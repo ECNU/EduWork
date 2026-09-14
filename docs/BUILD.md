@@ -63,6 +63,8 @@ git -C $core checkout (Get-Content core.lock.json -Raw | ConvertFrom-Json).commi
 node scripts/dev-eduwork-web.mjs start .local/web.private.json
 ```
 
+配置中的 `assembly`、`home`、`logs`、`userConfig` 和 `enterpriseProfile` 支持绝对路径；相对路径以执行启动命令时的目录为基准。请始终在仓库根目录执行 start、status、stop。后台 worker 和 Windows Profile 链接会继承同一基准，不因切换工作目录改变配置含义。资源环境变量及插件内的文件路径使用绝对路径。
+
 启动器将带认证信息的本机访问地址写入 `.local/web-logs/url.txt`。在浏览器打开该地址，再到设置中配置模型服务和 API Key。退出时把命令中的 `start` 改为 `stop`。私有配置、访问地址、用户目录和日志不提交到 Git。
 
 ### Office 与媒体开发资源
@@ -115,6 +117,35 @@ Python 环境须安装装配目录中 `d/node_modules/@eduwork/dsh-artifact-serv
 
 ## 从 Web 到桌面
 
+### 完整 Windows Electron 测试包
+
+从干净检出运行，准备 Git、PowerShell 7、Node.js 24.18.0、Go 1.26.6，以及带 x64 C++ 工具和 Redist 文件的 Visual Studio 2022 Build Tools。脚本使用 `vswhere` 定位 Visual Studio，校验可再分发 DLL 的微软签名；仅安装系统 VC++ 运行库不能替代这些构建输入。需要能访问锁定的 GitHub、npm 和资源下载地址。仅做 Web 验证不需要 Go 和 Visual Studio。
+
+在 EduWork 仓库根目录执行以下命令。使用源码回执中的开发版本；若源码已经是公测版，可将 `$Version` 改为符合 `X.Y.Z-dev.YYYYMMDD.N` 的本地测试版本。`-Development` 只构建和验收，不发布 GitHub Release、npm 或 OSS：
+
+```powershell
+$Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
+./scripts/ci-eduwork-windows-release.ps1 -CoreRoot . -EditionRoot . `
+  -DistributionConfig config/distributions/generic.json -Version $Version `
+  -Development -Output ../eduwork-electron-test
+```
+
+输出目录必须尚不存在，建议放在源码检出目录之外。`publish/` 包含 Electron ZIP、校验和与回执，`evidence-public/` 为脱敏检查结果。这个入口复用 GitHub CI 的脚本：自动准备锁定上游、Host、Node/Python/浏览器/ASR 资源和 Electron，检查解压后的同一 ZIP 并执行启动冒烟。下载和展开资源需要额外磁盘空间；不要将输出或本机配置提交到源码仓。
+
+机构版在 EduWork-ECNU 根目录先检出 `core.lock.json` 指定的公版提交，再运行：
+
+```powershell
+$CoreRoot = (Resolve-Path ../EduWork).Path
+$Version = (Get-Content core.lock.json -Raw | ConvertFrom-Json).version
+& "$CoreRoot/scripts/ci-eduwork-windows-release.ps1" -CoreRoot $CoreRoot -EditionRoot . `
+  -DistributionConfig edition/distribution.json -Version $Version `
+  -Development -Output ../eduwork-ecnu-electron-test
+```
+
+原生资源准备入口是 [prepare-windows-release-inputs.ps1](../scripts/prepare-windows-release-inputs.ps1)，由完整构建脚本调用，无需自行拼接资源路径。完整业务、真实登录和升级仍按实际变更验收；构建启动成功不等于这些项目已经通过。
+
+### 分阶段开发
+
 先验收 Web，再按 [Electron 构建说明](../dsh-electron/README.md)准备 Host、原生资源和桌面壳。`prepare-desktop-product.ps1` 默认保留 Web 内的全部独立插件；npm 产品拒绝 OIDC/Studio 快照覆盖。公版与 ECNU 各打一个 Electron 包即可做日常业务比较；只有 Host/壳发生变化时才另外生成 Wails 做共同内容验证。
 
 日常临时客户端与 Go/Wails 过渡包在本地构建、验证，不增加 GitHub 桌面打包矩阵或临时 Release。GitHub 后续正式桌面构建聚焦 Electron 的两种发行与已验收平台；现有源码/Web CI 和必要的 Mac 构建验证继续保留。Go 过渡包还须通过旧发布包的实际升级验收，不能直接使用独立 Wails 候选替代；详见 [发行与升级分工](RELEASE.md)。
@@ -125,7 +156,7 @@ macOS 不是将 Windows 依赖目录复制进 `.app`。先完成 [Mac 路径、�
 
 GitHub CI 产物不包含真实机构 Client ID 或部署配置。机构维护者在自己的机器下载 CI ZIP，先核对 CI 回执中的 SHA-256，再加入私有配置；程序和插件文件保持 CI 原样。真实配置不提交源码仓库，也不通过 CI secret 注入公开安装包。
 
-仅替换 `config/eduwork.jsonc` 时，可使用以下共用脚本。输入配置必须启用至少一个机构、填写实际 Client ID、更新清单地址及与版本相符的默认渠道；不支持在配置中分发用户 Key 或令牌。
+仅替换 `config/eduwork.jsonc` 时，可使用以下共用脚本。输入配置必须启用至少一个机构并填写实际 Client ID；不支持在配置中分发用户 Key 或令牌。可省略 `updates`，继承 CI 原包的发行更新源和默认渠道；也可显式设置 GitHub、静态 HTTPS 源或关闭更新。显式 `defaultPolicy` 必须与包版本的渠道一致。
 
 ```powershell
 ./scripts/configure-desktop-archive.ps1 `
@@ -134,6 +165,14 @@ GitHub CI 产物不包含真实机构 Client ID 或部署配置。机构维护�
   -Config ./private-config/eduwork.jsonc `
   -Output ./configured/desktop.zip
 ```
+
+例如机构使用公版默认 GitHub 更新时，不需要自建 OSS，可省略 `updates` 或加入：
+
+```json
+"updates": { "provider": "github", "repository": "ecnu/EduWork" }
+```
+
+静态源使用 `provider: "static"` 和 `manifestURL`；关闭更新使用 `provider: "disabled"`。`updates.defaultPolicy` 省略时按 CI 包版本继承；开发包为 development，公测包为 stable。此字段只提供发行默认值，不覆盖老用户主动保存的渠道选择。
 
 脚本保留输入 ZIP，核对全部文件的包内校验值，只替换配置和 `RELEASE-MANIFEST.json`，再逐文件确认程序未变。输出 ZIP、`.sha256` 和 `.receipt.json`，回执记录 CI 原包与装配包的摘要关系，不记录机构 Client ID。自定义 Logo 文件不在此单文件覆盖流程内。
 

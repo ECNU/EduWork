@@ -13,8 +13,13 @@ import {randomUUID} from 'node:crypto'
 
 const command=process.argv[2] || 'status',configPath=resolve(process.argv[3] || 'dist/studio-web.private.json')
 const config=JSON.parse(await readFile(configPath,'utf8'))
-const assembly=resolve(config.assembly),runtime=join(assembly,'d'),home=resolve(config.home)
-const records=resolve(config.logs),controlPath=join(records,'control.json'),logPath=join(records,'web.log')
+// Preserve invocation-relative configuration when the worker runs inside the
+// assembly. The Windows linker must use the same base as its parent process.
+const configBase=resolve(process.argv[4] || process.cwd())
+const assembly=resolve(configBase,config.assembly),runtime=join(assembly,'d'),home=resolve(configBase,config.home)
+const records=resolve(configBase,config.logs),controlPath=join(records,'control.json'),logPath=join(records,'web.log')
+for(const key of ['userConfig','enterpriseProfile'])if(config[key])config[key]=resolve(configBase,config[key])
+if(config.node && /[/\\]/.test(config.node))config.node=resolve(configBase,config.node)
 const profileName=config.profileName || 'chatecnu-work-web'
 if(!/^[a-z0-9-]+$/.test(profileName))throw new Error('Invalid Web profile name')
 const profile=join(home,'profiles',profileName),port=config.port || 8788
@@ -56,7 +61,7 @@ async function setup() {
   if(process.platform==='win32') {
     const linker=fileURLToPath(new URL('./link-studio-web-profile.ps1',import.meta.url))
     await new Promise((done,fail)=>{
-      const child=spawn('pwsh',['-NoProfile','-File',linker,'-Config',configPath],{windowsHide:true,stdio:'inherit'})
+      const child=spawn('pwsh',['-NoProfile','-File',linker,'-Config',configPath,'-BaseDirectory',configBase],{windowsHide:true,stdio:'inherit'})
       child.on('error',fail);child.on('exit',code=>code===0?done():fail(new Error('Profile module linking failed')))
     })
     for(const name of ['@deepseek-ai/dsh-persona','@chatecnu-work/dsh-skill-control-native','@eduwork/dsh-artifact-services','@eduwork/dsh-knowledge-studio']) {
@@ -125,7 +130,7 @@ else if(command==='status') {
   if(old&&live(old.pid))throw new Error('Web integration is already running')
   await setup();await mkdir(records,{recursive:true})
   await writeFile(join(records,'url.txt'),'')
-  const fd=await open(logPath,'w'),child=spawn(config.node || process.execPath,[fileURLToPath(import.meta.url),'worker',configPath],{cwd:assembly,detached:true,windowsHide:true,stdio:['ignore',fd.fd,fd.fd]})
+  const fd=await open(logPath,'w'),child=spawn(config.node || process.execPath,[fileURLToPath(import.meta.url),'worker',configPath,configBase],{cwd:assembly,detached:true,windowsHide:true,stdio:['ignore',fd.fd,fd.fd]})
   child.unref();await fd.close()
   for(let i=0;i<120;i++) {
     await new Promise(r=>setTimeout(r,250))

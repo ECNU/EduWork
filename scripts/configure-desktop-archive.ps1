@@ -62,7 +62,7 @@ function Check-Archive([string]$Path) {
 
 $source = Check-Archive $Archive
 $expectedPolicy = if ($source.identity.productVersion -match '-dev\.') {'development'} else {'stable'}
-if ($configSummary.defaultPolicy -ne $expectedPolicy) { throw 'Configuration update policy differs from the CI version channel.' }
+if ($configSummary.defaultPolicy -and $configSummary.defaultPolicy -ne $expectedPolicy) { throw 'Configuration update policy differs from the CI version channel.' }
 New-Item -ItemType Directory -Path (Split-Path $Output) -Force | Out-Null
 $partial = $Output + '.' + [Guid]::NewGuid().ToString('N') + '.partial'
 try {
@@ -102,7 +102,7 @@ $receipt = [ordered]@{
     distribution=$source.identity.distribution; sourceCIArchiveSHA256=$ExpectedSHA256.ToLowerInvariant()
     sha256=$hash; bytes=(Get-Item -LiteralPath $Output).Length; programFilesUnchanged=$true
     changedFiles=@('config/eduwork.jsonc','RELEASE-MANIFEST.json'); organizations=$configSummary.organizations
-    defaultPolicy=$configSummary.defaultPolicy; fileCount=$configured.files.Count; publicationStatus='local-only'
+    defaultPolicy=$expectedPolicy; fileCount=$configured.files.Count; publicationStatus='local-only'
 }
 $receipt | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath ($Output + '.receipt.json') -Encoding utf8NoBOM
 $receipt | ConvertTo-Json -Depth 6

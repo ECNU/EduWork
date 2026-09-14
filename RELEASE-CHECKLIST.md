@@ -1,47 +1,16 @@
-# Desktop release gates
+# 桌面发行检查
 
-The source snapshot targets DSH `0.1.5-rc.2`. Both portable Windows candidates
-consume one frozen product. Regular GitHub desktop Releases will package
-Electron for qualified platforms and both editions. Temporary desktop builds
-and Go/Wails transition packages are built and verified locally, outside the
-GitHub packaging matrix. CI checks source, locked dependencies and builds. The manually authorized
-release-windows.yml builds a Windows Electron ZIP, checks its extracted contents
-and runs a launch smoke check before publishing. Full Web, OIDC/restart, Office
-and media integration tests are local pre-submission checks; they are not
-repeated as release-CI gates. The receipt states its actual CI scope.
+[English](RELEASE-CHECKLIST_EN.md)
 
-Before dispatching a desktop Release job:
+当前产品锁定 DSH `0.1.5-rc.2`。公版与机构版复用公共产品和 Electron 构建配方。GitHub CI 检查源码、锁定依赖、ZIP 完整性和实际启动；真实模型、登录/重启、Office、音视频及升级按改动范围在本地验收，回执仅记录实际执行的检查。
 
-- Follow `docs/RELEASE.md`: internal versions are `X.Y.Z-dev.YYYYMMDD.N`,
-  never Releases. Publish only `X.Y.Z`; while DSH is a prerelease, the product
-  UI says public beta. Preserve old update formats for the Go transition.
-- Match the actual packaged version and both language badges. Verify persisted
-  development/public channel selection, no downgrade, stable refusing developer
-  artifacts, and the blue update action plus checking/download progress. Test
-  the default total model-request limit of 3 across main and child agents and queue cancellation.
+发行前核对以下项目：
 
-- Run the Web build from a clean clone, then prepare the common product and
-  Electron shell using the recipe in `dsh-electron/README.md`. Keep Wails source
-  regression checks; no temporary Wails packaging job is required on GitHub.
-- Before offering this release to old ECNU installations, attach local evidence
-  of the shipped old package upgrading to the Go transition package, retaining
-  history and recovering from failure. The independent Wails candidate is not
-  yet that transition package. Preserve the legacy feeds outside GitHub Release
-  automation; do not deliver an Electron ZIP to an unqualified old updater.
-- Freeze the native resource inputs, preserve each resource's license, verify
-  their hashes, and run Office/media creation, preview and download tests.
-- Test the actual packaged Windows applications: initial setup, full OIDC flow,
-  account menu/quota/logout, model selection, uploads, window/tray behavior,
-  configuration changes, moving the portable directory and isolated data.
-- Record public and institutional defaults separately. The institution release
-  must pin a public core commit and use its build scripts, without copying them.
-- Follow [update-source requirements](docs/UPDATES.md). Windows has a shared
-  portable updater, but an unconfigured candidate has no online feed. The CI
-  new-install ZIP is not yet the update-contract ZIP. Qualify GitHub discovery,
-  package format and real updates before enabling that channel; do not equate
-  a successful Release upload with working automatic updates or code signing.
-- Publish only reviewed archives and checksums. Public distribution uses GitHub
-  Releases; an institution may add its own mirror through its edition workflow.
-
-macOS and optional on-demand local language models are not qualified by these
-Windows source tests. Do not publish those assets without their own acceptance.
+- **版本与说明**：遵循[版本规则](docs/RELEASE.md)。`X.Y.Z` 为公测版；`X.Y.Z-dev.YYYYMMDD.N` 为开发版。普通开发构建只留 artifact，需要向开发渠道推送时，经负责人确认版本号和说明后发布 prerelease。当前自动发布工作流只处理公测版；不自行生成 Release notes。
+- **渠道与并发**：徽标与实际包版本一致，开发包默认开发渠道、公测包默认公测渠道，用户已保存的选择保留；不降级，公测渠道不接收开发版。验证蓝色更新按钮、检查/下载进度，以及默认总并发 3 和排队取消。
+- **构建来源**：从干净检出按[构建指南](docs/BUILD.md#从-web-到桌面)制作 Electron 包，冻结源码与依赖。机构仓锁定公版提交并复用构建代码。Go/Wails 只保留过渡装配和必要回归，不加入 GitHub Release 矩阵。
+- **旧版迁移**：向旧用户提供更新前，验收真实旧包 → Go 过渡包 → Electron 的适用路线，检查历史数据保留和失败恢复。旧 0.2 更新器不能直接接收 Electron，兼容入口由维护者单独管理。
+- **资源与功能**：保留原生资源许可证并核对哈希；在实际包上验证首次启动、登录、模型选择、上传、文件预览和资源管理器、窗口/托盘、配置修改、移动目录及数据隔离。按变更验收 Office/媒体生成与下载；账户配额只在机构发行中验收，公版 OIDC 不查询配额。
+- **包与更新清单**：开发和公测 CI ZIP 均含 `RELEASE-MANIFEST.json` 与启动/迁移契约；公测 Release 另生成 `update-windows-amd64.json`。普通开发 artifact 不会自动进入更新渠道，发布 prerelease 或机构静态源时提供相应清单。公版默认 GitHub，机构可配置其他源。遵循[更新源要求](docs/UPDATES.md)，对每次实际 ZIP 验证下载、校验与重启安装，不能只检查上传成功。
+- **配置装配**：公开 CI 包不含真实机构接入参数。本机仅加入配置和允许的品牌资源，程序文件保持原样；装配后重新生成包内清单、ZIP 大小与哈希及更新清单。仅当 ZIP 字节完全相同时，镜像才能沿用原校验值。保留原始 CI 包和装配回执。
+- **发布范围**：只发布已经审阅的包、校验值及获批说明。GitHub、OSS、npm 与仓库可见性是独立操作。Windows 检查不代表 macOS、代码签名或可选本地语言模型已通过，相关资产需要各自验收。

@@ -1,0 +1,16 @@
+# Desktop release checks
+
+[简体中文](RELEASE-CHECKLIST.md)
+
+The product pins DSH `0.1.5-rc.2`. Public and institutional editions reuse the common product and Electron recipe. GitHub CI checks source, locked dependencies, ZIP integrity and actual startup. Real models, sign-in/restart, Office, media and upgrades receive local acceptance appropriate to the change; receipts record only checks actually performed.
+
+Before a release, verify:
+
+- **Version and notes**: follow [versioning](docs/RELEASE.md). `X.Y.Z` is public beta; `X.Y.Z-dev.YYYYMMDD.N` is development. Routine builds retain artifacts only. Publishing a development prerelease requires the owner's approval of its version and notes. The automatic publishing workflow currently handles public beta only; do not generate Release notes without approval.
+- **Channels and concurrency**: badges match the installed version; development/public-beta packages default to their respective channels and preserve saved choices. Never downgrade or offer development builds to the public-beta channel. Check the blue update action, checking/download progress, the default total concurrency of 3 and queue cancellation.
+- **Build provenance**: use a clean checkout and the [build guide](docs/BUILD.md#从-web-到桌面), freezing source and dependencies. Institution editions pin the core commit and reuse its scripts. Keep Go/Wails transition assembly and relevant regression checks outside the GitHub Release matrix.
+- **Legacy migration**: qualify the applicable shipped-old-package → Go transition → Electron route, including retained history and failure recovery. Old 0.2 updaters cannot receive Electron directly; maintain legacy feeds separately.
+- **Resources and features**: preserve resource licenses and hashes. Test the actual package's first launch, sign-in, model selection, uploads, file previews and file-manager actions, window/tray behavior, configuration, relocation and data isolation. Check changed Office/media generation and downloads. Account quota belongs to institution acceptance; public OIDC does not query it.
+- **Archives and update manifests**: development and public-beta CI ZIPs contain `RELEASE-MANIFEST.json` and launch/migration contracts. Public-beta Releases also generate `update-windows-amd64.json`. Routine artifacts are not update feeds; supply the appropriate manifest when publishing prereleases or institution static updates. The public edition defaults to GitHub; institutions may select another source. Follow [update requirements](docs/UPDATES.md) and verify each actual ZIP's download, integrity and restart installation, not merely its upload.
+- **Configuration overlay**: public CI packages contain no live institution parameters. Add configuration and permitted branding locally while preserving program files, then regenerate the archive's file manifest, ZIP size/hash and update manifest. Only byte-identical mirrors may reuse checksums. Keep the original CI archive and overlay receipt.
+- **Publication scope**: publish only reviewed assets, checksums and approved notes. GitHub, OSS, npm and repository visibility are separate operations. Windows checks do not qualify macOS, code signing or optional local language models; those assets require their own acceptance.

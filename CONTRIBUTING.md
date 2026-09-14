@@ -2,6 +2,19 @@
 
 欢迎提交问题反馈、文档改进、功能修复和平台适配。先阅读 [README](README.md) 了解功能，再根据工作内容查阅 [构建指南](docs/BUILD.md) 或 [模块开发说明](docs/PACKAGES.md)。
 
+## 源码目录
+
+| 目录 | 适合修改的内容 |
+| --- | --- |
+| `packages/` | 独立 npm 模块：OIDC、记忆、邮件、Studio 和共享成果服务。 |
+| `dsh-plugins/`、`dsh-skills/`、`dsh-presets/` | 产品插件、任务指引与 Agent 预设。 |
+| `dsh-host/` | 两种桌面壳共用的 Host、配置与系统能力边界。 |
+| `dsh-electron/`、`dsh-desktop/` | Electron 主线与 Go/Wails 过渡壳。 |
+| `config/`、`scripts/` | 通用发行配置、组件锁、构建和装配脚本。 |
+| `tests/`、`docs/` | 产品检查、使用与维护文档；模块测试还保留在各自目录。 |
+
+机构专属配置、插件和 skills 位于 EduWork-ECNU 的 `edition/`，由 `core.lock.json` 固定所复用的公版提交。共享能力应在公版修改，机构仓不复制公版实现。
+
 ## 提交修改
 
 1. 从默认分支创建自己的分支，围绕一个明确问题修改代码或文档。

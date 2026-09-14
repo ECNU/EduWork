@@ -1,7 +1,10 @@
 #Requires -Version 7.0
-param([Parameter(Mandatory)][string]$Config)
+param([Parameter(Mandatory)][string]$Config, [string]$BaseDirectory = (Get-Location).Path)
 $ErrorActionPreference = 'Stop'
 $settings = Get-Content -LiteralPath $Config -Raw | ConvertFrom-Json
+$BaseDirectory = [IO.Path]::GetFullPath($BaseDirectory)
+$settings.home = [IO.Path]::GetFullPath($settings.home, $BaseDirectory)
+$settings.assembly = [IO.Path]::GetFullPath($settings.assembly, $BaseDirectory)
 $profileName = $(if ($settings.profileName) { [string]$settings.profileName } else { 'chatecnu-work-web' })
 if ($profileName -notmatch '^[a-z0-9-]+$') { throw 'Invalid Web profile name.' }
 $profile = [IO.Path]::GetFullPath((Join-Path $settings.home "profiles/$profileName"))

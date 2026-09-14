@@ -178,7 +178,7 @@ try {
       host = new DesktopHostProcess(resolve(options['--node']), prepared.profile, undefined, { bootstrap: bridge.bootstrap, allowLinkedProfile: true })
       const ready = await Promise.race([host.start(), new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Host readiness timed out')), 45000); timer.unref() })])
       assert.equal(ready.protocolVersion, 3)
-      assert.equal(ready.dshVersion, '0.1.5-rc.1')
+      assert.equal(ready.dshVersion, sourceIdentity.dshVersion, 'Host must match the tested product Runtime')
       ;(summaries.hostStarts ??= []).push({ label, elapsedMs: Math.round(performance.now() - started) })
     }
     const stop = async () => {

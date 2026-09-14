@@ -13,11 +13,15 @@ The default total model-request concurrency is 3. Main conversations, subagents 
 
 The installed configuration is `config/eduwork.jsonc`; examples are in `config/examples/`. Fill in deployment values such as the public Client ID, then choose Exit from the tray and restart. Closing the window alone normally keeps the process running.
 
-The Windows public edition defaults to GitHub updates. Use `provider: "github"` with `repository: "ecnu/EduWork"`, or configure a static HTTPS `manifestURL` to override the default. `provider: "disabled"` disables online updates. GitHub uses public, published stable releases and anonymous requests; do not supply a Token or use a Release HTML page as a static manifest.
+The Windows public edition defaults to GitHub updates. Use `provider: "github"` with `repository: "ecnu/EduWork"`, or configure a static HTTPS `manifestURL` to override the default. `provider: "disabled"` disables online updates. GitHub uses anonymous requests for published public releases; the development channel also accepts matching prereleases. Do not supply a Token or use a Release HTML page as a static manifest.
+
+For a configuration-only overlay of a CI archive, see the [build guide](../../../docs/BUILD.md#从-ci-原包装配机构配置). The overlay supports inherited defaults, GitHub, static HTTPS and disabled updates.
 
 ## Identity and models
 
 `organizations` may be empty. Users can still configure a personal API Key in the model settings. For identity-only login, omit both `keyBinding` and `provider`; standard OIDC alone does not provision model keys or a catalog. Those capabilities require the resource protocol.
+
+Each organization needs a unique stable `id`. Managed-model organizations also require distinct `provider.id` values matching their servers’ bootstrap responses. Changing only the client Provider ID cannot resolve a collision; use distinct server routes or separate client configurations.
 
 Passwords, API Keys, client secrets and login tokens must not be included in examples. Enterprise login stores its credential through the local protected credential service under `EDUWORK_API_KEY`. Personal provider credentials remain independently managed.
 

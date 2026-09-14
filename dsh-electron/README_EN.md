@@ -6,28 +6,22 @@ An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share th
 
 The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.
 
-Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; no configured source means no automatic download. Development checks use isolated data directories.
+Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 
 ## Build
 
-Prepare the matching Web product first. `$WebProduct` selects public or institutional composition without copying business code into the shell. Variables below identify explicitly selected, verified local inputs. `$Node` points to `node.exe` from an official extracted Node distribution, with its adjacent `LICENSE` retained.
+For a complete Windows test package, use the [build guide](../docs/BUILD.md#从-web-到桌面). It defines prerequisites, public and institutional commands, and output paths. From a clean EduWork checkout with Git, PowerShell 7, Node.js 24.18.0, Go 1.26.6 and Visual Studio 2022 C++ Build Tools:
+
 ```powershell
-node dsh-host/prepare.mjs --upstream $Upstream --output $HostAdapter
-./scripts/prepare-desktop-product.ps1 -WebAssembly $WebProduct -HostAdapter $HostAdapter -Output $DesktopProduct
-
-# Native resource inputs contain local resource paths, not account information.
-./scripts/prepare-desktop-resources.ps1 -OutputRoot $DesktopProduct @NativeResourceInputs
-
-./dsh-electron/scripts/prepare-electron.ps1 -Upstream $Upstream -Output $ElectronCache
-node dsh-electron/scripts/build-shell.mjs --upstream $Upstream --host $HostAdapter --output $ElectronShellBuild
-./scripts/assemble-desktop-candidate.ps1 -Shell electron -Product $DesktopProduct -HostAdapter $HostAdapter `
-  -ElectronShellBuild $ElectronShellBuild -ElectronRuntime "$ElectronCache/runtime" `
-  -Node $Node -OutputRoot $CandidateRoot -Version '0.3.5-dev.20260912.3'
+$Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
+./scripts/ci-eduwork-windows-release.ps1 -CoreRoot . -EditionRoot . `
+  -DistributionConfig config/distributions/generic.json -Version $Version `
+  -Development -Output ../eduwork-electron-test
 ```
 
-`-Shell electron`, `wails` or `both` selects the output: `electron-candidate/` and/or `wails-candidate/`. Existing destinations are rejected. Electron requires installed build dependencies for the pinned upstream source; Wails requires Go, Windows build tools and WebView2.
+Use a development-format version (`X.Y.Z-dev.YYYYMMDD.N`) and a new output directory. This invokes the same recipe as CI and produces a tested ZIP under `publish/`; it does not publish a Release. The recipe resolves pinned upstream source and prepares Host, native resources and Electron without requiring undefined local input variables. Actual login, media quality and upgrades need separate acceptance.
 
-Routine testing assembles Electron with public and ECNU profiles; use `both` for parity checks when changing Host or shell adapters. This DSH desktop Host baseline is built from fixed official source because it has no npm package. macOS still requires platform adaptation and native acceptance; Windows scripts do not produce a usable Mac release.
+For Host or shell development, inspect [the shared recipe](../scripts/ci-eduwork-windows-release.ps1) for the prepared `host/`, `product/`, `inputs/`, `electron/` and `shell/` directories. [Native input preparation](../scripts/prepare-windows-release-inputs.ps1) records paths and resource hashes in `inputs/inputs.json`. `assemble-desktop-candidate.ps1` supports `electron`, `wails` and `both`; use both only when checking shell parity. The official Host has no npm package at the pinned baseline and is built from fixed upstream source. macOS requires separate adaptation and native acceptance.
 
 ## Local data and updates
 

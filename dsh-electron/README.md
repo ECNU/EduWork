@@ -6,29 +6,22 @@
 
 桌面基底锁定 DSH `0.1.5-rc.2`（`fb2c4b9e698e30edb738bca4cf0618587db7d203`）。Electron 主进程、窗口、`dsh-app://` 和流式 Host 传输从该提交派生，产品适配以可核对的补丁生成，不修改共享的官方源码缓存。Host 适配放在 `../dsh-host/`，供两种桌面宿主复用。
 
-每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；未配置更新源时不会自动下载新版本。开发验证使用独立数据目录。
+每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；公版默认使用 GitHub，用户可通过配置覆盖来源或关闭更新。开发验证使用独立数据目录。
 
 ## 构建入口
 
-先完成同版本的 Web 产品装配。公版或机构版由 `$WebProduct` 的发行配置决定，壳中不复制业务代码。以下变量都指向明确选择、校验过的本地输入；Node 使用官方解压目录中的 `node.exe`，旁边应保留 `LICENSE`。
+完整 Windows 测试包使用[构建指南](../docs/BUILD.md#从-web-到桌面)中的入口，包含工具要求、公版与机构版命令及输出位置。在干净的 EduWork 检出目录准备 Git、PowerShell 7、Node.js 24.18.0、Go 1.26.6 和 Visual Studio 2022 C++ Build Tools 后运行：
 
 ```powershell
-node dsh-host/prepare.mjs --upstream $Upstream --output $HostAdapter
-./scripts/prepare-desktop-product.ps1 -WebAssembly $WebProduct -HostAdapter $HostAdapter -Output $DesktopProduct
-
-# 原生资源参数来自本地缓存位置配置，只包含资源路径，不包含账号。
-./scripts/prepare-desktop-resources.ps1 -OutputRoot $DesktopProduct @NativeResourceInputs
-
-./dsh-electron/scripts/prepare-electron.ps1 -Upstream $Upstream -Output $ElectronCache
-node dsh-electron/scripts/build-shell.mjs --upstream $Upstream --host $HostAdapter --output $ElectronShellBuild
-./scripts/assemble-desktop-candidate.ps1 -Shell electron -Product $DesktopProduct -HostAdapter $HostAdapter `
-  -ElectronShellBuild $ElectronShellBuild -ElectronRuntime "$ElectronCache/runtime" `
-  -Node $Node -OutputRoot $CandidateRoot -Version '0.3.5-dev.20260912.3'
+$Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
+./scripts/ci-eduwork-windows-release.ps1 -CoreRoot . -EditionRoot . `
+  -DistributionConfig config/distributions/generic.json -Version $Version `
+  -Development -Output ../eduwork-electron-test
 ```
 
-`-Shell electron`、`wails` 或 `both` 选择装配目标。输出分别为 `electron-candidate/` 和 `wails-candidate/`；已存在的目标会被拒绝，构建 Electron 需要锁定上游源码已经安装的构建依赖；Wails 需要 Go、Windows 构建工具和 WebView2。
+版本须为 `X.Y.Z-dev.YYYYMMDD.N`，输出目录须尚不存在。该命令复用 CI 配方，在 `publish/` 生成经过检查的 ZIP，不创建 Release；自动准备锁定上游、Host、原生资源和 Electron，无需填写未定义的本地输入变量。真实登录、媒体质量和升级另做验收。
 
-日常测试默认只装配 Electron，再分别选择公版/ECNU 发行配置；修改 Host 或壳适配时才使用 `both` 做一致性验收。DSH 桌面 Host 在此基线没有 npm 包，是固定官方源码构建的明确例外，不能用不存在的 npm 包替代。macOS 仍需平台适配和原生验收，Windows 脚本不能直接产出可用的 Mac 发行包。
+单独调试 Host 或壳时，可按[共用构建脚本](../scripts/ci-eduwork-windows-release.ps1)查看已准备的 `host/`、`product/`、`inputs/`、`electron/` 和 `shell/`。其中[原生资源准备](../scripts/prepare-windows-release-inputs.ps1)在 `inputs/inputs.json` 记录输入路径与哈希。`assemble-desktop-candidate.ps1` 支持 `electron`、`wails` 和 `both`，只有核对壳一致性时才需要双壳。锁定基线的官方 Host 没有 npm 包，按固定源码构建；macOS 仍需独立适配和真机验收。
 
 ## 本机数据与比较
 
