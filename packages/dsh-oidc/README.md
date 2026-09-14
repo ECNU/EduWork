@@ -1,10 +1,14 @@
 # dsh-oidc
 
+**一次机构登录，连接用户获授权的模型服务。**
+
 > npm 包：`@eduwork/dsh-oidc@0.2.3` · DSH 开发基线：`0.1.5-rc.1`。
 
 **简体中文** | [English](README_EN.md)
 
-`dsh-oidc` 是面向 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的企业身份与模型闭环集成插件。
+`dsh-oidc` 为 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 客户端提供机构登录、模型凭据和模型目录接入。启用托管模型模式后，用户在浏览器完成登录及必要确认，客户端即可获取并配置获授权的机构模型，个人 API Key 和其他模型也可以继续使用。
+
+我们希望机构服务能被更多 AI 客户端复用。**[开放身份与模型接入倡议](docs/open-integration.md)** 介绍了这个目标、已有实现和社区参与方式；具体接入遵循下方协议，不要求采用 EduWork 的界面或桌面壳。
 
 插件提供四项能力：
 
@@ -127,6 +131,7 @@ npm run check
 
 详细材料：
 
+- [开放身份与模型接入倡议](docs/open-integration.md)：目标、现有契约和社区参与方式
 - [`docs/architecture.md`](docs/architecture.md)：组合架构与代码边界
 - [`docs/server-integration-contract.md`](docs/server-integration-contract.md)：机构服务端必须共同实现的完整接口规范
 - [`docs/getting-started.md`](docs/getting-started.md)：第三方从零接入、部署、验收与排障

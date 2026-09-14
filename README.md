@@ -7,15 +7,17 @@
 [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README.md)
 [![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#安装与使用)
 
-**面向学习、研究与办公的桌面 AI 工作助手。**
+**让 AI 围绕你的资料，把任务做到交付。**
 
 **简体中文** | [English](README_EN.md)
 
-[下载安装](#安装与使用) · [学校与企业接入](#学校与企业接入) · [使用指南](docs/USER_GUIDE.md) · [参与开发](CONTRIBUTING.md)
+[下载安装](#安装与使用) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md) · [参与开发](CONTRIBUTING.md)
 
-EduWork 基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建。它能围绕本机文件持续完成任务：阅读资料、搜索信息、分析数据、编写代码，再把结果整理成文档、表格、演示文稿或音视频。
+准备一堂课、完成一份调研、整理一批表格，从手头的资料开始。EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手：读取本机文件、搜索信息、分析数据、编写代码，再把结果做成可预览、可下载、可继续修改的文档、表格、演示文稿或音视频。
 
 个人用户连接自己的模型 API 即可使用；学校和企业可通过配置接入统一身份认证与模型服务。每位用户在自己的电脑上独立运行客户端，无需额外部署 EduWork 服务端。
+
+> **你的工作区，也可以连接机构的 AI 服务。** 我们正在推动[开放身份与模型接入倡议](packages/dsh-oidc/docs/open-integration.md)，邀请社区一起让机构账号与模型服务被更多客户端复用。
 
 ## 你可以用它做什么
 
@@ -117,6 +119,16 @@ Studio 将常用成果集中在侧边栏。既可以从这里开始创作，也�
 机构可以将插件、技能和默认配置组合成自己的发行版，复用 EduWork 的工作台、Studio、文件预览和桌面能力。通用功能持续由公版维护，机构只需维护自己的扩展。
 
 [EduWork@ECNU](https://github.com/ecnu/EduWork-ECNU) 是一个机构扩展示例，展示了华东师范大学如何基于公版接入内部服务。可参考该仓库组织自己的扩展与发行配置，设计说明见[发行边界](docs/EDITIONS.md)。
+
+## 一次接入，更多客户端
+
+学校和企业接入一个新的 AI 客户端，往往需要再次处理登录、模型 Key 和模型目录。我们希望这些工作能够通过公开协议复用，让用户选择工具时，也能继续使用机构提供的服务。
+
+`dsh-oidc` 是我们的实现起点：身份遵循 OIDC，托管模型通过公开的凭据与资源接口接入。它有独立 npm 包，也有服务端接口、OpenAPI 和联调示例；其他客户端可以按协议独立实现，不必采用 EduWork 的界面。
+
+我们邀请身份平台、模型网关、客户端和插件作者共同完善这套约定。当前规范与实现随源码提供，跨客户端互通需要按版本实际验证；后续协议由真实接入问题推动演进。
+
+**[阅读开放接入倡议](packages/dsh-oidc/docs/open-integration.md)** · [实现服务端](packages/dsh-oidc/docs/server-integration-contract.md) · [接入客户端](packages/dsh-oidc/README.md) · [提出建议](https://github.com/ecnu/EduWork/issues)
 
 ## 数据与隐私
 

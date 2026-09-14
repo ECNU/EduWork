@@ -7,15 +7,17 @@
 [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README_EN.md)
 [![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#installation-and-use)
 
-**A desktop AI assistant for learning, research, and everyday work.**
+**An AI workspace that turns your materials into finished work.**
 
 [简体中文](README.md) | **English**
 
-[Get started](#installation-and-use) · [School and enterprise integration](#school-and-enterprise-integration) · [User guide](docs/USER_GUIDE.md) · [Contribute](CONTRIBUTING.md)
+[Get started](#installation-and-use) · [School and enterprise integration](#school-and-enterprise-integration) · [Open integration initiative](#one-integration-more-clients) · [User guide](docs/USER_GUIDE.md) · [Contribute](CONTRIBUTING.md)
 
-EduWork is built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It works with your local files to read sources, search for information, analyze data, and write code, then turn the results into documents, spreadsheets, presentations, or media.
+Prepare a lesson, complete a research brief, or organize a collection of spreadsheets, starting with the materials you already have. EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It reads local files, searches for information, analyzes data, and writes code, then produces documents, spreadsheets, presentations, or media that you can preview, download, and keep working on.
 
 Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. Each client runs independently on its user's computer, with no separate EduWork server to deploy.
+
+> **Your workspace can connect to your organization's AI services.** Through the [Open Identity and Model Integration Initiative](packages/dsh-oidc/docs/open-integration.en.md), we invite the community to make institutional accounts and model services reusable across more clients.
 
 ## What you can do
 
@@ -117,6 +119,16 @@ Schools and businesses can use plugins to connect internal systems, bringing org
 Organizations can combine plugins, skills, and default configuration into their own edition while reusing EduWork's workbench, Studio, file previews, and desktop capabilities. Shared features continue to be maintained in the public edition, while each organization maintains its extensions.
 
 [EduWork@ECNU](https://github.com/ecnu/EduWork-ECNU) is an example of an institutional extension, showing how East China Normal University connects its internal services to the public edition. Use that repository as a reference for organizing extensions and distribution configuration; see [edition boundaries](docs/EDITIONS.md) for the design.
+
+## One integration, more clients
+
+Connecting an organization to another AI client often means repeating the work of sign-in, model keys, and model catalogs. We want open protocols to make this work reusable, so users can choose their tools while continuing to use institutional services.
+
+`dsh-oidc` is our starting implementation: OIDC handles identity, while public credential and resource interfaces connect managed models. It provides an independent npm package, a server specification, OpenAPI, and integration examples. Other clients can implement the protocol without adopting EduWork's UI.
+
+We invite identity platforms, model gateways, client developers, and plugin authors to improve the contract together. Current interfaces and implementations are documented in the source repository; interoperability across clients needs version-specific testing, and real integration problems should guide future protocol changes.
+
+**[Read the open integration initiative](packages/dsh-oidc/docs/open-integration.en.md)** · [Implement a server](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Integrate a client](packages/dsh-oidc/README_EN.md) · [Share feedback](https://github.com/ecnu/EduWork/issues)
 
 ## Data and privacy
 

@@ -8,6 +8,8 @@
 
 This document is written for identity-platform, model-platform, and integration-test teams. It defines, in API-reference form, the server capabilities required by `dsh-oidc`.
 
+For the goals behind these interfaces and ways to contribute to their evolution, see the [Open Identity and Model Integration Initiative](open-integration.en.md). This specification remains the implementation and integration reference; the initiative does not change existing fields, paths, or compatibility rules.
+
 Status: implemented client wire specification, not an IETF standard. Source code and HTTP contract tests determine current behavior. Section 10 provides curl examples; section 11 contains **unimplemented optional proposals**. Every client is a local, single-user Runtime; this is not a shared Web-login architecture.
 
 | Capability | Required interfaces | Optionality and implemented behavior |

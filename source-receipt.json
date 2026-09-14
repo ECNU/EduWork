@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260914.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-14T12:35:37.484Z",
-  "fileSetSHA256": "6f5de96401f6969b87f992baba54a98aebd1a98ba775eda44e86a215acaea124",
+  "createdAt": "2026-09-14T12:45:09.183Z",
+  "fileSetSHA256": "8e5169c3483bdf35dc2c204832cb97820d6d95853a70a9286d83a737d6ac43eb",
   "files": [
     {
       "path": ".gitattributes",
@@ -3536,6 +3536,14 @@
       "sha256": "ab2650304628995e79f4bfc7283d3f31f61463a474b6d95db79947bba26a1dc7"
     },
     {
+      "path": "packages/dsh-oidc/docs/open-integration.en.md",
+      "sha256": "14d882f623cb8a2ba7a0613d336ba0e498c37d5b9575e004b3f2276b35e9e32e"
+    },
+    {
+      "path": "packages/dsh-oidc/docs/open-integration.md",
+      "sha256": "ac68e30c27af8af18e223b31a7d623955cf5e11e5e77e3fbfe26c21cc7ccee9d"
+    },
+    {
       "path": "packages/dsh-oidc/docs/public-resource-protocol.en.md",
       "sha256": "07a36bec6259b3269c2c3db3645242bf7a65a6e3f97eccee46a78d00cb86838c"
     },
@@ -3569,11 +3577,11 @@
     },
     {
       "path": "packages/dsh-oidc/docs/server-integration-contract.en.md",
-      "sha256": "2f6ce9c3f7fb37c7cc83b23e6eb5676bb2d2c52fe223fba4bc56313c30c92629"
+      "sha256": "d8c0d3d272a7ff7dba9c3705d79cdfd3d7243253e866b877a464706ae6aecd93"
     },
     {
       "path": "packages/dsh-oidc/docs/server-integration-contract.md",
-      "sha256": "d921e8ee6587b62a18d300228d33a0e323f4dfe28aacc668e4ecd15ad09dee53"
+      "sha256": "7123b92839291cc960fc575f543aa6bd9c4bd1c2c2d4fe854710683e492dc270"
     },
     {
       "path": "packages/dsh-oidc/examples/ecnu.enterprise-profile.example.json",
@@ -3629,11 +3637,11 @@
     },
     {
       "path": "packages/dsh-oidc/README_EN.md",
-      "sha256": "58e1992522b3a4987631e83d42357f1969be80f553026643470c587d16b16e7e"
+      "sha256": "19e4f3069f0861dfe1326c82f756273923d7b2937368070742a92e110688bc44"
     },
     {
       "path": "packages/dsh-oidc/README.md",
-      "sha256": "364d44832900d91f5fc918e7b59b04d4b8dbd363628797b57940b562acfbb46a"
+      "sha256": "922508b52b826f0e44f51019baec43e2662ea15ce4453d574fce863a856b39d6"
     },
     {
       "path": "packages/dsh-oidc/schema/enterprise-profile.v1alpha1.schema.json",
@@ -3849,11 +3857,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "4af8f8c9df6edb2173be09bf203d43537674e0816522d0c641367a12e454e462"
+      "sha256": "73b3ee04a923e56de3381c58c1ccdc6a85189d3c23b13dcab051485093fa8f59"
     },
     {
       "path": "README.md",
-      "sha256": "bd83a7069d9ff462aa081c692f798e09da777327ed89e8fb14d558fed0aad8d0"
+      "sha256": "0e7177984a8dc84b1ff7f2ffb1e899a92460be30abc37f01ce844f70f1e95b67"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",

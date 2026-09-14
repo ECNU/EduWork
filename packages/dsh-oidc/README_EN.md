@@ -1,10 +1,14 @@
 # dsh-oidc
 
+**Sign in with an institution to access the models it authorizes for you.**
+
 > npm package: `@eduwork/dsh-oidc@0.2.3` · DSH development baseline: `0.1.5-rc.1`.
 
 [简体中文](README.md) | **English**
 
-Standards-based enterprise identity and model integration for [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness).
+`dsh-oidc` connects [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) clients to institutional sign-in, model credentials, and model catalogs. With managed-model mode enabled, the client obtains and configures authorized institutional models after browser sign-in and any required confirmation. Personal API keys and other models remain available.
+
+We want institutional services to work across more AI clients. The **[Open Identity and Model Integration Initiative](docs/open-integration.en.md)** explains the goal, existing implementation, and ways to participate. Integration follows the contracts below without requiring EduWork's UI or desktop shell.
 
 `dsh-oidc` composes four concerns behind one reviewed, declarative Enterprise Profile:
 
@@ -166,6 +170,7 @@ The plugin and EduWork product use independent versions. Distribution builds use
 
 ## Documentation
 
+- [Open Identity and Model Integration Initiative](docs/open-integration.en.md)
 - [Architecture and boundaries](docs/architecture.en.md)
 - [Complete institutional server integration contract](docs/server-integration-contract.en.md)
 - [Third-party getting-started guide](docs/getting-started.en.md)
