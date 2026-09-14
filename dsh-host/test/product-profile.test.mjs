@@ -54,8 +54,8 @@ test('moving the whole product repairs only its managed module link and keeps hi
   assert.equal(patch[1].insert[0].config.backend, 'desktop')
   assert.equal(patch[1].insert[0].config.publicOption, true)
   assert.ok(patch.some(row => row.id === 'credentials' && row.disabled))
-  assert.equal(patch.find(row => row.id === 'session-controller').disabled, true)
-  assert.ok(patch.some(row => row.insert?.some(plugin => plugin.id === 'eduwork-session-controller' && plugin.name === '@chatecnu-work/dsh-artifact-preview-native/session-controller')))
+  assert.ok(!patch.some(row => row.id === 'session-controller' && row.disabled))
+  assert.ok(patch.some(row => row.insert?.some(plugin => plugin.id === 'eduwork-native-reveal' && plugin.name === '@chatecnu-work/dsh-artifact-preview-native/session-controller')))
   assert.ok(patch.some(row => row.insert?.some(plugin => plugin.name === '@chatecnu-work/dsh-credentials-native')))
 })
 

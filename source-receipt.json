@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260914.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-14T06:21:28.525Z",
-  "fileSetSHA256": "b0e7b6090ca50ad229931f8b9678e0a9478d1f92524a29eaac4a0d2b26bfbc22",
+  "createdAt": "2026-09-14T07:21:49.871Z",
+  "fileSetSHA256": "2965ede91262180d42e2f7b1a270a7cab645d65f5d0b6e01414a7b3bb6bd7c58",
   "files": [
     {
       "path": ".gitattributes",
@@ -725,7 +725,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "7f1bdba4f7c66fc8bcaa91a66d0c418e3c5b922fb77dc0056cc015acef0c3600"
+      "sha256": "32fbdd699b25b425060b540d3f3f6962a2ed72390bd14d234f74cdae573fe5d9"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -769,7 +769,7 @@
     },
     {
       "path": "dsh-host/test/native-reveal.integration.test.mjs",
-      "sha256": "55127cf7b1bc9a430d429dc3457c5fee4ba027ec93f2f12bb50b22dc39981000"
+      "sha256": "d9c1caf9f0151b699676d2e3a468db1bc496885cf2994a30967ed0c0fdd1019c"
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
@@ -785,7 +785,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "f74d10b3db380b8a6cb3dc4dd53d29620f2e5ed4f9c012b83e6ac360d67d8464"
+      "sha256": "c651549dbdfc4f0ae039410357e9876e2fc24d37f88a8981f5c3e258b4e72c17"
     },
     {
       "path": "dsh-host/test/release-policy.test.mjs",
@@ -945,7 +945,7 @@
     },
     {
       "path": "dsh-plugins/artifact-preview-native/lib/session-controller.js",
-      "sha256": "84bd40225dbdc270c55db937fa0e3abd45b850e6cad8fa7fee16679a3b422025"
+      "sha256": "c91df13a30cf9061e3a3af1dff41735c7125cf4f68f9c91800e13a83e1291015"
     },
     {
       "path": "dsh-plugins/artifact-preview-native/lib/stream.js",
@@ -994,6 +994,10 @@
     {
       "path": "dsh-plugins/artifact-preview-native/test/reveal.test.mjs",
       "sha256": "b1d514c6d187ceb603caa69b579e8c95b3f684f5498a1cbea1c3349f22e6884b"
+    },
+    {
+      "path": "dsh-plugins/artifact-preview-native/test/session-controller.test.mjs",
+      "sha256": "724b7bf7a2c82badedc2c9443346c513ada87cbf177ebf8ca0f80eee49cd835b"
     },
     {
       "path": "dsh-plugins/artifact-preview-native/test/stream.test.mjs",

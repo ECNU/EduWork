@@ -38,8 +38,8 @@ test('official session RPC reveals and selects a Unicode file through the deskto
   // runtime. No files in the original desktop package are modified.
   const patchFile = join(prepared.profile, 'cordis.patch.yml')
   const patch = JSON.parse(await readFile(patchFile, 'utf8'))
-  assert.equal(patch.find(row => row.id === 'session-controller').disabled, true)
-  const controller = patch.flatMap(row => row.insert ?? []).find(row => row.id === 'eduwork-session-controller')
+  assert.ok(!patch.some(row => row.id === 'session-controller' && row.disabled))
+  const controller = patch.flatMap(row => row.insert ?? []).find(row => row.id === 'eduwork-native-reveal')
   assert.ok(controller)
   controller.name = pathToFileURL(join(root, 'native/session-controller.js')).href
   await writeFile(patchFile, JSON.stringify(patch))
@@ -47,6 +47,9 @@ test('official session RPC reveals and selects a Unicode file through the deskto
   bridge = await startNativeBridge({ vault: { operation: async () => ({ configured: false, writable: true }), flush: async () => {} }, openExternal: async () => {} })
   host = new DesktopHostProcess(process.execPath, prepared.profile, undefined, { bootstrap: bridge.bootstrap, allowLinkedProfile: true })
   assert.equal((await host.start()).protocolVersion, 3)
+  const index = await host.fetch(new Request('http://localhost/'))
+  assert.equal(index.status, 200)
+  assert.ok((await index.text()).includes('@deepseek-ai/dsh-api-session-controller'), 'official client contribution must remain in the boot graph')
   const folder = join(root, '报告 2026,09'), target = join(folder, '回复邮件 & 100% #1.md')
   await mkdir(folder)
   await writeFile(target, 'Synthetic file-manager acceptance fixture')

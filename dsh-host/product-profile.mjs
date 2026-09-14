@@ -119,9 +119,8 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   }
   const desktop = [
     { id: 'credentials', disabled: true },
-    { id: 'session-controller', disabled: true },
     { insert: [
-      { id: 'eduwork-session-controller', name: '@chatecnu-work/dsh-artifact-preview-native/session-controller' },
+      { id: 'eduwork-native-reveal', name: '@chatecnu-work/dsh-artifact-preview-native/session-controller' },
       { id: 'eduwork-native-credentials', name: '@chatecnu-work/dsh-credentials-native' },
       { id: 'eduwork-desktop-boundary', name: '@chatecnu-work/dsh-desktop-boundary' },
       { id: 'eduwork-desktop-services', name: '@eduwork/desktop-services' },
