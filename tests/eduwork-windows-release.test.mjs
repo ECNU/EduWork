@@ -20,7 +20,7 @@ test('approved development releases publish only to the development channel and 
  const row={...receipt,version,distribution:'eduwork',asset:{...receipt.asset,name:`EduWork-${version}-windows-x64-electron.zip`}}
  assert.equal(validateReceipt(row,{...context,version}),'EduWork')
  assert.equal(githubUpdateManifest(row,context.repository).channel,'development')
- assert.deepEqual(releasePublication('EduWork',version),{name:`EduWork ${version}（开发版）`,prerelease:true,make_latest:'false'})
+ assert.deepEqual(releasePublication('EduWork',version),{name:`EduWork ${version}`,prerelease:true,make_latest:'false'})
  assert.equal(releasePublication('EduWork','0.3.6').prerelease,false)
  assert.equal(releasePublication('EduWork','0.3.6').make_latest,'true')
  assert.throws(()=>githubUpdateManifest({...row,kind:'eduwork-windows-development'},context.repository))

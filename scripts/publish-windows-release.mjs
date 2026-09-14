@@ -7,7 +7,7 @@ import {githubUpdateManifestBytes,updateManifestName,releaseChannel} from './git
 
 export function releasePublication(edition,version) {
   const prerelease=releaseChannel(version)==='development'
-  return {name:`${edition} ${version}（${prerelease?'开发版':'公测版'}）`,prerelease,make_latest:prerelease?'false':'true'}
+  return {name:`${edition} ${version}`,prerelease,make_latest:prerelease?'false':'true'}
 }
 
 export function validateReceipt(receipt, {repository, version, commit}) {

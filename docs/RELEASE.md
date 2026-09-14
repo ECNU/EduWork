@@ -12,6 +12,8 @@ GitHub 常规桌面 Release 面向长期维护的 Electron 公版和 ECNU 版，
 
 ## 版本号
 
+GitHub Release 标题统一为“项目名 版本号”，例如 `EduWork 0.3.6-dev.20260914.3` 或 `EduWork-ECNU 0.3.6`，不追加“（开发版）”“（公测版）”等文字。发布渠道由版本号及 GitHub 的 prerelease 标记区分。
+
 | 用途 | 例子 | 首页标记 | GitHub Release / 更新清单 |
 | --- | --- | --- | --- |
 | 开发与测试 | `0.3.5-dev.20260912.1` | 开发版 | 普通测试用本地包或 CI artifact；获批后可发布 GitHub prerelease |

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260914.3",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-14T14:34:12.255Z",
-  "fileSetSHA256": "279f44381fbc7a79e7e150bce19daca0be12cfb1ae5af877a39ed48a1ce6a1f5",
+  "createdAt": "2026-09-14T16:04:09.225Z",
+  "fileSetSHA256": "6c9dbe88e8ac4f707739266fdece637ecd8598074448bc10fe325b0b74637a8d",
   "files": [
     {
       "path": ".gitattributes",
@@ -209,7 +209,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "7d30ba3a326fbfa415bf79f066b45e3eafd365a1b000543f74530665fcb2e6b9"
+      "sha256": "53ef83eb0e30520b98771bec8f1f020f1455ed80bed38f7accfcc53f4961101b"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -4025,7 +4025,7 @@
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "96e17c2301568b0e0eca5ae249aa8ad41a9dbaff533405c417f3ea9b808aab17"
+      "sha256": "77c0c31a5f5a2715f9f30cceb7af0a69170abdce66295cbb4c371b2cbd4f1eda"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",
@@ -4125,7 +4125,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "564f256976890517acc91b2f82df2d06cb74fa9f1fd8d3ba8dac3c657008a978"
+      "sha256": "6c6fbddf4763929c500a6279cd284ae9121c9dc7f9b9c05e9e2670fe3088673a"
     },
     {
       "path": "tests/fixtures/eduwork-dsh-015/LICENSE",
