@@ -1,0 +1,81 @@
+{
+  "schemaVersion": "dsh-oidc/v1alpha1",
+  "id": "ecnu",
+  "displayName": "华东师范大学 ChatECNU",
+  "organization": "华东师范大学",
+  "brand": {
+    "productName": "EduWork@ECNU",
+    "organizationName": "华东师范大学",
+    "mark": "华",
+    "primaryColor": "#9f2636",
+    "loginTitle": "使用华东师范大学统一身份认证",
+    "loginDescription": "登录后由学校企业服务为当前用户绑定 ChatECNU 运行凭据；学校密码不会进入 DSH。",
+    "supportURL": "https://support.example.edu/replace-me"
+  },
+  "oidc": {
+    "issuer": "https://oidc.example.edu/replace-me",
+    "clientId": "replace-with-public-client-id",
+    "scopes": [
+      "openid",
+      "profile",
+      "offline_access",
+      "worker.bootstrap.read",
+      "worker.credential.provision",
+      "worker.credential.read",
+      "worker.credential.renew"
+    ]
+  },
+  "keyBinding": {
+    "baseURL": "https://worker.example.edu/api/worker/v1",
+    "credentialRef": "EDUWORK_API_KEY"
+  },
+  "provider": {
+    "id": "chatecnu",
+    "displayName": "ChatECNU",
+    "adapter": "openai-compatible",
+    "baseURL": "https://models.example.edu/open/api/v1",
+    "reasoning": "high",
+    "defaultContextWindow": 1000000,
+    "defaultMaxTokens": 393216,
+    "streamIdleTimeoutMs": 300000,
+    "retryPolicy": {
+      "mode": "normal",
+      "maxRetries": 2
+    },
+    "compat": {
+      "supportsDeveloperRole": false,
+      "supportsStore": false,
+      "supportsReasoningEffort": true,
+      "supportsUsageInStreaming": true,
+      "maxTokensField": "max_tokens",
+      "supportsStrictMode": false,
+      "supportsLongCacheRetention": false,
+      "thinkingFormat": "deepseek",
+      "requiresReasoningContentOnAssistantMessages": true
+    },
+    "models": [
+      {
+        "id": "ecnu-max",
+        "name": "ecnu-max",
+        "contextWindow": 1000000,
+        "maxTokens": 393216,
+        "input": ["text"],
+        "reasoningEfforts": {
+          "max": "max",
+          "high": "high",
+          "low": "low"
+        }
+      },
+      {
+        "id": "ecnu-plus",
+        "name": "ecnu-plus",
+        "contextWindow": 262144,
+        "maxTokens": 65536,
+        "input": ["text", "image"],
+        "compat": {
+          "supportsReasoningEffort": false
+        }
+      }
+    ]
+  }
+}

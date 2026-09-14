@@ -1,0 +1,8 @@
+# Installs idle: Workspace Knowledge starts only after explicit first-use consent.
+- insert:
+    - id: dsh-artifact-services
+      name: '@eduwork/dsh-artifact-services/dsh'
+      config: {}
+    - id: dsh-knowledge-studio
+      name: '@eduwork/dsh-knowledge-studio'
+      config: {}

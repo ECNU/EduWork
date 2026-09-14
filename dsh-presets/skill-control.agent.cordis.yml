@@ -1,0 +1,5 @@
+- id: skill-filesystem
+  name: '@chatecnu-work/dsh-skill-control-native'
+  config:
+    providerName: filesystem
+    skillDir: !!js process.env.DSH_BUNDLED_SKILL_DIR

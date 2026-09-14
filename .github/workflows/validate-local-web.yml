@@ -1,0 +1,48 @@
+name: Build EduWork source
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  local-web:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Select product assembly changes
+        id: changes
+        shell: pwsh
+        env:
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: node core/scripts/packages/manage.mjs product-changed "$env:BASE"
+      - uses: actions/setup-go@v5
+        if: steps.changes.outputs.build == 'true'
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Verify source build and local profile coordination
+        shell: pwsh
+        run: |
+          node core/scripts/check-source-docs.mjs core
+          if ($LASTEXITCODE) { throw 'Documentation links failed' }
+          node --test core/tests/eduwork-assembly-policy.test.mjs core/scripts/test/npm-runtime.test.mjs core/tests/eduwork-source-reproducibility.test.mjs core/tests/eduwork-upstream-lock.test.mjs core/tests/eduwork-profile-links.test.mjs core/tests/eduwork-web-acceptance-contract.test.mjs
+      - name: Build and verify the generic local Runtime
+        if: steps.changes.outputs.build == 'true'
+        shell: pwsh
+        run: ./core/scripts/ci-eduwork-web.ps1 -CoreRoot ./core -EditionRoot ./core -DistributionConfig config/distributions/generic.json -BuildOnly
+      - name: Retain local Web validation evidence
+        if: always() && steps.changes.outputs.build == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: eduwork-local-web-validation
+          retention-days: 7
+          path: core/dist/ci-local-web/evidence/public
+          if-no-files-found: error

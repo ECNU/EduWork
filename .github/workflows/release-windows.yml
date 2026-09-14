@@ -1,0 +1,90 @@
+name: Release Windows Electron
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Product version (X.Y.Z); publishes after validation'
+        required: true
+        type: string
+      release_notes:
+        description: 'Approved notes file in this repository (docs/releases/<version>.md)'
+        required: true
+        type: string
+      notes_approved:
+        description: 'These release notes were discussed and approved by the project owner'
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+concurrency:
+  group: windows-release-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Validate release policy and documentation
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          node core/scripts/check-source-docs.mjs core
+          node --test core/tests/eduwork-windows-release.test.mjs
+      - name: Build npm desktop, verify ZIP and smoke-test startup
+        shell: pwsh
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+        run: ./core/scripts/ci-eduwork-windows-release.ps1 -CoreRoot ./core -EditionRoot ./core -DistributionConfig config/distributions/generic.json -Version $env:RELEASE_VERSION -ReleaseNotesFile $env:RELEASE_NOTES -ReleaseNotesApproved:($env:RELEASE_NOTES_APPROVED -eq 'true') -Output "$env:RUNNER_TEMP/ew-release"
+      - name: Retain redacted validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-validation
+          path: ${{ runner.temp }}/ew-release/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Transfer validated release files
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release
+          path: ${{ runner.temp }}/ew-release/publish
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/download-artifact@v4
+        with:
+          name: windows-release
+          path: release-files
+      - name: Upload verified assets to a draft, then publish
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+        run: node scripts/publish-windows-release.mjs release-files

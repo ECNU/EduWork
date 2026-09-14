@@ -1,0 +1,9 @@
+# Default Web-first DSH bundle entry. Installing a local checkout with
+# `dsh plugin --profile web add .` appends this layer to the ordinary official
+# Web profile. Deployment facts remain outside the package source.
+- insert:
+    - id: enterprise-oidc
+      name: '@eduwork/dsh-oidc'
+      config:
+        profilePathEnv: EDUWORK_OIDC_PROFILE
+        allowEmptyProfiles: true

@@ -1,0 +1,50 @@
+name: Build Windows development artifact
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Development version (X.Y.Z-dev.YYYYMMDD.N); artifact only'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: windows-development-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Build and check the same desktop recipe
+        shell: pwsh
+        env:
+          DEVELOPMENT_VERSION: ${{ inputs.version }}
+        run: ./core/scripts/ci-eduwork-windows-release.ps1 -CoreRoot ./core -EditionRoot ./core -DistributionConfig config/distributions/generic.json -Version $env:DEVELOPMENT_VERSION -Development -Output "$env:RUNNER_TEMP/ew-development"
+      - name: Retain redacted validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-development-validation
+          path: ${{ runner.temp }}/ew-development/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain the verified development package
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-development
+          path: ${{ runner.temp }}/ew-development/publish
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error

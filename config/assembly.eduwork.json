@@ -1,0 +1,239 @@
+{
+  "schemaVersion": 1,
+  "externalPackages": [
+    {
+      "name": "@eduwork/dsh-oidc",
+      "lock": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
+      "requiredFiles": [
+        "lib/client.js"
+      ],
+      "capabilities": [
+        "oidc-pkce",
+        "enterprise-key-binding",
+        "enterprise-model-provider"
+      ]
+    },
+    {
+      "name": "@eduwork/dsh-mail",
+      "lock": "third_party/npm-015-rc1/dsh-mail-assistant/LOCK.json",
+      "requiredFiles": [
+        "lib/index.js",
+        "lib/client.js"
+      ],
+      "capabilities": [
+        "imap-readonly",
+        "smtp-approval-gated"
+      ]
+    },
+    {
+      "name": "@shlv/dsh-literature",
+      "lock": "third_party/dsh-literature/LOCK.json",
+      "requiredFiles": [
+        "cordis.patch.yml"
+      ],
+      "capabilities": [
+        "literature-search",
+        "literature-bibtex",
+        "literature-fulltext",
+        "notebook-source-provider"
+      ]
+    },
+    {
+      "name": "@eduwork/dsh-artifact-services",
+      "lock": "third_party/npm-015-rc1/dsh-artifact-services/LOCK.json",
+      "requiredFiles": [
+        "lib/dsh.js",
+        "lib/office.js",
+        "lib/runtime.js",
+        "python/runner.py",
+        "media/bgm/catalog.json"
+      ],
+      "capabilities": [
+        "shared-office",
+        "speech-provider-registry",
+        "shared-remotion",
+        "editable-video-project"
+      ]
+    },
+    {
+      "name": "@eduwork/dsh-knowledge-studio",
+      "lock": "third_party/npm-015-rc1/dsh-knowledge-studio/LOCK.json",
+      "requiredFiles": [
+        "lib/index.js",
+        "lib/client.js",
+        "cordis.patch.yml"
+      ],
+      "capabilities": [
+        "workspace-studio",
+        "local-source-retrieval",
+        "studio-artifacts"
+      ]
+    },
+    {
+      "name": "@eduwork/dsh-memory",
+      "lock": "third_party/npm-015-rc1/dsh-memory-native/LOCK.json",
+      "requiredFiles": [
+        "lib/index.js",
+        "lib/client.js",
+        "lib/spec.js",
+        "lib/typert.host.js",
+        "cordis.patch.yml"
+      ],
+      "capabilities": [
+        "local-memory",
+        "prior-chat-retrieval",
+        "memory-management"
+      ]
+    }
+  ],
+  "localPlugins": [
+    {
+      "source": "dsh-plugins/artifact-preview-native",
+      "package": "dsh-artifact-preview-native"
+    },
+    {
+      "source": "dsh-plugins/client-ui-branding",
+      "package": "dsh-client-ui-branding",
+      "requiredFiles": [
+        "lib/client.js"
+      ]
+    },
+    {
+      "source": "dsh-plugins/client-ui-conversation-brand",
+      "package": "dsh-client-ui-conversation-brand",
+      "requiredFiles": [
+        "lib/client.js"
+      ]
+    },
+    {
+      "source": "dsh-plugins/client-ui-media-artifacts",
+      "package": "dsh-client-ui-media-artifacts",
+      "requiredFiles": [
+        "lib/client.js"
+      ]
+    },
+    {
+      "source": "dsh-plugins/client-ui-agent-preset-product",
+      "package": "dsh-client-ui-agent-preset-product"
+    },
+    {
+      "source": "dsh-plugins/client-ui-skill-live",
+      "package": "dsh-client-ui-skill-live",
+      "requiredFiles": [
+        "lib/client.js"
+      ]
+    },
+    {
+      "source": "dsh-plugins/tool-browser",
+      "package": "dsh-tool-browser"
+    },
+    {
+      "source": "dsh-plugins/tool-artifact-publish",
+      "package": "dsh-tool-artifact-publish"
+    },
+    {
+      "source": "dsh-plugins/skill-settings-native",
+      "package": "dsh-skill-settings-native"
+    },
+    {
+      "source": "dsh-plugins/brand-settings-native",
+      "package": "dsh-brand-settings-native"
+    },
+    {
+      "source": "dsh-plugins/skill-control-native",
+      "package": "dsh-skill-control-native"
+    },
+    {
+      "source": "dsh-plugins/component-inventory-native",
+      "package": "dsh-component-inventory-native"
+    },
+    {
+      "source": "dsh-plugins/client-ui-component-inventory",
+      "package": "dsh-client-ui-component-inventory",
+      "requiredFiles": [
+        "lib/client.js"
+      ]
+    },
+    {
+      "source": "dsh-plugins/skill-manager-native",
+      "package": "dsh-skill-manager-native"
+    },
+    {
+      "source": "dsh-plugins/request-concurrency",
+      "package": "dsh-request-concurrency"
+    },
+    {
+      "source": "dsh-plugins/workbench-native",
+      "package": "workbench-native"
+    },
+    {
+      "source": "dsh-plugins/activity-insights-native",
+      "package": "dsh-activity-insights-native"
+    },
+    {
+      "source": "dsh-plugins/media-openai",
+      "package": "dsh-media-openai"
+    }
+  ],
+  "skills": [
+    {
+      "name": "browser",
+      "source": "dsh-skills/browser",
+      "defaultEnabled": true
+    },
+    {
+      "name": "skill-creator",
+      "source": "dsh-skills/skill-creator",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-documents",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/documents",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-presentations",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/presentations",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-spreadsheets",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/spreadsheets",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-pdfs",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/pdfs",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-speech",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/speech",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-video",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/video",
+      "defaultEnabled": true
+    },
+    {
+      "name": "knowledge-studio",
+      "sourcePackage": "@eduwork/dsh-knowledge-studio",
+      "sourcePath": "skills/knowledge-studio",
+      "requiresPackageCapability": "configurableSkills",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-images",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/images",
+      "defaultEnabled": true
+    }
+  ]
+}

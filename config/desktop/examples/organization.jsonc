@@ -1,0 +1,53 @@
+// 第三方学校/企业示例：复制为上一级 eduwork.jsonc，替换 example 域名及公开 Client ID。
+// 这是面向单机客户端的配置；不是多人共享 Web 服务配置。
+// 仅配 OIDC 可解决身份登录；自动获得 Key 和配置模型还需服务端实现 EduWork Resources v1。
+// 公版不包含配额与活跃心跳；这些能力由机构专属扩展提供。
+{
+  "schemaVersion": 1,
+  "product": {
+    "name": "EduWork",
+    // 相对于生效配置文件所在目录，可选；不改变 exe 图标/签名/应用 ID。
+    // "logoFile": "assets/logo.png",
+  },
+  "organizations": [
+    {
+      "schemaVersion": "dsh-oidc/v1alpha1",
+      // 稳定且唯一的小写 ID：登录凭据以企业配置绑定，避免随意重命名。
+      "id": "example-university",
+      "displayName": "示例大学 AI 服务",
+      "organization": "示例大学",
+      "brand": {
+        "organizationName": "示例大学",
+        "mark": "校",
+        "loginTitle": "使用学校账号登录",
+        "loginDescription": "在学校登录页授权后，连接学校提供的模型。",
+        "supportURL": "https://support.example.edu"
+      },
+      "oidc": {
+        // 必须与 /.well-known/openid-configuration 中 issuer 逐字符一致。
+        "issuer": "https://identity.example.edu",
+        // 桌面公共客户端使用 PKCE + 本机 loopback 回调，不配置 client_secret。
+        "clientId": "replace-with-desktop-public-client-id",
+        // 资源授权 scope 以服务端登记值为准；此处仅为协议示例。
+        "scopes": ["openid", "profile", "offline_access", "worker.bootstrap.read", "worker.credential.provision", "worker.credential.read", "worker.credential.renew"]
+      },
+      // 若只需身份登录，同时删除 keyBinding 和 provider；用户可另用个人 Key。
+      "keyBinding": {
+        "type": "eduwork-resources-v1",
+        "baseURL": "https://ai.example.edu/api/worker/v1",
+        // 这是凭据引用名，不是 API Key。真正的凭据由登录流程写入加密存储。
+        "credentialRef": "EDUWORK_API_KEY"
+      },
+      "provider": {
+        "id": "example-ai",
+        "displayName": "示例大学模型",
+        "adapter": "openai-compatible",
+        "baseURL": "https://ai.example.edu/open/api/v1",
+        // discovery：登录后读取企业模型目录；元数据声明上下文、输出、模态、思考档位。
+        // 如服务端无模型目录，改为 profile 并填写 models，参照 ECNU/CERNET 示例。
+        "modelSource": "discovery"
+      }
+    }
+  ],
+  "desktop": { "closeAction": "tray" }
+}

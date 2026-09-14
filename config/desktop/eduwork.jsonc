@@ -1,0 +1,76 @@
+// EduWork 用户配置。支持 //、/* */ 注释和尾逗号。
+// 修改后从托盘选择“退出”，再启动；关闭窗口默认只是收起到托盘。
+// 此文件与 config/assets 下的 Logo 属于用户文件，更新程序应保留它们。
+// 不要填写密码、client_secret、API Key 或登录令牌；个人 Key 在模型设置中管理。
+{
+  "schemaVersion": 1,
+  "product": {
+    // 可修改界面及窗口标题；安装包图标和应用 ID 由发行版决定。
+    "name": "EduWork"
+    // 可选：配置目录内的相对路径；支持 PNG/WebP/SVG，最大 256 KiB。
+    // ,"logoFile": "assets/logo.png"
+  },
+  // 空数组表示不用企业登录，用户仍可配置自己的 API Key 使用模型。
+  // 完整参考：examples/organization.jsonc；机构发行版可提供更多示例。
+  // 数组中可填写多个企业；身份分别保存，应用运行 Key 统一为 EDUWORK_API_KEY。
+  // 填写配置不会自动登录或创建 Key。
+  // 云端图像/TTS 可独立配置：见 examples/media.jsonc。默认不启用；不影响本地 TTS。
+  // 将示例的 media 段合并到顶层即可，不需要学校插件。
+  "organizations": [
+    // 完整示例：去掉下面每行最外层的 //，替换域名、Client ID 和机构信息。
+    // {
+    //   "schemaVersion": "dsh-oidc/v1alpha1",
+    //   // 稳定且唯一的小写 ID：登录凭据以企业配置绑定，避免随意重命名。
+    //   "id": "example-university",
+    //   "displayName": "示例大学 AI 服务",
+    //   "organization": "示例大学",
+    //   "brand": {
+    //     "organizationName": "示例大学",
+    //     "mark": "校",
+    //     "loginTitle": "使用学校账号登录",
+    //     "loginDescription": "在学校登录页授权后，连接学校提供的模型。",
+    //     "supportURL": "https://support.example.edu"
+    //   },
+    //   "oidc": {
+    //     // 必须与 /.well-known/openid-configuration 中 issuer 逐字符一致。
+    //     "issuer": "https://identity.example.edu",
+    //     // 桌面公共客户端使用 PKCE + 本机 loopback 回调，不配置 client_secret。
+    //     "clientId": "replace-with-desktop-public-client-id",
+    //     // 资源授权 scope 以服务端登记值为准；此处仅为协议示例。
+    //     "scopes": ["openid", "profile", "offline_access", "worker.bootstrap.read", "worker.credential.provision", "worker.credential.read", "worker.credential.renew"]
+    //   },
+    //   // 若只需身份登录，同时删除 keyBinding 和 provider；用户可另用个人 Key。
+    //   "keyBinding": {
+    //     "type": "eduwork-resources-v1",
+    //     "baseURL": "https://ai.example.edu/api/worker/v1",
+    //     // 这是凭据引用名，不是 API Key。真正的凭据由登录流程写入加密存储。
+    //     "credentialRef": "EDUWORK_API_KEY"
+    //   },
+    //   "provider": {
+    //     "id": "example-ai",
+    //     "displayName": "示例大学模型",
+    //     "adapter": "openai-compatible",
+    //     "baseURL": "https://ai.example.edu/open/api/v1",
+    //     // discovery：登录后读取企业模型目录；元数据声明上下文、输出、模态、思考档位。
+    //     // 如服务端无模型目录，改为 profile 并填写 models，参照 ECNU/CERNET 示例。
+    //     "modelSource": "discovery"
+    //   }
+    // }
+  ],
+  // Windows 公版默认从 ecnu/EduWork 的 GitHub Releases 获取公测更新。
+  // 此处留空则使用发行包默认值；从 Go 迁入时优先保留已有机构更新源。
+  // 可填 {"provider":"disabled"} 关闭在线更新。
+  // 公版可指向 GitHub Release 上的清单，学校版可指向学校自己的 OSS。
+  // 清单应按平台和桌面壳区分，示例见 examples/updates.jsonc。
+  "updates": {},
+  "features": {
+    // 当前客户端所有主会话和子代理共用的模型请求总上限；3 就是同时最多 3 路。
+    // 超出的请求排队，执行工具或等待结果的代理不占名额。范围 1–64。
+    // 此处提供发行默认值，修改后重启；设置中保存的用户偏好优先且即时生效。
+    "maxConcurrentRequests": 3
+  },
+  "desktop": {
+    // tray：点 X 收起到托盘；exit：点 X 退出。无可用托盘时点 X 直接退出。
+    "closeAction": "tray"
+  }
+}

@@ -1,0 +1,48 @@
+{
+  "name": "eduwork-dsh-runtime",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Frozen public EduWork runtime inputs for DSH 0.1.5-rc.1.",
+  "license": "MIT",
+  "dependencies": {
+    "@deepseek-ai/dsh": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-storage-sqlite": "0.1.5-rc.1",
+    "@shlv/dsh-literature": "0.1.2",
+    "@shlv/dsh-literature-arxiv": "0.1.2",
+    "@shlv/dsh-literature-core": "0.1.2",
+    "@shlv/dsh-literature-dblp": "0.1.2",
+    "@shlv/dsh-literature-tool": "0.1.2",
+    "@remotion/bundler": "4.0.520",
+    "@remotion/renderer": "4.0.520",
+    "@remotion/media": "4.0.520",
+    "@remotion/captions": "4.0.520",
+    "mediabunny": "1.51.0",
+    "remotion": "4.0.520",
+    "react": "18.3.1",
+    "zod": "4.4.3",
+    "playwright-core": "1.63.0",
+    "react-dom": "18.3.1",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5"
+  },
+  "optionalDependencies": {
+    "@ladybugdb/core-darwin-arm64": "0.20.1",
+    "@ladybugdb/core-darwin-x64": "0.20.1",
+    "@ladybugdb/core-linux-arm64": "0.20.1",
+    "@ladybugdb/core-linux-x64": "0.20.1",
+    "@ladybugdb/core-win32-x64": "0.20.1"
+  },
+  "overrides": {
+    "@deepseek-ai/dsh-agent": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-fs": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-invariants": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-jobs": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-sandbox": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-sandbox-policy": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-subagent": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-timeout": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.1"
+  }
+}

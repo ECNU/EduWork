@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "name": "@shlv/dsh-literature",
+  "version": "0.1.2",
+  "repository": "https://github.com/SihanLv/dsh-literature.git",
+  "commit": "4835fa0df18092a0ccb07274a0760dfc3e0bae3f",
+  "tarballSHA256": "f5ae59643ebdff165edfcf1111007eb0fa2249c70debd1e20ff98fd042e5043e",
+  "npm": {
+    "integrity": "sha512-5QJ3AYE+pZnad94Sdy0KswCWim4Sz5fC0XibrUL5SzgA0/QdTwmX86g9vsbjrGYMLFdIm5nrU9zXHkyx/+WfXw==",
+    "provenance": "https://registry.npmjs.org/-/npm/v1/attestations/@shlv%2fdsh-literature@0.1.2"
+  },
+  "publicationStatus": "published"
+}

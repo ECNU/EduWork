@@ -1,0 +1,19 @@
+node_modules/
+.venv/
+__pycache__/
+*.pyc
+dist/
+.dev-local/
+*.tgz
+*.log
+*.lbug*
+.env*
+!.env.example
+.DS_Store
+Thumbs.db
+
+# Generated bundles; maintained Host JavaScript remains tracked.
+/lib/client.js
+/lib/pdf-runtime.js
+/lib/pdfjs.js
+/packages/artifact-services/lib/video-template.js

@@ -1,0 +1,8 @@
+{
+  "name": "@eduwork/dsh-media-openai",
+  "version": "0.1.0-dev",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": ["lib", "README.md", "LICENSE"],
+  "license": "MIT"
+}

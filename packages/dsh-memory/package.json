@@ -1,0 +1,95 @@
+{
+  "name": "@eduwork/dsh-memory",
+  "version": "0.1.1",
+  "license": "MIT",
+  "description": "Local memory and conversation recall for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./core": "./lib/core.js",
+    "./spec": "./lib/spec.js",
+    "./typert": "./lib/typert.host.js",
+    "./remote": "./lib/typert.remote-client.js",
+    "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "README.md",
+    "README_EN.md",
+    "docs/development.md",
+    "CHANGELOG.md",
+    "LICENSE",
+    "NOTICE",
+    "UPSTREAM.md",
+    "SECURITY.md"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "test:host": "node scripts/host-smoke.mjs",
+    "test:web": "node scripts/web-smoke.mjs",
+    "verify": "node scripts/verify.mjs",
+    "verify:runtime": "node scripts/verify-runtime.mjs",
+    "prepack": "npm run build"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-api-remotes": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-commands": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-settings": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-session-query": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-storage-domain": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.1",
+    "@deepseek-ai/schemastery": "3.18.2",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ecnu/EduWork.git",
+    "directory": "packages/dsh-memory"
+  },
+  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-memory#readme",
+  "bugs": {
+    "url": "https://github.com/ecnu/EduWork/issues"
+  },
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "dependencies": {
+    "@deepseek-ai/dsh-storage-sqlite": "0.1.5-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "0.1.5-rc.1",
+    "esbuild": "0.25.9",
+    "playwright": "1.63.0",
+    "zod": "4.4.3",
+    "react": "18.3.1"
+  }
+}

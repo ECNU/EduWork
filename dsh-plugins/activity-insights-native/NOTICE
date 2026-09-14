@@ -1,0 +1,6 @@
+DSH Activity Insights
+Copyright (c) 2026 ChatECNU Work contributors
+
+The user-facing concept was informed by Codex activity profile surfaces.
+No private implementation, source code, or service protocol from Codex is
+included. This package is implemented against public DSH extension services.

@@ -1,0 +1,54 @@
+{
+  "name": "@eduwork/workbench-native",
+  "version": "0.1.0-dev.20260910.1",
+  "private": true,
+  "description": "Local skill management, updates and diagnostics for EduWork",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./typert": "./lib/typert.host.js",
+    "./package.json": "./package.json",
+    "./remote": "./lib/typert.remote-client.js",
+    "./view-model": "./lib/view-model.js"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "test": "node --test test/*.test.mjs",
+    "check:browser": "node test/import-browser.mjs"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-settings-plugins",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-session-format-catalog": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-session-persistence-jsonl": "0.1.5-rc.2",
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.1",
+    "react": "^18.2.0",
+    "zod": "^4.4.3",
+    "@deepseek-ai/dsh-api-remotes": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.1",
+    "@chatecnu-work/dsh-skill-manager-native": "0.1.0-dev",
+    "@chatecnu-work/dsh-skill-settings-native": "0.1.0-dev",
+    "@chatecnu-work/dsh-skill-control-native": "0.1.0-dev",
+    "yaml": "2.9.0"
+  }
+}

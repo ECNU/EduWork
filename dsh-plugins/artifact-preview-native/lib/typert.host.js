@@ -1,0 +1,8 @@
+import { importParameters, importResult, nativeImportParameters, parameters, result, revealResult } from './typert-schemas.js'
+const pkg = '@chatecnu-work/dsh-artifact-preview-native'
+const read = { id: `${pkg}#artifactPreview/read`, service: 'artifactPreview', namespace: 'artifactPreview', method: 'read', invocation: { kind: 'direct' }, parameters, result, sourceLocation: { file: 'dsh-plugins/artifact-preview-native/lib/index.js', line: 1, column: 1 } }
+const reveal = { id: `${pkg}#artifactPreview/reveal`, service: 'artifactPreview', namespace: 'artifactPreview', method: 'reveal', invocation: { kind: 'direct' }, parameters, result: revealResult, sourceLocation: { file: 'dsh-plugins/artifact-preview-native/lib/index.js', line: 1, column: 1 } }
+const importFiles = { id: `${pkg}#artifactPreview/importFiles`, service: 'artifactPreview', namespace: 'artifactPreview', method: 'importFiles', invocation: { kind: 'direct' }, parameters: importParameters, result: importResult, sourceLocation: { file: 'dsh-plugins/artifact-preview-native/lib/index.js', line: 1, column: 1 } }
+const importNativeFiles = { id: `${pkg}#artifactPreview/importNativeFiles`, service: 'artifactPreview', namespace: 'artifactPreview', method: 'importNativeFiles', invocation: { kind: 'direct' }, parameters: nativeImportParameters, result: importResult, sourceLocation: { file: 'dsh-plugins/artifact-preview-native/lib/index.js', line: 1, column: 1 } }
+export const TYPERT = { package: pkg, face: 'host', schemas: [], invocations: [read, reveal, importFiles, importNativeFiles], model: { services: [], events: [], objects: [] } }
+export default TYPERT

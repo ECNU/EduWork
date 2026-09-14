@@ -1,0 +1,24 @@
+{
+  "name": "@chatecnu-work/dsh-tool-artifact-publish",
+  "version": "0.1.0-dev",
+  "description": "Publish an existing workspace artifact into the DSH conversation UI",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./core": "./lib/core.js"
+  },
+  "files": [
+    "lib/**/*.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-fs": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.2-rc.1"
+  },
+  "license": "MIT"
+}

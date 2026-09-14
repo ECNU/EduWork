@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "runtimeId": "webview2-fixed-151.0.4129.93",
+  "distribution": "Microsoft Edge WebView2 Fixed Version Runtime",
+  "version": "151.0.4129.93",
+  "assets": {
+    "windows-amd64": {
+      "url": "https://msedge.sf.dl.delivery.mp.microsoft.com/filestreamingservice/files/1424552f-1033-46d3-a1ea-26c879f4262b/Microsoft.WebView2.FixedVersionRuntime.151.0.4129.93.x64.cab",
+      "sha256": "1cb7106545f5aee92ee16496347a0e775a351cb5a3816d072f04323695899bde",
+      "archive": "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.93.x64.cab",
+      "archiveRoot": "Microsoft.WebView2.FixedVersionRuntime.151.0.4129.93.x64"
+    }
+  }
+}

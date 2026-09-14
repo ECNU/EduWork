@@ -1,0 +1,60 @@
+{
+  "schemaVersion": 1,
+  "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
+  "commit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e",
+  "commitAuthoredAt": "2026-09-10T01:36:48Z",
+  "sourceArchiveURL": "https://codeload.github.com/deepseek-ai/deepseek-harness/tar.gz/183f08e9c6dde7e36cd2318eaee70b0da08fb35e",
+  "sourceArchiveSHA256": "23af26a7f422f3d3ba7ce148492e2937af3fe5cc39e8f05dd109e12dadd8262c",
+  "packageVersion": "0.1.5-rc.1",
+  "pnpmVersion": "11.7.0",
+  "pnpmLockSHA256": "a6515566578a26c29b5faddaf94abb5ec452ce6e533f8957e813328ebd4b3c27",
+  "node": {
+    "version": "24.18.0",
+    "windowsX64Archive": "node-v24.18.0-win-x64.zip",
+    "windowsX64URL": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-win-x64.zip",
+    "windowsX64SHA256": "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821"
+  },
+  "runtime": {
+    "defaultSource": "source",
+    "npm": {
+      "manifest": "third_party/dsh/runtime/package.json",
+      "packageLock": "third_party/dsh/runtime/package-lock.json",
+      "packageLockSHA256": "f9a36bef9a1d8442928bea05dae2642b906e1fcaf35a1a16119346254a00bb2f",
+      "available": false
+    },
+    "source": {
+      "available": true,
+      "buildCommand": "corepack prepare pnpm@11.7.0 --activate && pnpm install --frozen-lockfile && pnpm run clean && pnpm run build:official",
+      "packCommand": "pnpm run release:pack --family <vendor|dsh>",
+      "assembly": "official-release-tarballs",
+      "installManifest": "source-runtime/package.json",
+      "installLock": "source-runtime/package-lock.json",
+      "installLockSHA256": "4c2a8728aef005c038662a98fd13b7ef0afc503ecd75ba991aa48e2a1f2f5ff4",
+      "officialClientBuild": true,
+      "buildNormalization": {
+        "id": "dsh-015-rc1-reproducible-client-and-pack-v1",
+        "commit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e",
+        "files": [
+          {
+            "path": "packages/client/tsdown.client.ts",
+            "beforeSHA256": "8af1b4924e553ae0837a0f6382320051c0a41a07e3dc216a1f41d0c4edea1f08",
+            "afterSHA256": "918de3d7b13bb2e866c540cb60738b4208d05d7e0bd275fab2c89920b5443216"
+          },
+          {
+            "path": "scripts/release/pack.ts",
+            "beforeSHA256": "feddff24b912c7a929431ab0837617d5f41bb51464c5c04add41a16f6d57d2ad",
+            "afterSHA256": "1e10598b331a137c401dd551123e22c6ee38ad57b6430662140e73fe45c80fd4"
+          },
+          {
+            "path": ".eduwork-build/pnpmfile.cjs",
+            "beforeSHA256": null,
+            "afterSHA256": "d2f82398a1941aa313972690e22d37d5a570d6c67b2fe9e5372c668e688c7ab2"
+          }
+        ]
+      }
+    }
+  },
+  "runtimeAssembly": "node dsh-desktop/scripts/prepare-dsh-runtime.mjs --source <npm|source>",
+  "license": "MIT",
+  "reviewedAt": "2026-09-10"
+}

@@ -1,0 +1,79 @@
+name: Package npm module
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: Independent npm package
+        type: choice
+        required: true
+        options: [dsh-oidc, dsh-memory, dsh-mail, dsh-artifact-services, dsh-knowledge-studio]
+      publish:
+        description: Publish inspected tarball (requires package version tag and npm trusted publisher)
+        type: boolean
+        default: false
+      dist_tag:
+        description: npm dist-tag
+        type: choice
+        options: [latest, dev]
+        default: latest
+permissions:
+  contents: read
+concurrency:
+  group: npm-${{ inputs.package }}
+  cancel-in-progress: false
+env:
+  PUBLISH: ${{ inputs.publish }}
+  DIST_TAG: ${{ inputs.dist_tag }}
+jobs:
+  pack:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - run: node scripts/packages/release.mjs preflight ${{ inputs.package }}
+      - uses: actions/setup-python@v5
+        if: inputs.package == 'dsh-knowledge-studio' || inputs.package == 'dsh-artifact-services'
+        id: python
+        with:
+          python-version: '3.12'
+      - if: inputs.package == 'dsh-knowledge-studio' || inputs.package == 'dsh-artifact-services'
+        run: python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt
+      - run: node scripts/packages/manage.mjs install ${{ inputs.package }}
+      - run: node scripts/packages/manage.mjs check ${{ inputs.package }}
+        env:
+          DSH_OFFICE_PYTHON: ${{ steps.python.outputs.python-path }}
+          PYTHONUTF8: '1'
+      - run: node scripts/packages/manage.mjs pack ${{ inputs.package }} dist/npm-release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-${{ inputs.package }}-${{ github.sha }}
+          path: dist/npm-release/
+          retention-days: 14
+          if-no-files-found: error
+  publish:
+    needs: pack
+    if: inputs.publish && github.repository == 'ecnu/EduWork'
+    runs-on: ubuntu-latest
+    environment: npm
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+          registry-url: https://registry.npmjs.org
+      - run: npm install --global npm@11.6.2
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-${{ inputs.package }}-${{ github.sha }}
+          path: dist/npm-release
+      - name: Publish the inspected archive without rebuilding
+        run: node scripts/packages/release.mjs publish ${{ inputs.package }}

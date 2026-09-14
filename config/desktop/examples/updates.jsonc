@@ -1,0 +1,47 @@
+{
+  "schemaVersion": 1,
+  "product": { "name": "EduWork" },
+  "organizations": [],
+  "desktop": { "closeAction": "tray" },
+  "updates": {
+    "provider": "static",
+    // 首次启动的默认渠道；stable = 仅公测版，development = 开发版及更新的公测版。
+    // 已记录的渠道（包括设置里的手动选择）在升级时保留，不由此项强制覆盖。
+    "defaultPolicy": "stable",
+    // 将 updates 段复制到 config/eduwork.jsonc，重启生效。
+    // 静态 HTTPS JSON 清单；可放 OSS、其他对象存储或普通 Web 服务。
+    // 示例域名需要替换为发行方的真实地址；不能直接填 GitHub Releases 网页或 API URL。
+    "manifestURL": "https://releases.example.edu/eduwork/stable/latest-windows-amd64.json",
+    // 可选发布页，用于下载页入口；Windows 后台更新按 manifestURL 读取清单及包地址。
+    "releasesURL": "https://releases.example.edu/eduwork/releases"
+  }
+}
+// 清单示例（示例地址并未上线）：
+// {
+//   "schemaVersion": 1, "channel": "stable", "version": "0.3.5", "target": "windows-amd64",
+//   "artifacts": [
+//     {
+//       "shell": "electron", "flavor": "offline",
+//       "fileName": "EduWork-0.3.5-windows-x64-electron.zip",
+//       "bytes": 123456789, // 必须替换为最终 ZIP 的真实字节数
+//       "sha256": "replace-with-the-final-zip-64-character-sha256",
+//       "url": "https://releases.example.edu/eduwork/stable/0.3.5/EduWork-0.3.5-windows-x64-electron.zip",
+//       "sha256Url": "https://releases.example.edu/eduwork/stable/0.3.5/EduWork-0.3.5-windows-x64-electron.zip.sha256"
+//     }
+//   ]
+// }
+// Windows 已支持后台下载、进度、校验和用户选择重启安装。
+// 公测 stable 仅提供 X.Y.Z；开发 development 可提供 X.Y.Z-dev.YYYYMMDD.N。
+// 设置切换渠道会查询同一根路径下相应的渠道目录，不降级现有程序。
+// 下载 URL 必须位于对应渠道/版本目录。SHA256 与尺寸由打包结果生成，不能照抄示例。
+// 此处为 Electron 更新入口；旧 Go 0.2 的入口必须继续只提供 Go 桥接包。
+// Windows 公版默认 GitHub；设置上面的静态源会覆盖随包默认值。
+// 改回 GitHub：将整个 updates 段替换为下面一段，不要同时保留 manifestURL：
+// "updates": {"provider":"github","repository":"ecnu/EduWork","defaultPolicy":"stable"}
+// 关闭在线更新："updates": {"provider":"disabled"}
+// repository 只填写 owner/repo，不填网址或 Token；只读取公开且已发布的版本；development 同时接收符合版本规则的 prerelease。
+// GitHub 检查有 15 分钟缓存与失败退避。草稿或私有仓库不会提供在线更新。
+// 登录某个企业不会改变发行身份或自动选择更新源。
+// CI 的开发包与公测包均包含 RELEASE-MANIFEST.json 与启动契约。
+// 跨壳 ZIP 还必须有受校验的 wails-host-v1 启动与数据迁移契约，详见发行文档。
+// macOS 方案仍需真机验收，不能把 Windows 清单用于 Mac。

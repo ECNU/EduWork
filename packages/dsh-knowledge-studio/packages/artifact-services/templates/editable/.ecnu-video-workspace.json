@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "capabilities": [
+    "video-plan-v2",
+    "scene-voiceover-v2",
+    "remotion-captions-v1"
+  ]
+}

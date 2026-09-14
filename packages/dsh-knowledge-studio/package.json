@@ -1,0 +1,207 @@
+{
+  "name": "@eduwork/dsh-knowledge-studio",
+  "version": "0.5.0",
+  "dshKnowledgeStudio": {
+    "capabilities": [
+      "configurableSkills"
+    ]
+  },
+  "description": "A workspace-native creation studio for DeepSeek Harness, with local source retrieval and AI-powered documents, learning tools, audio, and video.",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./remote": "./lib/typert.remote-client.js",
+    "./typert": "./lib/typert.host.js",
+    "./parser": "./lib/parser.js",
+    "./store": "./lib/store.js",
+    "./tokenizer": "./lib/tokenizer.js",
+    "./artifacts": "./lib/artifacts.js",
+    "./media-timeline": "./lib/media-timeline.js",
+    "./media-providers": "./lib/media-providers.js",
+    "./shared-services": "./lib/shared-services.js"
+  },
+  "files": [
+    "lib/**/*.js",
+    "skills/**",
+    "docs/ARCHITECTURE.md",
+    "docs/CREATION_CONTRACT.md",
+    "docs/USAGE.md",
+    "docs/DEVELOPMENT.md",
+    "docs/MIGRATION.md",
+    "docs/STUDIO_VALIDATION.md",
+    "docs/RC1_COMPATIBILITY.md",
+    "cordis.patch.yml",
+    "README.md",
+    "README_EN.md",
+    "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "CHANGELOG.md",
+    "THIRD_PARTY_LICENSES.txt"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-layout"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "build:media": "node scripts/build-video-template.mjs",
+    "build:host": "tsdown --config tsdown.host.config.ts",
+    "build:client": "tsdown",
+    "build": "npm run build:media && npm run build:host && npm run build:client && npm run build:licenses",
+    "test": "node scripts/run-checks.mjs",
+    "test:p0": "node scripts/p0-smoke.mjs",
+    "test:ui": "node scripts/ui-smoke.mjs && node scripts/artifact-ui-smoke.mjs && node scripts/studio-flow-smoke.mjs && node scripts/artifact-evidence-smoke.mjs",
+    "test:host": "node scripts/host-smoke.mjs",
+    "test:host:preferences": "node scripts/host-preference-smoke.mjs",
+    "test:exports": "node scripts/export-smoke.mjs && node scripts/office-preview-client-smoke.mjs && node scripts/office-preview-scaling-smoke.mjs && node scripts/office-metrics-layout-smoke.mjs && node scripts/office-fixed-page-smoke.mjs && node scripts/office-adaptive-smoke.mjs",
+    "audit": "node scripts/audit-public.mjs",
+    "check": "npm run typecheck && npm run build && npm test && npm run test:p0 && npm run audit && npm run pack:release",
+    "pack:release": "node scripts/pack-release.mjs",
+    "dev:web": "node scripts/dev-web.mjs",
+    "build:licenses": "node scripts/generate-licenses.mjs",
+    "test:asr": "node scripts/asr-smoke.mjs",
+    "test:host:ui": "node scripts/host-ui-smoke.mjs",
+    "test:host:mindmap": "node scripts/mindmap-host-ui-smoke.mjs",
+    "test:host:office": "node scripts/office-host-ui-smoke.mjs"
+  },
+  "optionalDependencies": {
+    "@ladybugdb/core-darwin-arm64": "0.20.1",
+    "@ladybugdb/core-darwin-x64": "0.20.1",
+    "@ladybugdb/core-linux-arm64": "0.20.1",
+    "@ladybugdb/core-linux-x64": "0.20.1",
+    "@ladybugdb/core-win32-x64": "0.20.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-api-remotes": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-fs": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-home-paths": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-llm": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-settings": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-skill": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-workspace": "0.1.5-rc.1",
+    "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/cordis": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-fs": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-home-paths": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-llm": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-settings": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-skill": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-typert-protocol": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-workspace": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-api-remotes": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-api-session-controller": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-conversation": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-layout": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh": "0.1.5-rc.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.0.0",
+    "@types/react": "^18.3.28",
+    "@types/react-dom": "^18.3.7",
+    "react": "^18.3.1",
+    "react-markdown": "10.1.0",
+    "tsdown": "0.22.14",
+    "typescript": "^5.9.3",
+    "unpdf": "1.8.1",
+    "zod": "^4.4.3",
+    "jszip": "3.10.1",
+    "esbuild": "0.28.1"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  },
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "workspace",
+    "studio",
+    "knowledge-base",
+    "ladybugdb"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "license": "MIT",
+  "dependencies": {
+    "playwright-core": "^1.63.0",
+    "react-dom": "18.3.1",
+    "remark-gfm": "4.0.1",
+    "remark-parse": "11.0.0",
+    "unified": "11.0.5",
+    "@eduwork/dsh-artifact-services": "0.2.0"
+  },
+  "workspaces": [
+    "packages/artifact-services"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ecnu/EduWork.git",
+    "directory": "packages/dsh-knowledge-studio"
+  },
+  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-knowledge-studio#readme",
+  "bugs": {
+    "url": "https://github.com/ecnu/EduWork/issues"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "name": "@chatecnu-work/dsh-client-ui-conversation-brand",
+  "version": "0.1.0-dev",
+  "description": "ChatECNU Work copy derivative of the locked DSH Conversation plugin",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "README.md",
+    "NOTICE",
+    "UPSTREAM.md"
+  ],
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ],
+      "platform": "web"
+    }
+  },
+  "license": "MIT",
+  "chatecnuWork": {
+    "schemaVersion": 1,
+    "kind": "compat-plugin",
+    "replaces": ["@deepseek-ai/dsh-client-ui-conversation"],
+    "contractVersion": "dsh-client-ui-conversation@0.1.2-rc.1",
+    "upstreamCommit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+    "diffScope": ["package identity rebind", "empty-conversation hero copy", "release-channel badge", "unified add-control child slot"],
+    "sunsetWhen": "DSH exposes public conversation hero-copy, release-channel badge and a general add-control seam with command and file-intake callbacks"
+  }
+}

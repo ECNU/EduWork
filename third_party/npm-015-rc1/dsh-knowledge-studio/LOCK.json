@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-knowledge-studio",
+  "version": "0.5.0",
+  "repository": "https://github.com/freedomkk-qfeng/dsh-knowledge-studio",
+  "commit": "96ba6eff5d2e6a54a76fc8f782fc02061170f412",
+  "publicationStatus": "published",
+  "tarballSHA256": "9d82287bb64161efacef0f7497ff437b269b6527af70cb5a71cc09e540619866",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-knowledge-studio/-/dsh-knowledge-studio-0.5.0.tgz",
+    "integrity": "sha512-Q4yYOhH4bwa1Khl4yRjCWzxFiuhM7Jvniq1+7ymHl/kBtjNKLcdbP3FXuSWiu6eZzGGxzcMgq2nS/h0Nv+CUjA==",
+    "shasum": "9f0a0fbe4311049a7e6e7568cb461c06b6aff819"
+  },
+  "baseline": {
+    "dshVersion": "0.1.5-rc.1",
+    "commit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e"
+  }
+}

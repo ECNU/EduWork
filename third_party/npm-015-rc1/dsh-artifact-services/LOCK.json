@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-artifact-services",
+  "version": "0.2.0",
+  "repository": "https://github.com/freedomkk-qfeng/dsh-knowledge-studio",
+  "commit": "96ba6eff5d2e6a54a76fc8f782fc02061170f412",
+  "publicationStatus": "published",
+  "tarballSHA256": "c99c74f6c6ab5c83e94bbd05c4a6ce78d5eac4ffc54fcf64c4ed3ca3557a610d",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-artifact-services/-/dsh-artifact-services-0.2.0.tgz",
+    "integrity": "sha512-FtAU2cLc/VtxAEi3UrV7qOWqjwkmt9BYssHZkerBCmwY3n7W/qa80EtCY1gMiNBnzq6QWPUFhdamQio4fwQrBg==",
+    "shasum": "c3b28e4c6d75e8a939f39f934ed516b739f3171d"
+  },
+  "baseline": {
+    "dshVersion": "0.1.5-rc.1",
+    "commit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e"
+  }
+}

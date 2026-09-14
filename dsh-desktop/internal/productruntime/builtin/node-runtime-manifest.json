@@ -1,0 +1,45 @@
+{
+  "schemaVersion": 1,
+  "runtimeId": "node-24.18.0",
+  "nodeVersion": "24.18.0",
+  "distribution": "Node.js",
+  "environment": {
+    "id": "remotion-4.0.520-react-18.3.1-shared-browser-v4",
+    "packageManager": "npm",
+    "remotionVersion": "4.0.520",
+    "packageLockSha256": "49e03a4107de6a837173187acd5ea19831d7316220944f94e4286b1609a12ba4",
+    "browserAutomation": {
+      "id": "playwright-1.63.0-alpha-2026-08-05-v1",
+      "adapterVersion": "1",
+      "playwrightVersion": "1.63.0-alpha-2026-08-05",
+      "revision": "1237",
+      "browserVersion": "152.0.7977.8",
+      "executables": {
+        "windows-amd64": {
+          "sha256": "3148daf15d59debcc61d307185f7acbf48ac1662f4b79aded2950725a7e8c6f0",
+          "archive": {
+            "url": "https://cdn.playwright.dev/builds/cft/152.0.7977.8/win64/chrome-win64.zip",
+            "sha256": "8bee006dddbee3c428e30cc4b2f9035870b403dc52ffd9bdf2bd3c1bf3822166"
+          }
+        }
+      }
+    }
+  },
+  "assets": {
+    "windows-amd64": {
+      "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-win-x64.zip",
+      "sha256": "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821",
+      "archiveRoot": "node-v24.18.0-win-x64"
+    },
+    "darwin-amd64": {
+      "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-x64.tar.gz",
+      "sha256": "dfd0dbd3e721503434df7b7205e719f61b3a3a31b2bcf9729b8b91fea240f080",
+      "archiveRoot": "node-v24.18.0-darwin-x64"
+    },
+    "darwin-arm64": {
+      "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz",
+      "sha256": "e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1",
+      "archiveRoot": "node-v24.18.0-darwin-arm64"
+    }
+  }
+}

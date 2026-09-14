@@ -1,0 +1,123 @@
+// Actual login/provision buttons on two native shells, using a loopback-only
+// synthetic IdP and model server. This is not production ECNU authentication.
+import assert from 'node:assert/strict'
+import {createRequire} from 'node:module'
+import {mkdir,readFile,writeFile} from 'node:fs/promises'
+import {join,resolve} from 'node:path'
+import {parseArgs} from 'node:util'
+import {randomUUID} from 'node:crypto'
+const {values}=parseArgs({options:Object.fromEntries(['shell','product','cdp','evidence','config'].map(k=>[k,{type:'string'}]))})
+for(const key of ['shell','product','cdp','evidence','config'])assert.ok(values[key],key)
+assert.ok(['wails','electron'].includes(values.shell))
+assert.equal(new URL(values.cdp).hostname,'127.0.0.1')
+const config=JSON.parse(await readFile(resolve(values.config),'utf8'))
+const profile=config.organizations[0]
+assert.equal(profile.id,'desktop-test')
+assert.equal(new URL(profile.oidc.issuer).hostname,'127.0.0.1')
+assert.equal(new URL(profile.provider.baseURL).origin,profile.oidc.issuer)
+const product=resolve(values.product),evidence=resolve(values.evidence)
+assert.doesNotMatch(product,/[\\/]current[\\/]/i)
+await mkdir(evidence,{recursive:true})
+const {chromium}=createRequire(join(product,'d/package.json'))('playwright-core')
+const browser=await chromium.connectOverCDP(values.cdp)
+const page=browser.contexts().flatMap(c=>c.pages()).find(p=>p.url().startsWith(values.shell==='wails'?'http://wails.localhost/':'dsh-app://app/'))
+assert.ok(page)
+page.setDefaultTimeout(45000)
+const result={passed:false,shell:values.shell,syntheticIdentity:true,productionIdp:false,checks:[]}
+const save=()=>writeFile(join(evidence,'result.json'),JSON.stringify(result,null,2)+'\n')
+const stage=async name=>{result.stage=name;await save()}
+const check=name=>result.checks.push({name,passed:true})
+const rpc=(method,args={})=>page.evaluate(async({method,args})=>{
+ const envelope=await(await fetch('/api/'+method,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({type:'client-request',rpcId:'synthetic-enterprise',method,payload:{args}})})).json()
+ if(!envelope.result?.ok)throw new Error(method+': '+(envelope.result?.error?.message||'failed'))
+ return envelope.result.value
+},{method,args})
+try{
+ await stage('onboarding-before-any-session')
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'内测声明'}),async dialog=>dialog.getByRole('button',{name:'继续',exact:true}).click())
+ await page.addLocatorHandler(page.getByRole('dialog',{name:'添加一个 API Key 开始使用'}),async dialog=>dialog.getByRole('button',{name:'稍后配置',exact:true}).click())
+ const login=page.getByRole('dialog',{name:'连接企业模型',exact:true})
+ await login.getByRole('button',{name:'使用企业账号登录',exact:true}).waitFor()
+ assert.equal((await rpc('session/list',{_request:{}})).items.length,0)
+ await login.getByRole('button',{name:'使用企业账号登录',exact:true}).click()
+ await stage('external-browser-pkce-and-consent')
+ await login.getByRole('button',{name:'确认创建模型凭据',exact:true}).waitFor()
+ // The footer is already mounted while the onboarding flow completes.
+ await page.getByText('Synthetic user',{exact:true}).first().waitFor()
+ const identity=await rpc('oidcAccounts/status',{profileID:profile.id})
+ assert.equal(identity.state,'authenticated');assert.equal(identity.credentialReady,false)
+ check('pkce-callback-updates-footer-before-provision')
+ await login.getByRole('button',{name:'确认创建模型凭据',exact:true}).click()
+ await stage('connected-without-page-reload')
+ await login.waitFor({state:'hidden'})
+ await page.getByText('企业模型已连接',{exact:false}).first().waitFor()
+ assert.ok(!(await page.locator('body').innerText()).includes('点击设置完成登录'))
+ const catalog=await rpc('session/modelCatalog')
+ assert.equal(catalog.default.provider,'fixture-ai');assert.equal(catalog.default.model,'fixture-model')
+ check('provision-updates-footer-and-default-before-session')
+ await page.screenshot({path:join(evidence,'connected-empty-home.png')})
+ await page.getByRole('button',{name:'设置',exact:true}).click()
+ await page.getByRole('button',{name:'模型',exact:true}).click()
+ const enterprise=page.locator('[data-dsh-oidc-managed-provider]')
+ await enterprise.getByText('已连接',{exact:true}).first().waitFor()
+ await enterprise.getByRole('button',{name:'刷新状态',exact:true}).waitFor()
+ await page.screenshot({path:join(evidence,'connected-settings.png')})
+ check('settings-agrees-with-sidebar')
+ await page.keyboard.press('Escape')
+ await stage('new-session-inherits-enterprise-model')
+ const workspace=join(evidence,'synthetic-enterprise-workspace')
+ await mkdir(workspace,{recursive:true})
+ const registered=await rpc('workspace/create',{request:{path:workspace}})
+ const {sessionId}=await rpc('session/create',{request:{workspaceId:registered.workspace.workspaceId}})
+ result.sessionId=sessionId
+ const title='Enterprise default acceptance '+sessionId.slice(-6)
+ await rpc('session/rename',{request:{sessionId,title}})
+ await rpc('session/prompt',{request:{requestId:'request-'+randomUUID(),sessionId,mode:'queue',clientTimeZone:'Asia/Shanghai',content:[{type:'text',text:'Synthetic software test. Reply fixture-ok without tools.'}]}})
+ let history
+ for(let i=0;i<100;i++){
+  const session=(await rpc('session/list',{_request:{}})).items.find(item=>item.sessionId===sessionId)
+  history=await rpc('session/page',{request:{address:{kind:'session',sessionId},throughSeq:session.projections.asOfSeq,maxMessages:40}})
+  if(!session.running&&JSON.stringify(history).includes('fixture-ok'))break
+  await new Promise(done=>setTimeout(done,300))
+ }
+ assert.match(JSON.stringify(history),/fixture-ok/)
+ const workspaceTree=page.getByRole('treeitem').filter({has:page.getByText('synthetic-enterprise-workspace',{exact:true})}).first()
+ if(await workspaceTree.getAttribute('aria-expanded')==='false')await workspaceTree.getByText('synthetic-enterprise-workspace',{exact:true}).click()
+ const entry=page.getByRole('treeitem').getByText(title,{exact:true}).first()
+ if(await entry.isVisible())await entry.click()
+ await page.getByText(/^(Fixture model|fixture-model)$/).first().waitFor()
+ await page.screenshot({path:join(evidence,'enterprise-default-in-conversation.png')})
+ check('new-session-uses-managed-key-and-default-model')
+ await writeFile(join(evidence,'synthetic-history.json'),JSON.stringify(history,null,2)+'\n')
+ await page.reload({waitUntil:'domcontentloaded'})
+ await page.getByText('Synthetic user',{exact:true}).first().waitFor()
+ const restored=await rpc('session/modelCatalog')
+ assert.equal(restored.default.provider,'fixture-ai');assert.equal(restored.default.model,'fixture-model')
+ check('reload-restores-account-and-default')
+ await stage('avatar-quota-refresh-and-logout')
+ const avatar=page.getByRole('button',{name:/账户菜单/}).first()
+ await avatar.click()
+ const menu=page.getByRole('menu',{name:'账户菜单',exact:true})
+ await menu.getByText('90 credits 剩余',{exact:true}).waitFor()
+ assert.equal(await menu.getByRole('progressbar').getAttribute('value'),'90')
+ await menu.getByRole('menuitem',{name:'刷新配额',exact:true}).click()
+ await menu.getByText('90 credits 剩余',{exact:true}).waitFor()
+ await page.screenshot({path:join(evidence,'avatar-quota.png')})
+ await page.keyboard.press('Escape')
+ await menu.waitFor({state:'hidden'})
+ assert.equal(await avatar.evaluate(element=>element===document.activeElement),true)
+ check('avatar-menu-shows-real-quota-and-refreshes')
+ await avatar.click()
+ await menu.getByRole('menuitem',{name:'退出登录',exact:true}).click()
+ await menu.waitFor({state:'hidden'})
+ const signedOut=await rpc('oidcAccounts/status',{profileID:profile.id})
+ assert.equal(signedOut.state,'signed_out');assert.equal(signedOut.credentialReady,false)
+ await avatar.click()
+ await menu.getByRole('menuitem',{name:'登录账户',exact:true}).waitFor()
+ assert.equal(await menu.getByText('90 credits 剩余',{exact:true}).count(),0)
+ await page.screenshot({path:join(evidence,'avatar-signed-out.png')})
+ await page.keyboard.press('Escape')
+ check('logout-clears-account-menu-quota-and-managed-credential')
+ result.passed=true
+}catch(error){result.error=error.message;process.exitCode=1;await page.screenshot({path:join(evidence,'failure.png')}).catch(()=>{})}
+finally{await save();await browser.close();console.log(JSON.stringify({passed:result.passed,stage:result.stage,error:result.error,checks:result.checks.length,evidence}))}

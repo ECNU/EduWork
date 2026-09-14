@@ -1,0 +1,54 @@
+{
+  "name": "@chatecnu-work/dsh-activity-insights-native",
+  "version": "0.1.0-alpha.7",
+  "license": "MIT",
+  "description": "Local-only activity and usage insights for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./core": "./lib/core.js",
+    "./typert": "./lib/typert.host.js",
+    "./remote": "./lib/typert.remote-client.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/**/*.js", "README.md", "LICENSE", "NOTICE"],
+  "scripts": {
+    "build:client": "powershell -ExecutionPolicy Bypass -File ./build-client.ps1",
+    "test": "node --check lib/client.js && node --test test/*.test.mjs"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
+    }
+  },
+  "chatecnuWork": {
+    "schemaVersion": 1,
+    "kind": "host-independent-native-plugin",
+    "storagePolicy": "local-derived-readonly-session-statistics",
+    "defaultEnabled": true,
+    "removable": true,
+    "userSurfaces": ["settings.section:activity-insights"]
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-api-remotes": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-locale": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-settings": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-atomic-write": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-home-paths": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-session-persistence": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-session-query": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.2-rc.1",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  }
+}

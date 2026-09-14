@@ -1,0 +1,20 @@
+{
+  "apps/desktop/src/core-package-set.ts": "ca6e2e63329cb05ea379bb0dca88d5e7357d36f8e99270d178bab63a4f85cfcf",
+  "apps/desktop/src/host-process.ts": "9bc9bce5de490b100db053066f248983d5faa2027a89b209c8f4a1704b263acf",
+  "apps/desktop/src/host-protocol.ts": "ef608222e30a4976d3d93e9f0e7fcc004161b346fa8b0cd005a370dc44824065",
+  "apps/desktop/src/ipc.ts": "32ab677c23627eea738861f9ce428f0e333869b680de908edd7373416d41f83e",
+  "apps/desktop/src/locale.ts": "484bc187cbb8d8552df5d88920435a9499b17722e19275238135cbec568de5fa",
+  "apps/desktop/src/main.ts": "a0626b1b3ea34a3384b6951ca688b78f9edbc992b7981ab2466d9d70ae8adb8d",
+  "apps/desktop/src/paths.ts": "aff2d034842f540e4136bcddd3150c829f170dbfa8270ad8d621a29c9fdaca68",
+  "apps/desktop/src/preload-app.ts": "5818fe7eac11685d93418222fb9349b97d258d59f776892041e924fdd36914ef",
+  "apps/desktop/src/preload.ts": "6357f171cce42b9b28950aff4a0dee84c79da3b289ed01fdf6c44222f9adb68f",
+  "apps/desktop/src/project-manager.ts": "bad564cd43266448ff2e3493ae160d7f8cc29f2a5f3d14fde97992ad204bb6c6",
+  "apps/desktop/src/release.ts": "bbf43d2024b66e0def7566713d05d3f1aff664f89760a024413a216793c85074",
+  "apps/desktop/src/seed-store.ts": "51116c541a9b9be47a69e4cbd8160d252d9861b7b8ceb165340440f35af37c05",
+  "apps/desktop/src/single-instance.ts": "dc6a6e263a6fdedc3f1cfacb97eb6f60dd5b04ad5d3b02daae4640f2e30a5150",
+  "apps/desktop/src/update-coordinator.ts": "441c1cff7bd5af7240ef3b2eec0ad45d0db8aee05fdeb5501ab3fb82d0e41eed",
+  "apps/desktop/renderer/plugin-manager.css": "c1ab4b6d85866488b9dc0a3d567ba0384cc811422cdfdfcb39315e041f979704",
+  "apps/desktop/renderer/plugin-manager.html": "2aec1fb6879181fffc4f0526a6ea6f7316536e2317ffafd882a0a5750b83a531",
+  "apps/desktop/renderer/plugin-manager.js": "b926486d417b505316b4b506ab61aa70f19f3068f6d3af16d81bcd543106fb95",
+  "apps/desktop/package.json": "d4e66fd9d68666ed95fce3ba491aefde3f2664b53734ef8fa36824537ef7b433"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "@eduwork/desktop-services",
+  "version": "0.1.0-dev.20260910.1",
+  "type": "module",
+  "main": "lib/index.js",
+  "files": ["lib"],
+  "license": "MIT",
+  "peerDependencies": {"@deepseek-ai/cordis": "4.0.2"}
+}

@@ -1,0 +1,20 @@
+{
+  "name": "@chatecnu-work/dsh-credentials-native",
+  "version": "0.1.0-dev",
+  "description": "Native-vault credential provider for ChatECNU Work DSH",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js"
+  },
+  "files": [
+    "lib/**/*.js",
+    "README.md"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-credentials": "0.1.2-rc.1"
+  },
+  "license": "MIT"
+}

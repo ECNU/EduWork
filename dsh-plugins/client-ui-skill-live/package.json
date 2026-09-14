@@ -1,0 +1,55 @@
+{
+  "name": "@chatecnu-work/dsh-client-ui-skill-live",
+  "version": "0.1.0-dev",
+  "description": "DSH Skill UI replacement with live catalog invalidation for ChatECNU Work settings",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-tool",
+        "@deepseek-ai/dsh-client-ui-input-trigger",
+        "@deepseek-ai/dsh-api-remotes"
+      ],
+      "platform": "web"
+    }
+  },
+  "files": [
+    "lib/index.js",
+    "lib/client.js",
+    "README.md",
+    "NOTICE",
+    "UPSTREAM.md"
+  ],
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-api-remotes": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-connection": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-locale": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-input-trigger": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-tool": "0.1.2-rc.1",
+    "react": "^18.2.0"
+  },
+  "license": "MIT",
+  "chatecnuWork": {
+    "schemaVersion": 1,
+    "kind": "compat-plugin",
+    "replaces": ["@deepseek-ai/dsh-client-ui-skill"],
+    "contractVersion": "dsh-client-ui-skill@0.1.2-rc.1",
+    "upstreamCommit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+    "diffScope": ["package identity rebind", "live catalog invalidation after chatecnu-skills settings updates"],
+    "sunsetWhen": "upstream Skill UI invalidates its catalog on settings changes"
+  }
+}

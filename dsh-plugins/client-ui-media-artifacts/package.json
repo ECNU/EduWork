@@ -1,0 +1,58 @@
+{
+  "name": "@chatecnu-work/dsh-client-ui-media-artifacts",
+  "version": "0.1.0-dev",
+  "description": "ChatECNU workspace file intake, artifact cards, generated-file actions and preview UI for DSH conversations",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-tool"
+      ],
+      "platform": "web"
+    }
+  },
+  "files": ["lib/**/*.js", "README.md", "NOTICE", "UPSTREAM.md"],
+  "chatecnuWork": {
+    "schemaVersion": 1,
+    "kind": "compat-plugin",
+    "replaces": ["@deepseek-ai/dsh-client-ui-deliverables"],
+    "contractVersion": "dsh-client-ui-deliverables@0.1.2-rc.1",
+    "upstreamCommit": "a66e4702047846cdaa10c66c9d3df3951f5ea70d",
+    "diffScope": [
+      "package identity rebind",
+      "retain canonical successful-mutation deliverable derivation and extend it through persisted product-tool result metadata",
+      "expandable path-aware produced-file summary and context menu",
+      "composer workspace-file intake through the product add-control child slot and native @file grammar",
+      "session-scoped native details-column preview with Markdown, sandboxed HTML, PDF and Office rendering"
+    ],
+    "sunsetWhen": "DSH exposes public general-file intake plus produced-file rendering and preview action slots that cover typed chips, context actions and a session-scoped preview drawer"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-chat": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-layout": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-slots": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-tool": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-file-reference": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-session": "0.1.2-rc.1",
+    "@chatecnu-work/dsh-artifact-preview-native": "0.1.0-dev",
+    "@eduwork/dsh-artifact-services": "^0.1.0 || >=0.1.1-dev.20260907.3 <0.2.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  },
+  "license": "MIT"
+}

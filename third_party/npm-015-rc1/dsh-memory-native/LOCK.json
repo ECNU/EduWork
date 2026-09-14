@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-memory",
+  "version": "0.1.1",
+  "repository": "https://github.com/freedomkk-qfeng/dsh-memory-native",
+  "commit": "c03db35a95c33c6a1a4d960ab1d8d4155554e2e7",
+  "publicationStatus": "published",
+  "tarballSHA256": "ee5012f3a0c375e895b66629ec3182284caae731af7e15b7a3bf626594b007c2",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-memory/-/dsh-memory-0.1.1.tgz",
+    "integrity": "sha512-CVk/UoRIx+pYIUAuF2zKte5IgP4apw/qe8B5RznM3HqDjcxDvizvO20S0pWnaiRh8hSk+WTOmhqjibkoqR7vMg==",
+    "shasum": "338a2cb9ed36ff62397789586f5661c94908ad17"
+  },
+  "baseline": {
+    "dshVersion": "0.1.5-rc.1",
+    "commit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e"
+  }
+}

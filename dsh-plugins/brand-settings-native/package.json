@@ -1,0 +1,28 @@
+{
+  "name": "@chatecnu-work/dsh-brand-settings-native",
+  "version": "0.1.0-dev",
+  "description": "Host-owned edition identity, visual-style and onboarding policy for EduWork",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./core": "./lib/core.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "README.md"
+  ],
+  "chatecnuWork": {
+    "schemaVersion": 1,
+    "kind": "product-settings-plugin",
+    "contractVersion": 1,
+    "removable": true
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-settings": "0.1.2-rc.1",
+    "@deepseek-ai/schemastery": "3.18.2"
+  },
+  "license": "MIT"
+}

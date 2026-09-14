@@ -1,0 +1,439 @@
+{
+  "schemaVersion": 1,
+  "upstreamCommit": "183f08e9c6dde7e36cd2318eaee70b0da08fb35e",
+  "packages": [
+    {
+      "path": "packages/bundle/web-app/package.json",
+      "name": "@deepseek-ai/dsh-web-app",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./startup",
+        "./cordis.patch.yml"
+      ]
+    },
+    {
+      "path": "packages/bundle/base/package.json",
+      "name": "@deepseek-ai/dsh-base",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./cordis.patch.yml"
+      ]
+    },
+    {
+      "path": "packages/client/ui-renderer/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-renderer",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/client/ui-session/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-session",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/client/ui-slots/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-slots",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/client/ui-sidebar/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-sidebar",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/client/ui-settings/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-settings",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/api/remotes/package.json",
+      "name": "@deepseek-ai/dsh-api-remotes",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client",
+        "./types"
+      ]
+    },
+    {
+      "path": "packages/typert/protocol/package.json",
+      "name": "@deepseek-ai/dsh-typert-protocol",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types"
+      ]
+    },
+    {
+      "path": "packages/credentials/credentials/package.json",
+      "name": "@deepseek-ai/dsh-credentials",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types"
+      ]
+    },
+    {
+      "path": "packages/credentials/credentials-local/package.json",
+      "name": "@deepseek-ai/dsh-credentials-local",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/core/tools/package.json",
+      "name": "@deepseek-ai/dsh-tools",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types",
+        "./presentation"
+      ]
+    },
+    {
+      "path": "packages/fs/fs/package.json",
+      "name": "@deepseek-ai/dsh-fs",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/interaction/permission-presets/package.json",
+      "name": "@deepseek-ai/dsh-permission-presets",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/skill/skill-filesystem/package.json",
+      "name": "@deepseek-ai/dsh-skill-filesystem",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/llm/llm/package.json",
+      "name": "@deepseek-ai/dsh-llm",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types",
+        "./message"
+      ]
+    },
+    {
+      "path": "packages/llm/llm-deepseek/package.json",
+      "name": "@deepseek-ai/dsh-llm-deepseek",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/llm/llm-pi-ai/package.json",
+      "name": "@deepseek-ai/dsh-llm-pi-ai",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/attachment/attachment/package.json",
+      "name": "@deepseek-ai/dsh-attachment",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/util/launch-environment/package.json",
+      "name": "@deepseek-ai/dsh-launch-environment",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/identity/anonymous-user-id/package.json",
+      "name": "@deepseek-ai/dsh-anonymous-user-id",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/settings/settings/package.json",
+      "name": "@deepseek-ai/dsh-settings",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types"
+      ]
+    },
+    {
+      "path": "packages/host/webserver/package.json",
+      "name": "@deepseek-ai/dsh-host-webserver",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/host/plugin-inventory/package.json",
+      "name": "@deepseek-ai/dsh-host-plugin-inventory",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./types",
+        "./typert",
+        "./remote"
+      ]
+    },
+    {
+      "path": "packages/client/ui-settings-plugins/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-settings-plugins",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/client/ui-settings-plugin-inventory/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-settings-plugin-inventory",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "vendor/cordis/package.json",
+      "name": "@deepseek-ai/cordis",
+      "version": "4.0.2",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "vendor/schemastery/package.json",
+      "name": "@deepseek-ai/schemastery",
+      "version": "3.18.2",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/client/ui-sidebar-right/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-sidebar-right",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/client/ui-sidebar-documentpreview/package.json",
+      "name": "@deepseek-ai/dsh-client-ui-sidebar-documentpreview",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        ".",
+        "./client"
+      ]
+    },
+    {
+      "path": "packages/util/workspace-path/package.json",
+      "name": "@deepseek-ai/dsh-util-workspace-path",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    },
+    {
+      "path": "packages/core/session/package.json",
+      "name": "@deepseek-ai/dsh-session",
+      "version": "0.1.5-rc.1",
+      "requiredExports": [
+        "."
+      ]
+    }
+  ],
+  "sourceAnchors": [
+    {
+      "path": "packages/bundle/web-app/cordis.patch.yml",
+      "text": "name: '@deepseek-ai/dsh-host-webserver'",
+      "count": 1,
+      "purpose": "disable the upstream listener seat from the product desktop bundle before mounting the guarded listener"
+    },
+    {
+      "path": "packages/bundle/web-app/cordis.patch.yml",
+      "text": "name: '@deepseek-ai/dsh-client-ui-sidebar'",
+      "count": 1,
+      "purpose": "retain the upstream sidebar extension surface beside the product enterprise account client"
+    },
+    {
+      "path": "packages/bundle/base/cordis.patch.yml",
+      "text": "name: '@deepseek-ai/dsh-credentials-local'",
+      "count": 1,
+      "purpose": "disable the plaintext credential seat from the product desktop bundle before mounting the native vault provider"
+    },
+    {
+      "path": "packages/client/ui-sidebar/src/client/contract/slots.ts",
+      "text": "'sidebar.brand.mark':",
+      "count": 1,
+      "purpose": "replace the generic sidebar mark without forking the sidebar package"
+    },
+    {
+      "path": "packages/client/ui-sidebar/src/client/contract/slots.ts",
+      "text": "'sidebar.brand.name':",
+      "count": 1,
+      "purpose": "replace the generic sidebar name without forking the sidebar package"
+    },
+    {
+      "path": "packages/client/ui-conversation/src/client/contract/slots.ts",
+      "text": "'conversation.hero.brand.mark':",
+      "count": 1,
+      "purpose": "replace the empty-conversation hero mark without patching the conversation implementation"
+    },
+    {
+      "path": "packages/client/ui-sidebar/src/client/contract/slots.ts",
+      "text": "'sidebar.footer.action':",
+      "count": 1,
+      "purpose": "render the enterprise account entry"
+    },
+    {
+      "path": "packages/client/ui-settings/src/client/contract/slots.ts",
+      "text": "'settings.onboarding':",
+      "count": 1,
+      "purpose": "run institution onboarding before generic model onboarding"
+    },
+    {
+      "path": "packages/client/ui-settings/src/client/contract/slots.ts",
+      "text": "'settings.plugins.tab':",
+      "count": 1,
+      "purpose": "mount the product skill center inside DSH native settings"
+    },
+    {
+      "path": "packages/client/ui-settings-models/src/client/slot-contract.ts",
+      "text": "'settings.models.provider-card':",
+      "count": 1,
+      "purpose": "mount enterprise account state inside the official Models provider card without replacing the page"
+    },
+    {
+      "path": "packages/client/ui-settings-models/src/client/slot-contract.ts",
+      "text": "'settings.models.footer':",
+      "count": 1,
+      "purpose": "retain the official Models footer extension seam"
+    },
+    {
+      "path": "packages/bundle/web-app/cordis.patch.yml",
+      "text": "name: '@deepseek-ai/dsh-host-plugin-inventory'",
+      "count": 1,
+      "purpose": "retain the upstream read-only Loader inventory used by the product component catalog"
+    },
+    {
+      "path": "packages/client/ui-settings/src/client/contract/slots.ts",
+      "text": "'settings.plugins.tab':",
+      "count": 1,
+      "purpose": "mount the product component-origin, version and lifecycle page that supersedes the duplicate upstream read-only inventory tab"
+    },
+    {
+      "path": "packages/client/ui-skill/src/client/index.ts",
+      "text": "ctx.remote.$on('agent-preset/selected', invalidate)",
+      "count": 1,
+      "purpose": "invalidate DSH native slash-command catalogs after product skill policy changes"
+    },
+    {
+      "path": "packages/client/tsdown.client.ts",
+      "text": "export function clientBundle(",
+      "count": 1,
+      "purpose": "build a DSH-native client module-loader bundle"
+    },
+    {
+      "path": "packages/core/tools/src/index.ts",
+      "text": "'tools/pre-execute'(this: Scoped<ToolRuntime>",
+      "count": 1,
+      "purpose": "gate ChatECNU media operations through the native staged approval seam"
+    },
+    {
+      "path": "packages/interaction/permission-presets/src/index.ts",
+      "text": "current(session: Session): string",
+      "count": 1,
+      "purpose": "honor the native Full Access preset for trusted media operations"
+    },
+    {
+      "path": "packages/skill/skill-filesystem/src/index.ts",
+      "text": "process.env.DSH_BUNDLED_SKILL_DIR",
+      "count": 1,
+      "purpose": "mount product-bundled ChatECNU skills without copying them into the user profile"
+    },
+    {
+      "path": "packages/skill/skill-filesystem/src/index.ts",
+      "text": "export class FileSystemSkillProvider",
+      "count": 1,
+      "purpose": "wrap native filesystem discovery with live product skill policy without moving files"
+    },
+    {
+      "path": "packages/llm/llm-pi-ai/src/adapter.ts",
+      "text": "inputModalities: [...resolvedModel.input]",
+      "count": 1,
+      "purpose": "declare and enforce native image admission per enterprise model"
+    },
+    {
+      "path": "packages/llm/llm-pi-ai/src/context.ts",
+      "text": "data: Buffer.from(version.data).toString('base64')",
+      "count": 1,
+      "purpose": "resolve durable DSH image attachments into provider-native image content"
+    },
+    {
+      "path": "packages/core/session/src/types.ts",
+      "text": "export const SESSION_FORMAT_VERSION = 3",
+      "count": 1,
+      "purpose": "verify V3 session persistence boundary and migration tests"
+    },
+    {
+      "path": "packages/client/ui-sidebar-right/src/client/service.ts",
+      "text": "export interface ISidebarRight {",
+      "count": 1,
+      "purpose": "use official shared navigation controller for Studio and file previews"
+    },
+    {
+      "path": "packages/client/ui-sidebar-right/src/client/contract/slots.ts",
+      "text": "'sidebar.right.pane.tab': {",
+      "count": 1,
+      "purpose": "register artifact preview bodies in official tab surface"
+    },
+    {
+      "path": "packages/util/workspace-path/src/file-address.ts",
+      "text": "export function sessionFileAddress(",
+      "count": 1,
+      "purpose": "use public resource address grammar for generated file navigation"
+    }
+  ]
+}

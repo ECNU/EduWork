@@ -1,0 +1,8 @@
+# dsh-mail-assistant installs disabled and performs no network access at boot.
+# Configure it in Settings -> Mail assistant, or override this row for headless
+# deployments. Store the password/app password through the DSH credential ref
+# DSH_MAIL_ASSISTANT_PASSWORD; never put it in this file.
+- insert:
+    - id: dsh-mail-assistant
+      name: '@eduwork/dsh-mail'
+      config: {}

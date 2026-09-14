@@ -1,0 +1,29 @@
+{
+  "version": 2,
+  "id": "new-video",
+  "title": "新视频",
+  "template": "editorial",
+  "aspectRatio": "16:9",
+  "fps": 30,
+  "voiceover": {
+    "voice": "",
+    "format": "wav",
+    "speed": 1,
+    "leadInSeconds": 0.18,
+    "tailSeconds": 0.45,
+    "showCaptions": true
+  },
+  "scenes": [
+    {
+      "id": "opening",
+      "layout": "hero",
+      "durationSeconds": 4,
+      "eyebrow": "KNOWLEDGE STUDIO",
+      "title": "从一个清晰的想法开始",
+      "body": "选择模板和镜头布局，把内容变成有节奏的画面。"
+    }
+  ],
+  "audio": {
+    "bgm": null
+  }
+}

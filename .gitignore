@@ -1,0 +1,12 @@
+dist/
+node_modules/
+.research/
+.local/
+private-config/
+*.private.json
+.env
+.env.*
+!.env.example
+*.log
+.DS_Store
+Thumbs.db

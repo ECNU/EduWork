@@ -1,0 +1,10 @@
+{
+  "schemaVersion": "dsh-oidc/v1alpha1",
+  "id": "example-identity",
+  "displayName": "Example Organization",
+  "oidc": {
+    "issuer": "https://identity.example.edu",
+    "clientId": "replace-with-public-client-id",
+    "scopes": ["openid", "profile", "offline_access"]
+  }
+}

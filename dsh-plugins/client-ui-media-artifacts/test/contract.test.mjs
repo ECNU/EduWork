@@ -1,0 +1,70 @@
+import assert from 'node:assert/strict'
+import { readFile } from 'node:fs/promises'
+import test from 'node:test'
+import { isComposerPasteEvent } from '../src/client/paste-target.js'
+
+const source = await readFile(new URL('../src/client/index.js', import.meta.url), 'utf8')
+const deliverables = await readFile(new URL('../src/client/deliverables.js', import.meta.url), 'utf8')
+const inputFiles = await readFile(new URL('../src/client/input-files.js', import.meta.url), 'utf8')
+
+test('artifact UI owns product media and bounded document preview surfaces', () => {
+  assert.match(source, /inject = \['slots', 'remote', 'uiConversation', 'layout'\]/)
+  assert.match(deliverables, /ctx\.uiConversation\.events\.register\(deliverablesDefinition\)/)
+  assert.doesNotMatch(`${source}\n${deliverables}`, /conversationEvents/)
+  assert.match(source, /ecnu_image_generate/)
+  assert.match(source, /ecnu_tts_generate/)
+  assert.match(source, /artifact_publish/)
+  assert.match(source, /artifactCardProfile\(path, meta\?\.mime\)/)
+  assert.doesNotMatch(source, /artifact_publish:\s*\{\s*title:\s*'生成的视频'/)
+  assert.match(source, /office_document/)
+  assert.match(source, /office_spreadsheet/)
+  assert.match(source, /office_presentation/)
+  assert.match(source, /office_pdf/)
+  assert.match(deliverables, /该文件类型暂不支持预览/)
+  assert.match(deliverables, /使用本机应用打开/)
+  assert.match(deliverables, /sandboxedHtml/)
+  assert.match(deliverables, /sandbox: ''/)
+  assert.match(deliverables, /Content-Security-Policy/)
+  assert.doesNotMatch(deliverables, /window\.alert/)
+  assert.match(source, /openArtifactPreview\(\{ sessionId, path: meta\.relativePath/)
+  assert.match(source, /artifactPreview\.reveal/)
+  assert.doesNotMatch(source, /file:\/\//)
+  assert.doesNotMatch(source, /@deepseek-ai\/dsh-client-ui-.*\/src/)
+})
+
+test('conversation file intake uses the unified add slot and native @file grammar', () => {
+  assert.match(source, /conversation\.input\.add/)
+  assert.match(source, /artifactPreview\.importFiles/)
+  assert.match(source, /artifactPreview\.importNativeFiles/)
+  assert.match(inputFiles, /formatFileMention/)
+  assert.match(inputFiles, /workspaceFileReference/)
+  assert.match(inputFiles, /source: 'reference'/)
+  assert.match(inputFiles, /appearance: 'file'/)
+  assert.match(inputFiles, /latest\.insertReference\(workspaceFileReference\(file\.path\)\)/)
+  assert.doesNotMatch(inputFiles, /appendFileMentions/)
+  assert.match(inputFiles, /addEventListener\('paste', onPaste, true\)/)
+  assert.match(inputFiles, /isComposerPasteEvent\(event\)/)
+  assert.doesNotMatch(inputFiles, /HTMLTextAreaElement/)
+  assert.match(inputFiles, /addEventListener\('drop', onDrop, true\)/)
+  assert.match(inputFiles, /files\.every\(file => IMAGE_TYPES\.has\(file\.type\)\)/)
+  assert.match(inputFiles, /current\.onAddImages\(images\)/)
+  assert.match(inputFiles, /reader\.readAsDataURL\(file\)/)
+  assert.match(inputFiles, /postMessageWithAdditionalObjects/)
+  assert.match(inputFiles, /bridge\.resolveFilePaths\(NATIVE_REQUEST_MARKER_X, correlation, files\)/)
+  assert.match(inputFiles, /__chatecnuNativeFileGrant/)
+  assert.match(inputFiles, /data-chatecnu-workspace-file-picker/)
+  assert.match(inputFiles, /MAX_BROWSER_FALLBACK_BYTES/)
+  assert.doesNotMatch(inputFiles, /CanResolveFilePaths/)
+  assert.doesNotMatch(inputFiles, /window\.runtime/)
+  assert.doesNotMatch(inputFiles, /String\.fromCharCode\(\.\.\./)
+  assert.doesNotMatch(inputFiles, /type:\s*['"]file['"].*content/iu)
+})
+
+test('file paste follows the Lexical composer root through the event path', () => {
+  const other = { matches: () => false }
+  const composer = { matches: selector => selector === '[data-composer-input]' }
+  assert.equal(isComposerPasteEvent({ composedPath: () => [other, composer, other] }), true)
+  assert.equal(isComposerPasteEvent({ composedPath: () => [other] }), false)
+  assert.equal(isComposerPasteEvent({ target: composer }), true)
+  assert.equal(isComposerPasteEvent({ target: other }), false)
+})

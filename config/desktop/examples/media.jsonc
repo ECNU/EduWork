@@ -1,0 +1,43 @@
+// 将 media 段合并到 config/eduwork.jsonc。修改后从托盘退出，再启动。
+// 这是协议示例，域名、模型、尺寸、音色必须替换为服务端支持的值。
+// 不在此填写 Key。凭据由模型设置或企业登录保存在本机凭据存储。
+{
+  "schemaVersion": 1,
+  "organizations": [],
+  "media": {
+    // [] 关闭全部云端媒体服务；不影响系统本地 TTS。
+    "providers": [{
+      "id": "example-media",
+      "title": "示例媒体服务",
+      "protocol": "openai-compatible",
+      // API 基地址，末尾不要写 /images/generations 或 /audio/speech。
+      "baseURL": "https://api.example.edu/v1",
+      // 填已保存的凭据引用名称，不是 Key 的值。
+      // 个人示例：模型设置中 my-media 提供方的 Key 对应 MY_MEDIA_API_KEY。
+      // 企业模式改为 EDUWORK_API_KEY，并填写下方 oidcProfileId。详见 docs/MEDIA.md。
+      "credentialRef": "MY_MEDIA_API_KEY",
+      // 企业登录取得的 Key 必须加这一项，值对应 organizations[].id。
+      // 不要填模型 Provider ID；它与企业配置的 ID 是两个不同概念。
+      // "oidcProfileId": "example-university",
+      "images": {
+        "enabled": true,
+        "model": "replace-with-image-model-id",
+        // 必须按服务商填写，不能把用户要求的任意尺寸直接传给接口。
+        "nativeSizes": ["512x512", "768x768", "720x1280", "1280x720", "1024x1024"],
+        "defaultSize": "1024x1024",
+        // auto 不发 response_format；也可显式要求 b64_json 或 url。
+        "responseFormat": "b64_json",
+        "promptMaxChars": 4096
+      },
+      "speech": {
+        "enabled": true,
+        "model": "replace-with-tts-model-id",
+        // 目前服务须支持 WAV 输出，方便对话、Studio、字幕和视频共用。
+        // OpenAI 兼容协议没有统一音色列表接口，音色目录由此配置。
+        "voices": [{ "id": "replace-with-voice-id", "title": "示例音色", "language": "zh-CN" }],
+        "defaultVoice": "replace-with-voice-id",
+        "inputMaxChars": 4096
+      }
+    }]
+  }
+}

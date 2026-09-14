@@ -1,0 +1,249 @@
+{
+  "schemaVersion": 1,
+  "id": "eduwork",
+  "brand": {
+    "product": {
+      "name": "EduWork"
+    },
+    "visualStyle": "dsh",
+    "manageOptionalPresets": true,
+    "upstreamWelcomeNoticeVersion": "2026-08-13.1"
+  },
+  "capabilities": {
+    "institution": false,
+    "images": true
+  },
+  "packages": [
+    "@eduwork/dsh-oidc",
+    "@eduwork/dsh-mail",
+    "@shlv/dsh-literature",
+    "@eduwork/dsh-artifact-services",
+    "@eduwork/dsh-knowledge-studio",
+    "@eduwork/dsh-memory"
+  ],
+  "plugins": [
+    {
+      "root": "core",
+      "source": "dsh-plugins/request-concurrency",
+      "id": "eduwork-request-concurrency",
+      "name": "@eduwork/dsh-request-concurrency",
+      "config": {
+        "maxConcurrentRequests": 3
+      }
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/media-openai",
+      "id": "eduwork-media-openai",
+      "name": "@eduwork/dsh-media-openai",
+      "config": {
+        "providers": []
+      }
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/brand-settings-native",
+      "id": "eduwork-brand-settings",
+      "name": "@chatecnu-work/dsh-brand-settings-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/client-ui-branding",
+      "id": "eduwork-ui-branding",
+      "name": "@chatecnu-work/dsh-client-ui-branding"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/client-ui-conversation-brand",
+      "id": "eduwork-ui-conversation",
+      "name": "@chatecnu-work/dsh-client-ui-conversation-brand"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/client-ui-agent-preset-product",
+      "id": "eduwork-ui-agent-presets",
+      "name": "@chatecnu-work/dsh-client-ui-agent-preset-product"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/client-ui-skill-live",
+      "id": "eduwork-ui-skills",
+      "name": "@chatecnu-work/dsh-client-ui-skill-live"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/skill-settings-native",
+      "id": "eduwork-skill-settings",
+      "name": "@chatecnu-work/dsh-skill-settings-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/artifact-preview-native",
+      "id": "eduwork-artifact-preview",
+      "name": "@chatecnu-work/dsh-artifact-preview-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/client-ui-media-artifacts",
+      "id": "eduwork-media-ui",
+      "name": "@chatecnu-work/dsh-client-ui-media-artifacts"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/tool-browser",
+      "id": "eduwork-browser",
+      "name": "@chatecnu-work/dsh-tool-browser"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/tool-artifact-publish",
+      "id": "eduwork-artifact-publish",
+      "name": "@chatecnu-work/dsh-tool-artifact-publish"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/component-inventory-native",
+      "id": "eduwork-component-inventory-native",
+      "name": "@chatecnu-work/dsh-component-inventory-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/client-ui-component-inventory",
+      "id": "eduwork-client-ui-component-inventory",
+      "name": "@chatecnu-work/dsh-client-ui-component-inventory"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/skill-manager-native",
+      "id": "eduwork-skill-manager-native",
+      "name": "@chatecnu-work/dsh-skill-manager-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/workbench-native",
+      "id": "eduwork-workbench-native",
+      "name": "@eduwork/workbench-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/activity-insights-native",
+      "id": "eduwork-activity-insights-native",
+      "name": "@chatecnu-work/dsh-activity-insights-native"
+    }
+  ],
+  "skills": [
+    {
+      "name": "browser",
+      "source": "dsh-skills/browser",
+      "defaultEnabled": true
+    },
+    {
+      "name": "skill-creator",
+      "source": "dsh-skills/skill-creator",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-documents",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/documents",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-presentations",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/presentations",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-spreadsheets",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/spreadsheets",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-pdfs",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/pdfs",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-images",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/images",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-speech",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/speech",
+      "defaultEnabled": true
+    },
+    {
+      "name": "artifact-video",
+      "sourcePackage": "@eduwork/dsh-artifact-services",
+      "sourcePath": "skills/video",
+      "defaultEnabled": true
+    },
+    {
+      "name": "knowledge-studio",
+      "sourcePackage": "@eduwork/dsh-knowledge-studio",
+      "sourcePath": "skills/knowledge-studio",
+      "requiresPackageCapability": "configurableSkills",
+      "defaultEnabled": true
+    },
+    {
+      "name": "eduwork-help",
+      "source": "dsh-skills/eduwork-help",
+      "defaultEnabled": true
+    }
+  ],
+  "resources": [],
+  "patches": [
+    {
+      "id": "web",
+      "config": {
+        "searchProvider": "eduwork-search"
+      }
+    },
+    {
+      "insert": [
+        {
+          "id": "eduwork-search",
+          "name": "@chatecnu-work/dsh-tool-browser/search-auto"
+        }
+      ]
+    },
+    {
+      "id": "ui-brand-official",
+      "disabled": true
+    },
+    {
+      "id": "ui-conversation",
+      "disabled": true
+    },
+    {
+      "id": "ui-agent-preset",
+      "disabled": true
+    },
+    {
+      "id": "ui-skill",
+      "disabled": true
+    },
+    {
+      "id": "session-query-sqlite",
+      "config": {
+        "path": ".eduwork-memory-query.sqlite3",
+        "openAt": "first-search"
+      }
+    },
+    {
+      "id": "storage-domain",
+      "config": {
+        "backend": "json",
+        "routes": {
+          "local_memory": "sqlite"
+        }
+      }
+    }
+  ]
+}

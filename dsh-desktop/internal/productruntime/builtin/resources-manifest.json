@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "files": {
+    "media/bgm/README.md": "96f36dfb20bb568a33395eebc79aefec4d2d003bffbcab061d72bdaa34505ebd",
+    "media/bgm/catalog.json": "cfa09c08b28ec166773a39622e55f95b92fba92248e87e55a87c4186ed37c841",
+    "media/bgm/christmas-synths.ogg": "54975344ab1704bae1c5b9dccb674e581f5caa910190644ebba46ae065f07622",
+    "skills/presentations/assets/ecnu-background.jpg": "54a86372dc3a22128680d32aef7423efef79c54460f5c9cd35d20cedc1c58eec",
+    "skills/presentations/assets/ecnu-logo-form-a.png": "6ce0a87abb7e09e8d01b874ece4fb8a566eac6d6aa44dd3fb4304fd9e84beeac",
+    "skills/presentations/assets/ecnu-logo-form-c.png": "d0b0379e0e7282c20317d514e9a5d8eb966465777c036c3148464a2a9317ed4e",
+    "skills/video-creation/assets/node-environment/package-lock.json": "49e03a4107de6a837173187acd5ea19831d7316220944f94e4286b1609a12ba4",
+    "skills/video-creation/assets/node-environment/package.json": "25fc88767a5a6aafb7a27b0cd7295912056bc0ebd6a5c456510d13ea245d2115"
+  }
+}

@@ -1,0 +1,358 @@
+{
+  "schemaVersion": 1,
+  "policy": {
+    "requirePerTrackLicenseMetadata": true,
+    "requireSha256": true,
+    "allowUnknownOrUnverifiedMusic": false
+  },
+  "tracks": [
+    {
+      "id": "quiet-explanation",
+      "title": "清晰思路 · 安静讲解",
+      "category": "讲解 / 课程",
+      "bpm": 80,
+      "key": "D major",
+      "roots": [
+        50,
+        47,
+        55,
+        57
+      ],
+      "mode": "soft",
+      "melody": [
+        9,
+        7,
+        4,
+        2,
+        4,
+        7,
+        11,
+        9
+      ],
+      "filename": "quiet-explanation.mp3",
+      "author": "Knowledge Studio contributors (AI-assisted composition)",
+      "license": "MIT — project-generated material; see BGM usage notes",
+      "source": "../compose_bgm.py and ../scores/quiet-explanation.json",
+      "generation": "AI-assisted score and deterministic local additive/FM-style synthesis; no third-party audio samples",
+      "durationSeconds": 48,
+      "loop": true,
+      "sha256": "0d4c60e3c80a360d76faa4cccd7c3d53b1598447ec6eaf47b2015bc8a33d1c85",
+      "validation": {
+        "sampleRate": 32000,
+        "channels": 2,
+        "durationSeconds": 48,
+        "peak": 0.492554,
+        "rmsDbFS": -18.68,
+        "clippedSamples": 0,
+        "loopSeamPeak": 0.000732
+      },
+      "pcmMaster": {
+        "sha256": "91ac612fb7be5332e3eb4b891c6ff8aa0ba2d0a189de9443ec7fd79460842673",
+        "validation": {
+          "sampleRate": 32000,
+          "channels": 2,
+          "peak": 0.507788,
+          "rmsDbFS": -18.42,
+          "clippedSamples": 0
+        }
+      },
+      "mime": "mpeg",
+      "encoding": {
+        "codec": "mp3",
+        "encoder": "libmp3lame",
+        "bitrateKbps": 192,
+        "gaplessMetadata": true
+      }
+    },
+    {
+      "id": "warm-campus",
+      "title": "午后校园 · 温暖舒展",
+      "category": "校园 / 人文",
+      "bpm": 92,
+      "key": "C major",
+      "roots": [
+        48,
+        53,
+        45,
+        55
+      ],
+      "mode": "warm",
+      "melody": [
+        4,
+        7,
+        9,
+        7,
+        2,
+        4,
+        0,
+        2
+      ],
+      "filename": "warm-campus.mp3",
+      "author": "Knowledge Studio contributors (AI-assisted composition)",
+      "license": "MIT — project-generated material; see BGM usage notes",
+      "source": "../compose_bgm.py and ../scores/warm-campus.json",
+      "generation": "AI-assisted score and deterministic local additive/FM-style synthesis; no third-party audio samples",
+      "durationSeconds": 41.739125,
+      "loop": true,
+      "sha256": "d24e9166ce1f687d62684effabfab19e7734a5b343c2c873808623a28a3d1d59",
+      "validation": {
+        "sampleRate": 32000,
+        "channels": 2,
+        "durationSeconds": 41.739125,
+        "peak": 0.551697,
+        "rmsDbFS": -18.68,
+        "clippedSamples": 0,
+        "loopSeamPeak": 0.003845
+      },
+      "pcmMaster": {
+        "sha256": "607e67f061c15e0097f2f3610da378206a82c16cad1ff9d747ef4395265baa37",
+        "validation": {
+          "sampleRate": 32000,
+          "channels": 2,
+          "peak": 0.568788,
+          "rmsDbFS": -18.42,
+          "clippedSamples": 0
+        }
+      },
+      "mime": "mpeg",
+      "encoding": {
+        "codec": "mp3",
+        "encoder": "libmp3lame",
+        "bitrateKbps": 192,
+        "gaplessMetadata": true
+      }
+    },
+    {
+      "id": "digital-pulse",
+      "title": "数据微光 · 科技脉动",
+      "category": "科技 / 产品",
+      "bpm": 112,
+      "key": "A minor",
+      "roots": [
+        45,
+        41,
+        48,
+        43
+      ],
+      "mode": "pulse",
+      "melody": [
+        0,
+        7,
+        10,
+        12,
+        7,
+        3,
+        5,
+        7
+      ],
+      "filename": "digital-pulse.mp3",
+      "author": "Knowledge Studio contributors (AI-assisted composition)",
+      "license": "MIT — project-generated material; see BGM usage notes",
+      "source": "../compose_bgm.py and ../scores/digital-pulse.json",
+      "generation": "AI-assisted score and deterministic local additive/FM-style synthesis; no third-party audio samples",
+      "durationSeconds": 34.28571875,
+      "loop": true,
+      "sha256": "11092a835a3ed003346bf123b9545c82dbcf1a6a62089bfd9e941a2ed488e506",
+      "validation": {
+        "sampleRate": 32000,
+        "channels": 2,
+        "durationSeconds": 34.28571875,
+        "peak": 0.493042,
+        "rmsDbFS": -18.68,
+        "clippedSamples": 0,
+        "loopSeamPeak": 0.000641
+      },
+      "pcmMaster": {
+        "sha256": "fc69e249c4c72780bc33d90cc8b5d0d1f090acc95a06a5040280db5119c51847",
+        "validation": {
+          "sampleRate": 32000,
+          "channels": 2,
+          "peak": 0.508867,
+          "rmsDbFS": -18.42,
+          "clippedSamples": 0
+        }
+      },
+      "mime": "mpeg",
+      "encoding": {
+        "codec": "mp3",
+        "encoder": "libmp3lame",
+        "bitrateKbps": 192,
+        "gaplessMetadata": true
+      }
+    },
+    {
+      "id": "bright-day",
+      "title": "轻快日常 · 明亮节奏",
+      "category": "活动 / 日常",
+      "bpm": 104,
+      "key": "G major",
+      "roots": [
+        43,
+        48,
+        40,
+        50
+      ],
+      "mode": "bright",
+      "melody": [
+        7,
+        9,
+        4,
+        2,
+        7,
+        11,
+        9,
+        4
+      ],
+      "filename": "bright-day.mp3",
+      "author": "Knowledge Studio contributors (AI-assisted composition)",
+      "license": "MIT — project-generated material; see BGM usage notes",
+      "source": "../compose_bgm.py and ../scores/bright-day.json",
+      "generation": "AI-assisted score and deterministic local additive/FM-style synthesis; no third-party audio samples",
+      "durationSeconds": 36.9230625,
+      "loop": true,
+      "sha256": "f113ab7a24bb1beb89dc84cacff653ce22cad08a4c707e22f1170912d28e162f",
+      "validation": {
+        "sampleRate": 32000,
+        "channels": 2,
+        "durationSeconds": 36.9230625,
+        "peak": 0.501526,
+        "rmsDbFS": -18.68,
+        "clippedSamples": 0,
+        "loopSeamPeak": 0.00238
+      },
+      "pcmMaster": {
+        "sha256": "d9189cc929ed471e91f52ef403ab02d8f979c1c34716a1e0fb9d87697d7958e3",
+        "validation": {
+          "sampleRate": 32000,
+          "channels": 2,
+          "peak": 0.517428,
+          "rmsDbFS": -18.42,
+          "clippedSamples": 0
+        }
+      },
+      "mime": "mpeg",
+      "encoding": {
+        "codec": "mp3",
+        "encoder": "libmp3lame",
+        "bitrateKbps": 192,
+        "gaplessMetadata": true
+      }
+    },
+    {
+      "id": "reading-room",
+      "title": "静读时光 · 舒缓氛围",
+      "category": "阅读 / 专注",
+      "bpm": 64,
+      "key": "F major",
+      "roots": [
+        41,
+        46,
+        43,
+        48
+      ],
+      "mode": "ambient",
+      "melody": [
+        0,
+        7,
+        9,
+        4,
+        2,
+        7,
+        4,
+        0
+      ],
+      "filename": "reading-room.mp3",
+      "author": "Knowledge Studio contributors (AI-assisted composition)",
+      "license": "MIT — project-generated material; see BGM usage notes",
+      "source": "../compose_bgm.py and ../scores/reading-room.json",
+      "generation": "AI-assisted score and deterministic local additive/FM-style synthesis; no third-party audio samples",
+      "durationSeconds": 60,
+      "loop": true,
+      "sha256": "5a53742ec1d218f90593bf5e23daaa67f9acc8757985cca5aa829d7f0309ce6f",
+      "validation": {
+        "sampleRate": 32000,
+        "channels": 2,
+        "durationSeconds": 60,
+        "peak": 0.424011,
+        "rmsDbFS": -18.68,
+        "clippedSamples": 0,
+        "loopSeamPeak": 0.00061
+      },
+      "pcmMaster": {
+        "sha256": "c587f5b28f41eec040f2934daad33a5536dd634527ed150296125615b7f2124c",
+        "validation": {
+          "sampleRate": 32000,
+          "channels": 2,
+          "peak": 0.437095,
+          "rmsDbFS": -18.42,
+          "clippedSamples": 0
+        }
+      },
+      "mime": "mpeg",
+      "encoding": {
+        "codec": "mp3",
+        "encoder": "libmp3lame",
+        "bitrateKbps": 192,
+        "gaplessMetadata": true
+      }
+    },
+    {
+      "id": "steady-story",
+      "title": "行进的故事 · 纪录叙事",
+      "category": "纪实 / 汇报",
+      "bpm": 88,
+      "key": "D minor",
+      "roots": [
+        38,
+        46,
+        41,
+        45
+      ],
+      "mode": "story",
+      "melody": [
+        0,
+        3,
+        7,
+        10,
+        9,
+        7,
+        5,
+        3
+      ],
+      "filename": "steady-story.mp3",
+      "author": "Knowledge Studio contributors (AI-assisted composition)",
+      "license": "MIT — project-generated material; see BGM usage notes",
+      "source": "../compose_bgm.py and ../scores/steady-story.json",
+      "generation": "AI-assisted score and deterministic local additive/FM-style synthesis; no third-party audio samples",
+      "durationSeconds": 43.636375,
+      "loop": true,
+      "sha256": "3a10a6042961196f0e93b7bfbcb60da9e7031c953021f57c812a1a0bba984f28",
+      "validation": {
+        "sampleRate": 32000,
+        "channels": 2,
+        "durationSeconds": 43.636375,
+        "peak": 0.529144,
+        "rmsDbFS": -18.68,
+        "clippedSamples": 0,
+        "loopSeamPeak": 0.00058
+      },
+      "pcmMaster": {
+        "sha256": "837b133a949e75a5d4f081ad5a40dbc671a601c9c025427791f6da82cac88c8e",
+        "validation": {
+          "sampleRate": 32000,
+          "channels": 2,
+          "peak": 0.54552,
+          "rmsDbFS": -18.42,
+          "clippedSamples": 0
+        }
+      },
+      "mime": "mpeg",
+      "encoding": {
+        "codec": "mp3",
+        "encoder": "libmp3lame",
+        "bitrateKbps": 192,
+        "gaplessMetadata": true
+      }
+    }
+  ]
+}

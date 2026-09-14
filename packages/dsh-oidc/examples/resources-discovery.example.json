@@ -1,0 +1,20 @@
+{
+  "schemaVersion": "dsh-oidc/v1alpha1",
+  "id": "example-resources",
+  "displayName": "Example Organization",
+  "oidc": {
+    "issuer": "https://identity.example.edu",
+    "clientId": "replace-with-public-client-id",
+    "scopes": ["openid", "profile", "offline_access"]
+  },
+  "keyBinding": {
+    "type": "eduwork-resources-v1",
+    "baseURL": "https://ai.example.edu/api/worker/v1"
+  },
+  "provider": {
+    "id": "example-ai",
+    "adapter": "openai-compatible",
+    "baseURL": "https://ai.example.edu/open/api/v1",
+    "modelSource": "discovery"
+  }
+}

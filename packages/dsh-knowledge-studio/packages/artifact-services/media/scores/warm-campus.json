@@ -1,0 +1,1692 @@
+{
+  "version": 1,
+  "id": "warm-campus",
+  "title": "午后校园 · 温暖舒展",
+  "category": "校园 / 人文",
+  "bpm": 92,
+  "key": "C major",
+  "roots": [
+    48,
+    53,
+    45,
+    55
+  ],
+  "mode": "warm",
+  "melody": [
+    4,
+    7,
+    9,
+    7,
+    2,
+    4,
+    0,
+    2
+  ],
+  "bars": 16,
+  "events": [
+    {
+      "pitch": 60,
+      "beat": 0.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 64,
+      "beat": 0.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 67,
+      "beat": 0.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 0.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 48,
+      "beat": 0.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 48,
+      "beat": 2.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 60,
+      "beat": 0.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 0.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 1.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 2.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 3.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 64,
+      "beat": 3.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 0.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 79,
+      "beat": 2.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 65,
+      "beat": 4.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 69,
+      "beat": 4.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 72,
+      "beat": 4.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 79,
+      "beat": 4.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 53,
+      "beat": 4.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 53,
+      "beat": 6.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 69,
+      "beat": 4.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 84,
+      "beat": 4.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 5.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 65,
+      "beat": 6.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 81,
+      "beat": 7.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 7.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 8.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 60,
+      "beat": 8.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 64,
+      "beat": 8.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 71,
+      "beat": 8.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 45,
+      "beat": 8.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 45,
+      "beat": 10.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 64,
+      "beat": 8.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 83,
+      "beat": 8.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 9.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 10.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 11.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 11.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 81,
+      "beat": 8.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 79,
+      "beat": 10.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 67,
+      "beat": 12.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 71,
+      "beat": 12.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 12.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 81,
+      "beat": 12.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 55,
+      "beat": 12.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 55,
+      "beat": 14.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 81,
+      "beat": 12.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 12.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 13.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 14.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 93,
+      "beat": 15.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 15.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 16.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 64,
+      "beat": 16.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 67,
+      "beat": 16.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 16.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 48,
+      "beat": 16.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 48,
+      "beat": 18.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 60,
+      "beat": 16.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 16.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 17.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 18.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 19.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 64,
+      "beat": 19.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 16.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 76,
+      "beat": 18.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 65,
+      "beat": 20.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 69,
+      "beat": 20.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 72,
+      "beat": 20.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 79,
+      "beat": 20.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 53,
+      "beat": 20.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 53,
+      "beat": 22.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 69,
+      "beat": 20.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 84,
+      "beat": 20.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 21.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 65,
+      "beat": 22.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 81,
+      "beat": 23.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 23.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 24.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 60,
+      "beat": 24.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 64,
+      "beat": 24.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 71,
+      "beat": 24.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 45,
+      "beat": 24.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 45,
+      "beat": 26.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 64,
+      "beat": 24.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 83,
+      "beat": 24.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 25.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 26.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 27.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 27.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 24.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 74,
+      "beat": 26.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 67,
+      "beat": 28.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 71,
+      "beat": 28.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 28.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 81,
+      "beat": 28.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 55,
+      "beat": 28.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 55,
+      "beat": 30.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 81,
+      "beat": 28.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 28.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 29.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 30.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 93,
+      "beat": 31.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 31.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 32.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 64,
+      "beat": 32.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 67,
+      "beat": 32.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 32.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 48,
+      "beat": 32.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 48,
+      "beat": 34.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 60,
+      "beat": 32.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 32.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 33.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 34.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 35.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 64,
+      "beat": 35.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 32.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 76,
+      "beat": 34.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 65,
+      "beat": 36.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 69,
+      "beat": 36.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 72,
+      "beat": 36.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 79,
+      "beat": 36.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 53,
+      "beat": 36.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 53,
+      "beat": 38.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 69,
+      "beat": 36.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 84,
+      "beat": 36.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 37.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 65,
+      "beat": 38.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 81,
+      "beat": 39.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 39.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 40.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 60,
+      "beat": 40.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 64,
+      "beat": 40.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 71,
+      "beat": 40.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 45,
+      "beat": 40.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 45,
+      "beat": 42.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 64,
+      "beat": 40.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 83,
+      "beat": 40.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 41.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 42.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 43.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 43.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 40.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 74,
+      "beat": 42.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 67,
+      "beat": 44.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 71,
+      "beat": 44.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 44.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 81,
+      "beat": 44.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 55,
+      "beat": 44.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 55,
+      "beat": 46.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 81,
+      "beat": 44.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 44.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 45.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 46.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 93,
+      "beat": 47.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 47.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 48.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 64,
+      "beat": 48.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 67,
+      "beat": 48.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 48.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 48,
+      "beat": 48.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 48,
+      "beat": 50.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 60,
+      "beat": 48.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 48.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 49.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 50.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 51.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 64,
+      "beat": 51.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 48.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 79,
+      "beat": 50.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 65,
+      "beat": 52.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 69,
+      "beat": 52.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 72,
+      "beat": 52.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 79,
+      "beat": 52.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 53,
+      "beat": 52.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 53,
+      "beat": 54.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 69,
+      "beat": 52.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 84,
+      "beat": 52.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 53.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 65,
+      "beat": 54.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 81,
+      "beat": 55.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 72,
+      "beat": 55.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 56.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 60,
+      "beat": 56.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 64,
+      "beat": 56.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 71,
+      "beat": 56.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 45,
+      "beat": 56.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 45,
+      "beat": 58.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 64,
+      "beat": 56.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 83,
+      "beat": 56.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 57,
+      "beat": 57.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 60,
+      "beat": 58.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 76,
+      "beat": 59.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 59.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 81,
+      "beat": 56.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 79,
+      "beat": 58.5,
+      "length": 2.1,
+      "instrument": "keys",
+      "amplitude": 0.065,
+      "pan": 0.12
+    },
+    {
+      "pitch": 67,
+      "beat": 60.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.5
+    },
+    {
+      "pitch": 71,
+      "beat": 60.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": -0.16666666666666666
+    },
+    {
+      "pitch": 74,
+      "beat": 60.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.16666666666666666
+    },
+    {
+      "pitch": 81,
+      "beat": 60.0,
+      "length": 4.69,
+      "instrument": "pad",
+      "amplitude": 0.043,
+      "pan": 0.5
+    },
+    {
+      "pitch": 55,
+      "beat": 60.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 55,
+      "beat": 62.0,
+      "length": 1.6,
+      "instrument": "bass",
+      "amplitude": 0.12,
+      "pan": 0
+    },
+    {
+      "pitch": 81,
+      "beat": 60.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 79,
+      "beat": 60.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 71,
+      "beat": 61.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 74,
+      "beat": 62.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    },
+    {
+      "pitch": 93,
+      "beat": 63.0,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": 0.36
+    },
+    {
+      "pitch": 67,
+      "beat": 63.5,
+      "length": 1.6,
+      "instrument": "keys",
+      "amplitude": 0.072,
+      "pan": -0.36
+    }
+  ]
+}

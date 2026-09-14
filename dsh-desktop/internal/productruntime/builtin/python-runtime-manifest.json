@@ -1,0 +1,166 @@
+{
+  "schemaVersion": 2,
+  "runtimeId": "cpython-3.12.13+20260510",
+  "pythonVersion": "3.12.13",
+  "distribution": "python-build-standalone",
+  "distributionRelease": "20260510",
+  "assets": {
+    "windows-amd64": {
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-x86_64-pc-windows-msvc-install_only_stripped.tar.gz",
+      "sha256": "24168aff2e7d93784c6a436124c4ebb79b076a4e289bde4902c08333507b71d0",
+      "archiveRoot": "python"
+    },
+    "darwin-amd64": {
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-x86_64-apple-darwin-install_only_stripped.tar.gz",
+      "sha256": "6bab7fa97d4f2ddba86da0e05acff66c53b5edaca1df8edcf00ddca785a9c59b",
+      "archiveRoot": "python"
+    },
+    "darwin-arm64": {
+      "url": "https://github.com/astral-sh/python-build-standalone/releases/download/20260510/cpython-3.12.13%2B20260510-aarch64-apple-darwin-install_only_stripped.tar.gz",
+      "sha256": "55bc1a5edbc8ac4da0081f4f5731ed2d1ed10c57cb37a820b2a0dbc7cad742e9",
+      "archiveRoot": "python"
+    }
+  },
+  "environment": {
+    "id": "office-suite-v1",
+    "packages": [
+      {
+        "name": "charset-normalizer",
+        "version": "3.4.9",
+        "importName": "charset_normalizer",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/98/2b/f97f1c193fb855c345d678f5077d6926034db0722df74c8f057020e05a25/charset_normalizer-3.4.9-py3-none-any.whl",
+            "sha256": "68e5f26a1ad57ded6d1cfb85331d1c1a195314756471d97758c48498bb4dcdf5"
+          }
+        }
+      },
+      {
+        "name": "et_xmlfile",
+        "version": "2.0.0",
+        "importName": "et_xmlfile",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/c1/8b/5fe2cc11fee489817272089c4203e679c63b570a5aaeb18d852ae3cbba6a/et_xmlfile-2.0.0-py3-none-any.whl",
+            "sha256": "7a91720bc756843502c3b7504c77b8fe44217c85c537d85037f0f536151b2caa"
+          }
+        }
+      },
+      {
+        "name": "lxml",
+        "version": "6.0.2",
+        "importName": "lxml",
+        "assets": {
+          "windows-amd64": {
+            "url": "https://files.pythonhosted.org/packages/f7/d7/0cdfb6c3e30893463fb3d1e52bc5f5f99684a03c29a0b6b605cfae879cd5/lxml-6.0.2-cp312-cp312-win_amd64.whl",
+            "sha256": "72c87e5ee4e58a8354fb9c7c84cbf95a1c8236c127a5d1b7683f04bed8361e1f"
+          },
+          "darwin-amd64": {
+            "url": "https://files.pythonhosted.org/packages/f3/c8/8ff2bc6b920c84355146cd1ab7d181bc543b89241cfb1ebee824a7c81457/lxml-6.0.2-cp312-cp312-macosx_10_13_universal2.whl",
+            "sha256": "a59f5448ba2ceccd06995c95ea59a7674a10de0810f2ce90c9006f3cbc044456"
+          },
+          "darwin-arm64": {
+            "url": "https://files.pythonhosted.org/packages/f3/c8/8ff2bc6b920c84355146cd1ab7d181bc543b89241cfb1ebee824a7c81457/lxml-6.0.2-cp312-cp312-macosx_10_13_universal2.whl",
+            "sha256": "a59f5448ba2ceccd06995c95ea59a7674a10de0810f2ce90c9006f3cbc044456"
+          }
+        }
+      },
+      {
+        "name": "openpyxl",
+        "version": "3.1.5",
+        "importName": "openpyxl",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/c0/da/977ded879c29cbd04de313843e76868e6e13408a94ed6b987245dc7c8506/openpyxl-3.1.5-py2.py3-none-any.whl",
+            "sha256": "5282c12b107bffeef825f4617dc029afaf41d0ea60823bbb665ef3079dc79de2"
+          }
+        }
+      },
+      {
+        "name": "Pillow",
+        "version": "12.2.0",
+        "importName": "PIL",
+        "assets": {
+          "windows-amd64": {
+            "url": "https://files.pythonhosted.org/packages/5d/7b/25a221d2c761c6a8ae21bfa3874988ff2583e19cf8a27bf2fee358df7942/pillow-12.2.0-cp312-cp312-win_amd64.whl",
+            "sha256": "7f84204dee22a783350679a0333981df803dac21a0190d706a50475e361c93f5"
+          },
+          "darwin-amd64": {
+            "url": "https://files.pythonhosted.org/packages/58/be/7482c8a5ebebbc6470b3eb791812fff7d5e0216c2be3827b30b8bb6603ed/pillow-12.2.0-cp312-cp312-macosx_10_13_x86_64.whl",
+            "sha256": "2d192a155bbcec180f8564f693e6fd9bccff5a7af9b32e2e4bf8c9c69dbad6b5"
+          },
+          "darwin-arm64": {
+            "url": "https://files.pythonhosted.org/packages/d8/95/0a351b9289c2b5cbde0bacd4a83ebc44023e835490a727b2a3bd60ddc0f4/pillow-12.2.0-cp312-cp312-macosx_11_0_arm64.whl",
+            "sha256": "f3f40b3c5a968281fd507d519e444c35f0ff171237f4fdde090dd60699458421"
+          }
+        }
+      },
+      {
+        "name": "pypdf",
+        "version": "6.10.0",
+        "importName": "pypdf",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/55/f2/7ebe366f633f30a6ad105f650f44f24f98cb1335c4157d21ae47138b3482/pypdf-6.10.0-py3-none-any.whl",
+            "sha256": "90005e959e1596c6e6c84c8b0ad383285b3e17011751cedd17f2ce8fcdfc86de"
+          }
+        }
+      },
+      {
+        "name": "python-docx",
+        "version": "1.2.0",
+        "importName": "docx",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/d0/00/1e03a4989fa5795da308cd774f05b704ace555a70f9bf9d3be057b680bcf/python_docx-1.2.0-py3-none-any.whl",
+            "sha256": "3fd478f3250fbbbfd3b94fe1e985955737c145627498896a8a6bf81f4baf66c7"
+          }
+        }
+      },
+      {
+        "name": "python-pptx",
+        "version": "1.0.2",
+        "importName": "pptx",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/d9/4f/00be2196329ebbff56ce564aa94efb0fbc828d00de250b1980de1a34ab49/python_pptx-1.0.2-py3-none-any.whl",
+            "sha256": "160838e0b8565a8b1f67947675886e9fea18aa5e795db7ae531606d68e785cba"
+          }
+        }
+      },
+      {
+        "name": "reportlab",
+        "version": "4.4.9",
+        "importName": "reportlab",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/17/77/546e50edfaba6a0e58e8ec5fdc4446510227cec9e8f40172b60941d5a633/reportlab-4.4.9-py3-none-any.whl",
+            "sha256": "68e2d103ae8041a37714e8896ec9b79a1c1e911d68c3bd2ea17546568cf17bfd"
+          }
+        }
+      },
+      {
+        "name": "typing_extensions",
+        "version": "4.16.0",
+        "importName": "typing_extensions",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/49/d3/b8441a820a491ddfc024b0b0cf0393375b75ea13866d9c66727e54c2fc80/typing_extensions-4.16.0-py3-none-any.whl",
+            "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+          }
+        }
+      },
+      {
+        "name": "XlsxWriter",
+        "version": "3.2.9",
+        "importName": "xlsxwriter",
+        "assets": {
+          "any": {
+            "url": "https://files.pythonhosted.org/packages/3a/0c/3662f4a66880196a590b202f0db82d919dd2f89e99a27fadef91c4a33d41/xlsxwriter-3.2.9-py3-none-any.whl",
+            "sha256": "9a5db42bc5dff014806c58a20b9eae7322a134abb6fce3c92c181bfb275ec5b3"
+          }
+        }
+      }
+    ]
+  }
+}

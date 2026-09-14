@@ -1,0 +1,24 @@
+{
+  "name": "@chatecnu-work/dsh-skill-settings-native",
+  "version": "0.1.0-dev",
+  "description": "Host-owned durable settings for ChatECNU Work skill enablement",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./policy": "./lib/policy.js"
+  },
+  "files": [
+    "lib/**/*.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-settings": "0.1.2-rc.1",
+    "@deepseek-ai/schemastery": "3.18.2"
+  },
+  "license": "MIT"
+}

@@ -1,0 +1,20 @@
+# Keep legacy domain, instance IDs and database paths for in-place upgrades.
+- id: session-query-sqlite
+  config:
+    path: !!js dshHomePath('session-query-memory.sqlite3')
+    openAt: first-search
+- id: storage-domain
+  config:
+    backend: json
+    routes:
+      local_memory: sqlite
+- insert:
+    - id: local-memory-sqlite
+      name: '@deepseek-ai/dsh-storage-sqlite'
+      config:
+        path: !!js dshHomePath('memory.sqlite3')
+    - id: local-memory
+      name: '@eduwork/dsh-memory'
+      config:
+        enabled: true
+        search_prior_chats: true
