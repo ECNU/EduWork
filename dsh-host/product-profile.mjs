@@ -37,7 +37,8 @@ function mergeConfig(base = {}, extra = {}) {
   return result
 }
 
-export async function prepareProductProfile({ product, home, shell, pluginConfig = {}, patches = [], enterpriseProfile, userConfig }) {
+export async function prepareProductProfile({ product, home, shell, pluginConfig = {}, patches = [], enterpriseProfile, userConfig, configurationOwnership = 'user' }) {
+  if(!['user','publisher'].includes(configurationOwnership))throw new Error('Unknown desktop configuration ownership')
   product = await canonical(product); home = await canonical(home)
   if (!['electron', 'wails'].includes(shell)) throw new Error('Unknown desktop shell')
   // Assembly refuses to overwrite current. Runtime paths may legitimately live
@@ -60,7 +61,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     }
     pluginConfig = mergeConfig(pluginConfig, {
       'eduwork-brand-settings': { product: user.product },
-      'enterprise-oidc': { profiles: user.organizations, allowEmptyProfiles: true, manageProductBrand: false, configFile: user.source,
+      'enterprise-oidc': { profiles: user.organizations, allowEmptyProfiles: true, manageProductBrand: false, configFile: configurationOwnership==='publisher' ? undefined : user.source,
         ...(!enterpriseProfile ? { profilePathEnv: 'EDUWORK_NO_IMPLICIT_ENTERPRISE_PROFILE' } : {}) },
     })
   }

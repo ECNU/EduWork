@@ -61,6 +61,12 @@ function Check-Archive([string]$Path) {
 }
 
 $source = Check-Archive $Archive
+$configPaths = @('config/eduwork.jsonc')
+if ($source.identity.configurationOwnership -eq 'publisher') {
+    $versionedConfig = "config/eduwork.$($source.identity.productVersion).jsonc"
+    if (-not $source.files.ContainsKey($versionedConfig)) { throw 'Publisher configuration template is missing from the CI archive.' }
+    $configPaths += $versionedConfig
+} elseif ($source.identity.configurationOwnership -and $source.identity.configurationOwnership -ne 'user') { throw 'Unknown configuration ownership policy.' }
 $expectedPolicy = if ($source.identity.productVersion -match '-dev\.') {'development'} else {'stable'}
 if ($configSummary.defaultPolicy -and $configSummary.defaultPolicy -ne $expectedPolicy) { throw 'Configuration update policy differs from the CI version channel.' }
 New-Item -ItemType Directory -Path (Split-Path $Output) -Force | Out-Null
@@ -69,13 +75,14 @@ try {
     Copy-Item -LiteralPath $Archive -Destination $partial
     $zip = [IO.Compression.ZipFile]::Open($partial, [IO.Compression.ZipArchiveMode]::Update)
     try {
-        $configFile = $source.files['config/eduwork.jsonc']
-        $configFile.bytes = $configBytes.LongLength
-        $configFile.sha256 = $configHash
-        $replacements = @{
-            'config/eduwork.jsonc' = $configBytes
-            'RELEASE-MANIFEST.json' = [Text.Encoding]::UTF8.GetBytes(($source.manifest | ConvertTo-Json -Depth 12))
+        $replacements = @{}
+        foreach ($configPath in $configPaths) {
+            $configFile = $source.files[$configPath]
+            $configFile.bytes = $configBytes.LongLength
+            $configFile.sha256 = $configHash
+            $replacements[$configPath] = $configBytes
         }
+        $replacements['RELEASE-MANIFEST.json'] = [Text.Encoding]::UTF8.GetBytes(($source.manifest | ConvertTo-Json -Depth 12))
         foreach ($name in $replacements.Keys) {
             $zip.GetEntry($source.prefix + $name).Delete()
             $entry = $zip.CreateEntry($source.prefix + $name, [IO.Compression.CompressionLevel]::Optimal)
@@ -86,10 +93,12 @@ try {
     $configured = Check-Archive $partial
     if ($configured.files.Count -ne $source.files.Count) { throw 'Archive file set changed.' }
     foreach ($name in $source.files.Keys) {
-        if ($name -eq 'config/eduwork.jsonc') { continue }
+        if ($name -in $configPaths) { continue }
         if ($configured.files[$name].sha256 -ne $source.files[$name].sha256) { throw "Program file changed: $name" }
     }
-    if ($configured.files['config/eduwork.jsonc'].sha256 -ne $configHash) { throw 'Configuration overlay failed.' }
+    foreach ($configPath in $configPaths) {
+        if ($configured.files[$configPath].sha256 -ne $configHash) { throw 'Configuration overlay failed.' }
+    }
     Move-Item -LiteralPath $partial -Destination $Output
 } finally {
     # Only this invocation's explicitly named temporary file is removable.
@@ -101,7 +110,8 @@ $receipt = [ordered]@{
     schemaVersion=1; kind='eduwork-configured-desktop'; version=$source.identity.productVersion
     distribution=$source.identity.distribution; sourceCIArchiveSHA256=$ExpectedSHA256.ToLowerInvariant()
     sha256=$hash; bytes=(Get-Item -LiteralPath $Output).Length; programFilesUnchanged=$true
-    changedFiles=@('config/eduwork.jsonc','RELEASE-MANIFEST.json'); organizations=$configSummary.organizations
+    changedFiles=@($configPaths) + @('RELEASE-MANIFEST.json'); organizations=$configSummary.organizations
+    configurationOwnership=$(if ($source.identity.configurationOwnership) {$source.identity.configurationOwnership} else {'user'})
     defaultPolicy=$expectedPolicy; fileCount=$configured.files.Count; publicationStatus='local-only'
 }
 $receipt | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath ($Output + '.receipt.json') -Encoding utf8NoBOM

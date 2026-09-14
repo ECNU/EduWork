@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Product version (X.Y.Z); publishes after validation'
+        description: 'X.Y.Z public beta or X.Y.Z-dev.YYYYMMDD.N prerelease; publishes after validation'
         required: true
         type: string
       release_notes:

@@ -41,6 +41,16 @@ test('both shells activate only configured media tools and reread capability swi
   }
 })
 
+test('publisher configuration supplies services without exposing a configuration editor', async t => {
+  const {root,product,home}=await fixture(t)
+  const userConfig=join(root,'edition.jsonc')
+  await writeFile(userConfig,'{"schemaVersion":1,"organizations":[],"product":{"name":"School managed"}}')
+  const result=await prepareProductProfile({product,home,shell:'electron',userConfig,configurationOwnership:'publisher'})
+  const rows=JSON.parse(await readFile(join(result.profile,'cordis.patch.yml'),'utf8')).flatMap(row=>row.insert??[])
+  assert.equal(rows.find(row=>row.id==='enterprise-oidc').config.configFile,undefined)
+  assert.equal(rows.find(row=>row.id==='enterprise-oidc').config.allowEmptyProfiles,true)
+})
+
 test('moving the whole product repairs only its managed module link and keeps history', async t => {
   const { root, product, home } = await fixture(t)
   await prepareProductProfile({ product, home, shell: 'electron' })

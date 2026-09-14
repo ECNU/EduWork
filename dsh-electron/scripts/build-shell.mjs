@@ -57,7 +57,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-for (const name of ['portable-updates.mjs', 'native-vault.mjs', 'product.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
+for (const name of ['portable-updates.mjs', 'native-vault.mjs', 'product.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
 await copyFile(join(repository, 'dsh-host/native-resources.mjs'), join(output, 'src/native-resources.mjs'))
@@ -122,7 +122,7 @@ for (const name of Object.keys(alias)) await collectNotice(name, join(upstream, 
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })
-for (const file of ['dsh-host/user-config.mjs', 'dsh-plugins/media-openai/lib/config.js', 'dsh-host/enterprise-model-updates.mjs', ...['parser.js', 'scanner.js', 'string-intern.js'].map(name => 'dsh-host/' + vendor + '/' + name)]) adapters[file] = digest(await readFile(join(repository, file)))
+for (const file of ['dsh-electron/src/configuration-policy.mjs', 'dsh-host/user-config.mjs', 'dsh-plugins/media-openai/lib/config.js', 'dsh-host/enterprise-model-updates.mjs', ...['parser.js', 'scanner.js', 'string-intern.js'].map(name => 'dsh-host/' + vendor + '/' + name)]) adapters[file] = digest(await readFile(join(repository, file)))
 await writeFile(join(output, 'third-party/notices.json'), JSON.stringify(notices, null, 2) + '\n')
 await writeFile(join(output, 'source-receipt.json'), JSON.stringify({ schemaVersion: 1, dshCommit: lock.commit, dshVersion: lock.packageVersion, kind: 'official-desktop-with-product-adapters', files: rows, adapters, host: hostReceipt }, null, 2) + '\n')
 console.log('Built official Electron shell with recorded product adapters: ' + output)

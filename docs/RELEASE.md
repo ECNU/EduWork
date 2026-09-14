@@ -77,7 +77,7 @@ Electron CI 必须从同一份装配身份生成文件名、更新元数据、�
 4. 当前 `validate-local-web.yml` 从锁定 npm Runtime/插件及产品源码构建，执行源码/依赖检查和构建，上传轻量脱敏报告。它不会创建 Release。开发产物不进入用户更新渠道；私有 Fork PR 的跨私有仓构建限制见 [协作说明](../CONTRIBUTING.md)。
 5. 真实桌面、原生 Office/音视频、OIDC、托盘、链接、移动目录验收后，冻结最终 Electron 产物及 SHA-256，再启用正式 Release/更新渠道。ECNU 旧版升级另附本地过渡验收记录，不要求 GitHub 构建临时 Go 包。见 [发行检查项](../RELEASE-CHECKLIST.md)。CI 产物留存不等于一次公开发行。
 
-公版发行入口为 GitHub Releases。原样镜像 CI ZIP 时可复用其大小和校验值；机构在本机加入私有配置后，必须重新计算包内清单、ZIP 摘要与大小，并据此生成学校 OSS 更新清单。程序文件保持 CI 原样，不为学校渠道重新编译。Release 工作流只接收无后缀产品版本，并检查两仓版本、核心提交、插件锁、原生资源回执和 ZIP 哈希；发布权限只交给发行 job。
+公版发行入口为 GitHub Releases。原样镜像 CI ZIP 时可复用其大小和校验值；机构在本机加入私有配置后，必须重新计算包内清单、ZIP 摘要与大小，并据此生成学校 OSS 更新清单。程序文件保持 CI 原样，不为学校渠道重新编译。Release 工作流接收公测版本 `X.Y.Z` 或开发版本 `X.Y.Z-dev.YYYYMMDD.N`；开发版发布为 prerelease，不占用公测 latest，并检查两仓版本、核心提交、插件锁、原生资源回执和 ZIP 哈希；发布权限只交给发行 job。
 
 Windows Electron Release 工作流已提供（见下文），不包含签名安装器和完整旧版迁移发布链。Windows 构建不能代替 macOS 平台验证。
 
@@ -89,11 +89,11 @@ Windows Electron Release 工作流已提供（见下文），不包含签名安�
 
 开发包在普通逐文件清单上追加更新器所需的 `launcherVersion`、`flavor` 和 `launch`，附带旧快捷方式兼容入口。同一 ZIP 可用于新装及已验收的 Go 过渡版到 Electron 更新。0.2 原入口仍只提供 Go 过渡包，开发包不能直接下发给 0.2。
 
-机构本地验收也使用 GitHub CI 的同一份 ZIP：下载 Release 资产并核对 SHA-256，解压后仅加入私有 `config/eduwork.jsonc` 和它引用的品牌文件，不重新编译或替换 `resources/`。实际 Client ID、凭据与个人信息不提交仓库，也不通过 CI secret 注入安装包；公开配置只提供占位模板。归档验收记录时保留运行编号、提交、原始 ZIP 哈希及配置之外文件的校验结果，实际私有配置单独保管。
+机构本地验收也使用 GitHub CI 的同一份 ZIP：下载 Release 资产并核对 SHA-256，使用 `scripts/configure-desktop-archive.ps1` 加入私有配置。公版使用 `config/eduwork.jsonc`；声明由发行方管理配置的机构包同时写入与产品版本对应的 `config/eduwork.<版本>.jsonc`，详见[配置更新策略](UPDATES.md#配置随升级如何处理)。仅加入配置和已支持的品牌文件，不重新编译或替换 `resources/`。实际 Client ID、凭据与个人信息不提交仓库，也不通过 CI secret 注入安装包；公开配置只提供占位模板。归档验收记录时保留运行编号、提交、原始 ZIP 哈希及配置之外文件的校验结果，实际私有配置单独保管。
 
 Release notes 必须先与项目负责人讨论确认，不由代理自行编写，也不由构建脚本自动生成。确认后将原文存为发行仓库的 `docs/releases/<版本>.md`；触发时填写 `release_notes` 路径，并确认 `notes_approved`。未确认、文件缺失或空白时停止发布；CI 原样复制已确认的说明，记录 SHA-256，发布 job 再核对摘要。日常源码 CI 不需要发布说明，也不会创建 Release。GitHub 始终只发 Electron；Go 过渡包仅通过旧 OSS 更新渠道分发。
 
-维护者在仓库 Actions → Release Windows Electron → Run workflow 中选择 main，填写无后缀产品版本，例如 0.3.0。ECNU 仓运行对应同名工作流；先提交公共核心，再让 ECNU 的 core.lock.json 锁定该提交、源文件哈希和相同版本。构建产物的源码与组件校验信息须对应所选提交。
+维护者在仓库 Actions → Release Windows Electron → Run workflow 中选择 main，填写已确认的产品版本，例如公测版 `0.3.5` 或开发版 `0.3.6-dev.20260914.3`。ECNU 仓运行对应同名工作流；先提交公共核心，再让 ECNU 的 core.lock.json 锁定该提交、源文件哈希和相同版本。构建产物的源码与组件校验信息须对应所选提交。
 
 工作流只接受手动触发，不因 PR、main push 或任意 tag 自动发行。build job 只有 Contents: Read；跨私有仓仍使用专用只读部署密钥。只有依赖构建、整包校验和启动冒烟通过的 publish job 获得 Contents: Write。发布前以草稿上传并核对 ZIP、SHA-256、构建回执和说明，全部成功才将 Release 发布；同版本不同字节或其他提交的标签会拒绝覆盖。上传失败留下草稿供排查，不对用户暴露半成品。
 

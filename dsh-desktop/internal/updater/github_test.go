@@ -242,6 +242,7 @@ func TestGitHubElectronTransactionPreservesDataAndRollsBack(t *testing.T) {
 			oldIdentity := []byte(`{"shell":"electron","distribution":"eduwork","productVersion":"0.3.6"}`)
 			writeFixtureFile(t, filepath.Join(root, "resources/app/eduwork.desktop.json"), oldIdentity)
 			writeFixtureFile(t, filepath.Join(root, "config/eduwork.jsonc"), []byte("organization configuration"))
+			writeFixtureFile(t, filepath.Join(root, "config/eduwork.0.3.6.jsonc"), []byte("previous publisher configuration"))
 			writeFixtureFile(t, filepath.Join(root, "data/dsh/sessions/history.json"), []byte("conversation history"))
 			writeFixtureFile(t, filepath.Join(root, "data/state/update-preferences.json"), []byte(`{"policy":"development","source":"user"}`))
 			writeFixtureFile(t, filepath.Join(root, "workspace/project.txt"), []byte("workspace content"))
@@ -252,6 +253,7 @@ func TestGitHubElectronTransactionPreservesDataAndRollsBack(t *testing.T) {
 			}
 			writeFixtureFile(t, filepath.Join(root, "EduWork-Electron.exe"), payload)
 			files := map[string][]byte{"EduWork-Electron.exe": payload, "resources/app/eduwork.desktop.json": []byte(`{"shell":"electron","distribution":"eduwork","productVersion":"0.3.7"}`), "config/eduwork.jsonc": []byte("new default must not replace user"), "config/examples/new.jsonc": []byte("new example")}
+			files["config/eduwork.0.3.7.jsonc"] = []byte("next publisher configuration")
 			if fail {
 				files["fail-electron"] = []byte("fail")
 			}
@@ -290,6 +292,8 @@ func TestGitHubElectronTransactionPreservesDataAndRollsBack(t *testing.T) {
 				assertFileValue(t, filepath.Join(root, "resources/app/eduwork.desktop.json"), string(files["resources/app/eduwork.desktop.json"]))
 			}
 			assertFileValue(t, filepath.Join(root, "config/eduwork.jsonc"), "organization configuration")
+			assertFileValue(t, filepath.Join(root, "config/eduwork.0.3.6.jsonc"), "previous publisher configuration")
+			assertFileValue(t, filepath.Join(root, "config/eduwork.0.3.7.jsonc"), "next publisher configuration")
 			assertFileValue(t, filepath.Join(root, "data/dsh/sessions/history.json"), "conversation history")
 			assertFileValue(t, filepath.Join(root, "data/state/update-preferences.json"), `{"policy":"development","source":"user"}`)
 			assertFileValue(t, filepath.Join(root, "workspace/project.txt"), "workspace content")

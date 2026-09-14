@@ -1,12 +1,13 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog } from 'electron'
 import { readFileSync, mkdirSync } from 'node:fs'
-import { readFile, writeFile } from 'node:fs/promises'
+import { readFile, writeFile, access } from 'node:fs/promises'
 import { join, resolve, isAbsolute } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
+import { desktopConfigurationPath } from './configuration-policy.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates } from './portable-updates.mjs'
 import { workbenchAction } from './workbench-support.mjs'
@@ -42,7 +43,7 @@ export function configureEduworkPaths() {
     home: join(dataRoot, 'dsh'),
     userData: join(dataRoot, 'browser'),
     logs: join(dataRoot, 'logs'),
-    config: process.env.EDUWORK_CONFIG_FILE || join(distributionRoot, 'config/eduwork.jsonc'),
+    config: desktopConfigurationPath({root:distributionRoot,version:settings.productVersion,ownership:settings.configurationOwnership,override:process.env.EDUWORK_CONFIG_FILE}),
     icon: join(distributionRoot, 'resources/brand/icon-256.png'),
   }
   mkdirSync(paths.userData, { recursive: true })
@@ -80,6 +81,7 @@ async function prepareDesktop() {
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:#faf8f4}progress{width:100%;margin-top:20px;accent-color:#2575ff}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
+  if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
   if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
@@ -95,7 +97,7 @@ async function prepareDesktop() {
     launch = JSON.parse(await readFile(privatePath, 'utf8'))
   }
   const prepared = await prepareProductProfile({ product: paths.product, home: paths.home, shell: 'electron',
-    pluginConfig: launch.pluginConfig, patches: launch.patches, enterpriseProfile: launch.enterpriseProfile, userConfig: paths.config })
+    pluginConfig: launch.pluginConfig, patches: launch.patches, enterpriseProfile: launch.enterpriseProfile, userConfig: paths.config, configurationOwnership:settings.configurationOwnership })
   lifecycle.check()
   if (prepared.identity.distribution !== settings.distribution) throw new Error('Desktop and product editions do not match')
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
@@ -107,7 +109,7 @@ async function prepareDesktop() {
   const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
-    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
+    openConfiguration: settings.configurationOwnership==='publisher' ? undefined : target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap

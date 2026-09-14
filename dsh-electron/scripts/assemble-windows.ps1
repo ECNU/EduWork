@@ -50,6 +50,13 @@ Copy-Item -LiteralPath (Join-Path $ShellBuild 'source-receipt.json') -Destinatio
 $name = $identity.brand.product.name
 @{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'package.json') -Encoding utf8NoBOM
 $config = @{schemaVersion=1;shell='electron';appId="org.eduwork.$($identity.distribution).electron";distribution=$identity.distribution;productName=$name;productVersion=$Version;product='../product';node='../runtime/node.exe';updateChannel='disabled-candidate'}
+$policyPath = Join-Path $Product 'resources/desktop/configuration-policy.json'
+$config.configurationOwnership = 'user'
+if (Test-Path -LiteralPath $policyPath) {
+    $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
+    if ($policy.schemaVersion -ne 1 -or $policy.ownership -notin @('user','publisher')) { throw 'Invalid desktop configuration ownership policy' }
+    $config.configurationOwnership = $policy.ownership
+}
 $config.updates = @{defaultPolicy=$UpdateDefaultPolicy}
 if ($identity.distribution -eq 'eduwork') {
     $config.updates.provider='github'; $config.updates.repository='ecnu/EduWork'; $config.updateChannel='github'
@@ -68,6 +75,9 @@ Rename-Item -LiteralPath (Join-Path $Output 'electron.exe') -NewName 'EduWork-El
 $defaultConfig = Join-Path $Product 'resources/desktop/eduwork.jsonc'
 if (-not (Test-Path -LiteralPath $defaultConfig -PathType Leaf)) { $defaultConfig = '' }
 & (Join-Path $PSScriptRoot '../../scripts/install-desktop-config.ps1') -Output $Output -DefaultConfig $defaultConfig
+if ($config.configurationOwnership -eq 'publisher') {
+    Copy-Item -LiteralPath (Join-Path $Output 'config/eduwork.jsonc') -Destination (Join-Path $Output "config/eduwork.$Version.jsonc")
+}
 @{schemaVersion=1;shell='electron';version=$Version;dshVersion=$identity.dshVersion;dshCommit=$identity.dshCommit;distribution=$identity.distribution;productName=$name;nodeVersion=$nodeVersion;nodeSHA256=(Get-FileHash -LiteralPath $Node -Algorithm SHA256).Hash.ToLowerInvariant();published=$false;automaticUpdates=($config.updateChannel -ne 'disabled-candidate');pluginPolicy='frozen-candidate';assembledAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Output 'release.json') -Encoding utf8NoBOM
 @"
 $name — Electron candidate $Version

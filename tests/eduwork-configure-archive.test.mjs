@@ -15,13 +15,14 @@ test('configuration overlay preserves program bytes, inherits the CI channel and
   const create = join(root, 'archive.ps1')
   await writeFile(create, 'param($Source,$Archive)\n[IO.Compression.ZipFile]::CreateFromDirectory($Source,$Archive)')
   const pwsh = (path,args) => execFileSync('pwsh', ['-NoProfile','-File',path,...args], { windowsHide:true, encoding:'utf8', stdio:'pipe' })
-  for (const [version,policy] of [['0.3.6-dev.20260914.2','development'],['0.3.6','stable']]) {
-    const directory=join(root,version), input=join(directory,'input'), archive=join(directory,'ci.zip')
+  for (const ownership of ['user','publisher']) for (const [version,policy] of [['0.3.6-dev.20260914.2','development'],['0.3.6','stable']]) {
+    const directory=join(root,ownership,version), input=join(directory,'input'), archive=join(directory,'ci.zip')
     const files={
       'config/eduwork.jsonc':JSON.stringify({schemaVersion:1,organizations:[]}),
-      'resources/app/eduwork.desktop.json':JSON.stringify({shell:'electron',productVersion:version,distribution:'eduwork'}),
+      'resources/app/eduwork.desktop.json':JSON.stringify({shell:'electron',productVersion:version,distribution:'eduwork',configurationOwnership:ownership}),
       'resources/program.txt':'immutable synthetic program bytes',
     }
+    if(ownership==='publisher')files[`config/eduwork.${version}.jsonc`]=files['config/eduwork.jsonc']
     for(const [path,value] of Object.entries(files)) {const target=join(input,'App',path);await mkdir(join(target,'..'),{recursive:true});await writeFile(target,value)}
     await writeFile(join(input,'App/RELEASE-MANIFEST.json'),JSON.stringify({schemaVersion:1,kind:'eduwork-portable-release',version,shell:'electron',distribution:'eduwork',files:Object.entries(files).map(([path,value])=>({path,bytes:Buffer.byteLength(value),sha256:hash(value)}))}))
     pwsh(create,[input,archive])
@@ -36,7 +37,8 @@ test('configuration overlay preserves program bytes, inherits the CI channel and
       assert.equal(receipt.defaultPolicy,policy)
       assert.equal(receipt.sourceCIArchiveSHA256,sourceHash)
       assert.equal(receipt.programFilesUnchanged,true)
-      assert.deepEqual(receipt.changedFiles,['config/eduwork.jsonc','RELEASE-MANIFEST.json'])
+      assert.deepEqual(receipt.changedFiles,['config/eduwork.jsonc',...(ownership==='publisher'?[`config/eduwork.${version}.jsonc`]:[]),'RELEASE-MANIFEST.json'])
+      assert.equal(receipt.configurationOwnership,ownership)
       assert.equal(hash(await readFile(output)),receipt.sha256)
       assert.equal(hash(await readFile(archive)),sourceHash,'Original CI archive must remain immutable')
     }

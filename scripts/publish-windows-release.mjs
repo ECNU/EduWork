@@ -3,11 +3,17 @@ import { createReadStream } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import {githubUpdateManifest,updateManifestName} from './github-update-manifest.mjs'
+import {githubUpdateManifest,updateManifestName,releaseChannel} from './github-update-manifest.mjs'
+
+export function releasePublication(edition,version) {
+  const prerelease=releaseChannel(version)==='development'
+  return {name:`${edition} ${version}（${prerelease?'开发版':'公测版'}）`,prerelease,make_latest:prerelease?'false':'true'}
+}
 
 export function validateReceipt(receipt, {repository, version, commit}) {
   const edition = {'ecnu/eduwork':'EduWork','ecnu/eduwork-ecnu':'EduWork-ECNU'}[repository?.toLowerCase()]
-  if (!edition || !/^\d+\.\d+\.\d+$/.test(version) || !/^[a-f0-9]{40}$/.test(commit)) throw Error('Invalid release repository/version/commit')
+  releaseChannel(version)
+  if (!edition || !/^[a-f0-9]{40}$/.test(commit)) throw Error('Invalid release repository/version/commit')
   if (receipt.schemaVersion !== 1 || receipt.kind !== 'eduwork-windows-release' || receipt.passed !== true || receipt.version !== version || receipt.edition !== edition || receipt.shell !== 'electron' || receipt.platform !== 'windows-x64' || receipt.editionCommit !== commit) throw Error('Release identity or validation does not match this workflow')
   if (receipt.validationProfile !== 'ci-build-and-launch-v1') throw Error('Unknown release validation scope')
   if (receipt.releaseNotes?.approved !== true || !/^[a-f0-9]{64}$/.test(receipt.releaseNotes?.sha256 ?? '')) throw Error('Discussed and approved release notes are required')
@@ -51,13 +57,15 @@ export async function publish(directory) {
     return response.status===204?null:response.json()
   }
   const tag='v'+version
+  const publication=releasePublication(edition,version)
   let ref=await request('/git/ref/tags/'+tag,{},true)
   if(ref && (ref.object.type!=='commit' || ref.object.sha!==commit)) throw Error('Release tag already points to another commit')
   let release=await request('/releases/tags/'+tag,{},true)
   // Drafts are not returned by all tag lookups; use the authenticated list too.
   if(!release) release=(await request('/releases?per_page=100')).find(row=>row.tag_name===tag)
   if(release && release.target_commitish!==commit) throw Error('Existing release has a different source target')
-  if(!release) release=await request('/releases',{method:'POST',body:JSON.stringify({tag_name:tag,target_commitish:commit,name:`${edition} ${version}（公测版）`,body:await readFile(join(root,'RELEASE-NOTES.md'),'utf8'),draft:true,prerelease:false,make_latest:'false'})})
+  if(release && release.prerelease!==publication.prerelease)throw Error('Existing release has a different channel')
+  if(!release) release=await request('/releases',{method:'POST',body:JSON.stringify({...publication,tag_name:tag,target_commitish:commit,body:await readFile(join(root,'RELEASE-NOTES.md'),'utf8'),draft:true,make_latest:'false'})})
   for(const file of files) {
     const existing=release.assets.find(asset=>asset.name===file.name)
     if(existing) {
@@ -74,7 +82,7 @@ export async function publish(directory) {
     if(result.size!==file.bytes || result.digest!==`sha256:${file.sha256}`) throw Error('GitHub asset digest differs: '+file.name)
     console.log('Uploaded and verified '+file.name)
   }
-  if(release.draft) release=await request('/releases/'+release.id,{method:'PATCH',body:JSON.stringify({draft:false,make_latest:'true'})})
+  if(release.draft) release=await request('/releases/'+release.id,{method:'PATCH',body:JSON.stringify({draft:false,prerelease:publication.prerelease,make_latest:publication.make_latest})})
   ref=await request('/git/ref/tags/'+tag)
   if(ref.object.sha!==commit) throw Error('Published tag does not match the tested commit')
   console.log('Published '+release.html_url)

@@ -14,11 +14,12 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 $CoreRoot = [IO.Path]::GetFullPath($CoreRoot)
 $EditionRoot = [IO.Path]::GetFullPath($EditionRoot)
+$isDevelopmentVersion = $Version -match '^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$'
 if ($Development) {
     if ($Version -notmatch '^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$') { throw 'Development artifacts require X.Y.Z-dev.YYYYMMDD.N' }
     if ($ReleaseNotesFile -or $ReleaseNotesApproved) { throw 'Development artifacts do not publish Release notes.' }
 } else {
-if ($Version -notmatch '^\d+\.\d+\.\d+$') { throw 'GitHub Releases require X.Y.Z' }
+if ($Version -notmatch '^\d+\.\d+\.\d+$' -and -not $isDevelopmentVersion) { throw 'GitHub Releases require X.Y.Z or X.Y.Z-dev.YYYYMMDD.N' }
 if (-not $ReleaseNotesApproved) { throw 'Release notes must be discussed and approved before publication.' }
 if ($ReleaseNotesFile -notmatch '^docs/releases/[A-Za-z0-9][A-Za-z0-9._-]*[.]md$') { throw 'Use a reviewed Markdown file under docs/releases in the edition repository.' }
 $notesPath = Join-Path $EditionRoot $ReleaseNotesFile
@@ -71,9 +72,9 @@ try {
     $metadataPath = Join-Path $candidate 'release.json'
     $metadata = Get-Content $metadataPath -Raw | ConvertFrom-Json
     $metadata.pluginPolicy = 'npm-exact-locks'
-    $metadata | Add-Member -NotePropertyName releaseKind -NotePropertyValue $(if ($Development) {'portable-development'} else {'portable-public-test'})
+    $metadata | Add-Member -NotePropertyName releaseKind -NotePropertyValue $(if ($isDevelopmentVersion) {'portable-development'} else {'portable-public-test'})
     $metadata | ConvertTo-Json -Depth 12 | Set-Content $metadataPath -Encoding utf8NoBOM
-    $releaseLabel = if ($Development) {'开发版 / Development'} else {'公测版 / Public beta'}
+    $releaseLabel = if ($isDevelopmentVersion) {'开发版 / Development'} else {'公测版 / Public beta'}
     @"
 $name $Version — Windows x64 Electron $releaseLabel
 
@@ -104,7 +105,7 @@ $name $Version — Windows x64 Electron 开发版
 由维护者完成实包升级验收后配置开发更新清单，不能投放到 0.2 旧入口。
 "@ | Set-Content (Join-Path $candidate 'README.txt') -Encoding utf8NoBOM
     }
-    & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $candidate -Output $archive -Development:$Development -ForUpdate
+    & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $candidate -Output $archive -Development:$isDevelopmentVersion -ForUpdate
     # Test the extracted ZIP, not the input directory. This also exercises
     # relocation of the private Python environment and all native paths.
     $extracted = Join-Path $Output 'unpacked'

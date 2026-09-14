@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260914.2",
+  "version": "0.3.6-dev.20260914.3",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-14T13:02:57.177Z",
-  "fileSetSHA256": "390115cd2449c3dcc5a91434369adba7a2c6571c7db3bd820ede967042e1fd8b",
+  "createdAt": "2026-09-14T13:35:58.437Z",
+  "fileSetSHA256": "5fb7d8c9f22002fd1d64464624f77a143671a16ade489e1ff49f0ae1b9895dd8",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,7 +25,7 @@
     },
     {
       "path": ".github/workflows/release-windows.yml",
-      "sha256": "5d4f6fd0279b0bab45607da8aa9b0bba08cbfb294c9056987b05c1631bddc223"
+      "sha256": "d021b7757ee54b74205216c7ec757f8ca3b5589a289d4434057218d43efcaefa"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -209,15 +209,19 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "f95a3e958cedc5561501e981b0388974423da32d45dc672e4a86adf7346bef05"
+      "sha256": "7d30ba3a326fbfa415bf79f066b45e3eafd365a1b000543f74530665fcb2e6b9"
     },
     {
       "path": "docs/releases/0.3.5.md",
       "sha256": "9406f215b0a0e58dbde1eac4ff3703ad67ce24300f4b542e73b285e9ff66cff4"
     },
     {
+      "path": "docs/releases/0.3.6-dev.20260914.3.md",
+      "sha256": "0065795c6332fe341c22791a005aa87a1a33d1d81fe6c35a8d0d3dc930ddea06"
+    },
+    {
       "path": "docs/UPDATES.md",
-      "sha256": "516e0658766df6a40259f7c24d59961feef86f3a17b52b3989aaaaadcda3c9fc"
+      "sha256": "af1db1980431538d312a572545e4e27a4d7654e55e45e515c59ab35989b82fa4"
     },
     {
       "path": "docs/USER_GUIDE.md",
@@ -481,7 +485,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/github_test.go",
-      "sha256": "42d151445adea46eb1b1261da519141facbea12f534af5b9c3ef40e852c9d3e1"
+      "sha256": "0d52ca1a7dd2a9a20b2307f1feee7bc970f58caefc6a0ca48c50045483b2d345"
     },
     {
       "path": "dsh-desktop/internal/updater/github.go",
@@ -577,11 +581,11 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
-      "sha256": "059e9d9d2d30386bc8eafa9a722b47c7dc9f73b6269bf6a0448cd00ce113ee16"
+      "sha256": "24d84a5ea636346e4a09869a5f0600cddafcd47b3b55a0f49e867f56594efc95"
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "9dbfccee232d5a76425148204ff55045219626665e5ec97f354fd8df257dd049"
+      "sha256": "80189b0533801317e8864f1b7d4d83a0743942b886f78264b7d992ae7b82c0c5"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -594,6 +598,10 @@
     {
       "path": "dsh-electron/src/configuration-files.mjs",
       "sha256": "a640bc06ccb63a22590c9de274bb2c96395ab959c2eea2f7864eb51f416eaf53"
+    },
+    {
+      "path": "dsh-electron/src/configuration-policy.mjs",
+      "sha256": "7ce4c3ad05b1c8cd45a79f4a634a2da1421aa9fdc502aebc39019c6c9c83d399"
     },
     {
       "path": "dsh-electron/src/external-navigation.mjs",
@@ -621,11 +629,15 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "346daaafdd6d6761c41a4cab190b2e4189bc5d894261e2c27b4048f182520ae3"
+      "sha256": "5aed5363b4243894121afb6adf5ab76df55cb837ce99eace84a045863e81bdbd"
     },
     {
       "path": "dsh-electron/tests/configuration-files.test.mjs",
       "sha256": "3ab1a1539f509beb20efa5912f6ba97ac18127d9b79c811a30617431b83c21f8"
+    },
+    {
+      "path": "dsh-electron/tests/configuration-policy.test.mjs",
+      "sha256": "7e906949036cad4dc16fe402b137f4c1b961823018250cfa6ac86b5a08feb831"
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
@@ -733,7 +745,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "32fbdd699b25b425060b540d3f3f6962a2ed72390bd14d234f74cdae573fe5d9"
+      "sha256": "cf7de7bf7cc803686648904b4dc5d2286223204349eafb865c12bd8749cb11b2"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -793,7 +805,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "c651549dbdfc4f0ae039410357e9876e2fc24d37f88a8981f5c3e258b4e72c17"
+      "sha256": "655accba96d747406a2a6a5d678d9083dab774db8fd8a536243ca989fbeea256"
     },
     {
       "path": "dsh-host/test/release-policy.test.mjs",
@@ -3873,11 +3885,11 @@
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
-      "sha256": "5bd5c42d221e1bc2a4ab26da9e6195080fca4a12e63a8cf675f39f8397f90f0d"
+      "sha256": "4a9167807d48c932cec3071a423db51cfa109f01a9a0cedbaeb67254c5f1a0f4"
     },
     {
       "path": "RELEASE-CHECKLIST.md",
-      "sha256": "1e0ad9f6800c63e62cbfe0d138be0e61f2ab9119b11dea8563820510099f9c26"
+      "sha256": "359e107b67873beb90f53e01a3434536b71a53e1fd9d89603c16c47ae5e0694c"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -3901,7 +3913,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
-      "sha256": "bb8009976e3638a6a3877d018a5587c68468924dbed3fd8c693c40fb460916e8"
+      "sha256": "1a21d67c0bab65662231c7fa5eb5c3e29c6d8d119fa130581973494cfe6d9172"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -3909,7 +3921,7 @@
     },
     {
       "path": "scripts/configure-desktop-archive.ps1",
-      "sha256": "db47e9b84679e7a2042aed673e8de8edb40886bc515964e1f0897472b47e0d53"
+      "sha256": "74d3025276449c629b88b6a7709ee17c888c23019d5c419701ddabfcc1fdc7a2"
     },
     {
       "path": "scripts/configure-product-concurrency.mjs",
@@ -3929,7 +3941,7 @@
     },
     {
       "path": "scripts/github-update-manifest.mjs",
-      "sha256": "03988326ec7ef549f40a98f42f2c5289be269e99baa7496cf9f811d4529899e4"
+      "sha256": "1c3a8fb64ec7cb827ac3ff2a557a1abc18589234ae28f12e50936652a7639085"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
@@ -4009,7 +4021,7 @@
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "90507befcaf2bbe4877e96070c64a3e0a398b3f13b798ed34781a6b17d5bd7a3"
+      "sha256": "bc2f5f0b6f42e8cf3ebb686bdcb827ba8e7d02eeec3d7798b3eaa8694ce733d3"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",
@@ -4073,7 +4085,7 @@
     },
     {
       "path": "tests/eduwork-configure-archive.test.mjs",
-      "sha256": "bbc70876b3df819bafe4c6d81ae5118531dd26aa14bb34fe5ab48ac154eff2fd"
+      "sha256": "338d1e1673fd89a40beed2572c0aa7a229d718684af7bd4f6e2597723b0c88b7"
     },
     {
       "path": "tests/eduwork-deployment-privacy.test.mjs",
@@ -4109,7 +4121,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "f38dcfea6e17861d0e775322ad36422ccf663a66786b6479cfa5a0416c89922e"
+      "sha256": "56c7f98f07ca5421a3d676b19b8c9cbfc27977aa165b14b03512cbd6301368c8"
     },
     {
       "path": "tests/fixtures/eduwork-dsh-015/LICENSE",
