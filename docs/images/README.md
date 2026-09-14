@@ -1,9 +1,10 @@
-# 界面截图
+# 界面截图与品牌插画
 
 [English](README_EN.md)
 
 | 文件 | 展示内容 |
 | --- | --- |
+| `readme-hero.svg` · `readme-hero-en.svg` | 中英文首页品牌插画，使用统一 EduWork 标识；并非界面截图。 |
 | `workspace.png` | 工作区对话与成果文件。 |
 | `studio.png` | 课程设计对话与 Studio 侧边栏（机构配置示例，蓝色主题）。 |
 | `skills.png` | 技能中心。 |

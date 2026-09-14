@@ -1,68 +1,79 @@
-<img src="assets/eduwork/icon.svg" width="64" height="64" alt="EduWork Logo">
+<p align="center">
+  <img src="docs/images/readme-hero.svg" width="100%" alt="从资料到成果的 EduWork 工作区品牌插画">
+</p>
 
-# EduWork
+<h1 align="center">EduWork</h1>
 
-[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2)
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE)
-[![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README.md)
-[![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#安装与使用)
+<p align="center"><strong>让 AI 围绕你的资料，把任务做到交付。</strong><br><sub>本机工作区 · 可交付成果 · 学校与企业服务接入</sub></p>
 
-**让 AI 围绕你的资料，把任务做到交付。**
+<div align="center">
+
+[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2) [![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README.md) [![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
-[下载安装](#安装与使用) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md) · [参与开发](CONTRIBUTING.md)
+[开始使用](#安装与使用) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md)
 
-准备一堂课、完成一份调研、整理一批表格，从手头的资料开始。EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手：读取本机文件、搜索信息、分析数据、编写代码，再把结果做成可预览、可下载、可继续修改的文档、表格、演示文稿或音视频。
+</div>
 
-个人用户连接自己的模型 API 即可使用；学校和企业可通过配置接入统一身份认证与模型服务。每位用户在自己的电脑上独立运行客户端，无需额外部署 EduWork 服务端。
+EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手。选择一个文件夹，说清楚你想完成的任务：从阅读资料、搜索信息、分析数据，到生成文档、表格和演示文稿，都可以在同一个工作区完成。
 
-> **你的工作区，也可以连接机构的 AI 服务。** 我们正在推动[开放身份与模型接入倡议](packages/dsh-oidc/docs/open-integration.md)，邀请社区一起让机构账号与模型服务被更多客户端复用。
+个人用户连接自己的模型 API；学校和企业通过配置接入统一身份与模型服务。**每位用户在自己的电脑上独立运行，无需部署额外的 EduWork 服务端。**
+
+![EduWork 工作区：围绕课程资料整理教学方案，在对话中查看和打开成果文件](docs/images/workspace.png)
+
+<p align="center"><sub>资料、对话与成果放在一起，让一项工作可以持续做下去。</sub></p>
 
 ## 你可以用它做什么
 
-通过下面的演示，了解工作区、Studio 和技能中心。
+<table>
+<tr>
+<td width="50%" valign="top"><h3>围绕文件工作</h3><p>读取资料、编辑文档、分析数据、运行脚本，让 AI 在你的本机工作区完成任务。</p></td>
+<td width="50%" valign="top"><h3>把结果做成交付物</h3><p>用 Studio 制作报告、表格、演示文稿与学习材料，预览、下载，再继续修改。</p></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><h3>自由选择模型</h3><p>连接自己的 API，或使用机构账号登录。个人模型与企业模型可以同时使用。</p></td>
+<td width="50%" valign="top"><h3>接入你的服务</h3><p>通过配置接入身份与模型，通过技能和插件补充专业方法与内部业务能力。</p></td>
+</tr>
+</table>
 
-### 围绕文件完成任务
+### 从一个具体任务开始
 
-选择一个本机文件夹作为工作区，用自然语言交代任务。EduWork 可以读取和编辑文件、运行脚本，并通过子代理协作处理复杂工作。会话、任务资料和生成文件可以围绕同一个工作区持续使用。
-
-> 阅读这个文件夹里的调研资料，按主题整理观点，标出来源和仍需核实的问题。
->
-> 比较这几份表格的数据，找出差异，生成分析报告和汇总表。
->
-> 根据这份课程材料制作一套演示文稿，再生成配套的测验和复习闪卡。
-
-![工作区对话：围绕课程资料整理教学方案，并在对话中查看成果文件](docs/images/workspace.png)
-
-### 用 Studio 制作和管理成果
-
-Studio 将常用成果集中在侧边栏。既可以从这里开始创作，也可以在对话中提出任务，使用同一套生成、预览与下载能力。
-
-| 成果 | 用途 |
+| 你正在做什么 | 可以这样交给 EduWork |
 | --- | --- |
-| 报告 | 整理研究结论、学习指南或工作报告，生成 DOCX 文档。 |
-| 数据表 | 提取、比较和分析数据，生成 XLSX 工作簿。 |
-| 演示文稿 | 将资料整理成带讲稿的 PPTX 演示文稿。 |
-| 思维导图 | 梳理主题和知识关系，交互浏览并导出。 |
-| 测验与闪卡 | 制作练习题和复习卡片，边学边检验理解。 |
-| 音频与视频 | 将内容制作成配音或讲解视频，预览并下载媒体和字幕。 |
+| 备课与学习 | “根据课程材料制作演示文稿，再生成配套的测验和复习闪卡。” |
+| 研究与调研 | “阅读这些资料，按主题整理观点，标出来源和仍需核实的问题。” |
+| 数据与办公 | “比较这几份表格，找出差异，生成分析报告和汇总表。” |
+
+Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂任务。工作区保留会话和成果，方便接着修改、补充资料和继续推进。
+
+### 在 Studio 里，把成果做出来
+
+打开右侧 Studio，选择成果类型即可开始；也可以直接在对话中提出要求。两种入口共用生成、预览与下载能力。
+
+**报告 · 数据表 · 演示文稿 · 思维导图 · 测验 · 闪卡 · 音频 · 视频**
 
 ![Studio 侧边栏：围绕课程设计制作配套材料（机构配置示例）](docs/images/studio.png)
 
-图中为机构配置示例；Studio 的创作、预览与下载能力由公版提供，名称和标识可通过配置调整。
+<p align="center"><sub>图中为机构配置示例。Studio 由公版提供，界面名称和标识可通过配置调整。</sub></p>
 
-### 按需要扩展工作方式
+报告、表格和演示文稿可生成 **DOCX、XLSX、PPTX** 文件；学习材料支持交互预览，音视频可预览并下载媒体与字幕。文生图和云端 TTS 需配置兼容服务，本机语音取决于系统及本地资源，详见[媒体服务配置](docs/MEDIA.md)。
 
-- **搜索与浏览器**：检索网页和文献。配置 DeepSeek 搜索 Key 时使用官方搜索；未配置时使用免 Key 的浏览器搜索。
-- **技能中心**：查看和管理技能，用可扩展的任务指引补充专业工作方法。
-- **记忆与邮件助手**：通过本地记忆延续任务背景；配置邮件账户后处理邮件相关任务。
-- **语音与图像**：内置本机语音转写和系统语音合成；也可按服务商配置开启文生图、云端 TTS，对话与 Studio 共用这些能力。
-- **模型与偏好**：自行选择模型，切换蓝色或红色界面，调整模型请求总并发等设置。
+### 让工作方式适合你
 
-图像生成和云端 TTS 默认不连接服务，需提供兼容接口及凭据；本机语音的可用音色取决于操作系统和本地资源。参见[媒体服务配置](docs/MEDIA.md)。
+- **搜索与浏览器**：配置 DeepSeek 搜索 Key 时使用官方搜索，未配置时使用免 Key 的浏览器搜索。
+- **技能中心**：浏览和管理内置技能，导入或编写自己的任务指引，无需重新编译客户端。
+- **记忆与邮件**：用本地记忆延续工作背景；配置邮件账户后，可通过邮件助手处理相关任务。
+- **语音、模型与偏好**：使用本机语音转写、系统语音合成，选择自己的模型，切换蓝色或红色主题，设置模型请求总并发。
+
+<details>
+<summary>看看技能中心</summary>
 
 ![技能中心：浏览和管理内置技能，导入或创建自己的技能](docs/images/skills.png)
+
+技能提供任务指引，插件提供可执行能力；身份、模型和兼容媒体服务优先通过配置接入。
+
+</details>
 
 ## 安装与使用
 
@@ -82,7 +93,12 @@ Studio 将常用成果集中在侧边栏。既可以从这里开始创作，也�
 
 选择一个本机工作区，放入任务资料，直接描述你想得到的结果。需要文档、表格等成果时，也可以打开右侧 Studio，选择对应类型开始。
 
+<details>
+<summary>窗口行为与自动更新</summary>
+
 窗口关闭后默认收起到系统托盘；需要完全退出时，使用托盘菜单。Windows 公版默认从 GitHub 获取更新，公测与开发渠道可在设置中选择，机构可通过配置切换更新源；自动更新保留历史数据与用户配置，详见[更新说明](docs/UPDATES.md)。
+
+</details>
 
 ## 学校与企业接入
 
@@ -97,13 +113,18 @@ Studio 将常用成果集中在侧边栏。既可以从这里开始创作，也�
 
 企业模型和用户自己配置的模型可以同时使用。标准 OIDC 只解决身份登录；自动获取 Key 和模型目录需要服务端另外实现资源接口。
 
-### 配置方法
+<a id="配置方法"></a>
+
+<details>
+<summary><strong>三步配置你的机构</strong></summary>
 
 1. 在设置中点击 **打开配置文件**，编辑客户端目录下的 `config/eduwork.jsonc`。
 2. 文件内含完整注释示例。按管理员提供的信息填写 `organizations`；需要图像或语音服务时再加入 `media`。更多示例在客户端的 `config/examples/` 目录。
 3. 保存后从托盘完全退出并重新启动，再选择机构登录。
 
 配置文件只保存公开接入信息和凭据引用。个人 API Key 在模型设置中管理，企业凭据由登录流程保存在本机受保护存储中；不要把密码或令牌写入配置文件。界面 Logo 可配置，程序内嵌图标由发行包提供。
+
+</details>
 
 **管理员配置：** [完整企业配置示例](config/desktop/examples/organization.jsonc) · [媒体配置示例](config/desktop/examples/media.jsonc)。
 
@@ -122,13 +143,13 @@ Studio 将常用成果集中在侧边栏。既可以从这里开始创作，也�
 
 ## 一次接入，更多客户端
 
-学校和企业接入一个新的 AI 客户端，往往需要再次处理登录、模型 Key 和模型目录。我们希望这些工作能够通过公开协议复用，让用户选择工具时，也能继续使用机构提供的服务。
+> **让机构的账号与模型服务，被更多 AI 客户端复用。**
 
-`dsh-oidc` 是我们的实现起点：身份遵循 OIDC，托管模型通过公开的凭据与资源接口接入。它有独立 npm 包，也有服务端接口、OpenAPI 和联调示例；其他客户端可以按协议独立实现，不必采用 EduWork 的界面。
+我们发起**开放身份与模型接入倡议**，邀请身份平台、模型网关和客户端开发者，共同用公开协议连接登录、模型凭据与模型目录，让机构接入新工具时能够复用已有服务。
 
-我们邀请身份平台、模型网关、客户端和插件作者共同完善这套约定。当前规范与实现随源码提供，跨客户端互通需要按版本实际验证；后续协议由真实接入问题推动演进。
+`dsh-oidc` 是我们的实现起点：身份遵循标准 OIDC，托管模型通过公开资源接口接入，提供独立 npm 包、服务端规范、OpenAPI 和联调示例。其他客户端也可以按协议独立实现，无需采用 EduWork 的界面。当前倡议面向社区讨论，跨客户端互通需要按版本实际验证。
 
-**[阅读开放接入倡议](packages/dsh-oidc/docs/open-integration.md)** · [实现服务端](packages/dsh-oidc/docs/server-integration-contract.md) · [接入客户端](packages/dsh-oidc/README.md) · [提出建议](https://github.com/ecnu/EduWork/issues)
+**[阅读开放接入倡议](packages/dsh-oidc/docs/open-integration.md)** · [实现服务端](packages/dsh-oidc/docs/server-integration-contract.md) · [接入客户端](packages/dsh-oidc/README.md) · [一起讨论](https://github.com/ecnu/EduWork/issues)
 
 ## 数据与隐私
 

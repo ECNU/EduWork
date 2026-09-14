@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="320" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+  <title id="title">让想法在工作区里成为成果</title>
+  <desc id="desc">资料文档通过 EduWork 连接到报告、表格、演示文稿和学习材料。这是品牌插画，并非产品截图。</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f1f6ff"/><stop offset="1" stop-color="#fafbff"/></linearGradient>
+    <pattern id="dots" width="22" height="22" patternUnits="userSpaceOnUse"><circle cx="1" cy="1" r="1" fill="#2575ff" opacity=".10"/></pattern>
+    <filter id="shadow" x="-30%" y="-30%" width="170%" height="180%"><feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#243d76" flood-opacity=".08"/></filter>
+  </defs>
+  <rect width="1200" height="320" rx="24" fill="url(#bg)"/>
+  <rect width="1200" height="320" rx="24" fill="url(#dots)"/>
+  <circle cx="600" cy="147" r="125" fill="none" stroke="#2575ff" opacity=".07"/>
+  <circle cx="600" cy="147" r="94" fill="none" stroke="#2575ff" opacity=".10"/>
+  <g font-family="Segoe UI, Microsoft YaHei, Noto Sans CJK SC, sans-serif">
+    <text x="65" y="57" fill="#273958" font-size="22" font-weight="700" letter-spacing="1">从你的资料开始</text>
+    <text x="65" y="81" fill="#71819b" font-size="12" letter-spacing="1.6">文件 · 来源 · 想法</text>
+    <g filter="url(#shadow)">
+      <g transform="translate(92 111) rotate(-9 61 65)"><rect width="122" height="137" rx="11" fill="#fff" stroke="#dce4f0"/><rect x="18" y="20" width="32" height="6" rx="3" fill="#2575ff" opacity=".45"/><path d="M18 47h83M18 60h69M18 73h80M18 86h58" fill="none" stroke="#dce4f0" stroke-width="5" stroke-linecap="round"/></g>
+      <g transform="translate(222 98) rotate(6 61 75)"><rect width="126" height="155" rx="11" fill="#fff" stroke="#dce4f0"/><rect x="17" y="19" width="92" height="55" rx="6" fill="#edf4ff"/><path d="m28 61 20-20 18 16 17-25 17 29Z" fill="#b5d1ff"/><circle cx="89" cy="32" r="6" fill="#79a7f5"/><path d="M19 97h85M19 110h69M19 123h80" fill="none" stroke="#dce4f0" stroke-width="5" stroke-linecap="round"/></g>
+    </g>
+    <g stroke="#2575ff" stroke-width="2" fill="none" opacity=".35"><path d="M370 155H490" stroke-dasharray="4 7"/><path d="m481 149 9 6-9 6"/><path d="M710 155h75" stroke-dasharray="4 7"/><path d="m776 149 9 6-9 6"/></g>
+    <g transform="translate(545 92) scale(.43)" filter="url(#shadow)"><rect width="256" height="256" rx="56" fill="#2575ff"/><path fill="#fff" transform="translate(43 32) scale(.665 .78)" d="M42 108V81Q42 49 87 39L214 10V28Q214 61 181 70L94 91L174 112V129Q174 151 149 158L94 173L182 195Q214 204 214 235V246L88 219Q63 212 42 195V178Q42 151 75 141L103 133Z"/></g>
+    <text x="600" y="249" text-anchor="middle" fill="#536680" font-size="18">让想法在工作区里成为成果</text>
+    <g filter="url(#shadow)">
+      <rect x="817" y="53" width="315" height="62" rx="12" fill="#fff" stroke="#e0e6ef"/>
+      <rect x="817" y="128" width="315" height="62" rx="12" fill="#fff" stroke="#e0e6ef"/>
+      <rect x="817" y="203" width="315" height="62" rx="12" fill="#fff" stroke="#e0e6ef"/>
+    </g>
+    <rect x="833" y="66" width="36" height="36" rx="9" fill="#ecf3ff"/>
+    <g stroke="#3979e0" stroke-width="1.7" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M844 75h10l5 5v14h-15zM854 75v5h5M848 85h7M848 89h7"/></g>
+    <rect x="833" y="141" width="36" height="36" rx="9" fill="#eaf7f2"/>
+    <g stroke="#389b7b" stroke-width="1.7" fill="none" stroke-linecap="round"><path d="M843 167h17M844 164v-6M851 164v-14M858 164v-10"/></g>
+    <rect x="833" y="216" width="36" height="36" rx="9" fill="#fff3e7"/>
+    <g stroke="#cf8b42" stroke-width="1.7" fill="none" stroke-linejoin="round"><rect x="842" y="225" width="18" height="17" rx="3"/><path d="m849 229 6 4-6 4z"/></g>
+    <g fill="#34435c" font-size="17" font-weight="600"><text x="884" y="90">文档与报告</text><text x="884" y="165">表格与演示</text><text x="884" y="240">学习材料与音视频</text></g>
+  </g>
+</svg>

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260914.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-14T12:45:09.183Z",
-  "fileSetSHA256": "8e5169c3483bdf35dc2c204832cb97820d6d95853a70a9286d83a737d6ac43eb",
+  "createdAt": "2026-09-14T13:02:57.177Z",
+  "fileSetSHA256": "390115cd2449c3dcc5a91434369adba7a2c6571c7db3bd820ede967042e1fd8b",
   "files": [
     {
       "path": ".gitattributes",
@@ -165,11 +165,19 @@
     },
     {
       "path": "docs/images/README_EN.md",
-      "sha256": "45d3141501c7ddc68f8cee8646cc930bef58523d0ca042e1cdf77ba814e7e4bb"
+      "sha256": "ec247e1b6fb11da1371f15561633aa524e593d26ab7a30252a3dfbb81ea44ec5"
+    },
+    {
+      "path": "docs/images/readme-hero-en.svg",
+      "sha256": "66e858bee9f722bb0f1be823980e8525605c7b76a63803d11a0f8582006135be"
+    },
+    {
+      "path": "docs/images/readme-hero.svg",
+      "sha256": "296d706f0d2c3f76e6afc0d7bf02eff57a6436111cc0771d317711e6ede05047"
     },
     {
       "path": "docs/images/README.md",
-      "sha256": "23f42d74b8b30991102e7a16096fa26162f2158876a9dc046bf9db6b105321ed"
+      "sha256": "e1ca8e886e0ddb723b64e75c9b810750499c772363766cf813e2b2a9d3396664"
     },
     {
       "path": "docs/images/skills.png",
@@ -3857,11 +3865,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "73b3ee04a923e56de3381c58c1ccdc6a85189d3c23b13dcab051485093fa8f59"
+      "sha256": "ef71c68b1bb2db647857497b1bb7240a57121cb5130275bbd130a8baa9cb0a63"
     },
     {
       "path": "README.md",
-      "sha256": "0e7177984a8dc84b1ff7f2ffb1e899a92460be30abc37f01ce844f70f1e95b67"
+      "sha256": "fda25d7edcd46fb96f88db40ee7370c998f9df9830584a9c9ea1ee4061d0945c"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",

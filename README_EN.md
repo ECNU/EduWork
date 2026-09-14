@@ -1,68 +1,79 @@
-<img src="assets/eduwork/icon.svg" width="64" height="64" alt="EduWork Logo">
+<p align="center">
+  <img src="docs/images/readme-hero-en.svg" width="100%" alt="From source materials to finished work with EduWork — brand illustration">
+</p>
 
-# EduWork
+<h1 align="center">EduWork</h1>
 
-[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2)
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE)
-[![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README_EN.md)
-[![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#installation-and-use)
+<p align="center"><strong>Turn your materials into finished work, with AI.</strong><br><sub>Local workspaces · Useful outputs · Your models and institutional services</sub></p>
 
-**An AI workspace that turns your materials into finished work.**
+<div align="center">
+
+[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2) [![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README_EN.md) [![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
-[Get started](#installation-and-use) · [School and enterprise integration](#school-and-enterprise-integration) · [Open integration initiative](#one-integration-more-clients) · [User guide](docs/USER_GUIDE.md) · [Contribute](CONTRIBUTING.md)
+[Get started](#installation-and-use) · [School and enterprise integration](#school-and-enterprise-integration) · [Open integration initiative](#one-integration-more-clients) · [User guide](docs/USER_GUIDE.md)
 
-Prepare a lesson, complete a research brief, or organize a collection of spreadsheets, starting with the materials you already have. EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). It reads local files, searches for information, analyzes data, and writes code, then produces documents, spreadsheets, presentations, or media that you can preview, download, and keep working on.
+</div>
 
-Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. Each client runs independently on its user's computer, with no separate EduWork server to deploy.
+EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Choose a folder and describe what you want to accomplish: read sources, search for information, analyze data, and create documents, spreadsheets, and presentations in one workspace.
 
-> **Your workspace can connect to your organization's AI services.** Through the [Open Identity and Model Integration Initiative](packages/dsh-oidc/docs/open-integration.en.md), we invite the community to make institutional accounts and model services reusable across more clients.
+Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. **Each client runs independently on its user's computer, with no separate EduWork server to deploy.**
+
+![EduWork workspace: turn course materials into a teaching plan and open output files in the conversation](docs/images/workspace.png)
+
+<p align="center"><sub>Keep sources, conversations, and results together, so you can keep building on your work.</sub></p>
 
 ## What you can do
 
-Explore the workspace, Studio, and skill center in the examples below.
+<table>
+<tr>
+<td width="50%" valign="top"><h3>Work with your files</h3><p>Read sources, edit documents, analyze data, and run scripts in a local workspace.</p></td>
+<td width="50%" valign="top"><h3>Create useful outputs</h3><p>Use Studio to turn ideas into reports, spreadsheets, presentations, and learning materials.</p></td>
+</tr>
+<tr>
+<td width="50%" valign="top"><h3>Choose your models</h3><p>Connect your own APIs or sign in to an organization. Personal and enterprise models can coexist.</p></td>
+<td width="50%" valign="top"><h3>Bring your services</h3><p>Configure identity and model access, then add skills and plugins for specialized work.</p></td>
+</tr>
+</table>
 
-### Work with your files
+### Start with a real task
 
-Choose a local folder as your workspace and describe the task. EduWork can read and edit files, run scripts, and coordinate subagents for complex work. Continue working with conversations, source materials, and generated files around the same workspace.
-
-> Read the research materials in this folder. Organize the findings by topic, cite the sources, and flag questions that still need verification.
->
-> Compare these spreadsheets, identify differences, and create an analysis report and summary table.
->
-> Create a presentation from these course materials, then make a quiz and revision flashcards.
-
-![Workspace conversation: organize course materials into a teaching plan and access output files in the conversation](docs/images/workspace.png)
-
-### Create and manage results in Studio
-
-Studio brings common outputs together in the sidebar. Start there or ask in a conversation: both use the same generation, preview, and download capabilities.
-
-| Output | Use it for |
+| What you are working on | Try asking EduWork |
 | --- | --- |
-| Reports | Research findings, study guides, and work reports as DOCX documents. |
-| Spreadsheets | Extracting, comparing, and analyzing data in XLSX workbooks. |
-| Presentations | Turning sources into PPTX presentations with speaker notes. |
-| Mind maps | Organizing topics and relationships, with interactive browsing and export. |
-| Quizzes and flashcards | Practicing and checking your understanding as you learn. |
-| Audio and video | Narration and explanatory videos, with media previews and downloadable subtitles. |
+| Teaching and learning | “Create a presentation from these course materials, then make a quiz and revision flashcards.” |
+| Research and discovery | “Read these sources, organize findings by topic, cite the evidence, and flag questions to verify.” |
+| Data and everyday work | “Compare these spreadsheets, identify differences, and create an analysis report and summary table.” |
+
+The agent can read and edit files, run scripts, and coordinate subagents for complex tasks. Conversations and outputs stay with your workspace, ready for revisions, new sources, and follow-up work.
+
+### Make the results in Studio
+
+Open Studio on the right and choose an output type, or ask for it in a conversation. Both entry points share generation, previews, and downloads.
+
+**Reports · Spreadsheets · Presentations · Mind maps · Quizzes · Flashcards · Audio · Video**
 
 ![Studio sidebar: create teaching materials for a lesson plan, shown with an institution configuration](docs/images/studio.png)
 
-The screenshot shows an institution configuration. Studio creation, preview, and download capabilities are part of the public edition; names and branding can be configured.
+<p align="center"><sub>The screenshot shows an institution configuration. Studio is part of the public edition; interface names and branding are configurable.</sub></p>
 
-### Extend the way you work
+Export reports, spreadsheets, and presentations as **DOCX, XLSX, and PPTX** files. Preview interactive learning materials and download media with subtitles. Image generation and cloud TTS require compatible services; local speech depends on the system and local resources. See [media configuration](docs/MEDIA.md).
 
-- **Search and browser**: search the web and literature. Use official DeepSeek search when its key is configured, or browser search without a key otherwise.
-- **Skill center**: view and manage skills, adding task guidance for specialized work.
-- **Memory and mail assistant**: carry task context forward with local memory and configure a mail account for email tasks.
-- **Speech and images**: use local transcription and system speech synthesis, or configure image generation and cloud TTS providers. Conversations and Studio share these capabilities.
-- **Models and preferences**: choose your models, switch between blue and red themes, and set a total limit for concurrent model requests.
+### Make it work your way
 
-Image generation and cloud TTS have no service configured by default and require compatible endpoints and credentials. Available local voices depend on the operating system and local resources. See [media service configuration](docs/MEDIA.md).
+- **Search and browser**: use official DeepSeek search when its key is configured, or browser search without a key otherwise.
+- **Skill center**: browse built-in skills, import skills, or write task guidance of your own without rebuilding the client.
+- **Memory and mail**: keep task context with local memory; configure an email account to work with the mail assistant.
+- **Speech, models, and preferences**: use local transcription and system speech synthesis, choose your models, switch between blue and red themes, and set a total limit for concurrent model requests.
+
+<details>
+<summary>Explore the skill center</summary>
 
 ![Skill center: browse and manage built-in skills, import skills, or create your own](docs/images/skills.png)
+
+Skills provide task guidance; plugins provide executable capabilities. Supported identity, model, and media services connect through configuration.
+
+</details>
 
 ## Installation and use
 
@@ -82,7 +93,12 @@ Open **Settings → Models** and enter your provider's API key, endpoint, and mo
 
 Choose a local workspace, add your task materials, and describe the result you want. For documents, spreadsheets, and other outputs, you can also open Studio on the right and choose an output type.
 
+<details>
+<summary>Window behavior and updates</summary>
+
 Closing the window minimizes it to the system tray by default. Use the tray menu to exit completely. The Windows public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings; institutions can configure another source. Updates preserve history and user configuration; see the [update guide](docs/UPDATES.md).
+
+</details>
 
 ## School and enterprise integration
 
@@ -97,13 +113,18 @@ Closing the window minimizes it to the system tray by default. Use the tray menu
 
 Enterprise models can coexist with models configured by the user. Standard OIDC handles identity only; obtaining keys and model catalogs requires additional resource APIs on the server.
 
-### Configuration steps
+<a id="configuration-steps"></a>
+
+<details>
+<summary><strong>Configure your organization in three steps</strong></summary>
 
 1. Select **Open configuration file** in Settings to edit `config/eduwork.jsonc` in the client directory.
 2. The file includes a complete commented example. Fill in `organizations` using the details supplied by your administrator; add `media` if image or speech services are needed. More examples are available in the client's `config/examples/` directory.
 3. Save, exit completely through the tray, and restart. Then select your organization and sign in.
 
 Configuration files contain public connection details and credential references. Manage personal API keys in model settings; enterprise credentials are placed in protected local storage by the sign-in flow. Do not put passwords or tokens in the configuration file. The interface logo is configurable; the embedded application icon comes from the distribution.
+
+</details>
 
 **Administrator configuration:** [Complete enterprise example](config/desktop/examples/organization.jsonc) · [Media example](config/desktop/examples/media.jsonc).
 
@@ -112,7 +133,9 @@ Configuration files contain public connection details and credential references.
 - [Server implementation and integration testing (RFC EW-IDENTITY-1)](packages/dsh-oidc/docs/server-integration-contract.en.md): required endpoints, request and response fields, authentication requirements, curl examples, and acceptance steps. Start here when implementing the server.
 - [Client integration modes and model discovery](packages/dsh-oidc/docs/public-resource-protocol.en.md): identity-only versus managed-model integration, static versus discovered model catalogs, and how plugins connect through Host RPCs and account events.
 
-### Extend internal capabilities through plugins
+<a id="extend-internal-capabilities-through-plugins"></a>
+
+### Add internal services with plugins
 
 Schools and businesses can use plugins to connect internal systems, bringing organization-specific search, business tools, or account services into EduWork. Plugins provide executable capabilities; skills provide task-specific guidance. Existing identity, model, and media APIs should use configuration where supported.
 
@@ -122,13 +145,13 @@ Organizations can combine plugins, skills, and default configuration into their 
 
 ## One integration, more clients
 
-Connecting an organization to another AI client often means repeating the work of sign-in, model keys, and model catalogs. We want open protocols to make this work reusable, so users can choose their tools while continuing to use institutional services.
+> **Let institutional accounts and model services work across more AI clients.**
 
-`dsh-oidc` is our starting implementation: OIDC handles identity, while public credential and resource interfaces connect managed models. It provides an independent npm package, a server specification, OpenAPI, and integration examples. Other clients can implement the protocol without adopting EduWork's UI.
+Through the **Open Identity and Model Integration Initiative**, we invite identity platforms, model gateways, and client developers to make sign-in, model credentials, and model catalogs reusable through open protocols.
 
-We invite identity platforms, model gateways, client developers, and plugin authors to improve the contract together. Current interfaces and implementations are documented in the source repository; interoperability across clients needs version-specific testing, and real integration problems should guide future protocol changes.
+`dsh-oidc` is our starting implementation: standard OIDC for identity, public resource interfaces for managed models, an independent npm package, and a server specification with OpenAPI and integration examples. Other clients can implement the protocol without adopting EduWork's UI. This is a community proposal; interoperability needs version-specific testing.
 
-**[Read the open integration initiative](packages/dsh-oidc/docs/open-integration.en.md)** · [Implement a server](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Integrate a client](packages/dsh-oidc/README_EN.md) · [Share feedback](https://github.com/ecnu/EduWork/issues)
+**[Read the initiative](packages/dsh-oidc/docs/open-integration.en.md)** · [Implement a server](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Integrate a client](packages/dsh-oidc/README_EN.md) · [Share feedback](https://github.com/ecnu/EduWork/issues)
 
 ## Data and privacy
 
