@@ -3,7 +3,7 @@ import { createReadStream } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
-import {githubUpdateManifest,updateManifestName,releaseChannel} from './github-update-manifest.mjs'
+import {githubUpdateManifestBytes,updateManifestName,releaseChannel} from './github-update-manifest.mjs'
 
 export function releasePublication(edition,version) {
   const prerelease=releaseChannel(version)==='development'
@@ -47,7 +47,7 @@ export async function publish(directory) {
   if(files[3].sha256!==receipt.releaseNotes.sha256) throw Error('Release notes differ from the approved source file')
   if(zip.bytes!==receipt.asset.bytes || zip.sha256!==receipt.asset.sha256) throw Error('Downloaded CI artifact differs from the validated ZIP')
   if((await readFile(files[1].path,'utf8')).trim()!==`${zip.sha256}  ${zip.name}`) throw Error('SHA256 sidecar differs')
-  if(JSON.stringify(JSON.parse(await readFile(files[4].path,'utf8')))!==JSON.stringify(githubUpdateManifest(receipt,repository)))throw Error('GitHub update manifest differs from the validated release')
+  if((await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
   const headers={Authorization:`Bearer ${process.env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','User-Agent':'EduWork-Release-CI','X-GitHub-Api-Version':'2022-11-28'}
   const api=`https://api.github.com/repos/${repository}`
   async function request(path, options={}, missing=false) {

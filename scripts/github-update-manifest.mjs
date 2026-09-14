@@ -17,7 +17,12 @@ export function githubUpdateManifest(receipt,repository) {
  const url=`https://github.com/ecnu/${identity[0]}/releases/download/v${receipt.version}/${asset.name}`
  return {schemaVersion:1,distribution:identity[1],channel,version:receipt.version,target:'windows-amd64',artifacts:[{shell:'electron',flavor:'offline',fileName:asset.name,bytes:asset.bytes,sha256:asset.sha256,url,sha256Url:url+'.sha256'}]}
 }
+// Older clients cache metadata as json.RawMessage. Emit bytes that survive
+// Go JSON compaction/HTML escaping so they can still verify and upgrade.
+export function githubUpdateManifestBytes(receipt,repository) {
+ return JSON.stringify(githubUpdateManifest(receipt,repository)).replace(/[<>&\u2028\u2029]/g,char=>'\\u'+char.charCodeAt(0).toString(16).padStart(4,'0'))
+}
 if(process.argv[1] && import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
  const receipt=JSON.parse(await readFile(process.argv[2],'utf8'))
- await writeFile(join(dirname(resolve(process.argv[2])),updateManifestName),JSON.stringify(githubUpdateManifest(receipt,process.argv[3]),null,2)+'\n')
+ await writeFile(join(dirname(resolve(process.argv[2])),updateManifestName),githubUpdateManifestBytes(receipt,process.argv[3]))
 }

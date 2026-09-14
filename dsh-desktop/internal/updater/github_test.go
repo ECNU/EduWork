@@ -41,7 +41,10 @@ func githubVersionFixture(t *testing.T, payload []byte, version string) (Config,
 		if req.Header.Get("Authorization") != "" || req.Header.Get("Cookie") != "" {
 			t.Fatal("credentials leaked into public update request")
 		}
-		body, _ := json.Marshal(manifest)
+		// Release metadata is allowed to contain whitespace. Both first-read
+		// and cached checks must validate the digest of these exact bytes.
+		body, _ := json.MarshalIndent(manifest, "", "  ")
+		body = append(body, '\n')
 		headers := http.Header{}
 		status := 200
 		switch {

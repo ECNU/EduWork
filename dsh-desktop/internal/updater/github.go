@@ -114,10 +114,11 @@ func githubHTTPClient(original *http.Client, repository, version string) *http.C
 }
 
 type githubCache struct {
-	Until   time.Time       `json:"until"`
-	ETag    string          `json:"etag,omitempty"`
-	Body    json.RawMessage `json:"body,omitempty"`
-	Failure string          `json:"failure,omitempty"`
+	SchemaVersion int       `json:"schemaVersion"`
+	Until         time.Time `json:"until"`
+	ETag          string    `json:"etag,omitempty"`
+	Body          []byte    `json:"bodyBytes,omitempty"`
+	Failure       string    `json:"failure,omitempty"`
 }
 
 func readGitHubJSON(ctx context.Context, client *http.Client, target, cacheDir string) ([]byte, error) {
@@ -125,8 +126,13 @@ func readGitHubJSON(ctx context.Context, client *http.Client, target, cacheDir s
 	cachePath := ""
 	if cacheDir != "" {
 		cachePath = filepath.Join(cacheDir, "github-cache", fmt.Sprintf("%x.json", sha256.Sum256([]byte(target))))
-		if bytes, err := os.ReadFile(cachePath); err == nil && len(bytes) <= maxManifestBytes+4096 {
+		// Base64 preserves the response bytes used by the release asset digest.
+		// RawMessage is compacted and HTML-escaped when its envelope is marshaled.
+		if bytes, err := os.ReadFile(cachePath); err == nil && len(bytes) <= (maxManifestBytes+2)/3*4+4096 {
 			_ = json.Unmarshal(bytes, &saved)
+		}
+		if saved.SchemaVersion != 2 || len(saved.Body) > maxManifestBytes || (len(saved.Body) > 0 && !json.Valid(saved.Body)) {
+			saved = githubCache{}
 		}
 		if time.Now().Before(saved.Until) && time.Until(saved.Until) <= 15*time.Minute {
 			if saved.Failure != "" {
@@ -141,6 +147,7 @@ func readGitHubJSON(ctx context.Context, client *http.Client, target, cacheDir s
 		if cachePath == "" {
 			return
 		}
+		entry.SchemaVersion = 2
 		bytes, err := json.Marshal(entry)
 		if err != nil || os.MkdirAll(filepath.Dir(cachePath), 0700) != nil {
 			return
