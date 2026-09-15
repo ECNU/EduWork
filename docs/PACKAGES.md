@@ -37,13 +37,13 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 各包使用自己的 SemVer，保持现有包名、公开导出、配置标识和数据路径。每次发布使用新版本，不覆盖已经发布的版本。若共享服务版本变化，同步 Studio 的精确依赖与开发锁；先发布并核验共享服务，再发布 Studio。
 
-唯一发布工作流为 `.github/workflows/packages-release.yml`（Actions 中的 **Package npm module**）。按包选择，默认 `publish=false`，只做构建、测试和打包。无需创建桌面 Release，也不生成 Release notes。
+唯一发布工作流为 `.github/workflows/packages-release.yml`（Actions 中的 **Package npm module**）。按包选择，默认 `publish=false`，只做构建、测试和打包。插件仅发布到 npm，不创建插件 GitHub Release 或 Git tag；GitHub 发布入口保留给桌面客户端版本。
 
 真正发布时：
 
 1. 确认该包的新版本、变更记录及相关本地验收；提交源码和 lock。
-2. 创建并推送对应包的 tag：`dsh-oidc-v<版本>`、`dsh-memory-v<版本>`、`dsh-mail-v<版本>`、`dsh-artifact-services-v<版本>` 或 `dsh-knowledge-studio-v<版本>`。不要复用已有版本或移动已发布 tag。
-3. 在 **Run workflow** 的来源选择该 tag，再选择包和 `publish=true`。稳定版本使用 `latest`，预发布版本使用 `dev`；产品版本号不参与 npm 版本判断。
+2. 将已审查的变更合入并推送到 `main`，记录准备发布的完整 40 位提交 SHA。
+3. 在 **Run workflow** 的来源选择 `main`，将该 SHA 填入 `source_commit`，再选择包和 `publish=true`。工作流锁定触发时的提交；如果它与填写的 SHA 不一致，发布会停止，需要重新核对源码。稳定版本使用 `latest`，预发布版本使用 `dev`；产品版本号不参与 npm 版本判断。
 4. 工作流构建并检查选定包，只发布同一工作流生成、校验通过的 tarball；发布 job 不重建、不执行包生命周期脚本。核验 npm 中的包版本、integrity 和 provenance 后，再更新客户端的精确依赖锁。
 
 发布需要在 **每个 npm 包** 的 Trusted publishing 中设置 GitHub Actions：组织 `ecnu`、仓库 `EduWork`、workflow `packages-release.yml`、environment `npm`。GitHub 对应 environment 也叫 `npm`。此处带 provenance 的发布路径要求公开仓库和有效的绑定；仅检查打包时使用 `publish=false`。详见 [npm 官方 Trusted publishing 说明](https://docs.npmjs.com/trusted-publishers/)。

@@ -35,11 +35,11 @@ CI selects affected development roots; shared-service changes also select Studio
 
 Each package keeps its own SemVer, public exports, configuration IDs and persisted paths. Use a new version for every publication; never overwrite an existing npm version. If shared services change version, update Studio's exact dependency and lock; publish and verify shared services before Studio.
 
-Use **Package npm module**, `.github/workflows/packages-release.yml`. Select one package. The default `publish=false` builds, tests and packages without publishing. It creates no desktop Release or Release notes.
+Use **Package npm module**, `.github/workflows/packages-release.yml`. Select one package. The default `publish=false` builds, tests and packages without publishing. Plugins publish only to npm, without plugin GitHub Releases or Git tags. GitHub release entries are reserved for desktop client versions.
 
 1. Review the package version, changelog and relevant local acceptance, then commit source and locks.
-2. Create/push `<package-id>-v<version>`, using one of the five package IDs above. Never reuse a published npm version or move a published tag.
-3. Select that tag as the **Run workflow** source, select the package and set `publish=true`. Use `latest` for stable versions and `dev` for prereleases. Product versions do not control package versions.
+2. Merge and push the reviewed changes to `main`, then record the full 40-character commit SHA intended for publication.
+3. Select `main` as the **Run workflow** source, enter that SHA in `source_commit`, select the package and set `publish=true`. The workflow pins the triggering commit; a mismatch with the supplied SHA stops publication so the source can be reviewed again. Use `latest` for stable versions and `dev` for prereleases. Product versions do not control package versions.
 4. CI publishes the checked archive from the same run, verifying its source, identity and hashes without rebuilding or lifecycle scripts. Verify the resulting npm version, integrity and provenance before updating product locks.
 
 Configure Trusted publishing on **each npm package**: GitHub Actions, organization `ecnu`, repository `EduWork`, workflow `packages-release.yml`, environment `npm`. The GitHub environment has the same name. The provenance-based publication path requires a public repository and a valid binding. Use `publish=false` to check and package without publishing. See [npm's requirements](https://docs.npmjs.com/trusted-publishers/).

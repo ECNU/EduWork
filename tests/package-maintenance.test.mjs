@@ -4,6 +4,19 @@ import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { packages, selectPackage, changedGroups, needsProductBuild } from '../scripts/packages/catalog.mjs'
 import { inspectArchive } from '../scripts/packages/archive.mjs'
+import { verifyPublicationSource } from '../scripts/packages/publication-source.mjs'
+
+test('npm publication requires the reviewed main commit without package tags', () => {
+  const commit = 'a'.repeat(40)
+  const env = { GITHUB_REPOSITORY: 'ECNU/EduWork', GITHUB_REF: 'refs/heads/main', SOURCE_COMMIT: commit, GITHUB_SHA: commit }
+  assert.doesNotThrow(() => verifyPublicationSource(commit, env))
+  assert.throws(() => verifyPublicationSource(commit, { ...env, SOURCE_COMMIT: '' }), /full source commit/)
+  assert.throws(() => verifyPublicationSource(commit, { ...env, SOURCE_COMMIT: 'b'.repeat(40) }), /Reviewed and checked-out/)
+  assert.throws(() => verifyPublicationSource(commit, { ...env, GITHUB_SHA: 'b'.repeat(40) }), /Workflow and checked-out/)
+  assert.throws(() => verifyPublicationSource(commit, { ...env, GITHUB_REF: 'refs/tags/dsh-oidc-v1.2.3' }), /from main/)
+  assert.throws(() => verifyPublicationSource(commit, { ...env, GITHUB_REF: 'refs/heads/feature' }), /from main/)
+  assert.throws(() => verifyPublicationSource(commit, { ...env, GITHUB_REPOSITORY: 'someone/EduWork' }), /Only the source repository/)
+})
 
 test('shared-service changes select Studio integration; unrelated packages and docs do not rebuild', () => {
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])

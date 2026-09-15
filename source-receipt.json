@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260914.3",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-15T05:07:05.411Z",
-  "fileSetSHA256": "af0d6d3c8e823e5253189aee088c50f39d01f0d3415030e02d13bb73d592e6b1",
+  "createdAt": "2026-09-15T05:25:23.232Z",
+  "fileSetSHA256": "e7e4647bcdc3023af9bea0f543dadad6cc5553aebab93845753a283cf8ce9f68",
   "files": [
     {
       "path": ".gitattributes",
@@ -17,7 +17,7 @@
     },
     {
       "path": ".github/workflows/packages-release.yml",
-      "sha256": "950c73cd50ba052b4e7db0935fcf39bb93413325e1c71b2f5ac37e16f3115a90"
+      "sha256": "79528b78dfdf5f6d08906f0740a29631ea8390cca9a3f812010305e579c06b02"
     },
     {
       "path": ".github/workflows/packages.yml",
@@ -37,7 +37,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "1115fa58f2e4aabf37dc83e8fa1dd6841d865d722d66664ba69fe9debbe4f58e"
+      "sha256": "369b4441d9d5c40a2eee16d925e51adf2065d1b089f33ad541172405a5d9b6dd"
     },
     {
       "path": "assets/eduwork/icon-1024.png",
@@ -201,11 +201,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "6096ced0d8cce76390637fb8670f716380991cd7848de5a6c9b18be58e636129"
+      "sha256": "bd87343ade369d3081f8c8e67d8d121152f56586932618b033c211430371e1da"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "509d6a7a2b0c04fca3382a6cc15f3e64253097acb60b7dffbc7093bbe3459878"
+      "sha256": "19e810ca58b83e0bbb867662bc52e0bf8c8ffba77cb29354fcc1f0d6f68493ce"
     },
     {
       "path": "docs/RELEASE.md",
@@ -3988,8 +3988,12 @@
       "sha256": "8499c01bea3b0c16c5a946471efe9c20ccffd3755dafc68ff277b2b3daca07d2"
     },
     {
+      "path": "scripts/packages/publication-source.mjs",
+      "sha256": "b1028bd61b3e8b0a3ce725b7939fcd9b26abc2ebb72fe62def56dc13ca396f40"
+    },
+    {
       "path": "scripts/packages/release.mjs",
-      "sha256": "d342aec8478f1d496064e533cf24fe5e9c5f3348900f5dc0a1e2ff9d9b1f6270"
+      "sha256": "f99ce254a1bd15e1ff8d4b01501c29048d490e43f5dd3271cea2852766ca548d"
     },
     {
       "path": "scripts/patch-eduwork-source-reproducibility.mjs",
@@ -4145,7 +4149,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "1ed9650e1bb9004b6a24ba37d1dfa768847e1fd1c7bbe3594760a65fc443065b"
+      "sha256": "3e837c0cd49818d2ca6218c767ba6fa97d137636e24406b2528152ad68dcde30"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",

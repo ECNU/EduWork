@@ -10,6 +10,7 @@
 - Use the checked-in DSH/package/resource locks and record the actual component receipt. Never report a mocked build, registered service or successful tool status as a real end-to-end validation.
 - Default product assembly uses the published npm Runtime and plugin locks. Source Runtime and unpublished plugin experiments require explicit separate build modes and output directories. Prepare the pinned compiler workspace for product extensions; never assume another developer already populated it.
 - Public plugin source lives in `packages/`; npm identities and versions remain independent. Follow `docs/PACKAGES.md` for package-scoped checks and publication. Do not replace product npm locks with workspace links or run the retired standalone repository release flows.
+- 插件版本只发布 npm，不创建插件 GitHub Release 或 Git tag；发布来源使用已审查的完整提交 SHA。
 - Keep tests synthetic. User diagnostic exports, sessions, keys and local machine paths stay outside tracked source.
 - Coordinate shared API and package changes before freezing a combination. Public source snapshots, npm publication, local candidate promotion and desktop Releases are separate actions governed by the user's authorization.
 - Local Web is a single-machine functional validation environment. Desktop shell and release behavior require their own acceptance work.

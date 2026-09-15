@@ -8,9 +8,13 @@ on:
         required: true
         options: [dsh-oidc, dsh-memory, dsh-mail, dsh-artifact-services, dsh-knowledge-studio]
       publish:
-        description: Publish inspected tarball (requires package version tag and npm trusted publisher)
+        description: Publish inspected tarball (requires reviewed source commit and npm trusted publisher)
         type: boolean
         default: false
+      source_commit:
+        description: Reviewed full 40-character commit SHA (required when publishing from main)
+        type: string
+        required: false
       dist_tag:
         description: npm dist-tag
         type: choice
@@ -23,6 +27,7 @@ concurrency:
   cancel-in-progress: false
 env:
   PUBLISH: ${{ inputs.publish }}
+  SOURCE_COMMIT: ${{ inputs.source_commit }}
   DIST_TAG: ${{ inputs.dist_tag }}
 jobs:
   pack:
@@ -30,6 +35,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
@@ -65,6 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:

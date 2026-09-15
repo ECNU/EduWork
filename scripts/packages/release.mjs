@@ -7,6 +7,7 @@ import { createHash } from 'node:crypto'
 import { selectPackage, repository } from './catalog.mjs'
 import { inspectArchive } from './archive.mjs'
 import { npm } from './npm.mjs'
+import { verifyPublicationSource } from './publication-source.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const [mode, id] = process.argv.slice(2)
@@ -29,11 +30,7 @@ assert.match(manifest.version, /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/)
 const publish = process.env.PUBLISH === 'true'
 if (mode === 'publish') assert.ok(publish, 'Publishing requires the explicit workflow input')
 if (publish) {
-  assert.equal(process.env.GITHUB_REPOSITORY, repository, 'Only the source repository may publish')
-  assert.equal(process.env.GITHUB_SHA, commit, 'Workflow and checked-out source commits must match')
-  const tag = `${selected.id}-v${manifest.version}`
-  assert.equal(process.env.GITHUB_REF, `refs/tags/${tag}`, 'Dispatch the workflow from the package version tag')
-  assert.equal(git(['rev-parse', `refs/tags/${tag}^{commit}`]), commit)
+  verifyPublicationSource(commit, process.env)
   assert.ok(['latest', 'dev'].includes(process.env.DIST_TAG), 'Choose latest or dev')
   assert.ok(!manifest.version.includes('-') || process.env.DIST_TAG === 'dev', 'Prereleases must use the dev dist-tag')
   // npm versions are immutable. 401/network/server errors are not evidence of availability.
