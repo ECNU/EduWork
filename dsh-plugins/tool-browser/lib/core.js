@@ -86,20 +86,25 @@ export function directSearchResultURL(engine, raw) {
   }
 }
 
-export function browserExecutable(explicit = process.env.CHATECNU_WORK_BROWSER_EXECUTABLE) {
+export function browserExecutable(explicit, { environment = process.env, platform = process.platform } = {}) {
+  const installed = (root, ...parts) => root ? path.join(root, ...parts) : undefined
   const candidates = [
     explicit,
-    process.platform === 'win32' ? path.join(process.env['ProgramFiles(x86)'] ?? '', 'Microsoft', 'Edge', 'Application', 'msedge.exe') : undefined,
-    process.platform === 'win32' ? path.join(process.env.ProgramFiles ?? '', 'Microsoft', 'Edge', 'Application', 'msedge.exe') : undefined,
-    process.platform === 'win32' ? path.join(process.env.LOCALAPPDATA ?? '', 'Microsoft', 'Edge', 'Application', 'msedge.exe') : undefined,
-    process.platform === 'darwin' ? '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge' : undefined,
-    process.platform === 'darwin' ? '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome' : undefined,
-    process.platform === 'linux' ? '/usr/bin/microsoft-edge' : undefined,
-    process.platform === 'linux' ? '/usr/bin/google-chrome' : undefined,
-    process.platform === 'linux' ? '/usr/bin/chromium' : undefined,
+    environment.EDUWORK_BROWSER_EXECUTABLE,
+    environment.CHATECNU_WORK_BROWSER_EXECUTABLE,
+    // The desktop host resolves this relocatable path from desktop-resources.json.
+    // Search and interactive browsing share the Chromium shipped for media rendering.
+    environment.DSH_MEDIA_BROWSER,
+    environment.ECNU_AGENT_REMOTION_BROWSER,
+    ...(platform === 'win32' ? [
+      ...['ProgramFiles(x86)', 'ProgramFiles', 'LOCALAPPDATA'].map(key => installed(environment[key], 'Microsoft', 'Edge', 'Application', 'msedge.exe')),
+      ...['ProgramFiles', 'ProgramFiles(x86)', 'LOCALAPPDATA'].map(key => installed(environment[key], 'Google', 'Chrome', 'Application', 'chrome.exe')),
+    ] : []),
+    ...(platform === 'darwin' ? ['/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge', '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'] : []),
+    ...(platform === 'linux' ? ['/usr/bin/microsoft-edge', '/usr/bin/google-chrome', '/usr/bin/chromium'] : []),
   ].filter(Boolean)
-  const found = candidates.find(candidate => fs.existsSync(candidate))
-  if (!found) throw new Error('No supported browser was found. Install Microsoft Edge/Chrome or set CHATECNU_WORK_BROWSER_EXECUTABLE.')
+  const found = candidates.find(candidate => { try { return fs.statSync(candidate).isFile() } catch { return false } })
+  if (!found) throw new Error('No supported browser was found. Restore the complete EduWork package, install Microsoft Edge/Chrome, or set EDUWORK_BROWSER_EXECUTABLE.')
   return found
 }
 

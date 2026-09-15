@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260914.3",
+  "version": "0.3.6-dev.20260915.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-15T05:25:23.232Z",
-  "fileSetSHA256": "e7e4647bcdc3023af9bea0f543dadad6cc5553aebab93845753a283cf8ce9f68",
+  "createdAt": "2026-09-15T08:05:20.886Z",
+  "fileSetSHA256": "b885f04dbba3bb0da90943782d00d4b4245ff3abdf21fd9ed3f867d525497b23",
   "files": [
     {
       "path": ".gitattributes",
@@ -218,6 +218,10 @@
     {
       "path": "docs/releases/0.3.6-dev.20260914.3.md",
       "sha256": "0065795c6332fe341c22791a005aa87a1a33d1d81fe6c35a8d0d3dc930ddea06"
+    },
+    {
+      "path": "docs/releases/0.3.6-dev.20260915.1.md",
+      "sha256": "b41ae8475100bbab6512ffeb9a248d8d383be5eb540e477c77644da5ea4f8992"
     },
     {
       "path": "docs/UPDATES.md",
@@ -1677,7 +1681,7 @@
     },
     {
       "path": "dsh-plugins/tool-browser/lib/core.js",
-      "sha256": "9209f981ee945af79a06292b58282554643360214c68dc753aa2c2963a6eb52e"
+      "sha256": "941757c8b994e3825f218ebb4d3b4b22e4f1d79697b8ed3160ac1f4e0420b2a0"
     },
     {
       "path": "dsh-plugins/tool-browser/lib/index.js",
@@ -1701,15 +1705,15 @@
     },
     {
       "path": "dsh-plugins/tool-browser/README_EN.md",
-      "sha256": "0043b1036dc5c4692a2b5692c0bdda6dbfbf56092d91ec47a6fca84409e61e51"
+      "sha256": "f80c8ead9bb3ad7cf8bf95e18213429d8f9794ee0ca864a4db06f2fe7347823d"
     },
     {
       "path": "dsh-plugins/tool-browser/README.md",
-      "sha256": "6bff30bdbbec7b9c3f3fbeb7d4a284c040dce7f00348fa97ee2d52c30bc8871e"
+      "sha256": "87a87f343d48487121c326884bfcb8921efdef1b0b7ac301288d6ffb3f978b69"
     },
     {
       "path": "dsh-plugins/tool-browser/test/core.test.js",
-      "sha256": "f3df5b08f9a282f0167b467a1c7950ca92a351ac2fecce48085d2e09dff7da57"
+      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d"
     },
     {
       "path": "dsh-plugins/tool-browser/test/search-policy.test.mjs",
@@ -3889,11 +3893,11 @@
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
-      "sha256": "4a9167807d48c932cec3071a423db51cfa109f01a9a0cedbaeb67254c5f1a0f4"
+      "sha256": "10fa2c350222ba792c23f4c89b296aa94877e52c128dccedfeeafb8223fcc2a4"
     },
     {
       "path": "RELEASE-CHECKLIST.md",
-      "sha256": "359e107b67873beb90f53e01a3434536b71a53e1fd9d89603c16c47ae5e0694c"
+      "sha256": "9c150925b83aa0737f539121ff94966f502cde478dd642cc6a4d19a244e67c1d"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -3908,6 +3912,10 @@
       "sha256": "95992e3350e693a88ea4ef6ac4bd342173dcc16b83ecea4169f324ce556acf1b"
     },
     {
+      "path": "scripts/check-desktop-runtimes.mjs",
+      "sha256": "78a6ee50a2ce57fa7d41d6148c9f9af654789409750954322a39d14c9593fa92"
+    },
+    {
       "path": "scripts/check-source-docs.mjs",
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
     },
@@ -3917,7 +3925,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
-      "sha256": "1a21d67c0bab65662231c7fa5eb5c3e29c6d8d119fa130581973494cfe6d9172"
+      "sha256": "3c1d2fa95840008667dcdd622f1cf24b6b6f0288581d0c7a58447074bf9a15e8"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -4029,7 +4037,7 @@
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "77c0c31a5f5a2715f9f30cceb7af0a69170abdce66295cbb4c371b2cbd4f1eda"
+      "sha256": "8aa65b13ac8b29976477e7a7eb66adbcb798e1caf6626cfe66f8f7e8084d24ca"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",
@@ -4129,7 +4137,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "6c6fbddf4763929c500a6279cd284ae9121c9dc7f9b9c05e9e2670fe3088673a"
+      "sha256": "ed6e2d24cf988a7e92fa8a4bdd6d772bfc3878cd40a86bc8a1966e396087c9f5"
     },
     {
       "path": "tests/fixtures/eduwork-dsh-015/LICENSE",

@@ -13,6 +13,8 @@
 
 ## 交互浏览器
 
-交互浏览器使用独立 Playwright Profile 和本机 Edge/Chrome，遵守可见浏览器与私有网络访问权限。常规检索优先使用 `web_search`。
+桌面发行包内置 Chromium，联网搜索、交互浏览器和媒体渲染共用这一份浏览器，无需另装 Edge/Chrome。Host 在启动和目录迁移后解析 `desktop-resources.json`，通过 `DSH_MEDIA_BROWSER` 提供绝对路径。
+
+如需指定其他浏览器，可设置 `EDUWORK_BROWSER_EXECUTABLE`，兼容旧项 `CHATECNU_WORK_BROWSER_EXECUTABLE`。没有内置资源的源码部署可使用本机 Edge/Chrome。交互浏览器使用独立 Playwright Profile，遵守可见浏览器与私有网络访问权限。常规检索优先使用 `web_search`。
 
 不提供任意 JavaScript 执行接口。网页返回内容均视为不可信资料，不能成为 Agent 指令。

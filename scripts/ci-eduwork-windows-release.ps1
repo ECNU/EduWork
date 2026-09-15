@@ -113,6 +113,9 @@ $name $Version — Windows x64 Electron 开发版
     & tar.exe -xf $archive -C $extracted
     $desktop = Join-Path $extracted $name
     & node (Join-Path $CoreRoot 'scripts/verify-windows-release.mjs') $desktop --for-update
+    & (Join-Path $desktop 'resources/runtime/node.exe') (Join-Path $CoreRoot 'scripts/check-desktop-runtimes.mjs') $desktop (Join-Path $publicEvidence 'native-runtimes.json')
+    if ($LASTEXITCODE -ne 0) { throw 'Packaged native runtime smoke check failed' }
+    $receipt.checks.nativeRuntimes = 'passed'
     $frozenProduct = Join-Path $desktop 'resources/product'
     $gui = Join-Path $evidence 'gui'
     New-Item -ItemType Directory -Path $gui | Out-Null

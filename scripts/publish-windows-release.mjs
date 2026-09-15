@@ -17,7 +17,7 @@ export function validateReceipt(receipt, {repository, version, commit}) {
   if (receipt.schemaVersion !== 1 || receipt.kind !== 'eduwork-windows-release' || receipt.passed !== true || receipt.version !== version || receipt.edition !== edition || receipt.shell !== 'electron' || receipt.platform !== 'windows-x64' || receipt.editionCommit !== commit) throw Error('Release identity or validation does not match this workflow')
   if (receipt.validationProfile !== 'ci-build-and-launch-v1') throw Error('Unknown release validation scope')
   if (receipt.releaseNotes?.approved !== true || !/^[a-f0-9]{64}$/.test(receipt.releaseNotes?.sha256 ?? '')) throw Error('Discussed and approved release notes are required')
-  for (const check of ['sourceAndDependencies','desktopLaunch','archiveManifest']) {
+  for (const check of ['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes']) {
     if (receipt.checks?.[check] !== 'passed') throw Error('Release check did not pass: '+check)
   }
   if (receipt.asset?.name !== `${edition}-${version}-windows-x64-electron.zip` || !/^[a-f0-9]{64}$/.test(receipt.asset.sha256) || !Number.isSafeInteger(receipt.asset.bytes) || receipt.asset.bytes < 1) throw Error('Invalid release ZIP')

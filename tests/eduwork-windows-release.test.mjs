@@ -3,9 +3,13 @@ import assert from 'node:assert/strict'
 import { validateReceipt,releasePublication } from '../scripts/publish-windows-release.mjs'
 import {githubUpdateManifest,githubUpdateManifestBytes} from '../scripts/github-update-manifest.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
-const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-and-launch-v1',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
+const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-and-launch-v1',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
 test('release publisher accepts the complete matching Windows receipt',()=>assert.equal(validateReceipt(receipt,context),'EduWork'))
+
+test('release publisher rejects missing or failed packaged native runtime checks',()=>{
+ for(const nativeRuntimes of [undefined,'skipped','failed']) assert.throws(()=>validateReceipt({...receipt,checks:{...receipt.checks,nativeRuntimes}},context),/nativeRuntimes/)
+})
 
 test('published update metadata retains the legacy client wire representation',()=>{
  const row={...receipt,distribution:'eduwork'}

@@ -1,6 +1,40 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { browserPresentationMeta, compactText, directSearchResultURL, isCiteableSearchResultURL, isPrivateTarget, isSearchResultRelevant, normalizeURL, searchQueryTokens, searchURL, untrustedPage, webSearchResult } from '../lib/core.js'
+import { mkdtempSync, mkdirSync, writeFileSync, renameSync, rmSync } from 'node:fs'
+import { join, dirname } from 'node:path'
+import { tmpdir } from 'node:os'
+import { browserExecutable, browserPresentationMeta, compactText, directSearchResultURL, isCiteableSearchResultURL, isPrivateTarget, isSearchResultRelevant, normalizeURL, searchQueryTokens, searchURL, untrustedPage, webSearchResult } from '../lib/core.js'
+
+test('portable browser works without a system browser and follows relocated resources', t => {
+  const root = mkdtempSync(join(tmpdir(), 'eduwork-browser-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const before = join(root, '原位置 chrome.exe'), after = join(root, '移动后 chrome.exe')
+  writeFileSync(before, 'synthetic browser')
+  const environment = { DSH_MEDIA_BROWSER: before }
+  assert.equal(browserExecutable(undefined, { environment, platform: 'win32' }), before)
+  renameSync(before, after)
+  environment.DSH_MEDIA_BROWSER = after
+  assert.equal(browserExecutable(undefined, { environment, platform: 'win32' }), after)
+  environment.DSH_MEDIA_BROWSER = root
+  assert.throws(() => browserExecutable(undefined, { environment, platform: 'win32' }), /No supported browser/)
+})
+
+test('browser overrides remain supported and Windows Chrome is discovered without Edge', t => {
+  const root = mkdtempSync(join(tmpdir(), 'eduwork-browser-'))
+  t.after(() => rmSync(root, { recursive: true, force: true }))
+  const chrome = join(root, 'Google/Chrome/Application/chrome.exe'), bundled = join(root, 'bundled.exe')
+  mkdirSync(dirname(chrome), { recursive: true }); writeFileSync(chrome, 'synthetic chrome'); writeFileSync(bundled, 'synthetic bundled browser')
+  const environment = { LOCALAPPDATA: root }
+  assert.equal(browserExecutable(undefined, { environment, platform: 'win32' }), chrome)
+  environment.DSH_MEDIA_BROWSER = bundled
+  assert.equal(browserExecutable(undefined, { environment, platform: 'win32' }), bundled)
+  for (const key of ['EDUWORK_BROWSER_EXECUTABLE', 'CHATECNU_WORK_BROWSER_EXECUTABLE']) {
+    environment[key] = chrome
+    assert.equal(browserExecutable(undefined, { environment, platform: 'win32' }), chrome)
+    delete environment[key]
+  }
+  assert.equal(browserExecutable(chrome, { environment, platform: 'win32' }), chrome)
+})
 
 test('normalizes public HTTP(S) URLs and rejects local file URLs', () => {
   assert.equal(normalizeURL('example.com/a'), 'https://example.com/a')

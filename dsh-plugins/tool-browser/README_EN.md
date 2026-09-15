@@ -20,8 +20,12 @@ Bing/Baidu search route as a profile-scoped provider on DSH's official `ctx.web`
 seam. DSH's official `web_search` Tool, prompt guidance and result card remain
 the model and UI owners.
 
+Desktop packages include Chromium shared by search, interactive browsing and media rendering; no separate Edge/Chrome installation is required. The host resolves the relocatable path from `desktop-resources.json` into `DSH_MEDIA_BROWSER` on startup.
+
+Set `EDUWORK_BROWSER_EXECUTABLE` to override the browser; the legacy `CHATECNU_WORK_BROWSER_EXECUTABLE` remains supported. Source deployments without bundled resources can use locally installed Edge/Chrome.
+
 The main entry retains the DSH-native interactive browser execution surface. It uses a
-separate Playwright profile and the locally installed Edge/Chrome executable.
+separate Playwright profile.
 Interaction, visible mode and private-network targets pass through DSH
 permission presets. Ordinary search belongs to `web_search`, not this browser
 Tool.
