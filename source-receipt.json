@@ -4247,21 +4247,21 @@
   "artifacts": [
     {
       "name": "@eduwork/dsh-oidc",
-      "version": "0.2.3",
-      "commit": "e7ba4e04fdcaf0f957a148e796d4b0a850ca8468",
+      "version": "0.2.4",
+      "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
       "lock": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "303ca155620a6f6dbac88a1ca9adc041805429e1e89a30187435943e2c5e880a"
+      "sha256": "e7239dd1951f663140a95b14991562ad5f0c22546d57209082bf428674791ad4"
     },
     {
       "name": "@eduwork/dsh-mail",
-      "version": "0.1.1",
-      "commit": "c38ad0a7f7188218a58eaa9058c05db146feb16d",
+      "version": "0.1.2",
+      "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
       "lock": "third_party/npm-015-rc1/dsh-mail-assistant/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "eda40113e92e3bfb7e045a9b72778fec38cc96b8d34940142bbfb66ba045c9e7"
+      "sha256": "f63cec40142aa178d375a8e473f0ed851039c3e11b910ef9c2b106522be749b2"
     },
     {
       "name": "@shlv/dsh-literature",
@@ -4274,30 +4274,30 @@
     },
     {
       "name": "@eduwork/dsh-artifact-services",
-      "version": "0.2.0",
-      "commit": "96ba6eff5d2e6a54a76fc8f782fc02061170f412",
+      "version": "0.2.1",
+      "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
       "lock": "third_party/npm-015-rc1/dsh-artifact-services/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "c99c74f6c6ab5c83e94bbd05c4a6ce78d5eac4ffc54fcf64c4ed3ca3557a610d"
+      "sha256": "a4f223ee0db80ac98fd30e3973d57d8325f3df3b4cbd74c6539861819b463444"
     },
     {
       "name": "@eduwork/dsh-knowledge-studio",
-      "version": "0.5.0",
-      "commit": "96ba6eff5d2e6a54a76fc8f782fc02061170f412",
+      "version": "0.5.1",
+      "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
       "lock": "third_party/npm-015-rc1/dsh-knowledge-studio/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "9d82287bb64161efacef0f7497ff437b269b6527af70cb5a71cc09e540619866"
+      "sha256": "c1a742bfee247456024ac7ff12e0b3803ca3008eaae983c36850a5cc1a7c9997"
     },
     {
       "name": "@eduwork/dsh-memory",
-      "version": "0.1.1",
-      "commit": "c03db35a95c33c6a1a4d960ab1d8d4155554e2e7",
+      "version": "0.1.2",
+      "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
       "lock": "third_party/npm-015-rc1/dsh-memory-native/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "ee5012f3a0c375e895b66629ec3182284caae731af7e15b7a3bf626594b007c2"
+      "sha256": "86e948f4be7c8f13107a366efb43abc1d7dc8301583c4662f9145e2d20e519c7"
     }
   ],
   "reviewedCompatibility": [
