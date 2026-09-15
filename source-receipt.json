@@ -4327,7 +4327,7 @@
     },
     {
       "path": "dsh-plugins/tool-browser/test/core.test.js",
-      "sha256": "f3df5b08f9a282f0167b467a1c7950ca92a351ac2fecce48085d2e09dff7da57",
+      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
     }
