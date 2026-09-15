@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-mail",
-  "version": "0.1.1",
-  "repository": "https://github.com/freedomkk-qfeng/dsh-mail-assistant",
-  "commit": "c38ad0a7f7188218a58eaa9058c05db146feb16d",
+  "version": "0.1.2",
+  "repository": "https://github.com/ecnu/EduWork",
+  "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
   "publicationStatus": "published",
-  "tarballSHA256": "eda40113e92e3bfb7e045a9b72778fec38cc96b8d34940142bbfb66ba045c9e7",
+  "tarballSHA256": "f63cec40142aa178d375a8e473f0ed851039c3e11b910ef9c2b106522be749b2",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-mail/-/dsh-mail-0.1.1.tgz",
-    "integrity": "sha512-cmIOSSQXZjIo16hZyxPILf9wYszZhWbCZUeVRYW66qAsGm20rFv2/AGiuH33b7wUi4PSDhfFXZAqJM2qLI0V8Q==",
-    "shasum": "54630247a19f5f167047b86ef357c2dcd79dbfa6"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-mail/-/dsh-mail-0.1.2.tgz",
+    "integrity": "sha512-FdhKKYmWbMeiTWIjZdyHAtdbPjrh0bsHk73bSfB4+KZLugMWBRTprPYMDhgaGxpSdjs582Cg7JZ5slrrvrH6mQ==",
+    "shasum": "8e26752673832acbab5741fe6ec3a71c83995e1f"
   },
   "baseline": {
     "dshVersion": "0.1.5-rc.1",

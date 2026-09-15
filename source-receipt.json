@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260914.3",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-15T04:56:22.769Z",
-  "fileSetSHA256": "7fd262ef6281ac06f714221c8371c9aeb0d637a54b4dd749ef46751561e51949",
+  "createdAt": "2026-09-15T05:07:05.411Z",
+  "fileSetSHA256": "af0d6d3c8e823e5253189aee088c50f39d01f0d3415030e02d13bb73d592e6b1",
   "files": [
     {
       "path": ".gitattributes",
@@ -4225,23 +4225,23 @@
     },
     {
       "path": "third_party/npm-015-rc1/dsh-artifact-services/LOCK.json",
-      "sha256": "dd27921be10dbe485d72f4bc364534fb4f4c022a84bb08c9bb75327a06b051d9"
+      "sha256": "2ef620f97659452a7fb960edf1e199e23bdde48fae98d0e222278314220ccd95"
     },
     {
       "path": "third_party/npm-015-rc1/dsh-knowledge-studio/LOCK.json",
-      "sha256": "aa0c3c77777eac8aee77b503f77bf3077625d100535a118086f16ebf92c4ce5c"
+      "sha256": "80a4a9b974be0a93783fb534d574c4eec0049aca96550c92474d156b506e7829"
     },
     {
       "path": "third_party/npm-015-rc1/dsh-mail-assistant/LOCK.json",
-      "sha256": "02d32b48719ee880d9d3b777dd3fa8cfe3420e346b7b13c8498f9ad3d6ac5de9"
+      "sha256": "9731787bdeae048824f5523daf371a0da50d88c65b81ec1b3ebbae00163e8b3a"
     },
     {
       "path": "third_party/npm-015-rc1/dsh-memory-native/LOCK.json",
-      "sha256": "0b202aaedb9e60ea87e3604dd530d2d9dc8ea8109824833184932dbd67a746c8"
+      "sha256": "59a8b6dff7668630a90201a251d93d7076fb2de005de99c5d5bf12a25b1e417b"
     },
     {
       "path": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
-      "sha256": "c6813c72f4f7103b23a9970a24523fbd62b626ad6a8c201cc8b7b3e51c1dcc70"
+      "sha256": "2ea7d82ad0f58a90e9afcfad7a6b4eda12e60d455e617104d0bf67b9debe0ab0"
     }
   ],
   "artifacts": [

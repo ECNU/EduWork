@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-artifact-services",
-  "version": "0.2.0",
-  "repository": "https://github.com/freedomkk-qfeng/dsh-knowledge-studio",
-  "commit": "96ba6eff5d2e6a54a76fc8f782fc02061170f412",
+  "version": "0.2.1",
+  "repository": "https://github.com/ecnu/EduWork",
+  "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
   "publicationStatus": "published",
-  "tarballSHA256": "c99c74f6c6ab5c83e94bbd05c4a6ce78d5eac4ffc54fcf64c4ed3ca3557a610d",
+  "tarballSHA256": "a4f223ee0db80ac98fd30e3973d57d8325f3df3b4cbd74c6539861819b463444",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-artifact-services/-/dsh-artifact-services-0.2.0.tgz",
-    "integrity": "sha512-FtAU2cLc/VtxAEi3UrV7qOWqjwkmt9BYssHZkerBCmwY3n7W/qa80EtCY1gMiNBnzq6QWPUFhdamQio4fwQrBg==",
-    "shasum": "c3b28e4c6d75e8a939f39f934ed516b739f3171d"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-artifact-services/-/dsh-artifact-services-0.2.1.tgz",
+    "integrity": "sha512-MEL3/ll+qsILTJO2lcxLF/MVIMXBoETOjKyi6yUII7LcrQNuPVoAWQl00fKhlDXiXzFcinjuCBKLGqjBF09TkQ==",
+    "shasum": "a36496eadb9b8d1ef38e0566fa417e6703f258c9"
   },
   "baseline": {
     "dshVersion": "0.1.5-rc.1",
