@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-memory",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "license": "MIT",
   "description": "Local memory and conversation recall for DeepSeek Harness",
   "type": "module",

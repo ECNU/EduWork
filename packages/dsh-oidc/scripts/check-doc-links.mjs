@@ -43,8 +43,8 @@ for (const document of documents) {
       if (!isPublished(linkedPath)) failures.push(`${document.target.pathname}: package omits linked file ${linkedPath}`)
     }
   }
-  if (document.name.endsWith('.en.md')) {
-    const defaultName = document.name.replace(/\.en\.md$/, '.md')
+  if (document.name === 'README_EN.md' || document.name.endsWith('.en.md')) {
+    const defaultName = document.name === 'README_EN.md' ? 'README.md' : document.name.replace(/\.en\.md$/, '.md')
     try { await access(new URL(defaultName, document.target)) }
     catch { failures.push(`${document.target.pathname}: missing Chinese default ${defaultName}`) }
     if (!document.content.includes(`[简体中文](${defaultName})`)) {
@@ -52,7 +52,7 @@ for (const document of documents) {
     }
     continue
   }
-  const englishName = document.name.replace(/\.md$/, '.en.md')
+  const englishName = document.name === 'README.md' ? 'README_EN.md' : document.name.replace(/\.md$/, '.en.md')
   try { await access(new URL(englishName, document.target)) }
   catch { failures.push(`${document.target.pathname}: missing English mirror ${englishName}`) }
   if (!document.content.includes(`[English](${englishName})`)) {

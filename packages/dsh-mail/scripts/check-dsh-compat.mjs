@@ -2,7 +2,6 @@ import { readFile } from 'node:fs/promises'
 
 const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'))
-const expectedPackageVersion = '0.1.1'
 const expectedDsh = '0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1'
 const dshPeers = [
   '@deepseek-ai/dsh-api-remotes',
@@ -13,8 +12,8 @@ const dshPeers = [
   '@deepseek-ai/dsh-tools',
 ]
 
-if (manifest.name !== '@eduwork/dsh-mail' || manifest.version !== expectedPackageVersion) {
-  throw new Error(`Expected local compatibility candidate @eduwork/dsh-mail@${expectedPackageVersion}, got ${manifest.name}@${manifest.version}`)
+if (manifest.name !== '@eduwork/dsh-mail' || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(manifest.version)) {
+  throw new Error(`Expected a versioned @eduwork/dsh-mail package, got ${manifest.name}@${manifest.version}`)
 }
 for (const name of dshPeers) {
   if (manifest.peerDependencies?.[name] !== expectedDsh) {

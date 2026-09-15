@@ -8,7 +8,7 @@
 
 DSH Host 须通过完整的根级 npm `overrides` 和校验过的锁文件，将直接与间接 `@deepseek-ai/dsh*` 依赖统一锁定到 `0.1.5-rc.1`。只锁顶层包可能使上游 caret peer 解析到 rc.2，与 Studio 的精确 rc.1 peer 冲突并触发 `ERESOLVE`。安装示例以此配置为前提；使用装配锁文件执行 `npm ci`，不要通过 `--force` 或 `--legacy-peer-deps` 绕过冲突。
 
-上述 rc.1 条件适用于独立 npm 安装。EduWork 桌面使用 rc.2 Runtime 与固定插件载荷的产品组合，不在 Runtime 内重新执行本段安装命令；详见[产品构建指南](../../../../docs/BUILD.md)。
+上述 rc.1 条件适用于独立 npm 安装。EduWork 桌面使用 rc.2 Runtime 与固定插件载荷的产品组合，不在 Runtime 内重新执行本段安装命令；详见[产品构建指南](https://github.com/ecnu/EduWork/blob/main/docs/BUILD.md)。
 
 ## 安装与配置
 

@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-oidc",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Standards-based OIDC identity, enterprise API-key binding, declarative branding, and OpenAI-compatible model integration for DeepSeek Harness",
   "keywords": [
     "deepseek-harness",

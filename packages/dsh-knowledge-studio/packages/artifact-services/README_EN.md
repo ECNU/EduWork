@@ -8,7 +8,7 @@ Version: `@eduwork/dsh-artifact-services@0.2.0`, paired with Studio `0.5.0`. DSH
 
 For DSH integration, the consuming host must pin every direct and transitive `@deepseek-ai/dsh*` package to `0.1.5-rc.1` through complete root-level npm `overrides` and a verified lockfile. Pinning only the top-level DSH package allows upstream caret peer ranges to resolve rc.2, which can cause `ERESOLVE` with Studio's exact rc.1 peers. The installation examples assume this host configuration. Use `npm ci` with the assembly lockfile; do not bypass conflicts with `--force` or `--legacy-peer-deps`.
 
-The rc.1 requirement above applies to independent npm installation. EduWork desktop combines an rc.2 Runtime with pinned plugin payloads; do not rerun these install commands inside that Runtime. See the [product build guide](../../../../docs/BUILD.md).
+The rc.1 requirement above applies to independent npm installation. EduWork desktop combines an rc.2 Runtime with pinned plugin payloads; do not rerun these install commands inside that Runtime. See the [product build guide](https://github.com/ecnu/EduWork/blob/main/docs/BUILD.md).
 
 ## Install and configure
 

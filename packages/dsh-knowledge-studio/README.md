@@ -28,7 +28,7 @@
 
 Studio 精确依赖共享包，两包版本应配套安装。共享服务也可以供其他应用或插件直接使用，不依赖 Studio 或机构服务。
 
-本文的 rc.1 指独立 npm 安装的依赖基线。EduWork 桌面产品使用锁定的 rc.2 Runtime，并从固定 npm 包投影插件载荷，不在运行目录重新解析 peer 依赖；这是一套单独验收的产品组合。桌面构建请遵循[产品构建指南](../../docs/BUILD.md)，不要把独立安装的 rc.1 overrides 套到产品 Runtime 上。
+本文的 rc.1 指独立 npm 安装的依赖基线。EduWork 桌面产品使用锁定的 rc.2 Runtime，并从固定 npm 包投影插件载荷，不在运行目录重新解析 peer 依赖；这是一套单独验收的产品组合。桌面构建请遵循[产品构建指南](https://github.com/ecnu/EduWork/blob/main/docs/BUILD.md)，不要把独立安装的 rc.1 overrides 套到产品 Runtime 上。
 
 ## 安装
 

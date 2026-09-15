@@ -17,7 +17,7 @@ Open Studio from the official Sidebar Start page. The host manages tabs, collaps
 
 Studio requires the exact shared version. Official DSH **0.1.5-rc.1** and Node **22.19+ or 24** are the current baseline; do not use the old DSH 0.1.2 installation instructions for this version. The two packages retain independent SemVer versioning; their versions do not track the consuming product.
 
-The rc.1 baseline here applies to independent npm installations. EduWork desktop uses a locked rc.2 Runtime and projects plugin payloads from pinned npm packages without resolving peer dependencies again in the runtime directory. This is a separately validated product combination. Follow the [product build guide](../../docs/BUILD.md) for desktop builds; do not apply the independent rc.1 overrides to the product Runtime.
+The rc.1 baseline here applies to independent npm installations. EduWork desktop uses a locked rc.2 Runtime and projects plugin payloads from pinned npm packages without resolving peer dependencies again in the runtime directory. This is a separately validated product combination. Follow the [product build guide](https://github.com/ecnu/EduWork/blob/main/docs/BUILD.md) for desktop builds; do not apply the independent rc.1 overrides to the product Runtime.
 
 Before running the command, the host must pin all direct and transitive `@deepseek-ai/dsh*` dependencies to `0.1.5-rc.1` using complete root-level npm `overrides` and a verified lockfile. Pinning only the top-level package can resolve rc.2 through upstream caret peer ranges and cause `ERESOLVE`. Use `npm ci` for an existing locked assembly; do not bypass conflicts with `--force` or `--legacy-peer-deps`.
 

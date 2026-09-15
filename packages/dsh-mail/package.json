@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-mail",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Standards-based IMAP/SMTP mail assistant for DeepSeek Harness with explicit read/send controls and approval-aware delivery",
   "keywords": [
     "deepseek-harness",
