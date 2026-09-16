@@ -17,7 +17,7 @@ Content can be downloaded separately. Downloading available software also starts
 - Program files, plugins, npm packages, Python, Node and browsers remain whole-application updates. Content cannot carry executable binaries or runtime directories.
 - Personal/workspace Skills, user models, credentials, conversations and desktop preferences are preserved. Locally modified bundled Skills prevent online replacement and should be saved as personal Skills first.
 
-Configuration overlays are applied in memory without rewriting the original JSONC. Relative assets and the configuration editor remain anchored to that file. Content cannot change its own update source, trust key, application identity or desktop preferences. Related configuration and Skills changes must be shipped together for atomic activation; independent changes may use separate bundles.
+Configuration overlays are applied in memory without rewriting the original JSONC. Relative assets and the configuration editor remain anchored to that file. Content cannot change its own update source, trust key, application identity or desktop preferences. Configuration and Skills have independent revisions. Every latest bundle is a complete snapshot of all components managed by that source. Unchanged components retain their bytes and revision; clients switch only newer components. Related changes are activated atomically. This lets offline clients catch up without missing intermediate updates.
 
 ## Source configuration
 
@@ -42,7 +42,7 @@ For example, run `openssl genpkey -algorithm ED25519 -out content-signing.pem`, 
 
 ## Dependencies and release plan
 
-Software follows SemVer; content uses positive integer revisions. A publisher uses one increasing release sequence across both channels, plus an increasing revision for each included component. Omit unchanged components. Each Skill must declare dependencies in the release plan and have a matching `<name>/SKILL.md` entry.
+Software follows SemVer; content uses positive integer revisions. A publisher uses one increasing release sequence across both channels, plus an increasing revision for each changed component. Include unchanged components with their original bytes and revision. Each Skill must declare dependencies in the release plan and have a matching `<name>/SKILL.md` entry.
 
 Requirements include mandatory `minClient` and `capabilities`, optional `maxClientExclusive`, and an optional exact `dsh` version. The bundle requirements must cover every Skill; an individual upper client bound must match the bundle bound. Installed capability names come from `resources/product/assembly.json`: `package:<name>` for `managedPackages` and `plugin:<name>` for `localPlugins`. Presence does not prove account/model availability. Use client version bounds for required tool API versions; dependencies are never installed by this mechanism.
 
@@ -75,7 +75,7 @@ Save a private release plan, with paths relative to the plan file:
 }
 ```
 
-Remove the entire component field when not updating it. The configuration patch is plain JSON, for example `{"features":{"visionFallback":true}}`. The Skills directory is the complete official snapshot and must not contain personal Skills. Auxiliary scripts do not run installation hooks, npm or pip.
+A source authorized for only one component includes only that component. A source managing both must always include both, preserving unchanged bytes and revisions. The configuration patch is plain JSON, for example `{"features":{"visionFallback":true}}`. The Skills directory is the complete official snapshot and must not contain personal Skills. Auxiliary scripts do not run installation hooks, npm or pip.
 
 ## Building and publishing content
 

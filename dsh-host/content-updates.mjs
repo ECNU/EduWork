@@ -113,9 +113,7 @@ export class ContentUpdates {
     for(const key of new Set(Object.values(selected))) {
       try {
         const {manifest}=await this.cached(key)
-        if(Object.entries(manifest.components).some(([name,rev])=>rev<=(this.source.bundled[name]??0))) {
-          for(const name of Object.keys(selected))if(selected[name]===key)delete selected[name]
-        }
+        for(const name of Object.keys(selected))if(selected[name]===key&&manifest.components[name]<=(this.source.bundled[name]??0))delete selected[name]
       } catch {
         for(const name of Object.keys(selected))if(selected[name]===key)delete selected[name]
         this.view.message='缓存内容不可用，已恢复软件内置内容'
@@ -125,7 +123,10 @@ export class ContentUpdates {
       try {
         const pending=await this.cached(this.state.pending)
         if(Object.entries(pending.manifest.components).some(([name,revision])=>revision<(this.source.bundled[name]??0)))throw Error('软件内置内容已更新，已取消旧的待生效内容')
-        for(const name of Object.keys(pending.manifest.components))if(pending.manifest.components[name]>(this.source.bundled[name]??0))selected[name]=this.state.pending
+        for(const name of Object.keys(pending.manifest.components)) {
+          const activeRevision=selected[name]?(await this.cached(selected[name])).manifest.components[name]:this.source.bundled[name]??0
+          if(pending.manifest.components[name]>activeRevision)selected[name]=this.state.pending
+        }
         this.state.trial=this.state.pending;await this.save()
       } catch(error) { await this.rejectPending(error.message); return this.prepare() }
     }
@@ -183,7 +184,7 @@ export class ContentUpdates {
       const bundle=validateBundle(bytes,manifest,this.environment)
       if(bundle.skills)await this.unchangedBundledSkills()
       for(const [name,revision] of Object.entries(manifest.components)) {
-        if(revision<=this.view[name+'Revision'])throw Error('包内每个组件的修订号都必须递增；未变组件请不要重复发布')
+        if(revision<this.view[name+'Revision'])throw Error('内容组件修订号不能倒退')
         const active=this.state.active[name]
         if(active&&(await this.cached(active)).manifest.components[name]>revision)throw Error('内容组件修订号不能倒退')
       }

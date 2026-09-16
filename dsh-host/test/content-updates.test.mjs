@@ -15,7 +15,7 @@ const skill=(body='---\nname: example\ndescription: Example skill\n---\nUse the 
   const bytes=Buffer.from(body)
   return {entries:[{name:'example',requires}],files:[{path:'example/SKILL.md',data:bytes.toString('base64'),bytes:bytes.length,sha256:digest(bytes)}]}
 }
-async function fixture(t) {
+async function fixture(t,permissions={}) {
   const root=await mkdtemp(join(tmpdir(),'eduwork-content-'))
   t.after(()=>rm(root,{recursive:true,force:true}))
   const product=join(root,'resources/product'),configPath=join(root,'config/eduwork.jsonc')
@@ -23,7 +23,7 @@ async function fixture(t) {
   const builtin=Buffer.from('builtin skill'),keys=generateKeyPairSync('ed25519')
   await writeFile(join(product,'skills/example/SKILL.md'),builtin)
   await writeFile(join(root,'RELEASE-MANIFEST.json'),JSON.stringify({files:[{path:'resources/product/skills/example/SKILL.md',sha256:digest(builtin)}]}))
-  const source={publisher:'example',baseURL:'https://updates.example.test/content',publicKey:keys.publicKey.export({type:'spki',format:'pem'}),configuration:true,skills:true}
+  const source={publisher:'example',baseURL:'https://updates.example.test/content',publicKey:keys.publicKey.export({type:'spki',format:'pem'}),configuration:true,skills:false,...permissions}
   const base={schemaVersion:1,product:{name:'Custom name'},desktop:{closeAction:'exit'},features:{visionFallback:false,maxConcurrentRequests:3},organizations:[],contentUpdates:source}
   await writeFile(configPath,JSON.stringify(base))
   const environment={version,dshVersion:requires.dsh,capabilities:requires.capabilities},responses=new Map(),requests=[]
@@ -40,7 +40,7 @@ async function fixture(t) {
 }
 
 test('content activates only after restart, preserves base config and commits after desktop ready',async t=>{
-  const f=await fixture(t),original=await readFile(f.configPath,'utf8'),manager=await f.open()
+  const f=await fixture(t,{skills:true}),original=await readFile(f.configPath,'utf8'),manager=await f.open()
   f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
   await manager.prepare();assert.equal((await manager.check()).state,'available')
   assert.equal((await manager.download()).state,'ready')
@@ -56,13 +56,13 @@ test('content activates only after restart, preserves base config and commits af
   await restarted.ready()
   const stable=await f.open();assert.equal((await stable.prepare()).configurationRevision,1)
   await stable.selectPolicy('stable');assert.equal(stable.snapshot().configurationRevision,1)
-  f.release(1,undefined,undefined,{channel:'stable'})
+  f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()},{channel:'stable'})
   assert.equal((await stable.check()).state,'current')
   assert.equal(await readFile(f.configPath,'utf8'),original)
 })
 
 test('failed trial and interrupted startup roll back both components without a restart loop',async t=>{
-  const f=await fixture(t)
+  const f=await fixture(t,{skills:true})
   f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
   let manager=await f.open();await manager.check();await manager.download()
   manager=await f.open();await manager.prepare();await manager.ready()
@@ -73,7 +73,7 @@ test('failed trial and interrupted startup roll back both components without a r
   const afterCrash=await f.open(),restored=await afterCrash.prepare()
   assert.equal(restored.configurationRevision,1);assert.equal(restored.skillsRevision,1)
   assert.equal((await afterCrash.check()).state,'error')
-  f.release(3);await afterCrash.check();await afterCrash.download()
+  f.release(3,{configuration:3,skills:3},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()});await afterCrash.check();await afterCrash.download()
   const next=await f.open();await next.prepare();assert.equal(await next.rollback(),true)
   assert.equal(await next.rollback(),false)
   assert.equal((await (await f.open()).prepare()).configurationRevision,1)
@@ -117,7 +117,7 @@ test('a newer full package supersedes stale config and cancels incompatible pend
 })
 
 test('local bundled skill edits prevent replacement; personal and workspace skills are untouched',async t=>{
-  const f=await fixture(t),manager=await f.open()
+  const f=await fixture(t,{skills:true,configuration:false}),manager=await f.open()
   await mkdir(join(f.root,'data/personal-skills'),{recursive:true})
   await writeFile(join(f.root,'data/personal-skills/SKILL.md'),'personal')
   await writeFile(join(f.product,'skills/example/SKILL.md'),'local edit')
@@ -128,7 +128,7 @@ test('local bundled skill edits prevent replacement; personal and workspace skil
 })
 
 test('configuration management is opt-in and a missing generic config remains usable',async t=>{
-  const f=await fixture(t);f.base.contentUpdates.configuration=false
+  const f=await fixture(t,{skills:true});f.base.contentUpdates.configuration=false
   await writeFile(f.configPath,JSON.stringify(f.base))
   const manager=await f.open();f.release(1)
   assert.equal((await manager.check()).state,'error')
@@ -160,7 +160,7 @@ test('signed manifest is bound to publisher/channel and same-origin content root
 })
 
 test('publisher CLI output is consumable and signing-key mismatches fail before output',async t=>{
-  const f=await fixture(t),planFile=join(f.root,'plan.json'),keyFile=join(f.root,'key.pem'),output=join(f.root,'release')
+  const f=await fixture(t,{skills:true}),planFile=join(f.root,'plan.json'),keyFile=join(f.root,'key.pem'),output=join(f.root,'release')
   await writeFile(keyFile,f.keys.privateKey.export({type:'pkcs8',format:'pem'}))
   await writeFile(join(f.root,'config-patch.json'),JSON.stringify({features:{visionFallback:true}}))
   await writeFile(planFile,JSON.stringify({channel:'development',revision:1,requires,configuration:{revision:1,path:'config-patch.json'},skills:{revision:1,path:'resources/product/skills',entries:[{name:'example',requires}]}}))
@@ -172,4 +172,29 @@ test('publisher CLI output is consumable and signing-key mismatches fail before 
   const manager=await f.open();await manager.check();assert.equal((await manager.download()).state,'ready')
   await writeFile(keyFile,generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))
   await assert.rejects(createContentUpdate({config:f.configPath,planFile,keyFile,output:join(f.root,'bad')}),/签名/)
+})
+
+test('offline clients catch every component from the latest snapshot and unchanged revisions stay active',async t=>{
+  const f=await fixture(t,{skills:true}),snapshot=(configuration,skills)=>({schemaVersion:1,configuration:{features:{maxConcurrentRequests:configuration}},skills:skill('skill revision '+skills)})
+  let manager=await f.open()
+  f.release(1,{configuration:1,skills:1},snapshot(1,1));await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare();await manager.ready()
+  f.release(2,{configuration:2,skills:1},snapshot(2,1))
+  // The device misses release 2, then sees a later Skills-only change.
+  f.release(3,{configuration:2,skills:2},snapshot(2,2));await manager.check();await manager.download()
+  manager=await f.open();let prepared=await manager.prepare();await manager.ready()
+  assert.equal(prepared.configurationRevision,2);assert.equal(prepared.skillsRevision,2)
+  assert.equal(prepared.configurationPatch.features.maxConcurrentRequests,2)
+  const oldSkillRoot=prepared.skillRoot
+  f.release(4,{configuration:3,skills:2},snapshot(3,2));await manager.check();await manager.download()
+  manager=await f.open();prepared=await manager.prepare();await manager.ready()
+  assert.equal(prepared.configurationRevision,3);assert.equal(prepared.skillsRevision,2)
+  assert.equal(prepared.skillRoot,oldSkillRoot)
+  // Reopening must not drop newer configuration because another component is bundled.
+  f.base.contentUpdates.bundled={configuration:1,skills:2};await writeFile(f.configPath,JSON.stringify(f.base))
+  manager=await f.open();prepared=await manager.prepare()
+  assert.equal(prepared.configurationRevision,3);assert.equal(prepared.skillRoot,undefined)
+  f.release(5,{configuration:4},{schemaVersion:1,configuration:{features:{maxConcurrentRequests:4}}})
+  assert.equal((await manager.check()).state,'error')
+  assert.match(manager.snapshot().message,/所有组件/)
 })
