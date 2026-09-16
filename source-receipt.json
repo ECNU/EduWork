@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260915.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-15T08:05:20.886Z",
-  "fileSetSHA256": "b885f04dbba3bb0da90943782d00d4b4245ff3abdf21fd9ed3f867d525497b23",
+  "createdAt": "2026-09-16T12:33:38.856Z",
+  "fileSetSHA256": "7ff3294ad18376a0f6540c98edb830191c2a90bbfb02f0ff9899d58657e0c720",
   "files": [
     {
       "path": ".gitattributes",
@@ -256,8 +256,20 @@
       "sha256": "645f35bafa754a510bb3a31836c3bcd8bf85db36234852d2609931acb7953b85"
     },
     {
+      "path": "dsh-desktop/cmd/eduwork-updater/window_preview_windows_test.go",
+      "sha256": "ee9af27434ffa75bf0f8ec4deab768f748d783f4190e68982e2235529654f464"
+    },
+    {
+      "path": "dsh-desktop/cmd/eduwork-updater/window_view_test.go",
+      "sha256": "11cc02b8099191e39864c49be34a699431d89619ff591337cd6d1c3e3dccec62"
+    },
+    {
+      "path": "dsh-desktop/cmd/eduwork-updater/window_view.go",
+      "sha256": "3ae548f422eb57d1f998d50385021a98e40fb4cdcf63637c6d1c3a356993dfaf"
+    },
+    {
       "path": "dsh-desktop/cmd/eduwork-updater/window_windows.go",
-      "sha256": "04a23af2334d295daaac14226b7c44e4e1dec4ea3f1ae8b637929e1fcb4e0925"
+      "sha256": "651fa6dfade2627f6c4d5b892b3cad8567afd5c3df37c339fd5d987e1a620067"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-wails-candidate/configuration_other.go",
