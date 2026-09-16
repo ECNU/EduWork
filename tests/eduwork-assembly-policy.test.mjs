@@ -35,11 +35,40 @@ for (const field of ['arch', 'policySHA256']) test(`npm assembly rejects an exis
   const f = await fixture(t)
   await put(join(f.runtime, '.eduwork-distribution-runtime.json'), { ...f.projection, [field]: 'other' })
   const result = f.run(); assert.notEqual(result.status, 0)
-  assert.match(result.stdout + result.stderr, /another projection policy, platform or architecture/)
+  assert.match(result.stdout + result.stderr, /another projection policy,[\s\S]*platform or[\s\S]*architecture/)
 })
 test('npm assembly checks the actual distribution lock, not only its receipt', async t => {
   const f = await fixture(t)
   await writeFile(join(f.runtime, '.eduwork-distribution-lock.json'), 'changed')
   const result = f.run(); assert.notEqual(result.status, 0)
   assert.match(result.stdout + result.stderr, /Distribution Runtime lock proof differs/)
+})
+
+test('web package and skill staging use portable paths and commands', async () => {
+  for (const name of ['install-locked-dsh-package.ps1', 'copy-dsh-package-payload.ps1', 'install-bundled-dsh-skills.ps1']) {
+    const script = await readFile(join(root, 'scripts', name), 'utf8')
+    assert.match(script, /\[IO\.Path\]::DirectorySeparatorChar/, name)
+    assert.doesNotMatch(script, /TrimEnd\('\\\\'\)/, name)
+    assert.doesNotMatch(script, /\+ '\\\\'/, name)
+    assert.doesNotMatch(script, /npm\.cmd|tar\.exe/, name)
+  }
+  for (const name of ['client-ui-branding', 'client-ui-conversation-brand', 'client-ui-skill-live', 'client-ui-component-inventory', 'client-ui-agent-preset-product', 'client-ui-media-artifacts']) {
+    const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
+    assert.match(script, /\[IO\.Path\]::DirectorySeparatorChar/, name)
+    assert.doesNotMatch(script, /\+ '\\\\'/, name)
+  }
+  for (const name of ['client-ui-branding', 'client-ui-component-inventory', 'client-ui-media-artifacts', 'workbench-native', 'activity-insights-native']) {
+    const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
+    assert.match(script, /\$IsWindows[\s\S]*tsdown\.cmd[\s\S]*tsdown/, name)
+  }
+  for (const name of ['workbench-native', 'activity-insights-native']) {
+    const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
+    assert.match(script, /\$IsWindows[\s\S]*Junction[\s\S]*SymbolicLink/, name)
+    assert.doesNotMatch(script, /-ItemType Junction/, name)
+  }
+  const assembly = await readFile(join(root, 'scripts/assemble-eduwork-web.ps1'), 'utf8')
+  assert.match(assembly, /foreach \(\$packageName in \$local\.Keys\).*\$bundleDependencies\[\$packageName\]/s)
+  assert.match(assembly, /dependencies=\$bundleDependencies/)
+  const product = await readFile(join(root, 'scripts/prepare-desktop-product.ps1'), 'utf8')
+  assert.match(product, /if \(-not \$IsWindows\)[\s\S]*Copy-Item -LiteralPath \$Source -Destination \$Destination -Recurse/)
 })

@@ -20,6 +20,10 @@ if ($identity.pluginMode -eq 'npm' -and ($OidcSnapshot -or $StudioSnapshot)) { t
 $hostReceipt = Get-Content -LiteralPath (Join-Path $HostAdapter 'receipt.json') -Raw | ConvertFrom-Json
 if ($identity.kind -ne 'eduwork-web' -or $identity.dshCommit -ne $hostReceipt.upstreamCommit -or $identity.dshVersion -ne $hostReceipt.upstreamVersion) { throw 'Product and desktop Host baselines differ' }
 function Copy-Tree([string]$Source,[string]$Destination) {
+    if (-not $IsWindows) {
+        Copy-Item -LiteralPath $Source -Destination $Destination -Recurse
+        return
+    }
     $nativeErrors = $PSNativeCommandUseErrorActionPreference
     try {
         $PSNativeCommandUseErrorActionPreference = $false

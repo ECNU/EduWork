@@ -8,9 +8,9 @@ $repository = [IO.Path]::GetFullPath((Join-Path $source '..\..'))
 $upstream = [IO.Path]::GetFullPath($Upstream)
 if ([string]::IsNullOrWhiteSpace($DshLockPath)) { $DshLockPath = Join-Path $repository 'third_party\dsh\LOCK.json' }
 $target = if ([string]::IsNullOrWhiteSpace($Output)) { Join-Path $source 'lib' } else { [IO.Path]::GetFullPath($Output) }
-if (-not $target.StartsWith($repository + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Branding output must stay within the repository' }
+if (-not $target.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Branding output must stay within the repository' }
 $stage = Join-Path $upstream 'packages\extensions\chatecnu-work-client-ui-branding'
-$tsdown = Join-Path $upstream 'node_modules\.bin\tsdown.cmd'
+$tsdown = Join-Path $upstream ('node_modules/.bin/' + $(if ($IsWindows) { 'tsdown.cmd' } else { 'tsdown' }))
 
 & (Join-Path $repository 'dsh-desktop\scripts\test-dsh-compatibility.ps1') -Upstream $upstream -LockPath $DshLockPath
 if (-not (Test-Path -LiteralPath $tsdown)) { throw "Locked DSH build dependencies are unavailable: $tsdown" }
