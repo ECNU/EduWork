@@ -1,13 +1,14 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog } from 'electron'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { readFile, writeFile, access } from 'node:fs/promises'
-import { join, resolve, isAbsolute } from 'node:path'
+import { join, isAbsolute } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
-import { desktopConfigurationPath } from './configuration-policy.mjs'
+import { desktopPaths } from './desktop-paths.mjs'
+import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates } from './portable-updates.mjs'
 import { workbenchAction } from './workbench-support.mjs'
@@ -35,20 +36,8 @@ export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
-  const distributionRoot = resolve(appRoot, '../..')
-  const testRoot = process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT
-  if (testRoot && (!isAbsolute(testRoot) || /(?:^|[\\/])current(?:[\\/]|$)/iu.test(testRoot))) throw new Error('Test data requires an isolated absolute directory')
-  const dataRoot = testRoot ? resolve(testRoot) : join(distributionRoot, 'data', settings.distribution + '-electron')
-  paths = {
-    root: distributionRoot,
-    product: resolve(appRoot, settings.product),
-    node: resolve(appRoot, settings.node),
-    home: join(dataRoot, 'dsh'),
-    userData: join(dataRoot, 'browser'),
-    logs: join(dataRoot, 'logs'),
-    config: desktopConfigurationPath({root:distributionRoot,version:settings.productVersion,ownership:settings.configurationOwnership,override:process.env.EDUWORK_CONFIG_FILE}),
-    icon: join(distributionRoot, 'resources/brand/icon-256.png'),
-  }
+  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
+    testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
@@ -84,16 +73,18 @@ async function prepareDesktop() {
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:#faf8f4}progress{width:100%;margin-top:20px;accent-color:#2575ff}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
+  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+    await initializeUserConfig({ product: paths.product, config: paths.config })
   if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
-  const preferences = await readFile(join(paths.root,'data/state/update-preferences.json'),'utf8').then(JSON.parse).catch(()=>null)
-  contentUpdates = await new ContentUpdates({root:paths.root,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
+  const preferences = await readFile(join(paths.updateDataRoot,'state/update-preferences.json'),'utf8').then(JSON.parse).catch(()=>null)
+  contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     policy: preferences?.policy ?? user.updates.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
   const software = await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:()=>{app.relaunch();app.quit()},onPolicy:async policy=>{
-    await mkdir(join(paths.root,'data/state'),{recursive:true})
-    await writeFile(join(paths.root,'data/state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
+    await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
+    await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   lifecycle.check()
@@ -148,7 +139,7 @@ export async function attachDesktopWindow(window) {
     void window.webContents.executeJavaScript(`(window.__eduworkTrayActions ??= []).push(${JSON.stringify(value)}); window.dispatchEvent(new Event('eduwork:tray-action'));`).catch(() => {})
   }
   try {
-    const icon = nativeImage.createFromPath(join(paths.root, 'resources/brand/icon-32.png'))
+    const icon = nativeImage.createFromPath(process.platform === 'darwin' ? join(app.getAppPath(), '../brand/icon-32.png') : join(paths.root, 'resources/brand/icon-32.png'))
     lifecycle.check()
     if (icon.isEmpty()) throw new Error('No system tray icon available')
     tray = new Tray(icon)

@@ -1,5 +1,5 @@
 import { readFile, writeFile, mkdir, rename, readdir, lstat, rm } from 'node:fs/promises'
-import { join, dirname } from 'node:path'
+import { join, dirname, relative, isAbsolute, sep } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
@@ -21,8 +21,8 @@ export function contentCapabilities(identity) {
 
 /** Signed, opt-in publisher content. No installation hooks, npm or binary changes. */
 export class ContentUpdates {
-  constructor({root,product,configPath,version,distribution,identity,policy='stable',fetchImpl=fetch}) {
-    Object.assign(this,{root,product,configPath,version,distribution,identity,policy,fetchImpl})
+  constructor({root,product,configPath,version,distribution,identity,policy='stable',fetchImpl=fetch,dataRoot=join(root,'data'),skillsManifestPath=join(root,'RELEASE-MANIFEST.json')}) {
+    Object.assign(this,{root,product,configPath,version,distribution,identity,policy,fetchImpl,dataRoot,skillsManifestPath})
     this.environment={version,dshVersion:identity.dshVersion,capabilities:contentCapabilities(identity)}
     this.state={schemaVersion:1,active:{},pending:null,trial:null,rejected:[],highest:0}
     this.view={enabled:false,state:'disabled',policy,configurationRevision:0,skillsRevision:0,downloadedBytes:0,totalBytes:0,message:'未配置内容更新源'}
@@ -33,7 +33,7 @@ export class ContentUpdates {
     if(!this.source||!this.source.configuration&&!this.source.skills)return this
     const scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))
     // Installed revisions survive channel changes; changing feeds never downgrades.
-    this.store=join(this.root,'data','content-updates',scope)
+    this.store=join(this.dataRoot,'content-updates',scope)
     await safeDirectory(this.store)
     this.statePath=join(this.store,'state.json')
     try {
@@ -65,9 +65,11 @@ export class ContentUpdates {
     return {directory,manifest,bundle:validateBundle(bytes,manifest,this.environment)}
   }
   async unchangedBundledSkills() {
-    const manifest=await readJSON(join(this.root,'RELEASE-MANIFEST.json'),null)
+    const manifest=await readJSON(this.skillsManifestPath,null)
     if(!manifest?.files)throw Error('缺少内置 Skills 校验清单，不能启用在线 Skills')
-    const prefix='resources/product/skills/',expected=new Map(manifest.files.filter(f=>f.path.startsWith(prefix)).map(f=>[f.path.slice(prefix.length),f.sha256]))
+    const skillsPath=relative(this.root,join(this.product,'skills'))
+    if(isAbsolute(skillsPath)||skillsPath==='..'||skillsPath.startsWith('..'+sep))throw Error('内置 Skills 必须位于应用目录内')
+    const prefix=skillsPath.split(sep).join('/')+'/',expected=new Map(manifest.files.filter(f=>f.path.startsWith(prefix)).map(f=>[f.path.slice(prefix.length),f.sha256]))
     if(!expected.size)throw Error('内置 Skills 校验清单为空')
     const walk=async(folder,relative='')=>{
       for(const entry of await readdir(folder,{withFileTypes:true})) {
