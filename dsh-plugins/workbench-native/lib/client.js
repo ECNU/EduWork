@@ -44,7 +44,7 @@ window.__ModuleLoader__.load({
 			setTimeout(() => URL.revokeObjectURL(url), 6e4);
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/core.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/core.js
 		var _a$1;
 		function $constructor(name, initializer, params) {
 			function init(inst, def) {
@@ -103,7 +103,7 @@ window.__ModuleLoader__.load({
 			return globalConfig;
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/util.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/util.js
 		function getEnumValues(entries) {
 			const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 			return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -165,7 +165,10 @@ window.__ModuleLoader__.load({
 		}
 		function mergeDefs(...defs) {
 			const mergedDescriptors = {};
-			for (const def of defs) Object.assign(mergedDescriptors, Object.getOwnPropertyDescriptors(def));
+			for (const def of defs) {
+				const descriptors = Object.getOwnPropertyDescriptors(def);
+				Object.assign(mergedDescriptors, descriptors);
+			}
 			return Object.defineProperties({}, mergedDescriptors);
 		}
 		function esc(str) {
@@ -415,7 +418,7 @@ window.__ModuleLoader__.load({
 			return { ...iss };
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/errors.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/errors.js
 		const initializer$1 = (inst, def) => {
 			inst.name = "$ZodError";
 			Object.defineProperty(inst, "_zod", {
@@ -475,7 +478,7 @@ window.__ModuleLoader__.load({
 			return fieldErrors;
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/parse.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/parse.js
 		const _parse = (_Err) => (schema, value, _ctx, _params) => {
 			const ctx = _ctx ? {
 				..._ctx,
@@ -589,7 +592,7 @@ window.__ModuleLoader__.load({
 			return _safeParseAsync(_Err)(schema, value, _ctx);
 		};
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/regexes.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/regexes.js
 		/**
 		* @deprecated CUID v1 is deprecated by its authors due to information leakage
 		* (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -653,7 +656,7 @@ window.__ModuleLoader__.load({
 		const lowercase = /^[^A-Z]*$/;
 		const uppercase = /^[^a-z]*$/;
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/checks.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/checks.js
 		const $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 			var _a;
 			inst._zod ?? (inst._zod = {});
@@ -1011,7 +1014,7 @@ window.__ModuleLoader__.load({
 			};
 		});
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/doc.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/doc.js
 		var Doc = class {
 			constructor(args = []) {
 				this.content = [];
@@ -1042,14 +1045,14 @@ window.__ModuleLoader__.load({
 			}
 		};
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/versions.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/versions.js
 		const version = {
 			major: 4,
 			minor: 4,
 			patch: 3
 		};
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/schemas.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/schemas.js
 		const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 			var _a;
 			inst ?? (inst = {});
@@ -1596,13 +1599,13 @@ window.__ModuleLoader__.load({
 				}
 				return propValues;
 			});
-			const isObject$1 = isObject;
+			const isObject$2 = isObject;
 			const catchall = def.catchall;
 			let value;
 			inst._zod.parse = (payload, ctx) => {
 				value ?? (value = _normalized.value);
 				const input = payload.value;
-				if (!isObject$1(input)) {
+				if (!isObject$2(input)) {
 					payload.issues.push({
 						expected: "object",
 						code: "invalid_type",
@@ -1725,7 +1728,7 @@ window.__ModuleLoader__.load({
 				return (payload, ctx) => fn(shape, payload, ctx);
 			};
 			let fastpass;
-			const isObject$2 = isObject;
+			const isObject$1 = isObject;
 			const jit = !globalConfig.jitless;
 			const fastEnabled = jit && allowsEval.value;
 			const catchall = def.catchall;
@@ -1733,7 +1736,7 @@ window.__ModuleLoader__.load({
 			inst._zod.parse = (payload, ctx) => {
 				value ?? (value = _normalized.value);
 				const input = payload.value;
-				if (!isObject$2(input)) {
+				if (!isObject$1(input)) {
 					payload.issues.push({
 						expected: "object",
 						code: "invalid_type",
@@ -2079,7 +2082,7 @@ window.__ModuleLoader__.load({
 			inst._zod.optin = "optional";
 			inst._zod.optout = "optional";
 			defineLazy(inst._zod, "values", () => {
-				return def.innerType._zod.values ? new Set([...def.innerType._zod.values, void 0]) : void 0;
+				return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0]) : void 0;
 			});
 			defineLazy(inst._zod, "pattern", () => {
 				const pattern = def.innerType._zod.pattern;
@@ -2113,7 +2116,7 @@ window.__ModuleLoader__.load({
 				return pattern ? new RegExp(`^(${cleanRegex(pattern.source)}|null)$`) : void 0;
 			});
 			defineLazy(inst._zod, "values", () => {
-				return def.innerType._zod.values ? new Set([...def.innerType._zod.values, null]) : void 0;
+				return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null]) : void 0;
 			});
 			inst._zod.parse = (payload, ctx) => {
 				if (payload.value === null) return payload;
@@ -2279,7 +2282,7 @@ window.__ModuleLoader__.load({
 			}
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/registries.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/registries.js
 		var _a;
 		var $ZodRegistry = class {
 			constructor() {
@@ -2326,7 +2329,7 @@ window.__ModuleLoader__.load({
 		(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 		const globalRegistry = globalThis.__zod_globalRegistry;
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/api.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/api.js
 		// @__NO_SIDE_EFFECTS__
 		function _string(Class, params) {
 			return new Class({
@@ -2831,7 +2834,7 @@ window.__ModuleLoader__.load({
 			return ch;
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/to-json-schema.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/to-json-schema.js
 		function initializeContext(params) {
 			let target = params?.target ?? "draft-2020-12";
 			if (target === "draft-4") target = "draft-04";
@@ -3124,7 +3127,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return finalize(ctx, schema);
 		};
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/core/json-schema-processors.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/json-schema-processors.js
 		const formatMap = {
 			guid: "uuid",
 			url: "uri",
@@ -3386,7 +3389,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			seen.ref = def.innerType;
 		};
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/classic/iso.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/iso.js
 		const ZodISODateTime = /*@__PURE__*/ $constructor("ZodISODateTime", (inst, def) => {
 			$ZodISODateTime.init(inst, def);
 			ZodStringFormat.init(inst, def);
@@ -3416,7 +3419,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
 		}
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/classic/errors.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/errors.js
 		const initializer = (inst, issues) => {
 			$ZodError.init(inst, issues);
 			inst.name = "ZodError";
@@ -3438,7 +3441,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		};
 		const ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, { Parent: Error });
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/classic/parse.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/parse.js
 		const parse = /* @__PURE__ */ _parse(ZodRealError);
 		const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 		const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -3452,7 +3455,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 		const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
 		//#endregion
-		//#region ../../../../../../../../../ECNUDev-DSH/release-fix-20260913/wails-candidate/resources/product/d/node_modules/zod/v4/classic/schemas.js
+		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/schemas.js
 		const _installedGroups = /* @__PURE__ */ new WeakMap();
 		function _installLazyMethods(inst, group, methods) {
 			const proto = Object.getPrototypeOf(inst);
@@ -3973,11 +3976,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		});
 		function object(shape, params) {
-			return new ZodObject({
+			const def = {
 				type: "object",
 				shape: shape ?? {},
 				...normalizeParams(params)
-			});
+			};
+			return new ZodObject(def);
 		}
 		const ZodUnion = /*@__PURE__*/ $constructor("ZodUnion", (inst, def) => {
 			$ZodUnion.init(inst, def);
@@ -4056,9 +4060,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		});
 		function _enum(values, params) {
+			const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
 			return new ZodEnum({
 				type: "enum",
-				entries: Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values,
+				entries,
 				...normalizeParams(params)
 			});
 		}
@@ -4353,7 +4358,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							"schedule-update",
 							"install-update",
 							"use-stable-updates",
-							"use-development-updates"
+							"use-development-updates",
+							"download-content-update",
+							"restart-content-update"
 						]))
 					}],
 					codec("Desktop", object({
@@ -4365,7 +4372,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						report: string().optional(),
 						archive: string().optional(),
 						filename: string().optional(),
-						update
+						update,
+						contentUpdate: update
 					}).strict())
 				]
 			].map(([method, parameters, result]) => ({
@@ -4445,11 +4453,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 			const poll = async () => {
 				await read();
-				if (!stopped) timer = setTimeout(poll, [
+				if (!stopped) timer = setTimeout(poll, [view.status?.update?.state, view.status?.contentUpdate?.state].some((state) => [
 					"checking",
 					"downloading",
 					"applying"
-				].includes(view.status?.update?.state) ? 350 : 2500);
+				].includes(state)) ? 350 : 2500);
 			};
 			const run = async (action) => {
 				if (view.working) return;
@@ -4473,13 +4481,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			poll();
 			const open = () => {
 				publish({ open: true });
-				if (!view.status?.update || [
+				if (!["downloading", "ready"].includes(view.status?.contentUpdate?.state) && (!view.status?.update || [
 					"idle",
 					"installed",
 					"up_to_date",
 					"current",
 					"error"
-				].includes(view.status.update.state)) run("check-updates");
+				].includes(view.status.update.state))) run("check-updates");
 			};
 			const event = () => open();
 			window.addEventListener("eduwork:open-updates", event);
@@ -4503,17 +4511,68 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return (0, react.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
 		}
 		const percent = (s) => s?.totalBytes > 0 ? Math.min(100, Math.floor(s.downloadedBytes / s.totalBytes * 100)) : 0;
-		const size = (n) => (Math.max(0, n || 0) / 1048576).toFixed(1) + " MB";
+		const size = (n) => n < 1048576 ? Math.ceil(Math.max(0, n || 0) / 1024) + " KB" : (Math.max(0, n || 0) / 1048576).toFixed(1) + " MB";
+		function ContentPanel({ controller, content: c, working }) {
+			if (!c?.enabled) return null;
+			const progress = percent(c);
+			const message = c.state === "available" ? `发现内容更新 r${c.latestRevision} · ${size(c.totalBytes)}` : c.state === "checking" ? "正在检查内容更新…" : c.state === "downloading" ? "正在下载内容更新…" : c.state === "ready" ? "已下载并校验，下次启动生效。" : c.state === "requires_software" ? "此内容更新需要先升级到兼容的软件版本。" : c.state === "error" ? c.message : "当前内容已是最新版本";
+			return h$3("div", {
+				"data-eduwork-content-update": true,
+				style: {
+					marginTop: 16,
+					paddingTop: 16,
+					borderTop: `1px solid ${border$1}`
+				}
+			}, h$3("div", { style: { fontSize: 14 } }, c.configuration ? c.skills ? "配置与 Skills 更新" : "配置更新" : "Skills 更新"), h$3("p", { style: note }, [c.configuration && `配置 ${c.configurationRevision ? `r${c.configurationRevision}` : "随软件内置"}`, c.skills && `Skills ${c.skillsRevision ? `r${c.skillsRevision}` : "随软件内置"}`].filter(Boolean).join(" · ")), h$3("p", {
+				role: c.state === "error" ? "alert" : "status",
+				style: {
+					...note,
+					marginTop: 8,
+					overflowWrap: "anywhere",
+					...c.state === "error" ? { color: "var(--dsw-alias-state-error-primary, #a82332)" } : {}
+				}
+			}, message), c.message && c.state === "current" && h$3("p", { style: note }, c.message), c.state === "downloading" && h$3(react.default.Fragment, null, h$3("div", {
+				role: "progressbar",
+				"aria-label": "内容下载进度",
+				"aria-valuemin": 0,
+				"aria-valuemax": 100,
+				"aria-valuenow": progress,
+				style: {
+					height: 6,
+					marginTop: 10,
+					borderRadius: 999,
+					overflow: "hidden",
+					background: border$1
+				}
+			}, h$3("div", { style: {
+				width: `${progress}%`,
+				height: "100%",
+				background: accent
+			} })), h$3("p", { style: note }, `${size(c.downloadedBytes)} / ${size(c.totalBytes)} · ${progress}%`)), ["available", "ready"].includes(c.state) && h$3("div", { style: {
+				display: "flex",
+				justifyContent: "flex-end",
+				marginTop: 10
+			} }, h$3("button", {
+				type: "button",
+				disabled: Boolean(working),
+				style: primary,
+				onClick: () => controller.run(c.state === "available" ? "download-content-update" : "restart-content-update")
+			}, c.state === "available" ? "下载内容更新" : "重启使内容生效")), c.state === "ready" && h$3("p", { style: note }, "可以继续使用；重启前请先完成正在运行的任务。"));
+		}
 		function UpdatePanel({ controller }) {
-			const { status, error, working } = useUpdates(controller), s = status?.update, state = working || s?.state || status?.phase;
+			const { status, error, working } = useUpdates(controller), s = status?.update, c = status?.contentUpdate, state = working || s?.state || status?.phase;
 			const busy = [
 				"checking",
 				"downloading",
 				"applying",
 				"switching"
 			].includes(state);
-			const enabled = status && status.shell !== "web" && s?.enabled !== false;
-			const policy = s?.policy || "stable", locked = busy || state === "ready";
+			const enabled = status && status.shell !== "web" && (s?.enabled !== false || c?.enabled);
+			const policy = s?.policy || c?.policy || "stable", locked = busy || state === "ready" || [
+				"checking",
+				"downloading",
+				"ready"
+			].includes(c?.state);
 			const channels = [["stable", "仅公测版"], ["development", "开发版"]];
 			const setPolicy = async (value) => {
 				if (locked || value === policy) return;
@@ -4574,7 +4633,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, label))), h$3("p", { style: {
 				...note,
 				marginTop: 8
-			} }, policy === "development" ? "接收开发版及更新的公测版。" : "仅接收公测版；切换渠道不会降级。")), message && h$3("div", { style: {
+			} }, policy === "development" ? "接收开发版及更新的公测版。" : "仅接收公测版；切换渠道不会降级。")), message && s?.enabled !== false && h$3("div", { style: {
 				...row,
 				alignItems: "center",
 				marginTop: 12
@@ -4589,7 +4648,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				type: "button",
 				style: primary,
 				onClick: () => controller.run("download-update")
-			}, "下载更新")), [
+			}, "下载更新")), s?.enabled !== false && [
 				"checking",
 				"downloading",
 				"applying"
@@ -4657,7 +4716,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					color: "var(--dsw-alias-state-error-primary, #a82332)",
 					overflowWrap: "anywhere"
 				}
-			}, error || s.error), status?.url && h$3("a", {
+			}, error || s.error), h$3(ContentPanel, {
+				controller,
+				content: c,
+				working
+			}), status?.url && h$3("a", {
 				href: status.url,
 				target: "_blank",
 				rel: "noopener noreferrer",
@@ -4669,7 +4732,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, "打开下载页面"));
 		}
 		function UpdateFooter({ controller, wide = true }) {
-			const { status, open, working } = useUpdates(controller), s = status?.update, state = working || s?.state;
+			const { status, open, working } = useUpdates(controller), s = status?.update, c = status?.contentUpdate, state = working || s?.state;
 			(0, react.useEffect)(() => {
 				if (!open) return;
 				const key = (e) => {
@@ -4679,22 +4742,26 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				return () => window.removeEventListener("keydown", key);
 			}, [open]);
 			if (!status || status.shell === "web") return null;
-			const label = state === "available" ? "更新" : state === "downloading" ? `下载 ${percent(s)}%` : state === "ready" ? "重启更新" : "正在更新…";
-			const visible = wide && s?.enabled && [
+			const softwareVisible = s?.enabled && [
 				"available",
 				"downloading",
 				"ready",
 				"applying"
 			].includes(state);
-			const disabled = Boolean(working) || !["available", "ready"].includes(state);
+			const label = softwareVisible ? state === "available" ? "更新" : state === "downloading" ? `下载 ${percent(s)}%` : state === "ready" ? "重启更新" : "正在更新…" : c?.state === "downloading" ? `内容 ${percent(c)}%` : c?.state === "ready" ? "内容待生效" : "更新";
+			const visible = wide && (softwareVisible || c?.enabled && [
+				"available",
+				"downloading",
+				"ready",
+				"requires_software"
+			].includes(c.state));
 			return h$3(react.default.Fragment, null, visible && h$3("button", {
 				type: "button",
-				disabled,
-				"aria-label": `${label}到 ${s.latestVersion}`,
-				title: `EduWork ${s.latestVersion}`,
-				onClick: () => controller.run(state === "available" ? "download-update" : "install-update"),
+				"aria-label": "查看更新",
+				title: "查看软件及内容更新",
+				onClick: controller.open,
 				"data-eduwork-update-entry": true,
-				"data-chatecnu-update-prompt": state,
+				"data-chatecnu-update-prompt": softwareVisible ? state : c.state,
 				style: {
 					flex: "0 0 auto",
 					alignSelf: "center",
@@ -4706,8 +4773,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					padding: "0 11px",
 					background: "var(--dsw-alias-state-info-primary, #4f78dd)",
 					color: "white",
-					cursor: disabled ? "default" : "pointer",
-					opacity: disabled ? .78 : 1,
+					cursor: "pointer",
 					fontSize: 11,
 					fontWeight: 700,
 					whiteSpace: "nowrap",
@@ -4729,10 +4795,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, h$3("section", {
 				role: "dialog",
 				"aria-modal": true,
-				"aria-label": "软件更新",
+				"aria-label": "更新",
 				style: {
 					boxSizing: "border-box",
 					width: "min(480px, calc(100vw - 32px))",
+					maxHeight: "calc(100vh - 48px)",
+					overflowY: "auto",
 					padding: 24,
 					border: `1px solid ${border$1}`,
 					borderRadius: 16,
@@ -4748,7 +4816,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, h$3("h2", { style: {
 				fontSize: 20,
 				margin: 0
-			} }, "软件更新"), h$3("button", {
+			} }, "更新"), h$3("button", {
 				type: "button",
 				"aria-label": "关闭更新面板",
 				onClick: controller.close,
@@ -5336,7 +5404,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				try {
 					const path = await service.pickDirectory();
 					if (path === null) return;
-					setNotice(`已导入技能“${(await service.importDirectory(path)).name}”。`);
+					const imported = await service.importDirectory(path);
+					setNotice(`已导入技能“${imported.name}”。`);
 					await refresh();
 				} catch (cause) {
 					setError(cause instanceof Error ? cause.message : String(cause));

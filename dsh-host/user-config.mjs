@@ -2,6 +2,7 @@ import { readFileSync, realpathSync, statSync } from 'node:fs'
 import { dirname, extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import * as jsonc from './vendor/jsonc-parser/parser.js'
 import { normalizeMediaConfig } from './media-config.mjs'
+import { contentUpdateSource } from './content-update-protocol.mjs'
 
 const allowed = (value, keys, label) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) throw new Error(`${label} 必须是对象`)
@@ -25,12 +26,12 @@ function logo(path, filename) {
 }
 
 /** File-owned settings are read at process startup, never written by the UI. */
-export function loadUserConfig(path) {
+export function loadUserConfig(path, { overlay } = {}) {
   path = resolve(path)
   const source = { path, examplesPath: join(dirname(path), 'examples') }
   let body
   try { body = readFileSync(path, 'utf8').replace(/^\uFEFF/u, '') }
-  catch (error) { if (error.code === 'ENOENT') return { source, product: {}, organizations: [], closeAction: 'tray' }; throw error }
+  catch (error) { if (error.code === 'ENOENT') body = '{"schemaVersion":1}'; else throw error }
   try {
     if (Buffer.byteLength(body) > 1024 * 1024) throw new Error('配置文件超过 1 MiB')
     const errors = [], tree = jsonc.parseTree(body, errors, { allowTrailingComma: true })
@@ -50,8 +51,10 @@ export function loadUserConfig(path) {
       for (const child of node?.children ?? []) unique(child)
     }
     unique(tree)
-    const value = jsonc.getNodeValue(tree)
-    allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media'], '配置')
+    const original = jsonc.getNodeValue(tree)
+    if (overlay) allowed(overlay, ['organizations', 'features', 'media'], '内容配置')
+    const value = overlay ? { ...original, ...overlay, features: { ...original.features, ...overlay.features } } : original
+    allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media', 'contentUpdates'], '配置')
     if (value.schemaVersion !== 1) throw new Error('schemaVersion 必须是 1')
     allowed(value.product ?? {}, ['name', 'logoFile'], 'product')
     allowed(value.desktop ?? {}, ['closeAction'], 'desktop')
@@ -89,7 +92,7 @@ export function loadUserConfig(path) {
     }
     const features = { ...value.features }
     if (features.maxConcurrentRequests === undefined && features.maxParallelSubagents !== undefined) features.maxConcurrentRequests = features.maxParallelSubagents + 1
-    return { source, product, organizations: value.organizations ?? [], closeAction, updates, features,
+    return { source, product, organizations: value.organizations ?? [], closeAction, updates, features, contentUpdates: contentUpdateSource(value.contentUpdates),
       ...(value.media !== undefined ? { media: normalizeMediaConfig(value.media) } : {}) }
   } catch (error) {
     throw new Error(`请检查配置文件 ${path}\n${error.message}`, { cause: error })

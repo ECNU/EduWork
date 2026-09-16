@@ -37,7 +37,7 @@ function mergeConfig(base = {}, extra = {}) {
   return result
 }
 
-export async function prepareProductProfile({ product, home, shell, pluginConfig = {}, patches = [], enterpriseProfile, userConfig, configurationOwnership = 'user' }) {
+export async function prepareProductProfile({ product, home, shell, pluginConfig = {}, patches = [], enterpriseProfile, userConfig, configurationOwnership = 'user', managedContent = {} }) {
   if(!['user','publisher'].includes(configurationOwnership))throw new Error('Unknown desktop configuration ownership')
   product = await canonical(product); home = await canonical(home)
   if (!['electron', 'wails'].includes(shell)) throw new Error('Unknown desktop shell')
@@ -47,7 +47,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const identity = await json(join(product, 'assembly.json'))
   if (identity.dshVersion !== '0.1.5-rc.2' || identity.dshCommit !== 'fb2c4b9e698e30edb738bca4cf0618587db7d203') throw new Error('Desktop product does not match the qualified DSH baseline')
   if (!/^[a-z0-9-]+$/u.test(identity.distribution)) throw new Error('Invalid distribution identity')
-  const user = userConfig ? loadUserConfig(userConfig) : undefined
+  const user = userConfig ? loadUserConfig(userConfig, { overlay: managedContent.configurationPatch }) : undefined
   if (user) {
     if (user.organizations.length) {
       try {
@@ -55,7 +55,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
         const { loadEnterpriseProfiles } = await import(pathToFileURL(req.resolve('@eduwork/dsh-oidc/profile')).href)
         // Validate profiles before starting the Host. No credentials are read.
         loadEnterpriseProfiles({ profiles: user.organizations }, {})
-        user.organizations = await loadEnterpriseModelUpdates(product, user.organizations)
+        if (!managedContent.configurationPatch?.organizations) user.organizations = await loadEnterpriseModelUpdates(product, user.organizations)
         loadEnterpriseProfiles({ profiles: user.organizations }, {})
       } catch (error) { throw new Error(`请检查配置文件 ${user.source.path}\n${error.message}`, { cause: error }) }
     }
@@ -131,7 +131,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...desktop, ...patches], null, 2) + '\n')
   const environment = {
     DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1',
-    DSH_BUNDLED_SKILL_DIR: join(product, 'skills'),
+    DSH_BUNDLED_SKILL_DIR: managedContent.skillRoot ?? join(product, 'skills'),
     ...await prepareProductPresets({ product, home }),
     EDUWORK_PRODUCT_ROOT: product, EDUWORK_DESKTOP_SHELL: shell,
     DSH_MEDIA_NODE_ENV: join(product, 'd'),

@@ -165,6 +165,7 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 | [配置示例](config/desktop/examples/README.md) | 企业登录、品牌、媒体服务、更新源与并发设置。 |
 | [媒体服务配置](docs/MEDIA.md) | 文生图、云端 TTS 的接口要求及配置方法。 |
 | [版本与升级](docs/RELEASE.md) · [更新源部署](docs/UPDATES.md) | 开发版与公测版、数据迁移和自动更新。 |
+| [配置与 Skills 更新](docs/CONTENT_UPDATES.md) | 管理员按需独立更新模型配置和官方技能，无需重新下载客户端。 |
 | [构建指南](docs/BUILD.md) · [macOS 说明](docs/MACOS.md) | 从源码运行、桌面装配与平台适配。 |
 | [贡献指南](CONTRIBUTING.md) · [发行边界](docs/EDITIONS.md) | 参与开发及公版与机构扩展的分工。 |
 

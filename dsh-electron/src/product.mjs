@@ -14,6 +14,8 @@ import { startPortableUpdates } from './portable-updates.mjs'
 import { workbenchAction } from './workbench-support.mjs'
 import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
+import { ContentUpdates } from './content-updates.mjs'
+import { updateCoordinator } from './update-coordinator.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -25,6 +27,7 @@ let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, 
 let quitComplete = false
 let migrationLaunch
 let portableUpdates
+let contentUpdates, managedContent = {}
 const lifecycle = new DesktopLifecycle()
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
@@ -89,6 +92,19 @@ async function prepareDesktop() {
     await initializeUserConfig({ product: paths.product, config: paths.config })
   if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
+  const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
+  const preferences = await readFile(join(paths.root,'data/state/update-preferences.json'),'utf8').then(JSON.parse).catch(()=>null)
+  contentUpdates = await new ContentUpdates({root:paths.root,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
+    policy: preferences?.policy ?? user.updates.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
+  const software = await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
+  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:()=>{app.relaunch();app.quit()},onPolicy:async policy=>{
+    await mkdir(join(paths.root,'data/state'),{recursive:true})
+    await writeFile(join(paths.root,'data/state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
+  }})
+  if(portableUpdates)lifecycle.trackBridge(portableUpdates)
+  lifecycle.check()
+  managedContent = await contentUpdates.prepare()
+  if(managedContent.configurationPatch) user=loadUserConfig(paths.config,{overlay:managedContent.configurationPatch})
   if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
   await importLegacyData({root:paths.root,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
@@ -103,28 +119,26 @@ async function prepareDesktop() {
     launch = JSON.parse(await readFile(privatePath, 'utf8'))
   }
   const prepared = await prepareProductProfile({ product: paths.product, home: paths.home, shell: 'electron',
-    pluginConfig: launch.pluginConfig, patches: launch.patches, enterpriseProfile: launch.enterpriseProfile, userConfig: paths.config, configurationOwnership:settings.configurationOwnership })
+    pluginConfig: launch.pluginConfig, patches: launch.patches, enterpriseProfile: launch.enterpriseProfile, userConfig: paths.config, configurationOwnership:settings.configurationOwnership, managedContent })
   lifecycle.check()
   if (prepared.identity.distribution !== settings.distribution) throw new Error('Desktop and product editions do not match')
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
   // Reassert the edition's immutable ownership after optional test settings.
   Object.assign(process.env, prepared.environment)
-  portableUpdates = await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
-  if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
   const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
-    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
+    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, configurationOverlay:managedContent.configurationPatch,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
     openConfiguration: settings.configurationOwnership==='publisher' ? undefined : target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
-  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
+  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
   lifecycle.check()
   return { profile: prepared.profile, node: paths.node }
 }
 export function nativeBootstrap() { if (!bootstrap) throw new Error('Native desktop bridge is not ready'); return bootstrap }
-export async function desktopReady() { await writeMigrationHealth(migrationLaunch,'ready'); if (progressWindow && !progressWindow.isDestroyed()) progressWindow.close(); progressWindow = undefined }
+export async function desktopReady() { await contentUpdates?.ready(); await writeMigrationHealth(migrationLaunch,'ready'); if (progressWindow && !progressWindow.isDestroyed()) progressWindow.close(); progressWindow = undefined; void portableUpdates?.action('check-updates').catch(()=>{}) }
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
@@ -172,6 +186,8 @@ export function checkProductUpdates() {
 }
 export async function showDesktopFailure(error) {
   if (isQuitting()) return
+  try { if(await contentUpdates?.rollback()) {app.relaunch();app.quit();return} }
+  catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
   if (!progressWindow || progressWindow.isDestroyed()) progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
