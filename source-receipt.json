@@ -4365,9 +4365,9 @@
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
-      "sha256": "4913d2f9d7516987f81b8c6ac5a087ed1296860522caa58853dbc069503fe219",
+      "sha256": "4db760a47d296113f58ec18585e8501393f5b5954a014f7bac94aee75b4ec101",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Reviewed the new metadata-only skill projection: it retains one shared instruction body and follows the selected distribution credential binding. Existing legacy institution registration remains inactive in EduWork. No endpoint or credential exemption."
+      "reason": "Metadata-only skill projection retains one shared instruction body and follows the selected distribution credential binding. Platform-aware separators preserve the configured-root path checks; legacy institution registration is unchanged and remains inactive in EduWork. No endpoint or credential exemption."
     },
     {
       "path": "dsh-plugins/tool-browser/test/core.test.js",

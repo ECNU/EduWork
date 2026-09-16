@@ -1,9 +1,10 @@
 # Shared desktop/Web skill projection, including the pinned older npm baseline.
 function Resolve-DshSkillChild([string]$Root, [string]$Relative) {
     if ([string]::IsNullOrWhiteSpace($Relative) -or [IO.Path]::IsPathRooted($Relative) -or ($Relative -split '[/\\]') -contains '..') { throw 'Skill source must stay inside its configured root' }
-    $parent = [IO.Path]::GetFullPath($Root).TrimEnd('\')
+    $separator = [IO.Path]::DirectorySeparatorChar
+    $parent = [IO.Path]::GetFullPath($Root).TrimEnd($separator, [IO.Path]::AltDirectorySeparatorChar)
     $path = [IO.Path]::GetFullPath((Join-Path $parent $Relative))
-    if (-not $path.StartsWith($parent + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Skill source escapes its configured root' }
+    if (-not $path.StartsWith($parent + $separator, [StringComparison]::OrdinalIgnoreCase)) { throw 'Skill source escapes its configured root' }
     return $path
 }
 

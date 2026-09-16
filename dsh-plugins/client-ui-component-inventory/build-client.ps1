@@ -7,13 +7,13 @@ $repository = [IO.Path]::GetFullPath((Join-Path $source '..\..'))
 $upstream = [IO.Path]::GetFullPath($Upstream)
 if ([string]::IsNullOrWhiteSpace($DshLockPath)) { $DshLockPath = Join-Path $repository 'third_party\dsh\LOCK.json' }
 $target = if ([string]::IsNullOrWhiteSpace($Output)) { Join-Path $source 'lib' } else { [IO.Path]::GetFullPath($Output) }
-if (-not $target.StartsWith($repository + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Component inventory output must stay within the repository' }
+if (-not $target.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Component inventory output must stay within the repository' }
 $stage = Join-Path $upstream 'packages\extensions\chatecnu-work-component-inventory-ui'
 $hostPackage = Join-Path $upstream 'node_modules\@chatecnu-work\dsh-component-inventory-native'
 $hostSource = Join-Path $source '..\component-inventory-native'
 $managerPackage = Join-Path $upstream 'node_modules\@chatecnu-work\dsh-plugin-manager-native'
 $managerSource = Join-Path $source '..\plugin-manager-native'
-$tsdown = Join-Path $upstream 'node_modules\.bin\tsdown.cmd'
+$tsdown = Join-Path $upstream ('node_modules/.bin/' + $(if ($IsWindows) { 'tsdown.cmd' } else { 'tsdown' }))
 $zodPackages = @(
     (Join-Path $hostPackage 'node_modules\zod'),
     (Join-Path $managerPackage 'node_modules\zod')

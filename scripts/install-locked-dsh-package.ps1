@@ -5,7 +5,7 @@ function Install-LockedDshPackage {
         [Parameter(Mandatory = $true)][string]$Destination,
         [Parameter(Mandatory = $true)][string]$LockPath,
         [string[]]$RequiredFiles = @(),
-        [string]$NpmCommand = 'npm.cmd'
+        [string]$NpmCommand = 'npm'
     )
 
     $Destination = [IO.Path]::GetFullPath($Destination)
@@ -28,9 +28,10 @@ function Install-LockedDshPackage {
             $RelativePath -split '[/\\]' -contains '..') {
             throw "$packageName required artifact must be a package-relative path without parent traversal: $RelativePath"
         }
-        $rootFull = [IO.Path]::GetFullPath($PackageRoot).TrimEnd('\')
+        $separator = [IO.Path]::DirectorySeparatorChar
+        $rootFull = [IO.Path]::GetFullPath($PackageRoot).TrimEnd($separator, [IO.Path]::AltDirectorySeparatorChar)
         $resolved = [IO.Path]::GetFullPath((Join-Path $rootFull $RelativePath))
-        if (-not $resolved.StartsWith($rootFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
+        if (-not $resolved.StartsWith($rootFull + $separator, [StringComparison]::OrdinalIgnoreCase)) {
             throw "$packageName required artifact escapes the package root: $RelativePath"
         }
         return $resolved
@@ -67,9 +68,10 @@ function Install-LockedDshPackage {
     $destinationParent = Split-Path -Parent $Destination
     $safeName = $packageName -replace '[^A-Za-z0-9._-]', '-'
     $packRoot = Join-Path $destinationParent (".$safeName-package-staging")
-    $destinationParentFull = [IO.Path]::GetFullPath($destinationParent).TrimEnd('\')
+    $separator = [IO.Path]::DirectorySeparatorChar
+    $destinationParentFull = [IO.Path]::GetFullPath($destinationParent).TrimEnd($separator, [IO.Path]::AltDirectorySeparatorChar)
     $packRootFull = [IO.Path]::GetFullPath($packRoot)
-    if (-not $packRootFull.StartsWith($destinationParentFull + '\', [StringComparison]::OrdinalIgnoreCase)) {
+    if (-not $packRootFull.StartsWith($destinationParentFull + $separator, [StringComparison]::OrdinalIgnoreCase)) {
         throw "Refusing to stage $packageName outside the destination parent: $packRootFull"
     }
     if (Test-Path -LiteralPath $packRootFull) { Remove-Item -LiteralPath $packRootFull -Recurse -Force }
@@ -99,7 +101,7 @@ function Install-LockedDshPackage {
             throw "$packageName npm integrity mismatch: expected $($lock.npm.integrity), got $actualIntegrity"
         }
 
-        & tar.exe -xf $tarballs[0].FullName -C $packRootFull
+        & tar -xf $tarballs[0].FullName -C $packRootFull
         if ($LASTEXITCODE -ne 0) { throw "Extracting $packageName tarball failed with exit code $LASTEXITCODE" }
         $extracted = Join-Path $packRootFull 'package'
         $extractedManifest = Get-Content -Raw -LiteralPath (Join-Path $extracted 'package.json') | ConvertFrom-Json
