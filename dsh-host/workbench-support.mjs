@@ -6,9 +6,9 @@ import { exportDiagnostics } from './diagnostics.mjs'
 
 /** Native-owned arguments only. The renderer chooses one allowlisted action,
  * never a filesystem path, process argument or credential reference. */
-export async function workbenchAction({ action, config, version, shell, logs, root, product, home, updateStatus }) {
+export async function workbenchAction({ action, config, version, shell, logs, root, product, home, updateStatus, configurationOverlay }) {
   if (!['status', 'check-updates', 'diagnostics'].includes(action) || !['wails', 'electron'].includes(shell)) throw Error('Invalid desktop action')
-  if (action === 'diagnostics') return exportDiagnostics({ config, version, shell, logs, root, product, home, updateStatus })
+  if (action === 'diagnostics') return exportDiagnostics({ config, version, shell, logs, root, product, home, updateStatus, configurationOverlay })
   const settings = loadUserConfig(config)
   const base = { shell, version }
   if (action === 'check-updates') return { ...base, ...await checkDesktopUpdates({ updates: settings.updates, version, shell }) }
