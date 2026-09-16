@@ -24,7 +24,7 @@ $source = if ([string]::IsNullOrWhiteSpace($RuntimePackages)) {
     Join-Path $runtimePackage 'lib\client.js'
 }
 $target = if ([string]::IsNullOrWhiteSpace($Output)) { Join-Path $PSScriptRoot 'lib\client.js' } else { Join-Path ([IO.Path]::GetFullPath($Output)) 'client.js' }
-if (-not $target.StartsWith($repository + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Skill UI output must stay within the repository' }
+if (-not $target.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Skill UI output must stay within the repository' }
 New-Item -ItemType Directory -Path (Split-Path -Parent $target) -Force | Out-Null
 
 if (-not (Test-Path -LiteralPath $source -PathType Leaf)) {
