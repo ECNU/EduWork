@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile, writeFile, mkdir, mkdtemp, rm } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { createHash } from 'node:crypto'
 import { spawnSync } from 'node:child_process'
@@ -70,7 +71,7 @@ test('web package and skill staging use portable paths and commands', async () =
   assert.match(assembly, /foreach \(\$packageName in \$local\.Keys\).*\$bundleDependencies\[\$packageName\]/s)
   assert.match(assembly, /dependencies=\$bundleDependencies/)
   const product = await readFile(join(root, 'scripts/prepare-desktop-product.ps1'), 'utf8')
-  assert.match(product, /if \(-not \$IsWindows\)[\s\S]*Copy-Item -LiteralPath \$Source -Destination \$Destination -Recurse/)
+  assert.match(product, /copy-desktop-tree\.ps1/)
 
   const electron = await readFile(join(root, 'dsh-electron/scripts/prepare-electron.ps1'), 'utf8')
   assert.match(electron, /\$IsMacOS[\s\S]*'darwin'/)
@@ -101,4 +102,41 @@ test('web package and skill staging use portable paths and commands', async () =
   assert.match(configPackage, /pkgbuild/)
   assert.match(configPackage, /Get-FileHash[\s\S]*SHA256/)
   assert.match(configPackage, /receipt\.json/)
+})
+
+test('desktop tree copy merges into an existing directory without following links', { skip: process.platform === 'win32' }, async t => {
+  const directory = await mkdtemp(join(tmpdir(), 'eduwork-copy-tree-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const source = join(directory, 'source')
+  const destination = join(directory, 'destination')
+  await mkdir(join(source, 'lib'), { recursive: true })
+  await mkdir(join(destination, 'lib'), { recursive: true })
+  await writeFile(join(source, 'lib/index.js'), 'new')
+  await writeFile(join(source, '.hidden'), 'included')
+  await writeFile(join(destination, 'lib/index.js'), 'old')
+  await writeFile(join(destination, 'lib/keep.js'), 'keep')
+  const runCopy = (from, to) => spawnSync('pwsh', ['-NoProfile', '-Command', '. $env:EDUWORK_COPY_HELPER; Copy-Tree $env:EDUWORK_COPY_SOURCE $env:EDUWORK_COPY_DESTINATION'], {
+    encoding: 'utf8',
+    env: { ...process.env, EDUWORK_COPY_HELPER: join(root, 'scripts/copy-desktop-tree.ps1'), EDUWORK_COPY_SOURCE: from, EDUWORK_COPY_DESTINATION: to }
+  })
+  const result = runCopy(source, destination)
+  assert.equal(result.status, 0, result.error?.message ?? result.stderr)
+  assert.equal(await readFile(join(destination, 'lib/index.js'), 'utf8'), 'new')
+  assert.equal(await readFile(join(destination, 'lib/keep.js'), 'utf8'), 'keep')
+  assert.equal(await readFile(join(destination, '.hidden'), 'utf8'), 'included')
+  await assert.rejects(readFile(join(destination, 'source/lib/index.js')))
+  await assert.rejects(readFile(join(destination, 'lib/lib/index.js')))
+
+  const outside = join(directory, 'outside.txt')
+  await writeFile(outside, 'outside')
+  await symlink(outside, join(source, 'linked.txt'))
+  const linkedSource = runCopy(source, destination)
+  assert.notEqual(linkedSource.status, 0)
+  assert.match(linkedSource.stderr, /does not follow links/)
+  await symlink(outside, join(destination, 'lib/target.js'))
+  await writeFile(join(source, 'lib/target.js'), 'replacement')
+  const linkedTarget = runCopy(source, destination)
+  assert.notEqual(linkedTarget.status, 0)
+  assert.match(linkedTarget.stderr, /target must be a real file/)
+  assert.equal(await readFile(outside, 'utf8'), 'outside')
 })
