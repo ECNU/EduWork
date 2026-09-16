@@ -8,6 +8,7 @@ import { DesktopLifecycle } from './lifecycle.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopConfigurationPath } from './configuration-policy.mjs'
+import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates } from './portable-updates.mjs'
 import { workbenchAction } from './workbench-support.mjs'
@@ -84,6 +85,8 @@ async function prepareDesktop() {
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:#faf8f4}progress{width:100%;margin-top:20px;accent-color:#2575ff}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
+  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+    await initializeUserConfig({ product: paths.product, config: paths.config })
   if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
   if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
