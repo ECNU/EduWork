@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260915.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-16T13:49:05.560Z",
-  "fileSetSHA256": "dd2c09f2d6178579f8f5559a1c084921a6e74cea8768efa783b7bc45762fed9a",
+  "createdAt": "2026-09-16T14:05:01.592Z",
+  "fileSetSHA256": "928893f0c08ad516cc09e12a840d9aad1940d336c775aa744a26c4b809adec03",
   "files": [
     {
       "path": ".gitattributes",
@@ -161,11 +161,11 @@
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
-      "sha256": "eda197baa6ab3e02aabadd50754cde6184df5c4e11af0fcfef42ff9391af984c"
+      "sha256": "08efc9b181abc662ec51bdadc3d4a1ff92680f5dfbf829fb3607b4c9cba664e2"
     },
     {
       "path": "docs/CONTENT_UPDATES.md",
-      "sha256": "73054c11bc9412b04f0c1c6528ab8beb871df807b0e69c656d4476485f1a7778"
+      "sha256": "b3493a8dd381db0676049103fa307e57e6aea001f67ee40e559ba66f99bc8923"
     },
     {
       "path": "docs/EDITIONS.md",
@@ -737,11 +737,11 @@
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
-      "sha256": "327faa4aee483e6c2963d7eb04697b2d6264ca3de507187c91a0e36a895dfcee"
+      "sha256": "9af84a4e85923f4d590c0588deab55c21265c8cfa3c5d05d5b62f4ee6d392f1a"
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "d11a85544a2685a2f0697a19c6994b743f491f6578f2da5d4c94e8ba66263b20"
+      "sha256": "96ad4dc20f05ec0b33ec6347d7f6d51917f9d55c32c7e6809798c77dbaa99627"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -805,7 +805,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "bcbece99d5c484a4a388aeb0f29927e5665de6c668d5b160e6b95f6c6f118dd2"
+      "sha256": "d92dd5fba559a7d03639691461e2758103d7423a6a76a7216362eaaa00ab28f2"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
