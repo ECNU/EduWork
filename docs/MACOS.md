@@ -43,6 +43,10 @@ Apple Silicon 与 Intel 应分别构建和测试，不能复用 Windows 的运�
 
 公版的用户配置从包内模板在首次启动时复制到用户目录；已有配置和示例不会被覆盖。机构版可在装配时传 `-ExternalPublisherConfig <绝对路径>`，保持发行配置在 `.app` 之外，再单独制作配置 PKG；机构配置和凭据不要提交到公开仓库。此候选只生成 ad-hoc 签名的 `.app` 与 ZIP，不可视为 Developer ID 签名或公证后的正式发布。
 
+配置、会话、日志、内容更新缓存和渠道偏好保存在 `~/Library/Application Support/<distribution>-electron/`。启用[配置与 Skills 更新](CONTENT_UPDATES.md)后，更新仍在此目录下载、校验和激活，不会修改 `.app`；机构指定的外部配置文件也不会被内容更新覆盖。装配脚本在签名前生成 `Contents/Resources/bundled-skills.json`，记录内置 Skills 的校验值，用来识别本地修改。Windows 继续使用原有绿色版目录和 `RELEASE-MANIFEST.json`。
+
+macOS 候选暂未实现整包自动安装更新，内容更新不代表该能力已完成。原生验收还应覆盖只读应用目录下的配置/Skills 更新、重启生效与启动失败回退。
+
 Pull Request 应说明测试的 macOS 版本、硬件架构、构建命令和功能范围。除启动外，还需覆盖文件权限、中文与空格路径、企业登录、工作区、Office 和音视频。使用合成数据；真实机构登录由具备权限的测试者单独验证。
 
 GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色和实际安装体验仍需真机确认。仅生成 `.app` 或解析 npm 依赖成功不代表完整平台支持。

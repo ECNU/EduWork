@@ -140,6 +140,10 @@ $release = [ordered]@{
     published=$false; assembledAt=[DateTime]::UtcNow.ToString('o')
 }
 $release | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $resources 'release.json') -Encoding utf8NoBOM
+# Seal the immutable Skill baseline into the app before signing. Mutable content
+# updates live in Application Support and never rewrite the signed bundle.
+& $Node (Join-Path $PSScriptRoot '../../scripts/write-bundled-skills-manifest.mjs') --root $app --product (Join-Path $resources 'product') --output (Join-Path $resources 'bundled-skills.json')
+if ($LASTEXITCODE -ne 0) { throw 'Bundled Skills integrity manifest failed' }
 $archiveQualifier = if ($ExternalPublisherConfig) { '-external-config' } else { '' }
 $archive = Join-Path $Output "$editionName-$Version-macos-arm64-electron$archiveQualifier.zip"
 $signingRoot = Join-Path ([IO.Path]::GetTempPath()) ('eduwork-macos-' + [guid]::NewGuid().ToString('N'))

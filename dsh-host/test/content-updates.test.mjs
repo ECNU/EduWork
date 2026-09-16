@@ -2,12 +2,14 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, sign } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile, readFile, rm, readdir } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { ContentUpdates } from '../content-updates.mjs'
 import { compareVersions, digest, verifiedManifest, validateBundle } from '../content-update-protocol.mjs'
 import { loadUserConfig } from '../user-config.mjs'
 import { createContentUpdate } from '../../scripts/create-content-update.mjs'
+import { writeBundledSkillsManifest } from '../../scripts/write-bundled-skills-manifest.mjs'
+import { desktopPaths } from '../../dsh-electron/src/desktop-paths.mjs'
 
 const version='0.3.6-dev.20260916.1'
 const requires={minClient:version,dsh:'0.1.5-rc.2',capabilities:['package:@eduwork/dsh-oidc']}
@@ -15,20 +17,24 @@ const skill=(body='---\nname: example\ndescription: Example skill\n---\nUse the 
   const bytes=Buffer.from(body)
   return {entries:[{name:'example',requires}],files:[{path:'example/SKILL.md',data:bytes.toString('base64'),bytes:bytes.length,sha256:digest(bytes)}]}
 }
-async function fixture(t,permissions={}) {
-  const root=await mkdtemp(join(tmpdir(),'eduwork-content-'))
-  t.after(()=>rm(root,{recursive:true,force:true}))
-  const product=join(root,'resources/product'),configPath=join(root,'config/eduwork.jsonc')
-  await mkdir(join(product,'skills/example'),{recursive:true});await mkdir(join(root,'config'))
+async function fixture(t,permissions={},mac=false) {
+  const directory=await mkdtemp(join(tmpdir(),'eduwork-content-'))
+  t.after(()=>rm(directory,{recursive:true,force:true}))
+  const paths=mac?desktopPaths({appRoot:join(directory,'Example.app/Contents/Resources/app'),appData:join(directory,'Application Support'),platform:'darwin',
+    settings:{distribution:'example',productVersion:version,product:'../product',node:'../runtime/node',configurationOwnership:'user'}}):null
+  const root=paths?.root??directory,product=paths?.product??join(root,'resources/product'),configPath=paths?.config??join(root,'config/eduwork.jsonc')
+  await mkdir(join(product,'skills/example'),{recursive:true});await mkdir(dirname(configPath),{recursive:true})
   const builtin=Buffer.from('builtin skill'),keys=generateKeyPairSync('ed25519')
   await writeFile(join(product,'skills/example/SKILL.md'),builtin)
-  await writeFile(join(root,'RELEASE-MANIFEST.json'),JSON.stringify({files:[{path:'resources/product/skills/example/SKILL.md',sha256:digest(builtin)}]}))
+  if(mac)await writeBundledSkillsManifest({root,product,output:paths.skillsManifestPath})
+  else await writeFile(join(root,'RELEASE-MANIFEST.json'),JSON.stringify({files:[{path:'resources/product/skills/example/SKILL.md',sha256:digest(builtin)}]}))
   const source={publisher:'example',baseURL:'https://updates.example.test/content',publicKey:keys.publicKey.export({type:'spki',format:'pem'}),configuration:true,skills:false,...permissions}
   const base={schemaVersion:1,product:{name:'Custom name'},desktop:{closeAction:'exit'},features:{visionFallback:false,maxConcurrentRequests:3},organizations:[],contentUpdates:source}
   await writeFile(configPath,JSON.stringify(base))
   const environment={version,dshVersion:requires.dsh,capabilities:requires.capabilities},responses=new Map(),requests=[]
   const fetchImpl=async url=>{requests.push(url);return new Response(responses.get(url)??'',{status:responses.has(url)?200:404})}
-  const options={root,product,configPath,version,distribution:'example',identity:{dshVersion:requires.dsh,managedPackages:{'@eduwork/dsh-oidc':{}}},policy:'development',fetchImpl}
+  const options={root,product,configPath,version,distribution:'example',identity:{dshVersion:requires.dsh,managedPackages:{'@eduwork/dsh-oidc':{}}},policy:'development',fetchImpl,
+    ...(mac?{dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath}:{})}
   const open=async()=>new ContentUpdates(options).init()
   const release=(revision,components={configuration:revision},bundle={schemaVersion:1,configuration:{features:{visionFallback:true}}},extra={})=>{
     const bytes=Buffer.from(JSON.stringify(bundle)),manifest={schemaVersion:1,publisher:source.publisher,channel:'development',revision,requires,components,bundle:{url:`${source.baseURL}/bundles/${revision}.json`,bytes:bytes.length,sha256:digest(bytes)},...extra}
@@ -77,6 +83,36 @@ test('failed trial and interrupted startup roll back both components without a r
   const next=await f.open();await next.prepare();assert.equal(await next.rollback(),true)
   assert.equal(await next.rollback(),false)
   assert.equal((await (await f.open()).prepare()).configurationRevision,1)
+})
+
+test('macOS signed content uses external state and validates the packaged Skill manifest without writing inside the app',async t=>{
+  const f=await fixture(t,{skills:true},true)
+  const snapshot=async folder=>{
+    const entries=[]
+    for(const item of await readdir(folder,{withFileTypes:true})) {
+      const path=join(folder,item.name)
+      if(item.isDirectory())entries.push([item.name,await snapshot(path)])
+      else entries.push([item.name,digest(await readFile(path))])
+    }
+    return entries
+  }
+  const before=await snapshot(f.root),originalConfig=await readFile(f.configPath,'utf8')
+  f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
+  let manager=await f.open()
+  assert.equal(manager.store.startsWith(f.root),false)
+  assert.equal((await manager.check()).state,'available')
+  assert.equal((await manager.download()).state,'ready')
+  manager=await f.open();const prepared=await manager.prepare()
+  assert.equal(prepared.configurationRevision,1);assert.equal(prepared.skillsRevision,1)
+  assert.equal(prepared.skillRoot.startsWith(f.root),false)
+  await manager.ready()
+  assert.equal((await (await f.open()).prepare()).skillsRevision,1)
+  assert.deepEqual(await snapshot(f.root),before)
+  assert.equal(await readFile(f.configPath,'utf8'),originalConfig)
+  await writeFile(join(f.product,'skills/example/SKILL.md'),'local edit')
+  f.release(2,{configuration:2,skills:2},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
+  await manager.check();assert.equal((await manager.download()).state,'error')
+  assert.match(manager.snapshot().message,/本地修改/)
 })
 
 test('invalid signature, digest, dependencies and forbidden config never change installed content',async t=>{
