@@ -60,7 +60,8 @@ export class DesktopOidcBackend extends WebOidcBackend {
         throw error('oidc_host_unavailable', 'OIDC host has stopped')
       }
       attempt.origin = `http://127.0.0.1:${server.address().port}`
-      const authorization = this.createAuthorization(profile, discovery, `${attempt.origin}${OIDC_CALLBACK_PATH}`)
+      const authorization = await this.createAuthorization(profile, discovery, `${attempt.origin}${OIDC_CALLBACK_PATH}`)
+      if (this.disposed || attempt.state !== 'pending') throw error('oidc_login_cancelled', 'Sign-in was cancelled')
       Object.assign(attempt, { oauthState: authorization.state, flow: authorization.flow })
       attempt.timer = setTimeout(() => { void this.cancelLogin(loginID, 'expired').catch(() => {}) }, this.ttl)
       attempt.timer.unref()

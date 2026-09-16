@@ -10,6 +10,8 @@
 
 我们希望机构服务能被更多 AI 客户端复用。**[开放身份与模型接入倡议](docs/open-integration.md)** 介绍了这个目标、已有实现和社区参与方式；具体接入遵循下方协议，不要求采用 EduWork 的界面或桌面壳。
 
+本分支另提供 **[LiteLLM native OAuth 接入](docs/gateway-auth/README.md)**：通过完整发现地址动态注册客户端，使用 Access Token 直接调用获授权模型。此能力尚未发布；现有 OIDC 配置与下述四项能力保持兼容。新的 oidc-llm 仅提供待评审的协议草案。
+
 插件提供四项能力：
 
 1. 标准 OIDC Authorization Code + PKCE 公共客户端登录；

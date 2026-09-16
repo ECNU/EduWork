@@ -1,0 +1,9 @@
+{
+  "schemaVersion": "dsh-oidc/v1alpha1",
+  "id": "example-gateway",
+  "displayName": "示例模型网关",
+  "auth": {
+    "discoveryUrl": "https://gateway.example.org/.well-known/litellm-cli-auth",
+    "expectedIssuer": "https://gateway.example.org"
+  }
+}

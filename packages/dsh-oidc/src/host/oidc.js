@@ -145,7 +145,7 @@ function runtimeProjection(runtime = {}, fallback = {}) {
 function profileManagement(profiles) {
   const rows = [...profiles.values()].map(profile => ({
     id: profile.id, displayName: profile.displayName, organization: profile.organization,
-    baseURL: profile.provider?.baseURL ?? profile.oidc.issuer, builtIn: true, configured: true, enabled: true,
+    baseURL: profile.provider?.baseURL || profile.auth?.discoveryUrl || profile.oidc.issuer, builtIn: true, configured: true, enabled: true,
     providerID: profile.provider?.id ?? '',
     runtime: runtimeProjection({ ...profile.provider, modelSource: profile.provider?.modelSource ?? 'none' }, profile.provider),
   }))
@@ -284,7 +284,7 @@ export class WebOidcBackend {
     const discovery = await this.discover(profile)
     this.pruneFlows()
     if (this.flows.size >= MAX_PENDING_FLOWS) throw publicError('oidc_flow_limit', 'too many pending OIDC login attempts')
-    const { authorizationURL } = this.createAuthorization(profile, discovery, this.redirectURI)
+    const { authorizationURL } = await this.createAuthorization(profile, discovery, this.redirectURI)
     return { mode: 'redirect', authorizationURL }
   }
 

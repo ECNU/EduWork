@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Status: design proposal, not implemented or released. This page describes the interface boundaries and contribution scope. See the [dsh-oidc documentation](../../../packages/dsh-oidc/README_EN.md) for currently supported behavior. Do not change production configuration based on this proposal.
+Status: the LiteLLM native adapter is implemented on this branch but not released; existing OIDC remains compatible. oidc-llm stays a review draft pending agreement and a server implementation. See the [gateway guide](../../../packages/dsh-oidc/docs/gateway-auth/README_EN.md) for implemented configuration and wire behavior, and the [oidc-llm draft](../../../packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md) for the proposed protocol. Do not change production configuration based on an unreleased proposal.
 
 ## Goal
 

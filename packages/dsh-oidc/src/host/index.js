@@ -2,6 +2,7 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { apply as applyEnterpriseProvider } from './provider/index.js'
 import { NativeOidcBackend, WebOidcBackend } from './oidc.js'
 import { DesktopOidcBackend } from './desktop-oidc.js'
+import { GatewayDesktopBackend, GatewayWebBackend } from './gateway-backend.js'
 import { enterpriseProviderConfig, loadEnterpriseProfiles, publicProfile } from './profile.js'
 
 export const name = 'dsh-oidc'
@@ -14,6 +15,7 @@ export class OidcAccountService extends TypertRemoteService {
     super(ctx, 'oidcAccounts')
     for (const initialize of remoteInitializers) initialize.call(this)
     this.profiles = loadEnterpriseProfiles(config)
+    if (config.backend === 'native' && [...this.profiles.values()].some(profile => profile.auth)) throw new Error('Gateway auth requires the desktop or web Host backend; the legacy native bridge supports oidc profiles only')
     if (this.profiles.size === 0 && config.allowEmptyProfiles !== true) throw new Error('dsh-oidc requires at least one Enterprise Profile')
     this.uiMode = ['external', 'models-only'].includes(config.uiMode) ? config.uiMode : 'standard'
     this.manageProductBrand = config.manageProductBrand !== false
@@ -36,6 +38,7 @@ export class OidcAccountService extends TypertRemoteService {
       resolveCredential: async providerID => {
         const profile = [...this.profiles.values()].find(value => value.provider?.id === providerID)
         if (!profile) return undefined
+        if (profile.auth) return this.backend?.resolveGatewayCredential(profile.id)
         if (this.backend instanceof NativeOidcBackend) return ctx.credentials.resolve(profile.keyBinding.credentialRef)
         if (this.backend instanceof WebOidcBackend) return this.backend.resolveBoundCredential(profile.id, {
           credentialRef: profile.keyBinding.credentialRef, runtimeBaseURL: profile.provider.baseURL,
@@ -53,7 +56,7 @@ export class OidcAccountService extends TypertRemoteService {
         }
     if (config.backend === 'native') this.backend = new NativeOidcBackend(ctx, this.profiles)
     else if (config.backend === 'desktop') {
-      this.backend = new DesktopOidcBackend(ctx, this.profiles, config.desktop ?? {}, backendOptions)
+      this.backend = new GatewayDesktopBackend(ctx, this.profiles, config.desktop ?? {}, backendOptions)
       ctx.inject(['desktopServices'], inner => {
         this.backend.openExternal = url => inner.desktopServices.openExternal(url)
         inner.effect(() => () => {
@@ -64,7 +67,7 @@ export class OidcAccountService extends TypertRemoteService {
     } else {
       this.backendReady = new Promise(resolve => {
         ctx.inject(['webServer'], inner => {
-          const backend = new WebOidcBackend(inner, this.profiles, config.web ?? {}, backendOptions)
+          const backend = new GatewayWebBackend(inner, this.profiles, config.web ?? {}, backendOptions)
           this.backend = backend
           resolve()
           inner.effect(() => () => { if (this.backend === backend) this.backend = undefined }, 'dsh-oidc: web backend')

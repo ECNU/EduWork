@@ -10,6 +10,14 @@ try {
   // update settings inherit the source and channel in the original CI package.
   if (!config.organizations.length) throw new Error('A configured institution distribution requires at least one organization.')
   for (const org of config.organizations) {
+    if (org.auth) {
+      if (!org.id || org.oidc || org.keyBinding || org.provider?.baseURL || org.auth.clientId) throw new Error('Gateway auth must not mix fixed OIDC clients, Key Binding or a model API base URL.')
+      for (const value of [org.auth.discoveryUrl, ...(org.auth.expectedIssuer ? [org.auth.expectedIssuer] : [])]) {
+        const url = new URL(value)
+        if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('A distributed gateway discovery/issuer must use HTTPS without credentials, query or fragment.')
+      }
+      continue
+    }
     if (!org.id || !org.oidc?.clientId || /^replace-with-/i.test(org.oidc.clientId)) throw new Error('An organization has a missing or placeholder Client ID.')
     if (new URL(org.oidc.issuer).protocol !== 'https:') throw new Error('An organization issuer must use HTTPS.')
   }

@@ -4,8 +4,16 @@
   "title": "dsh-oidc Enterprise Profile v1alpha1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "id", "displayName", "oidc"],
-  "dependentRequired": { "keyBinding": ["provider"], "provider": ["keyBinding"] },
+  "required": ["schemaVersion", "id", "displayName"],
+  "oneOf": [
+    {
+      "required": ["oidc"], "properties": { "oidc": {}, "auth": false, "provider": { "$ref": "#/$defs/provider" } },
+      "dependentRequired": { "keyBinding": ["provider"], "provider": ["keyBinding"] }
+    },
+    {
+      "required": ["auth"], "properties": { "auth": {}, "oidc": false, "keyBinding": false, "provider": { "$ref": "#/$defs/gatewayProvider" } }
+    }
+  ],
   "properties": {
     "schemaVersion": { "const": "dsh-oidc/v1alpha1" },
     "id": { "$ref": "#/$defs/id" },
@@ -16,8 +24,9 @@
     "insecureDevelopmentOrigin": { "type": "string", "minLength": 8, "maxLength": 2048, "pattern": "^http://" },
     "brand": { "$ref": "#/$defs/brand" },
     "oidc": { "$ref": "#/$defs/oidc" },
+    "auth": { "$ref": "#/$defs/gatewayAuth" },
     "keyBinding": { "$ref": "#/$defs/keyBinding" },
-    "provider": { "$ref": "#/$defs/provider" }
+    "provider": { "type": "object" }
   },
   "allOf": [
     {
@@ -47,6 +56,32 @@
     }
   ],
   "$defs": {
+    "gatewayAuth": {
+      "type": "object", "additionalProperties": false, "required": ["discoveryUrl"],
+      "properties": {
+        "discoveryUrl": { "$ref": "#/$defs/secureEndpointURL" },
+        "expectedIssuer": { "$ref": "#/$defs/secureEndpointURL" }
+      }
+    },
+    "gatewayProvider": {
+      "type": "object", "additionalProperties": false,
+      "properties": {
+        "id": {"$ref": "#/$defs/id"},
+        "displayName": {"$ref": "#/$defs/nonEmpty120"},
+        "adapter": {"const": "openai-compatible"},
+        "reasoning": {"enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"]},
+        "defaultContextWindow": {"$ref": "#/$defs/positiveInteger"},
+        "defaultMaxTokens": {"$ref": "#/$defs/positiveInteger"},
+        "maxRequestImageBytes": {"$ref": "#/$defs/positiveInteger"},
+        "requestImagePixelBudget": {"$ref": "#/$defs/positiveInteger"},
+        "requestImageMaxBytes": {"$ref": "#/$defs/positiveInteger"},
+        "streamIdleTimeoutMs": {"$ref": "#/$defs/positiveInteger"},
+        "retryPolicy": {"$ref": "#/$defs/retryPolicy"},
+        "compat": {"$ref": "#/$defs/compat"},
+        "modelSource": {"const": "discovery"},
+        "models": {"type": "array", "minItems": 0, "maxItems": 128, "items": {"$ref": "#/$defs/model"}}
+      }
+    },
     "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
     "nonEmpty120": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^\\S(?:.*\\S)?$" },
     "positiveInteger": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },

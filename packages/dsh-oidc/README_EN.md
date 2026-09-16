@@ -10,6 +10,8 @@
 
 We want institutional services to work across more AI clients. The **[Open Identity and Model Integration Initiative](docs/open-integration.en.md)** explains the goal, existing implementation, and ways to participate. Integration follows the contracts below without requiring EduWork's UI or desktop shell.
 
+This branch also adds **[LiteLLM native OAuth](docs/gateway-auth/README_EN.md)**: complete discovery URL, dynamic registration and direct Access Token model access. It is not released yet; existing OIDC profiles and the four capabilities below retain their compatibility path. The new oidc-llm protocol remains a review draft.
+
 `dsh-oidc` composes four concerns behind one reviewed, declarative Enterprise Profile:
 
 1. OpenID Connect Authorization Code flow with PKCE for a public client;

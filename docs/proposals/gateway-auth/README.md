@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-状态：设计提案，尚未实现或发布。本页供贡献者评审接口边界和开发范围。当前可用功能仍以 [dsh-oidc 文档](../../../packages/dsh-oidc/README.md)为准，不应按本提案修改生产配置。
+状态：LiteLLM native adapter 已在本分支实现，尚未发布；原有 OIDC 实现保持兼容。oidc-llm 仍是待评审草案，等待协议确认及服务端实现。配置与实际接口见[网关接入指南](../../../packages/dsh-oidc/docs/gateway-auth/README.md)，新协议详见[oidc-llm 草案](../../../packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md)。不应按未发布提案修改生产配置。
 
 ## 目标
 
