@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Status: the LiteLLM native adapter is implemented on this branch but not released; existing OIDC remains compatible. oidc-llm stays a review draft pending agreement and a server implementation. See the [gateway guide](../../../packages/dsh-oidc/docs/gateway-auth/README_EN.md) for implemented configuration and wire behavior, and the [oidc-llm draft](../../../packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md) for the proposed protocol. Do not change production configuration based on an unreleased proposal.
+Status: LiteLLM native and the disabled-by-default experimental oidc-llm adapter are implemented on this branch but not released; existing OIDC remains compatible. oidc-llm stays a review draft and server behavior requires independent acceptance. See the [gateway guide](../../../packages/dsh-oidc/docs/gateway-auth/README_EN.md) for implemented behavior and limits, and the [oidc-llm draft](../../../packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.en.md) for the proposed protocol. Do not change production configuration based on an unreleased proposal.
 
 ## Goal
 
@@ -45,7 +45,7 @@ Existing configuration and published npm packages retain their current contracts
 
 1. Define discovery/configuration and the shared credential boundary, with synthetic contract tests.
 2. Implement the LiteLLM adapter for registration, authorization, account mapping, models, refresh and revocation.
-3. Agree on oidc-llm scopes, lifetimes and revocation before implementing its adapter and an independently testable server contract.
+3. Use the explicit experimental adapter for oidc-llm interoperability, then agree on scopes, lifetimes and revocation before defining release scope.
 4. Verify legacy OIDC profiles, account changes, restarts, ordinary/SSE model requests and failure recovery.
 
 PRs report checks actually performed and unverified behavior. Mock contract tests do not replace gateway and desktop acceptance. Ordinary CI keeps module checks and necessary builds; system-browser and desktop behavior require local validation.

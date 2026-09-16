@@ -6,7 +6,7 @@ import { callbackLanguage, callbackPage } from './callback-page.js'
 const MAX_FLOWS = 32
 const MAX_HISTORY = 128
 const error = (code, message) => Object.assign(new Error(message), { code })
-const safeCodes = new Set(['oidc_callback_invalid', 'oidc_authorization_rejected', 'oidc_token_invalid', 'oidc_id_token_invalid', 'oidc_userinfo_invalid'])
+const safeCodes = new Set(['oidc_callback_invalid', 'oidc_authorization_rejected', 'oidc_token_invalid', 'oidc_id_token_invalid', 'oidc_userinfo_invalid', 'gateway_token_invalid', 'gateway_scope_changed', 'gateway_identity_changed'])
 
 function reply(response, status, profile, outcome, language) {
   const page = callbackPage(profile, outcome, language)

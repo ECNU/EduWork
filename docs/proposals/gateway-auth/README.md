@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-状态：LiteLLM native adapter 已在本分支实现，尚未发布；原有 OIDC 实现保持兼容。oidc-llm 仍是待评审草案，等待协议确认及服务端实现。配置与实际接口见[网关接入指南](../../../packages/dsh-oidc/docs/gateway-auth/README.md)，新协议详见[oidc-llm 草案](../../../packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md)。不应按未发布提案修改生产配置。
+状态：LiteLLM native adapter 和默认关闭的 oidc-llm 实验 adapter 已在本分支实现，尚未发布；原有 OIDC 实现保持兼容。oidc-llm 仍是待评审草案，服务端能力需要独立验收。配置、实际接口与实验限制见[网关接入指南](../../../packages/dsh-oidc/docs/gateway-auth/README.md)，新协议详见[oidc-llm 草案](../../../packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md)。不应按未发布提案修改生产配置。
 
 ## 目标
 
@@ -45,7 +45,7 @@ oidc-llm 草案要求发现结果提供 `userinfo_endpoint`，客户端不固定
 
 1. 确定发现与配置结构、共享凭据管理边界，补充合成契约测试。
 2. 实现 LiteLLM adapter，覆盖注册、授权、资料映射、模型请求、刷新和撤销。
-3. 确定 oidc-llm 的 scope、有效期和撤销契约后，实现第二 adapter 与可独立联调的服务端接口。
+3. 通过显式实验 adapter 联调 oidc-llm，确认 scope、有效期和撤销契约后再确定发布范围。
 4. 验证历史 OIDC profile、账号切换、重启、模型普通/SSE 请求及异常恢复。
 
 每个 PR 报告实际执行的验证和未验证范围。模拟契约测试不能替代真实网关与桌面验收；普通 CI 沿用模块检查和必要构建，本地完成系统浏览器及桌面行为验证。

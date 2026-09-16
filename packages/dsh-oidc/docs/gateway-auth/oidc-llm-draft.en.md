@@ -2,7 +2,7 @@
 
 [简体中文](oidc-llm-draft.md) | **English**
 
-**Status: for review, not implemented by this client or a server.** The name, extension fields, scopes, lifetimes and revocation requirements are proposals, not a published OpenID standard. Existing OIDC integrations continue to use the [current contract](../server-integration-contract.en.md). [Gateway guide](README_EN.md).
+**Status: for review, not a released deployment contract.** This branch includes a disabled-by-default [experimental adapter](experimental-oidc-llm.en.md); that guide describes implemented behavior and limits. Server behavior requires separate acceptance. The name, extension fields, scopes, lifetimes and revocation requirements remain proposals, not a published OpenID standard. Existing OIDC integrations continue to use the [current contract](../server-integration-contract.en.md). [Gateway guide](README_EN.md).
 
 ## 1. Scope
 

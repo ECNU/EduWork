@@ -41,6 +41,7 @@
         "type": "object",
         "properties": {
           "oidc": { "type": "object", "properties": { "issuer": { "$ref": "#/$defs/secureEndpointURL" } } },
+          "auth": { "type": "object", "properties": { "discoveryUrl": { "$ref": "#/$defs/secureEndpointURL" }, "expectedIssuer": { "$ref": "#/$defs/secureEndpointURL" } } },
           "keyBinding": { "type": "object", "properties": { "baseURL": { "$ref": "#/$defs/secureEndpointURL" } } },
           "provider": { "type": "object", "properties": { "baseURL": { "$ref": "#/$defs/secureEndpointURL" } } }
         }
@@ -59,9 +60,17 @@
     "gatewayAuth": {
       "type": "object", "additionalProperties": false, "required": ["discoveryUrl"],
       "properties": {
-        "discoveryUrl": { "$ref": "#/$defs/secureEndpointURL" },
-        "expectedIssuer": { "$ref": "#/$defs/secureEndpointURL" }
-      }
+        "discoveryUrl": { "$ref": "#/$defs/endpointURL" },
+        "expectedIssuer": { "$ref": "#/$defs/endpointURL" },
+        "experimentalOidcLlm": { "type": "boolean" },
+        "clientId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "identityMode": { "enum": ["oauth", "oidc"] }
+      },
+      "allOf": [{
+        "if": { "required": ["experimentalOidcLlm"], "properties": { "experimentalOidcLlm": { "const": true } } },
+        "then": { "required": ["clientId", "identityMode"], "properties": { "clientId": {}, "identityMode": {} } },
+        "else": { "properties": { "clientId": false, "identityMode": false, "discoveryUrl": { "$ref": "#/$defs/secureEndpointURL" }, "expectedIssuer": { "$ref": "#/$defs/secureEndpointURL" } } }
+      }]
     },
     "gatewayProvider": {
       "type": "object", "additionalProperties": false,

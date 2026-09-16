@@ -286,11 +286,17 @@ export function normalizeEnterpriseProfile(raw) {
   let auth
   if (gateway) {
     const rawAuth = object(source.auth, 'profile.auth')
-    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer']), 'profile.auth')
-    // New gateway protocols allow HTTP only on explicitly enabled loopback labs.
+    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer', 'experimentalOidcLlm', 'clientId', 'identityMode']), 'profile.auth')
+    const experimental = rawAuth.experimentalOidcLlm === true
+    if (rawAuth.experimentalOidcLlm !== undefined && typeof rawAuth.experimentalOidcLlm !== 'boolean') throw new Error('profile.auth.experimentalOidcLlm must be boolean')
+    if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined)) throw new Error('profile.auth clientId and identityMode require experimentalOidcLlm=true')
+    if (experimental && !['oauth', 'oidc'].includes(rawAuth.identityMode)) throw new Error('profile.auth.identityMode must explicitly select oauth or oidc')
+    if (experimental && allowedInsecureOrigin && !rawAuth.expectedIssuer) throw new Error('development oidc-llm requires expectedIssuer')
+    const developmentOrigin = experimental ? allowedInsecureOrigin : undefined
     auth = Object.freeze({
-      discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment),
-      ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment) }),
+      discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment, developmentOrigin),
+      ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment, developmentOrigin) }),
+      ...(experimental ? { experimentalOidcLlm: true, clientId: text(rawAuth.clientId, 'profile.auth.clientId', 256), identityMode: rawAuth.identityMode } : {}),
     })
     if (source.provider?.baseURL !== undefined) throw new Error('profile.auth derives provider.baseURL from validated discovery')
     if (source.provider?.modelSource !== undefined && source.provider.modelSource !== 'discovery') throw new Error('profile.auth requires discovery modelSource')

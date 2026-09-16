@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-本分支新增 LiteLLM native OAuth 支持，尚未发布 npm 或桌面版本。已有 `oidc` 配置继续沿用原有 OIDC + 可选 Key Binding 实现，无需迁移。新的 **oidc-llm** 仍是[协议草案](oidc-llm-draft.md)，客户端会明确拒绝该发现类型，待协议确认、服务端可用后再接入。
+本分支新增 LiteLLM native OAuth 支持，以及默认关闭的 [oidc-llm 实验适配器](experimental-oidc-llm.md)，尚未发布 npm 或桌面版本。已有 `oidc` 配置继续沿用原有 OIDC + 可选 Key Binding 实现，无需迁移。新的 **oidc-llm** 仍是[协议草案](oidc-llm-draft.md)，实验实现不代表协议已定稿。
 
 ## 选择接入方式
 
@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | 已有 OIDC 与机构资源服务 | 原有 `oidc`、可选 `keyBinding` + `provider` | Key Binding 返回的 API Key | 原有固定 public client ID |
 | LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | 登录返回的 Access Token | 每次登录动态注册实际本机回调 |
-| oidc-llm 草案 | 暂不启用 | 拟使用 Access Token | 拟支持固定 ID 与可选动态注册 |
+| oidc-llm 0.1 实验 | `auth` + 显式实验开关与身份模式 | Access Token | 已实现预注册 public client |
 
 LiteLLM 不需要实现 EduWork 的 Key Binding。普通 OIDC 的 Access Token 也不会因为配置了模型 URL 就获得推理权限；继续按[现有服务端契约](../server-integration-contract.md)使用。配额和团队管理不纳入本次统一协议；LiteLLM 自己的团队选择留在网关网页，客户端仅保存不透明的授权上下文用于防止刷新串号。
 
@@ -157,7 +157,7 @@ POST revocation endpoint，表单 `token=<refresh_token>&client_id=<registered_c
 
 现有实现仍校验 Discovery issuer、PKCE S256、state、nonce、RS256 ID Token、UserInfo sub 与 ID Token sub 一致，并保留原有 Key Binding、凭据引用迁移及刷新行为。相关接口见[服务端契约](../server-integration-contract.md)、[Profile 规范](../enterprise-profile.md)。没有为兼容 LiteLLM 放松这些检查。
 
-新 oidc-llm 的 UserInfo 从发现的 `userinfo_endpoint` 获取，拟复用 `sub`、`name`、`preferred_username`、`picture`、`email` 等字段；具体 scope、生命周期和撤销保证见[草案](oidc-llm-draft.md)。在双方实现前不要把旧学校配置改成 `auth`。
+新 oidc-llm 的 UserInfo 从发现的 `userinfo_endpoint` 获取，复用标准主体和资料字段。实验配置及实际限制见[实验接入](experimental-oidc-llm.md)，尚待讨论的 scope、生命周期和撤销保证见[草案](oidc-llm-draft.md)。真实服务完成验收前，不迁移已有机构配置。
 
 ## 开发验证
 

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { createServer } from 'node:http'
-import { createHash } from 'node:crypto'
+import { createHash, generateKeyPairSync, sign } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -15,16 +15,27 @@ const { default: OidcAccountService } = await import(moduleURL)
 
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }
 
-async function fixture(t) {
+async function fixture(t, draft = false) {
   const records = new Map(), codes = new Map(), requests = [], opened = [], fibers = []
   const controls = { user: 'alice', streamGate: undefined, firstChunk: undefined, refreshGate: undefined }
-  let base, serial = 0
+  let base, serial = 0, grantedScopes
+  const pair = draft ? generateKeyPairSync('rsa', { modulusLength: 2048 }) : undefined
   const server = createServer(async (req, res) => {
     const url = new URL(req.url, base)
     const json = (body, status = 200) => { res.writeHead(status, { 'content-type': 'application/json' }); res.end(JSON.stringify(body)) }
     const chunks = []
     for await (const chunk of req) chunks.push(chunk)
     const body = Buffer.concat(chunks).toString()
+    if (url.pathname === '/discovery' && draft) return json({
+      issuer: base, authorization_endpoint: base + '/authorize', token_endpoint: base + '/token',
+      revocation_endpoint: base + '/revoke', userinfo_endpoint: base + '/userinfo', jwks_uri: base + '/jwks',
+      response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
+      code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'], revocation_endpoint_auth_methods_supported: ['none'],
+      scopes_supported: ['openid', 'profile', 'offline_access', 'llm:models:read', 'llm:invoke'],
+      subject_types_supported: ['public'], id_token_signing_alg_values_supported: ['RS256'],
+      oidc_llm: { version: '0.1', resource: base, api_base: base + '/v1', identity_modes_supported: ['oauth', 'oidc'], client_registration_methods_supported: ['static'] },
+    })
+    if (url.pathname === '/jwks' && draft) return json({ keys: [{ ...pair.publicKey.export({ format: 'jwk' }), kid: 'synthetic', alg: 'RS256', use: 'sig' }] })
     if (url.pathname === '/discovery') return json({ contract_version: 1, issuer: base, resource: base,
       authorization_endpoint: base + '/authorize', token_endpoint: base + '/token',
       registration_endpoint: base + '/register', revocation_endpoint: base + '/revoke',
@@ -40,14 +51,28 @@ async function fixture(t) {
     }
     if (url.pathname === '/token') {
       const form = new URLSearchParams(body)
+      let code
       if (form.get('grant_type') === 'authorization_code') {
-        const code = codes.get(form.get('code'))
+        code = codes.get(form.get('code'))
         if (!code || code.code_challenge !== createHash('sha256').update(form.get('code_verifier') || '').digest('base64url')) return json({ error: 'invalid_grant' }, 400)
+        grantedScopes = code.scope
       } else await controls.refreshGate?.promise
+      if (draft) {
+        const token = { access_token: 'synthetic-access-' + controls.user + '-' + (++serial), refresh_token: 'synthetic-refresh-' + serial,
+          expires_in: 3600, token_type: 'Bearer', scope: grantedScopes }
+        if (code) {
+          const now = Math.floor(Date.now() / 1000)
+          const payload = Buffer.from(JSON.stringify({ alg: 'RS256', kid: 'synthetic' })).toString('base64url') + '.'
+            + Buffer.from(JSON.stringify({ iss: base, aud: 'synthetic-client', sub: controls.user, nonce: code.nonce, iat: now, exp: now + 3600 })).toString('base64url')
+          token.id_token = payload + '.' + sign('RSA-SHA256', Buffer.from(payload), pair.privateKey).toString('base64url')
+        }
+        return json(token)
+      }
       return json({ access_token: 'synthetic-access-' + controls.user + '-' + (++serial), refresh_token: 'synthetic-refresh-' + serial,
         expires_in: 3600, token_type: 'Bearer', user_id: controls.user, team_id: null })
     }
     if (url.pathname === '/user/info') return json({ user_id: controls.user })
+    if (url.pathname === '/userinfo' && draft) return json({ sub: controls.user })
     if (url.pathname === '/v1/models') return json({ data: [{ id: 'synthetic-model' }] })
     if (url.pathname === '/revoke') return json({})
     if (url.pathname === '/v1/chat/completions') {
@@ -75,7 +100,8 @@ async function fixture(t) {
     async openExternal(url) { opened.push(url) }
   }
   const profile = { schemaVersion: 'dsh-oidc/v1alpha1', id: 'gateway', displayName: 'Synthetic gateway',
-    allowInsecureDevelopment: true, auth: { discoveryUrl: base + '/discovery' } }
+    allowInsecureDevelopment: true, auth: { discoveryUrl: base + '/discovery',
+      ...(draft ? { experimentalOidcLlm: true, identityMode: 'oidc', clientId: 'synthetic-client' } : {}) } }
   t.after(async () => {
     controls.streamGate?.resolve(); controls.refreshGate?.resolve()
     for (const fiber of fibers.reverse()) await fiber.dispose()
@@ -165,5 +191,36 @@ test('Host authorizedFetch drops unread response bytes after logout', async t =>
   await f.ctx.oidcAccounts.logout('gateway')
   f.controls.streamGate.resolve()
   await assert.rejects(response.text(), { code: 'oidc_login_cancelled' })
+  assert.equal(f.backend.gatewayCalls.size, 0)
+})
+
+test('actual DSH OIDC draft provider reuses Access Token refresh and rejects a prepared call after account switch', async t => {
+  const f = await fixture(t, true)
+  const prepared = await f.ctx.llm.prepareCall(f.options)
+  const profile = f.backend.profile('gateway')
+  await f.backend.refresh(profile, await f.backend.loadSession(profile))
+  const output = []
+  for await (const chunk of prepared.stream({ ...prepared.config, messages: [] })) output.push(chunk)
+  assert.ok(output.some(chunk => chunk.type === 'text-delta'))
+  assert.ok(!output.some(chunk => chunk.reason?.kind === 'error'))
+  assert.match(f.requests[0].authorization, /^Bearer synthetic-access-alice-/)
+  const beforeSwitch = await f.ctx.llm.prepareCall(f.options)
+  await f.login('bob')
+  const stale = []
+  for await (const chunk of beforeSwitch.stream({ ...beforeSwitch.config, messages: [] })) stale.push(chunk)
+  assert.ok(stale.some(chunk => chunk.reason?.kind === 'error'))
+  assert.equal(f.requests.length, 1)
+})
+
+test('actual DSH OIDC draft stream drops late output after logout', async t => {
+  const f = await fixture(t, true)
+  f.controls.streamGate = deferred()
+  const output = []
+  for await (const chunk of f.ctx.llm.stream(f.options)) {
+    output.push(chunk)
+    if (chunk.type === 'text-delta') { await f.ctx.oidcAccounts.logout('gateway'); f.controls.streamGate.resolve() }
+  }
+  assert.ok(JSON.stringify(output).includes('synthetic-first'))
+  assert.ok(!JSON.stringify(output).includes('synthetic-late'))
   assert.equal(f.backend.gatewayCalls.size, 0)
 })

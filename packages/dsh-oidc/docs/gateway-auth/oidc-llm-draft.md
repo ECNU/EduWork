@@ -2,7 +2,7 @@
 
 **简体中文** | [English](oidc-llm-draft.en.md)
 
-**状态：待评审，客户端与服务端尚未实现，不作为当前部署契约。** 名称、扩展字段、scope、寿命和撤销要求均为提议；不是已发布的 OpenID 标准。现有 OIDC 接入继续使用[当前契约](../server-integration-contract.md)。[网关接入入口](README.md) · [English overview](README_EN.md#existing-oidc-and-the-future-draft)
+**状态：待评审，不作为已发布部署契约。** 本分支已有默认关闭的[实验适配器](experimental-oidc-llm.md)，实现范围与限制以其文档为准；服务端行为仍需单独实测。名称、扩展字段、scope、寿命和撤销要求尚未定稿；不是已发布的 OpenID 标准。现有 OIDC 接入继续使用[当前契约](../server-integration-contract.md)。[网关接入入口](README.md) · [English overview](README_EN.md#existing-oidc-and-the-future-draft)
 
 ## 1. 范围
 

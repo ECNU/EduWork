@@ -1,6 +1,7 @@
 import { createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify as verifySignature } from 'node:crypto'
 import { emptyResources, normalizeResourceModels } from './resources.js'
 import { DEFAULT_CREDENTIAL_REF, legacyCredentialRefs } from './profile.js'
+import { bufferResourceResponse, validateResourceRead } from './model-resource-transport.js'
 
 const FLOW_TTL_MS = 10 * 60 * 1000
 const MAX_PENDING_FLOWS = 32
@@ -381,13 +382,14 @@ export class WebOidcBackend {
     }
   }
 
-  async verifyIDToken(profile, discovery, raw, expectedNonce, accessToken) {
+  async verifyIDToken(profile, discovery, raw, expectedNonce, accessToken, { refresh = false } = {}) {
+    if (typeof raw !== 'string') throw publicError('oidc_id_token_invalid', 'OIDC ID Token is missing')
     const parts = raw.split('.')
     if (parts.length !== 3) throw publicError('oidc_id_token_invalid', 'OIDC ID Token is malformed')
     const header = decodePart(parts[0], 'ID Token header')
     const claims = decodePart(parts[1], 'ID Token claims')
     if (header.alg !== 'RS256' || typeof header.kid !== 'string' || header.kid === '') throw publicError('oidc_id_token_invalid', 'OIDC ID Token must use RS256 with kid')
-    const keysResponse = await this.fetch(discovery.jwksURI, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(20_000) })
+    const keysResponse = await this.fetch(discovery.jwksURI, { headers: { accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20_000) })
     const jwks = await responseJSON(keysResponse, 'oidc_jwks_failed')
     const candidates = Array.isArray(jwks.keys) ? jwks.keys.filter(key => (
       key.kid === header.kid && key.kty === 'RSA' && (key.use === undefined || key.use === 'sig')
@@ -402,8 +404,12 @@ export class WebOidcBackend {
     const now = nowSeconds(this.now)
     const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
     const audienceValid = audience.includes(profile.oidc.clientId)
+      && audience.every(value => typeof value === 'string' && value !== '')
+      && new Set(audience).size === audience.length
       && (audience.length === 1 || claims.azp === profile.oidc.clientId)
-    if (claims.iss !== profile.oidc.issuer || !audienceValid || typeof claims.sub !== 'string' || claims.sub === '' || !equalText(claims.nonce, expectedNonce)) {
+      && (claims.azp === undefined || claims.azp === profile.oidc.clientId)
+    const nonceValid = refresh && claims.nonce === undefined || equalText(claims.nonce, expectedNonce)
+    if (claims.iss !== profile.oidc.issuer || !audienceValid || typeof claims.sub !== 'string' || claims.sub === '' || !nonceValid) {
       throw publicError('oidc_id_token_invalid', 'OIDC ID Token identity claims are invalid')
     }
     if (!Number.isFinite(claims.exp) || !Number.isFinite(claims.iat)
@@ -654,8 +660,7 @@ export class WebOidcBackend {
   async modelResourceFetch(profileID, relativePath, options = {}) {
     const profile = this.profile(profileID), epoch = this.accountEpoch(profile)
     if (!profile.provider || !profile.keyBinding) throw publicError('oidc_resource_not_configured', 'Organization model resources are not configured')
-    if (typeof relativePath !== 'string' || !/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(relativePath)
-      || Object.keys(options).some(key => key !== 'signal')) throw publicError('oidc_resource_path_denied', 'A fixed model-resource path and read-only options are required')
+    validateResourceRead(relativePath, options)
     const session = await this.activeSession(profile)
     const credential = await this.boundCredential(profile, session)
     if (!session || !credential?.value || epoch !== this.accountEpoch(profile)) throw publicError('oidc_login_required', 'Organization model sign-in is required')
@@ -665,16 +670,10 @@ export class WebOidcBackend {
     })
     // Complete the bounded body while the request signal is active. An extension
     // never receives a response belonging to a signed-out or replaced account.
-    if (Number(response.headers.get('content-length')) > 1024 * 1024) { await response.body?.cancel(); throw publicError('oidc_resource_invalid', 'Model resource response is too large') }
-    const chunks = [], reader = response.body?.getReader()
-    let size = 0
-    if (reader) {
-      try { for (;;) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > 1024 * 1024) throw new Error('size'); chunks.push(value) } }
-      catch { await reader.cancel().catch(() => {}); throw publicError('oidc_resource_invalid', 'Model resource response could not be read') }
-    }
-    const currentCredential = await this.ctx.credentials.resolve(profile.keyBinding.credentialRef)
-    if (epoch !== this.accountEpoch(profile) || currentCredential?.value !== credential.value) throw publicError('oidc_login_cancelled', 'Organization account changed during resource request')
-    return new Response([204, 205, 304].includes(response.status) ? null : Buffer.concat(chunks), { status: response.status, headers: response.headers })
+    return bufferResourceResponse(response, async () => {
+      const currentCredential = await this.ctx.credentials.resolve(profile.keyBinding.credentialRef)
+      if (epoch !== this.accountEpoch(profile) || currentCredential?.value !== credential.value) throw publicError('oidc_login_cancelled', 'Organization account changed during resource request')
+    })
   }
 
   async reconcile(profileID, options = {}) {

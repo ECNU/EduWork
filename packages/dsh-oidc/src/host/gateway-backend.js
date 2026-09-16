@@ -2,7 +2,10 @@ import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { WebOidcBackend, account, sessionRef } from './oidc.js'
 import { DesktopOidcBackend } from './desktop-oidc.js'
 import { emptyResources, normalizeResourceModels } from './resources.js'
-import { detectGatewayProtocol, gatewayJSON, liteLLMToken, protocolError, readGatewayJSON, registerLiteLLM, revokeLiteLLM, tokenRequest } from './litellm-protocol.js'
+import { gatewayJSON, liteLLMToken, protocolError, readGatewayJSON, registerLiteLLM, revokeLiteLLM, tokenRequest } from './litellm-protocol.js'
+import { detectGatewayProtocol } from './gateway-protocol.js'
+import { oidcLlmIdentity, oidcLlmToken } from './oidc-llm-protocol.js'
+import { bufferResourceResponse, validateResourceRead } from './model-resource-transport.js'
 
 const seconds = backend => Math.floor(backend.now() / 1000)
 const fingerprint = (profile, descriptor) => createHash('sha256').update(JSON.stringify({ auth: profile.auth, descriptor })).digest('hex')
@@ -101,7 +104,7 @@ function withGatewayAuth(Base) {
     async createAuthorization(profile, descriptor, redirectURI) {
       if (!profile.auth) return super.createAuthorization(profile, descriptor, redirectURI)
       const epoch = this.accountEpoch(profile)
-      const clientId = await registerLiteLLM(this.fetch, descriptor, redirectURI)
+      const clientId = descriptor.clientId ?? await registerLiteLLM(this.fetch, descriptor, redirectURI)
       if (epoch !== this.accountEpoch(profile)) throw protocolError('oidc_login_cancelled', 'Sign-in was cancelled')
       this.pruneFlows()
       if (this.flows.size >= 32) throw protocolError('oidc_flow_limit', 'Too many pending sign-ins')
@@ -109,6 +112,12 @@ function withGatewayAuth(Base) {
       const flow = { profileID: profile.id, verifier, clientId, redirectURI, createdAt: this.now(), epoch }
       const target = new URL(descriptor.authorizationEndpoint)
       for (const [key, value] of Object.entries({ response_type: 'code', client_id: clientId, redirect_uri: redirectURI, state, code_challenge: createHash('sha256').update(verifier).digest('base64url'), code_challenge_method: 'S256', resource: descriptor.resource })) target.searchParams.set(key, value)
+      if (descriptor.scopes) target.searchParams.set('scope', descriptor.scopes.join(' '))
+      if (descriptor.identityMode === 'oidc') {
+        flow.nonce = randomBytes(32).toString('base64url')
+        target.searchParams.set('nonce', flow.nonce)
+        target.searchParams.set('prompt', 'consent')
+      }
       this.flows.set(state, flow)
       return { state, flow, authorizationURL: target.toString() }
     }
@@ -118,19 +127,53 @@ function withGatewayAuth(Base) {
       if (!profile.auth) return super.exchangeAuthorization(requested, flow)
       if (query(requested, 'error')) throw protocolError('oidc_authorization_rejected', 'Gateway authorization was declined')
       const code = query(requested, 'code', true), descriptor = await this.discover(profile)
-      if (query(requested, 'iss') && query(requested, 'iss') !== descriptor.issuer) throw protocolError('oidc_callback_invalid', 'Gateway callback issuer mismatch')
+      const responseIssuer = query(requested, 'iss', descriptor.requireResponseIssuer)
+      if (responseIssuer && responseIssuer !== descriptor.issuer) throw protocolError('oidc_callback_invalid', 'Gateway callback issuer mismatch')
       const raw = await tokenRequest(this.fetch, descriptor, { grant_type: 'authorization_code', client_id: flow.clientId, code, redirect_uri: flow.redirectURI, code_verifier: flow.verifier })
-      const session = { ...liteLLMToken(raw, this.now), issuer: descriptor.issuer, protocol: descriptor.protocol, clientId: flow.clientId, binding: fingerprint(profile, descriptor), contextID: randomUUID(), capabilities: [] }
-      // Only project a display name; budgets, keys and team records never enter RPC.
-      try {
-        const info = await gatewayJSON(this.fetch, descriptor.userInfoEndpoint, { headers: { authorization: `Bearer ${session.accessToken}`, accept: 'application/json' } })
-        if (info.user_id === session.identity.sub && typeof info.user_info?.user_alias === 'string' && info.user_info.user_alias.trim()) session.identity.name = info.user_info.user_alias.trim().slice(0, 256)
-      } catch { /* Identity is supplied by the token endpoint; display data is optional. */ }
-      if (flow.epoch !== this.accountEpoch(profile)) {
+      const draft = descriptor.protocol === 'oidc-llm-draft-0.1'
+      let token
+      try { token = draft ? oidcLlmToken(raw, descriptor, this.now) : liteLLMToken(raw, this.now) }
+      catch (cause) {
+        if (draft && typeof raw.refresh_token === 'string' && raw.refresh_token.length > 0 && raw.refresh_token.length <= 65536) await this.revokeGateway(profile, descriptor, { clientId: flow.clientId, refreshToken: raw.refresh_token })
+        throw cause
+      }
+      const session = { ...token, issuer: descriptor.issuer, protocol: descriptor.protocol, clientId: flow.clientId, binding: fingerprint(profile, descriptor), contextID: randomUUID(), capabilities: [] }
+      if (draft) {
+        session.identityMode = descriptor.identityMode
+        session.oidcNonce = flow.nonce
+        try { await this.gatewayIdentity(profile, descriptor, raw, session) }
+        catch (cause) { await this.revokeGateway(profile, descriptor, session); throw cause }
+      } else {
+        // Only project a display name; budgets, keys and team records never enter RPC.
+        try {
+          const info = await gatewayJSON(this.fetch, descriptor.userInfoEndpoint, { headers: { authorization: `Bearer ${session.accessToken}`, accept: 'application/json' } })
+          if (info.user_id === session.identity.sub && typeof info.user_info?.user_alias === 'string' && info.user_info.user_alias.trim()) session.identity.name = info.user_info.user_alias.trim().slice(0, 256)
+        } catch { /* Identity is supplied by the token endpoint; display data is optional. */ }
+      }
+      if (flow.epoch !== this.accountEpoch(profile)
+        || this.attempts && ![...this.attempts.values()].some(attempt => attempt.flow === flow && attempt.state === 'pending')) {
         await this.revokeGateway(profile, descriptor, session)
         throw protocolError('oidc_login_cancelled', 'Account changed during sign-in')
       }
       return session
+    }
+
+    async gatewayIdentity(profile, descriptor, raw, session, previous) {
+      let claims
+      if (descriptor.identityMode === 'oidc' && (!previous || raw.id_token !== undefined)) {
+        claims = await this.verifyIDToken({ oidc: { issuer: descriptor.issuer, clientId: session.clientId } }, descriptor,
+          raw.id_token, session.oidcNonce, session.accessToken, { refresh: Boolean(previous) })
+        const audience = (Array.isArray(claims.aud) ? [...claims.aud] : [claims.aud]).sort()
+        if (previous && (claims.sub !== previous.identity.sub || JSON.stringify(audience) !== JSON.stringify(previous.oidcAudience)
+          || claims.auth_time !== undefined && claims.auth_time !== previous.authTime)) {
+          throw protocolError('gateway_identity_changed', 'OIDC refresh identity changed')
+        }
+        session.oidcAudience = audience
+        if (claims.auth_time !== undefined) session.authTime = claims.auth_time
+      }
+      const info = await gatewayJSON(this.fetch, descriptor.userInfoEndpoint, { headers: { authorization: `Bearer ${session.accessToken}`, accept: 'application/json' } })
+      session.identity = oidcLlmIdentity(info)
+      if (claims && claims.sub !== session.identity.sub || previous && previous.identity.sub !== session.identity.sub) throw protocolError('gateway_identity_changed', 'UserInfo subject does not match the authorization')
     }
 
     async loadSession(profile) {
@@ -143,6 +186,10 @@ function withGatewayAuth(Base) {
       const descriptor = await this.discover(profile)
       if (epoch !== this.accountEpoch(profile)) return undefined
       if (session?.protocol !== descriptor.protocol || session.binding !== fingerprint(profile, descriptor) || typeof session.contextID !== 'string' || !session.contextID || typeof session.accessToken !== 'string' || !session.accessToken || typeof session.refreshToken !== 'string' || !session.refreshToken || typeof session.clientId !== 'string' || !session.clientId || !Number.isFinite(session.expiresAt) || typeof session.identity?.sub !== 'string' || !session.identity.sub || !(session.teamID === null || typeof session.teamID === 'string')) return undefined
+      if (descriptor.protocol === 'oidc-llm-draft-0.1' && (session.clientId !== descriptor.clientId || session.identityMode !== descriptor.identityMode
+        || !Array.isArray(session.scopes) || descriptor.scopes.some(scope => !session.scopes.includes(scope))
+        || session.scopes.some(scope => !descriptor.scopes.includes(scope))
+        || descriptor.identityMode === 'oidc' && typeof session.oidcNonce !== 'string')) return undefined
       return session
     }
 
@@ -178,10 +225,14 @@ function withGatewayAuth(Base) {
       const saved = await this.gatewayCurrent(profile, session, epoch)
       // A request may have captured the old pair before the previous flight settled.
       if (saved.accessToken !== session.accessToken) return saved
-      let next
+      let next, received
       try {
         const raw = await tokenRequest(this.fetch, descriptor, { grant_type: 'refresh_token', client_id: saved.clientId, refresh_token: saved.refreshToken })
-        next = { ...saved, ...liteLLMToken(raw, this.now) }
+        received = raw
+        if (descriptor.protocol === 'oidc-llm-draft-0.1') {
+          next = { ...saved, ...oidcLlmToken(raw, descriptor, this.now, saved) }
+          await this.gatewayIdentity(profile, descriptor, raw, next, saved)
+        } else next = { ...saved, ...liteLLMToken(raw, this.now) }
         if (next.identity.sub !== saved.identity.sub || next.teamID !== saved.teamID) throw protocolError('gateway_identity_changed', 'Gateway authorization identity changed during refresh')
         next.identity = saved.identity
         await this.writeCredentials(profile, epoch, async () => {
@@ -192,7 +243,9 @@ function withGatewayAuth(Base) {
         return next
       } catch (cause) {
         if (next) await this.revokeGateway(profile, descriptor, next)
-        if (cause.oauthError === 'invalid_grant' || cause.oauthError === 'invalid_client' || cause.code === 'gateway_identity_changed') {
+        else if (descriptor.protocol === 'oidc-llm-draft-0.1' && typeof received?.refresh_token === 'string') await this.revokeGateway(profile, descriptor, { ...saved, refreshToken: received.refresh_token })
+        if (cause.oauthError === 'invalid_grant' || cause.oauthError === 'invalid_client' || cause.code === 'gateway_identity_changed'
+          || descriptor.protocol === 'oidc-llm-draft-0.1' && received) {
           await this.writeCredentials(profile, epoch, async () => {
             await this.gatewayCurrent(profile, saved, epoch)
             await this.ctx.credentials.unset(sessionRef(profile))
@@ -282,6 +335,21 @@ function withGatewayAuth(Base) {
       }
     }
 
+    async modelResourceFetch(profileID, relativePath, options = {}) {
+      const profile = this.profile(profileID)
+      if (!profile.auth) return super.modelResourceFetch(profileID, relativePath, options)
+      validateResourceRead(relativePath, options)
+      const epoch = this.accountEpoch(profile), revision = this.gatewayRevisions.get(profileID) ?? 0
+      const descriptor = await this.discover(profile)
+      const response = await this.authorizedFetch(profileID, `${descriptor.baseURL}${relativePath}`, {
+        method: 'GET', headers: { accept: 'application/json' },
+        signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(options.signal ? [options.signal] : [])]),
+      })
+      return bufferResourceResponse(response, () => {
+        if (epoch !== this.accountEpoch(profile) || revision !== (this.gatewayRevisions.get(profileID) ?? 0)) throw protocolError('oidc_login_cancelled', 'Gateway account changed during resource request')
+      })
+    }
+
     async readResources(profileID) {
       const profile = this.profile(profileID)
       if (!profile.auth) return super.readResources(profileID)
@@ -315,7 +383,18 @@ function withGatewayAuth(Base) {
     }
 
     async revokeGateway(profile, descriptor, session) {
-      try { await revokeLiteLLM(this.fetch, descriptor, session) }
+      try {
+        if (descriptor.protocol !== 'oidc-llm-draft-0.1') await revokeLiteLLM(this.fetch, descriptor, session)
+        else {
+          const response = await this.fetch(descriptor.revocationEndpoint, {
+            method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
+            body: new URLSearchParams({ token: session.refreshToken, token_type_hint: 'refresh_token', client_id: session.clientId }),
+            redirect: 'error', signal: AbortSignal.timeout(5_000),
+          })
+          await response.body?.cancel()
+          if (response.status !== 200) throw protocolError('gateway_revocation_failed', 'Remote revocation was not confirmed')
+        }
+      }
       catch { this.ctx.logger.warn('Gateway refresh revocation was not confirmed; local logout still removes access') }
     }
 

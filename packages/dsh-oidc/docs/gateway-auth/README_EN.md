@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-This branch adds LiteLLM native OAuth support. It is not included in a published npm package or desktop Release yet. Existing `oidc` profiles retain their OIDC and optional Key Binding behavior. **oidc-llm** remains a [draft](oidc-llm-draft.md); its discovery marker is explicitly rejected until the protocol and server are ready.
+This branch adds LiteLLM native OAuth and an [experimental oidc-llm adapter](experimental-oidc-llm.en.md), disabled by default. Neither is included in a published npm package or desktop Release yet. Existing `oidc` profiles retain their OIDC and optional Key Binding behavior. **oidc-llm** remains a [draft](oidc-llm-draft.en.md); the experiment does not finalize the protocol.
 
 ## Choose a connection
 
@@ -10,7 +10,7 @@ This branch adds LiteLLM native OAuth support. It is not included in a published
 | --- | --- | --- | --- |
 | Existing OIDC/resource service | Existing `oidc`, optional `keyBinding` + `provider` | API Key obtained through Key Binding | Pre-registered public client |
 | LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | Login Access Token | Dynamically register the actual callback on each login |
-| oidc-llm draft | Not enabled | Proposed Access Token | Proposed static and optional dynamic registration |
+| Experimental oidc-llm 0.1 | `auth` with explicit opt-in and identity mode | Access Token | Static public client implemented |
 
 Quota standardization and team management are outside this integration. LiteLLM handles its own team choice in the gateway page; the adapter retains its opaque authorization context solely to detect an unexpected identity change during refresh. An ordinary OIDC Access Token does not automatically authorize model inference.
 
@@ -59,7 +59,7 @@ Model calls bind to the current authorization when prepared. After logout or acc
 
 Existing profiles still validate issuer, PKCE, state, nonce, RS256 ID Tokens and matching UserInfo subject, and retain Key Binding, credential-name migration and refresh behavior. See the [existing server contract](../server-integration-contract.md) and [Profile reference](../enterprise-profile.md). These checks were not weakened for LiteLLM.
 
-The future oidc-llm draft discovers `userinfo_endpoint` and reuses OIDC claims. Scope, lifetimes and revocation guarantees remain proposed in the [draft](oidc-llm-draft.md). Do not migrate an existing institution configuration before both client and server support it.
+The oidc-llm adapter discovers `userinfo_endpoint` and reuses standard subject and identity claims. See [experimental integration](experimental-oidc-llm.en.md) for configuration and actual limits. Scope, lifetimes and revocation guarantees remain under review in the [draft](oidc-llm-draft.en.md). Do not migrate an existing institution configuration before real-server acceptance.
 
 ## Validation
 
