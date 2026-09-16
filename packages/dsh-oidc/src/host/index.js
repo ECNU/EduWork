@@ -35,6 +35,10 @@ export class OidcAccountService extends TypertRemoteService {
     this.accountStates = new Map()
     const provider = applyEnterpriseProvider(ctx, {
       ...enterpriseProviderConfig(this.profiles),
+      createAuthorizationScope: providerID => {
+        const profile = [...this.profiles.values()].find(value => value.provider?.id === providerID)
+        return profile?.auth ? this.backend.createGatewayScope(profile.id) : undefined
+      },
       resolveCredential: async providerID => {
         const profile = [...this.profiles.values()].find(value => value.provider?.id === providerID)
         if (!profile) return undefined

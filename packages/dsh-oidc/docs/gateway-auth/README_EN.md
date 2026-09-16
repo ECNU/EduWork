@@ -53,6 +53,8 @@ See the [Chinese wire reference](README.md#litellm-native-contract-1-接口) for
 
 The Host merges concurrent refreshes for one authorization and persists the complete rotated pair before use. A still-valid token can survive a temporary refresh outage; an expired token stops. Terminal grant errors or changed refresh identity require sign-in. Credential-bearing requests do not follow redirects. This authentication layer never automatically replays generation or a partially consumed SSE; safe reads may refresh and retry once after 401.
 
+Model calls bind to the current authorization when prepared. After logout or account/authorization replacement, a prepared call cannot acquire the new account's credential, active requests are cancelled, and late response bytes or stream content are discarded. Refresh within the same authorization keeps generation running. This is local client isolation, not immediate server-side Access Token revocation or a guarantee that upstream inference and billing stop at the same time.
+
 ## Existing OIDC and the future draft
 
 Existing profiles still validate issuer, PKCE, state, nonce, RS256 ID Tokens and matching UserInfo subject, and retain Key Binding, credential-name migration and refresh behavior. See the [existing server contract](../server-integration-contract.md) and [Profile reference](../enterprise-profile.md). These checks were not weakened for LiteLLM.

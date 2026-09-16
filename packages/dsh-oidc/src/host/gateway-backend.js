@@ -12,9 +12,82 @@ const query = (url, key, required = false) => {
   return values[0]
 }
 
+function scopedResponse(response, lease) {
+  if (!response.body) { lease.close(); return response }
+  const reader = response.body.getReader()
+  const body = new ReadableStream({
+    async pull(controller) {
+      try {
+        lease.assertCurrent()
+        const next = await reader.read()
+        lease.assertCurrent()
+        if (next.done) { lease.close(); controller.close() }
+        else controller.enqueue(next.value)
+      } catch (cause) {
+        lease.close()
+        await reader.cancel().catch(() => {})
+        controller.error(cause)
+      }
+    },
+    async cancel(reason) { lease.close(); await reader.cancel(reason).catch(() => {}) },
+  }, { highWaterMark: 0 })
+  return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
+}
+
 /** Additive protocol adapter. Profiles with `oidc` execute the existing backend. */
 function withGatewayAuth(Base) {
   return class extends Base {
+    constructor(...args) {
+      super(...args)
+      this.gatewayRevisions = new Map()
+      this.gatewayCalls = new Map()
+      this.ctx.effect(() => () => {
+        for (const profile of this.profiles.values()) if (profile.auth) this.invalidateGatewayCalls(profile)
+      }, 'dsh-oidc: gateway model requests')
+    }
+
+    invalidateGatewayCalls(profile) {
+      this.gatewayRevisions.set(profile.id, (this.gatewayRevisions.get(profile.id) ?? 0) + 1)
+      for (const controller of this.gatewayCalls.get(profile.id) ?? []) controller.abort()
+      this.gatewayCalls.delete(profile.id)
+    }
+
+    async createGatewayScope(profileID) {
+      const profile = this.profile(profileID), epoch = this.accountEpoch(profile)
+      const revision = this.gatewayRevisions.get(profileID) ?? 0
+      const session = await this.activeSession(profile)
+      if (!session) throw protocolError('oidc_login_required', 'Gateway sign-in is required')
+      await this.gatewayCurrent(profile, session, epoch)
+      const assertCurrent = () => {
+        if (epoch !== this.accountEpoch(profile) || revision !== (this.gatewayRevisions.get(profileID) ?? 0)) {
+          throw protocolError('oidc_login_cancelled', 'Gateway authorization changed; start a new model request')
+        }
+      }
+      assertCurrent()
+      return {
+        open: signal => {
+          assertCurrent()
+          const controller = new AbortController()
+          let calls = this.gatewayCalls.get(profileID)
+          if (!calls) this.gatewayCalls.set(profileID, calls = new Set())
+          calls.add(controller)
+          return {
+            signal: signal ? AbortSignal.any([signal, controller.signal]) : controller.signal,
+            assertCurrent,
+            resolveCredential: async providerID => {
+              assertCurrent()
+              if (providerID !== profile.provider.id) throw protocolError('oidc_authorized_origin_denied', 'Gateway credential does not belong to this provider')
+              const current = await this.activeSession(profile)
+              assertCurrent()
+              if (!current || current.contextID !== session.contextID) throw protocolError('oidc_login_cancelled', 'Gateway account changed during the request')
+              return { value: current.accessToken }
+            },
+            close: () => { controller.abort(); calls.delete(controller); if (!calls.size && this.gatewayCalls.get(profileID) === calls) this.gatewayCalls.delete(profileID) },
+          }
+        },
+      }
+    }
+
     async discover(profile) {
       if (!profile.auth) return super.discover(profile)
       const cached = this.discovery.get(profile.id)
@@ -77,6 +150,7 @@ function withGatewayAuth(Base) {
       if (!profile.auth) return super.saveSession(profile, session, epoch)
       return this.writeCredentials(profile, epoch, async () => {
         await this.ctx.credentials.set(sessionRef(profile), JSON.stringify(session))
+        this.invalidateGatewayCalls(profile)
         this.resourceFlights.delete(profile.id)
         await this.clearGatewayModels(profile)
       })
@@ -122,6 +196,7 @@ function withGatewayAuth(Base) {
           await this.writeCredentials(profile, epoch, async () => {
             await this.gatewayCurrent(profile, saved, epoch)
             await this.ctx.credentials.unset(sessionRef(profile))
+            this.invalidateGatewayCalls(profile)
           })
           await this.clearGatewayModels(profile)
           this.accountChanged(account(profile, undefined, false))
@@ -181,19 +256,30 @@ function withGatewayAuth(Base) {
       // Host-only model and own-account routes, never key administration or arbitrary origins.
       const modelBase = new URL(`${descriptor.baseURL}/`)
       if (target.username || target.password || target.hash || target.origin !== modelBase.origin || !(target.href === descriptor.userInfoEndpoint || target.pathname.startsWith(modelBase.pathname))) throw protocolError('oidc_authorized_origin_denied', 'Gateway token destination is not an authorized resource')
-      let session = await this.activeSession(profile)
-      if (!session) throw protocolError('oidc_login_required', 'Gateway sign-in is required')
-      const request = current => this.fetch(target.href, { ...init, headers: { ...Object.fromEntries(new Headers(init.headers)), authorization: `Bearer ${current.accessToken}` }, redirect: 'error', signal: init.signal ?? AbortSignal.timeout(20_000) })
-      let response = await request(session)
-      // Retry only safe reads. A generation (including SSE) is never replayed here.
-      if (response.status === 401 && ['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) {
-        await response.body?.cancel()
-        session = await this.refresh(profile, session)
+      const scope = await this.createGatewayScope(profileID)
+      const lease = scope.open(init.signal ?? AbortSignal.timeout(20_000))
+      let response
+      try {
+        let session = await this.activeSession(profile)
+        lease.assertCurrent()
+        if (!session) throw protocolError('oidc_login_required', 'Gateway sign-in is required')
+        const request = current => this.fetch(target.href, { ...init, headers: { ...Object.fromEntries(new Headers(init.headers)), authorization: `Bearer ${current.accessToken}` }, redirect: 'error', signal: lease.signal })
         response = await request(session)
+        // Retry only safe reads. A generation (including SSE) is never replayed here.
+        if (response.status === 401 && ['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) {
+          await response.body?.cancel()
+          session = await this.refresh(profile, session)
+          lease.assertCurrent()
+          response = await request(session)
+        }
+        await this.gatewayCurrent(profile, session, epoch)
+        lease.assertCurrent()
+        return scopedResponse(response, lease)
+      } catch (cause) {
+        lease.close()
+        await response?.body?.cancel().catch(() => {})
+        throw cause
       }
-      try { await this.gatewayCurrent(profile, session, epoch) }
-      catch (cause) { await response.body?.cancel(); throw cause }
-      return response
     }
 
     async readResources(profileID) {
@@ -237,6 +323,7 @@ function withGatewayAuth(Base) {
       const profile = this.profile(profileID)
       if (!profile.auth) return super.logout(profileID)
       this.accountEpochs.set(profileID, this.accountEpoch(profile) + 1)
+      this.invalidateGatewayCalls(profile)
       for (const attempt of this.attempts?.values() ?? []) if (attempt.profileID === profileID && attempt.state === 'pending') await this.cancelLogin(attempt.loginID)
       const epoch = this.accountEpoch(profile)
       // Clear locally even when discovery is offline on a fresh process.
