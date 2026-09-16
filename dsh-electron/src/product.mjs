@@ -32,10 +32,13 @@ export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
-  const distributionRoot = resolve(appRoot, '../..')
+  const distributionRoot = resolve(appRoot, process.platform === 'darwin' ? '../../..' : '../..')
+  const writableRoot = process.platform === 'darwin' ? join(app.getPath('appData'), settings.distribution + '-electron') : distributionRoot
+  const publisherConfig = settings.configurationOwnership === 'publisher' && settings.publisherConfig
+    ? resolve(appRoot, settings.publisherConfig) : undefined
   const testRoot = process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT
   if (testRoot && (!isAbsolute(testRoot) || /(?:^|[\\/])current(?:[\\/]|$)/iu.test(testRoot))) throw new Error('Test data requires an isolated absolute directory')
-  const dataRoot = testRoot ? resolve(testRoot) : join(distributionRoot, 'data', settings.distribution + '-electron')
+  const dataRoot = testRoot ? resolve(testRoot) : process.platform === 'darwin' ? writableRoot : join(distributionRoot, 'data', settings.distribution + '-electron')
   paths = {
     root: distributionRoot,
     product: resolve(appRoot, settings.product),
@@ -43,8 +46,8 @@ export function configureEduworkPaths() {
     home: join(dataRoot, 'dsh'),
     userData: join(dataRoot, 'browser'),
     logs: join(dataRoot, 'logs'),
-    config: desktopConfigurationPath({root:distributionRoot,version:settings.productVersion,ownership:settings.configurationOwnership,override:process.env.EDUWORK_CONFIG_FILE}),
-    icon: join(distributionRoot, 'resources/brand/icon-256.png'),
+    config: desktopConfigurationPath({root:writableRoot,version:settings.productVersion,ownership:settings.configurationOwnership,override:process.env.EDUWORK_CONFIG_FILE ?? publisherConfig}),
+    icon: process.platform === 'darwin' ? join(appRoot, '../brand/icon-256.png') : join(distributionRoot, 'resources/brand/icon-256.png'),
   }
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
@@ -134,7 +137,7 @@ export async function attachDesktopWindow(window) {
     void window.webContents.executeJavaScript(`(window.__eduworkTrayActions ??= []).push(${JSON.stringify(value)}); window.dispatchEvent(new Event('eduwork:tray-action'));`).catch(() => {})
   }
   try {
-    const icon = nativeImage.createFromPath(join(paths.root, 'resources/brand/icon-32.png'))
+    const icon = nativeImage.createFromPath(process.platform === 'darwin' ? join(app.getAppPath(), '../brand/icon-32.png') : join(paths.root, 'resources/brand/icon-32.png'))
     lifecycle.check()
     if (icon.isEmpty()) throw new Error('No system tray icon available')
     tray = new Tray(icon)
