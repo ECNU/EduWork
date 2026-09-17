@@ -6,6 +6,8 @@
 
 ## 选择接入方式
 
+配置已有 LiteLLM 网关请从 [LiteLLM 接入指南](litellm-setup.md)开始；本页描述底层协议和宿主集成要求。
+
 | 服务端 | 配置 | 模型凭据 | 客户端注册 |
 | --- | --- | --- | --- |
 | 纯身份 OIDC | 仅 oidc，不配置 provider | 无机构模型凭据 | 预注册 public client |
@@ -36,7 +38,7 @@ LiteLLM 不需要实现 EduWork 的 Key Binding。普通 OIDC 的 Access Token �
 
 普通 `/models` 只有 ID 时默认视为文本模型、不推测思考或图像能力。可用模型列表为空时保持空列表。读取失败显示目录暂不可用；不会沿用另一个账户的模型列表。
 
-插件使用 `backend: "desktop"` 或本机 `backend: "web"`。旧 `native` 桥仅支持原有 OIDC。示例插件配置：
+插件使用 `backend: "desktop"` 或本机 `backend: "web"`；旧 `native` 桥已移除。示例插件配置：
 
 ```json
 {

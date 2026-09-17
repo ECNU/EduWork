@@ -5,7 +5,7 @@
 模型请求总并发默认 3 路，所有主会话、子代理与辅助模型请求共用这个上限。设置 → 通用设置 → 模型请求总并发支持即时保存；填 2 就是总计 2 路，超额请求排队。在 `config/eduwork.jsonc` 顶层设置 `"features": { "maxConcurrentRequests": 3 }` 可提供发行默认值（1–64），退出后重启生效；用户已保存的并发偏好优先。旧 `maxParallelSubagents: 2` 兼容换算为总并发 3，不改配置文件原文。Windows 更新设置可选择“公测版”或“开发版（含公测版）”，不因切换渠道降级。
 
 - [organization.jsonc](organization.jsonc)：第三方企业 oidc-llm Token 模型配置，仅用于包含此分支功能的构建；现有 Release 尚未包含。
-- [litellm.jsonc](litellm.jsonc)：LiteLLM native OAuth 发现与模型接入，仅用于包含此分支功能的构建；现有 Release 尚未包含。详见[网关接入](../../../packages/dsh-oidc/docs/gateway-auth/README.md)。
+- [litellm.jsonc](litellm.jsonc)：LiteLLM native OAuth 发现与模型接入，仅用于包含此分支功能的构建；现有 Release 尚未包含。详见 [LiteLLM 接入指南](../../../packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
 - [media.jsonc](media.jsonc)：按服务商配置图像生成与云端 TTS，共用对话和 Studio 工具；无须学校媒体插件。
 - [updates.jsonc](updates.jsonc)：Windows 公版默认 GitHub 更新；示例说明如何切换静态 HTTPS 源、配置 GitHub 仓库或关闭更新，不要求使用 OSS。
 - [默认配置](../eduwork.jsonc)：可直接编辑的配置，带完整注释。

@@ -104,14 +104,20 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 **企业接入是公版的内置能力。** 学校或企业可以向用户分发一份配置，让同一个 EduWork 客户端连接自己的身份平台、模型网关和媒体服务，无需修改公版代码或重新打包。
 
-| 可以配置什么 | 接入后能做什么 |
-| --- | --- |
-| OIDC 身份认证 | 在系统浏览器中使用学校或企业账号登录，支持配置多个机构。 |
-| 模型凭据与目录 | 服务端实现 EduWork 资源协议后，客户端在用户授权及必要确认后获取 Key、配置企业模型，无需手动复制凭据。 |
-| 文生图与云端 TTS | 按兼容接口、模型、尺寸和音色配置启用，复用公共媒体能力。 |
-| 名称、Logo 与更新源 | 调整界面品牌，配置发行方的更新渠道；用户配置在更新时保留。 |
+### 支持企业登录的服务端
 
-企业模型和用户自己配置的模型可以同时使用。标准 OIDC 只解决身份登录；自动获取 Key 和模型目录需要服务端另外实现资源接口。
+| 服务端 / 项目 | 登录与模型接入 | 配置与使用 |
+| --- | --- | --- |
+| [LiteLLM](https://github.com/BerriAI/litellm) | 使用网关账号登录，按用户及所选团队的授权访问模型。 | [LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) |
+| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | 使用学校账号登录，访问获授权的模型；学校扩展提供个人配额信息。 | [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) |
+
+**华东师范大学用户可使用学校分发的 EduWork@ECNU，学校配置已预置，登录即可使用。** 学校版的获取与使用说明统一维护在 EduWork-ECNU 仓库。
+
+表中的 Token 模型接入需使用包含本功能的构建，尚未进入已发布的 npm 包或桌面版本；ChatECNU 使用显式启用的 oidc-llm 实验适配器。
+
+企业登录后，客户端使用登录 Token 自动读取模型目录并调用模型，使用过程中自动刷新，无需复制或另行创建模型 Key。模型权限与配额仍由服务端管理；企业模型和用户自己配置的模型可以同时使用。
+
+其他标准 OIDC 平台可以接入身份登录；要使用机构模型，服务端还需支持明确的 Token 模型接入协议。机构也可按需配置文生图、云端 TTS、名称、Logo 与更新源。
 
 <a id="配置方法"></a>
 
@@ -119,19 +125,19 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 <summary><strong>三步配置你的机构</strong></summary>
 
 1. 在设置中点击 **打开配置文件**，编辑客户端目录下的 `config/eduwork.jsonc`。
-2. 文件内含完整注释示例。按管理员提供的信息填写 `organizations`；需要图像或语音服务时再加入 `media`。更多示例在客户端的 `config/examples/` 目录。
+2. 按上表的服务端指南选择配置示例，将机构配置填入 `organizations`；需要图像或语音服务时再加入 `media`。更多示例在客户端的 `config/examples/` 目录。
 3. 保存后从托盘完全退出并重新启动，再选择机构登录。
 
-配置文件只保存公开接入信息和凭据引用。个人 API Key 在模型设置中管理，企业凭据由登录流程保存在本机受保护存储中；不要把密码或令牌写入配置文件。界面 Logo 可配置，程序内嵌图标由发行包提供。
+配置文件只保存公开接入信息和凭据引用。个人 API Key 在模型设置中管理，登录 Token 保存在本机受保护存储中；不要把密码或令牌写入配置文件。界面 Logo 可配置，程序内嵌图标由发行包提供。
 
 </details>
 
-**管理员配置：** [完整企业配置示例](config/desktop/examples/organization.jsonc) · [媒体配置示例](config/desktop/examples/media.jsonc)。
+**管理员配置：** [LiteLLM 配置示例](config/desktop/examples/litellm.jsonc) · [实验性 oidc-llm 配置示例](config/desktop/examples/organization.jsonc) · [媒体配置示例](config/desktop/examples/media.jsonc)。
 
-**开发者接入：** 以下两份文档描述同一套身份与资源协议，按工作角色选择阅读：
+**开发者接入：**
 
-- [服务端实现与联调（RFC EW-IDENTITY-1）](packages/dsh-oidc/docs/server-integration-contract.md)：服务端需要实现哪些接口、请求与响应字段、认证要求、curl 示例和验收步骤。新接入的服务端工程师从这里开始。
-- [客户端接入模式与模型发现](packages/dsh-oidc/docs/public-resource-protocol.md)：如何选择纯身份或托管模型模式、使用静态或自动模型目录，以及插件如何通过 Host RPC 和账户事件对接客户端。
+- [服务端实现与联调](packages/dsh-oidc/docs/server-integration-contract.md)：LiteLLM 原生契约和 oidc-llm 实验契约的接口、认证要求与验收步骤。
+- [客户端接入模式与模型发现](packages/dsh-oidc/docs/public-resource-protocol.md)：纯身份与 Token 模型模式、授权目录和模型能力配置，以及插件如何通过共享 Host 接入。
 
 ### 通过插件扩展内部能力
 
@@ -147,7 +153,7 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 我们发起**开放身份与模型接入倡议**，邀请身份平台、模型网关和客户端开发者，共同用公开协议连接登录、模型凭据与模型目录，让机构接入新工具时能够复用已有服务。
 
-`dsh-oidc` 是我们的实现起点：身份遵循标准 OIDC，托管模型通过公开资源接口接入，提供独立 npm 包、服务端规范、OpenAPI 和联调示例。其他客户端也可以按协议独立实现，无需采用 EduWork 的界面。当前倡议面向社区讨论，跨客户端互通需要按版本实际验证。
+`dsh-oidc` 是我们的实现起点：保留标准 OIDC 身份登录，模型接入支持 LiteLLM 原生 OAuth 契约和实验性 oidc-llm 契约，共用 Token 会话与模型调用模块。源码、协议文档和配置示例公开，模块以独立 npm 包维护；其他客户端也可以按协议独立实现，无需采用 EduWork 的界面。当前倡议面向社区讨论，跨客户端互通需要按版本实际验证。
 
 **[阅读开放接入倡议](packages/dsh-oidc/docs/open-integration.md)** · [实现服务端](packages/dsh-oidc/docs/server-integration-contract.md) · [接入客户端](packages/dsh-oidc/README.md) · [一起讨论](https://github.com/ecnu/EduWork/issues)
 
@@ -163,6 +169,7 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 | --- | --- |
 | [使用指南](docs/USER_GUIDE.md) | 模型、搜索、语音、文件操作与故障诊断。 |
 | [配置示例](config/desktop/examples/README.md) | 企业登录、品牌、媒体服务、更新源与并发设置。 |
+| [LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) | 服务端准备、客户端配置、登录及故障排查。 |
 | [媒体服务配置](docs/MEDIA.md) | 文生图、云端 TTS 的接口要求及配置方法。 |
 | [版本与升级](docs/RELEASE.md) · [更新源部署](docs/UPDATES.md) | 开发版与公测版、数据迁移和自动更新。 |
 | [配置与 Skills 更新](docs/CONTENT_UPDATES.md) | 管理员按需独立更新模型配置和官方技能，无需重新下载客户端。 |
@@ -175,7 +182,7 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 | 模块文档 | 功能 |
 | --- | --- |
-| [身份与模型接入（dsh-oidc）](packages/dsh-oidc/README.md) | OIDC 登录、模型凭据、企业模型目录与服务端接入协议。 |
+| [身份与模型接入（dsh-oidc）](packages/dsh-oidc/README.md) | OIDC / OAuth 登录、Token 模型授权、企业模型目录与服务端接入协议。 |
 | [本地记忆（dsh-memory）](packages/dsh-memory/README.md) | 本地记忆与历史检索，延续任务背景。 |
 | [邮件助手（dsh-mail）](packages/dsh-mail/README.md) | 通过 IMAP 读取邮件、SMTP 发送邮件，并管理相关权限。 |
 | [Studio（dsh-knowledge-studio）](packages/dsh-knowledge-studio/README.md) | 创作、预览和管理报告、表格、演示文稿、学习材料及音视频成果。 |

@@ -104,14 +104,20 @@ Closing the window minimizes it to the system tray by default. Use the tray menu
 
 **Enterprise integration is built into the public edition.** Schools and businesses can distribute a configuration file that connects the same EduWork client to their identity platform, model gateway, and media services, without changing the public code or rebuilding the client.
 
-| Configuration | What it enables |
-| --- | --- |
-| OIDC identity | Sign in with a school or enterprise account in the system browser. Multiple organizations are supported. |
-| Model credentials and catalog | With the EduWork resource protocol implemented by the server, obtain a key and configure enterprise models after user authorization and any required confirmation, without copying credentials manually. |
-| Image generation and cloud TTS | Enable shared media capabilities by configuring compatible endpoints, models, image sizes, and voices. |
-| Name, logo, and update source | Customize interface branding and configure the distributor's update channel. User configuration is retained during updates. |
+### Servers supporting enterprise sign-in
 
-Enterprise models can coexist with models configured by the user. Standard OIDC handles identity only; obtaining keys and model catalogs requires additional resource APIs on the server.
+| Server / project | Sign-in and model access | Setup and usage |
+| --- | --- | --- |
+| [LiteLLM](https://github.com/BerriAI/litellm) | Sign in to the gateway and access models authorized for the user and selected team. | [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
+| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | Sign in with a university account and access authorized models; the university extension provides personal quota information. | [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) |
+
+**East China Normal University users can use the university-distributed EduWork@ECNU, with school configuration already included: sign in to get started.** Distribution and usage instructions are maintained in the EduWork-ECNU repository.
+
+Token model access in this table requires a build containing this feature; it is not yet in published npm packages or desktop releases. ChatECNU uses the explicitly enabled experimental oidc-llm adapter.
+
+After enterprise sign-in, the client uses the login Token to discover and invoke models, refreshing it automatically during use. Users do not need to copy or create a separate model key. The server continues to manage model permissions and quotas; enterprise and personally configured models can coexist.
+
+Other standard OIDC platforms can provide identity sign-in. Organization models additionally require a supported Token model-access contract. Organizations can also configure image generation, cloud TTS, names, logos, and update sources.
 
 <a id="configuration-steps"></a>
 
@@ -119,19 +125,19 @@ Enterprise models can coexist with models configured by the user. Standard OIDC 
 <summary><strong>Configure your organization in three steps</strong></summary>
 
 1. Select **Open configuration file** in Settings to edit `config/eduwork.jsonc` in the client directory.
-2. The file includes a complete commented example. Fill in `organizations` using the details supplied by your administrator; add `media` if image or speech services are needed. More examples are available in the client's `config/examples/` directory.
+2. Choose a configuration example from the server guide above and add the organization to `organizations`; add `media` if image or speech services are needed. More examples are available in the client's `config/examples/` directory.
 3. Save, exit completely through the tray, and restart. Then select your organization and sign in.
 
-Configuration files contain public connection details and credential references. Manage personal API keys in model settings; enterprise credentials are placed in protected local storage by the sign-in flow. Do not put passwords or tokens in the configuration file. The interface logo is configurable; the embedded application icon comes from the distribution.
+Configuration files contain public connection details and credential references. Manage personal API keys in model settings; login Tokens are kept in protected local storage. Do not put passwords or tokens in the configuration file. The interface logo is configurable; the embedded application icon comes from the distribution.
 
 </details>
 
-**Administrator configuration:** [Complete enterprise example](config/desktop/examples/organization.jsonc) · [Media example](config/desktop/examples/media.jsonc).
+**Administrator configuration:** [LiteLLM example](config/desktop/examples/litellm.jsonc) · [Experimental oidc-llm example](config/desktop/examples/organization.jsonc) · [Media example](config/desktop/examples/media.jsonc).
 
-**Developer integration:** These two documents describe the same identity and resource protocol, with different audiences:
+**Developer integration:**
 
-- [Server implementation and integration testing (RFC EW-IDENTITY-1)](packages/dsh-oidc/docs/server-integration-contract.en.md): required endpoints, request and response fields, authentication requirements, curl examples, and acceptance steps. Start here when implementing the server.
-- [Client integration modes and model discovery](packages/dsh-oidc/docs/public-resource-protocol.en.md): identity-only versus managed-model integration, static versus discovered model catalogs, and how plugins connect through Host RPCs and account events.
+- [Server implementation and integration testing](packages/dsh-oidc/docs/server-integration-contract.en.md): endpoints, authentication requirements, and acceptance steps for the LiteLLM native and experimental oidc-llm contracts.
+- [Client integration modes and model discovery](packages/dsh-oidc/docs/public-resource-protocol.en.md): identity-only and Token model modes, authorized catalogs, model capabilities, and plugin integration through the shared Host.
 
 <a id="extend-internal-capabilities-through-plugins"></a>
 
@@ -149,7 +155,7 @@ Organizations can combine plugins, skills, and default configuration into their 
 
 Through the **Open Identity and Model Integration Initiative**, we invite identity platforms, model gateways, and client developers to make sign-in, model credentials, and model catalogs reusable through open protocols.
 
-`dsh-oidc` is our starting implementation: standard OIDC for identity, public resource interfaces for managed models, an independent npm package, and a server specification with OpenAPI and integration examples. Other clients can implement the protocol without adopting EduWork's UI. This is a community proposal; interoperability needs version-specific testing.
+`dsh-oidc` is our starting implementation: standard OIDC identity sign-in, the LiteLLM native OAuth contract, and the experimental oidc-llm contract, sharing Token sessions and model invocation modules. Source, protocol documents, and configuration examples are public, and the module is maintained as an independent npm package. Other clients can implement the protocols without adopting EduWork's UI. This is a community proposal; interoperability needs version-specific testing.
 
 **[Read the initiative](packages/dsh-oidc/docs/open-integration.en.md)** · [Implement a server](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Integrate a client](packages/dsh-oidc/README_EN.md) · [Share feedback](https://github.com/ecnu/EduWork/issues)
 
@@ -165,6 +171,7 @@ When moving between computers, use [history import](docs/数据导入.md) in Set
 | --- | --- |
 | [User guide](docs/USER_GUIDE.md) | Models, search, speech, file operations, and diagnostics. |
 | [Configuration examples](config/desktop/examples/README_EN.md) | Enterprise sign-in, branding, media, updates, and concurrency. |
+| [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) | Server preparation, client configuration, sign-in, and troubleshooting. |
 | [Media configuration](docs/MEDIA.md) | Endpoint requirements and setup for image generation and cloud TTS. |
 | [Versioning and upgrades](docs/RELEASE.md) · [Update sources](docs/UPDATES.md) | Development and public-beta builds, data migration, and automatic updates. |
 | [Configuration and Skills updates](docs/CONTENT_UPDATES_EN.md) | Optional independent model configuration and official Skills updates without downloading the whole client. |
@@ -179,7 +186,7 @@ These modules keep their source and documentation in this repository. Each npm p
 
 | Module documentation | Capabilities |
 | --- | --- |
-| [Identity and models (dsh-oidc)](packages/dsh-oidc/README_EN.md) | OIDC sign-in, model credentials, enterprise model catalogs, and server integration protocols. |
+| [Identity and models (dsh-oidc)](packages/dsh-oidc/README_EN.md) | OIDC / OAuth sign-in, Token model authorization, enterprise model catalogs, and server integration protocols. |
 | [Local memory (dsh-memory)](packages/dsh-memory/README_EN.md) | Local memory and history retrieval to carry task context forward. |
 | [Mail assistant (dsh-mail)](packages/dsh-mail/README_EN.md) | Read mail through IMAP, send through SMTP, and manage the associated permissions. |
 | [Studio (dsh-knowledge-studio)](packages/dsh-knowledge-studio/README_EN.md) | Create, preview, and manage reports, spreadsheets, presentations, learning materials, and media. |

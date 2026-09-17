@@ -10,7 +10,7 @@
 
 ## 开始接入
 
-1. 根据服务端选择 [LiteLLM native OAuth](docs/gateway-auth/README.md) 或 [oidc-llm 实验接入](docs/gateway-auth/experimental-oidc-llm.md)。
+1. 根据服务端选择 [LiteLLM 接入指南](docs/gateway-auth/litellm-setup.md) 或 [oidc-llm 实验接入](docs/gateway-auth/experimental-oidc-llm.md)。
 2. 复制对应的[LiteLLM 示例](examples/litellm.enterprise-profile.example.json)或[OIDC Token 示例](examples/oidc-llm.enterprise-profile.example.json)，填写完整发现地址与所需公开配置。
 3. 在桌面 Host 使用 backend: desktop，本机 Web 使用 backend: web。仅身份登录仍可使用[纯身份示例](examples/identity-only.example.json)；该模式不提供企业模型。
 4. 登录后自动读取当前授权的模型目录。账户刷新不应覆盖用户后来选择的个人模型。

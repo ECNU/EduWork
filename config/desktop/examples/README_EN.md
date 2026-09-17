@@ -7,7 +7,7 @@ The default total model-request concurrency is 3. Main conversations, subagents 
 ## Choose an example
 
 - [Organization](organization.jsonc): oidc-llm Token authorization and model catalog, only for builds containing this branch’s feature; not in existing Releases.
-- [LiteLLM](litellm.jsonc): native OAuth discovery and model access, only for builds containing this branch's feature; not in existing Releases. See the [gateway guide](../../../packages/dsh-oidc/docs/gateway-auth/README_EN.md).
+- [LiteLLM](litellm.jsonc): native OAuth discovery and model access, only for builds containing this branch's feature; not in existing Releases. See the [LiteLLM setup guide](../../../packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md).
 - [Media](media.jsonc): configurable image generation and cloud TTS.
 - [Updates](updates.jsonc): update channels and static HTTPS manifests.
 - [Default configuration](../eduwork.jsonc): the initial public-edition configuration.

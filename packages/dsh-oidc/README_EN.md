@@ -10,7 +10,7 @@ This branch has not been published to npm or a desktop release. Published versio
 
 ## Getting started
 
-1. Choose [LiteLLM native OAuth](docs/gateway-auth/README_EN.md) or [experimental oidc-llm](docs/gateway-auth/experimental-oidc-llm.en.md) based on the server.
+1. Start with the [LiteLLM setup guide](docs/gateway-auth/litellm-setup.en.md) or [experimental oidc-llm](docs/gateway-auth/experimental-oidc-llm.en.md), depending on the server.
 2. Copy the [LiteLLM example](examples/litellm.enterprise-profile.example.json) or [OIDC Token example](examples/oidc-llm.enterprise-profile.example.json), then supply the full discovery URL and required public settings.
 3. Use backend: desktop for desktop Hosts or backend: web for local Web. [Identity-only OIDC](examples/identity-only.example.json) remains available without organization models.
 4. Sign-in discovers the current authorization's model catalog. Passive account refresh must not replace a personal model selected later.

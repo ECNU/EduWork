@@ -6,6 +6,8 @@ This branch adds LiteLLM native OAuth and an [experimental oidc-llm adapter](exp
 
 ## Choose a connection
 
+Start with the [LiteLLM setup guide](litellm-setup.en.md) to configure an existing gateway. This page describes the underlying protocol and Host integration requirements.
+
 | Server | Configuration | Model credential | Client registration |
 | --- | --- | --- | --- |
 | Identity-only OIDC | oidc without provider | No organization model credential | Pre-registered public client |
