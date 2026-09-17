@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T06:39:04.577Z",
-  "fileSetSHA256": "ba1aa0b463f43cb4155cf8bfa40461fb1b4e51eb582527c07e83f6ab05d47e34",
+  "createdAt": "2026-09-17T06:48:38.369Z",
+  "fileSetSHA256": "32daf4f77fbbf46cd6296103faab377f96e9f2d2b8ad59962d55d059c247b038",
   "files": [
     {
       "path": ".gitattributes",
@@ -4153,7 +4153,7 @@
     },
     {
       "path": "scripts/resolve-eduwork-upstream.ps1",
-      "sha256": "78272457fb08c9a66ee9a8600d14f481b548a48387384f2b54922882d996c62d"
+      "sha256": "e90fca5666d0a9fff7ad04251ae5f4217676001c3586964cd8e802fbfc9b73b7"
     },
     {
       "path": "scripts/set-desktop-icon.ps1",
