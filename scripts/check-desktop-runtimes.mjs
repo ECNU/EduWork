@@ -8,11 +8,13 @@ import { prepareNativeResources } from '../dsh-host/native-resources.mjs'
 
 // Run against an extracted release, without downloads, model calls or user data.
 const desktop = resolve(process.argv[2])
-const product = join(desktop, 'resources/product')
+const mac = process.platform === 'darwin'
+const resources = join(desktop, mac ? 'Contents/Resources' : 'resources')
+const product = join(resources, 'product')
 const { environment, pluginConfig } = await prepareNativeResources({ product })
 assert.ok(environment.DSH_MEDIA_BROWSER && environment.DSH_OFFICE_PYTHON, 'Offline native resources are required')
 const run = async (executable, args) => promisify(execFile)(executable, args, { windowsHide: true, timeout: 30_000, encoding: 'utf8' })
-const node = join(desktop, 'resources/runtime/node.exe')
+const node = join(resources, mac ? 'runtime/node' : 'runtime/node.exe')
 const nodeVersion = (await run(node, ['--version'])).stdout.trim()
 assert.match(nodeVersion, /^v24\./)
 

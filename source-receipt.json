@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260915.1",
+  "version": "0.3.6-dev.20260917.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T06:12:53.630Z",
-  "fileSetSHA256": "9481a8054f8d72de439c92b1aa0041886b013857d874b9e80f98b81c66b41ba9",
+  "createdAt": "2026-09-17T06:25:36.313Z",
+  "fileSetSHA256": "f7d3b9206705869cf05b0054745198e1c3d52fcf97d49568b39ef2d848baf434",
   "files": [
     {
       "path": ".gitattributes",
@@ -152,6 +152,10 @@
       "sha256": "bb890f2629404ade7304009efda9638eae04ac1039bcf3a92fa9d17b930db0c7"
     },
     {
+      "path": "config/macos-native.lock.json",
+      "sha256": "b286e54a0ee040523fb33dbfdc5c954facf9e2088898b8194eb484db9875017c"
+    },
+    {
       "path": "CONTRIBUTING.md",
       "sha256": "16a8a96a65e50e7a750c2bdf7b562aebf0d3877e39b544bb3acc7bfff22dc81c"
     },
@@ -201,7 +205,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "1af6333a83f80dd8951e0f759925fdd623cae1371388e461a0e080289a095823"
+      "sha256": "50e13fd7e2a8cea3b6cdfb143f4c335a548a88247af1125ba7678abfc7c07d4c"
     },
     {
       "path": "docs/MEDIA.md",
@@ -3993,7 +3997,7 @@
     },
     {
       "path": "scripts/check-desktop-runtimes.mjs",
-      "sha256": "78a6ee50a2ce57fa7d41d6148c9f9af654789409750954322a39d14c9593fa92"
+      "sha256": "8c36c5f34f0615c592811e2836dbbffd9cf9af25038880446b0f72c118f4aa17"
     },
     {
       "path": "scripts/check-publisher-bootstrap.mjs",
@@ -4002,6 +4006,10 @@
     {
       "path": "scripts/check-source-docs.mjs",
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
+    },
+    {
+      "path": "scripts/ci-eduwork-macos-release.ps1",
+      "sha256": "bfa93ab4deb614b93ab31bde636259f14a821a98a171c6517e77be3de2f4857a"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
@@ -4122,6 +4130,10 @@
     {
       "path": "scripts/prepare-eduwork-web-runtime.ps1",
       "sha256": "8f2c78918b56966a1302ef74527079468cbd83f3edc7035364b8699a095cec68"
+    },
+    {
+      "path": "scripts/prepare-macos-release-inputs.ps1",
+      "sha256": "658e9bc391cf38a7d23916799adeac19489b1ba4a2710a654f8eca020941d82d"
     },
     {
       "path": "scripts/prepare-windows-release-inputs.ps1",
