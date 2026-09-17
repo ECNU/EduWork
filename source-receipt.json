@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260917.1",
+  "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T08:28:19.778Z",
-  "fileSetSHA256": "8db1e6f7fe78e745c67528c9c82ce92ef1e419a5d9f7e0a18d875d0323d95074",
+  "createdAt": "2026-09-17T08:30:11.121Z",
+  "fileSetSHA256": "b3d6030bf7e559357d8e9bf8a85df41ce13326fdb6da3b9316634e6c0b137c78",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "970fab5b3c3c67377cc649412420af7f9ee20de9971419dc56f76a909cd7b47c"
+      "sha256": "c952e5f7ca75dd1631faab1768acb7da0ba958c3c54ee1c14156ad1250cb41c0"
     },
     {
       "path": ".gitignore",
@@ -633,7 +633,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "09af8f5c8ad7af7dd50ed7d2162d60156ccb72d32a37ee1db5337841a5d4e038"
+      "sha256": "ea3af5d9031a025cf73a219686517815c78928d751eb55ee53ad96a25f9e843a"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -658,6 +658,10 @@
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
       "sha256": "d683dc09223eecc4a8edc00043a1c6538ede4f7326c1a9e6352e8d6a660b06e5"
+    },
+    {
+      "path": "dsh-electron/src/desktop-restart.mjs",
+      "sha256": "9ac4a40c566e03aedfce91f6e125022701c78d1c33b06f174694953332a1ac1a"
     },
     {
       "path": "dsh-electron/src/external-navigation.mjs",
@@ -689,7 +693,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "1735b8d30593cea4bff1a80ea0ba4ec3605357ca5f772bae8cdff070cf9e05bb"
+      "sha256": "25ad220d44e1b202d3760f02e5862b1bddece84367991887ffb9e78b5b53e1b5"
     },
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
@@ -710,6 +714,10 @@
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
       "sha256": "89c677f6e6156763402acaa3db8919e206809c379a347155d381421bf5511a88"
+    },
+    {
+      "path": "dsh-electron/tests/desktop-restart.test.mjs",
+      "sha256": "68bbd8d6391efb81c2293cc6abf87dceaf23080de202abae08470725c6486263"
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",

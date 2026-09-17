@@ -17,6 +17,7 @@ import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent } from './publisher-bootstrap.mjs'
+import { desktopRelaunchOptions } from './desktop-restart.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -27,10 +28,15 @@ export function configureWindowNavigation(window) {
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
 let quitComplete = false
 let migrationLaunch
+let updateCompleted = false
 let portableUpdates
 let contentUpdates, managedContent = {}
 let publisher
 const lifecycle = new DesktopLifecycle()
+function restartDesktop() {
+  app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
+  app.quit()
+}
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
 export function isQuitting() { return lifecycle.closing }
@@ -88,7 +94,7 @@ async function prepareDesktop() {
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     policy: preferences?.policy ?? user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
   const software = await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
-  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:()=>{app.relaunch();app.quit()},onPolicy:async policy=>{
+  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }})
@@ -131,7 +137,15 @@ async function prepareDesktop() {
   return { profile: prepared.profile, node: paths.node }
 }
 export function nativeBootstrap() { if (!bootstrap) throw new Error('Native desktop bridge is not ready'); return bootstrap }
-export async function desktopReady() { await contentUpdates?.ready(); await writeMigrationHealth(migrationLaunch,'ready'); if (progressWindow && !progressWindow.isDestroyed()) progressWindow.close(); progressWindow = undefined; void portableUpdates?.action('check-updates').catch(()=>{}) }
+export async function desktopReady() {
+  await contentUpdates?.ready()
+  await writeMigrationHealth(migrationLaunch,'ready')
+  updateCompleted = true
+  migrationLaunch = null
+  if (progressWindow && !progressWindow.isDestroyed()) progressWindow.close()
+  progressWindow = undefined
+  void portableUpdates?.action('check-updates').catch(()=>{})
+}
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
@@ -179,7 +193,7 @@ export function checkProductUpdates() {
 }
 export async function showDesktopFailure(error) {
   if (isQuitting()) return
-  try { if(await contentUpdates?.rollback()) {app.relaunch();app.quit();return} }
+  try { if(await contentUpdates?.rollback()) {restartDesktop();return} }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
@@ -189,7 +203,7 @@ export async function showDesktopFailure(error) {
   let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
-    if (url === 'eduwork-startup://restart/') { app.relaunch(); app.quit() }
+    if (url === 'eduwork-startup://restart/') restartDesktop()
     if (url === 'eduwork-startup://exit/') app.quit()
     if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {
       importing = true
@@ -199,7 +213,7 @@ export async function showDesktopFailure(error) {
         const path = selected.filePaths[0], info = await stat(path)
         if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
         await contentUpdates.importOffline(await readFile(path))
-        app.relaunch(); app.quit()
+        restartDesktop()
       })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
     }
   })
