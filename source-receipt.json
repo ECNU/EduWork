@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T06:25:36.313Z",
-  "fileSetSHA256": "f7d3b9206705869cf05b0054745198e1c3d52fcf97d49568b39ef2d848baf434",
+  "createdAt": "2026-09-17T06:39:04.577Z",
+  "fileSetSHA256": "ba1aa0b463f43cb4155cf8bfa40461fb1b4e51eb582527c07e83f6ab05d47e34",
   "files": [
     {
       "path": ".gitattributes",
@@ -601,7 +601,7 @@
     },
     {
       "path": "dsh-desktop/scripts/sync-dsh-upstream.ps1",
-      "sha256": "63b74ac33fd095adcb0141e6253c2ce2713ae818c29d7979c43836dbad4015fc"
+      "sha256": "71855ddfacb438776ff838f0be6f558c325cec675dffb6bca2465b66ba92fdd0"
     },
     {
       "path": "dsh-desktop/scripts/test-dsh-compatibility.ps1",
