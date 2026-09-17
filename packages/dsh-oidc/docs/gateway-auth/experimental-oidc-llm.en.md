@@ -17,7 +17,7 @@ Add this object to desktop `organizations` or plugin `profiles`. The server must
     "discoveryUrl": "https://models.example.org/.well-known/openid-configuration",
     "expectedIssuer": "https://models.example.org",
     "experimentalOidcLlm": true,
-    "clientId": "registered-public-client",
+    "clientId": "replace-with-public-client-id",
     "identityMode": "oidc"
   }
 }
