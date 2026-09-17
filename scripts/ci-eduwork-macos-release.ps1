@@ -7,6 +7,7 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$ReleaseNotesFile,
     [switch]$ReleaseNotesApproved,
+    [switch]$VerifyPublisherBootstrap,
     [Parameter(Mandatory)][string]$Output
 )
 $ErrorActionPreference = 'Stop'
@@ -56,7 +57,13 @@ try {
     $config=Join-Path $gui 'eduwork.jsonc'
     @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';oidc=@{issuer='https://identity.example.test';clientId='synthetic-ci-client';scopes=@('openid','profile')}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
     $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()
-    $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=Join-Path $gui 'data';$env:EDUWORK_CONFIG_FILE=$config
+    $bootstrapEnabled = Test-Path (Join-Path $frozen 'resources/desktop/publisher-bootstrap.json')
+    if ($VerifyPublisherBootstrap -and -not $bootstrapEnabled) { throw 'Publisher acceptance requires a bootstrap-enabled edition' }
+    $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=Join-Path $gui 'data'
+    # Optional maintainer acceptance uses the packaged public feed and a fresh
+    # profile, without school credentials or changing any archive bytes. Keep
+    # downloaded configuration out of public evidence and the release payload.
+    $env:EDUWORK_CONFIG_FILE=if ($VerifyPublisherBootstrap) { $null } else { $config }
     $start=[Diagnostics.ProcessStartInfo]::new()
     $start.FileName=Join-Path $app 'Contents/MacOS/Electron';$start.UseShellExecute=$false
     $start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
@@ -84,6 +91,12 @@ try {
     if (-not (Get-Content (Join-Path $gui 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'macOS desktop smoke failed' }
     Copy-Item (Join-Path $gui 'result.json') (Join-Path $public 'desktop-ui-result.json')
     $result.checks.desktopLaunch='passed'
+    if ($VerifyPublisherBootstrap) {
+        $started=Get-Content (Join-Path $gui 'data/logs/desktop-start.json') -Raw | ConvertFrom-Json
+        if ($started.configurationRevision -lt 1 -or $started.skillsRevision -lt 1) { throw 'First launch did not activate signed publisher content' }
+        $result.checks.publisherFirstLaunch='passed'
+        $result.content=@{configurationRevision=$started.configurationRevision;skillsRevision=$started.skillsRevision}
+    }
     & codesign --verify --deep --strict $app
     $result.checks.readOnlyApplication='passed'
     Copy-Item $archive,$($archive+'.sha256') $publish

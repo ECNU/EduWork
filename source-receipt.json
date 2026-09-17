@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T06:48:38.369Z",
-  "fileSetSHA256": "32daf4f77fbbf46cd6296103faab377f96e9f2d2b8ad59962d55d059c247b038",
+  "createdAt": "2026-09-17T07:03:20.836Z",
+  "fileSetSHA256": "57677ab677e99fbc2d9c6363b3271eddb4f344f8208870c3aa6f8c8fcec9f4e4",
   "files": [
     {
       "path": ".gitattributes",
@@ -205,7 +205,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "50e13fd7e2a8cea3b6cdfb143f4c335a548a88247af1125ba7678abfc7c07d4c"
+      "sha256": "8b16ab1f4f66707f5a9ce8054ccdb09b8c60a142657057c50a8e7091e1b48a9a"
     },
     {
       "path": "docs/MEDIA.md",
@@ -621,7 +621,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "f50738e838773826f62a653757727082755848ee537f163a6dd7ed0b039db1dc"
+      "sha256": "2ca9bb6eb0df6ec1a24f3baeec3553454865f274ebe8478416d9fb4e9f523d9f"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -638,6 +638,10 @@
     {
       "path": "dsh-electron/scripts/prepare-electron.ps1",
       "sha256": "58e0bad30564697b66a358eca8df8a06091fa13e12428c64a0a75caadcd50b85"
+    },
+    {
+      "path": "dsh-electron/scripts/relocate-macos-compositor.ps1",
+      "sha256": "429288cdab025734c9cf6709a7047cfcbc07d21f0ae49f11bb755a467016a1b4"
     },
     {
       "path": "dsh-electron/src/configuration-files.mjs",
@@ -4009,7 +4013,7 @@
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
-      "sha256": "bfa93ab4deb614b93ab31bde636259f14a821a98a171c6517e77be3de2f4857a"
+      "sha256": "9c6ae6c1375b6a4837b93ac2d28795e47a3f48f3d1c1ba0614480d52a2691a47"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
