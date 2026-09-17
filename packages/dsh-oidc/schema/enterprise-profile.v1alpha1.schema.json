@@ -4,129 +4,482 @@
   "title": "dsh-oidc Enterprise Profile v1alpha1",
   "type": "object",
   "additionalProperties": false,
-  "required": ["schemaVersion", "id", "displayName", "oidc"],
-  "dependentRequired": { "keyBinding": ["provider"], "provider": ["keyBinding"] },
+  "required": [
+    "schemaVersion",
+    "id",
+    "displayName"
+  ],
+  "oneOf": [
+    {
+      "required": [
+        "oidc"
+      ],
+      "properties": {
+        "oidc": {},
+        "auth": false,
+        "provider": false
+      }
+    },
+    {
+      "required": [
+        "auth"
+      ],
+      "properties": {
+        "auth": {},
+        "oidc": false,
+        "provider": {
+          "$ref": "#/$defs/gatewayProvider"
+        }
+      }
+    }
+  ],
   "properties": {
-    "schemaVersion": { "const": "dsh-oidc/v1alpha1" },
-    "id": { "$ref": "#/$defs/id" },
-    "displayName": { "$ref": "#/$defs/nonEmpty120" },
-    "organization": { "$ref": "#/$defs/nonEmpty120" },
-    "nativeInstitutionID": { "type": "string", "minLength": 1, "maxLength": 64 },
-    "allowInsecureDevelopment": { "type": "boolean", "default": false },
-    "insecureDevelopmentOrigin": { "type": "string", "minLength": 8, "maxLength": 2048, "pattern": "^http://" },
-    "brand": { "$ref": "#/$defs/brand" },
-    "oidc": { "$ref": "#/$defs/oidc" },
-    "keyBinding": { "$ref": "#/$defs/keyBinding" },
-    "provider": { "$ref": "#/$defs/provider" }
+    "schemaVersion": {
+      "const": "dsh-oidc/v1alpha1"
+    },
+    "id": {
+      "$ref": "#/$defs/id"
+    },
+    "displayName": {
+      "$ref": "#/$defs/nonEmpty120"
+    },
+    "organization": {
+      "$ref": "#/$defs/nonEmpty120"
+    },
+    "nativeInstitutionID": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 64
+    },
+    "allowInsecureDevelopment": {
+      "type": "boolean",
+      "default": false
+    },
+    "insecureDevelopmentOrigin": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 2048,
+      "pattern": "^http://"
+    },
+    "brand": {
+      "$ref": "#/$defs/brand"
+    },
+    "oidc": {
+      "$ref": "#/$defs/oidc"
+    },
+    "auth": {
+      "$ref": "#/$defs/gatewayAuth"
+    },
+    "provider": {
+      "type": "object"
+    }
   },
   "allOf": [
     {
       "if": {
         "not": {
           "type": "object",
-          "properties": { "insecureDevelopmentOrigin": {} },
-          "required": ["insecureDevelopmentOrigin"]
+          "properties": {
+            "insecureDevelopmentOrigin": {}
+          },
+          "required": [
+            "insecureDevelopmentOrigin"
+          ]
         }
       },
       "then": {
         "type": "object",
         "properties": {
-          "oidc": { "type": "object", "properties": { "issuer": { "$ref": "#/$defs/secureEndpointURL" } } },
-          "keyBinding": { "type": "object", "properties": { "baseURL": { "$ref": "#/$defs/secureEndpointURL" } } },
-          "provider": { "type": "object", "properties": { "baseURL": { "$ref": "#/$defs/secureEndpointURL" } } }
+          "oidc": {
+            "type": "object",
+            "properties": {
+              "issuer": {
+                "$ref": "#/$defs/secureEndpointURL"
+              }
+            }
+          },
+          "auth": {
+            "type": "object",
+            "properties": {
+              "discoveryUrl": {
+                "$ref": "#/$defs/secureEndpointURL"
+              },
+              "expectedIssuer": {
+                "$ref": "#/$defs/secureEndpointURL"
+              }
+            }
+          },
+          "provider": {
+            "type": "object",
+            "properties": {
+              "baseURL": {
+                "$ref": "#/$defs/secureEndpointURL"
+              }
+            }
+          }
         }
       }
     },
     {
       "if": {
         "type": "object",
-        "properties": { "insecureDevelopmentOrigin": {} },
-        "required": ["insecureDevelopmentOrigin"]
+        "properties": {
+          "insecureDevelopmentOrigin": {}
+        },
+        "required": [
+          "insecureDevelopmentOrigin"
+        ]
       },
-      "then": { "type": "object", "properties": { "allowInsecureDevelopment": { "const": true } } }
+      "then": {
+        "type": "object",
+        "properties": {
+          "allowInsecureDevelopment": {
+            "const": true
+          }
+        }
+      }
     }
   ],
   "$defs": {
-    "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{0,63}$" },
-    "nonEmpty120": { "type": "string", "minLength": 1, "maxLength": 120, "pattern": "^\\S(?:.*\\S)?$" },
-    "positiveInteger": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
-    "httpsURL": { "type": "string", "minLength": 9, "maxLength": 2048, "pattern": "^https://" },
-    "secureEndpointURL": { "type": "string", "minLength": 9, "maxLength": 2048, "pattern": "^(https://|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(?=[:/]))" },
-    "endpointURL": { "type": "string", "minLength": 8, "maxLength": 2048, "pattern": "^(https://|http://)" },
+    "gatewayAuth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "discoveryUrl"
+      ],
+      "properties": {
+        "discoveryUrl": {
+          "$ref": "#/$defs/endpointURL"
+        },
+        "expectedIssuer": {
+          "$ref": "#/$defs/endpointURL"
+        },
+        "experimentalOidcLlm": {
+          "type": "boolean"
+        },
+        "clientId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "identityMode": {
+          "enum": [
+            "oauth",
+            "oidc"
+          ]
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "required": [
+              "experimentalOidcLlm"
+            ],
+            "properties": {
+              "experimentalOidcLlm": {
+                "const": true
+              }
+            }
+          },
+          "then": {
+            "required": [
+              "clientId",
+              "identityMode"
+            ],
+            "properties": {
+              "clientId": {},
+              "identityMode": {}
+            }
+          },
+          "else": {
+            "properties": {
+              "clientId": false,
+              "identityMode": false,
+              "discoveryUrl": {
+                "$ref": "#/$defs/secureEndpointURL"
+              },
+              "expectedIssuer": {
+                "$ref": "#/$defs/secureEndpointURL"
+              }
+            }
+          }
+        }
+      ]
+    },
+    "gatewayProvider": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/id"
+        },
+        "displayName": {
+          "$ref": "#/$defs/nonEmpty120"
+        },
+        "adapter": {
+          "const": "openai-compatible"
+        },
+        "reasoning": {
+          "enum": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
+        "defaultContextWindow": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "defaultMaxTokens": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxRequestImageBytes": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "requestImagePixelBudget": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "requestImageMaxBytes": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "streamIdleTimeoutMs": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "retryPolicy": {
+          "$ref": "#/$defs/retryPolicy"
+        },
+        "compat": {
+          "$ref": "#/$defs/compat"
+        },
+        "modelSource": {
+          "const": "discovery"
+        },
+        "models": {
+          "type": "array",
+          "minItems": 0,
+          "maxItems": 128,
+          "items": {
+            "$ref": "#/$defs/model"
+          }
+        }
+      }
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{0,63}$"
+    },
+    "nonEmpty120": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 120,
+      "pattern": "^\\S(?:.*\\S)?$"
+    },
+    "positiveInteger": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "httpsURL": {
+      "type": "string",
+      "minLength": 9,
+      "maxLength": 2048,
+      "pattern": "^https://"
+    },
+    "secureEndpointURL": {
+      "type": "string",
+      "minLength": 9,
+      "maxLength": 2048,
+      "pattern": "^(https://|http://(localhost|127\\.0\\.0\\.1|\\[::1\\])(?=[:/]))"
+    },
+    "endpointURL": {
+      "type": "string",
+      "minLength": 8,
+      "maxLength": 2048,
+      "pattern": "^(https://|http://)"
+    },
     "brand": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "productName": { "type": "string", "minLength": 1, "maxLength": 80 },
-        "organizationName": { "$ref": "#/$defs/nonEmpty120" },
-        "mark": { "type": "string", "minLength": 1, "maxLength": 4 },
-        "logoURL": { "type": "string", "minLength": 9, "maxLength": 131072, "pattern": "^(https://|data:image/(png|webp);base64,)" },
-        "primaryColor": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$" },
-        "loginTitle": { "type": "string", "minLength": 1, "maxLength": 120 },
-        "loginDescription": { "type": "string", "minLength": 1, "maxLength": 500 },
-        "supportURL": { "$ref": "#/$defs/httpsURL" }
+        "productName": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "organizationName": {
+          "$ref": "#/$defs/nonEmpty120"
+        },
+        "mark": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 4
+        },
+        "logoURL": {
+          "type": "string",
+          "minLength": 9,
+          "maxLength": 131072,
+          "pattern": "^(https://|data:image/(png|webp);base64,)"
+        },
+        "primaryColor": {
+          "type": "string",
+          "pattern": "^#[0-9a-fA-F]{6}$"
+        },
+        "loginTitle": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 120
+        },
+        "loginDescription": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "supportURL": {
+          "$ref": "#/$defs/httpsURL"
+        }
       }
     },
     "oidc": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["issuer", "clientId", "scopes"],
+      "required": [
+        "issuer",
+        "clientId",
+        "scopes"
+      ],
       "properties": {
-        "issuer": { "$ref": "#/$defs/endpointURL" },
-        "clientId": { "type": "string", "minLength": 1, "maxLength": 256 },
+        "issuer": {
+          "$ref": "#/$defs/endpointURL"
+        },
+        "clientId": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
         "scopes": {
           "type": "array",
           "minItems": 2,
           "maxItems": 64,
           "uniqueItems": true,
           "allOf": [
-            { "contains": { "const": "openid" } },
-            { "contains": { "const": "profile" } }
+            {
+              "contains": {
+                "const": "openid"
+              }
+            },
+            {
+              "contains": {
+                "const": "profile"
+              }
+            }
           ],
-          "items": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^\\S+$" }
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128,
+            "pattern": "^\\S+$"
+          }
         }
-      }
-    },
-    "keyBinding": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["baseURL"],
-      "properties": {
-        "type": { "enum": ["worker-user-center-v1", "eduwork-resources-v1"], "default": "worker-user-center-v1" },
-        "baseURL": { "$ref": "#/$defs/endpointURL" },
-        "credentialRef": { "type": "string", "default": "EDUWORK_API_KEY", "pattern": "^[A-Za-z_][A-Za-z0-9_]*$", "maxLength": 128 }
       }
     },
     "compat": {
       "type": "object",
       "additionalProperties": false,
       "properties": {
-        "supportsDeveloperRole": { "type": "boolean" },
-        "supportsStore": { "type": "boolean" },
-        "supportsReasoningEffort": { "type": "boolean" },
-        "supportsUsageInStreaming": { "type": "boolean" },
-        "maxTokensField": { "enum": ["max_completion_tokens", "max_tokens"] },
-        "supportsStrictMode": { "type": "boolean" },
-        "supportsLongCacheRetention": { "type": "boolean" },
-        "thinkingFormat": { "enum": ["openai", "deepseek", "openrouter", "together", "baseten", "zai", "qwen", "chat-template", "qwen-chat-template", "string-thinking", "ant-ling"] },
-        "requiresReasoningContentOnAssistantMessages": { "type": "boolean" }
+        "supportsDeveloperRole": {
+          "type": "boolean"
+        },
+        "supportsStore": {
+          "type": "boolean"
+        },
+        "supportsReasoningEffort": {
+          "type": "boolean"
+        },
+        "supportsUsageInStreaming": {
+          "type": "boolean"
+        },
+        "maxTokensField": {
+          "enum": [
+            "max_completion_tokens",
+            "max_tokens"
+          ]
+        },
+        "supportsStrictMode": {
+          "type": "boolean"
+        },
+        "supportsLongCacheRetention": {
+          "type": "boolean"
+        },
+        "thinkingFormat": {
+          "enum": [
+            "openai",
+            "deepseek",
+            "openrouter",
+            "together",
+            "baseten",
+            "zai",
+            "qwen",
+            "chat-template",
+            "qwen-chat-template",
+            "string-thinking",
+            "ant-ling"
+          ]
+        },
+        "requiresReasoningContentOnAssistantMessages": {
+          "type": "boolean"
+        }
       }
     },
     "retryPolicy": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["mode"],
+      "required": [
+        "mode"
+      ],
       "properties": {
-        "mode": { "enum": ["normal", "always"] },
-        "maxRetries": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 },
-        "retryableCodes": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string", "minLength": 1, "maxLength": 128 } },
+        "mode": {
+          "enum": [
+            "normal",
+            "always"
+          ]
+        },
+        "maxRetries": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "retryableCodes": {
+          "type": "array",
+          "minItems": 1,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 128
+          }
+        },
         "backoff": {
           "type": "object",
           "additionalProperties": false,
           "properties": {
-            "initialDelayMs": { "type": "number", "exclusiveMinimum": 0, "maximum": 2147483647 },
-            "maxDelayMs": { "type": "number", "exclusiveMinimum": 0, "maximum": 2147483647 },
-            "jitterRatio": { "type": "number", "minimum": 0, "maximum": 1 }
+            "initialDelayMs": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
+            },
+            "maxDelayMs": {
+              "type": "number",
+              "exclusiveMinimum": 0,
+              "maximum": 2147483647
+            },
+            "jitterRatio": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            }
           }
         }
       }
@@ -134,59 +487,108 @@
     "model": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["id"],
+      "required": [
+        "id"
+      ],
       "properties": {
-        "id": { "type": "string", "minLength": 1, "maxLength": 256 },
-        "name": { "type": "string", "minLength": 1, "maxLength": 256 },
-        "input": { "type": "array", "minItems": 1, "maxItems": 2, "uniqueItems": true, "items": { "enum": ["text", "image"] } },
-        "contextWindow": { "$ref": "#/$defs/positiveInteger" },
-        "maxTokens": { "$ref": "#/$defs/positiveInteger" },
-        "reasoning": { "type": "boolean" },
-        "defaultReasoningEffort": { "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"] },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 256
+        },
+        "input": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "uniqueItems": true,
+          "items": {
+            "enum": [
+              "text",
+              "image"
+            ]
+          }
+        },
+        "contextWindow": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "maxTokens": {
+          "$ref": "#/$defs/positiveInteger"
+        },
+        "reasoning": {
+          "type": "boolean"
+        },
+        "defaultReasoningEffort": {
+          "enum": [
+            "off",
+            "minimal",
+            "low",
+            "medium",
+            "high",
+            "xhigh",
+            "max"
+          ]
+        },
         "reasoningEfforts": {
           "oneOf": [
-            { "const": false },
+            {
+              "const": false
+            },
             {
               "type": "object",
               "minProperties": 1,
               "maxProperties": 7,
               "additionalProperties": false,
               "properties": {
-                "off": { "type": ["string", "null"], "minLength": 1, "maxLength": 32 },
-                "minimal": { "type": "string", "minLength": 1, "maxLength": 32 },
-                "low": { "type": "string", "minLength": 1, "maxLength": 32 },
-                "medium": { "type": "string", "minLength": 1, "maxLength": 32 },
-                "high": { "type": "string", "minLength": 1, "maxLength": 32 },
-                "xhigh": { "type": "string", "minLength": 1, "maxLength": 32 },
-                "max": { "type": "string", "minLength": 1, "maxLength": 32 }
+                "off": {
+                  "type": [
+                    "string",
+                    "null"
+                  ],
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "minimal": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "low": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "medium": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "high": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "xhigh": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                },
+                "max": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                }
               }
             }
           ]
         },
-        "compat": { "$ref": "#/$defs/compat" }
-      }
-    },
-    "provider": {
-      "type": "object",
-      "additionalProperties": false,
-      "required": ["id", "adapter", "baseURL"],
-      "allOf": [{ "if": { "required": ["modelSource"], "properties": { "modelSource": { "const": "discovery" } } }, "else": { "required": ["models"], "properties": { "models": { "type": "array", "minItems": 1 } } } }],
-      "properties": {
-        "id": { "$ref": "#/$defs/id" },
-        "displayName": { "$ref": "#/$defs/nonEmpty120" },
-        "adapter": { "const": "openai-compatible" },
-        "baseURL": { "$ref": "#/$defs/endpointURL" },
-        "reasoning": { "enum": ["off", "minimal", "low", "medium", "high", "xhigh", "max"] },
-        "defaultContextWindow": { "$ref": "#/$defs/positiveInteger" },
-        "defaultMaxTokens": { "$ref": "#/$defs/positiveInteger" },
-        "maxRequestImageBytes": { "$ref": "#/$defs/positiveInteger" },
-        "requestImagePixelBudget": { "$ref": "#/$defs/positiveInteger" },
-        "requestImageMaxBytes": { "$ref": "#/$defs/positiveInteger" },
-        "streamIdleTimeoutMs": { "$ref": "#/$defs/positiveInteger" },
-        "retryPolicy": { "$ref": "#/$defs/retryPolicy" },
-        "compat": { "$ref": "#/$defs/compat" },
-        "modelSource": { "enum": ["profile", "discovery"], "default": "profile" },
-        "models": { "type": "array", "minItems": 0, "maxItems": 128, "items": { "$ref": "#/$defs/model" } }
+        "compat": {
+          "$ref": "#/$defs/compat"
+        }
       }
     }
   }

@@ -1,7 +1,6 @@
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { apply as applyEnterpriseProvider } from './provider/index.js'
-import { NativeOidcBackend, WebOidcBackend } from './oidc.js'
-import { DesktopOidcBackend } from './desktop-oidc.js'
+import { GatewayDesktopBackend, GatewayWebBackend } from './gateway-backend.js'
 import { enterpriseProviderConfig, loadEnterpriseProfiles, publicProfile } from './profile.js'
 
 export const name = 'dsh-oidc'
@@ -14,6 +13,7 @@ export class OidcAccountService extends TypertRemoteService {
     super(ctx, 'oidcAccounts')
     for (const initialize of remoteInitializers) initialize.call(this)
     this.profiles = loadEnterpriseProfiles(config)
+    if (config.backend === 'native') throw new Error('The legacy native account bridge has been removed; use the desktop or web Host backend')
     if (this.profiles.size === 0 && config.allowEmptyProfiles !== true) throw new Error('dsh-oidc requires at least one Enterprise Profile')
     this.uiMode = ['external', 'models-only'].includes(config.uiMode) ? config.uiMode : 'standard'
     this.manageProductBrand = config.manageProductBrand !== false
@@ -33,13 +33,14 @@ export class OidcAccountService extends TypertRemoteService {
     this.accountStates = new Map()
     const provider = applyEnterpriseProvider(ctx, {
       ...enterpriseProviderConfig(this.profiles),
+      createAuthorizationScope: providerID => {
+        const profile = [...this.profiles.values()].find(value => value.provider?.id === providerID)
+        return profile?.auth ? this.backend.createGatewayScope(profile.id) : undefined
+      },
       resolveCredential: async providerID => {
         const profile = [...this.profiles.values()].find(value => value.provider?.id === providerID)
         if (!profile) return undefined
-        if (this.backend instanceof NativeOidcBackend) return ctx.credentials.resolve(profile.keyBinding.credentialRef)
-        if (this.backend instanceof WebOidcBackend) return this.backend.resolveBoundCredential(profile.id, {
-          credentialRef: profile.keyBinding.credentialRef, runtimeBaseURL: profile.provider.baseURL,
-        })
+        return this.backend?.resolveGatewayCredential(profile.id)
       },
     })
     const backendOptions = {
@@ -51,9 +52,8 @@ export class OidcAccountService extends TypertRemoteService {
             provider.replaceConfig(enterpriseProviderConfig(profiles))
           },
         }
-    if (config.backend === 'native') this.backend = new NativeOidcBackend(ctx, this.profiles)
-    else if (config.backend === 'desktop') {
-      this.backend = new DesktopOidcBackend(ctx, this.profiles, config.desktop ?? {}, backendOptions)
+    if (config.backend === 'desktop') {
+      this.backend = new GatewayDesktopBackend(ctx, this.profiles, config.desktop ?? {}, backendOptions)
       ctx.inject(['desktopServices'], inner => {
         this.backend.openExternal = url => inner.desktopServices.openExternal(url)
         inner.effect(() => () => {
@@ -64,7 +64,7 @@ export class OidcAccountService extends TypertRemoteService {
     } else {
       this.backendReady = new Promise(resolve => {
         ctx.inject(['webServer'], inner => {
-          const backend = new WebOidcBackend(inner, this.profiles, config.web ?? {}, backendOptions)
+          const backend = new GatewayWebBackend(inner, this.profiles, config.web ?? {}, backendOptions)
           this.backend = backend
           resolve()
           inner.effect(() => () => { if (this.backend === backend) this.backend = undefined }, 'dsh-oidc: web backend')
@@ -114,10 +114,9 @@ export class OidcAccountService extends TypertRemoteService {
   modelResourceFetch(profileID, relativePath, options) {
     return this.callBackend('modelResourceFetch', profileID, relativePath, options)
   }
-  // Host-only credential snapshot for optional adapters; never exposed via RPC.
-  async resolveBoundCredential(profileID, expected) {
-    await this.backendReady
-    return this.backend instanceof WebOidcBackend ? this.backend.resolveBoundCredential(profileID, expected) : undefined
+  // Host-only readiness check for explicitly configured model-service adapters.
+  modelAuthorization(profileID, expectedBaseURL) {
+    return this.callBackend('modelAuthorization', profileID, expectedBaseURL)
   }
   async begin(profileID) {
     const result = await this.callBackend('begin', profileID)
@@ -184,6 +183,6 @@ for (const method of [
 
 export default OidcAccountService
 export { enterpriseProviderConfig, loadEnterpriseProfiles, normalizeEnterpriseProfile, publicProfile } from './profile.js'
-export { NativeOidcBackend, WebOidcBackend } from './oidc.js'
+export { WebOidcBackend } from './oidc.js'
 export { DesktopOidcBackend } from './desktop-oidc.js'
 export { EnterpriseModelTransforms } from './provider/transforms.js'

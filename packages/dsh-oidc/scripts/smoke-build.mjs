@@ -71,13 +71,10 @@ const view = name => {
 }
 assert.match(view('sidebar.footer.action'), /点击设置完成登录/)
 await settings.service.begin('example')
-account = identity
+account = connected
 await settings.service.loginStatus('example-attempt')
 assert.match(view('sidebar.footer.action'), /Synthetic user/)
-assert.match(view('sidebar.footer.action'), /等待创建模型凭据/)
-assert.match(view('settings.onboarding'), /确认创建模型凭据/)
-assert.equal(activations.length, 0)
-await settings.service.reconcile('example', { allowProvision: true })
+assert.doesNotMatch(view('settings.onboarding'), /创建模型凭据/)
 assert.match(view('sidebar.footer.action'), /企业模型已连接/)
 assert.match(view('settings.general.item'), /Synthetic user/)
 assert.equal(view('settings.onboarding'), '')
@@ -87,7 +84,7 @@ assert.equal(view('settings.onboarding'), '')
 const originalUseState = React.useState
 let stateIndex = 0
 try {
-  React.useState = initial => originalUseState(stateIndex++ === 0 ? 'provision' : initial)
+  React.useState = initial => originalUseState(stateIndex++ === 0 ? 'select' : initial)
   const pendingOnboarding = view('settings.onboarding')
   assert.match(pendingOnboarding, /role="dialog"/)
   assert.match(pendingOnboarding, /正在连接/)
@@ -98,7 +95,7 @@ assert.equal(activations.length, 1, 'a first login on the empty landing page mus
 assert.equal(activations[0][1].onlyIfMissing, false)
 assert.equal(sessionSelections.length, 0)
 currentSession = 'session-1'
-await settings.service.reconcile('example', { allowProvision: true })
+await settings.service.useModels('example')
 assert.equal(sessionSelections[0].id, 'session-1')
 const explicitActivations = activations.length
 await events.get('credentials/reference-updated')('EXAMPLE_API_KEY')

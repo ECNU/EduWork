@@ -2,7 +2,7 @@
 
 [简体中文](desktop-host.md)
 
-`backend: desktop` uses a temporary loopback callback for desktop sign-in. OIDC validation, host credentials, Key Binding, model discovery and `authorizedFetch()` reuse the Web implementation; existing `web` and legacy native bridge modes remain supported.
+`backend: desktop` uses a temporary loopback callback for desktop sign-in. OIDC validation, host credentials, token refresh, model discovery and authorizedFetch reuse shared code. Web and desktop are supported; the legacy native account bridge is removed.
 
 ```yaml
 - id: enterprise-oidc
@@ -20,7 +20,6 @@ The host supplies a Cordis `desktopServices` service with `openExternal(url: str
 
 When the distribution provides `configFile: {path, examplesPath}`, organization settings stay read-only and are loaded again on restart. The optional Host method `openConfiguration(target: 'config' | 'examples'): Promise<void>` enables configuration-file and example-folder buttons. The RPC accepts these two fixed targets only; the host resolves its own paths, and the renderer cannot send a path or command. `configuration().configFile.canOpen` reports availability. Web hosts without this capability show the configuration-file location instead. Personal models and configured organization sign-in remain available.
 
-Resource binding accepts the original `worker.user-center.v1`, the transitional `worker-user-center/v1`, and `eduwork-resources/v1`. Unknown versions and mismatched Provider IDs are rejected before creating a model credential. Completed identity sign-in is retained, with an error identifying the separate resource/configuration problem.
 
 The host must implement `credentials.resolve/set/unset`, backed by its operating-system vault. The plugin has no plaintext credential file or fallback on storage failure. OAuth tokens remain Host-only. Personal API keys remain independent of the organization's managed credential. The public `oidcAccounts.authorizedFetch()` capability remains Host-only.
 
@@ -36,11 +35,11 @@ Shared Host/Client RPC additions:
 
 Sign-in, sidebar and organization settings share one account snapshot. Credential Providers should emit the official `credentials/reference-updated` event after set/unset. The client listens to that forwarded Remote event and `connection/reset`; it does not depend on a custom account event that the official Remote transport does not forward.
 
-Explicit sign-in with a connected key, or confirmed key provisioning, selects the first resolvable enterprise model. A default is saved even when no session exists. For a current main session, the client also uses the official `modelDirectories.directoryFor(sessionID).select()` API; addressed subagents are left alone. Load the official `agentDefaultModel` and writable `settings` services. Older hosts without this capability show a message asking the user to choose from the model menu.
+Explicit sign-in with a connected model service selects the first resolvable enterprise model. A default is saved even when no session exists. For a current main session, the client also uses the official `modelDirectories.directoryFor(sessionID).select()` API; addressed subagents are left alone. Load the official `agentDefaultModel` and writable `settings` services. Older hosts without this capability show a message asking the user to choose from the model menu.
 
 Initial upgrade recovery uses `onlyIfMissing:true`: it preserves an existing resolvable default and repairs only an absent or unavailable one. A valid personal selection in the current session is also preserved. Credential events, connection checks and subsequent status refreshes never select a model. Personal credentials and unrelated settings remain unchanged.
 
-For desktop acceptance run `node scripts/serve-desktop-oidc-fixture.mjs --config <new test configuration file>`. It binds a random loopback port, serves synthetic HTTP PKCE/Key/models/quota and writes a public JSONC profile. The file must not exist; user configuration is never overwritten. Use isolated data directories for each shell and Ctrl+C to stop. No real accounts or model credits are used.
+For desktop acceptance run `node scripts/serve-desktop-oidc-fixture.mjs --config <new test configuration file>`. It binds a random loopback port, serves synthetic HTTP PKCE/Token/models/quota and writes a public JSONC profile. The file must not exist; user configuration is never overwritten. Use isolated data directories for each shell and Ctrl+C to stop. No real accounts or model credits are used.
 
 The independent random login handle is not OAuth state. Results never carry an authorization URL, code, nonce, verifier or token. The client polls once per second, displays browser completion instructions and a cancel button, and cancels on unmount. Sign-in expires within ten minutes. Closing a system browser cannot reliably be detected across platforms; the app cancel action and expiry bound the listener lifetime.
 
@@ -48,7 +47,7 @@ An empty Profile list is valid: no listener or organization login is needed. Ide
 
 Run `node --test test/desktop.test.js test/desktop-host.test.js`. To test a frozen installation, set `DSH_OIDC_PACKAGE_ROOT` to its package directory and `DSH_OIDC_EXPECT_DSH=0.1.5-rc.1`. The latter test uses the installed package's actual Host dependencies without WebServer, optional browser-service lifecycle and HTTP PKCE. All credentials and identities are synthetic. Shell vault, window and system-browser integration still require product acceptance.
 
-The `.20260910.6` public avatar menu provides account refresh and sign-out; quota UI requires an institution extension. A portal supports narrow sidebars; arrows, Home/End, Escape and outside click/focus are supported. Logout clears this profile's local identity, managed key and cached model metadata, serializes vault writes and rejects late writes. Personal keys remain untouched.
+The `.20260910.6` public avatar menu provides account refresh and sign-out; quota UI requires an institution extension. A portal supports narrow sidebars; arrows, Home/End, Escape and outside click/focus are supported. Logout clears this profile's local identity, Tokens and cached model metadata, serializes vault writes and rejects late writes. Personal keys remain untouched.
 
 The temporary HTTP callback page reads `brand.productName/organizationName/logoURL/mark/primaryColor` from this attempt's Profile and chooses Chinese or English from Accept-Language. It has no external fonts, scripts or raw error reflection and directs the user back to the app. Ordinary Web validation still redirects into its local app; model keys never enter the browser.
 

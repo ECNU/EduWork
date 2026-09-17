@@ -1,3 +1,4 @@
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { LlmError, assertUsableApiKey, resolveImageAttachmentAccess, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import { Config as PiAiConfig, PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
@@ -10,6 +11,7 @@ import {
 } from './core.js'
 import { TransformingEnterpriseAdapter } from './transform-adapter.js'
 import { EnterpriseModelTransforms } from './transforms.js'
+import { AuthorizationScopedAdapter } from './authorization-scope.js'
 
 export const name = 'dsh-oidc-provider'
 export const inject = ['llm']
@@ -108,6 +110,7 @@ export function resolveEnterpriseImageAccess(ctx, attachments, ref) {
 }
 
 export function apply(ctx, rawConfig = {}) {
+  const callAuthorization = new AsyncLocalStorage()
   const transforms = new EnterpriseModelTransforms(ctx)
   let current = () => settingsBase(rawConfig)
   let profiles = profilesFrom(current())
@@ -121,7 +124,10 @@ export function apply(ctx, rawConfig = {}) {
       }
       const ref = profile.apiKeyEnv
       const credentials = ctx.get('credentials')
-      const hit = typeof rawConfig.resolveCredential === 'function'
+      const lease = callAuthorization.getStore()
+      const hit = lease
+        ? (await lease.resolveCredential(provider))?.value
+        : typeof rawConfig.resolveCredential === 'function'
         ? (await rawConfig.resolveCredential(provider))?.value
         : credentials === undefined
         ? launchEnvironmentOf(ctx).get(ref)?.value
@@ -133,9 +139,12 @@ export function apply(ctx, rawConfig = {}) {
     resolveImageAccess: (attachments, ref) => resolveEnterpriseImageAccess(ctx, attachments, ref),
   })
 
-  const adapter = new TransformingEnterpriseAdapter(baseAdapter, transforms, (provider, model) => (
+  const transforming = new TransformingEnterpriseAdapter(baseAdapter, transforms, (provider, model) => (
     profiles.get(provider)?.modelPolicies.get(model) ?? { reasoning: true, supportsReasoningEffort: true }
   ))
+  const adapter = typeof rawConfig.createAuthorizationScope === 'function'
+    ? new AuthorizationScopedAdapter(transforming, callAuthorization, rawConfig.createAuthorizationScope)
+    : transforming
   let registration
   let directory
   const replaceProfiles = next => {

@@ -7,7 +7,7 @@ import { createServer } from 'node:http'
 import { normalizeMediaConfig, loadMediaProviders } from '../lib/config.js'
 import { apply } from '../lib/index.js'
 import { generateImage, selectImageGenerationSize, prepareManagedOutput } from '../lib/core.js'
-import { resolveMediaCredential } from '../lib/actions.js'
+import { resolveMediaCredential, mediaAuthorization } from '../lib/actions.js'
 
 const tinyPNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR4nGP4z8DwHwAFAAH/iZk9HQAAAABJRU5ErkJggg==', 'base64')
 const config = () => ({ providers: [{ id: 'example', title: '示例媒体', protocol: 'openai-compatible',
@@ -54,11 +54,37 @@ test('edition defaults preserve old configuration while explicit user settings o
 test('account-bound media never falls back to an unrelated shared key', async () => {
   let fallback = 0, expected
   const ctx = { credentials: { resolve: () => { fallback++; return { value: 'unrelated' } } },
-    get: () => ({ resolveBoundCredential: async (id, binding) => { expected = { id, ...binding }; return undefined } }) }
+    get: () => ({ modelAuthorization: async (id, baseURL) => { expected = { id, baseURL }; return false } }) }
   const provider = { ...config().providers[0], oidcProfileId: 'school' }
   assert.equal(await resolveMediaCredential(ctx, provider), undefined)
+  await assert.rejects(mediaAuthorization(ctx, provider), /Sign in/)
   assert.equal(fallback, 0)
-  assert.deepEqual(expected, { id: 'school', credentialRef: 'EDUWORK_API_KEY', runtimeBaseURL: provider.baseURL })
+  assert.deepEqual(expected, { id: 'school', baseURL: provider.baseURL })
+})
+
+test('account media uses shared authorization only for generation, never signed image downloads', async () => {
+  const calls = []
+  const provider = { ...config().providers[0], oidcProfileId: 'school' }
+  const ctx = { credentials: { resolve() { throw new Error('must not read a model key') } }, get: () => ({
+    modelAuthorization: async (id, baseURL) => id === 'school' && baseURL === provider.baseURL,
+    authorizedFetch: async (id, url, init) => {
+      calls.push(url)
+      assert.equal(id, 'school')
+      assert.equal(url, provider.baseURL + '/images/generations')
+      assert.equal(init.headers.Authorization, undefined)
+      return Response.json({ data: [{ url: 'https://cdn.example.test/image.png' }] })
+    },
+  }) }
+  const result = await generateImage({ baseURL: provider.baseURL, ...await mediaAuthorization(ctx, provider),
+    model: 'synthetic-image', prompt: 'test', size: '512x512', nativeSizes: ['512x512'],
+    fetchImpl: async (url, init) => {
+      assert.equal(url, 'https://cdn.example.test/image.png')
+      assert.equal(init.headers, undefined)
+      return new Response(tinyPNG)
+    },
+  })
+  assert.equal(result.dimensions.size, '1x1')
+  assert.equal(calls.length, 1)
 })
 
 test('unconfigured adapter registers nothing; readiness changes on login and Studio retains the shared tool permission path', async () => {

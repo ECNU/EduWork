@@ -1,0 +1,12 @@
+{
+  "schemaVersion": "dsh-oidc/v1alpha1",
+  "id": "example-models",
+  "displayName": "示例模型服务（实验）",
+  "auth": {
+    "discoveryUrl": "https://models.example.org/.well-known/openid-configuration",
+    "expectedIssuer": "https://models.example.org",
+    "experimentalOidcLlm": true,
+    "clientId": "replace-with-public-client-id",
+    "identityMode": "oidc"
+  }
+}

@@ -1,10 +1,8 @@
 import { readFileSync } from 'node:fs'
 
 export const PROFILE_SCHEMA_VERSION = 'dsh-oidc/v1alpha1'
-export const DEFAULT_CREDENTIAL_REF = 'EDUWORK_API_KEY'
 const MAX_PROFILE_BYTES = 512 * 1024
 const idPattern = /^[a-z][a-z0-9-]{0,63}$/
-const credentialPattern = /^[A-Za-z_][A-Za-z0-9_]*$/
 const colorPattern = /^#[0-9a-fA-F]{6}$/
 const allowedModalities = new Set(['text', 'image'])
 const allowedThinkingLevels = new Set(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
@@ -15,10 +13,9 @@ const allowedThinkingFormats = new Set([
 ])
 const allowedRootKeys = new Set([
   'schemaVersion', 'id', 'displayName', 'organization', 'nativeInstitutionID',
-  'allowInsecureDevelopment', 'insecureDevelopmentOrigin', 'brand', 'oidc', 'keyBinding', 'provider',
+  'allowInsecureDevelopment', 'insecureDevelopmentOrigin', 'brand', 'oidc', 'auth', 'provider',
 ])
 const allowedOidcKeys = new Set(['issuer', 'clientId', 'scopes'])
-const allowedKeyBindingKeys = new Set(['type', 'baseURL', 'credentialRef'])
 const allowedBrandKeys = new Set([
   'productName', 'organizationName', 'mark', 'logoURL', 'primaryColor',
   'loginTitle', 'loginDescription', 'supportURL',
@@ -217,9 +214,6 @@ export function normalizeModels(models, providerID) {
   }))
 }
 
-export function legacyCredentialRefs(profile) {
-  return [...new Set([profile.id, profile.provider?.id].filter(Boolean).map(id => `${id.toUpperCase().replace(/[^A-Z0-9]/g, '_')}_API_KEY`))]
-}
 
 function normalizeRetryPolicy(value) {
   const source = object(value, 'profile.provider.retryPolicy')
@@ -281,35 +275,41 @@ export function normalizeEnterpriseProfile(raw) {
   if (allowedInsecureOrigin !== undefined && !allowInsecureDevelopment) {
     throw new Error('profile.insecureDevelopmentOrigin requires allowInsecureDevelopment=true')
   }
-  const oidc = object(source.oidc, 'profile.oidc')
-  const identityOnly = source.keyBinding === undefined && source.provider === undefined
-  if (!identityOnly && (source.keyBinding === undefined || source.provider === undefined)) {
-    throw new Error('profile.keyBinding and profile.provider must either both be present or both be omitted')
+  const gateway = source.auth !== undefined
+  if (gateway && source.oidc !== undefined) throw new Error('profile.auth cannot be combined with oidc')
+  let auth
+  if (gateway) {
+    const rawAuth = object(source.auth, 'profile.auth')
+    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer', 'experimentalOidcLlm', 'clientId', 'identityMode']), 'profile.auth')
+    const experimental = rawAuth.experimentalOidcLlm === true
+    if (rawAuth.experimentalOidcLlm !== undefined && typeof rawAuth.experimentalOidcLlm !== 'boolean') throw new Error('profile.auth.experimentalOidcLlm must be boolean')
+    if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined)) throw new Error('profile.auth clientId and identityMode require experimentalOidcLlm=true')
+    if (experimental && !['oauth', 'oidc'].includes(rawAuth.identityMode)) throw new Error('profile.auth.identityMode must explicitly select oauth or oidc')
+    if (experimental && allowedInsecureOrigin && !rawAuth.expectedIssuer) throw new Error('development oidc-llm requires expectedIssuer')
+    const developmentOrigin = experimental ? allowedInsecureOrigin : undefined
+    auth = Object.freeze({
+      discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment, developmentOrigin),
+      ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment, developmentOrigin) }),
+      ...(experimental ? { experimentalOidcLlm: true, clientId: text(rawAuth.clientId, 'profile.auth.clientId', 256), identityMode: rawAuth.identityMode } : {}),
+    })
+    if (source.provider?.baseURL !== undefined) throw new Error('profile.auth derives provider.baseURL from validated discovery')
+    if (source.provider?.modelSource !== undefined && source.provider.modelSource !== 'discovery') throw new Error('profile.auth requires discovery modelSource')
   }
-  const keyBinding = identityOnly ? {} : object(source.keyBinding, 'profile.keyBinding')
-  const provider = identityOnly ? {} : object(source.provider, 'profile.provider')
+  const oidc = gateway ? {} : object(source.oidc, 'profile.oidc')
+  const identityOnly = !gateway
+  if (identityOnly && source.provider !== undefined) throw new Error('OIDC identity profiles cannot configure model resources; use auth.discoveryUrl for Access Token model access')
+  const provider = gateway ? { id, adapter: 'openai-compatible', ...object(source.provider ?? {}, 'profile.provider'), modelSource: 'discovery' } : {}
   exactKeys(oidc, allowedOidcKeys, 'profile.oidc')
-  exactKeys(keyBinding, allowedKeyBindingKeys, 'profile.keyBinding')
   exactKeys(provider, allowedProviderKeys, 'profile.provider')
   const providerID = identityOnly ? id : text(provider.id, 'profile.provider.id', 64)
   if (!idPattern.test(providerID)) throw new Error('profile.provider.id is invalid')
-  let credentialRef = keyBinding.credentialRef === undefined
-    ? DEFAULT_CREDENTIAL_REF
-    : text(keyBinding.credentialRef, 'profile.keyBinding.credentialRef', 128)
-  if (!credentialPattern.test(credentialRef)) {
-    throw new Error('profile.keyBinding.credentialRef must be a valid DSH credential reference')
-  }
-  if (legacyCredentialRefs({ id, provider: { id: providerID } }).includes(credentialRef)) credentialRef = DEFAULT_CREDENTIAL_REF
   if (!identityOnly && provider.adapter !== 'openai-compatible') throw new Error(`unsupported provider adapter ${String(provider.adapter)}`)
-  const protocol = keyBinding.type ?? 'worker-user-center-v1'
-  if (!['worker-user-center-v1', 'eduwork-resources-v1'].includes(protocol)) throw new Error('profile.keyBinding.type is not supported')
-  const modelSource = provider.modelSource ?? 'profile'
-  if (!['profile', 'discovery'].includes(modelSource)) throw new Error('profile.provider.modelSource must be profile or discovery')
+  const modelSource = 'discovery'
   const scopes = oidc.scopes
-  if (!Array.isArray(scopes) || scopes.length < 2 || scopes.length > 64 || !scopes.includes('openid') || !scopes.includes('profile') || scopes.some(scope => typeof scope !== 'string' || scope.length > 128 || scope.trim() !== scope || scope === '' || /\s/.test(scope))) {
+  if (!gateway && (!Array.isArray(scopes) || scopes.length < 2 || scopes.length > 64 || !scopes.includes('openid') || !scopes.includes('profile') || scopes.some(scope => typeof scope !== 'string' || scope.length > 128 || scope.trim() !== scope || scope === '' || /\s/.test(scope)))) {
     throw new Error('profile.oidc.scopes must contain openid and profile; every scope must be a non-empty token')
   }
-  if (new Set(scopes).size !== scopes.length) throw new Error('profile.oidc.scopes contains duplicates')
+  if (!gateway && new Set(scopes).size !== scopes.length) throw new Error('profile.oidc.scopes contains duplicates')
   return Object.freeze({
     schemaVersion: PROFILE_SCHEMA_VERSION,
     id,
@@ -319,22 +319,16 @@ export function normalizeEnterpriseProfile(raw) {
     ...(allowedInsecureOrigin === undefined ? {} : { insecureDevelopmentOrigin: allowedInsecureOrigin }),
     nativeInstitutionID: source.nativeInstitutionID === undefined ? id : text(source.nativeInstitutionID, 'profile.nativeInstitutionID', 64),
     brand: normalizeBrand(source.brand),
-    oidc: Object.freeze({
+    ...(gateway ? { auth } : { oidc: Object.freeze({
       issuer: issuerURL(oidc.issuer, 'profile.oidc.issuer', allowInsecureDevelopment, allowedInsecureOrigin),
       clientId: text(oidc.clientId, 'profile.oidc.clientId', 256),
       scopes: Object.freeze([...scopes]),
-    }),
-    ...(identityOnly ? {} : { keyBinding: Object.freeze({
-      type: protocol,
-      baseURL: exactURL(keyBinding.baseURL, 'profile.keyBinding.baseURL', allowInsecureDevelopment, allowedInsecureOrigin),
-      providerId: providerID,
-      credentialRef,
-    }),
-    provider: Object.freeze({
+    }) }),
+    ...(identityOnly ? {} : { provider: Object.freeze({
       id: providerID,
       displayName: text(provider.displayName ?? source.displayName, 'profile.provider.displayName', 120),
       adapter: provider.adapter,
-      baseURL: exactURL(provider.baseURL, 'profile.provider.baseURL', allowInsecureDevelopment, allowedInsecureOrigin),
+      baseURL: '',
       reasoning: provider.reasoning === undefined
         ? 'high'
         : (() => {
@@ -385,9 +379,9 @@ export function loadEnterpriseProfiles(raw = {}, environment = process.env) {
 
 export function enterpriseProviderConfig(profiles) {
   return {
-    providers: Object.fromEntries([...profiles.values()].filter(profile => profile.provider?.models.length).map(profile => [profile.provider.id, {
+    providers: Object.fromEntries([...profiles.values()].filter(profile => profile.provider?.baseURL && profile.provider.models.length).map(profile => [profile.provider.id, {
       displayName: profile.provider.displayName,
-      apiKeyEnv: profile.keyBinding.credentialRef,
+      apiKeyEnv: `DSH_GATEWAY_${profile.id.toUpperCase().replace(/-/g, '_')}_ACCESS`,
       baseURL: profile.provider.baseURL,
       allowInsecureDevelopment: profile.allowInsecureDevelopment,
       ...(profile.insecureDevelopmentOrigin === undefined ? {} : { insecureDevelopmentOrigin: profile.insecureDevelopmentOrigin }),
@@ -418,7 +412,7 @@ export function publicProfile(profile) {
     displayName: profile.displayName,
     organization: profile.organization,
     brand: profile.brand,
-    credentialRef: profile.keyBinding?.credentialRef ?? '',
+    credentialRef: '',
     ...(profile.provider ? { provider: {
       id: profile.provider.id,
       displayName: profile.provider.displayName,

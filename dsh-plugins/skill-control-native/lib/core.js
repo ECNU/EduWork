@@ -30,7 +30,7 @@ export function candidateEnabled(candidate, disabled, configuredRefs, availableC
   const capability = requiredCapability(candidate)
   if (capability !== undefined && !availableCapabilities.has(capability)) return false
   const ref = requiredCredential(candidate)
-  return ref === undefined || configuredRefs.has(ref)
+  return Boolean(binding) || ref === undefined || configuredRefs.has(ref)
 }
 
 export function filterObservation(observation, disabled, configuredRefs, availableCapabilities, availableBindings) {

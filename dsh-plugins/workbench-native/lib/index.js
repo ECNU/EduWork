@@ -22,7 +22,7 @@ export default class Workbench extends TypertRemoteService {
         const ref = requiredCredential(data), binding = requiredAccountBinding(data), capability = requiredCapability(data)
         let available = true
         try {
-          if (binding) available = Boolean(await this.ctx.get('oidcAccounts')?.resolveBoundCredential(binding.profileID, binding))
+          if (binding) available = await this.ctx.get('oidcAccounts')?.modelAuthorization?.(binding.profileID, binding.runtimeBaseURL) === true
           else if (ref) available = Boolean((await this.ctx.credentials.describe(ref))?.configured)
           if (capability) {
             const shared = this.ctx.get('artifactServices')

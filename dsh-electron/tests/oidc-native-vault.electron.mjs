@@ -54,14 +54,14 @@ async function idpFixture() {
   const { privateKey, publicKey } = generateKeyPairSync('rsa', { modulusLength: 2048 })
   const jwk = { ...publicKey.export({ format: 'jwk' }), kid: 'electron-fixture', use: 'sig', alg: 'RS256' }
   const codes = new Map()
-  const secrets = new Set(['<SYNTHETIC_PERSONAL_KEY>', '<SYNTHETIC_MANAGED_KEY>'])
-  const counts = { authorization: 0, code: 0, refresh: 0, revoked: 0, management: 0, unauthorized: 0, quota: 0 }
+  const secrets = new Set(['<SYNTHETIC_PERSONAL_KEY>'])
+  const counts = { authorization: 0, code: 0, refresh: 0, revoked: 0, unauthorized: 0, quota: 0 }
   let origin, currentAccess, currentRefresh, rejectAccess = false
   function issueToken(nonce, initial) {
     currentAccess = '<SYNTHETIC_ACCESS_' + randomBytes(12).toString('hex') + '>'
     currentRefresh = '<SYNTHETIC_REFRESH_' + randomBytes(12).toString('hex') + '>'
     secrets.add(currentAccess); secrets.add(currentRefresh)
-    const result = { token_type: 'Bearer', access_token: currentAccess, refresh_token: currentRefresh, expires_in: initial ? 1 : 3600 }
+    const result = { scope: 'openid profile offline_access llm:models:read llm:invoke', token_type: 'Bearer', access_token: currentAccess, refresh_token: currentRefresh, expires_in: initial ? 1 : 3600 }
     if (initial) {
       const header = encoded({ alg: 'RS256', kid: 'electron-fixture' })
       const payload = encoded({ iss: origin, aud: 'electron-fixture', sub: 'synthetic-user', nonce,
@@ -78,7 +78,13 @@ async function idpFixture() {
     const body = new URLSearchParams(Buffer.concat(chunks).toString())
     if (url.pathname === '/.well-known/openid-configuration') return json({ issuer: origin,
       authorization_endpoint: origin + '/authorize', token_endpoint: origin + '/token', userinfo_endpoint: origin + '/userinfo',
-      jwks_uri: origin + '/jwks', revocation_endpoint: origin + '/revoke', code_challenge_methods_supported: ['S256'] })
+      jwks_uri: origin + '/jwks', revocation_endpoint: origin + '/revoke', code_challenge_methods_supported: ['S256'],
+      response_types_supported: ['code'], grant_types_supported: ['authorization_code','refresh_token'],
+      token_endpoint_auth_methods_supported: ['none'], revocation_endpoint_auth_methods_supported: ['none'],
+      authorization_response_iss_parameter_supported: true, id_token_signing_alg_values_supported: ['RS256'], subject_types_supported: ['public'],
+      scopes_supported: ['openid','profile','offline_access','llm:models:read','llm:invoke'],
+      oidc_llm: { version: '0.1', resource: origin, api_base: origin + '/v1',
+        identity_modes_supported: ['oauth','oidc'], client_registration_methods_supported: ['static'] } })
     if (url.pathname === '/authorize') {
       counts.authorization++
       if (url.searchParams.get('code_challenge_method') !== 'S256') return json({ error: 'invalid_request' }, 400)
@@ -105,14 +111,8 @@ async function idpFixture() {
       return json({ sub: 'synthetic-user', name: 'Synthetic user' })
     }
     if (url.pathname === '/revoke') { counts.revoked++; return json({}) }
-    if (url.pathname.startsWith('/management/')) {
-      if (rejectAccess || req.headers.authorization !== 'Bearer ' + currentAccess) { rejectAccess = false; counts.unauthorized++; return json({ error: 'invalid_token' }, 401) }
-      counts.management++
-      if (url.pathname === '/management/bootstrap') return json({ protocol_version: 'eduwork-resources/v1', provider: { id: 'synthetic-ai' }, capabilities: ['quota.read'], runtime_credential: { status: 'active' } })
-      if (url.pathname.startsWith('/management/runtime-credential/')) return json({ provider_id: 'synthetic-ai', api_key: '<SYNTHETIC_MANAGED_KEY>', status: 'active' })
-    }
     if (url.pathname.startsWith('/v1/')) {
-      if (req.headers.authorization !== 'Bearer <SYNTHETIC_MANAGED_KEY>') return json({ error: 'invalid_key' }, 401)
+      if (rejectAccess || req.headers.authorization !== 'Bearer ' + currentAccess) { rejectAccess = false; counts.unauthorized++; return json({ error: 'invalid_token' }, 401) }
       if (url.pathname === '/v1/models') return json({ data: [{ id: 'synthetic-model' }] })
       if (url.pathname === '/v1/quota') { counts.quota++; return json({ provider_id: 'synthetic-ai', unit: 'credits', windows: [{ type: 'fixed', limit: 100, used: 1, remaining: 99 }] }) }
     }
@@ -123,9 +123,8 @@ async function idpFixture() {
   cleanups.push(() => new Promise(resolve => { server.close(resolve); server.closeAllConnections() }))
   return { origin, counts, secrets, rejectOnce: () => { rejectAccess = true },
     profile: { schemaVersion: 'dsh-oidc/v1alpha1', id: 'electron-fixture', displayName: 'Synthetic organization', allowInsecureDevelopment: true,
-      oidc: { issuer: origin, clientId: 'electron-fixture', scopes: ['openid', 'profile'] },
-      keyBinding: { type: 'eduwork-resources-v1', baseURL: origin + '/management' },
-      provider: { id: 'synthetic-ai', adapter: 'openai-compatible', baseURL: origin + '/v1', modelSource: 'discovery' } } }
+      auth: { discoveryUrl: origin + '/.well-known/openid-configuration', expectedIssuer: origin, experimentalOidcLlm: true, clientId: 'electron-fixture', identityMode: 'oidc' },
+      provider: { id: 'synthetic-ai', adapter: 'openai-compatible', modelSource: 'discovery' } } }
 }
 
 let currentStep = 'startup'
@@ -256,7 +255,7 @@ try {
   currentStep = 'refresh-401'
   await check('rotating-refresh-retries-authorized-401-once', async () => {
     idp.rejectOnce()
-    assert.equal((await first.rpc('oidcAccounts/reconcile', { profileID: idp.profile.id, options: { allowProvision: false } })).state, 'connected')
+    assert.equal((await first.rpc('oidcAccounts/reconcile', { profileID: idp.profile.id, options: {} })).state, 'connected')
     assert.equal(idp.counts.unauthorized, 1)
     assert.equal(idp.counts.refresh, 2)
   })

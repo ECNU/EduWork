@@ -12,7 +12,7 @@ The plugin uses public package exports rather than copied DSH source:
 | --- | --- |
 | `dsh-typert-protocol` | Host/client RPC descriptors. |
 | `dsh-host-webserver` | Exact `/oauth/callback` route. |
-| `dsh-credentials` | Session and runtime API-key storage. |
+| `dsh-credentials` | Authorization session storage. |
 | `dsh-llm` | Adapter registry, credentials, retry policy, stable errors. |
 | `dsh-llm-pi-ai` | Official `PiAiAdapter`. |
 | `dsh-settings` | Provider directory/readiness facts. |
@@ -23,7 +23,7 @@ The OpenAI-compatible wire implementation comes from `@earendil-works/pi-ai`, wh
 
 ## Why the Provider adapter is inside this package
 
-OIDC authentication alone does not yield a callable enterprise model. A closed-loop integration also needs a stable Provider route whose credential reference matches Key Binding output. Publishing a second organization-specific Provider package would recreate the coupling this repository is meant to remove.
+OIDC authentication alone does not yield a callable enterprise model. A closed-loop integration also needs a stable Provider route whose credential reference matches current token authorization. Publishing a second organization-specific Provider package would recreate the coupling this repository is meant to remove.
 
 The adapter is therefore an internal module of `dsh-oidc`, but its behavior is constrained:
 
@@ -49,12 +49,12 @@ The default export is `OidcAccountService`, a `TypertRemoteService` named `oidcA
 | `loginStatus(loginID)` / `cancelLogin(loginID)` | Poll or cancel the current desktop attempt. |
 | `resources(profileID)` | Model metadata and issues, without quota or secrets. |
 | `selectEnterpriseModel(profileID, options)` | Select a verified connected model through official defaults; no arbitrary Provider destination. |
-| `reconcile(profileID, {allowProvision})` | Bootstrap and resolve/provision/renew. |
+| `reconcile(profileID, {})` | Refresh authorization and model resources. |
 | `logout(profileID)` | Local cleanup and best-effort OIDC revocation. |
 | `management()` | Capability-aware projection consumed by the shared enterprise-model settings UI. |
 | `activate/configure/addCustom/updateCustom/removeProfile/configureModels/restart` | Optional native management operations; Web profiles reject mutation. |
 
-The client descriptor uses strict Zod codecs. Configuration sent to the browser excludes issuer, client ID, Key Binding base, model base URL, tokens, and keys.
+The client descriptor uses strict Zod codecs. Configuration sent to the browser excludes issuer, client ID, , model base URL, tokens, and keys.
 
 ## Web composition
 
@@ -80,7 +80,7 @@ dsh plugin --profile web add .
 
 The local-path install links the checkout into the Profile, so the source directory must remain available. It does not scan the current workspace. Team deployments should pin a reviewed, exact npm version and must not mix another DSH prerelease line into the same Profile.
 
-The shipped patch mounts exactly one `enterprise-oidc` instance using `EDUWORK_OIDC_PROFILE`. The Web backend requires the DSH WebServer to listen exactly on `127.0.0.1` and builds the fixed `/oauth/callback` from its actual port; no public callback-origin setting is accepted. The patch does not hard-code `agent-default-model`; after explicit login/key binding, the Client selects the connected organization model through official APIs. Restart recovery only repairs an unusable default and preserves personal selections. `DSH_OIDC_ENTERPRISE_PROFILE` remains a fallback.
+The shipped patch mounts exactly one `enterprise-oidc` instance using `EDUWORK_OIDC_PROFILE`. The Web backend requires the DSH WebServer to listen exactly on `127.0.0.1` and builds the fixed `/oauth/callback` from its actual port; no public callback-origin setting is accepted. The patch does not hard-code `agent-default-model`; after explicit gateway login, the Client selects the connected organization model through official APIs. Restart recovery only repairs an unusable default and preserves personal selections. `DSH_OIDC_ENTERPRISE_PROFILE` remains a fallback.
 
 ### Product-owned Bundle
 
@@ -101,50 +101,15 @@ The shipped patch mounts exactly one `enterprise-oidc` instance using `EDUWORK_O
 
 The containing DSH profile/bundle must also include the ordinary Web app, credentials, LLM/Pi adapter dependencies, settings, attachment services, and client surfaces. `dsh-oidc` is not a complete DSH distribution.
 
-See the [getting-started guide](getting-started.en.md) for OIDC registration, Key Binding implementation, environment variables, acceptance, and troubleshooting.
+See the [getting-started guide](getting-started.en.md) for OIDC registration, Token gateway implementation, environment variables, acceptance, and troubleshooting.
 
 ## Desktop composition
 
-New Wails/Electron products use `backend: desktop`: the plugin owns a temporary loopback callback and opens the browser through official `nativeCommand`. Both shells share identity, Key Binding and model behavior. The host still provides credential storage; no new `enterpriseAccounts` bridge is required. See [desktop host integration](desktop-host.en.md).
+New Wails/Electron products use `backend: desktop`: the plugin owns a temporary loopback callback and opens the browser through official `nativeCommand`. Both shells share identity, token lifecycle and model behavior. The host still provides credential storage; no new `enterpriseAccounts` bridge is required. See [desktop host integration](desktop-host.en.md).
 
 ## Legacy native bridge
 
-The following adapter interface is only for existing integrations. It is not required for a new desktop:
-
-```yaml
-- insert:
-    - id: enterprise-oidc
-      name: '@eduwork/dsh-oidc'
-      config:
-        backend: native
-        uiMode: models-only
-        profilePathEnv: PRODUCT_ENTERPRISE_PROFILE
-```
-
-The host supplies Cordis service `enterpriseAccounts`. Any product-owned institution catalog MUST first be converted by the host or assembly layer into a standard Enterprise Profile; `dsh-oidc` does not read or interpret product catalogs:
-
-```ts
-interface EnterpriseAccounts {
-  status(institutionID: string): Promise<NativeStatus>
-  login(institutionID: string, options: { allowProvision: false }): Promise<NativeStatus>
-  reconcile(institutionID: string, options: { allowProvision: boolean }): Promise<NativeStatus>
-  logout(institutionID: string): Promise<NativeStatus>
-  configuration(): Promise<NativeManagement>
-  activate(institutionID: string): Promise<NativeManagement>
-  configure(institutionID: string): Promise<NativeManagement>
-  addCustom(baseURL: string): Promise<NativeManagement>
-  updateCustom(institutionID: string, baseURL: string): Promise<NativeManagement>
-  removeInstitution(institutionID: string): Promise<NativeManagement>
-  configureCustomModels(institutionID: string, mode: 'discovery' | 'manual', models: RuntimeModel[]): Promise<NativeManagement>
-  restart(): Promise<{restarting: true}>
-}
-```
-
-`NativeStatus` may include `displayName`, `organization`, `state`, `userName`, `affiliation`, `accessExpiresAt`, `runtimeCredentialRef`, `credentialReady`, `credentialState`, and `capabilities`. `runtimeCredentialRef` is only a host status assertion; when present, it MUST equal the normalized Enterprise Profile `keyBinding.credentialRef`. Credential naming belongs to the Profile, not to Wails, Electron, or any other host implementation.
-
-Only the first four lifecycle operations are required for a native identity backend. Management operations are capability-detected: when absent, the same UI remains a read-only profile/model viewer. This is a host adapter, not part of OIDC or Key Binding wire standards. It can be implemented by Wails, Electron, Tauri, a mobile bridge, or another local host.
-
-The public browser projection is versioned as `dsh-oidc/management/v1alpha1`. It deliberately excludes tokens and credentials. Web Enterprise Profiles set all mutation capabilities to false; a native adapter may set `manageProfiles`, `manageModels`, and `restart` according to the methods it actually provides.
+backend: native has been removed. Use the shared desktop backend and Host credential/browser services.
 
 ## Model capability transforms
 
@@ -174,7 +139,7 @@ For every DSH release candidate or stable upgrade:
 1. update exact peer versions in a branch;
 2. diff the public exports and relevant types used above;
 3. run unit and package tests;
-4. launch a plain Web DSH profile and complete login, provisioning, model call, refresh, logout;
+4. launch a plain Web DSH profile and complete login, model call, refresh, logout;
 5. launch the desktop/native composition and compare user-visible behavior;
 6. verify client loader format and slot names;
 7. review whether official DSH capability supersedes any local adapter code;
@@ -182,6 +147,6 @@ For every DSH release candidate or stable upgrade:
 
 No semver range should silently opt this security-sensitive plugin into an untested DSH release while DSH remains pre-1.0.
 
-## Credential reads for institution adapters
+## Authorized requests for institution adapters
 
-Explicitly installed local adapters may call `ctx.oidcAccounts.resolveBoundCredential(profileID, { credentialRef: "EDUWORK_API_KEY", runtimeBaseURL })`. The runtime URL must exactly match the reviewed Profile model-service URL. The result is a DSH credential record verified against the session, issuer/client ID, complete resource binding and credential fingerprint, or `undefined`. Use this same snapshot rather than checking status and resolving the name separately, which can race with a login change. This is Host-only, with no Typert/RPC registration and no addition to the server protocol. Adapters remain responsible for restricting request destinations. Desktop/Web support the method; the legacy native bridge does not fall back to an unverified key.
+Installed adapters use `ctx.oidcAccounts.modelResourceFetch(profileID, relativePath)` for requests authorized by the current Token. See [account extensions](account-extensions.en.md). The old `resolveBoundCredential` method has been removed. Host-only `modelAuthorization(profileID, expectedBaseURL)` checks readiness and the discovered API URL, returning only a boolean. The shared Host transport checks the active session, refreshes authorization, and restricts requests to the discovered model API.

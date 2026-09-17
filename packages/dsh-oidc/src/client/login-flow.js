@@ -24,7 +24,12 @@ export async function signIn(service, profileID, { signal, onPending = (pending 
       const next = await service.loginStatus(result.loginID)
       if (next.state === 'completed') { completed = true; return next.status }
       if (next.state === 'cancelled') return service.status(profileID)
-      if (next.state === 'failed') throw Object.assign(new Error('Organization sign-in did not complete. Please try again.'), { code: next.errorCode })
+      if (next.state === 'failed') {
+        const message = ['gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'].includes(next.errorCode)
+          ? 'The authentication response does not match the sign-in configuration. Contact your administrator before trying again.'
+          : 'Organization sign-in did not complete. Please try again.'
+        throw Object.assign(new Error(message), { code: next.errorCode })
+      }
       if (next.state === 'expired') break
       await wait(interval, signal)
     }

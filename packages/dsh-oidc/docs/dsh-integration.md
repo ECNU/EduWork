@@ -12,7 +12,7 @@
 | --- | --- |
 | `dsh-typert-protocol` | Host/Client RPC 描述符。 |
 | `dsh-host-webserver` | 精确 `/oauth/callback` 路由。 |
-| `dsh-credentials` | Session 和运行时 API Key 存储。 |
+| `dsh-credentials` | 授权 Session 存储。 |
 | `dsh-llm` | Adapter 注册、凭据、重试策略和稳定错误。 |
 | `dsh-llm-pi-ai` | 官方 `PiAiAdapter`。 |
 | `dsh-settings` | Provider 目录和就绪状态。 |
@@ -23,7 +23,7 @@ OpenAI-compatible 网络实现来自 `@earendil-works/pi-ai`，它也是 DSH 官
 
 ## 为什么 Provider adapter 位于本包内
 
-只有 OIDC 认证还不能获得可调用的企业模型。闭环集成还需要稳定 Provider 路由，并确保其凭据引用与 Key Binding 输出一致。再发布一个机构特有 Provider 包，会重新制造本仓库要消除的耦合。
+只有 OIDC 认证还不能获得可调用的企业模型。闭环集成还需要稳定 Provider 路由，并确保其凭据引用与 当前 Token 授权一致。再发布一个机构特有 Provider 包，会重新制造本仓库要消除的耦合。
 
 因此 adapter 是 `dsh-oidc` 内部模块，但其行为受到严格约束：
 
@@ -49,12 +49,12 @@ OpenAI-compatible 网络实现来自 `@earendil-works/pi-ai`，它也是 DSH 官
 | `loginStatus(loginID)` / `cancelLogin(loginID)` | 查询或取消当前桌面登录。 |
 | `resources(profileID)` | 模型元数据与问题，不含配额或秘密。 |
 | `selectEnterpriseModel(profileID, options)` | 通过官方默认值选择已验证连接的模型，不接受任意 Provider 目的地。 |
-| `reconcile(profileID, {allowProvision})` | 执行 bootstrap 和 resolve/provision/renew。 |
+| `reconcile(profileID, {})` | 刷新授权和模型资源，不申请模型 Key。 |
 | `logout(profileID)` | 本地清理，并尽力执行 OIDC 撤销。 |
 | `management()` | 共用企业模型设置 UI 使用的宿主能力投影。 |
 | `activate/configure/addCustom/updateCustom/removeProfile/configureModels/restart` | 可选 native 管理操作；Web Profile 拒绝修改。 |
 
-Client 描述符使用严格 Zod codec。发送给浏览器的配置不包含 issuer、client ID、Key Binding base、模型 base URL、Token 或 Key。
+Client 描述符使用严格 Zod codec。发送给浏览器的配置不包含 issuer、client ID、、模型 base URL、Token 或 Key。
 
 ## Web 组合
 
@@ -101,50 +101,15 @@ dsh plugin --profile web add .
 
 所属 DSH Profile/Bundle 还必须包含普通 Web 应用、credentials、LLM/Pi adapter 依赖、settings、attachment 服务和 Client 界面。`dsh-oidc` 不是完整 DSH 发行版。
 
-OIDC 注册、Key Binding 实现、环境变量、验收和排障见[接入指南](getting-started.md)。
+OIDC 注册、Token 网关实现、环境变量、验收和排障见[接入指南](getting-started.md)。
 
 ## Desktop 组合
 
-新 Wails/Electron 产品使用 `backend: desktop`：插件管理临时 loopback 回调，通过官方 `nativeCommand` 打开浏览器。两壳共享身份、Key Binding 和模型行为；宿主仍提供凭据存储，无需另写 `enterpriseAccounts`。见[桌面 Host 集成](desktop-host.md)。
+新 Wails/Electron 产品使用 `backend: desktop`：插件管理临时 loopback 回调，通过官方 `nativeCommand` 打开浏览器。两壳共享身份、Token 生命周期和模型行为；宿主仍提供凭据存储，无需另写 `enterpriseAccounts`。见[桌面 Host 集成](desktop-host.md)。
 
-## 旧 native 桥兼容
+## 旧 native 桥
 
-以下 adapter 仅用于已有集成，不是新桌面的必做项：
-
-```yaml
-- insert:
-    - id: enterprise-oidc
-      name: '@eduwork/dsh-oidc'
-      config:
-        backend: native
-        uiMode: models-only
-        profilePathEnv: PRODUCT_ENTERPRISE_PROFILE
-```
-
-宿主提供 Cordis 服务 `enterpriseAccounts`。产品自有机构目录必须由宿主或装配层先转换为标准 Enterprise Profile；`dsh-oidc` 不读取或解释产品目录：
-
-```ts
-interface EnterpriseAccounts {
-  status(institutionID: string): Promise<NativeStatus>
-  login(institutionID: string, options: { allowProvision: false }): Promise<NativeStatus>
-  reconcile(institutionID: string, options: { allowProvision: boolean }): Promise<NativeStatus>
-  logout(institutionID: string): Promise<NativeStatus>
-  configuration(): Promise<NativeManagement>
-  activate(institutionID: string): Promise<NativeManagement>
-  configure(institutionID: string): Promise<NativeManagement>
-  addCustom(baseURL: string): Promise<NativeManagement>
-  updateCustom(institutionID: string, baseURL: string): Promise<NativeManagement>
-  removeInstitution(institutionID: string): Promise<NativeManagement>
-  configureCustomModels(institutionID: string, mode: 'discovery' | 'manual', models: RuntimeModel[]): Promise<NativeManagement>
-  restart(): Promise<{restarting: true}>
-}
-```
-
-`NativeStatus` 可以包含 `displayName`、`organization`、`state`、`userName`、`affiliation`、`accessExpiresAt`、`runtimeCredentialRef`、`credentialReady`、`credentialState` 和 `capabilities`。`runtimeCredentialRef` 只是宿主状态回报；若提供，必须等于 Enterprise Profile 规范化后的 `keyBinding.credentialRef`。凭据命名策略属于 Profile，不属于 Wails、Electron 或其他宿主实现。
-
-Native 身份后端只必须实现前四项生命周期操作。管理操作通过能力探测：缺少这些方法时，同一 UI 会保持为只读 Profile/模型查看器。这是宿主 adapter，不属于 OIDC 或 Key Binding 网络标准；Wails、Electron、Tauri、移动桥接或其他本地宿主均可实现。
-
-浏览器公共投影版本为 `dsh-oidc/management/v1alpha1`，有意排除 Token 和凭据。Web Enterprise Profile 的所有修改能力为 false；native adapter 可以根据实际方法声明 `manageProfiles`、`manageModels` 和 `restart`。
+backend: native 已移除。桌面使用共享 desktop 后端及宿主凭据、浏览器服务。
 
 ## 模型能力转换
 
@@ -167,9 +132,9 @@ const dispose = ctx.enterpriseTransforms.register({
 
 转换是可执行本地插件，必须单独审查，绝不会从 Enterprise Profile 加载。
 
-## 机构适配器的凭据读取
+## 机构资源传输
 
-显式安装的本地适配器可调用 `ctx.oidcAccounts.resolveBoundCredential(profileID, { credentialRef: "EDUWORK_API_KEY", runtimeBaseURL })`。`runtimeBaseURL` 必须精确等于该 Profile 已审查的模型服务基址；返回已同时验证 session、issuer/client ID、完整资源绑定和 Key 指纹的 DSH credential record，未满足条件则返回 `undefined`。适配器直接使用这份 record，不应在检查状态后另行解析同名 Key，避免两个读操作之间发生账户切换。此方法只在 Host 存在，没有 Typert/RPC 注册，也不属于服务端协议。适配器仍负责限制其请求目的地址；当前桌面/Web 后端支持该方法，旧 native 桥不会降级返回未经验证的 Key。
+扩展通过 modelResourceFetch(profileID, relativePath) 使用当前 Token 授权，见[账户扩展](account-extensions.md)。旧 resolveBoundCredential 已移除；可用性检查使用 Host-only modelAuthorization(profileID, expectedBaseURL)，只返回布尔值。
 
 ## DSH 升级流程
 
@@ -178,8 +143,8 @@ const dispose = ctx.enterpriseTransforms.register({
 1. 在分支中更新精确 peer version；
 2. 对比上述公开 export 和相关类型；
 3. 运行单元测试和打包测试；
-4. 启动纯 Web DSH Profile，完成登录、provision、模型调用、刷新和退出；
-5. 启动 Desktop/native 组合并比较用户可见行为；
+4. 启动纯 Web DSH Profile，完成登录、模型调用、刷新和退出；
+5. 启动 Desktop 组合并比较用户可见行为；
 6. 验证 Client loader 格式和 slot 名称；
 7. 审查 DSH 官方能力是否已替代任何本地 adapter 代码；
 8. 发布前在 `docs/compatibility.md` 记录结果。
