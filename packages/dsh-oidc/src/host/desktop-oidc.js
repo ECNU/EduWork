@@ -6,7 +6,7 @@ import { callbackLanguage, callbackPage } from './callback-page.js'
 const MAX_FLOWS = 32
 const MAX_HISTORY = 128
 const error = (code, message) => Object.assign(new Error(message), { code })
-const safeCodes = new Set(['oidc_callback_invalid', 'oidc_authorization_rejected', 'oidc_token_invalid', 'oidc_id_token_invalid', 'oidc_userinfo_invalid', 'gateway_token_invalid', 'gateway_scope_changed', 'gateway_identity_changed'])
+const safeCodes = new Set(['oidc_callback_invalid', 'oidc_authorization_rejected', 'oidc_token_invalid', 'oidc_id_token_invalid', 'oidc_userinfo_invalid', 'gateway_token_invalid', 'gateway_scope_changed', 'gateway_identity_changed', 'gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'])
 
 function reply(response, status, profile, outcome, language) {
   const page = callbackPage(profile, outcome, language)
@@ -138,8 +138,9 @@ export class DesktopOidcBackend extends WebOidcBackend {
       this.ctx.logger.warn('Desktop OIDC host credentials are unavailable')
     })
     await attempt.processing
+    const failedOutcome = ['gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'].includes(attempt.errorCode) ? 'issuer-invalid' : 'failed'
     if (!response.destroyed) reply(response, attempt.state === 'completed' ? 200 : 400, profile,
-      attempt.state === 'completed' ? (attempt.status?.state === 'authenticated' ? 'credential-required' : 'completed') : 'failed', language)
+      attempt.state === 'completed' ? (attempt.status?.state === 'authenticated' ? 'credential-required' : 'completed') : failedOutcome, language)
     await this.closeCallback(attempt)
   }
 

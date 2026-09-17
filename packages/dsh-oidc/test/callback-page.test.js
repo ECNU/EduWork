@@ -19,6 +19,8 @@ test('callback page uses branded bilingual content, system fonts and a nonce-onl
   assert.equal(page.headers['referrer-policy'], 'no-referrer')
   assert.match(callbackPage(profile, 'failed', 'en').html, /Sign-in did not complete/)
   assert.match(callbackPage(profile, 'expired', 'en').html, /has expired/)
+  assert.match(callbackPage(profile, 'issuer-invalid', 'en').html, /Contact your administrator/)
+  assert.match(callbackPage(profile, 'issuer-invalid', 'zh-CN').html, /联系管理员/)
   assert.equal(callbackLanguage('en-US,en;q=0.9,zh-CN;q=0.8'), 'en')
   assert.equal(callbackLanguage('fr;q=1,zh-CN;q=0.9,en;q=0.8'), 'zh-CN')
   assert.equal(callbackLanguage('zh;q=0,en;q=1'), 'en')

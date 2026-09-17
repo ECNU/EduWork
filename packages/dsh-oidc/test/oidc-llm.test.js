@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { generateKeyPairSync, sign, createHash } from 'node:crypto'
-import { GatewayDesktopBackend } from '../src/host/gateway-backend.js'
+import { GatewayDesktopBackend, GatewayWebBackend } from '../src/host/gateway-backend.js'
 import { normalizeEnterpriseProfile } from '../src/host/profile.js'
 import { detectGatewayProtocol } from '../src/host/gateway-protocol.js'
 import { oidcLlmIdentity, oidcLlmToken } from '../src/host/oidc-llm-protocol.js'
@@ -26,10 +26,10 @@ const jwt = claims => {
   return payload + '.' + sign('RSA-SHA256', Buffer.from(payload), pair.privateKey).toString('base64url')
 }
 
-async function fixture(t, mode = 'oidc') {
+async function fixture(t, mode = 'oidc', metadataChanges = {}) {
   const profile = normalizeEnterpriseProfile(profileRaw(mode)), records = new Map(), calls = []
   const controls = { user: 'alice', omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined }
-  let authorization, serial = 0
+  let authorization, callbackResult, serial = 0
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
     set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
   const backend = new GatewayDesktopBackend(ctx, new Map([[profile.id, profile]]), {}, {
@@ -37,7 +37,7 @@ async function fixture(t, mode = 'oidc') {
     fetch: async (url, init = {}) => {
       calls.push({ url, ...init })
       assert.equal(init.redirect, 'error')
-      if (url.endsWith('/.well-known/openid-configuration')) return json(metadata())
+      if (url.endsWith('/.well-known/openid-configuration')) return json({ ...metadata(), ...metadataChanges })
       if (url === base + '/jwks') return json({ keys: [key] })
       if (url === base + '/token') {
         assert.equal(init.body.get('client_id'), 'public-client')
@@ -65,16 +65,18 @@ async function fixture(t, mode = 'oidc') {
     },
   })
   t.after(() => backend.dispose())
-  const login = async () => {
+  const login = async (changeCallback = callback => {}) => {
     const started = await backend.begin(profile.id)
     const callback = new URL(authorization.searchParams.get('redirect_uri'))
     callback.searchParams.set('code', 'synthetic-code')
     callback.searchParams.set('state', authorization.searchParams.get('state'))
     if (!controls.omitIssuer) callback.searchParams.set('iss', base)
-    await fetch(callback)
+    changeCallback(callback)
+    const response = await fetch(callback, { headers: { 'accept-language': 'zh-CN' } })
+    callbackResult = { status: response.status, html: await response.text(), headers: response.headers }
     return backend.loginStatus(started.loginID)
   }
-  return { profile, backend, records, calls, controls, login, get authorization() { return authorization } }
+  return { profile, backend, records, calls, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
 }
 
 test('draft discovery requires explicit mode, static registration, complete contract and trust pins', () => {
@@ -136,12 +138,59 @@ test('OAuth-only draft is explicit and uses standard UserInfo claims without cla
 for (const [name, update] of [
   ['missing ID Token', { omitID: true }], ['wrong nonce', { claim: { nonce: 'wrong' } }],
   ['wrong audience', { claim: { aud: 'other' } }], ['wrong authorized party', { claim: { azp: 'other' } }],
-  ['UserInfo subject mismatch', { user: 'bob' }], ['missing response issuer', { omitIssuer: true }],
+  ['UserInfo subject mismatch', { user: 'bob' }],
 ]) test('OIDC draft refuses ' + name + ' without OAuth fallback', async t => {
   const f = await fixture(t); Object.assign(f.controls, update)
   assert.equal((await f.login()).state, 'failed')
   assert.equal(f.records.size, 0)
   assert.ok(!f.calls.some(call => call.url.endsWith('/models')))
+})
+
+for (const [name, change, expected] of [
+  ['missing', url => url.searchParams.delete('iss'), 'gateway_callback_issuer_missing'],
+  ['empty', url => url.searchParams.set('iss', ''), 'gateway_callback_issuer_invalid'],
+  ['mismatched', url => url.searchParams.set('iss', 'https://wrong.example.org'), 'gateway_callback_issuer_invalid'],
+  ['repeated', url => url.searchParams.append('iss', base), 'gateway_callback_issuer_invalid'],
+  ['missing in an error response', url => { url.searchParams.delete('code'); url.searchParams.delete('iss'); url.searchParams.set('error', 'access_denied') }, 'gateway_callback_issuer_missing'],
+]) test('callback reports ' + name + ' issuer before token exchange and delivers a safe failure page', async t => {
+  const f = await fixture(t)
+  const result = await f.login(change)
+  assert.equal(result.state, 'failed')
+  assert.equal(result.errorCode, expected)
+  assert.equal(f.records.size, 0)
+  assert.ok(!f.calls.some(call => call.url === base + '/token'))
+  assert.equal(f.callbackResult.status, 400)
+  assert.equal(f.callbackResult.headers.get('cache-control'), 'no-store')
+  assert.match(f.callbackResult.html, /联系管理员/)
+  for (const secret of ['synthetic-code', f.authorization.searchParams.get('state'), 'https://wrong.example.org']) assert.equal(f.callbackResult.html.includes(secret), false)
+  await assert.rejects(fetch(f.authorization.searchParams.get('redirect_uri'), { signal: AbortSignal.timeout(1000) }))
+})
+
+test('issuer requirements follow metadata, with every supplied issuer still validated', async t => {
+  const f = await fixture(t, 'oauth', { authorization_response_iss_parameter_supported: false })
+  f.controls.omitIssuer = true
+  assert.equal((await f.login()).state, 'completed')
+  await f.backend.logout(f.profile.id)
+  const tokenCalls = f.calls.filter(call => call.url === base + '/token').length
+  assert.equal((await f.login(url => url.searchParams.set('iss', 'https://wrong.example.org'))).errorCode, 'gateway_callback_issuer_invalid')
+  assert.equal(f.calls.filter(call => call.url === base + '/token').length, tokenCalls)
+})
+
+test('Web callback exposes the same safe issuer diagnostic without exchanging a code', async t => {
+  const f = await fixture(t)
+  const web = new GatewayWebBackend({ ...f.backend.ctx, webServer: { host: '127.0.0.1', port: 3080 } },
+    new Map([[f.profile.id, f.profile]]), {}, { fetch: f.backend.fetch })
+  const started = await web.begin(f.profile.id), authorization = new URL(started.authorizationURL)
+  const callback = new URL(authorization.searchParams.get('redirect_uri'))
+  callback.searchParams.set('state', authorization.searchParams.get('state'))
+  callback.searchParams.set('code', 'synthetic-code')
+  let location
+  await web.callback({ url: callback.pathname + callback.search }, {
+    writeHead: (_status, headers) => { location = headers.location }, end() {},
+  })
+  assert.equal(new URL(location).searchParams.get('dsh_oidc'), 'gateway_callback_issuer_missing')
+  assert.ok(!f.calls.some(call => call.url === base + '/token'))
+  assert.equal(f.records.size, 0)
 })
 
 test('draft refresh is single-flight, accepts optional refreshed ID Token and persists one rotated pair', async t => {

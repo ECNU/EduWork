@@ -32,6 +32,8 @@ Select `identityMode` explicitly. Neither mode falls back to the other:
 
 Only static public-client registration is implemented; no client secret is accepted. Register the actual IPv4 loopback callback `http://127.0.0.1:<random-port>/oauth/callback`. Dynamic registration remains future work.
 
+When discovery declares `authorization_response_iss_parameter_supported: true`, both successful and error authorization responses must include `iss` exactly matching the discovered `issuer`. A missing value produces `gateway_callback_issuer_missing`; repeated, empty or mismatched values produce `gateway_callback_issuer_invalid`. The client does not exchange the code. Ask the authentication service administrator to align discovery and callback behavior before starting a new sign-in. The desktop callback listener closes when the flow ends; refreshing an old callback URL cannot resume sign-in.
+
 Production endpoints require HTTPS. An isolated experiment may reuse `allowInsecureDevelopment: true` and `insecureDevelopmentOrigin`, with a mandatory `expectedIssuer` pin. HTTP is restricted to loopback or that exact origin, never an entire private network. LiteLLM native retains its loopback-only exception.
 
 ## Shared implementation and limits

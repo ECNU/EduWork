@@ -125,10 +125,12 @@ function withGatewayAuth(Base) {
     async exchangeAuthorization(requested, flow) {
       const profile = this.profile(flow.profileID)
       if (!profile.auth) return super.exchangeAuthorization(requested, flow)
+      const descriptor = await this.discover(profile)
+      const issuers = requested.searchParams.getAll('iss')
+      if (!issuers.length && descriptor.requireResponseIssuer) throw protocolError('gateway_callback_issuer_missing', 'Gateway authorization response omitted its required issuer')
+      if (issuers.length > 1 || issuers.length === 1 && issuers[0] !== descriptor.issuer) throw protocolError('gateway_callback_issuer_invalid', 'Gateway authorization response issuer is invalid')
       if (query(requested, 'error')) throw protocolError('oidc_authorization_rejected', 'Gateway authorization was declined')
-      const code = query(requested, 'code', true), descriptor = await this.discover(profile)
-      const responseIssuer = query(requested, 'iss', descriptor.requireResponseIssuer)
-      if (responseIssuer && responseIssuer !== descriptor.issuer) throw protocolError('oidc_callback_invalid', 'Gateway callback issuer mismatch')
+      const code = query(requested, 'code', true)
       const raw = await tokenRequest(this.fetch, descriptor, { grant_type: 'authorization_code', client_id: flow.clientId, code, redirect_uri: flow.redirectURI, code_verifier: flow.verifier })
       const draft = descriptor.protocol === 'oidc-llm-draft-0.1'
       let token
