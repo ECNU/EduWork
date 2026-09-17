@@ -11,10 +11,10 @@ product:
   styleLabels:
     dsh: Blue
     ecnu-liwa: Red
-visualStyle: dsh
+visualStyle: ecnu-liwa
 ```
 
-Logo URLs support same-origin paths, HTTP(S) and image data URLs, not arbitrary local file paths. Product identity is read from `composition.base.product` rather than stale user branding settings; `visualStyle` remains a user preference. Existing namespace and style IDs remain for compatibility.
+Logo URLs support same-origin paths, HTTP(S) and image data URLs, not arbitrary local file paths. Product identity is read from `composition.base.product` rather than stale user branding settings; `visualStyle` remains a user preference. Red is the default, while saved blue or red preferences remain in effect. Application icons stay red regardless of the interface theme. Existing namespace and style IDs remain for compatibility.
 
 One global color setting applies across plugins. `src/theme.js` contains `COLOR_SCHEME_TOKENS` and `RED_TOKENS`; blue values may be null to inherit official tokens. The plugin reuses the official settings entry without replacing upstream theme management.
 

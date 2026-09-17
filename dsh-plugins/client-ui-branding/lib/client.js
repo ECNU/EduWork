@@ -31,7 +31,7 @@ window.__ModuleLoader__.load({
 		//#region src/theme.js
 		const VISUAL_STYLES = Object.freeze(["dsh", "ecnu-liwa"]);
 		function normalizeVisualStyle(value) {
-			return VISUAL_STYLES.includes(value) ? value : "dsh";
+			return VISUAL_STYLES.includes(value) ? value : "ecnu-liwa";
 		}
 		const pair = (light, dark) => Object.freeze({
 			light,
@@ -77,6 +77,10 @@ window.__ModuleLoader__.load({
 		function tokensForVisualStyle(value) {
 			return normalizeVisualStyle(value) === "ecnu-liwa" ? ECNU_LIWA_TOKENS : null;
 		}
+		Object.freeze({
+			blue: null,
+			red: ECNU_LIWA_TOKENS
+		});
 		//#endregion
 		//#region src/eduwork-mark.js
 		const eduworkMarkPath = "M42 108V81Q42 49 87 39L214 10V28Q214 61 181 70L94 91L174 112V129Q174 151 149 158L94 173L182 195Q214 204 214 235V246L88 219Q63 212 42 195V178Q42 151 75 141L103 133Z";
@@ -99,7 +103,45 @@ window.__ModuleLoader__.load({
 			};
 		}
 		function genericMarkSVG(color) {
-			return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="${/^#[\da-f]{6}$/i.test(color) ? color : "#2575ff"}"/><path d="${eduworkMarkPath}" transform="translate(43 32) scale(.665 .78)" fill="#fff"/></svg>`;
+			return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="${/^#[\da-f]{6}$/i.test(color) ? color : "#9f2636"}"/><path d="${eduworkMarkPath}" transform="translate(43 32) scale(.665 .78)" fill="#fff"/></svg>`;
+		}
+		//#endregion
+		//#region src/client/desktop-actions.ts
+		const eventName = "eduwork:tray-action";
+		const handlers = /* @__PURE__ */ new Map();
+		function bindDesktopAction(action, callback) {
+			handlers.set(action, callback);
+			const drain = () => {
+				const pending = window.__eduworkTrayActions ?? [];
+				window.__eduworkTrayActions = [];
+				for (const value of pending.slice(-8)) {
+					const handler = handlers.get(value);
+					if (handler) handler();
+					else if (value === "new-session" || value === "settings") window.__eduworkTrayActions.push(value);
+				}
+			};
+			window.addEventListener(eventName, drain);
+			drain();
+			return () => {
+				window.removeEventListener(eventName, drain);
+				if (handlers.get(action) === callback) handlers.delete(action);
+			};
+		}
+		/** The official settings shell owns its button/open state. This slot retains
+		* that owner and invokes its enclosing button, without querying translated UI. */
+		function DesktopSettingsTrigger({ wide }) {
+			const anchor = (0, react.useRef)(null);
+			(0, react.useEffect)(() => bindDesktopAction("settings", () => {
+				anchor.current?.closest("button[aria-haspopup=\"dialog\"]")?.click();
+			}), []);
+			return react.default.createElement(react.default.Fragment, null, react.default.createElement("span", {
+				ref: anchor,
+				"aria-hidden": true,
+				style: {
+					fontSize: 18,
+					lineHeight: 1
+				}
+			}, "⚙"), wide && react.default.createElement("span", null, "设置"));
 		}
 		//#endregion
 		//#region src/client/index.ts
@@ -153,7 +195,7 @@ window.__ModuleLoader__.load({
 				marginBottom: 8,
 				color: "var(--dsw-alias-label-primary)",
 				fontSize: 14
-			} }, "产品风格"), h("div", { style: {
+			} }, "配色"), h("div", { style: {
 				display: "grid",
 				gridTemplateColumns: "repeat(2, minmax(180px, 1fr))",
 				gap: 8
@@ -231,13 +273,30 @@ window.__ModuleLoader__.load({
 			};
 			adopt();
 			const unsubscribe = scope.subscribe(adopt);
+			const observer = new MutationObserver(() => {
+				if (!document.title.endsWith(" — DeepSeek Harness")) return;
+				const name = productIdentity(scope.getSnapshot()).name;
+				appliedTitle = document.title.slice(0, -16) + name;
+				if (document.title !== appliedTitle) document.title = appliedTitle;
+			});
+			observer.observe(document.head, {
+				childList: true,
+				subtree: true,
+				characterData: true
+			});
 			return () => {
+				observer.disconnect();
 				unsubscribe();
 				if (document.title === appliedTitle) document.title = previousTitle;
 				icon.remove();
 			};
 		}
 		function apply(ctx) {
+			ctx.inject(["uiWorkspace"], (context) => context.effect(() => bindDesktopAction("new-session", () => context.uiWorkspace.startSession()), "eduwork: tray new session"));
+			ctx.slots.inject("settings.trigger", () => ctx.slots.register({
+				name: "settings.trigger",
+				priority: -100
+			}, DesktopSettingsTrigger));
 			const scope = ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE });
 			let clearTokens = () => {};
 			const adopt = () => {

@@ -25,7 +25,7 @@ export const SettingsSchema = z.object({
       'ecnu-liwa': z.string().default('红色'),
     }).default({}),
   }).default({}),
-  visualStyle: z.union(VISUAL_STYLES).default('dsh'),
+  visualStyle: z.union(VISUAL_STYLES).default('ecnu-liwa'),
   enabledOptionalPresets: z.array(z.union(['minimal', 'cordis'])).default([]),
   detailsPanelWidth: z.number()
     .step(1)
