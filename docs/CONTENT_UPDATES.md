@@ -42,7 +42,7 @@ Electron 客户端可以从发行方配置的 HTTPS 源下载小型内容包，�
 
 `configuration` 与 `skills` 省略时均为 `false`。`bundled` 表示当前软件包内置内容的修订号，省略或 `0` 表示未编订修订号。以后整包更新携带了新内容，必须同步提高相应的内置修订号，防止旧缓存盖过新配置。版本已经发布后，不得原地改变内容或复用修订号。
 
-私钥保存在发行机器的私有目录中，不进入 Git、CI 原包、客户端或上传目录。客户端仅携带公钥。更换更新源或公钥须通过基础配置／软件发行完成，远程内容不能更换自己的信任依据。机构私有接入配置按现有流程在本机加入 GitHub CI 原包。
+私钥保存在发行机器的私有目录中，不进入 Git、CI 原包、客户端或上传目录。客户端仅携带公钥。更换更新源或公钥须通过基础配置／软件发行完成，远程内容不能更换自己的信任依据。机构发行可以[首次启动下载签名配置](PUBLISHER_BOOTSTRAP.md)，直接分发 CI 原包；静态配置部署仍可由管理员本地装配。
 
 可用 OpenSSL 生成密钥：`openssl genpkey -algorithm ED25519 -out content-signing.pem`，再执行 `openssl pkey -in content-signing.pem -pubout -out content-public.pem` 导出公钥。操作目录应在仓库外，私钥仅授权发行账户读取。
 

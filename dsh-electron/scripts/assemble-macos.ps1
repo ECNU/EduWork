@@ -8,7 +8,8 @@ param(
     [Parameter(Mandatory)][string]$Version,
     [Parameter(Mandatory)][string]$Node,
     [Parameter(Mandatory)][string]$OpenSSL,
-    [string]$ExternalPublisherConfig
+    [string]$ExternalPublisherConfig,
+    [ValidateSet('stable','development')][string]$UpdateDefaultPolicy
 )
 $ErrorActionPreference = 'Stop'
 if (-not $IsMacOS) { throw 'The macOS Electron candidate must be assembled on macOS' }
@@ -21,6 +22,7 @@ $Node = [IO.Path]::GetFullPath($Node)
 $OpenSSL = [IO.Path]::GetFullPath($OpenSSL)
 if (Test-Path -LiteralPath $Output) { throw 'macOS output must be a new directory' }
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'An explicit product version is required' }
+if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version -match '-dev\.') { 'development' } else { 'stable' } }
 if ($ExternalPublisherConfig -and -not [IO.Path]::IsPathRooted($ExternalPublisherConfig)) { throw 'External publisher configuration path must be absolute' }
 $identity = Get-Content -LiteralPath (Join-Path $Product 'assembly.json') -Raw | ConvertFrom-Json
 & $Node (Join-Path $PSScriptRoot '../../scripts/verify-product-release-identity.mjs') $Product $Version
@@ -60,6 +62,7 @@ foreach ($asset in @('icon-32.png','icon-256.png','icon.icns')) {
 New-Item -ItemType Directory -Path (Join-Path $resources 'product') | Out-Null
 & rsync -a ($Product + '/') ((Join-Path $resources 'product') + '/')
 if ($LASTEXITCODE -ne 0) { throw 'Product copy failed' }
+& (Join-Path $PSScriptRoot 'relocate-macos-compositor.ps1') -PackageRoot (Join-Path $resources 'product/d/node_modules/@remotion/compositor-darwin-arm64') -Receipt (Join-Path $resources 'compositor-relocation.json')
 $ladybugPackage = Join-Path $resources 'product/d/node_modules/@ladybugdb/core-darwin-arm64'
 $ladybugNative = Join-Path $ladybugPackage 'lbugjs.node'
 $sslSource = Join-Path $OpenSSL 'lib/libssl.3.dylib'
@@ -107,8 +110,10 @@ $desktop = [ordered]@{
     schemaVersion=1; shell='electron'; appId="org.eduwork.$($identity.distribution).electron"
     distribution=$identity.distribution; productName=$identity.brand.product.name; productVersion=$Version
     product='../product'; node='../runtime/node'; configurationOwnership=$ownership
-    updateChannel='disabled-candidate'; updates=@{defaultPolicy='development'}
+    updateChannel='disabled-candidate'; updates=@{defaultPolicy=$UpdateDefaultPolicy}
 }
+$bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
 if ($ExternalPublisherConfig) {
     if ($ownership -ne 'publisher') { throw 'External publisher configuration requires publisher ownership' }
     $bundledPublisherConfig = Join-Path $resources 'product/resources/desktop/eduwork.jsonc'
@@ -135,7 +140,7 @@ $release = [ordered]@{
     distribution=$identity.distribution; productName=$identity.brand.product.name; platform='darwin-arm64'
     electronVersion=$electronVersion; nodeVersion=$receipt.host.nodeVersion
     minimumSystemVersion='15.0'; ladybugNativePatched=$true; bundledOpenSSL='3.5.8'
-    configurationMode=$(if ($ExternalPublisherConfig) {'external-publisher'} elseif ($ownership -eq 'publisher') {'bundled-publisher'} else {'user'})
+    configurationMode=$(if ($bootstrap.enabled) {'downloaded-publisher'} elseif ($ExternalPublisherConfig) {'external-publisher'} elseif ($ownership -eq 'publisher') {'bundled-publisher'} else {'user'})
     developerIDSigned=$false; adHocSigned=$true; notarized=$false
     published=$false; assembledAt=[DateTime]::UtcNow.ToString('o')
 }

@@ -160,7 +160,12 @@ export class ContentUpdates {
     if(!this.state.trial)return false
     await this.rejectTrial('新版内容未通过启动检查，已回退');return true
   }
-  async check() {
+  canRepair(key) {
+    // Restore only the exact previously committed configuration bytes. Never
+    // waive the revision floor for a different or failed first-start trial.
+    return this.state.active.configuration===key && !this.selected?.configuration
+  }
+  async check({repair=false}={}) {
     if(!this.view.enabled||this.busy||this.state.pending)return this.snapshot()
     this.busy=true;this.abort=new AbortController();this.view={...this.view,state:'checking',message:''}
     try {
@@ -168,7 +173,8 @@ export class ContentUpdates {
       const envelope=JSON.parse(bytes.toString('utf8')),manifest=verifiedManifest(envelope,this.source,this.policy)
       const key=`${manifest.revision}-${manifest.bundle.sha256}`
       if(this.state.rejected.includes(key))throw Error('此内容版本未通过启动检查，等待发行方提供修正版本')
-      const current=manifest.revision<=this.state.highest||Object.entries(manifest.components).every(([name,revision])=>revision<=this.view[name+'Revision'])
+      const restore=repair&&manifest.revision===this.state.highest&&this.canRepair(key)
+      const current=!restore&&(manifest.revision<=this.state.highest||Object.entries(manifest.components).every(([name,revision])=>revision<=this.view[name+'Revision']))
       const reason=incompatible(manifest.requires,this.environment)
       this.offer=current?null:{key,envelope,manifest}
       this.view={...this.view,state:current?'current':reason?'requires_software':'available',latestRevision:manifest.revision,totalBytes:manifest.bundle.bytes,downloadedBytes:0,message:reason??''}
@@ -179,29 +185,59 @@ export class ContentUpdates {
   async download() {
     if(this.busy||this.view.state!=='available'||!this.offer)return this.snapshot()
     this.busy=true;this.abort=new AbortController();this.view={...this.view,state:'downloading',message:'',downloadedBytes:0}
-    const {key,envelope,manifest}=this.offer
-    const temporary=join(this.store,'.stage-'+randomUUID())
+    const {envelope,manifest}=this.offer
     try {
       const bytes=await fetchContent(manifest.bundle.url,manifest.bundle.bytes,{fetchImpl:this.fetchImpl,signal:AbortSignal.any([this.abort.signal,AbortSignal.timeout(60000)]),onProgress:n=>{this.view.downloadedBytes=n}})
+      await this.installContent(envelope,bytes)
+    } catch(error) {this.view={...this.view,state:'error',message:error.message}}
+    finally {this.busy=false}
+    return this.snapshot()
+  }
+  async importOffline(bytes) {
+    if(!this.view.enabled||this.busy||this.state.pending)throw Error('请先完成当前内容更新')
+    if(bytes.length>24*1024*1024)throw Error('离线内容包过大')
+    const value=JSON.parse(bytes.toString('utf8'))
+    if(value?.schemaVersion!==1||typeof value.bundle!=='string'||Object.keys(value).some(k=>!['schemaVersion','manifest','bundle'].includes(k)))throw Error('离线内容包格式无效')
+    const bundle=Buffer.from(value.bundle,'base64')
+    if(bundle.toString('base64')!==value.bundle)throw Error('离线内容包编码无效')
+    this.busy=true
+    try { await this.installContent(value.manifest,bundle);return this.snapshot() }
+    finally { this.busy=false }
+  }
+  async installContent(envelope,bytes) {
+    const manifest=verifiedManifest(envelope,this.source,this.policy),key=`${manifest.revision}-${manifest.bundle.sha256}`
+    if(this.state.rejected.includes(key))throw Error('此内容版本未通过启动检查，等待发行方提供修正版本')
+    const repair=manifest.revision===this.state.highest&&this.canRepair(key)
+    if(manifest.revision<=this.state.highest&&!repair)throw Error('内容修订号必须高于已接收的版本')
+    const reason=incompatible(manifest.requires,this.environment);if(reason)throw Error(reason)
+    const temporary=join(this.store,'.stage-'+randomUUID())
+    try {
       const bundle=validateBundle(bytes,manifest,this.environment)
       if(bundle.skills)await this.unchangedBundledSkills()
       for(const [name,revision] of Object.entries(manifest.components)) {
         if(revision<this.view[name+'Revision'])throw Error('内容组件修订号不能倒退')
         const active=this.state.active[name]
-        if(active&&(await this.cached(active)).manifest.components[name]>revision)throw Error('内容组件修订号不能倒退')
+        if(active&&!(repair&&active===key)&&(await this.cached(active)).manifest.components[name]>revision)throw Error('内容组件修订号不能倒退')
       }
       await mkdir(temporary)
       await writeFile(join(temporary,'bundle.json'),bytes,{flag:'wx'})
       await writeFile(join(temporary,'manifest.json'),JSON.stringify(envelope),{flag:'wx'})
       if(bundle.configuration)loadUserConfig(this.configPath,{overlay:bundle.configuration})
       const target=join(this.store,key)
-      if(await lstat(target).catch(()=>null))await this.cached(key)
+      if(await lstat(target).catch(()=>null)) {
+        if(repair) {
+          if((await lstat(target)).isSymbolicLink())throw Error('内容缓存不能是符号链接')
+          const damaged=join(this.store,'.damaged-'+randomUUID())
+          await rename(target,damaged)
+          try { await rename(temporary,target) }
+          catch(error) { await rename(damaged,target);throw error }
+          await rm(damaged,{recursive:true,force:true})
+        } else await this.cached(key)
+      }
       else await rename(temporary,target)
       this.state.pending=key;this.state.highest=manifest.revision;await this.save()
       this.view={...this.view,state:'ready',message:'已下载并校验，下次启动生效'}
-    } catch(error) {this.view={...this.view,state:'error',message:error.message}}
-    finally {await rm(temporary,{recursive:true,force:true});this.busy=false}
-    return this.snapshot()
+    } finally {await rm(temporary,{recursive:true,force:true})}
   }
   async close() {this.abort?.abort()}
   async selectPolicy(policy) {

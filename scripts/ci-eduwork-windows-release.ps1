@@ -124,6 +124,16 @@ $name $Version — Windows x64 Electron 开发版
     $text = [IO.File]::ReadAllText($config)
     if ($text -notmatch '"closeAction"\s*:\s*"tray"') { throw 'Expected shipped close-to-tray default' }
     [IO.File]::WriteAllText($config,($text -replace '"closeAction"\s*:\s*"tray"','"closeAction": "exit"'),[Text.UTF8Encoding]::new($false))
+    if (Test-Path -LiteralPath (Join-Path $frozenProduct 'resources/desktop/publisher-bootstrap.json')) {
+        # Exercise the offline migration path with an isolated synthetic profile.
+        # CI never needs institution credentials or a live configuration server.
+        # First-run download/signature/rollback behavior has synthetic Node tests.
+        $smokeConfig = @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{
+            schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example'
+            oidc=@{issuer='https://identity.example.test';clientId='synthetic-ci-client';scopes=@('openid','profile')}
+        })}
+        $smokeConfig | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath $config -Encoding utf8NoBOM
+    }
     $listener = [Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0)
     $listener.Start(); $port=$listener.LocalEndpoint.Port; $listener.Stop()
     $env:EDUWORK_DESKTOP_TEST_DATA_ROOT = Join-Path $gui 'data'

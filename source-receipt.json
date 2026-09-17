@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260915.1",
+  "version": "0.3.6-dev.20260917.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T03:17:15.931Z",
-  "fileSetSHA256": "41ad9a51574a5654053dec73101fd34e514a7500765a06ebe87b907d329a90c5",
+  "createdAt": "2026-09-17T08:28:19.778Z",
+  "fileSetSHA256": "8db1e6f7fe78e745c67528c9c82ce92ef1e419a5d9f7e0a18d875d0323d95074",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "45c0c73b803235fb00cc82cfac3b2680af37a044f75297306dbad9c02cecbcab"
+      "sha256": "970fab5b3c3c67377cc649412420af7f9ee20de9971419dc56f76a909cd7b47c"
     },
     {
       "path": ".gitignore",
@@ -156,20 +156,24 @@
       "sha256": "0ff116f3dc2ce96dc2315793f374949f52094888f6da1719e2aba498cacd20b3"
     },
     {
+      "path": "config/macos-native.lock.json",
+      "sha256": "b286e54a0ee040523fb33dbfdc5c954facf9e2088898b8194eb484db9875017c"
+    },
+    {
       "path": "CONTRIBUTING.md",
       "sha256": "16a8a96a65e50e7a750c2bdf7b562aebf0d3877e39b544bb3acc7bfff22dc81c"
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "8d2674efa9d1d4c45ff22b2ef97bfdf2350c5805f95f6711c87d7e8b61e45dc5"
+      "sha256": "62ccc2c113a7623d04b152981d565694147f67892abe06349115be65cc5aa766"
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
-      "sha256": "08efc9b181abc662ec51bdadc3d4a1ff92680f5dfbf829fb3607b4c9cba664e2"
+      "sha256": "4432b03c60482d3ff723346be648faf941ce6435506694d7f2942eff88ddf5f6"
     },
     {
       "path": "docs/CONTENT_UPDATES.md",
-      "sha256": "b3493a8dd381db0676049103fa307e57e6aea001f67ee40e559ba66f99bc8923"
+      "sha256": "094511d5f91de0d06143bc9d7f4a2fb161e305391a607b5227f52560c68bed22"
     },
     {
       "path": "docs/EDITIONS.md",
@@ -205,7 +209,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "cbd631357712fee84c21c4a982ed67ef4b5a1eb87792d057eb63a3f34929163b"
+      "sha256": "8b16ab1f4f66707f5a9ce8054ccdb09b8c60a142657057c50a8e7091e1b48a9a"
     },
     {
       "path": "docs/MEDIA.md",
@@ -218,6 +222,14 @@
     {
       "path": "docs/PACKAGES.md",
       "sha256": "19e810ca58b83e0bbb867662bc52e0bf8c8ffba77cb29354fcc1f0d6f68493ce"
+    },
+    {
+      "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
+      "sha256": "287679dc0a0efb2978eb372be376d8bcfb81185335eb168d21e896543fbcb9e8"
+    },
+    {
+      "path": "docs/PUBLISHER_BOOTSTRAP.md",
+      "sha256": "9c3068746cdfa701c490594318d8fd32bab6e8a76a346875cc0dcee3b831638f"
     },
     {
       "path": "docs/RELEASE.md",
@@ -593,7 +605,7 @@
     },
     {
       "path": "dsh-desktop/scripts/sync-dsh-upstream.ps1",
-      "sha256": "63b74ac33fd095adcb0141e6253c2ce2713ae818c29d7979c43836dbad4015fc"
+      "sha256": "71855ddfacb438776ff838f0be6f558c325cec675dffb6bca2465b66ba92fdd0"
     },
     {
       "path": "dsh-desktop/scripts/test-dsh-compatibility.ps1",
@@ -613,15 +625,15 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "2f5cf39062ceb0b55889388683cc3b703f36b1270d9eeb5bf1839e82e8e509fd"
+      "sha256": "2ca9bb6eb0df6ec1a24f3baeec3553454865f274ebe8478416d9fb4e9f523d9f"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
-      "sha256": "24d84a5ea636346e4a09869a5f0600cddafcd47b3b55a0f49e867f56594efc95"
+      "sha256": "48055bfafa6c51caabb6678ed8674a0e1a9b5d49b99189110ed5b6618aa165ef"
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "b6997adfea9a41046898eccc4d7d5e93f80eea323b0e7a0ae164007c29353c7e"
+      "sha256": "09af8f5c8ad7af7dd50ed7d2162d60156ccb72d32a37ee1db5337841a5d4e038"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -630,6 +642,10 @@
     {
       "path": "dsh-electron/scripts/prepare-electron.ps1",
       "sha256": "58e0bad30564697b66a358eca8df8a06091fa13e12428c64a0a75caadcd50b85"
+    },
+    {
+      "path": "dsh-electron/scripts/relocate-macos-compositor.ps1",
+      "sha256": "429288cdab025734c9cf6709a7047cfcbc07d21f0ae49f11bb755a467016a1b4"
     },
     {
       "path": "dsh-electron/src/configuration-files.mjs",
@@ -673,7 +689,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "4e1bef009bf79a5fa32f4947a021b1c8a6fc312f56b24f15d0cef69d283052f4"
+      "sha256": "1735b8d30593cea4bff1a80ea0ba4ec3605357ca5f772bae8cdff070cf9e05bb"
     },
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
@@ -769,7 +785,7 @@
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "8de35818a72845466b9d48166f9cecb2da4f8116968eaa98b6dfb0274b96b173"
+      "sha256": "57b0c1042d83b4ba6f5eda91a4575cff23ffb3c287597f86afd00f80f31b13de"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -820,6 +836,10 @@
       "sha256": "1d410a8a4956aa217fbd5cdfa86fbf7d4ea04989bc7ce9b5c0104758b928c7bc"
     },
     {
+      "path": "dsh-host/publisher-bootstrap.mjs",
+      "sha256": "99fd2f6ae87078f5f20fab8ad4ba53c173c7509cdc88ff302062813ec94eb12a"
+    },
+    {
       "path": "dsh-host/README_EN.md",
       "sha256": "277c540c3f60fb81d9cebf33adf871d13bf0204d4819f5d0a75c97b639a77a7d"
     },
@@ -833,7 +853,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "4e8d5c234d324628f6f71b9db5eb6f2875ef872f837ca42f9690cab79215a17e"
+      "sha256": "d98bd13e50883f5ee360dbf8ed6f574d4b0d257492dc9f284a5718464811d715"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
@@ -882,6 +902,10 @@
     {
       "path": "dsh-host/test/product-profile.test.mjs",
       "sha256": "e6fbf8d26b8528b9a4a5e928e2f6f8c7f0ddf81b1f2570517e33fafe7ad3c70f"
+    },
+    {
+      "path": "dsh-host/test/publisher-bootstrap.test.mjs",
+      "sha256": "847212cfc4757b4b9140093d867e14503b22bc4f49bcb54e5fd5e6a225304ccd"
     },
     {
       "path": "dsh-host/test/release-policy.test.mjs",
@@ -3985,11 +4009,19 @@
     },
     {
       "path": "scripts/check-desktop-runtimes.mjs",
-      "sha256": "78a6ee50a2ce57fa7d41d6148c9f9af654789409750954322a39d14c9593fa92"
+      "sha256": "8c36c5f34f0615c592811e2836dbbffd9cf9af25038880446b0f72c118f4aa17"
+    },
+    {
+      "path": "scripts/check-publisher-bootstrap.mjs",
+      "sha256": "96c9e49d105ccbc70313da9a85c312c8c48f4d96edca46424dd2b02a91ea397d"
     },
     {
       "path": "scripts/check-source-docs.mjs",
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
+    },
+    {
+      "path": "scripts/ci-eduwork-macos-release.ps1",
+      "sha256": "9c6ae6c1375b6a4837b93ac2d28795e47a3f48f3d1c1ba0614480d52a2691a47"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
@@ -3997,7 +4029,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
-      "sha256": "3c1d2fa95840008667dcdd622f1cf24b6b6f0288581d0c7a58447074bf9a15e8"
+      "sha256": "2f5d991d031f5cc3e556fc2dbdcedd03d7199d62532848c8c4ec88d02457b906"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -4021,7 +4053,7 @@
     },
     {
       "path": "scripts/create-content-update.mjs",
-      "sha256": "daedeb71cfaf20748f5c41cafa4766eb19041638a7d68f0573bac7c30031f9b2"
+      "sha256": "cb99e253b3d18e9f5ccf4a9e10f2023e5c6f355871442186e4165ae7093db08c"
     },
     {
       "path": "scripts/dev-eduwork-web.mjs",
@@ -4112,6 +4144,10 @@
       "sha256": "8f2c78918b56966a1302ef74527079468cbd83f3edc7035364b8699a095cec68"
     },
     {
+      "path": "scripts/prepare-macos-release-inputs.ps1",
+      "sha256": "658e9bc391cf38a7d23916799adeac19489b1ba4a2710a654f8eca020941d82d"
+    },
+    {
       "path": "scripts/prepare-windows-release-inputs.ps1",
       "sha256": "5a81fd386aebd5b6227de4b1cbcef4013f7f63d42c58713faf0c5c6af1891980"
     },
@@ -4129,7 +4165,7 @@
     },
     {
       "path": "scripts/resolve-eduwork-upstream.ps1",
-      "sha256": "78272457fb08c9a66ee9a8600d14f481b548a48387384f2b54922882d996c62d"
+      "sha256": "e90fca5666d0a9fff7ad04251ae5f4217676001c3586964cd8e802fbfc9b73b7"
     },
     {
       "path": "scripts/set-desktop-icon.ps1",

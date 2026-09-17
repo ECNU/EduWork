@@ -36,7 +36,7 @@ Add to the base `config/eduwork.jsonc`; replace the public-key placeholder befor
 
 Both permission flags default to false. `bundled` records component revisions included in the software package; omitted values or zero mean unversioned built-in content. Increase these revisions when a future full package incorporates newer content so an old cache cannot override it. Never change published bytes under the same revision.
 
-Keep the Ed25519 private signing key outside Git, CI artifacts, client packages and uploaded folders. The client carries only the public key. Change the key or source through base configuration/software distribution, never through a content update. Private institution configuration is added locally to the GitHub CI artifact using the existing assembly process.
+Keep the Ed25519 private signing key outside Git, CI artifacts, client packages and uploaded folders. The client carries only the public key. Change the key or source through base configuration/software distribution, never through a content update. Institution editions can [download signed configuration on first launch](PUBLISHER_BOOTSTRAP_EN.md) and distribute CI artifacts unchanged. Local assembly remains available for static configuration deployments.
 
 For example, run `openssl genpkey -algorithm ED25519 -out content-signing.pem`, then `openssl pkey -in content-signing.pem -pubout -out content-public.pem`. Use a private directory outside the repository and restrict private-key access to the publisher account.
 
