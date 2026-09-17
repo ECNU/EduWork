@@ -41,7 +41,7 @@ Apple Silicon 与 Intel 应分别构建和测试，不能复用 Windows 的运�
   -Version $Version -Node $Node -OpenSSL $OpenSSL
 ```
 
-公版的用户配置从包内模板在首次启动时复制到用户目录；已有配置和示例不会被覆盖。机构版可在装配时传 `-ExternalPublisherConfig <绝对路径>`，保持发行配置在 `.app` 之外，再单独制作配置 PKG；机构配置和凭据不要提交到公开仓库。此候选只生成 ad-hoc 签名的 `.app` 与 ZIP，不可视为 Developer ID 签名或公证后的正式发布。
+公版的用户配置从包内模板在首次启动时复制到用户目录；已有配置和示例不会被覆盖。机构版推荐[首次启动下载签名配置](PUBLISHER_BOOTSTRAP.md)，CI 原包即可分发，不再要求配置 PKG。选择静态配置部署时仍可传 `-ExternalPublisherConfig <绝对路径>`，保持配置在 `.app` 外。此候选只生成 ad-hoc 签名的 `.app` 与 ZIP，不可视为 Developer ID 签名或公证后的正式发布。
 
 配置、会话、日志、内容更新缓存和渠道偏好保存在 `~/Library/Application Support/<distribution>-electron/`。启用[配置与 Skills 更新](CONTENT_UPDATES.md)后，更新仍在此目录下载、校验和激活，不会修改 `.app`；机构指定的外部配置文件也不会被内容更新覆盖。装配脚本在签名前生成 `Contents/Resources/bundled-skills.json`，记录内置 Skills 的校验值，用来识别本地修改。Windows 继续使用原有绿色版目录和 `RELEASE-MANIFEST.json`。
 

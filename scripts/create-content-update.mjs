@@ -53,6 +53,7 @@ export async function createContentUpdate({ config, planFile, keyFile, output })
   await writeFile(join(output,'bundles',filename),bytes,{flag:'wx'})
   await mkdir(join(output,plan.channel))
   await writeFile(join(output,plan.channel,'latest.json'),JSON.stringify(envelope,null,2)+'\n',{flag:'wx'})
+  await writeFile(join(output,`content-${plan.revision}-offline.json`),JSON.stringify({schemaVersion:1,manifest:envelope,bundle:bytes.toString('base64')})+'\n',{flag:'wx'})
   await writeFile(join(output,'receipt.json'),JSON.stringify(manifest,null,2)+'\n',{flag:'wx'})
   return manifest
 }
