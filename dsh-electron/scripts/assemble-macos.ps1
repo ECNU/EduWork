@@ -62,6 +62,7 @@ foreach ($asset in @('icon-32.png','icon-256.png','icon.icns')) {
 New-Item -ItemType Directory -Path (Join-Path $resources 'product') | Out-Null
 & rsync -a ($Product + '/') ((Join-Path $resources 'product') + '/')
 if ($LASTEXITCODE -ne 0) { throw 'Product copy failed' }
+& (Join-Path $PSScriptRoot 'relocate-macos-compositor.ps1') -PackageRoot (Join-Path $resources 'product/d/node_modules/@remotion/compositor-darwin-arm64') -Receipt (Join-Path $resources 'compositor-relocation.json')
 $ladybugPackage = Join-Path $resources 'product/d/node_modules/@ladybugdb/core-darwin-arm64'
 $ladybugNative = Join-Path $ladybugPackage 'lbugjs.node'
 $sslSource = Join-Path $OpenSSL 'lib/libssl.3.dylib'

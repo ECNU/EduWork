@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260915.1",
+  "version": "0.3.6-dev.20260917.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T06:12:53.630Z",
-  "fileSetSHA256": "9481a8054f8d72de439c92b1aa0041886b013857d874b9e80f98b81c66b41ba9",
+  "createdAt": "2026-09-17T07:03:20.836Z",
+  "fileSetSHA256": "57677ab677e99fbc2d9c6363b3271eddb4f344f8208870c3aa6f8c8fcec9f4e4",
   "files": [
     {
       "path": ".gitattributes",
@@ -152,6 +152,10 @@
       "sha256": "bb890f2629404ade7304009efda9638eae04ac1039bcf3a92fa9d17b930db0c7"
     },
     {
+      "path": "config/macos-native.lock.json",
+      "sha256": "b286e54a0ee040523fb33dbfdc5c954facf9e2088898b8194eb484db9875017c"
+    },
+    {
       "path": "CONTRIBUTING.md",
       "sha256": "16a8a96a65e50e7a750c2bdf7b562aebf0d3877e39b544bb3acc7bfff22dc81c"
     },
@@ -201,7 +205,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "1af6333a83f80dd8951e0f759925fdd623cae1371388e461a0e080289a095823"
+      "sha256": "8b16ab1f4f66707f5a9ce8054ccdb09b8c60a142657057c50a8e7091e1b48a9a"
     },
     {
       "path": "docs/MEDIA.md",
@@ -597,7 +601,7 @@
     },
     {
       "path": "dsh-desktop/scripts/sync-dsh-upstream.ps1",
-      "sha256": "63b74ac33fd095adcb0141e6253c2ce2713ae818c29d7979c43836dbad4015fc"
+      "sha256": "71855ddfacb438776ff838f0be6f558c325cec675dffb6bca2465b66ba92fdd0"
     },
     {
       "path": "dsh-desktop/scripts/test-dsh-compatibility.ps1",
@@ -617,7 +621,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "f50738e838773826f62a653757727082755848ee537f163a6dd7ed0b039db1dc"
+      "sha256": "2ca9bb6eb0df6ec1a24f3baeec3553454865f274ebe8478416d9fb4e9f523d9f"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -634,6 +638,10 @@
     {
       "path": "dsh-electron/scripts/prepare-electron.ps1",
       "sha256": "58e0bad30564697b66a358eca8df8a06091fa13e12428c64a0a75caadcd50b85"
+    },
+    {
+      "path": "dsh-electron/scripts/relocate-macos-compositor.ps1",
+      "sha256": "429288cdab025734c9cf6709a7047cfcbc07d21f0ae49f11bb755a467016a1b4"
     },
     {
       "path": "dsh-electron/src/configuration-files.mjs",
@@ -3993,7 +4001,7 @@
     },
     {
       "path": "scripts/check-desktop-runtimes.mjs",
-      "sha256": "78a6ee50a2ce57fa7d41d6148c9f9af654789409750954322a39d14c9593fa92"
+      "sha256": "8c36c5f34f0615c592811e2836dbbffd9cf9af25038880446b0f72c118f4aa17"
     },
     {
       "path": "scripts/check-publisher-bootstrap.mjs",
@@ -4002,6 +4010,10 @@
     {
       "path": "scripts/check-source-docs.mjs",
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
+    },
+    {
+      "path": "scripts/ci-eduwork-macos-release.ps1",
+      "sha256": "9c6ae6c1375b6a4837b93ac2d28795e47a3f48f3d1c1ba0614480d52a2691a47"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
@@ -4124,6 +4136,10 @@
       "sha256": "8f2c78918b56966a1302ef74527079468cbd83f3edc7035364b8699a095cec68"
     },
     {
+      "path": "scripts/prepare-macos-release-inputs.ps1",
+      "sha256": "658e9bc391cf38a7d23916799adeac19489b1ba4a2710a654f8eca020941d82d"
+    },
+    {
       "path": "scripts/prepare-windows-release-inputs.ps1",
       "sha256": "5a81fd386aebd5b6227de4b1cbcef4013f7f63d42c58713faf0c5c6af1891980"
     },
@@ -4141,7 +4157,7 @@
     },
     {
       "path": "scripts/resolve-eduwork-upstream.ps1",
-      "sha256": "78272457fb08c9a66ee9a8600d14f481b548a48387384f2b54922882d996c62d"
+      "sha256": "e90fca5666d0a9fff7ad04251ae5f4217676001c3586964cd8e802fbfc9b73b7"
     },
     {
       "path": "scripts/set-desktop-icon.ps1",

@@ -52,7 +52,7 @@ function Install-LockedSourceArchive {
         }
         $actualSHA256 = (Get-FileHash -Algorithm SHA256 -LiteralPath $archive).Hash.ToLowerInvariant()
         if ($actualSHA256 -ne $archiveSHA256) { throw "DSH source archive SHA-256 mismatch: $actualSHA256" }
-        & tar.exe -xzf $archive -C $extract
+        & tar -xzf $archive -C $extract
         if ($LASTEXITCODE -ne 0) { throw "Extracting DSH source archive failed with exit code $LASTEXITCODE" }
         $source = Get-ChildItem -LiteralPath $extract -Directory | Select-Object -First 1
         if ($null -eq $source) { throw 'DSH source archive did not contain a root directory.' }

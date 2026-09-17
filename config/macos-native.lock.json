@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "platform": "darwin-arm64",
+  "browser": {
+    "version": "152.0.7977.8",
+    "url": "https://cdn.playwright.dev/builds/cft/152.0.7977.8/mac-arm64/chrome-mac-arm64.zip",
+    "sha256": "78570bb23c7442f581c2b5f1c86c3e83b68b6cd35424cf390add51a1e305398b",
+    "executable": "Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing",
+    "executableSHA256": "72d65943199c16a93085b9d4b11fabb23362c44a2d09fc1d2912565911d3c191"
+  },
+  "openssl": {
+    "version": "3.5.8",
+    "url": "https://github.com/openssl/openssl/releases/download/openssl-3.5.8/openssl-3.5.8.tar.gz",
+    "sha256": "a8f84a39918ec6415ce765d9b429d313ba97b8143169c172e734b9514464f5b2"
+  },
+  "whisper": {
+    "version": "1.8.3",
+    "url": "https://codeload.github.com/ggml-org/whisper.cpp/tar.gz/refs/tags/v1.8.3",
+    "sha256": "870ba21409cdf66697dc4db15ebdb13bc67037d76c7cc63756c81471d8f1731a"
+  }
+}
