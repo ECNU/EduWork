@@ -1,6 +1,6 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog } from 'electron'
 import { readFileSync, mkdirSync } from 'node:fs'
-import { readFile, writeFile, access } from 'node:fs/promises'
+import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
@@ -16,6 +16,7 @@ import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
+import { publisherBootstrap, preparePublisherContent } from './publisher-bootstrap.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -28,6 +29,7 @@ let quitComplete = false
 let migrationLaunch
 let portableUpdates
 let contentUpdates, managedContent = {}
+let publisher
 const lifecycle = new DesktopLifecycle()
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
@@ -53,6 +55,7 @@ export function configureEduworkPaths() {
     if (quitComplete) return
     event.preventDefault()
     if (lifecycle.closing) return
+    void contentUpdates?.close()
     void (async () => {
       await lifecycle.close()
       tray?.destroy(); tray = undefined
@@ -75,12 +78,15 @@ async function prepareDesktop() {
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
     await initializeUserConfig({ product: paths.product, config: paths.config })
+  publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
+    distribution: settings.distribution, version: settings.productVersion, configPath: paths.config, dataRoot: paths.updateDataRoot })
+  if (publisher) paths.config = publisher.configPath
   if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   const preferences = await readFile(join(paths.updateDataRoot,'state/update-preferences.json'),'utf8').then(JSON.parse).catch(()=>null)
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
-    policy: preferences?.policy ?? user.updates.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
+    policy: preferences?.policy ?? user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
   const software = await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:()=>{app.relaunch();app.quit()},onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
@@ -88,7 +94,9 @@ async function prepareDesktop() {
   }})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   lifecycle.check()
-  managedContent = await contentUpdates.prepare()
+  managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
+    void progressWindow.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
+  } })
   if(managedContent.configurationPatch) user=loadUserConfig(paths.config,{overlay:managedContent.configurationPatch})
   if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
@@ -177,11 +185,24 @@ export async function showDesktopFailure(error) {
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
   if (!progressWindow || progressWindow.isDestroyed()) progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
   progressWindow.setSize(660, 470)
+  const needsConfiguration = error.code === 'EDUWORK_BOOTSTRAP_REQUIRED'
+  let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
     if (url === 'eduwork-startup://restart/') { app.relaunch(); app.quit() }
     if (url === 'eduwork-startup://exit/') app.quit()
+    if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {
+      importing = true
+      void (async () => {
+        const selected = await dialog.showOpenDialog(progressWindow, { title: '导入发行方提供的离线配置包', properties: ['openFile'], filters: [{ name: '签名内容包', extensions: ['json'] }] })
+        if (selected.canceled) return
+        const path = selected.filePaths[0], info = await stat(path)
+        if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
+        await contentUpdates.importOffline(await readFile(path))
+        app.relaunch(); app.quit()
+      })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
+    }
   })
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><meta charset="utf-8"><style>body{font:15px system-ui;margin:32px;color:#313744;background:#faf8f4}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff0f1;padding:16px;color:#9f2636}a{display:inline-block;margin:12px 12px 0 0;padding:9px;border:1px solid #aaa;border-radius:6px;color:inherit}</style><h2>${escape(settings.productName)} 暂时未能启动</h2><p>修正以下问题后可重新启动。原有配置和历史数据不会被重置。</p><pre>${escape(error.message || error)}</pre><p>配置文件：${escape(paths.config)}</p><a href="eduwork-startup://restart/">重新启动</a><a href="eduwork-startup://exit/">退出</a>`))
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><meta charset="utf-8"><style>body{font:15px system-ui;margin:32px;color:#313744;background:#faf8f4;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff0f1;padding:16px;color:#9f2636}a{display:inline-block;margin:12px 12px 0 0;padding:9px;border:1px solid #aaa;border-radius:6px;color:inherit}</style><h2>${escape(settings.productName)} ${needsConfiguration ? '正在等待发行配置' : '暂时未能启动'}</h2><p>${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}</p><pre>${escape(error.message || error)}</pre><p>配置文件：${escape(paths.config)}</p><a href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : '重新启动'}</a>${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}<a href="eduwork-startup://exit/">退出</a>`))
   progressWindow.show()
 }
