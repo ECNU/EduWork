@@ -11,6 +11,7 @@ test('a shared key cannot expose a skill bound to another institution', () => {
   const ready = new Set([accountBindingKey(requiredAccountBinding(skill))])
   assert.equal(candidateEnabled(skill, new Set(), configured), false)
   assert.equal(candidateEnabled(skill, new Set(), configured, new Set(), ready), true)
+  assert.equal(candidateEnabled(skill, new Set(), new Set(), new Set(), ready), true)
   const other = structuredClone(skill)
   other.metadata.eduwork.runtimeBaseURL = 'https://b.example/v1'
   assert.equal(candidateEnabled(other, new Set(), configured, new Set(), ready), false)

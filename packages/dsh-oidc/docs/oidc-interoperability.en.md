@@ -2,7 +2,7 @@
 
 [简体中文](oidc-interoperability.md) | **English**
 
-OIDC is the identity tier of the [server API specification](server-integration-contract.en.md). An identity-only Profile may implement this tier alone. Managed enterprise keys and automatic model setup additionally require Key Binding and the model gateway.
+OIDC is the identity tier of the [server API specification](server-integration-contract.en.md). An identity-only Profile may implement this tier alone. Model access uses an explicitly advertised token gateway contract; see [gateway integration](gateway-auth/README_EN.md).
 
 ## Standards
 

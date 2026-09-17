@@ -42,7 +42,7 @@ for (const wrongNonce of [false, true]) test(`HTTP callback ${wrongNonce ? 'fail
   assert.equal(response.status, wrongNonce ? 400 : 200)
   const html = await response.text(), url = new URL(callback)
   assert.match(html, /EduWork Test/)
-  assert.match(html, wrongNonce ? /此次登录未完成/ : /继续完成模型服务连接/)
+  assert.match(html, wrongNonce ? /此次登录未完成/ : /返回应用继续工作/)
   for (const secret of [url.searchParams.get('state'), '<ACCESS_TOKEN>', 'fixture-managed-key']) assert.equal(html.includes(secret), false)
   assert.doesNotMatch(html, /state=|code=|error_description|id_token|access_token/)
 })

@@ -140,7 +140,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
     await attempt.processing
     const failedOutcome = ['gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'].includes(attempt.errorCode) ? 'issuer-invalid' : 'failed'
     if (!response.destroyed) reply(response, attempt.state === 'completed' ? 200 : 400, profile,
-      attempt.state === 'completed' ? (attempt.status?.state === 'authenticated' ? 'credential-required' : 'completed') : failedOutcome, language)
+      attempt.state === 'completed' ? 'completed' : failedOutcome, language)
     await this.closeCallback(attempt)
   }
 
@@ -151,7 +151,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
     try {
       const session = await this.exchangeAuthorization(requested, attempt.flow)
       if (attempt.state !== 'pending') return
-      const refs = [sessionRef(profile), ...(profile.keyBinding ? [profile.keyBinding.credentialRef] : [])]
+      const refs = [sessionRef(profile)]
       for (const ref of refs) previous.set(ref, await this.ctx.credentials.resolve(ref))
       if (attempt.state !== 'pending') return
       wrote = true
@@ -159,7 +159,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
       if (attempt.state !== 'pending') return
       // A resource outage must not turn a successful identity login into a failed login.
       let status
-      try { status = await this.reconcile(profile.id, { allowProvision: false }) }
+      try { status = await this.reconcile(profile.id) }
       catch { status = await this.status(profile.id) }
       if (attempt.state !== 'pending') return
       attempt.status = status
@@ -175,13 +175,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
       // Cancellation/disposal while the host vault writes must not resurrect a login.
       if (wrote && attempt.state !== 'completed') {
         await this.writeCredentials(profile, attempt.flow.epoch, async () => {
-          const currentRecord = await this.ctx.credentials.resolve(sessionRef(profile))
-          let currentSession
-          try { currentSession = JSON.parse(currentRecord?.value) } catch { /* No proven runtime-key ownership. */ }
-          const ownsCurrentKey = await this.boundCredential(profile, currentSession)
           for (const [ref, record] of previous) {
-            // A different profile may have rebound the shared key during login.
-            if (ref !== sessionRef(profile) && !ownsCurrentKey) continue
             if (record?.value !== undefined) await this.ctx.credentials.set(ref, record.value)
             else await this.ctx.credentials.unset(ref)
           }

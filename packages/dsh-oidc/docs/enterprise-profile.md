@@ -1,12 +1,12 @@
 # Enterprise Profile 规范（`dsh-oidc/v1alpha1`）
 
-> 当前候选扩展：纯身份模式同时省略 keyBinding/provider；brand 可省略。资源模式支持 keyBinding.type=eduwork-resources-v1，默认兼容 worker-user-center-v1。provider.modelSource=discovery 时 models 可省略；默认 profile 模式仍要求模型列表。见 [公共资源协议](public-resource-protocol.md)。
+> 当前源码接受 Token 网关或纯身份 OIDC 配置。Key Binding 配置已移除，见[迁移说明](key-binding-protocol.md)。
 
 **简体中文** | [English](enterprise-profile.en.md)
 
 ## 状态与符合性
 
-本文规定 `dsh-oidc` `0.2.x` 使用的数据契约。关键词 **必须（MUST）**、**不得（MUST NOT）**、**必需（REQUIRED）**、**应该（SHOULD）**、**不应该（SHOULD NOT）** 和 **可以（MAY）** 按 RFC 2119 与 RFC 8174 解释。
+本文规定当前未发布源码分支使用的数据契约，旧已发布版本的配置迁移见上文链接。关键词 **必须（MUST）**、**不得（MUST NOT）**、**必需（REQUIRED）**、**应该（SHOULD）**、**不应该（SHOULD NOT）** 和 **可以（MAY）** 按 RFC 2119 与 RFC 8174 解释。
 
 权威机器可读 Schema 为 [`schema/enterprise-profile.v1alpha1.schema.json`](../schema/enterprise-profile.v1alpha1.schema.json)。运行时对若干安全敏感 URL 的校验有意比 JSON Schema 更严格。符合规范的 Profile 必须同时通过 JSON Schema 和 `normalizeEnterpriseProfile()` 校验。
 
@@ -17,10 +17,9 @@ Profile 是受信任的部署配置，不是用户输入。即便如此，解析
 - 根对象和所有涉及可执行行为的嵌套对象都会拒绝未知字段；
 - 序列化后的 Profile 总大小不超过 512 KiB；
 - 生产 URL 必须使用 HTTPS；
-- 只有显式 loopback 主机可以在开发环境使用 HTTP；
+- 开发环境使用 HTTP 必须显式允许 loopback，或绑定精确的开发 origin；
 - 拒绝 URL 凭据、fragment 和 endpoint-base query string；
 - 只能选择内置的 `openai-compatible` adapter；
-- Key Binding 只接受协议基址和可选的本地 DSH 凭据引用，不能改写网络路径或字段；
 - logo data URL 只接受 PNG/WebP，不接受 SVG。
 
 远程管理系统只有在宿主能够认证来源、校验完整性并通过审查流程暂存变更时，才可以分发 Profile JSON。下载的 JSON 不会仅仅因为不包含 JavaScript 就自动变得安全。
@@ -33,12 +32,11 @@ Profile 是受信任的部署配置，不是用户输入。即便如此，解析
 | `id` | 是 | 匹配 `^[a-z][a-z0-9-]{0,63}$` 的 Profile ID。 |
 | `displayName` | 是 | 面向用户的集成名称。 |
 | `organization` | 否 | 机构名称；默认使用 `displayName`。 |
-| `nativeInstitutionID` | 否 | 仅传给 native 后端的标识符；默认使用 `id`。 |
 | `allowInsecureDevelopment` | 否 | 为本地开发启用 loopback HTTP。网络 HTTP 还必须配置 `insecureDevelopmentOrigin`。 |
-| `insecureDevelopmentOrigin` | 否 | 精确的非 TLS 开发 origin。只有与 `allowInsecureDevelopment: true` 一起使用时才有效，且所有 HTTP OIDC/Key Binding/Provider endpoint 必须使用该 origin。不得放入生产 Profile。 |
+| `insecureDevelopmentOrigin` | 否 | 精确的非 TLS 开发 origin。只有与 `allowInsecureDevelopment: true` 一起使用时才有效，且所有 HTTP OIDC/网关 endpoint 必须使用该 origin。不得放入生产 Profile。 |
 | `brand` | 否 | 有边界的展示配置。 |
-| `oidc` | 是 | OIDC public client 配置事实。 |
-| `keyBinding` | 资源模式 | Key Binding 基础 URL，以及可选的本地 DSH 凭据引用。 |
+| `oidc` | 纯身份模式 | OIDC public client 信息，不得同时配置 auth 或 provider。 |
+| `auth` | 模型模式 | 完整发现地址，协议字段见网关指南。 |
 | `provider` | 资源模式 | 一个本地 OpenAI-compatible Provider 路由和模型列表。 |
 
 ## 品牌替换
@@ -72,31 +70,12 @@ Profile 是受信任的部署配置，不是用户输入。即便如此，解析
 - `clientId` 标识 public client。Profile 和本插件都不应包含 client secret。
 - `scopes` 必须包含 `openid` 和 `profile`；每项内部不得包含空白，且不得重复。
 - 当 Provider 会签发 refresh token 且策略允许时，应该请求 `offline_access`。
-- Key Binding 授权 scope 由部署决定，但建议使用参考示例中的名称。
 
 Web 重定向地址固定为 `http://127.0.0.1:<DSH端口>/oauth/callback`。host 和 path 不可配置；端口取 DSH WebServer 的实际监听端口。
 
-## Key Binding 对象
+## 网关 auth
 
-```json
-{
-  "baseURL": "https://ai.example.edu/api/worker/v1",
-  "credentialRef": "EDUWORK_API_KEY"
-}
-```
-
-| 字段 | 必需 | 含义 |
-| --- | --- | --- |
-| `baseURL` | 是 | `worker-user-center-v1` Key Binding 接口组的基址。 |
-| `credentialRef` | 否 | 保存绑定后模型 API Key 的本地 DSH Credential Provider 名称。必须匹配 `^[A-Za-z_][A-Za-z0-9_]*$`，最长 128 字符。 |
-
-请求中的 Provider ID 固定取 `provider.id`。`credentialRef` 省略时统一为 `EDUWORK_API_KEY`。旧配置中按本 Profile 的 `id` 或 `provider.id` 大写、非字母数字替换为 `_` 后追加 `_API_KEY` 的引用，按兼容别名规范化到同一默认值，不再按企业生成名称。其他显式引用原样保留。
-
-`credentialRef` 只是本地秘密存储的引用名，不是 API Key，不发送给 OIDC、Key Binding 或模型服务。常规部署使用 `EDUWORK_API_KEY`；需要额外独立管理的显式引用仍可使用例如 `MY_TEST_MODEL_KEY`。默认槽位记录当前绑定的企业 Key；多个 Profile 共用时，仅凭据指纹与当前 Key 匹配的已验证登录可以读取它。重新绑定后，其他 Profile 不会借用该 Key，登出也不会删除其他登录写入的新 Key。个人模型使用的独立引用不受影响。
-
-升级只在同一 issuer、client ID、资源管理基址、模型服务基址、Provider ID 且仅旧自动引用改名时迁移原 Key。新槽位已有值时既不覆盖也不自动接管；无法证明归属时保留身份并重新连接模型资源。旧会话缺少指纹时，仅完整绑定相同且引用归属无歧义才兼容。
-
-Endpoint 路径、请求/响应字段和 Provider ID 语义属于协议事实，不得由 Profile 自定义。Native 宿主若返回 `runtimeCredentialRef`，其值必须与本字段规范化后的结果一致，否则插件失败关闭。
+选择 [LiteLLM](gateway-auth/README.md) 或 [oidc-llm 实验](gateway-auth/experimental-oidc-llm.md)。auth.discoveryUrl 必须完整；实验 OIDC 另外填写显式开关、clientId 和 identityMode。不支持回退到模型 Key 流程。
 
 ## Provider 对象
 
@@ -107,7 +86,7 @@ Provider 对象是由本地、经过审查的 adapter 解释的数据。
 | `id` | 是 | DSH 路由 ID；在所有已加载 Profile 中必须唯一。 |
 | `displayName` | 否 | 面向用户的 Provider 名称。 |
 | `adapter` | 是 | 精确字符串 `openai-compatible`。 |
-| `baseURL` | 是 | HTTPS OpenAI-compatible API 基址。 |
+| `baseURL` | 不得配置 | 只能来自已校验的网关发现。 |
 | `reasoning` | 否 | 默认 DSH/pi-ai reasoning level，取值为 `off`、`minimal`、`low`、`medium`、`high`、`xhigh`、`max`，默认为 `high`。 |
 | `defaultContextWindow` | 否 | 正安全整数，默认 262144。 |
 | `defaultMaxTokens` | 否 | 正安全整数，默认 32768。 |
@@ -117,8 +96,8 @@ Provider 对象是由本地、经过审查的 adapter 解释的数据。
 | `streamIdleTimeoutMs` | 否 | 正数空闲超时，默认 300000。 |
 | `retryPolicy` | 否 | 由 DSH Provider 管理的重试策略；默认 normal/重试 2 次。 |
 | `compat` | 否 | 有边界的 pi-ai OpenAI 兼容事实。 |
-| `modelSource` | 否 | `profile`（默认）或 `discovery`；后者通过受管 Key 请求 `/models`。 |
-| `models` | `profile` 模式 | 1–128 个唯一模型条目；`discovery` 可省略，已配置条目作为能力声明。 |
+| `modelSource` | 否 | 仅支持 discovery，默认值；使用当前 Access Token 读取 /models。 |
+| `models` | 否 | 已审查的模型能力元数据，不得扩大获授权目录。 |
 
 `retryPolicy.mode` 可以是 `normal` 或 `always`。`always` 可能一直重试，直到成功、取消或销毁；没有明确产品决策时不应启用。该策略还会由 DSH 再次校验。
 

@@ -2,17 +2,17 @@
 
 **简体中文** | [English](README_EN.md)
 
-本分支新增 LiteLLM native OAuth 支持，以及默认关闭的 [oidc-llm 实验适配器](experimental-oidc-llm.md)，尚未发布 npm 或桌面版本。已有 `oidc` 配置继续沿用原有 OIDC + 可选 Key Binding 实现，无需迁移。新的 **oidc-llm** 仍是[协议草案](oidc-llm-draft.md)，实验实现不代表协议已定稿。
+本分支新增 LiteLLM native OAuth 支持，以及默认关闭的 [oidc-llm 实验适配器](experimental-oidc-llm.md)，尚未发布 npm 或桌面版本。仅身份 oidc 配置保留；旧 Key Binding 模型流程已移除，迁移见[说明](../key-binding-protocol.md)。新的 **oidc-llm** 仍是[协议草案](oidc-llm-draft.md)，实验实现不代表协议已定稿。
 
 ## 选择接入方式
 
 | 服务端 | 配置 | 模型凭据 | 客户端注册 |
 | --- | --- | --- | --- |
-| 已有 OIDC 与机构资源服务 | 原有 `oidc`、可选 `keyBinding` + `provider` | Key Binding 返回的 API Key | 原有固定 public client ID |
+| 纯身份 OIDC | 仅 oidc，不配置 provider | 无机构模型凭据 | 预注册 public client |
 | LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | 登录返回的 Access Token | 每次登录动态注册实际本机回调 |
 | oidc-llm 0.1 实验 | `auth` + 显式实验开关与身份模式 | Access Token | 已实现预注册 public client |
 
-LiteLLM 不需要实现 EduWork 的 Key Binding。普通 OIDC 的 Access Token 也不会因为配置了模型 URL 就获得推理权限；继续按[现有服务端契约](../server-integration-contract.md)使用。配额和团队管理不纳入本次统一协议；LiteLLM 自己的团队选择留在网关网页，客户端仅保存不透明的授权上下文用于防止刷新串号。
+LiteLLM 不需要实现 EduWork 的 Key Binding。普通 OIDC 的 Access Token 也不会因为配置了模型 URL 就获得推理权限；须配置明确的 Token 网关契约。配额和团队管理不纳入本次统一协议；LiteLLM 自己的团队选择留在网关网页，客户端仅保存不透明的授权上下文用于防止刷新串号。
 
 ## LiteLLM 配置
 
@@ -155,12 +155,12 @@ POST revocation endpoint，表单 `token=<refresh_token>&client_id=<registered_c
 
 ## 现有 OIDC 与后续迁移
 
-现有实现仍校验 Discovery issuer、PKCE S256、state、nonce、RS256 ID Token、UserInfo sub 与 ID Token sub 一致，并保留原有 Key Binding、凭据引用迁移及刷新行为。相关接口见[服务端契约](../server-integration-contract.md)、[Profile 规范](../enterprise-profile.md)。没有为兼容 LiteLLM 放松这些检查。
+纯身份 OIDC 与 oidc-llm 的 OIDC 模式共用 Discovery issuer、PKCE S256、state、nonce、RS256 ID Token 和 UserInfo sub 一致性校验。Key Binding 与旧凭据引用迁移已移除，模型授权改用网关 Token。相关接口见[服务端契约](../server-integration-contract.md)、[Profile 规范](../enterprise-profile.md)。没有为兼容 LiteLLM 放松这些检查。
 
 新 oidc-llm 的 UserInfo 从发现的 `userinfo_endpoint` 获取，复用标准主体和资料字段。实验配置及实际限制见[实验接入](experimental-oidc-llm.md)，尚待讨论的 scope、生命周期和撤销保证见[草案](oidc-llm-draft.md)。真实服务完成验收前，不迁移已有机构配置。
 
 ## 开发验证
 
-包内执行 `npm ci`、`npm run check`。合成测试覆盖旧 OIDC、安全发现、真实 loopback、刷新竞争、账户切换、目录隔离和错误行为；真实 LiteLLM 联调需单独运行本地网关并完成浏览器登录、普通/SSE、刷新、重启和退出验收。HTTP 同意页驱动、模拟到期或 mock 模型不等价于完整桌面、自然到期或真实推理验收。测试账号和 Token 不进入公开仓库。
+包内执行 `npm ci`、`npm run check`。合成测试覆盖纯身份 OIDC、安全发现、真实 loopback、刷新竞争、账户切换、目录隔离和错误行为；真实 LiteLLM 联调需单独运行本地网关并完成浏览器登录、普通/SSE、刷新、重启和退出验收。HTTP 同意页驱动、模拟到期或 mock 模型不等价于完整桌面、自然到期或真实推理验收。测试账号和 Token 不进入公开仓库。
 
 官方依据：[v1.101.0](https://github.com/BerriAI/litellm/releases/tag/v1.101.0)、[native flow](https://github.com/BerriAI/litellm/blob/v1.101.0/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py)、[HTTP routes](https://github.com/BerriAI/litellm/blob/v1.101.0/litellm/proxy/_experimental/mcp_server/discoverable_endpoints.py)、[proxy credentials](https://github.com/BerriAI/litellm/blob/v1.101.0/litellm/proxy/_experimental/mcp_server/proxy_api_credentials.py)。

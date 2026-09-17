@@ -11,13 +11,15 @@ try {
   if (!config.organizations.length) throw new Error('A configured institution distribution requires at least one organization.')
   for (const org of config.organizations) {
     if (org.auth) {
-      if (!org.id || org.oidc || org.keyBinding || org.provider?.baseURL || org.auth.clientId) throw new Error('Gateway auth must not mix fixed OIDC clients, Key Binding or a model API base URL.')
+      if (!org.id || org.oidc || org.keyBinding || org.provider?.baseURL || (!org.auth.experimentalOidcLlm && org.auth.clientId)) throw new Error('Gateway auth cannot mix OIDC identity profiles, Key Binding or a configured model API URL.')
+      if (org.auth.experimentalOidcLlm && (!org.auth.clientId || /^replace-with-/i.test(org.auth.clientId) || !['oidc', 'oauth'].includes(org.auth.identityMode))) throw new Error('Experimental oidc-llm requires a registered public client ID and explicit identity mode.')
       for (const value of [org.auth.discoveryUrl, ...(org.auth.expectedIssuer ? [org.auth.expectedIssuer] : [])]) {
         const url = new URL(value)
         if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('A distributed gateway discovery/issuer must use HTTPS without credentials, query or fragment.')
       }
       continue
     }
+    if (org.keyBinding || org.provider) throw new Error('Legacy model-key profiles have been removed; configure token gateway discovery.')
     if (!org.id || !org.oidc?.clientId || /^replace-with-/i.test(org.oidc.clientId)) throw new Error('An organization has a missing or placeholder Client ID.')
     if (new URL(org.oidc.issuer).protocol !== 'https:') throw new Error('An organization issuer must use HTTPS.')
   }

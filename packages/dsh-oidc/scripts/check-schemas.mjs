@@ -19,10 +19,6 @@ for (const path of ['/models']) if (!resources.paths?.[path]?.get) throw new Err
 assert.equal(resources.paths['/quota'], undefined, 'public contract must not declare institution quota')
 
 const contract = parseYAML(await readFile(new URL('protocol/openapi.yaml', root), 'utf8'))
-if (contract.openapi !== '3.1.0') throw new Error('protocol/openapi.yaml must use OpenAPI 3.1.0')
-assert.deepEqual(contract.components.schemas.BootstrapResponse.properties.protocol_version.enum,
-  ['worker.user-center.v1', 'worker-user-center/v1', 'eduwork-resources/v1'])
-for (const path of ['/bootstrap', '/runtime-credential/provision', '/runtime-credential/resolve', '/runtime-credential/renew']) {
-  if (contract.paths?.[path] === undefined) throw new Error(`protocol/openapi.yaml is missing ${path}`)
-}
-console.log('Enterprise Profile examples and Key Binding OpenAPI contract are structurally valid.')
+assert.equal(contract.paths['/bootstrap'], undefined)
+assert.ok(Object.keys(contract.paths).every(path => !path.startsWith('/runtime-credential')))
+console.log('Enterprise Profile examples and token resource OpenAPI contract are structurally valid.')

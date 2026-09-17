@@ -14,7 +14,7 @@
       "baseURL": "https://api.example.edu/v1",
       // 填已保存的凭据引用名称，不是 Key 的值。
       // 个人示例：模型设置中 my-media 提供方的 Key 对应 MY_MEDIA_API_KEY。
-      // 企业模式改为 EDUWORK_API_KEY，并填写下方 oidcProfileId。详见 docs/MEDIA.md。
+      // 企业模式填写下方 oidcProfileId；baseURL 必须匹配网关发现的 API 地址，credentialRef 不参与企业授权。详见 docs/MEDIA.md。
       "credentialRef": "MY_MEDIA_API_KEY",
       // 企业登录取得的 Key 必须加这一项，值对应 organizations[].id。
       // 不要填模型 Provider ID；它与企业配置的 ID 是两个不同概念。

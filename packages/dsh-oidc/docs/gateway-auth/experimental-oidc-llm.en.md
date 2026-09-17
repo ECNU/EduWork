@@ -38,7 +38,7 @@ Production endpoints require HTTPS. An isolated experiment may reuse `allowInsec
 
 ## Shared implementation and limits
 
-Both gateway adapters reuse discovery transport, Code+PKCE, browser/callbacks, the Host credential vault, single-flight refresh, model catalogs, the DSH Provider and streaming authorization isolation. The OIDC identity mode directly reuses the existing strict verifier. Legacy `oidc` and Key Binding remain supported.
+Both gateway adapters reuse discovery transport, Code+PKCE, browser/callbacks, the Host credential vault, single-flight refresh, model catalogs, the DSH Provider and streaming authorization isolation. The OIDC identity mode directly reuses the existing strict verifier. Standalone identity-only `oidc` remains supported. Legacy model Key Binding has been removed; see the [migration guide](../key-binding-protocol.en.md).
 
 Access tokens stay opaque. Discovered `api_base` and UserInfo must share the resource origin; authentication endpoints only receive their designated credentials, without redirects. Changed configuration/discovery bindings cannot reuse old authorization. Token responses require actual scope, positive integer expiry and a refresh token; grants cannot expand or omit required connection permissions. The server's expiry is honored without enforcing the unagreed 15-minute proposal.
 

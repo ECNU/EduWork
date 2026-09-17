@@ -24,7 +24,7 @@ The complete check covers TypeScript, the dependency lock and official contracts
 | Path | Responsibility |
 | --- | --- |
 | `src/host/profile.js` | Trusted Profile, bounded branding/models and common credential reference |
-| `src/host/oidc.js` | PKCE, Token/UserInfo, Key Binding, sessions and credential ownership |
+| `src/host/oidc.js` | PKCE, Token/UserInfo, identity sessions and credential writes |
 | `src/host/desktop-oidc.js` | Temporary loopback login shared by both desktop shells |
 | `src/host/resources.js` | Conservative model-catalog normalization |
 | `src/host/provider/` | Official PiAi Provider and explicit image-transform boundary |
@@ -37,7 +37,7 @@ The complete check covers TypeScript, the dependency lock and official contracts
 
 ## Extensions and publication
 
-The public package owns identity, managed keys, model discovery/inference and their account UI. Quota, heartbeat, campus search and speech business services belong in institution/product plugins. [Account extensions](account-extensions.en.md) are Host transport and slot contracts, not hidden institution-feature switches. Examples contain placeholder domains, public client IDs and no secrets.
+The public package owns identity, token authorization, model discovery/inference and their account UI. Quota, heartbeat, campus search and speech business services belong in institution/product plugins. [Account extensions](account-extensions.en.md) are Host transport and slot contracts, not hidden institution-feature switches. Examples contain placeholder domains, public client IDs and no secrets.
 
 Module checks and publication use the [shared EduWork workflow](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES_EN.md). Validate deployment-specific sign-in separately; published npm versions are immutable.
 

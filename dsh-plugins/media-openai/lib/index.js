@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { normalizeMediaConfig } from './config.js'
-import { generateImageForAgent, synthesizeSpeechForAgent, resolveMediaCredential } from './actions.js'
+import { generateImageForAgent, synthesizeSpeechForAgent } from './actions.js'
 
 export const name = 'eduwork-media-openai'
 export const inject = ['artifactServices', 'tools', 'agents', 'credentials', 'fs']
@@ -25,7 +25,7 @@ export function apply(ctx, raw = { providers: [] }) {
   for (const config of normalizeMediaConfig(raw).providers) {
     const available = async () => {
       try {
-        if (config.oidcProfileId) return Boolean(await resolveMediaCredential(ctx, config))
+        if (config.oidcProfileId) return await ctx.get?.('oidcAccounts')?.modelAuthorization?.(config.oidcProfileId, config.baseURL) === true
         return (await ctx.credentials.describe(config.credentialRef)).configured === true
       } catch { return false }
     }

@@ -15,12 +15,10 @@ export function callbackPage(profile = {}, outcome = 'failed', language = 'en') 
   const zh = language === 'zh-CN'
   const brand = profile.brand ?? {}, product = brand.productName || profile.displayName || 'EduWork'
   const organization = brand.organizationName || profile.organization || ''
-  const success = outcome === 'completed' || outcome === 'credential-required'
+  const success = outcome === 'completed'
   const title = success ? (zh ? '身份认证已完成' : 'You’re signed in')
     : outcome === 'expired' ? (zh ? '此次登录已过期' : 'This sign-in has expired') : (zh ? '此次登录未完成' : 'Sign-in did not complete')
-  const description = outcome === 'credential-required'
-    ? (zh ? '请返回应用，继续完成模型服务连接。' : 'Return to the app to finish connecting your model service.')
-    : success ? (zh ? '请返回应用继续工作。' : 'Return to the app to continue your work.')
+  const description = success ? (zh ? '请返回应用继续工作。' : 'Return to the app to continue your work.')
       : outcome === 'issuer-invalid'
         ? (zh ? '认证服务返回的信息与登录配置不一致。请联系管理员检查后重试。' : 'The authentication response does not match the sign-in configuration. Contact your administrator before trying again.')
         : (zh ? '请返回应用重新发起登录。' : 'Return to the app and start sign-in again.')

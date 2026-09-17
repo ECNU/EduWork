@@ -20,23 +20,23 @@ const isChinese = typeof navigator !== 'undefined' && navigator.language.toLower
 const messages = isChinese ? {
   waiting: '请在浏览器中完成登录…', cancelLogin: '取消登录',
   identityDescription: '使用组织账号登录。模型服务可在设置中单独配置。', identityConnected: '组织身份已登录',
-  unavailable: '企业模型服务暂时不可用', connected: '已连接', authenticated: '身份认证完成，等待创建模型凭据',
-  disconnected: '尚未连接', description: '使用组织统一身份认证连接企业模型。密码不会进入 DSH；模型请求只使用绑定后的运行凭据。',
-  connecting: '正在连接…', login: '使用企业账号登录', provisioning: '正在创建…', provision: '确认创建模型凭据',
+  unavailable: '企业模型服务暂时不可用', connected: '已连接',
+  disconnected: '尚未连接', description: '使用组织统一身份认证连接企业模型。密码不会进入 DSH；模型请求使用登录授权。',
+  connecting: '正在连接…', login: '使用企业账号登录',
   checking: '正在检查…', check: '检查连接', logout: '退出登录', help: '帮助', dialog: '连接企业模型',
   shortDescription: '通过组织统一身份认证连接企业模型；密码不会进入 DSH。', other: '使用其他模型',
-  enabled: '完成后将启用', footerConnected: '企业模型已连接', footerAuthenticated: '身份认证完成，等待创建模型凭据', footerSetup: '点击设置完成登录',
+  enabled: '完成后将启用', footerConnected: '企业模型已连接', footerSetup: '点击设置完成登录',
 } : {
   waiting: 'Complete sign-in in your browser…', cancelLogin: 'Cancel sign-in',
   identityDescription: 'Sign in with your organization account. Configure model services separately in settings.', identityConnected: 'Organization identity connected',
   unavailable: 'Enterprise model service is temporarily unavailable', connected: 'Connected',
-  authenticated: 'Identity verified; model credential is not provisioned', disconnected: 'Not connected',
-  description: 'Connect with your organization account. Your password never enters DSH; model requests use only the bound runtime credential.',
-  connecting: 'Connecting…', login: 'Sign in with organization', provisioning: 'Provisioning…', provision: 'Provision model credential',
+  disconnected: 'Not connected',
+  description: 'Connect with your organization account. Your password never enters DSH; model requests use your sign-in authorization.',
+  connecting: 'Connecting…', login: 'Sign in with organization',
   checking: 'Checking…', check: 'Check connection', logout: 'Sign out', help: 'Help', dialog: 'Connect enterprise models',
   shortDescription: 'Connect enterprise models through your organization identity provider. Your password never enters DSH.',
   other: 'Use another model', enabled: 'This enables', footerConnected: 'Enterprise models connected',
-  footerAuthenticated: 'Identity verified; provision a model credential', footerSetup: 'Open settings to connect',
+  footerSetup: 'Open settings to connect',
 }
 
 async function unwrap(operation: Promise<any>) {
@@ -111,8 +111,7 @@ function EnterpriseAccountCard({ service, configuration }: any) {
   const primary = { ...button, background: profile.brand?.primaryColor || 'var(--dsw-alias-brand-primary, #5157af)', color: 'white', borderColor: 'transparent' }
   const login = useSignIn(service)
   const begin = () => account.run('login', () => login.begin(profile.id))
-  const stateLabel = account.status?.state === 'connected' ? messages.connected
-    : account.status?.state === 'authenticated' ? messages.authenticated : messages.disconnected
+  const stateLabel = account.status?.state === 'connected' ? messages.connected : messages.disconnected
   const userName = accountUserName(account.status)
   return h('section', { style: { padding: '16px 0', borderBottom: `1px solid ${border}` } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start' } },
@@ -126,14 +125,10 @@ function EnterpriseAccountCard({ service, configuration }: any) {
     h('p', { style: { margin: '12px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 12, lineHeight: 1.6 } },
       profile.brand?.loginDescription || (profile.provider ? messages.description : messages.identityDescription)),
     h('div', { style: { marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' } },
-      account.status?.state !== 'connected' && account.status?.state !== 'authenticated' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: begin }, account.busy ? messages.connecting : messages.login),
-      profile.provider && !account.status?.credentialReady && account.status?.state === 'authenticated' && h('button', {
-        type: 'button', disabled: Boolean(account.busy), style: primary,
-        onClick: () => account.run('provision', () => service.reconcile(profile.id, { allowProvision: true })),
-      }, account.busy ? messages.provisioning : messages.provision),
+      account.status?.state !== 'connected' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: begin }, account.busy ? messages.connecting : messages.login),
       account.status?.state === 'connected' && h('button', {
         type: 'button', disabled: Boolean(account.busy), style: button,
-        onClick: () => account.run('reconcile', () => service.reconcile(profile.id, { allowProvision: false })),
+        onClick: () => account.run('reconcile', () => service.reconcile(profile.id, {})),
       }, account.busy ? messages.checking : messages.check),
       account.status?.state !== 'signed_out' && h('button', {
         type: 'button', disabled: Boolean(account.busy), style: button,
@@ -168,11 +163,7 @@ function EnterpriseOnboarding({ service, configuration, complete }: any) {
   h('p', { style: { margin: '18px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 13, lineHeight: 1.7 } },
     profile.brand?.loginDescription || (profile.provider ? messages.shortDescription : messages.identityDescription)),
   h('div', { style: { marginTop: 20, display: 'flex', gap: 9, flexWrap: 'wrap' } },
-    account.status?.state !== 'authenticated' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('provision', () => service.reconcile(profile.id, { allowProvision: true })) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : messages.login),
-    account.status?.state === 'authenticated' && h('button', {
-      type: 'button', disabled: Boolean(account.busy), style: primary,
-      onClick: () => account.run('provision', () => service.reconcile(profile.id, { allowProvision: true })),
-    }, account.busy ? messages.provisioning : messages.provision),
+    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : messages.login),
     h('button', { type: 'button', disabled: Boolean(account.busy), style: button, onClick: complete }, messages.other)),
   login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
   account.error && h('p', { role: 'alert', style: { margin: '12px 0 0', color: '#a82332', fontSize: 12 } }, account.error),
@@ -184,8 +175,7 @@ function FooterAccount({ service, configuration, renderSlot, wide = true }: any)
   const profile = configuration.profiles[0]
   const status = useAccountStatus(service, profile.id)
   const userName = accountUserName(status)
-  const statusLabel = status?.state === 'connected' ? (profile.provider ? messages.footerConnected : messages.identityConnected)
-    : status?.state === 'authenticated' ? messages.footerAuthenticated : messages.footerSetup
+  const statusLabel = status?.state === 'connected' ? (profile.provider ? messages.footerConnected : messages.identityConnected) : messages.footerSetup
   return h(AccountMenu, { service, profile, renderSlot, wide }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 } },
     h(ProductMark, { profile, size: 28 }),
     wide && h('div', { style: { minWidth: 0 } },

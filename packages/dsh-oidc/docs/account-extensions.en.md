@@ -2,7 +2,7 @@
 
 [简体中文](account-extensions.md) | **English**
 
-As of `0.2.0-dev.20260910.6`, public OIDC owns identity, managed model keys, models/default selection and sign-out. Quota HTTP, normalization and presentation are external, and public OIDC sends no heartbeat. `resources(profileID)` returns only `{profileID, modelSource, models, issues}`. Extracting quota alone does not require a new login. The dev.7 credential rename migrates only verified ownership and an identical deployment binding; unproven ownership retains identity but requires model-resource reconnection. Deploy matching client and Host type descriptors.
+Public OIDC owns identity, token authorization, model/default selection and sign-out. Quota HTTP, normalization and presentation remain optional institution extensions. resources(profileID) returns only model metadata. The current client does not provision or migrate model API keys; deploy matching client and Host descriptors.
 
 ## Host transport
 
@@ -12,22 +12,22 @@ An institution plugin depends on `oidcAccounts` and MUST first check its explici
 const response = await ctx.oidcAccounts.modelResourceFetch(profileID, '/quota', { signal })
 ```
 
-This Host-only method has no Remote decorator and never exposes credentials. It uses the configured `profile.provider.baseURL`, active identity and current managed model key; `provider` and `keyBinding` are required. Only GET is supported. Paths consist of slash-separated letters, digits, underscores or hyphens; absolute URLs, query/hash, escaped or dot paths and extra options are rejected. Redirects are denied, timeout is 20 seconds, and the buffered response limit is 1 MiB. HTTP failures return Response; the extension defines safe user-facing states. Do not display raw request/response secrets.
+This Host-only method has no Remote decorator and never exposes credentials. It uses the validated gateway API base and current Access Token; an authenticated auth profile is required. Only GET is supported. Paths consist of slash-separated letters, digits, underscores or hyphens; absolute URLs, query/hash, escaped or dot paths and extra options are rejected. Redirects are denied, timeout is 20 seconds, and the buffered response limit is 1 MiB. HTTP failures return Response; the extension defines safe user-facing states. Do not display raw request/response secrets.
 
-Logout or key replacement during response reading invalidates the result. The extension MUST also subscribe to `oidc/accounts-changed` and `credentials/reference-updated`, invalidate its generation, and check that generation after async operations. Abort requests on disposal. The public package does not cache extension data.
+Logout or reauthorization during response reading invalidates the result. The extension MUST also subscribe to `oidc/accounts-changed` and `credentials/reference-updated`, invalidate its generation, and check that generation after async operations. Abort requests on disposal. The public package does not cache extension data.
 
-For identity-token services, use the separate `authorizedFetch(profileID, endpoint, init)` method with approved origins, token refresh and one 401 retry. See [the public protocol](public-resource-protocol.en.md). Neither transport schedules business requests itself.
+For identity-token services, use the separate `authorizedFetch(profileID, endpoint, init)` method with approved origins, token refresh and at most one 401 retry for safe reads; generation is never replayed. See [the public protocol](public-resource-protocol.en.md). Neither transport schedules business requests itself.
 
 ## Client account menu
 
-The public sidebar account declares the official `oidc.account.menu.details` child slot, `kind: single`, `scope: root`. Use `slots.inject()` before registering the occupant. Public UI continues to own identity, login, model credential provisioning and sign-out.
+The public sidebar account declares the official `oidc.account.menu.details` child slot, `kind: single`, `scope: root`. Use `slots.inject()` before registering the occupant. Public UI continues to own identity, login, model connection and sign-out.
 
 | Owner prop | Meaning |
 | --- | --- |
 | `profile`, `status` | Trusted configuration and non-secret current state; read-only |
 | `busy` | Public account operation in progress; disable competing operations |
 | `run(operation)` | Shared busy/error handling for an async user action |
-| `refreshAccount()` | Reconcile identity/model connection without automatic provisioning |
+| `refreshAccount()` | Reconcile identity/model connection without changing the selected model |
 | `defaultContent` | Public Refresh account action; return it for inapplicable profiles |
 
 ```js

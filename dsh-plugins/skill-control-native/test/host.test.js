@@ -51,7 +51,7 @@ async function eventually(read, expected) {
 
 test('real Host follows optional Shared attachment, provider/credential changes, disablement and unload', async () => {
   const marker = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-  assert.equal(marker.dshVersion, '0.1.5-rc.1', 'This regression must run on the release candidate Host')
+  assert.equal(marker.dshVersion, process.env.CHATECNU_EXPECT_DSH ?? '0.1.5-rc.1', 'This regression must run on the declared release candidate Host')
   const root = await mkdtemp(join(tmpdir(), 'eduwork-skill-host-'))
   const previous = { home: process.env.DSH_HOME, agents: process.env.DSH_AGENTS_HOME }
   process.env.DSH_HOME = join(root, 'home')
@@ -153,7 +153,7 @@ test('real Host follows optional Shared attachment, provider/credential changes,
 
 test.after(() => hooks.deregister())
 
-test('real skill registry hides an institution skill when the shared slot belongs to another account', async () => {
+test('real skill registry follows model authorization without requiring the old shared key', async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-skill-binding-'))
   const ctx = new Context()
   let matching = false
@@ -162,17 +162,17 @@ test('real skill registry hides an institution skill when the shared slot belong
     await mkdir(directory, { recursive: true })
     await writeFile(join(directory, 'SKILL.md'), '---\nname: institution-search\ndescription: Synthetic binding check.\nmetadata:\n  eduwork:\n    credentialRef: EDUWORK_API_KEY\n    oidcProfileId: campus-a\n    runtimeBaseURL: https://a.example/v1\n---\nSynthetic only.\n')
     await ctx.plugin(SkillRegistry); await ctx.plugin(MemorySettings); await ctx.plugin(MemoryCredentials); await ctx.plugin(skillSettings)
-    ctx.provide('oidcAccounts', { resolveBoundCredential: async (id, expected) => {
+    ctx.provide('oidcAccounts', { modelAuthorization: async (id, expectedBaseURL) => {
       assert.equal(id, 'campus-a')
-      assert.equal(expected.runtimeBaseURL, 'https://a.example/v1')
-      return matching ? { value: 'synthetic' } : undefined
+      assert.equal(expectedBaseURL, 'https://a.example/v1')
+      return matching
     } })
     await ctx.plugin(skillControl, { skillDir: skills })
     const names = async () => (await ctx.skills.list({ cwd: root })).filter(row => row.name === 'institution-search').map(row => row.name)
     await ctx.credentials.set(credentialRef('EDUWORK_API_KEY'), 'unrelated')
     await eventually(names, [])
     matching = true
-    await ctx.credentials.set(credentialRef('EDUWORK_API_KEY'), 'matching')
+    await ctx.credentials.unset(credentialRef('EDUWORK_API_KEY'))
     await eventually(names, ['institution-search'])
     matching = false
     await ctx.credentials.set(credentialRef('EDUWORK_API_KEY'), 'replaced')

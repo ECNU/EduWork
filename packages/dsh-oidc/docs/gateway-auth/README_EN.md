@@ -2,13 +2,13 @@
 
 [简体中文](README.md) | **English**
 
-This branch adds LiteLLM native OAuth and an [experimental oidc-llm adapter](experimental-oidc-llm.en.md), disabled by default. Neither is included in a published npm package or desktop Release yet. Existing `oidc` profiles retain their OIDC and optional Key Binding behavior. **oidc-llm** remains a [draft](oidc-llm-draft.en.md); the experiment does not finalize the protocol.
+This branch adds LiteLLM native OAuth and an [experimental oidc-llm adapter](experimental-oidc-llm.en.md), disabled by default. Neither is included in a published npm package or desktop Release yet. Identity-only oidc profiles remain supported. Key Binding model flows are removed; see [migration](../key-binding-protocol.en.md). **oidc-llm** remains a [draft](oidc-llm-draft.en.md); the experiment does not finalize the protocol.
 
 ## Choose a connection
 
 | Server | Configuration | Model credential | Client registration |
 | --- | --- | --- | --- |
-| Existing OIDC/resource service | Existing `oidc`, optional `keyBinding` + `provider` | API Key obtained through Key Binding | Pre-registered public client |
+| Identity-only OIDC | oidc without provider | No organization model credential | Pre-registered public client |
 | LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | Login Access Token | Dynamically register the actual callback on each login |
 | Experimental oidc-llm 0.1 | `auth` with explicit opt-in and identity mode | Access Token | Static public client implemented |
 
@@ -36,7 +36,7 @@ See the [complete Profile example](../../examples/litellm.enterprise-profile.exa
 
 Models with only an ID default to text-only without assumed reasoning support. An empty catalog stays empty; a failed fetch never adopts another account's catalog.
 
-Use `backend: "desktop"` or local `backend: "web"`; the legacy `native` bridge supports existing OIDC profiles only. A direct plugin configuration can use `{"backend":"desktop","profilePathEnv":"EDUWORK_OIDC_PROFILE"}` with the environment variable pointing to a Profile JSON file. The desktop Host supplies `desktopServices.openExternal` and a Credential Provider as described in the [Host guide](../desktop-host.md). Web keeps the existing single-user loopback boundary.
+Use `backend: "desktop"` or local `backend: "web"`; the legacy `native` account bridge has been removed. A direct plugin configuration can use `{"backend":"desktop","profilePathEnv":"EDUWORK_OIDC_PROFILE"}` with the environment variable pointing to a Profile JSON file. The desktop Host supplies `desktopServices.openExternal` and a Credential Provider as described in the [Host guide](../desktop-host.md). Web keeps the existing single-user loopback boundary.
 
 ## LiteLLM native contract 1
 
@@ -57,12 +57,12 @@ Model calls bind to the current authorization when prepared. After logout or acc
 
 ## Existing OIDC and the future draft
 
-Existing profiles still validate issuer, PKCE, state, nonce, RS256 ID Tokens and matching UserInfo subject, and retain Key Binding, credential-name migration and refresh behavior. See the [existing server contract](../server-integration-contract.md) and [Profile reference](../enterprise-profile.md). These checks were not weakened for LiteLLM.
+Identity-only OIDC and the oidc-llm OIDC mode share issuer, PKCE, state, nonce, RS256 ID Token and matching UserInfo subject validation. Key Binding and legacy credential-name migration have been removed; model authorization uses gateway Tokens. See the [existing server contract](../server-integration-contract.md) and [Profile reference](../enterprise-profile.md). These checks were not weakened for LiteLLM.
 
 The oidc-llm adapter discovers `userinfo_endpoint` and reuses standard subject and identity claims. See [experimental integration](experimental-oidc-llm.en.md) for configuration and actual limits. Scope, lifetimes and revocation guarantees remain under review in the [draft](oidc-llm-draft.en.md). Do not migrate an existing institution configuration before real-server acceptance.
 
 ## Validation
 
-Run `npm ci` and `npm run check` in the package. Synthetic tests cover legacy OIDC, discovery validation, real loopback callbacks, refresh races, account/catalog isolation and errors. Live gateway acceptance separately covers browser authorization, ordinary/SSE inference, refresh, restart and logout. An HTTP form driver, simulated near-expiry and a mock inference backend do not prove desktop UI, natural expiry or real inference. Keep test credentials outside the public repository.
+Run `npm ci` and `npm run check` in the package. Synthetic tests cover identity-only OIDC, discovery validation, real loopback callbacks, refresh races, account/catalog isolation and errors. Live gateway acceptance separately covers browser authorization, ordinary/SSE inference, refresh, restart and logout. An HTTP form driver, simulated near-expiry and a mock inference backend do not prove desktop UI, natural expiry or real inference. Keep test credentials outside the public repository.
 
 Official baseline: [release](https://github.com/BerriAI/litellm/releases/tag/v1.101.0), [native flow](https://github.com/BerriAI/litellm/blob/v1.101.0/litellm/proxy/_experimental/mcp_server/gateway_dcr_flow.py), [HTTP routes](https://github.com/BerriAI/litellm/blob/v1.101.0/litellm/proxy/_experimental/mcp_server/discoverable_endpoints.py), [proxy credentials](https://github.com/BerriAI/litellm/blob/v1.101.0/litellm/proxy/_experimental/mcp_server/proxy_api_credentials.py).

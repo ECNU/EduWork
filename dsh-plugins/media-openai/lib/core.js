@@ -182,7 +182,7 @@ async function providerRequest(fetchImpl, url, apiKey, init, maximum) {
       ...init,
       redirect: 'manual',
       headers: {
-        Authorization: `Bearer ${apiKey}`,
+        ...(apiKey === undefined ? {} : { Authorization: `Bearer ${apiKey}` }),
         ...init.headers,
       },
     })
@@ -275,9 +275,9 @@ export function detectImageDimensions(bytes, format = detectImage(bytes)) {
   throw new Error('the configured image response did not contain readable pixel dimensions')
 }
 
-export async function generateImage({ fetchImpl = fetch, baseURL, apiKey, model, prompt, size, nativeSizes, responseFormat = 'auto', signal }) {
+export async function generateImage({ fetchImpl = fetch, requestImpl = fetchImpl, baseURL, apiKey, model, prompt, size, nativeSizes, responseFormat = 'auto', signal }) {
   const generationSize = selectImageGenerationSize(size, nativeSizes)
-  const { bytes } = await providerRequest(fetchImpl, `${baseURL}/images/generations`, apiKey, {
+  const { bytes } = await providerRequest(requestImpl, `${baseURL}/images/generations`, apiKey, {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json' },
@@ -345,8 +345,8 @@ export function validateAudio(format, declaredType, bytes) {
   return { mime, extension }
 }
 
-export async function synthesizeSpeech({ fetchImpl = fetch, baseURL, apiKey, model, input, voice, format, speed, signal }) {
-  const { response, bytes } = await providerRequest(fetchImpl, `${baseURL}/audio/speech`, apiKey, {
+export async function synthesizeSpeech({ fetchImpl = fetch, requestImpl = fetchImpl, baseURL, apiKey, model, input, voice, format, speed, signal }) {
+  const { response, bytes } = await providerRequest(requestImpl, `${baseURL}/audio/speech`, apiKey, {
     method: 'POST',
     signal,
     headers: { 'Content-Type': 'application/json', Accept: AUDIO_TYPES[format][0], 'Accept-Encoding': 'identity' },

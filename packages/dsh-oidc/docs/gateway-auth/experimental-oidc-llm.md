@@ -38,7 +38,7 @@
 
 ## 共享实现与边界
 
-两套网关适配器共用发现请求、Code+PKCE、浏览器/回调、Host 凭据库、并发刷新合并、模型目录、DSH Provider 与流式请求隔离。OIDC 身份分支直接复用现有严格验证器；原有 `oidc` 和 Key Binding 路径继续保留。
+两套网关适配器共用发现请求、Code+PKCE、浏览器/回调、Host 凭据库、并发刷新合并、模型目录、DSH Provider 与流式请求隔离。OIDC 身份分支直接复用现有严格验证器；保留独立的纯身份 `oidc` 登录；旧模型 Key Binding 已移除，见[迁移说明](../key-binding-protocol.md)。
 
 Access Token 按不透明 Bearer 处理。发现中的 `api_base` 与 UserInfo 必须和 resource 同源；认证端点只接收其角色对应的凭据，禁自动重定向。配置或发现绑定改变时不复用旧授权。Token 响应必须提供实际 scope、正整数有效期和 refresh token；scope 不得扩大或缺少本连接需要的权限。有效期按服务器响应执行，不把尚未议定的 15 分钟建议写成硬性上限。
 
@@ -46,7 +46,7 @@ Access Token 按不透明 Bearer 处理。发现中的 `api_base` 与 UserInfo �
 
 模型目录仍使用共享的保守能力映射：仅有 ID 时启用文本，不从名称猜图像或思考能力。草案中的可选模型能力扩展尚未消费，需要时使用显式审核的 provider 配置。
 
-机构扩展可以调用既有 Host-only `modelResourceFetch(profileID, relativePath)`。旧连接使用绑定的模型 Key，实验连接使用当前获准的 Access Token；两者共享路径限制、GET、正文大小限制与退出隔离。公共插件不自动查询配额，也不新增配额 RPC 或字段。扩展须显式安装，服务端须自行声明并执行其授权范围。
+机构扩展可以调用既有 Host-only `modelResourceFetch(profileID, relativePath)`。模型连接统一使用当前获准的 Access Token，共享路径限制、GET、正文大小限制与退出隔离。公共插件不自动查询配额，也不新增配额 RPC 或字段。扩展须显式安装，服务端须自行声明并执行其授权范围。
 
 退出立即停止本机请求，再提交 refresh token 撤销；支持 200 空响应或 JSON。远端失败仅记录脱敏警告，当前没有持久化撤销重试队列，不能宣称满足草案中这项提议。服务器的 refresh 家族撤销、Access Token 剩余有效期、scope 隔离和模型过滤仍需真实验收。
 

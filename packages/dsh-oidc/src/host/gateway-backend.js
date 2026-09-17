@@ -37,7 +37,7 @@ function scopedResponse(response, lease) {
   return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers })
 }
 
-/** Additive protocol adapter. Profiles with `oidc` execute the existing backend. */
+/** Token model protocols share the OIDC identity and callback implementation. */
 function withGatewayAuth(Base) {
   return class extends Base {
     constructor(...args) {
@@ -273,6 +273,17 @@ function withGatewayAuth(Base) {
         if ((cause.code === 'gateway_unavailable' || cause.status === 429 || cause.status >= 500) && session.expiresAt > seconds(this)) return this.gatewayCurrent(profile, session, epoch)
         throw cause
       }
+    }
+
+    async modelAuthorization(profileID, expectedBaseURL) {
+      const profile = this.profile(profileID), epoch = this.accountEpoch(profile)
+      if (!profile.auth || typeof expectedBaseURL !== 'string') return false
+      const descriptor = await this.discover(profile)
+      if (expectedBaseURL !== descriptor.baseURL) return false
+      const session = await this.activeSession(profile)
+      if (!session) return false
+      await this.gatewayCurrent(profile, session, epoch)
+      return true
     }
 
     async resolveGatewayCredential(profileID) {

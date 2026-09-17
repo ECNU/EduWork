@@ -6,7 +6,7 @@ The default total model-request concurrency is 3. Main conversations, subagents 
 
 ## Choose an example
 
-- [Organization](organization.jsonc): enterprise identity, model credentials and model catalog.
+- [Organization](organization.jsonc): oidc-llm Token authorization and model catalog, only for builds containing this branch’s feature; not in existing Releases.
 - [LiteLLM](litellm.jsonc): native OAuth discovery and model access, only for builds containing this branch's feature; not in existing Releases. See the [gateway guide](../../../packages/dsh-oidc/docs/gateway-auth/README_EN.md).
 - [Media](media.jsonc): configurable image generation and cloud TTS.
 - [Updates](updates.jsonc): update channels and static HTTPS manifests.
@@ -20,11 +20,11 @@ For a configuration-only overlay of a CI archive, see the [build guide](../../..
 
 ## Identity and models
 
-`organizations` may be empty. Users can still configure a personal API Key in the model settings. For identity-only login, omit both `keyBinding` and `provider`; standard OIDC alone does not provision model keys or a catalog. Those capabilities require the resource protocol.
+`organizations` may be empty. Users can still configure a personal API Key in the model settings. For identity-only login, configure `oidc` and omit `auth` and `provider`. Model access uses `auth` gateway discovery and Tokens. Legacy `keyBinding` configuration has been removed; standard OIDC alone does not supply a model catalog.
 
-Each organization needs a unique stable `id`. Managed-model organizations also require distinct `provider.id` values matching their servers’ bootstrap responses. Changing only the client Provider ID cannot resolve a collision; use distinct server routes or separate client configurations.
+Each organization needs a unique stable `id`. Model organizations also require distinct `provider.id` values. The model API URL comes from validated discovery.
 
-Passwords, API Keys, client secrets and login tokens must not be included in examples. Enterprise login stores its credential through the local protected credential service under `EDUWORK_API_KEY`. Personal provider credentials remain independently managed.
+Passwords, API Keys, client secrets and login tokens must not be included in examples. The shared Host stores login Tokens through the local protected credential service, isolates them per organization and refreshes them automatically. Personal provider credentials remain independently managed.
 
 Distribution model-capability corrections apply only to recognized managed configurations. They do not overwrite the administrator's file, personal providers or the user's default model choice. Server discovery remains authoritative; the public edition does not carry institution-specific correction rules.
 
