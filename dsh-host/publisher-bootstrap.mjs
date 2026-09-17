@@ -36,8 +36,17 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
   const previous = await lstat(target).catch(error => { if (error.code !== 'ENOENT') throw error })
   if (previous) {
     if (!previous.isFile() || previous.isSymbolicLink()) throw Error('发行配置缓存无效')
-    baseline = loadUserConfig(target)
-  } else {
+    try {
+      if (previous.size > 1024 * 1024) throw Error('发行配置缓存过大')
+      baseline = loadUserConfig(target)
+    } catch (error) {
+      if (error.code) throw error
+      // Preserve damaged local bytes, then reuse a valid legacy configuration
+      // or the verified content cache. A partial JSON write must not brick startup.
+      await rename(target, target + '.invalid-' + randomUUID())
+    }
+  }
+  if (!baseline) {
     // Read only this installation's configuration directory. Never search other
     // installations, account vaults or the user's projects for a fallback.
     const folder = dirname(configPath)

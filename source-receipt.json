@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260915.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-17T05:33:23.458Z",
-  "fileSetSHA256": "1c5943c81efc1d8ff0f11334d79da81079a12a40624728d3975dd675f9a6d9fd",
+  "createdAt": "2026-09-17T06:12:53.630Z",
+  "fileSetSHA256": "9481a8054f8d72de439c92b1aa0041886b013857d874b9e80f98b81c66b41ba9",
   "files": [
     {
       "path": ".gitattributes",
@@ -825,7 +825,7 @@
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
-      "sha256": "26e8a1c0cb45a50f09d2e2ce8c93b7fb607e649536ce60d335b139e0da7a8d21"
+      "sha256": "99fd2f6ae87078f5f20fab8ad4ba53c173c7509cdc88ff302062813ec94eb12a"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -893,7 +893,7 @@
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
-      "sha256": "3bf39be57490b212a376fc57096082fe6625859347683f50c0cd3ada460a17f0"
+      "sha256": "847212cfc4757b4b9140093d867e14503b22bc4f49bcb54e5fd5e6a225304ccd"
     },
     {
       "path": "dsh-host/test/release-policy.test.mjs",

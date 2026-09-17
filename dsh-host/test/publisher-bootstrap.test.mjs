@@ -167,3 +167,19 @@ test('damaged committed configuration can redownload identical signed bytes with
   const wrong = f.release(1, { components: { configuration: 2 } })
   await assert.rejects(next.manager.importOffline(wrong.offline), /修订号/)
 })
+
+test('damaged bootstrap JSON is preserved and valid signed content still starts offline', async t => {
+  const f = await fixture(t)
+  f.release()
+  const first = await f.open()
+  await preparePublisherContent(first.manager, first.bootstrap); await first.manager.ready()
+  await writeFile(first.bootstrap.configPath, '{partial')
+  f.responses.clear(); f.requests.length = 0
+  const next = await f.open()
+  assert.equal((await preparePublisherContent(next.manager, next.bootstrap)).configurationRevision, 1)
+  assert.equal(f.requests.length, 0)
+  const folder = dirname(first.bootstrap.configPath)
+  const backup = (await readdir(folder)).find(name => name.startsWith('eduwork.jsonc.invalid-'))
+  assert.ok(backup)
+  assert.equal(await readFile(join(folder, backup), 'utf8'), '{partial')
+})
