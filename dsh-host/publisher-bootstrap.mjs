@@ -6,12 +6,16 @@ import { ConfigurationFile, readConfiguration, configurationFingerprints } from 
 import { updateEnterpriseModels } from './enterprise-model-updates.mjs'
 
 /** Only publisher-owned editions can opt in. The descriptor is part of the app. */
-export async function readPublisherBootstrap({ ownership, product }) {
+export async function readPublisherBootstrap({ ownership, product, platform = process.platform }) {
   if (ownership !== 'publisher') return null
-  const descriptorPath = join(product, 'resources/desktop/publisher-bootstrap.json')
-  let bytes
-  try { bytes = await readFile(descriptorPath) }
-  catch (error) { if (error.code === 'ENOENT') return null; throw error }
+  if (!['win32', 'darwin', 'linux'].includes(platform)) throw Error('不支持的发行配置平台')
+  let bytes, descriptorPath
+  for (const name of [`publisher-bootstrap.${platform}.json`, 'publisher-bootstrap.json']) {
+    descriptorPath = join(product, 'resources/desktop', name)
+    try { bytes = await readFile(descriptorPath); break }
+    catch (error) { if (error.code !== 'ENOENT') throw error }
+  }
+  if (!bytes) return null
   if (bytes.length > 16384) throw Error('发行引导配置过大')
   const descriptor = JSON.parse(bytes.toString('utf8'))
   if (!descriptor || Object.keys(descriptor).some(k => !['schemaVersion', 'updates', 'contentUpdates'].includes(k))) throw Error('发行引导配置只能包含更新渠道与验签信息')

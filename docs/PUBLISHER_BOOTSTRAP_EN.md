@@ -46,6 +46,8 @@ Windows uses `<installation>/config/eduwork.jsonc`. macOS uses `~/Library/Applic
 
 ## Offline delivery and publication
 
+Publishers may also provide complete `desktop/publisher-bootstrap.win32.json`, `desktop/publisher-bootstrap.darwin.json`, or `desktop/publisher-bootstrap.linux.json` descriptors. The client prefers its platform file and falls back to the generic descriptor only when that file is absent. Invalid platform files fail instead of selecting another source. Platforms can manage configuration, Skills, revisions and compatibility independently. After initialization the selected source lives in the single `config/eduwork.jsonc`; changing bundled defaults does not overwrite a saved source.
+
 `scripts/create-content-update.mjs` also generates `content-<revision>-offline.json` alongside the online manifest, content and receipt. Users can import this file from the first-run window. The same channel, signature, dependency, anti-rollback and startup checks apply. An unsigned JSONC file is not an offline package.
 
 Validate signed content against target client versions, platforms and installed capabilities. Upload immutable content first, then update the channel's `latest.json`. Confirm clean installation before offering application downloads. Cover clean installation, offline restart, legacy upgrade and startup rollback. Platform-specific Skills require platform testing; removing a `platforms` restriction is not verification.

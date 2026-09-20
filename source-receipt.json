@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-20T14:40:34.016Z",
-  "fileSetSHA256": "c78f7fcab51522966914ebccbae37a1b75da9ae4ed0de355a20e06c2ee09fe62",
+  "createdAt": "2026-09-20T15:56:21.217Z",
+  "fileSetSHA256": "744e176e8e3cb6a9d490870f05aafac38c226ef322ddc4fa2c528f12304908ad",
   "files": [
     {
       "path": ".gitattributes",
@@ -261,11 +261,11 @@
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
-      "sha256": "456388054c54d6dd2eca43fd82c59a57a7df84ebe06c0371d96d8377dd1fcc84"
+      "sha256": "522cb514e498d1c199aae059edc496c472c1f5b264fd33eadf76a025deb56a99"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP.md",
-      "sha256": "7e94addacdf72f4b7e68b685a6818acc24742b6a25c80fabd6d1ec5a30b6e2c5"
+      "sha256": "19d3b1cf6e01c9d25720a8e3e722f51d5774a6fb19c2999267731f5118c35848"
     },
     {
       "path": "docs/RELEASE.md",
@@ -909,7 +909,7 @@
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
-      "sha256": "b79700ce697e4fd5a8d4a1c0552fbf7bd697259833725f6652171397c7f7d5d2"
+      "sha256": "3cf174f98e50bcd0432c3ebed65ddea3cfb82edaf4c83fba84b1b905ba9c7a24"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -981,7 +981,7 @@
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
-      "sha256": "8110fb05b168e71eb291cf0b67b200fcea1e334604f289239bdd6ec5424afd02"
+      "sha256": "e47dba00f9ceea6a45d484d8eb62ada272eed15e144da03ea9ba9e58015b6528"
     },
     {
       "path": "dsh-host/test/release-policy.test.mjs",
