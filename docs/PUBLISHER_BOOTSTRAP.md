@@ -1,6 +1,6 @@
 # 首次启动获取机构配置
 
-[English](PUBLISHER_BOOTSTRAP_EN.md) · [内容更新](CONTENT_UPDATES.md) · [构建指南](BUILD.md)
+[English](PUBLISHER_BOOTSTRAP_EN.md) · [配置文件](CONFIGURATION.md) · [内容更新](CONTENT_UPDATES.md) · [构建指南](BUILD.md)
 
 机构发行可以直接分发 GitHub CI 生成的 Electron 原包。包内只携带发行身份、更新渠道和验签公钥，客户端在首次启动时下载机构配置。Windows 与 macOS 复用同一套实现，无需为了加入机构配置再修改 ZIP 或制作配置 PKG。
 
@@ -36,13 +36,13 @@
 
 ## 启动与回退
 
-1. **首次安装：** 读取随包更新源，下载并校验签名、大小、摘要、组件和客户端依赖，再启动工作台。成功打开桌面后才提交内容版本。
-2. **无法下载：** 显示重试与导入签名离线包入口，不删除数据。网络恢复后重试即可，不要求重装。
-3. **已有安装：** 优先使用已验证缓存，不等待网络。进入工作台后按原有更新流程检查新内容，失败时保留现有配置。
-4. **从旧发行升级：** 在原配置所在目录查找不高于当前程序版本的版本化配置，再考虑旧 `eduwork.jsonc`。只复制机构目录、功能和媒体配置，保留关闭窗口偏好；不改旧文件，不扫描其他安装、不搬运登录凭据。更新源和公钥始终采用新包的声明。
-5. **启动失败：** 新内容未通过启动检查时回退到之前的内容或旧配置。全新安装没有可回退配置时，等待修正版本，不循环启用失败内容。损坏的已提交配置可以重新获取同一份签名内容，不降低版本号。
+1. **首次安装：** 将随包默认更新源写入 `config/eduwork.jsonc`，下载并校验签名、大小、摘要、组件和依赖，然后把学校配置写入同一个文件。桌面成功启动后才提交内容修订。
+2. **无法下载：** 提供重试与签名离线包导入，不删除数据。
+3. **已有安装：** 直接读取本地 `eduwork.jsonc`，不依赖网络；不再叠加隐藏配置。包内引导信息只负责初始化，之后本地文件中的来源、公钥和开关生效。
+4. **旧版升级：** 将已验证内容与旧基础配置合成为一个生效文件。成功启动后清理本次确认未修改的旧版本配置和旧基础缓存；不扫描其他安装或凭据目录。
+5. **配置更新：** 更新未修改的默认字段，保留手工修改、增加和删除，有冲突时提示字段路径。启动失败恢复唯一备份 `data/configuration/eduwork.previous.jsonc`，不生成更多副本。
 
-Windows 缓存位于安装目录的 `data/publisher-bootstrap/<源标识>/` 和 `data/content-updates/<源标识>/`；macOS 位于 `~/Library/Application Support/<distribution>-electron/data/` 下的同名目录。源标识绑定发行 ID、发布者、URL 与公钥。`.app` 内的引导资源只读，内容更新不能修改自己的信任根。实际生效配置由基础缓存与已验证内容叠加，不能只凭某个旧 JSONC 文件判断模型配置。
+Windows 配置位于安装目录的 `config/eduwork.jsonc`；macOS 位于 `~/Library/Application Support/<distribution>-electron/config/eduwork.jsonc`，不写入 `.app`。`data/content-updates/` 的签名下载内容和 `data/configuration/state.json` 的字段指纹、事务记录均为内部状态，不作为隐藏配置层。语法错误不会被远程配置静默修复；用户可以按[配置说明](CONFIGURATION.md)修改或恢复文件。
 
 ## 离线包与发布顺序
 

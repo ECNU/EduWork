@@ -84,12 +84,13 @@ async function prepareDesktop() {
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
     await initializeUserConfig({ product: paths.product, config: paths.config })
+  const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
-    distribution: settings.distribution, version: settings.productVersion, configPath: paths.config, dataRoot: paths.updateDataRoot })
+    distribution: settings.distribution, version: settings.productVersion, configPath: paths.config, dataRoot: paths.updateDataRoot, identity,
+    legacyConfigPath: paths.legacyConfig, migrateLegacy: !process.env.EDUWORK_CONFIG_FILE })
   if (publisher) paths.config = publisher.configPath
   if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
-  const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   const preferences = await readFile(join(paths.updateDataRoot,'state/update-preferences.json'),'utf8').then(JSON.parse).catch(()=>null)
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     policy: preferences?.policy ?? user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
@@ -103,7 +104,7 @@ async function prepareDesktop() {
   managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
     void progressWindow.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
   } })
-  if(managedContent.configurationPatch) user=loadUserConfig(paths.config,{overlay:managedContent.configurationPatch})
+  user=loadUserConfig(paths.config)
   if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
   await importLegacyData({root:paths.root,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
@@ -126,9 +127,9 @@ async function prepareDesktop() {
   Object.assign(process.env, prepared.environment)
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
   const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
-    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, configurationOverlay:managedContent.configurationPatch,
+    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
-    openConfiguration: settings.configurationOwnership==='publisher' ? undefined : target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
+    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap

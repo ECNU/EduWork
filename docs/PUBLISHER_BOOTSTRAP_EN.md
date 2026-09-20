@@ -1,6 +1,6 @@
 # Download institution configuration on first launch
 
-[中文](PUBLISHER_BOOTSTRAP.md) · [Content updates](CONTENT_UPDATES_EN.md) · [Build guide](BUILD.md)
+[中文](PUBLISHER_BOOTSTRAP.md) · [Configuration file](CONFIGURATION_EN.md) · [Content updates](CONTENT_UPDATES_EN.md) · [Build guide](BUILD.md)
 
 An institution edition can distribute the Electron archive produced by GitHub CI without repacking it. The app carries its edition identity, update feeds and a verification public key; it downloads institution configuration at first launch. Windows and macOS share this implementation. A separate configuration PKG is unnecessary for this mode.
 
@@ -36,13 +36,13 @@ The bundled `desktop/eduwork.jsonc` contains only public branding, an empty orga
 
 ## Startup and recovery
 
-1. **Clean installation:** download and verify signatures, size, digest, components and dependencies before starting the workbench. Commit the content revision only after desktop readiness.
-2. **Download failure:** offer retry and signed offline import without deleting data or requiring reinstallation.
-3. **Existing installation:** start from verified cached content without waiting for the network. Check for updates in the background; failures retain existing configuration.
-4. **Legacy upgrade:** consider versioned configurations no newer than the running app in the original configuration directory, then legacy `eduwork.jsonc`. Copy only organization, feature and media settings, preserving the close-window preference. Do not modify originals, scan other installations or copy credential stores. Feed and key always come from the new app.
-5. **Startup failure:** roll back uncommitted content to the prior revision or legacy configuration. With no fallback, wait for corrected content instead of retrying the failed revision forever. A damaged committed configuration may be restored from identical signed bytes without lowering the revision.
+1. **Clean installation:** seed `config/eduwork.jsonc` with packaged update sources, verify and download defaults, and write them to that same file. Commit the revision only after desktop readiness.
+2. **Download failure:** offer retry and signed offline import without deleting data.
+3. **Existing installation:** read the local file directly without network dependency or a hidden overlay. Packaged bootstrap metadata initializes the file once; local sources, public keys and switches then take precedence.
+4. **Legacy upgrade:** materialize the previously effective signed/legacy configuration. Remove unchanged obsolete version files and the old base cache after a successful startup, without scanning other installations or credentials.
+5. **Updates:** merge untouched defaults, preserve local edits/additions/deletions, and report conflicting paths. Failed startup restores the only backup, `data/configuration/eduwork.previous.jsonc`, without accumulating copies.
 
-Windows stores bootstrap and signed content caches under the installation's `data/publisher-bootstrap/<source-id>/` and `data/content-updates/<source-id>/`. macOS uses matching directories under `~/Library/Application Support/<distribution>-electron/data/`. The source ID binds edition, publisher, URL and public key. Nothing writes into `.app`. Remote content cannot replace its trust root. Effective configuration overlays authenticated content on the base cache; an old JSONC file alone does not describe the active model configuration.
+Windows uses `<installation>/config/eduwork.jsonc`. macOS uses `~/Library/Application Support/<distribution>-electron/config/eduwork.jsonc` and never writes into `.app`. Signed downloads in `data/content-updates/` and fingerprints/transactions in `data/configuration/state.json` are internal state, not a hidden configuration layer. Syntax errors are reported rather than silently replaced from the network. See [configuration](CONFIGURATION_EN.md) for editing and recovery.
 
 ## Offline delivery and publication
 

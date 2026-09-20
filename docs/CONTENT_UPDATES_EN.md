@@ -12,12 +12,12 @@ Content can be downloaded separately. Downloading available software also starts
 
 ## Ownership and scope
 
-- Configuration may update `organizations`, `features` and `media` only. Organization lists and media configuration are replaced; feature fields merge with the base configuration.
+- Configuration may update `organizations`, `features` and `media` only. Signed defaults merge into the editable file; locally modified fields and custom entries are retained.
 - Skills bundles contain a complete publisher Skills snapshot, including references and auxiliary scripts using existing runtimes.
 - Program files, plugins, npm packages, Python, Node and browsers remain whole-application updates. Content cannot carry executable binaries or runtime directories.
 - Personal/workspace Skills, user models, credentials, conversations and desktop preferences are preserved. Locally modified bundled Skills prevent online replacement and should be saved as personal Skills first.
 
-Configuration overlays are applied in memory without rewriting the original JSONC. Relative assets and the configuration editor remain anchored to that file. Content cannot change its own update source, trust key, application identity or desktop preferences. Configuration and Skills have independent revisions. Every latest bundle is a complete snapshot of all components managed by that source. Unchanged components retain their bytes and revision; clients switch only newer components. Related changes are activated atomically. This lets offline clients catch up without missing intermediate updates.
+Configuration updates write the single active `config/eduwork.jsonc`, retaining one `data/configuration/eduwork.previous.jsonc` backup. Untouched defaults update while local edits, additions and deletions survive; conflicts are shown in Settings. Remote content cannot change sources, public keys, product branding or desktop preferences. See [configuration](CONFIGURATION_EN.md).
 
 ## Source configuration
 

@@ -1,11 +1,9 @@
-import { readFile, writeFile, mkdir, readdir, lstat, rename, rm } from 'node:fs/promises'
+import { readFile, readdir, lstat } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
-import { randomUUID } from 'node:crypto'
 import { loadUserConfig } from './user-config.mjs'
-import { compareVersions, digest } from './content-update-protocol.mjs'
-
-const business = config => ({ organizations: config.organizations, features: config.features,
-  ...(config.media ? { media: config.media } : {}) })
+import { compareVersions, digest, verifiedManifest, validateBundle, incompatible } from './content-update-protocol.mjs'
+import { ConfigurationFile, readConfiguration, configurationFingerprints } from './configuration-file.mjs'
+import { updateEnterpriseModels } from './enterprise-model-updates.mjs'
 
 /** Only publisher-owned editions can opt in. The descriptor is part of the app. */
 export async function readPublisherBootstrap({ ownership, product }) {
@@ -24,63 +22,80 @@ export async function readPublisherBootstrap({ ownership, product }) {
   return trusted
 }
 
-export async function publisherBootstrap({ ownership, product, distribution, version, configPath, dataRoot }) {
+export async function publisherBootstrap({ ownership, product, distribution, version, configPath, dataRoot, identity = {}, legacyConfigPath, migrateLegacy = true }) {
+  if (ownership !== 'publisher') return null
   const trusted = await readPublisherBootstrap({ ownership, product })
-  if (!trusted) return null
-  const source = trusted.contentUpdates
-  const scope = digest(JSON.stringify([distribution, source.publisher, source.baseURL, source.publicKey]))
-  const directory = join(dataRoot, 'publisher-bootstrap', scope), target = join(directory, 'eduwork.jsonc')
-  await mkdir(directory, { recursive: true })
-  if ((await lstat(directory)).isSymbolicLink()) throw Error('发行配置目录不能是符号链接')
-  let baseline, migratedFrom
-  const previous = await lstat(target).catch(error => { if (error.code !== 'ENOENT') throw error })
-  if (previous) {
-    if (!previous.isFile() || previous.isSymbolicLink()) throw Error('发行配置缓存无效')
-    try {
-      if (previous.size > 1024 * 1024) throw Error('发行配置缓存过大')
-      baseline = loadUserConfig(target)
-    } catch (error) {
-      if (error.code) throw error
-      // Preserve damaged local bytes, then reuse a valid legacy configuration
-      // or the verified content cache. A partial JSON write must not brick startup.
-      await rename(target, target + '.invalid-' + randomUUID())
-    }
-  }
-  if (!baseline) {
-    // Read only this installation's configuration directory. Never search other
-    // installations, account vaults or the user's projects for a fallback.
-    const folder = dirname(configPath)
-    const candidates = (await readdir(folder).catch(error => { if (error.code === 'ENOENT') return []; throw error }))
+  const file = await new ConfigurationFile(configPath, dataRoot).open()
+  let migratedFrom
+  if (!file.state.initialized) {
+    const source = trusted?.contentUpdates
+    const scope = source ? digest(JSON.stringify([distribution, source.publisher, source.baseURL, source.publicKey])) : null
+    const oldCache = scope ? join(dataRoot, 'publisher-bootstrap', scope, 'eduwork.jsonc') : null
+    const current = await readConfiguration(configPath)
+    const seed = await readConfiguration(legacyConfigPath ?? join(product, 'resources/desktop/eduwork.jsonc'))
+    if (!seed && !current) throw Error('缺少初始配置，请创建 config/eduwork.jsonc')
+    const folder = dirname(configPath), cleanup = []
+    const names = (await readdir(folder).catch(error => { if (error.code === 'ENOENT') return []; throw error }))
       .map(name => ({ name, version: /^eduwork\.(.+)\.jsonc$/.exec(name)?.[1] }))
       .filter(item => { try { return item.version && compareVersions(item.version, version) <= 0 } catch { return false } })
       .sort((a, b) => compareVersions(b.version, a.version))
-    for (const path of [...new Set([configPath, ...candidates.map(item => join(folder, item.name)), join(folder, 'eduwork.jsonc')])]) {
+    let baseline
+    for (const path of migrateLegacy ? [oldCache, ...names.map(item => join(folder, item.name))].filter(Boolean) : []) {
       const info = await lstat(path).catch(error => { if (error.code !== 'ENOENT') throw error })
       if (!info?.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) continue
-      try {
-        const candidate = loadUserConfig(path)
-        if (candidate.organizations.length) { baseline = candidate; migratedFrom = path; break }
-      } catch { /* An invalid old file cannot prevent a signed first-run download. */ }
+      // A damaged obsolete cache can be ignored. An invalid editable active
+      // file above is reported to its owner, never silently replaced.
+      const candidate = await readConfiguration(path).catch(() => null)
+      if (!candidate) continue
+      cleanup.push(path === oldCache ? { kind: 'bootstrap', scope, hash: digest(candidate.text) }
+        : { kind: 'version', name: path.slice(folder.length + 1), hash: digest(candidate.text) })
+      if (!baseline && candidate.value.organizations?.length) { baseline = candidate.value; migratedFrom = path }
     }
+    let value = baseline ? { ...seed?.value, ...baseline, ...(trusted ? { updates: trusted.updates, contentUpdates: source } : {}) }
+      : { ...seed?.value, ...current?.value,
+          updates: Object.keys(current?.value.updates ?? {}).length ? current.value.updates : trusted?.updates ?? seed?.value.updates ?? {},
+          ...(current?.value.contentUpdates || source ? { contentUpdates: current?.value.contentUpdates ?? source } : {}) }
+    let defaults = null
+    if (baseline) {
+      // Materialize the old *effective* configuration, not the stale root file.
+      const state = scope ? await readFile(join(dataRoot, 'content-updates', scope, 'state.json'), 'utf8').then(JSON.parse)
+        .catch(error => { if (error.code !== 'ENOENT') throw error; return {} })
+        : {}
+      const key = state.active?.configuration
+      if (key && /^[1-9]\d*-[a-f0-9]{64}$/.test(key)) {
+        const directory = join(dataRoot, 'content-updates', scope, key)
+        const envelope = JSON.parse(await readFile(join(directory, 'manifest.json'), 'utf8'))
+        const manifest = verifiedManifest(envelope, source)
+        if (key !== `${manifest.revision}-${manifest.bundle.sha256}`) throw Error('旧配置内容身份不一致')
+        const environment = { version, dshVersion: identity.dshVersion,
+          capabilities: [...Object.keys(identity.localPlugins ?? {}).map(name => 'plugin:' + name), ...Object.keys(identity.managedPackages ?? {}).map(name => 'package:' + name)] }
+        const reason = incompatible(manifest.requires, environment)
+        if (reason) throw Error(reason)
+        const bundle = validateBundle(await readFile(join(directory, 'bundle.json')), manifest, environment)
+        value = { ...value, ...bundle.configuration, features: { ...value.features, ...bundle.configuration?.features } }
+        defaults = { key, scope, revision: manifest.components.configuration, fingerprints: configurationFingerprints(bundle.configuration), conflicts: [] }
+      } else {
+        const catalog = await readFile(join(product, 'resources/desktop/enterprise-model-updates.json'), 'utf8').then(JSON.parse)
+          .catch(error => { if (error.code !== 'ENOENT') throw error })
+        if (catalog) value.organizations = updateEnterpriseModels(value.organizations, catalog)
+      }
+      if (value.media === undefined) {
+        const media = await readFile(join(product, 'resources/desktop/media-defaults.json'), 'utf8').then(JSON.parse)
+          .catch(error => { if (error.code !== 'ENOENT') throw error })
+        if (media) value.media = { providers: media.providers.filter(provider => !provider.oidcProfileId || value.organizations.some(org => org.id === provider.oidcProfileId)) }
+      }
+    }
+    await file.initialize(value, { defaults, cleanup })
   }
-  const seed = loadUserConfig(join(product, 'resources/desktop/eduwork.jsonc'))
-  const value = { schemaVersion: 1, product: seed.product.name ? { name: seed.product.name } : {},
-    ...business(baseline ?? seed), desktop: { closeAction: baseline?.closeAction ?? seed.closeAction },
-    updates: trusted.updates, contentUpdates: source }
-  // The cached fallback is mutable state; it can never replace the app's trust
-  // root. Reapply the packaged descriptor on every launch, including offline.
-  const temporary = target + '.' + randomUUID() + '.tmp'
-  await writeFile(temporary, JSON.stringify(value, null, 2) + '\n', { flag: 'wx', mode: 0o600 })
-  try { loadUserConfig(temporary); await rename(temporary, target) }
-  finally { await rm(temporary, { force: true }) }
-  return { configPath: target, source, updates: trusted.updates, migratedFrom,
-    hasBaseline: value.organizations.length > 0 }
+  const config = loadUserConfig(configPath)
+  return { configPath, source: config.contentUpdates, updates: config.updates, migratedFrom, file,
+    hasBaseline: config.organizations.length > 0 }
 }
 
 /** Reuse the content journal: commit remains gated by desktopReady(). */
 export async function preparePublisherContent(manager, bootstrap, { onDownload = () => {} } = {}) {
   let managed = await manager.prepare()
-  if (!bootstrap || bootstrap.hasBaseline || managed.configurationRevision > 0) return managed
+  if (!bootstrap || bootstrap.hasBaseline || managed.configurationRevision > 0 || !manager.source?.configuration) return managed
   onDownload()
   const offer = await manager.check({ repair: true })
   if (offer.state === 'available') await manager.download()

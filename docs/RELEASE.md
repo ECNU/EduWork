@@ -91,7 +91,7 @@ Windows Electron Release 工作流已提供（见下文），不包含签名安�
 
 开发包在普通逐文件清单上追加更新器所需的 `launcherVersion`、`flavor` 和 `launch`，附带旧快捷方式兼容入口。同一 ZIP 可用于新装及已验收的 Go 过渡版到 Electron 更新。0.2 原入口仍只提供 Go 过渡包，开发包不能直接下发给 0.2。
 
-机构本地验收也使用 GitHub CI 的同一份 ZIP：下载 Release 资产并核对 SHA-256，使用 `scripts/configure-desktop-archive.ps1` 加入私有配置。公版使用 `config/eduwork.jsonc`；声明由发行方管理配置的机构包同时写入与产品版本对应的 `config/eduwork.<版本>.jsonc`，详见[配置更新策略](UPDATES.md#配置随升级如何处理)。仅加入配置和已支持的品牌文件，不重新编译或替换 `resources/`。实际 Client ID、凭据与个人信息不提交仓库，也不通过 CI secret 注入安装包；公开配置只提供占位模板。归档验收记录时保留运行编号、提交、原始 ZIP 哈希及配置之外文件的校验结果，实际私有配置单独保管。
+机构本地验收也使用 GitHub CI 的同一份 ZIP：下载 Release 资产并核对 SHA-256，使用 `scripts/configure-desktop-archive.ps1` 加入私有配置。公版与机构版均使用 `config/eduwork.jsonc`；启用首次下载配置的机构包可直接分发 CI 原包，详见[配置更新策略](UPDATES.md#配置随升级如何处理)。仅加入配置和已支持的品牌文件，不重新编译或替换 `resources/`。实际 Client ID、凭据与个人信息不提交仓库，也不通过 CI secret 注入安装包；公开配置只提供占位模板。归档验收记录时保留运行编号、提交、原始 ZIP 哈希及配置之外文件的校验结果，实际私有配置单独保管。
 
 Release notes 必须先与项目负责人讨论确认，不由代理自行编写，也不由构建脚本自动生成。确认后将原文存为发行仓库的 `docs/releases/<版本>.md`；触发时填写 `release_notes` 路径，并确认 `notes_approved`。未确认、文件缺失或空白时停止发布；CI 原样复制已确认的说明，记录 SHA-256，发布 job 再核对摘要。日常源码 CI 不需要发布说明，也不会创建 Release。GitHub 始终只发 Electron；Go 过渡包仅通过旧 OSS 更新渠道分发。
 

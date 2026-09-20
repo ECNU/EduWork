@@ -26,7 +26,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Institution configuration validation failed' }
 $configSummary = ($validation | Select-Object -Last 1) | ConvertFrom-Json
 $configBytes = [IO.File]::ReadAllBytes($Config)
 $configHash = [Convert]::ToHexString([Security.Cryptography.SHA256]::HashData($configBytes)).ToLowerInvariant()
-$targetName = "eduwork.$Version.jsonc"
+$targetName = 'eduwork.jsonc'
 $targetPath = "$InstallRoot/$targetName"
 $packageVersion = if ($Version -match '^(\d+\.\d+\.\d+)-dev\.(\d{8})\.([1-9]\d*)$') { "$($Matches[1]).$($Matches[2]).$($Matches[3])" } else { $Version }
 
