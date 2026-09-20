@@ -13,6 +13,6 @@ export function productIdentity(snapshot) {
 }
 
 export function genericMarkSVG(color) {
-  const accent = /^#[\da-f]{6}$/i.test(color) ? color : '#2575ff'
+  const accent = /^#[\da-f]{6}$/i.test(color) ? color : '#9f2636'
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><rect width="256" height="256" rx="56" fill="${accent}"/><path d="${eduworkMarkPath}" transform="translate(43 32) scale(.665 .78)" fill="#fff"/></svg>`
 }

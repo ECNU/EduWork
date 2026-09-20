@@ -1,7 +1,7 @@
 //#region src/theme.js
 const VISUAL_STYLES = Object.freeze(["dsh", "ecnu-liwa"]);
 function normalizeVisualStyle(value) {
-	return VISUAL_STYLES.includes(value) ? value : "dsh";
+	return VISUAL_STYLES.includes(value) ? value : "ecnu-liwa";
 }
 const pair = (light, dark) => Object.freeze({
 	light,
@@ -47,5 +47,11 @@ const ECNU_LIWA_TOKENS = Object.freeze({
 function tokensForVisualStyle(value) {
 	return normalizeVisualStyle(value) === "ecnu-liwa" ? ECNU_LIWA_TOKENS : null;
 }
+const BLUE_TOKENS = null;
+const RED_TOKENS = ECNU_LIWA_TOKENS;
+const COLOR_SCHEME_TOKENS = Object.freeze({
+	blue: null,
+	red: RED_TOKENS
+});
 //#endregion
-export { ECNU_LIWA_TOKENS, VISUAL_STYLES, normalizeVisualStyle, tokensForVisualStyle };
+export { BLUE_TOKENS, COLOR_SCHEME_TOKENS, ECNU_LIWA_TOKENS, RED_TOKENS, VISUAL_STYLES, normalizeVisualStyle, tokensForVisualStyle };

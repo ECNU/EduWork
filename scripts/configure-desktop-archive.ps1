@@ -64,8 +64,8 @@ $source = Check-Archive $Archive
 $configPaths = @('config/eduwork.jsonc')
 if ($source.identity.configurationOwnership -eq 'publisher') {
     $versionedConfig = "config/eduwork.$($source.identity.productVersion).jsonc"
-    if (-not $source.files.ContainsKey($versionedConfig)) { throw 'Publisher configuration template is missing from the CI archive.' }
-    $configPaths += $versionedConfig
+    # Accept old CI archives without introducing a second file in new ones.
+    if ($source.files.ContainsKey($versionedConfig)) { $configPaths += $versionedConfig }
 } elseif ($source.identity.configurationOwnership -and $source.identity.configurationOwnership -ne 'user') { throw 'Unknown configuration ownership policy.' }
 $expectedPolicy = if ($source.identity.productVersion -match '-dev\.') {'development'} else {'stable'}
 if ($configSummary.defaultPolicy -and $configSummary.defaultPolicy -ne $expectedPolicy) { throw 'Configuration update policy differs from the CI version channel.' }

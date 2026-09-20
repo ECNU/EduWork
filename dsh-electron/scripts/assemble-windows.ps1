@@ -62,6 +62,9 @@ if ($identity.distribution -eq 'eduwork') {
     $config.updates.provider='github'; $config.updates.repository='ecnu/EduWork'; $config.updateChannel='github'
 }
 if ($UpdateManifestURL) { $config.updates = @{provider='static';manifestURL=$UpdateManifestURL;defaultPolicy=$UpdateDefaultPolicy}; $config.updateChannel='configured' }
+$bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $config.configurationOwnership) | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
+if ($bootstrap.enabled) { $config.updateChannel = if ($bootstrap.softwareUpdates) { 'publisher-bootstrap' } else { 'disabled-candidate' } }
 $config | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'eduwork.desktop.json') -Encoding utf8NoBOM
 $updaterPath = Join-Path $Output 'resources/update/EduWork-Updater.exe'
 New-Item -ItemType Directory -Path (Split-Path $updaterPath) -Force | Out-Null
@@ -75,9 +78,6 @@ Rename-Item -LiteralPath (Join-Path $Output 'electron.exe') -NewName 'EduWork-El
 $defaultConfig = Join-Path $Product 'resources/desktop/eduwork.jsonc'
 if (-not (Test-Path -LiteralPath $defaultConfig -PathType Leaf)) { $defaultConfig = '' }
 & (Join-Path $PSScriptRoot '../../scripts/install-desktop-config.ps1') -Output $Output -DefaultConfig $defaultConfig
-if ($config.configurationOwnership -eq 'publisher') {
-    Copy-Item -LiteralPath (Join-Path $Output 'config/eduwork.jsonc') -Destination (Join-Path $Output "config/eduwork.$Version.jsonc")
-}
 @{schemaVersion=1;shell='electron';version=$Version;dshVersion=$identity.dshVersion;dshCommit=$identity.dshCommit;distribution=$identity.distribution;productName=$name;nodeVersion=$nodeVersion;nodeSHA256=(Get-FileHash -LiteralPath $Node -Algorithm SHA256).Hash.ToLowerInvariant();published=$false;automaticUpdates=($config.updateChannel -ne 'disabled-candidate');pluginPolicy='frozen-candidate';assembledAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Output 'release.json') -Encoding utf8NoBOM
 @"
 $name — Electron candidate $Version

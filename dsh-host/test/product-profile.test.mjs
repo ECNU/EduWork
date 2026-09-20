@@ -41,13 +41,13 @@ test('both shells activate only configured media tools and reread capability swi
   }
 })
 
-test('publisher configuration supplies services without exposing a configuration editor', async t => {
+test('publisher configuration exposes the same editable file as the generic edition', async t => {
   const {root,product,home}=await fixture(t)
   const userConfig=join(root,'edition.jsonc')
   await writeFile(userConfig,'{"schemaVersion":1,"organizations":[],"product":{"name":"School managed"}}')
   const result=await prepareProductProfile({product,home,shell:'electron',userConfig,configurationOwnership:'publisher'})
   const rows=JSON.parse(await readFile(join(result.profile,'cordis.patch.yml'),'utf8')).flatMap(row=>row.insert??[])
-  assert.equal(rows.find(row=>row.id==='enterprise-oidc').config.configFile,undefined)
+  assert.equal(rows.find(row=>row.id==='enterprise-oidc').config.configFile.path,userConfig)
   assert.equal(rows.find(row=>row.id==='enterprise-oidc').config.allowEmptyProfiles,true)
 })
 
@@ -135,7 +135,7 @@ test('both shells pass total request limits and legacy conversions through the s
   }
 })
 
-test('both shells refresh an old enterprise catalog without rewriting personal providers, selected model or JSONC', {skip: !process.env.EDUWORK_TEST_RUNTIME}, async t => {
+test('Electron reads the visible config while the Go bridge retains its old migration; personal providers stay separate', {skip: !process.env.EDUWORK_TEST_RUNTIME}, async t => {
   const {root,product,home} = await fixture(t)
   const runtime = process.env.EDUWORK_TEST_RUNTIME
   await mkdir(join(product, 'd/node_modules/@eduwork'), {recursive:true})
@@ -171,8 +171,8 @@ test('both shells refresh an old enterprise catalog without rewriting personal p
       const patch = JSON.parse(await readFile(join(result.profile, 'cordis.patch.yml'), 'utf8'))
       const effective = patch.flatMap(row => row.insert ?? []).find(row => row.id === 'enterprise-oidc').config
       const provider = enterpriseProviderConfig(loadEnterpriseProfiles(effective, {})).providers['school-ai']
-      assert.deepEqual(provider.models[0].input,['text','image'])
-      assert.equal(provider.models[0].contextWindow,524288)
+      assert.deepEqual(provider.models[0].input,shell==='wails'?['text','image']:['text'])
+      assert.equal(provider.models[0].contextWindow,shell==='wails'?524288:1000000)
       assert.deepEqual(provider.models[0].reasoningEfforts,org.provider.models[0].reasoningEfforts)
       assert.equal(provider.models[0].maxTokens,393216)
       assert.equal(provider.models[1].compat.supportsReasoningEffort,false)
@@ -180,6 +180,17 @@ test('both shells refresh an old enterprise catalog without rewriting personal p
       assert.equal(await readFile(join(data,'settings.yaml'),'utf8'),personal)
       assert.equal(await readFile(join(data,'selected-model.json'),'utf8'),selected)
     }
+    // Content activation writes the actual file before starting the Host;
+    // an in-memory configurationPatch can no longer override that file.
+    await writeFile(config,JSON.stringify({schemaVersion:1,organizations:[org],features:{visionFallback:true}}))
+    const managedContent={configurationRevision:2,configurationPatch:{organizations:[]},skillsRevision:2,skillRoot:join(root,'signed-skills')}
+    const prepared=await prepareProductProfile({product,home:data,shell,userConfig:config,managedContent})
+    const managed=JSON.parse(await readFile(join(prepared.profile,'cordis.patch.yml'),'utf8')).flatMap(row=>row.insert??[]).find(row=>row.id==='enterprise-oidc').config
+    assert.deepEqual(managed.profiles[0].provider.models[0].input,shell==='wails'?['text','image']:['text'])
+    assert.equal(managed.configFile.path,config)
+    assert.equal(prepared.environment.EDUWORK_VISION_FALLBACK,'true')
+    assert.equal(prepared.environment.DSH_BUNDLED_SKILL_DIR,managedContent.skillRoot)
+    assert.equal(await readFile(join(data,'settings.yaml'),'utf8'),personal)
   }
 })
 

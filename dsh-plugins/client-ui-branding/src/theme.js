@@ -1,7 +1,7 @@
 export const VISUAL_STYLES = Object.freeze(['dsh', 'ecnu-liwa'])
 
 export function normalizeVisualStyle(value) {
-  return VISUAL_STYLES.includes(value) ? value : 'dsh'
+  return VISUAL_STYLES.includes(value) ? value : 'ecnu-liwa'
 }
 
 const pair = (light, dark) => Object.freeze({ light, dark })

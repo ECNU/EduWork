@@ -37,7 +37,7 @@ function mergeConfig(base = {}, extra = {}) {
   return result
 }
 
-export async function prepareProductProfile({ product, home, shell, pluginConfig = {}, patches = [], enterpriseProfile, userConfig, configurationOwnership = 'user' }) {
+export async function prepareProductProfile({ product, home, shell, pluginConfig = {}, patches = [], enterpriseProfile, userConfig, configurationOwnership = 'user', managedContent = {} }) {
   if(!['user','publisher'].includes(configurationOwnership))throw new Error('Unknown desktop configuration ownership')
   product = await canonical(product); home = await canonical(home)
   if (!['electron', 'wails'].includes(shell)) throw new Error('Unknown desktop shell')
@@ -55,18 +55,18 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
         const { loadEnterpriseProfiles } = await import(pathToFileURL(req.resolve('@eduwork/dsh-oidc/profile')).href)
         // Validate profiles before starting the Host. No credentials are read.
         loadEnterpriseProfiles({ profiles: user.organizations }, {})
-        user.organizations = await loadEnterpriseModelUpdates(product, user.organizations)
+        if (shell === 'wails') user.organizations = await loadEnterpriseModelUpdates(product, user.organizations)
         loadEnterpriseProfiles({ profiles: user.organizations }, {})
       } catch (error) { throw new Error(`请检查配置文件 ${user.source.path}\n${error.message}`, { cause: error }) }
     }
     pluginConfig = mergeConfig(pluginConfig, {
       'eduwork-brand-settings': { product: user.product },
-      'enterprise-oidc': { profiles: user.organizations, allowEmptyProfiles: true, manageProductBrand: false, configFile: configurationOwnership==='publisher' ? undefined : user.source,
+      'enterprise-oidc': { profiles: user.organizations, allowEmptyProfiles: true, manageProductBrand: false, configFile: user.source,
         ...(!enterpriseProfile ? { profilePathEnv: 'EDUWORK_NO_IMPLICIT_ENTERPRISE_PROFILE' } : {}) },
     })
   }
   // Shared provider configuration is independent of the desktop shell/edition.
-  const media = await loadMediaProviders(product, user)
+  const media = await loadMediaProviders(product, shell === 'electron' && user ? { ...user, media: user.media ?? { providers: [] } } : user)
   pluginConfig = mergeConfig(pluginConfig, { 'eduwork-media-openai': media,
     'eduwork-artifact-services': { images: { enabled: media.providers.some(provider => provider.images?.enabled) } } })
   const resources = await prepareNativeResources({ product })
@@ -131,7 +131,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...desktop, ...patches], null, 2) + '\n')
   const environment = {
     DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1',
-    DSH_BUNDLED_SKILL_DIR: join(product, 'skills'),
+    DSH_BUNDLED_SKILL_DIR: managedContent.skillRoot ?? join(product, 'skills'),
     ...await prepareProductPresets({ product, home }),
     EDUWORK_PRODUCT_ROOT: product, EDUWORK_DESKTOP_SHELL: shell,
     DSH_MEDIA_NODE_ENV: join(product, 'd'),
