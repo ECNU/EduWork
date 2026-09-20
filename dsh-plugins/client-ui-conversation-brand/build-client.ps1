@@ -24,7 +24,7 @@ $source = if ([string]::IsNullOrWhiteSpace($RuntimePackages)) {
     Join-Path $runtimePackage 'lib'
 }
 $target = if ([string]::IsNullOrWhiteSpace($Output)) { Join-Path $PSScriptRoot 'lib' } else { [IO.Path]::GetFullPath($Output) }
-if (-not $target.StartsWith($repository + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Conversation output must stay within the repository' }
+if (-not $target.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Conversation output must stay within the repository' }
 if (-not (Test-Path -LiteralPath (Join-Path $source 'client.js'))) {
     throw "Locked DSH Conversation build is unavailable: $source"
 }

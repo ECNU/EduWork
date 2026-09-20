@@ -17,10 +17,10 @@ if ($artifactManifest.name -ne '@eduwork/dsh-artifact-services' -or -not $artifa
     throw 'Select Shared Artifact Services with office-preview-client via -ArtifactServices.'
 }
 $target = if ([string]::IsNullOrWhiteSpace($Output)) { Join-Path $source 'lib' } else { [IO.Path]::GetFullPath($Output) }
-if (-not $target.StartsWith($repository + '\', [StringComparison]::OrdinalIgnoreCase)) { throw 'Media UI output must stay within the repository' }
+if (-not $target.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Media UI output must stay within the repository' }
 $extensions = [IO.Path]::GetFullPath((Join-Path $upstream 'packages/extensions'))
 $stage = [IO.Path]::GetFullPath((Join-Path $extensions ('chatecnu-work-client-ui-media-artifacts-' + [guid]::NewGuid().ToString('N'))))
-$tsdown = Join-Path $upstream 'node_modules/.bin/tsdown.cmd'
+$tsdown = Join-Path $upstream ('node_modules/.bin/' + $(if ($IsWindows) { 'tsdown.cmd' } else { 'tsdown' }))
 & (Join-Path $repository 'dsh-desktop/scripts/test-dsh-compatibility.ps1') -Upstream $upstream -LockPath $DshLockPath
 if (-not (Test-Path -LiteralPath $tsdown)) { throw "Locked DSH build dependencies are unavailable: $tsdown" }
 if (Test-Path -LiteralPath $stage) { throw "Build stage already exists: $stage" }
@@ -62,7 +62,7 @@ try {
 } finally {
     # Check the resolved unique target before deleting our own build stage.
     $resolvedStage = [IO.Path]::GetFullPath($stage)
-    if (-not $resolvedStage.StartsWith($extensions + '\', [StringComparison]::OrdinalIgnoreCase) -or
+    if (-not $resolvedStage.StartsWith($extensions + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase) -or
         (Split-Path -Leaf $resolvedStage) -notmatch '^chatecnu-work-client-ui-media-artifacts-[a-f0-9]{32}$') { throw 'Unsafe build-stage cleanup target' }
     if (Test-Path -LiteralPath $resolvedStage) { Remove-Item -LiteralPath $resolvedStage -Recurse -Force }
 }
