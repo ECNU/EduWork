@@ -9,10 +9,11 @@ param(
     [Parameter(Mandatory)][string]$Node,
     [Parameter(Mandatory)][string]$OpenSSL,
     [string]$ExternalPublisherConfig,
-    [switch]$UserPublisherConfig,
+    [ValidateSet('stable','development')][string]$UpdateDefaultPolicy,
     [string]$BundleVersion,
     [string]$SparkleFramework,
     [string]$SparkleFeedURL,
+    [string]$SparkleDevelopmentFeedURL,
     [string]$SparklePublicEDKey
 )
 $ErrorActionPreference = 'Stop'
@@ -26,8 +27,8 @@ $Node = [IO.Path]::GetFullPath($Node)
 $OpenSSL = [IO.Path]::GetFullPath($OpenSSL)
 if (Test-Path -LiteralPath $Output) { throw 'macOS output must be a new directory' }
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'An explicit product version is required' }
+if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version -match '-dev\.') { 'development' } else { 'stable' } }
 if ($ExternalPublisherConfig -and -not [IO.Path]::IsPathRooted($ExternalPublisherConfig)) { throw 'External publisher configuration path must be absolute' }
-if ($ExternalPublisherConfig -and $UserPublisherConfig) { throw 'Choose either an explicit external config path or user-data config, not both' }
 $sparkleEnabled = [bool]($SparkleFramework -or $SparkleFeedURL -or $SparklePublicEDKey)
 if ($sparkleEnabled) {
     if (-not ($SparkleFramework -and $SparkleFeedURL -and $SparklePublicEDKey)) { throw 'Sparkle requires framework, HTTPS appcast URL and EdDSA public key together' }
@@ -41,19 +42,11 @@ if ($sparkleEnabled) {
     if (-not $BundleVersion) { throw 'Sparkle requires an explicit monotonically increasing BundleVersion (one to three numeric parts)' }
 }
 if ($BundleVersion -and $BundleVersion -notmatch '^(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*)){0,2}$') { throw 'BundleVersion must contain one to three numeric parts without leading zeros' }
+if ($SparkleDevelopmentFeedURL) {
+    $devFeed=[uri]$SparkleDevelopmentFeedURL
+    if (-not $sparkleEnabled -or $devFeed.Scheme -ne 'https' -or $devFeed.UserInfo -or $devFeed.Fragment -or $devFeed.Query) { throw 'Development appcast requires a fixed HTTPS URL and the Sparkle trust key' }
+}
 $identity = Get-Content -LiteralPath (Join-Path $Product 'assembly.json') -Raw | ConvertFrom-Json
-$ownership = 'user'
-$policyPath = Join-Path $Product 'resources/desktop/configuration-policy.json'
-if (Test-Path -LiteralPath $policyPath) {
-    $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
-    if ($policy.schemaVersion -ne 1 -or $policy.ownership -notin @('user','publisher')) { throw 'Invalid desktop configuration ownership policy' }
-    $ownership = $policy.ownership
-}
-if ($sparkleEnabled -and $ownership -eq 'publisher') {
-    if (-not ($ExternalPublisherConfig -or $UserPublisherConfig)) { throw 'Sparkle publisher edition requires external or user-data configuration; bundled configuration would be replaced during updates' }
-    if ($ExternalPublisherConfig -match '[/\\]eduwork\.\d+\.\d+\.\d+(?:-dev\.\d{8}\.[1-9]\d*)?\.jsonc$') { throw 'Sparkle publisher edition needs a stable external configuration path across app versions' }
-}
-if ($UserPublisherConfig -and $ownership -ne 'publisher') { throw 'User-data publisher configuration requires publisher ownership' }
 & $Node (Join-Path $PSScriptRoot '../../scripts/verify-product-release-identity.mjs') $Product $Version
 if ($LASTEXITCODE -ne 0) { throw 'Product release identity verification failed' }
 $receipt = Get-Content -LiteralPath (Join-Path $ShellBuild 'source-receipt.json') -Raw | ConvertFrom-Json
@@ -91,6 +84,7 @@ foreach ($asset in @('icon-32.png','icon-256.png','icon.icns')) {
 New-Item -ItemType Directory -Path (Join-Path $resources 'product') | Out-Null
 & rsync -a ($Product + '/') ((Join-Path $resources 'product') + '/')
 if ($LASTEXITCODE -ne 0) { throw 'Product copy failed' }
+& (Join-Path $PSScriptRoot 'relocate-macos-compositor.ps1') -PackageRoot (Join-Path $resources 'product/d/node_modules/@remotion/compositor-darwin-arm64') -Receipt (Join-Path $resources 'compositor-relocation.json')
 $ladybugPackage = Join-Path $resources 'product/d/node_modules/@ladybugdb/core-darwin-arm64'
 $ladybugNative = Join-Path $ladybugPackage 'lbugjs.node'
 $sslSource = Join-Path $OpenSSL 'lib/libssl.3.dylib'
@@ -127,19 +121,31 @@ Copy-Item -LiteralPath $Node -Destination (Join-Path $resources 'runtime/node')
 Copy-Item -LiteralPath $nodeLicense -Destination (Join-Path $resources 'runtime/LICENSE-Node')
 & chmod 755 (Join-Path $resources 'runtime/node')
 
+$ownership = 'user'
+$policyPath = Join-Path $Product 'resources/desktop/configuration-policy.json'
+if (Test-Path -LiteralPath $policyPath) {
+    $policy = Get-Content -LiteralPath $policyPath -Raw | ConvertFrom-Json
+    if ($policy.schemaVersion -ne 1 -or $policy.ownership -notin @('user','publisher')) { throw 'Invalid desktop configuration ownership policy' }
+    $ownership = $policy.ownership
+}
 $desktop = [ordered]@{
     schemaVersion=1; shell='electron'; appId="org.eduwork.$($identity.distribution).electron"
     distribution=$identity.distribution; productName=$identity.brand.product.name; productVersion=$Version
     product='../product'; node='../runtime/node'; configurationOwnership=$ownership
-    updateChannel='disabled-candidate'; updates=@{defaultPolicy='development'}
+    updateChannel='disabled-candidate'; updates=@{defaultPolicy=$UpdateDefaultPolicy}
 }
-if ($sparkleEnabled) { $desktop.macSparkle=@{enabled=$true} }
-if ($ExternalPublisherConfig -or $UserPublisherConfig) {
+if ($sparkleEnabled) {
+    $desktop.macSparkle=@{enabled=$true;feeds=@{stable=$SparkleFeedURL}}
+    if ($SparkleDevelopmentFeedURL) { $desktop.macSparkle.feeds.development=$SparkleDevelopmentFeedURL }
+    if ($UpdateDefaultPolicy -eq 'development' -and -not $SparkleDevelopmentFeedURL) { throw 'Development builds require a development appcast' }
+}
+$bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
+if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
+if ($ExternalPublisherConfig) {
     if ($ownership -ne 'publisher') { throw 'External publisher configuration requires publisher ownership' }
     $bundledPublisherConfig = Join-Path $resources 'product/resources/desktop/eduwork.jsonc'
     if (Test-Path -LiteralPath $bundledPublisherConfig) { Remove-Item -LiteralPath $bundledPublisherConfig -Force }
-    if ($UserPublisherConfig) { $desktop.publisherConfigLocation='user-data' }
-    else { $desktop.publisherConfig=$ExternalPublisherConfig }
+    $desktop.publisherConfig=$ExternalPublisherConfig
 } elseif ($ownership -eq 'publisher') { $desktop.publisherConfig='../product/resources/desktop/eduwork.jsonc' }
 $desktop | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $appPayload 'eduwork.desktop.json') -Encoding utf8NoBOM
 @{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $appPayload 'package.json') -Encoding utf8NoBOM
@@ -166,7 +172,7 @@ if ($sparkleEnabled) {
     New-Item -ItemType Directory -Path $native | Out-Null
     & clang++ -std=c++17 -fobjc-arc -dynamiclib -undefined dynamic_lookup -I $headers -F (Join-Path $app 'Contents/Frameworks') -framework Sparkle -framework AppKit '-Wl,-rpath,@loader_path/../../../Frameworks' (Join-Path $PSScriptRoot '../native/sparkle-addon.mm') -o (Join-Path $native 'sparkle.node')
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle native bridge compilation failed' }
-    & plutil -replace SUFeedURL -string $SparkleFeedURL $plist
+    & plutil -replace SUFeedURL -string $(if ($UpdateDefaultPolicy -eq 'development') { $SparkleDevelopmentFeedURL } else { $SparkleFeedURL }) $plist
     & plutil -replace SUPublicEDKey -string $SparklePublicEDKey $plist
     & plutil -replace SUEnableAutomaticChecks -bool NO $plist
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle Info.plist setup failed' }
@@ -182,13 +188,17 @@ $release = [ordered]@{
     distribution=$identity.distribution; productName=$identity.brand.product.name; platform='darwin-arm64'
     electronVersion=$electronVersion; nodeVersion=$receipt.host.nodeVersion
     minimumSystemVersion='15.0'; ladybugNativePatched=$true; bundledOpenSSL='3.5.8'
-    configurationMode=$(if ($UserPublisherConfig) {'user-data-publisher'} elseif ($ExternalPublisherConfig) {'external-publisher'} elseif ($ownership -eq 'publisher') {'bundled-publisher'} else {'user'})
+    configurationMode=$(if ($bootstrap.enabled) {'downloaded-publisher'} elseif ($ExternalPublisherConfig) {'external-publisher'} elseif ($ownership -eq 'publisher') {'bundled-publisher'} else {'user'})
     developerIDSigned=$false; adHocSigned=$true; notarized=$false
     sparkleEnabled=$sparkleEnabled; bundleVersion=$effectiveBundleVersion
     published=$false; assembledAt=[DateTime]::UtcNow.ToString('o')
 }
 $release | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $resources 'release.json') -Encoding utf8NoBOM
-$archiveQualifier = if ($ExternalPublisherConfig -or $UserPublisherConfig) { '-external-config' } else { '' }
+# Seal the immutable Skill baseline into the app before signing. Mutable content
+# updates live in Application Support and never rewrite the signed bundle.
+& $Node (Join-Path $PSScriptRoot '../../scripts/write-bundled-skills-manifest.mjs') --root $app --product (Join-Path $resources 'product') --output (Join-Path $resources 'bundled-skills.json')
+if ($LASTEXITCODE -ne 0) { throw 'Bundled Skills integrity manifest failed' }
+$archiveQualifier = if ($ExternalPublisherConfig) { '-external-config' } else { '' }
 $archive = Join-Path $Output "$editionName-$Version-macos-arm64-electron$archiveQualifier.zip"
 $signingRoot = Join-Path ([IO.Path]::GetTempPath()) ('eduwork-macos-' + [guid]::NewGuid().ToString('N'))
 $signingApp = Join-Path $signingRoot $appName

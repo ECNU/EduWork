@@ -19,11 +19,26 @@ if (-not (Test-Path -LiteralPath $archive)) {
 }
 if ((Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant() -ne $expected) { throw 'Electron archive checksum mismatch' }
 $runtime = Join-Path $Output 'runtime'
-if (-not (Test-Path -LiteralPath $(if ($IsWindows) { Join-Path $runtime 'electron.exe' } else { Join-Path $runtime 'Electron.app/Contents/MacOS/Electron' }) -PathType Leaf)) {
+if (-not (Test-Path -LiteralPath $runtime -PathType Container)) {
     New-Item -ItemType Directory -Path $runtime -Force | Out-Null
     & tar -xf $archive -C $runtime
     if ($LASTEXITCODE -ne 0) { throw 'Electron extraction failed' }
 }
-if ($IsWindows -and (Get-Content -LiteralPath (Join-Path $runtime 'version') -Raw).Trim().TrimStart('v') -ne $manifest.version) { throw 'Electron runtime version mismatch' }
-@{version=$manifest.version;platform=$platform;arch=$arch;archive=$archiveName;sha256=$expected;downloadedFrom='https://github.com/electron/electron/releases';runtime=$runtime} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Output 'receipt.json') -Encoding utf8NoBOM
-Write-Output "Verified Electron $($manifest.version) $platform $arch runtime: $runtime"
+if ($IsWindows) {
+    if (-not (Test-Path -LiteralPath (Join-Path $runtime 'electron.exe') -PathType Leaf)) { throw 'Electron runtime executable is missing' }
+    $actualVersion = (Get-Content -LiteralPath (Join-Path $runtime 'version') -Raw).Trim().TrimStart('v')
+    $actualArch = $arch # Windows runtime architecture is bound to the verified archive.
+} else {
+    $electronApp = Join-Path $runtime 'Electron.app'
+    $executable = Join-Path $electronApp 'Contents/MacOS/Electron'
+    $plist = Join-Path $electronApp 'Contents/Info.plist'
+    if (-not (Test-Path -LiteralPath $executable -PathType Leaf) -or -not (Test-Path -LiteralPath $plist -PathType Leaf)) { throw 'Electron.app runtime is incomplete' }
+    $actualVersion = (& plutil -extract CFBundleShortVersionString raw $plist).Trim()
+    if ($LASTEXITCODE -ne 0) { throw 'Electron.app version could not be read' }
+    $architectures = (& lipo -archs $executable).Trim() -split '\s+'
+    if ($LASTEXITCODE -ne 0 -or $arch -notin $architectures) { throw "Electron runtime architecture mismatch: expected $arch" }
+    $actualArch = $arch
+}
+if ($actualVersion -ne $manifest.version) { throw "Electron runtime version mismatch: expected $($manifest.version), found $actualVersion" }
+@{version=$actualVersion;platform=$platform;arch=$actualArch;archive=$archiveName;sha256=$expected;downloadedFrom='https://github.com/electron/electron/releases';runtime=$runtime} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Output 'receipt.json') -Encoding utf8NoBOM
+Write-Output "Verified Electron $actualVersion $platform $actualArch runtime: $runtime"

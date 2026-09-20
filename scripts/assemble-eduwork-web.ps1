@@ -207,7 +207,9 @@ $bundle = Join-Path $modules '@eduwork/web-composition'
 & node (Child $CoreRoot 'scripts/configure-product-concurrency.mjs') $runtime
 if ($LASTEXITCODE -ne 0) { throw 'Built-in workflow concurrency configuration failed' }
 New-Item -ItemType Directory -Path $bundle -Force | Out-Null
-@{name='@eduwork/web-composition';version=$Version;private=$true;type='module';dsh=@{bundle=@{patch='./cordis.patch.yml'}}} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $bundle 'package.json') -Encoding utf8NoBOM
+$bundleDependencies = [ordered]@{}
+foreach ($packageName in $local.Keys) { $bundleDependencies[$packageName] = $local[$packageName].version }
+@{name='@eduwork/web-composition';version=$Version;private=$true;type='module';dependencies=$bundleDependencies;dsh=@{bundle=@{patch='./cordis.patch.yml'}}} | ConvertTo-Json -Depth 6 | Set-Content -LiteralPath (Join-Path $bundle 'package.json') -Encoding utf8NoBOM
 @'
 - id: agent-presets
   config:

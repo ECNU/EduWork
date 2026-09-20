@@ -19,19 +19,7 @@ $identity = Get-Content -LiteralPath (Join-Path $WebAssembly 'assembly.json') -R
 if ($identity.pluginMode -eq 'npm' -and ($OidcSnapshot -or $StudioSnapshot)) { throw 'An npm desktop product preserves the tested Web packages; assemble an explicit development Web product to use snapshot overrides' }
 $hostReceipt = Get-Content -LiteralPath (Join-Path $HostAdapter 'receipt.json') -Raw | ConvertFrom-Json
 if ($identity.kind -ne 'eduwork-web' -or $identity.dshCommit -ne $hostReceipt.upstreamCommit -or $identity.dshVersion -ne $hostReceipt.upstreamVersion) { throw 'Product and desktop Host baselines differ' }
-function Copy-Tree([string]$Source,[string]$Destination) {
-    if (-not $IsWindows) {
-        Copy-Item -LiteralPath $Source -Destination $Destination -Recurse
-        return
-    }
-    $nativeErrors = $PSNativeCommandUseErrorActionPreference
-    try {
-        $PSNativeCommandUseErrorActionPreference = $false
-        & robocopy.exe $Source $Destination /E /XJ /COPY:DAT /R:2 /W:1 /NFL /NDL /NJH /NJS /NP | Out-Null
-        if ($LASTEXITCODE -ge 8) { throw 'Desktop payload copy failed' }
-        $global:LASTEXITCODE = 0
-    } finally { $PSNativeCommandUseErrorActionPreference = $nativeErrors }
-}
+. (Join-Path $PSScriptRoot 'copy-desktop-tree.ps1')
 Copy-Tree $WebAssembly $Output
 $modules = Join-Path $Output 'd/node_modules'
 Copy-Tree (Join-Path $HostAdapter 'desktop-host') (Join-Path $modules '@deepseek-ai/dsh-desktop-host')

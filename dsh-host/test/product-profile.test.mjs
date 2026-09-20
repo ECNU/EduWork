@@ -180,6 +180,16 @@ test('both shells refresh an old enterprise catalog without rewriting personal p
       assert.equal(await readFile(join(data,'settings.yaml'),'utf8'),personal)
       assert.equal(await readFile(join(data,'selected-model.json'),'utf8'),selected)
     }
+    // A signed current configuration supersedes migrations embedded in the
+    // program. Rolling back removes that overlay and restores the built-in rule.
+    const managedContent={configurationRevision:2,configurationPatch:{organizations:[org],features:{visionFallback:true}},skillsRevision:2,skillRoot:join(root,'signed-skills')}
+    const prepared=await prepareProductProfile({product,home:data,shell,userConfig:config,managedContent})
+    const managed=JSON.parse(await readFile(join(prepared.profile,'cordis.patch.yml'),'utf8')).flatMap(row=>row.insert??[]).find(row=>row.id==='enterprise-oidc').config
+    assert.deepEqual(managed.profiles[0].provider.models[0].input,['text'])
+    assert.equal(managed.configFile.path,config)
+    assert.equal(prepared.environment.EDUWORK_VISION_FALLBACK,'true')
+    assert.equal(prepared.environment.DSH_BUNDLED_SKILL_DIR,managedContent.skillRoot)
+    assert.equal(await readFile(join(data,'settings.yaml'),'utf8'),personal)
   }
 })
 

@@ -57,11 +57,12 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-for (const name of ['portable-updates.mjs', 'mac-sparkle-updates.mjs', 'native-vault.mjs', 'product.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
+const electronAdapters = ['update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'native-vault.mjs', 'product.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
+for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
 await copyFile(join(repository, 'dsh-host/native-resources.mjs'), join(output, 'src/native-resources.mjs'))
-await copyFile(join(repository, 'dsh-host/user-config.mjs'), join(output, 'src/user-config.mjs'))
+for (const name of ['user-config.mjs', 'content-updates.mjs', 'content-update-protocol.mjs', 'publisher-bootstrap.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-plugins/media-openai/lib/config.js'), join(output, 'src/media-config.mjs'))
 await copyFile(join(repository, 'dsh-host/enterprise-model-updates.mjs'), join(output, 'src/enterprise-model-updates.mjs'))
 await copyFile(join(repository, 'dsh-host/desktop-updates.mjs'), join(output, 'src/desktop-updates.mjs'))
@@ -85,7 +86,9 @@ const { build } = await import(pathToFileURL(require.resolve('tsdown')).href)
 await build({ config: false, cwd: output, alias, failOnWarn: true, entry: ['src/main.ts'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { alwaysBundle: [/.*/u], neverBundle: ['electron'] } })
 await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'preload-app': 'src/preload-app.ts' }, outDir: 'lib', format: ['cjs'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { neverBundle: ['electron'] } })
 const adapters = {}
-for (const file of ['dsh-electron/scripts/build-shell.mjs', 'dsh-electron/src/portable-updates.mjs', 'dsh-electron/src/mac-sparkle-updates.mjs', 'dsh-electron/src/product.mjs', 'dsh-electron/src/native-vault.mjs', 'dsh-electron/src/configuration-files.mjs', 'dsh-electron/src/lifecycle.mjs', 'dsh-electron/src/media-transport.mjs', 'dsh-electron/src/legacy-migration.mjs', 'dsh-electron/src/external-navigation.mjs', 'dsh-host/release-policy.mjs', 'dsh-host/desktop-updates.mjs', 'dsh-host/workbench-support.mjs', 'dsh-host/diagnostics.mjs', 'dsh-host/desktop-log.mjs', 'dsh-host/product-profile.mjs', 'dsh-host/product-presets.mjs', 'dsh-host/native-resources.mjs']) adapters[file] = digest(await readFile(join(repository, file)))
+adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))
+for (const name of electronAdapters) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+for (const file of ['dsh-electron/native/sparkle-addon.mm', 'dsh-electron/scripts/build-shell.mjs', 'dsh-electron/src/portable-updates.mjs', 'dsh-electron/src/product.mjs', 'dsh-electron/src/native-vault.mjs', 'dsh-electron/src/configuration-files.mjs', 'dsh-electron/src/lifecycle.mjs', 'dsh-electron/src/media-transport.mjs', 'dsh-electron/src/legacy-migration.mjs', 'dsh-electron/src/external-navigation.mjs', 'dsh-host/release-policy.mjs', 'dsh-host/desktop-updates.mjs', 'dsh-host/workbench-support.mjs', 'dsh-host/diagnostics.mjs', 'dsh-host/desktop-log.mjs', 'dsh-host/product-profile.mjs', 'dsh-host/product-presets.mjs', 'dsh-host/native-resources.mjs']) adapters[file] = digest(await readFile(join(repository, file)))
 const notices = [], visited = new Set()
 async function collectNotice(name, from) {
   let manifestPath
@@ -122,7 +125,7 @@ for (const name of Object.keys(alias)) await collectNotice(name, join(upstream, 
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })
-for (const file of ['dsh-electron/src/configuration-policy.mjs', 'dsh-host/user-config.mjs', 'dsh-plugins/media-openai/lib/config.js', 'dsh-host/enterprise-model-updates.mjs', ...['parser.js', 'scanner.js', 'string-intern.js'].map(name => 'dsh-host/' + vendor + '/' + name)]) adapters[file] = digest(await readFile(join(repository, file)))
+for (const file of ['dsh-electron/src/update-coordinator.mjs', 'dsh-host/content-updates.mjs', 'dsh-host/content-update-protocol.mjs', 'dsh-electron/src/configuration-policy.mjs', 'dsh-host/user-config.mjs', 'dsh-plugins/media-openai/lib/config.js', 'dsh-host/enterprise-model-updates.mjs', ...['parser.js', 'scanner.js', 'string-intern.js'].map(name => 'dsh-host/' + vendor + '/' + name)]) adapters[file] = digest(await readFile(join(repository, file)))
 await writeFile(join(output, 'third-party/notices.json'), JSON.stringify(notices, null, 2) + '\n')
 await writeFile(join(output, 'source-receipt.json'), JSON.stringify({ schemaVersion: 1, dshCommit: lock.commit, dshVersion: lock.packageVersion, kind: 'official-desktop-with-product-adapters', files: rows, adapters, host: hostReceipt }, null, 2) + '\n')
 console.log('Built official Electron shell with recorded product adapters: ' + output)

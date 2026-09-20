@@ -8,11 +8,13 @@ import { ECNU_LIWA_TOKENS, normalizeVisualStyle, tokensForVisualStyle } from '..
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 
-test('visual style defaults to blue and preserves an explicit red preference', () => {
+test('visual style defaults to red and preserves an explicit blue preference', () => {
   assert.equal(normalizeVisualStyle('dsh'), 'dsh')
-  assert.equal(normalizeVisualStyle('unknown'), 'dsh')
+  assert.equal(normalizeVisualStyle('unknown'), 'ecnu-liwa')
+  assert.equal(normalizeVisualStyle(undefined), 'ecnu-liwa')
   assert.equal(normalizeVisualStyle('ecnu-liwa'), 'ecnu-liwa')
   assert.equal(tokensForVisualStyle('dsh'), null)
+  assert.equal(tokensForVisualStyle(undefined), ECNU_LIWA_TOKENS)
 })
 
 test('product identity is assembly supplied and theme adaptive', () => {

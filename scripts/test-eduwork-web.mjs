@@ -309,8 +309,11 @@ try {
     const socket = createServer()
     const port = await listen(socket)
     await new Promise(accept => socket.close(accept))
+    const isolatedHome = join(evidence, 'os-home')
+    await mkdir(isolatedHome)
     config = { assembly: options.assembly, home: join(evidence, 'home'), logs: join(evidence, 'logs'),
-      profileName: `eduwork-ci-${runID}`, port }
+      profileName: `eduwork-ci-${runID}`, port,
+      environment: options.mode === 'clean-ci' ? { HOME: isolatedHome, USERPROFILE: isolatedHome } : undefined }
     configPath = join(evidence, 'web.private.json')
     await writeFile(configPath, JSON.stringify(config, null, 2) + '\n')
     owned = true
@@ -375,7 +378,8 @@ try {
     const catalog = await rpc('skills/list', { request: { sessionId: session.sessionId } })
     const names = catalog.skills.map(row => row.name)
     assert.equal(names.length, new Set(names).size, 'The real Agent catalog must not repeat names')
-    assert.ok(names.every(name => identity.skills.includes(name)), 'Do not expose undeclared/duplicate legacy skills')
+    const undeclared = names.filter(name => !identity.skills.includes(name))
+    assert.equal(undeclared.length, 0, `Do not expose undeclared/duplicate legacy skills: ${undeclared.join(', ')}`)
     const { parse } = createRequire(join(options.assembly, 'd/package.json'))('yaml')
     const metadata = await Promise.all(identity.skills.map(async name => {
       const text = await readFile(join(options.assembly, 'skills', name, 'SKILL.md'), 'utf8')

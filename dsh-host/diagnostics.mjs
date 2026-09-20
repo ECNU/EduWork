@@ -90,7 +90,7 @@ function configurationSummary(settings) {
   }
 }
 
-export async function exportDiagnostics({ config, version, shell, logs, root, product, home, updateStatus }) {
+export async function exportDiagnostics({ config, version, shell, logs, root, product, home, updateStatus, configurationOverlay }) {
   const paths = { PROGRAM: root, PRODUCT: product, DSH_HOME: home, LOGS: logs }
   const entries = [], files = [], generatedAt = new Date().toISOString(); let remaining = MAX_TOTAL
   const add = (name, text) => { const body = redactDiagnostic(text, paths); entries.push([name, body]); return body }
@@ -107,9 +107,11 @@ export async function exportDiagnostics({ config, version, shell, logs, root, pr
     }
   }
   let configuration
-  try { configuration = configurationSummary(loadUserConfig(config)) }
+  try { configuration = configurationSummary(loadUserConfig(config, { overlay: configurationOverlay })) }
   catch (error) { configuration = { valid: false, error: redactDiagnostic(error.message, paths) } }
   add('configuration.json', JSON.stringify(configuration, null, 2))
+  if (updateStatus?.contentUpdate) add('content-update-status.json', JSON.stringify(select(updateStatus.contentUpdate,
+    ['enabled', 'state', 'policy', 'configurationRevision', 'skillsRevision', 'latestRevision', 'downloadedBytes', 'totalBytes', 'message']), null, 2))
   if (updateStatus) add('update-status.json', JSON.stringify(select(updateStatus.update ?? updateStatus,
     ['state', 'phase', 'enabled', 'policy', 'currentVersion', 'latestVersion', 'downloadedBytes', 'totalBytes', 'installOnNextStart', 'checkedAt', 'error', 'message']), null, 2))
   for (const name of ['desktop-host.log', 'startup-error.log', 'host.log', 'desktop-shell.log', 'dsh-web.log', 'update.log', 'desktop-host.log.1']) {
