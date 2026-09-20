@@ -23,7 +23,9 @@ jobs:
       - name: Check shared update coordination
         run: node --test dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs
       - name: Prepare the pinned Electron test runtime
-        run: npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --no-audit --no-fund electron@44.0.0
+        run: |
+          npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --ignore-scripts --no-audit --no-fund electron@44.0.0
+          node "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/install.js"
       - name: Verify native bridge and signed replacement
         run: node dsh-electron/tests/sparkle-macos-smoke.mjs "$RUNNER_TEMP/sparkle-check"
       - name: Retain synthetic test results

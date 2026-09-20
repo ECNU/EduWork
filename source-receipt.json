@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-20T14:00:28.765Z",
-  "fileSetSHA256": "2a507c0f06c5dcb4b36bc2272e246bb6f6a7fcf534a68d8a17742b00349dc494",
+  "createdAt": "2026-09-20T14:03:40.664Z",
+  "fileSetSHA256": "960d80d35e4461ce8980720cd3c3ffa0cd8ab13e8251ffde9b327bcbe64730e7",
   "files": [
     {
       "path": ".gitattributes",
@@ -33,7 +33,7 @@
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "f7372876938c4101c69e69a61b693cdbac0022e0d91aa946689138c5c2aa9e8f"
+      "sha256": "2518265a8c9b910171f4189e52a918996932a62105600cdbf6e5806bd6caed47"
     },
     {
       "path": ".gitignore",
