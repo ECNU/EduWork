@@ -144,6 +144,8 @@ export class ConfigurationFile {
     const basis = this.state.initialFingerprints ?? configurationFingerprints(business(current.value))
     const firstDefaults = { hash: '', children: Object.fromEntries(Object.keys(patch).map(name => [name, name === 'features' && basis.children?.features
       ? { hash: '', children: Object.fromEntries(Object.keys(patch.features).map(key => [key, basis.children?.features?.children?.[key]])) }
+      : name === 'organizations' && keyed(patch.organizations) && basis.children?.organizations?.items
+        ? { hash: '', items: Object.fromEntries(patch.organizations.map(item => [item.id, basis.children.organizations.items[item.id]]).filter(([, value]) => value)) }
       : basis.children?.[name]])) }
     const previous = this.state.defaults?.fingerprints ?? firstDefaults
     const conflicts = []

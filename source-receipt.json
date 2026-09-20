@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-20T15:56:21.217Z",
-  "fileSetSHA256": "744e176e8e3cb6a9d490870f05aafac38c226ef322ddc4fa2c528f12304908ad",
+  "createdAt": "2026-09-20T16:36:28.510Z",
+  "fileSetSHA256": "8659cf66d8b25267bdd561384aaabfb4941772c84017df09c2522477403c1a45",
   "files": [
     {
       "path": ".gitattributes",
@@ -261,11 +261,11 @@
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
-      "sha256": "522cb514e498d1c199aae059edc496c472c1f5b264fd33eadf76a025deb56a99"
+      "sha256": "a373a274bed2d97afac77f6fa21ae84beb634fd30589db0e2f891ff03f2fa876"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP.md",
-      "sha256": "19d3b1cf6e01c9d25720a8e3e722f51d5774a6fb19c2999267731f5118c35848"
+      "sha256": "2507b8e40f60dfd01cc4e78f6ad3acab39ee9970562a4bd6d90bcdc6ff61e08e"
     },
     {
       "path": "docs/RELEASE.md",
@@ -849,7 +849,7 @@
     },
     {
       "path": "dsh-host/configuration-file.mjs",
-      "sha256": "29eae6f0b5ca57c6fadaab713192973762097f222e468620c81c5d421f17295a"
+      "sha256": "fac7f71e0cb49123586662b2391e0aeeafc3f46c4ab1f7da33f2c9aa585e4161"
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
@@ -909,7 +909,7 @@
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
-      "sha256": "3cf174f98e50bcd0432c3ebed65ddea3cfb82edaf4c83fba84b1b905ba9c7a24"
+      "sha256": "d5dc5786b8b314f101c20d80ae86c5c4571b98df6c488ee3812ee5adf9caf392"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -981,7 +981,7 @@
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
-      "sha256": "e47dba00f9ceea6a45d484d8eb62ada272eed15e144da03ea9ba9e58015b6528"
+      "sha256": "8430feeee85c7d0da3326099e95f115a0cf7d02648fa7326c49af6679a261004"
     },
     {
       "path": "dsh-host/test/release-policy.test.mjs",
@@ -1001,7 +1001,7 @@
     },
     {
       "path": "dsh-host/user-config.mjs",
-      "sha256": "d463e3126b1a50d39553bda380f49b59b4f1ce7389780e44f889a7175e7150cd"
+      "sha256": "e448f5a3ead1ca21ffc6d4d79835eb320ec1c0ac1b44b32fae464b02ae3869d0"
     },
     {
       "path": "dsh-host/vendor/jsonc-parser/LICENSE.md",
