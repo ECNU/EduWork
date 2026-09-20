@@ -165,6 +165,7 @@ foreach ($row in @(
     if ($LASTEXITCODE -ne 0) { throw "Info.plist update failed: $($row[0])" }
 }
 if ($sparkleEnabled) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../LICENSE-Sparkle') -Destination (Join-Path $resources 'LICENSE-Sparkle')
     $frameworkTarget = Join-Path $app 'Contents/Frameworks/Sparkle.framework'
     & ditto --noextattr --noqtn --noacl $SparkleFramework $frameworkTarget
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle framework copy failed' }
