@@ -38,8 +38,9 @@ and the resolved user layer for `visualStyle` and panel width. Display names do
 not select model providers, authentication, speech or other capabilities.
 
 The stored namespace `chatecnu-brand` and red-style id `ecnu-liwa` remain stable
-for existing users. A new profile defaults to blue (`dsh`); an existing explicit
-red preference is preserved. An institution can supply a red composition default.
+for existing users. Public and institution profiles default to red (`ecnu-liwa`),
+including missing or invalid preferences. Explicit blue (`dsh`) and red choices
+are preserved, and users can still switch between them.
 
 No desktop bridge is required. In local Web, omit the two product preset root
 environment variables to use the official roster. Optional-preset file sync runs

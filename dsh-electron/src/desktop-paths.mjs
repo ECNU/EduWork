@@ -8,8 +8,6 @@ export function desktopPaths({ appRoot, appData, settings, platform = process.pl
   const writableRoot = mac ? join(appData, settings.distribution + '-electron') : root
   if (testRoot && (!isAbsolute(testRoot) || /(?:^|[\\/])current(?:[\\/]|$)/iu.test(testRoot))) throw new Error('Test data requires an isolated absolute directory')
   const dataRoot = testRoot ? resolve(testRoot) : mac ? writableRoot : join(root, 'data', settings.distribution + '-electron')
-  const publisherConfig = settings.configurationOwnership === 'publisher' && settings.publisherConfig
-    ? resolve(appRoot, settings.publisherConfig) : undefined
   return {
     root,
     updateDataRoot: testRoot ? join(dataRoot, 'updates') : join(writableRoot, 'data'),
@@ -19,7 +17,8 @@ export function desktopPaths({ appRoot, appData, settings, platform = process.pl
     home: join(dataRoot, 'dsh'),
     userData: join(dataRoot, 'browser'),
     logs: join(dataRoot, 'logs'),
-    config: desktopConfigurationPath({ root: writableRoot, version: settings.productVersion, ownership: settings.configurationOwnership, override: configOverride ?? publisherConfig }),
+    config: desktopConfigurationPath({ root: writableRoot, version: settings.productVersion, ownership: settings.configurationOwnership, override: configOverride }),
+    legacyConfig: settings.configurationOwnership === 'publisher' && settings.publisherConfig ? resolve(appRoot, settings.publisherConfig) : undefined,
     icon: mac ? resolve(appRoot, '../brand/icon-256.png') : join(root, 'resources/brand/icon-256.png'),
   }
 }

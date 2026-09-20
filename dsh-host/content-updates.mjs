@@ -3,6 +3,7 @@ import { join, dirname, relative, isAbsolute, sep } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
+import { ConfigurationFile } from './configuration-file.mjs'
 
 async function readJSON(path, fallback) { try { return JSON.parse(await readFile(path,'utf8')) } catch(error) { if(error.code==='ENOENT')return fallback;throw error } }
 async function atomic(path,value) {
@@ -29,9 +30,10 @@ export class ContentUpdates {
   }
   async init() {
     if(!['stable','development'].includes(this.policy))throw Error('内容更新渠道无效')
+    this.configurationFile=await new ConfigurationFile(this.configPath,this.dataRoot).open()
     this.source=loadUserConfig(this.configPath).contentUpdates
     if(!this.source||!this.source.configuration&&!this.source.skills)return this
-    const scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))
+    const scope=this.scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))
     // Installed revisions survive channel changes; changing feeds never downgrades.
     this.store=join(this.dataRoot,'content-updates',scope)
     await safeDirectory(this.store)
@@ -87,9 +89,10 @@ export class ContentUpdates {
     const {directory,manifest,bundle}=await this.cached(key)
     const result={}
     if(includeConfiguration&&bundle.configuration) {
-      // Keep relative assets and the user's editable file anchored to the base config.
+      // Validate the signed defaults, then write through the single-file
+      // transaction only after all selected components have been verified.
       loadUserConfig(this.configPath,{overlay:bundle.configuration})
-      result.configurationPatch=bundle.configuration;result.configurationRevision=manifest.components.configuration
+      result.configurationDefaults=bundle.configuration;result.configurationRevision=manifest.components.configuration
     }
     if(includeSkills&&bundle.skills) {
       await this.unchangedBundledSkills()
@@ -111,6 +114,7 @@ export class ContentUpdates {
   async prepare() {
     if(!this.source||!this.view.enabled)return {}
     const selected={...this.state.active}
+    for(const name of Object.keys(selected))if(!this.source[name])delete selected[name]
     // A newer whole-application package supersedes older cached components.
     for(const key of new Set(Object.values(selected))) {
       try {
@@ -126,6 +130,7 @@ export class ContentUpdates {
         const pending=await this.cached(this.state.pending)
         if(Object.entries(pending.manifest.components).some(([name,revision])=>revision<(this.source.bundled[name]??0)))throw Error('软件内置内容已更新，已取消旧的待生效内容')
         for(const name of Object.keys(pending.manifest.components)) {
+          if(!this.source[name])continue
           const activeRevision=selected[name]?(await this.cached(selected[name])).manifest.components[name]:this.source.bundled[name]??0
           if(pending.manifest.components[name]>activeRevision)selected[name]=this.state.pending
         }
@@ -135,6 +140,16 @@ export class ContentUpdates {
     try {
       let result={}
       for(const key of new Set(Object.values(selected)))result={...result,...await this.materialize(key,selected.configuration===key,selected.skills===key)}
+      if(result.configurationDefaults) {
+        const conflicts=await this.configurationFile.apply({scope:this.scope,key:selected.configuration,patch:result.configurationDefaults,
+          revision:result.configurationRevision,
+          legacy:!this.configurationFile.state.defaults&&selected.configuration===this.state.active.configuration})
+        this.view.configurationConflicts=conflicts
+        if(conflicts.length)this.view.message=`已保留 ${conflicts.length} 项本地配置修改：${conflicts.join('、')}`
+        delete result.configurationDefaults
+      }
+      const local=this.configurationFile.state.defaults
+      if(!result.configurationRevision&&this.source.configuration&&local?.scope===this.scope&&local.revision>(this.source.bundled.configuration??0))result.configurationRevision=local.revision
       this.selected=selected
       Object.assign(this.view,{configurationRevision:result.configurationRevision??this.source.bundled.configuration??0,skillsRevision:result.skillsRevision??this.source.bundled.skills??0,state:'current'})
       return result
@@ -145,12 +160,17 @@ export class ContentUpdates {
     }
   }
   async ready() {
-    if(!this.state.trial)return
-    const committed={...this.state,active:this.selected,trial:null,pending:null}
-    await atomic(this.statePath,committed)
-    this.state=committed;this.view.state='current'
+    if(this.state.trial) {
+      const committed={...this.state,active:this.selected,trial:null,pending:null}
+      await atomic(this.statePath,committed)
+      this.state=committed;this.view.state='current'
+    }
+    await this.configurationFile.commit()
+    try { await this.configurationFile.cleanupLegacy() }
+    catch { this.view.message='配置已生效；部分旧配置暂未清理，下次启动重试' }
   }
   async rejectPending(reason) {
+    await this.configurationFile.rollback()
     if(this.state.pending)this.state.rejected=[...new Set([...this.state.rejected,this.state.pending])].slice(-100)
     this.state.pending=null;this.state.trial=null;await this.save()
     this.view={...this.view,state:'error',message:reason}
@@ -160,7 +180,12 @@ export class ContentUpdates {
     if(!this.state.trial)return false
     await this.rejectTrial('新版内容未通过启动检查，已回退');return true
   }
-  async check() {
+  canRepair(key) {
+    // Restore only the exact previously committed configuration bytes. Never
+    // waive the revision floor for a different or failed first-start trial.
+    return this.state.active.configuration===key && !this.selected?.configuration
+  }
+  async check({repair=false}={}) {
     if(!this.view.enabled||this.busy||this.state.pending)return this.snapshot()
     this.busy=true;this.abort=new AbortController();this.view={...this.view,state:'checking',message:''}
     try {
@@ -168,10 +193,12 @@ export class ContentUpdates {
       const envelope=JSON.parse(bytes.toString('utf8')),manifest=verifiedManifest(envelope,this.source,this.policy)
       const key=`${manifest.revision}-${manifest.bundle.sha256}`
       if(this.state.rejected.includes(key))throw Error('此内容版本未通过启动检查，等待发行方提供修正版本')
-      const current=manifest.revision<=this.state.highest||Object.entries(manifest.components).every(([name,revision])=>revision<=this.view[name+'Revision'])
+      const restore=repair&&manifest.revision===this.state.highest&&this.canRepair(key)
+      const current=!restore&&(manifest.revision<=this.state.highest||Object.entries(manifest.components).every(([name,revision])=>revision<=this.view[name+'Revision']))
       const reason=incompatible(manifest.requires,this.environment)
       this.offer=current?null:{key,envelope,manifest}
-      this.view={...this.view,state:current?'current':reason?'requires_software':'available',latestRevision:manifest.revision,totalBytes:manifest.bundle.bytes,downloadedBytes:0,message:reason??''}
+      const conflicts=this.view.configurationConflicts??[]
+      this.view={...this.view,state:current?'current':reason?'requires_software':'available',latestRevision:manifest.revision,totalBytes:manifest.bundle.bytes,downloadedBytes:0,message:reason??(conflicts.length?`已保留 ${conflicts.length} 项本地配置修改：${conflicts.join('、')}`:'')}
     } catch(error) {this.view={...this.view,state:'error',message:error.message}}
     finally {this.busy=false}
     return this.snapshot()
@@ -179,29 +206,59 @@ export class ContentUpdates {
   async download() {
     if(this.busy||this.view.state!=='available'||!this.offer)return this.snapshot()
     this.busy=true;this.abort=new AbortController();this.view={...this.view,state:'downloading',message:'',downloadedBytes:0}
-    const {key,envelope,manifest}=this.offer
-    const temporary=join(this.store,'.stage-'+randomUUID())
+    const {envelope,manifest}=this.offer
     try {
       const bytes=await fetchContent(manifest.bundle.url,manifest.bundle.bytes,{fetchImpl:this.fetchImpl,signal:AbortSignal.any([this.abort.signal,AbortSignal.timeout(60000)]),onProgress:n=>{this.view.downloadedBytes=n}})
+      await this.installContent(envelope,bytes)
+    } catch(error) {this.view={...this.view,state:'error',message:error.message}}
+    finally {this.busy=false}
+    return this.snapshot()
+  }
+  async importOffline(bytes) {
+    if(!this.view.enabled||this.busy||this.state.pending)throw Error('请先完成当前内容更新')
+    if(bytes.length>24*1024*1024)throw Error('离线内容包过大')
+    const value=JSON.parse(bytes.toString('utf8'))
+    if(value?.schemaVersion!==1||typeof value.bundle!=='string'||Object.keys(value).some(k=>!['schemaVersion','manifest','bundle'].includes(k)))throw Error('离线内容包格式无效')
+    const bundle=Buffer.from(value.bundle,'base64')
+    if(bundle.toString('base64')!==value.bundle)throw Error('离线内容包编码无效')
+    this.busy=true
+    try { await this.installContent(value.manifest,bundle);return this.snapshot() }
+    finally { this.busy=false }
+  }
+  async installContent(envelope,bytes) {
+    const manifest=verifiedManifest(envelope,this.source,this.policy),key=`${manifest.revision}-${manifest.bundle.sha256}`
+    if(this.state.rejected.includes(key))throw Error('此内容版本未通过启动检查，等待发行方提供修正版本')
+    const repair=manifest.revision===this.state.highest&&this.canRepair(key)
+    if(manifest.revision<=this.state.highest&&!repair)throw Error('内容修订号必须高于已接收的版本')
+    const reason=incompatible(manifest.requires,this.environment);if(reason)throw Error(reason)
+    const temporary=join(this.store,'.stage-'+randomUUID())
+    try {
       const bundle=validateBundle(bytes,manifest,this.environment)
       if(bundle.skills)await this.unchangedBundledSkills()
       for(const [name,revision] of Object.entries(manifest.components)) {
         if(revision<this.view[name+'Revision'])throw Error('内容组件修订号不能倒退')
         const active=this.state.active[name]
-        if(active&&(await this.cached(active)).manifest.components[name]>revision)throw Error('内容组件修订号不能倒退')
+        if(active&&!(repair&&active===key)&&(await this.cached(active)).manifest.components[name]>revision)throw Error('内容组件修订号不能倒退')
       }
       await mkdir(temporary)
       await writeFile(join(temporary,'bundle.json'),bytes,{flag:'wx'})
       await writeFile(join(temporary,'manifest.json'),JSON.stringify(envelope),{flag:'wx'})
       if(bundle.configuration)loadUserConfig(this.configPath,{overlay:bundle.configuration})
       const target=join(this.store,key)
-      if(await lstat(target).catch(()=>null))await this.cached(key)
+      if(await lstat(target).catch(()=>null)) {
+        if(repair) {
+          if((await lstat(target)).isSymbolicLink())throw Error('内容缓存不能是符号链接')
+          const damaged=join(this.store,'.damaged-'+randomUUID())
+          await rename(target,damaged)
+          try { await rename(temporary,target) }
+          catch(error) { await rename(damaged,target);throw error }
+          await rm(damaged,{recursive:true,force:true})
+        } else await this.cached(key)
+      }
       else await rename(temporary,target)
       this.state.pending=key;this.state.highest=manifest.revision;await this.save()
       this.view={...this.view,state:'ready',message:'已下载并校验，下次启动生效'}
-    } catch(error) {this.view={...this.view,state:'error',message:error.message}}
-    finally {await rm(temporary,{recursive:true,force:true});this.busy=false}
-    return this.snapshot()
+    } finally {await rm(temporary,{recursive:true,force:true})}
   }
   async close() {this.abort?.abort()}
   async selectPolicy(policy) {

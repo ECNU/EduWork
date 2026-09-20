@@ -66,7 +66,9 @@ export function verifiedManifest(envelope, source, channel) {
   if(manifest.schemaVersion!==1||manifest.publisher!==source.publisher||(channel&&manifest.channel!==channel)||!['stable','development'].includes(manifest.channel)||!Number.isSafeInteger(manifest.revision)||manifest.revision<1)throw Error('内容发行身份不匹配')
   validateRequirements(manifest.requires)
   if(!object(manifest.components)||Object.keys(manifest.components).some(k=>!['configuration','skills'].includes(k))||!Object.keys(manifest.components).length)throw Error('内容组件声明无效')
-  for(const [name,revision] of Object.entries(manifest.components))if(!source[name]||!Number.isSafeInteger(revision)||revision<1)throw Error('此内容组件未获本机配置授权')
+  // A publisher can ship a combined snapshot while the local owner opts out
+  // of configuration updates. Validate it all, but only activate allowed parts.
+  for(const revision of Object.values(manifest.components))if(!Number.isSafeInteger(revision)||revision<1)throw Error('内容组件修订号无效')
   for(const name of ['configuration','skills'])if(source[name]&&manifest.components[name]===undefined)throw Error('最新清单必须包含此更新源管理的所有组件，避免离线用户漏更新')
   const bundle=manifest.bundle
   if(!object(bundle)||!Number.isSafeInteger(bundle.bytes)||bundle.bytes<2||bundle.bytes>CONTENT_LIMIT||!/^[a-f0-9]{64}$/.test(bundle.sha256))throw Error('内容包摘要或大小无效')
@@ -87,6 +89,14 @@ export function validateBundle(bytes, manifest, environment) {
   if(bundle.configuration!==undefined) {
     if(!object(bundle.configuration)||!Object.keys(bundle.configuration).length||Object.keys(bundle.configuration).some(k=>!['organizations','features','media'].includes(k)))throw Error('配置更新只能修改机构目录、功能开关和媒体服务')
     if(Buffer.byteLength(JSON.stringify(bundle.configuration))>1024*1024)throw Error('配置更新超过 1 MiB')
+    const safe = value => {
+      if(!value || typeof value!=='object')return
+      for(const [key,child] of Object.entries(value)) {
+        if(['__proto__','constructor','prototype'].includes(key))throw Error('配置更新包含不允许的字段')
+        safe(child)
+      }
+    }
+    safe(bundle.configuration)
   }
   if(bundle.skills!==undefined) {
     const {entries,files}=bundle.skills

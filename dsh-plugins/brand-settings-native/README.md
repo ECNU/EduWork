@@ -10,7 +10,7 @@ Host 插件 `chatecnu-brand` 持久保存配色和详情侧栏宽度，使偏好
 
 `product` 支持 `name`、`logoUrl` 和 `styleLabels`。产品身份来自装配配置，不据此启用机构服务；用户设置仅控制配色和侧栏宽度。
 
-持久设置保留 `chatecnu-brand` 命名空间与 `ecnu-liwa` 样式 ID，以兼容已有配置。新公版配置默认蓝色 `dsh`；已有红色偏好继续保留，机构发行也可显式设置红色默认值。
+持久设置保留 `chatecnu-brand` 命名空间与 `ecnu-liwa` 样式 ID，以兼容已有配置。公版与机构版默认红色 `ecnu-liwa`；未设置或无效的配色也回退为红色。已有蓝色 `dsh` 或红色偏好继续保留，用户仍可切换配色。
 
 ## 可选 Agent 预设
 

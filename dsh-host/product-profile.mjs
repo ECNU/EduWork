@@ -47,7 +47,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const identity = await json(join(product, 'assembly.json'))
   if (identity.dshVersion !== '0.1.5-rc.2' || identity.dshCommit !== 'fb2c4b9e698e30edb738bca4cf0618587db7d203') throw new Error('Desktop product does not match the qualified DSH baseline')
   if (!/^[a-z0-9-]+$/u.test(identity.distribution)) throw new Error('Invalid distribution identity')
-  const user = userConfig ? loadUserConfig(userConfig, { overlay: managedContent.configurationPatch }) : undefined
+  const user = userConfig ? loadUserConfig(userConfig) : undefined
   if (user) {
     if (user.organizations.length) {
       try {
@@ -55,18 +55,18 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
         const { loadEnterpriseProfiles } = await import(pathToFileURL(req.resolve('@eduwork/dsh-oidc/profile')).href)
         // Validate profiles before starting the Host. No credentials are read.
         loadEnterpriseProfiles({ profiles: user.organizations }, {})
-        if (!managedContent.configurationPatch?.organizations) user.organizations = await loadEnterpriseModelUpdates(product, user.organizations)
+        if (shell === 'wails') user.organizations = await loadEnterpriseModelUpdates(product, user.organizations)
         loadEnterpriseProfiles({ profiles: user.organizations }, {})
       } catch (error) { throw new Error(`请检查配置文件 ${user.source.path}\n${error.message}`, { cause: error }) }
     }
     pluginConfig = mergeConfig(pluginConfig, {
       'eduwork-brand-settings': { product: user.product },
-      'enterprise-oidc': { profiles: user.organizations, allowEmptyProfiles: true, manageProductBrand: false, configFile: configurationOwnership==='publisher' ? undefined : user.source,
+      'enterprise-oidc': { profiles: user.organizations, allowEmptyProfiles: true, manageProductBrand: false, configFile: user.source,
         ...(!enterpriseProfile ? { profilePathEnv: 'EDUWORK_NO_IMPLICIT_ENTERPRISE_PROFILE' } : {}) },
     })
   }
   // Shared provider configuration is independent of the desktop shell/edition.
-  const media = await loadMediaProviders(product, user)
+  const media = await loadMediaProviders(product, shell === 'electron' && user ? { ...user, media: user.media ?? { providers: [] } } : user)
   pluginConfig = mergeConfig(pluginConfig, { 'eduwork-media-openai': media,
     'eduwork-artifact-services': { images: { enabled: media.providers.some(provider => provider.images?.enabled) } } })
   const resources = await prepareNativeResources({ product })

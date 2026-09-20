@@ -45,7 +45,7 @@ async function fixture(t,permissions={},mac=false) {
   return {root,product,configPath,base,source,keys,environment,responses,requests,options,open,release}
 }
 
-test('content activates only after restart, preserves base config and commits after desktop ready',async t=>{
+test('content activates by writing the one config after restart, keeps one backup and commits after desktop ready',async t=>{
   const f=await fixture(t,{skills:true}),original=await readFile(f.configPath,'utf8'),manager=await f.open()
   f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
   await manager.prepare();assert.equal((await manager.check()).state,'available')
@@ -54,7 +54,8 @@ test('content activates only after restart, preserves base config and commits af
   assert.equal(await readFile(f.configPath,'utf8'),original)
   const restarted=await f.open(),prepared=await restarted.prepare()
   assert.equal(prepared.configurationRevision,1);assert.equal(prepared.skillsRevision,1)
-  const effective=loadUserConfig(f.configPath,{overlay:prepared.configurationPatch})
+  assert.equal(prepared.configurationPatch,undefined)
+  const effective=loadUserConfig(f.configPath)
   assert.equal(effective.features.visionFallback,true);assert.equal(effective.features.maxConcurrentRequests,3)
   assert.equal(effective.closeAction,'exit');assert.equal(effective.product.name,'Custom name')
   assert.match(await readFile(join(prepared.skillRoot,'example/SKILL.md'),'utf8'),/installed tools/)
@@ -64,7 +65,8 @@ test('content activates only after restart, preserves base config and commits af
   await stable.selectPolicy('stable');assert.equal(stable.snapshot().configurationRevision,1)
   f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()},{channel:'stable'})
   assert.equal((await stable.check()).state,'current')
-  assert.equal(await readFile(f.configPath,'utf8'),original)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  assert.equal(await readFile(restarted.configurationFile.backup,'utf8'),original)
 })
 
 test('failed trial and interrupted startup roll back both components without a restart loop',async t=>{
@@ -108,7 +110,8 @@ test('macOS signed content uses external state and validates the packaged Skill 
   await manager.ready()
   assert.equal((await (await f.open()).prepare()).skillsRevision,1)
   assert.deepEqual(await snapshot(f.root),before)
-  assert.equal(await readFile(f.configPath,'utf8'),originalConfig)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  assert.equal(await readFile(manager.configurationFile.backup,'utf8'),originalConfig)
   await writeFile(join(f.product,'skills/example/SKILL.md'),'local edit')
   f.release(2,{configuration:2,skills:2},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
   await manager.check();assert.equal((await manager.download()).state,'error')
@@ -173,6 +176,26 @@ test('configuration management is opt-in and a missing generic config remains us
   assert.deepEqual(await disabled.prepare(),{})
 })
 
+test('manual edits between first download and restart are retained; disabling config still permits combined Skills releases',async t=>{
+  const f=await fixture(t,{skills:true}),manager=await f.open()
+  f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{maxConcurrentRequests:4}},skills:skill()})
+  await manager.check();await manager.download()
+  const local={...f.base,features:{...f.base.features,maxConcurrentRequests:7}}
+  await writeFile(f.configPath,JSON.stringify(local))
+  let next=await f.open();await next.prepare();await next.ready()
+  assert.equal(loadUserConfig(f.configPath).features.maxConcurrentRequests,7)
+  assert.ok(next.snapshot().configurationConflicts.includes('features.maxConcurrentRequests'))
+  local.contentUpdates.configuration=false
+  await writeFile(f.configPath,JSON.stringify(local))
+  next=await f.open()
+  f.release(2,{configuration:2,skills:2},{schemaVersion:1,configuration:{features:{maxConcurrentRequests:6}},skills:skill('updated skill')})
+  await next.check();assert.equal((await next.download()).state,'ready')
+  const disabled=await f.open(),prepared=await disabled.prepare();await disabled.ready()
+  assert.equal(prepared.skillsRevision,2)
+  assert.equal(loadUserConfig(f.configPath).features.maxConcurrentRequests,7)
+  assert.equal(loadUserConfig(f.configPath).contentUpdates.configuration,false)
+})
+
 test('signed skills reject path traversal, executable payloads, duplicate files and undeclared entries',async t=>{
   const f=await fixture(t)
   for(const path of ['../escape','example/../../escape','example/CON.txt','example/file.exe','example/file.dll','example/file:stream','/abs','example\\file','example/end.','unlisted/SKILL.md']) {
@@ -206,6 +229,10 @@ test('publisher CLI output is consumable and signing-key mismatches fail before 
   const filename=new URL(manifest.bundle.url).pathname.split('/').at(-1)
   f.responses.set(f.source.baseURL+'/development/latest.json',JSON.stringify(envelope));f.responses.set(manifest.bundle.url,await readFile(join(output,'bundles',filename)))
   const manager=await f.open();await manager.check();assert.equal((await manager.download()).state,'ready')
+  const offline=await new ContentUpdates({...f.options,dataRoot:join(f.root,'offline-data')}).init()
+  assert.equal((await offline.importOffline(await readFile(join(output,'content-1-offline.json')))).state,'ready')
+  assert.equal((await offline.prepare()).configurationRevision,1)
+  await offline.ready()
   await writeFile(keyFile,generateKeyPairSync('ed25519').privateKey.export({type:'pkcs8',format:'pem'}))
   await assert.rejects(createContentUpdate({config:f.configPath,planFile,keyFile,output:join(f.root,'bad')}),/签名/)
 })
@@ -220,7 +247,7 @@ test('offline clients catch every component from the latest snapshot and unchang
   f.release(3,{configuration:2,skills:2},snapshot(2,2));await manager.check();await manager.download()
   manager=await f.open();let prepared=await manager.prepare();await manager.ready()
   assert.equal(prepared.configurationRevision,2);assert.equal(prepared.skillsRevision,2)
-  assert.equal(prepared.configurationPatch.features.maxConcurrentRequests,2)
+  assert.equal(loadUserConfig(f.configPath).features.maxConcurrentRequests,2)
   const oldSkillRoot=prepared.skillRoot
   f.release(4,{configuration:3,skills:2},snapshot(3,2));await manager.check();await manager.download()
   manager=await f.open();prepared=await manager.prepare();await manager.ready()

@@ -170,7 +170,7 @@ When moving between computers, use [history import](docs/数据导入.md) in Set
 | Guide | Contents |
 | --- | --- |
 | [User guide](docs/USER_GUIDE.md) | Models, search, speech, file operations, and diagnostics. |
-| [Configuration examples](config/desktop/examples/README_EN.md) | Enterprise sign-in, branding, media, updates, and concurrency. |
+| [Configuration file](docs/CONFIGURATION_EN.md) · [Configuration examples](config/desktop/examples/README_EN.md) | Enterprise sign-in, branding, media, updates, and concurrency. |
 | [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) | Server preparation, client configuration, sign-in, and troubleshooting. |
 | [Media configuration](docs/MEDIA.md) | Endpoint requirements and setup for image generation and cloud TTS. |
 | [Versioning and upgrades](docs/RELEASE.md) · [Update sources](docs/UPDATES.md) | Development and public-beta builds, data migration, and automatic updates. |

@@ -2,6 +2,8 @@
 
 [简体中文](README.md)
 
+Active file, the single backup, and UAT setup: [configuration guide](../../../docs/CONFIGURATION_EN.md).
+
 The default total model-request concurrency is 3. Main conversations, subagents and auxiliary model requests share this limit; excess requests queue. Change it immediately in Settings → General → Total model-request concurrency. Top-level `features.maxConcurrentRequests` sets the distribution default (1–64); file changes require a restart, and a saved user preference takes priority. Legacy `maxParallelSubagents: 2` maps to a total of 3.
 
 ## Choose an example
