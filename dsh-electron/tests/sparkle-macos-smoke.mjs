@@ -79,10 +79,19 @@ try {
   await writeFile(join(evidence,'requests.json'),JSON.stringify(requests,null,2));
   assert.equal(probeRun.code,0,await readFile(marker,'utf8'))
   assert.equal(JSON.parse(await readFile(marker)).state,'available');result.checks.push('Electron loads the actual N-API bridge and probes the HTTPS feed')
-  const paths=await readdir(join(frameworkRoot,'bin'),{recursive:true})
-  const cliRelative=paths.find(path=>path.endsWith('/Contents/MacOS/Updater')) ?? paths.find(path=>path==='sparkle-cli')
-  assert.ok(cliRelative,`Sparkle CLI not found: ${paths.join(',')}`)
-  const cli=join(frameworkRoot,'bin',cliRelative)
+  const cliApp=join(root,'Sparkle CLI.app'),cliSource=join(root,'cli-source')
+  await mkdir(cliSource);await mkdir(join(cliApp,'Contents/MacOS'),{recursive:true});await mkdir(join(cliApp,'Contents/Frameworks'),{recursive:true})
+  const sourceCommit='eef1a539a373c1f1a320624b1130fc5de7b2e100'
+  const sources=['main.m','SPUCommandLineDriver.m','SPUCommandLineUserDriver.m','SPUCommandLineDriver.h','SPUCommandLineUserDriver.h']
+  for(const name of sources){const source=await fetch(`https://raw.githubusercontent.com/sparkle-project/Sparkle/${sourceCommit}/sparkle-cli/${name}`);assert.ok(source.ok);await writeFile(join(cliSource,name),await source.text())}
+  await run('ditto',[framework,join(cliApp,'Contents/Frameworks/Sparkle.framework')])
+  // The official CLI uses two exported private interfaces, pinned to this framework.
+  const privateHeaders=join(cliSource,'Sparkle');await mkdir(privateHeaders)
+  for(const name of ['SUInstallerLauncher+Private.h','SPUUserAgent+Private.h']){const source=await fetch(`https://raw.githubusercontent.com/sparkle-project/Sparkle/${sourceCommit}/Sparkle/${name}`);assert.ok(source.ok);await writeFile(join(privateHeaders,name),await source.text())}
+  const cli=join(cliApp,'Contents/MacOS/sparkle-cli')
+  await writeFile(join(cliApp,'Contents/Info.plist'),'<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>sparkle-cli</string><key>CFBundleIdentifier</key><string>org.eduwork.sparkle-cli-test</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1</string><key>LSBackgroundOnly</key><true/></dict></plist>')
+  await run('clang++',['-fobjc-arc','-I',cliSource,'-F',join(cliApp,'Contents/Frameworks'),'-framework','Sparkle','-framework','Cocoa','-Wl,-rpath,@executable_path/../Frameworks',...sources.filter(name=>name.endsWith('.m')).map(name=>join(cliSource,name)),'-o',cli])
+  await run('xattr',['-cr',cliApp]);await run('codesign',['--force','--deep','--sign','-','--timestamp=none',cliApp])
   const args=[oldApp,'--check-immediately','--feed-url',feed,'--user-agent-name','EduWork native CI','--verbose']
   const originalSignature=signature;signature=Buffer.alloc(64).toString('base64')
   assert.notEqual((await run(cli,args,{failure:true})).code,0)

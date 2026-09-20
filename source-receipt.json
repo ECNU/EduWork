@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-20T14:11:50.580Z",
-  "fileSetSHA256": "a970061785333c171ff0c10fad98c7b3cebfb7c475ac411b09dc56d086062c4e",
+  "createdAt": "2026-09-20T14:15:25.738Z",
+  "fileSetSHA256": "e961a708b642769277e762c8a9c1534f0210c1a86cfc9fb90183fde40a343bf5",
   "files": [
     {
       "path": ".gitattributes",
@@ -797,7 +797,7 @@
     },
     {
       "path": "dsh-electron/tests/sparkle-macos-smoke.mjs",
-      "sha256": "727cfb0ad2aa94ea3f4689ad1d293e46c9a7350dbb93030548cfa1a87af4f96c"
+      "sha256": "54b2f8ed59e1c5b882b643482f5c4ae791cb096767e856db114573dcce2a37e5"
     },
     {
       "path": "dsh-electron/tests/update-policy.test.mjs",
