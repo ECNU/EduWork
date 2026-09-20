@@ -39,9 +39,11 @@ if ($sparkleEnabled) {
     if ($feed.Scheme -ne 'https' -or $feed.UserInfo -or $feed.Fragment -or $feed.Query) { throw 'Sparkle appcast must be a fixed HTTPS URL without credentials, query or fragment' }
     try { $keyBytes = [Convert]::FromBase64String($SparklePublicEDKey) } catch { throw 'Sparkle EdDSA public key must be base64' }
     if ($keyBytes.Length -ne 32) { throw 'Sparkle EdDSA public key must decode to 32 bytes' }
-    if (-not $BundleVersion) { throw 'Sparkle requires an explicit monotonically increasing BundleVersion (one to three numeric parts)' }
+
 }
-if ($BundleVersion -and $BundleVersion -notmatch '^(?:0|[1-9]\d*)(?:\.(?:0|[1-9]\d*)){0,2}$') { throw 'BundleVersion must contain one to three numeric parts without leading zeros' }
+$expectedBundleVersion = (& node (Join-Path $PSScriptRoot '../../scripts/macos-update-feed.mjs') version $Version).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Unsupported macOS update version' }
+if ($BundleVersion -and $BundleVersion -ne $expectedBundleVersion) { throw 'BundleVersion must match the shared release version encoding' }
 if ($SparkleDevelopmentFeedURL) {
     $devFeed=[uri]$SparkleDevelopmentFeedURL
     if (-not $sparkleEnabled -or $devFeed.Scheme -ne 'https' -or $devFeed.UserInfo -or $devFeed.Fragment -or $devFeed.Query) { throw 'Development appcast requires a fixed HTTPS URL and the Sparkle trust key' }
@@ -152,7 +154,7 @@ $desktop | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $appPay
 
 $plist = Join-Path $app 'Contents/Info.plist'
 $marketingVersion = ($Version -split '-')[0]
-$effectiveBundleVersion = if ($BundleVersion) { $BundleVersion } elseif ($Version -match '-dev\.(\d{8})\.([1-9]\d*)$') { "$marketingVersion.$($Matches[1]).$($Matches[2])" } else { $marketingVersion }
+$effectiveBundleVersion = $expectedBundleVersion
 foreach ($row in @(
     @('CFBundleExecutable','Electron'), @('CFBundleName',$editionName),
     @('CFBundleDisplayName',$identity.brand.product.name), @('CFBundleIdentifier',$desktop.appId),

@@ -30,6 +30,12 @@ try {
   await writeFile(join(root,'sparkle.tar.xz'),bytes)
   await run('tar',['-xf',join(root,'sparkle.tar.xz'),'-C',frameworkRoot])
   const framework=join(frameworkRoot,'Sparkle.framework')
+  const compare=join(root,'compare.m')
+  await writeFile(compare,`#import <Foundation/Foundation.h>
+#import <Sparkle/Sparkle.h>
+int main(){@autoreleasepool {NSArray *versions=@[@"0.3.5",@"0.3.6dev20260920.1",@"0.3.6dev20260920.2",@"0.3.6dev20260921.1",@"0.3.6",@"0.3.7dev20260921.1"];for(NSUInteger i=1;i<versions.count;i++){if([[SUStandardVersionComparator defaultComparator] compareVersion:versions[i-1] toVersion:versions[i]] != NSOrderedAscending)return 1;}}return 0;}`)
+  await run('clang',['-fobjc-arc','-F',frameworkRoot,'-framework','Sparkle','-framework','Foundation','-Wl,-rpath,'+frameworkRoot,compare,'-o',join(root,'compare')]);await run(join(root,'compare'),[])
+  result.checks.push('Sparkle orders daily development versions below their stable release and prevents downgrades')
   const electron=join(root,'tools/node_modules/electron/dist/Electron.app')
   const headers=join(root,'headers');await mkdir(headers)
   const nodeHeaders=await fetch(`https://nodejs.org/dist/${process.version}/node-${process.version}-headers.tar.gz`)
@@ -87,7 +93,7 @@ try {
   await run('ditto',[framework,join(cliApp,'Contents/Frameworks/Sparkle.framework')])
   // The official CLI uses two exported private interfaces, pinned to this framework.
   const privateHeaders=join(cliSource,'Sparkle');await mkdir(privateHeaders)
-  for(const name of ['SUInstallerLauncher+Private.h','SPUUserAgent+Private.h']){const source=await fetch(`https://raw.githubusercontent.com/sparkle-project/Sparkle/${sourceCommit}/Sparkle/${name}`);assert.ok(source.ok);await writeFile(join(privateHeaders,name),await source.text())}
+  for(const name of ['SUInstallerLauncher+Private.h','SPUUserAgent+Private.h']){const source=await fetch(`https://raw.githubusercontent.com/sparkle-project/Sparkle/${sourceCommit}/${name.startsWith('SUInstaller')?'InstallerLauncher':'Sparkle'}/${name}`);assert.ok(source.ok);await writeFile(join(privateHeaders,name),await source.text())}
   const cli=join(cliApp,'Contents/MacOS/sparkle-cli')
   await writeFile(join(cliApp,'Contents/Info.plist'),'<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>sparkle-cli</string><key>CFBundleIdentifier</key><string>org.eduwork.sparkle-cli-test</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1</string><key>LSBackgroundOnly</key><true/></dict></plist>')
   await run('clang++',['-fobjc-arc','-I',cliSource,'-F',join(cliApp,'Contents/Frameworks'),'-framework','Sparkle','-framework','Cocoa','-Wl,-rpath,@executable_path/../Frameworks',...sources.filter(name=>name.endsWith('.m')).map(name=>join(cliSource,name)),'-o',cli])

@@ -4,7 +4,7 @@ import { join } from 'node:path'
 const require = createRequire(import.meta.url)
 
 // Sparkle owns its own native update dialog. The workbench reports only that
-// the manual check was handed off; it does not invent download/install states.
+// availability from its delegate; download/install progress stays in that dialog.
 export function startMacSparkleUpdates({ appPath, version, enabled = false, feeds = {}, policy = 'stable', onPolicy = async () => {}, platform = process.platform, loadAddon = require }) {
   if (platform !== 'darwin' || !enabled) return null
   let addon, failure
