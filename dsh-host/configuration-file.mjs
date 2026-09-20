@@ -171,8 +171,8 @@ export class ConfigurationFile {
     const backup = await readConfiguration(this.backup)
     if (!backup || digest(backup.text) !== trial.before) throw Error('配置备份校验失败，未覆盖当前文件')
     const current = await readConfiguration(this.path)
-    if (digest(current?.text ?? '{"schemaVersion":1}\n') !== trial.before) {
-      const restored = digest(current?.text ?? '') === trial.after ? backup.text
+    if (!current || digest(current.text) !== trial.before) {
+      const restored = !current || digest(current.text) === trial.after ? backup.text
         : render(current.text, mergeConfiguration(current.value, trial.afterFingerprints, backup.value))
       await atomic(this.path, restored)
     }

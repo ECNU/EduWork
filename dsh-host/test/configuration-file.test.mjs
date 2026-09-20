@@ -91,3 +91,15 @@ test('bad backup fails closed and never replaces the active config', async t => 
   await assert.rejects(f.open(), /备份校验失败/)
   assert.equal(await readFile(f.path, 'utf8'), active)
 })
+
+test('interrupted replacement restores a missing active file from the only backup', async t => {
+  const f = await fixture(t)
+  const before = await readFile(f.path, 'utf8')
+  await f.file.apply({ scope, key: key(1), revision: 1, patch: { features: { maxConcurrentRequests: 4 } } })
+  await rm(f.path)
+  const recovered = await f.open()
+  assert.equal(await readFile(f.path, 'utf8'), before)
+  assert.equal(await readFile(recovered.backup, 'utf8'), before)
+  assert.equal(recovered.state.trial, null)
+  assert.deepEqual((await readdir(join(f.dataRoot, 'configuration'))).filter(name => name.endsWith('.jsonc')), ['eduwork.previous.jsonc'])
+})
