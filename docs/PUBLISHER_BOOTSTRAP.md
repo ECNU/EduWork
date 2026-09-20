@@ -36,6 +36,8 @@
 
 ## 启动与回退
 
+发行方可以另提供完整的 `desktop/publisher-bootstrap.win32.json`、`desktop/publisher-bootstrap.darwin.json` 或 `desktop/publisher-bootstrap.linux.json`。客户端优先使用当前平台的文件；只有该文件不存在时才回退到通用文件，格式错误不会改用其他平台的来源。各平台可以分别管理配置、Skills、修订号和兼容性要求，通用文件仍兼容已有发行。初始化后，实际来源保存在唯一的 `config/eduwork.jsonc` 中；更换包内默认值不会覆盖用户保存的来源。
+
 1. **首次安装：** 将随包默认更新源写入 `config/eduwork.jsonc`，下载并校验签名、大小、摘要、组件和依赖，然后把学校配置写入同一个文件。桌面成功启动后才提交内容修订。
 2. **无法下载：** 提供重试与签名离线包导入，不删除数据。
 3. **已有安装：** 直接读取本地 `eduwork.jsonc`，不依赖网络；不再叠加隐藏配置。包内引导信息只负责初始化，之后本地文件中的来源、公钥和开关生效。

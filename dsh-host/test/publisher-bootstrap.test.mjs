@@ -4,7 +4,7 @@ import { generateKeyPairSync, sign } from 'node:crypto'
 import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
-import { publisherBootstrap, preparePublisherContent } from '../publisher-bootstrap.mjs'
+import { publisherBootstrap, preparePublisherContent, readPublisherBootstrap } from '../publisher-bootstrap.mjs'
 import { ContentUpdates } from '../content-updates.mjs'
 import { digest } from '../content-update-protocol.mjs'
 import { loadUserConfig } from '../user-config.mjs'
@@ -54,6 +54,21 @@ async function snapshot(folder) {
   for (const item of await readdir(folder, { withFileTypes: true })) entries.push([item.name, item.isDirectory() ? await snapshot(join(folder, item.name)) : digest(await readFile(join(folder, item.name)))])
   return entries
 }
+
+test('platform descriptors isolate update sources and invalid overrides never fall back', async t => {
+  const f = await fixture(t)
+  const mac = { ...f.descriptor, contentUpdates: { ...f.descriptor.contentUpdates, baseURL: 'https://updates.example.test/macos' } }
+  const override = join(dirname(f.descriptorPath), 'publisher-bootstrap.darwin.json')
+  await save(override, mac)
+  const win = await readPublisherBootstrap({ ...f.options, platform: 'win32' })
+  const darwin = await readPublisherBootstrap({ ...f.options, platform: 'darwin' })
+  assert.equal(win.contentUpdates.baseURL, f.descriptor.contentUpdates.baseURL)
+  assert.equal(darwin.contentUpdates.baseURL, mac.contentUpdates.baseURL)
+  assert.equal(await readPublisherBootstrap({ ...f.options, ownership: 'user', platform: 'darwin' }), null)
+  await save(override, { ...mac, organizations: [{ id: 'forbidden' }] })
+  await assert.rejects(readPublisherBootstrap({ ...f.options, platform: 'darwin' }), /只能包含更新渠道/)
+  await assert.rejects(readPublisherBootstrap({ ...f.options, platform: '../outside' }), /不支持/)
+})
 
 for (const platform of ['win32', 'darwin']) test(`${platform}: clean install downloads once, commits after ready and starts offline across app versions`, async t => {
   const f = await fixture(t, platform), bundleBefore = await snapshot(f.paths.product)
