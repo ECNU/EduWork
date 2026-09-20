@@ -64,7 +64,7 @@ export function apply(ctx, rawConfig = {}) {
         await Promise.all([...bindings].map(async ([key, binding]) => {
           try {
             const account = ctx.get?.('oidcAccounts')
-            if (await account?.resolveBoundCredential?.(binding.profileID, binding)) availableBindings.add(key)
+            if (await account?.modelAuthorization?.(binding.profileID, binding.runtimeBaseURL)) availableBindings.add(key)
           } catch { /* An unrelated login must not expose this institution's skill. */ }
         }))
         return filterObservation(observation, effectiveDisabled(settingsSource()), configured, capabilities, availableBindings)

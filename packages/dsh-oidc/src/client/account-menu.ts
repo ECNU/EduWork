@@ -6,8 +6,8 @@ import { useSignIn } from './use-sign-in.js'
 
 const h = React.createElement
 const zh = typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')
-const words = zh ? { menu: '账户菜单', check: '刷新账户', logout: '退出登录', login: '登录账户', provision: '确认创建模型凭据', waiting: '请在浏览器中完成登录…', cancel: '取消登录', processing: '正在处理…' }
-  : { menu: 'Account menu', check: 'Refresh account', logout: 'Sign out', login: 'Sign in', provision: 'Provision model credential', waiting: 'Complete sign-in in your browser…', cancel: 'Cancel sign-in', processing: 'Working…' }
+const words = zh ? { menu: '账户菜单', check: '刷新账户', logout: '退出登录', login: '登录账户', waiting: '请在浏览器中完成登录…', cancel: '取消登录', processing: '正在处理…' }
+  : { menu: 'Account menu', check: 'Refresh account', logout: 'Sign out', login: 'Sign in', waiting: 'Complete sign-in in your browser…', cancel: 'Cancel sign-in', processing: 'Working…' }
 const action = { width: '100%', textAlign: 'left' as const, border: 0, borderRadius: 7, padding: '9px 10px', font: 'inherit', cursor: 'pointer', background: 'var(--dsw-alias-bg-layer-2, #f5f6f8)', color: 'inherit' }
 const secondary = 'var(--dsw-alias-label-secondary, #69717f)'
 
@@ -62,14 +62,13 @@ export function AccountMenu({ service, profile, children, renderSlot, wide = tru
     items[next]?.focus()
   }
   const button = (label: string, onClick: () => void) => h('button', { type: 'button', role: 'menuitem', disabled: busy, style: action, onClick }, label)
-  const refreshAccount = () => service.reconcile(profile.id, { allowProvision: false })
+  const refreshAccount = () => service.reconcile(profile.id, {})
   const defaultContent = signedIn && button(busy ? words.processing : words.check, () => void run(refreshAccount))
   const content = open && h('div', { ref: panel, id, role: 'menu', tabIndex: -1, 'aria-label': words.menu, onKeyDown: keydown,
     style: { position: 'fixed', zIndex: 11000, ...position, width: 'min(296px, calc(100vw - 16px))', maxHeight: 'min(540px, calc(100vh - 80px))', overflowY: 'auto', boxSizing: 'border-box', padding: 14, border: '1px solid var(--dsw-alias-border-l2, #e1e4eb)', borderRadius: 13, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: 'var(--dsw-alias-label-primary, #20232c)', boxShadow: '0 12px 38px #17264d20', fontSize: 12 } },
     h('div', { role: 'presentation', style: { padding: '2px 3px 12px' } }, h('strong', null, accountUserName(status) || accountOrganization(profile)), h('div', { style: { marginTop: 4, color: secondary } }, accountOrganization(profile))),
     typeof renderSlot === 'function' ? renderSlot('oidc.account.menu.details', { profile, status, busy, run, refreshAccount, defaultContent }, { fallback: defaultContent }) : defaultContent,
     h('div', { style: { display: 'grid', gap: 6 } },
-      status?.state === 'authenticated' && profile.provider && button(words.provision, () => void run(() => service.reconcile(profile.id, { allowProvision: true }))),
       !signedIn && button(busy ? words.processing : words.login, () => void run(() => login.begin(profile.id))),
       signedIn && button(words.logout, () => void run(() => service.logout(profile.id), true))),
     login.pending && h('p', { role: 'status' }, words.waiting, ' ', h('button', { type: 'button', role: 'menuitem', style: action, onClick: login.cancel }, words.cancel)),

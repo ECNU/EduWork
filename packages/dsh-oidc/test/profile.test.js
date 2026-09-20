@@ -10,13 +10,14 @@ const exampleURL = new URL('../examples/enterprise-profile.example.json', import
 test('reference profile is bounded data and projects one callable Provider', async () => {
   const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
   const profile = normalizeEnterpriseProfile(raw)
-  const provider = enterpriseProviderConfig(new Map([[profile.id, profile]])).providers['example-ai']
+  assert.deepEqual(enterpriseProviderConfig(new Map([[profile.id, profile]])), { providers: {} })
+  const discovered = { ...profile, provider: { ...profile.provider, baseURL: 'https://models.example.org/v1' } }
+  const provider = enterpriseProviderConfig(new Map([[profile.id, discovered]])).providers['example-ai']
 
-  assert.equal(profile.oidc.issuer, 'https://id.example.edu/oidc')
-  assert.deepEqual(Object.keys(raw.keyBinding), ['baseURL', 'credentialRef'])
-  assert.equal(profile.keyBinding.type, 'worker-user-center-v1')
-  assert.equal(profile.keyBinding.providerId, 'example-ai')
-  assert.equal(profile.keyBinding.credentialRef, 'EDUWORK_API_KEY')
+  assert.equal(profile.keyBinding, undefined)
+  assert.equal(profile.oidc, undefined)
+  assert.ok(profile.auth.experimentalOidcLlm)
+  assert.equal(provider.apiKeyEnv, 'DSH_GATEWAY_EXAMPLE_UNIVERSITY_ACCESS')
   assert.deepEqual(provider.models.map(model => model.id), ['example-max', 'example-plus'])
   assert.deepEqual(provider.models[1].input, ['text', 'image'])
   assert.equal(provider.models[1].compat.supportsReasoningEffort, false)
@@ -26,8 +27,8 @@ test('reference profile is bounded data and projects one callable Provider', asy
   assert.equal(Object.values(provider).includes(undefined), false)
   assert.equal(Object.isFrozen(provider.models[0]), false)
   assert.equal(Object.isFrozen(provider.models[0].reasoningEfforts), false)
-  assert.equal(JSON.stringify(publicProfile(profile)).includes(profile.oidc.clientId), false)
-  assert.equal(JSON.stringify(publicProfile(profile)).includes(profile.provider.baseURL), false)
+  assert.equal(JSON.stringify(publicProfile(profile)).includes(profile.auth.clientId), false)
+  assert.equal(JSON.stringify(publicProfile(discovered)).includes(discovered.provider.baseURL), false)
 })
 
 test('Enterprise Profiles reject executable, unknown, and unsafe fields', async () => {
@@ -42,66 +43,24 @@ test('Enterprise Profiles reject executable, unknown, and unsafe fields', async 
   assert.throws(() => normalizeEnterpriseProfile({ ...raw, provider: { ...raw.provider, models: [{ id: 'bad', reasoningEfforts: { low: 'low' }, defaultReasoningEffort: 'high' }] } }), /must be one of the model's declared reasoningEfforts/)
   assert.throws(() => normalizeEnterpriseProfile({ ...raw, provider: { ...raw.provider, compat: { maxTokensField: 'whatever' } } }), /maxTokensField is not supported/)
   assert.throws(() => normalizeEnterpriseProfile({ ...raw, provider: { ...raw.provider, compat: { thinkingFormat: 'whatever' } } }), /thinkingFormat is not supported/)
-  assert.throws(() => normalizeEnterpriseProfile({ ...raw, keyBinding: { ...raw.keyBinding, resolvePath: '/secret' } }), /profile\.keyBinding\.resolvePath is not allowed/)
-  assert.throws(() => normalizeEnterpriseProfile({ ...raw, keyBinding: { ...raw.keyBinding, credentialRef: 'invalid-ref' } }), /valid DSH credential reference/)
   assert.throws(() => normalizeEnterpriseProfile({ ...raw, brand: { ...raw.brand, logoURL: 'data:image\/svg+xml;base64,PHN2Zz4=' } }), /base64 PNG\/WebP/)
   assert.throws(() => normalizeEnterpriseProfile({ ...raw, provider: { ...raw.provider, retryPolicy: { mode: 'normal', unexpected: true } } }), /retryPolicy\.unexpected is not allowed/)
 })
 
-test('credential references use the common default while preserving custom overrides', async () => {
+test('model profiles reject legacy key binding and require explicit trusted token discovery', async () => {
   const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
-  assert.equal(normalizeEnterpriseProfile(raw).keyBinding.credentialRef, 'EDUWORK_API_KEY')
-  const testProfile = normalizeEnterpriseProfile({
-    ...raw,
-    id: 'example-university-test',
-    keyBinding: { ...raw.keyBinding, credentialRef: 'EXAMPLE_AI_TEST_API_KEY' },
-  })
-  assert.equal(testProfile.provider.id, 'example-ai')
-  assert.equal(testProfile.keyBinding.credentialRef, 'EXAMPLE_AI_TEST_API_KEY')
-  assert.equal(
-    enterpriseProviderConfig(new Map([[testProfile.id, testProfile]])).providers['example-ai'].apiKeyEnv,
-    'EXAMPLE_AI_TEST_API_KEY',
-  )
-})
-
-test('insecure development endpoints require loopback or an exact explicit origin', async () => {
-  const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
-  const unsafe = {
-    ...raw,
-    allowInsecureDevelopment: true,
-    oidc: { ...raw.oidc, issuer: 'http://dev.example.edu/oidc' },
-  }
-  assert.throws(() => normalizeEnterpriseProfile(unsafe), /HTTPS issuer URL/)
-  const local = normalizeEnterpriseProfile({
-    ...raw,
-    allowInsecureDevelopment: true,
-    oidc: { ...raw.oidc, issuer: 'http://127.0.0.1:9000/oidc' },
-    keyBinding: { baseURL: 'http://127.0.0.1:9001/api/worker/v1' },
-    provider: { ...raw.provider, baseURL: 'http://localhost:9002/v1' },
-  })
-  assert.equal(local.oidc.issuer, 'http://127.0.0.1:9000/oidc')
-
-  const network = normalizeEnterpriseProfile({
-    ...raw,
-    allowInsecureDevelopment: true,
-    insecureDevelopmentOrigin: 'http://192.0.2.10',
-    oidc: { ...raw.oidc, issuer: 'http://192.0.2.10' },
-    keyBinding: { baseURL: 'http://192.0.2.10/api/worker/v1' },
-    provider: { ...raw.provider, baseURL: 'http://192.0.2.10/open/api/v1' },
-  })
-  assert.equal(network.oidc.issuer, 'http://192.0.2.10')
-  assert.throws(() => normalizeEnterpriseProfile({
-    ...raw,
-    allowInsecureDevelopment: true,
-    insecureDevelopmentOrigin: 'http://192.0.2.10',
-    oidc: { ...raw.oidc, issuer: 'http://192.0.2.10' },
-    keyBinding: { baseURL: 'http://192.0.2.10/api/worker/v1' },
-    provider: { ...raw.provider, baseURL: 'http://192.0.2.11/open/api/v1' },
-  }), /exact allowlisted HTTP origin/)
-  assert.throws(() => normalizeEnterpriseProfile({
-    ...raw,
-    insecureDevelopmentOrigin: 'http://192.0.2.10',
-  }), /requires allowInsecureDevelopment=true/)
+  assert.throws(() => normalizeEnterpriseProfile({ ...raw, keyBinding: { baseURL: 'https://old.example/management' } }), /keyBinding is not allowed/)
+  assert.throws(() => normalizeEnterpriseProfile({ ...raw, provider: { ...raw.provider, baseURL: 'https://old.example/v1' } }), /derives provider.baseURL/)
+  const { auth, provider, ...base } = raw
+  const identity = { ...base, oidc: { issuer: 'https://id.example.edu', clientId: 'public-client', scopes: ['openid', 'profile'] } }
+  assert.equal(normalizeEnterpriseProfile(identity).provider, undefined)
+  assert.throws(() => normalizeEnterpriseProfile({ ...identity, provider }), /Identity|identity/)
+  const discovery = 'http://192.0.2.10/.well-known/openid-configuration'
+  const local = { ...raw, allowInsecureDevelopment: true, insecureDevelopmentOrigin: 'http://192.0.2.10',
+    auth: { ...auth, discoveryUrl: discovery, expectedIssuer: 'http://192.0.2.10' } }
+  assert.equal(normalizeEnterpriseProfile(local).auth.discoveryUrl, discovery)
+  assert.throws(() => normalizeEnterpriseProfile({ ...local, auth: { ...local.auth, discoveryUrl: 'http://192.0.2.11/discovery' } }), /HTTPS issuer URL/)
+  assert.throws(() => normalizeEnterpriseProfile({ ...local, allowInsecureDevelopment: false }), /requires allowInsecureDevelopment=true/)
 })
 
 test('profiles reject duplicate provider routes', async () => {

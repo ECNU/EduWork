@@ -1,257 +1,50 @@
 openapi: 3.1.0
 info:
-  title: dsh-oidc Worker User Center Key Binding API
+  title: EduWork Identity and Resource Protocol
   version: 1.0.0
   description: >-
-    The fixed worker-user-center-v1 protocol used by dsh-oidc to exchange an
-    OIDC Bearer access token for a short-lived or revocable model runtime
-    credential. Endpoint paths and wire field names are deliberately not
-    configurable. See docs/key-binding-protocol.md for normative requirements.
-  license:
-    name: MIT
-    identifier: MIT
+    Model discovery for a local single-user client with explicit gateway authorization.
+    Requests use the current Access Token. The client does not provision model API keys.
+    Quota and activity heartbeat remain optional institution extensions.
+  license: { name: MIT, identifier: MIT }
 servers:
-  - url: https://ai.example.edu/api/worker/v1
-    description: Example baseURL from an Enterprise Profile
+  - url: https://ai.example.edu/open/api/v1
 security:
-  - oidcAccessToken: []
+  - accessToken: []
 paths:
-  /bootstrap:
+  /models:
     get:
-      operationId: bootstrap
-      summary: Read subject-independent integration state and credential lifecycle state
+      operationId: listResourceModels
       responses:
         '200':
-          description: Current provider and runtime credential state
-          headers:
-            Cache-Control:
-              schema: { type: string }
-              description: MUST contain no-store
+          description: Available model identifiers; reviewed capabilities remain in the client Profile
           content:
             application/json:
-              schema: { $ref: '#/components/schemas/BootstrapResponse' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
+              schema:
+                type: object
+                required: [data]
+                properties:
+                  data:
+                    type: array
+                    minItems: 1
+                    maxItems: 128
+                    items:
+                      type: object
+                      required: [id]
+                      properties:
+                        id: { type: string, minLength: 1, maxLength: 256 }
+        '401': { description: Access Token is invalid or expired }
+        '403': { description: Model discovery is not permitted }
+        '404': { description: Discovery endpoint is unavailable }
         '429': { $ref: '#/components/responses/RateLimited' }
-        '5XX': { $ref: '#/components/responses/ServerError' }
-  /runtime-credential/provision:
-    post:
-      operationId: provisionRuntimeCredential
-      summary: Provision and return a runtime credential for the authenticated subject
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RuntimeCredentialRequest' }
-      responses:
-        '200': { $ref: '#/components/responses/RuntimeCredential' }
-        '201': { $ref: '#/components/responses/RuntimeCredential' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '5XX': { $ref: '#/components/responses/ServerError' }
-  /runtime-credential/resolve:
-    post:
-      operationId: resolveRuntimeCredential
-      summary: Resolve the active runtime credential for the authenticated subject
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema: { $ref: '#/components/schemas/RuntimeCredentialRequest' }
-      responses:
-        '200': { $ref: '#/components/responses/RuntimeCredential' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '5XX': { $ref: '#/components/responses/ServerError' }
-  /runtime-credential/renew:
-    post:
-      operationId: renewRuntimeCredential
-      summary: Rotate an expiring or expired runtime credential
-      parameters:
-        - $ref: '#/components/parameters/IdempotencyKey'
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              allOf:
-                - $ref: '#/components/schemas/RuntimeCredentialRequest'
-                - type: object
-                  required: [api_key_id]
-      responses:
-        '200': { $ref: '#/components/responses/RuntimeCredential' }
-        '201': { $ref: '#/components/responses/RuntimeCredential' }
-        '400': { $ref: '#/components/responses/BadRequest' }
-        '401': { $ref: '#/components/responses/Unauthorized' }
-        '403': { $ref: '#/components/responses/Forbidden' }
-        '404': { $ref: '#/components/responses/NotFound' }
-        '409': { $ref: '#/components/responses/Conflict' }
-        '429': { $ref: '#/components/responses/RateLimited' }
-        '5XX': { $ref: '#/components/responses/ServerError' }
+        '5XX': { $ref: '#/components/responses/Unavailable' }
 components:
-  securitySchemes:
-    oidcAccessToken:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT or opaque OIDC access token
-      description: >-
-        Access token issued to the public OIDC client declared in the matching
-        Enterprise Profile. The server validates issuer, audience, expiry,
-        required scopes, and the authenticated subject.
-  parameters:
-    IdempotencyKey:
-      name: Idempotency-Key
-      in: header
-      required: true
-      description: Opaque UUID generated for one logical mutating operation.
-      schema:
-        type: string
-        format: uuid
-  schemas:
-    BootstrapResponse:
-      type: object
-      additionalProperties: false
-      required: [provider, capabilities, runtime_credential]
-      properties:
-        protocol_version:
-          type: string
-          enum: [worker.user-center.v1, worker-user-center/v1, eduwork-resources/v1]
-          description: Optional during v1 adoption; all three version labels share the deployed credential lifecycle wire.
-        subject:
-          $ref: '#/components/schemas/InformationalSubject'
-        provider:
-          type: object
-          additionalProperties: false
-          required: [id]
-          properties:
-            id:
-              type: string
-              pattern: '^[a-z][a-z0-9-]{0,63}$'
-        capabilities:
-          type: array
-          maxItems: 256
-          uniqueItems: true
-          items: { type: string, minLength: 1, maxLength: 128 }
-        runtime_credential:
-          $ref: '#/components/schemas/RuntimeCredentialState'
-    InformationalSubject:
-      type: object
-      additionalProperties: true
-      description: >-
-        Optional management-plane display data. dsh-oidc MUST NOT use it to
-        replace the identity established by the OIDC ID Token and UserInfo.
-      properties:
-        sub: { type: string }
-        name: { type: string }
-        affiliation: { type: string }
-    RuntimeCredentialState:
-      type: object
-      additionalProperties: false
-      required: [status]
-      properties:
-        status:
-          enum: [missing, active, expiring, expired, suspended, unavailable]
-        api_key_id:
-          type: string
-          minLength: 1
-          maxLength: 256
-        expires_at:
-          type: string
-          format: date-time
-        provisioning:
-          type: object
-          additionalProperties: false
-          properties:
-            allowed: { type: boolean }
-            reason: { type: string, maxLength: 500 }
-    RuntimeCredentialRequest:
-      type: object
-      additionalProperties: false
-      required: [provider_id]
-      properties:
-        provider_id:
-          type: string
-          pattern: '^[a-z][a-z0-9-]{0,63}$'
-        api_key_id:
-          type: string
-          minLength: 1
-          maxLength: 256
-    RuntimeCredentialResponse:
-      type: object
-      additionalProperties: false
-      required: [provider_id, api_key, status]
-      properties:
-        provider_id:
-          type: string
-          pattern: '^[a-z][a-z0-9-]{0,63}$'
-        api_key:
-          type: string
-          minLength: 1
-          maxLength: 16384
-          description: Secret value. It MUST appear only in this TLS response and MUST NOT be logged.
-        api_key_id:
-          type: string
-          minLength: 1
-          maxLength: 256
-        status:
-          const: active
-        expires_at:
-          type: string
-          format: date-time
-    Problem:
-      type: object
-      additionalProperties: true
-      required: [type, title, status]
-      properties:
-        type: { type: string, format: uri-reference }
-        title: { type: string }
-        status: { type: integer, minimum: 400, maximum: 599 }
-        detail: { type: string }
-        instance: { type: string, format: uri-reference }
-        code: { type: string, description: Stable machine-readable service code }
   responses:
-    RuntimeCredential:
-      description: Active runtime credential
-      headers:
-        Cache-Control:
-          schema: { type: string }
-          description: MUST contain no-store
-        Pragma:
-          schema: { type: string }
-          description: SHOULD be no-cache for compatibility
-      content:
-        application/json:
-          schema: { $ref: '#/components/schemas/RuntimeCredentialResponse' }
-    BadRequest:
-      description: Invalid request
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
-    Unauthorized:
-      description: Missing, invalid, expired, or wrong-audience access token
-      headers:
-        WWW-Authenticate: { schema: { type: string } }
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
-    Forbidden:
-      description: Authenticated subject lacks the required scope or organization entitlement
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
-    NotFound:
-      description: Requested runtime credential does not exist
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
-    Conflict:
-      description: Idempotency conflict or incompatible credential lifecycle state
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
     RateLimited:
-      description: Rate limit exceeded
+      description: Temporarily limited; current client reports unavailable and allows a later manual refresh
       headers:
-        Retry-After: { schema: { type: string } }
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
-    ServerError:
-      description: Server-side failure with no secret material
-      content: { application/problem+json: { schema: { $ref: '#/components/schemas/Problem' } } }
+        Retry-After: { schema: { type: string }, description: Seconds or HTTP date for a future retry; never a refresh-token grant }
+    Unavailable:
+      description: Temporary resource failure; do not clear identity or the model key
+  securitySchemes:
+    accessToken: { type: http, scheme: bearer, description: Model runtime credential }

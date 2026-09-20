@@ -14,7 +14,7 @@
 发布一个名为 `dsh-oidc` 的项目和软件包，包含：
 
 - 标准 OIDC Web 客户端和宿主中立的 native adapter 契约；
-- 固定 Key Binding 客户端；
+- 共享 Token 授权和生命周期；
 - 一个本地、经过审查的 OpenAI-compatible DSH Provider adapter；
 - 声明式 Provider/模型配置和有边界的品牌配置；
 - 标准账号 UI，以及 Web/native 宿主共用、可感知宿主能力的企业模型设置界面；
@@ -23,7 +23,7 @@
 
 桌面外壳、配额、机构业务 API、搜索、图像理解实现、Skill、打包和更新继续留在本仓库之外。
 
-Enterprise Profile 只是数据，不能选择可执行 adapter，也不能自定义 Key Binding 网络字段。
+Enterprise Profile 只是数据，不能选择可执行 adapter，也不能改写已发现的授权边界。
 
 ## 影响
 

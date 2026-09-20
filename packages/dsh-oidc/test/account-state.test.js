@@ -7,14 +7,14 @@ const authenticated = { ...signedOut, state: 'authenticated', userName: 'Example
 const connected = { ...authenticated, state: 'connected', credentialReady: true }
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 
-test('one shared snapshot updates every consumer and rejects a stale mount read after provisioning', async () => {
+test('one shared snapshot updates every consumer and rejects a stale mount read after selecting models', async () => {
   const old = deferred(), seen = [[], [], []], selected = []
   let reads = 0
   const { service } = createAccountState({ status: () => { reads++; return old.promise }, reconcile: async () => connected }, { connected: async id => selected.push(id) })
   seen.forEach(values => service.subscribeAccounts(id => values.push(service.accountSnapshot(id))))
   const a = service.status('school'), b = service.status('school')
   assert.equal(reads, 1)
-  await service.reconcile('school', { allowProvision: true })
+  await service.useModels('school')
   old.resolve(signedOut)
   assert.equal(await a, connected)
   assert.equal(await b, connected)
@@ -22,7 +22,7 @@ test('one shared snapshot updates every consumer and rejects a stale mount read 
   assert.deepEqual(selected, ['school'])
 })
 
-test('desktop login publishes identity then provisioning connects all consumers and activates once', async () => {
+test('desktop login and explicit model selection share one account snapshot', async () => {
   const selected = [], observed = []
   let ready = authenticated
   const { service } = createAccountState({
@@ -34,7 +34,7 @@ test('desktop login publishes identity then provisioning connects all consumers 
   await service.begin('school')
   await service.loginStatus('attempt')
   assert.deepEqual(selected, [])
-  await service.reconcile('school', { allowProvision: true })
+  await service.useModels('school')
   assert.deepEqual(observed, ['authenticated', 'connected'])
   assert.deepEqual(selected, ['school'])
   // A previous polling closure cannot roll the newly provisioned account back.
@@ -43,7 +43,7 @@ test('desktop login publishes identity then provisioning connects all consumers 
   assert.deepEqual(selected, ['school'])
 })
 
-test('already provisioned desktop callback selects only once; passive refresh never overrides choices', async () => {
+test('connected desktop callback selects only once; passive refresh never overrides choices', async () => {
   let selected = 0
   const { service } = createAccountState({
     begin: async () => ({ mode: 'external', loginID: 'attempt' }),
@@ -54,7 +54,7 @@ test('already provisioned desktop callback selects only once; passive refresh ne
   await Promise.all([service.loginStatus('attempt'), service.loginStatus('attempt')])
   const snapshot = service.accountSnapshot('school')
   await service.refreshAccounts(['school'])
-  await service.reconcile('school', { allowProvision: false })
+  await service.reconcile('school', {})
   assert.equal(service.accountSnapshot('school'), snapshot, 'unchanged snapshots stay referentially stable')
   assert.equal(selected, 1)
 })
@@ -77,10 +77,10 @@ test('late desktop polling and stale status cannot revive an explicitly signed-o
 test('failed model selection keeps the connected account visible and permits a deliberate retry', async () => {
   let fail = true
   const { service } = createAccountState({ reconcile: async () => connected }, { connected: async () => { if (fail) throw new Error('model unavailable') } })
-  await assert.rejects(service.reconcile('school', { allowProvision: true }), /model unavailable/)
+  await assert.rejects(service.useModels('school'), /model unavailable/)
   assert.equal(service.accountSnapshot('school'), connected)
   fail = false
-  await service.reconcile('school', { allowProvision: true })
+  await service.useModels('school')
 })
 
 test('without a session, enterprise selection still persists the official global default', async () => {

@@ -24,7 +24,7 @@ npm run check
 | 路径 | 职责 |
 | --- | --- |
 | `src/host/profile.js` | 可信 Profile、受限品牌/模型配置、统一凭据引用 |
-| `src/host/oidc.js` | PKCE、Token/UserInfo、Key Binding、会话与凭据归属 |
+| `src/host/oidc.js` | PKCE、Token/UserInfo、身份会话与凭据写入 |
 | `src/host/desktop-oidc.js` | 两种桌面外壳共用的临时 loopback 登录 |
 | `src/host/resources.js` | 模型目录的保守归一化 |
 | `src/host/provider/` | 官方 PiAi Provider 和显式图像转换边界 |
@@ -39,6 +39,6 @@ Host ESM 由 `scripts/build-host.mjs` 复制至 `lib`，Client 由 tsdown 打包
 
 ## 扩展与发布
 
-公共包只拥有身份、托管 Key、模型目录/调用及对应账号 UI。配额、心跳、校内检索和语音业务由机构/产品插件负责；[账户扩展](account-extensions.md)是 Host 运输与插槽边界，不是暗中启用机构功能的开关。所有示例均使用占位域名、Public Client ID 与无秘密配置。
+公共包只拥有身份、Token 授权、模型目录/调用及对应账号 UI。配额、心跳、校内检索和语音业务由机构/产品插件负责；[账户扩展](account-extensions.md)是 Host 运输与插槽边界，不是暗中启用机构功能的开关。所有示例均使用占位域名、Public Client ID 与无秘密配置。
 
 模块通过 EduWork 的统一工作流检查和发布，参见[包维护说明](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES.md)。依赖锁、合成测试与实际部署登录分别验证；发布包使用新版本，不覆盖已有 npm 版本。

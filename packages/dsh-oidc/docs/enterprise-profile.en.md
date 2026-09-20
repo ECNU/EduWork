@@ -1,12 +1,12 @@
 # Enterprise Profile specification (`dsh-oidc/v1alpha1`)
 
-> Candidate extension: omit both keyBinding/provider for identity-only OIDC; brand is optional. Resource mode accepts keyBinding.type=eduwork-resources-v1 (default worker-user-center-v1). provider.modelSource=discovery may omit models; normal profile mode requires models. See [Public resource protocol](public-resource-protocol.en.md).
+> Current source accepts token gateway profiles or identity-only OIDC. Key Binding profiles are removed; see [migration](key-binding-protocol.en.md).
 
 [简体中文](enterprise-profile.md) | **English**
 
 ## Status and conformance
 
-This document specifies the data contract consumed by `dsh-oidc` `0.2.x`. The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and **MAY** are interpreted as described by RFC 2119 and RFC 8174.
+This document specifies the current unpublished source branch contract. See the migration link above for previously released configurations. The key words **MUST**, **MUST NOT**, **REQUIRED**, **SHOULD**, **SHOULD NOT**, and **MAY** are interpreted as described by RFC 2119 and RFC 8174.
 
 The canonical machine-readable schema is [`schema/enterprise-profile.v1alpha1.schema.json`](../schema/enterprise-profile.v1alpha1.schema.json). Runtime validation is intentionally stricter in several security-sensitive URL cases. A conforming profile MUST pass both JSON Schema validation and `normalizeEnterpriseProfile()`.
 
@@ -20,7 +20,6 @@ Profiles are trusted deployment configuration, not user input. Nevertheless, the
 - development HTTP needs an explicit loopback allowance or exact development-origin allowlist;
 - URL credentials, fragments, and endpoint-base query strings are rejected;
 - only the built-in `openai-compatible` adapter can be selected;
-- Key Binding accepts only its protocol base and an optional local DSH credential reference; network paths and fields remain fixed;
 - logo data URLs accept PNG/WebP only, not SVG.
 
 A remote administration system MAY distribute profile JSON only if the host authenticates the source, verifies integrity, and stages changes through review. Downloaded JSON does not become safe merely because it contains no JavaScript.
@@ -33,12 +32,11 @@ A remote administration system MAY distribute profile JSON only if the host auth
 | `id` | yes | Profile ID matching `^[a-z][a-z0-9-]{0,63}$`. |
 | `displayName` | yes | Human-readable integration name. |
 | `organization` | no | Organization label; defaults to `displayName`. |
-| `nativeInstitutionID` | no | Identifier passed only to a native backend; defaults to `id`. |
 | `allowInsecureDevelopment` | no | Enables loopback HTTP for local development. Network HTTP additionally requires `insecureDevelopmentOrigin`. |
-| `insecureDevelopmentOrigin` | no | Exact non-TLS development origin. It is accepted only together with `allowInsecureDevelopment: true`, and every HTTP OIDC/key-binding/provider endpoint must use this exact origin. Never ship it in a production profile. |
+| `insecureDevelopmentOrigin` | no | Exact non-TLS development origin. It is accepted only together with `allowInsecureDevelopment: true`, and every HTTP OIDC/gateway endpoint must use this exact origin. Never ship it in a production profile. |
 | `brand` | no | Bounded presentational values. |
-| `oidc` | yes | OIDC public-client facts. |
-| `keyBinding` | resource mode | Key Binding base URL and optional local DSH credential reference. |
+| `oidc` | identity-only | OIDC public-client facts; cannot include auth or provider. |
+| `auth` | models | Full discovery URL; see the gateway guide for explicit protocol fields. |
 | `provider` | resource mode | One local OpenAI-compatible Provider route and model list. |
 
 ## Branding
@@ -72,31 +70,12 @@ Profiles MUST NOT include logos or names without permission from the rights hold
 - `clientId` identifies a public client. No client secret belongs in a profile or this plugin.
 - `scopes` MUST contain `openid` and `profile`, contain no whitespace within an item, and contain no duplicates.
 - `offline_access` SHOULD be requested when the Provider issues refresh tokens and policy allows it.
-- Key Binding authorization scopes are deployment-specific but SHOULD use the names in the reference example.
 
 The Web redirect URI is fixed to `http://127.0.0.1:<DSH-port>/oauth/callback`. The host and path are not configurable; the port follows the DSH WebServer's actual listening port.
 
-## Key Binding object
+## Gateway auth
 
-```json
-{
-  "baseURL": "https://ai.example.edu/api/worker/v1",
-  "credentialRef": "EDUWORK_API_KEY"
-}
-```
-
-| Field | Required | Meaning |
-| --- | --- | --- |
-| `baseURL` | yes | Base URL of the `worker-user-center-v1` Key Binding interface group. |
-| `credentialRef` | no | Local DSH Credential Provider name under which the bound model API key is stored. It must match `^[A-Za-z_][A-Za-z0-9_]*$` and is limited to 128 characters. |
-
-The Provider ID sent on the wire is always `provider.id`. An omitted `credentialRef` now defaults to `EDUWORK_API_KEY`. Legacy automatic references derived from this Profile’s `id` or `provider.id` (uppercase, non-alphanumerics replaced with `_`, followed by `_API_KEY`) normalize to this common name. Other explicit references remain unchanged.
-
-`credentialRef` names a local secret-store entry; it is not a key and is never sent over the network. Normal deployments use `EDUWORK_API_KEY`; explicit independent overrides such as `MY_TEST_MODEL_KEY` remain supported. With a shared reference, only a verified login whose bound credential fingerprint matches the current key may read it. Rebinding leaves other profiles disconnected from that key, and their logout cannot delete a key written by another login. Independently configured personal model credentials are unaffected.
-
-An upgrade imports an old key only when issuer, client ID, management URL, runtime URL and Provider ID all match and only the automatic reference changed. It neither overwrites nor adopts an occupied target. Unproven ownership retains identity but requires reconnecting model resources. Pre-fingerprint sessions are accepted only with an identical complete binding and unambiguous reference ownership.
-
-Endpoint paths, request/response fields, and Provider ID semantics are protocol facts and MUST NOT be customized by profiles. If a native host returns `runtimeCredentialRef`, it MUST equal the normalized profile value or the plugin fails closed.
+Use [LiteLLM](gateway-auth/README_EN.md) or [experimental oidc-llm](gateway-auth/experimental-oidc-llm.en.md). auth.discoveryUrl is explicit; OIDC mode requires the experimental flag, clientId and identityMode. No model-key fallback is supported.
 
 ## Provider object
 
@@ -107,7 +86,7 @@ The Provider object is data interpreted by a local audited adapter.
 | `id` | yes | DSH route ID, independent of the shared default credential reference. Must be unique across loaded profiles. |
 | `displayName` | no | User-facing Provider name. |
 | `adapter` | yes | Exact string `openai-compatible`. |
-| `baseURL` | yes | HTTPS OpenAI-compatible API base. |
+| `baseURL` | not configurable | Derived only from validated gateway discovery. |
 | `reasoning` | no | Default DSH/pi-ai reasoning level: `off`, `minimal`, `low`, `medium`, `high`, `xhigh`, or `max`; default `high`. |
 | `defaultContextWindow` | no | Positive safe integer, default 262144. |
 | `defaultMaxTokens` | no | Positive safe integer, default 32768. |
@@ -117,8 +96,8 @@ The Provider object is data interpreted by a local audited adapter.
 | `streamIdleTimeoutMs` | no | Positive idle timeout, default 300000. |
 | `retryPolicy` | no | DSH provider-owned retry policy; default normal/2 retries. |
 | `compat` | no | Bounded pi-ai OpenAI compatibility facts. |
-| `modelSource` | no | `profile` (default) or `discovery`; discovery requests `/models` with the managed key. |
-| `models` | profile mode | 1–128 unique entries; discovery may omit them, and configured entries supply reviewed capabilities. |
+| `modelSource` | no | Only discovery, the default; fetches /models with the current Access Token. |
+| `models` | no | Reviewed model capabilities; cannot expose models absent from the authorized catalog. |
 
 `retryPolicy.mode` is `normal` or `always`. `always` can retry indefinitely until success, cancellation, or disposal and SHOULD NOT be enabled without an explicit product decision. The policy is validated again by DSH.
 

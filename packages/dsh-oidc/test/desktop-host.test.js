@@ -131,7 +131,7 @@ test(`DSH ${dshVersion} Host attaches optional browser lifecycle and performs HT
   await ctx.oidcAccounts.cancelLogin(next.loginID)
 })
 
-test('DSH 0.1.5 desktop HTTP login provisions credentials and persists a usable default without a session', { skip: !['0.1.5-alpha.1', '0.1.5-rc.1'].includes(dshVersion) }, async t => {
+test('DSH 0.1.5 desktop HTTP token login connects models and persists a usable default without a session', { skip: !['0.1.5-alpha.1', '0.1.5-rc.1'].includes(dshVersion) }, async t => {
   const { SettingsProvider } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-settings')))
   const { default: AgentDefaultModel } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-agent-default-model')))
   const f = await fixture(t, { resources: true })
@@ -155,9 +155,9 @@ test('DSH 0.1.5 desktop HTTP login provisions credentials and persists a usable 
   const begin = await ctx.oidcAccounts.begin(f.profile.id)
   const auth = await fetch(f.opened.at(-1), { redirect: 'manual' })
   assert.equal((await fetch(auth.headers.get('location'))).status, 200)
-  assert.equal((await ctx.oidcAccounts.loginStatus(begin.loginID)).status.state, 'authenticated')
-  await assert.rejects(ctx.oidcAccounts.selectEnterpriseModel(f.profile.id), /请先完成企业登录/)
-  assert.equal((await ctx.oidcAccounts.reconcile(f.profile.id, { allowProvision: true })).credentialReady, true)
+  assert.equal((await ctx.oidcAccounts.loginStatus(begin.loginID)).status.state, 'connected')
+  assert.equal((await ctx.oidcAccounts.status(f.profile.id)).credentialReady, true)
+  assert.ok(!f.requests.some(request => /bootstrap|runtime-credential/.test(request.path)))
   const selection = await ctx.oidcAccounts.selectEnterpriseModel(f.profile.id, { onlyIfMissing: true })
   assert.equal(selection.changed, true)
   assert.equal(selection.selection.provider, 'fixture-ai')
@@ -166,12 +166,13 @@ test('DSH 0.1.5 desktop HTTP login provisions credentials and persists a usable 
   assert.deepEqual(saved['agent-default-model'], selection.selection)
   assert.deepEqual(saved['personal-preferences'], { keep: 'untouched' })
   assert.equal(f.records.get('PERSONAL_API_KEY'), '<PERSONAL_KEY>')
-  assert.ok(refs.includes(f.profile.keyBinding.credentialRef))
+  assert.ok(refs.includes('DSH_OIDC_DESKTOP_TEST_SESSION'))
+  assert.ok(!f.records.has('EDUWORK_API_KEY'))
   assert.ok(changes.length > 0)
   assert.deepEqual(await ctx.oidcAccounts.selectEnterpriseModel(f.profile.id, { onlyIfMissing: true }), { changed: false })
 
   // An already-signed-in upgrade repairs an unavailable default; it does not
-  // require another browser callback, key creation, or session.
+  // require another browser callback, model-key creation, or session.
   await ctx.agentDefaultModel.saveSelection({ provider: 'removed-provider', model: 'old-model' })
   const tokenCalls = f.tokenCalls()
   assert.equal((await ctx.oidcAccounts.selectEnterpriseModel(f.profile.id, { onlyIfMissing: true })).changed, true)
@@ -187,7 +188,7 @@ test('DSH 0.1.5 desktop HTTP login provisions credentials and persists a usable 
   await ctx.agentDefaultModel.saveSelection(personal)
   assert.deepEqual(await ctx.oidcAccounts.selectEnterpriseModel(f.profile.id, { onlyIfMissing: true }), { changed: false })
   assert.deepEqual(ctx.agentDefaultModel.currentSelection(), personal)
-  // Explicit login/provisioning is the user's request to use the enterprise.
+  // Explicit model selection is the user's request to use the enterprise.
   assert.equal((await ctx.oidcAccounts.selectEnterpriseModel(f.profile.id)).changed, true)
   assert.equal(ctx.agentDefaultModel.currentSelection().provider, 'fixture-ai')
 })

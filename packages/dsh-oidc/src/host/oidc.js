@@ -1,6 +1,5 @@
-import { createHash, createPublicKey, randomBytes, randomUUID, timingSafeEqual, verify as verifySignature } from 'node:crypto'
-import { emptyResources, normalizeResourceModels } from './resources.js'
-import { DEFAULT_CREDENTIAL_REF, legacyCredentialRefs } from './profile.js'
+import { createHash, createPublicKey, randomBytes, timingSafeEqual, verify as verifySignature } from 'node:crypto'
+import { emptyResources } from './resources.js'
 
 const FLOW_TTL_MS = 10 * 60 * 1000
 const MAX_PENDING_FLOWS = 32
@@ -74,22 +73,6 @@ function sessionRef(profile) {
   return `DSH_OIDC_${profile.id.toUpperCase().replace(/-/g, '_')}_SESSION`
 }
 
-function resourceBinding(profile) {
-  return profile.keyBinding ? {
-    managementBaseURL: profile.keyBinding.baseURL, runtimeBaseURL: profile.provider.baseURL,
-    providerID: profile.provider.id, credentialRef: profile.keyBinding.credentialRef,
-  } : null
-}
-
-function credentialHash(value) {
-  return typeof value === 'string' && value ? createHash('sha256').update(value).digest('hex') : ''
-}
-
-function sameResourceBinding(left, right, ignoreRef = false) {
-  return Boolean(left && right && ['managementBaseURL', 'runtimeBaseURL', 'providerID', ...(ignoreRef ? [] : ['credentialRef'])]
-    .every(key => left[key] === right[key]))
-}
-
 function nowSeconds(now) {
   return Math.floor(now() / 1000)
 }
@@ -103,11 +86,11 @@ function account(profile, session, credentialReady, credentialState = '') {
     profileID: profile.id,
     displayName: profile.displayName,
     organization: profile.organization,
-    state: session ? (credentialReady || !profile.keyBinding ? 'connected' : 'authenticated') : 'signed_out',
+    state: session ? 'connected' : 'signed_out',
     ...(session?.identity?.name ? { userName: session.identity.name } : {}),
     ...(session?.identity?.affiliation ? { affiliation: session.identity.affiliation } : {}),
     ...(session?.expiresAt ? { accessExpiresAt: new Date(session.expiresAt * 1000).toISOString() } : {}),
-    credentialRef: profile.keyBinding?.credentialRef ?? '',
+    credentialRef: '',
     credentialReady,
     ...(credentialState ? { credentialState } : {}),
     capabilities: Array.isArray(session?.capabilities) ? session.capabilities : [],
@@ -145,7 +128,7 @@ function runtimeProjection(runtime = {}, fallback = {}) {
 function profileManagement(profiles) {
   const rows = [...profiles.values()].map(profile => ({
     id: profile.id, displayName: profile.displayName, organization: profile.organization,
-    baseURL: profile.provider?.baseURL ?? profile.oidc.issuer, builtIn: true, configured: true, enabled: true,
+    baseURL: profile.provider?.baseURL || profile.auth?.discoveryUrl || profile.oidc.issuer, builtIn: true, configured: true, enabled: true,
     providerID: profile.provider?.id ?? '',
     runtime: runtimeProjection({ ...profile.provider, modelSource: profile.provider?.modelSource ?? 'none' }, profile.provider),
   }))
@@ -269,6 +252,7 @@ export class WebOidcBackend {
     }
     const result = Object.freeze({
       issuer: raw.issuer,
+      requireResponseIssuer: raw.authorization_response_iss_parameter_supported === true,
       authorizationEndpoint: discoveredEndpoint(raw.authorization_endpoint, profile, 'authorization_endpoint'),
       tokenEndpoint: discoveredEndpoint(raw.token_endpoint, profile, 'token_endpoint'),
       userInfoEndpoint: discoveredEndpoint(raw.userinfo_endpoint, profile, 'userinfo_endpoint'),
@@ -284,7 +268,7 @@ export class WebOidcBackend {
     const discovery = await this.discover(profile)
     this.pruneFlows()
     if (this.flows.size >= MAX_PENDING_FLOWS) throw publicError('oidc_flow_limit', 'too many pending OIDC login attempts')
-    const { authorizationURL } = this.createAuthorization(profile, discovery, this.redirectURI)
+    const { authorizationURL } = await this.createAuthorization(profile, discovery, this.redirectURI)
     return { mode: 'redirect', authorizationURL }
   }
 
@@ -323,9 +307,9 @@ export class WebOidcBackend {
       const profile = this.profile(flow.profileID)
       const session = await this.exchangeAuthorization(requested, flow)
       await this.saveSession(profile, session, flow.epoch)
-      const status = await this.reconcile(profile.id, { allowProvision: false })
+      const status = await this.reconcile(profile.id)
       this.accountChanged(status)
-      outcome = status.state === 'connected' ? 'connected' : 'credential-required'
+      outcome = 'connected'
     } catch (cause) {
       this.ctx.logger.warn('OIDC callback failed', { code: cause?.code ?? 'oidc_callback_failed' })
       outcome = cause?.code ?? 'oidc_callback_failed'
@@ -339,11 +323,14 @@ export class WebOidcBackend {
 
   async exchangeAuthorization(requested, flow) {
     const profile = this.profile(flow.profileID)
+    const discovery = await this.discover(profile)
+    const issuers = requested.searchParams.getAll('iss')
+    if ((!issuers.length && discovery.requireResponseIssuer) || issuers.length > 1
+      || (issuers.length === 1 && !equalText(issuers[0], discovery.issuer))) {
+      throw publicError('oidc_callback_invalid', 'OIDC authorization response issuer is missing or invalid')
+    }
     if (singleQueryParameter(requested, 'error')) throw publicError('oidc_authorization_rejected', 'OIDC authorization was rejected')
-    const code = singleQueryParameter(requested, 'code', true)
-    const issuer = singleQueryParameter(requested, 'iss')
-    if (issuer && !equalText(issuer, profile.oidc.issuer)) throw publicError('oidc_callback_invalid', 'OIDC authorization response issuer is invalid')
-    return this.exchangeCode(profile, await this.discover(profile), code, flow.verifier, flow.nonce, flow.redirectURI)
+    return this.exchangeCode(profile, discovery, singleQueryParameter(requested, 'code', true), flow.verifier, flow.nonce, flow.redirectURI)
   }
 
   async exchangeCode(profile, discovery, code, verifier, nonce, redirectURI = this.redirectURI) {
@@ -381,13 +368,14 @@ export class WebOidcBackend {
     }
   }
 
-  async verifyIDToken(profile, discovery, raw, expectedNonce, accessToken) {
+  async verifyIDToken(profile, discovery, raw, expectedNonce, accessToken, { refresh = false } = {}) {
+    if (typeof raw !== 'string') throw publicError('oidc_id_token_invalid', 'OIDC ID Token is missing')
     const parts = raw.split('.')
     if (parts.length !== 3) throw publicError('oidc_id_token_invalid', 'OIDC ID Token is malformed')
     const header = decodePart(parts[0], 'ID Token header')
     const claims = decodePart(parts[1], 'ID Token claims')
     if (header.alg !== 'RS256' || typeof header.kid !== 'string' || header.kid === '') throw publicError('oidc_id_token_invalid', 'OIDC ID Token must use RS256 with kid')
-    const keysResponse = await this.fetch(discovery.jwksURI, { headers: { accept: 'application/json' }, signal: AbortSignal.timeout(20_000) })
+    const keysResponse = await this.fetch(discovery.jwksURI, { headers: { accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20_000) })
     const jwks = await responseJSON(keysResponse, 'oidc_jwks_failed')
     const candidates = Array.isArray(jwks.keys) ? jwks.keys.filter(key => (
       key.kid === header.kid && key.kty === 'RSA' && (key.use === undefined || key.use === 'sig')
@@ -402,8 +390,12 @@ export class WebOidcBackend {
     const now = nowSeconds(this.now)
     const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
     const audienceValid = audience.includes(profile.oidc.clientId)
+      && audience.every(value => typeof value === 'string' && value !== '')
+      && new Set(audience).size === audience.length
       && (audience.length === 1 || claims.azp === profile.oidc.clientId)
-    if (claims.iss !== profile.oidc.issuer || !audienceValid || typeof claims.sub !== 'string' || claims.sub === '' || !equalText(claims.nonce, expectedNonce)) {
+      && (claims.azp === undefined || claims.azp === profile.oidc.clientId)
+    const nonceValid = refresh && claims.nonce === undefined || equalText(claims.nonce, expectedNonce)
+    if (claims.iss !== profile.oidc.issuer || !audienceValid || typeof claims.sub !== 'string' || claims.sub === '' || !nonceValid) {
       throw publicError('oidc_id_token_invalid', 'OIDC ID Token identity claims are invalid')
     }
     if (!Number.isFinite(claims.exp) || !Number.isFinite(claims.iat)
@@ -435,84 +427,12 @@ export class WebOidcBackend {
       try { session = JSON.parse(record.value) } catch { await this.ctx.credentials.unset(sessionRef(profile)); return undefined }
       if (session?.issuer !== profile.oidc.issuer || session?.clientId !== profile.oidc.clientId
         || typeof session?.accessToken !== 'string' || !Number.isFinite(session?.expiresAt)
-        || typeof session?.identity?.sub !== 'string') {
-        await this.clearOwnedCredential(profile, session)
+        || typeof session?.identity?.sub !== 'string' || session.resourceBinding !== undefined
+        || session.runtimeCredentialHash !== undefined) {
         await this.ctx.credentials.unset(sessionRef(profile))
         return undefined
       }
-      const binding = resourceBinding(profile)
-      if (binding) {
-        const current = await this.ctx.credentials.resolve(binding.credentialRef)
-        if (!sameResourceBinding(session.resourceBinding, binding)) {
-          const oldRef = session.resourceBinding?.credentialRef
-          const renameOnly = binding.credentialRef === DEFAULT_CREDENTIAL_REF
-            && legacyCredentialRefs(profile).includes(oldRef)
-            && sameResourceBinding(session.resourceBinding, binding, true)
-          const old = renameOnly ? await this.ctx.credentials.resolve(oldRef) : undefined
-          if (renameOnly && !current?.value && old?.value
-            && ![...this.profiles.values()].some(value => value.id !== profile.id && value.keyBinding?.credentialRef === oldRef)
-            && (session.runtimeCredentialHash === undefined || session.runtimeCredentialHash === credentialHash(old.value))) {
-            await this.ctx.credentials.set(binding.credentialRef, old.value)
-            session.runtimeCredentialHash = credentialHash(old.value)
-            await this.ctx.credentials.unset(oldRef)
-          } else {
-            // A rename never adopts or overwrites an already populated target.
-            // Changed endpoints retain identity but require a fresh binding.
-            if (!renameOnly) await this.clearOwnedCredential(profile, session)
-            session.runtimeCredentialHash = ''
-          }
-          session.resourceBinding = binding
-        } else if (session.runtimeCredentialHash === undefined) {
-          // Only unambiguous pre-fingerprint sessions may adopt their old key.
-          // New logins always save an explicit empty hash until binding succeeds.
-          session.runtimeCredentialHash = this.uniqueCredentialRef(profile) ? credentialHash(current?.value) : ''
-        }
-      }
-      const encoded = JSON.stringify(session)
-      if (encoded !== record.value) await this.ctx.credentials.set(sessionRef(profile), encoded)
       return session
-    })
-  }
-
-  uniqueCredentialRef(profile) {
-    return [...this.profiles.values()].filter(value => value.keyBinding?.credentialRef === profile.keyBinding?.credentialRef).length === 1
-  }
-
-  async boundCredential(profile, session) {
-    if (!session?.runtimeCredentialHash || !sameResourceBinding(session.resourceBinding, resourceBinding(profile))) return undefined
-    const credential = await this.ctx.credentials.resolve(profile.keyBinding.credentialRef)
-    return credentialHash(credential?.value) === session.runtimeCredentialHash ? credential : undefined
-  }
-
-  async resolveBoundCredential(profileID, expected) {
-    const profile = this.profiles.get(profileID)
-    if (!profile?.keyBinding || !expected || expected.credentialRef !== profile.keyBinding.credentialRef
-      || expected.runtimeBaseURL !== profile.provider.baseURL) return undefined
-    const epoch = this.accountEpoch(profile)
-    const credential = await this.boundCredential(profile, await this.loadSession(profile))
-    return epoch === this.accountEpoch(profile) ? credential : undefined
-  }
-
-  async clearOwnedCredential(profile, session) {
-    if (!profile.keyBinding || session?.resourceBinding?.credentialRef !== profile.keyBinding.credentialRef) return
-    const credential = await this.ctx.credentials.resolve(profile.keyBinding.credentialRef)
-    const proven = session.runtimeCredentialHash ? credentialHash(credential?.value) === session.runtimeCredentialHash
-      : session.runtimeCredentialHash === undefined && this.uniqueCredentialRef(profile)
-    if (proven) await this.ctx.credentials.unset(profile.keyBinding.credentialRef)
-  }
-
-  setRuntimeCredential(profile, session, value, epoch = this.accountEpoch(profile)) {
-    return this.writeCredentials(profile, epoch, async () => {
-      const record = await this.ctx.credentials.resolve(sessionRef(profile))
-      const saved = record?.value ? JSON.parse(record.value) : undefined
-      if (!saved || saved.issuer !== session.issuer || saved.clientId !== session.clientId
-        || saved.identity?.sub !== session.identity?.sub || !sameResourceBinding(saved.resourceBinding, resourceBinding(profile))) {
-        throw publicError('oidc_login_cancelled', '账户状态已改变，请重新登录。')
-      }
-      if (value) await this.ctx.credentials.set(profile.keyBinding.credentialRef, value)
-      else await this.clearOwnedCredential(profile, saved)
-      saved.runtimeCredentialHash = credentialHash(value)
-      await this.ctx.credentials.set(sessionRef(profile), JSON.stringify(saved))
     })
   }
 
@@ -521,7 +441,7 @@ export class WebOidcBackend {
   writeCredentials(profile, epoch, operation) {
     // Serialize vault writes so logout clears even a write already in progress.
     // Network requests do not hold this queue; late replies cannot restore keys.
-    const queue = profile.keyBinding?.credentialRef ?? sessionRef(profile)
+    const queue = sessionRef(profile)
     const write = (this.credentialWrites.get(queue) ?? Promise.resolve()).catch(() => {}).then(() => {
       if (epoch !== this.accountEpoch(profile)) throw publicError('oidc_login_cancelled', '账户状态已改变，请重新登录。')
       return operation()
@@ -532,18 +452,11 @@ export class WebOidcBackend {
   }
 
   clearCredentials(profile, epoch) {
-    return this.writeCredentials(profile, epoch, async () => {
-      const record = await this.ctx.credentials.resolve(sessionRef(profile))
-      let saved
-      try { saved = JSON.parse(record?.value) } catch { /* Malformed records cannot prove key ownership. */ }
-      await this.clearOwnedCredential(profile, saved)
-      await this.ctx.credentials.unset(sessionRef(profile))
-    })
+    return this.writeCredentials(profile, epoch, () => this.ctx.credentials.unset(sessionRef(profile)))
   }
 
   saveSession(profile, session, epoch = this.accountEpoch(profile)) {
-    return this.writeCredentials(profile, epoch, () => this.ctx.credentials.set(sessionRef(profile), JSON.stringify({ ...session,
-      runtimeCredentialHash: session.runtimeCredentialHash ?? '', resourceBinding: resourceBinding(profile) })))
+    return this.writeCredentials(profile, epoch, () => this.ctx.credentials.set(sessionRef(profile), JSON.stringify(session)))
   }
 
   refresh(profile, session) {
@@ -610,12 +523,8 @@ export class WebOidcBackend {
     const profile = this.profile(profileID)
     const epoch = this.accountEpoch(profile)
     const session = await this.loadSession(profile)
-    const credential = profile.keyBinding ? await this.boundCredential(profile, session) : undefined
-    if (session && credential?.value && profile.provider?.modelSource === 'discovery' && !this.resourceStates.has(profileID)) {
-      await this.resources(profileID)
-    }
     if (epoch !== this.accountEpoch(profile)) return account(profile, undefined, false)
-    return account(profile, session, typeof credential?.value === 'string' && credential.value !== '')
+    return account(profile, session, false, 'not_required')
   }
 
   async authorized(profile, session, endpoint, init = {}) {
@@ -639,7 +548,6 @@ export class WebOidcBackend {
     const target = new URL(endpoint)
     const allowed = new Set([
       new URL(profile.oidc.issuer).origin,
-      ...(profile.keyBinding ? [new URL(profile.keyBinding.baseURL).origin] : []),
       ...this.authorizedOrigins,
     ])
     if (!allowed.has(target.origin) || target.username || target.password || target.hash) {
@@ -650,87 +558,15 @@ export class WebOidcBackend {
     return (await this.authorized(profile, session, target.toString(), init)).response
   }
 
-  /** Host-only read transport for optional account extensions. No business paths. */
-  async modelResourceFetch(profileID, relativePath, options = {}) {
-    const profile = this.profile(profileID), epoch = this.accountEpoch(profile)
-    if (!profile.provider || !profile.keyBinding) throw publicError('oidc_resource_not_configured', 'Organization model resources are not configured')
-    if (typeof relativePath !== 'string' || !/^\/[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+)*$/.test(relativePath)
-      || Object.keys(options).some(key => key !== 'signal')) throw publicError('oidc_resource_path_denied', 'A fixed model-resource path and read-only options are required')
-    const session = await this.activeSession(profile)
-    const credential = await this.boundCredential(profile, session)
-    if (!session || !credential?.value || epoch !== this.accountEpoch(profile)) throw publicError('oidc_login_required', 'Organization model sign-in is required')
-    const response = await this.fetch(`${profile.provider.baseURL}${relativePath}`, {
-      method: 'GET', headers: { authorization: `Bearer ${credential.value}`, accept: 'application/json' },
-      redirect: 'error', signal: AbortSignal.any([AbortSignal.timeout(20_000), ...(options.signal ? [options.signal] : [])]),
-    })
-    // Complete the bounded body while the request signal is active. An extension
-    // never receives a response belonging to a signed-out or replaced account.
-    if (Number(response.headers.get('content-length')) > 1024 * 1024) { await response.body?.cancel(); throw publicError('oidc_resource_invalid', 'Model resource response is too large') }
-    const chunks = [], reader = response.body?.getReader()
-    let size = 0
-    if (reader) {
-      try { for (;;) { const { done, value } = await reader.read(); if (done) break; size += value.length; if (size > 1024 * 1024) throw new Error('size'); chunks.push(value) } }
-      catch { await reader.cancel().catch(() => {}); throw publicError('oidc_resource_invalid', 'Model resource response could not be read') }
-    }
-    const currentCredential = await this.ctx.credentials.resolve(profile.keyBinding.credentialRef)
-    if (epoch !== this.accountEpoch(profile) || currentCredential?.value !== credential.value) throw publicError('oidc_login_cancelled', 'Organization account changed during resource request')
-    return new Response([204, 205, 304].includes(response.status) ? null : Buffer.concat(chunks), { status: response.status, headers: response.headers })
+  async modelResourceFetch(profileID) {
+    this.profile(profileID)
+    throw publicError('oidc_resource_not_configured', 'Identity-only sign-in has no model resources; configure gateway authorization')
   }
 
-  async reconcile(profileID, options = {}) {
+  async reconcile(profileID) {
     const profile = this.profile(profileID)
-    const epoch = this.accountEpoch(profile)
-    let session = await this.activeSession(profile)
-    if (!session) return account(profile, undefined, false)
-    if (!profile.keyBinding) return account(profile, session, false, 'not_required')
-    const bootstrapCall = await this.authorized(profile, session, `${profile.keyBinding.baseURL}/bootstrap`)
-    session = bootstrapCall.session
-    const bootstrap = await responseJSON(bootstrapCall.response, 'oidc_binding_bootstrap_failed')
-    if (bootstrap.protocol_version !== undefined && !['worker.user-center.v1', 'worker-user-center/v1', 'eduwork-resources/v1'].includes(bootstrap.protocol_version)) {
-      throw publicError('oidc_binding_invalid', '身份登录已完成，但模型资源服务的协议版本不受支持。请联系服务管理员检查接口版本。')
-    }
-    if (bootstrap.provider?.id !== profile.keyBinding.providerId) {
-      throw publicError('oidc_binding_invalid', '身份登录已完成，但模型资源服务与配置中的 Provider ID 不一致。请检查企业配置文件。')
-    }
-    session = {
-      ...session,
-      capabilities: Array.isArray(bootstrap.capabilities) ? bootstrap.capabilities.filter(value => typeof value === 'string').slice(0, 256) : [],
-    }
-    await this.saveSession(profile, session, epoch)
-    const runtime = bootstrap.runtime_credential ?? {}
-    const state = String(runtime.status ?? '').toLowerCase()
-    let operation = 'resolve'
-    if (state === 'missing') {
-      if (options.allowProvision !== true) {
-        await this.setRuntimeCredential(profile, session, '', epoch)
-        return account(profile, session, false, 'missing')
-      }
-      if (runtime.provisioning?.allowed === false) throw publicError('oidc_binding_denied', 'the organization does not allow credential provisioning')
-      operation = 'provision'
-    } else if (state === 'expired' || state === 'expiring') {
-      operation = runtime.api_key_id ? 'renew' : 'resolve'
-    } else if (state !== 'active') {
-      await this.setRuntimeCredential(profile, session, '', epoch)
-      return account(profile, session, false, state || 'unavailable')
-    }
-    const payload = { provider_id: profile.keyBinding.providerId }
-    if (runtime.api_key_id) payload.api_key_id = runtime.api_key_id
-    const bindingCall = await this.authorized(profile, session, `${profile.keyBinding.baseURL}/runtime-credential/${operation}`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', ...(operation === 'provision' || operation === 'renew' ? { 'idempotency-key': randomUUID() } : {}) },
-      body: JSON.stringify(payload),
-    })
-    session = bindingCall.session
-    const credential = await responseJSON(bindingCall.response, 'oidc_binding_failed')
-    if (credential.provider_id !== profile.keyBinding.providerId) throw publicError('oidc_binding_invalid', 'runtime credential provider is invalid')
-    if (typeof credential.api_key !== 'string' || credential.api_key === '' || credential.api_key.length > 16 * 1024) throw publicError('oidc_binding_invalid', 'runtime credential response has an invalid API key')
-    await this.setRuntimeCredential(profile, session, credential.api_key, epoch)
-    await this.resources(profileID)
-    if (epoch !== this.accountEpoch(profile)) throw publicError('oidc_login_cancelled', '账户状态已改变，请重新登录。')
-    const current = await this.resolveBoundCredential(profile.id, {
-      credentialRef: profile.keyBinding.credentialRef, runtimeBaseURL: profile.provider.baseURL,
-    })
-    return account(profile, session, Boolean(current?.value), current ? credential.status ?? 'active' : 'replaced')
+    const session = await this.activeSession(profile)
+    return account(profile, session, false, 'not_required')
   }
 
   resources(profileID) {
@@ -742,32 +578,7 @@ export class WebOidcBackend {
   }
 
   async readResources(profileID) {
-    const profile = this.profile(profileID)
-    const epoch = this.accountEpoch(profile)
-    const result = emptyResources(profile)
-    if (!profile.keyBinding) return result
-    const session = await this.loadSession(profile)
-    const credential = await this.boundCredential(profile, session)
-    if (!credential?.value || epoch !== this.accountEpoch(profile)) return result
-    const request = async path => responseJSON(await this.fetch(`${profile.provider.baseURL}/${path}`, {
-      headers: { authorization: `Bearer ${credential.value}`, accept: 'application/json' },
-      signal: AbortSignal.timeout(20_000), redirect: 'error',
-    }), `oidc_resource_${path}_failed`)
-    const operations = []
-    if (profile.provider.modelSource === 'discovery') operations.push((async () => {
-      try {
-        const models = normalizeResourceModels(await request('models'), this.reviewedProfiles.get(profileID))
-        if (epoch !== this.accountEpoch(profile) || (await this.ctx.credentials.resolve(profile.keyBinding.credentialRef))?.value !== credential.value) return
-        const next = Object.freeze({ ...profile, provider: Object.freeze({ ...profile.provider, models }) })
-        await this.updateProvider(next)
-        this.profiles.set(profileID, next)
-        result.models = models
-      } catch { result.issues.push('models_unavailable') }
-    })())
-    await Promise.all(operations)
-    if (epoch !== this.accountEpoch(profile)) return emptyResources(profile)
-    this.resourceStates.set(profileID, result)
-    return result
+    return emptyResources(this.profile(profileID))
   }
 
   management() { return Promise.resolve(profileManagement(this.profiles)) }
@@ -802,103 +613,6 @@ export class WebOidcBackend {
       } catch (cause) { this.ctx.logger.warn(cause instanceof Error ? cause : new Error(String(cause))) }
     }
     return account(profile, undefined, false)
-  }
-}
-
-export class NativeOidcBackend {
-  constructor(ctx, profiles) {
-    this.ctx = ctx
-    this.profiles = profiles
-  }
-
-  profile(id) {
-    const profile = this.profiles.get(id)
-    if (!profile) throw publicError('oidc_profile_unknown', `unknown OIDC profile ${id}`)
-    return profile
-  }
-
-  service() {
-    const service = this.ctx.get('enterpriseAccounts')
-    if (!service) throw publicError('oidc_native_adapter_unavailable', 'native OIDC adapter is unavailable')
-    return service
-  }
-
-  normalize(profile, status) {
-    if (status.runtimeCredentialRef !== undefined && status.runtimeCredentialRef !== (profile.keyBinding?.credentialRef ?? '')) {
-      throw publicError(
-        'oidc_native_credential_ref_mismatch',
-        `native OIDC adapter credential reference does not match Enterprise Profile ${profile.id}`,
-      )
-    }
-    return {
-      profileID: profile.id,
-      displayName: status.displayName ?? profile.displayName,
-      organization: status.organization ?? profile.organization,
-      state: status.state ?? (status.credentialReady ? 'connected' : 'signed_out'),
-      ...(status.userName ? { userName: status.userName } : {}),
-      ...(status.affiliation ? { affiliation: status.affiliation } : {}),
-      ...(status.accessExpiresAt ? { accessExpiresAt: status.accessExpiresAt } : {}),
-      credentialRef: profile.keyBinding?.credentialRef ?? '',
-      credentialReady: status.credentialReady === true,
-      ...(status.credentialState ? { credentialState: status.credentialState } : {}),
-      capabilities: Array.isArray(status.capabilities) ? status.capabilities : [],
-    }
-  }
-
-  normalizeManagement(configuration) {
-    const active = String(configuration?.activeInstitutionID ?? '')
-    const institutions = Array.isArray(configuration?.institutions) ? configuration.institutions : []
-    return {
-      schemaVersion: 'dsh-oidc/management/v1alpha1', mode: 'native', activeProfileID: active,
-      restartRequired: configuration?.restartRequired === true,
-      capabilities: {
-        manageProfiles: ['activate', 'configure', 'addCustom', 'updateCustom', 'removeInstitution'].every(method => typeof this.service()[method] === 'function'),
-        manageModels: typeof this.service().configureCustomModels === 'function',
-        restart: typeof this.service().restart === 'function',
-      },
-      profiles: institutions.map(institution => ({
-        id: String(institution.id), displayName: String(institution.displayName), organization: String(institution.organization),
-        baseURL: String(institution.baseURL), builtIn: institution.builtIn === true, configured: institution.configured === true,
-        enabled: String(institution.id) === active, providerID: String(institution.providerID),
-        runtime: runtimeProjection(institution.runtime, { displayName: institution.displayName }),
-      })),
-    }
-  }
-
-  async management() { return this.normalizeManagement(await this.service().configuration()) }
-  async resources(profileID) {
-    return emptyResources(this.profile(profileID))
-  }
-  async activate(profileID) { return this.normalizeManagement(await this.service().activate(profileID)) }
-  async configure(profileID) { return this.normalizeManagement(await this.service().configure(profileID)) }
-  async addCustom(baseURL) { return this.normalizeManagement(await this.service().addCustom(baseURL)) }
-  async updateCustom(profileID, baseURL) { return this.normalizeManagement(await this.service().updateCustom(profileID, baseURL)) }
-  async removeProfile(profileID) { return this.normalizeManagement(await this.service().removeInstitution(profileID)) }
-  async configureModels(profileID, modelMode, models) {
-    return this.normalizeManagement(await this.service().configureCustomModels(profileID, modelMode, models))
-  }
-  restart() { return this.service().restart() }
-
-  async status(profileID) {
-    const profile = this.profile(profileID)
-    return this.normalize(profile, await this.service().status(profile.nativeInstitutionID))
-  }
-
-  async begin(profileID) {
-    const profile = this.profile(profileID)
-    const status = await this.service().login(profile.nativeInstitutionID, { allowProvision: false })
-    return { mode: 'completed', status: this.normalize(profile, status) }
-  }
-
-  async reconcile(profileID, options = {}) {
-    const profile = this.profile(profileID)
-    const status = await this.service().reconcile(profile.nativeInstitutionID, { allowProvision: options.allowProvision === true })
-    return this.normalize(profile, status)
-  }
-
-  async logout(profileID) {
-    const profile = this.profile(profileID)
-    return this.normalize(profile, await this.service().logout(profile.nativeInstitutionID))
   }
 }
 

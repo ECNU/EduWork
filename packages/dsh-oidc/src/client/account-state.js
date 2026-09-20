@@ -28,6 +28,14 @@ export function createAccountState(base, { connected = async (_profileID) => {} 
   const activate = async value => {
     if (value?.state === 'connected' && value.credentialReady) await connected(value.profileID)
   }
+  const reconcile = async (id, select) => {
+    const generation = mutate(id), result = await base.reconcile(id, {})
+    if (epoch(id) === generation && !disposed) {
+      publish(result)
+      if (select) await activate(result)
+    }
+    return result
+  }
   const service = {
     ...base, status,
     accountSnapshot: id => values.get(id) ?? null,
@@ -51,14 +59,8 @@ export function createAccountState(base, { connected = async (_profileID) => {} 
       }
       return next
     },
-    async reconcile(id, options) {
-      const generation = mutate(id), result = await base.reconcile(id, options)
-      if (epoch(id) === generation && !disposed) {
-        publish(result)
-        if (options?.allowProvision === true) await activate(result)
-      }
-      return result
-    },
+    reconcile: id => reconcile(id, false),
+    useModels: id => reconcile(id, true),
     async logout(id) {
       const generation = mutate(id), result = await base.logout(id)
       if (epoch(id) === generation) publish(result)

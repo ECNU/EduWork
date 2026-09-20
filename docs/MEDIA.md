@@ -8,12 +8,12 @@
 
 1. 在设置中打开安装目录的 `config/eduwork.jsonc`，将 [带注释的媒体示例](../config/desktop/examples/media.jsonc) 中的 `media` 段合并进去。
 2. 填服务商的 API 基地址、实际模型 ID、支持的图片原生尺寸、音色目录。`images.enabled` 和 `speech.enabled` 可独立开关。
-3. `credentialRef` 填已保存的凭据引用名称。企业登录默认使用 `EDUWORK_API_KEY`，同时必须填写 `oidcProfileId`，对应 `organizations[].id`。个人凭据在模型设置中保存，并使用该凭据的实际引用名称；配置文件不接受明文 Key。
-4. 从托盘选择退出，再启动。企业用户完成登录和凭据配置后查询可用提供方；对话或 Studio 即可使用。
+3. 个人模式的 `credentialRef` 填模型设置中保存的实际凭据引用名称。企业模式填写 `oidcProfileId`，对应 `organizations[].id`，并让 `baseURL` 与该网关发现的模型 API 基地址一致；请求由共享 Host 使用登录 Token 授权，`credentialRef` 不参与企业授权。配置文件不接受明文 Key。
+4. 从托盘选择退出，再启动。企业用户完成登录后查询可用提供方；对话或 Studio 即可使用。
 
 示例中的 `id` 是媒体提供方的稳定 ID，模型、企业配置和资源服务 Provider 各有自己的 ID，不要求它们相同。有多个提供方时在生成请求中明确选择，失败时不悄悄改用另一家服务。
 
-企业模式通过 OIDC 服务核对账户、凭据引用和 API 地址的绑定；不会因为公共 Key 槽里存在值，就拿其他企业的 Key 发起请求。默认配置以启动时文件为准；登录、注销或凭据变化会刷新可用状态。
+企业模式通过共享 Host 核对账户授权与发现的 API 地址，自动刷新 Token 并隔离注销后的请求；不会读取旧公共 Key 槽。生成结果的签名下载地址不附带登录 Token。默认配置以启动时文件为准；登录、注销或凭据变化会刷新可用状态。
 
 ## 个人 Key 的具体配置
 

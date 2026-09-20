@@ -137,3 +137,17 @@ test('desktop client waits for safe results, supports cancellation and leaves th
   assert.deepEqual(await signIn(service, 'example', { signal: controller.signal }), { state: 'signed_out' })
   assert.equal(cancelled, 1)
 })
+
+test('desktop sign-in distinguishes issuer configuration failure from a retryable sign-in failure', async () => {
+  for (const errorCode of ['gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid', 'oidc_authorization_rejected']) {
+    const service = {
+      begin: async () => ({ mode: 'external', loginID: 'synthetic-login', expiresAt: new Date(Date.now() + 5000).toISOString() }),
+      loginStatus: async () => ({ state: 'failed', errorCode }), cancelLogin: async () => {},
+    }
+    await assert.rejects(signIn(service, 'example'), error => {
+      assert.equal(error.code, errorCode)
+      assert.match(error.message, errorCode.startsWith('gateway_') ? /Contact your administrator/ : /Please try again/)
+      return true
+    })
+  }
+})

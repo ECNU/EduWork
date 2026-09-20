@@ -3,15 +3,14 @@ info:
   title: EduWork Identity and Resource Protocol
   version: 1.0.0
   description: >-
-    Optional resource integration for a local single-user OIDC client.
-    Management uses worker-user-center-v1 bootstrap and credential operations. Quota and activity heartbeat are institution extensions, absent from this contract.
-    Model discovery uses the resulting runtime API key, never the
-    identity token. Pure OIDC deployments may omit resource integration.
+    Model discovery for a local single-user client with explicit gateway authorization.
+    Requests use the current Access Token. The client does not provision model API keys.
+    Quota and activity heartbeat remain optional institution extensions.
   license: { name: MIT, identifier: MIT }
 servers:
   - url: https://ai.example.edu/open/api/v1
 security:
-  - runtimeKey: []
+  - accessToken: []
 paths:
   /models:
     get:
@@ -34,9 +33,9 @@ paths:
                       required: [id]
                       properties:
                         id: { type: string, minLength: 1, maxLength: 256 }
-        '401': { description: Runtime key is invalid or expired }
-        '403': { description: Model discovery is not permitted; keep the reviewed catalog }
-        '404': { description: Discovery not supported; client keeps reviewed model catalog }
+        '401': { description: Access Token is invalid or expired }
+        '403': { description: Model discovery is not permitted }
+        '404': { description: Discovery endpoint is unavailable }
         '429': { $ref: '#/components/responses/RateLimited' }
         '5XX': { $ref: '#/components/responses/Unavailable' }
 components:
@@ -48,4 +47,4 @@ components:
     Unavailable:
       description: Temporary resource failure; do not clear identity or the model key
   securitySchemes:
-    runtimeKey: { type: http, scheme: bearer, description: Model runtime credential }
+    accessToken: { type: http, scheme: bearer, description: Model runtime credential }

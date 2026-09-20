@@ -14,7 +14,7 @@ The original product implementation coupled OIDC account behavior, institution c
 Publish one project/package named `dsh-oidc` containing:
 
 - standard OIDC Web client and a host-neutral native adapter contract;
-- the fixed Key Binding client;
+- shared token authorization and lifecycle;
 - one local audited OpenAI-compatible DSH Provider adapter;
 - declarative Provider/model and bounded brand configuration;
 - standard account UI and one capability-aware enterprise-model settings surface shared by Web/native hosts;
@@ -23,7 +23,7 @@ Publish one project/package named `dsh-oidc` containing:
 
 Keep desktop shells, quotas, institutional business APIs, search, vision implementations, skills, packaging, and updates outside this repository.
 
-Enterprise Profiles are data and cannot select executable adapters or customize Key Binding wire fields.
+Enterprise Profiles are data and cannot select executable adapters or override discovered authorization boundaries.
 
 ## Consequences
 

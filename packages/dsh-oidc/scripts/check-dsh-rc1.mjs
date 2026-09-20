@@ -66,14 +66,16 @@ assert.equal(typeof createProvider, 'function', 'pi-ai createProvider is unavail
 assert.equal(typeof openAICompletionsApi, 'function', 'pi-ai OpenAI Completions adapter is unavailable')
 assert.equal(credentialRef('EDUWORK_API_KEY'), 'EDUWORK_API_KEY')
 
-const oidcService = new OidcAccountService(new Context(), { allowEmptyProfiles: true, backend: 'native' })
+const oidcService = new OidcAccountService(new Context(), { allowEmptyProfiles: true, backend: 'desktop' })
 assert.deepEqual(remoteMethods(oidcService).map(marker => marker.method), [
   'configuration', 'openConfiguration', 'status', 'resources', 'begin', 'loginStatus', 'cancelLogin', 'reconcile', 'selectEnterpriseModel', 'logout', 'management',
   'activate', 'configure', 'addCustom', 'updateCustom', 'removeProfile', 'configureModels', 'restart',
 ], 'OidcAccountService must preserve every Typert Remote marker')
 
 const example = normalizeEnterpriseProfile(JSON.parse(await readFile(new URL('examples/enterprise-profile.example.json', root), 'utf8')))
-const providerBase = settingsBase(enterpriseProviderConfig(new Map([[example.id, example]])))
+assert.deepEqual(enterpriseProviderConfig(new Map([[example.id, example]])).providers, {}, 'No model route before discovery')
+const discovered = { ...example, provider: { ...example.provider, baseURL: 'https://models.example.edu/v1' } }
+const providerBase = settingsBase(enterpriseProviderConfig(new Map([[example.id, discovered]])))
 assert.doesNotThrow(() => PiAiConfig(providerBase), 'the public Enterprise Profile must satisfy the reviewed PiAi settings schema')
 class ProbeSettingsProvider extends SettingsProvider {
   load() { return Promise.resolve({}) }

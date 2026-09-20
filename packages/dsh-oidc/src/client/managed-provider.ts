@@ -15,7 +15,7 @@ const copy: Record<string, string> = isChinese ? {
   waiting: '请在浏览器中完成登录…', cancelLogin: '取消登录',
   title: '学校 / 企业服务', description: '已验证机构和兼容协议服务使用统一入口管理；普通 API Key 提供方继续由 DSH 原生设置管理。',
   loading: '正在读取学校 / 企业服务…', add: '+ 添加学校 / 企业服务', verified: '已验证机构', custom: '自定义服务',
-  connected: '已连接', enabled: '已启用', disabled: '未启用', configure: '配置', enable: '启用并重载', login: '登录', provision: '确认创建并连接', refresh: '刷新状态',
+  connected: '已连接', enabled: '已启用', disabled: '未启用', configure: '配置', enable: '启用并重载', login: '登录', refresh: '刷新状态',
   processing: '处理中…', profileManaged: 'Enterprise Profile 管理', addTitle: '添加学校 / 企业服务', addDescription: '选择已验证机构，或填写一个兼容协议 Base URL。',
   addVerified: '添加', compatible: '连接兼容协议服务', compatibleHint: '默认从服务端发现登录、模型和能力。若元数据不完整，添加后可手动补充模型目录。',
   saveService: '保存服务', saving: '保存中…', providerID: 'Provider ID', modelCatalog: '模型目录', defaultContext: '默认上下文', defaultOutput: '默认最大输出',
@@ -38,7 +38,7 @@ const copy: Record<string, string> = isChinese ? {
   waiting: 'Complete sign-in in your browser…', cancelLogin: 'Cancel sign-in',
   title: 'Organization services', description: 'Manage verified organizations and compatible enterprise services here; ordinary API-key providers remain in DSH model settings.',
   loading: 'Loading organization services…', add: '+ Add organization service', verified: 'Verified organization', custom: 'Custom service',
-  connected: 'Connected', enabled: 'Enabled', disabled: 'Disabled', configure: 'Configure', enable: 'Enable and reload', login: 'Sign in', provision: 'Confirm and connect', refresh: 'Refresh',
+  connected: 'Connected', enabled: 'Enabled', disabled: 'Disabled', configure: 'Configure', enable: 'Enable and reload', login: 'Sign in', refresh: 'Refresh',
   processing: 'Working…', profileManaged: 'Enterprise Profile managed', addTitle: 'Add organization service', addDescription: 'Select a verified organization or enter a compatible protocol Base URL.',
   addVerified: 'Add', compatible: 'Connect a compatible service', compatibleHint: 'Login, models, and capabilities are discovered by default. A model catalog can be supplied manually when metadata is incomplete.',
   saveService: 'Save service', saving: 'Saving…', providerID: 'Provider ID', modelCatalog: 'Model catalog', defaultContext: 'Default context', defaultOutput: 'Default output',
@@ -147,9 +147,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
   }
   const login = useSignIn(service)
   const signIn = (profileID: string) => run(() => login.begin(profileID))
-  const connect = (profileID: string, status: any) => status?.state === 'authenticated' || status?.state === 'provision_required'
-    ? run(() => service.reconcile(profileID, { allowProvision: true }))
-    : signIn(profileID)
+  const connect = (profileID: string) => signIn(profileID)
 
   if (!management) return h('p', { style: { margin: '18px 0', color: textSecondary, fontSize: 12 } }, copy.loading)
   const canManageProfiles = !configuration.configFile && management.capabilities.manageProfiles === true
@@ -227,8 +225,8 @@ export function ManagedProviderCard({ service, configuration }: any) {
         h('div', { style: { display: 'flex', gap: 7, flex: 'none', flexWrap: 'wrap', justifyContent: 'flex-end' } },
           h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: () => openDetail(profile) }, canManageProfiles || canManageModels ? copy.configure : (isChinese ? '查看详情' : 'View details')),
           canManageProfiles && !profile.enabled && h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => enable(profile.id) }, copy.enable),
-          profile.enabled && !restartRequired && !connected && h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => connect(profile.id, status) }, busy ? copy.processing : (status?.state === 'authenticated' || status?.state === 'provision_required' ? copy.provision : copy.login)),
-          profile.enabled && !restartRequired && connected && h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: () => run(() => service.reconcile(profile.id, { allowProvision: false })) }, copy.refresh))))
+          profile.enabled && !restartRequired && !connected && h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => connect(profile.id) }, busy ? copy.processing : copy.login),
+          profile.enabled && !restartRequired && connected && h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: () => run(() => service.reconcile(profile.id, {})) }, copy.refresh))))
   })) : h('div', { style: { padding: 18, border: `1px dashed ${border}`, borderRadius: 13, background } },
     h('strong', { style: { display: 'block', fontSize: 14 } }, copy.emptyTitle),
     h('p', { style: { margin: '6px 0 0', color: textSecondary, fontSize: 12, lineHeight: 1.55 } }, configuration.configFile
