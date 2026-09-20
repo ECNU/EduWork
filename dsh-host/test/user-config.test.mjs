@@ -89,3 +89,15 @@ test('typos, duplicate fields, credential-bearing top-level config and escaping 
     writeFileSync(file,body);assert.throws(()=>loadUserConfig(file));assert.equal(readFileSync(file,'utf8'),body)
   }
 })
+
+
+test('installed-plugin options accept JSON objects and reject malformed entries', t => {
+  const {file}=fixture(t)
+  for(const plugins of [[], {'Bad ID':{}}, {'example':null}, {'example':[]}]) {
+    writeFileSync(file,JSON.stringify({schemaVersion:1,plugins}))
+    assert.throws(()=>loadUserConfig(file))
+  }
+  const plugins={'example':{baseURL:'https://uat.example.test/v1',enabled:false}}
+  writeFileSync(file,JSON.stringify({schemaVersion:1,plugins}))
+  assert.deepEqual(JSON.parse(JSON.stringify(loadUserConfig(file).pluginConfig)),plugins)
+})

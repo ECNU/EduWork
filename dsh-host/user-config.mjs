@@ -54,7 +54,7 @@ export function loadUserConfig(path, { overlay } = {}) {
     const original = jsonc.getNodeValue(tree)
     if (overlay) allowed(overlay, ['organizations', 'features', 'media'], '内容配置')
     const value = overlay ? { ...original, ...overlay, features: { ...original.features, ...overlay.features } } : original
-    allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media', 'contentUpdates'], '配置')
+    allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media', 'contentUpdates', 'plugins'], '配置')
     if (value.schemaVersion !== 1) throw new Error('schemaVersion 必须是 1')
     allowed(value.product ?? {}, ['name', 'logoFile'], 'product')
     allowed(value.desktop ?? {}, ['closeAction'], 'desktop')
@@ -90,9 +90,16 @@ export function loadUserConfig(path, { overlay } = {}) {
       if (url.protocol !== 'https:' || url.username || url.password || url.hash) throw new Error(`updates.${key} 必须使用不含凭据的 HTTPS 地址`)
       updates[key] = url.href
     }
+    const pluginConfig = value.plugins ?? {}
+    allowed(pluginConfig, Object.keys(pluginConfig), 'plugins')
+    if (Object.keys(pluginConfig).length > 64) throw new Error('plugins 最多配置 64 个已安装插件')
+    for (const [id, settings] of Object.entries(pluginConfig)) {
+      if (!/^[a-z][a-z0-9-]{0,127}$/u.test(id)) throw new Error('plugins 中的插件 ID 无效')
+      allowed(settings, Object.keys(settings ?? {}), `plugins.${id}`)
+    }
     const features = { ...value.features }
     if (features.maxConcurrentRequests === undefined && features.maxParallelSubagents !== undefined) features.maxConcurrentRequests = features.maxParallelSubagents + 1
-    return { source, product, organizations: value.organizations ?? [], closeAction, updates, features, contentUpdates: contentUpdateSource(value.contentUpdates),
+    return { source, product, pluginConfig, organizations: value.organizations ?? [], closeAction, updates, features, contentUpdates: contentUpdateSource(value.contentUpdates),
       ...(value.media !== undefined ? { media: normalizeMediaConfig(value.media) } : {}) }
   } catch (error) {
     throw new Error(`请检查配置文件 ${path}\n${error.message}`, { cause: error })

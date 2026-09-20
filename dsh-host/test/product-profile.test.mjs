@@ -135,29 +135,24 @@ test('both shells pass total request limits and legacy conversions through the s
   }
 })
 
-test('Electron reads the visible config while the Go bridge retains its old migration; personal providers stay separate', {skip: !process.env.EDUWORK_TEST_RUNTIME}, async t => {
+test('Electron validates Token profiles from the visible file without changing personal providers', {skip: !process.env.EDUWORK_TEST_RUNTIME}, async t => {
   const {root,product,home} = await fixture(t)
   const runtime = process.env.EDUWORK_TEST_RUNTIME
   await mkdir(join(product, 'd/node_modules/@eduwork'), {recursive:true})
   await symlink(join(runtime, 'node_modules/@eduwork/dsh-oidc'), join(product, 'd/node_modules/@eduwork/dsh-oidc'), process.platform === 'win32' ? 'junction' : 'dir')
   const org = {
     schemaVersion:'dsh-oidc/v1alpha1', id:'university', displayName:'Example University', organization:'Example University',
-    oidc:{issuer:'https://identity.example.edu',clientId:'synthetic-public-client',scopes:['openid','profile']},
-    keyBinding:{type:'eduwork-resources-v1',baseURL:'https://ai.example.edu/api/worker/v1',credentialRef:'EDUWORK_API_KEY'},
-    provider:{id:'school-ai',displayName:'Enterprise models',adapter:'openai-compatible',baseURL:'https://ai.example.edu/v1',modelSource:'profile',
+    auth:{discoveryUrl:'https://ai.example.edu/.well-known/openid-configuration',expectedIssuer:'https://ai.example.edu',experimentalOidcLlm:true,clientId:'synthetic-public-client',identityMode:'oidc'},
+    provider:{id:'school-ai',displayName:'Enterprise models',adapter:'openai-compatible',modelSource:'discovery',
       models:[{id:'main',name:'Main',input:['text'],contextWindow:1000000,maxTokens:393216,reasoningEfforts:{low:'low',high:'high',max:'max'},defaultReasoningEffort:'high'},
         {id:'secondary',name:'Secondary',input:['text','image'],contextWindow:262144,maxTokens:65536,compat:{supportsReasoningEffort:false}}]},
   }
   const config = join(root, 'eduwork.jsonc')
   const body = '\uFEFF// Administrator comments and settings are retained\r\n' + JSON.stringify({schemaVersion:1,organizations:[org]})
   await writeFile(config, body)
-  await mkdir(join(product, 'resources/desktop'), {recursive:true})
-  await writeFile(join(product, 'resources/desktop/enterprise-model-updates.json'), JSON.stringify({schemaVersion:1,updates:[{
-    match:{profileID:org.id,issuer:org.oidc.issuer,providerID:org.provider.id,baseURL:org.provider.baseURL,adapter:org.provider.adapter,modelID:'main'},fromInput:['text'],toInput:['text','image'],fromContextWindow:1000000,toContextWindow:524288,
-  }]}))
   const req = createRequire(join(runtime, 'package.json'))
   const {loadEnterpriseProfiles, enterpriseProviderConfig} = await import(pathToFileURL(req.resolve('@eduwork/dsh-oidc/profile')).href)
-  for (const shell of ['wails','electron']) {
+  for (const shell of ['electron']) {
     const data = home + '-' + shell
     await mkdir(data, {recursive:true})
     // A personal provider deliberately has the same model ID as the enterprise.
@@ -170,9 +165,11 @@ test('Electron reads the visible config while the Go bridge retains its old migr
       const result = await prepareProductProfile({product,home:data,shell,userConfig:config})
       const patch = JSON.parse(await readFile(join(result.profile, 'cordis.patch.yml'), 'utf8'))
       const effective = patch.flatMap(row => row.insert ?? []).find(row => row.id === 'enterprise-oidc').config
-      const provider = enterpriseProviderConfig(loadEnterpriseProfiles(effective, {})).providers['school-ai']
-      assert.deepEqual(provider.models[0].input,shell==='wails'?['text','image']:['text'])
-      assert.equal(provider.models[0].contextWindow,shell==='wails'?524288:1000000)
+      const profiles = loadEnterpriseProfiles(effective, {})
+      assert.deepEqual(enterpriseProviderConfig(profiles).providers,{})
+      const provider = profiles.get(org.id).provider
+      assert.deepEqual(provider.models[0].input,['text'])
+      assert.equal(provider.models[0].contextWindow,1000000)
       assert.deepEqual(provider.models[0].reasoningEfforts,org.provider.models[0].reasoningEfforts)
       assert.equal(provider.models[0].maxTokens,393216)
       assert.equal(provider.models[1].compat.supportsReasoningEffort,false)
@@ -186,7 +183,7 @@ test('Electron reads the visible config while the Go bridge retains its old migr
     const managedContent={configurationRevision:2,configurationPatch:{organizations:[]},skillsRevision:2,skillRoot:join(root,'signed-skills')}
     const prepared=await prepareProductProfile({product,home:data,shell,userConfig:config,managedContent})
     const managed=JSON.parse(await readFile(join(prepared.profile,'cordis.patch.yml'),'utf8')).flatMap(row=>row.insert??[]).find(row=>row.id==='enterprise-oidc').config
-    assert.deepEqual(managed.profiles[0].provider.models[0].input,shell==='wails'?['text','image']:['text'])
+    assert.deepEqual(managed.profiles[0].provider.models[0].input,['text'])
     assert.equal(managed.configFile.path,config)
     assert.equal(prepared.environment.EDUWORK_VISION_FALLBACK,'true')
     assert.equal(prepared.environment.DSH_BUNDLED_SKILL_DIR,managedContent.skillRoot)
@@ -200,4 +197,21 @@ test('an explicitly promoted current installation starts with normal data owners
  const result=await prepareProductProfile({product,home,shell:'wails'})
  assert.equal(JSON.parse(await readFile(join(home,'.eduwork-desktop-home.json'),'utf8')).shell,'wails')
  assert.equal(await realpath(join(result.profile,'node_modules')),await realpath(join(product,'d/node_modules')))
+})
+
+
+test('one configuration file overrides installed plugin endpoints but cannot add plugins', async t => {
+  const {root,product,home}=await fixture(t)
+  const composition=JSON.parse(await readFile(join(product,'composition.json'),'utf8'))
+  composition.push({insert:[{id:'example-service',name:'example',config:{baseURL:'https://prod.example.test',nested:{keep:true,enabled:true}}}]})
+  await writeFile(join(product,'composition.json'),JSON.stringify(composition))
+  const userConfig=join(root,'eduwork.jsonc')
+  const body=JSON.stringify({schemaVersion:1,plugins:{'example-service':{baseURL:'https://uat.example.test',nested:{enabled:false}}}})
+  await writeFile(userConfig,body)
+  const result=await prepareProductProfile({product,home,shell:'electron',userConfig})
+  const service=JSON.parse(await readFile(join(result.profile,'cordis.patch.yml'),'utf8')).flatMap(row=>row.insert??[]).find(plugin=>plugin.id==='example-service')
+  assert.deepEqual(service.config,{baseURL:'https://uat.example.test',nested:{keep:true,enabled:false}})
+  assert.equal(await readFile(userConfig,'utf8'),body)
+  await writeFile(userConfig,JSON.stringify({schemaVersion:1,plugins:{'not-installed':{}}}))
+  await assert.rejects(prepareProductProfile({product,home,shell:'electron',userConfig}),/not-installed/)
 })

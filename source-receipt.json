@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-20T14:28:03.828Z",
-  "fileSetSHA256": "f872c0de7a08f0f7df83dc2f0aa62a8af811c3326af7fde02e028544d21fd4a2",
+  "createdAt": "2026-09-20T14:40:34.016Z",
+  "fileSetSHA256": "c78f7fcab51522966914ebccbae37a1b75da9ae4ed0de355a20e06c2ee09fe62",
   "files": [
     {
       "path": ".gitattributes",
@@ -181,11 +181,11 @@
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
-      "sha256": "4ac4f7ebc6af5854469ca146c5e5e2bbe633500faeaaece5128719938c27e4bd"
+      "sha256": "6fec529237aa8ebaeb03cd254ceefe2335df7bdb7d79a9400b65decce0d9f4ca"
     },
     {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "fbbcc316b00db8d9a3dead3e6c67bc14423ec6e73ef2e7244f98276aed1af328"
+      "sha256": "e83fc069e2fc902eef98a38cfb154040582315896e6cbd4e545d52900eb6c781"
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
@@ -905,7 +905,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "1e7d468fc2426fc0ab9963537ab25225e61a1c8241fe1f8a4388a3f6034ca827"
+      "sha256": "7213602b32688b968610b58b6daf37e98525dc33d1f361a0eefe0c539ccc8c50"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -977,7 +977,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "1d2e2e16bdb95d163f41efbd386fdc1dd3c6bd214e35fa2384c59a851f7b415e"
+      "sha256": "3d44e0bc3566d3697b24396943d6b579767445534ae685163fefc24de8243bb0"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
@@ -989,7 +989,7 @@
     },
     {
       "path": "dsh-host/test/user-config.test.mjs",
-      "sha256": "dc420f1a612eca16048074fa9ee249e0f03d6c11d0b116b1ec6bef1395dc6df5"
+      "sha256": "00b83348441825b9d40ebee6cb913fd252de335678c3bb0fe64baa30dc32aab3"
     },
     {
       "path": "dsh-host/test/wails-migration.test.mjs",
@@ -1001,7 +1001,7 @@
     },
     {
       "path": "dsh-host/user-config.mjs",
-      "sha256": "449999669cb298f5827adaba5e943087341d8c425840814fcc748e2e164bced7"
+      "sha256": "d463e3126b1a50d39553bda380f49b59b4f1ce7389780e44f889a7175e7150cd"
     },
     {
       "path": "dsh-host/vendor/jsonc-parser/LICENSE.md",
@@ -1969,7 +1969,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "f09b07f9f9794421f6780829891e3c1aee56060a33b09fdb9dcfa96785d8db88"
+      "sha256": "55a43465891281dac75592964fd9f24b4e721fcac01f253f4594f7a0d251b1e1"
     },
     {
       "path": "dsh-plugins/workbench-native/test/concurrency-browser.mjs",
@@ -4537,18 +4537,18 @@
     },
     {
       "path": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
-      "sha256": "2ea7d82ad0f58a90e9afcfad7a6b4eda12e60d455e617104d0bf67b9debe0ab0"
+      "sha256": "8c321b1eaa3cf6f91132139d48a23f7115f3be3c0145ad95a04deaa5af9f5933"
     }
   ],
   "artifacts": [
     {
       "name": "@eduwork/dsh-oidc",
-      "version": "0.2.4",
-      "commit": "84071795e8fdc1c0ae4ad8fa2861184b2148dc1c",
+      "version": "0.3.0-dev.1",
+      "commit": "5fef08fdbff9a9543e75086f8fa0174ed511fceb",
       "lock": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "e7239dd1951f663140a95b14991562ad5f0c22546d57209082bf428674791ad4"
+      "sha256": "09b7a0c08d05eadbcc6fed38a0ade47224fb74fc78b4cc6957fe8ab4262d9323"
     },
     {
       "name": "@eduwork/dsh-mail",

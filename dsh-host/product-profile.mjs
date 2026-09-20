@@ -49,6 +49,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   if (!/^[a-z0-9-]+$/u.test(identity.distribution)) throw new Error('Invalid distribution identity')
   const user = userConfig ? loadUserConfig(userConfig) : undefined
   if (user) {
+    pluginConfig = mergeConfig(pluginConfig, user.pluginConfig)
     if (user.organizations.length) {
       try {
         const req = createRequire(join(product, 'd/package.json'))
@@ -111,6 +112,10 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   await atomicJSON(receiptFile, { schemaVersion: 1, target })
   await unlink(pendingFile)
   const composition = await json(join(product, 'composition.json'))
+  const installed = new Set(composition.flatMap(row => (row.insert ?? []).map(plugin => plugin.id)))
+  for (const id of Object.keys(user?.pluginConfig ?? {})) {
+    if (!installed.has(id)) throw new Error(`请检查配置文件 ${user.source.path}\nplugins.${id} 不属于此发行版已安装的插件`)
+  }
   for (const row of composition) {
     for (const plugin of row.insert || []) {
       if (pluginConfig[plugin.id]) plugin.config = mergeConfig(plugin.config, pluginConfig[plugin.id])
