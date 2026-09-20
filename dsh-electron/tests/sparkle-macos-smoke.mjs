@@ -37,10 +37,13 @@ try {
   await run('tar',['-xf',join(root,'headers.tar.gz'),'-C',headers,'--strip-components=1'])
   const pair=generateKeyPairSync('ed25519'),publicKey=pair.publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('base64')
   const cert=join(root,'localhost.crt'),key=join(root,'localhost.key')
-  await run('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost,IP:127.0.0.1','-addext','basicConstraints=critical,CA:TRUE'])
+  await run('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost,IP:127.0.0.1','-addext','basicConstraints=critical,CA:TRUE','-addext','extendedKeyUsage=serverAuth','-addext','keyUsage=digitalSignature,keyEncipherment,keyCertSign'])
   await run('sudo',['security','add-trusted-cert','-d','-r','trustRoot','-k','/Library/Keychains/System.keychain',cert])
+  await run('security',['verify-cert','-c',cert,'-p','ssl','-s','localhost']);
   let archive,signature,offerVersion='2'
+  const requests=[];
   server=createServer({key:await readFile(key),cert:await readFile(cert)},(request,response)=>{
+    requests.push({url:request.url,method:request.method});
     if(request.url==='/update.zip'){response.end(archive);return}
     response.setHeader('content-type','application/xml')
     response.end(`<?xml version="1.0"?><rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>Test updates</title><item><title>Test ${offerVersion}</title><sparkle:version>${offerVersion}</sparkle:version><sparkle:shortVersionString>0.3.${offerVersion}</sparkle:shortVersionString><enclosure url="https://localhost:${server.address().port}/update.zip" length="${archive.length}" type="application/octet-stream" sparkle:edSignature="${signature}" /></item></channel></rss>`)
@@ -67,7 +70,9 @@ try {
   const zip=join(root,'update.zip');await run('ditto',['-c','-k','--sequesterRsrc','--keepParent',newApp,zip])
   archive=await readFile(zip);signature=sign(null,archive,pair.privateKey).toString('base64')
   const marker=join(evidence,'probe.json')
-  await run(join(oldApp,'Contents/MacOS/Electron'),[],{env:{EDUWORK_SPARKLE_RESULT:marker}})
+  const probeRun=await run(join(oldApp,'Contents/MacOS/Electron'),[],{failure:true,env:{EDUWORK_SPARKLE_RESULT:marker}});
+  await writeFile(join(evidence,'requests.json'),JSON.stringify(requests,null,2));
+  assert.equal(probeRun.code,0,await readFile(marker,'utf8'))
   assert.equal(JSON.parse(await readFile(marker)).state,'available');result.checks.push('Electron loads the actual N-API bridge and probes the HTTPS feed')
   const paths=await readdir(join(frameworkRoot,'bin'),{recursive:true})
   const cliRelative=paths.find(path=>path.endsWith('/Contents/MacOS/Updater')) ?? paths.find(path=>path==='sparkle-cli')

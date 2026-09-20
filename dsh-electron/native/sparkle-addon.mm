@@ -18,7 +18,9 @@ static NSString *currentFeed = nil, *updateState = @"idle", *latestVersion = @""
 }
 - (void)updater:(SPUUpdater *)updater didFinishUpdateCycleForUpdateCheck:(SPUUpdateCheck)check error:(NSError *)error {
   if (error.code == SUNoUpdateError) { updateState = @"up_to_date"; lastError = @""; }
-  else if (error && error.code != SUInstallationCanceledError) { updateState = @"error"; lastError = error.localizedDescription; }
+  else if (error && error.code != SUInstallationCanceledError) { updateState = @"error"; lastError = error.localizedFailureReason.length ? [NSString stringWithFormat:@"%@: %@", error.localizedDescription, error.localizedFailureReason] : error.localizedDescription;
+    NSError *cause = error.userInfo[NSUnderlyingErrorKey];
+    if (cause) lastError = [lastError stringByAppendingFormat:@" (%@ %ld: %@)", cause.domain, (long)cause.code, cause.localizedDescription]; }
   else if ([updateState isEqualToString:@"checking"]) updateState = @"idle";
 }
 @end
