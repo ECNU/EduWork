@@ -37,9 +37,14 @@ try {
   await run('tar',['-xf',join(root,'headers.tar.gz'),'-C',headers,'--strip-components=1'])
   const pair=generateKeyPairSync('ed25519'),publicKey=pair.publicKey.export({format:'der',type:'spki'}).subarray(-32).toString('base64')
   const cert=join(root,'localhost.crt'),key=join(root,'localhost.key')
-  await run('openssl',['req','-x509','-newkey','rsa:2048','-nodes','-keyout',key,'-out',cert,'-days','1','-subj','/CN=localhost','-addext','subjectAltName=DNS:localhost,IP:127.0.0.1','-addext','basicConstraints=critical,CA:TRUE','-addext','extendedKeyUsage=serverAuth','-addext','keyUsage=digitalSignature,keyEncipherment,keyCertSign'])
-  await run('sudo',['security','add-trusted-cert','-d','-r','trustRoot','-k','/Library/Keychains/System.keychain',cert])
-  await run('security',['verify-cert','-c',cert,'-p','ssl','-s','localhost']);
+  const ca=join(root,'ca.crt'),caKey=join(root,'ca.key'),caConfig=join(root,'ca.cnf'),leafConfig=join(root,'leaf.cnf'),csr=join(root,'localhost.csr')
+  await writeFile(caConfig,'[req]\ndistinguished_name=dn\nx509_extensions=ca\nprompt=no\n[dn]\nCN=EduWork CI Root\n[ca]\nbasicConstraints=critical,CA:TRUE\nkeyUsage=critical,keyCertSign,cRLSign\nsubjectKeyIdentifier=hash\n')
+  await writeFile(leafConfig,'[req]\ndistinguished_name=dn\nprompt=no\n[dn]\nCN=localhost\n[server]\nbasicConstraints=CA:FALSE\nkeyUsage=digitalSignature,keyEncipherment\nextendedKeyUsage=serverAuth\nsubjectAltName=DNS:localhost,IP:127.0.0.1\n')
+  await run('openssl',['req','-x509','-newkey','rsa:2048','-sha256','-nodes','-keyout',caKey,'-out',ca,'-days','1','-config',caConfig])
+  await run('openssl',['req','-new','-newkey','rsa:2048','-nodes','-keyout',key,'-out',csr,'-config',leafConfig])
+  await run('openssl',['x509','-req','-in',csr,'-CA',ca,'-CAkey',caKey,'-CAcreateserial','-out',cert,'-days','1','-sha256','-extfile',leafConfig,'-extensions','server'])
+  await run('sudo',['security','add-trusted-cert','-d','-r','trustRoot','-k','/Library/Keychains/System.keychain',ca])
+  await run('security',['verify-cert','-c',cert,'-c',ca,'-p','ssl','-s','localhost'])
   let archive,signature,offerVersion='2'
   const requests=[];
   server=createServer({key:await readFile(key),cert:await readFile(cert)},(request,response)=>{
