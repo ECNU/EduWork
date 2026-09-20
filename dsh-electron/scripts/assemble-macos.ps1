@@ -119,7 +119,7 @@ if ($ExternalPublisherConfig) {
     $bundledPublisherConfig = Join-Path $resources 'product/resources/desktop/eduwork.jsonc'
     if (Test-Path -LiteralPath $bundledPublisherConfig) { Remove-Item -LiteralPath $bundledPublisherConfig -Force }
     $desktop.publisherConfig=$ExternalPublisherConfig
-} elseif ($ownership -eq 'publisher') { $desktop.publisherConfig='../product/resources/desktop/eduwork.jsonc' }
+}
 $desktop | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $appPayload 'eduwork.desktop.json') -Encoding utf8NoBOM
 @{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $appPayload 'package.json') -Encoding utf8NoBOM
 

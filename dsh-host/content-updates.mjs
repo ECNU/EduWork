@@ -3,6 +3,7 @@ import { join, dirname, relative, isAbsolute, sep } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
+import { ConfigurationFile } from './configuration-file.mjs'
 
 async function readJSON(path, fallback) { try { return JSON.parse(await readFile(path,'utf8')) } catch(error) { if(error.code==='ENOENT')return fallback;throw error } }
 async function atomic(path,value) {
@@ -29,9 +30,10 @@ export class ContentUpdates {
   }
   async init() {
     if(!['stable','development'].includes(this.policy))throw Error('内容更新渠道无效')
+    this.configurationFile=await new ConfigurationFile(this.configPath,this.dataRoot).open()
     this.source=loadUserConfig(this.configPath).contentUpdates
     if(!this.source||!this.source.configuration&&!this.source.skills)return this
-    const scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))
+    const scope=this.scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))
     // Installed revisions survive channel changes; changing feeds never downgrades.
     this.store=join(this.dataRoot,'content-updates',scope)
     await safeDirectory(this.store)
@@ -87,9 +89,10 @@ export class ContentUpdates {
     const {directory,manifest,bundle}=await this.cached(key)
     const result={}
     if(includeConfiguration&&bundle.configuration) {
-      // Keep relative assets and the user's editable file anchored to the base config.
+      // Validate the signed defaults, then write through the single-file
+      // transaction only after all selected components have been verified.
       loadUserConfig(this.configPath,{overlay:bundle.configuration})
-      result.configurationPatch=bundle.configuration;result.configurationRevision=manifest.components.configuration
+      result.configurationDefaults=bundle.configuration;result.configurationRevision=manifest.components.configuration
     }
     if(includeSkills&&bundle.skills) {
       await this.unchangedBundledSkills()
@@ -111,6 +114,7 @@ export class ContentUpdates {
   async prepare() {
     if(!this.source||!this.view.enabled)return {}
     const selected={...this.state.active}
+    for(const name of Object.keys(selected))if(!this.source[name])delete selected[name]
     // A newer whole-application package supersedes older cached components.
     for(const key of new Set(Object.values(selected))) {
       try {
@@ -126,6 +130,7 @@ export class ContentUpdates {
         const pending=await this.cached(this.state.pending)
         if(Object.entries(pending.manifest.components).some(([name,revision])=>revision<(this.source.bundled[name]??0)))throw Error('软件内置内容已更新，已取消旧的待生效内容')
         for(const name of Object.keys(pending.manifest.components)) {
+          if(!this.source[name])continue
           const activeRevision=selected[name]?(await this.cached(selected[name])).manifest.components[name]:this.source.bundled[name]??0
           if(pending.manifest.components[name]>activeRevision)selected[name]=this.state.pending
         }
@@ -135,6 +140,16 @@ export class ContentUpdates {
     try {
       let result={}
       for(const key of new Set(Object.values(selected)))result={...result,...await this.materialize(key,selected.configuration===key,selected.skills===key)}
+      if(result.configurationDefaults) {
+        const conflicts=await this.configurationFile.apply({scope:this.scope,key:selected.configuration,patch:result.configurationDefaults,
+          revision:result.configurationRevision,
+          legacy:!this.configurationFile.state.defaults&&selected.configuration===this.state.active.configuration})
+        this.view.configurationConflicts=conflicts
+        if(conflicts.length)this.view.message=`已保留 ${conflicts.length} 项本地配置修改：${conflicts.join('、')}`
+        delete result.configurationDefaults
+      }
+      const local=this.configurationFile.state.defaults
+      if(!result.configurationRevision&&this.source.configuration&&local?.scope===this.scope&&local.revision>(this.source.bundled.configuration??0))result.configurationRevision=local.revision
       this.selected=selected
       Object.assign(this.view,{configurationRevision:result.configurationRevision??this.source.bundled.configuration??0,skillsRevision:result.skillsRevision??this.source.bundled.skills??0,state:'current'})
       return result
@@ -145,12 +160,17 @@ export class ContentUpdates {
     }
   }
   async ready() {
-    if(!this.state.trial)return
-    const committed={...this.state,active:this.selected,trial:null,pending:null}
-    await atomic(this.statePath,committed)
-    this.state=committed;this.view.state='current'
+    if(this.state.trial) {
+      const committed={...this.state,active:this.selected,trial:null,pending:null}
+      await atomic(this.statePath,committed)
+      this.state=committed;this.view.state='current'
+    }
+    await this.configurationFile.commit()
+    try { await this.configurationFile.cleanupLegacy() }
+    catch { this.view.message='配置已生效；部分旧配置暂未清理，下次启动重试' }
   }
   async rejectPending(reason) {
+    await this.configurationFile.rollback()
     if(this.state.pending)this.state.rejected=[...new Set([...this.state.rejected,this.state.pending])].slice(-100)
     this.state.pending=null;this.state.trial=null;await this.save()
     this.view={...this.view,state:'error',message:reason}
@@ -177,7 +197,8 @@ export class ContentUpdates {
       const current=!restore&&(manifest.revision<=this.state.highest||Object.entries(manifest.components).every(([name,revision])=>revision<=this.view[name+'Revision']))
       const reason=incompatible(manifest.requires,this.environment)
       this.offer=current?null:{key,envelope,manifest}
-      this.view={...this.view,state:current?'current':reason?'requires_software':'available',latestRevision:manifest.revision,totalBytes:manifest.bundle.bytes,downloadedBytes:0,message:reason??''}
+      const conflicts=this.view.configurationConflicts??[]
+      this.view={...this.view,state:current?'current':reason?'requires_software':'available',latestRevision:manifest.revision,totalBytes:manifest.bundle.bytes,downloadedBytes:0,message:reason??(conflicts.length?`已保留 ${conflicts.length} 项本地配置修改：${conflicts.join('、')}`:'')}
     } catch(error) {this.view={...this.view,state:'error',message:error.message}}
     finally {this.busy=false}
     return this.snapshot()

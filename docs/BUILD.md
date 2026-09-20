@@ -156,7 +156,7 @@ macOS 不是将 Windows 依赖目录复制进 `.app`。先完成 [Mac 路径、�
 
 机构发行建议使用[首次启动获取配置](PUBLISHER_BOOTSTRAP.md)：CI 产物只内置更新源、公钥和公开默认值，客户端下载签名配置，CI 原包可直接分发，无需本机重装配。真实机构 Client ID 和业务参数不提交源码仓库，不通过 CI secret 注入程序包。
 
-以下方式适用于选择本地静态配置的部署，例如公版加独立的机构配置包。管理员下载 CI ZIP，核对 SHA-256，再加入配置；程序和插件文件保持 CI 原样。启用 publisher bootstrap 的发行由签名内容管理配置，应修改内容源，不依赖替换包内 JSONC 更新模型。
+以下方式适用于选择本地静态配置的部署，例如公版加独立的机构配置包。管理员下载 CI ZIP，核对 SHA-256，再加入配置；程序和插件文件保持 CI 原样。启用 publisher bootstrap 的发行首次下载默认配置，之后同样读取 `config/eduwork.jsonc`。管理员可编辑本地文件，也可发布签名默认值更新；详见[配置文件](CONFIGURATION.md)。
 
 仅替换 `config/eduwork.jsonc` 时，可使用以下共用脚本。输入配置必须启用至少一个机构并填写实际 Client ID；不支持在配置中分发用户 Key 或令牌。可省略 `updates`，继承 CI 原包的发行更新源和默认渠道；也可显式设置 GitHub、静态 HTTPS 源或关闭更新。显式 `defaultPolicy` 必须与包版本的渠道一致。
 
