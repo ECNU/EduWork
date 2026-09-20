@@ -28,10 +28,14 @@ function logo(path, filename) {
 /** File-owned settings are read at process startup, never written by the UI. */
 export function loadUserConfig(path, { overlay } = {}) {
   path = resolve(path)
-  const source = { path, examplesPath: join(dirname(path), 'examples') }
   let body
   try { body = readFileSync(path, 'utf8').replace(/^\uFEFF/u, '') }
   catch (error) { if (error.code === 'ENOENT') body = '{"schemaVersion":1}'; else throw error }
+  return parseUserConfig(path, body, { overlay })
+}
+
+export function parseUserConfig(path, body, { overlay } = {}) {
+  const source = { path, examplesPath: join(dirname(path), 'examples') }
   try {
     if (Buffer.byteLength(body) > 1024 * 1024) throw new Error('配置文件超过 1 MiB')
     const errors = [], tree = jsonc.parseTree(body, errors, { allowTrailingComma: true })

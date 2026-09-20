@@ -53,3 +53,11 @@ Publishers may also provide complete `desktop/publisher-bootstrap.win32.json`, `
 Validate signed content against target client versions, platforms and installed capabilities. Upload immutable content first, then update the channel's `latest.json`. Confirm clean installation before offering application downloads. Cover clean installation, offline restart, legacy upgrade and startup rollback. Platform-specific Skills require platform testing; removing a `platforms` restriction is not verification.
 
 CI desktop startup uses isolated synthetic institution configuration, without a live school service. Synthetic tests cover first-run download, signature verification and recovery. Real login and native platform acceptance remain release requirements. This feature handles configuration delivery; macOS Developer ID signing, notarization and whole-app updates remain separate work described in the [Mac guide](MACOS.md).
+
+## Migrating a retired configuration source
+
+When a configuration protocol changes, the bundled descriptor may declare `migrateFrom: ["https://downloads.example.org/old-content"]`. Only a matching publisher and public key authorize migration. Custom sources, different keys, disabled configuration updates and explicitly selected test configurations are preserved.
+
+The client verifies the old effective configuration, switches to the new source and requires a compatible signed configuration before starting the Host. Revisions are independent per source. Failed downloads can be retried; failed startup trials use the content transaction rollback. Local changes and additional organization entries survive. There is still one editable `config/eduwork.jsonc` and one backup. Older publisher installations without a content source also perform an initial download when this declaration is enabled.
+
+Publish the new signed content first and retain the old source for old clients. Omit `migrateFrom` when no migration is needed.

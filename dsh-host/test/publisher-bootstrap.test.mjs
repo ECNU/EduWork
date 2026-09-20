@@ -36,8 +36,8 @@ async function fixture(t, platform = 'win32') {
     manager.environment.platform = platform
     return { bootstrap, manager }
   }
-  const release = (revision = 1, changes = {}) => {
-    const bytes = Buffer.from(JSON.stringify({ schemaVersion: 1, configuration: { organizations: [{ id: 'example', title: 'Example school' }], features: { maxConcurrentRequests: 2 } } }))
+  const release = (revision = 1, changes = {}, configuration = { organizations: [{ id: 'example', title: 'Example school' }], features: { maxConcurrentRequests: 2 } }) => {
+    const bytes = Buffer.from(JSON.stringify({ schemaVersion: 1, configuration }))
     const manifest = { schemaVersion: 1, publisher: source.publisher, channel: 'development', revision,
       requires: { minClient: version, capabilities: [], platforms: ['win32', 'darwin'] }, components: { configuration: revision },
       bundle: { url: `${source.baseURL}/bundles/${revision}.json`, bytes: bytes.length, sha256: digest(bytes) }, ...changes }
@@ -124,7 +124,7 @@ test('wrong signer, corrupt bytes, wrong channel and platform incompatibility ca
 test('legacy publisher config migrates locally without overwriting it or importing future versions and feed overrides', async t => {
   const f = await fixture(t), folder = dirname(f.paths.config)
   const old = join(folder, 'eduwork.0.3.6-dev.20260916.1.jsonc'), future = join(folder, 'eduwork.9.0.0.jsonc')
-  await save(old, { schemaVersion: 1, organizations: [{ id: 'old-school' }], updates: { provider: 'disabled' }, desktop: { closeAction: 'exit' }, features: { visionFallback: true } })
+  await save(old, { schemaVersion: 1, organizations: [{ id: 'example' }], updates: { provider: 'disabled' }, desktop: { closeAction: 'exit' }, features: { visionFallback: true } })
   const before = await readFile(old, 'utf8')
   await save(future, { schemaVersion: 1, organizations: [{ id: 'future-school' }] })
   await save(f.paths.config, { schemaVersion: 1, organizations: [] })
@@ -134,7 +134,7 @@ test('legacy publisher config migrates locally without overwriting it or importi
   await preparePublisherContent(manager, bootstrap)
   assert.equal(f.requests.length, 0)
   const effective = loadUserConfig(bootstrap.configPath)
-  assert.equal(effective.organizations[0].id, 'old-school')
+  assert.equal(effective.organizations[0].id, 'example')
   assert.equal(effective.closeAction, 'exit')
   assert.equal(effective.updates.provider, 'github')
   assert.equal(effective.features.visionFallback, true)
@@ -235,4 +235,127 @@ test('upgrade from the old layered layout materializes the signed effective conf
   const next=await f.open();await preparePublisherContent(next.manager,next.bootstrap)
   assert.equal(loadUserConfig(f.paths.config).organizations[0].id,'uat-school')
   assert.deepEqual((await readdir(folder)).filter(name=>name.endsWith('.jsonc')),['eduwork.jsonc'])
+})
+
+const plain = value => JSON.parse(JSON.stringify(value))
+const retired = 'https://updates.example.test/legacy'
+const oldProfile = { id: 'example', oidc: { issuer: 'https://school.example.test', clientId: 'synthetic-public-client' }, keyBinding: { type: 'legacy' }, provider: { id: 'school', baseURL: 'https://school.example.test/api/v1' } }
+const newProfile = { id: 'example', auth: { discoveryUrl: 'https://school.example.test/.well-known/openid-configuration', clientId: 'synthetic-public-client' }, provider: { id: 'school', modelSource: 'discovery' } }
+async function migrationFixture(t, layout = 'root') {
+  const f = await fixture(t)
+  f.descriptor.migrateFrom = [retired]
+  await save(f.descriptorPath, f.descriptor)
+  const oldSource = { ...f.descriptor.contentUpdates, baseURL: retired }
+  const oldValue = { schemaVersion: 1, organizations: [oldProfile, { id: 'personal', label: 'Keep me' }], contentUpdates: oldSource, desktop: { closeAction: 'exit' } }
+  let oldPath = f.paths.config
+  if (layout === 'cache') {
+    const scope = digest(JSON.stringify(['example', oldSource.publisher, oldSource.baseURL, oldSource.publicKey]))
+    oldPath = join(f.paths.updateDataRoot, 'publisher-bootstrap', scope, 'eduwork.jsonc')
+    await save(f.paths.config, { schemaVersion: 1, organizations: [] })
+  } else if (layout === 'version') {
+    oldPath = join(dirname(f.paths.config), 'eduwork.0.3.5.jsonc')
+    delete oldValue.contentUpdates
+  }
+  await save(oldPath, oldValue)
+  return { ...f, oldValue, oldPath, oldSource }
+}
+for (const layout of ['root', 'cache', 'version']) test(`declared feed migration (${layout}) requires new signed configuration before Host starts and retains extra profiles`, async t => {
+  const f = await migrationFixture(t, layout)
+  f.release(1, {}, { organizations: [newProfile] })
+  const first = await f.open()
+  assert.equal(first.bootstrap.requiresConfiguration, true)
+  assert.equal(first.manager.source.baseURL, f.descriptor.contentUpdates.baseURL)
+  await preparePublisherContent(first.manager, first.bootstrap)
+  const value = loadUserConfig(f.paths.config)
+  assert.deepEqual(plain(value.organizations), [newProfile, { id: 'personal', label: 'Keep me' }])
+  assert.equal(value.closeAction, 'exit')
+  assert.equal(first.manager.state.active.configuration, undefined)
+  await first.manager.ready()
+  f.responses.clear(); f.requests.length = 0
+  const next = await f.open()
+  assert.equal(next.bootstrap.requiresConfiguration, false)
+  await preparePublisherContent(next.manager, next.bootstrap)
+  assert.equal(f.requests.length, 0)
+  assert.deepEqual(loadUserConfig(f.paths.config).organizations, value.organizations)
+})
+
+test('failed migration download remains retryable; an uncommitted trial restores old fields and only a new revision can retry', async t => {
+  const f = await migrationFixture(t), first = await f.open()
+  await assert.rejects(preparePublisherContent(first.manager, first.bootstrap), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations[0]), oldProfile)
+  f.release(1, {}, { organizations: [newProfile] })
+  const retry = await f.open()
+  assert.equal(retry.bootstrap.requiresConfiguration, true)
+  await preparePublisherContent(retry.manager, retry.bootstrap)
+  const interrupted = await f.open()
+  assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations[0]), oldProfile)
+  await assert.rejects(preparePublisherContent(interrupted.manager, interrupted.bootstrap), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  f.release(2, {}, { organizations: [newProfile] })
+  await preparePublisherContent(interrupted.manager, interrupted.bootstrap)
+  await interrupted.manager.ready()
+  assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations[0]), newProfile)
+  assert.deepEqual((await readdir(dirname(interrupted.manager.configurationFile.backup))).filter(name => name.endsWith('.jsonc')), ['eduwork.previous.jsonc'])
+})
+
+test('a previously initialized single config migrates only the explicitly retired source and preserves local edits', async t => {
+  const f = await fixture(t), oldSource = { ...f.descriptor.contentUpdates }
+  f.release(1, {}, { organizations: [oldProfile], features: { maxConcurrentRequests: 2 } })
+  const original = await f.open()
+  await preparePublisherContent(original.manager, original.bootstrap); await original.manager.ready()
+  const local = JSON.parse(await readFile(f.paths.config, 'utf8'))
+  local.organizations.push({ id: 'personal' }); local.features.maxConcurrentRequests = 9
+  await save(f.paths.config, local)
+  f.descriptor.contentUpdates.baseURL = 'https://updates.example.test/v2'
+  f.descriptor.migrateFrom = [oldSource.baseURL]
+  await save(f.descriptorPath, f.descriptor)
+  f.release(1, {}, { organizations: [newProfile], features: { maxConcurrentRequests: 3 } })
+  const next = await f.open()
+  assert.equal(next.bootstrap.requiresConfiguration, true)
+  await preparePublisherContent(next.manager, next.bootstrap); await next.manager.ready()
+  assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations), [newProfile, { id: 'personal' }])
+  assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 9)
+})
+
+for (const kind of ['custom-source', 'different-key', 'disabled', 'explicit-config']) test(`publisher migration respects ${kind}`, async t => {
+  const f = await migrationFixture(t)
+  if (kind === 'custom-source') f.oldValue.contentUpdates.baseURL = 'https://uat.example.test/content'
+  if (kind === 'different-key') f.oldValue.contentUpdates.publicKey = generateKeyPairSync('ed25519').publicKey.export({ type: 'spki', format: 'pem' })
+  if (kind === 'disabled') f.oldValue.contentUpdates.configuration = false
+  if (kind === 'explicit-config') f.options.migrateLegacy = false
+  await save(f.paths.config, f.oldValue)
+  const first = await f.open()
+  assert.equal(first.bootstrap.requiresConfiguration, false)
+  await preparePublisherContent(first.manager, first.bootstrap)
+  assert.equal(f.requests.length, 0)
+  assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations), f.oldValue.organizations)
+  assert.equal(first.manager.source.baseURL, f.oldValue.contentUpdates.baseURL)
+})
+
+test('a retired cache is verified with its original source and signed defaults before migration', async t => {
+  const f = await migrationFixture(t, 'cache'), target = f.descriptor.contentUpdates.baseURL
+  f.descriptor.contentUpdates.baseURL = retired
+  const old = f.release(4, {}, { organizations: [oldProfile], features: { maxConcurrentRequests: 7 } })
+  f.descriptor.contentUpdates.baseURL = target
+  const scope = digest(JSON.stringify(['example', f.oldSource.publisher, retired, f.oldSource.publicKey]))
+  const key = `4-${old.manifest.bundle.sha256}`, store = join(f.paths.updateDataRoot, 'content-updates', scope)
+  await save(join(store, key, 'manifest.json'), old.envelope)
+  await writeFile(join(store, key, 'bundle.json'), old.bytes)
+  await save(join(store, 'state.json'), { schemaVersion: 1, active: { configuration: key }, pending: null, trial: null, rejected: [], highest: 4 })
+  f.release(1, {}, { organizations: [newProfile], features: { maxConcurrentRequests: 3 } })
+  const first = await f.open()
+  assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 7)
+  assert.equal(first.bootstrap.requiresConfiguration, true)
+  await preparePublisherContent(first.manager, first.bootstrap); await first.manager.ready()
+  assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations[0]), newProfile)
+  assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 3)
+  assert.equal(first.manager.snapshot().configurationRevision, 1, 'revision is scoped to the explicitly changed source')
+  await assert.rejects(readFile(f.oldPath), { code: 'ENOENT' })
+})
+
+test('migration descriptors reject non-HTTPS, query and credential URLs', async t => {
+  const f = await fixture(t)
+  for (const bad of ['http://updates.example.test', 'https://updates.example.test/?x=1', 'https://user:secret@updates.example.test', '../outside']) {
+    await save(f.descriptorPath, { ...f.descriptor, migrateFrom: [bad] })
+    await assert.rejects(readPublisherBootstrap(f.options), /migrateFrom/)
+  }
 })

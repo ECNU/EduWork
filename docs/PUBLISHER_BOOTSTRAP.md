@@ -8,7 +8,7 @@
 
 ## 启用方式
 
-发行资源中提供 `desktop/configuration-policy.json`，设置 `ownership: "publisher"`；再通过发行的 `resources` 将 `desktop/publisher-bootstrap.json` 放入产品目录。后者只允许以下三个顶层字段：
+发行资源中提供 `desktop/configuration-policy.json`，设置 `ownership: "publisher"`；再通过发行的 `resources` 将 `desktop/publisher-bootstrap.json` 放入产品目录。后者包含更新渠道与验签信息：
 
 ```json
 {
@@ -45,6 +45,14 @@
 5. **配置更新：** 更新未修改的默认字段，保留手工修改、增加和删除，有冲突时提示字段路径。启动失败恢复唯一备份 `data/configuration/eduwork.previous.jsonc`，不生成更多副本。
 
 Windows 配置位于安装目录的 `config/eduwork.jsonc`；macOS 位于 `~/Library/Application Support/<distribution>-electron/config/eduwork.jsonc`，不写入 `.app`。`data/content-updates/` 的签名下载内容和 `data/configuration/state.json` 的字段指纹、事务记录均为内部状态，不作为隐藏配置层。语法错误不会被远程配置静默修复；用户可以按[配置说明](CONFIGURATION.md)修改或恢复文件。
+
+## 迁移旧配置源
+
+需要同步升级配置协议时，可在包内引导文件增加 `migrateFrom: ["https://downloads.example.org/old-content"]`。它只声明旧内容源地址；迁移要求发行者、公钥均与新源一致，不允许借此更换信任密钥。自定义地址、公钥、关闭配置更新或显式指定测试配置的安装不迁移。
+
+客户端先校验并读取旧来源的有效配置，再切换到新源，等待新签名配置下载、验签与依赖检查完成后才启动 Host。新来源使用独立修订号。首次下载失败可以重试，未通过启动检查的配置按内容更新事务回退。已有本地修改和附加机构条目保留；迁移成功后仍只使用 `config/eduwork.jsonc` 和一份回退备份。此前尚未配置内容更新源的机构安装，也会在启用此声明后完成首次配置下载。
+
+必须先部署新内容源，再分发包含迁移声明的软件；旧源需保留供旧软件使用。无需迁移时不要设置 `migrateFrom`。
 
 ## 离线包与发布顺序
 
