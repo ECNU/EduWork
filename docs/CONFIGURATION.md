@@ -28,11 +28,15 @@
 
 ## 切换 UAT 或本地测试
 
-直接编辑 `eduwork.jsonc` 中的机构配置：按服务端要求修改 `organizations` 里的 `oidc.issuer`、`oidc.clientId`、`keyBinding.baseURL`、`provider.baseURL`，以及 `media.providers` 中的服务地址与关联。并非所有部署都需要所有字段，参照对应协议和配置示例。
+直接编辑 `eduwork.jsonc` 中的机构配置：按服务端要求修改 `organizations` 里的 `auth.discoveryUrl`、`auth.expectedIssuer`、`auth.clientId`，以及 `media.providers` 中的服务地址与关联。仅身份登录的 OIDC 使用 `oidc.issuer` 和 `oidc.clientId`；旧 `keyBinding` 已不再支持。参照对应协议和配置示例。
 
 需要固定测试配置时，把现有 `contentUpdates.configuration` 改为 `false`；Skills 可继续更新。把 `contentUpdates.skills` 也设为 `false` 可停用全部远程内容更新。不要用不完整的 `contentUpdates` 对象替换现有的来源和公钥。
 
 软件的 `updates` 与配置的 `contentUpdates` 分开管理。软件更新渠道的“开发版／公测版”不等于服务端的“UAT／生产”。无需修改程序资源、签名缓存或创建 UAT 配置服务才能测试。长期联调建议使用独立安装和数据目录，避免混用两个环境的会话与登录状态。
+
+## 已安装插件的配置
+
+可选的 `plugins` 对象以发行版中的插件 ID 为键，例如 `"plugins": {"example-service": {"baseURL": "https://uat.example.test/v1"}}`。重启时将这些选项合并到已安装插件；它不能安装插件，未知 ID 会提示配置错误。具体字段查阅发行版和插件文档。切换 UAT 时应一起修改机构服务、登录和媒体的地址。远程内容配置不会覆盖这个本地配置区。
 
 ## 内部状态
 

@@ -28,11 +28,15 @@ Legacy upgrades materialize the previously effective versioned/signed configurat
 
 ## UAT and local testing
 
-Edit the organization parameters in `eduwork.jsonc`: the appropriate `oidc.issuer`, `oidc.clientId`, `keyBinding.baseURL`, `provider.baseURL`, and endpoints/associations under `media.providers`. Required fields depend on the server protocol; use the matching example.
+Edit the organization parameters in `eduwork.jsonc`: `auth.discoveryUrl`, `auth.expectedIssuer`, `auth.clientId`, and endpoints/associations under `media.providers`. Identity-only OIDC instead uses `oidc.issuer` and `oidc.clientId`; legacy `keyBinding` is no longer supported. Required fields depend on the server protocol; use the matching example.
 
 Set the existing `contentUpdates.configuration` field to `false` to freeze local configuration while continuing Skills updates. Set `contentUpdates.skills` to `false` as well to disable all remote content updates. Keep the existing source and public key rather than replacing the object with an incomplete one.
 
 Software `updates` and configuration `contentUpdates` are separate. Development/stable release channels do not select UAT/production services. Local testing requires no edits to app resources or signed caches, and no separate UAT content server. A separate installation/data directory is recommended for sustained testing so accounts and conversations stay separate.
+
+## Installed plugin settings
+
+Optional `plugins` entries use the plugin ID from the edition composition, for example `"plugins": {"example-service": {"baseURL": "https://uat.example.test/v1"}}`. These options merge into that installed plugin on restart; they cannot install plugins. Unknown IDs fail with a configuration error. Use the edition/plugin documentation for accepted options. Institution service endpoints must be switched alongside account and media endpoints for UAT. Remote content configuration does not overwrite this local section.
 
 ## Internal state
 
