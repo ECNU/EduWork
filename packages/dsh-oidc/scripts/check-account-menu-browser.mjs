@@ -18,7 +18,7 @@ const assets = new Map([
 const server = createServer((request, response) => {
   const path = new URL(request.url, 'http://127.0.0.1').pathname
   if (path.startsWith('/callback-')) {
-    const result = callbackPage({ displayName: '示例大学', brand: { productName: 'EduWork', organizationName: '示例大学', mark: 'E', primaryColor: '#4f5fd7' } }, path.endsWith('success') ? 'credential-required' : 'failed', 'zh-CN')
+    const result = callbackPage({ displayName: '示例大学', brand: { productName: 'EduWork', organizationName: '示例大学', mark: 'E', primaryColor: '#4f5fd7' } }, path.endsWith('success') ? 'completed' : 'failed', 'zh-CN')
     response.writeHead(200, result.headers); response.end(result.html); return
   }
   if (assets.has(path)) { response.writeHead(200, { 'content-type': 'text/javascript' }); response.end(assets.get(path)); return }

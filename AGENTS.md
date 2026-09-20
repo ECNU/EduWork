@@ -1,5 +1,8 @@
 # Development guidance
 
+- 所有修改先在独立主题分支开发，通过 Pull Request 合入 main，不直接提交或推送 main。未完成的功能使用 Draft PR；合并前检查实际 diff、受影响功能的验证结果和现有 CI。PR 合并与 npm、桌面 Release、机构部署分别授权。
+- 一个 PR 围绕一个明确目标，不混入工作区中其他任务的未提交改动。功能提案须明确“计划”与“已实现”；内部研究和联调记录留在仓库外。
+
 - Release notes 必须先与项目负责人讨论确认，不得自行编写或自动生成。CI 只复制已确认的说明文件。GitHub 桌面 Release 仅发布 Electron；Go/Wails 过渡包在本地构建，经旧更新器验收后走原 OSS 渠道。
 
 - 文档默认使用中文；所有自有目录的 `README.md` 使用中文，配套英文统一命名 `README_EN.md`；保留第三方 vendor 原文。两份入口保持功能边界、命令与示例一致，并保留语言切换链接。

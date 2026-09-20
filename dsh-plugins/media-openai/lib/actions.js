@@ -11,12 +11,15 @@ async function workspace(ctx, exec) {
 }
 
 export async function resolveMediaCredential(ctx, config) {
-  if (config.oidcProfileId) {
-    return ctx.get?.('oidcAccounts')?.resolveBoundCredential?.(config.oidcProfileId, {
-      credentialRef: config.credentialRef, runtimeBaseURL: config.baseURL,
-    })
-  }
+  if (config.oidcProfileId) return undefined
   return ctx.credentials.resolve(config.credentialRef)
+}
+
+export async function mediaAuthorization(ctx, config) {
+  if (!config.oidcProfileId) return { apiKey: await key(ctx, config) }
+  const account = ctx.get?.('oidcAccounts')
+  if (!await account?.modelAuthorization?.(config.oidcProfileId, config.baseURL)) throw new Error('Sign in to the configured model service')
+  return { requestImpl: (url, init) => account.authorizedFetch(config.oidcProfileId, url, init) }
 }
 
 async function key(ctx, config) {
@@ -32,7 +35,7 @@ export async function generateImageForAgent(ctx, config, args, exec) {
   const request = normalizeImageRequest(args, config)
   const projectPath = await workspace(ctx, exec)
   const managed = await prepareManagedOutput(projectPath, 'images')
-  const generated = await generateImage({ baseURL: config.baseURL, apiKey: await key(ctx, config), model: config.images.model,
+  const generated = await generateImage({ baseURL: config.baseURL, ...await mediaAuthorization(ctx, config), model: config.images.model,
     prompt: request.prompt, size: request.size, nativeSizes: config.images.nativeSizes, responseFormat: config.images.responseFormat, signal: signalFor(exec.signal) })
   const saved = await saveGeneratedImage({ generated, request, managed, projectPath, signal: exec.signal })
   return { model: config.images.model, ...saved,
@@ -44,7 +47,7 @@ export async function synthesizeSpeechForAgent(ctx, config, args, exec) {
   const request = normalizeSpeechRequest(args, config)
   const projectPath = await workspace(ctx, exec)
   const managed = await prepareManagedOutput(projectPath, 'audio')
-  const generated = await synthesizeSpeech({ baseURL: config.baseURL, apiKey: await key(ctx, config), model: config.speech.model,
+  const generated = await synthesizeSpeech({ baseURL: config.baseURL, ...await mediaAuthorization(ctx, config), model: config.speech.model,
     ...request, signal: signalFor(exec.signal) })
   exec.signal?.throwIfAborted()
   await revalidateManagedOutput(managed, projectPath, 'audio')

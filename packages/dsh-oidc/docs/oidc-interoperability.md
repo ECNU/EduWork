@@ -2,7 +2,7 @@
 
 **简体中文** | [English](oidc-interoperability.en.md)
 
-OIDC 是[服务端接口规范](server-integration-contract.md)的身份能力档，纯身份 Profile 可只实现本文件。只有需要托管模型 Key 和自动配置企业模型时，才必须同时提供 Key Binding 和模型网关。
+OIDC 是[服务端接口规范](server-integration-contract.md)的身份能力档，纯身份 Profile 可只实现本文件。模型接入使用独立声明的 Token 网关契约，见[网关接入](gateway-auth/README.md)。
 
 ## 标准依据
 

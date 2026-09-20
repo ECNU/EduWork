@@ -96,7 +96,7 @@ int main(){@autoreleasepool {NSArray *versions=@[@"0.3.5",@"0.3.6dev20260920.1",
   for(const name of ['SUInstallerLauncher+Private.h','SPUUserAgent+Private.h']){const source=await fetch(`https://raw.githubusercontent.com/sparkle-project/Sparkle/${sourceCommit}/${name.startsWith('SUInstaller')?'InstallerLauncher':'Sparkle'}/${name}`);assert.ok(source.ok);await writeFile(join(privateHeaders,name),await source.text())}
   const cli=join(cliApp,'Contents/MacOS/sparkle-cli')
   await writeFile(join(cliApp,'Contents/Info.plist'),'<?xml version="1.0"?><plist version="1.0"><dict><key>CFBundleExecutable</key><string>sparkle-cli</string><key>CFBundleIdentifier</key><string>org.eduwork.sparkle-cli-test</string><key>CFBundlePackageType</key><string>APPL</string><key>CFBundleVersion</key><string>1</string><key>LSBackgroundOnly</key><true/></dict></plist>')
-  await run('clang++',['-fobjc-arc','-I',cliSource,'-F',join(cliApp,'Contents/Frameworks'),'-framework','Sparkle','-framework','Cocoa','-Wl,-rpath,@executable_path/../Frameworks',...sources.filter(name=>name.endsWith('.m')).map(name=>join(cliSource,name)),'-o',cli])
+  await run('clang++',['-fobjc-arc','-DSPU_OBJC_DIRECT=','-DSPU_OBJC_DIRECT_MEMBERS=','-I',cliSource,'-F',join(cliApp,'Contents/Frameworks'),'-framework','Sparkle','-framework','Cocoa','-Wl,-rpath,@executable_path/../Frameworks',...sources.filter(name=>name.endsWith('.m')).map(name=>join(cliSource,name)),'-o',cli])
   await run('xattr',['-cr',cliApp]);await run('codesign',['--force','--deep','--sign','-','--timestamp=none',cliApp])
   const args=[oldApp,'--check-immediately','--feed-url',feed,'--user-agent-name','EduWork native CI','--verbose']
   const originalSignature=signature;signature=Buffer.alloc(64).toString('base64')

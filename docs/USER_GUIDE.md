@@ -14,12 +14,12 @@ EduWork 是单机工作助手。Web 入口用于本机开发验证，桌面版�
 
 设置中的学校/企业服务页展示已配置的企业。点击“打开配置文件”，由系统选择编辑器打开安装目录的 `config/eduwork.jsonc`。没有文件关联时由操作系统提示选择应用。
 
-默认文件含逐行注释与完整企业示例。更多例子见旁边的 `config/examples/`；源码对应 `config/desktop/examples/`。修改后从托盘退出，再重新启动。
+默认文件含配置注释。企业配置例子见旁边的 `config/examples/`；源码对应 `config/desktop/examples/`。修改后从托盘退出，再重新启动。
 
 - `organizations: []`：只使用自己的模型。
 - 只有 `oidc`：标准 OIDC 身份登录，不要求企业提供模型。
-- 增加 `keyBinding`、`provider`：通过 EduWork 资源协议取得 Key 和模型目录；服务端实现要求见本仓库 OIDC 模块的[服务端完整契约](../packages/dsh-oidc/docs/server-integration-contract.md)和[公共资源协议](../packages/dsh-oidc/docs/public-resource-protocol.md)。它们是协议的维护入口，产品文档引用同一份标准。
-- 可配多家企业。身份分别保存，运行凭据引用统一为 `EDUWORK_API_KEY`；不用手动复制企业 Key，也不将秘密写入配置文件。
+- 配置 `auth`、`provider`：通过 LiteLLM 或实验性 oidc-llm 发现协议获得模型，登录 Token 直接授权调用。详见[网关接入](../packages/dsh-oidc/docs/gateway-auth/README.md)。此功能尚未进入已发布版本。
+- 可配多家企业。Token 按机构分别保存、自动刷新；不用手动复制凭据，也不将秘密写入配置文件。新客户端已移除旧 Key Binding，服务端可继续兼容旧客户端。
 
 只有 ECNU 版附带具体学校部署示例和专有服务。配置登录不会限制个人模型。企业没有提供某项能力，就不显示该能力。
 

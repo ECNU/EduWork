@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  // Requires a build containing the gateway-auth feature. Existing Releases do not yet include it.
+  // 替换为可信网关地址；本文件不包含账号密码、API Key 或登录令牌。
+  "organizations": [
+    {
+      "schemaVersion": "dsh-oidc/v1alpha1",
+      "id": "example-gateway",
+      "displayName": "示例模型网关",
+      "auth": {
+        "discoveryUrl": "https://gateway.example.org/.well-known/litellm-cli-auth",
+        "expectedIssuer": "https://gateway.example.org"
+      }
+    }
+  ]
+}

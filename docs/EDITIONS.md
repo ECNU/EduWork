@@ -5,7 +5,7 @@ EduWork 提供通用产品，EduWork-ECNU 在同一份公版代码上增加华�
 | 归属 | 内容 | 扩展方式 |
 | --- | --- | --- |
 | EduWork | 对话、Studio、文件生成与预览、技能中心、邮件、记忆、浏览器搜索、个人概览、蓝/红主题 | 公版代码与精确锁定的通用 npm 插件 |
-| EduWork | OIDC 登录、资源协议适配、企业 Key、企业模型同步 | `config/eduwork.jsonc` 中的机构与模型配置 |
+| EduWork | OIDC 登录、网关 Token 授权、企业模型同步 | `config/eduwork.jsonc` 中的机构与模型配置 |
 | EduWork | Electron、Go 过渡壳、更新下载与进度、托盘、历史导入、模型请求并发 | 两个壳共用 Host、产品配置与工作台插件 |
 | EduWork-ECNU | 校内搜索、学校配额、活跃心跳、文本模型的校内视觉辅助 | `edition/plugins/`，由机构发行清单追加 |
 | EduWork-ECNU | 学校默认模型及更新规则、专属技能、默认机构配置 | `edition/` 中的数据及技能；通用解释器仍属于公版 |
@@ -14,13 +14,13 @@ EduWork 提供通用产品，EduWork-ECNU 在同一份公版代码上增加华�
 
 技能是可配置的操作指引；插件是可执行能力。校内搜索等技能依赖的学校插件不会因为复制一份技能文件就成为公版能力。对话与 Studio 使用同一套通用生成和预览服务，机构插件只提供服务适配。
 
-运行 Key 统一引用 `EDUWORK_API_KEY`。多个机构的身份仍分别保存，运行时只选定当前使用的模型凭据。不能把密码、Key 或登录令牌写进发行包。
+新版客户端使用按机构隔离的登录 Token 授权模型请求，并通过共享 Host 刷新。不能把密码、Key 或登录令牌写进发行包。
 
 ## 用公版连接企业服务
 
-在设置中打开 `config/eduwork.jsonc`，参考 `config/examples/organization.jsonc` 填写 OIDC 和资源服务配置。服务器按 [服务端完整契约](../packages/dsh-oidc/docs/server-integration-contract.md)实现接口。已有部署可以选择受支持的兼容协议适配器；它不会自动启用学校配额和心跳。
+在设置中打开 `config/eduwork.jsonc`，参考 `config/examples/organization.jsonc` 填写网关发现配置。服务器按 [服务端完整契约](../packages/dsh-oidc/docs/server-integration-contract.md)实现接口。新版客户端支持 LiteLLM 与实验性 oidc-llm；服务端可继续为旧客户端保留 Key Binding 接口。网关配置不会自动启用学校配额和心跳。
 
-发行包中的配置示例保留注释。机构地址或模型 ID 必须采用服务端实际登记值。完成登录和创建凭据后，可继续使用个人模型；不要求所有用户使用某个学校的模型。
+发行包中的配置示例保留注释。机构地址或模型 ID 必须采用服务端实际登记值。完成登录后，可继续使用个人模型；不要求所有用户使用某个学校的模型。
 
 ## 维护与装配
 

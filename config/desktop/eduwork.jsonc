@@ -12,51 +12,11 @@
   },
   // 空数组表示不用企业登录，用户仍可配置自己的 API Key 使用模型。
   // 完整参考：examples/organization.jsonc；机构发行版可提供更多示例。
-  // 数组中可填写多个企业；身份分别保存，应用运行 Key 统一为 EDUWORK_API_KEY。
-  // 填写配置不会自动登录或创建 Key。
+  // 数组中可填写多个企业；身份及 Access Token 分别保存。
+  // 按 organization.jsonc 或 litellm.jsonc 配置后，登录授权即可连接模型。
   // 云端图像/TTS 可独立配置：见 examples/media.jsonc。默认不启用；不影响本地 TTS。
   // 将示例的 media 段合并到顶层即可，不需要学校插件。
-  "organizations": [
-    // 完整示例：去掉下面每行最外层的 //，替换域名、Client ID 和机构信息。
-    // {
-    //   "schemaVersion": "dsh-oidc/v1alpha1",
-    //   // 稳定且唯一的小写 ID：登录凭据以企业配置绑定，避免随意重命名。
-    //   "id": "example-university",
-    //   "displayName": "示例大学 AI 服务",
-    //   "organization": "示例大学",
-    //   "brand": {
-    //     "organizationName": "示例大学",
-    //     "mark": "校",
-    //     "loginTitle": "使用学校账号登录",
-    //     "loginDescription": "在学校登录页授权后，连接学校提供的模型。",
-    //     "supportURL": "https://support.example.edu"
-    //   },
-    //   "oidc": {
-    //     // 必须与 /.well-known/openid-configuration 中 issuer 逐字符一致。
-    //     "issuer": "https://identity.example.edu",
-    //     // 桌面公共客户端使用 PKCE + 本机 loopback 回调，不配置 client_secret。
-    //     "clientId": "replace-with-desktop-public-client-id",
-    //     // 资源授权 scope 以服务端登记值为准；此处仅为协议示例。
-    //     "scopes": ["openid", "profile", "offline_access", "worker.bootstrap.read", "worker.credential.provision", "worker.credential.read", "worker.credential.renew"]
-    //   },
-    //   // 若只需身份登录，同时删除 keyBinding 和 provider；用户可另用个人 Key。
-    //   "keyBinding": {
-    //     "type": "eduwork-resources-v1",
-    //     "baseURL": "https://ai.example.edu/api/worker/v1",
-    //     // 这是凭据引用名，不是 API Key。真正的凭据由登录流程写入加密存储。
-    //     "credentialRef": "EDUWORK_API_KEY"
-    //   },
-    //   "provider": {
-    //     "id": "example-ai",
-    //     "displayName": "示例大学模型",
-    //     "adapter": "openai-compatible",
-    //     "baseURL": "https://ai.example.edu/open/api/v1",
-    //     // discovery：登录后读取企业模型目录；元数据声明上下文、输出、模态、思考档位。
-    //     // 如服务端无模型目录，改为 profile 并填写 models，参照 ECNU/CERNET 示例。
-    //     "modelSource": "discovery"
-    //   }
-    // }
-  ],
+  "organizations": [],
   // Windows 公版默认从 ecnu/EduWork 的 GitHub Releases 获取公测更新。
   // 此处留空则使用发行包默认值；从 Go 迁入时优先保留已有机构更新源。
   // 可填 {"provider":"disabled"} 关闭在线更新。
