@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-20T14:27:10.678Z",
-  "fileSetSHA256": "fccc3cf30a361e783ad2e668d46432f61dab5014cc47b92723ec2180db03c551",
+  "createdAt": "2026-09-20T14:28:03.828Z",
+  "fileSetSHA256": "f872c0de7a08f0f7df83dc2f0aa62a8af811c3326af7fde02e028544d21fd4a2",
   "files": [
     {
       "path": ".gitattributes",
@@ -37,7 +37,7 @@
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "2518265a8c9b910171f4189e52a918996932a62105600cdbf6e5806bd6caed47"
+      "sha256": "af67925d73e0e6f1b98358aa2ef6b8ecc8e40f4cee254d6482bb4f2ffe8c1c27"
     },
     {
       "path": ".gitignore",
@@ -4237,7 +4237,7 @@
     },
     {
       "path": "scripts/macos-update-feed.mjs",
-      "sha256": "8f49001f7f565f2db0a15bb031d69bc0812d07981c79f759f28eee8d30c46dfb"
+      "sha256": "ef291165ca9390c20243f2c5ca3d11d6a8052181f8a59aed1838884300084380"
     },
     {
       "path": "scripts/normalize-generated-client.ps1",

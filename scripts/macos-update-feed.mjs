@@ -47,7 +47,7 @@ async function main() {
     const [archive,receiptFile,configFile,keyFile,url,output] = args
     const config = validateMacUpdateConfig(JSON.parse(await readFile(configFile,'utf8')))
     const receipt = JSON.parse(await readFile(receiptFile,'utf8')), bytes = await readFile(archive)
-    if (!receipt.sparkleEnabled || receipt.bundleVersion !== bundleVersion(receipt.version) || receipt.asset.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw Error('Archive does not match the verified Sparkle receipt')
+    if (!(receipt.sparkleEnabled ?? receipt.softwareAutoUpdate) || receipt.bundleVersion !== bundleVersion(receipt.version) || receipt.asset.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw Error('Archive does not match the verified Sparkle receipt')
     const key = createPrivateKey(await readFile(keyFile))
     if (key.asymmetricKeyType !== 'ed25519' || createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('base64') !== config.publicEDKey) throw Error('Signing key differs from the bundled trust anchor')
     await writeFile(output,appcast({version:receipt.version,url,bytes:bytes.length,signature:sign(null,bytes,key).toString('base64')}),{flag:'wx'})
