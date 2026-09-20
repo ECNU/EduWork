@@ -34,6 +34,11 @@ const percent=s=>s?.totalBytes>0?Math.min(100,Math.floor(s.downloadedBytes/s.tot
 const size=n=>(Math.max(0,n||0)/1048576).toFixed(1)+' MB'
 export function UpdatePanel({controller}) {
  const {status,error,working}=useUpdates(controller),s=status?.update,state=working||s?.state||status?.phase
+ if(s?.nativeUI)return h('div',{'data-eduwork-update-panel':true},
+  h('div',{style:row},h('div',null,h('div',{style:{fontSize:14}},'macOS 应用更新'),
+   h('p',{style:note},s.enabled?`当前版本 ${status.version}。Sparkle 会在系统窗口中检查、下载并安装新版 App；学校配置和个人数据保留在 App 外。`:`当前版本 ${status.version}。更新组件暂不可用。`)),
+   h('button',{type:'button',style:button,disabled:!s.enabled,onClick:()=>controller.run('check-updates')},'检查更新')),
+  (error||s.error)&&h('p',{role:'alert',style:{...note,color:'var(--dsw-alias-state-error-primary, #a82332)'}},error||s.error))
  const busy=['checking','downloading','applying','switching'].includes(state)
  const enabled=status&&status.shell!=='web'&&s?.enabled!==false
  const policy=s?.policy||'stable',locked=busy||state==='ready'

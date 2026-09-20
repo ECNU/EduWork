@@ -1,4 +1,11 @@
-import { join, isAbsolute } from 'node:path'
+import { join, resolve, isAbsolute } from 'node:path'
+
+export function publisherConfigurationOverride({settings,appRoot,writableRoot}) {
+  if(settings.configurationOwnership!=='publisher')return undefined
+  if(settings.publisherConfigLocation==='user-data')return join(writableRoot,'config/eduwork.jsonc')
+  if(settings.publisherConfigLocation)throw Error('Unknown publisher configuration location')
+  return settings.publisherConfig?resolve(appRoot,settings.publisherConfig):undefined
+}
 
 // Publisher configurations use a new filename for every release. Old updaters
 // merge missing config files, so this also works on the first upgraded launch.
