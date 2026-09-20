@@ -57,7 +57,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['update-coordinator.mjs', 'portable-updates.mjs', 'native-vault.mjs', 'product.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
+const electronAdapters = ['update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'native-vault.mjs', 'product.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
@@ -89,7 +89,7 @@ const adapters = {}
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))
 adapters['dsh-host/configuration-file.mjs'] = digest(await readFile(join(repository, 'dsh-host/configuration-file.mjs')))
 for (const name of electronAdapters) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
-for (const file of ['dsh-electron/scripts/build-shell.mjs', 'dsh-electron/src/portable-updates.mjs', 'dsh-electron/src/product.mjs', 'dsh-electron/src/native-vault.mjs', 'dsh-electron/src/configuration-files.mjs', 'dsh-electron/src/lifecycle.mjs', 'dsh-electron/src/media-transport.mjs', 'dsh-electron/src/legacy-migration.mjs', 'dsh-electron/src/external-navigation.mjs', 'dsh-host/release-policy.mjs', 'dsh-host/desktop-updates.mjs', 'dsh-host/workbench-support.mjs', 'dsh-host/diagnostics.mjs', 'dsh-host/desktop-log.mjs', 'dsh-host/product-profile.mjs', 'dsh-host/product-presets.mjs', 'dsh-host/native-resources.mjs']) adapters[file] = digest(await readFile(join(repository, file)))
+for (const file of ['dsh-electron/native/sparkle-addon.mm', 'dsh-electron/scripts/build-shell.mjs', 'dsh-electron/src/portable-updates.mjs', 'dsh-electron/src/product.mjs', 'dsh-electron/src/native-vault.mjs', 'dsh-electron/src/configuration-files.mjs', 'dsh-electron/src/lifecycle.mjs', 'dsh-electron/src/media-transport.mjs', 'dsh-electron/src/legacy-migration.mjs', 'dsh-electron/src/external-navigation.mjs', 'dsh-host/release-policy.mjs', 'dsh-host/desktop-updates.mjs', 'dsh-host/workbench-support.mjs', 'dsh-host/diagnostics.mjs', 'dsh-host/desktop-log.mjs', 'dsh-host/product-profile.mjs', 'dsh-host/product-presets.mjs', 'dsh-host/native-resources.mjs']) adapters[file] = digest(await readFile(join(repository, file)))
 const notices = [], visited = new Set()
 async function collectNotice(name, from) {
   let manifestPath

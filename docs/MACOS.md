@@ -45,7 +45,7 @@ Apple Silicon 与 Intel 应分别构建和测试，不能复用 Windows 的运�
 
 配置、会话、日志、内容更新缓存和渠道偏好保存在 `~/Library/Application Support/<distribution>-electron/`。启用[配置与 Skills 更新](CONTENT_UPDATES.md)后，更新仍在此目录下载、校验和激活，不会修改 `.app`；生效配置统一为该用户目录中的 `config/eduwork.jsonc`，仅保留一份回退备份；旧外部配置只作为首次迁移来源。装配脚本在签名前生成 `Contents/Resources/bundled-skills.json`，记录内置 Skills 的校验值，用来识别本地修改。Windows 继续使用原有绿色版目录和 `RELEASE-MANIFEST.json`。
 
-macOS 候选暂未实现整包自动安装更新，内容更新不代表该能力已完成。原生验收还应覆盖只读应用目录下的配置/Skills 更新、重启生效与启动失败回退。
+macOS 可选接入 Sparkle 原生更新：后台检查，用户确认下载及安装后替换应用并重启。发行必须提供独立的更新清单与签名公钥；没有配置更新源的包保持禁用。配置与 Skills 更新继续在用户目录中完成。装配、签名和渠道规则见 [Mac 更新](MACOS_UPDATES.md)。
 
 Pull Request 应说明测试的 macOS 版本、硬件架构、构建命令和功能范围。除启动外，还需覆盖文件权限、中文与空格路径、企业登录、工作区、Office 和音视频。使用合成数据；真实机构登录由具备权限的测试者单独验证。
 
@@ -63,7 +63,7 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 构建从校验锁下载 Node、独立 Python 和 Office wheels、Chromium，并从固定源码构建 OpenSSL 与本地 Whisper CPU 引擎，携带离线语音模型。Python 与浏览器复用已有版本，Mac 专属输入记录在 `config/macos-native.lock.json`。Python 调用关闭字节码缓存，应用启动不修改签名包。
 
-CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugDB、桌面启动与退出，以及启动前后的签名完整性。默认桌面冒烟使用合成账号配置，不访问学校服务。维护者可在签名内容源就绪后添加 `-VerifyPublisherBootstrap`，用原包和全新用户目录检查实际配置下载与激活；不登录账号，下载的配置不进入公开产物。学校登录和系统权限仍须由有权限的测试者确认。产物保持 ad-hoc 签名，没有 Apple 公证，也不声明整包自动安装更新能力。
+CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugDB、桌面启动与退出，以及启动前后的签名完整性。默认桌面冒烟使用合成账号配置，不访问学校服务。维护者可在签名内容源就绪后添加 `-VerifyPublisherBootstrap`，用原包和全新用户目录检查实际配置下载与激活；不登录账号，下载的配置不进入公开产物。学校登录和系统权限仍须由有权限的测试者确认。产物保持 ad-hoc 签名，没有 Apple 公证，是否启用 Sparkle 由更新源配置和产物回执确认；原生安装验收由独立 Mac CI 执行。
 
 ## 发行要求
 

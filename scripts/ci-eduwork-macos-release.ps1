@@ -5,7 +5,9 @@ param(
     [Parameter(Mandatory)][string]$EditionRoot,
     [Parameter(Mandatory)][string]$DistributionConfig,
     [Parameter(Mandatory)][string]$Version,
-    [Parameter(Mandatory)][string]$ReleaseNotesFile,
+    [string]$ReleaseNotesFile,
+    [switch]$Development,
+    [string]$MacUpdateConfig,
     [switch]$ReleaseNotesApproved,
     [switch]$VerifyPublisherBootstrap,
     [Parameter(Mandatory)][string]$Output
@@ -14,17 +16,17 @@ $ErrorActionPreference = 'Stop'
 $PSNativeCommandUseErrorActionPreference = $true
 if (-not $IsMacOS -or (& node -p 'process.arch').Trim() -ne 'arm64') { throw 'Use a macOS arm64 runner' }
 if ($Version -notmatch '^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$') { throw 'macOS currently supports development candidates only' }
-if (-not $ReleaseNotesApproved -or $ReleaseNotesFile -notmatch '^docs/releases/[A-Za-z0-9][A-Za-z0-9._-]*[.]md$') { throw 'A reviewed release notes file and approval are required' }
+if (-not $Development -and (-not $ReleaseNotesApproved -or $ReleaseNotesFile -notmatch '^docs/releases/[A-Za-z0-9][A-Za-z0-9._-]*[.]md$')) { throw 'A reviewed release notes file and approval are required' }
 $CoreRoot = [IO.Path]::GetFullPath($CoreRoot); $EditionRoot = [IO.Path]::GetFullPath($EditionRoot)
 $Output = [IO.Path]::GetFullPath($Output)
 if (Test-Path $Output) { throw 'Release build requires a new workspace' }
-$notes = Join-Path $EditionRoot $ReleaseNotesFile
-if ([string]::IsNullOrWhiteSpace((Get-Content $notes -Raw))) { throw 'Release notes are empty' }
+$notes = if ($Development) { $null } else { Join-Path $EditionRoot $ReleaseNotesFile }
+if ($notes -and [string]::IsNullOrWhiteSpace((Get-Content $notes -Raw))) { throw 'Release notes are empty' }
 $name = if ($CoreRoot -eq $EditionRoot) { 'EduWork' } else { 'EduWork-ECNU' }
 $public = Join-Path $Output 'evidence-public'; $publish = Join-Path $Output 'publish'
 New-Item -ItemType Directory -Path $public,$publish | Out-Null
 $result = [ordered]@{schemaVersion=1;kind='eduwork-macos-release';version=$Version;edition=$name;platform='macos-arm64';shell='electron';validationProfile='ci-build-and-launch-v1';passed=$false;checks=@{};developerIDSigned=$false;notarized=$false;softwareAutoUpdate=$false}
-$result.releaseNotes=@{approved=$true;file=$ReleaseNotesFile;sha256=(Get-FileHash $notes -Algorithm SHA256).Hash.ToLowerInvariant()}
+if ($notes) { $result.releaseNotes=@{approved=$true;file=$ReleaseNotesFile;sha256=(Get-FileHash $notes -Algorithm SHA256).Hash.ToLowerInvariant()} }
 try {
     $result.coreCommit=(& git -C $CoreRoot rev-parse HEAD).Trim();$result.editionCommit=(& git -C $EditionRoot rev-parse HEAD).Trim()
     & (Join-Path $CoreRoot 'scripts/ci-eduwork-web.ps1') -CoreRoot $CoreRoot -EditionRoot $EditionRoot -DistributionConfig $DistributionConfig -Version $Version -Output (Join-Path $Output 'web') -VerifySnapshot -BuildOnly
@@ -41,9 +43,17 @@ try {
     $inputs=Get-Content (Join-Path $Output 'inputs/inputs.json') -Raw | ConvertFrom-Json
     & (Join-Path $CoreRoot 'dsh-electron/scripts/prepare-electron.ps1') -Upstream $upstream -Output (Join-Path $Output 'electron')
     & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --upstream $upstream --host $hostAdapter --output $shellBuild
-    & (Join-Path $CoreRoot 'dsh-electron/scripts/assemble-macos.ps1') -Product $product -ShellBuild $shellBuild -ElectronRuntime (Join-Path $Output 'electron/runtime') -Output (Join-Path $Output 'desktop') -Version $Version -Node $inputs.node -OpenSSL $inputs.openssl
+    $macOptions=@{}
+    if (-not $MacUpdateConfig) { $MacUpdateConfig=Join-Path $product 'resources/desktop/mac-updates.json' }
+    if (Test-Path $MacUpdateConfig) {
+        $sparkleInput=Join-Path $Output 'sparkle'
+        & node (Join-Path $CoreRoot 'scripts/macos-update-feed.mjs') prepare $MacUpdateConfig $sparkleInput
+        $sparkle=Get-Content (Join-Path $sparkleInput 'inputs.json') -Raw | ConvertFrom-Json
+        $macOptions=@{SparkleFramework=$sparkle.framework;SparkleFeedURL=$sparkle.feeds.stable;SparkleDevelopmentFeedURL=$sparkle.feeds.development;SparklePublicEDKey=$sparkle.publicEDKey}
+    }
+    & (Join-Path $CoreRoot 'dsh-electron/scripts/assemble-macos.ps1') -Product $product -ShellBuild $shellBuild -ElectronRuntime (Join-Path $Output 'electron/runtime') -Output (Join-Path $Output 'desktop') -Version $Version -Node $inputs.node -OpenSSL $inputs.openssl @macOptions
     $pack=Get-Content (Join-Path $Output 'desktop/release-receipt.json') -Raw | ConvertFrom-Json
-    $result.asset=$pack.asset;$result.minimumSystemVersion=$pack.minimumSystemVersion;$result.nativeLockSHA256=$inputs.nativeLockSHA256
+    $result.softwareAutoUpdate=$pack.sparkleEnabled;$result.bundleVersion=$pack.bundleVersion;$result.asset=$pack.asset;$result.minimumSystemVersion=$pack.minimumSystemVersion;$result.nativeLockSHA256=$inputs.nativeLockSHA256
     $archive=Join-Path $Output ('desktop/'+$pack.asset.name)
     $unpacked=Join-Path $Output 'unpacked';New-Item -ItemType Directory -Path $unpacked | Out-Null
     & ditto -x -k $archive $unpacked
@@ -100,7 +110,7 @@ try {
     & codesign --verify --deep --strict $app
     $result.checks.readOnlyApplication='passed'
     Copy-Item $archive,$($archive+'.sha256') $publish
-    Copy-Item $notes (Join-Path $publish 'RELEASE-NOTES.md')
+    if ($notes) { Copy-Item $notes (Join-Path $publish 'RELEASE-NOTES.md') }
     $result.passed=$true
     $result | ConvertTo-Json -Depth 16 | Set-Content (Join-Path $publish 'release-receipt.json') -Encoding utf8NoBOM
 } catch { $result.error=$_.Exception.Message;throw }

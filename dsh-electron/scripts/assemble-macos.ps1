@@ -9,7 +9,12 @@ param(
     [Parameter(Mandatory)][string]$Node,
     [Parameter(Mandatory)][string]$OpenSSL,
     [string]$ExternalPublisherConfig,
-    [ValidateSet('stable','development')][string]$UpdateDefaultPolicy
+    [ValidateSet('stable','development')][string]$UpdateDefaultPolicy,
+    [string]$BundleVersion,
+    [string]$SparkleFramework,
+    [string]$SparkleFeedURL,
+    [string]$SparkleDevelopmentFeedURL,
+    [string]$SparklePublicEDKey
 )
 $ErrorActionPreference = 'Stop'
 if (-not $IsMacOS) { throw 'The macOS Electron candidate must be assembled on macOS' }
@@ -24,6 +29,25 @@ if (Test-Path -LiteralPath $Output) { throw 'macOS output must be a new director
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'An explicit product version is required' }
 if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version -match '-dev\.') { 'development' } else { 'stable' } }
 if ($ExternalPublisherConfig -and -not [IO.Path]::IsPathRooted($ExternalPublisherConfig)) { throw 'External publisher configuration path must be absolute' }
+$sparkleEnabled = [bool]($SparkleFramework -or $SparkleFeedURL -or $SparklePublicEDKey)
+if ($sparkleEnabled) {
+    if (-not ($SparkleFramework -and $SparkleFeedURL -and $SparklePublicEDKey)) { throw 'Sparkle requires framework, HTTPS appcast URL and EdDSA public key together' }
+    if (-not [IO.Path]::IsPathRooted($SparkleFramework)) { throw 'Sparkle framework path must be absolute' }
+    $SparkleFramework = [IO.Path]::GetFullPath($SparkleFramework)
+    if (-not (Test-Path -LiteralPath (Join-Path $SparkleFramework 'Headers/Sparkle.h') -PathType Leaf)) { throw 'Sparkle framework headers are missing' }
+    $feed = [uri]$SparkleFeedURL
+    if ($feed.Scheme -ne 'https' -or $feed.UserInfo -or $feed.Fragment -or $feed.Query) { throw 'Sparkle appcast must be a fixed HTTPS URL without credentials, query or fragment' }
+    try { $keyBytes = [Convert]::FromBase64String($SparklePublicEDKey) } catch { throw 'Sparkle EdDSA public key must be base64' }
+    if ($keyBytes.Length -ne 32) { throw 'Sparkle EdDSA public key must decode to 32 bytes' }
+
+}
+$expectedBundleVersion = (& node (Join-Path $PSScriptRoot '../../scripts/macos-update-feed.mjs') version $Version).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Unsupported macOS update version' }
+if ($BundleVersion -and $BundleVersion -ne $expectedBundleVersion) { throw 'BundleVersion must match the shared release version encoding' }
+if ($SparkleDevelopmentFeedURL) {
+    $devFeed=[uri]$SparkleDevelopmentFeedURL
+    if (-not $sparkleEnabled -or $devFeed.Scheme -ne 'https' -or $devFeed.UserInfo -or $devFeed.Fragment -or $devFeed.Query) { throw 'Development appcast requires a fixed HTTPS URL and the Sparkle trust key' }
+}
 $identity = Get-Content -LiteralPath (Join-Path $Product 'assembly.json') -Raw | ConvertFrom-Json
 & $Node (Join-Path $PSScriptRoot '../../scripts/verify-product-release-identity.mjs') $Product $Version
 if ($LASTEXITCODE -ne 0) { throw 'Product release identity verification failed' }
@@ -112,6 +136,11 @@ $desktop = [ordered]@{
     product='../product'; node='../runtime/node'; configurationOwnership=$ownership
     updateChannel='disabled-candidate'; updates=@{defaultPolicy=$UpdateDefaultPolicy}
 }
+if ($sparkleEnabled) {
+    $desktop.macSparkle=@{enabled=$true;feeds=@{stable=$SparkleFeedURL}}
+    if ($SparkleDevelopmentFeedURL) { $desktop.macSparkle.feeds.development=$SparkleDevelopmentFeedURL }
+    if ($UpdateDefaultPolicy -eq 'development' -and -not $SparkleDevelopmentFeedURL) { throw 'Development builds require a development appcast' }
+}
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
 if ($ExternalPublisherConfig) {
@@ -125,16 +154,38 @@ $desktop | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $appPay
 
 $plist = Join-Path $app 'Contents/Info.plist'
 $marketingVersion = ($Version -split '-')[0]
-$bundleVersion = if ($Version -match '-dev\.(\d{8})\.([1-9]\d*)$') { "$marketingVersion.$($Matches[1]).$($Matches[2])" } else { $marketingVersion }
+$effectiveBundleVersion = $expectedBundleVersion
 foreach ($row in @(
     @('CFBundleExecutable','Electron'), @('CFBundleName',$editionName),
     @('CFBundleDisplayName',$identity.brand.product.name), @('CFBundleIdentifier',$desktop.appId),
-    @('CFBundleShortVersionString',$marketingVersion), @('CFBundleVersion',$bundleVersion), @('CFBundleIconFile','brand/icon.icns'),
+    @('CFBundleShortVersionString',$marketingVersion), @('CFBundleVersion',$effectiveBundleVersion), @('CFBundleIconFile','brand/icon.icns'),
     @('LSMinimumSystemVersion','15.0')
 )) {
     & plutil -replace $row[0] -string $row[1] $plist
     if ($LASTEXITCODE -ne 0) { throw "Info.plist update failed: $($row[0])" }
 }
+if ($sparkleEnabled) {
+    Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../LICENSE-Sparkle') -Destination (Join-Path $resources 'LICENSE-Sparkle')
+    $frameworkTarget = Join-Path $app 'Contents/Frameworks/Sparkle.framework'
+    & ditto --noextattr --noqtn --noacl $SparkleFramework $frameworkTarget
+    if ($LASTEXITCODE -ne 0) { throw 'Sparkle framework copy failed' }
+    $headers = Join-Path $nodeRoot 'include/node'
+    if (-not (Test-Path -LiteralPath (Join-Path $headers 'node_api.h') -PathType Leaf)) { throw 'Official Node distribution must include N-API headers' }
+    $native = Join-Path $appPayload 'native'
+    New-Item -ItemType Directory -Path $native | Out-Null
+    & clang++ -std=c++17 -fobjc-arc -dynamiclib -undefined dynamic_lookup -I $headers -F (Join-Path $app 'Contents/Frameworks') -framework Sparkle -framework AppKit '-Wl,-rpath,@loader_path/../../../Frameworks' (Join-Path $PSScriptRoot '../native/sparkle-addon.mm') -o (Join-Path $native 'sparkle.node')
+    if ($LASTEXITCODE -ne 0) { throw 'Sparkle native bridge compilation failed' }
+    & plutil -replace SUFeedURL -string $(if ($UpdateDefaultPolicy -eq 'development') { $SparkleDevelopmentFeedURL } else { $SparkleFeedURL }) $plist
+    & plutil -replace SUPublicEDKey -string $SparklePublicEDKey $plist
+    & plutil -replace SUEnableAutomaticChecks -bool NO $plist
+    if ($LASTEXITCODE -ne 0) { throw 'Sparkle Info.plist setup failed' }
+}
+# Finder and FileProvider can attach resource forks and extended attributes to
+# an app copied through Desktop/Finder. They invalidate the code signature and
+# make Sparkle reject the replacement during relaunch, so keep the archive
+# deterministic and explicitly remove those attributes before signing.
+& xattr -cr $app
+if ($LASTEXITCODE -ne 0) { throw 'macOS app metadata cleanup failed' }
 $release = [ordered]@{
     schemaVersion=1; shell='electron'; version=$Version; dshVersion=$identity.dshVersion; dshCommit=$identity.dshCommit
     distribution=$identity.distribution; productName=$identity.brand.product.name; platform='darwin-arm64'
@@ -142,6 +193,7 @@ $release = [ordered]@{
     minimumSystemVersion='15.0'; ladybugNativePatched=$true; bundledOpenSSL='3.5.8'
     configurationMode=$(if ($bootstrap.enabled) {'downloaded-publisher'} elseif ($ExternalPublisherConfig) {'external-publisher'} elseif ($ownership -eq 'publisher') {'bundled-publisher'} else {'user'})
     developerIDSigned=$false; adHocSigned=$true; notarized=$false
+    sparkleEnabled=$sparkleEnabled; bundleVersion=$effectiveBundleVersion
     published=$false; assembledAt=[DateTime]::UtcNow.ToString('o')
 }
 $release | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $resources 'release.json') -Encoding utf8NoBOM
@@ -158,6 +210,8 @@ New-Item -ItemType Directory -Path $signingApp -Force | Out-Null
 try {
     & rsync -a ($app + '/') ($signingApp + '/')
     if ($LASTEXITCODE -ne 0) { throw 'Signing-stage copy failed' }
+    & xattr -cr $signingApp
+    if ($LASTEXITCODE -ne 0) { throw 'Signing-stage metadata cleanup failed' }
     & codesign --force --deep --sign - --timestamp=none $signingApp
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signing failed' }
     & codesign --verify --deep --strict $signingApp

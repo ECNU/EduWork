@@ -9,3 +9,7 @@ EduWork combines independent components; its MIT License applies only to project
 - Remotion uses its own license with eligibility and usage conditions. Including its source or runtime does not make it MIT licensed. Review the applicable upstream terms for the actual distributor and deployment.
 
 The file-level source receipt does not substitute for a dependency SBOM. Final desktop releases must include a complete SBOM and applicable runtime/model/media notices; desktop release preparation is a later stage.
+
+## Sparkle
+
+macOS 可选更新组件使用 [Sparkle](https://github.com/sparkle-project/Sparkle) 2.10.0（MIT 及其附带第三方许可）。完整许可见 [LICENSE-Sparkle](dsh-electron/LICENSE-Sparkle)，启用时同时装入应用包。框架和源码版本固定在锁与测试中。

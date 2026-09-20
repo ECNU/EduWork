@@ -52,7 +52,7 @@ export function UpdatePanel({controller}) {
  const busy=['checking','downloading','applying','switching'].includes(state)
  const enabled=status&&status.shell!=='web'&&(s?.enabled!==false||c?.enabled)
  const policy=s?.policy||c?.policy||'stable',locked=busy||state==='ready'||['checking','downloading','ready'].includes(c?.state)
- const channels=[['stable','仅公测版'],['development','开发版']]
+ const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.nativeUI||s.policies?.includes(value))
  const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
  const progress=percent(s),determinate=state==='downloading'&&s?.totalBytes>0
  const message=state==='available'?`发现新版本 ${s.latestVersion}`:state==='downloading'?`正在下载 ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
@@ -61,11 +61,11 @@ export function UpdatePanel({controller}) {
  return h('div',{'data-eduwork-update-panel':true},
   h('div',{style:row},
    h('div',{style:{minWidth:0}},
-    h('div',{style:{fontSize:14}},'自动更新'),
+    h('div',{style:{fontSize:14}},s?.nativeUI?'macOS 应用更新':'自动更新'),
     h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:'读取当前版本…'),
-    h('p',{style:note},enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
+    h('p',{style:note},s?.nativeUI?'点击检查后，在系统更新窗口确认下载与安装；配置和数据保留在用户目录。':enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
    h('button',{type:'button',style:{...button,flexShrink:0},disabled:locked||!enabled,onClick:()=>controller.run('check-updates')},state==='checking'?'检查中…':'检查更新')),
-  enabled&&s&&h(React.Fragment,null,
+  enabled&&s&&channels.length>1&&h(React.Fragment,null,
    h('div',{role:'radiogroup','aria-label':'更新渠道',style:{display:'flex',gap:8,marginTop:12}},
     ...channels.map(([value,label],index)=>h('button',{
      key:value,type:'button',role:'radio','aria-checked':policy===value,'aria-disabled':locked,tabIndex:policy===value?0:-1,
