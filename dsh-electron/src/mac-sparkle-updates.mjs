@@ -10,7 +10,7 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
   let addon, failure
   try {
     addon = loadAddon(join(appPath, 'native/sparkle.node'))
-    if (['start','check','setFeed'].some(name => typeof addon[name] !== 'function')) throw Error('Invalid Sparkle native bridge')
+    if (['start','check','setFeed','probe','snapshot'].some(name => typeof addon[name] !== 'function')) throw Error('Invalid Sparkle native bridge')
     for (const [channel, value] of Object.entries(feeds)) {
       const url = new URL(value)
       if (!['stable','development'].includes(channel) || url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw Error('Invalid Sparkle appcast')
@@ -20,13 +20,12 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
   } catch (error) { failure = error }
   const status = () => ({ shell: 'electron', version, phase: failure ? 'error' : 'ready',
     message: failure ? `macOS 更新组件不可用：${failure.message}` : 'macOS 应用更新由 Sparkle 管理；检查、下载和安装会在系统窗口中进行。',
-    update: { enabled: !failure, nativeUI: true, policy, policies:Object.keys(feeds), state: failure ? 'error' : 'idle', ...(failure ? {error:failure.message} : {}) } })
+    update: { enabled: !failure, nativeUI: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : addon.snapshot()) } })
   return {
     action: async action => {
       if (action === 'status') return status()
-      // Startup checks signed content without opening a manual Sparkle dialog.
-      // The user explicitly starts the native software update from the panel.
-      if (action === 'check-updates-background') return status()
+      // Probe only: the native delegate reports availability without a dialog.
+      if (action === 'check-updates-background') { if (!failure) addon.probe(); return status() }
       if (action === 'use-stable-updates' || action === 'use-development-updates') {
         if (failure) throw failure
         const next = action === 'use-development-updates' ? 'development' : 'stable'
@@ -36,7 +35,7 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
         policy = next
         return status()
       }
-      if (action === 'check-updates') {
+      if (action === 'check-updates' || action === 'download-update') {
         if (failure) throw Error(`macOS 更新组件不可用：${failure.message}`)
         addon.check(); return status()
       }

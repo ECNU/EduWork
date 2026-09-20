@@ -1,6 +1,6 @@
 # 配置示例
 
-[English](README_EN.md)
+[English](README_EN.md) · [生效配置、备份与 UAT](../../../docs/CONFIGURATION.md)
 
 模型请求总并发默认 3 路，所有主会话、子代理与辅助模型请求共用这个上限。设置 → 通用设置 → 模型请求总并发支持即时保存；填 2 就是总计 2 路，超额请求排队。在 `config/eduwork.jsonc` 顶层设置 `"features": { "maxConcurrentRequests": 3 }` 可提供发行默认值（1–64），退出后重启生效；用户已保存的并发偏好优先。旧 `maxParallelSubagents: 2` 兼容换算为总并发 3，不改配置文件原文。Windows 更新设置可选择“公测版”或“开发版（含公测版）”，不因切换渠道降级。
 

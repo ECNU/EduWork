@@ -14,7 +14,7 @@ const component=ts.transpileModule(await readFile(new URL('../src/updates.ts',im
  .replace(/import \{ createPortal \} from ['"]react-dom['"];?/,'const {createPortal}=ReactDOM;')
 assert.doesNotMatch(component,/from ['"]react/)
 let policy='stable',state='up_to_date',downloaded=0,scheduled=false
-let content=null,softwareEnabled=true
+let content=null,softwareEnabled=true,nativeUI=false
 const actions=[]
 const server=createServer(async(request,response)=>{
  if(request.url==='/react.js'||request.url==='/react-dom.js') {
@@ -31,7 +31,7 @@ const server=createServer(async(request,response)=>{
   if(action==='test-complete')state='ready'
   if(action==='schedule-update')scheduled=true
   if(action==='install-update')state='applying'
-  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled},contentUpdate:content}));return
+  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{nativeUI,policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled},contentUpdate:content}));return
  }
  response.setHeader('content-type','text/html');response.end(`<html><meta charset="utf-8"><body style="font:14px system-ui;margin:40px;max-width:600px"><div id="root"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script type="module">import {createUpdateController,UpdatePanel,UpdateFooter} from '/component.js';const controller=createUpdateController(async action=>(await fetch('/api/'+action)).json());ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(React.Fragment,null,React.createElement(UpdatePanel,{controller}),React.createElement(UpdateFooter,{controller})));</script></body></html>`)
 })
@@ -96,6 +96,16 @@ try {
  await dialog.getByRole('button',{name:'重启使内容生效',exact:true}).click()
  await dialog.getByText('配置 r2 · Skills r3',{exact:true}).waitFor()
  assert.ok(actions.includes('restart-content-update'))
+ await page.keyboard.press('Escape')
+ nativeUI=true;softwareEnabled=true;state='up_to_date';content={...content,state:'available',latestRevision:4}
+ await page.reload();await page.getByText('macOS 应用更新',{exact:true}).waitFor()
+ await page.getByText('配置与 Skills 更新',{exact:true}).waitFor()
+ await page.getByRole('button',{name:'下载内容更新',exact:true}).click()
+ await page.getByLabel('内容下载进度').waitFor()
+ content={...content,state:'current'};await page.reload()
+ await page.getByRole('radio',{name:'仅公测版',exact:true}).click()
+ await page.waitForFunction(()=>document.querySelector('[role=radio][aria-checked=true]')?.textContent==='仅公测版')
+ await page.screenshot({path:join(evidence,'mac-software-and-content.png')})
  assert.deepEqual(errors,[])
  await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,sourceLayout:'0.2.0 / d8691cb UpdateSettings',channelSwitch:true,keyboardSwitch:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
  console.log('Shared update UI acceptance passed')

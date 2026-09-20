@@ -5,7 +5,7 @@ import { desktopPaths } from '../src/desktop-paths.mjs'
 
 const settings = { distribution: 'example', productVersion: '0.3.6', configurationOwnership: 'user', product: '../product', node: '../runtime/node' }
 
-test('macOS mutable paths stay outside the app and external publisher config remains external', () => {
+test('macOS mutable paths and both editions use the user config directory, including older publisher metadata', () => {
   const root = resolve('synthetic-installed/Example.app'), appRoot = join(root, 'Contents/Resources/app'), appData = resolve('synthetic-user/Application Support')
   const options = { appRoot, appData, settings, platform: 'darwin' }
   const paths = desktopPaths(options), userRoot = join(appData, 'example-electron')
@@ -17,7 +17,8 @@ test('macOS mutable paths stay outside the app and external publisher config rem
   }
   assert.equal(paths.skillsManifestPath, join(root, 'Contents/Resources/bundled-skills.json'))
   const publisherConfig = resolve('synthetic-publisher/config.jsonc')
-  assert.equal(desktopPaths({ ...options, settings: { ...settings, configurationOwnership: 'publisher', publisherConfig } }).config, publisherConfig)
+  assert.equal(desktopPaths({ ...options, settings: { ...settings, configurationOwnership: 'publisher', publisherConfig } }).config, paths.config)
+  assert.equal(desktopPaths({ ...options, configOverride: publisherConfig }).config, publisherConfig)
   const testRoot = resolve('synthetic-isolated-test')
   assert.equal(desktopPaths({ ...options, testRoot }).updateDataRoot, join(testRoot, 'updates'))
 })

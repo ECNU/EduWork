@@ -77,13 +77,11 @@ eduwork/
 
 ## 配置随升级如何处理
 
-公版的 `config/eduwork.jsonc` 由使用者或部署方维护，升级不覆盖。仅配置机构登录不会改变这一策略。
+公版与机构版 Electron 都读取 `config/eduwork.jsonc`。软件升级保留该文件，不再按产品版本生成配置副本。公版默认不启用远程配置；机构版可通过[首次启动获取配置](PUBLISHER_BOOTSTRAP.md)初始化，然后用签名内容更新默认字段，保留用户手工修改。
 
-机构发行可在自己的资源中提供 `desktop/configuration-policy.json`，声明 `{"schemaVersion":1,"ownership":"publisher"}`。Electron 装配器将配置所有权写入程序身份，并为每个版本提供 `config/eduwork.<产品版本>.jsonc`。客户端读取与当前程序版本对应的完整配置：机构、模型能力与限制、媒体、品牌、服务开关和更新源均可随发行更新。此模式隐藏编辑发行配置的入口；个人模型设置仍可使用。
+唯一回退备份是 `data/configuration/eduwork.previous.jsonc`。旧版升级将原来实际生效的学校配置迁入统一入口，确认成功启动后清理未再修改的旧入口。配置编辑、UAT 切换和回退见[配置文件](CONFIGURATION.md)。历史、个人模型、Key、默认模型和用户已保存的界面及更新渠道偏好仍独立保留。
 
-CI 仅提供空白模板。发行维护者下载并校验 CI ZIP 后，用 `scripts/configure-desktop-archive.ps1` 加入实际配置；脚本同步写入兼容的 `config/eduwork.jsonc` 及本版本配置，更新文件清单，并验证程序字节与 CI 一致。实际部署参数不进入源码或 CI。
-
-版本化文件使用新路径，兼容旧更新器“不覆盖已有配置、补入新增配置”的行为。旧配置保留，失败回退后的旧程序仍读取自己的配置；不可同版本替换发行包。历史、个人模型、Key、默认模型选择、用户已保存的界面及更新渠道偏好不属于发行配置，继续保留。缺失本版本的配置会明确阻止启动，避免静默使用过期或空白的旧机构配置。
+静态机构部署可用 `scripts/configure-desktop-archive.ps1` 为 CI 原包加入 `config/eduwork.jsonc`；无需变更程序文件。脚本兼容旧版含版本化文件的 CI 包，但新包不再生成这些文件。
 
 ## 开发包与公测包的默认渠道
 

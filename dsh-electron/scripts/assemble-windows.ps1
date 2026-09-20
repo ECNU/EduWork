@@ -78,9 +78,6 @@ Rename-Item -LiteralPath (Join-Path $Output 'electron.exe') -NewName 'EduWork-El
 $defaultConfig = Join-Path $Product 'resources/desktop/eduwork.jsonc'
 if (-not (Test-Path -LiteralPath $defaultConfig -PathType Leaf)) { $defaultConfig = '' }
 & (Join-Path $PSScriptRoot '../../scripts/install-desktop-config.ps1') -Output $Output -DefaultConfig $defaultConfig
-if ($config.configurationOwnership -eq 'publisher') {
-    Copy-Item -LiteralPath (Join-Path $Output 'config/eduwork.jsonc') -Destination (Join-Path $Output "config/eduwork.$Version.jsonc")
-}
 @{schemaVersion=1;shell='electron';version=$Version;dshVersion=$identity.dshVersion;dshCommit=$identity.dshCommit;distribution=$identity.distribution;productName=$name;nodeVersion=$nodeVersion;nodeSHA256=(Get-FileHash -LiteralPath $Node -Algorithm SHA256).Hash.ToLowerInvariant();published=$false;automaticUpdates=($config.updateChannel -ne 'disabled-candidate');pluginPolicy='frozen-candidate';assembledAt=[DateTime]::UtcNow.ToString('o')} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $Output 'release.json') -Encoding utf8NoBOM
 @"
 $name — Electron candidate $Version

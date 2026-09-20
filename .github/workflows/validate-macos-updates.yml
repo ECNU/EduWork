@@ -1,0 +1,38 @@
+name: Validate macOS updater
+on:
+  pull_request:
+    paths:
+      - 'dsh-electron/native/**'
+      - 'dsh-electron/src/mac-sparkle-updates.mjs'
+      - 'dsh-electron/tests/sparkle-macos-smoke.mjs'
+      - 'dsh-electron/sparkle.lock.json'
+      - '.github/workflows/validate-macos-updates.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  sparkle:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Check shared update coordination
+        run: node --test dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs
+      - name: Prepare the pinned Electron test runtime
+        run: npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --no-audit --no-fund electron@44.0.0
+      - name: Verify native bridge and signed replacement
+        run: node dsh-electron/tests/sparkle-macos-smoke.mjs "$RUNNER_TEMP/sparkle-check"
+      - name: Retain synthetic test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-update-validation
+          path: |
+            ${{ runner.temp }}/sparkle-check/evidence/*.json
+            ${{ runner.temp }}/sparkle-check/evidence/*.log
+          retention-days: 7
+          if-no-files-found: error
