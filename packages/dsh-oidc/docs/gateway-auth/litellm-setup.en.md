@@ -67,7 +67,7 @@ Save, exit completely through the tray, and restart EduWork. Closing its window 
 
 The model API base is the validated issuer with `/v1` appended, preserving any deployment prefix. Do not set `provider.baseURL`. LiteLLM dynamically registers a Client ID for this login: do not configure a static `clientId`, `client_secret`, or scope, or combine this profile with `oidc` or `keyBinding`.
 
-Production uses HTTPS. Explicit `allowInsecureDevelopment: true` on the organization entry, alongside `auth`, permits loopback HTTP for local development only, not arbitrary remote HTTP addresses. Keep passwords, Tokens, and upstream keys out of the client configuration.
+`allowInsecureDevelopment` is the only HTTP switch, at the profile root beside `auth`/`oidc`. Its default is `false` (HTTPS only); `true` also accepts HTTP service URLs. `insecureDevelopmentOrigin` is obsolete and ignored. Issuer identity, resource-origin validation and OAuth/PKCE checks still apply. `discoveryUrl` is the complete discovery URL; `expectedIssuer` is optional and pins the exact issuer when provided.
 
 Developers integrating another client can use the [single Profile example](../../examples/litellm.enterprise-profile.example.json) and [desktop Host guide](../desktop-host.en.md) to reuse the same authorization and model modules. Desktop users do not need to assemble a Host themselves.
 

@@ -95,18 +95,19 @@ test('draft discovery requires explicit mode, static registration, complete cont
   assert.throws(() => normalizeEnterpriseProfile(raw), /explicitly/)
 })
 
-test('development exception pins one explicit HTTP origin and does not weaken native LiteLLM', () => {
+test('HTTP opt-in applies to discovered endpoints while issuer and resource checks remain', () => {
   const raw = JSON.parse(JSON.stringify(profileRaw()).replaceAll(base, 'http://192.0.2.10'))
   assert.throws(() => normalizeEnterpriseProfile(raw))
-  Object.assign(raw, { allowInsecureDevelopment: true, insecureDevelopmentOrigin: 'http://192.0.2.10' })
+  Object.assign(raw, { allowInsecureDevelopment: true })
   const profile = normalizeEnterpriseProfile(raw)
   const meta = JSON.parse(JSON.stringify(metadata()).replaceAll(base, 'http://192.0.2.10'))
   assert.equal(detectGatewayProtocol(meta, profile).issuer, 'http://192.0.2.10')
-  assert.throws(() => detectGatewayProtocol({ ...meta, token_endpoint: 'http://192.0.2.11/token' }, profile))
+  assert.equal(detectGatewayProtocol({ ...meta, token_endpoint: 'http://192.0.2.11/token' }, profile).tokenEndpoint, 'http://192.0.2.11/token')
+  assert.throws(() => detectGatewayProtocol({ ...meta, userinfo_endpoint: 'http://192.0.2.11/userinfo' }, profile))
   delete raw.auth.expectedIssuer
-  assert.throws(() => normalizeEnterpriseProfile(raw), /expectedIssuer/)
+  assert.equal(detectGatewayProtocol(meta, normalizeEnterpriseProfile(raw)).issuer, meta.issuer)
   raw.auth = { discoveryUrl: 'http://192.0.2.10/discovery' }
-  assert.throws(() => normalizeEnterpriseProfile(raw))
+  assert.equal(normalizeEnterpriseProfile(raw).auth.discoveryUrl, raw.auth.discoveryUrl)
 })
 
 test('OIDC draft uses shared PKCE callback, verifier, ID validation and Access Token resources without Key Binding', async t => {

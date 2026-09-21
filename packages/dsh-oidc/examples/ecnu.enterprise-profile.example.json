@@ -72,5 +72,6 @@
       }
     ],
     "modelSource": "discovery"
-  }
+  },
+  "allowInsecureDevelopment": false
 }

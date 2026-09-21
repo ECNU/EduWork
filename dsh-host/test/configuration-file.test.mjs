@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, readFile, writeFile, readdir, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { ConfigurationFile, configurationFingerprints, mergeConfiguration } from '../configuration-file.mjs'
+import { ConfigurationFile, configurationFingerprints, mergeConfiguration, readConfiguration } from '../configuration-file.mjs'
 import { loadUserConfig } from '../user-config.mjs'
 
 const scope = 'a'.repeat(64), key = revision => `${revision}-${'b'.repeat(64)}`
@@ -23,7 +23,7 @@ async function fixture(t) {
 test('manual UAT edits and per-model settings survive while untouched defaults update', async t => {
   const f = await fixture(t)
   await f.file.apply({ scope, key: key(1), revision: 1, patch: { organizations: [profile()], features: { maxConcurrentRequests: 3 } } }); await f.file.commit()
-  const local = JSON.parse((await readFile(f.path, 'utf8')).replace(/^\/\/.*\n/, ''))
+  const local = (await readConfiguration(f.path)).value
   local.organizations[0].oidc.issuer = 'https://uat.example.org'
   local.organizations[0].provider.baseURL = 'https://uat.example.org/v1'
   local.organizations[0].provider.models[0].contextWindow = 77
@@ -61,7 +61,7 @@ test('deleted default entries stay deleted and removed unchanged defaults disapp
 test('interrupted replacement restores the only backup while retaining edits made during the trial', async t => {
   const f = await fixture(t)
   await f.file.apply({ scope, key: key(1), revision: 1, patch: { features: { maxConcurrentRequests: 4 } } })
-  const current = JSON.parse((await readFile(f.path, 'utf8')).replace(/^\/\/.*\n/, ''))
+  const current = (await readConfiguration(f.path)).value
   current.organizations[0].oidc.issuer = 'https://uat.example.org'
   await writeFile(f.path, JSON.stringify(current))
   const recovered = await f.open()

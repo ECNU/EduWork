@@ -5,6 +5,11 @@
   "oidc": {
     "issuer": "https://identity.example.edu",
     "clientId": "replace-with-public-client-id",
-    "scopes": ["openid", "profile", "offline_access"]
-  }
+    "scopes": [
+      "openid",
+      "profile",
+      "offline_access"
+    ]
+  },
+  "allowInsecureDevelopment": false
 }

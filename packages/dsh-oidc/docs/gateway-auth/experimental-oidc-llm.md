@@ -34,7 +34,7 @@
 
 发现声明 `authorization_response_iss_parameter_supported: true` 时，成功和错误授权回调都必须带 `iss`，且与发现中的 `issuer` 完全一致。缺失会报告 `gateway_callback_issuer_missing`；重复、空值或不匹配会报告 `gateway_callback_issuer_invalid`。客户端不会继续换取 Token，应由认证服务管理员核对发现声明与回调实现后重新发起登录。桌面回调监听在流程结束后关闭，刷新旧回调地址不能恢复登录。
 
-生产端点须为 HTTPS。独立实验环境可复用既有 `allowInsecureDevelopment: true` 和 `insecureDevelopmentOrigin`，但必须同时固定 `expectedIssuer`；HTTP 端点只允许 loopback 或该完整原点，不扩大到整个内网。此例外不改变 LiteLLM native 的 loopback 限制。
+`allowInsecureDevelopment` 是唯一的 HTTP 开关，放在企业对象中，与 `auth`/`oidc` 同级；默认 `false` 仅接受 HTTPS，改为 `true` 也接受 HTTP 服务地址。旧 `insecureDevelopmentOrigin` 已废弃并忽略。issuer 身份、资源同源关系及 OAuth/PKCE 校验仍按协议执行。`discoveryUrl` 填完整发现地址，`expectedIssuer` 可选，填写后必须与发现文档完全一致。
 
 ## 共享实现与边界
 

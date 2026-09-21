@@ -32,8 +32,8 @@ Profile 是受信任的部署配置，不是用户输入。即便如此，解析
 | `id` | 是 | 匹配 `^[a-z][a-z0-9-]{0,63}$` 的 Profile ID。 |
 | `displayName` | 是 | 面向用户的集成名称。 |
 | `organization` | 否 | 机构名称；默认使用 `displayName`。 |
-| `allowInsecureDevelopment` | 否 | 为本地开发启用 loopback HTTP。网络 HTTP 还必须配置 `insecureDevelopmentOrigin`。 |
-| `insecureDevelopmentOrigin` | 否 | 精确的非 TLS 开发 origin。只有与 `allowInsecureDevelopment: true` 一起使用时才有效，且所有 HTTP OIDC/网关 endpoint 必须使用该 origin。不得放入生产 Profile。 |
+| `allowInsecureDevelopment` | 可选布尔值，默认 `false` 仅接受 HTTPS；`true` 也接受 HTTP 服务地址。 |
+| `insecureDevelopmentOrigin` | 已废弃，仅兼容旧文件；不再参与校验，新配置无需填写。 |
 | `brand` | 否 | 有边界的展示配置。 |
 | `oidc` | 纯身份模式 | OIDC public client 信息，不得同时配置 auth 或 provider。 |
 | `auth` | 模型模式 | 完整发现地址，协议字段见网关指南。 |

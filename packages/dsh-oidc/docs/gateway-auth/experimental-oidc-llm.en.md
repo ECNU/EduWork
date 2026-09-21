@@ -34,7 +34,7 @@ Only static public-client registration is implemented; no client secret is accep
 
 When discovery declares `authorization_response_iss_parameter_supported: true`, both successful and error authorization responses must include `iss` exactly matching the discovered `issuer`. A missing value produces `gateway_callback_issuer_missing`; repeated, empty or mismatched values produce `gateway_callback_issuer_invalid`. The client does not exchange the code. Ask the authentication service administrator to align discovery and callback behavior before starting a new sign-in. The desktop callback listener closes when the flow ends; refreshing an old callback URL cannot resume sign-in.
 
-Production endpoints require HTTPS. An isolated experiment may reuse `allowInsecureDevelopment: true` and `insecureDevelopmentOrigin`, with a mandatory `expectedIssuer` pin. HTTP is restricted to loopback or that exact origin, never an entire private network. LiteLLM native retains its loopback-only exception.
+`allowInsecureDevelopment` is the only HTTP switch, at the profile root beside `auth`/`oidc`. Its default is `false` (HTTPS only); `true` also accepts HTTP service URLs. `insecureDevelopmentOrigin` is obsolete and ignored. Issuer identity, resource-origin validation and OAuth/PKCE checks still apply. `discoveryUrl` is the complete discovery URL; `expectedIssuer` is optional and pins the exact issuer when provided.
 
 ## Shared implementation and limits
 

@@ -1,3 +1,4 @@
+import { serviceProtocolAllowed } from './transport.js'
 import { readFileSync } from 'node:fs'
 
 export const PROFILE_SCHEMA_VERSION = 'dsh-oidc/v1alpha1'
@@ -52,41 +53,22 @@ function text(value, label, max = 2048) {
   return value
 }
 
-function isLoopback(hostname) {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
-}
-
-function insecureDevelopmentOrigin(value, label) {
+function issuerURL(value, label, allowInsecure = false) {
   const raw = text(value, label)
   const parsed = new URL(raw)
-  if (parsed.protocol !== 'http:' || parsed.username || parsed.password || parsed.search || parsed.hash || (parsed.pathname !== '/' && parsed.pathname !== '')) {
-    throw new Error(`${label} must be an exact HTTP origin without credentials, path, query, or fragment`)
-  }
-  return raw.replace(/\/+$/, '')
-}
-
-function endpointProtocolAllowed(parsed, allowInsecure, allowedInsecureOrigin) {
-  return parsed.protocol === 'https:' || (allowInsecure && parsed.protocol === 'http:' && (
-    isLoopback(parsed.hostname) || parsed.origin === allowedInsecureOrigin
-  ))
-}
-
-function issuerURL(value, label, allowInsecure = false, allowedInsecureOrigin) {
-  const raw = text(value, label)
-  const parsed = new URL(raw)
-  const permitted = endpointProtocolAllowed(parsed, allowInsecure, allowedInsecureOrigin)
+  const permitted = serviceProtocolAllowed(parsed, allowInsecure)
   if (!permitted || parsed.username || parsed.password || parsed.search || parsed.hash) {
-    throw new Error(`${label} must be an HTTPS issuer URL without credentials, query, or fragment${allowInsecure ? ' (loopback or the exact allowlisted HTTP origin is allowed in development)' : ''}`)
+    throw new Error(`${label} must be an HTTPS issuer URL without credentials, query, or fragment${allowInsecure ? ' (HTTP is allowed with allowInsecureDevelopment=true)' : '; set allowInsecureDevelopment=true to allow HTTP'}`)
   }
   return raw
 }
 
-function exactURL(value, label, allowInsecure = false, allowedInsecureOrigin) {
+function exactURL(value, label, allowInsecure = false) {
   const raw = text(value, label)
   const parsed = new URL(raw)
-  const permitted = endpointProtocolAllowed(parsed, allowInsecure, allowedInsecureOrigin)
+  const permitted = serviceProtocolAllowed(parsed, allowInsecure)
   if (!permitted || parsed.username || parsed.password || parsed.hash || parsed.search) {
-    throw new Error(`${label} must be an absolute HTTPS URL without credentials, query, or fragment${allowInsecure ? ' (loopback or the exact allowlisted HTTP origin is allowed in development)' : ''}`)
+    throw new Error(`${label} must be an absolute HTTPS URL without credentials, query, or fragment${allowInsecure ? ' (HTTP is allowed with allowInsecureDevelopment=true)' : '; set allowInsecureDevelopment=true to allow HTTP'}`)
   }
   return raw.replace(/\/+$/, '')
 }
@@ -269,12 +251,8 @@ export function normalizeEnterpriseProfile(raw) {
   const id = text(source.id, 'profile.id', 64)
   if (!idPattern.test(id)) throw new Error('profile.id is invalid')
   const allowInsecureDevelopment = source.allowInsecureDevelopment === true
-  const allowedInsecureOrigin = source.insecureDevelopmentOrigin === undefined
-    ? undefined
-    : insecureDevelopmentOrigin(source.insecureDevelopmentOrigin, 'profile.insecureDevelopmentOrigin')
-  if (allowedInsecureOrigin !== undefined && !allowInsecureDevelopment) {
-    throw new Error('profile.insecureDevelopmentOrigin requires allowInsecureDevelopment=true')
-  }
+  if (source.allowInsecureDevelopment !== undefined && typeof source.allowInsecureDevelopment !== 'boolean') throw new Error('profile.allowInsecureDevelopment must be boolean')
+  // Accept the obsolete field in old files, but it no longer controls transport.
   const gateway = source.auth !== undefined
   if (gateway && source.oidc !== undefined) throw new Error('profile.auth cannot be combined with oidc')
   let auth
@@ -285,11 +263,9 @@ export function normalizeEnterpriseProfile(raw) {
     if (rawAuth.experimentalOidcLlm !== undefined && typeof rawAuth.experimentalOidcLlm !== 'boolean') throw new Error('profile.auth.experimentalOidcLlm must be boolean')
     if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined)) throw new Error('profile.auth clientId and identityMode require experimentalOidcLlm=true')
     if (experimental && !['oauth', 'oidc'].includes(rawAuth.identityMode)) throw new Error('profile.auth.identityMode must explicitly select oauth or oidc')
-    if (experimental && allowedInsecureOrigin && !rawAuth.expectedIssuer) throw new Error('development oidc-llm requires expectedIssuer')
-    const developmentOrigin = experimental ? allowedInsecureOrigin : undefined
     auth = Object.freeze({
-      discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment, developmentOrigin),
-      ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment, developmentOrigin) }),
+      discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment),
+      ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment) }),
       ...(experimental ? { experimentalOidcLlm: true, clientId: text(rawAuth.clientId, 'profile.auth.clientId', 256), identityMode: rawAuth.identityMode } : {}),
     })
     if (source.provider?.baseURL !== undefined) throw new Error('profile.auth derives provider.baseURL from validated discovery')
@@ -316,11 +292,10 @@ export function normalizeEnterpriseProfile(raw) {
     displayName: text(source.displayName, 'profile.displayName', 120),
     organization: text(source.organization ?? source.displayName, 'profile.organization', 120),
     allowInsecureDevelopment,
-    ...(allowedInsecureOrigin === undefined ? {} : { insecureDevelopmentOrigin: allowedInsecureOrigin }),
     nativeInstitutionID: source.nativeInstitutionID === undefined ? id : text(source.nativeInstitutionID, 'profile.nativeInstitutionID', 64),
     brand: normalizeBrand(source.brand),
     ...(gateway ? { auth } : { oidc: Object.freeze({
-      issuer: issuerURL(oidc.issuer, 'profile.oidc.issuer', allowInsecureDevelopment, allowedInsecureOrigin),
+      issuer: issuerURL(oidc.issuer, 'profile.oidc.issuer', allowInsecureDevelopment),
       clientId: text(oidc.clientId, 'profile.oidc.clientId', 256),
       scopes: Object.freeze([...scopes]),
     }) }),
@@ -384,7 +359,6 @@ export function enterpriseProviderConfig(profiles) {
       apiKeyEnv: `DSH_GATEWAY_${profile.id.toUpperCase().replace(/-/g, '_')}_ACCESS`,
       baseURL: profile.provider.baseURL,
       allowInsecureDevelopment: profile.allowInsecureDevelopment,
-      ...(profile.insecureDevelopmentOrigin === undefined ? {} : { insecureDevelopmentOrigin: profile.insecureDevelopmentOrigin }),
       reasoning: profile.provider.reasoning,
       ...(profile.provider.defaultContextWindow === undefined ? {} : { defaultContextWindow: profile.provider.defaultContextWindow }),
       ...(profile.provider.defaultMaxTokens === undefined ? {} : { defaultMaxTokens: profile.provider.defaultMaxTokens }),

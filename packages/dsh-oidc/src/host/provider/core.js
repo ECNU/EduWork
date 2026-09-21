@@ -1,3 +1,4 @@
+import { serviceProtocolAllowed } from '../transport.js'
 const modalities = new Set(['text', 'image'])
 export const REASONING_EFFORT_ORDER = Object.freeze(['off', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'])
 const reasoningEfforts = new Set(REASONING_EFFORT_ORDER)
@@ -12,23 +13,11 @@ function nonEmpty(value, label) {
   return value.trim()
 }
 
-function exactDevelopmentOrigin(value, label) {
-  if (value === undefined) return undefined
+function endpointURL(value, label, allowInsecureDevelopment = false) {
   const raw = nonEmpty(value, label).replace(/\/+$/, '')
   const parsed = new URL(raw)
-  if (parsed.protocol !== 'http:' || parsed.username || parsed.password || parsed.hash || parsed.search || (parsed.pathname !== '/' && parsed.pathname !== '')) {
-    throw new Error(`${label} must be an exact HTTP origin`)
-  }
-  return raw
-}
-
-function endpointURL(value, label, allowInsecureDevelopment = false, insecureDevelopmentOrigin) {
-  const raw = nonEmpty(value, label).replace(/\/+$/, '')
-  const parsed = new URL(raw)
-  const loopback = ['localhost', '127.0.0.1', '[::1]'].includes(parsed.hostname)
-  const allowedOrigin = exactDevelopmentOrigin(insecureDevelopmentOrigin, `${label}.insecureDevelopmentOrigin`)
-  const permittedHTTP = parsed.protocol === 'http:' && (loopback || (allowInsecureDevelopment === true && parsed.origin === allowedOrigin))
-  if ((parsed.protocol !== 'https:' && !permittedHTTP) || parsed.username || parsed.password || parsed.hash || parsed.search) {
+  if (typeof allowInsecureDevelopment !== 'boolean') throw new Error(`${label}.allowInsecureDevelopment must be boolean`)
+  if (!serviceProtocolAllowed(parsed, allowInsecureDevelopment) || parsed.username || parsed.password || parsed.hash || parsed.search) {
     throw new Error(`${label} must be HTTPS or explicitly allowed development HTTP without credentials, query, or fragment`)
   }
   return raw
@@ -100,7 +89,7 @@ export function resolveEnterpriseProfiles(raw = {}) {
     const route = nonEmpty(provider, 'provider route')
     if (typeof source !== 'object' || source === null || Array.isArray(source)) throw new Error(`${route} config must be an object`)
     const displayName = nonEmpty(source.displayName ?? route, `${route}.displayName`)
-    const baseURL = endpointURL(source.baseURL, `${route}.baseURL`, source.allowInsecureDevelopment, source.insecureDevelopmentOrigin)
+    const baseURL = endpointURL(source.baseURL, `${route}.baseURL`, source.allowInsecureDevelopment)
     const credentialRef = nonEmpty(source.apiKeyEnv, `${route}.apiKeyEnv`)
     const contextWindow = positiveInteger(source.defaultContextWindow, 262144, `${route}.defaultContextWindow`)
     const maxTokens = positiveInteger(source.defaultMaxTokens, 32768, `${route}.defaultMaxTokens`)

@@ -1,3 +1,4 @@
+import { explicitConfigurationDefaults, documentConfiguration, configurationComments } from './configuration-documentation.mjs'
 import { readFile, writeFile, mkdir, rename, rm, lstat } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { randomUUID } from 'node:crypto'
@@ -63,7 +64,10 @@ function render(text, value) {
     if (hash(previous) === hash(next)) return
     if (node.type === 'object' && object(next) && Object.keys(previous).sort().join('\0') === Object.keys(next).sort().join('\0')) {
       for (const property of node.children ?? []) visit(property.children[1], next[property.children[0].value])
-    } else edits.push({ offset: node.offset + prefix, length: node.length, text: JSON.stringify(next, null, 2) })
+    } else {
+      const comments = configurationComments(text.slice(node.offset + prefix, node.offset + prefix + node.length)).filter(comment => !comment.startsWith('// [eduwork] '))
+      edits.push({ offset: node.offset + prefix, length: node.length, text: (comments.length ? comments.join('\n') + '\n' : '') + JSON.stringify(next, null, 2) })
+    }
   }
   visit(tree, value)
   for (const edit of edits.sort((a, b) => b.offset - a.offset)) text = text.slice(0, edit.offset) + edit.text + text.slice(edit.offset + edit.length)
@@ -79,7 +83,8 @@ async function atomic(path, text) {
 
 /** One effective file and one backup; transactions contain hashes, not copies. */
 export class ConfigurationFile {
-  constructor(path, dataRoot) {
+  constructor(path, dataRoot, { fields = {} } = {}) {
+    this.fields = fields
     this.path = path; this.dataRoot = dataRoot
     this.directory = join(dataRoot, 'configuration')
     this.backup = join(this.directory, 'eduwork.previous.jsonc')
@@ -114,8 +119,9 @@ export class ConfigurationFile {
   async save() { await atomic(this.statePath, JSON.stringify(this.state, null, 2) + '\n') }
   async begin(next, { key, scope, defaults, initialized = this.state.initialized, cleanup = this.state.cleanup }) {
     if (this.state.trial) throw Error('请先完成当前配置更新')
+    next = explicitConfigurationDefaults(next)
     const current = await readConfiguration(this.path)
-    const before = current?.text ?? '{"schemaVersion":1}\n', after = render(before, next)
+    const before = current?.text ?? '{"schemaVersion":1}\n', after = documentConfiguration(render(before, next), this.fields)
     // Validate before replacing either the active file or its only backup.
     const temporary = this.path + '.' + randomUUID() + '.tmp'
     await mkdir(dirname(this.path), { recursive: true })
@@ -132,6 +138,15 @@ export class ConfigurationFile {
       }
       await rename(temporary, this.path)
     } finally { await rm(temporary, { force: true }) }
+  }
+  async document() {
+    if (this.state.trial) return // A content update already owns the only rollback backup.
+    const current = await readConfiguration(this.path)
+    if (!current) return
+    const next = explicitConfigurationDefaults(current.value)
+    if (documentConfiguration(render(current.text, next), this.fields) === current.text) return
+    await this.begin(next, { key: 'documentation', scope: 'initialization', defaults: this.state.defaults })
+    await this.commit()
   }
   async initialize(value, { defaults = null, cleanup = [] } = {}) {
     await this.begin(value, { key: 'initialization', scope: 'initialization', defaults, initialized: true, cleanup })

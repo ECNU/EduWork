@@ -107,6 +107,8 @@ async function prepareDesktop() {
   managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
     void progressWindow.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
   } })
+  try { await contentUpdates.configurationFile.document() }
+  catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
   if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')

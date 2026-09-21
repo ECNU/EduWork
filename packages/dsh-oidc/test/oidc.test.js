@@ -135,7 +135,7 @@ function providerFetch(options = {}) {
   return { calls, fetch, setNonce(value) { currentNonce = value } }
 }
 
-test('explicit development HTTP Discovery stays on the exact allowlisted origin', async () => {
+test('HTTP opt-in also applies to standard OIDC metadata endpoints', async () => {
   const developmentProfile = normalizeEnterpriseProfile({
     ...raw,
     allowInsecureDevelopment: true,
@@ -166,7 +166,7 @@ test('explicit development HTTP Discovery stays on the exact allowlisted origin'
   const rejected = new WebOidcBackend(ctx, new Map([[developmentProfile.id, developmentProfile]]), {}, {
     fetch: async () => Response.json(metadata('http://192.0.2.11')),
   })
-  await assert.rejects(() => rejected.begin(developmentProfile.id), /exact development HTTP origin/)
+  assert.equal(new URL((await rejected.begin(developmentProfile.id)).authorizationURL).origin, 'http://192.0.2.11')
 })
 
 test('multi-audience ID Tokens require azp to identify this client', async () => {

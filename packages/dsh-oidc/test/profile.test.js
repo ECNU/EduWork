@@ -59,8 +59,8 @@ test('model profiles reject legacy key binding and require explicit trusted toke
   const local = { ...raw, allowInsecureDevelopment: true, insecureDevelopmentOrigin: 'http://192.0.2.10',
     auth: { ...auth, discoveryUrl: discovery, expectedIssuer: 'http://192.0.2.10' } }
   assert.equal(normalizeEnterpriseProfile(local).auth.discoveryUrl, discovery)
-  assert.throws(() => normalizeEnterpriseProfile({ ...local, auth: { ...local.auth, discoveryUrl: 'http://192.0.2.11/discovery' } }), /HTTPS issuer URL/)
-  assert.throws(() => normalizeEnterpriseProfile({ ...local, allowInsecureDevelopment: false }), /requires allowInsecureDevelopment=true/)
+  assert.equal(normalizeEnterpriseProfile({ ...local, auth: { ...local.auth, discoveryUrl: 'http://192.0.2.11/discovery' } }).auth.discoveryUrl, 'http://192.0.2.11/discovery')
+  assert.throws(() => normalizeEnterpriseProfile({ ...local, allowInsecureDevelopment: false }), /HTTPS issuer URL/)
 })
 
 test('profiles reject duplicate provider routes', async () => {

@@ -41,3 +41,9 @@ Optional `plugins` entries use the plugin ID from the edition composition, for e
 ## Internal state
 
 `data/content-updates/` stores verified downloads. `data/configuration/state.json` stores revisions, field fingerprints and transactions for verification, merging and recovery. Neither is an additional active configuration file or a user editing surface.
+
+## Inline configuration reference
+
+The effective `eduwork.jsonc` contains Chinese field comments and a complete commented reference for generic options, including paths, accepted values, defaults and mutually exclusive settings. Optional examples stay commented out until real deployment parameters are supplied. Institution plugin options are documented by the edition examples. Initial downloads, configuration updates and upgrades of existing files keep this help, personal comments and one rollback backup.
+
+Set `allowInsecureDevelopment` beside `auth` in the organization object to `true` to also accept HTTP for enterprise discovery, authentication endpoints and model APIs. The default is explicitly written as `false` (HTTPS only); an existing `true` is preserved. The obsolete `insecureDevelopmentOrigin` is accepted but ignored. Issuer/resource identity and PKCE checks remain in force. Brand links, media services and software/content feeds retain their own URL rules, documented in the file.

@@ -13,5 +13,6 @@
     "id": "example-ai",
     "adapter": "openai-compatible",
     "modelSource": "discovery"
-  }
+  },
+  "allowInsecureDevelopment": false
 }

@@ -1,16 +1,281 @@
 {
+  // [eduwork] 配置格式版本，固定为 1。
   "schemaVersion": 1,
-  // Requires a build containing the gateway-auth feature. Existing Releases do not yet include it.
+  // LiteLLM 原生 CLI 登录协议配置。
   // 替换为可信网关地址；本文件不包含账号密码、API Key 或登录令牌。
+  // [eduwork] 企业配置数组；空数组关闭企业登录，个人 API Key 仍可在模型设置中使用。[] 表示数组中的一项。
   "organizations": [
     {
+      // [eduwork] 默认 false：仅接受 HTTPS 服务地址；true：也接受 HTTP。切 HTTP UAT 时改为 true，无需额外地址字段。
+      "allowInsecureDevelopment": false,
+      // [eduwork] 企业配置格式，固定为 dsh-oidc/v1alpha1。
       "schemaVersion": "dsh-oidc/v1alpha1",
+      // [eduwork] 本地企业标识，必须唯一；小写字母开头，可含数字和连字符，最多 64 字符。
       "id": "example-gateway",
+      // [eduwork] 企业登录入口名称。
       "displayName": "示例模型网关",
+      // [eduwork] Token 模型网关登录。与仅身份登录的 oidc 二选一。
       "auth": {
+        // [eduwork] 完整发现文档 URL；oidc-llm 使用 /.well-known/openid-configuration，LiteLLM 使用 /.well-known/litellm-cli-auth。
         "discoveryUrl": "https://gateway.example.org/.well-known/litellm-cli-auth",
+        // [eduwork] 预期 issuer，须与发现文档完全一致；可省略，此时按发现地址验证。
         "expectedIssuer": "https://gateway.example.org"
       }
     }
   ]
 }
+
+// <eduwork-configuration-reference>
+// 配置项参考（以下全部是注释，不会生效）。将需要的字段放回上方对应对象，修改后完全退出再启动。
+// [] 表示数组元素；示例值不是推荐默认值。auth/oidc 等互斥项按说明选择，不要整段照搬。
+// schemaVersion：配置格式版本，固定为 1。
+//   "schemaVersion": 1
+// product：产品展示信息；不改变安装包图标和应用身份。
+//   "product": {}
+// product.name：窗口及界面标题。
+//   "name": "EduWork"
+// product.logoFile：配置目录内的 Logo 相对路径；PNG/WebP/SVG，最多 256 KiB；空字符串清除自定义 Logo。
+//   "logoFile": "assets/logo.png"
+// organizations：企业配置数组；空数组关闭企业登录，个人 API Key 仍可在模型设置中使用。[] 表示数组中的一项。
+//   "organizations": []
+// organizations[].schemaVersion：企业配置格式，固定为 dsh-oidc/v1alpha1。
+//   "schemaVersion": "dsh-oidc/v1alpha1"
+// organizations[].id：本地企业标识，必须唯一；小写字母开头，可含数字和连字符，最多 64 字符。
+//   "id": "example"
+// organizations[].displayName：企业登录入口名称。
+//   "displayName": "示例 AI 服务"
+// organizations[].organization：所属机构的显示名称；省略时取 displayName。
+//   "organization": "示例机构"
+// organizations[].nativeInstitutionID：与原生机构条目关联的标识；省略时使用 id。
+//   "nativeInstitutionID": "example"
+// organizations[].allowInsecureDevelopment：默认 false：仅接受 HTTPS 服务地址；true：也接受 HTTP。切 HTTP UAT 时改为 true，无需额外地址字段。
+//   "allowInsecureDevelopment": false
+// organizations[].brand：企业登录与账户展示；以下字段均可选。
+//   "brand": {}
+// organizations[].auth：Token 模型网关登录。与仅身份登录的 oidc 二选一。
+//   "auth": {}
+// organizations[].oidc：仅 OIDC 身份登录；与 auth、provider 互斥，不提供模型授权。
+//   "oidc": {}
+// organizations[].provider：Token 模型网关的模型策略；API 地址从发现文档读取，不能填写 baseURL。
+//   "provider": {}
+// organizations[].brand.productName：企业展示的产品名称。
+//   "productName": "EduWork"
+// organizations[].brand.organizationName：登录面板上的机构名称。
+//   "organizationName": "示例机构"
+// organizations[].brand.mark：最多 4 字符的简短机构标记。
+//   "mark": "校"
+// organizations[].brand.logoURL：企业 Logo；HTTPS URL 或 PNG/WebP 的 base64 data URL，最多 128 KiB。
+//   "logoURL": "https://example.org/logo.png"
+// organizations[].brand.primaryColor：六位十六进制品牌色。
+//   "primaryColor": "#9f2636"
+// organizations[].brand.loginTitle：登录标题，最多 120 字符。
+//   "loginTitle": "使用机构账号登录"
+// organizations[].brand.loginDescription：登录说明，最多 500 字符。
+//   "loginDescription": "授权后使用机构提供的模型。"
+// organizations[].brand.supportURL：帮助页面，必须为 HTTPS。
+//   "supportURL": "https://example.org/help"
+// organizations[].auth.discoveryUrl：完整发现文档 URL；oidc-llm 使用 /.well-known/openid-configuration，LiteLLM 使用 /.well-known/litellm-cli-auth。
+//   "discoveryUrl": "https://models.example.org/.well-known/openid-configuration"
+// organizations[].auth.expectedIssuer：预期 issuer，须与发现文档完全一致；可省略，此时按发现地址验证。
+//   "expectedIssuer": "https://models.example.org"
+// organizations[].auth.experimentalOidcLlm：oidc-llm 0.1 设为 true；原生 LiteLLM 省略或 false。
+//   "experimentalOidcLlm": false
+// organizations[].auth.clientId：仅 oidc-llm：服务端分配的公开客户端 ID，不是 client_secret；LiteLLM 自动注册，不填写。
+//   "clientId": "replace-with-public-client-id"
+// organizations[].auth.identityMode：仅 oidc-llm，必须显式选 oidc 或 oauth；oidc 还验证 ID Token。
+//   "identityMode": "oidc"
+// organizations[].oidc.issuer：OIDC 签发者 URL；客户端据此查找发现文档。
+//   "issuer": "https://id.example.org"
+// organizations[].oidc.clientId：服务端分配的公开客户端 ID；不填写客户端密钥。
+//   "clientId": "replace-with-public-client-id"
+// organizations[].oidc.scopes：授权范围，至少包含 openid、profile，不可重复。
+//   "scopes": ["openid","profile"]
+// organizations[].provider.id：模型提供方标识，各企业之间必须唯一；默认取企业 id。
+//   "id": "example-ai"
+// organizations[].provider.displayName：模型提供方显示名称；默认取企业 displayName。
+//   "displayName": "示例模型"
+// organizations[].provider.adapter：模型协议，目前固定 openai-compatible。
+//   "adapter": "openai-compatible"
+// organizations[].provider.modelSource：模型目录来源，Token 模式固定 discovery。
+//   "modelSource": "discovery"
+// organizations[].provider.reasoning：默认思考强度：off/minimal/low/medium/high/xhigh/max；默认 high。
+//   "reasoning": "high"
+// organizations[].provider.defaultContextWindow：默认上下文 token 数；模型自己的 contextWindow 优先，不填沿用发现/适配器。
+//   "defaultContextWindow": 524288
+// organizations[].provider.defaultMaxTokens：默认最大输出 token 数；应符合服务端模型限制。
+//   "defaultMaxTokens": 65536
+// organizations[].provider.maxRequestImageBytes：每次请求图片总字节上限，默认 20971520（20 MiB）。
+//   "maxRequestImageBytes": 20971520
+// organizations[].provider.requestImagePixelBudget：请求图片像素预算，默认 4194304。
+//   "requestImagePixelBudget": 4194304
+// organizations[].provider.requestImageMaxBytes：单张请求图片压缩后的字节预算，默认 1048576。
+//   "requestImageMaxBytes": 1048576
+// organizations[].provider.streamIdleTimeoutMs：流式响应空闲超时，正整数毫秒；省略沿用适配器默认值。
+//   "streamIdleTimeoutMs": 120000
+// organizations[].provider.retryPolicy：请求重试策略；不填时 mode=normal、maxRetries=2。
+//   "retryPolicy": {}
+// organizations[].provider.compat：提供方协议兼容选项；不确定时保持未配置。
+//   "compat": {}
+// organizations[].provider.models：按服务端模型 ID 补充能力和限制；空数组完全使用发现目录。
+//   "models": []
+// organizations[].provider.retryPolicy.mode：normal 常规重试，always 持续重试；关闭重试请设置 maxRetries=0。
+//   "mode": "normal"
+// organizations[].provider.retryPolicy.maxRetries：最大重试次数，非负整数。
+//   "maxRetries": 2
+// organizations[].provider.retryPolicy.retryableCodes：额外可重试的错误代码，字符串数组。
+//   "retryableCodes": ["rate_limit_exceeded"]
+// organizations[].provider.retryPolicy.backoff：重试间隔策略。
+//   "backoff": {}
+// organizations[].provider.retryPolicy.backoff.initialDelayMs：初始间隔，正数毫秒，不能大于 maxDelayMs。
+//   "initialDelayMs": 1000
+// organizations[].provider.retryPolicy.backoff.maxDelayMs：最大间隔，正数毫秒。
+//   "maxDelayMs": 30000
+// organizations[].provider.retryPolicy.backoff.jitterRatio：间隔随机浮动比例，0–1。
+//   "jitterRatio": 0.2
+// organizations[].provider.compat.supportsDeveloperRole：是否发送 developer 角色；不填时沿用模型适配器策略。
+//   "supportsDeveloperRole": false
+// organizations[].provider.compat.supportsStore：是否支持 store 请求参数。
+//   "supportsStore": false
+// organizations[].provider.compat.supportsReasoningEffort：是否发送 reasoning_effort 思考强度。
+//   "supportsReasoningEffort": true
+// organizations[].provider.compat.supportsUsageInStreaming：流式请求是否要求返回 usage。
+//   "supportsUsageInStreaming": true
+// organizations[].provider.compat.maxTokensField：输出上限参数名：max_tokens 或 max_completion_tokens。
+//   "maxTokensField": "max_tokens"
+// organizations[].provider.compat.supportsStrictMode：工具定义是否支持 strict。
+//   "supportsStrictMode": false
+// organizations[].provider.compat.supportsLongCacheRetention：是否支持长时间提示词缓存。
+//   "supportsLongCacheRetention": false
+// organizations[].provider.compat.thinkingFormat：思考格式：openai/deepseek/openrouter/together/baseten/zai/qwen/chat-template/qwen-chat-template/string-thinking/ant-ling。
+//   "thinkingFormat": "deepseek"
+// organizations[].provider.compat.requiresReasoningContentOnAssistantMessages：历史 assistant 消息是否必须携带 reasoning_content。
+//   "requiresReasoningContentOnAssistantMessages": true
+// organizations[].provider.models[].id：服务端模型 ID，同一个提供方内不可重复。
+//   "id": "example-max"
+// organizations[].provider.models[].name：模型显示名称，默认取 id。
+//   "name": "Example Max"
+// organizations[].provider.models[].input：支持的输入：text、image；默认仅 text。
+//   "input": ["text"]
+// organizations[].provider.models[].contextWindow：模型上下文 token 上限，正整数。
+//   "contextWindow": 524288
+// organizations[].provider.models[].maxTokens：模型最大输出 token 数，正整数。
+//   "maxTokens": 65536
+// organizations[].provider.models[].reasoning：模型是否支持思考，布尔值。
+//   "reasoning": true
+// organizations[].provider.models[].reasoningEfforts：界面强度到服务端参数的映射；可选 off/minimal/low/medium/high/xhigh/max；false 关闭，仅 off 可映射 null。
+//   "reasoningEfforts": {"off":null,"low":"low","high":"high","max":"max"}
+// organizations[].provider.models[].defaultReasoningEffort：默认思考档位，必须在 reasoningEfforts 中声明。
+//   "defaultReasoningEffort": "high"
+// organizations[].provider.models[].compat：该模型的兼容策略；覆盖提供方对应字段。
+//   "compat": {}
+// organizations[].provider.models[].compat.supportsDeveloperRole：是否发送 developer 角色；不填时沿用模型适配器策略。
+//   "supportsDeveloperRole": false
+// organizations[].provider.models[].compat.supportsStore：是否支持 store 请求参数。
+//   "supportsStore": false
+// organizations[].provider.models[].compat.supportsReasoningEffort：是否发送 reasoning_effort 思考强度。
+//   "supportsReasoningEffort": true
+// organizations[].provider.models[].compat.supportsUsageInStreaming：流式请求是否要求返回 usage。
+//   "supportsUsageInStreaming": true
+// organizations[].provider.models[].compat.maxTokensField：输出上限参数名：max_tokens 或 max_completion_tokens。
+//   "maxTokensField": "max_tokens"
+// organizations[].provider.models[].compat.supportsStrictMode：工具定义是否支持 strict。
+//   "supportsStrictMode": false
+// organizations[].provider.models[].compat.supportsLongCacheRetention：是否支持长时间提示词缓存。
+//   "supportsLongCacheRetention": false
+// organizations[].provider.models[].compat.thinkingFormat：思考格式：openai/deepseek/openrouter/together/baseten/zai/qwen/chat-template/qwen-chat-template/string-thinking/ant-ling。
+//   "thinkingFormat": "deepseek"
+// organizations[].provider.models[].compat.requiresReasoningContentOnAssistantMessages：历史 assistant 消息是否必须携带 reasoning_content。
+//   "requiresReasoningContentOnAssistantMessages": true
+// features：功能默认值；已保存的界面偏好可能优先。
+//   "features": {}
+// features.visionFallback：是否允许文本模型使用已安装的辅助读图插件；false 关闭，不影响原生多模态。
+//   "visionFallback": false
+// features.maxConcurrentRequests：全客户端模型请求总并发，1–64；主会话、子代理、辅助模型共用，超出排队。设置中保存的值优先。
+//   "maxConcurrentRequests": 3
+// features.maxParallelSubagents：旧版兼容项，1–32；仅在未填总并发时换算为此值+1。新配置请使用 maxConcurrentRequests。
+//   "maxParallelSubagents": 2
+// desktop：桌面行为。
+//   "desktop": {}
+// desktop.closeAction：tray 关闭窗口后驻留托盘；exit 退出；默认 tray，无托盘时退出。
+//   "closeAction": "tray"
+// updates：软件更新源；空对象沿用发行包的默认渠道与平台设置。
+//   "updates": {}
+// updates.provider：github/static/disabled；static 须填 manifestURL，github 不可同时填写 manifestURL。
+//   "provider": "github"
+// updates.repository：GitHub 更新仓库 owner/repo，只读公开 Release；不要填写 URL 或 Token。
+//   "repository": "ecnu/EduWork"
+// updates.manifestURL：static 的 HTTPS 更新清单，必须与平台对应；Mac 使用发行版的 Sparkle 渠道。
+//   "manifestURL": "https://updates.example.org/development/latest-windows-amd64.json"
+// updates.releasesURL：可选 HTTPS 下载/发布页面。
+//   "releasesURL": "https://updates.example.org/releases"
+// updates.defaultPolicy：stable 仅公测，development 也接收开发版；不填沿用打包默认值，设置中手动选择优先。
+//   "defaultPolicy": "development"
+// contentUpdates：可选签名配置/Skills 更新；须同时有来源和真实公钥，未配置则关闭。与软件 updates 独立。
+//   "contentUpdates": {}
+// contentUpdates.publisher：内容发行者标识，须与签名清单相符。
+//   "publisher": "example"
+// contentUpdates.baseURL：签名内容源的 HTTPS 根地址；程序自动按更新渠道查询。
+//   "baseURL": "https://updates.example.org/content"
+// contentUpdates.publicKey：发行者 Ed25519 PEM 公钥；只能填公钥，不是私钥或访问令牌。
+//   "publicKey": "-----BEGIN PUBLIC KEY-----\nREPLACE_WITH_PUBLISHER_PUBLIC_KEY\n-----END PUBLIC KEY-----"
+// contentUpdates.configuration：是否更新配置，默认 false；切 UAT 可关闭以固定测试配置。
+//   "configuration": false
+// contentUpdates.skills：是否更新受管 Skills，默认 false。
+//   "skills": false
+// contentUpdates.bundled：随发行包内置的内容修订号，一般不手动调整。
+//   "bundled": {}
+// contentUpdates.bundled.configuration：内置配置修订号，非负整数，默认 0。
+//   "configuration": 0
+// contentUpdates.bundled.skills：内置 Skills 修订号，非负整数，默认 0。
+//   "skills": 0
+// media：通用文生图/TTS，按 providers 配置；不填时可能使用发行默认值，空数组显式关闭云端媒体。
+//   "media": {}
+// media.providers：媒体服务数组，个人凭据保存在凭据库。
+//   "providers": []
+// media.providers[].id：媒体服务唯一标识，不能用 system/local。
+//   "id": "example-media"
+// media.providers[].title：显示名称，默认取 id。
+//   "title": "示例媒体服务"
+// media.providers[].protocol：媒体协议，固定 openai-compatible。
+//   "protocol": "openai-compatible"
+// media.providers[].baseURL：HTTPS API 基地址；本机 localhost/127.0.0.1/::1 服务也可用 HTTP。
+//   "baseURL": "https://models.example.org/v1"
+// media.providers[].credentialRef：凭据库引用名，默认 EDUWORK_API_KEY；这里不填 Key 本身。
+//   "credentialRef": "EDUWORK_API_KEY"
+// media.providers[].oidcProfileId：关联 organizations[].id，使用其授权；与媒体 API 地址一起调整。
+//   "oidcProfileId": "example"
+// media.providers[].images：云端文生图能力；默认关闭。
+//   "images": {}
+// media.providers[].speech：云端 TTS 能力；默认关闭，不影响本地语音。
+//   "speech": {}
+// media.providers[].images.enabled：是否启用文生图，默认 false；启用时须填写 model 和 nativeSizes。
+//   "enabled": false
+// media.providers[].images.model：文生图模型 ID。
+//   "model": "example-image"
+// media.providers[].images.nativeSizes：服务支持的尺寸列表，每边 64–4096 像素。
+//   "nativeSizes": ["1024x1024"]
+// media.providers[].images.defaultSize：默认尺寸，必须属于 nativeSizes；省略取首项。
+//   "defaultSize": "1024x1024"
+// media.providers[].images.responseFormat：auto/b64_json/url，默认 auto。
+//   "responseFormat": "auto"
+// media.providers[].images.promptMaxChars：提示词最大字符数，正整数，默认 4096。
+//   "promptMaxChars": 4096
+// media.providers[].speech.enabled：是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。
+//   "enabled": false
+// media.providers[].speech.model：TTS 模型 ID。
+//   "model": "example-tts"
+// media.providers[].speech.voices：服务端支持的音色数组，启用时不能为空。
+//   "voices": []
+// media.providers[].speech.defaultVoice：默认音色 ID，须在 voices 中；省略取首项。
+//   "defaultVoice": "voice-a"
+// media.providers[].speech.inputMaxChars：输入文本最大字符数，正整数，默认 4096。
+//   "inputMaxChars": 4096
+// media.providers[].speech.voices[].id：服务端音色 ID，不可重复。
+//   "id": "voice-a"
+// media.providers[].speech.voices[].title：音色显示名称，默认取 id。
+//   "title": "示例音色"
+// media.providers[].speech.voices[].language：可选语言标识。
+//   "language": "zh-CN"
+// plugins：已安装插件的选项，以插件 ID 为键；不会安装新插件。具体参数由该插件文档定义，未知插件 ID 会报错。
+//   "plugins": {}
+// </eduwork-configuration-reference>

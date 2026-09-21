@@ -11,6 +11,12 @@
 
 `distribution` 是发行标识，例如公版为 `eduwork`。Mac 配置和用户数据不写入 `.app`。密码、API Key 和登录令牌仍由凭据存储管理，不写入 JSONC。
 
+## 在配置文件中查阅选项
+
+`eduwork.jsonc` 会在字段旁显示中文说明，文件末尾包含全部通用配置项的注释参考，写明位置、取值、默认行为和互斥关系。可选项的示例保持为注释，填写真实参数后再放入对应对象，避免仅因补全文档就开启服务。机构插件的附加选项由发行版配置示例说明。
+
+首次下载和配置更新也会写出这些说明。升级已有安装时补齐注释；保留用户注释、现有值和同一份回退备份。缺省的 `organizations[].allowInsecureDevelopment` 显式写为 `false`，已有 `true` 不会重置。
+
 ## 默认配置和更新
 
 公版默认不启用远程配置管理。机构版可以在首次启动时下载签名默认配置并写入同一文件；已经初始化后，随包引导文件不再覆盖用户编辑过的更新源或配置。
@@ -29,6 +35,15 @@
 ## 切换 UAT 或本地测试
 
 直接编辑 `eduwork.jsonc` 中的机构配置：按服务端要求修改 `organizations` 里的 `auth.discoveryUrl`、`auth.expectedIssuer`、`auth.clientId`，以及 `media.providers` 中的服务地址与关联。仅身份登录的 OIDC 使用 `oidc.issuer` 和 `oidc.clientId`；旧 `keyBinding` 已不再支持。参照对应协议和配置示例。
+
+HTTP UAT 只需把对应企业对象中与 `auth` 同级的开关改为：
+
+```jsonc
+// false 仅接受 HTTPS；true 也接受 HTTP。无需额外填写开发地址。
+"allowInsecureDevelopment": true,
+```
+
+该开关用于企业登录、发现、认证端点和模型 API；默认 `false`。旧 `insecureDevelopmentOrigin` 仅兼容读取并忽略，不再需要。服务端 issuer、授权资源及 PKCE 仍按所选协议校验。品牌帮助链接、媒体配置和程序/内容更新源仍遵循各自的地址约定，详见文件内注释。
 
 需要固定测试配置时，把现有 `contentUpdates.configuration` 改为 `false`；Skills 可继续更新。把 `contentUpdates.skills` 也设为 `false` 可停用全部远程内容更新。不要用不完整的 `contentUpdates` 对象替换现有的来源和公钥。
 

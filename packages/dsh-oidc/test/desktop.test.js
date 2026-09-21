@@ -111,7 +111,7 @@ test('cancel during an asynchronous vault write restores previous credentials', 
 })
 
 test('rejects unsafe discovery and configured callback host without opening a browser', async t => {
-  const f = await fixture(t, { authorizationEndpoint: 'http://untrusted.example/authorize' })
+  const f = await fixture(t, { authorizationEndpoint: 'ftp://untrusted.example/authorize' })
   await assert.rejects(f.backend.begin(f.profile.id), { code: 'oidc_discovery_invalid' })
   assert.equal(f.opened.length, 0)
   assert.equal(f.backend.attempts.size, 0)

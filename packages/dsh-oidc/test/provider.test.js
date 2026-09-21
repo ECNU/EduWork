@@ -61,9 +61,9 @@ test('settings validation rejects schema-shaped provider values that cannot be s
   } } }), /models must not be empty/)
 })
 
-test('provider route preserves the Enterprise Profile development-origin boundary', () => {
+test('provider routes use the same explicit HTTP boolean', () => {
   const [loopback] = resolveEnterpriseProfiles({ providers: { campus: {
-    displayName: 'Campus AI', apiKeyEnv: 'CAMPUS_API_KEY', baseURL: 'http://127.0.0.1:3100/v1',
+    displayName: 'Campus AI', apiKeyEnv: 'CAMPUS_API_KEY', baseURL: 'http://127.0.0.1:3100/v1', allowInsecureDevelopment: true,
     models: [{ id: 'campus-max', input: ['text'] }],
   } } })
   assert.equal(loopback.baseURL, 'http://127.0.0.1:3100/v1')
@@ -80,11 +80,11 @@ test('provider route preserves the Enterprise Profile development-origin boundar
   } } })
   assert.equal(profile.baseURL, 'http://192.0.2.10/v1')
 
-  assert.throws(() => resolveEnterpriseProfiles({ providers: { campus: {
+  assert.doesNotThrow(() => resolveEnterpriseProfiles({ providers: { campus: {
     displayName: 'Campus AI', apiKeyEnv: 'CAMPUS_API_KEY', baseURL: 'http://192.0.2.11/v1',
     allowInsecureDevelopment: true, insecureDevelopmentOrigin: 'http://192.0.2.10',
     models: [{ id: 'campus-max', input: ['text'] }],
-  } } }), /explicitly allowed development HTTP/)
+  } } }))
 })
 
 test('image attachment access uses the reviewed filesystem execution-world mapping', () => {
@@ -108,7 +108,7 @@ function harness(policy) {
 
 function reasoningConfig(baseURL) {
   return { providers: { gateway: {
-    displayName: 'Gateway', apiKeyEnv: 'GATEWAY_API_KEY', baseURL,
+    displayName: 'Gateway', apiKeyEnv: 'GATEWAY_API_KEY', baseURL, allowInsecureDevelopment: true,
     reasoning: 'max',
     models: [
       { id: 'reasoner-a', reasoningEfforts: { low: 'low', high: 'high', max: 'max' }, defaultReasoningEffort: 'high' },
@@ -246,7 +246,7 @@ test('thinking-only models replace unsupported user effort with the configured i
 test('real pi-ai wire preserves thinking-only defaults and removes historical user efforts', async t => {
   const server = await captureServer(t)
   const config = { providers: { gateway: {
-    displayName: 'Gateway', apiKeyEnv: 'GATEWAY_API_KEY', baseURL: server.baseURL,
+    displayName: 'Gateway', apiKeyEnv: 'GATEWAY_API_KEY', baseURL: server.baseURL, allowInsecureDevelopment: true,
     reasoning: 'high',
     models: [
       { id: 'thinking-only', compat: { supportsReasoningEffort: false } },

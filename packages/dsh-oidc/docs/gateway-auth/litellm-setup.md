@@ -67,7 +67,7 @@ curl --fail --silent --show-error https://gateway.example.org/.well-known/litell
 
 模型 API 地址由校验后的 issuer 追加 `/v1` 得到，保留部署路径前缀；不要另填 `provider.baseURL`。LiteLLM 会动态注册本次登录所需的 Client ID，无需手工填写固定 `clientId`、`client_secret` 或 scope，也不要同时配置 `oidc`、`keyBinding`。
 
-正式部署使用 HTTPS。本机开发只有在机构条目中显式设置 `allowInsecureDevelopment: true`（与 `auth` 同级）才允许 loopback HTTP，不能用它连接任意明文远程地址。密码、Token 和上游 Key 均不应写入客户端配置。
+`allowInsecureDevelopment` 是唯一的 HTTP 开关，放在企业对象中，与 `auth`/`oidc` 同级；默认 `false` 仅接受 HTTPS，改为 `true` 也接受 HTTP 服务地址。旧 `insecureDevelopmentOrigin` 已废弃并忽略。issuer 身份、资源同源关系及 OAuth/PKCE 校验仍按协议执行。`discoveryUrl` 填完整发现地址，`expectedIssuer` 可选，填写后必须与发现文档完全一致。
 
 其他客户端开发者可使用[单个 Profile 示例](../../examples/litellm.enterprise-profile.example.json)和[桌面宿主指南](../desktop-host.md)，复用同一授权与模型模块；桌面安装用户无需自行装配 Host。
 

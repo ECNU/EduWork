@@ -32,7 +32,7 @@ LiteLLM 不需要实现 EduWork 的 Key Binding。普通 OIDC 的 Access Token �
 }
 ```
 
-`discoveryUrl` 是完整地址，不由客户端猜路径。`expectedIssuer` 可省略，但部署方建议填写；LiteLLM 适配器始终要求 issuer、resource、认证端点与发现地址同源，且 resource 与 issuer 完整字符串一致。生产使用 HTTPS；实验只允许显式设置 `allowInsecureDevelopment: true` 后的 loopback HTTP。不允许通过 `insecureDevelopmentOrigin` 放宽此新协议到任意明文地址。
+`allowInsecureDevelopment` 是唯一的 HTTP 开关，放在企业对象中，与 `auth`/`oidc` 同级；默认 `false` 仅接受 HTTPS，改为 `true` 也接受 HTTP 服务地址。旧 `insecureDevelopmentOrigin` 已废弃并忽略。issuer 身份、资源同源关系及 OAuth/PKCE 校验仍按协议执行。`discoveryUrl` 填完整发现地址，`expectedIssuer` 可选，填写后必须与发现文档完全一致。
 
 `auth` 与 `oidc`、`keyBinding` 互斥；LiteLLM 配置不填写固定 `clientId`、secret、scope 或 `provider.baseURL`。模型 API 基址由已校验的 issuer 追加 `/v1`，保留部署路径前缀。可选 `provider` 支持唯一的 `id`、显示名、上下文/输出限制和经管理员核实的 `models` 能力；只能使用 `modelSource: "discovery"`。模型能否出现由当前账户的 `/v1/models` 决定，配置里的模型信息只是能力补充，不会绕过授权。
 

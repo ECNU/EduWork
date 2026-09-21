@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
 import { ConfigurationFile } from './configuration-file.mjs'
+import { editionConfigurationFields } from './configuration-documentation.mjs'
 
 async function readJSON(path, fallback) { try { return JSON.parse(await readFile(path,'utf8')) } catch(error) { if(error.code==='ENOENT')return fallback;throw error } }
 async function atomic(path,value) {
@@ -30,7 +31,7 @@ export class ContentUpdates {
   }
   async init() {
     if(!['stable','development'].includes(this.policy))throw Error('内容更新渠道无效')
-    this.configurationFile=await new ConfigurationFile(this.configPath,this.dataRoot).open()
+    this.configurationFile=await new ConfigurationFile(this.configPath,this.dataRoot,{fields:await editionConfigurationFields(this.product)}).open()
     this.source=loadUserConfig(this.configPath).contentUpdates
     if(!this.source||!this.source.configuration&&!this.source.skills)return this
     const scope=this.scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))
