@@ -16,7 +16,7 @@
 
 </div>
 
-EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Choose a folder and describe what you want to accomplish: read sources, search for information, analyze data, and create documents, spreadsheets, and presentations in one workspace.
+EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Choose a folder and describe what you want to accomplish: read sources, search for information, analyze data, and create web pages, documents, spreadsheets, and presentations in one workspace.
 
 Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. **Each client runs independently on its user's computer, with no separate EduWork server to deploy.**
 
@@ -42,14 +42,14 @@ Individuals can connect their own model APIs. Schools and businesses can configu
 | What you are working on | Try asking EduWork |
 | --- | --- |
 | Teaching and learning | “Create a presentation from these course materials, then make a quiz and revision flashcards.” |
-| Research and discovery | “Read these sources, organize findings by topic, cite the evidence, and flag questions to verify.” |
+| Research and discovery | “Research this topic, keep source links, create a one-page HTML introduction, and flag questions to verify.” |
 | Data and everyday work | “Compare these spreadsheets, identify differences, and create an analysis report and summary table.” |
 
 The agent can read and edit files, run scripts, and coordinate subagents for complex tasks. Conversations and outputs stay with your workspace, ready for revisions, new sources, and follow-up work.
 
 ### Make the results in Studio
 
-Open Studio on the right and choose an output type, or ask for it in a conversation. Both entry points share generation, previews, and downloads.
+Open Studio on the right and choose an output type, or ask for it in a conversation. For example, keep a page generated from your research in the workspace, then use Studio to create a quiz with explanations and source evidence. The same material can become a report, presentation, or set of revision cards.
 
 **Reports · Spreadsheets · Presentations · Mind maps · Quizzes · Flashcards · Audio · Video**
 
@@ -105,7 +105,7 @@ GitHub's Source code archives are not desktop packages. See the [build guide](do
 | LiteLLM gateway account | Configure discovery as described below and sign in through the browser, without manually entering a model key. |
 | School or company configuration | Merge it into the active file using the [organization steps](#configuration-steps), then sign in. |
 
-The public edition does not download institution configuration by default. It ships a commented `eduwork.jsonc` and an `examples/` folder. All user configuration lives in the single file opened from Settings; optional fields are documented in a commented reference at its end.
+The public edition does not download institution configuration by default. It ships a commented `eduwork.jsonc` and an `examples/` folder. Application configuration such as institution connections, media services, plugin defaults, and update sources lives in the single file opened from Settings; optional fields are documented in a commented reference at its end. Personal models, API keys, and interface preferences remain managed in their respective settings screens.
 
 #### Connect LiteLLM
 
@@ -113,7 +113,7 @@ The public edition does not download institution configuration by default. It sh
 2. Set its display name, unique local `id`, complete discovery URL (such as `https://gateway.example.org/.well-known/litellm-cli-auth`), and the `issuer` from discovery. LiteLLM registers its Client ID automatically: **do not enter `clientId`, `client_secret`, or an API Key**.
 3. Save, completely exit, and restart. Sign in to LiteLLM from the account menu, choose a team if requested, approve access, and select a model to chat.
 
-The gateway must enable native CLI OAuth and grant the account model permissions. The protocol baseline is LiteLLM v1.101.0 / native contract 1. For HTTP testing, set `allowInsecureDevelopment` to `true` in the organization object; keep its default `false` for HTTPS. See the [field-by-field steps](config/desktop/examples/README_EN.md#connect-litellm-where-to-edit-and-what-to-enter) and [server preparation and troubleshooting](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md).
+The gateway must enable native CLI OAuth and grant the account model permissions. For HTTP testing, set `allowInsecureDevelopment` to `true` in the organization object; keep its default `false` for HTTPS. See the [field-by-field steps](config/desktop/examples/README_EN.md#connect-litellm-where-to-edit-and-what-to-enter), and the [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) for version requirements and deployment checks.
 
 <details>
 <summary>See model selection after LiteLLM sign-in</summary>
@@ -131,7 +131,7 @@ Choose a local workspace, add your task materials, and describe the result you w
 <details>
 <summary>Window behavior and updates</summary>
 
-Closing the window minimizes it to the system tray by default. Use the tray menu to exit completely. The Windows public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings; institutions can configure another source. Updates preserve history and user configuration; see the [update guide](docs/UPDATES.md).
+Closing the window minimizes it to the system tray by default. Use the tray or application menu to exit completely. The public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings. Windows uses its portable updater; macOS uses Sparkle to download, replace the application, and restart after user confirmation. Institutions can configure another source. Updates preserve history and user configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES_EN.md).
 
 </details>
 
@@ -146,7 +146,7 @@ Closing the window minimizes it to the system tray by default. Use the tray menu
 | [LiteLLM](https://github.com/BerriAI/litellm) | Sign in to the gateway and access models authorized for the user and selected team. | [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
 | [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | Connect institution identity and authorized models through oidc-llm. | [EduWork@ECNU institutional edition example](https://github.com/ECNU/EduWork-ECNU) |
 
-**EduWork 0.3.6-dev.20260921.1 includes these Token model-access capabilities.** oidc-llm remains experimental and requires explicit opt-in according to the server contract; standard LiteLLM configuration does not enable that option.
+These sign-in methods are built into the desktop package, without an additional plugin installation. oidc-llm remains experimental and requires explicit opt-in according to the server contract; standard LiteLLM configuration does not enable that option.
 
 After enterprise sign-in, the client uses the login Token to discover and invoke models, refreshing it automatically during use. Users do not need to copy or create a separate model key. The server continues to manage model permissions and quotas; enterprise and personally configured models can coexist.
 

@@ -16,7 +16,7 @@
 
 </div>
 
-EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手。选择一个文件夹，说清楚你想完成的任务：从阅读资料、搜索信息、分析数据，到生成文档、表格和演示文稿，都可以在同一个工作区完成。
+EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手。选择一个文件夹，说清楚你想完成的任务：从阅读资料、搜索信息、分析数据，到生成网页、文档、表格和演示文稿，都可以在同一个工作区完成。
 
 个人用户连接自己的模型 API；学校和企业通过配置接入统一身份与模型服务。**每位用户在自己的电脑上独立运行，无需部署额外的 EduWork 服务端。**
 
@@ -42,14 +42,14 @@ EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-har
 | 你正在做什么 | 可以这样交给 EduWork |
 | --- | --- |
 | 备课与学习 | “根据课程材料制作演示文稿，再生成配套的测验和复习闪卡。” |
-| 研究与调研 | “阅读这些资料，按主题整理观点，标出来源和仍需核实的问题。” |
+| 研究与调研 | “调研这个主题，保留来源链接，制作一页 HTML 介绍，并标出仍需核实的问题。” |
 | 数据与办公 | “比较这几份表格，找出差异，生成分析报告和汇总表。” |
 
 Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂任务。工作区保留会话和成果，方便接着修改、补充资料和继续推进。
 
 ### 在 Studio 里，把成果做出来
 
-打开右侧 Studio，选择成果类型即可开始；也可以直接在对话中提出要求。两种入口共用生成、预览与下载能力。
+打开右侧 Studio，选择成果类型即可开始；也可以直接在对话中提出要求。例如，把调研生成的网页留在工作区，再用 Studio 制作测验，答题时查看解析与资料依据。同一份资料可以继续用于报告、演示文稿或复习卡片。
 
 **报告 · 数据表 · 演示文稿 · 思维导图 · 测验 · 闪卡 · 音频 · 视频**
 
@@ -105,7 +105,7 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 | LiteLLM 网关账号 | 按下方步骤配置发现地址，通过浏览器登录，无需手动填写模型 Key。 |
 | 学校或企业提供的配置 | 按[机构配置方法](#配置方法)合并到生效配置，再选择机构登录。 |
 
-公版默认不自动下载机构配置，安装包自带带注释的 `eduwork.jsonc` 和 `examples/`；所有用户配置集中在设置中打开的这一份文件。可选配置项也列在文件末尾的注释参考中。
+公版默认不自动下载机构配置，安装包自带带注释的 `eduwork.jsonc` 和 `examples/`。机构接入、媒体服务、插件默认值与更新源等应用配置集中在设置中打开的这一份文件，可选配置项列在文件末尾的注释参考中。个人模型、API Key 和界面偏好仍在对应设置界面中管理。
 
 #### 连接 LiteLLM
 
@@ -113,7 +113,7 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 2. 填写登录名称、本机唯一 `id`、完整发现地址（例如 `https://gateway.example.org/.well-known/litellm-cli-auth`）以及发现文档里的 `issuer`。LiteLLM 自动注册 Client ID，**不需要填写 `clientId`、`client_secret` 或 API Key**。
 3. 保存后完全退出并重启，从账户入口登录 LiteLLM；按网关提示选择团队并授权，再选择模型开始对话。
 
-服务端需启用 LiteLLM 原生 CLI OAuth，并提供有模型权限的账号；当前协议基线为 LiteLLM v1.101.0 / native contract 1。HTTP 测试环境还需把机构对象中的 `allowInsecureDevelopment` 改为 `true`，HTTPS 保持默认 `false`。参见[逐项配置说明](config/desktop/examples/README.md#接入-litellm改哪里填什么)和[服务端准备与排错](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
+服务端需启用 LiteLLM 原生 CLI OAuth，并提供有模型权限的账号。HTTP 测试环境还需把机构对象中的 `allowInsecureDevelopment` 改为 `true`，HTTPS 保持默认 `false`。字段填写见[逐项配置说明](config/desktop/examples/README.md#接入-litellm改哪里填什么)，版本要求与部署检查见[LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
 
 <details>
 <summary>查看 LiteLLM 登录后的模型选择</summary>
@@ -131,7 +131,7 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 <details>
 <summary>窗口行为与自动更新</summary>
 
-窗口关闭后默认收起到系统托盘；需要完全退出时，使用托盘菜单。Windows 公版默认从 GitHub 获取更新，公测与开发渠道可在设置中选择，机构可通过配置切换更新源；自动更新保留历史数据与用户配置，详见[更新说明](docs/UPDATES.md)。
+窗口关闭后默认收起到系统托盘；需要完全退出时，使用托盘或应用菜单。公版默认从 GitHub 获取更新，公测与开发渠道可在设置中选择。Windows 使用绿色版更新器；macOS 使用 Sparkle，按提示确认下载和安装后替换应用并重启。机构可配置自己的更新源，更新保留历史数据与用户配置。详见 [Windows 更新说明](docs/UPDATES.md)和 [macOS 更新说明](docs/MACOS_UPDATES.md)。
 
 </details>
 
@@ -146,7 +146,7 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 | [LiteLLM](https://github.com/BerriAI/litellm) | 使用网关账号登录，按用户及所选团队的授权访问模型。 | [LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) |
 | [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | 通过 oidc-llm 接入机构身份与获授权的模型。 | [EduWork@ECNU 机构发行示例](https://github.com/ECNU/EduWork-ECNU) |
 
-**EduWork 0.3.6-dev.20260921.1 已包含上述 Token 模型接入能力。** oidc-llm 仍是实验性协议，需按服务端约定显式启用；标准 LiteLLM 配置无需开启此实验选项。
+这些登录方式已内置于桌面包，无需另装插件。oidc-llm 仍是实验性协议，需按服务端约定显式启用；标准 LiteLLM 配置无需开启此实验选项。
 
 企业登录后，客户端使用登录 Token 自动读取模型目录并调用模型，使用过程中自动刷新，无需复制或另行创建模型 Key。模型权限与配额仍由服务端管理；企业模型和用户自己配置的模型可以同时使用。
 
