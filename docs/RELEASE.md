@@ -97,6 +97,8 @@ Windows Electron Release 工作流已提供（见下文），不包含签名安�
 
 Release notes 必须先与项目负责人讨论确认，不由代理自行编写，也不由构建脚本自动生成。确认后将原文存为发行仓库的 `docs/releases/<版本>.md`；触发时填写 `release_notes` 路径，并确认 `notes_approved`。未确认、文件缺失或空白时停止发布；CI 原样复制已确认的说明，记录 SHA-256，发布 job 再核对摘要。日常源码 CI 不需要发布说明，也不会创建 Release。GitHub 始终只发 Electron；Go 过渡包仅通过旧 OSS 更新渠道分发。
 
+发行包含社区贡献时，在说明中列出贡献者的 GitHub 用户名、对应改动和 PR 链接。机构版复用公版贡献时链接公版原始 PR，保留原作者署名。
+
 维护者在仓库 Actions → Release Windows Electron → Run workflow 中选择 main，填写已确认的产品版本，例如公测版 `0.3.5` 或开发版 `0.3.6-dev.20260914.3`。ECNU 仓运行对应同名工作流；先提交公共核心，再让 ECNU 的 core.lock.json 锁定该提交、源文件哈希和相同版本。构建产物的源码与组件校验信息须对应所选提交。
 
 工作流只接受手动触发，不因 PR、main push 或任意 tag 自动发行。build job 只有 Contents: Read；跨私有仓仍使用专用只读部署密钥。只有依赖构建、整包校验和启动冒烟通过的 publish job 获得 Contents: Write。发布前以草稿上传并核对 ZIP、SHA-256、构建回执和说明，全部成功才将 Release 发布；同版本不同字节或其他提交的标签会拒绝覆盖。上传失败留下草稿供排查，不对用户暴露半成品。

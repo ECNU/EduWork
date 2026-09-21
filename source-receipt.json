@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T12:44:17.876Z",
-  "fileSetSHA256": "fbedb8ee8d2bdfebe4e539784f6d3ae899259e891e097d8d688c5faf8355a9b9",
+  "createdAt": "2026-09-21T13:13:02.547Z",
+  "fileSetSHA256": "1b1836344a2b262cbeb2e48744aa73afcfe3ad114b3c71b77b59196d9500079f",
   "files": [
     {
       "path": ".gitattributes",
@@ -285,7 +285,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "29136601c7f0cdab001f5c7f48b60c611aac380e9eb9f688ff8a29dcb9f7115c"
+      "sha256": "e70d2ae2c7fdb4377eb5b9ed7f2072c8838e27fe4b82d2b51291f4c4c3876e13"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -4609,7 +4609,7 @@
     },
     {
       "path": "updates/macos/development.xml",
-      "sha256": "9c29f48d22250acddeb30500e9a9e1d934c6c55662a1232a1987601b297c1083"
+      "sha256": "2493bce2a7848495f15da93c4f1eb57a1faa5a51f5d14ace570b53a08904b87c"
     },
     {
       "path": "updates/macos/stable.xml",
