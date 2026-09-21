@@ -6,6 +6,10 @@ on:
       - 'dsh-electron/src/mac-sparkle-updates.mjs'
       - 'dsh-electron/tests/sparkle-macos-smoke.mjs'
       - 'dsh-electron/src/initialize-user-config.mjs'
+      - 'dsh-electron/src/product.mjs'
+      - 'dsh-electron/scripts/build-shell.mjs'
+      - 'dsh-electron/tests/tray-icon.electron.mjs'
+      - 'assets/eduwork/tray-black.png'
       - 'dsh-electron/tests/user-config-electron-smoke.mjs'
       - 'dsh-electron/sparkle.lock.json'
       - 'dsh-electron/scripts/assemble-macos.ps1'
@@ -34,6 +38,8 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --ignore-scripts --no-audit --no-fund electron@44.0.0
           node "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/install.js"
+      - name: Verify the native menu bar image
+        run: '"$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/tray-icon.electron.mjs'
       - name: Verify user configuration initialization in Electron
         run: node dsh-electron/tests/user-config-electron-smoke.mjs "$RUNNER_TEMP/sparkle-check" "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
       - name: Verify native bridge and signed replacement

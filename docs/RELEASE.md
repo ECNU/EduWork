@@ -27,6 +27,8 @@ Windows 设置恢复“公测版”和“开发版（含公测版）”两个更
 
 公版与 ECNU 版同一次发行使用相同的产品版本。发行配置、平台和壳放进文件名，例如 `EduWork-0.3.0-windows-x64-electron.zip` 与 `EduWork-ECNU-0.3.0-windows-x64-electron.zip`。它们不能互相覆盖数据和配置。壳名不放进 SemVer 后缀。
 
+仅发布 macOS 修复、没有对应 Windows 包时，GitHub 标签使用 `macos-v<产品版本>`，例如 `macos-v0.3.6-dev.20260921.2`；应用版本、Release 标题和包名仍使用原产品版本。此类开发版继续标记为 prerelease，且不设置为 latest。现有 Windows 客户端只识别 `v<版本>` 标签，独立的 Mac 标签可避免它误选缺少 Windows 更新清单的 Release；Mac 通过签名 Sparkle appcast 获取新包。仅更新 Mac 渠道，Windows 与配置更新渠道保持原样。
+
 显示策略来自 `dsh-host/release-policy.mjs`，由客户端构建脚本写入界面，不能仅编辑用户 JSONC 来把开发构建伪装成公测版。首次启动不显示上游内测说明；缺少模型 Key 时必要的配置引导仍保留。
 
 ## 发行文件名与更新目标
