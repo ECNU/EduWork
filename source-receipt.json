@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T05:24:11.104Z",
-  "fileSetSHA256": "298be95c681408603af72e672e00663e8b15705d62c993e8cef361eebcb54d94",
+  "createdAt": "2026-09-21T06:04:26.447Z",
+  "fileSetSHA256": "57a8658efe7a3076f374fdbfb20f39b8016e528fe3dd261ca7162ff4df07d235",
   "files": [
     {
       "path": ".gitattributes",
@@ -4213,7 +4213,7 @@
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
-      "sha256": "e5c78ca1ab0f2fb4e3dedc7eb9f7e0966d7b0fce283df8d3997eee93ea9b5165"
+      "sha256": "831e4661a6fed41029abf959d8974c528f5ab3d5d41f4d705f8fcb0851d132a6"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
@@ -4258,6 +4258,10 @@
     {
       "path": "scripts/github-update-manifest.mjs",
       "sha256": "ef7e377750a940cc98ea3f2bb97551cb71c34602c9ea2b6abe46e1269d315978"
+    },
+    {
+      "path": "scripts/inspect-release-test-desktop.mjs",
+      "sha256": "bbc50d7bcc6cd0ebb70323b6bd3bdb3463c7b869a843c39b00c4fbb976ba593c"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",

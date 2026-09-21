@@ -74,12 +74,10 @@ try {
     # profile, without school credentials or changing any archive bytes. Keep
     # downloaded configuration out of public evidence and the release payload.
     $env:EDUWORK_CONFIG_FILE=if ($VerifyPublisherBootstrap) { $null } else { $config }
-    $start=[Diagnostics.ProcessStartInfo]::new()
-    $start.FileName=Join-Path $app 'Contents/MacOS/Electron';$start.UseShellExecute=$false
-    $start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
-    foreach ($arg in @("--remote-debugging-port=$port",'--remote-debugging-address=127.0.0.1','--use-mock-keychain')) { $start.ArgumentList.Add($arg) }
-    $process=[Diagnostics.Process]::Start($start)
-    $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
+    # Write directly to files: a descendant retaining a pipe must not prevent
+    # the test harness from reporting the original startup failure.
+    Write-Host 'Starting isolated macOS desktop acceptance'
+    $process=Start-Process -FilePath (Join-Path $app 'Contents/MacOS/Electron') -ArgumentList @("--remote-debugging-port=$port",'--remote-debugging-address=127.0.0.1','--use-mock-keychain') -RedirectStandardOutput (Join-Path $gui 'stdout.log') -RedirectStandardError (Join-Path $gui 'stderr.log') -PassThru
     $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=$null;$env:EDUWORK_CONFIG_FILE=$null
     $launchFailure=$null
     try {
@@ -91,19 +89,24 @@ try {
         }
         if (-not $ready) { throw 'macOS desktop failed to start within acceptance limit' }
         & node (Join-Path $CoreRoot 'dsh-electron/tests/desktop-smoke.mjs') --shell electron --product $frozen --cdp "http://127.0.0.1:$port" --data-root (Join-Path $gui 'data') --evidence $gui --launch-only
-    } catch { $launchFailure=$_;throw } finally {
+    } catch {
+        $launchFailure=$_
+        if (-not $VerifyPublisherBootstrap) {
+            try { & node (Join-Path $CoreRoot 'scripts/inspect-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port" } catch { Write-Warning 'Startup diagnostic connection was unavailable.' }
+            Get-Content (Join-Path $gui 'stderr.log') -Tail 40 -ErrorAction SilentlyContinue
+        }
+        throw $launchFailure
+    } finally {
         if (-not $process.HasExited) {
             try {
                 & node (Join-Path $CoreRoot 'scripts/close-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port"
                 if (-not $process.WaitForExit(15000)) { throw 'macOS test desktop did not stop' }
             } catch {
-                if (-not $process.HasExited) { $process.Kill($true);$process.WaitForExit() }
+                if (-not $process.HasExited) { $process.Kill($true);[void]$process.WaitForExit(5000) }
                 if (-not $launchFailure) { throw }
                 Write-Warning 'Test desktop cleanup also failed; preserving the original launch error.'
             }
         }
-        [IO.File]::WriteAllText((Join-Path $gui 'stdout.log'),$stdout.GetAwaiter().GetResult())
-        [IO.File]::WriteAllText((Join-Path $gui 'stderr.log'),$stderr.GetAwaiter().GetResult())
     }
     if (-not (Get-Content (Join-Path $gui 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'macOS desktop smoke failed' }
     Copy-Item (Join-Path $gui 'result.json') (Join-Path $public 'desktop-ui-result.json')
