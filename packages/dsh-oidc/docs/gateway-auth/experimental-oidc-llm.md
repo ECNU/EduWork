@@ -2,7 +2,7 @@
 
 **简体中文** | [English](experimental-oidc-llm.en.md)
 
-本分支提供 oidc-llm 0.1 的实验适配器，默认关闭，尚未发布。协议仍在讨论；本页描述已实现的客户端边界，不表示[完整草案](oidc-llm-draft.md)已经定稿或服务端已经通过验收。
+oidc-llm 0.1 的实验适配器已包含在 `@eduwork/dsh-oidc@0.3.0-dev.2` 与 EduWork `0.3.6-dev.20260921.1` 中，默认关闭，需显式启用。协议仍在讨论；本页描述已实现的客户端边界，不表示[完整草案](oidc-llm-draft.md)已经定稿或任意服务端均已通过验收。
 
 ## 配置
 

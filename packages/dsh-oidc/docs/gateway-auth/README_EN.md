@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-This branch adds LiteLLM native OAuth and an [experimental oidc-llm adapter](experimental-oidc-llm.en.md), disabled by default. Neither is included in a published npm package or desktop Release yet. Identity-only oidc profiles remain supported. Key Binding model flows are removed; see [migration](../key-binding-protocol.en.md). **oidc-llm** remains a [draft](oidc-llm-draft.en.md); the experiment does not finalize the protocol.
+LiteLLM native OAuth and the opt-in [experimental oidc-llm adapter](experimental-oidc-llm.en.md) are published in `@eduwork/dsh-oidc@0.3.0-dev.2` and included in EduWork `0.3.6-dev.20260921.1`. Identity-only oidc profiles remain supported. Key Binding model flows are removed; see [migration](../key-binding-protocol.en.md). **oidc-llm** remains a [draft](oidc-llm-draft.en.md); the experiment does not finalize the protocol.
 
 ## Choose a connection
 

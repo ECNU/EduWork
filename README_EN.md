@@ -12,17 +12,17 @@
 
 [简体中文](README.md) | **English**
 
-[Get started](#installation-and-use) · [School and enterprise integration](#school-and-enterprise-integration) · [Open integration initiative](#one-integration-more-clients) · [User guide](docs/USER_GUIDE.md)
+[Get started](#installation-and-use) · [Connect LiteLLM](#connect-litellm) · [School and enterprise integration](#school-and-enterprise-integration) · [Open integration initiative](#one-integration-more-clients) · [User guide](docs/USER_GUIDE.md)
 
 </div>
 
-EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Choose a folder and describe what you want to accomplish: read sources, search for information, analyze data, and create documents, spreadsheets, and presentations in one workspace.
+EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Choose a folder and describe what you want to accomplish: read sources, search for information, analyze data, and create web pages, documents, spreadsheets, and presentations in one workspace.
 
 Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. **Each client runs independently on its user's computer, with no separate EduWork server to deploy.**
 
-![EduWork workspace: turn course materials into a teaching plan and open output files in the conversation](docs/images/workspace.png)
+![EduWork workspace: research campus information, generate an HTML introduction, and preview the page on the right](docs/images/workspace.png)
 
-<p align="center"><sub>Keep sources, conversations, and results together, so you can keep building on your work.</sub></p>
+<p align="center"><sub>From research to a finished page: continue the conversation on the left and preview the generated result on the right.</sub></p>
 
 ## What you can do
 
@@ -42,22 +42,31 @@ Individuals can connect their own model APIs. Schools and businesses can configu
 | What you are working on | Try asking EduWork |
 | --- | --- |
 | Teaching and learning | “Create a presentation from these course materials, then make a quiz and revision flashcards.” |
-| Research and discovery | “Read these sources, organize findings by topic, cite the evidence, and flag questions to verify.” |
+| Research and discovery | “Research this topic, keep source links, create a one-page HTML introduction, and flag questions to verify.” |
 | Data and everyday work | “Compare these spreadsheets, identify differences, and create an analysis report and summary table.” |
 
 The agent can read and edit files, run scripts, and coordinate subagents for complex tasks. Conversations and outputs stay with your workspace, ready for revisions, new sources, and follow-up work.
 
 ### Make the results in Studio
 
-Open Studio on the right and choose an output type, or ask for it in a conversation. Both entry points share generation, previews, and downloads.
+Open Studio on the right and choose an output type, or ask for it in a conversation. For example, keep a page generated from your research in the workspace, then use Studio to create a quiz with explanations and source evidence. The same material can become a report, presentation, or set of revision cards.
 
 **Reports · Spreadsheets · Presentations · Mind maps · Quizzes · Flashcards · Audio · Video**
 
-![Studio sidebar: create teaching materials for a lesson plan, shown with an institution configuration](docs/images/studio.png)
+![Studio in the public edition: output types and a quiz generated from workspace materials](docs/images/studio.png)
 
-<p align="center"><sub>The screenshot shows an institution configuration. Studio is part of the public edition; interface names and branding are configurable.</sub></p>
+<p align="center"><sub>Choose an output type to begin. Generated items appear under Recent results, ready to open and use.</sub></p>
 
 Export reports, spreadsheets, and presentations as **DOCX, XLSX, and PPTX** files. Preview interactive learning materials and download media with subtitles. Image generation and cloud TTS require compatible services; local speech depends on the system and local resources. See [media configuration](docs/MEDIA.md).
+
+<details>
+<summary>See how a generated quiz works</summary>
+
+![Studio quiz: check answers, explanations, and source evidence, then ask AI a follow-up question](docs/images/quiz.png)
+
+Answer directly in the sidebar, review explanations and source evidence, and use Ask AI for follow-up questions.
+
+</details>
 
 ### Make it work your way
 
@@ -81,13 +90,39 @@ Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64
 
 ### 1. Get the client
 
-Download a complete desktop package from [GitHub Releases](https://github.com/ecnu/EduWork/releases), extract it into a writable directory, and run `EduWork-Electron.exe`. Keep the accompanying resource files; do not copy just the EXE.
+Download the complete desktop package for your platform from [GitHub Releases](https://github.com/ecnu/EduWork/releases):
 
-If no desktop package is available in Releases yet, follow the [build guide](docs/BUILD.md) to run from source. GitHub's Source code archives are not desktop packages.
+- **Windows x64:** extract into a writable directory and run `EduWork-Electron.exe`. Keep the accompanying resource files; do not copy just the EXE.
+- **macOS arm64:** extract and move `EduWork.app` to Applications, then open it. Configuration and user data live in the user directory.
+
+GitHub's Source code archives are not desktop packages. See the [build guide](docs/BUILD.md) to run from source.
 
 ### 2. Connect a model
 
-Open **Settings → Models** and enter your provider's API key, endpoint, and model. School and enterprise users can load an organization configuration as described below, then sign in through the browser to obtain models.
+| What you have | How to connect |
+| --- | --- |
+| Personal model API | Open **Settings → Models** and enter your provider's API key, endpoint, and model. |
+| LiteLLM gateway account | Configure discovery as described below and sign in through the browser, without manually entering a model key. |
+| School or company configuration | Merge it into the active file using the [organization steps](#configuration-steps), then sign in. |
+
+The public edition does not download institution configuration by default. It ships a commented `eduwork.jsonc` and an `examples/` folder. Application configuration such as institution connections, media services, plugin defaults, and update sources lives in the single file opened from Settings; optional fields are documented in a commented reference at its end. Personal models, API keys, and interface preferences remain managed in their respective settings screens.
+
+#### Connect LiteLLM
+
+1. Open the active `eduwork.jsonc` through **Settings → Open configuration file**. Use the adjacent `examples/litellm.jsonc` to add an organization to the `organizations` array.
+2. Set its display name, unique local `id`, complete discovery URL (such as `https://gateway.example.org/.well-known/litellm-cli-auth`), and the `issuer` from discovery. LiteLLM registers its Client ID automatically: **do not enter `clientId`, `client_secret`, or an API Key**.
+3. Save, completely exit, and restart. Sign in to LiteLLM from the account menu, choose a team if requested, approve access, and select a model to chat.
+
+The gateway must enable native CLI OAuth and grant the account model permissions. For HTTP testing, set `allowInsecureDevelopment` to `true` in the organization object; keep its default `false` for HTTPS. See the [field-by-field steps](config/desktop/examples/README_EN.md#connect-litellm-where-to-edit-and-what-to-enter), and the [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) for version requirements and deployment checks.
+
+<details>
+<summary>See model selection after LiteLLM sign-in</summary>
+
+![After LiteLLM sign-in, the model menu shows the authorized deepseek-v4-flash under the local LiteLLM group](docs/images/litellm-models.png)
+
+This example account is authorized to use `deepseek-v4-flash`; your gateway determines the actual names and model list. The DeepSeek group above is a separately configured provider, which can coexist with organization models.
+
+</details>
 
 ### 3. Start working
 
@@ -96,7 +131,7 @@ Choose a local workspace, add your task materials, and describe the result you w
 <details>
 <summary>Window behavior and updates</summary>
 
-Closing the window minimizes it to the system tray by default. Use the tray menu to exit completely. The Windows public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings; institutions can configure another source. Updates preserve history and user configuration; see the [update guide](docs/UPDATES.md).
+Closing the window minimizes it to the system tray by default. Use the tray or application menu to exit completely. The public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings. Windows uses its portable updater; macOS uses Sparkle to download, replace the application, and restart after user confirmation. Institutions can configure another source. Updates preserve history and user configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES_EN.md).
 
 </details>
 
@@ -109,11 +144,9 @@ Closing the window minimizes it to the system tray by default. Use the tray menu
 | Server / project | Sign-in and model access | Setup and usage |
 | --- | --- | --- |
 | [LiteLLM](https://github.com/BerriAI/litellm) | Sign in to the gateway and access models authorized for the user and selected team. | [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
-| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | Sign in with a university account and access authorized models; the university extension provides personal quota information. | [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) |
+| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | Connect institution identity and authorized models through oidc-llm. | [EduWork@ECNU institutional edition example](https://github.com/ECNU/EduWork-ECNU) |
 
-**East China Normal University users can use the university-distributed EduWork@ECNU, with school configuration already included: sign in to get started.** Distribution and usage instructions are maintained in the EduWork-ECNU repository.
-
-Token model access in this table requires a build containing this feature; it is not yet in published npm packages or desktop releases. ChatECNU uses the explicitly enabled experimental oidc-llm adapter.
+These sign-in methods are built into the desktop package, without an additional plugin installation. oidc-llm remains experimental and requires explicit opt-in according to the server contract; standard LiteLLM configuration does not enable that option.
 
 After enterprise sign-in, the client uses the login Token to discover and invoke models, refreshing it automatically during use. Users do not need to copy or create a separate model key. The server continues to manage model permissions and quotas; enterprise and personally configured models can coexist.
 
@@ -124,9 +157,9 @@ Other standard OIDC platforms can provide identity sign-in. Organization models 
 <details>
 <summary><strong>Configure your organization in three steps</strong></summary>
 
-1. Select **Open configuration file** in Settings to edit `config/eduwork.jsonc` in the client directory.
-2. Choose a configuration example from the server guide above and add the organization to `organizations`; add `media` if image or speech services are needed. More examples are available in the client's `config/examples/` directory.
-3. Save, exit completely through the tray, and restart. Then select your organization and sign in.
+1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows, or `~/Library/Application Support/eduwork-electron/config/` on macOS.
+2. Follow the server guide and the adjacent `examples/` folder. Add organization entries to `organizations`, preserving existing settings; add `media` if needed. Editing the example alone has no effect.
+3. Save, exit completely through the tray or application menu, and restart. Then select your organization and sign in.
 
 Configuration files contain public connection details and credential references. Manage personal API keys in model settings; login Tokens are kept in protected local storage. Do not put passwords or tokens in the configuration file. The interface logo is configurable; the embedded application icon comes from the distribution.
 

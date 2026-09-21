@@ -4,7 +4,7 @@
 
 ## Supported host baseline
 
-Current `0.2.0` uses the registry-published DSH `0.1.5-rc.1` development/CI closure. Historical stable `0.1.0` targets `0.1.2-rc.1`; older candidate evidence is recorded separately in the [compatibility matrix](compatibility.en.md). Never mix DSH lines. See [development preparation](development.en.md) for clean installation.
+Current `0.3.0-dev.2` uses registry-published DSH `0.1.5-rc.1` dependencies for package development/CI; complete EduWork distributions use their product Runtime lock. Do not mix DSH dependency versions. See [compatibility](compatibility.en.md) and [development preparation](development.en.md).
 
 The plugin uses public package exports rather than copied DSH source:
 
@@ -62,10 +62,10 @@ The client descriptor uses strict Zod codecs. Configuration sent to the browser 
 
 `dsh-oidc` declares its own default local-Web Bundle patch. Install it directly from npm into the official Web profile without authoring a wrapper Bundle:
 
-Install exact `0.2.0` with a coherent DSH `0.1.5-rc.1` host. If the registry does not yet provide this version during release preparation, use the reviewed source/frozen artifact below.
+Install exact `0.3.0-dev.2` with the package's declared DSH `0.1.5-rc.1` dependency baseline. EduWork desktop distributions already include the package; desktop users only edit configuration and do not run the plugin installation command below.
 
 ```bash
-dsh plugin --profile web add @eduwork/dsh-oidc@0.2.0
+dsh plugin --profile web add @eduwork/dsh-oidc@0.3.0-dev.2
 ```
 
 For auditing, development, or validating unpublished changes, install a reviewed local checkout instead:
