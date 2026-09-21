@@ -115,6 +115,37 @@ test('help can extend an existing signed baseline with newly supplied defaults',
   assert.equal((await readConfiguration(f.path)).value.features.visionFallback, true)
 })
 
+test('a later signed release can remove an unchanged institution with generated defaults', async t => {
+  const f = await fixture(t)
+  const org = { schemaVersion: 'dsh-oidc/v1alpha1', id: 'school', oidc: { issuer: 'https://identity.example.test' } }
+  await f.file.apply({ scope, key: key(1), revision: 1, patch: { organizations: [org] } })
+  await f.file.commit()
+  const reopened = await f.open()
+  assert.deepEqual(await reopened.apply({ scope, key: key(2), revision: 2, patch: { organizations: [] } }), [])
+  assert.deepEqual((await readConfiguration(f.path)).value.organizations, [])
+  await reopened.rollback()
+  const current = (await readConfiguration(f.path)).value
+  current.organizations[0].oidc.issuer = 'https://custom.example.test'
+  await writeFile(f.path, JSON.stringify(current))
+  assert.deepEqual(await reopened.apply({ scope, key: key(2), revision: 2, patch: { organizations: [] } }), ['organizations[school]'])
+  assert.equal((await readConfiguration(f.path)).value.organizations[0].oidc.issuer, 'https://custom.example.test')
+})
+
+test('Windows BOM configurations can initialize, refresh help and recover a failed trial', async t => {
+  const f = await fixture(t)
+  const text = '\uFEFF// Windows configuration\r\n' + JSON.stringify(f.value, null, 2).replaceAll('\n', '\r\n') + '\r\n'
+  await writeFile(f.path, text)
+  const data = join(f.root, 'bom-data')
+  const file = await new ConfigurationFile(f.path, data).open()
+  await file.document()
+  const documented = await readFile(f.path, 'utf8')
+  assert.ok(documented.startsWith('\uFEFF'))
+  await file.apply({ scope, key: key(1), revision: 1, patch: { features: { maxConcurrentRequests: 4 } } })
+  await new ConfigurationFile(f.path, data).open()
+  assert.equal(await readFile(f.path, 'utf8'), documented)
+  assert.equal((await readConfiguration(f.path)).value.features.maxConcurrentRequests, 3)
+})
+
 test('rollback resolves relative logos beside the active config, including crash recovery', async t => {
   const f = await fixture(t)
   await mkdir(join(f.root, 'config/assets'))

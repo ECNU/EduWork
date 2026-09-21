@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T03:02:25.202Z",
-  "fileSetSHA256": "f73b7f57b218510ca62957bf681b4b3bf0d9156564686e34fe6a596704c5f33b",
+  "createdAt": "2026-09-21T03:10:16.274Z",
+  "fileSetSHA256": "6ca28e395615fe5e3ac30ee39d086e1d18e6b04522b8dc92aefaad094c6aaba7",
   "files": [
     {
       "path": ".gitattributes",
@@ -853,7 +853,7 @@
     },
     {
       "path": "dsh-host/configuration-file.mjs",
-      "sha256": "d6df4e57e7fc0a0e3de7f16e14ed060d9ab3d6cedfb6a1c2dc15bceb6144e4de"
+      "sha256": "895ba9e78832e7eabb7362080cea2d9822525a2cb09973fba7b792f551efb390"
     },
     {
       "path": "dsh-host/configuration-plugin-options.mjs",
@@ -941,7 +941,7 @@
     },
     {
       "path": "dsh-host/test/configuration-file.test.mjs",
-      "sha256": "0a94af6d06292ce6163ebca43a8a9e6aebe4df18c1051dcc8b875999cf51fcd6"
+      "sha256": "4d3ef48d77ab4e89f7ae571ad67f7c6c9c2dcee93a078e5c2f896f36c4fe704f"
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",

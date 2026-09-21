@@ -44,10 +44,25 @@ function addedDefaultFingerprints(previous, before, after) {
   return changed ? { hash: '', [field]: entries } : previous
 }
 
+function matchesFingerprint(value, previous) {
+  if (!previous) return false
+  if (hash(value) === previous.hash) return true
+  if (previous.hash !== '') return false
+  // An extended baseline has no aggregate hash, but can still match a whole
+  // unchanged container (including one the next release removes completely).
+  let entries, fingerprints
+  if (object(value) && previous.children) { entries = value; fingerprints = previous.children }
+  else if (keyed(value) && previous.items) {
+    entries = Object.fromEntries(value.map(item => [item.id, item])); fingerprints = previous.items
+  } else return false
+  const keys = Object.keys(fingerprints).filter(key => fingerprints[key] !== undefined)
+  return Object.keys(entries).length === keys.length && keys.every(key => Object.hasOwn(entries, key) && matchesFingerprint(entries[key], fingerprints[key]))
+}
+
 /** Three-way defaults update. Local additions, deletions and edits win. */
 export function mergeConfiguration(local, previous, incoming, conflicts = [], path = '') {
   if (!previous && incoming === undefined) return local
-  if (hash(local) === previous?.hash || hash(local) === hash(incoming) || local === undefined && !previous) return incoming
+  if (matchesFingerprint(local, previous) || hash(local) === hash(incoming) || local === undefined && !previous) return incoming
   if (object(local) && object(incoming) && previous?.children) {
     const result = {}
     for (const key of new Set([...Object.keys(local), ...Object.keys(previous.children), ...Object.keys(incoming)])) {
@@ -64,7 +79,7 @@ export function mergeConfiguration(local, previous, incoming, conflicts = [], pa
     }
     return result
   }
-  if (hash(incoming) !== previous?.hash) conflicts.push(path)
+  if (!matchesFingerprint(incoming, previous)) conflicts.push(path)
   return local
 }
 
@@ -73,7 +88,7 @@ export async function readConfiguration(path, validationPath = path) {
   if (!info) return null
   if (!info.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) throw Error('配置文件必须是普通文件且不超过 1 MiB')
   const text = await readFile(path, 'utf8')
-  parseUserConfig(validationPath, text)
+  parseUserConfig(validationPath, text.replace(/^\uFEFF/, ''))
   return { text, value: jsonc.getNodeValue(jsonc.parseTree(text.replace(/^\uFEFF/, ''), [], { allowTrailingComma: true })) }
 }
 
