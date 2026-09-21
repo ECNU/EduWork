@@ -65,7 +65,7 @@ try {
     $result.checks.nativeRuntimes='passed'
     $gui=Join-Path $Output 'gui';New-Item -ItemType Directory -Path $gui | Out-Null
     $config=Join-Path $gui 'eduwork.jsonc'
-    @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';oidc=@{issuer='https://identity.example.test';clientId='synthetic-ci-client';scopes=@('openid','profile')}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
+    @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';auth=@{discoveryUrl='https://identity.example.test/.well-known/openid-configuration';expectedIssuer='https://identity.example.test';experimentalOidcLlm=$true;clientId='synthetic-ci-client';identityMode='oidc'}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
     $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()
     $bootstrapEnabled = Test-Path (Join-Path $frozen 'resources/desktop/publisher-bootstrap.json')
     if ($VerifyPublisherBootstrap -and -not $bootstrapEnabled) { throw 'Publisher acceptance requires a bootstrap-enabled edition' }
@@ -81,6 +81,7 @@ try {
     $process=[Diagnostics.Process]::Start($start)
     $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
     $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=$null;$env:EDUWORK_CONFIG_FILE=$null
+    $launchFailure=$null
     try {
         $deadline=[DateTime]::UtcNow.AddMinutes(3);$ready=$false
         while ([DateTime]::UtcNow -lt $deadline) {
@@ -90,10 +91,16 @@ try {
         }
         if (-not $ready) { throw 'macOS desktop failed to start within acceptance limit' }
         & node (Join-Path $CoreRoot 'dsh-electron/tests/desktop-smoke.mjs') --shell electron --product $frozen --cdp "http://127.0.0.1:$port" --data-root (Join-Path $gui 'data') --evidence $gui --launch-only
-    } finally {
+    } catch { $launchFailure=$_;throw } finally {
         if (-not $process.HasExited) {
-            & node (Join-Path $CoreRoot 'scripts/close-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port"
-            if (-not $process.WaitForExit(15000)) { $process.Kill($true);throw 'macOS test desktop did not stop' }
+            try {
+                & node (Join-Path $CoreRoot 'scripts/close-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port"
+                if (-not $process.WaitForExit(15000)) { throw 'macOS test desktop did not stop' }
+            } catch {
+                if (-not $process.HasExited) { $process.Kill($true);$process.WaitForExit() }
+                if (-not $launchFailure) { throw }
+                Write-Warning 'Test desktop cleanup also failed; preserving the original launch error.'
+            }
         }
         [IO.File]::WriteAllText((Join-Path $gui 'stdout.log'),$stdout.GetAwaiter().GetResult())
         [IO.File]::WriteAllText((Join-Path $gui 'stderr.log'),$stderr.GetAwaiter().GetResult())
