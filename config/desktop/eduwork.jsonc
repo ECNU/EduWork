@@ -2,45 +2,182 @@
 // 修改后从托盘选择“退出”，再启动；关闭窗口默认只是收起到托盘。
 // 此文件与 config/assets 下的 Logo 属于用户文件，更新程序应保留它们。
 // 不要填写密码、client_secret、API Key 或登录令牌；个人 Key 在模型设置中管理。
+// 可修改界面及窗口标题；安装包图标和应用 ID 由发行版决定。
+// 可选：配置目录内的相对路径；支持 PNG/WebP/SVG，最大 256 KiB。
+// ,"logoFile": "assets/logo.png"
+// 空数组表示不用企业登录，用户仍可配置自己的 API Key 使用模型。
+// 完整参考：examples/organization.jsonc；机构发行版可提供更多示例。
+// 数组中可填写多个企业；身份及 Access Token 分别保存。
+// 按 organization.jsonc 或 litellm.jsonc 配置后，登录授权即可连接模型。
+// 云端图像/TTS 可独立配置：见 examples/media.jsonc。默认不启用；不影响本地 TTS。
+// 将示例的 media 段合并到顶层即可，不需要学校插件。
+// Windows 公版默认从 ecnu/EduWork 的 GitHub Releases 获取公测更新。
+// 此处留空则使用发行包默认值；从 Go 迁入时优先保留已有机构更新源。
+// 可填 {"provider":"disabled"} 关闭在线更新。
+// 公版可指向 GitHub Release 上的清单，学校版可指向学校自己的 OSS。
+// 清单应按平台和桌面壳区分，示例见 examples/updates.jsonc。
+// 当前客户端所有主会话和子代理共用的模型请求总上限；3 就是同时最多 3 路。
+// 超出的请求排队，执行工具或等待结果的代理不占名额。范围 1–64。
+// 此处提供发行默认值，修改后重启；设置中保存的用户偏好优先且即时生效。
+// tray：点 X 收起到托盘；exit：点 X 退出。无可用托盘时点 X 直接退出。
 {
   // [eduwork] 配置格式版本，固定为 1。
   "schemaVersion": 1,
   // [eduwork] 产品展示信息；不改变安装包图标和应用身份。
   "product": {
-    // 可修改界面及窗口标题；安装包图标和应用 ID 由发行版决定。
     // [eduwork] 窗口及界面标题。
     "name": "EduWork"
-    // 可选：配置目录内的相对路径；支持 PNG/WebP/SVG，最大 256 KiB。
-    // ,"logoFile": "assets/logo.png"
   },
-  // 空数组表示不用企业登录，用户仍可配置自己的 API Key 使用模型。
-  // 完整参考：examples/organization.jsonc；机构发行版可提供更多示例。
-  // 数组中可填写多个企业；身份及 Access Token 分别保存。
-  // 按 organization.jsonc 或 litellm.jsonc 配置后，登录授权即可连接模型。
-  // 云端图像/TTS 可独立配置：见 examples/media.jsonc。默认不启用；不影响本地 TTS。
-  // 将示例的 media 段合并到顶层即可，不需要学校插件。
   // [eduwork] 企业配置数组；空数组关闭企业登录，个人 API Key 仍可在模型设置中使用。[] 表示数组中的一项。
   "organizations": [],
-  // Windows 公版默认从 ecnu/EduWork 的 GitHub Releases 获取公测更新。
-  // 此处留空则使用发行包默认值；从 Go 迁入时优先保留已有机构更新源。
-  // 可填 {"provider":"disabled"} 关闭在线更新。
-  // 公版可指向 GitHub Release 上的清单，学校版可指向学校自己的 OSS。
-  // 清单应按平台和桌面壳区分，示例见 examples/updates.jsonc。
   // [eduwork] 软件更新源；空对象沿用发行包的默认渠道与平台设置。
   "updates": {},
   // [eduwork] 功能默认值；已保存的界面偏好可能优先。
   "features": {
-    // 当前客户端所有主会话和子代理共用的模型请求总上限；3 就是同时最多 3 路。
-    // 超出的请求排队，执行工具或等待结果的代理不占名额。范围 1–64。
-    // 此处提供发行默认值，修改后重启；设置中保存的用户偏好优先且即时生效。
     // [eduwork] 全客户端模型请求总并发，1–64；主会话、子代理、辅助模型共用，超出排队。设置中保存的值优先。
     "maxConcurrentRequests": 3
   },
   // [eduwork] 桌面行为。
   "desktop": {
-    // tray：点 X 收起到托盘；exit：点 X 退出。无可用托盘时点 X 直接退出。
     // [eduwork] tray 关闭窗口后驻留托盘；exit 退出；默认 tray，无托盘时退出。
     "closeAction": "tray"
+  },
+  // [eduwork] 已安装插件的选项，以插件 ID 为键；不会安装新插件。下方列出可编辑默认值；设置中保存的个人偏好可能优先。
+  "plugins": {
+    "eduwork-brand-settings": {
+      // [eduwork] 默认配色：ecnu-liwa 红色、dsh 蓝色；设置中保存的个人偏好优先。
+      "visualStyle": "ecnu-liwa",
+      // [eduwork] 右侧面板默认宽度，300–1600 像素；个人偏好优先。
+      "detailsPanelWidth": 360,
+      // [eduwork] 默认启用的可选 Agent 预设：minimal、cordis；个人偏好优先。
+      "enabledOptionalPresets": [],
+      // [eduwork] 同步可选 Agent 预设；发行默认 true。
+      "manageOptionalPresets": true
+    },
+    "eduwork-skill-settings": {
+      // [eduwork] 默认禁用的 Skill 名称数组；个人设置优先。
+      "disabled": [],
+      // [eduwork] 默认启用的 Skill 名称数组；个人设置优先。
+      "enabled": [],
+      // [eduwork] 发行版默认禁用的 Skill 名称数组。
+      "defaultDisabled": []
+    },
+    "eduwork-activity-insights-native": {
+      // [eduwork] 个人概览缓存时间，10000–600000 毫秒。
+      "cacheMs": 60000,
+      // [eduwork] 概览统计任务并发，1–4；不是模型请求并发。
+      "concurrency": 2,
+      // [eduwork] 单项概览统计超时，5000–120000 毫秒。
+      "requestTimeoutMs": 30000,
+      // [eduwork] 用户资料读取超时，500–10000 毫秒。
+      "profileTimeoutMs": 3000,
+      // [eduwork] 统计缓存命名空间。
+      "cacheNamespace": "default"
+    },
+    "enterprise-oidc": {
+      // [eduwork] standard 标准面板、external 外部入口、models-only 仅模型入口。
+      "uiMode": "standard",
+      "desktop": {
+        // [eduwork] 浏览器登录回调端口，0–65535；0 自动选择可用端口。
+        "callbackPort": 0,
+        // [eduwork] 浏览器登录流程超时，1000–600000 毫秒。
+        "flowTimeoutMs": 600000
+      }
+    },
+    "eduwork-knowledge-studio": {
+      // [eduwork] 插件自行注册 Skills；桌面版由统一 Skill 目录管理，保持 false。
+      "skills": false,
+      // [eduwork] 单个文本文件大小上限，64 KiB–64 MiB。
+      "maxTextFileBytes": 1048576,
+      // [eduwork] 单个 PDF 大小上限，1–256 MiB。
+      "maxPdfFileBytes": 67108864,
+      // [eduwork] 最大索引文件数，1–100000。
+      "maxFiles": 20000,
+      // [eduwork] 是否注册索引检索工具，默认关闭。
+      "indexedRetrievalTools": false
+    },
+    "eduwork-artifact-services": {
+      // [eduwork] 插件自行注册 Skills；桌面版使用统一目录，保持 false。
+      "skills": false,
+      "transcription": {
+        // [eduwork] 本地 Whisper 转写；程序和模型路径由安装包定位，可按需覆盖。
+        "local": {
+          // [eduwork] 转写服务标识。
+          "id": "whisper-cpp",
+          // [eduwork] 转写服务显示名称。
+          "title": "Local Whisper (CPU)",
+          // [eduwork] 转写模型显示标识；模型文件由 modelPath 指定。
+          "model": "whisper-tiny-q5_1",
+          // [eduwork] 本地转写 CPU 线程数，1–64。
+          "threads": 4,
+          // [eduwork] 音频时长上限，1–14400 秒。
+          "maxDurationSeconds": 3600
+        }
+      }
+    },
+    "dsh-mail-assistant": {
+      // [eduwork] 允许读取邮件；设置中的个人选择优先。
+      "readEnabled": false,
+      // [eduwork] 允许发送邮件；仍遵守会话权限规则。
+      "sendEnabled": false,
+      // [eduwork] 邮箱地址；密码在设置中保存，不写入本文件。
+      "email": "",
+      // [eduwork] 登录用户名；空字符串使用邮箱地址。
+      "username": "",
+      // [eduwork] 发件人显示名称。
+      "fromName": "",
+      // [eduwork] 默认收件文件夹。
+      "inboxFolder": "INBOX",
+      // [eduwork] IMAP 主机名，启用读取前填写。
+      "imapHost": "",
+      // [eduwork] IMAP 端口，1–65535。
+      "imapPort": 993,
+      // [eduwork] IMAP 加密：implicit 或 starttls。
+      "imapTls": "implicit",
+      // [eduwork] SMTP 主机名，启用发送前填写。
+      "smtpHost": "",
+      // [eduwork] SMTP 端口，1–65535。
+      "smtpPort": 465,
+      // [eduwork] SMTP 加密：implicit 或 starttls。
+      "smtpTls": "implicit",
+      // [eduwork] 返回的邮件正文字符上限，1000–200000。
+      "maxBodyChars": 20000,
+      // [eduwork] 单封邮件大小上限，1–100 MiB。
+      "maxMessageBytes": 26214400,
+      // [eduwork] 单个附件大小上限，1 KiB–100 MiB。
+      "maxAttachmentBytes": 20971520
+    },
+    "local-memory": {
+      // [eduwork] 是否启用本地记忆；以下默认值可在个人设置中覆盖。
+      "enabled": true,
+      // [eduwork] 是否生成记忆。
+      "generate_memories": true,
+      // [eduwork] 是否使用记忆。
+      "use_memories": true,
+      // [eduwork] 是否允许检索历史会话。
+      "search_prior_chats": true,
+      // [eduwork] 存在外部上下文时停止自动生成记忆。
+      "disable_on_external_context": true,
+      // [eduwork] 单次整理最多读取的原始记忆数，1–10000。
+      "max_raw_memories_for_consolidation": 256,
+      // [eduwork] 可用于整理的会话最大天数，1–3650。
+      "max_rollout_age_days": 30,
+      // [eduwork] 每次启动最多处理的会话数，1–10000。
+      "max_rollouts_per_startup": 16,
+      // [eduwork] 未使用记忆的保留天数，1–3650。
+      "max_unused_days": 30,
+      // [eduwork] 后台记忆处理要求的最低剩余额度百分比，0–100。
+      "min_rate_limit_remaining_percent": 25,
+      // [eduwork] 会话空闲多少小时后可整理，0–8760。
+      "min_rollout_idle_hours": 6,
+      // [eduwork] 记忆记录数上限，16–10000。
+      "max_records": 400
+    }
+  },
+  // [eduwork] 通用文生图/TTS，按 providers 配置；不填时可能使用发行默认值，空数组显式关闭云端媒体。
+  "media": {
+    // [eduwork] 媒体服务数组，个人凭据保存在凭据库。
+    "providers": []
   }
 }
 
@@ -229,6 +366,12 @@
 //   "releasesURL": "https://updates.example.org/releases"
 // updates.defaultPolicy：stable 仅公测，development 也接收开发版；不填沿用打包默认值，设置中手动选择优先。
 //   "defaultPolicy": "development"
+// updates.macFeeds：macOS Sparkle 更新清单；仅支持 Sparkle 的安装包使用，仍验证包内公钥。Windows 忽略此项。
+//   "macFeeds": {}
+// updates.macFeeds.stable：macOS 公测渠道的 HTTPS appcast 地址。
+//   "stable": "https://updates.example.org/macos/stable/appcast.xml"
+// updates.macFeeds.development：macOS 开发渠道的 HTTPS appcast 地址。
+//   "development": "https://updates.example.org/macos/development/appcast.xml"
 // contentUpdates：可选签名配置/Skills 更新；须同时有来源和真实公钥，未配置则关闭。与软件 updates 独立。
 //   "contentUpdates": {}
 // contentUpdates.publisher：内容发行者标识，须与签名清单相符。
@@ -295,6 +438,138 @@
 //   "title": "示例音色"
 // media.providers[].speech.voices[].language：可选语言标识。
 //   "language": "zh-CN"
-// plugins：已安装插件的选项，以插件 ID 为键；不会安装新插件。具体参数由该插件文档定义，未知插件 ID 会报错。
+// plugins：已安装插件的选项，以插件 ID 为键；不会安装新插件。下方列出可编辑默认值；设置中保存的个人偏好可能优先。
 //   "plugins": {}
+// plugins.eduwork-brand-settings.visualStyle：默认配色：ecnu-liwa 红色、dsh 蓝色；设置中保存的个人偏好优先。
+//   "visualStyle": "ecnu-liwa"
+// plugins.eduwork-brand-settings.detailsPanelWidth：右侧面板默认宽度，300–1600 像素；个人偏好优先。
+//   "detailsPanelWidth": 360
+// plugins.eduwork-brand-settings.enabledOptionalPresets：默认启用的可选 Agent 预设：minimal、cordis；个人偏好优先。
+//   "enabledOptionalPresets": []
+// plugins.eduwork-brand-settings.manageOptionalPresets：同步可选 Agent 预设；发行默认 true。
+//   "manageOptionalPresets": true
+// plugins.eduwork-brand-settings.upstreamWelcomeNoticeVersion：已阅读的上游说明版本，由发行包提供；通常不修改。
+//   "upstreamWelcomeNoticeVersion": "2026-08-13.1"
+// plugins.eduwork-brand-settings.product.styleLabels：可选配色名称；产品名称和 Logo 请修改顶层 product。
+//   "styleLabels": {"dsh":"蓝色","ecnu-liwa":"红色"}
+// plugins.eduwork-skill-settings.disabled：默认禁用的 Skill 名称数组；个人设置优先。
+//   "disabled": []
+// plugins.eduwork-skill-settings.enabled：默认启用的 Skill 名称数组；个人设置优先。
+//   "enabled": []
+// plugins.eduwork-skill-settings.defaultDisabled：发行版默认禁用的 Skill 名称数组。
+//   "defaultDisabled": []
+// plugins.eduwork-activity-insights-native.cacheMs：个人概览缓存时间，10000–600000 毫秒。
+//   "cacheMs": 60000
+// plugins.eduwork-activity-insights-native.concurrency：概览统计任务并发，1–4；不是模型请求并发。
+//   "concurrency": 2
+// plugins.eduwork-activity-insights-native.requestTimeoutMs：单项概览统计超时，5000–120000 毫秒。
+//   "requestTimeoutMs": 30000
+// plugins.eduwork-activity-insights-native.profileTimeoutMs：用户资料读取超时，500–10000 毫秒。
+//   "profileTimeoutMs": 3000
+// plugins.eduwork-activity-insights-native.cacheNamespace：统计缓存命名空间。
+//   "cacheNamespace": "default"
+// plugins.eduwork-activity-insights-native.dshHome：可选统计数据目录；不填自动使用当前用户的 DSH 数据目录。
+//   "dshHome": "/path/to/dsh-home"
+// plugins.eduwork-knowledge-studio.maxTextFileBytes：单个文本文件大小上限，64 KiB–64 MiB。
+//   "maxTextFileBytes": 1048576
+// plugins.eduwork-knowledge-studio.maxPdfFileBytes：单个 PDF 大小上限，1–256 MiB。
+//   "maxPdfFileBytes": 67108864
+// plugins.eduwork-knowledge-studio.maxFiles：最大索引文件数，1–100000。
+//   "maxFiles": 20000
+// plugins.eduwork-knowledge-studio.indexedRetrievalTools：是否注册索引检索工具，默认关闭。
+//   "indexedRetrievalTools": false
+// plugins.eduwork-knowledge-studio.skills：插件自行注册 Skills；桌面版由统一 Skill 目录管理，保持 false。
+//   "skills": false
+// plugins.eduwork-knowledge-studio.dataRoot：可选索引数据目录；不填使用用户数据目录。
+//   "dataRoot": "/path/to/studio"
+// plugins.eduwork-knowledge-studio.artifactPath：可选成果索引 JSON 文件路径；不填使用用户数据目录。
+//   "artifactPath": "/path/to/artifacts.json"
+// plugins.eduwork-knowledge-studio.uiPreferencesPath：可选 Studio 界面偏好文件路径；不填使用用户数据目录。
+//   "uiPreferencesPath": "/path/to/studio-ui.json"
+// plugins.eduwork-artifact-services.skills：插件自行注册 Skills；桌面版使用统一目录，保持 false。
+//   "skills": false
+// plugins.eduwork-artifact-services.bgmRoot：可选背景音乐目录，须含 catalog.json；不填使用包内音乐。
+//   "bgmRoot": "/path/to/bgm"
+// plugins.eduwork-artifact-services.transcription.local：本地 Whisper 转写；程序和模型路径由安装包定位，可按需覆盖。
+//   "local": {}
+// plugins.eduwork-artifact-services.transcription.local.id：转写服务标识。
+//   "id": "whisper-cpp"
+// plugins.eduwork-artifact-services.transcription.local.title：转写服务显示名称。
+//   "title": "Local Whisper (CPU)"
+// plugins.eduwork-artifact-services.transcription.local.model：转写模型显示标识；模型文件由 modelPath 指定。
+//   "model": "whisper-tiny-q5_1"
+// plugins.eduwork-artifact-services.transcription.local.threads：本地转写 CPU 线程数，1–64。
+//   "threads": 4
+// plugins.eduwork-artifact-services.transcription.local.maxDurationSeconds：音频时长上限，1–14400 秒。
+//   "maxDurationSeconds": 3600
+// plugins.eduwork-artifact-services.transcription.local.executablePath：可选 Whisper 可执行文件绝对路径；不填使用内置运行时。
+//   "executablePath": "/path/to/whisper-cli"
+// plugins.eduwork-artifact-services.transcription.local.modelPath：可选 Whisper 模型绝对路径；不填使用内置模型。
+//   "modelPath": "/path/to/ggml-tiny-q5_1.bin"
+// plugins.eduwork-artifact-services.transcription.local.ffmpegPath：可选 FFmpeg 可执行文件绝对路径；不填自动查找内置运行时。
+//   "ffmpegPath": "/path/to/ffmpeg"
+// plugins.dsh-mail-assistant.readEnabled：允许读取邮件；设置中的个人选择优先。
+//   "readEnabled": false
+// plugins.dsh-mail-assistant.sendEnabled：允许发送邮件；仍遵守会话权限规则。
+//   "sendEnabled": false
+// plugins.dsh-mail-assistant.email：邮箱地址；密码在设置中保存，不写入本文件。
+//   "email": ""
+// plugins.dsh-mail-assistant.username：登录用户名；空字符串使用邮箱地址。
+//   "username": ""
+// plugins.dsh-mail-assistant.fromName：发件人显示名称。
+//   "fromName": ""
+// plugins.dsh-mail-assistant.inboxFolder：默认收件文件夹。
+//   "inboxFolder": "INBOX"
+// plugins.dsh-mail-assistant.imapHost：IMAP 主机名，启用读取前填写。
+//   "imapHost": ""
+// plugins.dsh-mail-assistant.imapPort：IMAP 端口，1–65535。
+//   "imapPort": 993
+// plugins.dsh-mail-assistant.imapTls：IMAP 加密：implicit 或 starttls。
+//   "imapTls": "implicit"
+// plugins.dsh-mail-assistant.smtpHost：SMTP 主机名，启用发送前填写。
+//   "smtpHost": ""
+// plugins.dsh-mail-assistant.smtpPort：SMTP 端口，1–65535。
+//   "smtpPort": 465
+// plugins.dsh-mail-assistant.smtpTls：SMTP 加密：implicit 或 starttls。
+//   "smtpTls": "implicit"
+// plugins.dsh-mail-assistant.maxBodyChars：返回的邮件正文字符上限，1000–200000。
+//   "maxBodyChars": 20000
+// plugins.dsh-mail-assistant.maxMessageBytes：单封邮件大小上限，1–100 MiB。
+//   "maxMessageBytes": 26214400
+// plugins.dsh-mail-assistant.maxAttachmentBytes：单个附件大小上限，1 KiB–100 MiB。
+//   "maxAttachmentBytes": 20971520
+// plugins.local-memory.enabled：是否启用本地记忆；以下默认值可在个人设置中覆盖。
+//   "enabled": true
+// plugins.local-memory.generate_memories：是否生成记忆。
+//   "generate_memories": true
+// plugins.local-memory.use_memories：是否使用记忆。
+//   "use_memories": true
+// plugins.local-memory.search_prior_chats：是否允许检索历史会话。
+//   "search_prior_chats": true
+// plugins.local-memory.disable_on_external_context：存在外部上下文时停止自动生成记忆。
+//   "disable_on_external_context": true
+// plugins.local-memory.max_raw_memories_for_consolidation：单次整理最多读取的原始记忆数，1–10000。
+//   "max_raw_memories_for_consolidation": 256
+// plugins.local-memory.max_rollout_age_days：可用于整理的会话最大天数，1–3650。
+//   "max_rollout_age_days": 30
+// plugins.local-memory.max_rollouts_per_startup：每次启动最多处理的会话数，1–10000。
+//   "max_rollouts_per_startup": 16
+// plugins.local-memory.max_unused_days：未使用记忆的保留天数，1–3650。
+//   "max_unused_days": 30
+// plugins.local-memory.min_rate_limit_remaining_percent：后台记忆处理要求的最低剩余额度百分比，0–100。
+//   "min_rate_limit_remaining_percent": 25
+// plugins.local-memory.min_rollout_idle_hours：会话空闲多少小时后可整理，0–8760。
+//   "min_rollout_idle_hours": 6
+// plugins.local-memory.max_records：记忆记录数上限，16–10000。
+//   "max_records": 400
+// plugins.enterprise-oidc.uiMode：standard 标准面板、external 外部入口、models-only 仅模型入口。
+//   "uiMode": "standard"
+// plugins.enterprise-oidc.desktop.callbackPort：浏览器登录回调端口，0–65535；0 自动选择可用端口。
+//   "callbackPort": 0
+// plugins.enterprise-oidc.desktop.flowTimeoutMs：浏览器登录流程超时，1000–600000 毫秒。
+//   "flowTimeoutMs": 600000
+// plugins.enterprise-oidc.web.returnPath：仅 Local Web 登录完成后返回的同源绝对路径；Electron 忽略。
+//   "returnPath": "/"
+// plugins.enterprise-oidc.authorizedOrigins：额外允许账户服务访问的 HTTPS 源数组，最多 64 个；默认使用发现协议授权的资源，通常不要填写。
+//   "authorizedOrigins": []
 // </eduwork-configuration-reference>

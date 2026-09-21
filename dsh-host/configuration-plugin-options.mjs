@@ -1,0 +1,107 @@
+// Editable desktop plugin options. The third tuple member means that the
+// example is also the plugin's safe default and should be written into JSONC.
+// Omitted/dynamic paths stay commented; never persist installation-specific paths.
+const group = (id, entries) => Object.fromEntries(Object.entries(entries).map(([key, value]) => [`plugins.${id}.${key}`, value]))
+export const bundledConfigurationPlugins = {
+  'dsh-mail-assistant': '@eduwork/dsh-mail',
+  'local-memory': '@eduwork/dsh-memory',
+}
+export const pluginConfigurationFields = {
+  ...group('eduwork-brand-settings', {
+    visualStyle: ['默认配色：ecnu-liwa 红色、dsh 蓝色；设置中保存的个人偏好优先。', 'ecnu-liwa', true],
+    detailsPanelWidth: ['右侧面板默认宽度，300–1600 像素；个人偏好优先。', 360, true],
+    enabledOptionalPresets: ['默认启用的可选 Agent 预设：minimal、cordis；个人偏好优先。', [], true],
+    manageOptionalPresets: ['同步可选 Agent 预设；发行默认 true。', true, true],
+    upstreamWelcomeNoticeVersion: ['已阅读的上游说明版本，由发行包提供；通常不修改。', '2026-08-13.1'],
+    'product.styleLabels': ['可选配色名称；产品名称和 Logo 请修改顶层 product。', { dsh: '蓝色', 'ecnu-liwa': '红色' }],
+  }),
+  ...group('eduwork-skill-settings', {
+    disabled: ['默认禁用的 Skill 名称数组；个人设置优先。', [], true],
+    enabled: ['默认启用的 Skill 名称数组；个人设置优先。', [], true],
+    defaultDisabled: ['发行版默认禁用的 Skill 名称数组。', [], true],
+  }),
+  ...group('eduwork-activity-insights-native', {
+    cacheMs: ['个人概览缓存时间，10000–600000 毫秒。', 60000, true],
+    concurrency: ['概览统计任务并发，1–4；不是模型请求并发。', 2, true],
+    requestTimeoutMs: ['单项概览统计超时，5000–120000 毫秒。', 30000, true],
+    profileTimeoutMs: ['用户资料读取超时，500–10000 毫秒。', 3000, true],
+    cacheNamespace: ['统计缓存命名空间。', 'default', true],
+    dshHome: ['可选统计数据目录；不填自动使用当前用户的 DSH 数据目录。', '/path/to/dsh-home'],
+  }),
+  ...group('eduwork-knowledge-studio', {
+    maxTextFileBytes: ['单个文本文件大小上限，64 KiB–64 MiB。', 1048576, true],
+    maxPdfFileBytes: ['单个 PDF 大小上限，1–256 MiB。', 67108864, true],
+    maxFiles: ['最大索引文件数，1–100000。', 20000, true],
+    indexedRetrievalTools: ['是否注册索引检索工具，默认关闭。', false, true],
+    skills: ['插件自行注册 Skills；桌面版由统一 Skill 目录管理，保持 false。', false, true],
+    dataRoot: ['可选索引数据目录；不填使用用户数据目录。', '/path/to/studio'],
+    artifactPath: ['可选成果索引 JSON 文件路径；不填使用用户数据目录。', '/path/to/artifacts.json'],
+    uiPreferencesPath: ['可选 Studio 界面偏好文件路径；不填使用用户数据目录。', '/path/to/studio-ui.json'],
+  }),
+  ...group('eduwork-artifact-services', {
+    skills: ['插件自行注册 Skills；桌面版使用统一目录，保持 false。', false, true],
+    bgmRoot: ['可选背景音乐目录，须含 catalog.json；不填使用包内音乐。', '/path/to/bgm'],
+    'transcription.local': ['本地 Whisper 转写；程序和模型路径由安装包定位，可按需覆盖。', {}],
+    'transcription.local.id': ['转写服务标识。', 'whisper-cpp', true],
+    'transcription.local.title': ['转写服务显示名称。', 'Local Whisper (CPU)', true],
+    'transcription.local.model': ['转写模型显示标识；模型文件由 modelPath 指定。', 'whisper-tiny-q5_1', true],
+    'transcription.local.threads': ['本地转写 CPU 线程数，1–64。', 4, true],
+    'transcription.local.maxDurationSeconds': ['音频时长上限，1–14400 秒。', 3600, true],
+    'transcription.local.executablePath': ['可选 Whisper 可执行文件绝对路径；不填使用内置运行时。', '/path/to/whisper-cli'],
+    'transcription.local.modelPath': ['可选 Whisper 模型绝对路径；不填使用内置模型。', '/path/to/ggml-tiny-q5_1.bin'],
+    'transcription.local.ffmpegPath': ['可选 FFmpeg 可执行文件绝对路径；不填自动查找内置运行时。', '/path/to/ffmpeg'],
+  }),
+  ...group('dsh-mail-assistant', {
+    readEnabled: ['允许读取邮件；设置中的个人选择优先。', false, true],
+    sendEnabled: ['允许发送邮件；仍遵守会话权限规则。', false, true],
+    email: ['邮箱地址；密码在设置中保存，不写入本文件。', '', true],
+    username: ['登录用户名；空字符串使用邮箱地址。', '', true],
+    fromName: ['发件人显示名称。', '', true],
+    inboxFolder: ['默认收件文件夹。', 'INBOX', true],
+    imapHost: ['IMAP 主机名，启用读取前填写。', '', true],
+    imapPort: ['IMAP 端口，1–65535。', 993, true],
+    imapTls: ['IMAP 加密：implicit 或 starttls。', 'implicit', true],
+    smtpHost: ['SMTP 主机名，启用发送前填写。', '', true],
+    smtpPort: ['SMTP 端口，1–65535。', 465, true],
+    smtpTls: ['SMTP 加密：implicit 或 starttls。', 'implicit', true],
+    maxBodyChars: ['返回的邮件正文字符上限，1000–200000。', 20000, true],
+    maxMessageBytes: ['单封邮件大小上限，1–100 MiB。', 26214400, true],
+    maxAttachmentBytes: ['单个附件大小上限，1 KiB–100 MiB。', 20971520, true],
+  }),
+  ...group('local-memory', {
+    enabled: ['是否启用本地记忆；以下默认值可在个人设置中覆盖。', true, true],
+    generate_memories: ['是否生成记忆。', true, true],
+    use_memories: ['是否使用记忆。', true, true],
+    search_prior_chats: ['是否允许检索历史会话。', true, true],
+    disable_on_external_context: ['存在外部上下文时停止自动生成记忆。', true, true],
+    max_raw_memories_for_consolidation: ['单次整理最多读取的原始记忆数，1–10000。', 256, true],
+    max_rollout_age_days: ['可用于整理的会话最大天数，1–3650。', 30, true],
+    max_rollouts_per_startup: ['每次启动最多处理的会话数，1–10000。', 16, true],
+    max_unused_days: ['未使用记忆的保留天数，1–3650。', 30, true],
+    min_rate_limit_remaining_percent: ['后台记忆处理要求的最低剩余额度百分比，0–100。', 25, true],
+    min_rollout_idle_hours: ['会话空闲多少小时后可整理，0–8760。', 6, true],
+    max_records: ['记忆记录数上限，16–10000。', 400, true],
+  }),
+  ...group('enterprise-oidc', {
+    uiMode: ['standard 标准面板、external 外部入口、models-only 仅模型入口。', 'standard', true],
+    'desktop.callbackPort': ['浏览器登录回调端口，0–65535；0 自动选择可用端口。', 0, true],
+    'desktop.flowTimeoutMs': ['浏览器登录流程超时，1000–600000 毫秒。', 600000, true],
+    'web.returnPath': ['仅 Local Web 登录完成后返回的同源绝对路径；Electron 忽略。', '/'],
+    authorizedOrigins: ['额外允许账户服务访问的 HTTPS 源数组，最多 64 个；默认使用发现协议授权的资源，通常不要填写。', []],
+  }),
+}
+
+// Runtime wiring has one public entry, not a second competing knob in plugins.
+export const managedPluginConfiguration = {
+  'enterprise-oidc.profiles': 'organizations',
+  'enterprise-oidc.allowEmptyProfiles': 'organizations',
+  'enterprise-oidc.profilePathEnv': 'organizations',
+  'enterprise-oidc.backend': 'desktop',
+  'enterprise-oidc.manageProductBrand': 'product',
+  'enterprise-oidc.configFile': 'desktop',
+  'eduwork-brand-settings.product': 'product',
+  'eduwork-request-concurrency.maxConcurrentRequests': 'features.maxConcurrentRequests',
+  'eduwork-request-concurrency.maxParallelSubagents': 'features.maxParallelSubagents',
+  'eduwork-media-openai.providers': 'media.providers',
+  'eduwork-artifact-services.images': 'media.providers',
+}

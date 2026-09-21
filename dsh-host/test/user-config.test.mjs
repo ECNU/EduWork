@@ -11,6 +11,17 @@ function fixture(t) {
   t.after(() => rmSync(root, { recursive: true, force: true }))
   return { root, file: join(root, 'eduwork.jsonc') }
 }
+
+test('Mac appcasts can be configured in the same file and reject unsafe addresses', t => {
+  const { file } = fixture(t)
+  const updates = { macFeeds: { stable: 'https://updates.example.test/stable.xml', development: 'https://updates.example.test/dev.xml' } }
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, updates }))
+  assert.deepEqual(loadUserConfig(file).updates, updates)
+  for (const value of ['http://example.test/feed', 'https://user:secret@example.test/feed', 'https://example.test/feed?token=x', 'https://example.test/feed#x']) {
+    writeFileSync(file, JSON.stringify({ schemaVersion: 1, updates: { macFeeds: { stable: value } } }))
+    assert.throws(() => loadUserConfig(file))
+  }
+})
 test('all shipped commented examples parse', () => {
   const examples = readdirSync(new URL('../../config/desktop/examples/', import.meta.url)).filter(name => name.endsWith('.jsonc')).map(name => 'examples/' + name)
   assert.ok(examples.includes('examples/organization.jsonc'))

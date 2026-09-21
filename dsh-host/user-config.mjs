@@ -68,8 +68,17 @@ export function parseUserConfig(path, body, { overlay } = {}) {
     if (value.product?.name !== undefined) product.name = text(value.product.name, 'product.name', 80)
     if (value.product?.logoFile !== undefined) product.logoUrl = value.product.logoFile === '' ? '' : logo(path, value.product.logoFile)
     if (!Array.isArray(value.organizations ?? []) || (value.organizations?.length ?? 0) > 32) throw new Error('organizations 必须是最多含 32 个企业的数组')
-    allowed(value.updates ?? {}, ['provider', 'repository', 'manifestURL', 'releasesURL', 'defaultPolicy'], 'updates')
+    allowed(value.updates ?? {}, ['provider', 'repository', 'manifestURL', 'releasesURL', 'defaultPolicy', 'macFeeds'], 'updates')
     const updates = {}
+    if (value.updates?.macFeeds !== undefined) {
+      allowed(value.updates.macFeeds, ['stable', 'development'], 'updates.macFeeds')
+      updates.macFeeds = {}
+      for (const [channel, target] of Object.entries(value.updates.macFeeds)) {
+        const url = new URL(target)
+        if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw new Error('updates.macFeeds 必须是无凭据和参数的 HTTPS appcast 地址')
+        updates.macFeeds[channel] = url.href
+      }
+    }
     if (value.updates?.provider !== undefined) {
       if (!['github','static','disabled'].includes(value.updates.provider)) throw new Error('updates.provider 必须为 github、static 或 disabled')
       updates.provider = value.updates.provider

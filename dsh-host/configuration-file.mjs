@@ -56,7 +56,7 @@ export async function readConfiguration(path) {
 
 // Keep comments/formatting around unchanged values. A changed container's key
 // set is rewritten as a unit; the exact original bytes remain in the one backup.
-function render(text, value) {
+export function renderConfiguration(text, value) {
   const prefix = text.startsWith('\uFEFF') ? 1 : 0
   const tree = jsonc.parseTree(text.slice(prefix), [], { allowTrailingComma: true }), edits = []
   function visit(node, next) {
@@ -83,8 +83,9 @@ async function atomic(path, text) {
 
 /** One effective file and one backup; transactions contain hashes, not copies. */
 export class ConfigurationFile {
-  constructor(path, dataRoot, { fields = {} } = {}) {
+  constructor(path, dataRoot, { fields = {}, defaults = {} } = {}) {
     this.fields = fields
+    this.explicitDefaults = defaults
     this.path = path; this.dataRoot = dataRoot
     this.directory = join(dataRoot, 'configuration')
     this.backup = join(this.directory, 'eduwork.previous.jsonc')
@@ -119,9 +120,9 @@ export class ConfigurationFile {
   async save() { await atomic(this.statePath, JSON.stringify(this.state, null, 2) + '\n') }
   async begin(next, { key, scope, defaults, initialized = this.state.initialized, cleanup = this.state.cleanup }) {
     if (this.state.trial) throw Error('请先完成当前配置更新')
-    next = explicitConfigurationDefaults(next)
+    next = explicitConfigurationDefaults(next, this.explicitDefaults)
     const current = await readConfiguration(this.path)
-    const before = current?.text ?? '{"schemaVersion":1}\n', after = documentConfiguration(render(before, next), this.fields)
+    const before = current?.text ?? '{"schemaVersion":1}\n', after = documentConfiguration(renderConfiguration(before, next), this.fields)
     // Validate before replacing either the active file or its only backup.
     const temporary = this.path + '.' + randomUUID() + '.tmp'
     await mkdir(dirname(this.path), { recursive: true })
@@ -143,8 +144,8 @@ export class ConfigurationFile {
     if (this.state.trial) return // A content update already owns the only rollback backup.
     const current = await readConfiguration(this.path)
     if (!current) return
-    const next = explicitConfigurationDefaults(current.value)
-    if (documentConfiguration(render(current.text, next), this.fields) === current.text) return
+    const next = explicitConfigurationDefaults(current.value, this.explicitDefaults)
+    if (documentConfiguration(renderConfiguration(current.text, next), this.fields) === current.text) return
     await this.begin(next, { key: 'documentation', scope: 'initialization', defaults: this.state.defaults })
     await this.commit()
   }
@@ -190,7 +191,7 @@ export class ConfigurationFile {
     const current = await readConfiguration(this.path)
     if (!current || digest(current.text) !== trial.before) {
       const restored = !current || digest(current.text) === trial.after ? backup.text
-        : render(current.text, mergeConfiguration(current.value, trial.afterFingerprints, backup.value))
+        : renderConfiguration(current.text, mergeConfiguration(current.value, trial.afterFingerprints, backup.value))
       await atomic(this.path, restored)
     }
     this.state.trial = null

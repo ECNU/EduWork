@@ -210,6 +210,12 @@
 //   "releasesURL": "https://updates.example.org/releases"
 // updates.defaultPolicy：stable 仅公测，development 也接收开发版；不填沿用打包默认值，设置中手动选择优先。
 //   "defaultPolicy": "development"
+// updates.macFeeds：macOS Sparkle 更新清单；仅支持 Sparkle 的安装包使用，仍验证包内公钥。Windows 忽略此项。
+//   "macFeeds": {}
+// updates.macFeeds.stable：macOS 公测渠道的 HTTPS appcast 地址。
+//   "stable": "https://updates.example.org/macos/stable/appcast.xml"
+// updates.macFeeds.development：macOS 开发渠道的 HTTPS appcast 地址。
+//   "development": "https://updates.example.org/macos/development/appcast.xml"
 // contentUpdates：可选签名配置/Skills 更新；须同时有来源和真实公钥，未配置则关闭。与软件 updates 独立。
 //   "contentUpdates": {}
 // contentUpdates.publisher：内容发行者标识，须与签名清单相符。
@@ -276,6 +282,138 @@
 //   "title": "示例音色"
 // media.providers[].speech.voices[].language：可选语言标识。
 //   "language": "zh-CN"
-// plugins：已安装插件的选项，以插件 ID 为键；不会安装新插件。具体参数由该插件文档定义，未知插件 ID 会报错。
+// plugins：已安装插件的选项，以插件 ID 为键；不会安装新插件。下方列出可编辑默认值；设置中保存的个人偏好可能优先。
 //   "plugins": {}
+// plugins.eduwork-brand-settings.visualStyle：默认配色：ecnu-liwa 红色、dsh 蓝色；设置中保存的个人偏好优先。
+//   "visualStyle": "ecnu-liwa"
+// plugins.eduwork-brand-settings.detailsPanelWidth：右侧面板默认宽度，300–1600 像素；个人偏好优先。
+//   "detailsPanelWidth": 360
+// plugins.eduwork-brand-settings.enabledOptionalPresets：默认启用的可选 Agent 预设：minimal、cordis；个人偏好优先。
+//   "enabledOptionalPresets": []
+// plugins.eduwork-brand-settings.manageOptionalPresets：同步可选 Agent 预设；发行默认 true。
+//   "manageOptionalPresets": true
+// plugins.eduwork-brand-settings.upstreamWelcomeNoticeVersion：已阅读的上游说明版本，由发行包提供；通常不修改。
+//   "upstreamWelcomeNoticeVersion": "2026-08-13.1"
+// plugins.eduwork-brand-settings.product.styleLabels：可选配色名称；产品名称和 Logo 请修改顶层 product。
+//   "styleLabels": {"dsh":"蓝色","ecnu-liwa":"红色"}
+// plugins.eduwork-skill-settings.disabled：默认禁用的 Skill 名称数组；个人设置优先。
+//   "disabled": []
+// plugins.eduwork-skill-settings.enabled：默认启用的 Skill 名称数组；个人设置优先。
+//   "enabled": []
+// plugins.eduwork-skill-settings.defaultDisabled：发行版默认禁用的 Skill 名称数组。
+//   "defaultDisabled": []
+// plugins.eduwork-activity-insights-native.cacheMs：个人概览缓存时间，10000–600000 毫秒。
+//   "cacheMs": 60000
+// plugins.eduwork-activity-insights-native.concurrency：概览统计任务并发，1–4；不是模型请求并发。
+//   "concurrency": 2
+// plugins.eduwork-activity-insights-native.requestTimeoutMs：单项概览统计超时，5000–120000 毫秒。
+//   "requestTimeoutMs": 30000
+// plugins.eduwork-activity-insights-native.profileTimeoutMs：用户资料读取超时，500–10000 毫秒。
+//   "profileTimeoutMs": 3000
+// plugins.eduwork-activity-insights-native.cacheNamespace：统计缓存命名空间。
+//   "cacheNamespace": "default"
+// plugins.eduwork-activity-insights-native.dshHome：可选统计数据目录；不填自动使用当前用户的 DSH 数据目录。
+//   "dshHome": "/path/to/dsh-home"
+// plugins.eduwork-knowledge-studio.maxTextFileBytes：单个文本文件大小上限，64 KiB–64 MiB。
+//   "maxTextFileBytes": 1048576
+// plugins.eduwork-knowledge-studio.maxPdfFileBytes：单个 PDF 大小上限，1–256 MiB。
+//   "maxPdfFileBytes": 67108864
+// plugins.eduwork-knowledge-studio.maxFiles：最大索引文件数，1–100000。
+//   "maxFiles": 20000
+// plugins.eduwork-knowledge-studio.indexedRetrievalTools：是否注册索引检索工具，默认关闭。
+//   "indexedRetrievalTools": false
+// plugins.eduwork-knowledge-studio.skills：插件自行注册 Skills；桌面版由统一 Skill 目录管理，保持 false。
+//   "skills": false
+// plugins.eduwork-knowledge-studio.dataRoot：可选索引数据目录；不填使用用户数据目录。
+//   "dataRoot": "/path/to/studio"
+// plugins.eduwork-knowledge-studio.artifactPath：可选成果索引 JSON 文件路径；不填使用用户数据目录。
+//   "artifactPath": "/path/to/artifacts.json"
+// plugins.eduwork-knowledge-studio.uiPreferencesPath：可选 Studio 界面偏好文件路径；不填使用用户数据目录。
+//   "uiPreferencesPath": "/path/to/studio-ui.json"
+// plugins.eduwork-artifact-services.skills：插件自行注册 Skills；桌面版使用统一目录，保持 false。
+//   "skills": false
+// plugins.eduwork-artifact-services.bgmRoot：可选背景音乐目录，须含 catalog.json；不填使用包内音乐。
+//   "bgmRoot": "/path/to/bgm"
+// plugins.eduwork-artifact-services.transcription.local：本地 Whisper 转写；程序和模型路径由安装包定位，可按需覆盖。
+//   "local": {}
+// plugins.eduwork-artifact-services.transcription.local.id：转写服务标识。
+//   "id": "whisper-cpp"
+// plugins.eduwork-artifact-services.transcription.local.title：转写服务显示名称。
+//   "title": "Local Whisper (CPU)"
+// plugins.eduwork-artifact-services.transcription.local.model：转写模型显示标识；模型文件由 modelPath 指定。
+//   "model": "whisper-tiny-q5_1"
+// plugins.eduwork-artifact-services.transcription.local.threads：本地转写 CPU 线程数，1–64。
+//   "threads": 4
+// plugins.eduwork-artifact-services.transcription.local.maxDurationSeconds：音频时长上限，1–14400 秒。
+//   "maxDurationSeconds": 3600
+// plugins.eduwork-artifact-services.transcription.local.executablePath：可选 Whisper 可执行文件绝对路径；不填使用内置运行时。
+//   "executablePath": "/path/to/whisper-cli"
+// plugins.eduwork-artifact-services.transcription.local.modelPath：可选 Whisper 模型绝对路径；不填使用内置模型。
+//   "modelPath": "/path/to/ggml-tiny-q5_1.bin"
+// plugins.eduwork-artifact-services.transcription.local.ffmpegPath：可选 FFmpeg 可执行文件绝对路径；不填自动查找内置运行时。
+//   "ffmpegPath": "/path/to/ffmpeg"
+// plugins.dsh-mail-assistant.readEnabled：允许读取邮件；设置中的个人选择优先。
+//   "readEnabled": false
+// plugins.dsh-mail-assistant.sendEnabled：允许发送邮件；仍遵守会话权限规则。
+//   "sendEnabled": false
+// plugins.dsh-mail-assistant.email：邮箱地址；密码在设置中保存，不写入本文件。
+//   "email": ""
+// plugins.dsh-mail-assistant.username：登录用户名；空字符串使用邮箱地址。
+//   "username": ""
+// plugins.dsh-mail-assistant.fromName：发件人显示名称。
+//   "fromName": ""
+// plugins.dsh-mail-assistant.inboxFolder：默认收件文件夹。
+//   "inboxFolder": "INBOX"
+// plugins.dsh-mail-assistant.imapHost：IMAP 主机名，启用读取前填写。
+//   "imapHost": ""
+// plugins.dsh-mail-assistant.imapPort：IMAP 端口，1–65535。
+//   "imapPort": 993
+// plugins.dsh-mail-assistant.imapTls：IMAP 加密：implicit 或 starttls。
+//   "imapTls": "implicit"
+// plugins.dsh-mail-assistant.smtpHost：SMTP 主机名，启用发送前填写。
+//   "smtpHost": ""
+// plugins.dsh-mail-assistant.smtpPort：SMTP 端口，1–65535。
+//   "smtpPort": 465
+// plugins.dsh-mail-assistant.smtpTls：SMTP 加密：implicit 或 starttls。
+//   "smtpTls": "implicit"
+// plugins.dsh-mail-assistant.maxBodyChars：返回的邮件正文字符上限，1000–200000。
+//   "maxBodyChars": 20000
+// plugins.dsh-mail-assistant.maxMessageBytes：单封邮件大小上限，1–100 MiB。
+//   "maxMessageBytes": 26214400
+// plugins.dsh-mail-assistant.maxAttachmentBytes：单个附件大小上限，1 KiB–100 MiB。
+//   "maxAttachmentBytes": 20971520
+// plugins.local-memory.enabled：是否启用本地记忆；以下默认值可在个人设置中覆盖。
+//   "enabled": true
+// plugins.local-memory.generate_memories：是否生成记忆。
+//   "generate_memories": true
+// plugins.local-memory.use_memories：是否使用记忆。
+//   "use_memories": true
+// plugins.local-memory.search_prior_chats：是否允许检索历史会话。
+//   "search_prior_chats": true
+// plugins.local-memory.disable_on_external_context：存在外部上下文时停止自动生成记忆。
+//   "disable_on_external_context": true
+// plugins.local-memory.max_raw_memories_for_consolidation：单次整理最多读取的原始记忆数，1–10000。
+//   "max_raw_memories_for_consolidation": 256
+// plugins.local-memory.max_rollout_age_days：可用于整理的会话最大天数，1–3650。
+//   "max_rollout_age_days": 30
+// plugins.local-memory.max_rollouts_per_startup：每次启动最多处理的会话数，1–10000。
+//   "max_rollouts_per_startup": 16
+// plugins.local-memory.max_unused_days：未使用记忆的保留天数，1–3650。
+//   "max_unused_days": 30
+// plugins.local-memory.min_rate_limit_remaining_percent：后台记忆处理要求的最低剩余额度百分比，0–100。
+//   "min_rate_limit_remaining_percent": 25
+// plugins.local-memory.min_rollout_idle_hours：会话空闲多少小时后可整理，0–8760。
+//   "min_rollout_idle_hours": 6
+// plugins.local-memory.max_records：记忆记录数上限，16–10000。
+//   "max_records": 400
+// plugins.enterprise-oidc.uiMode：standard 标准面板、external 外部入口、models-only 仅模型入口。
+//   "uiMode": "standard"
+// plugins.enterprise-oidc.desktop.callbackPort：浏览器登录回调端口，0–65535；0 自动选择可用端口。
+//   "callbackPort": 0
+// plugins.enterprise-oidc.desktop.flowTimeoutMs：浏览器登录流程超时，1000–600000 毫秒。
+//   "flowTimeoutMs": 600000
+// plugins.enterprise-oidc.web.returnPath：仅 Local Web 登录完成后返回的同源绝对路径；Electron 忽略。
+//   "returnPath": "/"
+// plugins.enterprise-oidc.authorizedOrigins：额外允许账户服务访问的 HTTPS 源数组，最多 64 个；默认使用发现协议授权的资源，通常不要填写。
+//   "authorizedOrigins": []
 // </eduwork-configuration-reference>

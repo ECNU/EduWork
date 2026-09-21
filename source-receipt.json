@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T01:52:45.730Z",
-  "fileSetSHA256": "04f35b3a1bfbd6e94fe8f5b95256b8dc432627ef0f7b1620f7c348ac87ed5d88",
+  "createdAt": "2026-09-21T02:19:36.200Z",
+  "fileSetSHA256": "9a6c394bf4e90d8a54465bab473defb8f5ca539b9981e2e6a5b6f4af6867c240",
   "files": [
     {
       "path": ".gitattributes",
@@ -137,19 +137,19 @@
     },
     {
       "path": "config/desktop/eduwork.jsonc",
-      "sha256": "057ee310d4df45a2619858dd9f6249b798be3ddd043730ab1a5ae1c7db1357a6"
+      "sha256": "1662e4ea5e855298dd5cb113ccb57a62f8f317804ff841fa84d568485ac2e964"
     },
     {
       "path": "config/desktop/examples/litellm.jsonc",
-      "sha256": "0017373de787ab6b70571570f73d3864ff0198a60d6932e86741cb25c52fce9e"
+      "sha256": "d2c39748f9ce1b12eec0b6c69c7480eb11581e33948040deb9028f94efe9052c"
     },
     {
       "path": "config/desktop/examples/media.jsonc",
-      "sha256": "b7636dffd7b544adcc535b074779836599a8bdc3113ad00763aef8fef0a6c060"
+      "sha256": "b1f6f04879dde3e77f21101c88ac720723756735f1864ea28e49f708b3ee4512"
     },
     {
       "path": "config/desktop/examples/organization.jsonc",
-      "sha256": "2c5c106f54a90b0d3161152a7ce21c05d7d51143f2ab65213aa3a228dd52d597"
+      "sha256": "0b4b5b9c7e3e47f6621cfa4802cfb040337c7a0f44cc0aac6c4e00e5f6f71ea7"
     },
     {
       "path": "config/desktop/examples/README_EN.md",
@@ -161,7 +161,7 @@
     },
     {
       "path": "config/desktop/examples/updates.jsonc",
-      "sha256": "d2b5f8b3a6c79f36fa5bac8a92ed1969fe4f6b1bb453ddda00b5620a17fb3e45"
+      "sha256": "cdb3d0989908a661d05526d7f67ab824a8e36a71ceb784418d84d3d57d2d949e"
     },
     {
       "path": "config/distributions/generic.json",
@@ -181,11 +181,11 @@
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
-      "sha256": "37b453f15872abd3be4bfc9cf216e8da4563d3c7d03827d6accb25dfaad4c24c"
+      "sha256": "ab397ccffa2ef62df53f30b492bd3af5072c4679aa538d0b4b401236a4f91b41"
     },
     {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "1da1e8fb53d7ba9689d24865dce249798a79f290025f701a4558385bb829813f"
+      "sha256": "172c7f15e0a36ece9dd07283d1264f43312577818a6c0ae68181201400683df1"
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
@@ -609,7 +609,7 @@
     },
     {
       "path": "dsh-desktop/scripts/assemble-official-host.ps1",
-      "sha256": "5fceedff43fde5fb85f686f6723c471e721ea18384a283201cb58feba5c1cbc6"
+      "sha256": "b7929268f5cca767d2ac7eb0bbe56c7bbda54430c6788ee26ca5f789c27866d9"
     },
     {
       "path": "dsh-desktop/scripts/assemble-wails-bridge.ps1",
@@ -677,7 +677,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "c6015df2411113216638149821d7b354394060d1f160affef0dd3a180f4b5529"
+      "sha256": "6392664b73eb6cf6ed1cdacb40de9a14341f6d9be4180559f5f291d072e27d24"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -741,11 +741,11 @@
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
-      "sha256": "afe8613664006b1387c11b3d608c88890965499a03dbeeea6dc67564e21aeb90"
+      "sha256": "6e2710263ab0debd8e8c6b48766d5be272fe27527a638953d27e077b086a15c6"
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "9e5a9cad16788f9cd56e2f3de0fcacf1195cc28f6ced5f37a4ab266731e523ef"
+      "sha256": "5771b7d36e42e860af440e9fb0e6cd4238fc8e7ce540fc3e2c1441e2c2e65038"
     },
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
@@ -829,7 +829,7 @@
     },
     {
       "path": "dsh-electron/tests/update-policy.test.mjs",
-      "sha256": "8db81228b08b1a4f2763778bdee98a6627befe2e14a87809417b661ee246017a"
+      "sha256": "141372843ac3e7c9eb3c7381cfa4e3be451a3dca5b7ebb7eea44fd85900b06e7"
     },
     {
       "path": "dsh-electron/tests/window-lifecycle.mjs",
@@ -849,15 +849,19 @@
     },
     {
       "path": "dsh-host/configuration-documentation.mjs",
-      "sha256": "a6ad51ffa3fea34e924f9db4c32584de72900df863f4d5ad549e0a83a81e502f"
+      "sha256": "9f3b6175761ed3cb9693dcab831e2be1c88b3f71e12f082bdc56284db4b4b363"
     },
     {
       "path": "dsh-host/configuration-file.mjs",
-      "sha256": "7c4b4eb38173e4a593b3471a41e8d0a4736a69991264e00aee49f9aebf25fab0"
+      "sha256": "dfc1b15978a5221ca7821628f1bdc7b7671b11748c29c73cd9e9e6a9f02f29a7"
+    },
+    {
+      "path": "dsh-host/configuration-plugin-options.mjs",
+      "sha256": "f719e666d56f0c8c91e027a4c12aed64ff7f1064e97a415d32dc4b4978b1979c"
     },
     {
       "path": "dsh-host/configuration-reference.mjs",
-      "sha256": "c4bd90caeb55105b925e1678415e6a3feb1c35647f377b879cbf9a39a6e9c0b6"
+      "sha256": "fa1e9fe22cffa7a66d0c76cb9af2ffbc51d6666048f8c6718a96bea52ef15c08"
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
@@ -865,7 +869,7 @@
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "94ccb787c405a5eb60c9623f4d6b79df506e18693f7a37dc97d46113cd4e6801"
+      "sha256": "6580479c9f5ee1748747b88e989c5b94b4f331a7464037fc4e660018589ae99c"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -913,7 +917,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "7213602b32688b968610b58b6daf37e98525dc33d1f361a0eefe0c539ccc8c50"
+      "sha256": "ca17a86e0953119def381d3b12296f9a9a8f8428a4ae1fee52a4c36832a46b73"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -933,7 +937,7 @@
     },
     {
       "path": "dsh-host/test/configuration-documentation.test.mjs",
-      "sha256": "276ab14beff2e1532402527e71caa78de9e4ccfdc38a88edd4ffeb7d104838ad"
+      "sha256": "c139018ee21bfbe49566d5ca17d95727f42402119bd74ea4730410c657586bb4"
     },
     {
       "path": "dsh-host/test/configuration-file.test.mjs",
@@ -989,7 +993,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "3d44e0bc3566d3697b24396943d6b579767445534ae685163fefc24de8243bb0"
+      "sha256": "ac2d3d8eae9c153c743fa2a8677960e4b8cedbb588120c3eb7cda9841e94e2a0"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
@@ -1001,7 +1005,7 @@
     },
     {
       "path": "dsh-host/test/user-config.test.mjs",
-      "sha256": "00b83348441825b9d40ebee6cb913fd252de335678c3bb0fe64baa30dc32aab3"
+      "sha256": "38c66d43d0398b9629561f2c95b69585c5d955c23645bd21e74b479385b63d25"
     },
     {
       "path": "dsh-host/test/wails-migration.test.mjs",
@@ -1013,7 +1017,7 @@
     },
     {
       "path": "dsh-host/user-config.mjs",
-      "sha256": "e448f5a3ead1ca21ffc6d4d79835eb320ec1c0ac1b44b32fae464b02ae3869d0"
+      "sha256": "6e91c60f2cdb83f3a490910a209e4950fefdb027258cf2b4217fa6751b739a3c"
     },
     {
       "path": "dsh-host/vendor/jsonc-parser/LICENSE.md",

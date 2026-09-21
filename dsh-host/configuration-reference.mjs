@@ -1,3 +1,4 @@
+import { pluginConfigurationFields } from './configuration-plugin-options.mjs'
 // User-visible JSONC help. Examples document optional values; they are not defaults.
 const fields = (prefix, entries) => Object.fromEntries(Object.entries(entries).map(([key, value]) => [prefix + key, value]))
 const compat = {
@@ -104,6 +105,9 @@ export const configurationFields = {
     manifestURL: ['static 的 HTTPS 更新清单，必须与平台对应；Mac 使用发行版的 Sparkle 渠道。', 'https://updates.example.org/development/latest-windows-amd64.json'],
     releasesURL: ['可选 HTTPS 下载/发布页面。', 'https://updates.example.org/releases'],
     defaultPolicy: ['stable 仅公测，development 也接收开发版；不填沿用打包默认值，设置中手动选择优先。', 'development'],
+    macFeeds: ['macOS Sparkle 更新清单；仅支持 Sparkle 的安装包使用，仍验证包内公钥。Windows 忽略此项。', {}],
+    'macFeeds.stable': ['macOS 公测渠道的 HTTPS appcast 地址。', 'https://updates.example.org/macos/stable/appcast.xml'],
+    'macFeeds.development': ['macOS 开发渠道的 HTTPS appcast 地址。', 'https://updates.example.org/macos/development/appcast.xml'],
   }),
   contentUpdates: ['可选签名配置/Skills 更新；须同时有来源和真实公钥，未配置则关闭。与软件 updates 独立。', {}],
   ...fields('contentUpdates.', {
@@ -148,7 +152,8 @@ export const configurationFields = {
     title: ['音色显示名称，默认取 id。', '示例音色'],
     language: ['可选语言标识。', 'zh-CN'],
   }),
-  plugins: ['已安装插件的选项，以插件 ID 为键；不会安装新插件。具体参数由该插件文档定义，未知插件 ID 会报错。', {}],
+  plugins: ['已安装插件的选项，以插件 ID 为键；不会安装新插件。下方列出可编辑默认值；设置中保存的个人偏好可能优先。', {}],
+  ...pluginConfigurationFields,
 }
 
 export function configurationReference(extra = {}) {
