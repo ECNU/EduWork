@@ -84,6 +84,50 @@ test('newly materialized defaults can update without adopting existing local cho
   assert.equal((await readConfiguration(f.path)).value.features.visionFallback, true)
 })
 
+test('automatic HTTP defaults participate in later signed updates while genuine local edits win', async t => {
+  const f = await fixture(t)
+  const org = { schemaVersion: 'dsh-oidc/v1alpha1', id: 'school', displayName: 'Example',
+    oidc: { issuer: 'https://identity.example.test', clientId: 'synthetic-client', scopes: ['openid', 'profile'] } }
+  await f.file.apply({ scope, key: key(1), revision: 1, patch: { organizations: [org] } })
+  await f.file.commit()
+  assert.equal((await readConfiguration(f.path)).value.organizations[0].allowInsecureDevelopment, false)
+  const next = { ...org, allowInsecureDevelopment: true, oidc: { ...org.oidc, issuer: 'http://uat.example.test' } }
+  const reopened = await f.open()
+  assert.deepEqual(await reopened.apply({ scope, key: key(2), revision: 2, patch: { organizations: [next] } }), [])
+  const current = await readConfiguration(f.path)
+  assert.deepEqual(JSON.parse(JSON.stringify(current.value.organizations)), [next])
+  await reopened.commit()
+  current.value.organizations[0].oidc.issuer = 'http://custom.example.test'
+  await writeFile(f.path, JSON.stringify(current.value))
+  const conflicts = await reopened.apply({ scope, key: key(3), revision: 3, patch: { organizations: [next] } })
+  assert.equal((await readConfiguration(f.path)).value.organizations[0].oidc.issuer, 'http://custom.example.test')
+  assert.deepEqual(conflicts, [])
+})
+
+test('help can extend an existing signed baseline with newly supplied defaults', async t => {
+  const f = await fixture(t)
+  await f.file.apply({ scope, key: key(1), revision: 1, patch: { features: { maxConcurrentRequests: 3 } } })
+  await f.file.commit()
+  f.file.explicitDefaults = { features: { visionFallback: false } }
+  await f.file.document()
+  const reopened = await f.open()
+  await reopened.apply({ scope, key: key(2), revision: 2, patch: { features: { maxConcurrentRequests: 4, visionFallback: true } } })
+  assert.equal((await readConfiguration(f.path)).value.features.visionFallback, true)
+})
+
+test('rollback resolves relative logos beside the active config, including crash recovery', async t => {
+  const f = await fixture(t)
+  await mkdir(join(f.root, 'config/assets'))
+  await writeFile(join(f.root, 'config/assets/logo.svg'), '<svg xmlns="http://www.w3.org/2000/svg"/>')
+  await writeFile(f.path, JSON.stringify({ ...f.value, product: { logoFile: 'assets/logo.svg' } }))
+  const before = await readFile(f.path, 'utf8')
+  await f.file.apply({ scope, key: key(1), revision: 1, patch: { features: { maxConcurrentRequests: 4 } } })
+  const recovered = await f.open()
+  assert.equal(await readFile(f.path, 'utf8'), before)
+  assert.equal(recovered.state.trial, null)
+  assert.match(loadUserConfig(f.path).product.logoUrl, /^data:image\/svg\+xml;base64,/)
+})
+
 test('bootstrap initialization rejects an obsolete source snapshot', async t => {
   const f = await fixture(t)
   const current = await readConfiguration(f.path)

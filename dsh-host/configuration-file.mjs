@@ -68,12 +68,12 @@ export function mergeConfiguration(local, previous, incoming, conflicts = [], pa
   return local
 }
 
-export async function readConfiguration(path) {
+export async function readConfiguration(path, validationPath = path) {
   const info = await lstat(path).catch(error => { if (error.code !== 'ENOENT') throw error })
   if (!info) return null
   if (!info.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) throw Error('配置文件必须是普通文件且不超过 1 MiB')
   const text = await readFile(path, 'utf8')
-  parseUserConfig(path, text)
+  parseUserConfig(validationPath, text)
   return { text, value: jsonc.getNodeValue(jsonc.parseTree(text.replace(/^\uFEFF/, ''), [], { allowTrailingComma: true })) }
 }
 
@@ -176,7 +176,9 @@ export class ConfigurationFile {
     if (!current) return
     const next = explicitConfigurationDefaults(current.value, this.explicitDefaults)
     if (documentConfiguration(renderConfiguration(current.text, next), this.fields) === current.text) return
-    await this.begin(next, { current, key: 'documentation', scope: 'initialization', defaults: this.state.defaults,
+    const defaults = this.state.defaults && { ...this.state.defaults,
+      fingerprints: addedDefaultFingerprints(this.state.defaults.fingerprints, business(current.value), business(next)) }
+    await this.begin(next, { current, key: 'documentation', scope: 'initialization', defaults,
       initialFingerprints: addedDefaultFingerprints(this.state.initialFingerprints, business(current.value), business(next)) })
     await this.commit()
   }
@@ -207,7 +209,9 @@ export class ConfigurationFile {
       if (update[name] === undefined) delete next[name]
       else next[name] = update[name]
     }
-    await this.begin(next, { current, key, scope, initialized: true, defaults: { key, scope, revision, fingerprints: configurationFingerprints(patch), conflicts } })
+    const materialized = explicitConfigurationDefaults(next, this.explicitDefaults)
+    const fingerprints = addedDefaultFingerprints(configurationFingerprints(patch), business(next), business(materialized))
+    await this.begin(materialized, { current, key, scope, initialized: true, defaults: { key, scope, revision, fingerprints, conflicts } })
     return conflicts
   }
   async commit() {
@@ -219,7 +223,8 @@ export class ConfigurationFile {
   async rollback() {
     const trial = this.state.trial
     if (!trial) return false
-    const backup = await readConfiguration(this.backup)
+    // Relative assets still belong to the active configuration directory.
+    const backup = await readConfiguration(this.backup, this.path)
     if (!backup || digest(backup.text) !== trial.before) throw Error('配置备份校验失败，未覆盖当前文件')
     const current = await readConfiguration(this.path)
     if (!current || digest(current.text) !== trial.before) {

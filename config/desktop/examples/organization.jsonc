@@ -325,6 +325,62 @@
 //   "language": "zh-CN"
 // plugins：已安装插件的选项，以插件 ID 为键；不会安装新插件。下方列出可编辑默认值；设置中保存的个人偏好可能优先。
 //   "plugins": {}
+// plugins.literature.enabledSources：参与检索的文献源：dblp、arxiv；不填使用全部已注册源，空数组禁用全部。
+//   "enabledSources": ["dblp","arxiv"]
+// plugins.literature.searchMaxResults：合并文献检索结果后的默认条数上限。
+//   "searchMaxResults": 10
+// plugins.literature.timeoutMs：全文下载等文献请求超时，单位毫秒。
+//   "timeoutMs": 60000
+// plugins.literature.maxRedirects：同源请求允许的最大重定向次数。
+//   "maxRedirects": 5
+// plugins.literature.maxUrlLength：可接受的文献链接长度上限，单位字符。
+//   "maxUrlLength": 2048
+// plugins.literature.downloadMaxBytes：全文及源码压缩包下载字节上限。
+//   "downloadMaxBytes": 100000000
+// plugins.literature.extractMaxChars：每个提取文本文件保留的字符数上限。
+//   "extractMaxChars": 200000
+// plugins.literature.summaryMaxChars：全文摘要保留的字符数上限。
+//   "summaryMaxChars": 4000
+// plugins.literature.landingPageMaxChars：分析出版商页面时保留的字符数上限。
+//   "landingPageMaxChars": 20000
+// plugins.literature.userAgent：文献 HTTP 请求的 User-Agent。
+//   "userAgent": "deepseek-harness/0.1.0 (+https://github.com/deepseek-ai)"
+// plugins.literature-dblp.baseUrl：DBLP 服务地址。
+//   "baseUrl": "https://dblp.org"
+// plugins.literature-dblp.timeoutMs：DBLP 请求超时，单位毫秒。
+//   "timeoutMs": 30000
+// plugins.literature-dblp.maxRedirects：同源请求允许的最大重定向次数。
+//   "maxRedirects": 5
+// plugins.literature-dblp.maxUrlLength：请求链接长度上限，单位字符。
+//   "maxUrlLength": 2048
+// plugins.literature-dblp.maxResponseBytes：单次响应的字节上限。
+//   "maxResponseBytes": 5000000
+// plugins.literature-dblp.rateLimitMs：DBLP 请求最小间隔，单位毫秒。
+//   "rateLimitMs": 1000
+// plugins.literature-dblp.userAgent：DBLP HTTP 请求的 User-Agent。
+//   "userAgent": "deepseek-harness/0.1.0 (+https://github.com/deepseek-ai)"
+// plugins.literature-arxiv.apiBase：arXiv 检索 API 地址。
+//   "apiBase": "https://export.arxiv.org"
+// plugins.literature-arxiv.wwwBase：arXiv 页面与全文地址。
+//   "wwwBase": "https://arxiv.org"
+// plugins.literature-arxiv.timeoutMs：arXiv 请求超时，单位毫秒。
+//   "timeoutMs": 30000
+// plugins.literature-arxiv.maxRedirects：同源请求允许的最大重定向次数。
+//   "maxRedirects": 5
+// plugins.literature-arxiv.maxUrlLength：请求链接长度上限，单位字符。
+//   "maxUrlLength": 2048
+// plugins.literature-arxiv.maxResponseBytes：单次全文及源码响应的字节上限。
+//   "maxResponseBytes": 100000000
+// plugins.literature-arxiv.rateLimitMs：arXiv 请求最小间隔，单位毫秒；默认 3000，避免触发限流。
+//   "rateLimitMs": 3000
+// plugins.literature-arxiv.rateLimitBackoffBaseMs：限流重试的基础等待时间，单位毫秒。
+//   "rateLimitBackoffBaseMs": 3000
+// plugins.literature-arxiv.rateLimitBackoffMaxRetries：限流后的最大重试次数。
+//   "rateLimitBackoffMaxRetries": 5
+// plugins.literature-arxiv.userAgent：arXiv HTTP 请求的 User-Agent。
+//   "userAgent": "deepseek-harness/0.1.0 (+https://github.com/deepseek-ai)"
+// plugins.tool-literature.subagentProvider：寻找出版商 PDF 链接时使用的子代理执行器；须支持结构化输出和工具过滤。
+//   "subagentProvider": "spawn"
 // plugins.eduwork-brand-settings.visualStyle：默认配色：ecnu-liwa 红色、dsh 蓝色；设置中保存的个人偏好优先。
 //   "visualStyle": "ecnu-liwa"
 // plugins.eduwork-brand-settings.detailsPanelWidth：右侧面板默认宽度，300–1600 像素；个人偏好优先。

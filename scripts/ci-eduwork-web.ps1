@@ -62,6 +62,8 @@ try {
     $componentReceipt = Get-Content -LiteralPath (Join-Path $assemblyOutput 'assembly.json') -Raw | ConvertFrom-Json
     if ($componentReceipt.runtimeMode -ne 'npm' -or $componentReceipt.pluginMode -ne 'npm' -or @($componentReceipt.managedPackages.PSObject.Properties | Where-Object { $_.Value.source -ne 'npm' }).Count) { throw 'Default CI must validate the npm Runtime and registry-installed independent plugins' }
     $result.dependencySource = 'npm-exact-locks'
+    & node (Join-Path $CoreRoot 'scripts/check-bundled-configuration.mjs') $assemblyOutput
+    if ($LASTEXITCODE) { throw 'Installed bundle configuration coverage failed.' }
     Copy-Item -LiteralPath (Join-Path $assemblyOutput 'assembly.json') -Destination (Join-Path $evidence 'assembly.json')
     $result.build = 'passed'
     if ($BuildOnly) {

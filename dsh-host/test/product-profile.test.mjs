@@ -19,13 +19,15 @@ async function fixture(t) {
   return { root, product, home }
 }
 
-test('mail and memory settings reach their installed bundle rows without admitting uninstalled plugins', async t => {
+test('mail, memory and literature settings reach installed bundle rows without admitting uninstalled plugins', async t => {
   const { root, product, home } = await fixture(t)
   const identity = JSON.parse(await readFile(join(product, 'assembly.json')))
-  identity.bundles.push('@eduwork/dsh-mail', '@eduwork/dsh-memory')
+  identity.bundles.push('@eduwork/dsh-mail', '@eduwork/dsh-memory', '@shlv/dsh-literature')
   await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
   const userConfig = join(root, 'eduwork.jsonc')
-  const plugins = { 'dsh-mail-assistant': { imapHost: 'mail.example.test', readEnabled: false }, 'local-memory': { max_records: 50 } }
+  const plugins = { 'dsh-mail-assistant': { imapHost: 'mail.example.test', readEnabled: false }, 'local-memory': { max_records: 50 },
+    literature: { timeoutMs: 90000 }, 'literature-dblp': { rateLimitMs: 2000 },
+    'literature-arxiv': { apiBase: 'https://arxiv.example.test' }, 'tool-literature': { subagentProvider: 'spawn' } }
   await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, plugins }))
   const prepared = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
   const rows = JSON.parse(await readFile(join(prepared.profile, 'cordis.patch.yml')))

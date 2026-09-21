@@ -5,8 +5,48 @@ const group = (id, entries) => Object.fromEntries(Object.entries(entries).map(([
 export const bundledConfigurationPlugins = {
   'dsh-mail-assistant': '@eduwork/dsh-mail',
   'local-memory': '@eduwork/dsh-memory',
+  literature: '@shlv/dsh-literature',
+  'literature-dblp': '@shlv/dsh-literature',
+  'literature-arxiv': '@shlv/dsh-literature',
+  'tool-literature': '@shlv/dsh-literature',
 }
 export const pluginConfigurationFields = {
+  ...group('literature', {
+    enabledSources: ['参与检索的文献源：dblp、arxiv；不填使用全部已注册源，空数组禁用全部。', ['dblp', 'arxiv']],
+    searchMaxResults: ['合并文献检索结果后的默认条数上限。', 10, true],
+    timeoutMs: ['全文下载等文献请求超时，单位毫秒。', 60000, true],
+    maxRedirects: ['同源请求允许的最大重定向次数。', 5, true],
+    maxUrlLength: ['可接受的文献链接长度上限，单位字符。', 2048, true],
+    downloadMaxBytes: ['全文及源码压缩包下载字节上限。', 100000000, true],
+    extractMaxChars: ['每个提取文本文件保留的字符数上限。', 200000, true],
+    summaryMaxChars: ['全文摘要保留的字符数上限。', 4000, true],
+    landingPageMaxChars: ['分析出版商页面时保留的字符数上限。', 20000, true],
+    userAgent: ['文献 HTTP 请求的 User-Agent。', 'deepseek-harness/0.1.0 (+https://github.com/deepseek-ai)', true],
+  }),
+  ...group('literature-dblp', {
+    baseUrl: ['DBLP 服务地址。', 'https://dblp.org', true],
+    timeoutMs: ['DBLP 请求超时，单位毫秒。', 30000, true],
+    maxRedirects: ['同源请求允许的最大重定向次数。', 5, true],
+    maxUrlLength: ['请求链接长度上限，单位字符。', 2048, true],
+    maxResponseBytes: ['单次响应的字节上限。', 5000000, true],
+    rateLimitMs: ['DBLP 请求最小间隔，单位毫秒。', 1000, true],
+    userAgent: ['DBLP HTTP 请求的 User-Agent。', 'deepseek-harness/0.1.0 (+https://github.com/deepseek-ai)', true],
+  }),
+  ...group('literature-arxiv', {
+    apiBase: ['arXiv 检索 API 地址。', 'https://export.arxiv.org', true],
+    wwwBase: ['arXiv 页面与全文地址。', 'https://arxiv.org', true],
+    timeoutMs: ['arXiv 请求超时，单位毫秒。', 30000, true],
+    maxRedirects: ['同源请求允许的最大重定向次数。', 5, true],
+    maxUrlLength: ['请求链接长度上限，单位字符。', 2048, true],
+    maxResponseBytes: ['单次全文及源码响应的字节上限。', 100000000, true],
+    rateLimitMs: ['arXiv 请求最小间隔，单位毫秒；默认 3000，避免触发限流。', 3000, true],
+    rateLimitBackoffBaseMs: ['限流重试的基础等待时间，单位毫秒。', 3000, true],
+    rateLimitBackoffMaxRetries: ['限流后的最大重试次数。', 5, true],
+    userAgent: ['arXiv HTTP 请求的 User-Agent。', 'deepseek-harness/0.1.0 (+https://github.com/deepseek-ai)', true],
+  }),
+  ...group('tool-literature', {
+    subagentProvider: ['寻找出版商 PDF 链接时使用的子代理执行器；须支持结构化输出和工具过滤。', 'spawn', true],
+  }),
   ...group('eduwork-brand-settings', {
     visualStyle: ['默认配色：ecnu-liwa 红色、dsh 蓝色；设置中保存的个人偏好优先。', 'ecnu-liwa', true],
     detailsPanelWidth: ['右侧面板默认宽度，300–1600 像素；个人偏好优先。', 360, true],
