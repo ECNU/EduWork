@@ -4,7 +4,7 @@
 
 Let users sign in to a LiteLLM gateway from EduWork, discover authorized models, and chat without manually distributing model API keys.
 
-[LiteLLM](https://github.com/BerriAI/litellm) provides the gateway; EduWork uses its native OAuth flow. This guide is for administrators of an existing LiteLLM deployment and EduWork desktop users. The protocol baseline is **LiteLLM v1.101.0 / native contract 1**; validate other versions using the checks below. EduWork requires a build containing this feature, which has not yet been published as an npm package or desktop release.
+[LiteLLM](https://github.com/BerriAI/litellm) provides the gateway; EduWork uses its native OAuth flow. This guide is for administrators of an existing LiteLLM deployment and EduWork desktop users. The protocol baseline is **LiteLLM v1.101.0 / native contract 1**; validate other versions using the checks below. **EduWork 0.3.6-dev.20260921.1 includes this feature** and a commented `examples/litellm.jsonc`; no additional plugin installation is needed. The underlying implementation is published as `@eduwork/dsh-oidc@0.3.0-dev.2`.
 
 ## 1. Prepare the server
 
@@ -37,7 +37,7 @@ See the [protocol reference](README_EN.md) for the full response and constraints
 
 ## 2. Configure EduWork
 
-Select **Open configuration file** in Settings and add this organization to `config/eduwork.jsonc`. Merge into an existing `organizations` array rather than replacing other settings.
+Select **Open configuration file** in Settings. Add the object inside the example's `organizations` array to the same array in the active `eduwork.jsonc`. On Windows, it is in the application's `config/`; on macOS public editions, it is in `~/Library/Application Support/eduwork-electron/config/`. The adjacent `examples/litellm.jsonc` provides the same format and full comments. Editing only the example has no effect; do not replace existing settings with the entire example.
 
 ```json
 {
@@ -47,6 +47,7 @@ Select **Open configuration file** in Settings and add this organization to `con
       "schemaVersion": "dsh-oidc/v1alpha1",
       "id": "example-gateway",
       "displayName": "Example model gateway",
+      "allowInsecureDevelopment": false,
       "auth": {
         "discoveryUrl": "https://gateway.example.org/.well-known/litellm-cli-auth",
         "expectedIssuer": "https://gateway.example.org"
@@ -60,10 +61,11 @@ Select **Open configuration file** in Settings and add this organization to `con
 | --- | --- |
 | `id` | A stable organization identifier, unique on this client. |
 | `displayName` | The organization name shown in the account menu. |
+| `allowInsecureDevelopment` | Defaults to `false` for HTTPS only; set `true` for HTTP testing, beside `auth`. |
 | `auth.discoveryUrl` | The complete discovery document URL supplied by the administrator. |
 | `auth.expectedIssuer` | The expected issuer; recommended, and must match discovery. |
 
-Save, exit completely through the tray, and restart EduWork. Closing its window usually leaves the process running.
+Save, exit completely through the tray or application menu, and restart EduWork. Closing its window usually leaves the process running.
 
 The model API base is the validated issuer with `/v1` appended, preserving any deployment prefix. Do not set `provider.baseURL`. LiteLLM dynamically registers a Client ID for this login: do not configure a static `clientId`, `client_secret`, or scope, or combine this profile with `oidc` or `keyBinding`.
 
@@ -77,6 +79,10 @@ Developers integrating another client can use the [single Profile example](../..
 2. Complete sign-in in the system browser. If the gateway asks for a team, select one with the required model permissions and approve access.
 3. The browser returns to a local callback page. Once it confirms completion, return to EduWork.
 4. Select an organization model and send a short message to verify a real upstream response.
+
+![Selecting deepseek-v4-flash in the organization group after signing in to LiteLLM from EduWork](../../../../docs/images/litellm-models.png)
+
+The local LiteLLM group is the configured organization name, and `deepseek-v4-flash` is an authorized gateway model. Server permissions determine your model list; the DeepSeek group above belongs to a separately configured provider.
 
 The `127.0.0.1` callback is a temporary EduWork listener on the user's computer, not the LiteLLM server. Complete sign-in in a browser on the same computer as the client. Do not bookmark or reuse an old authorization link.
 

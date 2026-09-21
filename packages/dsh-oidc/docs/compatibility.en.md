@@ -6,7 +6,7 @@ Runtime and DSH compatibility follow package.json, dependency locks and measured
 
 The current source supports LiteLLM native contract 1, explicitly enabled experimental oidc-llm 0.1 and standard identity-only OIDC. oidc-llm remains a draft and is disabled by default.
 
-This branch removes Key Binding model flows and backend: native account bridging; old profiles fail explicitly. New clients use Tokens while servers may retain legacy endpoints for released clients. This breaking change is unpublished. Choose an appropriate new package version and reviewed product locks before publication; never overwrite an existing npm version.
+`@eduwork/dsh-oidc@0.3.0-dev.2` removes Key Binding model flows and backend: native account bridging; old profiles fail explicitly. EduWork `0.3.6-dev.20260921.1` uses this package. New clients use Tokens, so confirm server support and migrate old profiles before upgrading. Servers may retain legacy endpoints for older clients. Future distributions must pin reviewed package versions and product locks; never overwrite an existing npm version.
 
 ## Validation
 

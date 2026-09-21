@@ -2,7 +2,7 @@
 
 [简体中文](experimental-oidc-llm.md) | **English**
 
-This branch provides an opt-in oidc-llm 0.1 adapter, disabled by default and not released. The protocol remains under review. This page describes implemented client behavior; it does not claim that the [complete draft](oidc-llm-draft.en.md) is finalized or that a server has passed acceptance.
+The opt-in oidc-llm 0.1 adapter is included in `@eduwork/dsh-oidc@0.3.0-dev.2` and EduWork `0.3.6-dev.20260921.1`, and remains disabled by default. The protocol is still under review. This page describes implemented client behavior; it does not claim that the [complete draft](oidc-llm-draft.en.md) is finalized or that arbitrary servers have passed acceptance.
 
 ## Configuration
 
