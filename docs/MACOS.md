@@ -51,6 +51,8 @@ Pull Request 应说明测试的 macOS 版本、硬件架构、构建命令和功
 
 GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色和实际安装体验仍需真机确认。仅生成 `.app` 或解析 npm 依赖成功不代表完整平台支持。
 
+涉及 Electron 菜单或输入行为的修改，应在实际打包应用的对话输入框和设置文本框中，用合成文本验证 `Cmd+A/C/X/V/Z` 与 `Cmd+Shift+Z`，确认全选、复制、剪切、粘贴、撤销和重做，并检查“编辑”菜单。使用真实键盘或系统原生按键自动化；DOM 键盘事件、CDP 输入或 `webContents.sendInputEvent()` 不能替代 macOS 菜单快捷键验收。测试无需发送模型请求。
+
 ## CI 开发候选
 
 公版运行 `Build desktop release candidates`，机构版运行 `Build ECNU desktop release candidates`，选择 Windows、Mac 或两者。工作流仅保留验收产物，校验后由维护者发布。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
