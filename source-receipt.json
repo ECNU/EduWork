@@ -4,7 +4,7 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T04:49:02.102Z",
+  "createdAt": "2026-09-21T04:51:16.463Z",
   "fileSetSHA256": "32f33b518729b58a6c8010a1be8adc8b78c60767911a7b2005dc029a059fcbac",
   "files": [
     {
@@ -4591,12 +4591,12 @@
   "artifacts": [
     {
       "name": "@eduwork/dsh-oidc",
-      "version": "0.3.0-dev.1",
-      "commit": "5fef08fdbff9a9543e75086f8fa0174ed511fceb",
+      "version": "0.3.0-dev.2",
+      "commit": "0b161e99509665a47508d13a96bfb6a98d181b2f",
       "lock": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
       "path": null,
       "source": "registry",
-      "sha256": "09b7a0c08d05eadbcc6fed38a0ade47224fb74fc78b4cc6957fe8ab4262d9323"
+      "sha256": "356c6338d27a537045fe9e33a4bce3bd18c4391add5327a3e5bbbf17fe016945"
     },
     {
       "name": "@eduwork/dsh-mail",
