@@ -3,7 +3,7 @@ import { readFile, writeFile, mkdir, rename, rm, lstat } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import * as jsonc from './vendor/jsonc-parser/parser.js'
-import { loadUserConfig } from './user-config.mjs'
+import { loadUserConfig, parseUserConfig } from './user-config.mjs'
 import { digest } from './content-update-protocol.mjs'
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -19,6 +19,29 @@ export function configurationFingerprints(value) {
   if (object(value)) result.children = Object.fromEntries(Object.entries(value).map(([key, item]) => [key, configurationFingerprints(item)]))
   else if (keyed(value)) result.items = Object.fromEntries(value.map(item => [item.id, configurationFingerprints(item)]))
   return result
+}
+
+// Documentation may introduce absent defaults, but must never turn a user's
+// existing value into a publisher baseline. Keep hashes for prior deletions too.
+function addedDefaultFingerprints(previous, before, after) {
+  if (hash(before) === hash(after)) return previous
+  if (before === undefined && !previous) return configurationFingerprints(after)
+  let field, left, right
+  if (object(before) && object(after)) { field = 'children'; left = before; right = after }
+  else if (keyed(before) && keyed(after)) {
+    field = 'items'
+    left = Object.fromEntries(before.map(item => [item.id, item]))
+    right = Object.fromEntries(after.map(item => [item.id, item]))
+  } else return previous
+  const entries = { ...previous?.[field] }
+  let changed = false
+  for (const [key, value] of Object.entries(right)) {
+    const child = addedDefaultFingerprints(own(entries, key), own(left, key), value)
+    if (child !== own(entries, key)) { entries[key] = child; changed = true }
+  }
+  // The old aggregate hash no longer describes the extended baseline. Children
+  // still distinguish unchanged publisher defaults from local edits.
+  return changed ? { hash: '', [field]: entries } : previous
 }
 
 /** Three-way defaults update. Local additions, deletions and edits win. */
@@ -50,7 +73,7 @@ export async function readConfiguration(path) {
   if (!info) return null
   if (!info.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) throw Error('配置文件必须是普通文件且不超过 1 MiB')
   const text = await readFile(path, 'utf8')
-  loadUserConfig(path)
+  parseUserConfig(path, text)
   return { text, value: jsonc.getNodeValue(jsonc.parseTree(text.replace(/^\uFEFF/, ''), [], { allowTrailingComma: true })) }
 }
 
@@ -118,24 +141,31 @@ export class ConfigurationFile {
     return this
   }
   async save() { await atomic(this.statePath, JSON.stringify(this.state, null, 2) + '\n') }
-  async begin(next, { key, scope, defaults, initialized = this.state.initialized, cleanup = this.state.cleanup }) {
+  async begin(next, { key, scope, defaults, current, initialized = this.state.initialized, cleanup = this.state.cleanup, initialFingerprints = this.state.initialFingerprints }) {
     if (this.state.trial) throw Error('请先完成当前配置更新')
+    if (current === undefined) throw Error('配置更新缺少原始文件快照')
     next = explicitConfigurationDefaults(next, this.explicitDefaults)
-    const current = await readConfiguration(this.path)
     const before = current?.text ?? '{"schemaVersion":1}\n', after = documentConfiguration(renderConfiguration(before, next), this.fields)
+    const ensureUnchanged = async () => {
+      const fresh = await readFile(this.path, 'utf8').catch(error => { if (error.code !== 'ENOENT') throw error; return null })
+      if (fresh !== (current?.text ?? null)) throw Error('配置文件在更新期间被修改，请重试；手工修改已保留')
+    }
     // Validate before replacing either the active file or its only backup.
     const temporary = this.path + '.' + randomUUID() + '.tmp'
     await mkdir(dirname(this.path), { recursive: true })
     try {
       await writeFile(temporary, after, { flag: 'wx', mode: 0o600 }); loadUserConfig(temporary)
+      // Compare with the snapshot used to plan the merge, before rotating the
+      // only backup. A newer read must never silently authorize a stale result.
+      await ensureUnchanged()
       await atomic(this.backup, before)
       this.state.trial = { key, scope, before: digest(before), after: digest(after), afterFingerprints: configurationFingerprints(next), defaults, initialized, cleanup,
-        initialFingerprints: scope === 'initialization' ? configurationFingerprints(business(next)) : this.state.initialFingerprints }
+        initialFingerprints }
       await this.save()
-      const fresh = await readFile(this.path, 'utf8').catch(error => { if (error.code !== 'ENOENT') throw error; return '{"schemaVersion":1}\n' })
-      if (digest(fresh) !== digest(before)) {
+      try { await ensureUnchanged() }
+      catch (error) {
         this.state.trial = null; await this.save()
-        throw Error('配置文件在更新期间被修改，请重试；手工修改已保留')
+        throw error
       }
       await rename(temporary, this.path)
     } finally { await rm(temporary, { force: true }) }
@@ -146,11 +176,14 @@ export class ConfigurationFile {
     if (!current) return
     const next = explicitConfigurationDefaults(current.value, this.explicitDefaults)
     if (documentConfiguration(renderConfiguration(current.text, next), this.fields) === current.text) return
-    await this.begin(next, { key: 'documentation', scope: 'initialization', defaults: this.state.defaults })
+    await this.begin(next, { current, key: 'documentation', scope: 'initialization', defaults: this.state.defaults,
+      initialFingerprints: addedDefaultFingerprints(this.state.initialFingerprints, business(current.value), business(next)) })
     await this.commit()
   }
-  async initialize(value, { defaults = null, cleanup = [] } = {}) {
-    await this.begin(value, { key: 'initialization', scope: 'initialization', defaults, initialized: true, cleanup })
+  async initialize(value, { defaults = null, cleanup = [], current } = {}) {
+    if (current === undefined) current = await readConfiguration(this.path)
+    await this.begin(value, { current, key: 'initialization', scope: 'initialization', defaults, initialized: true, cleanup,
+      initialFingerprints: configurationFingerprints(business(explicitConfigurationDefaults(value, this.explicitDefaults))) })
     await this.commit()
   }
   async apply({ scope, key, patch, revision, legacy = false }) {
@@ -174,7 +207,7 @@ export class ConfigurationFile {
       if (update[name] === undefined) delete next[name]
       else next[name] = update[name]
     }
-    await this.begin(next, { key, scope, initialized: true, defaults: { key, scope, revision, fingerprints: configurationFingerprints(patch), conflicts } })
+    await this.begin(next, { current, key, scope, initialized: true, defaults: { key, scope, revision, fingerprints: configurationFingerprints(patch), conflicts } })
     return conflicts
   }
   async commit() {

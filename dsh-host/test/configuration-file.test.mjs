@@ -58,6 +58,66 @@ test('deleted default entries stay deleted and removed unchanged defaults disapp
   assert.ok(conflicts.includes('organizations[school]'))
 })
 
+test('refreshing help before the first signed update does not adopt local edits as publisher defaults', async t => {
+  const f = await fixture(t)
+  const local = (await readConfiguration(f.path)).value
+  local.features.maxConcurrentRequests = 7
+  local.organizations[0].oidc.issuer = 'https://uat.example.org'
+  await writeFile(f.path, JSON.stringify(local))
+  await f.file.document()
+  const reopened = await f.open()
+  const conflicts = await reopened.apply({ scope, key: key(1), revision: 1,
+    patch: { organizations: [profile(200)], features: { maxConcurrentRequests: 4 } } })
+  const active = (await readConfiguration(f.path)).value
+  assert.equal(active.features.maxConcurrentRequests, 7)
+  assert.equal(active.organizations[0].oidc.issuer, 'https://uat.example.org')
+  assert.equal(active.organizations[0].provider.models[0].contextWindow, 200, 'untouched defaults still update')
+  assert.ok(conflicts.includes('features.maxConcurrentRequests'))
+})
+
+test('newly materialized defaults can update without adopting existing local choices', async t => {
+  const f = await fixture(t)
+  f.file.explicitDefaults = { features: { visionFallback: false } }
+  await f.file.document()
+  const reopened = await f.open()
+  await reopened.apply({ scope, key: key(1), revision: 1, patch: { features: { visionFallback: true } } })
+  assert.equal((await readConfiguration(f.path)).value.features.visionFallback, true)
+})
+
+test('bootstrap initialization rejects an obsolete source snapshot', async t => {
+  const f = await fixture(t)
+  const current = await readConfiguration(f.path)
+  const edited = JSON.stringify({ ...current.value, product: { name: 'Edited during bootstrap' } })
+  await writeFile(f.path, edited)
+  await assert.rejects(f.file.initialize(current.value, { current }), /配置文件在更新期间被修改/)
+  assert.equal(await readFile(f.path, 'utf8'), edited)
+  assert.equal(f.file.state.initialized, false)
+  await assert.rejects(readFile(f.file.backup), { code: 'ENOENT' })
+})
+
+for (const operation of ['document', 'apply']) test(`${operation} rejects an edit made after planning without rotating the backup`, async t => {
+  const f = await fixture(t)
+  await f.file.document()
+  const previous = await readFile(f.file.backup, 'utf8')
+  // Change the help contract so document() has work to do on the second call.
+  f.file.fields = { 'product.name': ['Additional help', 'Example'] }
+  const begin = f.file.begin.bind(f.file)
+  let edited
+  f.file.begin = async (...args) => {
+    const local = (await readConfiguration(f.path)).value
+    local.product = { name: 'My edit while the update was being prepared' }
+    edited = JSON.stringify(local)
+    await writeFile(f.path, edited)
+    return begin(...args)
+  }
+  await assert.rejects(operation === 'document' ? f.file.document() : f.file.apply({ scope, key: key(1), revision: 1,
+    patch: { features: { maxConcurrentRequests: 4 } } }), /配置文件在更新期间被修改/)
+  assert.equal(await readFile(f.path, 'utf8'), edited)
+  assert.equal(await readFile(f.file.backup, 'utf8'), previous)
+  assert.equal(f.file.state.trial, null)
+  assert.equal((await f.open()).state.trial, null)
+})
+
 test('interrupted replacement restores the only backup while retaining edits made during the trial', async t => {
   const f = await fixture(t)
   await f.file.apply({ scope, key: key(1), revision: 1, patch: { features: { maxConcurrentRequests: 4 } } })

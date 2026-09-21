@@ -108,14 +108,14 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
       value.contentUpdates = { ...source, ...(oldSource ? { configuration: oldSource.configuration !== false, skills: oldSource.skills !== false } : {}) }
       markRequired()
     }
-    await file.initialize(value, { defaults, cleanup })
+    await file.initialize(value, { defaults, cleanup, current })
   }
   // Also handle an installation that already uses the single editable file.
   const active = await readConfiguration(configPath)
   if (previousSource(active?.value.contentUpdates)) {
     markRequired()
     await file.initialize({ ...active.value, contentUpdates: { ...source, configuration: true, skills: active.value.contentUpdates.skills !== false } },
-      { defaults: file.state.defaults, cleanup: file.state.cleanup })
+      { defaults: file.state.defaults, cleanup: file.state.cleanup, current: active })
   }
   const config = loadUserConfig(configPath)
   return { configPath, source: config.contentUpdates, updates: config.updates, migratedFrom, file,

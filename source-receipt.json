@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T02:19:36.200Z",
-  "fileSetSHA256": "9a6c394bf4e90d8a54465bab473defb8f5ca539b9981e2e6a5b6f4af6867c240",
+  "createdAt": "2026-09-21T02:53:26.198Z",
+  "fileSetSHA256": "1adb7c46a0bd5e2fe8390fc1698259e853efecddd6db022b69239021f06f86f3",
   "files": [
     {
       "path": ".gitattributes",
@@ -853,7 +853,7 @@
     },
     {
       "path": "dsh-host/configuration-file.mjs",
-      "sha256": "dfc1b15978a5221ca7821628f1bdc7b7671b11748c29c73cd9e9e6a9f02f29a7"
+      "sha256": "abf6a4a5a09b5fb90bee9629f378fc5ad1ba0efff64091db91ea43e1ad75c27c"
     },
     {
       "path": "dsh-host/configuration-plugin-options.mjs",
@@ -921,7 +921,7 @@
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
-      "sha256": "d5dc5786b8b314f101c20d80ae86c5c4571b98df6c488ee3812ee5adf9caf392"
+      "sha256": "181b2a30a049cabc91037291ca9f2a2de36339b68b34886a5439873b71f1b5e6"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -941,7 +941,7 @@
     },
     {
       "path": "dsh-host/test/configuration-file.test.mjs",
-      "sha256": "916736a79796b04add82fd53bba1f9b87475b1ece3b07e437a17f7ecd4ef54d5"
+      "sha256": "9965fe2b95d641019c7148847322522807bf410042a442ecf8b1e94b02fd1609"
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
