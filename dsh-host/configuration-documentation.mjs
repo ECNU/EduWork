@@ -20,8 +20,11 @@ export async function editionConfigurationFields(product) {
 
 export function explicitConfigurationDefaults(value) {
   if (!Array.isArray(value.organizations)) return value
-  return { ...value, organizations: value.organizations.map(profile => profile?.schemaVersion === 'dsh-oidc/v1alpha1'
-    ? { allowInsecureDevelopment: false, ...profile } : profile) }
+  return { ...value, organizations: value.organizations.map(profile => {
+    if (profile?.schemaVersion !== 'dsh-oidc/v1alpha1') return profile
+    const { insecureDevelopmentOrigin: obsolete, ...current } = profile
+    return { allowInsecureDevelopment: false, ...current }
+  }) }
 }
 
 export function configurationComments(text) {
