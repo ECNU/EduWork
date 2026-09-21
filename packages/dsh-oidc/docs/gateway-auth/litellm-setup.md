@@ -4,7 +4,7 @@
 
 让用户在 EduWork 中登录 LiteLLM 网关，自动发现获授权的模型并直接对话，无需手动分发模型 API Key。
 
-[LiteLLM 项目](https://github.com/BerriAI/litellm)提供网关；EduWork 使用其 native OAuth 流程。本文适用于已有 LiteLLM 部署的管理员和使用 EduWork 桌面的用户。协议基线为 **LiteLLM v1.101.0 / native contract 1**，其他版本需按本文验收。EduWork 端需使用包含本功能的构建；本分支尚未发布 npm 包或桌面版本。
+[LiteLLM 项目](https://github.com/BerriAI/litellm)提供网关；EduWork 使用其 native OAuth 流程。本文适用于已有 LiteLLM 部署的管理员和使用 EduWork 桌面的用户。协议基线为 **LiteLLM v1.101.0 / native contract 1**，其他版本需按本文验收。**EduWork 0.3.6-dev.20260921.1 已内置本功能**，安装包附带 `examples/litellm.jsonc`，无需另装插件。底层实现已发布为 `@eduwork/dsh-oidc@0.3.0-dev.2`。
 
 ## 1. 管理员准备服务端
 
@@ -37,7 +37,7 @@ curl --fail --silent --show-error https://gateway.example.org/.well-known/litell
 
 ## 2. 配置 EduWork
 
-在设置中选择 **打开配置文件**，将下面的机构条目加入 `config/eduwork.jsonc`。已有配置时合并 `organizations` 数组，不要覆盖其他配置。
+在设置中选择 **打开配置文件**，将下面 `organizations` 数组内的机构对象加入生效 `eduwork.jsonc` 的同名数组。Windows 文件在程序目录的 `config/`，macOS 公版在 `~/Library/Application Support/eduwork-electron/config/`；旁边 `examples/litellm.jsonc` 提供相同格式和完整注释。只修改示例不会生效，也不要用整个示例覆盖已有配置。
 
 ```json
 {
@@ -47,6 +47,7 @@ curl --fail --silent --show-error https://gateway.example.org/.well-known/litell
       "schemaVersion": "dsh-oidc/v1alpha1",
       "id": "example-gateway",
       "displayName": "示例模型网关",
+      "allowInsecureDevelopment": false,
       "auth": {
         "discoveryUrl": "https://gateway.example.org/.well-known/litellm-cli-auth",
         "expectedIssuer": "https://gateway.example.org"
@@ -60,10 +61,11 @@ curl --fail --silent --show-error https://gateway.example.org/.well-known/litell
 | --- | --- |
 | `id` | 本机唯一且稳定的机构标识；多个机构使用不同值。 |
 | `displayName` | 账户菜单中显示的机构名称。 |
+| `allowInsecureDevelopment` | 默认 `false`，仅接受 HTTPS；HTTP 测试环境设为 `true`，与 `auth` 同级。 |
 | `auth.discoveryUrl` | 完整发现文档 URL，由管理员提供。 |
 | `auth.expectedIssuer` | 预期的服务签发方，建议填写，并与发现文档中的 issuer 一致。 |
 
-保存后从托盘完全退出 EduWork，再重新启动。只关闭窗口通常不会退出进程。
+保存后从托盘或应用菜单完全退出 EduWork，再重新启动。只关闭窗口通常不会退出进程。
 
 模型 API 地址由校验后的 issuer 追加 `/v1` 得到，保留部署路径前缀；不要另填 `provider.baseURL`。LiteLLM 会动态注册本次登录所需的 Client ID，无需手工填写固定 `clientId`、`client_secret` 或 scope，也不要同时配置 `oidc`、`keyBinding`。
 

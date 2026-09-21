@@ -12,7 +12,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-[开始使用](#安装与使用) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md)
+[开始使用](#安装与使用) · [连接 LiteLLM](#连接-litellm) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md)
 
 </div>
 
@@ -81,13 +81,30 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 ### 1. 获取客户端
 
-从 [GitHub Releases](https://github.com/ecnu/EduWork/releases) 获取完整桌面包，解压到可写目录，运行 `EduWork-Electron.exe`。请保留同目录下的资源文件，不要只复制 EXE。
+从 [GitHub Releases](https://github.com/ecnu/EduWork/releases) 选择对应平台的完整桌面包：
 
-若 Releases 暂无可用安装包，可按[构建指南](docs/BUILD.md)从源码运行；GitHub 的 Source code 压缩包不是桌面安装包。
+- **Windows x64**：解压到可写目录，运行 `EduWork-Electron.exe`。请保留同目录下的资源文件，不要只复制 EXE。
+- **macOS arm64**：解压后将 `EduWork.app` 放入“应用程序”，然后打开；配置和用户数据存放在用户目录。
+
+GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构建指南](docs/BUILD.md)。
 
 ### 2. 连接模型
 
-打开 **设置 → 模型**，填写服务商的 API Key、接口地址和模型。使用学校或企业服务的用户，可按下方说明加载机构配置，再通过浏览器登录获得模型。
+| 你已有的服务 | 如何连接 |
+| --- | --- |
+| 个人模型 API | 打开 **设置 → 模型**，填写服务商的 API Key、接口地址和模型。 |
+| LiteLLM 网关账号 | 按下方步骤配置发现地址，通过浏览器登录，无需手动填写模型 Key。 |
+| 学校或企业提供的配置 | 按[机构配置方法](#配置方法)合并到生效配置，再选择机构登录。 |
+
+公版默认不自动下载机构配置，安装包自带带注释的 `eduwork.jsonc` 和 `examples/`；所有用户配置集中在设置中打开的这一份文件。可选配置项也列在文件末尾的注释参考中。
+
+#### 连接 LiteLLM
+
+1. 从 **设置 → 打开配置文件** 打开生效的 `eduwork.jsonc`，参照旁边的 `examples/litellm.jsonc`，把机构条目加入 `organizations` 数组。
+2. 填写登录名称、本机唯一 `id`、完整发现地址（例如 `https://gateway.example.org/.well-known/litellm-cli-auth`）以及发现文档里的 `issuer`。LiteLLM 自动注册 Client ID，**不需要填写 `clientId`、`client_secret` 或 API Key**。
+3. 保存后完全退出并重启，从账户入口登录 LiteLLM；按网关提示选择团队并授权，再选择模型开始对话。
+
+服务端需启用 LiteLLM 原生 CLI OAuth，并提供有模型权限的账号；当前协议基线为 LiteLLM v1.101.0 / native contract 1。HTTP 测试环境还需把机构对象中的 `allowInsecureDevelopment` 改为 `true`，HTTPS 保持默认 `false`。参见[逐项配置说明](config/desktop/examples/README.md#接入-litellm改哪里填什么)和[服务端准备与排错](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
 
 ### 3. 开始工作
 
@@ -109,11 +126,9 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 | 服务端 / 项目 | 登录与模型接入 | 配置与使用 |
 | --- | --- | --- |
 | [LiteLLM](https://github.com/BerriAI/litellm) | 使用网关账号登录，按用户及所选团队的授权访问模型。 | [LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) |
-| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | 使用学校账号登录，访问获授权的模型；学校扩展提供个人配额信息。 | [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) |
+| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | 通过 oidc-llm 接入机构身份与获授权的模型。 | [EduWork@ECNU 机构发行示例](https://github.com/ECNU/EduWork-ECNU) |
 
-**华东师范大学用户可使用学校分发的 EduWork@ECNU，学校配置已预置，登录即可使用。** 学校版的获取与使用说明统一维护在 EduWork-ECNU 仓库。
-
-表中的 Token 模型接入需使用包含本功能的构建，尚未进入已发布的 npm 包或桌面版本；ChatECNU 使用显式启用的 oidc-llm 实验适配器。
+**EduWork 0.3.6-dev.20260921.1 已包含上述 Token 模型接入能力。** oidc-llm 仍是实验性协议，需按服务端约定显式启用；标准 LiteLLM 配置无需开启此实验选项。
 
 企业登录后，客户端使用登录 Token 自动读取模型目录并调用模型，使用过程中自动刷新，无需复制或另行创建模型 Key。模型权限与配额仍由服务端管理；企业模型和用户自己配置的模型可以同时使用。
 
@@ -124,9 +139,9 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 <details>
 <summary><strong>三步配置你的机构</strong></summary>
 
-1. 在设置中点击 **打开配置文件**，编辑客户端目录下的 `config/eduwork.jsonc`。
-2. 按上表的服务端指南选择配置示例，将机构配置填入 `organizations`；需要图像或语音服务时再加入 `media`。更多示例在客户端的 `config/examples/` 目录。
-3. 保存后从托盘完全退出并重新启动，再选择机构登录。
+1. 在设置中点击 **打开配置文件**，编辑当前生效的 `eduwork.jsonc`。Windows 位于程序目录的 `config/`；macOS 位于 `~/Library/Application Support/eduwork-electron/config/`。
+2. 按服务端指南选择旁边 `examples/` 中的示例，将机构条目加入 `organizations`，保留已有配置；需要图像或语音服务时再加入 `media`。只修改示例文件不会生效。
+3. 保存后从托盘或应用菜单完全退出并重新启动，再选择机构登录。
 
 配置文件只保存公开接入信息和凭据引用。个人 API Key 在模型设置中管理，登录 Token 保存在本机受保护存储中；不要把密码或令牌写入配置文件。界面 Logo 可配置，程序内嵌图标由发行包提供。
 

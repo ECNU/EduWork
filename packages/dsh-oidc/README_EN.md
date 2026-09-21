@@ -6,7 +6,7 @@ Sign in with an organization and use its authorized models directly.
 
 The current source supports LiteLLM native OAuth and explicitly enabled experimental oidc-llm 0.1. Both reuse browser/loopback transport, PKCE, Host sessions, refresh, logout and the DSH Provider. Model requests use the current Access Token; this client no longer provisions or stores organization model API keys. Personal API-key settings remain independent.
 
-This branch has not been published to npm or a desktop release. Published versions retain their documented behavior. The current source rejects old OIDC + Key Binding profiles; see [migration](docs/key-binding-protocol.en.md). Servers may retain legacy endpoints for older clients.
+These capabilities are published in `@eduwork/dsh-oidc@0.3.0-dev.2` and included in EduWork `0.3.6-dev.20260921.1`. Desktop users edit the bundled `eduwork.jsonc` without installing this npm package separately; see the [LiteLLM setup guide](docs/gateway-auth/litellm-setup.en.md). Legacy OIDC + Key Binding profiles are explicitly rejected; see [migration](docs/key-binding-protocol.en.md). Servers may retain legacy endpoints for older clients.
 
 ## Getting started
 

@@ -1,3 +1,9 @@
+// 使用方法：设置 → 打开配置文件，把本示例 organizations 中的对象加入生效文件的 organizations 数组。
+// 只修改本示例不会生效；不要用整个示例覆盖已有配置。详见同目录 README.md。
+// 填写 id（本机唯一标识）、displayName（登录名称），以及管理员提供的发现地址和 issuer。
+// LiteLLM 自动注册 Client ID；不需要 clientId、client_secret、API Key，也不另填模型 API 地址。
+// 服务端须启用原生 CLI OAuth，发现地址应返回 contract_version=1 的 JSON。
+// 保存生效配置后，从托盘或应用菜单选择“退出”再启动，登录网关并选择获授权的模型。
 {
   // [eduwork] 配置格式版本，固定为 1。
   "schemaVersion": 1,

@@ -16,7 +16,7 @@ OIDC 模式需要浏览器登录、Code + PKCE、有效 ID Token 和 UserInfo。
 
 插件通过 config.profile、config.profiles 或 EDUWORK_OIDC_PROFILE 指向的可信 JSON 文件加载配置。桌面使用 backend: desktop，Host 提供凭据存储和 desktopServices.openExternal；插件监听临时 127.0.0.1 回调。本机 Web 使用 backend: web，WebServer 必须监听 127.0.0.1，回调端口取实际服务端口。
 
-仅用于包含本分支源码的开发装配，尚未发布。按[开发说明](development.md)构建和验证。正式装配应固定通过审查的已发布包，不能把新配置直接交给尚不支持它的旧版本。
+上述 Host 接入已发布于 `@eduwork/dsh-oidc@0.3.0-dev.2`；EduWork `0.3.6-dev.20260921.1` 已完成装配，桌面用户按 [LiteLLM 接入指南](gateway-auth/litellm-setup.md)编辑 `eduwork.jsonc` 即可。其他宿主应固定通过审查的包版本，不能把新配置直接交给不支持它的旧版本。从源码开发和验证见[开发说明](development.md)。
 
 ## 登录与使用
 

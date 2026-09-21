@@ -6,7 +6,7 @@
 
 当前源码提供 LiteLLM native OAuth 和显式启用的 oidc-llm 0.1 实验接入。两者共用浏览器/loopback、PKCE、Host 会话、刷新、退出与 DSH Provider；模型请求使用当前 Access Token，客户端不再申请或保存机构模型 API Key。个人 API Key 设置独立保留。
 
-本分支尚未发布 npm 或桌面版本；已发布版本的行为以对应版本文档为准。旧 OIDC + Key Binding 配置在本源码中会被明确拒绝，迁移见[旧方案迁移](docs/key-binding-protocol.md)。服务端可继续保留旧接口供旧客户端使用。
+上述能力已随 `@eduwork/dsh-oidc@0.3.0-dev.2` 发布，并包含在 EduWork `0.3.6-dev.20260921.1` 中。桌面用户直接编辑随包提供的 `eduwork.jsonc`，无需单独安装本 npm 包，步骤见 [LiteLLM 接入指南](docs/gateway-auth/litellm-setup.md)。旧 OIDC + Key Binding 配置会被明确拒绝，迁移见[旧方案迁移](docs/key-binding-protocol.md)。服务端可继续保留旧接口供旧客户端使用。
 
 ## 开始接入
 
