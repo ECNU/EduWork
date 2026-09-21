@@ -80,7 +80,7 @@ Copy-Item -LiteralPath (Join-Path $ShellBuild 'LICENSE-DeepSeek') -Destination $
 Copy-Item -LiteralPath (Join-Path $ShellBuild 'source-receipt.json') -Destination $appPayload
 $brand = Join-Path $resources 'brand'
 New-Item -ItemType Directory -Path $brand | Out-Null
-foreach ($asset in @('icon-32.png','icon-256.png','icon.icns')) {
+foreach ($asset in @('icon-32.png','icon-256.png','icon.icns','tray-black.png')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../../assets/eduwork/$asset") -Destination (Join-Path $brand $asset)
 }
 New-Item -ItemType Directory -Path (Join-Path $resources 'product') | Out-Null

@@ -172,7 +172,11 @@ export async function attachDesktopWindow(window) {
     void window.webContents.executeJavaScript(`(window.__eduworkTrayActions ??= []).push(${JSON.stringify(value)}); window.dispatchEvent(new Event('eduwork:tray-action'));`).catch(() => {})
   }
   try {
-    const icon = nativeImage.createFromPath(process.platform === 'darwin' ? join(app.getAppPath(), '../brand/icon-32.png') : join(paths.root, 'resources/brand/icon-32.png'))
+    // The 32px monochrome asset is 16pt at Retina scale; macOS supplies the menu bar color.
+    const icon = process.platform === 'darwin'
+      ? nativeImage.createFromBuffer(readFileSync(join(app.getAppPath(), '../brand/tray-black.png')), { scaleFactor: 2 })
+      : nativeImage.createFromPath(join(paths.root, 'resources/brand/icon-32.png'))
+    if (process.platform === 'darwin') icon.setTemplateImage(true)
     lifecycle.check()
     if (icon.isEmpty()) throw new Error('No system tray icon available')
     tray = new Tray(icon)
