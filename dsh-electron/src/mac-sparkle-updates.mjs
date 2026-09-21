@@ -3,6 +3,11 @@ import { join } from 'node:path'
 
 const require = createRequire(import.meta.url)
 
+export function editableMacUpdateConfiguration({ defaults = {}, updates = {}, feeds = {}, version }) {
+  return { ...defaults, ...updates, macFeeds: { ...feeds, ...updates.macFeeds },
+    defaultPolicy: updates.defaultPolicy ?? defaults.defaultPolicy ?? (version.includes('-dev.') ? 'development' : 'stable') }
+}
+
 // Sparkle owns its own native update dialog. The workbench reports only that
 // availability from its delegate; download/install progress stays in that dialog.
 export function startMacSparkleUpdates({ appPath, version, enabled = false, feeds = {}, policy = 'stable', onPolicy = async () => {}, platform = process.platform, loadAddon = require }) {

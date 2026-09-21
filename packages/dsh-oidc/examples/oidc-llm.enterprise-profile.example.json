@@ -8,5 +8,6 @@
     "experimentalOidcLlm": true,
     "clientId": "replace-with-public-client-id",
     "identityMode": "oidc"
-  }
+  },
+  "allowInsecureDevelopment": false
 }

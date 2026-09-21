@@ -8,6 +8,7 @@ import { loadMediaProviders } from './media-config.mjs'
 import { loadEnterpriseModelUpdates } from './enterprise-model-updates.mjs'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
+import { bundledConfigurationPlugins } from './configuration-plugin-options.mjs'
 
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const same = (a, b) => process.platform === 'win32' ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : resolve(a) === resolve(b)
@@ -113,6 +114,11 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   await unlink(pendingFile)
   const composition = await json(join(product, 'composition.json'))
   const installed = new Set(composition.flatMap(row => (row.insert ?? []).map(plugin => plugin.id)))
+  const bundleRows = []
+  for (const [id, name] of Object.entries(bundledConfigurationPlugins)) if (identity.bundles?.includes(name)) {
+    installed.add(id)
+    if (pluginConfig[id]) bundleRows.push({ id, config: pluginConfig[id] })
+  }
   for (const id of Object.keys(user?.pluginConfig ?? {})) {
     if (!installed.has(id)) throw new Error(`请检查配置文件 ${user.source.path}\nplugins.${id} 不属于此发行版已安装的插件`)
   }
@@ -133,7 +139,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     ] },
   ]
   await writeFile(join(profile, 'package.json'), JSON.stringify({ name: 'eduwork-desktop-profile', private: true, type: 'module', dsh: { profile: { bundles: identity.bundles } } }, null, 2) + '\n')
-  await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...desktop, ...patches], null, 2) + '\n')
+  await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...bundleRows, ...desktop, ...patches], null, 2) + '\n')
   const environment = {
     DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1',
     DSH_BUNDLED_SKILL_DIR: managedContent.skillRoot ?? join(product, 'skills'),

@@ -32,7 +32,7 @@ In a build containing this feature, add this object to `organizations` in `confi
 }
 ```
 
-See the [complete Profile example](../../examples/litellm.enterprise-profile.example.json). `discoveryUrl` is the complete configured URL. `expectedIssuer` is optional but recommended. Native discovery requires issuer, resource and auth endpoints on the discovery origin; resource must exactly equal issuer. Production uses HTTPS. Explicit `allowInsecureDevelopment: true` permits loopback HTTP only; `insecureDevelopmentOrigin` does not relax this new protocol to arbitrary HTTP hosts.
+`allowInsecureDevelopment` is the only HTTP switch, at the profile root beside `auth`/`oidc`. Its default is `false` (HTTPS only); `true` also accepts HTTP service URLs. `insecureDevelopmentOrigin` is obsolete and ignored. Issuer identity, resource-origin validation and OAuth/PKCE checks still apply. `discoveryUrl` is the complete discovery URL; `expectedIssuer` is optional and pins the exact issuer when provided.
 
 `auth` is mutually exclusive with `oidc` and `keyBinding`. Do not supply a static `clientId`, secret, scopes or `provider.baseURL`. The adapter appends `/v1` to the validated issuer, preserving any deployment prefix. An optional `provider` may supply a distinct `id`, display name, context/output limits and reviewed per-model capabilities in `models`; only `modelSource: "discovery"` is supported. The current account's model list determines visibility. Local model metadata cannot grant access to an absent model.
 

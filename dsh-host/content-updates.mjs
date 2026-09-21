@@ -4,6 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
 import { ConfigurationFile } from './configuration-file.mjs'
+import { configurationDocumentationOptions } from './configuration-documentation.mjs'
 
 async function readJSON(path, fallback) { try { return JSON.parse(await readFile(path,'utf8')) } catch(error) { if(error.code==='ENOENT')return fallback;throw error } }
 async function atomic(path,value) {
@@ -22,15 +23,15 @@ export function contentCapabilities(identity) {
 
 /** Signed, opt-in publisher content. No installation hooks, npm or binary changes. */
 export class ContentUpdates {
-  constructor({root,product,configPath,version,distribution,identity,policy='stable',fetchImpl=fetch,dataRoot=join(root,'data'),skillsManifestPath=join(root,'RELEASE-MANIFEST.json')}) {
-    Object.assign(this,{root,product,configPath,version,distribution,identity,policy,fetchImpl,dataRoot,skillsManifestPath})
+  constructor({root,product,configPath,version,distribution,identity,policy='stable',fetchImpl=fetch,dataRoot=join(root,'data'),skillsManifestPath=join(root,'RELEASE-MANIFEST.json'),configurationDefaults={}}) {
+    Object.assign(this,{root,product,configPath,version,distribution,identity,policy,fetchImpl,dataRoot,skillsManifestPath,configurationDefaults})
     this.environment={version,dshVersion:identity.dshVersion,capabilities:contentCapabilities(identity)}
     this.state={schemaVersion:1,active:{},pending:null,trial:null,rejected:[],highest:0}
     this.view={enabled:false,state:'disabled',policy,configurationRevision:0,skillsRevision:0,downloadedBytes:0,totalBytes:0,message:'未配置内容更新源'}
   }
   async init() {
     if(!['stable','development'].includes(this.policy))throw Error('内容更新渠道无效')
-    this.configurationFile=await new ConfigurationFile(this.configPath,this.dataRoot).open()
+    this.configurationFile=await new ConfigurationFile(this.configPath,this.dataRoot,await configurationDocumentationOptions(this.product,{defaults:this.configurationDefaults})).open()
     this.source=loadUserConfig(this.configPath).contentUpdates
     if(!this.source||!this.source.configuration&&!this.source.skills)return this
     const scope=this.scope=digest(JSON.stringify([this.distribution,this.source.publisher,this.source.baseURL,this.source.publicKey]))

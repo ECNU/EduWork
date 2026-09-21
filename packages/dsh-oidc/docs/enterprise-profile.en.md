@@ -32,8 +32,8 @@ A remote administration system MAY distribute profile JSON only if the host auth
 | `id` | yes | Profile ID matching `^[a-z][a-z0-9-]{0,63}$`. |
 | `displayName` | yes | Human-readable integration name. |
 | `organization` | no | Organization label; defaults to `displayName`. |
-| `allowInsecureDevelopment` | no | Enables loopback HTTP for local development. Network HTTP additionally requires `insecureDevelopmentOrigin`. |
-| `insecureDevelopmentOrigin` | no | Exact non-TLS development origin. It is accepted only together with `allowInsecureDevelopment: true`, and every HTTP OIDC/gateway endpoint must use this exact origin. Never ship it in a production profile. |
+| `allowInsecureDevelopment` | Optional boolean; `false` (default) accepts HTTPS only, `true` also accepts HTTP service URLs. |
+| `insecureDevelopmentOrigin` | Deprecated; accepted in old files but ignored. Omit from new configurations. |
 | `brand` | no | Bounded presentational values. |
 | `oidc` | identity-only | OIDC public-client facts; cannot include auth or provider. |
 | `auth` | models | Full discovery URL; see the gateway guide for explicit protocol fields. |

@@ -1,7 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import {join} from 'node:path'
-import { startMacSparkleUpdates } from '../src/mac-sparkle-updates.mjs'
+import { startMacSparkleUpdates, editableMacUpdateConfiguration } from '../src/mac-sparkle-updates.mjs'
+import { explicitConfigurationDefaults } from '../../dsh-host/configuration-documentation.mjs'
 
 test('Sparkle stays disabled on Windows or in a candidate without a feed', () => {
   const fail = () => { throw Error('native module must not load') }
@@ -30,6 +31,24 @@ test('missing native framework disables updates without aborting the desktop', a
 })
 
 const feeds={stable:'https://updates.example.org/stable.xml',development:'https://updates.example.org/dev.xml'}
+test('a single custom Mac appcast retains the other packaged channel through documentation and native startup', async () => {
+  for (const channel of ['stable', 'development']) {
+    const other = channel === 'stable' ? 'development' : 'stable'
+    const updates = { macFeeds: { [channel]: 'https://custom.example.org/appcast.xml' } }
+    const defaults = editableMacUpdateConfiguration({ feeds, updates, version: '0.3.6-dev.1' })
+    const documented = explicitConfigurationDefaults({ schemaVersion: 1, updates }, { updates: defaults })
+    const calls = []
+    const service = startMacSparkleUpdates({ appPath: '/app', version: '0.3.6-dev.1', platform: 'darwin', enabled: true,
+      feeds: defaults.macFeeds, policy: other, loadAddon: () => ({ probe() {}, snapshot: () => ({ state: 'idle' }),
+        start: url => calls.push(url), check() {}, setFeed: url => calls.push(url) }) })
+    assert.equal((await service.action('status')).update.enabled, true)
+    assert.deepEqual(calls, [feeds[other]])
+    await service.action('use-' + channel + '-updates')
+    assert.equal(calls.at(-1), updates.macFeeds[channel])
+    assert.deepEqual(documented.updates.macFeeds, defaults.macFeeds)
+    assert.deepEqual(editableMacUpdateConfiguration({ feeds, updates: documented.updates, version: '0.3.6-dev.1' }), defaults)
+  }
+})
 test('startup leaves native dialogs closed; explicit checks and channels preserve signed content updates', async()=>{
   const {updateCoordinator}=await import('../src/update-coordinator.mjs')
   const calls=[];let policy='stable',saved

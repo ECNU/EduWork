@@ -53,13 +53,12 @@
     },
     "allowInsecureDevelopment": {
       "type": "boolean",
-      "default": false
+      "default": false,
+      "description": "false (default): HTTPS only. true: allow HTTP service URLs too. Does not change issuer or OAuth validation."
     },
     "insecureDevelopmentOrigin": {
-      "type": "string",
-      "minLength": 8,
-      "maxLength": 2048,
-      "pattern": "^http://"
+      "deprecated": true,
+      "description": "Accepted for older configuration files; ignored. Use allowInsecureDevelopment only."
     },
     "brand": {
       "$ref": "#/$defs/brand"

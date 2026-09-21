@@ -38,6 +38,14 @@ Software `updates` and configuration `contentUpdates` are separate. Development/
 
 Optional `plugins` entries use the plugin ID from the edition composition, for example `"plugins": {"example-service": {"baseURL": "https://uat.example.test/v1"}}`. These options merge into that installed plugin on restart; they cannot install plugins. Unknown IDs fail with a configuration error. Use the edition/plugin documentation for accepted options. Institution service endpoints must be switched alongside account and media endpoints for UAT. Remote content configuration does not overwrite this local section.
 
+Windows update defaults preserve migrated sources; macOS appcasts appear under `updates.macFeeds`. Changing an appcast does not change the embedded verification key. Mail and memory defaults are also editable under `plugins`; saved personal settings still take precedence. Machine-specific runtime paths, versions and generated installation identifiers remain automatic.
+
 ## Internal state
 
 `data/content-updates/` stores verified downloads. `data/configuration/state.json` stores revisions, field fingerprints and transactions for verification, merging and recovery. Neither is an additional active configuration file or a user editing surface.
+
+## Inline configuration reference
+
+The effective `eduwork.jsonc` contains Chinese field comments and a complete commented reference for generic options, including paths, accepted values, defaults and mutually exclusive settings. Optional examples stay commented out until real deployment parameters are supplied. Applicable installed-plugin defaults, including institution endpoints, are written into `plugins` in this file. Optional, mutually exclusive and automatically located values remain commented examples. All additional options are listed in the same file. Initial downloads, configuration updates and upgrades of existing files keep this help, personal comments and one rollback backup.
+
+Set `allowInsecureDevelopment` beside `auth` in the organization object to `true` to also accept HTTP for enterprise discovery, authentication endpoints and model APIs. The default is explicitly written as `false` (HTTPS only); an existing `true` is preserved. The obsolete `insecureDevelopmentOrigin` is accepted but ignored. Issuer/resource identity and PKCE checks remain in force. Brand links, media services and software/content feeds retain their own URL rules, documented in the file.

@@ -47,7 +47,7 @@ New-Item -ItemType Directory -Path $hostOutput -Force | Out-Null
 foreach ($file in @('host-process.mjs','host-protocol.mjs','receipt.json','LICENSE-DeepSeek')) {
     Copy-Item -LiteralPath (Join-Path $HostAdapter $file) -Destination (Join-Path $hostOutput $file)
 }
-foreach ($file in @('bridge.mjs','wire.mjs','product-profile.mjs','product-presets.mjs','product-profile-cli.mjs','native-resources.mjs','user-config.mjs','enterprise-model-updates.mjs','desktop-updates.mjs','release-policy.mjs','workbench-support.mjs','diagnostics.mjs','wails-migration.mjs')) {
+foreach ($file in @('bridge.mjs','wire.mjs','product-profile.mjs','configuration-plugin-options.mjs','product-presets.mjs','product-profile-cli.mjs','native-resources.mjs','user-config.mjs','enterprise-model-updates.mjs','desktop-updates.mjs','release-policy.mjs','workbench-support.mjs','diagnostics.mjs','wails-migration.mjs')) {
     Copy-Item -LiteralPath (Join-Path $core "dsh-host/$file") -Destination (Join-Path $hostOutput $file)
 }
 Copy-Item -LiteralPath (Join-Path $core 'dsh-plugins/media-openai/lib/config.js') -Destination (Join-Path $hostOutput 'media-config.mjs')

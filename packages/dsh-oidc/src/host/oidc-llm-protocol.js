@@ -1,3 +1,4 @@
+import { serviceProtocolAllowed } from './transport.js'
 // Experimental draft 0.1. These wire rules are not a published standard.
 import { protocolError } from './litellm-protocol.js'
 
@@ -10,9 +11,7 @@ const includes = (raw, key, values) => {
 function endpoint(value, profile, origin) {
   let url
   try { url = new URL(value) } catch { fail('oidc-llm metadata contains an invalid URL') }
-  const development = profile.allowInsecureDevelopment && url.protocol === 'http:'
-    && (['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname) || url.origin === profile.insecureDevelopmentOrigin)
-  if (typeof value !== 'string' || value.length > 2048 || (url.protocol !== 'https:' && !development)
+  if (typeof value !== 'string' || value.length > 2048 || !serviceProtocolAllowed(url, profile.allowInsecureDevelopment)
     || url.username || url.password || url.search || url.hash || origin && url.origin !== origin) fail('oidc-llm URL is outside the configured trust boundary')
   return url
 }

@@ -4,6 +4,12 @@
 
 所有重要变更均记录于此。格式遵循 Keep a Changelog 原则；项目使用语义化版本，并遵循[兼容性与发布策略](docs/compatibility.md)中对 1.0 之前版本的说明。
 
+## [0.3.0-dev.2] - 2026-09-21
+
+- 使用 `allowInsecureDevelopment` 单一开关显式允许 HTTP 测试服务，默认关闭；HTTPS 行为不变。
+- 兼容读取旧 `insecureDevelopmentOrigin` 字段，但不再要求重复配置地址。
+- 统一 OIDC、OIDC-LLM、LiteLLM 与模型请求的传输策略，并补齐配置示例和回归测试。
+
 ## [0.2.0] - 2026-09-11
 
 - 适配 DSH 0.1.5-rc.1，企业身份、托管 Key 和模型接入独立于机构专属服务。

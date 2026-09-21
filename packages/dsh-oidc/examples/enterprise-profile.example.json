@@ -69,5 +69,6 @@
       }
     ],
     "modelSource": "discovery"
-  }
+  },
+  "allowInsecureDevelopment": false
 }

@@ -1,3 +1,4 @@
+import { serviceProtocolAllowed } from './transport.js'
 // LiteLLM v1.101.0, native CLI auth contract 1. This is OAuth, not OIDC.
 // Protocol-specific wire fields stay here; tokens never cross the renderer RPC.
 const MAX_BYTES = 1024 * 1024
@@ -51,8 +52,7 @@ export async function gatewayJSON(fetcher, url, init = {}) {
 function trustedURL(value, profile, origin) {
   let url
   try { url = new URL(value) } catch { throw protocolError('gateway_discovery_invalid', 'Gateway metadata contains an invalid URL') }
-  const local = profile.allowInsecureDevelopment && url.protocol === 'http:' && ['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname)
-  if (!nonempty(value, 2048) || (url.protocol !== 'https:' && !local) || url.username || url.password || url.search || url.hash || (origin && url.origin !== origin)) {
+  if (!nonempty(value, 2048) || !serviceProtocolAllowed(url, profile.allowInsecureDevelopment) || url.username || url.password || url.search || url.hash || (origin && url.origin !== origin)) {
     throw protocolError('gateway_discovery_invalid', 'Gateway metadata URL is outside the configured trust boundary')
   }
   return url

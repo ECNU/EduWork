@@ -1,3 +1,4 @@
+import { readConfiguration } from '../configuration-file.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, sign } from 'node:crypto'
@@ -229,7 +230,7 @@ test('upgrade from the old layered layout materializes the signed effective conf
   await assert.rejects(readFile(old),{code:'ENOENT'})
   await assert.rejects(readFile(oldCache),{code:'ENOENT'})
   assert.deepEqual(JSON.parse(await readFile(sentinel,'utf8')),{untouched:true})
-  const local=JSON.parse(await readFile(f.paths.config,'utf8'))
+  const local=(await readConfiguration(f.paths.config)).value
   local.organizations=[{id:'uat-school'}];local.contentUpdates.configuration=false
   await save(f.paths.config,local)
   const next=await f.open();await preparePublisherContent(next.manager,next.bootstrap)
@@ -302,7 +303,7 @@ test('a previously initialized single config migrates only the explicitly retire
   f.release(1, {}, { organizations: [oldProfile], features: { maxConcurrentRequests: 2 } })
   const original = await f.open()
   await preparePublisherContent(original.manager, original.bootstrap); await original.manager.ready()
-  const local = JSON.parse(await readFile(f.paths.config, 'utf8'))
+  const local = (await readConfiguration(f.paths.config)).value
   local.organizations.push({ id: 'personal' }); local.features.maxConcurrentRequests = 9
   await save(f.paths.config, local)
   f.descriptor.contentUpdates.baseURL = 'https://updates.example.test/v2'

@@ -1,8 +1,9 @@
+import { explicitConfigurationDefaults, documentConfiguration, configurationComments } from './configuration-documentation.mjs'
 import { readFile, writeFile, mkdir, rename, rm, lstat } from 'node:fs/promises'
 import { dirname, join, relative } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import * as jsonc from './vendor/jsonc-parser/parser.js'
-import { loadUserConfig } from './user-config.mjs'
+import { loadUserConfig, parseUserConfig } from './user-config.mjs'
 import { digest } from './content-update-protocol.mjs'
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -20,10 +21,48 @@ export function configurationFingerprints(value) {
   return result
 }
 
+// Documentation may introduce absent defaults, but must never turn a user's
+// existing value into a publisher baseline. Keep hashes for prior deletions too.
+function addedDefaultFingerprints(previous, before, after) {
+  if (hash(before) === hash(after)) return previous
+  if (before === undefined && !previous) return configurationFingerprints(after)
+  let field, left, right
+  if (object(before) && object(after)) { field = 'children'; left = before; right = after }
+  else if (keyed(before) && keyed(after)) {
+    field = 'items'
+    left = Object.fromEntries(before.map(item => [item.id, item]))
+    right = Object.fromEntries(after.map(item => [item.id, item]))
+  } else return previous
+  const entries = { ...previous?.[field] }
+  let changed = false
+  for (const [key, value] of Object.entries(right)) {
+    const child = addedDefaultFingerprints(own(entries, key), own(left, key), value)
+    if (child !== own(entries, key)) { entries[key] = child; changed = true }
+  }
+  // The old aggregate hash no longer describes the extended baseline. Children
+  // still distinguish unchanged publisher defaults from local edits.
+  return changed ? { hash: '', [field]: entries } : previous
+}
+
+function matchesFingerprint(value, previous) {
+  if (!previous) return false
+  if (hash(value) === previous.hash) return true
+  if (previous.hash !== '') return false
+  // An extended baseline has no aggregate hash, but can still match a whole
+  // unchanged container (including one the next release removes completely).
+  let entries, fingerprints
+  if (object(value) && previous.children) { entries = value; fingerprints = previous.children }
+  else if (keyed(value) && previous.items) {
+    entries = Object.fromEntries(value.map(item => [item.id, item])); fingerprints = previous.items
+  } else return false
+  const keys = Object.keys(fingerprints).filter(key => fingerprints[key] !== undefined)
+  return Object.keys(entries).length === keys.length && keys.every(key => Object.hasOwn(entries, key) && matchesFingerprint(entries[key], fingerprints[key]))
+}
+
 /** Three-way defaults update. Local additions, deletions and edits win. */
 export function mergeConfiguration(local, previous, incoming, conflicts = [], path = '') {
   if (!previous && incoming === undefined) return local
-  if (hash(local) === previous?.hash || hash(local) === hash(incoming) || local === undefined && !previous) return incoming
+  if (matchesFingerprint(local, previous) || hash(local) === hash(incoming) || local === undefined && !previous) return incoming
   if (object(local) && object(incoming) && previous?.children) {
     const result = {}
     for (const key of new Set([...Object.keys(local), ...Object.keys(previous.children), ...Object.keys(incoming)])) {
@@ -40,22 +79,22 @@ export function mergeConfiguration(local, previous, incoming, conflicts = [], pa
     }
     return result
   }
-  if (hash(incoming) !== previous?.hash) conflicts.push(path)
+  if (!matchesFingerprint(incoming, previous)) conflicts.push(path)
   return local
 }
 
-export async function readConfiguration(path) {
+export async function readConfiguration(path, validationPath = path) {
   const info = await lstat(path).catch(error => { if (error.code !== 'ENOENT') throw error })
   if (!info) return null
   if (!info.isFile() || info.isSymbolicLink() || info.size > 1024 * 1024) throw Error('配置文件必须是普通文件且不超过 1 MiB')
   const text = await readFile(path, 'utf8')
-  loadUserConfig(path)
+  parseUserConfig(validationPath, text.replace(/^\uFEFF/, ''))
   return { text, value: jsonc.getNodeValue(jsonc.parseTree(text.replace(/^\uFEFF/, ''), [], { allowTrailingComma: true })) }
 }
 
 // Keep comments/formatting around unchanged values. A changed container's key
 // set is rewritten as a unit; the exact original bytes remain in the one backup.
-function render(text, value) {
+export function renderConfiguration(text, value) {
   const prefix = text.startsWith('\uFEFF') ? 1 : 0
   const tree = jsonc.parseTree(text.slice(prefix), [], { allowTrailingComma: true }), edits = []
   function visit(node, next) {
@@ -63,7 +102,10 @@ function render(text, value) {
     if (hash(previous) === hash(next)) return
     if (node.type === 'object' && object(next) && Object.keys(previous).sort().join('\0') === Object.keys(next).sort().join('\0')) {
       for (const property of node.children ?? []) visit(property.children[1], next[property.children[0].value])
-    } else edits.push({ offset: node.offset + prefix, length: node.length, text: JSON.stringify(next, null, 2) })
+    } else {
+      const comments = configurationComments(text.slice(node.offset + prefix, node.offset + prefix + node.length)).filter(comment => !comment.startsWith('// [eduwork] '))
+      edits.push({ offset: node.offset + prefix, length: node.length, text: (comments.length ? comments.join('\n') + '\n' : '') + JSON.stringify(next, null, 2) })
+    }
   }
   visit(tree, value)
   for (const edit of edits.sort((a, b) => b.offset - a.offset)) text = text.slice(0, edit.offset) + edit.text + text.slice(edit.offset + edit.length)
@@ -79,7 +121,9 @@ async function atomic(path, text) {
 
 /** One effective file and one backup; transactions contain hashes, not copies. */
 export class ConfigurationFile {
-  constructor(path, dataRoot) {
+  constructor(path, dataRoot, { fields = {}, defaults = {} } = {}) {
+    this.fields = fields
+    this.explicitDefaults = defaults
     this.path = path; this.dataRoot = dataRoot
     this.directory = join(dataRoot, 'configuration')
     this.backup = join(this.directory, 'eduwork.previous.jsonc')
@@ -112,29 +156,51 @@ export class ConfigurationFile {
     return this
   }
   async save() { await atomic(this.statePath, JSON.stringify(this.state, null, 2) + '\n') }
-  async begin(next, { key, scope, defaults, initialized = this.state.initialized, cleanup = this.state.cleanup }) {
+  async begin(next, { key, scope, defaults, current, initialized = this.state.initialized, cleanup = this.state.cleanup, initialFingerprints = this.state.initialFingerprints }) {
     if (this.state.trial) throw Error('请先完成当前配置更新')
-    const current = await readConfiguration(this.path)
-    const before = current?.text ?? '{"schemaVersion":1}\n', after = render(before, next)
+    if (current === undefined) throw Error('配置更新缺少原始文件快照')
+    next = explicitConfigurationDefaults(next, this.explicitDefaults)
+    const before = current?.text ?? '{"schemaVersion":1}\n', after = documentConfiguration(renderConfiguration(before, next), this.fields)
+    const ensureUnchanged = async () => {
+      const fresh = await readFile(this.path, 'utf8').catch(error => { if (error.code !== 'ENOENT') throw error; return null })
+      if (fresh !== (current?.text ?? null)) throw Error('配置文件在更新期间被修改，请重试；手工修改已保留')
+    }
     // Validate before replacing either the active file or its only backup.
     const temporary = this.path + '.' + randomUUID() + '.tmp'
     await mkdir(dirname(this.path), { recursive: true })
     try {
       await writeFile(temporary, after, { flag: 'wx', mode: 0o600 }); loadUserConfig(temporary)
+      // Compare with the snapshot used to plan the merge, before rotating the
+      // only backup. A newer read must never silently authorize a stale result.
+      await ensureUnchanged()
       await atomic(this.backup, before)
       this.state.trial = { key, scope, before: digest(before), after: digest(after), afterFingerprints: configurationFingerprints(next), defaults, initialized, cleanup,
-        initialFingerprints: scope === 'initialization' ? configurationFingerprints(business(next)) : this.state.initialFingerprints }
+        initialFingerprints }
       await this.save()
-      const fresh = await readFile(this.path, 'utf8').catch(error => { if (error.code !== 'ENOENT') throw error; return '{"schemaVersion":1}\n' })
-      if (digest(fresh) !== digest(before)) {
+      try { await ensureUnchanged() }
+      catch (error) {
         this.state.trial = null; await this.save()
-        throw Error('配置文件在更新期间被修改，请重试；手工修改已保留')
+        throw error
       }
       await rename(temporary, this.path)
     } finally { await rm(temporary, { force: true }) }
   }
-  async initialize(value, { defaults = null, cleanup = [] } = {}) {
-    await this.begin(value, { key: 'initialization', scope: 'initialization', defaults, initialized: true, cleanup })
+  async document() {
+    if (this.state.trial) return // A content update already owns the only rollback backup.
+    const current = await readConfiguration(this.path)
+    if (!current) return
+    const next = explicitConfigurationDefaults(current.value, this.explicitDefaults)
+    if (documentConfiguration(renderConfiguration(current.text, next), this.fields) === current.text) return
+    const defaults = this.state.defaults && { ...this.state.defaults,
+      fingerprints: addedDefaultFingerprints(this.state.defaults.fingerprints, business(current.value), business(next)) }
+    await this.begin(next, { current, key: 'documentation', scope: 'initialization', defaults,
+      initialFingerprints: addedDefaultFingerprints(this.state.initialFingerprints, business(current.value), business(next)) })
+    await this.commit()
+  }
+  async initialize(value, { defaults = null, cleanup = [], current } = {}) {
+    if (current === undefined) current = await readConfiguration(this.path)
+    await this.begin(value, { current, key: 'initialization', scope: 'initialization', defaults, initialized: true, cleanup,
+      initialFingerprints: configurationFingerprints(business(explicitConfigurationDefaults(value, this.explicitDefaults))) })
     await this.commit()
   }
   async apply({ scope, key, patch, revision, legacy = false }) {
@@ -158,7 +224,9 @@ export class ConfigurationFile {
       if (update[name] === undefined) delete next[name]
       else next[name] = update[name]
     }
-    await this.begin(next, { key, scope, initialized: true, defaults: { key, scope, revision, fingerprints: configurationFingerprints(patch), conflicts } })
+    const materialized = explicitConfigurationDefaults(next, this.explicitDefaults)
+    const fingerprints = addedDefaultFingerprints(configurationFingerprints(patch), business(next), business(materialized))
+    await this.begin(materialized, { current, key, scope, initialized: true, defaults: { key, scope, revision, fingerprints, conflicts } })
     return conflicts
   }
   async commit() {
@@ -170,12 +238,13 @@ export class ConfigurationFile {
   async rollback() {
     const trial = this.state.trial
     if (!trial) return false
-    const backup = await readConfiguration(this.backup)
+    // Relative assets still belong to the active configuration directory.
+    const backup = await readConfiguration(this.backup, this.path)
     if (!backup || digest(backup.text) !== trial.before) throw Error('配置备份校验失败，未覆盖当前文件')
     const current = await readConfiguration(this.path)
     if (!current || digest(current.text) !== trial.before) {
       const restored = !current || digest(current.text) === trial.after ? backup.text
-        : render(current.text, mergeConfiguration(current.value, trial.afterFingerprints, backup.value))
+        : renderConfiguration(current.text, mergeConfiguration(current.value, trial.afterFingerprints, backup.value))
       await atomic(this.path, restored)
     }
     this.state.trial = null

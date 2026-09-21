@@ -38,6 +38,18 @@ export function resolveUpdateConfiguration(defaults={},updates={},prior=null) {
  return result
 }
 
+// The same resolution feeds both the updater and the editable JSONC. In
+// particular, preserve a migrated Go installation's source before writing it.
+export function editablePortableUpdateConfiguration({defaults={},updates={},prior=null,version,distribution}) {
+ const configuration=resolveUpdateConfiguration(defaults,updates,prior)
+ const edition=portableUpdateEdition({configuration,prior,version,distribution})
+ const result={...configuration,defaultPolicy:edition.defaultPolicy}
+ if(!edition.enabled)return {...result,provider:'disabled'}
+ if(edition.provider==='github')return {...result,provider:'github',repository:edition.repository}
+ if(edition.manifestBaseURL)return {...result,provider:'static',manifestURL:`${edition.manifestBaseURL}/${edition.defaultPolicy}/latest-${edition.target}.json`}
+ return result
+}
+
 export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform}) {
  if(platform!=='win32')return null
  const state=join(root,'data/state/updates')

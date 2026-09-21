@@ -1,3 +1,4 @@
+import { serviceProtocolAllowed } from './transport.js'
 import { createHash, createPublicKey, randomBytes, timingSafeEqual, verify as verifySignature } from 'node:crypto'
 import { emptyResources } from './resources.js'
 
@@ -43,10 +44,6 @@ async function responseJSON(response, stage) {
   return value
 }
 
-function isLoopback(hostname) {
-  return hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '[::1]'
-}
-
 /** OIDC metadata endpoints may use origins distinct from the issuer over HTTPS. */
 function discoveredEndpoint(value, profile, label, optional = false) {
   if (optional && (value === undefined || value === '')) return ''
@@ -54,17 +51,8 @@ function discoveredEndpoint(value, profile, label, optional = false) {
   let endpoint
   try { endpoint = new URL(value) }
   catch (cause) { throw publicError('oidc_discovery_invalid', `OIDC ${label} is not an absolute URL`, cause) }
-  const issuerURL = new URL(profile.oidc.issuer)
-  const secure = endpoint.protocol === 'https:'
-  const localDevelopment = issuerURL.protocol === 'http:' && isLoopback(issuerURL.hostname)
-    && endpoint.protocol === 'http:' && isLoopback(endpoint.hostname)
-  const explicitlyAllowedDevelopment = profile.allowInsecureDevelopment === true
-    && typeof profile.insecureDevelopmentOrigin === 'string'
-    && issuerURL.origin === profile.insecureDevelopmentOrigin
-    && endpoint.protocol === 'http:'
-    && endpoint.origin === profile.insecureDevelopmentOrigin
-  if ((!secure && !localDevelopment && !explicitlyAllowedDevelopment) || endpoint.username || endpoint.password || endpoint.hash) {
-    throw publicError('oidc_discovery_invalid', `OIDC ${label} must be HTTPS, loopback HTTP, or the profile's exact development HTTP origin`)
+  if (!serviceProtocolAllowed(endpoint, profile.allowInsecureDevelopment) || endpoint.username || endpoint.password || endpoint.hash) {
+    throw publicError('oidc_discovery_invalid', `OIDC ${label} must be HTTPS; set allowInsecureDevelopment=true to allow HTTP`)
   }
   return endpoint.toString()
 }

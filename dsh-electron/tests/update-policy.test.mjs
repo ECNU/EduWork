@@ -1,6 +1,23 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {portableUpdateEdition,resolveUpdateConfiguration} from '../src/portable-updates.mjs'
+import {portableUpdateEdition,resolveUpdateConfiguration,editablePortableUpdateConfiguration} from '../src/portable-updates.mjs'
+
+test('writing update defaults preserves the actual source, channel, and disabled choice across restarts', () => {
+ const defaults={provider:'github',repository:'example/product',defaultPolicy:'development'},version='0.3.6-dev.1'
+ const cases=[
+  {updates:{}},
+  {updates:{},prior:{schemaVersion:1,enabled:true,manifestBaseURL:'https://institution.example.test/bridge',target:'windows-amd64'}},
+  {updates:{provider:'static',manifestURL:'https://custom.example.test/stable/latest-windows-amd64.json',defaultPolicy:'stable'}},
+  {updates:{provider:'disabled'}},
+ ]
+ for(const entry of cases){
+  const actual=portableUpdateEdition({configuration:resolveUpdateConfiguration(defaults,entry.updates,entry.prior),prior:entry.prior,version})
+  const written=editablePortableUpdateConfiguration({...entry,defaults,version})
+  const next=portableUpdateEdition({configuration:resolveUpdateConfiguration(defaults,written,entry.prior),prior:entry.prior,version})
+  for(const key of ['enabled','repository','manifestBaseURL','defaultPolicy']) assert.equal(next[key],actual[key],key)
+  assert.equal(Boolean(written.provider),true)
+ }
+})
 
 test('package channel is independent of feed URL and preserved old bridge config',()=>{
  const manifestURL='https://updates.example.test/releases-bridge/stable/latest-windows-amd64.json'
