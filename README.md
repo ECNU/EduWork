@@ -12,17 +12,17 @@
 
 **简体中文** | [English](README_EN.md)
 
-[开始使用](#安装与使用) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md)
+[开始使用](#安装与使用) · [连接 LiteLLM](#连接-litellm) · [学校与企业接入](#学校与企业接入) · [开放接入倡议](#一次接入更多客户端) · [使用指南](docs/USER_GUIDE.md)
 
 </div>
 
-EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手。选择一个文件夹，说清楚你想完成的任务：从阅读资料、搜索信息、分析数据，到生成文档、表格和演示文稿，都可以在同一个工作区完成。
+EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 的桌面 AI 工作助手。选择一个文件夹，说清楚你想完成的任务：从阅读资料、搜索信息、分析数据，到生成网页、文档、表格和演示文稿，都可以在同一个工作区完成。
 
 个人用户连接自己的模型 API；学校和企业通过配置接入统一身份与模型服务。**每位用户在自己的电脑上独立运行，无需部署额外的 EduWork 服务端。**
 
-![EduWork 工作区：围绕课程资料整理教学方案，在对话中查看和打开成果文件](docs/images/workspace.png)
+![EduWork 工作区：调研校园资料、生成 HTML 简介，并在右侧预览网页成果](docs/images/workspace.png)
 
-<p align="center"><sub>资料、对话与成果放在一起，让一项工作可以持续做下去。</sub></p>
+<p align="center"><sub>从调研到网页成果：左侧继续对话，右侧直接预览生成的页面。</sub></p>
 
 ## 你可以用它做什么
 
@@ -42,22 +42,31 @@ EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-har
 | 你正在做什么 | 可以这样交给 EduWork |
 | --- | --- |
 | 备课与学习 | “根据课程材料制作演示文稿，再生成配套的测验和复习闪卡。” |
-| 研究与调研 | “阅读这些资料，按主题整理观点，标出来源和仍需核实的问题。” |
+| 研究与调研 | “调研这个主题，保留来源链接，制作一页 HTML 介绍，并标出仍需核实的问题。” |
 | 数据与办公 | “比较这几份表格，找出差异，生成分析报告和汇总表。” |
 
 Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂任务。工作区保留会话和成果，方便接着修改、补充资料和继续推进。
 
 ### 在 Studio 里，把成果做出来
 
-打开右侧 Studio，选择成果类型即可开始；也可以直接在对话中提出要求。两种入口共用生成、预览与下载能力。
+打开右侧 Studio，选择成果类型即可开始；也可以直接在对话中提出要求。例如，把调研生成的网页留在工作区，再用 Studio 制作测验，答题时查看解析与资料依据。同一份资料可以继续用于报告、演示文稿或复习卡片。
 
 **报告 · 数据表 · 演示文稿 · 思维导图 · 测验 · 闪卡 · 音频 · 视频**
 
-![Studio 侧边栏：围绕课程设计制作配套材料（机构配置示例）](docs/images/studio.png)
+![公版 Studio：成果类型入口与基于工作区资料生成的测验](docs/images/studio.png)
 
-<p align="center"><sub>图中为机构配置示例。Studio 由公版提供，界面名称和标识可通过配置调整。</sub></p>
+<p align="center"><sub>选一种成果形式开始，生成的内容保存在「最近成果」，随时打开继续使用。</sub></p>
 
 报告、表格和演示文稿可生成 **DOCX、XLSX、PPTX** 文件；学习材料支持交互预览，音视频可预览并下载媒体与字幕。文生图和云端 TTS 需配置兼容服务，本机语音取决于系统及本地资源，详见[媒体服务配置](docs/MEDIA.md)。
+
+<details>
+<summary>看看生成的测验如何使用</summary>
+
+![Studio 测验：答题后查看对错、解析与来源依据，并可继续向 AI 提问](docs/images/quiz.png)
+
+在侧栏直接答题，查看解析与来源依据；有疑问时可以继续「问问 AI」。
+
+</details>
 
 ### 让工作方式适合你
 
@@ -81,13 +90,39 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 ### 1. 获取客户端
 
-从 [GitHub Releases](https://github.com/ecnu/EduWork/releases) 获取完整桌面包，解压到可写目录，运行 `EduWork-Electron.exe`。请保留同目录下的资源文件，不要只复制 EXE。
+从 [GitHub Releases](https://github.com/ecnu/EduWork/releases) 选择对应平台的完整桌面包：
 
-若 Releases 暂无可用安装包，可按[构建指南](docs/BUILD.md)从源码运行；GitHub 的 Source code 压缩包不是桌面安装包。
+- **Windows x64**：解压到可写目录，运行 `EduWork-Electron.exe`。请保留同目录下的资源文件，不要只复制 EXE。
+- **macOS arm64**：解压后将 `EduWork.app` 放入“应用程序”，然后打开；配置和用户数据存放在用户目录。
+
+GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构建指南](docs/BUILD.md)。
 
 ### 2. 连接模型
 
-打开 **设置 → 模型**，填写服务商的 API Key、接口地址和模型。使用学校或企业服务的用户，可按下方说明加载机构配置，再通过浏览器登录获得模型。
+| 你已有的服务 | 如何连接 |
+| --- | --- |
+| 个人模型 API | 打开 **设置 → 模型**，填写服务商的 API Key、接口地址和模型。 |
+| LiteLLM 网关账号 | 按下方步骤配置发现地址，通过浏览器登录，无需手动填写模型 Key。 |
+| 学校或企业提供的配置 | 按[机构配置方法](#配置方法)合并到生效配置，再选择机构登录。 |
+
+公版默认不自动下载机构配置，安装包自带带注释的 `eduwork.jsonc` 和 `examples/`。机构接入、媒体服务、插件默认值与更新源等应用配置集中在设置中打开的这一份文件，可选配置项列在文件末尾的注释参考中。个人模型、API Key 和界面偏好仍在对应设置界面中管理。
+
+#### 连接 LiteLLM
+
+1. 从 **设置 → 打开配置文件** 打开生效的 `eduwork.jsonc`，参照旁边的 `examples/litellm.jsonc`，把机构条目加入 `organizations` 数组。
+2. 填写登录名称、本机唯一 `id`、完整发现地址（例如 `https://gateway.example.org/.well-known/litellm-cli-auth`）以及发现文档里的 `issuer`。LiteLLM 自动注册 Client ID，**不需要填写 `clientId`、`client_secret` 或 API Key**。
+3. 保存后完全退出并重启，从账户入口登录 LiteLLM；按网关提示选择团队并授权，再选择模型开始对话。
+
+服务端需启用 LiteLLM 原生 CLI OAuth，并提供有模型权限的账号。HTTP 测试环境还需把机构对象中的 `allowInsecureDevelopment` 改为 `true`，HTTPS 保持默认 `false`。字段填写见[逐项配置说明](config/desktop/examples/README.md#接入-litellm改哪里填什么)，版本要求与部署检查见[LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
+
+<details>
+<summary>查看 LiteLLM 登录后的模型选择</summary>
+
+![LiteLLM 登录后，模型菜单在「本机 LiteLLM」分组中显示已授权的 deepseek-v4-flash](docs/images/litellm-models.png)
+
+图中 LiteLLM 账号获授权使用 `deepseek-v4-flash`；实际名称和列表由你的网关配置决定。上方 DeepSeek 分组是单独配置的服务商，可与机构模型同时使用。
+
+</details>
 
 ### 3. 开始工作
 
@@ -96,7 +131,7 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 <details>
 <summary>窗口行为与自动更新</summary>
 
-窗口关闭后默认收起到系统托盘；需要完全退出时，使用托盘菜单。Windows 公版默认从 GitHub 获取更新，公测与开发渠道可在设置中选择，机构可通过配置切换更新源；自动更新保留历史数据与用户配置，详见[更新说明](docs/UPDATES.md)。
+窗口关闭后默认收起到系统托盘；需要完全退出时，使用托盘或应用菜单。公版默认从 GitHub 获取更新，公测与开发渠道可在设置中选择。Windows 使用绿色版更新器；macOS 使用 Sparkle，按提示确认下载和安装后替换应用并重启。机构可配置自己的更新源，更新保留历史数据与用户配置。详见 [Windows 更新说明](docs/UPDATES.md)和 [macOS 更新说明](docs/MACOS_UPDATES.md)。
 
 </details>
 
@@ -109,11 +144,9 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 | 服务端 / 项目 | 登录与模型接入 | 配置与使用 |
 | --- | --- | --- |
 | [LiteLLM](https://github.com/BerriAI/litellm) | 使用网关账号登录，按用户及所选团队的授权访问模型。 | [LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) |
-| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | 使用学校账号登录，访问获授权的模型；学校扩展提供个人配额信息。 | [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) |
+| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | 通过 oidc-llm 接入机构身份与获授权的模型。 | [EduWork@ECNU 机构发行示例](https://github.com/ECNU/EduWork-ECNU) |
 
-**华东师范大学用户可使用学校分发的 EduWork@ECNU，学校配置已预置，登录即可使用。** 学校版的获取与使用说明统一维护在 EduWork-ECNU 仓库。
-
-表中的 Token 模型接入需使用包含本功能的构建，尚未进入已发布的 npm 包或桌面版本；ChatECNU 使用显式启用的 oidc-llm 实验适配器。
+这些登录方式已内置于桌面包，无需另装插件。oidc-llm 仍是实验性协议，需按服务端约定显式启用；标准 LiteLLM 配置无需开启此实验选项。
 
 企业登录后，客户端使用登录 Token 自动读取模型目录并调用模型，使用过程中自动刷新，无需复制或另行创建模型 Key。模型权限与配额仍由服务端管理；企业模型和用户自己配置的模型可以同时使用。
 
@@ -124,9 +157,9 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 <details>
 <summary><strong>三步配置你的机构</strong></summary>
 
-1. 在设置中点击 **打开配置文件**，编辑客户端目录下的 `config/eduwork.jsonc`。
-2. 按上表的服务端指南选择配置示例，将机构配置填入 `organizations`；需要图像或语音服务时再加入 `media`。更多示例在客户端的 `config/examples/` 目录。
-3. 保存后从托盘完全退出并重新启动，再选择机构登录。
+1. 在设置中点击 **打开配置文件**，编辑当前生效的 `eduwork.jsonc`。Windows 位于程序目录的 `config/`；macOS 位于 `~/Library/Application Support/eduwork-electron/config/`。
+2. 按服务端指南选择旁边 `examples/` 中的示例，将机构条目加入 `organizations`，保留已有配置；需要图像或语音服务时再加入 `media`。只修改示例文件不会生效。
+3. 保存后从托盘或应用菜单完全退出并重新启动，再选择机构登录。
 
 配置文件只保存公开接入信息和凭据引用。个人 API Key 在模型设置中管理，登录 Token 保存在本机受保护存储中；不要把密码或令牌写入配置文件。界面 Logo 可配置，程序内嵌图标由发行包提供。
 

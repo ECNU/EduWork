@@ -16,7 +16,7 @@ OIDC mode requires browser sign-in, Code + PKCE, a valid ID Token and UserInfo. 
 
 Load trusted JSON through config.profile, config.profiles or EDUWORK_OIDC_PROFILE. Desktop uses backend: desktop, Host credential storage and desktopServices.openExternal, with a temporary 127.0.0.1 callback. Local Web uses backend: web with WebServer bound to 127.0.0.1 and its actual port.
 
-These changes are for development assemblies containing this branch, not yet published. Follow [development](development.en.md) for validation. Released assemblies must pin reviewed published packages; old packages cannot consume these new profiles.
+This Host integration is published in `@eduwork/dsh-oidc@0.3.0-dev.2` and assembled in EduWork `0.3.6-dev.20260921.1`. Desktop users edit `eduwork.jsonc` using the [LiteLLM setup guide](gateway-auth/litellm-setup.en.md). Other Hosts must pin reviewed package versions; old packages cannot consume these profiles. See [development](development.en.md) for source builds and validation.
 
 ## Sign-in and use
 

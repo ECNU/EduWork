@@ -14,4 +14,4 @@ Servers may keep legacy endpoints for already released clients. New clients use 
 4. Sign in again. The client neither guesses a new discovery URL nor treats saved model keys as Access Tokens, and never silently falls back. It does not read old model keys or bulk-delete keys potentially used elsewhere.
 5. Identity-only oidc profiles may remain but cannot include a model provider.
 
-This is a breaking configuration change in unpublished source. Consult historical versions for the retired protocol. Personal API-key settings remain available.
+This configuration change is included in `@eduwork/dsh-oidc@0.3.0-dev.2` and EduWork `0.3.6-dev.20260921.1`. Consult historical versions for the retired protocol. Personal API-key settings remain available.

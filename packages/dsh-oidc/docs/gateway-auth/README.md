@@ -2,7 +2,7 @@
 
 **简体中文** | [English](README_EN.md)
 
-本分支新增 LiteLLM native OAuth 支持，以及默认关闭的 [oidc-llm 实验适配器](experimental-oidc-llm.md)，尚未发布 npm 或桌面版本。仅身份 oidc 配置保留；旧 Key Binding 模型流程已移除，迁移见[说明](../key-binding-protocol.md)。新的 **oidc-llm** 仍是[协议草案](oidc-llm-draft.md)，实验实现不代表协议已定稿。
+LiteLLM native OAuth 和默认关闭的 [oidc-llm 实验适配器](experimental-oidc-llm.md) 已随 `@eduwork/dsh-oidc@0.3.0-dev.2` 发布，并包含在 EduWork `0.3.6-dev.20260921.1` 中。仅身份 oidc 配置保留；旧 Key Binding 模型流程已移除，迁移见[说明](../key-binding-protocol.md)。**oidc-llm** 仍是[协议草案](oidc-llm-draft.md)，实验实现不代表协议已定稿。
 
 ## 选择接入方式
 

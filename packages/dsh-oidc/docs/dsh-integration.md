@@ -4,7 +4,7 @@
 
 ## 支持的宿主基线
 
-当前 `0.2.0`以 npm 已发布的 DSH `0.1.5-rc.1` 闭包作为开发/CI 基线。历史稳定版 `0.1.0` 对应 `0.1.2-rc.1`；其他旧候选证据分别记在[兼容性矩阵](compatibility.md)。不要混装 DSH 版本。干净安装见[开发准备](development.md)。
+当前 `0.3.0-dev.2` 以 npm 已发布的 DSH `0.1.5-rc.1` 依赖作为包开发/CI 基线；完整 EduWork 发行的 Runtime 以产品锁为准。不要混装 DSH 依赖版本。参见[兼容性说明](compatibility.md)和[开发准备](development.md)。
 
 插件只使用公开 package export，不复制 DSH 源码：
 
@@ -62,10 +62,10 @@ Client 描述符使用严格 Zod codec。发送给浏览器的配置不包含 is
 
 `dsh-oidc` 自带默认的 local-Web Bundle patch，可以直接从 npm 安装到官方 Web Profile，无需再编写 wrapper Bundle：
 
-安装精确的 `0.2.0`，宿主 DSH 依赖应统一为 `0.1.5-rc.1`。发布准备期间若 registry 尚未提供该版本，使用下方源码或已核验的冻结产物。
+安装精确的 `0.3.0-dev.2`，宿主 DSH 依赖应统一为包声明的 `0.1.5-rc.1` 基线。EduWork 桌面发行已装配此包，桌面用户只需编辑配置，无需执行以下插件安装命令。
 
 ```bash
-dsh plugin --profile web add @eduwork/dsh-oidc@0.2.0
+dsh plugin --profile web add @eduwork/dsh-oidc@0.3.0-dev.2
 ```
 
 需要审计、开发或验证尚未发布的改动时，可以安装经过审查的本地 checkout：
