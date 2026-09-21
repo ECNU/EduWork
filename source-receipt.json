@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T06:04:26.447Z",
-  "fileSetSHA256": "57a8658efe7a3076f374fdbfb20f39b8016e528fe3dd261ca7162ff4df07d235",
+  "createdAt": "2026-09-21T06:11:27.076Z",
+  "fileSetSHA256": "b326a935048d1598006547402de6204b393a0df6bc7fa5bc140cf75df96313b3",
   "files": [
     {
       "path": ".gitattributes",
@@ -41,7 +41,7 @@
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "a36259f9658dbb7057edc9ae5b84255163c56dd3ed3b156f4ecbdc8d43da7239"
+      "sha256": "6dfd44a3477fcaf25617c4ff3ef58a6d5bb7a81ec40afe72346c26be8be0bdcd"
     },
     {
       "path": ".gitignore",
@@ -842,6 +842,10 @@
     {
       "path": "dsh-electron/tests/update-policy.test.mjs",
       "sha256": "141372843ac3e7c9eb3c7381cfa4e3be451a3dca5b7ebb7eea44fd85900b06e7"
+    },
+    {
+      "path": "dsh-electron/tests/user-config-electron-smoke.mjs",
+      "sha256": "80408d92cf80ae2a9238442f189aafd1ed48a8346eb400387c73f0f1745e9f55"
     },
     {
       "path": "dsh-electron/tests/window-lifecycle.mjs",
