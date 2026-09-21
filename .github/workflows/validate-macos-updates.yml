@@ -7,6 +7,8 @@ on:
       - 'dsh-electron/tests/sparkle-macos-smoke.mjs'
       - 'dsh-electron/sparkle.lock.json'
       - 'dsh-electron/scripts/assemble-macos.ps1'
+      - 'config/desktop/mac-updates.json'
+      - '.github/workflows/desktop-candidates.yml'
       - 'scripts/macos-update-feed.mjs'
       - 'scripts/test/macos-update-feed.test.mjs'
       - 'scripts/ci-eduwork-macos-release.ps1'

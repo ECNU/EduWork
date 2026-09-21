@@ -6,6 +6,8 @@ macOS 使用 Sparkle 的原生窗口检查、下载、校验和安装更新。�
 
 应用之外的配置、会话、凭据和 Skills 保留在用户目录。配置与 Skills 更新和程序更新共用设置入口，程序更新不会覆盖它们。旧 Mac 包没有 Sparkle，首次需要手动替换到包含此组件的版本，此后才支持该流程。
 
+公版默认使用 GitHub：`updates/macos/stable.xml` 与 `updates/macos/development.xml` 提供 appcast，安装包来自 GitHub Release。先发布并核验 Release 资产，再通过 PR 更新对应清单；开发渠道同时保留最新开发版和更高的公测版。机构可配置自己的清单源。
+
 ## 发行配置
 
 机构发行可将以下文件装配到 `resources/desktop/mac-updates.json`。也可在 Mac CI 配方中指定 `-MacUpdateConfig <文件>`。这个文件只包含公开更新地址和验证公钥，不包含私钥或登录配置。

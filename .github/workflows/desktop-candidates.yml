@@ -1,0 +1,86 @@
+name: Build desktop release candidates
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Approved X.Y.Z-dev.YYYYMMDD.N version; artifacts only'
+        required: true
+        type: string
+      development:
+        description: 'Build an internal test artifact without release notes or publication'
+        type: boolean
+        default: true
+      release_notes:
+        description: 'Approved docs/releases/<version>.md file (release candidate only)'
+        required: false
+        type: string
+      notes_approved:
+        description: 'The project owner approved this version and release text'
+        required: true
+        default: false
+        type: boolean
+      platform:
+        description: 'Build both platforms, or diagnose one native platform'
+        required: true
+        default: both
+        type: choice
+        options: [both, windows, macos]
+permissions:
+  contents: read
+concurrency:
+  group: desktop-candidate-${{ github.sha }}-${{ inputs.platform || 'both' }}
+  cancel-in-progress: false
+jobs:
+  build:
+    # Manual, read-only candidate builds may validate a maintainer-selected branch before merge.
+    if: github.event_name == 'workflow_dispatch'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"runner":"windows-latest","platform":"windows"}]' || inputs.platform == 'macos' && '[{"runner":"macos-15","platform":"macos"}]' || '[{"runner":"windows-latest","platform":"windows"},{"runner":"macos-15","platform":"macos"}]') }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Build and validate the exact desktop archive
+        shell: pwsh
+        env:
+          DEVELOPMENT_ONLY: ${{ inputs.development }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          TARGET_PLATFORM: ${{ matrix.platform }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ($env:DEVELOPMENT_ONLY -ne 'true' -and $env:RELEASE_NOTES_APPROVED -ne 'true') { throw 'Release notes approval is required.' }
+          node core/scripts/check-source-docs.mjs core
+          $script = "./core/scripts/ci-eduwork-$($env:TARGET_PLATFORM)-release.ps1"
+          $acceptance = @{}
+          if ($env:DEVELOPMENT_ONLY -eq 'true') { $acceptance.Development = $true } else { $acceptance.ReleaseNotesApproved = $true }
+          & $script -CoreRoot ./core -EditionRoot ./core -DistributionConfig config/distributions/generic.json -Version $env:RELEASE_VERSION -ReleaseNotesFile $env:RELEASE_NOTES -Output "$env:RUNNER_TEMP/ew-candidate" @acceptance
+      - name: Retain validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-validation
+          path: ${{ runner.temp }}/ew-candidate/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain candidate files for acceptance before publication
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-release
+          path: ${{ runner.temp }}/ew-candidate/publish
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error

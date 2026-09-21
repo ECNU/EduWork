@@ -1,0 +1,8 @@
+{
+  "schemaVersion": 1,
+  "feeds": {
+    "stable": "https://raw.githubusercontent.com/ECNU/EduWork/main/updates/macos/stable.xml",
+    "development": "https://raw.githubusercontent.com/ECNU/EduWork/main/updates/macos/development.xml"
+  },
+  "publicEDKey": "41+0xtqhb5phrG6OA2PXvouBurFHKFJ2As1KWPkuNQM="
+}

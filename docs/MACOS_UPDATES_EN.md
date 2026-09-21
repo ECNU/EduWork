@@ -6,6 +6,8 @@ Sparkle provides native checks, downloads, verification, installation and relaun
 
 Older Mac builds without Sparkle require one manual replacement before this update path becomes available.
 
+The public edition defaults to GitHub: `updates/macos/stable.xml` and `updates/macos/development.xml` provide appcasts pointing to GitHub Release assets. Publish and verify the assets first, then update the relevant feed through a PR. The development feed includes the newest development build and any newer stable release. Editions may configure their own feeds.
+
 An edition may supply `resources/desktop/mac-updates.json`, or pass `-MacUpdateConfig <file>` to the Mac CI recipe. The schema contains `schemaVersion: 1`, HTTPS `feeds.stable` and `feeds.development`, and `publicEDKey` (the Base64 encoding of the raw 32-byte Ed25519 public key). No credentials or private keys belong in that file. CI verifies the pinned framework, compiles the native bridge and seals the application. Missing configuration disables application updates; incomplete configuration fails the build.
 
 Channel preferences live in the user directory. The development appcast should offer the newest development or stable release; the stable appcast offers stable releases only. Switching channels must not downgrade. Assembly and appcasts share a version encoding: `0.3.6-dev.20260920.1` becomes `0.3.6dev20260920.1`, while stable remains `0.3.6`. Sparkle ignores hyphenated suffixes; native CI verifies this encoding with Sparkle's actual comparator.
