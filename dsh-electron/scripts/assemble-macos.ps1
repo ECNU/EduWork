@@ -130,6 +130,13 @@ if (Test-Path -LiteralPath $policyPath) {
     if ($policy.schemaVersion -ne 1 -or $policy.ownership -notin @('user','publisher')) { throw 'Invalid desktop configuration ownership policy' }
     $ownership = $policy.ownership
 }
+if ($ownership -eq 'user') {
+    foreach ($relative in @('eduwork.jsonc', 'examples/organization.jsonc', 'examples/updates.jsonc')) {
+        if (-not (Test-Path -LiteralPath (Join-Path $resources "product/resources/desktop/$relative") -PathType Leaf)) {
+            throw "Missing first-launch user configuration resource: $relative"
+        }
+    }
+}
 $desktop = [ordered]@{
     schemaVersion=1; shell='electron'; appId="org.eduwork.$($identity.distribution).electron"
     distribution=$identity.distribution; productName=$identity.brand.product.name; productVersion=$Version

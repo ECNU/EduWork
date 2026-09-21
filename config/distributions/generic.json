@@ -200,6 +200,16 @@
   "resources": [
     {
       "root": "core",
+      "source": "config/desktop/eduwork.jsonc",
+      "target": "desktop/eduwork.jsonc"
+    },
+    {
+      "root": "core",
+      "source": "config/desktop/examples",
+      "target": "desktop/examples"
+    },
+    {
+      "root": "core",
       "source": "config/desktop/mac-updates.json",
       "target": "desktop/mac-updates.json"
     }

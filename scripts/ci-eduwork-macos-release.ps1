@@ -65,7 +65,11 @@ try {
     $result.checks.nativeRuntimes='passed'
     $gui=Join-Path $Output 'gui';New-Item -ItemType Directory -Path $gui | Out-Null
     $config=Join-Path $gui 'eduwork.jsonc'
-    @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';auth=@{discoveryUrl='https://identity.example.test/.well-known/openid-configuration';expectedIssuer='https://identity.example.test';experimentalOidcLlm=$true;clientId='synthetic-ci-client';identityMode='oidc'}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
+    # The public edition must create its own config from the actual ZIP.
+    # An existing synthetic config would hide a broken first-launch template.
+    if ($name -ne 'EduWork') {
+        @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';auth=@{discoveryUrl='https://identity.example.test/.well-known/openid-configuration';expectedIssuer='https://identity.example.test';experimentalOidcLlm=$true;clientId='synthetic-ci-client';identityMode='oidc'}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
+    }
     $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()
     $bootstrapEnabled = Test-Path (Join-Path $frozen 'resources/desktop/publisher-bootstrap.json')
     if ($VerifyPublisherBootstrap -and -not $bootstrapEnabled) { throw 'Publisher acceptance requires a bootstrap-enabled edition' }
@@ -111,6 +115,12 @@ try {
     if (-not (Get-Content (Join-Path $gui 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'macOS desktop smoke failed' }
     Copy-Item (Join-Path $gui 'result.json') (Join-Path $public 'desktop-ui-result.json')
     $result.checks.desktopLaunch='passed'
+    if ($name -eq 'EduWork') {
+        if (-not (Test-Path -LiteralPath $config -PathType Leaf) -or -not (Test-Path -LiteralPath (Join-Path $gui 'examples/organization.jsonc') -PathType Leaf)) {
+            throw 'First launch did not create the user configuration and examples'
+        }
+        $result.checks.userConfigurationFirstLaunch='passed'
+    }
     if ($VerifyPublisherBootstrap) {
         $started=Get-Content (Join-Path $gui 'data/logs/desktop-start.json') -Raw | ConvertFrom-Json
         if ($started.configurationRevision -lt 1 -or $started.skillsRevision -lt 1) { throw 'First launch did not activate signed publisher content' }

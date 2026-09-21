@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T06:11:27.076Z",
-  "fileSetSHA256": "b326a935048d1598006547402de6204b393a0df6bc7fa5bc140cf75df96313b3",
+  "createdAt": "2026-09-21T06:24:10.491Z",
+  "fileSetSHA256": "0efa44d0b12d4dd7ae6109e1e191cf4783e4ec46d4067fc14e2086c72de0f3aa",
   "files": [
     {
       "path": ".gitattributes",
@@ -173,7 +173,7 @@
     },
     {
       "path": "config/distributions/generic.json",
-      "sha256": "5ee6cc84f320958f7cdbd47a36ee8b482bdb34d5828fd36f0ef1d9f97bfecb86"
+      "sha256": "d9b0e435dabe7908f0c9a45b7bd12a8ddbd9d1dd52dec40bb2f12704a773846b"
     },
     {
       "path": "config/macos-native.lock.json",
@@ -681,7 +681,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "87d5be3a2b6b72a4123fa59b02c0043542f6cf49f72a3cfa54ef596aef0aecae"
+      "sha256": "df06aa3bc6a690a0b800435aead955804ea82060f01c53f484ccda3a49e21e1a"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -4217,7 +4217,7 @@
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
-      "sha256": "831e4661a6fed41029abf959d8974c528f5ab3d5d41f4d705f8fcb0851d132a6"
+      "sha256": "cdd99dbd0ecdfc8a69c537beca90724f624246d95a54b1633b155a5897859d30"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
