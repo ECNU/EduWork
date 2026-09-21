@@ -65,7 +65,11 @@ try {
     $result.checks.nativeRuntimes='passed'
     $gui=Join-Path $Output 'gui';New-Item -ItemType Directory -Path $gui | Out-Null
     $config=Join-Path $gui 'eduwork.jsonc'
-    @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';oidc=@{issuer='https://identity.example.test';clientId='synthetic-ci-client';scopes=@('openid','profile')}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
+    # The public edition must create its own config from the actual ZIP.
+    # An existing synthetic config would hide a broken first-launch template.
+    if ($name -ne 'EduWork') {
+        @{schemaVersion=1;desktop=@{closeAction='exit'};organizations=@(@{schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';auth=@{discoveryUrl='https://identity.example.test/.well-known/openid-configuration';expectedIssuer='https://identity.example.test';experimentalOidcLlm=$true;clientId='synthetic-ci-client';identityMode='oidc'}})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
+    }
     $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()
     $bootstrapEnabled = Test-Path (Join-Path $frozen 'resources/desktop/publisher-bootstrap.json')
     if ($VerifyPublisherBootstrap -and -not $bootstrapEnabled) { throw 'Publisher acceptance requires a bootstrap-enabled edition' }
@@ -74,13 +78,12 @@ try {
     # profile, without school credentials or changing any archive bytes. Keep
     # downloaded configuration out of public evidence and the release payload.
     $env:EDUWORK_CONFIG_FILE=if ($VerifyPublisherBootstrap) { $null } else { $config }
-    $start=[Diagnostics.ProcessStartInfo]::new()
-    $start.FileName=Join-Path $app 'Contents/MacOS/Electron';$start.UseShellExecute=$false
-    $start.RedirectStandardOutput=$true;$start.RedirectStandardError=$true
-    foreach ($arg in @("--remote-debugging-port=$port",'--remote-debugging-address=127.0.0.1','--use-mock-keychain')) { $start.ArgumentList.Add($arg) }
-    $process=[Diagnostics.Process]::Start($start)
-    $stdout=$process.StandardOutput.ReadToEndAsync();$stderr=$process.StandardError.ReadToEndAsync()
+    # Write directly to files: a descendant retaining a pipe must not prevent
+    # the test harness from reporting the original startup failure.
+    Write-Host 'Starting isolated macOS desktop acceptance'
+    $process=Start-Process -FilePath (Join-Path $app 'Contents/MacOS/Electron') -ArgumentList @("--remote-debugging-port=$port",'--remote-debugging-address=127.0.0.1','--use-mock-keychain') -RedirectStandardOutput (Join-Path $gui 'stdout.log') -RedirectStandardError (Join-Path $gui 'stderr.log') -PassThru
     $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=$null;$env:EDUWORK_CONFIG_FILE=$null
+    $launchFailure=$null
     try {
         $deadline=[DateTime]::UtcNow.AddMinutes(3);$ready=$false
         while ([DateTime]::UtcNow -lt $deadline) {
@@ -90,17 +93,34 @@ try {
         }
         if (-not $ready) { throw 'macOS desktop failed to start within acceptance limit' }
         & node (Join-Path $CoreRoot 'dsh-electron/tests/desktop-smoke.mjs') --shell electron --product $frozen --cdp "http://127.0.0.1:$port" --data-root (Join-Path $gui 'data') --evidence $gui --launch-only
+    } catch {
+        $launchFailure=$_
+        if (-not $VerifyPublisherBootstrap) {
+            try { & node (Join-Path $CoreRoot 'scripts/inspect-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port" } catch { Write-Warning 'Startup diagnostic connection was unavailable.' }
+            Get-Content (Join-Path $gui 'stderr.log') -Tail 40 -ErrorAction SilentlyContinue
+        }
+        throw $launchFailure
     } finally {
         if (-not $process.HasExited) {
-            & node (Join-Path $CoreRoot 'scripts/close-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port"
-            if (-not $process.WaitForExit(15000)) { $process.Kill($true);throw 'macOS test desktop did not stop' }
+            try {
+                & node (Join-Path $CoreRoot 'scripts/close-release-test-desktop.mjs') $frozen "http://127.0.0.1:$port"
+                if (-not $process.WaitForExit(15000)) { throw 'macOS test desktop did not stop' }
+            } catch {
+                if (-not $process.HasExited) { $process.Kill($true);[void]$process.WaitForExit(5000) }
+                if (-not $launchFailure) { throw }
+                Write-Warning 'Test desktop cleanup also failed; preserving the original launch error.'
+            }
         }
-        [IO.File]::WriteAllText((Join-Path $gui 'stdout.log'),$stdout.GetAwaiter().GetResult())
-        [IO.File]::WriteAllText((Join-Path $gui 'stderr.log'),$stderr.GetAwaiter().GetResult())
     }
     if (-not (Get-Content (Join-Path $gui 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'macOS desktop smoke failed' }
     Copy-Item (Join-Path $gui 'result.json') (Join-Path $public 'desktop-ui-result.json')
     $result.checks.desktopLaunch='passed'
+    if ($name -eq 'EduWork') {
+        if (-not (Test-Path -LiteralPath $config -PathType Leaf) -or -not (Test-Path -LiteralPath (Join-Path $gui 'examples/organization.jsonc') -PathType Leaf)) {
+            throw 'First launch did not create the user configuration and examples'
+        }
+        $result.checks.userConfigurationFirstLaunch='passed'
+    }
     if ($VerifyPublisherBootstrap) {
         $started=Get-Content (Join-Path $gui 'data/logs/desktop-start.json') -Raw | ConvertFrom-Json
         if ($started.configurationRevision -lt 1 -or $started.skillsRevision -lt 1) { throw 'First launch did not activate signed publisher content' }

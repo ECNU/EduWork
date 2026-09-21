@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T04:51:16.463Z",
-  "fileSetSHA256": "32f33b518729b58a6c8010a1be8adc8b78c60767911a7b2005dc029a059fcbac",
+  "createdAt": "2026-09-21T06:24:10.491Z",
+  "fileSetSHA256": "0efa44d0b12d4dd7ae6109e1e191cf4783e4ec46d4067fc14e2086c72de0f3aa",
   "files": [
     {
       "path": ".gitattributes",
@@ -41,7 +41,7 @@
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "a36259f9658dbb7057edc9ae5b84255163c56dd3ed3b156f4ecbdc8d43da7239"
+      "sha256": "6dfd44a3477fcaf25617c4ff3ef58a6d5bb7a81ec40afe72346c26be8be0bdcd"
     },
     {
       "path": ".gitignore",
@@ -173,7 +173,7 @@
     },
     {
       "path": "config/distributions/generic.json",
-      "sha256": "5ee6cc84f320958f7cdbd47a36ee8b482bdb34d5828fd36f0ef1d9f97bfecb86"
+      "sha256": "d9b0e435dabe7908f0c9a45b7bd12a8ddbd9d1dd52dec40bb2f12704a773846b"
     },
     {
       "path": "config/macos-native.lock.json",
@@ -681,7 +681,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "87d5be3a2b6b72a4123fa59b02c0043542f6cf49f72a3cfa54ef596aef0aecae"
+      "sha256": "df06aa3bc6a690a0b800435aead955804ea82060f01c53f484ccda3a49e21e1a"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -842,6 +842,10 @@
     {
       "path": "dsh-electron/tests/update-policy.test.mjs",
       "sha256": "141372843ac3e7c9eb3c7381cfa4e3be451a3dca5b7ebb7eea44fd85900b06e7"
+    },
+    {
+      "path": "dsh-electron/tests/user-config-electron-smoke.mjs",
+      "sha256": "80408d92cf80ae2a9238442f189aafd1ed48a8346eb400387c73f0f1745e9f55"
     },
     {
       "path": "dsh-electron/tests/window-lifecycle.mjs",
@@ -4213,7 +4217,7 @@
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
-      "sha256": "1b7aa8d10f1b8a2904a7282e50ff57803e4b32efb4c8894e695b7bad465406e3"
+      "sha256": "cdd99dbd0ecdfc8a69c537beca90724f624246d95a54b1633b155a5897859d30"
     },
     {
       "path": "scripts/ci-eduwork-web.ps1",
@@ -4258,6 +4262,10 @@
     {
       "path": "scripts/github-update-manifest.mjs",
       "sha256": "ef7e377750a940cc98ea3f2bb97551cb71c34602c9ea2b6abe46e1269d315978"
+    },
+    {
+      "path": "scripts/inspect-release-test-desktop.mjs",
+      "sha256": "bbc50d7bcc6cd0ebb70323b6bd3bdb3463c7b869a843c39b00c4fbb976ba593c"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
