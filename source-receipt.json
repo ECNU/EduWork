@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T04:40:20.122Z",
-  "fileSetSHA256": "dc1d330af2a4652ecf912e05a2bedcfe930fbcaa8e1c0bd435c9c1fa6cde0129",
+  "createdAt": "2026-09-21T04:49:02.102Z",
+  "fileSetSHA256": "32f33b518729b58a6c8010a1be8adc8b78c60767911a7b2005dc029a059fcbac",
   "files": [
     {
       "path": ".gitattributes",
@@ -4577,7 +4577,7 @@
     },
     {
       "path": "third_party/npm-015-rc1/dsh-oidc/LOCK.json",
-      "sha256": "8c321b1eaa3cf6f91132139d48a23f7115f3be3c0145ad95a04deaa5af9f5933"
+      "sha256": "7cea7f6c727c8eb09d599e85f70984a47ee1f00e587f186c3d0acaf27305472b"
     },
     {
       "path": "updates/macos/development.xml",
