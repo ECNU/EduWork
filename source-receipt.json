@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260917.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-21T03:10:16.274Z",
-  "fileSetSHA256": "6ca28e395615fe5e3ac30ee39d086e1d18e6b04522b8dc92aefaad094c6aaba7",
+  "createdAt": "2026-09-21T04:30:00.065Z",
+  "fileSetSHA256": "0cd4620c029eb4531bf6ed5209cb71e2fb5e638cedcc687e63d548d8e908664c",
   "files": [
     {
       "path": ".gitattributes",
@@ -3617,11 +3617,11 @@
     },
     {
       "path": "packages/dsh-oidc/CHANGELOG.en.md",
-      "sha256": "076a2e1066c7604b642650f8bf104a0af3da2196197702410a6e745cd1dc30c1"
+      "sha256": "912465a55b13cb188162f2ee82c33c1d748e221a8f0af470232450c676790e5d"
     },
     {
       "path": "packages/dsh-oidc/CHANGELOG.md",
-      "sha256": "c509d588c4faaddb2e929576b91cdc2d468be8ef8558cccc25003211772c5736"
+      "sha256": "53710275c8b0875248c021bcc4f4104c77469798a74713ce37b5bd162066ef95"
     },
     {
       "path": "packages/dsh-oidc/CODE_OF_CONDUCT.en.md",
@@ -3873,11 +3873,11 @@
     },
     {
       "path": "packages/dsh-oidc/package-lock.json",
-      "sha256": "1986e011bf08060e71364deed951fd9a0e54a3eb5002b8265fd7392697e53e57"
+      "sha256": "a1861d0d3d42201cb811dfe372d6c541d0d9baa283131d77f50cbbf1d6a45d83"
     },
     {
       "path": "packages/dsh-oidc/package.json",
-      "sha256": "5cfd0e761370cc77e2638a1d2f0b229efcbba3191786f1575e3f91eda8114da3"
+      "sha256": "c3fe91eca08e2e84fd56fe961c89ed5ef14a5b7f33a292db6e54a40dd0ea4c22"
     },
     {
       "path": "packages/dsh-oidc/protocol/openapi.yaml",

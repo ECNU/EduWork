@@ -4,6 +4,12 @@
 
 All notable changes are documented here. The format follows Keep a Changelog principles and the project uses Semantic Versioning with pre-1.0 qualifications described in `docs/compatibility.en.md`.
 
+## [0.3.0-dev.2] - 2026-09-21
+
+- Explicitly allow HTTP test services through the single `allowInsecureDevelopment` flag, disabled by default; HTTPS behavior is unchanged.
+- Accept the legacy `insecureDevelopmentOrigin` field without requiring a duplicate origin setting.
+- Align transport policy across OIDC, OIDC-LLM, LiteLLM and model requests, with documented examples and regression tests.
+
 ## [0.2.0] - 2026-09-11
 
 - Target DSH 0.1.5-rc.1 and keep enterprise identity, managed keys and model integration independent of institution services.
