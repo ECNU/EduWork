@@ -1,6 +1,6 @@
 # macOS 支持与贡献
 
-EduWork 当前提供 Windows x64 桌面包。仓库另有 macOS arm64 未签名开发候选装配入口；它用于本机验证，不是完整的公开发行包。原生资源、系统集成、签名与公证仍需逐项验收。
+EduWork 提供 Windows x64 和 macOS 15+ Apple Silicon（arm64）开发包。Mac 使用 ad-hoc 签名，尚无 Apple Developer ID 签名或公证，首次打开可能需要系统安全确认。Intel Mac 不在当前构建范围内。
 
 ## 共用架构
 
@@ -53,6 +53,8 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 ## CI 开发候选
 
+公版运行 `Build desktop release candidates`，机构版运行 `Build ECNU desktop release candidates`，选择 Windows、Mac 或两者。工作流仅保留验收产物，校验后由维护者发布。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
+
 `scripts/ci-eduwork-macos-release.ps1` 在 `macos-15` arm64 runner 上复用公共装配，生成待验收的开发 ZIP，不自动发布 Release。输入为核心目录、机构目录、发行配置、已确认版本与说明文件：
 
 ```powershell
@@ -67,6 +69,6 @@ CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugD
 
 ## 发行要求
 
-macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md) 区分系统和架构。面向普通用户发行前，完成 Developer ID 签名、公证、Gatekeeper、全新用户目录启动和更新验证；证书及密码通过受保护的 CI 环境管理。
+macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md) 区分系统和架构。开发版需要全新用户目录启动与更新验证，并如实声明 ad-hoc 签名的限制；公测发行前还需完成 Developer ID 签名、公证和 Gatekeeper 验收；证书及密码通过受保护的 CI 环境管理。
 
 公版与机构版复用同一构建流程。通过验证的平台才加入正式 Release，更新源按系统、架构和发行身份分别提供产物。

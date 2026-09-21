@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2) [![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README.md) [![Platform: Windows x64](https://img.shields.io/badge/platform-Windows%20x64-0078D4?style=flat-square)](#安装与使用)
+[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2) [![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README.md) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-0078D4?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
@@ -77,7 +77,7 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 ## 安装与使用
 
-当前桌面目标平台为 **Windows x64**，采用 **Electron 绿色包**，解压即可运行。macOS 版本正在适配，进展见 [macOS 说明](docs/MACOS.md)。
+桌面包支持 **Windows x64** 和 **macOS 15+ Apple Silicon（arm64）**。Windows 使用 Electron 绿色包，解压即可运行；Mac 开发包解压后将 `EduWork.app` 放入“应用程序”。Mac 尚未使用 Apple Developer ID 签名或公证，首次打开可能出现系统安全提示，详见 [macOS 说明](docs/MACOS.md)。
 
 ### 1. 获取客户端
 

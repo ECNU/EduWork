@@ -197,7 +197,13 @@
       "defaultEnabled": true
     }
   ],
-  "resources": [],
+  "resources": [
+    {
+      "root": "core",
+      "source": "config/desktop/mac-updates.json",
+      "target": "desktop/mac-updates.json"
+    }
+  ],
   "patches": [
     {
       "id": "web",
