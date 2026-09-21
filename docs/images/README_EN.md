@@ -5,8 +5,10 @@
 | File | Content |
 | --- | --- |
 | `readme-hero.svg` · `readme-hero-en.svg` | Chinese and English homepage brand illustrations, using the shared EduWork mark; these are not UI screenshots. |
-| `workspace.png` | Workspace and conversation |
-| `studio.png` | Lesson planning conversation and Studio sidebar, shown with an institution configuration and the blue theme |
+| `workspace.png` | Public-edition workspace: research conversation and a generated HTML page preview |
+| `studio.png` | Public-edition Studio: output types and a recently generated quiz |
+| `quiz.png` | Quiz answers, explanations, and source evidence |
 | `skills.png` | Skill management |
+| `litellm-models.png` | Selecting an authorized model after LiteLLM sign-in; the red box highlights the LiteLLM group |
 
-Screenshots use demonstration material to introduce the interface; they do not represent model output quality. The Chinese and English homepages share the same images. Update alternative text with the images and exclude personal or institution-private information.
+Screenshots show the public edition's red theme with demonstration material. They illustrate features and controls; generated content in them is not a factual reference. Chinese and English documents share the same images. Update alternative text with the images and exclude personal or institution-private information.

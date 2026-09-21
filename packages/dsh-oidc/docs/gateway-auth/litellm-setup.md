@@ -80,6 +80,10 @@ curl --fail --silent --show-error https://gateway.example.org/.well-known/litell
 3. 浏览器返回本机回调页面，确认登录完成后回到 EduWork。
 4. 在模型选择器中选择该机构的模型，发送一条简短消息确认真实模型响应。
 
+![EduWork 登录 LiteLLM 后，在机构分组中选择 deepseek-v4-flash](../../../../docs/images/litellm-models.png)
+
+图中「本机 LiteLLM」是配置的机构名称，`deepseek-v4-flash` 是网关授权的模型。你的模型列表由服务端权限决定；上方 DeepSeek 分组属于另外配置的服务商。
+
 `127.0.0.1` 回调是 EduWork 在用户电脑上临时监听的地址，不是 LiteLLM 服务器地址。浏览器必须在运行客户端的同一台电脑上完成回调；不要收藏或重复打开旧授权链接。
 
 客户端自动读取当前授权的 `/v1/models`，请求使用 Access Token，并在临近到期时刷新。重启后通过本机受保护存储恢复授权。退出登录会清理本地会话并尝试撤销 Refresh Token；Access Token 的剩余有效期由服务端控制。

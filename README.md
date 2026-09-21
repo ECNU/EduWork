@@ -20,9 +20,9 @@ EduWork 是基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-har
 
 个人用户连接自己的模型 API；学校和企业通过配置接入统一身份与模型服务。**每位用户在自己的电脑上独立运行，无需部署额外的 EduWork 服务端。**
 
-![EduWork 工作区：围绕课程资料整理教学方案，在对话中查看和打开成果文件](docs/images/workspace.png)
+![EduWork 工作区：调研校园资料、生成 HTML 简介，并在右侧预览网页成果](docs/images/workspace.png)
 
-<p align="center"><sub>资料、对话与成果放在一起，让一项工作可以持续做下去。</sub></p>
+<p align="center"><sub>从调研到网页成果：左侧继续对话，右侧直接预览生成的页面。</sub></p>
 
 ## 你可以用它做什么
 
@@ -53,11 +53,20 @@ Agent 可以读写文件、运行脚本，并通过子代理协作处理复杂�
 
 **报告 · 数据表 · 演示文稿 · 思维导图 · 测验 · 闪卡 · 音频 · 视频**
 
-![Studio 侧边栏：围绕课程设计制作配套材料（机构配置示例）](docs/images/studio.png)
+![公版 Studio：成果类型入口与基于工作区资料生成的测验](docs/images/studio.png)
 
-<p align="center"><sub>图中为机构配置示例。Studio 由公版提供，界面名称和标识可通过配置调整。</sub></p>
+<p align="center"><sub>选一种成果形式开始，生成的内容保存在「最近成果」，随时打开继续使用。</sub></p>
 
 报告、表格和演示文稿可生成 **DOCX、XLSX、PPTX** 文件；学习材料支持交互预览，音视频可预览并下载媒体与字幕。文生图和云端 TTS 需配置兼容服务，本机语音取决于系统及本地资源，详见[媒体服务配置](docs/MEDIA.md)。
+
+<details>
+<summary>看看生成的测验如何使用</summary>
+
+![Studio 测验：答题后查看对错、解析与来源依据，并可继续向 AI 提问](docs/images/quiz.png)
+
+在侧栏直接答题，查看解析与来源依据；有疑问时可以继续「问问 AI」。
+
+</details>
 
 ### 让工作方式适合你
 
@@ -105,6 +114,15 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 3. 保存后完全退出并重启，从账户入口登录 LiteLLM；按网关提示选择团队并授权，再选择模型开始对话。
 
 服务端需启用 LiteLLM 原生 CLI OAuth，并提供有模型权限的账号；当前协议基线为 LiteLLM v1.101.0 / native contract 1。HTTP 测试环境还需把机构对象中的 `allowInsecureDevelopment` 改为 `true`，HTTPS 保持默认 `false`。参见[逐项配置说明](config/desktop/examples/README.md#接入-litellm改哪里填什么)和[服务端准备与排错](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
+
+<details>
+<summary>查看 LiteLLM 登录后的模型选择</summary>
+
+![LiteLLM 登录后，模型菜单在「本机 LiteLLM」分组中显示已授权的 deepseek-v4-flash](docs/images/litellm-models.png)
+
+图中 LiteLLM 账号获授权使用 `deepseek-v4-flash`；实际名称和列表由你的网关配置决定。上方 DeepSeek 分组是单独配置的服务商，可与机构模型同时使用。
+
+</details>
 
 ### 3. 开始工作
 

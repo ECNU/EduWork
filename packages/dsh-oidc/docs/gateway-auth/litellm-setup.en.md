@@ -80,6 +80,10 @@ Developers integrating another client can use the [single Profile example](../..
 3. The browser returns to a local callback page. Once it confirms completion, return to EduWork.
 4. Select an organization model and send a short message to verify a real upstream response.
 
+![Selecting deepseek-v4-flash in the organization group after signing in to LiteLLM from EduWork](../../../../docs/images/litellm-models.png)
+
+The local LiteLLM group is the configured organization name, and `deepseek-v4-flash` is an authorized gateway model. Server permissions determine your model list; the DeepSeek group above belongs to a separately configured provider.
+
 The `127.0.0.1` callback is a temporary EduWork listener on the user's computer, not the LiteLLM server. Complete sign-in in a browser on the same computer as the client. Do not bookmark or reuse an old authorization link.
 
 The client discovers the current authorization's `/v1/models`, sends requests with the Access Token, and refreshes near expiry. Protected local storage restores authorization after restart. Logout clears the local session and attempts Refresh Token revocation; the server controls the remaining lifetime of issued Access Tokens.

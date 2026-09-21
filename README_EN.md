@@ -20,9 +20,9 @@ EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com
 
 Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. **Each client runs independently on its user's computer, with no separate EduWork server to deploy.**
 
-![EduWork workspace: turn course materials into a teaching plan and open output files in the conversation](docs/images/workspace.png)
+![EduWork workspace: research campus information, generate an HTML introduction, and preview the page on the right](docs/images/workspace.png)
 
-<p align="center"><sub>Keep sources, conversations, and results together, so you can keep building on your work.</sub></p>
+<p align="center"><sub>From research to a finished page: continue the conversation on the left and preview the generated result on the right.</sub></p>
 
 ## What you can do
 
@@ -53,11 +53,20 @@ Open Studio on the right and choose an output type, or ask for it in a conversat
 
 **Reports · Spreadsheets · Presentations · Mind maps · Quizzes · Flashcards · Audio · Video**
 
-![Studio sidebar: create teaching materials for a lesson plan, shown with an institution configuration](docs/images/studio.png)
+![Studio in the public edition: output types and a quiz generated from workspace materials](docs/images/studio.png)
 
-<p align="center"><sub>The screenshot shows an institution configuration. Studio is part of the public edition; interface names and branding are configurable.</sub></p>
+<p align="center"><sub>Choose an output type to begin. Generated items appear under Recent results, ready to open and use.</sub></p>
 
 Export reports, spreadsheets, and presentations as **DOCX, XLSX, and PPTX** files. Preview interactive learning materials and download media with subtitles. Image generation and cloud TTS require compatible services; local speech depends on the system and local resources. See [media configuration](docs/MEDIA.md).
+
+<details>
+<summary>See how a generated quiz works</summary>
+
+![Studio quiz: check answers, explanations, and source evidence, then ask AI a follow-up question](docs/images/quiz.png)
+
+Answer directly in the sidebar, review explanations and source evidence, and use Ask AI for follow-up questions.
+
+</details>
 
 ### Make it work your way
 
@@ -105,6 +114,15 @@ The public edition does not download institution configuration by default. It sh
 3. Save, completely exit, and restart. Sign in to LiteLLM from the account menu, choose a team if requested, approve access, and select a model to chat.
 
 The gateway must enable native CLI OAuth and grant the account model permissions. The protocol baseline is LiteLLM v1.101.0 / native contract 1. For HTTP testing, set `allowInsecureDevelopment` to `true` in the organization object; keep its default `false` for HTTPS. See the [field-by-field steps](config/desktop/examples/README_EN.md#connect-litellm-where-to-edit-and-what-to-enter) and [server preparation and troubleshooting](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md).
+
+<details>
+<summary>See model selection after LiteLLM sign-in</summary>
+
+![After LiteLLM sign-in, the model menu shows the authorized deepseek-v4-flash under the local LiteLLM group](docs/images/litellm-models.png)
+
+This example account is authorized to use `deepseek-v4-flash`; your gateway determines the actual names and model list. The DeepSeek group above is a separately configured provider, which can coexist with organization models.
+
+</details>
 
 ### 3. Start working
 
