@@ -5139,6 +5139,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			};
 			const focus = () => {
+				if (visibleArtifact && visibleArtifact.sessionId !== current()) visibleArtifact = void 0;
 				poll();
 			};
 			const studioVisibility = (event) => {

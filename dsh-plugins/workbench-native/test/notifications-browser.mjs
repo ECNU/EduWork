@@ -21,7 +21,7 @@ const server = createServer(async (request, response) => {
   let session='one',sessionListeners=new Set();window.calls=[];window.navigated=[];window.target=null;
   const ctx={sessions:{list:{getSnapshot:()=>({current:session}),subscribe:f=>{sessionListeners.add(f);return()=>sessionListeners.delete(f)}}},uiWorkspace:{openSession:id=>{session=id;window.navigated.push(id);sessionListeners.forEach(f=>f())}},get:()=>({openTab:(kind,options)=>window.calls.push({kind,options})})};
   const controller=installNotificationNavigation(ctx,async(view)=>{window.lastView=view;const target=window.target;window.target=null;return{desktop:true,delivery:'available',target}});
-  window.controller=controller;window.scope=scope;ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(NotificationSettings,{scope,status:controller.status}));
+  window.controller=controller;window.scope=scope;window.selectSession=ctx.uiWorkspace.openSession;ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(NotificationSettings,{scope,status:controller.status}));
   </script></html>`)
 })
 await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -42,6 +42,13 @@ try {
   assert.deepEqual(await page.evaluate(() => window.navigated), ['two'])
   assert.deepEqual(await page.evaluate(() => window.calls[0]), { kind: 'knowledge-studio', options: { params: { artifactId: 'artifact_a' } } })
   await page.waitForFunction(() => window.lastView.openedKey === 'studio-a')
+  await page.evaluate(() => window.dispatchEvent(new CustomEvent('eduwork:studio-visibility', { detail: { sessionId: 'two', artifactId: 'artifact_' + 'a'.repeat(32), visible: true } })))
+  await page.waitForFunction(() => window.lastView.artifactId === 'artifact_' + 'a'.repeat(32))
+  // Leaving and returning to a session must not reuse an old pane's visibility.
+  await page.evaluate(() => window.selectSession('three'))
+  await page.waitForFunction(() => window.lastView.sessionId === 'three' && !window.lastView.artifactId)
+  await page.evaluate(() => window.selectSession('two'))
+  await page.waitForFunction(() => window.lastView.sessionId === 'two' && !window.lastView.artifactId)
   await page.getByRole('checkbox', { name: '显示会话与成果标题', exact: true }).check()
   await mkdir(evidence, { recursive: true }); await page.screenshot({ path: join(evidence, 'notification-settings.png') })
   await page.evaluate(() => window.controller.close())

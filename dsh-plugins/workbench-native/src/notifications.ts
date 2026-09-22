@@ -64,7 +64,10 @@ export function installNotificationNavigation(ctx, invoke, environment = window)
       if (!disposed) { environment.clearTimeout(timer); timer = environment.setTimeout(poll, 1000) }
     }
   }
-  const focus = () => { void poll() }
+  const focus = () => {
+    if (visibleArtifact && visibleArtifact.sessionId !== current()) visibleArtifact = undefined
+    void poll()
+  }
   const studioVisibility = event => {
     const value = event.detail
     if (value?.sessionId !== current() || typeof value.artifactId !== 'string' || !/^artifact_[a-f0-9]{32}$/.test(value.artifactId)) return
