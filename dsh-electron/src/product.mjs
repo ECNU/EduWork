@@ -1,4 +1,5 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog } from 'electron'
+import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
+import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
@@ -33,6 +34,8 @@ let updateCompleted = false
 let portableUpdates
 let contentUpdates, managedContent = {}
 let publisher
+let taskNotifications, notificationAdapter
+let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
 function restartDesktop() {
   app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
@@ -65,6 +68,7 @@ export function configureEduworkPaths() {
     void contentUpdates?.close()
     void (async () => {
       await lifecycle.close()
+      taskNotifications?.close()
       tray?.destroy(); tray = undefined
       quitComplete = true
       app.quit()
@@ -136,7 +140,13 @@ async function prepareDesktop() {
   // Reassert the edition's immutable ownership after optional test settings.
   Object.assign(process.env, prepared.environment)
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
+  notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
+    activate: key => taskNotifications.activate(key), failed: () => { taskNotifications.delivery = 'unavailable' } })
+  taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
+    show: () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } },
+    publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(), changed: () => refreshTray() })
   const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
+    attention: body => taskNotifications.handle(body),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
     openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
@@ -180,16 +190,24 @@ export async function attachDesktopWindow(window) {
     lifecycle.check()
     if (icon.isEmpty()) throw new Error('No system tray icon available')
     tray = new Tray(icon)
-    tray.setToolTip(settings.productName)
-    tray.setContextMenu(Menu.buildFromTemplate([
+    refreshTray = () => {
+      if (!tray) return
+      const pending = taskNotifications?.menu() ?? []
+      tray.setToolTip(settings.productName + (pending.length ? ` · ${pending.length} 项待查看` : ''))
+      if (process.platform === 'darwin') tray.setTitle(pending.length ? String(pending.length) : '')
+      tray.setContextMenu(Menu.buildFromTemplate([
       { label: '打开 ' + settings.productName, click: show },
       { label: '新建会话', click: () => action('new-session') },
+      { label: pending.length ? `待查看 ${pending.length} 项` : '没有待处理事项', enabled: pending.length > 0, ...(pending.length ? { submenu: pending } : {}) },
       { type: 'separator' },
       { label: '检查更新', click: () => { show(); void checkProductUpdates() } },
       { label: '设置', click: () => action('settings') },
       { type: 'separator' },
       { label: '退出 ' + settings.productName, click: () => app.quit() },
-    ]))
+      ]))
+    }
+    refreshTray()
+    tray.on('balloon-click', () => notificationAdapter?.balloonClick())
     tray.on('double-click', show)
   } catch (error) {
     tray?.destroy(); tray = undefined

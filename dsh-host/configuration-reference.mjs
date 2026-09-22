@@ -98,6 +98,16 @@ export const configurationFields = {
   'features.maxParallelSubagents': ['旧版兼容项，1–32；仅在未填总并发时换算为此值+1。新配置请使用 maxConcurrentRequests。', 2],
   desktop: ['桌面行为。', {}],
   'desktop.closeAction': ['tray 关闭窗口后驻留托盘；exit 退出；默认 tray，无托盘时退出。', 'tray'],
+  'desktop.notifications': ['桌面通知默认值；通用设置中保存的个人偏好优先。仅客户端仍运行时生效，系统勿扰或通知权限可能阻止弹窗。', {}],
+  ...fields('desktop.notifications.', {
+    enabled: ['允许后台桌面弹窗；关闭后托盘仍保留待处理事项。', true],
+    attention: ['需求确认和授权请求通知。', true],
+    completed: ['主会话任务完成通知；子代理和单个工具结束不通知。', true],
+    failed: ['任务最终失败、受阻或输出达到上限时通知。', true],
+    studio: ['独立 Studio 成果完成通知。', true],
+    sound: ['允许系统通知声音；仍受系统勿扰控制。', false],
+    preview: ['在通知和托盘条目显示会话或成果标题；默认关闭，不显示回答正文、命令或文件内容。', false],
+  }),
   updates: ['软件更新源；空对象沿用发行包的默认渠道与平台设置。', {}],
   ...fields('updates.', {
     provider: ['github/static/disabled；static 须填 manifestURL，github 不可同时填写 manifestURL。', 'github'],
