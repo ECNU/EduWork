@@ -4,7 +4,6 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-		//#region \0rolldown/runtime.js
 		var __create = Object.create;
 		var __defProp = Object.defineProperty;
 		var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -25,11 +24,9 @@ window.__ModuleLoader__.load({
 			value: mod,
 			enumerable: true
 		}) : target, mod));
-		//#endregion
 		let react = require("react");
 		react = __toESM(react, 1);
 		let react_dom = require("react-dom");
-		//#region lib/diagnostic-download.js
 		function downloadDiagnosticArchive(result) {
 			if (!result.archive || !/^EduWork-diagnostics-[\w-]+\.zip$/.test(result.filename || "")) throw new Error(result.message || "诊断包未生成，请重试。");
 			const bytes = Uint8Array.from(atob(result.archive), (char) => char.charCodeAt(0));
@@ -43,8 +40,6 @@ window.__ModuleLoader__.load({
 			link.remove();
 			setTimeout(() => URL.revokeObjectURL(url), 6e4);
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/core.js
 		var _a$1;
 		function $constructor(name, initializer, params) {
 			function init(inst, def) {
@@ -102,8 +97,6 @@ window.__ModuleLoader__.load({
 			if (newConfig) Object.assign(globalConfig, newConfig);
 			return globalConfig;
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/util.js
 		function getEnumValues(entries) {
 			const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 			return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -414,8 +407,6 @@ window.__ModuleLoader__.load({
 			};
 			return { ...iss };
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/errors.js
 		const initializer$1 = (inst, def) => {
 			inst.name = "$ZodError";
 			Object.defineProperty(inst, "_zod", {
@@ -474,8 +465,6 @@ window.__ModuleLoader__.load({
 			processError(error);
 			return fieldErrors;
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/parse.js
 		const _parse = (_Err) => (schema, value, _ctx, _params) => {
 			const ctx = _ctx ? {
 				..._ctx,
@@ -588,8 +577,6 @@ window.__ModuleLoader__.load({
 		const _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
 			return _safeParseAsync(_Err)(schema, value, _ctx);
 		};
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/regexes.js
 		/**
 		* @deprecated CUID v1 is deprecated by its authors due to information leakage
 		* (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -652,8 +639,6 @@ window.__ModuleLoader__.load({
 		const boolean$1 = /^(?:true|false)$/i;
 		const lowercase = /^[^A-Z]*$/;
 		const uppercase = /^[^a-z]*$/;
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/checks.js
 		const $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 			var _a;
 			inst._zod ?? (inst._zod = {});
@@ -1010,8 +995,6 @@ window.__ModuleLoader__.load({
 				payload.value = def.tx(payload.value);
 			};
 		});
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/doc.js
 		var Doc = class {
 			constructor(args = []) {
 				this.content = [];
@@ -1041,15 +1024,11 @@ window.__ModuleLoader__.load({
 				return new F(...args, lines.join("\n"));
 			}
 		};
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/versions.js
 		const version = {
 			major: 4,
 			minor: 4,
 			patch: 3
 		};
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/schemas.js
 		const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 			var _a;
 			inst ?? (inst = {});
@@ -2278,8 +2257,6 @@ window.__ModuleLoader__.load({
 				payload.issues.push(issue(_iss));
 			}
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/registries.js
 		var _a;
 		var $ZodRegistry = class {
 			constructor() {
@@ -2325,8 +2302,6 @@ window.__ModuleLoader__.load({
 		}
 		(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 		const globalRegistry = globalThis.__zod_globalRegistry;
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/api.js
 		// @__NO_SIDE_EFFECTS__
 		function _string(Class, params) {
 			return new Class({
@@ -2830,8 +2805,6 @@ window.__ModuleLoader__.load({
 			ch._zod.check = fn;
 			return ch;
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/to-json-schema.js
 		function initializeContext(params) {
 			let target = params?.target ?? "draft-2020-12";
 			if (target === "draft-4") target = "draft-04";
@@ -3123,8 +3096,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			extractDefs(ctx, schema);
 			return finalize(ctx, schema);
 		};
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/core/json-schema-processors.js
 		const formatMap = {
 			guid: "uuid",
 			url: "uri",
@@ -3385,8 +3356,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const seen = ctx.seen.get(schema);
 			seen.ref = def.innerType;
 		};
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/classic/iso.js
 		const ZodISODateTime = /*@__PURE__*/ $constructor("ZodISODateTime", (inst, def) => {
 			$ZodISODateTime.init(inst, def);
 			ZodStringFormat.init(inst, def);
@@ -3415,8 +3384,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function duration(params) {
 			return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
 		}
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/classic/errors.js
 		const initializer = (inst, issues) => {
 			$ZodError.init(inst, issues);
 			inst.name = "ZodError";
@@ -3437,8 +3404,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		};
 		const ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, { Parent: Error });
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/classic/parse.js
 		const parse = /* @__PURE__ */ _parse(ZodRealError);
 		const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 		const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -3451,8 +3416,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const safeDecode = /* @__PURE__ */ _safeDecode(ZodRealError);
 		const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 		const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
-		//#endregion
-		//#region ../../../../../../Users/Administrator/Documents/CWork/resources/product/d/node_modules/zod/v4/classic/schemas.js
 		const _installedGroups = /* @__PURE__ */ new WeakMap();
 		function _installLazyMethods(inst, group, methods) {
 			const proto = Object.getPrototypeOf(inst);
@@ -4244,8 +4207,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function superRefine(fn, params) {
 			return /* @__PURE__ */ _superRefine(fn, params);
 		}
-		//#endregion
-		//#region lib/typert-schemas.js
 		const pkg$1 = "@eduwork/workbench-native";
 		const codec = (name, schema) => ({
 			mode: "strict",
@@ -4299,8 +4260,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				reason: string()
 			}).strict())
 		}).strict());
-		//#endregion
-		//#region lib/typert.remote-client.js
 		var typert_remote_client_default = {
 			package: "@eduwork/workbench-native",
 			descriptors: [
@@ -4408,8 +4367,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}))
 		};
-		//#endregion
-		//#region src/updates.ts
 		const h$4 = react.default.createElement;
 		const accent = "var(--dsw-alias-state-business-primary, #3575ef)";
 		const border$1 = "var(--dsw-alias-border-l2, #ddd)";
@@ -4840,8 +4797,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				style: button
 			}, "×")), h$4(UpdatePanel, { controller }))), document.body));
 		}
-		//#endregion
-		//#region src/data-import.ts
 		const h$3 = react.default.createElement;
 		function DataImportPanel({ service }) {
 			const [job, setJob] = (0, react.useState)(null), [error, setError] = (0, react.useState)(""), [choosing, setChoosing] = (0, react.useState)(false);
@@ -4963,8 +4918,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: "var(--dsw-alias-label-secondary)"
 			} }, "已有数据、模型配置和登录信息不变。跨机时，程序目录之外的项目文件需要另外复制。"));
 		}
-		//#endregion
-		//#region src/concurrency.ts
 		const h$2 = react.default.createElement;
 		function ConcurrencySettings({ scope }) {
 			const snapshot = (0, react.useSyncExternalStore)((listener) => scope.subscribe(listener), () => scope.getSnapshot(), () => scope.getSnapshot());
@@ -5056,8 +5009,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}, error));
 		}
-		//#endregion
-		//#region src/notifications.ts
 		const h$1 = react.default.createElement;
 		const labels = {
 			enabled: "桌面弹窗",
@@ -5217,13 +5168,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			};
 		}
-		//#endregion
-		//#region lib/directory-picker.js
 		async function pickImportDirectory(workspace, bridge = globalThis.go?.main?.Startup) {
 			return (typeof bridge?.PickDirectory === "function" ? await bridge.PickDirectory() : await workspace.pickDirectory()) || null;
 		}
-		//#endregion
-		//#region node_modules/@chatecnu-work/dsh-skill-manager-native/lib/typert-schemas.js
 		const skillSummarySchema = object({
 			name: string().min(1).max(64),
 			description: string().min(1).max(1024),
@@ -5258,8 +5205,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}).strict();
 		const sourcePathSchema = string().min(1).max(4096);
 		const skillNameSchema = string().min(1).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
-		//#endregion
-		//#region node_modules/@chatecnu-work/dsh-skill-manager-native/lib/typert.remote-client.js
 		const pkg = "@chatecnu-work/dsh-skill-manager-native";
 		const source = {
 			file: "dsh-plugins/skill-manager-native/lib/index.js",
@@ -5285,8 +5230,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				descriptor("trashPersonalSkill", [jsonParameter("name", skillNameSchema, `${pkg}#SkillName`)], skillSummaryResult)
 			]
 		};
-		//#endregion
-		//#region node_modules/@chatecnu-work/dsh-skill-settings-native/lib/policy.js
 		const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 		const SKILL_ALIASES = Object.freeze({
 			documents: "artifact-documents",
@@ -5326,8 +5269,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				enabled: [...enabledNames].sort()
 			};
 		}
-		//#endregion
-		//#region lib/view-model.js
 		const bundledSkillCatalog = Object.freeze([
 			Object.freeze({
 				name: "artifact-documents",
@@ -5468,8 +5409,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			return [...rows.values()];
 		}
-		//#endregion
-		//#region src/client.ts
 		const inject = [
 			"slots",
 			"remote",
@@ -6151,7 +6090,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				await unmount();
 			};
 		}
-		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;
 		return module.exports;
