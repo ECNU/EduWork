@@ -216,3 +216,50 @@ test('catalog 401 refreshes once; invalid_grant clears the authorization', async
   await assert.rejects(f.backend.resolveGatewayCredential(f.profile.id), /sign in again/)
   assert.equal(f.records.size, 0)
 })
+
+test('explicit service POST recovery refreshes once and reuses the buffered body', async t => {
+  const f = await fixture(t)
+  await f.login()
+  const originalFetch = f.backend.fetch, requests = []
+  const endpoint = `${base}/v1/activity`
+  f.backend.fetch = async (url, init) => {
+    if (url !== endpoint) return originalFetch(url, init)
+    requests.push(init)
+    return requests.length === 1 ? json({}, 401) : json({ status: 'Success' })
+  }
+  const body = JSON.stringify({ activity: { state: 'active' } })
+  const response = await f.backend.authorizedFetch(f.profile.id, endpoint, { method: 'POST', body }, { retryUnauthorized: true })
+  assert.equal(response.status, 200)
+  await response.json()
+  assert.equal(requests.length, 2)
+  assert.deepEqual(requests.map(r => r.body), [body, body])
+  assert.deepEqual(requests.map(r => r.headers.authorization), ['Bearer synthetic-access-1', 'Bearer synthetic-access-2'])
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+  assert.ok(requests.every(r => !('retryUnauthorized' in r)))
+})
+
+test('explicit service POST recovery is bounded and rejects non-replayable bodies', async t => {
+  const f = await fixture(t)
+  await f.login()
+  const originalFetch = f.backend.fetch
+  let requests = 0
+  const endpoint = `${base}/v1/activity`
+  f.backend.fetch = async (url, init) => {
+    if (url !== endpoint) return originalFetch(url, init)
+    requests++
+    return json({}, 401)
+  }
+  const response = await f.backend.authorizedFetch(f.profile.id, endpoint, { method: 'POST', body: '{}' }, { retryUnauthorized: true })
+  assert.equal(response.status, 401)
+  await response.body.cancel()
+  assert.equal(requests, 2)
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+  await assert.rejects(f.backend.authorizedFetch(f.profile.id, endpoint,
+    { method: 'POST', body: new ReadableStream() }, { retryUnauthorized: true }), /buffered text/)
+  assert.equal(requests, 2)
+  f.controls.refreshStatus = 400
+  await assert.rejects(f.backend.authorizedFetch(f.profile.id, endpoint,
+    { method: 'POST', body: '{}' }, { retryUnauthorized: true }), { code: 'oidc_login_required' })
+  assert.equal(requests, 3)
+  assert.equal(f.records.size, 0)
+})

@@ -79,6 +79,24 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}) {
   return { profile, backend, records, calls, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
 }
 
+test('OIDC draft service POST recovers a 401 with a rotated Access Token', async t => {
+  const f = await fixture(t)
+  await f.login()
+  const fetcher = f.backend.fetch, requests = []
+  const endpoint = base + '/open/api/v1/user/active'
+  f.backend.fetch = async (url, init) => {
+    if (url !== endpoint) return fetcher(url, init)
+    requests.push(init)
+    return json({ status: requests.length === 1 ? 'Unauthorized' : 'Success' }, requests.length === 1 ? 401 : 200)
+  }
+  const response = await f.backend.authorizedFetch(f.profile.id, endpoint, { method: 'POST', body: '{}' }, { retryUnauthorized: true })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).status, 'Success')
+  assert.equal(requests.length, 2)
+  assert.notEqual(requests[0].headers.authorization, requests[1].headers.authorization)
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
+
 test('draft discovery requires explicit mode, static registration, complete contract and trust pins', () => {
   const profile = normalizeEnterpriseProfile(profileRaw())
   assert.equal(detectGatewayProtocol(metadata(), profile).baseURL, base + '/open/api/v1')

@@ -314,7 +314,9 @@ function withGatewayAuth(Base) {
       return account(profile, session, true, 'access_token')
     }
 
-    async authorizedFetch(profileID, endpoint, init = {}) {
+    async authorizedFetch(profileID, endpoint, init = {}, authorization = {}) {
+      const retryUnauthorized = authorization.retryUnauthorized === true
+      if (retryUnauthorized && init.body != null && typeof init.body !== 'string') throw new TypeError('Authorization retry requires a buffered text request body')
       const profile = this.profile(profileID)
       if (!profile.auth) return super.authorizedFetch(profileID, endpoint, init)
       const epoch = this.accountEpoch(profile), descriptor = await this.discover(profile)
@@ -331,8 +333,9 @@ function withGatewayAuth(Base) {
         if (!session) throw protocolError('oidc_login_required', 'Gateway sign-in is required')
         const request = current => this.fetch(target.href, { ...init, headers: { ...Object.fromEntries(new Headers(init.headers)), authorization: `Bearer ${current.accessToken}` }, redirect: 'error', signal: lease.signal })
         response = await request(session)
-        // Retry only safe reads. A generation (including SSE) is never replayed here.
-        if (response.status === 401 && ['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase())) {
+        // Reads recover automatically. Trusted Host services may explicitly opt
+        // in for replayable calls; model generation does not opt in.
+        if (response.status === 401 && (retryUnauthorized || ['GET', 'HEAD'].includes((init.method ?? 'GET').toUpperCase()))) {
           await response.body?.cancel()
           session = await this.refresh(profile, session)
           lease.assertCurrent()
