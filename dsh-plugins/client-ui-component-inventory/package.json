@@ -1,7 +1,7 @@
 {
   "name": "@chatecnu-work/dsh-client-ui-component-inventory",
   "version": "0.1.0-dev",
-  "description": "Component source and version tab for EduWork",
+  "description": "About, component versions and community plugin settings for EduWork",
   "type": "module",
   "main": "lib/index.js",
   "exports": {

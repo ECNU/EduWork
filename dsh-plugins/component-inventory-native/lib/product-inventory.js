@@ -25,12 +25,14 @@ export function productInventory(environment = process.env) {
   const available = path => Boolean(resource(path) && file(resource(path)))
   const source = desktop ? 'release-bundled' : 'source'
   const release = {
+    productName: environment.EDUWORK_PRODUCT_NAME || identity.brand?.product?.name || 'EduWork', platform: `${process.platform}-${process.arch}`,
     productVersion: identity.version, dshVersion: identity.dshVersion, dshCommit: identity.dshCommit,
     nodeVersion: process.versions.node, pnpmVersion: null, packageFlavor: native ? 'offline' : 'development',
     distributionMode: desktop ? 'desktop-release' : 'web-or-source',
   }
   const components = [
     ...(desktop ? [row('desktop-shell', 'platform', identity.version, 'ready', source, null, [], ['desktop-ui'], { framework: shell === 'electron' ? 'Electron' : 'Go / Wails' })] : []),
+    ...(shell === 'electron' ? [row('electron', 'runtime', environment.EDUWORK_ELECTRON_VERSION, environment.EDUWORK_ELECTRON_VERSION ? 'ready' : 'unavailable', source, null, [], ['desktop-ui'])] : []),
     row('dsh-core', 'platform', identity.dshVersion, available('d/node_modules/@deepseek-ai/dsh/package.json') ? 'ready' : 'missing', source, 'd', ['nodejs'], ['agent-loop'], { commit: identity.dshCommit }),
     row('nodejs', 'runtime', process.versions.node, 'ready', source, null, [], ['dsh-core', 'video-production']),
   ]

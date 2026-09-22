@@ -20,5 +20,26 @@ test('both shells report the same native content from actual assembly receipts',
     for (const id of ['python', 'office-suite', 'video-production']) assert.equal(components.find(row => row.id === id).status, 'ready')
     assert.equal(components.find(row => row.id === 'local-asr').status, 'missing')
   }
-  assert.deepEqual(snapshots[0].components.slice(1), snapshots[1].components.slice(1))
+  const content = snapshot => snapshot.components.filter(row => !['desktop-shell', 'electron'].includes(row.id))
+  assert.deepEqual(content(snapshots[0]), content(snapshots[1]))
+})
+
+test('About reports the edition and running Electron version without mistaking the product version for a framework version', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-about-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  for (const name of ['EduWork', 'EduWork@ECNU']) {
+    await writeFile(join(root, 'assembly.json'), JSON.stringify({ version: '0.3.6-dev.fixture', brand: { product: { name } }, dshVersion: '0.1.5-rc.2', dshCommit: 'fixture' }))
+    const env = { EDUWORK_PRODUCT_ROOT: root, EDUWORK_DESKTOP_SHELL: 'electron', EDUWORK_ELECTRON_VERSION: '42.0.0' }
+    const snapshot = productInventory(env)
+    assert.equal(snapshot.release.productName, name)
+    assert.equal(snapshot.release.platform, `${process.platform}-${process.arch}`)
+    assert.equal(snapshot.release.productVersion, '0.3.6-dev.fixture')
+    assert.equal(snapshot.components.find(row => row.id === 'electron').version, '42.0.0')
+    assert.equal(snapshot.components.find(row => row.id === 'electron').status, 'ready')
+    assert.equal(productInventory({ ...env, EDUWORK_PRODUCT_NAME: 'Example institution' }).release.productName, 'Example institution')
+    delete env.EDUWORK_ELECTRON_VERSION
+    assert.equal(productInventory(env).components.find(row => row.id === 'electron').status, 'unavailable')
+    delete env.EDUWORK_DESKTOP_SHELL
+    assert.equal(productInventory(env).components.some(row => row.id === 'electron'), false)
+  }
 })
