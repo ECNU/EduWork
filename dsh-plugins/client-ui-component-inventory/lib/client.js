@@ -7552,7 +7552,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		//#endregion
 		//#region \0dsh-css:packages/extensions/chatecnu-work-component-inventory-ui/src/client/about.module.css.mjs
-		const css = ".vna3bW_about{width:100%;max-width:820px;color:var(--dsw-alias-label-primary,#191919)}.vna3bW_heading{margin:0 0 24px;font-size:20px}.vna3bW_product{border-bottom:1px solid var(--dsw-alias-border-l2,#e6e6e6);margin-bottom:24px;padding-bottom:24px}.vna3bW_identity{align-items:center;gap:16px;display:flex}.vna3bW_productText{min-width:0}.vna3bW_productName{overflow-wrap:anywhere;margin:0;font-size:21px;font-weight:650}.vna3bW_version{color:var(--dsw-alias-label-secondary,#666);overflow-wrap:anywhere;margin:5px 0 0;font-size:13px}.vna3bW_basedOn{color:var(--dsw-alias-label-secondary,#666);margin:6px 0 0;font-size:12px}.vna3bW_links{flex-wrap:wrap;gap:10px;margin-top:20px;display:flex}.vna3bW_link{border:1px solid var(--dsw-alias-border-l2,#e6e6e6);background:var(--dsw-alias-bg-layer-3,#fff);min-height:36px;color:var(--dsw-alias-label-primary,#191919);border-radius:8px;justify-content:center;align-items:center;gap:8px;padding:0 13px;font-size:13px;text-decoration:none;display:inline-flex}.vna3bW_link:hover{background:var(--dsw-alias-bg-layer-2,#f6f6f6);border-color:var(--dsw-alias-label-secondary,#666)}.vna3bW_link:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#9f2636);outline-offset:3px}.vna3bW_hint{color:var(--dsw-alias-label-secondary,#666);margin:9px 0 0;font-size:12px;line-height:1.5}.vna3bW_componentsHeading{margin:0 0 18px;font-size:17px}.vna3bW_componentGrid{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));align-items:start;gap:10px;display:grid}";
+		const css = ".vna3bW_about{width:100%;max-width:820px;color:var(--dsw-alias-label-primary,#191919)}.vna3bW_heading{margin:0 0 24px;font-size:20px}.vna3bW_product{border-bottom:1px solid var(--dsw-alias-border-l2,#e6e6e6);margin-bottom:24px;padding-bottom:24px}.vna3bW_identity{align-items:center;gap:16px;display:flex}.vna3bW_productText{min-width:0}.vna3bW_productName{overflow-wrap:anywhere;margin:0;font-size:21px;font-weight:650}.vna3bW_version{color:var(--dsw-alias-label-secondary,#666);overflow-wrap:anywhere;margin:5px 0 0;font-size:13px}.vna3bW_basedOn{color:var(--dsw-alias-label-secondary,#666);margin:6px 0 0;font-size:12px}.vna3bW_links{flex-wrap:wrap;gap:10px;margin-top:20px;display:flex}.vna3bW_link{border:1px solid var(--dsw-alias-border-l2,#e6e6e6);background:var(--dsw-alias-bg-layer-3,#fff);min-height:36px;color:var(--dsw-alias-label-primary,#191919);border-radius:8px;justify-content:center;align-items:center;gap:8px;padding:0 13px;font-size:13px;text-decoration:none;display:inline-flex}.vna3bW_link:hover{background:var(--dsw-alias-bg-layer-2,#f6f6f6);border-color:var(--dsw-alias-label-secondary,#666)}.vna3bW_link:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#9f2636);outline-offset:3px}.vna3bW_componentsHeading{margin:0 0 18px;font-size:17px}.vna3bW_componentGrid{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));align-items:start;gap:10px;display:grid}";
 		const tagId = "@chatecnu-work/dsh-client-ui-component-inventory/about.module.css";
 		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
 			const tag = document.createElement("style");
@@ -7567,7 +7567,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"componentGrid": "vna3bW_componentGrid",
 			"componentsHeading": "vna3bW_componentsHeading",
 			"heading": "vna3bW_heading",
-			"hint": "vna3bW_hint",
 			"identity": "vna3bW_identity",
 			"link": "vna3bW_link",
 			"links": "vna3bW_links",
@@ -7593,7 +7592,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				basedOn: "基于 EduWork 开源项目",
 				github: "GitHub",
 				feedback: "反馈问题",
-				feedbackHint: "前往 GitHub，需要 GitHub 账号。",
 				external: "在浏览器中打开",
 				runtimeGroup: "运行环境",
 				runtimeHint: "应用界面、Agent 和脚本使用的核心组件。",
@@ -7696,7 +7694,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				basedOn: "Based on the EduWork open-source project",
 				github: "GitHub",
 				feedback: "Report an issue",
-				feedbackHint: "Opens GitHub. A GitHub account is required.",
 				external: "Open in browser",
 				runtimeGroup: "Runtime environment",
 				runtimeHint: "Core components for the interface, agent and scripts.",
@@ -8255,7 +8252,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				target: "_blank",
 				rel: "noopener noreferrer",
 				title: t("external")
-			}, t("feedback"), h(ExternalArrow))), h("p", { className: about_module_css_default.hint }, t("feedbackHint"))), h("h3", { className: about_module_css_default.componentsHeading }, t("components")), h(ComponentLayers, {
+			}, t("feedback"), h(ExternalArrow)))), h("h3", { className: about_module_css_default.componentsHeading }, t("components")), h(ComponentLayers, {
 				components: state.value.components,
 				t
 			}));

@@ -11,7 +11,7 @@ const NS = 'settings.eduworkAbout'
 const copy = {
   zh: {
     tab: '关于', title: '关于', components: '组件与版本', basedOn: '基于 EduWork 开源项目',
-    github: 'GitHub', feedback: '反馈问题', feedbackHint: '前往 GitHub，需要 GitHub 账号。', external: '在浏览器中打开',
+    github: 'GitHub', feedback: '反馈问题', external: '在浏览器中打开',
     runtimeGroup: '运行环境', runtimeHint: '应用界面、Agent 和脚本使用的核心组件。',
     capability: '能力环境', capabilityHint: '由插件或 Skills 按需使用的共享依赖环境。',
     loading: '正在读取组件…', failure: '暂时无法读取组件信息。', retry: '重试', unknown: '未声明',
@@ -40,7 +40,7 @@ const copy = {
   },
   en: {
     tab: 'About', title: 'About', components: 'Components & versions', basedOn: 'Based on the EduWork open-source project',
-    github: 'GitHub', feedback: 'Report an issue', feedbackHint: 'Opens GitHub. A GitHub account is required.', external: 'Open in browser',
+    github: 'GitHub', feedback: 'Report an issue', external: 'Open in browser',
     runtimeGroup: 'Runtime environment', runtimeHint: 'Core components for the interface, agent and scripts.',
     capability: 'Capability environments', capabilityHint: 'Shared managed dependencies used on demand by plugins and skills.',
     loading: 'Reading components…', failure: 'Component information is temporarily unavailable.', retry: 'Retry', unknown: 'Undeclared',
@@ -257,8 +257,7 @@ function About({ list, t, renderSlot }) {
           productName !== 'EduWork' ? h('p', { className: styles.basedOn }, t('basedOn')) : null)),
       h('div', { className: styles.links },
         h('a', { className: styles.link, href: projectURL, target: '_blank', rel: 'noopener noreferrer', title: t('external') }, h(GitHubMark), t('github'), h(ExternalArrow)),
-        h('a', { className: styles.link, href: feedbackURL(release), target: '_blank', rel: 'noopener noreferrer', title: t('external') }, t('feedback'), h(ExternalArrow))),
-      h('p', { className: styles.hint }, t('feedbackHint'))),
+        h('a', { className: styles.link, href: feedbackURL(release), target: '_blank', rel: 'noopener noreferrer', title: t('external') }, t('feedback'), h(ExternalArrow)))),
     h('h3', { className: styles.componentsHeading }, t('components')),
     h(ComponentLayers, { components: state.value.components, t }))
 }

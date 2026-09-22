@@ -25,6 +25,5 @@
 }
 .link:hover { background: var(--dsw-alias-bg-layer-2, #f6f6f6); border-color: var(--dsw-alias-label-secondary, #666); }
 .link:focus-visible { outline: 2px solid var(--dsw-alias-state-business-primary, #9f2636); outline-offset: 3px; }
-.hint { margin: 9px 0 0; color: var(--dsw-alias-label-secondary, #666); font-size: 12px; line-height: 1.5; }
 .componentsHeading { margin: 0 0 18px; font-size: 17px; }
 .componentGrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 10px; align-items: start; }
