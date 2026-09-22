@@ -6,6 +6,7 @@ import { gatewayJSON, liteLLMToken, protocolError, readGatewayJSON, registerLite
 import { detectGatewayProtocol } from './gateway-protocol.js'
 import { oidcLlmIdentity, oidcLlmToken } from './oidc-llm-protocol.js'
 import { bufferResourceResponse, validateResourceRead } from './model-resource-transport.js'
+import { accessTokenNeedsRefresh } from './token-lifetime.js'
 
 const seconds = backend => Math.floor(backend.now() / 1000)
 const fingerprint = (profile, descriptor) => createHash('sha256').update(JSON.stringify({ auth: profile.auth, descriptor })).digest('hex')
@@ -266,7 +267,7 @@ function withGatewayAuth(Base) {
       const epoch = this.accountEpoch(profile)
       const session = await this.loadSession(profile)
       if (!session) return undefined
-      if (session.expiresAt > seconds(this) + 90) return session
+      if (!accessTokenNeedsRefresh(session, this.now)) return session
       try { return await this.refresh(profile, session) }
       catch (cause) {
         // Brief outages must not discard a still-valid access token; expired tokens stop.

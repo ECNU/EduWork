@@ -14,7 +14,7 @@ const deferred = () => { let resolve; const promise = new Promise(done => { reso
 async function fixture(t) {
   const profile = normalizeEnterpriseProfile(rawProfile()), records = new Map(), calls = [], routes = []
   let now = Date.now(), counter = 0, authorization
-  const controls = { user: 'alice', team: null, models: ['model-a'], refreshGate: undefined, refreshStatus: 200, modelsStatus: 200, revokeStatus: 200 }
+  const controls = { user: 'alice', team: null, models: ['model-a'], expiresIn: 3600, refreshGate: undefined, refreshStatus: 200, modelsStatus: 200, revokeStatus: 200 }
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined, set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
   const fetcher = async (url, init = {}) => {
     calls.push({ url, ...init })
@@ -29,7 +29,7 @@ async function fixture(t) {
         if (controls.refreshStatus !== 200) return json({ error: controls.refreshStatus === 400 ? 'invalid_grant' : 'unavailable' }, controls.refreshStatus)
       }
       counter++
-      return json({ token_type: 'Bearer', access_token: `synthetic-access-${counter}`, refresh_token: `synthetic-refresh-${counter}`, expires_in: 3600, user_id: controls.user, team_id: controls.team })
+      return json({ token_type: 'Bearer', access_token: `synthetic-access-${counter}`, refresh_token: `synthetic-refresh-${counter}`, expires_in: controls.expiresIn, user_id: controls.user, team_id: controls.team })
     }
     if (url === `${base}/user/info`) return json({ user_id: controls.user, user_info: { user_alias: controls.user }, keys: ['NEVER-EXPOSE'], teams: ['NEVER-EXPOSE'] })
     if (url === `${base}/v1/models`) return json({ data: controls.models.map(id => ({ id })) }, controls.modelsStatus)
@@ -82,6 +82,34 @@ test('Desktop Host uses DCR actual loopback, state, PKCE, direct access and a wh
   assert.equal(f.routes.at(-1).providers.gateway.models[0].id, 'model-a')
   assert.equal(f.routes.at(-1).providers.gateway.models[0].reasoning, false)
   assert.ok(!f.calls.some(call => /bootstrap|runtime-credential|key\//.test(call.url)))
+})
+
+test('long-lived tokens refresh at the thirty-minute boundary before any resource 401', async t => {
+  const f = await fixture(t)
+  f.controls.expiresIn = 36000
+  await f.login()
+  const saved = JSON.parse(f.records.get(sessionRef(f.profile)))
+  f.advance((saved.expiresAt - 1801) * 1000 - f.backend.now())
+  assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-1')
+  f.advance(1000)
+  assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-2')
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
+
+test('short-lived tokens refresh at half-life without repeated refresh on login, requests or restart', async t => {
+  const f = await fixture(t)
+  f.controls.expiresIn = 120
+  await f.login()
+  for (let i = 0; i < 3; i++) assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-1')
+  f.advance(59000)
+  assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-1')
+  f.advance(1000)
+  assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-2')
+  for (let i = 0; i < 3; i++) assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-2')
+  const restarted = new GatewayDesktopBackend(f.backend.ctx, new Map([[f.profile.id, f.profile]]), {}, { fetch: f.backend.fetch, now: f.backend.now })
+  t.after(() => restarted.dispose())
+  assert.equal((await restarted.resolveGatewayCredential(f.profile.id)).value, 'synthetic-access-2')
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
 })
 
 test('concurrent agents refresh one rotated pair and persisted restart uses that pair', async t => {

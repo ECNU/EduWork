@@ -187,12 +187,36 @@ test('same authorization refresh preserves an active stream and cleans up its ca
   assert.equal(f.backend.gatewayCalls.size, 0)
 })
 
+for (const draft of [false, true]) test(`DSH ${draft ? 'OIDC draft' : 'LiteLLM'} lets an accepted stream finish past token expiry and refreshes the next request`, async t => {
+  const f = await fixture(t, draft)
+  const profile = f.backend.profile('gateway')
+  const before = await f.backend.loadSession(profile)
+  f.controls.streamGate = deferred()
+  const output = []
+  for await (const chunk of f.ctx.llm.stream(f.options)) {
+    output.push(chunk)
+    if (chunk.type === 'text-delta') {
+      f.backend.now = () => (before.expiresAt + 1) * 1000
+      f.controls.streamGate.resolve()
+    }
+  }
+  assert.ok(JSON.stringify(output).includes('synthetic-late'))
+  assert.ok(!output.some(chunk => chunk.reason?.kind === 'error'))
+  assert.equal(f.requests.length, 1, 'an accepted stream is neither cancelled nor replayed on local expiry')
+  const next = []
+  for await (const chunk of f.ctx.llm.stream(f.options)) next.push(chunk)
+  assert.ok(JSON.stringify(next).includes('synthetic-late'))
+  assert.ok(!next.some(chunk => chunk.reason?.kind === 'error'))
+  assert.equal(f.requests.length, 2)
+  assert.notEqual(f.requests[0].authorization, f.requests[1].authorization)
+})
+
 for (const draft of [false, true]) test(`DSH ${draft ? 'OIDC draft' : 'LiteLLM'} refreshes a near-expiry token before a prepared model request`, async t => {
   const f = await fixture(t, draft)
   const prepared = await f.ctx.llm.prepareCall(f.options)
   const profile = f.backend.profile('gateway')
   const before = await f.backend.loadSession(profile)
-  f.backend.now = () => (before.expiresAt - 60) * 1000
+  f.backend.now = () => (before.expiresAt - 1200) * 1000
   const output = []
   for await (const chunk of prepared.stream({ ...prepared.config, messages: [] })) output.push(chunk)
   const after = await f.backend.loadSession(profile)
