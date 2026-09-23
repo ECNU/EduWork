@@ -140,7 +140,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
       { id: 'eduwork-native-reveal', name: '@chatecnu-work/dsh-artifact-preview-native/session-controller' },
       { id: 'eduwork-native-credentials', name: '@chatecnu-work/dsh-credentials-native' },
       { id: 'eduwork-desktop-boundary', name: '@chatecnu-work/dsh-desktop-boundary' },
-      { id: 'eduwork-desktop-services', name: '@eduwork/desktop-services' },
+      { id: 'eduwork-desktop-services', name: '@eduwork/desktop-services', config: { notifications: user?.notifications ?? {} } },
     ] },
   ]
   if (native) {

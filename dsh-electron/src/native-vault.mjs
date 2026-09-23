@@ -51,7 +51,7 @@ export function externalBrowserURL(value) {
   return url.href
 }
 
-export async function startNativeBridge({ vault, openExternal, openConfiguration, workbench }) {
+export async function startNativeBridge({ vault, openExternal, openConfiguration, workbench, attention }) {
   const token = randomBytes(32).toString('base64url')
   const authorization = Buffer.from('Bearer ' + token)
   const sockets = new Set()
@@ -73,6 +73,11 @@ export async function startNativeBridge({ vault, openExternal, openConfiguration
       }
       const body = JSON.parse(Buffer.concat(parts).toString('utf8'))
       if (closing) { response.writeHead(503).end(); return }
+      if (request.url === '/v1/extensions/attention') {
+        if (!attention) { response.writeHead(501).end(); return }
+        const result = JSON.stringify(await attention(body))
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(result); return
+      }
       if (request.url === '/v1/extensions/workbench') {
         if (!body || Object.keys(body).length !== 1 || !['status','check-updates','diagnostics','download-update','schedule-update','install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update'].includes(body.action)) throw new Error('Invalid desktop action')
         if (!workbench) { response.writeHead(501).end(); return }

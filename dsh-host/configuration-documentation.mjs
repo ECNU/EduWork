@@ -51,7 +51,7 @@ export async function configurationDocumentationOptions(product, { defaults = {}
   const composition = await read('composition.json') ?? [], identity = await read('assembly.json') ?? {}
   return { fields: extra, defaults: mergeConfigurationDefaults({
     schemaVersion: 1, product: { name: identity.brand?.product?.name ?? 'EduWork' }, organizations: [],
-    desktop: { closeAction: 'tray' }, features: { maxConcurrentRequests: 3 }, media: { providers: [] },
+    desktop: { closeAction: 'tray', notifications: { enabled: true, attention: true, completed: true, failed: true, studio: true, sound: false, preview: false } }, features: { maxConcurrentRequests: 3 }, media: { providers: [] },
     plugins: pluginConfigurationDefaults(composition, fields, identity.bundles),
   }, defaults) }
 }
