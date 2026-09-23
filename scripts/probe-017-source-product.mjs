@@ -59,6 +59,9 @@ try {
     const failed = plugins.filter(row => row.enabled && row.fiberPhase === 'failed')
     assert.equal(failed.length, 0, JSON.stringify(failed))
     assert.ok(plugins.some(row => row.patchId === 'chatecnu-brand' && row.enabled))
+    for (const id of ['literature', 'literature-dblp', 'literature-arxiv', 'tool-literature']) {
+      assert.ok(plugins.some(row => row.patchId === id && row.enabled && row.fiberPhase === 'active'), `Literature plugin not active: ${id}`)
+    }
     report.boots.push({ round, plugins: plugins.length, authenticated: true })
     await host.stop(); host = undefined
   }

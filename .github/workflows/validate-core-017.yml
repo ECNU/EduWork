@@ -20,6 +20,7 @@ on:
       - 'scripts/assemble-017-source-product.mjs'
       - 'scripts/probe-017-source-product.mjs'
       - 'scripts/probe-017-deliverables.mjs'
+      - 'scripts/probe-017-literature.mjs'
       - 'dsh-host/product-profile.mjs'
       - 'dsh-electron/src/**'
       - 'dsh-plugins/**'
@@ -69,7 +70,7 @@ jobs:
           $deps = "$env:RUNNER_TEMP/source-deps"
           New-Item -ItemType Directory -Path $deps | Out-Null
           Copy-Item core/third_party/dsh/candidate-v0.1.7-alpha.2/source-probe/package*.json $deps
-          npm ci --prefix $deps --ignore-scripts --no-audit --no-fund
+          npm ci --prefix $deps --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE) { throw 'Locked qualification dependencies failed' }
           node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
@@ -82,6 +83,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Source product assembly failed' }
           node core/scripts/probe-017-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
           if ($LASTEXITCODE) { throw 'Assembled product qualification failed' }
+          node core/scripts/probe-017-literature.mjs --product "$env:RUNNER_TEMP/source-product" --output "$env:RUNNER_TEMP/literature-evidence"
+          if ($LASTEXITCODE) { throw 'Published literature compatibility failed' }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -94,4 +97,5 @@ jobs:
             ${{ runner.temp }}/client-build.json
             ${{ runner.temp }}/assembled-evidence/report.json
             ${{ runner.temp }}/deliverables-evidence/report.json
+            ${{ runner.temp }}/literature-evidence/report.json
           if-no-files-found: ignore

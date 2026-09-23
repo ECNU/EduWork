@@ -38,14 +38,14 @@ node dsh-host/prepare-native.mjs --upstream C:/EduworkTest/source-017 --output C
 node scripts/probe-eduwork-017-host.mjs --runtime C:/EduworkTest/runtime-017 --host C:/EduworkTest/host-017 --output C:/EduworkTest/host-evidence
 ```
 
-For source plugins, copy `source-probe/package.json` and `package-lock.json` into a separate `C:/EduworkTest/source-deps` directory and run `npm ci --ignore-scripts` there, then:
+For source plugins, copy `source-probe/package.json` and `package-lock.json` into a separate `C:/EduworkTest/source-deps` directory and run `npm ci --legacy-peer-deps --ignore-scripts` there, then:
 
 ```powershell
 node scripts/build-017-plugin-clients.mjs --runtime C:/EduworkTest/runtime-017 --dependencies C:/EduworkTest/source-deps --output C:/EduworkTest/source-stage --report C:/EduworkTest/client-build.json
 node scripts/probe-eduwork-017-settings.mjs --runtime C:/EduworkTest/runtime-017 --dependencies C:/EduworkTest/source-deps --source C:/EduworkTest/source-stage --full-product --output C:/EduworkTest/settings-evidence
 ```
 
-This mode builds into an isolated directory without changing published packages or checked-in generated files. It checks legacy preferences, native validation, live editing, restart persistence, optional presets and authenticated RPC for organizations, Studio, memory, components and skills. Use `--serve` to keep the synthetic workspace available for UI testing. Its `launch.json` contains a temporary authentication token; do not publish it. The source composition excludes the external literature plugin.
+This mode builds into an isolated directory without changing published packages or checked-in generated files. It checks legacy preferences, native validation, live editing, restart persistence, optional presets and authenticated RPC for organizations, Studio, memory, components and skills. Use `--serve` to keep the synthetic workspace available for UI testing. Its `launch.json` contains a temporary authentication token; do not publish it. This source probe excludes literature, while the assembled product below retains the published family. `--legacy-peer-deps` applies only to the isolated supplemental dependencies; the frozen candidate Runtime supplies all DSH peers.
 
 Original settings are retained as a migration backup, with new preferences in a separate native `desktop-017` Profile. The user-facing product configuration remains `eduwork.jsonc`. Legacy custom presets keep their source directories and IDs, while the official registry manages converted definitions. Plugins used by third-party presets still need individual compatibility checks.
 
@@ -55,8 +55,9 @@ Qualify product outputs in native deliverables, then verify plugin resolution an
 node scripts/probe-017-deliverables.mjs --runtime C:/EduworkTest/runtime-017 --output C:/EduworkTest/deliverables-evidence
 node scripts/assemble-017-source-product.mjs --runtime C:/EduworkTest/runtime-017 --source C:/EduworkTest/source-stage --dependencies C:/EduworkTest/source-deps --host C:/EduworkTest/host-017 --output C:/EduworkTest/source-product
 node scripts/probe-017-source-product.mjs --product C:/EduworkTest/source-product --host C:/EduworkTest/host-017 --output C:/EduworkTest/assembled-evidence
+node scripts/probe-017-literature.mjs --product C:/EduworkTest/source-product --output C:/EduworkTest/literature-evidence
 ```
 
-The source product combines the locked npm Runtime with separately built product plugins. It is marked `source-qualification` and excluded from releases. The assembled probe launches real child processes without source import redirection, with synthetic in-memory credential storage. The deliverables probe uses real tools, filesystem and sessions with a synthetic generator; failure, cancellation, escaping paths and failed nested transports must not publish files. The candidate uses upstream file intake and deliverable cards while retaining extended previews shared with Studio. The source product does not include the external literature plugin or the complete local media resources.
+The source product combines the locked npm Runtime with separately built product plugins. It is marked `source-qualification` and excluded from releases. The assembled probe launches real child processes without source import redirection, with synthetic in-memory credential storage. The deliverables probe uses real tools, filesystem and sessions with a synthetic generator; failure, cancellation, escaping paths and failed nested transports must not publish files. The candidate uses upstream file intake and deliverable cards while retaining extended previews shared with Studio. The literature family remains at published version `0.1.2`, with version and bundle integrity checks. Its probe uses synthetic retrieval to test real tool execution, output validation and full-text file writing, not external search sites. The source product does not include the complete local media resources.
 
 These checks do not cover live model requests, organization sign-in, Studio generation, native windows, Office/media rendering or application updates, and do not establish compatibility with every historical session. Complete those checks before promoting the desktop release baseline. Candidate CI uploads reports, not raw startup logs containing authentication URLs.

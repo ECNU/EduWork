@@ -42,6 +42,16 @@ for (const folder of new Set(sourceFolders)) {
   await cp(source, join(modules, manifest.name), { recursive: true })
   sourcePackages.push(manifest.name)
 }
+// The published literature family is retained unchanged. Runtime peer packages
+// come only from the candidate lock, never from a second peer installation.
+const literatureLock = await json(join(repository, 'third_party/dsh-literature/LOCK.json'))
+const dependencyLock = await json(join(paths.dependencies, 'package-lock.json'))
+const literatureNames = ['@shlv/dsh-literature', ...['core', 'dblp', 'arxiv', 'tool'].map(part => '@shlv/dsh-literature-' + part)]
+for (const name of literatureNames) {
+  const manifest = await json(join(modules, name, 'package.json'))
+  if (manifest.version !== literatureLock.version) throw new Error(`Unqualified literature package: ${name}`)
+}
+if (dependencyLock.packages['node_modules/@shlv/dsh-literature']?.integrity !== literatureLock.npm.integrity) throw new Error('Literature bundle integrity does not match the product lock')
 await cp(join(repository, 'config/desktop'), join(paths.output, 'resources/desktop'), { recursive: true })
 for (const skill of distribution.skills) {
   const source = skill.sourcePackage ? join(modules, skill.sourcePackage, skill.sourcePath) : join(repository, skill.source)
@@ -62,8 +72,8 @@ await writeFile(memoryBundle, (await readFile(memoryBundle, 'utf8')).replace('id
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.core.17', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', pluginMode: 'source-qualification', published: false,
-  bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory'],
-  sourcePackages, omittedPackages: ['@shlv/dsh-literature'], nativeResources: 'not-bundled',
+  bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@shlv/dsh-literature'],
+  sourcePackages, externalPackages: literatureNames, omittedPackages: [], nativeResources: 'not-bundled',
 }
 await writeFile(join(paths.output, 'assembly.json'), JSON.stringify(identity, null, 2) + '\n')
 await writeFile(join(paths.output, 'composition.json'), JSON.stringify(composition, null, 2) + '\n')
@@ -71,7 +81,7 @@ await installProductHost({ product: paths.output, adapter: paths.host })
 const runtimeManifestPath = join(paths.output, 'd/package.json')
 const runtimeManifest = await json(runtimeManifestPath)
 const installed = await json(join(paths.output, 'assembly.json'))
-for (const name of [...sourcePackages, ...Object.keys(installed.desktopHost.nativePlugins)]) {
+for (const name of [...sourcePackages, ...literatureNames, ...Object.keys(installed.desktopHost.nativePlugins)]) {
   const manifest = await json(join(modules, name, 'package.json'))
   runtimeManifest.dependencies[name] = manifest.version
 }

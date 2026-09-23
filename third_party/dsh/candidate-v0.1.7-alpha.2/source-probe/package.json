@@ -2,11 +2,16 @@
   "version": "0.0.0",
   "name": "eduwork-017-source-probe-dependencies",
   "dependencies": {
+    "@shlv/dsh-literature": "0.1.2",
+    "@shlv/dsh-literature-arxiv": "0.1.2",
+    "@shlv/dsh-literature-core": "0.1.2",
+    "@shlv/dsh-literature-dblp": "0.1.2",
+    "@shlv/dsh-literature-tool": "0.1.2",
     "imapflow": "1.7.6",
+    "jszip": "3.10.1",
     "mailparser": "3.9.23",
     "nodemailer": "9.1.1",
     "react-markdown": "10.1.0",
-    "jszip": "3.10.1",
     "unpdf": "1.8.1"
   },
   "private": true,
