@@ -7,6 +7,7 @@ import { randomUUID } from 'node:crypto'
 import { parseArgs } from 'node:util'
 import { prepareProductProfile } from '../dsh-host/product-profile.mjs'
 import { startNativeBridge } from '../dsh-electron/src/native-vault.mjs'
+import { TaskNotifications } from '../dsh-electron/src/task-notifications.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (!values.product || !values.host || !values.output) throw new Error('Use --product --host --output (new synthetic directory)')
@@ -14,7 +15,9 @@ const product = resolve(values.product), hostRoot = resolve(values.host), output
 assert.equal(JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8')).pluginMode, 'source-qualification')
 await mkdir(output)
 const home = join(output, 'home'), config = join(output, 'eduwork.jsonc')
-await writeFile(config, '{"schemaVersion":1,"product":{"name":"Synthetic desktop"}}\n')
+await writeFile(config, '{"schemaVersion":1,"product":{"name":"Synthetic desktop"},"desktop":{"notifications":{"preview":true}}}\n')
+await mkdir(home)
+await writeFile(join(home, 'settings.yaml'), '{"eduwork-notifications":{"preview":false,"completed":false}}\n')
 const workspace = join(output, '中文 workspace')
 await mkdir(workspace)
 await writeFile(join(workspace, 'history.md'), '# Persistent preview')
@@ -28,7 +31,8 @@ const vault = { async flush() {}, async operation(operation, ref, value) {
   return { configured: secrets.has(ref), writable: true, source: 'synthetic-memory',
     ...(operation === 'resolve' && secrets.has(ref) ? { value: secrets.get(ref) } : {}) }
 } }
-const bridge = await startNativeBridge({ vault, openExternal() { throw new Error('Unexpected external navigation in synthetic probe') } })
+const notifications = new TaskNotifications({ foreground: () => false, show() {}, publish() {}, dismiss() {}, changed() {} })
+const bridge = await startNativeBridge({ vault, attention: body => notifications.handle(body), openExternal() { throw new Error('Unexpected external navigation in synthetic probe') } })
 const { DesktopHostProcess } = await import(pathToFileURL(join(hostRoot, 'host-process.mjs')).href)
 const { authenticateWebHost } = await import(pathToFileURL(join(hostRoot, 'web-document.mjs')).href)
 let host
@@ -58,6 +62,18 @@ try {
       await rpc(method)
       if (round === 1) report.rpc.push(method)
     }
+    const notificationSettings = (await rpc('settings/describe')).namespaces.find(row => row.ns === 'eduwork-notifications')
+    assert.ok(notificationSettings, 'Native notification settings did not activate')
+    assert.equal(notificationSettings.value.preview, round === 2)
+    assert.equal(notificationSettings.value.completed, false)
+    assert.equal((await rpc('workbench/notificationView', { view: { sessionId: '' } })).desktop, true)
+    if (round === 1) {
+      await assert.rejects(rpc('settings/update', { ns: 'eduwork-notifications', patch: { preview: 'invalid' } }))
+      await rpc('settings/update', { ns: 'eduwork-notifications', patch: { preview: true } })
+    }
+    for (let attempt = 0; notifications.preferences?.preview !== true && attempt < 100; attempt++) await new Promise(resolve => setTimeout(resolve, 25))
+    assert.equal(notifications.preferences?.preview, true, 'Native settings changes must reach the shell without a restart')
+    report.notifications = ['legacy-preference-migration', 'native-validation', 'authenticated-bridge', 'live-update', ...(round === 2 ? ['restart-persistence'] : [])]
     // Exercise actual SQLite persistence and native RPC serialization, not just
     // service registration. Only this probe's new synthetic home is modified.
     const memoryRequest = request => ({ request: JSON.stringify(request) })
@@ -117,6 +133,7 @@ try {
 } finally {
   await host?.stop()
   await bridge.close()
+  notifications.close()
   await writeFile(join(output, 'report.json'), JSON.stringify(report, null, 2) + '\n')
   // The report contains no secrets; raw startup logs remain local to the probe.
   await writeFile(join(output, 'host.log'), logs.join(''))

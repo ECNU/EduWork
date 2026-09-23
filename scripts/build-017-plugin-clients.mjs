@@ -27,6 +27,7 @@ for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail'
   })
 }
 const { build } = require('esbuild')
+const { transform: transformCSS } = require('lightningcss')
 const sharedRoot = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services')
 const shared = JSON.parse(await readFile(join(sharedRoot, 'package.json'), 'utf8'))
 const sharedAliases = Object.fromEntries(Object.entries(shared.exports).map(([key, path]) => [shared.name + (key === '.' ? '' : key.slice(1)), join(sharedRoot, path)]))
@@ -65,6 +66,18 @@ for (const [folder, entry] of clients) {
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-dockkit'],
     define: { 'process.env.NODE_ENV': '"production"', __EDUWORK_NATIVE_017__: 'true' },
     alias: { ...localAliases, ...(folder === 'packages/dsh-knowledge-studio' ? Object.fromEntries(['process', 'path', 'url'].map(name => [`node:${name}`, join(root, `src/client/shims/${name}.ts`)])) : {}) },
+    // ModuleLoader fetches one JS artifact. Embed module CSS just as the
+    // official compiler does, with stable per-plugin class names.
+    plugins: [{ name: 'native-module-css', setup(builder) {
+      builder.onLoad({ filter: /\.module\.css$/ }, async ({ path }) => {
+        const id = manifest.name + '/' + relative(root, path).split(sep).join('/')
+        const css = transformCSS({ filename: id, code: await readFile(path), cssModules: true, minify: true })
+        const classes = Object.fromEntries(Object.entries(css.exports).map(([key, value]) => [key, [value.name, ...value.composes.map(item => item.name)].join(' ')]))
+        return { loader: 'js', contents: `const id=${JSON.stringify(id)}, css=${JSON.stringify(css.code.toString())};
+          if(typeof document!=='undefined'){let tag=document.querySelector('style[data-plugin-css='+JSON.stringify(id)+']');if(!tag){tag=document.createElement('style');tag.dataset.pluginCss=id;document.head.append(tag)}tag.textContent=css}
+          export default ${JSON.stringify(classes)};` }
+      })
+    } }],
     banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
     footer: { js: `const original = module.exports; return { ...original, async apply(...args) { try { return await original.apply(...args); } catch (error) { console.error(${JSON.stringify(manifest.name)}, error?.stack || String(error)); throw error; } } }; } });` },
   })

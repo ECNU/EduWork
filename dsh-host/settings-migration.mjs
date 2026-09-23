@@ -10,6 +10,7 @@ export const nativeSettingsEntryIds = Object.freeze({
   'eduwork-request-concurrency': 'eduwork-concurrency',
   'eduwork-knowledge-studio': 'dsh-knowledge-studio',
   'local-memory': 'memories',
+  'eduwork-desktop-services': 'eduwork-notifications',
 })
 
 const exists = async path => readFile(path, 'utf8').catch(error => {

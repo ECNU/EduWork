@@ -135,6 +135,7 @@ export function nativeEntryIds(patches) {
     ...(row.id ? { id: nativeSettingsEntryIds[row.id] ?? row.id } : {}),
     ...(row.insert ? { insert: row.insert.map(plugin => ({ ...plugin,
       id: nativeSettingsEntryIds[plugin.id] ?? plugin.id,
+      ...(plugin.id === 'eduwork-desktop-services' ? { config: plugin.config?.notifications ?? {} } : {}),
       ...(plugin.id === 'eduwork-request-concurrency' ? { name: '@eduwork/dsh-request-concurrency/lib/native.js' } : {}),
       ...(plugin.id === 'eduwork-artifact-publish' ? { name: '@chatecnu-work/dsh-tool-artifact-publish/native' } : {}),
     })) } : {}),

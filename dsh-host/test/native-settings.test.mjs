@@ -33,6 +33,12 @@ test('native product onboarding and optional presets use defaults below user cho
   ])
 })
 
+test('desktop notification preferences retain their namespace in the native profile', () => {
+  const patches = [{ insert: [{ id: 'eduwork-desktop-services', name: '@eduwork/desktop-services', config: { notifications: { enabled: false, preview: true } } }] }]
+  assert.deepEqual(nativeEntryIds(patches)[0].insert[0], { id: 'eduwork-notifications', name: '@eduwork/desktop-services', config: { enabled: false, preview: true } })
+  assert.equal(patches[0].insert[0].id, 'eduwork-desktop-services')
+})
+
 test('regenerating deployment defaults never replaces saved native preferences', async () => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-native-profile-'))
   const options = { profile, bundles: ['@deepseek-ai/dsh-base'], patches: [{ insert: [

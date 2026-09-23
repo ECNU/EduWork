@@ -5,12 +5,19 @@ import { DesktopAttention, notificationDefaults, observeDesktopAttention } from 
 // Host-only seam. No Remote decorator: the renderer cannot choose an arbitrary
 // external URL or obtain the native bridge credential through this service.
 export default class DesktopServices extends Service {
+  static Config = typeof z.boolean().volatile === 'function'
+    ? z.object(Object.fromEntries(Object.entries(notificationDefaults).map(([key, value]) => [key, z.boolean().default(value).volatile()])))
+    : undefined
   static inject = ['desktopBoundary', 'settings', 'sessions']
   constructor(ctx, config = {}) {
     super(ctx, 'desktopServices')
-    const scope = ctx.settings.register('eduwork-notifications', z.object(Object.fromEntries(Object.entries(notificationDefaults).map(([key, value]) => [key, z.boolean().default(value)]))),
-      { base: { ...notificationDefaults, ...config.notifications }, applies: 'live' })
-    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences: () => scope.get(), validateTarget: async target => {
+    const scope = typeof ctx.settings.register === 'function'
+      ? ctx.settings.register('eduwork-notifications', z.object(Object.fromEntries(Object.entries(notificationDefaults).map(([key, value]) => [key, z.boolean().default(value)]))),
+        { base: { ...notificationDefaults, ...config.notifications }, applies: 'live' })
+      : null
+    if (!scope) ctx.effect(() => ctx.settings.configure({ auto: false }))
+    const preferences = () => scope ? scope.get() : Object.fromEntries(Object.keys(notificationDefaults).map(key => [key, config[key].get()]))
+    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences, validateTarget: async target => {
       if (!target.artifactId) return true
       const studio = ctx.get('knowledgeStudio')
       if (!studio) return false
@@ -18,7 +25,8 @@ export default class DesktopServices extends Service {
       return !artifact.deletedAt && artifact.sessionId === target.sessionId
     } })
     observeDesktopAttention(ctx, this.attention)
-    ctx.effect(() => scope.watch(() => this.attention.changed()))
+    if (scope) ctx.effect(() => scope.watch(() => this.attention.changed()))
+    else ctx.on('loader/volatile-update', () => this.attention.changed())
   }
   async notificationBridge(body) {
     const { nativeBridge } = await this.ctx.desktopBoundary.ready
