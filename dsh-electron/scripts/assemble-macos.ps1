@@ -163,8 +163,8 @@ $plist = Join-Path $app 'Contents/Info.plist'
 $marketingVersion = ($Version -split '-')[0]
 $effectiveBundleVersion = $expectedBundleVersion
 foreach ($row in @(
-    @('CFBundleExecutable','Electron'), @('CFBundleName',$editionName),
-    @('CFBundleDisplayName',$identity.brand.product.name), @('CFBundleIdentifier',$desktop.appId),
+    @('CFBundleExecutable','Electron'), @('CFBundleName',$desktop.productName),
+    @('CFBundleDisplayName',$desktop.productName), @('CFBundleIdentifier',$desktop.appId),
     @('CFBundleShortVersionString',$marketingVersion), @('CFBundleVersion',$effectiveBundleVersion), @('CFBundleIconFile','brand/icon.icns'),
     @('LSMinimumSystemVersion','15.0')
 )) {

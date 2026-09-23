@@ -47,6 +47,8 @@ Both platforms share event state and preferences. Windows uses the existing tray
 
 The Windows notification sender uses the same `product.name` as application branding, falling back to the packaged product name. Windows application IDs omit whitespace and are limited to 128 characters; the full brand remains visible inside the app. Distribution identity, user data paths and the macOS bundle ID are unchanged.
 
+On macOS, both bundle display names use the distribution brand at build time; notification titles use the current product name. Editing `product.name` in user configuration does not rewrite the system display name inside the signed application bundle.
+
 The OS may suppress popups because of notification permissions, Do Not Disturb or platform restrictions. EduWork does not bypass them with custom popups; tray items remain available. A successful API call does not prove a notification was seen. macOS signing, notification permissions and release-package behavior require native acceptance.
 
 Exact Studio artifact navigation and read acknowledgements need the Studio client changes included in this feature. Before a desktop release, publish and pin that package using the [package workflow](PACKAGES_EN.md). Editing package source does not replace the current npm lock.
