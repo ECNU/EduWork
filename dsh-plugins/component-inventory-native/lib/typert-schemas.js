@@ -16,6 +16,6 @@ const runtimeComponent = z.object({
   metadata: z.array(z.object({ key: z.string(), value: z.string() }).strict()),
 }).strict()
 export const componentSnapshotResult = Object.freeze({
-  mode: 'strict', typeSymbol: '@chatecnu-work/dsh-component-inventory-native#ComponentSnapshot',
+  mode: 'strict', create() { return this.schema }, typeSymbol: '@chatecnu-work/dsh-component-inventory-native#ComponentSnapshot',
   schema: z.object({ release, components: z.array(runtimeComponent) }).strict(),
 })

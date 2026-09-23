@@ -174,16 +174,16 @@ export function resolveEnterpriseProfiles(raw = {}) {
   })
 }
 
-export function configurableEntries(profiles) {
+export function configurableEntries(profiles, settingsNs = ENTERPRISE_SETTINGS_NAMESPACE) {
   return [...profiles.values()].map(profile => ({
     provider: profile.provider,
     displayName: profile.displayName,
-    settingsNs: ENTERPRISE_SETTINGS_NAMESPACE,
+    settingsNs,
     settingsPath: ['providers', profile.provider],
     declared: true,
   }))
 }
 
 export function settingsBase(rawConfig) {
-  return { providers: rawConfig.providers ?? {} }
+  return { providers: typeof rawConfig.providers?.get === 'function' ? rawConfig.providers.get() : rawConfig.providers ?? {} }
 }

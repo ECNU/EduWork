@@ -2,7 +2,7 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { ArtifactEngine } from './artifacts.js'
 import { StudioRegistry } from './capabilities.js'
 import { KnowledgeIndexManager } from './manager.js'
-import { KnowledgeStudioSettingsSchema, mergeDefaultSettings, SETTINGS_NAMESPACE, validateSettings } from './settings.js'
+import { Config, liveSettings, KnowledgeStudioSettingsSchema, mergeDefaultSettings, SETTINGS_NAMESPACE, validateSettings } from './settings.js'
 import { installKnowledgeStudioSkill } from './skill.js'
 import { installKnowledgeStudioTools } from './tools.js'
 import { mediaParameters } from './capabilities.js'
@@ -12,13 +12,16 @@ export const name = 'dsh-knowledge-studio'
 const initializers = []
 
 export class KnowledgeStudioService extends TypertRemoteService {
+  static Config = Config
   static inject = ['tools', 'workspaceRegistry', 'fs', 'settings', 'skills', 'llm', 'agents', 'agentDefaultModel', 'artifactServices']
 
   constructor(ctx, config = {}) {
     super(ctx, 'knowledgeStudio')
-    this.settingsScope = ctx.settings.register(SETTINGS_NAMESPACE, KnowledgeStudioSettingsSchema, {
-      base: mergeDefaultSettings(config), applies: 'live', validate: validateSettings,
-    })
+    this.settingsScope = typeof ctx.settings.register === 'function'
+      ? ctx.settings.register(SETTINGS_NAMESPACE, KnowledgeStudioSettingsSchema, {
+        base: mergeDefaultSettings(config), applies: 'live', validate: validateSettings,
+      })
+      : { get: () => liveSettings(config) }
     this.manager = new KnowledgeIndexManager(ctx, config)
     this.mediaProviders = ctx.artifactServices.media
     this.artifacts = new ArtifactEngine(ctx, this.manager, {...config,mediaProviders:this.mediaProviders})
