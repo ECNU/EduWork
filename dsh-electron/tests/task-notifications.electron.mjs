@@ -7,18 +7,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { TaskNotifications, nativeNotificationAdapter } from '../src/task-notifications.mjs'
+import { applyDesktopBrand } from '../src/desktop-brand.mjs'
 import { notificationDefaults } from '../../dsh-plugins/desktop-services/lib/attention.js'
 
 const evidence = process.env.EDUWORK_TEST_EVIDENCE
 if (!evidence) throw Error('Set EDUWORK_TEST_EVIDENCE to an isolated output directory')
 app.setPath('userData', mkdtempSync(join(tmpdir(), 'eduwork-notification-native-')))
-app.setName('EduWork notification test')
-app.setAppUserModelId('org.eduwork.notification-test')
+const productName = process.env.EDUWORK_TEST_PRODUCT_NAME || 'EduWork'
+applyDesktopBrand(app, process.platform, { productName, appId: 'org.eduwork.notification-test' })
 async function run() {
 const events = [], window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
 const tray = new Tray(nativeImage.createFromPath(fileURLToPath(new URL('../../assets/eduwork/icon-32.png', import.meta.url))))
 tray.setToolTip('EduWork notification test')
-const adapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: 'EduWork 测试', activate: key => broker.activate(key), failed: () => events.push('native-failed') })
+const adapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName, activate: key => broker.activate(key), failed: () => events.push('native-failed') })
 const broker = new TaskNotifications({ foreground: () => window.isFocused(), show: () => { events.push('window-restored'); window.show(); window.focus() },
   publish: value => { adapter.publish(value); events.push('native-api-called') }, dismiss: () => adapter.dismiss(),
   changed: () => tray.setContextMenu(Menu.buildFromTemplate(broker.menu())) })
@@ -32,7 +33,7 @@ try {
   const target = broker.handle({ action: 'view', sessionId: 'fixture' }).openKey
   broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, items: [] })
   await mkdir(evidence, { recursive: true })
-  await writeFile(join(evidence, 'native-notifications.json'), JSON.stringify({ platform: process.platform, electron: process.versions.electron, events, menuItems, target, cleared: broker.menu().length === 0,
+  await writeFile(join(evidence, 'native-notifications.json'), JSON.stringify({ platform: process.platform, electron: process.versions.electron, productName: app.getName(), events, menuItems, target, cleared: broker.menu().length === 0,
     scope: 'Native tray/notification API and programmatic menu navigation; does not certify visual delivery, OS permissions, historical toast clicks or DND.' }, null, 2))
 } finally { broker.close(); tray.destroy(); window.destroy(); app.quit() }
 }

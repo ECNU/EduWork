@@ -1,5 +1,6 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
+import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
@@ -53,9 +54,8 @@ export function configureEduworkPaths() {
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
-  app.setName(settings.productName)
+  applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
-  app.setAppUserModelId(settings.appId)
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Own the process tree from the beginning of startup, including when the
@@ -119,7 +119,7 @@ async function prepareDesktop() {
   try { await contentUpdates.configurationFile.document() }
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
-  if (user.product.name) { settings.productName = user.product.name; app.setName(user.product.name); progressWindow.setTitle(user.product.name) }
+  if (user.product.name) { settings.productName = user.product.name; applyDesktopBrand(app, process.platform, settings); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
   await importLegacyData({root:paths.root,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
     writeMigrationHealth(migrationLaunch,'importing',`正在复制历史文件 ${progress.copied}/${progress.total}`)})
