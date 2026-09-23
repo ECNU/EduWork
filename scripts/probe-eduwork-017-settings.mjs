@@ -197,6 +197,66 @@ try {
   await assert.rejects(ctx.settings.update('dsh-mail-assistant', { fromName: 'header\ninjection' }))
   await assert.rejects(ctx.settings.update('eduwork-concurrency', { maxConcurrentRequests: 0 }))
   assert.equal(read('eduwork-concurrency').value.maxConcurrentRequests, 5)
+  // Use the real native Loader, volatile settings and LLM dispatcher. Synthetic
+  // adapters keep the scheduler checks offline without bypassing its middleware.
+  const { LlmAdapter } = await load('@deepseek-ai/dsh-llm')
+  const consume = async iterable => { const result = []; for await (const chunk of iterable) result.push(chunk); return result }
+  const waitForQueue = async predicate => {
+    for (let attempt = 0; attempt < 200 && !predicate(); attempt++) await new Promise(resolve => setTimeout(resolve, 10))
+    assert.ok(predicate(), 'Native request queue did not converge')
+  }
+  let active = 0, peak = 0
+  const entered = [], gates = new Map()
+  class ConcurrencyAdapter extends LlmAdapter {
+    async *stream(options) {
+      active++; peak = Math.max(peak, active); entered.push(options.testID)
+      try {
+        if (options.fail) throw new Error('synthetic-adapter-failure')
+        if (!options.immediate) await new Promise(resolve => gates.set(options.testID, resolve))
+        yield { type: 'text', text: 'synthetic' }
+      } finally { active-- }
+    }
+  }
+  const removeAdapter = ctx.llm.registerAdapter(['qualification-concurrency'], new ConcurrencyAdapter())
+  const stream = (testID, extra = {}) => ctx.llm.stream({ provider: 'qualification-concurrency', model: 'synthetic', messages: [],
+    testID, ...(testID === 'compact' ? {} : { sessionId: testID }), ...extra })
+  report.nativeConcurrency = []
+  for (const limit of [1, 2, 3]) {
+    await ctx.settings.update('eduwork-concurrency', { maxConcurrentRequests: limit })
+    entered.length = 0; gates.clear(); peak = 0
+    const ids = ['root-a', 'root-b', 'child-1', 'child-2', 'background-3', 'nested-4', 'workflow-5', 'child-6', 'compact']
+    const tasks = ids.map(id => consume(stream(id)))
+    await waitForQueue(() => entered.length === limit)
+    assert.deepEqual(entered, ids.slice(0, limit))
+    for (const id of ids) { await waitForQueue(() => gates.has(id)); gates.get(id)(); await new Promise(resolve => setImmediate(resolve)) }
+    await Promise.all(tasks)
+    assert.deepEqual(entered, ids); assert.equal(peak, limit); assert.equal(active, 0)
+    report.nativeConcurrency.push({ limit, peak, requests: ids.length, fifo: true })
+  }
+  await ctx.settings.update('eduwork-concurrency', { maxConcurrentRequests: 1 })
+  entered.length = 0; gates.clear(); peak = 0
+  const cancel = new AbortController()
+  const first = consume(stream('active'))
+  await waitForQueue(() => entered.length === 1)
+  const queued = consume(stream('cancelled', { signal: cancel.signal })); cancel.abort(new Error('synthetic-cancel'))
+  await queued.catch(error => assert.match(error.message, /synthetic-cancel/))
+  assert.deepEqual(entered, ['active'])
+  const second = consume(stream('second')), third = consume(stream('third'))
+  await ctx.settings.update('eduwork-concurrency', { maxConcurrentRequests: 2 })
+  await waitForQueue(() => entered.length === 2)
+  await ctx.settings.update('eduwork-concurrency', { maxConcurrentRequests: 1 })
+  gates.get('active')(); await first
+  await new Promise(resolve => setImmediate(resolve)); assert.equal(entered.length, 2)
+  gates.get('second')(); await second
+  await waitForQueue(() => entered.length === 3); gates.get('third')(); await third
+  assert.equal(active, 0)
+  assert.ok((await consume(stream('failed', { fail: true }))).some(chunk => chunk.type === 'finish' && chunk.reason?.kind === 'error'))
+  const early = stream('early', { immediate: true })[Symbol.asyncIterator]()
+  await early.next(); await early.return()
+  assert.ok((await consume(stream('after', { immediate: true }))).some(chunk => chunk.type === 'text'))
+  assert.equal(active, 0)
+  report.nativeConcurrency.push({ queuedCancellation: true, liveIncrease: true, liveDecrease: true, errorRelease: true, abandonedStreamRelease: true })
+  removeAdapter()
   await ctx.settings.update('chatecnu-brand', { visualStyle: 'ecnu-liwa' })
   await ctx.settings.update('eduwork-concurrency', { maxConcurrentRequests: 2 })
   await ctx.fiber.dispose(); application = undefined

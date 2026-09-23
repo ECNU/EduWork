@@ -2,7 +2,7 @@
  * Run with the verified raw Electron executable (not `node --test`):
  * electron.exe oidc-native-vault.electron.mjs --product <frozen-product>
  *   --adapter <prepared-host/host-process.mjs> --node <node.exe> --evidence <directory>
- * This uses real Electron safeStorage and the official desktop Host byte pipes.
+ * This uses real Electron safeStorage and the selected desktop Host transport.
  * Only navigation to the synthetic localhost IdP is performed by an HTTP fixture,
  * rather than opening the user's system browser. No existing desktop home is used.
  */
@@ -11,7 +11,7 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { generateKeyPairSync, randomBytes, randomUUID, createHash, sign } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, writeFile, copyFile, symlink, rm } from 'node:fs/promises'
-import { join, resolve, relative, isAbsolute, sep } from 'node:path'
+import { join, resolve, relative, isAbsolute, sep, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { EncryptedVault, startNativeBridge } from '../src/native-vault.mjs'
 import { prepareProductProfile } from '../../dsh-host/product-profile.mjs'
@@ -136,6 +136,7 @@ try {
   summaries.electron = process.versions.electron
   summaries.platform = process.platform
   const sourceIdentity = JSON.parse(await readFile(join(sourceProduct, 'assembly.json'), 'utf8'))
+  const native = sourceIdentity.dshVersion === '0.1.7-alpha.2'
   summaries.dshVersion = sourceIdentity.dshVersion
   summaries.oidcVersion = JSON.parse(await readFile(join(sourceProduct, 'd/node_modules/@eduwork/dsh-oidc/package.json'), 'utf8')).version
   // Use the actual frozen product. A metadata wrapper with external module
@@ -147,6 +148,9 @@ try {
   await writeFile(profileFile, JSON.stringify(idp.profile))
   cleanups.push(() => rm(profileFile, { force: true }))
   const { DesktopHostProcess } = await import(pathToFileURL(resolve(options['--adapter'])))
+  const authenticateWebHost = native
+    ? (await import(pathToFileURL(join(dirname(resolve(options['--adapter'])), 'web-document.mjs')))).authenticateWebHost
+    : undefined
   let opened = 0
   const external = async url => {
     const target = new URL(url)
@@ -170,14 +174,24 @@ try {
       workbench: action => workbenchAction({ action, config, version: sourceIdentity.version, shell: 'electron' }) })
     cleanups.push(async () => { await bridge.close(); await rm(vaultPath, { force: true }); await rm(vaultPath + '.pending', { force: true }) })
     const prepared = await prepareProductProfile({ product, home: join(directory, 'home'), shell: 'electron', enterpriseProfile: profileFile })
-    let host
+    let host, origin, cookie
     const start = async () => {
       const started = performance.now()
       Object.assign(process.env, prepared.environment)
-      host = new DesktopHostProcess(resolve(options['--node']), prepared.profile, undefined, { bootstrap: bridge.bootstrap, allowLinkedProfile: true })
+      host = native
+        ? new DesktopHostProcess(resolve(options['--node']), join(product, 'd'), prepared.profile, undefined,
+          { ...process.env, ...prepared.environment }, undefined, undefined, undefined, undefined, { bootstrap: bridge.bootstrap })
+        : new DesktopHostProcess(resolve(options['--node']), prepared.profile, undefined, { bootstrap: bridge.bootstrap, allowLinkedProfile: true })
       const ready = await Promise.race([host.start(), new Promise((_, reject) => { const timer = setTimeout(() => reject(new Error('Host readiness timed out')), 45000); timer.unref() })])
-      assert.equal(ready.protocolVersion, 3)
-      assert.equal(ready.dshVersion, sourceIdentity.dshVersion, 'Host must match the tested product Runtime')
+      if (native) {
+        origin = new URL(ready.url).origin
+        assert.equal(new URL(origin).hostname, '127.0.0.1')
+        cookie = await authenticateWebHost(ready.url)
+        assert.ok(cookie)
+      } else {
+        assert.equal(ready.protocolVersion, 3)
+        assert.equal(ready.dshVersion, sourceIdentity.dshVersion, 'Host must match the tested product Runtime')
+      }
       ;(summaries.hostStarts ??= []).push({ label, elapsedMs: Math.round(performance.now() - started) })
     }
     const stop = async () => {
@@ -189,8 +203,10 @@ try {
       }
     }
     const rpc = async (method, args = {}) => {
-      const response = await host.fetch(new Request('dsh-app://app/api/' + method, { method: 'POST', headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ type: 'client-request', rpcId: randomUUID(), method, payload: { args } }), signal: AbortSignal.timeout(30000) }))
+      const request = new Request((native ? origin : 'dsh-app://app') + '/api/' + method, { method: 'POST',
+        headers: { 'content-type': 'application/json', ...(native ? { origin, cookie } : {}) },
+        body: JSON.stringify({ type: 'client-request', rpcId: randomUUID(), method, payload: { args } }), signal: AbortSignal.timeout(30000) })
+      const response = await (native ? fetch(request) : host.fetch(request))
       const value = await response.json()
       assert.equal(response.status, 200, method + ' transport status')
       assert.equal(value.result?.ok, true, method + ' RPC failed')
