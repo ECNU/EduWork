@@ -19,6 +19,7 @@ import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
+import { bindMacDockActivate } from './mac-dock-activate.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -196,6 +197,8 @@ export async function attachDesktopWindow(window) {
     if (isQuitting()) throw error
     console.warn('System tray unavailable; closing the window will exit.')
   }
+  // The Dock click is activate. A hidden window still exists, so show it again.
+  bindMacDockActivate(app, show)
   window.on('close', event => {
     if (!isQuitting() && tray && user?.closeAction !== 'exit') { event.preventDefault(); window.hide() }
   })
