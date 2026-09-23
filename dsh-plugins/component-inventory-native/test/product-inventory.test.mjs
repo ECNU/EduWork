@@ -43,3 +43,23 @@ test('About reports the edition and running Electron version without mistaking t
     assert.equal(productInventory(env).components.some(row => row.id === 'electron'), false)
   }
 })
+
+test('macOS receipts resolve native executables and preserve older receipts without invented versions', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-mac-inventory-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const put = async (path, value) => { await mkdir(dirname(join(root, path)), { recursive: true }); await writeFile(join(root, path), JSON.stringify(value)) }
+  await put('assembly.json', { version: 'fixture', dshVersion: 'fixture', dshCommit: 'fixture' })
+  const receipt = { platform: 'darwin-arm64', environment: { DSH_OFFICE_PYTHON: 'r/office-python', DSH_MEDIA_BROWSER: 'r/b/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing' } }
+  for (const path of ['r/p/bin/python3', ...Object.values(receipt.environment), 'd/node_modules/@remotion/compositor-darwin-arm64/ffmpeg']) await put(path, {})
+  await put('d/node_modules/remotion/package.json', { version: '4.0.520' })
+  const env = { EDUWORK_PRODUCT_ROOT: root, EDUWORK_DESKTOP_SHELL: 'electron' }
+  await put('desktop-resources.json', receipt)
+  const old = productInventory(env).components
+  for (const id of ['python', 'office-suite', 'video-production']) assert.equal(old.find(row => row.id === id).status, 'ready')
+  assert.equal(old.find(row => row.id === 'python').version, null)
+  receipt.python = { executable: 'r/p/bin/python3', version: '3.12.13' }
+  await put('desktop-resources.json', receipt)
+  assert.equal(productInventory(env).components.find(row => row.id === 'python').version, '3.12.13')
+  await rm(join(root, 'd/node_modules/@remotion/compositor-darwin-arm64/ffmpeg'))
+  assert.equal(productInventory(env).components.find(row => row.id === 'video-production').status, 'missing')
+})
