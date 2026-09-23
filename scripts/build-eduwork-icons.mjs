@@ -22,6 +22,11 @@ for (const size of sizes) {
   await writeFile(join(output, `icon-${size}.png`), bytes)
 }
 await writeFile(join(output, 'icon-blue-1024.png'), await sharp(Buffer.from(icon('#2575ff'))).resize(1024,1024).png().toBuffer())
+// Dock artwork needs transparent margins; in-app logos keep the full canvas.
+for (const [name, color] of [['red', DEFAULT_ICON_COLOR], ['blue', '#2575ff']]) {
+  await writeFile(join(output, `dock-${name}-1024.png`), await sharp(Buffer.from(icon(color))).resize(824,824)
+    .extend({ top: 100, bottom: 100, left: 100, right: 100, background: '#00000000' }).png().toBuffer())
+}
 for (const color of ['black', 'white']) await writeFile(join(output, `tray-${color}.png`), await sharp(Buffer.from(`<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256"><path fill="${color}" d="${shape}"/></svg>`)).resize(32,32).png().toBuffer())
 const icoSizes = sizes.filter(size => size <= 256), head = Buffer.alloc(6 + 16 * icoSizes.length)
 head.writeUInt16LE(1,2);head.writeUInt16LE(icoSizes.length,4)

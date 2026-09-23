@@ -79,7 +79,7 @@ async function prepareDesktop() {
   const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
   const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
   const startupIcon = process.platform === 'darwin' ? join(app.getAppPath(), '../brand', startupBlue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon
-  if (process.platform === 'darwin') app.dock.setIcon(startupIcon)
+  if (process.platform === 'darwin') app.dock.setIcon(join(app.getAppPath(), '../brand', startupBlue ? 'dock-blue-1024.png' : 'dock-red-1024.png'))
   progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
     icon: startupIcon,
     backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
@@ -181,7 +181,7 @@ export function attachDockTheme(window) {
   window.webContents.on('ipc-message', (event, channel, style) => {
     if (channel !== 'eduwork:visual-style' || event.senderFrame !== window.webContents.mainFrame ||
         !window.webContents.getURL().startsWith('dsh-app://app/') || !['dsh', 'ecnu-liwa'].includes(style) || style === previous) return
-    const filename = style === 'dsh' ? 'icon-blue-1024.png' : 'icon-1024.png'
+    const filename = style === 'dsh' ? 'dock-blue-1024.png' : 'dock-red-1024.png'
     const icon = nativeImage.createFromPath(join(app.getAppPath(), '../brand', filename))
     if (icon.isEmpty()) { console.warn('Dock theme icon unavailable: ' + filename); return }
     app.dock.setIcon(icon)

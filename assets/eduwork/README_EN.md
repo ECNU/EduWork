@@ -12,4 +12,4 @@ Generate PNG, multi-resolution ICO, ICNS and tray assets with:
 node scripts/build-eduwork-icons.mjs --sharp <sharp-module-entry>
 ```
 
-The build script defines the output paths. macOS keeps the red installed ICNS icon; the running Dock icon and startup window follow the selected color scheme; complete platform support still requires the checks in the [macOS guide](../../docs/MACOS.md). These assets are MIT licensed.
+The build script defines the output paths. macOS keeps the red installed ICNS icon; the running Dock icon and startup window follow the selected color scheme. The Dock uses `dock-red-1024.png` and `dock-blue-1024.png`, with 100 pixels of transparent padding on each side of the 1024-pixel canvas; in-app logos keep their original size; complete platform support still requires the checks in the [macOS guide](../../docs/MACOS.md). These assets are MIT licensed.
