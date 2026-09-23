@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 const nullableString = z.string().nullable()
 const release = z.object({
+  productName: z.string().optional(), platform: z.string().optional(),
   productVersion: z.string(), dshVersion: z.string(), dshCommit: nullableString,
   nodeVersion: z.string(), pnpmVersion: nullableString,
   packageFlavor: nullableString,

@@ -317,6 +317,10 @@ window.__ModuleLoader__.load({
 				document.documentElement.style.removeProperty("--chatecnu-logo-accent");
 			}, "chatecnu-work: visual-style tokens");
 			ctx.effect(() => installProductIdentity(scope), "eduwork: document identity");
+			ctx.slots.inject("settings.about.brand", () => ctx.slots.register({
+				name: "settings.about.brand",
+				inject: () => ({ service: scope })
+			}, ProductMark));
 			ctx.slots.inject("sidebar.brand.mark", () => ctx.slots.inject("sidebar.brand.name", () => ctx.slots.inject("conversation.hero.brand.mark", function* () {
 				yield ctx.slots.register({
 					name: "sidebar.brand.mark",

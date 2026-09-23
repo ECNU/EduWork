@@ -135,6 +135,10 @@ async function prepareDesktop() {
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
   // Reassert the edition's immutable ownership after optional test settings.
   Object.assign(process.env, prepared.environment)
+  // The Host runs in the bundled Node process, so it cannot read Electron's
+  // process.versions directly. Report the version of this running shell.
+  process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
+  process.env.EDUWORK_PRODUCT_NAME = settings.productName
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
   const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
