@@ -7,10 +7,12 @@ on:
       - 'dsh-electron/tests/sparkle-macos-smoke.mjs'
       - 'dsh-electron/src/initialize-user-config.mjs'
       - 'dsh-electron/src/product.mjs'
+      - 'dsh-electron/src/window-visibility.mjs'
       - 'dsh-electron/scripts/build-shell.mjs'
       - 'dsh-electron/tests/tray-icon.electron.mjs'
       - 'assets/eduwork/tray-black.png'
       - 'dsh-electron/tests/user-config-electron-smoke.mjs'
+      - 'dsh-electron/tests/window-visibility.test.mjs'
       - 'dsh-electron/sparkle.lock.json'
       - 'dsh-electron/scripts/assemble-macos.ps1'
       - 'config/desktop/mac-updates.json'
@@ -33,7 +35,7 @@ jobs:
         with:
           node-version: '24.18.0'
       - name: Check shared update coordination
-        run: node --test scripts/test/macos-update-feed.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs
+        run: node --test scripts/test/macos-update-feed.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs dsh-electron/tests/window-visibility.test.mjs
       - name: Prepare the pinned Electron test runtime
         run: |
           npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --ignore-scripts --no-audit --no-fund electron@44.0.0
