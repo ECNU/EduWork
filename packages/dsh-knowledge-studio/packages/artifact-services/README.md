@@ -19,7 +19,7 @@ npm install ./eduwork-dsh-artifact-services-0.2.0.tgz
 
 使用 Studio 时，在同一命令中安装配套 Studio 包，只启用 Studio bundle，由其注册一次 Shared。见[源码构建与 Profile 激活](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/docs/USAGE.md)。普通 Node 应用直接调用下述 API；DSH Host 还需加载一次 `/dsh` 适配器。
 
-Office 要求 Python 3.12+ 与本包 `python/requirements.txt` 中的依赖，`DSH_OFFICE_PYTHON` 指向解释器绝对路径。安装 npm 包不会安装 Python 库、ASR 模型或浏览器。TTS 内置 Windows System.Speech，使用系统已安装音色；其他平台需要 Provider。端侧 ASR 要求宿主提供 whisper.cpp 可执行程序和模型，见[转写说明](docs/TRANSCRIPTION.md)。
+Office 要求 Python 3.12+ 与本包 `python/requirements.txt` 中的依赖，`DSH_OFFICE_PYTHON` 指向解释器绝对路径。安装 npm 包不会安装 Python 库、ASR 模型或浏览器。TTS 的 `system` Provider 在 Windows 使用 System.Speech，在 macOS 使用系统 `say`；两者枚举已安装音色并输出 WAV，不需要 API Key。Mac 中文配音需要先在系统设置中安装中文语音，见[平台要求](docs/PLATFORMS.md#speech-synthesis)。其他平台需要 Provider。端侧 ASR 要求宿主提供 whisper.cpp 可执行程序和模型，见[转写说明](docs/TRANSCRIPTION.md)。
 
 共享预览解析真实 DOCX/XLSX/PPTX 文件，保留 PPTX 固定页面坐标并使用内容哈希元数据。控件跟随宿主主题，文档内容保留原色。Studio 与对话附件使用同一[预览契约](docs/OFFICE_PREVIEW.md)；原生全屏和普通文档预览由宿主管理，对话最终文件可用时交给官方 `present`。预览保真度仍需用原生 Office 独立核对。
 
@@ -33,7 +33,7 @@ import {mkdtemp} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {SpeechService, createSystemSpeechProvider} from '@eduwork/dsh-artifact-services/speech'
-if (process.platform !== 'win32') throw new Error('This example uses Windows System.Speech')
+if (!['win32', 'darwin'].includes(process.platform)) throw new Error('This example requires Windows or macOS system speech')
 const directory = await mkdtemp(join(tmpdir(), 'shared-speech-example-'))
 const speech = new SpeechService()
 const dispose = speech.register(createSystemSpeechProvider())

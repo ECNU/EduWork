@@ -20,7 +20,7 @@ npm install ./eduwork-dsh-artifact-services-0.2.0.tgz
 
 For Studio, install its matching archive in the same command and activate only the Studio bundle, which registers Shared once. See [source build and Profile activation](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/docs/USAGE.md). Plain Node applications import the APIs below; DSH hosts additionally load the `/dsh` adapter once.
 
-Office requires Python 3.12+ with this package’s `python/requirements.txt`; set `DSH_OFFICE_PYTHON` to the interpreter’s absolute path. Package installation does not install Python libraries, ASR models or a browser. TTS includes Windows System.Speech using installed voices; other platforms need a provider adapter. Local ASR requires a host-provisioned whisper.cpp executable and model. See [transcription](docs/TRANSCRIPTION.md).
+Office requires Python 3.12+ with this package’s `python/requirements.txt`; set `DSH_OFFICE_PYTHON` to the interpreter’s absolute path. Package installation does not install Python libraries, ASR models or a browser. The `system` TTS provider uses System.Speech on Windows and the system `say` command on macOS. Both enumerate installed voices and produce WAV without an API key. For Chinese narration on Mac, install a Chinese system voice first; see [platform requirements](docs/PLATFORMS.md#speech-synthesis). Other platforms need a provider adapter. Local ASR requires a host-provisioned whisper.cpp executable and model. See [transcription](docs/TRANSCRIPTION.md).
 
 Shared previews read actual DOCX/XLSX/PPTX bytes, with fixed PPTX page coordinates and content-hashed metadata. Preview controls follow the host theme; document content keeps its original colors. Use the same [preview contract](docs/OFFICE_PREVIEW.md) from Studio and conversation attachments. The consuming host owns native fullscreen and ordinary document preview. Final conversation files use official `present` when available. Preview fidelity still needs independent native Office review.
 
@@ -33,7 +33,7 @@ import {mkdtemp} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {SpeechService, createSystemSpeechProvider} from '@eduwork/dsh-artifact-services/speech'
-if (process.platform !== 'win32') throw new Error('This example uses Windows System.Speech')
+if (!['win32', 'darwin'].includes(process.platform)) throw new Error('This example requires Windows or macOS system speech')
 const directory = await mkdtemp(join(tmpdir(), 'shared-speech-example-'))
 const speech = new SpeechService()
 const dispose = speech.register(createSystemSpeechProvider())
