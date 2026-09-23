@@ -8,7 +8,7 @@
 
 每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；公版默认使用 GitHub，用户可通过配置覆盖来源或关闭更新。开发验证使用独立数据目录。
 
-macOS 的运行中 Dock 图标、下次启动窗口的图标和进度条跟随红／蓝配色。启动配色缓存保存在应用用户数据目录的 `visual-style.json`，不修改应用包或签名。退出后的 Dock、访达和启动台保留默认品牌图标；台前调度不保证同步。
+macOS 的运行中 Dock 图标、下次启动窗口的图标和进度条跟随红／蓝配色。启动配色缓存保存在应用用户数据目录的 `visual-style.json`，不修改应用包或签名。Dock 原生插件在应用退出后继续读取这份缓存，保留所选配色。访达和启动台保留默认品牌图标；台前调度不保证同步。首次升级到带 Dock 插件的版本后，若已固定的图标仍恢复默认色，将应用从 Dock 移除后重新加入，以加载插件。
 
 ## 构建入口
 
@@ -47,4 +47,4 @@ node scripts/verify-desktop-parity.mjs --reference $DesktopProduct --electron $E
 
 普通网页链接由系统浏览器打开，应用窗口保持在本机工作台。`tests/external-navigation.electron.mjs` 使用真实 Electron 隐藏测试页面验证同窗口/新窗口链接，捕获浏览器启动调用，不打开用户账号页面；无需远程调试端口。静态导航策略另有单元测试。
 
-macOS 配色检查：使用 Electron 运行 `dsh-electron/tests/dock-theme.electron.mjs`，覆盖隔离预加载、红蓝切换、启动配色缓存和不可信消息拒绝。
+macOS 配色检查：使用 Electron 运行 `dsh-electron/tests/dock-theme.electron.mjs`，覆盖隔离预加载、红蓝切换、启动配色缓存和不可信消息拒绝。使用 `node --test dsh-electron/tests/dock-plugin.test.mjs` 编译并验证退出后的原生 Dock 插件；需要 Xcode Command Line Tools。

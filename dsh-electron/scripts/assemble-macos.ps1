@@ -171,6 +171,8 @@ foreach ($row in @(
     & plutil -replace $row[0] -string $row[1] $plist
     if ($LASTEXITCODE -ne 0) { throw "Info.plist update failed: $($row[0])" }
 }
+& $Node (Join-Path $PSScriptRoot 'build-dock-plugin.mjs') $app
+if ($LASTEXITCODE -ne 0) { throw 'Dock tile plugin compilation failed' }
 if ($sparkleEnabled) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../LICENSE-Sparkle') -Destination (Join-Path $resources 'LICENSE-Sparkle')
     $frameworkTarget = Join-Path $app 'Contents/Frameworks/Sparkle.framework'

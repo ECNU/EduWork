@@ -8,7 +8,7 @@ The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d
 
 Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 
-On macOS, the running Dock icon and the next startup window’s icon and progress bar follow the red/blue color scheme. The startup preference is cached in `visual-style.json` in the application user-data directory; the app bundle and signature stay unchanged. The Dock after quitting, Finder and Launchpad retain the default brand icon; Stage Manager synchronization is not guaranteed.
+On macOS, the running Dock icon and the next startup window’s icon and progress bar follow the red/blue color scheme. The startup preference is cached in `visual-style.json` in the application user-data directory; the app bundle and signature stay unchanged. A native Dock tile plugin reads the same cache after the app exits, retaining the selected color. Finder and Launchpad retain the default brand icon; Stage Manager synchronization is not guaranteed. After first upgrading to a version with the Dock plugin, remove and re-add an existing pinned tile if it still reverts to the default color, so the Dock loads the plugin.
 
 ## Build
 
@@ -48,4 +48,4 @@ Window checks use explicitly enabled local debugging ports. Electron accepts `--
 
 Ordinary web links open in the system browser while the application remains on the local workbench. `tests/external-navigation.electron.mjs` uses real hidden Electron pages to test same/new-window links, captures browser-launch calls without opening account pages, and requires no debugging port. Static navigation policies have separate unit tests.
 
-For macOS color-scheme checks, run `dsh-electron/tests/dock-theme.electron.mjs` with Electron. It covers the isolated preload, red/blue switching, startup preference persistence and untrusted message rejection.
+For macOS color-scheme checks, run `dsh-electron/tests/dock-theme.electron.mjs` with Electron. It covers the isolated preload, red/blue switching, startup preference persistence and untrusted message rejection. Run `node --test dsh-electron/tests/dock-plugin.test.mjs` to build and verify the native Dock plugin for the stopped app; Xcode Command Line Tools are required.
