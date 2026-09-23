@@ -4,7 +4,7 @@
 
 | 文件 | 展示内容 |
 | --- | --- |
-| `readme-hero.svg` · `readme-hero-en.svg` | 中英文首页品牌插画，使用统一 EduWork 标识；并非界面截图。 |
+| `readme-hero.svg` · `readme-hero-en.svg` | 保留的早期品牌插画；当前首页使用 `assets/eduwork/icon-red.svg` 与下列五张实机截图。 |
 | `workspace.png` | 公版工作区：调研对话与生成的 HTML 网页预览。 |
 | `studio.png` | 公版 Studio：成果类型入口与最近生成的测验。 |
 | `quiz.png` | 测验答题、解析与来源依据。 |
