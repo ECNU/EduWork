@@ -51,10 +51,13 @@ export async function legacyPresetPatches(home, parse) {
     await refuseLink(metadataPath)
     const metadataText = await readFile(metadataPath, 'utf8').catch(missing)
     const metadata = metadataText === undefined ? {} : parse(metadataText) ?? {}
-    const config = { id: entry.name, plugins: plugins.map(row => {
-      if (!row || typeof row.name !== 'string') throw new Error(`Invalid legacy preset plugin: ${entry.name}`)
+    const resolvePlugins = rows => rows.map(row => {
+      if (!row || typeof row !== 'object') throw new Error(`Invalid legacy preset plugin: ${entry.name}`)
+      if (row.group === true && Array.isArray(row.config)) return { ...row, config: resolvePlugins(row.config) }
+      if (typeof row.name !== 'string') throw new Error(`Invalid legacy preset plugin: ${entry.name}`)
       return row.name.startsWith('.') ? { ...row, name: pathToFileURL(resolve(directory, row.name)).href } : row
-    }) }
+    })
+    const config = { id: entry.name, plugins: resolvePlugins(plugins) }
     for (const key of ['name', 'description', 'order']) if (metadata[key] !== undefined) config[key] = metadata[key]
     const id = ['standard', 'ptc', 'minimal', 'cordis'].includes(entry.name) ? `preset-${entry.name}` : `eduwork-legacy-preset-${createHash('sha256').update(entry.name).digest('hex').slice(0, 16)}`
     patches.push(id.startsWith('eduwork-legacy-') ? { insert: [{ id, name: '@deepseek-ai/dsh-agent-preset', config }] } : { id, config })
@@ -133,6 +136,7 @@ export function nativeEntryIds(patches) {
     ...(row.insert ? { insert: row.insert.map(plugin => ({ ...plugin,
       id: nativeSettingsEntryIds[plugin.id] ?? plugin.id,
       ...(plugin.id === 'eduwork-request-concurrency' ? { name: '@eduwork/dsh-request-concurrency/lib/native.js' } : {}),
+      ...(plugin.id === 'eduwork-artifact-publish' ? { name: '@chatecnu-work/dsh-tool-artifact-publish/native' } : {}),
     })) } : {}),
   }))]
 }
@@ -170,8 +174,16 @@ export async function writeNativeProfile({ profile, bundles, patches, parse = JS
   await writeChanged(join(bundle, 'package.json'), json({ name, version: '0.0.0', private: true, type: 'module',
     dsh: { bundle: { patch: './cordis.patch.yml' } } }))
   await writeChanged(bundlePath, json(next))
-  await writeChanged(join(profile, 'package.json'), json({ name: 'eduwork-desktop-profile', private: true, type: 'module',
-    dsh: { profile: { bundles: [...bundles.filter(value => value !== name), name] } } }))
+  const manifestPath = join(profile, 'package.json')
+  await refuseLink(manifestPath)
+  const savedManifest = JSON.parse(await readFile(manifestPath, 'utf8').catch(error => { missing(error); return '{}' }))
+  const savedBundles = savedManifest.dsh?.profile?.bundles ?? []
+  if (!Array.isArray(savedBundles) || savedBundles.some(value => typeof value !== 'string')) throw new Error('Invalid native profile bundle list')
+  // Native plugin management writes dependencies and bundle activation here.
+  // Keep them on restart; only the generated product bundle is kept last.
+  await writeChanged(manifestPath, json({ name: 'eduwork-desktop-profile', private: true, type: 'module', ...savedManifest,
+    dsh: { ...savedManifest.dsh, profile: { ...savedManifest.dsh?.profile,
+      bundles: [...new Set([...bundles, ...savedBundles].filter(value => value !== name)), name] } } }))
   // Exclusive create protects both a saved native preference and an in-flight
   // settings update. Absence is the only condition that initializes the file.
   try { await writeFile(join(profile, 'cordis.patch.yml'), '[]\n', { flag: 'wx', mode: 0o600 }) }

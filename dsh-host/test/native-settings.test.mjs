@@ -10,7 +10,7 @@ test('legacy preset identities, ordering and activation survive without rewritin
   const home = await mkdtemp(join(tmpdir(), 'eduwork-legacy-presets-'))
   const directory = join(home, '.agent-presets', 'synthetic')
   await mkdir(directory, { recursive: true })
-  const source = '[{"name":"./local.js","config":{"keep":true}}]'
+  const source = '[{"name":"./local.js","config":{"keep":true}},{"group":true,"config":[{"name":"./nested.js","disabled":true}]}]'
   await writeFile(join(directory, 'agent.cordis.yml'), source)
   await writeFile(join(directory, 'preset.yml'), '{"name":"测试模式","order":9}')
   await writeFile(join(home, 'settings.yaml'), '{"chatecnu-brand":{"enabledOptionalPresets":["minimal"]}}')
@@ -19,6 +19,8 @@ test('legacy preset identities, ordering and activation survive without rewritin
   const custom = rows[2].insert[0]
   assert.equal(custom.config.id, 'synthetic'); assert.equal(custom.config.order, 9)
   assert.equal(custom.config.name, '测试模式'); assert.match(custom.config.plugins[0].name, /^file:.*local.js$/)
+  assert.match(custom.config.plugins[1].config[0].name, /^file:.*nested.js$/)
+  assert.equal(custom.config.plugins[1].config[0].disabled, true)
   assert.equal(await readFile(join(directory, 'agent.cordis.yml'), 'utf8'), source)
   assert.equal((await legacyPresetPatches(home, JSON.parse))[2].insert[0].id, custom.id)
 })
@@ -37,6 +39,11 @@ test('regenerating deployment defaults never replaces saved native preferences',
     { id: 'eduwork-brand-settings', name: 'synthetic', config: { visualStyle: 'dsh' } },
   ] }] }
   await writeNativeProfile(options)
+  const manifestPath = join(profile, 'package.json')
+  const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  manifest.dependencies = { 'synthetic-addon': '1.2.3' }
+  manifest.dsh.profile.bundles.push('synthetic-addon')
+  await writeFile(manifestPath, JSON.stringify(manifest))
   const preferences = JSON.stringify([{ id: 'chatecnu-brand', config: { visualStyle: 'ecnu-liwa' } }])
   await writeFile(join(profile, 'cordis.patch.yml'), preferences)
   options.patches[0].insert[0].config.product = { name: 'Updated product name' }
@@ -44,6 +51,9 @@ test('regenerating deployment defaults never replaces saved native preferences',
   const saved = JSON.parse(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'))
   assert.equal(saved[0].config.visualStyle, 'ecnu-liwa')
   assert.equal(saved[0].config.product.name, 'Updated product name')
+  const updatedManifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+  assert.deepEqual(updatedManifest.dependencies, manifest.dependencies)
+  assert.deepEqual(updatedManifest.dsh.profile.bundles, ['@deepseek-ai/dsh-base', 'synthetic-addon', '@eduwork/generated-profile'])
   const bundle = JSON.parse(await readFile(join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml'), 'utf8'))
   assert.equal(bundle[0].insert[0].id, 'chatecnu-brand')
   assert.equal(bundle[0].insert[0].config.product.name, 'Updated product name')

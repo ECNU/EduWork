@@ -27,15 +27,24 @@ export function adaptNativeHostProcess(input) {
   text = replace(text, '    this.child = child', `    child.stdin?.once('error', error => this.fail(error))
     child.stdin?.end(bootstrap)
     this.child = child`)
+  text = replace(text, "    child.stderr?.setEncoding('utf8')\n    child.stderr?.on('data', (chunk: string) => { this.stderr = (this.stderr + chunk).slice(-MAX_HOST_DIAGNOSTIC_CHARS) })", '')
   text = replace(text, '    child.stdout?.pipe(process.stdout)', `    bindRedactedLog(child.stdout, this.product.onLog)
-    bindRedactedLog(child.stderr, this.product.onLog)`)
-  return "import { bindRedactedLog } from './redacted-log.mjs'\n" + text
+    bindRedactedLog(child.stderr, line => {
+      this.stderr = (this.stderr + line).slice(-MAX_HOST_DIAGNOSTIC_CHARS)
+      this.product.onLog?.(line)
+    })`)
+  text = replace(text, 'new DesktopHostFatalError(message.message, message.diagnostic)',
+    'new DesktopHostFatalError(redactHostDiagnostic(message.message), message.diagnostic === undefined ? undefined : redactHostDiagnostic(message.diagnostic))')
+  return "import { bindRedactedLog, redactHostDiagnostic } from './redacted-log.mjs'\n" + text
 }
 
 export function adaptNativeHostEntry(input) {
   let text = input.replaceAll('\r\n', '\n')
   text = replace(text, "import * as desktopOffice from './office.ts'", "import { parse } from 'yaml'\nimport { stageLegacySettings, importLegacySettings } from './settings-migration.mjs'")
   text = replace(text, "import { installPlatformSessionPublisher } from './platform-session.ts'\n", '')
+  // The product manifest owns its bundled extensions as well as DSH. Using
+  // the CLI manifest here makes profile resolution omit all product packages.
+  text = replace(text, "const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')", "const installAnchor = join(runtimeDir, 'package.json')")
   text = text.replaceAll("'./update-tasks.ts'", "'./update-tasks.js'").replaceAll("'./office-engine.ts'", "'./office-engine.js'")
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
   text = replace(text, "args: ['--no-open', '--port', '19387'],", "args: ['--no-open', '--host', '127.0.0.1', '--port', '0'],")

@@ -49,4 +49,14 @@ This mode builds into an isolated directory without changing published packages 
 
 Original settings are retained as a migration backup, with new preferences in a separate native `desktop-017` Profile. The user-facing product configuration remains `eduwork.jsonc`. Legacy custom presets keep their source directories and IDs, while the official registry manages converted definitions. Plugins used by third-party presets still need individual compatibility checks.
 
+Qualify product outputs in native deliverables, then verify plugin resolution and restart in an assembled directory:
+
+```powershell
+node scripts/probe-017-deliverables.mjs --runtime C:/EduworkTest/runtime-017 --output C:/EduworkTest/deliverables-evidence
+node scripts/assemble-017-source-product.mjs --runtime C:/EduworkTest/runtime-017 --source C:/EduworkTest/source-stage --dependencies C:/EduworkTest/source-deps --host C:/EduworkTest/host-017 --output C:/EduworkTest/source-product
+node scripts/probe-017-source-product.mjs --product C:/EduworkTest/source-product --host C:/EduworkTest/host-017 --output C:/EduworkTest/assembled-evidence
+```
+
+The source product combines the locked npm Runtime with separately built product plugins. It is marked `source-qualification` and excluded from releases. The assembled probe launches real child processes without source import redirection, with synthetic in-memory credential storage. The deliverables probe uses real tools, filesystem and sessions with a synthetic generator; failure, cancellation, escaping paths and failed nested transports must not publish files. The candidate uses upstream file intake and deliverable cards while retaining extended previews shared with Studio. The source product does not include the external literature plugin or the complete local media resources.
+
 These checks do not cover live model requests, organization sign-in, Studio generation, native windows, Office/media rendering or application updates, and do not establish compatibility with every historical session. Complete those checks before promoting the desktop release baseline. Candidate CI uploads reports, not raw startup logs containing authentication URLs.

@@ -6,6 +6,7 @@ import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
+import { releaseIdentity } from '../dsh-host/release-policy.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -43,7 +44,7 @@ await build({ entryPoints: [join(repository, 'packages/dsh-knowledge-studio/src/
 const clients = Object.entries({ 'dsh-mail': 'index.tsx', 'dsh-memory': 'index.ts', 'dsh-oidc': 'index.ts', 'dsh-knowledge-studio': 'index.tsx' })
   .map(([folder, entry]) => [`packages/${folder}`, `src/client/${entry}`])
 for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts']) {
-  clients.push([`dsh-plugins/${folder}`, folder === 'workbench-native' ? 'src/client.ts' : `src/client/index.${folder === 'client-ui-media-artifacts' ? 'js' : 'ts'}`])
+  clients.push([`dsh-plugins/${folder}`, folder === 'workbench-native' ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {
@@ -91,8 +92,11 @@ for (const [folder, upstream] of [
     client = client.replace(from, to)
   }
   if (upstream === 'ui-conversation') {
+    const badge = releaseIdentity('0.0.0-dev.core.17', runtimeReceipt.dshVersion).badge
     replaceOnce('"hero.headline": "探索未至之境"', '"hero.headline": "今天想一起完成什么？"')
     replaceOnce('"hero.headline": "Into the Unknown"', '"hero.headline": "What shall we accomplish today?"')
+    replaceOnce('"hero.preview": "预览版"', '"hero.preview": ' + JSON.stringify(badge.zh))
+    replaceOnce('"hero.preview": "Preview"', '"hero.preview": ' + JSON.stringify(badge.en))
   }
   if (upstream === 'ui-skill') {
     replaceOnce('ctx.on("connection/reset", clearAll);', 'ctx.on("connection/reset", clearAll);\nctx.remote.$on("settings/document-updated", clearAll);')

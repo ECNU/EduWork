@@ -15,6 +15,11 @@ on:
       - 'scripts/probe-eduwork-017-settings.mjs'
       - 'scripts/build-017-plugin-clients.mjs'
       - 'scripts/native-preset-ui.mjs'
+      - 'scripts/assemble-017-source-product.mjs'
+      - 'scripts/probe-017-source-product.mjs'
+      - 'scripts/probe-017-deliverables.mjs'
+      - 'dsh-host/product-profile.mjs'
+      - 'dsh-electron/src/**'
       - 'dsh-plugins/**'
       - 'packages/**'
   workflow_dispatch:
@@ -47,6 +52,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
+          node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
+          if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
       - name: Qualify authenticated Host transport and update admission
         shell: pwsh
         run: |
@@ -66,6 +73,13 @@ jobs:
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
           node core/scripts/probe-eduwork-017-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
+      - name: Qualify the assembled desktop product without source resolution hooks
+        shell: pwsh
+        run: |
+          node core/scripts/assemble-017-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
+          if ($LASTEXITCODE) { throw 'Source product assembly failed' }
+          node core/scripts/probe-017-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
+          if ($LASTEXITCODE) { throw 'Assembled product qualification failed' }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -76,4 +90,6 @@ jobs:
             ${{ runner.temp }}/native-host/receipt.json
             ${{ runner.temp }}/settings-evidence/report.json
             ${{ runner.temp }}/client-build.json
+            ${{ runner.temp }}/assembled-evidence/report.json
+            ${{ runner.temp }}/deliverables-evidence/report.json
           if-no-files-found: ignore
