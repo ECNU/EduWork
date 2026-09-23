@@ -30,6 +30,7 @@ const { authenticateWebHost } = await import(pathToFileURL(join(hostRoot, 'web-d
 let host
 const logs = []
 const report = { success: false, scope: 'assembled source product; synthetic credentials; no source import hooks', boots: [], rpc: [] }
+let memoryId
 try {
   for (const round of [1, 2]) {
     const prepared = await prepareProductProfile({ product, home, shell: 'electron', userConfig: config })
@@ -52,6 +53,38 @@ try {
     for (const method of ['oidcAccounts/configuration', 'knowledgeStudio/listCapabilities', 'localMemories/stats', 'productComponents/list', 'skillManager/list']) {
       await rpc(method)
       if (round === 1) report.rpc.push(method)
+    }
+    // Exercise actual SQLite persistence and native RPC serialization, not just
+    // service registration. Only this probe's new synthetic home is modified.
+    const memoryRequest = request => ({ request: JSON.stringify(request) })
+    if (round === 1) {
+      const imported = await rpc('localMemories/importData', { document: JSON.stringify({ records: [
+        { content: 'Synthetic qualification preference: use the lavender notebook.', kind: 'preference', scope: 'user' },
+      ] }) })
+      assert.equal(imported.imported, 1)
+      const listed = await rpc('localMemories/listRecords', memoryRequest({ query: 'lavender' }))
+      assert.equal(listed.total, 1)
+      memoryId = listed.items[0].id
+      const edited = await rpc('localMemories/updateRecord', memoryRequest({ id: memoryId, content: 'Synthetic qualification preference: use the amber notebook.' }))
+      assert.equal(edited.updated, true)
+      await rpc('localMemories/setRecordPinned', memoryRequest({ id: memoryId, pinned: true }))
+      const removed = await rpc('localMemories/deleteRecord', memoryRequest({ id: memoryId, mode: 'forget' }))
+      assert.equal(removed.deleted, true)
+      assert.equal(removed.suppressionCreated, true)
+      assert.equal((await rpc('localMemories/undoDelete', { token: removed.undoToken })).restored, true)
+    } else {
+      const saved = await rpc('localMemories/listRecords', memoryRequest({ query: 'amber' }))
+      assert.equal(saved.total, 1)
+      assert.equal(saved.items[0].id, memoryId)
+      assert.ok(saved.items[0].userPinnedAt)
+      const exported = JSON.parse(await rpc('localMemories/exportData'))
+      assert.equal(exported.records[0].content, saved.items[0].content)
+      const removed = await rpc('localMemories/deleteRecord', memoryRequest({ id: memoryId, mode: 'forget' }))
+      assert.equal(removed.deleted, true)
+      const stats = await rpc('localMemories/stats')
+      assert.equal(stats.total, 0)
+      assert.equal(stats.suppressed, 1)
+      report.memory = ['import', 'search', 'edit', 'pin', 'forget', 'undo', 'restart-persistence', 'export']
     }
     assert.equal((await fetch(origin)).status, 401)
     assert.equal((await fetch(origin, { headers: { cookie } })).status, 200)
