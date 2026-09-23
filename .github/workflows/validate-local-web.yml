@@ -35,7 +35,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Documentation links failed' }
           node --test core/tests/eduwork-assembly-policy.test.mjs core/scripts/test/npm-runtime.test.mjs core/tests/eduwork-source-reproducibility.test.mjs core/tests/eduwork-upstream-lock.test.mjs core/tests/eduwork-profile-links.test.mjs core/tests/eduwork-web-acceptance-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Source checks failed' }
-          node --test core/dsh-host/test/configuration-documentation.test.mjs core/dsh-host/test/configuration-file.test.mjs core/dsh-host/test/publisher-bootstrap.test.mjs core/dsh-host/test/content-updates.test.mjs core/dsh-electron/tests/configuration-policy.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs core/dsh-electron/tests/desktop-restart.test.mjs core/dsh-electron/tests/mac-sparkle-updates.test.mjs
+          node --test core/dsh-host/test/configuration-documentation.test.mjs core/dsh-host/test/configuration-file.test.mjs core/dsh-host/test/publisher-bootstrap.test.mjs core/dsh-host/test/content-updates.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/configuration-policy.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs core/dsh-electron/tests/desktop-restart.test.mjs core/dsh-electron/tests/mac-sparkle-updates.test.mjs
           if ($LASTEXITCODE) { throw 'Content lifecycle checks failed' }
       - name: Build and verify the generic local Runtime
         if: steps.changes.outputs.build == 'true'

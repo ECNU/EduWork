@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, sign } from 'node:crypto'
-import { mkdtemp, mkdir, writeFile, readFile, rm, readdir } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, readdir, chmod, rename } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { ContentUpdates } from '../content-updates.mjs'
@@ -22,7 +22,7 @@ async function fixture(t,permissions={},mac=false) {
   t.after(()=>rm(directory,{recursive:true,force:true}))
   const paths=mac?desktopPaths({appRoot:join(directory,'Example.app/Contents/Resources/app'),appData:join(directory,'Application Support'),platform:'darwin',
     settings:{distribution:'example',productVersion:version,product:'../product',node:'../runtime/node',configurationOwnership:'user'}}):null
-  const root=paths?.root??directory,product=paths?.product??join(root,'resources/product'),configPath=paths?.config??join(root,'config/eduwork.jsonc')
+  const root=paths?.root??join(directory,'Original app'),product=paths?.product??join(root,'resources/product'),configPath=paths?.config??join(root,'config/eduwork.jsonc')
   await mkdir(join(product,'skills/example'),{recursive:true});await mkdir(dirname(configPath),{recursive:true})
   const builtin=Buffer.from('builtin skill'),keys=generateKeyPairSync('ed25519')
   await writeFile(join(product,'skills/example/SKILL.md'),builtin)
@@ -42,8 +42,151 @@ async function fixture(t,permissions={},mac=false) {
     responses.set(source.baseURL+'/'+manifest.channel+'/latest.json',JSON.stringify(envelope));responses.set(manifest.bundle.url,bytes)
     return {manifest,envelope,bytes}
   }
-  return {root,product,configPath,base,source,keys,environment,responses,requests,options,open,release}
+  return {directory,root,product,configPath,base,source,keys,environment,responses,requests,options,open,release}
 }
+
+const offlineBytes = release => Buffer.from(JSON.stringify({schemaVersion:1,manifest:release.envelope,bundle:release.bytes.toString('base64')}))
+async function moveFixture(f) {
+  const destination=join(f.directory,'Moved app with spaces')
+  // Both paths are children of this test's own temporary directory.
+  await rename(f.root,destination)
+  Object.assign(f,{root:destination,configPath:join(destination,'config/eduwork.jsonc'),product:join(destination,'resources/product')})
+  Object.assign(f.options,{root:f.root,configPath:f.configPath,product:f.product})
+}
+
+for(const mode of ['online','offline']) test(`Windows read-only replacement failure survives relocation and ${mode} retry without losing data`,{skip:process.platform!=='win32'},async t=>{
+  const f=await fixture(t,{skills:true}),release=f.release(1,{configuration:1,skills:1},{schemaVersion:1,configuration:{features:{visionFallback:true}},skills:skill()})
+  let manager=await f.open();await manager.check();await manager.download()
+  const key=manager.state.pending,original=await readFile(f.configPath,'utf8')
+  await writeFile(join(f.root,'data/history.txt'),'keep this history')
+  await chmod(f.configPath,0o444)
+  try {
+    manager=await f.open()
+    await assert.rejects(manager.prepare(),error=>error.code==='EDUWORK_CONTENT_IO'&&error.cause.code==='EPERM')
+    assert.equal(await readFile(f.configPath,'utf8'),original)
+    assert.deepEqual(manager.state.rejected,[])
+    assert.equal(manager.state.retryable,key)
+    assert.equal(manager.state.pending,null)
+  } finally {await chmod(f.configPath,0o600)}
+  await moveFixture(f)
+  manager=await f.open()
+  assert.equal(manager.state.highest,1)
+  if(mode==='online') {
+    assert.equal((await manager.check({repair:true})).state,'available')
+    assert.equal((await manager.download()).state,'ready')
+  } else {
+    f.responses.clear();f.requests.length=0
+    assert.equal((await manager.importOffline(offlineBytes(release))).state,'ready')
+    assert.equal(f.requests.length,0)
+  }
+  manager=await f.open()
+  const prepared=await manager.prepare()
+  assert.equal(prepared.configurationRevision,1);assert.equal(prepared.skillsRevision,1)
+  await manager.ready()
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  assert.equal(await readFile(join(f.root,'data/history.txt'),'utf8'),'keep this history')
+  assert.equal(await readFile(manager.configurationFile.backup,'utf8'),original)
+  assert.deepEqual((await readdir(dirname(manager.configurationFile.backup))).filter(name=>name.endsWith('.jsonc')),['eduwork.previous.jsonc'])
+  assert.deepEqual(manager.state.rejected,[])
+})
+
+for(const mode of ['online','offline']) test(`legacy rejection requires explicit ${mode} retry after relocation and preserves local edits`,async t=>{
+  const f=await fixture(t),release=f.release(1),first=await f.open()
+  await first.check();await first.download()
+  const key=first.state.pending
+  // Exact journal shape written by releases that misclassified local I/O failures.
+  await writeFile(first.statePath,JSON.stringify({schemaVersion:1,active:{},pending:null,trial:null,rejected:[key],highest:1}))
+  f.base.features.maxConcurrentRequests=7
+  await writeFile(f.configPath,JSON.stringify(f.base))
+  await moveFixture(f)
+  let manager=await f.open();await manager.prepare()
+  assert.equal((await manager.check({repair:true})).state,'error')
+  await assert.rejects(manager.importOffline(offlineBytes(release)),/未通过启动检查/)
+  if(mode==='online') {
+    assert.equal((await manager.check({repair:true,retryFailed:true})).state,'available')
+    assert.equal((await manager.download()).state,'ready')
+  } else {
+    f.responses.clear();f.requests.length=0
+    assert.equal((await manager.importOffline(offlineBytes(release),{retryFailed:true})).state,'ready')
+    assert.equal(f.requests.length,0)
+  }
+  manager=await f.open();assert.equal((await manager.prepare()).configurationRevision,1);await manager.ready()
+  assert.equal(loadUserConfig(f.configPath).features.maxConcurrentRequests,7)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  assert.equal(manager.state.highest,1)
+  assert.deepEqual(manager.state.rejected,[])
+})
+
+test('manual recovery never waives signatures, content hashes, compatibility or the exact revision floor',async t=>{
+  const f=await fixture(t),release=f.release(2),first=await f.open()
+  await first.check();await first.download()
+  const key=first.state.pending
+  await writeFile(first.statePath,JSON.stringify({schemaVersion:1,active:{},pending:null,trial:null,rejected:[key],highest:2}))
+  const manager=await f.open(),before=await readFile(manager.statePath,'utf8')
+  const altered=JSON.parse(offlineBytes(release));altered.manifest.signature=Buffer.alloc(64).toString('base64url')
+  await assert.rejects(manager.importOffline(Buffer.from(JSON.stringify(altered)),{retryFailed:true}),/签名/)
+  const corrupt=JSON.parse(offlineBytes(release));corrupt.bundle=Buffer.alloc(release.bytes.length).toString('base64')
+  await assert.rejects(manager.importOffline(Buffer.from(JSON.stringify(corrupt)),{retryFailed:true}))
+  const different=f.release(2,{configuration:2},{schemaVersion:1,configuration:{features:{maxConcurrentRequests:9}}})
+  await assert.rejects(manager.importOffline(offlineBytes(different),{retryFailed:true}),/修订号/)
+  const lower=f.release(1)
+  await assert.rejects(manager.importOffline(offlineBytes(lower),{retryFailed:true}),/修订号/)
+  const wrongChannel=f.release(2,undefined,undefined,{channel:'stable'})
+  await assert.rejects(manager.importOffline(offlineBytes(wrongChannel),{retryFailed:true}),/身份/)
+  manager.environment.dshVersion='0.0.1'
+  await assert.rejects(manager.importOffline(offlineBytes(release),{retryFailed:true}),/DSH/)
+  assert.equal(await readFile(manager.statePath,'utf8'),before)
+  assert.equal(manager.state.pending,null)
+})
+
+test('a failed manually retried health check is rejected again instead of retrying on every launch',async t=>{
+  const f=await fixture(t),release=f.release(1),manager=await f.open()
+  await manager.importOffline(offlineBytes(release));await manager.prepare();await manager.rollback()
+  await manager.importOffline(offlineBytes(release),{retryFailed:true});await manager.prepare()
+  // Desktop never reports ready on the second attempt either.
+  const next=await f.open();await next.prepare()
+  assert.equal((await next.check({repair:true})).state,'error')
+  await assert.rejects(next.importOffline(offlineBytes(release)),/未通过启动检查/)
+  assert.equal(next.state.highest,1)
+})
+
+test('interrupted file application rolls back then offers the same signed revision again',async t=>{
+  const f=await fixture(t),release=f.release(1),manager=await f.open()
+  await manager.importOffline(offlineBytes(release))
+  manager.state.trial=manager.state.pending;manager.state.trialPhase='applying';await manager.save()
+  await manager.configurationFile.apply({scope:manager.scope,key:manager.state.pending,revision:1,patch:{features:{visionFallback:true}}})
+  // Terminate after the file replacement but before Host startup is recorded.
+  const next=await f.open()
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,false)
+  assert.deepEqual(next.state.rejected,[])
+  assert.equal((await next.check({repair:true})).state,'available')
+  await next.download();assert.equal((await next.prepare()).configurationRevision,1);await next.ready()
+})
+
+for(const code of ['EACCES','EBUSY','EROFS','ENOSPC']) test(`${code} after file activation keeps a retryable journal even if rollback initially fails`,async t=>{
+  const f=await fixture(t),release=f.release(1),manager=await f.open()
+  await manager.importOffline(offlineBytes(release));await manager.prepare()
+  const error=Object.assign(new Error('synthetic filesystem failure'),{code})
+  manager.configurationFile.rollback=async()=>{throw error}
+  const wrapped=Object.assign(new Error('first-run recovery',{cause:error}),{code:'EDUWORK_BOOTSTRAP_REQUIRED'})
+  await assert.rejects(manager.rollback(wrapped),{code})
+  const next=await f.open()
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,false)
+  assert.deepEqual(next.state.rejected,[])
+  assert.equal((await next.check({repair:true})).state,'available')
+})
+
+test('Windows journal write failure during crash recovery does not reset the revision floor',{skip:process.platform!=='win32'},async t=>{
+  const f=await fixture(t),release=f.release(7),manager=await f.open()
+  await manager.importOffline(offlineBytes(release));await manager.prepare()
+  const before=await readFile(manager.statePath,'utf8')
+  await chmod(manager.statePath,0o444)
+  try {await assert.rejects(f.open(),{code:'EPERM'});assert.equal(await readFile(manager.statePath,'utf8'),before)}
+  finally {await chmod(manager.statePath,0o600)}
+  const next=await f.open()
+  assert.equal(next.state.highest,7)
+  assert.equal(next.state.rejected.length,1)
+})
 
 test('content activates by writing the one config after restart, keeps one backup and commits after desktop ready',async t=>{
   const f=await fixture(t,{skills:true}),original=await readFile(f.configPath,'utf8'),manager=await f.open()
