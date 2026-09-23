@@ -1,6 +1,7 @@
 // Native API smoke. Run with Electron, not Node. Uses a fresh application profile.
 // Emitted native events prove API delivery only; visual/click/DND acceptance is separate.
 import { app, BrowserWindow, Tray, Menu, nativeImage, Notification } from 'electron'
+import assert from 'node:assert/strict'
 import { mkdir, writeFile } from 'node:fs/promises'
 import { mkdtempSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -32,8 +33,13 @@ try {
   broker.menu()[0].click()
   const target = broker.handle({ action: 'view', sessionId: 'fixture' }).openKey
   broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, items: [] })
+  assert.equal(menuItems, 1)
+  assert.equal(target, 'fixture-approval')
+  assert.equal(broker.menu().length, 0)
+  assert.ok(events.includes('native-api-called'))
+  assert.ok(events.includes('window-restored'))
   await mkdir(evidence, { recursive: true })
-  await writeFile(join(evidence, 'native-notifications.json'), JSON.stringify({ platform: process.platform, electron: process.versions.electron, productName: app.getName(), events, menuItems, target, cleared: broker.menu().length === 0,
+  await writeFile(join(evidence, 'native-notifications.json'), JSON.stringify({ success: true, platform: process.platform, electron: process.versions.electron, productName: app.getName(), events, menuItems, target, cleared: broker.menu().length === 0,
     scope: 'Native tray/notification API and programmatic menu navigation; does not certify visual delivery, OS permissions, historical toast clicks or DND.' }, null, 2))
 } finally { broker.close(); tray.destroy(); window.destroy(); app.quit() }
 }
