@@ -139,6 +139,10 @@ async function prepareDesktop() {
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
   // Reassert the edition's immutable ownership after optional test settings.
   Object.assign(process.env, prepared.environment)
+  // The Host runs in the bundled Node process, so it cannot read Electron's
+  // process.versions directly. Report the version of this running shell.
+  process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
+  process.env.EDUWORK_PRODUCT_NAME = settings.productName
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), failed: () => { taskNotifications.delivery = 'unavailable' } })

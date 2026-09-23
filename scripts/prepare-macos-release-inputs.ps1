@@ -78,6 +78,7 @@ Copy-Item (Join-Path $Output 'openssl-source/LICENSE.txt') (Join-Path $resources
 Invoke-WebRequest 'https://raw.githubusercontent.com/openai/whisper/v20250625/LICENSE' -OutFile (Join-Path $resources 'licenses/LICENSE-whisper-model') -MaximumRetryCount 3
 $manifest = @{
     schemaVersion=1;platform='darwin-arm64'
+    python=@{baseRoot='r/p';executable='r/p/bin/python3';version=$python.pythonVersion;runtimeId=$python.runtimeId;archiveSHA256=$python.assets['darwin-arm64'].sha256}
     environment=@{DSH_OFFICE_PYTHON='r/office-python';DSH_MEDIA_BROWSER=('r/b/'+$lock.browser.executable);DSH_MEDIA_NODE_ENV='d'}
     browser=@{version=$lock.browser.version;executableSHA256=$lock.browser.executableSHA256}
     pluginConfig=@{'eduwork-artifact-services'=@{transcription=@{local=@{executablePath='r/a/whisper-cli';modelPath='r/a/model.bin'}}}}
