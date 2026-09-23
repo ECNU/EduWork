@@ -74,6 +74,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Locked qualification dependencies failed' }
           node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
+          node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-session-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
+          if ($LASTEXITCODE) { throw 'Memory message admission and user intent checks failed' }
           node core/scripts/probe-eduwork-017-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
       - name: Qualify the assembled desktop product without source resolution hooks

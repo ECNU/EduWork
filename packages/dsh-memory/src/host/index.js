@@ -17,7 +17,7 @@ import {
   redactSensitive,
 } from './core.js'
 import { memoryDomain } from './spec.js'
-import { explicitMemoryRequest, executionSources } from './session-context.js'
+import { explicitMemoryRequest, executionSources, memoryMessageSource } from './session-context.js'
 
 export const name = 'memory-native'
 export const SETTINGS_NAMESPACE = 'memories'
@@ -361,7 +361,7 @@ export class LocalMemoryService extends TypertRemoteService {
         ...decision,
         messages: [...decision.messages, createUserMessage({
           content: [{ type: 'text', text }],
-          source: { kind: 'plugin', plugin: name, form: 'notice', summary: `local Memory × ${payload.length}` },
+          source: memoryMessageSource(agent.session, `local Memory × ${payload.length}`),
         })],
       }
     })
