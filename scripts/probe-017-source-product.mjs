@@ -15,6 +15,10 @@ assert.equal(JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8')).
 await mkdir(output)
 const home = join(output, 'home'), config = join(output, 'eduwork.jsonc')
 await writeFile(config, '{"schemaVersion":1,"product":{"name":"Synthetic desktop"}}\n')
+const workspace = join(output, '中文 workspace')
+await mkdir(workspace)
+await writeFile(join(workspace, 'history.md'), '# Persistent preview')
+await writeFile(join(output, 'outside.md'), 'Not authorized by the session workspace')
 const secrets = new Map()
 // Only the credential storage implementation is synthetic. Exercise the actual
 // authenticated native bridge, stdin bootstrap and installed credential plugin.
@@ -30,7 +34,7 @@ const { authenticateWebHost } = await import(pathToFileURL(join(hostRoot, 'web-d
 let host
 const logs = []
 const report = { success: false, scope: 'assembled source product; synthetic credentials; no source import hooks', boots: [], rpc: [] }
-let memoryId
+let memoryId, previewSessionId
 try {
   for (const round of [1, 2]) {
     const prepared = await prepareProductProfile({ product, home, shell: 'electron', userConfig: config })
@@ -58,6 +62,8 @@ try {
     // service registration. Only this probe's new synthetic home is modified.
     const memoryRequest = request => ({ request: JSON.stringify(request) })
     if (round === 1) {
+      previewSessionId = (await rpc('session/create', { request: { cwd: workspace } })).sessionId
+      assert.equal((await rpc('artifactPreview/read', { sessionId: previewSessionId, relativePath: 'history.md' })).data, '# Persistent preview')
       const imported = await rpc('localMemories/importData', { document: JSON.stringify({ records: [
         { content: 'Synthetic qualification preference: use the lavender notebook.', kind: 'preference', scope: 'user' },
       ] }) })
@@ -73,6 +79,13 @@ try {
       assert.equal(removed.suppressionCreated, true)
       assert.equal((await rpc('localMemories/undoDelete', { token: removed.undoToken })).restored, true)
     } else {
+      // Browsing a persisted session must not require prompting an Agent first.
+      const preview = await rpc('artifactPreview/read', { sessionId: previewSessionId, relativePath: 'history.md' })
+      assert.equal(preview.data, '# Persistent preview')
+      assert.equal(await (await fetch(origin + preview.downloadUrl, { headers: { cookie } })).text(), preview.data)
+      await assert.rejects(rpc('artifactPreview/read', { sessionId: previewSessionId, relativePath: '../outside.md' }), /inside the current workspace/)
+      await assert.rejects(rpc('artifactPreview/read', { sessionId: 'unknown-synthetic-session', relativePath: 'history.md' }), /workspace is unavailable/)
+      report.preview = ['live-session', 'cold-session-after-restart', 'download-bytes', 'workspace-escape-rejected', 'unknown-session-rejected']
       const saved = await rpc('localMemories/listRecords', memoryRequest({ query: 'amber' }))
       assert.equal(saved.total, 1)
       assert.equal(saved.items[0].id, memoryId)
