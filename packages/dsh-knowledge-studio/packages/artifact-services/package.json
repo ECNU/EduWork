@@ -29,6 +29,7 @@
     "./transcription": "./lib/transcription.js",
     "./transcription-openai": "./lib/transcription-openai.js",
     "./transcription-whisper": "./lib/transcription-whisper.js",
+    "./transcription-dsh": "./lib/transcription-dsh.js",
     "./transcription-components": "./lib/transcription-components.js"
   },
   "files": [

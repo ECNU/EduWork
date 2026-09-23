@@ -23,4 +23,12 @@ node scripts/probe-dsh-017.mjs --runtime C:/EduworkTest/runtime-017 --output C:/
 
 The probe verifies the installation receipt and creates a new DSH home. It checks local Web authentication, services including settings and presets, read-only V3 migration, V4 successor publication, extension preservation, and refusal of corrupt logs. The output's `report.json` contains the results. Keep the directory for inspection and use a new directory for another run. Upstream startup logs can contain a local authentication URL; do not post raw logs to public issues.
 
+Run the separate file-transcription adapter probe without downloading speech models:
+
+```powershell
+node scripts/probe-dsh-017-speech.mjs --runtime C:/EduworkTest/runtime-017 --output C:/EduworkTest/speech-probe-017
+```
+
+This uses the real DSH `speechToText` registry, WAV validator and the Runtime's FFmpeg, with a synthetic recognizer. It checks Unicode paths, resampling, chunks beyond the upstream single-request size limit, duration limits, no cloud fallback, provider replacement and cancellation. An optional `--ffmpeg` selects an absolute path to a provisioned FFmpeg. The output directory must not exist; results are written to `report.json`. This does not test SenseVoice inference or recognition accuracy.
+
 These checks do not cover live model requests, organization sign-in, Studio, native windows, preview rendering or application updates, and do not establish compatibility with every historical session. Complete those acceptance checks before promoting the desktop release baseline.
