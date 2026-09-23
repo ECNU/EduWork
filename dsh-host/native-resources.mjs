@@ -9,6 +9,25 @@ const PRIVATE_WINDOWS_PATHS = String.raw`# EduWork managed private-runtime Windo
 import os
 import sys
 if os.name == "nt":
+    import builtins
+    import io
+    import functools
+    # Import loaders use extended paths for long portable installations. Office
+    # libraries then join __file__ with ../templates; Win32 extended paths do
+    # not resolve those dot segments. Normalize only that path form at open,
+    # preserving normal paths, file descriptors and caller options unchanged.
+    def _eduwork_open(original):
+        @functools.wraps(original)
+        def normalized(file, *args, **kwargs):
+            if isinstance(file, (str, bytes, os.PathLike)):
+                path = os.fspath(file)
+                prefix = b"\\\\?\\" if isinstance(path, bytes) else "\\\\?\\"
+                if path.startswith(prefix):
+                    file = os.path.normpath(path)
+            return original(file, *args, **kwargs)
+        return normalized
+    builtins.open = _eduwork_open(builtins.open)
+    io.open = _eduwork_open(io.open)
     from importlib.machinery import FileFinder, ExtensionFileLoader, EXTENSION_SUFFIXES, SourceFileLoader, SOURCE_SUFFIXES, SourcelessFileLoader, BYTECODE_SUFFIXES
     _finder = FileFinder.path_hook((ExtensionFileLoader, EXTENSION_SUFFIXES), (SourceFileLoader, SOURCE_SUFFIXES), (SourcelessFileLoader, BYTECODE_SUFFIXES))
     def _eduwork_path_hook(path):

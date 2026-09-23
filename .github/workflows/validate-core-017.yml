@@ -9,6 +9,8 @@ on:
       - 'dsh-host/native-profile.mjs'
       - 'dsh-host/settings-migration.mjs'
       - 'dsh-host/redacted-log.mjs'
+      - 'dsh-host/native-resources.mjs'
+      - 'dsh-host/test/native-resources*.mjs'
       - 'dsh-host/test/native-settings.test.mjs'
       - 'dsh-host/test/redacted-log.test.mjs'
       - 'scripts/probe-eduwork-017-host.mjs'
@@ -48,7 +50,7 @@ jobs:
       - name: Verify migration recovery and prepare the pinned Runtime
         shell: pwsh
         run: |
-          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs
+          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
