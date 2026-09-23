@@ -4,6 +4,7 @@ import remote from '../lib/typert.remote-client.js'
 import {createUpdateController,UpdatePanel,UpdateFooter} from './updates'
 import {DataImportPanel} from './data-import'
 import {ConcurrencySettings} from './concurrency'
+import {NotificationSettings, installNotificationNavigation} from './notifications'
 import {pickImportDirectory} from '../lib/directory-picker.js'
 import skillManagerRemote from '@chatecnu-work/dsh-skill-manager-native/remote'
 import { canonicalSkillName, effectiveDisabledSkills, skillToggleSettings, skillGroups, skillCenterRows } from '../lib/view-model.js'
@@ -289,6 +290,11 @@ function DesktopSettings({service,controller}) {
 export async function apply(ctx) {
   const unmount = await ctx.remote.$mount(remote), unmountSkills = await ctx.remote.$mount(skillManagerRemote)
   ctx.inject(['remote.workbench','remote.skillManager'], inner=>{
+    const notifications = installNotificationNavigation(inner, view => unwrap(inner.remote.workbench.notificationView(view)))
+    inner.on('dispose', () => notifications.close())
+    const notificationScope = inner.settingsScope.bind({ namespace: 'eduwork-notifications' })
+    inner.slots.inject('settings.general.item', () => inner.slots.register({ name: 'settings.general.item', id: 'eduwork-notifications', order: 19,
+      inject: () => ({ scope: notificationScope, status: notifications.status }) }, NotificationSettings))
     const service={settings:inner.settingsScope.bind({namespace:'chatecnu-skills'}),hasSession:()=>Boolean(inner.sessions.list.getSnapshot().current),subscribeSession:fn=>inner.sessions.list.subscribe(fn),
       list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=inner.sessions.list.getSnapshot().current;if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
       create:input=>unwrap(inner.remote.skillManager.create(input)),importDirectory:path=>unwrap(inner.remote.skillManager.importDirectory(path)),remove:name=>unwrap(inner.remote.skillManager.trashPersonalSkill(name)),pickDirectory:()=>pickImportDirectory(inner.uiWorkspace)}

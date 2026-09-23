@@ -2,6 +2,8 @@
 
 [简体中文](README.md)
 
+See [desktop notifications](../docs/DESKTOP_NOTIFICATIONS_EN.md) for task alerts and pending tray items. Institutional editions reuse the public implementation; native delivery requires platform-specific acceptance.
+
 An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share the same EduWork product composition, plugins, skills and preview implementation.
 
 The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.

@@ -26,6 +26,9 @@ try {
     New-Item -ItemType Directory -Path $target -Force | Out-Null
     foreach ($file in Get-ChildItem -LiteralPath (Join-Path $stage 'lib') -File -Filter '*.js') {
         $content = [IO.File]::ReadAllText($file.FullName) -replace '(?m)^//# sourceMappingURL=.*$', ''
+        # Rolldown region comments can contain resolved dependency paths outside
+        # the toolchain. Keep build-machine paths out of the shipped source.
+        $content = $content -replace '(?m)^[ \t]*//#(?:end)?region\b[^\r\n]*\r?\n', ''
         $content = ($content -replace '(?m)[ \t]+(?=\r?$)', '').TrimEnd("`r", "`n") + "`n"
         [IO.File]::WriteAllText((Join-Path $target $file.Name),$content,[Text.UTF8Encoding]::new($false))
     }

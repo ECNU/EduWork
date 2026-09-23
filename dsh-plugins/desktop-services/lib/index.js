@@ -1,10 +1,34 @@
 import { Service } from '@deepseek-ai/cordis'
+import z from '@deepseek-ai/schemastery'
+import { DesktopAttention, notificationDefaults, observeDesktopAttention } from './attention.js'
 
 // Host-only seam. No Remote decorator: the renderer cannot choose an arbitrary
 // external URL or obtain the native bridge credential through this service.
 export default class DesktopServices extends Service {
-  static inject = ['desktopBoundary']
-  constructor(ctx) { super(ctx, 'desktopServices') }
+  static inject = ['desktopBoundary', 'settings', 'sessions']
+  constructor(ctx, config = {}) {
+    super(ctx, 'desktopServices')
+    const scope = ctx.settings.register('eduwork-notifications', z.object(Object.fromEntries(Object.entries(notificationDefaults).map(([key, value]) => [key, z.boolean().default(value)]))),
+      { base: { ...notificationDefaults, ...config.notifications }, applies: 'live' })
+    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences: () => scope.get(), validateTarget: async target => {
+      if (!target.artifactId) return true
+      const studio = ctx.get('knowledgeStudio')
+      if (!studio) return false
+      const { artifact } = await studio.readArtifact(target.artifactId)
+      return !artifact.deletedAt && artifact.sessionId === target.sessionId
+    } })
+    observeDesktopAttention(ctx, this.attention)
+    ctx.effect(() => scope.watch(() => this.attention.changed()))
+  }
+  async notificationBridge(body) {
+    const { nativeBridge } = await this.ctx.desktopBoundary.ready
+    const response = await fetch(nativeBridge.baseURL + '/v1/extensions/attention', {
+      method: 'POST', headers: { authorization: 'Bearer ' + nativeBridge.token, 'content-type': 'application/json' },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(5000),
+    })
+    if (!response.ok) throw Error('Desktop notifications unavailable')
+    return response.json()
+  }
   async workbench(action) {
     if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update'].includes(action)) throw new Error('Unsupported desktop action')
     const { nativeBridge } = await this.ctx.desktopBoundary.ready

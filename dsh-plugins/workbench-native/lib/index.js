@@ -43,6 +43,10 @@ export default class Workbench extends TypertRemoteService {
     if (desktop?.workbench) return desktop.workbench(action)
     return { shell: 'web', phase: 'web', message: '浏览器用于功能验证；更新与桌面诊断请在客户端中使用。' }
   }
+  async notificationView(view) {
+    const desktop = this.ctx.get('desktopServices')
+    return desktop?.attention ? desktop.attention.view(view) : { desktop: false, target: null, delivery: 'unavailable' }
+  }
   importer() {
     if (!process.env.DSH_HOME) throw new Error('当前运行环境没有数据目录。')
     return this.dataImporter ??= new DataImporter({ home: process.env.DSH_HOME, persistence: this.ctx.sessionPersistence,
@@ -54,6 +58,6 @@ export default class Workbench extends TypertRemoteService {
   async cancelImport() { return this.importer().cancel() }
   async importStatus() { return this.importer().status() }
 }
-for (const name of ['catalog', 'desktop', 'importData', 'importStatus', 'inspectImport', 'cancelImport']) Remote(name)(Workbench.prototype[name], {
+for (const name of ['catalog', 'desktop', 'notificationView', 'importData', 'importStatus', 'inspectImport', 'cancelImport']) Remote(name)(Workbench.prototype[name], {
   kind: 'method', name, static: false, private: false, addInitializer(init) { initializers.push(init) },
 })
