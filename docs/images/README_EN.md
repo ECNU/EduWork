@@ -4,7 +4,7 @@
 
 | File | Content |
 | --- | --- |
-| `readme-hero.svg` · `readme-hero-en.svg` | Chinese and English homepage brand illustrations, using the shared EduWork mark; these are not UI screenshots. |
+| `readme-hero.svg` · `readme-hero-en.svg` | Earlier brand illustrations retained as assets; the current homepage uses `assets/eduwork/icon-red.svg` and the five application screenshots below. |
 | `workspace.png` | Public-edition workspace: research conversation and a generated HTML page preview |
 | `studio.png` | Public-edition Studio: output types and a recently generated quiz |
 | `quiz.png` | Quiz answers, explanations, and source evidence |
