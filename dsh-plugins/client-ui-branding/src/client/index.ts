@@ -126,7 +126,7 @@ export function apply(ctx) {
     clearTokens()
     clearTokens = () => {}
     const visualStyle = normalizeVisualStyle(scope.getSnapshot().value?.visualStyle)
-    document.documentElement.dataset.chatecnuVisualStyle = visualStyle
+    if (scope.getSnapshot().status !== 'loading') document.documentElement.dataset.chatecnuVisualStyle = visualStyle
     const logoAccent = visualStyle === 'ecnu-liwa' ? '#9f2636' : '#2575ff'
     document.documentElement.style.setProperty('--chatecnu-logo-accent', logoAccent)
     const tokens = tokensForVisualStyle(visualStyle)

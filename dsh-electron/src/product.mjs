@@ -1,5 +1,5 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog } from 'electron'
-import { readFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
@@ -75,12 +75,17 @@ export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDeskto
 async function prepareDesktop() {
   lifecycle.check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
+  const startupBlue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
+  const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
+  const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
+  const startupIcon = process.platform === 'darwin' ? join(app.getAppPath(), '../brand', startupBlue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon
+  if (process.platform === 'darwin') app.dock.setIcon(startupIcon)
   progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
-    icon: paths.icon,
-    backgroundColor: '#faf8f4', webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+    icon: startupIcon,
+    backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
   const title = String(settings.productName).replace(/[<>&"']/gu, '')
-  const logo = 'data:image/png;base64,' + readFileSync(paths.icon).toString('base64')
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:#faf8f4}progress{width:100%;margin-top:20px;accent-color:#9f2636}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
+  const logo = 'data:image/png;base64,' + readFileSync(startupIcon).toString('base64')
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:' + startupBackground + '}progress{width:100%;margin-top:20px;accent-color:' + startupAccent + '}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
@@ -158,10 +163,38 @@ export async function desktopReady() {
   void portableUpdates?.action('check-updates-background').catch(()=>{})
 }
 
+function savedEduworkStyle() {
+  try {
+    return JSON.parse(readFileSync(join(app.getPath('userData'), 'visual-style.json'), 'utf8')).style === 'dsh' ? 'dsh' : 'ecnu-liwa'
+  } catch { return 'ecnu-liwa' }
+}
+function persistEduworkStyle(style) {
+  const file = join(app.getPath('userData'), 'visual-style.json')
+  try {
+    writeFileSync(file + '.tmp', JSON.stringify({ style }), { mode: 0o600 })
+    renameSync(file + '.tmp', file)
+  } catch (error) { console.warn('Could not save desktop visual style:', error.message) }
+}
+export function attachDockTheme(window) {
+  if (process.platform !== 'darwin') return
+  let previous
+  window.webContents.on('ipc-message', (event, channel, style) => {
+    if (channel !== 'eduwork:visual-style' || event.senderFrame !== window.webContents.mainFrame ||
+        !window.webContents.getURL().startsWith('dsh-app://app/') || !['dsh', 'ecnu-liwa'].includes(style) || style === previous) return
+    const filename = style === 'dsh' ? 'icon-blue-1024.png' : 'icon-1024.png'
+    const icon = nativeImage.createFromPath(join(app.getAppPath(), '../brand', filename))
+    if (icon.isEmpty()) { console.warn('Dock theme icon unavailable: ' + filename); return }
+    app.dock.setIcon(icon)
+    persistEduworkStyle(style)
+    previous = style
+  })
+}
+
 export async function attachDesktopWindow(window) {
   mainWindow = window
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
+  attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
   const show = () => { if (!window.isDestroyed()) { if (window.isMinimized()) window.restore(); window.show(); window.focus() } }
   const action = value => {

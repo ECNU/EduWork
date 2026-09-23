@@ -8,6 +8,8 @@ The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d
 
 Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 
+On macOS, the running Dock icon and the next startup window’s icon and progress bar follow the red/blue color scheme. The startup preference is cached in `visual-style.json` in the application user-data directory; the app bundle and signature stay unchanged. The Dock after quitting, Finder and Launchpad retain the default brand icon; Stage Manager synchronization is not guaranteed.
+
 ## Build
 
 For a complete Windows test package, use the [build guide](../docs/BUILD.md#从-web-到桌面). It defines prerequisites, public and institutional commands, and output paths. From a clean EduWork checkout with Git, PowerShell 7, Node.js 24.18.0, Go 1.26.6 and Visual Studio 2022 C++ Build Tools:
@@ -45,3 +47,5 @@ Window checks use explicitly enabled local debugging ports. Electron accepts `--
 `tests/desktop-preview-acceptance.mjs` checks real-file preview/upload. `tests/desktop-conversation-acceptance.mjs` sends two bounded synthetic requests only to an explicitly configured private test provider and removes temporary credentials on exit. Do not include test configuration in product archives. See [native vault and OIDC tests](tests/oidc-native-vault.md). Record the actual verified scope and limitations with release evidence; internal test logs and user data do not belong in source packages.
 
 Ordinary web links open in the system browser while the application remains on the local workbench. `tests/external-navigation.electron.mjs` uses real hidden Electron pages to test same/new-window links, captures browser-launch calls without opening account pages, and requires no debugging port. Static navigation policies have separate unit tests.
+
+For macOS color-scheme checks, run `dsh-electron/tests/dock-theme.electron.mjs` with Electron. It covers the isolated preload, red/blue switching, startup preference persistence and untrusted message rejection.

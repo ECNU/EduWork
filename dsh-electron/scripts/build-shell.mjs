@@ -50,6 +50,7 @@ for (const file of files) {
     replace('  app.exit(1)', '  // Keep the startup error visible so the user can fix configuration and retry.')
     replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
   }
+  if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8')
   if (file === 'apps/desktop/src/locale.ts') {
     const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
     if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')
@@ -89,6 +90,7 @@ const { build } = await import(pathToFileURL(require.resolve('tsdown')).href)
 await build({ config: false, cwd: output, alias, failOnWarn: true, entry: ['src/main.ts'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { alwaysBundle: [/.*/u], neverBundle: ['electron'] } })
 await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'preload-app': 'src/preload-app.ts' }, outDir: 'lib', format: ['cjs'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { neverBundle: ['electron'] } })
 const adapters = {}
+adapters['dsh-electron/src/dock-theme-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs')))
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))
 for (const name of ['configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 adapters['dsh-host/configuration-file.mjs'] = digest(await readFile(join(repository, 'dsh-host/configuration-file.mjs')))

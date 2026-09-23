@@ -8,6 +8,8 @@
 
 每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；公版默认使用 GitHub，用户可通过配置覆盖来源或关闭更新。开发验证使用独立数据目录。
 
+macOS 的运行中 Dock 图标、下次启动窗口的图标和进度条跟随红／蓝配色。启动配色缓存保存在应用用户数据目录的 `visual-style.json`，不修改应用包或签名。退出后的 Dock、访达和启动台保留默认品牌图标；台前调度不保证同步。
+
 ## 构建入口
 
 完整 Windows 测试包使用[构建指南](../docs/BUILD.md#从-web-到桌面)中的入口，包含工具要求、公版与机构版命令及输出位置。在干净的 EduWork 检出目录准备 Git、PowerShell 7、Node.js 24.18.0、Go 1.26.6 和 Visual Studio 2022 C++ Build Tools 后运行：
@@ -44,3 +46,5 @@ node scripts/verify-desktop-parity.mjs --reference $DesktopProduct --electron $E
 共同的真实文件预览与上传脚本为 `tests/desktop-preview-acceptance.mjs`。`tests/desktop-conversation-acceptance.mjs` 仅对明确配置的私有验收 provider 发两条有界合成请求，并在退出时清理临时凭据；不将测试配置放进产品包。OIDC 系统加密与 Host 联合测试见 [测试说明](tests/oidc-native-vault.md)。实际通过范围及限制应随该次发行的验收回执提供，源码仓不打包内部测试日志或用户数据。
 
 普通网页链接由系统浏览器打开，应用窗口保持在本机工作台。`tests/external-navigation.electron.mjs` 使用真实 Electron 隐藏测试页面验证同窗口/新窗口链接，捕获浏览器启动调用，不打开用户账号页面；无需远程调试端口。静态导航策略另有单元测试。
+
+macOS 配色检查：使用 Electron 运行 `dsh-electron/tests/dock-theme.electron.mjs`，覆盖隔离预加载、红蓝切换、启动配色缓存和不可信消息拒绝。
