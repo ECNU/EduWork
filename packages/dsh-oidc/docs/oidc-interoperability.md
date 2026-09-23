@@ -93,7 +93,7 @@ TLS 信任和 DNS 解析仍由 Node.js 宿主和操作系统负责。
 
 ## 刷新与退出
 
-当 access token 距离过期不足 90 秒且存在 refresh token 时，插件会刷新会话。若收到 `invalid_grant`，会删除已存 OIDC 会话和本地模型凭据，并要求重新登录。轮换后的 refresh token 会替换旧值。没有 refresh token 的过期会话在下次需要活动会话时按同样方式处理。
+请求前检查 access token，默认提前 30 分钟刷新，提前量不超过服务端返回有效期的一半；只有到期时间的旧会话在首次刷新后自动补齐刷新时间。不会延长服务端给出的实际有效期。若收到 `invalid_grant`，会删除已存 OIDC 会话和本地模型凭据，并要求重新登录。轮换后的 refresh token 会替换旧值。没有 refresh token 的会话仍可用到实际到期，到期后在下次需要活动会话时清理，而非在提前刷新窗口内提前退出。
 
 退出登录时，如果 Discovery 发布 `revocation_endpoint`，插件会尝试按 RFC 7009 撤销 token；随后在本地删除该 Profile 的 OIDC 会话与归属于它的托管模型凭据；共享引用已被其他登录改写时不会删除另一方的 Key。远程撤销失败会被记录，但不阻止本地清理。
 

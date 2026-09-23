@@ -1,4 +1,5 @@
 import { serviceProtocolAllowed } from './transport.js'
+import { accessTokenTiming } from './token-lifetime.js'
 // LiteLLM v1.101.0, native CLI auth contract 1. This is OAuth, not OIDC.
 // Protocol-specific wire fields stay here; tokens never cross the renderer RPC.
 const MAX_BYTES = 1024 * 1024
@@ -99,7 +100,7 @@ export function liteLLMToken(raw, now, previous) {
     throw protocolError('gateway_token_invalid', 'LiteLLM token response is incomplete or invalid')
   }
   if (previous && (raw.user_id !== previous.identity.sub || raw.team_id !== previous.teamID)) throw protocolError('gateway_identity_changed', 'Gateway authorization identity changed during refresh; sign in again')
-  return { accessToken: raw.access_token, refreshToken: raw.refresh_token, expiresAt: Math.floor(now() / 1000) + raw.expires_in, teamID: raw.team_id, identity: { sub: raw.user_id, name: previous?.identity?.name || raw.user_id } }
+  return { accessToken: raw.access_token, refreshToken: raw.refresh_token, ...accessTokenTiming(raw.expires_in, now), teamID: raw.team_id, identity: { sub: raw.user_id, name: previous?.identity?.name || raw.user_id } }
 }
 
 export function tokenRequest(fetcher, descriptor, values) {

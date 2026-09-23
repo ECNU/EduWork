@@ -1,11 +1,11 @@
 import { serviceProtocolAllowed } from './transport.js'
 import { createHash, createPublicKey, randomBytes, timingSafeEqual, verify as verifySignature } from 'node:crypto'
 import { emptyResources } from './resources.js'
+import { accessTokenNeedsRefresh, accessTokenTiming } from './token-lifetime.js'
 
 const FLOW_TTL_MS = 10 * 60 * 1000
 const MAX_PENDING_FLOWS = 32
 const CLOCK_SKEW_SECONDS = 60
-const ACCESS_REFRESH_SECONDS = 90
 const MAX_RESPONSE_BYTES = 1024 * 1024
 export const OIDC_CALLBACK_PATH = '/oauth/callback'
 
@@ -336,6 +336,7 @@ export class WebOidcBackend {
     }
     const expiresIn = token.expires_in === undefined ? 3600 : Number(token.expires_in)
     if (!Number.isFinite(expiresIn) || expiresIn <= 0) throw publicError('oidc_token_invalid', 'OIDC token expiry is invalid')
+    const timing = accessTokenTiming(expiresIn, this.now)
     const claims = await this.verifyIDToken(profile, discovery, token.id_token, nonce, token.access_token)
     const userInfo = await this.userInfo(discovery.userInfoEndpoint, token.access_token)
     if (!equalText(userInfo.sub, claims.sub)) throw publicError('oidc_userinfo_invalid', 'OIDC UserInfo subject does not match ID Token')
@@ -346,7 +347,7 @@ export class WebOidcBackend {
       clientId: profile.oidc.clientId,
       accessToken: token.access_token,
       refreshToken: typeof token.refresh_token === 'string' ? token.refresh_token : '',
-      expiresAt: nowSeconds(this.now) + Math.max(60, expiresIn),
+      ...timing,
       identity: {
         sub: claims.sub,
         name: userName,
@@ -459,7 +460,8 @@ export class WebOidcBackend {
     const epoch = this.accountEpoch(profile)
     const saved = await this.loadSession(profile)
     if (!saved) throw publicError('oidc_login_required', 'OIDC session is no longer available')
-    if (saved && saved.accessToken !== session.accessToken && saved.expiresAt > nowSeconds(this.now) + ACCESS_REFRESH_SECONDS) return saved
+    if (saved.accessToken !== session.accessToken && saved.expiresAt > nowSeconds(this.now)) return saved
+    session = saved
     if (!session.refreshToken) throw publicError('oidc_login_required', 'OIDC session cannot be refreshed')
     const discovery = await this.discover(profile)
     const response = await this.fetch(discovery.tokenEndpoint, {
@@ -486,7 +488,7 @@ export class WebOidcBackend {
       ...session,
       accessToken: token.access_token,
       refreshToken: typeof token.refresh_token === 'string' ? token.refresh_token : session.refreshToken,
-      expiresAt: nowSeconds(this.now) + Math.max(60, expiresIn),
+      ...accessTokenTiming(expiresIn, this.now),
     }
     await this.saveSession(profile, next, epoch)
     return next
@@ -496,8 +498,9 @@ export class WebOidcBackend {
     const epoch = this.accountEpoch(profile)
     let session = await this.loadSession(profile)
     if (!session) return undefined
-    if (session.expiresAt <= nowSeconds(this.now) + ACCESS_REFRESH_SECONDS) {
+    if (accessTokenNeedsRefresh(session, this.now)) {
       if (!session.refreshToken) {
+        if (session.expiresAt > nowSeconds(this.now)) return session
         await this.clearCredentials(profile, epoch)
         this.accountChanged(account(profile, undefined, false))
         return undefined

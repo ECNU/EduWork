@@ -1,4 +1,5 @@
 import { serviceProtocolAllowed } from './transport.js'
+import { accessTokenTiming } from './token-lifetime.js'
 // Experimental draft 0.1. These wire rules are not a published standard.
 import { protocolError } from './litellm-protocol.js'
 
@@ -73,7 +74,7 @@ export function oidcLlmToken(raw, descriptor, now, previous) {
     throw protocolError('gateway_scope_changed', 'oidc-llm granted scopes do not match the requested authorization')
   }
   // No unapproved 15-minute ceiling: honor the actual advertised TTL.
-  return { accessToken: raw.access_token, refreshToken: raw.refresh_token, expiresAt: Math.floor(now() / 1000) + raw.expires_in, scopes, teamID: null }
+  return { accessToken: raw.access_token, refreshToken: raw.refresh_token, ...accessTokenTiming(raw.expires_in, now), scopes, teamID: null }
 }
 
 export function oidcLlmIdentity(raw) {
