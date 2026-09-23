@@ -1,0 +1,20 @@
+name: 功能建议 / Feature request
+description: 提出一个使用场景或改进建议 / Suggest a use case or improvement
+body:
+  - type: textarea
+    id: scenario
+    attributes:
+      label: 使用场景 / Use case
+      description: 目前想完成什么，遇到了什么限制？ / What are you trying to do, and what is getting in the way?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 改进建议 / Proposed improvement
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 版本与环境（可选） / Version and environment (optional)
