@@ -1,0 +1,20 @@
+{
+  "version": "0.0.0",
+  "name": "eduwork-017-source-probe-dependencies",
+  "dependencies": {
+    "imapflow": "1.7.6",
+    "mailparser": "3.9.23",
+    "nodemailer": "9.1.1",
+    "react-markdown": "10.1.0",
+    "jszip": "3.10.1",
+    "unpdf": "1.8.1"
+  },
+  "private": true,
+  "optionalDependencies": {
+    "@ladybugdb/core-darwin-arm64": "0.20.1",
+    "@ladybugdb/core-darwin-x64": "0.20.1",
+    "@ladybugdb/core-linux-arm64": "0.20.1",
+    "@ladybugdb/core-linux-x64": "0.20.1",
+    "@ladybugdb/core-win32-x64": "0.20.1"
+  }
+}

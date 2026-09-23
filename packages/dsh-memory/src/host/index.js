@@ -306,12 +306,17 @@ function createTools(corePromise, sessionQuery) {
 }
 
 export class LocalMemoryService extends TypertRemoteService {
+  static Config = typeof z.string().volatile === 'function'
+    ? z.object(Object.fromEntries(Object.entries(SettingsSchema.dict).map(([key, field]) => [key, field.volatile()])))
+    : undefined
   static inject = ['storageDomain', 'settings', 'tools', 'commands', 'systemPrompt', 'sessionQuery']
 
   constructor(ctx, config = {}) {
     super(ctx, 'localMemories')
     for (const initialize of remoteInitializers) initialize.call(this)
-    this.settings = ctx.settings.register(SETTINGS_NAMESPACE, SettingsSchema, { base: { ...DEFAULT_SETTINGS, ...config } })
+    this.settings = typeof ctx.settings.register === 'function'
+      ? ctx.settings.register(SETTINGS_NAMESPACE, SettingsSchema, { base: { ...DEFAULT_SETTINGS, ...config } })
+      : { get: () => Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map(key => [key, config[key].get()])) }
     this.domain = ctx.storageDomain.open(memoryDomain)
     this.core = this.domain.then(domain => new MemoryCore(
       domain.table('records'),

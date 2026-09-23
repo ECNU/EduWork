@@ -39,7 +39,7 @@ const progress = z.object({
   skippedSessions: z.number().int().nonnegative(),
 }).strict()
 
-const result = (typeSymbol, schema) => Object.freeze({ mode: 'strict', typeSymbol, schema })
+const result = (typeSymbol, schema) => Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol, schema })
 export const snapshotResult = result('@chatecnu-work/dsh-activity-insights-native#ActivitySnapshot', snapshot)
 export const progressResult = result('@chatecnu-work/dsh-activity-insights-native#ActivityProgress', progress)
 export const requestParameter = Object.freeze({

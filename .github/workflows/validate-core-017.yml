@@ -1,0 +1,79 @@
+name: Qualify DSH 0.1.7 candidate
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/validate-core-017.yml'
+      - 'third_party/dsh/candidate-v0.1.7-alpha.2/**'
+      - 'dsh-host/prepare-native.mjs'
+      - 'dsh-host/upstream-inputs-017.json'
+      - 'dsh-host/native-profile.mjs'
+      - 'dsh-host/settings-migration.mjs'
+      - 'dsh-host/redacted-log.mjs'
+      - 'dsh-host/test/native-settings.test.mjs'
+      - 'dsh-host/test/redacted-log.test.mjs'
+      - 'scripts/probe-eduwork-017-host.mjs'
+      - 'scripts/probe-eduwork-017-settings.mjs'
+      - 'scripts/build-017-plugin-clients.mjs'
+      - 'scripts/native-preset-ui.mjs'
+      - 'dsh-plugins/**'
+      - 'packages/**'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  native-host:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-14]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+      - uses: actions/checkout@v4
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: 00102833dfaee1da9f48a3a8eae9d34005a75218
+          path: upstream
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Verify migration recovery and prepare the pinned Runtime
+        shell: pwsh
+        run: |
+          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs
+          if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
+          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
+          if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
+      - name: Qualify authenticated Host transport and update admission
+        shell: pwsh
+        run: |
+          node core/dsh-host/prepare-native.mjs --upstream upstream --output "$env:RUNNER_TEMP/native-host"
+          if ($LASTEXITCODE) { throw 'Pinned Host adaptation failed' }
+          node core/scripts/probe-eduwork-017-host.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-host-evidence"
+          if ($LASTEXITCODE) { throw 'Native Host qualification failed' }
+      - name: Build source plugins and qualify native settings and RPC
+        shell: pwsh
+        run: |
+          $deps = "$env:RUNNER_TEMP/source-deps"
+          New-Item -ItemType Directory -Path $deps | Out-Null
+          Copy-Item core/third_party/dsh/candidate-v0.1.7-alpha.2/source-probe/package*.json $deps
+          npm ci --prefix $deps --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE) { throw 'Locked qualification dependencies failed' }
+          node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
+          if ($LASTEXITCODE) { throw 'Candidate client build failed' }
+          node core/scripts/probe-eduwork-017-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
+          if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: native-host-${{ matrix.os }}
+          retention-days: 7
+          path: |
+            ${{ runner.temp }}/native-host-evidence/report.json
+            ${{ runner.temp }}/native-host/receipt.json
+            ${{ runner.temp }}/settings-evidence/report.json
+            ${{ runner.temp }}/client-build.json
+          if-no-files-found: ignore

@@ -5,16 +5,20 @@ import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 
-const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' } } })
+const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, 'native-017': { type: 'boolean' } } })
 if (!values.upstream || !values.host || !values.output) throw new Error('Use --upstream <pinned source> --host <prepared host> --output <new directory>')
 const upstream = resolve(values.upstream), output = resolve(values.output), host = resolve(values.host)
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const lock = JSON.parse(await readFile(join(repository, 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'), 'utf8'))
+// Keep the independently pinned product window/lifecycle while replacing its
+// Host with the official Web transport. The receipt records both revisions.
+const native = values['native-017'] === true
+const coreLock = native ? JSON.parse(await readFile(join(repository, 'third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json'), 'utf8')) : lock
 const digest = data => createHash('sha256').update(data).digest('hex')
 const inputs = JSON.parse(await readFile(join(repository, 'dsh-electron/upstream-inputs.json'), 'utf8'))
 const hostReceipt = JSON.parse(await readFile(join(host, 'receipt.json'), 'utf8'))
-if (hostReceipt.upstreamCommit !== lock.commit) throw new Error('Host and Electron commits differ')
-for (const name of ['host-process.mjs', 'host-protocol.mjs']) {
+if (hostReceipt.upstreamCommit !== coreLock.commit) throw new Error('Host and selected core commits differ')
+for (const name of native ? ['host-process.mjs', 'node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs'] : ['host-process.mjs', 'host-protocol.mjs']) {
   if (digest(await readFile(join(host, name))) !== hostReceipt.outputs[name]) throw new Error('Prepared Host bytes differ from receipt')
 }
 const source = async path => {
@@ -48,8 +52,12 @@ for (const file of files) {
     replace('  const message = error instanceof Error ? error.message : String(error)', '  if (isQuitting()) return\n  const message = error instanceof Error ? error.message : String(error)')
     replace('  dialog.showErrorBox(resolveDesktopLocale(app.getLocale()).messages.startupFailed, message)', '  await showDesktopFailure(error)')
     replace('  app.exit(1)', '  // Keep the startup error visible so the user can fix configuration and retry.')
-    replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
+    if (native) {
+      replace("import { fetchDesktopProtocolResponse } from './media-transport.mjs'", "import { registerNativeWebBridge } from './native-web-bridge.mjs'")
+      replace('  let pluginWindow: BrowserWindow | undefined', '  let pluginWindow: BrowserWindow | undefined\n  registerNativeWebBridge({ getHost: () => host, getWindow: () => mainWindow })')
+    } else replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
   }
+  if (native && file === 'apps/desktop/src/preload-app.ts') text = await readFile(join(repository, 'dsh-electron/src/native-preload.mjs'), 'utf8')
   if (file === 'apps/desktop/src/locale.ts') {
     const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
     if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')
@@ -63,6 +71,7 @@ for (const file of files) {
 const electronAdapters = ['update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'native-vault.mjs', 'product.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
+for (const name of ['native-profile.mjs', 'settings-migration.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
 await copyFile(join(repository, 'dsh-host/native-resources.mjs'), join(output, 'src/native-resources.mjs'))
 for (const name of ['user-config.mjs', 'configuration-file.mjs', 'configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs', 'content-updates.mjs', 'content-update-protocol.mjs', 'publisher-bootstrap.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
@@ -76,8 +85,15 @@ await copyFile(join(repository, 'dsh-host/desktop-log.mjs'), join(output, 'src/d
 const vendor = 'vendor/jsonc-parser'
 await mkdir(join(output, 'src', vendor), { recursive: true })
 for (const name of ['parser.js', 'scanner.js', 'string-intern.js', 'package.json', 'LICENSE.md', 'README.md']) await copyFile(join(repository, 'dsh-host', vendor, name), join(output, 'src', vendor, name))
-await copyFile(join(host, 'host-process.mjs'), join(output, 'src/eduwork-host-process.mjs'))
-await copyFile(join(host, 'host-protocol.mjs'), join(output, 'src/host-protocol.mjs'))
+if (native) {
+  await copyFile(join(host, 'host-process.mjs'), join(output, 'src/eduwork-native-host-process.mjs'))
+  for (const name of ['node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs']) await copyFile(join(host, name), join(output, 'src', name))
+  await copyFile(join(repository, 'dsh-electron/src/native-web-host.mjs'), join(output, 'src/eduwork-host-process.mjs'))
+  await copyFile(join(repository, 'dsh-electron/src/native-web-bridge.mjs'), join(output, 'src/native-web-bridge.mjs'))
+} else {
+  await copyFile(join(host, 'host-process.mjs'), join(output, 'src/eduwork-host-process.mjs'))
+  await copyFile(join(host, 'host-protocol.mjs'), join(output, 'src/host-protocol.mjs'))
+}
 await copyFile(join(host, 'LICENSE-DeepSeek'), join(output, 'LICENSE-DeepSeek'))
 const manifest = JSON.parse(await source('apps/desktop/package.json'))
 await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name: '@eduwork/desktop-electron', scripts: {}, devDependencies: {} }, null, 2))
@@ -89,6 +105,8 @@ const { build } = await import(pathToFileURL(require.resolve('tsdown')).href)
 await build({ config: false, cwd: output, alias, failOnWarn: true, entry: ['src/main.ts'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { alwaysBundle: [/.*/u], neverBundle: ['electron'] } })
 await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'preload-app': 'src/preload-app.ts' }, outDir: 'lib', format: ['cjs'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { neverBundle: ['electron'] } })
 const adapters = {}
+for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
+if (native) for (const name of ['native-web-host.mjs', 'native-web-bridge.mjs', 'native-preload.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))
 for (const name of ['configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 adapters['dsh-host/configuration-file.mjs'] = digest(await readFile(join(repository, 'dsh-host/configuration-file.mjs')))
@@ -132,5 +150,5 @@ await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })
 for (const file of ['dsh-electron/src/update-coordinator.mjs', 'dsh-host/content-updates.mjs', 'dsh-host/content-update-protocol.mjs', 'dsh-electron/src/configuration-policy.mjs', 'dsh-host/user-config.mjs', 'dsh-plugins/media-openai/lib/config.js', 'dsh-host/enterprise-model-updates.mjs', ...['parser.js', 'scanner.js', 'string-intern.js'].map(name => 'dsh-host/' + vendor + '/' + name)]) adapters[file] = digest(await readFile(join(repository, file)))
 await writeFile(join(output, 'third-party/notices.json'), JSON.stringify(notices, null, 2) + '\n')
-await writeFile(join(output, 'source-receipt.json'), JSON.stringify({ schemaVersion: 1, dshCommit: lock.commit, dshVersion: lock.packageVersion, kind: 'official-desktop-with-product-adapters', files: rows, adapters, host: hostReceipt }, null, 2) + '\n')
+await writeFile(join(output, 'source-receipt.json'), JSON.stringify({ schemaVersion: 1, dshCommit: coreLock.commit, dshVersion: coreLock.packageVersion, shellCommit: lock.commit, kind: 'official-desktop-with-product-adapters', files: rows, adapters, host: hostReceipt }, null, 2) + '\n')
 console.log('Built official Electron shell with recorded product adapters: ' + output)

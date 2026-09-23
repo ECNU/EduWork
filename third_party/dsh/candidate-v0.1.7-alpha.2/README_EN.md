@@ -7,7 +7,7 @@ This directory pins upstream source and npm Runtime inputs for migration checks.
 - Upstream commit: `00102833dfaee1da9f48a3a8eae9d34005a75218`, tagged `dsh-v0.1.7-alpha.2`.
 - `LOCK.json` records source archive, pnpm lock, npm install lock and package integrity. Runtime packages come from the official npm registry, with one pinned DSH family version.
 - Only the published npm Runtime is enabled. Source packing remains disabled; existing product plugin npm locks are unchanged.
-- The desktop Host, settings service, Agent presets and product plugins still require migration. A successful candidate installation does not establish EduWork compatibility.
+- Separate official Web Host adapters, native settings migration and source-plugin qualification are available. The default release assembly remains unchanged; these checks alone do not qualify the complete desktop product.
 
 Prepare a separate Runtime from the repository root. The output directory must not exist:
 
@@ -31,4 +31,22 @@ node scripts/probe-dsh-017-speech.mjs --runtime C:/EduworkTest/runtime-017 --out
 
 This uses the real DSH `speechToText` registry, WAV validator and the Runtime's FFmpeg, with a synthetic recognizer. It checks Unicode paths, resampling, chunks beyond the upstream single-request size limit, duration limits, no cloud fallback, provider replacement and cancellation. An optional `--ffmpeg` selects an absolute path to a provisioned FFmpeg. The output directory must not exist; results are written to `report.json`. This does not test SenseVoice inference or recognition accuracy.
 
-These checks do not cover live model requests, organization sign-in, Studio, native windows, preview rendering or application updates, and do not establish compatibility with every historical session. Complete those acceptance checks before promoting the desktop release baseline.
+Qualify Host authentication, update admission and streaming (`--upstream` must contain the pinned source commit):
+
+```powershell
+node dsh-host/prepare-native.mjs --upstream C:/EduworkTest/source-017 --output C:/EduworkTest/host-017
+node scripts/probe-eduwork-017-host.mjs --runtime C:/EduworkTest/runtime-017 --host C:/EduworkTest/host-017 --output C:/EduworkTest/host-evidence
+```
+
+For source plugins, copy `source-probe/package.json` and `package-lock.json` into a separate `C:/EduworkTest/source-deps` directory and run `npm ci --ignore-scripts` there, then:
+
+```powershell
+node scripts/build-017-plugin-clients.mjs --runtime C:/EduworkTest/runtime-017 --dependencies C:/EduworkTest/source-deps --output C:/EduworkTest/source-stage --report C:/EduworkTest/client-build.json
+node scripts/probe-eduwork-017-settings.mjs --runtime C:/EduworkTest/runtime-017 --dependencies C:/EduworkTest/source-deps --source C:/EduworkTest/source-stage --full-product --output C:/EduworkTest/settings-evidence
+```
+
+This mode builds into an isolated directory without changing published packages or checked-in generated files. It checks legacy preferences, native validation, live editing, restart persistence, optional presets and authenticated RPC for organizations, Studio, memory, components and skills. Use `--serve` to keep the synthetic workspace available for UI testing. Its `launch.json` contains a temporary authentication token; do not publish it. The source composition excludes the external literature plugin.
+
+Original settings are retained as a migration backup, with new preferences in a separate native `desktop-017` Profile. The user-facing product configuration remains `eduwork.jsonc`. Legacy custom presets keep their source directories and IDs, while the official registry manages converted definitions. Plugins used by third-party presets still need individual compatibility checks.
+
+These checks do not cover live model requests, organization sign-in, Studio generation, native windows, Office/media rendering or application updates, and do not establish compatibility with every historical session. Complete those checks before promoting the desktop release baseline. Candidate CI uploads reports, not raw startup logs containing authentication URLs.

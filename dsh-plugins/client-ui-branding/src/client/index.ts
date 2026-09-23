@@ -3,7 +3,9 @@ import { normalizeVisualStyle, tokensForVisualStyle } from '../theme.js'
 import { genericMarkSVG, productIdentity } from '../identity.js'
 import { bindDesktopAction, DesktopSettingsTrigger } from './desktop-actions.js'
 
-export const inject = ['slots', 'theme', 'connection', 'remote', 'settingsScope']
+declare const __EDUWORK_NATIVE_017__: boolean
+const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+export const inject = ['slots', 'theme', 'connection', 'remote', nativeSettings ? 'configForms' : 'settingsScope']
 
 const h = React.createElement
 const SETTINGS_NAMESPACE = 'chatecnu-brand'
@@ -120,7 +122,7 @@ export function apply(ctx) {
   ctx.inject(['uiWorkspace'], context => context.effect(() =>
     bindDesktopAction('new-session', () => context.uiWorkspace.startSession()), 'eduwork: tray new session'))
   ctx.slots.inject('settings.trigger', () => ctx.slots.register({ name: 'settings.trigger', priority: -100 }, DesktopSettingsTrigger))
-  const scope = ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE })
+  const scope = (nativeSettings ? ctx.configForms.get(SETTINGS_NAMESPACE) : ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE }))
   let clearTokens = () => {}
   const adopt = () => {
     clearTokens()

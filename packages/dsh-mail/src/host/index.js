@@ -1,5 +1,6 @@
 import { DEFAULTS, PASSWORD_REF_NAME, TOOL_NAMES } from './constants.js'
-import { currentSettings, MailSettingsSchema, settingsBase, SETTINGS_NAMESPACE, validateSettings } from './config.js'
+import { Config, currentSettings, MailSettingsSchema, settingsBase, SETTINGS_NAMESPACE, validateSettings } from './config.js'
+export { Config }
 import { decideMailPermission } from './permission.js'
 import { installTools } from './tools.js'
 
@@ -7,14 +8,16 @@ export const name = 'dsh-mail-assistant'
 export const inject = ['settings', 'credentials', 'tools', 'fs', 'permissionPresets']
 
 export function apply(ctx, config = {}) {
-  const base = settingsBase(config)
+  const native = typeof ctx.settings.register !== 'function'
+  const readLive = () => Object.fromEntries(Object.keys(DEFAULTS).map(key => [key, config[key].get()]))
+  const base = native ? readLive() : settingsBase(config)
   validateSettings(base)
-  const scope = ctx.settings.register(SETTINGS_NAMESPACE, MailSettingsSchema, {
+  const scope = native ? { get: readLive } : ctx.settings.register(SETTINGS_NAMESPACE, MailSettingsSchema, {
     base,
     applies: 'live',
     validate: validateSettings,
   })
-  const getSettings = () => currentSettings(ctx, scope, config)
+  const getSettings = () => currentSettings(ctx, scope, native ? {} : config)
 
   ctx.on('tools/pre-execute', (exec, next) => decideMailPermission(ctx, exec, next))
   installTools(ctx, getSettings)
@@ -46,4 +49,4 @@ export function apply(ctx, config = {}) {
 }
 
 export { DEFAULTS, MailSettingsSchema, PASSWORD_REF_NAME, SETTINGS_NAMESPACE, TOOL_NAMES, validateSettings }
-export default { name, inject, apply }
+export default { name, inject, Config, apply }
