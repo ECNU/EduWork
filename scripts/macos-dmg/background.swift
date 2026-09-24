@@ -23,7 +23,7 @@ glow.draw(fromCenter: NSPoint(x: 55, y: 70), radius: 0,
 func text(_ value: String, top: Double, size: Double, weight: NSFont.Weight, gray: Double) {
     let string = value as NSString
     let initialFont = NSFont.systemFont(ofSize: size, weight: weight)
-    let measuredWidth = string.size(withAttributes: [.font: initialFont]).width
+    let measuredWidth = Double(string.size(withAttributes: [.font: initialFont]).width)
     let font = NSFont.systemFont(ofSize: size * min(1, 680 / max(1, measuredWidth)), weight: weight)
     let attributes: [NSAttributedString.Key: Any] = [
         .font: font, .foregroundColor: NSColor(calibratedWhite: gray, alpha: 1)
