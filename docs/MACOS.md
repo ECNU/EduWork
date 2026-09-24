@@ -21,7 +21,7 @@ macOS 使用 Electron，并复用同一套工作区、Studio、插件和配置�
 | Native 模块 | 在目标架构安装并验证 PTY、文件锁、数据库等原生模块；区分 Node 与 Electron ABI。 |
 | Office | 提供可重定位 Python、所需 wheels 和字体，验证 DOCX/XLSX/PPTX 生成与预览。 |
 | 媒体 | 提供架构匹配的 Chromium、FFmpeg 和 Remotion 组件，复用公共媒体服务。 |
-| 系统 TTS | 增加 macOS 语音提供方，枚举真实音色并通过统一接口返回 WAV。 |
+| 系统 TTS | 共享服务的 `system` 提供方调用系统 `say`，枚举已安装音色并返回 WAV；中文配音需要中文音色。桌面构建需更新对应 npm 组件锁并验收。 |
 | 本地 ASR | 配置匹配架构的 whisper.cpp 和模型，验证参数、路径、取消及输出格式。 |
 | 桌面操作 | 验证托盘、窗口恢复、单实例唤起、外部链接、文件打开与 OIDC 回调。 |
 | 发行与更新 | 为 macOS 单独实现并验证安装、数据保留、更新失败恢复、签名与公证。 |

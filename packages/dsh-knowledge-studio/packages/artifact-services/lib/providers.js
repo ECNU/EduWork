@@ -33,6 +33,6 @@ export function normalizeMediaOptions(value = {}) {
 
 export function createMediaProviders() {
   const providers=new MediaProviders()
-  if(process.platform==='win32')providers.registerSpeech(createSystemSpeechProvider())
+  if(process.platform==='win32'||process.platform==='darwin')providers.registerSpeech(createSystemSpeechProvider())
   return providers
 }

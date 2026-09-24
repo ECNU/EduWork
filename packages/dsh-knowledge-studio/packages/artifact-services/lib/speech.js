@@ -2,6 +2,9 @@ import {spawn} from 'node:child_process'
 import {mkdir, writeFile, readFile, appendFile} from 'node:fs/promises'
 import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {createMacOSSpeechProvider} from './speech-macos.js'
+import {waveDuration} from './speech-wave.js'
+export {waveDuration} from './speech-wave.js'
 
 /** Application API v1. Providers receive the same request regardless of host. */
 export class SpeechService {
@@ -30,7 +33,8 @@ export class SpeechService {
     if (typeof request.text !== 'string' || !request.text.trim()) throw new Error('语音文本不能为空')
     const speed = Number(request.speed ?? 1)
     if (!Number.isFinite(speed) || speed<.25 || speed>4) throw new Error('语速必须在 0.25–4 之间')
-    const voices = await provider.voices()
+    const voices = await provider.voices({signal:request.signal})
+    request.signal?.throwIfAborted()
     const chinese=/[\u3400-\u9fff]/u.test(request.text)
     const voice = request.voice || (chinese?voices.find(item=>/^zh(?:-|$)/i.test(item.language||''))?.id:undefined) || voices[0]?.id
     if (!voices.some(v=>v.id===voice)) throw new Error(`音色不可用：${voice || request.provider}`)
@@ -44,22 +48,8 @@ export class SpeechService {
   }
 }
 
-export function waveDuration(buffer) {
-  if(buffer.length<44 || buffer.toString('ascii',0,4)!=='RIFF' || buffer.toString('ascii',8,12)!=='WAVE')throw new Error('语音适配器必须返回 WAV 音频')
-  let rate=0, bytes=0
-  for(let offset=12;offset+8<=buffer.length;) {
-    const name=buffer.toString('ascii',offset,offset+4),size=buffer.readUInt32LE(offset+4)
-    if(offset+8+size>buffer.length)throw new Error('WAV 音频不完整')
-    if(name==='fmt '&&size<16)throw new Error('WAV 格式头不完整')
-    if(name==='fmt ')rate=buffer.readUInt32LE(offset+16)
-    if(name==='data')bytes=size
-    offset+=8+size+(size%2)
-  }
-  if(!rate||!bytes)throw new Error('语音输出不是有效 WAV 文件')
-  return bytes/rate
-}
-
 export function createSystemSpeechProvider() {
+  if(process.platform==='darwin')return createMacOSSpeechProvider()
   const script=fileURLToPath(new URL('./speech.ps1',import.meta.url))
   let cache, cacheAt=0
   return {id:'system',title:'Windows 本地语音',local:true,

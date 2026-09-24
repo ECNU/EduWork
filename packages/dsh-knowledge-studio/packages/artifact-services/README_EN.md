@@ -20,7 +20,7 @@ npm install ./eduwork-dsh-artifact-services-0.2.0.tgz
 
 For Studio, install its matching archive in the same command and activate only the Studio bundle, which registers Shared once. See [source build and Profile activation](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/docs/USAGE.md). Plain Node applications import the APIs below; DSH hosts additionally load the `/dsh` adapter once.
 
-Office requires Python 3.12+ with this package’s `python/requirements.txt`; set `DSH_OFFICE_PYTHON` to the interpreter’s absolute path. Package installation does not install Python libraries, ASR models or a browser. TTS includes Windows System.Speech using installed voices; other platforms need a provider adapter. Local ASR requires a host-provisioned whisper.cpp executable and model. See [transcription](docs/TRANSCRIPTION.md).
+Office requires Python 3.12+ with this package’s `python/requirements.txt`; set `DSH_OFFICE_PYTHON` to the interpreter’s absolute path. Package installation does not install Python libraries, ASR models or a browser. The `system` TTS provider uses System.Speech on Windows and the system `say` command on macOS. Both enumerate installed voices and produce WAV without an API key. For Chinese narration on Mac, install a Chinese system voice first; see [platform requirements](docs/PLATFORMS.md#speech-synthesis). Other platforms need a provider adapter. Local ASR requires a host-provisioned whisper.cpp executable and model. See [transcription](docs/TRANSCRIPTION.md).
 
 Source also provides the opt-in `createDshTranscriptionProvider`, connecting DSH 0.1.7's local `speechToText` service to the existing audio-file API. Hosts register it explicitly; it has not replaced the desktop default engine. It processes long audio in chunks but supplies no timestamps; keep the previous provider for timestamp-dependent workloads. TTS remains independent, and Mac currently has no bundled system-speech adapter. See [transcription](docs/TRANSCRIPTION.md#optional-dsh-017-local-adapter) for options, preparation and limitations.
 
@@ -35,7 +35,7 @@ import {mkdtemp} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {SpeechService, createSystemSpeechProvider} from '@eduwork/dsh-artifact-services/speech'
-if (process.platform !== 'win32') throw new Error('This example uses Windows System.Speech')
+if (!['win32', 'darwin'].includes(process.platform)) throw new Error('This example requires Windows or macOS system speech')
 const directory = await mkdtemp(join(tmpdir(), 'shared-speech-example-'))
 const speech = new SpeechService()
 const dispose = speech.register(createSystemSpeechProvider())
