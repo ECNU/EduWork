@@ -4,7 +4,6 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
-		//#region \0rolldown/runtime.js
 		var __create = Object.create;
 		var __defProp = Object.defineProperty;
 		var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -25,11 +24,9 @@ window.__ModuleLoader__.load({
 			value: mod,
 			enumerable: true
 		}) : target, mod));
-		//#endregion
 		let react = require("react");
 		react = __toESM(react, 1);
 		let react_dom = require("react-dom");
-		//#region lib/diagnostic-download.js
 		function downloadDiagnosticArchive(result) {
 			if (!result.archive || !/^EduWork-diagnostics-[\w-]+\.zip$/.test(result.filename || "")) throw new Error(result.message || "诊断包未生成，请重试。");
 			const bytes = Uint8Array.from(atob(result.archive), (char) => char.charCodeAt(0));
@@ -43,8 +40,6 @@ window.__ModuleLoader__.load({
 			link.remove();
 			setTimeout(() => URL.revokeObjectURL(url), 6e4);
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/core.js
 		var _a$1;
 		function $constructor(name, initializer, params) {
 			function init(inst, def) {
@@ -102,8 +97,6 @@ window.__ModuleLoader__.load({
 			if (newConfig) Object.assign(globalConfig, newConfig);
 			return globalConfig;
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/util.js
 		function getEnumValues(entries) {
 			const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 			return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -165,10 +158,7 @@ window.__ModuleLoader__.load({
 		}
 		function mergeDefs(...defs) {
 			const mergedDescriptors = {};
-			for (const def of defs) {
-				const descriptors = Object.getOwnPropertyDescriptors(def);
-				Object.assign(mergedDescriptors, descriptors);
-			}
+			for (const def of defs) Object.assign(mergedDescriptors, Object.getOwnPropertyDescriptors(def));
 			return Object.defineProperties({}, mergedDescriptors);
 		}
 		function esc(str) {
@@ -417,8 +407,6 @@ window.__ModuleLoader__.load({
 			};
 			return { ...iss };
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/errors.js
 		const initializer$1 = (inst, def) => {
 			inst.name = "$ZodError";
 			Object.defineProperty(inst, "_zod", {
@@ -477,8 +465,6 @@ window.__ModuleLoader__.load({
 			processError(error);
 			return fieldErrors;
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/parse.js
 		const _parse = (_Err) => (schema, value, _ctx, _params) => {
 			const ctx = _ctx ? {
 				..._ctx,
@@ -591,8 +577,6 @@ window.__ModuleLoader__.load({
 		const _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
 			return _safeParseAsync(_Err)(schema, value, _ctx);
 		};
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/regexes.js
 		/**
 		* @deprecated CUID v1 is deprecated by its authors due to information leakage
 		* (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -655,8 +639,6 @@ window.__ModuleLoader__.load({
 		const boolean$1 = /^(?:true|false)$/i;
 		const lowercase = /^[^A-Z]*$/;
 		const uppercase = /^[^a-z]*$/;
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/checks.js
 		const $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 			var _a;
 			inst._zod ?? (inst._zod = {});
@@ -1013,8 +995,6 @@ window.__ModuleLoader__.load({
 				payload.value = def.tx(payload.value);
 			};
 		});
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/doc.js
 		var Doc = class {
 			constructor(args = []) {
 				this.content = [];
@@ -1044,15 +1024,11 @@ window.__ModuleLoader__.load({
 				return new F(...args, lines.join("\n"));
 			}
 		};
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/versions.js
 		const version = {
 			major: 4,
 			minor: 4,
 			patch: 3
 		};
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/schemas.js
 		const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 			var _a;
 			inst ?? (inst = {});
@@ -1599,13 +1575,13 @@ window.__ModuleLoader__.load({
 				}
 				return propValues;
 			});
-			const isObject$2 = isObject;
+			const isObject$1 = isObject;
 			const catchall = def.catchall;
 			let value;
 			inst._zod.parse = (payload, ctx) => {
 				value ?? (value = _normalized.value);
 				const input = payload.value;
-				if (!isObject$2(input)) {
+				if (!isObject$1(input)) {
 					payload.issues.push({
 						expected: "object",
 						code: "invalid_type",
@@ -1728,7 +1704,7 @@ window.__ModuleLoader__.load({
 				return (payload, ctx) => fn(shape, payload, ctx);
 			};
 			let fastpass;
-			const isObject$1 = isObject;
+			const isObject$2 = isObject;
 			const jit = !globalConfig.jitless;
 			const fastEnabled = jit && allowsEval.value;
 			const catchall = def.catchall;
@@ -1736,7 +1712,7 @@ window.__ModuleLoader__.load({
 			inst._zod.parse = (payload, ctx) => {
 				value ?? (value = _normalized.value);
 				const input = payload.value;
-				if (!isObject$1(input)) {
+				if (!isObject$2(input)) {
 					payload.issues.push({
 						expected: "object",
 						code: "invalid_type",
@@ -2082,7 +2058,7 @@ window.__ModuleLoader__.load({
 			inst._zod.optin = "optional";
 			inst._zod.optout = "optional";
 			defineLazy(inst._zod, "values", () => {
-				return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, void 0]) : void 0;
+				return def.innerType._zod.values ? new Set([...def.innerType._zod.values, void 0]) : void 0;
 			});
 			defineLazy(inst._zod, "pattern", () => {
 				const pattern = def.innerType._zod.pattern;
@@ -2116,7 +2092,7 @@ window.__ModuleLoader__.load({
 				return pattern ? new RegExp(`^(${cleanRegex(pattern.source)}|null)$`) : void 0;
 			});
 			defineLazy(inst._zod, "values", () => {
-				return def.innerType._zod.values ? /* @__PURE__ */ new Set([...def.innerType._zod.values, null]) : void 0;
+				return def.innerType._zod.values ? new Set([...def.innerType._zod.values, null]) : void 0;
 			});
 			inst._zod.parse = (payload, ctx) => {
 				if (payload.value === null) return payload;
@@ -2281,8 +2257,6 @@ window.__ModuleLoader__.load({
 				payload.issues.push(issue(_iss));
 			}
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/registries.js
 		var _a;
 		var $ZodRegistry = class {
 			constructor() {
@@ -2328,8 +2302,6 @@ window.__ModuleLoader__.load({
 		}
 		(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 		const globalRegistry = globalThis.__zod_globalRegistry;
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/api.js
 		// @__NO_SIDE_EFFECTS__
 		function _string(Class, params) {
 			return new Class({
@@ -2833,8 +2805,6 @@ window.__ModuleLoader__.load({
 			ch._zod.check = fn;
 			return ch;
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/to-json-schema.js
 		function initializeContext(params) {
 			let target = params?.target ?? "draft-2020-12";
 			if (target === "draft-4") target = "draft-04";
@@ -3126,8 +3096,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			extractDefs(ctx, schema);
 			return finalize(ctx, schema);
 		};
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/core/json-schema-processors.js
 		const formatMap = {
 			guid: "uuid",
 			url: "uri",
@@ -3388,8 +3356,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const seen = ctx.seen.get(schema);
 			seen.ref = def.innerType;
 		};
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/iso.js
 		const ZodISODateTime = /*@__PURE__*/ $constructor("ZodISODateTime", (inst, def) => {
 			$ZodISODateTime.init(inst, def);
 			ZodStringFormat.init(inst, def);
@@ -3418,8 +3384,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function duration(params) {
 			return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
 		}
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/errors.js
 		const initializer = (inst, issues) => {
 			$ZodError.init(inst, issues);
 			inst.name = "ZodError";
@@ -3440,8 +3404,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		};
 		const ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, { Parent: Error });
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/parse.js
 		const parse = /* @__PURE__ */ _parse(ZodRealError);
 		const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 		const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -3454,8 +3416,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const safeDecode = /* @__PURE__ */ _safeDecode(ZodRealError);
 		const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 		const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
-		//#endregion
-		//#region ../../../../../../../../CWork/resources/product/d/node_modules/zod/v4/classic/schemas.js
 		const _installedGroups = /* @__PURE__ */ new WeakMap();
 		function _installLazyMethods(inst, group, methods) {
 			const proto = Object.getPrototypeOf(inst);
@@ -3976,12 +3936,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		});
 		function object(shape, params) {
-			const def = {
+			return new ZodObject({
 				type: "object",
 				shape: shape ?? {},
 				...normalizeParams(params)
-			};
-			return new ZodObject(def);
+			});
 		}
 		const ZodUnion = /*@__PURE__*/ $constructor("ZodUnion", (inst, def) => {
 			$ZodUnion.init(inst, def);
@@ -4060,10 +4019,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		});
 		function _enum(values, params) {
-			const entries = Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values;
 			return new ZodEnum({
 				type: "enum",
-				entries,
+				entries: Array.isArray(values) ? Object.fromEntries(values.map((v) => [v, v])) : values,
 				...normalizeParams(params)
 			});
 		}
@@ -4249,8 +4207,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function superRefine(fn, params) {
 			return /* @__PURE__ */ _superRefine(fn, params);
 		}
-		//#endregion
-		//#region lib/typert-schemas.js
 		const pkg$1 = "@eduwork/workbench-native";
 		const codec = (name, schema) => ({
 			mode: "strict",
@@ -4304,11 +4260,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				reason: string()
 			}).strict())
 		}).strict());
-		//#endregion
-		//#region lib/typert.remote-client.js
 		var typert_remote_client_default = {
 			package: "@eduwork/workbench-native",
 			descriptors: [
+				[
+					"notificationView",
+					[{
+						name: "view",
+						wire: "view",
+						source: "json",
+						codec: codec("NotificationView", object({
+							sessionId: string().max(256),
+							artifactId: string().max(256).optional(),
+							openedKey: string().max(600).optional()
+						}).strict())
+					}],
+					codec("NotificationState", object({
+						desktop: boolean(),
+						delivery: _enum(["available", "unavailable"]),
+						target: object({
+							key: string(),
+							sessionId: string(),
+							artifactId: string().optional()
+						}).strict().nullable()
+					}).strict())
+				],
 				[
 					"inspectImport",
 					[{
@@ -4391,9 +4367,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}))
 		};
-		//#endregion
-		//#region src/updates.ts
-		const h$3 = react.default.createElement;
+		const h$4 = react.default.createElement;
 		const accent = "var(--dsw-alias-state-business-primary, #3575ef)";
 		const border$1 = "var(--dsw-alias-border-l2, #ddd)";
 		const button = {
@@ -4516,14 +4490,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			if (!c?.enabled) return null;
 			const progress = percent(c);
 			const message = c.state === "available" ? `发现内容更新 r${c.latestRevision} · ${size(c.totalBytes)}` : c.state === "checking" ? "正在检查内容更新…" : c.state === "downloading" ? "正在下载内容更新…" : c.state === "ready" ? "已下载并校验，下次启动生效。" : c.state === "requires_software" ? "此内容更新需要先升级到兼容的软件版本。" : c.state === "error" ? c.message : "当前内容已是最新版本";
-			return h$3("div", {
+			return h$4("div", {
 				"data-eduwork-content-update": true,
 				style: {
 					marginTop: 16,
 					paddingTop: 16,
 					borderTop: `1px solid ${border$1}`
 				}
-			}, h$3("div", { style: { fontSize: 14 } }, c.configuration ? c.skills ? "配置与 Skills 更新" : "配置更新" : "Skills 更新"), h$3("p", { style: note }, [c.configuration && `配置 ${c.configurationRevision ? `r${c.configurationRevision}` : "随软件内置"}`, c.skills && `Skills ${c.skillsRevision ? `r${c.skillsRevision}` : "随软件内置"}`].filter(Boolean).join(" · ")), h$3("p", {
+			}, h$4("div", { style: { fontSize: 14 } }, c.configuration ? c.skills ? "配置与 Skills 更新" : "配置更新" : "Skills 更新"), h$4("p", { style: note }, [c.configuration && `配置 ${c.configurationRevision ? `r${c.configurationRevision}` : "随软件内置"}`, c.skills && `Skills ${c.skillsRevision ? `r${c.skillsRevision}` : "随软件内置"}`].filter(Boolean).join(" · ")), h$4("p", {
 				role: c.state === "error" ? "alert" : "status",
 				style: {
 					...note,
@@ -4531,7 +4505,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					overflowWrap: "anywhere",
 					...c.state === "error" ? { color: "var(--dsw-alias-state-error-primary, #a82332)" } : {}
 				}
-			}, message), c.message && c.state === "current" && h$3("p", { style: note }, c.message), c.state === "downloading" && h$3(react.default.Fragment, null, h$3("div", {
+			}, message), c.message && c.state === "current" && h$4("p", { style: note }, c.message), c.state === "downloading" && h$4(react.default.Fragment, null, h$4("div", {
 				role: "progressbar",
 				"aria-label": "内容下载进度",
 				"aria-valuemin": 0,
@@ -4544,20 +4518,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					overflow: "hidden",
 					background: border$1
 				}
-			}, h$3("div", { style: {
+			}, h$4("div", { style: {
 				width: `${progress}%`,
 				height: "100%",
 				background: accent
-			} })), h$3("p", { style: note }, `${size(c.downloadedBytes)} / ${size(c.totalBytes)} · ${progress}%`)), ["available", "ready"].includes(c.state) && h$3("div", { style: {
+			} })), h$4("p", { style: note }, `${size(c.downloadedBytes)} / ${size(c.totalBytes)} · ${progress}%`)), ["available", "ready"].includes(c.state) && h$4("div", { style: {
 				display: "flex",
 				justifyContent: "flex-end",
 				marginTop: 10
-			} }, h$3("button", {
+			} }, h$4("button", {
 				type: "button",
 				disabled: Boolean(working),
 				style: primary,
 				onClick: () => controller.run(c.state === "available" ? "download-content-update" : "restart-content-update")
-			}, c.state === "available" ? "下载内容更新" : "重启使内容生效")), c.state === "ready" && h$3("p", { style: note }, "可以继续使用；重启前请先完成正在运行的任务。"));
+			}, c.state === "available" ? "下载内容更新" : "重启使内容生效")), c.state === "ready" && h$4("p", { style: note }, "可以继续使用；重启前请先完成正在运行的任务。"));
 		}
 		function UpdatePanel({ controller }) {
 			const { status, error, working } = useUpdates(controller), s = status?.update, c = status?.contentUpdate, state = working || s?.state || status?.phase;
@@ -4573,7 +4547,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"downloading",
 				"ready"
 			].includes(c?.state);
-			const channels = [["stable", "仅公测版"], ["development", "开发版"]];
+			const channels = [["stable", "仅公测版"], ["development", "开发版"]].filter(([value]) => !s?.nativeUI || s.policies?.includes(value));
 			const setPolicy = async (value) => {
 				if (locked || value === policy) return;
 				await controller.run(value === "development" ? "use-development-updates" : "use-stable-updates");
@@ -4581,10 +4555,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 			const progress = percent(s), determinate = state === "downloading" && s?.totalBytes > 0;
 			const message = state === "available" ? `发现新版本 ${s.latestVersion}` : state === "downloading" ? `正在下载 ${s.latestVersion}` : state === "checking" ? "正在检查更新…" : state === "switching" ? "正在切换更新渠道…" : state === "applying" ? "正在退出并安装更新…" : state === "installed" ? "更新已完成" : state === "up_to_date" ? "当前已是最新版本" : null;
-			return h$3("div", { "data-eduwork-update-panel": true }, h$3("div", { style: row }, h$3("div", { style: { minWidth: 0 } }, h$3("div", { style: { fontSize: 14 } }, "自动更新"), h$3("p", { style: {
+			return h$4("div", { "data-eduwork-update-panel": true }, h$4("div", { style: row }, h$4("div", { style: { minWidth: 0 } }, h$4("div", { style: { fontSize: 14 } }, s?.nativeUI ? "macOS 应用更新" : "自动更新"), h$4("p", { style: {
 				...note,
 				overflowWrap: "anywhere"
-			} }, status?.version ? `当前版本 ${status.version}` : "读取当前版本…"), h$3("p", { style: note }, enabled ? "启动时在后台检查，发现新版本后在左下角提示。" : status ? "当前未启用自动更新。" : "正在读取更新状态…")), h$3("button", {
+			} }, status?.version ? `当前版本 ${status.version}` : "读取当前版本…"), h$4("p", { style: note }, s?.nativeUI ? "点击检查后，在系统更新窗口确认下载与安装；配置和数据保留在用户目录。" : enabled ? "启动时在后台检查，发现新版本后在左下角提示。" : status ? "当前未启用自动更新。" : "正在读取更新状态…")), h$4("button", {
 				type: "button",
 				style: {
 					...button,
@@ -4592,7 +4566,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				},
 				disabled: locked || !enabled,
 				onClick: () => controller.run("check-updates")
-			}, state === "checking" ? "检查中…" : "检查更新")), enabled && s && h$3(react.default.Fragment, null, h$3("div", {
+			}, state === "checking" ? "检查中…" : "检查更新")), enabled && s && channels.length > 1 && h$4(react.default.Fragment, null, h$4("div", {
 				role: "radiogroup",
 				"aria-label": "更新渠道",
 				style: {
@@ -4600,7 +4574,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					gap: 8,
 					marginTop: 12
 				}
-			}, ...channels.map(([value, label], index) => h$3("button", {
+			}, ...channels.map(([value, label], index) => h$4("button", {
 				key: value,
 				type: "button",
 				role: "radio",
@@ -4630,21 +4604,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					e.currentTarget.parentElement.children[next].focus();
 					setPolicy(channels[next][0]);
 				}
-			}, label))), h$3("p", { style: {
+			}, label))), h$4("p", { style: {
 				...note,
 				marginTop: 8
-			} }, policy === "development" ? "接收开发版及更新的公测版。" : "仅接收公测版；切换渠道不会降级。")), message && s?.enabled !== false && h$3("div", { style: {
+			} }, policy === "development" ? "接收开发版及更新的公测版。" : "仅接收公测版；切换渠道不会降级。")), message && s?.enabled !== false && h$4("div", { style: {
 				...row,
 				alignItems: "center",
 				marginTop: 12
-			} }, h$3("span", {
+			} }, h$4("span", {
 				role: "status",
 				"aria-live": "polite",
 				style: {
 					fontSize: 12,
 					color: secondary
 				}
-			}, message), state === "available" && s && h$3("button", {
+			}, message), state === "available" && s && h$4("button", {
 				type: "button",
 				style: primary,
 				onClick: () => controller.run("download-update")
@@ -4652,7 +4626,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"checking",
 				"downloading",
 				"applying"
-			].includes(state) && h$3("div", null, h$3("style", null, "@keyframes eduwork-update-progress{from{transform:translateX(-100%)}to{transform:translateX(334%)}}[data-eduwork-update-indeterminate]{animation:eduwork-update-progress 1.4s linear infinite}@media(prefers-reduced-motion:reduce){[data-eduwork-update-indeterminate]{animation:none}}"), h$3("div", {
+			].includes(state) && h$4("div", null, h$4("style", null, "@keyframes eduwork-update-progress{from{transform:translateX(-100%)}to{transform:translateX(334%)}}[data-eduwork-update-indeterminate]{animation:eduwork-update-progress 1.4s linear infinite}@media(prefers-reduced-motion:reduce){[data-eduwork-update-indeterminate]{animation:none}}"), h$4("div", {
 				role: "progressbar",
 				"aria-label": state === "downloading" ? "更新下载进度" : "更新处理进度",
 				"aria-valuemin": 0,
@@ -4665,7 +4639,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					borderRadius: 999,
 					background: border$1
 				}
-			}, h$3("div", {
+			}, h$4("div", {
 				"data-eduwork-update-indeterminate": determinate ? void 0 : true,
 				style: {
 					width: determinate ? `${progress}%` : "30%",
@@ -4674,41 +4648,41 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					background: accent,
 					transition: determinate ? "width .2s ease" : void 0
 				}
-			})), state === "downloading" && h$3("div", { style: {
+			})), state === "downloading" && h$4("div", { style: {
 				...row,
 				marginTop: 6,
 				fontSize: 11,
 				color: secondary,
 				fontVariantNumeric: "tabular-nums"
-			} }, h$3("span", { style: {
+			} }, h$4("span", { style: {
 				minWidth: 0,
 				overflowWrap: "anywhere"
-			} }, s?.fileName || "正在下载发行包"), h$3("span", { style: { flexShrink: 0 } }, determinate ? `${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%` : "正在连接…")), state === "downloading" && h$3("p", { style: note }, "下载期间可以继续对话，关闭此面板不影响下载。")), state === "ready" && h$3("div", { style: {
+			} }, s?.fileName || "正在下载发行包"), h$4("span", { style: { flexShrink: 0 } }, determinate ? `${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%` : "正在连接…")), state === "downloading" && h$4("p", { style: note }, "下载期间可以继续对话，关闭此面板不影响下载。")), state === "ready" && h$4("div", { style: {
 				marginTop: 12,
 				padding: 11,
 				border: `1px solid ${border$1}`,
 				borderRadius: 10
-			} }, h$3("p", {
+			} }, h$4("p", {
 				role: "status",
 				style: {
 					margin: 0,
 					fontSize: 12
 				}
-			}, s.installOnNextStart ? `版本 ${s.latestVersion} 已校验，将在下次启动时安装。` : `版本 ${s.latestVersion} 已下载并校验。`), h$3("p", { style: note }, "可继续使用当前版本。重启安装前，请先完成正在运行的任务。"), h$3("div", { style: {
+			}, s.installOnNextStart ? `版本 ${s.latestVersion} 已校验，将在下次启动时安装。` : `版本 ${s.latestVersion} 已下载并校验。`), h$4("p", { style: note }, "可继续使用当前版本。重启安装前，请先完成正在运行的任务。"), h$4("div", { style: {
 				display: "flex",
 				justifyContent: "flex-end",
 				flexWrap: "wrap",
 				gap: 8,
 				marginTop: 10
-			} }, !s.installOnNextStart && h$3("button", {
+			} }, !s.installOnNextStart && h$4("button", {
 				type: "button",
 				style: button,
 				onClick: () => controller.run("schedule-update")
-			}, "下次启动时安装"), h$3("button", {
+			}, "下次启动时安装"), h$4("button", {
 				type: "button",
 				style: primary,
 				onClick: () => controller.run("install-update")
-			}, "立即重启更新"))), !busy && (error || s?.error) && h$3("p", {
+			}, "立即重启更新"))), !busy && (error || s?.error) && h$4("p", {
 				role: "alert",
 				style: {
 					...note,
@@ -4716,11 +4690,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					color: "var(--dsw-alias-state-error-primary, #a82332)",
 					overflowWrap: "anywhere"
 				}
-			}, error || s.error), h$3(ContentPanel, {
+			}, error || s.error), h$4(ContentPanel, {
 				controller,
 				content: c,
 				working
-			}), status?.url && h$3("a", {
+			}), status?.url && h$4("a", {
 				href: status.url,
 				target: "_blank",
 				rel: "noopener noreferrer",
@@ -4755,7 +4729,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"ready",
 				"requires_software"
 			].includes(c.state));
-			return h$3(react.default.Fragment, null, visible && h$3("button", {
+			return h$4(react.default.Fragment, null, visible && h$4("button", {
 				type: "button",
 				"aria-label": "查看更新",
 				title: "查看软件及内容更新",
@@ -4779,7 +4753,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					whiteSpace: "nowrap",
 					fontFamily: "system-ui, sans-serif"
 				}
-			}, label), open && (0, react_dom.createPortal)(h$3("div", {
+			}, label), open && (0, react_dom.createPortal)(h$4("div", {
 				style: {
 					position: "fixed",
 					inset: 0,
@@ -4792,7 +4766,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				onMouseDown: (e) => {
 					if (e.target === e.currentTarget) controller.close();
 				}
-			}, h$3("section", {
+			}, h$4("section", {
 				role: "dialog",
 				"aria-modal": true,
 				"aria-label": "更新",
@@ -4808,24 +4782,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					color: "var(--dsw-alias-label-primary, #222)",
 					boxShadow: "0 20px 70px #0003"
 				}
-			}, h$3("div", { style: {
+			}, h$4("div", { style: {
 				display: "flex",
 				justifyContent: "space-between",
 				alignItems: "center",
 				marginBottom: 18
-			} }, h$3("h2", { style: {
+			} }, h$4("h2", { style: {
 				fontSize: 20,
 				margin: 0
-			} }, "更新"), h$3("button", {
+			} }, "更新"), h$4("button", {
 				type: "button",
 				"aria-label": "关闭更新面板",
 				onClick: controller.close,
 				style: button
-			}, "×")), h$3(UpdatePanel, { controller }))), document.body));
+			}, "×")), h$4(UpdatePanel, { controller }))), document.body));
 		}
-		//#endregion
-		//#region src/data-import.ts
-		const h$2 = react.default.createElement;
+		const h$3 = react.default.createElement;
 		function DataImportPanel({ service }) {
 			const [job, setJob] = (0, react.useState)(null), [error, setError] = (0, react.useState)(""), [choosing, setChoosing] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
@@ -4885,38 +4857,38 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: "inherit",
 				cursor: "pointer"
 			};
-			return h$2("section", {
+			return h$3("section", {
 				"data-eduwork-data-import": true,
 				style: {
 					padding: "16px 0",
 					borderBottom: "1px solid var(--dsw-alias-border-l2, #ddd)"
 				}
-			}, h$2("h3", { style: {
+			}, h$3("h3", { style: {
 				fontSize: 14,
 				margin: "0 0 12px"
-			} }, "导入历史数据"), h$2("p", { style: {
+			} }, "导入历史数据"), h$3("p", { style: {
 				fontSize: 13,
 				lineHeight: 1.7
-			} }, "选择旧客户端的程序根目录（包含程序和 data 文件夹）。合并会话及程序目录内的工作区、附件；重复内容跳过，冲突会话保留为副本。请先退出旧客户端。"), h$2("button", {
+			} }, "选择旧客户端的程序根目录（包含程序和 data 文件夹）。合并会话及程序目录内的工作区、附件；重复内容跳过，冲突会话保留为副本。请先退出旧客户端。"), h$3("button", {
 				type: "button",
 				disabled: busy,
 				style: button,
 				onClick: start
-			}, scanning ? "正在检查…" : busy ? "正在处理…" : "选择旧客户端目录并检查"), job?.state === "ready" && h$2("div", { style: {
+			}, scanning ? "正在检查…" : busy ? "正在处理…" : "选择旧客户端目录并检查"), job?.state === "ready" && h$3("div", { style: {
 				display: "flex",
 				gap: 8,
 				marginTop: 12
-			} }, h$2("button", {
+			} }, h$3("button", {
 				type: "button",
 				disabled: busy || !job.total,
 				style: button,
 				onClick: confirm
-			}, `导入 ${job.total} 个可读会话`), h$2("button", {
+			}, `导入 ${job.total} 个可读会话`), h$3("button", {
 				type: "button",
 				disabled: busy,
 				style: button,
 				onClick: cancel
-			}, "取消")), (scanning || job?.state === "running") && h$2("progress", {
+			}, "取消")), (scanning || job?.state === "running") && h$3("progress", {
 				"aria-label": scanning ? "兼容性检查进度" : "数据导入进度",
 				max: (scanning ? job.found : job.total) || 1,
 				...(scanning ? job.found : job.total) ? { value: scanning ? job.scanned : job.completed } : {},
@@ -4926,29 +4898,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					marginTop: 12,
 					accentColor: "var(--dsw-alias-state-business-primary)"
 				}
-			}), job?.targetFormat > 0 && h$2("p", { style: { fontSize: 12 } }, `来源客户端：${job.sourceVersion || "未标注"}；发现会话格式：${job.formats.map((v) => `v${v}`).join("、") || "未识别"}；本机支持至 v${job.targetFormat}。兼容性以会话格式为准。`), job?.message && h$2("p", {
+			}), job?.targetFormat > 0 && h$3("p", { style: { fontSize: 12 } }, `来源客户端：${job.sourceVersion || "未标注"}；发现会话格式：${job.formats.map((v) => `v${v}`).join("、") || "未识别"}；本机支持至 v${job.targetFormat}。兼容性以会话格式为准。`), job?.message && h$3("p", {
 				role: job.state === "error" ? "alert" : "status",
 				style: { fontSize: 13 }
-			}, job.message), error && h$2("p", { role: "alert" }, error), job?.issues?.length > 0 && h$2("details", { open: job.state === "ready" }, h$2("summary", null, `无法导入（${job.issues.length} 项）`), h$2("ul", null, ...job.issues.map((row, i) => h$2("li", {
+			}, job.message), error && h$3("p", { role: "alert" }, error), job?.issues?.length > 0 && h$3("details", { open: job.state === "ready" }, h$3("summary", null, `无法导入（${job.issues.length} 项）`), h$3("ul", null, ...job.issues.map((row, i) => h$3("li", {
 				key: i,
 				style: {
 					fontSize: 12,
 					overflowWrap: "anywhere"
 				}
-			}, `${row.path}：${row.reason}`)))), job?.warnings?.length > 0 && h$2("details", null, h$2("summary", null, `导入说明（${job.warnings.length} 项）`), h$2("ul", null, ...job.warnings.map((text, i) => h$2("li", {
+			}, `${row.path}：${row.reason}`)))), job?.warnings?.length > 0 && h$3("details", null, h$3("summary", null, `导入说明（${job.warnings.length} 项）`), h$3("ul", null, ...job.warnings.map((text, i) => h$3("li", {
 				key: i,
 				style: {
 					fontSize: 12,
 					overflowWrap: "anywhere"
 				}
-			}, text)))), job?.state === "complete" && h$2("p", { style: { fontSize: 12 } }, "导入记录已保存。完成当前任务后重新打开客户端，即可查看导入的会话。"), h$2("p", { style: {
+			}, text)))), job?.state === "complete" && h$3("p", { style: { fontSize: 12 } }, "导入记录已保存。完成当前任务后重新打开客户端，即可查看导入的会话。"), h$3("p", { style: {
 				fontSize: 12,
 				color: "var(--dsw-alias-label-secondary)"
 			} }, "已有数据、模型配置和登录信息不变。跨机时，程序目录之外的项目文件需要另外复制。"));
 		}
-		//#endregion
-		//#region src/concurrency.ts
-		const h$1 = react.default.createElement;
+		const h$2 = react.default.createElement;
 		function ConcurrencySettings({ scope }) {
 			const snapshot = (0, react.useSyncExternalStore)((listener) => scope.subscribe(listener), () => scope.getSnapshot(), () => scope.getSnapshot());
 			const limit = snapshot.value?.maxConcurrentRequests;
@@ -4979,23 +4949,23 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: "inherit",
 				fontSize: 13
 			};
-			return h$1("section", {
+			return h$2("section", {
 				"data-eduwork-concurrency": true,
 				style: {
 					padding: "16px 0",
 					borderBottom: "1px solid var(--dsw-alias-border-l2, #ddd)"
 				}
-			}, h$1("div", { style: {
+			}, h$2("div", { style: {
 				display: "flex",
 				justifyContent: "space-between",
 				alignItems: "flex-start",
 				gap: 16
-			} }, h$1("div", null, h$1("div", { style: { fontSize: 14 } }, "模型请求总并发"), h$1("p", { style: {
+			} }, h$2("div", null, h$2("div", { style: { fontSize: 14 } }, "模型请求总并发"), h$2("p", { style: {
 				margin: "4px 0 0",
 				fontSize: 12,
 				color: "var(--dsw-alias-label-secondary)",
 				lineHeight: 1.55
-			} }, limit === void 0 ? "正在读取并发设置…" : `当前客户端的主会话和子代理共用上限，同时最多 ${limit} 个模型请求。`)), h$1("form", {
+			} }, limit === void 0 ? "正在读取并发设置…" : `当前客户端的主会话和子代理共用上限，同时最多 ${limit} 个模型请求。`)), h$2("form", {
 				style: {
 					display: "flex",
 					gap: 8,
@@ -5005,7 +4975,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					e.preventDefault();
 					save();
 				}
-			}, h$1("input", {
+			}, h$2("input", {
 				type: "number",
 				min: 1,
 				max: 64,
@@ -5018,7 +4988,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					width: 64
 				},
 				onChange: (e) => setDraft(e.target.value)
-			}), h$1("button", {
+			}), h$2("button", {
 				type: "submit",
 				disabled: saving || snapshot.status !== "ready" || !valid || value === limit,
 				style: {
@@ -5026,12 +4996,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					whiteSpace: "nowrap",
 					cursor: "pointer"
 				}
-			}, saving ? "保存中…" : "保存"))), h$1("p", { style: {
+			}, saving ? "保存中…" : "保存"))), h$2("p", { style: {
 				margin: "8px 0 0",
 				fontSize: 12,
 				color: "var(--dsw-alias-label-secondary)",
 				lineHeight: 1.55
-			} }, "超出的模型请求排队；代理任务数可以更多。保存后生效，已运行的请求会正常完成。"), error && h$1("p", {
+			} }, "超出的模型请求排队；代理任务数可以更多。保存后生效，已运行的请求会正常完成。"), error && h$2("p", {
 				role: "alert",
 				style: {
 					fontSize: 12,
@@ -5039,13 +5009,169 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}, error));
 		}
-		//#endregion
-		//#region lib/directory-picker.js
+		const h$1 = react.default.createElement;
+		const labels = {
+			enabled: "桌面弹窗",
+			attention: "需求确认与授权",
+			completed: "任务完成",
+			failed: "任务失败或受阻",
+			studio: "Studio 成果完成",
+			sound: "通知声音",
+			preview: "显示会话与成果标题"
+		};
+		function NotificationSettings({ scope, status }) {
+			const snapshot = (0, react.useSyncExternalStore)((listener) => scope.subscribe(listener), () => scope.getSnapshot(), () => scope.getSnapshot());
+			const native = (0, react.useSyncExternalStore)(status.subscribe, status.getSnapshot, status.getSnapshot);
+			const [saving, setSaving] = (0, react.useState)(""), [error, setError] = (0, react.useState)("");
+			if (!native.desktop) return null;
+			const save = async (key, value) => {
+				setSaving(key);
+				setError("");
+				try {
+					await scope.set(key, value);
+					if (scope.getSnapshot().value?.[key] !== value) throw Error("通知设置未保存，请重试。");
+				} catch (cause) {
+					setError(cause.message);
+				} finally {
+					setSaving("");
+				}
+			};
+			return h$1("section", {
+				"data-eduwork-notifications": true,
+				style: {
+					padding: "16px 0",
+					borderBottom: "1px solid var(--dsw-alias-border-l2)"
+				}
+			}, h$1("div", { style: { fontSize: 14 } }, "桌面通知"), h$1("p", { style: {
+				fontSize: 12,
+				color: "var(--dsw-alias-label-secondary)",
+				lineHeight: 1.6
+			} }, "应用在后台运行时提醒；点击返回对应会话。关闭弹窗后，托盘仍保留待处理事项。"), h$1("div", { style: {
+				display: "grid",
+				gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))",
+				gap: 8
+			} }, ...Object.entries(labels).map(([key, label]) => h$1("label", {
+				key,
+				style: {
+					display: "flex",
+					alignItems: "center",
+					gap: 8,
+					minHeight: 32,
+					fontSize: 13
+				}
+			}, h$1("input", {
+				type: "checkbox",
+				checked: snapshot.value?.[key] === true,
+				disabled: Boolean(saving) || snapshot.writable !== true,
+				onChange: (event) => {
+					save(key, event.target.checked);
+				}
+			}), label))), h$1("p", { style: {
+				fontSize: 12,
+				color: "var(--dsw-alias-label-secondary)",
+				lineHeight: 1.6
+			} }, "仅在应用仍运行时生效。系统通知权限或勿扰模式可能阻止弹窗；默认不显示内容预览。"), native.delivery === "unavailable" && h$1("p", {
+				role: "status",
+				style: { fontSize: 12 }
+			}, "系统通知暂不可用，可从托盘查看待处理事项。"), error && h$1("p", {
+				role: "alert",
+				style: {
+					fontSize: 12,
+					color: "var(--dsw-alias-state-error-primary)"
+				}
+			}, error));
+		}
+		function installNotificationNavigation(ctx, invoke, environment = window) {
+			let disposed = false, busy = false, timer, openedKey, navigation = 0, visibleArtifact;
+			let snapshot = {
+				desktop: false,
+				delivery: "available"
+			};
+			const listeners = /* @__PURE__ */ new Set();
+			const status = {
+				getSnapshot: () => snapshot,
+				subscribe: (listener) => {
+					listeners.add(listener);
+					return () => listeners.delete(listener);
+				}
+			};
+			const current = () => ctx.sessions.list.getSnapshot().current ?? "";
+			const poll = async () => {
+				if (disposed || busy) return;
+				busy = true;
+				try {
+					const result = await invoke({
+						sessionId: current(),
+						...openedKey ? { openedKey } : {},
+						...visibleArtifact?.sessionId === current() ? { artifactId: visibleArtifact.artifactId } : {}
+					});
+					if (disposed) return;
+					openedKey = void 0;
+					if (snapshot.desktop !== result.desktop || snapshot.delivery !== result.delivery) {
+						snapshot = {
+							desktop: result.desktop,
+							delivery: result.delivery
+						};
+						listeners.forEach((listener) => listener());
+					}
+					const target = result.target;
+					if (target) {
+						const ownNavigation = ++navigation;
+						ctx.uiWorkspace.openSession(target.sessionId);
+						if (target.artifactId) for (let attempt = 0; attempt < 20; attempt++) {
+							await new Promise((resolve) => environment.setTimeout(resolve, 50));
+							if (disposed || ownNavigation !== navigation || current() !== target.sessionId) return;
+							try {
+								ctx.get("sidebarRight").openTab("knowledge-studio", { params: { artifactId: target.artifactId } });
+								break;
+							} catch (error) {
+								if (attempt === 19) throw error;
+							}
+						}
+						openedKey = target.key;
+					}
+				} catch {} finally {
+					busy = false;
+					if (!disposed) {
+						environment.clearTimeout(timer);
+						timer = environment.setTimeout(poll, 1e3);
+					}
+				}
+			};
+			const focus = () => {
+				if (visibleArtifact && visibleArtifact.sessionId !== current()) visibleArtifact = void 0;
+				poll();
+			};
+			const studioVisibility = (event) => {
+				const value = event.detail;
+				if (value?.sessionId !== current() || typeof value.artifactId !== "string" || !/^artifact_[a-f0-9]{32}$/.test(value.artifactId)) return;
+				if (value.visible === true) visibleArtifact = {
+					sessionId: value.sessionId,
+					artifactId: value.artifactId
+				};
+				else if (value.visible === false && visibleArtifact?.artifactId === value.artifactId) visibleArtifact = void 0;
+				focus();
+			};
+			const unsubscribe = ctx.sessions.list.subscribe(focus);
+			environment.addEventListener("focus", focus);
+			environment.addEventListener("eduwork:studio-visibility", studioVisibility);
+			poll();
+			return {
+				status,
+				close() {
+					disposed = true;
+					navigation++;
+					environment.clearTimeout(timer);
+					environment.removeEventListener("focus", focus);
+					environment.removeEventListener("eduwork:studio-visibility", studioVisibility);
+					unsubscribe();
+					listeners.clear();
+				}
+			};
+		}
 		async function pickImportDirectory(workspace, bridge = globalThis.go?.main?.Startup) {
 			return (typeof bridge?.PickDirectory === "function" ? await bridge.PickDirectory() : await workspace.pickDirectory()) || null;
 		}
-		//#endregion
-		//#region node_modules/@chatecnu-work/dsh-skill-manager-native/lib/typert-schemas.js
 		const skillSummarySchema = object({
 			name: string().min(1).max(64),
 			description: string().min(1).max(1024),
@@ -5080,8 +5206,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}).strict();
 		const sourcePathSchema = string().min(1).max(4096);
 		const skillNameSchema = string().min(1).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
-		//#endregion
-		//#region node_modules/@chatecnu-work/dsh-skill-manager-native/lib/typert.remote-client.js
 		const pkg = "@chatecnu-work/dsh-skill-manager-native";
 		const source = {
 			file: "dsh-plugins/skill-manager-native/lib/index.js",
@@ -5107,8 +5231,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				descriptor("trashPersonalSkill", [jsonParameter("name", skillNameSchema, `${pkg}#SkillName`)], skillSummaryResult)
 			]
 		};
-		//#endregion
-		//#region node_modules/@chatecnu-work/dsh-skill-settings-native/lib/policy.js
 		const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 		const SKILL_ALIASES = Object.freeze({
 			documents: "artifact-documents",
@@ -5148,8 +5270,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				enabled: [...enabledNames].sort()
 			};
 		}
-		//#endregion
-		//#region lib/view-model.js
 		const bundledSkillCatalog = Object.freeze([
 			Object.freeze({
 				name: "artifact-documents",
@@ -5290,8 +5410,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			return [...rows.values()];
 		}
-		//#endregion
-		//#region src/client.ts
 		const inject = [
 			"slots",
 			"remote",
@@ -5404,8 +5522,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				try {
 					const path = await service.pickDirectory();
 					if (path === null) return;
-					const imported = await service.importDirectory(path);
-					setNotice(`已导入技能“${imported.name}”。`);
+					setNotice(`已导入技能“${(await service.importDirectory(path)).name}”。`);
 					await refresh();
 				} catch (cause) {
 					setError(cause instanceof Error ? cause.message : String(cause));
@@ -5890,6 +6007,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		async function apply(ctx) {
 			const unmount = await ctx.remote.$mount(typert_remote_client_default), unmountSkills = await ctx.remote.$mount(TYPERT_REMOTE);
 			ctx.inject(["remote.workbench", "remote.skillManager"], (inner) => {
+				const notifications = installNotificationNavigation(inner, (view) => unwrap(inner.remote.workbench.notificationView(view)));
+				inner.on("dispose", () => notifications.close());
+				const notificationScope = inner.settingsScope.bind({ namespace: "eduwork-notifications" });
+				inner.slots.inject("settings.general.item", () => inner.slots.register({
+					name: "settings.general.item",
+					id: "eduwork-notifications",
+					order: 19,
+					inject: () => ({
+						scope: notificationScope,
+						status: notifications.status
+					})
+				}, NotificationSettings));
 				const service = {
 					settings: inner.settingsScope.bind({ namespace: "chatecnu-skills" }),
 					hasSession: () => Boolean(inner.sessions.list.getSnapshot().current),
@@ -5962,7 +6091,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				await unmount();
 			};
 		}
-		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;
 		return module.exports;

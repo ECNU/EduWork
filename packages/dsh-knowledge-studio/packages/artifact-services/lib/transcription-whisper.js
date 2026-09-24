@@ -1,41 +1,9 @@
-import {spawn} from 'node:child_process'
-import {open,readFile,realpath,stat,mkdtemp,writeFile,copyFile,unlink} from 'node:fs/promises'
+import {readFile,realpath,mkdtemp,copyFile,unlink} from 'node:fs/promises'
 import {join,isAbsolute,relative} from 'node:path'
 import {getMediaFFmpegPath} from './runtime.js'
 import {waveDuration} from './speech.js'
 import {transcriptionInput} from './transcription.js'
-
-async function localFile(path) {
-  if(!path||!isAbsolute(path))throw new Error('Configure an absolute local transcription runtime/model path')
-  const resolved=await realpath(path)
-  if(!(await stat(resolved)).isFile())throw new Error('Local transcription component is unavailable')
-  return resolved
-}
-
-async function run(executable,args,directory,stage,signal) {
-  signal?.throwIfAborted()
-  const out=await open(join(directory,stage+'.stdout.log'),'wx'),err=await open(join(directory,stage+'.stderr.log'),'wx')
-  try {
-    const startedAt=new Date().toISOString()
-    let pid,exitCode,startReceipt
-    try {await new Promise((resolve,reject)=>{
-      const child=spawn(executable,args,{cwd:directory,windowsHide:true,shell:false,signal,stdio:['ignore',out.fd,err.fd]})
-      pid=child.pid
-      startReceipt=writeFile(join(directory,stage+'.process.json'),JSON.stringify({pid,startedAt,status:'running'}))
-      // Retain the logging error until the child closes; do not detach inference.
-      startReceipt.catch(()=>{})
-      // Wait for close (including on cancellation), so no child retains output handles.
-      let failed
-      child.once('error',error=>{failed=error})
-      child.once('close',code=>{
-        exitCode=code
-        if(signal?.aborted)reject(signal.reason)
-        else if(failed||code!==0)reject(new Error(`Local transcription ${stage} failed; inspect the job logs`))
-        else resolve()
-      })
-    })} finally {await startReceipt;await writeFile(join(directory,stage+'.process.json'),JSON.stringify({pid,startedAt,finishedAt:new Date().toISOString(),exitCode,cancelled:Boolean(signal?.aborted)}))}
-  } finally {await out.close();await err.close()}
-}
+import {localFile,run} from './transcription-local.js'
 
 /** Optional CPU CLI adapter; registration/invocation never installs or downloads. */
 export function createWhisperCppTranscriptionProvider({id='whisper-cpp',title='Local Whisper (CPU)',executablePath,modelPath,model='whisper-tiny-q5_1',threads=4,ffmpegPath,maxDurationSeconds=3600}={}) {

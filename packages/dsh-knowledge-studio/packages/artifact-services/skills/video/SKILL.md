@@ -19,7 +19,7 @@ description: 用共享媒体工具制作或修改视频，支持结构化模板�
 4. `video_project` 的 `voiceover-jobs` 返回待合成段落和 `jobHash`。对未就绪段调用 `speech_synthesize`，原样传入文本、音色和语速，使用所选 provider；随后用 `stage-voiceover` 传回 `scene-id`、`job-hash` 和真实音频绝对路径。不要生成一条长音轨再按猜测拆时长。
 5. 素材通过 `stage` 放入项目 `public/`。通过 `stage-bgm` 选曲库内带许可证和哈希的曲目。引用本地素材使用 `staticFile()`；不在渲染时下载远程素材。
 6. 调用 `validate`，检查实际时长、时间轴和字幕状态。修改旁白或音色后，旧的音频绑定不能继续当作有效配音。失败时报告具体阶段，保留可修改的源码。
-7. 调用 `render`，得到 MP4、封面和首/中/尾质检帧。实际查看画面并试听成片，再交付。若宿主提供 `artifact_publish`，使用其正常成果登记链路。
+7. 调用 `render`，得到 MP4、封面和首/中/尾质检帧。实际查看画面并试听成片，再交付。若需要独立文件卡片，优先使用宿主的 `present` 登记最终成片；旧宿主仅提供 `artifact_publish` 时可使用该工具。
 
 ## 时间轴与验收
 

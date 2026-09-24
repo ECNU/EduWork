@@ -7,8 +7,19 @@ on:
       - 'dsh-electron/tests/sparkle-macos-smoke.mjs'
       - 'dsh-electron/src/initialize-user-config.mjs'
       - 'dsh-electron/src/product.mjs'
+      - 'dsh-electron/src/dock-theme-preload.cjs'
+      - 'dsh-electron/scripts/build-dock-plugin.mjs'
+      - 'dsh-electron/tests/dock-*'
+      - 'dsh-plugins/client-ui-branding/src/client/**'
+      - 'assets/eduwork/dock-*.png'
+      - 'assets/eduwork/icon*-1024.png'
       - 'dsh-electron/scripts/build-shell.mjs'
       - 'dsh-electron/tests/tray-icon.electron.mjs'
+      - 'dsh-electron/tests/task-notifications.electron.mjs'
+      - 'dsh-electron/tests/task-notifications.test.mjs'
+      - 'dsh-electron/src/task-notifications.mjs'
+      - 'dsh-electron/src/desktop-brand.mjs'
+      - 'dsh-plugins/desktop-services/lib/attention.js'
       - 'assets/eduwork/tray-black.png'
       - 'dsh-electron/tests/user-config-electron-smoke.mjs'
       - 'dsh-electron/sparkle.lock.json'
@@ -40,6 +51,14 @@ jobs:
           node "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/install.js"
       - name: Verify the native menu bar image
         run: '"$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/tray-icon.electron.mjs'
+      - name: Verify native Dock theme and signed plugin
+        run: |
+          node --test dsh-electron/tests/dock-plugin.test.mjs
+          "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/dock-theme.electron.mjs
+      - name: Verify native notification adapter and tray navigation
+        run: |
+          node --test dsh-electron/tests/task-notifications.test.mjs
+          EDUWORK_TEST_EVIDENCE="$RUNNER_TEMP/sparkle-check/evidence" "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/task-notifications.electron.mjs
       - name: Verify user configuration initialization in Electron
         run: node dsh-electron/tests/user-config-electron-smoke.mjs "$RUNNER_TEMP/sparkle-check" "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron"
       - name: Verify native bridge and signed replacement

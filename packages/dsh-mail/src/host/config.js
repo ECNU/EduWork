@@ -4,20 +4,24 @@ import { DEFAULTS, SETTINGS_NAMESPACE } from './constants.js'
 export const MailSettingsSchema = z.object({
   readEnabled: z.boolean().default(DEFAULTS.readEnabled),
   sendEnabled: z.boolean().default(DEFAULTS.sendEnabled),
-  email: z.string().default(DEFAULTS.email),
-  username: z.string().default(DEFAULTS.username),
-  fromName: z.string().default(DEFAULTS.fromName),
-  inboxFolder: z.string().default(DEFAULTS.inboxFolder),
-  imapHost: z.string().default(DEFAULTS.imapHost),
-  imapPort: z.number().default(DEFAULTS.imapPort),
+  email: z.string().pattern(/^[^\r\n\u0000]*$/u).default(DEFAULTS.email),
+  username: z.string().pattern(/^[^\r\n\u0000]*$/u).default(DEFAULTS.username),
+  fromName: z.string().pattern(/^[^\r\n\u0000]*$/u).default(DEFAULTS.fromName),
+  inboxFolder: z.string().pattern(/^[^\r\n\u0000]*$/u).default(DEFAULTS.inboxFolder),
+  imapHost: z.string().pattern(/^[^\r\n\u0000]*$/u).default(DEFAULTS.imapHost),
+  imapPort: z.number().step(1).min(1).max(65535).default(DEFAULTS.imapPort),
   imapTls: z.union(['implicit', 'starttls']).default(DEFAULTS.imapTls),
-  smtpHost: z.string().default(DEFAULTS.smtpHost),
-  smtpPort: z.number().default(DEFAULTS.smtpPort),
+  smtpHost: z.string().pattern(/^[^\r\n\u0000]*$/u).default(DEFAULTS.smtpHost),
+  smtpPort: z.number().step(1).min(1).max(65535).default(DEFAULTS.smtpPort),
   smtpTls: z.union(['implicit', 'starttls']).default(DEFAULTS.smtpTls),
-  maxBodyChars: z.number().default(DEFAULTS.maxBodyChars),
-  maxMessageBytes: z.number().default(DEFAULTS.maxMessageBytes),
-  maxAttachmentBytes: z.number().default(DEFAULTS.maxAttachmentBytes),
+  maxBodyChars: z.number().step(1).min(1_000).max(200_000).default(DEFAULTS.maxBodyChars),
+  maxMessageBytes: z.number().step(1).min(1_048_576).max(104_857_600).default(DEFAULTS.maxMessageBytes),
+  maxAttachmentBytes: z.number().step(1).min(1_024).max(104_857_600).default(DEFAULTS.maxAttachmentBytes),
 })
+
+export const Config = typeof z.string().volatile === 'function'
+  ? z.object(Object.fromEntries(Object.entries(MailSettingsSchema.dict).map(([key, field]) => [key, field.volatile()])))
+  : undefined
 
 export function settingsBase(config = {}) {
   const base = { ...DEFAULTS }

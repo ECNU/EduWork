@@ -23,7 +23,7 @@ const record = z.object({
   userEditedAt: nullableText.optional(), userPinnedAt: nullableText.optional(), previousContent: nullableText.optional(), revision: z.number().int().positive().optional(),
   createdAt: z.string(), updatedAt: z.string(), accessedAt: nullableText, accessCount: z.number().int().nonnegative(),
 }).strict()
-const result = (typeSymbol, schema) => ({ mode: 'strict', typeSymbol, schema })
+const result = (typeSymbol, schema) => ({ mode: 'strict', create() { return this.schema }, typeSymbol, schema })
 const parameter = (name, max, typeSymbol) => ({
   name, wire: name, source: 'json', codec: result(typeSymbol, z.string().max(max)),
 })

@@ -8,6 +8,23 @@ export function enabledOptionalPresets(value) {
   return [...new Set(values.filter(item => OPTIONAL_PRESETS.includes(item)))]
 }
 
+// DSH 0.1.7 owns definition activation and session generations. The product
+// only chooses which of its optional built-ins is enabled via the native
+// plugin manager; no copied preset directories or private registry remain.
+export async function syncNativeOptionalPresets(ctx, selected) {
+  const enabled = new Set(enabledOptionalPresets(selected))
+  if (OPTIONAL_PRESETS.includes(ctx.agentPresets.defaultId) && !enabled.has(ctx.agentPresets.defaultId)) {
+    await ctx.settings.update('agent-preset-registry', { selectedDefault: 'standard' })
+  }
+  for (const id of OPTIONAL_PRESETS) {
+    const plugin = (await ctx.pluginManager.listPlugins()).find(row => row.patchId === `preset-${id}`)
+    if (!plugin) throw new Error(`Missing official preset entry: ${id}`)
+    if (plugin.enabled === enabled.has(id)) continue
+    const result = await ctx.pluginManager.setPluginEnabled(plugin.entryId, enabled.has(id))
+    if (result.application !== 'applied') throw new Error(`Preset ${id} was not applied: ${result.error?.code ?? result.application}`)
+  }
+}
+
 export async function isPresetDirectory(directory) {
   try {
     return (await stat(resolve(directory, 'agent.cordis.yml'))).isFile()

@@ -28,7 +28,7 @@ const jwt = claims => {
 
 async function fixture(t, mode = 'oidc', metadataChanges = {}) {
   const profile = normalizeEnterpriseProfile(profileRaw(mode)), records = new Map(), calls = []
-  const controls = { user: 'alice', omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined }
+  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined }
   let authorization, callbackResult, serial = 0
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
     set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
@@ -48,7 +48,7 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}) {
           assert.equal(createHash('sha256').update(init.body.get('code_verifier')).digest('base64url'), authorization.searchParams.get('code_challenge'))
         }
         const access = 'synthetic-access-' + (++serial), now = Math.floor(Date.now() / 1000)
-        const raw = { access_token: access, refresh_token: 'synthetic-refresh-' + serial, token_type: 'Bearer', expires_in: 1800,
+        const raw = { access_token: access, refresh_token: 'synthetic-refresh-' + serial, token_type: 'Bearer', expires_in: controls.expiresIn,
           scope: controls.scope ?? authorization.searchParams.get('scope') }
         if (mode === 'oidc' && !controls.omitID && (!refresh || controls.refreshID)) {
           raw.id_token = jwt({ iss: base, aud: 'public-client', sub: 'alice', exp: now + 1800, iat: now,
@@ -78,6 +78,39 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}) {
   }
   return { profile, backend, records, calls, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
 }
+
+test('OIDC draft honors short token lifetimes without immediately refreshing the new pair', async t => {
+  const f = await fixture(t)
+  let now = Date.now()
+  f.backend.now = () => now
+  f.controls.expiresIn = 120
+  await f.login()
+  const before = await f.backend.loadSession(f.profile)
+  for (let i = 0; i < 3; i++) assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, before.accessToken)
+  now += 61000
+  const after = await f.backend.resolveGatewayCredential(f.profile.id)
+  assert.notEqual(after.value, before.accessToken)
+  for (let i = 0; i < 3; i++) assert.equal((await f.backend.resolveGatewayCredential(f.profile.id)).value, after.value)
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
+
+test('OIDC draft service POST recovers a 401 with a rotated Access Token', async t => {
+  const f = await fixture(t)
+  await f.login()
+  const fetcher = f.backend.fetch, requests = []
+  const endpoint = base + '/open/api/v1/user/active'
+  f.backend.fetch = async (url, init) => {
+    if (url !== endpoint) return fetcher(url, init)
+    requests.push(init)
+    return json({ status: requests.length === 1 ? 'Unauthorized' : 'Success' }, requests.length === 1 ? 401 : 200)
+  }
+  const response = await f.backend.authorizedFetch(f.profile.id, endpoint, { method: 'POST', body: '{}' }, { retryUnauthorized: true })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).status, 'Success')
+  assert.equal(requests.length, 2)
+  assert.notEqual(requests[0].headers.authorization, requests[1].headers.authorization)
+  assert.equal(f.calls.filter(call => call.body?.get?.('grant_type') === 'refresh_token').length, 1)
+})
 
 test('draft discovery requires explicit mode, static registration, complete contract and trust pins', () => {
   const profile = normalizeEnterpriseProfile(profileRaw())

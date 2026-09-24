@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 
-export const inject = ['slots', 'remote', 'remote.credentials', 'settingsScope']
+declare const __EDUWORK_NATIVE_017__: boolean
+const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+export const inject = ['slots', 'remote', 'remote.credentials', nativeSettings ? 'configForms' : 'settingsScope']
 
 const NS = 'dsh-mail-assistant'
 const PASSWORD_REF = 'DSH_MAIL_ASSISTANT_PASSWORD'
@@ -185,7 +187,7 @@ function MailSettings({ service }: any) {
 }
 
 export function apply(ctx: any) {
-  const service = { scope: ctx.settingsScope.bind({ namespace: NS }), credentials: ctx.remote.credentials }
+  const service = { scope: (nativeSettings ? ctx.configForms.get(NS) : ctx.settingsScope.bind({ namespace: NS })), credentials: ctx.remote.credentials }
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'mail-assistant', order: 25, label: () => copy.nav, inject: () => ({ service }),
   }, MailSettings))

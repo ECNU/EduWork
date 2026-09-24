@@ -25,6 +25,37 @@ The adapter uses the shared FFmpeg resolver, converts to 16 kHz mono PCM, then r
 
 The Windows CLI is invoked with relative ASCII job filenames so Chinese workspace/audio paths work. Node always stages a private `model.bin` copy in the Windows job, then removes it after completion, failure or cancellation; the configured model is never overwritten or hard-linked. This also avoids the CLI's legacy path limit when it combines a deep working directory with an otherwise ASCII model path. Allow temporary space equal to the selected model (approximately 30.7 MiB for tiny-q5_1). The native executable still requires its job's own audio/output paths to fit Windows path limits. Before creating the job or invoking a native process, the adapter checks the planned job path including its suffix and output filename; paths reaching 260 characters receive an actionable error asking for a shorter workspace/task directory.
 
+## Optional DSH 0.1.7 local adapter
+
+`createDshTranscriptionProvider` connects a host's existing `speechToText` service to the same file-transcription API. It is opt-in: the published desktop composition still registers Whisper, and this adapter does not mount official speech bundles, download models, prepare a recognizer or change the microphone's selected provider.
+
+```js
+import {createDshTranscriptionProvider} from '@eduwork/dsh-artifact-services/transcription-dsh'
+
+// In a DSH 0.1.7 host that has explicitly enabled the official speech bundle:
+ctx.inject(['artifactServices', 'speechToText'], ctx => {
+  ctx.effect(() => ctx.artifactServices.registerTranscriptionProvider(
+    createDshTranscriptionProvider({speechToText: ctx.speechToText}),
+  ))
+})
+```
+
+| Option | Default | Meaning |
+| --- | --- | --- |
+| `speechToText` | Required | The host-owned official service, shared with voice input. |
+| `id` | `dsh-sensevoice` | Provider id exposed by the file-transcription API. |
+| `title` | `Local SenseVoice (DSH)` | Display name. |
+| `providerId` | `sensevoice-local` | Exact upstream provider to use; it must report `host-local`. Cloud providers are rejected. |
+| `ffmpegPath` | Shared media runtime | Optional absolute path to a provisioned FFmpeg executable; no browser or engine download. |
+| `maxDurationSeconds` | `3600` | Whole-file duration ceiling, integer 1–14,400. Oversized audio fails before inference. |
+| `chunkSeconds` | `60` | Integer 1–120. Sequential canonical 16 kHz mono PCM16 WAV requests; 120 seconds remains below upstream's default 4 MiB limit. If the host lowers that limit, lower this option accordingly. |
+
+Prepare the official model explicitly in the host before using this provider. Discovery is read-only; ready, standby and waking resources can accept work. A selected provider is pinned before conversion and remains pinned for every chunk. Removal/replacement, failed inference and cancellation fail the whole request; no partial transcript or automatic cloud fallback is returned. Regional language hints such as `zh-CN` can map to an advertised base language such as `zh`; unsupported languages fail explicitly.
+
+FFmpeg converts the authorized input to a canonical WAV in a caller-owned job directory and keeps process logs/receipts there. Inference reads bounded chunks instead of retaining the whole decoded file in memory. The result's duration comes from the complete decoded audio. Automatic language selection is not reported as a detected language. The upstream transcript API has no segment timestamps, so discovery advertises `timestamps:false` and results omit `segments`. Chunk boundaries are not forced-alignment timestamps. Fixed chunk boundaries can affect recognition at a cut; validate long recordings and supported languages before replacing an existing provider. Keep Whisper available for timestamp-dependent or otherwise unqualified workloads.
+
+The candidate probe in `scripts/probe-dsh-017-speech.mjs` uses the real official registry and FFmpeg with a synthetic recognizer; it does **not** verify SenseVoice accuracy, microphone permissions or native desktop behavior. TTS is a separate service: the target upstream speech subsystem does not implement speech synthesis, and this adapter leaves local/remote TTS unchanged.
+
 ## Host-owned optional components
 
 `getTranscriptionComponents()` returns a versioned recommendation containing HTTPS source URLs, platform, file size, license and SHA256. It does not fetch or install anything. The host should show size/license, obtain the installation decision, download to staging, verify the pinned checksum, extract safely, and inject absolute paths. Keep engine libraries and license files together. Other platforms can provide an equivalent built CLI through the same adapter.

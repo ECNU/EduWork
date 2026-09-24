@@ -4,10 +4,13 @@ import remote from '../lib/typert.remote-client.js'
 import {createUpdateController,UpdatePanel,UpdateFooter} from './updates'
 import {DataImportPanel} from './data-import'
 import {ConcurrencySettings} from './concurrency'
+import {NotificationSettings, installNotificationNavigation} from './notifications'
 import {pickImportDirectory} from '../lib/directory-picker.js'
 import skillManagerRemote from '@chatecnu-work/dsh-skill-manager-native/remote'
 import { canonicalSkillName, effectiveDisabledSkills, skillToggleSettings, skillGroups, skillCenterRows } from '../lib/view-model.js'
-export const inject = ['slots','remote','remote.skills','connection','sessions','settingsScope','uiWorkspace']
+declare const __EDUWORK_NATIVE_017__: boolean
+const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace']
 const h = React.createElement
 const color = 'var(--dsw-alias-state-business-primary, #9f2636)'
 const border = 'var(--dsw-alias-border-l2, #e1e4eb)'
@@ -289,7 +292,12 @@ function DesktopSettings({service,controller}) {
 export async function apply(ctx) {
   const unmount = await ctx.remote.$mount(remote), unmountSkills = await ctx.remote.$mount(skillManagerRemote)
   ctx.inject(['remote.workbench','remote.skillManager'], inner=>{
-    const service={settings:inner.settingsScope.bind({namespace:'chatecnu-skills'}),hasSession:()=>Boolean(inner.sessions.list.getSnapshot().current),subscribeSession:fn=>inner.sessions.list.subscribe(fn),
+    const notifications = installNotificationNavigation(inner, view => unwrap(inner.remote.workbench.notificationView(view)))
+    inner.on('dispose', () => notifications.close())
+    const notificationScope = nativeSettings ? inner.configForms.get('eduwork-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-notifications' })
+    inner.slots.inject('settings.general.item', () => inner.slots.register({ name: 'settings.general.item', id: 'eduwork-notifications', order: 19,
+      inject: () => ({ scope: notificationScope, status: notifications.status }) }, NotificationSettings))
+    const service={settings:(nativeSettings ? inner.configForms.get('chatecnu-skills') : inner.settingsScope.bind({ namespace: 'chatecnu-skills' })),hasSession:()=>Boolean(inner.sessions.list.getSnapshot().current),subscribeSession:fn=>inner.sessions.list.subscribe(fn),
       list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=inner.sessions.list.getSnapshot().current;if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
       create:input=>unwrap(inner.remote.skillManager.create(input)),importDirectory:path=>unwrap(inner.remote.skillManager.importDirectory(path)),remove:name=>unwrap(inner.remote.skillManager.trashPersonalSkill(name)),pickDirectory:()=>pickImportDirectory(inner.uiWorkspace)}
     inner.slots.inject('settings.plugins.tab',()=>inner.slots.register({name:'settings.plugins.tab',id:'skills',order:-20,label:'技能',inject:()=>({service})},SkillCenter))
@@ -299,7 +307,7 @@ export async function apply(ctx) {
     inner.slots.inject('sidebar.footer.action',()=>inner.slots.register({name:'sidebar.footer.action',id:'eduwork-updates',order:90,inject:()=>({controller:updates})},UpdateFooter))
     inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-workbench',order:16,inject:()=>({service:desktop,controller:updates})},DesktopSettings))
     inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-data-import',order:17,inject:()=>({service:dataImport})},DataImportPanel))
-    const concurrency=inner.settingsScope.bind({namespace:'eduwork-concurrency'})
+    const concurrency=(nativeSettings ? inner.configForms.get('eduwork-concurrency') : inner.settingsScope.bind({ namespace: 'eduwork-concurrency' }))
     inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-concurrency',order:18,inject:()=>({scope:concurrency})},ConcurrencySettings))
   })
   return async()=>{await unmountSkills();await unmount()}

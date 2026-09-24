@@ -27,6 +27,8 @@ $Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
 
 ## 本机数据与比较
 
+任务提醒与托盘待处理菜单见[桌面通知](../docs/DESKTOP_NOTIFICATIONS.md)。事件处理由公版实现，机构版共用；原生通知需按平台验收。
+
 Electron 默认数据为 `<安装目录>/data/<发行名>-electron/{dsh,browser,logs}`，系统加密凭据单独保存在 browser 目录；Wails 使用 `<安装目录>/data/<发行名>-wails/dsh` 与独立 Windows Credential Manager 命名空间。关闭程序后可以移动整个目录，已登记的外部工作区原文件位置仍需有效。直接解压启动不会扫描旧数据；从 Go 过渡版的经过校验的更新握手启动时，会导入当前 Go 数据目录，两壳不同时写同一份会话库。
 
 候选固定插件和 Host 组合。托盘提供打开、新建会话、检查更新、设置和退出。`config/eduwork.jsonc` 配置更新入口；[绿色版更新适配器](src/portable-updates.mjs)调用共用下载和安装控制器，支持开发/公测渠道、下载进度与重启安装。旧 Go 过渡更新器可通过经过校验的握手调用 `legacy-migration.mjs`，按握手类型导入旧 `data/dsh` 或 Go 过渡版的数据目录，保留原始数据；普通启动不自动扫描其他安装。用户也可从设置中选择旧客户端根目录，检查并合并历史数据。版本发布前必须对实际 ZIP 执行相应迁移验收，不能用一次历史验收替代新包验证。安装器、签名及 macOS 仍需独立推进。

@@ -16,7 +16,7 @@ const { default: OidcAccountService } = await import(moduleURL)
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }
 
 async function fixture(t, draft = false) {
-  const records = new Map(), codes = new Map(), requests = [], opened = [], fibers = []
+  const records = new Map(), codes = new Map(), requests = [], activity = [], opened = [], fibers = []
   const controls = { user: 'alice', streamGate: undefined, firstChunk: undefined, refreshGate: undefined }
   let base, serial = 0, grantedScopes
   const pair = draft ? generateKeyPairSync('rsa', { modulusLength: 2048 }) : undefined
@@ -75,6 +75,10 @@ async function fixture(t, draft = false) {
     if (url.pathname === '/userinfo' && draft) return json({ sub: controls.user })
     if (url.pathname === '/v1/models') return json({ data: [{ id: 'synthetic-model' }] })
     if (url.pathname === '/revoke') return json({})
+    if (url.pathname === '/v1/user/active') {
+      activity.push({ authorization: req.headers.authorization, body })
+      return json({ status: activity.length === 1 ? 'Unauthorized' : 'Success' }, activity.length === 1 ? 401 : 200)
+    }
     if (url.pathname === '/v1/chat/completions') {
       requests.push({ authorization: req.headers.authorization })
       res.writeHead(200, { 'content-type': 'text/event-stream' })
@@ -116,7 +120,7 @@ async function fixture(t, draft = false) {
     assert.equal((await ctx.oidcAccounts.loginStatus(attempt.loginID)).state, 'completed')
   }
   await login()
-  return { ctx, controls, requests, login, base, backend: ctx.oidcAccounts.backend,
+  return { ctx, controls, requests, activity, login, base, backend: ctx.oidcAccounts.backend,
     options: { provider: profile.id, model: 'synthetic-model', messages: [] } }
 }
 
@@ -181,6 +185,61 @@ test('same authorization refresh preserves an active stream and cleans up its ca
   assert.ok(!chunks.some(chunk => chunk.reason?.kind === 'error'))
   assert.equal(f.requests.length, 1)
   assert.equal(f.backend.gatewayCalls.size, 0)
+})
+
+for (const draft of [false, true]) test(`DSH ${draft ? 'OIDC draft' : 'LiteLLM'} lets an accepted stream finish past token expiry and refreshes the next request`, async t => {
+  const f = await fixture(t, draft)
+  const profile = f.backend.profile('gateway')
+  const before = await f.backend.loadSession(profile)
+  f.controls.streamGate = deferred()
+  const output = []
+  for await (const chunk of f.ctx.llm.stream(f.options)) {
+    output.push(chunk)
+    if (chunk.type === 'text-delta') {
+      f.backend.now = () => (before.expiresAt + 1) * 1000
+      f.controls.streamGate.resolve()
+    }
+  }
+  assert.ok(JSON.stringify(output).includes('synthetic-late'))
+  assert.ok(!output.some(chunk => chunk.reason?.kind === 'error'))
+  assert.equal(f.requests.length, 1, 'an accepted stream is neither cancelled nor replayed on local expiry')
+  const next = []
+  for await (const chunk of f.ctx.llm.stream(f.options)) next.push(chunk)
+  assert.ok(JSON.stringify(next).includes('synthetic-late'))
+  assert.ok(!next.some(chunk => chunk.reason?.kind === 'error'))
+  assert.equal(f.requests.length, 2)
+  assert.notEqual(f.requests[0].authorization, f.requests[1].authorization)
+})
+
+for (const draft of [false, true]) test(`DSH ${draft ? 'OIDC draft' : 'LiteLLM'} refreshes a near-expiry token before a prepared model request`, async t => {
+  const f = await fixture(t, draft)
+  const prepared = await f.ctx.llm.prepareCall(f.options)
+  const profile = f.backend.profile('gateway')
+  const before = await f.backend.loadSession(profile)
+  f.backend.now = () => (before.expiresAt - 1200) * 1000
+  const output = []
+  for await (const chunk of prepared.stream({ ...prepared.config, messages: [] })) output.push(chunk)
+  const after = await f.backend.loadSession(profile)
+  assert.notEqual(after.accessToken, before.accessToken)
+  assert.notEqual(after.refreshToken, before.refreshToken)
+  assert.equal(after.contextID, before.contextID)
+  assert.equal(f.requests.length, 1)
+  assert.equal(f.requests[0].authorization, `Bearer ${after.accessToken}`)
+  assert.ok(JSON.stringify(output).includes('synthetic-late'))
+  assert.ok(!output.some(chunk => chunk.reason?.kind === 'error'))
+})
+
+test('Host account service forwards explicit POST recovery without exposing credentials', async t => {
+  const f = await fixture(t, true)
+  const response = await f.ctx.oidcAccounts.authorizedFetch('gateway', f.base + '/v1/user/active', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"activity":{"state":"active"}}',
+  }, { retryUnauthorized: true })
+  assert.equal(response.status, 200)
+  assert.equal((await response.json()).status, 'Success')
+  assert.equal(f.activity.length, 2)
+  assert.equal(f.activity[0].body, f.activity[1].body)
+  assert.notEqual(f.activity[0].authorization, f.activity[1].authorization)
+  assert.equal((await f.ctx.oidcAccounts.status('gateway')).state, 'connected')
 })
 
 test('Host authorizedFetch drops unread response bytes after logout', async t => {
