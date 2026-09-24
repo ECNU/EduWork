@@ -3648,6 +3648,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		//#region ../../../node_modules/@chatecnu-work/dsh-component-inventory-native/lib/typert-schemas.js
 		const nullableString = string$2().nullable();
 		const release = object$1({
+			productName: string$2().optional(),
+			platform: string$2().optional(),
 			productVersion: string$2(),
 			dshVersion: string$2(),
 			dshCommit: nullableString,
@@ -7530,6 +7532,50 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			]
 		};
 		//#endregion
+		//#region src/client/about.js
+		const projectURL = "https://github.com/ECNU/EduWork";
+		function feedbackURL(release) {
+			const url = new URL(`${projectURL}/issues/new`);
+			url.searchParams.set("template", "bug_report.yml");
+			url.searchParams.set("environment", [
+				`${release.productName || "EduWork"} ${release.productVersion}`,
+				release.platform,
+				`DSH Core ${release.dshVersion}`
+			].filter(Boolean).join("\n"));
+			return url.href;
+		}
+		function visibleComponents(components) {
+			return components.filter((item) => item.id !== "desktop-shell").map((item) => item.category === "platform" ? {
+				...item,
+				category: "runtime"
+			} : item);
+		}
+		//#endregion
+		//#region \0dsh-css:packages/extensions/chatecnu-work-component-inventory-ui/src/client/about.module.css.mjs
+		const css = ".vna3bW_about{width:100%;max-width:820px;color:var(--dsw-alias-label-primary,#191919)}.vna3bW_heading{margin:0 0 24px;font-size:20px}.vna3bW_product{border-bottom:1px solid var(--dsw-alias-border-l2,#e6e6e6);margin-bottom:24px;padding-bottom:24px}.vna3bW_identity{align-items:center;gap:16px;display:flex}.vna3bW_productText{min-width:0}.vna3bW_productName{overflow-wrap:anywhere;margin:0;font-size:21px;font-weight:650}.vna3bW_version{color:var(--dsw-alias-label-secondary,#666);overflow-wrap:anywhere;margin:5px 0 0;font-size:13px}.vna3bW_basedOn{color:var(--dsw-alias-label-secondary,#666);margin:6px 0 0;font-size:12px}.vna3bW_links{flex-wrap:wrap;gap:10px;margin-top:20px;display:flex}.vna3bW_link{border:1px solid var(--dsw-alias-border-l2,#e6e6e6);background:var(--dsw-alias-bg-layer-3,#fff);min-height:36px;color:var(--dsw-alias-label-primary,#191919);border-radius:8px;justify-content:center;align-items:center;gap:8px;padding:0 13px;font-size:13px;text-decoration:none;display:inline-flex}.vna3bW_link:hover{background:var(--dsw-alias-bg-layer-2,#f6f6f6);border-color:var(--dsw-alias-label-secondary,#666)}.vna3bW_link:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#9f2636);outline-offset:3px}.vna3bW_componentsHeading{margin:0 0 18px;font-size:17px}.vna3bW_componentGrid{grid-template-columns:repeat(auto-fit,minmax(min(220px,100%),1fr));align-items:start;gap:10px;display:grid}";
+		const tagId = "@chatecnu-work/dsh-client-ui-component-inventory/about.module.css";
+		if (typeof document !== "undefined" && document.querySelector("style[data-plugin-css=" + JSON.stringify(tagId) + "]") === null) {
+			const tag = document.createElement("style");
+			tag.dataset.plugin = "@chatecnu-work/dsh-client-ui-component-inventory";
+			tag.dataset.pluginCss = tagId;
+			tag.textContent = css;
+			document.head.appendChild(tag);
+		}
+		var about_module_css_default = {
+			"about": "vna3bW_about",
+			"basedOn": "vna3bW_basedOn",
+			"componentGrid": "vna3bW_componentGrid",
+			"componentsHeading": "vna3bW_componentsHeading",
+			"heading": "vna3bW_heading",
+			"identity": "vna3bW_identity",
+			"link": "vna3bW_link",
+			"links": "vna3bW_links",
+			"product": "vna3bW_product",
+			"productName": "vna3bW_productName",
+			"productText": "vna3bW_productText",
+			"version": "vna3bW_version"
+		};
+		//#endregion
 		//#region src/client/index.ts
 		const inject = [
 			"slots",
@@ -7537,15 +7583,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"remote"
 		];
 		const h = react.default.createElement;
+		const NS = "settings.eduworkAbout";
 		const copy = {
 			zh: {
-				tab: "组件与版本",
-				title: "组件与版本",
-				subtitle: "查看产品平台、代码运行时和能力环境。插件清单与挂载状态由 DSH 官方页面提供。",
-				platform: "产品与平台",
-				platformHint: "承载本机 Agent Core 和渲染界面。",
-				runtimeGroup: "代码运行时",
-				runtimeHint: "执行 DSH、插件、Skills 及办公脚本的语言运行环境。",
+				tab: "关于",
+				title: "关于",
+				components: "组件与版本",
+				basedOn: "基于 EduWork 开源项目",
+				github: "GitHub",
+				feedback: "反馈问题",
+				external: "在浏览器中打开",
+				runtimeGroup: "运行环境",
+				runtimeHint: "应用界面、Agent 和脚本使用的核心组件。",
 				capability: "能力环境",
 				capabilityHint: "由插件或 Skills 按需使用的共享依赖环境。",
 				loading: "正在读取组件…",
@@ -7578,9 +7627,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				online: "在线包",
 				offline: "离线包",
 				development: "开发构建",
-				"desktop-shell": "桌面容器",
 				"dsh-core": "DSH Core",
-				webview2: "界面渲染",
+				electron: "Electron",
+				"electron-desc": "提供应用窗口、界面渲染和桌面系统集成。",
+				webview2: "WebView2",
 				nodejs: "Node.js",
 				python: "Python",
 				"office-suite": "办公文档环境",
@@ -7638,13 +7688,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				installedVersion: "版本"
 			},
 			en: {
-				tab: "Components & versions",
-				title: "Components & versions",
-				subtitle: "Inspect the product platform, code runtimes and capability environments. DSH's official page owns the plugin inventory and mount state.",
-				platform: "Product & platform",
-				platformHint: "Hosts the local Agent Core and renders the UI.",
-				runtimeGroup: "Code runtimes",
-				runtimeHint: "Language runtimes for DSH, plugins, skills and office scripts.",
+				tab: "About",
+				title: "About",
+				components: "Components & versions",
+				basedOn: "Based on the EduWork open-source project",
+				github: "GitHub",
+				feedback: "Report an issue",
+				external: "Open in browser",
+				runtimeGroup: "Runtime environment",
+				runtimeHint: "Core components for the interface, agent and scripts.",
 				capability: "Capability environments",
 				capabilityHint: "Shared managed dependencies used on demand by plugins and skills.",
 				loading: "Reading components…",
@@ -7677,9 +7729,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				online: "Online",
 				offline: "Offline",
 				development: "Development",
-				"desktop-shell": "Desktop shell",
 				"dsh-core": "DSH Core",
-				webview2: "UI renderer",
+				electron: "Electron",
+				"electron-desc": "Application windows, UI rendering and desktop integration.",
+				webview2: "WebView2",
 				nodejs: "Node.js",
 				python: "Python",
 				"office-suite": "Office document environment",
@@ -7754,7 +7807,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"local-archive": "localArchive",
 			"unknown-local": "unknownLocal"
 		};
-		function CommunityPluginManager({ manager, t, onChanged }) {
+		function CommunityPluginManager({ manager, t }) {
 			const [snapshot, setSnapshot] = (0, react.useState)({
 				status: "loading",
 				packages: []
@@ -7791,7 +7844,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 								status: "ready",
 								packages: next.snapshot.packages
 							});
-							onChanged();
 						}
 					} catch {
 						window.clearInterval(timer);
@@ -8017,24 +8069,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				display: "grid",
 				gap: 22,
 				marginBottom: 26
-			} }, ...[
-				[
-					"platform",
-					"platform",
-					"platformHint"
-				],
-				[
-					"runtime",
-					"runtimeGroup",
-					"runtimeHint"
-				],
-				[
-					"capability",
-					"capability",
-					"capabilityHint"
-				]
-			].map(([category, title, hint]) => {
-				const rows = components.filter((item) => item.category === category);
+			} }, ...[[
+				"runtime",
+				"runtimeGroup",
+				"runtimeHint"
+			], [
+				"capability",
+				"capability",
+				"capabilityHint"
+			]].map(([category, title, hint]) => {
+				const rows = visibleComponents(components).filter((item) => item.category === category);
 				if (rows.length === 0) return null;
 				return h("section", { key: category }, h("header", { style: { marginBottom: 10 } }, h("h4", { style: {
 					margin: 0,
@@ -8044,12 +8088,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					color: secondary,
 					fontSize: 11,
 					lineHeight: 1.5
-				} }, t(hint))), h("div", { style: {
-					display: "grid",
-					gridTemplateColumns: "repeat(2, minmax(0, 1fr))",
-					gap: 9,
-					alignItems: "start"
-				} }, ...rows.map((item) => {
+				} }, t(hint))), h("div", { className: about_module_css_default.componentGrid }, ...rows.map((item) => {
 					const color = statusColors[item.status] ?? tertiary;
 					const detailRows = [
 						[t("lockedVersion"), item.version ?? t("unknown")],
@@ -8133,7 +8172,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				})));
 			}));
 		}
-		function ComponentInventory({ list, manager, t }) {
+		function useInventory(list) {
 			const [state, setState] = (0, react.useState)({ status: "loading" });
 			const [request, setRequest] = (0, react.useState)(0);
 			(0, react.useEffect)(() => {
@@ -8150,73 +8189,115 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					active = false;
 				};
 			}, [list, request]);
-			if (state.status === "loading") return h("p", { style: { color: tertiary } }, t("loading"));
-			if (state.status === "error") return h("div", {
+			return {
+				state,
+				retry: () => {
+					setState({ status: "loading" });
+					setRequest((value) => value + 1);
+				}
+			};
+		}
+		function InventoryStatus({ state, retry, t }) {
+			if (state.status === "loading") return h("p", {
+				role: "status",
+				style: { color: secondary }
+			}, t("loading"));
+			return h("div", {
 				role: "alert",
 				style: { color: "var(--dsw-alias-state-error-primary, #c33)" }
 			}, h("span", null, t("failure")), " ", h("button", {
 				type: "button",
-				onClick: () => {
-					setState({ status: "loading" });
-					setRequest((value) => value + 1);
-				}
+				onClick: retry,
+				style: actionButton(secondary)
 			}, t("retry")));
+		}
+		function ExternalArrow() {
+			return h("svg", {
+				width: 14,
+				height: 14,
+				viewBox: "0 0 24 24",
+				fill: "none",
+				stroke: "currentColor",
+				strokeWidth: 1.7,
+				"aria-hidden": true
+			}, h("path", { d: "M8 5h11v11M19 5 5 19" }));
+		}
+		function GitHubMark() {
+			return h("svg", {
+				width: 17,
+				height: 17,
+				viewBox: "0 0 24 24",
+				fill: "currentColor",
+				"aria-hidden": true
+			}, h("path", { d: "M12 .5C5.37.5 0 5.87 0 12.5c0 5.3 3.44 9.8 8.21 11.39.6.11.82-.26.82-.58v-2.23c-3.34.73-4.04-1.42-4.04-1.42-.55-1.39-1.33-1.76-1.33-1.76-1.09-.75.08-.73.08-.73 1.2.08 1.84 1.24 1.84 1.24 1.07 1.83 2.81 1.3 3.5.99.11-.78.42-1.3.76-1.6-2.67-.3-5.47-1.33-5.47-5.93 0-1.31.47-2.38 1.24-3.22-.13-.3-.54-1.52.12-3.18 0 0 1.01-.32 3.3 1.23a11.51 11.51 0 0 1 6 0c2.29-1.55 3.3-1.23 3.3-1.23.66 1.66.25 2.88.12 3.18.77.84 1.24 1.91 1.24 3.22 0 4.61-2.81 5.63-5.49 5.93.43.37.81 1.1.81 2.22v3.29c0 .32.22.7.83.58A12.01 12.01 0 0 0 24 12.5C24 5.87 18.63.5 12 .5Z" }));
+		}
+		function About({ list, t, renderSlot }) {
+			const { state, retry } = useInventory(list);
+			if (state.status !== "ready") return h(InventoryStatus, {
+				state,
+				retry,
+				t
+			});
 			const release = state.value.release;
-			return h("div", { style: {
-				width: "100%",
-				maxWidth: 820,
-				color: primary
-			} }, h("header", { style: { marginBottom: 18 } }, h("h3", { style: {
-				margin: "0 0 5px",
-				fontSize: 20
-			} }, t("title")), h("p", { style: {
-				margin: 0,
-				color: secondary,
-				fontSize: 13,
-				lineHeight: 1.6
-			} }, t("subtitle"))), h("article", { style: {
-				display: "flex",
-				justifyContent: "space-between",
-				gap: 18,
-				alignItems: "center",
-				border: `1px solid ${border}`,
-				borderRadius: 10,
-				padding: "12px 14px",
-				background: layer,
-				marginBottom: 20
-			} }, h("div", null, h("span", { style: {
-				display: "block",
-				color: tertiary,
-				fontSize: 10
-			} }, t("productName")), h("strong", { style: {
-				display: "block",
-				marginTop: 4,
-				fontSize: 15
-			} }, release.productVersion)), h("div", { style: {
-				display: "flex",
-				gap: 18,
-				color: secondary,
-				fontSize: 10,
-				textAlign: "right"
-			} }, h("span", null, release.distributionMode === "desktop-release" ? t("desktopMode") : t("sourceMode")), release.packageFlavor ? h("span", null, `${t("packageFlavor")} · ${t(release.packageFlavor)}`) : null)), h(ComponentLayers, {
+			const productName = release.productName || "EduWork";
+			return h("div", { className: about_module_css_default.about }, h("h3", { className: about_module_css_default.heading }, t("title")), h("header", { className: about_module_css_default.product }, h("div", { className: about_module_css_default.identity }, renderSlot("settings.about.brand", { size: 48 }), h("div", { className: about_module_css_default.productText }, h("h4", { className: about_module_css_default.productName }, productName), h("p", { className: about_module_css_default.version }, release.productVersion), productName !== "EduWork" ? h("p", { className: about_module_css_default.basedOn }, t("basedOn")) : null)), h("div", { className: about_module_css_default.links }, h("a", {
+				className: about_module_css_default.link,
+				href: projectURL,
+				target: "_blank",
+				rel: "noopener noreferrer",
+				title: t("external")
+			}, h(GitHubMark), t("github"), h(ExternalArrow)), h("a", {
+				className: about_module_css_default.link,
+				href: feedbackURL(release),
+				target: "_blank",
+				rel: "noopener noreferrer",
+				title: t("external")
+			}, t("feedback"), h(ExternalArrow)))), h("h3", { className: about_module_css_default.componentsHeading }, t("components")), h(ComponentLayers, {
 				components: state.value.components,
 				t
-			}), release.distributionMode === "desktop-release" ? h(CommunityPluginManager, {
+			}));
+		}
+		function CommunityPlugins({ list, manager, t }) {
+			const { state, retry } = useInventory(list);
+			if (state.status !== "ready") return h(InventoryStatus, {
+				state,
+				retry,
+				t
+			});
+			return state.value.release.distributionMode === "desktop-release" ? h(CommunityPluginManager, {
 				manager,
-				t,
-				onChanged: () => setRequest((value) => value + 1)
-			}) : null);
+				t
+			}) : null;
 		}
 		async function apply(ctx) {
-			const [disposeInventory, disposeManager] = await Promise.all([ctx.remote.$mount(TYPERT_REMOTE$1), ctx.remote.$mount(TYPERT_REMOTE)]);
+			const disposeInventory = await ctx.remote.$mount(TYPERT_REMOTE$1);
 			ctx.effect(() => () => {
 				disposeInventory();
+			}, "component-inventory: remote");
+			ctx.effect(() => ctx.locale.register(NS, copy), "component-inventory: dictionaries");
+			ctx.inject(["remote.productComponents"], (surfaceCtx) => {
+				const t = surfaceCtx.locale.bind(NS);
+				const list = async () => unwrap(await surfaceCtx.remote.productComponents.list());
+				surfaceCtx.slots.inject("settings.section", () => surfaceCtx.slots.register({
+					name: "settings.section",
+					id: "about",
+					order: 100,
+					label: () => t("tab"),
+					locale: NS,
+					children: { "settings.about.brand": {
+						kind: "single",
+						scope: "root"
+					} },
+					inject: () => ({ list })
+				}, About));
+			});
+			const disposeManager = await ctx.remote.$mount(TYPERT_REMOTE).catch(() => null);
+			if (!disposeManager) return;
+			ctx.effect(() => () => {
 				disposeManager();
-			}, "component-inventory: remotes");
+			}, "community-plugins: remote");
 			ctx.inject(["remote.productComponents", "remote.productPluginManager"], (surfaceCtx) => {
-				const language = surfaceCtx.locale.getSnapshot?.().locale ?? "zh";
-				const dictionary = String(language).toLowerCase().startsWith("zh") ? copy.zh : copy.en;
-				const t = (key) => dictionary[key] ?? key;
+				const t = surfaceCtx.locale.bind(NS);
 				const list = async () => unwrap(await surfaceCtx.remote.productComponents.list());
 				const manager = {
 					list: async () => unwrap(await surfaceCtx.remote.productPluginManager.list()),
@@ -8226,17 +8307,28 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					job: async (jobID) => unwrap(await surfaceCtx.remote.productPluginManager.job(jobID)),
 					restart: async () => unwrap(await surfaceCtx.remote.productPluginManager.restart())
 				};
-				surfaceCtx.slots.inject("settings.plugins.tab", () => surfaceCtx.slots.register({
-					name: "settings.plugins.tab",
-					id: "components",
-					order: 20,
-					label: () => t("tab"),
-					inject: () => ({
-						list,
-						manager,
-						t
-					})
-				}, ComponentInventory));
+				let active = true;
+				let disposeTab = () => {};
+				surfaceCtx.effect(() => () => {
+					active = false;
+					disposeTab();
+				}, "community-plugins: tab");
+				list().then(async (value) => {
+					if (!active || value.release.distributionMode !== "desktop-release") return;
+					await manager.list();
+					if (!active) return;
+					disposeTab = surfaceCtx.slots.inject("settings.plugins.tab", () => surfaceCtx.slots.register({
+						name: "settings.plugins.tab",
+						id: "community",
+						order: 20,
+						label: () => t("managerTitle"),
+						locale: NS,
+						inject: () => ({
+							list,
+							manager
+						})
+					}, CommunityPlugins));
+				}).catch(() => {});
 			});
 		}
 		//#endregion

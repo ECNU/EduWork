@@ -93,7 +93,7 @@ The plugin intentionally has no JSON path mapping or private profile endpoint. O
 
 ## Refresh and logout
 
-If the access token is within 90 seconds of expiry and a refresh token exists, the plugin refreshes it. On `invalid_grant`, the stored OIDC session and its still-owned local model credential are removed and login is required. A rotated refresh token replaces the previous one. An expired session without a refresh token is handled the same way when an active session is next required.
+Before requests, the plugin refreshes up to 30 minutes early, capped at half the server-advertised token lifetime. Older sessions with only an expiry gain a refresh timestamp on their first refresh. The actual server-advertised lifetime is never extended. On `invalid_grant`, the stored OIDC session and its still-owned local model credential are removed and login is required. A rotated refresh token replaces the previous one. Sessions without a refresh token remain usable until actual expiry and are then cleared when an active session is next required; entering the early-refresh window does not sign them out prematurely.
 
 Logout attempts RFC 7009 revocation when Discovery publishes `revocation_endpoint`, then removes the OIDC session record and only a model credential still owned by that session. A key written by another profile into the shared reference is preserved. Remote revocation failure is logged without blocking local cleanup.
 

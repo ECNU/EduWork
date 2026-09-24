@@ -79,7 +79,7 @@ const importSchema = z.object({
 }).strict()
 
 function result(typeSymbol, schema) {
-  return Object.freeze({ mode: 'strict', typeSymbol, schema })
+  return Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol, schema })
 }
 
 export const statsResult = result('@eduwork/dsh-memory#MemoryStats', statsSchema)
@@ -96,6 +96,6 @@ export function stringParameter(name, max, typeSymbol) {
     name,
     wire: name,
     source: 'json',
-    codec: Object.freeze({ mode: 'strict', typeSymbol, schema: z.string().max(max) }),
+    codec: Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol, schema: z.string().max(max) }),
   })
 }

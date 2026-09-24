@@ -9,6 +9,10 @@ export const SettingsSchema = z.object({
   defaultDisabled: z.array(z.string()).default([]),
 })
 
+export const Config = typeof z.string().volatile === 'function'
+  ? z.object(Object.fromEntries(Object.entries(SettingsSchema.dict).map(([key, field]) => [key, field.volatile()])))
+  : undefined
+
 function baseSettings(raw = {}) {
   return {
     disabled: Array.isArray(raw.disabled)
@@ -28,6 +32,7 @@ function baseSettings(raw = {}) {
 // workspace/session exists, while every Agent reads the same durable value.
 export function apply(ctx, raw = {}) {
   ctx.inject(['settings'], (settingsCtx) => {
+    if (typeof settingsCtx.settings.register !== 'function') return
     settingsCtx.settings.register(SETTINGS_NAMESPACE, SettingsSchema, {
       base: baseSettings(raw),
     })

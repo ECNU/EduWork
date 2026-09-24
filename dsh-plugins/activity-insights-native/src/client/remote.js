@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 const ranked = z.object({ name: z.string(), count: z.number().int().nonnegative() }).strict()
-const result = (typeSymbol, schema) => ({ mode: 'strict', typeSymbol, schema })
+const result = (typeSymbol, schema) => ({ mode: 'strict', create() { return this.schema }, typeSymbol, schema })
 const snapshot = z.object({
   generatedAt: z.string(), timeZone: z.string(),
   profile: z.object({ displayName: z.string().nullable(), organization: z.string().nullable(), affiliation: z.string().nullable(), connected: z.boolean() }).strict(),

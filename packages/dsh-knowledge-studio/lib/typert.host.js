@@ -1,7 +1,7 @@
 import { z } from 'zod'
 
 const pkg = '@eduwork/dsh-knowledge-studio'
-const codec = (typeSymbol, schema = z.unknown()) => Object.freeze({ mode: 'strict', typeSymbol: `${pkg}#${typeSymbol}`, schema })
+const codec = (typeSymbol, schema = z.unknown()) => Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#${typeSymbol}`, schema })
 const parameter = (name, schema = z.string()) => Object.freeze({ name, wire: name, source: 'json', codec: codec(name, schema) })
 const descriptor = (method, parameters = []) => ({
   id: `${pkg}#knowledgeStudio/${method}`, service: 'knowledgeStudio', namespace: 'knowledgeStudio', method,

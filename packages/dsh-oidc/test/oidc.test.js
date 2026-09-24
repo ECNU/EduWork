@@ -61,6 +61,40 @@ test('concurrent host requests share one rotating refresh operation', async () =
   assert.equal(refreshes, 1, 'a late request must reuse the saved refreshed token')
 })
 
+test('legacy OIDC upgrades saved sessions to thirty-minute refresh with short-token protection', async () => {
+  let refreshes = 0, now = 1000_000
+  const state = harness(async () => {
+    refreshes++
+    return Response.json({ access_token: 'renewed-' + refreshes, refresh_token: 'rotated-' + refreshes, token_type: 'Bearer', expires_in: 10 })
+  })
+  state.backend.now = () => now
+  state.backend.discovery.set(profile.id, { tokenEndpoint: `${profile.oidc.issuer}/token` })
+  const session = { issuer: profile.oidc.issuer, clientId: profile.oidc.clientId, accessToken: 'old', refreshToken: 'initial-refresh', expiresAt: 2801, identity: { sub: 'user-1' } }
+  await state.backend.saveSession(profile, session)
+  assert.equal((await state.backend.activeSession(profile)).accessToken, 'old')
+  now += 1000
+  const first = await state.backend.activeSession(profile)
+  assert.equal(first.accessToken, 'renewed-1')
+  assert.equal(first.expiresAt, 1011, 'do not inflate a ten-second token to sixty seconds')
+  assert.equal((await state.backend.activeSession(profile)).accessToken, 'renewed-1')
+  now += 5000
+  assert.equal((await state.backend.activeSession(profile)).accessToken, 'renewed-2')
+  await state.backend.refresh(profile, session)
+  assert.equal(refreshes, 2, 'a late caller reuses the rotated pair')
+})
+
+test('a non-refreshable legacy session remains usable until its actual expiry', async () => {
+  let now = 1000_000
+  const state = harness(async () => { throw new Error('a session without a refresh token must not call the token endpoint') })
+  state.backend.now = () => now
+  const session = { issuer: profile.oidc.issuer, clientId: profile.oidc.clientId, accessToken: 'old', refreshToken: '', expiresAt: 1100, identity: { sub: 'user-1' } }
+  await state.backend.saveSession(profile, session)
+  assert.equal((await state.backend.activeSession(profile)).accessToken, 'old')
+  now = 1100_000
+  assert.equal(await state.backend.activeSession(profile), undefined)
+  assert.equal(await state.backend.loadSession(profile), undefined)
+})
+
 function harness(fetch, config = {}) {
   const secrets = new Map()
   let route

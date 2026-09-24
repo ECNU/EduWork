@@ -45,7 +45,7 @@ export class OidcAccountService extends TypertRemoteService {
     })
     const backendOptions = {
           authorizedOrigins: config.authorizedOrigins,
-          accountChanged: status => this.notifyAccount(status),
+          accountChanged: status => this.notifyAccount(status, { force: true }),
           updateProvider: profile => {
             const profiles = new Map(this.profiles)
             profiles.set(profile.id, profile)
@@ -98,18 +98,20 @@ export class OidcAccountService extends TypertRemoteService {
     return { opened: true }
   }
 
-  notifyAccount(status) {
-    if (this.accountStates.get(status.profileID) !== status.state) {
+  notifyAccount(status, { force = false } = {}) {
+    // A completed sign-in replaces authorization even when both sessions are
+    // "connected". Consumers must reset work blocked by the previous session.
+    if (force || this.accountStates.get(status.profileID) !== status.state) {
       this.accountStates.set(status.profileID, status.state)
-      this.ctx.emit('oidc/accounts-changed', { profileID: status.profileID, state: status.state })
+      this.ctx.emit('oidc/accounts-changed', { profileID: status.profileID, state: status.state, ...(force ? { authorizationChanged: true } : {}) })
     }
     return status
   }
   async status(profileID) { return this.notifyAccount(await this.callBackend('status', profileID)) }
   resources(profileID) { return this.callBackend('resources', profileID) }
   // Host-only capability: deliberately absent from Remote markers and Typert.
-  authorizedFetch(profileID, endpoint, init) {
-    return this.callBackend('authorizedFetch', profileID, endpoint, init)
+  authorizedFetch(profileID, endpoint, init, authorization) {
+    return this.callBackend('authorizedFetch', profileID, endpoint, init, authorization)
   }
   modelResourceFetch(profileID, relativePath, options) {
     return this.callBackend('modelResourceFetch', profileID, relativePath, options)
