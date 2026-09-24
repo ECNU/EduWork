@@ -13,6 +13,7 @@ on:
       - 'dsh-plugins/client-ui-branding/src/client/**'
       - 'assets/eduwork/dock-*.png'
       - 'assets/eduwork/icon*-1024.png'
+      - 'dsh-electron/src/window-visibility.mjs'
       - 'dsh-electron/scripts/build-shell.mjs'
       - 'dsh-electron/tests/tray-icon.electron.mjs'
       - 'dsh-electron/tests/task-notifications.electron.mjs'
@@ -22,6 +23,8 @@ on:
       - 'dsh-plugins/desktop-services/lib/attention.js'
       - 'assets/eduwork/tray-black.png'
       - 'dsh-electron/tests/user-config-electron-smoke.mjs'
+      - 'dsh-electron/tests/window-visibility.test.mjs'
+      - 'dsh-electron/tests/window-visibility.electron.mjs'
       - 'dsh-electron/sparkle.lock.json'
       - 'dsh-electron/scripts/assemble-macos.ps1'
       - 'config/desktop/mac-updates.json'
@@ -44,7 +47,7 @@ jobs:
         with:
           node-version: '24.18.0'
       - name: Check shared update coordination
-        run: node --test scripts/test/macos-update-feed.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs
+        run: node --test scripts/test/macos-update-feed.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs dsh-electron/tests/window-visibility.test.mjs
       - name: Prepare the pinned Electron test runtime
         run: |
           npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --ignore-scripts --no-audit --no-fund electron@44.0.0
@@ -55,6 +58,8 @@ jobs:
         run: |
           node --test dsh-electron/tests/dock-plugin.test.mjs
           "$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/dock-theme.electron.mjs
+      - name: Verify native window close and activation
+        run: '"$RUNNER_TEMP/sparkle-check/tools/node_modules/electron/dist/Electron.app/Contents/MacOS/Electron" dsh-electron/tests/window-visibility.electron.mjs'
       - name: Verify native notification adapter and tray navigation
         run: |
           node --test dsh-electron/tests/task-notifications.test.mjs

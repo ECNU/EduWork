@@ -5,6 +5,7 @@ import { readFileSync, writeFileSync, renameSync, mkdtempSync, mkdirSync, copyFi
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
+import { attachWindowVisibility } from '../src/window-visibility.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const temporary = mkdtempSync(join(tmpdir(), 'eduwork-theme-'))
@@ -63,8 +64,9 @@ app.whenReady().then(async () => {
     await select('ecnu-liwa', 4, 'dock-red-1024.png')
     // Render the production startup page using each persisted choice.
     const start = source.indexOf('  const startupBlue ='), end = source.indexOf('\n  lifecycle.check()', start)
-    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', `return (async () => {
+    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', `return (async () => {
       const settings = { productName: 'Theme test' }, paths = { icon: ${JSON.stringify(join(brand, images[0]))} }
+      const isQuitting = () => false, tray = undefined
       let progressWindow
       ${source.slice(start, end)}
       return progressWindow
@@ -73,7 +75,7 @@ app.whenReady().then(async () => {
       writeFileSync(preference, JSON.stringify({ style }))
       let startupDock
       const startupApp = { getAppPath: () => appRoot, dock: { setIcon(file) { startupDock = file; app.dock.setIcon(file) } } }
-      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle)
+      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility)
       assert.equal(startupDock, join(brand, style === 'dsh' ? images[3] : images[2]))
       assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('progress')).accentColor"), color)
       const expected = readFileSync(join(brand, style === 'dsh' ? images[1] : images[0])).toString('base64')
