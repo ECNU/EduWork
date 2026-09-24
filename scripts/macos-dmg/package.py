@@ -1,7 +1,6 @@
 """Create a Finder drag-to-install image without changing the signed application."""
 
 import argparse
-import hashlib
 import plistlib
 import shutil
 import subprocess
@@ -20,12 +19,7 @@ def run(*args):
 def application_name(app):
     with (app / 'Contents/Info.plist').open('rb') as stream:
         info = plistlib.load(stream)
-    name = info.get('CFBundleDisplayName') or info.get('CFBundleName')
-    if (not isinstance(name, str) or not name.strip() or name != name.strip()
-            or name in ('.', '..') or any(c in name for c in '/\\:')
-            or any(ord(c) < 32 for c in name) or len(name.encode('utf-8')) > 240):
-        raise ValueError('Application display name must be a safe macOS filename')
-    return name
+    return info.get('CFBundleDisplayName') or info.get('CFBundleName') or app.stem
 
 
 def write_layout(mount, app_name):
@@ -76,7 +70,7 @@ def package(app, output):
         run('xcrun', 'swift', Path(__file__).with_name('background.swift'), background, name)
         rw = workspace / 'installer-rw.dmg'
         run('hdiutil', 'create', '-ov', '-fs', 'HFS+', '-format', 'UDRW',
-            '-volname', name, '-srcfolder', stage, rw)
+            '-volname', app.stem, '-srcfolder', stage, rw)
         mount.mkdir()
         run('hdiutil', 'attach', '-nobrowse', '-mountpoint', mount, rw)
         mounted = True
@@ -89,11 +83,6 @@ def package(app, output):
         # Exclusive creation avoids overwriting another build that finished meanwhile.
         with compressed.open('rb') as src, output.open('xb') as dst:
             shutil.copyfileobj(src, dst)
-        digest = hashlib.sha256()
-        with output.open('rb') as stream:
-            for chunk in iter(lambda: stream.read(1024 * 1024), b''):
-                digest.update(chunk)
-        Path(str(output) + '.sha256').write_text(f'{digest.hexdigest()}  {output.name}\n')
         print(f'DMG: {output}')
     finally:
         if mounted:
