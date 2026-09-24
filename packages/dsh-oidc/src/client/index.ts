@@ -125,7 +125,7 @@ function EnterpriseAccountCard({ service, configuration }: any) {
     h('p', { style: { margin: '12px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 12, lineHeight: 1.6 } },
       profile.brand?.loginDescription || (profile.provider ? messages.description : messages.identityDescription)),
     h('div', { style: { marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' } },
-      account.status?.state !== 'connected' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: begin }, account.busy ? messages.connecting : messages.login),
+      account.status?.state !== 'connected' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: begin }, account.busy ? messages.connecting : profile.brand?.loginButtonLabel || messages.login),
       account.status?.state === 'connected' && h('button', {
         type: 'button', disabled: Boolean(account.busy), style: button,
         onClick: () => account.run('reconcile', () => service.reconcile(profile.id, {})),
@@ -163,7 +163,7 @@ function EnterpriseOnboarding({ service, configuration, complete }: any) {
   h('p', { style: { margin: '18px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 13, lineHeight: 1.7 } },
     profile.brand?.loginDescription || (profile.provider ? messages.shortDescription : messages.identityDescription)),
   h('div', { style: { marginTop: 20, display: 'flex', gap: 9, flexWrap: 'wrap' } },
-    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : messages.login),
+    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : profile.brand?.loginButtonLabel || messages.login),
     h('button', { type: 'button', disabled: Boolean(account.busy), style: button, onClick: complete }, messages.other)),
   login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
   account.error && h('p', { role: 'alert', style: { margin: '12px 0 0', color: '#a82332', fontSize: 12 } }, account.error),

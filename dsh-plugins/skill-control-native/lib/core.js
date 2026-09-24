@@ -23,6 +23,16 @@ export function requiredAccountBinding(candidate) {
 
 export const accountBindingKey = binding => JSON.stringify([binding.profileID, binding.credentialRef, binding.runtimeBaseURL])
 
+// A skill may follow an account while its tool's endpoint is configured
+// separately. Explicit URL bindings remain strict; tools still authorize every
+// request against their configured destination, regardless of skill visibility.
+export async function accountBindingAvailable(accounts, binding) {
+  if (binding.runtimeBaseURL !== undefined)
+    return await accounts?.modelAuthorization?.(binding.profileID, binding.runtimeBaseURL) === true
+  const status = await accounts?.status?.(binding.profileID)
+  return status?.profileID === binding.profileID && status.state === 'connected' && status.credentialReady === true
+}
+
 export function candidateEnabled(candidate, disabled, configuredRefs, availableCapabilities = new Set(), availableBindings = new Set()) {
   if (disabled.has(canonicalSkillName(candidate.name))) return false
   const binding = requiredAccountBinding(candidate)

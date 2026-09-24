@@ -51,6 +51,7 @@ Profile 是受信任的部署配置，不是用户输入。即便如此，解析
 | `logoURL` | HTTPS URL 或 base64 PNG/WebP；文本最多 128 KiB。远程图片使用 `referrerPolicy=no-referrer`。 |
 | `primaryColor` | 六位十六进制颜色；只覆盖一组受限 DSH 主题 token。 |
 | `loginTitle` | 最多 120 字符。 |
+| `loginButtonLabel` | 最多 40 字符。首次登录、设置页和账户菜单的登录按钮文字；省略时使用客户端默认文案。 |
 | `loginDescription` | 最多 500 字符。 |
 | `supportURL` | 使用 `noopener noreferrer` 打开的绝对 HTTPS URL。 |
 

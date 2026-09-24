@@ -331,6 +331,11 @@
           "minLength": 1,
           "maxLength": 120
         },
+        "loginButtonLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
         "loginDescription": {
           "type": "string",
           "minLength": 1,

@@ -7,6 +7,20 @@ import { enterpriseProviderConfig, normalizeEnterpriseProfile, publicProfile } f
 
 const exampleURL = new URL('../examples/enterprise-profile.example.json', import.meta.url)
 
+test('optional login label survives normalization and the public wire contract', async () => {
+  const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
+  const { configurationResult } = await import('../src/host/typert-schemas.js')
+  const profile = normalizeEnterpriseProfile({ ...raw, brand: { ...raw.brand, loginButtonLabel: '统一认证登录' } })
+  const wire = configurationResult.schema.parse({
+    schemaVersion: 'dsh-oidc/v1alpha1', uiMode: 'standard', profiles: [publicProfile(profile)],
+  })
+  assert.equal(wire.profiles[0].brand.loginButtonLabel, '统一认证登录')
+  assert.equal(normalizeEnterpriseProfile(raw).brand.loginButtonLabel, undefined)
+  for (const value of ['', ' 登录 ', 'x'.repeat(41), false])
+    assert.throws(() => normalizeEnterpriseProfile({ ...raw, brand: { loginButtonLabel: value } }), /brand.loginButtonLabel/)
+  assert.equal(normalizeEnterpriseProfile({ ...raw, brand: { loginButtonLabel: 'x'.repeat(40) } }).brand.loginButtonLabel.length, 40)
+})
+
 test('reference profile is bounded data and projects one callable Provider', async () => {
   const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
   const profile = normalizeEnterpriseProfile(raw)
