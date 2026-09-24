@@ -5590,9 +5590,15 @@
   "reviewedCompatibility": [
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "4897d6391c426188bfad481054c20eb0e187b347e00c2257b5e6fb62e6232ba9",
+      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Legacy composition remains inactive for eduwork-web product identities. Parent, worker and Windows linker share the invocation directory when resolving local configuration paths. Bundle selection and service registration are unchanged; no institution endpoint or credential exemption."
+      "reason": "Legacy composition remains inactive for eduwork-web product identities. Parent, worker and Windows linker share the invocation directory when resolving local configuration paths; the linker now runs in-process from link-studio-web-profile.mjs instead of PowerShell. Bundle selection and service registration are unchanged; no institution endpoint or credential exemption."
+    },
+    {
+      "path": "scripts/lib/dsh-skills.mjs",
+      "sha256": "3a48a2ffe4fe37bd59b47cae11b2b06927fb7ecfc731caf6c01facefb9831ec1",
+      "kind": "inactive-legacy-institution-references",
+      "reason": "Node.js port of install-bundled-dsh-skills.ps1. Metadata-only skill projection retains one shared instruction body and follows the selected distribution credential binding; the configured-root path checks are preserved with platform-aware separators. Legacy institution registration is unchanged and remains inactive in EduWork. No endpoint or credential exemption."
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
