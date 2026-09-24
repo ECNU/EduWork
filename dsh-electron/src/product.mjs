@@ -19,7 +19,7 @@ import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
-import { publisherBootstrap, preparePublisherContent } from './publisher-bootstrap.mjs'
+import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 
 export function configureWindowNavigation(window) {
@@ -230,7 +230,7 @@ export function checkProductUpdates() {
 }
 export async function showDesktopFailure(error) {
   if (isQuitting()) return
-  try { if(await contentUpdates?.rollback()) {restartDesktop();return} }
+  try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
@@ -240,7 +240,16 @@ export async function showDesktopFailure(error) {
   let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
-    if (url === 'eduwork-startup://restart/') restartDesktop()
+    if (url === 'eduwork-startup://restart/' && !importing) {
+      if (!needsConfiguration) restartDesktop()
+      else {
+        importing = true
+        void (async () => {
+          await retryPublisherContent(contentUpdates)
+          restartDesktop()
+        })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })).finally(() => { importing = false })
+      }
+    }
     if (url === 'eduwork-startup://exit/') app.quit()
     if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {
       importing = true
@@ -249,7 +258,7 @@ export async function showDesktopFailure(error) {
         if (selected.canceled) return
         const path = selected.filePaths[0], info = await stat(path)
         if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
-        await contentUpdates.importOffline(await readFile(path))
+        await contentUpdates.importOffline(await readFile(path), { retryFailed: true })
         restartDesktop()
       })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
     }

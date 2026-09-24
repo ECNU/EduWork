@@ -2,10 +2,10 @@ import { readConfiguration } from '../configuration-file.mjs'
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { generateKeyPairSync, sign } from 'node:crypto'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, chmod } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
-import { publisherBootstrap, preparePublisherContent, readPublisherBootstrap } from '../publisher-bootstrap.mjs'
+import { publisherBootstrap, preparePublisherContent, readPublisherBootstrap, retryPublisherContent } from '../publisher-bootstrap.mjs'
 import { ContentUpdates } from '../content-updates.mjs'
 import { digest } from '../content-update-protocol.mjs'
 import { loadUserConfig } from '../user-config.mjs'
@@ -159,6 +159,37 @@ test('failed first trial does not loop or accept the rejected signed revision', 
   await assert.rejects(next.manager.importOffline(release.offline), /未通过启动检查/)
   f.release(2)
   assert.equal((await preparePublisherContent(next.manager, next.bootstrap)).configurationRevision, 2)
+})
+
+test('Windows first-run config write failure exposes recovery and restarts after permissions recover',{skip:process.platform!=='win32'},async t=>{
+  const f=await fixture(t);f.release()
+  const first=await f.open(),original=await readFile(first.bootstrap.configPath,'utf8')
+  await chmod(first.bootstrap.configPath,0o444)
+  try {
+    await assert.rejects(preparePublisherContent(first.manager,first.bootstrap),error=>error.code==='EDUWORK_BOOTSTRAP_REQUIRED'&&/写入权限/.test(error.message))
+    assert.equal(await readFile(first.bootstrap.configPath,'utf8'),original)
+    assert.deepEqual(first.manager.state.rejected,[])
+  } finally {await chmod(first.bootstrap.configPath,0o600)}
+  const next=await f.open()
+  assert.equal((await preparePublisherContent(next.manager,next.bootstrap)).configurationRevision,1)
+  await next.manager.ready()
+  assert.equal(loadUserConfig(next.bootstrap.configPath).organizations[0].id,'example')
+})
+
+test('startup retry action recovers an old rejection only after a verified download, retaining rejection on failure',async t=>{
+  const f=await fixture(t),release=f.release(),first=await f.open()
+  await preparePublisherContent(first.manager,first.bootstrap)
+  const next=await f.open()
+  f.responses.set(release.manifest.bundle.url,'corrupt')
+  await assert.rejects(retryPublisherContent(next.manager))
+  assert.equal(next.manager.state.pending,null)
+  assert.equal(next.manager.state.rejected.length,1)
+  f.responses.set(release.manifest.bundle.url,release.bytes)
+  assert.equal((await retryPublisherContent(next.manager)).state,'ready')
+  assert.equal(next.manager.state.rejected.length,0)
+  const recovered=await f.open()
+  assert.equal((await preparePublisherContent(recovered.manager,recovered.bootstrap)).configurationRevision,1)
+  await recovered.manager.ready()
 })
 
 test('generic edition never reads the publisher feed; local source and update preferences override bootstrap defaults', async t => {
