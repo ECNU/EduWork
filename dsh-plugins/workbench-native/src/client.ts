@@ -10,7 +10,7 @@ import skillManagerRemote from '@chatecnu-work/dsh-skill-manager-native/remote'
 import { canonicalSkillName, effectiveDisabledSkills, skillToggleSettings, skillGroups, skillCenterRows } from '../lib/view-model.js'
 declare const __EDUWORK_NATIVE_017__: boolean
 const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
-export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace']
+export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace',...(nativeSettings ? ['uiSession'] : [])]
 const h = React.createElement
 const color = 'var(--dsw-alias-state-business-primary, #9f2636)'
 const border = 'var(--dsw-alias-border-l2, #e1e4eb)'
@@ -317,8 +317,12 @@ export async function apply(ctx) {
     const notificationScope = nativeSettings ? inner.configForms.get('eduwork-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-notifications' })
     inner.slots.inject('settings.general.item', () => inner.slots.register({ name: 'settings.general.item', id: 'eduwork-notifications', order: 19,
       inject: () => ({ scope: notificationScope, status: notifications.status }) }, NotificationSettings))
-    const service={settings:(nativeSettings ? inner.configForms.get('chatecnu-skills') : inner.settingsScope.bind({ namespace: 'chatecnu-skills' })),hasSession:()=>Boolean(inner.sessions.list.getSnapshot().current),subscribeSession:fn=>inner.sessions.list.subscribe(fn),
-      list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=inner.sessions.list.getSnapshot().current;if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
+    // Native Session catalogs no longer carry selection. Follow the same
+    // public current binding as the official UI without acquiring a new one.
+    const currentSession = nativeSettings ? inner.uiSession.adapter.current : inner.sessions.list
+    const currentSessionId = () => nativeSettings ? currentSession.getSnapshot().props.sessionId : currentSession.getSnapshot().current
+    const service={settings:(nativeSettings ? inner.configForms.get('chatecnu-skills') : inner.settingsScope.bind({ namespace: 'chatecnu-skills' })),hasSession:()=>Boolean(currentSessionId()),subscribeSession:fn=>currentSession.subscribe(fn),
+      list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=currentSessionId();if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
       create:input=>unwrap(inner.remote.skillManager.create(input)),importDirectory:path=>unwrap(inner.remote.skillManager.importDirectory(path)),remove:name=>unwrap(inner.remote.skillManager.trashPersonalSkill(name)),pickDirectory:()=>pickImportDirectory(inner.uiWorkspace)}
     if (nativeSettings) {
       inner.slots.inject('main', () => inner.slots.register({

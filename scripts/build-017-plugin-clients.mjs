@@ -51,7 +51,7 @@ async function prepareCandidateManifests(directory) {
       if (manifest.name === '@eduwork/workbench-native') {
         manifest.dsh.client.inject = manifest.dsh.client.inject
           .flatMap(name => name === '@deepseek-ai/dsh-client-ui-settings-plugins'
-            ? ['@deepseek-ai/dsh-client-ui-layout', '@deepseek-ai/dsh-client-ui-sidebar'] : [name])
+            ? ['@deepseek-ai/dsh-client-ui-layout', '@deepseek-ai/dsh-client-ui-sidebar', '@deepseek-ai/dsh-client-ui-session'] : [name])
       }
       await writeFile(path, JSON.stringify(manifest, null, 2) + '\n')
       report.manifests.push({ name: manifest.name, originalPeers, targetPeers: manifest.peerDependencies ?? {} })

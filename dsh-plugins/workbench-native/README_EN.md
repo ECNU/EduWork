@@ -29,3 +29,5 @@ The setting controls total concurrency for this Host, defaulting to 3 across mai
 ## Verification
 
 Set `EDUWORK_TEST_RUNTIME` to a prepared DSH runtime and run `node --test test/*.test.mjs`. `test/import-browser.mjs` uses the real React interface, strict import schemas and Edge, with TypeScript tooling prepared in `main.cache/client-build-tools`. Tests use synthetic data only.
+
+Verify the 0.1.7 sidebar entry with an assembled real Host and Edge: `node test/skills-sidebar-browser.mjs --product <product-directory> --host <native-host-directory> --output <new-evidence-directory>`. It covers peer navigation, collapse, skill management and current-project skills. Reports and screenshots stay in the isolated output directory; no model or login credentials are needed.

@@ -5430,7 +5430,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"connection",
 			"sessions",
 			nativeSettings ? "configForms" : "settingsScope",
-			"uiWorkspace"
+			"uiWorkspace",
+			...nativeSettings ? ["uiSession"] : []
 		];
 		const h = react.default.createElement;
 		const color = "var(--dsw-alias-state-business-primary, #9f2636)";
@@ -6069,13 +6070,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						status: notifications.status
 					})
 				}, NotificationSettings));
+				const currentSession = nativeSettings ? inner.uiSession.adapter.current : inner.sessions.list;
+				const currentSessionId = () => nativeSettings ? currentSession.getSnapshot().props.sessionId : currentSession.getSnapshot().current;
 				const service = {
 					settings: nativeSettings ? inner.configForms.get("chatecnu-skills") : inner.settingsScope.bind({ namespace: "chatecnu-skills" }),
-					hasSession: () => Boolean(inner.sessions.list.getSnapshot().current),
-					subscribeSession: (fn) => inner.sessions.list.subscribe(fn),
+					hasSession: () => Boolean(currentSessionId()),
+					subscribeSession: (fn) => currentSession.subscribe(fn),
 					list: async () => {
 						const result = await unwrap(inner.remote.workbench.catalog());
-						const id = inner.sessions.list.getSnapshot().current;
+						const id = currentSessionId();
 						if (!id || !inner.remote.skills) return result.skills;
 						const session = await unwrap(inner.remote.skills.list({ sessionId: id }));
 						const known = new Set(result.skills.map((row) => canonicalSkillName(row.name)));

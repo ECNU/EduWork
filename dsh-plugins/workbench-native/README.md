@@ -29,3 +29,5 @@ DSH 0.1.7 版本从左侧「技能」直接进入，与「插件」并列。入�
 ## 验证
 
 通过 `EDUWORK_TEST_RUNTIME` 指定准备好的 DSH Runtime，运行 `node --test test/*.test.mjs`。`test/import-browser.mjs` 使用真实 React 界面、严格的导入模式和 Edge；需要准备 `main.cache/client-build-tools` 中的 TypeScript 构建工具。测试仅使用合成数据。
+
+0.1.7 侧栏入口使用组装后的真实 Host 与 Edge 验证：`node test/skills-sidebar-browser.mjs --product <product目录> --host <native-host目录> --output <新建证据目录>`。覆盖并列导航、折叠、技能管理与当前项目技能；结果及截图写入独立目录，无需模型或登录凭据。
