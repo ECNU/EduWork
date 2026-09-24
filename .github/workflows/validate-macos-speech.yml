@@ -1,0 +1,37 @@
+name: Validate macOS system speech
+on:
+  pull_request:
+    paths:
+      - 'packages/dsh-knowledge-studio/packages/artifact-services/lib/speech*.js'
+      - 'packages/dsh-knowledge-studio/packages/artifact-services/lib/providers.js'
+      - 'packages/dsh-knowledge-studio/test/speech-macos.test.mjs'
+      - 'packages/dsh-knowledge-studio/scripts/system-speech-smoke.mjs'
+      - '.github/workflows/validate-macos-speech.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  system-speech:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Check speech provider contracts
+        run: node --test packages/dsh-knowledge-studio/test/speech-macos.test.mjs
+      - name: Verify native system voices and WAV output
+        run: node packages/dsh-knowledge-studio/scripts/system-speech-smoke.mjs --output "$RUNNER_TEMP/system-speech"
+      - name: Retain synthetic validation report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-system-speech-validation
+          path: |
+            ${{ runner.temp }}/system-speech/report.json
+            ${{ runner.temp }}/system-speech/**/*.process.json
+            ${{ runner.temp }}/system-speech/**/*.log
+          retention-days: 7
+          if-no-files-found: error
