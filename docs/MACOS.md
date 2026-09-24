@@ -57,7 +57,7 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 公版运行 `Build desktop release candidates`，机构版运行 `Build ECNU desktop release candidates`，选择 Windows、Mac 或两者。工作流仅保留验收产物，校验后由维护者发布。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
 
-`scripts/ci-eduwork-macos-release.ps1` 在 `macos-15` arm64 runner 上复用公共装配，生成待验收的开发 ZIP 和 DMG，不自动发布 Release。输入为核心目录、机构目录、发行配置、已确认版本与说明文件：
+`scripts/ci-eduwork-macos-release.ps1` 在 `macos-15` arm64 runner 上复用公共装配，生成待验收的开发 ZIP，不自动发布 Release。输入为核心目录、机构目录、发行配置、已确认版本与说明文件：
 
 ```powershell
 ./core/scripts/ci-eduwork-macos-release.ps1 -CoreRoot ./core -EditionRoot ./institution `
@@ -77,16 +77,12 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 
 ## DMG 拖拽安装窗口
 
-Mac 候选构建会额外生成 DMG 和 SHA-256 校验文件。窗口包含应用、指向 `/Applications` 的快捷方式与拖拽指引。应用文件名、窗口标题和安装文案读取发行品牌名称；公版为 `EduWork`，机构版由发行配置提供。ZIP 仍保留供现有更新流程使用。
-
-也可以对已签名的应用单独打包，无需重新构建产品：
+可对已签名的应用单独生成带品牌标题、拖拽指引和 Applications 快捷方式的 DMG；默认候选构建仍生成 ZIP。
 
 ```powershell
 ./scripts/package-macos-dmg.ps1 -App '/path/to/EduWork.app' -Output '/path/to/EduWork-macos-arm64.dmg'
 ```
 
-需要 macOS、Xcode Command Line Tools、PowerShell 7，以及支持 `venv` 和 `pip` 的 Python 3（可通过 `-Python` 指定）。脚本使用临时虚拟环境安装精确版本且校验哈希的 Finder 元数据依赖；背景由系统 AppKit 绘制。输出必须不存在。应用文件名须与 `CFBundleDisplayName`（缺省时使用 `CFBundleName`）一致。
+需要 macOS、Xcode Command Line Tools、PowerShell 7，以及支持 `venv` 和 `pip` 的 Python 3（可通过 `-Python` 指定）。脚本在临时环境中安装哈希锁定的 Finder 元数据依赖；输出必须不存在。应用文件名须与 `CFBundleDisplayName`（缺省时使用 `CFBundleName`）一致，名称由发行品牌配置提供。
 
-打包不修改或重新签名应用，不改变 Bundle ID、用户数据目录与更新源。脚本验证复制前后的应用签名及最终镜像校验和；成功或失败后均尝试推出临时卷。DMG 不增加 Developer ID 签名或 Apple 公证。首次使用改名后的机构版本时，旧名称的应用不会自动被拖拽安装覆盖，可退出旧版后将旧 `.app` 移到废纸篓，保留用户数据。
-
-验收时打开最终只读 DMG，确认背景、应用名称、图标位置和 Applications 快捷方式；将应用拖到应用程序目录后验证启动与签名。至少分别检查公版名称、机构名称及包含中文和空格的路径。
+打包验证应用签名和镜像完整性，不修改或重新签名应用，也不增加 Apple 公证。不同名称的旧应用不会被拖拽安装覆盖，可退出后移到废纸篓，保留用户数据。验收时打开最终只读 DMG，检查背景、名称、布局和快捷方式，并验证拖拽安装后的启动与签名。
