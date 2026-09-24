@@ -47,7 +47,8 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   // there after an explicit promotion; data must still remain outside product.
   if (inside(product, home) || inside(home, product)) throw new Error('Desktop requires isolated product and data directories')
   const identity = await json(join(product, 'assembly.json'))
-  const native = identity.dshVersion === '0.1.7-alpha.2' && identity.dshCommit === '00102833dfaee1da9f48a3a8eae9d34005a75218'
+  const native = (identity.dshVersion === '0.1.7-rc.1' && identity.dshCommit === '46a7f68b0922371ce7144b668b90e377d8e799f4')
+    || (identity.dshVersion === '0.1.7-alpha.2' && identity.dshCommit === '00102833dfaee1da9f48a3a8eae9d34005a75218')
   if (native && shell !== 'electron') throw new Error('The DSH 0.1.7 candidate supports Electron only')
   if (!native && (identity.dshVersion !== '0.1.5-rc.2' || identity.dshCommit !== 'fb2c4b9e698e30edb738bca4cf0618587db7d203')) throw new Error('Desktop product does not match the qualified DSH baseline')
   if (!/^[a-z0-9-]+$/u.test(identity.distribution)) throw new Error('Invalid distribution identity')

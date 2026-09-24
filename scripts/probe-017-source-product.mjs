@@ -129,6 +129,7 @@ try {
   }
   assert.ok(secrets.size > 0, 'Installed connection did not exercise the native credential bridge')
   assert.ok(!logs.join('').includes(bridge.bootstrap.nativeBridge.token))
+  assert.ok(!logs.join('').includes('is incompatible with dsh'), 'Candidate composition contains incompatible plugin declarations')
   report.success = true
 } finally {
   await host?.stop()

@@ -39,9 +39,9 @@ test('approved npm lock is complete registry-only, exact DSH and excludes produc
 })
 
 test('0.1.7 candidate has an independent exact registry lock and no retired DSH packages', async () => {
-  const input = await contract(join(root, 'third_party/dsh/candidate-v0.1.7-alpha.2'))
+  const input = await contract(join(root, 'third_party/dsh/candidate-v0.1.7-rc.1'))
   assert.equal(validateNpmRuntimeLock(input), input.lock.runtime.npm.packageLockSHA256)
-  assert.equal(input.lock.packageVersion, '0.1.7-alpha.2')
+  assert.equal(input.lock.packageVersion, '0.1.7-rc.1')
   assert.equal(input.lock.qualification.status, 'migration-candidate')
   assert.equal(input.lock.qualification.desktop, false)
   const dsh = input.packageLock.packages['node_modules/@deepseek-ai/dsh']

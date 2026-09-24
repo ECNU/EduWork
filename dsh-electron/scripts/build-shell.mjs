@@ -13,7 +13,7 @@ const lock = JSON.parse(await readFile(join(repository, 'third_party/dsh/release
 // Keep the independently pinned product window/lifecycle while replacing its
 // Host with the official Web transport. The receipt records both revisions.
 const native = values['native-017'] === true
-const coreLock = native ? JSON.parse(await readFile(join(repository, 'third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json'), 'utf8')) : lock
+const coreLock = native ? JSON.parse(await readFile(join(repository, 'third_party/dsh/candidate-v0.1.7-rc.1/LOCK.json'), 'utf8')) : lock
 const digest = data => createHash('sha256').update(data).digest('hex')
 const inputs = JSON.parse(await readFile(join(repository, 'dsh-electron/upstream-inputs.json'), 'utf8'))
 const hostReceipt = JSON.parse(await readFile(join(host, 'receipt.json'), 'utf8'))

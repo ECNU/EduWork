@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/validate-core-017.yml'
-      - 'third_party/dsh/candidate-v0.1.7-alpha.2/**'
+      - 'third_party/dsh/candidate-v0.1.7-rc.1/**'
       - 'dsh-host/prepare-native.mjs'
       - 'dsh-host/upstream-inputs-017.json'
       - 'dsh-host/native-profile.mjs'
@@ -42,7 +42,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: deepseek-ai/deepseek-harness
-          ref: 00102833dfaee1da9f48a3a8eae9d34005a75218
+          ref: 46a7f68b0922371ce7144b668b90e377d8e799f4
           path: upstream
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -53,7 +53,7 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
-          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
+          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-rc.1/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
@@ -69,7 +69,7 @@ jobs:
         run: |
           $deps = "$env:RUNNER_TEMP/source-deps"
           New-Item -ItemType Directory -Path $deps | Out-Null
-          Copy-Item core/third_party/dsh/candidate-v0.1.7-alpha.2/source-probe/package*.json $deps
+          Copy-Item core/third_party/dsh/candidate-v0.1.7-rc.1/source-probe/package*.json $deps
           npm ci --prefix $deps --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE) { throw 'Locked qualification dependencies failed' }
           node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
