@@ -25,8 +25,6 @@ def application_name(app):
             or name in ('.', '..') or any(c in name for c in '/\\:')
             or any(ord(c) < 32 for c in name) or len(name.encode('utf-8')) > 240):
         raise ValueError('Application display name must be a safe macOS filename')
-    if app.name != name + '.app':
-        raise ValueError('Application filename must match its display name; rename before packaging')
     return name
 
 

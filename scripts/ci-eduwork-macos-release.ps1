@@ -57,7 +57,7 @@ try {
     $archive=Join-Path $Output ('desktop/'+$pack.asset.name)
     $unpacked=Join-Path $Output 'unpacked';New-Item -ItemType Directory -Path $unpacked | Out-Null
     & ditto -x -k $archive $unpacked
-    $app=Join-Path $unpacked $pack.appName
+    $app=Join-Path $unpacked "$name.app"
     & codesign --verify --deep --strict $app
     $result.checks.archiveManifest='passed'
     $frozen=Join-Path $app 'Contents/Resources/product'

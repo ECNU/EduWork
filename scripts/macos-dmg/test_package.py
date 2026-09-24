@@ -25,9 +25,8 @@ class ApplicationNameTests(unittest.TestCase):
     def test_falls_back_to_bundle_name(self):
         self.assertEqual(self.read_name(None, 'EduWork.app'), 'EduWork')
 
-    def test_rejects_old_filename_with_new_brand(self):
-        with self.assertRaisesRegex(ValueError, 'filename must match'):
-            self.read_name('EduWork@ECNU', 'EduWork-ECNU.app')
+    def test_display_name_can_differ_from_application_filename(self):
+        self.assertEqual(self.read_name('EduWork@ECNU', 'EduWork-ECNU.app'), 'EduWork@ECNU')
 
     def test_rejects_unsafe_volume_names(self):
         for name in ('../other', 'bad:name', 'bad\\name', 'bad\nname', '.', ' padded ', '字' * 100):

@@ -83,6 +83,6 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 ./scripts/package-macos-dmg.ps1 -App '/path/to/EduWork.app' -Output '/path/to/EduWork-macos-arm64.dmg'
 ```
 
-需要 macOS、Xcode Command Line Tools、PowerShell 7，以及支持 `venv` 和 `pip` 的 Python 3（可通过 `-Python` 指定）。脚本在临时环境中安装哈希锁定的 Finder 元数据依赖；输出必须不存在。应用文件名须与 `CFBundleDisplayName`（缺省时使用 `CFBundleName`）一致，名称由发行品牌配置提供。
+需要 macOS、Xcode Command Line Tools、PowerShell 7，以及支持 `venv` 和 `pip` 的 Python 3（可通过 `-Python` 指定）。脚本在临时环境中安装哈希锁定的 Finder 元数据依赖；输出必须不存在。安装窗口标题读取 `CFBundleDisplayName`（缺省时使用 `CFBundleName`），保留输入应用的文件名。
 
-打包验证应用签名和镜像完整性，不修改或重新签名应用，也不增加 Apple 公证。不同名称的旧应用不会被拖拽安装覆盖，可退出后移到废纸篓，保留用户数据。验收时打开最终只读 DMG，检查背景、名称、布局和快捷方式，并验证拖拽安装后的启动与签名。
+打包验证应用签名和镜像完整性，不修改或重新签名应用，也不增加 Apple 公证。验收时打开最终只读 DMG，检查背景、名称、布局和快捷方式，并验证拖拽安装后的启动与签名。
