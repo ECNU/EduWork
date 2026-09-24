@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { app, BrowserWindow } from 'electron'
 import { attachAppActivation, attachWindowVisibility } from '../src/window-visibility.mjs'
 
-await app.whenReady()
+app.whenReady().then(async () => {
 let quitting = false
 const windows = []
 const dispose = attachAppActivation({ app, windows: () => windows })
@@ -37,3 +37,4 @@ try {
   for (const window of windows) if (!window.isDestroyed()) window.destroy()
   app.exit(process.exitCode || 0)
 }
+})
