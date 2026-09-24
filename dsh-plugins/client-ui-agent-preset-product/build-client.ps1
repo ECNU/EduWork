@@ -64,8 +64,7 @@ Replace-Exactly 'optional policy helper' @'
 '@ @'
 		const PRODUCT_OPTIONAL_PRESETS = ["minimal", "cordis"];
 		function productPresetRows(rows) {
-			const present = new Set(rows.map((row) => row.id));
-			return [...rows, ...PRODUCT_OPTIONAL_PRESETS.filter((id) => !present.has(id)).map((id) => ({
+			return [...rows.filter((row) => !PRODUCT_OPTIONAL_PRESETS.includes(row.id)), ...PRODUCT_OPTIONAL_PRESETS.map((id) => rows.find((row) => row.id === id) ?? ({
 				id,
 				trust: "system",
 				isDefault: false,
