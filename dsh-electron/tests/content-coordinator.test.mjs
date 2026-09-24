@@ -29,3 +29,13 @@ test('content-only installations persist policy, pending content blocks a partia
   await assert.rejects(coordinator.action('restart-content-update'),/尚无/)
   await coordinator.close()
 })
+
+test('only an explicit check authorizes retrying a previously failed signed revision',async()=>{
+  const checks=[]
+  const content={snapshot:()=>({state:'current'}),async check(options){checks.push(options)},async close(){}}
+  const coordinator=updateCoordinator({content,version:'0.3.6'})
+  await coordinator.action('check-updates-background')
+  await coordinator.action('check-updates')
+  await coordinator.close()
+  assert.deepEqual(checks,[{retryFailed:false},{retryFailed:true}])
+})

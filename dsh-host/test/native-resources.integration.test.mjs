@@ -19,6 +19,10 @@ test('relocatable native closure runs real Office creation/preview and system TT
   Object.assign(childEnv, environment)
   const pythonCode = 'import sys,json,docx,openpyxl,pptx,pypdf,reportlab,lxml.etree; print(json.dumps({"prefix":sys.prefix,"base":sys.base_prefix,"paths":sys.path,"modules":[m.__file__ for m in [docx,openpyxl,pptx,pypdf,reportlab,lxml.etree]]}))'
   const probe = JSON.parse((await run(environment.DSH_OFFICE_PYTHON, ['-I', '-X', 'utf8', '-c', pythonCode], { env: childEnv, windowsHide: true, encoding: 'utf8' })).stdout)
+  // python-docx lazily loads these templates using __file__/../templates.
+  // The private long-path importer must retain ordinary file-open semantics.
+  const footerCode = 'from docx import Document; from pathlib import Path; import io,os; d=Document(); s=d.sections[0]; s.header.paragraphs[0].text="Header"; s.footer.paragraphs[0].text="Footer"; p=Path("template-test.docx"); d.save(p); assert Document(p).sections[0].footer.paragraphs[0].text=="Footer"; fd=os.open(p,os.O_RDONLY); assert open(fd,"rb").read(2)==b"PK"; assert io.open(p,"rb").read(2)==b"PK"; print("header-footer-open-ok")'
+  assert.match((await run(environment.DSH_OFFICE_PYTHON, ['-I', '-X', 'utf8', '-c', footerCode], { env: childEnv, cwd: evidence, windowsHide: true, encoding: 'utf8' })).stdout, /header-footer-open-ok/)
   const canonical = await realpath(product)
   for (const path of [probe.prefix, probe.base, ...probe.paths, ...probe.modules]) {
     const rel = relative(toNamespacedPath(canonical), toNamespacedPath(path))

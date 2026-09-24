@@ -17,7 +17,7 @@ import {
   redactSensitive,
 } from './core.js'
 import { memoryDomain } from './spec.js'
-import { explicitMemoryRequest, executionSources } from './session-context.js'
+import { explicitMemoryRequest, executionSources, memoryMessageSource } from './session-context.js'
 
 export const name = 'memory-native'
 export const SETTINGS_NAMESPACE = 'memories'
@@ -306,12 +306,17 @@ function createTools(corePromise, sessionQuery) {
 }
 
 export class LocalMemoryService extends TypertRemoteService {
+  static Config = typeof z.string().volatile === 'function'
+    ? z.object(Object.fromEntries(Object.entries(SettingsSchema.dict).map(([key, field]) => [key, field.volatile()])))
+    : undefined
   static inject = ['storageDomain', 'settings', 'tools', 'commands', 'systemPrompt', 'sessionQuery']
 
   constructor(ctx, config = {}) {
     super(ctx, 'localMemories')
     for (const initialize of remoteInitializers) initialize.call(this)
-    this.settings = ctx.settings.register(SETTINGS_NAMESPACE, SettingsSchema, { base: { ...DEFAULT_SETTINGS, ...config } })
+    this.settings = typeof ctx.settings.register === 'function'
+      ? ctx.settings.register(SETTINGS_NAMESPACE, SettingsSchema, { base: { ...DEFAULT_SETTINGS, ...config } })
+      : { get: () => Object.fromEntries(Object.keys(DEFAULT_SETTINGS).map(key => [key, config[key].get()])) }
     this.domain = ctx.storageDomain.open(memoryDomain)
     this.core = this.domain.then(domain => new MemoryCore(
       domain.table('records'),
@@ -356,7 +361,7 @@ export class LocalMemoryService extends TypertRemoteService {
         ...decision,
         messages: [...decision.messages, createUserMessage({
           content: [{ type: 'text', text }],
-          source: { kind: 'plugin', plugin: name, form: 'notice', summary: `local Memory × ${payload.length}` },
+          source: memoryMessageSource(agent.session, `local Memory × ${payload.length}`),
         })],
       }
     })

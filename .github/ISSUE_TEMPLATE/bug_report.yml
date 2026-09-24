@@ -1,0 +1,32 @@
+name: 问题反馈 / Bug report
+description: 报告 EduWork 公版或机构版的问题 / Report a problem in EduWork or an institution edition
+body:
+  - type: textarea
+    id: environment
+    attributes:
+      label: 版本与环境 / Version and environment
+      description: 从应用「关于」进入时会自动填写，可补充操作系统版本。 / Prefilled when opened from About; add your OS version if relevant.
+      placeholder: EduWork 版本、Windows / macOS 版本、处理器架构
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: 问题描述 / What happened?
+      description: 请同时说明预期的行为。 / Include what you expected to happen.
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 复现步骤 / Steps to reproduce
+      placeholder: |
+        1.
+        2.
+    validations:
+      required: true
+  - type: textarea
+    id: attachments
+    attributes:
+      label: 截图或相关日志（可选） / Screenshots or relevant logs (optional)
+      description: 提交前请移除账号、密钥、令牌及其他私人信息。 / Remove accounts, keys, tokens and other private information before sharing.

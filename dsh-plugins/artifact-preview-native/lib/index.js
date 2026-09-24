@@ -5,6 +5,7 @@ import { assertOfficeSourceSize, renderOfficePreview } from './office.js'
 import { revealInFileManager } from './reveal.js'
 import { importGrantedWorkspaceFiles, importWorkspaceFiles } from './workspace-import.js'
 import { PREVIEW_FETCH_PATH, PREVIEW_LEGACY_PREFIX, fileResponse, serveLegacyStream, streamFailure, streamToken } from './stream.js'
+import { sessionCwd } from './session-workspace.js'
 
 export const name = 'artifact-preview-native'
 const initializers = []
@@ -80,8 +81,7 @@ export class ArtifactPreviewService extends TypertRemoteService {
   }
   async resolveTarget(sessionId, relativePath, signal) {
     if (typeof sessionId !== 'string' || typeof relativePath !== 'string' || relativePath.trim().length === 0) throw new Error('preview request is incomplete')
-    const session = this.ctx.sessions.get(sessionId)
-    const cwd = session?.header?.cwd
+    const cwd = await sessionCwd(this.ctx, sessionId, signal)
     if (typeof cwd !== 'string' || cwd.length === 0) throw new Error('the session workspace is unavailable')
     const root = await this.ctx.fs.resolve('.', { cwd, signal })
     const target = await this.ctx.fs.resolve(relativePath, { cwd, signal })
@@ -130,10 +130,9 @@ export class ArtifactPreviewService extends TypertRemoteService {
   }
   async importFiles(sessionId, files) {
     if (typeof sessionId !== 'string') throw new Error('文件导入请求缺少会话')
-    const session = this.ctx.sessions.get(sessionId)
-    const cwd = session?.header?.cwd
-    if (typeof cwd !== 'string' || cwd.length === 0) throw new Error('当前会话没有可用的工作区')
     const signal = AbortSignal.timeout(120_000)
+    const cwd = await sessionCwd(this.ctx, sessionId, signal)
+    if (typeof cwd !== 'string' || cwd.length === 0) throw new Error('当前会话没有可用的工作区')
     const root = await this.ctx.fs.resolve('.', { cwd, signal })
     const info = await this.ctx.fs.stat(root, signal)
     if (info?.type !== 'directory') throw new Error('当前会话工作区不可用')
@@ -141,10 +140,9 @@ export class ArtifactPreviewService extends TypertRemoteService {
   }
   async importNativeFiles(sessionId, grantID) {
     if (typeof sessionId !== 'string') throw new Error('文件导入请求缺少会话')
-    const session = this.ctx.sessions.get(sessionId)
-    const cwd = session?.header?.cwd
-    if (typeof cwd !== 'string' || cwd.length === 0) throw new Error('当前会话没有可用的工作区')
     const signal = AbortSignal.timeout(120_000)
+    const cwd = await sessionCwd(this.ctx, sessionId, signal)
+    if (typeof cwd !== 'string' || cwd.length === 0) throw new Error('当前会话没有可用的工作区')
     const root = await this.ctx.fs.resolve('.', { cwd, signal })
     const info = await this.ctx.fs.stat(root, signal)
     if (info?.type !== 'directory') throw new Error('当前会话工作区不可用')

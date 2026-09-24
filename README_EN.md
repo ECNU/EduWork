@@ -1,90 +1,95 @@
 <p align="center">
-  <img src="docs/images/readme-hero-en.svg" width="100%" alt="From source materials to finished work with EduWork — brand illustration">
+  <img src="assets/eduwork/icon-red.svg" width="72" height="72" alt="EduWork red logo">
 </p>
 
 <h1 align="center">EduWork</h1>
 
-<p align="center"><strong>Turn your materials into finished work, with AI.</strong><br><sub>Local workspaces · Useful outputs · Your models and institutional services</sub></p>
+<p align="center"><strong>An open AI knowledge workbench.</strong><br><sub>Enterprise sign-in · Open protocols · Knowledge Studio</sub></p>
 
 <div align="center">
 
-[![DSH 0.1.5-rc.2](https://img.shields.io/badge/DSH-0.1.5--rc.2-5367E8?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.5-rc.2) [![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Desktop: Electron](https://img.shields.io/badge/desktop-Electron-47848F?style=flat-square&logo=electron&logoColor=white)](dsh-electron/README_EN.md) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-0078D4?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
-[Get started](#installation-and-use) · [Connect LiteLLM](#connect-litellm) · [School and enterprise integration](#school-and-enterprise-integration) · [Open integration initiative](#one-integration-more-clients) · [User guide](docs/USER_GUIDE.md)
+[Open enterprise integration](#open-enterprise-integration) · [Knowledge Studio](#knowledge-studio) · [Get started](#installation-and-use) · [Connect LiteLLM](#connect-litellm) · [Extend and contribute](#extend-and-contribute)
 
 </div>
 
-EduWork is a desktop AI assistant built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Choose a folder and describe what you want to accomplish: read sources, search for information, analyze data, and create web pages, documents, spreadsheets, and presentations in one workspace.
+EduWork brings organizational model access and source-based creation and learning into one desktop workbench. Sign in with a school or enterprise account, explore questions in conversation, and turn your materials into reports, presentations, quizzes, and flashcards in Knowledge Studio.
 
-Individuals can connect their own model APIs. Schools and businesses can configure their identity and model services. **Each client runs independently on its user's computer, with no separate EduWork server to deploy.**
+We focus on two things: **making organizational model services available to different clients through open protocols, and giving knowledge work ways to interact beyond chat.**
+
+<a id="school-and-enterprise-integration"></a>
+
+## Open enterprise integration
+
+Sign in with a school or enterprise account, discover the models you are authorized to use, and start a conversation. There is no need to distribute model API keys to individual users. Organization models and personally configured models can coexist; permissions and quotas remain managed by the server.
+
+### Native LiteLLM support
+
+The EduWork desktop package includes LiteLLM native CLI OAuth support. Configure the full discovery URL, and the client handles browser authorization, model discovery, and Token refresh without an additional plugin installation. The gateway must enable the corresponding CLI OAuth feature and grant users model access. See the [setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) for version requirements.
+
+![After LiteLLM sign-in, the model menu shows the authorized deepseek-v4-flash under the local LiteLLM group](docs/images/litellm-models.png)
+
+<p align="center"><sub>Sign in to use models authorized by the gateway. DeepSeek is a separately configured provider in this example and can coexist with LiteLLM.</sub></p>
+
+| Integration | Current support |
+| --- | --- |
+| **LiteLLM native OAuth** | Sign in to the gateway, then discover and call models authorized for the user and selected team. [Setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
+| **oidc-llm (experimental)** | Connect institution identity and Token-based model access with explicit experimental opt-in. [Protocol notes](packages/dsh-oidc/docs/gateway-auth/experimental-oidc-llm.en.md) · [ChatECNU edition example](https://github.com/ECNU/EduWork-ECNU) |
+| **Standard OIDC** | Identity sign-in; model access additionally requires a supported authorization contract on the server. [Integration contract](packages/dsh-oidc/docs/server-integration-contract.en.md) |
+
+### One integration, more clients
+
+**An organization's accounts and model services should be independent of any one client.** We publish the identity and model-access protocols, implementation, and configuration examples. Other clients can implement the protocols independently, or reuse the separately published `@eduwork/dsh-oidc` module in compatible DSH applications, without adopting EduWork's UI.
+
+The native LiteLLM and experimental oidc-llm protocols share Access Token session and model invocation capabilities. oidc-llm is not yet finalized, and cross-client interoperability requires version-specific validation. We plan to support more open-source Token gateways and welcome gateway, identity platform, and client developers to participate.
+
+[Open integration initiative](packages/dsh-oidc/docs/open-integration.en.md) · [Server interfaces and integration testing](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Client integration](packages/dsh-oidc/README_EN.md)
+
+## Knowledge Studio
+
+**Inspired by NotebookLM, turn source materials into knowledge you can read, use, and practice.** Knowledge Studio uses the files in your local workspace and your configured models, sharing artifacts and file previews with conversations.
+
+### From sources to creation
+
+Organize materials and explore questions in a conversation. Preview the files you create and use them as sources in Studio. The example below starts with campus research and an HTML introduction, then turns that material into a quiz.
 
 ![EduWork workspace: research campus information, generate an HTML introduction, and preview the page on the right](docs/images/workspace.png)
 
-<p align="center"><sub>From research to a finished page: continue the conversation on the left and preview the generated result on the right.</sub></p>
+<p align="center"><sub>Conversation and output side by side: keep discussing while inspecting the resulting file.</sub></p>
 
-## What you can do
+Open Studio on the right and choose an output:
 
-<table>
-<tr>
-<td width="50%" valign="top"><h3>Work with your files</h3><p>Read sources, edit documents, analyze data, and run scripts in a local workspace.</p></td>
-<td width="50%" valign="top"><h3>Create useful outputs</h3><p>Use Studio to turn ideas into reports, spreadsheets, presentations, and learning materials.</p></td>
-</tr>
-<tr>
-<td width="50%" valign="top"><h3>Choose your models</h3><p>Connect your own APIs or sign in to an organization. Personal and enterprise models can coexist.</p></td>
-<td width="50%" valign="top"><h3>Bring your services</h3><p>Configure identity and model access, then add skills and plugins for specialized work.</p></td>
-</tr>
-</table>
-
-### Start with a real task
-
-| What you are working on | Try asking EduWork |
+| Create and organize | Understand and learn |
 | --- | --- |
-| Teaching and learning | “Create a presentation from these course materials, then make a quiz and revision flashcards.” |
-| Research and discovery | “Research this topic, keep source links, create a one-page HTML introduction, and flag questions to verify.” |
-| Data and everyday work | “Compare these spreadsheets, identify differences, and create an analysis report and summary table.” |
+| Reports, spreadsheets, presentations | Mind maps, quizzes, flashcards |
+| Export DOCX, XLSX, PPTX | Explore citations, answer questions, review explanations, ask follow-ups |
 
-The agent can read and edit files, run scripts, and coordinate subagents for complex tasks. Conversations and outputs stay with your workspace, ready for revisions, new sources, and follow-up work.
+Audio and video overviews offer another way to explore sources. Image generation and cloud TTS require compatible services; local speech depends on the system and local resources. See [media configuration](docs/MEDIA.md).
 
-### Make the results in Studio
+![Knowledge Studio: reports, mind maps, quizzes, flashcards, spreadsheets, presentations, audio and video, with recent results](docs/images/studio.png)
 
-Open Studio on the right and choose an output type, or ask for it in a conversation. For example, keep a page generated from your research in the workspace, then use Studio to create a quiz with explanations and source evidence. The same material can become a report, presentation, or set of revision cards.
+<p align="center"><sub>Use the same sources for different outputs, then open them from Recent results.</sub></p>
 
-**Reports · Spreadsheets · Presentations · Mind maps · Quizzes · Flashcards · Audio · Video**
+### From reading to learning
 
-![Studio in the public edition: output types and a quiz generated from workspace materials](docs/images/studio.png)
-
-<p align="center"><sub>Choose an output type to begin. Generated items appear under Recent results, ready to open and use.</sub></p>
-
-Export reports, spreadsheets, and presentations as **DOCX, XLSX, and PPTX** files. Preview interactive learning materials and download media with subtitles. Image generation and cloud TTS require compatible services; local speech depends on the system and local resources. See [media configuration](docs/MEDIA.md).
-
-<details>
-<summary>See how a generated quiz works</summary>
+Quizzes and flashcards are interactive. Answer questions, review feedback and source evidence, and use Ask AI to follow up on anything you do not understand.
 
 ![Studio quiz: check answers, explanations, and source evidence, then ask AI a follow-up question](docs/images/quiz.png)
 
-Answer directly in the sidebar, review explanations and source evidence, and use Ask AI for follow-up questions.
+<p align="center"><sub>Return to the source behind an answer, then continue learning with new questions.</sub></p>
 
-</details>
+### Studio is a plugin, too
 
-### Make it work your way
+Knowledge Studio is an independent plugin. It connects to the workbench through the host's sidebar slots and provides a capability registration interface. Developers can extend output types or integrate other Studio interfaces through plugins. Office, speech, and media generation services are maintained separately for reuse by conversations and Studio.
 
-- **Search and browser**: use official DeepSeek search when its key is configured, or browser search without a key otherwise.
-- **Skill center**: browse built-in skills, import skills, or write task guidance of your own without rebuilding the client.
-- **Memory and mail**: keep task context with local memory; configure an email account to work with the mail assistant.
-- **Speech, models, and preferences**: use local transcription and system speech synthesis, choose your models, switch between blue and red themes, and set a total limit for concurrent model requests.
-
-<details>
-<summary>Explore the skill center</summary>
-
-![Skill center: browse and manage built-in skills, import skills, or create your own](docs/images/skills.png)
-
-Skills provide task guidance; plugins provide executable capabilities. Supported identity, model, and media services connect through configuration.
-
-</details>
+We want this space to support more ways to create and learn. Additional Studios need a plugin adapter; Knowledge Studio is the implementation available today. See the [Studio architecture and extension interfaces](packages/dsh-knowledge-studio/docs/ARCHITECTURE.md).
 
 ## Installation and use
+
+Each client runs independently on its user's computer, without a separate EduWork server. Model services come from your chosen provider or organization.
 
 Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the development package and move `EduWork.app` to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
 
@@ -115,18 +120,26 @@ The public edition does not download institution configuration by default. It sh
 
 The gateway must enable native CLI OAuth and grant the account model permissions. For HTTP testing, set `allowInsecureDevelopment` to `true` in the organization object; keep its default `false` for HTTPS. See the [field-by-field steps](config/desktop/examples/README_EN.md#connect-litellm-where-to-edit-and-what-to-enter), and the [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) for version requirements and deployment checks.
 
+<a id="configuration-steps"></a>
+
 <details>
-<summary>See model selection after LiteLLM sign-in</summary>
+<summary>Use a school or enterprise configuration</summary>
 
-![After LiteLLM sign-in, the model menu shows the authorized deepseek-v4-flash under the local LiteLLM group](docs/images/litellm-models.png)
+1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows, or `~/Library/Application Support/eduwork-electron/config/` on macOS.
+2. Follow the server guide and the adjacent `examples/` folder. Add organization entries to `organizations`, preserving existing settings; add `media` if needed. Editing the example alone has no effect.
+3. Save, exit completely through the tray or application menu, and restart. Then select your organization and sign in.
 
-This example account is authorized to use `deepseek-v4-flash`; your gateway determines the actual names and model list. The DeepSeek group above is a separately configured provider, which can coexist with organization models.
+Configuration files contain public connection details and credential references. Manage personal API keys in model settings; login Tokens are kept in protected local storage. Do not put passwords or tokens in the configuration file. The interface logo is configurable; the embedded application icon comes from the distribution.
+
+[LiteLLM example](config/desktop/examples/litellm.jsonc) · [Experimental oidc-llm example](config/desktop/examples/organization.jsonc) · [Media example](config/desktop/examples/media.jsonc)
 
 </details>
 
 ### 3. Start working
 
 Choose a local workspace, add your task materials, and describe the result you want. For documents, spreadsheets, and other outputs, you can also open Studio on the right and choose an output type.
+
+Try: **“Create a study guide from these sources, then make a companion quiz.”**
 
 <details>
 <summary>Window behavior and updates</summary>
@@ -135,68 +148,19 @@ Closing the window minimizes it to the system tray by default. Use the tray or a
 
 </details>
 
-## School and enterprise integration
-
-**Enterprise integration is built into the public edition.** Schools and businesses can distribute a configuration file that connects the same EduWork client to their identity platform, model gateway, and media services, without changing the public code or rebuilding the client.
-
-### Servers supporting enterprise sign-in
-
-| Server / project | Sign-in and model access | Setup and usage |
-| --- | --- | --- |
-| [LiteLLM](https://github.com/BerriAI/litellm) | Sign in to the gateway and access models authorized for the user and selected team. | [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
-| [ChatECNU](https://developer.ecnu.edu.cn/vitepress/llm/model.html) | Connect institution identity and authorized models through oidc-llm. | [EduWork@ECNU institutional edition example](https://github.com/ECNU/EduWork-ECNU) |
-
-These sign-in methods are built into the desktop package, without an additional plugin installation. oidc-llm remains experimental and requires explicit opt-in according to the server contract; standard LiteLLM configuration does not enable that option.
-
-After enterprise sign-in, the client uses the login Token to discover and invoke models, refreshing it automatically during use. Users do not need to copy or create a separate model key. The server continues to manage model permissions and quotas; enterprise and personally configured models can coexist.
-
-Other standard OIDC platforms can provide identity sign-in. Organization models additionally require a supported Token model-access contract. Organizations can also configure image generation, cloud TTS, names, logos, and update sources.
-
-<a id="configuration-steps"></a>
-
-<details>
-<summary><strong>Configure your organization in three steps</strong></summary>
-
-1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows, or `~/Library/Application Support/eduwork-electron/config/` on macOS.
-2. Follow the server guide and the adjacent `examples/` folder. Add organization entries to `organizations`, preserving existing settings; add `media` if needed. Editing the example alone has no effect.
-3. Save, exit completely through the tray or application menu, and restart. Then select your organization and sign in.
-
-Configuration files contain public connection details and credential references. Manage personal API keys in model settings; login Tokens are kept in protected local storage. Do not put passwords or tokens in the configuration file. The interface logo is configurable; the embedded application icon comes from the distribution.
-
-</details>
-
-**Administrator configuration:** [LiteLLM example](config/desktop/examples/litellm.jsonc) · [Experimental oidc-llm example](config/desktop/examples/organization.jsonc) · [Media example](config/desktop/examples/media.jsonc).
-
-**Developer integration:**
-
-- [Server implementation and integration testing](packages/dsh-oidc/docs/server-integration-contract.en.md): endpoints, authentication requirements, and acceptance steps for the LiteLLM native and experimental oidc-llm contracts.
-- [Client integration modes and model discovery](packages/dsh-oidc/docs/public-resource-protocol.en.md): identity-only and Token model modes, authorized catalogs, model capabilities, and plugin integration through the shared Host.
-
 <a id="extend-internal-capabilities-through-plugins"></a>
 
-### Add internal services with plugins
+## Extend and contribute
 
-Schools and businesses can use plugins to connect internal systems, bringing organization-specific search, business tools, or account services into EduWork. Plugins provide executable capabilities; skills provide task-specific guidance. Existing identity, model, and media APIs should use configuration where supported.
+**Skills provide task guidance; plugins provide executable capabilities and interface extensions.** Manage built-in skills, import others, or write your own so that conversations and Studio can follow methods suited to your work.
 
-Organizations can combine plugins, skills, and default configuration into their own edition while reusing EduWork's workbench, Studio, file previews, and desktop capabilities. Shared features continue to be maintained in the public edition, while each organization maintains its extensions.
+![Skill center: browse and manage built-in skills, import skills, or create your own](docs/images/skills.png)
 
-[EduWork@ECNU](https://github.com/ecnu/EduWork-ECNU) is an example of an institutional extension, showing how East China Normal University connects its internal services to the public edition. Use that repository as a reference for organizing extensions and distribution configuration; see [edition boundaries](docs/EDITIONS.md) for the design.
+<p align="center"><sub>From task guidance to plugin capabilities, extend the workbench as needed.</sub></p>
 
-## One integration, more clients
+Contributions are welcome for gateway adapters, Studio outputs and interfaces, skills, and plugins. Connect supported identity, model, and media services through configuration. Institutions can also combine internal plugins, skills, and defaults into their own edition. [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) is an institutional extension built on the public edition.
 
-> **Let institutional accounts and model services work across more AI clients.**
-
-Through the **Open Identity and Model Integration Initiative**, we invite identity platforms, model gateways, and client developers to make sign-in, model credentials, and model catalogs reusable through open protocols.
-
-`dsh-oidc` is our starting implementation: standard OIDC identity sign-in, the LiteLLM native OAuth contract, and the experimental oidc-llm contract, sharing Token sessions and model invocation modules. Source, protocol documents, and configuration examples are public, and the module is maintained as an independent npm package. Other clients can implement the protocols without adopting EduWork's UI. This is a community proposal; interoperability needs version-specific testing.
-
-**[Read the initiative](packages/dsh-oidc/docs/open-integration.en.md)** · [Implement a server](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Integrate a client](packages/dsh-oidc/README_EN.md) · [Share feedback](https://github.com/ecnu/EduWork/issues)
-
-## Data and privacy
-
-Conversations, workspace references, and memory are managed locally. When using remote models, search, or media services, content needed for a task is sent to the corresponding provider and is subject to that provider's data policies.
-
-When moving between computers, use [history import](docs/数据导入.md) in Settings to merge conversations and materials inside the client directory. Workspace files outside that directory must be copied separately. For troubleshooting, export a diagnostic ZIP and, for a particular conversation, a separate Session log. See the [user guide](docs/USER_GUIDE.md).
+[Contribution guide](CONTRIBUTING.md) · [Discussion and feedback](https://github.com/ECNU/EduWork/issues) · [Edition boundaries](docs/EDITIONS.md)
 
 ## Documentation
 
@@ -205,6 +169,7 @@ When moving between computers, use [history import](docs/数据导入.md) in Set
 | [User guide](docs/USER_GUIDE.md) | Models, search, speech, file operations, and diagnostics. |
 | [Configuration file](docs/CONFIGURATION_EN.md) · [Configuration examples](config/desktop/examples/README_EN.md) | Enterprise sign-in, branding, media, updates, and concurrency. |
 | [LiteLLM setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) | Server preparation, client configuration, sign-in, and troubleshooting. |
+| [Knowledge Studio](packages/dsh-knowledge-studio/README_EN.md) | Output types, usage, and extension development. |
 | [Media configuration](docs/MEDIA.md) | Endpoint requirements and setup for image generation and cloud TTS. |
 | [Versioning and upgrades](docs/RELEASE.md) · [Update sources](docs/UPDATES.md) | Development and public-beta builds, data migration, and automatic updates. |
 | [Configuration and Skills updates](docs/CONTENT_UPDATES_EN.md) | Optional independent model configuration and official Skills updates without downloading the whole client. |
@@ -213,7 +178,8 @@ When moving between computers, use [history import](docs/数据导入.md) in Set
 
 Detailed documentation defaults to Chinese.
 
-### Public modules
+<details>
+<summary>Public modules for independent use</summary>
 
 These modules keep their source and documentation in this repository. Each npm package can still be installed, versioned, and published independently, including for use in other DSH applications.
 
@@ -227,8 +193,16 @@ These modules keep their source and documentation in this repository. Each npm p
 
 See [package development and publication](docs/PACKAGES_EN.md) for module development, checks, and npm releases.
 
+</details>
+
+## Data and privacy
+
+Conversations, workspace references, and memory are managed locally. When using remote models, search, or media services, content needed for a task is sent to the corresponding provider and is subject to that provider's data policies. Screenshots use demonstration material; their generated content is not a factual reference.
+
+When moving between computers, use [history import](docs/数据导入.md) in Settings to merge conversations and materials inside the client directory. Workspace files outside that directory must be copied separately. For troubleshooting, export a diagnostic ZIP and, for a particular conversation, a separate Session log. See the [user guide](docs/USER_GUIDE.md).
+
 ## Acknowledgments and license
 
-Thanks to [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) and its open-source ecosystem for the foundations of EduWork.
+EduWork is built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Thanks to the project for its Agent runtime and plugin foundations. Knowledge Studio's source-based creation and learning interactions are inspired by NotebookLM.
 
 EduWork project code uses the [MIT License](LICENSE). Third-party components retain their own licenses; see the [third-party notices](THIRD_PARTY_NOTICES.md).

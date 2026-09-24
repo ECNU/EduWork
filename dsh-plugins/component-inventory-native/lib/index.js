@@ -64,6 +64,8 @@ function releaseSummary() {
   const release = manifest ? readJSON(manifest) : null
   const dsh = resolvePackage('@deepseek-ai/dsh')
   return {
+    productName: typeof release?.productName === 'string' ? release.productName : 'EduWork',
+    platform: `${process.platform}-${process.arch}`,
     productVersion: String(release?.version ?? 'source'),
     dshVersion: String(release?.dshVersion ?? dsh?.version ?? 'unknown'),
     dshCommit: typeof release?.dshCommit === 'string' ? release.dshCommit : null,

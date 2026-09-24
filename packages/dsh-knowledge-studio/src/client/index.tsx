@@ -699,6 +699,8 @@ function DetailsPanel({
   openFile,
   closePanel,
   officialSidebar,
+  notificationNavigation,
+  notificationVisible,
 }: any) {
   const sessionId = providedSessionId??useSession((snapshot: any) => snapshot.sessionId)
   const draft = useInput((snapshot:any)=>snapshot.draft)
@@ -723,6 +725,21 @@ function DetailsPanel({
     setArtifactIdState(value)
     remember({ artifactId: value })
   }
+
+  useEffect(() => {
+    const id = notificationNavigation?.params?.artifactId
+    if (typeof id !== 'string' || !/^artifact_[a-f0-9]{32}$/.test(id)) return
+    setEvidence(null)
+    setDialog(null)
+    setArtifactId(id)
+  }, [notificationNavigation?.revision, sessionId])
+
+  useEffect(() => {
+    if (!artifactId || notificationVisible !== true) return
+    const report = (visible: boolean) => window.dispatchEvent(new CustomEvent('eduwork:studio-visibility', { detail: { sessionId, artifactId, visible } }))
+    report(true)
+    return () => { report(false) }
+  }, [sessionId, artifactId, notificationVisible])
 
   useEffect(() => {
     let disposed = false
@@ -973,7 +990,7 @@ function SidebarStudio(props:any) {
   useEffect(()=>{
     if(!tab.signal.aborted)props.surface.adoptTab(meta,tab.visible)
   },[props.surface,meta.sessionId,meta.cwd,tab.visible,tab.signal])
-  return <SessionDetails {...props}/>
+  return <SessionDetails {...props} notificationNavigation={tab.navigation} notificationVisible={tab.visible}/>
 }
 
 function absoluteWorkspacePath(root: string, relative: string) {

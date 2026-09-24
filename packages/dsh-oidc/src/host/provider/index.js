@@ -16,9 +16,22 @@ import { AuthorizationScopedAdapter } from './authorization-scope.js'
 export const name = 'dsh-oidc-provider'
 export const inject = ['llm']
 export const SETTINGS_NAMESPACE = ENTERPRISE_SETTINGS_NAMESPACE
+export const Config = PiAiConfig
 
 function installEnterpriseSettings(ctx, rawConfig, hooks) {
   ctx.inject(['settings'], (settingsCtx) => {
+    if (typeof settingsCtx.settings.installSection !== 'function') {
+      // Account-managed routes come from the organization profile and its
+      // authorization lease. Never project them into editable API-key forms.
+      if (rawConfig.settingsEnabled !== true) return
+      if (typeof rawConfig.providers?.get !== 'function' || !ctx.fiber.entry) {
+        throw new Error('Editable enterprise providers require a DSH profile entry with live Config')
+      }
+      settingsCtx.effect(() => settingsCtx.settings.configure({ auto: false }, ctx.fiber))
+      hooks.setSource(() => settingsBase(rawConfig))
+      ctx.on('loader/volatile-update', () => hooks.onChange())
+      return
+    }
     settingsCtx.settings.installSection(
       ctx,
       SETTINGS_NAMESPACE,
@@ -147,14 +160,17 @@ export function apply(ctx, rawConfig = {}) {
     : transforming
   let registration
   let directory
+  const nativeSettings = typeof ctx.get('settings')?.installSection !== 'function'
+  const editableDirectory = !nativeSettings || rawConfig.settingsEnabled === true
+  const settingsNs = nativeSettings ? ctx.fiber.entry?.options.id ?? SETTINGS_NAMESPACE : SETTINGS_NAMESPACE
   const replaceProfiles = next => {
     const previous = profiles
     profiles = next
     try {
       if (registration) registration.replace([...next.keys()])
       else if (next.size) registration = ctx.llm.registerAdapter([...next.keys()], adapter)
-      if (directory) directory.replace(configurableEntries(next))
-      else if (next.size) directory = ctx.llm.registerConfigurableProviders(configurableEntries(next))
+      if (directory) directory.replace(configurableEntries(next, settingsNs))
+      else if (next.size && editableDirectory) directory = ctx.llm.registerConfigurableProviders(configurableEntries(next, settingsNs))
     } catch (error) {
       profiles = previous
       registration?.replace([...previous.keys()])

@@ -13,10 +13,10 @@ const directory = join(root, 'third_party/dsh/release-v0.1.5-rc.2')
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 const readJSON = async path => JSON.parse(await readFile(path, 'utf8'))
 const writeJSON = async (path, value) => { await mkdir(resolve(path, '..'), { recursive: true }); await writeFile(path, JSON.stringify(value, null, 2) + '\n') }
-async function contract() {
-  const manifest = await readJSON(join(directory, 'npm-runtime/package.json'))
-  const lock = await readJSON(join(directory, 'LOCK.json'))
-  const packageLockBytes = await readFile(join(directory, 'npm-runtime/package-lock.json'))
+async function contract(contractDirectory = directory) {
+  const manifest = await readJSON(join(contractDirectory, 'npm-runtime/package.json'))
+  const lock = await readJSON(join(contractDirectory, 'LOCK.json'))
+  const packageLockBytes = await readFile(join(contractDirectory, 'npm-runtime/package-lock.json'))
   return { manifest, lock, packageLockBytes, packageLock: JSON.parse(packageLockBytes) }
 }
 function relock(input) {
@@ -36,6 +36,22 @@ test('approved npm lock is complete registry-only, exact DSH and excludes produc
   assert.equal(validateNpmRuntimeLock(input), input.lock.runtime.npm.packageLockSHA256)
   for (const name of omittedRoots) assert.equal(input.manifest.dependencies[name], undefined)
   for (const path of Object.keys(input.packageLock.packages)) assert.ok(!path.includes('node_modules/@eduwork/'))
+})
+
+test('0.1.7 candidate has an independent exact registry lock and no retired DSH packages', async () => {
+  const input = await contract(join(root, 'third_party/dsh/candidate-v0.1.7-rc.1'))
+  assert.equal(validateNpmRuntimeLock(input), input.lock.runtime.npm.packageLockSHA256)
+  assert.equal(input.lock.packageVersion, '0.1.7-rc.1')
+  assert.equal(input.lock.qualification.status, 'migration-candidate')
+  assert.equal(input.lock.qualification.desktop, false)
+  const dsh = input.packageLock.packages['node_modules/@deepseek-ai/dsh']
+  assert.equal(dsh.integrity, input.lock.runtime.npm.dshIntegrity)
+  for (const name of ['agent-presets', 'code-runtime', 'code-runtime-worker-thread', 'settings-file', 'e2b', 'fs-e2b', 'subprocess-e2b', 'workflow-worker-thread']) {
+    assert.equal(input.packageLock.packages[`node_modules/@deepseek-ai/dsh-${name}`], undefined)
+  }
+  const current = await contract()
+  assert.notEqual(input.lock.commit, current.lock.commit)
+  assert.notEqual(input.lock.runtime.npm.packageLockSHA256, current.lock.runtime.npm.packageLockSHA256)
 })
 
 test('refuses altered lock bytes and non-registry tarballs even if newly hashed', async () => {
