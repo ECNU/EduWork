@@ -12,6 +12,8 @@ const windows = []
 const dispose = attachAppActivation({ app, windows: () => windows })
 try {
   assert.equal(process.platform, 'darwin')
+  const fallback = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
+  windows.push(fallback)
   for (const kind of ['startup', 'main', 'failure']) {
     const window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
     windows.unshift(window)
@@ -23,6 +25,7 @@ try {
     assert.equal(window.isVisible(), false)
     app.emit('activate')
     assert.equal(window.isVisible(), true, kind + ' reopens on activation')
+    assert.equal(fallback.isVisible(), false, 'Preferred recovery window wins over another live window')
     window.hide()
     app.emit('activate')
     assert.equal(window.isVisible(), true, kind + ' reopens repeatedly')

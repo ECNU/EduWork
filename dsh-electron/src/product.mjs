@@ -59,7 +59,8 @@ export function configureEduworkPaths() {
   app.setPath('userData', paths.userData)
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
-  attachAppActivation({ app, windows: () => [mainWindow, progressWindow, ...BrowserWindow.getAllWindows()] })
+  // Startup/error recovery must take precedence over a partially loaded workbench.
+  attachAppActivation({ app, windows: () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows()] })
   // Own the process tree from the beginning of startup, including when the
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
