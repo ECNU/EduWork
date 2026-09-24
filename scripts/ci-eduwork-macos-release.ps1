@@ -57,7 +57,7 @@ try {
     $archive=Join-Path $Output ('desktop/'+$pack.asset.name)
     $unpacked=Join-Path $Output 'unpacked';New-Item -ItemType Directory -Path $unpacked | Out-Null
     & ditto -x -k $archive $unpacked
-    $app=Join-Path $unpacked "$name.app"
+    $app=Join-Path $unpacked $pack.appName
     & codesign --verify --deep --strict $app
     $result.checks.archiveManifest='passed'
     $frozen=Join-Path $app 'Contents/Resources/product'
@@ -129,6 +129,10 @@ try {
     }
     & codesign --verify --deep --strict $app
     $result.checks.readOnlyApplication='passed'
+    $dmg = Join-Path $publish ([IO.Path]::GetFileNameWithoutExtension($archive) + '.dmg')
+    & (Join-Path $CoreRoot 'scripts/package-macos-dmg.ps1') -App $app -Output $dmg
+    $result.checks.installerImage='passed'
+    $result.installer=@{name=[IO.Path]::GetFileName($dmg);bytes=(Get-Item $dmg).Length;sha256=(Get-FileHash $dmg -Algorithm SHA256).Hash.ToLowerInvariant()}
     Copy-Item $archive,$($archive+'.sha256') $publish
     if ($notes) { Copy-Item $notes (Join-Path $publish 'RELEASE-NOTES.md') }
     $result.passed=$true

@@ -63,7 +63,9 @@ $nodeLicense = Join-Path $nodeRoot 'LICENSE'
 if (-not (Test-Path -LiteralPath $nodeLicense -PathType Leaf)) { throw 'Use the extracted official Node distribution, including LICENSE' }
 
 $editionName = if ($identity.distribution -eq 'eduwork') { 'EduWork' } else { 'EduWork-ECNU' }
-$appName = "$editionName.app"
+$productName = [string]$identity.brand.product.name
+if ([string]::IsNullOrWhiteSpace($productName) -or $productName -ne $productName.Trim() -or $productName -match '[/\\:\x00-\x1f]' -or $productName -in @('.', '..')) { throw 'Product name must be a safe macOS application filename' }
+$appName = "$productName.app"
 $app = Join-Path $Output $appName
 New-Item -ItemType Directory -Path $Output | Out-Null
 & ditto --noextattr --noqtn --noacl $electronApp $app
@@ -197,7 +199,7 @@ if ($sparkleEnabled) {
 if ($LASTEXITCODE -ne 0) { throw 'macOS app metadata cleanup failed' }
 $release = [ordered]@{
     schemaVersion=1; shell='electron'; version=$Version; dshVersion=$identity.dshVersion; dshCommit=$identity.dshCommit
-    distribution=$identity.distribution; productName=$identity.brand.product.name; platform='darwin-arm64'
+    distribution=$identity.distribution; productName=$identity.brand.product.name; appName=$appName; platform='darwin-arm64'
     electronVersion=$electronVersion; nodeVersion=$receipt.host.nodeVersion
     minimumSystemVersion='15.0'; ladybugNativePatched=$true; bundledOpenSSL='3.5.8'
     configurationMode=$(if ($bootstrap.enabled) {'downloaded-publisher'} elseif ($ExternalPublisherConfig) {'external-publisher'} elseif ($ownership -eq 'publisher') {'bundled-publisher'} else {'user'})
