@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import memoryRemote from './remote.js'
 
-export const inject = ['slots', 'locale', 'remote', 'settingsScope']
+declare const __EDUWORK_NATIVE_017__: boolean
+const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+export const inject = ['slots', 'locale', 'remote', nativeSettings ? 'configForms' : 'settingsScope']
 
 const h = React.createElement
 const NS = 'settings.localMemory'
@@ -386,7 +388,7 @@ export async function apply(ctx) {
   const disposeRemote = await ctx.remote.$mount(memoryRemote)
   ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'memory-native: personalization dictionaries')
   ctx.inject(['remote.localMemories'], surface => {
-    const settings = surface.settingsScope.bind({ namespace: SETTINGS_NAMESPACE })
+    const settings = (nativeSettings ? surface.configForms.get(SETTINGS_NAMESPACE) : surface.settingsScope.bind({ namespace: SETTINGS_NAMESPACE }))
     const service = {
       settings,
       stats: () => unwrap(surface.remote.localMemories.stats()),

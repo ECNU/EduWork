@@ -1,5 +1,14 @@
 import { normalizeSources } from './core.js'
 
+// V4 rejects the retired plugin wrapper. Use the same producer name that the
+// official V3 migration assigns to our historical Memory notices.
+export function memoryMessageSource(session, summary) {
+  const producer = session?.header?.version >= 4
+    ? { kind: 'plugin:memory-native' }
+    : { kind: 'plugin', plugin: 'memory-native' }
+  return { ...producer, form: 'notice', summary }
+}
+
 function sessionEvents(session) {
   if (session == null) return []
   const events = typeof session.snapshotEvents === 'function'

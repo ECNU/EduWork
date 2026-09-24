@@ -46,6 +46,8 @@
 
 Windows 配置位于安装目录的 `config/eduwork.jsonc`；macOS 位于 `~/Library/Application Support/<distribution>-electron/config/eduwork.jsonc`，不写入 `.app`。`data/content-updates/` 的签名下载内容和 `data/configuration/state.json` 的字段指纹、事务记录均为内部状态，不作为隐藏配置层。语法错误不会被远程配置静默修复；用户可以按[配置说明](CONFIGURATION.md)修改或恢复文件。
 
+Windows 绿色版的程序目录需要可写。配置文件只读、文件占用或磁盘空间不足导致的写入失败，会保留同一签名内容的重试机会；修正本机问题后重新启动即可。启动窗口中的“重试下载”和“导入离线配置包”也可主动重试旧版记录为失败的最高已接收修订，无需删除 `data` 或换一份配置。重试仍验证发行方、渠道、签名、摘要、依赖和组件修订，不接受更低修订或同号的不同内容包。真正未通过桌面启动检查的内容仍会回退并停止自动重试。
+
 ## 迁移旧配置源
 
 需要同步升级配置协议时，可在包内引导文件增加 `migrateFrom: ["https://downloads.example.org/old-content"]`。它只声明旧内容源地址；迁移要求发行者、公钥均与新源一致，不允许借此更换信任密钥。自定义地址、公钥、关闭配置更新或显式指定测试配置的安装不迁移。

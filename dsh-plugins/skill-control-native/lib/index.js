@@ -23,7 +23,11 @@ export function apply(ctx, rawConfig = {}) {
   const config = resolveConfig(rawConfig)
   let invalidate = () => {}
   let imageSource
-  const settingsSource = () => ctx.settings.get(SETTINGS_NAMESPACE) ?? { disabled: [], enabled: [], defaultDisabled: [] }
+  let filesystem
+  const settingsSource = () => (typeof ctx.settings.get === 'function'
+    ? ctx.settings.get(SETTINGS_NAMESPACE)
+    : ctx.settings.describe().find(row => row.ns === SETTINGS_NAMESPACE)?.value)
+    ?? { disabled: [], enabled: [], defaultDisabled: [] }
 
   ctx.skills.registerProvider((control) => {
     invalidate = control.invalidate
@@ -33,6 +37,7 @@ export function apply(ctx, rawConfig = {}) {
       bundledSkillDir: config.skillDir,
       customSkillDirs: config.customSkillDirs,
     })
+    filesystem = delegate
     return {
       name: config.providerName,
       async list(options) {
@@ -96,4 +101,10 @@ export function apply(ctx, rawConfig = {}) {
   ctx.on('settings/updated', (namespace) => {
     if (namespace === SETTINGS_NAMESPACE) invalidate()
   })
+  ctx.on('settings/document-updated', (namespace) => {
+    if (namespace === SETTINGS_NAMESPACE) invalidate()
+  })
+  // Native filesystem providers own watchers from 0.1.7 onward. A preset can
+  // be disabled or reloaded while the Host stays alive; close those watchers.
+  ctx.effect(() => () => filesystem?.dispose?.(), 'product skill filesystem watcher')
 }

@@ -34,7 +34,17 @@ export const SettingsSchema = z.object({
     .default(DETAILS_PANEL_DEFAULT_WIDTH),
 })
 
+export const Config = typeof z.string().volatile === 'function'
+  ? z.object(Object.fromEntries(Object.entries(SettingsSchema.dict).map(([key, field]) => [key, field.volatile()])))
+  : undefined
+
 export async function apply(ctx, raw = {}) {
+  if (typeof ctx.settings.register !== 'function') {
+    ctx.effect(() => ctx.settings.configure({ auto: false }))
+    // Preset activation belongs to native pluginManager. Do not mutate the
+    // profile from volatile callbacks: they run inside its HMR transaction.
+    return
+  }
   await acknowledgeUpstreamWelcomeNotice(ctx.settings, raw.upstreamWelcomeNoticeVersion)
   // The launcher owns a per-home active roster and a read-only product library.
   const managesPresets = raw.manageOptionalPresets ?? Boolean(process.env.DSH_PRODUCT_PRESET_DIR || process.env.DSH_PRODUCT_PRESET_LIBRARY_DIR)

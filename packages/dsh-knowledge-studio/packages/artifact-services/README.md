@@ -21,6 +21,8 @@ npm install ./eduwork-dsh-artifact-services-0.2.0.tgz
 
 Office 要求 Python 3.12+ 与本包 `python/requirements.txt` 中的依赖，`DSH_OFFICE_PYTHON` 指向解释器绝对路径。安装 npm 包不会安装 Python 库、ASR 模型或浏览器。TTS 的 `system` Provider 在 Windows 使用 System.Speech，在 macOS 使用系统 `say`；两者枚举已安装音色并输出 WAV，不需要 API Key。Mac 中文配音需要先在系统设置中安装中文语音，见[平台要求](docs/PLATFORMS.md#speech-synthesis)。其他平台需要 Provider。端侧 ASR 要求宿主提供 whisper.cpp 可执行程序和模型，见[转写说明](docs/TRANSCRIPTION.md)。
 
+源码另提供可选的 `createDshTranscriptionProvider`，用于把 DSH 0.1.7 的本地 `speechToText` 服务接到现有文件转写接口；需由宿主显式注册，尚未替换桌面默认引擎。它支持分段处理长音频，但不提供时间戳；需要时间戳时仍使用原 Provider。TTS 保持独立，Mac 当前未内置系统语音适配器。选项、准备步骤和能力限制见[转写说明](docs/TRANSCRIPTION.md#optional-dsh-017-local-adapter)。
+
 共享预览解析真实 DOCX/XLSX/PPTX 文件，保留 PPTX 固定页面坐标并使用内容哈希元数据。控件跟随宿主主题，文档内容保留原色。Studio 与对话附件使用同一[预览契约](docs/OFFICE_PREVIEW.md)；原生全屏和普通文档预览由宿主管理，对话最终文件可用时交给官方 `present`。预览保真度仍需用原生 Office 独立核对。
 
 PDF/视频应用可从 `@eduwork/dsh-artifact-services/runtime` 导入 `createMediaRuntime` 并使用其 `browserExecutable`。固定部署应同时提供 `DSH_MEDIA_NODE_ENV` / `DSH_MEDIA_BROWSER`，兼容旧 `ECNU_AGENT_NODE_ENV` / `ECNU_AGENT_REMOTION_BROWSER`。已配置时不调用 `ensureBrowser`；未配置时实际渲染可准备本包浏览器，只读就绪检查不会下载。

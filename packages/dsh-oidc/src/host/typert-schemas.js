@@ -8,11 +8,11 @@ export const baseURLSchema = z.string().min(1).max(2048)
 export const modelCatalogModeSchema = z.enum(['discovery', 'manual'])
 export const configurationTargetSchema = z.enum(['config', 'examples'])
 export const openConfigurationResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#OpenConfigurationResult`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#OpenConfigurationResult`,
   schema: z.object({ opened: z.literal(true) }).strict(),
 })
 export const enterpriseSelectionResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#EnterpriseSelectionResult`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#EnterpriseSelectionResult`,
   schema: z.object({ changed: z.boolean(), selection: z.object({ provider: z.string(), model: z.string(), reasoningEffort: z.string().optional() }).strict().optional() }).strict(),
 })
 export const enterpriseSelectionOptionsSchema = z.object({ onlyIfMissing: z.boolean().optional() }).strict()
@@ -52,7 +52,7 @@ export const runtimeModelSchema = z.object({
 export const runtimeModelsSchema = z.array(runtimeModelSchema).max(128)
 
 export const resourcesResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#Resources`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#Resources`,
   schema: z.object({
     profileID: z.string(), modelSource: z.string(), models: runtimeModelsSchema, issues: z.array(z.string()),
   }).strict(),
@@ -69,14 +69,14 @@ const managementProfileSchema = z.object({
 }).strict()
 
 export const configurationResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#Configuration`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#Configuration`,
   schema: z.object({ schemaVersion: z.literal('dsh-oidc/v1alpha1'), uiMode: z.enum(['standard', 'models-only', 'external']), profiles: z.array(publicProfileSchema),
     manageProductBrand: z.boolean().optional(), configFile: z.object({ path: z.string(), examplesPath: z.string(), canOpen: z.boolean() }).strict().optional(),
   }).strict(),
 })
 
 export const managementResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#ManagementConfiguration`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#ManagementConfiguration`,
   schema: z.object({
     schemaVersion: z.literal('dsh-oidc/management/v1alpha1'), mode: z.enum(['profile', 'native']),
     activeProfileID: z.string(), restartRequired: z.boolean(),
@@ -86,14 +86,14 @@ export const managementResult = Object.freeze({
 })
 
 export const restartResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#RestartResult`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#RestartResult`,
   schema: z.object({ restarting: z.literal(true) }).strict(),
 })
 
-export const accountResult = Object.freeze({ mode: 'strict', typeSymbol: `${pkg}#AccountStatus`, schema: accountSchema })
+export const accountResult = Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#AccountStatus`, schema: accountSchema })
 
 export const beginResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#BeginResult`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#BeginResult`,
   schema: z.union([
     z.object({ mode: z.literal('redirect'), authorizationURL: z.string().url() }).strict(),
     z.object({ mode: z.literal('completed'), status: accountSchema }).strict(),
@@ -102,7 +102,7 @@ export const beginResult = Object.freeze({
 })
 
 export const loginResult = Object.freeze({
-  mode: 'strict', typeSymbol: `${pkg}#LoginResult`,
+  mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#LoginResult`,
   schema: z.object({
     loginID: loginIdSchema, profileID: profileIdSchema, expiresAt: z.string().datetime(),
     state: z.enum(['pending', 'completed', 'cancelled', 'expired', 'failed']),
@@ -111,5 +111,5 @@ export const loginResult = Object.freeze({
 })
 
 export function jsonParameter(name, schema, typeSymbol) {
-  return Object.freeze({ name, wire: name, source: 'json', codec: Object.freeze({ mode: 'strict', typeSymbol, schema }) })
+  return Object.freeze({ name, wire: name, source: 'json', codec: Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol, schema }) })
 }

@@ -7,13 +7,13 @@ const skillSummarySchema = z.object({
 }).strict()
 
 export const skillSummaryResult = Object.freeze({
-  mode: 'strict',
+  mode: 'strict', create() { return this.schema },
   typeSymbol: '@chatecnu-work/dsh-skill-manager-native#SkillSummary',
   schema: skillSummarySchema,
 })
 
 export const skillListResult = Object.freeze({
-  mode: 'strict',
+  mode: 'strict', create() { return this.schema },
   typeSymbol: '@chatecnu-work/dsh-skill-manager-native#SkillList',
   schema: z.object({ skills: z.array(skillSummarySchema) }).strict(),
 })
@@ -21,7 +21,7 @@ export const skillListResult = Object.freeze({
 export function jsonParameter(name, schema, typeSymbol) {
   return Object.freeze({
     name, wire: name, source: 'json',
-    codec: Object.freeze({ mode: 'strict', typeSymbol, schema }),
+    codec: Object.freeze({ mode: 'strict', create() { return this.schema }, typeSymbol, schema }),
   })
 }
 

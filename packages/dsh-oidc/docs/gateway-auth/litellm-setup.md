@@ -80,7 +80,7 @@ curl --fail --silent --show-error https://gateway.example.org/.well-known/litell
 3. 浏览器返回本机回调页面，确认登录完成后回到 EduWork。
 4. 在模型选择器中选择该机构的模型，发送一条简短消息确认真实模型响应。
 
-![EduWork 登录 LiteLLM 后，在机构分组中选择 deepseek-v4-flash](../../../../docs/images/litellm-models.png)
+![EduWork 登录 LiteLLM 后，在机构分组中选择 deepseek-v4-flash](https://raw.githubusercontent.com/ECNU/EduWork/main/docs/images/litellm-models.png)
 
 图中「本机 LiteLLM」是配置的机构名称，`deepseek-v4-flash` 是网关授权的模型。你的模型列表由服务端权限决定；上方 DeepSeek 分组属于另外配置的服务商。
 
