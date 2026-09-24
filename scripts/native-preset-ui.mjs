@@ -5,8 +5,8 @@ export function adaptNativePresetUI(source) {
     if (source.split(before).length !== 2) throw new Error(`Native preset UI anchor changed: ${before.slice(0, 100)}`)
     source = source.replace(before, after)
   }
-  replace('const en = {', 'const en = { productDisabled: "Disabled", productNotReady: "Preset configuration is not ready. Try again.", productApplyFailed: "Could not apply the preset change. Try again or restart the app.",')
-  replace('const zh = {', 'const zh = { productDisabled: "已关闭", productNotReady: "预设配置未就绪，请重试", productApplyFailed: "预设变更未生效，请重试或重新启动应用",')
+  replace('const en = {', 'const en = { productDisabled: "Disabled", productEnableToView: "Enable this mode to view its configuration", productNotReady: "Preset configuration is not ready. Try again.", productApplyFailed: "Could not apply the preset change. Try again or restart the app.",')
+  replace('const zh = {', 'const zh = { productDisabled: "已关闭", productEnableToView: "请先开启此模式，再查看配置", productNotReady: "预设配置未就绪，请重试", productApplyFailed: "预设变更未生效，请重试或重新启动应用",')
   replace('"remote.agentPresets",', '"remote.agentPresets",\n"remote.pluginManager",')
   replace('makeDefault, setPickerVisible, startCreatorDraft', 'makeDefault, setPickerVisible, setOptionalEnabled, startCreatorDraft')
   replace('const creator = startCreatorDraft !== void 0 && state.rows.some((row) => row.id === "cordis")',
@@ -14,6 +14,10 @@ export function adaptNativePresetUI(source) {
   replace('const selectionAction = row.broken !== void 0 ?', 'const selectionAction = row.productEnabled === false ? t("productDisabled") : row.broken !== void 0 ?')
   replace('disabled: row.isDefault || row.broken === void 0 && (!state.showPicker || state.policySaving),',
     'disabled: row.productEnabled === false || row.isDefault || row.broken === void 0 && (!state.showPicker || state.policySaving),')
+  // Disabled optional modes have no definition in the native registry. rc.1's
+  // new reader must not request a missing declaration, including while toggling.
+  replace('"data-tip": t("view"),', `"data-tip": row.productEnabled === false ? t("productEnableToView") : t("view"),
+    disabled: row.productEnabled === false || state.status !== "ready" || state.policySaving,`)
   replace('children: [(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Button, {',
     `children: [row.productEntry === void 0 ? null : (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.Switch, {
       checked: row.productEnabled === true,
