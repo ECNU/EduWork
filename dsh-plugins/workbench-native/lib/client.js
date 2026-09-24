@@ -4210,6 +4210,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const pkg$1 = "@eduwork/workbench-native";
 		const codec = (name, schema) => ({
 			mode: "strict",
+			create() {
+				return this.schema;
+			},
 			typeSymbol: `${pkg$1}#${name}`,
 			schema
 		});
@@ -5179,11 +5182,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}).strict();
 		const skillSummaryResult = Object.freeze({
 			mode: "strict",
+			create() {
+				return this.schema;
+			},
 			typeSymbol: "@chatecnu-work/dsh-skill-manager-native#SkillSummary",
 			schema: skillSummarySchema
 		});
 		const skillListResult = Object.freeze({
 			mode: "strict",
+			create() {
+				return this.schema;
+			},
 			typeSymbol: "@chatecnu-work/dsh-skill-manager-native#SkillList",
 			schema: object({ skills: array(skillSummarySchema) }).strict()
 		});
@@ -5194,6 +5203,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				source: "json",
 				codec: Object.freeze({
 					mode: "strict",
+					create() {
+						return this.schema;
+					},
 					typeSymbol,
 					schema
 				})
@@ -5410,13 +5422,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			return [...rows.values()];
 		}
+		const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== "undefined" && __EDUWORK_NATIVE_017__;
 		const inject = [
 			"slots",
 			"remote",
 			"remote.skills",
 			"connection",
 			"sessions",
-			"settingsScope",
+			nativeSettings ? "configForms" : "settingsScope",
 			"uiWorkspace"
 		];
 		const h = react.default.createElement;
@@ -5459,7 +5472,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			color: "white",
 			fontWeight: 650
 		});
-		function SkillCenter({ service }) {
+		function SkillCenter({ service, embedded = false }) {
 			const settings = (0, react.useSyncExternalStore)((listener) => service.settings.subscribe(listener), () => service.settings.getSnapshot(), () => service.settings.getSnapshot());
 			const [catalog, setCatalog] = (0, react.useState)([]);
 			const credentialReady = false;
@@ -5573,10 +5586,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const header = h("div", { style: {
 				marginBottom: 18,
 				display: "flex",
-				justifyContent: "space-between",
+				justifyContent: embedded ? "flex-end" : "space-between",
 				alignItems: "flex-start",
 				gap: 16
-			} }, h("div", null, h("h3", { style: {
+			} }, !embedded && h("div", null, h("h3", { style: {
 				margin: "0 0 5px",
 				fontSize: 20
 			} }, "技能"), h("p", { style: {
@@ -6004,12 +6017,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}, error)));
 		}
+		function SkillPluginPage({ service, view }) {
+			return view === "summary" ? h(react.default.Fragment, null, "管理内置、个人与项目技能，供对话和 Studio 共用。") : h(SkillCenter, {
+				service,
+				embedded: true
+			});
+		}
 		async function apply(ctx) {
 			const unmount = await ctx.remote.$mount(typert_remote_client_default), unmountSkills = await ctx.remote.$mount(TYPERT_REMOTE);
 			ctx.inject(["remote.workbench", "remote.skillManager"], (inner) => {
 				const notifications = installNotificationNavigation(inner, (view) => unwrap(inner.remote.workbench.notificationView(view)));
 				inner.on("dispose", () => notifications.close());
-				const notificationScope = inner.settingsScope.bind({ namespace: "eduwork-notifications" });
+				const notificationScope = nativeSettings ? inner.configForms.get("eduwork-notifications") : inner.settingsScope.bind({ namespace: "eduwork-notifications" });
 				inner.slots.inject("settings.general.item", () => inner.slots.register({
 					name: "settings.general.item",
 					id: "eduwork-notifications",
@@ -6020,7 +6039,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					})
 				}, NotificationSettings));
 				const service = {
-					settings: inner.settingsScope.bind({ namespace: "chatecnu-skills" }),
+					settings: nativeSettings ? inner.configForms.get("chatecnu-skills") : inner.settingsScope.bind({ namespace: "chatecnu-skills" }),
 					hasSession: () => Boolean(inner.sessions.list.getSnapshot().current),
 					subscribeSession: (fn) => inner.sessions.list.subscribe(fn),
 					list: async () => {
@@ -6041,7 +6060,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					remove: (name) => unwrap(inner.remote.skillManager.trashPersonalSkill(name)),
 					pickDirectory: () => pickImportDirectory(inner.uiWorkspace)
 				};
-				inner.slots.inject("settings.plugins.tab", () => inner.slots.register({
+				if (nativeSettings) inner.slots.inject("plugins.item", () => inner.slots.register({
+					name: "plugins.item",
+					id: "eduwork-skills",
+					order: -20,
+					label: "技能",
+					inject: () => ({ service })
+				}, SkillPluginPage));
+				else inner.slots.inject("settings.plugins.tab", () => inner.slots.register({
 					name: "settings.plugins.tab",
 					id: "skills",
 					order: -20,
@@ -6078,7 +6104,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					order: 17,
 					inject: () => ({ service: dataImport })
 				}, DataImportPanel));
-				const concurrency = inner.settingsScope.bind({ namespace: "eduwork-concurrency" });
+				const concurrency = nativeSettings ? inner.configForms.get("eduwork-concurrency") : inner.settingsScope.bind({ namespace: "eduwork-concurrency" });
 				inner.slots.inject("settings.general.item", () => inner.slots.register({
 					name: "settings.general.item",
 					id: "eduwork-concurrency",

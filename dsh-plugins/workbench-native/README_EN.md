@@ -4,6 +4,10 @@
 
 Provides generic skill management, desktop updates and diagnostics. The skill center reads actual skill directories without requiring an institution account; desktop operations reuse authenticated host-boundary services.
 
+## Skill entry
+
+DSH 0.1.7 exposes Skills under the sidebar's Plugins page through the official `plugins.item` slot and back navigation. Search, toggles, import, creation, personal-skill removal and current-project discovery reuse the same service. List summaries do not load the skill catalog, and Settings no longer duplicates the skill tab. DSH 0.1.5 keeps Settings → Plugins → Skills.
+
 ## Updates and diagnostics
 
 A small blue button appears at the lower left when an update is available, shows download progress, and offers restart/install when ready. Settings and tray actions open the same panel; closing it does not stop a download.

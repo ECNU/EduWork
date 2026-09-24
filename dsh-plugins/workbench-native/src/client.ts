@@ -29,7 +29,7 @@ const buttonStyle = Object.freeze({
 })
 const primaryStyle = Object.freeze({ ...buttonStyle, background: color, borderColor: color, color: 'white', fontWeight: 650 })
 
-function SkillCenter({ service }) {
+function SkillCenter({ service, embedded = false }) {
   const settings = useSyncExternalStore(
     listener => service.settings.subscribe(listener),
     () => service.settings.getSnapshot(),
@@ -136,8 +136,8 @@ function SkillCenter({ service }) {
     } finally { setBusy('') }
   }
 
-  const header = h('div', { style: { marginBottom: 18, display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 } },
-    h('div', null,
+  const header = h('div', { style: { marginBottom: 18, display: 'flex', justifyContent: embedded ? 'flex-end' : 'space-between', alignItems: 'flex-start', gap: 16 } },
+    !embedded && h('div', null,
       h('h3', { style: { margin: '0 0 5px', fontSize: 20 } }, '技能'),
       h('p', { style: { margin: 0, color: '#75635c', fontSize: 13, lineHeight: 1.6 } },
         '按用途选择技能。在对话和 Studio 中创作，共用同一套制作与文件预览能力。'),
@@ -289,6 +289,14 @@ function DesktopSettings({service,controller}) {
    message&&h('p',{role:'status',style:{...note,marginTop:10}},message),
    error&&h('p',{role:'alert',style:{...note,marginTop:10,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},error)))
 }
+// The official Plugins page owns the title, summary, list and back navigation.
+// Keep the same skill service and editor for both desktop generations.
+function SkillPluginPage({ service, view }) {
+  return view === 'summary'
+    ? h(React.Fragment, null, '管理内置、个人与项目技能，供对话和 Studio 共用。')
+    : h(SkillCenter, { service, embedded: true })
+}
+
 export async function apply(ctx) {
   const unmount = await ctx.remote.$mount(remote), unmountSkills = await ctx.remote.$mount(skillManagerRemote)
   ctx.inject(['remote.workbench','remote.skillManager'], inner=>{
@@ -300,7 +308,13 @@ export async function apply(ctx) {
     const service={settings:(nativeSettings ? inner.configForms.get('chatecnu-skills') : inner.settingsScope.bind({ namespace: 'chatecnu-skills' })),hasSession:()=>Boolean(inner.sessions.list.getSnapshot().current),subscribeSession:fn=>inner.sessions.list.subscribe(fn),
       list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=inner.sessions.list.getSnapshot().current;if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
       create:input=>unwrap(inner.remote.skillManager.create(input)),importDirectory:path=>unwrap(inner.remote.skillManager.importDirectory(path)),remove:name=>unwrap(inner.remote.skillManager.trashPersonalSkill(name)),pickDirectory:()=>pickImportDirectory(inner.uiWorkspace)}
-    inner.slots.inject('settings.plugins.tab',()=>inner.slots.register({name:'settings.plugins.tab',id:'skills',order:-20,label:'技能',inject:()=>({service})},SkillCenter))
+    if (nativeSettings) {
+      inner.slots.inject('plugins.item', () => inner.slots.register({
+        name: 'plugins.item', id: 'eduwork-skills', order: -20, label: '技能', inject: () => ({ service }),
+      }, SkillPluginPage))
+    } else {
+      inner.slots.inject('settings.plugins.tab',()=>inner.slots.register({name:'settings.plugins.tab',id:'skills',order:-20,label:'技能',inject:()=>({service})},SkillCenter))
+    }
     const desktop=action=>unwrap(inner.remote.workbench.desktop(action)), updates=createUpdateController(desktop)
     const dataImport={pickDirectory:()=>pickImportDirectory(inner.uiWorkspace),preview:path=>unwrap(inner.remote.workbench.inspectImport(path)),start:id=>unwrap(inner.remote.workbench.importData(id)),cancel:()=>unwrap(inner.remote.workbench.cancelImport()),status:()=>unwrap(inner.remote.workbench.importStatus())}
     inner.on('dispose',()=>updates.dispose())
