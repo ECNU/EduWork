@@ -2,6 +2,7 @@ import {spawn} from 'node:child_process'
 import {createInterface} from 'node:readline'
 import {mkdir,readFile,writeFile} from 'node:fs/promises'
 import {join} from 'node:path'
+import {updaterStartupError} from './startup-failure.mjs'
 
 export function portableUpdateEdition({configuration={},version,prior=null,distribution='eduwork'}) {
  let edition={schemaVersion:1,enabled:false,manifestBaseURL:'',defaultPolicy:'stable',target:'windows-amd64',flavor:'offline',allowShellMigration:true,distribution}
@@ -50,40 +51,23 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
  return result
 }
 
-function unavailablePortableUpdates({version,policy,error}) {
- const reason=error.code==='ENOENT'?'未找到更新器，请重新解压完整安装包。'
-  :['EACCES','EPERM'].includes(error.code)?'Windows 拒绝启动更新器，请检查安全软件的拦截记录或文件权限。':'更新器未能启动。'
- const message=`自动更新暂不可用，应用将继续启动。${reason}`
- const status=()=>({shell:'electron',version,phase:'error',message,
-  update:{enabled:false,state:'error',policy,error:`${message}\n${error.message}`}})
- return {
-  async action(action) {
-   // A software helper failure must not block independent signed content checks.
-   if(['status','check-updates','check-updates-background'].includes(action))return status()
-   throw Error(message)
-  },
-  async close(){},
- }
-}
-
-export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform,spawnProcess=spawn,onUnavailable=()=>{}}) {
+export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform,spawnProcess=spawn}) {
  if(platform!=='win32')return null
  const state=join(root,'data/state/updates')
  const prior=await readFile(join(root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
  const configuration=resolveUpdateConfiguration(defaults,updates,prior)
  const edition=portableUpdateEdition({configuration,version,prior,distribution})
- if(!edition.enabled)return null
  await mkdir(state,{recursive:true});const path=join(state,'electron-edition.json');await writeFile(path,JSON.stringify(edition))
+ const executable=join(root,'resources/update/EduWork-Updater.exe')
  let child
  try {
-  child=spawnProcess(join(root,'resources/update/EduWork-Updater.exe'),['serve','--root',root,'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
+  child=spawnProcess(executable,['serve','--root',root,'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
   // Wait for OS process creation before writing to stdin. On denied/missing
   // executables, Node emits an async error and writing early can also emit EPIPE.
   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject)})
  } catch(error) {
   child?.stdin?.destroy()
-  onUnavailable(error)
-  return unavailablePortableUpdates({version,policy:edition.defaultPolicy,error})
+  throw updaterStartupError(executable,error)
  }
  let sequence=0,exited=false,closing=false,lastError='';const pending=new Map()
  child.stderr.on('data',chunk=>{lastError=(lastError+chunk).slice(-4096)})

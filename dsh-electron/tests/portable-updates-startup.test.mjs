@@ -8,7 +8,7 @@ import { mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { startPortableUpdates } from '../src/portable-updates.mjs'
-import { updateCoordinator } from '../src/update-coordinator.mjs'
+import { isContentFileError } from '../../dsh-host/content-updates.mjs'
 
 async function fixture(t) {
  const root=await mkdtemp(join(tmpdir(),'eduwork-updater-startup-'))
@@ -25,48 +25,52 @@ function denied(code) {
  }
 }
 
-test('EACCES and EPERM leave the app usable, report the cause and do not apply a pending update',async t=>{
+test('EACCES and EPERM stop startup, preserve the cause and leave configuration and pending updates intact',async t=>{
  for(const code of ['EACCES','EPERM']) {
-  const options=await fixture(t),pending=join(options.root,'data/state/pending-update.json'),errors=[]
+  const options=await fixture(t),pending=join(options.root,'data/state/pending-update.json'),config=join(options.root,'config/eduwork.jsonc')
   await mkdir(join(options.root,'data/state'),{recursive:true})
+  await mkdir(join(options.root,'config'),{recursive:true})
   await writeFile(pending,'synthetic pending transaction')
-  const bridge=await startPortableUpdates({...options,spawnProcess:denied(code),onUnavailable:error=>errors.push(error)})
-  const status=await bridge.action('status')
-  assert.equal(status.phase,'error');assert.equal(status.update.enabled,false)
-  assert.match(status.update.error,/Windows 拒绝启动更新器/)
-  assert.match(status.update.error,new RegExp(code))
-  assert.equal(errors[0].code,code)
-  assert.equal((await bridge.action('check-updates')).update.state,'error')
-  await assert.rejects(bridge.action('install-update'),/自动更新暂不可用/)
+  await writeFile(config,'// synthetic user configuration\n{}')
+  await assert.rejects(startPortableUpdates({...options,spawnProcess:denied(code)}),error=>{
+   assert.equal(error.code,'EDUWORK_UPDATER_START_FAILED')
+   assert.equal(error.cause.code,code)
+   assert.equal(error.executable,join(options.root,'resources/update/EduWork-Updater.exe'))
+   assert.match(error.message,new RegExp(code))
+   assert.equal(isContentFileError(error),true,'OS denial must not be reclassified as invalid publisher content')
+   return true
+  })
   assert.equal(await readFile(pending,'utf8'),'synthetic pending transaction')
-  await bridge.close()
+  assert.equal(await readFile(config,'utf8'),'// synthetic user configuration\n{}')
  }
 })
 
-test('real child_process spawn of a missing helper does not reject application preparation',async t=>{
- const options=await fixture(t),errors=[]
- const bridge=await startPortableUpdates({...options,onUnavailable:error=>errors.push(error)})
- assert.equal(errors[0].code,'ENOENT')
- assert.match((await bridge.action('status')).update.error,/未找到更新器/)
- await bridge.close()
+test('real child_process spawn of a missing helper rejects application preparation',async t=>{
+ const options=await fixture(t)
+ await assert.rejects(startPortableUpdates(options),error=>{
+  assert.equal(error.code,'EDUWORK_UPDATER_START_FAILED')
+  assert.equal(error.cause.code,'ENOENT')
+  assert.match(error.cause.message,/spawn .*EduWork-Updater\.exe ENOENT/)
+  return true
+ })
 })
 
-test('disabled updates never spawn a helper or write updater state; invalid configuration remains an error',async t=>{
- const options=await fixture(t),spawnProcess=()=>assert.fail('Disabled updates must not spawn')
- assert.equal(await startPortableUpdates({...options,updates:{provider:'disabled'},spawnProcess}),null)
- await assert.rejects(readFile(join(options.root,'data/state/updates/electron-edition.json')),{code:'ENOENT'})
- await assert.rejects(startPortableUpdates({...options,updates:{provider:'invalid'},spawnProcess}),/不支持/)
+test('disabling automatic updates does not bypass required component startup',async t=>{
+ const options=await fixture(t)
+ await assert.rejects(startPortableUpdates({...options,updates:{provider:'disabled'},spawnProcess:denied('EACCES')}),{code:'EDUWORK_UPDATER_START_FAILED'})
+ assert.equal(JSON.parse(await readFile(join(options.root,'data/state/updates/electron-edition.json'),'utf8')).enabled,false)
 })
 
-test('signed content checks remain independent when the software updater cannot start',async t=>{
- const options=await fixture(t),checks=[]
- const software=await startPortableUpdates({...options,spawnProcess:denied('EACCES')})
- const content={snapshot:()=>({enabled:true,state:'current'}),async check(value){checks.push(value)},async close(){}}
- const coordinator=updateCoordinator({software,content,version:options.version})
- assert.equal((await coordinator.action('check-updates-background')).update.state,'error')
- assert.equal((await coordinator.action('check-updates')).contentUpdate.enabled,true)
- await coordinator.close()
- assert.deepEqual(checks,[{retryFailed:false},{retryFailed:true}])
+test('configuration errors retain their own diagnosis before spawning a helper',async t=>{
+ const options=await fixture(t)
+ await assert.rejects(startPortableUpdates({...options,updates:{provider:'invalid'},spawnProcess:()=>assert.fail('Invalid configuration must not spawn')}),/不支持/)
+})
+
+test('synchronous process creation failures retain the same fatal component diagnosis',async t=>{
+ const options=await fixture(t),cause=Object.assign(Error('Synthetic invalid executable'),{code:'ENOEXEC'})
+ await assert.rejects(startPortableUpdates({...options,spawnProcess:()=>{throw cause}}),error=>{
+  assert.equal(error.code,'EDUWORK_UPDATER_START_FAILED');assert.equal(error.cause,cause);return true
+ })
 })
 
 test('successful process creation keeps the real pipe protocol and scheduled-install handoff',async t=>{
@@ -97,7 +101,6 @@ test('errors reported after the helper has launched remain fatal instead of bypa
  const {id}=JSON.parse(line);process.stdout.write(JSON.stringify({id,error:'Invalid scheduled package'})+'\\n');
  });`)
  await assert.rejects(startPortableUpdates({...options,
-  onUnavailable:()=>assert.fail('Only OS launch failures may degrade to unavailable'),
   spawnProcess:(_file,_args,settings)=>spawn(process.execPath,[script],settings),
  }),/Invalid scheduled package/)
 })
