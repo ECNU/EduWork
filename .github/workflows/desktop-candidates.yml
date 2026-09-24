@@ -19,8 +19,8 @@ on:
         required: true
         default: false
         type: boolean
-      publish_macos_release:
-        description: 'Publish validated Mac ZIP and DMG to GitHub Releases (main, approved notes, development=false)'
+      publish_release:
+        description: 'Publish validated DMG and MSI to one GitHub Release (main, both platforms, approved notes)'
         type: boolean
         default: false
       platform:
@@ -62,7 +62,7 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
-          PUBLISH_MACOS_RELEASE: ${{ inputs.publish_macos_release }}
+          PUBLISH_RELEASE: ${{ inputs.publish_release }}
           SOURCE_REF: ${{ github.ref }}
           SELECTED_PLATFORM: ${{ inputs.platform }}
           TARGET_PLATFORM: ${{ matrix.platform }}
@@ -70,7 +70,7 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           if ($env:DEVELOPMENT_ONLY -ne 'true' -and $env:RELEASE_NOTES_APPROVED -ne 'true') { throw 'Release notes approval is required.' }
-          if ($env:PUBLISH_MACOS_RELEASE -eq 'true' -and ($env:SOURCE_REF -ne 'refs/heads/main' -or $env:DEVELOPMENT_ONLY -eq 'true' -or $env:RELEASE_NOTES_APPROVED -ne 'true' -or $env:SELECTED_PLATFORM -eq 'windows')) { throw 'Mac publication requires main, approved release notes, development=false, and a Mac build.' }
+          if ($env:PUBLISH_RELEASE -eq 'true' -and ($env:SOURCE_REF -ne 'refs/heads/main' -or $env:DEVELOPMENT_ONLY -eq 'true' -or $env:RELEASE_NOTES_APPROVED -ne 'true' -or $env:SELECTED_PLATFORM -ne 'both')) { throw 'Publication requires main, both platforms, approved release notes, and development=false.' }
           node core/scripts/check-source-docs.mjs core
           $script = "./core/scripts/ci-eduwork-$($env:TARGET_PLATFORM)-release.ps1"
           $acceptance = @{}
@@ -90,6 +90,30 @@ jobs:
           [[ ${#archives[@]} -eq 1 && -f "${archives[0]}" ]]
           python -m pip install --only-binary=:all: --require-hashes -r core/scripts/macos-dmg/requirements.txt
           python core/scripts/macos-dmg/package.py --app "$build/unpacked/EduWork.app" --output "${archives[0]%.zip}.dmg"
+      - name: Create Windows MSI
+        if: matrix.platform == 'windows'
+        shell: pwsh
+        run: |
+          $build = "$env:RUNNER_TEMP/ew-candidate"
+          $archives = @(Get-ChildItem "$build/publish/*.zip")
+          if ($archives.Count -ne 1) { throw 'Expected one validated Windows ZIP' }
+          $msi = [IO.Path]::ChangeExtension($archives[0].FullName, '.msi')
+          ./core/scripts/package-windows-msi.ps1 -App "$build/unpacked/EduWork" -Output $msi
+          $install = [IO.Path]::GetFullPath("$env:RUNNER_TEMP/msi-install")
+          $log = "$build/evidence-public/msi-install.log"
+          $process = Start-Process msiexec.exe -ArgumentList "/i `"$msi`" /qn /norestart INSTALLFOLDER=`"$install`" /l*v `"$log`"" -Wait -PassThru
+          if ($process.ExitCode -notin 0,3010) { throw "MSI installation failed: $($process.ExitCode)" }
+          try {
+            if ((Get-FileHash "$install/EduWork-Electron.exe").Hash -ne (Get-FileHash "$build/unpacked/EduWork/EduWork-Electron.exe").Hash) { throw 'Installed executable differs' }
+            New-Item -ItemType Directory "$install/data" -Force | Out-Null
+            'synthetic user data' | Set-Content "$install/data/installer-test.txt"
+            'synthetic user configuration' | Set-Content "$install/config/eduwork.jsonc"
+          } finally {
+            $process = Start-Process msiexec.exe -ArgumentList "/x `"$msi`" /qn /norestart" -Wait -PassThru
+            if ($process.ExitCode -notin 0,3010) { throw "MSI uninstallation failed: $($process.ExitCode)" }
+          }
+          if (Test-Path "$install/EduWork-Electron.exe") { throw 'MSI did not uninstall the application' }
+          if ((Get-Content "$install/data/installer-test.txt") -ne 'synthetic user data' -or (Get-Content "$install/config/eduwork.jsonc") -ne 'synthetic user configuration') { throw 'MSI removed user data or configuration' }
       - name: Retain validation reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -106,26 +130,27 @@ jobs:
           compression-level: 0
           retention-days: 3
           if-no-files-found: error
-  publish-macos:
+  publish:
     needs: build
-    if: inputs.publish_macos_release && github.ref == 'refs/heads/main' && !inputs.development && inputs.notes_approved && inputs.platform != 'windows'
+    if: inputs.publish_release && github.ref == 'refs/heads/main' && !inputs.development && inputs.notes_approved && inputs.platform == 'both'
     runs-on: ubuntu-latest
     permissions:
       contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: macos-release
+          pattern: '*-release'
           path: release-files
-      - name: Publish validated Mac ZIP and DMG
+      - name: Publish validated desktop installers
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RELEASE_VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          tag="macos-v$RELEASE_VERSION"
-          gh release create "$tag" release-files/*.dmg release-files/*.zip release-files/*.sha256 \
-            --target "$GITHUB_SHA" --title "EduWork $RELEASE_VERSION (macOS)" \
-            --notes-file release-files/RELEASE-NOTES.md --prerelease --latest=false --draft
+          cmp release-files/{macos,windows}-release/RELEASE-NOTES.md
+          tag="desktop-v$RELEASE_VERSION"
+          gh release create "$tag" release-files/macos-release/*.dmg release-files/windows-release/*.msi release-files/*-release/*.zip release-files/*-release/*.sha256 \
+            --target "$GITHUB_SHA" --title "EduWork $RELEASE_VERSION (macOS and Windows)" \
+            --notes-file release-files/macos-release/RELEASE-NOTES.md --prerelease --latest=false --draft
           gh release edit "$tag" --draft=false

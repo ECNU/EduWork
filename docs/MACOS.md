@@ -77,7 +77,7 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 
 ## DMG 拖拽安装窗口
 
-可对已签名的应用单独生成带标题、拖拽指引和 Applications 快捷方式的 DMG；GitHub Actions 的 Mac 候选构建会同时上传 ZIP 和美化 DMG。默认仅保留构建产物；需发布时，在 main 手动运行 `Build desktop release candidates`，选择 Mac、关闭 `development`、提供已批准的发行说明并勾选 `notes_approved` 和 `publish_macos_release`，即可在 `macos-v<版本>` 的 GitHub 预发布中下载 ZIP 与 DMG。本地打包需要 macOS、Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
+可对已签名的应用单独生成带标题、拖拽指引和 Applications 快捷方式的 DMG；GitHub Actions 的 Mac 候选构建会同时上传 ZIP 和美化 DMG。默认仅保留构建产物；需发布时，在 main 手动运行 `Build desktop release candidates`，选择 `both`、关闭 `development`、提供已批准的发行说明并勾选 `notes_approved` 和 `publish_release`，即可在 `desktop-v<版本>` 的 GitHub 预发布中下载 macOS DMG、Windows MSI 和各自的 ZIP。MSI 安装到当前用户的 `%LOCALAPPDATA%\EduWork`，卸载保留用户配置和数据；Windows Installer 使用三段数字版本，同一 `X.Y.Z` 的开发版本允许覆盖安装。该预发布不会改动现有自动更新源。本地打包需要 macOS、Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
 
 ```sh
 python3 -m venv /tmp/eduwork-dmg-venv
