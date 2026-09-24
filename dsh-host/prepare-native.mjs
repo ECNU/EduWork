@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { stripTypeScriptTypes } from 'node:module'
 import { parseArgs } from 'node:util'
 
-const upstreamCommit = '00102833dfaee1da9f48a3a8eae9d34005a75218'
+const upstreamCommit = '46a7f68b0922371ce7144b668b90e377d8e799f4'
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 const sources = JSON.parse((await readFile(new URL('./upstream-inputs-017.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''))
 function replace(text, before, after) {
@@ -49,6 +49,7 @@ export function adaptNativeHostEntry(input) {
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
   text = replace(text, "args: ['--no-open', '--port', '19387'],", "args: ['--no-open', '--host', '127.0.0.1', '--port', '0'],")
   text = replace(text, `  await ctx.plugin(desktopOffice, {
+    runtimeDir,
     source: process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime'),
     root: join(resolveDshHome(), 'dsh-runtimes', 'dsh-primary-runtime'),
   })
@@ -91,7 +92,7 @@ export async function prepareNative({ upstream, output }) {
   await emit('desktop-host/package.json', JSON.stringify(manifest, null, 2) + '\n')
   await emit('LICENSE-DeepSeek', input.LICENSE)
   await emit('desktop-host/LICENSE', input.LICENSE)
-  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.7-alpha.2', protocolVersion: 4,
+  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.7-rc.1', protocolVersion: 4,
     sources, outputs, nodeVersion: process.version, adaptations: ['private-stdin-bootstrap', 'bounded-redacted-log-callback',
       'loopback-ephemeral-port', 'recoverable-product-settings-migration', 'composition-owned-office-and-accounts', 'prepend-update-admission'] }
   await emit('receipt.json', JSON.stringify(receipt, null, 2) + '\n')
@@ -100,7 +101,7 @@ export async function prepareNative({ upstream, output }) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const { values } = parseArgs({ options: { upstream: { type: 'string' }, output: { type: 'string' } } })
-  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned alpha.2 source> --output <new directory>')
+  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned rc.1 source> --output <new directory>')
   await prepareNative({ upstream: resolve(values.upstream), output: resolve(values.output) })
   console.log('Prepared pinned 0.1.7 Web Host and HTTP transport.')
 }

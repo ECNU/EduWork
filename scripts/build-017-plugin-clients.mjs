@@ -1,7 +1,7 @@
 // Explicit source qualification build. This does not publish npm artifacts or
 // change the release assembly's dependency locks.
 import { createRequire } from 'node:module'
-import { readFile, mkdir, writeFile, cp, copyFile } from 'node:fs/promises'
+import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promises'
 import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -17,7 +17,7 @@ if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-if (runtimeReceipt.dshVersion !== '0.1.7-alpha.2' || runtimeReceipt.dshCommit !== '00102833dfaee1da9f48a3a8eae9d34005a75218') throw new Error('This build requires the pinned candidate Runtime')
+if (runtimeReceipt.dshVersion !== '0.1.7-rc.1' || runtimeReceipt.dshCommit !== '46a7f68b0922371ce7144b668b90e377d8e799f4') throw new Error('This build requires the pinned candidate Runtime')
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
@@ -32,6 +32,28 @@ const sharedRoot = join(repository, 'packages/dsh-knowledge-studio/packages/arti
 const shared = JSON.parse(await readFile(join(sharedRoot, 'package.json'), 'utf8'))
 const sharedAliases = Object.fromEntries(Object.entries(shared.exports).map(([key, path]) => [shared.name + (key === '.' ? '' : key.slice(1)), join(sharedRoot, path)]))
 const report = { scope: 'source candidate client bundles; unpublished', dshVersion: runtimeReceipt.dshVersion, packages: [] }
+// These are separately rebuilt, private candidate artifacts. Their DSH peers
+// describe this target, not the default-version npm builds in the source tree.
+// Do not rewrite third-party manifests or grant compatibility exemptions.
+report.manifests = []
+async function prepareCandidateManifests(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) await prepareCandidateManifests(path)
+    else if (entry.name === 'package.json') {
+      const manifest = JSON.parse(await readFile(path, 'utf8'))
+      if (!/^@(eduwork|chatecnu-work)\//.test(manifest.name ?? '')) continue
+      const originalPeers = { ...manifest.peerDependencies }
+      for (const name of Object.keys(manifest.peerDependencies ?? {})) {
+        if (/^@deepseek-ai\/dsh(?:-|$)/.test(name)) manifest.peerDependencies[name] = runtimeReceipt.dshVersion
+      }
+      manifest.private = true
+      await writeFile(path, JSON.stringify(manifest, null, 2) + '\n')
+      report.manifests.push({ name: manifest.name, originalPeers, targetPeers: manifest.peerDependencies ?? {} })
+    }
+  }
+}
+for (const directory of ['dsh-plugins', 'packages']) await prepareCandidateManifests(join(repository, directory))
 // Memory's maintained build copies its JS Host modules verbatim. Studio's PDF
 // runtime is generated separately and is required for real document indexing.
 for (const folder of ['dsh-memory', 'dsh-mail', 'dsh-oidc']) {

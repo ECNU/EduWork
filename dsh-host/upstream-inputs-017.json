@@ -3,8 +3,8 @@
   "apps/desktop/src/host-process.ts": "fcf374983576db367fc917c00041819716db77a9d611bfcf7790346c11469d77",
   "apps/desktop/src/node-environment.ts": "cd760fede0ea4838269b09f9d68fd95dde2956d3542f16ed2a6b9629b02339bf",
   "apps/desktop/src/web-document.ts": "05ab6fd59199f1b7a7dd558e60f50e38f4df1085a70af671014c085d270e91cc",
-  "apps/desktop-host/package.json": "198d9f5977a3f7d346431456e4170c380a77ac30e4099099b6acb184017a2a2c",
-  "apps/desktop-host/src/index.ts": "7b8a9452cf6a61412dd66ebc2699b5df47873201d6e409e2969114cd3abf0ad3",
+  "apps/desktop-host/package.json": "d49b3bcf55f1bd939ee3f900ffa667603c2ae95fc1e4983736a2fb84d1bde021",
+  "apps/desktop-host/src/index.ts": "6b20e316f076eb307aeefa6e4e696a99a14b29426af6a936059957af9c054c48",
   "apps/desktop-host/src/update-tasks.ts": "1bec03570fc6553f8eef2622dc1cd274e9181f1a800c0a359859d72149e42f97",
   "apps/desktop-host/src/office-engine.ts": "7af8a522d8289e5ee0e9fe3cf7b9e1550e131dde41765d5d98fbb5822333a5e5"
 }
