@@ -82,6 +82,19 @@ test('total request budget is configurable and takes precedence over the legacy 
     assert.throws(()=>loadUserConfig(file),/1–64/)
   }
 })
+
+test('official active subagent limit is independent of the legacy request-budget conversion', t => {
+  const {file}=fixture(t)
+  for(const value of [1,2,64]) {
+    writeFileSync(file,JSON.stringify({schemaVersion:1,features:{maxActiveSubagents:value,maxParallelSubagents:4}}))
+    assert.equal(loadUserConfig(file).features.maxActiveSubagents,value)
+    assert.equal(loadUserConfig(file).features.maxConcurrentRequests,5)
+  }
+  for(const value of [0,-1,1.5,65,'2',null]) {
+    writeFileSync(file,JSON.stringify({schemaVersion:1,features:{maxActiveSubagents:value}}))
+    assert.throws(()=>loadUserConfig(file),/maxActiveSubagents 必须是 1–64/)
+  }
+})
 test('relative logo survives moving configuration and malformed data reports file and line', t => {
   const {root,file}=fixture(t)
   mkdirSync(join(root,'assets'))

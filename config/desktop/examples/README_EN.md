@@ -43,7 +43,13 @@ The `examples/` folder is beside the active file. On macOS, first launch copies 
 
 ## Other settings
 
-The default total model-request concurrency is 3. Main conversations, subagents and auxiliary model requests share this limit; excess requests queue. Change it immediately in Settings → General → Total model-request concurrency. Top-level `features.maxConcurrentRequests` sets the distribution default (1–64); file changes require a restart, and a saved user preference takes priority. Legacy `maxParallelSubagents: 2` maps to a total of 3.
+The default total model-request concurrency is 3 across the current Host. Main conversations, subagents and auxiliary model requests share it; excess requests queue. Other clients and independent media endpoints are outside this limit. Change it immediately in Settings → General → Total model-request concurrency.
+
+On DSH 0.1.7-rc.1, the default active subagent count is 2. Plugins → Subagent controls this count across all recursive levels under one main agent; the main agent is excluded. New subagents are rejected at capacity. This is separate from request concurrency, with no reserved main-agent request slot.
+
+Use `"features": { "maxConcurrentRequests": 3, "maxActiveSubagents": 2 }` in `eduwork.jsonc` for the two defaults (each 1–64). File changes require a restart. Values already saved in the UI take priority, including values equal to an old default. Legacy `maxParallelSubagents: 2` still maps only to a total request concurrency of 3. DSH 0.1.5 does not use `maxActiveSubagents`.
+
+Signed configuration updates may deliver these defaults through `features`, preserving local edits. An update with the new field must require a client version that supports it and DSH 0.1.7-rc.1; do not target older clients.
 
 The Windows public edition defaults to GitHub updates. Use `provider: "github"` with `repository: "ecnu/EduWork"`, or configure a static HTTPS `manifestURL` to override the default. `provider: "disabled"` disables online updates. GitHub uses anonymous requests for published public releases; the development channel also accepts matching prereleases. Do not supply a Token or use a Release HTML page as a static manifest.
 

@@ -46,6 +46,24 @@ async function fixture(t,permissions={},mac=false) {
 }
 
 const offlineBytes = release => Buffer.from(JSON.stringify({schemaVersion:1,manifest:release.envelope,bundle:release.bytes.toString('base64')}))
+
+test('signed configuration delivers child defaults independently and preserves local edits', async t => {
+  const f=await fixture(t)
+  const compatible={...requires,dsh:'0.1.7-rc.1'}
+  f.options.identity.dshVersion=compatible.dsh
+  f.release(1,{configuration:1},{schemaVersion:1,configuration:{features:{maxActiveSubagents:2}}},{requires:compatible})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare();await manager.ready()
+  assert.equal(loadUserConfig(f.configPath).features.maxActiveSubagents,2)
+  assert.equal(loadUserConfig(f.configPath).features.maxConcurrentRequests,3)
+  const local={...f.base,features:{...f.base.features,maxActiveSubagents:5}}
+  await writeFile(f.configPath,JSON.stringify(local))
+  f.release(2,{configuration:2},{schemaVersion:1,configuration:{features:{maxActiveSubagents:1}}},{requires:compatible})
+  await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare();await manager.ready()
+  assert.equal(loadUserConfig(f.configPath).features.maxActiveSubagents,5)
+  assert.ok(manager.snapshot().configurationConflicts.includes('features.maxActiveSubagents'))
+})
 async function moveFixture(f) {
   const destination=join(f.directory,'Moved app with spaces')
   // Both paths are children of this test's own temporary directory.

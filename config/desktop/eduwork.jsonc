@@ -34,8 +34,10 @@
   "updates": {},
   // [eduwork] 功能默认值；已保存的界面偏好可能优先。
   "features": {
-    // [eduwork] 全客户端模型请求总并发，1–64；主会话、子代理、辅助模型共用，超出排队。设置中保存的值优先。
-    "maxConcurrentRequests": 3
+    // [eduwork] 当前 Host 的模型请求总并发，1–64，默认 3；主会话、子代理、辅助模型共用，超出排队。界面中保存的值优先；不限制其他客户端或独立媒体接口。
+    "maxConcurrentRequests": 3,
+    // [eduwork] DSH 0.1.7-rc.1 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。
+    "maxActiveSubagents": 2
   },
   // [eduwork] 桌面行为。
   "desktop": {
@@ -346,9 +348,11 @@
 //   "features": {}
 // features.visionFallback：是否允许文本模型使用已安装的辅助读图插件；false 关闭，不影响原生多模态。
 //   "visionFallback": false
-// features.maxConcurrentRequests：全客户端模型请求总并发，1–64；主会话、子代理、辅助模型共用，超出排队。设置中保存的值优先。
+// features.maxConcurrentRequests：当前 Host 的模型请求总并发，1–64，默认 3；主会话、子代理、辅助模型共用，超出排队。界面中保存的值优先；不限制其他客户端或独立媒体接口。
 //   "maxConcurrentRequests": 3
-// features.maxParallelSubagents：旧版兼容项，1–32；仅在未填总并发时换算为此值+1。新配置请使用 maxConcurrentRequests。
+// features.maxActiveSubagents：DSH 0.1.7-rc.1 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。
+//   "maxActiveSubagents": 2
+// features.maxParallelSubagents：旧版兼容项，1–32；仅在未填总并发时换算为此值+1，不控制官方子代理数量。新配置请分别使用 maxConcurrentRequests 和 maxActiveSubagents。
 //   "maxParallelSubagents": 2
 // desktop：桌面行为。
 //   "desktop": {}

@@ -18,6 +18,8 @@ Legacy `maxParallelSubagents: N` is migrated once to total concurrency `N + 1`, 
 
 Both desktop shells pass the configuration default through `EDUWORK_MAX_CONCURRENT_REQUESTS`. Web can set the plugin's `maxConcurrentRequests`. Legacy `maxParallelSubagents` configuration and `EDUWORK_MAX_PARALLEL_SUBAGENTS` remain compatible. Saved user preferences take priority. File changes require restart; UI saves do not. The user's configuration file is not rewritten during preference migration.
 
+The native DSH 0.1.7 desktop passes `features.maxConcurrentRequests` through generated plugin configuration instead of the legacy environment variable. The official volatile settings API persists UI changes in the desktop profile. On 0.1.7-rc.1, `features.maxActiveSubagents` separately supplies the official `subagent` plugin's default count of 2; reaching that count rejects new subagents. The two limits are independent. Saved UI limits always take priority over subsequent deployment defaults.
+
 The official workflow `maxConcurrentAgents` setting (default 2) limits workflow task count separately. This plugin does not govern direct HTTP/SDK calls in external processes, image generation or TTS. A server must still enforce account-level limits across clients.
 
 ## Verification

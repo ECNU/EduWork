@@ -37,6 +37,46 @@ test('mail, memory and literature settings reach installed bundle rows without a
   await assert.rejects(prepareProductProfile({ product, home, shell: 'electron', userConfig }), /不属于此发行版/)
 })
 
+test('rc.1 reads independent request and subagent defaults below saved UI choices', async t => {
+  const { root, product, home } = await fixture(t)
+  await writeFile(join(product, 'assembly.json'), JSON.stringify({ distribution: 'eduwork', dshVersion: '0.1.7-rc.1', dshCommit: '46a7f68b0922371ce7144b668b90e377d8e799f4', bundles: ['@deepseek-ai/dsh-base'] }))
+  // JSON is sufficient for the synthetic bundle; the real Host probe covers YAML.
+  const yaml = join(product, 'd/node_modules/yaml')
+  await mkdir(yaml, { recursive: true })
+  await writeFile(join(yaml, 'package.json'), '{"type":"module","exports":"./index.js"}')
+  await writeFile(join(yaml, 'index.js'), 'export const parse = JSON.parse')
+  const presets = join(product, 'd/node_modules/@deepseek-ai/dsh-web-app/presets')
+  await mkdir(presets, { recursive: true })
+  for (const id of ['standard', 'ptc', 'minimal', 'cordis']) await writeFile(join(presets, id+'.patch.yml'), JSON.stringify([{ insert: [{ id: 'preset-'+id, config: { plugins: [] } }] }]))
+  const userConfig = join(root, 'eduwork.jsonc')
+  const options = { product, home, shell: 'electron', userConfig }
+  const configure = async features => {
+    await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, features }))
+    const { profile } = await prepareProductProfile(options)
+    const patches = JSON.parse(await readFile(join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml')))
+    return { profile, subagent: patches.find(row => row.id === 'subagent').config, requests: patches.find(row => row.id === 'eduwork-concurrency').config }
+  }
+  let current = await configure({})
+  assert.deepEqual(current.subagent, { maxActiveSubagents: 2 })
+  assert.deepEqual(current.requests, { maxConcurrentRequests: 3 })
+  current = await configure({ maxActiveSubagents: 4, maxConcurrentRequests: 6 })
+  assert.equal(current.subagent.maxActiveSubagents, 4)
+  assert.equal(current.requests.maxConcurrentRequests, 6)
+  // Preserve explicit settings even when they happen to equal the old defaults.
+  const preferences = [{ id: 'subagent', config: { maxActiveSubagents: 4, maxDepth: 2 } },
+    { id: 'eduwork-concurrency', config: { maxConcurrentRequests: 6 } }]
+  await writeFile(join(current.profile, 'cordis.patch.yml'), JSON.stringify(preferences))
+  current = await configure({ maxActiveSubagents: 1, maxConcurrentRequests: 2 })
+  assert.equal(current.subagent.maxActiveSubagents, 1)
+  assert.equal(current.requests.maxConcurrentRequests, 2)
+  assert.deepEqual(JSON.parse(await readFile(join(current.profile, 'cordis.patch.yml'))), preferences)
+  // Without a saved preference, legacy input still converts only the request limit.
+  await writeFile(join(current.profile, 'cordis.patch.yml'), '[]')
+  current = await configure({ maxParallelSubagents: 4 })
+  assert.equal(current.requests.maxConcurrentRequests, 5)
+  assert.equal(current.subagent.maxActiveSubagents, 2)
+})
+
 test('both shells activate only configured media tools and reread capability switches without rewriting JSONC', async t => {
   const { root, product } = await fixture(t)
   const composition = JSON.parse(await readFile(join(product, 'composition.json'), 'utf8'))
