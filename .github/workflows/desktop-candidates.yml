@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Approved X.Y.Z-dev.YYYYMMDD.N version; artifacts only'
+        description: 'Approved X.Y.Z-dev.YYYYMMDD.N version'
         required: true
         type: string
       development:
@@ -19,6 +19,10 @@ on:
         required: true
         default: false
         type: boolean
+      publish_macos_release:
+        description: 'Publish validated Mac ZIP and DMG to GitHub Releases (main, approved notes, development=false)'
+        type: boolean
+        default: false
       platform:
         description: 'Build both platforms, or diagnose one native platform'
         required: true
@@ -58,16 +62,34 @@ jobs:
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          PUBLISH_MACOS_RELEASE: ${{ inputs.publish_macos_release }}
+          SOURCE_REF: ${{ github.ref }}
+          SELECTED_PLATFORM: ${{ inputs.platform }}
           TARGET_PLATFORM: ${{ matrix.platform }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           if ($env:DEVELOPMENT_ONLY -ne 'true' -and $env:RELEASE_NOTES_APPROVED -ne 'true') { throw 'Release notes approval is required.' }
+          if ($env:PUBLISH_MACOS_RELEASE -eq 'true' -and ($env:SOURCE_REF -ne 'refs/heads/main' -or $env:DEVELOPMENT_ONLY -eq 'true' -or $env:RELEASE_NOTES_APPROVED -ne 'true' -or $env:SELECTED_PLATFORM -eq 'windows')) { throw 'Mac publication requires main, approved release notes, development=false, and a Mac build.' }
           node core/scripts/check-source-docs.mjs core
           $script = "./core/scripts/ci-eduwork-$($env:TARGET_PLATFORM)-release.ps1"
           $acceptance = @{}
           if ($env:DEVELOPMENT_ONLY -eq 'true') { $acceptance.Development = $true } else { $acceptance.ReleaseNotesApproved = $true }
           & $script -CoreRoot ./core -EditionRoot ./core -DistributionConfig config/distributions/generic.json -Version $env:RELEASE_VERSION -ReleaseNotesFile $env:RELEASE_NOTES -Output "$env:RUNNER_TEMP/ew-candidate" @acceptance
+      - uses: actions/setup-python@v5
+        if: matrix.platform == 'macos'
+        with:
+          python-version: '3.12'
+      - name: Create styled macOS DMG
+        if: matrix.platform == 'macos'
+        shell: bash
+        run: |
+          set -euo pipefail
+          build="$RUNNER_TEMP/ew-candidate"
+          archives=("$build/publish/"*.zip)
+          [[ ${#archives[@]} -eq 1 && -f "${archives[0]}" ]]
+          python -m pip install --only-binary=:all: --require-hashes -r core/scripts/macos-dmg/requirements.txt
+          python core/scripts/macos-dmg/package.py --app "$build/unpacked/EduWork.app" --output "${archives[0]%.zip}.dmg"
       - name: Retain validation reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -84,3 +106,26 @@ jobs:
           compression-level: 0
           retention-days: 3
           if-no-files-found: error
+  publish-macos:
+    needs: build
+    if: inputs.publish_macos_release && github.ref == 'refs/heads/main' && !inputs.development && inputs.notes_approved && inputs.platform != 'windows'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: macos-release
+          path: release-files
+      - name: Publish validated Mac ZIP and DMG
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          tag="macos-v$RELEASE_VERSION"
+          gh release create "$tag" release-files/*.dmg release-files/*.zip release-files/*.sha256 \
+            --target "$GITHUB_SHA" --title "EduWork $RELEASE_VERSION (macOS)" \
+            --notes-file release-files/RELEASE-NOTES.md --prerelease --latest=false --draft
+          gh release edit "$tag" --draft=false

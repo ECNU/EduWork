@@ -55,7 +55,7 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 ## CI 开发候选
 
-公版运行 `Build desktop release candidates`，机构版运行 `Build ECNU desktop release candidates`，选择 Windows、Mac 或两者。工作流仅保留验收产物，校验后由维护者发布。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
+公版运行 `Build desktop release candidates`，机构版运行 `Build ECNU desktop release candidates`，选择 Windows、Mac 或两者。工作流默认仅保留验收产物；维护者可使用下述显式发布选项上传到 GitHub Releases。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
 
 `scripts/ci-eduwork-macos-release.ps1` 在 `macos-15` arm64 runner 上复用公共装配，生成待验收的开发 ZIP，不自动发布 Release。输入为核心目录、机构目录、发行配置、已确认版本与说明文件：
 
@@ -77,7 +77,7 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 
 ## DMG 拖拽安装窗口
 
-可对已签名的应用单独生成带标题、拖拽指引和 Applications 快捷方式的 DMG；默认候选构建仍生成 ZIP。需要 macOS、Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3。
+可对已签名的应用单独生成带标题、拖拽指引和 Applications 快捷方式的 DMG；GitHub Actions 的 Mac 候选构建会同时上传 ZIP 和美化 DMG。默认仅保留构建产物；需发布时，在 main 手动运行 `Build desktop release candidates`，选择 Mac、关闭 `development`、提供已批准的发行说明并勾选 `notes_approved` 和 `publish_macos_release`，即可在 `macos-v<版本>` 的 GitHub 预发布中下载 ZIP 与 DMG。本地打包需要 macOS、Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
 
 ```sh
 python3 -m venv /tmp/eduwork-dmg-venv
