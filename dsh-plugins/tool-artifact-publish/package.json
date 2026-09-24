@@ -6,7 +6,8 @@
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
-    "./core": "./lib/core.js"
+    "./core": "./lib/core.js",
+    "./native": "./lib/native.js"
   },
   "files": [
     "lib/**/*.js",

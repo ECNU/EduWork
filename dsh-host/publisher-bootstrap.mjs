@@ -4,6 +4,7 @@ import { loadUserConfig, parseUserConfig } from './user-config.mjs'
 import { compareVersions, digest, verifiedManifest, validateBundle, incompatible } from './content-update-protocol.mjs'
 import { ConfigurationFile, readConfiguration, configurationFingerprints } from './configuration-file.mjs'
 import { updateEnterpriseModels } from './enterprise-model-updates.mjs'
+import { isContentFileError } from './content-updates.mjs'
 
 /** Only publisher-owned editions can opt in. The descriptor is part of the app. */
 export async function readPublisherBootstrap({ ownership, product, platform = process.platform }) {
@@ -125,7 +126,25 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
 }
 
 /** Reuse the content journal: commit remains gated by desktopReady(). */
+export async function retryPublisherContent(manager) {
+  const status = await manager.check({ repair: true, retryFailed: true })
+  if (status.state === 'available') await manager.download()
+  const result = manager.snapshot()
+  if (['error', 'requires_software'].includes(result.state)) throw Error(result.message)
+  return result
+}
+
 export async function preparePublisherContent(manager, bootstrap, { onDownload = () => {} } = {}) {
+  try {
+    return await preparePublisherContentTrial(manager, bootstrap, onDownload)
+  } catch(error) {
+    if(isContentFileError(error)&&bootstrap&&(!bootstrap.hasBaseline||bootstrap.requiresConfiguration))
+      throw Object.assign(new Error(error.message,{cause:error}),{code:'EDUWORK_BOOTSTRAP_REQUIRED'})
+    throw error
+  }
+}
+
+async function preparePublisherContentTrial(manager, bootstrap, onDownload) {
   let managed = await manager.prepare()
   if (!bootstrap || bootstrap.hasBaseline && !bootstrap.requiresConfiguration || managed.configurationRevision > 0 || !manager.source?.configuration) return managed
   onDownload()

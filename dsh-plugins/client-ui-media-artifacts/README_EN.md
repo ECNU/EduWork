@@ -2,6 +2,8 @@
 
 [简体中文](README.md)
 
+The 0.1.7 candidate builds `src/client/native.js`. Upstream components own attachment intake and deliverable cards; this entry retains only the extended preview sidebar shared with Studio. The legacy card and attachment adapters documented below remain in the default release Runtime.
+
 This replaceable DSH client plugin is a narrow compatibility derivative of
 `@deepseek-ai/dsh-client-ui-deliverables@0.1.2-rc.1`. It replaces that one
 plugin without changing DSH Core, the rest of the Web UI, or the Agent loop:
