@@ -1,5 +1,6 @@
 // Native window smoke test; the Dock's activate event is dispatched explicitly.
 import assert from 'node:assert/strict'
+import { once } from 'node:events'
 import { app, BrowserWindow } from 'electron'
 import { attachAppActivation, attachWindowVisibility } from '../src/window-visibility.mjs'
 
@@ -24,7 +25,9 @@ try {
     app.emit('activate')
     assert.equal(window.isVisible(), true, kind + ' reopens repeatedly')
     quitting = true
+    const closed = once(window, 'closed', { signal: AbortSignal.timeout(10000) })
     window.close()
+    await closed
     assert.equal(window.isDestroyed(), true, kind + ' can close when quitting')
     quitting = false
   }
