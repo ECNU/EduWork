@@ -6,13 +6,14 @@
  * Only navigation to the synthetic localhost IdP is performed by an HTTP fixture,
  * rather than opening the user's system browser. No existing desktop home is used.
  */
-import { app, safeStorage } from 'electron'
+import { app, safeStorage, net } from 'electron'
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import { generateKeyPairSync, randomBytes, randomUUID, createHash, sign } from 'node:crypto'
 import { mkdir, mkdtemp, readFile, writeFile, copyFile, symlink, rm } from 'node:fs/promises'
 import { join, resolve, relative, isAbsolute, sep, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { setTimeout as delay } from 'node:timers/promises'
 import { EncryptedVault, startNativeBridge } from '../src/native-vault.mjs'
 import { prepareProductProfile } from '../../dsh-host/product-profile.mjs'
 import { workbenchAction } from '../../dsh-host/workbench-support.mjs'
@@ -47,7 +48,13 @@ const finish = async () => {
   console.log(JSON.stringify({ passed: summaries.passed, checks: checks.length, evidence: join(root, 'result.json') }))
   app.exit(summaries.passed ? 0 : 1)
 }
-const check = async (name, fn) => { await fn(); checks.push({ name, passed: true }); console.log('PASS ' + name) }
+const check = async (name, fn) => {
+  await writeFile(join(root, 'progress.json'), JSON.stringify({ pid: process.pid, check: name,
+    at: new Date().toISOString(), completed: checks.map(row => row.name) }) + '\n')
+  await fn()
+  checks.push({ name, passed: true })
+  console.log('PASS ' + name)
+}
 const encoded = value => Buffer.from(JSON.stringify(value)).toString('base64url')
 
 async function idpFixture() {
@@ -61,7 +68,7 @@ async function idpFixture() {
     currentAccess = '<SYNTHETIC_ACCESS_' + randomBytes(12).toString('hex') + '>'
     currentRefresh = '<SYNTHETIC_REFRESH_' + randomBytes(12).toString('hex') + '>'
     secrets.add(currentAccess); secrets.add(currentRefresh)
-    const result = { scope: 'openid profile offline_access llm:models:read llm:invoke', token_type: 'Bearer', access_token: currentAccess, refresh_token: currentRefresh, expires_in: initial ? 1 : 3600 }
+    const result = { scope: 'openid profile offline_access llm:models:read llm:invoke', token_type: 'Bearer', access_token: currentAccess, refresh_token: currentRefresh, expires_in: initial ? 10 : 3600 }
     if (initial) {
       const header = encoded({ alg: 'RS256', kid: 'electron-fixture' })
       const payload = encoded({ iss: origin, aud: 'electron-fixture', sub: 'synthetic-user', nonce,
@@ -137,6 +144,7 @@ try {
   summaries.platform = process.platform
   const sourceIdentity = JSON.parse(await readFile(join(sourceProduct, 'assembly.json'), 'utf8'))
   const native = sourceIdentity.dshVersion === '0.1.7-rc.1'
+  summaries.transport = native ? 'electron-chromium-http' : 'desktop-byte-pipe'
   summaries.dshVersion = sourceIdentity.dshVersion
   summaries.oidcVersion = JSON.parse(await readFile(join(sourceProduct, 'd/node_modules/@eduwork/dsh-oidc/package.json'), 'utf8')).version
   // Use the actual frozen product. A metadata wrapper with external module
@@ -203,10 +211,11 @@ try {
       }
     }
     const rpc = async (method, args = {}) => {
+      // Exercise Electron's Chromium network stack, matching renderer HTTP.
       const request = new Request((native ? origin : 'dsh-app://app') + '/api/' + method, { method: 'POST',
         headers: { 'content-type': 'application/json', ...(native ? { origin, cookie } : {}) },
         body: JSON.stringify({ type: 'client-request', rpcId: randomUUID(), method, payload: { args } }), signal: AbortSignal.timeout(30000) })
-      const response = await (native ? fetch(request) : host.fetch(request))
+      const response = await (native ? net.fetch(request) : host.fetch(request))
       const value = await response.json()
       assert.equal(response.status, 200, method + ' transport status')
       assert.equal(value.result?.ok, true, method + ' RPC failed')
@@ -242,17 +251,31 @@ try {
   })
   currentStep = 'login'
   await check('desktop-PKCE-login-and-proactive-refresh', async () => {
+    currentStep = 'login-begin'
     const begin = await first.rpc('oidcAccounts/begin', { profileID: idp.profile.id })
     assert.equal(begin.mode, 'external')
     assert.equal(Object.hasOwn(begin, 'authorizationURL'), false)
+    currentStep = 'login-status'
     const result = await first.rpc('oidcAccounts/loginStatus', { loginID: begin.loginID })
     assert.equal(result.state, 'completed')
+    assert.ok(result.status, 'Completed login must include account status')
     assert.equal(result.status.state, 'connected')
     assert.equal(result.status.credentialReady, true)
+    currentStep = 'login-display-name'
     assert.equal((await first.rpc('activityInsights/snapshot', { request: '{}' })).profile.displayName, 'Synthetic user')
     assert.equal(idp.counts.code, 1)
+    // A short-lived token refreshes halfway through its lifetime. Do not assume
+    // the first request already crossed that boundary: fast machines may not.
+    currentStep = 'login-refresh-boundary'
+    const saved = JSON.parse((await first.vault.operation('resolve', 'DSH_OIDC_ELECTRON_FIXTURE_SESSION')).value)
+    assert.ok(Number.isFinite(saved.refreshAt) && saved.refreshAt < saved.expiresAt)
+    await delay(Math.max(0, saved.refreshAt * 1000 - Date.now() + 50))
+    assert.ok(Date.now() < saved.expiresAt * 1000, 'Exercise proactive refresh before expiry')
+    assert.equal((await first.rpc('oidcAccounts/reconcile', { profileID: idp.profile.id, options: {} })).state, 'connected')
     assert.equal(idp.counts.refresh, 1)
+    currentStep = 'login-model-catalog'
     const resources = await first.rpc('oidcAccounts/resources', { profileID: idp.profile.id })
+    assert.ok(resources.models?.length, 'Connected gateway must return its model catalog')
     assert.equal(resources.models[0].id, 'synthetic-model')
     assert.equal(Object.hasOwn(resources, 'quota'), false, 'Public native OIDC does not expose ECNU quota')
     assert.equal(idp.counts.quota, 0, 'Even when a server advertises quota, public OIDC does not request it')
@@ -306,8 +329,11 @@ try {
   summaries.protocolCounters = idp.counts
   summaries.controlledLocalAuthorizationNavigations = opened
 } catch (error) {
-  // Assertions/response envelopes may contain secrets: keep only a safe stage label.
+  // Assertions/response envelopes may contain secrets: retain only the stage
+  // and this test's line/column, never a raw response or stack trace.
+  const location = String(error?.stack).match(/oidc-native-vault\.electron\.mjs:(\d+):(\d+)/)
   summaries.failure = { stage: currentStep, kind: error?.name || 'Error',
+    ...(location ? { testLocation: { line: Number(location[1]), column: Number(location[2]) } } : {}),
     ...(currentStep === 'real-host-start' ? { message: String(error?.message || '').replace(/(?:Bearer\s+|(?:token|api_key|access_token)[=:]\s*)[^\s,}"']+/gi, '[redacted]').slice(0, 3000) } : {}) }
   console.error('FAILED ' + currentStep + ' (' + (error?.name || 'Error') + ')')
 } finally { await finish() }
