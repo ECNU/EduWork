@@ -149,7 +149,11 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     const parse = text => yaml.parse(text, { customTags: [{ tag: 'tag:yaml.org,2002:js', resolve: value => ({ __jsExpr: value }) }] })
     const legacyPresets = await legacyPresetPatches(home, parse)
     const nativePresets = await nativePresetPatches(join(product, 'd'), parse)
-    await writeNativeProfile({ profile, bundles: identity.bundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...legacyPresets, ...patches], parse })
+    // Native volatile settings read plugin configuration, not the legacy env.
+    // These deployment defaults remain below preferences saved by the UI.
+    const limits = [{ id: 'eduwork-concurrency', config: { maxConcurrentRequests: user?.features?.maxConcurrentRequests ?? 3 } }]
+    if (identity.dshVersion === '0.1.7-rc.1') limits.push({ id: 'subagent', config: { maxActiveSubagents: user?.features?.maxActiveSubagents ?? 2 } })
+    await writeNativeProfile({ profile, bundles: identity.bundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse })
   } else {
     await writeFile(join(profile, 'package.json'), JSON.stringify({ name: 'eduwork-desktop-profile', private: true, type: 'module', dsh: { profile: { bundles: identity.bundles } } }, null, 2) + '\n')
     await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...bundleRows, ...desktop, ...patches], null, 2) + '\n')

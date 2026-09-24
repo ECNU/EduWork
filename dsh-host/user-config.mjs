@@ -96,8 +96,9 @@ export function parseUserConfig(path, body, { overlay } = {}) {
       if (!['stable', 'development'].includes(value.updates.defaultPolicy)) throw new Error('updates.defaultPolicy 必须为 stable 或 development')
       updates.defaultPolicy = value.updates.defaultPolicy
     }
-    allowed(value.features ?? {}, ['visionFallback','maxConcurrentRequests','maxParallelSubagents'], 'features')
+    allowed(value.features ?? {}, ['visionFallback','maxConcurrentRequests','maxActiveSubagents','maxParallelSubagents'], 'features')
     if (value.features?.maxConcurrentRequests !== undefined && (!Number.isSafeInteger(value.features.maxConcurrentRequests) || value.features.maxConcurrentRequests < 1 || value.features.maxConcurrentRequests > 64)) throw new Error('features.maxConcurrentRequests 必须是 1–64 的整数')
+    if (value.features?.maxActiveSubagents !== undefined && (!Number.isSafeInteger(value.features.maxActiveSubagents) || value.features.maxActiveSubagents < 1 || value.features.maxActiveSubagents > 64)) throw new Error('features.maxActiveSubagents 必须是 1–64 的整数')
     if (value.features?.maxParallelSubagents !== undefined && (!Number.isSafeInteger(value.features.maxParallelSubagents) || value.features.maxParallelSubagents < 1 || value.features.maxParallelSubagents > 32)) throw new Error('features.maxParallelSubagents 必须是 1–32 的整数')
     if (value.features?.visionFallback !== undefined && typeof value.features.visionFallback !== 'boolean') throw new Error('features.visionFallback 必须为 true 或 false')
     for (const key of ['manifestURL', 'releasesURL']) {

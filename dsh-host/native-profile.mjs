@@ -165,8 +165,15 @@ export async function writeNativeProfile({ profile, bundles, patches, parse = JS
     const before = configurations(JSON.parse(previousText)), after = configurations(next)
     const saved = parse(preferencesText)
     if (!Array.isArray(saved)) throw new Error('Native profile preferences must be a patch list')
-    const rebased = saved.map(row => row.config === undefined || !before.has(row.id) || !after.has(row.id) ? row
-      : { ...row, config: rebaseNativeConfig(before.get(row.id), after.get(row.id), row.config) })
+    const rebased = saved.map(row => {
+      if (row.config === undefined || !before.has(row.id) || !after.has(row.id)) return row
+      const config = rebaseNativeConfig(before.get(row.id), after.get(row.id), row.config)
+      // Keep saved limits even when they equal the previous default. The
+      // official form saves a whole config; intent cannot be inferred safely.
+      const limit = { subagent: 'maxActiveSubagents', 'eduwork-concurrency': 'maxConcurrentRequests' }[row.id]
+      if (limit && Object.hasOwn(row.config, limit)) config[limit] = row.config[limit]
+      return { ...row, config }
+    })
     if (!isDeepStrictEqual(saved, rebased)) {
       await writeChanged(journalPath, json({ schemaVersion: 1, beforeBundle: previousText, afterBundle: json(next), beforePreferences: preferencesText, afterPreferences: json(rebased) }))
       await completePendingWrite(journalPath, bundlePath, preferencesPath)
