@@ -1,7 +1,7 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
-import { readFileSync, mkdirSync } from 'node:fs'
+import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
@@ -21,6 +21,7 @@ import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
+import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -58,6 +59,8 @@ export function configureEduworkPaths() {
   app.setPath('userData', paths.userData)
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
+  // Startup/error recovery must take precedence over a partially loaded workbench.
+  attachAppActivation({ app, windows: () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows()] })
   // Own the process tree from the beginning of startup, including when the
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
@@ -79,12 +82,18 @@ export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDeskto
 async function prepareDesktop() {
   lifecycle.check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
+  const startupBlue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
+  const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
+  const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
+  const startupIcon = process.platform === 'darwin' ? join(app.getAppPath(), '../brand', startupBlue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon
+  if (process.platform === 'darwin') app.dock.setIcon(join(app.getAppPath(), '../brand', startupBlue ? 'dock-blue-1024.png' : 'dock-red-1024.png'))
   progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
-    icon: paths.icon,
-    backgroundColor: '#faf8f4', webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+    icon: startupIcon,
+    backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+  attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   const title = String(settings.productName).replace(/[<>&"']/gu, '')
-  const logo = 'data:image/png;base64,' + readFileSync(paths.icon).toString('base64')
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:#faf8f4}progress{width:100%;margin-top:20px;accent-color:#9f2636}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
+  const logo = 'data:image/png;base64,' + readFileSync(startupIcon).toString('base64')
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:' + startupBackground + '}progress{width:100%;margin-top:20px;accent-color:' + startupAccent + '}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
@@ -167,17 +176,46 @@ export async function desktopReady() {
   await writeMigrationHealth(migrationLaunch,'ready')
   updateCompleted = true
   migrationLaunch = null
-  if (progressWindow && !progressWindow.isDestroyed()) progressWindow.close()
+  if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
   progressWindow = undefined
   void portableUpdates?.action('check-updates-background').catch(()=>{})
+}
+
+function savedEduworkStyle() {
+  try {
+    return JSON.parse(readFileSync(join(app.getPath('userData'), 'visual-style.json'), 'utf8')).style === 'dsh' ? 'dsh' : 'ecnu-liwa'
+  } catch { return 'ecnu-liwa' }
+}
+function persistEduworkStyle(style) {
+  const file = join(app.getPath('userData'), 'visual-style.json')
+  try {
+    writeFileSync(file + '.tmp', JSON.stringify({ style }), { mode: 0o600 })
+    renameSync(file + '.tmp', file)
+  } catch (error) { console.warn('Could not save desktop visual style:', error.message) }
+}
+export function attachDockTheme(window) {
+  if (process.platform !== 'darwin') return
+  let previous
+  window.webContents.on('ipc-message', (event, channel, style) => {
+    if (channel !== 'eduwork:visual-style' || event.senderFrame !== window.webContents.mainFrame ||
+        !window.webContents.getURL().startsWith('dsh-app://app/') || !['dsh', 'ecnu-liwa'].includes(style) || style === previous) return
+    const filename = style === 'dsh' ? 'dock-blue-1024.png' : 'dock-red-1024.png'
+    const icon = nativeImage.createFromPath(join(app.getAppPath(), '../brand', filename))
+    if (icon.isEmpty()) { console.warn('Dock theme icon unavailable: ' + filename); return }
+    app.dock.setIcon(icon)
+    persistEduworkStyle(style)
+    previous = style
+  })
 }
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
+  attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
-  const show = () => { if (!window.isDestroyed()) { if (window.isMinimized()) window.restore(); window.show(); window.focus() } }
+  const show = attachWindowVisibility({ app, window, isQuitting,
+    shouldExit: () => user?.closeAction === 'exit', hasTray: () => Boolean(tray) })
   const action = value => {
     show()
     if (!['new-session', 'settings'].includes(value) || window.isDestroyed()) return
@@ -216,11 +254,10 @@ export async function attachDesktopWindow(window) {
   } catch (error) {
     tray?.destroy(); tray = undefined
     if (isQuitting()) throw error
-    console.warn('System tray unavailable; closing the window will exit.')
+    console.warn(process.platform === 'darwin'
+      ? 'System tray unavailable; use the Dock to reopen the window.'
+      : 'System tray unavailable; closing the window will exit.')
   }
-  window.on('close', event => {
-    if (!isQuitting() && tray && user?.closeAction !== 'exit') { event.preventDefault(); window.hide() }
-  })
 }
 
 export function checkProductUpdates() {
@@ -234,7 +271,10 @@ export async function showDesktopFailure(error) {
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
   const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
-  if (!progressWindow || progressWindow.isDestroyed()) progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+  if (!progressWindow || progressWindow.isDestroyed()) {
+    progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+    attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
+  }
   progressWindow.setSize(660, 470)
   const needsConfiguration = error.code === 'EDUWORK_BOOTSTRAP_REQUIRED'
   let importing = false

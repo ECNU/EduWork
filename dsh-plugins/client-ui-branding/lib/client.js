@@ -145,12 +145,13 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/index.ts
+		const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== "undefined" && __EDUWORK_NATIVE_017__;
 		const inject = [
 			"slots",
 			"theme",
 			"connection",
 			"remote",
-			"settingsScope"
+			nativeSettings ? "configForms" : "settingsScope"
 		];
 		const h = react.default.createElement;
 		const SETTINGS_NAMESPACE = "chatecnu-brand";
@@ -297,13 +298,13 @@ window.__ModuleLoader__.load({
 				name: "settings.trigger",
 				priority: -100
 			}, DesktopSettingsTrigger));
-			const scope = ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE });
+			const scope = nativeSettings ? ctx.configForms.get(SETTINGS_NAMESPACE) : ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE });
 			let clearTokens = () => {};
 			const adopt = () => {
 				clearTokens();
 				clearTokens = () => {};
 				const visualStyle = normalizeVisualStyle(scope.getSnapshot().value?.visualStyle);
-				document.documentElement.dataset.chatecnuVisualStyle = visualStyle;
+				if (scope.getSnapshot().status !== "loading") document.documentElement.dataset.chatecnuVisualStyle = visualStyle;
 				const logoAccent = visualStyle === "ecnu-liwa" ? "#9f2636" : "#2575ff";
 				document.documentElement.style.setProperty("--chatecnu-logo-accent", logoAccent);
 				const tokens = tokensForVisualStyle(visualStyle);

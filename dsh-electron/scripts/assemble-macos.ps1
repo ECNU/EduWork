@@ -80,7 +80,7 @@ Copy-Item -LiteralPath (Join-Path $ShellBuild 'LICENSE-DeepSeek') -Destination $
 Copy-Item -LiteralPath (Join-Path $ShellBuild 'source-receipt.json') -Destination $appPayload
 $brand = Join-Path $resources 'brand'
 New-Item -ItemType Directory -Path $brand | Out-Null
-foreach ($asset in @('icon-32.png','icon-256.png','icon.icns','tray-black.png')) {
+foreach ($asset in @('icon-32.png','icon-256.png','icon-1024.png','icon-blue-1024.png','dock-red-1024.png','dock-blue-1024.png','icon.icns','tray-black.png')) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot "../../assets/eduwork/$asset") -Destination (Join-Path $brand $asset)
 }
 New-Item -ItemType Directory -Path (Join-Path $resources 'product') | Out-Null
@@ -171,6 +171,8 @@ foreach ($row in @(
     & plutil -replace $row[0] -string $row[1] $plist
     if ($LASTEXITCODE -ne 0) { throw "Info.plist update failed: $($row[0])" }
 }
+& $Node (Join-Path $PSScriptRoot 'build-dock-plugin.mjs') $app
+if ($LASTEXITCODE -ne 0) { throw 'Dock tile plugin compilation failed' }
 if ($sparkleEnabled) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../LICENSE-Sparkle') -Destination (Join-Path $resources 'LICENSE-Sparkle')
     $frameworkTarget = Join-Path $app 'Contents/Frameworks/Sparkle.framework'
