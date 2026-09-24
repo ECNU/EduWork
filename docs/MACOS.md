@@ -77,12 +77,12 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 
 ## DMG 拖拽安装窗口
 
-可对已签名的应用单独生成带品牌标题、拖拽指引和 Applications 快捷方式的 DMG；默认候选构建仍生成 ZIP。
+可对已签名的应用单独生成带标题、拖拽指引和 Applications 快捷方式的 DMG；默认候选构建仍生成 ZIP。需要 macOS、Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3。
 
-```powershell
-./scripts/package-macos-dmg.ps1 -App '/path/to/EduWork.app' -Output '/path/to/EduWork-macos-arm64.dmg'
+```sh
+python3 -m venv /tmp/eduwork-dmg-venv
+/tmp/eduwork-dmg-venv/bin/python3 -m pip install --only-binary=:all: --require-hashes -r scripts/macos-dmg/requirements.txt
+/tmp/eduwork-dmg-venv/bin/python3 scripts/macos-dmg/package.py --app '/path/to/EduWork.app' --output '/path/to/EduWork-macos-arm64.dmg'
 ```
 
-需要 macOS、Xcode Command Line Tools、PowerShell 7，以及支持 `venv` 和 `pip` 的 Python 3（可通过 `-Python` 指定）。脚本在临时环境中安装哈希锁定的 Finder 元数据依赖；输出必须不存在。安装窗口标题读取 `CFBundleDisplayName`（缺省时使用 `CFBundleName`），保留输入应用的文件名。
-
-打包验证应用签名和镜像完整性，不修改或重新签名应用，也不增加 Apple 公证。验收时打开最终只读 DMG，检查背景、名称、布局和快捷方式，并验证拖拽安装后的启动与签名。
+输出必须不存在。窗口标题读取应用已有的显示名称，保留原文件名和签名，不增加 Apple 公证。脚本校验应用签名及镜像完整性；验收时打开最终 DMG，检查背景、图标布局和 Applications 快捷方式，并验证拖拽安装后的启动与签名。
