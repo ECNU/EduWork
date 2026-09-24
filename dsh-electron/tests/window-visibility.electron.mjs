@@ -4,6 +4,8 @@ import { once } from 'node:events'
 import { app, BrowserWindow } from 'electron'
 import { attachAppActivation, attachWindowVisibility } from '../src/window-visibility.mjs'
 
+// Match the product's macOS lifecycle while testing each window in isolation.
+app.on('window-all-closed', () => {})
 app.whenReady().then(async () => {
 let quitting = false
 const windows = []
