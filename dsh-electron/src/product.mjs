@@ -22,6 +22,7 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { applyHostGitIdentity } from './host-git-identity.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -148,6 +149,8 @@ async function prepareDesktop() {
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
   // Reassert the edition's immutable ownership after optional test settings.
   Object.assign(process.env, prepared.environment)
+  const gitIdentity = applyHostGitIdentity(process.env)
+  desktopHostLog(`[git] host identity ssh=${gitIdentity.ssh} home=${gitIdentity.home} systemGit=${gitIdentity.systemGitOnPath ? 'on-path' : 'missing'}\n`)
   // The Host runs in the bundled Node process, so it cannot read Electron's
   // process.versions directly. Report the version of this running shell.
   process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
