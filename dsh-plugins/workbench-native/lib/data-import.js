@@ -9,9 +9,12 @@ const inside = (root, path) => { const r = relative(root, path); return r === ''
 async function exists(path) { try { return await lstat(path) } catch (e) { if (e.code === 'ENOENT') return null; throw e } }
 async function hashFile(path) { const h = createHash('sha256'); for await (const chunk of createReadStream(path)) h.update(chunk); return h.digest('hex') }
 const ignored = new Set(['node_modules', '.git', '.venv', '__pycache__'])
+const systemAliases = process.platform === 'darwin' ? new Map([['/var', '/private/var'], ['/tmp', '/private/tmp']]) : new Map()
 async function noLinks(path) {
   for (let current = resolve(path); ; current = dirname(current)) {
-    if ((await exists(current))?.isSymbolicLink()) throw Error(`导入路径不能通过目录链接：${current}`)
+    if ((await exists(current))?.isSymbolicLink()
+      && (!systemAliases.has(current) || await realpath(current) !== systemAliases.get(current)))
+      throw Error(`导入路径不能通过目录链接：${current}`)
     if (dirname(current) === current) break
   }
 }
@@ -214,6 +217,12 @@ export class DataImporter {
           mappings.push([join(sourceHome, 'attachments'), attachments])
           let cwd = header.cwd
           if (typeof cwd !== 'string' || !cwd) cwd = join(root, 'restored-workspace')
+          if (isAbsolute(cwd)) {
+            await noLinks(cwd)
+            // Compare the same physical spelling as the selected program root:
+            // Windows 8.3 names and macOS system aliases are not new workspaces.
+            cwd = await realpath(cwd).catch(error => { if (error.code === 'ENOENT') return cwd; throw error })
+          }
           if (inside(root, resolve(cwd)) && !homes.some(h => inside(h, resolve(cwd)))) {
             if (!(await exists(cwd))?.isDirectory()) job.warnings.push(`原工作区不在此机器上：${cwd}。会话已导入，项目文件需另外复制。`)
             const dest = join(home, 'imported-workspaces', digest(root).slice(0, 16), digest(cwd).slice(0, 12), basename(cwd))
@@ -225,6 +234,7 @@ export class DataImporter {
             mappings.push([header.cwd, cwd]); job.warnings.push(`原工作区不在此机器上：${header.cwd}。会话已导入，项目文件需另外复制。`)
           }
           await noLinks(cwd); await mkdir(cwd, { recursive: true })
+          if (typeof header.cwd === 'string' && header.cwd && header.cwd !== cwd) mappings.push([header.cwd, cwd])
           const mapped = remap(events, mappings.sort((a, b) => b[0].length - a[0].length))
           write = await this.persistence.create({ ...read.header, id, cwd }, { inheritedEventCount: read.inheritedEventCount })
           await write.append(mapped); await write.flush(); await write.close(); write = null
