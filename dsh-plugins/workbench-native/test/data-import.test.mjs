@@ -81,7 +81,7 @@ test('imports old and current logs through official persistence, keeps conflicts
   await runImport(importer,source);assert.equal(importer.status().skipped,1);assert.equal(importer.status().imported,0)
   // A second copy of the same ID with different history is retained separately.
   const other=join(root,'other');await mkdir(join(other,'data','dsh'),{recursive:true});const branch=await openStore(join(other,'data','dsh','sessions'))
-  try{handle=await branch.persistence.create({...header,cwd:'Z:\\unavailable\\project'});await handle.append([event('另一个分支')]);await handle.flush();await handle.close()}finally{await branch.close()}
+  try{handle=await branch.persistence.create({...header,cwd:join(root,'unavailable','project')});await handle.append([event('另一个分支')]);await handle.flush();await handle.close()}finally{await branch.close()}
   await runImport(importer,other);assert.equal(importer.status().imported,1);assert.equal(importer.status().conflicts,1);assert.equal((await dst.persistence.list()).length,2)
   assert.match(importer.status().warnings.join('\n'),/原工作区/)
   await runImport(importer,other);assert.equal(importer.status().skipped,1);assert.equal((await dst.persistence.list()).length,2)
