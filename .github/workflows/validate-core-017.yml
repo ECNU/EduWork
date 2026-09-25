@@ -23,6 +23,9 @@ on:
       - 'scripts/probe-017-literature.mjs'
       - 'dsh-host/product-profile.mjs'
       - 'dsh-electron/src/**'
+      - 'dsh-electron/scripts/**'
+      - 'dsh-electron/tests/**'
+      - 'dsh-electron/upstream-inputs-017.json'
       - 'dsh-plugins/**'
       - 'packages/**'
   workflow_dispatch:
@@ -53,6 +56,8 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
+          node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
@@ -81,6 +86,20 @@ jobs:
           if ($LASTEXITCODE) { throw 'Memory message admission and user intent checks failed' }
           node core/scripts/probe-eduwork-017-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
+      - name: Build the pinned native shell and exercise real Electron bridges
+        shell: pwsh
+        run: |
+          $desktopTools = "$env:RUNNER_TEMP/desktop-tools/apps/desktop"
+          New-Item -ItemType Directory -Path $desktopTools -Force | Out-Null
+          Copy-Item core/third_party/dsh/candidate-v0.1.7-rc.2/desktop-probe/package*.json $desktopTools
+          npm ci --prefix $desktopTools --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE) { throw 'Pinned Electron metadata installation failed' }
+          ./core/dsh-electron/scripts/prepare-electron.ps1 -Upstream "$env:RUNNER_TEMP/desktop-tools" -Output "$env:RUNNER_TEMP/electron"
+          node core/dsh-electron/scripts/build-shell.mjs --native-017 --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
+          if ($LASTEXITCODE) { throw 'Native desktop build failed' }
+          $electron = if ($IsWindows) { "$env:RUNNER_TEMP/electron/runtime/electron.exe" } else { "$env:RUNNER_TEMP/electron/runtime/Electron.app/Contents/MacOS/Electron" }
+          node core/dsh-electron/scripts/probe-native-desktop.mjs --shell "$env:RUNNER_TEMP/native-shell" --runtime "$env:RUNNER_TEMP/native-runtime" --electron $electron --output "$env:RUNNER_TEMP/native-desktop-evidence"
+          if ($LASTEXITCODE) { throw 'Native Electron acceptance failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |
@@ -103,4 +122,7 @@ jobs:
             ${{ runner.temp }}/assembled-evidence/report.json
             ${{ runner.temp }}/deliverables-evidence/report.json
             ${{ runner.temp }}/literature-evidence/report.json
+            ${{ runner.temp }}/native-shell/source-receipt.json
+            ${{ runner.temp }}/native-desktop-evidence/report.json
+            ${{ runner.temp }}/native-desktop-evidence/electron.log
           if-no-files-found: ignore

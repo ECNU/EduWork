@@ -19,14 +19,19 @@ export function attachWindowVisibility({ app, window, platform = process.platfor
   const show = () => showDesktopWindow(window)
   window.on('close', event => {
     if (isQuitting()) return
-    if (shouldExit()) {
+    if (shouldExit() || (platform !== 'darwin' && !hasTray())) {
       event.preventDefault()
       app.quit()
       return
     }
     if (platform === 'darwin' || hasTray()) {
       event.preventDefault()
-      window.hide()
+      // Match the upstream desktop lifecycle: hiding a macOS fullscreen
+      // window directly leaves an empty Space behind.
+      if (platform === 'darwin' && window.isFullScreen()) {
+        window.once('leave-full-screen', () => { if (!window.isDestroyed()) window.hide() })
+        window.setFullScreen(false)
+      } else window.hide()
     }
   })
   return show
