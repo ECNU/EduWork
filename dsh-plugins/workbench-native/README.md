@@ -6,7 +6,7 @@
 
 ## 技能入口
 
-DSH 0.1.7 版本从左侧「插件 → 技能」进入，复用官方 `plugins.item` 扩展槽和返回导航。搜索、开关、导入、创建、移除个人技能以及当前项目的技能发现仍使用同一套服务；列表摘要不会加载技能目录。设置中的旧技能标签不再重复展示。DSH 0.1.5 版本保留「设置 → 插件 → 技能」入口。
+DSH 0.1.7 版本从左侧「技能」直接进入，与「插件」并列。入口复用官方 `sidebar.panellist` 和 `main` 扩展槽，选中状态与侧栏折叠由官方导航处理。搜索、开关、导入、创建、移除个人技能以及当前项目的技能发现仍使用同一套服务；切换页面保留当前会话。插件列表和设置中不再重复展示技能入口。DSH 0.1.5 版本保留「设置 → 插件 → 技能」入口。
 
 ## 自动更新与诊断
 
@@ -29,3 +29,5 @@ DSH 0.1.7 版本从左侧「插件 → 技能」进入，复用官方 `plugins.i
 ## 验证
 
 通过 `EDUWORK_TEST_RUNTIME` 指定准备好的 DSH Runtime，运行 `node --test test/*.test.mjs`。`test/import-browser.mjs` 使用真实 React 界面、严格的导入模式和 Edge；需要准备 `main.cache/client-build-tools` 中的 TypeScript 构建工具。测试仅使用合成数据。
+
+0.1.7 侧栏入口使用组装后的真实 Host 与 Edge 验证：`node test/skills-sidebar-browser.mjs --product <product目录> --host <native-host目录> --output <新建证据目录>`。覆盖并列导航、折叠、技能管理与当前项目技能；结果及截图写入独立目录，无需模型或登录凭据。
