@@ -74,3 +74,15 @@ CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugD
 macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md) 区分系统和架构。开发版需要全新用户目录启动与更新验证，并如实声明 ad-hoc 签名的限制；公测发行前还需完成 Developer ID 签名、公证和 Gatekeeper 验收；证书及密码通过受保护的 CI 环境管理。
 
 公版与机构版复用同一构建流程。通过验证的平台才加入正式 Release，更新源按系统、架构和发行身份分别提供产物。
+
+## DMG 拖拽安装窗口
+
+可在 macOS 上为现有应用生成带标题、拖拽指引和 Applications 快捷方式的 DMG。需要 Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
+
+```sh
+python3 -m venv /tmp/eduwork-dmg-venv
+/tmp/eduwork-dmg-venv/bin/python3 -m pip install --only-binary=:all: --require-hashes -r scripts/macos-dmg/requirements.txt
+/tmp/eduwork-dmg-venv/bin/python3 scripts/macos-dmg/package.py --app '/path/to/EduWork.app' --output '/path/to/EduWork-macos-arm64.dmg'
+```
+
+输出必须不存在。窗口标题读取应用已有的显示名称，保留原文件名和签名，不增加 Apple 公证。脚本校验应用签名及镜像完整性；验收时打开最终 DMG，检查背景、图标布局和 Applications 快捷方式，并验证拖拽安装后的启动与签名。
