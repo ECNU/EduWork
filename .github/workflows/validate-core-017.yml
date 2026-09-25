@@ -57,6 +57,9 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-plugins/workbench-native/test/data-import.test.mjs core/dsh-plugins/workbench-native/test/import-catalog.test.mjs
+          if ($LASTEXITCODE) { throw 'Historical directory import qualification failed' }
       - name: Qualify authenticated Host transport and update admission
         shell: pwsh
         run: |

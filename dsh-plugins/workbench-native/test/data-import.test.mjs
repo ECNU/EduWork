@@ -7,7 +7,7 @@ import { pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
 import { zstdCompressSync } from 'node:zlib'
 import { DataImporter, findImportHomes } from '../lib/data-import.js'
-import { inspectSession } from '../lib/import-inspection.js'
+import { inspectSession, loadImportFormats } from '../lib/import-inspection.js'
 
 const runtime = process.env.EDUWORK_TEST_RUNTIME
 test('legacy v0 descriptor v2 imports losslessly and remains usable by the current subagent runtime', {skip:!runtime},async t=>{
@@ -23,7 +23,7 @@ test('legacy v0 descriptor v2 imports losslessly and remains usable by the curre
  const encode=data=>zstdCompressSync(Buffer.from([header,row(data)].map(r=>JSON.stringify(r)).join('\n')+'\n'))
  const bytes=encode(descriptor);await writeFile(file,bytes)
  const openStore=async path=>{const ctx=new Context();await ctx.plugin(Jsonl,{root:path,compression:'zstd'});return {persistence:ctx.sessionPersistence,close:()=>ctx.fiber.dispose()}}
- const dst=await openStore(join(home,'sessions')),importer=new DataImporter({home,persistence:dst.persistence,openStore,loadFormats:async()=>formats})
+ const dst=await openStore(join(home,'sessions')),importer=new DataImporter({home,persistence:dst.persistence,openStore,loadFormats:()=>loadImportFormats(load)})
  try {
   importer.preview(source);await importer.running;assert.equal(importer.status().excluded,0,JSON.stringify(importer.status()));assert.equal(importer.status().total,1)
   importer.start(importer.status().id);await importer.running;assert.equal(importer.status().imported,1,JSON.stringify(importer.status()))
@@ -46,9 +46,9 @@ for (const location of ['external', 'inside-program']) test(`missing ${location}
  const openStore=async path=>{const ctx=new Context();await ctx.plugin(Jsonl,{root:path,compression:'zstd'});return{persistence:ctx.sessionPersistence,close:()=>ctx.fiber.dispose()}}
  const src=await openStore(join(source,'data/dsh/sessions')),dst=await openStore(join(home,'sessions'))
  const registered=[]
- const importer=new DataImporter({home,persistence:dst.persistence,openStore,loadFormats:async()=>formats,register:async(cwd,id)=>registered.push({cwd,id})})
+ const importer=new DataImporter({home,persistence:dst.persistence,openStore,loadFormats:()=>loadImportFormats(load),register:async(cwd,id)=>registered.push({cwd,id})})
  try{
-  const h=await src.persistence.create({version:3,id:'cross-machine-fixture',createdAt:100,cwd:missing,isSeeded:false,delegationDepth:0,agentPreset:'standard'})
+  const h=await src.persistence.create({version:formats.currentVersion,id:'cross-machine-fixture',createdAt:100,cwd:missing,isSeeded:false,delegationDepth:0,agentPreset:'standard'})
   await h.append([{seq:0,type:'session/title',time:100,data:{title:'Retained history',source:{kind:'user'},messageSeqs:[]}}]);await h.flush();await h.close()
   importer.preview(source);await importer.running;assert.equal(importer.status().total,1)
   importer.start(importer.status().id);await importer.running
@@ -61,7 +61,8 @@ for (const location of ['external', 'inside-program']) test(`missing ${location}
 test('imports old and current logs through official persistence, keeps conflicts and skips repeats', { skip: !runtime }, async () => {
  const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
  const [{Context},{default:Jsonl}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl')])
- const loadFormats=async()=>(await load('@deepseek-ai/dsh-session-format-catalog')).sessionFormatCatalog
+ const loadFormats=()=>loadImportFormats(load)
+ const formats=await loadFormats()
  const runImport=async(importer,source)=>{importer.preview(source);await importer.running;assert.equal(importer.status().state,'ready',JSON.stringify(importer.status()));assert.ok(importer.status().total,JSON.stringify(importer.status()));importer.start(importer.status().id);await importer.running}
  const openStore=async(root,compression='zstd')=>{const ctx=new Context();await ctx.plugin(Jsonl,{root,compression});return {persistence:ctx.sessionPersistence,close:()=>ctx.fiber.dispose()}}
  const root=await mkdtemp(join(tmpdir(),'eduwork-import-test-')),source=join(root,'旧版 客户端'),home=join(root,'新客户端','data','dsh'),srcHome=join(source,'data','dsh'),workspace=join(source,'workspace')
@@ -69,7 +70,7 @@ test('imports old and current logs through official persistence, keeps conflicts
  await mkdir(join(srcHome,'attachments'),{recursive:true});await writeFile(join(srcHome,'attachments','中文.txt'),'attachment')
  await writeFile(join(home,'settings.yaml'),'keep-model-config')
  const src=await openStore(join(srcHome,'sessions')),dst=await openStore(join(home,'sessions'))
- const header={version:3,id:'session-import-fixture',createdAt:100,cwd:workspace,isSeeded:false,delegationDepth:0,agentPreset:'standard'}
+ const header={version:formats.currentVersion,id:'session-import-fixture',createdAt:100,cwd:workspace,isSeeded:false,delegationDepth:0,agentPreset:'standard'}
  const event=title=>({seq:0,type:'session/title',time:100,data:{title,messageSeqs:[],source:{kind:'user'}}})
  let handle
  try {
@@ -90,7 +91,7 @@ test('imports old and current logs through official persistence, keeps conflicts
   try{handle=await legacyStore.persistence.create({...header,id:'session-v1-fixture'});await handle.flush();await handle.close()}finally{await legacyStore.close()}
   const folders=await readdir(join(legacyHome,'sessions'),{recursive:true})
   const file=folders.find(f=>f.endsWith('.jsonl.zstd'));assert.ok(file)
-  const physical=join(legacyHome,'sessions',file),v1=physical.replace('session.v3.jsonl.zstd','session.v1.jsonl')
+  const physical=join(legacyHome,'sessions',file),v1=physical.replace(/session\.v\d+\.jsonl\.zstd$/,'session.v1.jsonl')
   assert.notEqual(v1,physical)
   const oldText=JSON.stringify({type:'session',version:1,id:'session-v1-fixture',createdAt:100,cwd:workspace,delegationDepth:0,agentPreset:'standard'})+'\n'+JSON.stringify({...event('旧版 v1 会话'),data:{title:'旧版 v1 会话',messageSeqs:[],source:{kind:'user'}}})+'\n'
   await rm(physical);await writeFile(v1,oldText)
@@ -116,9 +117,10 @@ test('preflight accounts for future, malformed, mixed-generation and compressed 
  const event=(seq,title)=>({seq,type:'session/title',time:100+seq,data:{title,messageSeqs:[],source:{kind:'user'}}})
  const write=async(id,name,bytes)=>{const dir=join(sessions,'project',id);await mkdir(dir,{recursive:true});const file=join(dir,name);await writeFile(file,bytes);return file}
  const text=(id,version=3)=>JSON.stringify({...header(id),version})+'\n'+JSON.stringify(event(0,id))+'\n'
- const importer=new DataImporter({home,persistence:target.persistence,openStore,loadFormats:async()=>formats})
+ const importer=new DataImporter({home,persistence:target.persistence,openStore,loadFormats:()=>loadImportFormats(load)})
  try {
-  await write('future','session.v4.jsonl',text('future',4))
+  const futureVersion=formats.currentVersion+1
+  await write('future',`session.v${futureVersion}.jsonl`,text('future',futureVersion))
   await write('future','session.v3.jsonl',text('future')) // must not silently use this older generation
   await write('broken','session.v3.jsonl',JSON.stringify(header('broken'))+'\n{bad\n')
   await write('mismatch','session.v2.jsonl',text('mismatch'))
@@ -135,7 +137,7 @@ test('preflight accounts for future, malformed, mixed-generation and compressed 
   importer.preview(source);await importer.running
   const job=importer.status()
   assert.equal(job.state,'ready',JSON.stringify(job));assert.equal(job.sourceVersion,'0.2.0-dev.20260909.3')
-  assert.deepEqual(job.formats,[2,3,4]);assert.equal(job.total,2,JSON.stringify(job));assert.equal(job.excluded,5);assert.equal(job.found,7);assert.equal(job.scanned,7);assert.equal(job.olderCopies,1)
+  assert.deepEqual(job.formats,[2,3,futureVersion]);assert.equal(job.total,2,JSON.stringify(job));assert.equal(job.excluded,5);assert.equal(job.found,7);assert.equal(job.scanned,7);assert.equal(job.olderCopies,1)
   assert.equal((await target.persistence.list()).length,0,'preflight must not merge live sessions')
   assert.ok(job.issues.some(row=>row.category==='unsupported'&&/更新客户端/.test(row.reason)))
   assert.ok(job.issues.some(row=>/第 2 行/.test(row.reason)))

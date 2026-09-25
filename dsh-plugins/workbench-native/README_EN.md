@@ -22,6 +22,8 @@ Import merges sessions, internal workspaces and attachments. Duplicates are skip
 
 Directory selection uses official `uiWorkspace.pickDirectory` or Go `Startup.PickDirectory`. `inspectImport` returns the inspection state; a `ready` result may be confirmed through `importData(id)` or cancelled. Only staging is used before confirmation. Compatibility is determined from log headers and record-body versions. Unknown versions produce explicit errors, without silently skipping them or substituting an older copy for an unreadable new log. Results are saved under `dsh/imports`; reopen the session after the current task finishes.
 
+When DSH 0.1.7 imports v0–v3 logs, it first collects direct children and their own descriptors per source data directory, then uses the official migration API to produce v4. Fork-inherited descriptors are excluded from the child's own evidence. Inspection never modifies source files. A corrupt child is reported separately; if its header is readable, its parent retains an explicit unknown-child entry. Source file or directory changes during inspection require another inspection.
+
 ## Model requests
 
 The setting controls total concurrency for this Host, defaulting to 3 across main conversations, subagents and auxiliary requests. Legacy subagent limits migrate to total concurrency; see [concurrency control](../request-concurrency/README_EN.md).
