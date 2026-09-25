@@ -67,6 +67,15 @@ test('shipped JSONC files contain the current complete reference', async () => {
   }
 })
 
+test('model type help preserves declared metadata without installing model IDs or inferred types', () => {
+  for (const provider of [{}, { models: [] }, { models: [{ id: 'main', type: 'llm' }, { id: 'voice', type: 'tts' }] }]) {
+    const value = { schemaVersion: 1, organizations: [{ schemaVersion: 'dsh-oidc/v1alpha1', id: 'example', provider }] }
+    const documented = documentConfiguration(JSON.stringify(explicitConfigurationDefaults(value)))
+    assert.deepEqual(JSON.parse(JSON.stringify(parseUserConfig('synthetic.jsonc', documented).organizations[0].provider)), provider)
+    assert.ok(documented.includes('organizations[].provider.models[].type'))
+  }
+})
+
 test('installed defaults become real JSONC values, preserve edits and survive content rollback', async t => {
   const root = await mkdtemp(join(tmpdir(), 'complete-config-'))
   t.after(() => rm(root, { recursive: true, force: true }))

@@ -17,7 +17,7 @@ const deferred = () => { let resolve; const promise = new Promise(done => { reso
 
 async function fixture(t, draft = false) {
   const records = new Map(), codes = new Map(), requests = [], activity = [], opened = [], fibers = []
-  const controls = { user: 'alice', streamGate: undefined, firstChunk: undefined, refreshGate: undefined }
+  const controls = { user: 'alice', streamGate: undefined, firstChunk: undefined, refreshGate: undefined, models: [{ id: 'synthetic-model', type: 'llm' }, { id: 'specialist', type: 'embedding' }] }
   let base, serial = 0, grantedScopes
   const pair = draft ? generateKeyPairSync('rsa', { modulusLength: 2048 }) : undefined
   const server = createServer(async (req, res) => {
@@ -73,7 +73,7 @@ async function fixture(t, draft = false) {
     }
     if (url.pathname === '/user/info') return json({ user_id: controls.user })
     if (url.pathname === '/userinfo' && draft) return json({ sub: controls.user })
-    if (url.pathname === '/v1/models') return json({ data: [{ id: 'synthetic-model' }] })
+    if (url.pathname === '/v1/models') return json({ data: controls.models })
     if (url.pathname === '/revoke') return json({})
     if (url.pathname === '/v1/user/active') {
       activity.push({ authorization: req.headers.authorization, body })
@@ -123,6 +123,17 @@ async function fixture(t, draft = false) {
   return { ctx, controls, requests, activity, login, base, backend: ctx.oidcAccounts.backend,
     options: { provider: profile.id, model: 'synthetic-model', messages: [] } }
 }
+
+for (const draft of [false, true]) test('DSH registers only LLMs and removes reclassified models: ' + (draft ? 'OIDC' : 'LiteLLM'), async t => {
+  const f = await fixture(t, draft)
+  assert.deepEqual((await f.ctx.llm.listModels('gateway')).map(model => model.id), ['synthetic-model'])
+  await assert.rejects(f.ctx.llm.prepareCall({ provider: 'gateway', model: 'specialist' }))
+  assert.equal(f.requests.length, 0)
+  f.controls.models = [{ id: 'synthetic-model', type: 'tts' }]
+  await f.backend.readResources('gateway')
+  assert.deepEqual(f.ctx.llm.listProviders(), [])
+  assert.equal(await f.backend.modelAuthorization('gateway', f.base + '/v1'), true)
+})
 
 test('DSH stops an active gateway stream on logout without forwarding buffered old content', async t => {
   const f = await fixture(t)

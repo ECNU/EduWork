@@ -44,7 +44,7 @@ Access Token 按不透明 Bearer 处理。发现中的 `api_base` 与 UserInfo �
 
 刷新可以省略 ID Token；返回时检查原 issuer、sub、aud、可选 auth_time 和 nonce。轮换后的 Token 若验证失败，客户端撤销新凭据并要求重登，避免继续使用可能已消费的旧 refresh token。临时 Token endpoint 故障不会删除仍有效的旧授权。
 
-模型目录仍使用共享的保守能力映射：仅有 ID 时启用文本，不从名称猜图像或思考能力。草案中的可选模型能力扩展尚未消费，需要时使用显式审核的 provider 配置。
+`/models` 条目的可选 `type` 用于区分模型用途，服务端未提供时由已审核的 `provider.models[].type` 补充。仅 `llm` 注册到对话，类型无法确定时不注册。输入模态与思考能力仍使用已审核的 Provider 配置，能看图的 LLM 不会被排除。详见 [Profile 说明](../enterprise-profile.md#provider-对象)。
 
 机构扩展可以调用既有 Host-only `modelResourceFetch(profileID, relativePath)`。模型连接统一使用当前获准的 Access Token，共享路径限制、GET、正文大小限制与退出隔离。公共插件不自动查询配额，也不新增配额 RPC 或字段。扩展须显式安装，服务端须自行声明并执行其授权范围。
 

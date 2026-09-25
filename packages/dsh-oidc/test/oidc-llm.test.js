@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { generateKeyPairSync, sign, createHash } from 'node:crypto'
 import { GatewayDesktopBackend, GatewayWebBackend } from '../src/host/gateway-backend.js'
-import { normalizeEnterpriseProfile } from '../src/host/profile.js'
+import { normalizeEnterpriseProfile, enterpriseProviderConfig } from '../src/host/profile.js'
 import { detectGatewayProtocol } from '../src/host/gateway-protocol.js'
 import { oidcLlmIdentity, oidcLlmToken } from '../src/host/oidc-llm-protocol.js'
 
@@ -26,14 +26,15 @@ const jwt = claims => {
   return payload + '.' + sign('RSA-SHA256', Buffer.from(payload), pair.privateKey).toString('base64url')
 }
 
-async function fixture(t, mode = 'oidc', metadataChanges = {}) {
-  const profile = normalizeEnterpriseProfile(profileRaw(mode)), records = new Map(), calls = []
-  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined }
+async function fixture(t, mode = 'oidc', metadataChanges = {}, provider) {
+  const profile = normalizeEnterpriseProfile({ ...profileRaw(mode), ...(provider === undefined ? {} : { provider }) }), records = new Map(), calls = [], routes = []
+  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
   let authorization, callbackResult, serial = 0
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
     set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
   const backend = new GatewayDesktopBackend(ctx, new Map([[profile.id, profile]]), {}, {
     openExternal: async url => { authorization = new URL(url) },
+    updateProvider: profile => { routes.push(enterpriseProviderConfig(new Map([[profile.id, profile]]))) },
     fetch: async (url, init = {}) => {
       calls.push({ url, ...init })
       assert.equal(init.redirect, 'error')
@@ -58,7 +59,8 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}) {
         return json(raw)
       }
       if (url === base + '/userinfo') return json({ sub: controls.user, preferred_username: 'Synthetic user', private_extra: 'DO-NOT-PROJECT' })
-      if (url === base + '/open/api/v1/models') return json({ object: 'list', data: [{ id: 'model-a', object: 'model' }] })
+      if (url === base + '/open/api/v1/models') return json({ object: 'list', data: controls.models.map(model => ({ object: 'model', ...model })) })
+      if (url === base + '/open/api/v1/images/generations' || url === base + '/open/api/v1/audio/speech') return json({ model: JSON.parse(init.body).model })
       if (url === base + '/open/api/v1/quota') { await controls.quotaGate; return json({ remaining: 1 }) }
       if (url === base + '/revoke') { assert.equal(init.body.get('token_type_hint'), 'refresh_token'); return new Response('', { status: 200 }) }
       throw new Error('unexpected synthetic route')
@@ -76,8 +78,39 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}) {
     callbackResult = { status: response.status, html: await response.text(), headers: response.headers }
     return backend.loginStatus(started.loginID)
   }
-  return { profile, backend, records, calls, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
+  return { profile, backend, records, calls, routes, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
 }
+
+test('mixed purposes register only LLMs while retaining specialist catalogs, media and account authorization', async t => {
+  const f = await fixture(t, 'oidc', {}, { models: [{ id: 'vision', type: 'llm', input: ['text', 'image'] }, { id: 'not-authorized', type: 'llm' }] })
+  f.controls.models = [{ id: 'model-a', type: 'llm' }, { id: 'vision' }, ...['embedding', 'rerank', 'image', 'tts'].map(type => ({ id: type, type }))]
+  assert.equal((await f.login()).state, 'completed')
+  const resources = await f.backend.readResources('draft')
+  assert.deepEqual(resources.models.map(model => model.type), ['llm', 'llm', 'embedding', 'rerank', 'image', 'tts'])
+  assert.deepEqual(resources.issues, [])
+  assert.deepEqual(f.routes.at(-1).providers.draft.models.map(model => model.id), ['model-a', 'vision'])
+  assert.deepEqual(f.routes.at(-1).providers.draft.models[1].input, ['text', 'image'])
+  // Reclassification removes an already registered LLM, without revoking media access.
+  f.controls.models = [{ id: 'model-a', type: 'tts' }, { id: 'vision', type: 'future-service' }, { id: 'image', type: 'image' }]
+  const changed = await f.backend.readResources('draft')
+  assert.deepEqual(changed.models.map(model => model.type), ['tts', 'unknown', 'image'])
+  assert.deepEqual(changed.issues, ['model_types_unresolved'])
+  assert.deepEqual(f.routes.at(-1).providers, {})
+  assert.equal(await f.backend.modelAuthorization('draft', base + '/open/api/v1'), true)
+  for (const [path, model] of [['/images/generations', 'image'], ['/audio/speech', 'model-a']]) {
+    const response = await f.backend.authorizedFetch('draft', base + '/open/api/v1' + path, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }),
+    })
+    assert.deepEqual(await response.json(), { model })
+    assert.match(f.calls.at(-1).headers.authorization, /^Bearer synthetic-access-/)
+  }
+  assert.equal((await f.backend.modelResourceFetch('draft', '/quota')).status, 200)
+  f.controls.models = []
+  assert.deepEqual((await f.backend.readResources('draft')).models, [])
+  assert.deepEqual(f.routes.at(-1).providers, {})
+  await f.backend.logout('draft')
+  assert.equal(f.records.size, 0)
+})
 
 test('OIDC draft honors short token lifetimes without immediately refreshing the new pair', async t => {
   const f = await fixture(t)

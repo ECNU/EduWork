@@ -9,5 +9,37 @@
     "clientId": "replace-with-public-client-id",
     "identityMode": "oidc"
   },
-  "allowInsecureDevelopment": false
+  "allowInsecureDevelopment": false,
+  "provider": {
+    "models": [
+      {
+        "id": "example-chat",
+        "type": "llm"
+      },
+      {
+        "id": "example-vision-chat",
+        "type": "llm",
+        "input": [
+          "text",
+          "image"
+        ]
+      },
+      {
+        "id": "example-embedding",
+        "type": "embedding"
+      },
+      {
+        "id": "example-rerank",
+        "type": "rerank"
+      },
+      {
+        "id": "example-image",
+        "type": "image"
+      },
+      {
+        "id": "example-tts",
+        "type": "tts"
+      }
+    ]
+  }
 }

@@ -53,6 +53,8 @@ Windows 更新设置可选择“公测版”或“开发版（含公测版）”
 
 多个机构使用不同的稳定 `id`；显式配置 `provider.id` 时也必须唯一。模型 API 地址由通过校验的服务发现提供。
 
+用 `organizations[].provider.models[].type` 声明模型用途：`llm`、`embedding`、`rerank`、`image`、`tts` 或 `unknown`。仅 LLM 进入对话，包括支持图片输入的 LLM。服务端类型优先，本地补充缺失类型；无法确定类型的模型不进入对话。只返回 ID 的网关需配合新客户端补齐配置，独立媒体服务仍保留各自配置。详见 [Profile 说明](../../../packages/dsh-oidc/docs/enterprise-profile.md#provider-对象)。
+
 配置不是秘密存储。不要写密码、API Key、client_secret 或登录令牌；个人 Key 在模型设置中输入，登录 Token 由共享 Host 保存在本机受保护存储，并按机构隔离、自动刷新。
 
 只在 CI 包中加入机构配置时，使用[配置装配指南](https://github.com/ECNU/EduWork/blob/main/docs/BUILD.md#从-ci-原包装配机构配置)。支持继承随包默认值、GitHub、静态 HTTPS 源或关闭更新。

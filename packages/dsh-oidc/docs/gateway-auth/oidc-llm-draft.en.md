@@ -116,6 +116,8 @@ OAuth-only mode offers a UserInfo-shaped extension without claiming full OIDC id
 - POST api_base + `/chat/completions`: same Bearer, OpenAI-compatible ordinary JSON or SSE with `data:` and final `[DONE]`.
 - Images, audio, Responses and other capabilities require future explicit declarations; “OpenAI-compatible” does not imply every API is supported.
 
+Optional `data[].type` classifies purpose as `llm`, `embedding`, `rerank`, `image`, `tts` or `unknown`; only LLMs enter the EduWork chat catalog. It is an extension, not part of standard OpenAI discovery. Server types take precedence, and reviewed local model types fill missing metadata. Unresolved or unsupported types stay out of chat.
+
 Optional capability metadata for context/output limits, input modalities and reasoning remains to be agreed. An ID alone does not establish vision/reasoning support. No quota endpoint is defined.
 
 ## 7. Revocation and errors

@@ -116,6 +116,8 @@ OAuth-only 模式提供 UserInfo 格式兼容扩展，不宣称完成 OIDC 身�
 - POST `api_base + /chat/completions`：相同 Bearer，使用 OpenAI-compatible 请求与普通 JSON/SSE（`data:`，最终 `[DONE]`）响应。
 - 其他图像、音频、Responses 等能力需以后显式声明；不因“OpenAI-compatible”就假定全部支持。
 
+可选的 `data[].type` 将用途分为 `llm`、`embedding`、`rerank`、`image`、`tts` 或 `unknown`，仅 LLM 进入 EduWork 对话目录。这是扩展字段，不属于 OpenAI 标准发现字段；服务端类型优先，缺失时使用已审核的本地模型类型。无法确定或不支持的类型不进入对话。
+
 上下文、输出上限、输入模态、思考能力等可选元数据的字段格式尚待确认。只有模型 ID 时不能推断图像或 reasoning 支持。本轮不定义配额接口。
 
 ## 7. 撤销与错误

@@ -99,6 +99,49 @@ The Provider object is data interpreted by a local audited adapter.
 | `modelSource` | no | Only discovery, the default; fetches /models with the current Access Token. |
 | `models` | no | Reviewed model capabilities; cannot expose models absent from the authorized catalog. |
 
+Model purpose uses `type`: `llm`, `embedding`, `rerank`, `image`, `tts` or `unknown`. Only `llm` registers with the DSH conversation provider. The full resource catalog retains specialist types; media services keep their own model and endpoint configuration. Classifying a model does not enable a service or grant access.
+
+An explicit `data[].type` from the authorized `/models` response takes precedence. When absent, `provider.models[].type` supplies it. Missing, invalid or unsupported server types resolve to `unknown` and stay out of chat; the resources result reports `model_types_unresolved`. The client never guesses purpose from model names, the OpenAI `object` field or input modalities. An image-capable LLM is still `llm`.
+
+Example provider metadata for a gateway returning only model IDs (replace IDs with authorized server IDs):
+
+```json
+{
+  "models": [
+    {
+      "id": "example-chat",
+      "type": "llm"
+    },
+    {
+      "id": "example-vision-chat",
+      "type": "llm",
+      "input": [
+        "text",
+        "image"
+      ]
+    },
+    {
+      "id": "example-embedding",
+      "type": "embedding"
+    },
+    {
+      "id": "example-rerank",
+      "type": "rerank"
+    },
+    {
+      "id": "example-image",
+      "type": "image"
+    },
+    {
+      "id": "example-tts",
+      "type": "tts"
+    }
+  ]
+}
+```
+
+This is an optional EduWork resource extension, not a standard OpenAI field or a claim that existing LiteLLM/oidc-llm servers provide it. ID-only deployments must supply local types before enabling this client behavior. Distribute typed configuration only to upgraded clients: older clients reject unknown model fields. Local declarations are intersected with the authorized server catalog; unavailable IDs are never registered. Personal API-key providers are unchanged.
+
 `retryPolicy.mode` is `normal` or `always`. `always` can retry indefinitely until success, cancellation, or disposal and SHOULD NOT be enabled without an explicit product decision. The policy is validated again by DSH.
 
 `compat` accepts only the keys enumerated in the JSON Schema. Operators MUST describe provider facts accurately; a compatibility override can change request semantics, though it cannot execute code.
@@ -108,6 +151,7 @@ The Provider object is data interpreted by a local audited adapter.
 Each model has:
 
 - required `id`;
+- optional purpose `type`; unresolved types are `unknown` and only `llm` is conversational;
 - optional display `name`;
 - `input` containing `text`, `image`, or both (default `text`);
 - optional positive `contextWindow` and `maxTokens`;

@@ -12,7 +12,13 @@
   "provider": {
     "id": "example-ai",
     "adapter": "openai-compatible",
-    "modelSource": "discovery"
+    "modelSource": "discovery",
+    "models": [
+      {
+        "id": "example-chat",
+        "type": "llm"
+      }
+    ]
   },
   "allowInsecureDevelopment": false
 }
