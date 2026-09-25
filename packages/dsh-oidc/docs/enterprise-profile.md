@@ -97,18 +97,50 @@ Provider 对象是由本地、经过审查的 adapter 解释的数据。
 | `retryPolicy` | 否 | 由 DSH Provider 管理的重试策略；默认 normal/重试 2 次。 |
 | `compat` | 否 | 有边界的 pi-ai OpenAI 兼容事实。 |
 | `modelSource` | 否 | 仅支持 discovery，默认值；使用当前 Access Token 读取 /models。 |
-| `chatModelIds` | 否 | 对话模型 ID 白名单，最多 128 个唯一 ID。与服务端授权目录取交集；省略不筛选，空数组不注册对话模型。不影响独立媒体服务授权。 |
 | `models` | 否 | 已审查的模型能力元数据，不得扩大获授权目录。 |
 
-当 `/models` 同时返回聊天、embedding、rerank、生图和 TTS 时，通过 `chatModelIds` 明确筛选对话模型。`models` 只补充名称、模态和限制，不能替代白名单。筛选不按名称猜类型，也不会把服务端未授权的 ID 加入目录；支持图片输入的聊天模型仍可列入。生图和语音继续使用各自服务配置中的模型。
+模型用途用 `type` 区分：`llm`、`embedding`、`rerank`、`image`、`tts` 或 `unknown`。只有 `llm` 注册到 DSH 对话 Provider；完整资源目录保留专用模型分类，媒体服务仍使用各自的模型和接口配置。标注类型不会自动启用服务，也不会扩大授权。
+
+服务端授权目录 `/models` 的 `data[].type` 优先；未提供时使用 `provider.models[].type`。两边都缺失、服务端类型无效或尚不支持时归为 `unknown`，不进入对话，资源结果包含 `model_types_unresolved`。不按模型名称、OpenAI 的 `object` 字段或输入模态猜类型；能看图的 LLM 仍是 `llm`。
+
+只返回模型 ID 的网关可在 Provider 中补充以下元数据（替换为服务端授权的实际 ID）：
 
 ```json
 {
-  "chatModelIds": ["example-chat", "example-vision-chat"]
+  "models": [
+    {
+      "id": "example-chat",
+      "type": "llm"
+    },
+    {
+      "id": "example-vision-chat",
+      "type": "llm",
+      "input": [
+        "text",
+        "image"
+      ]
+    },
+    {
+      "id": "example-embedding",
+      "type": "embedding"
+    },
+    {
+      "id": "example-rerank",
+      "type": "rerank"
+    },
+    {
+      "id": "example-image",
+      "type": "image"
+    },
+    {
+      "id": "example-tts",
+      "type": "tts"
+    }
+  ]
 }
 ```
 
-这是 `provider` 对象中的可选字段，适用于 LiteLLM 和 oidc-llm。下发前必须确保目标客户端包含该字段支持；旧客户端严格拒绝未知字段。
+这是 EduWork 的可选资源扩展，不是 OpenAI 标准字段，也不代表现有 LiteLLM/oidc-llm 服务已提供它。仅返回 ID 的部署必须在启用此客户端行为前补齐本地类型。类型配置只下发给已升级客户端，旧客户端会拒绝未知模型字段。本地声明仍与服务端授权目录取交集，不注册未授权 ID；个人 API Key 提供方不受影响。
 
 `retryPolicy.mode` 可以是 `normal` 或 `always`。`always` 可能一直重试，直到成功、取消或销毁；没有明确产品决策时不应启用。该策略还会由 DSH 再次校验。
 
@@ -119,6 +151,7 @@ Provider 对象是由本地、经过审查的 adapter 解释的数据。
 每个模型包含：
 
 - 必需的 `id`；
+- 可选用途 `type`；无法确定时为 `unknown`，仅 `llm` 用于对话；
 - 可选显示名称 `name`；
 - `input` 可包含 `text`、`image` 或两者，默认 `text`；
 - 可选的正数 `contextWindow` 和 `maxTokens`；

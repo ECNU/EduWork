@@ -256,17 +256,6 @@
         "modelSource": {
           "const": "discovery"
         },
-        "chatModelIds": {
-          "type": "array",
-          "maxItems": 128,
-          "uniqueItems": true,
-          "items": {
-            "type": "string",
-            "minLength": 1,
-            "maxLength": 256,
-            "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
-          }
-        },
         "models": {
           "type": "array",
           "minItems": 0,
@@ -505,6 +494,18 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "llm",
+            "embedding",
+            "rerank",
+            "image",
+            "tts",
+            "unknown"
+          ],
+          "description": "Model purpose, independent of input modalities. Server type takes precedence; local metadata fills absent server types. Missing types resolve to unknown; only llm registers for conversation."
         },
         "name": {
           "type": "string",

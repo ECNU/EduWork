@@ -15,6 +15,8 @@ These capabilities are published in `@eduwork/dsh-oidc@0.3.0-dev.2` and included
 3. Use backend: desktop for desktop Hosts or backend: web for local Web. [Identity-only OIDC](examples/identity-only.example.json) remains available without organization models.
 4. Sign-in discovers the current authorization's model catalog. Passive account refresh must not replace a personal model selected later.
 
+The current source classifies discovered models by `type`; only `llm` enters chat. If the server returns only IDs, supply `provider.models[].type` using actual model IDs before upgrading. Server type metadata takes precedence; specialist and unresolved types remain outside chat. This requires an updated plugin/client and coordinated configuration, and is not part of the published version above. See the [model reference](docs/enterprise-profile.en.md).
+
 Validate from source:
 
 ~~~sh

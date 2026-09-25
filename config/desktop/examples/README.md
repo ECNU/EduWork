@@ -53,7 +53,7 @@ Windows 更新设置可选择“公测版”或“开发版（含公测版）”
 
 多个机构使用不同的稳定 `id`；显式配置 `provider.id` 时也必须唯一。模型 API 地址由通过校验的服务发现提供。
 
-如果服务端目录混有 embedding、rerank、生图或 TTS，可设置 `organizations[].provider.chatModelIds` 为对话模型 ID 数组。它与服务器授权目录取交集，不按名称猜类型，不影响独立媒体服务。省略时保留全部发现条目，`[]` 不注册对话模型；`provider.models` 仍只补充能力。参见 [Profile 说明](../../../packages/dsh-oidc/docs/enterprise-profile.md#provider-对象)。须先升级到支持此字段的客户端，再下发配置。
+用 `organizations[].provider.models[].type` 声明模型用途：`llm`、`embedding`、`rerank`、`image`、`tts` 或 `unknown`。仅 LLM 进入对话，包括支持图片输入的 LLM。服务端类型优先，本地补充缺失类型；无法确定类型的模型不进入对话。只返回 ID 的网关需配合新客户端补齐配置，独立媒体服务仍保留各自配置。详见 [Profile 说明](../../../packages/dsh-oidc/docs/enterprise-profile.md#provider-对象)。
 
 配置不是秘密存储。不要写密码、API Key、client_secret 或登录令牌；个人 Key 在模型设置中输入，登录 Token 由共享 Host 保存在本机受保护存储，并按机构隔离、自动刷新。
 

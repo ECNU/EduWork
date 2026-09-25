@@ -1,4 +1,5 @@
 import { serviceProtocolAllowed } from './transport.js'
+import { MODEL_TYPES, isLLM } from './model-types.js'
 import { readFileSync } from 'node:fs'
 
 export const PROFILE_SCHEMA_VERSION = 'dsh-oidc/v1alpha1'
@@ -24,10 +25,10 @@ const allowedBrandKeys = new Set([
 const allowedProviderKeys = new Set([
   'id', 'displayName', 'adapter', 'baseURL', 'reasoning', 'defaultContextWindow',
   'defaultMaxTokens', 'maxRequestImageBytes', 'requestImagePixelBudget',
-  'requestImageMaxBytes', 'streamIdleTimeoutMs', 'retryPolicy', 'compat', 'models', 'modelSource', 'chatModelIds',
+  'requestImageMaxBytes', 'streamIdleTimeoutMs', 'retryPolicy', 'compat', 'models', 'modelSource',
 ])
 const allowedModelKeys = new Set([
-  'id', 'name', 'input', 'contextWindow', 'maxTokens', 'reasoning',
+  'id', 'type', 'name', 'input', 'contextWindow', 'maxTokens', 'reasoning',
   'reasoningEfforts', 'defaultReasoningEffort', 'compat',
 ])
 const allowedCompatKeys = new Set([
@@ -51,13 +52,6 @@ function text(value, label, max = 2048) {
     throw new Error(`${label} must be a non-empty trimmed string no longer than ${max} characters`)
   }
   return value
-}
-
-function chatModelIds(value) {
-  if (!Array.isArray(value) || value.length > 128) throw new Error('profile.provider.chatModelIds must contain 0-128 model IDs')
-  const ids = value.map(id => text(id, 'profile.provider.chatModelIds entry', 256))
-  if (new Set(ids).size !== ids.length) throw new Error('profile.provider.chatModelIds contains duplicates')
-  return Object.freeze(ids)
 }
 
 function issuerURL(value, label, allowInsecure = false) {
@@ -169,6 +163,8 @@ export function normalizeModels(models, providerID) {
     const model = object(raw, label)
     exactKeys(model, allowedModelKeys, label)
     const id = text(model.id, `${label}.id`, 256)
+    const type = model.type === undefined ? 'unknown' : model.type
+    if (!MODEL_TYPES.includes(type)) throw new Error(`${label}.type must be one of ${MODEL_TYPES.join(', ')}`)
     if (seen.has(id)) throw new Error(`${providerID} repeats model ${id}`)
     seen.add(id)
     const input = model.input ?? ['text']
@@ -191,6 +187,7 @@ export function normalizeModels(models, providerID) {
     }
     return Object.freeze({
       id,
+      type,
       name: model.name === undefined ? id : text(model.name, `${providerID}.${id}.name`, 256),
       input: Object.freeze([...new Set(input)]),
       ...(model.contextWindow === undefined ? {} : { contextWindow: positiveInteger(model.contextWindow, `${providerID}.${id}.contextWindow`) }),
@@ -327,7 +324,6 @@ export function normalizeEnterpriseProfile(raw) {
       retryPolicy: provider.retryPolicy === undefined ? undefined : normalizeRetryPolicy(provider.retryPolicy),
       compat: provider.compat === undefined ? undefined : normalizeCompat(provider.compat, 'profile.provider.compat'),
       modelSource,
-      ...(provider.chatModelIds === undefined ? {} : { chatModelIds: chatModelIds(provider.chatModelIds) }),
       models: modelSource === 'discovery' && (provider.models === undefined || provider.models.length === 0)
         ? Object.freeze([]) : normalizeModels(provider.models, providerID),
     }),
@@ -362,7 +358,7 @@ export function loadEnterpriseProfiles(raw = {}, environment = process.env) {
 
 export function enterpriseProviderConfig(profiles) {
   return {
-    providers: Object.fromEntries([...profiles.values()].filter(profile => profile.provider?.baseURL && profile.provider.models.length).map(profile => [profile.provider.id, {
+    providers: Object.fromEntries([...profiles.values()].filter(profile => profile.provider?.baseURL && profile.provider.models.some(isLLM)).map(profile => [profile.provider.id, {
       displayName: profile.provider.displayName,
       apiKeyEnv: `DSH_GATEWAY_${profile.id.toUpperCase().replace(/-/g, '_')}_ACCESS`,
       baseURL: profile.provider.baseURL,
@@ -376,7 +372,7 @@ export function enterpriseProviderConfig(profiles) {
       ...(profile.provider.streamIdleTimeoutMs === undefined ? {} : { streamIdleTimeoutMs: profile.provider.streamIdleTimeoutMs }),
       ...(profile.provider.retryPolicy === undefined ? {} : { retryPolicy: structuredClone(profile.provider.retryPolicy) }),
       ...(profile.provider.compat === undefined ? {} : { compat: { ...profile.provider.compat } }),
-      models: profile.provider.models.map(model => ({
+      models: profile.provider.models.filter(isLLM).map(({ type, ...model }) => ({
         ...model,
         input: [...model.input],
         ...(model.reasoningEfforts && typeof model.reasoningEfforts === 'object'
@@ -398,7 +394,7 @@ export function publicProfile(profile) {
     ...(profile.provider ? { provider: {
       id: profile.provider.id,
       displayName: profile.provider.displayName,
-      models: profile.provider.models.map(model => ({ id: model.id, name: model.name, input: model.input })),
+      models: profile.provider.models.filter(isLLM).map(model => ({ id: model.id, name: model.name, input: model.input })),
     } } : {}),
   }
 }

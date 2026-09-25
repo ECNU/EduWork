@@ -17,7 +17,7 @@ paths:
       operationId: listResourceModels
       responses:
         '200':
-          description: Available model identifiers; reviewed capabilities remain in the client Profile
+          description: Authorized model identifiers and optional purpose metadata; reviewed capabilities remain in the client Profile
           content:
             application/json:
               schema:
@@ -26,13 +26,21 @@ paths:
                 properties:
                   data:
                     type: array
-                    minItems: 1
+                    minItems: 0
                     maxItems: 128
                     items:
                       type: object
                       required: [id]
                       properties:
                         id: { type: string, minLength: 1, maxLength: 256 }
+                        type:
+                          type: string
+                          description: >-
+                            Optional EduWork purpose extension, independent of input modalities and
+                            the OpenAI object field. Known values are llm, embedding, rerank, image,
+                            tts and unknown. Server declarations take precedence over client Profile
+                            metadata; absent types use Profile metadata. Unsupported or unresolved
+                            types normalize to unknown. Only llm registers for conversation.
         '401': { description: Access Token is invalid or expired }
         '403': { description: Model discovery is not permitted }
         '404': { description: Discovery endpoint is unavailable }
@@ -45,6 +53,6 @@ components:
       headers:
         Retry-After: { schema: { type: string }, description: Seconds or HTTP date for a future retry; never a refresh-token grant }
     Unavailable:
-      description: Temporary resource failure; do not clear identity or the model key
+      description: Temporary resource failure; do not clear identity or a still-valid Access Token
   securitySchemes:
     accessToken: { type: http, scheme: bearer, description: Model runtime credential }

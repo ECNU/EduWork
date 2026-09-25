@@ -44,7 +44,7 @@ Access tokens stay opaque. Discovered `api_base` and UserInfo must share the res
 
 Refresh may omit an ID Token. If present, its original issuer, subject, audience, optional auth_time and nonce are checked. Failed validation after rotation revokes the new credentials and requires sign-in instead of continuing with a possibly consumed old refresh token. Temporary Token endpoint failures preserve still-valid authorization.
 
-Catalogs retain shared conservative capability mapping: ID-only rows support text without inferred vision or reasoning. Optional draft model capability fields are not consumed yet; use reviewed provider configuration when needed.
+The optional `/models` entry `type` classifies model purpose; reviewed `provider.models[].type` fills missing server metadata. Only `llm` registers for conversation; unresolved types are excluded. Input modalities and reasoning remain reviewed provider facts: image-capable LLMs stay conversational. See the [Profile reference](../enterprise-profile.en.md#provider-object).
 
 Institution extensions can use the existing Host-only `modelResourceFetch(profileID, relativePath)`. Legacy connections use their managed model Key; experimental connections use the current authorized Access Token. Both reuse path restrictions, GET, bounded bodies and logout isolation. The public plugin makes no implicit quota request and adds no quota RPC/fields. Extensions must be installed explicitly; the server must define and enforce their authorization.
 

@@ -57,7 +57,6 @@ export const configurationFields = {
     displayName: ['模型提供方显示名称；默认取企业 displayName。', '示例模型'],
     adapter: ['模型协议，目前固定 openai-compatible。', 'openai-compatible'],
     modelSource: ['模型目录来源，Token 模式固定 discovery。', 'discovery'],
-    chatModelIds: ['对话模型 ID 白名单，与服务端授权目录取交集；省略不筛选，空数组关闭对话模型，不影响独立媒体服务。', ['example-chat']],
     reasoning: ['默认思考强度：off/minimal/low/medium/high/xhigh/max；默认 high。', 'high'],
     defaultContextWindow: ['默认上下文 token 数；模型自己的 contextWindow 优先，不填沿用发现/适配器。', 524288],
     defaultMaxTokens: ['默认最大输出 token 数；应符合服务端模型限制。', 65536],
@@ -67,7 +66,7 @@ export const configurationFields = {
     streamIdleTimeoutMs: ['流式响应空闲超时，正整数毫秒；省略沿用适配器默认值。', 120000],
     retryPolicy: ['请求重试策略；不填时 mode=normal、maxRetries=2。', {}],
     compat: ['提供方协议兼容选项；不确定时保持未配置。', {}],
-    models: ['按服务端模型 ID 补充能力和限制，不作白名单；对话目录由 chatModelIds 筛选。', []],
+    models: ['按服务端授权模型 ID 补充类型、能力和限制；只注册 llm 到对话，不扩大授权目录。', []],
   }),
   ...fields('organizations[].provider.retryPolicy.', {
     mode: ['normal 常规重试，always 持续重试；关闭重试请设置 maxRetries=0。', 'normal'],
@@ -83,6 +82,7 @@ export const configurationFields = {
   ...fields('organizations[].provider.compat.', compat),
   ...fields('organizations[].provider.models[].', {
     id: ['服务端模型 ID，同一个提供方内不可重复。', 'example-max'],
+    type: ['模型用途：llm/embedding/rerank/image/tts/unknown；仅 llm 进入对话。服务端类型优先，缺失时用此值；两边都缺失为 unknown。', 'llm'],
     name: ['模型显示名称，默认取 id。', 'Example Max'],
     input: ['支持的输入：text、image；默认仅 text。', ['text']],
     contextWindow: ['模型上下文 token 上限，正整数。', 524288],

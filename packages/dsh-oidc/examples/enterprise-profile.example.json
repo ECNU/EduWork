@@ -45,6 +45,7 @@
     "models": [
       {
         "id": "example-max",
+        "type": "llm",
         "name": "Example Max",
         "input": [
           "text"
@@ -58,6 +59,7 @@
       },
       {
         "id": "example-plus",
+        "type": "llm",
         "name": "Example Plus",
         "input": [
           "text",

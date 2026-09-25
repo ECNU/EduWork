@@ -61,7 +61,7 @@ For a configuration-only overlay of a CI archive, see the [build guide](https://
 
 Each organization needs a unique stable `id`. Explicit `provider.id` values must also be unique. The model API URL comes from validated discovery.
 
-If discovery mixes chat with embedding, reranking, image generation or TTS, set `organizations[].provider.chatModelIds` to the conversational model IDs. It intersects the authorized catalog without guessing types from names or affecting independent media services. Omit it to retain all discovered entries; `[]` registers no chat models. `provider.models` remains capability metadata. See the [Profile reference](../../../packages/dsh-oidc/docs/enterprise-profile.en.md#provider-object). Upgrade clients to support the field before distributing configuration.
+Use `organizations[].provider.models[].type` to classify each model as `llm`, `embedding`, `rerank`, `image`, `tts` or `unknown`. Only LLMs enter chat, including LLMs accepting image input. The server type takes precedence; local metadata fills missing server types. Unresolved types stay out of chat. ID-only gateways must receive typed configuration together with a compatible client. Independent media services keep their own configuration. See the [Profile reference](../../../packages/dsh-oidc/docs/enterprise-profile.en.md#provider-object).
 
 Passwords, API Keys, client secrets and login tokens must not be included in examples. The shared Host stores login Tokens through the local protected credential service, isolates them per organization and refreshes them automatically. Personal provider credentials remain independently managed.
 

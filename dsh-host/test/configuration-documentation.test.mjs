@@ -67,12 +67,12 @@ test('shipped JSONC files contain the current complete reference', async () => {
   }
 })
 
-test('chat catalog help preserves omitted, empty and explicit selections without installing example IDs', () => {
-  for (const provider of [{}, { chatModelIds: [] }, { chatModelIds: ['main', 'vision-chat'] }]) {
+test('model type help preserves declared metadata without installing model IDs or inferred types', () => {
+  for (const provider of [{}, { models: [] }, { models: [{ id: 'main', type: 'llm' }, { id: 'voice', type: 'tts' }] }]) {
     const value = { schemaVersion: 1, organizations: [{ schemaVersion: 'dsh-oidc/v1alpha1', id: 'example', provider }] }
     const documented = documentConfiguration(JSON.stringify(explicitConfigurationDefaults(value)))
-    assert.deepEqual({ ...parseUserConfig('synthetic.jsonc', documented).organizations[0].provider }, provider)
-    assert.ok(documented.includes('organizations[].provider.chatModelIds'))
+    assert.deepEqual(JSON.parse(JSON.stringify(parseUserConfig('synthetic.jsonc', documented).organizations[0].provider)), provider)
+    assert.ok(documented.includes('organizations[].provider.models[].type'))
   }
 })
 

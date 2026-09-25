@@ -28,7 +28,7 @@ const jwt = claims => {
 
 async function fixture(t, mode = 'oidc', metadataChanges = {}, provider) {
   const profile = normalizeEnterpriseProfile({ ...profileRaw(mode), ...(provider === undefined ? {} : { provider }) }), records = new Map(), calls = [], routes = []
-  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: ['model-a'] }
+  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
   let authorization, callbackResult, serial = 0
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
     set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
@@ -59,7 +59,7 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider) {
         return json(raw)
       }
       if (url === base + '/userinfo') return json({ sub: controls.user, preferred_username: 'Synthetic user', private_extra: 'DO-NOT-PROJECT' })
-      if (url === base + '/open/api/v1/models') return json({ object: 'list', data: controls.models.map(id => ({ id, object: 'model' })) })
+      if (url === base + '/open/api/v1/models') return json({ object: 'list', data: controls.models.map(model => ({ object: 'model', ...model })) })
       if (url === base + '/open/api/v1/images/generations' || url === base + '/open/api/v1/audio/speech') return json({ model: JSON.parse(init.body).model })
       if (url === base + '/open/api/v1/quota') { await controls.quotaGate; return json({ remaining: 1 }) }
       if (url === base + '/revoke') { assert.equal(init.body.get('token_type_hint'), 'refresh_token'); return new Response('', { status: 200 }) }
@@ -81,32 +81,35 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider) {
   return { profile, backend, records, calls, routes, controls, login, get authorization() { return authorization }, get callbackResult() { return callbackResult } }
 }
 
-test('mixed model catalogs register only selected chat models while media and account authorization remains available', async t => {
-  for (const chatModelIds of [['model-a', 'not-authorized'], []]) {
-    const f = await fixture(t, 'oidc', {}, { chatModelIds })
-    f.controls.models = ['model-a', 'embedding', 'rerank', 'image', 'tts']
-    assert.equal((await f.login()).state, 'completed')
-    const resources = await f.backend.readResources('draft')
-    assert.deepEqual(resources.models.map(model => model.id), chatModelIds.length ? ['model-a'] : [])
-    assert.deepEqual(resources.issues, [])
-    const routes = f.routes.at(-1).providers
-    assert.deepEqual(Object.keys(routes), chatModelIds.length ? ['draft'] : [])
-    if (routes.draft) assert.deepEqual(routes.draft.models.map(model => model.id), ['model-a'])
-    assert.equal(await f.backend.modelAuthorization('draft', base + '/open/api/v1'), true)
-    for (const [path, model] of [['/images/generations', 'image'], ['/audio/speech', 'tts']]) {
-      const response = await f.backend.authorizedFetch('draft', base + '/open/api/v1' + path, {
-        method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }),
-      })
-      assert.deepEqual(await response.json(), { model })
-      assert.match(f.calls.at(-1).headers.authorization, /^Bearer synthetic-access-/)
-    }
-    assert.equal((await f.backend.modelResourceFetch('draft', '/quota')).status, 200)
-    f.controls.models = ['image', 'tts']
-    assert.deepEqual((await f.backend.readResources('draft')).models, [])
-    assert.deepEqual(f.routes.at(-1).providers, {})
-    await f.backend.logout('draft')
-    assert.equal(f.records.size, 0)
+test('mixed purposes register only LLMs while retaining specialist catalogs, media and account authorization', async t => {
+  const f = await fixture(t, 'oidc', {}, { models: [{ id: 'vision', type: 'llm', input: ['text', 'image'] }, { id: 'not-authorized', type: 'llm' }] })
+  f.controls.models = [{ id: 'model-a', type: 'llm' }, { id: 'vision' }, ...['embedding', 'rerank', 'image', 'tts'].map(type => ({ id: type, type }))]
+  assert.equal((await f.login()).state, 'completed')
+  const resources = await f.backend.readResources('draft')
+  assert.deepEqual(resources.models.map(model => model.type), ['llm', 'llm', 'embedding', 'rerank', 'image', 'tts'])
+  assert.deepEqual(resources.issues, [])
+  assert.deepEqual(f.routes.at(-1).providers.draft.models.map(model => model.id), ['model-a', 'vision'])
+  assert.deepEqual(f.routes.at(-1).providers.draft.models[1].input, ['text', 'image'])
+  // Reclassification removes an already registered LLM, without revoking media access.
+  f.controls.models = [{ id: 'model-a', type: 'tts' }, { id: 'vision', type: 'future-service' }, { id: 'image', type: 'image' }]
+  const changed = await f.backend.readResources('draft')
+  assert.deepEqual(changed.models.map(model => model.type), ['tts', 'unknown', 'image'])
+  assert.deepEqual(changed.issues, ['model_types_unresolved'])
+  assert.deepEqual(f.routes.at(-1).providers, {})
+  assert.equal(await f.backend.modelAuthorization('draft', base + '/open/api/v1'), true)
+  for (const [path, model] of [['/images/generations', 'image'], ['/audio/speech', 'model-a']]) {
+    const response = await f.backend.authorizedFetch('draft', base + '/open/api/v1' + path, {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ model }),
+    })
+    assert.deepEqual(await response.json(), { model })
+    assert.match(f.calls.at(-1).headers.authorization, /^Bearer synthetic-access-/)
   }
+  assert.equal((await f.backend.modelResourceFetch('draft', '/quota')).status, 200)
+  f.controls.models = []
+  assert.deepEqual((await f.backend.readResources('draft')).models, [])
+  assert.deepEqual(f.routes.at(-1).providers, {})
+  await f.backend.logout('draft')
+  assert.equal(f.records.size, 0)
 })
 
 test('OIDC draft honors short token lifetimes without immediately refreshing the new pair', async t => {

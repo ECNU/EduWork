@@ -383,6 +383,7 @@ function withGatewayAuth(Base) {
         this.updateProvider(next)
         this.profiles.set(profileID, next)
         result.models = models
+        if (models.some(model => model.type === 'unknown')) result.issues.push('model_types_unresolved')
       } catch (cause) {
         if (cause.code === 'oidc_login_cancelled' || cause.code === 'oidc_login_required') throw cause
         result.issues.push('models_unavailable')

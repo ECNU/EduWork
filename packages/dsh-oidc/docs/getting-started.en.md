@@ -18,6 +18,8 @@ Load trusted JSON through config.profile, config.profiles or EDUWORK_OIDC_PROFIL
 
 This Host integration is published in `@eduwork/dsh-oidc@0.3.0-dev.2` and assembled in EduWork `0.3.6-dev.20260921.1`. Desktop users edit `eduwork.jsonc` using the [LiteLLM setup guide](gateway-auth/litellm-setup.en.md). Other Hosts must pin reviewed package versions; old packages cannot consume these profiles. See [development](development.en.md) for source builds and validation.
 
+The current source classifies discovered models by `type`; only `llm` enters chat. If the server returns only IDs, supply `provider.models[].type` using actual model IDs before upgrading. Server type metadata takes precedence; specialist and unresolved types remain outside chat. This requires an updated plugin/client and coordinated configuration, and is not part of the published version above. See the [model reference](enterprise-profile.en.md).
+
 ## Sign-in and use
 
 1. Complete browser consent. The client checks state, PKCE and applicable identity claims.

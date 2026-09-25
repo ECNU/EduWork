@@ -10,11 +10,11 @@ const schema = JSON.parse(await readFile(new URL('schema/enterprise-profile.v1al
 const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema)
 
 const selectionProfile = JSON.parse(await readFile(new URL('examples/oidc-llm.enterprise-profile.example.json', root), 'utf8'))
-for (const [chatModelIds, expected] of [[[], true], [['chat', 'vision-chat'], true], [null, false], ['chat', false], [['chat', 'chat'], false], [[' chat'], false], [[''], false], [[123], false], [['x'.repeat(257)], false], [Array.from({ length: 129 }, (_, i) => `chat-${i}`), false]]) {
-  const value = { ...selectionProfile, provider: { chatModelIds } }
-  assert.equal(validate(value), expected, 'chatModelIds schema acceptance')
+for (const [type, expected] of [[undefined, true], ...['llm', 'embedding', 'rerank', 'image', 'tts', 'unknown'].map(type => [type, true]), [null, false], ['chat', false], ['LLM', false], ['', false], [123, false], [[], false]]) {
+  const value = { ...selectionProfile, provider: { models: [{ id: 'example', ...(type === undefined ? {} : { type }) }] } }
+  assert.equal(validate(value), expected, 'model type schema acceptance')
   if (expected) normalizeEnterpriseProfile(value)
-  else assert.throws(() => normalizeEnterpriseProfile(value), /chatModelIds/)
+  else assert.throws(() => normalizeEnterpriseProfile(value), /\.type/)
 }
 
 for (const name of ['enterprise-profile.example.json', 'ecnu.enterprise-profile.example.json', 'identity-only.example.json', 'resources-discovery.example.json', 'litellm.enterprise-profile.example.json', 'oidc-llm.enterprise-profile.example.json']) {

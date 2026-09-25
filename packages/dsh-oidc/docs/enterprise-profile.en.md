@@ -97,18 +97,50 @@ The Provider object is data interpreted by a local audited adapter.
 | `retryPolicy` | no | DSH provider-owned retry policy; default normal/2 retries. |
 | `compat` | no | Bounded pi-ai OpenAI compatibility facts. |
 | `modelSource` | no | Only discovery, the default; fetches /models with the current Access Token. |
-| `chatModelIds` | no | Optional allowlist of up to 128 unique chat model IDs, intersected with the authorized server catalog. Omit to leave discovery unfiltered; an empty array registers no chat models. Independent media authorization is unaffected. |
 | `models` | no | Reviewed model capabilities; cannot expose models absent from the authorized catalog. |
 
-When `/models` mixes chat, embedding, reranking, image generation and TTS, use `chatModelIds` to select conversational models explicitly. `models` supplies names, modalities and limits, not an allowlist. Selection never guesses type from names or exposes unauthorized IDs. Chat models that accept image input may still be selected. Image generation and speech keep their own service model configuration.
+Model purpose uses `type`: `llm`, `embedding`, `rerank`, `image`, `tts` or `unknown`. Only `llm` registers with the DSH conversation provider. The full resource catalog retains specialist types; media services keep their own model and endpoint configuration. Classifying a model does not enable a service or grant access.
+
+An explicit `data[].type` from the authorized `/models` response takes precedence. When absent, `provider.models[].type` supplies it. Missing, invalid or unsupported server types resolve to `unknown` and stay out of chat; the resources result reports `model_types_unresolved`. The client never guesses purpose from model names, the OpenAI `object` field or input modalities. An image-capable LLM is still `llm`.
+
+Example provider metadata for a gateway returning only model IDs (replace IDs with authorized server IDs):
 
 ```json
 {
-  "chatModelIds": ["example-chat", "example-vision-chat"]
+  "models": [
+    {
+      "id": "example-chat",
+      "type": "llm"
+    },
+    {
+      "id": "example-vision-chat",
+      "type": "llm",
+      "input": [
+        "text",
+        "image"
+      ]
+    },
+    {
+      "id": "example-embedding",
+      "type": "embedding"
+    },
+    {
+      "id": "example-rerank",
+      "type": "rerank"
+    },
+    {
+      "id": "example-image",
+      "type": "image"
+    },
+    {
+      "id": "example-tts",
+      "type": "tts"
+    }
+  ]
 }
 ```
 
-This optional `provider` field works with LiteLLM and oidc-llm. Distribute it only to clients that support it; older clients strictly reject unknown fields.
+This is an optional EduWork resource extension, not a standard OpenAI field or a claim that existing LiteLLM/oidc-llm servers provide it. ID-only deployments must supply local types before enabling this client behavior. Distribute typed configuration only to upgraded clients: older clients reject unknown model fields. Local declarations are intersected with the authorized server catalog; unavailable IDs are never registered. Personal API-key providers are unchanged.
 
 `retryPolicy.mode` is `normal` or `always`. `always` can retry indefinitely until success, cancellation, or disposal and SHOULD NOT be enabled without an explicit product decision. The policy is validated again by DSH.
 
@@ -119,6 +151,7 @@ This optional `provider` field works with LiteLLM and oidc-llm. Distribute it on
 Each model has:
 
 - required `id`;
+- optional purpose `type`; unresolved types are `unknown` and only `llm` is conversational;
 - optional display `name`;
 - `input` containing `text`, `image`, or both (default `text`);
 - optional positive `contextWindow` and `maxTokens`;
