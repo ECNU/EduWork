@@ -1,11 +1,13 @@
-# 公版、机构版与配置的边界
+# 教育发行版、学校发行版与配置的边界
 
-EduWork 提供通用产品，EduWork-ECNU 在同一份公版代码上增加华东师范大学服务。机构版不维护第二份 UI、Studio、桌面壳或更新器。
+DSH 提供 Agent 运行时与插件体系；DeepSeek 官方客户端与 EduWork 是基于该基础组织的不同发行组合。EduWork 是教育发行版，选择适合教学、科研与办公的插件、技能和桌面资源。EduWork-ECNU 在同一份公版代码上增加华东师范大学服务，其他学校也可以基于 EduWork 组合自己的发行版。
+
+机构版通过配置、插件和技能扩展，不维护第二份 UI、Studio、桌面壳或更新器。公共组合见[公版发行清单](../config/distributions/generic.json)，面向用户的主要插件与技能见[首页](../README.md#随包插件)。
 
 | 归属 | 内容 | 扩展方式 |
 | --- | --- | --- |
 | EduWork | 对话、Studio、文件生成与预览、技能中心、邮件、记忆、浏览器搜索、个人概览、蓝/红主题 | 公版代码与精确锁定的通用 npm 插件 |
-| EduWork | OIDC 登录、网关 Token 授权、企业模型同步 | `config/eduwork.jsonc` 中的机构与模型配置 |
+| EduWork | 单点登录、oidc-llm 草案与 LiteLLM 原生 Token 模型接入 | `config/eduwork.jsonc` 中的机构与模型配置 |
 | EduWork | Electron、Go 过渡壳、更新下载与进度、托盘、历史导入、模型请求并发 | 两个壳共用 Host、产品配置与工作台插件 |
 | EduWork-ECNU | 校内搜索、学校配额、活跃心跳、文本模型的校内视觉辅助 | `edition/plugins/`，由机构发行清单追加 |
 | EduWork-ECNU | 学校默认模型及更新规则、专属技能、默认机构配置 | `edition/` 中的数据及技能；通用解释器仍属于公版 |
