@@ -160,7 +160,7 @@ POST revocation endpoint，表单 `token=<refresh_token>&client_id=<registered_c
 
 纯身份 OIDC 与 oidc-llm 的 OIDC 模式共用 Discovery issuer、PKCE S256、state、nonce、RS256 ID Token 和 UserInfo sub 一致性校验。Key Binding 与旧凭据引用迁移已移除，模型授权改用网关 Token。相关接口见[服务端契约](../server-integration-contract.md)、[Profile 规范](../enterprise-profile.md)。没有为兼容 LiteLLM 放松这些检查。
 
-新 oidc-llm 的 UserInfo 从发现的 `userinfo_endpoint` 获取，复用标准主体和资料字段。实验配置及实际限制见[实验接入](experimental-oidc-llm.md)，尚待讨论的 scope、生命周期和撤销保证见[草案](oidc-llm-draft.md)。真实服务完成验收前，不迁移已有机构配置。
+oidc-llm 已实现 Token 直连模型与可选的完整 OIDC 身份校验，ChatECNU 是采用该草案的参考部署。配置及客户端边界见[实验接入](experimental-oidc-llm.md)；[草案](oidc-llm-draft.md)明确当前 scopes、静态注册、按服务端有效期提前刷新和退出撤销行为，并将动态注册、刷新家族及长流到期契约列为后续扩展。其他服务仍需单独验收，已有机构配置须显式迁移。
 
 ## 开发验证
 
