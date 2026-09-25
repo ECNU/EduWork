@@ -10,7 +10,7 @@ import { DesktopQuitConfirmation } from 'fixture-quit'
 import { DesktopFatalRecovery } from 'fixture-recovery'
 import { resolveDesktopLocale } from 'fixture-locale'
 import { installMicrophonePermissions } from 'fixture-permissions'
-const output = process.env.EDUWORK_PROBE_OUTPUT, results = []
+const output = process.env.EDUWORK_PROBE_OUTPUT, results = [], limitations = []
 app.setPath('userData', join(output, 'browser-data'))
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }])
 const timer = setTimeout(() => finish(new Error('Electron smoke deadline exceeded')), 90000)
@@ -19,7 +19,7 @@ function finish(error) {
   if (finished) return
   finished = true
   clearTimeout(timer)
-  writeFileSync(join(output, 'report.json'), JSON.stringify({ ok: !error, electron: process.versions.electron, platform: process.platform, results, error: error ? error.stack ?? String(error) : undefined }, null, 2))
+  writeFileSync(join(output, 'report.json'), JSON.stringify({ ok: !error, electron: process.versions.electron, platform: process.platform, results, limitations, error: error ? error.stack ?? String(error) : undefined }, null, 2))
   bridge?.dispose()
   for (const window of BrowserWindow.getAllWindows()) window.destroy()
   server?.close()
@@ -58,9 +58,17 @@ app.whenReady().then(async () => {
   results.push('built preload and theme synchronization')
   mainWindow.show(); mainWindow.focus()
   await until(() => mainWindow.isFocused())
+  // Service-session CI runners may not expose an OS clipboard. Establish that
+  // native Electron can round-trip first; only then judge the browser bridge.
+  await clipboard.writeText('eduwork native clipboard baseline')
+  await tick()
+  const nativeClipboardAvailable = (await clipboard.readText()) === 'eduwork native clipboard baseline'
   await evaluate(`navigator.clipboard.writeText('eduwork desktop fixture')`)
-  assert.equal(await clipboard.readText(), 'eduwork desktop fixture')
-  results.push('built preload: browser, desktop keyboard, locale, file paths, native theme and clipboard')
+  if (nativeClipboardAvailable) {
+    await until(async () => (await clipboard.readText()) === 'eduwork desktop fixture')
+    results.push('browser clipboard write round-trips through the system clipboard')
+  } else limitations.push('System clipboard readback unavailable to native Electron in this session; browser write authorization succeeded, OS round-trip not verified')
+  results.push('built preload: browser, desktop keyboard, locale, file paths and native theme')
   // Register a real binding, then deliver physical input through Electron's
   // before-input-event path and the built preload, not a synthetic IPC send.
   const shortcutPlatform = process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux'
@@ -115,6 +123,8 @@ app.whenReady().then(async () => {
   const permissionFixture = { checks: null, requests: null,
     setPermissionCheckHandler(fn) { this.checks = fn }, setPermissionRequestHandler(fn) { this.requests = fn } }
   installMicrophonePermissions(permissionFixture, () => mainWindow.webContents)
+  assert.equal(permissionFixture.checks(mainWindow.webContents, 'clipboard-sanitized-write', 'dsh-app://app', { isMainFrame: true }), true)
+  assert.equal(permissionFixture.checks(mainWindow.webContents, 'clipboard-sanitized-write', protectedURL, { isMainFrame: false }), false)
   assert.equal(permissionFixture.checks(mainWindow.webContents, 'media', protectedURL, { isMainFrame: false, mediaType: 'audio' }), false)
   assert.equal(permissionFixture.checks(mainWindow.webContents, 'media', 'dsh-app://app', { isMainFrame: true, mediaType: 'video' }), false)
   assert.equal(permissionFixture.checks(mainWindow.webContents, 'geolocation', 'dsh-app://app', { isMainFrame: true }), false)

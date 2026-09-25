@@ -142,12 +142,12 @@ OAuth 错误沿用 `invalid_request`、`invalid_client`、`invalid_grant`、`inv
 
 ## 8. ChatECNU 参考部署
 
-ChatECNU 是采用本草案的参考部署，不是协议指定的唯一服务。其[公开发现文档](https://chat.ecnu.edu.cn/.well-known/openid-configuration)在 2026-09-25 声明：
+ChatECNU 是采用本草案的参考部署，不是协议指定的唯一服务。其公开发现文档在 2026-09-25 声明如下；部署地址由机构版提供，这里使用 `{issuer}` 表示，发现路径为 `{issuer}/.well-known/openid-configuration`：
 
 | 项目 | 公开元数据 |
 | --- | --- |
-| issuer / resource | `https://chat.ecnu.edu.cn` |
-| 模型 API 基址 | `https://chat.ecnu.edu.cn/open/api/v1` |
+| issuer / resource | `{issuer}`，二者相同 |
+| 模型 API 基址 | `{issuer}/open/api/v1` |
 | 扩展版本 | `oidc_llm.version: "0.1"` |
 | 身份模式 | `oauth`、`oidc`；EduWork@ECNU 显式选择 `oidc` |
 | 客户端注册 | `static`，公共客户端认证方法 `none` |
