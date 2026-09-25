@@ -97,7 +97,18 @@ Provider 对象是由本地、经过审查的 adapter 解释的数据。
 | `retryPolicy` | 否 | 由 DSH Provider 管理的重试策略；默认 normal/重试 2 次。 |
 | `compat` | 否 | 有边界的 pi-ai OpenAI 兼容事实。 |
 | `modelSource` | 否 | 仅支持 discovery，默认值；使用当前 Access Token 读取 /models。 |
+| `chatModelIds` | 否 | 对话模型 ID 白名单，最多 128 个唯一 ID。与服务端授权目录取交集；省略不筛选，空数组不注册对话模型。不影响独立媒体服务授权。 |
 | `models` | 否 | 已审查的模型能力元数据，不得扩大获授权目录。 |
+
+当 `/models` 同时返回聊天、embedding、rerank、生图和 TTS 时，通过 `chatModelIds` 明确筛选对话模型。`models` 只补充名称、模态和限制，不能替代白名单。筛选不按名称猜类型，也不会把服务端未授权的 ID 加入目录；支持图片输入的聊天模型仍可列入。生图和语音继续使用各自服务配置中的模型。
+
+```json
+{
+  "chatModelIds": ["example-chat", "example-vision-chat"]
+}
+```
+
+这是 `provider` 对象中的可选字段，适用于 LiteLLM 和 oidc-llm。下发前必须确保目标客户端包含该字段支持；旧客户端严格拒绝未知字段。
 
 `retryPolicy.mode` 可以是 `normal` 或 `always`。`always` 可能一直重试，直到成功、取消或销毁；没有明确产品决策时不应启用。该策略还会由 DSH 再次校验。
 

@@ -97,7 +97,18 @@ The Provider object is data interpreted by a local audited adapter.
 | `retryPolicy` | no | DSH provider-owned retry policy; default normal/2 retries. |
 | `compat` | no | Bounded pi-ai OpenAI compatibility facts. |
 | `modelSource` | no | Only discovery, the default; fetches /models with the current Access Token. |
+| `chatModelIds` | no | Optional allowlist of up to 128 unique chat model IDs, intersected with the authorized server catalog. Omit to leave discovery unfiltered; an empty array registers no chat models. Independent media authorization is unaffected. |
 | `models` | no | Reviewed model capabilities; cannot expose models absent from the authorized catalog. |
+
+When `/models` mixes chat, embedding, reranking, image generation and TTS, use `chatModelIds` to select conversational models explicitly. `models` supplies names, modalities and limits, not an allowlist. Selection never guesses type from names or exposes unauthorized IDs. Chat models that accept image input may still be selected. Image generation and speech keep their own service model configuration.
+
+```json
+{
+  "chatModelIds": ["example-chat", "example-vision-chat"]
+}
+```
+
+This optional `provider` field works with LiteLLM and oidc-llm. Distribute it only to clients that support it; older clients strictly reject unknown fields.
 
 `retryPolicy.mode` is `normal` or `always`. `always` can retry indefinitely until success, cancellation, or disposal and SHOULD NOT be enabled without an explicit product decision. The policy is validated again by DSH.
 

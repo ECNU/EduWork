@@ -24,7 +24,7 @@ const allowedBrandKeys = new Set([
 const allowedProviderKeys = new Set([
   'id', 'displayName', 'adapter', 'baseURL', 'reasoning', 'defaultContextWindow',
   'defaultMaxTokens', 'maxRequestImageBytes', 'requestImagePixelBudget',
-  'requestImageMaxBytes', 'streamIdleTimeoutMs', 'retryPolicy', 'compat', 'models', 'modelSource',
+  'requestImageMaxBytes', 'streamIdleTimeoutMs', 'retryPolicy', 'compat', 'models', 'modelSource', 'chatModelIds',
 ])
 const allowedModelKeys = new Set([
   'id', 'name', 'input', 'contextWindow', 'maxTokens', 'reasoning',
@@ -51,6 +51,13 @@ function text(value, label, max = 2048) {
     throw new Error(`${label} must be a non-empty trimmed string no longer than ${max} characters`)
   }
   return value
+}
+
+function chatModelIds(value) {
+  if (!Array.isArray(value) || value.length > 128) throw new Error('profile.provider.chatModelIds must contain 0-128 model IDs')
+  const ids = value.map(id => text(id, 'profile.provider.chatModelIds entry', 256))
+  if (new Set(ids).size !== ids.length) throw new Error('profile.provider.chatModelIds contains duplicates')
+  return Object.freeze(ids)
 }
 
 function issuerURL(value, label, allowInsecure = false) {
@@ -320,6 +327,7 @@ export function normalizeEnterpriseProfile(raw) {
       retryPolicy: provider.retryPolicy === undefined ? undefined : normalizeRetryPolicy(provider.retryPolicy),
       compat: provider.compat === undefined ? undefined : normalizeCompat(provider.compat, 'profile.provider.compat'),
       modelSource,
+      ...(provider.chatModelIds === undefined ? {} : { chatModelIds: chatModelIds(provider.chatModelIds) }),
       models: modelSource === 'discovery' && (provider.models === undefined || provider.models.length === 0)
         ? Object.freeze([]) : normalizeModels(provider.models, providerID),
     }),

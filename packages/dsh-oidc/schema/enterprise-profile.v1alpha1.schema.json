@@ -256,6 +256,17 @@
         "modelSource": {
           "const": "discovery"
         },
+        "chatModelIds": {
+          "type": "array",
+          "maxItems": 128,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 256,
+            "pattern": "^\\S(?:[\\s\\S]*\\S)?$"
+          }
+        },
         "models": {
           "type": "array",
           "minItems": 0,

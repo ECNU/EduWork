@@ -9,6 +9,14 @@ const root = new URL('../', import.meta.url)
 const schema = JSON.parse(await readFile(new URL('schema/enterprise-profile.v1alpha1.schema.json', root), 'utf8'))
 const validate = new Ajv2020({ allErrors: true, strict: true }).compile(schema)
 
+const selectionProfile = JSON.parse(await readFile(new URL('examples/oidc-llm.enterprise-profile.example.json', root), 'utf8'))
+for (const [chatModelIds, expected] of [[[], true], [['chat', 'vision-chat'], true], [null, false], ['chat', false], [['chat', 'chat'], false], [[' chat'], false], [[''], false], [[123], false], [['x'.repeat(257)], false], [Array.from({ length: 129 }, (_, i) => `chat-${i}`), false]]) {
+  const value = { ...selectionProfile, provider: { chatModelIds } }
+  assert.equal(validate(value), expected, 'chatModelIds schema acceptance')
+  if (expected) normalizeEnterpriseProfile(value)
+  else assert.throws(() => normalizeEnterpriseProfile(value), /chatModelIds/)
+}
+
 for (const name of ['enterprise-profile.example.json', 'ecnu.enterprise-profile.example.json', 'identity-only.example.json', 'resources-discovery.example.json', 'litellm.enterprise-profile.example.json', 'oidc-llm.enterprise-profile.example.json']) {
   const value = JSON.parse(await readFile(new URL(`examples/${name}`, root), 'utf8'))
   if (!validate(value)) throw new Error(`${name} failed JSON Schema validation: ${JSON.stringify(validate.errors)}`)

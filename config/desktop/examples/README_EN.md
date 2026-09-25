@@ -61,6 +61,8 @@ For a configuration-only overlay of a CI archive, see the [build guide](https://
 
 Each organization needs a unique stable `id`. Explicit `provider.id` values must also be unique. The model API URL comes from validated discovery.
 
+If discovery mixes chat with embedding, reranking, image generation or TTS, set `organizations[].provider.chatModelIds` to the conversational model IDs. It intersects the authorized catalog without guessing types from names or affecting independent media services. Omit it to retain all discovered entries; `[]` registers no chat models. `provider.models` remains capability metadata. See the [Profile reference](../../../packages/dsh-oidc/docs/enterprise-profile.en.md#provider-object). Upgrade clients to support the field before distributing configuration.
+
 Passwords, API Keys, client secrets and login tokens must not be included in examples. The shared Host stores login Tokens through the local protected credential service, isolates them per organization and refreshes them automatically. Personal provider credentials remain independently managed.
 
 Distribution model-capability corrections apply only to recognized managed configurations. They do not overwrite the administrator's file, personal providers or the user's default model choice. Server discovery remains authoritative; the public edition does not carry institution-specific correction rules.

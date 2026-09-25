@@ -9,5 +9,8 @@
     "clientId": "replace-with-public-client-id",
     "identityMode": "oidc"
   },
-  "allowInsecureDevelopment": false
+  "allowInsecureDevelopment": false,
+  "provider": {
+    "chatModelIds": ["example-chat", "example-vision-chat"]
+  }
 }
