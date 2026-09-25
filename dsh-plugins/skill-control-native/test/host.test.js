@@ -153,29 +153,34 @@ test('real Host follows optional Shared attachment, provider/credential changes,
 
 test.after(() => hooks.deregister())
 
-test('real skill registry follows model authorization without requiring the old shared key', async () => {
+for (const bindURL of [false, true]) test(`real skill registry follows ${bindURL ? 'endpoint' : 'account'} authorization and login events without requiring the old shared key`, async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-skill-binding-'))
   const ctx = new Context()
   let matching = false
   try {
     const skills = join(root, 'skills'), directory = join(skills, 'institution-search')
     await mkdir(directory, { recursive: true })
-    await writeFile(join(directory, 'SKILL.md'), '---\nname: institution-search\ndescription: Synthetic binding check.\nmetadata:\n  eduwork:\n    credentialRef: EDUWORK_API_KEY\n    oidcProfileId: campus-a\n    runtimeBaseURL: https://a.example/v1\n---\nSynthetic only.\n')
+    await writeFile(join(directory, 'SKILL.md'), '---\nname: institution-search\ndescription: Synthetic binding check.\nmetadata:\n  eduwork:\n    credentialRef: EDUWORK_API_KEY\n    oidcProfileId: campus-a\n' + (bindURL ? '    runtimeBaseURL: https://a.example/v1\n' : '') + '---\nSynthetic only.\n')
     await ctx.plugin(SkillRegistry); await ctx.plugin(MemorySettings); await ctx.plugin(MemoryCredentials); await ctx.plugin(skillSettings)
     ctx.provide('oidcAccounts', { modelAuthorization: async (id, expectedBaseURL) => {
+      assert.equal(bindURL, true)
       assert.equal(id, 'campus-a')
       assert.equal(expectedBaseURL, 'https://a.example/v1')
       return matching
+    }, status: async id => {
+      assert.equal(bindURL, false)
+      assert.equal(id, 'campus-a')
+      return { profileID: id, state: matching ? 'connected' : 'signed_out', credentialReady: matching }
     } })
     await ctx.plugin(skillControl, { skillDir: skills })
     const names = async () => (await ctx.skills.list({ cwd: root })).filter(row => row.name === 'institution-search').map(row => row.name)
     await ctx.credentials.set(credentialRef('EDUWORK_API_KEY'), 'unrelated')
     await eventually(names, [])
     matching = true
-    await ctx.credentials.unset(credentialRef('EDUWORK_API_KEY'))
+    ctx.emit('oidc/accounts-changed', { profileID: 'campus-a', state: 'connected' })
     await eventually(names, ['institution-search'])
     matching = false
-    await ctx.credentials.set(credentialRef('EDUWORK_API_KEY'), 'replaced')
+    ctx.emit('oidc/accounts-changed', { profileID: 'campus-a', state: 'signed_out' })
     await eventually(names, [])
   } finally {
     await ctx.fiber.dispose()

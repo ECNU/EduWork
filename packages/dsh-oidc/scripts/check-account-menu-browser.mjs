@@ -84,6 +84,21 @@ try {
   assert.equal(await menu.getByText('模型配额', { exact: true }).count(), 0)
   checks.push('sign-out synchronizes footer and settings')
   await page.keyboard.press('Escape'); await waitClosed()
+  for (const custom of [false, true]) {
+    await page.goto(origin + '/?onboarding=1' + (custom ? '&customLogin=1' : ''))
+    const dialog = page.getByRole('dialog')
+    const label = custom ? '统一认证登录' : '使用企业账号登录'
+    await dialog.getByRole('button', { name: label, exact: true }).waitFor()
+    await dialog.getByRole('heading', { name: custom ? '示例大学统一身份认证' : '连接企业模型', exact: true }).waitFor()
+    if (custom) await dialog.getByText('使用学校账号连接校内服务。', { exact: true }).waitFor()
+    await dialog.getByRole('button', { name: '使用其他模型', exact: true }).click()
+    await dialog.waitFor({ state: 'hidden' })
+    await page.locator('#general').getByRole('button', { name: label, exact: true }).waitFor()
+    await trigger.click()
+    await menu.getByRole('menuitem', { name: custom ? label : '登录账户', exact: true }).waitFor()
+    await page.keyboard.press('Escape'); await waitClosed()
+  }
+  checks.push('custom and default login wording is consistent across onboarding, settings and account menu; other models stay available')
   for (const outcome of ['success', 'failure']) {
     await page.goto(`${origin}/callback-${outcome}`)
     await page.getByRole('heading', { name: outcome === 'success' ? '身份认证已完成' : '此次登录未完成' }).waitFor()

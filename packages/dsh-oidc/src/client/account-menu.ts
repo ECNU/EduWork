@@ -69,7 +69,7 @@ export function AccountMenu({ service, profile, children, renderSlot, wide = tru
     h('div', { role: 'presentation', style: { padding: '2px 3px 12px' } }, h('strong', null, accountUserName(status) || accountOrganization(profile)), h('div', { style: { marginTop: 4, color: secondary } }, accountOrganization(profile))),
     typeof renderSlot === 'function' ? renderSlot('oidc.account.menu.details', { profile, status, busy, run, refreshAccount, defaultContent }, { fallback: defaultContent }) : defaultContent,
     h('div', { style: { display: 'grid', gap: 6 } },
-      !signedIn && button(busy ? words.processing : words.login, () => void run(() => login.begin(profile.id))),
+      !signedIn && button(busy ? words.processing : profile.brand?.loginButtonLabel || words.login, () => void run(() => login.begin(profile.id))),
       signedIn && button(words.logout, () => void run(() => service.logout(profile.id), true))),
     login.pending && h('p', { role: 'status' }, words.waiting, ' ', h('button', { type: 'button', role: 'menuitem', style: action, onClick: login.cancel }, words.cancel)),
     error && h('p', { role: 'alert', style: { color: 'var(--dsw-alias-state-error-primary, #a14d3b)', marginBottom: 0 } }, error))

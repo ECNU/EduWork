@@ -51,6 +51,7 @@ Branding changes only approved presentation surfaces. It does not alter authenti
 | `logoURL` | HTTPS URL or base64 PNG/WebP, at most 128 KiB as text. Remote images use `referrerPolicy=no-referrer`. |
 | `primaryColor` | Six-digit hex color. Only a bounded DSH token set is overridden. |
 | `loginTitle` | 120 characters. |
+| `loginButtonLabel` | 40 characters. Sign-in button text in onboarding, settings and the account menu; omitted values use the client's default wording. |
 | `loginDescription` | 500 characters. |
 | `supportURL` | Absolute HTTPS URL opened with `noopener noreferrer`. |
 
