@@ -20,12 +20,20 @@ const home = join(output, 'home'), profile = join(home, 'profiles', 'synthetic-d
 await mkdir(profile, { recursive: true })
 const fixture = join(output, 'http-fixture.mjs')
 await writeFile(fixture, `
+import { gzipSync } from 'node:zlib';
 export const inject = ['connection'];
 export function apply(ctx) {
   let cancelled = 0;
   ctx.on('connection/request', async (request, response, next) => {
     const path = new URL(request.url, 'http://localhost').pathname;
     if (path === '/api/__probe/ping') { response.end(JSON.stringify({ cancelled })); return; }
+    if (path === '/api/__probe/compressed') {
+      const bytes = gzipSync('decoded synthetic content');
+      response.setHeader('content-encoding', 'gzip');
+      response.setHeader('content-length', bytes.length);
+      response.end(request.method === 'HEAD' ? undefined : bytes);
+      return;
+    }
     if (path === '/api/__probe/media') {
       const bytes = Buffer.from('0123456789');
       response.setHeader('accept-ranges', 'bytes');
@@ -68,6 +76,14 @@ try {
   assert.equal(await range.text(), '2345'); assert.equal(range.headers.get('set-cookie'), null)
   const head = await request('/api/__probe/media', { method: 'HEAD' })
   assert.equal(head.status, 200); assert.equal(await head.text(), '')
+  assert.equal(head.headers.get('content-length'), '10')
+  for (const method of ['GET', 'HEAD']) {
+    const compressed = await request('/api/__probe/compressed', { method })
+    assert.equal(compressed.status, 200)
+    assert.equal(compressed.headers.get('content-length'), null)
+    assert.equal(compressed.headers.get('content-encoding'), null)
+    assert.equal(await compressed.text(), method === 'HEAD' ? '' : 'decoded synthetic content')
+  }
   const abort = new AbortController()
   const stream = await request('/api/__probe/stream', { signal: abort.signal })
   const reader = stream.body.getReader(); assert.equal((await reader.read()).value.byteLength > 0, true)
@@ -96,7 +112,8 @@ try {
   assert.ok(logs.every(text => !/[?&]token=(?!\[redacted\])/.test(text)), 'Launch credential leaked to log callback')
   report.success = true
   report.verified = ['real-child-startup', 'loopback-authentication', 'foreign-origin-denied', 'byte-range', 'head',
-    'concurrent-unread-stream', 'cancellation', 'correlated-quit-and-update-inspection', 'update-admission-lock', 'clean-shutdown', 'redacted-launch-log']
+    'unencoded-file-length', 'decoded-gzip-headers', 'concurrent-unread-stream', 'cancellation',
+    'correlated-quit-and-update-inspection', 'update-admission-lock', 'clean-shutdown', 'redacted-launch-log']
 } catch (error) { report.error = { message: error.message, diagnostic: error.diagnostic }; process.exitCode = 1 }
 finally {
   await host.stop().catch(error => { report.shutdownError = error.message })

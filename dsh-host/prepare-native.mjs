@@ -64,6 +64,21 @@ export function adaptNativeHostEntry(input) {
   return text
 }
 
+export function adaptNativeWebDocument(input) {
+  // Node fetch decodes compressed bodies. Retain the official header filtering,
+  // but preserve representation length for unencoded files (HEAD, Range and
+  // download progress). Never forward the compressed body's old byte count.
+  return replace(input.replaceAll('\r\n', '\n'),
+    '  for (const name of WITHHELD_RESPONSE_HEADERS) outgoing.delete(name)',
+    `  for (const name of WITHHELD_RESPONSE_HEADERS) outgoing.delete(name)
+  const encoding = response.headers.get('content-encoding')?.trim().toLowerCase()
+  const length = response.headers.get('content-length')
+  if ((!encoding || encoding === 'identity') && length !== null
+    && /^(0|[1-9]\\d*)$/u.test(length) && Number.isSafeInteger(Number(length))) {
+    outgoing.set('content-length', length)
+  }`)
+}
+
 export async function prepareNative({ upstream, output }) {
   const input = {}, outputs = {}
   for (const [path, hash] of Object.entries(sources)) {
@@ -80,7 +95,8 @@ export async function prepareNative({ upstream, output }) {
   const transform = text => stripTypeScriptTypes(text, { mode: 'transform' })
   await emit('host-process.mjs', transform(adaptNativeHostProcess(input['apps/desktop/src/host-process.ts'])))
   await emit('redacted-log.mjs', await readFile(new URL('./redacted-log.mjs', import.meta.url), 'utf8'))
-  for (const file of ['node-environment', 'web-document']) await emit(`${file}.mjs`, transform(input[`apps/desktop/src/${file}.ts`]))
+  await emit('node-environment.mjs', transform(input['apps/desktop/src/node-environment.ts']))
+  await emit('web-document.mjs', transform(adaptNativeWebDocument(input['apps/desktop/src/web-document.ts'])))
   await emit('desktop-host/lib/index.js', transform(adaptNativeHostEntry(input['apps/desktop-host/src/index.ts'])))
   // This hook is installed after profile plugins. Prepend it so a plugin's
   // handled media/API response cannot bypass update admission.
@@ -98,7 +114,8 @@ export async function prepareNative({ upstream, output }) {
   await emit('desktop-host/LICENSE', input.LICENSE)
   const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.7-rc.2', protocolVersion: 4,
     sources, outputs, nodeVersion: process.version, adaptations: ['private-stdin-bootstrap', 'bounded-redacted-log-callback',
-      'loopback-ephemeral-port', 'recoverable-product-settings-migration', 'composition-owned-office-and-accounts', 'prepend-update-admission'] }
+      'loopback-ephemeral-port', 'recoverable-product-settings-migration', 'composition-owned-office-and-accounts', 'prepend-update-admission',
+      'preserve-unencoded-response-length'] }
   await emit('receipt.json', JSON.stringify(receipt, null, 2) + '\n')
   return receipt
 }

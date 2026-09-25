@@ -33,6 +33,14 @@ try {
   session.append('session/title', { title, messageSeqs: [], source: { kind: 'user' } })
   session.append('turn/start', { turn: 1 }); session.append('step/start', { turn: 1, step: 1 })
   session.append('user/message', createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'Synthetic desktop preview acceptance. These tool records are fixture data, not a real model execution.' }] }), { surfaceOp: 'append' })
+  // A persisted tool lifecycle begins with the assistant advertising its
+  // calls. A bare tool/call is an invalid log, even in a synthetic UI fixture.
+  const calls = files.map((file, index) => ({ type: 'tool-call', id: `synthetic-publish-${index}`,
+    name: 'present', arguments: JSON.stringify({ files: [{ path: file }] }) }))
+  session.append('assistant/message', { turn: 1, step: 1,
+    message: createAssistantMessage({ source: { provider: 'synthetic-fixture', model: 'not-a-model-call' }, content: calls }),
+    stream: calls.map((block, index) => ({ type: 'chunk', time: Date.now(), chunk: { type: 'block-end', index, block } })),
+  }, { surfaceOp: 'append' })
   for (const [index, file] of files.entries()) {
     const callId = `synthetic-publish-${index}`
     session.append('tool/call', { turn: 1, step: 1, callId, name: 'present', arguments: JSON.stringify({ files: [{ path: file }] }) })
