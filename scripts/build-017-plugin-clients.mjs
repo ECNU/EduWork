@@ -6,6 +6,7 @@ import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
+import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' } } })
@@ -131,6 +132,7 @@ for (const [folder, upstream] of [
     client = client.replace(from, to)
   }
   if (upstream === 'ui-conversation') {
+    client = adaptNativeFileReferenceUI(client)
     const badge = releaseIdentity('0.0.0-dev.core.17', runtimeReceipt.dshVersion).badge
     replaceOnce('"hero.headline": "探索未至之境"', '"hero.headline": "今天想一起完成什么？"')
     replaceOnce('"hero.headline": "Into the Unknown"', '"hero.headline": "What shall we accomplish today?"')

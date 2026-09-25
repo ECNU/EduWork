@@ -17,6 +17,7 @@ on:
       - 'scripts/probe-eduwork-017-settings.mjs'
       - 'scripts/build-017-plugin-clients.mjs'
       - 'scripts/native-preset-ui.mjs'
+      - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-017-source-product.mjs'
       - 'scripts/probe-017-source-product.mjs'
       - 'scripts/probe-017-deliverables.mjs'
@@ -56,6 +57,8 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
+          node --test core/dsh-plugins/tool-browser/test/*.test.mjs
+          if ($LASTEXITCODE) { throw 'Managed browser lifecycle checks failed' }
           node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
