@@ -15,7 +15,7 @@ for (const source of [repository, paths.runtime, paths.source, paths.dependencie
 }
 const json = async file => JSON.parse(await readFile(file, 'utf8'))
 const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
-if (receipt.dshVersion !== '0.1.7-rc.1' || receipt.dshCommit !== '46a7f68b0922371ce7144b668b90e377d8e799f4') throw new Error('Unqualified candidate Runtime')
+if (receipt.dshVersion !== '0.1.7-rc.2' || receipt.dshCommit !== '477b4f420553e8a52c2fbccc464d7561b239c443') throw new Error('Unqualified candidate Runtime')
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
 await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')

@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import { stripTypeScriptTypes } from 'node:module'
 import { parseArgs } from 'node:util'
 
-const upstreamCommit = '46a7f68b0922371ce7144b668b90e377d8e799f4'
+const upstreamCommit = '477b4f420553e8a52c2fbccc464d7561b239c443'
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 const sources = JSON.parse((await readFile(new URL('./upstream-inputs-017.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''))
 function replace(text, before, after) {
@@ -45,7 +45,9 @@ export function adaptNativeHostEntry(input) {
   // The product manifest owns its bundled extensions as well as DSH. Using
   // the CLI manifest here makes profile resolution omit all product packages.
   text = replace(text, "const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')", "const installAnchor = join(runtimeDir, 'package.json')")
-  text = text.replaceAll("'./update-tasks.ts'", "'./update-tasks.js'").replaceAll("'./office-engine.ts'", "'./office-engine.js'")
+  for (const module of ['update-tasks', 'office-engine', 'quit-inspection']) {
+    text = text.replaceAll(`'./${module}.ts'`, `'./${module}.js'`)
+  }
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
   text = replace(text, "args: ['--no-open', '--port', '19387'],", "args: ['--no-open', '--host', '127.0.0.1', '--port', '0'],")
   text = replace(text, `  await ctx.plugin(desktopOffice, {
@@ -85,6 +87,8 @@ export async function prepareNative({ upstream, output }) {
   const admission = replace(input['apps/desktop-host/src/update-tasks.ts'].replaceAll('\r\n', '\n'),
     '  })\n  return async (action) => {', '  }, true)\n  return async (action) => {')
   await emit('desktop-host/lib/update-tasks.js', transform(admission))
+  await emit('desktop-host/lib/quit-inspection.js', transform(input['apps/desktop-host/src/quit-inspection.ts']
+    .replaceAll("'./update-tasks.ts'", "'./update-tasks.js'")))
   await emit('desktop-host/lib/office-engine.js', transform(input['apps/desktop-host/src/office-engine.ts']))
   await emit('desktop-host/lib/settings-migration.mjs', await readFile(new URL('./settings-migration.mjs', import.meta.url), 'utf8'))
   const manifest = JSON.parse(input['apps/desktop-host/package.json'])
@@ -92,7 +96,7 @@ export async function prepareNative({ upstream, output }) {
   await emit('desktop-host/package.json', JSON.stringify(manifest, null, 2) + '\n')
   await emit('LICENSE-DeepSeek', input.LICENSE)
   await emit('desktop-host/LICENSE', input.LICENSE)
-  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.7-rc.1', protocolVersion: 4,
+  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.7-rc.2', protocolVersion: 4,
     sources, outputs, nodeVersion: process.version, adaptations: ['private-stdin-bootstrap', 'bounded-redacted-log-callback',
       'loopback-ephemeral-port', 'recoverable-product-settings-migration', 'composition-owned-office-and-accounts', 'prepend-update-admission'] }
   await emit('receipt.json', JSON.stringify(receipt, null, 2) + '\n')
@@ -101,7 +105,7 @@ export async function prepareNative({ upstream, output }) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const { values } = parseArgs({ options: { upstream: { type: 'string' }, output: { type: 'string' } } })
-  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned rc.1 source> --output <new directory>')
+  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned rc.2 source> --output <new directory>')
   await prepareNative({ upstream: resolve(values.upstream), output: resolve(values.output) })
   console.log('Prepared pinned 0.1.7 Web Host and HTTP transport.')
 }

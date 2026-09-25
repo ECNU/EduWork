@@ -12,7 +12,7 @@
 
 每次运行在证据目录中创建独立 `run-*`，不连接现有 CDP，不使用已有用户目录，也不重启其他桌面进程。测试只读使用传入的冻结产品，临时 Profile 链接到该产品；不会复制或修改产品 Runtime。测试完成后只清理本次合成身份配置和保险库文件，保留脱敏结果与运行目录便于排查。分享时仅需要 `result.json`。
 
-实际运行链为 Electron `safeStorage` → 产品 `EncryptedVault` / native bridge → `credentials-native` → 官方 DesktopHostProcess → OIDC desktop → localhost IdP。0.1.5 使用协议 3 字节管道，0.1.7-rc.1 候选使用经过认证的本地 HTTP 传输。存储和加密均为真实实现，IdP 使用本次生成的 RSA 密钥签名并核对 PKCE。
+实际运行链为 Electron `safeStorage` → 产品 `EncryptedVault` / native bridge → `credentials-native` → 官方 DesktopHostProcess → OIDC desktop → localhost IdP。0.1.5 使用协议 3 字节管道，0.1.7-rc.2 候选使用经过认证的本地 HTTP 传输。存储和加密均为真实实现，IdP 使用本次生成的 RSA 密钥签名并核对 PKCE。
 
 验收覆盖：
 

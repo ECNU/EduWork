@@ -15,7 +15,7 @@ if (!values.runtime || !values.output) throw new Error('Use --runtime <prepared 
 const runtime = resolve(values.runtime), output = resolve(values.output)
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
-const contractRoot = join(repository, 'third_party/dsh/candidate-v0.1.7-rc.1')
+const contractRoot = join(repository, 'third_party/dsh/candidate-v0.1.7-rc.2')
 const lock = await json(join(contractRoot, 'LOCK.json'))
 const manifest = await json(join(contractRoot, 'npm-runtime/package.json'))
 const packageLockBytes = await readFile(join(contractRoot, 'npm-runtime/package-lock.json'))

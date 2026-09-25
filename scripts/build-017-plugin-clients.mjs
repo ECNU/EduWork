@@ -17,7 +17,7 @@ if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-if (runtimeReceipt.dshVersion !== '0.1.7-rc.1' || runtimeReceipt.dshCommit !== '46a7f68b0922371ce7144b668b90e377d8e799f4') throw new Error('This build requires the pinned candidate Runtime')
+if (runtimeReceipt.dshVersion !== '0.1.7-rc.2' || runtimeReceipt.dshCommit !== '477b4f420553e8a52c2fbccc464d7561b239c443') throw new Error('This build requires the pinned candidate Runtime')
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.

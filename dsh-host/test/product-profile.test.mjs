@@ -39,7 +39,7 @@ test('mail, memory and literature settings reach installed bundle rows without a
 
 test('rc.1 reads independent request and subagent defaults below saved UI choices', async t => {
   const { root, product, home } = await fixture(t)
-  await writeFile(join(product, 'assembly.json'), JSON.stringify({ distribution: 'eduwork', dshVersion: '0.1.7-rc.1', dshCommit: '46a7f68b0922371ce7144b668b90e377d8e799f4', bundles: ['@deepseek-ai/dsh-base'] }))
+  await writeFile(join(product, 'assembly.json'), JSON.stringify({ distribution: 'eduwork', dshVersion: '0.1.7-rc.2', dshCommit: '477b4f420553e8a52c2fbccc464d7561b239c443', bundles: ['@deepseek-ai/dsh-base'] }))
   // JSON is sufficient for the synthetic bundle; the real Host probe covers YAML.
   const yaml = join(product, 'd/node_modules/yaml')
   await mkdir(yaml, { recursive: true })
