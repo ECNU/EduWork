@@ -2,6 +2,7 @@ import {spawn} from 'node:child_process'
 import {createInterface} from 'node:readline'
 import {mkdir,readFile,writeFile} from 'node:fs/promises'
 import {join} from 'node:path'
+import {updaterStartupError} from './startup-failure.mjs'
 
 export function portableUpdateEdition({configuration={},version,prior=null,distribution='eduwork'}) {
  let edition={schemaVersion:1,enabled:false,manifestBaseURL:'',defaultPolicy:'stable',target:'windows-amd64',flavor:'offline',allowShellMigration:true,distribution}
@@ -50,14 +51,24 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
  return result
 }
 
-export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform}) {
+export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform,spawnProcess=spawn}) {
  if(platform!=='win32')return null
  const state=join(root,'data/state/updates')
  const prior=await readFile(join(root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
  const configuration=resolveUpdateConfiguration(defaults,updates,prior)
  const edition=portableUpdateEdition({configuration,version,prior,distribution})
  await mkdir(state,{recursive:true});const path=join(state,'electron-edition.json');await writeFile(path,JSON.stringify(edition))
- const child=spawn(join(root,'resources/update/EduWork-Updater.exe'),['serve','--root',root,'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
+ const executable=join(root,'resources/update/EduWork-Updater.exe')
+ let child
+ try {
+  child=spawnProcess(executable,['serve','--root',root,'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
+  // Wait for OS process creation before writing to stdin. On denied/missing
+  // executables, Node emits an async error and writing early can also emit EPIPE.
+  await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject)})
+ } catch(error) {
+  child?.stdin?.destroy()
+  throw updaterStartupError(executable,error)
+ }
  let sequence=0,exited=false,closing=false,lastError='';const pending=new Map()
  child.stderr.on('data',chunk=>{lastError=(lastError+chunk).slice(-4096)})
  const done=new Promise(resolve=>{
@@ -65,6 +76,7 @@ export async function startPortableUpdates({root,updates={},defaults={},version,
   child.once('exit',finish)
   child.once('error',error=>{lastError=error.message;finish()})
  })
+ child.stdin.on('error',error=>{lastError=error.message;for(const value of pending.values())value.reject(error);pending.clear()})
  const lines=createInterface({input:child.stdout});lines.on('line',line=>{
   let reply;try{reply=JSON.parse(line)}catch{return}
   if(reply.event==='quit-for-update'){onQuit();return}
