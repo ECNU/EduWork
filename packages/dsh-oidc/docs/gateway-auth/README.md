@@ -6,13 +6,14 @@ LiteLLM native OAuth 和默认关闭的 [oidc-llm 实验适配器](experimental-
 
 ## 选择接入方式
 
-配置已有 LiteLLM 网关请从 [LiteLLM 接入指南](litellm-setup.md)开始；本页描述底层协议和宿主集成要求。
+模型接入有两条路线：机构模型平台可参考 [oidc-llm 草案与实验接入](experimental-oidc-llm.md)，已有 LiteLLM 网关可从 [LiteLLM 接入指南](litellm-setup.md)开始。本页描述底层协议和宿主集成要求。
 
 | 服务端 | 配置 | 模型凭据 | 客户端注册 |
 | --- | --- | --- | --- |
-| 纯身份 OIDC | 仅 oidc，不配置 provider | 无机构模型凭据 | 预注册 public client |
-| LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | 登录返回的 Access Token | 每次登录动态注册实际本机回调 |
 | oidc-llm 0.1 实验 | `auth` + 显式实验开关与身份模式 | Access Token | 已实现预注册 public client |
+| LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | 登录返回的 Access Token | 每次登录动态注册实际本机回调 |
+
+另保留纯身份 OIDC：仅配置 `oidc`，不配置 `provider`，使用预注册 public client。该模式只验证身份、不提供机构模型，故不计入上述两条模型接入路线。oidc-llm 内部的 `oidc` / `oauth` 则是同一草案的身份模式。
 
 LiteLLM 不需要实现 EduWork 的 Key Binding。普通 OIDC 的 Access Token 也不会因为配置了模型 URL 就获得推理权限；须配置明确的 Token 网关契约。配额和团队管理不纳入本次统一协议；LiteLLM 自己的团队选择留在网关网页，客户端仅保存不透明的授权上下文用于防止刷新串号。
 
