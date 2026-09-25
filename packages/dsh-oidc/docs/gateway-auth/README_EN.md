@@ -6,13 +6,14 @@ LiteLLM native OAuth and the opt-in [experimental oidc-llm adapter](experimental
 
 ## Choose a connection
 
-Start with the [LiteLLM setup guide](litellm-setup.en.md) to configure an existing gateway. This page describes the underlying protocol and Host integration requirements.
+There are two model-access routes: institution model platforms can consult the [oidc-llm draft and experimental adapter](experimental-oidc-llm.en.md); existing LiteLLM deployments can start with the [LiteLLM setup guide](litellm-setup.en.md). This page describes the underlying protocol and Host integration requirements.
 
 | Server | Configuration | Model credential | Client registration |
 | --- | --- | --- | --- |
-| Identity-only OIDC | oidc without provider | No organization model credential | Pre-registered public client |
-| LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | Login Access Token | Dynamically register the actual callback on each login |
 | Experimental oidc-llm 0.1 | `auth` with explicit opt-in and identity mode | Access Token | Static public client implemented |
+| LiteLLM 1.101.0 native contract 1 | `auth.discoveryUrl` | Login Access Token | Dynamically register the actual callback on each login |
+
+Identity-only OIDC is retained separately: configure `oidc` without `provider`, using a pre-registered public client. It authenticates identity without providing institution models, so it is not counted as a third model-access route. The `oidc` and `oauth` options within oidc-llm are identity modes of the same draft.
 
 Quota standardization and team management are outside this integration. LiteLLM handles its own team choice in the gateway page; the adapter retains its opaque authorization context solely to detect an unexpected identity change during refresh. An ordinary OIDC Access Token does not automatically authorize model inference.
 
@@ -61,7 +62,7 @@ Model calls bind to the current authorization when prepared. After logout or acc
 
 Identity-only OIDC and the oidc-llm OIDC mode share issuer, PKCE, state, nonce, RS256 ID Token and matching UserInfo subject validation. Key Binding and legacy credential-name migration have been removed; model authorization uses gateway Tokens. See the [existing server contract](../server-integration-contract.md) and [Profile reference](../enterprise-profile.md). These checks were not weakened for LiteLLM.
 
-The oidc-llm adapter discovers `userinfo_endpoint` and reuses standard subject and identity claims. See [experimental integration](experimental-oidc-llm.en.md) for configuration and actual limits. Scope, lifetimes and revocation guarantees remain under review in the [draft](oidc-llm-draft.en.md). Do not migrate an existing institution configuration before real-server acceptance.
+The oidc-llm adapter implements Token-based model access and optional full OIDC identity validation, with ChatECNU as a reference deployment adopting the draft. See [experimental integration](experimental-oidc-llm.en.md) for configuration and client limits. The [draft](oidc-llm-draft.en.md) documents current scopes, static registration, early refresh based on server-provided expiry and logout revocation, while leaving dynamic registration, refresh families and stream behavior at expiry to future contracts. Other servers need separate acceptance, and existing deployments require explicit migration.
 
 ## Validation
 
