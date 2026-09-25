@@ -6,6 +6,7 @@ import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
+import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' } } })
@@ -17,7 +18,7 @@ if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-if (runtimeReceipt.dshVersion !== '0.1.7-rc.1' || runtimeReceipt.dshCommit !== '46a7f68b0922371ce7144b668b90e377d8e799f4') throw new Error('This build requires the pinned candidate Runtime')
+if (runtimeReceipt.dshVersion !== '0.1.7-rc.2' || runtimeReceipt.dshCommit !== '477b4f420553e8a52c2fbccc464d7561b239c443') throw new Error('This build requires the pinned candidate Runtime')
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
@@ -131,6 +132,7 @@ for (const [folder, upstream] of [
     client = client.replace(from, to)
   }
   if (upstream === 'ui-conversation') {
+    client = adaptNativeFileReferenceUI(client)
     const badge = releaseIdentity('0.0.0-dev.core.17', runtimeReceipt.dshVersion).badge
     replaceOnce('"hero.headline": "探索未至之境"', '"hero.headline": "今天想一起完成什么？"')
     replaceOnce('"hero.headline": "Into the Unknown"', '"hero.headline": "What shall we accomplish today?"')

@@ -7,6 +7,7 @@ import { join, isAbsolute } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
+import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
@@ -30,7 +31,6 @@ export function configureWindowNavigation(window) {
 }
 
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
-let quitComplete = false
 let migrationLaunch
 let updateCompleted = false
 let portableUpdates
@@ -39,9 +39,21 @@ let publisher
 let taskNotifications, notificationAdapter
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
-function restartDesktop() {
-  app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
-  app.quit()
+let confirmQuit = async () => true
+const desktopExit = new DesktopExit({
+  confirm: () => confirmQuit(),
+  close: async () => {
+    void contentUpdates?.close()
+    await lifecycle.close()
+    taskNotifications?.close()
+    tray?.destroy(); tray = undefined
+  },
+  relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
+  quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
+})
+export function setDesktopQuitGuard(guard) { confirmQuit = guard }
+export function restartDesktop() {
+  desktopExit.restart()
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
@@ -57,6 +69,7 @@ export function configureEduworkPaths() {
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
   applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
+  app.setAppLogsPath(paths.logs)
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
@@ -65,17 +78,9 @@ export function configureEduworkPaths() {
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
   app.on('before-quit', event => {
-    if (quitComplete) return
+    if (desktopExit.complete) return
     event.preventDefault()
-    if (lifecycle.closing) return
-    void contentUpdates?.close()
-    void (async () => {
-      await lifecycle.close()
-      taskNotifications?.close()
-      tray?.destroy(); tray = undefined
-      quitComplete = true
-      app.quit()
-    })()
+    void desktopExit.request()
   })
 }
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
@@ -115,8 +120,8 @@ async function prepareDesktop() {
     policy: preferences?.policy ?? user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
   const software = process.platform === 'darwin' ? startMacSparkleUpdates({ appPath:app.getAppPath(), version:settings.productVersion, enabled:settings.macSparkle?.enabled === true && user.updates.provider !== 'disabled', feeds:updateDefaults.macFeeds, policy:contentUpdates.policy, onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true}); await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
-  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,onPolicy:async policy=>{
+  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>desktopExit.handoff()})
+  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,beforeInstall:()=>confirmQuit(),onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }})

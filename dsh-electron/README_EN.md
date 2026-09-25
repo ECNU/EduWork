@@ -8,6 +8,19 @@ An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share th
 
 The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.
 
+An explicit `--native-017` build uses the [DSH 0.1.7-rc.2 candidate lock](../third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json): the core, Web client, Desktop Host and desktop modules all come from `477b4f420553e8a52c2fbccc464d7561b239c443`. It reuses the official window factory, complete preload bridge, isolated browser guests, shortcuts, directory picker, theme and locale synchronization, Host lifecycle, quit confirmation and fatal recovery. Build receipts record input hashes and product adaptations.
+
+Product adapters retain organization login, encrypted credentials, portable updates, signed configuration and skill updates, task notifications and Studio. Microphone access retains upstream owner-window, main-frame and OS checks; other permissions default to denial except clipboard writes from the application main frame. External pages use isolated native guests without bypassing CSP or X-Frame-Options. Recovery offers exit/restart, without disabling essential distribution plugins. This is not a repackaged official installer and does not inherit its signature. Default release locks and update feeds remain unchanged.
+
+The candidate shell requires source, Host and npm Runtime prepared from the same lock, without the old desktop source or a shared compiler cache:
+
+```powershell
+node dsh-electron/scripts/build-shell.mjs --native-017 --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
+```
+
+`$ElectronExecutable` must be the pristine Electron runtime executable, not a packaged application's EXE. Output directories must not exist. The [candidate CI](../.github/workflows/validate-core-017.yml) builds and runs real Electron on Windows/macOS against synthetic pages to check native bridges, frame-protected pages, permission boundaries and lifecycle behavior. Real organization login, OS microphone consent, update installation and manual macOS interactions still need separate acceptance.
+
 Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 
 On macOS, the running Dock icon and the next startup window’s icon and progress bar follow the red/blue color scheme. The startup preference is cached in `visual-style.json` in the application user-data directory; the app bundle and signature stay unchanged. A native Dock tile plugin reads the same cache after the app exits, retaining the selected color. Finder and Launchpad retain the default brand icon; Stage Manager synchronization is not guaranteed. After first upgrading to a version with the Dock plugin, remove and re-add an existing pinned tile if it still reverts to the default color, so the Dock loads the plugin.

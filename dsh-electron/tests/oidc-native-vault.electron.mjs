@@ -143,7 +143,7 @@ try {
   summaries.electron = process.versions.electron
   summaries.platform = process.platform
   const sourceIdentity = JSON.parse(await readFile(join(sourceProduct, 'assembly.json'), 'utf8'))
-  const native = sourceIdentity.dshVersion === '0.1.7-rc.1'
+  const native = sourceIdentity.dshVersion === '0.1.7-rc.2'
   summaries.transport = native ? 'electron-chromium-http' : 'desktop-byte-pipe'
   summaries.dshVersion = sourceIdentity.dshVersion
   summaries.oidcVersion = JSON.parse(await readFile(join(sourceProduct, 'd/node_modules/@eduwork/dsh-oidc/package.json'), 'utf8')).version

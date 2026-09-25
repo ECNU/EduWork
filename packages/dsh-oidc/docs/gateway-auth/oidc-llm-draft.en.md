@@ -142,12 +142,12 @@ Use OAuth errors `invalid_request`, `invalid_client`, `invalid_grant`, `invalid_
 
 ## 8. ChatECNU reference deployment
 
-ChatECNU is a reference deployment adopting this draft, not the only permitted service. Its [public discovery document](https://chat.ecnu.edu.cn/.well-known/openid-configuration), checked on 2026-09-25, advertises:
+ChatECNU is a reference deployment adopting this draft, not the only permitted service. Its public discovery document, checked on 2026-09-25, advertises the following metadata. The institution edition supplies the deployment address, represented here as `{issuer}`; discovery is served at `{issuer}/.well-known/openid-configuration`:
 
 | Item | Public metadata |
 | --- | --- |
-| issuer / resource | `https://chat.ecnu.edu.cn` |
-| Model API base | `https://chat.ecnu.edu.cn/open/api/v1` |
+| issuer / resource | `{issuer}`, identical for both fields |
+| Model API base | `{issuer}/open/api/v1` |
 | Extension version | `oidc_llm.version: "0.1"` |
 | Identity modes | `oauth`, `oidc`; EduWork@ECNU explicitly selects `oidc` |
 | Client registration | `static`, public-client authentication `none` |

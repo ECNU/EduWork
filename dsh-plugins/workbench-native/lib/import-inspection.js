@@ -7,7 +7,11 @@ import { sessionFrames } from './import-zstd.js'
 import { normalizeLegacyImportRow } from './import-legacy.js'
 const decompress = promisify(zstdDecompress)
 
-export const loadImportFormats = async () => (await import('@deepseek-ai/dsh-session-format-catalog')).sessionFormatCatalog
+export async function loadImportFormats(load = name => import(name)) {
+  const module = await load('@deepseek-ai/dsh-session-format-catalog')
+  return { ...module.sessionFormatCatalog, historical: module.historicalSessionFormatCatalog,
+    forChildren: module.createSessionFormatCatalogWithChildren }
+}
 
 // Inspect every physical candidate, including names that the normal DSH list
 // hides. A future generation must never fall back to an older copy silently.
@@ -55,8 +59,10 @@ async function* lines(path, compression) {
   if (pending) yield pending.replace(/\r$/, '')
 }
 
-export async function inspectSession(candidate, formats) {
-  const before = await lstat(candidate.path)
+const sameFile = (before, after) => ['dev', 'ino', 'size', 'mtimeNs', 'ctimeNs'].every(key => before[key] === after[key])
+
+export async function inspectSession(candidate, formats, { onHeader = () => {} } = {}) {
+  const before = await lstat(candidate.path, { bigint: true })
   let restore, line = 0, legacyDescriptors = 0
   for await (const text of lines(candidate.path, candidate.compression)) {
     line++
@@ -68,6 +74,7 @@ export async function inspectSession(candidate, formats) {
       if (result.status === 'malformed') throw Error(`会话头无效：${result.reason}`)
       if (result.storedVersion !== candidate.version) throw Error(`文件名是 v${candidate.version}，会话头是 v${result.storedVersion}，版本不一致`)
       if (result.header.id !== basename(dirname(candidate.path))) throw Error('会话 ID 与所在目录不一致')
+      onHeader(result.header, before)
       restore = formats.createRestore(row, { recovery: 'strict', validation: 'current' })
     } else {
       const normalized = normalizeLegacyImportRow(row, candidate.version)
@@ -76,9 +83,50 @@ export async function inspectSession(candidate, formats) {
     }
   }
   if (!restore) throw Error('会话文件为空')
-  const artifact = restore.finish(), after = await lstat(candidate.path)
-  if (before.size !== after.size || before.mtimeMs !== after.mtimeMs) throw Error('检查期间来源文件发生变化，请退出旧客户端再重试')
+  const artifact = restore.finish(), after = await lstat(candidate.path, { bigint: true })
+  if (!sameFile(before, after)) throw Error('检查期间来源文件发生变化，请退出旧客户端再重试')
   return { ...artifact, legacyDescriptors }
+}
+
+// V4 migration needs the complete direct-child inventory of ONE source home.
+// Decode historical evidence with the official V0–V3 catalog first; discard
+// bodies after extracting descriptors, then let the official V4 edge migrate.
+export async function prepareImportCatalogs(groups, formats, checkPath, progress = () => {}) {
+  const errors = new Map(), children = new Map(), witnesses = new Map()
+  if (!formats.forChildren) {
+    if (formats.currentVersion >= 4) throw Error('当前 Runtime 缺少旧会话关系迁移接口，请使用完整客户端重试')
+    return { errors, forSession: () => formats, validate: async () => {} }
+  }
+  for (const group of groups) {
+    const candidate = group[0]
+    let header, artifact
+    progress(candidate)
+    try {
+      await checkPath(candidate.path)
+      if (group[1]?.version === candidate.version) throw Error('同一代会话存在多份编码文件，无法确定应使用哪份；请先在来源客户端整理')
+      artifact = await inspectSession(candidate, candidate.version <= 3 ? formats.historical : formats, {
+        onHeader(value, identity) { header = value; witnesses.set(candidate.path, identity) },
+      })
+    } catch (error) { errors.set(candidate.path, error) }
+    if (header?.origin !== 'subagent' || !header.parentSession) continue
+    const descriptors = artifact?.events.filter(event => event.type === 'subagent/descriptor' && event.seq >= artifact.inheritedEventCount) ?? []
+    const facts = children.get(header.parentSession) ?? []
+    // A readable child header with an unreadable body remains an explicit
+    // unknown child, matching native persistence; the child itself is excluded.
+    facts.push({ childId: header.id, childCreatedAt: header.createdAt,
+      descriptorCount: descriptors.length, descriptor: descriptors[0]?.data ?? null })
+    children.set(header.parentSession, facts)
+  }
+  return {
+    errors,
+    forSession: candidate => formats.forChildren(children.get(basename(dirname(candidate.path))) ?? []),
+    async validate() {
+      for (const [path, before] of witnesses) {
+        if (!sameFile(before, await lstat(path, { bigint: true })))
+          throw Error('检查期间来源文件发生变化，请退出旧客户端再重试')
+      }
+    },
+  }
 }
 
 // Product version is supplementary metadata only. Missing release metadata
