@@ -34,13 +34,13 @@ for (const file of files) {
   let text = before.toString('utf8')
   if (file === 'apps/desktop/src/main.ts') {
     const replace = (from, to) => { if (text.split(from).length !== 2) throw new Error('Official Electron anchor changed: ' + from.slice(0, 80)); text = text.replace(from, to) }
-    replace("import { DesktopHostProcess } from './host-process.ts'", "import { DesktopHostProcess } from './eduwork-host-process.mjs'\nimport { configureEduworkPaths, prepareEduworkDesktop, nativeBootstrap, desktopReady, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation, showDesktopFailure, checkProductUpdates } from './product.mjs'\nimport { fetchDesktopProtocolResponse } from './media-transport.mjs'")
+    replace("import { DesktopHostProcess } from './host-process.ts'", "import { DesktopHostProcess } from './eduwork-host-process.mjs'\nimport { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation, showDesktopFailure, checkProductUpdates } from './product.mjs'\nimport { fetchDesktopProtocolResponse } from './media-transport.mjs'")
     replace('  const checkAndPrompt = async (manual: boolean): Promise<void> => {', '  const checkAndPrompt = async (manual: boolean): Promise<void> => {\n    if (manual) await checkProductUpdates()\n    return\n    // Upstream installer updates are inactive for the portable product distribution.')
     replace("const SCHEME = 'dsh-app'", "configureEduworkPaths()\nconst SCHEME = 'dsh-app'")
     // macOS routes standard editing shortcuts through native menu roles.
     // Keep the application menu first and preserve other platforms' menus.
     replace("      { role: 'quit' },\n    ],\n  }]))", "      { role: 'quit' },\n    ],\n  }, ...(process.platform === 'darwin' ? [{ role: 'editMenu' as const }] : [])]))")
-    replace('  const resources = runtimeResources()', '  const product = await prepareEduworkDesktop()\n  const resources = { ...runtimeResources(), node: product.node }')
+    replace('  const resources = runtimeResources()', '  if (await installEduworkFromDmg()) return\n  const product = await prepareEduworkDesktop()\n  const resources = { ...runtimeResources(), node: product.node }')
     replace('  const development = developmentProject()', '  const development = product.profile')
     replace('new DesktopHostProcess(resources.node, projectDir, hostInspectPort)', 'new DesktopHostProcess(resources.node, projectDir, hostInspectPort, { bootstrap: nativeBootstrap(), allowLinkedProfile: true, onLog: desktopHostLog })')
     replace('    await next.start()', "    trackHost(next)\n    await next.start()\n    if (isQuitting()) throw new Error('Desktop is shutting down')")

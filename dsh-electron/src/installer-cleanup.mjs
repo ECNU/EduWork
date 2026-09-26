@@ -1,8 +1,9 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
-import { readFile, writeFile, mkdtemp, rm, readdir, realpath, stat } from 'node:fs/promises'
-import { join, basename, extname } from 'node:path'
+import { readFile, writeFile, mkdtemp, rm, realpath, stat } from 'node:fs/promises'
+import { join, extname, isAbsolute } from 'node:path'
 import { tmpdir } from 'node:os'
+import { setTimeout as delay } from 'node:timers/promises'
 
 const exec = promisify(execFile)
 const command = (file, args) => exec(file, args, { timeout: 30000, maxBuffer: 4 * 1024 * 1024 })
@@ -26,62 +27,85 @@ async function signature(appPath) {
   return hash
 }
 
-export async function findInstaller(appPath, images, identify = signature) {
-  if (!images.length) return null
-  const installed = await realpath(appPath)
-  const identity = await identify(installed)
-  const matches = []
+const mountsOf = image => (image['system-entities'] ?? []).map(row => row['mount-point']).filter(Boolean)
+async function imageIdentity(path) {
+  const file = await stat(path)
+  if (!file.isFile()) throw new Error('安装镜像不是普通文件。')
+  return { device: file.dev, inode: file.ino, size: file.size, modified: file.mtimeMs }
+}
+async function checkImage(candidate) {
+  const current = await imageIdentity(candidate.imagePath)
+  if (Object.keys(current).some(key => current[key] !== candidate[key])) throw new Error('安装镜像已变化，保留文件供手动检查。')
+}
+
+export async function sourceInstaller(appPath, images, identify = signature) {
+  const source = await realpath(appPath)
   for (const image of images) {
-    const mounts = (image['system-entities'] ?? []).map(row => row['mount-point']).filter(Boolean)
+    const mounts = mountsOf(image)
     if (mounts.length !== 1 || extname(image['image-path'] ?? '').toLowerCase() !== '.dmg') continue
-    try {
-      const mount = await realpath(mounts[0])
-      if (installed.startsWith(mount + '/')) continue
-      const apps = (await readdir(mount)).filter(name => name.endsWith('.app'))
-      if (apps.length !== 1) continue
-      const candidate = await realpath(join(mount, apps[0]))
-      if (!candidate.startsWith(mount + '/') || await identify(candidate) !== identity) continue
-      const imagePath = await realpath(image['image-path'])
-      const file = await stat(imagePath)
-      if (!file.isFile()) continue
-      matches.push({ mount, imagePath, identity, device: file.dev, inode: file.ino, size: file.size, modified: file.mtimeMs })
-    } catch { /* Unreadable or unrelated images are not installation candidates. */ }
+    const mount = await realpath(mounts[0]).catch(() => null)
+    if (!mount || !source.startsWith(mount + '/')) continue
+    const imagePath = await realpath(image['image-path'])
+    return { imagePath, identity: await identify(source), ...await imageIdentity(imagePath) }
   }
-  return matches.length === 1 ? matches[0] : null
+  return null
 }
 
-export async function cleanInstaller(candidate, { images = mountedImages, identify = signature, appPath, eject, trash }) {
-  // Recheck after the dialog: a volume or image may have been replaced meanwhile.
-  const current = await findInstaller(appPath, await images(), identify)
-  if (!current || Object.keys(candidate).some(key => candidate[key] !== current[key])) throw new Error('安装镜像已变化，请手动检查。')
-  await eject(current.mount)
-  const file = await stat(current.imagePath)
-  if (file.dev !== current.device || file.ino !== current.inode || file.size !== current.size || file.mtimeMs !== current.modified) throw new Error('安装卷已推出，但镜像文件已变化，请手动清理。')
-  await trash(current.imagePath)
-}
-
-export async function offerInstallerCleanup({ app, window, shell, dialog, appPath,
-  images = mountedImages, identify = signature, platform = process.platform,
-  eject = mount => command('/usr/bin/hdiutil', ['detach', mount]) }) {
-  if (platform !== 'darwin' || !app.isPackaged || !app.isInApplicationsFolder()) return
-  const statePath = join(app.getPath('userData'), 'installer-cleanup.json')
-  const candidate = await findInstaller(appPath, await images(), identify)
-  if (!candidate || !window || window.isDestroyed()) return
-  try {
-    if (JSON.parse(await readFile(statePath, 'utf8')).identity === candidate.identity) return
-  } catch (error) { if (error.code !== 'ENOENT' && !(error instanceof SyntaxError)) throw error }
-  const { response } = await dialog.showMessageBox(window, {
-    type: 'question', title: '清理安装文件', message: '安装已完成，是否清理安装文件？',
-    detail: `将推出安装卷“${basename(candidate.mount)}”，并将以下镜像移到废纸篓：\n${candidate.imagePath}\n\n不会删除已安装的应用。`,
-    buttons: ['推出并移到废纸篓', '保留'], defaultId: 0, cancelId: 1,
-  })
-  if (response === 0) {
+export async function cleanInstaller(candidate, { appPath, images = mountedImages, identify = signature,
+  eject = mount => exec('/usr/bin/hdiutil', ['detach', mount], { timeout: 2000 }), trash, wait = delay }) {
+  if (!candidate || !isAbsolute(candidate.imagePath ?? '') || extname(candidate.imagePath).toLowerCase() !== '.dmg' ||
+      !['device', 'inode', 'size', 'modified'].every(key => Number.isFinite(candidate[key])) ||
+      await identify(appPath) !== candidate.identity) throw new Error('无法确认安装镜像来源，保留文件。')
+  const installed = await realpath(appPath)
+  for (let attempt = 0; attempt < 25; attempt++) {
+    await checkImage(candidate)
+    const mounts = []
+    for (const image of await images()) {
+      if (await realpath(image['image-path']).catch(() => null) === candidate.imagePath) {
+        mounts.push(...await Promise.all(mountsOf(image).map(mount => realpath(mount))))
+      }
+    }
+    if (mounts.length > 1 || mounts.some(mount => installed.startsWith(mount + '/'))) throw new Error('安装卷仍在使用，保留文件。')
     try {
-      await cleanInstaller(candidate, { appPath, images, identify, eject, trash: path => shell.trashItem(path) })
+      for (const mount of mounts) await eject(mount)
+      break
     } catch (error) {
-      if (!window.isDestroyed()) await dialog.showMessageBox(window, { type: 'warning', title: '未能完成清理', message: '请手动检查安装卷和 DMG 文件。', detail: error.message })
-      return
+      if (attempt === 24) throw error
+      // The source process may still be exiting after Electron relaunches the installed app.
+      await wait(250)
     }
   }
-  await writeFile(statePath, JSON.stringify({ identity: candidate.identity }), { mode: 0o600 })
+  await checkImage(candidate)
+  await trash(candidate.imagePath)
+}
+
+export async function installFromDmg({ app, shell, dialog, appPath,
+  images = mountedImages, identify = signature, platform = process.platform, eject, wait,
+  warn = message => console.warn(message) }) {
+  if (platform !== 'darwin' || !app.isPackaged) return false
+  const statePath = join(app.getPath('userData'), 'pending-source-dmg-cleanup.json')
+  if (app.isInApplicationsFolder()) {
+    try {
+      const candidate = JSON.parse(await readFile(statePath, 'utf8'))
+      await cleanInstaller(candidate, { appPath, images, identify, eject, wait, trash: path => shell.trashItem(path) })
+      await rm(statePath, { force: true })
+    } catch (error) {
+      if (error.code === 'ENOENT') await rm(statePath, { force: true })
+      else warn(`安装文件未清理，可手动推出安装卷并移到废纸篓：${error.message}`)
+    }
+    return false
+  }
+  const candidate = await sourceInstaller(appPath, await images(), identify)
+  if (!candidate) return false
+  await writeFile(statePath, JSON.stringify(candidate), { mode: 0o600 })
+  app.releaseSingleInstanceLock()
+  try {
+    if (app.moveToApplicationsFolder()) return true
+    await rm(statePath, { force: true })
+  } catch (error) {
+    await rm(statePath, { force: true })
+    await dialog.showMessageBox({ type: 'error', message: '未能安装到“应用程序”目录', detail: `${error.message}\n可以重试，或将应用拖到“应用程序”目录后打开。` })
+  }
+  app.quit()
+  return true
 }
