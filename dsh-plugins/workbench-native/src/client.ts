@@ -14,6 +14,11 @@ export const inject = ['slots','remote','remote.skills','connection','sessions',
 const h = React.createElement
 const color = 'var(--dsw-alias-state-business-primary, #9f2636)'
 const border = 'var(--dsw-alias-border-l2, #e1e4eb)'
+const primary = 'var(--dsw-alias-label-primary, #352622)'
+const secondary = 'var(--dsw-alias-label-secondary, #75635c)'
+const surface = 'var(--dsw-alias-bg-layer-1, #fffaf7)'
+const mutedSurface = 'var(--dsw-alias-bg-layer-3, #f2ece8)'
+const danger = 'var(--dsw-alias-state-error-primary, #a82332)'
 const panelStyle = Object.freeze({
   position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center',
   background: 'rgba(32, 24, 21, 0.30)', backdropFilter: 'blur(4px)',
@@ -24,8 +29,8 @@ const cardStyle = Object.freeze({
   boxShadow: '0 22px 70px rgba(61, 35, 31, .18)', padding: 22, fontFamily: 'system-ui, sans-serif',
 })
 const buttonStyle = Object.freeze({
-  border: `1px solid ${border}`, borderRadius: 9, padding: '8px 12px', background: '#fffaf7',
-  color: '#352622', cursor: 'pointer', fontSize: 13,
+  border: `1px solid ${border}`, borderRadius: 9, padding: '8px 12px', background: surface,
+  color: primary, cursor: 'pointer', fontSize: 13,
 })
 const primaryStyle = Object.freeze({ ...buttonStyle, background: color, borderColor: color, color: 'white', fontWeight: 650 })
 
@@ -139,7 +144,7 @@ function SkillCenter({ service, embedded = false }) {
   const header = h('div', { style: { marginBottom: 18, display: 'flex', justifyContent: embedded ? 'flex-end' : 'space-between', alignItems: 'flex-start', gap: 16 } },
     !embedded && h('div', null,
       h('h3', { style: { margin: '0 0 5px', fontSize: 20 } }, '技能'),
-      h('p', { style: { margin: 0, color: '#75635c', fontSize: 13, lineHeight: 1.6 } },
+      h('p', { style: { margin: 0, color: secondary, fontSize: 13, lineHeight: 1.6 } },
         '按用途选择技能。在对话和 Studio 中创作，共用同一套制作与文件预览能力。'),
     ),
     h('div', { style: { display: 'flex', gap: 8, flex: 'none' } },
@@ -155,14 +160,14 @@ function SkillCenter({ service, embedded = false }) {
       onChange: event => setQuery(event.currentTarget.value),
       style: { boxSizing: 'border-box', width: '100%', height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 12px', marginBottom: 14, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: 'var(--dsw-alias-label-primary, #222)' },
     }),
-    error && h('p', { role: 'alert', style: { color: '#a82332', fontSize: 12 } }, error),
-    notice && h('p', { role: 'status', style: { color: '#357a55', fontSize: 12 } }, notice),
-    !service.hasSession() && h('p', { style: { color: '#8a766f', fontSize: 12 } }, '打开一个项目后，还会显示该项目专属的技能。'),
+    error && h('p', { role: 'alert', style: { color: danger, fontSize: 12 } }, error),
+    notice && h('p', { role: 'status', style: { color: 'var(--dsw-alias-state-success-primary, #357a55)', fontSize: 12 } }, notice),
+    !service.hasSession() && h('p', { style: { color: secondary, fontSize: 12 } }, '打开一个项目后，还会显示该项目专属的技能。'),
     rows.length === 0 && h('p', { role: 'status' }, '没有匹配的技能。'),
     ...skillGroups.filter(group => rows.some(row => row.group === group.id)).map(group => h('section', {
       key: group.id, 'aria-label': group.label, style: { marginBottom: 22 },
     },
-    h('h4', { style: { margin: '0 0 10px', fontSize: 14, color: '#66534d' } }, group.label),
+    h('h4', { style: { margin: '0 0 10px', fontSize: 14, color: secondary } }, group.label),
     h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 } },
       ...rows.filter(row => row.group === group.id).map(row => h('article', {
         key: row.name,
@@ -172,27 +177,27 @@ function SkillCenter({ service, embedded = false }) {
       h('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 } },
         h('div', { style: { minWidth: 0 } },
           h('strong', { style: { display: 'block', fontSize: 14 } }, row.label),
-          h('code', { style: { display: 'block', marginTop: 2, color: '#8a766f', fontSize: 11 } }, row.name),
+          h('code', { style: { display: 'block', marginTop: 2, color: secondary, fontSize: 11 } }, row.name),
         ),
         h('button', {
           type: 'button', role: 'switch', 'aria-label': row.label, 'aria-checked': row.enabled, disabled: busy !== '' || !settings.writable,
           onClick: () => toggle(row),
-          style: { ...buttonStyle, flex: 'none', minWidth: 52, padding: '5px 9px', background: row.enabled ? color : '#f2ece8', color: row.enabled ? 'white' : '#75635c', borderColor: row.enabled ? color : border },
+          style: { ...buttonStyle, flex: 'none', minWidth: 52, padding: '5px 9px', background: row.enabled ? color : mutedSurface, color: row.enabled ? 'white' : secondary, borderColor: row.enabled ? color : border },
         }, busy === row.name ? '…' : row.enabled ? '已开启' : '已关闭'),
       ),
-      h('p', { style: { minHeight: 38, margin: '10px 0 8px', color: '#66534d', fontSize: 12, lineHeight: 1.55 } }, row.description),
-      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: '#8a766f', fontSize: 11 } },
+      h('p', { style: { minHeight: 38, margin: '10px 0 8px', color: secondary, fontSize: 12, lineHeight: 1.55 } }, row.description),
+      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: secondary, fontSize: 11 } },
         h('div', { style: { display: 'flex', gap: 7, flexWrap: 'wrap' } },
           h('span', null, row.source === 'builtin' ? '产品内置' : row.source === 'personal' ? '个人技能' : row.source === 'session' ? '会话可用' : '项目技能'),
-          !row.available && h('span', { style: { color: '#a26b22' } }, row.requirement || '需要配置相应服务'),
+          !row.available && h('span', { style: { color: secondary } }, row.requirement || '需要配置相应服务'),
         ),
         row.removable && h('button', {
           type: 'button', disabled: busy !== '',
           onClick: () => { setError(''); setNotice(''); setPendingRemoval(row) },
-          style: { ...buttonStyle, flex: 'none', padding: '4px 8px', borderColor: '#edc9cd', background: '#fff7f7', color: '#a82332', fontSize: 11 },
+          style: { ...buttonStyle, flex: 'none', padding: '4px 8px', borderColor: border, background: surface, color: danger, fontSize: 11 },
         }, '移除'),
       ),
-      row.variants.length > 0 && h('details', { style: { marginTop: 10, fontSize: 12, color: '#66534d' } },
+      row.variants.length > 0 && h('details', { style: { marginTop: 10, fontSize: 12, color: secondary } },
         h('summary', { style: { cursor: 'pointer' } }, '已安装的自定义版本'),
         ...row.variants.map(variant => h('div', { key: `${variant.source}:${variant.name}`, style: { marginTop: 10 } },
           h('strong', null, variant.name),
@@ -212,7 +217,7 @@ function SkillCenter({ service, embedded = false }) {
           h('div', null,
             h('div', { style: { color, fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'PERSONAL SKILL'),
             h('h2', { style: { margin: '5px 0 4px', fontSize: 22 } }, '创建个人技能'),
-            h('p', { style: { margin: 0, color: '#75635c', fontSize: 12, lineHeight: 1.55 } }, '创建后立即进入 DSH 标准技能目录，可随时关闭。'),
+            h('p', { style: { margin: 0, color: secondary, fontSize: 12, lineHeight: 1.55 } }, '创建后立即进入 DSH 标准技能目录，可随时关闭。'),
           ),
           h('button', { type: 'button', disabled: busy === 'create', 'aria-label': '关闭', onClick: () => setCreateOpen(false), style: { ...buttonStyle, padding: '5px 9px' } }, '×'),
         ),
@@ -220,24 +225,24 @@ function SkillCenter({ service, embedded = false }) {
           h('input', {
             value: draft.name, required: true, maxLength: 64, pattern: '[a-z0-9]+(?:-[a-z0-9]+)*', placeholder: '例如 meeting-helper',
             onChange: event => setDraft({ ...draft, name: event.currentTarget.value }),
-            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: 'white' },
+            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: surface, color: primary },
           }),
         ),
         h('label', { style: { display: 'block', marginTop: 13, fontSize: 12, fontWeight: 650 } }, '用途说明',
           h('input', {
             value: draft.description, required: true, maxLength: 1024, placeholder: '说明它能做什么，以及什么时候应该使用',
             onChange: event => setDraft({ ...draft, description: event.currentTarget.value }),
-            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: 'white' },
+            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: surface, color: primary },
           }),
         ),
         h('label', { style: { display: 'block', marginTop: 13, fontSize: 12, fontWeight: 650 } }, '工作指令',
           h('textarea', {
             value: draft.instructions, required: true, rows: 8, placeholder: '写清楚 Agent 应遵循的步骤、边界和交付要求。',
             onChange: event => setDraft({ ...draft, instructions: event.currentTarget.value }),
-            style: { boxSizing: 'border-box', display: 'block', resize: 'vertical', width: '100%', marginTop: 6, border: `1px solid ${border}`, borderRadius: 9, padding: 10, background: 'white', lineHeight: 1.55 },
+            style: { boxSizing: 'border-box', display: 'block', resize: 'vertical', width: '100%', marginTop: 6, border: `1px solid ${border}`, borderRadius: 9, padding: 10, background: surface, color: primary, lineHeight: 1.55 },
           }),
         ),
-        error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: '#fff0f0', color: '#a82332', fontSize: 12 } }, error),
+        error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: mutedSurface, color: danger, fontSize: 12 } }, error),
         h('div', { style: { marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 8 } },
           h('button', { type: 'button', disabled: busy === 'create', style: buttonStyle, onClick: () => setCreateOpen(false) }, '取消'),
           h('button', { type: 'submit', disabled: busy === 'create', style: primaryStyle }, busy === 'create' ? '正在创建…' : '创建'),
@@ -249,16 +254,16 @@ function SkillCenter({ service, embedded = false }) {
       onMouseDown: event => { if (event.target === event.currentTarget && busy === '') setPendingRemoval(null) },
     },
     h('section', { role: 'dialog', 'aria-modal': 'true', 'aria-label': '移除个人技能', style: cardStyle },
-      h('div', { style: { color: '#a82332', fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'REMOVE PERSONAL SKILL'),
+      h('div', { style: { color: danger, fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'REMOVE PERSONAL SKILL'),
       h('h2', { style: { margin: '6px 0 8px', fontSize: 21 } }, `移除“${pendingRemoval.label}”？`),
-      h('p', { style: { margin: 0, color: '#66534d', fontSize: 13, lineHeight: 1.65 } },
+      h('p', { style: { margin: 0, color: secondary, fontSize: 13, lineHeight: 1.65 } },
         '该技能会移出 Agent 的个人技能目录，并保留在本地回收区。历史会话不受影响；已经注入当前会话的内容可能持续到新建会话。'),
-      error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: '#fff0f0', color: '#a82332', fontSize: 12 } }, error),
+      error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: mutedSurface, color: danger, fontSize: 12 } }, error),
       h('div', { style: { marginTop: 19, display: 'flex', justifyContent: 'flex-end', gap: 8 } },
         h('button', { type: 'button', disabled: busy !== '', style: buttonStyle, onClick: () => setPendingRemoval(null) }, '取消'),
         h('button', {
           type: 'button', disabled: busy !== '', onClick: removeSkill,
-          style: { ...primaryStyle, background: '#a82332', borderColor: '#a82332' },
+          style: { ...primaryStyle, background: danger, borderColor: danger },
         }, busy === `remove:${pendingRemoval.name}` ? '正在移除…' : '移除'),
       ),
     )),
