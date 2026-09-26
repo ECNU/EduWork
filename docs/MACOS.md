@@ -74,3 +74,22 @@ CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugD
 macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md) 区分系统和架构。开发版需要全新用户目录启动与更新验证，并如实声明 ad-hoc 签名的限制；公测发行前还需完成 Developer ID 签名、公证和 Gatekeeper 验收；证书及密码通过受保护的 CI 环境管理。
 
 公版与机构版复用同一构建流程。通过验证的平台才加入正式 Release，更新源按系统、架构和发行身份分别提供产物。
+
+## DMG 拖拽安装窗口
+
+可在 macOS 上为现有应用生成带标题、拖拽指引和 Applications 快捷方式的 DMG。需要 Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
+
+```sh
+python3 -m venv /tmp/eduwork-dmg-venv
+/tmp/eduwork-dmg-venv/bin/python3 -m pip install --only-binary=:all: --require-hashes -r scripts/macos-dmg/requirements.txt
+/tmp/eduwork-dmg-venv/bin/python3 -B -m unittest discover -s scripts/macos-dmg -p 'test_*.py'
+/tmp/eduwork-dmg-venv/bin/python3 scripts/macos-dmg/package.py --app '/path/to/EduWork.app' --output '/path/to/EduWork-macos-arm64.dmg'
+```
+
+输出必须不存在。窗口标题读取应用已有的显示名称，保留原文件名和签名，不增加 Apple 公证。脚本校验应用签名及镜像完整性；验收时打开最终 DMG，检查背景、图标布局和 Applications 快捷方式，并验证拖拽安装后的启动与签名。
+
+## 自动安装与安装文件清理
+
+从 DMG 安装卷双击应用后，通过 macOS 原生安装接口搬移到“应用程序”目录，并重新启动安装好的应用。系统可能要求确认安装位置或覆盖已有版本；取消安装时保留 DMG 并退出。也可继续手动拖拽安装。
+
+自动安装会记录源 DMG。安装后的应用在启动早期、加载工作环境和登录前，自动正常推出源安装卷，再将 DMG 移到废纸篓，无需额外确认。清理前校验应用签名及镜像文件身份；卷被占用会短暂重试，不强制推出。失败时保留文件并记录日志，可手动清理；后续启动会重试。手动拖拽安装没有自动安装记录，不会扫描清理其他镜像。已安装应用和用户数据不受影响。

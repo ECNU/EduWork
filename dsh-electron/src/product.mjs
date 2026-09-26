@@ -22,6 +22,7 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { installFromDmg } from './installer-cleanup.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -77,6 +78,9 @@ export function configureEduworkPaths() {
       app.quit()
     })()
   })
+}
+export function installEduworkFromDmg() {
+  return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
 }
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
 async function prepareDesktop() {
