@@ -22,6 +22,7 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { offerInstallerCleanup } from './installer-cleanup.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -178,6 +179,7 @@ export async function desktopReady() {
   migrationLaunch = null
   if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
   progressWindow = undefined
+  void offerInstallerCleanup({ app, window: mainWindow, shell, dialog, appPath: paths.root }).catch(error => console.warn('Installer cleanup unavailable:', error.message))
   void portableUpdates?.action('check-updates-background').catch(()=>{})
 }
 
