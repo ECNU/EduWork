@@ -108,7 +108,7 @@ function EnterpriseAccountCard({ service, configuration }: any) {
   const [profileID, setProfileID] = useState(configuration.profiles[0]?.id || '')
   const profile = configuration.profiles.find((candidate: any) => candidate.id === profileID) || configuration.profiles[0]
   const account = useAccount(service, profile.id)
-  const primary = { ...button, background: profile.brand?.primaryColor || 'var(--dsw-alias-brand-primary, #5157af)', color: 'white', borderColor: 'transparent' }
+  const primary = { ...button, background: profile.brand?.primaryColor || 'var(--dsw-alias-state-business-primary, #5157af)', color: 'white', borderColor: 'transparent' }
   const login = useSignIn(service)
   const begin = () => account.run('login', () => login.begin(profile.id))
   const stateLabel = account.status?.state === 'connected' ? messages.connected : messages.disconnected
@@ -136,7 +136,7 @@ function EnterpriseAccountCard({ service, configuration }: any) {
       }, messages.logout),
       profile.brand?.supportURL && h('a', { href: profile.brand.supportURL, target: '_blank', rel: 'noopener noreferrer', style: { ...button, textDecoration: 'none' } }, messages.help)),
     login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
-    account.error && h('p', { role: 'alert', style: { margin: '10px 0 0', color: '#a82332', fontSize: 12 } }, account.error),
+    account.error && h('p', { role: 'alert', style: { margin: '10px 0 0', color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, account.error),
     h('p', { style: { margin: '10px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: 11 } },
       profile.provider ? `${profile.provider.displayName} · ${profile.provider.models.map((model: any) => model.name).join('、')}` : messages.other))
 }
@@ -147,7 +147,7 @@ function EnterpriseOnboarding({ service, configuration, complete }: any) {
   useEffect(() => { if (account.status?.state === 'connected' && !account.busy && !account.error) complete() }, [account.status?.state, account.busy, account.error, complete])
   const login = useSignIn(service)
   if (account.status === null || (account.status?.state === 'connected' && !account.busy && !account.error)) return null
-  const primary = { ...button, background: profile.brand?.primaryColor || 'var(--dsw-alias-brand-primary, #5157af)', color: 'white', borderColor: 'transparent' }
+  const primary = { ...button, background: profile.brand?.primaryColor || 'var(--dsw-alias-state-business-primary, #5157af)', color: 'white', borderColor: 'transparent' }
   const begin = () => account.run('login', () => login.begin(profile.id))
   return h('div', {
     style: { position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(28, 24, 23, .32)', backdropFilter: 'blur(4px)', boxSizing: 'border-box' },
@@ -166,7 +166,7 @@ function EnterpriseOnboarding({ service, configuration, complete }: any) {
     h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : messages.login),
     h('button', { type: 'button', disabled: Boolean(account.busy), style: button, onClick: complete }, messages.other)),
   login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
-  account.error && h('p', { role: 'alert', style: { margin: '12px 0 0', color: '#a82332', fontSize: 12 } }, account.error),
+  account.error && h('p', { role: 'alert', style: { margin: '12px 0 0', color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, account.error),
   h('p', { style: { margin: '16px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: 11, lineHeight: 1.55 } },
     profile.provider ? `${messages.enabled} ${profile.provider.displayName}: ${profile.provider.models.map((model: any) => model.name).join('、')}` : messages.other)))
 }

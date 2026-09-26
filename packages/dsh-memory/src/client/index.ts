@@ -9,7 +9,7 @@ const h = React.createElement
 const NS = 'settings.localMemory'
 const SETTINGS_NAMESPACE = 'memories'
 const PAGE_SIZE = 10
-const accent = 'var(--dsw-alias-brand-primary, #4d6bfe)'
+const accent = 'var(--dsw-alias-state-business-primary, #4d6bfe)'
 const border = 'var(--dsw-alias-border-l2, #e4e7ee)'
 const primary = 'var(--dsw-alias-label-primary, #17191c)'
 const secondary = 'var(--dsw-alias-label-secondary, #6f737a)'
@@ -69,11 +69,11 @@ function Switch({ checked, disabled, label, onChange }) {
     style: {
       position: 'relative', flex: 'none', width: 38, height: 22, padding: 0, border: 0, borderRadius: 20,
       cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? .45 : 1,
-      background: checked ? accent : 'var(--dsw-alias-fill-tertiary, #c9cdd5)', transition: 'background .16s ease',
+      background: checked ? accent : 'var(--dsw-alias-border-l3, #c9cdd5)', transition: 'background .16s ease',
     },
   }, h('span', { style: {
     position: 'absolute', top: 3, left: checked ? 19 : 3, width: 16, height: 16, borderRadius: '50%',
-    background: '#fff', boxShadow: '0 1px 3px rgba(0,0,0,.25)', transition: 'left .16s ease',
+    background: checked ? 'var(--dsw-alias-bg-base, #fff)' : secondary, boxShadow: '0 1px 3px rgba(0,0,0,.25)', transition: 'left .16s ease',
   } }))
 }
 
@@ -89,9 +89,9 @@ function ToggleRow({ title, hint, checked, disabled, onChange, last = false }) {
 
 function buttonStyle(danger = false) {
   return {
-    minHeight: 34, border: `1px solid ${danger ? 'var(--dsw-alias-state-danger, #d74b4b)' : border}`,
+    minHeight: 34, border: `1px solid ${danger ? 'var(--dsw-alias-state-error-primary, #d74b4b)' : border}`,
     borderRadius: 8, padding: '6px 12px', background: 'transparent', cursor: 'pointer',
-    color: danger ? 'var(--dsw-alias-state-danger, #c63b3b)' : primary, fontSize: 12, fontWeight: 600,
+    color: danger ? 'var(--dsw-alias-state-error-primary, #c63b3b)' : primary, fontSize: 12, fontWeight: 600,
   }
 }
 
@@ -106,7 +106,7 @@ function MemoryCard({ record, t, busy, editing, draft, forgetArmed, onEdit, onDr
   const sources = (record.sources ?? []).map(sourceText).filter(Boolean).slice(0, 3)
   return h('article', { style: { padding: 14, border: `1px solid ${border}`, borderRadius: 10, background: panel } },
     h('div', { style: { display: 'flex', gap: 7, alignItems: 'center', flexWrap: 'wrap', marginBottom: 8 } },
-      h('span', { style: { padding: '2px 7px', borderRadius: 999, background: 'var(--dsw-alias-fill-secondary, #e9ebef)', color: secondary, fontSize: 11 } }, record.kind),
+      h('span', { style: { padding: '2px 7px', borderRadius: 999, background: 'var(--dsw-alias-bg-layer-2, #e9ebef)', color: secondary, fontSize: 11 } }, record.kind),
       record.scope === 'project' && h('span', { style: { color: secondary, fontSize: 11 } }, 'project'),
       record.userEditedAt && h('span', { style: { color: accent, fontSize: 11, fontWeight: 600 } }, t('corrected')),
       record.userPinnedAt && h('span', { style: { color: accent, fontSize: 11, fontWeight: 600 } }, t('retained')),
@@ -310,7 +310,7 @@ function MemorySection({ t, service }) {
         h('input', { ref: fileInput, type: 'file', accept: 'application/json,.json', hidden: true, onChange: importData }),
       ),
     ),
-    h('section', { style: { marginTop: 24, padding: '16px 18px', border: '1px solid color-mix(in srgb, var(--dsw-alias-state-danger, #d74b4b) 35%, transparent)', borderRadius: 12 } },
+    h('section', { style: { marginTop: 24, padding: '16px 18px', border: '1px solid color-mix(in srgb, var(--dsw-alias-state-error-primary, #d74b4b) 35%, transparent)', borderRadius: 12 } },
       h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 22 } },
         h('div', null,
           h('div', { style: { fontSize: 13, fontWeight: 650 } }, t('delete')),
@@ -319,8 +319,8 @@ function MemorySection({ t, service }) {
         h('button', { type: 'button', disabled: busy !== '' || stats.total + stats.suppressed === 0, onClick: deleteAll, style: buttonStyle(true) }, deleteArmed ? t('deleteAgain') : t('delete')),
       ),
     ),
-    !managing && error && h('p', { role: 'alert', style: { color: 'var(--dsw-alias-state-danger, #c63b3b)', fontSize: 12 } }, error),
-    !managing && message && h('div', { role: 'status', style: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dsw-alias-state-success, #2b8057)', fontSize: 12 } },
+    !managing && error && h('p', { role: 'alert', style: { color: 'var(--dsw-alias-state-error-primary, #c63b3b)', fontSize: 12 } }, error),
+    !managing && message && h('div', { role: 'status', style: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dsw-alias-state-success-primary, #2b8057)', fontSize: 12 } },
       h('span', null, message),
       undoToken && h('button', { type: 'button', disabled: busy !== '', onClick: undoDelete, style: buttonStyle() }, t('undo')),
     ),
@@ -349,8 +349,8 @@ function MemorySection({ t, service }) {
         }),
       ),
       (error || message) && h('div', { style: { flex: 'none', padding: '0 22px 12px' } },
-        error && h('p', { role: 'alert', style: { margin: 0, color: 'var(--dsw-alias-state-danger, #c63b3b)', fontSize: 12 } }, error),
-        message && h('div', { role: 'status', style: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dsw-alias-state-success, #2b8057)', fontSize: 12 } },
+        error && h('p', { role: 'alert', style: { margin: 0, color: 'var(--dsw-alias-state-error-primary, #c63b3b)', fontSize: 12 } }, error),
+        message && h('div', { role: 'status', style: { display: 'flex', alignItems: 'center', gap: 8, color: 'var(--dsw-alias-state-success-primary, #2b8057)', fontSize: 12 } },
           h('span', null, message),
           undoToken && h('button', { type: 'button', disabled: busy !== '', onClick: undoDelete, style: buttonStyle() }, t('undo')),
         ),
