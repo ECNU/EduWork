@@ -140,21 +140,21 @@ A network failure during revocation does not block local logout; the client logs
 
 Use OAuth errors `invalid_request`, `invalid_client`, `invalid_grant`, `invalid_scope`, `unsupported_grant_type`, and `invalid_target` for resource mismatch. 401 is an authentication failure, 403 a permission failure, 429 throttling and 5xx a service failure; they must not all become sign-in prompts. Safe reads may refresh and retry once after 401; generation is not replayed automatically. Errors and logs must not disclose credentials.
 
-## 8. ChatECNU reference deployment
+## 8. Example deployment
 
-ChatECNU is a reference deployment adopting this draft, not the only permitted service. Its [public discovery document](https://chat.ecnu.edu.cn/.well-known/openid-configuration), checked on 2026-09-25, advertises:
+The following uses `models.example.org` to illustrate a deployment adopting this draft, consistent with the discovery example in section 2. These are example values, not metadata or acceptance results from a real service.
 
-| Item | Public metadata |
+| Item | Example metadata |
 | --- | --- |
-| issuer / resource | `https://chat.ecnu.edu.cn` |
-| Model API base | `https://chat.ecnu.edu.cn/open/api/v1` |
+| issuer / resource | `https://models.example.org` |
+| Model API base | `https://models.example.org/open/api/v1` |
 | Extension version | `oidc_llm.version: "0.1"` |
-| Identity modes | `oauth`, `oidc`; EduWork@ECNU explicitly selects `oidc` |
+| Identity modes | `oauth`, `oidc`; the client explicitly selects `oidc` through configuration |
 | Client registration | `static`, public-client authentication `none` |
 | Authorization and refresh | Code, PKCE S256, Refresh Token |
 | Identity validation | RS256, public JWKS, UserInfo, authorization callback `iss` |
 
-Additional business scopes are advertised, but this connection requests only those in section 4. Editions provide deployment addresses and a public client ID through configuration, not hardcoded public-plugin defaults.
+Servers may advertise additional business scopes, but this connection requests only those in section 4. Editions provide deployment addresses and a public client ID through configuration, not hardcoded public-plugin defaults.
 
 Discovery establishes advertised capabilities, not exact Token lifetimes, refresh-family reuse detection, immediate revocation, filtering for every account or stream behavior at expiry. These require real-server acceptance; an integration test or client implementation is not a complete server guarantee.
 
