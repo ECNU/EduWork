@@ -81,8 +81,14 @@ def package(app, output):
         run('hdiutil', 'convert', rw, '-format', 'UDZO', '-o', compressed)
         run('hdiutil', 'verify', compressed)
         # Exclusive creation avoids overwriting another build that finished meanwhile.
-        with compressed.open('rb') as src, output.open('xb') as dst:
-            shutil.copyfileobj(src, dst)
+        with compressed.open('rb') as src:
+            dst = output.open('xb')
+            try:
+                with dst:
+                    shutil.copyfileobj(src, dst)
+            except BaseException:
+                output.unlink(missing_ok=True)
+                raise
         print(f'DMG: {output}')
     finally:
         if mounted:

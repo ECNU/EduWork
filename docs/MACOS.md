@@ -82,6 +82,7 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 ```sh
 python3 -m venv /tmp/eduwork-dmg-venv
 /tmp/eduwork-dmg-venv/bin/python3 -m pip install --only-binary=:all: --require-hashes -r scripts/macos-dmg/requirements.txt
+/tmp/eduwork-dmg-venv/bin/python3 -B -m unittest discover -s scripts/macos-dmg -p 'test_*.py'
 /tmp/eduwork-dmg-venv/bin/python3 scripts/macos-dmg/package.py --app '/path/to/EduWork.app' --output '/path/to/EduWork-macos-arm64.dmg'
 ```
 
