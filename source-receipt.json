@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T10:34:09.830Z",
-  "fileSetSHA256": "69392892a78cce1e6b027cc46c1f9d129b621587ab13c01bab058a9622d6462e",
+  "createdAt": "2026-09-27T16:32:04.032Z",
+  "fileSetSHA256": "8a89a6d220397d85ea33ab1e12375877b82b9a7e73e371b1a4d3401016f93a64",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "3d087af29aa6e29bb64ca25a9fc52a74ac3dd6cac7107243c4556ab1dd9f04d7"
+      "sha256": "c285a7b8490a8b3ceec1b012f7a46935f4c4ec1cff9eba8ba1e480f17610b20e"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -3041,7 +3041,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/scripts/build-video-template.mjs",
-      "sha256": "b5d0ac3623ab64d0b379f98736175a015dcd3cc177f2345592639591b301b07b"
+      "sha256": "166e075cca2ce368fa47a5104643223e6ccc1218e24d5e4dd659529f460a23ee"
     },
     {
       "path": "packages/dsh-knowledge-studio/scripts/dev-web.mjs",
@@ -4485,7 +4485,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "a8efbd231a3156c03f5dd15ce022e3080aa830cc2b5870b1d5fd79e3b003f2f5"
+      "sha256": "c42691fda14b7a69c4d561a350122d5055a2b212e029492700b4b5e11042ba98"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -4501,7 +4501,7 @@
     },
     {
       "path": "scripts/build-017-plugin-clients.mjs",
-      "sha256": "4f82cba18121728c91a614fa5fb641e0a0d1cbf6a988344929ef70c99adb97e0"
+      "sha256": "8e66875c3016cf0cdfc1a965331ec740ed53d803d08c9e2a8c7c78586d192586"
     },
     {
       "path": "scripts/build-eduwork-icons.mjs",
@@ -4525,7 +4525,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "8d7a5b1931cc8672b0c8257e6bc4bbf50a25f0e5a5ac1f9e2d066185a4f3186f"
+      "sha256": "3d1440e66d4ace9d6c0144d8e05026d7fa1b4013d65cac1bafc1765a6fdda4c3"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4752,6 +4752,10 @@
       "sha256": "e57d3ddaeb940e2fc29f307bdcd774a7f87e774e34a73de3b765694a6b2e82e4"
     },
     {
+      "path": "scripts/test/media-template.test.mjs",
+      "sha256": "59e09a13bb65eb703844bbb8cf4e6527ae5dead058c7ff2226b27739f7b87da1"
+    },
+    {
       "path": "scripts/test/npm-runtime.test.mjs",
       "sha256": "8528ce374ffc942b97594cf229abceea2c97000dc196659e355a520316352046"
     },
@@ -4762,6 +4766,10 @@
     {
       "path": "scripts/validate-distribution-config.mjs",
       "sha256": "4285a99f7c4340af3d923cb25a69dd18c8257106933bc663410943d1c0122d45"
+    },
+    {
+      "path": "scripts/verify-media-template.mjs",
+      "sha256": "7baea744dbe7976e961a2ebb1f2ec1497a3ebbaeb9d0646c6742856c2cc9cea7"
     },
     {
       "path": "scripts/verify-product-release-identity.mjs",
