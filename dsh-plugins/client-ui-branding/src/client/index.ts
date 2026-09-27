@@ -1,6 +1,6 @@
 import React, { useSyncExternalStore } from 'react'
 import { normalizeVisualStyle, tokensForVisualStyle } from '../theme.js'
-import { genericMarkSVG, productIdentity } from '../identity.js'
+import { genericMarkSVG, productDocumentTitle, productIdentity } from '../identity.js'
 import { bindDesktopAction, DesktopSettingsTrigger } from './desktop-actions.js'
 
 declare const __EDUWORK_NATIVE_017__: boolean
@@ -104,10 +104,12 @@ function installProductIdentity(scope) {
   // The official workspace changes the title again after navigation. Preserve
   // its session title while replacing only the upstream product suffix.
   const observer = new MutationObserver(() => {
-    if (!document.title.endsWith(' — DeepSeek Harness')) return
     const name = productIdentity(scope.getSnapshot()).name
-    appliedTitle = document.title.slice(0, -'DeepSeek Harness'.length) + name
-    if (document.title !== appliedTitle) document.title = appliedTitle
+    const nextTitle = productDocumentTitle(document.title, name)
+    if (document.title !== nextTitle) {
+      appliedTitle = nextTitle
+      document.title = nextTitle
+    }
   })
   observer.observe(document.head, { childList: true, subtree: true, characterData: true })
   return () => {

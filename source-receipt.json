@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T06:13:12.144Z",
-  "fileSetSHA256": "0811042f5a69c2f8c9bca95375dd6a947f60810d2181aa921ea83f6a7dae242d",
+  "createdAt": "2026-09-27T07:17:42.471Z",
+  "fileSetSHA256": "c4b284daef38a33d7a1df2f227094942b2a2fd0c2305529f6088a6f2cc003cbc",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "6dba089fe26e2a6057e004eb13ffd3856b4da4d2c1627edd52b903e33847f39b"
+      "sha256": "3d087af29aa6e29bb64ca25a9fc52a74ac3dd6cac7107243c4556ab1dd9f04d7"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -321,7 +321,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "e70d2ae2c7fdb4377eb5b9ed7f2072c8838e27fe4b82d2b51291f4c4c3876e13"
+      "sha256": "6e983ed5adbb1b9977fba16674ed2c0f02b662abc9b9649fc601f2e5a477757e"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -737,11 +737,11 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "d685c7aa64efb4b427af5a620a547d5b9cb2f88e5d2fc365079c79f112056544"
+      "sha256": "78e5c23ddcbb5463d32488f29989889219178371722f49c78222264059cb0141"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
-      "sha256": "38d73e858f990783bba3145d0f5bae91cf897dc2ef678cf3487c0dff9511e2df"
+      "sha256": "893731fb7c22b1965deb32e669223e6f5fe196978225ecb320b9733f9ded4a86"
     },
     {
       "path": "dsh-electron/scripts/build-dock-plugin.mjs",
@@ -793,7 +793,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
-      "sha256": "d4791c745a1aca3328646af00570db26812f922c3c3a4fd46b9856f3ee448813"
+      "sha256": "0fa489b68b2b0e06bcf36c608d69e48ad97fd0b3b6dc813406448e79f6a68a1e"
     },
     {
       "path": "dsh-electron/src/desktop-restart.mjs",
@@ -885,7 +885,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
-      "sha256": "a01e1fcc84626c44902145c50a08a8f5315e92a800390b0666c8c32485e73a99"
+      "sha256": "8947c5365a50610ae1fa951cbafe94a6b7b924117f66a1106d4aec0e236853eb"
     },
     {
       "path": "dsh-electron/tests/desktop-restart.test.mjs",
@@ -893,7 +893,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
-      "sha256": "55772dcd97e362288be77b1a70fb2b3f71b3e9f9db10db334d96e8e4e88ac50e"
+      "sha256": "84409c7e029fd3d9cb59c56d1182c2c2af293c50d4e24d38fdaca121b2eb6db7"
     },
     {
       "path": "dsh-electron/tests/diagnostics-download.mjs",
@@ -1077,7 +1077,7 @@
     },
     {
       "path": "dsh-host/native-resources.mjs",
-      "sha256": "f266322b37436a9be3215a9ae1bc61f7256893350a6a4b22af21968c10c9fabf"
+      "sha256": "3814293aee0f214e803dfcb2a133c8c8650586d24c51360f8c878da5fd2bea78"
     },
     {
       "path": "dsh-host/prepare-native.mjs",
@@ -1161,7 +1161,7 @@
     },
     {
       "path": "dsh-host/test/native-resources.test.mjs",
-      "sha256": "1f25486d45334bdfd2828a55f0728e9d2ec6d4cfe90eb9df0495837d849af67d"
+      "sha256": "89d45f118764b79cd0368d181e8732bd0651637c797bebe74f5f1553f3b93bdd"
     },
     {
       "path": "dsh-host/test/native-reveal.integration.test.mjs",
@@ -1549,7 +1549,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/client/index.ts",
-      "sha256": "cedd1da2419793ad43646c1350208c94673060d3fedf70a1f8da1f98e37f8452"
+      "sha256": "b7308b99e233aeedb1bef57f6f5b2cd5671d1f69b06e5ccffed04038de32ea6c"
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/eduwork-mark.js",
@@ -1557,7 +1557,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/identity.js",
-      "sha256": "bc65b24c4281b6c4eb937f58cfcf45b2833462b262afb6ec79df09525e6690dd"
+      "sha256": "9a50a09aa13b612cd8b4129c8ac8262a29a9be37451e113fb7e9b779fec49f3d"
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/index.js",
@@ -1569,7 +1569,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-branding/test/identity.test.mjs",
-      "sha256": "32eabfc904a6c137dd9d25b14c3af96db6f8aa142b4b247774a784e82c7461a3"
+      "sha256": "f6a0a55e787763bc952abdba2b9495c6ce549ba4edbd5c51d35693928fb83b90"
     },
     {
       "path": "dsh-plugins/client-ui-branding/test/theme.test.mjs",
@@ -4481,7 +4481,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "6aaa5e5107fca8915379fcbcd263440a51404519f380099d20b734aea7f139ce"
+      "sha256": "a8efbd231a3156c03f5dd15ce022e3080aa830cc2b5870b1d5fd79e3b003f2f5"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -4518,6 +4518,10 @@
     {
       "path": "scripts/check-source-docs.mjs",
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
+    },
+    {
+      "path": "scripts/ci-017-alpha-desktop.ps1",
+      "sha256": "8d7a5b1931cc8672b0c8257e6bc4bbf50a25f0e5a5ac1f9e2d066185a4f3186f"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4640,6 +4644,14 @@
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
     {
+      "path": "scripts/portable-product-links.mjs",
+      "sha256": "3a1b0ba81a2b9394a47a5ae3f9b9f06d5b878ad1a284da967837fb039465c5e5"
+    },
+    {
+      "path": "scripts/prepare-017-alpha-product.mjs",
+      "sha256": "1b8b5ae4e1437095d66a9fe2b95a92345b41ebb499b49c0fbeadf40d94f62253"
+    },
+    {
       "path": "scripts/prepare-desktop-product.ps1",
       "sha256": "b665848127a714533917ffd9ab638db9567cfd51cc2cd701f34747f1596255e1"
     },
@@ -4720,6 +4732,10 @@
       "sha256": "720e007ae5a5213df6fe0d3800f846df40f4876dc7dd2bd7c215faee64c40291"
     },
     {
+      "path": "scripts/test-017-alpha-desktop.ps1",
+      "sha256": "3b979425ff35c23c27d42487e94d041fb24686edefdb3bb5e021c5ffaef51020"
+    },
+    {
       "path": "scripts/test-eduwork-search.mjs",
       "sha256": "3d9e763244403efe3775626a149352d551b714f4d11e2e939a0ab47faeb2a7c3"
     },
@@ -4734,6 +4750,10 @@
     {
       "path": "scripts/test/npm-runtime.test.mjs",
       "sha256": "8528ce374ffc942b97594cf229abceea2c97000dc196659e355a520316352046"
+    },
+    {
+      "path": "scripts/test/portable-product-links.test.mjs",
+      "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
     },
     {
       "path": "scripts/validate-distribution-config.mjs",

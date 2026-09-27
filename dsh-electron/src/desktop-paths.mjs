@@ -5,9 +5,10 @@ import { desktopConfigurationPath } from './configuration-policy.mjs'
 export function desktopPaths({ appRoot, appData, settings, platform = process.platform, testRoot, configOverride }) {
   const mac = platform === 'darwin'
   const root = resolve(appRoot, mac ? '../../..' : '../..')
-  const writableRoot = mac ? join(appData, settings.distribution + '-electron') : root
+  const namespace = settings.distribution + '-electron' + (mac && settings.sourceAlpha === true ? '-alpha' : '')
+  const writableRoot = mac ? join(appData, namespace) : root
   if (testRoot && (!isAbsolute(testRoot) || /(?:^|[\\/])current(?:[\\/]|$)/iu.test(testRoot))) throw new Error('Test data requires an isolated absolute directory')
-  const dataRoot = testRoot ? resolve(testRoot) : mac ? writableRoot : join(root, 'data', settings.distribution + '-electron')
+  const dataRoot = testRoot ? resolve(testRoot) : mac ? writableRoot : join(root, 'data', namespace)
   return {
     root,
     updateDataRoot: testRoot ? join(dataRoot, 'updates') : join(writableRoot, 'data'),
