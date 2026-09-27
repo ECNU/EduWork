@@ -59,6 +59,8 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
+          node --test core/dsh-plugins/client-ui-branding/test/identity.test.mjs
+          if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs

@@ -1,6 +1,12 @@
 import { eduworkMarkPath } from './eduwork-mark.js'
 export const DEFAULT_PRODUCT_NAME = 'EduWork'
 
+export function productDocumentTitle(title, name) {
+  if (title === 'DeepSeek Harness') return name
+  return title.endsWith(' — DeepSeek Harness')
+    ? title.slice(0, -'DeepSeek Harness'.length) + name : title
+}
+
 // Assembly supplies its own assets. A public product has no institution logo
 // or endpoint baked into the client. Never treat the display name as a key.
 export function productIdentity(snapshot) {

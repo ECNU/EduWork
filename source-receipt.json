@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T07:00:23.637Z",
-  "fileSetSHA256": "7a28b697eb357fa00b564f2639e5a4ac7082ead5ff4ae540b20bde64cd50d40a",
+  "createdAt": "2026-09-27T07:17:42.471Z",
+  "fileSetSHA256": "c4b284daef38a33d7a1df2f227094942b2a2fd0c2305529f6088a6f2cc003cbc",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "fb2226a96b631b926199bb988eceba3b1cbf6723d95c1c466fa9d3f1cb211054"
+      "sha256": "3d087af29aa6e29bb64ca25a9fc52a74ac3dd6cac7107243c4556ab1dd9f04d7"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -893,7 +893,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
-      "sha256": "55772dcd97e362288be77b1a70fb2b3f71b3e9f9db10db334d96e8e4e88ac50e"
+      "sha256": "84409c7e029fd3d9cb59c56d1182c2c2af293c50d4e24d38fdaca121b2eb6db7"
     },
     {
       "path": "dsh-electron/tests/diagnostics-download.mjs",
@@ -1077,7 +1077,7 @@
     },
     {
       "path": "dsh-host/native-resources.mjs",
-      "sha256": "f266322b37436a9be3215a9ae1bc61f7256893350a6a4b22af21968c10c9fabf"
+      "sha256": "3814293aee0f214e803dfcb2a133c8c8650586d24c51360f8c878da5fd2bea78"
     },
     {
       "path": "dsh-host/prepare-native.mjs",
@@ -1161,7 +1161,7 @@
     },
     {
       "path": "dsh-host/test/native-resources.test.mjs",
-      "sha256": "1f25486d45334bdfd2828a55f0728e9d2ec6d4cfe90eb9df0495837d849af67d"
+      "sha256": "89d45f118764b79cd0368d181e8732bd0651637c797bebe74f5f1553f3b93bdd"
     },
     {
       "path": "dsh-host/test/native-reveal.integration.test.mjs",
@@ -1549,7 +1549,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/client/index.ts",
-      "sha256": "cedd1da2419793ad43646c1350208c94673060d3fedf70a1f8da1f98e37f8452"
+      "sha256": "b7308b99e233aeedb1bef57f6f5b2cd5671d1f69b06e5ccffed04038de32ea6c"
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/eduwork-mark.js",
@@ -1557,7 +1557,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/identity.js",
-      "sha256": "bc65b24c4281b6c4eb937f58cfcf45b2833462b262afb6ec79df09525e6690dd"
+      "sha256": "9a50a09aa13b612cd8b4129c8ac8262a29a9be37451e113fb7e9b779fec49f3d"
     },
     {
       "path": "dsh-plugins/client-ui-branding/src/index.js",
@@ -1569,7 +1569,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-branding/test/identity.test.mjs",
-      "sha256": "32eabfc904a6c137dd9d25b14c3af96db6f8aa142b4b247774a784e82c7461a3"
+      "sha256": "f6a0a55e787763bc952abdba2b9495c6ce549ba4edbd5c51d35693928fb83b90"
     },
     {
       "path": "dsh-plugins/client-ui-branding/test/theme.test.mjs",
