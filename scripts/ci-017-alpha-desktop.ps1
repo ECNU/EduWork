@@ -5,6 +5,7 @@ param(
     [Parameter(Mandatory)][string]$EditionRoot,
     [Parameter(Mandatory)][string]$Version,
     [string]$PublisherDescriptors,
+    [switch]$VerifyPublisherBootstrap,
     [Parameter(Mandatory)][string]$Output
 )
 # Explicit source Alpha artifacts only. Default npm release assembly and update
@@ -56,13 +57,14 @@ try {
     & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --native-017 --upstream $upstream --runtime $runtime --host $hostAdapter --output $shell
     & (Join-Path $CoreRoot "scripts/prepare-$platform-release-inputs.ps1") -Product $product -Output (Join-Path $Output 'inputs')
     $inputs=Get-Content (Join-Path $Output 'inputs/inputs.json') -Raw | ConvertFrom-Json
-    $assembler=@{Product=$product;ShellBuild=$shell;ElectronRuntime=(Join-Path $Output 'electron/runtime');Output=(Join-Path $Output 'desktop');Version=$Version;Node=$inputs.node}
+    $assembled=Join-Path $Output $(if ($IsWindows) {'desktop/electron-candidate'} else {'desktop'})
+    $assembler=@{Product=$product;ShellBuild=$shell;ElectronRuntime=(Join-Path $Output 'electron/runtime');Output=$assembled;Version=$Version;Node=$inputs.node}
     if ($IsMacOS) { $assembler.OpenSSL=$inputs.openssl }
     & (Join-Path $CoreRoot "dsh-electron/scripts/assemble-$platform.ps1") @assembler
     $unpacked=Join-Path $Output 'unpacked';New-Item -ItemType Directory -Path $unpacked | Out-Null
     if ($IsWindows) {
         $archive=Join-Path $publish "$name-$Version-windows-x64-electron.zip"
-        & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate (Join-Path $Output 'desktop') -Output $archive -Development
+        & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $assembled -Output $archive -Development
         & tar.exe -xf $archive -C $unpacked
         $desktop=Join-Path $unpacked $name
         & node (Join-Path $CoreRoot 'scripts/verify-windows-release.mjs') $desktop
@@ -72,7 +74,7 @@ try {
         $archive=Join-Path $publish $pack.asset.name
         Copy-Item (Join-Path $Output "desktop/$($pack.asset.name)"),(Join-Path $Output "desktop/$($pack.asset.name).sha256") $publish
         & ditto -x -k $archive $unpacked
-        $desktop=Join-Path $unpacked "$name.app"
+        $desktop=Join-Path $unpacked "$name Alpha.app"
         & codesign --verify --deep --strict $desktop
         $frozen=Join-Path $desktop 'Contents/Resources/product';$node=Join-Path $desktop 'Contents/Resources/runtime/node';$exe=Join-Path $desktop 'Contents/MacOS/Electron'
         $result.developerIDSigned=$false;$result.notarized=$false;$result.minimumSystemVersion=$pack.minimumSystemVersion
@@ -82,9 +84,10 @@ try {
     $result.checks.nativeRuntimes='passed'
     # Synthetic profile only: downloaded publisher configuration never enters
     # the public payload or logs. Live bootstrap acceptance runs separately.
-    & (Join-Path $CoreRoot 'scripts/test-017-alpha-desktop.ps1') -CoreRoot $CoreRoot -Product $frozen -Executable $exe -Output (Join-Path $Output 'gui')
+    & (Join-Path $CoreRoot 'scripts/test-017-alpha-desktop.ps1') -CoreRoot $CoreRoot -Product $frozen -Executable $exe -Output (Join-Path $Output 'gui') -PublisherBootstrap:$VerifyPublisherBootstrap
     Copy-Item (Join-Path $Output 'gui/result.json') (Join-Path $public 'desktop-ui-result.json')
     $result.checks.desktopLaunch='passed'
+    if ($VerifyPublisherBootstrap) { $result.checks.publisherFirstLaunch='passed' }
     if ($IsMacOS) { & codesign --verify --deep --strict $desktop;$result.checks.readOnlyApplication='passed' }
     $result.asset=@{name=[IO.Path]::GetFileName($archive);bytes=(Get-Item $archive).Length;sha256=(Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()}
     $result.passed=$true

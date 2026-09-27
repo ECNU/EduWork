@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T06:47:07.466Z",
-  "fileSetSHA256": "0ab97e73c5f6a19bf9fe9e888767a694b88e4e2f52603405d776308d5a14e3f2",
+  "createdAt": "2026-09-27T06:56:46.217Z",
+  "fileSetSHA256": "8930fa70a80c527428c3dbf767a1df9c731822a3d3986d4727d4f8d68279cb5d",
   "files": [
     {
       "path": ".gitattributes",
@@ -737,11 +737,11 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "5d2ef31b7e51f378ae87b678aea1f57e2685d0be0a82b6aae840b2ee4867003c"
+      "sha256": "78e5c23ddcbb5463d32488f29989889219178371722f49c78222264059cb0141"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
-      "sha256": "fa9f275871833a60557f441035258b1227adb43d62083073d3c3a1df26591f3c"
+      "sha256": "893731fb7c22b1965deb32e669223e6f5fe196978225ecb320b9733f9ded4a86"
     },
     {
       "path": "dsh-electron/scripts/build-dock-plugin.mjs",
@@ -793,7 +793,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
-      "sha256": "d4791c745a1aca3328646af00570db26812f922c3c3a4fd46b9856f3ee448813"
+      "sha256": "0fa489b68b2b0e06bcf36c608d69e48ad97fd0b3b6dc813406448e79f6a68a1e"
     },
     {
       "path": "dsh-electron/src/desktop-restart.mjs",
@@ -885,7 +885,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
-      "sha256": "a01e1fcc84626c44902145c50a08a8f5315e92a800390b0666c8c32485e73a99"
+      "sha256": "8947c5365a50610ae1fa951cbafe94a6b7b924117f66a1106d4aec0e236853eb"
     },
     {
       "path": "dsh-electron/tests/desktop-restart.test.mjs",
@@ -4521,7 +4521,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "c78359c6c0e6aa0fb0cc9c8ececa347fd9a231b138e85d4c1862aaa46d34b9a6"
+      "sha256": "0bfcf3f5b51d7778628e9fb23925af6e833d382b1caabfefc40bed082f980e38"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4729,7 +4729,7 @@
     },
     {
       "path": "scripts/test-017-alpha-desktop.ps1",
-      "sha256": "8a5f6b649e3cd07f3a338dc7fd4eb22ee9e34006b154643c352a758e45154dc8"
+      "sha256": "3b979425ff35c23c27d42487e94d041fb24686edefdb3bb5e021c5ffaef51020"
     },
     {
       "path": "scripts/test-eduwork-search.mjs",

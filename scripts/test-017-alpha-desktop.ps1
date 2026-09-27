@@ -1,13 +1,14 @@
 #Requires -Version 7.0
-param([Parameter(Mandatory)][string]$CoreRoot,[Parameter(Mandatory)][string]$Product,[Parameter(Mandatory)][string]$Executable,[Parameter(Mandatory)][string]$Output)
+param([Parameter(Mandatory)][string]$CoreRoot,[Parameter(Mandatory)][string]$Product,[Parameter(Mandatory)][string]$Executable,[Parameter(Mandatory)][string]$Output,[switch]$PublisherBootstrap)
 $ErrorActionPreference='Stop';$PSNativeCommandUseErrorActionPreference=$true
 New-Item -ItemType Directory -Path $Output | Out-Null
 $config=Join-Path $Output 'eduwork.jsonc'
-@{schemaVersion=1;desktop=@{closeAction='exit'};updates=@{provider='disabled'};organizations=@(@{
+if (-not $PublisherBootstrap) { @{schemaVersion=1;desktop=@{closeAction='exit'};updates=@{provider='disabled'};organizations=@(@{
     schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';auth=@{
         discoveryUrl='https://identity.example.test/.well-known/openid-configuration';expectedIssuer='https://identity.example.test';experimentalOidcLlm=$true;clientId='replace-with-synthetic-client';identityMode='oidc'
     }
-})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM
+})} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM }
+elseif (-not (Test-Path (Join-Path $Product 'resources/desktop/publisher-bootstrap.json'))) { throw 'Publisher acceptance requires a packaged descriptor' }
 $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()
 $beforeData=$env:EDUWORK_DESKTOP_TEST_DATA_ROOT;$beforeConfig=$env:EDUWORK_CONFIG_FILE
 $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=Join-Path $Output 'data';$env:EDUWORK_CONFIG_FILE=$config
@@ -26,7 +27,11 @@ try {
     if (-not $ready) { throw 'Alpha desktop failed to start within acceptance limit' }
     & node (Join-Path $CoreRoot 'dsh-electron/tests/desktop-smoke.mjs') --shell electron --product $Product --cdp "http://127.0.0.1:$port" --data-root (Join-Path $Output 'data') --evidence $Output --launch-only
     if (-not (Get-Content (Join-Path $Output 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'Alpha GUI smoke failed' }
-} catch { $failure=$_;Get-Content (Join-Path $Output 'stderr.log') -Tail 40 -ErrorAction SilentlyContinue;throw }
+    if ($PublisherBootstrap) {
+        $started=Get-Content (Join-Path $Output 'data/logs/desktop-start.json') -Raw | ConvertFrom-Json
+        if ($started.configurationRevision -lt 1) { throw 'First launch did not activate the signed Alpha configuration' }
+    }
+} catch { $failure=$_;if (-not $PublisherBootstrap) {Get-Content (Join-Path $Output 'stderr.log') -Tail 40 -ErrorAction SilentlyContinue};throw }
 finally {
     if (-not $process.HasExited) {
         try {

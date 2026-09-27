@@ -63,7 +63,7 @@ $nodeLicense = Join-Path $nodeRoot 'LICENSE'
 if (-not (Test-Path -LiteralPath $nodeLicense -PathType Leaf)) { throw 'Use the extracted official Node distribution, including LICENSE' }
 
 $editionName = if ($identity.distribution -eq 'eduwork') { 'EduWork' } else { 'EduWork-ECNU' }
-$appName = "$editionName.app"
+$appName = if ($identity.sourceAlpha) { "$editionName Alpha.app" } else { "$editionName.app" }
 $app = Join-Path $Output $appName
 New-Item -ItemType Directory -Path $Output | Out-Null
 & ditto --noextattr --noqtn --noacl $electronApp $app
@@ -154,6 +154,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
 if ($identity.sourceAlpha) {
     if ($sparkleEnabled) { throw 'Source Alpha does not enable software updates' }
     $desktop.updates=@{provider='disabled';defaultPolicy='development'}
+    $desktop.sourceAlpha=$true;$desktop.appId+='.alpha'
 }
 if ($ExternalPublisherConfig) {
     if ($ownership -ne 'publisher') { throw 'External publisher configuration requires publisher ownership' }
