@@ -60,13 +60,14 @@ if (Test-Path -LiteralPath $policyPath) {
     $config.configurationOwnership = $policy.ownership
 }
 $config.updates = @{defaultPolicy=$UpdateDefaultPolicy}
-if ($identity.distribution -eq 'eduwork') {
+if ($identity.distribution -eq 'eduwork' -and -not $identity.sourceAlpha) {
     $config.updates.provider='github'; $config.updates.repository='ecnu/EduWork'; $config.updateChannel='github'
 }
 if ($UpdateManifestURL) { $config.updates = @{provider='static';manifestURL=$UpdateManifestURL;defaultPolicy=$UpdateDefaultPolicy}; $config.updateChannel='configured' }
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $config.configurationOwnership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
 if ($bootstrap.enabled) { $config.updateChannel = if ($bootstrap.softwareUpdates) { 'publisher-bootstrap' } else { 'disabled-candidate' } }
+if ($identity.sourceAlpha) { $config.updates=@{provider='disabled';defaultPolicy='development'};$config.updateChannel='disabled-candidate' }
 $config | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'eduwork.desktop.json') -Encoding utf8NoBOM
 $updaterPath = Join-Path $Output 'resources/update/EduWork-Updater.exe'
 New-Item -ItemType Directory -Path (Split-Path $updaterPath) -Force | Out-Null

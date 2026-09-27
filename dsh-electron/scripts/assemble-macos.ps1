@@ -151,6 +151,10 @@ if ($sparkleEnabled) {
 }
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
+if ($identity.sourceAlpha) {
+    if ($sparkleEnabled) { throw 'Source Alpha does not enable software updates' }
+    $desktop.updates=@{provider='disabled';defaultPolicy='development'}
+}
 if ($ExternalPublisherConfig) {
     if ($ownership -ne 'publisher') { throw 'External publisher configuration requires publisher ownership' }
     $bundledPublisherConfig = Join-Path $resources 'product/resources/desktop/eduwork.jsonc'

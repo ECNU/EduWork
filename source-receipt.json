@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T06:13:12.144Z",
-  "fileSetSHA256": "0811042f5a69c2f8c9bca95375dd6a947f60810d2181aa921ea83f6a7dae242d",
+  "createdAt": "2026-09-27T06:47:07.466Z",
+  "fileSetSHA256": "0ab97e73c5f6a19bf9fe9e888767a694b88e4e2f52603405d776308d5a14e3f2",
   "files": [
     {
       "path": ".gitattributes",
@@ -321,7 +321,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "e70d2ae2c7fdb4377eb5b9ed7f2072c8838e27fe4b82d2b51291f4c4c3876e13"
+      "sha256": "6e983ed5adbb1b9977fba16674ed2c0f02b662abc9b9649fc601f2e5a477757e"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -737,11 +737,11 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "d685c7aa64efb4b427af5a620a547d5b9cb2f88e5d2fc365079c79f112056544"
+      "sha256": "5d2ef31b7e51f378ae87b678aea1f57e2685d0be0a82b6aae840b2ee4867003c"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
-      "sha256": "38d73e858f990783bba3145d0f5bae91cf897dc2ef678cf3487c0dff9511e2df"
+      "sha256": "fa9f275871833a60557f441035258b1227adb43d62083073d3c3a1df26591f3c"
     },
     {
       "path": "dsh-electron/scripts/build-dock-plugin.mjs",
@@ -4520,6 +4520,10 @@
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
     },
     {
+      "path": "scripts/ci-017-alpha-desktop.ps1",
+      "sha256": "c78359c6c0e6aa0fb0cc9c8ececa347fd9a231b138e85d4c1862aaa46d34b9a6"
+    },
+    {
       "path": "scripts/ci-eduwork-macos-release.ps1",
       "sha256": "cdd99dbd0ecdfc8a69c537beca90724f624246d95a54b1633b155a5897859d30"
     },
@@ -4640,6 +4644,10 @@
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
     {
+      "path": "scripts/prepare-017-alpha-product.mjs",
+      "sha256": "1b8b5ae4e1437095d66a9fe2b95a92345b41ebb499b49c0fbeadf40d94f62253"
+    },
+    {
       "path": "scripts/prepare-desktop-product.ps1",
       "sha256": "b665848127a714533917ffd9ab638db9567cfd51cc2cd701f34747f1596255e1"
     },
@@ -4718,6 +4726,10 @@
     {
       "path": "scripts/set-desktop-icon.ps1",
       "sha256": "720e007ae5a5213df6fe0d3800f846df40f4876dc7dd2bd7c215faee64c40291"
+    },
+    {
+      "path": "scripts/test-017-alpha-desktop.ps1",
+      "sha256": "8a5f6b649e3cd07f3a338dc7fd4eb22ee9e34006b154643c352a758e45154dc8"
     },
     {
       "path": "scripts/test-eduwork-search.mjs",
