@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T06:56:46.217Z",
-  "fileSetSHA256": "8930fa70a80c527428c3dbf767a1df9c731822a3d3986d4727d4f8d68279cb5d",
+  "createdAt": "2026-09-27T07:00:23.637Z",
+  "fileSetSHA256": "7a28b697eb357fa00b564f2639e5a4ac7082ead5ff4ae540b20bde64cd50d40a",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "6dba089fe26e2a6057e004eb13ffd3856b4da4d2c1627edd52b903e33847f39b"
+      "sha256": "fb2226a96b631b926199bb988eceba3b1cbf6723d95c1c466fa9d3f1cb211054"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -4481,7 +4481,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "6aaa5e5107fca8915379fcbcd263440a51404519f380099d20b734aea7f139ce"
+      "sha256": "a8efbd231a3156c03f5dd15ce022e3080aa830cc2b5870b1d5fd79e3b003f2f5"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -4521,7 +4521,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "0bfcf3f5b51d7778628e9fb23925af6e833d382b1caabfefc40bed082f980e38"
+      "sha256": "8d7a5b1931cc8672b0c8257e6bc4bbf50a25f0e5a5ac1f9e2d066185a4f3186f"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4644,6 +4644,10 @@
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
     {
+      "path": "scripts/portable-product-links.mjs",
+      "sha256": "3a1b0ba81a2b9394a47a5ae3f9b9f06d5b878ad1a284da967837fb039465c5e5"
+    },
+    {
       "path": "scripts/prepare-017-alpha-product.mjs",
       "sha256": "1b8b5ae4e1437095d66a9fe2b95a92345b41ebb499b49c0fbeadf40d94f62253"
     },
@@ -4746,6 +4750,10 @@
     {
       "path": "scripts/test/npm-runtime.test.mjs",
       "sha256": "8528ce374ffc942b97594cf229abceea2c97000dc196659e355a520316352046"
+    },
+    {
+      "path": "scripts/test/portable-product-links.test.mjs",
+      "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
     },
     {
       "path": "scripts/validate-distribution-config.mjs",

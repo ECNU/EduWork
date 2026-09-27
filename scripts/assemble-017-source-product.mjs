@@ -1,5 +1,6 @@
 // Unpublished qualification product. Never accepted by the release npm path.
-import { cp, mkdir, readFile, writeFile, readdir, access } from 'node:fs/promises'
+import { mkdir, readFile, writeFile, readdir, access } from 'node:fs/promises'
+import { copyProductTree as cp } from './portable-product-links.mjs'
 import { resolve, join, relative, isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'

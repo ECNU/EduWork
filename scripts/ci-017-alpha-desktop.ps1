@@ -57,6 +57,7 @@ try {
     & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --native-017 --upstream $upstream --runtime $runtime --host $hostAdapter --output $shell
     & (Join-Path $CoreRoot "scripts/prepare-$platform-release-inputs.ps1") -Product $product -Output (Join-Path $Output 'inputs')
     $inputs=Get-Content (Join-Path $Output 'inputs/inputs.json') -Raw | ConvertFrom-Json
+    & node (Join-Path $CoreRoot 'scripts/portable-product-links.mjs') $product
     $assembled=Join-Path $Output $(if ($IsWindows) {'desktop/electron-candidate'} else {'desktop'})
     $assembler=@{Product=$product;ShellBuild=$shell;ElectronRuntime=(Join-Path $Output 'electron/runtime');Output=$assembled;Version=$Version;Node=$inputs.node}
     if ($IsMacOS) { $assembler.OpenSSL=$inputs.openssl }

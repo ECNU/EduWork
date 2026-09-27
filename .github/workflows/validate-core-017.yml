@@ -19,6 +19,8 @@ on:
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-017-source-product.mjs'
+      - 'scripts/portable-product-links.mjs'
+      - 'scripts/test/portable-product-links.test.mjs'
       - 'scripts/probe-017-source-product.mjs'
       - 'scripts/probe-017-deliverables.mjs'
       - 'scripts/probe-017-literature.mjs'
@@ -57,6 +59,8 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
+          node --test core/scripts/test/portable-product-links.test.mjs
+          if ($LASTEXITCODE) { throw 'Portable source product links failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle checks failed' }
           node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
