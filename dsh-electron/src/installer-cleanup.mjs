@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { readFile, writeFile, mkdtemp, rm, realpath, stat } from 'node:fs/promises'
-import { join, extname, isAbsolute } from 'node:path'
+import { join, extname, isAbsolute, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { setTimeout as delay } from 'node:timers/promises'
 
@@ -44,7 +44,7 @@ export async function sourceInstaller(appPath, images, identify = signature) {
     const mounts = mountsOf(image)
     if (mounts.length !== 1 || extname(image['image-path'] ?? '').toLowerCase() !== '.dmg') continue
     const mount = await realpath(mounts[0]).catch(() => null)
-    if (!mount || !source.startsWith(mount + '/')) continue
+    if (!mount || !source.startsWith(mount + sep)) continue
     const imagePath = await realpath(image['image-path'])
     return { imagePath, identity: await identify(source), ...await imageIdentity(imagePath) }
   }
@@ -65,7 +65,7 @@ export async function cleanInstaller(candidate, { appPath, images = mountedImage
         mounts.push(...await Promise.all(mountsOf(image).map(mount => realpath(mount))))
       }
     }
-    if (mounts.length > 1 || mounts.some(mount => installed.startsWith(mount + '/'))) throw new Error('安装卷仍在使用，保留文件。')
+    if (mounts.length > 1 || mounts.some(mount => installed.startsWith(mount + sep))) throw new Error('安装卷仍在使用，保留文件。')
     try {
       for (const mount of mounts) await eject(mount)
       break
