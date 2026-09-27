@@ -37,6 +37,7 @@ export const configurationFields = {
     logoURL: ['企业 Logo；HTTPS URL 或 PNG/WebP 的 base64 data URL，最多 128 KiB。', 'https://example.org/logo.png'],
     primaryColor: ['六位十六进制品牌色。', '#9f2636'],
     loginTitle: ['登录标题，最多 120 字符。', '使用机构账号登录'],
+    loginButtonLabel: ['登录按钮文字，最多 40 字符；省略时使用客户端默认文案。', '统一认证登录'],
     loginDescription: ['登录说明，最多 500 字符。', '授权后使用机构提供的模型。'],
     supportURL: ['帮助页面，必须为 HTTPS。', 'https://example.org/help'],
   }),

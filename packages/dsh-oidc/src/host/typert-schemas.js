@@ -20,7 +20,7 @@ export const enterpriseSelectionOptionsSchema = z.object({ onlyIfMissing: z.bool
 const brandSchema = z.object({
   productName: z.string().optional(), organizationName: z.string().optional(), mark: z.string().optional(),
   logoURL: z.string().optional(), primaryColor: z.string().optional(), loginTitle: z.string().optional(),
-  loginDescription: z.string().optional(), supportURL: z.string().optional(),
+  loginDescription: z.string().optional(), loginButtonLabel: z.string().min(1).max(40).optional(), supportURL: z.string().optional(),
 }).strict()
 
 const publicProfileSchema = z.object({

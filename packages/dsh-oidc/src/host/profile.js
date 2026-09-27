@@ -19,7 +19,7 @@ const allowedRootKeys = new Set([
 const allowedOidcKeys = new Set(['issuer', 'clientId', 'scopes'])
 const allowedBrandKeys = new Set([
   'productName', 'organizationName', 'mark', 'logoURL', 'primaryColor',
-  'loginTitle', 'loginDescription', 'supportURL',
+  'loginTitle', 'loginDescription', 'loginButtonLabel', 'supportURL',
 ])
 const allowedProviderKeys = new Set([
   'id', 'displayName', 'adapter', 'baseURL', 'reasoning', 'defaultContextWindow',
@@ -114,8 +114,8 @@ function normalizeBrand(value = {}) {
     }
     result.logoURL = logo.startsWith('https://') ? safeHTTPSResource(logo, 'brand.logoURL', 128 * 1024) : logo
   }
-  for (const key of ['loginTitle', 'loginDescription']) {
-    if (source[key] !== undefined) result[key] = text(source[key], `brand.${key}`, key === 'loginTitle' ? 120 : 500)
+  for (const [key, max] of Object.entries({ loginTitle: 120, loginDescription: 500, loginButtonLabel: 40 })) {
+    if (source[key] !== undefined) result[key] = text(source[key], `brand.${key}`, max)
   }
   if (source.supportURL !== undefined) result.supportURL = exactURL(source.supportURL, 'brand.supportURL')
   return Object.freeze(result)
