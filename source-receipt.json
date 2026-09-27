@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-27T07:17:42.471Z",
-  "fileSetSHA256": "c4b284daef38a33d7a1df2f227094942b2a2fd0c2305529f6088a6f2cc003cbc",
+  "createdAt": "2026-09-27T08:00:59.360Z",
+  "fileSetSHA256": "2590d6b76cf9bb0dfea3e6011eee65876df7e78da6056ab9e4387c4a0cbddc80",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,7 +25,7 @@
     },
     {
       "path": ".github/workflows/desktop-candidates.yml",
-      "sha256": "ade128bb8678d836133adf5d97d7edb40d3ee3ca8aa1262335c25f87db30f0bf"
+      "sha256": "b056ad0eeff9d75e3b8bd43e73fa8caad7c26c8d04e432ef2d72620933c91bc4"
     },
     {
       "path": ".github/workflows/development-windows.yml",
@@ -342,6 +342,10 @@
     {
       "path": "docs/releases/0.3.6-dev.20260921.2.md",
       "sha256": "3988b639ecb3fcea7498c29b7f69112a959e2c23bb8e7c1d44a5e7132817d866"
+    },
+    {
+      "path": "docs/releases/0.3.6-dev.20260927.1.md",
+      "sha256": "fa03336dd564358c9eaa9859644731d998dfadee177ca5bff30029036fdd8ff7"
     },
     {
       "path": "docs/UPDATES.md",
@@ -4649,7 +4653,7 @@
     },
     {
       "path": "scripts/prepare-017-alpha-product.mjs",
-      "sha256": "1b8b5ae4e1437095d66a9fe2b95a92345b41ebb499b49c0fbeadf40d94f62253"
+      "sha256": "f10ed2825f09eae5871e5625fd8e555a32e3323d5d091f6c7de15b00b38e5c74"
     },
     {
       "path": "scripts/prepare-desktop-product.ps1",
@@ -4733,7 +4737,7 @@
     },
     {
       "path": "scripts/test-017-alpha-desktop.ps1",
-      "sha256": "3b979425ff35c23c27d42487e94d041fb24686edefdb3bb5e021c5ffaef51020"
+      "sha256": "bbc39e49eb5cf4b203684e4b7530978dadad74bc43f3c8b9e8c766e477b7d3ce"
     },
     {
       "path": "scripts/test-eduwork-search.mjs",

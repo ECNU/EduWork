@@ -55,7 +55,13 @@ if(values.edition){
   await save(join(product,'composition.json'),composition)
 }
 const configuration=parse(await readFile(join(resources,'eduwork.jsonc'),'utf8'))
-const policy=await read(join(resources,'configuration-policy.json'))
+// Generic products have user-owned configuration and no publisher descriptor.
+const policy=await read(join(resources,'configuration-policy.json')).catch(error=>{
+  if(error.code!=='ENOENT') throw error
+  return {schemaVersion:1,ownership:'user'}
+})
+assert.equal(policy.schemaVersion,1)
+assert.ok(['user','publisher'].includes(policy.ownership),'Unknown configuration ownership')
 if(policy.ownership==='publisher'){
   if(!values['publisher-descriptors']) throw Error('Publisher Alpha needs explicit compatible configuration descriptors')
   for(const name of ['publisher-bootstrap.json','publisher-bootstrap.darwin.json'])

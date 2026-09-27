@@ -3,12 +3,19 @@ param([Parameter(Mandatory)][string]$CoreRoot,[Parameter(Mandatory)][string]$Pro
 $ErrorActionPreference='Stop';$PSNativeCommandUseErrorActionPreference=$true
 New-Item -ItemType Directory -Path $Output | Out-Null
 $config=Join-Path $Output 'eduwork.jsonc'
-if (-not $PublisherBootstrap) { @{schemaVersion=1;desktop=@{closeAction='exit'};updates=@{provider='disabled'};organizations=@(@{
+$identity=Get-Content (Join-Path $Product 'assembly.json') -Raw | ConvertFrom-Json
+$generic=$identity.distribution -eq 'eduwork'
+if ($generic -and $PublisherBootstrap) { throw 'Generic Alpha does not download an institution configuration' }
+if (-not $PublisherBootstrap -and -not $generic) { @{schemaVersion=1;desktop=@{closeAction='exit'};updates=@{provider='disabled'};organizations=@(@{
     schemaVersion='dsh-oidc/v1alpha1';id='ci-example';displayName='CI example';auth=@{
         discoveryUrl='https://identity.example.test/.well-known/openid-configuration';expectedIssuer='https://identity.example.test';experimentalOidcLlm=$true;clientId='replace-with-synthetic-client';identityMode='oidc'
     }
 })} | ConvertTo-Json -Depth 8 | Set-Content $config -Encoding utf8NoBOM }
-elseif (-not (Test-Path (Join-Path $Product 'resources/desktop/publisher-bootstrap.json'))) { throw 'Publisher acceptance requires a packaged descriptor' }
+elseif ($PublisherBootstrap -and -not (Test-Path (Join-Path $Product 'resources/desktop/publisher-bootstrap.json'))) { throw 'Publisher acceptance requires a packaged descriptor' }
+if ($generic -and $IsWindows) {
+    # The portable Windows ZIP already contains its editable default config.
+    Copy-Item (Join-Path $Product '../../config/eduwork.jsonc') $config
+}
 $listener=[Net.Sockets.TcpListener]::new([Net.IPAddress]::Loopback,0);$listener.Start();$port=$listener.LocalEndpoint.Port;$listener.Stop()
 $beforeData=$env:EDUWORK_DESKTOP_TEST_DATA_ROOT;$beforeConfig=$env:EDUWORK_CONFIG_FILE
 $env:EDUWORK_DESKTOP_TEST_DATA_ROOT=Join-Path $Output 'data';$env:EDUWORK_CONFIG_FILE=$config
@@ -27,6 +34,10 @@ try {
     if (-not $ready) { throw 'Alpha desktop failed to start within acceptance limit' }
     & node (Join-Path $CoreRoot 'dsh-electron/tests/desktop-smoke.mjs') --shell electron --product $Product --cdp "http://127.0.0.1:$port" --data-root (Join-Path $Output 'data') --evidence $Output --launch-only
     if (-not (Get-Content (Join-Path $Output 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'Alpha GUI smoke failed' }
+    if ($generic) {
+        # Use the shipped default (created on first launch on macOS), without a synthetic organization.
+        & node --input-type=module -e 'import assert from "node:assert/strict";import {readFile} from "node:fs/promises";import {pathToFileURL} from "node:url";const {parse}=await import(pathToFileURL(process.argv[1]));const config=parse(await readFile(process.argv[2],"utf8"));assert.deepEqual(config.organizations,[]);assert.equal(config.updates.provider,"disabled");assert.equal(config.product.name,"EduWork");console.log("GENERIC_FIRST_LAUNCH_CONFIG_OK");' (Join-Path $CoreRoot 'dsh-host/vendor/jsonc-parser/parser.js') $config
+    }
     if ($PublisherBootstrap) {
         $started=Get-Content (Join-Path $Output 'data/logs/desktop-start.json') -Raw | ConvertFrom-Json
         if ($started.configurationRevision -lt 1) { throw 'First launch did not activate the signed Alpha configuration' }
