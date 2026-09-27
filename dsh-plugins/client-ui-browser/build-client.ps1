@@ -9,7 +9,7 @@ $upstream = [IO.Path]::GetFullPath($Upstream)
 if ([string]::IsNullOrWhiteSpace($DshLockPath)) { $DshLockPath = Join-Path $repository 'third_party\dsh\LOCK.json' }
 $target = if ([string]::IsNullOrWhiteSpace($Output)) { Join-Path $source 'lib' } else { [IO.Path]::GetFullPath($Output) }
 if (-not $target.StartsWith($repository + [IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase)) { throw 'Browser output must stay within the repository' }
-$stage = Join-Path $upstream ('packages\extensions\eduwork-client-ui-browser-' + [guid]::NewGuid().ToString('N'))
+$stage = Join-Path $upstream 'packages\extensions\eduwork-client-ui-browser'
 $tsdown = Join-Path $upstream ('node_modules/.bin/' + $(if ($IsWindows) { 'tsdown.cmd' } else { 'tsdown' }))
 
 & (Join-Path $repository 'dsh-desktop\scripts\test-dsh-compatibility.ps1') -Upstream $upstream -LockPath $DshLockPath
