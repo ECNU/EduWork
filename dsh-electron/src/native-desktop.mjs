@@ -14,7 +14,7 @@ import { DesktopHostProcess } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
 import { showDesktopWindow } from './window-visibility.mjs'
-import { configureEduworkPaths, prepareEduworkDesktop, nativeBootstrap, desktopReady,
+import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady,
   trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop } from './product.mjs'
 
@@ -58,6 +58,7 @@ function reportFatal(error, source) {
   })
 }
 async function main() {
+  if (await installEduworkFromDmg() || isQuitting()) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({ getHost: () => backend.host, getWindow: () => mainWindow, reportFatal, checkUpdates: checkProductUpdates })
   protocol.handle(SCHEME, request => backend.host?.fetch(request) ?? new Response(null, { status: 503 }))

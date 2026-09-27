@@ -80,9 +80,11 @@ export async function cleanInstaller(candidate, { appPath, images = mountedImage
 }
 
 export async function installFromDmg({ app, shell, dialog, appPath,
-  images = mountedImages, identify = signature, platform = process.platform, eject, wait,
+  images = mountedImages, identify = signature, platform = process.platform, defaultApp = process.defaultApp, eject, wait,
   warn = message => console.warn(message) }) {
-  if (platform !== 'darwin' || !app.isPackaged) return false
+  // The macOS assembler retains the Electron executable name, so isPackaged
+  // is false even in a signed bundle. defaultApp identifies Electron CLI runs.
+  if (platform !== 'darwin' || defaultApp) return false
   const statePath = join(app.getPath('userData'), 'pending-source-dmg-cleanup.json')
   if (app.isInApplicationsFolder()) {
     try {
@@ -100,7 +102,14 @@ export async function installFromDmg({ app, shell, dialog, appPath,
   await writeFile(statePath, JSON.stringify(candidate), { mode: 0o600 })
   app.releaseSingleInstanceLock()
   try {
-    if (app.moveToApplicationsFolder()) return true
+    if (app.moveToApplicationsFolder({ conflictHandler: conflict => {
+      if (conflict === 'existsAndRunning') {
+        dialog.showMessageBoxSync({ type: 'info', message: '请先退出已安装的应用，再重新打开安装卷中的应用。' })
+        return false
+      }
+      return dialog.showMessageBoxSync({ type: 'question', message: '替换“应用程序”中的已有版本？',
+        detail: '已有应用会移到废纸篓，用户配置和数据会保留。', buttons: ['替换', '取消'], defaultId: 1, cancelId: 1 }) === 0
+    } })) return true
     await rm(statePath, { force: true })
   } catch (error) {
     await rm(statePath, { force: true })

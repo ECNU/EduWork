@@ -16,7 +16,7 @@ async function fixture(t) {
   const identify = async () => 'same-signed-app'
   const calls = []
   const options = { appPath, images, identify, platform: 'darwin', wait: async () => {},
-    app: { isPackaged: true, isInApplicationsFolder: () => true, getPath: () => root,
+    app: { isPackaged: false, isInApplicationsFolder: () => true, getPath: () => root,
       releaseSingleInstanceLock: () => calls.push('release'), moveToApplicationsFolder: () => { calls.push('move'); return true }, quit: () => calls.push('quit') },
     shell: { trashItem: async path => calls.push(['trash', path]) },
     dialog: { showMessageBox: async () => calls.push('error') },
@@ -79,9 +79,9 @@ test('changed signature, malformed record, replaced image, and active source app
   assert.deepEqual(f.calls, [])
 })
 
-test('Windows and unpackaged development runs skip installation and cleanup', async t => {
+test('Windows and Electron CLI development runs skip installation and cleanup', async t => {
   const f = await fixture(t)
-  for (const options of [{ ...f.options, platform: 'win32' }, { ...f.options, app: { ...f.app, isPackaged: false } }]) {
+  for (const options of [{ ...f.options, platform: 'win32' }, { ...f.options, defaultApp: true }]) {
     assert.equal(await installFromDmg(options), false)
   }
   assert.deepEqual(f.calls, [])
@@ -100,4 +100,21 @@ test('cleanup resolves image aliases and retains a record if trash fails', async
   await installFromDmg(f.options)
   await assert.rejects(access(f.statePath), { code: 'ENOENT' })
   assert.deepEqual(f.calls, [])
+})
+
+test('replacement requires approval and a running destination is never replaced', async t => {
+  const f = await fixture(t)
+  for (const [conflict, response, allowed] of [['exists', 1, false], ['exists', 0, true], ['existsAndRunning', 0, false]]) {
+    let prompted = false
+    const result = await installFromDmg({ ...f.options, appPath: f.source,
+      dialog: { showMessageBoxSync: () => { prompted = true; return response } },
+      app: { ...f.app, isInApplicationsFolder: () => false, moveToApplicationsFolder: options => {
+        assert.equal(options.conflictHandler(conflict), allowed)
+        return allowed
+      } } })
+    assert.equal(result, true)
+    assert.equal(prompted, true)
+    if (!allowed) await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+    await access(f.imagePath)
+  }
 })

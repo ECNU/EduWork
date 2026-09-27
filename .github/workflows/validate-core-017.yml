@@ -106,6 +106,9 @@ jobs:
           ./core/dsh-electron/scripts/prepare-electron.ps1 -Upstream "$env:RUNNER_TEMP/desktop-tools" -Output "$env:RUNNER_TEMP/electron"
           node core/dsh-electron/scripts/build-shell.mjs --native-017 --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
           if ($LASTEXITCODE) { throw 'Native desktop build failed' }
+          $env:EDUWORK_TEST_NATIVE_SHELL = "$env:RUNNER_TEMP/native-shell"
+          node --experimental-test-module-mocks --experimental-transform-types --test core/dsh-electron/tests/native-installer-startup.test.mjs core/dsh-electron/tests/installer-cleanup.test.mjs
+          if ($LASTEXITCODE) { throw 'Native installer startup checks failed' }
           $electron = if ($IsWindows) { "$env:RUNNER_TEMP/electron/runtime/electron.exe" } else { "$env:RUNNER_TEMP/electron/runtime/Electron.app/Contents/MacOS/Electron" }
           node core/dsh-electron/scripts/probe-native-desktop.mjs --shell "$env:RUNNER_TEMP/native-shell" --runtime "$env:RUNNER_TEMP/native-runtime" --electron $electron --output "$env:RUNNER_TEMP/native-desktop-evidence"
           if ($LASTEXITCODE) { throw 'Native Electron acceptance failed' }
