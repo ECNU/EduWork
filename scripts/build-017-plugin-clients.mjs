@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
+import { buildVideoTemplate } from '../packages/dsh-knowledge-studio/scripts/video-template-build.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -27,10 +28,11 @@ for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail'
     filter: path => !relative(sourceRepository, path).split(/[\\/]/).some(part => ['node_modules', '.git', 'test', 'tests', '.research'].includes(part)),
   })
 }
-const { build } = require('esbuild')
+const { build, transform } = require('esbuild')
 const { transform: transformCSS } = require('lightningcss')
 const sharedRoot = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services')
 const shared = JSON.parse(await readFile(join(sharedRoot, 'package.json'), 'utf8'))
+await buildVideoTemplate(sharedRoot, transform)
 const sharedAliases = Object.fromEntries(Object.entries(shared.exports).map(([key, path]) => [shared.name + (key === '.' ? '' : key.slice(1)), join(sharedRoot, path)]))
 const report = { scope: 'source candidate client bundles; unpublished', dshVersion: runtimeReceipt.dshVersion, packages: [] }
 // These are separately rebuilt, private candidate artifacts. Their DSH peers

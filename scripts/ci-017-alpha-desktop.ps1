@@ -80,6 +80,8 @@ try {
         $frozen=Join-Path $desktop 'Contents/Resources/product';$node=Join-Path $desktop 'Contents/Resources/runtime/node';$exe=Join-Path $desktop 'Contents/MacOS/Electron'
         $result.developerIDSigned=$false;$result.notarized=$false;$result.minimumSystemVersion=$pack.minimumSystemVersion
     }
+    $mediaTemplate=Join-Path $frozen 'd/node_modules/@eduwork/dsh-artifact-services/lib/video-template.js'
+    if (-not (Test-Path -LiteralPath $mediaTemplate -PathType Leaf)) { throw 'Packaged shared media template is missing' }
     $result.checks.archiveManifest='passed'
     & $node (Join-Path $CoreRoot 'scripts/check-desktop-runtimes.mjs') $desktop (Join-Path $public 'native-runtimes.json')
     $result.checks.nativeRuntimes='passed'
