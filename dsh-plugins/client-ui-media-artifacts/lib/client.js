@@ -6433,10 +6433,76 @@ button{cursor:pointer}button:hover:enabled{background:var(--dsw-alias-interactiv
 				sourceMode
 			})));
 		}
+		const onlineId = "@eduwork/workspace-online-media";
+		const mediaTypes = {
+			mp4: "video/mp4",
+			webm: "video/webm",
+			mov: "video/quicktime",
+			mp3: "audio/mpeg",
+			wav: "audio/wav",
+			ogg: "audio/ogg",
+			opus: "audio/ogg",
+			m4a: "audio/mp4",
+			aac: "audio/aac",
+			flac: "audio/flac"
+		};
+		function onlineMedia(address) {
+			try {
+				const url = new URL(address);
+				const mime = mediaTypes[extension(url.pathname)];
+				if (["http:", "https:"].includes(url.protocol) && !url.username && !url.password && mime) return {
+					encoding: "url",
+					data: url.href,
+					mime
+				};
+			} catch {}
+		}
+		function OnlineMediaTab({ useTabInfo }) {
+			const { tab } = useTabInfo();
+			const preview = onlineMedia(tab.contentId);
+			if (!preview) return h$1("p", { role: "alert" }, "媒体地址不可用");
+			return h$1("section", { style: {
+				height: "100%",
+				display: "grid",
+				gridTemplateRows: "auto minmax(0, 1fr)"
+			} }, h$1("header", { style: {
+				padding: 10,
+				borderBottom: "1px solid var(--dsw-alias-border-l2)"
+			} }, h$1("button", {
+				type: "button",
+				style: button,
+				onClick: () => globalThis.eduworkPreviewLinks?.openExternal(preview.data)
+			}, "在外部浏览器打开")), h$1(PreviewContent, {
+				preview,
+				path: new URL(preview.data).pathname
+			}));
+		}
 		function installSidebarPreview(ctx, { previewFile, revealFile }) {
 			const sidebar = ctx.get("sidebarRight");
 			const tabs = ctx.get("sidebarRightTabs");
 			if (!sidebar || !tabs) return void 0;
+			const bridge = globalThis.eduworkPreviewLinks;
+			if (bridge) {
+				ctx.effect(() => tabs.register({
+					id: onlineId,
+					kind: "eduwork-online-media",
+					priority: "extension",
+					patterns: Object.keys(mediaTypes).map((ext) => `*.${ext}`),
+					canOpen: (address) => !!onlineMedia(address),
+					title: (address) => basename(new URL(address).pathname)
+				}), "eduwork: online media type");
+				ctx.effect(() => ctx.slots.inject("sidebar.right.pane.tab", () => ctx.slots.register({
+					name: "sidebar.right.pane.tab",
+					key: onlineId
+				}, OnlineMediaTab)), "eduwork: online media renderer");
+				ctx.effect(() => bridge.subscribe((url) => {
+					try {
+						sidebar.openResource(url, { kind: "eduwork-online-media" });
+					} catch {
+						bridge.openExternal(url);
+					}
+				}), "eduwork: online media links");
+			}
 			ctx.effect(() => tabs.register(artifactTabDefinition), "eduwork: rendered file type");
 			ctx.effect(() => ctx.slots.inject("sidebar.right.pane.tab", () => ctx.slots.register({
 				name: "sidebar.right.pane.tab",

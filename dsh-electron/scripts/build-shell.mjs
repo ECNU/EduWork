@@ -59,6 +59,7 @@ for (const file of files) {
   }
   if (native && file === 'apps/desktop/src/preload-app.ts') text = await readFile(join(repository, 'dsh-electron/src/native-preload.mjs'), 'utf8')
   if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8')
+  if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/preview-links-preload.cjs'), 'utf8')
   if (file === 'apps/desktop/src/locale.ts') {
     const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
     if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')
@@ -107,6 +108,7 @@ await build({ config: false, cwd: output, alias, failOnWarn: true, entry: ['src/
 await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'preload-app': 'src/preload-app.ts' }, outDir: 'lib', format: ['cjs'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { neverBundle: ['electron'] } })
 const adapters = {}
 adapters['dsh-electron/src/dock-theme-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs')))
+adapters['dsh-electron/src/preview-links-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/preview-links-preload.cjs')))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 if (native) for (const name of ['native-web-host.mjs', 'native-web-bridge.mjs', 'native-preload.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))

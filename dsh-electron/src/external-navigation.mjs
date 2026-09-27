@@ -10,8 +10,25 @@ export function navigationTarget(raw) {
   return 'blocked'
 }
 
-export function attachExternalNavigation(contents, openExternal, onError = () => {}) {
+export function attachExternalNavigation(contents, openExternal, onError = () => {}, openNative = openExternal) {
+  let previewReady = false
+  const trusted = event => event.senderFrame === contents.mainFrame &&
+    event.senderFrame?.url?.startsWith('dsh-app://app/')
+  contents.on('ipc-message', (event, channel, value) => {
+    if (!trusted(event)) return
+    if (channel === 'eduwork:preview-ready') previewReady = value === true
+    if (channel === 'eduwork:preview-external' && navigationTarget(value) === 'external') {
+      void Promise.resolve().then(() => openNative(value)).catch(onError)
+    }
+  })
+  contents.on('did-start-navigation', (_event, _url, inPlace, isMainFrame) => {
+    if (isMainFrame && !inPlace) previewReady = false
+  })
   const open = url => {
+    if (previewReady && /\.(mp4|webm|mov|mp3|wav|ogg|opus|m4a|aac|flac)$/i.test(new URL(url).pathname)) {
+      contents.send('eduwork:preview-link', url)
+      return
+    }
     // Both synchronous launch failures and rejected OS calls are contained.
     void Promise.resolve().then(() => openExternal(url)).catch(onError)
   }
