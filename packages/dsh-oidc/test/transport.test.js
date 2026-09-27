@@ -20,7 +20,7 @@ test('one boolean controls HTTP for DNS, IP, loopback and model requests; HTTPS 
     const allowed = profile(origin, true)
     const descriptor = detectGatewayProtocol(metadata(origin), allowed)
     assert.equal(descriptor.issuer, origin)
-    const configured = { ...allowed, provider: { ...allowed.provider, baseURL: origin + '/v1', models: [{ id: 'model', input: ['text'] }] } }
+    const configured = { ...allowed, provider: { ...allowed.provider, baseURL: origin + '/v1', models: [{ id: 'model', type: 'llm', input: ['text'] }] } }
     const [model] = resolveEnterpriseProfiles(enterpriseProviderConfig(new Map([['example', configured]])))
     assert.equal(model.baseURL, origin + '/v1')
     assert.throws(() => detectGatewayProtocol({ ...metadata(origin), token_endpoint: 'http://other.example.test/token' }, allowed), /trust boundary/)

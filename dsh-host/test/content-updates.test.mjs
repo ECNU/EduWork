@@ -49,7 +49,7 @@ const offlineBytes = release => Buffer.from(JSON.stringify({schemaVersion:1,mani
 
 test('signed configuration delivers child defaults independently and preserves local edits', async t => {
   const f=await fixture(t)
-  const compatible={...requires,dsh:'0.1.7-rc.1'}
+  const compatible={...requires,dsh:'0.1.7-rc.2'}
   f.options.identity.dshVersion=compatible.dsh
   f.release(1,{configuration:1},{schemaVersion:1,configuration:{features:{maxActiveSubagents:2}}},{requires:compatible})
   let manager=await f.open();await manager.check();await manager.download()

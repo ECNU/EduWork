@@ -34,3 +34,18 @@ test('Windows portable config, update state and manifest locations stay compatib
   assert.throws(() => desktopPaths({ appRoot, settings, platform: 'win32', testRoot: 'relative' }))
   assert.throws(() => desktopPaths({ appRoot, settings, platform: 'win32', testRoot: join(root, 'current') }))
 })
+
+test('macOS source Alpha isolates all writable state without moving the read-only product', () => {
+  const appRoot = resolve('synthetic-installed/Example Alpha.app/Contents/Resources/app')
+  const options = { appRoot, appData: resolve('synthetic-user/Application Support'), settings, platform: 'darwin' }
+  const normal = desktopPaths(options), alpha = desktopPaths({ ...options, settings: { ...settings, sourceAlpha: true } })
+  assert.equal(alpha.product, normal.product)
+  assert.equal(alpha.skillsManifestPath, normal.skillsManifestPath)
+  for (const field of ['config', 'home', 'userData', 'logs', 'updateDataRoot']) {
+    assert.notEqual(alpha[field], normal[field])
+    assert.equal(relative(join(options.appData, 'example-electron-alpha'), alpha[field]).startsWith('..'), false)
+  }
+  assert.equal(desktopPaths({ ...options, settings: { ...settings, sourceAlpha: false } }).config, normal.config)
+  const windows = { appRoot: resolve('synthetic-portable/resources/app'), settings, platform: 'win32' }
+  assert.deepEqual(desktopPaths({ ...windows, settings: { ...settings, sourceAlpha: true } }), desktopPaths(windows))
+})

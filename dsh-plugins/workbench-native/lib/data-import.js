@@ -2,16 +2,19 @@ import { constants, createReadStream } from 'node:fs'
 import { readdir, lstat, realpath, mkdir, copyFile, readFile, writeFile, rename, rm } from 'node:fs/promises'
 import { join, resolve, relative, isAbsolute, dirname, basename } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
-import { findSessionCandidates, inspectSession, loadImportFormats, sourceVersion } from './import-inspection.js'
+import { findSessionCandidates, inspectSession, loadImportFormats, prepareImportCatalogs, sourceVersion } from './import-inspection.js'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 const inside = (root, path) => { const r = relative(root, path); return r === '' || (!r.startsWith('..') && !isAbsolute(r)) }
 async function exists(path) { try { return await lstat(path) } catch (e) { if (e.code === 'ENOENT') return null; throw e } }
 async function hashFile(path) { const h = createHash('sha256'); for await (const chunk of createReadStream(path)) h.update(chunk); return h.digest('hex') }
 const ignored = new Set(['node_modules', '.git', '.venv', '__pycache__'])
+const systemAliases = process.platform === 'darwin' ? new Map([['/var', '/private/var'], ['/tmp', '/private/tmp']]) : new Map()
 async function noLinks(path) {
   for (let current = resolve(path); ; current = dirname(current)) {
-    if ((await exists(current))?.isSymbolicLink()) throw Error(`导入路径不能通过目录链接：${current}`)
+    if ((await exists(current))?.isSymbolicLink()
+      && (!systemAliases.has(current) || await realpath(current) !== systemAliases.get(current)))
+      throw Error(`导入路径不能通过目录链接：${current}`)
     if (dirname(current) === current) break
   }
 }
@@ -83,6 +86,9 @@ function remap(value, mappings) {
   return value
 }
 const prefix = (a, b) => a.length <= b.length && a.every((row, i) => JSON.stringify(row) === JSON.stringify(b[i]))
+const inventoryKey = ({ groups, unknown }) => JSON.stringify([
+  ...groups.flat().map(row => row.path), ...unknown.map(row => row.path),
+].sort())
 
 export class DataImporter {
   constructor({ home, persistence, openStore = openImportStore, loadFormats = loadImportFormats, register = async () => {} }) { this.home = home; this.persistence = persistence; this.openStore = openStore; this.loadFormats = loadFormats; this.register = register; this.job = null }
@@ -121,6 +127,9 @@ export class DataImporter {
     job.found = inventories.reduce((sum, row) => sum + row.groups.length + row.unknown.length, 0)
     const issue = (path, category, reason) => { job.excluded++; job.scanned++; job.issues.push({ path: relative(root, path), category, reason }) }
     for (const { sourceHome, groups, unknown } of inventories) {
+      const catalogs = await prepareImportCatalogs(groups, formats, noLinks, () => {
+        job.message = '正在检查旧会话及子会话关系…'
+      })
       for (const row of unknown) issue(row.path, 'unsupported', row.reason)
       for (const group of groups) {
         const candidate = group[0]
@@ -131,7 +140,8 @@ export class DataImporter {
         try {
           await noLinks(candidate.path)
           if (group[1]?.version === candidate.version) throw Error('同一代会话存在多份编码文件，无法确定应使用哪份；请先在来源客户端整理')
-          const artifact = await inspectSession(candidate, formats)
+          if (catalogs.errors.has(candidate.path)) throw catalogs.errors.get(candidate.path)
+          const artifact = await inspectSession(candidate, catalogs.forSession(candidate))
           const staged = join(staging, String(job.scanned))
           store = await this.openStore(staged)
           write = await store.persistence.create(artifact.header, { inheritedEventCount: artifact.inheritedEventCount })
@@ -141,6 +151,9 @@ export class DataImporter {
         } catch (error) { issue(candidate.path, error.category ?? 'invalid', error.message) }
         finally { await write?.close(); await store?.close() }
       }
+      if (inventoryKey({ groups, unknown }) !== inventoryKey(await findSessionCandidates(sourceHome)))
+        throw Error('检查期间来源会话目录发生变化，请退出旧客户端再重试')
+      await catalogs.validate()
     }
     job.formats.sort((a,b) => a-b)
     if (legacyDescriptors) job.warnings.push(`已兼容 ${legacyDescriptors} 份旧子代理描述 v2；正文与原有配置保留，来源文件未修改。`)
@@ -204,6 +217,12 @@ export class DataImporter {
           mappings.push([join(sourceHome, 'attachments'), attachments])
           let cwd = header.cwd
           if (typeof cwd !== 'string' || !cwd) cwd = join(root, 'restored-workspace')
+          if (isAbsolute(cwd)) {
+            await noLinks(cwd)
+            // Compare the same physical spelling as the selected program root:
+            // Windows 8.3 names and macOS system aliases are not new workspaces.
+            cwd = await realpath(cwd).catch(error => { if (error.code === 'ENOENT') return cwd; throw error })
+          }
           if (inside(root, resolve(cwd)) && !homes.some(h => inside(h, resolve(cwd)))) {
             if (!(await exists(cwd))?.isDirectory()) job.warnings.push(`原工作区不在此机器上：${cwd}。会话已导入，项目文件需另外复制。`)
             const dest = join(home, 'imported-workspaces', digest(root).slice(0, 16), digest(cwd).slice(0, 12), basename(cwd))
@@ -215,6 +234,7 @@ export class DataImporter {
             mappings.push([header.cwd, cwd]); job.warnings.push(`原工作区不在此机器上：${header.cwd}。会话已导入，项目文件需另外复制。`)
           }
           await noLinks(cwd); await mkdir(cwd, { recursive: true })
+          if (typeof header.cwd === 'string' && header.cwd && header.cwd !== cwd) mappings.push([header.cwd, cwd])
           const mapped = remap(events, mappings.sort((a, b) => b[0].length - a[0].length))
           write = await this.persistence.create({ ...read.header, id, cwd }, { inheritedEventCount: read.inheritedEventCount })
           await write.append(mapped); await write.flush(); await write.close(); write = null

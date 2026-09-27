@@ -6,6 +6,19 @@
 
 桌面基底锁定 DSH `0.1.5-rc.2`（`fb2c4b9e698e30edb738bca4cf0618587db7d203`）。Electron 主进程、窗口、`dsh-app://` 和流式 Host 传输从该提交派生，产品适配以可核对的补丁生成，不修改共享的官方源码缓存。Host 适配放在 `../dsh-host/`，供两种桌面宿主复用。
 
+显式 `--native-017` 构建使用 [DSH 0.1.7-rc.2 候选锁](../third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json)：内核、Web 客户端、Desktop Host 和桌面模块均来自 `477b4f420553e8a52c2fbccc464d7561b239c443`。窗口工厂、完整预加载桥接、浏览器 guest 隔离、快捷键、目录选择、主题与语言同步、Host 生命周期、退出确认和故障恢复复用官方实现；输入哈希及产品适配记录在构建回执中。
+
+机构登录与系统加密凭据、便携更新、签名配置与技能更新、任务通知和 Studio 由产品适配保留。麦克风权限沿用官方主窗口、主框架和系统授权检查，其他权限默认拒绝，仅允许应用主框架写剪贴板。外部网页使用隔离的原生浏览器，不绕过站点 CSP 或 X-Frame-Options。故障恢复提供退出与重启，不提供会关闭发行版必要插件的“禁用全部插件”。这不是官方安装包的重打包，也不继承其签名。此模式不改变默认发行锁或更新源。
+
+候选壳构建需要同一锁准备的源码、Host 和 npm Runtime；不再使用旧版桌面源码或共享编译缓存：
+
+```powershell
+node dsh-electron/scripts/build-shell.mjs --native-017 --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
+```
+
+`$ElectronExecutable` 必须是原始 Electron runtime 的可执行文件，不能使用已打包应用的 EXE。输出目录必须尚不存在。[候选 CI](../.github/workflows/validate-core-017.yml) 在 Windows/macOS 构建并启动真实 Electron，使用合成网页检查桥接、受防嵌入策略保护的页面、权限边界与生命周期；真实机构登录、系统录音授权、更新安装及 macOS 人工交互仍须另行验收。
+
 每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；公版默认使用 GitHub，用户可通过配置覆盖来源或关闭更新。开发验证使用独立数据目录。
 
 macOS 的运行中 Dock 图标、下次启动窗口的图标和进度条跟随红／蓝配色。启动配色缓存保存在应用用户数据目录的 `visual-style.json`，不修改应用包或签名。Dock 原生插件在应用退出后继续读取这份缓存，保留所选配色。访达和启动台保留默认品牌图标；台前调度不保证同步。首次升级到带 Dock 插件的版本后，若已固定的图标仍恢复默认色，将应用从 Dock 移除后重新加入，以加载插件。

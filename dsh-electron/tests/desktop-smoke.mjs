@@ -46,6 +46,15 @@ try {
     await page.waitForFunction(() => document.body.innerText.trim().length > 0)
     // The official document title exists before the branding plugin mounts.
     await page.waitForFunction(expected => document.title === expected, identity.brand.product.name)
+    // Navigation can reset either the bare title or a session-qualified title.
+    // Exercise the mounted plugin, rather than accepting a transient brand.
+    for (const [title, expected] of [
+      ['Synthetic session — DeepSeek Harness', 'Synthetic session — ' + identity.brand.product.name],
+      ['DeepSeek Harness', identity.brand.product.name],
+    ]) {
+      await page.evaluate(title => { document.title = title }, title)
+      await page.waitForFunction(expected => document.title === expected, expected)
+    }
     assert.equal(await page.title(), identity.brand.product.name)
     const transport = await page.evaluate(() => ({ ownsHost: globalThis.__DSH_TRANSPORT__?.ownsHost,
       scheme: location.protocol, nodeExposed: typeof globalThis.require !== 'undefined' || typeof globalThis.process !== 'undefined' }))

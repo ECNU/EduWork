@@ -5430,7 +5430,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			"connection",
 			"sessions",
 			nativeSettings ? "configForms" : "settingsScope",
-			"uiWorkspace"
+			"uiWorkspace",
+			...nativeSettings ? ["uiSession"] : []
 		];
 		const h = react.default.createElement;
 		const color = "var(--dsw-alias-state-business-primary, #9f2636)";
@@ -5472,7 +5473,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			color: "white",
 			fontWeight: 650
 		});
-		function SkillCenter({ service, embedded = false }) {
+		function SkillCenter({ service, standalone = false }) {
 			const settings = (0, react.useSyncExternalStore)((listener) => service.settings.subscribe(listener), () => service.settings.getSnapshot(), () => service.settings.getSnapshot());
 			const [catalog, setCatalog] = (0, react.useState)([]);
 			const credentialReady = false;
@@ -5586,12 +5587,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const header = h("div", { style: {
 				marginBottom: 18,
 				display: "flex",
-				justifyContent: embedded ? "flex-end" : "space-between",
+				flexWrap: "wrap",
+				justifyContent: "space-between",
 				alignItems: "flex-start",
 				gap: 16
-			} }, !embedded && h("div", null, h("h3", { style: {
+			} }, h("div", { style: { flex: "1 1 280px" } }, h(standalone ? "h1" : "h3", { style: {
 				margin: "0 0 5px",
-				fontSize: 20
+				fontSize: 20,
+				fontWeight: 500,
+				lineHeight: "28px"
 			} }, "技能"), h("p", { style: {
 				margin: 0,
 				color: "#75635c",
@@ -5620,7 +5624,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			if (settings.status !== "ready") return h("div", null, header, h("p", { role: "alert" }, "当前连接无法维护技能设置。"));
 			return h("div", { style: {
 				width: "100%",
-				maxWidth: 820
+				maxWidth: standalone ? 960 : 820
 			} }, header, h("input", {
 				type: "search",
 				value: query,
@@ -6017,11 +6021,39 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}, error)));
 		}
-		function SkillPluginPage({ service, view }) {
-			return view === "summary" ? h(react.default.Fragment, null, "管理内置、个人与项目技能，供对话和 Studio 共用。") : h(SkillCenter, {
+		const skillsPanelId = "eduwork-skills";
+		function SkillsPage({ service }) {
+			return h("div", { style: {
+				display: "flex",
+				justifyContent: "center",
+				boxSizing: "border-box",
+				height: "100%",
+				overflow: "auto",
+				padding: "calc(28px + var(--dsh-frame-top-clearance, 0px)) clamp(24px, 4vw, 48px) 48px",
+				color: "var(--dsw-alias-label-primary, #222)"
+			} }, h(SkillCenter, {
 				service,
-				embedded: true
-			});
+				standalone: true
+			}));
+		}
+		function SkillsPanelIcon({ size = 16 }) {
+			return h("svg", {
+				width: size,
+				height: size,
+				viewBox: "0 0 17 17",
+				fill: "none",
+				"aria-hidden": true,
+				strokeWidth: 1
+			}, h("path", {
+				d: "M4.57788 5.77124H10.7029M4.57788 8.89819H7.91879",
+				stroke: "currentColor"
+			}), h("path", {
+				d: "M12.1404 1.19446C12.9442 1.19446 13.6404 1.81999 13.6404 2.64465V8.89856H12.6404V2.64465C12.6404 2.42015 12.4411 2.19446 12.1404 2.19446H3.14038C2.83968 2.19446 2.64038 2.42015 2.64038 2.64465V13.0929C2.64082 13.3172 2.84001 13.5421 3.14038 13.5421H8.88159V14.5421H3.14038C2.33675 14.5421 1.6408 13.9172 1.64038 13.0929V2.64465C1.64038 1.81999 2.33651 1.19446 3.14038 1.19446H12.1404Z",
+				fill: "currentColor"
+			}), h("path", {
+				d: "M12.0051 15.1056C12.0051 13.6395 10.8166 12.451 9.35059 12.451C10.8166 12.451 12.0051 11.2626 12.0051 9.79651C12.0051 11.2626 13.1936 12.451 14.6597 12.451C13.1936 12.451 12.0051 13.6395 12.0051 15.1056Z",
+				stroke: "currentColor"
+			}));
 		}
 		async function apply(ctx) {
 			const unmount = await ctx.remote.$mount(typert_remote_client_default), unmountSkills = await ctx.remote.$mount(TYPERT_REMOTE);
@@ -6038,13 +6070,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						status: notifications.status
 					})
 				}, NotificationSettings));
+				const currentSession = nativeSettings ? inner.uiSession.adapter.current : inner.sessions.list;
+				const currentSessionId = () => nativeSettings ? currentSession.getSnapshot().props.sessionId : currentSession.getSnapshot().current;
 				const service = {
 					settings: nativeSettings ? inner.configForms.get("chatecnu-skills") : inner.settingsScope.bind({ namespace: "chatecnu-skills" }),
-					hasSession: () => Boolean(inner.sessions.list.getSnapshot().current),
-					subscribeSession: (fn) => inner.sessions.list.subscribe(fn),
+					hasSession: () => Boolean(currentSessionId()),
+					subscribeSession: (fn) => currentSession.subscribe(fn),
 					list: async () => {
 						const result = await unwrap(inner.remote.workbench.catalog());
-						const id = inner.sessions.list.getSnapshot().current;
+						const id = currentSessionId();
 						if (!id || !inner.remote.skills) return result.skills;
 						const session = await unwrap(inner.remote.skills.list({ sessionId: id }));
 						const known = new Set(result.skills.map((row) => canonicalSkillName(row.name)));
@@ -6060,14 +6094,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					remove: (name) => unwrap(inner.remote.skillManager.trashPersonalSkill(name)),
 					pickDirectory: () => pickImportDirectory(inner.uiWorkspace)
 				};
-				if (nativeSettings) inner.slots.inject("plugins.item", () => inner.slots.register({
-					name: "plugins.item",
-					id: "eduwork-skills",
-					order: -20,
-					label: "技能",
-					inject: () => ({ service })
-				}, SkillPluginPage));
-				else inner.slots.inject("settings.plugins.tab", () => inner.slots.register({
+				if (nativeSettings) {
+					inner.slots.inject("main", () => inner.slots.register({
+						name: "main",
+						key: skillsPanelId,
+						inject: () => ({ service })
+					}, SkillsPage));
+					inner.slots.inject("sidebar.panellist", () => inner.slots.register({
+						name: "sidebar.panellist",
+						id: skillsPanelId,
+						order: -10,
+						label: "技能"
+					}, SkillsPanelIcon));
+				} else inner.slots.inject("settings.plugins.tab", () => inner.slots.register({
 					name: "settings.plugins.tab",
 					id: "skills",
 					order: -20,

@@ -116,7 +116,7 @@ Identity is keyed by issuer + sub, never a name or email address. The current ad
 | `GET api_base + /models` | Bearer; 200 OpenAI-style `{"object":"list","data":[{"id":"example-chat","object":"model"}]}`, limited to the current authorization |
 | `POST api_base + /chat/completions` | Same Bearer; OpenAI-compatible requests with JSON or SSE responses (`data:`, ending with `[DONE]`) |
 
-The server determines model access and quotas; client configuration cannot grant access. Empty catalogs stay empty. Profiles, catalogs and requests are isolated by authorization. ID-only models receive text capabilities without guessing vision, reasoning or context limits from their names; other capabilities require explicit configuration or future metadata.
+The server determines model access and quotas; client configuration cannot grant access. Empty catalogs stay empty. Profiles, catalogs and requests are isolated by authorization. The optional data[].type extension classifies models as llm, embedding, rerank, image, tts or unknown. Only LLMs enter the EduWork conversation directory. This is not a standard OpenAI discovery field: a server type takes precedence, while reviewed local types fill missing declarations. Unknown or unsupported types stay outside conversation. Image input, reasoning and context limits require separate explicit metadata; an image-capable LLM remains an LLM.
 
 Image, audio and other APIs need separate agreements between the server and relevant plugins; OpenAI compatibility does not imply every API is supported. Quotas and school services remain institution extensions, not mandatory public endpoints.
 

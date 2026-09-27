@@ -10,6 +10,10 @@ on:
         description: 'Build an internal test artifact without release notes or publication'
         type: boolean
         default: true
+      source_alpha:
+        description: 'Explicit DSH rc.2 source Alpha; artifacts only, npm release locks unchanged'
+        type: boolean
+        default: false
       release_notes:
         description: 'Approved docs/releases/<version>.md file (release candidate only)'
         required: false
@@ -59,11 +63,17 @@ jobs:
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           TARGET_PLATFORM: ${{ matrix.platform }}
+          SOURCE_ALPHA: ${{ inputs.source_alpha }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
           if ($env:DEVELOPMENT_ONLY -ne 'true' -and $env:RELEASE_NOTES_APPROVED -ne 'true') { throw 'Release notes approval is required.' }
           node core/scripts/check-source-docs.mjs core
+          if ($env:SOURCE_ALPHA -eq 'true') {
+            if ($env:DEVELOPMENT_ONLY -ne 'true' -or $env:RELEASE_NOTES -or $env:RELEASE_NOTES_APPROVED -eq 'true') { throw 'Source Alpha builds artifacts only; publish reviewed notes separately.' }
+            ./core/scripts/ci-017-alpha-desktop.ps1 -CoreRoot ./core -EditionRoot ./core -Version $env:RELEASE_VERSION -Output "$env:RUNNER_TEMP/ew-candidate"
+            exit 0
+          }
           $script = "./core/scripts/ci-eduwork-$($env:TARGET_PLATFORM)-release.ps1"
           $acceptance = @{}
           if ($env:DEVELOPMENT_ONLY -eq 'true') { $acceptance.Development = $true } else { $acceptance.ReleaseNotesApproved = $true }

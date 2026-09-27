@@ -12,7 +12,7 @@ if (!values.product || !values.output) throw new Error('Use --product <assembled
 const product = resolve(values.product), output = resolve(values.output)
 const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
 assert.equal(identity.pluginMode, 'source-qualification')
-assert.equal(identity.dshVersion, '0.1.7-rc.1')
+assert.equal(identity.dshVersion, '0.1.7-rc.2')
 const require = createRequire(join(product, 'd/package.json'))
 const load = name => import(pathToFileURL(require.resolve(name)).href)
 const { Context } = await load('@deepseek-ai/cordis')

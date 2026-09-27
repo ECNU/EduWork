@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.1.7-rc.2](https://img.shields.io/badge/DSH-0.1.7--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.7-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -148,14 +148,14 @@ We want this space to support more ways to create and learn. Additional Studios 
 
 Each client runs independently on its user's computer, without a separate EduWork server. Model services come from your chosen provider or organization.
 
-Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the development package and move `EduWork.app` to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
+Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the package and move the included `.app` application to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
 
 ### 1. Get the client
 
 Download the complete desktop package for your platform from [GitHub Releases](https://github.com/ecnu/EduWork/releases):
 
 - **Windows x64:** extract into a writable directory and run `EduWork-Electron.exe`. Keep the accompanying resource files; do not copy just the EXE.
-- **macOS arm64:** extract and move `EduWork.app` to Applications, then open it. Configuration and user data live in the user directory.
+- **macOS arm64:** extract the package, move the included `.app` application to Applications, and open it. Configuration and user data live in the user directory.
 
 GitHub's Source code archives are not desktop packages. See the [build guide](docs/BUILD.md) to run from source.
 
@@ -166,6 +166,8 @@ GitHub's Source code archives are not desktop packages. See the [build guide](do
 | Personal model API | Open **Settings → Models** and enter your provider's API key, endpoint, and model. |
 | LiteLLM gateway account | Configure discovery as described below and sign in through the browser, without manually entering a model key. |
 | School or company configuration | Merge it into the active file using the [organization steps](#configuration-steps), then sign in. |
+
+The conversation selector lists LLMs, including LLMs that accept images. Image generation, speech synthesis, embedding, and reranking models serve their respective capabilities rather than appearing as chat models.
 
 The public edition does not download institution configuration by default. It ships a commented `eduwork.jsonc` and an `examples/` folder. Application configuration such as institution connections, media services, plugin defaults, and update sources lives in the single file opened from Settings; optional fields are documented in a commented reference at its end. Personal models, API keys, and interface preferences remain managed in their respective settings screens.
 
@@ -182,7 +184,7 @@ The gateway must enable native CLI OAuth and grant the account model permissions
 <details>
 <summary>Use a school or enterprise configuration</summary>
 
-1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows, or `~/Library/Application Support/eduwork-electron/config/` on macOS.
+1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows. On macOS it lives in a distribution-specific directory under `~/Library/Application Support/`; use the file opened from Settings.
 2. Follow the server guide and the adjacent `examples/` folder. Add organization entries to `organizations`, preserving existing settings; add `media` if needed. Editing the example alone has no effect.
 3. Save, exit completely through the tray or application menu, and restart. Then select your organization and sign in.
 
@@ -201,7 +203,7 @@ Try: **“Create a study guide from these sources, then make a companion quiz.�
 <details>
 <summary>Window behavior and updates</summary>
 
-Closing the window minimizes it to the system tray by default. Use the tray or application menu to exit completely. The public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings. Windows uses its portable updater; macOS uses Sparkle to download, replace the application, and restart after user confirmation. Institutions can configure another source. Updates preserve history and user configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES_EN.md).
+Closing the window minimizes it to the system tray by default. Use the tray or application menu to exit completely. Whether automatic updates are enabled and which source they use depend on the distribution package and configuration; consult the release notes for your version. When enabled, Windows uses its portable updater and macOS uses Sparkle, preserving history and user configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES_EN.md).
 
 </details>
 

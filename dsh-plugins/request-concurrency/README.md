@@ -14,7 +14,7 @@
 
 发行默认值使用 JSONC `features.maxConcurrentRequests`，两种桌面壳都通过共享 Host 转为 `EDUWORK_MAX_CONCURRENT_REQUESTS`。Web 可在插件配置中使用 `maxConcurrentRequests`。旧 JSONC / 插件配置 / 环境变量 `maxParallelSubagents` / `EDUWORK_MAX_PARALLEL_SUBAGENTS` 继续读取并换算为总量，不重写用户配置文件。用户在设置中保存的数值优先于发行默认值；文件变更需重启，界面保存无需重启。
 
-DSH 0.1.7 原生桌面通过生成的插件配置传入 `features.maxConcurrentRequests`，不依赖旧环境变量；界面通过官方 volatile 配置写入桌面 profile。0.1.7-rc.1 同时把 `features.maxActiveSubagents`（默认 2）传给官方 `subagent` 插件，限制一个主 Agent 下的子代理数量，达到上限拒绝新建。两项限制互不换算；它们在界面已保存的值始终优先于后续发行默认值。
+DSH 0.1.7 原生桌面通过生成的插件配置传入 `features.maxConcurrentRequests`，不依赖旧环境变量；界面通过官方 volatile 配置写入桌面 profile。0.1.7-rc.2 同时把 `features.maxActiveSubagents`（默认 2）传给官方 `subagent` 插件，限制一个主 Agent 下的子代理数量，达到上限拒绝新建。两项限制互不换算；它们在界面已保存的值始终优先于后续发行默认值。
 
 官方工作流的 `maxConcurrentAgents` 仍限制单次工作流的任务数，内置工作流保留默认 2。它与本插件的全 Host 模型请求上限作用不同，不能单独保证多个工作流和普通子代理的合计请求量。本插件复用官方请求入口，不改任务持久化或另写代理执行器。
 

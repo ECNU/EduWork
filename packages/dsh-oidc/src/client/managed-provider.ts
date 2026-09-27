@@ -218,8 +218,8 @@ export function ManagedProviderCard({ service, configuration }: any) {
         h('div', { style: { minWidth: 0 } },
           h('div', { style: { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' } },
             h('strong', { style: { fontSize: 15 } }, profile.displayName),
-            h('span', { style: { borderRadius: 999, padding: '2px 7px', background: profile.builtIn ? '#f5e9e8' : '#eef1f6', color: profile.builtIn ? accent : '#536174', fontSize: 11 } }, configuration.configFile ? (isChinese ? '配置文件' : 'Configuration file') : profile.builtIn ? copy.verified : copy.custom),
-            h('span', { style: { borderRadius: 999, padding: '2px 7px', border: `1px solid ${connected ? '#b9d9c8' : border}`, color: connected ? '#357a55' : profile.enabled ? accent : textTertiary, fontSize: 11 } }, connected ? copy.connected : profile.enabled ? copy.enabled : copy.disabled)),
+            h('span', { style: { borderRadius: 999, padding: '2px 7px', background: 'var(--dsw-alias-bg-layer-2, #eef1f6)', color: textSecondary, fontSize: 11 } }, configuration.configFile ? (isChinese ? '配置文件' : 'Configuration file') : profile.builtIn ? copy.verified : copy.custom),
+            h('span', { style: { borderRadius: 999, padding: '2px 7px', border: `1px solid ${connected ? 'var(--dsw-alias-state-success-primary, #357a55)' : border}`, color: connected ? 'var(--dsw-alias-state-success-primary, #357a55)' : profile.enabled ? accent : textTertiary, fontSize: 11 } }, connected ? copy.connected : profile.enabled ? copy.enabled : copy.disabled)),
           h('div', { style: { marginTop: 6, color: textSecondary, fontSize: 11, overflowWrap: 'anywhere' } }, profile.baseURL),
           h('div', { style: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' } }, ...modelBadges)),
         h('div', { style: { display: 'flex', gap: 7, flex: 'none', flexWrap: 'wrap', justifyContent: 'flex-end' } },
@@ -289,7 +289,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
       !editingModels && h('div', { style: { display: 'grid', gap: 9, marginTop: 11 } }, ...(detail.runtime.models.length > 0 ? detail.runtime.models.map((model: any) => {
         const summary = modelCapabilitySummary(model, detail.runtime)
         return h('article', { key: model.id, style: { border: `1px solid ${border}`, borderRadius: 11, padding: 13 } },
-          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('strong', null, summary.name), summary.name !== summary.id && h('code', { style: { color: textTertiary, fontSize: 11 } }, summary.id), summary.multimodal && h('span', { style: { color: '#355c91', fontSize: 10 } }, isChinese ? '多模态' : 'Multimodal')),
+          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('strong', null, summary.name), summary.name !== summary.id && h('code', { style: { color: textTertiary, fontSize: 11 } }, summary.id), summary.multimodal && h('span', { style: { color: 'var(--dsw-alias-state-business-primary, #355c91)', fontSize: 10 } }, isChinese ? '多模态' : 'Multimodal')),
           h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))', gap: 8, marginTop: 10, color: textSecondary, fontSize: 11 } },
             summary.upstreamModelID && h('span', null, `${copy.baseModel}：${summary.upstreamModelID}`), h('span', null, `${copy.context}：${summary.contextWindow || copy.unspecified}`), h('span', null, `${copy.output}：${summary.maxTokens || copy.unspecified}`),
             h('span', null, `${copy.input}：${summary.input.map(modalityLabel).join('、')}`), h('span', null, `${copy.reasoning}：${!summary.reasoningSupported ? copy.unsupported : summary.reasoningEfforts.length ? summary.reasoningEfforts.map(capabilityLabel).join('、') : copy.decidedByService}`)))
@@ -302,7 +302,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
             h('button', { type: 'button', style: buttonStyle, onClick: () => setEditingModels(false) }, copy.cancel),
             h('button', { type: 'submit', disabled: busy, style: primaryStyle }, copy.saveModels)))),
       canManageProfiles && h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 10, marginTop: 18, paddingTop: 14, borderTop: `1px solid ${border}` } },
-        h('div', null, removeConfirmID === detail.id ? h('span', { style: { color: '#a82332', fontSize: 11 } }, detail.builtIn ? copy.confirmRemove : copy.confirmDelete) : h('button', { type: 'button', disabled: busy, style: { ...buttonStyle, color: '#a82332' }, onClick: () => setRemoveConfirmID(detail.id) }, detail.builtIn ? copy.removeService : copy.deleteService), removeConfirmID === detail.id && h('span', { style: { marginLeft: 8 } }, h('button', { type: 'button', style: buttonStyle, onClick: () => setRemoveConfirmID('') }, copy.cancel), h('button', { type: 'button', style: { ...primaryStyle, marginLeft: 6 }, onClick: () => removeProfile(detail) }, copy.confirm))),
+        h('div', null, removeConfirmID === detail.id ? h('span', { style: { color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 11 } }, detail.builtIn ? copy.confirmRemove : copy.confirmDelete) : h('button', { type: 'button', disabled: busy, style: { ...buttonStyle, color: 'var(--dsw-alias-state-error-primary, #a82332)' }, onClick: () => setRemoveConfirmID(detail.id) }, detail.builtIn ? copy.removeService : copy.deleteService), removeConfirmID === detail.id && h('span', { style: { marginLeft: 8 } }, h('button', { type: 'button', style: buttonStyle, onClick: () => setRemoveConfirmID('') }, copy.cancel), h('button', { type: 'button', style: { ...primaryStyle, marginLeft: 6 }, onClick: () => removeProfile(detail) }, copy.confirm))),
         detail.enabled ? h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: disable }, copy.disable) : h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => enable(detail.id) }, copy.enable))))
 
   return h('section', { 'data-dsh-oidc-managed-provider': 'true', style: { margin: '18px 0' } },
@@ -315,7 +315,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
         : h('div', { style: { marginTop: 6 } }, h('div', null, copy.fileFallback, h('code', null, configuration.configFile.path)), h('div', null, copy.examplesHint)))
       : management.mode === 'profile' && h('p', { style: { margin: '8px 0', color: textTertiary, fontSize: 11 } }, copy.profileNotice),
     login.pending && h('p', { role: 'status' }, copy.waiting, ' ', h('button', { type: 'button', style: buttonStyle, onClick: login.cancel }, copy.cancelLogin)),
-    error && h('p', { role: 'alert', style: { color: '#a82332', fontSize: 12 } }, error), notice && h('p', { role: 'status', style: { color: '#357a55', fontSize: 12 } }, notice),
+    error && h('p', { role: 'alert', style: { color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, error), notice && h('p', { role: 'status', style: { color: 'var(--dsw-alias-state-success-primary, #357a55)', fontSize: 12 } }, notice),
     restartRequired && canRestart && h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 12, margin: '10px 0', padding: 11, border: `1px solid ${border}`, borderRadius: 10 } }, h('span', { style: { color: textSecondary, fontSize: 12 } }, copy.restartNotice), h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => run(service.restart) }, copy.restart)),
     providerCards, addDialog, detailDialog)
 }

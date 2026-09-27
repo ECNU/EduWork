@@ -10,10 +10,15 @@ import skillManagerRemote from '@chatecnu-work/dsh-skill-manager-native/remote'
 import { canonicalSkillName, effectiveDisabledSkills, skillToggleSettings, skillGroups, skillCenterRows } from '../lib/view-model.js'
 declare const __EDUWORK_NATIVE_017__: boolean
 const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
-export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace']
+export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace',...(nativeSettings ? ['uiSession'] : [])]
 const h = React.createElement
 const color = 'var(--dsw-alias-state-business-primary, #9f2636)'
 const border = 'var(--dsw-alias-border-l2, #e1e4eb)'
+const primary = 'var(--dsw-alias-label-primary, #352622)'
+const secondary = 'var(--dsw-alias-label-secondary, #75635c)'
+const surface = 'var(--dsw-alias-bg-layer-1, #fffaf7)'
+const mutedSurface = 'var(--dsw-alias-bg-layer-3, #f2ece8)'
+const danger = 'var(--dsw-alias-state-error-primary, #a82332)'
 const panelStyle = Object.freeze({
   position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center',
   background: 'rgba(32, 24, 21, 0.30)', backdropFilter: 'blur(4px)',
@@ -24,12 +29,12 @@ const cardStyle = Object.freeze({
   boxShadow: '0 22px 70px rgba(61, 35, 31, .18)', padding: 22, fontFamily: 'system-ui, sans-serif',
 })
 const buttonStyle = Object.freeze({
-  border: `1px solid ${border}`, borderRadius: 9, padding: '8px 12px', background: '#fffaf7',
-  color: '#352622', cursor: 'pointer', fontSize: 13,
+  border: `1px solid ${border}`, borderRadius: 9, padding: '8px 12px', background: surface,
+  color: primary, cursor: 'pointer', fontSize: 13,
 })
 const primaryStyle = Object.freeze({ ...buttonStyle, background: color, borderColor: color, color: 'white', fontWeight: 650 })
 
-function SkillCenter({ service, embedded = false }) {
+function SkillCenter({ service, standalone = false }) {
   const settings = useSyncExternalStore(
     listener => service.settings.subscribe(listener),
     () => service.settings.getSnapshot(),
@@ -136,10 +141,10 @@ function SkillCenter({ service, embedded = false }) {
     } finally { setBusy('') }
   }
 
-  const header = h('div', { style: { marginBottom: 18, display: 'flex', justifyContent: embedded ? 'flex-end' : 'space-between', alignItems: 'flex-start', gap: 16 } },
-    !embedded && h('div', null,
-      h('h3', { style: { margin: '0 0 5px', fontSize: 20 } }, '技能'),
-      h('p', { style: { margin: 0, color: '#75635c', fontSize: 13, lineHeight: 1.6 } },
+  const header = h('div', { style: { marginBottom: 18, display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', alignItems: 'flex-start', gap: 16 } },
+    h('div', { style: { flex: '1 1 280px' } },
+      h(standalone ? 'h1' : 'h3', { style: { margin: '0 0 5px', fontSize: 20, fontWeight: 500, lineHeight: '28px' } }, '技能'),
+      h('p', { style: { margin: 0, color: secondary, fontSize: 13, lineHeight: 1.6 } },
         '按用途选择技能。在对话和 Studio 中创作，共用同一套制作与文件预览能力。'),
     ),
     h('div', { style: { display: 'flex', gap: 8, flex: 'none' } },
@@ -149,20 +154,20 @@ function SkillCenter({ service, embedded = false }) {
   )
   if (settings.status === 'loading') return h('div', null, header, h('p', null, '正在读取技能设置…'))
   if (settings.status !== 'ready') return h('div', null, header, h('p', { role: 'alert' }, '当前连接无法维护技能设置。'))
-  return h('div', { style: { width: '100%', maxWidth: 820 } }, header,
+  return h('div', { style: { width: '100%', maxWidth: standalone ? 960 : 820 } }, header,
     h('input', {
       type: 'search', value: query, placeholder: '搜索技能', 'aria-label': '搜索技能',
       onChange: event => setQuery(event.currentTarget.value),
       style: { boxSizing: 'border-box', width: '100%', height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 12px', marginBottom: 14, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: 'var(--dsw-alias-label-primary, #222)' },
     }),
-    error && h('p', { role: 'alert', style: { color: '#a82332', fontSize: 12 } }, error),
-    notice && h('p', { role: 'status', style: { color: '#357a55', fontSize: 12 } }, notice),
-    !service.hasSession() && h('p', { style: { color: '#8a766f', fontSize: 12 } }, '打开一个项目后，还会显示该项目专属的技能。'),
+    error && h('p', { role: 'alert', style: { color: danger, fontSize: 12 } }, error),
+    notice && h('p', { role: 'status', style: { color: 'var(--dsw-alias-state-success-primary, #357a55)', fontSize: 12 } }, notice),
+    !service.hasSession() && h('p', { style: { color: secondary, fontSize: 12 } }, '打开一个项目后，还会显示该项目专属的技能。'),
     rows.length === 0 && h('p', { role: 'status' }, '没有匹配的技能。'),
     ...skillGroups.filter(group => rows.some(row => row.group === group.id)).map(group => h('section', {
       key: group.id, 'aria-label': group.label, style: { marginBottom: 22 },
     },
-    h('h4', { style: { margin: '0 0 10px', fontSize: 14, color: '#66534d' } }, group.label),
+    h('h4', { style: { margin: '0 0 10px', fontSize: 14, color: secondary } }, group.label),
     h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 10 } },
       ...rows.filter(row => row.group === group.id).map(row => h('article', {
         key: row.name,
@@ -172,27 +177,27 @@ function SkillCenter({ service, embedded = false }) {
       h('div', { style: { display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 12 } },
         h('div', { style: { minWidth: 0 } },
           h('strong', { style: { display: 'block', fontSize: 14 } }, row.label),
-          h('code', { style: { display: 'block', marginTop: 2, color: '#8a766f', fontSize: 11 } }, row.name),
+          h('code', { style: { display: 'block', marginTop: 2, color: secondary, fontSize: 11 } }, row.name),
         ),
         h('button', {
           type: 'button', role: 'switch', 'aria-label': row.label, 'aria-checked': row.enabled, disabled: busy !== '' || !settings.writable,
           onClick: () => toggle(row),
-          style: { ...buttonStyle, flex: 'none', minWidth: 52, padding: '5px 9px', background: row.enabled ? color : '#f2ece8', color: row.enabled ? 'white' : '#75635c', borderColor: row.enabled ? color : border },
+          style: { ...buttonStyle, flex: 'none', minWidth: 52, padding: '5px 9px', background: row.enabled ? color : mutedSurface, color: row.enabled ? 'white' : secondary, borderColor: row.enabled ? color : border },
         }, busy === row.name ? '…' : row.enabled ? '已开启' : '已关闭'),
       ),
-      h('p', { style: { minHeight: 38, margin: '10px 0 8px', color: '#66534d', fontSize: 12, lineHeight: 1.55 } }, row.description),
-      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: '#8a766f', fontSize: 11 } },
+      h('p', { style: { minHeight: 38, margin: '10px 0 8px', color: secondary, fontSize: 12, lineHeight: 1.55 } }, row.description),
+      h('div', { style: { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, color: secondary, fontSize: 11 } },
         h('div', { style: { display: 'flex', gap: 7, flexWrap: 'wrap' } },
           h('span', null, row.source === 'builtin' ? '产品内置' : row.source === 'personal' ? '个人技能' : row.source === 'session' ? '会话可用' : '项目技能'),
-          !row.available && h('span', { style: { color: '#a26b22' } }, row.requirement || '需要配置相应服务'),
+          !row.available && h('span', { style: { color: secondary } }, row.requirement || '需要配置相应服务'),
         ),
         row.removable && h('button', {
           type: 'button', disabled: busy !== '',
           onClick: () => { setError(''); setNotice(''); setPendingRemoval(row) },
-          style: { ...buttonStyle, flex: 'none', padding: '4px 8px', borderColor: '#edc9cd', background: '#fff7f7', color: '#a82332', fontSize: 11 },
+          style: { ...buttonStyle, flex: 'none', padding: '4px 8px', borderColor: border, background: surface, color: danger, fontSize: 11 },
         }, '移除'),
       ),
-      row.variants.length > 0 && h('details', { style: { marginTop: 10, fontSize: 12, color: '#66534d' } },
+      row.variants.length > 0 && h('details', { style: { marginTop: 10, fontSize: 12, color: secondary } },
         h('summary', { style: { cursor: 'pointer' } }, '已安装的自定义版本'),
         ...row.variants.map(variant => h('div', { key: `${variant.source}:${variant.name}`, style: { marginTop: 10 } },
           h('strong', null, variant.name),
@@ -212,7 +217,7 @@ function SkillCenter({ service, embedded = false }) {
           h('div', null,
             h('div', { style: { color, fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'PERSONAL SKILL'),
             h('h2', { style: { margin: '5px 0 4px', fontSize: 22 } }, '创建个人技能'),
-            h('p', { style: { margin: 0, color: '#75635c', fontSize: 12, lineHeight: 1.55 } }, '创建后立即进入 DSH 标准技能目录，可随时关闭。'),
+            h('p', { style: { margin: 0, color: secondary, fontSize: 12, lineHeight: 1.55 } }, '创建后立即进入 DSH 标准技能目录，可随时关闭。'),
           ),
           h('button', { type: 'button', disabled: busy === 'create', 'aria-label': '关闭', onClick: () => setCreateOpen(false), style: { ...buttonStyle, padding: '5px 9px' } }, '×'),
         ),
@@ -220,24 +225,24 @@ function SkillCenter({ service, embedded = false }) {
           h('input', {
             value: draft.name, required: true, maxLength: 64, pattern: '[a-z0-9]+(?:-[a-z0-9]+)*', placeholder: '例如 meeting-helper',
             onChange: event => setDraft({ ...draft, name: event.currentTarget.value }),
-            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: 'white' },
+            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: surface, color: primary },
           }),
         ),
         h('label', { style: { display: 'block', marginTop: 13, fontSize: 12, fontWeight: 650 } }, '用途说明',
           h('input', {
             value: draft.description, required: true, maxLength: 1024, placeholder: '说明它能做什么，以及什么时候应该使用',
             onChange: event => setDraft({ ...draft, description: event.currentTarget.value }),
-            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: 'white' },
+            style: { boxSizing: 'border-box', display: 'block', width: '100%', marginTop: 6, height: 38, border: `1px solid ${border}`, borderRadius: 9, padding: '0 10px', background: surface, color: primary },
           }),
         ),
         h('label', { style: { display: 'block', marginTop: 13, fontSize: 12, fontWeight: 650 } }, '工作指令',
           h('textarea', {
             value: draft.instructions, required: true, rows: 8, placeholder: '写清楚 Agent 应遵循的步骤、边界和交付要求。',
             onChange: event => setDraft({ ...draft, instructions: event.currentTarget.value }),
-            style: { boxSizing: 'border-box', display: 'block', resize: 'vertical', width: '100%', marginTop: 6, border: `1px solid ${border}`, borderRadius: 9, padding: 10, background: 'white', lineHeight: 1.55 },
+            style: { boxSizing: 'border-box', display: 'block', resize: 'vertical', width: '100%', marginTop: 6, border: `1px solid ${border}`, borderRadius: 9, padding: 10, background: surface, color: primary, lineHeight: 1.55 },
           }),
         ),
-        error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: '#fff0f0', color: '#a82332', fontSize: 12 } }, error),
+        error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: mutedSurface, color: danger, fontSize: 12 } }, error),
         h('div', { style: { marginTop: 18, display: 'flex', justifyContent: 'flex-end', gap: 8 } },
           h('button', { type: 'button', disabled: busy === 'create', style: buttonStyle, onClick: () => setCreateOpen(false) }, '取消'),
           h('button', { type: 'submit', disabled: busy === 'create', style: primaryStyle }, busy === 'create' ? '正在创建…' : '创建'),
@@ -249,16 +254,16 @@ function SkillCenter({ service, embedded = false }) {
       onMouseDown: event => { if (event.target === event.currentTarget && busy === '') setPendingRemoval(null) },
     },
     h('section', { role: 'dialog', 'aria-modal': 'true', 'aria-label': '移除个人技能', style: cardStyle },
-      h('div', { style: { color: '#a82332', fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'REMOVE PERSONAL SKILL'),
+      h('div', { style: { color: danger, fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'REMOVE PERSONAL SKILL'),
       h('h2', { style: { margin: '6px 0 8px', fontSize: 21 } }, `移除“${pendingRemoval.label}”？`),
-      h('p', { style: { margin: 0, color: '#66534d', fontSize: 13, lineHeight: 1.65 } },
+      h('p', { style: { margin: 0, color: secondary, fontSize: 13, lineHeight: 1.65 } },
         '该技能会移出 Agent 的个人技能目录，并保留在本地回收区。历史会话不受影响；已经注入当前会话的内容可能持续到新建会话。'),
-      error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: '#fff0f0', color: '#a82332', fontSize: 12 } }, error),
+      error && h('p', { role: 'alert', style: { margin: '13px 0 0', padding: 9, borderRadius: 8, background: mutedSurface, color: danger, fontSize: 12 } }, error),
       h('div', { style: { marginTop: 19, display: 'flex', justifyContent: 'flex-end', gap: 8 } },
         h('button', { type: 'button', disabled: busy !== '', style: buttonStyle, onClick: () => setPendingRemoval(null) }, '取消'),
         h('button', {
           type: 'button', disabled: busy !== '', onClick: removeSkill,
-          style: { ...primaryStyle, background: '#a82332', borderColor: '#a82332' },
+          style: { ...primaryStyle, background: danger, borderColor: danger },
         }, busy === `remove:${pendingRemoval.name}` ? '正在移除…' : '移除'),
       ),
     )),
@@ -289,12 +294,24 @@ function DesktopSettings({service,controller}) {
    message&&h('p',{role:'status',style:{...note,marginTop:10}},message),
    error&&h('p',{role:'alert',style:{...note,marginTop:10,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},error)))
 }
-// The official Plugins page owns the title, summary, list and back navigation.
-// Keep the same skill service and editor for both desktop generations.
-function SkillPluginPage({ service, view }) {
-  return view === 'summary'
-    ? h(React.Fragment, null, '管理内置、个人与项目技能，供对话和 Studio 共用。')
-    : h(SkillCenter, { service, embedded: true })
+const skillsPanelId = 'eduwork-skills'
+
+function SkillsPage({ service }) {
+  return h('div', { style: {
+    display: 'flex', justifyContent: 'center', boxSizing: 'border-box', height: '100%', overflow: 'auto',
+    padding: 'calc(28px + var(--dsh-frame-top-clearance, 0px)) clamp(24px, 4vw, 48px) 48px',
+    color: 'var(--dsw-alias-label-primary, #222)',
+  } }, h(SkillCenter, { service, standalone: true }))
+}
+
+// DSH's skill outline, kept inline because the legacy and native runtimes
+// export different icon names. The official sidebar owns the button and state.
+function SkillsPanelIcon({ size = 16 }) {
+  return h('svg', { width: size, height: size, viewBox: '0 0 17 17', fill: 'none', 'aria-hidden': true, strokeWidth: 1 },
+    h('path', { d: 'M4.57788 5.77124H10.7029M4.57788 8.89819H7.91879', stroke: 'currentColor' }),
+    h('path', { d: 'M12.1404 1.19446C12.9442 1.19446 13.6404 1.81999 13.6404 2.64465V8.89856H12.6404V2.64465C12.6404 2.42015 12.4411 2.19446 12.1404 2.19446H3.14038C2.83968 2.19446 2.64038 2.42015 2.64038 2.64465V13.0929C2.64082 13.3172 2.84001 13.5421 3.14038 13.5421H8.88159V14.5421H3.14038C2.33675 14.5421 1.6408 13.9172 1.64038 13.0929V2.64465C1.64038 1.81999 2.33651 1.19446 3.14038 1.19446H12.1404Z', fill: 'currentColor' }),
+    h('path', { d: 'M12.0051 15.1056C12.0051 13.6395 10.8166 12.451 9.35059 12.451C10.8166 12.451 12.0051 11.2626 12.0051 9.79651C12.0051 11.2626 13.1936 12.451 14.6597 12.451C13.1936 12.451 12.0051 13.6395 12.0051 15.1056Z', stroke: 'currentColor' }),
+  )
 }
 
 export async function apply(ctx) {
@@ -305,13 +322,20 @@ export async function apply(ctx) {
     const notificationScope = nativeSettings ? inner.configForms.get('eduwork-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-notifications' })
     inner.slots.inject('settings.general.item', () => inner.slots.register({ name: 'settings.general.item', id: 'eduwork-notifications', order: 19,
       inject: () => ({ scope: notificationScope, status: notifications.status }) }, NotificationSettings))
-    const service={settings:(nativeSettings ? inner.configForms.get('chatecnu-skills') : inner.settingsScope.bind({ namespace: 'chatecnu-skills' })),hasSession:()=>Boolean(inner.sessions.list.getSnapshot().current),subscribeSession:fn=>inner.sessions.list.subscribe(fn),
-      list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=inner.sessions.list.getSnapshot().current;if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
+    // Native Session catalogs no longer carry selection. Follow the same
+    // public current binding as the official UI without acquiring a new one.
+    const currentSession = nativeSettings ? inner.uiSession.adapter.current : inner.sessions.list
+    const currentSessionId = () => nativeSettings ? currentSession.getSnapshot().props.sessionId : currentSession.getSnapshot().current
+    const service={settings:(nativeSettings ? inner.configForms.get('chatecnu-skills') : inner.settingsScope.bind({ namespace: 'chatecnu-skills' })),hasSession:()=>Boolean(currentSessionId()),subscribeSession:fn=>currentSession.subscribe(fn),
+      list:async()=>{const result=await unwrap(inner.remote.workbench.catalog());const id=currentSessionId();if(!id||!inner.remote.skills)return result.skills;const session=await unwrap(inner.remote.skills.list({sessionId:id}));const known=new Set(result.skills.map(row=>canonicalSkillName(row.name)));return [...result.skills,...session.skills.filter(row=>!known.has(canonicalSkillName(row.name))).map(row=>({...row,source:'session',available:true,removable:false}))]},
       create:input=>unwrap(inner.remote.skillManager.create(input)),importDirectory:path=>unwrap(inner.remote.skillManager.importDirectory(path)),remove:name=>unwrap(inner.remote.skillManager.trashPersonalSkill(name)),pickDirectory:()=>pickImportDirectory(inner.uiWorkspace)}
     if (nativeSettings) {
-      inner.slots.inject('plugins.item', () => inner.slots.register({
-        name: 'plugins.item', id: 'eduwork-skills', order: -20, label: '技能', inject: () => ({ service }),
-      }, SkillPluginPage))
+      inner.slots.inject('main', () => inner.slots.register({
+        name: 'main', key: skillsPanelId, inject: () => ({ service }),
+      }, SkillsPage))
+      inner.slots.inject('sidebar.panellist', () => inner.slots.register({
+        name: 'sidebar.panellist', id: skillsPanelId, order: -10, label: '技能',
+      }, SkillsPanelIcon))
     } else {
       inner.slots.inject('settings.plugins.tab',()=>inner.slots.register({name:'settings.plugins.tab',id:'skills',order:-20,label:'技能',inject:()=>({service})},SkillCenter))
     }

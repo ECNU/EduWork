@@ -15,7 +15,7 @@ if(!values.runtime||!values.output)throw new Error('Use --runtime <prepared cand
 const runtime=resolve(values.runtime),output=resolve(values.output)
 const json=async path=>JSON.parse(await readFile(path,'utf8'))
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex')
-const contract=fileURLToPath(new URL('../third_party/dsh/candidate-v0.1.7-rc.1/',import.meta.url))
+const contract=fileURLToPath(new URL('../third_party/dsh/candidate-v0.1.7-rc.2/',import.meta.url))
 const lock=await json(join(contract,'LOCK.json')),manifest=await json(join(contract,'npm-runtime/package.json'))
 const packageLockBytes=await readFile(join(contract,'npm-runtime/package-lock.json'))
 validateNpmRuntimeLock({manifest,lock,packageLockBytes,packageLock:JSON.parse(packageLockBytes)})

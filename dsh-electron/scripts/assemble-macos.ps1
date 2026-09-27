@@ -63,7 +63,7 @@ $nodeLicense = Join-Path $nodeRoot 'LICENSE'
 if (-not (Test-Path -LiteralPath $nodeLicense -PathType Leaf)) { throw 'Use the extracted official Node distribution, including LICENSE' }
 
 $editionName = if ($identity.distribution -eq 'eduwork') { 'EduWork' } else { 'EduWork-ECNU' }
-$appName = "$editionName.app"
+$appName = if ($identity.sourceAlpha) { "$editionName Alpha.app" } else { "$editionName.app" }
 $app = Join-Path $Output $appName
 New-Item -ItemType Directory -Path $Output | Out-Null
 & ditto --noextattr --noqtn --noacl $electronApp $app
@@ -72,6 +72,7 @@ $resources = Join-Path $app 'Contents/Resources'
 $appPayload = Join-Path $resources 'app'
 New-Item -ItemType Directory -Path $appPayload | Out-Null
 foreach ($folder in @('lib','renderer','third-party')) {
+    if ($folder -eq 'renderer' -and -not (Test-Path -LiteralPath (Join-Path $ShellBuild $folder))) { continue }
     New-Item -ItemType Directory -Path (Join-Path $appPayload $folder) | Out-Null
     & rsync -a ((Join-Path $ShellBuild $folder) + '/') ((Join-Path $appPayload $folder) + '/')
     if ($LASTEXITCODE -ne 0) { throw "Shell payload copy failed: $folder" }
@@ -150,6 +151,11 @@ if ($sparkleEnabled) {
 }
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
+if ($identity.sourceAlpha) {
+    if ($sparkleEnabled) { throw 'Source Alpha does not enable software updates' }
+    $desktop.updates=@{provider='disabled';defaultPolicy='development'}
+    $desktop.sourceAlpha=$true;$desktop.appId+='.alpha'
+}
 if ($ExternalPublisherConfig) {
     if ($ownership -ne 'publisher') { throw 'External publisher configuration requires publisher ownership' }
     $bundledPublisherConfig = Join-Path $resources 'product/resources/desktop/eduwork.jsonc'

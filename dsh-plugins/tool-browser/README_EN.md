@@ -32,3 +32,9 @@ Tool.
 
 The Tool intentionally exposes no arbitrary JavaScript execution. Returned page
 content is labelled as untrusted data before it is rendered into the Agent turn.
+
+The model uses one `browser` tool. Each session owns its pages and persistent login profile, with calls serialized per owner. Use `tabs`, `select_tab`, `new_tab`, and `close_tab` for tab management. Snapshots include the URL, tab ID, and accessibility structure.
+
+After a page or process closes, snapshot recovery explicitly reports the changed target. Click, type, back, and screenshot operations never silently retry on an unknown page. Visible mode requires permission. The sidebar browser is separate: its content and login state are not available through this tool.
+
+DSH rc.2's experimental Playwright MCP provider has richer operations, but its default isolated profile, fixed launch mode, and connection lifecycle do not directly preserve this product's persistent login and on-demand visible window behavior. This distribution keeps one browser tool; ordinary `web_search` routing is unchanged.

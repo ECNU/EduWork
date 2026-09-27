@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { genericMarkSVG, productIdentity } from '../src/identity.js'
+import { genericMarkSVG, productDocumentTitle, productIdentity } from '../src/identity.js'
+
+test('official navigation restores the product title and preserves session names', () => {
+  assert.equal(productDocumentTitle('DeepSeek Harness', 'EduWork@Example'), 'EduWork@Example')
+  assert.equal(productDocumentTitle('我的课程 — DeepSeek Harness', 'EduWork'), '我的课程 — EduWork')
+  for (const title of ['我的课程 — EduWork', '关于 DeepSeek Harness', 'Other page']) {
+    assert.equal(productDocumentTitle(title, 'EduWork'), title)
+  }
+})
 
 test('new public profiles have a neutral identity without institution configuration', () => {
   assert.deepEqual(productIdentity(), { name: 'EduWork', logoUrl: '', styleLabels: { dsh: '蓝色', 'ecnu-liwa': '红色' } })

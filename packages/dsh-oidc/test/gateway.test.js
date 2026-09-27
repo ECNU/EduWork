@@ -6,7 +6,7 @@ import { sessionRef } from '../src/host/oidc.js'
 import { detectGatewayProtocol, liteLLMToken, readGatewayJSON } from '../src/host/litellm-protocol.js'
 
 const base = 'https://gateway.example.org/prefix'
-const rawProfile = () => ({ schemaVersion: 'dsh-oidc/v1alpha1', id: 'gateway', displayName: 'Test gateway', auth: { discoveryUrl: `${base}/discovery`, expectedIssuer: base } })
+const rawProfile = () => ({ schemaVersion: 'dsh-oidc/v1alpha1', id: 'gateway', displayName: 'Test gateway', auth: { discoveryUrl: `${base}/discovery`, expectedIssuer: base }, provider: { models: [{ id: 'model-a', type: 'llm', reasoning: false }] } })
 const metadata = () => ({ contract_version: 1, issuer: base, resource: base, authorization_endpoint: `${base}/authorize`, token_endpoint: `${base}/token`, registration_endpoint: `${base}/register`, revocation_endpoint: `${base}/revoke`, response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'], code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'], revocation_endpoint_auth_methods_supported: ['none'] })
 const json = (body, status = 200) => new Response(JSON.stringify(body), { status, headers: { 'content-type': 'application/json' } })
 const deferred = () => { let resolve; const promise = new Promise(done => { resolve = done }); return { promise, resolve } }

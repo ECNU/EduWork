@@ -20,4 +20,7 @@ Use this skill when current public web information or an interactive website is 
 - Do not enter passwords, tokens, payment data, personal data or submit forms without user confirmation.
 - Browser interaction and private-network targets may trigger DSH permission confirmation unless Full Access is active.
 - The managed browser uses a separate profile; do not assume it shares the user's normal browser login state.
+- The right-sidebar browser is also separate. This tool cannot inspect its pages or reuse its login state. State this boundary directly when asked; do not claim to see a sidebar page.
+- Each conversation owns its managed pages and persistent login profile. Use `tabs` and `select_tab` to inspect and select popup/new tabs; check the returned URL before acting.
+- After a closed-target error, call `snapshot`/`tabs` or navigate explicitly. Recovery reports a new target; never repeat a previous click or form submission without inspecting it.
 - Prefer a page snapshot over a screenshot for text tasks. Use screenshots only when layout or visual evidence matters.

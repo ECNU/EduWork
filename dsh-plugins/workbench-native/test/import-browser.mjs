@@ -7,11 +7,12 @@ import { join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { tmpdir } from 'node:os'
 import { DataImporter } from '../lib/data-import.js'
+import { loadImportFormats } from '../lib/import-inspection.js'
 
 const root=fileURLToPath(new URL('../../..',import.meta.url)),runtime=process.env.EDUWORK_TEST_RUNTIME
 assert.ok(runtime,'Set EDUWORK_TEST_RUNTIME to the installed product/d directory')
 const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
-const ts=createRequire(join(root,'.cache/client-build-tools/package.json'))('typescript')
+const ts=createRequire(join(process.env.EDUWORK_TEST_BUILD_TOOLS || join(root,'.cache/client-build-tools'),'package.json'))('typescript')
 const {chromium}=req('playwright-core')
 const [{Context},{default:Jsonl},{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
 const hook=registerHooks({resolve(name,ctx,next){return next(name,name==='zod'?{...ctx,parentURL:pathToFileURL(join(runtime,'package.json')).href}:ctx)}})
@@ -21,10 +22,15 @@ const temp=await mkdtemp(join(tmpdir(),'eduwork-import-browser-')),source=join(t
 await mkdir(home);await mkdir(join(source,'workspace'),{recursive:true})
 const openStore=async(root,compression='zstd')=>{const ctx=new Context();await ctx.plugin(Jsonl,{root,compression});return {persistence:ctx.sessionPersistence,close:()=>ctx.fiber.dispose()}}
 const dest=await openStore(join(home,'sessions')),src=await openStore(join(source,'data/dsh/sessions'))
-const handle=await src.persistence.create({version:3,id:'session-browser',createdAt:100,cwd:join(source,'workspace'),isSeeded:false,delegationDepth:0,agentPreset:'standard'})
-await handle.append([{seq:0,type:'session/title',time:100,data:{title:'浏览器导入测试',source:{kind:'user'},messageSeqs:[]}}]);await handle.flush();await handle.close();await src.close()
-const future=join(source,'data/dsh/sessions/project/session-future');await mkdir(future,{recursive:true});await writeFile(join(future,'session.v4.jsonl'),'\u007b"type":"session","version":4,"id":"session-future"}\n')
-const importer=new DataImporter({home,persistence:dest.persistence,openStore,loadFormats:async()=>formats})
+await src.close()
+const old=join(source,'data/dsh/sessions/project/session-browser');await mkdir(old,{recursive:true})
+await writeFile(join(old,'session.v3.jsonl'),[
+ {type:'session',version:3,id:'session-browser',createdAt:100,cwd:join(source,'workspace'),isSeeded:false,delegationDepth:0,agentPreset:'standard'},
+ {seq:0,type:'session/title',time:100,data:{title:'浏览器导入测试',source:{kind:'user'},messageSeqs:[]}},
+].map(row=>JSON.stringify(row)).join('\n')+'\n')
+const futureVersion=formats.currentVersion+1
+const future=join(source,'data/dsh/sessions/project/session-future');await mkdir(future,{recursive:true});await writeFile(join(future,`session.v${futureVersion}.jsonl`),JSON.stringify({type:'session',version:futureVersion,id:'session-future'})+'\n')
+const importer=new DataImporter({home,persistence:dest.persistence,openStore,loadFormats:()=>loadImportFormats(load)})
 const component=ts.transpileModule(await readFile(new URL('../src/data-import.ts',import.meta.url),'utf8'),{compilerOptions:{target:ts.ScriptTarget.ES2022,module:ts.ModuleKind.ES2022}}).outputText.replace(/import React, \{ useEffect, useState \} from ['"]react['"];?/,'const {useEffect,useState}=React;')
 assert.doesNotMatch(component,/from ['"]react/)
 let previewCalls=0,importCalls=0
