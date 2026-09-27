@@ -21,7 +21,7 @@ app.whenReady().then(async () => {
     protocol.handle('dsh-app', () => new Response('<!doctype html><title>Preview bridge fixture</title><video controls></video>', { headers: { 'content-type': 'text/html' } }))
     window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true, nodeIntegration: false, preload: join(process.env.TEST_SOURCE, 'dsh-electron/src/preview-links-preload.cjs') } })
     const opened = []
-    attachExternalNavigation(window.webContents, value => opened.push(value), error => { throw error })
+    attachExternalNavigation(window.webContents, value => opened.push(value), error => { throw error }, value => opened.push(value))
     await window.loadURL('dsh-app://app/index.html')
     const ready = new Promise(resolve => window.webContents.on('ipc-message', (_event, channel) => { if (channel === 'eduwork:preview-ready') resolve() }))
     await window.webContents.executeJavaScript(`window.loaded = new Promise((resolve, reject) => {

@@ -10,7 +10,7 @@ export function navigationTarget(raw) {
   return 'blocked'
 }
 
-export function attachExternalNavigation(contents, openExternal, onError = () => {}, openNative = openExternal) {
+export function attachExternalNavigation(contents, openExternal, onError = () => {}, openNative = async url => (await import('electron')).shell.openExternal(url)) {
   let previewReady = false
   const trusted = event => event.senderFrame === contents.mainFrame &&
     event.senderFrame?.url?.startsWith('dsh-app://app/')

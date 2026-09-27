@@ -26,7 +26,7 @@ import { attachAppActivation, attachWindowVisibility } from './window-visibility
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
     void dialog.showMessageBox(window, { type: 'error', title: '无法打开链接', message: '系统浏览器未能打开链接，请检查默认浏览器设置后重试。' })
-  }, url => shell.openExternal(url))
+  })
 }
 
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
