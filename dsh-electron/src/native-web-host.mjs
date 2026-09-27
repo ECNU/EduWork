@@ -1,4 +1,5 @@
 import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
 import { DesktopHostProcess as NativeHost } from './eduwork-native-host-process.mjs'
 import { authenticateWebHost, forwardWebRequest, serveWebDocument } from './web-document.mjs'
 
@@ -25,6 +26,20 @@ export class DesktopHostProcess {
   boot() {
     if (!this.#ready) throw new Error('Desktop Host has not finished starting')
     return { injections: this.#ready.injections, streamBaseUrl: this.#ready.origin }
+  }
+  get origin() { return this.#ready?.origin }
+  inspectQuit() { return this.#host.inspectQuit() }
+  async readLocalePreference() {
+    const rpcId = randomUUID(), method = 'settings/describe'
+    const response = await this.fetch(new Request(`dsh-app://app/api/${method}`, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ type: 'client-request', rpcId, method, payload: { args: {} } }),
+    }))
+    const envelope = await response.json()
+    if (!response.ok || envelope.type !== 'server-response' || envelope.rpcId !== rpcId || envelope.result?.ok !== true) throw new Error('Desktop locale unavailable')
+    const preference = envelope.result.value?.namespaces?.find(item => item.ns === 'locale')?.value?.preference
+    if (preference != null && typeof preference !== 'string') throw new Error('Invalid desktop locale preference')
+    return preference ?? null
   }
   fetch(request) {
     const url = new URL(request.url)

@@ -1,12 +1,13 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
+import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
-import { join, isAbsolute } from 'node:path'
+import { join, isAbsolute, dirname } from 'node:path'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
+import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
@@ -22,6 +23,7 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { startupFailurePage } from './startup-failure.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -30,7 +32,6 @@ export function configureWindowNavigation(window) {
 }
 
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
-let quitComplete = false
 let migrationLaunch
 let updateCompleted = false
 let portableUpdates
@@ -39,9 +40,21 @@ let publisher
 let taskNotifications, notificationAdapter
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
-function restartDesktop() {
-  app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
-  app.quit()
+let confirmQuit = async () => true
+const desktopExit = new DesktopExit({
+  confirm: () => confirmQuit(),
+  close: async () => {
+    void contentUpdates?.close()
+    await lifecycle.close()
+    taskNotifications?.close()
+    tray?.destroy(); tray = undefined
+  },
+  relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
+  quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
+})
+export function setDesktopQuitGuard(guard) { confirmQuit = guard }
+export function restartDesktop() {
+  desktopExit.restart()
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
@@ -57,6 +70,7 @@ export function configureEduworkPaths() {
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
   applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
+  app.setAppLogsPath(paths.logs)
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
@@ -65,17 +79,9 @@ export function configureEduworkPaths() {
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
   app.on('before-quit', event => {
-    if (quitComplete) return
+    if (desktopExit.complete) return
     event.preventDefault()
-    if (lifecycle.closing) return
-    void contentUpdates?.close()
-    void (async () => {
-      await lifecycle.close()
-      taskNotifications?.close()
-      tray?.destroy(); tray = undefined
-      quitComplete = true
-      app.quit()
-    })()
+    void desktopExit.request()
   })
 }
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
@@ -115,8 +121,8 @@ async function prepareDesktop() {
     policy: preferences?.policy ?? user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
   const software = process.platform === 'darwin' ? startMacSparkleUpdates({ appPath:app.getAppPath(), version:settings.productVersion, enabled:settings.macSparkle?.enabled === true && user.updates.provider !== 'disabled', feeds:updateDefaults.macFeeds, policy:contentUpdates.policy, onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true}); await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
-  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,onPolicy:async policy=>{
+  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>desktopExit.handoff()})
+  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,beforeInstall:()=>confirmQuit(),onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }})
@@ -268,18 +274,26 @@ export function checkProductUpdates() {
 export async function showDesktopFailure(error) {
   if (isQuitting()) return
   try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
-  catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`) }
+  catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
-  const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
     attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   }
-  progressWindow.setSize(660, 470)
-  const needsConfiguration = error.code === 'EDUWORK_BOOTSTRAP_REQUIRED'
+  progressWindow.setSize(660, page.executable ? 700 : 470)
+  const { needsConfiguration } = page
   let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
+    if (page.executable && url === 'eduwork-startup://copy/') {
+      clipboard.writeText(page.diagnostics)
+      void progressWindow.webContents.executeJavaScript("document.getElementById('copy-status').textContent = '已复制，可粘贴给维护人员。'").catch(()=>{})
+    }
+    if (page.executable && url === 'eduwork-startup://component/') {
+      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=>
+        dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message}))
+    }
     if (url === 'eduwork-startup://restart/' && !importing) {
       if (!needsConfiguration) restartDesktop()
       else {
@@ -303,6 +317,6 @@ export async function showDesktopFailure(error) {
       })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
     }
   })
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><meta charset="utf-8"><style>body{font:15px system-ui;margin:32px;color:#313744;background:#faf8f4;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff0f1;padding:16px;color:#9f2636}a{display:inline-block;margin:12px 12px 0 0;padding:9px;border:1px solid #aaa;border-radius:6px;color:inherit}</style><h2>${escape(settings.productName)} ${needsConfiguration ? '正在等待发行配置' : '暂时未能启动'}</h2><p>${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}</p><pre>${escape(error.message || error)}</pre><p>配置文件：${escape(paths.config)}</p><a href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : '重新启动'}</a>${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}<a href="eduwork-startup://exit/">退出</a>`))
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
   progressWindow.show()
 }

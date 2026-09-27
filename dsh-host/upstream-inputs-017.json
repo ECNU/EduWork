@@ -1,10 +1,11 @@
 {
   "LICENSE": "ebb4f09972aee8608be255debaf78451a68e95c290f55c240dec2ecfa16ea6be",
-  "apps/desktop/src/host-process.ts": "fcf374983576db367fc917c00041819716db77a9d611bfcf7790346c11469d77",
+  "apps/desktop/src/host-process.ts": "6b9d3e558f526b7832020fb43d6682a07a68bf2d5657f26951f50a4f3eabfa28",
   "apps/desktop/src/node-environment.ts": "cd760fede0ea4838269b09f9d68fd95dde2956d3542f16ed2a6b9629b02339bf",
   "apps/desktop/src/web-document.ts": "05ab6fd59199f1b7a7dd558e60f50e38f4df1085a70af671014c085d270e91cc",
-  "apps/desktop-host/package.json": "d49b3bcf55f1bd939ee3f900ffa667603c2ae95fc1e4983736a2fb84d1bde021",
-  "apps/desktop-host/src/index.ts": "6b20e316f076eb307aeefa6e4e696a99a14b29426af6a936059957af9c054c48",
-  "apps/desktop-host/src/update-tasks.ts": "1bec03570fc6553f8eef2622dc1cd274e9181f1a800c0a359859d72149e42f97",
-  "apps/desktop-host/src/office-engine.ts": "7af8a522d8289e5ee0e9fe3cf7b9e1550e131dde41765d5d98fbb5822333a5e5"
+  "apps/desktop-host/package.json": "ff8440f98dcd25a9fd9beb02fd8b2549cc4db380f4b4e141ff7c09786d8c7c7d",
+  "apps/desktop-host/src/index.ts": "4812095a04dc94cddb2297ed3238ba4bf26d6884a0dcdc0b8c79180e54ef98c7",
+  "apps/desktop-host/src/update-tasks.ts": "ace98160f307323fd04055dc990ab1d52faeb848a0a03ec9cf43c475fad9972b",
+  "apps/desktop-host/src/office-engine.ts": "7af8a522d8289e5ee0e9fe3cf7b9e1550e131dde41765d5d98fbb5822333a5e5",
+  "apps/desktop-host/src/quit-inspection.ts": "d732d8706a6fe5eb993c4dfd90fdec7203889507b0b13b957cfebebd80cd16e2"
 }

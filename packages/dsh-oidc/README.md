@@ -15,6 +15,8 @@
 3. 在桌面 Host 使用 backend: desktop，本机 Web 使用 backend: web。仅身份登录仍可使用[纯身份示例](examples/identity-only.example.json)；该模式不提供企业模型。
 4. 登录后自动读取当前授权的模型目录。账户刷新不应覆盖用户后来选择的个人模型。
 
+当前源码按模型 `type` 注册，仅 `llm` 进入对话。服务器只返回 ID 时，升级前须按实际模型 ID 补充 `provider.models[].type`；服务端类型优先，专用及类型未知的模型不进入对话。这项改动需要新插件/客户端与配置同步，尚不属于上述已发布版本。详见[模型说明](docs/enterprise-profile.md)。
+
 从源码验证：
 
 ~~~sh

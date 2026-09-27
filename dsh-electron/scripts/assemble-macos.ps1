@@ -72,6 +72,7 @@ $resources = Join-Path $app 'Contents/Resources'
 $appPayload = Join-Path $resources 'app'
 New-Item -ItemType Directory -Path $appPayload | Out-Null
 foreach ($folder in @('lib','renderer','third-party')) {
+    if ($folder -eq 'renderer' -and -not (Test-Path -LiteralPath (Join-Path $ShellBuild $folder))) { continue }
     New-Item -ItemType Directory -Path (Join-Path $appPayload $folder) | Out-Null
     & rsync -a ((Join-Path $ShellBuild $folder) + '/') ((Join-Path $appPayload $folder) + '/')
     if ($LASTEXITCODE -ne 0) { throw "Shell payload copy failed: $folder" }

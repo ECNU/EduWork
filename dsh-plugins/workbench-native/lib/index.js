@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parse } from 'yaml'
 import { DataImporter } from './data-import.js'
+import { skillReadiness } from './skill-readiness.js'
 import { requiredCapability, requiredCredential, requiredAccountBinding } from '@chatecnu-work/dsh-skill-control-native/core'
 
 const initializers = []
@@ -19,19 +20,11 @@ export default class Workbench extends TypertRemoteService {
         if (!header) continue
         const data = parse(header[1])
         if (typeof data.name !== 'string' || typeof data.description !== 'string') continue
-        const ref = requiredCredential(data), binding = requiredAccountBinding(data), capability = requiredCapability(data)
-        let available = true
-        try {
-          if (binding) available = await this.ctx.get('oidcAccounts')?.modelAuthorization?.(binding.profileID, binding.runtimeBaseURL) === true
-          else if (ref) available = Boolean((await this.ctx.credentials.describe(ref))?.configured)
-          if (capability) {
-            const shared = this.ctx.get('artifactServices')
-            const readiness = capability === 'image-generation' ? await shared?.images?.list() : []
-            available = available && Boolean(readiness?.some(row => row.available === true))
-          }
-        } catch { available = false }
-        skills.push({ name: data.name, description: data.description.slice(0, 1024), source: 'builtin', available,
-          requirement: available ? '' : '需要配置相应服务', removable: false })
+        const readiness = await skillReadiness(this.ctx, {
+          credential: requiredCredential(data), binding: requiredAccountBinding(data), capability: requiredCapability(data),
+        })
+        skills.push({ name: data.name, description: data.description.slice(0, 1024), source: 'builtin',
+          ...readiness, removable: false })
       } catch { /* Skip malformed definitions, just like the runtime scanner. */ }
     }
     const personal = await this.ctx.skillManager.list()

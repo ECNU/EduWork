@@ -1,7 +1,7 @@
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import { FileSystemSkillProvider } from '@deepseek-ai/dsh-skill-filesystem'
 import { SETTINGS_NAMESPACE } from '@chatecnu-work/dsh-skill-settings-native'
-import { effectiveDisabled, filterObservation, requiredCapability, requiredCredential, requiredAccountBinding, accountBindingKey } from './core.js'
+import { effectiveDisabled, filterObservation, requiredCapability, requiredCredential, requiredAccountBinding, accountBindingKey, accountBindingAvailable } from './core.js'
 
 export const name = 'skill-control-native'
 export const inject = ['skills', 'credentials', 'settings']
@@ -69,7 +69,7 @@ export function apply(ctx, rawConfig = {}) {
         await Promise.all([...bindings].map(async ([key, binding]) => {
           try {
             const account = ctx.get?.('oidcAccounts')
-            if (await account?.modelAuthorization?.(binding.profileID, binding.runtimeBaseURL)) availableBindings.add(key)
+            if (await accountBindingAvailable(account, binding)) availableBindings.add(key)
           } catch { /* An unrelated login must not expose this institution's skill. */ }
         }))
         return filterObservation(observation, effectiveDisabled(settingsSource()), configured, capabilities, availableBindings)
@@ -98,6 +98,7 @@ export function apply(ctx, rawConfig = {}) {
   // this lifecycle seam back to ECNU's current key name.
   ctx.on('credentials/reference-updated', () => { invalidate() })
   ctx.on('credentials/updated', () => { invalidate() }) // Older credential providers.
+  ctx.on('oidc/accounts-changed', () => { invalidate() })
   ctx.on('settings/updated', (namespace) => {
     if (namespace === SETTINGS_NAMESPACE) invalidate()
   })

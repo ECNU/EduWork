@@ -39,7 +39,9 @@ Copy-Tree $ElectronRuntime $Output
 $app = Join-Path $Output 'resources/app'
 New-Item -ItemType Directory -Path $app -Force | Out-Null
 Copy-Tree (Join-Path $ShellBuild 'lib') (Join-Path $app 'lib')
-Copy-Tree (Join-Path $ShellBuild 'renderer') (Join-Path $app 'renderer')
+if (Test-Path -LiteralPath (Join-Path $ShellBuild 'renderer') -PathType Container) {
+    Copy-Tree (Join-Path $ShellBuild 'renderer') (Join-Path $app 'renderer')
+}
 Copy-Tree (Join-Path $ShellBuild 'third-party') (Join-Path $app 'third-party')
 Copy-Item -LiteralPath (Join-Path $ShellBuild 'LICENSE-DeepSeek') -Destination (Join-Path $app 'LICENSE-DeepSeek')
 Copy-Tree $Product (Join-Path $Output 'resources/product')

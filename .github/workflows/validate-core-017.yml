@@ -3,7 +3,7 @@ on:
   pull_request:
     paths:
       - '.github/workflows/validate-core-017.yml'
-      - 'third_party/dsh/candidate-v0.1.7-rc.1/**'
+      - 'third_party/dsh/candidate-v0.1.7-rc.2/**'
       - 'dsh-host/prepare-native.mjs'
       - 'dsh-host/upstream-inputs-017.json'
       - 'dsh-host/native-profile.mjs'
@@ -17,12 +17,16 @@ on:
       - 'scripts/probe-eduwork-017-settings.mjs'
       - 'scripts/build-017-plugin-clients.mjs'
       - 'scripts/native-preset-ui.mjs'
+      - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-017-source-product.mjs'
       - 'scripts/probe-017-source-product.mjs'
       - 'scripts/probe-017-deliverables.mjs'
       - 'scripts/probe-017-literature.mjs'
       - 'dsh-host/product-profile.mjs'
       - 'dsh-electron/src/**'
+      - 'dsh-electron/scripts/**'
+      - 'dsh-electron/tests/**'
+      - 'dsh-electron/upstream-inputs-017.json'
       - 'dsh-plugins/**'
       - 'packages/**'
   workflow_dispatch:
@@ -42,7 +46,7 @@ jobs:
       - uses: actions/checkout@v4
         with:
           repository: deepseek-ai/deepseek-harness
-          ref: 46a7f68b0922371ce7144b668b90e377d8e799f4
+          ref: 477b4f420553e8a52c2fbccc464d7561b239c443
           path: upstream
           persist-credentials: false
       - uses: actions/setup-node@v4
@@ -53,10 +57,17 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
-          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-rc.1/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-plugins/tool-browser/test/*.test.mjs
+          if ($LASTEXITCODE) { throw 'Managed browser lifecycle checks failed' }
+          node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
+          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-plugins/workbench-native/test/data-import.test.mjs core/dsh-plugins/workbench-native/test/import-catalog.test.mjs
+          if ($LASTEXITCODE) { throw 'Historical directory import qualification failed' }
       - name: Qualify authenticated Host transport and update admission
         shell: pwsh
         run: |
@@ -69,7 +80,7 @@ jobs:
         run: |
           $deps = "$env:RUNNER_TEMP/source-deps"
           New-Item -ItemType Directory -Path $deps | Out-Null
-          Copy-Item core/third_party/dsh/candidate-v0.1.7-rc.1/source-probe/package*.json $deps
+          Copy-Item core/third_party/dsh/candidate-v0.1.7-rc.2/source-probe/package*.json $deps
           npm ci --prefix $deps --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE) { throw 'Locked qualification dependencies failed' }
           node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
@@ -78,6 +89,20 @@ jobs:
           if ($LASTEXITCODE) { throw 'Memory message admission and user intent checks failed' }
           node core/scripts/probe-eduwork-017-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
+      - name: Build the pinned native shell and exercise real Electron bridges
+        shell: pwsh
+        run: |
+          $desktopTools = "$env:RUNNER_TEMP/desktop-tools/apps/desktop"
+          New-Item -ItemType Directory -Path $desktopTools -Force | Out-Null
+          Copy-Item core/third_party/dsh/candidate-v0.1.7-rc.2/desktop-probe/package*.json $desktopTools
+          npm ci --prefix $desktopTools --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE) { throw 'Pinned Electron metadata installation failed' }
+          ./core/dsh-electron/scripts/prepare-electron.ps1 -Upstream "$env:RUNNER_TEMP/desktop-tools" -Output "$env:RUNNER_TEMP/electron"
+          node core/dsh-electron/scripts/build-shell.mjs --native-017 --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
+          if ($LASTEXITCODE) { throw 'Native desktop build failed' }
+          $electron = if ($IsWindows) { "$env:RUNNER_TEMP/electron/runtime/electron.exe" } else { "$env:RUNNER_TEMP/electron/runtime/Electron.app/Contents/MacOS/Electron" }
+          node core/dsh-electron/scripts/probe-native-desktop.mjs --shell "$env:RUNNER_TEMP/native-shell" --runtime "$env:RUNNER_TEMP/native-runtime" --electron $electron --output "$env:RUNNER_TEMP/native-desktop-evidence"
+          if ($LASTEXITCODE) { throw 'Native Electron acceptance failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |
@@ -100,4 +125,7 @@ jobs:
             ${{ runner.temp }}/assembled-evidence/report.json
             ${{ runner.temp }}/deliverables-evidence/report.json
             ${{ runner.temp }}/literature-evidence/report.json
+            ${{ runner.temp }}/native-shell/source-receipt.json
+            ${{ runner.temp }}/native-desktop-evidence/report.json
+            ${{ runner.temp }}/native-desktop-evidence/electron.log
           if-no-files-found: ignore

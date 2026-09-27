@@ -45,6 +45,7 @@
     "models": [
       {
         "id": "ecnu-max",
+        "type": "llm",
         "name": "ecnu-max",
         "contextWindow": 1000000,
         "maxTokens": 393216,
@@ -59,6 +60,7 @@
       },
       {
         "id": "ecnu-plus",
+        "type": "llm",
         "name": "ecnu-plus",
         "contextWindow": 262144,
         "maxTokens": 65536,

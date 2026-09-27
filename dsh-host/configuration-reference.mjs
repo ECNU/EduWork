@@ -37,6 +37,7 @@ export const configurationFields = {
     logoURL: ['企业 Logo；HTTPS URL 或 PNG/WebP 的 base64 data URL，最多 128 KiB。', 'https://example.org/logo.png'],
     primaryColor: ['六位十六进制品牌色。', '#9f2636'],
     loginTitle: ['登录标题，最多 120 字符。', '使用机构账号登录'],
+    loginButtonLabel: ['登录按钮文字，最多 40 字符；省略时使用客户端默认文案。', '统一认证登录'],
     loginDescription: ['登录说明，最多 500 字符。', '授权后使用机构提供的模型。'],
     supportURL: ['帮助页面，必须为 HTTPS。', 'https://example.org/help'],
   }),
@@ -66,7 +67,7 @@ export const configurationFields = {
     streamIdleTimeoutMs: ['流式响应空闲超时，正整数毫秒；省略沿用适配器默认值。', 120000],
     retryPolicy: ['请求重试策略；不填时 mode=normal、maxRetries=2。', {}],
     compat: ['提供方协议兼容选项；不确定时保持未配置。', {}],
-    models: ['按服务端模型 ID 补充能力和限制；空数组完全使用发现目录。', []],
+    models: ['按服务端授权模型 ID 补充类型、能力和限制；只注册 llm 到对话，不扩大授权目录。', []],
   }),
   ...fields('organizations[].provider.retryPolicy.', {
     mode: ['normal 常规重试，always 持续重试；关闭重试请设置 maxRetries=0。', 'normal'],
@@ -82,6 +83,7 @@ export const configurationFields = {
   ...fields('organizations[].provider.compat.', compat),
   ...fields('organizations[].provider.models[].', {
     id: ['服务端模型 ID，同一个提供方内不可重复。', 'example-max'],
+    type: ['模型用途：llm/embedding/rerank/image/tts/unknown；仅 llm 进入对话。服务端类型优先，缺失时用此值；两边都缺失为 unknown。', 'llm'],
     name: ['模型显示名称，默认取 id。', 'Example Max'],
     input: ['支持的输入：text、image；默认仅 text。', ['text']],
     contextWindow: ['模型上下文 token 上限，正整数。', 524288],
@@ -95,7 +97,7 @@ export const configurationFields = {
   features: ['功能默认值；已保存的界面偏好可能优先。', {}],
   'features.visionFallback': ['是否允许文本模型使用已安装的辅助读图插件；false 关闭，不影响原生多模态。', false],
   'features.maxConcurrentRequests': ['当前 Host 的模型请求总并发，1–64，默认 3；主会话、子代理、辅助模型共用，超出排队。界面中保存的值优先；不限制其他客户端或独立媒体接口。', 3],
-  'features.maxActiveSubagents': ['DSH 0.1.7-rc.1 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。', 2],
+  'features.maxActiveSubagents': ['DSH 0.1.7-rc.2 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。', 2],
   'features.maxParallelSubagents': ['旧版兼容项，1–32；仅在未填总并发时换算为此值+1，不控制官方子代理数量。新配置请分别使用 maxConcurrentRequests 和 maxActiveSubagents。', 2],
   desktop: ['桌面行为。', {}],
   'desktop.closeAction': ['tray 关闭窗口后驻留托盘；exit 退出；默认 tray，无托盘时退出。', 'tray'],

@@ -6,7 +6,7 @@ Provides generic skill management, desktop updates and diagnostics. The skill ce
 
 ## Skill entry
 
-DSH 0.1.7 exposes Skills under the sidebar's Plugins page through the official `plugins.item` slot and back navigation. Search, toggles, import, creation, personal-skill removal and current-project discovery reuse the same service. List summaries do not load the skill catalog, and Settings no longer duplicates the skill tab. DSH 0.1.5 keeps Settings → Plugins → Skills.
+DSH 0.1.7 provides a direct Skills sidebar entry alongside Plugins through the official `sidebar.panellist` and `main` slots. The official navigation handles selection and sidebar collapse. Search, toggles, import, creation, personal-skill removal and current-project discovery reuse the same service; switching pages preserves the current session. The plugin list and Settings no longer duplicate the skill entry. DSH 0.1.5 keeps Settings → Plugins → Skills.
 
 ## Updates and diagnostics
 
@@ -22,6 +22,8 @@ Import merges sessions, internal workspaces and attachments. Duplicates are skip
 
 Directory selection uses official `uiWorkspace.pickDirectory` or Go `Startup.PickDirectory`. `inspectImport` returns the inspection state; a `ready` result may be confirmed through `importData(id)` or cancelled. Only staging is used before confirmation. Compatibility is determined from log headers and record-body versions. Unknown versions produce explicit errors, without silently skipping them or substituting an older copy for an unreadable new log. Results are saved under `dsh/imports`; reopen the session after the current task finishes.
 
+When DSH 0.1.7 imports v0–v3 logs, it first collects direct children and their own descriptors per source data directory, then uses the official migration API to produce v4. Fork-inherited descriptors are excluded from the child's own evidence. Inspection never modifies source files. A corrupt child is reported separately; if its header is readable, its parent retains an explicit unknown-child entry. Source file or directory changes during inspection require another inspection.
+
 ## Model requests
 
 The setting controls total concurrency for this Host, defaulting to 3 across main conversations, subagents and auxiliary requests. Legacy subagent limits migrate to total concurrency; see [concurrency control](../request-concurrency/README_EN.md).
@@ -29,3 +31,5 @@ The setting controls total concurrency for this Host, defaulting to 3 across mai
 ## Verification
 
 Set `EDUWORK_TEST_RUNTIME` to a prepared DSH runtime and run `node --test test/*.test.mjs`. `test/import-browser.mjs` uses the real React interface, strict import schemas and Edge, with TypeScript tooling prepared in `main.cache/client-build-tools`. Tests use synthetic data only.
+
+Verify the 0.1.7 sidebar entry with an assembled real Host and Edge: `node test/skills-sidebar-browser.mjs --product <product-directory> --host <native-host-directory> --output <new-evidence-directory>`. It covers peer navigation, collapse, skill management and current-project skills. Reports and screenshots stay in the isolated output directory; no model or login credentials are needed.

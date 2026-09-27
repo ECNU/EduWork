@@ -116,7 +116,7 @@ OIDC 模式复用现有验证器，校验 RS256 签名、issuer、audience/azp�
 | `GET api_base + /models` | Bearer；200 OpenAI 风格 `{"object":"list","data":[{"id":"example-chat","object":"model"}]}`，只返回当前授权可用模型 |
 | `POST api_base + /chat/completions` | 相同 Bearer；OpenAI-compatible 请求与普通 JSON 或 SSE 响应（`data:`，最终 `[DONE]`） |
 
-服务端决定可用模型及额度，客户端不能用配置扩权。空目录保持为空；不同授权的资料、目录和请求隔离。仅有模型 ID 时，客户端按文本能力处理，不从名称猜测图像、思考或上下文上限；其他能力需显式配置或后续定义的元数据。
+服务端决定可用模型及额度，客户端不能用配置扩权。空目录保持为空；不同授权的资料、目录和请求隔离。可选的 data[].type 将用途分为 llm、embedding、rerank、image、tts 或 unknown，仅 LLM 进入 EduWork 对话目录。这是扩展字段，不属于 OpenAI 标准发现字段；服务端类型优先，缺失时使用已审核的本地模型类型。无法确定或不支持的类型不进入对话。图像输入、思考与上下文能力另行显式配置，不从名称猜测；能读图的 LLM 仍是 LLM。
 
 图像、音频和其他 API 由服务端与对应插件另行约定，不因“OpenAI-compatible”就假定全部支持。配额及学校服务仍属于机构扩展，不进入公共协议必选接口。
 

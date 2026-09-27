@@ -395,7 +395,7 @@ try {
     const disabled = new Set([...(policy.disabled ?? []), ...(policy.defaultDisabled ?? []).filter(name => !(policy.enabled ?? []).includes(name))])
     const gated = []
     for (const row of metadata) {
-      if (disabled.has(row.name) || row.credential && !credentials[row.credential]?.configured) {
+      if (disabled.has(row.name) || !row.account && row.credential && !credentials[row.credential]?.configured) {
         assert.ok(!names.includes(row.name), `${row.name} must respect its settings/credential gate`)
         gated.push({ name: row.name, reason: disabled.has(row.name) ? 'disabled in settings' : 'credential not configured' })
       } else if ((row.capability || row.account) && !names.includes(row.name)) {
