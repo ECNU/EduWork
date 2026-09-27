@@ -70,7 +70,7 @@ await build({ entryPoints: [join(repository, 'packages/dsh-knowledge-studio/src/
 })
 const clients = Object.entries({ 'dsh-mail': 'index.tsx', 'dsh-memory': 'index.ts', 'dsh-oidc': 'index.ts', 'dsh-knowledge-studio': 'index.tsx' })
   .map(([folder, entry]) => [`packages/${folder}`, `src/client/${entry}`])
-for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts']) {
+for (const folder of ['client-ui-browser', 'client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts']) {
   clients.push([`dsh-plugins/${folder}`, folder === 'workbench-native' ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }

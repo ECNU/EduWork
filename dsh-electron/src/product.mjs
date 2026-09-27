@@ -1,4 +1,4 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
+import { app, BrowserWindow, WebContentsView, ipcMain, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
@@ -14,6 +14,7 @@ import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration } from './portable-updates.mjs'
 import { startMacSparkleUpdates, editableMacUpdateConfiguration } from './mac-sparkle-updates.mjs'
+import { BrowserPanel } from './browser-panel.mjs'
 import { workbenchAction } from './workbench-support.mjs'
 import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
@@ -22,10 +23,12 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { startBrowserServer } from './browser-server.mjs'
+import { createRequire } from 'node:module'
 
 export function configureWindowNavigation(window) {
-  attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
-    void dialog.showMessageBox(window, { type: 'error', title: '无法打开链接', message: '系统浏览器未能打开链接，请检查默认浏览器设置后重试。' })
+  attachExternalNavigation(window.webContents, url => browserPanel ? browserPanel.openLink(url) : shell.openExternal(url), () => {
+    void dialog.showMessageBox(window, { type: 'error', title: '无法打开链接', message: '链接未能打开，请重试。' })
   })
 }
 
@@ -36,6 +39,7 @@ let updateCompleted = false
 let portableUpdates
 let contentUpdates, managedContent = {}
 let publisher
+let browserPanel
 let taskNotifications, notificationAdapter
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
@@ -50,6 +54,7 @@ export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
+  if (settings.browserRuntime === 'electron') process.env.EDUWORK_EXPERIMENTAL_ELECTRON_BROWSER = '1'
   paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
   mkdirSync(paths.userData, { recursive: true })
@@ -158,7 +163,13 @@ async function prepareDesktop() {
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } },
     publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(), changed: () => refreshTray() })
+  browserPanel = process.env.EDUWORK_EXPERIMENTAL_ELECTRON_BROWSER === '1' ? new BrowserPanel({ BrowserWindow, WebContentsView, ipcMain, getWindow: () => mainWindow, openExternal: url => shell.openExternal(url) }) : undefined
+  if (browserPanel) lifecycle.trackBridge(browserPanel)
+  const browserServer = process.env.EDUWORK_EXPERIMENTAL_ELECTRON_BROWSER === '1'
+    ? await startBrowserServer({ BrowserWindow, panel: browserPanel, WebSocketServer: createRequire(join(paths.product, 'd/package.json'))('ws').WebSocketServer, version: process.versions.chrome }) : undefined
+  if (browserServer) lifecycle.trackBridge(browserServer)
   const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
+    browserConnection: browserServer?.connection,
     attention: body => taskNotifications.handle(body),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),

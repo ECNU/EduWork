@@ -13,6 +13,27 @@ function encryption() {
     decryptString(bytes) { const cipher = createDecipheriv('aes-256-gcm', key, bytes.subarray(0, 12)); cipher.setAuthTag(bytes.subarray(12, 28)); return Buffer.concat([cipher.update(bytes.subarray(28)), cipher.final()]).toString('utf8') },
   }
 }
+
+test('browser connection is optional, authenticated and unavailable to web origins', async () => {
+  for (const enabled of [false, true]) {
+    const connection = {baseURL:'ws://127.0.0.1:12345',token:'synthetic'}
+    const bridge = await startNativeBridge({vault:{flush:async()=>{}},browserConnection:enabled?connection:undefined})
+    try {
+      const {baseURL,token}=bridge.bootstrap.nativeBridge
+      const call=(body={},headers={authorization:'Bearer '+token})=>fetch(baseURL+'/v1/extensions/browser-connection',{method:'POST',headers,body:JSON.stringify(body)})
+      assert.equal((await call({},{})).status,403)
+      assert.equal((await call({},{authorization:'Bearer '+token,origin:'https://untrusted.invalid'})).status,403)
+      const response=await call()
+      assert.equal(response.status,enabled?200:501)
+      if(enabled) {
+        assert.deepEqual(await response.json(),connection)
+        assert.equal((await call([])).status,400)
+        assert.equal((await call({extra:true})).status,400)
+      }
+    } finally {await bridge.close()}
+  }
+})
+
 test('vault encrypts at rest, serializes writes, and survives a new provider', async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-')), path = join(root, 'credentials.encrypted'), crypto = encryption()
   const vault = new EncryptedVault(path, crypto)

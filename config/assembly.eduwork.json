@@ -88,6 +88,11 @@
   ],
   "localPlugins": [
     {
+      "source": "dsh-plugins/client-ui-browser",
+      "package": "eduwork-client-ui-browser",
+      "requiredFiles": ["lib/client.js"]
+    },
+    {
       "source": "dsh-plugins/artifact-preview-native",
       "package": "dsh-artifact-preview-native"
     },

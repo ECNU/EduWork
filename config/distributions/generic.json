@@ -47,6 +47,11 @@
       "name": "@chatecnu-work/dsh-brand-settings-native"
     },
     {
+      "id": "eduwork-browser-panel",
+      "name": "@eduwork/client-ui-browser",
+      "config": {}
+    },
+    {
       "root": "core",
       "source": "dsh-plugins/client-ui-branding",
       "id": "eduwork-ui-branding",

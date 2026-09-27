@@ -68,4 +68,14 @@ export default class DesktopServices extends Service {
     })
     if (!response.ok) throw new Error('The system browser could not be opened')
   }
+  async browserConnection(signal) {
+    const { nativeBridge } = await this.ctx.desktopBoundary.ready
+    const response = await fetch(nativeBridge.baseURL + '/v1/extensions/browser-connection', {
+      method: 'POST', headers: { authorization: 'Bearer ' + nativeBridge.token, 'content-type': 'application/json' },
+      body: '{}', signal,
+    })
+    if (response.status === 501) return null
+    if (!response.ok) throw Error('Electron browser connection unavailable')
+    return response.json()
+  }
 }
