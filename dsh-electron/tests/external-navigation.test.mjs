@@ -33,3 +33,33 @@ test('modern navigation details and launch failures do not create unhandled reje
   assert.equal(prevented, true)
   assert.deepEqual(errors, ['OS launch failed'])
 })
+
+test('media routing requires the trusted preview client and external override bypasses it', async () => {
+  const contents = new EventEmitter(), routed = [], native = [], sent = []
+  contents.mainFrame = { url: 'dsh-app://app/index.html' }
+  contents.setWindowOpenHandler = callback => { contents.open = callback }
+  contents.send = (...args) => sent.push(args)
+  attachExternalNavigation(contents, url => routed.push(url), assert.fail, url => native.push(url))
+  const url = 'https://example.org/movie.MP4?download=1'
+  contents.open({ url })
+  contents.emit('ipc-message', { senderFrame: { url: 'dsh-app://app/index.html' } }, 'eduwork:preview-ready', true)
+  contents.open({ url })
+  const trusted = { senderFrame: contents.mainFrame }
+  contents.emit('ipc-message', trusted, 'eduwork:preview-ready', true)
+  contents.open({ url })
+  contents.open({ url: 'https://example.org/page' })
+  contents.emit('ipc-message', trusted, 'eduwork:preview-external', url)
+  for (const invalid of ['file:///secret', 'https://user:pass@example.org', 'javascript:alert(1)']) {
+    contents.emit('ipc-message', trusted, 'eduwork:preview-external', invalid)
+  }
+  contents.emit('ipc-message', { senderFrame: { url: 'https://example.org' } }, 'eduwork:preview-external', url)
+  await new Promise(setImmediate)
+  assert.deepEqual(sent, [['eduwork:preview-link', url]])
+  assert.deepEqual(native, [url])
+  assert.deepEqual(routed, [url, url, 'https://example.org/page'])
+  contents.emit('did-start-navigation', {}, 'dsh-app://app/index.html', false, true)
+  contents.open({ url })
+  await new Promise(setImmediate)
+  assert.equal(routed.length, 4)
+  assert.equal(sent.length, 1)
+})
