@@ -140,21 +140,21 @@ revocation endpoint 按 RFC 7009 接受 form `token`、公共 `client_id` 和 `t
 
 OAuth 错误沿用 `invalid_request`、`invalid_client`、`invalid_grant`、`invalid_scope`、`unsupported_grant_type`，resource 不匹配使用 `invalid_target`。401 为认证失败，403 为权限不足，429 为限流，5xx 为服务异常；不能统一提示重新登录。安全读取可在 401 后刷新并重试一次，模型生成不自动重放。错误与日志不得泄露凭据。
 
-## 8. ChatECNU 参考部署
+## 8. 示例部署
 
-ChatECNU 是采用本草案的参考部署，不是协议指定的唯一服务。其[公开发现文档](https://chat.ecnu.edu.cn/.well-known/openid-configuration)在 2026-09-25 声明：
+以下使用 `models.example.org` 演示采用本草案的部署配置，与第 2 节的发现文档示例一致；这些是示例值，不代表真实服务的元数据或验收结果。
 
-| 项目 | 公开元数据 |
+| 项目 | 示例元数据 |
 | --- | --- |
-| issuer / resource | `https://chat.ecnu.edu.cn` |
-| 模型 API 基址 | `https://chat.ecnu.edu.cn/open/api/v1` |
+| issuer / resource | `https://models.example.org` |
+| 模型 API 基址 | `https://models.example.org/open/api/v1` |
 | 扩展版本 | `oidc_llm.version: "0.1"` |
-| 身份模式 | `oauth`、`oidc`；EduWork@ECNU 显式选择 `oidc` |
+| 身份模式 | `oauth`、`oidc`；客户端通过配置显式选择 `oidc` |
 | 客户端注册 | `static`，公共客户端认证方法 `none` |
 | 授权与刷新 | Code、PKCE S256、Refresh Token |
 | 身份验证 | RS256、公开 JWKS、UserInfo、授权回调 `iss` |
 
-它还声明其他业务 scopes；本连接仅请求第 4 节所列权限。部署地址和公共 client ID 由发行版配置提供，不硬编码到公共插件。
+服务端可以声明其他业务 scopes；本连接仅请求第 4 节所列权限。部署地址和公共 client ID 由发行版配置提供，不硬编码到公共插件。
 
 发现文档能确认服务端声明的能力，不能证明 Token 的具体寿命、刷新家族重用检测、即时撤销效果、所有账号的模型过滤或长流到期行为。这些需要真实服务验收；不能把某次联调或客户端实现等同于服务端的完整保证。
 
