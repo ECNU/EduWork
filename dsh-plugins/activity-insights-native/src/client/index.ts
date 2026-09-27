@@ -102,7 +102,7 @@ function ScanProgress({ progress, t }) {
       h('span', null, phaseLabel),
       total > 0 && h('span', null, format(t('progressCount'), { completed, total })),
     ),
-    h('div', { style: { height: 6, overflow: 'hidden', borderRadius: 999, background: 'var(--dsw-alias-fill-secondary, #ece8e5)' } },
+    h('div', { style: { height: 6, overflow: 'hidden', borderRadius: 999, background: 'var(--dsw-alias-bg-layer-3, #ece8e5)' } },
       h('div', { style: {
         width: total > 0 ? `${percent}%` : '8%', minWidth: progress?.state === 'running' ? 8 : 0, height: '100%',
         borderRadius: 999, background: accent, transition: 'width 180ms ease-out',
@@ -123,7 +123,7 @@ function Heatmap({ activity, metric, setMetric, t }) {
   const columns = Math.max(1, Math.ceil((leading + activity.length) / 7))
   const cells = Array.from({ length: leading }, (_, index) => h('span', { key: `blank-${index}`, 'aria-hidden': true }))
   const backgrounds = [
-    'var(--dsw-alias-fill-secondary, #eceff2)',
+    'var(--dsw-alias-bg-layer-3, #eceff2)',
     `color-mix(in srgb, ${accent} 22%, var(--dsw-alias-bg-base, #fff))`,
     `color-mix(in srgb, ${accent} 42%, var(--dsw-alias-bg-base, #fff))`,
     `color-mix(in srgb, ${accent} 66%, var(--dsw-alias-bg-base, #fff))`, accent,
@@ -156,7 +156,7 @@ function Heatmap({ activity, metric, setMetric, t }) {
       h('div', { style: { display: 'flex', gap: 4 } },
         ...['activity', 'tokens'].map(value => h('button', {
           key: value, type: 'button', onClick: () => setMetric(value),
-          style: { border: 0, borderRadius: 7, padding: '5px 9px', background: metric === value ? 'var(--dsw-alias-fill-secondary, #edf0f2)' : 'transparent', color: metric === value ? primary : tertiary, cursor: 'pointer', fontSize: 11 },
+          style: { border: 0, borderRadius: 7, padding: '5px 9px', background: metric === value ? 'var(--dsw-alias-bg-layer-3, #edf0f2)' : 'transparent', color: metric === value ? primary : tertiary, cursor: 'pointer', fontSize: 11 },
         }, t(value))),
       ),
     ),
