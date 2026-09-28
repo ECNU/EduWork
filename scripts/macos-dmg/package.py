@@ -10,6 +10,7 @@ from pathlib import Path
 
 from ds_store import DSStore
 from mac_alias import Alias
+from volume import attach_image, detach_image
 
 
 def run(*args):
@@ -58,6 +59,7 @@ def package(app, output):
     output.parent.mkdir(parents=True, exist_ok=True)
     workspace = Path(tempfile.mkdtemp(prefix='eduwork-dmg-', suffix='.noindex'))
     mounted = False
+    device = None
     mount = workspace / 'volume'
     try:
         stage = workspace / 'stage'
@@ -72,10 +74,10 @@ def package(app, output):
         run('hdiutil', 'create', '-ov', '-fs', 'HFS+', '-format', 'UDRW',
             '-volname', app.stem, '-srcfolder', stage, rw)
         mount.mkdir()
-        run('hdiutil', 'attach', '-nobrowse', '-mountpoint', mount, rw)
         mounted = True
+        device = attach_image(rw, mount)
         write_layout(mount, app.name)
-        run('hdiutil', 'detach', mount)
+        detach_image(device)
         mounted = False
         compressed = workspace / 'installer.dmg'
         run('hdiutil', 'convert', rw, '-format', 'UDZO', '-o', compressed)
@@ -93,8 +95,12 @@ def package(app, output):
     finally:
         if mounted:
             # Never recurse into a still-mounted volume if ejecting fails.
-            result = subprocess.run(['hdiutil', 'detach', str(mount)])
-            mounted = result.returncode != 0
+            try:
+                if device:
+                    detach_image(device)
+                    mounted = False
+            except Exception:
+                pass
         if not mounted:
             shutil.rmtree(workspace)
         else:

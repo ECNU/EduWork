@@ -20,6 +20,8 @@ class OutputCleanupTest(unittest.TestCase):
         self.output = self.root / 'Example.dmg'
         for context in [patch.object(dmg.sys, 'platform', 'darwin'),
                         patch.object(dmg, 'write_layout'),
+                        patch.object(dmg, 'attach_image', return_value='/dev/disk9'),
+                        patch.object(dmg, 'detach_image'),
                         patch.object(dmg, 'run', side_effect=self.command)]:
             context.start()
             self.addCleanup(context.stop)

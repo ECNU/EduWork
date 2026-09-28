@@ -25,10 +25,9 @@ $python=Join-Path $venv 'bin/python3'
 # to the mounted image or treating HFS metadata timestamps as product changes.
 $mount=Join-Path $WorkDirectory 'mounted'
 New-Item -ItemType Directory -Path $mount | Out-Null
-$mounted=$false
+$device=$null
 try {
-    & hdiutil attach -readonly -nobrowse -mountpoint $mount $Output | Out-Host
-    $mounted=$true
+    $device=& $python (Join-Path $builder 'volume.py') attach $Output $mount --readonly
     $installed=Join-Path $mount ([IO.Path]::GetFileName($App))
     & codesign --verify --deep --strict $installed | Out-Host
     $differences=@(& rsync --recursive --links --checksum --dry-run --delete --itemize-changes ($App + '/') ($installed + '/'))
@@ -39,7 +38,7 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $mount $file) -PathType Leaf)) { throw "DMG window resource missing: $file" }
     }
 } finally {
-    if ($mounted) { & hdiutil detach $mount | Out-Host }
+    if ($device) { & $python (Join-Path $builder 'volume.py') detach $device | Out-Host }
 }
 $sha=(Get-FileHash -LiteralPath $Output -Algorithm SHA256).Hash.ToLowerInvariant()
 "$sha  $([IO.Path]::GetFileName($Output))" | Set-Content -LiteralPath ($Output + '.sha256') -Encoding utf8NoBOM

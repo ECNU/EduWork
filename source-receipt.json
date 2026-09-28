@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T07:48:57.665Z",
-  "fileSetSHA256": "905ee951a3928ed1408d2ef82f24db5867ab08a7c21f2c986b204503689fc7d8",
+  "createdAt": "2026-09-28T08:15:39.361Z",
+  "fileSetSHA256": "ba7d1fb300ba42939b55e656e7c1e25ef75fe4c959bb24382578dfbaa32b577d",
   "files": [
     {
       "path": ".gitattributes",
@@ -4661,7 +4661,7 @@
     },
     {
       "path": "scripts/macos-dmg/package.py",
-      "sha256": "3b4e6edf431b77587c24dff47aec1d359d38980d864e279b70d511a45029d131"
+      "sha256": "7fa2f9e3a3ac8108112a5e34172c27b9cfe77e334fb041f1cc1b25ba5ce15eb4"
     },
     {
       "path": "scripts/macos-dmg/requirements.txt",
@@ -4669,7 +4669,15 @@
     },
     {
       "path": "scripts/macos-dmg/test_package.py",
-      "sha256": "9bda4f2d3d0ca303f0b795caab317d5482254bf0ee282bbf969aca1b370e8cb0"
+      "sha256": "a0d0f12887e3d1894295ed5ae3df14d4ebe8fb6a347fda36679491d4d593bb66"
+    },
+    {
+      "path": "scripts/macos-dmg/test_volume.py",
+      "sha256": "185f5db815636b791461d5fe094f0c575650cd0023906baa546743d565122963"
+    },
+    {
+      "path": "scripts/macos-dmg/volume.py",
+      "sha256": "cd04da46e6d982dc0afbb7194dd141a7dfe1a9731212369bc6c3cfbb44001559"
     },
     {
       "path": "scripts/macos-update-feed.mjs",
@@ -4761,7 +4769,7 @@
     },
     {
       "path": "scripts/prepare-macos-dmg.ps1",
-      "sha256": "c32aaefab855ed37829cd64bee720eb16b6c430e67aef592b7f82536a00710ef"
+      "sha256": "0d92feda35cde22dada72ad21f928b1c59afade6b1e889fed6f258f6cec3a573"
     },
     {
       "path": "scripts/prepare-macos-release-inputs.ps1",
