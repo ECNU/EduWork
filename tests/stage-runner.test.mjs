@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import {
   Workspace, digestPath, runStages, stage,
 } from '../scripts/lib/stage-runner.mjs'
+import { pathExists } from '../scripts/lib/build-util.mjs'
 
 async function sandbox(prefix) {
   const root = await mkdtemp(join(tmpdir(), prefix))
@@ -146,6 +147,144 @@ test('a checkpoint from different arguments is refused', async () => {
     const other = new Workspace({ root: workspace, parameters: { version: '1.0.0-dev.20260102.1' }, stages })
     await assert.rejects(() => other.enter(), /different pipeline arguments/)
   } finally { await cleanup() }
+})
+
+test('a mutable output may be appended to by a later stage without failing verification', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-mutable-')
+  try {
+    // The desktop product is created once and later stages add native resources
+    // and Host modules into it. Its own digest would change, so it is declared
+    // mutable; the appended paths are declared strictly by their own stage.
+    const stages = [
+      stage({
+        name: 'product',
+        outputs: ['product/assembly.json'],
+        mutableOutputs: ['product'],
+        run: async (ws) => {
+          await mkdir(join(ws.root, 'product'), { recursive: true })
+          await writeFile(join(ws.root, 'product/assembly.json'), '{}')
+        },
+      }),
+      stage({
+        name: 'runtime-resources',
+        dependsOn: ['product'],
+        outputs: ['product/resources.json'],
+        run: async (ws) => {
+          await writeFile(join(ws.root, 'product/resources.json'), '{"node":"..."}')
+        },
+      }),
+    ]
+    const first = new Workspace({ root: workspace, parameters: {}, stages })
+    await first.enter()
+    await runStages(first, { log: quiet })
+
+    const second = new Workspace({ root: workspace, parameters: {}, stages })
+    await second.enter()
+    await runStages(second, { log: quiet })
+    assert.deepEqual(second.executed, [], 'a satisfied run redoes nothing')
+    assert.deepEqual(second.skipped.sort(), ['product', 'runtime-resources'])
+  } finally { await cleanup() }
+})
+
+test('a mutable output that vanished is still a hard failure', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-mutable-vanish-')
+  try {
+    const stages = [
+      stage({
+        name: 'product',
+        mutableOutputs: ['product'],
+        run: async (ws) => { await mkdir(join(ws.root, 'product'), { recursive: true }) },
+      }),
+    ]
+    const first = new Workspace({ root: workspace, parameters: {}, stages })
+    await first.enter()
+    await runStages(first, { log: quiet })
+
+    await rm(join(workspace, 'product'), { recursive: true, force: true })
+    const second = new Workspace({ root: workspace, parameters: {}, stages })
+    await second.enter()
+    await assert.rejects(() => runStages(second, { log: quiet }), (error) => {
+      assert.equal(error.code, 'EDUWORK_VANISHED_ARTIFACT')
+      return true
+    })
+  } finally { await cleanup() }
+})
+
+test('a rerun clears what the stage owned, so its new-directory guard never trips', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-clean-')
+  try {
+    // Every stage entry point refuses to write into an existing directory. The
+    // runner owns these paths, so it removes them first and the guard only ever
+    // protects a direct CLI invocation.
+    let runs = 0
+    const stages = [
+      stage({
+        name: 'inputs',
+        outputs: ['inputs'],
+        inputs: () => ({ token: runs }),
+        run: async (ws) => {
+          runs += 1
+          const output = join(ws.root, 'inputs')
+          if (await pathExists(output)) throw new Error('Use a new input directory')
+          await mkdir(output, { recursive: true })
+          await writeFile(join(output, 'inputs.json'), `{"run":${runs}}`)
+        },
+      }),
+    ]
+    const first = new Workspace({ root: workspace, parameters: {}, stages })
+    await first.enter()
+    await runStages(first, { log: quiet })
+
+    // A changed input invalidates the stage; the directory it left behind must
+    // not make the rerun fail.
+    const second = new Workspace({ root: workspace, parameters: {}, stages })
+    await second.enter()
+    await runStages(second, { log: quiet })
+    assert.deepEqual(second.executed, ['inputs'])
+    assert.equal(JSON.parse(await readFile(join(workspace, 'inputs/inputs.json'), 'utf8')).run, 2)
+  } finally { await cleanup() }
+})
+
+test('a rerun clears declared scratch paths that are not artifacts', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-clean-scratch-')
+  try {
+    // The scratch tree is not an artifact, so nothing would otherwise remove it;
+    // it is declared only so a rerun starts clean.
+    let generation = 0
+    const stages = [
+      stage({
+        name: 'assemble',
+        outputs: ['desktop'],
+        clean: ['scratch'],
+        inputs: () => ({ generation }),
+        run: async (ws) => {
+          generation += 1
+          await mkdir(join(ws.root, 'scratch'), { recursive: true })
+          await writeFile(join(ws.root, 'scratch/leftover'), 'previous run')
+          if (await pathExists(join(ws.root, 'desktop'))) throw new Error('Desktop output must be a new directory')
+          await mkdir(join(ws.root, 'desktop'), { recursive: true })
+          await writeFile(join(ws.root, 'desktop/app'), 'binary')
+        },
+      }),
+    ]
+    const first = new Workspace({ root: workspace, parameters: {}, stages })
+    await first.enter()
+    await runStages(first, { log: quiet })
+    await writeFile(join(workspace, 'scratch/leftover'), 'stale')
+
+    const second = new Workspace({ root: workspace, parameters: {}, stages })
+    await second.enter()
+    await runStages(second, { log: quiet })
+    assert.deepEqual(second.executed, ['assemble'])
+  } finally { await cleanup() }
+})
+
+test('two stages may not create the same output', async () => {
+  const stages = [
+    stage({ name: 'a', outputs: ['shared'], run: async () => {} }),
+    stage({ name: 'b', mutableOutputs: ['shared'], run: async () => {} }),
+  ]
+  assert.throws(() => new Workspace({ root: '/nonexistent', parameters: {}, stages }), /both create shared/)
 })
 
 test('a dependency cycle is rejected before anything runs', async () => {

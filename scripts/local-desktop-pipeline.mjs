@@ -48,6 +48,8 @@ export async function localDesktopPipeline({
   skipInstall = false,
   verifySnapshot = true,
   runtimeSource = '',
+  jobs = 1,
+  reuseWorkspace = false,
 } = {}) {
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot || coreRoot)
@@ -85,6 +87,8 @@ export async function localDesktopPipeline({
     verifySnapshot,
     runtimeSource,
     output,
+    jobs,
+    reuseWorkspace,
   }
   let releaseReceipt
   if (isWindows) {
@@ -166,6 +170,8 @@ if (isMainModule(import.meta.url)) {
       'skip-install': { type: 'boolean' },
       'no-verify-snapshot': { type: 'boolean' },
       'runtime-source': { type: 'string' },
+      jobs: { type: 'string' },
+      'reuse-workspace': { type: 'boolean' },
     },
   })
   await localDesktopPipeline({
@@ -178,5 +184,7 @@ if (isMainModule(import.meta.url)) {
     skipInstall: Boolean(values['skip-install']),
     verifySnapshot: !values['no-verify-snapshot'],
     runtimeSource: values['runtime-source'] ?? '',
+    jobs: Number(values.jobs ?? 1),
+    reuseWorkspace: Boolean(values['reuse-workspace']),
   })
 }

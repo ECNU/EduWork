@@ -6,7 +6,7 @@
 import { createHash } from 'node:crypto'
 import { lstat, readdir, readFile } from 'node:fs/promises'
 import { join, relative, resolve, sep } from 'node:path'
-import { ensureDir, pathExists, sha256File, statEntry, writeText } from './build-util.mjs'
+import { ensureDir, pathExists, removeTree, sha256File, statEntry, writeText } from './build-util.mjs'
 
 export const CHECKPOINT_SCHEMA_VERSION = 1
 
@@ -23,6 +23,20 @@ export class Stage {
   /** Declared but unhashed dependencies: an ordering edge only. */
   get dependsOn() { return [...(this.definition.dependsOn ?? [])] }
   get outputs() { return [...(this.definition.outputs ?? [])] }
+  /**
+   * Outputs this stage creates but does not own: a later stage appends to them,
+   * so their digest is not a stable fingerprint. They are still verified to
+   * exist, and they still count as declared so two stages cannot create the
+   * same tree at once.
+   */
+  get mutableOutputs() { return [...(this.definition.mutableOutputs ?? [])] }
+  /**
+   * Extra paths this stage owns that are not artifacts: a stage that writes into
+   * a parent directory or a scratch area lists them here so a rerun starts from
+   * a clean slate instead of tripping its own "must be a new directory" guard.
+   * Anything already declared as an output is cleaned without being listed.
+   */
+  get clean() { return [...(this.definition.clean ?? [])] }
   get run() { return this.definition.run }
 }
 
@@ -120,8 +134,30 @@ export function dependentsOf(stages, name) {
   return result
 }
 
+/**
+ * One output may only be created by one stage. Two stages writing the same tree
+ * cannot be ordered against each other, so a parallel run would corrupt it; the
+ * shared desktop product is instead created once and appended to afterwards by
+ * stages that declare the appended paths, not the tree.
+ */
+function assertOutputOwnership(stages) {
+  const owners = new Map()
+  for (const entry of stages) {
+    for (const output of [...entry.outputs, ...entry.mutableOutputs, ...entry.clean]) {
+      const previous = owners.get(output)
+      if (previous && previous !== entry.name) {
+        throw new Error(`Stages ${previous} and ${entry.name} both create ${output}; only one stage may create an output`)
+      }
+      owners.set(output, entry.name)
+    }
+  }
+}
+
 function contractDigest(entry) {
-  return digest(JSON.stringify({ requires: entry.requires, dependsOn: entry.dependsOn, outputs: entry.outputs }))
+  return digest(JSON.stringify({
+    requires: entry.requires, dependsOn: entry.dependsOn, outputs: entry.outputs,
+    mutableOutputs: entry.mutableOutputs, clean: entry.clean,
+  }))
 }
 
 async function inputsDigest(entry, workspace) {
@@ -129,6 +165,24 @@ async function inputsDigest(entry, workspace) {
   if (!declared) return digest('{}')
   const value = typeof declared === 'function' ? await declared(workspace) : declared
   return digest(JSON.stringify(value))
+}
+
+/**
+ * A rerun of a stage starts by removing what that stage owns. The runner creates
+ * these paths, so it may clear them; every stage script keeps its own "must be a
+ * new directory" guard for direct CLI use, and the runner simply never trips it.
+ *
+ * Cleaning happens after the satisfied check, never before: a skipped stage's
+ * artifacts must still be on disk for verification.
+ */
+async function cleanOutputs(entry, workspace, log) {
+  const owned = [...entry.outputs, ...entry.mutableOutputs, ...entry.clean]
+  for (const output of owned) {
+    const path = workspace.resolvePath(output)
+    if (!await pathExists(path)) continue
+    log(`clean   ${entry.name} — ${output}`)
+    await removeTree(path)
+  }
 }
 
 async function recordArtifacts(entry, workspace) {
@@ -142,6 +196,18 @@ async function recordArtifacts(entry, workspace) {
       throw error
     }
     artifacts[output] = value
+  }
+  // A tree a later stage appends to has no stable digest. Record what this stage
+  // created for diagnostics, but promise only that the tree still exists.
+  for (const output of entry.mutableOutputs) {
+    const path = workspace.resolvePath(output)
+    const value = await digestPath(path)
+    if (!value) {
+      const error = new Error(`Stage ${entry.name} did not produce ${path}`)
+      error.code = 'EDUWORK_MISSING_ARTIFACT'
+      throw error
+    }
+    artifacts[output] = { kind: 'mutable', createdAs: value.kind === 'tree' ? value.sha256 : value.sha256 ?? null }
   }
   return artifacts
 }
@@ -158,6 +224,7 @@ async function verifyArtifacts(entry, workspace, record) {
       error.code = 'EDUWORK_VANISHED_ARTIFACT'
       throw error
     }
+    if (recorded.kind === 'mutable') continue
     if (JSON.stringify(recorded) !== JSON.stringify(actual)) {
       const error = new Error(
         `Stage ${entry.name} output was modified after it was recorded: ${path}; ` +
@@ -173,7 +240,9 @@ async function verifyArtifacts(entry, workspace, record) {
  * A resumable build workspace. The checkpoint records the run arguments and the
  * artifact digest each stage produced. A later invocation may re-enter the same
  * workspace; it may not reinterpret it under different arguments, and it may not
- * find a recorded artifact missing or modified.
+ * find a recorded artifact missing or modified. Two stages that declare the same
+ * output in the same workspace cannot run together, so a shared tree such as the
+ * desktop product is only ever written by one stage at a time.
  */
 export class Workspace {
   constructor({ root, checkpointFile, parameters = {}, stages = [], platform = process.platform }) {
@@ -186,6 +255,7 @@ export class Workspace {
     this.byName = new Map(stages.map(entry => [entry.name, entry]))
     const { order } = buildGraph(stages)
     this.order = order
+    assertOutputOwnership(stages)
     this.completed = new Map()
     this.executed = []
     this.skipped = []
@@ -287,6 +357,7 @@ export async function runStages(workspace, { jobs = 1, force = [], log = console
     }
     log(`run     ${entry.name}${entry.description ? ` — ${entry.description}` : ''}`)
     const started = Date.now()
+    await cleanOutputs(entry, workspace, log)
     await entry.run(workspace)
     const artifacts = await recordArtifacts(entry, workspace)
     const next = {
