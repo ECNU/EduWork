@@ -66,8 +66,10 @@ try {
     if ($IsWindows) {
         $archive=Join-Path $publish "$name-$Version-windows-x64-electron.zip"
         & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $assembled -Output $archive -Development
-        & tar.exe -xf $archive -C $unpacked
         $desktop=Join-Path $unpacked $name
+        $archiveHash=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+        $result.portableExtractor=& (Join-Path $CoreRoot 'scripts/prepare-windows-portable-extractor.ps1') -Archive $archive -ExpectedSHA256 $archiveHash -OutputDirectory (Join-Path $Output 'portable-extractor') -Target $desktop -PublishDirectory $publish
+        $result.checks.portableExtractor='passed'
         & node (Join-Path $CoreRoot 'scripts/verify-windows-release.mjs') $desktop
         $frozen=Join-Path $desktop 'resources/product';$node=Join-Path $desktop 'resources/runtime/node.exe';$exe=Join-Path $desktop 'EduWork-Electron.exe'
     } else {

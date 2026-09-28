@@ -1,0 +1,45 @@
+name: Verify portable extractor
+on:
+  pull_request:
+    paths:
+      - 'dsh-desktop/internal/portable/**'
+      - 'dsh-desktop/cmd/eduwork-extract/**'
+      - 'scripts/pack-portable-extractor.ps1'
+      - 'scripts/prepare-windows-portable-extractor.ps1'
+      - 'scripts/ci-017-alpha-desktop.ps1'
+      - 'scripts/ci-eduwork-windows-release.ps1'
+      - 'scripts/publish-windows-release.mjs'
+      - 'tests/eduwork-windows-release.test.mjs'
+      - 'tests/github-update-package.test.mjs'
+      - 'scripts/portable-extractor.manifest'
+      - '.github/workflows/validate-portable-extractor.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-extractor:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Check long paths, corruption, cancellation and existing data
+        working-directory: dsh-desktop
+        shell: pwsh
+        run: |
+          go test -v ./internal/portable
+          if ($LASTEXITCODE) { throw 'Extractor tests failed' }
+          go vet ./internal/portable ./cmd/eduwork-extract
+          if ($LASTEXITCODE) { throw 'Extractor static checks failed' }
+          go build -trimpath -o "$env:RUNNER_TEMP/eduwork-extract.exe" ./cmd/eduwork-extract
+          if ($LASTEXITCODE) { throw 'Extractor build failed' }
+      - name: Build both branded packages and verify release publication inputs
+        shell: pwsh
+        run: |
+          node --test tests/github-update-package.test.mjs tests/eduwork-windows-release.test.mjs
+          if ($LASTEXITCODE) { throw 'Portable release pipeline checks failed' }
