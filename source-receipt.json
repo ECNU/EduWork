@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T04:40:21.661Z",
-  "fileSetSHA256": "c0d8002bd09593266df7ededb687a4473539eb716f4f05603695611ab5e9ecc7",
+  "createdAt": "2026-09-28T06:52:24.104Z",
+  "fileSetSHA256": "6ee2d51aee2c5e0cd4159e3facbec6f7d5157a4aca90b0e2f6f7720374583bbb",
   "files": [
     {
       "path": ".gitattributes",
@@ -309,11 +309,11 @@
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
-      "sha256": "5c5f857f961cf7eba4e0bbe6d78c6b7bdb037b3fbb4941553c5addf01d7c7c4e"
+      "sha256": "eef005c5c26d213a72b4969ccec1952394f2b6a48d84d02de8003eff4a4e61d5"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.md",
-      "sha256": "b26a2fb14b503a553916150283a71d45d0530c14680bdbecb395d29877287060"
+      "sha256": "cc66b9f94e9dd83ef7450ca34d9469c7e66d10e10625eb9ca72c5cda36c3ec6f"
     },
     {
       "path": "docs/proposals/gateway-auth/README_EN.md",
@@ -4781,7 +4781,7 @@
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "a6d64f52612c193c69f03d16b4782d85a43c8fe4362317ea0932d2db9a543690"
+      "sha256": "2d61a74838fb3044dbbc5c67ecdef9c1de719fcb83775f7653efd0672a939729"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",

@@ -105,7 +105,6 @@ export async function publish(directory) {
     const upload=new URL(release.upload_url.replace(/\{.*$/,''))
     if(upload.origin!=='https://uploads.github.com') throw Error('Unexpected release upload host')
     upload.searchParams.set('name',file.name)
-    if(file.name.endsWith('-windows-x64-setup.zip'))upload.searchParams.set('label','Windows 安装包')
     const response=await fetch(upload,{method:'POST',headers:{...headers,'Content-Type':file.name.endsWith('.zip')?'application/zip':'application/octet-stream','Content-Length':String(file.bytes)},body:createReadStream(file.path),duplex:'half'})
     if(!response.ok) throw Error(`Upload failed: ${file.name}, HTTP ${response.status}; draft retained`)
     const result=await response.json()
