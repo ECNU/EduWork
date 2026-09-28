@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T07:31:40.072Z",
-  "fileSetSHA256": "ffe382908e599520046222977c0950e616b7c20e05817be88b685c818338e532",
+  "createdAt": "2026-09-28T07:48:57.665Z",
+  "fileSetSHA256": "905ee951a3928ed1408d2ef82f24db5867ab08a7c21f2c986b204503689fc7d8",
   "files": [
     {
       "path": ".gitattributes",
@@ -293,7 +293,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "c59d77f6e50fdd20590185d8470b3f491b03c4474e23f86404e1c0de3108de9f"
+      "sha256": "44fef91bfa7d9d80fd17e21ad9295d5223e1f9c826777605a60f055b23aed23b"
     },
     {
       "path": "docs/MEDIA.md",
@@ -333,7 +333,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "db363fcbd8a98357df18d1af9e1fbcb5786484665b3e19cc9bd35021d4de968c"
+      "sha256": "d74ab805e0d301a11c2aac01426751a512086132ff30652a95cf9e386ce75897"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -4585,7 +4585,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "953116e9fa9438dac1f8fad5ef480b203eae26d7ea5b6d13a249c8c184058581"
+      "sha256": "87b2abea35aab614a335d8ac63c50141a85bd067ca2f5a262c5e63606f4ce819"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4758,6 +4758,10 @@
     {
       "path": "scripts/prepare-eduwork-web-runtime.ps1",
       "sha256": "8f2c78918b56966a1302ef74527079468cbd83f3edc7035364b8699a095cec68"
+    },
+    {
+      "path": "scripts/prepare-macos-dmg.ps1",
+      "sha256": "c32aaefab855ed37829cd64bee720eb16b6c430e67aef592b7f82536a00710ef"
     },
     {
       "path": "scripts/prepare-macos-release-inputs.ps1",

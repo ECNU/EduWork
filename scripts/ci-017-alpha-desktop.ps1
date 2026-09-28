@@ -93,7 +93,12 @@ try {
     Copy-Item (Join-Path $Output 'gui/result.json') (Join-Path $public 'desktop-ui-result.json')
     $result.checks.desktopLaunch='passed'
     if ($VerifyPublisherBootstrap) { $result.checks.publisherFirstLaunch='passed' }
-    if ($IsMacOS) { & codesign --verify --deep --strict $desktop;$result.checks.readOnlyApplication='passed' }
+    if ($IsMacOS) {
+        & codesign --verify --deep --strict $desktop;$result.checks.readOnlyApplication='passed'
+        $dmg=Join-Path $publish "$name-$Version-macos-arm64-electron.dmg"
+        $result.installer=& (Join-Path $CoreRoot 'scripts/prepare-macos-dmg.ps1') -App $desktop -Output $dmg -WorkDirectory (Join-Path $Output 'dmg')
+        $result.checks.macosDmg='passed'
+    }
     $result.asset=@{name=[IO.Path]::GetFileName($archive);bytes=(Get-Item $archive).Length;sha256=(Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()}
     $result.passed=$true
     $result | ConvertTo-Json -Depth 16 | Set-Content (Join-Path $publish "$platform-alpha-receipt.json") -Encoding utf8NoBOM
