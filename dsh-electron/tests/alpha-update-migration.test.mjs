@@ -20,7 +20,7 @@ async function fixture(t, updates = { provider: 'disabled' }, preference) {
   await writeFile(config, JSON.stringify({ schemaVersion: 1, updates }) + '\n')
   if (preference) await writeFile(join(dataRoot, 'state/update-preferences.json'), JSON.stringify(preference))
   const policy = await migrateUpdateChannel({ dataRoot, version: '0.4.0' })
-  return { dataRoot, logs, config, policy, version: '0.4.0', defaults: { provider: 'github', repository: 'ECNU/EduWork' } }
+  return { dataRoot, logs, config, policy, platform: 'win32', version: '0.4.0', defaults: { provider: 'github', repository: 'ECNU/EduWork' } }
 }
 
 test('old Alpha selection enables both software routes without changing explicit dev policy', async t => {
@@ -64,13 +64,13 @@ test('pending choice resumes after interruption, with user edits preserved', asy
   assert.equal(JSON.parse(await readFile(path, 'utf8')).state, 'complete')
 })
 
-test('Mac Alpha uses its packaged appcast and retains an explicit development channel', async t => {
-  const input = await fixture(t, undefined, { schemaVersion: 1, source: 'user', policy: 'development' })
+for (const policy of ['stable', 'development']) test(`Mac Alpha uses its packaged ${policy} appcast and retains the selected channel`, async t => {
+  const input = await fixture(t, undefined, { schemaVersion: 1, source: 'user', policy })
   const macFeeds = { stable: 'https://updates.example.org/stable.xml', development: 'https://updates.example.org/dev.xml' }
   await migrateAlphaUpdates({ ...input, platform: 'darwin', defaults: { macFeeds }, choose: async () => 'enable' })
   const updates = loadUserConfig(input.config).updates
   assert.notEqual(updates.provider, 'disabled')
-  assert.equal(updates.defaultPolicy, 'development')
+  assert.equal(updates.defaultPolicy, policy)
   assert.deepEqual(updates.macFeeds, macFeeds)
   await migrateAlphaUpdates({ ...input, platform: 'darwin', choose: assert.fail })
 })

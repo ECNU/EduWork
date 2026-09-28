@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T17:12:15.895Z",
-  "fileSetSHA256": "fa9c90d2273a98bb7eccb922ec6aa89d6515f311e6646531002eec2b4fbcc4bd",
+  "createdAt": "2026-09-28T17:16:48.038Z",
+  "fileSetSHA256": "c0c6ec98e6157a568e74e18cb8591476b38cea7e24f7d989d9e405b98c298928",
   "files": [
     {
       "path": ".gitattributes",
@@ -953,7 +953,7 @@
     },
     {
       "path": "dsh-electron/tests/alpha-update-migration.test.mjs",
-      "sha256": "4c6a71a69f972b0201a4277e963df4435a7301206316b2b0a53ec1bdab292b7f"
+      "sha256": "dbe6c2f973bfae3e3bd53d3449da2ffe139f049a2d75a5018fdfdab949692018"
     },
     {
       "path": "dsh-electron/tests/configuration-files.test.mjs",
