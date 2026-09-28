@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T02:46:02.723Z",
-  "fileSetSHA256": "25f71cdd55aeac012096e0da74315351324b71fd4141e9b419b6d3e0c18f6bd6",
+  "createdAt": "2026-09-28T04:04:08.341Z",
+  "fileSetSHA256": "48e168292bda5b1cfff77cf35fcb9469acd87ef4a52b8ece6aa7b84bfa292d5c",
   "files": [
     {
       "path": ".gitattributes",
@@ -58,6 +58,10 @@
     {
       "path": ".github/workflows/validate-macos-updates.yml",
       "sha256": "dc2c34370141987b53143170730ed0d5176f4825ad9a321b0863be9ca1d198c2"
+    },
+    {
+      "path": ".github/workflows/validate-portable-extractor.yml",
+      "sha256": "9522eee4f9589fcf036a7780c28cabc332304d3037cc7d95c21d54a851f6258d"
     },
     {
       "path": ".gitignore",
@@ -304,6 +308,14 @@
       "sha256": "19e810ca58b83e0bbb867662bc52e0bf8c8ffba77cb29354fcc1f0d6f68493ce"
     },
     {
+      "path": "docs/PORTABLE-EXTRACTOR.en.md",
+      "sha256": "4e206c7fda4f797803a2eb7501d5cfd3ee75b73dcc6dbc42d96ed0200d36a603"
+    },
+    {
+      "path": "docs/PORTABLE-EXTRACTOR.md",
+      "sha256": "ab15700eb16e4c4e115f5670fad5b82bd677b328475e26e19817294fa01eb643"
+    },
+    {
       "path": "docs/proposals/gateway-auth/README_EN.md",
       "sha256": "87faddf0dd131fa96f7ae03c706374c1ed0ed6f05e53f985cde15b822687ff98"
     },
@@ -358,6 +370,14 @@
     {
       "path": "docs/数据导入.md",
       "sha256": "129e61d8ff360b4ce30a49cd4592993420c545b66193dfbe9049cf1a7682ea20"
+    },
+    {
+      "path": "dsh-desktop/cmd/eduwork-extract/main_windows.go",
+      "sha256": "e0ed5ece7924d9e3bbb2e55dc165c977f9fb2ca2e49364cd48cab676db6f9f97"
+    },
+    {
+      "path": "dsh-desktop/cmd/eduwork-extract/ui_windows.go",
+      "sha256": "29ceb55422d040d4bd8377758111d0ff35f88acdfb183fcc24b2866059e8b5bb"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows_test.go",
@@ -546,6 +566,22 @@
     {
       "path": "dsh-desktop/internal/nativevault/store.go",
       "sha256": "31286dc953fab02c34a9951e4924ec93249778af5c698f06251a881bfbf02249"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/archive_test.go",
+      "sha256": "a9e61e27297b485359ed6999badbd6fb04fa3465de4cf118a689963e2e6f042f"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/archive.go",
+      "sha256": "bb51504aa049739d9833436a38a2fa85164674e52181103f5f1e2ce7623fb43b"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/space_other.go",
+      "sha256": "935e591283f1a7831da605ee66e68e8e9109557c69a4392b4e8eded5031a3921"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/space_windows.go",
+      "sha256": "9154f4a23f1b91165277aac5c970d7aa5f800b552b359bcb1602913d0ec4bc92"
     },
     {
       "path": "dsh-desktop/internal/productruntime/builtin/builtin.go",
@@ -4624,6 +4660,10 @@
       "sha256": "59aa83e446d06a357990a89baa6a54118171c71c43a5ad886e72e207e4c5cb0a"
     },
     {
+      "path": "scripts/pack-portable-extractor.ps1",
+      "sha256": "431750ede2a2f54a9b01e7a3494b79c192d143cc086d83cf8ce606eab3a3f13b"
+    },
+    {
       "path": "scripts/pack-windows-release.ps1",
       "sha256": "f902cb0fb47c1f64e41eafc4af9a8194a00ef05a79d5d59ab58c6d22ade22291"
     },
@@ -4658,6 +4698,10 @@
     {
       "path": "scripts/patch-eduwork-source-reproducibility.mjs",
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
+    },
+    {
+      "path": "scripts/portable-extractor.manifest",
+      "sha256": "d14e65eb4e40c0181c6e2f918fb8c3910ffa618226379081af8050aa5ef17276"
     },
     {
       "path": "scripts/portable-product-links.mjs",

@@ -1,0 +1,31 @@
+name: Verify portable extractor
+on:
+  pull_request:
+    paths:
+      - 'dsh-desktop/internal/portable/**'
+      - 'dsh-desktop/cmd/eduwork-extract/**'
+      - 'scripts/pack-portable-extractor.ps1'
+      - 'scripts/portable-extractor.manifest'
+      - '.github/workflows/validate-portable-extractor.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-extractor:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Check long paths, corruption, cancellation and existing data
+        working-directory: dsh-desktop
+        shell: pwsh
+        run: |
+          go test -v ./internal/portable
+          if ($LASTEXITCODE) { throw 'Extractor tests failed' }
+          go vet ./internal/portable ./cmd/eduwork-extract
+          if ($LASTEXITCODE) { throw 'Extractor static checks failed' }
+          go build -trimpath -o "$env:RUNNER_TEMP/eduwork-extract.exe" ./cmd/eduwork-extract
+          if ($LASTEXITCODE) { throw 'Extractor build failed' }
