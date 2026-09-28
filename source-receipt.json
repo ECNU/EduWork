@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T04:22:48.867Z",
-  "fileSetSHA256": "b0adef84a851309f27c9ad2c8d3b1009f9f56f091e4110d6eef8e044b40bcf02",
+  "createdAt": "2026-09-28T04:31:30.618Z",
+  "fileSetSHA256": "94c1f84b1e93c9637366742b89d8d87a23619e0dedf829daf5415e1b6b6da981",
   "files": [
     {
       "path": ".gitattributes",
@@ -333,7 +333,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "6e983ed5adbb1b9977fba16674ed2c0f02b662abc9b9649fc601f2e5a477757e"
+      "sha256": "749276a024c6615249b5ab418720fd2a7550ca394485abb6c0b87b3e2a7e24a6"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -361,7 +361,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "a950f79527960b48d24590429f7320fc6008239433f5a113a687393814d7d1ce"
+      "sha256": "a1dd573250b4b362a205ceb5d88c94df4d50b8f0a988cd62dd001efaa3136ab8"
     },
     {
       "path": "docs/USER_GUIDE.md",
