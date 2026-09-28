@@ -2,7 +2,7 @@
 
 [English](PORTABLE-EXTRACTOR.en.md)
 
-Windows 安装包是首次下载的可选附件：外层 ZIP 只有一个 `EduWork-Setup.exe` 或 `EduWork-ECNU-Setup.exe`，EXE 内包含原始 Windows 桌面发行 ZIP。安装界面使用发行包中的产品名称、图标和实际版本号，提供安装位置、进度、取消和完成后立即启动按钮。下载入口统一标为“Windows 安装包”，不增加“便携版”等版本名称。
+Windows 安装包是首次下载的可选附件：外层 ZIP 只有一个 `EduWork-Setup.exe` 或 `EduWork-ECNU-Setup.exe`，EXE 内包含原始 Windows 桌面发行 ZIP。安装界面使用发行包中的产品名称、图标和实际版本号，提供安装位置、进度、取消和完成后立即启动按钮。GitHub Release 附件直接显示完整文件名：`EduWork-<版本>-windows-x64-setup.zip` 或 `EduWork-ECNU-<版本>-windows-x64-setup.zip`，不设置替代文件名的显示标签。安装界面不增加“便携版”等版本名称。
 
 安装程序通过解压释放应用，不注册安装记录、不创建快捷方式、不修改 PATH 或开机启动。配置和数据的存储方式由原来的应用决定。应用目录已存在时拒绝覆盖；升级仍使用应用现有更新机制。
 
