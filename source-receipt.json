@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T17:18:25.833Z",
-  "fileSetSHA256": "548e3c44a24e4b48255f798f4b0db9f18d6032c43d90232620075658e6925792",
+  "createdAt": "2026-09-28T17:22:51.789Z",
+  "fileSetSHA256": "b70559136143796b1241adde07ae80019e64dc1cb2a39b3786d95755e73cced3",
   "files": [
     {
       "path": ".gitattributes",
@@ -4821,7 +4821,7 @@
     },
     {
       "path": "scripts/build-017-plugin-clients.mjs",
-      "sha256": "6ac5e2087545d9edd54468ee34b98f5b4fefa704d244003780950996d5ba31bf"
+      "sha256": "38c66def1d128c90209f415f9f71289ae8a7766bd5634e429514ddb8c0bfe6cb"
     },
     {
       "path": "scripts/build-eduwork-icons.mjs",
@@ -4845,7 +4845,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "63d808725d36431c726ae720d34b345c4fa31ae845bc5388ebbb5fcd3d7b77b9"
+      "sha256": "37d440a7345593fc88c7ea64071cb15e7176924b5dcfe4f1d30f82118d884647"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
