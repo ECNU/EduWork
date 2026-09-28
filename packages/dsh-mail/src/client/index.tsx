@@ -6,36 +6,37 @@ export const inject = ['slots', 'remote', 'remote.credentials', nativeSettings ?
 
 const NS = 'dsh-mail-assistant'
 const PASSWORD_REF = 'DSH_MAIL_ASSISTANT_PASSWORD'
-const zh = typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')
+// Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
+const zh = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 
 const copy = zh ? {
-  nav: '邮件助手', title: '邮件助手', description: '让 Agent 通过标准 IMAP 只读检索邮件，并按当前 DSH 权限模式通过 SMTP 发信。它不是邮箱客户端，不会移动、删除、归档或修改邮件状态。',
+  nav: '邮件助手', title: '邮件助手', description: '让 Agent 通过标准 IMAP 只读检索邮件，并按当前权限模式通过 SMTP 发信。它不是邮箱客户端，不会移动、删除、归档或修改邮件状态。',
   loading: '正在读取配置…', save: '保存', saving: '正在保存…', saved: '配置已保存，新调用立即生效。',
   readPermission: '允许 Agent 读信', readHint: '可列出目录、分页查找、读取邮件和下载附件；IMAP 始终只读。',
   sendPermission: '允许 Agent 发信', sendHint: '可发送纯文本邮件；普通权限逐次确认，Full Access 不再弹窗。',
   identity: '邮箱账号', identityHint: '先填写日常使用的邮箱信息。多数邮箱要求使用客户端授权码，而不是网页登录密码。',
   email: '邮箱地址', emailHint: '用于收信和发信。', username: '登录用户名', usernameHint: '仅当服务商要求时填写；留空则使用邮箱地址。', fromName: '发件人显示名称', fromNameHint: '收件人看到的名称；可留空。', inbox: '收件箱目录', inboxHint: '通常保持 INBOX。',
-  password: '密码 / 客户端授权码', passwordHint: '安全写入 DSH 凭据存储，不会写进 settings.yaml，也不会回显。', configured: '已保存', missing: '未填写', credentialPlaceholder: '输入授权码；已保存时留空不会改变', clearPassword: '清除授权码',
+  password: '密码 / 客户端授权码', passwordHint: '安全写入本机凭据存储，不会写进 settings.yaml，也不会回显。', configured: '已保存', missing: '未填写', credentialPlaceholder: '输入授权码；已保存时留空不会改变', clearPassword: '清除授权码',
   servers: '邮箱服务器', serversHint: '选择常见服务商可自动填写；单位邮箱或自建邮箱请选择“手动配置”。', preset: '邮箱服务商', custom: '手动配置', imap: '收信（IMAP）', smtp: '发信（SMTP）', host: '服务器地址', port: '端口', tls: '加密', implicit: '隐式 TLS', starttls: 'STARTTLS',
   advanced: '高级设置', advancedHint: '登录用户名、收件箱目录和安全上限通常不需要修改。', collapse: '收起',
   agentAccess: '开放给 Agent', agentAccessHint: '账号和服务器保存好后，再按需要分别开放读信或发信。', permissionNeedsSetup: '请先填写邮箱地址、授权码和相应的服务器。',
   limits: '安全上限', bodyLimit: '正文字符', messageLimit: '整封邮件字节', attachmentLimit: '附件总字节',
   usage: '保存后，在对话里让 Agent“查一下最近邮件”即可验证。插件不会在启动或保存时主动连接邮箱。',
-  error: '保存失败', reload: '重新加载', unavailable: '当前 DSH 连接未提供此设置命名空间。', readOnly: '当前连接为只读模式，无法保存设置。', credentialPartial: '授权码已经保存，但其他配置保存失败；请修正后再次保存。',
+  error: '保存失败', reload: '重新加载', unavailable: '当前连接未提供此设置命名空间。', readOnly: '当前连接为只读模式，无法保存设置。', credentialPartial: '授权码已经保存，但其他配置保存失败；请修正后再次保存。',
 } : {
-  nav: 'Mail assistant', title: 'Mail assistant', description: 'Let the agent search mail through read-only IMAP and send through SMTP under the current DSH permission preset. This is not a mail client: it never moves, deletes, archives, or changes message state.',
+  nav: 'Mail assistant', title: 'Mail assistant', description: 'Let the agent search mail through read-only IMAP and send through SMTP under the current permission preset. This is not a mail client: it never moves, deletes, archives, or changes message state.',
   loading: 'Loading configuration…', save: 'Save', saving: 'Saving…', saved: 'Saved. New calls use the configuration immediately.',
   readPermission: 'Allow the agent to read mail', readHint: 'List folders, page through searches, read messages, and download attachments. IMAP always stays read-only.',
   sendPermission: 'Allow the agent to send mail', sendHint: 'Send plain-text messages. Ordinary permissions ask each time; Full Access does not prompt.',
   identity: 'Mailbox account', identityHint: 'Start with the mailbox information you normally use. Most providers require an app password instead of the web-login password.',
   email: 'Email address', emailHint: 'Used for both incoming and outgoing mail.', username: 'Login username', usernameHint: 'Only set this when required by your provider; otherwise the email address is used.', fromName: 'Sender display name', fromNameHint: 'The name recipients see; optional.', inbox: 'Inbox folder', inboxHint: 'Usually keep INBOX.',
-  password: 'Password / app password', passwordHint: 'Stored securely in DSH Credentials. It is never written to settings.yaml or returned to this page.', configured: 'Saved', missing: 'Missing', credentialPlaceholder: 'Enter an app password; leave blank to keep the saved value', clearPassword: 'Clear app password',
+  password: 'Password / app password', passwordHint: 'Stored securely in the local credential store. It is never written to settings.yaml or returned to this page.', configured: 'Saved', missing: 'Missing', credentialPlaceholder: 'Enter an app password; leave blank to keep the saved value', clearPassword: 'Clear app password',
   servers: 'Mail servers', serversHint: 'Choose a common provider to fill these automatically, or use Manual configuration for institutional and self-hosted mail.', preset: 'Mail provider', custom: 'Manual configuration', imap: 'Incoming (IMAP)', smtp: 'Outgoing (SMTP)', host: 'Server address', port: 'Port', tls: 'Encryption', implicit: 'Implicit TLS', starttls: 'STARTTLS',
   advanced: 'Advanced settings', advancedHint: 'Login username, inbox folder, and safety limits usually need no changes.', collapse: 'Collapse',
   agentAccess: 'Agent access', agentAccessHint: 'After saving the account and servers, enable reading and sending independently as needed.', permissionNeedsSetup: 'Enter the email address, app password, and corresponding server first.',
   limits: 'Safety limits', bodyLimit: 'Body characters', messageLimit: 'Whole-message bytes', attachmentLimit: 'Total attachment bytes',
   usage: 'After saving, ask the agent to find recent mail. The plugin never connects to a mailbox during startup or save.',
-  error: 'Save failed', reload: 'Reload', unavailable: 'This DSH connection does not expose the mail settings namespace.', readOnly: 'This connection exposes settings in read-only mode.', credentialPartial: 'The app password was stored, but the remaining settings failed to save. Fix the form and save again.',
+  error: 'Save failed', reload: 'Reload', unavailable: 'This connection does not expose the mail settings namespace.', readOnly: 'This connection exposes settings in read-only mode.', credentialPartial: 'The app password was stored, but the remaining settings failed to save. Fix the form and save again.',
 }
 
 const defaults = {

@@ -5,7 +5,8 @@ import { useAccountStatus } from './use-account-status.js'
 import { useSignIn } from './use-sign-in.js'
 
 const h = React.createElement
-const zh = typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')
+// Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
+const zh = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 const words = zh ? { menu: '账户菜单', check: '刷新账户', logout: '退出登录', login: '登录账户', waiting: '请在浏览器中完成登录…', cancel: '取消登录', processing: '正在处理…' }
   : { menu: 'Account menu', check: 'Refresh account', logout: 'Sign out', login: 'Sign in', waiting: 'Complete sign-in in your browser…', cancel: 'Cancel sign-in', processing: 'Working…' }
 const action = { width: '100%', textAlign: 'left' as const, border: 0, borderRadius: 7, padding: '9px 10px', font: 'inherit', cursor: 'pointer', background: 'var(--dsw-alias-bg-layer-2, #f5f6f8)', color: 'inherit' }

@@ -9,11 +9,12 @@ const textPrimary = 'var(--dsw-alias-label-primary, #231a17)'
 const textSecondary = 'var(--dsw-alias-label-secondary, #75635c)'
 const textTertiary = 'var(--dsw-alias-label-tertiary, #8a766f)'
 const background = 'var(--dsw-alias-bg-layer-1, #fffdfb)'
-const isChinese = typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')
+// Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
+const isChinese = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 
 const copy: Record<string, string> = isChinese ? {
   waiting: '请在浏览器中完成登录…', cancelLogin: '取消登录',
-  title: '学校 / 企业服务', description: '已验证机构和兼容协议服务使用统一入口管理；普通 API Key 提供方继续由 DSH 原生设置管理。',
+  title: '学校 / 企业服务', description: '已验证机构和兼容协议服务使用统一入口管理；普通 API Key 提供方继续在模型设置中管理。',
   loading: '正在读取学校 / 企业服务…', add: '+ 添加学校 / 企业服务', verified: '已验证机构', custom: '自定义服务',
   connected: '已连接', enabled: '已启用', disabled: '未启用', configure: '配置', enable: '启用并重载', login: '登录', refresh: '刷新状态',
   processing: '处理中…', profileManaged: 'Enterprise Profile 管理', addTitle: '添加学校 / 企业服务', addDescription: '选择已验证机构，或填写一个兼容协议 Base URL。',
@@ -29,14 +30,14 @@ const copy: Record<string, string> = isChinese ? {
   removeService: '移除服务', deleteService: '删除服务', confirmRemove: '确认从当前配置中移除？以后仍可重新添加。', confirmDelete: '确认永久删除这项本地配置？',
   confirm: '确认删除', disable: '停用并重载', restartNotice: '机构配置已保存。重启后会加载对应的 Provider、品牌和本地能力组合。', restart: '立即重启应用',
   emptyTitle: '尚未配置学校 / 企业服务', emptyHint: '添加只保存配置；需要使用时再显式启用。全局同时只会启用一个企业服务。',
-  profileNotice: '应用从受信 Enterprise Profile 读取机构与模型目录；如需修改，请更新 Profile 后重启 DSH。',
+  profileNotice: '应用从受信 Enterprise Profile 读取机构与模型目录；如需修改，请更新 Profile 后重启应用。',
   fileHint: '通过配置文件连接学校或企业服务。修改后退出应用，再重新启动。',
   openConfig: '打开配置文件', openExamples: '查看示例',
   configOpened: '已请求系统打开配置文件，修改后请退出并重新启动应用。', examplesOpened: '已请求系统打开示例目录。',
   fileFallback: '请在运行应用的电脑上打开：', examplesHint: '完整示例见同目录下的 examples 文件夹。',
 } : {
   waiting: 'Complete sign-in in your browser…', cancelLogin: 'Cancel sign-in',
-  title: 'Organization services', description: 'Manage verified organizations and compatible enterprise services here; ordinary API-key providers remain in DSH model settings.',
+  title: 'Organization services', description: 'Manage verified organizations and compatible enterprise services here; ordinary API-key providers remain in model settings.',
   loading: 'Loading organization services…', add: '+ Add organization service', verified: 'Verified organization', custom: 'Custom service',
   connected: 'Connected', enabled: 'Enabled', disabled: 'Disabled', configure: 'Configure', enable: 'Enable and reload', login: 'Sign in', refresh: 'Refresh',
   processing: 'Working…', profileManaged: 'Enterprise Profile managed', addTitle: 'Add organization service', addDescription: 'Select a verified organization or enter a compatible protocol Base URL.',
@@ -52,7 +53,7 @@ const copy: Record<string, string> = isChinese ? {
   removeService: 'Remove service', deleteService: 'Delete service', confirmRemove: 'Remove this service from the current configuration?', confirmDelete: 'Permanently delete this local configuration?',
   confirm: 'Confirm', disable: 'Disable and reload', restartNotice: 'Configuration was saved. Reload to apply the Provider, brand, and local capabilities.', restart: 'Restart now',
   emptyTitle: 'No organization service configured', emptyHint: 'Adding a service only saves its configuration. Enable one explicitly when needed; only one service is active at a time.',
-  profileNotice: 'The app reads organizations and models from a trusted Enterprise Profile. Update the Profile and restart DSH to change them.',
+  profileNotice: 'The app reads organizations and models from a trusted Enterprise Profile. Update the Profile and restart the app to change them.',
   fileHint: 'Connect an organization through the configuration file. Quit and relaunch after editing.',
   openConfig: 'Open configuration file', openExamples: 'View examples',
   configOpened: 'The file was sent to your system editor. Quit and relaunch after editing.', examplesOpened: 'The examples folder was sent to your system file manager.',

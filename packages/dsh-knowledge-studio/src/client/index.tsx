@@ -13,9 +13,8 @@ import { ReadingFrame, ReadingLayer } from './ReadingFrame.js'
 import { BUILTIN_CAPABILITIES } from '../../lib/capabilities.js'
 
 export const inject = ['slots', 'remote', 'sessions', 'layout']
-const zh =
-  typeof navigator !== 'undefined' &&
-  navigator.language.toLowerCase().startsWith('zh')
+// Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
+const zh = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 
 const t = zh
   ? {

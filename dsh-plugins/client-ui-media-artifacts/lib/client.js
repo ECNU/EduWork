@@ -5877,7 +5877,7 @@ button{cursor:pointer}button:hover:enabled{background:var(--dsw-alias-interactiv
 				marginTop: 6,
 				color: "var(--dsw-alias-label-secondary)",
 				fontSize: 12
-			} }, "图片使用 DSH 原生附件，其他文件复制到当前工作区"))), document.body);
+			} }, "图片使用原生附件，其他文件复制到当前工作区"))), document.body);
 		}
 		function AddMenu({ anchor, onFiles, onCommands, close }) {
 			const menuRef = (0, react.useRef)(null);
@@ -5967,7 +5967,7 @@ button{cursor:pointer}button:hover:enabled{background:var(--dsw-alias-interactiv
 			} }, "命令与工作流"), h$2("small", { style: {
 				color: "var(--dsw-alias-label-secondary)",
 				fontSize: 11
-			} }, "打开 DSH 原生命令菜单")))), document.body);
+			} }, "打开原生命令菜单")))), document.body);
 		}
 		function WorkspaceFileInput({ sessionId, input, inputActions, locked, onAddImages, openCommands, commandMenuOpen, insertReference, importFiles, importNativeFiles, notify }) {
 			const pickerRef = (0, react.useRef)(null);
