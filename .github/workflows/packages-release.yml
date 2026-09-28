@@ -6,7 +6,7 @@ on:
         description: Independent npm package
         type: choice
         required: true
-        options: [dsh-oidc, dsh-memory, dsh-mail, dsh-artifact-services, dsh-knowledge-studio]
+        options: [dsh-literature, dsh-oidc, dsh-memory, dsh-mail, dsh-artifact-services, dsh-knowledge-studio]
       publish:
         description: Publish inspected tarball (requires reviewed source commit and npm trusted publisher)
         type: boolean

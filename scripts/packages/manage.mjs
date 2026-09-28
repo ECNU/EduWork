@@ -24,6 +24,7 @@ if (action === 'list') {
   if (action === 'install') npm(['ci'], { cwd, stdio: 'inherit' })
   if (action === 'check') {
     const scripts = {
+      'dsh-literature': ['check'],
       'dsh-oidc': ['check'],
       'dsh-mail': ['check'],
       'dsh-memory': ['build', 'test'],
