@@ -16,6 +16,7 @@ if ($ForUpdate) {
 }
 $name = switch ($identity.distribution) { 'eduwork' {'EduWork'} 'eduwork-chatecnu' {'EduWork-ECNU'} default {throw 'Unknown release distribution'} }
 if ([IO.Path]::GetFileName($Output) -ne "$name-$($identity.productVersion)-windows-x64-electron.zip") { throw 'Release asset name differs from the package identity' }
+& (Join-Path $PSScriptRoot '../dsh-electron/scripts/set-updater-manifest.ps1') -Executable (Join-Path $Candidate 'resources/update/EduWork-Updater.exe') -VerifyOnly
 $files = [Collections.Generic.List[object]]::new()
 function Inventory([string]$Directory, [string]$Prefix) {
     foreach ($entry in Get-ChildItem -LiteralPath $Directory -Force) {

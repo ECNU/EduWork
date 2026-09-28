@@ -5,6 +5,7 @@ import { resolve, join, relative, isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { installProductHost } from '../dsh-host/install-product-host.mjs'
+import { verifyMediaTemplate } from './verify-media-template.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (Object.values(values).length !== 5) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
@@ -18,6 +19,7 @@ const json = async file => JSON.parse(await readFile(file, 'utf8'))
 const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
 if (receipt.dshVersion !== '0.1.7-rc.2' || receipt.dshCommit !== '477b4f420553e8a52c2fbccc464d7561b239c443') throw new Error('Unqualified candidate Runtime')
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
+const sourceMediaTemplate = await verifyMediaTemplate(join(paths.source, 'packages/dsh-knowledge-studio/packages/artifact-services'))
 await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
@@ -43,6 +45,8 @@ for (const folder of new Set(sourceFolders)) {
   await cp(source, join(modules, manifest.name), { recursive: true })
   sourcePackages.push(manifest.name)
 }
+const mediaTemplate = await verifyMediaTemplate(join(modules, '@eduwork/dsh-artifact-services'))
+if (mediaTemplate.sha256 !== sourceMediaTemplate.sha256) throw new Error('Assembled media template differs from the source build')
 // The published literature family is retained unchanged. Runtime peer packages
 // come only from the candidate lock, never from a second peer installation.
 const literatureLock = await json(join(repository, 'third_party/dsh-literature/LOCK.json'))
@@ -74,7 +78,7 @@ const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.co
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', pluginMode: 'source-qualification', published: false,
   bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@shlv/dsh-literature'],
-  sourcePackages, externalPackages: literatureNames, omittedPackages: [], nativeResources: 'not-bundled',
+  sourcePackages, externalPackages: literatureNames, omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
 }
 await writeFile(join(paths.output, 'assembly.json'), JSON.stringify(identity, null, 2) + '\n')
 await writeFile(join(paths.output, 'composition.json'), JSON.stringify(composition, null, 2) + '\n')

@@ -43,6 +43,12 @@ jobs:
           if ($LASTEXITCODE) { throw 'Updater startup and recovery guidance checks failed' }
           node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop notification checks failed' }
+      - name: Verify Windows updater manifests and archives
+        if: steps.changes.outputs.build == 'true'
+        shell: pwsh
+        run: |
+          node --test core/dsh-electron/tests/updater-manifest.test.mjs core/tests/github-update-package.test.mjs
+          if ($LASTEXITCODE) { throw 'Updater manifest and archive checks failed' }
       - name: Build and verify the generic local Runtime
         if: steps.changes.outputs.build == 'true'
         shell: pwsh

@@ -76,6 +76,7 @@ try {
     & go build -trimpath -ldflags '-s -w -H windowsgui' -o $updaterPath ./cmd/eduwork-updater
     if ($LASTEXITCODE -ne 0) { throw 'Portable update helper build failed' }
 } finally { Pop-Location }
+& (Join-Path $PSScriptRoot 'set-updater-manifest.ps1') -Executable $updaterPath
 Rename-Item -LiteralPath (Join-Path $Output 'electron.exe') -NewName 'EduWork-Electron.exe'
 & (Join-Path $PSScriptRoot '../../scripts/set-desktop-icon.ps1') -Executable (Join-Path $Output 'EduWork-Electron.exe') -Shell electron
 $defaultConfig = Join-Path $Product 'resources/desktop/eduwork.jsonc'

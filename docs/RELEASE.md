@@ -113,6 +113,6 @@ Release notes 必须先与项目负责人讨论确认，不由代理自行编写
 
 CI 使用锁定 npm Runtime 和插件，固定 DSH 源码只作为 UI 编译及官方 Desktop Host/Electron 适配输入。Node、Python/wheels、Whisper/模型使用 SHA-256；Chromium 按独立资源锁中的版本从 Playwright 官方 CDN 下载，分别核对已锁定的归档和可执行文件 SHA-256；不使用较新 npm Playwright 默认选择的浏览器。Microsoft DLL 来自 Windows runner 的 Visual Studio x64 Redist 目录，检查微软签名并记录实际版本/哈希。
 
-CI 仅执行源码与锁定依赖检查、构建、打包、解压同一 ZIP 后的完整性校验，以及实际客户端启动冒烟（界面载入与 Host 基本通信）。不在 CI 反复执行模型会话、OIDC 登录/重启、Office 或音视频业务全流程；这些由维护者提交前在本地验收，现有完整测试脚本保留。回执的 ci-build-and-launch-v1 范围只记录 CI 实际执行的项目。测试使用临时配置和数据，账号或数据不进入安装包。
+CI 执行源码与锁定依赖检查、构建、打包，并生成[Windows 安装包](PORTABLE-EXTRACTOR.md)。核对外层 ZIP 内的 EXE 后，用该解压器释放原始 ZIP，再执行文件完整性、原生运行时和实际客户端启动冒烟（界面载入与 Host 基本通信）。不在 CI 反复执行模型会话、OIDC 登录/重启、Office 或音视频业务全流程；这些由维护者提交前在本地验收，现有完整测试脚本保留。Windows 回执的 `ci-build-launch-and-extract-v2` 范围只记录实际执行的项目。测试使用临时配置和数据，账号或数据不进入安装包。
 
-发行包含 Windows x64 Electron ZIP、同名 .sha256、release-receipt.json、RELEASE-NOTES.md 和 update-windows-amd64.json。构建中间 ZIP artifact 保留 3 天，脱敏验收报告保留 7 天。签名安装器、macOS 和旧 Go 两跳迁移不由此流程发布；本流程不会修改 OSS、旧更新清单或仓库可见性。
+发行包含八个文件：Windows x64 Electron ZIP 及同名 `.sha256`、`release-receipt.json`、`RELEASE-NOTES.md`、`update-windows-amd64.json`，以及Windows 安装包 `*-windows-x64-setup.zip`、同名 `.sha256` 和 `.json` 回执。首次下载可选择解压器 ZIP；自动更新清单仍只引用原始 Electron ZIP。构建中间 ZIP artifact 保留 3 天，脱敏验收报告保留 7 天。签名安装器、macOS 和旧 Go 两跳迁移不由此流程发布；本流程不会修改 OSS、旧更新清单或仓库可见性。
