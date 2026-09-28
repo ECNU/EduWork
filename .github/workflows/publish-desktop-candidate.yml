@@ -1,0 +1,88 @@
+name: Publish desktop candidate
+on:
+  workflow_dispatch:
+    inputs:
+      source_run_id:
+        description: 'Existing successful candidate run ID; no local transfer or rebuild'
+        required: true
+        type: string
+      version:
+        description: 'Approved product version'
+        required: true
+        type: string
+      release_notes:
+        description: 'Approved docs/releases/<version>.md'
+        required: true
+        type: string
+      notes_approved:
+        description: 'Project owner approved the version and exact notes'
+        required: true
+        default: false
+        type: boolean
+      publish:
+        description: 'Publish after validation; false validates artifacts only'
+        required: true
+        default: false
+        type: boolean
+  workflow_call:
+    inputs:
+      source_run_id:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      release_notes:
+        required: true
+        type: string
+      notes_approved:
+        required: true
+        default: false
+        type: boolean
+      publish:
+        required: true
+        default: false
+        type: boolean
+permissions:
+  contents: read
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: desktop-publication-${{ github.repository }}-${{ inputs.version }}
+      cancel-in-progress: false
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Verify and optionally publish the existing CI artifacts
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+          EDITION_ROOT: core
+          HAS_CORE_LOCK: 'false'
+          RELEASE_PRODUCT: EduWork
+          RELEASE_DISTRIBUTION: eduwork
+          REQUIRE_PUBLISHER_BOOTSTRAP: 'false'
+          CANDIDATE_WORKFLOW: .github/workflows/desktop-candidates.yml
+        run: node core/scripts/publish-desktop-candidate.mjs
+      - name: Retain publication verification
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-publication-verification
+          path: ${{ runner.temp }}/desktop-publication-${{ github.run_id }}/publication-verification.json
+          retention-days: 30
+          if-no-files-found: warn

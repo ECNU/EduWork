@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Approved X.Y.Z-dev.YYYYMMDD.N version; artifacts only'
+        description: 'Approved X.Y.Z-dev.YYYYMMDD.N version'
         required: true
         type: string
       development:
@@ -11,7 +11,7 @@ on:
         type: boolean
         default: true
       source_alpha:
-        description: 'Explicit DSH rc.2 source Alpha; artifacts only, npm release locks unchanged'
+        description: 'Explicit DSH rc.2 source Alpha; npm release locks unchanged'
         type: boolean
         default: false
       release_notes:
@@ -20,6 +20,11 @@ on:
         type: string
       notes_approved:
         description: 'The project owner approved this version and release text'
+        required: true
+        default: false
+        type: boolean
+      publish:
+        description: 'Publish source Alpha directly from CI after both platforms pass'
         required: true
         default: false
         type: boolean
@@ -64,13 +69,17 @@ jobs:
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           TARGET_PLATFORM: ${{ matrix.platform }}
           SOURCE_ALPHA: ${{ inputs.source_alpha }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+          SELECTED_PLATFORMS: ${{ inputs.platform }}
         run: |
           $ErrorActionPreference = 'Stop'
           $PSNativeCommandUseErrorActionPreference = $true
+          if ($env:PUBLISH_RELEASE -eq 'true' -and ($env:GITHUB_REF -ne 'refs/heads/main' -or $env:SOURCE_ALPHA -ne 'true' -or $env:SELECTED_PLATFORMS -ne 'both' -or $env:RELEASE_NOTES_APPROVED -ne 'true' -or -not $env:RELEASE_NOTES)) { throw 'Publication requires main, source Alpha, both platforms and approved notes.' }
           if ($env:DEVELOPMENT_ONLY -ne 'true' -and $env:RELEASE_NOTES_APPROVED -ne 'true') { throw 'Release notes approval is required.' }
           node core/scripts/check-source-docs.mjs core
           if ($env:SOURCE_ALPHA -eq 'true') {
-            if ($env:DEVELOPMENT_ONLY -ne 'true' -or $env:RELEASE_NOTES -or $env:RELEASE_NOTES_APPROVED -eq 'true') { throw 'Source Alpha builds artifacts only; publish reviewed notes separately.' }
+            if ($env:DEVELOPMENT_ONLY -ne 'true') { throw 'Source Alpha requires the explicit development assembly mode.' }
+            if ($env:PUBLISH_RELEASE -ne 'true' -and ($env:RELEASE_NOTES -or $env:RELEASE_NOTES_APPROVED -eq 'true')) { throw 'Artifact-only Alpha builds do not consume release notes; select publish to release approved notes.' }
             ./core/scripts/ci-017-alpha-desktop.ps1 -CoreRoot ./core -EditionRoot ./core -Version $env:RELEASE_VERSION -Output "$env:RUNNER_TEMP/ew-candidate"
             exit 0
           }
@@ -94,3 +103,16 @@ jobs:
           compression-level: 0
           retention-days: 3
           if-no-files-found: error
+  publish:
+    needs: build
+    if: inputs.publish
+    permissions:
+      actions: read
+      contents: write
+    uses: ./.github/workflows/publish-desktop-candidate.yml
+    with:
+      source_run_id: '${{ github.run_id }}'
+      version: ${{ inputs.version }}
+      release_notes: ${{ inputs.release_notes }}
+      notes_approved: ${{ inputs.notes_approved }}
+      publish: true
