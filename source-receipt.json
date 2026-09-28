@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T17:16:48.038Z",
-  "fileSetSHA256": "c0c6ec98e6157a568e74e18cb8591476b38cea7e24f7d989d9e405b98c298928",
+  "createdAt": "2026-09-28T17:18:25.833Z",
+  "fileSetSHA256": "548e3c44a24e4b48255f798f4b0db9f18d6032c43d90232620075658e6925792",
   "files": [
     {
       "path": ".gitattributes",
@@ -4805,7 +4805,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "3c8144ff8101a2c08fb047e0d491692db6ad1e7691a0c1a768e92950a4a3b6ed"
+      "sha256": "98d720536c773109c193aa87e68bf3833f73e5599e3b8311fb7ddc25cac05c7a"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
