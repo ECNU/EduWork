@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T04:04:08.341Z",
-  "fileSetSHA256": "48e168292bda5b1cfff77cf35fcb9469acd87ef4a52b8ece6aa7b84bfa292d5c",
+  "createdAt": "2026-09-28T04:22:48.867Z",
+  "fileSetSHA256": "b0adef84a851309f27c9ad2c8d3b1009f9f56f091e4110d6eef8e044b40bcf02",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
-      "sha256": "9522eee4f9589fcf036a7780c28cabc332304d3037cc7d95c21d54a851f6258d"
+      "sha256": "72a91792a0041c23ecbfd2bb679e700806a6dcf98f451e6a271729adeb37023e"
     },
     {
       "path": ".gitignore",
@@ -309,11 +309,11 @@
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
-      "sha256": "4e206c7fda4f797803a2eb7501d5cfd3ee75b73dcc6dbc42d96ed0200d36a603"
+      "sha256": "2fb9e37efe825e2f03b43a69c533770073fcaa5c5e9557f77383c8cb7758985d"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.md",
-      "sha256": "ab15700eb16e4c4e115f5670fad5b82bd677b328475e26e19817294fa01eb643"
+      "sha256": "d6b91368d157b83e18ca1ddd5391c7be377429767205602217f1d4104b8567b6"
     },
     {
       "path": "docs/proposals/gateway-auth/README_EN.md",
@@ -4573,7 +4573,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "3d1440e66d4ace9d6c0144d8e05026d7fa1b4013d65cac1bafc1765a6fdda4c3"
+      "sha256": "953116e9fa9438dac1f8fad5ef480b203eae26d7ea5b6d13a249c8c184058581"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4585,7 +4585,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
-      "sha256": "2f5d991d031f5cc3e556fc2dbdcedd03d7199d62532848c8c4ec88d02457b906"
+      "sha256": "5577252103532f5e4d73a8e8bbba77792bb9d8d9764f82c42da089bfe1f4528f"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -4661,7 +4661,7 @@
     },
     {
       "path": "scripts/pack-portable-extractor.ps1",
-      "sha256": "431750ede2a2f54a9b01e7a3494b79c192d143cc086d83cf8ce606eab3a3f13b"
+      "sha256": "96be157251a47d28ecaa87c2b456c6e2b815f88fafc096eca944819ea3cb7eda"
     },
     {
       "path": "scripts/pack-windows-release.ps1",
@@ -4736,6 +4736,10 @@
       "sha256": "93996b9354781198578610055f6f2fddb46c7124eb47173bdcda464fd7f1ebac"
     },
     {
+      "path": "scripts/prepare-windows-portable-extractor.ps1",
+      "sha256": "a68adc91825bae406763c2075fc0cd149e43a7cd2c20ae5d268343f44aa4ff5e"
+    },
+    {
       "path": "scripts/prepare-windows-release-inputs.ps1",
       "sha256": "5a81fd386aebd5b6227de4b1cbcef4013f7f63d42c58713faf0c5c6af1891980"
     },
@@ -4777,7 +4781,7 @@
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "8aa65b13ac8b29976477e7a7eb66adbcb798e1caf6626cfe66f8f7e8084d24ca"
+      "sha256": "71300900c40c156392aedf4c9753d99f53c3c5db28e41b06e0f88883f9a9c831"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",
@@ -4901,7 +4905,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "ed6e2d24cf988a7e92fa8a4bdd6d772bfc3878cd40a86bc8a1966e396087c9f5"
+      "sha256": "b9f13e65015fb872abca35a9378298dc626f1ab00b79c942591ff726e4b29437"
     },
     {
       "path": "tests/fixtures/eduwork-dsh-015/LICENSE",
@@ -4917,7 +4921,7 @@
     },
     {
       "path": "tests/github-update-package.test.mjs",
-      "sha256": "4654bdb15ac1a63f41dbbc07af89682309beb0838e07ef72631df80dee72548d"
+      "sha256": "980e48a10af7d645c3b70c2111f9609dcd9f0fb1d329d9583c611e2d0ce35dba"
     },
     {
       "path": "tests/package-maintenance.test.mjs",

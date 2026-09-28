@@ -29,7 +29,7 @@ $Output = [IO.Path]::GetFullPath($Output)
 if (Test-Path -LiteralPath $Output) { throw 'Release build requires a new workspace' }
 New-Item -ItemType Directory -Path $Output | Out-Null
 $name = if ($CoreRoot -eq $EditionRoot) {'EduWork'} else {'EduWork-ECNU'}
-$receipt = [ordered]@{schemaVersion=1;kind='eduwork-windows-release';version=$Version;edition=$name;shell='electron';platform='windows-x64';validationProfile='ci-build-and-launch-v1';passed=$false;checks=[ordered]@{}}
+$receipt = [ordered]@{schemaVersion=1;kind='eduwork-windows-release';version=$Version;edition=$name;shell='electron';platform='windows-x64';validationProfile='ci-build-launch-and-extract-v2';passed=$false;checks=[ordered]@{}}
 if ($Development) { $receipt.kind='eduwork-windows-development'; $receipt.publication='artifact-only' }
 else { $receipt.releaseNotes = @{approved=$true;file=$ReleaseNotesFile;sha256=(Get-FileHash -LiteralPath $notesPath -Algorithm SHA256).Hash.ToLowerInvariant()} }
 $evidence = Join-Path $Output 'evidence'
@@ -106,12 +106,14 @@ $name $Version — Windows x64 Electron 开发版
 "@ | Set-Content (Join-Path $candidate 'README.txt') -Encoding utf8NoBOM
     }
     & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $candidate -Output $archive -Development:$isDevelopmentVersion -ForUpdate
-    # Test the extracted ZIP, not the input directory. This also exercises
-    # relocation of the private Python environment and all native paths.
+    # Exercise the delivered extractor, then run existing checks against its
+    # output. Do not create a second unpacked application just for this check.
     $extracted = Join-Path $Output 'unpacked'
     New-Item -ItemType Directory -Path $extracted | Out-Null
-    & tar.exe -xf $archive -C $extracted
     $desktop = Join-Path $extracted $name
+    $archiveHash = (Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
+    $receipt.portableExtractor = & (Join-Path $CoreRoot 'scripts/prepare-windows-portable-extractor.ps1') -Archive $archive -ExpectedSHA256 $archiveHash -OutputDirectory (Join-Path $Output 'portable-extractor') -Target $desktop -PublishDirectory $publish
+    $receipt.checks.portableExtractor = 'passed'
     & node (Join-Path $CoreRoot 'scripts/verify-windows-release.mjs') $desktop --for-update
     & (Join-Path $desktop 'resources/runtime/node.exe') (Join-Path $CoreRoot 'scripts/check-desktop-runtimes.mjs') $desktop (Join-Path $publicEvidence 'native-runtimes.json')
     if ($LASTEXITCODE -ne 0) { throw 'Packaged native runtime smoke check failed' }

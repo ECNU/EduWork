@@ -21,6 +21,14 @@ The input must contain the Electron product identity, brand icon, and `RELEASE-M
 
 The builder does not reassemble the application or change the original release ZIP, application version, or update source. Keep the canonical `*-windows-x64-electron.zip` asset for existing updaters. Add the extraction package and verification files as separate assets on the same Release. Release notes remain subject to maintainer approval.
 
+## CI and release pipelines
+
+Windows candidate, development, and release recipes invoke `prepare-windows-portable-extractor.ps1` by default. It builds the extraction ZIP, reads and verifies its sole EXE, and uses that executable to extract the original release. Existing manifest, native runtime, and desktop launch checks then run against that output. A failed step prevents a successful receipt.
+
+The `publish` directory contains both ZIPs, their SHA-256 sidecars, and receipts. The release publisher requires eight verified files and binds the extractor to the original ZIP, version, distribution, and clean core source commit before upload. Update manifests still reference only the original ZIP. Source Alpha workflows retain build artifacts only; public publication and release notes require maintainer approval.
+
+Public and institution editions share this recipe. Institution repositories adopt it through `core.lock.json`, without copying the implementation. macOS builds do not produce the Windows extractor. Dedicated PR CI builds and extracts synthetic stable and development packages for both brands and checks that missing or modified publication files are rejected before upload.
+
 ## Validation and limits
 
 - Verify the embedded ZIP SHA-256 and manifest identity, file count, paths, and sizes before extraction.

@@ -15,26 +15,44 @@ export function validateReceipt(receipt, {repository, version, commit}) {
   releaseChannel(version)
   if (!edition || !/^[a-f0-9]{40}$/.test(commit)) throw Error('Invalid release repository/version/commit')
   if (receipt.schemaVersion !== 1 || receipt.kind !== 'eduwork-windows-release' || receipt.passed !== true || receipt.version !== version || receipt.edition !== edition || receipt.shell !== 'electron' || receipt.platform !== 'windows-x64' || receipt.editionCommit !== commit) throw Error('Release identity or validation does not match this workflow')
-  if (receipt.validationProfile !== 'ci-build-and-launch-v1') throw Error('Unknown release validation scope')
+  if (receipt.validationProfile !== 'ci-build-launch-and-extract-v2') throw Error('Unknown release validation scope')
   if (receipt.releaseNotes?.approved !== true || !/^[a-f0-9]{64}$/.test(receipt.releaseNotes?.sha256 ?? '')) throw Error('Discussed and approved release notes are required')
-  for (const check of ['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes']) {
+  for (const check of ['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor']) {
     if (receipt.checks?.[check] !== 'passed') throw Error('Release check did not pass: '+check)
   }
   if (receipt.asset?.name !== `${edition}-${version}-windows-x64-electron.zip` || !/^[a-f0-9]{64}$/.test(receipt.asset.sha256) || !Number.isSafeInteger(receipt.asset.bytes) || receipt.asset.bytes < 1) throw Error('Invalid release ZIP')
+  const unpackName=`${edition}-${version}-windows-x64-unpack.zip`
+  validateFileIdentity(receipt.portableExtractor?.asset,unpackName)
+  validateFileIdentity(receipt.portableExtractor?.receipt,unpackName+'.json')
   return edition
+}
+function validateFileIdentity(file,name) {
+  if(file?.name!==name || !/^[a-f0-9]{64}$/.test(file?.sha256??'') || !Number.isSafeInteger(file?.bytes) || file.bytes<1)throw Error('Invalid portable extractor asset: '+name)
+}
+export function validateExtractorReceipt(extractor,receipt) {
+  const distribution={'EduWork':'eduwork','EduWork-ECNU':'eduwork-chatecnu'}[receipt.edition]
+  if(extractor.schemaVersion!==1 || extractor.kind!=='eduwork-portable-extractor' || extractor.format!=='zip-containing-self-extracting-exe' || extractor.version!==receipt.version || extractor.distribution!==distribution)throw Error('Portable extractor identity differs from the release')
+  for(const key of ['name','bytes','sha256']) {
+    if(extractor.payload?.[key]!==receipt.asset[key])throw Error('Portable extractor payload differs from the update ZIP')
+    if(extractor.asset?.[key]!==receipt.portableExtractor.asset[key])throw Error('Portable extractor asset differs from its build receipt')
+  }
+  if(!/^[a-f0-9]{40}$/.test(receipt.coreCommit??'') || extractor.extractor?.sourceCommit!==receipt.coreCommit || extractor.extractor?.sourceDirty!==false)throw Error('Portable extractor source does not match the clean tested core')
+  validateFileIdentity(extractor.extractor,`${receipt.edition}-Unpack.exe`)
+  for(const check of ['embeddedArchive','manifestIdentity','outerZIP','extraction'])if(extractor.checks?.[check]!=='passed')throw Error('Portable extractor check did not pass: '+check)
+  if(extractor.checks.executionLevel!=='asInvoker')throw Error('Portable extractor must not require elevation')
 }
 async function hashFile(path) {
   const hash = createHash('sha256')
   for await (const chunk of createReadStream(path)) hash.update(chunk)
   return hash.digest('hex')
 }
-export async function publish(directory) {
-  if (process.env.RELEASE_NOTES_APPROVED !== 'true') throw Error('Release notes require explicit maintainer approval')
-  const root=resolve(directory), repository=process.env.GITHUB_REPOSITORY, version=process.env.RELEASE_VERSION, commit=process.env.GITHUB_SHA
+// Validate every artifact before contacting GitHub; extra files are never uploaded.
+export async function validatedReleaseFiles(directory,{repository,version,commit}) {
+  const root=resolve(directory)
   const receipt=JSON.parse(await readFile(join(root,'release-receipt.json'),'utf8'))
   const edition=validateReceipt(receipt,{repository,version,commit})
-  if (!process.env.GITHUB_TOKEN) throw Error('Release job token is required')
-  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName]
+  const unpack=receipt.portableExtractor
+  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name]
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -48,6 +66,17 @@ export async function publish(directory) {
   if(zip.bytes!==receipt.asset.bytes || zip.sha256!==receipt.asset.sha256) throw Error('Downloaded CI artifact differs from the validated ZIP')
   if((await readFile(files[1].path,'utf8')).trim()!==`${zip.sha256}  ${zip.name}`) throw Error('SHA256 sidecar differs')
   if((await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
+  if(files[5].sha256!==unpack.asset.sha256 || files[5].bytes!==unpack.asset.bytes)throw Error('Portable extractor ZIP differs from the validated asset')
+  if((await readFile(files[6].path,'utf8')).trim()!==`${unpack.asset.sha256}  ${unpack.asset.name}`)throw Error('Portable extractor SHA256 sidecar differs')
+  if(files[7].sha256!==unpack.receipt.sha256 || files[7].bytes!==unpack.receipt.bytes)throw Error('Portable extractor receipt differs from the validated build')
+  validateExtractorReceipt(JSON.parse(await readFile(files[7].path,'utf8')),receipt)
+  return {receipt,edition,files}
+}
+export async function publish(directory) {
+  if (process.env.RELEASE_NOTES_APPROVED !== 'true') throw Error('Release notes require explicit maintainer approval')
+  const root=resolve(directory), repository=process.env.GITHUB_REPOSITORY, version=process.env.RELEASE_VERSION, commit=process.env.GITHUB_SHA
+  const {edition,files}=await validatedReleaseFiles(root,{repository,version,commit})
+  if (!process.env.GITHUB_TOKEN) throw Error('Release job token is required')
   const headers={Authorization:`Bearer ${process.env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','User-Agent':'EduWork-Release-CI','X-GitHub-Api-Version':'2022-11-28'}
   const api=`https://api.github.com/repos/${repository}`
   async function request(path, options={}, missing=false) {

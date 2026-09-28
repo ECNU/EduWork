@@ -19,7 +19,8 @@ try {
     $reader = [IO.StreamReader]::new($matches[0].Open())
     try { $desktop = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
     $rootName = $matches[0].FullName.Split('/')[0]
-    if ($rootName -notmatch '^EduWork(?:-ECNU)?$' -or $desktop.shell -ne 'electron') { throw 'Unsupported release identity' }
+    $expectedDistribution = switch ($rootName) { 'EduWork' {'eduwork'} 'EduWork-ECNU' {'eduwork-chatecnu'} default {throw 'Unsupported release root'} }
+    if ($desktop.shell -ne 'electron' -or $desktop.distribution -cne $expectedDistribution -or $desktop.productVersion -notmatch '^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-dev\.\d{8}\.[1-9]\d*)?$') { throw 'Unsupported release identity' }
     $identity = [ordered]@{product=$desktop.productName;version=$desktop.productVersion;distribution=$desktop.distribution;root=$rootName;sha256=$hash;bytes=(Get-Item -LiteralPath $Archive).Length}
     $iconEntry = $zip.GetEntry("$rootName/resources/brand/icon.ico")
     if (-not $iconEntry -or $iconEntry.Length -gt 2MB) { throw 'Missing or oversized product icon' }
