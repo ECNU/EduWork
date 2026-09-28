@@ -9,6 +9,33 @@ import (
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/updater"
 )
 
+func TestStableStartupDisarmsPreviouslyDownloadedDevelopment(t *testing.T) {
+	for _, policy := range []string{"stable", "development"} {
+		t.Run(policy, func(t *testing.T) {
+			root := t.TempDir()
+			pending := updater.PendingUpdate{SchemaVersion: 1, Version: "0.4.1-dev.20260928.1", Channel: "development", State: "ready", InstallOnNextStart: true}
+			if err := updater.SavePending(root, pending); err != nil {
+				t.Fatal(err)
+			}
+			manager, err := New(Config{Version: "0.4.0", EditionPath: writeEdition(t, root, policy), StateDir: root})
+			if err != nil {
+				t.Fatal(err)
+			}
+			saved, err := updater.LoadPending(root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if policy == "stable" {
+				if saved.InstallOnNextStart || saved.State != "cancelled" || manager.Status().State == "ready" {
+					t.Fatalf("dev update remains armed: %+v", saved)
+				}
+			} else if !saved.InstallOnNextStart || saved.State != "ready" {
+				t.Fatalf("explicit dev choice lost: %+v", saved)
+			}
+		})
+	}
+}
+
 func TestAssemblyDefaultSurvivesUpgradeAndPreservesUserChoice(t *testing.T) {
 	for _, policy := range []string{"development", "stable"} {
 		t.Run(policy, func(t *testing.T) {

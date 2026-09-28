@@ -77,7 +77,7 @@ test('source assembly fails before copying the Runtime when media assets were no
   const {root} = await fixture(t)
   const source = join(root, 'source'), inputRuntime = join(root, 'runtime'), output = join(root, 'product')
   await mkdir(inputRuntime)
-  await writeFile(join(inputRuntime, '.chatecnu-dsh-runtime.json'), JSON.stringify({dshVersion:'0.1.7-rc.2', dshCommit:'477b4f420553e8a52c2fbccc464d7561b239c443'}))
+  await writeFile(join(inputRuntime, '.chatecnu-dsh-runtime.json'), JSON.stringify({dshVersion:'0.2.0-rc.1', dshCommit:'4878cdabd87d4041bdaff61d04c966883b9fd07a'}))
   await mkdir(join(source, 'config/distributions'), {recursive:true})
   await writeFile(join(source, 'config/distributions/generic.json'), '{}')
   const result = spawnSync(process.execPath, [assembler, '--runtime', inputRuntime, '--source', source, '--dependencies', join(root, 'deps'), '--host', join(root, 'host'), '--output', output], {encoding:'utf8'})

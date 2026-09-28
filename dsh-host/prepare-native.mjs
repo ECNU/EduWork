@@ -5,8 +5,9 @@ import { pathToFileURL } from 'node:url'
 import { createHash } from 'node:crypto'
 import { stripTypeScriptTypes } from 'node:module'
 import { parseArgs } from 'node:util'
+import { distributionPolicy } from './distribution-policy.mjs'
 
-const upstreamCommit = '477b4f420553e8a52c2fbccc464d7561b239c443'
+const upstreamCommit = '4878cdabd87d4041bdaff61d04c966883b9fd07a'
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 const sources = JSON.parse((await readFile(new URL('./upstream-inputs-017.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''))
 function replace(text, before, after) {
@@ -49,6 +50,7 @@ export function adaptNativeHostEntry(input) {
     text = text.replaceAll(`'./${module}.ts'`, `'./${module}.js'`)
   }
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
+  text = replace(text, 'patchFiles: [],', "patchFiles: [join(import.meta.dirname, 'distribution-policy.patch.json')],")
   text = replace(text, "args: ['--no-open', '--port', '19387'],", "args: ['--no-open', '--host', '127.0.0.1', '--port', '0'],")
   text = replace(text, `  await ctx.plugin(desktopOffice, {
     runtimeDir,
@@ -62,6 +64,15 @@ export function adaptNativeHostEntry(input) {
   await ctx.loader.await()
   await importLegacySettings(ctx, migration, parse)`)
   return text
+}
+
+export function adaptNativeQuitInspection(input) {
+  return replace(input.replaceAll('\r\n', '\n'), '    let scheduledTasks = false',
+    `    // The official Schedule store includes reminders in cold sessions.
+    // Those timers can fire even when agents.list() has no matching Agent.
+    const schedule = ctx.get('schedule')
+    let scheduledTasks = schedule !== undefined && (await schedule.catalog()).some(task => task.status === 'active')`)
+    .replaceAll("'./update-tasks.ts'", "'./update-tasks.js'")
 }
 
 export function adaptNativeWebDocument(input) {
@@ -98,13 +109,13 @@ export async function prepareNative({ upstream, output }) {
   await emit('node-environment.mjs', transform(input['apps/desktop/src/node-environment.ts']))
   await emit('web-document.mjs', transform(adaptNativeWebDocument(input['apps/desktop/src/web-document.ts'])))
   await emit('desktop-host/lib/index.js', transform(adaptNativeHostEntry(input['apps/desktop-host/src/index.ts'])))
+  await emit('desktop-host/lib/distribution-policy.patch.json', JSON.stringify(distributionPolicy(), null, 2) + '\n')
   // This hook is installed after profile plugins. Prepend it so a plugin's
   // handled media/API response cannot bypass update admission.
   const admission = replace(input['apps/desktop-host/src/update-tasks.ts'].replaceAll('\r\n', '\n'),
     '  })\n  return async (action) => {', '  }, true)\n  return async (action) => {')
   await emit('desktop-host/lib/update-tasks.js', transform(admission))
-  await emit('desktop-host/lib/quit-inspection.js', transform(input['apps/desktop-host/src/quit-inspection.ts']
-    .replaceAll("'./update-tasks.ts'", "'./update-tasks.js'")))
+  await emit('desktop-host/lib/quit-inspection.js', transform(adaptNativeQuitInspection(input['apps/desktop-host/src/quit-inspection.ts'])))
   await emit('desktop-host/lib/office-engine.js', transform(input['apps/desktop-host/src/office-engine.ts']))
   await emit('desktop-host/lib/settings-migration.mjs', await readFile(new URL('./settings-migration.mjs', import.meta.url), 'utf8'))
   const manifest = JSON.parse(input['apps/desktop-host/package.json'])
@@ -112,17 +123,17 @@ export async function prepareNative({ upstream, output }) {
   await emit('desktop-host/package.json', JSON.stringify(manifest, null, 2) + '\n')
   await emit('LICENSE-DeepSeek', input.LICENSE)
   await emit('desktop-host/LICENSE', input.LICENSE)
-  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.7-rc.2', protocolVersion: 4,
+  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.2.0-rc.1', protocolVersion: 4,
     sources, outputs, nodeVersion: process.version, adaptations: ['private-stdin-bootstrap', 'bounded-redacted-log-callback',
       'loopback-ephemeral-port', 'recoverable-product-settings-migration', 'composition-owned-office-and-accounts', 'prepend-update-admission',
-      'preserve-unencoded-response-length'] }
+      'preserve-unencoded-response-length', 'distribution-privacy-overlay', 'cold-session-schedule-quit-inspection'] }
   await emit('receipt.json', JSON.stringify(receipt, null, 2) + '\n')
   return receipt
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const { values } = parseArgs({ options: { upstream: { type: 'string' }, output: { type: 'string' } } })
-  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned rc.2 source> --output <new directory>')
+  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned 0.2.0-rc.1 source> --output <new directory>')
   await prepareNative({ upstream: resolve(values.upstream), output: resolve(values.output) })
-  console.log('Prepared pinned 0.1.7 Web Host and HTTP transport.')
+  console.log('Prepared pinned 0.2.0-rc.1 Web Host and HTTP transport.')
 }

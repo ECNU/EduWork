@@ -113,7 +113,17 @@ func New(config Config) (*Manager, error) {
 		}
 	}
 	_ = updater.DiscardSupersededPending(config.StateDir, config.Version)
-	if pending, err := updater.LoadPending(config.StateDir); err == nil && pending.Version != config.Version {
+	// A default-channel migration can leave an already downloaded dev package.
+	// Retain its bytes/identity for diagnostics, but never apply it on stable.
+	if pending, err := updater.LoadPending(config.StateDir); err == nil && manager.policy == "stable" && (pending.Channel == "development" || strings.Contains(pending.Version, "-dev.")) && pending.State != "cancelled" {
+		pending.State = "cancelled"
+		pending.InstallOnNextStart = false
+		pending.Error = "更新渠道已切换为 stable，已取消待安装的开发版"
+		if err := updater.SavePending(config.StateDir, pending); err != nil {
+			return nil, err
+		}
+	}
+	if pending, err := updater.LoadPending(config.StateDir); err == nil && pending.Version != config.Version && pending.State != "cancelled" {
 		manager.state = pending.State
 		manager.status.LatestVersion = pending.Version
 		manager.status.Channel = pending.Channel

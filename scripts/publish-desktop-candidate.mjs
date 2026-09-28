@@ -7,6 +7,7 @@ import {pathToFileURL} from 'node:url'
 import {execFileSync} from 'node:child_process'
 import {Readable} from 'node:stream'
 import {pipeline} from 'node:stream/promises'
+import {githubUpdateManifestBytes, updateManifestName} from './github-update-manifest.mjs'
 import {validateExtractorReceipt} from './publish-windows-release.mjs'
 
 const sha = /^[a-f0-9]{40}$/
@@ -19,11 +20,11 @@ async function hashFile(path) {
 }
 export function assetNames(product, version, platform) {
   assert.match(product, /^[A-Za-z0-9-]+$/)
-  assert.match(version, /^\d+\.\d+\.\d+-dev\.\d{8}\.\d+$/)
+  assert.match(version, /^(?:0\.4\.0|\d+\.\d+\.\d+-dev\.\d{8}\.\d+)$/)
   assert.ok(['windows', 'macos'].includes(platform))
   const zip = `${product}-${version}-${platform === 'windows' ? 'windows-x64' : 'macos-arm64'}-electron.zip`
   const extra = platform === 'windows' ? `${product}-${version}-windows-x64-setup.zip` : zip.replace(/\.zip$/, '.dmg')
-  return [zip, zip + '.sha256', `${platform}-alpha-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json'] : [])]
+  return [zip, zip + '.sha256', `${platform}-${version.includes('-dev.')?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', ...(!version.includes('-dev.') ? [updateManifestName] : [])] : [])]
 }
 export function validateRun(run, {repository, workflow, currentRun}, jobs = []) {
   assert.equal(run.repository.full_name.toLowerCase(), repository.toLowerCase(), 'Wrong source repository')
@@ -46,14 +47,17 @@ export function validateCandidateReceipt(receipt, context) {
   const {product, version, distribution, platform, coreCommit, editionCommit} = context
   assert.match(coreCommit, sha)
   assert.match(editionCommit, sha)
-  for (const [key, value] of Object.entries({schemaVersion: 1, kind: 'eduwork-source-alpha', version, distribution, platform, shell: 'electron', passed: true, automaticUpdates: false, coreCommit, editionCommit})) {
+  for (const [key, value] of Object.entries({schemaVersion: 1, kind: version.includes('-dev.')?'eduwork-source-alpha':'eduwork-source-release', version, distribution, platform, shell: 'electron', passed: true, automaticUpdates: !version.includes('-dev.'), coreCommit, editionCommit})) {
     assert.equal(receipt[key], value, 'Candidate identity mismatch: ' + key)
   }
   assert.ok(typeof receipt.dshVersion === 'string' && receipt.dshVersion.length > 0)
   for (const check of ['sourceSnapshot', 'archiveManifest', 'mediaTemplate', 'nativeRuntimes', 'desktopLaunch']) assert.equal(receipt.checks[check], 'passed', check)
   if (context.requirePublisherBootstrap) assert.equal(receipt.checks.publisherFirstLaunch, 'passed')
   assert.equal(receipt.asset.name, assetNames(product, version, platform)[0])
-  if (platform === 'windows') assert.equal(receipt.checks.portableExtractor, 'passed')
+  if (platform === 'windows') {
+    assert.equal(receipt.checks.portableExtractor, 'passed')
+    if (!version.includes('-dev.')) assert.equal(receipt.checks.updateContract, 'passed')
+  }
   else {
     assert.equal(receipt.checks.macosDmg, 'passed')
     assert.equal(receipt.checks.readOnlyApplication, 'passed')
@@ -63,7 +67,7 @@ export function validateCandidateReceipt(receipt, context) {
 export async function validatedCandidateFiles(directory, context) {
   const names = assetNames(context.product, context.version, context.platform)
   assert.deepEqual((await readdir(directory)).sort(), [...names].sort(), 'Unexpected candidate files')
-  const receipt = await json(join(directory, `${context.platform}-alpha-receipt.json`))
+  const receipt = await json(join(directory, `${context.platform}-${context.version.includes('-dev.')?'alpha':'release'}-receipt.json`))
   validateCandidateReceipt(receipt, context)
   const files = []
   for (const name of names) {
@@ -84,6 +88,7 @@ export async function validatedCandidateFiles(directory, context) {
     await verifyFile(receipt.portableExtractor.asset, names[3])
     await verifyFile(receipt.portableExtractor.receipt, names[5], false)
     validateExtractorReceipt(await json(join(directory, names[5])), {...receipt, edition: context.product})
+    if (!context.version.includes('-dev.')) assert.equal(await readFile(join(directory, updateManifestName), 'utf8'), githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), 'Update manifest differs from verified artifact')
   } else await verifyFile(receipt.installer.asset, names[3])
   return {files, receipt}
 }
@@ -167,7 +172,7 @@ export async function publishCandidate(env = process.env) {
   const notesAsset = join(root, 'RELEASE-NOTES.md')
   await writeFile(notesAsset, notes)
   files.push({name: 'RELEASE-NOTES.md', path: notesAsset, bytes: Buffer.byteLength(notes), sha256: await hashFile(notesAsset)})
-  assert.equal(files.length, 12)
+  assert.equal(files.length, version.includes('-dev.') ? 12 : 13)
   const result = {verified: true, published: false, repository, sourceRun: run.id, editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
   if (env.PUBLISH_RELEASE === 'true') {
     const tag = result.tag
@@ -182,11 +187,11 @@ export async function publishCandidate(env = process.env) {
     const identity = release => {
       assert.equal(release.target_commitish, run.head_sha)
       assert.equal(release.tag_name, tag)
-      assert.equal(release.prerelease, true)
+      assert.equal(release.prerelease, version.includes('-dev.'))
       assert.equal(release.name, title)
       assert.equal(release.body.trimEnd(), notes.trimEnd())
     }
-    if (!release) release = await request('/releases', {method: 'POST', body: JSON.stringify({tag_name: tag, target_commitish: run.head_sha, name: title, body: notes, draft: true, prerelease: true, make_latest: 'false'})})
+    if (!release) release = await request('/releases', {method: 'POST', body: JSON.stringify({tag_name: tag, target_commitish: run.head_sha, name: title, body: notes, draft: true, prerelease: version.includes('-dev.'), make_latest: version.includes('-dev.')?'false':'true'})})
     identity(release)
     for (const file of files) {
       const existing = release.assets.filter(asset => asset.name === file.name)
@@ -203,7 +208,7 @@ export async function publishCandidate(env = process.env) {
     release = await request('/releases/' + release.id)
     identity(release)
     verifyRemoteAssets(release.assets, files)
-    if (release.draft) await request('/releases/' + release.id, {method: 'PATCH', body: JSON.stringify({draft: false, prerelease: true, make_latest: 'false'})})
+    if (release.draft) await request('/releases/' + release.id, {method: 'PATCH', body: JSON.stringify({draft: false, prerelease: version.includes('-dev.'), make_latest: version.includes('-dev.')?'false':'true'})})
     release = await request('/releases/' + release.id)
     identity(release)
     assert.equal(release.draft, false)

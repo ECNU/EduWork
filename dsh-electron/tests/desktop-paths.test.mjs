@@ -5,6 +5,17 @@ import { desktopPaths } from '../src/desktop-paths.mjs'
 
 const settings = { distribution: 'example', productVersion: '0.3.6', configurationOwnership: 'user', product: '../product', node: '../runtime/node' }
 
+test('first stable reuses Alpha data without combining two existing macOS homes', () => {
+  const appRoot = resolve('synthetic-installed/Example.app/Contents/Resources/app'), appData = resolve('synthetic-user/Application Support')
+  const options = { appRoot, appData, settings: { ...settings, productVersion: '0.4.0' }, platform: 'darwin' }
+  const alphaOnly = desktopPaths({ ...options, exists: path => path.endsWith('example-electron-alpha') })
+  assert.equal(alphaOnly.home, join(appData, 'example-electron-alpha/dsh'))
+  const both = desktopPaths({ ...options, exists: () => true })
+  assert.equal(both.home, join(appData, 'example-electron/dsh'))
+  const future = desktopPaths({ ...options, settings: { ...settings, productVersion: '1.0.0' }, exists: path => path.endsWith('example-electron-alpha') })
+  assert.equal(future.home, alphaOnly.home)
+})
+
 test('macOS mutable paths and both editions use the user config directory, including older publisher metadata', () => {
   const root = resolve('synthetic-installed/Example.app'), appRoot = join(root, 'Contents/Resources/app'), appData = resolve('synthetic-user/Application Support')
   const options = { appRoot, appData, settings, platform: 'darwin' }

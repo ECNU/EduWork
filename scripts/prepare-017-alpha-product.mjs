@@ -10,18 +10,21 @@ import { parseUserConfig } from '../dsh-host/user-config.mjs'
 import { documentConfiguration } from '../dsh-host/configuration-documentation.mjs'
 import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
 
-const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors'].map(key=>[key,{type:'string'}])) })
+const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
-if(!/^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/.test(values.version)) throw Error('Source alpha requires an explicit development version')
+const stable=values.channel==='stable'
+if(values.channel && !['stable','development'].includes(values.channel)) throw Error('Unknown source build channel')
+if(!(stable?/^0\.4\.0$/:/^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/).test(values.version)) throw Error('Version does not match the explicit source build channel')
 const product=resolve(values.product)
 const read=async file=>JSON.parse(await readFile(file,'utf8'))
 const save=async(file,value)=>writeFile(file,JSON.stringify(value,null,2)+'\n')
 const identity=await read(join(product,'assembly.json'))
 assert.equal(identity.pluginMode,'source-qualification')
-assert.equal(identity.dshVersion,'0.1.7-rc.2')
+assert.equal(identity.dshVersion,'0.2.0-rc.1')
 assert.notEqual(identity.sourceAlpha,true,'Prepare each source Alpha only once')
 const resources=join(product,'resources/desktop')
 const generic=await read(new URL('../config/distributions/generic.json',import.meta.url))
+generic.packages=generic.packages.map(name=>name==='@shlv/dsh-literature'?'@eduwork/dsh-literature':name)
 const pluginNames=generic.plugins.map(plugin=>plugin.name)
 if(values.edition){
   const edition=resolve(values.edition), distribution=await read(join(edition,'edition/distribution.json'))
@@ -72,7 +75,7 @@ function noCredentials(value){if(!value||typeof value!=='object')return;for(cons
   noCredentials(item)
 }}
 noCredentials(configuration)
-configuration.updates={provider:'disabled'}
+configuration.updates=stable?{...configuration.updates,defaultPolicy:'stable',...(policy.ownership==='user'?{provider:'github',repository:'ECNU/EduWork'}:{})}:{provider:'disabled'}
 const body=documentConfiguration(JSON.stringify(configuration,null,2)+'\n')
 parseUserConfig(join(resources,'eduwork.jsonc'),body)
 await writeFile(join(resources,'eduwork.jsonc'),body)
@@ -81,14 +84,14 @@ await writeFile(join(resources,'eduwork.jsonc'),body)
 for(const name of ['publisher-bootstrap.json','publisher-bootstrap.darwin.json']){
   const path=join(resources,name)
   const descriptor=await read(path).catch(error=>{if(error.code!=='ENOENT')throw error})
-  if(descriptor){descriptor.updates={provider:'disabled'};await save(path,descriptor)}
+  if(descriptor){descriptor.updates=stable?{...descriptor.updates}:{provider:'disabled'};await save(path,descriptor)}
 }
 for(const platform of ['win32','darwin']) await readPublisherBootstrap({ownership:policy.ownership,product,platform})
-await rm(join(resources,'mac-updates.json'),{force:true})
+if(!stable) await rm(join(resources,'mac-updates.json'),{force:true})
 identity.localPlugins={};identity.managedPackages={}
 for(const name of pluginNames) identity.localPlugins[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:true}
 for(const name of generic.packages) identity.managedPackages[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:identity.sourcePackages.includes(name)}
-Object.assign(identity,{version:values.version,qualification:'GitHub Alpha: pinned rc.2 source build; npm release locks unchanged',automaticUpdates:false,
-  sourceAlpha:true,published:false})
+Object.assign(identity,{version:values.version,qualification:'Pinned DSH 0.2.0 source build; package and component receipts retained',automaticUpdates:stable,
+  sourceAlpha:!stable,sourceRelease:stable,releaseChannel:stable?'stable':'development',published:false})
 await save(join(product,'assembly.json'),identity)
-console.log(JSON.stringify({distribution:identity.distribution,version:identity.version,dshVersion:identity.dshVersion,sourceAlpha:true,automaticUpdates:false}))
+console.log(JSON.stringify({distribution:identity.distribution,version:identity.version,dshVersion:identity.dshVersion,sourceAlpha:!stable,automaticUpdates:stable}))

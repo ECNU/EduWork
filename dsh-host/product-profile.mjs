@@ -47,7 +47,8 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   // there after an explicit promotion; data must still remain outside product.
   if (inside(product, home) || inside(home, product)) throw new Error('Desktop requires isolated product and data directories')
   const identity = await json(join(product, 'assembly.json'))
-  const native = (identity.dshVersion === '0.1.7-rc.2' && identity.dshCommit === '477b4f420553e8a52c2fbccc464d7561b239c443')
+  const native = (identity.dshVersion === '0.2.0-rc.1' && identity.dshCommit === '4878cdabd87d4041bdaff61d04c966883b9fd07a')
+    || (identity.dshVersion === '0.1.7-rc.2' && identity.dshCommit === '477b4f420553e8a52c2fbccc464d7561b239c443')
     || (identity.dshVersion === '0.1.7-alpha.2' && identity.dshCommit === '00102833dfaee1da9f48a3a8eae9d34005a75218')
   if (native && shell !== 'electron') throw new Error('The DSH 0.1.7 candidate supports Electron only')
   if (!native && (identity.dshVersion !== '0.1.5-rc.2' || identity.dshCommit !== 'fb2c4b9e698e30edb738bca4cf0618587db7d203')) throw new Error('Desktop product does not match the qualified DSH baseline')
@@ -121,7 +122,8 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const composition = await json(join(product, 'composition.json'))
   const installed = new Set(composition.flatMap(row => (row.insert ?? []).map(plugin => plugin.id)))
   const bundleRows = []
-  for (const [id, name] of Object.entries(bundledConfigurationPlugins)) if (identity.bundles?.includes(name)) {
+  for (const [id, name] of Object.entries(bundledConfigurationPlugins)) if (identity.bundles?.includes(name)
+    || (name === '@shlv/dsh-literature' && identity.bundles?.includes('@eduwork/dsh-literature'))) {
     installed.add(id)
     if (pluginConfig[id]) bundleRows.push({ id, config: pluginConfig[id] })
   }
@@ -138,7 +140,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const desktop = [
     { id: 'credentials', disabled: true },
     { insert: [
-      { id: 'eduwork-native-reveal', name: '@chatecnu-work/dsh-artifact-preview-native/session-controller' },
+      ...identity.dshVersion === '0.2.0-rc.1' ? [] : [{ id: 'eduwork-native-reveal', name: '@chatecnu-work/dsh-artifact-preview-native/session-controller' }],
       { id: 'eduwork-native-credentials', name: '@chatecnu-work/dsh-credentials-native' },
       { id: 'eduwork-desktop-boundary', name: '@chatecnu-work/dsh-desktop-boundary' },
       { id: 'eduwork-desktop-services', name: '@eduwork/desktop-services', config: { notifications: user?.notifications ?? {} } },
@@ -149,11 +151,13 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     const parse = text => yaml.parse(text, { customTags: [{ tag: 'tag:yaml.org,2002:js', resolve: value => ({ __jsExpr: value }) }] })
     const legacyPresets = await legacyPresetPatches(home, parse)
     const nativePresets = await nativePresetPatches(join(product, 'd'), parse)
+    // Upstream now owns both the SessionController opener and its platform fixes.
+    if (identity.dshVersion === '0.2.0-rc.1') desktop.push({ id: 'eduwork-native-reveal', disabled: true })
     // Native volatile settings read plugin configuration, not the legacy env.
     // These deployment defaults remain below preferences saved by the UI.
     const limits = [{ id: 'eduwork-concurrency', config: { maxConcurrentRequests: user?.features?.maxConcurrentRequests ?? 3 } }]
-    if (identity.dshVersion === '0.1.7-rc.2') limits.push({ id: 'subagent', config: { maxActiveSubagents: user?.features?.maxActiveSubagents ?? 2 } })
-    await writeNativeProfile({ profile, bundles: identity.bundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse })
+    if (['0.1.7-rc.2', '0.2.0-rc.1'].includes(identity.dshVersion)) limits.push({ id: 'subagent', config: { maxActiveSubagents: user?.features?.maxActiveSubagents ?? 2 } })
+    await writeNativeProfile({ profile, home, bundles: identity.bundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse, yaml, migrateSchedule: identity.dshVersion === '0.2.0-rc.1' })
   } else {
     await writeFile(join(profile, 'package.json'), JSON.stringify({ name: 'eduwork-desktop-profile', private: true, type: 'module', dsh: { profile: { bundles: identity.bundles } } }, null, 2) + '\n')
     await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...bundleRows, ...desktop, ...patches], null, 2) + '\n')

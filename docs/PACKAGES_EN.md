@@ -6,13 +6,14 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-literature` | [Literature search, citations and full text](../packages/dsh-literature/README_EN.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [Identity, credentials and models](../packages/dsh-oidc/README_EN.md) | `packages/dsh-oidc` |
 | `@eduwork/dsh-memory` | [Local memory and retrieval](../packages/dsh-memory/README_EN.md) | `packages/dsh-memory` |
 | `@eduwork/dsh-mail` | [Mail assistant](../packages/dsh-mail/README_EN.md) | `packages/dsh-mail` |
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README_EN.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office, speech, images and media](../packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Studio's existing workspace |
 
-Four development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
+Five development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
 
 ## Develop and check
 
@@ -32,6 +33,8 @@ Studio/shared-service Node tests generate real Office files. Prepare a separate 
 CI selects affected development roots; shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
 
 ## Publish independently
+
+`@eduwork/dsh-literature` targets DSH `0.2.0-rc.1`, forked from `SihanLv/dsh-literature` and maintained by EduWork. The current `0.1.7-rc.2` client retains its verified `@shlv/dsh-literature` lock; publishing the new package does not change existing client dependencies. Verify the registry artifact and update the assembly lock with the kernel upgrade.
 
 Each package keeps its own SemVer, public exports, configuration IDs and persisted paths. Use a new version for every publication; never overwrite an existing npm version. If shared services change version, update Studio's exact dependency and lock; publish and verify shared services before Studio.
 

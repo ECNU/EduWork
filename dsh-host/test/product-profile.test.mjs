@@ -19,10 +19,10 @@ async function fixture(t) {
   return { root, product, home }
 }
 
-test('mail, memory and literature settings reach installed bundle rows without admitting uninstalled plugins', async t => {
+for (const literature of ['@shlv/dsh-literature', '@eduwork/dsh-literature']) test(`mail, memory and ${literature} settings reach installed bundle rows without admitting uninstalled plugins`, async t => {
   const { root, product, home } = await fixture(t)
   const identity = JSON.parse(await readFile(join(product, 'assembly.json')))
-  identity.bundles.push('@eduwork/dsh-mail', '@eduwork/dsh-memory', '@shlv/dsh-literature')
+  identity.bundles.push('@eduwork/dsh-mail', '@eduwork/dsh-memory', literature)
   await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
   const userConfig = join(root, 'eduwork.jsonc')
   const plugins = { 'dsh-mail-assistant': { imapHost: 'mail.example.test', readEnabled: false }, 'local-memory': { max_records: 50 },

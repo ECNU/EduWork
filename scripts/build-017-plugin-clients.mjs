@@ -20,16 +20,41 @@ if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-if (runtimeReceipt.dshVersion !== '0.1.7-rc.2' || runtimeReceipt.dshCommit !== '477b4f420553e8a52c2fbccc464d7561b239c443') throw new Error('This build requires the pinned candidate Runtime')
+if (runtimeReceipt.dshVersion !== '0.2.0-rc.1' || runtimeReceipt.dshCommit !== '4878cdabd87d4041bdaff61d04c966883b9fd07a') throw new Error('This build requires the pinned candidate Runtime')
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
-for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail', 'packages/dsh-memory', 'packages/dsh-oidc', 'packages/dsh-knowledge-studio']) {
+for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail', 'packages/dsh-memory', 'packages/dsh-oidc', 'packages/dsh-knowledge-studio', 'packages/dsh-literature']) {
   await cp(join(sourceRepository, folder), join(repository, folder), { recursive: true,
     filter: path => !relative(sourceRepository, path).split(/[\\/]/).some(part => ['node_modules', '.git', 'test', 'tests', '.research'].includes(part)),
   })
 }
 const { build, transform } = require('esbuild')
+// Compile each maintained Host module without bundling away Cordis service identity.
+// The package CI separately checks its TypeScript declarations and runtime contract.
+const literatureRoot = join(repository, 'packages/dsh-literature')
+async function buildLiterature(directory) {
+  for (const entry of await readdir(directory, { withFileTypes: true })) {
+    const path = join(directory, entry.name)
+    if (entry.isDirectory()) await buildLiterature(path)
+    else if (entry.name.endsWith('.ts')) {
+      const target = join(literatureRoot, 'lib', relative(join(literatureRoot, 'src'), path)).replace(/\.ts$/, '.js')
+      const text = (await readFile(path, 'utf8')).replace(/(from\s+['"]\.[^'"]*)\.ts(['"])/g, '$1.js$2')
+      const built = await transform(text, { loader: 'ts', format: 'esm', target: 'node24' })
+      await mkdir(resolve(target, '..'), { recursive: true })
+      await writeFile(target, built.code)
+    }
+  }
+}
+await buildLiterature(join(literatureRoot, 'src'))
+const distributionPath = join(repository, 'config/distributions/generic.json')
+const distribution = JSON.parse(await readFile(distributionPath, 'utf8'))
+distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)
+await writeFile(distributionPath, JSON.stringify(distribution, null, 2) + '\n')
+// The legacy npm 0.1.5 assembly retains its adapter; this pinned native Runtime
+// uses the upstream opener for artifact RPCs as well as SessionController.
+await copyFile(join(repository, 'dsh-plugins/artifact-preview-native/lib/reveal-upstream.js'),
+  join(repository, 'dsh-plugins/artifact-preview-native/lib/reveal.js'))
 const { transform: transformCSS } = require('lightningcss')
 const sharedRoot = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services')
 const shared = JSON.parse(await readFile(join(sharedRoot, 'package.json'), 'utf8'))
