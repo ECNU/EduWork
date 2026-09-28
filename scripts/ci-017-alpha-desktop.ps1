@@ -81,6 +81,8 @@ try {
         $result.developerIDSigned=$false;$result.notarized=$false;$result.minimumSystemVersion=$pack.minimumSystemVersion
     }
     $result.checks.archiveManifest='passed'
+    & $node (Join-Path $CoreRoot 'scripts/verify-media-template.mjs') $frozen
+    $result.checks.mediaTemplate='passed'
     & $node (Join-Path $CoreRoot 'scripts/check-desktop-runtimes.mjs') $desktop (Join-Path $public 'native-runtimes.json')
     $result.checks.nativeRuntimes='passed'
     # Synthetic profile only: downloaded publisher configuration never enters
