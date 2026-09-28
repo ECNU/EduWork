@@ -1,10 +1,10 @@
-# Windows portable extraction package
+# Windows setup package
 
 [中文](PORTABLE-EXTRACTOR.md)
 
-This optional first-download asset is a ZIP containing one EXE. The EXE embeds the original Windows desktop release ZIP unchanged. It uses the product name and icon from that release and provides destination selection, progress, cancellation, and a launch button after extraction.
+This optional first-download asset is a ZIP containing `EduWork-Setup.exe` or `EduWork-ECNU-Setup.exe`. The EXE embeds the original Windows desktop release ZIP unchanged. The setup UI uses the product name, icon, and actual version from that release, with destination selection, progress, cancellation, and a launch button after installation. The download label is “Windows 安装包” (Windows setup package); the UI does not add a separate “portable edition” label.
 
-The extractor does not register an installation, create shortcuts, or change PATH or startup entries. The portable application's existing behavior determines where configuration and data are stored. Existing destinations are rejected. Application updates continue to use the existing updater.
+The setup program extracts the application without registering an installation, creating shortcuts, or changing PATH or startup entries. The application's existing behavior determines where configuration and data are stored. Existing destinations are rejected. Application updates continue to use the existing updater.
 
 ## Build
 
@@ -17,7 +17,7 @@ Use Windows, PowerShell 7, and the Go toolchain pinned by `dsh-desktop/go.mod`:
   -OutputDirectory '<new output directory>'
 ```
 
-The input must contain the Electron product identity, brand icon, and `RELEASE-MANIFEST.json`. Outputs include `*-windows-x64-unpack.zip`, its SHA-256 sidecar, and a receipt recording the extractor source commit, dirty state, Go version, and payload and asset hashes. Public assets should use committed, clean source.
+The input must contain the Electron product identity, brand icon, and `RELEASE-MANIFEST.json`. Outputs include `*-windows-x64-setup.zip`, its SHA-256 sidecar, and a receipt recording the extractor source commit, dirty state, Go version, and payload and asset hashes. Public assets should use committed, clean source.
 
 The builder does not reassemble the application or change the original release ZIP, application version, or update source. Keep the canonical `*-windows-x64-electron.zip` asset for existing updaters. Add the extraction package and verification files as separate assets on the same Release. Release notes remain subject to maintainer approval.
 

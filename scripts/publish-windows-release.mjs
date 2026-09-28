@@ -21,7 +21,7 @@ export function validateReceipt(receipt, {repository, version, commit}) {
     if (receipt.checks?.[check] !== 'passed') throw Error('Release check did not pass: '+check)
   }
   if (receipt.asset?.name !== `${edition}-${version}-windows-x64-electron.zip` || !/^[a-f0-9]{64}$/.test(receipt.asset.sha256) || !Number.isSafeInteger(receipt.asset.bytes) || receipt.asset.bytes < 1) throw Error('Invalid release ZIP')
-  const unpackName=`${edition}-${version}-windows-x64-unpack.zip`
+  const unpackName=`${edition}-${version}-windows-x64-setup.zip`
   validateFileIdentity(receipt.portableExtractor?.asset,unpackName)
   validateFileIdentity(receipt.portableExtractor?.receipt,unpackName+'.json')
   return edition
@@ -37,7 +37,7 @@ export function validateExtractorReceipt(extractor,receipt) {
     if(extractor.asset?.[key]!==receipt.portableExtractor.asset[key])throw Error('Portable extractor asset differs from its build receipt')
   }
   if(!/^[a-f0-9]{40}$/.test(receipt.coreCommit??'') || extractor.extractor?.sourceCommit!==receipt.coreCommit || extractor.extractor?.sourceDirty!==false)throw Error('Portable extractor source does not match the clean tested core')
-  validateFileIdentity(extractor.extractor,`${receipt.edition}-Unpack.exe`)
+  validateFileIdentity(extractor.extractor,`${receipt.edition}-Setup.exe`)
   for(const check of ['embeddedArchive','manifestIdentity','outerZIP','extraction'])if(extractor.checks?.[check]!=='passed')throw Error('Portable extractor check did not pass: '+check)
   if(extractor.checks.executionLevel!=='asInvoker')throw Error('Portable extractor must not require elevation')
 }
@@ -105,6 +105,7 @@ export async function publish(directory) {
     const upload=new URL(release.upload_url.replace(/\{.*$/,''))
     if(upload.origin!=='https://uploads.github.com') throw Error('Unexpected release upload host')
     upload.searchParams.set('name',file.name)
+    if(file.name.endsWith('-windows-x64-setup.zip'))upload.searchParams.set('label','Windows 安装包')
     const response=await fetch(upload,{method:'POST',headers:{...headers,'Content-Type':file.name.endsWith('.zip')?'application/zip':'application/octet-stream','Content-Length':String(file.bytes)},body:createReadStream(file.path),duplex:'half'})
     if(!response.ok) throw Error(`Upload failed: ${file.name}, HTTP ${response.status}; draft retained`)
     const result=await response.json()

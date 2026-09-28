@@ -45,7 +45,7 @@ func unpack(ctx context.Context, target string, verifyOnly bool, report portable
 func main() {
 	data, err := base64.StdEncoding.DecodeString(buildIdentity)
 	if err != nil || json.Unmarshal(data, &identity) != nil {
-		message(0, "解压器配置无效，请重新下载。")
+		message(0, "安装程序配置无效，请重新下载。")
 		return
 	}
 	target := flag.String("extract-to", "", "extract into a new directory without starting the application")

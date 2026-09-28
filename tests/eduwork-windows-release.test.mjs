@@ -8,7 +8,7 @@ import {createHash} from 'node:crypto'
 import {githubUpdateManifest,githubUpdateManifestBytes} from '../scripts/github-update-manifest.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
 const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
-function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-unpack.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-unpack.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
+function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
 test('release publisher accepts the complete matching Windows receipt',()=>assert.equal(validateReceipt(receipt,context),'EduWork'))
@@ -58,7 +58,7 @@ test('release publisher rejects wrong edition, commit, development versions and 
 })
 
 test('portable extractor is mandatory and must bind the same clean core and payload',()=>{
- const child={schemaVersion:1,kind:'eduwork-portable-extractor',format:'zip-containing-self-extracting-exe',version:receipt.version,distribution:'eduwork',payload:receipt.asset,asset:receipt.portableExtractor.asset,extractor:{name:'EduWork-Unpack.exe',bytes:1536,sha256:'1'.repeat(64),sourceCommit:receipt.coreCommit,sourceDirty:false},checks:{embeddedArchive:'passed',manifestIdentity:'passed',outerZIP:'passed',extraction:'passed',executionLevel:'asInvoker'}}
+ const child={schemaVersion:1,kind:'eduwork-portable-extractor',format:'zip-containing-self-extracting-exe',version:receipt.version,distribution:'eduwork',payload:receipt.asset,asset:receipt.portableExtractor.asset,extractor:{name:'EduWork-Setup.exe',bytes:1536,sha256:'1'.repeat(64),sourceCommit:receipt.coreCommit,sourceDirty:false},checks:{embeddedArchive:'passed',manifestIdentity:'passed',outerZIP:'passed',extraction:'passed',executionLevel:'asInvoker'}}
  validateExtractorReceipt(child,receipt)
  for(const bad of [{...receipt,portableExtractor:undefined},{...receipt,checks:{...receipt.checks,portableExtractor:'skipped'}},{...receipt,portableExtractor:{...receipt.portableExtractor,asset:{...receipt.portableExtractor.asset,name:'../unpack.zip'}}}])assert.throws(()=>validateReceipt(bad,context))
  for(const bad of [{...child,version:'other'},{...child,distribution:'eduwork-chatecnu'},{...child,payload:{...child.payload,sha256:'2'.repeat(64)}},{...child,asset:{...child.asset,bytes:7}},{...child,extractor:{...child.extractor,sourceDirty:true}},{...child,extractor:{...child.extractor,sourceCommit:'3'.repeat(40)}},{...child,checks:{...child.checks,extraction:'skipped'}},{...child,checks:{...child.checks,executionLevel:'requireAdministrator'}}])assert.throws(()=>validateExtractorReceipt(bad,receipt))
@@ -75,7 +75,7 @@ async function publicationFixture(t,edition='EduWork') {
  row.portableExtractor=extractorFiles(edition,row.version)
  row.portableExtractor.asset.bytes=unpack.length;row.portableExtractor.asset.sha256=digest(unpack)
  row.releaseNotes.sha256=digest(notes)
- const child={schemaVersion:1,kind:'eduwork-portable-extractor',format:'zip-containing-self-extracting-exe',version:row.version,distribution:row.distribution,payload:row.asset,asset:row.portableExtractor.asset,extractor:{name:`${edition}-Unpack.exe`,bytes:12,sha256:'1'.repeat(64),sourceCommit:row.coreCommit,sourceDirty:false},checks:{embeddedArchive:'passed',manifestIdentity:'passed',outerZIP:'passed',extraction:'passed',executionLevel:'asInvoker'}}
+ const child={schemaVersion:1,kind:'eduwork-portable-extractor',format:'zip-containing-self-extracting-exe',version:row.version,distribution:row.distribution,payload:row.asset,asset:row.portableExtractor.asset,extractor:{name:`${edition}-Setup.exe`,bytes:12,sha256:'1'.repeat(64),sourceCommit:row.coreCommit,sourceDirty:false},checks:{embeddedArchive:'passed',manifestIdentity:'passed',outerZIP:'passed',extraction:'passed',executionLevel:'asInvoker'}}
  const childBytes=JSON.stringify(child)
  row.portableExtractor.receipt.bytes=Buffer.byteLength(childBytes);row.portableExtractor.receipt.sha256=digest(childBytes)
  const files={[row.asset.name]:archive,[row.asset.name+'.sha256']:`${row.asset.sha256}  ${row.asset.name}\n`,'RELEASE-NOTES.md':notes,'release-receipt.json':JSON.stringify(row),'update-windows-amd64.json':githubUpdateManifestBytes(row,ctx.repository),[row.portableExtractor.asset.name]:unpack,[row.portableExtractor.asset.name+'.sha256']:`${row.portableExtractor.asset.sha256}  ${row.portableExtractor.asset.name}\n`,[row.portableExtractor.receipt.name]:childBytes}

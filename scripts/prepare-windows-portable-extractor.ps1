@@ -13,7 +13,7 @@ $Target = [IO.Path]::GetFullPath($Target)
 $PublishDirectory = (Resolve-Path -LiteralPath $PublishDirectory).Path
 if (Test-Path -LiteralPath $Target) { throw 'Extractor acceptance requires a new destination' }
 & (Join-Path $PSScriptRoot 'pack-portable-extractor.ps1') -Archive $Archive -ExpectedSHA256 $ExpectedSHA256 -OutputDirectory $OutputDirectory | Out-Host
-$receipts = @(Get-ChildItem -LiteralPath $OutputDirectory -Filter '*-windows-x64-unpack.zip.json' -File)
+$receipts = @(Get-ChildItem -LiteralPath $OutputDirectory -Filter '*-windows-x64-setup.zip.json' -File)
 if ($receipts.Count -ne 1) { throw 'Expected exactly one extractor receipt' }
 $receiptPath = $receipts[0].FullName
 $receipt = Get-Content -LiteralPath $receiptPath -Raw | ConvertFrom-Json

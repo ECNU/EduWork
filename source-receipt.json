@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T04:31:30.618Z",
-  "fileSetSHA256": "94c1f84b1e93c9637366742b89d8d87a23619e0dedf829daf5415e1b6b6da981",
+  "createdAt": "2026-09-28T04:40:21.661Z",
+  "fileSetSHA256": "c0d8002bd09593266df7ededb687a4473539eb716f4f05603695611ab5e9ecc7",
   "files": [
     {
       "path": ".gitattributes",
@@ -309,11 +309,11 @@
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
-      "sha256": "2fb9e37efe825e2f03b43a69c533770073fcaa5c5e9557f77383c8cb7758985d"
+      "sha256": "5c5f857f961cf7eba4e0bbe6d78c6b7bdb037b3fbb4941553c5addf01d7c7c4e"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.md",
-      "sha256": "d6b91368d157b83e18ca1ddd5391c7be377429767205602217f1d4104b8567b6"
+      "sha256": "b26a2fb14b503a553916150283a71d45d0530c14680bdbecb395d29877287060"
     },
     {
       "path": "docs/proposals/gateway-auth/README_EN.md",
@@ -333,7 +333,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "749276a024c6615249b5ab418720fd2a7550ca394485abb6c0b87b3e2a7e24a6"
+      "sha256": "db363fcbd8a98357df18d1af9e1fbcb5786484665b3e19cc9bd35021d4de968c"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -361,7 +361,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "a1dd573250b4b362a205ceb5d88c94df4d50b8f0a988cd62dd001efaa3136ab8"
+      "sha256": "d9ee8f51c2c0d50444d276166fd7420c890dc117f34bf4411177fa2257098940"
     },
     {
       "path": "docs/USER_GUIDE.md",
@@ -373,11 +373,11 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/main_windows.go",
-      "sha256": "e0ed5ece7924d9e3bbb2e55dc165c977f9fb2ca2e49364cd48cab676db6f9f97"
+      "sha256": "f75aa7cb8cf121d7aebd4b7df5298474b12ae14072227397788d272b147599c9"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/ui_windows.go",
-      "sha256": "29ceb55422d040d4bd8377758111d0ff35f88acdfb183fcc24b2866059e8b5bb"
+      "sha256": "4c1b13ae7fc9da3775c7944e7102bbfe724267353f39140f54fbae6e9a71451e"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows_test.go",
@@ -573,7 +573,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/archive.go",
-      "sha256": "bb51504aa049739d9833436a38a2fa85164674e52181103f5f1e2ce7623fb43b"
+      "sha256": "6d10289a8154101e7dca5905f828397d387f25d795e8ad7f87099677223bf4ac"
     },
     {
       "path": "dsh-desktop/internal/portable/space_other.go",
@@ -4661,7 +4661,7 @@
     },
     {
       "path": "scripts/pack-portable-extractor.ps1",
-      "sha256": "96be157251a47d28ecaa87c2b456c6e2b815f88fafc096eca944819ea3cb7eda"
+      "sha256": "54566b2ccbfe0c476ffd1a424d309ec1dd30af08cda553400c7c5a561527df01"
     },
     {
       "path": "scripts/pack-windows-release.ps1",
@@ -4737,7 +4737,7 @@
     },
     {
       "path": "scripts/prepare-windows-portable-extractor.ps1",
-      "sha256": "a68adc91825bae406763c2075fc0cd149e43a7cd2c20ae5d268343f44aa4ff5e"
+      "sha256": "2b5409b0010e7699602442e896775212143f7e292b3787425d2c37d79b11be94"
     },
     {
       "path": "scripts/prepare-windows-release-inputs.ps1",
@@ -4781,7 +4781,7 @@
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "71300900c40c156392aedf4c9753d99f53c3c5db28e41b06e0f88883f9a9c831"
+      "sha256": "a6d64f52612c193c69f03d16b4782d85a43c8fe4362317ea0932d2db9a543690"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",
@@ -4905,7 +4905,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "b9f13e65015fb872abca35a9378298dc626f1ab00b79c942591ff726e4b29437"
+      "sha256": "d90aa55cfa3a4292b9d03152b91733f53b1ed6b4888eb886a0dbaedb4e33e20c"
     },
     {
       "path": "tests/fixtures/eduwork-dsh-015/LICENSE",
@@ -4921,7 +4921,7 @@
     },
     {
       "path": "tests/github-update-package.test.mjs",
-      "sha256": "980e48a10af7d645c3b70c2111f9609dcd9f0fb1d329d9583c611e2d0ce35dba"
+      "sha256": "2b125c1ef2e58a21fe2d9695049d65290042b6d98d6671c48c0f4931f579a896"
     },
     {
       "path": "tests/package-maintenance.test.mjs",

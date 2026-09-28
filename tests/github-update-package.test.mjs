@@ -35,7 +35,7 @@ test('CI archive format supports stable and development updates in both editions
   const hash=readFileSync(zip+'.sha256','utf8').trim().split(/\s+/)[0]
   const extractorBuild=join(root,`extractor-${name}-${version}`),publish=join(root,`publish-${name}-${version}`);mkdirSync(publish)
   run('pwsh',['-NoProfile','-File',join(repo,'scripts/prepare-windows-portable-extractor.ps1'),'-Archive',zip,'-ExpectedSHA256',hash,'-OutputDirectory',extractorBuild,'-Target',join(extracted,name),'-PublishDirectory',publish])
-  const unpackName=`${name}-${version}-windows-x64-unpack.zip`
+  const unpackName=`${name}-${version}-windows-x64-setup.zip`
   const extractorReceipt=JSON.parse(readFileSync(join(publish,unpackName+'.json'),'utf8'))
   assert.equal(extractorReceipt.checks.outerZIP,'passed');assert.equal(extractorReceipt.checks.extraction,'passed')
   assert.ok(join(extracted,name,deepRelative).length>260)

@@ -30,7 +30,7 @@ try {
     try { $inputStream.CopyTo($outputStream) } finally { $inputStream.Dispose(); $outputStream.Dispose() }
 } finally { $zip.Dispose() }
 
-$exe = Join-Path $OutputDirectory "$rootName-Unpack.exe"
+$exe = Join-Path $OutputDirectory "$rootName-Setup.exe"
 $encoded = [Convert]::ToBase64String([Text.Encoding]::UTF8.GetBytes(($identity | ConvertTo-Json -Compress)))
 $module = Join-Path $PSScriptRoot '../dsh-desktop'
 Push-Location $module
@@ -90,7 +90,7 @@ try {
 $verification = Join-Path $OutputDirectory 'verification.json'
 $process = Start-Process -FilePath $exe -ArgumentList @('--verify','--report',('"'+$verification+'"')) -WindowStyle Hidden -PassThru -Wait
 if ($process.ExitCode -ne 0 -or -not (Get-Content -LiteralPath $verification -Raw | ConvertFrom-Json).success) { throw 'Embedded payload verification failed' }
-$asset = Join-Path $OutputDirectory "$rootName-$($desktop.productVersion)-windows-x64-unpack.zip"
+$asset = Join-Path $OutputDirectory "$rootName-$($desktop.productVersion)-windows-x64-setup.zip"
 $file = [IO.File]::Open($asset,[IO.FileMode]::CreateNew)
 $outer = [IO.Compression.ZipArchive]::new($file,[IO.Compression.ZipArchiveMode]::Create)
 try { [IO.Compression.ZipFileExtensions]::CreateEntryFromFile($outer,$exe,[IO.Path]::GetFileName($exe),[IO.Compression.CompressionLevel]::NoCompression) | Out-Null }

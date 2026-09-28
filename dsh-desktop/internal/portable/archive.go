@@ -72,7 +72,7 @@ func Payload(f *os.File, expectedBytes int64) (*io.SectionReader, error) {
 		return nil, err
 	}
 	if st.Size() < FooterSize {
-		return nil, errors.New("解压器不完整，请重新下载")
+		return nil, errors.New("安装程序不完整，请重新下载")
 	}
 	footer := make([]byte, FooterSize)
 	if _, err := f.ReadAt(footer, st.Size()-FooterSize); err != nil {
@@ -80,7 +80,7 @@ func Payload(f *os.File, expectedBytes int64) (*io.SectionReader, error) {
 	}
 	start, size := binary.LittleEndian.Uint64(footer[16:24]), binary.LittleEndian.Uint64(footer[24:32])
 	if string(footer[:16]) != Magic || size != uint64(expectedBytes) || size > uint64(st.Size()-FooterSize) || start != uint64(st.Size()-FooterSize)-size {
-		return nil, errors.New("解压器内容边界不正确，请重新下载")
+		return nil, errors.New("安装程序内容边界不正确，请重新下载")
 	}
 	return io.NewSectionReader(f, int64(start), int64(size)), nil
 }
@@ -148,7 +148,7 @@ func Inspect(reader io.ReaderAt, id Identity) (*Archive, error) {
 		return nil, err
 	}
 	if m.SchemaVersion != 1 || m.Kind != "eduwork-portable-release" || m.Version != id.Version || m.Distribution != id.Distribution || m.Platform != "windows-x64" || m.Shell != "electron" {
-		return nil, errors.New("发行包与解压器的版本或平台不匹配")
+		return nil, errors.New("发行包与安装程序的版本或平台不匹配")
 	}
 	if len(m.Files) == 0 || len(m.Files)+1 != len(files) {
 		return nil, errors.New("发行包文件数量与清单不符")
@@ -201,13 +201,13 @@ func (w *progressWriter) Write(b []byte) (int, error) {
 	p := int(10 * w.done / w.total)
 	if p != w.last {
 		w.last = p
-		report(w.report, p, "正在检查解压包完整性…")
+		report(w.report, p, "正在检查安装包完整性…")
 	}
 	return len(b), nil
 }
 
 func Verify(ctx context.Context, reader io.Reader, id Identity, progress Reporter) error {
-	report(progress, 0, "正在检查解压包完整性…")
+	report(progress, 0, "正在检查安装包完整性…")
 	h := sha256.New()
 	w := &progressWriter{total: id.Bytes, last: -1, report: progress}
 	n, err := io.Copy(io.MultiWriter(h, w), cancelReader{ctx, io.LimitReader(reader, id.Bytes+1)})
@@ -215,7 +215,7 @@ func Verify(ctx context.Context, reader io.Reader, id Identity, progress Reporte
 		return err
 	}
 	if n != id.Bytes || !strings.EqualFold(hex.EncodeToString(h.Sum(nil)), id.SHA256) {
-		return errors.New("解压包校验失败，请重新下载；现有应用未被修改")
+		return errors.New("安装包校验失败，请重新下载；现有应用未被修改")
 	}
 	return nil
 }
@@ -258,7 +258,7 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 	}
 	defer func() {
 		if stage != "" {
-			report(progress, 99, "正在清理本次未完成的解压…")
+			report(progress, 99, "正在清理本次未完成的安装…")
 			if e := p.RemoveAll(stage); e != nil {
 				err = errors.Join(err, fmt.Errorf("请手动删除本次临时目录 %s：%w", filepath.Join(parent, stage), e))
 			} else if errors.Is(err, context.Canceled) {
@@ -294,7 +294,7 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 		n, copyErr := io.CopyBuffer(io.MultiWriter(dst, h), cancelReader{ctx, src}, buffer)
 		closeErr := errors.Join(dst.Close(), src.Close())
 		if copyErr != nil || closeErr != nil {
-			return "", fmt.Errorf("解压 %s 失败：%w", f.Path, errors.Join(copyErr, closeErr))
+			return "", fmt.Errorf("安装 %s 失败：%w", f.Path, errors.Join(copyErr, closeErr))
 		}
 		if n != f.Bytes || !strings.EqualFold(hex.EncodeToString(h.Sum(nil)), f.SHA256) {
 			return "", fmt.Errorf("文件校验失败：%s", f.Path)
@@ -302,7 +302,7 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 		completed += n
 		percent := 10 + int(88*completed/a.Total)
 		if percent != lastPercent {
-			report(progress, percent, fmt.Sprintf("正在解压并校验文件… %d%%", percent))
+			report(progress, percent, fmt.Sprintf("正在安装… %d%%", percent))
 			lastPercent = percent
 		}
 	}
@@ -322,9 +322,9 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 		return "", e
 	}
 	if err := p.Rename(stage, base); err != nil {
-		return "", fmt.Errorf("无法完成解压，请检查目录权限或安全软件记录：%w", err)
+		return "", fmt.Errorf("无法完成安装，请检查目录权限或安全软件记录：%w", err)
 	}
 	stage = ""
-	report(progress, 100, "解压完成，可以启动应用了。")
+	report(progress, 100, "安装完成，可以启动应用了。")
 	return target, nil
 }
