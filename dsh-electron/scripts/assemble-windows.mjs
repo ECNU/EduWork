@@ -91,7 +91,7 @@ export async function assembleWindows({
     config.configurationOwnership = policy.ownership
   }
   config.updates = { defaultPolicy: updateDefaultPolicy }
-  if (identity.distribution === 'eduwork') {
+  if (identity.distribution === 'eduwork' && !identity.sourceAlpha) {
     config.updates.provider = 'github'
     config.updates.repository = 'ecnu/EduWork'
     config.updateChannel = 'github'
@@ -103,6 +103,12 @@ export async function assembleWindows({
   const bootstrap = JSON.parse(await capture(node, [join(scriptRoot, '../../scripts/check-publisher-bootstrap.mjs'), product, config.configurationOwnership])
     .catch(() => { throw new Error('Publisher bootstrap validation failed') }))
   if (bootstrap.enabled) config.updateChannel = bootstrap.softwareUpdates ? 'publisher-bootstrap' : 'disabled-candidate'
+  if (identity.sourceAlpha) {
+    config.sourceAlpha = true
+    config.appId += '.alpha'
+    config.updates = { provider: 'disabled', defaultPolicy: 'development' }
+    config.updateChannel = 'disabled-candidate'
+  }
   await writeJSON(join(app, 'eduwork.desktop.json'), config)
 
   const updaterPath = join(output, 'resources/update/EduWork-Updater.exe')

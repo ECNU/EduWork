@@ -1,7 +1,7 @@
 // Assembles the unsigned macOS arm64 Electron candidate: Electron.app payload,
 // frozen product, native relocations, optional Sparkle updater, ad-hoc signed
 // ZIP. Node.js port of assemble-macos.ps1. Requires macOS arm64.
-import { chmod, mkdir, mkdtemp, rename, rm, unlink } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, readdir, rename, rm, unlink } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
@@ -13,6 +13,15 @@ import {
 import { relocateMacosCompositor } from './relocate-macos-compositor.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
+
+// Contents/Resources/brand must carry exactly this set on macOS. The Dock tile
+// theme, the startup progress window and the menu bar item all read from it at
+// runtime, so the assembler copies the full list and fails before signing when
+// one is absent instead of letting the packaged app crash on launch.
+const BRAND_ASSETS = [
+  'icon-32.png', 'icon-256.png', 'icon-1024.png', 'icon-blue-1024.png',
+  'dock-red-1024.png', 'dock-blue-1024.png', 'icon.icns', 'tray-black.png',
+]
 
 const ditto = (source, destination) => run('ditto', ['--noextattr', '--noqtn', '--noacl', source, destination])
 const rsync = (source, destination) => run('rsync', ['-a', `${source}/`, `${destination}/`])
@@ -93,7 +102,7 @@ export async function assembleMacos({
   if (!await isFile(nodeLicense)) throw new Error('Use the extracted official Node distribution, including LICENSE')
 
   const editionName = identity.distribution === 'eduwork' ? 'EduWork' : 'EduWork-ECNU'
-  const appName = `${editionName}.app`
+  const appName = identity.sourceAlpha ? `${editionName} Alpha.app` : `${editionName}.app`
   const app = join(output, appName)
   await mkdir(output)
   await ditto(electronApp, app).catch(() => { throw new Error('Electron.app copy failed') })
@@ -101,6 +110,7 @@ export async function assembleMacos({
   const appPayload = join(resources, 'app')
   await mkdir(appPayload)
   for (const folder of ['lib', 'renderer', 'third-party']) {
+    if (folder === 'renderer' && !await pathExists(join(shellBuild, folder))) continue
     await mkdir(join(appPayload, folder))
     await rsync(join(shellBuild, folder), join(appPayload, folder))
       .catch(() => { throw new Error(`Shell payload copy failed: ${folder}`) })
@@ -109,8 +119,15 @@ export async function assembleMacos({
   await copyFileTo(join(shellBuild, 'source-receipt.json'), join(appPayload, 'source-receipt.json'))
   const brand = join(resources, 'brand')
   await mkdir(brand)
-  for (const asset of ['icon-32.png', 'icon-256.png', 'icon.icns']) {
+  // Every asset here is read at runtime from Contents/Resources/brand: the Dock
+  // tile and progress window icons, the two theme variants and the menu bar
+  // template. A missing file only surfaces as a launch crash, so copy the whole
+  // set and assert it before the app is signed.
+  for (const asset of ['icon-32.png', 'icon-256.png', 'icon-1024.png', 'icon-blue-1024.png', 'dock-red-1024.png', 'dock-blue-1024.png', 'icon.icns', 'tray-black.png']) {
     await copyFileTo(join(scriptRoot, `../../assets/eduwork/${asset}`), join(brand, asset))
+  }
+  for (const asset of await readdir(brand)) {
+    if (!BRAND_ASSETS.includes(asset)) throw new Error(`Unexpected bundled brand asset: ${asset}`)
   }
   await mkdir(join(resources, 'product'))
   await rsync(product, join(resources, 'product')).catch(() => { throw new Error('Product copy failed') })
@@ -188,6 +205,12 @@ export async function assembleMacos({
   }
   const bootstrap = JSON.parse(await capture(node, [join(scriptRoot, '../../scripts/check-publisher-bootstrap.mjs'), product, ownership])
     .catch(() => { throw new Error('Publisher bootstrap validation failed') }))
+  if (identity.sourceAlpha) {
+    if (sparkleEnabled) throw new Error('Source Alpha does not enable software updates')
+    desktop.updates = { provider: 'disabled', defaultPolicy: 'development' }
+    desktop.sourceAlpha = true
+    desktop.appId += '.alpha'
+  }
   if (externalPublisherConfig) {
     if (ownership !== 'publisher') throw new Error('External publisher configuration requires publisher ownership')
     const bundledPublisherConfig = join(resources, 'product/resources/desktop/eduwork.jsonc')
@@ -220,6 +243,10 @@ export async function assembleMacos({
   ]) {
     await plutilReplace(plist, key, value)
   }
+  // Compiles the Dock tile plugin and registers NSDockTilePlugIn in the app
+  // plist. Must run before the ad-hoc signature is created below.
+  await run(node, [join(scriptRoot, 'build-dock-plugin.mjs'), app])
+    .catch(() => { throw new Error('Dock tile plugin compilation failed') })
   if (sparkleEnabled) {
     await copyFileTo(join(scriptRoot, '../LICENSE-Sparkle'), join(resources, 'LICENSE-Sparkle'))
     const frameworkTarget = join(app, 'Contents/Frameworks/Sparkle.framework')
