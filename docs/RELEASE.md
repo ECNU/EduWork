@@ -95,7 +95,7 @@ Windows Electron Release 工作流已提供（见下文），不包含签名安�
 
 传入 `CoreRoot`、`EditionRoot`、开发版本号 `Version` 与全新的 `Output`。发行方拥有配置时，还须提供 `PublisherDescriptors`：包含 Windows/macOS 的独立签名配置入口，配置兼容性必须与 rc.2 一致。接入参数和用户凭据不进入安装包。构建后检查解压的原生组件及实际桌面启动，真实登录、模型对话和升级另行验收。
 
-该入口只保留 ZIP、SHA-256 和平台回执，不生成更新清单、不发布 Release，软件自动更新关闭。经维护者确认说明后，可将同一份已验证产物发布为 GitHub **Pre-release**，并设置为非 Latest。正式发行与更新源切换须在验收后另行执行。
+该入口保留原始 ZIP、Windows 安装包 ZIP、macOS DMG、对应 SHA-256 和平台回执，不生成更新清单、不发布 Release，软件自动更新关闭。DMG 使用已从 ZIP 解压并通过启动检查的同一应用；构建后重新挂载只读镜像，核对应用文件、签名及安装窗口资源。经维护者确认说明后，可将同一份已验证产物发布为 GitHub **Pre-release**，并设置为非 Latest。正式发行与更新源切换须在验收后另行执行。
 
 开发更新包可由机构仓的 `Build ECNU Windows development artifact` 工作流构建，版本使用 `X.Y.Z-dev.YYYYMMDD.N`。它复用同一桌面构建、锁定依赖、ZIP 校验和启动检查，只保留 Actions artifact，不创建 Release、不编写发行说明，也不接触 OSS 凭据。源码基线版本和实际装配版本分别记录在回执中；界面徽标与默认更新渠道使用实际装配版本。维护者下载精确的 CI ZIP 后做升级验收，最后发布开发渠道清单。
 

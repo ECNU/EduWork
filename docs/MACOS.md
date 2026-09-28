@@ -77,6 +77,8 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 
 ## DMG 拖拽安装窗口
 
+DSH 0.1.7 Alpha CI 同时生成 ZIP 和 DMG。共享入口 `scripts/prepare-macos-dmg.ps1` 使用已验收的 ZIP 内应用生成 DMG，挂载最终只读镜像核对应用文件、签名、背景及 Applications 快捷方式；两种下载格式包含相同应用。
+
 可在 macOS 上为现有应用生成带标题、拖拽指引和 Applications 快捷方式的 DMG。需要 Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
 
 ```sh
