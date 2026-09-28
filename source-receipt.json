@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T06:52:24.104Z",
-  "fileSetSHA256": "6ee2d51aee2c5e0cd4159e3facbec6f7d5157a4aca90b0e2f6f7720374583bbb",
+  "createdAt": "2026-09-28T07:31:40.072Z",
+  "fileSetSHA256": "ffe382908e599520046222977c0950e616b7c20e05817be88b685c818338e532",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "c285a7b8490a8b3ceec1b012f7a46935f4c4ec1cff9eba8ba1e480f17610b20e"
+      "sha256": "ca828da1be79a50f6dcbc16d1b1a7600a75a130ae88dc5a0b9547068a0466ae8"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -293,7 +293,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "522634f7bb3199940c0e43d900d7fcec71b2a7c0bc81e73c301b86d04ea09a6e"
+      "sha256": "c59d77f6e50fdd20590185d8470b3f491b03c4474e23f86404e1c0de3108de9f"
     },
     {
       "path": "docs/MEDIA.md",
@@ -789,7 +789,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "b3a83d885f48f2cc17375488aa8246f5f112e7e4066ee034a80c893677871f63"
+      "sha256": "8f606406c53d6d3664cf08eee103226e06b20ef7e22b42235e007bff2650eb09"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -860,6 +860,10 @@
       "sha256": "be8bcfb65f7e1af3f0c7dbaa70fc603f3e5756aea225009ec881e6b51cf5307c"
     },
     {
+      "path": "dsh-electron/src/installer-cleanup.mjs",
+      "sha256": "020511f9e9bff1ce40b1b721f4e3cecee35212b98498e47d38b6e272895832de"
+    },
+    {
       "path": "dsh-electron/src/legacy-migration.mjs",
       "sha256": "a8a5e04c5e010563d184f2cee91455461899d944834f09f55218229c2d966f44"
     },
@@ -881,7 +885,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "194d681dced74b85f59d89bcf989da3d4f73b8836a7486a9b3cc7f8dc66fd097"
+      "sha256": "6f3552726b9f3264f16b53787b885de8f5e7f2235c1ee5e61257488a5aa48ff0"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -897,7 +901,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "14984939e5eef0d7bd6bbb40461258035b4629e113080ac2c2d533426dd3ab48"
+      "sha256": "50b49f4a97320d5d5782ab9e6e447adaed5d9e666b2dd447babe4b8ba6614674"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
@@ -976,6 +980,10 @@
       "sha256": "8523f087e7c598551dd12590a15f9d647148ad0bebbb795ca2fb45617bbe1a01"
     },
     {
+      "path": "dsh-electron/tests/installer-cleanup.test.mjs",
+      "sha256": "2a694c38a9a5f531d7cb0e2793fb405aaed6667d781f8cb82fd88f6b5f8e440b"
+    },
+    {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
       "sha256": "c348bfa496e42b9246ef870e030b3036b0088d4809be5d04d60b3adddf4714e1"
     },
@@ -990,6 +998,10 @@
     {
       "path": "dsh-electron/tests/media-transport.test.mjs",
       "sha256": "d3a1acdab15b9f6e7daa3f985818fdde067d8eaa0715400c9bef192ad854129c"
+    },
+    {
+      "path": "dsh-electron/tests/native-installer-startup.test.mjs",
+      "sha256": "8e3680314001e678d37c47f4386dd78a72bf72bfd54f17221d821aead1e217b2"
     },
     {
       "path": "dsh-electron/tests/native-vault.test.mjs",
@@ -4642,6 +4654,22 @@
     {
       "path": "scripts/link-studio-web-profile.ps1",
       "sha256": "a2923af7273a8c8dca942095a14a2038c7772b3abdc3c57346d8ae34bc4136ab"
+    },
+    {
+      "path": "scripts/macos-dmg/background.swift",
+      "sha256": "6960bc01280ee61d81d6885556808d653fc6fa2b892ccf0a310e883f0543ed0b"
+    },
+    {
+      "path": "scripts/macos-dmg/package.py",
+      "sha256": "3b4e6edf431b77587c24dff47aec1d359d38980d864e279b70d511a45029d131"
+    },
+    {
+      "path": "scripts/macos-dmg/requirements.txt",
+      "sha256": "1f5ed3493c8dff5598017b7c1899bca54fd00008a679f9d3ec48a5e505166ea0"
+    },
+    {
+      "path": "scripts/macos-dmg/test_package.py",
+      "sha256": "9bda4f2d3d0ca303f0b795caab317d5482254bf0ee282bbf969aca1b370e8cb0"
     },
     {
       "path": "scripts/macos-update-feed.mjs",
