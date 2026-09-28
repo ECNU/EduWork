@@ -14,10 +14,9 @@ import { BUILTIN_CAPABILITIES } from '../../lib/capabilities.js'
 
 export const inject = ['slots', 'remote', 'sessions', 'layout']
 // Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
-const zh = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
+const zh = () => String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 
-const t = zh
-  ? {
+const t_ZH = {
       loading: '正在读取…',
       noWorkspace: '当前会话不属于任何工作区。',
       failed: '生成失败',
@@ -42,7 +41,7 @@ const t = zh
       review: '再复习',
       reset: '重新开始',
     }
-  : {
+const t_EN = {
       loading: 'Loading…',
       noWorkspace: 'This session is not attached to a workspace.',
       failed: 'Generation failed',
@@ -67,6 +66,8 @@ const t = zh
       review: 'Review again',
       reset: 'Start over',
     }
+// Resolved on each read so copy follows the current DSH UI language.
+const t: any = new Proxy({}, { get: (_target, key) => (zh() ? t_ZH : t_EN)[key as keyof typeof t_ZH] })
 
 async function unwrap<T = any>(operation: Promise<any>): Promise<T> {
   const result = await operation
@@ -104,13 +105,13 @@ function useWorkspace(service: any, cwd: string) {
     setError('')
     const load = async () => {
       const warning = setTimeout(() => {
-        if (!disposed) setError(zh ? '工作区服务响应较慢，基础创作仍可使用。' : 'Workspace service is slow. Basic creation remains available.')
+        if (!disposed) setError(zh() ? '工作区服务响应较慢，基础创作仍可使用。' : 'Workspace service is slow. Basic creation remains available.')
       }, 8000)
       try {
         const result = await workspaceRequest(service, cwd)
         if (!disposed) { setValue(result ? { ...result, requestedCwd: cwd } : result); setError(result ? '' : t.noWorkspace) }
       } catch {
-        if (!disposed) setError(zh ? '无法连接工作区服务，请重试。' : 'Cannot connect to workspace service. Retry.')
+        if (!disposed) setError(zh() ? '无法连接工作区服务，请重试。' : 'Cannot connect to workspace service. Retry.')
       } finally {
         clearTimeout(warning)
         if (!disposed) timer = setTimeout(load, 2000)
@@ -1041,7 +1042,7 @@ export async function apply(ctx: any) {
         surfaceCtx.slots.register({name:'conversation.session.header.utilities',id:'knowledge-studio-entry',order:30,
           inject:()=>({surface,sessions:surfaceCtx.sessions})},StudioHeaderEntry))]:[]),
       ...(officialSidebar?[
-        surfaceCtx.sidebarRightTabs.register({id:'@eduwork/dsh-knowledge-studio',kind:'knowledge-studio',title:()=> 'Studio',guide:[{order:30,title:()=> 'Studio',description:()=>zh?'从工作区资料创建成果':'Create artifacts from workspace sources'}]}),
+        surfaceCtx.sidebarRightTabs.register({id:'@eduwork/dsh-knowledge-studio',kind:'knowledge-studio',title:()=> 'Studio',guide:[{order:30,title:()=> 'Studio',description:()=>zh()?'从工作区资料创建成果':'Create artifacts from workspace sources'}]}),
         surfaceCtx.slots.inject('sidebar.right.pane.tab',()=>surfaceCtx.slots.register({name:'sidebar.right.pane.tab',key:'@eduwork/dsh-knowledge-studio',inject:()=>({surface,service,sessionMeta,openFile,tabHandles,officialSidebar})},SidebarStudio)),
       ]:[surfaceCtx.slots.inject('details', () => {
         let disposeEntry: undefined | (() => void)

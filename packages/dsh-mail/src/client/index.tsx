@@ -7,9 +7,9 @@ export const inject = ['slots', 'remote', 'remote.credentials', nativeSettings ?
 const NS = 'dsh-mail-assistant'
 const PASSWORD_REF = 'DSH_MAIL_ASSISTANT_PASSWORD'
 // Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
-const zh = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
+const zh = () => String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 
-const copy = zh ? {
+const copy_ZH = {
   nav: '邮件助手', title: '邮件助手', description: '让 Agent 通过标准 IMAP 只读检索邮件，并按当前权限模式通过 SMTP 发信。它不是邮箱客户端，不会移动、删除、归档或修改邮件状态。',
   loading: '正在读取配置…', save: '保存', saving: '正在保存…', saved: '配置已保存，新调用立即生效。',
   readPermission: '允许 Agent 读信', readHint: '可列出目录、分页查找、读取邮件和下载附件；IMAP 始终只读。',
@@ -23,7 +23,8 @@ const copy = zh ? {
   limits: '安全上限', bodyLimit: '正文字符', messageLimit: '整封邮件字节', attachmentLimit: '附件总字节',
   usage: '保存后，在对话里让 Agent“查一下最近邮件”即可验证。插件不会在启动或保存时主动连接邮箱。',
   error: '保存失败', reload: '重新加载', unavailable: '当前连接未提供此设置命名空间。', readOnly: '当前连接为只读模式，无法保存设置。', credentialPartial: '授权码已经保存，但其他配置保存失败；请修正后再次保存。',
-} : {
+}
+const copy_EN = {
   nav: 'Mail assistant', title: 'Mail assistant', description: 'Let the agent search mail through read-only IMAP and send through SMTP under the current permission preset. This is not a mail client: it never moves, deletes, archives, or changes message state.',
   loading: 'Loading configuration…', save: 'Save', saving: 'Saving…', saved: 'Saved. New calls use the configuration immediately.',
   readPermission: 'Allow the agent to read mail', readHint: 'List folders, page through searches, read messages, and download attachments. IMAP always stays read-only.',
@@ -38,6 +39,8 @@ const copy = zh ? {
   usage: 'After saving, ask the agent to find recent mail. The plugin never connects to a mailbox during startup or save.',
   error: 'Save failed', reload: 'Reload', unavailable: 'This connection does not expose the mail settings namespace.', readOnly: 'This connection exposes settings in read-only mode.', credentialPartial: 'The app password was stored, but the remaining settings failed to save. Fix the form and save again.',
 }
+// Resolved on each read so copy follows the current DSH UI language.
+const copy: any = new Proxy({}, { get: (_target, key) => (zh() ? copy_ZH : copy_EN)[key as keyof typeof copy_ZH] })
 
 const defaults = {
   readEnabled: false, sendEnabled: false, email: '', username: '', fromName: '', inboxFolder: 'INBOX',

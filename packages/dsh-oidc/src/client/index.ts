@@ -17,8 +17,8 @@ const button = Object.freeze({
   background: 'var(--dsw-alias-bg-layer-1, #fff)', color: 'var(--dsw-alias-label-primary, #241a18)',
 })
 // Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
-const isChinese = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
-const messages = isChinese ? {
+const isChinese = () => String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
+const messages_ZH = {
   waiting: '请在浏览器中完成登录…', cancelLogin: '取消登录',
   identityDescription: '使用组织账号登录。模型服务可在设置中单独配置。', identityConnected: '组织身份已登录',
   unavailable: '企业模型服务暂时不可用', connected: '已连接',
@@ -27,7 +27,8 @@ const messages = isChinese ? {
   checking: '正在检查…', check: '检查连接', logout: '退出登录', help: '帮助', dialog: '连接企业模型',
   shortDescription: '通过组织统一身份认证连接企业模型；密码不会进入本应用。', other: '使用其他模型',
   enabled: '完成后将启用', footerConnected: '企业模型已连接', footerSetup: '点击设置完成登录',
-} : {
+}
+const messages_EN = {
   waiting: 'Complete sign-in in your browser…', cancelLogin: 'Cancel sign-in',
   identityDescription: 'Sign in with your organization account. Configure model services separately in settings.', identityConnected: 'Organization identity connected',
   unavailable: 'Enterprise model service is temporarily unavailable', connected: 'Connected',
@@ -39,6 +40,8 @@ const messages = isChinese ? {
   other: 'Use another model', enabled: 'This enables', footerConnected: 'Enterprise models connected',
   footerSetup: 'Open settings to connect',
 }
+// Resolved on each read so copy follows the current DSH UI language.
+const messages: any = new Proxy({}, { get: (_target, key) => (isChinese() ? messages_ZH : messages_EN)[key as keyof typeof messages_ZH] })
 
 async function unwrap(operation: Promise<any>) {
   const result = await operation
@@ -164,7 +167,7 @@ function EnterpriseOnboarding({ service, configuration, complete }: any) {
   h('p', { style: { margin: '18px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 13, lineHeight: 1.7 } },
     profile.brand?.loginDescription || (profile.provider ? messages.shortDescription : messages.identityDescription)),
   h('div', { style: { marginTop: 20, display: 'flex', gap: 9, flexWrap: 'wrap' } },
-    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : profile.brand?.loginButtonLabel || messages.login),
+    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese() ? '使用企业模型' : 'Use organization model') : profile.brand?.loginButtonLabel || messages.login),
     h('button', { type: 'button', disabled: Boolean(account.busy), style: button, onClick: complete }, messages.other)),
   login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
   account.error && h('p', { role: 'alert', style: { margin: '12px 0 0', color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, account.error),

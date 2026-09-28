@@ -10,9 +10,9 @@ const textSecondary = 'var(--dsw-alias-label-secondary, #75635c)'
 const textTertiary = 'var(--dsw-alias-label-tertiary, #8a766f)'
 const background = 'var(--dsw-alias-bg-layer-1, #fffdfb)'
 // Follow the DSH UI language (set on <html lang>), not the browser's; fall back to the browser.
-const isChinese = String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
+const isChinese = () => String((typeof document !== 'undefined' && document.documentElement.lang) || (typeof navigator !== 'undefined' ? navigator.language : '')).toLowerCase().startsWith('zh')
 
-const copy: Record<string, string> = isChinese ? {
+const copy_ZH = {
   waiting: '请在浏览器中完成登录…', cancelLogin: '取消登录',
   title: '学校 / 企业服务', description: '已验证机构和兼容协议服务使用统一入口管理；普通 API Key 提供方继续在模型设置中管理。',
   loading: '正在读取学校 / 企业服务…', add: '+ 添加学校 / 企业服务', verified: '已验证机构', custom: '自定义服务',
@@ -35,7 +35,8 @@ const copy: Record<string, string> = isChinese ? {
   openConfig: '打开配置文件', openExamples: '查看示例',
   configOpened: '已请求系统打开配置文件，修改后请退出并重新启动应用。', examplesOpened: '已请求系统打开示例目录。',
   fileFallback: '请在运行应用的电脑上打开：', examplesHint: '完整示例见同目录下的 examples 文件夹。',
-} : {
+}
+const copy_EN = {
   waiting: 'Complete sign-in in your browser…', cancelLogin: 'Cancel sign-in',
   title: 'Organization services', description: 'Manage verified organizations and compatible enterprise services here; ordinary API-key providers remain in model settings.',
   loading: 'Loading organization services…', add: '+ Add organization service', verified: 'Verified organization', custom: 'Custom service',
@@ -59,6 +60,8 @@ const copy: Record<string, string> = isChinese ? {
   configOpened: 'The file was sent to your system editor. Quit and relaunch after editing.', examplesOpened: 'The examples folder was sent to your system file manager.',
   fileFallback: 'Open this file on the computer running the app: ', examplesHint: 'Complete examples are in the examples folder beside it.',
 }
+// Resolved on each read so copy follows the current DSH UI language.
+const copy: any = new Proxy({}, { get: (_target, key) => (isChinese() ? copy_ZH : copy_EN)[key as keyof typeof copy_ZH] })
 
 const buttonStyle = Object.freeze({
   border: `1px solid ${border}`, borderRadius: 9, padding: '8px 12px', background,
@@ -75,13 +78,13 @@ const cardStyle = Object.freeze({
 })
 
 const sourceLabel = (value: string) => ({
-  preset: isChinese ? '内置审核目录' : 'Reviewed catalog', discovered: isChinese ? '服务端自动发现' : 'Server discovery',
-  discovery: isChinese ? '等待服务端同步' : 'Awaiting discovery', manual: isChinese ? '本机手动配置' : 'Local manual catalog',
+  preset: isChinese() ? '内置审核目录' : 'Reviewed catalog', discovered: isChinese() ? '服务端自动发现' : 'Server discovery',
+  discovery: isChinese() ? '等待服务端同步' : 'Awaiting discovery', manual: isChinese() ? '本机手动配置' : 'Local manual catalog',
   profile: copy.profileManaged,
-} as Record<string, string>)[value] || (isChinese ? '提供方声明' : 'Provider declaration')
-const capabilityLabel = (value: string) => ({ off: isChinese ? '关闭' : 'Off', minimal: isChinese ? '极低' : 'Minimal', low: isChinese ? '低' : 'Low', medium: isChinese ? '中' : 'Medium', high: isChinese ? '高' : 'High', xhigh: isChinese ? '极高' : 'Extra high', max: 'Max' } as Record<string, string>)[value] || value
-const modalityLabel = (value: string) => ({ text: isChinese ? '文本' : 'Text', image: isChinese ? '图片' : 'Image', audio: isChinese ? '音频' : 'Audio', video: isChinese ? '视频' : 'Video' } as Record<string, string>)[value] || value
-export const managedProviderSectionLabel = isChinese ? '企业服务' : 'Enterprise services'
+} as Record<string, string>)[value] || (isChinese() ? '提供方声明' : 'Provider declaration')
+const capabilityLabel = (value: string) => ({ off: isChinese() ? '关闭' : 'Off', minimal: isChinese() ? '极低' : 'Minimal', low: isChinese() ? '低' : 'Low', medium: isChinese() ? '中' : 'Medium', high: isChinese() ? '高' : 'High', xhigh: isChinese() ? '极高' : 'Extra high', max: 'Max' } as Record<string, string>)[value] || value
+const modalityLabel = (value: string) => ({ text: isChinese() ? '文本' : 'Text', image: isChinese() ? '图片' : 'Image', audio: isChinese() ? '音频' : 'Audio', video: isChinese() ? '视频' : 'Video' } as Record<string, string>)[value] || value
+export const managedProviderSectionLabel = isChinese() ? '企业服务' : 'Enterprise services'
 
 export function ManagedProviderCard({ service, configuration }: any) {
   const [management, setManagement] = useState<any>(null)
@@ -154,7 +157,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
   const canManageProfiles = !configuration.configFile && management.capabilities.manageProfiles === true
   const canManageModels = !configuration.configFile && management.capabilities.manageModels === true
   const noModelsNotice = configuration.configFile
-    ? (isChinese ? '尚未同步模型目录。登录后将读取服务端模型；也可在配置文件中声明模型目录。' : 'No model catalog has been synced. Sign in to discover models, or declare them in the configuration file.') : copy.noModels
+    ? (isChinese() ? '尚未同步模型目录。登录后将读取服务端模型；也可在配置文件中声明模型目录。' : 'No model catalog has been synced. Sign in to discover models, or declare them in the configuration file.') : copy.noModels
   const canRestart = management.capabilities.restart === true
   const detail = management.profiles.find((profile: any) => profile.id === detailID) ?? null
   const configured = management.profiles.filter((profile: any) => profile.configured)
@@ -210,7 +213,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
     const status = statuses[profile.id]
     const connected = profile.enabled && status?.state === 'connected'
     const modelBadges = !profile.providerID
-      ? [h('span', { key: 'identity', style: { color: textSecondary, fontSize: 11 } }, isChinese ? '身份登录 · 模型可自行配置' : 'Identity sign-in · configure your own models')]
+      ? [h('span', { key: 'identity', style: { color: textSecondary, fontSize: 11 } }, isChinese() ? '身份登录 · 模型可自行配置' : 'Identity sign-in · configure your own models')]
       : profile.runtime.models.length > 0
       ? profile.runtime.models.map((model: any) => h('code', { key: model.id, style: { borderRadius: 6, padding: '3px 7px', background: 'var(--dsw-alias-bg-layer-2, #f6f1ee)', color: textSecondary, fontSize: 11 } }, model.id))
       : [h('span', { key: 'empty', style: { color: textTertiary, fontSize: 11 } }, noModelsNotice)]
@@ -219,19 +222,19 @@ export function ManagedProviderCard({ service, configuration }: any) {
         h('div', { style: { minWidth: 0 } },
           h('div', { style: { display: 'flex', alignItems: 'center', gap: 7, flexWrap: 'wrap' } },
             h('strong', { style: { fontSize: 15 } }, profile.displayName),
-            h('span', { style: { borderRadius: 999, padding: '2px 7px', background: 'var(--dsw-alias-bg-layer-2, #eef1f6)', color: textSecondary, fontSize: 11 } }, configuration.configFile ? (isChinese ? '配置文件' : 'Configuration file') : profile.builtIn ? copy.verified : copy.custom),
+            h('span', { style: { borderRadius: 999, padding: '2px 7px', background: 'var(--dsw-alias-bg-layer-2, #eef1f6)', color: textSecondary, fontSize: 11 } }, configuration.configFile ? (isChinese() ? '配置文件' : 'Configuration file') : profile.builtIn ? copy.verified : copy.custom),
             h('span', { style: { borderRadius: 999, padding: '2px 7px', border: `1px solid ${connected ? 'var(--dsw-alias-state-success-primary, #357a55)' : border}`, color: connected ? 'var(--dsw-alias-state-success-primary, #357a55)' : profile.enabled ? accent : textTertiary, fontSize: 11 } }, connected ? copy.connected : profile.enabled ? copy.enabled : copy.disabled)),
           h('div', { style: { marginTop: 6, color: textSecondary, fontSize: 11, overflowWrap: 'anywhere' } }, profile.baseURL),
           h('div', { style: { display: 'flex', gap: 6, marginTop: 8, flexWrap: 'wrap' } }, ...modelBadges)),
         h('div', { style: { display: 'flex', gap: 7, flex: 'none', flexWrap: 'wrap', justifyContent: 'flex-end' } },
-          h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: () => openDetail(profile) }, canManageProfiles || canManageModels ? copy.configure : (isChinese ? '查看详情' : 'View details')),
+          h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: () => openDetail(profile) }, canManageProfiles || canManageModels ? copy.configure : (isChinese() ? '查看详情' : 'View details')),
           canManageProfiles && !profile.enabled && h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => enable(profile.id) }, copy.enable),
           profile.enabled && !restartRequired && !connected && h('button', { type: 'button', disabled: busy, style: primaryStyle, onClick: () => connect(profile.id) }, busy ? copy.processing : copy.login),
           profile.enabled && !restartRequired && connected && h('button', { type: 'button', disabled: busy, style: buttonStyle, onClick: () => run(() => service.reconcile(profile.id, {})) }, copy.refresh))))
   })) : h('div', { style: { padding: 18, border: `1px dashed ${border}`, borderRadius: 13, background } },
     h('strong', { style: { display: 'block', fontSize: 14 } }, copy.emptyTitle),
     h('p', { style: { margin: '6px 0 0', color: textSecondary, fontSize: 12, lineHeight: 1.55 } }, configuration.configFile
-      ? (isChinese ? '参考上方示例，在配置文件的 organizations 中填写企业信息，保存并退出后重新启动。也可以直接在模型设置中使用自己的 API Key。' : 'Use the examples above to fill in organizations, save, quit and relaunch. You can also use your own API key in model settings.') : copy.emptyHint))
+      ? (isChinese() ? '参考上方示例，在配置文件的 organizations 中填写企业信息，保存并退出后重新启动。也可以直接在模型设置中使用自己的 API Key。' : 'Use the examples above to fill in organizations, save, quit and relaunch. You can also use your own API key in model settings.') : copy.emptyHint))
 
   const addDialog = addOpen && h('div', { style: panelStyle, onMouseDown: (event: any) => { if (event.target === event.currentTarget && !busy) setAddOpen(false) } },
     h('div', { role: 'dialog', 'aria-modal': 'true', 'aria-label': copy.addTitle, style: { ...cardStyle, width: 'min(660px, calc(100vw - 40px))' } },
@@ -290,7 +293,7 @@ export function ManagedProviderCard({ service, configuration }: any) {
       !editingModels && h('div', { style: { display: 'grid', gap: 9, marginTop: 11 } }, ...(detail.runtime.models.length > 0 ? detail.runtime.models.map((model: any) => {
         const summary = modelCapabilitySummary(model, detail.runtime)
         return h('article', { key: model.id, style: { border: `1px solid ${border}`, borderRadius: 11, padding: 13 } },
-          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('strong', null, summary.name), summary.name !== summary.id && h('code', { style: { color: textTertiary, fontSize: 11 } }, summary.id), summary.multimodal && h('span', { style: { color: 'var(--dsw-alias-state-business-primary, #355c91)', fontSize: 10 } }, isChinese ? '多模态' : 'Multimodal')),
+          h('div', { style: { display: 'flex', gap: 8, flexWrap: 'wrap' } }, h('strong', null, summary.name), summary.name !== summary.id && h('code', { style: { color: textTertiary, fontSize: 11 } }, summary.id), summary.multimodal && h('span', { style: { color: 'var(--dsw-alias-state-business-primary, #355c91)', fontSize: 10 } }, isChinese() ? '多模态' : 'Multimodal')),
           h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(125px, 1fr))', gap: 8, marginTop: 10, color: textSecondary, fontSize: 11 } },
             summary.upstreamModelID && h('span', null, `${copy.baseModel}：${summary.upstreamModelID}`), h('span', null, `${copy.context}：${summary.contextWindow || copy.unspecified}`), h('span', null, `${copy.output}：${summary.maxTokens || copy.unspecified}`),
             h('span', null, `${copy.input}：${summary.input.map(modalityLabel).join('、')}`), h('span', null, `${copy.reasoning}：${!summary.reasoningSupported ? copy.unsupported : summary.reasoningEfforts.length ? summary.reasoningEfforts.map(capabilityLabel).join('、') : copy.decidedByService}`)))
