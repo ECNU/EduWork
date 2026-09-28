@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T08:18:07.916Z",
-  "fileSetSHA256": "c2a9a110b73e61197c860127e8450741ac3bcf85657c7ba18ef0031789f0f29a",
+  "createdAt": "2026-09-28T09:56:45.176Z",
+  "fileSetSHA256": "04b4f6fb872044232b14671e37f4277fe9ef7a92ff8cce8e350df8a1f493d6e5",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,7 +25,7 @@
     },
     {
       "path": ".github/workflows/desktop-candidates.yml",
-      "sha256": "b056ad0eeff9d75e3b8bd43e73fa8caad7c26c8d04e432ef2d72620933c91bc4"
+      "sha256": "69355823d0d688d1e8b0f127ee3d7a22cc9f782b0b38ab7e39eff43a61f87997"
     },
     {
       "path": ".github/workflows/development-windows.yml",
@@ -40,12 +40,20 @@
       "sha256": "c6c336b3d5e767ee96c7ef6089db1dee9d6cd02037ab0edeb654094183a70c24"
     },
     {
+      "path": ".github/workflows/publish-desktop-candidate.yml",
+      "sha256": "706289e4f4d599f3bdc6b3d4247ce51cb385b9c2a743b038aae09d3cb4eef3e0"
+    },
+    {
       "path": ".github/workflows/release-windows.yml",
       "sha256": "d021b7757ee54b74205216c7ec757f8ca3b5589a289d4434057218d43efcaefa"
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
       "sha256": "ca828da1be79a50f6dcbc16d1b1a7600a75a130ae88dc5a0b9547068a0466ae8"
+    },
+    {
+      "path": ".github/workflows/validate-desktop-publisher.yml",
+      "sha256": "ae84b85c61d9122afcc55973f79a3fe6464c8e72c1fc4f618596c19809f80f80"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -69,7 +77,7 @@
     },
     {
       "path": "AGENTS.md",
-      "sha256": "2fe67955fc7e5a30b4a145df750a9ae4c129dc058f88358854d9ba9b9a680379"
+      "sha256": "54cf301aadcebd1d6fd738e26ae0cbec603cf99aa92378a9394c0ef989475466"
     },
     {
       "path": "assets/eduwork/dock-blue-1024.png",
@@ -333,7 +341,7 @@
     },
     {
       "path": "docs/RELEASE.md",
-      "sha256": "d74ab805e0d301a11c2aac01426751a512086132ff30652a95cf9e386ce75897"
+      "sha256": "2ddbaf581febd0eda3bae18e259ed89e9218adb3ea1e40137537e5d582e2fb17"
     },
     {
       "path": "docs/releases/0.3.5.md",
@@ -358,6 +366,10 @@
     {
       "path": "docs/releases/0.3.6-dev.20260927.1.md",
       "sha256": "fa03336dd564358c9eaa9859644731d998dfadee177ca5bff30029036fdd8ff7"
+    },
+    {
+      "path": "docs/releases/0.3.6-dev.20260928.2.md",
+      "sha256": "1f7942248f38865f4b199d92aa9841de7380f2a4bf3bd258b61fe680800d5dc0"
     },
     {
       "path": "docs/UPDATES.md",
@@ -4820,6 +4832,10 @@
       "sha256": "dd3e028561c302a40763d30015aa0ce441fd952080757c71e7f93c7d53504955"
     },
     {
+      "path": "scripts/publish-desktop-candidate.mjs",
+      "sha256": "e1be559e500435e7c77f533e3240ed5ba747a00494777f49230cd50cb20caef9"
+    },
+    {
       "path": "scripts/publish-windows-release.mjs",
       "sha256": "2d61a74838fb3044dbbc5c67ecdef9c1de719fcb83775f7653efd0672a939729"
     },
@@ -4886,6 +4902,10 @@
     {
       "path": "scripts/write-bundled-skills-manifest.mjs",
       "sha256": "084f9024fbf98fec56cf1326bf045819742bbcd0c8d3cf1c03c23173c204d318"
+    },
+    {
+      "path": "tests/desktop-candidate-publication.test.mjs",
+      "sha256": "1586a388fd320f7ef596d86545ffaaae1a7c77f6b7184be3ea25789e4773c1b5"
     },
     {
       "path": "tests/desktop-enterprise-ui-acceptance.mjs",
