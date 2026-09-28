@@ -35,9 +35,17 @@ export function inspectArchive(bytes, selected, expectedVersion) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
   }
+  if (selected.id === 'dsh-literature') {
+    for (const file of ['LICENSE', 'NOTICE.md', 'UPSTREAM.json', 'README.md', 'README_EN.md', 'cordis.patch.yml']) {
+      assert.ok(files.has(file), `Missing literature provenance or bundle file ${file}`)
+    }
+    for (const entry of Object.values(manifest.exports).filter(entry => entry.endsWith('.js'))) {
+      assert.ok(files.has(entry.slice(2).replace(/\.js$/, '.d.ts')), `Missing literature declaration for ${entry}`)
+    }
+  }
   for (const [file, content] of files) {
     assert.ok(!/(^|\/)(node_modules|\.git|\.local|dist|test|tests)(\/|$)|\.(tgz|log|map)$/.test(file), `Unexpected packed file ${file}`)
-    if (!/\.(js|mjs|json|md|yml|yaml|py|ps1|txt)$/.test(file)) continue
+    if (!/\.(js|mjs|ts|json|md|yml|yaml|py|ps1|txt)$/.test(file)) continue
     const text = content.toString('utf8')
     assert.ok(!/(?:ghp_|github_pat_|npm_)[A-Za-z0-9_]{30,}|-----BEGIN (?:RSA |OPENSSH |EC )?PRIVATE KEY-----/.test(text), `Credential-shaped content in ${file}`)
     assert.ok(!/[A-Z]:[\\/]+(?:Users[\\/]+|ECNUDev)|\/Users\/[^/\s]+\//i.test(text), `Machine path in ${file}`)

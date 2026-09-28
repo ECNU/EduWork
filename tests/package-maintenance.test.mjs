@@ -22,14 +22,14 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])
   assert.deepEqual(changedGroups(['packages/dsh-oidc/src/host/model-provider.ts']), ['dsh-oidc'])
   assert.deepEqual(changedGroups(['packages/dsh-mail/README.md', 'README.md']), [])
-  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 4)
+  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 5)
   assert.equal(needsProductBuild(['packages/dsh-oidc/src/host/model-provider.ts', 'docs/PACKAGES.md']), false)
   assert.equal(needsProductBuild(['third_party/npm-015-rc1/dsh-oidc/LOCK.json']), true)
   assert.equal(needsProductBuild(['dsh-host/entry.mjs']), true)
   assert.throws(() => selectPackage('../../private'), /Unknown package/)
 })
-test('five separate package identities retain registry dependency contracts and product npm locks', async () => {
-  assert.equal(new Set(packages.map(p => p.name)).size, 5)
+test('six separate package identities retain registry dependency contracts and product npm locks', async () => {
+  assert.equal(new Set(packages.map(p => p.name)).size, 6)
   for (const selected of packages) {
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
@@ -41,6 +41,13 @@ test('five separate package identities retain registry dependency contracts and 
   const assembly = JSON.parse(await readFile(new URL('../config/assembly.eduwork.json', import.meta.url)))
   for (const selected of packages) {
     const declaration = assembly.externalPackages.find(p => p.name === selected.name)
+    if (selected.id === 'dsh-literature') {
+      // The DSH 0.2 fork is independent of the current 0.1.7 client assembly.
+      // Publishing it must not replace an incompatible legacy release dependency.
+      assert.equal(declaration, undefined)
+      assert.ok(assembly.externalPackages.some(p => p.name === '@shlv/dsh-literature'))
+      continue
+    }
     assert.ok(declaration, `${selected.name} still uses the npm assembly boundary`)
     const lock = JSON.parse(await readFile(new URL(`../${declaration.lock}`, import.meta.url)))
     assert.equal(lock.publicationStatus, 'published')
@@ -60,11 +67,11 @@ function tarball(files) {
   return gzipSync(Buffer.concat([...records, Buffer.alloc(1024)]))
 }
 test('publication rejects the wrong package, missing entry points and archive traversal', () => {
-  const selected = packages[0]
+  const selected = selectPackage('dsh-oidc')
   const manifest = { name: selected.name, version: '1.2.3', repository: { url: 'git+https://github.com/ecnu/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
   const files = { 'package/package.json': JSON.stringify(manifest), 'package/lib/index.js': 'export default {}' }
   assert.equal(inspectArchive(tarball(files), selected, '1.2.3').manifest.name, selected.name)
-  assert.throws(() => inspectArchive(tarball(files), packages[1], '1.2.3'))
+  assert.throws(() => inspectArchive(tarball(files), selectPackage('dsh-mail'), '1.2.3'))
   assert.throws(() => inspectArchive(tarball(files), selected, '9.9.9'))
   assert.throws(() => inspectArchive(tarball({ 'package/package.json': files['package/package.json'] }), selected, '1.2.3'), /Missing packed export/)
   assert.throws(() => inspectArchive(tarball({ ...files, 'package/../escape.js': 'bad' }), selected, '1.2.3'), /Unsafe archive path/)
