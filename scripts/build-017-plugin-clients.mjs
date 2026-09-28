@@ -24,29 +24,14 @@ if (runtimeReceipt.dshVersion !== '0.2.0-rc.1' || runtimeReceipt.dshCommit !== '
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
-for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail', 'packages/dsh-memory', 'packages/dsh-oidc', 'packages/dsh-knowledge-studio', 'packages/dsh-literature']) {
+for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail', 'packages/dsh-memory', 'packages/dsh-oidc', 'packages/dsh-knowledge-studio']) {
   await cp(join(sourceRepository, folder), join(repository, folder), { recursive: true,
     filter: path => !relative(sourceRepository, path).split(/[\\/]/).some(part => ['node_modules', '.git', 'test', 'tests', '.research'].includes(part)),
   })
 }
 const { build, transform } = require('esbuild')
-// Compile each maintained Host module without bundling away Cordis service identity.
-// The package CI separately checks its TypeScript declarations and runtime contract.
-const literatureRoot = join(repository, 'packages/dsh-literature')
-async function buildLiterature(directory) {
-  for (const entry of await readdir(directory, { withFileTypes: true })) {
-    const path = join(directory, entry.name)
-    if (entry.isDirectory()) await buildLiterature(path)
-    else if (entry.name.endsWith('.ts')) {
-      const target = join(literatureRoot, 'lib', relative(join(literatureRoot, 'src'), path)).replace(/\.ts$/, '.js')
-      const text = (await readFile(path, 'utf8')).replace(/(from\s+['"]\.[^'"]*)\.ts(['"])/g, '$1.js$2')
-      const built = await transform(text, { loader: 'ts', format: 'esm', target: 'node24' })
-      await mkdir(resolve(target, '..'), { recursive: true })
-      await writeFile(target, built.code)
-    }
-  }
-}
-await buildLiterature(join(literatureRoot, 'src'))
+// Literature is a separately published npm input in the product dependency lock.
+// Package changes go through its own check/pack/publication workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
 const distribution = JSON.parse(await readFile(distributionPath, 'utf8'))
 distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)

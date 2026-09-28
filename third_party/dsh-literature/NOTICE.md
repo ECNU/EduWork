@@ -12,6 +12,6 @@ providers, and the `literature_search`, `literature_bibtex`, and
 `literature_fulltext` model tools. It remains independently installable in a
 plain DSH deployment; this historical lock selects the original public bundle.
 
-The DSH 0.2 source candidate instead uses the EduWork-maintained fork,
-[`@eduwork/dsh-literature`](../../packages/dsh-literature/README.md).
-The historical lock is retained until the fork's npm publication is verified.
+The DSH 0.2 candidate instead uses the published EduWork-maintained fork,
+[`@eduwork/dsh-literature`](../../packages/dsh-literature/README.md) 0.1.0.
+The original lock is retained for historical builds.

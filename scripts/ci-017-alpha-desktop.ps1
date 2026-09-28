@@ -102,6 +102,7 @@ try {
         & codesign --verify --deep --strict $desktop
         $frozen=Join-Path $desktop 'Contents/Resources/product';$node=Join-Path $desktop 'Contents/Resources/runtime/node';$exe=Join-Path $desktop 'Contents/MacOS/Electron'
         $result.developerIDSigned=$false;$result.notarized=$false;$result.minimumSystemVersion=$pack.minimumSystemVersion
+        $result.sparkleEnabled=$pack.sparkleEnabled;$result.bundleVersion=$pack.bundleVersion
     }
     $result.checks.archiveManifest='passed'
     & $node (Join-Path $CoreRoot 'scripts/verify-media-template.mjs') $frozen

@@ -55,7 +55,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-`@eduwork/dsh-literature` 是面向 DSH `0.2.0-rc.1` 的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。当前 `0.1.7-rc.2` 客户端仍使用原来已核验的 `@shlv/dsh-literature` 锁；新包的发布不改变现有客户端依赖。内核升级时再核验新包的 registry 产物并更新装配锁。
+`@eduwork/dsh-literature` 是面向 DSH `0.2.0-rc.1` 的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装已发布的 `0.1.0`，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.0-rc.1/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 
 `config/assembly.eduwork.json` 仍通过 `third_party/npm-015-rc1/*/LOCK.json` 获取已发布 npm 包，版本、SRI 和 tarball SHA-256 都固定。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 

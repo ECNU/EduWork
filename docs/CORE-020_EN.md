@@ -21,6 +21,6 @@ Older Alpha packages disabled automatic updates without recording whether that w
 
 ## Assembly
 
-The desktop workflow's explicit `source_stable` mode builds `0.4.0` using the pinned official npm Runtime and product plugins rebuilt from that commit, retaining receipts and software updates. `source_alpha` continues to require a development version and disables automatic updates; the modes are mutually exclusive. Stable macOS assembly requires trusted Sparkle configuration. Publication still requires main, both successful platforms and approved version-specific notes, with verification and upload performed in CI.
+The desktop workflow's explicit `source_stable` mode builds `0.4.0` using the pinned official npm Runtime and product extensions rebuilt from that commit, except for the separately verified npm literature package, retaining receipts and software updates. `source_alpha` continues to require a development version and disables automatic updates; the modes are mutually exclusive. Stable macOS assembly requires trusted Sparkle configuration. Publication still requires main, both successful platforms and approved version-specific notes, with verification and upload performed in CI.
 
 Institution editions must update their signed configuration for `0.2.0-rc.1`; changing a version string cannot replace a compatible signed release. School connection configuration and internal feedback API drafts are not included in this repository.

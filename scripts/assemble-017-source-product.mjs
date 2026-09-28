@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { installProductHost } from '../dsh-host/install-product-host.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
+import assert from 'node:assert/strict'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (Object.values(values).length !== 5) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
@@ -19,6 +20,13 @@ const json = async file => JSON.parse(await readFile(file, 'utf8'))
 const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
 if (receipt.dshVersion !== '0.2.0-rc.1' || receipt.dshCommit !== '4878cdabd87d4041bdaff61d04c966883b9fd07a') throw new Error('Unqualified candidate Runtime')
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
+const literatureLock = await json(join(repository, 'third_party/dsh/candidate-v0.2.0-rc.1/literature.json'))
+const literatureManifest = await json(join(paths.dependencies, 'node_modules', literatureLock.name, 'package.json'))
+const productDependencyLock = await json(join(paths.dependencies, 'package-lock.json'))
+assert.equal(literatureLock.publicationStatus, 'published')
+assert.equal(literatureManifest.name, literatureLock.name)
+assert.equal(literatureManifest.version, literatureLock.version)
+assert.equal(productDependencyLock.packages['node_modules/' + literatureLock.name]?.integrity, literatureLock.npm.integrity)
 const sourceMediaTemplate = await verifyMediaTemplate(join(paths.source, 'packages/dsh-knowledge-studio/packages/artifact-services'))
 await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')
@@ -36,7 +44,7 @@ for (const entry of await readdir(join(paths.dependencies, 'node_modules'), { wi
   else await copyDependency(entry.name)
 }
 const sourceFolders = [...distribution.plugins.map(row => row.source), 'dsh-plugins/skill-control-native',
-  ...['dsh-mail', 'dsh-memory', 'dsh-oidc', 'dsh-knowledge-studio', 'dsh-literature'].map(name => 'packages/' + name),
+  ...['dsh-mail', 'dsh-memory', 'dsh-oidc', 'dsh-knowledge-studio'].map(name => 'packages/' + name),
   'packages/dsh-knowledge-studio/packages/artifact-services']
 const sourcePackages = []
 for (const folder of new Set(sourceFolders)) {
@@ -68,7 +76,7 @@ const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.co
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', pluginMode: 'source-qualification', published: false,
   bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature'],
-  sourcePackages, externalPackages: [], omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
+  sourcePackages, externalPackages: [literatureLock], omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
 }
 await writeFile(join(paths.output, 'assembly.json'), JSON.stringify(identity, null, 2) + '\n')
 await writeFile(join(paths.output, 'composition.json'), JSON.stringify(composition, null, 2) + '\n')
@@ -76,7 +84,7 @@ await installProductHost({ product: paths.output, adapter: paths.host })
 const runtimeManifestPath = join(paths.output, 'd/package.json')
 const runtimeManifest = await json(runtimeManifestPath)
 const installed = await json(join(paths.output, 'assembly.json'))
-for (const name of [...sourcePackages, ...Object.keys(installed.desktopHost.nativePlugins)]) {
+for (const name of [...sourcePackages, literatureLock.name, ...Object.keys(installed.desktopHost.nativePlugins)]) {
   const manifest = await json(join(modules, name, 'package.json'))
   runtimeManifest.dependencies[name] = manifest.version
 }

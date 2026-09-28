@@ -9,6 +9,7 @@ import {Readable} from 'node:stream'
 import {pipeline} from 'node:stream/promises'
 import {githubUpdateManifestBytes, updateManifestName} from './github-update-manifest.mjs'
 import {validateExtractorReceipt} from './publish-windows-release.mjs'
+import {bundleVersion} from './macos-update-feed.mjs'
 
 const sha = /^[a-f0-9]{40}$/
 const digest = /^[a-f0-9]{64}$/
@@ -59,6 +60,10 @@ export function validateCandidateReceipt(receipt, context) {
     if (!version.includes('-dev.')) assert.equal(receipt.checks.updateContract, 'passed')
   }
   else {
+    if (!version.includes('-dev.')) {
+      assert.equal(receipt.sparkleEnabled, true, 'Stable macOS requires Sparkle updates')
+      assert.equal(receipt.bundleVersion, bundleVersion(version), 'Sparkle bundle version mismatch')
+    }
     assert.equal(receipt.checks.macosDmg, 'passed')
     assert.equal(receipt.checks.readOnlyApplication, 'passed')
     for (const check of ['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow']) assert.equal(receipt.installer.checks[check], 'passed', check)

@@ -49,8 +49,6 @@ Plugins provide executable capabilities, service connections, and interfaces. Th
 
 **Bundled does not mean every external service is already connected.** The public edition contains no institution accounts, model allowances, or private credentials. See the [distribution manifest](config/distributions/generic.json) for the full combination. Public npm plugins can also be used independently in other DSH applications with compatible versions.
 
-We maintain [`@eduwork/dsh-literature`](packages/dsh-literature/README_EN.md) for DSH 0.2, forked from [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature). It supports DBLP, arXiv, BibTeX and available full text, with more sources planned. Existing clients still use the community package listed above.
-
 ## Bundled skills
 
 Skills describe task methods and workflows, using tools supplied by plugins. They are managed separately from plugins; conversations and Studio share the same creation capabilities.

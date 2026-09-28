@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.3.6-dev.20260921.2",
+  "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T16:42:29.587Z",
-  "fileSetSHA256": "4fca298a5fc51f9266b1cbb14ff33c2b76f19bf597fde1747eb429c1fe1c5dc2",
+  "createdAt": "2026-09-28T17:12:15.895Z",
+  "fileSetSHA256": "fa9c90d2273a98bb7eccb922ec6aa89d6515f311e6646531002eec2b4fbcc4bd",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,7 +25,7 @@
     },
     {
       "path": ".github/workflows/desktop-candidates.yml",
-      "sha256": "69355823d0d688d1e8b0f127ee3d7a22cc9f782b0b38ab7e39eff43a61f87997"
+      "sha256": "0643e409e07316acee8d4e0863fcfd14a8766f1d5cefa5245c473eca8f23ac93"
     },
     {
       "path": ".github/workflows/development-windows.yml",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "ca828da1be79a50f6dcbc16d1b1a7600a75a130ae88dc5a0b9547068a0466ae8"
+      "sha256": "a9d564c83ab33861a8db40857fe8be318f3df3ae783769f3c1e11776d607acf7"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -244,6 +244,14 @@
       "sha256": "b84b123a8497a8cee4c4170152a048238991b49abf0e03937472e0da02272847"
     },
     {
+      "path": "docs/CORE-020_EN.md",
+      "sha256": "70928fbdb4403f8575c46f42fd5694c7d11f5065ad776b9447296f17cedb2105"
+    },
+    {
+      "path": "docs/CORE-020.md",
+      "sha256": "723ef0c64716c6cefd8604aa1df72c8051fbd3dbdeb56b03dd0afe4064d9c340"
+    },
+    {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
       "sha256": "bb311dfe53b52cd626cf696c4082abec734c225ce9f247871c9ecd2c0efa2656"
     },
@@ -309,11 +317,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "b85fa2021663d08295e431feba67c790fcac348e14bbb563cae57e47a14d868a"
+      "sha256": "4ffaa7fb15b8dbaf68a94f9a9a4fc1712b337795ae2e09c12324b53d21508a89"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "4efb7c9e1cb9351ff164d6a5c6b800f8943f1fc5aeb56aeafb0f6908958636d7"
+      "sha256": "dc0d3b15714792bf590b81e1f0817c170ac329e7a92afa9a3be19ffc983c137f"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -653,11 +661,11 @@
     },
     {
       "path": "dsh-desktop/internal/updatecontrol/manager_test.go",
-      "sha256": "3adab8d1e6f1d343ac5dea74b3223483c25e53c7178590948a5da9a59ecf84a2"
+      "sha256": "86005ef0fbdde2ff72b893d6a1ae5139234b6a419d4380c12a4f72f8fd4b4c99"
     },
     {
       "path": "dsh-desktop/internal/updatecontrol/manager.go",
-      "sha256": "b98e2e982402647f5755aa4402680c07a6fd08d2566376b73f996f2c482dd82b"
+      "sha256": "fe8e0b06c4a8b55b708a39ee92c95f963c582822df3fdd9ba969ced27318ec5a"
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
@@ -768,6 +776,10 @@
       "sha256": "916eb17466d6890ad70bda72b4435ec9ce9722270ea0d00061527d611702c54d"
     },
     {
+      "path": "dsh-electron/entitlements.plist",
+      "sha256": "48164d04a22347aeba9188068a12b8e8ee5d396e36d00aa36bc762fe224c0630"
+    },
+    {
       "path": "dsh-electron/LICENSE-Sparkle",
       "sha256": "389a4e4e9a32f059775b13a06e25a591445ba229d2838d26dd3e7c0c45127cfe"
     },
@@ -789,7 +801,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
-      "sha256": "78e5c23ddcbb5463d32488f29989889219178371722f49c78222264059cb0141"
+      "sha256": "850c813e9142047947394fbe9ba728ef25f21f19feccfc050728649ddb2a9930"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -801,11 +813,11 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "8f606406c53d6d3664cf08eee103226e06b20ef7e22b42235e007bff2650eb09"
+      "sha256": "e44f7dad5fb40e73b5c3e0a7ceee1eb6fdd0fbeff89b88388eff62de8c2d451c"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
-      "sha256": "b48b023f4d881f71200493478518d807c778102f05403c0346c5dbf81aee7833"
+      "sha256": "0d0eed907f74a44be94a771d03a78b72f75fd85ba5c760c1601ada7b88e69b06"
     },
     {
       "path": "dsh-electron/scripts/pack-migration-release.ps1",
@@ -836,6 +848,10 @@
       "sha256": "11568750d668e4d4720c525ed7df89fa2e4cc65cb043333e49e0b92f2e009104"
     },
     {
+      "path": "dsh-electron/src/alpha-update-migration.mjs",
+      "sha256": "e24109105db7877a791de352e516402ced82e95903ef603c10670a2596479cd2"
+    },
+    {
       "path": "dsh-electron/src/configuration-files.mjs",
       "sha256": "a640bc06ccb63a22590c9de274bb2c96395ab959c2eea2f7864eb51f416eaf53"
     },
@@ -853,7 +869,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
-      "sha256": "0fa489b68b2b0e06bcf36c608d69e48ad97fd0b3b6dc813406448e79f6a68a1e"
+      "sha256": "c0a02db101fd024f3fc173d1812baec38c8f70a101da2c5bb198b09a0b3efb81"
     },
     {
       "path": "dsh-electron/src/desktop-restart.mjs",
@@ -913,7 +929,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "50b49f4a97320d5d5782ab9e6e447adaed5d9e666b2dd447babe4b8ba6614674"
+      "sha256": "6d0ffd5c8c97dd73b9d34ec10d275b78f523c559287d4e30ff3e7993b6c915f1"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
@@ -924,12 +940,20 @@
       "sha256": "6c5e2d9aea6013d052e283e8e097e66326d43a4751aee192aca0d7ad15a1833e"
     },
     {
+      "path": "dsh-electron/src/update-channel-migration.mjs",
+      "sha256": "9e9e5e3232ed7dc3d8fdbcf0d8a0c2b39de269402ec9d675951372e2124bccb2"
+    },
+    {
       "path": "dsh-electron/src/update-coordinator.mjs",
       "sha256": "a7800aed537e0826653bfc3c63470e550a88479ef73fed0546747aaa07ca479d"
     },
     {
       "path": "dsh-electron/src/window-visibility.mjs",
       "sha256": "91811031f900ed9d325d034266592be198c697613fc0cff8998d7882a8cfc5de"
+    },
+    {
+      "path": "dsh-electron/tests/alpha-update-migration.test.mjs",
+      "sha256": "4c6a71a69f972b0201a4277e963df4435a7301206316b2b0a53ec1bdab292b7f"
     },
     {
       "path": "dsh-electron/tests/configuration-files.test.mjs",
@@ -949,7 +973,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
-      "sha256": "8947c5365a50610ae1fa951cbafe94a6b7b924117f66a1106d4aec0e236853eb"
+      "sha256": "1f589f5752039b31871d75e710a9d7334b8944cedc64ae924bc452a94e5789fa"
     },
     {
       "path": "dsh-electron/tests/desktop-restart.test.mjs",
@@ -1056,6 +1080,10 @@
       "sha256": "82e0fb57034483ba778b69c49fc8354f6353289e7d09cc9d775ff8bd9c66e7c6"
     },
     {
+      "path": "dsh-electron/tests/update-channel-migration.test.mjs",
+      "sha256": "0751bb6c4d46cdee2aabb9eb4b08effe291fa48fca425ae6f6f684d2dc86c02a"
+    },
+    {
       "path": "dsh-electron/tests/update-policy.test.mjs",
       "sha256": "141372843ac3e7c9eb3c7381cfa4e3be451a3dca5b7ebb7eea44fd85900b06e7"
     },
@@ -1085,7 +1113,7 @@
     },
     {
       "path": "dsh-electron/upstream-inputs-017.json",
-      "sha256": "95787993499a2ce0911e5e618b76e1d4b930e29f0c6e82749bcaa44c325be52e"
+      "sha256": "af336c584a9638e8f5006014cace71095d5ce1a8919bb057e882bfdb84622008"
     },
     {
       "path": "dsh-electron/upstream-inputs.json",
@@ -1117,7 +1145,7 @@
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "aede3a33f6f46e52013b18a128d0014c7925bbc2b3a174c5198fd554ad0cc911"
+      "sha256": "9f4748abaacbce514579a78f0369904373108a4ab2ec80cd1ae13692d2434677"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -1130,6 +1158,10 @@
     {
       "path": "dsh-host/diagnostics.mjs",
       "sha256": "2269f5154fc9a192c3c6f1e36d390d067c9c4b268157eab237a5f6f13c32a32c"
+    },
+    {
+      "path": "dsh-host/distribution-policy.mjs",
+      "sha256": "28aa32e08277924e26e1e3c0b0f1c7b7e03783bb0c855dbb0075ca59837abfae"
     },
     {
       "path": "dsh-host/enterprise-model-updates.mjs",
@@ -1149,7 +1181,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "797f537992c945bea10d5543e8b1edeba87105608fe70eab91719e3a5bea0c3f"
+      "sha256": "abe8c9c89b125181f74c72c483510dbb9d5a302fab6f8546e0f5bb0b08b9d419"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -1157,7 +1189,7 @@
     },
     {
       "path": "dsh-host/prepare-native.mjs",
-      "sha256": "b36dd836be4dbe91b94086c239e051caccaacd83103bf044a6e6205cea724a19"
+      "sha256": "9febde57ab2d9da76aa49b22d7ce60554ef05fcedbae3d3bf4eb2722c4e45ab0"
     },
     {
       "path": "dsh-host/prepare.mjs",
@@ -1173,7 +1205,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "8ef62cb7d0e7cf3d1c2655a8abb9eb6dca476ca6fbb76ba8e2f6069ea712d02b"
+      "sha256": "6933d3ca84c1b7ad13ed08229164781c91de9daf6d8376905a44a6379756a474"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1209,7 +1241,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "1fff7337181fe75bdf800c4c46580d7ab39e1899c97a3d7aad5e775eff9d7f76"
+      "sha256": "bdadda47d2a04371636be84773d6f04278f69ddd5cffa94fe0ce6657d4a0a971"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
@@ -1232,6 +1264,10 @@
       "sha256": "2b0cbcc2b9a6e8e7ad9c847b5a5be72bf3c655b9f9cf3e42d25bdabe76774c5a"
     },
     {
+      "path": "dsh-host/test/native-020.test.mjs",
+      "sha256": "66d579d3f91fca0ddb0f8d274752424c0d3bcde145d4116c122aaa80c7d01950"
+    },
+    {
       "path": "dsh-host/test/native-resources.integration.test.mjs",
       "sha256": "b64e8c5b19abe63884a6c44fc5700e5e92ca4fc58bebb2e080dfaf5e88063750"
     },
@@ -1245,7 +1281,7 @@
     },
     {
       "path": "dsh-host/test/native-settings.test.mjs",
-      "sha256": "a177a6d54f5f198b7019714ba911e032d1650210d538ade99f607d2fac2aaee6"
+      "sha256": "b1f4d04bbaaa8746753add0228b4b9c96fdb2e603f77fcf7334e34c426d8bbbb"
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
@@ -1261,7 +1297,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "077fd7b9f2d9b0fbaa7c8a48a2ffd5cb1b3db2fe42aec001017c12019b2df34d"
+      "sha256": "9583f4a02544ca6745ac24e634f7c2102ae6296a6e35953b65d4c9e936a92059"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
@@ -1289,7 +1325,7 @@
     },
     {
       "path": "dsh-host/upstream-inputs-017.json",
-      "sha256": "83b906b9ef210deff49177ac468909c403d7f70dc60ddba2e0b8af8238d77cdc"
+      "sha256": "7d31ca29e614718655109ceb8aae9257432a036c36d154fa5c86ed5f3cbe6e15"
     },
     {
       "path": "dsh-host/user-config.mjs",
@@ -1426,6 +1462,10 @@
     {
       "path": "dsh-plugins/artifact-preview-native/lib/office.js",
       "sha256": "9ec155d446a07502b02a2dedb5fbb1a4d2360bf51b2d40bd1f0fbf03fb56ad98"
+    },
+    {
+      "path": "dsh-plugins/artifact-preview-native/lib/reveal-upstream.js",
+      "sha256": "473062e1eaf75f372ffd01685c7589220504320bd3eac4398fc4948c8706574b"
     },
     {
       "path": "dsh-plugins/artifact-preview-native/lib/reveal.js",
@@ -4749,11 +4789,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "3a6c4741d4c134695ef1ee68fc60d3db95cb18fd3c814a7cc4cd0a06b536fbf6"
+      "sha256": "911f9a58a369a9136f37693d987ea968792786ee6de5df0cc2c9a38289150f4f"
     },
     {
       "path": "README.md",
-      "sha256": "360865545359469f6c499d550ed4b36af09af6239cfb7fe4b7fa7e7088361990"
+      "sha256": "2995271eba98d9c1e3801c73dcb55448bd8b8dc20a659421bfd4ed7bcb509636"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
@@ -4765,7 +4805,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "c42691fda14b7a69c4d561a350122d5055a2b212e029492700b4b5e11042ba98"
+      "sha256": "3c8144ff8101a2c08fb047e0d491692db6ad1e7691a0c1a768e92950a4a3b6ed"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -4781,7 +4821,7 @@
     },
     {
       "path": "scripts/build-017-plugin-clients.mjs",
-      "sha256": "8e66875c3016cf0cdfc1a965331ec740ed53d803d08c9e2a8c7c78586d192586"
+      "sha256": "6ac5e2087545d9edd54468ee34b98f5b4fefa704d244003780950996d5ba31bf"
     },
     {
       "path": "scripts/build-eduwork-icons.mjs",
@@ -4805,7 +4845,7 @@
     },
     {
       "path": "scripts/ci-017-alpha-desktop.ps1",
-      "sha256": "87b2abea35aab614a335d8ac63c50141a85bd067ca2f5a262c5e63606f4ce819"
+      "sha256": "63d808725d36431c726ae720d34b345c4fa31ae845bc5388ebbb5fcd3d7b77b9"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
@@ -4853,7 +4893,7 @@
     },
     {
       "path": "scripts/github-update-manifest.mjs",
-      "sha256": "ef7e377750a940cc98ea3f2bb97551cb71c34602c9ea2b6abe46e1269d315978"
+      "sha256": "b5a8213d3949892eb75d4ecb84b7f97a2b07af2d476eef45948ba220b8b70acf"
     },
     {
       "path": "scripts/inspect-release-test-desktop.mjs",
@@ -4965,7 +5005,7 @@
     },
     {
       "path": "scripts/prepare-017-alpha-product.mjs",
-      "sha256": "f10ed2825f09eae5871e5625fd8e555a32e3323d5d091f6c7de15b00b38e5c74"
+      "sha256": "00c30312e074d4c6f887182edb393eb54e4243a80d1af51bbbdd59a5ab3d90ed"
     },
     {
       "path": "scripts/prepare-desktop-product.ps1",
@@ -5005,7 +5045,7 @@
     },
     {
       "path": "scripts/probe-017-deliverables.mjs",
-      "sha256": "8fbb372de68d88c2af7a6d0855c5849e77ce18701e9c51f5282340ddfef2437c"
+      "sha256": "03112004a15e7d0ebd037206e677049b2cfc84b46be83a1ffd752f20274504ef"
     },
     {
       "path": "scripts/probe-017-file-cards.mjs",
@@ -5013,7 +5053,7 @@
     },
     {
       "path": "scripts/probe-017-literature.mjs",
-      "sha256": "9b33f5f37be840958d3fd58108e458b2febb703407c33bddbd74294d33dcfe9d"
+      "sha256": "360ceb520fad8c993c4b871a5ef55ec263cd8f1196066cf1445fc6f12cef1b76"
     },
     {
       "path": "scripts/probe-017-source-product.mjs",
@@ -5021,7 +5061,7 @@
     },
     {
       "path": "scripts/probe-dsh-017-speech.mjs",
-      "sha256": "d09c7c02da406ed91b3128e1aae71421bee20eb7f582ed8cbb646bd80055131c"
+      "sha256": "325cd9d3ff5fc65107a0aca6d68082798321e40c3b0ce68f60a9120f41a431d3"
     },
     {
       "path": "scripts/probe-dsh-017.mjs",
@@ -5029,11 +5069,11 @@
     },
     {
       "path": "scripts/probe-eduwork-017-host.mjs",
-      "sha256": "8d4bf4d5f7f4203bf65203eadaa8688a8c7c6011bee8396071023861b33cad6b"
+      "sha256": "fb2ade5f954b41744c18896d8713022ec321805ddd80a881a1a90e7cc76834b4"
     },
     {
       "path": "scripts/probe-eduwork-017-settings.mjs",
-      "sha256": "1009d2362010bb8e5152574e9a4f4f86b2888fb4b1a4722079f06c05d57df72d"
+      "sha256": "bfdb1daf8ed41abb5b8ff30ef4a48d1a8a4ec0c9c1bcdc5d63b978222ec53f63"
     },
     {
       "path": "scripts/project-eduwork-runtime.mjs",
@@ -5041,7 +5081,7 @@
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
-      "sha256": "e1be559e500435e7c77f533e3240ed5ba747a00494777f49230cd50cb20caef9"
+      "sha256": "f3692a90ece819f0f6956ff5efdd63bc735cf788ef3244361b3d900dcdd8f7b5"
     },
     {
       "path": "scripts/publish-windows-release.mjs",
@@ -5077,7 +5117,7 @@
     },
     {
       "path": "scripts/test/media-template.test.mjs",
-      "sha256": "59e09a13bb65eb703844bbb8cf4e6527ae5dead058c7ff2226b27739f7b87da1"
+      "sha256": "e055d50bd63d8a2f9ff05972bed0641e9ef9035820c735c5cf061a9c6f396d25"
     },
     {
       "path": "scripts/test/npm-runtime.test.mjs",
@@ -5113,7 +5153,7 @@
     },
     {
       "path": "tests/desktop-candidate-publication.test.mjs",
-      "sha256": "1586a388fd320f7ef596d86545ffaaae1a7c77f6b7184be3ea25789e4773c1b5"
+      "sha256": "d7310b9c69d3b125e46700d834c603442adf37407ee906dbd1f95a7cb9e02ab5"
     },
     {
       "path": "tests/desktop-enterprise-ui-acceptance.mjs",
@@ -5209,7 +5249,7 @@
     },
     {
       "path": "third_party/dsh-literature/NOTICE.md",
-      "sha256": "403cc5d348cb2658e9cf2982119e4df03db04b4a682040e9213ab2b15c404fed"
+      "sha256": "6f25002bafef23bfa3a3885e240997c6dcd7aa91203163e75c88f22d672932aa"
     },
     {
       "path": "third_party/dsh/candidate-v0.1.7-alpha.2/LOCK.json",
@@ -5294,6 +5334,38 @@
     {
       "path": "third_party/dsh/candidate-v0.1.7-rc.2/source-probe/package.json",
       "sha256": "44d91b4b795249307a2da9104eca597ff8ea664bd1e969691c79073d2ed65621"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/desktop-probe/package-lock.json",
+      "sha256": "81d59f522355f883c98f7d30a02a149f0277f182d48cac28b4bb9bf4df159f2f"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/desktop-probe/package.json",
+      "sha256": "e43ce4b11070e035712b5db694a2ebf90462d8b8236427c022d400b1c235ddd7"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/literature.json",
+      "sha256": "ae80c765d165ad102b1d1eced80baee5dbfdc0acd3f8c6f849547ed6a770ba9f"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/LOCK.json",
+      "sha256": "2c000fff21b62a125bb1bc652b8716887b0bf69fde050eb639e11e1e29465c78"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/npm-runtime/package-lock.json",
+      "sha256": "a2a4f276e1e50d021fc44aa7fab948e076b3f29b3847bcdb64201c7609faa16b"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/npm-runtime/package.json",
+      "sha256": "486821ebb0ddedab01e7dae3a9003b5c5861ed561f443f7ec408e0bb24912eba"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/source-probe/package-lock.json",
+      "sha256": "26d05cf9f9747f119236b963b3332949b82452209ef61b919d1104fbd7598191"
+    },
+    {
+      "path": "third_party/dsh/candidate-v0.2.0-rc.1/source-probe/package.json",
+      "sha256": "1849ca90fb6a642c2c919102682b88aad1e9f1a99237e64f9a8c216bbac4c10d"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
@@ -5442,6 +5514,13 @@
       "path": null,
       "source": "registry",
       "sha256": "86e948f4be7c8f13107a366efb43abc1d7dc8301583c4662f9145e2d20e519c7"
+    },
+    {
+      "name": "@eduwork/dsh-literature",
+      "version": "0.1.0",
+      "commit": "43cc526b1f800391c15e248fa1a8eba1db753fba",
+      "sha256": "7df06096b1a1bcfa440933a1501e06b56e08e13d87df97196120fc52ed583c25",
+      "lock": "third_party/dsh/candidate-v0.2.0-rc.1/literature.json"
     }
   ],
   "reviewedCompatibility": [

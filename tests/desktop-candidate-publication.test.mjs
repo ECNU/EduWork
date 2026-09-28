@@ -5,6 +5,7 @@ import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createHash} from 'node:crypto'
 import {githubUpdateManifestBytes, updateManifestName} from '../scripts/github-update-manifest.mjs'
+import {bundleVersion} from '../scripts/macos-update-feed.mjs'
 import {assetNames, validateRun, validateCandidateReceipt, validatedCandidateFiles, verifyRemoteAssets, publishCandidate} from '../scripts/publish-desktop-candidate.mjs'
 
 const globalContext = {product: 'EduWork', version: '0.3.6-dev.20260928.2', distribution: 'eduwork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40)}
@@ -26,6 +27,7 @@ async function fixture(platform, context = globalContext) {
     receipt.portableExtractor = {asset: extra, receipt: await file(names[5], JSON.stringify(extractor), false)}
   } else receipt.installer = {asset: extra, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}
   if (platform === 'windows' && !context.version.includes('-dev.')) await file(updateManifestName, githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), false)
+  if (platform === 'macos') Object.assign(receipt, {sparkleEnabled: !context.version.includes('-dev.'), bundleVersion: bundleVersion(context.version)})
   await writeFile(join(directory, names[2]), JSON.stringify(receipt))
   return {directory, names, receipt, context: {...context, platform}}
 }
@@ -102,5 +104,9 @@ for (const platform of ['windows', 'macos']) test('stable ' + platform + ' carri
     await assert.rejects(validatedCandidateFiles(data.directory, data.context), /Update manifest differs/)
     const invalid = structuredClone(data.receipt); delete invalid.checks.updateContract
     assert.throws(() => validateCandidateReceipt(invalid, data.context))
+  } else {
+    for (const changed of [{sparkleEnabled: false}, {sparkleEnabled: undefined}, {bundleVersion: '0'}, {bundleVersion: undefined}]) {
+      assert.throws(() => validateCandidateReceipt({...data.receipt, ...changed}, data.context), /Sparkle/)
+    }
   }
 })

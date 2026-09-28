@@ -49,8 +49,6 @@ EduWork 的重点是把教育工作需要的能力组合好：**开放的机构�
 
 **随包提供不等于所有外部服务都已开通。** 公版不包含学校账号、模型额度或私人凭据。完整组合见[发行清单](config/distributions/generic.json)；公共 npm 插件也可供匹配版本的其他 DSH 应用独立使用。
 
-我们正在维护面向 DSH 0.2 的独立文献包 [`@eduwork/dsh-literature`](packages/dsh-literature/README.md)，fork 自 [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature)。目前支持 DBLP、arXiv、BibTeX 与可用全文，计划逐步拓展文献来源；现有客户端仍使用上表中的社区包。
-
 ## 随包技能
 
 技能（Skills）提供任务方法与操作指引，调用插件提供的工具。它们与插件分别管理，对话和 Studio 共用同一套创作能力。
