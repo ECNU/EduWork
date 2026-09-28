@@ -31,7 +31,7 @@ def detach_image(device, attempts=20):
         # mount path then disappears; retry the stable device, not that path.
         info = subprocess.run(['hdiutil', 'info', '-plist'], check=True, capture_output=True)
         images = plistlib.loads(info.stdout)['images']
-        if not any(entity.get('dev-entry') == device for image in images
+        if not any(entity.get('dev-entry', '') == device or entity.get('dev-entry', '').startswith(device + 's') for image in images
                    for entity in image.get('system-entities', [])):
             return
         if attempt + 1 < attempts:

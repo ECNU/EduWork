@@ -20,7 +20,9 @@ class VolumeTest(unittest.TestCase):
         self.assertIn('-readonly', run.call_args.args[0])
 
     def test_busy_device_is_retried_without_forcing_eject(self):
-        info = {'images': [{'system-entities': [{'dev-entry': '/dev/disk9'}]}]}
+        # The inventory may list only the remaining partition after a partial
+        # unmount. It still belongs to the disk being detached.
+        info = {'images': [{'system-entities': [{'dev-entry': '/dev/disk9s2'}]}]}
         with patch.object(volume.subprocess, 'run', side_effect=[result(16), result(data=info), result()]) as run, \
                 patch.object(volume.time, 'sleep'):
             volume.detach_image('/dev/disk9')

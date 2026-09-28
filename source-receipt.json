@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.3.6-dev.20260921.2",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-28T08:15:39.361Z",
-  "fileSetSHA256": "ba7d1fb300ba42939b55e656e7c1e25ef75fe4c959bb24382578dfbaa32b577d",
+  "createdAt": "2026-09-28T08:18:07.916Z",
+  "fileSetSHA256": "c2a9a110b73e61197c860127e8450741ac3bcf85657c7ba18ef0031789f0f29a",
   "files": [
     {
       "path": ".gitattributes",
@@ -4673,11 +4673,11 @@
     },
     {
       "path": "scripts/macos-dmg/test_volume.py",
-      "sha256": "185f5db815636b791461d5fe094f0c575650cd0023906baa546743d565122963"
+      "sha256": "b24d7f11808d22968359468a20f3131056ffb76d571a1608ff8308fc5927ea3d"
     },
     {
       "path": "scripts/macos-dmg/volume.py",
-      "sha256": "cd04da46e6d982dc0afbb7194dd141a7dfe1a9731212369bc6c3cfbb44001559"
+      "sha256": "bd8ae7d6bca873a9b612af46393f962849221ba3769e02719157b8e898b18824"
     },
     {
       "path": "scripts/macos-update-feed.mjs",
