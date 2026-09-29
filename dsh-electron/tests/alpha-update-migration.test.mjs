@@ -112,3 +112,39 @@ test('custom legacy bridge routes and release links prevent public-default migra
   await migrateAlphaUpdates({ ...input, choose: assert.fail })
   assert.equal(loadUserConfig(input.config).updates.releasesURL, 'https://updates.example.org/releases')
 })
+
+test('old Mac Alpha with normalized empty feeds can opt into the packaged stable appcast', async t => {
+  const input = await fixture(t, {provider:'disabled', defaultPolicy:'development', macFeeds:{}})
+  const macFeeds = {stable:'https://updates.example.org/stable.xml'}
+  let prompts = 0
+  await migrateAlphaUpdates({...input, platform:'darwin', defaults:{macFeeds}, choose:async () => {prompts++; return 'enable'}})
+  assert.equal(prompts, 1)
+  assert.deepEqual(loadUserConfig(input.config).updates.macFeeds, macFeeds)
+  await migrateAlphaUpdates({...input, platform:'darwin', defaults:{macFeeds}, choose:assert.fail})
+})
+
+test('known 0.4.0 prereleases retain a one-time update choice on stable upgrade', async t => {
+  for (const productVersion of ['0.4.0-alpha.1','0.4.0-beta.1','0.4.0-rc.1','0.4.0-dev.20260929.1']) {
+    const input = await fixture(t)
+    await writeFile(join(input.logs,'desktop-start.json'), JSON.stringify({productVersion,dshVersion:'0.2.0-rc.1'}))
+    let prompts = 0
+    await migrateAlphaUpdates({...input, choose:async () => {prompts++; return 'disabled'}})
+    assert.equal(prompts, 1, productVersion)
+    assert.equal(loadUserConfig(input.config).updates.provider, 'disabled')
+    await migrateAlphaUpdates({...input, choose:assert.fail})
+  }
+})
+
+test('new Alpha detection preserves unknown origins, real Mac feeds and prerelease destinations', async t => {
+  for (const prior of [{productVersion:'0.4.0-alpha.1',dshVersion:'9.0.0'}, {productVersion:'0.4.0',dshVersion:'0.2.0-rc.1'}]) {
+    const input = await fixture(t)
+    await writeFile(join(input.logs,'desktop-start.json'), JSON.stringify(prior))
+    await migrateAlphaUpdates({...input, choose:assert.fail})
+  }
+  const input = await fixture(t, {provider:'disabled',macFeeds:{stable:'https://updates.example.org/custom.xml'}})
+  const before = await readFile(input.config,'utf8')
+  await migrateAlphaUpdates({...input, platform:'darwin', defaults:{macFeeds:{stable:'https://updates.example.org/packaged.xml'}}, choose:assert.fail})
+  assert.equal(await readFile(input.config,'utf8'), before)
+  const alpha = await fixture(t)
+  await migrateAlphaUpdates({...alpha, version:'0.4.0-alpha.1', choose:assert.fail})
+})

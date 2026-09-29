@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T02:57:34.659Z",
-  "fileSetSHA256": "36f82bacde5672a103620b7246c4aa07cf1e4e8e987ca03a3ddbc35ef1bad2f6",
+  "createdAt": "2026-09-29T03:02:09.141Z",
+  "fileSetSHA256": "41c013761f5925eb311f5b0c714e9a1a6fb5e83f66e65a0cd7a8a21b08a53ef5",
   "files": [
     {
       "path": ".gitattributes",
@@ -857,7 +857,7 @@
     },
     {
       "path": "dsh-electron/src/alpha-update-migration.mjs",
-      "sha256": "e24109105db7877a791de352e516402ced82e95903ef603c10670a2596479cd2"
+      "sha256": "dfdcb54d323acf2a309779cbaf6a71c92446eeab97f14fe3ac62341b53b1abda"
     },
     {
       "path": "dsh-electron/src/configuration-files.mjs",
@@ -949,7 +949,7 @@
     },
     {
       "path": "dsh-electron/src/update-channel-migration.mjs",
-      "sha256": "9e9e5e3232ed7dc3d8fdbcf0d8a0c2b39de269402ec9d675951372e2124bccb2"
+      "sha256": "5d2961ac48cde1f55480c43369895c5caaa4e537957ad2bbbf81af1292aeadec"
     },
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
@@ -961,7 +961,7 @@
     },
     {
       "path": "dsh-electron/tests/alpha-update-migration.test.mjs",
-      "sha256": "dbe6c2f973bfae3e3bd53d3449da2ffe139f049a2d75a5018fdfdab949692018"
+      "sha256": "c501fa5acd582e3386b1f7965d1ce5800f4fc478ffbb056898898b3f4c1944a4"
     },
     {
       "path": "dsh-electron/tests/configuration-files.test.mjs",
@@ -1089,7 +1089,7 @@
     },
     {
       "path": "dsh-electron/tests/update-channel-migration.test.mjs",
-      "sha256": "0751bb6c4d46cdee2aabb9eb4b08effe291fa48fca425ae6f6f684d2dc86c02a"
+      "sha256": "56e250c86e9e377a6b25fcad30a40fd751675333acc0b9089998948d51ab6b42"
     },
     {
       "path": "dsh-electron/tests/update-policy.test.mjs",

@@ -26,8 +26,12 @@ export async function migrateAlphaUpdates({ version, dataRoot, config, logs, def
   if (!current) return
   if (!receipt) {
     const prior = await read(join(logs, 'desktop-start.json'))
-    if (!/^0\.3\.6-dev\.\d{8}\.[1-9]\d*$/u.test(prior?.productVersion ?? '') || prior?.dshVersion !== '0.1.7-rc.2') return
-    if (current.value.updates?.provider !== 'disabled' || current.value.updates.manifestURL || current.value.updates.repository || current.value.updates.macFeeds || current.value.updates.releasesURL) return
+    const oldAlpha = /^0\.3\.6-dev\.\d{8}\.[1-9]\d*$/u.test(prior?.productVersion ?? '') && prior?.dshVersion === '0.1.7-rc.2'
+    const currentAlpha = /^0\.4\.0-(?:(?:alpha|beta|rc)\.[1-9]\d*|dev\.\d{8}\.[1-9]\d*)$/u.test(prior?.productVersion ?? '') && prior?.dshVersion === '0.2.0-rc.1'
+    if (!oldAlpha && !currentAlpha) return
+    const macFeeds = current.value.updates?.macFeeds
+    const customFeeds = macFeeds !== undefined && (macFeeds === null || typeof macFeeds !== 'object' || Array.isArray(macFeeds) || Object.keys(macFeeds).length > 0)
+    if (current.value.updates?.provider !== 'disabled' || current.value.updates.manifestURL || current.value.updates.repository || customFeeds || current.value.updates.releasesURL) return
     // A legacy Go bridge may be the only record of a custom/institution route.
     // Preserve that installation instead of materializing the public default.
     if (priorUpdates?.schemaVersion === 1 && (priorUpdates.manifestBaseURL || priorUpdates.repository)) return

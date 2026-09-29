@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { migrateUpdateChannel } from '../src/update-channel-migration.mjs'
+import { migrateUpdateChannel, usesStableDefault } from '../src/update-channel-migration.mjs'
 
 async function fixture(t, saved) {
   const dataRoot = await mkdtemp(join(tmpdir(), 'eduwork-channel-'))
@@ -44,4 +44,20 @@ test('invalid preferences fail without replacement; old versions retain prior de
   assert.equal(await readFile(f.preferences, 'utf8'), original)
   const old = await fixture(t, { schemaVersion: 1, policy: 'development' })
   assert.equal(await migrateUpdateChannel({ ...old, version: '0.3.6' }), 'development')
+})
+
+test('prereleases do not migrate preferences or consume the future stable migration receipt', async t => {
+  for (const version of ['0.4.0-alpha.1','0.4.0-beta.1','0.4.0-rc.1','0.4.0-dev.20260929.1','1.0.0-alpha.1']) {
+    assert.equal(usesStableDefault(version), false)
+    for (const source of ['user','packaged-default']) {
+      const f = await fixture(t, {schemaVersion:1, policy:'development', source})
+      const before = await readFile(f.preferences,'utf8')
+      assert.equal(await migrateUpdateChannel({...f,version}), 'development')
+      assert.equal(await readFile(f.preferences,'utf8'), before)
+      await assert.rejects(readFile(join(f.dataRoot,'state/update-channel-040.json')), {code:'ENOENT'})
+      assert.equal(await migrateUpdateChannel(f), source === 'user' ? 'development' : 'stable')
+    }
+  }
+  assert.equal(usesStableDefault('0.4.0'), true)
+  assert.equal(usesStableDefault('1.0.0'), true)
 })

@@ -18,7 +18,7 @@ async function atomic(path, value) {
 }
 
 export function usesStableDefault(version) {
-  const match = /^(\d+)\.(\d+)\.(\d+)(?:-|$)/u.exec(version)
+  const match = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/u.exec(version)
   return !!match && (Number(match[1]) > 0 || Number(match[2]) >= 4)
 }
 
