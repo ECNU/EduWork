@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T06:08:37.657Z",
-  "fileSetSHA256": "591e1d8ade2f31951904771483b2cfad952577fcc373cb9333d2c14dad8dbafb",
+  "createdAt": "2026-09-29T06:16:01.005Z",
+  "fileSetSHA256": "81c7f5d6249e1b3674d2b65fc003be236a685a044a60ee3d483fb454b8a20802",
   "files": [
     {
       "path": ".gitattributes",
@@ -389,7 +389,7 @@
     },
     {
       "path": "docs/releases/0.4.0-alpha.2.md",
-      "sha256": "de9620c7f9d74a87acc557d17e6b963fb0c15a26e7bb395acc69b1a0862db10e"
+      "sha256": "a55e9b8b5ba6f25e0a849e57fa0aa65a41fa8a13b09f2f03f6d850ebbb0cd655"
     },
     {
       "path": "docs/UPDATES.md",
