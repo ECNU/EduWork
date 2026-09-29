@@ -17,7 +17,13 @@ export function verifyGenericFirstLaunch(identity, config) {
     assert.equal(config.updates.provider, 'github')
     assert.equal(config.updates.repository, 'ECNU/EduWork')
     assert.equal(config.updates.defaultPolicy, 'stable')
-  } else assert.deepEqual(config.updates, { provider: 'disabled', defaultPolicy: 'development' })
+  } else {
+    // macOS normalization retains an empty feed map even when updates are
+    // disabled. No feed URL or other update source may survive in an Alpha.
+    const { macFeeds, ...policy } = config.updates
+    if (Object.hasOwn(config.updates, 'macFeeds')) assert.deepEqual(macFeeds, {})
+    assert.deepEqual(policy, { provider: 'disabled', defaultPolicy: 'development' })
+  }
   return { passed: true, channel: stable ? 'stable' : 'development', provider: config.updates.provider }
 }
 

@@ -30,3 +30,11 @@ test('Alpha first launch rejects enabled updates, stable policy and stray update
     assert.throws(() => verifyGenericFirstLaunch(identity, {...config, updates:{...config.updates, ...changes}}))
   }
 })
+
+test('Alpha accepts normalized empty Mac feeds but rejects any active or malformed feed map', () => {
+  const { identity, config } = fixture(false)
+  assert.equal(verifyGenericFirstLaunch(identity, {...config, updates:{...config.updates, macFeeds:{}}}).passed, true)
+  for (const macFeeds of [{stable:'https://example.invalid/appcast.xml'}, {development:'https://example.invalid/dev.xml'}, null, [], '']) {
+    assert.throws(() => verifyGenericFirstLaunch(identity, {...config, updates:{...config.updates, macFeeds}}))
+  }
+})
