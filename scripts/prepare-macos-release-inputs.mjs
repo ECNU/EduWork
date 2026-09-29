@@ -20,6 +20,7 @@ import {
   capture, copyFileTo, copyTree, download, ensureDir, fullPath, isMacOS, isMainModule,
   pathExists, readJSON, run, sha256File, writeJSON, writeText,
 } from './lib/build-util.mjs'
+import { cachedCompile, compileKey } from './lib/native-compile-cache.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -103,19 +104,44 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
   const openssl = join(output, 'openssl')
   const buildEnv = { MACOSX_DEPLOYMENT_TARGET: '15.0' }
   const opensslSource = join(output, 'openssl-source')
-  await run('perl', ['./Configure', 'darwin64-arm64-cc', `--prefix=${openssl}`, '--libdir=lib', 'no-tests'], { cwd: opensslSource, env: buildEnv })
-  await run('make', ['-j3'], { cwd: opensslSource, env: buildEnv })
-  await run('make', ['install_sw'], { cwd: opensslSource, env: buildEnv })
+  // The compile layers are cached by source + patch + target + tool versions, so
+  // an unchanged OpenSSL or whisper.cpp is not rebuilt. Each entry is re-hashed
+  // against its manifest on restore.
+  await cachedCompile({
+    key: await compileKey({
+      name: 'openssl-darwin64-arm64',
+      parts: { source: lock.openssl.sha256, target: 'darwin64-arm64-cc', prefix: 'no-tests' },
+      tools: { perl: ['-v'], make: ['--version'], cc: ['--version'] },
+    }),
+    outputs: { openssl },
+    label: `openssl ${lock.openssl.version}`,
+    build: async (name, destination) => {
+      await run('perl', ['./Configure', 'darwin64-arm64-cc', `--prefix=${destination}`, '--libdir=lib', 'no-tests'], { cwd: opensslSource, env: buildEnv })
+      await run('make', ['-j3'], { cwd: opensslSource, env: buildEnv })
+      await run('make', ['install_sw'], { cwd: opensslSource, env: buildEnv })
+    },
+  })
 
   await extract(await downloadAsset(lock.whisper, 'whisper.tar.gz'), join(output, 'whisper-source'))
-  await run('cmake', [
-    '-S', join(output, 'whisper-source'), '-B', join(output, 'whisper-build'),
-    '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0', '-DBUILD_SHARED_LIBS=OFF',
-    '-DGGML_METAL=OFF', '-DGGML_BLAS=OFF', '-DGGML_NATIVE=OFF', '-DWHISPER_BUILD_TESTS=OFF', '-DWHISPER_CURL=OFF',
-  ], { env: buildEnv })
-  await run('cmake', ['--build', join(output, 'whisper-build'), '--config', 'Release', '--target', 'whisper-cli', '--parallel', '3'], { env: buildEnv })
-  await ensureDir(join(output, 'speech'))
-  await copyFileTo(join(output, 'whisper-build/bin/whisper-cli'), join(output, 'speech/whisper-cli'))
+  await cachedCompile({
+    key: await compileKey({
+      name: 'whisper-cli-darwin-arm64',
+      parts: { source: lock.whisper.sha256, deploymentTarget: '15.0', shared: 'OFF', metal: 'OFF', blas: 'OFF', native: 'OFF' },
+      tools: { cmake: ['--version'], cc: ['--version'] },
+    }),
+    outputs: { 'whisper-cli': join(output, 'speech/whisper-cli') },
+    label: `whisper.cpp ${lock.whisper.version}`,
+    build: async (name, destination) => {
+      await run('cmake', [
+        '-S', join(output, 'whisper-source'), '-B', join(output, 'whisper-build'),
+        '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0', '-DBUILD_SHARED_LIBS=OFF',
+        '-DGGML_METAL=OFF', '-DGGML_BLAS=OFF', '-DGGML_NATIVE=OFF', '-DWHISPER_BUILD_TESTS=OFF', '-DWHISPER_CURL=OFF',
+      ], { env: buildEnv })
+      await run('cmake', ['--build', join(output, 'whisper-build'), '--config', 'Release', '--target', 'whisper-cli', '--parallel', '3'], { env: buildEnv })
+      await ensureDir(dirname(destination))
+      await copyFileTo(join(output, 'whisper-build/bin/whisper-cli'), destination)
+    },
+  })
   // The model is pinned here rather than read from a product, so this tree stays
   // reusable; `install` checks the same id against the product's catalog.
   const model = speechModelLock()

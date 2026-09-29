@@ -11,7 +11,7 @@ import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
   ensureDir, fullPath, isMacOS, isMainModule, isWindows, pathExists, readJSON,
-  removeTree, run, runNode, sha256File, writeJSON,
+  removeTree, run, runNode, setCacheRoot, sha256File, writeJSON,
 } from './lib/build-util.mjs'
 import { ciEduworkWeb } from './ci-eduwork-web.mjs'
 
@@ -48,11 +48,15 @@ export async function localDesktopPipeline({
   skipInstall = false,
   verifySnapshot = true,
   runtimeSource = '',
+  cacheRoot = '',
   jobs = 1,
   reuseWorkspace = false,
 } = {}) {
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot || coreRoot)
+  // Set before any work: the native-input stage downloads and compiles, and both
+  // layers read this root.
+  if (cacheRoot) setCacheRoot(cacheRoot)
   const name = coreRoot === editionRoot ? 'EduWork' : 'EduWork-ECNU'
   // The pinned compiler workspace uses the corepack/npm entries bundled with
   // Node.js 24; newer Node releases no longer ship corepack.
@@ -170,6 +174,7 @@ if (isMainModule(import.meta.url)) {
       'skip-install': { type: 'boolean' },
       'no-verify-snapshot': { type: 'boolean' },
       'runtime-source': { type: 'string' },
+      'cache-root': { type: 'string' },
       jobs: { type: 'string' },
       'reuse-workspace': { type: 'boolean' },
     },
@@ -184,6 +189,7 @@ if (isMainModule(import.meta.url)) {
     skipInstall: Boolean(values['skip-install']),
     verifySnapshot: !values['no-verify-snapshot'],
     runtimeSource: values['runtime-source'] ?? '',
+    cacheRoot: values['cache-root'] ?? '',
     jobs: Number(values.jobs ?? 1),
     reuseWorkspace: Boolean(values['reuse-workspace']),
   })

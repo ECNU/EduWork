@@ -3,9 +3,10 @@
 // pinned downloads, native tool execution) with one Node.js implementation
 // that behaves identically on Windows, macOS and Linux.
 import { createHash } from 'node:crypto'
-import { createWriteStream } from 'node:fs'
-import { copyFile, cp, lstat, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises'
+import { createWriteStream, realpathSync } from 'node:fs'
+import { copyFile, cp, lstat, mkdir, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
+import { tmpdir } from 'node:os'
 import { pathToFileURL } from 'node:url'
 import { pipeline } from 'node:stream/promises'
 import { Readable } from 'node:stream'
@@ -104,10 +105,21 @@ export async function sha512Integrity(path) {
   return 'sha512-' + createHash('sha512').update(await readFile(path)).digest('base64')
 }
 
-export async function download(url, file, { sha256 = '', retries = 3 } = {}) {
+export async function download(url, file, { sha256 = '', retries = 3, cacheRoot: explicitRoot = '' } = {}) {
   if (!/^https:\/\//.test(url)) throw new Error(`Downloads require HTTPS: ${url}`)
-  if (sha256 && !/^[a-f0-9]{64}$/.test(sha256)) throw new Error(`Downloads require a pinned SHA-256: ${url}`)
+  if (sha256 && !/^[a-f0-9]{64}$/.test(sha256)) throw new Error('Downloads require a pinned SHA-256: ' + url)
   await ensureDir(dirname(file))
+  // A content-addressed cache hit skips the network entirely. Only a pinned
+  // download is cacheable: without a SHA-256 there is no key to trust, and
+  // storing an unverified response would make the cache a way around the pin.
+  const root = explicitRoot || cacheDirectory()
+  const cached = sha256 && root ? join(root, 'downloads', sha256.slice(0, 2), sha256) : ''
+  if (cached && await pathExists(cached)) {
+    await copyFileTo(cached, file)
+    if (await sha256File(file) === sha256) return file
+    // A corrupt entry is discarded rather than trusted; the fetch below refills it.
+    await removeTree(cached)
+  }
   let lastError
   for (let attempt = 1; attempt <= retries; attempt += 1) {
     try {
@@ -118,6 +130,14 @@ export async function download(url, file, { sha256 = '', retries = 3 } = {}) {
         const actual = await sha256File(file)
         if (actual !== sha256) throw new Error(`Resource hash mismatch: ${file} (${actual})`)
       }
+      if (cached) {
+        // Stage beside the entry and rename, so a concurrent reader never sees
+        // a partial file under a content address.
+        const staging = `${cached}.${process.pid}.tmp`
+        await ensureDir(dirname(cached))
+        await copyFileTo(file, staging)
+        await rename(staging, cached)
+      }
       return file
     } catch (error) {
       lastError = error
@@ -126,6 +146,32 @@ export async function download(url, file, { sha256 = '', retries = 3 } = {}) {
     }
   }
   throw lastError
+}
+
+/**
+ * Where download and compile caches live. Defaults to the OS temporary
+ * directory, never inside the repository: the source audit walks `coreRoot` and
+ * rejects generated content, so a cache in the tree is a build that poisons the
+ * next one.
+ */
+export function defaultCacheRoot() {
+  return join(realpathSync(tmpdir()), 'eduwork-native-cache')
+}
+
+// A process-wide setting rather than a parameter on every call: `download` is
+// reached through several layers, and threading a cache directory through them
+// would put build plumbing into signatures that have nothing to do with it.
+// Direct CLI use of a single script gets the default without asking for it.
+let cacheRoot = ''
+
+export function cacheDirectory() {
+  if (!cacheRoot) cacheRoot = process.env.EDUWORK_CACHE_ROOT || defaultCacheRoot()
+  return cacheRoot
+}
+
+export function setCacheRoot(path) {
+  cacheRoot = fullPath(path)
+  return cacheRoot
 }
 
 export function sleep(milliseconds) {
