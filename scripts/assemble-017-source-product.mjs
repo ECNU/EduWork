@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util'
 import { fileURLToPath } from 'node:url'
 import { installProductHost } from '../dsh-host/install-product-host.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
+import { copySourceSkills } from './copy-source-skills.mjs'
 import assert from 'node:assert/strict'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
@@ -56,10 +57,7 @@ for (const folder of new Set(sourceFolders)) {
 const mediaTemplate = await verifyMediaTemplate(join(modules, '@eduwork/dsh-artifact-services'))
 if (mediaTemplate.sha256 !== sourceMediaTemplate.sha256) throw new Error('Assembled media template differs from the source build')
 await cp(join(repository, 'config/desktop'), join(paths.output, 'resources/desktop'), { recursive: true })
-for (const skill of distribution.skills) {
-  const source = skill.sourcePackage ? join(modules, skill.sourcePackage, skill.sourcePath) : join(repository, skill.source)
-  await cp(source, join(paths.output, 'skills', skill.name), { recursive: true })
-}
+await copySourceSkills({ repository, packages: modules, skills: distribution.skills, output: join(paths.output, 'skills') })
 const insert = [
   { id: 'eduwork-artifact-services', name: '@eduwork/dsh-artifact-services/dsh', config: { skills: false, images: { enabled: false } } },
   { id: 'eduwork-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', config: { skills: false } },
