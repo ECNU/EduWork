@@ -51,6 +51,14 @@ Maintainers can inspect a binding with `npm trust list @eduwork/dsh-oidc --json`
 
 Do not store long-lived npm tokens. If publication is explicitly authorized before CI publication is verified, a maintainer can publish an inspected archive with an authenticated npm CLI and interactive verification, without claiming GitHub provenance.
 
+## Compatibility declarations and build locks
+
+`peerDependencies` describes supported host APIs. Development dependencies, `package-lock.json` and product locks identify exact build inputs. For a verified compatible API series, prefer a bounded peer range over enumerating every rc version. Check prerelease matching and exercise actual plugin loading and tool calls across the supported range; adjacent versions alone do not establish compatibility, and `*` is not a substitute for a boundary.
+
+Reuse an existing npm archive when its declared range covers a kernel upgrade and compatibility checks pass. Correcting an overly narrow published declaration still requires a new npm version because published versions are immutable, but this should not become a routine step for every rc update. Literature `0.1.1` continues to use its published rc.1/rc.2 declaration; a wider range needs a subsequent verified package release.
+
+Bundled source extensions are currently rebuilt for the candidate runtime, with DSH peers targeting that build. This qualifies that assembled artifact, not the original npm package on a new host. Maintain truthful source manifests for standalone publication; do not rewrite third-party packages or add compatibility exemptions.
+
 ## Product assembly
 
 `config/assembly.eduwork.json` still consumes published registry archives through exact version/SRI/SHA-256 locks in `third_party/npm-015-rc1/`. Editing package source cannot silently change a desktop build. Follow [the build guide](BUILD.md): publish, verify the registry, update locks, then build the product. A development workspace link is not release evidence.
