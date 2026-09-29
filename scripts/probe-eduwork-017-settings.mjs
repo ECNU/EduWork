@@ -26,8 +26,8 @@ for (const row of [...distribution.plugins, { name: '@chatecnu-work/dsh-skill-co
   localPackages.set(row.name, { root, manifest: JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) })
 }
 const receipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-assert.equal(receipt.dshVersion, '0.2.0-rc.1')
-assert.equal(receipt.dshCommit, '4878cdabd87d4041bdaff61d04c966883b9fd07a')
+assert.equal(receipt.dshVersion, '0.2.0-rc.2')
+assert.equal(receipt.dshCommit, '639ed015397290b3745d163aafe02ffee4aa3f84')
 await mkdir(output)
 const home = join(output, 'home'), profileDir = join(home, 'profiles', 'settings-probe')
 await mkdir(profileDir, { recursive: true })

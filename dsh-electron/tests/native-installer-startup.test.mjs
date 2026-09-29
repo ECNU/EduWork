@@ -32,6 +32,14 @@ for (const scenario of ['installed', 'moved', 'cancelled', 'second-instance', 'q
     t.mock.module(electron, { exports: { app, dialog: { showMessageBox: () => assert.fail('No tasks exist during installation') },
       protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
+    const prior = process.env.EDUWORK_LAUNCHER_TEST
+    process.env.EDUWORK_LAUNCHER_TEST = 'launcher-owned'
+    t.after(() => { if (prior === undefined) delete process.env.EDUWORK_LAUNCHER_TEST; else process.env.EDUWORK_LAUNCHER_TEST = prior })
+    mock('login-shell-environment.ts', {
+      resolveDesktopLoginShellConfig: () => ({ timeoutMs: 1000 }),
+      readDesktopLoginShellEnvironment: async () => ({ environment: { ...process.env,
+        PATH: 'synthetic-login-shell-path', EDUWORK_LAUNCHER_TEST: 'shell-value', CHATECNU_UNTRUSTED_TEST: 'shell-value' } }),
+    })
     mock('product.mjs', {
       configureEduworkPaths() {}, installEduworkFromDmg: async () => {
         calls.push('installer')
@@ -45,6 +53,11 @@ for (const scenario of ['installed', 'moved', 'cancelled', 'second-instance', 'q
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
     })
     mock('eduwork-host-process.mjs', { DesktopHostProcess: class {
+      constructor(node, profile, inspect, options) {
+        assert.equal(options.environment.PATH, 'synthetic-login-shell-path')
+        assert.equal(options.environment.EDUWORK_LAUNCHER_TEST, 'launcher-owned')
+        assert.equal(options.environment.CHATECNU_UNTRUSTED_TEST, undefined)
+      }
       async start() { calls.push('host') }
       async stop() { calls.push('stop') }
     } })

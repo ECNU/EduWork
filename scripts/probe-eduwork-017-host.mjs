@@ -10,7 +10,7 @@ const { values } = parseArgs({ options: { runtime: { type: 'string' }, host: { t
 if (!values.runtime || !values.host || !values.output) throw new Error('Use --runtime <candidate> --host <prepared native Host> --output <new directory>')
 const runtime = resolve(values.runtime), hostRoot = resolve(values.host), output = resolve(values.output)
 const receipt = JSON.parse(await readFile(join(hostRoot, 'receipt.json'), 'utf8'))
-assert.equal(receipt.upstreamCommit, '4878cdabd87d4041bdaff61d04c966883b9fd07a')
+assert.equal(receipt.upstreamCommit, '639ed015397290b3745d163aafe02ffee4aa3f84')
 assert.equal(receipt.protocolVersion, 4)
 await mkdir(output)
 await symlink(join(runtime, 'node_modules'), join(hostRoot, 'desktop-host/node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
@@ -72,7 +72,7 @@ const createHost = () => new DesktopHostProcess(process.execPath, runtime, profi
   DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' }, undefined, undefined, undefined, undefined,
   { hostEntry: join(hostRoot, 'desktop-host/lib/index.js'), bootstrap: {}, onLog: text => logs.push(text) })
 let host = createHost()
-const report = { success: false, version: '0.2.0-rc.1', protocol: 4, scope: 'real Host, authenticated HTTP, synthetic media' }
+const report = { success: false, version: '0.2.0-rc.2', protocol: 4, scope: 'real Host, authenticated HTTP, synthetic media' }
 try {
   const ready = await host.start()
   const origin = new URL(ready.url).origin

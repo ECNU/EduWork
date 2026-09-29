@@ -2,12 +2,14 @@
 
 [中文](CORE-020.md)
 
-This combination pins DSH `0.2.0-rc.1`, commit `4878cdabd87d4041bdaff61d04c966883b9fd07a`. Official npm dependencies and desktop sources are verified separately using `third_party/dsh/candidate-v0.2.0-rc.1/`. Historical `017` script names remain compatible with existing automation; the previous npm release lock is retained.
+This combination pins DSH `0.2.0-rc.2`, commit `639ed015397290b3745d163aafe02ffee4aa3f84`. Official npm dependencies and desktop sources are verified separately using `third_party/dsh/candidate-v0.2.0-rc.2/`. Historical `017` script names remain compatible with existing automation; the previous npm release lock is retained.
 
 ## Distribution policy
 
 - Official product analytics, session-log and plugin-inventory uploads, feedback controls and `/feedback` are disabled through the official `runProfile.patchFiles` overlay. The policy survives user preferences and reloads. Native DeepSeek request identifiers remain unchanged.
 - Scheduling uses the official optional plugin, disabled by default and available from the plugin page. Existing activation, settings and task storage are preserved. Tasks do not run while the app is closed or wake the computer.
+- Plugin installation, compatibility checks, activation and removal use the official manager. Desktop bundles a pinned pnpm, so users do not need a separate Node.js or pnpm installation. The legacy community installer in settings is removed; installed dependencies and activation settings are retained.
+- macOS launches from Finder use the official login-shell environment reader to discover development tools. The launcher still owns distribution data and resource paths. Default preset selection follows upstream rc.2 behavior.
 - File reveal uses the official native opener. Product extensions continue to provide attachment cards, organization login, Studio and skill management.
 - Literature uses the EduWork-maintained [`@eduwork/dsh-literature`](../packages/dsh-literature/README_EN.md), forked from SihanLv/dsh-literature 0.1.2. Jobs compatibility is implemented in source without bypassing official compatibility checks. Candidate dependencies remove the old `@shlv` family while retaining DBLP, arXiv, citations, full text and user activation settings.
 
@@ -25,4 +27,4 @@ Desktop workflows select the source lock through `config/desktop-build.json`. Th
 
 The shared entry point is `scripts/build-desktop-candidate.ps1`. Versions determine the channel: `X.Y.Z` is stable; `X.Y.Z-alpha.N`, `beta.N`, `rc.N` and `X.Y.Z-dev.YYYYMMDD.N` are prereleases with automatic software updates disabled. `0.4.0-alpha.1` is for testing; stable migration starts with the final `0.4.0`. Stable macOS assembly requires trusted Sparkle configuration. Publication still requires main, both successful platforms and approved version-specific notes. CI verifies and uploads artifacts directly, reusing the same build when publication is retried.
 
-Institution editions must update their signed configuration for `0.2.0-rc.1`; changing a version string cannot replace a compatible signed release. School connection configuration and internal feedback API drafts are not included in this repository.
+Institution editions must update their signed configuration for `0.2.0-rc.2`; changing a version string cannot replace a compatible signed release. School connection configuration and internal feedback API drafts are not included in this repository.

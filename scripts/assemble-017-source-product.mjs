@@ -19,10 +19,10 @@ for (const source of [repository, paths.runtime, paths.source, paths.dependencie
 }
 const json = async file => JSON.parse(await readFile(file, 'utf8'))
 const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
-if (receipt.dshVersion !== '0.2.0-rc.1' || receipt.dshCommit !== '4878cdabd87d4041bdaff61d04c966883b9fd07a') throw new Error('Unqualified candidate Runtime')
+if (receipt.dshVersion !== '0.2.0-rc.2' || receipt.dshCommit !== '639ed015397290b3745d163aafe02ffee4aa3f84') throw new Error('Unqualified candidate Runtime')
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
 const sourceMediaTemplate = await verifyMediaTemplate(join(paths.source, 'packages/dsh-knowledge-studio/packages/artifact-services'))
-const literatureLock = await json(join(repository, 'third_party/dsh/candidate-v0.2.0-rc.1/literature.json'))
+const literatureLock = await json(join(repository, 'third_party/dsh/candidate-v0.2.0-rc.2/literature.json'))
 const literatureManifest = await json(join(paths.dependencies, 'node_modules', literatureLock.name, 'package.json'))
 const productDependencyLock = await json(join(paths.dependencies, 'package-lock.json'))
 assert.equal(literatureLock.publicationStatus, 'published')

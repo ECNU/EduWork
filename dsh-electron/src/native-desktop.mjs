@@ -10,6 +10,7 @@ import { writeCrashReport, pruneCrashReports } from './crash-report.ts'
 import { createWindow } from './main.ts'
 import { SCHEME } from './ipc.ts'
 import { resolveDesktopLocale } from './locale.ts'
+import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopHostProcess } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
@@ -23,9 +24,12 @@ protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: {
   standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true,
 } }])
 let mainWindow, bridge, product, entered = false, sessionEnding = false, recoveryExit = false
+let hostEnvironment = process.env
+const loginShellRead = new AbortController()
+app.on('will-quit', () => loginShellRead.abort())
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
-  { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure }), state => {
+  { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && entered && !isQuitting()) reportFatal(state.failure, 'host')
 })
 // Keep the product's resource teardown, with the official controller as its one
@@ -63,7 +67,14 @@ async function main() {
   bridge = installNativeDesktopBridge({ getHost: () => backend.host, getWindow: () => mainWindow, reportFatal, checkUpdates: checkProductUpdates })
   protocol.handle(SCHEME, request => backend.host?.fetch(request) ?? new Response(null, { status: 503 }))
   powerMonitor.on('shutdown', () => { sessionEnding = true })
-  await backend.start(async () => { product = await prepareEduworkDesktop() })
+  await backend.start(async () => {
+    product = await prepareEduworkDesktop()
+    const inherited = await readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), { signal: loginShellRead.signal })
+    const editionVariable = name => name.startsWith('EDUWORK_') || name.startsWith('CHATECNU_')
+    hostEnvironment = Object.fromEntries(Object.entries(inherited.environment).filter(([name]) => !editionVariable(name)))
+    // Edition bootstrap and resource paths remain owned by the launcher.
+    for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
+  })
   if (isQuitting()) return
   mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true)
   const window = mainWindow

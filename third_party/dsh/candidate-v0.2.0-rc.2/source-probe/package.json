@@ -1,0 +1,27 @@
+{
+  "version": "0.0.0",
+  "name": "eduwork-020-source-probe-dependencies",
+  "dependencies": {
+    "@eduwork/dsh-literature": "0.1.1",
+    "@joplin/turndown-plugin-gfm": "1.0.68",
+    "fast-xml-parser": "5.11.1",
+    "imapflow": "1.7.6",
+    "jszip": "3.10.1",
+    "mailparser": "3.9.23",
+    "node-html-parser": "9.0.4",
+    "nodemailer": "9.1.1",
+    "pdfjs-dist": "6.3.289",
+    "react-markdown": "10.1.0",
+    "tar": "7.5.22",
+    "turndown": "7.2.4",
+    "unpdf": "1.8.1"
+  },
+  "private": true,
+  "optionalDependencies": {
+    "@ladybugdb/core-darwin-arm64": "0.20.1",
+    "@ladybugdb/core-darwin-x64": "0.20.1",
+    "@ladybugdb/core-linux-arm64": "0.20.1",
+    "@ladybugdb/core-linux-x64": "0.20.1",
+    "@ladybugdb/core-win32-x64": "0.20.1"
+  }
+}
