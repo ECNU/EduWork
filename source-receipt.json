@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T02:32:59.198Z",
-  "fileSetSHA256": "c1944153d73d24ddaff67f0f444262847c0553878014f2dd9f249bb0472c09e0",
+  "createdAt": "2026-09-29T02:45:00.135Z",
+  "fileSetSHA256": "ec1836b813e9b6ce7c5832fedf9916524cfbecbc100623aba12390496f291c8a",
   "files": [
     {
       "path": ".gitattributes",
@@ -5157,7 +5157,7 @@
     },
     {
       "path": "scripts/verify-generic-first-launch.mjs",
-      "sha256": "6f8c6f98ee6a42eae59eeecb468cc557f1e986b4fd0966dfd52d51581fd8cc97"
+      "sha256": "87d366815e2e187d1d1404a83ef85100afbaf303c22f5b4c2a3700d53b38dd26"
     },
     {
       "path": "scripts/verify-media-template.mjs",
@@ -5261,7 +5261,7 @@
     },
     {
       "path": "tests/generic-first-launch.test.mjs",
-      "sha256": "3eba729ee3db23f206be5f9fe6d391296889f8b7a6e5f68131c59dffdd588f97"
+      "sha256": "975de5bb56d4e75274299ec0491d45db132478fb12b6ed6306a0b4bfefdcd804"
     },
     {
       "path": "tests/github-update-package.test.mjs",

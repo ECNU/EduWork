@@ -17,7 +17,7 @@ export function verifyGenericFirstLaunch(identity, config) {
     assert.equal(config.updates.provider, 'github')
     assert.equal(config.updates.repository, 'ECNU/EduWork')
     assert.equal(config.updates.defaultPolicy, 'stable')
-  } else assert.deepEqual(config.updates, { provider: 'disabled' })
+  } else assert.deepEqual(config.updates, { provider: 'disabled', defaultPolicy: 'development' })
   return { passed: true, channel: stable ? 'stable' : 'development', provider: config.updates.provider }
 }
 
