@@ -1,0 +1,229 @@
+{
+  "platform": "macos",
+  "generatedFrom": "stage declarations in scripts/lib/*-stages.mjs",
+  "stages": 12,
+  "maxParallelism": 2,
+  "waves": [
+    {
+      "wave": 0,
+      "stages": [
+        "web",
+        "native-inputs"
+      ]
+    },
+    {
+      "wave": 1,
+      "stages": [
+        "host-adapter",
+        "electron"
+      ]
+    },
+    {
+      "wave": 2,
+      "stages": [
+        "product",
+        "shell"
+      ]
+    },
+    {
+      "wave": 3,
+      "stages": [
+        "install-host",
+        "native-install"
+      ]
+    },
+    {
+      "wave": 4,
+      "stages": [
+        "sparkle"
+      ]
+    },
+    {
+      "wave": 5,
+      "stages": [
+        "desktop"
+      ]
+    },
+    {
+      "wave": 6,
+      "stages": [
+        "accept"
+      ]
+    },
+    {
+      "wave": 7,
+      "stages": [
+        "publish"
+      ]
+    }
+  ],
+  "detail": [
+    {
+      "name": "web",
+      "description": "Web assembly and source audit",
+      "requires": [],
+      "dependsOn": [],
+      "outputs": [
+        "web",
+        "web/assembly"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "host-adapter",
+      "description": "Desktop Host adapter build",
+      "requires": [
+        "web"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "host"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "product",
+      "description": "Shared desktop product tree",
+      "requires": [
+        "web",
+        "host-adapter"
+      ],
+      "dependsOn": [],
+      "outputs": [],
+      "mutableOutputs": [
+        "product"
+      ],
+      "clean": []
+    },
+    {
+      "name": "electron",
+      "description": "Electron runtime download",
+      "requires": [
+        "web"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "electron"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "shell",
+      "description": "Electron shell build",
+      "requires": [
+        "web",
+        "host-adapter"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "shell"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "install-host",
+      "description": "Install the Host adapter into the product",
+      "requires": [],
+      "dependsOn": [
+        "product",
+        "host-adapter"
+      ],
+      "outputs": [
+        "product/d/node_modules/@deepseek-ai/dsh-desktop-host"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "native-inputs",
+      "description": "macOS arm64 native inputs",
+      "requires": [],
+      "dependsOn": [],
+      "outputs": [
+        "inputs"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "native-install",
+      "description": "Install native inputs into the product",
+      "requires": [
+        "product",
+        "native-inputs"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "product/desktop-resources.json"
+      ],
+      "mutableOutputs": [
+        "product/r"
+      ],
+      "clean": []
+    },
+    {
+      "name": "sparkle",
+      "description": "Sparkle update framework",
+      "requires": [
+        "product",
+        "native-install"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "sparkle"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "desktop",
+      "description": "Electron.app assembly",
+      "requires": [
+        "shell",
+        "electron",
+        "install-host",
+        "native-install",
+        "sparkle"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "desktop"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "accept",
+      "description": "Packaged launch acceptance",
+      "requires": [
+        "desktop"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "gui"
+      ],
+      "mutableOutputs": [
+        "unpacked",
+        "evidence-public"
+      ],
+      "clean": []
+    },
+    {
+      "name": "publish",
+      "description": "Release ZIP and receipt",
+      "requires": [
+        "accept"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "publish"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    }
+  ]
+}
