@@ -1,6 +1,7 @@
 import React, { useSyncExternalStore } from 'react'
 import { normalizeVisualStyle, tokensForVisualStyle } from '../theme.js'
-import { genericMarkSVG, productDocumentTitle, productIdentity } from '../identity.js'
+import { genericMarkSVG, productIdentity } from '../identity.js'
+import { installProductIdentity } from './product-identity.js'
 import { bindDesktopAction, DesktopSettingsTrigger } from './desktop-actions.js'
 
 declare const __EDUWORK_NATIVE_017__: boolean
@@ -80,45 +81,6 @@ function ProductBrandName({ service }) {
   }, identity.name)
 }
 
-function installProductIdentity(scope) {
-  const previousTitle = document.title
-  const icon = document.createElement('link')
-  icon.rel = 'icon'
-  icon.type = 'image/svg+xml'
-  icon.dataset.eduworkProductIcon = 'true'
-  document.head.append(icon)
-  let appliedTitle = ''
-  const adopt = () => {
-    const snapshot = scope.getSnapshot()
-    const identity = productIdentity(snapshot)
-    const color = normalizeVisualStyle(snapshot.value?.visualStyle) === 'ecnu-liwa' ? '#9f2636' : '#2575ff'
-    appliedTitle = identity.name
-    document.title = appliedTitle
-    icon.href = identity.logoUrl || `data:image/svg+xml,${encodeURIComponent(genericMarkSVG(color))}`
-    // Let the browser infer the type for institution PNG or other images.
-    if (identity.logoUrl) icon.removeAttribute('type')
-    else icon.type = 'image/svg+xml'
-  }
-  adopt()
-  const unsubscribe = scope.subscribe(adopt)
-  // The official workspace changes the title again after navigation. Preserve
-  // its session title while replacing only the upstream product suffix.
-  const observer = new MutationObserver(() => {
-    const name = productIdentity(scope.getSnapshot()).name
-    const nextTitle = productDocumentTitle(document.title, name)
-    if (document.title !== nextTitle) {
-      appliedTitle = nextTitle
-      document.title = nextTitle
-    }
-  })
-  observer.observe(document.head, { childList: true, subtree: true, characterData: true })
-  return () => {
-    observer.disconnect()
-    unsubscribe()
-    if (document.title === appliedTitle) document.title = previousTitle
-    icon.remove()
-  }
-}
 
 export function apply(ctx) {
   ctx.inject(['uiWorkspace'], context => context.effect(() =>

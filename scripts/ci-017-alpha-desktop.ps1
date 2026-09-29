@@ -112,7 +112,18 @@ try {
     $result.checks.nativeRuntimes='passed'
     # Synthetic profile only: downloaded publisher configuration never enters
     # the public payload or logs. Live bootstrap acceptance runs separately.
-    & (Join-Path $CoreRoot 'scripts/test-017-alpha-desktop.ps1') -CoreRoot $CoreRoot -Product $frozen -Executable $exe -Output (Join-Path $Output 'gui') -PublisherBootstrap:$VerifyPublisherBootstrap
+    try {
+        & (Join-Path $CoreRoot 'scripts/test-017-alpha-desktop.ps1') -CoreRoot $CoreRoot -Product $frozen -Executable $exe -Output (Join-Path $Output 'gui') -PublisherBootstrap:$VerifyPublisherBootstrap
+    } finally {
+        # Only synthetic UI evidence is public. Publisher screens and logs may
+        # contain school configuration; never upload profiles or credentials.
+        if (-not $VerifyPublisherBootstrap) {
+            foreach ($file in @('result.json','failed-desktop-ui.json','failed-desktop.png')) {
+                $evidence=Join-Path $Output "gui/$file"
+                if (Test-Path -LiteralPath $evidence) { Copy-Item -LiteralPath $evidence -Destination (Join-Path $public "gui-$file") }
+            }
+        }
+    }
     Copy-Item (Join-Path $Output 'gui/result.json') (Join-Path $public 'desktop-ui-result.json')
     $result.checks.desktopLaunch='passed'
     if ($VerifyPublisherBootstrap) { $result.checks.publisherFirstLaunch='passed' }

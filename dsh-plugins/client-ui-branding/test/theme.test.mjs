@@ -18,7 +18,7 @@ test('visual style defaults to red and preserves an explicit blue preference', (
 })
 
 test('product identity is assembly supplied and theme adaptive', () => {
-  const source = fs.readFileSync(path.join(root, 'src/client/index.ts'), 'utf8')
+  const source = ['src/client/index.ts', 'src/client/product-identity.js'].map(file => fs.readFileSync(path.join(root, file), 'utf8')).join('\n')
   assert.match(source, /styleLabels\[choice.id\]/)
   assert.match(source, /productIdentity/)
   assert.match(source, /--chatecnu-logo-accent/)
