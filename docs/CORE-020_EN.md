@@ -21,6 +21,8 @@ Older Alpha packages disabled automatic updates without recording whether that w
 
 ## Assembly
 
-The desktop workflow's explicit `source_stable` mode builds `0.4.0` using the pinned official npm Runtime and product extensions rebuilt from that commit, except for the separately verified npm literature package, retaining receipts and software updates. `source_alpha` continues to require a development version and disables automatic updates; the modes are mutually exclusive. Stable macOS assembly requires trusted Sparkle configuration. Publication still requires main, both successful platforms and approved version-specific notes, with verification and upload performed in CI.
+Desktop workflows select the source lock through `config/desktop-build.json`. The official Runtime uses an exact npm lock, product extensions are rebuilt from the selected commit, and literature uses a separately verified npm package. Kernel upgrades change the recipe and locks; routine releases do not change workflow logic.
+
+The shared entry point is `scripts/build-desktop-candidate.ps1`. Versions determine the channel: `X.Y.Z` is stable; `X.Y.Z-alpha.N`, `beta.N`, `rc.N` and `X.Y.Z-dev.YYYYMMDD.N` are prereleases with automatic software updates disabled. `0.4.0-alpha.1` is for testing; stable migration starts with the final `0.4.0`. Stable macOS assembly requires trusted Sparkle configuration. Publication still requires main, both successful platforms and approved version-specific notes. CI verifies and uploads artifacts directly, reusing the same build when publication is retried.
 
 Institution editions must update their signed configuration for `0.2.0-rc.1`; changing a version string cannot replace a compatible signed release. School connection configuration and internal feedback API drafts are not included in this repository.

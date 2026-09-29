@@ -9,18 +9,21 @@ import { parse } from '../dsh-host/vendor/jsonc-parser/parser.js'
 import { parseUserConfig } from '../dsh-host/user-config.mjs'
 import { documentConfiguration } from '../dsh-host/configuration-documentation.mjs'
 import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
+import { desktopVersion } from './desktop-build-plan.mjs'
 
-const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel'].map(key=>[key,{type:'string'}])) })
+const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
-const stable=values.channel==='stable'
-if(values.channel && !['stable','development'].includes(values.channel)) throw Error('Unknown source build channel')
-if(!(stable?/^0\.4\.0$/:/^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/).test(values.version)) throw Error('Version does not match the explicit source build channel')
+const release=desktopVersion(values.version), stable=release.automaticUpdates
+if(values.channel && values.channel!==release.channel) throw Error('Version does not match the explicit source build channel')
 const product=resolve(values.product)
 const read=async file=>JSON.parse(await readFile(file,'utf8'))
 const save=async(file,value)=>writeFile(file,JSON.stringify(value,null,2)+'\n')
 const identity=await read(join(product,'assembly.json'))
 assert.equal(identity.pluginMode,'source-qualification')
-assert.equal(identity.dshVersion,'0.2.0-rc.1')
+const recipe=await read(new URL('../config/desktop-build.json',import.meta.url))
+const runtimeLock=await read(values['runtime-lock']??new URL('../'+recipe.sourceLock,import.meta.url))
+assert.equal(identity.dshVersion,runtimeLock.packageVersion)
+assert.equal(identity.dshCommit,runtimeLock.commit)
 assert.notEqual(identity.sourceAlpha,true,'Prepare each source Alpha only once')
 const resources=join(product,'resources/desktop')
 const generic=await read(new URL('../config/distributions/generic.json',import.meta.url))
@@ -91,7 +94,7 @@ if(!stable) await rm(join(resources,'mac-updates.json'),{force:true})
 identity.localPlugins={};identity.managedPackages={}
 for(const name of pluginNames) identity.localPlugins[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:true}
 for(const name of generic.packages) identity.managedPackages[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:identity.sourcePackages.includes(name)}
-Object.assign(identity,{version:values.version,qualification:'Pinned DSH 0.2.0 source build; package and component receipts retained',automaticUpdates:stable,
+Object.assign(identity,{version:values.version,qualification:'Pinned DSH source build; package and component receipts retained',automaticUpdates:stable,
   sourceAlpha:!stable,sourceRelease:stable,releaseChannel:stable?'stable':'development',published:false})
 await save(join(product,'assembly.json'),identity)
 console.log(JSON.stringify({distribution:identity.distribution,version:identity.version,dshVersion:identity.dshVersion,sourceAlpha:!stable,automaticUpdates:stable}))

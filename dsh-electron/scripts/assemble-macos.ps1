@@ -27,7 +27,7 @@ $Node = [IO.Path]::GetFullPath($Node)
 $OpenSSL = [IO.Path]::GetFullPath($OpenSSL)
 if (Test-Path -LiteralPath $Output) { throw 'macOS output must be a new directory' }
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'An explicit product version is required' }
-if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version -match '-dev\.') { 'development' } else { 'stable' } }
+if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version.Contains('-')) { 'development' } else { 'stable' } }
 if ($ExternalPublisherConfig -and -not [IO.Path]::IsPathRooted($ExternalPublisherConfig)) { throw 'External publisher configuration path must be absolute' }
 $sparkleEnabled = [bool]($SparkleFramework -or $SparkleFeedURL -or $SparklePublicEDKey)
 if ($sparkleEnabled) {

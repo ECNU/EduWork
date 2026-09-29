@@ -9,14 +9,14 @@ param(
     [switch]$VerifyPublisherBootstrap,
     [Parameter(Mandatory)][string]$Output
 )
-# Explicit source Alpha artifacts only. Default npm release assembly and update
-# feeds are not changed by this entry point. Publication is a separate action.
+# Native source assembly. Release inputs come from the checked-in build recipe;
+# the historical filename remains for existing local callers.
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if (-not ($IsWindows -or $IsMacOS)) { throw 'Use a native Windows or macOS runner' }
-$versionPattern=if ($Stable) {'^0\.4\.0$'} else {'^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$'}
-if ($Version -notmatch $versionPattern) { throw 'Version does not match the explicit source build channel' }
 $CoreRoot=[IO.Path]::GetFullPath($CoreRoot);$EditionRoot=[IO.Path]::GetFullPath($EditionRoot);$Output=[IO.Path]::GetFullPath($Output)
+$plan = (& node (Join-Path $CoreRoot 'scripts/desktop-build-plan.mjs') --core $CoreRoot --edition $EditionRoot --version $Version) | ConvertFrom-Json
+if ([bool]$Stable -ne [bool]$plan.automaticUpdates) { throw 'Version does not match the explicit source build channel' }
 if (Test-Path $Output) { throw 'Alpha assembly requires a new output directory' }
 $platform=if ($IsWindows) {'windows'} else {'macos'}
 $name=if ($CoreRoot -eq $EditionRoot) {'EduWork'} else {'EduWork-ECNU'}
@@ -32,12 +32,12 @@ try {
         if ($lock.commit -ne $result.coreCommit -or $lock.sourceFileSetSHA256 -ne $source.fileSetSHA256) { throw 'Institution/core snapshot mismatch' }
     }
     $result.checks.sourceSnapshot='passed'
-    $candidate=Join-Path $CoreRoot 'third_party/dsh/candidate-v0.2.0-rc.1'
+    $candidate=$plan.candidate
     $runtime=Join-Path $Output 'runtime';$upstream=Join-Path $Output 'upstream';$hostAdapter=Join-Path $Output 'host'
     $sourceStage=Join-Path $Output 'source';$deps=Join-Path $Output 'dependencies';$product=Join-Path $Output 'product';$shell=Join-Path $Output 'shell'
     & git init $upstream
-    & git -C $upstream remote add origin https://github.com/deepseek-ai/deepseek-harness.git
-    & git -C $upstream fetch --depth=1 origin 4878cdabd87d4041bdaff61d04c966883b9fd07a
+    & git -C $upstream remote add origin $plan.upstreamRepository
+    & git -C $upstream fetch --depth=1 origin $plan.upstreamCommit
     & git -C $upstream checkout --detach FETCH_HEAD
     & node (Join-Path $CoreRoot 'dsh-desktop/scripts/prepare-dsh-runtime.mjs') --source npm --lock (Join-Path $candidate 'LOCK.json') --output $runtime
     & node (Join-Path $CoreRoot 'dsh-host/prepare-native.mjs') --upstream $upstream --output $hostAdapter
@@ -49,7 +49,7 @@ try {
     $editionArgs=if ($CoreRoot -ne $EditionRoot) {@('--edition',$EditionRoot)} else {@()}
     if ($PublisherDescriptors) { $editionArgs+=@('--publisher-descriptors',[IO.Path]::GetFullPath($PublisherDescriptors)) }
     if ($Stable) { $editionArgs+=@('--channel','stable') }
-    & node (Join-Path $CoreRoot 'scripts/prepare-017-alpha-product.mjs') --product $product --version $Version @editionArgs
+    & node (Join-Path $CoreRoot 'scripts/prepare-017-alpha-product.mjs') --product $product --version $Version --runtime-lock $plan.sourceLock @editionArgs
     & node (Join-Path $CoreRoot 'scripts/verify-product-release-identity.mjs') $product $Version
     $identity=Get-Content (Join-Path $product 'assembly.json') -Raw | ConvertFrom-Json
     $result.dshVersion=$identity.dshVersion;$result.distribution=$identity.distribution;$result.edition=$name

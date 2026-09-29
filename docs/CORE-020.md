@@ -21,6 +21,8 @@ macOS 首次 stable 启动在没有既有正式版数据目录时沿用 Alpha �
 
 ## 装配
 
-桌面工作流的 `source_stable` 是显式的 `0.4.0` 源码插件装配模式：官方 Runtime 来自精确 npm 锁，产品扩展从该次提交重建，文献包使用单独核验的 npm 版本，保留构建回执和软件更新能力。`source_alpha` 仍只接受开发版本且禁用自动更新；两者互斥。macOS stable 装配必须提供可信 Sparkle 配置。发布仍要求 main、两个平台成功、确认过的版本说明；产物由 CI 校验和直接上传。
+桌面工作流使用 `config/desktop-build.json` 选择源码锁。官方 Runtime 来自精确 npm 锁，产品扩展从该次提交重建，文献包使用单独核验的 npm 版本。升级内核时更新配置与锁；常规发版不改工作流。
+
+统一入口为 `scripts/build-desktop-candidate.ps1`，版本决定渠道：`X.Y.Z` 为 stable；`X.Y.Z-alpha.N`、`beta.N`、`rc.N` 和 `X.Y.Z-dev.YYYYMMDD.N` 为预发布，关闭软件自动更新。`0.4.0-alpha.1` 先供测试，正式 `0.4.0` 才执行 stable 迁移。macOS stable 装配必须提供可信 Sparkle 配置。发布仍要求 main、两个平台成功、确认过的版本说明；产物由 CI 校验和直接上传，失败复用原构建重试。
 
 学校发行版须独立更新兼容 `0.2.0-rc.1` 的签名配置。旧内核的签名配置不能直接换版本号冒用；本仓库不包含学校接入配置或反馈接口草案。
