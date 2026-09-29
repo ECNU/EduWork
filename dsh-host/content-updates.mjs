@@ -148,6 +148,13 @@ export class ContentUpdates {
     if(this.state.pending) {
       try {
         const pending=await this.cached(this.state.pending)
+        if(this.policy==='stable'&&pending.manifest.channel!=='stable') {
+          // Keep the cached bytes and revision floor; this is a channel change,
+          // not a failed health check and not permission to roll content back.
+          this.state.pending=null;this.state.trial=null;this.state.trialPhase=null
+          await this.save()
+          return this.prepare()
+        }
         if(Object.entries(pending.manifest.components).some(([name,revision])=>revision<(this.source.bundled[name]??0)))throw Error('软件内置内容已更新，已取消旧的待生效内容')
         for(const name of Object.keys(pending.manifest.components)) {
           if(!this.source[name])continue

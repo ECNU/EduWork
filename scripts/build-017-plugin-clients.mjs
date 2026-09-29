@@ -11,7 +11,7 @@ import { releaseIdentity } from '../dsh-host/release-policy.mjs'
 import { buildVideoTemplate } from '../packages/dsh-knowledge-studio/scripts/build-video-template.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 
-const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' } } })
+const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
 const sourceRepository = fileURLToPath(new URL('../', import.meta.url))
 const repository = resolve(values.output)
@@ -20,7 +20,8 @@ if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-if (runtimeReceipt.dshVersion !== '0.1.7-rc.2' || runtimeReceipt.dshCommit !== '477b4f420553e8a52c2fbccc464d7561b239c443') throw new Error('This build requires the pinned candidate Runtime')
+if (runtimeReceipt.dshVersion !== '0.2.0-rc.1' || runtimeReceipt.dshCommit !== '4878cdabd87d4041bdaff61d04c966883b9fd07a') throw new Error('This build requires the pinned candidate Runtime')
+const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.core.17', runtimeReceipt.dshVersion)
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
@@ -30,11 +31,21 @@ for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail'
   })
 }
 const { build, transform } = require('esbuild')
+// Literature is a separately published npm input in the product dependency lock.
+// Package changes go through its own check/pack/publication workflow.
+const distributionPath = join(repository, 'config/distributions/generic.json')
+const distribution = JSON.parse(await readFile(distributionPath, 'utf8'))
+distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)
+await writeFile(distributionPath, JSON.stringify(distribution, null, 2) + '\n')
+// The legacy npm 0.1.5 assembly retains its adapter; this pinned native Runtime
+// uses the upstream opener for artifact RPCs as well as SessionController.
+await copyFile(join(repository, 'dsh-plugins/artifact-preview-native/lib/reveal-upstream.js'),
+  join(repository, 'dsh-plugins/artifact-preview-native/lib/reveal.js'))
 const { transform: transformCSS } = require('lightningcss')
 const sharedRoot = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services')
 const shared = JSON.parse(await readFile(join(sharedRoot, 'package.json'), 'utf8'))
 const sharedAliases = Object.fromEntries(Object.entries(shared.exports).map(([key, path]) => [shared.name + (key === '.' ? '' : key.slice(1)), join(sharedRoot, path)]))
-const report = { scope: 'source candidate client bundles; unpublished', dshVersion: runtimeReceipt.dshVersion, packages: [] }
+const report = { scope: 'source candidate client bundles; unpublished', dshVersion: runtimeReceipt.dshVersion, productRelease, packages: [] }
 await buildVideoTemplate({ artifactRoot: sharedRoot, transform })
 report.mediaTemplate = await verifyMediaTemplate(sharedRoot)
 // These are separately rebuilt, private candidate artifacts. Their DSH peers
@@ -138,7 +149,7 @@ for (const [folder, upstream] of [
   }
   if (upstream === 'ui-conversation') {
     client = adaptNativeFileReferenceUI(client)
-    const badge = releaseIdentity('0.0.0-dev.core.17', runtimeReceipt.dshVersion).badge
+    const badge = productRelease.badge
     replaceOnce('"hero.headline": "探索未至之境"', '"hero.headline": "今天想一起完成什么？"')
     replaceOnce('"hero.headline": "Into the Unknown"', '"hero.headline": "What shall we accomplish today?"')
     replaceOnce('"hero.preview": "预览版"', '"hero.preview": ' + JSON.stringify(badge.zh))

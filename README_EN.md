@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.1.7-rc.2](https://img.shields.io/badge/DSH-0.1.7--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.1.7-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.1](https://img.shields.io/badge/DSH-0.2.0--rc.1-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.1) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -41,15 +41,13 @@ Plugins provide executable capabilities, service connections, and interfaces. Th
 | [Institutional sign-in and models](packages/dsh-oidc/README_EN.md) · `@eduwork/dsh-oidc` | Browser-based SSO, model discovery, and Token refresh; supports the oidc-llm draft and native LiteLLM OAuth. | A compatible institution or gateway service. |
 | [Knowledge Studio](packages/dsh-knowledge-studio/README_EN.md) · `@eduwork/dsh-knowledge-studio` | Reports, mind maps, quizzes, flashcards, spreadsheets, presentations, and audio/video overviews from workspace materials. | A connected model; media outputs need their corresponding services. |
 | [Artifact and media services](packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) · `@eduwork/dsh-artifact-services` | Office generation and previews, speech, and media production shared by conversations and Studio. | Bundled local resources or configured services. |
-| [Literature search](third_party/dsh-literature/NOTICE.md) · `@shlv/dsh-literature` | Search DBLP and arXiv, retrieve BibTeX and available full text. | Access to the literature services; contributed by a community project. |
+| [Literature search](packages/dsh-literature/README_EN.md) · `@eduwork/dsh-literature` | Search DBLP and arXiv, retrieve BibTeX and available full text. | Forked from [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature), maintained by EduWork; additional sources are planned. |
 | [Local memory](packages/dsh-memory/README_EN.md) · `@eduwork/dsh-memory` | Manage local memory and retrieve earlier conversations to carry context forward. | Managed locally. |
 | [Mail assistant](packages/dsh-mail/README_EN.md) · `@eduwork/dsh-mail` | Read IMAP mail and send through SMTP with authorization. | A connected mailbox and appropriate permissions. |
 | [Browser](dsh-plugins/tool-browser/README_EN.md) and [media integration](dsh-plugins/media-openai/README_EN.md) | Browse web pages; connect OpenAI-compatible image generation and cloud TTS. | Web access; separately configured cloud media services. |
 | [Skill management](dsh-plugins/skill-settings-native/README_EN.md) and [workbench settings](dsh-plugins/workbench-native/README_EN.md) | Manage skills, import history, and configure notifications and updates. | Included with the distribution. |
 
 **Bundled does not mean every external service is already connected.** The public edition contains no institution accounts, model allowances, or private credentials. See the [distribution manifest](config/distributions/generic.json) for the full combination. Public npm plugins can also be used independently in other DSH applications with compatible versions.
-
-We maintain [`@eduwork/dsh-literature`](packages/dsh-literature/README_EN.md) for DSH 0.2, forked from [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature). It supports DBLP, arXiv, BibTeX and available full text, with more sources planned. Existing clients still use the community package listed above.
 
 ## Bundled skills
 

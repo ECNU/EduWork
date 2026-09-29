@@ -47,6 +47,22 @@ async function fixture(t,permissions={},mac=false) {
 
 const offlineBytes = release => Buffer.from(JSON.stringify({schemaVersion:1,manifest:release.envelope,bundle:release.bytes.toString('base64')}))
 
+test('stable startup cancels pending dev content without lowering revision floor or changing active configuration', async t => {
+  const f = await fixture(t)
+  f.release(9)
+  let manager = await f.open(); await manager.check(); await manager.download()
+  const key = manager.state.pending
+  f.options.policy = 'stable'
+  manager = await f.open(); await manager.prepare(); await manager.ready()
+  assert.equal(manager.state.pending, null)
+  assert.equal(manager.state.highest, 9)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback, false)
+  assert.equal((await manager.cached(key)).manifest.revision, 9)
+  f.release(8, {configuration: 8}, undefined, {channel: 'stable'})
+  await manager.check()
+  assert.equal(manager.snapshot().state, 'current')
+})
+
 test('signed configuration delivers child defaults independently and preserves local edits', async t => {
   const f=await fixture(t)
   const compatible={...requires,dsh:'0.1.7-rc.2'}

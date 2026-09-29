@@ -79,11 +79,11 @@ Electron CI 必须从同一份装配身份生成文件名、更新元数据、�
 
 GitHub 托管的构建产物由 GitHub 托管的发布任务读取、校验和上传，不默认经维护者电脑下载后再转传。下载安装包用于真机验收，不是上传 Release 的必要步骤。构建完成和发布完成是两个状态，交付前须检查 Release 已公开、标签来源正确、附件齐全且哈希一致。
 
-公版和机构版的 Source Alpha 候选工作流都提供 `publish` 选项。选择 `main`、`source_alpha=true`、`development=true` 和两个平台，填写已确认的版本及 `docs/releases/<版本>.md`，确认 `notes_approved` 后，构建成功会调用独立发布任务。构建任务只有读取权限；发布任务才有读取 artifact 和写入 Release 的权限。默认仍只构建，不因日常 PR 或推送自动发行。
+公版和机构版的桌面候选工作流都提供 `publish` 选项。选择 `main` 和两个平台，填写已确认的版本（如 `0.4.0-alpha.1`）及 `docs/releases/<版本>.md`，确认 `notes_approved` 后，构建成功会调用独立发布任务。构建任务只有读取权限；发布任务才有读取 artifact 和写入 Release 的权限。默认仍只构建，不因日常 PR 或推送自动发行。
 
 已经构建成功的版本，或上传中断的版本，运行 `Publish desktop candidate`（机构版为 `Publish ECNU desktop candidate`），填写原候选构建的 `source_run_id` 和同一版本、说明文件。先以 `publish=false` 在云端验证，再以 `publish=true` 发布；无需重新构建或本机转运。机构版从锁定的公版核心复用发布脚本。
 
-发布器检查来源工作流、已合并提交、两个平台回执、Actions artifact 摘要及全部文件哈希，上传时保持完整文件名。先形成草稿，核对 12 个附件后才公开为非 Latest 的 prerelease。重复执行只接受同一提交和相同字节，不替换不匹配的附件，不删除已发布版本；如需删除重发，须由维护者另行明确授权。产物超过 Actions 保留期限后需要重新构建。此流程不修改 OSS 或更新入口。
+发布器检查来源工作流、已合并提交、两个平台回执、Actions artifact 摘要及全部文件哈希，上传时保持完整文件名。先形成草稿，预发布核对 12 个附件后才公开为非 Latest 的 prerelease；stable 另核对 Windows 更新清单，公开为正式 Release。重复执行只接受同一提交和相同字节，不替换不匹配的附件，不删除已发布版本；如需删除重发，须由维护者另行明确授权。产物超过 Actions 保留期限后需要重新构建。此流程不修改 OSS 或更新入口。
 
 1. 本地修改、测试、生成干净源代码快照。两个仓库各自是一条干净历史；机构仓锁定公版快照的实际提交。
 2. 审阅版本、文档、示例、隐私扫描、许可证和插件组合。独立插件的开发包与公开稳定包分别冻结，禁止覆盖同版本 tarball。
@@ -91,7 +91,7 @@ GitHub 托管的构建产物由 GitHub 托管的发布任务读取、校验和�
 4. 当前 `validate-local-web.yml` 从锁定 npm Runtime/插件及产品源码构建，执行源码/依赖检查和构建，上传轻量脱敏报告。它不会创建 Release。开发产物不进入用户更新渠道；私有 Fork PR 的跨私有仓构建限制见 [协作说明](../CONTRIBUTING.md)。
 5. 真实桌面、原生 Office/音视频、OIDC、托盘、链接、移动目录验收后，冻结最终 Electron 产物及 SHA-256，再启用正式 Release/更新渠道。ECNU 旧版升级另附本地过渡验收记录，不要求 GitHub 构建临时 Go 包。见 [发行检查项](../RELEASE-CHECKLIST.md)。CI 产物留存不等于一次公开发行。
 
-公版发行入口为 GitHub Releases。原样镜像 CI ZIP 时可复用其大小和校验值；机构在本机加入私有配置后，必须重新计算包内清单、ZIP 摘要与大小，并据此生成学校 OSS 更新清单。程序文件保持 CI 原样，不为学校渠道重新编译。Release 工作流接收公测版本 `X.Y.Z` 或开发版本 `X.Y.Z-dev.YYYYMMDD.N`；开发版发布为 prerelease，不占用公测 latest，并检查两仓版本、核心提交、插件锁、原生资源回执和 ZIP 哈希；发布权限只交给发行 job。
+公版发行入口为 GitHub Releases。原样镜像 CI ZIP 时可复用其大小和校验值；机构在本机加入私有配置后，必须重新计算包内清单、ZIP 摘要与大小，并据此生成学校 OSS 更新清单。程序文件保持 CI 原样，不为学校渠道重新编译。桌面候选工作流接收正式版本 `X.Y.Z`，以及 `X.Y.Z-alpha.N`、`beta.N`、`rc.N` 或 `X.Y.Z-dev.YYYYMMDD.N`；预发布版本发布为 prerelease，不占用公测 latest，并检查两仓版本、核心提交、插件锁、原生资源回执和 ZIP 哈希；发布权限只交给发行 job。
 
 Windows Electron Release 工作流已提供（见下文），不包含签名安装器和完整旧版迁移发布链。Windows 构建不能代替 macOS 平台验证。
 
@@ -99,17 +99,15 @@ Windows Electron Release 工作流已提供（见下文），不包含签名安�
 
 ## 触发 Windows Electron Release
 
-### DSH 0.1.7 源码 Alpha
+### 双平台桌面候选
 
-`scripts/ci-017-alpha-desktop.ps1` 是显式的 rc.2 Alpha 构建入口，支持 Windows x64 和 macOS arm64。它使用独立目录、固定的 rc.2 Runtime/上游源码、源码插件和原生资源锁，复用现有 Electron 装配与归档校验。默认 npm 发布锁保持不变，回执标明 `source-alpha`，不能当作已完成 npm 依赖升级的正式发行。
+`scripts/build-desktop-candidate.ps1` 是公版和机构版共用入口，支持 Windows x64 和 macOS arm64。传入 `CoreRoot`、`EditionRoot`、`Version` 与全新的 `Output`。公版 `config/desktop-build.json` 选择官方 Runtime、上游源码及编译依赖的固定锁；机构版 `edition/desktop-build.json` 只声明平台配置目录和机构验证入口。两版工作流使用同一实现，版本升级不再增加模式开关或写死新内核提交。
 
-传入 `CoreRoot`、`EditionRoot`、开发版本号 `Version` 与全新的 `Output`。发行方拥有配置时，还须提供 `PublisherDescriptors`：包含 Windows/macOS 的独立签名配置入口，配置兼容性必须与 rc.2 一致。接入参数和用户凭据不进入安装包。构建后检查解压的原生组件及实际桌面启动，真实登录、模型对话和升级另行验收。
+版本统一校验：`X.Y.Z` 选择 stable；Alpha、Beta、RC 和日期 dev 版本选择预发布并关闭软件自动更新。内部 `ci-017-alpha-desktop.ps1` 文件名保留兼容，但输入由配置决定，不固定到 0.1.7。机构版必须验证签名配置首次下载，不能通过工作流选项关闭。实际学校接入参数和用户凭据不进入安装包。
 
-该入口保留原始 ZIP、Windows 安装包 ZIP、macOS DMG、对应 SHA-256 和平台回执，不生成更新清单、不发布 Release，软件自动更新关闭。DMG 使用已从 ZIP 解压并通过启动检查的同一应用；构建后重新挂载只读镜像，核对应用文件、签名及安装窗口资源。经维护者确认说明后，可将同一份已验证产物发布为 GitHub **Pre-release**，并设置为非 Latest。正式发行与更新源切换须在验收后另行执行。
+构建保留原始 ZIP、Windows 安装包 ZIP、macOS DMG、对应 SHA-256 和平台回执。原生组件、解压完整性和实际客户端启动检查通过后才可发布。DMG 使用已从 ZIP 解压并通过启动检查的同一应用，重新挂载校验文件、签名及窗口资源。预发布不生成软件更新清单；stable 保留 Windows 更新清单及可信 Sparkle 校验。云端发布不修改 OSS 或更新入口。
 
-开发更新包可由机构仓的 `Build ECNU Windows development artifact` 工作流构建，版本使用 `X.Y.Z-dev.YYYYMMDD.N`。它复用同一桌面构建、锁定依赖、ZIP 校验和启动检查，只保留 Actions artifact，不创建 Release、不编写发行说明，也不接触 OSS 凭据。源码基线版本和实际装配版本分别记录在回执中；界面徽标与默认更新渠道使用实际装配版本。维护者下载精确的 CI ZIP 后做升级验收，最后发布开发渠道清单。
-
-开发包在普通逐文件清单上追加更新器所需的 `launcherVersion`、`flavor` 和 `launch`，附带旧快捷方式兼容入口。同一 ZIP 可用于新装及已验收的 Go 过渡版到 Electron 更新。0.2 原入口仍只提供 Go 过渡包，开发包不能直接下发给 0.2。
+CI 默认只构建。填写已批准的说明并启用 `publish` 才发布；也可在合并后通过独立发布工作流复用原构建。真实登录、模型对话和升级仍由维护者验收。以下旧单平台 npm Release 流程只用于历史基线，不作为当前双平台发版入口。
 
 机构本地验收也使用 GitHub CI 的同一份 ZIP：下载 Release 资产并核对 SHA-256，使用 `scripts/configure-desktop-archive.ps1` 加入私有配置。公版与机构版均使用 `config/eduwork.jsonc`；启用首次下载配置的机构包可直接分发 CI 原包，详见[配置更新策略](UPDATES.md#配置随升级如何处理)。仅加入配置和已支持的品牌文件，不重新编译或替换 `resources/`。实际 Client ID、凭据与个人信息不提交仓库，也不通过 CI secret 注入安装包；公开配置只提供占位模板。归档验收记录时保留运行编号、提交、原始 ZIP 哈希及配置之外文件的校验结果，实际私有配置单独保管。
 

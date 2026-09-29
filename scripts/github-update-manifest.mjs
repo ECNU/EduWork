@@ -11,7 +11,8 @@ export function githubUpdateManifest(receipt,repository) {
  const editions={'ecnu/eduwork':['EduWork','eduwork'],'ecnu/eduwork-ecnu':['EduWork-ECNU','eduwork-chatecnu']}
  const identity=editions[repository?.toLowerCase()]
  const channel=releaseChannel(receipt.version)
- if(!identity || receipt.passed!==true || receipt.kind!=='eduwork-windows-release' || receipt.edition!==identity[0] || receipt.distribution!==identity[1] || receipt.shell!=='electron' || receipt.platform!=='windows-x64')throw Error('Update manifest requires a matching validated Electron release')
+ const qualifiedSource=receipt.kind==='eduwork-source-release' && receipt.version==='0.4.0' && receipt.platform==='windows' && receipt.automaticUpdates===true && receipt.checks?.updateContract==='passed'
+ if(!identity || receipt.passed!==true || (!qualifiedSource && (receipt.kind!=='eduwork-windows-release' || receipt.platform!=='windows-x64')) || receipt.edition!==identity[0] || receipt.distribution!==identity[1] || receipt.shell!=='electron')throw Error('Update manifest requires a matching validated Electron release')
  const asset=receipt.asset
  if(asset?.name!==`${identity[0]}-${receipt.version}-windows-x64-electron.zip` || !Number.isSafeInteger(asset.bytes) || asset.bytes<1 || asset.bytes>=2**31 || !/^[a-f0-9]{64}$/.test(asset.sha256))throw Error('Invalid update asset')
  const url=`https://github.com/ecnu/${identity[0]}/releases/download/v${receipt.version}/${asset.name}`

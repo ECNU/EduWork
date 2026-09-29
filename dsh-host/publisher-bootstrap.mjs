@@ -1,7 +1,7 @@
 import { readFile, readdir, lstat } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { loadUserConfig, parseUserConfig } from './user-config.mjs'
-import { compareVersions, digest, verifiedManifest, validateBundle, incompatible } from './content-update-protocol.mjs'
+import { compareVersions, digest, verifiedManifest, validateBundle, historicalConfiguration, incompatible } from './content-update-protocol.mjs'
 import { ConfigurationFile, readConfiguration, configurationFingerprints } from './configuration-file.mjs'
 import { updateEnterpriseModels } from './enterprise-model-updates.mjs'
 import { isContentFileError } from './content-updates.mjs'
@@ -28,6 +28,7 @@ export async function readPublisherBootstrap({ ownership, product, platform = pr
   })) throw Error('migrateFrom 必须是有效的 HTTPS 配置源地址数组')
   const trusted = parseUserConfig(descriptorPath, JSON.stringify(configuration)), source = trusted.contentUpdates
   if (!source?.configuration || (source.bundled.configuration ?? 0) !== 0) throw Error('首次下载配置必须启用 configuration，内置配置修订号必须为 0')
+  if (migrateFrom.includes(source.baseURL)) throw Error('migrateFrom 不能包含当前配置源')
   // A packaging channel is chosen by desktop settings, not by a shared descriptor.
   if (trusted.updates.defaultPolicy) throw Error('默认渠道须在打包时指定，不能写入发行引导配置')
   return { ...trusted, migrateFrom }
@@ -41,7 +42,7 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
   const scopeOf = source => digest(JSON.stringify([distribution, source.publisher, source.baseURL, source.publicKey]))
   const targetScope = source ? scopeOf(source) : null
   const previousSource = value => migrateLegacy && source && value?.configuration !== false &&
-    value?.publisher === source.publisher && value?.publicKey === source.publicKey && trusted.migrateFrom.includes(value.baseURL)
+    value?.publisher === source.publisher && value?.publicKey === source.publicKey && value?.baseURL !== source.baseURL && trusted.migrateFrom.includes(value.baseURL)
   const markRequired = () => { file.state.requiredConfigurationScope = targetScope }
   let migratedFrom
   if (!file.state.initialized) {
@@ -89,10 +90,12 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
         const environment = { version, dshVersion: identity.dshVersion,
           capabilities: [...Object.keys(identity.localPlugins ?? {}).map(name => 'plugin:' + name), ...Object.keys(identity.managedPackages ?? {}).map(name => 'package:' + name)] }
         const reason = incompatible(manifest.requires, environment)
-        if (reason) throw Error(reason)
-        const bundle = validateBundle(await readFile(join(directory, 'bundle.json')), manifest, environment)
-        value = { ...value, ...bundle.configuration, features: { ...value.features, ...bundle.configuration?.features } }
-        defaults = { key, scope, revision: manifest.components.configuration, fingerprints: configurationFingerprints(bundle.configuration), conflicts: [] }
+        const retiring = previousSource(oldSource)
+        if (reason && !retiring) throw Error(reason)
+        const bytes = await readFile(join(directory, 'bundle.json'))
+        const configuration = retiring ? historicalConfiguration(bytes, manifest) : validateBundle(bytes, manifest, environment).configuration
+        value = { ...value, ...configuration, features: { ...value.features, ...configuration?.features } }
+        defaults = { key, scope, revision: manifest.components.configuration, fingerprints: configurationFingerprints(configuration), conflicts: [] }
       } else {
         const catalog = await readFile(join(product, 'resources/desktop/enterprise-model-updates.json'), 'utf8').then(JSON.parse)
           .catch(error => { if (error.code !== 'ENOENT') throw error })
@@ -106,7 +109,7 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
     }
     const oldSource = baseline ? baselineSource : current?.value.contentUpdates
     if (source && migrateLegacy && (previousSource(oldSource) || trusted.migrateFrom.length && !oldSource && value.organizations?.length)) {
-      value.contentUpdates = { ...source, ...(oldSource ? { configuration: oldSource.configuration !== false, skills: oldSource.skills !== false } : {}) }
+      value.contentUpdates = { ...source, ...(oldSource ? { configuration: source.configuration && oldSource.configuration !== false, skills: source.skills && oldSource.skills === true } : {}) }
       markRequired()
     }
     await file.initialize(value, { defaults, cleanup, current })
@@ -115,7 +118,7 @@ export async function publisherBootstrap({ ownership, product, distribution, ver
   const active = await readConfiguration(configPath)
   if (previousSource(active?.value.contentUpdates)) {
     markRequired()
-    await file.initialize({ ...active.value, contentUpdates: { ...source, configuration: true, skills: active.value.contentUpdates.skills !== false } },
+    await file.initialize({ ...active.value, contentUpdates: { ...source, configuration: true, skills: source.skills && active.value.contentUpdates.skills === true } },
       { defaults: file.state.defaults, cleanup: file.state.cleanup, current: active })
   }
   const config = loadUserConfig(configPath)

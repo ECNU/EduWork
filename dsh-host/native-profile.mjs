@@ -80,6 +80,47 @@ async function writeChanged(path, text) {
   } finally { await unlink(temporary).catch(missing) }
 }
 
+const literatureModules = new Map(['core', 'dblp', 'arxiv', 'tool']
+  .map(part => ['@shlv/dsh-literature-' + part, '@eduwork/dsh-literature/' + part]))
+
+// Keep name guards, comments and !!js expressions intact. Do not walk arbitrary
+// plugin configuration: a business field named "name" is not an entry selector.
+export function rewriteLiteraturePatchNames(text, yaml) {
+  if (![...literatureModules.keys()].some(name => text.includes(name))) return text
+  if (!yaml) throw new Error('Literature patch migration requires the Runtime YAML parser')
+  const document = yaml.parseDocument(text, { customTags: [{ tag: 'tag:yaml.org,2002:js', resolve: value => value }] })
+  if (document.errors.length) throw document.errors[0]
+  let changed = false
+  const walk = list => {
+    if (!yaml.isSeq(list)) return
+    for (const row of list.items) {
+      if (!yaml.isMap(row)) continue
+      const name = row.get('name')
+      if (literatureModules.has(name)) { row.set('name', literatureModules.get(name)); changed = true }
+      walk(row.get('insert', true))
+      if (row.get('group') === true) walk(row.get('config', true))
+    }
+  }
+  walk(document.contents)
+  return changed ? String(document) : text
+}
+
+async function migrateLiteraturePatchFile(path, yaml) {
+  await refuseLink(path)
+  const before = await readFile(path, 'utf8').catch(missing)
+  if (before === undefined) return
+  const after = rewriteLiteraturePatchNames(before, yaml)
+  if (before === after) return
+  const backup = path + '.before-literature-fork-' + createHash('sha256').update(before).digest('hex').slice(0, 16)
+  await refuseLink(backup)
+  try { await writeFile(backup, before, { flag: 'wx', mode: 0o600 }) }
+  catch (error) {
+    if (error.code !== 'EEXIST') throw error
+    if (await readFile(backup, 'utf8') !== before) throw new Error('Literature migration backup differs; originals retained')
+  }
+  await writeChanged(path, after)
+}
+
 async function completePendingWrite(journalPath, bundlePath, preferencesPath) {
   await refuseLink(journalPath)
   const text = await readFile(journalPath, 'utf8').catch(missing)
@@ -145,7 +186,7 @@ export function nativeEntryIds(patches) {
 // Generated deployment defaults are an ordinary bundle BELOW the native user
 // patch. Never regenerate the latter: Settings writes it through configEditor.
 // This profile lives beside the 0.1.5 profile for rollback, in the same DSH home.
-export async function writeNativeProfile({ profile, bundles, patches, parse = JSON.parse }) {
+export async function writeNativeProfile({ profile, home, bundles, patches, parse = JSON.parse, yaml, migrateSchedule = false }) {
   const name = '@eduwork/generated-profile'
   const bundle = join(profile, 'node_modules', name)
   for (const path of [profile, join(profile, 'node_modules'), join(profile, 'node_modules/@eduwork'), bundle]) {
@@ -159,6 +200,10 @@ export async function writeNativeProfile({ profile, bundles, patches, parse = JS
   // Finish the previous pair before rebasing again, including after a second
   // directory move. Rebased defaults cannot be mistaken for personal edits.
   await completePendingWrite(journalPath, bundlePath, preferencesPath)
+  if (bundles.includes('@eduwork/dsh-literature')) {
+    await migrateLiteraturePatchFile(preferencesPath, yaml)
+    if (home) await migrateLiteraturePatchFile(join(home, 'cordis.patch.yml'), yaml)
+  }
   const previousText = await readFile(bundlePath, 'utf8').catch(missing)
   const preferencesText = await readFile(preferencesPath, 'utf8').catch(missing)
   if (previousText && preferencesText && previousText !== json(next)) {
@@ -187,11 +232,44 @@ export async function writeNativeProfile({ profile, bundles, patches, parse = JS
   const savedManifest = JSON.parse(await readFile(manifestPath, 'utf8').catch(error => { missing(error); return '{}' }))
   const savedBundles = savedManifest.dsh?.profile?.bundles ?? []
   if (!Array.isArray(savedBundles) || savedBundles.some(value => typeof value !== 'string')) throw new Error('Invalid native profile bundle list')
+  // An existing native bundle list is also the user's activation state. An
+  // absent legacy/fork bundle means disabled, not an invitation to re-enable it.
+  const inheritedBundles = savedManifest.dsh?.profile?.bundles === undefined ? bundles
+    : bundles.filter(value => value !== '@eduwork/dsh-literature')
+  if (bundles.includes('@eduwork/dsh-literature')) {
+    for (let i = 0; i < savedBundles.length; i++) {
+      if (savedBundles[i] === '@shlv/dsh-literature') savedBundles[i] = '@eduwork/dsh-literature'
+    }
+    // The maintained bundle is supplied by the product Runtime, not installed
+    // from the profile's old third-party dependency on the next restart.
+    if (savedManifest.dependencies?.['@shlv/dsh-literature']) {
+      delete savedManifest.dependencies['@shlv/dsh-literature']
+    }
+  }
+  const scheduleBundle = '@deepseek-ai/dsh-experimental-schedule-bundle'
+  if (migrateSchedule && !savedManifest.eduwork?.scheduleBundleMigrated) {
+    // Previous web-app rows were disabled by default. Only explicit activation
+    // selects the optional bundle; preserve partial activation and configuration.
+    const saved = parse(await readFile(preferencesPath, 'utf8').catch(error => { missing(error); return '[]' }))
+    const home = parse(await readFile(join(profile, '../..', 'cordis.patch.yml'), 'utf8').catch(error => { missing(error); return '[]' }))
+    if (!Array.isArray(saved) || !Array.isArray(home)) throw new Error('Invalid schedule migration preferences')
+    const enabled = new Map(['time-context', 'schedule', 'ui-schedule'].map(id => [id, false]))
+    for (const row of [...(previousText ? JSON.parse(previousText) : []), ...saved, ...home]) {
+      for (const item of [...(row.insert ?? []), row]) if (enabled.has(item.id) && typeof item.disabled === 'boolean') enabled.set(item.id, !item.disabled)
+    }
+    if (!savedBundles.includes(scheduleBundle) && [...enabled.values()].some(Boolean)) {
+      // Write defaults before the marker: an interrupted migration safely retries.
+      const defaults = [...enabled].map(([id, active]) => ({ id, disabled: !active }))
+      await writeChanged(preferencesPath, json([...defaults, ...saved]))
+      savedBundles.push(scheduleBundle)
+    }
+    savedManifest.eduwork = { ...savedManifest.eduwork, scheduleBundleMigrated: true }
+  }
   // Native plugin management writes dependencies and bundle activation here.
   // Keep them on restart; only the generated product bundle is kept last.
   await writeChanged(manifestPath, json({ name: 'eduwork-desktop-profile', private: true, type: 'module', ...savedManifest,
     dsh: { ...savedManifest.dsh, profile: { ...savedManifest.dsh?.profile,
-      bundles: [...new Set([...bundles, ...savedBundles].filter(value => value !== name)), name] } } }))
+      bundles: [...new Set([...inheritedBundles, ...savedBundles].filter(value => value !== name)), name] } } }))
   // Exclusive create protects both a saved native preference and an in-flight
   // settings update. Absence is the only condition that initializes the file.
   try { await writeFile(join(profile, 'cordis.patch.yml'), '[]\n', { flag: 'wx', mode: 0o600 }) }

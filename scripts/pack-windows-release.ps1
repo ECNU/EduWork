@@ -7,8 +7,10 @@ $Candidate = (Resolve-Path -LiteralPath $Candidate).Path
 $Output = [IO.Path]::GetFullPath($Output)
 if ($Output.StartsWith($Candidate.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $Output)) { throw 'ZIP must be a new file outside the desktop directory' }
 $identity = Get-Content (Join-Path $Candidate 'resources/app/eduwork.desktop.json') -Raw | ConvertFrom-Json
-$versionPattern = if ($Development) { '^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$' } else { '^\d+\.\d+\.\d+$' }
-if ($identity.productVersion -notmatch $versionPattern -or $identity.shell -ne 'electron') { throw 'Package version does not match its selected channel or Electron shell' }
+$release = & node (Join-Path $PSScriptRoot 'desktop-build-plan.mjs') --identity --version $identity.productVersion
+if ($LASTEXITCODE -ne 0) { throw 'Unsupported desktop release version' }
+$release = $release | ConvertFrom-Json
+if ([bool]$Development -ne $release.prerelease -or $identity.shell -ne 'electron') { throw 'Package version does not match its selected channel or Electron shell' }
 if ($ForUpdate) {
     foreach ($entry in @('ChatECNU-Work.exe','EduWork.exe')) {
         if (-not (Test-Path -LiteralPath (Join-Path $Candidate $entry) -PathType Leaf)) { throw "Migration launcher is missing: $entry" }

@@ -21,8 +21,12 @@ const currentDesktopLocale = () => resolveDesktopLocale(app.getLocale())
 const chromeFallbackFill = () => nativeTheme.shouldUseDarkColors ? '#1b1b1c' : '#f9fafb'
 export ${source.slice(start, end)}
 `
-    const popup = source.slice(source.indexOf('  window.webContents.setWindowOpenHandler('), source.indexOf("  if (process.platform === 'darwin')"))
-    replace(popup, '')
+    // Match only the handler. Platform blocks following it belong to the
+    // official window factory, including Windows/macOS fullscreen events.
+    replace(`  window.webContents.setWindowOpenHandler(({ url }) => {
+    if (['http:', 'https:'].includes(new URL(url).protocol)) void shell.openExternal(url)
+    return { action: 'deny' }
+  })\n`, '')
     const navigation = source.slice(source.indexOf("  window.webContents.on('will-navigate'"), source.indexOf('  return window'))
     replace(navigation, '')
   }

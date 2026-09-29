@@ -1,10 +1,77 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, writeFile, access, symlink, mkdir } from 'node:fs/promises'
+import { mkdtemp, readFile, writeFile, access, symlink, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { writeNativeProfile, rebaseNativeConfig, legacyPresetPatches, nativeEntryIds } from '../native-profile.mjs'
 import { stageLegacySettings, importLegacySettings } from '../settings-migration.mjs'
+
+test('literature fork migrates the bundle without losing source preferences or disabled tools', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-literature-migrate-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const manifestPath = join(profile, 'package.json')
+  const preferencesPath = join(profile, 'cordis.patch.yml')
+  const preferences = JSON.stringify([
+    { id: 'literature', config: { enabledSources: ['arxiv'], timeoutMs: 90000 } },
+    { id: 'literature-dblp', disabled: true },
+    { id: 'tool-literature', disabled: true },
+  ])
+  await writeFile(manifestPath, JSON.stringify({
+    dependencies: { '@shlv/dsh-literature': '0.1.2', 'synthetic-addon': '1.0.0' },
+    dsh: { profile: { bundles: ['@shlv/dsh-literature', 'synthetic-addon'] } },
+  }))
+  await writeFile(preferencesPath, preferences)
+  const options = { profile, bundles: ['@eduwork/dsh-literature'], patches: [] }
+  await writeNativeProfile(options)
+  const migrated = await readFile(manifestPath, 'utf8')
+  assert.deepEqual(JSON.parse(migrated).dsh.profile.bundles, ['@eduwork/dsh-literature', 'synthetic-addon', '@eduwork/generated-profile'])
+  assert.deepEqual(JSON.parse(migrated).dependencies, { 'synthetic-addon': '1.0.0' })
+  assert.equal(await readFile(preferencesPath, 'utf8'), preferences)
+  await writeNativeProfile(options)
+  assert.equal(await readFile(manifestPath, 'utf8'), migrated)
+  assert.equal(await readFile(preferencesPath, 'utf8'), preferences)
+})
+
+test('literature respects whole-bundle disablement before and after migration', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-literature-disabled-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const path = join(profile, 'package.json')
+  const options = { profile, bundles: ['@eduwork/dsh-literature'], patches: [] }
+  // A fresh installation has the maintained bundle enabled.
+  await writeNativeProfile(options)
+  assert.ok(JSON.parse(await readFile(path)).dsh.profile.bundles.includes('@eduwork/dsh-literature'))
+  // Both an old disabled profile and a later UI disable are represented by an
+  // existing list without the bundle. Restart must retain that choice.
+  for (const dependencies of [{ '@shlv/dsh-literature': '0.1.2' }, {}]) {
+    await writeFile(path, JSON.stringify({ dependencies, dsh: { profile: { bundles: [] } } }))
+    await writeNativeProfile(options)
+    await writeNativeProfile(options)
+    assert.deepEqual(JSON.parse(await readFile(path)).dsh.profile.bundles, ['@eduwork/generated-profile'])
+  }
+})
+
+test('schedule migrates explicit activation once and preserves disabled bundle thereafter', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-schedule-'))
+  const options = { profile, bundles: [], patches: [], migrateSchedule: true }
+  await writeFile(join(profile, 'cordis.patch.yml'), '[{"id":"schedule","disabled":false,"config":{"keep":1}},{"id":"ui-schedule","disabled":true}]')
+  await writeNativeProfile(options)
+  const path = join(profile, 'package.json')
+  const manifest = JSON.parse(await readFile(path, 'utf8'))
+  assert.ok(manifest.dsh.profile.bundles.includes('@deepseek-ai/dsh-experimental-schedule-bundle'))
+  const patches = JSON.parse(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'))
+  assert.equal(patches.findLast(row => row.id === 'schedule').config.keep, 1)
+  assert.equal(patches.findLast(row => row.id === 'ui-schedule').disabled, true)
+  manifest.dsh.profile.bundles = []
+  await writeFile(path, JSON.stringify(manifest))
+  await writeNativeProfile(options)
+  assert.equal(JSON.parse(await readFile(path, 'utf8')).dsh.profile.bundles.includes('@deepseek-ai/dsh-experimental-schedule-bundle'), false)
+})
+
+test('new schedule bundle stays optional for an untouched profile', async () => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-schedule-off-'))
+  await writeNativeProfile({ profile, bundles: [], patches: [], migrateSchedule: true })
+  assert.deepEqual(JSON.parse(await readFile(join(profile, 'package.json'), 'utf8')).dsh.profile.bundles, ['@eduwork/generated-profile'])
+})
 
 test('legacy preset identities, ordering and activation survive without rewriting source', async () => {
   const home = await mkdtemp(join(tmpdir(), 'eduwork-legacy-presets-'))

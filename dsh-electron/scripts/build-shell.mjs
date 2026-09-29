@@ -11,8 +11,8 @@ if (!values.upstream || !values.host || !values.output) throw new Error('Use --u
 const upstream = resolve(values.upstream), output = resolve(values.output), host = resolve(values.host)
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const native = values['native-017'] === true
-if (native && !values.runtime) throw new Error('The native shell requires --runtime <pinned rc.2 npm Runtime>')
-const lock = JSON.parse(await readFile(join(repository, native ? 'third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json' : 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'), 'utf8'))
+if (native && !values.runtime) throw new Error('The native shell requires --runtime <pinned 0.2.0-rc.1 npm Runtime>')
+const lock = JSON.parse(await readFile(join(repository, native ? 'third_party/dsh/candidate-v0.2.0-rc.1/LOCK.json' : 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'), 'utf8'))
 const coreLock = lock
 const digest = data => createHash('sha256').update(data).digest('hex')
 const inputs = JSON.parse(await readFile(join(repository, native ? 'dsh-electron/upstream-inputs-017.json' : 'dsh-electron/upstream-inputs.json'), 'utf8'))
@@ -66,9 +66,10 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
+const electronAdapters = ['update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
+await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8')).replace('../../dsh-host/configuration-file.mjs','./configuration-file.mjs'))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
 await copyFile(join(repository, 'dsh-host/native-resources.mjs'), join(output, 'src/native-resources.mjs'))

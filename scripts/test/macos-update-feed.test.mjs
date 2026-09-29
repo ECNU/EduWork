@@ -4,6 +4,9 @@ import { bundleVersion, validateMacUpdateConfig, appcast } from '../macos-update
 test('release feed uses the same prerelease-safe bundle version as assembly',()=>{
   assert.equal(bundleVersion('0.3.6-dev.20260920.2'),'0.3.6dev20260920.2')
   assert.equal(bundleVersion('0.3.6'),'0.3.6')
+  assert.equal(bundleVersion('0.4.0-alpha.1'),'0.4.0alpha1')
+  assert.equal(bundleVersion('0.4.0-beta.2'),'0.4.0beta2')
+  assert.equal(bundleVersion('0.4.0-rc.1'),'0.4.0rc1')
   assert.throws(()=>bundleVersion('0.3.6-preview'))
   const content=appcast({version:'0.3.6-dev.20260920.2',url:'https://example.org/app.zip',bytes:10,signature:Buffer.alloc(64).toString('base64')})
   assert.match(content,/<sparkle:version>0.3.6dev20260920.2<\/sparkle:version>/)

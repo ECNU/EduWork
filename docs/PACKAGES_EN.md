@@ -34,7 +34,7 @@ CI selects affected development roots; shared-service changes also select Studio
 
 ## Publish independently
 
-`@eduwork/dsh-literature` targets DSH `0.2.0-rc.1`, forked from `SihanLv/dsh-literature` and maintained by EduWork. The current `0.1.7-rc.2` client retains its verified `@shlv/dsh-literature` lock; publishing the new package does not change existing client dependencies. Verify the registry artifact and update the assembly lock with the kernel upgrade.
+`@eduwork/dsh-literature` targets DSH `0.2.0-rc.1`, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs published version `0.1.0` from npm, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.0-rc.1/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
 
 Each package keeps its own SemVer, public exports, configuration IDs and persisted paths. Use a new version for every publication; never overwrite an existing npm version. If shared services change version, update Studio's exact dependency and lock; publish and verify shared services before Studio.
 

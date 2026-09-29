@@ -3,12 +3,13 @@ import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto
 import { execFileSync } from 'node:child_process'
 import { join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { desktopVersion } from './desktop-build-plan.mjs'
 
 // Sparkle ignores hyphenated suffixes. Encode the supported prerelease grammar
 // without a hyphen so every development build sorts before its stable release.
 export function bundleVersion(version) {
-  if (!/^\d+\.\d+\.\d+(?:-dev\.\d{8}\.[1-9]\d*)?$/.test(version)) throw Error('Unsupported desktop version')
-  return version.replace('-dev.', 'dev')
+  desktopVersion(version)
+  return version.replace(/-(dev|alpha|beta|rc)\./, '$1')
 }
 export function validateMacUpdateConfig(raw) {
   if (raw.schemaVersion !== 1 || !raw.feeds?.stable || !raw.feeds?.development) throw Error('Both macOS update channels are required')

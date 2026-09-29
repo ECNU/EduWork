@@ -10,7 +10,7 @@ const { values } = parseArgs({ options: { runtime: { type: 'string' }, host: { t
 if (!values.runtime || !values.host || !values.output) throw new Error('Use --runtime <candidate> --host <prepared native Host> --output <new directory>')
 const runtime = resolve(values.runtime), hostRoot = resolve(values.host), output = resolve(values.output)
 const receipt = JSON.parse(await readFile(join(hostRoot, 'receipt.json'), 'utf8'))
-assert.equal(receipt.upstreamCommit, '477b4f420553e8a52c2fbccc464d7561b239c443')
+assert.equal(receipt.upstreamCommit, '4878cdabd87d4041bdaff61d04c966883b9fd07a')
 assert.equal(receipt.protocolVersion, 4)
 await mkdir(output)
 await symlink(join(runtime, 'node_modules'), join(hostRoot, 'desktop-host/node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
@@ -21,11 +21,22 @@ await mkdir(profile, { recursive: true })
 const fixture = join(output, 'http-fixture.mjs')
 await writeFile(fixture, `
 import { gzipSync } from 'node:zlib';
-export const inject = ['connection'];
+export const inject = ['connection', 'pluginManager'];
 export function apply(ctx) {
   let cancelled = 0;
   ctx.on('connection/request', async (request, response, next) => {
     const path = new URL(request.url, 'http://localhost').pathname;
+    if (path === '/api/__probe/privacy') {
+      const ids = ['session-telemetry-otel', 'desktop-product-telemetry', 'product-analytics', 'message-feedback', 'ui-message-feedback', 'command-feedback'];
+      const selected = async () => (await ctx.pluginManager.listPlugins()).flatMap(row => {
+        const id = [...ctx.loader.entries()].find(entry => entry.id === row.entryId)?.options.id;
+        return ids.includes(id) ? [{ id, entryId: row.entryId, enabled: row.enabled }] : [];
+      });
+      const before = await selected(), changes = [];
+      if (request.method === 'POST') for (const row of before) changes.push(await ctx.pluginManager.setPluginEnabled(row.entryId, true));
+      response.end(JSON.stringify({ before, changes, after: await selected() }));
+      return;
+    }
     if (path === '/api/__probe/ping') { response.end(JSON.stringify({ cancelled })); return; }
     if (path === '/api/__probe/compressed') {
       const bytes = gzipSync('decoded synthetic content');
@@ -57,16 +68,22 @@ await writeNativeProfile({ profile, bundles: ['@deepseek-ai/dsh-base', '@deepsee
   { insert: [{ id: 'synthetic-http', name: pathToFileURL(fixture).href }] },
 ] })
 const logs = []
-const host = new DesktopHostProcess(process.execPath, runtime, profile, undefined, { ...process.env,
+const createHost = () => new DesktopHostProcess(process.execPath, runtime, profile, undefined, { ...process.env,
   DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' }, undefined, undefined, undefined, undefined,
   { hostEntry: join(hostRoot, 'desktop-host/lib/index.js'), bootstrap: {}, onLog: text => logs.push(text) })
-const report = { success: false, version: '0.1.7-rc.2', protocol: 4, scope: 'real Host, authenticated HTTP, synthetic media' }
+let host = createHost()
+const report = { success: false, version: '0.2.0-rc.1', protocol: 4, scope: 'real Host, authenticated HTTP, synthetic media' }
 try {
   const ready = await host.start()
   const origin = new URL(ready.url).origin
   assert.equal(new URL(origin).hostname, '127.0.0.1')
   const cookie = await authenticateWebHost(ready.url)
   const request = (path, options = {}) => forwardWebRequest(new Request('dsh-app://app' + path, options), origin, cookie)
+  const privacy = await (await request('/api/__probe/privacy', { method: 'POST' })).json()
+  assert.equal(privacy.before.length, 6, 'Expected all official statistics and feedback entries')
+  assert.ok(privacy.before.every(row => !row.enabled))
+  assert.ok(privacy.changes.every(change => change.changed && change.application === 'overridden'), JSON.stringify(privacy.changes))
+  assert.ok(privacy.after.every(row => !row.enabled), 'Plugin manager re-enabled a distribution-disabled entry')
   const unauthenticated = await fetch(origin + '/api/__probe/ping')
   assert.notEqual(unauthenticated.status, 200); await unauthenticated.body?.cancel()
   const denied = await request('/api/__probe/ping', { headers: { origin: 'https://untrusted.invalid' } })
@@ -109,11 +126,19 @@ try {
   await host.updateTasks('unlock')
   const resumed = await request('/api/__probe/ping'); assert.equal(resumed.status, 200); await resumed.body.cancel()
   await host.stop()
+  host = createHost()
+  const restarted = await host.start(), restartOrigin = new URL(restarted.url).origin
+  const restartCookie = await authenticateWebHost(restarted.url)
+  const afterRestart = await (await forwardWebRequest(new Request('dsh-app://app/api/__probe/privacy'), restartOrigin, restartCookie)).json()
+  assert.equal(afterRestart.after.length, 6)
+  assert.ok(afterRestart.after.every(row => !row.enabled), 'Persisted enable request bypassed distribution policy after restart')
+  await host.stop()
   assert.ok(logs.every(text => !/[?&]token=(?!\[redacted\])/.test(text)), 'Launch credential leaked to log callback')
   report.success = true
   report.verified = ['real-child-startup', 'loopback-authentication', 'foreign-origin-denied', 'byte-range', 'head',
     'unencoded-file-length', 'decoded-gzip-headers', 'concurrent-unread-stream', 'cancellation',
-    'correlated-quit-and-update-inspection', 'update-admission-lock', 'clean-shutdown', 'redacted-launch-log']
+    'correlated-quit-and-update-inspection', 'update-admission-lock', 'clean-shutdown', 'redacted-launch-log',
+    'statistics-feedback-disabled', 'plugin-manager-enable-overridden', 'privacy-preserved-after-restart']
 } catch (error) { report.error = { message: error.message, diagnostic: error.diagnostic }; process.exitCode = 1 }
 finally {
   await host.stop().catch(error => { report.shutdownError = error.message })

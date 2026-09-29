@@ -36,7 +36,7 @@ try {
     if (-not (Get-Content (Join-Path $Output 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'Alpha GUI smoke failed' }
     if ($generic) {
         # Use the shipped default (created on first launch on macOS), without a synthetic organization.
-        & node --input-type=module -e 'import assert from "node:assert/strict";import {readFile} from "node:fs/promises";import {pathToFileURL} from "node:url";const {parse}=await import(pathToFileURL(process.argv[1]));const config=parse(await readFile(process.argv[2],"utf8"));assert.deepEqual(config.organizations,[]);assert.equal(config.updates.provider,"disabled");assert.equal(config.product.name,"EduWork");console.log("GENERIC_FIRST_LAUNCH_CONFIG_OK");' (Join-Path $CoreRoot 'dsh-host/vendor/jsonc-parser/parser.js') $config
+        & node (Join-Path $CoreRoot 'scripts/verify-generic-first-launch.mjs') $Product $config
     }
     if ($PublisherBootstrap) {
         $started=Get-Content (Join-Path $Output 'data/logs/desktop-start.json') -Raw | ConvertFrom-Json

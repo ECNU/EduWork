@@ -4,11 +4,15 @@ import {mkdtemp, writeFile, readFile, rm} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createHash} from 'node:crypto'
+import {githubUpdateManifestBytes, updateManifestName} from '../scripts/github-update-manifest.mjs'
+import {bundleVersion} from '../scripts/macos-update-feed.mjs'
+import {desktopVersion} from '../scripts/desktop-build-plan.mjs'
 import {assetNames, validateRun, validateCandidateReceipt, validatedCandidateFiles, verifyRemoteAssets, publishCandidate} from '../scripts/publish-desktop-candidate.mjs'
 
-const context = {product: 'EduWork', version: '0.3.6-dev.20260928.2', distribution: 'eduwork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40)}
+const globalContext = {product: 'EduWork', version: '0.3.6-dev.20260928.2', distribution: 'eduwork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40)}
+const context = globalContext
 const hash = data => createHash('sha256').update(data).digest('hex')
-async function fixture(platform) {
+async function fixture(platform, context = globalContext) {
   const directory = await mkdtemp(join(tmpdir(), 'eduwork-publication-'))
   const names = assetNames(context.product, context.version, platform)
   const file = async (name, body, sidecar = true) => {
@@ -17,12 +21,14 @@ async function fixture(platform) {
     if (sidecar) await writeFile(join(directory, name + '.sha256'), `${meta.sha256}  ${name}\n`)
     return meta
   }
-  const receipt = {schemaVersion: 1, kind: 'eduwork-source-alpha', version: context.version, distribution: context.distribution, coreCommit: context.coreCommit, editionCommit: context.editionCommit, platform, shell: 'electron', passed: true, automaticUpdates: false, dshVersion: '0.1.7-rc.2', checks: Object.fromEntries(['sourceSnapshot', 'archiveManifest', 'mediaTemplate', 'nativeRuntimes', 'desktopLaunch', 'portableExtractor', 'macosDmg', 'readOnlyApplication'].map(name => [name, 'passed'])), asset: await file(names[0], 'synthetic archive')}
+  const receipt = {schemaVersion: 1, kind: desktopVersion(context.version).prerelease ? 'eduwork-source-alpha' : 'eduwork-source-release', edition: context.product, version: context.version, distribution: context.distribution, coreCommit: context.coreCommit, editionCommit: context.editionCommit, platform, shell: 'electron', passed: true, automaticUpdates: !desktopVersion(context.version).prerelease, dshVersion: '0.1.7-rc.2', checks: Object.fromEntries(['sourceSnapshot', 'archiveManifest', 'mediaTemplate', 'nativeRuntimes', 'desktopLaunch', 'portableExtractor', 'updateContract', 'macosDmg', 'readOnlyApplication'].map(name => [name, 'passed'])), asset: await file(names[0], 'synthetic archive')}
   const extra = await file(names[3], 'synthetic installer')
   if (platform === 'windows') {
     const extractor = {schemaVersion: 1, kind: 'eduwork-portable-extractor', format: 'zip-containing-self-extracting-exe', version: context.version, distribution: context.distribution, payload: receipt.asset, asset: extra, extractor: {name: 'EduWork-Setup.exe', bytes: 1, sha256: 'c'.repeat(64), sourceCommit: context.coreCommit, sourceDirty: false}, checks: {executionLevel: 'asInvoker', embeddedArchive: 'passed', manifestIdentity: 'passed', outerZIP: 'passed', extraction: 'passed'}}
     receipt.portableExtractor = {asset: extra, receipt: await file(names[5], JSON.stringify(extractor), false)}
   } else receipt.installer = {asset: extra, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}
+  if (platform === 'windows' && !desktopVersion(context.version).prerelease) await file(updateManifestName, githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), false)
+  if (platform === 'macos') Object.assign(receipt, {sparkleEnabled: !desktopVersion(context.version).prerelease, bundleVersion: bundleVersion(context.version)})
   await writeFile(join(directory, names[2]), JSON.stringify(receipt))
   return {directory, names, receipt, context: {...context, platform}}
 }
@@ -83,8 +89,36 @@ test('build and standalone workflows expose the same guarded cloud publication p
   const publish = await readFile(new URL('../.github/workflows/publish-desktop-candidate.yml', import.meta.url), 'utf8')
   assert.match(build, /needs: build/)
   assert.match(build, /uses: \.\/\.github\/workflows\/publish-desktop-candidate.yml/)
-  assert.match(build, /SELECTED_PLATFORMS -ne 'both'/)
+  assert.match(build, /build-desktop-candidate\.ps1/)
+  assert.doesNotMatch(build, /source_alpha:|source_stable:/)
   assert.match(publish, /workflow_call:/)
   assert.match(publish, /if: github.ref == 'refs\/heads\/main'/)
   assert.match(publish, /runs-on: ubuntu-latest/)
+})
+
+for (const platform of ['windows', 'macos']) test('stable ' + platform + ' carries validated update metadata', async t => {
+  const data = await fixture(platform, { ...context, version: '0.4.0' })
+  t.after(() => rm(data.directory, { recursive: true, force: true }))
+  await validatedCandidateFiles(data.directory, data.context)
+  assert.equal(data.names.length, platform === 'windows' ? 7 : 5)
+  if (platform === 'windows') {
+    await writeFile(join(data.directory, updateManifestName), '{}')
+    await assert.rejects(validatedCandidateFiles(data.directory, data.context), /Update manifest differs/)
+    const invalid = structuredClone(data.receipt); delete invalid.checks.updateContract
+    assert.throws(() => validateCandidateReceipt(invalid, data.context))
+  } else {
+    for (const changed of [{sparkleEnabled: false}, {sparkleEnabled: undefined}, {bundleVersion: '0'}, {bundleVersion: undefined}]) {
+      assert.throws(() => validateCandidateReceipt({...data.receipt, ...changed}, data.context), /Sparkle/)
+    }
+  }
+})
+
+for (const platform of ['windows', 'macos']) test('alpha SemVer ' + platform + ' remains a prerelease without stable update metadata', async t => {
+  const data = await fixture(platform, { ...context, version: '0.4.0-alpha.1' })
+  t.after(() => rm(data.directory, { recursive: true, force: true }))
+  await validatedCandidateFiles(data.directory, data.context)
+  assert.equal(data.receipt.automaticUpdates, false)
+  assert.equal(data.names.includes(updateManifestName), false)
+  assert.equal(data.names[2], `${platform}-alpha-receipt.json`)
+  assert.throws(() => validateCandidateReceipt({...data.receipt, automaticUpdates: true}, data.context), /automaticUpdates/)
 })

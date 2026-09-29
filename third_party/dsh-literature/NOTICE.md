@@ -1,6 +1,6 @@
 # dsh-literature notice
 
-ChatECNU Work includes `@shlv/dsh-literature` version `0.1.2` and its declared
+The historical npm release assembly includes `@shlv/dsh-literature` version `0.1.2` and its declared
 runtime dependency family. The package is distributed under the MIT License.
 
 - Source: <https://github.com/SihanLv/dsh-literature>
@@ -10,4 +10,8 @@ runtime dependency family. The package is distributed under the MIT License.
 The package provides the `ctx.literature` service seam, DBLP and arXiv source
 providers, and the `literature_search`, `literature_bibtex`, and
 `literature_fulltext` model tools. It remains independently installable in a
-plain DSH deployment; ChatECNU Work only selects and locks that public bundle.
+plain DSH deployment; this historical lock selects the original public bundle.
+
+The DSH 0.2 candidate instead uses the published EduWork-maintained fork,
+[`@eduwork/dsh-literature`](../../packages/dsh-literature/README.md) 0.1.0.
+The original lock is retained for historical builds.

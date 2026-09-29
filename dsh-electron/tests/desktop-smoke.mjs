@@ -20,6 +20,11 @@ const checks = [], errors = []
 page.on('pageerror', error => errors.push(error.message))
 page.setDefaultTimeout(20_000)
 const check = async (name, callback) => { const result = await callback(); checks.push({ name, passed: true, result }) }
+let phase = 'load', expectedTitle
+const waitForTitle = async (name, expected) => {
+  phase = name; expectedTitle = expected
+  await page.waitForFunction(expected => document.title === expected, expected)
+}
 let sequence = 0
 const rpc = (method, args = {}) => page.evaluate(async ({ method, args, id }) => {
   const response = await fetch('/api/' + method, { method: 'POST', headers: { 'content-type': 'application/json' },
@@ -43,9 +48,10 @@ try {
   await check('official-protocol-brand-and-renderer', async () => {
     // The official narrow sidebar keeps the button but omits its text label.
     if (!values['launch-only']) await page.getByRole('button', { name: /^(新建会话|New session)$/i }).first().waitFor()
+    phase = 'renderer-body'
     await page.waitForFunction(() => document.body.innerText.trim().length > 0)
     // The official document title exists before the branding plugin mounts.
-    await page.waitForFunction(expected => document.title === expected, identity.brand.product.name)
+    await waitForTitle('initial-product-title', identity.brand.product.name)
     // Navigation can reset either the bare title or a session-qualified title.
     // Exercise the mounted plugin, rather than accepting a transient brand.
     for (const [title, expected] of [
@@ -53,7 +59,7 @@ try {
       ['DeepSeek Harness', identity.brand.product.name],
     ]) {
       await page.evaluate(title => { document.title = title }, title)
-      await page.waitForFunction(expected => document.title === expected, expected)
+      await waitForTitle('navigation-title: ' + title, expected)
     }
     assert.equal(await page.title(), identity.brand.product.name)
     const transport = await page.evaluate(() => ({ ownsHost: globalThis.__DSH_TRANSPORT__?.ownsHost,
@@ -94,8 +100,8 @@ try {
   assert.deepEqual(errors, [])
 } catch (error) {
   process.exitCode = 1
-  checks.push({ name: 'desktop-browser', passed: false, error: error.message })
-  console.error('Desktop browser acceptance: ' + error.message)
+  checks.push({ name: 'desktop-browser', passed: false, phase, expectedTitle, observedTitle: await page.title().catch(() => null), error: error.message, stack: error.stack })
+  console.error('Desktop browser acceptance: ' + JSON.stringify(checks.at(-1)))
   await page.screenshot({ path: join(evidence, 'failed-desktop.png') }).catch(() => {})
   await (async () => writeFile(join(evidence, 'failed-desktop-ui.json'), JSON.stringify({
     title: await page.title(), viewport: await page.evaluate(() => ({ width: innerWidth, height: innerHeight })),

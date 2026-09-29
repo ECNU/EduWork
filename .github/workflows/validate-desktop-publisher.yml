@@ -4,8 +4,22 @@ on:
     paths:
       - '.github/workflows/*desktop*.yml'
       - 'scripts/publish-desktop-candidate.mjs'
+      - 'config/desktop-build.json'
+      - 'scripts/desktop-build-plan.mjs'
+      - 'scripts/build-desktop-candidate.ps1'
+      - 'scripts/ci-017-alpha-desktop.ps1'
+      - 'scripts/prepare-017-alpha-product.mjs'
+      - 'scripts/macos-update-feed.mjs'
+      - 'scripts/pack-windows-release.ps1'
+      - 'scripts/pack-portable-extractor.ps1'
+      - 'tests/windows-package-preflight.test.mjs'
+      - 'tests/desktop-build-plan.test.mjs'
+      - 'scripts/test/macos-update-feed.test.mjs'
       - 'scripts/publish-windows-release.mjs'
       - 'tests/desktop-candidate-publication.test.mjs'
+      - 'scripts/verify-generic-first-launch.mjs'
+      - 'scripts/test-017-alpha-desktop.ps1'
+      - 'tests/generic-first-launch.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,4 +31,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.18.0'
-      - run: node --test tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs
+      - run: node --test tests/windows-package-preflight.test.mjs tests/desktop-build-plan.test.mjs tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs tests/generic-first-launch.test.mjs scripts/test/macos-update-feed.test.mjs
