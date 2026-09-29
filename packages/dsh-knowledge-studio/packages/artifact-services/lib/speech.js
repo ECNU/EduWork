@@ -16,6 +16,8 @@ export class SpeechService {
     return () => {if (this.#providers.get(provider.id) === provider) this.#providers.delete(provider.id)}
   }
   has(id) {return this.#providers.has(id)}
+  // Host-owned metadata only: checking permission must not enumerate remote voices.
+  isLocal(id) {return this.#providers.get(id)?.local === true}
   async list() {
     return Promise.all([...this.#providers.values()].map(async p => {
       try {

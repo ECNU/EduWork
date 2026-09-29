@@ -28,6 +28,12 @@ Shared previews read actual DOCX/XLSX/PPTX bytes, with fixed PPTX page coordinat
 
 PDF/video consumers in Node can import `createMediaRuntime` from `@eduwork/dsh-artifact-services/runtime` and use its `browserExecutable`. Supply `DSH_MEDIA_NODE_ENV` / `DSH_MEDIA_BROWSER` together for a pinned deployment (legacy `ECNU_AGENT_NODE_ENV` / `ECNU_AGENT_REMOTION_BROWSER` remain supported); configured deployments never call `ensureBrowser`. Without configuration, an actual rendering request may prepare the shared package’s browser. Read-only readiness checks do not download it. The pinned runtime is Remotion 4.0.520, mediabunny 1.55.5 and React/React DOM 18.3.1; all consumers should resolve one copy of mediabunny. `getMediaFFmpegPath` from the same entry resolves FFmpeg from the selected dependency owner without preparing a browser. An existing runtime can be passed as `{runtime}`.
 
+## Conversation tool permissions
+
+Office creation, editing, PDF merging and extraction follow the session's effective file-write policy. Existing workspace-write access needs no repeated approval; read-only sessions still require approval for each write. Custom presets use the resolved sandbox policy. Project-relative paths, canonical containment and no-overwrite checks still apply, even under Full Access.
+
+Local TTS, ASR, fixed-template media rendering and video project file operations also reuse workspace-write access. Remote provider calls, image generation and execution of editable video project code retain approval. The host declares a provider's `local: true` capability; model arguments cannot set it. Permission checks never query voice endpoints or invoke generation. Other host permission hooks continue to run.
+
 ## Application interfaces (v1)
 
 ```js

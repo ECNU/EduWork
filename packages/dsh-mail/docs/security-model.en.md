@@ -23,6 +23,10 @@ The canonical body field is `untrustedText`. Rendering adds a fixed warning and 
 
 Warnings are defense in depth. The actual mutation boundary is enforced by the separate `sendEnabled` capability, argument validation, workspace fencing, and DSH's native `tools/pre-execute` permission path. Even if the model mishandles text, the mail body cannot bypass those mechanisms.
 
+## Attachment downloads
+
+`mail_get_attachment` checks the session's effective write policy before accessing credentials or downloading. Workspace-write permits saving attachments; read-only or unknown modes require approval for this call. Rejection, cancellation or unavailable approval prevents the download. Path and size limits remain enforced; download permission does not grant permission to send mail.
+
 ## Send approval
 
 `mail_send` enters DSH permission handling before credentials, attachments, or SMTP access:

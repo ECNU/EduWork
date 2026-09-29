@@ -6,6 +6,8 @@ import {renderMedia} from './media.js'
 import {runVideoCommand} from './video-runner.js'
 import {createMediaRuntime} from './runtime.js'
 import {structuredSpec} from './structured-spec.js'
+import {normalizeMediaOptions} from './providers.js'
+import {decideWorkspaceWrite} from './tool-permissions.js'
 
 async function workspace(ctx,exec) {
   const cwd=exec.agent?.session.header.cwd
@@ -22,10 +24,19 @@ export function installMediaTools(ctx,service) {
   ctx.on('tools/pre-execute',(exec,next)=>{
     if(!writes.has(exec.name))return next()
     if(exec.name==='video_project'&&['validate','voiceover-jobs'].includes(exec.arguments?.action))return next()
-    if(!exec.agent)return Promise.resolve({kind:'deny',reason:'Media writes require an Agent session'})
-    if(ctx.permissionPresets.current(exec.agent.session)==='danger-full-access')return next()
     const reason=exec.name==='video_project'?'Create or modify an editable video project in the current workspace':exec.name==='speech_synthesize'?'Generate speech in the current workspace using the selected provider':'Render audio or video in the current workspace with the selected media settings'
-    return Promise.resolve({kind:'ask',reason})
+    let local=false
+    if(exec.name==='speech_synthesize')local=service.speech.isLocal(exec.arguments?.provider)
+    if(exec.name==='media_render') {
+      try {
+        const spec=structuredSpec(exec.arguments ?? {}),options=normalizeMediaOptions(spec.options)
+        local=(spec.kind==='video'&&!options.narration)||service.speech.isLocal(options.provider)
+      } catch { /* Invalid arguments never acquire an implicit grant. */ }
+    }
+    // Rendering an editable project runs its React source; a file-write grant
+    // alone does not authorize that arbitrary code. Fixed media templates do.
+    if(exec.name==='video_project')local=['init','stage','stage-voiceover','stage-bgm'].includes(exec.arguments?.action)
+    return decideWorkspaceWrite(ctx,exec,next,reason,{local})
   })
   const schema={type:'object',additionalProperties:false,properties:{reportJSON:{type:'string',required:true},relativePath:{type:'string'},mime:{type:'string'}}}
   const output={schema,render:(_,v)=>[{type:'text',text:v.reportJSON}],presentationMeta:(_,v)=>v.relativePath?{relativePath:v.relativePath,mime:v.mime}:{}}

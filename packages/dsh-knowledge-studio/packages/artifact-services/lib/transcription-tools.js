@@ -2,14 +2,15 @@ import {defineTool} from '@deepseek-ai/dsh-tools'
 import {realpath} from 'node:fs/promises'
 import {assertWithinWorkspace,createMediaJobDirectory} from './media-paths.js'
 import {transcriptionInput} from './transcription.js'
+import {decideWorkspaceWrite} from './tool-permissions.js'
 
 export function installTranscriptionTools(ctx,service) {
   // The DSH tool boundary owns approval. The shared service never prompts again.
   ctx.on('tools/pre-execute',(exec,next)=>{
     if(exec.name!=='speech_transcribe')return next()
-    if(!exec.agent)return Promise.resolve({kind:'deny',reason:'Transcription requires an Agent workspace'})
-    if(ctx.permissionPresets.current(exec.agent.session)==='danger-full-access')return next()
-    return Promise.resolve({kind:'ask',reason:'Transcribe the selected workspace audio file. A remote provider uploads the file and may use its service quota.'})
+    return decideWorkspaceWrite(ctx,exec,next,
+      'Transcribe the selected workspace audio file. A remote provider uploads the file and may use its service quota.',
+      {local:service.transcription.isLocal(exec.arguments?.provider)})
   })
   const output={schema:{type:'object',additionalProperties:false,properties:{reportJSON:{type:'string',required:true}}},render:(_,value)=>[{type:'text',text:value.reportJSON}]}
   ctx.tools.register(defineTool({name:'speech_transcription_providers',description:'List configured audio-file transcription providers, readiness and timestamp support. Local engines/models are installed only by the host on request; no automatic download or remote fallback.',parameters:{},output,
