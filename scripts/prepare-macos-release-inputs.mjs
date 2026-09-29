@@ -17,7 +17,7 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
-  capture, copyFileTo, copyTree, download, ensureDir, fullPath, isMacOS, isMainModule,
+  capture, copyFileTo, copyTree, copyTreePreservingLinks, download, ensureDir, fullPath, isMacOS, isMainModule,
   pathExists, readJSON, run, sha256File, writeJSON, writeText,
 } from './lib/build-util.mjs'
 import { cachedCompile, compileKey } from './lib/native-compile-cache.mjs'
@@ -196,10 +196,13 @@ export async function installMacosReleaseInputs({ inputs, product } = {}) {
   await rm(resources, { recursive: true, force: true })
   await rm(join(product, 'desktop-resources.json'), { force: true })
   await ensureDir(resources)
-  await copyTree(join(inputs, 'python'), join(resources, 'p'))
+  // The Python runtime ships versioned symlinks (python3 -> python3.12), so the
+  // link-preserving copy is required; the link-rejecting one is for payloads
+  // that must not depend on anything outside themselves.
+  await copyTreePreservingLinks(join(inputs, 'python'), join(resources, 'p'))
   await copyFileTo(join(inputs, 'office-python'), join(resources, 'office-python'))
   await chmod(join(resources, 'office-python'), 0o755)
-  await copyTree(join(inputs, 'browser/chrome-mac-arm64'), join(resources, 'b'))
+  await copyTreePreservingLinks(join(inputs, 'browser/chrome-mac-arm64'), join(resources, 'b'))
   await copyFileTo(join(inputs, 'speech/whisper-cli'), join(resources, 'a/whisper-cli'))
   await copyFileTo(join(inputs, 'speech/model.bin'), join(resources, 'a/model.bin'))
   await copyTree(join(inputs, 'licenses'), join(resources, 'licenses'))

@@ -66,7 +66,10 @@ export function sharedDesktopStages({
       name: 'product',
       description: 'Shared desktop product tree',
       requires: ['web', 'host-adapter'],
-      outputs: ['product/assembly.json'],
+      // `assembly.json` is created here but rewritten by `install-host` when it
+      // records the adapter it installed, so it is mutable rather than pinned:
+      // the stage promises the tree exists, not that every byte is frozen.
+      outputs: [],
       mutableOutputs: ['product'],
       run: async (workspace) => {
         await prepareDesktopProduct({
