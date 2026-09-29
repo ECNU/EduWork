@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T13:59:20.720Z",
-  "fileSetSHA256": "d03d225d008476c9c54fa258ae7446ef0f9c4c54d93314007d5841f31fa98a4c",
+  "createdAt": "2026-09-29T14:04:48.722Z",
+  "fileSetSHA256": "a4851224bd1d02b8b877d2ed7bb13663cff5980583c89d40f55ff614679d3ebc",
   "files": [
     {
       "path": ".gitattributes",
@@ -4829,11 +4829,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "b2676f017cb2daa3639aaacf7045dcf770aaa7a559ae99529f9a3df2744dd49c"
+      "sha256": "ef3eff39f879bec01b14d35da351dd5b2e317a8386b52d08ca6a9431edf3f983"
     },
     {
       "path": "README.md",
-      "sha256": "40f81c7339c17efede50d09ff6b182e47514b0e91a18a7cf0030fc174e33e3b3"
+      "sha256": "52b376e3205ea9f505291011fcdcee36e5f1ca04eae11185a4278e41e8209354"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
