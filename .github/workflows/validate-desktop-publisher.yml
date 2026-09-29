@@ -6,6 +6,9 @@ on:
       - 'scripts/publish-desktop-candidate.mjs'
       - 'scripts/publish-windows-release.mjs'
       - 'tests/desktop-candidate-publication.test.mjs'
+      - 'scripts/verify-generic-first-launch.mjs'
+      - 'scripts/test-017-alpha-desktop.ps1'
+      - 'tests/generic-first-launch.test.mjs'
   workflow_dispatch:
 permissions:
   contents: read
@@ -17,4 +20,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.18.0'
-      - run: node --test tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs
+      - run: node --test tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs tests/generic-first-launch.test.mjs
