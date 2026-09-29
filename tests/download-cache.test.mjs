@@ -7,7 +7,7 @@ import { createHash } from 'node:crypto'
 import { realpathSync } from 'node:fs'
 import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { sep, join } from 'node:path'
 import { defaultCacheRoot, download, ensureDir, pathExists } from '../scripts/lib/build-util.mjs'
 
 const sha256 = buffer => createHash('sha256').update(buffer).digest('hex')
@@ -94,9 +94,32 @@ test('a mismatched hash fails instead of populating the cache', async () => {
 test('the default cache root lives outside any repository', () => {
   const root = defaultCacheRoot()
   assert.match(root, /eduwork-native-cache$/)
-  // It sits under the resolved OS temporary directory, never inside a checkout,
-  // because the source audit rejects generated content found in the repository.
-  assert.ok(root.startsWith(join(realpathSync(tmpdir()), '')))
+  // It must never be inside a checkout, because the source audit rejects
+  // generated content found in the repository.
+  assert.ok(!root.includes(`${sep}.git${sep}`), 'the cache root must not be inside a checkout')
+  // On POSIX it is a flat, predictable path rather than the per-user or per-job
+  // temporary directory: on a GitHub-hosted runner `$TMPDIR` is `RUNNER_TEMP`,
+  // which is wiped at the start of every job, so a cache there never survives to
+  // be used. Windows keeps `%TEMP%`, which is the documented location there.
+  if (process.platform === 'win32') {
+    assert.ok(root.startsWith(join(realpathSync(tmpdir()), '')))
+  } else {
+    assert.ok(root.startsWith('/tmp/'), `expected a flat /tmp root, got ${root}`)
+  }
+})
+
+test('EDUWORK_TMPDIR relocates the cache root for callers that need a durable one', () => {
+  const previous = process.env.EDUWORK_TMPDIR
+  try {
+    // A caller that needs a durable root — CI caching the native inputs, or a
+    // machine with a small /tmp — can name it without a code change.
+    const relocated = join(tmpdir(), 'eduwork-relocated')
+    process.env.EDUWORK_TMPDIR = relocated
+    assert.equal(defaultCacheRoot(), join(relocated, 'eduwork-native-cache'))
+  } finally {
+    if (previous === undefined) delete process.env.EDUWORK_TMPDIR
+    else process.env.EDUWORK_TMPDIR = previous
+  }
 })
 
 test('non-HTTPS downloads are still rejected before any cache write', async () => {

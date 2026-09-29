@@ -137,7 +137,9 @@ node scripts/local-desktop-pipeline.mjs
 | --- | --- |
 | `--jobs N` | 并发阶段数；`0`（默认）表示按依赖图允许的宽度自动决定 |
 | `--reuse-workspace` | 复用已有工作区与检查点，而不是要求一个新目录 |
-| `--cache-root <dir>` | 原生输入缓存位置，默认为系统临时目录下的 `eduwork-native-cache` |
+| `--cache-root <dir>` | 原生输入缓存位置，默认 `/tmp/eduwork-native-cache`（Windows 为 `%TEMP%`），也可用 `EDUWORK_TMPDIR` 或 `EDUWORK_CACHE_ROOT` 指定 |
+| `--digest-budget <bytes>` | 单个产物超过该字节数时只比对文件清单与大小，不再逐文件哈希；默认 2 GiB |
+| `--lock-wait <seconds>` | 等待同一工作区锁的秒数；默认 0 表示发现被占用立即失败 |
 | `--runtime-source <dir>` | 已校验的 Runtime 缓存，避免重复投影 |
 | `--no-verify-snapshot` | 跳过源码回执比对，供未提交工作树验证使用 |
 

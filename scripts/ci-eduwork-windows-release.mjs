@@ -15,7 +15,8 @@ import { join } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import {
-  capture, ensureDir, fullPath, isFile, isMainModule, isWindows, readJSON, sha256File, writeJSON,
+  capture, ensureDir, fullPath, isFile, isMainModule, isWindows, readJSON, setCacheRoot,
+  sha256File, writeJSON,
 } from './lib/build-util.mjs'
 import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
@@ -26,7 +27,8 @@ const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
-  '[--jobs N] [--reuse-workspace] (--jobs 0 = as many as the graph allows)'
+  '[--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] ' +
+  '(--jobs 0 = as many as the graph allows)'
 
 export async function ciEduworkWindowsRelease({
   coreRoot,
@@ -43,11 +45,17 @@ export async function ciEduworkWindowsRelease({
   jobs = 0,
   reuseWorkspace = false,
   force = [],
+  cacheRoot = '',
+  digestBudget = 0,
+  lockWaitMs = 0,
 } = {}) {
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)
   output = fullPath(output)
+  // Set before any work: the native-input stage downloads and compiles, and both
+  // cache layers read this root.
+  if (cacheRoot) setCacheRoot(cacheRoot)
 
   // Development artifacts are named for their channel and never carry approved
   // public notes; a public release requires both the flag and a reviewed file.
@@ -124,7 +132,14 @@ export async function ciEduworkWindowsRelease({
 
   const common = { coreRoot, editionRoot, distributionConfig, version, verifySnapshot, runtimeSource, upstreamSource }
   const stages = [...sharedDesktopStages(common), ...windowsStages({ coreRoot, receiptBase })]
-  const workspace = new Workspace({ root: output, parameters, stages, platform: 'windows-x64' })
+  const workspace = new Workspace({
+    root: output,
+    parameters,
+    stages,
+    platform: 'windows-x64',
+    lockWaitMs,
+    ...(digestBudget > 0 ? { digestBudget } : {}),
+  })
   const entered = await workspace.enter({ force: reuseWorkspace })
   // Zero means "decide from the graph": no run finishes sooner than its widest
   // wave, so that is the default and an explicit number still wins.
@@ -142,6 +157,9 @@ export async function ciEduworkWindowsRelease({
     result.error = error.message
     throw error
   } finally {
+    // Held from `enter` to here, so the evidence written below belongs to this
+    // run's workspace.
+    await workspace.release()
     // Preserve the Web runner's redacted failure report too. Raw test homes,
     // credentials and process logs remain on the disposable runner.
     await ensureDir(join(output, 'evidence-public'))
@@ -167,6 +185,9 @@ if (isMainModule(import.meta.url)) {
       output: { type: 'string' },
       jobs: { type: 'string' },
       'reuse-workspace': { type: 'boolean' },
+      'cache-root': { type: 'string' },
+      'digest-budget': { type: 'string' },
+      'lock-wait': { type: 'string' },
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
@@ -186,5 +207,8 @@ if (isMainModule(import.meta.url)) {
     output: values.output,
     jobs: Number(values.jobs ?? 0),
     reuseWorkspace: Boolean(values['reuse-workspace']),
+    cacheRoot: values['cache-root'] ?? '',
+    digestBudget: Number(values['digest-budget'] ?? 0),
+    lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
   })
 }

@@ -60,9 +60,22 @@ intermediate build directory.
 
 ## Cache root
 
-Default `<realpath($TMPDIR)>/eduwork-native-cache`. Overridable with
-`--cache-root <dir>`, threaded through the same argument plumbing that already
-carries `--runtime-source`.
+Default `/tmp/eduwork-native-cache` on POSIX and
+`<realpath(%TEMP%)>/eduwork-native-cache` on Windows. Overridable with
+`--cache-root <dir>`, which is threaded through the same argument plumbing that
+already carries `--runtime-source`.
+
+`EDUWORK_TMPDIR` relocates the whole temporary root, and `EDUWORK_CACHE_ROOT`
+overrides the cache directory outright; `--cache-root` sets the latter.
+
+**Why not `$TMPDIR` outright.** `tmpdir()` resolves to `$TMPDIR` on POSIX, and on
+a GitHub-hosted runner that is `RUNNER_TEMP` — emptied at the start of every job
+and destroyed when the job ends. A cache there never survives long enough to be
+used, in the one environment where a cold cache costs the most. A flat `/tmp`
+path is what most people mean by "the temporary directory": it is stable between
+local runs and is not per-job. Callers that need a durable cache on CI should
+either set `EDUWORK_TMPDIR` to a path they persist (for example with
+`actions/cache`) or pass `--cache-root`.
 
 It is never inside `coreRoot`. The source audit walks the repository and rejects
 generated content — the `dist/dsh-cache` incident showed exactly how a harmless

@@ -51,6 +51,8 @@ export async function localDesktopPipeline({
   verifySnapshot = true,
   runtimeSource = '',
   cacheRoot = '',
+  digestBudget = 0,
+  lockWaitMs = 0,
   jobs = 0,
   reuseWorkspace = false,
 } = {}) {
@@ -106,6 +108,9 @@ export async function localDesktopPipeline({
     output,
     jobs,
     reuseWorkspace,
+    cacheRoot,
+    digestBudget,
+    lockWaitMs,
   }
   let releaseReceipt
   if (isWindows) {
@@ -188,6 +193,8 @@ if (isMainModule(import.meta.url)) {
       'no-verify-snapshot': { type: 'boolean' },
       'runtime-source': { type: 'string' },
       'cache-root': { type: 'string' },
+      'digest-budget': { type: 'string' },
+      'lock-wait': { type: 'string' },
       jobs: { type: 'string' },
       'reuse-workspace': { type: 'boolean' },
     },
@@ -203,6 +210,8 @@ if (isMainModule(import.meta.url)) {
     verifySnapshot: !values['no-verify-snapshot'],
     runtimeSource: values['runtime-source'] ?? '',
     cacheRoot: values['cache-root'] ?? '',
+    digestBudget: Number(values['digest-budget'] ?? 0),
+    lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
     jobs: Number(values.jobs ?? 0),
     reuseWorkspace: Boolean(values['reuse-workspace']),
   })

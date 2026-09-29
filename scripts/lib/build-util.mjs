@@ -149,12 +149,33 @@ export async function download(url, file, { sha256 = '', retries = 3, cacheRoot:
 }
 
 /**
- * Where download and compile caches live. Defaults to the OS temporary
- * directory, never inside the repository: the source audit walks `coreRoot` and
- * rejects generated content, so a cache in the tree is a build that poisons the
- * next one.
+ * Where download and compile caches live. Never inside the repository: the
+ * source audit walks `coreRoot` and rejects generated content, so a cache in the
+ * tree is a build that poisons the next one.
+ *
+ * `cacheDirectory()` consults `EDUWORK_CACHE_ROOT` first and only falls back
+ * here, so this function answers one question: where does the cache go when
+ * nobody said?
+ *
+ *   1. `EDUWORK_TMPDIR` — an explicit temporary root, for a caller that needs the
+ *      cache somewhere durable.
+ *   2. `/tmp` on POSIX — a flat, predictable path that survives between local
+ *      runs.
+ *   3. `os.tmpdir()` — Windows, where there is no `/tmp` and `%TEMP%` is the
+ *      documented location.
+ *
+ * The default deliberately avoids `os.tmpdir()` on POSIX. `tmpdir()` reads
+ * `$TMPDIR`, which on macOS is a long random per-user path and on a
+ * GitHub-hosted runner is `RUNNER_TEMP` — emptied at the start of every job and
+ * destroyed when the job ends. A cache there never survives long enough to be
+ * used, in the one environment where a cold cache costs the most. CI should set
+ * `EDUWORK_TMPDIR` (or pass `--cache-root`) to a path it actually persists.
  */
 export function defaultCacheRoot() {
+  if (process.env.EDUWORK_TMPDIR) {
+    return join(fullPath(process.env.EDUWORK_TMPDIR), 'eduwork-native-cache')
+  }
+  if (!isWindows) return join('/tmp', 'eduwork-native-cache')
   return join(realpathSync(tmpdir()), 'eduwork-native-cache')
 }
 

@@ -11,7 +11,7 @@ import { join } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
 import {
-  capture, ensureDir, fullPath, isMacOS, isMainModule, readJSON, sha256Text, writeJSON,
+  capture, ensureDir, fullPath, isMacOS, isMainModule, readJSON, setCacheRoot, sha256Text, writeJSON,
 } from './lib/build-util.mjs'
 import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
@@ -34,6 +34,9 @@ export async function ciEduworkMacosRelease({
   jobs = 0,
   reuseWorkspace = false,
   force = [],
+  cacheRoot = '',
+  digestBudget = 0,
+  lockWaitMs = 0,
 } = {}) {
   if (!isMacOS || process.arch !== 'arm64') throw new Error('Use a macOS arm64 runner')
   if (!/^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/.test(version ?? '')) throw new Error('macOS currently supports development candidates only')
@@ -43,6 +46,9 @@ export async function ciEduworkMacosRelease({
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)
   output = fullPath(output)
+  // Set before any work: the native-input stage downloads and compiles, and both
+  // cache layers read this root.
+  if (cacheRoot) setCacheRoot(cacheRoot)
   const name = coreRoot === editionRoot ? 'EduWork' : 'EduWork-ECNU'
   let notesSHA256 = ''
   // With the approval flags in place the notes are read once here, so an empty
@@ -97,7 +103,14 @@ export async function ciEduworkMacosRelease({
     ...sharedDesktopStages(common),
     ...macosStages({ coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase }),
   ]
-  const workspace = new Workspace({ root: output, parameters, stages, platform: 'macos-arm64' })
+  const workspace = new Workspace({
+    root: output,
+    parameters,
+    stages,
+    platform: 'macos-arm64',
+    lockWaitMs,
+    ...(digestBudget > 0 ? { digestBudget } : {}),
+  })
   const entered = await workspace.enter({ force: reuseWorkspace })
   // Zero means "decide from the graph": no run finishes sooner than its widest
   // wave, so that is the default and an explicit number still wins.
@@ -115,6 +128,9 @@ export async function ciEduworkMacosRelease({
     result.error = error.message
     throw error
   } finally {
+    // Held from `enter` to here. `runStages` also releases on its own path, which
+    // covers a caller that only uses the runner; releasing again is a no-op.
+    await workspace.release()
     await ensureDir(join(output, 'evidence-public'))
     await writeJSON(join(output, 'evidence-public/desktop-release-result.json'), result)
     await copyPublicWebEvidence(workspace, join(output, 'evidence-public'))
@@ -140,10 +156,13 @@ if (isMainModule(import.meta.url)) {
       output: { type: 'string' },
       jobs: { type: 'string' },
       'reuse-workspace': { type: 'boolean' },
+      'cache-root': { type: 'string' },
+      'digest-budget': { type: 'string' },
+      'lock-wait': { type: 'string' },
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
-    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--development] [--jobs N] [--reuse-workspace] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
+    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--development] [--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
   }
   await ciEduworkMacosRelease({
     coreRoot: values['core-root'],
@@ -161,5 +180,8 @@ if (isMainModule(import.meta.url)) {
     output: values.output,
     jobs: Number(values.jobs ?? 0),
     reuseWorkspace: Boolean(values['reuse-workspace']),
+    cacheRoot: values['cache-root'] ?? '',
+    digestBudget: Number(values['digest-budget'] ?? 0),
+    lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
   })
 }
