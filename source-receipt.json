@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T03:02:09.141Z",
-  "fileSetSHA256": "41c013761f5925eb311f5b0c714e9a1a6fb5e83f66e65a0cd7a8a21b08a53ef5",
+  "createdAt": "2026-09-29T06:16:01.005Z",
+  "fileSetSHA256": "81c7f5d6249e1b3674d2b65fc003be236a685a044a60ee3d483fb454b8a20802",
   "files": [
     {
       "path": ".gitattributes",
@@ -386,6 +386,10 @@
     {
       "path": "docs/releases/0.4.0-alpha.1.md",
       "sha256": "ad2412b97a70e1bac382713ff66e64eb38311bfd41d7dd20f515efc55fafc94c"
+    },
+    {
+      "path": "docs/releases/0.4.0-alpha.2.md",
+      "sha256": "a55e9b8b5ba6f25e0a849e57fa0aa65a41fa8a13b09f2f03f6d850ebbb0cd655"
     },
     {
       "path": "docs/UPDATES.md",
@@ -2241,11 +2245,15 @@
     },
     {
       "path": "dsh-plugins/tool-browser/lib/index.js",
-      "sha256": "713e17f559f37292fc24975faa5971caefdf1b24ffff24e879e8a999764f20e7"
+      "sha256": "e7dfda3db661284faab1aa5c77cddb39e5c7d24451f01c02afa4abaf7c199729"
     },
     {
       "path": "dsh-plugins/tool-browser/lib/managed-browser.js",
       "sha256": "e41871954f2c338f34e179bdd62e8bbea011a07e9133f2e412e6c178e576ae53"
+    },
+    {
+      "path": "dsh-plugins/tool-browser/lib/permission.js",
+      "sha256": "471dc70d9fba0b3e08c758f58074a2d7eb1663f154254329a61c83e1e1b0d035"
     },
     {
       "path": "dsh-plugins/tool-browser/lib/search-auto.js",
@@ -2278,6 +2286,10 @@
     {
       "path": "dsh-plugins/tool-browser/test/managed-browser.test.mjs",
       "sha256": "bffef959d872585a2ae225fbd78c6361bf0fa9e1bd1e80928b9c3872cf4ec864"
+    },
+    {
+      "path": "dsh-plugins/tool-browser/test/permission.test.mjs",
+      "sha256": "f9bf556d3e6ebf66ff799bbd36222d11d17bc0bdcd179992fc51c848f8327ef3"
     },
     {
       "path": "dsh-plugins/tool-browser/test/search-policy.test.mjs",
@@ -2697,7 +2709,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/image-tools.js",
-      "sha256": "e420345117ae8663db849db7a55b30c6f74c16fddab248dc0b2fad4a0bd8c50b"
+      "sha256": "62ff783a3adb8401f1126b3699f5b4cdd187946eb81bfa1f3a8ae00abe3dfb3d"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/images.js",
@@ -2713,7 +2725,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/media-tools.js",
-      "sha256": "f6469507de10ff9f0d2f123c8c44c63be83977947f5e2458e34c21006f99c000"
+      "sha256": "b257452e376bd8c8148e09f29cb409c16fa9072f644e3e55ed13fe42190227d0"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/media.js",
@@ -2741,7 +2753,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/office-tools.js",
-      "sha256": "dd1e1ef0816520ba5a5263c8392780848ca7c98eaad4d78eed43b4212a036c64"
+      "sha256": "5dbc714e1b89c52e69235e5f8708f80e024dd0053574806248f1dde388fe289d"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/office.js",
@@ -2796,6 +2808,10 @@
       "sha256": "2b1f537af2b605720d1d879c73ad54a7abdc9ff7a4f6863bebe27f080f0ba09d"
     },
     {
+      "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/tool-permissions.js",
+      "sha256": "d1c2367c90b1179f9cd6b794dc452649b89f5a5bad82326fa56b684a4cb22777"
+    },
+    {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-components.js",
       "sha256": "a5c6bfe363e41245319a97b52cf391c3aebd1466ddf6f209fa9b34bc587716f6"
     },
@@ -2813,7 +2829,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-tools.js",
-      "sha256": "72d15b5617f9f7baa08dcfafea4558ec94d915a4c9e72ecdfcbdc4ef76cec7d5"
+      "sha256": "a48a2b68b239812004cbb7416360d136e271d8039dbd14da79b3390ed61f9027"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-whisper.js",
@@ -3017,15 +3033,15 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md",
-      "sha256": "e2e995adaff141db285ea2f4df98a9b72d258aac189ea7caaa9f99cc1d0b23ab"
+      "sha256": "2c034ab6da71e0cf07bae242c79ca67448732e9d16d613b72d418d9c17d979f4"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/README.md",
-      "sha256": "40820849cb38c257c291fa89ece0fe038170c911bc731a5f7b036b2beaca7d82"
+      "sha256": "3a623ef09d1ea3c1b94b32ecc964ad047a6783bc77f726a71149c25def468008"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/documents/SKILL.md",
-      "sha256": "3b5f54e6f7f5f2667f28fb4053938c235614d38305b62cc6524768b1223f6a44"
+      "sha256": "d976888967805b47aa3e8ff8ff1b1f9f6336c84736e4e7689280bb23e0526e01"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/images/SKILL.md",
@@ -3033,7 +3049,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/pdfs/SKILL.md",
-      "sha256": "5fdb9b3f779cfe18f196595abe68df4a7cdfb965e96e1b4f89f3b36b558a9ad8"
+      "sha256": "0289f36ee1ab685e6411a849aa925fcc8bade72b9b2f0a9e01a5ef7e8c198ad3"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/presentations/references/brand-assets.md",
@@ -3049,7 +3065,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/presentations/SKILL.md",
-      "sha256": "890704e924461f04e85a0ffcc795577ffc42314cf7351abed8d69d802333138b"
+      "sha256": "fdd352696ed7fe2e63c64550a2b3430337125f5fd01b48ec012271081d062216"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/common.md",
@@ -3077,7 +3093,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/spreadsheets/SKILL.md",
-      "sha256": "ef0c4bbcf1d65ce216af06bb32c60edb000e27bed88a2e6cea40471dbc106a5f"
+      "sha256": "80857358a63974c71d33d9ab25b0e3f2252e0a6a06f92e3f214f3447059aee7f"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/video/references/quality-check.md",
@@ -3469,7 +3485,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/test/image-services.test.mjs",
-      "sha256": "650b260bc50c2206f092f40c4b62a3d972f0d6f3036cd81213f472c8a9d8b9b5"
+      "sha256": "305d1cc4d8d32526b0e20f6f660d7b9931d727bc167aef452f888994180bbe8f"
     },
     {
       "path": "packages/dsh-knowledge-studio/test/media-preflight.test.mjs",
@@ -3557,11 +3573,15 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/test/transcription.test.mjs",
-      "sha256": "abc7bfac1e884e671ce95f0c42964580587afc00dd228616dff90771b9195294"
+      "sha256": "d53048940dff4d05f497a003d50be573e046387b20fd31233286258c7d257246"
     },
     {
       "path": "packages/dsh-knowledge-studio/test/video-runner.test.mjs",
       "sha256": "a0c8d58e52e4916ce3dd0c62695055ec08a9e06372055c52f6e77b6382acec72"
+    },
+    {
+      "path": "packages/dsh-knowledge-studio/test/workspace-permissions.test.mjs",
+      "sha256": "288edcb37c5bde51825372e4b4a018c73ed4f7421a7c86cb4126c732425f3ca6"
     },
     {
       "path": "packages/dsh-knowledge-studio/THIRD_PARTY_LICENSES.txt",
@@ -3889,11 +3909,11 @@
     },
     {
       "path": "packages/dsh-mail/docs/security-model.en.md",
-      "sha256": "c0db2247be1784b2063f523e5bba6f8ce0a7c327e1e701dd8f2a098819ce0e75"
+      "sha256": "efdff5e072a3e31a446ed5b149427b3dfb59de66c073bbcd564b5961dc9e5b9e"
     },
     {
       "path": "packages/dsh-mail/docs/security-model.md",
-      "sha256": "19225439e5160c16a1021ea2c973c29b612fefcd3efa336c435eb2b1ac40aadd"
+      "sha256": "1272ec7ae6f84330716ef88eedb5685057b24eb554989d420f5b0c3e71e816aa"
     },
     {
       "path": "packages/dsh-mail/docs/tool-contract.en.md",
@@ -4009,7 +4029,7 @@
     },
     {
       "path": "packages/dsh-mail/src/host/permission.js",
-      "sha256": "b9d8566c42d38adfa0307897c8cb94b8f0478bc440701f02da975f4ea66e6da0"
+      "sha256": "4d4a71b8393e74f5a657fd0f273427295eb35fa20dea420ff3380a360cd6314e"
     },
     {
       "path": "packages/dsh-mail/src/host/sanitize.js",
@@ -4030,6 +4050,10 @@
     {
       "path": "packages/dsh-mail/SUPPORT.md",
       "sha256": "be355487ebc2c42f1ddc8f5296cf280083e0cdc2ed5a7a55756c905cfd796a36"
+    },
+    {
+      "path": "packages/dsh-mail/test/attachment-permission.test.js",
+      "sha256": "0241c7f180923b3f7200c54f2d1577c038a3a49af6f7459a8ceef69d6bd85329"
     },
     {
       "path": "packages/dsh-mail/test/client-settings.test.js",

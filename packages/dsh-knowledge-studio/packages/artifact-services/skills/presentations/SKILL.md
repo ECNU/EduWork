@@ -29,7 +29,7 @@ description: 使用共享成果组件的 office_presentation 工具创建、检�
 
 ## 工具契约
 
-调用 `office_presentation`，参数为 `action`、按需提供 `input_path`、`output_path`、直接对象形式的 `spec`（旧版 `spec_json` 字符串仍兼容，二者只传一个） 和仅供回归的 `strict`。路径必须在当前项目内且使用相对路径；写操作由 DSH 权限层统一确认，PPTX 产物会进入预览链路。私有 Python、品牌资产与脚本路径由插件管理，Agent 不应自行寻找或安装。
+调用 `office_presentation`，参数为 `action`、按需提供 `input_path`、`output_path`、直接对象形式的 `spec`（旧版 `spec_json` 字符串仍兼容，二者只传一个） 和仅供回归的 `strict`。路径必须在当前项目内且使用相对路径；写操作遵守 DSH 当前权限；已有工作区写入权限时直接执行，权限不足时由工具申请本次审批，不要自行重复索权或要求切换 Full Access，PPTX 产物会进入预览链路。私有 Python、品牌资产与脚本路径由插件管理，Agent 不应自行寻找或安装。
 
 ## 约束
 
