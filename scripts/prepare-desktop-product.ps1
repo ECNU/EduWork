@@ -34,8 +34,10 @@ foreach ($folder in @('desktop-boundary','credentials-native','desktop-services'
         # its Host modules change for the new transport, with no client rebuild.
         Copy-Tree (Join-Path $source 'lib') (Join-Path $destination 'lib')
     } else { Copy-DshPackagePayload -Source $source -Destination $destination }
-    foreach ($peer in @($manifest.peerDependencies.PSObject.Properties | Where-Object Name -like '@deepseek-ai/dsh-*')) { $peer.Value = $identity.dshVersion }
-    $manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath (Join-Path $destination 'package.json') -Encoding utf8NoBOM
+    $manifestPath = Join-Path $destination 'package.json'
+    $manifest | ConvertTo-Json -Depth 12 | Set-Content -LiteralPath $manifestPath -Encoding utf8NoBOM
+    & node (Join-Path $repository 'dsh-host/dsh-compatibility.mjs') $manifestPath $identity.dshVersion
+    if ($LASTEXITCODE -ne 0) { throw 'Failed to declare desktop adapter API compatibility' }
     $adapters[$manifest.name] = @{version=$manifest.version;source="dsh-plugins/$folder"}
 }
 if ($OidcSnapshot) {

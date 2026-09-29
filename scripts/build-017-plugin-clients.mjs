@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
+import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { buildVideoTemplate } from '../packages/dsh-knowledge-studio/scripts/build-video-template.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 
@@ -60,9 +61,7 @@ async function prepareCandidateManifests(directory) {
       const manifest = JSON.parse(await readFile(path, 'utf8'))
       if (!/^@(eduwork|chatecnu-work)\//.test(manifest.name ?? '')) continue
       const originalPeers = { ...manifest.peerDependencies }
-      for (const name of Object.keys(manifest.peerDependencies ?? {})) {
-        if (/^@deepseek-ai\/dsh(?:-|$)/.test(name)) manifest.peerDependencies[name] = runtimeReceipt.dshVersion
-      }
+      manifest.peerDependencies = rebuiltDshPeers(manifest, runtimeReceipt.dshVersion)
       manifest.private = true
       if (manifest.name === '@eduwork/workbench-native') {
         manifest.dsh.client.inject = manifest.dsh.client.inject

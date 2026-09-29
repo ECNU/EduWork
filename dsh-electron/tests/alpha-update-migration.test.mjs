@@ -44,13 +44,20 @@ test('dismiss or decline keeps disabled, records once, and inherits stable', asy
   await migrateAlphaUpdates({ ...input, choose: assert.fail })
 })
 
-for (const dshVersion of ['0.2.0-rc.1', '0.2.0-rc.2']) test(`stable migration recognizes Alpha running ${dshVersion}`, async t => {
+for (const dshVersion of ['0.2.0-rc.1', '0.2.0-rc.2', '0.2.0-rc.3', '0.2.0', '0.2.1']) test(`stable migration recognizes Alpha running ${dshVersion}`, async t => {
   const input = await fixture(t)
   await writeFile(join(input.logs, 'desktop-start.json'), JSON.stringify({ productVersion: '0.4.0-alpha.4', dshVersion }))
   let prompts = 0
   await migrateAlphaUpdates({ ...input, choose: async () => { prompts++; return 'enable' } })
   assert.equal(prompts, 1)
   assert.equal(loadUserConfig(input.config).updates.provider, 'github')
+})
+
+for (const dshVersion of ['0.3.0-alpha.1', '0.3.0', 'bad', '0.2.0-rc.01']) test(`migration does not infer permission from ${dshVersion}`, async t => {
+  const input = await fixture(t)
+  await writeFile(join(input.logs, 'desktop-start.json'), JSON.stringify({ productVersion: '0.4.0-alpha.4', dshVersion }))
+  await migrateAlphaUpdates({ ...input, choose: assert.fail })
+  assert.equal(loadUserConfig(input.config).updates.provider, 'disabled')
 })
 
 test('institution route and unknown origin are never silently replaced', async t => {

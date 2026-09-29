@@ -10,6 +10,7 @@ import { parseUserConfig } from '../dsh-host/user-config.mjs'
 import { documentConfiguration } from '../dsh-host/configuration-documentation.mjs'
 import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
+import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -38,7 +39,7 @@ if(values.edition){
     const destination=join(product,'d/node_modules',plugin.name)
     await cp(join(edition,plugin.source),destination,{recursive:true})
     const manifest=await read(join(destination,'package.json'))
-    for(const name of Object.keys(manifest.peerDependencies??{})) if(name.startsWith('@deepseek-ai/dsh')) manifest.peerDependencies[name]=identity.dshVersion
+    manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion)
     manifest.private=true
     await save(join(destination,'package.json'),manifest)
     runtime.dependencies[plugin.name]=manifest.version

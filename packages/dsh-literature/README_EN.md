@@ -15,12 +15,14 @@ Forked from [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature) 
 
 Full-text availability depends on the source, network and access permissions. The package does not guarantee access to paywalled or restricted content. The publisher-PDF fallback uses a host-configured Subagent; no model or account is included.
 
+The declared range is `>=0.2.0-rc.1 <0.3.0-0`. Tool/Jobs checks cover rc.1 and rc.2; future versions still need behavioral qualification. The official plugin manager includes prereleases, while npm defaults only admit prereleases with the same patch tuple as a range endpoint; for example, `0.2.1-rc.1` matches differently.
+
 ## Installation and use
 
-Requires Node.js `24.18.0+` and DSH `0.2.0-rc.1 / 0.2.0-rc.2`; other kernel versions have not been validated.
+Requires Node.js `24.18.0+` and DSH `0.2.x (starting with 0.2.0-rc.1)`; other kernel versions have not been validated.
 
 ```sh
-dsh plugin add @eduwork/dsh-literature@0.1.1
+dsh plugin add @eduwork/dsh-literature@0.1.2
 ```
 
 Alternatively, build from source:

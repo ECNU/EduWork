@@ -21,9 +21,9 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 `peerDependencies` 表示插件支持的宿主 API 范围；开发依赖、`package-lock.json` 和产品组件锁记录一次构建的确切输入，两者分别维护。对已验证兼容的同一 API 系列，peer 应使用有上下界的版本范围，避免逐个追加 rc 版本。范围需要检查预发布版本的匹配语义，并在支持范围内验证实际插件加载与工具调用；不能仅因版本号相邻就假定兼容，也不使用 `*` 跳过边界。
 
-内核升级时先核对 API 与行为：兼容声明已覆盖且验证通过的包直接复用现有 npm 产物，不因宿主升级重发。若已发布包的声明过窄，修正元数据仍需新的 npm 版本，不能覆盖旧包，但这不应成为每次 rc 升级的固定步骤。当前文献包 `0.1.1` 仍按已发布的 rc.1／rc.2 声明使用；扩展范围须随该包后续经过验证的发布落地。
+内核升级时先核对 API 与行为：兼容声明已覆盖且验证通过的包直接复用现有 npm 产物，不因宿主升级重发。若已发布包的声明过窄，修正元数据仍需新的 npm 版本，不能覆盖旧包，但这不应成为每次 rc 升级的固定步骤。文献包从 `0.1.2` 起声明 `>=0.2.0-rc.1 <0.3.0-0`，检索实现不变。
 
-内置源码扩展目前在候选装配时重建，并将其 DSH peers 指向所用内核；这只说明该次装配经过验证，不能视作原 npm 包支持了新版本。对外发布时维护源 manifest 的真实兼容范围，不改写第三方包或配置兼容性豁免。
+内置源码扩展目前在候选装配时重建，并将其 DSH peers 声明为已适配的 API 范围（当前为 `>=0.2.0-rc.2 <0.3.0-0`）；这只说明该次装配经过验证，不能视作原 npm 包支持了新版本。对外发布时维护源 manifest 的真实兼容范围，不改写第三方包或配置兼容性豁免。
 
 ## 本地开发
 
@@ -63,7 +63,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-`@eduwork/dsh-literature` 是面向 DSH `0.2.0-rc.2` 的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装已发布的 `0.1.1`，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.0-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
+`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.0-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 
 `config/assembly.eduwork.json` 仍通过 `third_party/npm-015-rc1/*/LOCK.json` 获取已发布 npm 包，版本、SRI 和 tarball SHA-256 都固定。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 
