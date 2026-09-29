@@ -8,6 +8,8 @@
 
 - 官方产品统计、会话日志及插件清单上传、反馈按钮和 `/feedback` 关闭。通过官方 `runProfile.patchFiles` 覆盖用户偏好，重载后仍生效；不改写 DeepSeek 模型请求的匿名标识。
 - 定时任务使用官方可选插件，默认关闭，可在插件页启用。保留旧启用状态、配置与任务存储。应用退出后不执行任务，也不会唤醒计算机。
+- 插件安装、兼容性检查、启停和卸载统一使用官方插件管理器，桌面包携带固定版本 pnpm，无需用户另装 Node.js 或 pnpm。设置页的旧社区安装入口移除；已安装的依赖和插件启用状态保留。
+- macOS 从 Finder 启动时，使用官方 login-shell 环境读取补全开发工具路径，发行版的数据和资源路径仍由启动器管理。预设默认选择遵循 rc.2 官方规则。
 - 文件定位使用官方路径打开器。附件卡片、企业登录、Studio 和技能管理继续由产品扩展提供。
 - 文献使用 EduWork 维护的 [`@eduwork/dsh-literature`](../packages/dsh-literature/README.md)，fork 自 SihanLv/dsh-literature 0.1.2。Jobs 接口在源码中适配，不豁免官方兼容性检查。新候选运行时移除旧 `@shlv` 文献包，保留 DBLP、arXiv、引用与全文能力及用户启停设置。
 

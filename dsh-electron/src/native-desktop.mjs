@@ -70,9 +70,10 @@ async function main() {
   await backend.start(async () => {
     product = await prepareEduworkDesktop()
     const inherited = await readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), { signal: loginShellRead.signal })
-    hostEnvironment = { ...inherited.environment }
+    const editionVariable = name => name.startsWith('EDUWORK_') || name.startsWith('CHATECNU_')
+    hostEnvironment = Object.fromEntries(Object.entries(inherited.environment).filter(([name]) => !editionVariable(name)))
     // Edition bootstrap and resource paths remain owned by the launcher.
-    for (const [name, value] of Object.entries(process.env)) if (name.startsWith('EDUWORK_')) hostEnvironment[name] = value
+    for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
   })
   if (isQuitting()) return
   mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true)

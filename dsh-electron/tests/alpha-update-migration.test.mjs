@@ -44,6 +44,15 @@ test('dismiss or decline keeps disabled, records once, and inherits stable', asy
   await migrateAlphaUpdates({ ...input, choose: assert.fail })
 })
 
+for (const dshVersion of ['0.2.0-rc.1', '0.2.0-rc.2']) test(`stable migration recognizes Alpha running ${dshVersion}`, async t => {
+  const input = await fixture(t)
+  await writeFile(join(input.logs, 'desktop-start.json'), JSON.stringify({ productVersion: '0.4.0-alpha.4', dshVersion }))
+  let prompts = 0
+  await migrateAlphaUpdates({ ...input, choose: async () => { prompts++; return 'enable' } })
+  assert.equal(prompts, 1)
+  assert.equal(loadUserConfig(input.config).updates.provider, 'github')
+})
+
 test('institution route and unknown origin are never silently replaced', async t => {
   const input = await fixture(t, { provider: 'disabled', manifestURL: 'https://example.org/updates/stable/latest-windows-amd64.json' })
   await migrateAlphaUpdates({ ...input, choose: assert.fail })
