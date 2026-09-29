@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T14:04:48.722Z",
-  "fileSetSHA256": "a4851224bd1d02b8b877d2ed7bb13663cff5980583c89d40f55ff614679d3ebc",
+  "createdAt": "2026-09-29T14:17:27.496Z",
+  "fileSetSHA256": "ed9e11f1b0800b8d973e7e14e04e09a26159a60270e971c7cb3dcb77e45a2f8f",
   "files": [
     {
       "path": ".gitattributes",
@@ -390,6 +390,10 @@
     {
       "path": "docs/releases/0.4.0-alpha.2.md",
       "sha256": "a55e9b8b5ba6f25e0a849e57fa0aa65a41fa8a13b09f2f03f6d850ebbb0cd655"
+    },
+    {
+      "path": "docs/releases/0.4.0-alpha.4.md",
+      "sha256": "726d7f1693ebd9cefc3c5b1de231f0f4d03e169d5e0bad8495f715a311ff46e2"
     },
     {
       "path": "docs/UPDATES.md",
@@ -3609,7 +3613,7 @@
     },
     {
       "path": "packages/dsh-literature/CHANGELOG.md",
-      "sha256": "aba7e18b5d8739053d72183ac4e0d913fff529958311339148305482254527fb"
+      "sha256": "f98247fd6e31e1c20ae5dd2326b154664b6d4c6b5fb4099f82c08e12ee482941"
     },
     {
       "path": "packages/dsh-literature/cordis.patch.yml",
@@ -3625,19 +3629,19 @@
     },
     {
       "path": "packages/dsh-literature/package-lock.json",
-      "sha256": "db6db245a53fc3b628cfdb213422634a617541fbb90d0ff1703597c1ac41c6bd"
+      "sha256": "469db901dc6722fd96e240da77a16c670c82d5f2d1e9198b94e372fa650b85e9"
     },
     {
       "path": "packages/dsh-literature/package.json",
-      "sha256": "0ee09998f90c6184730c6ccbb507bfa73146fbe0d2f463f156c43fefee7a1297"
+      "sha256": "9628460ffd22f9f2fe4339517b9772bcda93b242781b06a8a9ad50173d630961"
     },
     {
       "path": "packages/dsh-literature/README_EN.md",
-      "sha256": "64bd3d5ce92192780b5bf823ea44ed1fdcfb23972fffae875f6f56273b668a8c"
+      "sha256": "58bbcfda49797976d9d12ec6dcd03d9b86fe2d8b6402eec1b00f7248363607bf"
     },
     {
       "path": "packages/dsh-literature/README.md",
-      "sha256": "0c07a4db5f49ba569678e8be8850cbc7adf048b089d6eaa87983e838bd5fe5e0"
+      "sha256": "32c66e0c86c1271bcb589d6c7436b309605fca2b98fde99dbcf75c8c71376268"
     },
     {
       "path": "packages/dsh-literature/scripts/probe-runtime.mjs",

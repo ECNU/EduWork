@@ -17,10 +17,10 @@ Full-text availability depends on the source, network and access permissions. Th
 
 ## Installation and use
 
-Requires Node.js `24.18.0+` and DSH `0.2.0-rc.1`; other kernel versions have not been validated.
+Requires Node.js `24.18.0+` and DSH `0.2.0-rc.1 / 0.2.0-rc.2`; other kernel versions have not been validated.
 
 ```sh
-dsh plugin add @eduwork/dsh-literature@0.1.0
+dsh plugin add @eduwork/dsh-literature@0.1.1
 ```
 
 Alternatively, build from source:
