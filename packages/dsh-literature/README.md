@@ -17,10 +17,10 @@
 
 ## 安装与使用
 
-要求 Node.js `24.18.0+` 和 DSH `0.2.0-rc.1`；其他内核版本尚未验证。
+要求 Node.js `24.18.0+` 和 DSH `0.2.0-rc.1 / 0.2.0-rc.2`；其他内核版本尚未验证。
 
 ```sh
-dsh plugin add @eduwork/dsh-literature@0.1.0
+dsh plugin add @eduwork/dsh-literature@0.1.1
 ```
 
 也可以从源码构建：

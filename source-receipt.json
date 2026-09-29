@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T06:16:01.005Z",
-  "fileSetSHA256": "81c7f5d6249e1b3674d2b65fc003be236a685a044a60ee3d483fb454b8a20802",
+  "createdAt": "2026-09-29T14:12:26.153Z",
+  "fileSetSHA256": "34960e72d76869cbb9b6eb9bcd5dfefa3f3191a2932a1a94f075bfbf3d4e3c65",
   "files": [
     {
       "path": ".gitattributes",
@@ -3609,7 +3609,7 @@
     },
     {
       "path": "packages/dsh-literature/CHANGELOG.md",
-      "sha256": "aba7e18b5d8739053d72183ac4e0d913fff529958311339148305482254527fb"
+      "sha256": "f98247fd6e31e1c20ae5dd2326b154664b6d4c6b5fb4099f82c08e12ee482941"
     },
     {
       "path": "packages/dsh-literature/cordis.patch.yml",
@@ -3625,19 +3625,19 @@
     },
     {
       "path": "packages/dsh-literature/package-lock.json",
-      "sha256": "db6db245a53fc3b628cfdb213422634a617541fbb90d0ff1703597c1ac41c6bd"
+      "sha256": "469db901dc6722fd96e240da77a16c670c82d5f2d1e9198b94e372fa650b85e9"
     },
     {
       "path": "packages/dsh-literature/package.json",
-      "sha256": "0ee09998f90c6184730c6ccbb507bfa73146fbe0d2f463f156c43fefee7a1297"
+      "sha256": "9628460ffd22f9f2fe4339517b9772bcda93b242781b06a8a9ad50173d630961"
     },
     {
       "path": "packages/dsh-literature/README_EN.md",
-      "sha256": "64bd3d5ce92192780b5bf823ea44ed1fdcfb23972fffae875f6f56273b668a8c"
+      "sha256": "58bbcfda49797976d9d12ec6dcd03d9b86fe2d8b6402eec1b00f7248363607bf"
     },
     {
       "path": "packages/dsh-literature/README.md",
-      "sha256": "0c07a4db5f49ba569678e8be8850cbc7adf048b089d6eaa87983e838bd5fe5e0"
+      "sha256": "32c66e0c86c1271bcb589d6c7436b309605fca2b98fde99dbcf75c8c71376268"
     },
     {
       "path": "packages/dsh-literature/scripts/probe-runtime.mjs",
@@ -4845,7 +4845,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "98d720536c773109c193aa87e68bf3833f73e5599e3b8311fb7ddc25cac05c7a"
+      "sha256": "e84c8d5bc19faccb803587ea63b6e063411f6671704d2c87e4fd424ce9082c6f"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -4922,6 +4922,10 @@
     {
       "path": "scripts/copy-dsh-package-payload.ps1",
       "sha256": "67f11911fc1c0e6fc9bd2a1b40dcf2aa0968e777ee013a324f61cddbb7a7a88e"
+    },
+    {
+      "path": "scripts/copy-source-skills.mjs",
+      "sha256": "0b6a8a6cec7003c6e27242267fdaf9b16da41762701496f8148e533b19b75430"
     },
     {
       "path": "scripts/create-content-update.mjs",
@@ -5174,6 +5178,10 @@
     {
       "path": "scripts/test/portable-product-links.test.mjs",
       "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
+    },
+    {
+      "path": "scripts/test/source-skills.test.mjs",
+      "sha256": "f83bd7407a90e915cfc96071de5d84448ddff460ba0d4d0dd95df6eb5575bd9d"
     },
     {
       "path": "scripts/validate-distribution-config.mjs",
