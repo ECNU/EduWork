@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  Workspace, digestPath, maxParallelism, parallelSets, runStages, stage,
+  Workspace, digestPath, maxParallelism, parallelSets, runPipeline, runStages, stage,
 } from '../scripts/lib/stage-runner.mjs'
 import { pathExists } from '../scripts/lib/build-util.mjs'
 
@@ -322,5 +322,170 @@ test('artifact digests are stable across repeated reads of a tree', async () => 
     assert.deepEqual(one.files.map(file => file.path), ['b.txt', 'nested/a.txt'])
     await writeFile(join(tree, 'nested', 'a.txt'), 'changed')
     assert.notEqual((await digestPath(tree)).sha256, one.sha256)
+  } finally { await cleanup() }
+})
+
+test('a workspace locked by a live process refuses a second entry', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-lock-')
+  try {
+    const stages = [stage({ name: 'noop', outputs: ['out.txt'], run: async (ws) => { await writeFile(join(ws.root, 'out.txt'), 'x') } })]
+    const lockDir = join(workspace, 'pipeline-checkpoint.json.lock')
+    await mkdir(lockDir, { recursive: true })
+    // The parent process is certainly alive, so this stands in for a concurrent
+    // build holding the workspace.
+    await writeFile(join(lockDir, 'owner.json'), JSON.stringify({ pid: process.ppid, startedAt: new Date().toISOString() }))
+    const blocked = new Workspace({ root: workspace, parameters: {}, stages, lockWaitMs: 1500 })
+    await assert.rejects(() => blocked.enter({ log: quiet }), (error) => {
+      assert.equal(error.code, 'EDUWORK_WORKSPACE_LOCKED')
+      return true
+    })
+    // The refused entry must not have removed the live holder's lock.
+    assert.equal(await pathExists(join(lockDir, 'owner.json')), true)
+    const owner = JSON.parse(await readFile(join(lockDir, 'owner.json'), 'utf8'))
+    assert.equal(owner.pid, process.ppid)
+
+    // The same process that holds it may re-enter: the lock keeps a second
+    // process out, it does not serialize a process against itself.
+    await writeFile(join(lockDir, 'owner.json'), JSON.stringify({ pid: process.pid, startedAt: new Date().toISOString() }))
+    const mine = new Workspace({ root: workspace, parameters: {}, stages })
+    await mine.enter({ force: true, log: quiet })
+    await mine.release()
+    assert.equal(await pathExists(lockDir), false)
+  } finally { await cleanup() }
+})
+
+test('a lock left by a stopped process is recovered instead of blocking', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-lock-stale-')
+  try {
+    const stages = [stage({ name: 'noop', outputs: ['out.txt'], run: async (ws) => { await writeFile(join(ws.root, 'out.txt'), 'x') } })]
+    const lockDir = join(workspace, 'pipeline-checkpoint.json.lock')
+    await mkdir(lockDir, { recursive: true })
+    // A pid that cannot be alive: the runner must clear the lock and continue.
+    await writeFile(join(lockDir, 'owner.json'), JSON.stringify({ pid: 0x7ffffffe, startedAt: new Date().toISOString() }))
+    const ws = new Workspace({ root: workspace, parameters: {}, stages })
+    const entered = await ws.enter()
+    assert.equal(entered.reused, false)
+    assert.equal(await pathExists(join(lockDir, 'owner.json')), true, 'the recovered lock should be ours, not gone')
+    const owner = JSON.parse(await readFile(join(lockDir, 'owner.json'), 'utf8'))
+    assert.equal(owner.pid, process.pid)
+    await ws.release()
+    assert.equal(await pathExists(lockDir), false, 'release must remove the lock')
+  } finally { await cleanup() }
+})
+
+test('a changed stage catalog stops the run instead of silently reusing records', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-catalog-')
+  try {
+    const one = stage({ name: 'one', outputs: ['one.txt'], run: async (ws) => { await writeFile(join(ws.root, 'one.txt'), '1') } })
+    const two = stage({ name: 'two', outputs: ['two.txt'], run: async (ws) => { await writeFile(join(ws.root, 'two.txt'), '2') } })
+    const first = new Workspace({ root: workspace, parameters: {}, stages: [one, two] })
+    await first.enter()
+    await runStages(first, { log: quiet })
+
+    // `two` is gone from the catalog. Its record is still in the checkpoint, and
+    // nothing else would notice: the artifacts are on disk and the parameters
+    // are unchanged.
+    const second = new Workspace({ root: workspace, parameters: {}, stages: [one] })
+    await assert.rejects(() => second.enter(), (error) => {
+      assert.equal(error.code, 'EDUWORK_CATALOG_CHANGED')
+      assert.deepEqual(error.removedStages, ['two'])
+      return true
+    })
+
+    // An added stage is the same class of mismatch, in the other direction.
+    const three = stage({ name: 'three', outputs: ['three.txt'], run: async (ws) => { await writeFile(join(ws.root, 'three.txt'), '3') } })
+    const third = new Workspace({ root: workspace, parameters: {}, stages: [one, two, three] })
+    await assert.rejects(() => third.enter(), (error) => {
+      assert.equal(error.code, 'EDUWORK_CATALOG_CHANGED')
+      assert.deepEqual(error.addedStages, ['three'])
+      return true
+    })
+
+    // A narrowed dependency edge is the case a name-only comparison would miss.
+    const four = stage({
+      name: 'two',
+      requires: ['one'],
+      outputs: ['two.txt'],
+      run: async (ws) => { await writeFile(join(ws.root, 'two.txt'), '2') },
+    })
+    const fourth = new Workspace({ root: workspace, parameters: {}, stages: [one, four] })
+    await assert.rejects(() => fourth.enter(), (error) => {
+      assert.equal(error.code, 'EDUWORK_CATALOG_CHANGED')
+      return true
+    })
+  } finally { await cleanup() }
+})
+
+test('a digest budget makes large trees cheaper without weakening small ones', async () => {
+  const { root, cleanup } = await sandbox('eduwork-stages-budget-')
+  try {
+    const tree = join(root, 'tree')
+    await mkdir(join(tree, 'nested'), { recursive: true })
+    await writeFile(join(tree, 'a.txt'), 'aaaa')
+    await writeFile(join(tree, 'nested', 'b.txt'), 'bb')
+
+    // Under the budget: contents are hashed.
+    const hashed = await digestPath(tree, { budget: 1024 * 1024 })
+    assert.equal(hashed.verify, 'bytes')
+    assert.ok(hashed.files.every(file => file.sha256 !== undefined))
+
+    // Over the budget: file list and sizes only, and the fallback is recorded so
+    // a reader can tell which check ran.
+    const sized = await digestPath(tree, { budget: 1 })
+    assert.equal(sized.verify, 'size')
+    assert.ok(sized.files.every(file => file.sha256 === undefined))
+    assert.equal(sized.bytes, 6)
+
+    // A same-size rewrite is the known blind spot of a size digest; it is the
+    // documented cost of not hashing, not a surprise.
+    await writeFile(join(tree, 'a.txt'), 'bbbb')
+    assert.equal((await digestPath(tree, { budget: 1 })).sha256, sized.sha256)
+    // The hashed digest still catches it.
+    assert.notEqual((await digestPath(tree, { budget: 1024 * 1024 })).sha256, hashed.sha256)
+  } finally { await cleanup() }
+})
+
+test('verify: trust records an output without checking it, and says so', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-trust-')
+  try {
+    const stages = [stage({
+      name: 'generated',
+      outputs: ['gen'],
+      verify: 'trust',
+      run: async (ws) => { await mkdir(join(ws.root, 'gen'), { recursive: true }); await writeFile(join(ws.root, 'gen', 'x'), 'x') },
+    })]
+    const first = new Workspace({ root: workspace, parameters: {}, stages })
+    await first.enter()
+    await runStages(first, { log: quiet })
+
+    // Rewriting the content does not stop the rerun, because nothing was
+    // promised about it.
+    await writeFile(join(workspace, 'gen', 'x'), 'tampered')
+    const notes = []
+    const second = new Workspace({ root: workspace, parameters: {}, stages })
+    await second.enter()
+    await runStages(second, { log: message => notes.push(message) })
+    assert.deepEqual(second.skipped, ['generated'])
+    assert.ok(notes.some(note => /recorded unverified \(verify: trust\)/.test(note)), 'the trust record should be reported')
+
+    // Deleting it is still a failure: existence was promised.
+    await rm(join(workspace, 'gen'), { recursive: true, force: true })
+    const third = new Workspace({ root: workspace, parameters: {}, stages })
+    await third.enter()
+    await assert.rejects(() => runStages(third, { log: quiet }), (error) => {
+      assert.equal(error.code, 'EDUWORK_VANISHED_ARTIFACT')
+      return true
+    })
+  } finally { await cleanup() }
+})
+
+test('a failed run releases the workspace so the rerun is possible', async () => {
+  const { workspace, cleanup } = await sandbox('eduwork-stages-lock-release-')
+  try {
+    const stages = [stage({ name: 'breaks', outputs: ['never.txt'], run: async () => { throw new Error('synthetic failure') } })]
+    const ws = new Workspace({ root: workspace, parameters: {}, stages })
+    await ws.enter()
+    await assert.rejects(() => runPipeline(ws, { log: quiet }), /synthetic failure/)
+    assert.equal(await pathExists(join(workspace, 'pipeline-checkpoint.json.lock')), false, 'a failed run must not keep the lock')
   } finally { await cleanup() }
 })
