@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T14:17:27.496Z",
-  "fileSetSHA256": "ed9e11f1b0800b8d973e7e14e04e09a26159a60270e971c7cb3dcb77e45a2f8f",
+  "createdAt": "2026-09-29T14:36:22.574Z",
+  "fileSetSHA256": "55918614605104bddfa6858a6cfcb29927396eb6e8c2c11dc67d497f985fa08f",
   "files": [
     {
       "path": ".gitattributes",
@@ -321,11 +321,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "185d9a2206ebcb729af124916319049a97784deab89ab76cbfd0b58858c0043b"
+      "sha256": "c257e3ecca20e0038fba032575d4731e151517b31111a4021983c13c1f02a12a"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "f452fb3c00c92d150f2850fcef84e73f129d71acbd1d1be76e4f52af11947a75"
+      "sha256": "212288c240402cc37b955d2a58e367532e5fe04f607e36c73997748a12c3241a"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -5453,7 +5453,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.0-rc.2/literature.json",
-      "sha256": "ae80c765d165ad102b1d1eced80baee5dbfdc0acd3f8c6f849547ed6a770ba9f"
+      "sha256": "6c2d211844d15b1f9655e59274886415ccc340553015e1bf81e77631f331560b"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.0-rc.2/LOCK.json",
@@ -5469,11 +5469,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.0-rc.2/source-probe/package-lock.json",
-      "sha256": "26d05cf9f9747f119236b963b3332949b82452209ef61b919d1104fbd7598191"
+      "sha256": "015ad3eabbb2825b39843db5866e558f6c3d926d1a3b640b4c36d886bb34f257"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.0-rc.2/source-probe/package.json",
-      "sha256": "1849ca90fb6a642c2c919102682b88aad1e9f1a99237e64f9a8c216bbac4c10d"
+      "sha256": "d8ab33197b8e27a591f34174062b5f1677ba0e0104fdf602c88f6e8be9c9277a"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
@@ -5625,10 +5625,10 @@
     },
     {
       "name": "@eduwork/dsh-literature",
-      "version": "0.1.0",
-      "commit": "43cc526b1f800391c15e248fa1a8eba1db753fba",
-      "sha256": "7df06096b1a1bcfa440933a1501e06b56e08e13d87df97196120fc52ed583c25",
-      "lock": "third_party/dsh/candidate-v0.2.0-rc.1/literature.json"
+      "version": "0.1.1",
+      "commit": "28765a78f8d135d75cb5fc28ede00c5ec465420a",
+      "sha256": "f681924abc4a4a3823d6a4f8e04457874e8f7c11ac147a51ea6b2e1c058b7ddc",
+      "lock": "third_party/dsh/candidate-v0.2.0-rc.2/literature.json"
     }
   ],
   "reviewedCompatibility": [
