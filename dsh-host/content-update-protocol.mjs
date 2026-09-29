@@ -81,7 +81,7 @@ export function safeContentPath(value) {
   if(/\.(?:exe|dll|node|so|dylib|msi|app)$/i.test(value))throw Error('Skills 内容包不能携带程序或运行时')
   return value
 }
-export function validateBundle(bytes, manifest, environment) {
+function authenticatedBundle(bytes, manifest) {
   if(bytes.length!==manifest.bundle.bytes||digest(bytes)!==manifest.bundle.sha256)throw Error('内容包大小或摘要校验失败')
   const bundle=JSON.parse(bytes.toString('utf8'))
   if(!object(bundle)||bundle.schemaVersion!==1||Object.keys(bundle).some(k=>!['schemaVersion','configuration','skills'].includes(k)))throw Error('内容包结构无效')
@@ -116,12 +116,30 @@ export function validateBundle(bytes, manifest, environment) {
     for(const entry of entries) {
       if(!id(entry.name)||names.has(entry.name.toLowerCase())||!paths.has(entry.name.toLowerCase()+'/skill.md'))throw Error('Skill 名称或入口无效')
       names.add(entry.name.toLowerCase())
-      const why=incompatible(entry.requires,environment);if(why)throw Error(why)
+      validateRequirements(entry.requires)
     }
     // References can be shared; unlisted skill entry points cannot be injected.
     for(const file of files)if(/(?:^|\/)skill\.md$/i.test(file.path)&&!names.has(file.path.slice(0,-9).toLowerCase()))throw Error('Skills 包包含未声明的技能入口')
   }
   return bundle
+}
+
+export function validateBundle(bytes, manifest, environment) {
+  const bundle = authenticatedBundle(bytes, manifest)
+  for (const entry of bundle.skills?.entries ?? []) {
+    const why = incompatible(entry.requires, environment)
+    if (why) throw Error(why)
+  }
+  return bundle
+}
+
+// Only the publisher bootstrap's explicitly retired source may use this for
+// historical merge fingerprints. It returns no skills or activation receipt;
+// the new source must still pass current-runtime validation before startup.
+export function historicalConfiguration(bytes, manifest) {
+  const configuration = authenticatedBundle(bytes, manifest).configuration
+  if (!configuration) throw Error('旧内容包缺少已签名配置')
+  return configuration
 }
 
 export async function fetchContent(url, limit, {fetchImpl=fetch,signal,onProgress}={}) {

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T01:30:12.444Z",
-  "fileSetSHA256": "7d4476c1ea71b546ad69908757c913fd1adc26bf1743570e134ce2b1cd57bce8",
+  "createdAt": "2026-09-29T01:38:39.290Z",
+  "fileSetSHA256": "7f151425714c13bbaf3b14b607f73e6c37ec1e7182e07408469c86eeb8d7a269",
   "files": [
     {
       "path": ".gitattributes",
@@ -1141,7 +1141,7 @@
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
-      "sha256": "d8b00e540f0a8bb47e6e88bec1162bc8852abbe9bd6bd6a095877d3266194d37"
+      "sha256": "c3eb82a3bfe243b554308dbd4df71cdf6695a9e3ad33fa9d04d537eb2dab6b84"
     },
     {
       "path": "dsh-host/content-updates.mjs",
@@ -1209,7 +1209,7 @@
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
-      "sha256": "014cf6c042311304d9b129f21f2f26b83523b7371ffcb5f6ea06381239ba7be7"
+      "sha256": "facaf272183a71fd77fbcca03b304357cff7d4730e9607714c4ea90b68f9bd39"
     },
     {
       "path": "dsh-host/README_EN.md",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
-      "sha256": "c33091bd16eeb6e0369b48207e4d0a0172d0ec761c2d8439657d2fd14b47dca8"
+      "sha256": "82d818f507b4249729650b73cb823b2bac9d2fbcce18c187c0af7990b07cd236"
     },
     {
       "path": "dsh-host/test/redacted-log.test.mjs",
