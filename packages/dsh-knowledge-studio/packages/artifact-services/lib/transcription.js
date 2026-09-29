@@ -27,7 +27,6 @@ export class TranscriptionService {
         timestamps:provider.timestamps===true,...(provider.model?{model:provider.model}:{})}
     }))
   }
-  isLocal(id) {return this.#providers.get(id)?.local === true}
   async transcribe(request) {
     request.signal?.throwIfAborted()
     const provider=this.#providers.get(request.provider)

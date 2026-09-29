@@ -9,8 +9,7 @@ export function installTranscriptionTools(ctx,service) {
   ctx.on('tools/pre-execute',(exec,next)=>{
     if(exec.name!=='speech_transcribe')return next()
     return decideWorkspaceWrite(ctx,exec,next,
-      'Transcribe the selected workspace audio file. A remote provider uploads the file and may use its service quota.',
-      {local:service.transcription.isLocal(exec.arguments?.provider)})
+      'Transcribe the selected workspace audio file using the selected provider')
   })
   const output={schema:{type:'object',additionalProperties:false,properties:{reportJSON:{type:'string',required:true}}},render:(_,value)=>[{type:'text',text:value.reportJSON}]}
   ctx.tools.register(defineTool({name:'speech_transcription_providers',description:'List configured audio-file transcription providers, readiness and timestamp support. Local engines/models are installed only by the host on request; no automatic download or remote fallback.',parameters:{},output,

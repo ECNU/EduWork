@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readdir, realpath, rm, symlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -8,8 +8,10 @@ import { pathToFileURL } from 'node:url'
 import { apply as officeTools } from '../packages/artifact-services/lib/office-tools.js'
 import { installMediaTools } from '../packages/artifact-services/lib/media-tools.js'
 import { installTranscriptionTools } from '../packages/artifact-services/lib/transcription-tools.js'
+import { installImageTools } from '../packages/artifact-services/lib/image-tools.js'
 import { SpeechService } from '../packages/artifact-services/lib/speech.js'
 import { TranscriptionService } from '../packages/artifact-services/lib/transcription.js'
+import { ImageService } from '../packages/artifact-services/lib/images.js'
 
 // Default to the package lock; the same tests also run against a pinned product
 // Runtime via EDUWORK_TEST_RUNTIME, without replacing the package's dependencies.
@@ -123,7 +125,7 @@ test('old hosts retain canonical workspace grants; unknown presets ask', async t
   assert.equal(unknown.approvals(), 1)
 })
 
-test('local speech/media reuse the write grant; remote providers and editable code still ask', async t => {
+test('configured media reuse the write grant without querying providers; editable code still asks', async t => {
   const h = await harness(t), speech = new SpeechService(), transcription = new TranscriptionService()
   const noProviderCall = () => { throw new Error('permission checks must not call providers') }
   for (const [id, local] of [['local', true], ['remote', false]]) {
@@ -135,23 +137,99 @@ test('local speech/media reuse the write grant; remote providers and editable co
     get: name => h.ctx.get(name), permissionPresets: h.ctx.permissionPresets, fs: h.ctx.fs }
   installMediaTools(ctx, { speech })
   installTranscriptionTools(ctx, { transcription })
+  installImageTools(ctx, { images: {} })
   const decision = async (name, args) => {
     const exec = { name, arguments: args, agent: h.agent }
     const run = i => i === hooks.length ? { kind: 'allow' } : hooks[i](exec, () => run(i + 1))
     return (await run(0)).kind
   }
-  for (const name of ['speech_synthesize', 'speech_transcribe']) {
+  for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate']) {
     assert.equal(await decision(name, { provider: 'local' }), 'allow')
-    assert.equal(await decision(name, { provider: 'remote' }), 'ask')
-    assert.equal(await decision(name, { provider: 'missing' }), 'ask')
+    assert.equal(await decision(name, { provider: 'remote' }), 'allow')
   }
   assert.equal(await decision('media_render', { spec: { kind: 'audio', options: { provider: 'local' } } }), 'allow')
-  assert.equal(await decision('media_render', { spec: { kind: 'audio', options: { provider: 'remote' } } }), 'ask')
+  assert.equal(await decision('media_render', { spec: { kind: 'audio', options: { provider: 'remote' } } }), 'allow')
   assert.equal(await decision('media_render', { spec: { kind: 'video', options: { narration: false } } }), 'allow')
   assert.equal(await decision('video_project', { action: 'init' }), 'allow')
   assert.equal(await decision('video_project', { action: 'render' }), 'ask')
   h.state.mode = 'read-only'
-  assert.equal(await decision('speech_transcribe', { provider: 'local' }), 'ask')
+  for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate', 'media_render'])
+    assert.equal(await decision(name, { provider: 'remote' }), 'ask')
   h.state.mode = 'danger-full-access'
   assert.equal(await decision('speech_synthesize', { provider: 'remote' }), 'allow')
+})
+
+test('local and remote image/speech tools execute under workspace access while refusals stop providers', async t => {
+  const h = await harness(t)
+  const speech = new SpeechService(), transcription = new TranscriptionService(), images = new ImageService()
+  const png = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScL6WQAAAABJRU5ErkJggg==', 'base64')
+  const wav = Buffer.alloc(44 + 1600)
+  wav.write('RIFF', 0); wav.writeUInt32LE(wav.length - 8, 4); wav.write('WAVEfmt ', 8)
+  wav.writeUInt32LE(16, 16); wav.writeUInt16LE(1, 20); wav.writeUInt16LE(1, 22)
+  wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34)
+  wav.write('data', 36); wav.writeUInt32LE(1600, 40)
+  await writeFile(join(h.root, 'input.wav'), wav)
+  const calls = []
+  let available = true
+  for (const [id, local] of [['local', true], ['remote', false]]) {
+    const record = (kind, request) => {
+      assert.equal(request.execution.agent, h.agent)
+      assert.equal(request.sessionId, h.agent.session.id)
+      calls.push(kind + ':' + id)
+    }
+    // Synthetic adapters write real files without using paid or private services.
+    images.register({ id, local, available: () => available, async generate(request) {
+      record('image', request)
+      const path = join(request.projectPath, id + '.png')
+      await writeFile(path, png)
+      return { path }
+    } })
+    speech.register({ id, local, voices: async () => available ? [{ id: 'voice', title: 'Test' }] : [],
+      async synthesize(request) {
+        record('speech', request)
+        const path = join(request.directory, request.name + '.wav')
+        await writeFile(path, wav)
+        return { path }
+      } })
+    transcription.register({ id, local, available: () => available, async transcribe(request) {
+      record('transcription', request)
+      return { text: 'Synthetic transcript' }
+    } })
+  }
+  installImageTools(h.ctx, { images })
+  installMediaTools(h.ctx, { speech })
+  installTranscriptionTools(h.ctx, { transcription })
+  const requests = provider => [
+    ['image_generate', { provider, prompt: 'Synthetic image' }],
+    ['speech_synthesize', { provider, text: 'Synthetic speech' }],
+    ['speech_transcribe', { provider, input_path: 'input.wav' }],
+  ]
+  for (const provider of ['local', 'remote'])
+    for (const [name, args] of requests(provider)) {
+      const result = await h.execute(name, args)
+      assert.equal(result.isError, false, JSON.stringify(result))
+    }
+  assert.equal(h.approvals(), 0)
+  assert.equal(calls.length, 6)
+
+  h.state.mode = 'read-only'
+  for (const [name, args] of requests('remote'))
+    assert.equal((await h.execute(name, args)).isError, true)
+  assert.equal(h.approvals(), 3)
+  assert.equal(calls.length, 6, 'rejected approval must not reach providers')
+
+  h.state.mode = 'workspace-write'
+  for (const [name, args] of requests('remote'))
+    assert.equal((await h.execute(name, args, { signal: AbortSignal.abort() })).isError, true)
+  h.state.workspaceRoot = join(h.directory, 'different-workspace')
+  await mkdir(h.state.workspaceRoot)
+  for (const [name, args] of requests('remote'))
+    assert.equal((await h.execute(name, args)).isError, true)
+  h.state.workspaceRoot = h.root
+  available = false
+  for (const provider of ['remote', 'unconfigured'])
+    for (const [name, args] of requests(provider))
+      assert.equal((await h.execute(name, args)).isError, true)
+  assert.equal(calls.length, 6, 'cancelled, out-of-scope or unavailable calls must not generate')
+  assert.equal(h.approvals(), 3)
 })

@@ -1,12 +1,11 @@
 import {defineTool} from '@deepseek-ai/dsh-tools'
 import {realpath} from 'node:fs/promises'
+import {decideWorkspaceWrite} from './tool-permissions.js'
 
 export function installImageTools(ctx,service) {
   ctx.on('tools/pre-execute',(exec,next)=>{
     if(exec.name!=='image_generate')return next()
-    if(!exec.agent)return Promise.resolve({kind:'deny',reason:'Image generation requires an Agent workspace'})
-    if(ctx.permissionPresets.current(exec.agent.session)==='danger-full-access')return next()
-    return Promise.resolve({kind:'ask',reason:'Generate an image in the current workspace using the selected provider. Remote generation may use service credits.'})
+    return decideWorkspaceWrite(ctx,exec,next,'Generate an image in the current workspace using the selected provider')
   })
   const output={
     schema:{type:'object',additionalProperties:false,properties:{reportJSON:{type:'string',required:true},relativePath:{type:'string'},mime:{type:'string'}}},

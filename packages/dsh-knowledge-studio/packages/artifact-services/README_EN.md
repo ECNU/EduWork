@@ -32,7 +32,7 @@ PDF/video consumers in Node can import `createMediaRuntime` from `@eduwork/dsh-a
 
 Office creation, editing, PDF merging and extraction follow the session's effective file-write policy. Existing workspace-write access needs no repeated approval; read-only sessions still require approval for each write. Custom presets use the resolved sandbox policy. Project-relative paths, canonical containment and no-overwrite checks still apply, even under Full Access.
 
-Local TTS, ASR, fixed-template media rendering and video project file operations also reuse workspace-write access. Remote provider calls, image generation and execution of editable video project code retain approval. The host declares a provider's `local: true` capability; model arguments cannot set it. Permission checks never query voice endpoints or invoke generation. Other host permission hooks continue to run.
+Image generation, TTS, ASR, fixed-template media rendering and video project file operations also reuse workspace-write access, including configured remote providers. Remote services may upload request content and consume quota, but this alone does not trigger repeated approval. Feature flags, provider availability, credentials and workspace containment checks still apply; permission checks themselves never query voice endpoints or invoke generation. Read-only sessions still require approval, as does execution of editable video project code. Other host permission hooks continue to run.
 
 ## Application interfaces (v1)
 

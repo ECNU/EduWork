@@ -10,13 +10,13 @@ export function artifactPolicy(ctx, exec) {
   return { mode: ctx.permissionPresets.current(exec.agent.session) }
 }
 
-/** Only call this for fixed, workspace-fenced operations, never arbitrary code. */
-export async function decideWorkspaceWrite(ctx, exec, next, reason, { local = true } = {}) {
+/** Fixed workspace operations reuse write access; arbitrary code needs separate approval. */
+export async function decideWorkspaceWrite(ctx, exec, next, reason, { executesCode = false } = {}) {
   if (!exec.agent) return { kind: 'deny', reason: 'Artifact writes require an Agent-backed session' }
   if (!exec.agent.session.header.cwd) return { kind: 'deny', reason: 'Artifact writes require a session workspace' }
   const policy = artifactPolicy(ctx, exec)
   if (policy?.mode === 'danger-full-access') return next()
-  if (local && policy?.mode === 'workspace-write') {
+  if (!executesCode && policy?.mode === 'workspace-write') {
     // The process-backed renderers keep their own canonical path fences.
     // A custom policy may narrow the root, so do not silently widen it to cwd.
     if (policy.workspaceRoot !== undefined) {
