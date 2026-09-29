@@ -29,6 +29,12 @@ PDF/视频应用可从 `@eduwork/dsh-artifact-services/runtime` 导入 `createMe
 
 运行时锁定 Remotion 4.0.520、mediabunny 1.55.5、React/React DOM 18.3.1，各调用方应解析到同一份 mediabunny。同入口的 `getMediaFFmpegPath` 从选定依赖所属环境解析 FFmpeg，不准备浏览器；可通过 `{runtime}` 传入已有运行时。
 
+## 对话工具权限
+
+Office 的新建、编辑、PDF 合并与提取遵守会话当前生效的文件写入权限。已有工作区写入权限时不重复确认；只读模式仍需本次审批。自定义权限预设以实际 sandbox policy 为准。项目相对路径、真实路径边界和禁止覆盖已有文件的约束仍生效，Full Access 也不会扩大 Office 工具的路径范围。
+
+生图、TTS、ASR、固定模板音视频渲染及视频项目文件操作同样复用工作区写入权限，包括调用已配置的远程提供方。远程服务仍可能上传请求内容并消耗额度，但不会仅因此逐次要求确认。功能开关、服务可用性、凭据及工作区路径检查继续生效；权限检查本身不会请求音色接口或调用生成服务。只读模式仍需审批，运行可编辑视频项目代码也保留独立审批。其他宿主权限钩子继续执行。
+
 ## 应用接口（v1）
 ```js
 import {mkdtemp} from 'node:fs/promises'
