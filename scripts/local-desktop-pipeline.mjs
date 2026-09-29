@@ -49,7 +49,7 @@ export async function localDesktopPipeline({
   verifySnapshot = true,
   runtimeSource = '',
   cacheRoot = '',
-  jobs = 1,
+  jobs = 0,
   reuseWorkspace = false,
 } = {}) {
   coreRoot = fullPath(coreRoot)
@@ -190,7 +190,7 @@ if (isMainModule(import.meta.url)) {
     verifySnapshot: !values['no-verify-snapshot'],
     runtimeSource: values['runtime-source'] ?? '',
     cacheRoot: values['cache-root'] ?? '',
-    jobs: Number(values.jobs ?? 1),
+    jobs: Number(values.jobs ?? 0),
     reuseWorkspace: Boolean(values['reuse-workspace']),
   })
 }

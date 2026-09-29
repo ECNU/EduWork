@@ -13,7 +13,7 @@ import { parseArgs } from 'node:util'
 import {
   capture, ensureDir, fullPath, isMacOS, isMainModule, readJSON, sha256Text, writeJSON,
 } from './lib/build-util.mjs'
-import { Workspace, runStages } from './lib/stage-runner.mjs'
+import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
 import { macosStages } from './lib/macos-stages.mjs'
 
@@ -31,7 +31,7 @@ export async function ciEduworkMacosRelease({
   runtimeSource = '',
   upstreamSource = '',
   output,
-  jobs = 1,
+  jobs = 0,
   reuseWorkspace = false,
   force = [],
 } = {}) {
@@ -99,13 +99,16 @@ export async function ciEduworkMacosRelease({
   ]
   const workspace = new Workspace({ root: output, parameters, stages, platform: 'macos-arm64' })
   const entered = await workspace.enter({ force: reuseWorkspace })
+  // Zero means "decide from the graph": no run finishes sooner than its widest
+  // wave, so that is the default and an explicit number still wins.
+  const workers = jobs > 0 ? jobs : maxParallelism(stages)
 
-  const result = { ...receiptBase, jobs, workspaceReused: entered.reused, passed: false, checks: {} }
+  const result = { ...receiptBase, jobs: workers, workspaceReused: entered.reused, passed: false, checks: {} }
   try {
-    await runStages(workspace, { jobs, force })
+    await runStages(workspace, { jobs: workers, force })
     const published = await readJSON(join(output, 'publish/release-receipt.json'))
     Object.assign(result, published)
-    result.jobs = jobs
+    result.jobs = workers
     result.workspaceReused = entered.reused
     result.passed = true
   } catch (error) {
@@ -140,7 +143,7 @@ if (isMainModule(import.meta.url)) {
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
-    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--development] [--jobs N] [--reuse-workspace] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>]')
+    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--development] [--jobs N] [--reuse-workspace] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
   }
   await ciEduworkMacosRelease({
     coreRoot: values['core-root'],
@@ -156,7 +159,7 @@ if (isMainModule(import.meta.url)) {
     runtimeSource: values['runtime-source'] ?? '',
     upstreamSource: values['upstream-source'] ?? '',
     output: values.output,
-    jobs: Number(values.jobs ?? 1),
+    jobs: Number(values.jobs ?? 0),
     reuseWorkspace: Boolean(values['reuse-workspace']),
   })
 }

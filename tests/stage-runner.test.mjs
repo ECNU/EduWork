@@ -4,7 +4,7 @@ import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
-  Workspace, digestPath, runStages, stage,
+  Workspace, digestPath, maxParallelism, parallelSets, runStages, stage,
 } from '../scripts/lib/stage-runner.mjs'
 import { pathExists } from '../scripts/lib/build-util.mjs'
 

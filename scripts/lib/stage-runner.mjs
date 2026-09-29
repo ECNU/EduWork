@@ -327,6 +327,50 @@ export class Workspace {
 }
 
 /**
+ * Group the stages into the waves a perfectly parallel run would produce: every
+ * stage in a wave can run at once, and each wave depends only on earlier ones.
+ * This is derived from the declared edges rather than hand-written, so it cannot
+ * drift from the graph.
+ */
+export function parallelSets(stages) {
+  const depth = new Map()
+  const visiting = new Set()
+  const depthOf = name => {
+    if (depth.has(name)) return depth.get(name)
+    // A cycle is rejected by the graph builder before a run starts; this guard
+    // keeps the helper safe to call on its own instead of recursing forever.
+    if (visiting.has(name)) return 0
+    const entry = stages.find(candidate => candidate.name === name)
+    if (!entry) return 0
+    visiting.add(name)
+    const dependencies = [...entry.requires, ...entry.dependsOn]
+    const value = dependencies.length ? Math.max(...dependencies.map(depthOf)) + 1 : 0
+    visiting.delete(name)
+    depth.set(name, value)
+    return value
+  }
+  for (const entry of stages) depthOf(entry.name)
+  const byLevel = new Map()
+  for (const entry of stages) {
+    const level = depth.get(entry.name)
+    if (!byLevel.has(level)) byLevel.set(level, [])
+    byLevel.get(level).push(entry.name)
+  }
+  // Dense, lowest level first. A cycle can leave level 0 unused, and an array
+  // with a hole in it would make the widest-wave reduction below return NaN.
+  return [...byLevel.keys()].sort((a, b) => a - b).map(level => byLevel.get(level))
+}
+
+/**
+ * The widest wave: how many stages a run can usefully execute at once. Asking
+ * for more workers than this can never finish sooner, which is what makes it a
+ * defensible default for `jobs`.
+ */
+export function maxParallelism(stages) {
+  return Math.max(1, ...parallelSets(stages).map(wave => wave.length))
+}
+
+/**
  * Run the stages that are not already satisfied, in dependency order, with at
  * most `jobs` running at once. Independent stages overlap; a stage whose inputs
  * or recorded artifacts changed is rerun.

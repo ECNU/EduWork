@@ -17,7 +17,7 @@ import { parseArgs } from 'node:util'
 import {
   capture, ensureDir, fullPath, isFile, isMainModule, isWindows, readJSON, sha256File, writeJSON,
 } from './lib/build-util.mjs'
-import { Workspace, runStages } from './lib/stage-runner.mjs'
+import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
 import { windowsStages } from './lib/windows-stages.mjs'
 
@@ -26,7 +26,7 @@ const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
-  '[--jobs N] [--reuse-workspace]'
+  '[--jobs N] [--reuse-workspace] (--jobs 0 = as many as the graph allows)'
 
 export async function ciEduworkWindowsRelease({
   coreRoot,
@@ -40,7 +40,7 @@ export async function ciEduworkWindowsRelease({
   runtimeSource = '',
   upstreamSource = '',
   output,
-  jobs = 1,
+  jobs = 0,
   reuseWorkspace = false,
   force = [],
 } = {}) {
@@ -126,13 +126,16 @@ export async function ciEduworkWindowsRelease({
   const stages = [...sharedDesktopStages(common), ...windowsStages({ coreRoot, receiptBase })]
   const workspace = new Workspace({ root: output, parameters, stages, platform: 'windows-x64' })
   const entered = await workspace.enter({ force: reuseWorkspace })
+  // Zero means "decide from the graph": no run finishes sooner than its widest
+  // wave, so that is the default and an explicit number still wins.
+  const workers = jobs > 0 ? jobs : maxParallelism(stages)
 
-  const result = { ...receiptBase, jobs, workspaceReused: entered.reused, passed: false, checks: {} }
+  const result = { ...receiptBase, jobs: workers, workspaceReused: entered.reused, passed: false, checks: {} }
   try {
-    await runStages(workspace, { jobs, force })
+    await runStages(workspace, { jobs: workers, force })
     const published = await readJSON(join(output, 'publish/release-receipt.json'))
     Object.assign(result, published)
-    result.jobs = jobs
+    result.jobs = workers
     result.workspaceReused = entered.reused
     result.passed = true
   } catch (error) {
@@ -181,7 +184,7 @@ if (isMainModule(import.meta.url)) {
     runtimeSource: values['runtime-source'] ?? '',
     upstreamSource: values['upstream-source'] ?? '',
     output: values.output,
-    jobs: Number(values.jobs ?? 1),
+    jobs: Number(values.jobs ?? 0),
     reuseWorkspace: Boolean(values['reuse-workspace']),
   })
 }
