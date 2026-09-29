@@ -117,6 +117,34 @@ Python 环境须安装装配目录中 `d/node_modules/@eduwork/dsh-artifact-serv
 
 ## 从 Web 到桌面
 
+### 一键本地构建与安装
+
+`scripts/local-desktop-pipeline.mjs` 用一条命令在本机完成构建、打包、安装与启动冒烟，不需要 PowerShell，也不发布任何渠道（GitHub Release、npm、更新源仍是单独授权的流程）：
+
+```
+node scripts/local-desktop-pipeline.mjs
+```
+
+- Windows x64：复用下文完整测试包流水线（等价 `-Development`），验收通过后把同一 ZIP 解压安装到 `%LOCALAPPDATA%\Programs\EduWork`，并对安装副本复核归档哈希与原生运行时。
+- macOS arm64：执行 macOS 开发候选流水线，把验收过的 `.app` 安装到 `~/Applications`，安装后复核 codesign 与原生运行时。
+- Linux：当前没有桌面包，改为执行完整的 Web 装配与功能验证。
+
+版本默认取 `source-receipt.json`（非开发版本时自动派生 `X.Y.Z-dev.YYYYMMDD.1`）。安装目标已存在时会拒绝并提示换 `--install-root`；`--skip-install` 只构建不安装；`--workspace` 指定新的构建工作区。构建输入要求与下文完整测试包一致。
+
+同工作区重复运行只重跑输入发生变化的阶段。常用参数：
+
+| 参数 | 作用 |
+| --- | --- |
+| `--jobs N` | 并发阶段数；`0`（默认）表示按依赖图允许的宽度自动决定 |
+| `--reuse-workspace` | 复用已有工作区与检查点，而不是要求一个新目录 |
+| `--cache-root <dir>` | 原生输入缓存位置，默认 `/tmp/eduwork-native-cache`（Windows 为 `%TEMP%`），也可用 `EDUWORK_TMPDIR` 或 `EDUWORK_CACHE_ROOT` 指定 |
+| `--digest-budget <bytes>` | 单个产物超过该字节数时只比对文件清单与大小，不再逐文件哈希；默认 2 GiB |
+| `--lock-wait <seconds>` | 等待同一工作区锁的秒数；默认 0 表示发现被占用立即失败 |
+| `--runtime-source <dir>` | 已校验的 Runtime 缓存，避免重复投影 |
+| `--no-verify-snapshot` | 跳过源码回执比对，供未提交工作树验证使用 |
+
+流水线在昂贵工作之前做预检（工具、目录、上游缓存完整性、固定 URL 可达性），发现工具缺失或缓存损坏时立即失败。缓存只报告不自动修复。各阶段如何声明输入输出、缓存为何分两层、以及并行宽度如何推导，见[声明式桌面构建流水线提案](proposals/build-pipeline-stages/README.md)与[原生输入缓存](NATIVE-INPUT-CACHE.md)。
+
 ### 完整 Windows Electron 测试包
 
 从干净检出运行，准备 Git、PowerShell 7、Node.js 24.18.0、Go 1.26.6，以及带 x64 C++ 工具和 Redist 文件的 Visual Studio 2022 Build Tools。脚本使用 `vswhere` 定位 Visual Studio，校验可再分发 DLL 的微软签名；仅安装系统 VC++ 运行库不能替代这些构建输入。需要能访问锁定的 GitHub、npm 和资源下载地址。仅做 Web 验证不需要 Go 和 Visual Studio。

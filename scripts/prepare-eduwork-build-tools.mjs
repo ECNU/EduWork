@@ -5,6 +5,8 @@ import { createRequire } from 'node:module'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
+import { fullPath, runBundledCli, runNode } from './lib/build-util.mjs'
+import { resolveEduworkUpstream, withUpstreamLock } from './lib/upstream.mjs'
 
 const ownPath = fileURLToPath(import.meta.url)
 const hash = value => createHash('sha256').update(value).digest('hex')
@@ -115,8 +117,55 @@ export async function prepareBuildTools(options) {
   return { ...identity, libraryPackages: libraries.length, replacedLibraries: libraries.filter(item => item.changed).length, librariesSHA256: hash(JSON.stringify(libraries.map(({ changed, ...item }) => item))) }
 }
 
+// Full provisioning flow (the former prepare-eduwork-build-tools.ps1): verify
+// the pinned disposable source archive, normalize it, then install and prepare
+// the compiler workspace under the shared upstream lock.
+export async function provisionBuildTools({ coreRoot = join(dirname(ownPath), '..'), runtimePackages, upstream = '', dshLockPath = '', sourceArchive = '' } = {}) {
+  coreRoot = fullPath(coreRoot)
+  runtimePackages = fullPath(runtimePackages)
+  const lockPath = dshLockPath ? fullPath(dshLockPath) : join(coreRoot, 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json')
+  const lock = await json(lockPath)
+  const resolvedUpstream = await resolveEduworkUpstream(lock.commit, upstream)
+  await withUpstreamLock(resolvedUpstream, 'prepare product client build tools', async () => {
+    // Builds use a disposable verified archive, never a developer Git checkout.
+    if (await present(join(resolvedUpstream, '.git'))) throw new Error('Product build tools require a disposable source archive cache, not a developer Git checkout')
+    const { syncDshUpstream } = await import(pathToFileURL(join(coreRoot, 'dsh-desktop/scripts/sync-dsh-upstream.mjs')).href)
+    await syncDshUpstream({
+      upstream: resolvedUpstream,
+      lockPath,
+      skipBuild: true,
+      ...(sourceArchive ? { sourceArchive: fullPath(sourceArchive) } : {}),
+    }).catch(error => { throw new Error(`Pinned build source verification failed: ${error.message}`) })
+    await runNode(join(coreRoot, 'scripts/patch-eduwork-source-reproducibility.mjs'), ['--upstream', resolvedUpstream, '--lock', lockPath])
+      .catch(() => { throw new Error('Pinned client build normalization failed') })
+    const status = await prepareBuildTools({ upstream: resolvedUpstream, runtimePackages, lockPath, phase: 'status' })
+    if (status.installNeeded) {
+      // Only the compiler dependency tree is prepared. No lifecycle scripts,
+      // official Runtime build or source release packing runs.
+      await runBundledCli('corepack', [`pnpm@${lock.pnpmVersion}`, 'install', '--frozen-lockfile', '--ignore-scripts'], {
+        cwd: resolvedUpstream,
+        env: { ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
+      }).catch(error => { throw new Error(`Pinned client build tool dependency installation failed: ${error.message}`) })
+    }
+    await prepareBuildTools({ upstream: resolvedUpstream, runtimePackages, lockPath, phase: 'prepare' })
+    console.log(`Product client build tools ready: ${resolvedUpstream}`)
+  })
+  return resolvedUpstream
+}
+
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const { values } = parseArgs({ options: { upstream: { type: 'string' }, 'runtime-packages': { type: 'string' }, lock: { type: 'string' }, phase: { type: 'string' } } })
-  if (!values.upstream || !values['runtime-packages'] || !values.lock) throw new Error('Use --upstream <archive-cache> --runtime-packages <verified-runtime/node_modules> --lock <LOCK.json> --phase status|prepare')
-  console.log(JSON.stringify(await prepareBuildTools({ upstream: values.upstream, runtimePackages: values['runtime-packages'], lockPath: values.lock, phase: values.phase ?? 'prepare' })))
+  const { values } = parseArgs({ options: { upstream: { type: 'string' }, 'runtime-packages': { type: 'string' }, lock: { type: 'string' }, phase: { type: 'string' }, 'core-root': { type: 'string' }, 'source-archive': { type: 'string' } } })
+  if (!values['runtime-packages']) throw new Error('Use --runtime-packages <verified-runtime/node_modules> [--upstream <archive-cache>] [--lock <LOCK.json>] --phase status|prepare|provision')
+  if ((values.phase ?? 'prepare') === 'provision') {
+    await provisionBuildTools({
+      ...(values['core-root'] ? { coreRoot: values['core-root'] } : {}),
+      runtimePackages: values['runtime-packages'],
+      upstream: values.upstream ?? '',
+      dshLockPath: values.lock ?? '',
+      sourceArchive: values['source-archive'] ?? '',
+    })
+  } else {
+    if (!values.upstream || !values.lock) throw new Error('Use --upstream <archive-cache> --runtime-packages <verified-runtime/node_modules> --lock <LOCK.json> --phase status|prepare')
+    console.log(JSON.stringify(await prepareBuildTools({ upstream: values.upstream, runtimePackages: values['runtime-packages'], lockPath: values.lock, phase: values.phase ?? 'prepare' })))
+  }
 }
