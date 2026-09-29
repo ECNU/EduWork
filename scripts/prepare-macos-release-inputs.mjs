@@ -100,7 +100,16 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
   const browser = join(browserRoot, 'chrome-mac-arm64', lock.browser.executable)
   if (await sha256File(browser) !== lock.browser.executableSHA256) throw new Error('Chromium executable differs from its lock')
 
+  // Every download happens before the first compile. The model used to be
+  // fetched last, so a network failure discarded several minutes of OpenSSL and
+  // whisper.cpp builds that could not be reused.
   await extract(await downloadAsset(lock.openssl, 'openssl.tar.gz'), join(output, 'openssl-source'))
+  await extract(await downloadAsset(lock.whisper, 'whisper.tar.gz'), join(output, 'whisper-source'))
+  // The model is pinned here rather than read from a product, so this tree stays
+  // reusable; `install` checks the same id against the product's catalog.
+  const model = speechModelLock()
+  await download(model.url, join(output, 'speech/model.bin'), { sha256: model.sha256 })
+
   const openssl = join(output, 'openssl')
   const buildEnv = { MACOSX_DEPLOYMENT_TARGET: '15.0' }
   const opensslSource = join(output, 'openssl-source')
@@ -122,7 +131,6 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
     },
   })
 
-  await extract(await downloadAsset(lock.whisper, 'whisper.tar.gz'), join(output, 'whisper-source'))
   await cachedCompile({
     key: await compileKey({
       name: 'whisper-cli-darwin-arm64',
@@ -142,10 +150,6 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
       await copyFileTo(join(output, 'whisper-build/bin/whisper-cli'), destination)
     },
   })
-  // The model is pinned here rather than read from a product, so this tree stays
-  // reusable; `install` checks the same id against the product's catalog.
-  const model = speechModelLock()
-  await download(model.url, join(output, 'speech/model.bin'), { sha256: model.sha256 })
   await ensureDir(join(output, 'licenses'))
   await copyFileTo(join(output, 'whisper-source/LICENSE'), join(output, 'licenses/LICENSE-whisper.cpp'))
   await copyFileTo(join(opensslSource, 'LICENSE.txt'), join(output, 'licenses/LICENSE-OpenSSL'))

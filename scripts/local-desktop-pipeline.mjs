@@ -13,6 +13,8 @@ import {
   ensureDir, fullPath, isMacOS, isMainModule, isWindows, pathExists, readJSON,
   removeTree, run, runNode, setCacheRoot, sha256File, writeJSON,
 } from './lib/build-util.mjs'
+import { resolveEduworkUpstream } from './lib/upstream.mjs'
+import { preflight } from './lib/preflight.mjs'
 import { ciEduworkWeb } from './ci-eduwork-web.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
@@ -80,6 +82,17 @@ export async function localDesktopPipeline({
   if (!skipInstall && await pathExists(installTarget)) {
     throw new Error(`Install target already exists and is never replaced: ${installTarget}. ` +
       'Move it away or pass --install-root <new directory>.')
+  }
+
+  // Fail before the expensive work rather than minutes into it. The upstream
+  // cache is inspected only when it already exists: scanning it reports damage,
+  // and it is never repaired or deleted here.
+  const lock = await readJSON(join(coreRoot, 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'))
+  const resolvedUpstream = await resolveEduworkUpstream(lock.commit)
+  const checks = await preflight({ coreRoot, upstream: resolvedUpstream })
+  for (const note of checks.notes) console.log(`Preflight: ${note}`)
+  if (checks.problems.length) {
+    throw new Error(`Preflight failed:\n  ${checks.problems.join('\n  ')}`)
   }
 
   const shared = {
