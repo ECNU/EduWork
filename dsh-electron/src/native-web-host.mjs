@@ -1,4 +1,4 @@
-import { join } from 'node:path'
+import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DesktopHostProcess as NativeHost } from './eduwork-native-host-process.mjs'
 import { authenticateWebHost, forwardWebRequest, serveWebDocument } from './web-document.mjs'
@@ -10,8 +10,9 @@ export class DesktopHostProcess {
   constructor(node, projectDir, inspectPort, options = {}) {
     if (!process.env.EDUWORK_PRODUCT_ROOT) throw new Error('Product Runtime location is unavailable')
     this.#runtime = join(process.env.EDUWORK_PRODUCT_ROOT, 'd')
-    this.#host = new NativeHost(node, this.#runtime, projectDir, inspectPort, process.env,
-      options.onFailure, undefined, undefined, undefined, { bootstrap: options.bootstrap, onLog: options.onLog })
+    this.#host = new NativeHost(node, this.#runtime, projectDir, inspectPort, options.environment ?? process.env,
+      options.onFailure, undefined, { pnpm: join(this.#runtime, 'node_modules/pnpm/bin/pnpm.mjs'), nodeBin: dirname(node) },
+      undefined, { bootstrap: options.bootstrap, onLog: options.onLog })
   }
   async start() {
     const ready = await this.#host.start()

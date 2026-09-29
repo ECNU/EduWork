@@ -2,7 +2,7 @@
 
 [中文](CORE-020.md)
 
-This combination pins DSH `0.2.0-rc.1`, commit `4878cdabd87d4041bdaff61d04c966883b9fd07a`. Official npm dependencies and desktop sources are verified separately using `third_party/dsh/candidate-v0.2.0-rc.1/`. Historical `017` script names remain compatible with existing automation; the previous npm release lock is retained.
+This combination pins DSH `0.2.0-rc.2`, commit `639ed015397290b3745d163aafe02ffee4aa3f84`. Official npm dependencies and desktop sources are verified separately using `third_party/dsh/candidate-v0.2.0-rc.2/`. Historical `017` script names remain compatible with existing automation; the previous npm release lock is retained.
 
 ## Distribution policy
 
@@ -25,4 +25,4 @@ Desktop workflows select the source lock through `config/desktop-build.json`. Th
 
 The shared entry point is `scripts/build-desktop-candidate.ps1`. Versions determine the channel: `X.Y.Z` is stable; `X.Y.Z-alpha.N`, `beta.N`, `rc.N` and `X.Y.Z-dev.YYYYMMDD.N` are prereleases with automatic software updates disabled. `0.4.0-alpha.1` is for testing; stable migration starts with the final `0.4.0`. Stable macOS assembly requires trusted Sparkle configuration. Publication still requires main, both successful platforms and approved version-specific notes. CI verifies and uploads artifacts directly, reusing the same build when publication is retried.
 
-Institution editions must update their signed configuration for `0.2.0-rc.1`; changing a version string cannot replace a compatible signed release. School connection configuration and internal feedback API drafts are not included in this repository.
+Institution editions must update their signed configuration for `0.2.0-rc.2`; changing a version string cannot replace a compatible signed release. School connection configuration and internal feedback API drafts are not included in this repository.

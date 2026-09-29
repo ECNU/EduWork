@@ -7,7 +7,7 @@ import { stripTypeScriptTypes } from 'node:module'
 import { parseArgs } from 'node:util'
 import { distributionPolicy } from './distribution-policy.mjs'
 
-const upstreamCommit = '4878cdabd87d4041bdaff61d04c966883b9fd07a'
+const upstreamCommit = '639ed015397290b3745d163aafe02ffee4aa3f84'
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
 const sources = JSON.parse((await readFile(new URL('./upstream-inputs-017.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''))
 function replace(text, before, after) {
@@ -123,7 +123,7 @@ export async function prepareNative({ upstream, output }) {
   await emit('desktop-host/package.json', JSON.stringify(manifest, null, 2) + '\n')
   await emit('LICENSE-DeepSeek', input.LICENSE)
   await emit('desktop-host/LICENSE', input.LICENSE)
-  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.2.0-rc.1', protocolVersion: 4,
+  const receipt = { schemaVersion: 1, upstreamCommit, upstreamVersion: '0.2.0-rc.2', protocolVersion: 4,
     sources, outputs, nodeVersion: process.version, adaptations: ['private-stdin-bootstrap', 'bounded-redacted-log-callback',
       'loopback-ephemeral-port', 'recoverable-product-settings-migration', 'composition-owned-office-and-accounts', 'prepend-update-admission',
       'preserve-unencoded-response-length', 'distribution-privacy-overlay', 'cold-session-schedule-quit-inspection'] }
@@ -133,7 +133,7 @@ export async function prepareNative({ upstream, output }) {
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const { values } = parseArgs({ options: { upstream: { type: 'string' }, output: { type: 'string' } } })
-  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned 0.2.0-rc.1 source> --output <new directory>')
+  if (!values.upstream || !values.output) throw new Error('Use --upstream <pinned 0.2.0-rc.2 source> --output <new directory>')
   await prepareNative({ upstream: resolve(values.upstream), output: resolve(values.output) })
-  console.log('Prepared pinned 0.2.0-rc.1 Web Host and HTTP transport.')
+  console.log('Prepared pinned 0.2.0-rc.2 Web Host and HTTP transport.')
 }
