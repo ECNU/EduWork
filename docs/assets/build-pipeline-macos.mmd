@@ -31,3 +31,10 @@ flowchart LR
   sparkle --> desktop
   desktop --> accept
   accept --> publish
+  classDef mutable fill:#fff8e5,stroke:#d4a72c
+  subgraph legend[" "]
+    direction LR
+    l1["hashed dependency"]:::legendSolid --> l2[" "]:::legendBlank
+  end
+  classDef legendSolid fill:#ffffff,stroke:#1f883d
+  classDef legendBlank fill:none,stroke:none

@@ -19,8 +19,13 @@ test('the checked-in diagrams match the stage declarations', async () => {
   try {
     await buildPipelineDiagrams({ output })
     const assets = join(coreRoot, 'docs/assets')
+    // The rendered .svg is checked in beside the sources, so it is compared
+    // exactly like the text forms. A hand-exported raster could not be, which is
+    // how the previous .png drifted away from the stages it claimed to show.
     for (const name of ['build-pipeline-macos.drawio', 'build-pipeline-macos.mmd', 'build-pipeline-macos.json',
-      'build-pipeline-windows.drawio', 'build-pipeline-windows.mmd', 'build-pipeline-windows.json']) {
+      'build-pipeline-macos.svg',
+      'build-pipeline-windows.drawio', 'build-pipeline-windows.mmd', 'build-pipeline-windows.json',
+      'build-pipeline-windows.svg']) {
       const [generated, checkedIn] = await Promise.all([
         readFile(join(output, name), 'utf8'),
         readFile(join(assets, name), 'utf8').catch(() => null),
@@ -28,6 +33,39 @@ test('the checked-in diagrams match the stage declarations', async () => {
       assert.ok(checkedIn !== null, `${name} is missing from docs/assets; run the generator`)
       assert.equal(checkedIn, generated, `${name} is stale; re-run scripts/build-pipeline-diagram.mjs`)
     }
+  } finally {
+    await rm(output, { recursive: true, force: true })
+  }
+})
+
+test('the rendered svg names every stage and carries both edge kinds', async () => {
+  const output = await mkdtemp(join(tmpdir(), 'l5-diagrams-svg-'))
+  try {
+    const written = await buildPipelineDiagrams({ output })
+    assert.ok(written.includes('build-pipeline-macos.svg'), 'the svg is not an emitted asset')
+    const svg = await readFile(join(output, 'build-pipeline-macos.svg'), 'utf8')
+    const common = {
+      coreRoot,
+      editionRoot: coreRoot,
+      distributionConfig: 'config/distributions/generic.json',
+      version: '0.0.0',
+      verifySnapshot: true,
+      runtimeSource: '',
+      upstreamSource: '',
+    }
+    const stages = [...sharedDesktopStages(common), ...macosStages({
+      coreRoot, name: 'EduWork', version: '0.0.0', development: true, releaseNotesFile: '', receiptBase: {},
+    })]
+    // A stage that is declared but not drawn would be a picture that quietly
+    // disagrees with the pipeline.
+    for (const entry of stages) {
+      assert.ok(svg.includes(`>${entry.name}</text>`), `${entry.name} is missing from the svg`)
+    }
+    // Hashed edges are solid green, ordering-only edges dashed grey; a diagram
+    // that drew only one kind would hide which changes invalidate a stage.
+    assert.ok(svg.includes(`stroke="${'#1f883d'}"`), 'the svg has no hashed dependency edge')
+    assert.ok(svg.includes(`stroke="${'#afb8c1'}"`), 'the svg has no ordering-only edge')
+    assert.ok(/wave \d/.test(svg), 'the svg does not label its waves')
   } finally {
     await rm(output, { recursive: true, force: true })
   }
