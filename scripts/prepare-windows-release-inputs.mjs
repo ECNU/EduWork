@@ -34,11 +34,15 @@ async function findFiles(root, name) {
   return found
 }
 
+export function assetFilePath(asset, directory) {
+  return join(directory, decodeURIComponent(new URL(asset.url).pathname.split('/').at(-1)))
+}
+
 async function downloadAsset(asset, directory) {
   if (!/^https:\/\//.test(asset.url ?? '') || !/^[a-f0-9]{64}$/.test(asset.sha256 ?? '')) {
     throw new Error('Downloads require HTTPS and a pinned SHA-256')
   }
-  const file = join(directory, decodeURIComponent(new URL(asset.url).pathname.split('/').at(-1)))
+  const file = assetFilePath(asset, directory)
   console.log(`Downloading ${basename(file)}`)
   await download(asset.url, file, { sha256: asset.sha256 })
   return file
@@ -182,6 +186,9 @@ export async function installWindowsReleaseInputs({ inputs, product } = {}) {
   const manifest = await readJSON(join(inputs, 'inputs.json'))
   const node = manifest.node
   if (!node) throw new Error(`Native inputs record no node runtime: ${inputs}`)
+  const pythonManifest = await readJSON(join(scriptRoot, '../dsh-desktop/internal/productruntime/builtin/python-runtime-manifest.json'))
+  const pythonAsset = pythonManifest.assets['windows-amd64']
+  const pythonArchive = assetFilePath(pythonAsset, join(inputs, 'downloads'))
   const catalog = await JSON.parse(await capture(node, [
     '--input-type=module', '-e',
     'import {pathToFileURL} from "node:url"; const m=await import(pathToFileURL(process.argv[1])); console.log(JSON.stringify(m.getTranscriptionComponents()))',
@@ -201,7 +208,7 @@ export async function installWindowsReleaseInputs({ inputs, product } = {}) {
   await rm(join(product, 'desktop-resources.json'), { force: true })
   await prepareDesktopResources({
     outputRoot: product,
-    pythonArchive: join(inputs, 'downloads', basename((await findFiles(join(inputs, 'downloads'), '.tar.gz'))[0] ?? 'python.tar.gz')),
+    pythonArchive,
     pythonWheelRoot: join(inputs, 'wheels'),
     browserSource: dirname((await findFiles(join(inputs, 'browsers'), 'chrome.exe'))[0]),
     asrSource: dirname((await findFiles(join(inputs, 'whisper'), 'whisper-cli.exe'))[0]),

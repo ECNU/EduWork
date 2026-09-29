@@ -193,7 +193,7 @@ async function annotateCandidate({ candidate, coreRoot, name, version, developme
  */
 async function acceptWindows({ workspace, coreRoot }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
-  const { name, edition } = workspace.parameters
+  const { name, edition, development } = workspace.parameters
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const archive = packed.output
   const gui = workspace.resolvePath('gui')
@@ -203,8 +203,31 @@ async function acceptWindows({ workspace, coreRoot }) {
   await ensureDir(evidence)
   await ensureDir(unpacked)
 
-  await run('tar.exe', ['-xf', archive, '-C', unpacked])
   const desktop = join(unpacked, edition)
+  let portableExtractor
+  if (development) {
+    await run('tar.exe', ['-xf', archive, '-C', unpacked])
+  } else {
+    const extractorBuild = join(gui, 'portable-extractor')
+    const extractorPublish = join(gui, 'extractor-publish')
+    await ensureDir(extractorPublish)
+    await run('pwsh', [
+      '-NoProfile', '-File', join(coreRoot, 'scripts/prepare-windows-portable-extractor.ps1'),
+      '-Archive', archive,
+      '-ExpectedSHA256', packed.sha256,
+      '-OutputDirectory', extractorBuild,
+      '-Target', desktop,
+      '-PublishDirectory', extractorPublish,
+    ])
+    const assetName = `${edition}-${workspace.parameters.version}-windows-x64-setup.zip`
+    const receiptName = `${assetName}.json`
+    const asset = join(extractorPublish, assetName)
+    const receipt = join(extractorPublish, receiptName)
+    portableExtractor = {
+      asset: { name: assetName, bytes: (await statEntry(asset)).size, sha256: await sha256File(asset) },
+      receipt: { name: receiptName, bytes: (await statEntry(receipt)).size, sha256: await sha256File(receipt) },
+    }
+  }
   await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, '--for-update'])
   await run(join(desktop, 'resources/runtime/node.exe'), [
     join(coreRoot, 'scripts/check-desktop-runtimes.mjs'), desktop, join(evidence, 'native-runtimes.json'),
@@ -296,7 +319,9 @@ async function acceptWindows({ workspace, coreRoot }) {
     desktopLaunch: 'passed',
     archiveManifest: 'passed',
     nativeRuntimes: 'passed',
+    ...(portableExtractor ? { portableExtractor: 'passed' } : {}),
     asset: { name: name, bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
+    ...(portableExtractor ? { portableExtractorAssets: portableExtractor } : {}),
   }
   await writeJSON(join(gui, 'acceptance-checks.json'), checks)
   return checks
@@ -317,6 +342,12 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   if (await isFile(`${packed.output}.sha256`)) {
     await copyFileTo(`${packed.output}.sha256`, join(publish, `${basename(packed.output)}.sha256`))
   }
+  if (!development) {
+    const extractorPublish = join(gui, 'extractor-publish')
+    for (const name of [checks.portableExtractorAssets.asset.name, `${checks.portableExtractorAssets.asset.name}.sha256`, checks.portableExtractorAssets.receipt.name]) {
+      await copyFileTo(join(extractorPublish, name), join(publish, name))
+    }
+  }
 
   const receipt = {
     ...receiptBase,
@@ -332,11 +363,13 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
       browserURL: inputs.browserURL,
       browserArchiveSHA256: inputs.browserArchiveSHA256,
     },
-    checks: { sourceAndDependencies: 'passed', ...checks, asset: undefined },
+    checks: { sourceAndDependencies: 'passed', ...checks, asset: undefined, portableExtractorAssets: undefined },
     asset: checks.asset,
+    ...(!development ? { portableExtractor: checks.portableExtractorAssets } : {}),
     passed: true,
   }
   delete receipt.checks.asset
+  delete receipt.checks.portableExtractorAssets
   await writeJSON(join(publish, 'release-receipt.json'), receipt)
   if (!development) {
     await copyFileTo(join(editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))

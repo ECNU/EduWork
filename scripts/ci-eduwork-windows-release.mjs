@@ -116,7 +116,7 @@ export async function ciEduworkWindowsRelease({
     edition: name,
     shell: 'electron',
     platform: 'windows-x64',
-    validationProfile: 'ci-build-and-launch-v1',
+    validationProfile: development ? 'ci-build-and-launch-v1' : 'ci-build-launch-and-extract-v2',
     sourceSnapshotVerified: verifySnapshot,
     sourceVersion: source.version,
     coreCommit: (await capture('git', ['-C', coreRoot, 'rev-parse', 'HEAD'])).trim(),

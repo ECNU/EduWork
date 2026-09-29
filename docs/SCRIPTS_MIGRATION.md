@@ -24,7 +24,7 @@
 | `assemble-eduwork-web.ps1` | `assemble-eduwork-web.mjs` | ✅ 已移植 |
 | `ci-eduwork-macos-release.ps1` | `ci-eduwork-macos-release.mjs` | ✅ 已移植 |
 | `ci-eduwork-web.ps1` | `ci-eduwork-web.mjs` | ✅ 已移植 |
-| `ci-eduwork-windows-release.ps1` | `ci-eduwork-windows-release.mjs` | ✅ 已移植 |
+| `ci-eduwork-windows-release.ps1` | `ci-eduwork-windows-release.mjs` | ✅ 已移植（正式发行的 portable extractor 验收复用现有 PowerShell 7 脚本） |
 | `configure-desktop-archive.ps1` | `configure-desktop-archive.mjs` | ✅ 已移植 |
 | `install-desktop-config.ps1` | `install-desktop-config.mjs` | ✅ 已移植 |
 | `link-studio-web-profile.ps1` | `link-studio-web-profile.mjs` | ✅ 已移植 |
@@ -165,9 +165,9 @@ node "./core/scripts/ci-eduwork-${TARGET_PLATFORM}-release.mjs"
 | `--no-verify-snapshot` | 校验 | 跳过 `source-receipt.json` 快照比对 |
 | `--runtime-source <dir>` | 重新安装 | 复用已准备的 DSH Runtime 目录，省去 `npm install` |
 
-**`--no-verify-snapshot`**：默认的 `--verify-receipt` 会把工作树里每个文件的路径与 SHA-256 同 `source-receipt.json` 中冻结的 `files` 数组逐条比对。该快照绑定已审阅的提交，任何源码改动都会使其失效——包括移植期间的新增文件。移植、调试、本地联调时必然失败，因此提供该开关。
+**`--no-verify-snapshot`**：默认的 `--verify-receipt` 会把工作树里每个文件的路径与 SHA-256 同 `source-receipt.json` 中冻结的 `files` 数组逐条比对。该快照绑定已审阅的源码内容；新增文件或修改源码后，在更新快照前可使用此开关进行本地联调。
 
-传给该开关构建出的产物**来自未提交的工作树**，三个回执都会记录 `sourceSnapshotVerified: false`。不要把它当作发行输入。
+传给该开关构建出的产物**未经源码快照验证**，三个回执都会记录 `sourceSnapshotVerified: false`。不要把它当作发行输入。
 
 **`--runtime-source <dir>`**：装配脚本原本把 Runtime 缓存在 `<coreRoot>/dist/dsh-cache/` 下，不存在时执行 `npm install`（900 个包，约 4 分钟）。指向仓库外的已准备目录可跳过该步骤。
 

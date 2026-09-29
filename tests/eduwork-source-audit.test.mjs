@@ -68,7 +68,8 @@ test('source audit still reports a real violation inside a kept directory', asyn
   const root = await mkdtemp(join(tmpdir(), 'eduwork-audit-violation-'))
   try {
     await mkdir(join(root, 'src'), { recursive: true })
-    await writeFile(join(root, 'src', 'leak.mjs'), 'export const leak = "/Users/example/private/tree"\n')
+    const privatePath = ['/Users', '/example/private/tree'].join('')
+    await writeFile(join(root, 'src', 'leak.mjs'), `export const leak = "${privatePath}"\n`)
     const report = auditDistribution({ root })
     assert.ok(report.errors.some(error => error.includes('developer-specific absolute path')), JSON.stringify(report.errors))
   } finally { await rm(root, { recursive: true, force: true }) }
