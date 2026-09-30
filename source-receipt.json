@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-30T15:59:35.453Z",
-  "fileSetSHA256": "249ff819ca56306072c8464b4f27536f50982ac5cd0ef17c921c91f6dc22bff0",
+  "createdAt": "2026-09-30T16:24:13.112Z",
+  "fileSetSHA256": "b1c93eff146ac3a5dbcb5ead8efc18ca4bff9dd24fd330c08ad76b66a45367c4",
   "files": [
     {
       "path": ".gitattributes",
@@ -4977,7 +4977,7 @@
     },
     {
       "path": "scripts/github-update-manifest.mjs",
-      "sha256": "b5a8213d3949892eb75d4ecb84b7f97a2b07af2d476eef45948ba220b8b70acf"
+      "sha256": "17d1d7d07d7cd7fdbb1a0368e512fee7f704936e9c2ef59b12e70ae46d456cb9"
     },
     {
       "path": "scripts/inspect-release-test-desktop.mjs",
@@ -5309,7 +5309,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "d90aa55cfa3a4292b9d03152b91733f53b1ed6b4888eb886a0dbaedb4e33e20c"
+      "sha256": "664f8d56d3e56f6a7e02d07f39e856f92a996725d076545e1952e8d07bd3b404"
     },
     {
       "path": "tests/fixtures/eduwork-dsh-015/LICENSE",
