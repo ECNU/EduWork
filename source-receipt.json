@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.0",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-29T12:27:31.341Z",
-  "fileSetSHA256": "d8d9954f6eb6052b39b9556ed713783ca99d1f10e95328febd83752c781e6846",
+  "createdAt": "2026-09-30T03:34:55.354Z",
+  "fileSetSHA256": "dc383fdcd8f353d17a7cb9ec4a0c6820a5cbb7483b39b6dea70e559cb8c634e3",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-windows.yml",
-      "sha256": "0980f83064db16d1b5a7e30ae9ffba06c3d8a5fba5fc5d4a7b2a9be7f03e7bee"
+      "sha256": "132fdc911d2edbeb99d545f91d3b57754f9babfb7eaf6887f853a8a323a9ebd1"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/release-windows.yml",
-      "sha256": "d021b7757ee54b74205216c7ec757f8ca3b5589a289d4434057218d43efcaefa"
+      "sha256": "af0c44613bd54f4da9c9f7c3e3d528bd1c70152dd022edbfe7b8ebbdb1634807"
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
@@ -69,7 +69,7 @@
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
-      "sha256": "72a91792a0041c23ecbfd2bb679e700806a6dcf98f451e6a271729adeb37023e"
+      "sha256": "a64d9bc5c32728550d752609c0659242004ef723b0ff34415c5f87bdd834f3f6"
     },
     {
       "path": ".gitignore",
@@ -176,6 +176,10 @@
       "sha256": "4c700fdf8705548b58699fe8f4e555cebcee78c3c439fb40252a60b0ea88c993"
     },
     {
+      "path": "CHANGELOG.md",
+      "sha256": "599ec340e90f98ab60d93cc76b8149c3d8ccc3f8c56af35551adb7f6a136195b"
+    },
+    {
       "path": "config/assembly.eduwork.json",
       "sha256": "b38f00e94f4fb40cb9fe5363476de8881b5dc6bff48175483475e67bb014b7b2"
     },
@@ -261,7 +265,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "2712ca4246c92f6a4b29f1af2ba9883c5b70557089eabb89c9f58cf175ec4779"
+      "sha256": "e92b47b3ccc32feb2cc5ade581dc077ca4e34dc1462a8754a6bb3b95aab195ca"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -885,7 +889,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "0f36277b732dd7be6860b1421a9604418c26954fe035ff6cb44fed5b21992ce1"
+      "sha256": "031bd994ad7376c8f78c2b0b5679e79c654decda5a2cb594a73557c68fc4aa78"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
@@ -926,6 +930,10 @@
     {
       "path": "dsh-electron/scripts/relocate-macos-compositor.ps1",
       "sha256": "429288cdab025734c9cf6709a7047cfcbc07d21f0ae49f11bb755a467016a1b4"
+    },
+    {
+      "path": "dsh-electron/scripts/set-updater-manifest.mjs",
+      "sha256": "d9dbaa9df50292b0855d72954b61587ca7738a3d186c8f739a992822e916a7c0"
     },
     {
       "path": "dsh-electron/scripts/set-updater-manifest.ps1",
@@ -5033,7 +5041,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.mjs",
-      "sha256": "f31535c44ea742d129cf78c62bb7ee761adf0712248e57e217d640a781156d07"
+      "sha256": "f14522e4cf879cdba0f8ac6d0bc36bd997c53d3323a5b7b2541265dc6a0763f4"
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
@@ -5144,8 +5152,12 @@
       "sha256": "ac628ad9e2b242681fec6262bfed924a3f9fd74950bb279f2de6688405320a5c"
     },
     {
+      "path": "scripts/lib/windows-pe.mjs",
+      "sha256": "d202b98820d119d63d9083c18f422c3d0552ed6aeb17722739c83bd6a9c5118e"
+    },
+    {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "7b79f20bb9e47d58402e6f4968e5a90a2f6992a26d23a4cf7269d3b725a23c0d"
+      "sha256": "3e3c94ee06a2c8220b54e3dfec6a746736930981d1169e8ca545ee256c4f5ea2"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -5213,7 +5225,7 @@
     },
     {
       "path": "scripts/pack-windows-release.mjs",
-      "sha256": "433da30df1b84e0efd49846640d89dc98738f35da9f5d94c725f3b39669bf88c"
+      "sha256": "e37de9951ac7bbfc0ba021d1f0dd1404dcd9d3521d845707dee8a26a842555ce"
     },
     {
       "path": "scripts/pack-windows-release.ps1",
@@ -5256,8 +5268,20 @@
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
     {
+      "path": "scripts/pe-resources/package-lock.json",
+      "sha256": "fc4870a8334a199227066192f759f996d26b9d6ab70348eb4b131315726a904d"
+    },
+    {
+      "path": "scripts/pe-resources/package.json",
+      "sha256": "5b37a0ce43633297a17d3f1e4ae36ac5327e755c2ff3aad1b853cd64cda569eb"
+    },
+    {
       "path": "scripts/portable-extractor.manifest",
       "sha256": "d14e65eb4e40c0181c6e2f918fb8c3910ffa618226379081af8050aa5ef17276"
+    },
+    {
+      "path": "scripts/portable-extractor.mjs",
+      "sha256": "9d802e0f2728bdffabd5b52469b70f0b9218fde65d9a0636639a9fee4dfa3044"
     },
     {
       "path": "scripts/portable-product-links.mjs",
@@ -5277,7 +5301,7 @@
     },
     {
       "path": "scripts/prepare-desktop-resources.mjs",
-      "sha256": "4cdeefa7b032bd2ea61bd7e3d43e3403fa2917f32c1eb1a8905d916ad07d867a"
+      "sha256": "3d4c33fe8f57143d437c727a2466d0b0947f1f6df676175a757175165042957a"
     },
     {
       "path": "scripts/prepare-desktop-resources.ps1",
@@ -5285,7 +5309,7 @@
     },
     {
       "path": "scripts/prepare-eduwork-build-tools.mjs",
-      "sha256": "dce78445b27950c8c5e1a13b102824c38da7a1c8f5892008efae48f04f919ea5"
+      "sha256": "2487d30437c424c7212e40143924597f6ed62dbbb83028e2c47ada5642e3f8a1"
     },
     {
       "path": "scripts/prepare-eduwork-build-tools.ps1",
@@ -5317,7 +5341,7 @@
     },
     {
       "path": "scripts/prepare-windows-release-inputs.mjs",
-      "sha256": "ee536898ec04c7eeaa8ddef95ed4f4406f701d87c1cea4e5b7bcb004c1dedd84"
+      "sha256": "16a425c19772b4e59411b2758afe775462a5c498bd5bbaea052adc7bf9f210e0"
     },
     {
       "path": "scripts/prepare-windows-release-inputs.ps1",
@@ -5377,7 +5401,7 @@
     },
     {
       "path": "scripts/set-desktop-icon.mjs",
-      "sha256": "9f5c675282856aa4cb4bebbf97c8c5887c3d35b07b7b954ca1a7e0cee9a50e63"
+      "sha256": "65fa593d2e43fe78292b7497babb522ac8250e218b043b40ebb3f9c6f992b376"
     },
     {
       "path": "scripts/set-desktop-icon.ps1",

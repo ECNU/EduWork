@@ -17,6 +17,7 @@ import {
   pathExists, readJSON, run, sha256File, writeJSON, writeText,
 } from './lib/build-util.mjs'
 import { prepareDesktopResources } from './prepare-desktop-resources.mjs'
+import { readPEResources } from './lib/windows-pe.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -53,18 +54,33 @@ async function extract(archive, directory) {
   await run('tar.exe', ['-xf', archive, '-C', directory])
 }
 
-// GitHub's Windows runner contains licensed Visual Studio redistribution files.
-// Authenticode verification has no Node API, so the check runs through the
-// Windows-bundled PowerShell (not PowerShell 7).
-async function verifyMicrosoftSignature(file) {
-  const powershell = join(process.env.SystemRoot ?? 'C:\\Windows', 'System32/WindowsPowerShell/v1.0/powershell.exe')
-  const probe = '$s=Get-AuthenticodeSignature -LiteralPath $args[0];' +
-    '@{status=[string]$s.Status;subject=[string]$s.SignerCertificate.Subject;fileVersion=(Get-Item -LiteralPath $args[0]).VersionInfo.FileVersion}|ConvertTo-Json -Compress'
-  const result = JSON.parse(await capture(powershell, ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-Command', probe, file]))
-  if (result.status !== 'Valid' || !/Microsoft Corporation/.test(result.subject)) {
-    throw new Error(`Unverified Microsoft DLL: ${basename(file)}`)
+// Check the Microsoft signature with the Windows SDK tool and read the file
+// version from the PE resource. Neither step requires PowerShell.
+async function findSignTool() {
+  const bin = join(process.env.WindowsSdkDir ?? join(process.env['ProgramFiles(x86)'] ?? 'C:\\Program Files (x86)', 'Windows Kits/10'), 'bin')
+  const versions = (await readdir(bin, { withFileTypes: true })).filter(entry => entry.isDirectory())
+    .map(entry => entry.name).sort((a, b) => b.localeCompare(a, 'en', { numeric: true }))
+  for (const version of versions) {
+    const candidate = join(bin, version, 'x64/signtool.exe')
+    if (await isFile(candidate)) return candidate
   }
-  return result.fileVersion
+  throw new Error(`Windows SDK x64 signtool.exe is missing under ${bin}`)
+}
+
+export async function verifyMicrosoftSignature(file) {
+  const output = await capture(await findSignTool(), ['verify', '/pa', '/v', file])
+  const chain = output.match(/Signing Certificate Chain:([\s\S]*?)(?:Timestamp Verified by|Successfully verified|$)/)?.[1] ?? ''
+  const signer = [...chain.matchAll(/Issued to:\s*([^\r\n]+)/g)].at(-1)?.[1]?.trim()
+  if (!['Microsoft Windows Software Compatibility Publisher', 'Microsoft Corporation'].includes(signer)) {
+    throw new Error(`Unverified Microsoft DLL signer: ${basename(file)} (${signer ?? 'missing'})`)
+  }
+  const { library, resources } = await readPEResources(file, { ignoreCert: true })
+  const versions = library.Resource.VersionInfo.fromEntries(resources.entries)
+  if (versions.length !== 1) throw new Error(`Missing DLL version resource: ${basename(file)}`)
+  const values = versions[0].getAllLanguagesForStringValues().map(lang => versions[0].getStringValues(lang))
+  const fileVersion = values.find(value => value.CompanyName === 'Microsoft Corporation')?.FileVersion
+  if (!/^\d+(?:\.\d+){3}$/.test(fileVersion ?? '')) throw new Error(`Invalid Microsoft DLL version: ${basename(file)}`)
+  return fileVersion
 }
 
 /**
@@ -189,11 +205,16 @@ export async function installWindowsReleaseInputs({ inputs, product } = {}) {
   const pythonManifest = await readJSON(join(scriptRoot, '../dsh-desktop/internal/productruntime/builtin/python-runtime-manifest.json'))
   const pythonAsset = pythonManifest.assets['windows-amd64']
   const pythonArchive = assetFilePath(pythonAsset, join(inputs, 'downloads'))
-  const catalog = await JSON.parse(await capture(node, [
-    '--input-type=module', '-e',
-    'import {pathToFileURL} from "node:url"; const m=await import(pathToFileURL(process.argv[1])); console.log(JSON.stringify(m.getTranscriptionComponents()))',
-    join(product, 'd/node_modules/@eduwork/dsh-artifact-services/lib/transcription-components.js'),
-  ])).catch(() => { throw new Error(`Transcription catalog is missing from ${product}`) })
+  let catalog
+  try {
+    catalog = JSON.parse(await capture(node, [
+      '--input-type=module', '-e',
+      'import {pathToFileURL} from "node:url"; const m=await import(pathToFileURL(process.argv[1])); console.log(JSON.stringify(m.getTranscriptionComponents()))',
+      join(product, 'd/node_modules/@eduwork/dsh-artifact-services/lib/transcription-components.js'),
+    ]))
+  } catch {
+    throw new Error(`Transcription catalog is missing from ${product}`)
+  }
   if (catalog.engine.version !== manifest.asrEngineVersion) {
     throw new Error('Whisper source differs from the shared speech protocol version')
   }

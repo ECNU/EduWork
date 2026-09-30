@@ -10,6 +10,7 @@ import {
   pathExists, readJSON, run, runNode, sha256File, writeJSON, writeText,
 } from '../../scripts/lib/build-util.mjs'
 import { setDesktopIcon } from '../../scripts/set-desktop-icon.mjs'
+import { setUpdaterManifest } from './set-updater-manifest.mjs'
 import { installDesktopConfig } from '../../scripts/install-desktop-config.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
@@ -115,6 +116,7 @@ export async function assembleWindows({
   await ensureDir(dirname(updaterPath))
   await run('go', ['build', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', updaterPath, './cmd/eduwork-updater'], { cwd: join(scriptRoot, '../../dsh-desktop') })
     .catch(() => { throw new Error('Portable update helper build failed') })
+  await setUpdaterManifest({ executable: updaterPath })
   await rename(join(output, 'electron.exe'), join(output, 'EduWork-Electron.exe'))
   await setDesktopIcon({ executable: join(output, 'EduWork-Electron.exe'), shell: 'electron' })
   let defaultConfig = join(product, 'resources/desktop/eduwork.jsonc')

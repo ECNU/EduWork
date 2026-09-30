@@ -147,15 +147,15 @@ node scripts/local-desktop-pipeline.mjs
 
 ### 完整 Windows Electron 测试包
 
-从干净检出运行，准备 Git、PowerShell 7、Node.js 24.18.0、Go 1.26.6，以及带 x64 C++ 工具和 Redist 文件的 Visual Studio 2022 Build Tools。脚本使用 `vswhere` 定位 Visual Studio，校验可再分发 DLL 的微软签名；仅安装系统 VC++ 运行库不能替代这些构建输入。需要能访问锁定的 GitHub、npm 和资源下载地址。仅做 Web 验证不需要 Go 和 Visual Studio。
+从干净检出运行，准备 Git、Node.js 24.18.0、Go 1.26.6，以及带 x64 C++ 工具、Redist 文件和 Windows SDK x64 SignTool 的 Visual Studio 2022 Build Tools。Node 构建脚本使用 `vswhere` 定位 Visual Studio，并通过 `signtool.exe` 校验可再分发 DLL 的微软签名；仅安装系统 VC++ 运行库不能替代这些构建输入。需要能访问锁定的 GitHub、npm 和资源下载地址。仅做 Web 验证不需要 Go 和 Visual Studio。
 
-在 EduWork 仓库根目录执行以下命令。使用源码回执中的开发版本；若源码已经是公测版，可将 `$Version` 改为符合 `X.Y.Z-dev.YYYYMMDD.N` 的本地测试版本。`-Development` 只构建和验收，不发布 GitHub Release、npm 或 OSS：
+在 EduWork 仓库根目录执行以下命令。将版本设为符合 `X.Y.Z-dev.YYYYMMDD.N` 的开发版本。`--development` 只构建和验收，不发布 GitHub Release、npm 或 OSS：
 
 ```powershell
-$Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
-./scripts/ci-eduwork-windows-release.ps1 -CoreRoot . -EditionRoot . `
-  -DistributionConfig config/distributions/generic.json -Version $Version `
-  -Development -Output ../eduwork-electron-test
+$Version = '0.4.0-dev.20260930.1'
+node ./scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . `
+  --distribution-config config/distributions/generic.json --version $Version `
+  --development --output ../eduwork-electron-test
 ```
 
 输出目录必须尚不存在，建议放在源码检出目录之外。`publish/` 包含 Electron ZIP、校验和与回执，`evidence-public/` 为脱敏检查结果。这个入口复用 GitHub CI 的脚本：自动准备锁定上游、Host、Node/Python/浏览器/ASR 资源和 Electron，检查解压后的同一 ZIP 并执行启动冒烟。下载和展开资源需要额外磁盘空间；不要将输出或本机配置提交到源码仓。
@@ -165,12 +165,12 @@ $Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
 ```powershell
 $CoreRoot = (Resolve-Path ../EduWork).Path
 $Version = (Get-Content core.lock.json -Raw | ConvertFrom-Json).version
-& "$CoreRoot/scripts/ci-eduwork-windows-release.ps1" -CoreRoot $CoreRoot -EditionRoot . `
-  -DistributionConfig edition/distribution.json -Version $Version `
-  -Development -Output ../eduwork-ecnu-electron-test
+node "$CoreRoot/scripts/ci-eduwork-windows-release.mjs" --core-root $CoreRoot --edition-root . `
+  --distribution-config edition/distribution.json --version $Version `
+  --development --output ../eduwork-ecnu-electron-test
 ```
 
-原生资源准备入口是 [prepare-windows-release-inputs.ps1](../scripts/prepare-windows-release-inputs.ps1)，由完整构建脚本调用，无需自行拼接资源路径。完整业务、真实登录和升级仍按实际变更验收；构建启动成功不等于这些项目已经通过。
+原生资源准备入口是 [prepare-windows-release-inputs.mjs](../scripts/prepare-windows-release-inputs.mjs)，由完整构建脚本调用，无需自行拼接资源路径。完整业务、真实登录和升级仍按实际变更验收；构建启动成功不等于这些项目已经通过。
 
 ### 分阶段开发
 

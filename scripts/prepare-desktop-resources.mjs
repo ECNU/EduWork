@@ -114,7 +114,8 @@ export async function prepareDesktopResources({
   await invokePrivate(python, installArguments)
   const requirements = JSON.stringify(wheels.map(({ name, version, importName }) => ({ name, version, importName })))
   const probe = 'import importlib,importlib.metadata,json,sys; rows=json.loads(sys.argv[1]); [(importlib.import_module(r["importName"]), None if importlib.metadata.version(r["name"])==r["version"] else sys.exit(2)) for r in rows]; print(json.dumps({"prefix":sys.prefix,"basePrefix":sys.base_prefix,"version":sys.version.split()[0]}))'
-  const checked = JSON.parse(await invokePrivate(python, ['-I', '-B', '-X', 'utf8', '-c', probe, requirements]))
+  const { stdout } = await invokePrivate(python, ['-I', '-B', '-X', 'utf8', '-c', probe, requirements])
+  const checked = JSON.parse(stdout)
   if (checked.prefix.toLowerCase() !== venv.toLowerCase() ||
     checked.basePrefix.toLowerCase() !== join(resourceRoot, 'p').toLowerCase() ||
     checked.version !== manifest.pythonVersion) {

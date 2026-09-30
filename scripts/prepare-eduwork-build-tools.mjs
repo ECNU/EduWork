@@ -67,7 +67,7 @@ async function context({ upstream, runtimePackages, lockPath }) {
   if (runtime.dshVersion !== lock.packageVersion || runtime.dshCommit !== lock.commit || inputSHA256 !== expectedSHA256 || inputSHA256 !== runtime[npm ? 'packageLockSHA256' : 'sourceInstallLockSHA256']) throw new Error('Build library Runtime identity differs from its approved install lock')
   if (runtime.platform && (runtime.platform !== process.platform || runtime.arch !== process.arch)) throw new Error('Build library Runtime belongs to another platform')
   const proof = JSON.parse(proofBytes)
-  const policySHA256 = hash(Buffer.concat([await readFile(ownPath), await readFile(join(dirname(ownPath), 'prepare-eduwork-build-tools.ps1'))]))
+  const policySHA256 = hash(await readFile(ownPath))
   const identity = { schemaVersion: 1, kind: 'eduwork-product-client-build-tools', dshCommit: lock.commit, dshVersion: lock.packageVersion, sourceArchiveSHA256: lock.sourceArchiveSHA256, pnpmLockSHA256: lock.pnpmLockSHA256, pnpmVersion: lock.pnpmVersion, nodeVersion: process.version, platform: process.platform, arch: process.arch, policySHA256, runtimeSource: runtime.source, runtimeInstallLockSHA256: inputSHA256 }
   return { upstream, runtimePackages, identity, proof }
 }

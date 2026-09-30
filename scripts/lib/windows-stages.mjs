@@ -8,10 +8,8 @@
 // "ZIP must be a new file" guard still holds because a rerun of `desktop` clears
 // the whole directory first.
 //
-// NOT YET VERIFIED. The macOS chain in this repository runs end to end on a
-// maintainer machine; this one has never been executed, because Windows x64
-// packages cannot be built on macOS. It is a transcription of the previous CI
-// script and must be accepted on a Windows runner before anyone relies on it.
+// The development package and packaged launch have passed on Windows x64.
+// The public extractor path still needs a clean-checkout release acceptance.
 import { createWriteStream } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
@@ -26,6 +24,7 @@ import { copyPublicWebEvidence } from './shared-desktop-stages.mjs'
 import { assembleDesktopCandidate } from '../assemble-desktop-candidate.mjs'
 import { packWindowsRelease } from '../pack-windows-release.mjs'
 import { prepareWindowsReleaseInputs, installWindowsReleaseInputs } from '../prepare-windows-release-inputs.mjs'
+import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
@@ -193,7 +192,7 @@ async function annotateCandidate({ candidate, coreRoot, name, version, developme
  */
 async function acceptWindows({ workspace, coreRoot }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
-  const { name, edition, development } = workspace.parameters
+  const { edition, development } = workspace.parameters
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const archive = packed.output
   const gui = workspace.resolvePath('gui')
@@ -211,22 +210,10 @@ async function acceptWindows({ workspace, coreRoot }) {
     const extractorBuild = join(gui, 'portable-extractor')
     const extractorPublish = join(gui, 'extractor-publish')
     await ensureDir(extractorPublish)
-    await run('pwsh', [
-      '-NoProfile', '-File', join(coreRoot, 'scripts/prepare-windows-portable-extractor.ps1'),
-      '-Archive', archive,
-      '-ExpectedSHA256', packed.sha256,
-      '-OutputDirectory', extractorBuild,
-      '-Target', desktop,
-      '-PublishDirectory', extractorPublish,
-    ])
-    const assetName = `${edition}-${workspace.parameters.version}-windows-x64-setup.zip`
-    const receiptName = `${assetName}.json`
-    const asset = join(extractorPublish, assetName)
-    const receipt = join(extractorPublish, receiptName)
-    portableExtractor = {
-      asset: { name: assetName, bytes: (await statEntry(asset)).size, sha256: await sha256File(asset) },
-      receipt: { name: receiptName, bytes: (await statEntry(receipt)).size, sha256: await sha256File(receipt) },
-    }
+    portableExtractor = await prepareWindowsPortableExtractor({
+      archive, expectedSHA256: packed.sha256, outputDirectory: extractorBuild,
+      target: desktop, publishDirectory: extractorPublish,
+    })
   }
   await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, '--for-update'])
   await run(join(desktop, 'resources/runtime/node.exe'), [
@@ -320,7 +307,7 @@ async function acceptWindows({ workspace, coreRoot }) {
     archiveManifest: 'passed',
     nativeRuntimes: 'passed',
     ...(portableExtractor ? { portableExtractor: 'passed' } : {}),
-    asset: { name: name, bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
+    asset: { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
     ...(portableExtractor ? { portableExtractorAssets: portableExtractor } : {}),
   }
   await writeJSON(join(gui, 'acceptance-checks.json'), checks)

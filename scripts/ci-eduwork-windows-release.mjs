@@ -8,9 +8,8 @@
 // specific. This file validates the arguments, enters the workspace and writes
 // the receipt; it contains no build steps.
 //
-// NOT YET VERIFIED. This chain has never run: Windows x64 packages cannot be
-// built on macOS, and the port has not been exercised on a Windows runner.
-// A green run here is unproven until the maintainer accepts it there.
+// The development package and packaged launch passed on Windows x64. Public
+// extractor acceptance is still pending a clean-checkout release run.
 import { join } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'

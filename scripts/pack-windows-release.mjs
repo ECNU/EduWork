@@ -5,6 +5,7 @@ import { basename, dirname, extname, join, sep } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fullPath, isFile, isMainModule, pathExists, readJSON, sha256File, statEntry, writeText } from './lib/build-util.mjs'
 import { ZipWriter } from './lib/zip.mjs'
+import { setUpdaterManifest } from '../dsh-electron/scripts/set-updater-manifest.mjs'
 
 export async function packWindowsRelease({ candidate, output, development = false, forUpdate = false } = {}) {
   candidate = await realpath(fullPath(candidate))
@@ -21,6 +22,7 @@ export async function packWindowsRelease({ candidate, output, development = fals
     for (const entry of ['ChatECNU-Work.exe', 'EduWork.exe']) {
       if (!await isFile(join(candidate, entry))) throw new Error(`Migration launcher is missing: ${entry}`)
     }
+    await setUpdaterManifest({ executable: join(candidate, 'resources/update/EduWork-Updater.exe'), verifyOnly: true })
   }
   const names = { eduwork: 'EduWork', 'eduwork-chatecnu': 'EduWork-ECNU' }
   const name = names[identity.distribution]
