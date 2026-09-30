@@ -136,7 +136,9 @@ try {
     $result.asset=@{name=[IO.Path]::GetFileName($archive);bytes=(Get-Item $archive).Length;sha256=(Get-FileHash $archive -Algorithm SHA256).Hash.ToLowerInvariant()}
     $result.passed=$true
     $result | ConvertTo-Json -Depth 16 | Set-Content (Join-Path $publish "$platform-$(if ($Stable) {'release'} else {'alpha'})-receipt.json") -Encoding utf8NoBOM
-    if ($Stable -and $IsWindows) {
+    # The GitHub update manifest only exists for the ECNU editions; institutional
+    # editions publish their own update source from the receipt.
+    if ($Stable -and $IsWindows -and $name -in @('EduWork','EduWork-ECNU')) {
         & node (Join-Path $CoreRoot 'scripts/github-update-manifest.mjs') (Join-Path $publish 'windows-release-receipt.json') "ECNU/$name"
     }
 } catch { $result.error=$_.Exception.Message;Write-Host $_.ScriptStackTrace;throw }
