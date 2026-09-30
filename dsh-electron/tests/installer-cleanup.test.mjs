@@ -1,9 +1,9 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, rm, access, realpath, symlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, access, realpath, symlink, rename } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { sourceInstaller, cleanInstaller, installFromDmg } from '../src/installer-cleanup.mjs'
+import { sourceInstaller, draggedInstaller, cleanInstaller, installFromDmg } from '../src/installer-cleanup.mjs'
 
 async function fixture(t) {
   const root = await realpath(await mkdtemp(join(tmpdir(), 'installer-test-')))
@@ -27,8 +27,8 @@ async function fixture(t) {
 test('automatic installation records only its own source before moving; installed startup ejects then trashes without prompting', async t => {
   const f = await fixture(t)
   assert.equal(await sourceInstaller(f.appPath, await f.images(), f.identify), null)
-  assert.equal(await installFromDmg(f.options), false)
-  assert.deepEqual(f.calls, [], 'Manual installation does not discover or clean other images')
+  assert.equal(await installFromDmg({ ...f.options, images: async () => [] }), false)
+  assert.deepEqual(f.calls, [])
   assert.equal(await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
     moveToApplicationsFolder: () => { f.calls.push('move'); return true } } }), true)
   assert.equal(JSON.parse(await readFile(f.statePath, 'utf8')).imagePath, f.imagePath)
@@ -37,6 +37,85 @@ test('automatic installation records only its own source before moving; installe
   assert.equal(await installFromDmg(f.options), false)
   assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
   await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+})
+
+test('dragged installation cleans its unique signed source once; replacing the application allows discovery again', async t => {
+  const f = await fixture(t)
+  assert.equal(await installFromDmg(f.options), false)
+  assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
+  await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+  f.calls.length = 0
+  await installFromDmg({ ...f.options, images: async () => assert.fail('An existing installation must not scan mounted images') })
+  assert.deepEqual(f.calls, [])
+  const replacement = join(f.appPath, '..', 'replacement.app')
+  await mkdir(replacement)
+  await rm(f.appPath, { recursive: true })
+  await rename(replacement, f.appPath)
+  await installFromDmg(f.options)
+  assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
+})
+
+test('dragged installation preserves mismatching, invalid, ambiguous, and escaped source applications', async t => {
+  const f = await fixture(t), images = await f.images()
+  for (const identify of [async path => path === f.appPath ? 'installed' : 'different',
+    async path => { if (path !== f.appPath) throw Error('invalid signature'); return 'installed' }]) {
+    assert.equal(await draggedInstaller(f.appPath, images, identify), null)
+  }
+  const otherMount = join(f.mount, '..', 'other-mounted'), otherImage = join(f.mount, '..', 'other.dmg')
+  await mkdir(join(otherMount, 'Example.app'), { recursive: true }); await writeFile(otherImage, 'another-image')
+  const other = { 'image-path': otherImage, 'system-entities': [{ 'mount-point': otherMount }] }
+  assert.equal(await draggedInstaller(f.appPath, [...images, other], f.identify), null)
+  const alias = f.imagePath + '.alias.dmg'; await symlink(f.imagePath, alias)
+  assert.equal((await draggedInstaller(f.appPath, [...images, { ...images[0], 'image-path': alias }], f.identify)).imagePath, f.imagePath)
+  await rm(f.source, { recursive: true }); await symlink(f.appPath, f.source)
+  assert.equal(await draggedInstaller(f.appPath, images, f.identify), null)
+  assert.deepEqual(f.calls, [])
+})
+
+test('failed dragged cleanup retains its exact source for a later retry without rediscovery', async t => {
+  const f = await fixture(t)
+  await installFromDmg({ ...f.options, eject: async () => { throw Error('busy') } })
+  assert.equal(f.calls.length, 1); assert.equal(f.calls[0][0], 'warning')
+  await access(f.imagePath); await access(f.statePath)
+  f.calls.length = 0
+  await installFromDmg({ ...f.options, images: async () => [] })
+  assert.deepEqual(f.calls, [['trash', f.imagePath]])
+  await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+})
+
+test('a dragged upgrade preserves a previous failed source and discovers its new signed image', async t => {
+  const f = await fixture(t)
+  await installFromDmg({ ...f.options, eject: async () => { throw Error('busy') } })
+  await access(f.statePath)
+  const mount = join(f.mount, '..', 'new-mounted'), imagePath = join(f.mount, '..', 'new-version.dmg')
+  await mkdir(join(mount, 'Example.app'), { recursive: true }); await writeFile(imagePath, 'new-image')
+  const replacement = join(f.appPath, '..', 'replacement.app')
+  await mkdir(replacement)
+  await rm(f.appPath, { recursive: true })
+  await rename(replacement, f.appPath)
+  f.calls.length = 0
+  await installFromDmg({ ...f.options, identify: async path => path === f.source ? 'same-signed-app' : 'new-signed-app',
+    images: async () => [...await f.images(), { 'image-path': imagePath, 'system-entities': [{ 'mount-point': mount }] }] })
+  assert.deepEqual(f.calls, [['eject', mount], ['trash', imagePath]])
+  await access(f.imagePath)
+  await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+})
+
+test('cancelled automatic installation preserves the image for the existing application; a later dragged replacement can clean it', async t => {
+  const f = await fixture(t)
+  await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
+    moveToApplicationsFolder: () => false } })
+  f.calls.length = 0
+  await installFromDmg(f.options)
+  assert.deepEqual(f.calls, [])
+  await access(f.imagePath)
+  await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+  const replacement = join(f.appPath, '..', 'replacement.app')
+  await mkdir(replacement)
+  await rm(f.appPath, { recursive: true })
+  await rename(replacement, f.appPath)
+  await installFromDmg(f.options)
+  assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
 })
 
 test('cancellation and failed installation preserve the image and remove the pending cleanup record', async t => {
