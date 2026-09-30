@@ -37,6 +37,12 @@ if ($selected.schemaVersion -ne 1) { throw 'Unsupported distribution schema' }
 if ($selected.coreBase) {
     $distribution = Get-Content -LiteralPath (Child $CoreRoot $selected.coreBase) -Raw | ConvertFrom-Json
     foreach ($key in @('id','brand','capabilities')) { if ($selected.PSObject.Properties[$key]) { $distribution.$key = $selected.$key } }
+    # An edition may explicitly replace one core skill while retaining one
+    # user-facing name. Duplicate skills without this declaration still fail.
+    foreach ($skill in @($selected.skills | Where-Object { $_.replace -eq $true })) {
+        if (@($distribution.skills | Where-Object name -eq $skill.name).Count -ne 1) { throw "Skill replacement must select one core skill: $($skill.name)" }
+        $distribution.skills = @($distribution.skills | Where-Object name -ne $skill.name)
+    }
     foreach ($key in @('plugins','skills','resources','patches')) { $distribution.$key = @($distribution.$key) + @($selected.$key) }
 } else { $distribution = $selected }
 if (-not $AssemblyConfig) { $AssemblyConfig = Child $CoreRoot 'config/assembly.eduwork.json' }
