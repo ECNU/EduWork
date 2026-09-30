@@ -138,13 +138,13 @@ try {
 
 ## DSH 装配
 
-只加载一次 `@eduwork/dsh-artifact-services/dsh`。它提供 `artifactServices`、六个通用技能，以及启用且可用时的 `artifact-images`；默认十个工具，另有两个可选图像工具：
+只加载一次 `@eduwork/dsh-artifact-services/dsh`。它提供 `artifactServices`、六个通用技能，以及启用且可用时的 `artifact-images`；默认十个工具，另有三个可选图像工具：
 
 | 工具 | 职责 |
 | --- | --- |
 | `office_document`、`office_spreadsheet`、`office_presentation`、`office_pdf` | Office 操作，使用工作区相对路径 |
 | `speech_voices`、`speech_synthesize` | Provider、音色、配乐发现及语音合成 |
-| `image_providers`、`image_generate` | 配置 `images.enabled:true` 后提供图像发现/生成 |
+| `image_providers`、`image_generate`、`image_edit` | 配置 `images.enabled:true` 后提供图像发现/生成 |
 | `speech_transcription_providers`、`speech_transcribe` | 音频文件转写服务发现和转写 |
 | `media_render` | 结构化音视频生成 |
 | `video_project` | 可编辑项目初始化、暂存、语音任务、验证与渲染 |
@@ -164,3 +164,5 @@ try {
 DSH 服务默认关闭生图。部署方须在 ArtifactServices 插件配置中显式设置 `images: { enabled: true }`，统一开启工具、技能与 Provider 调用。Office 和视频中的本地图片不受影响，语音与视频能力也独立于此选项。
 
 内置系统 TTS 支持 Windows。其他平台需要注册语音 Provider 并提供兼容的原生资源，见[平台要求](docs/PLATFORMS.md)。
+
+图像 Provider 可选实现 `edit(request)`，沿用 `generate` 的工作区、取消信号与结果契约；输入为 `images` 路径数组及可选 `mask`，通过 `images.edit(request)` / `image_edit` 调用。目录仅对实现编辑的 Provider 声明 `capabilities.edit:true`；不自动回退到生成。输入与输出均限制在工作区，结果须另存，复用工作区写入权限。

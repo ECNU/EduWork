@@ -153,6 +153,8 @@ export const configurationFields = {
     defaultSize: ['默认尺寸，必须属于 nativeSizes；省略取首项。', '1024x1024'],
     responseFormat: ['auto/b64_json/url，默认 auto。', 'auto'],
     promptMaxChars: ['提示词最大字符数，正整数，默认 4096。', 4096],
+    edit: ['是否支持标准 /images/edits 图像编辑，默认 false；不影响文生图。', false],
+    editMaxImages: ['单次编辑允许的输入图片数，1–16，默认 1；按服务端能力填写。', 1],
   }),
   ...fields('media.providers[].speech.', {
     enabled: ['是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。', false],

@@ -1,6 +1,6 @@
 # 配置图像生成与云端语音
 
-公版内置一个通用 OpenAI 兼容媒体适配器。服务商、学校或企业只提供配置，不需要修改 EduWork 代码、安装学校媒体插件或重新构建。对话与 Studio 共用 `image_providers` / `image_generate`、`speech_voices` / `speech_synthesize`，也共用文件预览、字幕与下载机制。
+公版内置一个通用 OpenAI 兼容媒体适配器。服务商、学校或企业只提供配置，不需要修改 EduWork 代码、安装学校媒体插件或重新构建。对话与 Studio 共用 `image_providers` / `image_generate` / `image_edit`、`speech_voices` / `speech_synthesize`，也共用文件预览、字幕与下载机制。
 
 公版默认不配置云端服务。不配置图像服务时不启用生图工具；图像技能只有在提供方可用时才启用。云端 TTS 可选，本地系统 TTS 不受影响。不提供免费云端额度，也不会从聊天模型名称猜测生图或 TTS 模型。
 
@@ -43,9 +43,12 @@
 | 能力 | 接口 | 请求 | 支持的响应 |
 | --- | --- | --- | --- |
 | 文生图 | `POST {baseURL}/images/generations` | `model`、`prompt`、`size`；按配置可发送 `response_format` | `data[0].b64_json` 或 `data[0].url`，图片为 PNG/JPEG/WebP/GIF |
+| 图像编辑 | `POST {baseURL}/images/edits` | multipart：`model`、`prompt`、`size`、`image`（多图为 `image[]`），可选 `mask` 与 `response_format` | 与文生图相同 |
 | TTS | `POST {baseURL}/audio/speech` | `model`、`input`、`voice`、`speed`、`response_format: "wav"` | WAV 二进制，Content-Type 为 audio/wav、audio/wave 或 audio/x-wav |
 
-两个请求均通过 `Authorization: Bearer <由本机凭据服务取得的 Key>` 认证，不发送学校专用头。配置不支持任意请求代码或附加脚本。兼容端点仍可能有各自限制，模型名、尺寸和音色应以服务商为准。
+三个请求均通过 `Authorization: Bearer <由本机凭据服务取得的 Key 或登录 Token>` 认证，不发送学校专用头。配置不支持任意请求代码或附加脚本。兼容端点仍可能有各自限制，模型名、尺寸和音色应以服务商为准。
+
+支持编辑的服务在 `images` 段设置 `edit: true`，并用 `editMaxImages` 声明单次图片数（1–16，默认 1）。`image_providers` 会显示 `edit: true`；不声明时只提供生成能力。编辑上传真实工作区图片，不会把原图描述成文本再重新生成。每张输入不超过 50 MiB，合计不超过 100 MiB；输入支持 PNG/JPEG/WebP，可选 PNG 遮罩须与第一张原图同尺寸。输出另存为新文件，原图保留。接口字段参考 [OpenAI 图像编辑协议](https://developers.openai.com/api/reference/resources/images/methods/edit)，具体尺寸、图片数及遮罩支持以所用服务为准。
 
 图片响应示例：
 
