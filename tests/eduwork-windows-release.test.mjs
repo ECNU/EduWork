@@ -25,6 +25,17 @@ test('published update metadata retains the legacy client wire representation',(
  assert.ok(!encoded.endsWith('\n'),'A trailing newline changes the legacy cached digest')
 })
 
+test('source releases generate upgrade manifests for subsequent stable versions in both editions',()=>{
+ for(const version of ['0.4.0','0.4.1','0.5.0','1.0.0']) for(const [edition,distribution] of [['EduWork','eduwork'],['EduWork-ECNU','eduwork-chatecnu']]) {
+  const row={...receipt,kind:'eduwork-source-release',version,edition,distribution,platform:'windows',automaticUpdates:true,checks:{...receipt.checks,updateContract:'passed'},asset:{...receipt.asset,name:`${edition}-${version}-windows-x64-electron.zip`}}
+  const manifest=githubUpdateManifest(row,'ECNU/'+edition)
+  assert.equal(manifest.channel,'stable')
+  assert.equal(manifest.version,version)
+  assert.equal(manifest.artifacts[0].url,`https://github.com/ecnu/${edition}/releases/download/v${version}/${row.asset.name}`)
+  for(const bad of [{...row,automaticUpdates:false},{...row,passed:false},{...row,checks:{...row.checks,updateContract:'failed'}},{...row,version:version+'-dev.20261001.1',asset:{...row.asset,name:`${edition}-${version}-dev.20261001.1-windows-x64-electron.zip`}}])assert.throws(()=>githubUpdateManifest(bad,'ECNU/'+edition))
+ }
+})
+
 test('approved development releases publish only to the development channel and never become latest stable',()=>{
  const version='0.3.6-dev.20260914.3'
  const row={...receipt,version,distribution:'eduwork',asset:{...receipt.asset,name:`EduWork-${version}-windows-x64-electron.zip`},portableExtractor:extractorFiles('EduWork',version)}
