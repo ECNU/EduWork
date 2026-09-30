@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 import { normalizeMediaConfig } from './config.js'
-import { generateImageForAgent, synthesizeSpeechForAgent } from './actions.js'
+import { generateImageForAgent, editImageForAgent, synthesizeSpeechForAgent } from './actions.js'
 
 export const name = 'eduwork-media-openai'
 export const inject = ['artifactServices', 'tools', 'agents', 'credentials', 'fs']
@@ -46,12 +46,18 @@ export function apply(ctx, raw = { providers: [] }) {
     }
     if (config.images) {
       const dispose = ctx.artifactServices.registerImageProvider({ id: config.id, title: config.title, local: false, available,
-        capabilities: { nativeSizes: config.images.nativeSizes, fitModes: ['crop', 'pad'], customSize: true },
+        capabilities: { nativeSizes: config.images.nativeSizes, fitModes: ['crop', 'pad'], customSize: true,
+          ...(config.images.edit?{editMaxImages:config.images.editMaxImages}: {}) },
         async generate(request) {
           const { prompt, fit } = request, size = request.size || config.images.defaultSize
           if (request.execution?.name !== 'image_generate') return dispatchShared(ctx, 'image_generate', { prompt, size, fit, provider: config.id }, request)
           return generateImageForAgent(ctx, config, { prompt, size, fit }, executionFor(ctx, request))
         },
+        ...(config.images.edit?{async edit(request) {
+          const {prompt,images,mask,fit}=request,size=request.size||config.images.defaultSize
+          if(request.execution?.name!=='image_edit')return dispatchShared(ctx,'image_edit',{prompt,images,mask,size,fit,provider:config.id},request)
+          return editImageForAgent(ctx,config,{prompt,images,mask,size,fit},executionFor(ctx,request))
+        }}:{}),
       })
       ctx.effect(() => dispose, `media-openai: image ${config.id}`)
     }

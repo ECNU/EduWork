@@ -324,6 +324,10 @@
 //   "responseFormat": "auto"
 // media.providers[].images.promptMaxChars：提示词最大字符数，正整数，默认 4096。
 //   "promptMaxChars": 4096
+// media.providers[].images.edit：是否支持标准 /images/edits 图像编辑，默认 false；不影响文生图。
+//   "edit": false
+// media.providers[].images.editMaxImages：单次编辑允许的输入图片数，1–16，默认 1；按服务端能力填写。
+//   "editMaxImages": 1
 // media.providers[].speech.enabled：是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。
 //   "enabled": false
 // media.providers[].speech.model：TTS 模型 ID。
