@@ -2,6 +2,8 @@
   "version": "0.0.0",
   "name": "eduwork-020-source-probe-dependencies",
   "dependencies": {
+    "@deepseek-ai/dsh-browser-use": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "0.2.0-rc.2",
     "@eduwork/dsh-literature": "0.1.2",
     "@joplin/turndown-plugin-gfm": "1.0.68",
     "fast-xml-parser": "5.11.1",

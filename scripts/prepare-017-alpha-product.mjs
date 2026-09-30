@@ -48,7 +48,16 @@ if(values.edition){
       nodePaths:[join(product,'d/node_modules')],external:['react','react/*','@deepseek-ai/cordis','@deepseek-ai/dsh-client-ui-slots','@deepseek-ai/dsh-client-store'],
       banner:{js:`window.__ModuleLoader__.load({id:${JSON.stringify(plugin.name)},factory:(require)=>{var module={exports:{}};var exports=module.exports;`},footer:{js:'return module.exports;}});'}})
   }
-  composition.push({insert:entries},{id:'eduwork-brand-settings',config:distribution.brand})
+  composition.push({insert:entries},...(distribution.patches??[]),{id:'eduwork-brand-settings',config:distribution.brand})
+  // Retired edition tools stay disabled above saved activation preferences,
+  // including on the official profile reload. Keep this separate from defaults.
+  const retired=distribution.retiredPluginIds??[]
+  assert.ok(Array.isArray(retired)&&retired.every(id=>typeof id==='string'&&/^[a-z][a-z0-9-]*$/.test(id)))
+  if(retired.length){
+    const policyFile=join(product,'d/node_modules/@deepseek-ai/dsh-desktop-host/lib/distribution-policy.patch.json')
+    const enforced=await read(policyFile)
+    await save(policyFile,[...enforced,...new Set(retired).values()].map(row=>typeof row==='string'?{id:row,disabled:true}:row))
+  }
   Object.assign(identity,{distribution:distribution.id,brand:distribution.brand,capabilities:distribution.capabilities,
     editionCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:edition,encoding:'utf8',windowsHide:true}).trim(),sourcePackages:[...identity.sourcePackages,...entries.map(entry=>entry.name)]})
   for(const skill of distribution.skills) await cp(join(edition,skill.source),join(product,'skills',skill.name),{recursive:true})
