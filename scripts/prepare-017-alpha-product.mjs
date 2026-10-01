@@ -48,7 +48,15 @@ if(values.edition){
       nodePaths:[join(product,'d/node_modules')],external:['react','react/*','@deepseek-ai/cordis','@deepseek-ai/dsh-client-ui-slots','@deepseek-ai/dsh-client-store'],
       banner:{js:`window.__ModuleLoader__.load({id:${JSON.stringify(plugin.name)},factory:(require)=>{var module={exports:{}};var exports=module.exports;`},footer:{js:'return module.exports;}});'}})
   }
-  composition.push({insert:entries},...(distribution.patches??[]),{id:'eduwork-brand-settings',config:distribution.brand})
+  // A config patch for an existing plugin merges into that plugin's entry: a separate
+  // config entry would replace the whole config, including the user's organizations.
+  const patches=[]
+  for(const patch of distribution.patches??[]){
+    const base=patch.config&&!patch.name&&composition.find(entry=>entry?.id===patch.id&&entry.name)
+    if(base) base.config={...base.config,...patch.config}
+    else patches.push(patch)
+  }
+  composition.push({insert:entries},...patches,{id:'eduwork-brand-settings',config:distribution.brand})
   // Retired edition tools stay disabled above saved activation preferences,
   // including on the official profile reload. Keep this separate from defaults.
   const retired=distribution.retiredPluginIds??[]
