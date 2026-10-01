@@ -5793,7 +5793,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: "#75635c",
 				fontSize: 12,
 				lineHeight: 1.55
-			} }, "创建后立即进入 DSH 标准技能目录，可随时关闭。")), h("button", {
+			} }, "创建后立即进入标准技能目录，可随时关闭。")), h("button", {
 				type: "button",
 				disabled: busy === "create",
 				"aria-label": "关闭",
