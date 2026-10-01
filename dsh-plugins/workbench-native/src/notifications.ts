@@ -32,7 +32,13 @@ export function installNotificationNavigation(ctx, invoke, environment = window)
   let snapshot = { desktop: false, delivery: 'available' }
   const listeners = new Set<() => void>()
   const status = { getSnapshot: () => snapshot, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) } }
-  const current = () => ctx.sessions.list.getSnapshot().current ?? ''
+  // DSH 0.2 keeps the selected session in the UI scope adapter. The session
+  // catalog still exists, but no longer exposes a `current` selection.
+  const selection = ctx.uiSession?.adapter.current ?? ctx.sessions.list
+  const current = () => {
+    const value = selection.getSnapshot()
+    return value.props?.sessionId ?? value.current ?? ''
+  }
   const poll = async () => {
     if (disposed || busy) return
     busy = true
@@ -75,7 +81,7 @@ export function installNotificationNavigation(ctx, invoke, environment = window)
     else if (value.visible === false && visibleArtifact?.artifactId === value.artifactId) visibleArtifact = undefined
     focus()
   }
-  const unsubscribe = ctx.sessions.list.subscribe(focus)
+  const unsubscribe = selection.subscribe(focus)
   environment.addEventListener('focus', focus)
   environment.addEventListener('eduwork:studio-visibility', studioVisibility)
   void poll()
