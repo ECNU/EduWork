@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-10-01T01:23:36.199Z",
-  "fileSetSHA256": "82d66bba7b6f913a6626aac20a7ed113b6b9eceabe9e48d7ffe96781db440454",
+  "createdAt": "2026-10-01T02:26:36.636Z",
+  "fileSetSHA256": "2f29391a1f83a14f49a026b8c3db30886672948f1e47d902e051c4ee6a65363a",
   "files": [
     {
       "path": ".gitattributes",
@@ -2357,7 +2357,11 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/index.js",
-      "sha256": "5b0c8a141bfb3a906037bb943fe2e947aa91b4388a5b170614c65dd7583a4163"
+      "sha256": "f7d81d04701162a5c21879334d30d61fdd4dc344adadff7d4137ed044809c1a1"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/lib/skill-display.js",
+      "sha256": "5346d9d578bee60c68895e9aa0b13def8804bd9c1dd6f1542006976bf9cff758"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/skill-readiness.js",
@@ -2365,7 +2369,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert-schemas.js",
-      "sha256": "0f3ff39c1cf7f7ab2cd5161cd35d67d1f0d29ce7edbd34919871990a1644fc82"
+      "sha256": "68db33eb6f73e38c4305afb20a2cac742f9ddc336d55c7e0f8f89d8489436b0c"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert.host.js",
@@ -2377,7 +2381,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/view-model.js",
-      "sha256": "70d65eb5dc9acf19fdcb169331d12575eb6ec6fb66dcaea288e98440a6e0cc37"
+      "sha256": "01009cc2d55ef6a1f2d2b846b3f008a0a6183493c11a20ddbadf9aabb878073c"
     },
     {
       "path": "dsh-plugins/workbench-native/LICENSE",
@@ -2389,11 +2393,11 @@
     },
     {
       "path": "dsh-plugins/workbench-native/README_EN.md",
-      "sha256": "b796cd2df159bb58b660e7b14e1ae504c061f39f7c22189b8a22d4d816079e4b"
+      "sha256": "42511ca1b26f89d73f46f8ac1821502193543e59e590a9a4fed8f0a1e263783e"
     },
     {
       "path": "dsh-plugins/workbench-native/README.md",
-      "sha256": "94afb46364b598b49c22f3745b93bcced8dd93b470ef227b98e1f863b77779fa"
+      "sha256": "6efcf4a1591d6c12fff91fca44e53f9ae20d29bbc6e1abb8486b8acc2c55786f"
     },
     {
       "path": "dsh-plugins/workbench-native/src/client.ts",
@@ -2438,6 +2442,10 @@
     {
       "path": "dsh-plugins/workbench-native/test/notifications-browser.mjs",
       "sha256": "a76bd8730ea81e690c30a0efadd6909923c87e82bcc04e6780452769b7119df3"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/skill-display.test.mjs",
+      "sha256": "4ed8132e5df34cf041e71ee8f9d1fbfd95a41793c17ef97c60e16eac910d342a"
     },
     {
       "path": "dsh-plugins/workbench-native/test/skill-readiness.test.mjs",
