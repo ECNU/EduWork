@@ -65,7 +65,14 @@ const insert = [
   ...distribution.plugins.map(row => ({ id: row.id, name: row.name, config: row.source === 'dsh-plugins/brand-settings-native' ? distribution.brand : row.config ?? {} })),
 ]
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
-const composition = [...distribution.patches, ...exclusions, { insert }]
+// A config patch for a plugin inserted here merges into that entry: a separate config
+// entry would replace the whole config, including the user's organizations.
+const patches = distribution.patches.filter(patch => {
+  const base = patch.config && !patch.name && insert.find(entry => entry.id === patch.id)
+  if (base) base.config = { ...base.config, ...patch.config }
+  return !base
+})
+const composition = [...patches, ...exclusions, { insert }]
 // Memory's published bundle retains its old entry ID; the candidate uses the
 // stable settings namespace as the native entry identity.
 const memoryBundle = join(modules, '@eduwork/dsh-memory/cordis.patch.yml')
