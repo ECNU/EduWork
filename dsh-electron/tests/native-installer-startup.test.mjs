@@ -73,11 +73,11 @@ for (const scenario of ['installed', 'moved', 'cancelled', 'second-instance', 'q
       t.after(() => clearTimeout(timer))
     })])
     if (scenario === 'installed') {
-      assert.deepEqual(calls, ['lock', 'ready', 'installer', 'prepare', 'host', 'window', 'desktop-ready'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'prepare', 'host', 'window', 'desktop-ready'])
     } else if (scenario === 'second-instance') {
-      assert.deepEqual(calls, ['lock', 'quit'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {
-      assert.deepEqual(calls, ['lock', 'ready', 'installer', 'quit'])
+      assert.deepEqual(calls, ['ready', 'installer', 'quit'])
       assert.equal(exit.complete, true)
     }
   })

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, rm, access, realpath, symlink, rename } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm, access, realpath, symlink, rename, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { sourceInstaller, draggedInstaller, cleanInstaller, installFromDmg } from '../src/installer-cleanup.mjs'
@@ -51,6 +51,23 @@ test('dragged installation cleans its unique signed source once; replacing the a
   await mkdir(replacement)
   await rm(f.appPath, { recursive: true })
   await rename(replacement, f.appPath)
+  await installFromDmg(f.options)
+  assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
+})
+
+test('a first startup without a mounted installer retries discovery on the next startup', async t => {
+  const f = await fixture(t)
+  await installFromDmg({ ...f.options, images: async () => [] })
+  assert.deepEqual(f.calls, [])
+  await installFromDmg(f.options)
+  assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
+  assert.equal(JSON.parse(await readFile(join(f.app.getPath('userData'), 'dmg-installation.json'), 'utf8')).cleaned, true)
+})
+
+test('a receipt written before cleanup by an older version does not prevent discovery', async t => {
+  const f = await fixture(t), file = await stat(f.appPath)
+  await writeFile(join(f.app.getPath('userData'), 'dmg-installation.json'),
+    JSON.stringify({ installation: `${file.dev}:${file.ino}:${file.birthtimeMs}` }))
   await installFromDmg(f.options)
   assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
 })
