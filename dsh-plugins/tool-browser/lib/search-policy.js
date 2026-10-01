@@ -10,3 +10,11 @@ export async function searchWithAvailableProvider({ request, signal, settings, r
   if (!key) return browser.search(request, signal)
   return deepseek({ ...config, apiKey: key }).search(request, signal)
 }
+
+// DSH's settings service has no per-plugin read; take the live config of the
+// active web-search-deepseek entry from the config editor. A disabled or absent
+// entry reads as unconfigured, so search falls back to the browser.
+export function providerSettings(configEditor, id) {
+  const entry = configEditor?.entries?.().find(row => row.options?.id === id && row.fiber?.state === 2)
+  return entry ? JSON.parse(JSON.stringify(entry.fiber.config ?? entry.options.config ?? {})) : undefined
+}

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { searchWithAvailableProvider } from '../lib/search-policy.js'
+import { providerSettings, searchWithAvailableProvider } from '../lib/search-policy.js'
 
 function fixture(config = {}, credential) {
   const calls = []
@@ -44,4 +44,15 @@ test('a request uses one settings snapshot and respects cancellation before disp
   assert.equal(await searchWithAvailableProvider(options), 'https://old.example')
   options.signal = AbortSignal.abort()
   await assert.rejects(searchWithAvailableProvider(options), {name:'AbortError'})
+})
+test('provider settings come from the active config entry; inactive or missing entries fall back to browser', async () => {
+  const row = (id, state, config) => ({ options: { id, config: { stale: true } }, fiber: { state, config } })
+  const editor = rows => ({ entries: () => rows })
+  assert.deepEqual(providerSettings(editor([row('other', 2, {}), row('web-search-deepseek', 2, { apiKey: 'test-only' })]), 'web-search-deepseek'), { apiKey: 'test-only' })
+  assert.equal(providerSettings(editor([row('web-search-deepseek', 3, { apiKey: 'test-only' })]), 'web-search-deepseek'), undefined)
+  assert.equal(providerSettings(undefined, 'web-search-deepseek'), undefined)
+  const {calls, options} = fixture()
+  options.settings = () => providerSettings(editor([]), 'web-search-deepseek')
+  assert.equal(await searchWithAvailableProvider(options), 'browser results')
+  assert.deepEqual(calls.at(-1), ['browser', 'test'])
 })
