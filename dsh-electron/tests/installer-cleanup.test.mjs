@@ -1,7 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, writeFile, readFile, rm, access, realpath, symlink, rename, stat } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve } from 'node:path'
+import { pathToFileURL } from 'node:url'
+import { EventEmitter } from 'node:events'
+import { registerHooks } from 'node:module'
+import { DesktopExit } from '../src/desktop-exit.mjs'
+import { DesktopLifecycle } from '../src/lifecycle.mjs'
 import { tmpdir } from 'node:os'
 import { sourceInstaller, draggedInstaller, cleanInstaller, installFromDmg } from '../src/installer-cleanup.mjs'
 
@@ -88,15 +93,21 @@ test('dragged installation preserves mismatching, invalid, ambiguous, and escape
   assert.deepEqual(f.calls, [])
 })
 
-test('failed dragged cleanup retains its exact source for a later retry without rediscovery', async t => {
+test('dragged cleanup retries a busy volume and preserves its source for later startup, even after ejection', async t => {
   const f = await fixture(t)
-  await installFromDmg({ ...f.options, eject: async () => { throw Error('busy') } })
+  let attempts = 0
+  await installFromDmg({ ...f.options, eject: async () => { attempts++; throw Error('busy') } })
+  assert.equal(attempts, 25)
   assert.equal(f.calls.length, 1); assert.equal(f.calls[0][0], 'warning')
   await access(f.imagePath); await access(f.statePath)
+  const candidate = JSON.parse(await readFile(f.statePath, 'utf8'))
   f.calls.length = 0
   await installFromDmg({ ...f.options, images: async () => [] })
   assert.deepEqual(f.calls, [['trash', f.imagePath]])
   await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+  await writeFile(f.statePath, JSON.stringify(candidate)); f.calls.length = 0; attempts = 0
+  await installFromDmg({ ...f.options, eject: async () => { if (++attempts < 3) throw Error('busy') } })
+  assert.equal(attempts, 3); assert.deepEqual(f.calls, [['trash', f.imagePath]])
 })
 
 test('a dragged upgrade preserves a previous failed source and discovers its new signed image', async t => {
@@ -121,6 +132,7 @@ test('cancelled automatic installation preserves the image for the existing appl
   const f = await fixture(t)
   await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
     moveToApplicationsFolder: () => false } })
+  assert.deepEqual(f.calls, ['quit'])
   f.calls.length = 0
   await installFromDmg(f.options)
   assert.deepEqual(f.calls, [])
@@ -134,32 +146,13 @@ test('cancelled automatic installation preserves the image for the existing appl
   assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
 })
 
-test('cancellation and failed installation preserve the image and remove the pending cleanup record', async t => {
+test('failed installation preserves the image and removes the pending cleanup record', async t => {
   const f = await fixture(t)
-  for (const fails of [false, true]) {
-    f.calls.length = 0
-    await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
-      moveToApplicationsFolder: () => { if (fails) throw Error('denied'); return false } } })
-    assert.deepEqual(f.calls, fails ? ['error', 'quit'] : ['quit'])
-    await assert.rejects(access(f.statePath), { code: 'ENOENT' })
-    await access(f.imagePath)
-  }
-})
-
-test('cleanup retries busy source process, retains pending cleanup on failure and retries even after volume was ejected', async t => {
-  const f = await fixture(t), candidate = await sourceInstaller(f.source, await f.images(), f.identify)
-  await writeFile(f.statePath, JSON.stringify(candidate))
-  let attempts = 0
-  await installFromDmg({ ...f.options, eject: async () => { attempts++; throw Error('busy') } })
-  assert.equal(attempts, 25)
-  assert.equal(f.calls[0][0], 'warning'); assert.equal(f.calls.length, 1)
-  await access(f.statePath)
-  f.calls.length = 0
-  await installFromDmg({ ...f.options, images: async () => [] })
-  assert.deepEqual(f.calls, [['trash', f.imagePath]])
-  await writeFile(f.statePath, JSON.stringify(candidate)); f.calls.length = 0; attempts = 0
-  await installFromDmg({ ...f.options, eject: async () => { if (++attempts < 3) throw Error('busy') } })
-  assert.equal(attempts, 3); assert.deepEqual(f.calls, [['trash', f.imagePath]])
+  await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
+    moveToApplicationsFolder: () => { throw Error('denied') } } })
+  assert.deepEqual(f.calls, ['error', 'quit'])
+  await assert.rejects(access(f.statePath), { code: 'ENOENT' })
+  await access(f.imagePath)
 })
 
 test('changed signature, malformed record, replaced image, and active source app never get trashed', async t => {
@@ -213,3 +206,79 @@ test('replacement requires approval and a running destination is never replaced'
     await access(f.imagePath)
   }
 })
+
+// Exercise the built rc.2 entry and its actual single-instance, quit and backend
+// controllers. Only Electron, product preparation and the Host are substituted.
+const source = process.env.EDUWORK_TEST_NATIVE_SHELL && pathToFileURL(resolve(process.env.EDUWORK_TEST_NATIVE_SHELL, 'src') + '/')
+const electron = 'data:text/javascript,export {}'
+registerHooks({ resolve(specifier, context, next) {
+  return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
+} })
+for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup']) {
+  test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
+    const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
+    let guard = async () => true, completed
+    const done = new Promise(resolve => { completed = resolve })
+    const exit = new DesktopExit({ confirm: () => guard(), close: () => lifecycle.close(),
+      relaunch: () => assert.fail('Installer restart belongs to Electron'), quit: () => app.quit(), failed: assert.fail })
+    app.getPath = () => '/unused'
+    app.getLocale = () => 'en'
+    app.requestSingleInstanceLock = () => { calls.push('lock'); return scenario !== 'second-instance' }
+    app.whenReady = async () => { calls.push('ready') }
+    app.quit = () => {
+      if (!exit.complete) { void exit.request(); return }
+      calls.push('quit'); app.emit('will-quit'); completed()
+    }
+    t.mock.module(electron, { exports: { app, dialog: { showMessageBox: () => assert.fail('No tasks exist during installation') },
+      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
+    const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
+    const prior = process.env.EDUWORK_LAUNCHER_TEST
+    process.env.EDUWORK_LAUNCHER_TEST = 'launcher-owned'
+    t.after(() => { if (prior === undefined) delete process.env.EDUWORK_LAUNCHER_TEST; else process.env.EDUWORK_LAUNCHER_TEST = prior })
+    mock('login-shell-environment.ts', {
+      resolveDesktopLoginShellConfig: () => ({ timeoutMs: 1000 }),
+      readDesktopLoginShellEnvironment: async () => ({ environment: { ...process.env,
+        PATH: 'synthetic-login-shell-path', EDUWORK_LAUNCHER_TEST: 'shell-value', CHATECNU_UNTRUSTED_TEST: 'shell-value' } }),
+    })
+    mock('product.mjs', {
+      configureEduworkPaths() {}, installEduworkFromDmg: async () => {
+        calls.push('installer')
+        if (scenario === 'quit-during-cleanup') { app.quit(); await exit.pending }
+        if (scenario === 'installer-exit') { app.quit(); return true }
+        return false
+      }, prepareEduworkDesktop: async () => { calls.push('prepare'); return {} },
+      nativeBootstrap() {}, desktopReady: async () => { calls.push('desktop-ready'); completed() },
+      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
+      attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail,
+      checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
+    })
+    mock('eduwork-host-process.mjs', { DesktopHostProcess: class {
+      constructor(node, profile, inspect, options) {
+        assert.equal(options.environment.PATH, 'synthetic-login-shell-path')
+        assert.equal(options.environment.EDUWORK_LAUNCHER_TEST, 'launcher-owned')
+        assert.equal(options.environment.CHATECNU_UNTRUSTED_TEST, undefined)
+      }
+      async start() { calls.push('host') }
+      async stop() { calls.push('stop') }
+    } })
+    mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: () => ({ attach() {}, dispose() {} }) })
+    mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
+    mock('main.ts', { createWindow: () => {
+      calls.push('window')
+      return Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {}, isDestroyed: () => false, show() {} })
+    } })
+    await import(new URL(`native-desktop.mjs?scenario=${scenario}`, source))
+    await Promise.race([done, new Promise((_, reject) => {
+      const timer = setTimeout(() => reject(new Error('Startup did not settle')), 3000)
+      t.after(() => clearTimeout(timer))
+    })])
+    if (scenario === 'installed') {
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'prepare', 'host', 'window', 'desktop-ready'])
+    } else if (scenario === 'second-instance') {
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
+    } else {
+      assert.deepEqual(calls, ['ready', 'installer', 'quit'])
+      assert.equal(exit.complete, true)
+    }
+  })
+}
