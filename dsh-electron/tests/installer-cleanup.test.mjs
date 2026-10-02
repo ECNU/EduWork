@@ -17,7 +17,7 @@ async function fixture(t) {
   const calls = []
   const options = { appPath, images, identify, platform: 'darwin', wait: async () => {},
     app: { isPackaged: false, isInApplicationsFolder: () => true, getPath: () => root,
-      releaseSingleInstanceLock: () => calls.push('release'), moveToApplicationsFolder: () => { calls.push('move'); return true }, quit: () => calls.push('quit') },
+      moveToApplicationsFolder: () => { calls.push('move'); return true }, quit: () => calls.push('quit') },
     shell: { trashItem: async path => calls.push(['trash', path]) },
     dialog: { showMessageBox: async () => calls.push('error') },
     eject: async path => calls.push(['eject', path]), warn: message => calls.push(['warning', message]) }
@@ -29,10 +29,9 @@ test('automatic installation records only its own source before moving; installe
   assert.equal(await sourceInstaller(f.appPath, await f.images(), f.identify), null)
   assert.equal(await installFromDmg({ ...f.options, images: async () => [] }), false)
   assert.deepEqual(f.calls, [])
-  assert.equal(await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
-    moveToApplicationsFolder: () => { f.calls.push('move'); return true } } }), true)
+  assert.equal(await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false } }), true)
   assert.equal(JSON.parse(await readFile(f.statePath, 'utf8')).imagePath, f.imagePath)
-  assert.deepEqual(f.calls, ['release', 'move'])
+  assert.deepEqual(f.calls, ['move'])
   f.calls.length = 0
   assert.equal(await installFromDmg(f.options), false)
   assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
@@ -45,7 +44,7 @@ test('dragged installation cleans its unique signed source once; replacing the a
   assert.deepEqual(f.calls, [['eject', f.mount], ['trash', f.imagePath]])
   await assert.rejects(access(f.statePath), { code: 'ENOENT' })
   f.calls.length = 0
-  await installFromDmg({ ...f.options, images: async () => assert.fail('An existing installation must not scan mounted images') })
+  await installFromDmg({ ...f.options, images: async () => assert.fail('A cleaned installation must not scan mounted images') })
   assert.deepEqual(f.calls, [])
   const replacement = join(f.appPath, '..', 'replacement.app')
   await mkdir(replacement)
@@ -141,7 +140,7 @@ test('cancellation and failed installation preserve the image and remove the pen
     f.calls.length = 0
     await installFromDmg({ ...f.options, appPath: f.source, app: { ...f.app, isInApplicationsFolder: () => false,
       moveToApplicationsFolder: () => { if (fails) throw Error('denied'); return false } } })
-    assert.deepEqual(f.calls, fails ? ['release', 'error', 'quit'] : ['release', 'quit'])
+    assert.deepEqual(f.calls, fails ? ['error', 'quit'] : ['quit'])
     await assert.rejects(access(f.statePath), { code: 'ENOENT' })
     await access(f.imagePath)
   }

@@ -145,7 +145,6 @@ export async function installFromDmg({ app, shell, dialog, appPath,
   const candidate = await sourceInstaller(appPath, await images(), identify)
   if (!candidate) return false
   await writeFile(statePath, JSON.stringify(candidate), { mode: 0o600 })
-  app.releaseSingleInstanceLock()
   try {
     if (app.moveToApplicationsFolder({ conflictHandler: conflict => {
       if (conflict === 'existsAndRunning') {
