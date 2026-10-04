@@ -3,9 +3,9 @@
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
   "version": "0.4.1",
-  "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-10-01T01:23:36.199Z",
-  "fileSetSHA256": "82d66bba7b6f913a6626aac20a7ed113b6b9eceabe9e48d7ffe96781db440454",
+  "sourceState": "local-development-snapshot",
+  "createdAt": "2026-10-04T00:17:32.494Z",
+  "fileSetSHA256": "85eb024154f24b54af70f016b51938d10df896b3c54c522f2dea527bed437d2a",
   "files": [
     {
       "path": ".gitattributes",
@@ -2061,7 +2061,7 @@
     },
     {
       "path": "dsh-plugins/media-openai/lib/config.js",
-      "sha256": "442cb30f401047e73ee0191df51760b4e70efbfa419c1d01279623e525ea019a"
+      "sha256": "9aa9a6af863267e0c658eaf3c7399c48259d1cecac712293c89d15026ab80327"
     },
     {
       "path": "dsh-plugins/media-openai/lib/core.js",
@@ -2109,7 +2109,7 @@
     },
     {
       "path": "dsh-plugins/media-openai/test/media.test.js",
-      "sha256": "18bdbb7d332282919b15913549371ee0b1720dbd3b9e9fd0e373a0bfd1f3dcea"
+      "sha256": "5e3e4b7190e0fd4e0db2e2e4d907142b8325deaf5052ebf28f9a43a04108306d"
     },
     {
       "path": "dsh-plugins/media-openai/test/shared.integration.test.js",
@@ -4717,7 +4717,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/oidc.js",
-      "sha256": "73909ac2b51c8c021429e1394617fba391a14090f06653569b422c9ccc97ac5f"
+      "sha256": "4e1ba83c4c7ac329ffbe5d48e4304b26b56d622ea406a7d40b2e696487df111e"
     },
     {
       "path": "packages/dsh-oidc/src/host/profile.js",
@@ -4817,7 +4817,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/oidc.test.js",
-      "sha256": "cad64c55d46af1b0dbf2587bd47257dcf3472c3298e0268d0943fa736270c54c"
+      "sha256": "b082853a7485067f379ef33e1107290c94de1f3c39a041e1d39c7cfd3f2ef555"
     },
     {
       "path": "packages/dsh-oidc/test/presentation.test.js",
