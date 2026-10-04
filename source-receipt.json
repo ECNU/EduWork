@@ -3,9 +3,9 @@
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
   "version": "0.4.1",
-  "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-10-01T01:23:36.199Z",
-  "fileSetSHA256": "82d66bba7b6f913a6626aac20a7ed113b6b9eceabe9e48d7ffe96781db440454",
+  "sourceState": "local-development-snapshot",
+  "createdAt": "2026-10-04T00:17:32.887Z",
+  "fileSetSHA256": "c263a73ad8ad817d58b67b3e6d6700a3b1262e9a7178d569ae207d5f0825ec0a",
   "files": [
     {
       "path": ".gitattributes",
@@ -1217,7 +1217,7 @@
     },
     {
       "path": "dsh-host/prepare-native.mjs",
-      "sha256": "f5beaabc7ccdb45a6d58220b982ca98ab9761d2ad9ae9269266a6ace4c3020d4"
+      "sha256": "82fbbe634ac7ea3d1b0eda1ddf7cdd0d22ad8003444ef6e4120a7900f4a524c9"
     },
     {
       "path": "dsh-host/prepare.mjs",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-host/test/native-020.test.mjs",
-      "sha256": "66d579d3f91fca0ddb0f8d274752424c0d3bcde145d4116c122aaa80c7d01950"
+      "sha256": "1dc5a503e4856a2d112cbe088f5514d71d463683edc82a7ced6ce5936059ce6e"
     },
     {
       "path": "dsh-host/test/native-resources.integration.test.mjs",
