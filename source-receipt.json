@@ -3,9 +3,9 @@
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
   "version": "0.4.1",
-  "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-10-01T01:23:36.199Z",
-  "fileSetSHA256": "82d66bba7b6f913a6626aac20a7ed113b6b9eceabe9e48d7ffe96781db440454",
+  "sourceState": "local-development-snapshot",
+  "createdAt": "2026-10-04T00:17:33.680Z",
+  "fileSetSHA256": "471ab974e7e9f7a9d435a921ba85363a10458548c7a07ba23a230fa97a373252",
   "files": [
     {
       "path": ".gitattributes",
@@ -2705,7 +2705,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/package-lock.json",
-      "sha256": "7f228bb8c9aca8ef17e014d8ef2b412c2a27b09c44fe2b3a8e08fb96b95d40d8"
+      "sha256": "22fd917db3c77e2781cd93c69ed7d7840b8ee944668844c3e0caf8b92bb455c4"
     },
     {
       "path": "packages/dsh-knowledge-studio/package.json",
