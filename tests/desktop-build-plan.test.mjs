@@ -18,6 +18,7 @@ test('publication preflight preserves main, both-platform and notes requirements
   validateBuildRequest(request)
   for (const change of [{ref: 'refs/heads/topic'}, {platform: 'windows'}, {notesApproved: false}, {releaseNotes: 'other.md'}]) assert.throws(() => validateBuildRequest({...request, ...change}))
   validateBuildRequest({...request, publish: false, notesApproved: false, releaseNotes: '', ref: 'refs/heads/topic', platform: 'macos'})
+  validateBuildRequest({...request, publish: false, notesApproved: false, releaseNotes: '', ref: 'refs/heads/topic', platform: 'linux'})
 })
 
 test('institution recipe inherits the pinned core runtime and cannot relax bootstrap checks', async t => {

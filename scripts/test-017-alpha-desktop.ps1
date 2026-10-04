@@ -35,7 +35,7 @@ try {
     & node (Join-Path $CoreRoot 'dsh-electron/tests/desktop-smoke.mjs') --shell electron --product $Product --cdp "http://127.0.0.1:$port" --data-root (Join-Path $Output 'data') --evidence $Output --launch-only
     if (-not (Get-Content (Join-Path $Output 'result.json') -Raw | ConvertFrom-Json).passed) { throw 'Alpha GUI smoke failed' }
     if ($generic) {
-        # Use the shipped default (created on first launch on macOS), without a synthetic organization.
+        # Use the shipped default (created on first launch on macOS and Linux), without a synthetic organization.
         & node (Join-Path $CoreRoot 'scripts/verify-generic-first-launch.mjs') $Product $config
     }
     if ($PublisherBootstrap) {

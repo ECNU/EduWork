@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 1,
+  "platform": "linux-x64",
+  "minimum": "Ubuntu 22.04",
+  "browser": {
+    "version": "152.0.7977.8",
+    "url": "https://cdn.playwright.dev/builds/cft/152.0.7977.8/linux64/chrome-linux64.zip",
+    "sha256": "931865951a28fccf0491a7f5e0a2fe1a0605765210a4ce4a4758d9d3d97d0b77",
+    "executable": "chrome",
+    "executableSHA256": "5ba22c3d2a8c6ee5a940193c8060665dead08796288afa5ae7a524eeb3ccdd3f"
+  },
+  "whisper": {
+    "version": "1.8.3",
+    "url": "https://codeload.github.com/ggml-org/whisper.cpp/tar.gz/refs/tags/v1.8.3",
+    "sha256": "870ba21409cdf66697dc4db15ebdb13bc67037d76c7cc63756c81471d8f1731a"
+  }
+}

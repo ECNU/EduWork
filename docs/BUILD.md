@@ -1,6 +1,6 @@
 # 从 npm 装配 EduWork
 
-默认装配用于验证下一次发行的真实依赖组合。公版与 ECNU 版调用同一套脚本；机构仓只提供配置、学校服务插件和资源。当前可运行的构建环境是 Windows + PowerShell 7 + Node 24.18.0；macOS 按 [接手计划](MACOS.md)另行适配。
+默认装配用于验证下一次发行的真实依赖组合。公版与 ECNU 版调用同一套脚本；机构仓只提供配置、学校服务插件和资源。当前可运行的构建环境是 Windows + PowerShell 7 + Node 24.18.0；macOS 按 [接手计划](MACOS.md)另行适配。Linux x64 走同一套候选构建，入口是 `scripts/build-linux-x64.sh`，产物为 `EduWork-<版本>-linux-x64-electron.tar.gz`。一份包覆盖 Ubuntu 22.04 及更新的 glibc 系统。Ubuntu 23.10 及更新版本会拦住用户命名空间沙箱，启动脚本会补上 --no-sandbox；22.04 仍使用命名空间沙箱。凭据走已解锁的 GNOME 密钥环，验收构建会先打开一个临时密钥环。它不计入 Windows 与 macOS 同时通过才能发布的条件，也不启用在线更新。
 
 ## 依赖从哪里来
 

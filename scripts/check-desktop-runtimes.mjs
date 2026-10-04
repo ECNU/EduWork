@@ -14,7 +14,7 @@ const product = join(resources, 'product')
 const { environment, pluginConfig } = await prepareNativeResources({ product })
 assert.ok(environment.DSH_MEDIA_BROWSER && environment.DSH_OFFICE_PYTHON, 'Offline native resources are required')
 const run = async (executable, args) => promisify(execFile)(executable, args, { windowsHide: true, timeout: 30_000, encoding: 'utf8' })
-const node = join(resources, mac ? 'runtime/node' : 'runtime/node.exe')
+const node = join(resources, process.platform === 'win32' ? 'runtime/node.exe' : 'runtime/node')
 const nodeVersion = (await run(node, ['--version'])).stdout.trim()
 assert.match(nodeVersion, /^v24\./)
 

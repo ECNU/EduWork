@@ -18,7 +18,7 @@ async function fixture(t) {
     environment: { DSH_OFFICE_PYTHON: 'r/v/Scripts/python.exe', DSH_MEDIA_BROWSER: 'r/b/chrome.exe', DSH_MEDIA_NODE_ENV: 'd' },
     pluginConfig: { 'eduwork-artifact-services': { transcription: { local: { executablePath: 'r/a/whisper-cli.exe', modelPath: 'r/a/model.bin' } } } },
   }
-  if (process.platform === 'darwin') {
+  if (process.platform !== 'win32') {
     await mkdir(join(product, 'r/p/bin'), { recursive: true })
     await writeFile(join(product, 'r/p/bin/python3'), 'synthetic standalone Python')
     await writeFile(join(product, 'r/office-python'), '#!/bin/sh\nexec "$(dirname "$0")/p/bin/python3" -B "$@"\n')
@@ -45,7 +45,7 @@ test('resource resolution repairs only the managed Windows venv after moving a p
   assert.deepEqual(await prepareNativeResources({ product: moved }), result)
 })
 
-test('macOS standalone Python survives relocation without changing the signed product', { skip: process.platform !== 'darwin' }, async t => {
+test('Unix standalone Python survives relocation without rewriting the product', { skip: process.platform === 'win32' }, async t => {
   const { directory, product } = await fixture(t)
   const snapshot = async root => {
     const files = await readdir(root, { recursive: true, withFileTypes: true })
@@ -68,7 +68,7 @@ test('resource resolver refuses escape paths, links and unowned Python environme
   manifest.environment.DSH_MEDIA_NODE_ENV = 'external'
   await save(); await assert.rejects(prepareNativeResources({ product }), /link escapes/)
   manifest.environment.DSH_MEDIA_NODE_ENV = 'd'
-  if (process.platform === 'darwin') {
+  if (process.platform !== 'win32') {
     manifest.python.executable = 'r/office-python'
     await save(); await assert.rejects(prepareNativeResources({ product }), /identity mismatch/)
   } else {

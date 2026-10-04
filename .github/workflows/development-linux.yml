@@ -1,0 +1,73 @@
+name: Build Linux x64 development artifact
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Development version (X.Y.Z-dev.YYYYMMDD.N); artifact only'
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: linux-development-${{ inputs.version }}
+  cancel-in-progress: false
+jobs:
+  build:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Install Linux build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake g++ rsync xvfb unzip gnome-keyring libgtk-3-0t64 libnss3 libasound2t64 libgbm1
+          curl -fsSL -o /tmp/pwsh.tar.gz https://github.com/PowerShell/PowerShell/releases/download/v7.5.2/powershell-7.5.2-linux-x64.tar.gz
+          sudo mkdir -p /opt/microsoft/powershell/7
+          sudo tar -xzf /tmp/pwsh.tar.gz -C /opt/microsoft/powershell/7
+          sudo chmod +x /opt/microsoft/powershell/7/pwsh
+          sudo ln -sf /opt/microsoft/powershell/7/pwsh /usr/local/bin/pwsh
+      - name: Build and check the Linux desktop archive
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          SELECTED_PLATFORMS: linux
+          PUBLISH_RELEASE: 'false'
+        run: |
+          set -euo pipefail
+          export XDG_DATA_HOME=$(mktemp -d "${RUNNER_TEMP}/eduwork-keyring.XXXXXX")
+          exec dbus-run-session -- bash -c '
+            set -euo pipefail
+            printf "%s\n" eduwork-build | gnome-keyring-daemon --unlock --components=secrets >/dev/null
+            while IFS= read -r line; do
+              case "$line" in
+                *=*) export "$line" ;;
+              esac
+            done < <(printf "%s\n" eduwork-build | gnome-keyring-daemon --start --components=secrets --daemonize)
+            exec xvfb-run -a pwsh -NoProfile -File ./core/scripts/build-desktop-candidate.ps1 -CoreRoot ./core -EditionRoot ./core -Version "$RELEASE_VERSION" -Output "$RUNNER_TEMP/ew-linux"
+          '
+      - name: Retain validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-validation
+          path: ${{ runner.temp }}/ew-linux/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain the Linux package
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64
+          path: ${{ runner.temp }}/ew-linux/publish
+          compression-level: 0
+          retention-days: 3
+          if-no-files-found: error

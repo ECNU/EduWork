@@ -13,12 +13,13 @@ param(
 # the historical filename remains for existing local callers.
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
-if (-not ($IsWindows -or $IsMacOS)) { throw 'Use a native Windows or macOS runner' }
+if (-not ($IsWindows -or $IsMacOS -or $IsLinux)) { throw 'Use a native Windows, macOS, or Linux runner' }
 $CoreRoot=[IO.Path]::GetFullPath($CoreRoot);$EditionRoot=[IO.Path]::GetFullPath($EditionRoot);$Output=[IO.Path]::GetFullPath($Output)
 $plan = (& node (Join-Path $CoreRoot 'scripts/desktop-build-plan.mjs') --core $CoreRoot --edition $EditionRoot --version $Version) | ConvertFrom-Json
 if ([bool]$Stable -ne [bool]$plan.automaticUpdates) { throw 'Version does not match the explicit source build channel' }
 if (Test-Path $Output) { throw 'Alpha assembly requires a new output directory' }
-$platform=if ($IsWindows) {'windows'} else {'macos'}
+if ($IsLinux -and (& node -p 'process.arch').Trim() -ne 'x64') { throw 'Linux packaging supports x64 only' }
+$platform=if ($IsWindows) {'windows'} elseif ($IsMacOS) {'macos'} else {'linux'}
 $name=if ($CoreRoot -eq $EditionRoot) {'EduWork'} else {'EduWork-ECNU'}
 $public=Join-Path $Output 'evidence-public';$publish=Join-Path $Output 'publish'
 New-Item -ItemType Directory -Path $public,$publish | Out-Null
@@ -94,6 +95,13 @@ try {
         & node (Join-Path $CoreRoot 'scripts/verify-windows-release.mjs') $desktop @verifyArgs
         if ($Stable) { $result.checks.updateContract='passed' }
         $frozen=Join-Path $desktop 'resources/product';$node=Join-Path $desktop 'resources/runtime/node.exe';$exe=Join-Path $desktop 'EduWork-Electron.exe'
+    } elseif ($IsLinux) {
+        $archive=Join-Path $publish "$name-$Version-linux-x64-electron.tar.gz"
+        & (Join-Path $CoreRoot 'scripts/pack-linux-release.ps1') -Candidate $assembled -Output $archive -Development:(-not $Stable)
+        & tar -xf $archive -C $unpacked
+        $desktop=Join-Path $unpacked $name
+        $frozen=Join-Path $desktop 'resources/product';$node=Join-Path $desktop 'resources/runtime/node';$exe=Join-Path $desktop 'eduwork'
+        $result.automaticUpdates=$false
     } else {
         $pack=Get-Content (Join-Path $Output 'desktop/release-receipt.json') -Raw | ConvertFrom-Json
         $archive=Join-Path $publish $pack.asset.name

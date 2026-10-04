@@ -25,7 +25,7 @@ async function inside(root, path) {
 
 export function validateBuildRequest({ version, publish, notesApproved, releaseNotes, platform, ref }) {
   const identity = desktopVersion(version)
-  assert.ok(['both', 'windows', 'macos'].includes(platform), 'Unknown target platform')
+  assert.ok(['both', 'windows', 'macos', 'linux'].includes(platform), 'Unknown target platform')
   if (publish) {
     assert.equal(ref, 'refs/heads/main', 'Publication requires reviewed main')
     assert.equal(platform, 'both', 'Publication requires both platforms')

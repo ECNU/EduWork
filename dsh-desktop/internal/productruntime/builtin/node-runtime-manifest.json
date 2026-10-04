@@ -21,6 +21,13 @@
             "url": "https://cdn.playwright.dev/builds/cft/152.0.7977.8/win64/chrome-win64.zip",
             "sha256": "8bee006dddbee3c428e30cc4b2f9035870b403dc52ffd9bdf2bd3c1bf3822166"
           }
+        },
+        "linux-amd64": {
+          "sha256": "5ba22c3d2a8c6ee5a940193c8060665dead08796288afa5ae7a524eeb3ccdd3f",
+          "archive": {
+            "url": "https://cdn.playwright.dev/builds/cft/152.0.7977.8/linux64/chrome-linux64.zip",
+            "sha256": "931865951a28fccf0491a7f5e0a2fe1a0605765210a4ce4a4758d9d3d97d0b77"
+          }
         }
       }
     }
@@ -40,6 +47,11 @@
       "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-darwin-arm64.tar.gz",
       "sha256": "e1a97e14c99c803e96c7339403282ea05a499c32f8d83defe9ef5ec66f979ed1",
       "archiveRoot": "node-v24.18.0-darwin-arm64"
+    },
+    "linux-amd64": {
+      "url": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-linux-x64.tar.xz",
+      "sha256": "55aa7153f9d88f28d765fcdad5ae6945b5c0f98a36881703817e4c450fa76742",
+      "archiveRoot": "node-v24.18.0-linux-x64"
     }
   }
 }
