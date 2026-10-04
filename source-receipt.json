@@ -3,9 +3,9 @@
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
   "version": "0.4.1",
-  "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-10-01T01:23:36.199Z",
-  "fileSetSHA256": "82d66bba7b6f913a6626aac20a7ed113b6b9eceabe9e48d7ffe96781db440454",
+  "sourceState": "local-development-snapshot",
+  "createdAt": "2026-10-04T00:17:33.279Z",
+  "fileSetSHA256": "ee9d7bb2a3682c60c27de388640d73ebdf44ec20bd67377a33f64a44a5576088",
   "files": [
     {
       "path": ".gitattributes",
@@ -4657,7 +4657,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/client/login-flow.js",
-      "sha256": "a11f7758f91a970442126d21e5f1138ca312f382135eeb1c3245cfca1852ae71"
+      "sha256": "be868e92ac9688a9c748a04b0854629a9cc3c994988c6b84a26317b622f140d6"
     },
     {
       "path": "packages/dsh-oidc/src/client/managed-provider.ts",
@@ -4681,11 +4681,11 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/callback-page.js",
-      "sha256": "26d905a7e0e2f7c4a4835391eb8cb85edd35431ec62806d92004c67f9cd04ca3"
+      "sha256": "e3dbee889ee68b2fbf606b7911e8b8ae9a724fbc355a606039f0c114ec601485"
     },
     {
       "path": "packages/dsh-oidc/src/host/desktop-oidc.js",
-      "sha256": "027e1e74a33f1d8e35dc6856671096b9ffec4ec9e4cd2a6c6f281c2c3f2874cd"
+      "sha256": "accd183093f600138b79b4b83e7f39ae36903719c6306ba63ba05cae321ab040"
     },
     {
       "path": "packages/dsh-oidc/src/host/gateway-backend.js",
@@ -4717,7 +4717,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/oidc.js",
-      "sha256": "73909ac2b51c8c021429e1394617fba391a14090f06653569b422c9ccc97ac5f"
+      "sha256": "0ff8a995da9c8f97bf1bb4d3c2150138a22d61e697539b5110954a851db23386"
     },
     {
       "path": "packages/dsh-oidc/src/host/profile.js",
@@ -4789,7 +4789,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/desktop.test.js",
-      "sha256": "73e0c216d93477c883ef706f4ec17bdb4a9145504bf5a69bfdd01c38432e6c26"
+      "sha256": "6cee4f646ace73af81b161c5f07cb1fbe72ea998216b8c5422c56435e1b2552a"
     },
     {
       "path": "packages/dsh-oidc/test/gateway-provider.test.js",

@@ -19,6 +19,8 @@ export function callbackPage(profile = {}, outcome = 'failed', language = 'en') 
   const title = success ? (zh ? '身份认证已完成' : 'You’re signed in')
     : outcome === 'expired' ? (zh ? '此次登录已过期' : 'This sign-in has expired') : (zh ? '此次登录未完成' : 'Sign-in did not complete')
   const description = success ? (zh ? '请返回应用继续工作。' : 'Return to the app to continue your work.')
+      : outcome === 'time-invalid'
+        ? (zh ? '登录凭据的时间校验未通过，可能是电脑时间不准确或凭据已过期。请在系统设置中开启自动设置日期和时间并同步，然后返回应用重新登录。若仍失败，请联系管理员。' : 'The sign-in token failed its time check. Your computer clock may be inaccurate, or the token may have expired. Enable automatic date and time in system settings, synchronize your clock, then sign in again. If this continues, contact your administrator.')
       : outcome === 'issuer-invalid'
         ? (zh ? '认证服务返回的信息与登录配置不一致。请联系管理员检查后重试。' : 'The authentication response does not match the sign-in configuration. Contact your administrator before trying again.')
         : (zh ? '请返回应用重新发起登录。' : 'Return to the app and start sign-in again.')
