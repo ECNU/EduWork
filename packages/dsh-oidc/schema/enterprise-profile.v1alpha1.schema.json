@@ -354,6 +354,14 @@
         },
         "supportURL": {
           "$ref": "#/$defs/httpsURL"
+        },
+        "language": {
+          "enum": [
+            "auto",
+            "zh-CN",
+            "en"
+          ],
+          "type": "string"
         }
       }
     },

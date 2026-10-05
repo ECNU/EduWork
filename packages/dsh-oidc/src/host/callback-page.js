@@ -12,18 +12,21 @@ export function callbackLanguage(header = '') {
 
 /** Only trusted profile presentation and a fixed outcome enter the page. */
 export function callbackPage(profile = {}, outcome = 'failed', language = 'en') {
+  // brand.language fixes the page language; auto (default) follows the browser preference.
+  if (profile.brand?.language && profile.brand.language !== 'auto') language = profile.brand.language
   const zh = language === 'zh-CN'
   const brand = profile.brand ?? {}, product = brand.productName || profile.displayName || 'EduWork'
   const organization = brand.organizationName || profile.organization || ''
   const success = outcome === 'completed'
-  const title = success ? (zh ? '身份认证已完成' : 'You’re signed in')
+  const who = organization ? (zh ? `${organization}统一身份认证` : `${organization} sign-in`) : (zh ? '组织统一身份认证' : 'your organization sign-in')
+  const title = success ? (zh ? '登录成功' : 'You’re signed in')
     : outcome === 'expired' ? (zh ? '此次登录已过期' : 'This sign-in has expired') : (zh ? '此次登录未完成' : 'Sign-in did not complete')
-  const description = success ? (zh ? '请返回应用继续工作。' : 'Return to the app to continue your work.')
+  const description = success ? (zh ? `你已通过${who}，请返回「${product}」继续使用。` : `You signed in with ${who}. Return to ${product} to continue.`)
       : outcome === 'time-invalid'
         ? (zh ? '登录凭据的时间校验未通过，可能是电脑时间不准确或凭据已过期。请在系统设置中开启自动设置日期和时间并同步，然后返回应用重新登录。若仍失败，请联系管理员。' : 'The sign-in token failed its time check. Your computer clock may be inaccurate, or the token may have expired. Enable automatic date and time in system settings, synchronize your clock, then sign in again. If this continues, contact your administrator.')
       : outcome === 'issuer-invalid'
         ? (zh ? '认证服务返回的信息与登录配置不一致。请联系管理员检查后重试。' : 'The authentication response does not match the sign-in configuration. Contact your administrator before trying again.')
-        : (zh ? '请返回应用重新发起登录。' : 'Return to the app and start sign-in again.')
+        : (zh ? `请返回「${product}」重新点击登录。` : `Return to ${product} and start sign-in again.`)
   const accent = /^#[a-f0-9]{6}$/i.test(brand.primaryColor ?? '') ? brand.primaryColor : '#4f5fd7'
   let logo = '', imageSource = "'none'"
   if (/^data:image\/(png|webp);base64,[A-Za-z0-9+/]+=*$/.test(brand.logoURL ?? '')) { logo = brand.logoURL; imageSource = 'data:' }
@@ -39,6 +42,6 @@ export function callbackPage(profile = {}, outcome = 'failed', language = 'en') 
       'x-content-type-options': 'nosniff', connection: 'close',
     },
     html: `<!doctype html><html lang="${language === 'zh-CN' ? 'zh-CN' : 'en'}"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escape(title)} · ${escape(product)}</title>
-<style nonce="${nonce}">*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f6f8;color:#20232c;font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}.card{width:min(100%,480px);padding:36px;border:1px solid #e1e4eb;border-radius:20px;background:#fff;box-shadow:0 14px 48px #17264d0a}.brand{display:flex;align-items:center;gap:12px;margin-bottom:36px}.mark{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:11px;background:${accent};color:white;font-size:22px;font-weight:700}.mark img{width:100%;height:100%;object-fit:contain;border-radius:inherit}.name{font-weight:650;font-size:16px}.organization{font-size:12px;color:#747987;margin-top:3px}.status{font-size:12px;color:${success ? '#397958' : '#a14d3b'};margin-bottom:12px}h1{margin:0 0 14px;font-size:26px;line-height:1.35;letter-spacing:-.4px}p{margin:0;color:#5c6270;font-size:15px;line-height:1.8}.hint{margin-top:28px;padding-top:20px;border-top:1px solid #edf0f4;font-size:13px;color:#818694}@media(max-width:480px){.card{padding:28px}h1{font-size:23px}}</style></head><body><main class="card"><div class="brand"><div class="mark">${mark}</div><div><div class="name">${escape(product)}</div>${organization && organization !== product ? `<div class="organization">${escape(organization)}</div>` : ''}</div></div><div class="status">${success ? (zh ? '已验证身份' : 'Identity verified') : (zh ? '需要重新登录' : 'Please try again')}</div><h1>${title}</h1><p>${description}</p><p class="hint">${zh ? '现在可以关闭此标签页。' : 'You can close this browser tab now.'}</p></main></body></html>`,
+<style nonce="${nonce}">*{box-sizing:border-box}body{margin:0;min-height:100vh;display:grid;place-items:center;padding:24px;background:#f5f6f8;color:#20232c;font-family:system-ui,-apple-system,"Segoe UI","Microsoft YaHei",sans-serif}.card{width:min(100%,480px);padding:36px;border:1px solid #e1e4eb;border-radius:20px;background:#fff;box-shadow:0 14px 48px #17264d0a}.brand{display:flex;align-items:center;gap:12px;margin-bottom:36px}.mark{width:42px;height:42px;display:grid;place-items:center;flex:none;border-radius:11px;background:${accent};color:white;font-size:22px;font-weight:700}.mark img{width:100%;height:100%;object-fit:contain;border-radius:inherit}.name{font-weight:650;font-size:16px}.organization{font-size:12px;color:#747987;margin-top:3px}.status{font-size:12px;color:${success ? '#397958' : '#a14d3b'};margin-bottom:12px}h1{margin:0 0 14px;font-size:26px;line-height:1.35;letter-spacing:-.4px}p{margin:0;color:#5c6270;font-size:15px;line-height:1.8}.hint{margin-top:28px;padding-top:20px;border-top:1px solid #edf0f4;font-size:13px;color:#818694}@media(max-width:480px){.card{padding:28px}h1{font-size:23px}}</style></head><body><main class="card"><div class="brand"><div class="mark">${mark}</div><div><div class="name">${escape(product)}</div>${organization && organization !== product ? `<div class="organization">${escape(organization)}</div>` : ''}</div></div><div class="status">${success ? (zh ? '已验证身份' : 'Identity verified') : (zh ? '需要重新登录' : 'Please try again')}</div><h1>${escape(title)}</h1><p>${escape(description)}</p><p class="hint">${zh ? '此页面可以关闭。' : 'You can close this browser tab now.'}</p></main></body></html>`,
   }
 }
