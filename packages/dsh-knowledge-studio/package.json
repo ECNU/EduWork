@@ -49,7 +49,8 @@
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-api-session-controller",
         "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-layout"
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web",
       "immediately": true
@@ -149,6 +150,9 @@
       "optional": true
     },
     "zod": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-locale": {
       "optional": true
     }
   },
