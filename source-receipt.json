@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-05T08:48:50.585Z",
-  "fileSetSHA256": "ddc8f120d879d77c2de05265e2dd19c792b9925aa07c8645ace7906ec4deffa8",
+  "createdAt": "2026-10-05T08:51:50.888Z",
+  "fileSetSHA256": "c5134219dcb897e9e46fc00ab6095c5ae65bf6d0500a2ba525acb3d829a1af70",
   "files": [
     {
       "path": ".gitattributes",
@@ -4657,7 +4657,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/smoke-build.mjs",
-      "sha256": "92e0d0a59cf8b6ad7bd8bcb2fe132c5e7223f65eff36e62b679dc0192997b622"
+      "sha256": "08dfc2ebdf52db034028d9d8be1abb342c5e8294d9d22f05fd2a574326c55d7f"
     },
     {
       "path": "packages/dsh-oidc/SECURITY.en.md",
@@ -5241,7 +5241,7 @@
     },
     {
       "path": "scripts/test/plugin-locale.test.mjs",
-      "sha256": "0f8ab874359e4c97dbfc319344dbebd6c20f3b874df0838102b295fe40cfcd0d"
+      "sha256": "0453481925dd56a24ecd5d4c712846fd1a294baa6ab3574566964e711d8a1dd2"
     },
     {
       "path": "scripts/test/portable-product-links.test.mjs",

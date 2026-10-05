@@ -19,7 +19,7 @@ const require = createRequire(import.meta.url)
 let LocaleRuntime
 runInNewContext(await readFile(join(dirname(require.resolve('@deepseek-ai/dsh-client-locale/package.json')), 'lib/client.js'), 'utf8'), {
   window: { __ModuleLoader__: { load: definition => { LocaleRuntime = definition.factory(name => name.startsWith('react') ? require(name) : {}).LocaleRuntime } } },
-  console,
+  navigator: { languages: ['en-US'], language: 'en-US' }, console,
 })
 let exports
 runInNewContext(client, {

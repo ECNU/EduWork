@@ -27,13 +27,21 @@ async function setup() {
       stdin: { contents: await readFile(path, 'utf8') + '\n' + extraExports, resolveDir: dirname(path), loader: path.endsWith('tsx') ? 'tsx' : 'ts' },
       bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic',
       nodePaths: [process.env.EDUWORK_TEST_DEPENDENCIES, runtime].filter(Boolean).map(path => join(path, 'node_modules')),
-      external: ['react', 'react-dom', '@deepseek-ai/*', '@eduwork/*'],
+      external: ['react', 'react-dom', '@deepseek-ai/*'],
+      alias: Object.fromEntries(['presentation-contract', 'office-preview-client'].map(name => [
+        `@eduwork/dsh-artifact-services/${name}`,
+        join(root, 'packages/dsh-knowledge-studio/packages/artifact-services/lib', `${name}.js`),
+      ])),
       plugins: [{ name: 'rpc-transport-fixture', setup(build) {
         build.onLoad({ filter: /[\\/]client[\\/]remote\.(?:js|ts)$/ }, () => ({ contents: 'export default {}; export const knowledgeStudioRemote = {}', loader: 'js' }))
       } }],
     })
     const module = { exports: {} }
-    new Function('require', 'module', 'exports', outputFiles[0].text)(require, module, module.exports)
+    const requireRuntime = name => {
+      assert.ok(!name.startsWith('@eduwork/'), 'render tests must bundle reviewed source, not an installed EduWork plugin')
+      return require(name)
+    }
+    new Function('require', 'module', 'exports', outputFiles[0].text)(requireRuntime, module, module.exports)
     return module.exports
   }
   dependencies = { React, renderToStaticMarkup, load, LocaleRuntime }
