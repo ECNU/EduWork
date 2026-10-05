@@ -3,9 +3,9 @@
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
   "version": "0.4.1",
-  "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-09-30T16:24:13.112Z",
-  "fileSetSHA256": "b1c93eff146ac3a5dbcb5ead8efc18ca4bff9dd24fd330c08ad76b66a45367c4",
+  "sourceState": "local-development-snapshot",
+  "createdAt": "2026-10-05T08:01:13.883Z",
+  "fileSetSHA256": "6b12a25cec18270da733b6f369a6c39645d2cf90e0eac44c3e3f8c87583e04aa",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "94facbc0349f643423a87e7b7c9fb47d3a5561771d00f33836abb628b941d1fa"
+      "sha256": "10aabdda67bea5ef85a9f0acd6792e4c77651a140f758dc9ed77cf0cb67348f9"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -402,6 +402,10 @@
     {
       "path": "docs/releases/0.4.1.md",
       "sha256": "0866077084fc81589d5574b9fa7f60f4532867208c9b64b9484ee38854157bf9"
+    },
+    {
+      "path": "docs/SESSION-SEARCH-BACKPORT.md",
+      "sha256": "59d63d68dee987d741f854057db79c1490fdfb5080e2a846fb0c2a0c275bb2f0"
     },
     {
       "path": "docs/UPDATES.md",
@@ -4877,7 +4881,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "881b04f9530ee2ad8ca5eb62627062c13960c017d791496e232ed96ce1138617"
+      "sha256": "8ff9c1de2ba9ffd8b433e853fe92cc6a2f9202e8efa2257367c94f23f65b7e52"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -5080,6 +5084,10 @@
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
     {
+      "path": "scripts/patch-session-search-runtime.mjs",
+      "sha256": "278319a8b63529af814f44e33dc47ee92a31138d475df8ef0af7715cc0046094"
+    },
+    {
       "path": "scripts/portable-extractor.manifest",
       "sha256": "d14e65eb4e40c0181c6e2f918fb8c3910ffa618226379081af8050aa5ef17276"
     },
@@ -5210,6 +5218,10 @@
     {
       "path": "scripts/test/portable-product-links.test.mjs",
       "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
+    },
+    {
+      "path": "scripts/test/session-search-runtime.test.mjs",
+      "sha256": "40c2bc83676a06e4614f254704d260debd9ea34c60c029ce936dfc6a0038c8da"
     },
     {
       "path": "scripts/test/source-skills.test.mjs",
@@ -5589,11 +5601,11 @@
     },
     {
       "path": "updates/macos/development.xml",
-      "sha256": "a45bab5f3f50b43c6b21553d443ba5388c4b91c7b3184f8c7f54cf28d3535c3e"
+      "sha256": "bd227ebe8e373068a6cd9ffbeb93016d2e5122954d70d1d466322982239fcd15"
     },
     {
       "path": "updates/macos/stable.xml",
-      "sha256": "7c819737293b6267880780b67b1bb123604defeea6c444769435b4121acd40f4"
+      "sha256": "f9a2d8c1bad0f049d68db087f21392c1aaa009fb1d0ea4f57a3193783dd2dfe5"
     }
   ],
   "artifacts": [
