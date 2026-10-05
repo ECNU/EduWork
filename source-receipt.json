@@ -3,9 +3,9 @@
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
   "version": "0.4.1",
-  "sourceState": "reviewed-source-snapshot",
-  "createdAt": "2026-10-01T01:23:36.199Z",
-  "fileSetSHA256": "82d66bba7b6f913a6626aac20a7ed113b6b9eceabe9e48d7ffe96781db440454",
+  "sourceState": "local-development-snapshot",
+  "createdAt": "2026-10-05T08:33:01.774Z",
+  "fileSetSHA256": "20f777c560a3fb2c566d2bdd4738319d470e12d35bd9c79dce8048a038feb834",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "94facbc0349f643423a87e7b7c9fb47d3a5561771d00f33836abb628b941d1fa"
+      "sha256": "e13b01b3693660eaadb687773986808a2b49ef9e4a06a5e1ca183dcaf553027b"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -313,7 +313,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "78c32973ac949142f05867623c85f5b3d80577dfc25126ef8c7e9d8faa1d094a"
+      "sha256": "55907e3a68dd979027ad2d4efa33e6a09ba5688c98ac23d25e3c607bd422fd95"
     },
     {
       "path": "docs/MEDIA.md",
@@ -402,6 +402,10 @@
     {
       "path": "docs/releases/0.4.1.md",
       "sha256": "0866077084fc81589d5574b9fa7f60f4532867208c9b64b9484ee38854157bf9"
+    },
+    {
+      "path": "docs/SESSION-SEARCH-BACKPORT.md",
+      "sha256": "59d63d68dee987d741f854057db79c1490fdfb5080e2a846fb0c2a0c275bb2f0"
     },
     {
       "path": "docs/UPDATES.md",
@@ -837,7 +841,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "d1d80a394737c3dd3abc5a9748bb65fc65e01d354442465f66d2e91f2b981cea"
+      "sha256": "68a050a9829514c7827082a7d31265b814769a4d8e8f546e449f7be8052f00f5"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -877,7 +881,7 @@
     },
     {
       "path": "dsh-electron/src/configuration-files.mjs",
-      "sha256": "a640bc06ccb63a22590c9de274bb2c96395ab959c2eea2f7864eb51f416eaf53"
+      "sha256": "ebe38191c2b9b28f7f9b6a711563f2ba8f64e6c92a89bf4d377f4f6cce1353b0"
     },
     {
       "path": "dsh-electron/src/configuration-policy.mjs",
@@ -913,7 +917,7 @@
     },
     {
       "path": "dsh-electron/src/installer-cleanup.mjs",
-      "sha256": "19a38547875dc35684f5bcbe0ad0629898110fb007b27c6c4244c07a27f20e6c"
+      "sha256": "79545050011152ed695cc6c0155b877619344e17e2a2d31168690b7aef46a2b2"
     },
     {
       "path": "dsh-electron/src/legacy-migration.mjs",
@@ -937,7 +941,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "46abb354e1c28a63e905969d5739a61c12fd792733c9cdf7edd66ec66ecd725a"
+      "sha256": "053953e8b07ed7272d7acbf66402d16970b7c6ea94dd1ec79809fbffaa27af24"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -953,7 +957,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "6d0ffd5c8c97dd73b9d34ec10d275b78f523c559287d4e30ff3e7993b6c915f1"
+      "sha256": "c3a5ad493dae29ed04c78163c918b27edae82a603ac7ad9d03e810ee4d82c081"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
@@ -981,7 +985,7 @@
     },
     {
       "path": "dsh-electron/tests/configuration-files.test.mjs",
-      "sha256": "3ab1a1539f509beb20efa5912f6ba97ac18127d9b79c811a30617431b83c21f8"
+      "sha256": "224b2afd27a3c4acd003369b930dbe078c6c9d5335612df6b1ca0b2464654394"
     },
     {
       "path": "dsh-electron/tests/configuration-policy.test.mjs",
@@ -1041,7 +1045,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "9155e9065260d6410ca7d65ea87bcbaaeb5805fc5148c86d763979342d2d379b"
+      "sha256": "47fce1ad12ddefecba802d6c6d2d3563723a97586a84fe267896f9559f79e531"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1058,10 +1062,6 @@
     {
       "path": "dsh-electron/tests/media-transport.test.mjs",
       "sha256": "d3a1acdab15b9f6e7daa3f985818fdde067d8eaa0715400c9bef192ad854129c"
-    },
-    {
-      "path": "dsh-electron/tests/native-installer-startup.test.mjs",
-      "sha256": "4f76d5b55100bb567a70098e0314befcfbc31ea9834760f81c91adc250fbb973"
     },
     {
       "path": "dsh-electron/tests/native-vault.test.mjs",
@@ -1189,7 +1189,7 @@
     },
     {
       "path": "dsh-host/dsh-compatibility.mjs",
-      "sha256": "5b98dd728355aa1de3865b74871ab76b14235f0c1873ff70db3456aa0744d461"
+      "sha256": "0193c7346d293cb17a8b4b91c21b939745803393ebe5b346026fb9ba6bc7492d"
     },
     {
       "path": "dsh-host/enterprise-model-updates.mjs",
@@ -1217,7 +1217,7 @@
     },
     {
       "path": "dsh-host/prepare-native.mjs",
-      "sha256": "f5beaabc7ccdb45a6d58220b982ca98ab9761d2ad9ae9269266a6ace4c3020d4"
+      "sha256": "82fbbe634ac7ea3d1b0eda1ddf7cdd0d22ad8003444ef6e4120a7900f4a524c9"
     },
     {
       "path": "dsh-host/prepare.mjs",
@@ -1285,7 +1285,7 @@
     },
     {
       "path": "dsh-host/test/dsh-compatibility.test.mjs",
-      "sha256": "390ddbebc7e4a7cd3655780ea52d96b0cb53ffced9f6c5f49ccafec0788b0622"
+      "sha256": "65abb056355e6153f050bafecda41e182e8384486c8381868351ad4b28ba571a"
     },
     {
       "path": "dsh-host/test/enterprise-model-updates.test.mjs",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-host/test/native-020.test.mjs",
-      "sha256": "66d579d3f91fca0ddb0f8d274752424c0d3bcde145d4116c122aaa80c7d01950"
+      "sha256": "1dc5a503e4856a2d112cbe088f5514d71d463683edc82a7ced6ce5936059ce6e"
     },
     {
       "path": "dsh-host/test/native-resources.integration.test.mjs",
@@ -2061,7 +2061,7 @@
     },
     {
       "path": "dsh-plugins/media-openai/lib/config.js",
-      "sha256": "442cb30f401047e73ee0191df51760b4e70efbfa419c1d01279623e525ea019a"
+      "sha256": "9aa9a6af863267e0c658eaf3c7399c48259d1cecac712293c89d15026ab80327"
     },
     {
       "path": "dsh-plugins/media-openai/lib/core.js",
@@ -2109,7 +2109,7 @@
     },
     {
       "path": "dsh-plugins/media-openai/test/media.test.js",
-      "sha256": "18bdbb7d332282919b15913549371ee0b1720dbd3b9e9fd0e373a0bfd1f3dcea"
+      "sha256": "5e3e4b7190e0fd4e0db2e2e4d907142b8325deaf5052ebf28f9a43a04108306d"
     },
     {
       "path": "dsh-plugins/media-openai/test/shared.integration.test.js",
@@ -2357,7 +2357,11 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/index.js",
-      "sha256": "5b0c8a141bfb3a906037bb943fe2e947aa91b4388a5b170614c65dd7583a4163"
+      "sha256": "f7d81d04701162a5c21879334d30d61fdd4dc344adadff7d4137ed044809c1a1"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/lib/skill-display.js",
+      "sha256": "5346d9d578bee60c68895e9aa0b13def8804bd9c1dd6f1542006976bf9cff758"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/skill-readiness.js",
@@ -2365,7 +2369,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert-schemas.js",
-      "sha256": "0f3ff39c1cf7f7ab2cd5161cd35d67d1f0d29ce7edbd34919871990a1644fc82"
+      "sha256": "68db33eb6f73e38c4305afb20a2cac742f9ddc336d55c7e0f8f89d8489436b0c"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert.host.js",
@@ -2377,7 +2381,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/view-model.js",
-      "sha256": "70d65eb5dc9acf19fdcb169331d12575eb6ec6fb66dcaea288e98440a6e0cc37"
+      "sha256": "01009cc2d55ef6a1f2d2b846b3f008a0a6183493c11a20ddbadf9aabb878073c"
     },
     {
       "path": "dsh-plugins/workbench-native/LICENSE",
@@ -2389,11 +2393,11 @@
     },
     {
       "path": "dsh-plugins/workbench-native/README_EN.md",
-      "sha256": "b796cd2df159bb58b660e7b14e1ae504c061f39f7c22189b8a22d4d816079e4b"
+      "sha256": "42511ca1b26f89d73f46f8ac1821502193543e59e590a9a4fed8f0a1e263783e"
     },
     {
       "path": "dsh-plugins/workbench-native/README.md",
-      "sha256": "94afb46364b598b49c22f3745b93bcced8dd93b470ef227b98e1f863b77779fa"
+      "sha256": "6efcf4a1591d6c12fff91fca44e53f9ae20d29bbc6e1abb8486b8acc2c55786f"
     },
     {
       "path": "dsh-plugins/workbench-native/src/client.ts",
@@ -2409,7 +2413,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/notifications.ts",
-      "sha256": "01d9ebb0557bd45b7e1fb9906cf41c08d9e964d3f1c1253ab5b1e81a7dbc357a"
+      "sha256": "536b87820fd508184cd07b04ef77cc461c5a207e4a249e9764fda1fae1d336a5"
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
@@ -2438,6 +2442,14 @@
     {
       "path": "dsh-plugins/workbench-native/test/notifications-browser.mjs",
       "sha256": "a76bd8730ea81e690c30a0efadd6909923c87e82bcc04e6780452769b7119df3"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/notifications-navigation.test.mjs",
+      "sha256": "f13736506dc597c72eaf6eec9176044369d6413372c8bd53ca52b179c030aaa9"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/skill-display.test.mjs",
+      "sha256": "4ed8132e5df34cf041e71ee8f9d1fbfd95a41793c17ef97c60e16eac910d342a"
     },
     {
       "path": "dsh-plugins/workbench-native/test/skill-readiness.test.mjs",
@@ -2649,11 +2661,11 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/lib/studio-instructions.d.ts",
-      "sha256": "f3e758039c2d58c2c67655df38f5ed1594a836f73d17d2fdb7d3de1395d6883e"
+      "sha256": "60a9bc3e65fbb7d2a49afda704039a346aa0b9ed07e8a42f855208595ac93f75"
     },
     {
       "path": "packages/dsh-knowledge-studio/lib/studio-instructions.js",
-      "sha256": "be78a1ce2487d6300e0eb53b258aa1fb8e25689f92a0d5e02d44a68d392d5e16"
+      "sha256": "8512c97c0ff91e0a17fe087a23c114642e4f203d4dde47b00b7c4cc7e30c23b5"
     },
     {
       "path": "packages/dsh-knowledge-studio/lib/studio-media.js",
@@ -2705,7 +2717,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/package-lock.json",
-      "sha256": "7f228bb8c9aca8ef17e014d8ef2b412c2a27b09c44fe2b3a8e08fb96b95d40d8"
+      "sha256": "22fd917db3c77e2781cd93c69ed7d7840b8ee944668844c3e0caf8b92bb455c4"
     },
     {
       "path": "packages/dsh-knowledge-studio/package.json",
@@ -3377,7 +3389,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/src/client/index.tsx",
-      "sha256": "0fe81474bf28ee7d6fec51e787742856e1e0b3ff15d8c6ac29ea91d97c540698"
+      "sha256": "2f4755777b66d2f5aa355d20d42312d374a4ecbec2fc8e451240a4f809739c28"
     },
     {
       "path": "packages/dsh-knowledge-studio/src/client/KnowledgeMarkdown.tsx",
@@ -3570,6 +3582,10 @@
     {
       "path": "packages/dsh-knowledge-studio/test/studio-content.test.mjs",
       "sha256": "41f551135f6aab82234cb2f942fd16d35823343542eb88af11cad47faff3d35c"
+    },
+    {
+      "path": "packages/dsh-knowledge-studio/test/studio-instructions.test.mjs",
+      "sha256": "a9e1c48f2b32ef3facc9c6c8db34e7ef565c4f7a1a38d0f8ba99a518d1694665"
     },
     {
       "path": "packages/dsh-knowledge-studio/test/studio-registry.test.mjs",
@@ -4657,7 +4673,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/client/login-flow.js",
-      "sha256": "a11f7758f91a970442126d21e5f1138ca312f382135eeb1c3245cfca1852ae71"
+      "sha256": "be868e92ac9688a9c748a04b0854629a9cc3c994988c6b84a26317b622f140d6"
     },
     {
       "path": "packages/dsh-oidc/src/client/managed-provider.ts",
@@ -4681,11 +4697,11 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/callback-page.js",
-      "sha256": "26d905a7e0e2f7c4a4835391eb8cb85edd35431ec62806d92004c67f9cd04ca3"
+      "sha256": "e3dbee889ee68b2fbf606b7911e8b8ae9a724fbc355a606039f0c114ec601485"
     },
     {
       "path": "packages/dsh-oidc/src/host/desktop-oidc.js",
-      "sha256": "027e1e74a33f1d8e35dc6856671096b9ffec4ec9e4cd2a6c6f281c2c3f2874cd"
+      "sha256": "accd183093f600138b79b4b83e7f39ae36903719c6306ba63ba05cae321ab040"
     },
     {
       "path": "packages/dsh-oidc/src/host/gateway-backend.js",
@@ -4717,7 +4733,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/oidc.js",
-      "sha256": "73909ac2b51c8c021429e1394617fba391a14090f06653569b422c9ccc97ac5f"
+      "sha256": "1104ba861227e681bd1ae35e1050442c73039b8394289a839d818da07f9197f1"
     },
     {
       "path": "packages/dsh-oidc/src/host/profile.js",
@@ -4789,7 +4805,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/desktop.test.js",
-      "sha256": "73e0c216d93477c883ef706f4ec17bdb4a9145504bf5a69bfdd01c38432e6c26"
+      "sha256": "6cee4f646ace73af81b161c5f07cb1fbe72ea998216b8c5422c56435e1b2552a"
     },
     {
       "path": "packages/dsh-oidc/test/gateway-provider.test.js",
@@ -4817,7 +4833,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/oidc.test.js",
-      "sha256": "cad64c55d46af1b0dbf2587bd47257dcf3472c3298e0268d0943fa736270c54c"
+      "sha256": "b082853a7485067f379ef33e1107290c94de1f3c39a041e1d39c7cfd3f2ef555"
     },
     {
       "path": "packages/dsh-oidc/test/presentation.test.js",
@@ -4877,7 +4893,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "881b04f9530ee2ad8ca5eb62627062c13960c017d791496e232ed96ce1138617"
+      "sha256": "8ff9c1de2ba9ffd8b433e853fe92cc6a2f9202e8efa2257367c94f23f65b7e52"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -5080,6 +5096,10 @@
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
     {
+      "path": "scripts/patch-session-search-runtime.mjs",
+      "sha256": "278319a8b63529af814f44e33dc47ee92a31138d475df8ef0af7715cc0046094"
+    },
+    {
       "path": "scripts/portable-extractor.manifest",
       "sha256": "d14e65eb4e40c0181c6e2f918fb8c3910ffa618226379081af8050aa5ef17276"
     },
@@ -5089,7 +5109,7 @@
     },
     {
       "path": "scripts/prepare-017-alpha-product.mjs",
-      "sha256": "eacff0ed0e51cd2f667509f0c651656bbd2ad24cb80f69d0cd05b4b293c99fba"
+      "sha256": "a3df26a620650b46948f7c01954fbddc9e012d94f66c0a8e6159ede1d295fb81"
     },
     {
       "path": "scripts/prepare-desktop-product.ps1",
@@ -5210,6 +5230,10 @@
     {
       "path": "scripts/test/portable-product-links.test.mjs",
       "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
+    },
+    {
+      "path": "scripts/test/session-search-runtime.test.mjs",
+      "sha256": "40c2bc83676a06e4614f254704d260debd9ea34c60c029ce936dfc6a0038c8da"
     },
     {
       "path": "scripts/test/source-skills.test.mjs",

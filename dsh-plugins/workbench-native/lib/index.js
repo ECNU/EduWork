@@ -4,6 +4,7 @@ import { join } from 'node:path'
 import { parse } from 'yaml'
 import { DataImporter } from './data-import.js'
 import { skillReadiness } from './skill-readiness.js'
+import { skillDisplayMetadata } from './skill-display.js'
 import { requiredCapability, requiredCredential, requiredAccountBinding } from '@chatecnu-work/dsh-skill-control-native/core'
 
 const initializers = []
@@ -23,7 +24,7 @@ export default class Workbench extends TypertRemoteService {
         const readiness = await skillReadiness(this.ctx, {
           credential: requiredCredential(data), binding: requiredAccountBinding(data), capability: requiredCapability(data),
         })
-        skills.push({ name: data.name, description: data.description.slice(0, 1024), source: 'builtin',
+        skills.push({ name: data.name, description: data.description.slice(0, 1024), ...skillDisplayMetadata(data), source: 'builtin',
           ...readiness, removable: false })
       } catch { /* Skip malformed definitions, just like the runtime scanner. */ }
     }

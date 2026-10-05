@@ -4,6 +4,7 @@ import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname } from 'node:path'
+import { execFile } from 'node:child_process'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
@@ -193,7 +194,8 @@ async function prepareDesktop() {
     attention: body => taskNotifications.handle(body),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
-    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
+    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
+      process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
