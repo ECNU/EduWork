@@ -7,6 +7,21 @@ import { enterpriseProviderConfig, normalizeEnterpriseProfile, publicProfile } f
 
 const exampleURL = new URL('../examples/enterprise-profile.example.json', import.meta.url)
 
+test('callback language is optional, bounded and preserved across the public wire contract', async () => {
+  const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
+  const { configurationResult } = await import('../src/host/typert-schemas.js')
+  for (const language of ['auto', 'zh-CN', 'en']) {
+    const profile = normalizeEnterpriseProfile({ ...raw, brand: { ...raw.brand, language } })
+    const wire = configurationResult.schema.parse({
+      schemaVersion: 'dsh-oidc/v1alpha1', uiMode: 'standard', profiles: [publicProfile(profile)],
+    })
+    assert.equal(wire.profiles[0].brand.language, language)
+  }
+  assert.equal(normalizeEnterpriseProfile(raw).brand.language, undefined)
+  for (const language of ['', 'zh', 'fr', false])
+    assert.throws(() => normalizeEnterpriseProfile({ ...raw, brand: { language } }), /brand.language/)
+})
+
 test('optional login label survives normalization and the public wire contract', async () => {
   const raw = JSON.parse(await readFile(exampleURL, 'utf8'))
   const { configurationResult } = await import('../src/host/typert-schemas.js')

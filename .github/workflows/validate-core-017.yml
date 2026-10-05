@@ -26,6 +26,7 @@ on:
       - 'scripts/assemble-017-source-product.mjs'
       - 'scripts/patch-session-search-runtime.mjs'
       - 'scripts/test/session-search-runtime.test.mjs'
+      - 'scripts/test/plugin-locale.test.mjs'
       - 'scripts/verify-media-template.mjs'
       - 'scripts/test/media-template.test.mjs'
       - 'scripts/portable-product-links.mjs'
@@ -94,6 +95,8 @@ jobs:
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
+          node --test core/scripts/test/plugin-locale.test.mjs
+          if ($LASTEXITCODE) { throw 'Plugin locale regression checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution policy, desktop and channel migration checks failed' }
           node --test core/scripts/test/media-template.test.mjs

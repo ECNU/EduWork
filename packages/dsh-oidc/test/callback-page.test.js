@@ -24,6 +24,7 @@ test('callback page uses branded bilingual content, system fonts and a nonce-onl
   assert.match(callbackPage(profile, 'issuer-invalid', 'zh-CN').html, /联系管理员/)
   const fixed = { ...profile, brand: { ...profile.brand, language: 'zh-CN' } }
   assert.match(callbackPage(fixed, 'completed', 'en').html, /lang="zh-CN"[\s\S]*登录成功/)
+  assert.match(callbackPage({ ...profile, brand: { ...profile.brand, language: 'en' } }, 'time-invalid', 'zh-CN').html, /lang="en"[\s\S]*time check/)
   assert.match(callbackPage({ ...profile, brand: { ...profile.brand, language: 'auto' } }, 'completed', 'en').html, /You’re signed in/)
   assert.equal(callbackLanguage('en-US,en;q=0.9,zh-CN;q=0.8'), 'en')
   assert.equal(callbackLanguage('fr;q=1,zh-CN;q=0.9,en;q=0.8'), 'zh-CN')
