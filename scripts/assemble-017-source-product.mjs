@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { installProductHost } from '../dsh-host/install-product-host.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { copySourceSkills } from './copy-source-skills.mjs'
+import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import assert from 'node:assert/strict'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
@@ -33,6 +34,7 @@ await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
 const modules = join(paths.output, 'd/node_modules')
+const runtimePatches = [await patchSessionSearchRuntime(modules)]
 const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's lock, and this output is explicitly not a release.
@@ -72,7 +74,7 @@ const memoryBundle = join(modules, '@eduwork/dsh-memory/cordis.patch.yml')
 await writeFile(memoryBundle, (await readFile(memoryBundle, 'utf8')).replace('id: local-memory\n', 'id: memories\n').replace('id: local-memory\r\n', 'id: memories\n'))
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.core.17', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
-  runtimeMode: 'npm', pluginMode: 'source-qualification', published: false,
+  runtimeMode: 'npm', runtimePatches, pluginMode: 'source-qualification', published: false,
   bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature'],
   sourcePackages, externalPackages: [literatureLock], omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
 }
