@@ -21,6 +21,8 @@ test('only owned rebuilt plugins receive the native API range; other peers and s
   assert.equal(rebuiltDshPeers(source, '0.1.5-rc.1')['@deepseek-ai/dsh'], '0.1.5-rc.1')
   for (const version of ['0.2.0-rc.1', '0.3.0-rc.1', '0.3.0', '9.0.0']) assert.throws(() => rebuiltDshPeers(source, version), /qualification/)
   assert.throws(() => rebuiltDshPeers({ ...source, name: '@third-party/example' }, '0.2.0-rc.2'), /distribution-owned/)
+  assert.equal(rebuiltDshPeers({ ...source, name: '@ustc/tokenworks-bootstrap' }, '0.2.0-rc.2', { editionOwned: true })['@deepseek-ai/dsh'], rebuiltDshPeerRange)
+  for (const name of ['@deepseek-ai/dsh-tools', 'unscoped', undefined]) assert.throws(() => rebuiltDshPeers({ ...source, name }, '0.2.0-rc.2', { editionOwned: true }), /distribution-owned/)
 })
 
 test('broader peer ranges do not qualify an unknown or mixed desktop kernel', () => {
