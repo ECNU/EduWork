@@ -26,7 +26,7 @@ async function setup() {
     const { outputFiles } = await require('esbuild').build({
       stdin: { contents: await readFile(path, 'utf8') + '\n' + extraExports, resolveDir: dirname(path), loader: path.endsWith('tsx') ? 'tsx' : 'ts' },
       bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic',
-      nodePaths: [join(runtime, 'node_modules')],
+      nodePaths: [process.env.EDUWORK_TEST_DEPENDENCIES, runtime].filter(Boolean).map(path => join(path, 'node_modules')),
       external: ['react', 'react-dom', '@deepseek-ai/*', '@eduwork/*'],
       plugins: [{ name: 'rpc-transport-fixture', setup(build) {
         build.onLoad({ filter: /[\\/]client[\\/]remote\.(?:js|ts)$/ }, () => ({ contents: 'export default {}; export const knowledgeStudioRemote = {}', loader: 'js' }))

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-05T08:42:56.354Z",
-  "fileSetSHA256": "067f11b84fe27097ac8a3b7852d0556f2f4c541114fb2705f711bd6e60d949d6",
+  "createdAt": "2026-10-05T08:48:50.585Z",
+  "fileSetSHA256": "ddc8f120d879d77c2de05265e2dd19c792b9925aa07c8645ace7906ec4deffa8",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "df1901c5f6595c7389a2dccbdd997bde600fd57891ae64be5f9bf8414caa8e6d"
+      "sha256": "c9105d178ec314ae6217c5559be2e1a1c22a177e8b26828b3a6262590d26df54"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -2717,11 +2717,11 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/package-lock.json",
-      "sha256": "a7e0534798fbb4b47d47ad7e36bf836cf9c03ea91f98263a95c3b4a76b9bbc38"
+      "sha256": "37a3ef15869112adb67b3cc3ca40bfc988505d077ef26db0ad582867df28c331"
     },
     {
       "path": "packages/dsh-knowledge-studio/package.json",
-      "sha256": "11474fb3b11f91470f52780c9fbd672a2f1a0c9d8c155e88891b21872375d813"
+      "sha256": "8295ef0f2d978ca2c5453df57282040fe719d87286f2f0368aa758a005b8e9a1"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/contracts/presentation-metrics.json",
@@ -4113,7 +4113,7 @@
     },
     {
       "path": "packages/dsh-mail/test/client-settings.test.js",
-      "sha256": "92ddffea279729ce2047a7c01ef5451ebf555515548f50b165dfd15ae17950be"
+      "sha256": "b518ee4bf2f53e79be2873293e126f656d922a211bde79c2efe283670b47e329"
     },
     {
       "path": "packages/dsh-mail/test/config.test.js",
@@ -4657,7 +4657,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/smoke-build.mjs",
-      "sha256": "5147c89a8200f1da02fe2ca19ebf3068b9c253e93a7598206dc404fbd8ff053c"
+      "sha256": "92e0d0a59cf8b6ad7bd8bcb2fe132c5e7223f65eff36e62b679dc0192997b622"
     },
     {
       "path": "packages/dsh-oidc/SECURITY.en.md",
@@ -5241,7 +5241,7 @@
     },
     {
       "path": "scripts/test/plugin-locale.test.mjs",
-      "sha256": "b1be78cbadddde47f6166e933292a264ed03c1f8524d56b35195ccbbb99bf444"
+      "sha256": "0f8ab874359e4c97dbfc319344dbebd6c20f3b874df0838102b295fe40cfcd0d"
     },
     {
       "path": "scripts/test/portable-product-links.test.mjs",
