@@ -151,3 +151,25 @@ test('desktop sign-in distinguishes issuer configuration failure from a retryabl
     })
   }
 })
+
+
+test('clock behind the identity service produces actionable time advice without storing credentials', async t => {
+  const f = await fixture(t)
+  const { begin, callback } = await f.authorization()
+  f.backend.now = () => Date.now() - 135_000
+  const response = await fetch(callback, { headers: { 'accept-language': 'zh-CN' } })
+  assert.equal(response.status, 400)
+  assert.equal(f.backend.loginStatus(begin.loginID).errorCode, 'oidc_id_token_time_invalid')
+  assert.match(await response.text(), /自动设置日期和时间/)
+  assert.deepEqual([...f.records.keys()], ['PERSONAL_API_KEY'])
+  await assertClosed(callback)
+})
+
+test('desktop client propagates time advice instead of retry-only advice', async () => {
+  const service = {
+    begin: async () => ({mode: 'external', loginID: 'synthetic', expiresAt: new Date(Date.now() + 60_000).toISOString()}),
+    loginStatus: async () => ({state: 'failed', errorCode: 'oidc_id_token_time_invalid'}),
+    cancelLogin: async () => {},
+  }
+  await assert.rejects(signIn(service, 'synthetic', {interval: 0}), error => error.code === 'oidc_id_token_time_invalid' && /automatic date and time/.test(error.message))
+})

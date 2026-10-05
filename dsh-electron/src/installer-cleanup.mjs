@@ -126,9 +126,7 @@ export async function installFromDmg({ app, shell, dialog, appPath,
         await rm(statePath, { force: true })
         candidate = null
       }
-      if (!candidate && receipt.installation === installation) return false
-      // A new directory also distinguishes reinstalling the same signed version.
-      await writeFile(receiptPath, JSON.stringify({ installation, cancelled: candidate ? undefined : receipt.cancelled }), { mode: 0o600 })
+      if (!candidate && receipt.installation === installation && receipt.cleaned === true) return false
       if (!candidate) {
         candidate = await draggedInstaller(appPath, await images(), identify)
         if (!candidate || receipt.cancelled?.installations.includes(installation) && candidate.imagePath === receipt.cancelled.imagePath &&
@@ -137,6 +135,7 @@ export async function installFromDmg({ app, shell, dialog, appPath,
       }
       await cleanInstaller(candidate, { appPath, images, identify, eject, wait, trash: path => shell.trashItem(path) })
       await rm(statePath, { force: true })
+      await writeFile(receiptPath, JSON.stringify({ installation, cleaned: true }), { mode: 0o600 })
     } catch (error) {
       if (error.code === 'ENOENT') await rm(statePath, { force: true })
       else warn(`安装文件未清理，可手动推出安装卷并移到废纸篓：${error.message}`)
@@ -146,7 +145,6 @@ export async function installFromDmg({ app, shell, dialog, appPath,
   const candidate = await sourceInstaller(appPath, await images(), identify)
   if (!candidate) return false
   await writeFile(statePath, JSON.stringify(candidate), { mode: 0o600 })
-  app.releaseSingleInstanceLock()
   try {
     if (app.moveToApplicationsFolder({ conflictHandler: conflict => {
       if (conflict === 'existsAndRunning') {

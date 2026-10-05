@@ -41,7 +41,8 @@ for (const file of files) {
     // macOS routes standard editing shortcuts through native menu roles.
     // Keep the application menu first and preserve other platforms' menus.
     replace("      { role: 'quit' },\n    ],\n  }]))", "      { role: 'quit' },\n    ],\n  }, ...(process.platform === 'darwin' ? [{ role: 'editMenu' as const }] : [])]))")
-    replace('  const resources = runtimeResources()', '  if (await installEduworkFromDmg() || isQuitting()) return\n  const product = await prepareEduworkDesktop()\n  const resources = { ...runtimeResources(), node: product.node }')
+    replace('  const resources = runtimeResources()', '  if (await installEduworkFromDmg() || isQuitting()) return\n  if (!claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })) return\n  const product = await prepareEduworkDesktop()\n  const resources = { ...runtimeResources(), node: product.node }')
+    replace('const ownsDesktopInstance = claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })\n\nif (ownsDesktopInstance) void app.whenReady()', 'void app.whenReady()')
     replace('  const development = developmentProject()', '  const development = product.profile')
     replace('new DesktopHostProcess(resources.node, projectDir, hostInspectPort)', 'new DesktopHostProcess(resources.node, projectDir, hostInspectPort, { bootstrap: nativeBootstrap(), allowLinkedProfile: true, onLog: desktopHostLog })')
     replace('    await next.start()', "    trackHost(next)\n    await next.start()\n    if (isQuitting()) throw new Error('Desktop is shutting down')")

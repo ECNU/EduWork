@@ -27,7 +27,9 @@ export async function signIn(service, profileID, { signal, onPending = (pending 
       if (next.state === 'failed') {
         const message = ['gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'].includes(next.errorCode)
           ? 'The authentication response does not match the sign-in configuration. Contact your administrator before trying again.'
-          : 'Organization sign-in did not complete. Please try again.'
+          : next.errorCode === 'oidc_id_token_time_invalid'
+            ? 'The sign-in token failed its time check. Enable automatic date and time in system settings, synchronize your clock, and sign in again. If this continues, contact your administrator.'
+            : 'Organization sign-in did not complete. Please try again.'
         throw Object.assign(new Error(message), { code: next.errorCode })
       }
       if (next.state === 'expired') break
