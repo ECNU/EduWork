@@ -1,6 +1,6 @@
 import {KnowledgeSurface, type Target, type SessionMemory} from './KnowledgeSurface'
 import {StudioIcon} from './StudioIcon'
-import {artifactRequest} from '../../lib/studio-instructions.js'
+import {artifactRequest,parameterVisible} from '../../lib/studio-instructions.js'
 import {StudioEntry,StudioHeaderEntry,StudioBlankEntry} from './StudioEntry'
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {KnowledgeMarkdown as Markdown} from './KnowledgeMarkdown'
@@ -188,9 +188,6 @@ function location(value: any) {
   return `L${value.lineStart ?? '?'}${value.lineEnd && value.lineEnd !== value.lineStart ? `–${value.lineEnd}` : ''}`
 }
 
-function parameterVisible(parameter:any,values:Record<string,any>) {
-  return (!parameter.when || Object.entries(parameter.when).every(([key,value])=>values[key]===value)) && (!parameter.whenNot || Object.entries(parameter.whenNot).every(([key,value])=>values[key]!==value)) && (!parameter.whenNonempty || Boolean(values[parameter.whenNonempty]))
-}
 function ParameterDialog({ capability, busy, close, submit }: any) {
   const [values, setValues] = useState<Record<string, any>>(() =>
     Object.fromEntries(
