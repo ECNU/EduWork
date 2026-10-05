@@ -388,9 +388,12 @@ export class WebOidcBackend {
       throw publicError('oidc_id_token_invalid', 'OIDC ID Token identity claims are invalid')
     }
     if (!Number.isFinite(claims.exp) || !Number.isFinite(claims.iat)
-      || claims.exp < now - CLOCK_SKEW_SECONDS || claims.iat > now + CLOCK_SKEW_SECONDS
-      || (claims.nbf !== undefined && (!Number.isFinite(claims.nbf) || claims.nbf > now + CLOCK_SKEW_SECONDS))) {
-      throw publicError('oidc_id_token_invalid', 'OIDC ID Token time claims are invalid')
+      || (claims.nbf !== undefined && !Number.isFinite(claims.nbf))) {
+      throw publicError('oidc_id_token_invalid', 'OIDC ID Token time claims are malformed')
+    }
+    if (claims.exp < now - CLOCK_SKEW_SECONDS || claims.iat > now + CLOCK_SKEW_SECONDS
+      || (claims.nbf !== undefined && claims.nbf > now + CLOCK_SKEW_SECONDS)) {
+      throw publicError('oidc_id_token_time_invalid', 'OIDC ID Token time claims are invalid')
     }
     if (claims.at_hash !== undefined && (typeof claims.at_hash !== 'string' || !verifyAccessTokenHash(accessToken, claims.at_hash))) {
       throw publicError('oidc_id_token_invalid', 'OIDC ID Token access-token hash is invalid')
