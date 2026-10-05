@@ -324,7 +324,17 @@ function withGatewayAuth(Base) {
       const target = new URL(endpoint)
       // Host-only model and own-account routes, never key administration or arbitrary origins.
       const modelBase = new URL(`${descriptor.baseURL}/`)
-      if (target.username || target.password || target.hash || target.origin !== modelBase.origin || !(target.href === descriptor.userInfoEndpoint || target.pathname.startsWith(modelBase.pathname))) throw protocolError('oidc_authorized_origin_denied', 'Gateway token destination is not an authorized resource')
+      // Trusted Host services can grant one exact issuer POST route for their
+      // own request. This option is never accepted through a renderer RPC or
+      // persisted as a broader model-resource allowlist.
+      const servicePath = authorization.issuerServicePath
+      const issuerService = typeof servicePath === 'string'
+        && /^\/(?:[a-zA-Z0-9_-]+\/)*[a-zA-Z0-9_-]+$/.test(servicePath)
+        && (init.method ?? 'GET').toUpperCase() === 'POST'
+        && target.href === new URL(descriptor.issuer).origin + servicePath
+      const modelResource = target.origin === modelBase.origin
+        && (target.href === descriptor.userInfoEndpoint || target.pathname.startsWith(modelBase.pathname))
+      if (target.username || target.password || target.hash || !(modelResource || issuerService)) throw protocolError('oidc_authorized_origin_denied', 'Gateway token destination is not an authorized resource')
       const scope = await this.createGatewayScope(profileID)
       const lease = scope.open(init.signal ?? AbortSignal.timeout(20_000))
       let response

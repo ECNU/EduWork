@@ -12,6 +12,8 @@ The canonical machine-readable schema is [`schema/enterprise-profile.v1alpha1.sc
 
 ## Trust model
 
+`auth.additionalScopes` explicitly requests additional service scopes for oidc-llm integrations, such as institution search. No additional scopes are requested by default. Each must be advertised in discovery's `scopes_supported`; token and refresh responses must retain the requested scopes. Changing scope configuration requires a new sign-in rather than expanding an existing token's authority.
+
 Profiles are trusted deployment configuration, not user input. Nevertheless, the parser is fail-closed:
 
 - unknown keys are rejected at the root and at every executable-relevant nested object;

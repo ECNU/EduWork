@@ -17,15 +17,15 @@ GitHub Release 标题统一为“项目名 版本号”，例如 `EduWork 0.3.6-
 | 用途 | 例子 | 首页标记 | GitHub Release / 更新清单 |
 | --- | --- | --- | --- |
 | 开发与测试 | `0.3.5-dev.20260912.1` | 开发版 | 普通测试用本地包或 CI artifact；获批后可发布 GitHub prerelease |
-| 验证后发行 | `0.3.5`，DSH 为 `0.1.5-rc.2` | 公测版 | 经审阅后发布 |
+| 稳定渠道发行 | `0.4.0`，DSH 为 `0.2.0-rc.2` | 公测版 | 经审阅后发布非 prerelease，并进入 stable 渠道 |
 | 后续开发 | `0.3.6-dev.20260913.1` | 开发版 | 普通测试用本地包或 CI artifact；获批后可发布 GitHub prerelease |
-| 上游稳定后的发行 | 例如 `0.4.0`，DSH 无预发布后缀 | 正式版 | 经审阅后发布 |
+| 上游稳定后的发行 | `X.Y.Z`，DSH 无预发布后缀 | 正式版 | 经审阅后发布非 prerelease，并进入 stable 渠道 |
 
 日期采用北京时间，同一天的构建序号递增。每次构建必须指定版本，不以打包机时间隐式决定。开发版使用 `X.Y.Z-dev.YYYYMMDD.N`，公测发行使用 `X.Y.Z`、标签 `vX.Y.Z`，需要通过 GitHub 推送开发版时，标签为 `vX.Y.Z-dev.YYYYMMDD.N` 并设置 prerelease；必须先确认版本号和发布说明。普通 CI 构建不创建 Release。已发布版本不可复用。0.x 阶段能力或兼容性变化通常提高次版本，兼容修复提高补丁版本。
 
 Windows 设置恢复“公测版”和“开发版（含公测版）”两个更新渠道。公测只查 stable，拒绝开发包；开发同时查 development/stable，按 SemVer 选择较新版本。`0.3.4 < 0.3.5-dev.20260912.1 < 0.3.5`，因此同基线开发版可升级到公测版。切换渠道不会降级，也不改变当前版本徽标；下载、待安装、安装期间不允许切换。用户选择随升级保留。装配必须核对产品版本、首页中英文徽标一致，不能仅改回执版本号而复用旧徽标资源。
 
-公版与 ECNU 版同一次发行使用相同的产品版本。发行配置、平台和壳放进文件名，例如 `EduWork-0.3.0-windows-x64-electron.zip` 与 `EduWork-ECNU-0.3.0-windows-x64-electron.zip`。它们不能互相覆盖数据和配置。壳名不放进 SemVer 后缀。
+公版与机构版可以独立安排发行；机构版通过核心锁固定已经验收的公版来源，不要求同时发布。基于同一公版发布时，使用对应的产品版本。发行配置、平台和壳放进文件名，例如 `EduWork-0.3.0-windows-x64-electron.zip` 与 `EduWork-ECNU-0.3.0-windows-x64-electron.zip`。它们不能互相覆盖数据和配置。壳名不放进 SemVer 后缀。
 
 仅发布 macOS 修复、没有对应 Windows 包时，GitHub 标签使用 `macos-v<产品版本>`，例如 `macos-v0.3.6-dev.20260921.2`；应用版本、Release 标题和包名仍使用原产品版本。此类开发版继续标记为 prerelease，且不设置为 latest。现有 Windows 客户端只识别 `v<版本>` 标签，独立的 Mac 标签可避免它误选缺少 Windows 更新清单的 Release；Mac 通过签名 Sparkle appcast 获取新包。仅更新 Mac 渠道，Windows 与配置更新渠道保持原样。
 

@@ -11,8 +11,8 @@ if (!values.upstream || !values.host || !values.output) throw new Error('Use --u
 const upstream = resolve(values.upstream), output = resolve(values.output), host = resolve(values.host)
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 const native = values['native-017'] === true
-if (native && !values.runtime) throw new Error('The native shell requires --runtime <pinned 0.2.0-rc.1 npm Runtime>')
-const lock = JSON.parse(await readFile(join(repository, native ? 'third_party/dsh/candidate-v0.2.0-rc.1/LOCK.json' : 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'), 'utf8'))
+if (native && !values.runtime) throw new Error('The native shell requires --runtime <pinned 0.2.0-rc.2 npm Runtime>')
+const lock = JSON.parse(await readFile(join(repository, native ? 'third_party/dsh/candidate-v0.2.0-rc.2/LOCK.json' : 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'), 'utf8'))
 const coreLock = lock
 const digest = data => createHash('sha256').update(data).digest('hex')
 const inputs = JSON.parse(await readFile(join(repository, native ? 'dsh-electron/upstream-inputs-017.json' : 'dsh-electron/upstream-inputs.json'), 'utf8'))
@@ -69,11 +69,13 @@ for (const file of files) {
 const electronAdapters = ['update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
-await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8')).replace('../../dsh-host/configuration-file.mjs','./configuration-file.mjs'))
+await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
+  .replace('../../dsh-host/configuration-file.mjs','./configuration-file.mjs')
+  .replace('../../dsh-host/dsh-compatibility.mjs','./dsh-compatibility.mjs'))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-presets.mjs'), join(output, 'src/product-presets.mjs'))
 await copyFile(join(repository, 'dsh-host/native-resources.mjs'), join(output, 'src/native-resources.mjs'))
-for (const name of ['user-config.mjs', 'configuration-file.mjs', 'configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs', 'content-updates.mjs', 'content-update-protocol.mjs', 'publisher-bootstrap.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
+for (const name of ['user-config.mjs', 'configuration-file.mjs', 'configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs', 'content-updates.mjs', 'content-update-protocol.mjs', 'publisher-bootstrap.mjs', 'dsh-compatibility.mjs']) await copyFile(join(repository, 'dsh-host', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-plugins/media-openai/lib/config.js'), join(output, 'src/media-config.mjs'))
 await copyFile(join(repository, 'dsh-host/enterprise-model-updates.mjs'), join(output, 'src/enterprise-model-updates.mjs'))
 await copyFile(join(repository, 'dsh-host/desktop-updates.mjs'), join(output, 'src/desktop-updates.mjs'))
@@ -122,7 +124,7 @@ if (native) {
   adapters['dsh-electron/scripts/native-desktop-source.mjs'] = digest(await readFile(join(repository, 'dsh-electron/scripts/native-desktop-source.mjs')))
 }
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))
-for (const name of ['configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
+for (const name of ['configuration-documentation.mjs', 'configuration-reference.mjs', 'configuration-plugin-options.mjs', 'dsh-compatibility.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 adapters['dsh-host/configuration-file.mjs'] = digest(await readFile(join(repository, 'dsh-host/configuration-file.mjs')))
 for (const name of electronAdapters) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const file of ['dsh-electron/native/sparkle-addon.mm', 'dsh-electron/scripts/build-shell.mjs', 'dsh-electron/src/portable-updates.mjs', 'dsh-electron/src/product.mjs', 'dsh-electron/src/native-vault.mjs', 'dsh-electron/src/configuration-files.mjs', 'dsh-electron/src/lifecycle.mjs', 'dsh-electron/src/media-transport.mjs', 'dsh-electron/src/legacy-migration.mjs', 'dsh-electron/src/external-navigation.mjs', 'dsh-host/release-policy.mjs', 'dsh-host/desktop-updates.mjs', 'dsh-host/workbench-support.mjs', 'dsh-host/diagnostics.mjs', 'dsh-host/desktop-log.mjs', 'dsh-host/product-profile.mjs', 'dsh-host/product-presets.mjs', 'dsh-host/native-resources.mjs']) adapters[file] = digest(await readFile(join(repository, file)))

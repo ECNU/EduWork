@@ -102,6 +102,8 @@
 //   "clientId": "replace-with-public-client-id"
 // organizations[].auth.identityMode：仅 oidc-llm，必须显式选 oidc 或 oauth；oidc 还验证 ID Token。
 //   "identityMode": "oidc"
+// organizations[].auth.additionalScopes：仅 oidc-llm，显式申请额外服务范围；必须由服务端 discovery 支持，刷新时不得扩张。
+//   "additionalScopes": []
 // organizations[].oidc.issuer：OIDC 签发者 URL；客户端据此查找发现文档。
 //   "issuer": "https://id.example.org"
 // organizations[].oidc.clientId：服务端分配的公开客户端 ID；不填写客户端密钥。
@@ -304,6 +306,10 @@
 //   "responseFormat": "auto"
 // media.providers[].images.promptMaxChars：提示词最大字符数，正整数，默认 4096。
 //   "promptMaxChars": 4096
+// media.providers[].images.edit：是否支持标准 /images/edits 图像编辑，默认 false；不影响文生图。
+//   "edit": false
+// media.providers[].images.editMaxImages：单次编辑允许的输入图片数，1–16，默认 1；按服务端能力填写。
+//   "editMaxImages": 1
 // media.providers[].speech.enabled：是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。
 //   "enabled": false
 // media.providers[].speech.model：TTS 模型 ID。

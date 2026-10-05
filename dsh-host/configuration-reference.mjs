@@ -47,6 +47,7 @@ export const configurationFields = {
     experimentalOidcLlm: ['oidc-llm 0.1 设为 true；原生 LiteLLM 省略或 false。', false],
     clientId: ['仅 oidc-llm：服务端分配的公开客户端 ID，不是 client_secret；LiteLLM 自动注册，不填写。', 'replace-with-public-client-id'],
     identityMode: ['仅 oidc-llm，必须显式选 oidc 或 oauth；oidc 还验证 ID Token。', 'oidc'],
+    additionalScopes: ['仅 oidc-llm，显式申请额外服务范围；必须由服务端 discovery 支持，刷新时不得扩张。', []],
   }),
   ...fields('organizations[].oidc.', {
     issuer: ['OIDC 签发者 URL；客户端据此查找发现文档。', 'https://id.example.org'],
@@ -152,6 +153,8 @@ export const configurationFields = {
     defaultSize: ['默认尺寸，必须属于 nativeSizes；省略取首项。', '1024x1024'],
     responseFormat: ['auto/b64_json/url，默认 auto。', 'auto'],
     promptMaxChars: ['提示词最大字符数，正整数，默认 4096。', 4096],
+    edit: ['是否支持标准 /images/edits 图像编辑，默认 false；不影响文生图。', false],
+    editMaxImages: ['单次编辑允许的输入图片数，1–16，默认 1；按服务端能力填写。', 1],
   }),
   ...fields('media.providers[].speech.', {
     enabled: ['是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。', false],

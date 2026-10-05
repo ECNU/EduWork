@@ -26,8 +26,9 @@ const jwt = claims => {
   return payload + '.' + sign('RSA-SHA256', Buffer.from(payload), pair.privateKey).toString('base64url')
 }
 
-async function fixture(t, mode = 'oidc', metadataChanges = {}, provider) {
-  const profile = normalizeEnterpriseProfile({ ...profileRaw(mode), ...(provider === undefined ? {} : { provider }) }), records = new Map(), calls = [], routes = []
+async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authChanges = {}) {
+  const raw = profileRaw(mode)
+  const profile = normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, ...authChanges }, ...(provider === undefined ? {} : { provider }) }), records = new Map(), calls = [], routes = []
   const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
   let authorization, callbackResult, serial = 0
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
@@ -62,6 +63,11 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider) {
       if (url === base + '/open/api/v1/models') return json({ object: 'list', data: controls.models.map(model => ({ object: 'model', ...model })) })
       if (url === base + '/open/api/v1/images/generations' || url === base + '/open/api/v1/audio/speech') return json({ model: JSON.parse(init.body).model })
       if (url === base + '/open/api/v1/quota') { await controls.quotaGate; return json({ remaining: 1 }) }
+      if (/\/api\/worker\/v1\/search\/(campus|web)$/.test(url)) {
+        const kind = url.split('/').at(-1)
+        const granted = controls.scope ?? authorization.searchParams.get('scope')
+        return granted.split(' ').includes('search.' + kind) ? json({ data: { sources: [{ url: 'https://example.org/result' }] } }) : json({}, 403)
+      }
       if (url === base + '/revoke') { assert.equal(init.body.get('token_type_hint'), 'refresh_token'); return new Response('', { status: 200 }) }
       throw new Error('unexpected synthetic route')
     },
@@ -159,6 +165,50 @@ test('draft discovery requires explicit mode, static registration, complete cont
   ]) assert.throws(() => detectGatewayProtocol({ ...metadata(), ...change }, profile))
   const raw = profileRaw(); delete raw.auth.identityMode
   assert.throws(() => normalizeEnterpriseProfile(raw), /explicitly/)
+})
+
+test('additional scopes are explicit, advertised and bounded without changing default consent', () => {
+  const raw = profileRaw()
+  const advertised = { ...metadata(), scopes_supported: [...metadata().scopes_supported, 'search.web', 'search.campus', 'admin'] }
+  const defaults = detectGatewayProtocol(advertised, normalizeEnterpriseProfile(raw))
+  assert.equal(defaults.scopes.includes('search.web'), false)
+  const profile = normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, additionalScopes: ['search.web', 'search.campus'] } })
+  const descriptor = detectGatewayProtocol(advertised, profile)
+  assert.deepEqual(descriptor.scopes, [...defaults.scopes, 'search.web', 'search.campus'])
+  assert.throws(() => detectGatewayProtocol(metadata(), profile), /scopes_supported/)
+  for (const value of [null, 'search.web', [''], ['a b'], ['a"b'], ['a\\b'], ['search.web', 'search.web'], ['x'.repeat(129)], Array.from({ length: 65 }, (_, i) => 's' + i)]) {
+    assert.throws(() => normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, additionalScopes: value } }), /additionalScopes/)
+  }
+})
+
+test('service consent survives login, Token retry, restart and logout without widening paths or scopes', async t => {
+  const f = await fixture(t, 'oidc', { scopes_supported: [...metadata().scopes_supported, 'search.web', 'search.campus'] }, undefined,
+    { additionalScopes: ['search.web', 'search.campus'] })
+  assert.equal((await f.login()).state, 'completed')
+  assert.ok(f.authorization.searchParams.get('scope').split(' ').includes('search.web'))
+  const transport = f.backend.fetch
+  let workerCalls = 0
+  f.backend.fetch = async (url, init) => {
+    if (url.endsWith('/api/worker/v1/search/web') && ++workerCalls === 1) return json({}, 401)
+    return transport(url, init)
+  }
+  const path = '/api/worker/v1/search/web'
+  const execute = () => f.backend.authorizedFetch('draft', base + path, { method: 'POST', body: '{"query":"synthetic"}' },
+    { issuerServicePath: path, retryUnauthorized: true })
+  assert.equal((await execute()).status, 200)
+  assert.equal(workerCalls, 2)
+  assert.equal(f.calls.filter(c => c.body?.get?.('grant_type') === 'refresh_token').length, 1)
+  const restarted = new GatewayDesktopBackend(f.backend.ctx, new Map([[f.profile.id, f.profile]]), {}, { fetch: f.backend.fetch })
+  t.after(() => restarted.dispose())
+  assert.ok((await restarted.loadSession(f.profile)).scopes.includes('search.campus'))
+  const resumed = await restarted.authorizedFetch('draft', base + path, { method: 'POST', body: '{}' }, { issuerServicePath: path })
+  assert.equal(resumed.status, 200)
+  await assert.rejects(f.backend.authorizedFetch('draft', 'https://other.example.org' + path, {}, { issuerServicePath: path }))
+  f.controls.scope = f.authorization.searchParams.get('scope') + ' admin'
+  await assert.rejects(f.backend.refresh(f.profile, await f.backend.loadSession(f.profile)), /sign in again/)
+  assert.equal(f.records.size, 0)
+  await f.backend.logout('draft')
+  await assert.rejects(execute(), /sign-in|sign in/i)
 })
 
 test('HTTP opt-in applies to discovered endpoints while issuer and resource checks remain', () => {

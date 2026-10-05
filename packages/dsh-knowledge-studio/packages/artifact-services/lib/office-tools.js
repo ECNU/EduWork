@@ -1,4 +1,5 @@
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { decideWorkspaceWrite } from './tool-permissions.js'
 import {
   actionNeedsApproval,
   normalizeOfficeRequest,
@@ -86,10 +87,7 @@ export function apply(ctx) {
   ctx.on('tools/pre-execute', (exec, next) => {
     const format = byName.get(exec.name)
     if (format === undefined || !actionNeedsApproval(format, exec.arguments ?? {})) return next()
-    const agent = exec.agent
-    if (agent === undefined) return Promise.resolve({ kind: 'deny', reason: 'office writes require an Agent-backed session' })
-    if (ctx.permissionPresets.current(agent.session) === 'danger-full-access') return next()
-    return Promise.resolve({ kind: 'ask', reason: `Create or modify a ${format} artifact in the current workspace` })
+    return decideWorkspaceWrite(ctx, exec, next, `Create or modify a ${format} artifact in the current workspace`)
   })
   for (const [format, definition] of Object.entries(definitions)) ctx.tools.register(tool(format, definition, ctx))
 }

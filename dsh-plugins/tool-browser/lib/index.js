@@ -2,13 +2,12 @@ import path from 'node:path'
 import { createHash } from 'node:crypto'
 import { mkdir } from 'node:fs/promises'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { browserExecutable, browserPresentationMeta, compactText, isPrivateTarget, normalizeURL, untrustedPage } from './core.js'
+import { browserExecutable, browserPresentationMeta, compactText, normalizeURL, untrustedPage } from './core.js'
 import { ManagedBrowser, managedBrowserOwners } from './managed-browser.js'
+import { decideBrowserPermission } from './permission.js'
 
 export const name = 'tool-browser'
 export const inject = ['tools', 'fs', 'permissionPresets']
-
-const sensitiveActions = new Set(['click', 'type', 'visible', 'screenshot', 'close_tab'])
 
 function requireAgentWorkspace(exec) {
   const cwd = exec.agent?.session.header.cwd
@@ -21,13 +20,6 @@ function profileRoot() {
   if (configured) return configured
   const home = process.env.DSH_HOME || process.cwd()
   return path.join(home, 'browser-profile')
-}
-
-function actionNeedsApproval(args) {
-  if (args.mode === 'visible') return true
-  if (sensitiveActions.has(args.action)) return true
-  if (args.action === 'navigate' && typeof args.url === 'string') return isPrivateTarget(args.url)
-  return false
 }
 
 async function collect(page) {
@@ -63,14 +55,7 @@ export function apply(ctx) {
   })
   ctx.on('agent/disposed', ({ agent }) => owners.release(agent))
 
-  ctx.on('tools/pre-execute', (exec, next) => {
-    if (exec.name !== 'browser') return next()
-    const agent = exec.agent
-    if (agent === undefined) return Promise.resolve({ kind: 'deny', reason: 'Browser requires an Agent-backed session' })
-    if (!actionNeedsApproval(exec.args ?? {})) return next()
-    if (ctx.permissionPresets.current(agent.session) === 'danger-full-access') return next()
-    return Promise.resolve({ kind: 'ask', reason: 'Allow the Agent to interact with a web page or open a visible managed browser' })
-  })
+  ctx.on('tools/pre-execute', (exec, next) => decideBrowserPermission(ctx, exec, next))
 
   ctx.tools.register(defineTool({
     name: 'browser',

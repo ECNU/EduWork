@@ -93,6 +93,8 @@ test('DSH transcription tools reject workspace escapes before touching outputs a
  const ctx={tools:{register:tool=>registered.set(tool.name,tool)},on:(_,fn)=>{before=fn},permissionPresets:{current:()=> 'workspace-write'},fs:{resolve:async(path,{cwd})=>resolve(cwd,path),processPath:path=>path}}
  installTranscriptionTools(ctx,service)
  const exec={name:'speech_transcribe',agent:{session:{id:'session',header:{cwd:root}}},signal:new AbortController().signal}
+ assert.equal(await before(exec,()=> 'next'),'next')
+ ctx.permissionPresets.current=()=> 'read-only'
  assert.equal((await before(exec,()=>{throw new Error('not approved')})).kind,'ask')
  ctx.permissionPresets.current=()=> 'danger-full-access';assert.equal(await before(exec,()=> 'next'),'next')
  assert.equal((await before({...exec,agent:undefined},()=>{})).kind,'deny')
