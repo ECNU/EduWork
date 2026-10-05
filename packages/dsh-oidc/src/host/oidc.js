@@ -225,7 +225,7 @@ export class WebOidcBackend {
     let response
     try {
       response = await this.fetch(discoveryURL(profile.oidc.issuer), {
-        headers: { accept: 'application/json' }, signal: AbortSignal.timeout(20_000),
+        headers: { accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20_000),
       })
     } catch (cause) {
       throw publicError('oidc_discovery_failed', 'unable to read OIDC discovery metadata', cause)
@@ -328,7 +328,7 @@ export class WebOidcBackend {
     })
     const response = await this.fetch(discovery.tokenEndpoint, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
-      body, signal: AbortSignal.timeout(20_000),
+      body, redirect: 'error', signal: AbortSignal.timeout(20_000),
     })
     const token = await responseJSON(response, 'oidc_token_request_failed')
     if (typeof token.access_token !== 'string' || typeof token.id_token !== 'string' || token.token_type?.toLowerCase() !== 'bearer') {
@@ -400,7 +400,7 @@ export class WebOidcBackend {
 
   async userInfo(endpoint, accessToken) {
     const response = await this.fetch(endpoint, {
-      headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' }, signal: AbortSignal.timeout(20_000),
+      headers: { authorization: `Bearer ${accessToken}`, accept: 'application/json' }, redirect: 'error', signal: AbortSignal.timeout(20_000),
     })
     const result = await responseJSON(response, 'oidc_userinfo_failed')
     if (typeof result.sub !== 'string' || result.sub === '') throw publicError('oidc_userinfo_invalid', 'OIDC UserInfo has no subject')
@@ -467,7 +467,7 @@ export class WebOidcBackend {
     const response = await this.fetch(discovery.tokenEndpoint, {
       method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded', accept: 'application/json' },
       body: new URLSearchParams({ grant_type: 'refresh_token', client_id: profile.oidc.clientId, refresh_token: session.refreshToken }),
-      signal: AbortSignal.timeout(20_000),
+      redirect: 'error', signal: AbortSignal.timeout(20_000),
     })
     let token
     try { token = await responseJSON(response, 'oidc_refresh_failed') }
@@ -598,7 +598,7 @@ export class WebOidcBackend {
           const token = session.refreshToken || session.accessToken
           await this.fetch(discovery.revocationEndpoint, {
             method: 'POST', headers: { 'content-type': 'application/x-www-form-urlencoded' },
-            body: new URLSearchParams({ token, client_id: profile.oidc.clientId }), signal: AbortSignal.timeout(10_000),
+            body: new URLSearchParams({ token, client_id: profile.oidc.clientId }), redirect: 'error', signal: AbortSignal.timeout(10_000),
           })
         }
       } catch (cause) { this.ctx.logger.warn(cause instanceof Error ? cause : new Error(String(cause))) }

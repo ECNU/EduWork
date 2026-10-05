@@ -139,6 +139,8 @@ function providerFetch(options = {}) {
   const fetch = async (url, init = {}) => {
     const target = String(url)
     calls.push({ target, init })
+    // Requests carrying codes, tokens or provider metadata never follow redirects.
+    assert.equal(init.redirect, 'error', target)
     if (target.endsWith('/.well-known/openid-configuration')) return Response.json({
       issuer: profile.oidc.issuer,
       authorization_endpoint: 'https://authorize.example.net/oauth/authorize?tenant=example',
