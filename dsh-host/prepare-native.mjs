@@ -24,6 +24,10 @@ export function adaptNativeHostProcess(input) {
     `const entry = this.product.hostEntry ?? join(this.runtimeDir, 'node_modules', '@deepseek-ai', 'dsh-desktop-host', 'lib', 'index.js')
     const bootstrap = this.product.bootstrap === undefined ? '' : JSON.stringify(this.product.bootstrap) + '\\n'
     if (Buffer.byteLength(bootstrap) > 2048) throw new Error('Desktop bootstrap exceeds the maximum length')`)
+  // This distribution runs the Host with bundled Node, not Electron. Do not
+  // let Electron's Node-mode flag leak into external Electron editors.
+  text = replace(text, 'env: desktopNodeEnvironment(this.node, undefined, this.environment),',
+    'env: (() => { const env = { ...this.environment }; delete env.ELECTRON_RUN_AS_NODE; return env })(),')
   text = replace(text, "stdio: ['ignore', 'pipe', 'pipe', 'ipc'],", "stdio: ['pipe', 'pipe', 'pipe', 'ipc'],\n      windowsHide: true,")
   text = replace(text, '    this.child = child', `    child.stdin?.once('error', error => this.fail(error))
     child.stdin?.end(bootstrap)
