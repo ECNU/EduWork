@@ -13,8 +13,11 @@ export function isDsh020(version, minimum = '0.2.0-rc.1') {
   } catch { return false }
 }
 
-export function rebuiltDshPeers(manifest, version) {
-  if (!/^@(eduwork|chatecnu-work)\//.test(manifest.name ?? '')) throw Error('Only rebuilt distribution-owned plugins may project DSH peers')
+// Institution plugins come from the edition repository under their own scope;
+// the assembler marks them as distribution-owned explicitly.
+export function rebuiltDshPeers(manifest, version, { editionOwned = false } = {}) {
+  const owned = /^@(eduwork|chatecnu-work)\//.test(manifest.name ?? '') || editionOwned && /^@[a-z0-9-]+\/[a-z0-9._-]+$/.test(manifest.name ?? '') && !/^@deepseek-ai\//.test(manifest.name)
+  if (!owned) throw Error('Only rebuilt distribution-owned plugins may project DSH peers')
   const [[major, minor]] = versionParts(version)
   const native020 = isDsh020(version, '0.2.0-rc.2')
   if (!native020 && (major !== 0 || minor !== 1)) throw Error('This DSH API series needs explicit compatibility qualification')

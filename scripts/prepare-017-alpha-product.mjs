@@ -39,7 +39,7 @@ if(values.edition){
     const destination=join(product,'d/node_modules',plugin.name)
     await cp(join(edition,plugin.source),destination,{recursive:true})
     const manifest=await read(join(destination,'package.json'))
-    manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion)
+    manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion,{editionOwned:true})
     manifest.private=true
     await save(join(destination,'package.json'),manifest)
     runtime.dependencies[plugin.name]=manifest.version

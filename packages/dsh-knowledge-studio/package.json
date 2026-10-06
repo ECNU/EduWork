@@ -49,7 +49,8 @@
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-api-session-controller",
         "@deepseek-ai/dsh-client-ui-conversation",
-        "@deepseek-ai/dsh-client-ui-layout"
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web",
       "immediately": true
@@ -100,7 +101,8 @@
     "@deepseek-ai/dsh-workspace": "0.1.5-rc.1",
     "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
     "react": "^18.2.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {
@@ -149,6 +151,9 @@
       "optional": true
     },
     "zod": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-locale": {
       "optional": true
     }
   },

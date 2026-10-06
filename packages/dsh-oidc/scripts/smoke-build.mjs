@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { runInNewContext } from 'node:vm'
+import { dirname, join } from 'node:path'
 
 await import('../lib/index.js')
 await import('../lib/typert.host.js')
@@ -15,6 +16,11 @@ if (!client.includes('window.__ModuleLoader__.load') || !client.includes('id: "@
 // Exercise the compiled client registration and its actual service adapter. This
 // catches UI buttons whose Remote descriptor exists but whose wrapper is missing.
 const require = createRequire(import.meta.url)
+let LocaleRuntime
+runInNewContext(await readFile(join(dirname(require.resolve('@deepseek-ai/dsh-client-locale/package.json')), 'lib/client.js'), 'utf8'), {
+  window: { __ModuleLoader__: { load: definition => { LocaleRuntime = definition.factory(name => name.startsWith('react') ? require(name) : {}).LocaleRuntime } } },
+  navigator: { languages: ['en-US'], language: 'en-US' }, console,
+})
 let exports
 runInNewContext(client, {
   window: { __ModuleLoader__: { load: definition => { exports = definition.factory(require) } } },
@@ -31,6 +37,7 @@ const connected = { ...identity, state: 'connected', credentialReady: true }
 const activations = [], sessionSelections = []
 let currentSession = null
 const ctx = {
+  locale: new LocaleRuntime({ emit() {} }),
   remote: {
     $mount: async () => () => {},
     $on: (event, listener) => { events.set(event, listener); return () => events.delete(event) },
@@ -51,8 +58,9 @@ const ctx = {
     : name === 'modelDirectories' ? { directoryFor: id => ({ select: async selection => sessionSelections.push({ id, selection }) }) } : undefined,
   inject: (_names, callback) => callback(ctx),
   slots: { inject: (_name, callback) => callback(), register: (definition, component) => { registrations.push({ ...definition, component }); return () => {} } },
-  effect: () => {},
+  effect: setup => setup(),
 }
+ctx.locale.setLocale('zh')
 await exports.apply(ctx)
 await new Promise(resolve => setImmediate(resolve))
 const settings = registrations.find(item => item.name === 'settings.models.footer')?.inject()
@@ -67,7 +75,7 @@ const { renderToStaticMarkup } = require('react-dom/server')
 const view = name => {
   const registration = registrations.find(item => item.name === name)
   assert.equal(registration.inject().service, settings.service)
-  return renderToStaticMarkup(React.createElement(registration.component, registration.inject()))
+  return renderToStaticMarkup(React.createElement(registration.component, { ...registration.inject(), t: ctx.locale.bind(registration.locale) }))
 }
 assert.match(view('sidebar.footer.action'), /点击设置完成登录/)
 await settings.service.begin('example')
