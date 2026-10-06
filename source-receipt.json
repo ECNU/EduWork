@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-05T08:51:50.888Z",
-  "fileSetSHA256": "c5134219dcb897e9e46fc00ab6095c5ae65bf6d0500a2ba525acb3d829a1af70",
+  "createdAt": "2026-10-06T03:46:09.787Z",
+  "fileSetSHA256": "b6648b906ad10220b7e450eaba450b1553328b148524201ee14ef30f187815c5",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "c9105d178ec314ae6217c5559be2e1a1c22a177e8b26828b3a6262590d26df54"
+      "sha256": "71e5901c234aafe6c574cea900de68386d8c635fbbdfbb6e9be3ebb94c1b384b"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -2285,11 +2285,11 @@
     },
     {
       "path": "dsh-plugins/tool-browser/lib/search-auto.js",
-      "sha256": "5301960663028d873b402c4d76c1097c6709e4520d2e5d63bb44112b2306dd7b"
+      "sha256": "6e198fec07f9a89816387dc4b068f0daf64adf6ce59c82e1426f1e4c560747c7"
     },
     {
       "path": "dsh-plugins/tool-browser/lib/search-policy.js",
-      "sha256": "a0c4f52a0633413ec6ed0f2f56c477713d58099a3d879261fe02bda28eced4b4"
+      "sha256": "b6aea77f9a8cc783441221e0f0f42251ac94dbc63cbf89a10b6ee57a58910e12"
     },
     {
       "path": "dsh-plugins/tool-browser/lib/search-provider.js",
@@ -2321,7 +2321,11 @@
     },
     {
       "path": "dsh-plugins/tool-browser/test/search-policy.test.mjs",
-      "sha256": "4bdc80a36a75443f038aeb0f7b672c2aa361fffad907078259be0502b4033238"
+      "sha256": "6eac6aa8bd9430000fcb79a8b9d8f88c93360a68effd49fd0e7ac90dd2250d92"
+    },
+    {
+      "path": "dsh-plugins/tool-browser/test/search-runtime.test.mjs",
+      "sha256": "bec7559ce351ca23bb26d120186e65a18a96e2c43c5bae58fe839be7f8de1d9f"
     },
     {
       "path": "dsh-plugins/workbench-native/build-client.ps1",
@@ -2717,11 +2721,11 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/package-lock.json",
-      "sha256": "37a3ef15869112adb67b3cc3ca40bfc988505d077ef26db0ad582867df28c331"
+      "sha256": "1289369dc0689beb159f9805613d9b33c995ed502264f01c3ddb52e30c6588f5"
     },
     {
       "path": "packages/dsh-knowledge-studio/package.json",
-      "sha256": "8295ef0f2d978ca2c5453df57282040fe719d87286f2f0368aa758a005b8e9a1"
+      "sha256": "50670514b75dc9223e6cf3089a0493c86057fcc25082691acb733f70b5fb69c4"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/contracts/presentation-metrics.json",
@@ -4593,11 +4597,11 @@
     },
     {
       "path": "packages/dsh-oidc/package-lock.json",
-      "sha256": "addc9bfd2de7c90c9144575ffbd99ca947971c62b7f443285820483760fbf077"
+      "sha256": "3434c50a0321408bf2c24926758e2fff22d37c3db8abcff170eca5a357fa9430"
     },
     {
       "path": "packages/dsh-oidc/package.json",
-      "sha256": "c064dda64ac7bab0a1c84e645095e82699a85499cdf8e6b69b6da1e13c0fe213"
+      "sha256": "13c9541d76b722aec0ab0f3babbef4ba77d7fe70e8452857e9f6fa44a749184d"
     },
     {
       "path": "packages/dsh-oidc/protocol/openapi.yaml",
@@ -4617,7 +4621,7 @@
     },
     {
       "path": "packages/dsh-oidc/schema/enterprise-profile.v1alpha1.schema.json",
-      "sha256": "2e4c2fd33f76351250fad1f21a8dd80b7731092535cc487b71055c1f2302010d"
+      "sha256": "a3611b4f38aa832fc43d0bd31debb55cc9f8808d4cd3bd8a7a6e0f71be5e5ea3"
     },
     {
       "path": "packages/dsh-oidc/scripts/build-host.mjs",
@@ -5221,7 +5225,7 @@
     },
     {
       "path": "scripts/test-eduwork-search.mjs",
-      "sha256": "3d9e763244403efe3775626a149352d551b714f4d11e2e939a0ab47faeb2a7c3"
+      "sha256": "aa6ca69e4f21d7ec90c4622a88f95d62a846ddaa16214c3e6cfde4ae1202516b"
     },
     {
       "path": "scripts/test-eduwork-web.mjs",

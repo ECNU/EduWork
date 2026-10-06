@@ -84,8 +84,6 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-plugins/tool-browser/test/*.test.mjs
-          if ($LASTEXITCODE) { throw 'Managed browser lifecycle checks failed' }
           node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
@@ -93,6 +91,8 @@ jobs:
           node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-plugins/tool-browser/test/*.test.mjs
+          if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs
