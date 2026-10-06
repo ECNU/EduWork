@@ -7,19 +7,30 @@ const MAX_BODY = 512 * 1024
 const REF = /^[A-Za-z_][A-Za-z0-9_]{0,511}$/u
 
 export class EncryptedVault {
-  constructor(path, encryption) {
+  constructor(path, encryption, { onUnreadable = () => {} } = {}) {
     this.path = path
     this.encryption = encryption
+    this.onUnreadable = onUnreadable
     this.queue = Promise.resolve()
   }
   async flush() { await this.queue }
   async read() {
     let bytes
     try { bytes = await readFile(this.path) } catch (error) { if (error.code === 'ENOENT') return Object.create(null); throw error }
-    const value = JSON.parse(this.encryption.decryptString(bytes))
-    if (value.schemaVersion !== 1 || !value.values || typeof value.values !== 'object' || Array.isArray(value.values)) throw new Error('Invalid encrypted vault')
-    for (const [key, secret] of Object.entries(value.values)) if (!REF.test(key) || typeof secret !== 'string') throw new Error('Invalid encrypted vault entry')
-    return Object.assign(Object.create(null), value.values)
+    try {
+      const value = JSON.parse(this.encryption.decryptString(bytes))
+      if (value.schemaVersion !== 1 || !value.values || typeof value.values !== 'object' || Array.isArray(value.values)) throw new Error('Invalid encrypted vault')
+      for (const [key, secret] of Object.entries(value.values)) if (!REF.test(key) || typeof secret !== 'string') throw new Error('Invalid encrypted vault entry')
+      return Object.assign(Object.create(null), value.values)
+    } catch (error) {
+      // A vault this OS account can no longer decrypt (copied install, reset
+      // password, lost key) must not stop the app. Keep the bytes beside it and
+      // continue signed out; I/O errors above still fail instead.
+      const aside = `${this.path}.unreadable-${Date.now()}`
+      await rename(this.path, aside)
+      this.onUnreadable({ reason: error instanceof SyntaxError ? 'format' : /Invalid encrypted vault/.test(error?.message) ? 'schema' : 'decrypt', aside })
+      return Object.create(null)
+    }
   }
   async operation(operation, ref, value) {
     if (typeof ref !== 'string' || !REF.test(ref)) throw new Error('Invalid credential reference')

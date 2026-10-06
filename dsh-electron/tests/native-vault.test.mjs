@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
@@ -23,7 +23,27 @@ test('vault encrypts at rest, serializes writes, and survives a new provider', a
   await vault.operation('unset', 'TEST_4')
   assert.equal((await vault.operation('resolve', 'TEST_4')).configured, false)
   await assert.rejects(vault.operation('set', 'TEST_INVALID', ''))
-  await assert.rejects(new EncryptedVault(path, encryption()).operation('resolve', 'TEST_3'))
+})
+test('a vault this account cannot decrypt is kept aside and the app continues signed out', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-')), path = join(root, 'credentials.encrypted')
+  await new EncryptedVault(path, encryption()).operation('set', 'TEST_OLD', 'synthetic-old-secret')
+  const original = await readFile(path), events = []
+  // A different key stands in for a copied install or a reset OS password.
+  const vault = new EncryptedVault(path, encryption(), { onUnreadable: event => events.push(event) })
+  assert.deepEqual(await vault.operation('resolve', 'TEST_OLD'), { configured: false, writable: true, source: 'os-encrypted-vault' })
+  assert.equal(events.length, 1)
+  assert.equal(events[0].reason, 'decrypt')
+  assert.deepEqual(await readFile(events[0].aside), original, 'the unreadable bytes are preserved, not deleted')
+  await vault.operation('set', 'TEST_NEW', 'synthetic-new-secret')
+  assert.equal((await vault.operation('resolve', 'TEST_NEW')).value, 'synthetic-new-secret')
+  assert.equal(events.length, 1, 'the fresh vault is readable')
+  assert.deepEqual((await readdir(root)).filter(name => name.includes('unreadable')).length, 1)
+})
+test('a vault read error other than a missing file still fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-'))
+  // A directory in place of the file stands in for a locked or unreadable path.
+  await mkdir(join(root, 'credentials.encrypted'))
+  await assert.rejects(new EncryptedVault(join(root, 'credentials.encrypted'), encryption()).operation('resolve', 'TEST'))
 })
 test('native bridge rejects browser origins and unauthenticated callers; external opening is controlled', async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-bridge-test-')), opened = []
