@@ -45,14 +45,24 @@ test('a request uses one settings snapshot and respects cancellation before disp
   options.signal = AbortSignal.abort()
   await assert.rejects(searchWithAvailableProvider(options), {name:'AbortError'})
 })
-test('provider settings come from the active config entry; inactive or missing entries fall back to browser', async () => {
+test('inactive or missing providers ignore ambient credentials and fall back to browser', async () => {
   const row = (id, state, config) => ({ options: { id, config: { stale: true } }, fiber: { state, config } })
   const editor = rows => ({ entries: () => rows })
-  assert.deepEqual(providerSettings(editor([row('other', 2, {}), row('web-search-deepseek', 2, { apiKey: 'test-only' })]), 'web-search-deepseek'), { apiKey: 'test-only' })
   assert.equal(providerSettings(editor([row('web-search-deepseek', 3, { apiKey: 'test-only' })]), 'web-search-deepseek'), undefined)
   assert.equal(providerSettings(undefined, 'web-search-deepseek'), undefined)
-  const {calls, options} = fixture()
-  options.settings = () => providerSettings(editor([]), 'web-search-deepseek')
-  assert.equal(await searchWithAvailableProvider(options), 'browser results')
-  assert.deepEqual(calls.at(-1), ['browser', 'test'])
+  for (const configEditor of [undefined, editor([]), editor([row('other', 2, {})]), editor([row('web-search-deepseek', 3, {})])]) {
+    const {calls, options} = fixture({}, 'ambient-test-key')
+    options.settings = () => providerSettings(configEditor, 'web-search-deepseek')
+    assert.equal(await searchWithAvailableProvider(options), 'browser results')
+    assert.deepEqual(calls, [['browser', 'test']])
+  }
+})
+
+test('cancellation during credential resolution prevents both providers from running', async () => {
+  const controller = new AbortController()
+  const { calls, options } = fixture()
+  options.signal = controller.signal
+  options.resolveCredential = async () => { controller.abort(); return 'test-only' }
+  await assert.rejects(searchWithAvailableProvider(options), { name: 'AbortError' })
+  assert.deepEqual(calls, [])
 })
