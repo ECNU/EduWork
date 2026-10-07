@@ -79,7 +79,7 @@ export async function startNativeBridge({ vault, openExternal, openConfiguration
         response.writeHead(200, { 'Content-Type': 'application/json' }).end(result); return
       }
       if (request.url === '/v1/extensions/workbench') {
-        if (!body || Object.keys(body).length !== 1 || !['status','check-updates','diagnostics','download-update','schedule-update','install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update'].includes(body.action)) throw new Error('Invalid desktop action')
+        if (!body || Object.keys(body).length !== 1 || !['status','check-updates','diagnostics','download-update','schedule-update','install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update','enable-automatic-download','disable-automatic-download'].includes(body.action)) throw new Error('Invalid desktop action')
         if (!workbench) { response.writeHead(501).end(); return }
         response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(await workbench(body.action))); return
       }

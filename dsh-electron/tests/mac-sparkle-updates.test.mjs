@@ -10,12 +10,12 @@ test('Sparkle stays disabled on Windows or in a candidate without a feed', () =>
   assert.equal(startMacSparkleUpdates({ appPath: '/synthetic', version: '0.3.6', platform: 'darwin', loadAddon: fail }), null)
 })
 
-test('explicit checks probe quietly; only download opens the native confirmation', async () => {
+test('explicit checks and downloads use the native driver without native dialogs', async () => {
   const calls = []
   const bridge = startMacSparkleUpdates({ appPath: '/synthetic.app/Contents/Resources/app', version: '0.3.6', platform: 'darwin', enabled: true, feeds:{stable:'https://updates.example.org/stable.xml'},
-    loadAddon: path => { calls.push(path); return { probe:()=>calls.push('probe'),snapshot:()=>({state:'idle'}), start: () => calls.push('start'), check: () => calls.push('check'), setFeed:()=>{} } } })
+    loadAddon: path => { calls.push(path); return { setAutomaticDownload(){},install(){},probe:()=>calls.push('probe'),snapshot:()=>({state:'idle'}), start: () => calls.push('start'), check: () => calls.push('check'), setFeed:()=>{} } } })
   const before = await bridge.action('status')
-  assert.equal(before.update.nativeUI, true)
+  assert.equal(before.update.nativeUI, false)
   assert.equal(before.update.state, 'idle')
   assert.equal((await bridge.action('check-updates')).phase, 'ready')
   assert.deepEqual(calls, [join('/synthetic.app/Contents/Resources/app','native/sparkle.node'), 'start', 'probe'])
@@ -40,7 +40,7 @@ test('a single custom Mac appcast retains the other packaged channel through doc
     const documented = explicitConfigurationDefaults({ schemaVersion: 1, updates }, { updates: defaults })
     const calls = []
     const service = startMacSparkleUpdates({ appPath: '/app', version: '0.3.6-dev.1', platform: 'darwin', enabled: true,
-      feeds: defaults.macFeeds, policy: other, loadAddon: () => ({ probe() {}, snapshot: () => ({ state: 'idle' }),
+      feeds: defaults.macFeeds, policy: other, loadAddon: () => ({ setAutomaticDownload(){},install(){},probe() {}, snapshot: () => ({ state: 'idle' }),
         start: url => calls.push(url), check() {}, setFeed: url => calls.push(url) }) })
     assert.equal((await service.action('status')).update.enabled, true)
     assert.deepEqual(calls, [feeds[other]])
@@ -54,7 +54,7 @@ test('startup and explicit checks leave native dialogs closed and preserve signe
   const {updateCoordinator}=await import('../src/update-coordinator.mjs')
   const calls=[];let policy='stable',saved
   const software=startMacSparkleUpdates({appPath:'/app',version:'0.3.6',platform:'darwin',enabled:true,feeds,
-    onPolicy:async value=>{saved=value},loadAddon:()=>({probe:()=>calls.push('probe'),snapshot:()=>({state:'idle'}),start:url=>calls.push(url),check:()=>calls.push('check'),setFeed:url=>calls.push(url)})})
+    onPolicy:async value=>{saved=value},loadAddon:()=>({setAutomaticDownload(){},install(){},probe:()=>calls.push('probe'),snapshot:()=>({state:'idle'}),start:url=>calls.push(url),check:()=>calls.push('check'),setFeed:url=>calls.push(url)})})
   const content={state:{},snapshot:()=>({enabled:true,state:'current',policy}),check:async()=>calls.push('content'),selectPolicy:async value=>{policy=value},close:async()=>{}}
   const coordinator=updateCoordinator({software,content,version:'0.3.6'})
   await coordinator.action('check-updates-background')
@@ -69,7 +69,7 @@ test('startup and explicit checks leave native dialogs closed and preserve signe
 test('channel persistence failure restores the previous appcast',async()=>{
   const calls=[]
   const bridge=startMacSparkleUpdates({appPath:'/app',version:'0.3.6',platform:'darwin',enabled:true,feeds,
-    onPolicy:async()=>{throw Error('disk full')},loadAddon:()=>({probe:()=>{},snapshot:()=>({state:'idle'}),start:()=>{},check:()=>{},setFeed:url=>calls.push(url)})})
+    onPolicy:async()=>{throw Error('disk full')},loadAddon:()=>({setAutomaticDownload(){},install(){},probe:()=>{},snapshot:()=>({state:'idle'}),start:()=>{},check:()=>{},setFeed:url=>calls.push(url)})})
   await assert.rejects(bridge.action('use-development-updates'),/disk full/)
   assert.deepEqual(calls,[feeds.development,feeds.stable]);assert.equal((await bridge.action('status')).update.policy,'stable')
 })
@@ -77,7 +77,25 @@ test('unsafe or unconfigured channels fail closed before starting native updates
   for(const feeds of [{stable:'http://updates.example.org/a.xml'},{stable:'https://user:password@updates.example.org/a.xml'},{}]){
     let started=false
     const bridge=startMacSparkleUpdates({appPath:'/app',version:'0.3.6',platform:'darwin',enabled:true,feeds,
-      loadAddon:()=>({probe:()=>{},snapshot:()=>({state:'idle'}),start:()=>{started=true},check:()=>{},setFeed:()=>{}})})
+      loadAddon:()=>({setAutomaticDownload(){},install(){},probe:()=>{},snapshot:()=>({state:'idle'}),start:()=>{started=true},check:()=>{},setFeed:()=>{}})})
     assert.equal((await bridge.action('status')).update.enabled,false);assert.equal(started,false)
   }
+})
+
+test('automatic download preference uses Sparkle persistence and never forces an installation', async()=>{
+  const calls=[];let automaticDownload=false
+  const addon={start(){},setFeed(){},probe(){calls.push('probe')},check(){calls.push('check')},
+    snapshot:()=>({state:'idle',automaticDownload}),
+    setAutomaticDownload(value){automaticDownload=value;calls.push(value)},install(){calls.push('install')}}
+  const bridge=startMacSparkleUpdates({appPath:'/app',version:'1',platform:'darwin',enabled:true,feeds,loadAddon:()=>addon})
+  assert.equal((await bridge.action('enable-automatic-download')).update.automaticDownload,true)
+  assert.deepEqual(calls,[true,'probe'])
+  await bridge.action('download-update');assert.equal(calls.at(-1),'check')
+  await bridge.action('disable-automatic-download')
+  assert.equal((await bridge.action('status')).update.automaticDownload,false)
+  await bridge.action('download-update');assert.equal(calls.at(-1),'check')
+  assert.ok(!calls.includes('install'))
+  await bridge.action('install-update');assert.equal(calls.at(-1),'install')
+  addon.setAutomaticDownload=()=>{throw Error('busy')}
+  await assert.rejects(bridge.action('enable-automatic-download'),/busy/)
 })

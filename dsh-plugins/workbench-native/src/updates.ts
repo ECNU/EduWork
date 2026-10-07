@@ -20,9 +20,8 @@ export function createUpdateController(service) {
  const run=async(action)=>{
   if(view.working)return
   const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':''
-  const handoff=view.open&&action==='download-update'&&view.status?.update?.nativeUI
-  publish({error:'',working,...(handoff?{open:false}:{})})
-  try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message,...(handoff?{open:true}:{})})}
+  publish({error:'',working})
+  try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
   finally{if(working)await new Promise(resolve=>setTimeout(resolve,Math.max(0,450-(Date.now()-started))));await read();publish({working:''})}
  }
  void poll()
@@ -52,8 +51,8 @@ export function UpdatePanel({controller}) {
  const {status,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate,state=working||s?.state||status?.phase
  const busy=['checking','downloading','applying','switching'].includes(state)
  const enabled=status&&status.shell!=='web'&&(s?.enabled!==false||c?.enabled)
- const policy=s?.policy||c?.policy||'stable',locked=busy||state==='ready'||['checking','downloading','ready'].includes(c?.state)
- const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.nativeUI||s.policies?.includes(value))
+ const policy=s?.policy||c?.policy||'stable',locked=busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
+ const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
  const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
  const progress=percent(s),determinate=state==='downloading'&&s?.totalBytes>0
  const message=state==='available'?`发现新版本 ${s.latestVersion}`:state==='downloading'?`正在下载 ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
@@ -62,10 +61,13 @@ export function UpdatePanel({controller}) {
  return h('div',{'data-eduwork-update-panel':true},
   h('div',{style:row},
    h('div',{style:{minWidth:0}},
-    h('div',{style:{fontSize:14}},s?.nativeUI?'macOS 应用更新':'自动更新'),
+    h('div',{style:{fontSize:14}},(s?.nativeUpdater||s?.nativeUI)?'macOS 应用更新':'自动更新'),
     h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:'读取当前版本…'),
-    h('p',{style:note},s?.nativeUI?'检查在后台进行；点击下载更新后，在系统窗口确认下载与安装。':enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
+    h('p',{style:note},(s?.nativeUpdater||s?.nativeUI)?'检查在后台进行，不打断当前工作。':enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
    h('button',{type:'button',style:{...button,flexShrink:0},disabled:locked||!enabled,onClick:()=>controller.run('check-updates')},state==='checking'?'检查中…':'检查更新')),
+  s?.enabled&&typeof s.automaticDownload==='boolean'&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
+   h('input',{type:'checkbox',checked:s.automaticDownload,disabled:locked||Boolean(working),onChange:e=>controller.run(e.target.checked?'enable-automatic-download':'disable-automatic-download')}),
+   h('span',null,'自动下载，退出时安装',h('p',{style:note},'下载完成后提醒；不会强制重启。关闭窗口不等于退出应用。'))),
   enabled&&s&&channels.length>1&&h(React.Fragment,null,
    h('div',{role:'radiogroup','aria-label':'更新渠道',style:{display:'flex',gap:8,marginTop:12}},
     ...channels.map(([value,label],index)=>h('button',{
@@ -86,10 +88,10 @@ export function UpdatePanel({controller}) {
     h('span',{style:{flexShrink:0}},determinate?`${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%`:'正在连接…')),
    state==='downloading'&&h('p',{style:note},'下载期间可以继续对话，关闭此面板不影响下载。')),
   state==='ready'&&h('div',{style:{marginTop:12,padding:11,border:`1px solid ${border}`,borderRadius:10}},
-   h('p',{role:'status',style:{margin:0,fontSize:12}},s.installOnNextStart?`版本 ${s.latestVersion} 已校验，将在下次启动时安装。`:`版本 ${s.latestVersion} 已下载并校验。`),
+   h('p',{role:'status',style:{margin:0,fontSize:12}},s.installOnQuit?`版本 ${s.latestVersion} 已下载并校验，将在退出应用时安装。`:s.installOnNextStart?`版本 ${s.latestVersion} 已校验，将在下次启动时安装。`:`版本 ${s.latestVersion} 已下载并校验。`),
    h('p',{style:note},'可继续使用当前版本。重启安装前，请先完成正在运行的任务。'),
    h('div',{style:{display:'flex',justifyContent:'flex-end',flexWrap:'wrap',gap:8,marginTop:10}},
-    !s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
+    !s.installOnQuit&&!s.installOnNextStart&&h('button',{type:'button',style:button,onClick:()=>controller.run('schedule-update')},'下次启动时安装'),
     h('button',{type:'button',style:primary,onClick:()=>controller.run('install-update')},'立即重启更新'))),
   !busy&&(error||s?.error)&&h('p',{role:'alert',style:{...note,marginTop:12,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},error||s.error),
   h(ContentPanel,{controller,content:c,working}),
@@ -101,7 +103,7 @@ export function UpdateFooter({controller,wide=true}) {
  if(!status||status.shell==='web')return null
  // Keep one small blue entry; both download transactions remain in the panel.
  const softwareVisible=s?.enabled&&['available','downloading','ready','applying'].includes(state)
- const label=softwareVisible?(state==='available'?'更新':state==='downloading'?`下载 ${percent(s)}%`:state==='ready'?'重启更新':'正在更新…'):(c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'更新')
+ const label=softwareVisible?(state==='available'?'更新':state==='downloading'?(s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'):(c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'更新')
  const visible=wide&&(softwareVisible||c?.enabled&&['available','downloading','ready','requires_software'].includes(c.state))
  return h(React.Fragment,null,
   visible&&h('button',{type:'button','aria-label':'查看更新',title:'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':softwareVisible?state:c.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),

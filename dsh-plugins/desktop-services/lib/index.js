@@ -38,7 +38,7 @@ export default class DesktopServices extends Service {
     return response.json()
   }
   async workbench(action) {
-    if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update'].includes(action)) throw new Error('Unsupported desktop action')
+    if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update','enable-automatic-download','disable-automatic-download'].includes(action)) throw new Error('Unsupported desktop action')
     const { nativeBridge } = await this.ctx.desktopBoundary.ready
     const response = await fetch(nativeBridge.baseURL + '/v1/extensions/workbench', {
       method: 'POST', headers: { authorization: 'Bearer ' + nativeBridge.token, 'content-type': 'application/json' },
