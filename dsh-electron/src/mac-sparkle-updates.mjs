@@ -22,9 +22,19 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
     if (!feeds[policy]) throw Error('No Sparkle appcast for the selected channel')
     addon.start(feeds[policy])
   } catch (error) { failure = error }
+  const nativeStatus = () => {
+    const status = addon.snapshot()
+    // Appcast links are external input; never expose executable or credential URLs.
+    try {
+      const url = new URL(status.releaseNotesURL)
+      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw Error('Unsafe link')
+      status.releaseNotesURL = url.href
+    } catch { delete status.releaseNotesURL }
+    return status
+  }
   const status = () => ({ shell: 'electron', version, phase: failure ? 'error' : 'ready',
     message: failure ? `macOS 更新组件不可用：${failure.message}` : '检查在后台进行；可选择自动下载并在退出时安装，不会强制重启。',
-    update: { enabled: !failure, nativeUI: false, nativeUpdater: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : addon.snapshot()) } })
+    update: { enabled: !failure, nativeUI: false, nativeUpdater: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : nativeStatus()) } })
   return {
     action: async action => {
       if (action === 'status') return status()

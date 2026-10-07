@@ -12,6 +12,19 @@ static NSString *currentFeed = nil, *updateState = @"idle", *latestVersion = @""
 static void (^installHandler)(void) = nil;
 static void (^downloadChoice)(SPUUserUpdateChoice) = nil;
 static BOOL manualDownload = NO;
+static NSString *releaseNotesURL = @"", *downloadStage = @"";
+static uint64_t downloadedBytes = 0, totalBytes = 0;
+
+static void rememberUpdate(SUAppcastItem *item) {
+  latestVersion = item.displayVersionString;
+  releaseNotesURL = (item.infoURL ?: item.releaseNotesURL).absoluteString ?: @"";
+}
+static void beginDownload() {
+  updateState = @"downloading";
+  downloadStage = @"downloading";
+  downloadedBytes = totalBytes = 0;
+  lastError = @"";
+}
 // Public Sparkle user-driver contract: render status in the workbench, while
 // Sparkle continues to own downloads, signatures, extraction and installation.
 @interface EduworkUserDriver : SPUStandardUserDriver
@@ -19,54 +32,80 @@ static BOOL manualDownload = NO;
 @implementation EduworkUserDriver
 - (void)showUserInitiatedUpdateCheckWithCancellation:(void (^)(void))cancel { updateState = @"checking"; }
 - (void)showUpdateFoundWithAppcastItem:(SUAppcastItem *)item state:(SPUUserUpdateState *)state reply:(void (^)(SPUUserUpdateChoice))reply {
-  latestVersion = item.displayVersionString;
+  rememberUpdate(item);
   if (item.informationOnlyUpdate) {
-    manualDownload = NO; updateState = @"error"; lastError = @"此更新需要前往发行页面查看说明。";
-    reply(SPUUserUpdateChoiceDismiss); return;
+    manualDownload = NO;
+    updateState = @"error";
+    lastError = @"此更新需要前往发行页面查看说明。";
+    reply(SPUUserUpdateChoiceDismiss);
+    return;
   }
   if (state.stage == SPUUserUpdateStageInstalling) {
-    updateState = @"ready"; installHandler = ^{ reply(SPUUserUpdateChoiceInstall); }; manualDownload = NO;
+    updateState = @"ready";
+    installHandler = ^{ reply(SPUUserUpdateChoiceInstall); };
+    manualDownload = NO;
   } else if (manualDownload) {
-    manualDownload = NO; reply(SPUUserUpdateChoiceInstall);
+    manualDownload = NO;
+    reply(SPUUserUpdateChoiceInstall);
   } else {
-    updateState = @"available"; downloadChoice = [reply copy];
+    updateState = @"available";
+    downloadChoice = [reply copy];
   }
 }
+// Release notes are opened via the appcast URL in the shared panel, not HTML in a native dialog.
 - (void)showUpdateReleaseNotesWithDownloadData:(SPUDownloadData *)data {}
 - (void)showUpdateReleaseNotesFailedToDownloadWithError:(NSError *)error {}
 - (void)showUpdateInstalledAndRelaunched:(BOOL)relaunched acknowledgement:(void (^)(void))ack { ack(); }
-- (void)showDownloadInitiatedWithCancellation:(void (^)(void))cancel { updateState = @"downloading"; }
-- (void)showDownloadDidReceiveExpectedContentLength:(uint64_t)length {}
-- (void)showDownloadDidReceiveDataOfLength:(uint64_t)length {}
-- (void)showDownloadDidStartExtractingUpdate { updateState = @"downloading"; }
+- (void)showDownloadInitiatedWithCancellation:(void (^)(void))cancel { beginDownload(); }
+- (void)showDownloadDidReceiveExpectedContentLength:(uint64_t)length { totalBytes = length; }
+- (void)showDownloadDidReceiveDataOfLength:(uint64_t)length { downloadedBytes += length; }
+- (void)showDownloadDidStartExtractingUpdate {
+  updateState = @"downloading";
+  downloadStage = @"extracting";
+  totalBytes = 0;
+}
 - (void)showExtractionReceivedProgress:(double)progress {}
 - (void)showReadyToInstallAndRelaunch:(void (^)(SPUUserUpdateChoice))reply {
-  updateState = @"ready"; installHandler = ^{ reply(SPUUserUpdateChoiceInstall); };
+  updateState = @"ready";
+  installHandler = ^{ reply(SPUUserUpdateChoiceInstall); };
 }
-- (void)showInstallingUpdateWithApplicationTerminated:(BOOL)terminated retryTerminatingApplication:(void (^)(void))retry { updateState = @"applying"; }
+- (void)showInstallingUpdateWithApplicationTerminated:(BOOL)terminated retryTerminatingApplication:(void (^)(void))retry {
+  // A task/unsaved-work guard may refuse termination. Keep Sparkle's retry
+  // available until the host really exits; do not strand the UI in "applying".
+  updateState = terminated ? @"applying" : @"ready";
+  installHandler = terminated ? nil : [retry copy];
+}
 - (void)showUpdateNotFoundWithError:(NSError *)error acknowledgement:(void (^)(void))ack {
   updateState = @"up_to_date"; lastError = @""; ack();
 }
 - (void)showUpdaterError:(NSError *)error acknowledgement:(void (^)(void))ack {
   updateState = @"error"; installHandler = nil; lastError = error.localizedDescription; ack();
 }
-- (void)dismissUpdateInstallation { downloadChoice = nil; manualDownload = NO; if (![updateState isEqualToString:@"ready"]) installHandler = nil; }
+- (void)dismissUpdateInstallation {
+  downloadChoice = nil;
+  manualDownload = NO;
+  if (![updateState isEqualToString:@"ready"]) installHandler = nil;
+}
 @end
 static EduworkUserDriver *userDriver = nil;
 @interface EduworkUpdaterDelegate : NSObject <SPUUpdaterDelegate>
 @end
 @implementation EduworkUpdaterDelegate
 - (void)updater:(SPUUpdater *)updater willDownloadUpdate:(SUAppcastItem *)item withRequest:(NSMutableURLRequest *)request {
-  updateState = @"downloading"; lastError = @"";
+  beginDownload();
 }
 - (void)userDidCancelDownload:(SPUUpdater *)updater { updateState = @"available"; }
 - (BOOL)updater:(SPUUpdater *)updater willInstallUpdateOnQuit:(SUAppcastItem *)item immediateInstallationBlock:(void (^)(void))handler {
-  latestVersion = item.displayVersionString; updateState = @"ready";
-  installHandler = [handler copy]; return YES;
+  rememberUpdate(item);
+  updateState = @"ready";
+  installHandler = [handler copy];
+  return YES;
 }
 - (NSString *)feedURLStringForUpdater:(SPUUpdater *)updater { return currentFeed; }
 - (void)updater:(SPUUpdater *)updater didFindValidUpdate:(SUAppcastItem *)item {
-  updateState = @"available"; latestVersion = item.displayVersionString; lastError = @"";
+  rememberUpdate(item);
+  updateState = item.informationOnlyUpdate ? @"error" : @"available";
+  lastError = item.informationOnlyUpdate ? @"此更新需要前往发行页面查看说明。" : @"";
 }
 - (void)updater:(SPUUpdater *)updater didFinishUpdateCycleForUpdateCheck:(SPUUpdateCheck)check error:(NSError *)error {
   if (error.code == SUNoUpdateError) { updateState = @"up_to_date"; lastError = @""; }
@@ -122,7 +161,7 @@ static napi_value setFeed(napi_env env, napi_callback_info info) {
   std::string feed(length + 1, '\0');
   napi_get_value_string_utf8(env, args[0], feed.data(), feed.size(), &length);
   currentFeed = [NSString stringWithUTF8String:feed.c_str()];
-  updateState = @"idle"; latestVersion = @""; lastError = @"";
+  updateState = @"idle"; latestVersion = @""; lastError = @""; releaseNotesURL = @"";
   [updater resetUpdateCycle];
   napi_value result;
   napi_get_undefined(env, &result);
@@ -171,12 +210,16 @@ static napi_value install(napi_env env, napi_callback_info info) {
 }
 static napi_value snapshot(napi_env env, napi_callback_info info) {
   napi_value result; napi_create_object(env, &result);
-  for (const auto &pair : {std::make_pair("state", updateState), std::make_pair("latestVersion", latestVersion), std::make_pair("error", lastError)}) {
+  for (const auto &pair : {std::make_pair("state", updateState), std::make_pair("latestVersion", latestVersion), std::make_pair("error", lastError), std::make_pair("releaseNotesURL", releaseNotesURL), std::make_pair("downloadStage", downloadStage)}) {
     napi_value value; napi_create_string_utf8(env, pair.second.UTF8String ?: "", NAPI_AUTO_LENGTH, &value);
     napi_set_named_property(env, result, pair.first, value);
   }
   for (const auto &pair : {std::make_pair("automaticDownload", (bool)updater.automaticallyDownloadsUpdates), std::make_pair("installOnQuit", installHandler != nil), std::make_pair("busy", (bool)updater.sessionInProgress)}) {
     napi_value value; napi_get_boolean(env, pair.second, &value);
+    napi_set_named_property(env, result, pair.first, value);
+  }
+  for (const auto &pair : {std::make_pair("downloadedBytes", downloadedBytes), std::make_pair("totalBytes", totalBytes)}) {
+    napi_value value; napi_create_double(env, (double)pair.second, &value);
     napi_set_named_property(env, result, pair.first, value);
   }
   return result;

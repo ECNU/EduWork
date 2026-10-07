@@ -99,3 +99,19 @@ test('automatic download preference uses Sparkle persistence and never forces an
   addon.setAutomaticDownload=()=>{throw Error('busy')}
   await assert.rejects(bridge.action('enable-automatic-download'),/busy/)
 })
+
+
+test('appcast notes survive status transport but unsafe links do not', async () => {
+  let releaseNotesURL
+  const bridge = startMacSparkleUpdates({appPath:'/app',version:'1',platform:'darwin',enabled:true,feeds,
+    loadAddon:()=>({start(){},setFeed(){},probe(){},check(){},install(){},setAutomaticDownload(){},
+      snapshot:()=>({state:'error',releaseNotesURL,error:'Information-only update'})})})
+  for (const url of ['https://example.org/notes', 'http://example.org/notes']) {
+    releaseNotesURL=url
+    assert.equal((await bridge.action('status')).update.releaseNotesURL,url)
+  }
+  for (const url of ['javascript:alert(1)', 'file:///etc/passwd', 'https://user:secret@example.org', '', undefined]) {
+    releaseNotesURL=url
+    assert.equal((await bridge.action('status')).update.releaseNotesURL,undefined)
+  }
+})

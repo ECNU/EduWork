@@ -54,8 +54,8 @@ export function UpdatePanel({controller}) {
  const policy=s?.policy||c?.policy||'stable',locked=busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
  const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
  const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
- const progress=percent(s),determinate=state==='downloading'&&s?.totalBytes>0
- const message=state==='available'?`发现新版本 ${s.latestVersion}`:state==='downloading'?`正在下载 ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
+ const progress=percent(s),determinate=state==='downloading'&&s?.downloadStage!=='extracting'&&s?.totalBytes>0
+ const message=state==='available'?`发现新版本 ${s.latestVersion}`:state==='downloading'?`${s.downloadStage==='extracting'?'正在准备安装':'正在下载'} ${s.latestVersion}`:state==='checking'?'正在检查更新…':state==='switching'?'正在切换更新渠道…':state==='applying'?'正在退出并安装更新…':state==='installed'?'更新已完成':state==='up_to_date'?'当前已是最新版本':null
  // Restore the 0.2 settings layout while sharing native state across both shells.
  // Status-specific content expands below the channel buttons, never in a second UI.
  return h('div',{'data-eduwork-update-panel':true},
@@ -84,8 +84,8 @@ export function UpdatePanel({controller}) {
    h('div',{role:'progressbar','aria-label':state==='downloading'?'更新下载进度':'更新处理进度','aria-valuemin':0,'aria-valuemax':100,...(determinate?{'aria-valuenow':progress}:{}),style:{height:6,marginTop:10,overflow:'hidden',borderRadius:999,background:border}},
     h('div',{'data-eduwork-update-indeterminate':determinate?undefined:true,style:{width:determinate?`${progress}%`:'30%',height:'100%',borderRadius:999,background:accent,transition:determinate?'width .2s ease':undefined}})),
    state==='downloading'&&h('div',{style:{...row,marginTop:6,fontSize:11,color:secondary,fontVariantNumeric:'tabular-nums'}},
-    h('span',{style:{minWidth:0,overflowWrap:'anywhere'}},s?.fileName||'正在下载发行包'),
-    h('span',{style:{flexShrink:0}},determinate?`${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%`:'正在连接…')),
+    h('span',{style:{minWidth:0,overflowWrap:'anywhere'}},s?.downloadStage==='extracting'?'正在解包并校验':s?.fileName||'正在下载发行包'),
+    h('span',{style:{flexShrink:0}},determinate?`${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%`:s?.downloadStage==='extracting'?'请稍候…':'后台下载中…')),
    state==='downloading'&&h('p',{style:note},'下载期间可以继续对话，关闭此面板不影响下载。')),
   state==='ready'&&h('div',{style:{marginTop:12,padding:11,border:`1px solid ${border}`,borderRadius:10}},
    h('p',{role:'status',style:{margin:0,fontSize:12}},s.installOnQuit?`版本 ${s.latestVersion} 已下载并校验，将在退出应用时安装。`:s.installOnNextStart?`版本 ${s.latestVersion} 已校验，将在下次启动时安装。`:`版本 ${s.latestVersion} 已下载并校验。`),
@@ -95,6 +95,7 @@ export function UpdatePanel({controller}) {
     h('button',{type:'button',style:primary,onClick:()=>controller.run('install-update')},'立即重启更新'))),
   !busy&&(error||s?.error)&&h('p',{role:'alert',style:{...note,marginTop:12,color:'var(--dsw-alias-state-error-primary, #a82332)',overflowWrap:'anywhere'}},error||s.error),
   h(ContentPanel,{controller,content:c,working}),
+  s?.releaseNotesURL&&h('a',{href:s.releaseNotesURL,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'查看发行说明'),
   status?.url&&h('a',{href:status.url,target:'_blank',rel:'noopener noreferrer',style:{...button,display:'inline-block',marginTop:12}},'打开下载页面'))
 }
 export function UpdateFooter({controller,wide=true}) {
