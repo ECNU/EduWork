@@ -60,6 +60,7 @@ try {
  assert.equal(await page.getByRole('radio',{name:'开发版',exact:true}).evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(53, 117, 239)')
  const pill=page.locator('[data-eduwork-update-entry]');assert.equal(await pill.innerText(),'更新')
  await pill.click();await page.getByRole('dialog',{name:'更新',exact:true}).getByRole('button',{name:'下载更新',exact:true}).click();await page.keyboard.press('Escape');await page.getByLabel('更新下载进度').waitFor()
+ await page.waitForFunction(()=>document.querySelector('[aria-label="更新下载进度"]')?.getAttribute('aria-valuenow')==='50')
  assert.equal(await page.getByLabel('更新下载进度').getAttribute('aria-valuenow'),'50')
  assert.equal(await page.getByRole('radio',{name:'开发版',exact:true}).isDisabled(),true)
  await page.screenshot({path:join(evidence,'download-blue.png')})
