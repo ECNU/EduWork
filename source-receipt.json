@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-06T05:00:06.362Z",
-  "fileSetSHA256": "250043ef33235b38ce20c367280d75608458147aa621fcd5840d735c4f8103c5",
+  "createdAt": "2026-10-07T08:55:13.608Z",
+  "fileSetSHA256": "c336e197756a32dbf310dab5bb58f251a03b76bc80dfe60ea3af29e72b045fa3",
   "files": [
     {
       "path": ".gitattributes",
@@ -845,7 +845,11 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "68a050a9829514c7827082a7d31265b814769a4d8e8f546e449f7be8052f00f5"
+      "sha256": "91b2340f6abed657b9edce916d1322dc7cf2df0c0151e6067f1101dea6e5fdd6"
+    },
+    {
+      "path": "dsh-electron/scripts/host-quit-adaptation.mjs",
+      "sha256": "cadff9e760f2301c7453d293fc5897f39f84f09cffa78146a3e7545766162384"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -1042,6 +1046,10 @@
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
       "sha256": "a5947adae3167fbbb671ec29abce02c813c692f80114186bcacd092dd3592edb"
+    },
+    {
+      "path": "dsh-electron/tests/host-quit-adaptation.test.mjs",
+      "sha256": "6b5024219722dac5fd6cd4a9e98f44b73ee3770058772ba47149559e3c56ec66"
     },
     {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",
