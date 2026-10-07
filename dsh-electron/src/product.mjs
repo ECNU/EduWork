@@ -3,7 +3,7 @@ import { TaskNotifications, nativeNotificationAdapter } from './task-notificatio
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
-import { join, isAbsolute, dirname } from 'node:path'
+import { join, isAbsolute, dirname, basename } from 'node:path'
 import { execFile } from 'node:child_process'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
@@ -184,7 +184,8 @@ async function prepareDesktop() {
   // process.versions directly. Report the version of this running shell.
   process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
-  const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
+  const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage, {
+    onUnreadable: ({ reason, aside }) => desktopHostLog(JSON.stringify({ component: 'credential-vault', event: 'unreadable', reason, kept: basename(aside) }) + '\n') })
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
