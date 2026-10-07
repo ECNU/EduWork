@@ -20,8 +20,9 @@ export function createUpdateController(service) {
  const run=async(action)=>{
   if(view.working)return
   const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':''
-  publish({error:'',working})
-  try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
+  const handoff=view.open&&action==='download-update'&&view.status?.update?.nativeUI
+  publish({error:'',working,...(handoff?{open:false}:{})})
+  try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message,...(handoff?{open:true}:{})})}
   finally{if(working)await new Promise(resolve=>setTimeout(resolve,Math.max(0,450-(Date.now()-started))));await read();publish({working:''})}
  }
  void poll()
@@ -63,7 +64,7 @@ export function UpdatePanel({controller}) {
    h('div',{style:{minWidth:0}},
     h('div',{style:{fontSize:14}},s?.nativeUI?'macOS 应用更新':'自动更新'),
     h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:'读取当前版本…'),
-    h('p',{style:note},s?.nativeUI?'点击检查后，在系统更新窗口确认下载与安装；配置和数据保留在用户目录。':enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
+    h('p',{style:note},s?.nativeUI?'检查在后台进行；点击下载更新后，在系统窗口确认下载与安装。':enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
    h('button',{type:'button',style:{...button,flexShrink:0},disabled:locked||!enabled,onClick:()=>controller.run('check-updates')},state==='checking'?'检查中…':'检查更新')),
   enabled&&s&&channels.length>1&&h(React.Fragment,null,
    h('div',{role:'radiogroup','aria-label':'更新渠道',style:{display:'flex',gap:8,marginTop:12}},

@@ -24,13 +24,18 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
     addon.start(feeds[policy])
   } catch (error) { failure = error }
   const status = () => ({ shell: 'electron', version, phase: failure ? 'error' : 'ready',
-    message: failure ? `macOS 更新组件不可用：${failure.message}` : 'macOS 应用更新由 Sparkle 管理；检查、下载和安装会在系统窗口中进行。',
+    message: failure ? `macOS 更新组件不可用：${failure.message}` : 'macOS 应用更新由 Sparkle 管理；检查在后台进行；确认下载与安装时才打开系统窗口。',
     update: { enabled: !failure, nativeUI: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : addon.snapshot()) } })
   return {
     action: async action => {
       if (action === 'status') return status()
-      // Probe only: the native delegate reports availability without a dialog.
-      if (action === 'check-updates-background') { if (!failure) addon.probe(); return status() }
+      // Both startup and explicit checks report through the shared workbench UI.
+      // Only the download action hands off to Sparkle's native confirmation.
+      if (action === 'check-updates' || action === 'check-updates-background') {
+        if (failure && action === 'check-updates') throw Error(`macOS 更新组件不可用：${failure.message}`)
+        if (!failure) addon.probe()
+        return status()
+      }
       if (action === 'use-stable-updates' || action === 'use-development-updates') {
         if (failure) throw failure
         const next = action === 'use-development-updates' ? 'development' : 'stable'
@@ -40,7 +45,7 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
         policy = next
         return status()
       }
-      if (action === 'check-updates' || action === 'download-update') {
+      if (action === 'download-update') {
         if (failure) throw Error(`macOS 更新组件不可用：${failure.message}`)
         addon.check(); return status()
       }

@@ -10,16 +10,17 @@ test('Sparkle stays disabled on Windows or in a candidate without a feed', () =>
   assert.equal(startMacSparkleUpdates({ appPath: '/synthetic', version: '0.3.6', platform: 'darwin', loadAddon: fail }), null)
 })
 
-test('manual check delegates once to native Sparkle without inventing Windows update states', async () => {
+test('explicit checks probe quietly; only download opens the native confirmation', async () => {
   const calls = []
   const bridge = startMacSparkleUpdates({ appPath: '/synthetic.app/Contents/Resources/app', version: '0.3.6', platform: 'darwin', enabled: true, feeds:{stable:'https://updates.example.org/stable.xml'},
-    loadAddon: path => { calls.push(path); return { probe:()=>{},snapshot:()=>({state:'idle'}), start: () => calls.push('start'), check: () => calls.push('check'), setFeed:()=>{} } } })
+    loadAddon: path => { calls.push(path); return { probe:()=>calls.push('probe'),snapshot:()=>({state:'idle'}), start: () => calls.push('start'), check: () => calls.push('check'), setFeed:()=>{} } } })
   const before = await bridge.action('status')
   assert.equal(before.update.nativeUI, true)
   assert.equal(before.update.state, 'idle')
   assert.equal((await bridge.action('check-updates')).phase, 'ready')
-  assert.deepEqual(calls, [join('/synthetic.app/Contents/Resources/app','native/sparkle.node'), 'start', 'check'])
+  assert.deepEqual(calls, [join('/synthetic.app/Contents/Resources/app','native/sparkle.node'), 'start', 'probe'])
   await bridge.action('download-update');assert.equal(calls.at(-1),'check')
+  assert.equal(calls.filter(call=>call==='check').length,1)
 })
 
 test('missing native framework disables updates without aborting the desktop', async () => {
@@ -49,17 +50,17 @@ test('a single custom Mac appcast retains the other packaged channel through doc
     assert.deepEqual(editableMacUpdateConfiguration({ feeds, updates: documented.updates, version: '0.3.6-dev.1' }), defaults)
   }
 })
-test('startup leaves native dialogs closed; explicit checks and channels preserve signed content updates', async()=>{
+test('startup and explicit checks leave native dialogs closed and preserve signed content updates', async()=>{
   const {updateCoordinator}=await import('../src/update-coordinator.mjs')
   const calls=[];let policy='stable',saved
   const software=startMacSparkleUpdates({appPath:'/app',version:'0.3.6',platform:'darwin',enabled:true,feeds,
-    onPolicy:async value=>{saved=value},loadAddon:()=>({probe:()=>{},snapshot:()=>({state:'idle'}),start:url=>calls.push(url),check:()=>calls.push('check'),setFeed:url=>calls.push(url)})})
+    onPolicy:async value=>{saved=value},loadAddon:()=>({probe:()=>calls.push('probe'),snapshot:()=>({state:'idle'}),start:url=>calls.push(url),check:()=>calls.push('check'),setFeed:url=>calls.push(url)})})
   const content={state:{},snapshot:()=>({enabled:true,state:'current',policy}),check:async()=>calls.push('content'),selectPolicy:async value=>{policy=value},close:async()=>{}}
   const coordinator=updateCoordinator({software,content,version:'0.3.6'})
   await coordinator.action('check-updates-background')
-  assert.deepEqual(calls,[feeds.stable,'content'])
+  assert.deepEqual(calls,[feeds.stable,'probe','content'])
   await coordinator.action('check-updates')
-  assert.deepEqual(calls.slice(-2),['check','content'])
+  assert.deepEqual(calls.slice(-2),['probe','content'])
   const status=await coordinator.action('use-development-updates')
   assert.equal(saved,'development');assert.equal(status.update.policy,'development');assert.equal(status.contentUpdate.policy,'development')
   assert.equal(calls.at(-1),feeds.development)

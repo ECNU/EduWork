@@ -105,6 +105,13 @@ try {
  content={...content,state:'current'};await page.reload()
  await page.getByRole('radio',{name:'仅公测版',exact:true}).click()
  await page.waitForFunction(()=>document.querySelector('[role=radio][aria-checked=true]')?.textContent==='仅公测版')
+ // Checking remains inside the shared panel; native download confirmation replaces it.
+ await page.waitForFunction(()=>document.querySelector('[data-eduwork-update-entry]')?.textContent==='更新')
+ await pill.click();await dialog.waitFor()
+ assert.equal(await dialog.getByText(/发现新版本/).count(),1)
+ await dialog.getByRole('button',{name:'下载更新',exact:true}).click()
+ await dialog.waitFor({state:'detached'})
+ await page.getByLabel('更新下载进度').waitFor()
  await page.screenshot({path:join(evidence,'mac-software-and-content.png')})
  assert.deepEqual(errors,[])
  await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,sourceLayout:'0.2.0 / d8691cb UpdateSettings',channelSwitch:true,keyboardSwitch:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
