@@ -140,6 +140,9 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const desktop = [
     ...shell === 'electron' ? [
       { id: 'directory-picker', disabled: true },
+      // Legacy desktop Hosts also insert these explicit entries beside auto.
+      { id: 'directory-picker-native', disabled: true },
+      { id: 'ui-directory-picker-native', disabled: true },
       { insert: [
         { id: 'eduwork-directory-picker', name: '@eduwork/desktop-services/lib/directory-picker.js' },
         { id: 'eduwork-directory-flow', name: '@deepseek-ai/dsh-client-ui-directory-picker-native' },

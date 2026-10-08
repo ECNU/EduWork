@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-08T16:42:53.767Z",
-  "fileSetSHA256": "80d2867478f0d84882ace953a238cb4afc822d4d39195b4150abe78f1215f9cf",
+  "fileSetSHA256": "7be91e50c67b0bebced027e2e47a2b40beaae580f8e6d399f50570d20a31b630",
   "files": [
     {
       "path": ".gitattributes",
@@ -1245,7 +1245,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "d7076fe0a986bfd27ceb1cf69e165c2eb3053511ae2637b7db4d6a55d6e9b663"
+      "sha256": "52e42086f3ed0e0810c8b1bcb5d4e7617057a1316831cd77454465b0f5c93432"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1345,7 +1345,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "625bdaf657d0272e945f915537729ea9213c7f32c787c63718f10db49f6e73c7"
+      "sha256": "1460559a623914002c979741bb75927c29fa462e228a67feffe549ac1182fd0c"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
