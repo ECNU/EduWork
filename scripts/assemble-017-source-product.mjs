@@ -3,10 +3,13 @@ import { mkdir, readFile, writeFile, readdir, access } from 'node:fs/promises'
 import { copyProductTree as cp } from './portable-product-links.mjs'
 import { resolve, join, relative, isAbsolute } from 'node:path'
 import { parseArgs } from 'node:util'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
+import { createRequire } from 'node:module'
 import { installProductHost } from '../dsh-host/install-product-host.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { copySourceSkills } from './copy-source-skills.mjs'
+import { mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
+import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import assert from 'node:assert/strict'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
@@ -33,6 +36,7 @@ await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
 const modules = join(paths.output, 'd/node_modules')
+const runtimePatches = [await patchSessionSearchRuntime(modules)]
 const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's lock, and this output is explicitly not a release.
@@ -65,21 +69,16 @@ const insert = [
   ...distribution.plugins.map(row => ({ id: row.id, name: row.name, config: row.source === 'dsh-plugins/brand-settings-native' ? distribution.brand : row.config ?? {} })),
 ]
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
-// A config patch for a plugin inserted here merges into that entry: a separate config
-// entry would replace the whole config, including the user's organizations.
-const patches = distribution.patches.filter(patch => {
-  const base = patch.config && !patch.name && insert.find(entry => entry.id === patch.id)
-  if (base) base.config = { ...base.config, ...patch.config }
-  return !base
-})
-const composition = [...patches, ...exclusions, { insert }]
+const require = createRequire(join(paths.runtime, 'package.json'))
+const { composeEntries } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
+const composition = [...mergeDistributionConfigPatches([{ insert }], distribution.patches, composeEntries), ...exclusions]
 // Memory's published bundle retains its old entry ID; the candidate uses the
 // stable settings namespace as the native entry identity.
 const memoryBundle = join(modules, '@eduwork/dsh-memory/cordis.patch.yml')
 await writeFile(memoryBundle, (await readFile(memoryBundle, 'utf8')).replace('id: local-memory\n', 'id: memories\n').replace('id: local-memory\r\n', 'id: memories\n'))
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.core.17', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
-  runtimeMode: 'npm', pluginMode: 'source-qualification', published: false,
+  runtimeMode: 'npm', runtimePatches, pluginMode: 'source-qualification', published: false,
   bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature'],
   sourcePackages, externalPackages: [literatureLock], omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
 }

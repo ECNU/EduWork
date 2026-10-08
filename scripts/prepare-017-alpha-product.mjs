@@ -4,6 +4,7 @@ import { cp, mkdir, readFile, writeFile, rm, access } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { parseArgs } from 'node:util'
 import { createRequire } from 'node:module'
+import { pathToFileURL } from 'node:url'
 import { execFileSync } from 'node:child_process'
 import { parse } from '../dsh-host/vendor/jsonc-parser/parser.js'
 import { parseUserConfig } from '../dsh-host/user-config.mjs'
@@ -11,6 +12,7 @@ import { documentConfiguration } from '../dsh-host/configuration-documentation.m
 import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
+import { mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -33,13 +35,14 @@ const pluginNames=generic.plugins.map(plugin=>plugin.name)
 if(values.edition){
   const edition=resolve(values.edition), distribution=await read(join(edition,'edition/distribution.json'))
   const require=createRequire(join(product,'d/package.json')), {build}=require('esbuild')
-  const runtime=await read(join(product,'d/package.json')), composition=await read(join(product,'composition.json'))
+  const runtime=await read(join(product,'d/package.json'))
+  let composition=await read(join(product,'composition.json'))
   const entries=[]
   for(const plugin of distribution.plugins){
     const destination=join(product,'d/node_modules',plugin.name)
     await cp(join(edition,plugin.source),destination,{recursive:true})
     const manifest=await read(join(destination,'package.json'))
-    manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion)
+    manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion,{editionOwned:true})
     manifest.private=true
     await save(join(destination,'package.json'),manifest)
     runtime.dependencies[plugin.name]=manifest.version
@@ -48,15 +51,9 @@ if(values.edition){
       nodePaths:[join(product,'d/node_modules')],external:['react','react/*','@deepseek-ai/cordis','@deepseek-ai/dsh-client-ui-slots','@deepseek-ai/dsh-client-store'],
       banner:{js:`window.__ModuleLoader__.load({id:${JSON.stringify(plugin.name)},factory:(require)=>{var module={exports:{}};var exports=module.exports;`},footer:{js:'return module.exports;}});'}})
   }
-  // A config patch for an existing plugin merges into that plugin's entry: a separate
-  // config entry would replace the whole config, including the user's organizations.
-  const patches=[]
-  for(const patch of distribution.patches??[]){
-    const base=patch.config&&!patch.name&&composition.find(entry=>entry?.id===patch.id&&entry.name)
-    if(base) base.config={...base.config,...patch.config}
-    else patches.push(patch)
-  }
-  composition.push({insert:entries},...patches,{id:'eduwork-brand-settings',config:distribution.brand})
+  const {composeEntries}=await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
+  composition=mergeDistributionConfigPatches([...composition,{insert:entries}],
+    [...distribution.patches??[],{id:'eduwork-brand-settings',config:distribution.brand}],composeEntries)
   // Retired edition tools stay disabled above saved activation preferences,
   // including on the official profile reload. Keep this separate from defaults.
   const retired=distribution.retiredPluginIds??[]
