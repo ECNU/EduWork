@@ -52,6 +52,14 @@ export async function assembleEduworkWeb({
     for (const key of ['id', 'brand', 'capabilities']) {
       if (Object.hasOwn(selected, key)) distribution[key] = selected[key]
     }
+    // Explicit replacements retain a single user-facing Skill name, matching
+    // the existing PowerShell edition overlay contract.
+    for (const skill of (selected.skills ?? []).filter(skill => skill.replace === true)) {
+      if ((distribution.skills ?? []).filter(coreSkill => coreSkill.name === skill.name).length !== 1) {
+        throw new Error(`Skill replacement must select one core skill: ${skill.name}`)
+      }
+      distribution.skills = distribution.skills.filter(coreSkill => coreSkill.name !== skill.name)
+    }
     for (const key of ['plugins', 'skills', 'resources', 'patches']) {
       distribution[key] = [...(distribution[key] ?? []), ...(selected[key] ?? [])]
     }

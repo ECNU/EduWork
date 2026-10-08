@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-08T13:48:46.432Z",
-  "fileSetSHA256": "0b24851ffa98971847c8253729595a166d489ee5bb43ef65d319376806397d82",
+  "createdAt": "2026-10-08T14:13:19.716Z",
+  "fileSetSHA256": "3ae9a77eb6eb0867cccaa31b64a544a664b5c4d5ccb9d08acc3a30dd4b2e7a99",
   "files": [
     {
       "path": ".gitattributes",
@@ -5045,7 +5045,7 @@
     },
     {
       "path": "scripts/assemble-eduwork-web.mjs",
-      "sha256": "1f7a11bb7decf8625be09d31c2875f39b20a32d754b8dbe5aa98a506054e70b2"
+      "sha256": "9d968a9e1b83fb556dfc14f9d2f8a0a08091efc8a105ea329f35bfb024d51fe5"
     },
     {
       "path": "scripts/assemble-eduwork-web.ps1",
@@ -5582,6 +5582,10 @@
     {
       "path": "tests/download-cache.test.mjs",
       "sha256": "4614867a76bd47aad4e8a4880787fc907d2ecb0f88f6396d8ae39d8555dfa087"
+    },
+    {
+      "path": "tests/edition-skill-replacement.test.mjs",
+      "sha256": "5e44d622453ce2b133f6f72fe46f67e3ee8cdb0e807bd1ffb3532532f9efea9a"
     },
     {
       "path": "tests/eduwork-assembly-policy.test.mjs",
