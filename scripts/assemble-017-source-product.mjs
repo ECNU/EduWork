@@ -8,7 +8,7 @@ import { createRequire } from 'node:module'
 import { installProductHost } from '../dsh-host/install-product-host.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { copySourceSkills } from './copy-source-skills.mjs'
-import { mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
+import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import assert from 'node:assert/strict'
 
@@ -69,17 +69,19 @@ const insert = [
   ...distribution.plugins.map(row => ({ id: row.id, name: row.name, config: row.source === 'dsh-plugins/brand-settings-native' ? distribution.brand : row.config ?? {} })),
 ]
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
-const require = createRequire(join(paths.runtime, 'package.json'))
-const { composeEntries } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
-const composition = [...mergeDistributionConfigPatches([{ insert }], distribution.patches, composeEntries), ...exclusions]
 // Memory's published bundle retains its old entry ID; the candidate uses the
 // stable settings namespace as the native entry identity.
 const memoryBundle = join(modules, '@eduwork/dsh-memory/cordis.patch.yml')
 await writeFile(memoryBundle, (await readFile(memoryBundle, 'utf8')).replace('id: local-memory\n', 'id: memories\n').replace('id: local-memory\r\n', 'id: memories\n'))
+const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature']
+const require = createRequire(join(paths.output, 'd/package.json'))
+const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
+const lowerLayers = await loadDistributionBundleLayers(join(paths.output, 'd'), bundles, boot)
+const composition = [...mergeDistributionConfigPatches([{ insert }], distribution.patches, boot.composeEntries, lowerLayers), ...exclusions]
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.core.17', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'source-qualification', published: false,
-  bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature'],
+  bundles,
   sourcePackages, externalPackages: [literatureLock], omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
 }
 await writeFile(join(paths.output, 'assembly.json'), JSON.stringify(identity, null, 2) + '\n')

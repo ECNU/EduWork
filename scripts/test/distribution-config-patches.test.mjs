@@ -6,7 +6,7 @@ import { cp, mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
-import { mergeDistributionConfigPatches } from '../distribution-config-patches.mjs'
+import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from '../distribution-config-patches.mjs'
 import { prepareProductProfile } from '../../dsh-host/product-profile.mjs'
 
 const runtime = process.env.EDUWORK_TEST_RUNTIME
@@ -120,7 +120,35 @@ test('group replacement retains the official stale-target skip behavior', { skip
   const expected = composeEntries([composition, patches], message => expectedWarnings.push(message))
   assert.deepEqual(compose(composition, patches, actualWarnings), expected)
   assert.deepEqual(actualWarnings, expectedWarnings)
+  const lowerWarnings = []
+  const output = mergeDistributionConfigPatches([], patches, composeEntries, [composition])
+  assert.deepEqual(composeEntries([composition, output], message => lowerWarnings.push(message)), expected)
+  assert.deepEqual(lowerWarnings, expectedWarnings, 'bundle-layer targets retain the same stale-index behavior')
   assert.equal(expected[0].config[0].disabled, undefined)
+})
+
+test('installed bundle defaults are retained without copying or mutating bundle entries', { skip: !runtime }, async () => {
+  const boot = await import(pathToFileURL(createRequire(join(runtime, 'package.json')).resolve('@deepseek-ai/dsh-app-boot')).href)
+  const layers = await loadDistributionBundleLayers(runtime, ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app'], boot)
+  const before = structuredClone(layers)
+  const defaults = composeEntries(layers), warnings = []
+  const patches = mergeDistributionConfigPatches([], [
+    { id: 'agent-default-model', config: { provider: 'synthetic-provider' }, disabled: true },
+    { id: 'agent-default-model', name: 'wrong-package', config: { model: 'wrong-model' }, disabled: false },
+    { id: 'agent-default-model', config: { model: 'synthetic-model' } },
+    { id: 'session-title-llm', config: { maxOutputTokens: 2048 } },
+    { id: 'session-title-llm', config: { timeoutMs: 1000 } },
+  ], composeEntries, layers)
+  const entries = composeEntries([...layers, patches], message => warnings.push(message))
+  assert.deepEqual(entries.find(row => row.id === 'agent-default-model').config,
+    { ...defaults.find(row => row.id === 'agent-default-model').config, provider: 'synthetic-provider', model: 'synthetic-model' })
+  assert.equal(entries.find(row => row.id === 'agent-default-model').disabled, true)
+  assert.deepEqual(entries.find(row => row.id === 'session-title-llm').config,
+    { ...defaults.find(row => row.id === 'session-title-llm').config, maxOutputTokens: 2048, timeoutMs: 1000 })
+  assert.equal(warnings.length, 1)
+  assert.match(warnings[0], /name mismatch/)
+  assert.equal(patches.some(row => row.insert), false, 'bundle entries are not copied into the product composition')
+  assert.deepEqual(layers, before, 'lower bundle layers remain read-only')
 })
 
 test('real edition preparation preserves user organizations through product profile generation', { skip: !process.env.EDUWORK_TEST_PRODUCT }, async t => {
@@ -133,7 +161,11 @@ test('real edition preparation preserves user organizations through product prof
   await writeFile(join(edition, 'edition/distribution.json'), JSON.stringify({
     id: identity.distribution, brand: identity.brand, capabilities: identity.capabilities,
     plugins: [], skills: [], resources: [],
-    patches: [{ id: 'enterprise-oidc', config: { backend: 'desktop' }, disabled: true }],
+    patches: [
+      { id: 'enterprise-oidc', config: { backend: 'desktop' }, disabled: true },
+      { id: 'agent-default-model', config: { provider: 'synthetic-provider' } },
+      { id: 'session-title-llm', config: { maxOutputTokens: 2048 }, disabled: true },
+    ],
   }))
   const git = args => execFileSync('git', ['-C', edition, ...args], { stdio: 'pipe', windowsHide: true })
   git(['init'])
@@ -160,4 +192,42 @@ test('real edition preparation preserves user organizations through product prof
   assert.equal(account.config.uiMode, 'external')
   assert.equal(account.disabled, true)
   assert.equal(entries.find(entry => entry.id === 'chatecnu-brand').config.product.name, 'Synthetic user product')
+  const defaults = boot.composeEntries(profile.layers.map(layer => layer.patches))
+  assert.deepEqual(entries.find(entry => entry.id === 'agent-default-model').config,
+    { ...defaults.find(entry => entry.id === 'agent-default-model').config, provider: 'synthetic-provider' })
+  assert.deepEqual(entries.find(entry => entry.id === 'session-title-llm').config,
+    { ...defaults.find(entry => entry.id === 'session-title-llm').config, maxOutputTokens: 2048 })
+  assert.equal(entries.find(entry => entry.id === 'session-title-llm').disabled, true)
+})
+
+test('real source assembly retains installed bundle defaults and disabled instructions', {
+  skip: !runtime || !process.env.EDUWORK_TEST_SOURCE || !process.env.EDUWORK_TEST_DEPENDENCIES || !process.env.EDUWORK_TEST_HOST,
+}, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-assembly-config-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const source = join(root, 'source'), product = join(root, 'product')
+  await cp(process.env.EDUWORK_TEST_SOURCE, source, { recursive: true })
+  const distributionPath = join(source, 'config/distributions/generic.json')
+  const distribution = JSON.parse(await readFile(distributionPath, 'utf8'))
+  distribution.patches.push(
+    { id: 'agent-default-model', config: { provider: 'synthetic-provider' } },
+    { id: 'session-title-llm', config: { maxOutputTokens: 2048 }, disabled: true },
+  )
+  await writeFile(distributionPath, JSON.stringify(distribution))
+  execFileSync(process.execPath, [fileURLToPath(new URL('../assemble-017-source-product.mjs', import.meta.url)),
+    '--runtime', runtime, '--source', source, '--dependencies', process.env.EDUWORK_TEST_DEPENDENCIES,
+    '--host', process.env.EDUWORK_TEST_HOST, '--output', product], { stdio: 'pipe', windowsHide: true })
+  const boot = await import(pathToFileURL(createRequire(join(product, 'd/package.json')).resolve('@deepseek-ai/dsh-app-boot')).href)
+  const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+  const layers = await loadDistributionBundleLayers(join(product, 'd'), identity.bundles, boot)
+  const defaults = boot.composeEntries(layers)
+  const composition = JSON.parse(await readFile(join(product, 'composition.json'), 'utf8'))
+  const entries = boot.composeEntries([...layers, composition])
+  assert.deepEqual(entries.find(entry => entry.id === 'agent-default-model').config,
+    { ...defaults.find(entry => entry.id === 'agent-default-model').config, provider: 'synthetic-provider' })
+  assert.deepEqual(entries.find(entry => entry.id === 'session-title-llm').config,
+    { ...defaults.find(entry => entry.id === 'session-title-llm').config, maxOutputTokens: 2048 })
+  assert.equal(entries.find(entry => entry.id === 'session-title-llm').disabled, true)
+  assert.equal(entries.find(entry => entry.id === 'deepseek-account').disabled, true)
+  assert.equal(composition.some(row => row.insert?.some(entry => entry.id === 'agent-default-model')), false)
 })

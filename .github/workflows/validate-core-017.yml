@@ -154,6 +154,9 @@ jobs:
           node core/scripts/assemble-017-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
           if ($LASTEXITCODE) { throw 'Source product assembly failed' }
           $env:EDUWORK_TEST_PRODUCT = "$env:RUNNER_TEMP/source-product"
+          $env:EDUWORK_TEST_SOURCE = "$env:RUNNER_TEMP/source-stage"
+          $env:EDUWORK_TEST_DEPENDENCIES = "$env:RUNNER_TEMP/source-deps"
+          $env:EDUWORK_TEST_HOST = "$env:RUNNER_TEMP/native-host"
           node --test core/scripts/test/distribution-config-patches.test.mjs
           if ($LASTEXITCODE) { throw 'Assembled edition configuration checks failed' }
           node core/scripts/probe-017-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"

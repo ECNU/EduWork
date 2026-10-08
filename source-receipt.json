@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-08T14:00:13.820Z",
-  "fileSetSHA256": "dd7dc8cde1fb8c4c0ec9b0fe772893881cad55995ab662e9ef2e39d557ecf1f7",
+  "createdAt": "2026-10-08T14:39:16.172Z",
+  "fileSetSHA256": "a653ed49cbab6fe336c825bf555930f15fd4da08e06f76e8c921a93fa614c27f",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "52a0513e4403f4959517db7c03f34d122246122a292894f4edfd67d8dd4da7e3"
+      "sha256": "1594422c876977d7d82ac08fd83a095968386211a38e96950e4facf76ca27edf"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -4913,7 +4913,7 @@
     },
     {
       "path": "scripts/assemble-017-source-product.mjs",
-      "sha256": "871d79f9c8d7b82ce23c61ae9c40c1358f52bd9af846aa6779e5cac841ddf093"
+      "sha256": "75714bc2d9f9f75f8c16595fa84354130e05cf784a8b93adb8179b634e6b7415"
     },
     {
       "path": "scripts/assemble-desktop-candidate.ps1",
@@ -5013,7 +5013,7 @@
     },
     {
       "path": "scripts/distribution-config-patches.mjs",
-      "sha256": "44f16c2fa02fddf7ceee62d58ccd03c90bda9f3c54829026b2636df4100339f0"
+      "sha256": "cf95217b3202d1d01248109b8601d8e9b34a671c75725691f5fec7252b7df01a"
     },
     {
       "path": "scripts/github-update-manifest.mjs",
@@ -5133,7 +5133,7 @@
     },
     {
       "path": "scripts/prepare-017-alpha-product.mjs",
-      "sha256": "aa703bc21ee9a56c2ab78a02f32e184110ad406faa35c4bfce9f09e57b02defb"
+      "sha256": "19ca2db4b536a500e7fe89b4039c58b498117c8d1488a61c053c1c2dfc8d1a14"
     },
     {
       "path": "scripts/prepare-desktop-product.ps1",
@@ -5241,7 +5241,7 @@
     },
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
-      "sha256": "24a1aa5aa3afeac51a27602db7ab33cb0140dc57d4d6d1d07dbf32f64e5cce29"
+      "sha256": "add1561e4f774f6b6beb15f4b5bcd219df8585e7c7b586eaa5f94ad470e01dbc"
     },
     {
       "path": "scripts/test/macos-update-feed.test.mjs",

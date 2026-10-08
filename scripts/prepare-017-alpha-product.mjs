@@ -12,7 +12,7 @@ import { documentConfiguration } from '../dsh-host/configuration-documentation.m
 import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
-import { mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
+import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -51,9 +51,10 @@ if(values.edition){
       nodePaths:[join(product,'d/node_modules')],external:['react','react/*','@deepseek-ai/cordis','@deepseek-ai/dsh-client-ui-slots','@deepseek-ai/dsh-client-store'],
       banner:{js:`window.__ModuleLoader__.load({id:${JSON.stringify(plugin.name)},factory:(require)=>{var module={exports:{}};var exports=module.exports;`},footer:{js:'return module.exports;}});'}})
   }
-  const {composeEntries}=await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
+  const boot=await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
+  const lowerLayers=await loadDistributionBundleLayers(join(product,'d'),identity.bundles,boot)
   composition=mergeDistributionConfigPatches([...composition,{insert:entries}],
-    [...distribution.patches??[],{id:'eduwork-brand-settings',config:distribution.brand}],composeEntries)
+    [...distribution.patches??[],{id:'eduwork-brand-settings',config:distribution.brand}],boot.composeEntries,lowerLayers)
   // Retired edition tools stay disabled above saved activation preferences,
   // including on the official profile reload. Keep this separate from defaults.
   const retired=distribution.retiredPluginIds??[]
