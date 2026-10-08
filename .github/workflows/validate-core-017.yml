@@ -7,6 +7,8 @@ on:
       - 'config/desktop-build.json'
       - 'scripts/desktop-build-plan.mjs'
       - 'dsh-host/prepare-native.mjs'
+      - 'dsh-host/prepare.mjs'
+      - 'dsh-host/test/prepare.test.mjs'
       - 'dsh-host/distribution-policy.mjs'
       - 'third_party/dsh-literature/**'
       - 'dsh-host/test/native-020.test.mjs'
@@ -45,6 +47,29 @@ on:
 permissions:
   contents: read
 jobs:
+  legacy-directory-picker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/checkout@v4
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: fb2c4b9e698e30edb738bca4cf0618587db7d203
+          path: legacy-upstream
+          persist-credentials: false
+      - name: Verify the legacy desktop picker composition against its pinned Runtime
+        env:
+          DSH_HOST_SOURCE: ${{ github.workspace }}/legacy-upstream
+          EDUWORK_TEST_RUNTIME: ${{ runner.temp }}/legacy-runtime
+        run: |
+          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/release-v0.1.5-rc.2/LOCK.json --output "$EDUWORK_TEST_RUNTIME"
+          node core/dsh-host/prepare.mjs --upstream "$DSH_HOST_SOURCE" --output "$RUNNER_TEMP/legacy-host"
+          node --test core/dsh-host/test/prepare.test.mjs
   native-host:
     strategy:
       fail-fast: false

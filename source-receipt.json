@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-08T16:42:53.767Z",
-  "fileSetSHA256": "7be91e50c67b0bebced027e2e47a2b40beaae580f8e6d399f50570d20a31b630",
+  "fileSetSHA256": "5722eeaaa2f4ed32861c10c7f57f0b6966e42cf943cc1bba7c19de1eb604256f",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "4fe8107a2ce5cd8c19c28b1d20d619c28a8e5c65dc4ccd0a3462fa44978840ea"
+      "sha256": "c95345198eb5c8fa553a04b6772e7ae5105b69897401dbc86c5ed280f33fbdb2"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -1233,7 +1233,7 @@
     },
     {
       "path": "dsh-host/prepare.mjs",
-      "sha256": "64426430e1cb1e89f3a8b4e63a567f9649b63535a663e0b5d114896c516dd974"
+      "sha256": "ab828f1998ab25c600ad10673b77c335306d5832cc71f1ab995f2606d92cc971"
     },
     {
       "path": "dsh-host/product-presets.mjs",
@@ -1333,7 +1333,7 @@
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
-      "sha256": "56f60088c479b0c23edebd9da30d47458b21a79b7471e49b787355668c17f04b"
+      "sha256": "8a1e52c537ec903de831dfd09d794a07f51c723f4f5badad4421fd0215875adf"
     },
     {
       "path": "dsh-host/test/product-concurrency.test.mjs",

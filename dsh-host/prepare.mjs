@@ -55,6 +55,11 @@ export function adaptHostEntry(source) {
   text = replaceOnce(text, 'import { closeSync, createReadStream,', 'import { createReadStream,')
   text = replaceOnce(text, '      closeSync(DESKTOP_REQUEST_PIPE_FD)\n', '')
   text = replaceOnce(text, '      closeSync(DESKTOP_RESPONSE_PIPE_FD)\n', '')
+  text = replaceOnce(text, "    loadOverlayPatches('dsh desktop', DESKTOP_PATCH),", `    loadOverlayPatches('dsh desktop', DESKTOP_PATCH),
+    // Legacy desktop defaults insert their native picker after profile patches.
+    // Preserve only the product's explicit picker opt-outs at this boundary.
+    profile.patches.filter(patch => patch.disabled === true
+      && ['directory-picker-native', 'ui-directory-picker-native'].includes(patch.id)),`)
   return replaceOnce(text,
     "roots: [{ path: join(dshRoot, 'config', 'agent-presets'), trust: 'system' }],",
     `// Product profile roots are part of the selected composition; keep them.
@@ -92,7 +97,7 @@ export async function prepare({ upstream, output }) {
   const receipt = {
     schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.5-rc.2', protocolVersion: 3,
     nodeVersion: process.version, preparationVersion: 1, sources, outputs,
-    adaptations: ['preserve-product-agent-presets-roots', 'explicit-candidate-linked-profile', 'stdin-bootstrap', 'stdout-logs-to-stderr', 'bounded-stderr-tail', 'lifecycle-failure-callback', 'stream-owned-pipe-shutdown'],
+    adaptations: ['preserve-product-agent-presets-roots', 'preserve-product-directory-picker-opt-outs', 'explicit-candidate-linked-profile', 'stdin-bootstrap', 'stdout-logs-to-stderr', 'bounded-stderr-tail', 'lifecycle-failure-callback', 'stream-owned-pipe-shutdown'],
   }
   await emit('receipt.json', JSON.stringify(receipt, null, 2) + '\n')
   return receipt
