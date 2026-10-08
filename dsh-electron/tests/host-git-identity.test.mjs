@@ -6,7 +6,7 @@ import { applyHostGitIdentity as applyIdentity } from '../src/host-git-identity.
 const socketRoot = '/tmp-test-root'
 const uid = 1000
 function applyHostGitIdentity(env, options) {
-  return applyIdentity(env, { uid, launchdSshAuthSock: () => undefined, ...options })
+  return applyIdentity(env, { uid, launchdSshAuthSock: () => undefined, realpath: file => file, ...options })
 }
 
 function mockLstat(files) {
@@ -254,9 +254,9 @@ test('owned inherited agent remains preferred without querying launchd', () => {
 for (const source of ['inherited', 'launchd', 'discovered']) {
   for (const [name, overrides] of [
     ['socket owned by another user', { socket: { kind: 'socket', uid: uid + 1 } }],
-    ['socket symlink', { socket: { kind: 'symlink' } }],
+    ['unresolved socket symlink', { socket: { kind: 'symlink' } }],
     ['parent owned by another user', { directory: { kind: 'directory', uid: uid + 1 } }],
-    ['parent symlink', { directory: { kind: 'symlink' } }],
+    ['unresolved parent symlink', { directory: { kind: 'symlink' } }],
   ]) {
     test(`${source} rejects ${name}`, () => {
       const folder = path.join(socketRoot, 'com.apple.launchd.BAD')
@@ -307,4 +307,60 @@ test('relative inherited and launchd socket paths are rejected', () => {
   })
   assert.equal('SSH_AUTH_SOCK' in env, false)
   assert.equal(summary.ssh, 'absent')
+})
+
+
+for (const source of ['inherited', 'launchd']) {
+  for (const aliasKind of ['socket', 'parent']) {
+    test(`${source} accepts an owned ${aliasKind} alias and passes the verified target`, () => {
+      const alias = '/selected-agent/agent.sock'
+      const target = '/real-agent/agent.sock'
+      const env = source === 'inherited' ? { SSH_AUTH_SOCK: alias } : {}
+      const files = {
+        [alias]: { kind: aliasKind === 'socket' ? 'symlink' : 'socket' },
+        ['/selected-agent']: { kind: aliasKind === 'parent' ? 'symlink' : 'directory' },
+        [target]: { kind: 'socket' },
+      }
+      const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+        listDir: () => [], launchdSshAuthSock: () => source === 'launchd' ? alias : undefined,
+        lstat: mockLstat(files), realpath: file => file === alias ? target : file,
+      })
+      assert.equal(env.SSH_AUTH_SOCK, target)
+      assert.equal(summary.ssh, source)
+    })
+  }
+  for (const foreignPart of ['alias', 'alias parent', 'target', 'target parent']) {
+    test(`${source} refuses an alias with foreign ${foreignPart} ownership`, () => {
+      const alias = '/selected-agent/agent.sock'
+      const target = '/real-agent/agent.sock'
+      const env = source === 'inherited' ? { SSH_AUTH_SOCK: alias } : {}
+      const files = {
+        [alias]: { kind: 'symlink', uid: foreignPart === 'alias' ? uid + 1 : uid },
+        ['/selected-agent']: { kind: 'symlink', uid: foreignPart === 'alias parent' ? uid + 1 : uid },
+        [target]: { kind: 'socket', uid: foreignPart === 'target' ? uid + 1 : uid },
+        ['/real-agent']: { kind: 'directory', uid: foreignPart === 'target parent' ? uid + 1 : uid },
+      }
+      const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+        listDir: () => [], launchdSshAuthSock: () => source === 'launchd' ? alias : undefined,
+        lstat: mockLstat(files), realpath: () => target,
+      })
+      assert.equal('SSH_AUTH_SOCK' in env, false)
+      assert.equal(summary.ssh, 'absent')
+    })
+  }
+}
+
+test('discovery rejects even an owned alias to a valid owned socket', () => {
+  const alias = path.join(socketRoot, 'com.apple.launchd.ALIAS', 'Listeners')
+  const target = '/real-agent/agent.sock'
+  let resolutions = 0
+  const env = {}
+  const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+    listDir: () => ['com.apple.launchd.ALIAS'],
+    lstat: mockLstat({ [alias]: { kind: 'symlink' }, [target]: { kind: 'socket' } }),
+    realpath: () => { resolutions++; return target },
+  })
+  assert.equal('SSH_AUTH_SOCK' in env, false)
+  assert.equal(summary.ssh, 'absent')
+  assert.equal(resolutions, 0)
 })

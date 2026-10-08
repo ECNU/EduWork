@@ -1,4 +1,4 @@
-import { readdirSync, lstatSync } from 'node:fs'
+import { readdirSync, lstatSync, realpathSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir as defaultHomedir } from 'node:os'
 import path from 'node:path'
@@ -25,6 +25,23 @@ function isOwnedSocket(lstat, filePath, uid) {
   return typeof filePath === 'string' && path.isAbsolute(filePath)
     && isOwnedAt(lstat, path.dirname(filePath), uid, 'isDirectory')
     && isOwnedAt(lstat, filePath, uid, 'isSocket')
+}
+
+function ownedExplicitSocket(lstat, realpath, filePath, uid) {
+  if (typeof filePath !== 'string' || !path.isAbsolute(filePath) || !Number.isInteger(uid)) return undefined
+  try {
+    const original = lstat(filePath)
+    const parent = lstat(path.dirname(filePath))
+    if (parent.isSymbolicLink() && parent.uid !== uid) return undefined
+    if (original.uid !== uid || (!original.isSocket() && !original.isSymbolicLink())) return undefined
+    // A user-selected agent may use an alias (for example a third-party agent).
+    // Pass the verified canonical target to the Host, so a mutable alias cannot
+    // redirect it after validation. Discovery never follows aliases.
+    const target = realpath(filePath)
+    return isOwnedSocket(lstat, target, uid) ? target : undefined
+  } catch {
+    return undefined
+  }
 }
 
 function launchdSshAuthSock() {
@@ -66,15 +83,16 @@ function discoverLaunchdSshSocket(socketRoot, listDir, lstat, uid) {
   return bestPath
 }
 
-function resolveSshAuthSock(env, socketRoot, listDir, lstat, uid, readLaunchdSocket) {
-  const current = env.SSH_AUTH_SOCK
-  if (isOwnedSocket(lstat, current, uid)) {
+function resolveSshAuthSock(env, socketRoot, listDir, lstat, realpath, uid, readLaunchdSocket) {
+  const current = ownedExplicitSocket(lstat, realpath, env.SSH_AUTH_SOCK, uid)
+  if (current) {
     return { status: 'inherited', value: current }
   }
   let sessionSocket
   try { sessionSocket = readLaunchdSocket() } catch { /* Fall back to owned launchd sockets. */ }
-  if (isOwnedSocket(lstat, sessionSocket, uid)) {
-    return { status: 'launchd', value: sessionSocket }
+  const session = ownedExplicitSocket(lstat, realpath, sessionSocket, uid)
+  if (session) {
+    return { status: 'launchd', value: session }
   }
   const discovered = discoverLaunchdSshSocket(socketRoot, listDir, lstat, uid)
   if (discovered) {
@@ -116,12 +134,13 @@ export function applyHostGitIdentity(env, options = {}) {
 
   const listDir = options.listDir ?? readdirSync
   const lstat = options.lstat ?? lstatSync
+  const realpath = options.realpath ?? realpathSync
   const uid = options.uid ?? process.getuid?.()
   const readLaunchdSocket = options.launchdSshAuthSock ?? launchdSshAuthSock
   const socketRoot = options.socketRoot ?? '/private/tmp'
   const homedirFn = options.homedir ?? defaultHomedir
 
-  const ssh = resolveSshAuthSock(env, socketRoot, listDir, lstat, uid, readLaunchdSocket)
+  const ssh = resolveSshAuthSock(env, socketRoot, listDir, lstat, realpath, uid, readLaunchdSocket)
   if (ssh.value) {
     env.SSH_AUTH_SOCK = ssh.value
   }

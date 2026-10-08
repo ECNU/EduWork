@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-08T13:44:37.141Z",
-  "fileSetSHA256": "070ea3a4aada5798f93c609747d39c5eb23f41fd705c053d6caeeb02591a276c",
+  "createdAt": "2026-10-08T13:52:07.808Z",
+  "fileSetSHA256": "8f290931242e2f430219d48ee558f859fd240b0a0a001ad1be746e918825339f",
   "files": [
     {
       "path": ".gitattributes",
@@ -917,7 +917,7 @@
     },
     {
       "path": "dsh-electron/src/host-git-identity.mjs",
-      "sha256": "e4e37b387269c6a4176f3b3a96b3ed3d14b3689cc8ff73fa706dd8ccb83bbdd8"
+      "sha256": "3820c3a40ed7b5c54cea73791a942b62d47e31490fbd0244083c6eac86b92f2e"
     },
     {
       "path": "dsh-electron/src/initialize-user-config.mjs",
@@ -1049,7 +1049,7 @@
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
-      "sha256": "ba3f0a8b5efd742401c15fc863824769ddc4b3e896d7d332aa99131818cebf01"
+      "sha256": "929f52a3c8cef6a6672833551edef72a50cf1c2a7a50f5a780a2ecc8dc0815e7"
     },
     {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",
