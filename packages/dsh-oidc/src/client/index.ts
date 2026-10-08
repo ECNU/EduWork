@@ -1,3 +1,4 @@
+import { NS, dictionaries } from './locale.js'
 import React, { useEffect, useState } from 'react'
 import oidcRemote from './remote.js'
 import { accountOrganization, accountStatusLine, accountUserName } from './presentation.js'
@@ -7,7 +8,7 @@ import { useAccountStatus } from './use-account-status.js'
 import { createAccountState, selectConnectedModel } from './account-state.js'
 import { AccountMenu } from './account-menu.js'
 
-export const inject = ['slots', 'remote', 'theme']
+export const inject = ['slots', 'locale', 'remote', 'theme']
 
 const h = React.createElement
 const enterpriseBrandPriority = -100
@@ -16,33 +17,11 @@ const button = Object.freeze({
   border: `1px solid ${border}`, borderRadius: 9, padding: '8px 12px', cursor: 'pointer',
   background: 'var(--dsw-alias-bg-layer-1, #fff)', color: 'var(--dsw-alias-label-primary, #241a18)',
 })
-const isChinese = typeof navigator !== 'undefined' && navigator.language.toLowerCase().startsWith('zh')
-const messages = isChinese ? {
-  waiting: '请在浏览器中完成登录…', cancelLogin: '取消登录',
-  identityDescription: '使用组织账号登录。模型服务可在设置中单独配置。', identityConnected: '组织身份已登录',
-  unavailable: '企业模型服务暂时不可用', connected: '已连接',
-  disconnected: '尚未连接', description: '使用组织统一身份认证连接企业模型。密码不会进入 DSH；模型请求使用登录授权。',
-  connecting: '正在连接…', login: '使用企业账号登录',
-  checking: '正在检查…', check: '检查连接', logout: '退出登录', help: '帮助', dialog: '连接企业模型',
-  shortDescription: '通过组织统一身份认证连接企业模型；密码不会进入 DSH。', other: '使用其他模型',
-  enabled: '完成后将启用', footerConnected: '企业模型已连接', footerSetup: '点击设置完成登录',
-} : {
-  waiting: 'Complete sign-in in your browser…', cancelLogin: 'Cancel sign-in',
-  identityDescription: 'Sign in with your organization account. Configure model services separately in settings.', identityConnected: 'Organization identity connected',
-  unavailable: 'Enterprise model service is temporarily unavailable', connected: 'Connected',
-  disconnected: 'Not connected',
-  description: 'Connect with your organization account. Your password never enters DSH; model requests use your sign-in authorization.',
-  connecting: 'Connecting…', login: 'Sign in with organization',
-  checking: 'Checking…', check: 'Check connection', logout: 'Sign out', help: 'Help', dialog: 'Connect enterprise models',
-  shortDescription: 'Connect enterprise models through your organization identity provider. Your password never enters DSH.',
-  other: 'Use another model', enabled: 'This enables', footerConnected: 'Enterprise models connected',
-  footerSetup: 'Open settings to connect',
-}
 
-async function unwrap(operation: Promise<any>) {
+async function unwrapResult(operation: Promise<any>, t: (key: string) => string) {
   const result = await operation
   if (result?.ok === true) return result.value
-  throw new Error(result?.error?.message || result?.error?.code || messages.unavailable)
+  throw new Error(result?.error?.message || result?.error?.code || t('account.unavailable'))
 }
 
 function ProductMark({ profile, size = 24 }: any) {
@@ -104,14 +83,14 @@ function useAccount(service: any, profileID: string) {
   return { status, busy, error, run }
 }
 
-function EnterpriseAccountCard({ service, configuration }: any) {
+function EnterpriseAccountCard({ t, service, configuration }: any) {
   const [profileID, setProfileID] = useState(configuration.profiles[0]?.id || '')
   const profile = configuration.profiles.find((candidate: any) => candidate.id === profileID) || configuration.profiles[0]
   const account = useAccount(service, profile.id)
   const primary = { ...button, background: profile.brand?.primaryColor || 'var(--dsw-alias-state-business-primary, #5157af)', color: 'white', borderColor: 'transparent' }
   const login = useSignIn(service)
   const begin = () => account.run('login', () => login.begin(profile.id))
-  const stateLabel = account.status?.state === 'connected' ? messages.connected : messages.disconnected
+  const stateLabel = account.status?.state === 'connected' ? t('account.connected') : t('account.disconnected')
   const userName = accountUserName(account.status)
   return h('section', { style: { padding: '16px 0', borderBottom: `1px solid ${border}` } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start' } },
@@ -123,25 +102,25 @@ function EnterpriseAccountCard({ service, configuration }: any) {
       configuration.profiles.length > 1 && h('select', { value: profile.id, onChange: (event: any) => setProfileID(event.currentTarget.value), style: button },
         ...configuration.profiles.map((candidate: any) => h('option', { key: candidate.id, value: candidate.id }, candidate.displayName)))),
     h('p', { style: { margin: '12px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 12, lineHeight: 1.6 } },
-      profile.brand?.loginDescription || (profile.provider ? messages.description : messages.identityDescription)),
+      profile.brand?.loginDescription || (profile.provider ? t('account.description') : t('account.identityDescription'))),
     h('div', { style: { marginTop: 12, display: 'flex', gap: 8, flexWrap: 'wrap' } },
-      account.status?.state !== 'connected' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: begin }, account.busy ? messages.connecting : profile.brand?.loginButtonLabel || messages.login),
+      account.status?.state !== 'connected' && h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: begin }, account.busy ? t('account.connecting') : profile.brand?.loginButtonLabel || t('account.login')),
       account.status?.state === 'connected' && h('button', {
         type: 'button', disabled: Boolean(account.busy), style: button,
         onClick: () => account.run('reconcile', () => service.reconcile(profile.id, {})),
-      }, account.busy ? messages.checking : messages.check),
+      }, account.busy ? t('account.checking') : t('account.check')),
       account.status?.state !== 'signed_out' && h('button', {
         type: 'button', disabled: Boolean(account.busy), style: button,
         onClick: () => account.run('logout', () => service.logout(profile.id)),
-      }, messages.logout),
-      profile.brand?.supportURL && h('a', { href: profile.brand.supportURL, target: '_blank', rel: 'noopener noreferrer', style: { ...button, textDecoration: 'none' } }, messages.help)),
-    login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
+      }, t('account.logout')),
+      profile.brand?.supportURL && h('a', { href: profile.brand.supportURL, target: '_blank', rel: 'noopener noreferrer', style: { ...button, textDecoration: 'none' } }, t('account.help'))),
+    login.pending && h('p', { role: 'status' }, t('account.waiting'), ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, t('account.cancelLogin'))),
     account.error && h('p', { role: 'alert', style: { margin: '10px 0 0', color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, account.error),
     h('p', { style: { margin: '10px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: 11 } },
-      profile.provider ? `${profile.provider.displayName} · ${profile.provider.models.map((model: any) => model.name).join('、')}` : messages.other))
+      profile.provider ? `${profile.provider.displayName} · ${profile.provider.models.map((model: any) => model.name).join('、')}` : t('account.other')))
 }
 
-function EnterpriseOnboarding({ service, configuration, complete }: any) {
+function EnterpriseOnboarding({ t, service, configuration, complete }: any) {
   const profile = configuration.profiles[0]
   const account = useAccount(service, profile.id)
   useEffect(() => { if (account.status?.state === 'connected' && !account.busy && !account.error) complete() }, [account.status?.state, account.busy, account.error, complete])
@@ -152,31 +131,31 @@ function EnterpriseOnboarding({ service, configuration, complete }: any) {
   return h('div', {
     style: { position: 'fixed', inset: 0, zIndex: 10000, display: 'grid', placeItems: 'center', padding: 24, background: 'rgba(28, 24, 23, .32)', backdropFilter: 'blur(4px)', boxSizing: 'border-box' },
   }, h('section', {
-    role: 'dialog', 'aria-modal': 'true', 'aria-label': profile.brand?.loginTitle || messages.dialog,
+    role: 'dialog', 'aria-modal': 'true', 'aria-label': profile.brand?.loginTitle || t('account.dialog'),
     style: { boxSizing: 'border-box', width: 'min(540px, 100%)', maxHeight: 'calc(100vh - 48px)', overflow: 'auto', border: `1px solid ${border}`, borderRadius: 16, padding: 26, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: 'var(--dsw-alias-label-primary, #241a18)', boxShadow: '0 24px 80px rgba(42, 28, 24, .22)' },
   },
   h('div', { style: { display: 'flex', alignItems: 'center', gap: 12 } },
     h(ProductMark, { profile, size: 40 }),
     h('div', null,
-      h('h2', { style: { margin: 0, fontSize: 20, fontWeight: 650 } }, profile.brand?.loginTitle || messages.dialog),
+      h('h2', { style: { margin: 0, fontSize: 20, fontWeight: 650 } }, profile.brand?.loginTitle || t('account.dialog')),
       h('div', { style: { marginTop: 3, color: 'var(--dsw-alias-label-secondary)', fontSize: 12 } }, accountOrganization(profile)))),
   h('p', { style: { margin: '18px 0 0', color: 'var(--dsw-alias-label-secondary)', fontSize: 13, lineHeight: 1.7 } },
-    profile.brand?.loginDescription || (profile.provider ? messages.shortDescription : messages.identityDescription)),
+    profile.brand?.loginDescription || (profile.provider ? t('account.shortDescription') : t('account.identityDescription'))),
   h('div', { style: { marginTop: 20, display: 'flex', gap: 9, flexWrap: 'wrap' } },
-    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? messages.connecting : account.status?.state === 'connected' ? (isChinese ? '使用企业模型' : 'Use organization model') : profile.brand?.loginButtonLabel || messages.login),
-    h('button', { type: 'button', disabled: Boolean(account.busy), style: button, onClick: complete }, messages.other)),
-  login.pending && h('p', { role: 'status' }, messages.waiting, ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, messages.cancelLogin)),
+    h('button', { type: 'button', disabled: Boolean(account.busy), style: primary, onClick: account.status?.state === 'connected' ? () => account.run('select', () => service.useModels(profile.id)) : begin }, account.busy ? t('account.connecting') : account.status?.state === 'connected' ? (t('account.useModels')) : profile.brand?.loginButtonLabel || t('account.login')),
+    h('button', { type: 'button', disabled: Boolean(account.busy), style: button, onClick: complete }, t('account.other'))),
+  login.pending && h('p', { role: 'status' }, t('account.waiting'), ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, t('account.cancelLogin'))),
   account.error && h('p', { role: 'alert', style: { margin: '12px 0 0', color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, account.error),
   h('p', { style: { margin: '16px 0 0', color: 'var(--dsw-alias-label-tertiary)', fontSize: 11, lineHeight: 1.55 } },
-    profile.provider ? `${messages.enabled} ${profile.provider.displayName}: ${profile.provider.models.map((model: any) => model.name).join('、')}` : messages.other)))
+    profile.provider ? `${t('account.enabled')} ${profile.provider.displayName}: ${profile.provider.models.map((model: any) => model.name).join('、')}` : t('account.other'))))
 }
 
-function FooterAccount({ service, configuration, renderSlot, wide = true }: any) {
+function FooterAccount({ t, service, configuration, renderSlot, wide = true }: any) {
   const profile = configuration.profiles[0]
   const status = useAccountStatus(service, profile.id)
   const userName = accountUserName(status)
-  const statusLabel = status?.state === 'connected' ? (profile.provider ? messages.footerConnected : messages.identityConnected) : messages.footerSetup
-  return h(AccountMenu, { service, profile, renderSlot, wide }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 } },
+  const statusLabel = status?.state === 'connected' ? (profile.provider ? t('account.footerConnected') : t('account.identityConnected')) : t('account.footerSetup')
+  return h(AccountMenu, { t, service, profile, renderSlot, wide }, h('div', { style: { display: 'flex', alignItems: 'center', gap: 9, minWidth: 0 } },
     h(ProductMark, { profile, size: 28 }),
     wide && h('div', { style: { minWidth: 0 } },
       h('div', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13, fontWeight: 600 } }, userName || accountOrganization(profile)),
@@ -184,6 +163,9 @@ function FooterAccount({ service, configuration, renderSlot, wide = true }: any)
 }
 
 export async function apply(ctx: any) {
+  ctx.effect(() => ctx.locale.register(NS, dictionaries), 'oidc: dictionaries')
+  const t = ctx.locale.bind(NS)
+  const unwrap = (operation: Promise<any>) => unwrapResult(operation, t)
   const disposeRemote = await ctx.remote.$mount(oidcRemote)
   ctx.inject(['remote.oidcAccounts'], (surfaceCtx: any) => {
     let cancelled = false
@@ -225,22 +207,22 @@ export async function apply(ctx: any) {
         if (connected) await selectConnectedModel(surfaceCtx, base, connected.id, true)
       }).catch(() => {})
       disposers.push(surfaceCtx.slots.inject('settings.models.footer', () => surfaceCtx.slots.register({
-        name: 'settings.models.footer', id: 'dsh-oidc-enterprise', order: -100,
+        name: 'settings.models.footer', id: 'dsh-oidc-enterprise', locale: NS, order: -100,
         inject: () => ({ service, configuration }),
       }, ManagedProviderCard)))
       if (configuration.uiMode === 'models-only' || configuration.profiles.length === 0) return
       if (configuration.manageProductBrand !== false) disposeBrand = installBrand(surfaceCtx, configuration.profiles[0])
       disposers.push(surfaceCtx.slots.inject('settings.onboarding', () => surfaceCtx.slots.register({
-        name: 'settings.onboarding', id: 'dsh-oidc-enterprise', order: -10,
+        name: 'settings.onboarding', id: 'dsh-oidc-enterprise', locale: NS, order: -10,
         inject: () => ({ service, configuration }),
       }, EnterpriseOnboarding)))
       disposers.push(surfaceCtx.slots.inject('sidebar.footer.action', () => surfaceCtx.slots.register({
-        name: 'sidebar.footer.action', id: 'dsh-oidc-account', order: -90,
+        name: 'sidebar.footer.action', id: 'dsh-oidc-account', locale: NS, order: -90,
         children: { 'oidc.account.menu.details': { kind: 'single', scope: 'root' } },
         inject: () => ({ service, configuration }),
       }, FooterAccount)))
       disposers.push(surfaceCtx.slots.inject('settings.general.item', () => surfaceCtx.slots.register({
-        name: 'settings.general.item', id: 'dsh-oidc-account', order: 10,
+        name: 'settings.general.item', id: 'dsh-oidc-account', locale: NS, order: 10,
         inject: () => ({ service, configuration }),
       }, EnterpriseAccountCard)))
     }).catch((cause: any) => { console.error('dsh-oidc client initialization failed', cause) })

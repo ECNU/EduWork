@@ -107,6 +107,54 @@ test('network failure leaves a retryable first-run state; signed offline import 
   await assert.rejects(next.manager.importOffline(release.offline), /修订号/)
 })
 
+for (const platform of ['win32', 'darwin']) for (const dshVersion of ['0.2.0-rc.1', '0.2.0-rc.2']) {
+  test(`unchanged signed configuration bootstraps ${dshVersion} on ${platform} without an exact kernel pin`, async t => {
+    const f = await fixture(t, platform)
+    f.options.version = '0.4.0-alpha.2'
+    f.options.identity = { dshVersion, managedPackages: { '@eduwork/dsh-oidc': {} } }
+    const requires = { minClient: '0.4.0-0', maxClientExclusive: '0.5.0',
+      capabilities: ['package:@eduwork/dsh-oidc'], platforms: [platform] }
+    const old = f.release(4, { requires: { ...requires, dsh: '0.2.0-rc.2' } })
+    const first = await f.open()
+    if (dshVersion === '0.2.0-rc.1') {
+      await assert.rejects(preparePublisherContent(first.manager, first.bootstrap), /DSH/)
+      assert.equal(first.manager.state.highest, 0)
+    }
+    // Requirements alone change: preserve the signed configuration bytes and
+    // component revision, but issue a higher signed manifest revision.
+    const corrected = f.release(5, { requires, components: { configuration: 4 } })
+    assert.deepEqual(corrected.bytes, old.bytes)
+    assert.equal((await preparePublisherContent(first.manager, first.bootstrap)).configurationRevision, 4)
+    await first.manager.ready()
+    const local = (await readConfiguration(f.paths.config)).value
+    local.features.maxConcurrentRequests = 9
+    await save(f.paths.config, local)
+    f.responses.clear(); f.requests.length = 0
+    const second = await f.open()
+    assert.equal((await preparePublisherContent(second.manager, second.bootstrap)).configurationRevision, 4)
+    assert.equal(f.requests.length, 0)
+    assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 9)
+    await assert.rejects(second.manager.importOffline(old.offline), /修订号/)
+  })
+}
+
+test('omitting a kernel pin still enforces the client API, platform and required capabilities', async t => {
+  const f = await fixture(t)
+  f.options.version = '0.4.0-alpha.2'
+  f.options.identity = { dshVersion: '0.2.0-rc.2' }
+  const { bootstrap, manager } = await f.open()
+  for (const [requires, message] of [
+    [{ minClient: '0.4.1', capabilities: [] }, /客户端版本/],
+    [{ minClient: '0.3.0', maxClientExclusive: '0.4.0-0', capabilities: [] }, /客户端版本/],
+    [{ minClient: '0.4.0-0', capabilities: [], platforms: ['linux'] }, /操作系统/],
+    [{ minClient: '0.4.0-0', capabilities: ['package:@eduwork/dsh-oidc'] }, /工具能力/],
+  ]) {
+    f.release(5, { requires })
+    await assert.rejects(preparePublisherContent(manager, bootstrap), message)
+    assert.equal(manager.state.highest, 0)
+  }
+})
+
 test('wrong signer, corrupt bytes, wrong channel and platform incompatibility cannot initialize an installation', async t => {
   const f = await fixture(t), { bootstrap, manager } = await f.open()
   const release = f.release()

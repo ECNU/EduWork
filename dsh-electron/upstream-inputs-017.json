@@ -1,7 +1,7 @@
 {
-  "apps/desktop/src/main.ts": "20606a9e55be87e14d96ea3495a69d096db7c42760c0984d63c3cff2fb4f9c00",
+  "apps/desktop/src/main.ts": "1fd424f16514d82d79665e0e8a1e2448dd8636126d3a37be7fa888d883b6ea3a",
   "apps/desktop/src/ipc.ts": "b7ee202112d7485c524741ffcfe257c5c4f6dca18281aa5ac01c4510b69c6a08",
-  "apps/desktop/src/locale.ts": "d00695f9bd1841f07197ab358ec80f4888d26cbaa63378d639b950b18110e0c4",
+  "apps/desktop/src/locale.ts": "8426a3943be0dfe81d0f0ecef1d9fe3cc03dc6cd79d3b8177a316f12ac09b242",
   "apps/desktop/src/single-instance.ts": "dc6a6e263a6fdedc3f1cfacb97eb6f60dd5b04ad5d3b02daae4640f2e30a5150",
   "apps/desktop/src/backend-controller.ts": "eec9641e9abf40586464d7b3d4ffa8d968e040696f3fc7923507faae3d82ed27",
   "apps/desktop/src/startup-error.ts": "ba75b42f56dd8352eecd7ad94841cb32142cebcdab864c8e4c04452788a47378",
@@ -20,5 +20,7 @@
   "apps/desktop/src/preload-windows.ts": "776cf6acd3ab4286844913a9f94bf7d3979186d846cda9f53e25a072d2f7e218",
   "apps/desktop/src/preload-menu.ts": "456b5004c2c0c7f511e7b2d732ad1bfc394712cb26c9f38d8852aba75c0d1c60",
   "apps/desktop/src/windows-layout.ts": "c032247c34d9794171aa3bd67534d511aca9f8963058d9976fb57f8c06a24628",
-  "apps/desktop/package.json": "01472cd50aaf6ab9bd3f8973cdbe300c41f25541227ef36e0dd5ec6ed11fc0bc"
+  "apps/desktop/package.json": "eef6bc1131564aac2af0667487236edc5c1be721747b4ac81c9442937d34252c",
+  "apps/desktop/src/login-shell-environment.ts": "d8a6730a92c057ad70fb7fa163df72aca13eff9cfe54edb7a823594e8680e348",
+  "apps/desktop/src/duration-env.ts": "f230ed09a0094871e30d3eac559b9674fc122b01539348b661df4b3dd1b534aa"
 }

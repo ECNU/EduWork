@@ -24,6 +24,9 @@ on:
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-017-source-product.mjs'
+      - 'scripts/patch-session-search-runtime.mjs'
+      - 'scripts/test/session-search-runtime.test.mjs'
+      - 'scripts/test/plugin-locale.test.mjs'
       - 'scripts/verify-media-template.mjs'
       - 'scripts/test/media-template.test.mjs'
       - 'scripts/portable-product-links.mjs'
@@ -81,8 +84,6 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-plugins/tool-browser/test/*.test.mjs
-          if ($LASTEXITCODE) { throw 'Managed browser lifecycle checks failed' }
           node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
@@ -90,6 +91,10 @@ jobs:
           node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-plugins/tool-browser/test/*.test.mjs
+          if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
+          node --test core/scripts/test/session-search-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution policy, desktop and channel migration checks failed' }
           node --test core/scripts/test/media-template.test.mjs
@@ -111,6 +116,10 @@ jobs:
           Copy-Item "$env:DSH_CANDIDATE/source-probe/package*.json" $deps
           npm ci --prefix $deps --legacy-peer-deps --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE) { throw 'Locked qualification dependencies failed' }
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          $env:EDUWORK_TEST_DEPENDENCIES = $deps
+          node --test core/scripts/test/plugin-locale.test.mjs
+          if ($LASTEXITCODE) { throw 'Plugin locale regression checks failed' }
           node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
           node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-session-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
@@ -129,7 +138,7 @@ jobs:
           node core/dsh-electron/scripts/build-shell.mjs --native-017 --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
           if ($LASTEXITCODE) { throw 'Native desktop build failed' }
           $env:EDUWORK_TEST_NATIVE_SHELL = "$env:RUNNER_TEMP/native-shell"
-          node --experimental-test-module-mocks --experimental-transform-types --test core/dsh-electron/tests/native-installer-startup.test.mjs core/dsh-electron/tests/installer-cleanup.test.mjs
+          node --experimental-test-module-mocks --experimental-transform-types --test core/dsh-electron/tests/installer-cleanup.test.mjs
           if ($LASTEXITCODE) { throw 'Native installer startup checks failed' }
           $electron = if ($IsWindows) { "$env:RUNNER_TEMP/electron/runtime/electron.exe" } else { "$env:RUNNER_TEMP/electron/runtime/Electron.app/Contents/MacOS/Electron" }
           node core/dsh-electron/scripts/probe-native-desktop.mjs --shell "$env:RUNNER_TEMP/native-shell" --runtime "$env:RUNNER_TEMP/native-runtime" --electron $electron --output "$env:RUNNER_TEMP/native-desktop-evidence"

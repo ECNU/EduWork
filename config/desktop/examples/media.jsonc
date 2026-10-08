@@ -121,6 +121,8 @@
 //   "loginDescription": "授权后使用机构提供的模型。"
 // organizations[].brand.supportURL：帮助页面，必须为 HTTPS。
 //   "supportURL": "https://example.org/help"
+// organizations[].brand.language：浏览器登录结果页的语言：auto 按浏览器偏好，zh-CN 或 en 固定语言。
+//   "language": "auto"
 // organizations[].auth.discoveryUrl：完整发现文档 URL；oidc-llm 使用 /.well-known/openid-configuration，LiteLLM 使用 /.well-known/litellm-cli-auth。
 //   "discoveryUrl": "https://models.example.org/.well-known/openid-configuration"
 // organizations[].auth.expectedIssuer：预期 issuer，须与发现文档完全一致；可省略，此时按发现地址验证。
@@ -131,6 +133,8 @@
 //   "clientId": "replace-with-public-client-id"
 // organizations[].auth.identityMode：仅 oidc-llm，必须显式选 oidc 或 oauth；oidc 还验证 ID Token。
 //   "identityMode": "oidc"
+// organizations[].auth.additionalScopes：仅 oidc-llm，显式申请额外服务范围；必须由服务端 discovery 支持，刷新时不得扩张。
+//   "additionalScopes": []
 // organizations[].oidc.issuer：OIDC 签发者 URL；客户端据此查找发现文档。
 //   "issuer": "https://id.example.org"
 // organizations[].oidc.clientId：服务端分配的公开客户端 ID；不填写客户端密钥。
@@ -333,6 +337,10 @@
 //   "responseFormat": "auto"
 // media.providers[].images.promptMaxChars：提示词最大字符数，正整数，默认 4096。
 //   "promptMaxChars": 4096
+// media.providers[].images.edit：是否支持标准 /images/edits 图像编辑，默认 false；不影响文生图。
+//   "edit": false
+// media.providers[].images.editMaxImages：单次编辑允许的输入图片数，1–16，默认 1；按服务端能力填写。
+//   "editMaxImages": 1
 // media.providers[].speech.enabled：是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。
 //   "enabled": false
 // media.providers[].speech.model：TTS 模型 ID。

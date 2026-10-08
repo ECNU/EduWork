@@ -10,6 +10,7 @@ import { writeCrashReport, pruneCrashReports } from './crash-report.ts'
 import { createWindow } from './main.ts'
 import { SCHEME } from './ipc.ts'
 import { resolveDesktopLocale } from './locale.ts'
+import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopHostProcess } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
@@ -23,9 +24,12 @@ protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: {
   standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true,
 } }])
 let mainWindow, bridge, product, entered = false, sessionEnding = false, recoveryExit = false
+let hostEnvironment = process.env
+const loginShellRead = new AbortController()
+app.on('will-quit', () => loginShellRead.abort())
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
-  { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure }), state => {
+  { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && entered && !isQuitting()) reportFatal(state.failure, 'host')
 })
 // Keep the product's resource teardown, with the official controller as its one
@@ -59,11 +63,19 @@ function reportFatal(error, source) {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
+  if (!claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({ getHost: () => backend.host, getWindow: () => mainWindow, reportFatal, checkUpdates: checkProductUpdates })
   protocol.handle(SCHEME, request => backend.host?.fetch(request) ?? new Response(null, { status: 503 }))
   powerMonitor.on('shutdown', () => { sessionEnding = true })
-  await backend.start(async () => { product = await prepareEduworkDesktop() })
+  await backend.start(async () => {
+    product = await prepareEduworkDesktop()
+    const inherited = await readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), { signal: loginShellRead.signal })
+    const editionVariable = name => name.startsWith('EDUWORK_') || name.startsWith('CHATECNU_')
+    hostEnvironment = Object.fromEntries(Object.entries(inherited.environment).filter(([name]) => !editionVariable(name)))
+    // Edition bootstrap and resource paths remain owned by the launcher.
+    for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
+  })
   if (isQuitting()) return
   mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true)
   const window = mainWindow
@@ -91,10 +103,8 @@ async function main() {
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1') window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
-if (claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) {
-  void app.whenReady().then(main).catch(async error => {
-    if (isQuitting() || recovery.active) return
-    if (entered) { reportFatal(error, 'main'); return }
-    await showDesktopFailure(error)
-  }).catch(error => reportFatal(error, 'main'))
-}
+void app.whenReady().then(main).catch(async error => {
+  if (isQuitting() || recovery.active) return
+  if (entered) { reportFatal(error, 'main'); return }
+  await showDesktopFailure(error)
+}).catch(error => reportFatal(error, 'main'))

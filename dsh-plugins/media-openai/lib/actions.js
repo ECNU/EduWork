@@ -1,4 +1,4 @@
-import { generateImage, normalizeImageRequest, normalizeSpeechRequest, prepareManagedOutput, projectRelative,
+import { generateImage, editImage, normalizeImageRequest, normalizeSpeechRequest, prepareManagedOutput, projectRelative,
   revalidateManagedOutput, synthesizeSpeech, writeUniqueFile } from './core.js'
 import { saveGeneratedImage } from './image-output.js'
 
@@ -41,6 +41,16 @@ export async function generateImageForAgent(ctx, config, args, exec) {
   return { model: config.images.model, ...saved,
     ...(generated.created === undefined ? {} : { created: generated.created }),
     ...(typeof generated.revisedPrompt !== 'string' || !generated.revisedPrompt ? {} : { revisedPrompt: generated.revisedPrompt }) }
+}
+
+export async function editImageForAgent(ctx,config,args,exec) {
+  if(config.images?.edit!==true)throw new Error('The configured image provider does not support editing')
+  const request=normalizeImageRequest(args,config),projectPath=await workspace(ctx,exec)
+  const managed=await prepareManagedOutput(projectPath,'images')
+  const generated=await editImage({baseURL:config.baseURL,...await mediaAuthorization(ctx,config),model:config.images.model,
+    prompt:request.prompt,size:request.size,nativeSizes:config.images.nativeSizes,responseFormat:config.images.responseFormat,
+    images:args.images,mask:args.mask,projectPath,maxImages:config.images.editMaxImages,signal:signalFor(exec.signal)})
+  return {model:config.images.model,...await saveGeneratedImage({generated,request,managed,projectPath,signal:exec.signal})}
 }
 
 export async function synthesizeSpeechForAgent(ctx, config, args, exec) {

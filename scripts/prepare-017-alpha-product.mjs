@@ -10,6 +10,7 @@ import { parseUserConfig } from '../dsh-host/user-config.mjs'
 import { documentConfiguration } from '../dsh-host/configuration-documentation.mjs'
 import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
+import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -38,7 +39,7 @@ if(values.edition){
     const destination=join(product,'d/node_modules',plugin.name)
     await cp(join(edition,plugin.source),destination,{recursive:true})
     const manifest=await read(join(destination,'package.json'))
-    for(const name of Object.keys(manifest.peerDependencies??{})) if(name.startsWith('@deepseek-ai/dsh')) manifest.peerDependencies[name]=identity.dshVersion
+    manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion,{editionOwned:true})
     manifest.private=true
     await save(join(destination,'package.json'),manifest)
     runtime.dependencies[plugin.name]=manifest.version
@@ -47,7 +48,16 @@ if(values.edition){
       nodePaths:[join(product,'d/node_modules')],external:['react','react/*','@deepseek-ai/cordis','@deepseek-ai/dsh-client-ui-slots','@deepseek-ai/dsh-client-store'],
       banner:{js:`window.__ModuleLoader__.load({id:${JSON.stringify(plugin.name)},factory:(require)=>{var module={exports:{}};var exports=module.exports;`},footer:{js:'return module.exports;}});'}})
   }
-  composition.push({insert:entries},{id:'eduwork-brand-settings',config:distribution.brand})
+  composition.push({insert:entries},...(distribution.patches??[]),{id:'eduwork-brand-settings',config:distribution.brand})
+  // Retired edition tools stay disabled above saved activation preferences,
+  // including on the official profile reload. Keep this separate from defaults.
+  const retired=distribution.retiredPluginIds??[]
+  assert.ok(Array.isArray(retired)&&retired.every(id=>typeof id==='string'&&/^[a-z][a-z0-9-]*$/.test(id)))
+  if(retired.length){
+    const policyFile=join(product,'d/node_modules/@deepseek-ai/dsh-desktop-host/lib/distribution-policy.patch.json')
+    const enforced=await read(policyFile)
+    await save(policyFile,[...enforced,...new Set(retired).values()].map(row=>typeof row==='string'?{id:row,disabled:true}:row))
+  }
   Object.assign(identity,{distribution:distribution.id,brand:distribution.brand,capabilities:distribution.capabilities,
     editionCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:edition,encoding:'utf8',windowsHide:true}).trim(),sourcePackages:[...identity.sourcePackages,...entries.map(entry=>entry.name)]})
   for(const skill of distribution.skills) await cp(join(edition,skill.source),join(product,'skills',skill.name),{recursive:true})
