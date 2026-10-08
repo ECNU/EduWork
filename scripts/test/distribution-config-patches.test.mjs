@@ -109,6 +109,20 @@ test('whole-config replacement keeps precedence after subsequent object patches'
   assert.deepEqual(composeEntries([composition])[0].config, { first: true, second: true })
 })
 
+test('group replacement retains the official stale-target skip behavior', { skip: !runtime }, () => {
+  const composition = [{ insert: [{ id: 'group', group: true, config: initial()[0].insert }] }]
+  const patches = [
+    { id: 'group', config: [{ id: 'new-child', name: 'synthetic-new', config: { keep: true } }] },
+    { id: 'new-child', config: { changed: true }, disabled: true },
+    { id: 'account', config: { backend: 'web' } },
+  ]
+  const expectedWarnings = [], actualWarnings = []
+  const expected = composeEntries([composition, patches], message => expectedWarnings.push(message))
+  assert.deepEqual(compose(composition, patches, actualWarnings), expected)
+  assert.deepEqual(actualWarnings, expectedWarnings)
+  assert.equal(expected[0].config[0].disabled, undefined)
+})
+
 test('real edition preparation preserves user organizations through product profile generation', { skip: !process.env.EDUWORK_TEST_PRODUCT }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-edition-config-'))
   t.after(() => rm(root, { recursive: true, force: true }))

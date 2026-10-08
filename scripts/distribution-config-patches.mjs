@@ -2,11 +2,11 @@ import { randomUUID } from 'node:crypto'
 
 const record = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 
-function entryById(entries, id) {
+function selectedEntry(entries, marker) {
   let found
   for (const entry of entries) {
-    if (entry.id === id) found = entry
-    if (entry.group && Array.isArray(entry.config)) found = entryById(entry.config, id) ?? found
+    if (entry[marker]) found = entry
+    if (entry.group && Array.isArray(entry.config)) found = selectedEntry(entry.config, marker) ?? found
   }
   return found
 }
@@ -18,6 +18,7 @@ function entryById(entries, id) {
 // temporary origin tags identify its source row without reimplementing patches.
 export function mergeDistributionConfigPatches(composition, patches, composeEntries) {
   const marker = '__eduworkAssemblyOrigin_' + randomUUID()
+  const selection = marker + '_selected'
   const origins = new Map(), replacements = new Set(), result = []
   function mark(entries) {
     for (const entry of entries) {
@@ -27,7 +28,12 @@ export function mergeDistributionConfigPatches(composition, patches, composeEntr
     }
   }
   for (const patch of structuredClone([...composition, ...patches])) {
-    const base = patch.id && entryById(composeEntries([result]), patch.id)
+    // Probe the Runtime's actual target. Its index may still reference a
+    // removed child after group-config replacement, so looking up an ID in
+    // the resulting tree alone would incorrectly revive a skipped patch.
+    const base = patch.id && selectedEntry(composeEntries([result, [
+      { id: patch.id, name: patch.name, [selection]: true },
+    ]]), selection)
     if (patch.insert) mark(patch.insert)
     if (base?.group && Array.isArray(patch.config)) mark(patch.config)
     const origin = base && origins.get(base[marker])

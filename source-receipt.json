@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-08T13:52:57.878Z",
-  "fileSetSHA256": "7cb0864b4db656544596c768db8a4d2ce07dd159edecc02d392302083a18ab47",
+  "createdAt": "2026-10-08T14:00:13.820Z",
+  "fileSetSHA256": "dd7dc8cde1fb8c4c0ec9b0fe772893881cad55995ab662e9ef2e39d557ecf1f7",
   "files": [
     {
       "path": ".gitattributes",
@@ -5013,7 +5013,7 @@
     },
     {
       "path": "scripts/distribution-config-patches.mjs",
-      "sha256": "dc90d077196846dd7539526ef42633d5ff8938213d5cc2d3e2fb41ee6a307d4f"
+      "sha256": "44f16c2fa02fddf7ceee62d58ccd03c90bda9f3c54829026b2636df4100339f0"
     },
     {
       "path": "scripts/github-update-manifest.mjs",
@@ -5241,7 +5241,7 @@
     },
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
-      "sha256": "b7932f0904868973fd85fb67d343c560056b95f6af9cc5d066a4b1d1469ca0c1"
+      "sha256": "24a1aa5aa3afeac51a27602db7ab33cb0140dc57d4d6d1d07dbf32f64e5cce29"
     },
     {
       "path": "scripts/test/macos-update-feed.test.mjs",
