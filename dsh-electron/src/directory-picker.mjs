@@ -32,6 +32,7 @@ export class DesktopDirectoryPicker {
       signal?.removeEventListener('abort', request.cancel)
       if (this.pending === request) this.pending = undefined
     })
+    request.settled = result.then(() => {}, () => {})
     // Electron's open dialog has no AbortSignal API. An abandoned caller gets
     // null immediately, but retain the lock until the OS sheet actually closes;
     // otherwise a reconnect could open a second sheet or adopt a stale result.
@@ -41,5 +42,12 @@ export class DesktopDirectoryPicker {
   dispose() {
     this.disposed = true
     this.pending?.cancel()
+  }
+
+  close() {
+    this.dispose()
+    // Keep the parent alive until AppKit finishes its sheet. Destroying it in
+    // app.quit() while the open panel is active can stall native panel cleanup.
+    return this.pending?.settled ?? Promise.resolve()
   }
 }

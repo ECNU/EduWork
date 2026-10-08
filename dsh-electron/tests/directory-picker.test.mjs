@@ -92,3 +92,24 @@ test('unauthorized and malformed bridge requests never open a native dialog', as
   for (const body of [null, [], { path: '/synthetic' }]) assert.equal((await request(body)).status, 400)
   assert.equal(calls, 0)
 })
+
+test('accepted shutdown discards the choice and keeps its parent alive until the sheet ends', async () => {
+  const { picker, calls } = fixture()
+  const selected = picker.pick(); await tick()
+  let parentClosed = false
+  const shutdown = picker.close().then(() => { parentClosed = true })
+  assert.equal(await selected, null)
+  await tick(); assert.equal(parentClosed, false)
+  assert.equal(await picker.pick(), null)
+  calls[0].resolve({ canceled: false, filePaths: ['/synthetic/quit-choice'] })
+  await shutdown; assert.equal(parentClosed, true)
+})
+
+test('a failing native panel cannot prevent shutdown', async () => {
+  const { picker, calls } = fixture()
+  const selected = picker.pick(); await tick()
+  const shutdown = picker.close()
+  assert.equal(await selected, null)
+  calls[0].reject(new Error('native panel closed with an error'))
+  await shutdown
+})

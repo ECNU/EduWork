@@ -50,6 +50,7 @@ let confirmQuit = async () => true
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: async () => {
+    await directoryPicker.close()
     void contentUpdates?.close()
     await lifecycle.close()
     taskNotifications?.close()

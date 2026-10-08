@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-08T16:42:53.767Z",
-  "fileSetSHA256": "2c1024c5f199d0f47f39cbbc290b79c044ba6bfc8358b1a7eb43dc6b9afa5208",
+  "fileSetSHA256": "80d2867478f0d84882ace953a238cb4afc822d4d39195b4150abe78f1215f9cf",
   "files": [
     {
       "path": ".gitattributes",
@@ -909,7 +909,7 @@
     },
     {
       "path": "dsh-electron/src/directory-picker.mjs",
-      "sha256": "89bd69a3cd4ba66050e39fbee3e3eb6518d6a40c64d0051ea499bf00257837d0"
+      "sha256": "419e07ca27ff824eb82a9ad93bd252f0607258564acf68c808708d13c0322e5f"
     },
     {
       "path": "dsh-electron/src/dock-theme-preload.cjs",
@@ -965,7 +965,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "e2e9ed30bcbde1e1c4d5f01eb0124866b1b3de076ad15850098aefa732db149a"
+      "sha256": "019f6594bad129925cdd3a5e58b40e060dadcddd614262127d4f56ebb975403a"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
@@ -1025,7 +1025,7 @@
     },
     {
       "path": "dsh-electron/tests/directory-picker.test.mjs",
-      "sha256": "7a29a929b8b59e5b436dcd1caa5d6b000f4649af322fbb08f7d42dc0db34f215"
+      "sha256": "5181284ed3c124b7f6467a526a54011b337ae1a859856db5d7a55736fb2decae"
     },
     {
       "path": "dsh-electron/tests/dock-plugin-native.m",
