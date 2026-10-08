@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-06T05:00:06.362Z",
-  "fileSetSHA256": "250043ef33235b38ce20c367280d75608458147aa621fcd5840d735c4f8103c5",
+  "createdAt": "2026-10-08T16:42:53.767Z",
+  "fileSetSHA256": "2c1024c5f199d0f47f39cbbc290b79c044ba6bfc8358b1a7eb43dc6b9afa5208",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "71e5901c234aafe6c574cea900de68386d8c635fbbdfbb6e9be3ebb94c1b384b"
+      "sha256": "4fe8107a2ce5cd8c19c28b1d20d619c28a8e5c65dc4ccd0a3462fa44978840ea"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -845,7 +845,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "68a050a9829514c7827082a7d31265b814769a4d8e8f546e449f7be8052f00f5"
+      "sha256": "c1df3e8ef7c563b1f8bafa4c211ddcaf07ba08b8856a301e8ebd28d66187b913"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -908,6 +908,10 @@
       "sha256": "9ac4a40c566e03aedfce91f6e125022701c78d1c33b06f174694953332a1ac1a"
     },
     {
+      "path": "dsh-electron/src/directory-picker.mjs",
+      "sha256": "89bd69a3cd4ba66050e39fbee3e3eb6518d6a40c64d0051ea499bf00257837d0"
+    },
+    {
       "path": "dsh-electron/src/dock-theme-preload.cjs",
       "sha256": "989e43aef2a3b32ff3ecb7b1470c2d5a8e0234275f66e466b01ad75a45012b36"
     },
@@ -941,15 +945,15 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "e7032d389cd204c7015d5b6ee13f5c0e5e0f6d4507166e517e8e099719a87aac"
+      "sha256": "199b945d9d6da8b2a5b6c22b2746c872f4f8361227e9b95a61e5e976a8b635a7"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "053953e8b07ed7272d7acbf66402d16970b7c6ea94dd1ec79809fbffaa27af24"
+      "sha256": "211877c286b7f271fe0f674fd07ee139118d1016c2b83d65e0504e7273dbf64b"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
-      "sha256": "497775f63d7dbe084cc24560f89a61cf978ef5b8f035d250b8d3fa898b3e13c9"
+      "sha256": "d4f13c1a8a043c66fc8ae7523f35ad214b6efc73eaf61b7419121b8138190ac2"
     },
     {
       "path": "dsh-electron/src/native-web-host.mjs",
@@ -961,7 +965,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "c3a5ad493dae29ed04c78163c918b27edae82a603ac7ad9d03e810ee4d82c081"
+      "sha256": "e2e9ed30bcbde1e1c4d5f01eb0124866b1b3de076ad15850098aefa732db149a"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
@@ -1020,6 +1024,10 @@
       "sha256": "53f06b1be27a0297b85d08e7b830b45191593f56b5839323a850031a6bf318c7"
     },
     {
+      "path": "dsh-electron/tests/directory-picker.test.mjs",
+      "sha256": "7a29a929b8b59e5b436dcd1caa5d6b000f4649af322fbb08f7d42dc0db34f215"
+    },
+    {
       "path": "dsh-electron/tests/dock-plugin-native.m",
       "sha256": "03ad90f9e81eb0ee3bdd7a4ffa26e116c2802f1a5b2e23e0a3582435497e6684"
     },
@@ -1041,7 +1049,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "a5947adae3167fbbb671ec29abce02c813c692f80114186bcacd092dd3592edb"
+      "sha256": "3b28be375e83cda4462a4cc9b03f473d43f2d9985b506b3136478d64fd00c149"
     },
     {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",
@@ -1237,7 +1245,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "fedee83631b62942553774f2c4d82c3f70be9688b07e23d180c5a80d96121198"
+      "sha256": "d7076fe0a986bfd27ceb1cf69e165c2eb3053511ae2637b7db4d6a55d6e9b663"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1337,7 +1345,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "9583f4a02544ca6745ac24e634f7c2102ae6296a6e35953b65d4c9e936a92059"
+      "sha256": "625bdaf657d0272e945f915537729ea9213c7f32c787c63718f10db49f6e73c7"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
@@ -2048,12 +2056,20 @@
       "sha256": "99f6022d578095d07374238a70fda21ba70936d9813bc88ebacce9622c4d2ac7"
     },
     {
+      "path": "dsh-plugins/desktop-services/lib/directory-picker.js",
+      "sha256": "446fb9d92fa54ad0f24d36d024e5ef981abe8bfffeb25cd099b7aae4f13da55a"
+    },
+    {
+      "path": "dsh-plugins/desktop-services/lib/directory-request.js",
+      "sha256": "543e211604e8d076212cc63e4ea6a5c412ecaa2d02ece7839d6b49003291fc39"
+    },
+    {
       "path": "dsh-plugins/desktop-services/lib/index.js",
       "sha256": "bbfd686c5b2c426d6b94ca392fe5d9dd7a86c34f08bd8e937b474761b179565f"
     },
     {
       "path": "dsh-plugins/desktop-services/package.json",
-      "sha256": "e75f55a5f57a235438ff812911f5dcb74eeb072be79b561d0ca4c4b3b6dc554d"
+      "sha256": "d9a51cdc26d44eafc700d36a2bc8cc52e898adcc73f6c819f916b0f707748484"
     },
     {
       "path": "dsh-plugins/desktop-services/test/attention-host.test.mjs",
@@ -5181,7 +5197,7 @@
     },
     {
       "path": "scripts/probe-017-source-product.mjs",
-      "sha256": "327203754022187089c55be555018397a49fe8546fd6ebc35bb5b101873c4ffa"
+      "sha256": "7ca1e6033f9e21b0cc47ed66a63179908ec730596769499d7c785f7cc0fb2c58"
     },
     {
       "path": "scripts/probe-dsh-017-speech.mjs",

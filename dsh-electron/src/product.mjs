@@ -6,6 +6,7 @@ import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname } from 'node:path'
 import { execFile } from 'node:child_process'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
+import { DesktopDirectoryPicker } from './directory-picker.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
 import { DesktopExit } from './desktop-exit.mjs'
@@ -33,6 +34,9 @@ export function configureWindowNavigation(window) {
   })
 }
 
+const directoryPicker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
+export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
+app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
 let migrationLaunch
 let updateCompleted = false
@@ -190,7 +194,7 @@ async function prepareDesktop() {
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } },
     publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(), changed: () => refreshTray() })
-  const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
+  const bridge = await startNativeBridge({ vault, pickDirectory: pickDesktopDirectory, openExternal: url => shell.openExternal(url),
     attention: body => taskNotifications.handle(body),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),

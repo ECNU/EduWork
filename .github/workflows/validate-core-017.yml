@@ -84,7 +84,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }

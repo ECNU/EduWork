@@ -32,7 +32,8 @@ const vault = { async flush() {}, async operation(operation, ref, value) {
     ...(operation === 'resolve' && secrets.has(ref) ? { value: secrets.get(ref) } : {}) }
 } }
 const notifications = new TaskNotifications({ foreground: () => false, show() {}, publish() {}, dismiss() {}, changed() {} })
-const bridge = await startNativeBridge({ vault, attention: body => notifications.handle(body), openExternal() { throw new Error('Unexpected external navigation in synthetic probe') } })
+let directoryRequests = 0
+const bridge = await startNativeBridge({ vault, pickDirectory: async () => { directoryRequests++; return workspace }, attention: body => notifications.handle(body), openExternal() { throw new Error('Unexpected external navigation in synthetic probe') } })
 const { DesktopHostProcess } = await import(pathToFileURL(join(hostRoot, 'host-process.mjs')).href)
 const { authenticateWebHost } = await import(pathToFileURL(join(hostRoot, 'web-document.mjs')).href)
 let host
@@ -117,7 +118,14 @@ try {
     }
     assert.equal((await fetch(origin)).status, 401)
     assert.equal((await fetch(origin, { headers: { cookie } })).status, 200)
+    const pickedDirectory = await rpc('directoryPicker/pick')
+    assert.equal(pickedDirectory, workspace)
+    assert.equal(directoryRequests, round)
+    report.directoryPicker = 'installed Host capability and authenticated bridge; synthetic dialog result (native UI tested separately)'
     const plugins = await rpc('pluginManager/listPlugins')
+    assert.ok(plugins.some(row => row.patchId === 'eduwork-directory-picker' && row.fiberPhase === 'active'))
+    assert.ok(plugins.some(row => row.patchId === 'eduwork-directory-flow' && row.fiberPhase === 'active'))
+    assert.ok(!plugins.some(row => row.patchId === 'directory-picker' && row.enabled))
     const failed = plugins.filter(row => row.enabled && row.fiberPhase === 'failed')
     assert.equal(failed.length, 0, JSON.stringify(failed))
     assert.ok(plugins.some(row => row.patchId === 'chatecnu-brand' && row.enabled))
