@@ -153,6 +153,7 @@ jobs:
         run: |
           node core/scripts/assemble-017-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
           if ($LASTEXITCODE) { throw 'Source product assembly failed' }
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           $env:EDUWORK_TEST_PRODUCT = "$env:RUNNER_TEMP/source-product"
           $env:EDUWORK_TEST_SOURCE = "$env:RUNNER_TEMP/source-stage"
           $env:EDUWORK_TEST_DEPENDENCIES = "$env:RUNNER_TEMP/source-deps"

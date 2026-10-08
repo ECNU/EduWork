@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-08T14:39:16.172Z",
-  "fileSetSHA256": "a653ed49cbab6fe336c825bf555930f15fd4da08e06f76e8c921a93fa614c27f",
+  "createdAt": "2026-10-08T16:12:21.969Z",
+  "fileSetSHA256": "2eebf7277b1db0ed274d603585c864d8bc7b837fea5865b716dcaea270bce0b3",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-core-017.yml",
-      "sha256": "1594422c876977d7d82ac08fd83a095968386211a38e96950e4facf76ca27edf"
+      "sha256": "ba929cc92df3a342bb1be7a34015cc76866cd9d5233c8879cf84bab5f16d3073"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
