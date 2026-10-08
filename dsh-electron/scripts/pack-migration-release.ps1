@@ -10,6 +10,7 @@ if (Test-Path -LiteralPath $Output) { throw 'Migration ZIP output already exists
 $identity = Get-Content -LiteralPath (Join-Path $Candidate 'resources/app/eduwork.desktop.json') -Raw | ConvertFrom-Json
 if ($identity.schemaVersion -ne 1 -or $identity.shell -ne 'electron' -or $identity.distribution -notmatch '^[a-z0-9][a-z0-9-]{0,79}$' -or $identity.productVersion -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'Invalid Electron release identity' }
 if (-not (Test-Path -LiteralPath (Join-Path $Candidate 'EduWork-Electron.exe') -PathType Leaf)) { throw 'Electron entry is missing' }
+& (Join-Path $PSScriptRoot 'set-updater-manifest.ps1') -Executable (Join-Path $Candidate 'resources/update/EduWork-Updater.exe') -VerifyOnly
 if ($Migration -eq 'wails-host-v1') {
     foreach ($entry in @('ChatECNU-Work.exe','EduWork.exe')) {
         if (-not (Test-Path -LiteralPath (Join-Path $Candidate $entry) -PathType Leaf)) { throw "Bridge migration requires both historical shortcut launchers: $entry" }

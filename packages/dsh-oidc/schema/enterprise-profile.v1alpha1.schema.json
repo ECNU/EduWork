@@ -166,6 +166,16 @@
             "oauth",
             "oidc"
           ]
+        },
+        "additionalScopes": {
+          "type": "array",
+          "maxItems": 64,
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "maxLength": 128,
+            "pattern": "^[\\u0021\\u0023-\\u005b\\u005d-\\u007e]+$"
+          }
         }
       },
       "allOf": [
@@ -194,6 +204,7 @@
             "properties": {
               "clientId": false,
               "identityMode": false,
+              "additionalScopes": false,
               "discoveryUrl": {
                 "$ref": "#/$defs/secureEndpointURL"
               },
@@ -331,6 +342,11 @@
           "minLength": 1,
           "maxLength": 120
         },
+        "loginButtonLabel": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 40
+        },
         "loginDescription": {
           "type": "string",
           "minLength": 1,
@@ -338,6 +354,14 @@
         },
         "supportURL": {
           "$ref": "#/$defs/httpsURL"
+        },
+        "language": {
+          "enum": [
+            "auto",
+            "zh-CN",
+            "en"
+          ],
+          "type": "string"
         }
       }
     },
@@ -494,6 +518,18 @@
           "type": "string",
           "minLength": 1,
           "maxLength": 256
+        },
+        "type": {
+          "type": "string",
+          "enum": [
+            "llm",
+            "embedding",
+            "rerank",
+            "image",
+            "tts",
+            "unknown"
+          ],
+          "description": "Model purpose, independent of input modalities. Server type takes precedence; local metadata fills absent server types. Missing types resolve to unknown; only llm registers for conversation."
         },
         "name": {
           "type": "string",

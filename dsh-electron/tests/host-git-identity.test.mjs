@@ -1,19 +1,26 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import path from 'node:path'
-import { applyHostGitIdentity } from '../src/host-git-identity.mjs'
+import { applyHostGitIdentity as applyIdentity } from '../src/host-git-identity.mjs'
 
 const socketRoot = '/tmp-test-root'
+const uid = 1000
+function applyHostGitIdentity(env, options) {
+  return applyIdentity(env, { uid, launchdSshAuthSock: () => undefined, ...options })
+}
 
-function mockStat(files) {
+function mockLstat(files) {
   return filePath => {
-    const entry = files[filePath]
+    const entry = files[filePath] ?? (Object.keys(files).some(file => path.dirname(file) === filePath) ? { kind: 'directory' } : undefined)
     if (!entry) {
       const error = new Error('ENOENT')
       error.code = 'ENOENT'
       throw error
     }
     return {
+      uid: entry.uid ?? uid,
+      isSymbolicLink() { return entry.kind === 'symlink' },
+      isDirectory() { return entry.kind === 'directory' },
       isSocket() {
         return entry.kind === 'socket'
       },
@@ -36,7 +43,7 @@ test('existing valid socket is inherited', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({ [sock]: { kind: 'socket' } }),
+    lstat: mockLstat({ [sock]: { kind: 'socket' } }),
   })
   assert.equal(env.SSH_AUTH_SOCK, sock)
   assert.equal(summary.ssh, 'inherited')
@@ -54,7 +61,7 @@ test('discovers newest launchd Listeners socket', () => {
     platform: 'darwin',
     socketRoot,
     listDir: mockListDir(['com.apple.launchd.AAA', 'com.apple.launchd.BBB']),
-    stat: mockStat(files),
+    lstat: mockLstat(files),
   })
   assert.equal(env.SSH_AUTH_SOCK, newer)
   assert.equal(summary.ssh, 'discovered')
@@ -67,7 +74,7 @@ test('stale SSH_AUTH_SOCK is replaced by discovered socket', () => {
     platform: 'darwin',
     socketRoot,
     listDir: mockListDir(['com.apple.launchd.ZZZ']),
-    stat: mockStat({ [discovered]: { kind: 'socket', mtimeMs: 1 } }),
+    lstat: mockLstat({ [discovered]: { kind: 'socket', mtimeMs: 1 } }),
   })
   assert.equal(env.SSH_AUTH_SOCK, discovered)
   assert.equal(summary.ssh, 'discovered')
@@ -81,7 +88,7 @@ test('non-socket stale path is replaced', () => {
     platform: 'darwin',
     socketRoot,
     listDir: mockListDir(['com.apple.launchd.ONE']),
-    stat: mockStat({
+    lstat: mockLstat({
       [bad]: { kind: 'file' },
       [discovered]: { kind: 'socket', mtimeMs: 1 },
     }),
@@ -95,7 +102,7 @@ test('absent leaves SSH_AUTH_SOCK unset when never set', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
   })
   assert.equal('SSH_AUTH_SOCK' in env, false)
   assert.equal(summary.ssh, 'absent')
@@ -107,7 +114,7 @@ test('absent removes stale SSH_AUTH_SOCK', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
   })
   assert.equal('SSH_AUTH_SOCK' in env, false)
   assert.equal(summary.ssh, 'absent')
@@ -119,7 +126,7 @@ test('empty HOME is filled', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
     homedir: () => '/Users/filled',
   })
   assert.equal(env.HOME, '/Users/filled')
@@ -132,7 +139,7 @@ test('existing HOME is kept', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
     homedir: () => '/Users/other',
   })
   assert.equal(env.HOME, '/Users/kept')
@@ -145,7 +152,7 @@ test('PATH without discrete /usr/bin appends system dirs', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
   })
   assert.equal(env.PATH, '/opt/homebrew/bin' + path.delimiter + '/usr/bin:/bin:/usr/sbin:/sbin')
 })
@@ -157,7 +164,7 @@ test('PATH with /usr/bin elsewhere is unchanged', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
   })
   assert.equal(env.PATH, original)
 })
@@ -168,7 +175,7 @@ test('missing PATH is set to system dirs', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
   })
   assert.equal(env.PATH, '/usr/bin:/bin:/usr/sbin:/sbin')
 })
@@ -188,7 +195,7 @@ test('discovery ignores non-matching dirs and non-socket Listeners', () => {
     platform: 'darwin',
     socketRoot,
     listDir: mockListDir(['not-launchd', 'com.apple.launchd.BAD', 'com.apple.launchd.GOOD']),
-    stat: mockStat({
+    lstat: mockLstat({
       [fileListener]: { kind: 'file', mtimeMs: 99 },
     }),
   })
@@ -200,7 +207,7 @@ test('discovery ignores non-matching dirs and non-socket Listeners', () => {
     platform: 'darwin',
     socketRoot,
     listDir: mockListDir(['com.apple.launchd.BAD-extra!', 'com.apple.launchd.OK']),
-    stat: mockStat({
+    lstat: mockLstat({
       [path.join(socketRoot, 'com.apple.launchd.BAD', 'Listeners')]: { kind: 'socket', mtimeMs: 1 },
       [socketListener]: { kind: 'socket', mtimeMs: 2 },
     }),
@@ -214,7 +221,90 @@ test('systemGitOnPath reflects final PATH', () => {
     platform: 'darwin',
     socketRoot,
     listDir: () => [],
-    stat: mockStat({}),
+    lstat: mockLstat({}),
   })
   assert.equal(summary.systemGitOnPath, true)
+})
+
+
+test('current launchd session takes precedence over newer fallback socket', () => {
+  const session = path.join(socketRoot, 'com.apple.launchd.SESSION', 'Listeners')
+  const fallback = path.join(socketRoot, 'com.apple.launchd.OTHER', 'Listeners')
+  const env = { SSH_AUTH_SOCK: '/gone.sock' }
+  const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+    launchdSshAuthSock: () => session,
+    listDir: () => ['com.apple.launchd.OTHER'],
+    lstat: mockLstat({ [session]: { kind: 'socket', mtimeMs: 1 }, [fallback]: { kind: 'socket', mtimeMs: 999 } }),
+  })
+  assert.equal(env.SSH_AUTH_SOCK, session)
+  assert.equal(summary.ssh, 'launchd')
+})
+
+test('owned inherited agent remains preferred without querying launchd', () => {
+  const sock = '/agent/Listeners'
+  const env = { SSH_AUTH_SOCK: sock }
+  const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+    launchdSshAuthSock: () => { throw new Error('must not query launchd') },
+    listDir: () => { throw new Error('must not scan') }, lstat: mockLstat({ [sock]: { kind: 'socket' } }),
+  })
+  assert.equal(env.SSH_AUTH_SOCK, sock)
+  assert.equal(summary.ssh, 'inherited')
+})
+
+for (const source of ['inherited', 'launchd', 'discovered']) {
+  for (const [name, overrides] of [
+    ['socket owned by another user', { socket: { kind: 'socket', uid: uid + 1 } }],
+    ['socket symlink', { socket: { kind: 'symlink' } }],
+    ['parent owned by another user', { directory: { kind: 'directory', uid: uid + 1 } }],
+    ['parent symlink', { directory: { kind: 'symlink' } }],
+  ]) {
+    test(`${source} rejects ${name}`, () => {
+      const folder = path.join(socketRoot, 'com.apple.launchd.BAD')
+      const sock = path.join(folder, 'Listeners')
+      const files = {
+        [folder]: overrides.directory ?? { kind: 'directory' },
+        [sock]: overrides.socket ?? { kind: 'socket', mtimeMs: 100 },
+      }
+      const env = source === 'inherited' ? { SSH_AUTH_SOCK: sock } : {}
+      const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+        listDir: () => source === 'discovered' ? ['com.apple.launchd.BAD'] : [],
+        launchdSshAuthSock: () => source === 'launchd' ? sock : undefined,
+        lstat: mockLstat(files),
+      })
+      assert.equal('SSH_AUTH_SOCK' in env, false)
+      assert.equal(summary.ssh, 'absent')
+    })
+  }
+}
+
+test('launchctl failure still permits the owned socket fallback', () => {
+  const sock = path.join(socketRoot, 'com.apple.launchd.OK', 'Listeners')
+  const env = {}
+  const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+    listDir: () => ['com.apple.launchd.OK'],
+    launchdSshAuthSock: () => { throw new Error('launchctl failed') },
+    lstat: mockLstat({ [sock]: { kind: 'socket', mtimeMs: 1 } }),
+  })
+  assert.equal(env.SSH_AUTH_SOCK, sock)
+  assert.equal(summary.ssh, 'discovered')
+})
+
+test('timestamp ties have a deterministic lexical selection', () => {
+  const a = path.join(socketRoot, 'com.apple.launchd.A', 'Listeners')
+  const b = path.join(socketRoot, 'com.apple.launchd.B', 'Listeners')
+  const files = { [a]: { kind: 'socket', mtimeMs: 10 }, [b]: { kind: 'socket', mtimeMs: 10 } }
+  for (const dirs of [['com.apple.launchd.B', 'com.apple.launchd.A'], ['com.apple.launchd.A', 'com.apple.launchd.B']]) {
+    const env = {}
+    applyHostGitIdentity(env, { platform: 'darwin', socketRoot, listDir: () => dirs, lstat: mockLstat(files) })
+    assert.equal(env.SSH_AUTH_SOCK, a)
+  }
+})
+
+test('relative inherited and launchd socket paths are rejected', () => {
+  const env = { SSH_AUTH_SOCK: 'agent.sock' }
+  const summary = applyHostGitIdentity(env, { platform: 'darwin', socketRoot,
+    launchdSshAuthSock: () => 'other.sock', listDir: () => [], lstat: () => { throw new Error('must not stat relative path') },
+  })
+  assert.equal('SSH_AUTH_SOCK' in env, false)
+  assert.equal(summary.ssh, 'absent')
 })

@@ -4,49 +4,106 @@
 
 <h1 align="center">EduWork</h1>
 
-<p align="center"><strong>An open AI knowledge workbench.</strong><br><sub>Enterprise sign-in · Open protocols · Knowledge Studio</sub></p>
+<p align="center"><strong>An education distribution built on DSH.</strong><br><sub>SSO · Plugins and skills · Knowledge Studio</sub></p>
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.2](https://img.shields.io/badge/DSH-0.2.0--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
-[Open enterprise integration](#open-enterprise-integration) · [Knowledge Studio](#knowledge-studio) · [Get started](#installation-and-use) · [Connect LiteLLM](#connect-litellm) · [Extend and contribute](#extend-and-contribute)
+[Editions](#from-dsh-to-institution-editions) · [Plugins](#bundled-plugins) · [Skills](#bundled-skills) · [SSO](#sso-and-open-model-access) · [Studio](#knowledge-studio) · [Get started](#installation-and-use)
 
 </div>
 
-EduWork brings organizational model access and source-based creation and learning into one desktop workbench. Sign in with a school or enterprise account, explore questions in conversation, and turn your materials into reports, presentations, quizzes, and flashcards in Knowledge Studio.
+EduWork is an education-focused distribution built on [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). It brings together plugins, skills, and a desktop environment for teaching, research, and administrative work. Work with local materials, then connect your institution's model service to use authorized models with your organization account.
 
-We focus on two things: **making organizational model services available to different clients through open protocols, and giving knowledge work ways to interact beyond chat.**
+## From DSH to institution editions
+
+The Linux kernel and distribution relationship is a useful analogy: **DSH provides the agent runtime and plugin architecture; DeepSeek's official client provides the official combination. EduWork assembles plugins, skills, and configuration for education, and institutions extend it with their own services.**
+
+```mermaid
+flowchart TD
+    DSH["DeepSeek Harness · Runtime and plugin architecture"] --> Official["DeepSeek official client"]
+    DSH --> EduWork["EduWork · Education distribution"]
+    EduWork --> ECNU["EduWork@ECNU · ECNU edition"]
+    EduWork --> School["Other institution editions"]
+```
+
+EduWork focuses on a useful combination for education: **open institutional sign-in and model access, source-based Knowledge Studio, and skills for creation, research, and learning.** Shared capabilities continue to reuse DSH implementations; institution services connect through configuration and plugins. [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) adds East China Normal University services. Other institutions can build their own combinations directly on EduWork.
+
+## Bundled plugins
+
+Plugins provide executable capabilities, service connections, and interfaces. The education distribution includes these main plugins, without requiring desktop users to install each separately:
+
+| Plugin | Capabilities | Requirements |
+| --- | --- | --- |
+| [Institutional sign-in and models](packages/dsh-oidc/README_EN.md) · `@eduwork/dsh-oidc` | Browser-based SSO, model discovery, and Token refresh; supports the oidc-llm draft and native LiteLLM OAuth. | A compatible institution or gateway service. |
+| [Knowledge Studio](packages/dsh-knowledge-studio/README_EN.md) · `@eduwork/dsh-knowledge-studio` | Reports, mind maps, quizzes, flashcards, spreadsheets, presentations, and audio/video overviews from workspace materials. | A connected model; media outputs need their corresponding services. |
+| [Artifact and media services](packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) · `@eduwork/dsh-artifact-services` | Office generation and previews, speech, and media production shared by conversations and Studio. | Bundled local resources or configured services. |
+| [Literature search](packages/dsh-literature/README_EN.md) · `@eduwork/dsh-literature` | Search DBLP and arXiv, retrieve BibTeX and available full text. | Forked from [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature), maintained by EduWork; additional sources are planned. |
+| [Local memory](packages/dsh-memory/README_EN.md) · `@eduwork/dsh-memory` | Manage local memory and retrieve earlier conversations to carry context forward. | Managed locally. |
+| [Mail assistant](packages/dsh-mail/README_EN.md) · `@eduwork/dsh-mail` | Read IMAP mail and send through SMTP with authorization. | A connected mailbox and appropriate permissions. |
+| [Browser](dsh-plugins/tool-browser/README_EN.md) and [media integration](dsh-plugins/media-openai/README_EN.md) | Browse web pages; connect OpenAI-compatible image generation and cloud TTS. | Web access; separately configured cloud media services. |
+| [Skill management](dsh-plugins/skill-settings-native/README_EN.md) and [workbench settings](dsh-plugins/workbench-native/README_EN.md) | Manage skills, import history, and configure notifications and updates. | Included with the distribution. |
+
+**Bundled does not mean every external service is already connected.** The public edition contains no institution accounts, model allowances, or private credentials. See the [distribution manifest](config/distributions/generic.json) for the full combination. Public npm plugins can also be used independently in other DSH applications with compatible versions.
+
+## Bundled skills
+
+Skills describe task methods and workflows, using tools supplied by plugins. They are managed separately from plugins; conversations and Studio share the same creation capabilities.
+
+| Skill | Purpose |
+| --- | --- |
+| `artifact-documents` | Write and edit Word documents. |
+| `artifact-presentations` | Organize content and create PowerPoint presentations. |
+| `artifact-spreadsheets` | Organize data, perform analysis, and create spreadsheets. |
+| `artifact-pdfs` | Read, generate, and inspect PDFs. |
+| `artifact-images` | Create illustrations, posters, and other images through configured services. |
+| `artifact-speech` | Discover voices, synthesize speech, and transcribe audio through available providers. |
+| `artifact-video` | Plan and generate video content. |
+| `knowledge-studio` | Create and register Studio artifacts from source materials. |
+| `browser` | Search public information, read pages, and interact with websites. |
+| `skill-creator` | Create and maintain your own skills. |
+| `eduwork-help` | Find product guidance and troubleshooting instructions. |
+
+Enable or disable bundled skills, import personal skills, or write project-specific ones. Copying a skill adds instructions; the models, plugins, and services it uses must still be available.
+
+![Skill management: browse bundled skills, import skills, or create your own](docs/images/skills.png)
+
+<p align="center"><sub>The interface evolves between versions. Plugins provide capabilities; skills describe how to use them.</sub></p>
 
 <a id="school-and-enterprise-integration"></a>
+<a id="open-enterprise-integration"></a>
 
-## Open enterprise integration
+## SSO and open model access
 
-Sign in with a school or enterprise account, discover the models you are authorized to use, and start a conversation. There is no need to distribute model API keys to individual users. Organization models and personally configured models can coexist; permissions and quotas remain managed by the server.
+**Sign in with an organization account to use authorized models, without tying the account or service to one client.** EduWork authorizes through the browser, discovers models, and manages Token refresh. Organization models and personal API keys can coexist; the server manages permissions and quotas.
 
-### Native LiteLLM support
+There are two model-access routes:
 
-The EduWork desktop package includes LiteLLM native CLI OAuth support. Configure the full discovery URL, and the client handles browser authorization, model discovery, and Token refresh without an additional plugin installation. The gateway must enable the corresponding CLI OAuth feature and grant users model access. See the [setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) for version requirements.
+| Route | Who it serves | Current status |
+| --- | --- | --- |
+| **oidc-llm open protocol draft** | Institutions, self-hosted model platforms, and gateways serving multiple clients. | ChatECNU uses this route. EduWork includes an experimental adapter requiring explicit opt-in. [Draft](packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.en.md) · [Implemented scope and configuration](packages/dsh-oidc/docs/gateway-auth/experimental-oidc-llm.en.md) |
+| **Native LiteLLM OAuth** | Organizations already running LiteLLM. | Connect directly to native CLI OAuth and the gateway's authorization and model catalog, without implementing another protocol. [Setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
+
+### The open integration direction we are advancing
+
+**oidc-llm is the protocol draft we are advancing for institutions and interoperability across clients.** Building on OAuth/OIDC, it specifies service discovery, model catalogs, and Access Token model invocation. Institutions can expose model access without building a separate sign-in and key-distribution flow for every client. Other clients can implement the protocol independently of EduWork's interface or DSH.
+
+It remains a **0.1 draft with an experimental implementation**, not a finalized standard or an official OpenID standard. ChatECNU is an adoption example. The full draft and the client's implemented scope are documented separately; interoperability must be verified for the versions involved. The draft's `oidc` and `oauth` options are identity modes within the same protocol.
+
+The plugin also retains **identity-only OIDC sign-in** for authentication without model authorization. This is not a third model-access route. Quota, billing, and campus business services remain institutional extensions, rather than requirements of the shared sign-in protocol.
+
+[Open integration initiative](packages/dsh-oidc/docs/open-integration.en.md) · [Server integration contract](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Client plugin](packages/dsh-oidc/README_EN.md)
+
+### Connect an existing LiteLLM gateway
+
+Configure the complete discovery URL, and the client handles browser authorization, model discovery, and Token refresh. The server must enable native CLI OAuth and authorize models for the user. See the [setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) for version requirements. Adapters for more open-source model gateways are welcome.
 
 ![After LiteLLM sign-in, the model menu shows the authorized deepseek-v4-flash under the local LiteLLM group](docs/images/litellm-models.png)
 
-<p align="center"><sub>Sign in to use models authorized by the gateway. DeepSeek is a separately configured provider in this example and can coexist with LiteLLM.</sub></p>
-
-| Integration | Current support |
-| --- | --- |
-| **LiteLLM native OAuth** | Sign in to the gateway, then discover and call models authorized for the user and selected team. [Setup guide](packages/dsh-oidc/docs/gateway-auth/litellm-setup.en.md) |
-| **oidc-llm (experimental)** | Connect institution identity and Token-based model access with explicit experimental opt-in. [Protocol notes](packages/dsh-oidc/docs/gateway-auth/experimental-oidc-llm.en.md) · [ChatECNU edition example](https://github.com/ECNU/EduWork-ECNU) |
-| **Standard OIDC** | Identity sign-in; model access additionally requires a supported authorization contract on the server. [Integration contract](packages/dsh-oidc/docs/server-integration-contract.en.md) |
-
-### One integration, more clients
-
-**An organization's accounts and model services should be independent of any one client.** We publish the identity and model-access protocols, implementation, and configuration examples. Other clients can implement the protocols independently, or reuse the separately published `@eduwork/dsh-oidc` module in compatible DSH applications, without adopting EduWork's UI.
-
-The native LiteLLM and experimental oidc-llm protocols share Access Token session and model invocation capabilities. oidc-llm is not yet finalized, and cross-client interoperability requires version-specific validation. We plan to support more open-source Token gateways and welcome gateway, identity platform, and client developers to participate.
-
-[Open integration initiative](packages/dsh-oidc/docs/open-integration.en.md) · [Server interfaces and integration testing](packages/dsh-oidc/docs/server-integration-contract.en.md) · [Client integration](packages/dsh-oidc/README_EN.md)
+<p align="center"><sub>Organization gateways and personally configured model services can coexist.</sub></p>
 
 ## Knowledge Studio
 
@@ -91,14 +148,14 @@ We want this space to support more ways to create and learn. Additional Studios 
 
 Each client runs independently on its user's computer, without a separate EduWork server. Model services come from your chosen provider or organization.
 
-Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the development package and move `EduWork.app` to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
+Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the package and move the included `.app` application to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
 
 ### 1. Get the client
 
 Download the complete desktop package for your platform from [GitHub Releases](https://github.com/ecnu/EduWork/releases):
 
 - **Windows x64:** extract into a writable directory and run `EduWork-Electron.exe`. Keep the accompanying resource files; do not copy just the EXE.
-- **macOS arm64:** extract and move `EduWork.app` to Applications, then open it. Configuration and user data live in the user directory.
+- **macOS arm64:** extract the package, move the included `.app` application to Applications, and open it. Configuration and user data live in the user directory.
 
 GitHub's Source code archives are not desktop packages. See the [build guide](docs/BUILD.md) to run from source.
 
@@ -109,6 +166,8 @@ GitHub's Source code archives are not desktop packages. See the [build guide](do
 | Personal model API | Open **Settings → Models** and enter your provider's API key, endpoint, and model. |
 | LiteLLM gateway account | Configure discovery as described below and sign in through the browser, without manually entering a model key. |
 | School or company configuration | Merge it into the active file using the [organization steps](#configuration-steps), then sign in. |
+
+The conversation selector lists LLMs, including LLMs that accept images. Image generation, speech synthesis, embedding, and reranking models serve their respective capabilities rather than appearing as chat models.
 
 The public edition does not download institution configuration by default. It ships a commented `eduwork.jsonc` and an `examples/` folder. Application configuration such as institution connections, media services, plugin defaults, and update sources lives in the single file opened from Settings; optional fields are documented in a commented reference at its end. Personal models, API keys, and interface preferences remain managed in their respective settings screens.
 
@@ -125,7 +184,7 @@ The gateway must enable native CLI OAuth and grant the account model permissions
 <details>
 <summary>Use a school or enterprise configuration</summary>
 
-1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows, or `~/Library/Application Support/eduwork-electron/config/` on macOS.
+1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows. On macOS it lives in a distribution-specific directory under `~/Library/Application Support/`; use the file opened from Settings.
 2. Follow the server guide and the adjacent `examples/` folder. Add organization entries to `organizations`, preserving existing settings; add `media` if needed. Editing the example alone has no effect.
 3. Save, exit completely through the tray or application menu, and restart. Then select your organization and sign in.
 
@@ -144,7 +203,7 @@ Try: **“Create a study guide from these sources, then make a companion quiz.�
 <details>
 <summary>Window behavior and updates</summary>
 
-Closing the window minimizes it to the system tray by default. Use the tray or application menu to exit completely. The public edition defaults to GitHub updates, with public-beta and development channels selectable in Settings. Windows uses its portable updater; macOS uses Sparkle to download, replace the application, and restart after user confirmation. Institutions can configure another source. Updates preserve history and user configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES_EN.md).
+Closing the window minimizes it to the system tray by default. Use the tray or application menu to exit completely. Whether automatic updates are enabled and which source they use depend on the distribution package and configuration; consult the release notes for your version. When enabled, Windows uses its portable updater and macOS uses Sparkle, preserving history and user configuration. See the [Windows update guide](docs/UPDATES.md) and [macOS update guide](docs/MACOS_UPDATES_EN.md).
 
 </details>
 
@@ -152,15 +211,11 @@ Closing the window minimizes it to the system tray by default. Use the tray or a
 
 ## Extend and contribute
 
-**Skills provide task guidance; plugins provide executable capabilities and interface extensions.** Manage built-in skills, import others, or write your own so that conversations and Studio can follow methods suited to your work.
+Institutions can start with EduWork's education distribution and add identity and model configuration, campus service plugins, teaching and research skills, branding, and update channels. **Shared improvements belong in the public edition; institution-specific capabilities stay in their own editions.** [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) demonstrates this composition.
 
-![Skill center: browse and manage built-in skills, import skills, or create your own](docs/images/skills.png)
+Configuration is enough to connect supported model services. Add plugins and skills for extra capabilities such as campus search and quota information. Studio also connects through slots, allowing new output types or alternative Studio implementations without maintaining a second workbench.
 
-<p align="center"><sub>From task guidance to plugin capabilities, extend the workbench as needed.</sub></p>
-
-Contributions are welcome for gateway adapters, Studio outputs and interfaces, skills, and plugins. Connect supported identity, model, and media services through configuration. Institutions can also combine internal plugins, skills, and defaults into their own edition. [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) is an institutional extension built on the public edition.
-
-[Contribution guide](CONTRIBUTING.md) · [Discussion and feedback](https://github.com/ECNU/EduWork/issues) · [Edition boundaries](docs/EDITIONS.md)
+Contributions of plugins, skills, gateway adapters, and Studio implementations are welcome, as is feedback on the oidc-llm draft. [Contribution guide](CONTRIBUTING.md) · [Discussion and feedback](https://github.com/ECNU/EduWork/issues) · [Edition boundaries](docs/EDITIONS.md) · [Package maintenance](docs/PACKAGES_EN.md)
 
 ## Documentation
 
@@ -177,23 +232,6 @@ Contributions are welcome for gateway adapters, Studio outputs and interfaces, s
 | [Contribution guide](CONTRIBUTING.md) · [Edition boundaries](docs/EDITIONS.md) | Contributing and the division between the public edition and institutional extensions. |
 
 Detailed documentation defaults to Chinese.
-
-<details>
-<summary>Public modules for independent use</summary>
-
-These modules keep their source and documentation in this repository. Each npm package can still be installed, versioned, and published independently, including for use in other DSH applications.
-
-| Module documentation | Capabilities |
-| --- | --- |
-| [Identity and models (dsh-oidc)](packages/dsh-oidc/README_EN.md) | OIDC / OAuth sign-in, Token model authorization, enterprise model catalogs, and server integration protocols. |
-| [Local memory (dsh-memory)](packages/dsh-memory/README_EN.md) | Local memory and history retrieval to carry task context forward. |
-| [Mail assistant (dsh-mail)](packages/dsh-mail/README_EN.md) | Read mail through IMAP, send through SMTP, and manage the associated permissions. |
-| [Studio (dsh-knowledge-studio)](packages/dsh-knowledge-studio/README_EN.md) | Create, preview, and manage reports, spreadsheets, presentations, learning materials, and media. |
-| [Artifact and media services (dsh-artifact-services)](packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Office, speech, image, and media generation shared by conversations and Studio. |
-
-See [package development and publication](docs/PACKAGES_EN.md) for module development, checks, and npm releases.
-
-</details>
 
 ## Data and privacy
 

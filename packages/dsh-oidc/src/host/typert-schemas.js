@@ -1,4 +1,5 @@
 import { z } from 'zod'
+import { MODEL_TYPES } from './model-types.js'
 
 const pkg = '@eduwork/dsh-oidc'
 export const profileIdSchema = z.string().min(1).max(64)
@@ -20,7 +21,7 @@ export const enterpriseSelectionOptionsSchema = z.object({ onlyIfMissing: z.bool
 const brandSchema = z.object({
   productName: z.string().optional(), organizationName: z.string().optional(), mark: z.string().optional(),
   logoURL: z.string().optional(), primaryColor: z.string().optional(), loginTitle: z.string().optional(),
-  loginDescription: z.string().optional(), supportURL: z.string().optional(),
+  loginDescription: z.string().optional(), loginButtonLabel: z.string().min(1).max(40).optional(), supportURL: z.string().optional(), language: z.enum(['auto', 'zh-CN', 'en']).optional(),
 }).strict()
 
 const publicProfileSchema = z.object({
@@ -50,11 +51,12 @@ export const runtimeModelSchema = z.object({
 }).strict()
 
 export const runtimeModelsSchema = z.array(runtimeModelSchema).max(128)
+export const resourceModelSchema = runtimeModelSchema.extend({ type: z.enum(MODEL_TYPES) })
 
 export const resourcesResult = Object.freeze({
   mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#Resources`,
   schema: z.object({
-    profileID: z.string(), modelSource: z.string(), models: runtimeModelsSchema, issues: z.array(z.string()),
+    profileID: z.string(), modelSource: z.string(), models: z.array(resourceModelSchema).max(128), issues: z.array(z.string()),
   }).strict(),
 })
 

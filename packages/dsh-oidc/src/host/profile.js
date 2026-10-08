@@ -1,4 +1,5 @@
 import { serviceProtocolAllowed } from './transport.js'
+import { MODEL_TYPES, isLLM } from './model-types.js'
 import { readFileSync } from 'node:fs'
 
 export const PROFILE_SCHEMA_VERSION = 'dsh-oidc/v1alpha1'
@@ -19,7 +20,7 @@ const allowedRootKeys = new Set([
 const allowedOidcKeys = new Set(['issuer', 'clientId', 'scopes'])
 const allowedBrandKeys = new Set([
   'productName', 'organizationName', 'mark', 'logoURL', 'primaryColor',
-  'loginTitle', 'loginDescription', 'supportURL',
+  'loginTitle', 'loginDescription', 'loginButtonLabel', 'supportURL', 'language',
 ])
 const allowedProviderKeys = new Set([
   'id', 'displayName', 'adapter', 'baseURL', 'reasoning', 'defaultContextWindow',
@@ -27,7 +28,7 @@ const allowedProviderKeys = new Set([
   'requestImageMaxBytes', 'streamIdleTimeoutMs', 'retryPolicy', 'compat', 'models', 'modelSource',
 ])
 const allowedModelKeys = new Set([
-  'id', 'name', 'input', 'contextWindow', 'maxTokens', 'reasoning',
+  'id', 'type', 'name', 'input', 'contextWindow', 'maxTokens', 'reasoning',
   'reasoningEfforts', 'defaultReasoningEffort', 'compat',
 ])
 const allowedCompatKeys = new Set([
@@ -114,10 +115,14 @@ function normalizeBrand(value = {}) {
     }
     result.logoURL = logo.startsWith('https://') ? safeHTTPSResource(logo, 'brand.logoURL', 128 * 1024) : logo
   }
-  for (const key of ['loginTitle', 'loginDescription']) {
-    if (source[key] !== undefined) result[key] = text(source[key], `brand.${key}`, key === 'loginTitle' ? 120 : 500)
+  for (const [key, max] of Object.entries({ loginTitle: 120, loginDescription: 500, loginButtonLabel: 40 })) {
+    if (source[key] !== undefined) result[key] = text(source[key], `brand.${key}`, max)
   }
   if (source.supportURL !== undefined) result.supportURL = exactURL(source.supportURL, 'brand.supportURL')
+  if (source.language !== undefined) {
+    if (!['auto', 'zh-CN', 'en'].includes(source.language)) throw new Error('brand.language must be auto, zh-CN or en')
+    result.language = source.language
+  }
   return Object.freeze(result)
 }
 
@@ -162,6 +167,8 @@ export function normalizeModels(models, providerID) {
     const model = object(raw, label)
     exactKeys(model, allowedModelKeys, label)
     const id = text(model.id, `${label}.id`, 256)
+    const type = model.type === undefined ? 'unknown' : model.type
+    if (!MODEL_TYPES.includes(type)) throw new Error(`${label}.type must be one of ${MODEL_TYPES.join(', ')}`)
     if (seen.has(id)) throw new Error(`${providerID} repeats model ${id}`)
     seen.add(id)
     const input = model.input ?? ['text']
@@ -184,6 +191,7 @@ export function normalizeModels(models, providerID) {
     }
     return Object.freeze({
       id,
+      type,
       name: model.name === undefined ? id : text(model.name, `${providerID}.${id}.name`, 256),
       input: Object.freeze([...new Set(input)]),
       ...(model.contextWindow === undefined ? {} : { contextWindow: positiveInteger(model.contextWindow, `${providerID}.${id}.contextWindow`) }),
@@ -258,15 +266,22 @@ export function normalizeEnterpriseProfile(raw) {
   let auth
   if (gateway) {
     const rawAuth = object(source.auth, 'profile.auth')
-    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer', 'experimentalOidcLlm', 'clientId', 'identityMode']), 'profile.auth')
+    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer', 'experimentalOidcLlm', 'clientId', 'identityMode', 'additionalScopes']), 'profile.auth')
     const experimental = rawAuth.experimentalOidcLlm === true
     if (rawAuth.experimentalOidcLlm !== undefined && typeof rawAuth.experimentalOidcLlm !== 'boolean') throw new Error('profile.auth.experimentalOidcLlm must be boolean')
-    if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined)) throw new Error('profile.auth clientId and identityMode require experimentalOidcLlm=true')
+    if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined || rawAuth.additionalScopes !== undefined)) throw new Error('profile.auth clientId, identityMode and additionalScopes require experimentalOidcLlm=true')
     if (experimental && !['oauth', 'oidc'].includes(rawAuth.identityMode)) throw new Error('profile.auth.identityMode must explicitly select oauth or oidc')
+    if (rawAuth.additionalScopes !== undefined && (!Array.isArray(rawAuth.additionalScopes)
+      || rawAuth.additionalScopes.length > 64
+      || rawAuth.additionalScopes.some(scope => typeof scope !== 'string' || scope.length > 128 || !/^[\x21\x23-\x5b\x5d-\x7e]+$/.test(scope))
+      || new Set(rawAuth.additionalScopes).size !== rawAuth.additionalScopes.length)) {
+      throw new Error('profile.auth.additionalScopes must contain at most 64 unique OAuth scope tokens, each at most 128 characters')
+    }
     auth = Object.freeze({
       discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment),
       ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment) }),
       ...(experimental ? { experimentalOidcLlm: true, clientId: text(rawAuth.clientId, 'profile.auth.clientId', 256), identityMode: rawAuth.identityMode } : {}),
+      ...(rawAuth.additionalScopes === undefined ? {} : { additionalScopes: Object.freeze([...rawAuth.additionalScopes]) }),
     })
     if (source.provider?.baseURL !== undefined) throw new Error('profile.auth derives provider.baseURL from validated discovery')
     if (source.provider?.modelSource !== undefined && source.provider.modelSource !== 'discovery') throw new Error('profile.auth requires discovery modelSource')
@@ -354,7 +369,7 @@ export function loadEnterpriseProfiles(raw = {}, environment = process.env) {
 
 export function enterpriseProviderConfig(profiles) {
   return {
-    providers: Object.fromEntries([...profiles.values()].filter(profile => profile.provider?.baseURL && profile.provider.models.length).map(profile => [profile.provider.id, {
+    providers: Object.fromEntries([...profiles.values()].filter(profile => profile.provider?.baseURL && profile.provider.models.some(isLLM)).map(profile => [profile.provider.id, {
       displayName: profile.provider.displayName,
       apiKeyEnv: `DSH_GATEWAY_${profile.id.toUpperCase().replace(/-/g, '_')}_ACCESS`,
       baseURL: profile.provider.baseURL,
@@ -368,7 +383,7 @@ export function enterpriseProviderConfig(profiles) {
       ...(profile.provider.streamIdleTimeoutMs === undefined ? {} : { streamIdleTimeoutMs: profile.provider.streamIdleTimeoutMs }),
       ...(profile.provider.retryPolicy === undefined ? {} : { retryPolicy: structuredClone(profile.provider.retryPolicy) }),
       ...(profile.provider.compat === undefined ? {} : { compat: { ...profile.provider.compat } }),
-      models: profile.provider.models.map(model => ({
+      models: profile.provider.models.filter(isLLM).map(({ type, ...model }) => ({
         ...model,
         input: [...model.input],
         ...(model.reasoningEfforts && typeof model.reasoningEfforts === 'object'
@@ -390,7 +405,7 @@ export function publicProfile(profile) {
     ...(profile.provider ? { provider: {
       id: profile.provider.id,
       displayName: profile.provider.displayName,
-      models: profile.provider.models.map(model => ({ id: model.id, name: model.name, input: model.input })),
+      models: profile.provider.models.filter(isLLM).map(model => ({ id: model.id, name: model.name, input: model.input })),
     } } : {}),
   }
 }

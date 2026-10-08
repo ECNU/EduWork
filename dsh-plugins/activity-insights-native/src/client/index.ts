@@ -13,9 +13,9 @@ const zh = {
   tokenActivity: '活动记录', activity: '活跃度', tokens: 'Token', chats: '总会话', activeDays: '活跃天数', userMessages: '用户消息', toolCalls: '工具调用', overview: '使用概览',
   uniqueSkills: '使用过的 Skills', skillRuns: 'Skills 调用', topModel: '最常用模型', topReasoning: '最常用推理档位', coverage: 'Token 记录覆盖率',
   tools: '常用工具', skills: '常用 Skills', none: '暂无记录', times: '{count} 次', days: '{count} 天', minutes: '{count} 分', hours: '{count} 小时', hoursMinutes: '{hours} 小时 {minutes} 分', less: '少', more: '多',
-  privacy: '统计在本机即时生成，只读取 DSH 会话事件的时间、类型和用量元数据；不会上传或展示对话正文、工具参数、文件路径及结果内容。',
+  privacy: '统计在本机即时生成，只读取本机会话事件的时间、类型和用量元数据；不会上传或展示对话正文、工具参数、文件路径及结果内容。',
   coverageHint: '仅汇总模型服务实际返回的 usage。覆盖率不足 100% 时，“累计 Token 数”不代表全部历史用量。',
-  durationHint: '按 DSH 会话统计中的模型运行时间与工具运行时间汇总，不包含关闭或闲置等待。',
+  durationHint: '按会话统计中的模型运行时间与工具运行时间汇总，不包含关闭或闲置等待。',
   skipped: '有 {count} 个历史会话暂时无法读取，已跳过。',
 }
 const en = {
@@ -102,7 +102,7 @@ function ScanProgress({ progress, t }) {
       h('span', null, phaseLabel),
       total > 0 && h('span', null, format(t('progressCount'), { completed, total })),
     ),
-    h('div', { style: { height: 6, overflow: 'hidden', borderRadius: 999, background: 'var(--dsw-alias-fill-secondary, #ece8e5)' } },
+    h('div', { style: { height: 6, overflow: 'hidden', borderRadius: 999, background: 'var(--dsw-alias-bg-layer-3, #ece8e5)' } },
       h('div', { style: {
         width: total > 0 ? `${percent}%` : '8%', minWidth: progress?.state === 'running' ? 8 : 0, height: '100%',
         borderRadius: 999, background: accent, transition: 'width 180ms ease-out',
@@ -123,7 +123,7 @@ function Heatmap({ activity, metric, setMetric, t }) {
   const columns = Math.max(1, Math.ceil((leading + activity.length) / 7))
   const cells = Array.from({ length: leading }, (_, index) => h('span', { key: `blank-${index}`, 'aria-hidden': true }))
   const backgrounds = [
-    'var(--dsw-alias-fill-secondary, #eceff2)',
+    'var(--dsw-alias-bg-layer-3, #eceff2)',
     `color-mix(in srgb, ${accent} 22%, var(--dsw-alias-bg-base, #fff))`,
     `color-mix(in srgb, ${accent} 42%, var(--dsw-alias-bg-base, #fff))`,
     `color-mix(in srgb, ${accent} 66%, var(--dsw-alias-bg-base, #fff))`, accent,
@@ -156,7 +156,7 @@ function Heatmap({ activity, metric, setMetric, t }) {
       h('div', { style: { display: 'flex', gap: 4 } },
         ...['activity', 'tokens'].map(value => h('button', {
           key: value, type: 'button', onClick: () => setMetric(value),
-          style: { border: 0, borderRadius: 7, padding: '5px 9px', background: metric === value ? 'var(--dsw-alias-fill-secondary, #edf0f2)' : 'transparent', color: metric === value ? primary : tertiary, cursor: 'pointer', fontSize: 11 },
+          style: { border: 0, borderRadius: 7, padding: '5px 9px', background: metric === value ? 'var(--dsw-alias-bg-layer-3, #edf0f2)' : 'transparent', color: metric === value ? primary : tertiary, cursor: 'pointer', fontSize: 11 },
         }, t(value))),
       ),
     ),

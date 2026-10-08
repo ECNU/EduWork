@@ -1,0 +1,13 @@
+# EduWork literature: stable entry IDs preserve existing settings.
+- insert:
+    - id: literature
+      name: '@eduwork/dsh-literature/core'
+
+    - id: literature-dblp
+      name: '@eduwork/dsh-literature/dblp'
+
+    - id: literature-arxiv
+      name: '@eduwork/dsh-literature/arxiv'
+
+    - id: tool-literature
+      name: '@eduwork/dsh-literature/tool'

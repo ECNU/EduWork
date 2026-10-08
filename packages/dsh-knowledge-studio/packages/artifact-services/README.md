@@ -29,6 +29,12 @@ PDF/视频应用可从 `@eduwork/dsh-artifact-services/runtime` 导入 `createMe
 
 运行时锁定 Remotion 4.0.520、mediabunny 1.55.5、React/React DOM 18.3.1，各调用方应解析到同一份 mediabunny。同入口的 `getMediaFFmpegPath` 从选定依赖所属环境解析 FFmpeg，不准备浏览器；可通过 `{runtime}` 传入已有运行时。
 
+## 对话工具权限
+
+Office 的新建、编辑、PDF 合并与提取遵守会话当前生效的文件写入权限。已有工作区写入权限时不重复确认；只读模式仍需本次审批。自定义权限预设以实际 sandbox policy 为准。项目相对路径、真实路径边界和禁止覆盖已有文件的约束仍生效，Full Access 也不会扩大 Office 工具的路径范围。
+
+生图、TTS、ASR、固定模板音视频渲染及视频项目文件操作同样复用工作区写入权限，包括调用已配置的远程提供方。远程服务仍可能上传请求内容并消耗额度，但不会仅因此逐次要求确认。功能开关、服务可用性、凭据及工作区路径检查继续生效；权限检查本身不会请求音色接口或调用生成服务。只读模式仍需审批，运行可编辑视频项目代码也保留独立审批。其他宿主权限钩子继续执行。
+
 ## 应用接口（v1）
 ```js
 import {mkdtemp} from 'node:fs/promises'
@@ -132,13 +138,13 @@ try {
 
 ## DSH 装配
 
-只加载一次 `@eduwork/dsh-artifact-services/dsh`。它提供 `artifactServices`、六个通用技能，以及启用且可用时的 `artifact-images`；默认十个工具，另有两个可选图像工具：
+只加载一次 `@eduwork/dsh-artifact-services/dsh`。它提供 `artifactServices`、六个通用技能，以及启用且可用时的 `artifact-images`；默认十个工具，另有三个可选图像工具：
 
 | 工具 | 职责 |
 | --- | --- |
 | `office_document`、`office_spreadsheet`、`office_presentation`、`office_pdf` | Office 操作，使用工作区相对路径 |
 | `speech_voices`、`speech_synthesize` | Provider、音色、配乐发现及语音合成 |
-| `image_providers`、`image_generate` | 配置 `images.enabled:true` 后提供图像发现/生成 |
+| `image_providers`、`image_generate`、`image_edit` | 配置 `images.enabled:true` 后提供图像发现/生成 |
 | `speech_transcription_providers`、`speech_transcribe` | 音频文件转写服务发现和转写 |
 | `media_render` | 结构化音视频生成 |
 | `video_project` | 可编辑项目初始化、暂存、语音任务、验证与渲染 |
@@ -158,3 +164,5 @@ try {
 DSH 服务默认关闭生图。部署方须在 ArtifactServices 插件配置中显式设置 `images: { enabled: true }`，统一开启工具、技能与 Provider 调用。Office 和视频中的本地图片不受影响，语音与视频能力也独立于此选项。
 
 内置系统 TTS 支持 Windows。其他平台需要注册语音 Provider 并提供兼容的原生资源，见[平台要求](docs/PLATFORMS.md)。
+
+图像 Provider 可选实现 `edit(request)`，沿用 `generate` 的工作区、取消信号与结果契约；输入为 `images` 路径数组及可选 `mask`，通过 `images.edit(request)` / `image_edit` 调用。目录仅对实现编辑的 Provider 声明 `capabilities.edit:true`；不自动回退到生成。输入与输出均限制在工作区，结果须另存，复用工作区写入权限。

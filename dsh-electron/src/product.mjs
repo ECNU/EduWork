@@ -1,12 +1,14 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification } from 'electron'
+import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
-import { join, isAbsolute } from 'node:path'
+import { join, isAbsolute, dirname } from 'node:path'
+import { execFile } from 'node:child_process'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
+import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
@@ -19,10 +21,12 @@ import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
-import { publisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
+import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
+import { installFromDmg } from './installer-cleanup.mjs'
+import { startupFailurePage } from './startup-failure.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -31,7 +35,6 @@ export function configureWindowNavigation(window) {
 }
 
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
-let quitComplete = false
 let migrationLaunch
 let updateCompleted = false
 let portableUpdates
@@ -40,9 +43,21 @@ let publisher
 let taskNotifications, notificationAdapter
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
-function restartDesktop() {
-  app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
-  app.quit()
+let confirmQuit = async () => true
+const desktopExit = new DesktopExit({
+  confirm: () => confirmQuit(),
+  close: async () => {
+    void contentUpdates?.close()
+    await lifecycle.close()
+    taskNotifications?.close()
+    tray?.destroy(); tray = undefined
+  },
+  relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
+  quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
+})
+export function setDesktopQuitGuard(guard) { confirmQuit = guard }
+export function restartDesktop() {
+  desktopExit.restart()
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
@@ -58,6 +73,7 @@ export function configureEduworkPaths() {
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
   applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
+  app.setAppLogsPath(paths.logs)
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
@@ -66,18 +82,13 @@ export function configureEduworkPaths() {
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
   app.on('before-quit', event => {
-    if (quitComplete) return
+    if (desktopExit.complete) return
     event.preventDefault()
-    if (lifecycle.closing) return
-    void contentUpdates?.close()
-    void (async () => {
-      await lifecycle.close()
-      taskNotifications?.close()
-      tray?.destroy(); tray = undefined
-      quitComplete = true
-      app.quit()
-    })()
+    void desktopExit.request()
   })
+}
+export function installEduworkFromDmg() {
+  return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
 }
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
 async function prepareDesktop() {
@@ -106,22 +117,32 @@ async function prepareDesktop() {
   if (publisher) paths.config = publisher.configPath
   if(settings.configurationOwnership==='publisher')await access(paths.config)
   user = loadUserConfig(paths.config)
-  const preferences = await readFile(join(paths.updateDataRoot,'state/update-preferences.json'),'utf8').then(JSON.parse).catch(()=>null)
+  const { migrateUpdateChannel } = await import('./update-channel-migration.mjs')
+  const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
+    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')})
+  const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
   const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
+  const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })
+  const migrationDefaults = trustedUpdates?.updates ?? settings.updates ?? {}
+  const alphaDefaults = process.platform === 'darwin'
+    ? { ...migrationDefaults, macFeeds: settings.macSparkle?.enabled === true
+        ? { ...settings.macSparkle.feeds, ...migrationDefaults.macFeeds } : {} }
+    : migrationDefaults
+  await migrateAlphaUpdates({version:settings.productVersion,dataRoot:paths.updateDataRoot,config:paths.config,logs:paths.logs,
+    defaults:alphaDefaults,priorUpdates,policy:updatePolicy,choose:async ({policy})=>{
+      const result=await dialog.showMessageBox(progressWindow,{type:'question',title:'更新设置',
+        message:'旧测试版关闭了自动更新，是否启用？',
+        detail:`当前更新渠道为${policy==='development'?'开发版':'正式版'}。启用后会自动检查新版本；保留关闭也可以继续使用。`,
+        buttons:['启用自动更新','保持关闭'],defaultId:0,cancelId:1,noLink:true})
+      return result.response===0?'enable':'disabled'
+    }})
+  user=loadUserConfig(paths.config)
   const updateDefaults = process.platform === 'win32'
     ? editablePortableUpdateConfiguration({defaults:settings.updates,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     configurationDefaults:{updates:updateDefaults},
-    policy: preferences?.policy ?? user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')}).init()
-  const software = process.platform === 'darwin' ? startMacSparkleUpdates({ appPath:app.getAppPath(), version:settings.productVersion, enabled:settings.macSparkle?.enabled === true && user.updates.provider !== 'disabled', feeds:updateDefaults.macFeeds, policy:contentUpdates.policy, onPolicy:async policy=>{
-    await mkdir(join(paths.updateDataRoot,'state'),{recursive:true}); await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>app.quit()})
-  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,onPolicy:async policy=>{
-    await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
-    await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  }})
-  if(portableUpdates)lifecycle.trackBridge(portableUpdates)
+    policy: updatePolicy}).init()
   lifecycle.check()
   managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
     void progressWindow.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
@@ -129,6 +150,17 @@ async function prepareDesktop() {
   try { await contentUpdates.configurationFile.document() }
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
+  const effectiveUpdateDefaults = process.platform === 'win32'
+    ? editablePortableUpdateConfiguration({defaults:settings.updates,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
+  const software = process.platform === 'darwin' ? startMacSparkleUpdates({ appPath:app.getAppPath(), version:settings.productVersion, enabled:settings.macSparkle?.enabled === true && user.updates.provider !== 'disabled', feeds:effectiveUpdateDefaults.macFeeds, policy:contentUpdates.policy, onPolicy:async policy=>{
+    await mkdir(join(paths.updateDataRoot,'state'),{recursive:true}); await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
+  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>desktopExit.handoff()})
+  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,beforeInstall:()=>confirmQuit(),onPolicy:async policy=>{
+    await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
+    await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
+  }})
+  if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) { settings.productName = user.product.name; applyDesktopBrand(app, process.platform, settings); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
   await importLegacyData({root:paths.root,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
@@ -165,7 +197,8 @@ async function prepareDesktop() {
     attention: body => taskNotifications.handle(body),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
-    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
+    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
+      process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
@@ -271,18 +304,26 @@ export function checkProductUpdates() {
 export async function showDesktopFailure(error) {
   if (isQuitting()) return
   try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
-  catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`) }
+  catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
-  const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
+  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
     attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   }
-  progressWindow.setSize(660, 470)
-  const needsConfiguration = error.code === 'EDUWORK_BOOTSTRAP_REQUIRED'
+  progressWindow.setSize(660, page.executable ? 700 : 470)
+  const { needsConfiguration } = page
   let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
+    if (page.executable && url === 'eduwork-startup://copy/') {
+      clipboard.writeText(page.diagnostics)
+      void progressWindow.webContents.executeJavaScript("document.getElementById('copy-status').textContent = '已复制，可粘贴给维护人员。'").catch(()=>{})
+    }
+    if (page.executable && url === 'eduwork-startup://component/') {
+      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=>
+        dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message}))
+    }
     if (url === 'eduwork-startup://restart/' && !importing) {
       if (!needsConfiguration) restartDesktop()
       else {
@@ -306,6 +347,6 @@ export async function showDesktopFailure(error) {
       })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
     }
   })
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(`<!doctype html><meta charset="utf-8"><style>body{font:15px system-ui;margin:32px;color:#313744;background:#faf8f4;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere;background:#fff0f1;padding:16px;color:#9f2636}a{display:inline-block;margin:12px 12px 0 0;padding:9px;border:1px solid #aaa;border-radius:6px;color:inherit}</style><h2>${escape(settings.productName)} ${needsConfiguration ? '正在等待发行配置' : '暂时未能启动'}</h2><p>${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}</p><pre>${escape(error.message || error)}</pre><p>配置文件：${escape(paths.config)}</p><a href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : '重新启动'}</a>${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}<a href="eduwork-startup://exit/">退出</a>`))
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
   progressWindow.show()
 }

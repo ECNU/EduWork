@@ -17,7 +17,7 @@ const deferred = () => { let resolve; const promise = new Promise(done => { reso
 
 async function fixture(t, draft = false) {
   const records = new Map(), codes = new Map(), requests = [], activity = [], opened = [], fibers = []
-  const controls = { user: 'alice', streamGate: undefined, firstChunk: undefined, refreshGate: undefined }
+  const controls = { user: 'alice', streamGate: undefined, firstChunk: undefined, refreshGate: undefined, models: [{ id: 'synthetic-model', type: 'llm' }, { id: 'specialist', type: 'embedding' }] }
   let base, serial = 0, grantedScopes
   const pair = draft ? generateKeyPairSync('rsa', { modulusLength: 2048 }) : undefined
   const server = createServer(async (req, res) => {
@@ -73,9 +73,9 @@ async function fixture(t, draft = false) {
     }
     if (url.pathname === '/user/info') return json({ user_id: controls.user })
     if (url.pathname === '/userinfo' && draft) return json({ sub: controls.user })
-    if (url.pathname === '/v1/models') return json({ data: [{ id: 'synthetic-model' }] })
+    if (url.pathname === '/v1/models') return json({ data: controls.models })
     if (url.pathname === '/revoke') return json({})
-    if (url.pathname === '/v1/user/active') {
+    if (url.pathname === '/user/active') {
       activity.push({ authorization: req.headers.authorization, body })
       return json({ status: activity.length === 1 ? 'Unauthorized' : 'Success' }, activity.length === 1 ? 401 : 200)
     }
@@ -123,6 +123,17 @@ async function fixture(t, draft = false) {
   return { ctx, controls, requests, activity, login, base, backend: ctx.oidcAccounts.backend,
     options: { provider: profile.id, model: 'synthetic-model', messages: [] } }
 }
+
+for (const draft of [false, true]) test('DSH registers only LLMs and removes reclassified models: ' + (draft ? 'OIDC' : 'LiteLLM'), async t => {
+  const f = await fixture(t, draft)
+  assert.deepEqual((await f.ctx.llm.listModels('gateway')).map(model => model.id), ['synthetic-model'])
+  await assert.rejects(f.ctx.llm.prepareCall({ provider: 'gateway', model: 'specialist' }))
+  assert.equal(f.requests.length, 0)
+  f.controls.models = [{ id: 'synthetic-model', type: 'tts' }]
+  await f.backend.readResources('gateway')
+  assert.deepEqual(f.ctx.llm.listProviders(), [])
+  assert.equal(await f.backend.modelAuthorization('gateway', f.base + '/v1'), true)
+})
 
 test('DSH stops an active gateway stream on logout without forwarding buffered old content', async t => {
   const f = await fixture(t)
@@ -231,15 +242,32 @@ for (const draft of [false, true]) test(`DSH ${draft ? 'OIDC draft' : 'LiteLLM'}
 
 test('Host account service forwards explicit POST recovery without exposing credentials', async t => {
   const f = await fixture(t, true)
-  const response = await f.ctx.oidcAccounts.authorizedFetch('gateway', f.base + '/v1/user/active', {
+  await assert.rejects(f.ctx.oidcAccounts.authorizedFetch('gateway', f.base + '/user/active', { method: 'POST', body: '{}' }), { code: 'oidc_authorized_origin_denied' })
+  const response = await f.ctx.oidcAccounts.authorizedFetch('gateway', f.base + '/user/active', {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: '{"activity":{"state":"active"}}',
-  }, { retryUnauthorized: true })
+  }, { retryUnauthorized: true, issuerServicePath: '/user/active' })
   assert.equal(response.status, 200)
   assert.equal((await response.json()).status, 'Success')
   assert.equal(f.activity.length, 2)
   assert.equal(f.activity[0].body, f.activity[1].body)
   assert.notEqual(f.activity[0].authorization, f.activity[1].authorization)
   assert.equal((await f.ctx.oidcAccounts.status('gateway')).state, 'connected')
+})
+
+test('issuer service grant is an exact POST path and does not become a general account allowlist', async t => {
+  const f = await fixture(t, true)
+  for (const [endpoint, method, path] of [
+    [f.base + '/user/active', 'GET', '/user/active'],
+    [f.base + '/user/active?extra=1', 'POST', '/user/active'],
+    [f.base + '/user/active#fragment', 'POST', '/user/active'],
+    [f.base + '/user/active', 'POST', '/user/other'],
+    [f.base + '/key/generate', 'POST', '/user/active'],
+    ['https://other.example/user/active', 'POST', '/user/active'],
+    [f.base + '/user/active', 'POST', '//user/active'],
+    [f.base + '/user/active', 'POST', '/user/../user/active'],
+  ]) await assert.rejects(f.ctx.oidcAccounts.authorizedFetch('gateway', endpoint,
+    { method }, { issuerServicePath: path }), { code: 'oidc_authorized_origin_denied' })
+  assert.equal(f.activity.length, 0)
 })
 
 test('Host authorizedFetch drops unread response bytes after logout', async t => {

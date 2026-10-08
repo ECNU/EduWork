@@ -7,8 +7,10 @@ $Candidate = (Resolve-Path -LiteralPath $Candidate).Path
 $Output = [IO.Path]::GetFullPath($Output)
 if ($Output.StartsWith($Candidate.TrimEnd('\','/') + [IO.Path]::DirectorySeparatorChar,[StringComparison]::OrdinalIgnoreCase) -or (Test-Path -LiteralPath $Output)) { throw 'ZIP must be a new file outside the desktop directory' }
 $identity = Get-Content (Join-Path $Candidate 'resources/app/eduwork.desktop.json') -Raw | ConvertFrom-Json
-$versionPattern = if ($Development) { '^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$' } else { '^\d+\.\d+\.\d+$' }
-if ($identity.productVersion -notmatch $versionPattern -or $identity.shell -ne 'electron') { throw 'Package version does not match its selected channel or Electron shell' }
+$release = & node (Join-Path $PSScriptRoot 'desktop-build-plan.mjs') --identity --version $identity.productVersion
+if ($LASTEXITCODE -ne 0) { throw 'Unsupported desktop release version' }
+$release = $release | ConvertFrom-Json
+if ([bool]$Development -ne $release.prerelease -or $identity.shell -ne 'electron') { throw 'Package version does not match its selected channel or Electron shell' }
 if ($ForUpdate) {
     foreach ($entry in @('ChatECNU-Work.exe','EduWork.exe')) {
         if (-not (Test-Path -LiteralPath (Join-Path $Candidate $entry) -PathType Leaf)) { throw "Migration launcher is missing: $entry" }
@@ -16,6 +18,7 @@ if ($ForUpdate) {
 }
 $name = switch ($identity.distribution) { 'eduwork' {'EduWork'} 'eduwork-chatecnu' {'EduWork-ECNU'} default {throw 'Unknown release distribution'} }
 if ([IO.Path]::GetFileName($Output) -ne "$name-$($identity.productVersion)-windows-x64-electron.zip") { throw 'Release asset name differs from the package identity' }
+& (Join-Path $PSScriptRoot '../dsh-electron/scripts/set-updater-manifest.ps1') -Executable (Join-Path $Candidate 'resources/update/EduWork-Updater.exe') -VerifyOnly
 $files = [Collections.Generic.List[object]]::new()
 function Inventory([string]$Directory, [string]$Prefix) {
     foreach ($entry in Get-ChildItem -LiteralPath $Directory -Force) {

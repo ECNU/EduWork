@@ -10,6 +10,7 @@ function fixture({ platform = 'darwin', quitting = false, exit = false, tray = f
   app.quit = () => calls.push('quit')
   window.isDestroyed = () => destroyed
   window.isMinimized = () => minimized
+  window.isFullScreen = () => false
   window.restore = () => calls.push('restore')
   window.show = () => calls.push('show')
   window.focus = () => calls.push('focus')
@@ -50,8 +51,18 @@ test('Windows retains existing tray and no-tray close behavior', () => {
   assert.equal(withTray.close(), true)
   assert.deepEqual(withTray.calls, ['hide'])
   const withoutTray = fixture({ platform: 'win32' })
-  assert.equal(withoutTray.close(), false)
-  assert.deepEqual(withoutTray.calls, [])
+  assert.equal(withoutTray.close(), true)
+  assert.deepEqual(withoutTray.calls, ['quit'])
+})
+
+test('macOS leaves fullscreen before hiding and tolerates a destroyed window', () => {
+  const f = fixture()
+  f.window.isFullScreen = () => true
+  f.window.setFullScreen = value => f.calls.push(['fullscreen', value])
+  f.close()
+  assert.deepEqual(f.calls, [['fullscreen', false]])
+  f.window.emit('leave-full-screen')
+  assert.deepEqual(f.calls, [['fullscreen', false], 'hide'])
 })
 
 test('quitting does not intercept the native window close', () => {

@@ -37,8 +37,10 @@ export function normalizeMediaConfig(value = { providers: [] }) {
     if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname))) || url.username || url.password || url.search || url.hash) throw new Error('media.provider.baseURL 请使用不含凭据的 HTTPS API 基地址（本机服务可用 HTTP）')
     const provider = { id, title: text(raw.title ?? id, 'media.provider.title'), protocol: raw.protocol,
       baseURL: url.href.replace(/\/+$/u, ''), credentialRef: text(raw.credentialRef ?? 'EDUWORK_API_KEY', 'media.provider.credentialRef') }
+    // Sign-in sessions are bound to their own endpoints; use oidcProfileId to reach them.
+    if (/^DSH_OIDC_/iu.test(provider.credentialRef)) throw new Error('media.provider.credentialRef 不能引用登录会话，请改用 oidcProfileId')
     if (raw.oidcProfileId !== undefined) provider.oidcProfileId = text(raw.oidcProfileId, 'media.provider.oidcProfileId')
-    object(raw.images ?? {}, ['enabled', 'model', 'nativeSizes', 'defaultSize', 'responseFormat', 'promptMaxChars'], 'media.provider.images')
+    object(raw.images ?? {}, ['enabled', 'model', 'nativeSizes', 'defaultSize', 'responseFormat', 'promptMaxChars', 'edit', 'editMaxImages'], 'media.provider.images')
     if (enabled(raw.images?.enabled, 'media.provider.images')) {
       const image = raw.images
       if (!Array.isArray(image.nativeSizes) || !image.nativeSizes.length) throw new Error('启用图像服务时请填写 images.nativeSizes')
@@ -49,6 +51,10 @@ export function normalizeMediaConfig(value = { providers: [] }) {
       if (!['auto', 'b64_json', 'url'].includes(responseFormat)) throw new Error('images.responseFormat 必须为 auto、b64_json 或 url')
       provider.images = { enabled: true, model: text(image.model, 'images.model'), nativeSizes, defaultSize, responseFormat,
         promptMaxChars: positive(image.promptMaxChars, 4096, 'images.promptMaxChars') }
+      if(image.edit!==undefined&&typeof image.edit!=='boolean')throw new Error('images.edit 必须为 true 或 false')
+      const editMaxImages=positive(image.editMaxImages,1,'images.editMaxImages')
+      if(editMaxImages>16)throw new Error('images.editMaxImages 最大为 16')
+      if(image.edit===true)Object.assign(provider.images,{edit:true,editMaxImages})
     }
     object(raw.speech ?? {}, ['enabled', 'model', 'voices', 'defaultVoice', 'inputMaxChars'], 'media.provider.speech')
     if (enabled(raw.speech?.enabled, 'media.provider.speech')) {

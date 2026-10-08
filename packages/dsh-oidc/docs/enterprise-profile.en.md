@@ -12,6 +12,8 @@ The canonical machine-readable schema is [`schema/enterprise-profile.v1alpha1.sc
 
 ## Trust model
 
+`auth.additionalScopes` explicitly requests additional service scopes for oidc-llm integrations, such as institution search. No additional scopes are requested by default. Each must be advertised in discovery's `scopes_supported`; token and refresh responses must retain the requested scopes. Changing scope configuration requires a new sign-in rather than expanding an existing token's authority.
+
 Profiles are trusted deployment configuration, not user input. Nevertheless, the parser is fail-closed:
 
 - unknown keys are rejected at the root and at every executable-relevant nested object;
@@ -51,6 +53,7 @@ Branding changes only approved presentation surfaces. It does not alter authenti
 | `logoURL` | HTTPS URL or base64 PNG/WebP, at most 128 KiB as text. Remote images use `referrerPolicy=no-referrer`. |
 | `primaryColor` | Six-digit hex color. Only a bounded DSH token set is overridden. |
 | `loginTitle` | 120 characters. |
+| `loginButtonLabel` | 40 characters. Sign-in button text in onboarding, settings and the account menu; omitted values use the client's default wording. |
 | `loginDescription` | 500 characters. |
 | `supportURL` | Absolute HTTPS URL opened with `noopener noreferrer`. |
 
@@ -99,6 +102,49 @@ The Provider object is data interpreted by a local audited adapter.
 | `modelSource` | no | Only discovery, the default; fetches /models with the current Access Token. |
 | `models` | no | Reviewed model capabilities; cannot expose models absent from the authorized catalog. |
 
+Model purpose uses `type`: `llm`, `embedding`, `rerank`, `image`, `tts` or `unknown`. Only `llm` registers with the DSH conversation provider. The full resource catalog retains specialist types; media services keep their own model and endpoint configuration. Classifying a model does not enable a service or grant access.
+
+An explicit `data[].type` from the authorized `/models` response takes precedence. When absent, `provider.models[].type` supplies it. Missing, invalid or unsupported server types resolve to `unknown` and stay out of chat; the resources result reports `model_types_unresolved`. The client never guesses purpose from model names, the OpenAI `object` field or input modalities. An image-capable LLM is still `llm`.
+
+Example provider metadata for a gateway returning only model IDs (replace IDs with authorized server IDs):
+
+```json
+{
+  "models": [
+    {
+      "id": "example-chat",
+      "type": "llm"
+    },
+    {
+      "id": "example-vision-chat",
+      "type": "llm",
+      "input": [
+        "text",
+        "image"
+      ]
+    },
+    {
+      "id": "example-embedding",
+      "type": "embedding"
+    },
+    {
+      "id": "example-rerank",
+      "type": "rerank"
+    },
+    {
+      "id": "example-image",
+      "type": "image"
+    },
+    {
+      "id": "example-tts",
+      "type": "tts"
+    }
+  ]
+}
+```
+
+This is an optional EduWork resource extension, not a standard OpenAI field or a claim that existing LiteLLM/oidc-llm servers provide it. ID-only deployments must supply local types before enabling this client behavior. Distribute typed configuration only to upgraded clients: older clients reject unknown model fields. Local declarations are intersected with the authorized server catalog; unavailable IDs are never registered. Personal API-key providers are unchanged.
+
 `retryPolicy.mode` is `normal` or `always`. `always` can retry indefinitely until success, cancellation, or disposal and SHOULD NOT be enabled without an explicit product decision. The policy is validated again by DSH.
 
 `compat` accepts only the keys enumerated in the JSON Schema. Operators MUST describe provider facts accurately; a compatibility override can change request semantics, though it cannot execute code.
@@ -108,6 +154,7 @@ The Provider object is data interpreted by a local audited adapter.
 Each model has:
 
 - required `id`;
+- optional purpose `type`; unresolved types are `unknown` and only `llm` is conversational;
 - optional display `name`;
 - `input` containing `text`, `image`, or both (default `text`);
 - optional positive `contextWindow` and `maxTokens`;

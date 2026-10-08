@@ -3,12 +3,13 @@ import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 
 const source = await readFile(new URL('../src/client/index.tsx', import.meta.url), 'utf8')
+const dictionaries = await readFile(new URL('../src/client/locale.ts', import.meta.url), 'utf8')
 
 test('settings follow account, servers, advanced, then agent access', () => {
-  const account = source.indexOf('<section style={styles.card}><h3 style={{ margin: 0, fontSize: 15 }}>{copy.identity}</h3>')
-  const servers = source.indexOf('{copy.servers}</h3>')
-  const advanced = source.indexOf('{copy.advanced}</strong>')
-  const access = source.indexOf('{copy.agentAccess}</h3>')
+  const account = source.indexOf("{t('identity')}</h3>")
+  const servers = source.indexOf("{t('servers')}</h3>")
+  const advanced = source.indexOf("{t('advanced')}</strong>")
+  const access = source.indexOf("{t('agentAccess')}</h3>")
 
   assert.ok(account >= 0)
   assert.ok(servers > account)
@@ -18,10 +19,10 @@ test('settings follow account, servers, advanced, then agent access', () => {
 
 test('rare mailbox fields stay behind Advanced settings', () => {
   const advancedContent = source.indexOf('advancedOpen &&')
-  assert.ok(source.indexOf("field(copy.username, 'username'", advancedContent) > advancedContent)
-  assert.ok(source.indexOf("field(copy.inbox, 'inboxFolder'", advancedContent) > advancedContent)
-  assert.match(source, /email: '\u90ae\u7bb1\u5730\u5740'/)
-  assert.doesNotMatch(source, /email: '\u53d1\u4ef6\u90ae\u7bb1\u5730\u5740'/)
+  assert.ok(source.indexOf("field(t('username'), 'username'", advancedContent) > advancedContent)
+  assert.ok(source.indexOf("field(t('inbox'), 'inboxFolder'", advancedContent) > advancedContent)
+  assert.match(dictionaries, /"email": "\u90ae\u7bb1\u5730\u5740"/)
+  assert.doesNotMatch(dictionaries, /"email": "\u53d1\u4ef6\u90ae\u7bb1\u5730\u5740"/)
 })
 
 test('agent capabilities cannot be enabled before their account path is ready', () => {

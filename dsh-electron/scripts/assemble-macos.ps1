@@ -27,7 +27,7 @@ $Node = [IO.Path]::GetFullPath($Node)
 $OpenSSL = [IO.Path]::GetFullPath($OpenSSL)
 if (Test-Path -LiteralPath $Output) { throw 'macOS output must be a new directory' }
 if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$') { throw 'An explicit product version is required' }
-if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version -match '-dev\.') { 'development' } else { 'stable' } }
+if (-not $UpdateDefaultPolicy) { $UpdateDefaultPolicy = if ($Version.Contains('-')) { 'development' } else { 'stable' } }
 if ($ExternalPublisherConfig -and -not [IO.Path]::IsPathRooted($ExternalPublisherConfig)) { throw 'External publisher configuration path must be absolute' }
 $sparkleEnabled = [bool]($SparkleFramework -or $SparkleFeedURL -or $SparklePublicEDKey)
 if ($sparkleEnabled) {
@@ -63,7 +63,7 @@ $nodeLicense = Join-Path $nodeRoot 'LICENSE'
 if (-not (Test-Path -LiteralPath $nodeLicense -PathType Leaf)) { throw 'Use the extracted official Node distribution, including LICENSE' }
 
 $editionName = if ($identity.distribution -eq 'eduwork') { 'EduWork' } else { 'EduWork-ECNU' }
-$appName = "$editionName.app"
+$appName = if ($identity.sourceAlpha) { "$editionName Alpha.app" } else { "$editionName.app" }
 $app = Join-Path $Output $appName
 New-Item -ItemType Directory -Path $Output | Out-Null
 & ditto --noextattr --noqtn --noacl $electronApp $app
@@ -72,6 +72,7 @@ $resources = Join-Path $app 'Contents/Resources'
 $appPayload = Join-Path $resources 'app'
 New-Item -ItemType Directory -Path $appPayload | Out-Null
 foreach ($folder in @('lib','renderer','third-party')) {
+    if ($folder -eq 'renderer' -and -not (Test-Path -LiteralPath (Join-Path $ShellBuild $folder))) { continue }
     New-Item -ItemType Directory -Path (Join-Path $appPayload $folder) | Out-Null
     & rsync -a ((Join-Path $ShellBuild $folder) + '/') ((Join-Path $appPayload $folder) + '/')
     if ($LASTEXITCODE -ne 0) { throw "Shell payload copy failed: $folder" }
@@ -150,6 +151,11 @@ if ($sparkleEnabled) {
 }
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
+if ($identity.sourceAlpha) {
+    if ($sparkleEnabled) { throw 'Source Alpha does not enable software updates' }
+    $desktop.updates=@{provider='disabled';defaultPolicy='development'}
+    $desktop.sourceAlpha=$true;$desktop.appId+='.alpha'
+}
 if ($ExternalPublisherConfig) {
     if ($ownership -ne 'publisher') { throw 'External publisher configuration requires publisher ownership' }
     $bundledPublisherConfig = Join-Path $resources 'product/resources/desktop/eduwork.jsonc'
@@ -166,7 +172,8 @@ foreach ($row in @(
     @('CFBundleExecutable','Electron'), @('CFBundleName',$desktop.productName),
     @('CFBundleDisplayName',$desktop.productName), @('CFBundleIdentifier',$desktop.appId),
     @('CFBundleShortVersionString',$marketingVersion), @('CFBundleVersion',$effectiveBundleVersion), @('CFBundleIconFile','brand/icon.icns'),
-    @('LSMinimumSystemVersion','15.0')
+    @('LSMinimumSystemVersion','15.0'),
+    @('NSMicrophoneUsageDescription',"$($desktop.productName) 使用麦克风进行语音输入。")
 )) {
     & plutil -replace $row[0] -string $row[1] $plist
     if ($LASTEXITCODE -ne 0) { throw "Info.plist update failed: $($row[0])" }
@@ -221,7 +228,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Signing-stage copy failed' }
     & xattr -cr $signingApp
     if ($LASTEXITCODE -ne 0) { throw 'Signing-stage metadata cleanup failed' }
-    & codesign --force --deep --sign - --timestamp=none $signingApp
+    & codesign --force --deep --sign - --timestamp=none --entitlements (Join-Path $PSScriptRoot '../entitlements.plist') $signingApp
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signing failed' }
     & codesign --verify --deep --strict $signingApp
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signature verification failed' }

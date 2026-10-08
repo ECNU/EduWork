@@ -28,6 +28,12 @@ Shared previews read actual DOCX/XLSX/PPTX bytes, with fixed PPTX page coordinat
 
 PDF/video consumers in Node can import `createMediaRuntime` from `@eduwork/dsh-artifact-services/runtime` and use its `browserExecutable`. Supply `DSH_MEDIA_NODE_ENV` / `DSH_MEDIA_BROWSER` together for a pinned deployment (legacy `ECNU_AGENT_NODE_ENV` / `ECNU_AGENT_REMOTION_BROWSER` remain supported); configured deployments never call `ensureBrowser`. Without configuration, an actual rendering request may prepare the shared package’s browser. Read-only readiness checks do not download it. The pinned runtime is Remotion 4.0.520, mediabunny 1.55.5 and React/React DOM 18.3.1; all consumers should resolve one copy of mediabunny. `getMediaFFmpegPath` from the same entry resolves FFmpeg from the selected dependency owner without preparing a browser. An existing runtime can be passed as `{runtime}`.
 
+## Conversation tool permissions
+
+Office creation, editing, PDF merging and extraction follow the session's effective file-write policy. Existing workspace-write access needs no repeated approval; read-only sessions still require approval for each write. Custom presets use the resolved sandbox policy. Project-relative paths, canonical containment and no-overwrite checks still apply, even under Full Access.
+
+Image generation, TTS, ASR, fixed-template media rendering and video project file operations also reuse workspace-write access, including configured remote providers. Remote services may upload request content and consume quota, but this alone does not trigger repeated approval. Feature flags, provider availability, credentials and workspace containment checks still apply; permission checks themselves never query voice endpoints or invoke generation. Read-only sessions still require approval, as does execution of editable video project code. Other host permission hooks continue to run.
+
 ## Application interfaces (v1)
 
 ```js
@@ -134,13 +140,13 @@ Structured audio/video and editable Remotion projects use `lib/remotion.js`. The
 
 ## DSH composition
 
-Load `@eduwork/dsh-artifact-services/dsh` once. It provides `artifactServices`, six generic skills plus `artifact-images` when enabled and available, ten default tools and two opt-in image tools:
+Load `@eduwork/dsh-artifact-services/dsh` once. It provides `artifactServices`, six generic skills plus `artifact-images` when enabled and available, ten default tools and three opt-in image tools:
 
 | Tools | Responsibilities |
 | --- | --- |
 | `office_document`, `office_spreadsheet`, `office_presentation`, `office_pdf` | Existing Office tool names and workspace-relative paths |
 | `speech_voices`, `speech_synthesize` | Provider/voice/music discovery and speech generation |
-| `image_providers`, `image_generate` | Opt-in image discovery/generation; omitted unless `images.enabled:true` |
+| `image_providers`, `image_generate`, `image_edit` | Opt-in image discovery/generation; omitted unless `images.enabled:true` |
 | `speech_transcription_providers`, `speech_transcribe` | Audio-file transcription provider discovery and transcription |
 | `media_render` | Structured audio/video generation |
 | `video_project` | Editable project init/staging/voice jobs/validation/rendering |
@@ -167,3 +173,5 @@ option.
 ## Platform support
 
 The built-in system TTS adapter supports Windows. Other platforms require a registered speech provider and compatible native resources. See [platform requirements](docs/PLATFORMS.md).
+
+Image providers may implement `edit(request)` with the same workspace, cancellation and output contract as `generate`. Inputs are an `images` path array and optional `mask`; use `images.edit(request)` / `image_edit`. The catalog declares `capabilities.edit:true` only for editing providers, with no generation fallback. Inputs and new output files stay within the workspace and reuse its write permission.

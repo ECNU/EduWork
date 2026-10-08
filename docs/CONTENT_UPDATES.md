@@ -50,9 +50,13 @@ Electron 客户端可以从发行方配置的 HTTPS 源下载小型内容包，�
 
 软件版本和内容修订号独立：软件采用 SemVer，内容使用正整数 `revision`。一个发布者的所有渠道共用递增序列；发生变化的组件也必须递增修订号，未变组件仍放入完整快照并保留原修订号。配置与 Skills 的修订号分别显示。
 
-每个 Skill 在发行计划的 `entries` 中声明依赖，必须存在同名目录下的 `SKILL.md`。`requires.minClient` 与 `requires.capabilities` 必填；`maxClientExclusive` 可限制最高客户端版本，`dsh` 可指定精确 DSH 版本。整个包的依赖必须覆盖全部 Skills；每个 Skill 的客户端上限若填写，应与包的上限一致。
+每个 Skill 在发行计划的 `entries` 中声明依赖，必须存在同名目录下的 `SKILL.md`。`requires.minClient` 与 `requires.capabilities` 必填；`maxClientExclusive` 可限制最高客户端版本。整个包的依赖必须覆盖全部 Skills；每个 Skill 的客户端上限若填写，应与包的上限一致。
 
-含平台相关脚本时，使用 `platforms` 限定 `win32`、`darwin` 或 `linux`；省略代表全平台，发布方需自行验证。当前桌面发行验收范围为 Windows，声明平台并不代表已完成其他平台的产品验收。
+内容兼容性按所用配置字段、工具接口及客户端版本范围声明。普通配置默认省略 `requires.dsh`，只列实际依赖的能力，不能将安装包的完整插件清单复制为前置条件。`dsh` 仍可选，用于确实依赖某个内核实现的内容；一旦填写，客户端按精确版本检查，包括离线缓存。上游仅变更 rc 版本号不构成重签配置或限制旧客户端的理由。
+
+只修正兼容声明时，提高清单的发行修订号并重新签名；配置或 Skills 正文未变，保留其字节与组件修订号。签名、哈希、防倒退和必要能力检查仍执行。软件构建的内核、npm 产物和来源锁继续精确固定，不能用放宽构建锁代替正确的兼容声明。
+
+含平台相关脚本时，使用 `platforms` 限定 `win32`、`darwin` 或 `linux`；省略代表全平台，发布方需自行验证。平台兼容检查不能代替对应操作系统的安装与运行验收。
 
 能力名称来自安装包 `resources/product/assembly.json`：`package:<包名>` 对应 `managedPackages`，`plugin:<包名>` 对应 `localPlugins`。它表示该能力已随程序安装，不能代替模型、账户等服务的可用性检查。不能借此声明或下载新的插件依赖；程序版本范围应覆盖所需的工具接口版本。
 
@@ -64,7 +68,6 @@ Electron 客户端可以从发行方配置的 HTTPS 源下载小型内容包，�
   "revision": 2,
   "requires": {
     "minClient": "0.3.6-dev.20260916.1",
-    "dsh": "0.1.5-rc.2",
     "capabilities": ["package:@eduwork/dsh-oidc"]
   },
   "configuration": { "revision": 2, "path": "configuration.json" },
@@ -75,7 +78,6 @@ Electron 客户端可以从发行方配置的 HTTPS 源下载小型内容包，�
       "name": "example",
       "requires": {
         "minClient": "0.3.6-dev.20260916.1",
-        "dsh": "0.1.5-rc.2",
         "capabilities": []
       }
     }]

@@ -7,7 +7,7 @@ import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { publisherBootstrap, preparePublisherContent, readPublisherBootstrap, retryPublisherContent } from '../publisher-bootstrap.mjs'
 import { ContentUpdates } from '../content-updates.mjs'
-import { digest } from '../content-update-protocol.mjs'
+import { digest, historicalConfiguration, validateBundle } from '../content-update-protocol.mjs'
 import { loadUserConfig } from '../user-config.mjs'
 import { desktopPaths } from '../../dsh-electron/src/desktop-paths.mjs'
 
@@ -32,7 +32,7 @@ async function fixture(t, platform = 'win32') {
   const open = async () => {
     const bootstrap = await publisherBootstrap(options)
     const manager = await new ContentUpdates({ ...options, root: paths.root, configPath: bootstrap.configPath,
-      identity: { dshVersion: '0.1.5-rc.2' }, policy: 'development', fetchImpl }).init()
+      identity: { dshVersion: '0.1.5-rc.2', ...options.identity }, policy: 'development', fetchImpl }).init()
     // Exercise platform compatibility independently of the test host OS.
     manager.environment.platform = platform
     return { bootstrap, manager }
@@ -105,6 +105,54 @@ test('network failure leaves a retryable first-run state; signed offline import 
   assert.equal(f.requests.length, 0)
   await next.manager.ready()
   await assert.rejects(next.manager.importOffline(release.offline), /修订号/)
+})
+
+for (const platform of ['win32', 'darwin']) for (const dshVersion of ['0.2.0-rc.1', '0.2.0-rc.2']) {
+  test(`unchanged signed configuration bootstraps ${dshVersion} on ${platform} without an exact kernel pin`, async t => {
+    const f = await fixture(t, platform)
+    f.options.version = '0.4.0-alpha.2'
+    f.options.identity = { dshVersion, managedPackages: { '@eduwork/dsh-oidc': {} } }
+    const requires = { minClient: '0.4.0-0', maxClientExclusive: '0.5.0',
+      capabilities: ['package:@eduwork/dsh-oidc'], platforms: [platform] }
+    const old = f.release(4, { requires: { ...requires, dsh: '0.2.0-rc.2' } })
+    const first = await f.open()
+    if (dshVersion === '0.2.0-rc.1') {
+      await assert.rejects(preparePublisherContent(first.manager, first.bootstrap), /DSH/)
+      assert.equal(first.manager.state.highest, 0)
+    }
+    // Requirements alone change: preserve the signed configuration bytes and
+    // component revision, but issue a higher signed manifest revision.
+    const corrected = f.release(5, { requires, components: { configuration: 4 } })
+    assert.deepEqual(corrected.bytes, old.bytes)
+    assert.equal((await preparePublisherContent(first.manager, first.bootstrap)).configurationRevision, 4)
+    await first.manager.ready()
+    const local = (await readConfiguration(f.paths.config)).value
+    local.features.maxConcurrentRequests = 9
+    await save(f.paths.config, local)
+    f.responses.clear(); f.requests.length = 0
+    const second = await f.open()
+    assert.equal((await preparePublisherContent(second.manager, second.bootstrap)).configurationRevision, 4)
+    assert.equal(f.requests.length, 0)
+    assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 9)
+    await assert.rejects(second.manager.importOffline(old.offline), /修订号/)
+  })
+}
+
+test('omitting a kernel pin still enforces the client API, platform and required capabilities', async t => {
+  const f = await fixture(t)
+  f.options.version = '0.4.0-alpha.2'
+  f.options.identity = { dshVersion: '0.2.0-rc.2' }
+  const { bootstrap, manager } = await f.open()
+  for (const [requires, message] of [
+    [{ minClient: '0.4.1', capabilities: [] }, /客户端版本/],
+    [{ minClient: '0.3.0', maxClientExclusive: '0.4.0-0', capabilities: [] }, /客户端版本/],
+    [{ minClient: '0.4.0-0', capabilities: [], platforms: ['linux'] }, /操作系统/],
+    [{ minClient: '0.4.0-0', capabilities: ['package:@eduwork/dsh-oidc'] }, /工具能力/],
+  ]) {
+    f.release(5, { requires })
+    await assert.rejects(preparePublisherContent(manager, bootstrap), message)
+    assert.equal(manager.state.highest, 0)
+  }
 })
 
 test('wrong signer, corrupt bytes, wrong channel and platform incompatibility cannot initialize an installation', async t => {
@@ -270,6 +318,19 @@ test('upgrade from the old layered layout materializes the signed effective conf
 })
 
 const plain = value => JSON.parse(JSON.stringify(value))
+test('historical combined content yields configuration only; incompatible skills remain ineligible for activation', () => {
+  const skill = Buffer.from('# Legacy skill\n')
+  const requires = { minClient: version, dsh: '0.1.7-rc.2', capabilities: [] }
+  const configuration = { organizations: [{ id: 'example' }] }
+  const bytes = Buffer.from(JSON.stringify({ schemaVersion: 1, configuration, skills: {
+    entries: [{ name: 'legacy', requires }],
+    files: [{ path: 'legacy/SKILL.md', data: skill.toString('base64'), bytes: skill.length, sha256: digest(skill) }],
+  } }))
+  const manifest = { requires, components: { configuration: 1, skills: 1 }, bundle: { bytes: bytes.length, sha256: digest(bytes) } }
+  assert.deepEqual(historicalConfiguration(bytes, manifest), configuration)
+  assert.throws(() => validateBundle(bytes, manifest, { version: '0.4.0', dshVersion: '0.2.0-rc.1', capabilities: [] }), /DSH/)
+  assert.throws(() => historicalConfiguration(Buffer.alloc(bytes.length), manifest), /摘要/)
+})
 const retired = 'https://updates.example.test/legacy'
 const oldProfile = { id: 'example', oidc: { issuer: 'https://school.example.test', clientId: 'synthetic-public-client' }, keyBinding: { type: 'legacy' }, provider: { id: 'school', baseURL: 'https://school.example.test/api/v1' } }
 const newProfile = { id: 'example', auth: { discoveryUrl: 'https://school.example.test/.well-known/openid-configuration', clientId: 'synthetic-public-client' }, provider: { id: 'school', modelSource: 'discovery' } }
@@ -363,30 +424,79 @@ for (const kind of ['custom-source', 'different-key', 'disabled', 'explicit-conf
   assert.equal(first.manager.source.baseURL, f.oldValue.contentUpdates.baseURL)
 })
 
-test('a retired cache is verified with its original source and signed defaults before migration', async t => {
+for (const oldDSH of ['0.1.5-rc.2', '0.1.7-rc.2']) test(`a retired ${oldDSH} cache supplies authenticated merge defaults but cannot start the new Host`, async t => {
   const f = await migrationFixture(t, 'cache'), target = f.descriptor.contentUpdates.baseURL
   f.descriptor.contentUpdates.baseURL = retired
-  const old = f.release(4, {}, { organizations: [oldProfile], features: { maxConcurrentRequests: 7 } })
+  const old = f.release(4, { requires: { minClient: version, dsh: oldDSH, capabilities: [] } }, { organizations: [oldProfile], features: { maxConcurrentRequests: 7 } })
   f.descriptor.contentUpdates.baseURL = target
   const scope = digest(JSON.stringify(['example', f.oldSource.publisher, retired, f.oldSource.publicKey]))
   const key = `4-${old.manifest.bundle.sha256}`, store = join(f.paths.updateDataRoot, 'content-updates', scope)
   await save(join(store, key, 'manifest.json'), old.envelope)
   await writeFile(join(store, key, 'bundle.json'), old.bytes)
   await save(join(store, 'state.json'), { schemaVersion: 1, active: { configuration: key }, pending: null, trial: null, rejected: [], highest: 4 })
-  f.release(1, {}, { organizations: [newProfile], features: { maxConcurrentRequests: 3 } })
+  f.options.version = '0.4.0'
+  f.options.identity = { dshVersion: '0.2.0-rc.1' }
   const first = await f.open()
   assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 7)
   assert.equal(first.bootstrap.requiresConfiguration, true)
+  await assert.rejects(preparePublisherContent(first.manager, first.bootstrap), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  assert.ok(await readFile(f.oldPath))
+  for (const requires of [
+    { dsh: oldDSH }, { dsh: '0.2.0-rc.1', platforms: ['linux'] }, { dsh: '0.2.0-rc.1', capabilities: ['missing-capability'] },
+  ]) {
+    f.release(1, { requires: { minClient: '0.4.0', capabilities: [], ...requires } })
+    await assert.rejects(preparePublisherContent(first.manager, first.bootstrap), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  }
+  f.release(1, { requires: { minClient: '0.4.0', dsh: '0.2.0-rc.1', capabilities: [] } }, { organizations: [newProfile], features: { maxConcurrentRequests: 3 } })
   await preparePublisherContent(first.manager, first.bootstrap); await first.manager.ready()
   assert.deepEqual(plain(loadUserConfig(f.paths.config).organizations[0]), newProfile)
   assert.equal(loadUserConfig(f.paths.config).features.maxConcurrentRequests, 3)
   assert.equal(first.manager.snapshot().configurationRevision, 1, 'revision is scoped to the explicitly changed source')
   await assert.rejects(readFile(f.oldPath), { code: 'ENOENT' })
+  assert.equal(JSON.parse(await readFile(join(store, 'state.json'))).highest, 4)
+  assert.deepEqual(await readFile(join(store, key, 'bundle.json')), old.bytes)
+})
+
+for (const initialized of [false, true]) test(`a config-only successor cannot reactivate retired skills (initialized=${initialized})`, async t => {
+  const f = await migrationFixture(t)
+  if (initialized) {
+    f.descriptor.migrateFrom = []
+    await save(f.descriptorPath, f.descriptor)
+    await f.open()
+    f.descriptor.migrateFrom = [retired]
+    await save(f.descriptorPath, f.descriptor)
+  }
+  const current = (await readConfiguration(f.paths.config)).value
+  current.contentUpdates.skills = true
+  await save(f.paths.config, current)
+  const first = await f.open()
+  assert.equal(first.manager.source.skills, false)
+  assert.equal(first.bootstrap.requiresConfiguration, true)
+  f.release(1, {}, { organizations: [newProfile] })
+  await preparePublisherContent(first.manager, first.bootstrap)
+  assert.equal(first.manager.state.active.skills, undefined)
+  await first.manager.ready()
+})
+
+for (const corruption of ['signature', 'bytes']) test(`retired incompatible cache still rejects invalid ${corruption}`, async t => {
+  const f = await migrationFixture(t, 'cache')
+  f.descriptor.contentUpdates.baseURL = retired
+  const old = f.release(4, { requires: { minClient: version, dsh: '0.1.7-rc.2', capabilities: [] } })
+  const scope = digest(JSON.stringify(['example', f.oldSource.publisher, retired, f.oldSource.publicKey]))
+  const key = `4-${old.manifest.bundle.sha256}`, store = join(f.paths.updateDataRoot, 'content-updates', scope)
+  if (corruption === 'signature') old.envelope.signature = Buffer.alloc(64).toString('base64url')
+  await save(join(store, key, 'manifest.json'), old.envelope)
+  await writeFile(join(store, key, 'bundle.json'), corruption === 'bytes' ? Buffer.alloc(old.bytes.length) : old.bytes)
+  await save(join(store, 'state.json'), { schemaVersion: 1, active: { configuration: key }, highest: 4 })
+  f.options.version = '0.4.0'; f.options.identity = { dshVersion: '0.2.0-rc.1' }
+  await assert.rejects(f.open(), corruption === 'signature' ? /签名/ : /摘要/)
+  assert.ok(await readFile(f.oldPath))
+  assert.equal(f.requests.length, 0)
 })
 
 test('migration descriptors reject non-HTTPS, query and credential URLs', async t => {
   const f = await fixture(t)
-  for (const bad of ['http://updates.example.test', 'https://updates.example.test/?x=1', 'https://user:secret@updates.example.test', '../outside']) {
+  for (const bad of ['http://updates.example.test', 'https://updates.example.test/?x=1', 'https://user:secret@updates.example.test', '../outside', f.descriptor.contentUpdates.baseURL]) {
     await save(f.descriptorPath, { ...f.descriptor, migrateFrom: [bad] })
     await assert.rejects(readPublisherBootstrap(f.options), /migrateFrom/)
   }

@@ -1,4 +1,5 @@
-import { readdirSync, statSync } from 'node:fs'
+import { readdirSync, lstatSync } from 'node:fs'
+import { execFileSync } from 'node:child_process'
 import { homedir as defaultHomedir } from 'node:os'
 import path from 'node:path'
 
@@ -10,36 +11,54 @@ function pathHasUsrBin(pathValue) {
   return pathValue.split(path.delimiter).some(entry => entry === '/usr/bin')
 }
 
-function isSocketAt(stat, filePath) {
+function isOwnedAt(lstat, filePath, uid, kind) {
+  if (!Number.isInteger(uid)) return false
   try {
-    const st = stat(filePath)
-    return st.isSocket?.() ?? st.isSocket === true
+    const entry = lstat(filePath)
+    return entry.uid === uid && !entry.isSymbolicLink() && entry[kind]()
   } catch {
     return false
   }
 }
 
-function discoverLaunchdSshSocket(socketRoot, listDir, stat) {
+function isOwnedSocket(lstat, filePath, uid) {
+  return typeof filePath === 'string' && path.isAbsolute(filePath)
+    && isOwnedAt(lstat, path.dirname(filePath), uid, 'isDirectory')
+    && isOwnedAt(lstat, filePath, uid, 'isSocket')
+}
+
+function launchdSshAuthSock() {
+  try {
+    return execFileSync('/bin/launchctl', ['getenv', 'SSH_AUTH_SOCK'], {
+      encoding: 'utf8', timeout: 1000, stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim()
+  } catch {
+    return undefined
+  }
+}
+
+function discoverLaunchdSshSocket(socketRoot, listDir, lstat, uid) {
   let bestPath = null
-  let bestMtime = -1
+  let bestMtime = -Infinity
   let entries
   try {
-    entries = listDir(socketRoot)
+    entries = listDir(socketRoot).sort()
   } catch {
     return null
   }
+  // Prefer the newest owned socket; lexical order breaks timestamp ties.
+  // The current user's launchd environment takes precedence over this fallback.
   for (const name of entries) {
     if (!LAUNCHD_DIR.test(name)) continue
-    const dir = path.join(socketRoot, name)
-    const listener = path.join(dir, 'Listeners')
-    if (!isSocketAt(stat, listener)) continue
+    const listener = path.join(socketRoot, name, 'Listeners')
+    if (!isOwnedSocket(lstat, listener, uid)) continue
     let mtime
     try {
-      mtime = stat(listener).mtimeMs ?? stat(listener).mtime.getTime()
+      mtime = lstat(listener).mtimeMs
     } catch {
       continue
     }
-    if (mtime > bestMtime) {
+    if (Number.isFinite(mtime) && mtime > bestMtime) {
       bestMtime = mtime
       bestPath = listener
     }
@@ -47,18 +66,21 @@ function discoverLaunchdSshSocket(socketRoot, listDir, stat) {
   return bestPath
 }
 
-function resolveSshAuthSock(env, socketRoot, listDir, stat) {
+function resolveSshAuthSock(env, socketRoot, listDir, lstat, uid, readLaunchdSocket) {
   const current = env.SSH_AUTH_SOCK
-  if (current && isSocketAt(stat, current)) {
+  if (isOwnedSocket(lstat, current, uid)) {
     return { status: 'inherited', value: current }
   }
-  const discovered = discoverLaunchdSshSocket(socketRoot, listDir, stat)
+  let sessionSocket
+  try { sessionSocket = readLaunchdSocket() } catch { /* Fall back to owned launchd sockets. */ }
+  if (isOwnedSocket(lstat, sessionSocket, uid)) {
+    return { status: 'launchd', value: sessionSocket }
+  }
+  const discovered = discoverLaunchdSshSocket(socketRoot, listDir, lstat, uid)
   if (discovered) {
     return { status: 'discovered', value: discovered }
   }
-  if (Object.hasOwn(env, 'SSH_AUTH_SOCK')) {
-    delete env.SSH_AUTH_SOCK
-  }
+  delete env.SSH_AUTH_SOCK
   return { status: 'absent', value: undefined }
 }
 
@@ -93,12 +115,14 @@ export function applyHostGitIdentity(env, options = {}) {
   }
 
   const listDir = options.listDir ?? readdirSync
-  const stat = options.stat ?? statSync
+  const lstat = options.lstat ?? lstatSync
+  const uid = options.uid ?? process.getuid?.()
+  const readLaunchdSocket = options.launchdSshAuthSock ?? launchdSshAuthSock
   const socketRoot = options.socketRoot ?? '/private/tmp'
   const homedirFn = options.homedir ?? defaultHomedir
 
-  const ssh = resolveSshAuthSock(env, socketRoot, listDir, stat)
-  if (ssh.status === 'discovered') {
+  const ssh = resolveSshAuthSock(env, socketRoot, listDir, lstat, uid, readLaunchdSocket)
+  if (ssh.value) {
     env.SSH_AUTH_SOCK = ssh.value
   }
 

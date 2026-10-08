@@ -36,7 +36,7 @@
   "features": {
     // [eduwork] 当前 Host 的模型请求总并发，1–64，默认 3；主会话、子代理、辅助模型共用，超出排队。界面中保存的值优先；不限制其他客户端或独立媒体接口。
     "maxConcurrentRequests": 3,
-    // [eduwork] DSH 0.1.7-rc.1 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。
+    // [eduwork] DSH 0.1.7-rc.2 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。
     "maxActiveSubagents": 2
   },
   // [eduwork] 桌面行为。
@@ -228,10 +228,14 @@
 //   "primaryColor": "#9f2636"
 // organizations[].brand.loginTitle：登录标题，最多 120 字符。
 //   "loginTitle": "使用机构账号登录"
+// organizations[].brand.loginButtonLabel：登录按钮文字，最多 40 字符；省略时使用客户端默认文案。
+//   "loginButtonLabel": "统一认证登录"
 // organizations[].brand.loginDescription：登录说明，最多 500 字符。
 //   "loginDescription": "授权后使用机构提供的模型。"
 // organizations[].brand.supportURL：帮助页面，必须为 HTTPS。
 //   "supportURL": "https://example.org/help"
+// organizations[].brand.language：浏览器登录结果页的语言：auto 按浏览器偏好，zh-CN 或 en 固定语言。
+//   "language": "auto"
 // organizations[].auth.discoveryUrl：完整发现文档 URL；oidc-llm 使用 /.well-known/openid-configuration，LiteLLM 使用 /.well-known/litellm-cli-auth。
 //   "discoveryUrl": "https://models.example.org/.well-known/openid-configuration"
 // organizations[].auth.expectedIssuer：预期 issuer，须与发现文档完全一致；可省略，此时按发现地址验证。
@@ -242,6 +246,8 @@
 //   "clientId": "replace-with-public-client-id"
 // organizations[].auth.identityMode：仅 oidc-llm，必须显式选 oidc 或 oauth；oidc 还验证 ID Token。
 //   "identityMode": "oidc"
+// organizations[].auth.additionalScopes：仅 oidc-llm，显式申请额外服务范围；必须由服务端 discovery 支持，刷新时不得扩张。
+//   "additionalScopes": []
 // organizations[].oidc.issuer：OIDC 签发者 URL；客户端据此查找发现文档。
 //   "issuer": "https://id.example.org"
 // organizations[].oidc.clientId：服务端分配的公开客户端 ID；不填写客户端密钥。
@@ -274,7 +280,7 @@
 //   "retryPolicy": {}
 // organizations[].provider.compat：提供方协议兼容选项；不确定时保持未配置。
 //   "compat": {}
-// organizations[].provider.models：按服务端模型 ID 补充能力和限制；空数组完全使用发现目录。
+// organizations[].provider.models：按服务端授权模型 ID 补充类型、能力和限制；只注册 llm 到对话，不扩大授权目录。
 //   "models": []
 // organizations[].provider.retryPolicy.mode：normal 常规重试，always 持续重试；关闭重试请设置 maxRetries=0。
 //   "mode": "normal"
@@ -310,6 +316,8 @@
 //   "requiresReasoningContentOnAssistantMessages": true
 // organizations[].provider.models[].id：服务端模型 ID，同一个提供方内不可重复。
 //   "id": "example-max"
+// organizations[].provider.models[].type：模型用途：llm/embedding/rerank/image/tts/unknown；仅 llm 进入对话。服务端类型优先，缺失时用此值；两边都缺失为 unknown。
+//   "type": "llm"
 // organizations[].provider.models[].name：模型显示名称，默认取 id。
 //   "name": "Example Max"
 // organizations[].provider.models[].input：支持的输入：text、image；默认仅 text。
@@ -350,7 +358,7 @@
 //   "visionFallback": false
 // features.maxConcurrentRequests：当前 Host 的模型请求总并发，1–64，默认 3；主会话、子代理、辅助模型共用，超出排队。界面中保存的值优先；不限制其他客户端或独立媒体接口。
 //   "maxConcurrentRequests": 3
-// features.maxActiveSubagents：DSH 0.1.7-rc.1 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。
+// features.maxActiveSubagents：DSH 0.1.7-rc.2 的子代理数量默认值，1–64，默认 2；同一主 Agent 下跨递归层级统计，主 Agent 不计入，达到上限拒绝新建。与模型请求总并发分别控制；界面中已保存的数量优先。0.1.5 不使用此项。
 //   "maxActiveSubagents": 2
 // features.maxParallelSubagents：旧版兼容项，1–32；仅在未填总并发时换算为此值+1，不控制官方子代理数量。新配置请分别使用 maxConcurrentRequests 和 maxActiveSubagents。
 //   "maxParallelSubagents": 2
@@ -442,6 +450,10 @@
 //   "responseFormat": "auto"
 // media.providers[].images.promptMaxChars：提示词最大字符数，正整数，默认 4096。
 //   "promptMaxChars": 4096
+// media.providers[].images.edit：是否支持标准 /images/edits 图像编辑，默认 false；不影响文生图。
+//   "edit": false
+// media.providers[].images.editMaxImages：单次编辑允许的输入图片数，1–16，默认 1；按服务端能力填写。
+//   "editMaxImages": 1
 // media.providers[].speech.enabled：是否启用云端 TTS，默认 false；启用时须填写 model 和 voices。
 //   "enabled": false
 // media.providers[].speech.model：TTS 模型 ID。

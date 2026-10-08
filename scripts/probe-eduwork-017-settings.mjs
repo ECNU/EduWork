@@ -26,8 +26,8 @@ for (const row of [...distribution.plugins, { name: '@chatecnu-work/dsh-skill-co
   localPackages.set(row.name, { root, manifest: JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) })
 }
 const receipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-assert.equal(receipt.dshVersion, '0.1.7-rc.1')
-assert.equal(receipt.dshCommit, '46a7f68b0922371ce7144b668b90e377d8e799f4')
+assert.equal(receipt.dshVersion, '0.2.0-rc.2')
+assert.equal(receipt.dshCommit, '639ed015397290b3745d163aafe02ffee4aa3f84')
 await mkdir(output)
 const home = join(output, 'home'), profileDir = join(home, 'profiles', 'settings-probe')
 await mkdir(profileDir, { recursive: true })
@@ -183,6 +183,30 @@ try {
   assert.ok(!(await ctx.skills.list()).some(row => row.name === 'synthetic-skill'), 'Disabled skills must stay hidden')
   await ctx.settings.update('chatecnu-skills', { disabled: [] })
   assert.ok((await ctx.skills.list()).some(row => row.name === 'synthetic-skill'), 'Enabling a skill must invalidate the official cache')
+  // Use the native filesystem provider/cache with synthetic account responses.
+  // No real login, model request or personal credential is involved.
+  const accountSkill = join(process.env.DSH_BUNDLED_SKILL_DIR, 'synthetic-institution')
+  await mkdir(accountSkill)
+  await writeFile(join(accountSkill, 'SKILL.md'), '---\nname: synthetic-institution\ndescription: Synthetic organization skill\nmetadata:\n  eduwork:\n    oidcProfileId: synthetic-school\n    credentialRef: UNUSED_LEGACY_KEY\n---\nSynthetic only.\n')
+  const accounts = ctx.oidcAccounts, originalStatus = accounts.status
+  let signedIn = false
+  accounts.status = async id => id === 'synthetic-school'
+    ? { profileID: id, state: signedIn ? 'connected' : 'signed_out', credentialReady: signedIn }
+    : originalStatus.call(accounts, id)
+  try {
+    for (const ready of [false, true, false]) {
+      signedIn = ready
+      ctx.emit('oidc/accounts-changed', { profileID: 'synthetic-school', state: ready ? 'connected' : 'signed_out' })
+      let visible
+      for (let attempt = 0; attempt < 100; attempt++) {
+        visible = (await ctx.skills.list()).some(row => row.name === 'synthetic-institution')
+        if (visible === ready) break
+        await new Promise(resolve => setTimeout(resolve, 25))
+      }
+      assert.equal(visible, ready, 'Native skill visibility must follow organization sign-in without a personal API key')
+    }
+    report.skillAccountLifecycle = { signedOut: true, signedIn: true, logoutInvalidation: true, personalKey: false }
+  } finally { accounts.status = originalStatus }
   await waitForPresets(['standard', 'ptc'])
   await ctx.settings.update('chatecnu-brand', { enabledOptionalPresets: ['minimal'] })
   await syncNativeOptionalPresets(ctx, ['minimal'])

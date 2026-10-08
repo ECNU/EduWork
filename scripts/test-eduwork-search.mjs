@@ -15,6 +15,7 @@ const require = createRequire(join(product, 'd/package.json'))
 const load = name => import(pathToFileURL(require.resolve(name)).href)
 const { Context } = await load('@deepseek-ai/cordis')
 const { WebRuntime } = await load('@deepseek-ai/dsh-web')
+const { Config } = await load('@deepseek-ai/dsh-web-search-deepseek')
 const auto = await load('@chatecnu-work/dsh-tool-browser/search-auto')
 const composition = JSON.parse(await readFile(join(product, 'composition.json'), 'utf8'))
 assert.equal(composition.find(row => row.id === 'web').config.searchProvider, 'eduwork-search')
@@ -24,7 +25,7 @@ const fiber = await ctx.plugin(WebRuntime, { searchProvider: 'eduwork-search' })
 let settings = {}, key, requests = 0
 const cleanups = []
 auto.apply({ web: ctx.web, get(name) {
-  if (name === 'settings') return { get: () => settings }
+  if (name === 'configEditor') return { entries: () => [{ options: { id: 'web-search-deepseek' }, fiber: { state: 2, config: Config(settings) } }] }
   if (name === 'credentials') return { resolve: async ref => { assert.equal(ref, 'DEEPSEEK_API_KEY'); return key ? {value:key} : undefined } }
 }, effect(factory) { cleanups.push(factory()) } })
 const fixture = createServer(async (request, response) => {

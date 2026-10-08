@@ -37,10 +37,20 @@ jobs:
           if ($LASTEXITCODE) { throw 'Source checks failed' }
           node --test core/dsh-plugins/component-inventory-native/test/product-inventory.test.mjs core/dsh-plugins/client-ui-component-inventory/test/about.test.mjs
           if ($LASTEXITCODE) { throw 'About and component inventory checks failed' }
+          node --test core/dsh-plugins/client-ui-branding/test/*.test.mjs
+          if ($LASTEXITCODE) { throw 'Product identity checks failed' }
           node --test core/dsh-host/test/configuration-documentation.test.mjs core/dsh-host/test/configuration-file.test.mjs core/dsh-host/test/publisher-bootstrap.test.mjs core/dsh-host/test/content-updates.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/configuration-policy.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs core/dsh-electron/tests/desktop-restart.test.mjs core/dsh-electron/tests/mac-sparkle-updates.test.mjs
           if ($LASTEXITCODE) { throw 'Content lifecycle checks failed' }
+          node --test core/dsh-electron/tests/portable-updates-startup.test.mjs core/dsh-electron/tests/startup-failure.test.mjs
+          if ($LASTEXITCODE) { throw 'Updater startup and recovery guidance checks failed' }
           node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop notification checks failed' }
+      - name: Verify Windows updater manifests and archives
+        if: steps.changes.outputs.build == 'true'
+        shell: pwsh
+        run: |
+          node --test core/dsh-electron/tests/updater-manifest.test.mjs core/tests/github-update-package.test.mjs
+          if ($LASTEXITCODE) { throw 'Updater manifest and archive checks failed' }
       - name: Build and verify the generic local Runtime
         if: steps.changes.outputs.build == 'true'
         shell: pwsh

@@ -1,0 +1,119 @@
+{
+  "name": "@eduwork/dsh-literature",
+  "version": "0.1.2",
+  "description": "Literature research for DSH: DBLP and arXiv search, BibTeX and full text. EduWork-maintained fork of SihanLv/dsh-literature.",
+  "type": "module",
+  "main": "lib/index.js",
+  "types": "lib/index.d.ts",
+  "exports": {
+    ".": "./lib/index.js",
+    "./core": "./lib/core/index.js",
+    "./dblp": "./lib/dblp/index.js",
+    "./arxiv": "./lib/arxiv/index.js",
+    "./tool": "./lib/tool/index.js",
+    "./core/invariant": "./lib/core/invariant.js",
+    "./dblp/invariant": "./lib/dblp/invariant.js",
+    "./arxiv/invariant": "./lib/arxiv/invariant.js",
+    "./tool/invariant": "./lib/tool/invariant.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib/**/*.js",
+    "lib/**/*.d.ts",
+    "cordis.patch.yml",
+    "README.md",
+    "README_EN.md",
+    "LICENSE",
+    "NOTICE.md",
+    "UPSTREAM.json",
+    "CHANGELOG.md"
+  ],
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "test:live": "vitest run --config vitest.live.config.ts",
+    "test:runtime": "node scripts/probe-runtime.mjs",
+    "check": "npm run typecheck && npm run build && npm test && npm run test:runtime"
+  },
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.4",
+    "@deepseek-ai/dsh-agent": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-fs": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-invariants": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-jobs": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-sandbox": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-sandbox-policy": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-subagent": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-timeout": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.0-rc.1 <0.3.0-0",
+    "@deepseek-ai/schemastery": "^3.18.4"
+  },
+  "dependencies": {
+    "@joplin/turndown-plugin-gfm": "^1.0.67",
+    "fast-xml-parser": "^5.2.5",
+    "node-html-parser": "^9.0.1",
+    "pdfjs-dist": "^6.2.108",
+    "tar": "^7.5.22",
+    "turndown": "^7.2.4"
+  },
+  "devDependencies": {
+    "@deepseek-ai/cordis": "4.0.4",
+    "@deepseek-ai/cordis-plugin-include": "1.0.9",
+    "@deepseek-ai/cordis-plugin-loader": "1.0.5",
+    "@deepseek-ai/dsh-agent": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-fs": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-fs-local": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-fs-sandbox": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-invariants": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-jobs": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-jobs-local": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-sandbox": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-sandbox-policy": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-session-projection": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-subagent": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-system-prompt": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-timeout": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tool-jobs": "0.2.0-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.0-rc.2",
+    "@deepseek-ai/schemastery": "3.18.4",
+    "@types/node": "^22.20.0",
+    "@types/turndown": "^5.0.6",
+    "semver": "7.8.5",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ecnu/EduWork.git",
+    "directory": "packages/dsh-literature"
+  },
+  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-literature#readme",
+  "bugs": {
+    "url": "https://github.com/ecnu/EduWork/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "literature",
+    "dblp",
+    "arxiv",
+    "bibtex"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "license": "MIT"
+}

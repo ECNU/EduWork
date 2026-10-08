@@ -39,7 +39,9 @@ Copy-Tree $ElectronRuntime $Output
 $app = Join-Path $Output 'resources/app'
 New-Item -ItemType Directory -Path $app -Force | Out-Null
 Copy-Tree (Join-Path $ShellBuild 'lib') (Join-Path $app 'lib')
-Copy-Tree (Join-Path $ShellBuild 'renderer') (Join-Path $app 'renderer')
+if (Test-Path -LiteralPath (Join-Path $ShellBuild 'renderer') -PathType Container) {
+    Copy-Tree (Join-Path $ShellBuild 'renderer') (Join-Path $app 'renderer')
+}
 Copy-Tree (Join-Path $ShellBuild 'third-party') (Join-Path $app 'third-party')
 Copy-Item -LiteralPath (Join-Path $ShellBuild 'LICENSE-DeepSeek') -Destination (Join-Path $app 'LICENSE-DeepSeek')
 Copy-Tree $Product (Join-Path $Output 'resources/product')
@@ -58,13 +60,14 @@ if (Test-Path -LiteralPath $policyPath) {
     $config.configurationOwnership = $policy.ownership
 }
 $config.updates = @{defaultPolicy=$UpdateDefaultPolicy}
-if ($identity.distribution -eq 'eduwork') {
+if ($identity.distribution -eq 'eduwork' -and -not $identity.sourceAlpha) {
     $config.updates.provider='github'; $config.updates.repository='ecnu/EduWork'; $config.updateChannel='github'
 }
 if ($UpdateManifestURL) { $config.updates = @{provider='static';manifestURL=$UpdateManifestURL;defaultPolicy=$UpdateDefaultPolicy}; $config.updateChannel='configured' }
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $config.configurationOwnership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
 if ($bootstrap.enabled) { $config.updateChannel = if ($bootstrap.softwareUpdates) { 'publisher-bootstrap' } else { 'disabled-candidate' } }
+if ($identity.sourceAlpha) { $config.sourceAlpha=$true;$config.appId+='.alpha';$config.updates=@{provider='disabled';defaultPolicy='development'};$config.updateChannel='disabled-candidate' }
 $config | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'eduwork.desktop.json') -Encoding utf8NoBOM
 $updaterPath = Join-Path $Output 'resources/update/EduWork-Updater.exe'
 New-Item -ItemType Directory -Path (Split-Path $updaterPath) -Force | Out-Null
@@ -73,6 +76,7 @@ try {
     & go build -trimpath -ldflags '-s -w -H windowsgui' -o $updaterPath ./cmd/eduwork-updater
     if ($LASTEXITCODE -ne 0) { throw 'Portable update helper build failed' }
 } finally { Pop-Location }
+& (Join-Path $PSScriptRoot 'set-updater-manifest.ps1') -Executable $updaterPath
 Rename-Item -LiteralPath (Join-Path $Output 'electron.exe') -NewName 'EduWork-Electron.exe'
 & (Join-Path $PSScriptRoot '../../scripts/set-desktop-icon.ps1') -Executable (Join-Path $Output 'EduWork-Electron.exe') -Shell electron
 $defaultConfig = Join-Path $Product 'resources/desktop/eduwork.jsonc'

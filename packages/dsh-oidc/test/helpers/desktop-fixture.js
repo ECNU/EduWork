@@ -65,7 +65,7 @@ export async function fixture(t, options = {}) {
     if (url.pathname === '/revoke') return json({})
     if (options.resources && url.pathname.startsWith('/v1/')) {
       if (req.headers.authorization !== 'Bearer <ACCESS_TOKEN>') return json({ error: 'unauthorized' }, 401)
-      if (url.pathname === '/v1/models') return json({ data: [{ id: 'fixture-model', name: 'Fixture model' }] })
+      if (url.pathname === '/v1/models') return json({ data: [{ id: 'fixture-model', type: 'llm', name: 'Fixture model' }] })
       if (url.pathname === '/v1/quota') { await options.beforeQuota?.(); return json(options.quota ?? { provider_id: 'fixture-ai', unit: 'credits', windows: [{ type: 'fixed_168h', limit: 100, used: 10, remaining: 90 }] }) }
       if (url.pathname === '/v1/chat/completions') {
         res.writeHead(200, { 'content-type': 'text/event-stream' })

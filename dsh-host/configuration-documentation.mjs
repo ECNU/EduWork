@@ -4,6 +4,7 @@ import { configurationFields, configurationReference } from './configuration-ref
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { bundledConfigurationPlugins, managedPluginConfiguration } from './configuration-plugin-options.mjs'
+import { qualifiedDesktopBaseline } from './dsh-compatibility.mjs'
 
 const object = value => value !== null && typeof value === 'object' && !Array.isArray(value)
 export function mergeConfigurationDefaults(defaults, value) {
@@ -52,7 +53,7 @@ export async function configurationDocumentationOptions(product, { defaults = {}
   return { fields: extra, defaults: mergeConfigurationDefaults({
     schemaVersion: 1, product: { name: identity.brand?.product?.name ?? 'EduWork' }, organizations: [],
     desktop: { closeAction: 'tray', notifications: { enabled: true, attention: true, completed: true, failed: true, studio: true, sound: false, preview: false } },
-    features: { maxConcurrentRequests: 3, ...(identity.dshVersion === '0.1.7-rc.1' ? { maxActiveSubagents: 2 } : {}) }, media: { providers: [] },
+    features: { maxConcurrentRequests: 3, ...(qualifiedDesktopBaseline(identity)?.configurableSubagents ? { maxActiveSubagents: 2 } : {}) }, media: { providers: [] },
     plugins: pluginConfigurationDefaults(composition, fields, identity.bundles),
   }, defaults) }
 }

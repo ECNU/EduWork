@@ -26,7 +26,7 @@ await mkdir(evidence, { recursive: true })
 const fixtureFile = join(evidence, 'fixture.json')
 let fixture = await readFile(fixtureFile, 'utf8').then(JSON.parse).catch(() => null)
 const previous = await readFile(join(evidence, 'result.json'), 'utf8').then(JSON.parse).catch(() => ({}))
-const result = { ...previous, shell: values.shell, syntheticFilesOnly: true, startedAt: new Date().toISOString(), passed: false, checks: previous.checks || [], errors: [] }
+const result = { ...previous, shell: values.shell, phase, syntheticFilesOnly: true, startedAt: new Date().toISOString(), passed: false, checks: previous.checks || [], errors: [] }
 const save = () => writeFile(join(evidence, 'result.json'), JSON.stringify(result, null, 2) + '\n')
 const saveFixture = () => writeFile(fixtureFile, JSON.stringify(fixture, null, 2) + '\n')
 const check = async (name, details = {}) => {
@@ -94,7 +94,7 @@ const selectSession = async () => {
     await row.locator('span[class*="_chevron"]').click()
   }
   await page.getByRole('treeitem').getByText(fixture.title, { exact: true }).first().click()
-  await page.getByRole('banner').getByRole('button', { name: fixture.title, exact: true }).waitFor()
+  await page.getByRole('banner').getByText(fixture.title, { exact: true }).waitFor()
   await page.locator('[contenteditable="true"]').first().waitFor()
 }
 
@@ -215,7 +215,7 @@ try {
       await page.getByRole('button', { name: '新建会话', exact: true }).first().click()
       await page.getByRole('button', { name: '选择工作区', exact: true }).waitFor()
       await page.getByRole('treeitem').getByText(fixture.title, { exact: true }).first().click()
-      await page.getByRole('banner').getByRole('button', { name: fixture.title, exact: true }).waitFor()
+      await page.getByRole('banner').getByText(fixture.title, { exact: true }).waitFor()
       for (const file of attachments) await page.getByText(file.name, { exact: true }).last().waitFor()
       assert.match(await editor.innerText(), /保留附件的上传验收草稿/)
       assert.doesNotMatch(await page.locator('body').innerText(), /文件卡片未能加入|文件上传失败|Failed to load plugins/)
