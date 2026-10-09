@@ -56,7 +56,9 @@ export async function assembleWindows({
   const app = join(output, 'resources/app')
   await ensureDir(app)
   await copyTree(join(shellBuild, 'lib'), join(app, 'lib'), payloadFilters)
-  await copyTree(join(shellBuild, 'renderer'), join(app, 'renderer'), payloadFilters)
+  if (await pathExists(join(shellBuild, 'renderer'))) {
+    await copyTree(join(shellBuild, 'renderer'), join(app, 'renderer'), payloadFilters)
+  }
   await copyTree(join(shellBuild, 'third-party'), join(app, 'third-party'), payloadFilters)
   await copyFileTo(join(shellBuild, 'LICENSE-DeepSeek'), join(app, 'LICENSE-DeepSeek'))
   await copyTree(product, join(output, 'resources/product'), payloadFilters)

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-09T14:54:31.648Z",
-  "fileSetSHA256": "f09d60531606ca9d81cf8815aca32dcbfdf865c40e1e171eeb22651fa52ddef9",
+  "createdAt": "2026-10-09T16:44:56.297Z",
+  "fileSetSHA256": "f1de5a91167bb01506909f2ec59a78006c2fe4c9bc758d77fb4aea2f702629af",
   "files": [
     {
       "path": ".gitattributes",
@@ -889,7 +889,7 @@
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.mjs",
-      "sha256": "818b81ab95e1491bb4424e052addf86f4a9034f555d0afaf1306607eed95c7f9"
+      "sha256": "ba3a5b77d86403076555b4d4f8c6f78e06f2274e85ec06f8366f8fece3f69fa1"
     },
     {
       "path": "dsh-electron/scripts/assemble-windows.ps1",
