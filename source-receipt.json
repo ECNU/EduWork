@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-06T05:00:06.362Z",
-  "fileSetSHA256": "250043ef33235b38ce20c367280d75608458147aa621fcd5840d735c4f8103c5",
+  "createdAt": "2026-10-09T09:12:35.346Z",
+  "fileSetSHA256": "238745cd11e2c013f11a4735868467a97965a6d47f80d44efcaf422dd419a02a",
   "files": [
     {
       "path": ".gitattributes",
@@ -845,7 +845,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "68a050a9829514c7827082a7d31265b814769a4d8e8f546e449f7be8052f00f5"
+      "sha256": "305eca345478f88a5c559fbc90bb3d994f92aa03a01d25517ea72fb9662c8f80"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -961,11 +961,15 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "c3a5ad493dae29ed04c78163c918b27edae82a603ac7ad9d03e810ee4d82c081"
+      "sha256": "70ebb3a368ef25ea5212fb52d880291e1b2a528484661edf84fa52be9d590214"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
       "sha256": "3f2d5b22512d0e9ac7698c18c57c2cd5031369f834915f612ee1e46a313d389b"
+    },
+    {
+      "path": "dsh-electron/src/startup-page.mjs",
+      "sha256": "89aebffdf734af0ccf829dde2a0e29cebab1366ddeb25f9c56b4e26dfabfc7f8"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1029,7 +1033,7 @@
     },
     {
       "path": "dsh-electron/tests/dock-theme.electron.mjs",
-      "sha256": "4d01a4da33452f4bba401055af06018285984d8fc8201c307ad8af293aae0160"
+      "sha256": "49c5eec965fa30e607f99ab49c1ca2e77e22104da83fa595bd0d1a9f742b1858"
     },
     {
       "path": "dsh-electron/tests/external-navigation.electron.mjs",
