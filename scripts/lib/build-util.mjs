@@ -254,9 +254,19 @@ function formatCommand(command, args) {
 // Run a native executable. Throws on non-zero exit. `echo: false` silences
 // pass-through output; `capture: true` returns trimmed stdout instead.
 // `replaceEnv: true` uses `env` as the complete child environment.
+// Git Bash can put GNU tar ahead of Windows bsdtar on PATH. GNU tar cannot
+// handle our ZIP inputs or native drive-letter paths; always select Windows tar.
+export function windowsTarExecutable() {
+  if (!isWindows) throw new Error("Windows tar requires Windows")
+  const root = process.env.SystemRoot || process.env.WINDIR
+  if (!root || !isAbsolute(root)) throw new Error("Windows system directory is missing")
+  return join(root, "System32", "tar.exe")
+}
+
 export function run(command, args = [], { cwd, env, capture = false, echo = !capture, allowFailure = false, logStream, replaceEnv = false } = {}) {
   return new Promise((resolvePromise, rejectPromise) => {
-    const child = spawn(command, args, {
+    const executable = isWindows && /^tar(?:\.exe)?$/i.test(command) ? windowsTarExecutable() : command
+    const child = spawn(executable, args, {
       cwd,
       env: env ? (replaceEnv ? env : { ...process.env, ...env }) : process.env,
       stdio: ['ignore', capture || logStream ? 'pipe' : echo ? 'inherit' : 'ignore', capture || logStream ? 'pipe' : echo ? 'inherit' : 'ignore'],
