@@ -8,9 +8,12 @@
 | --- | --- | --- |
 | 本机开发 | `node scripts/local-desktop-pipeline.mjs` | 当前平台的开发包，可选择安装 |
 | main 更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
+| feature 分支验证 | 手动运行 `development-desktop.yml`，选择分支和 `platform` | 所选平台的开发包与验收报告 artifact |
 | 手动候选 | `desktop-candidates.yml`，选择 `node` | 双平台候选 artifact；经授权可发布 GitHub Release |
 
 手动候选使用 Product SemVer：`X.Y.Z` 为 stable，`X.Y.Z-alpha.N`、`-beta.N`、`-rc.N` 和 `-dev.YYYYMMDD.N` 为预发布。本 PR 不修改产品版本。发布说明须先经项目负责人确认并保存为 `docs/releases/<版本>.md`；CI 只读取该文件。发布须从 main 构建，两个平台都完成验收。[发行指南](RELEASE.md)说明后续人工验收和发布授权。
+
+手动开发包验证不需要发行说明，也不会创建 Release。新 workflow 文件尚未进入仓库默认分支时，可运行已注册的 `desktop-candidates.yml`：选择 feature 分支、`build_mode=node`、`development=true`、开发版本及目标平台，并保持发布关闭、发行说明为空、审批未勾选。
 
 ## 本机构建
 

@@ -12,6 +12,10 @@ on:
         default: node
         type: choice
         options: [node, ps1]
+      development:
+        description: 'Build a development artifact without release notes or publication (Node only)'
+        type: boolean
+        default: false
       release_notes:
         description: 'Approved docs/releases/<version>.md file (release candidate only)'
         required: false
@@ -49,13 +53,20 @@ jobs:
         shell: bash
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
+          DEVELOPMENT_BUILD: ${{ inputs.development }}
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           PUBLISH_RELEASE: ${{ inputs.publish }}
           SELECTED_PLATFORMS: ${{ inputs.platform }}
         run: |
-          if [[ "$BUILD_MODE" == node ]]; then
+          if [[ "$DEVELOPMENT_BUILD" == true ]]; then
+            [[ "$BUILD_MODE" == node ]]
+            [[ "$PUBLISH_RELEASE" != true ]]
+            [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]]
+            [[ -z "$RELEASE_NOTES" ]]
+            [[ "$RELEASE_NOTES_APPROVED" != true ]]
+          elif [[ "$BUILD_MODE" == node ]]; then
             node core/scripts/desktop-build-plan.mjs --core ./core --edition ./core --version "$RELEASE_VERSION" >/dev/null
             [[ "$RELEASE_NOTES_APPROVED" == true ]]
             [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
@@ -105,6 +116,7 @@ jobs:
         if: inputs.build_mode == 'node'
         shell: bash
         env:
+          DEVELOPMENT_BUILD: ${{ inputs.development }}
           RELEASE_VERSION: ${{ inputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
@@ -114,9 +126,14 @@ jobs:
           args=(--core-root ./core --edition-root ./core
             --distribution-config config/distributions/generic.json
             --recipe pinned-source
-            --version "$RELEASE_VERSION" --release-notes-file "$RELEASE_NOTES"
+            --version "$RELEASE_VERSION"
             --output "$RUNNER_TEMP/ew-candidate")
-          if [[ "$RELEASE_NOTES_APPROVED" == true ]]; then args+=(--release-notes-approved); fi
+          if [[ "$DEVELOPMENT_BUILD" == true ]]; then
+            args+=(--development)
+          else
+            args+=(--release-notes-file "$RELEASE_NOTES")
+            if [[ "$RELEASE_NOTES_APPROVED" == true ]]; then args+=(--release-notes-approved); fi
+          fi
           node core/scripts/ci-eduwork-${{ matrix.platform }}-release.mjs "${args[@]}"
       - name: Retain validation reports
         if: always()

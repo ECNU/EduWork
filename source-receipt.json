@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-09T16:44:56.297Z",
-  "fileSetSHA256": "f1de5a91167bb01506909f2ec59a78006c2fe4c9bc758d77fb4aea2f702629af",
+  "createdAt": "2026-10-09T17:38:40.276Z",
+  "fileSetSHA256": "d6f45e43834851f47a73d3c9ac93b10b09e39634979e75d9398614d75ea3cd65",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,11 +25,11 @@
     },
     {
       "path": ".github/workflows/desktop-candidates.yml",
-      "sha256": "ed084fe8675035601564d4ba05a9a6d0a575162b8159c2274b23e5e8b0437f7a"
+      "sha256": "7eac1996f85287616c068c88b75a3efd688e329dc50ff64fac5c16f1f68cf684"
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "0a553eb55377e5cbf94db292c0cbef12300e7bcf54da8066582e3b2f357f9420"
+      "sha256": "318c31378de6b5f59bc503cbff5823b06a516360c6d5b493ccca370fb88883ad"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -245,7 +245,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "dc3e3c8713b9864d430050bcdf4260d8a3024f0fdeac6ef1b7366e25e1e31252"
+      "sha256": "21c5aff2bc38acb2f6f6340804ad6153a81529bb55a718f72c118c360b86fcd4"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",

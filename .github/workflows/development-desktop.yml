@@ -8,14 +8,20 @@ on:
         description: 'Optional development Product SemVer; defaults to the source version and run number'
         required: false
         type: string
+      platform:
+        description: 'Platforms to validate; main pushes always build both'
+        required: true
+        default: both
+        type: choice
+        options: [both, windows, macos]
 permissions:
   contents: read
 concurrency:
-  group: desktop-apps-${{ github.sha }}
+  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}
   cancel-in-progress: false
 jobs:
   version:
-    if: github.ref == 'refs/heads/main'
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     outputs:
       development_version: ${{ steps.resolve.outputs.development_version }}
@@ -46,11 +52,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - platform: windows
-            runner: windows-latest
-          - platform: macos
-            runner: macos-15
+        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"platform":"windows","runner":"windows-latest"}]' || inputs.platform == 'macos' && '[{"platform":"macos","runner":"macos-15"}]' || '[{"platform":"windows","runner":"windows-latest"},{"platform":"macos","runner":"macos-15"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
