@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-09T05:22:25.295Z",
-  "fileSetSHA256": "2377b5f5250c4a55f935898c7db57115985793aecc361c64a73611e14064cdb7",
+  "createdAt": "2026-10-09T12:37:54.725Z",
+  "fileSetSHA256": "2bb0202b200d5bed335d4868452cbe3281d3c8f939a118f1541de3418f6d9dc5",
   "files": [
     {
       "path": ".gitattributes",
@@ -5345,7 +5345,7 @@
     },
     {
       "path": "tests/eduwork-assembly-policy.test.mjs",
-      "sha256": "e3c419650205c1f6943cda54efe4fb4ae7c32dac82e09b9d8bce8c6e9af65958"
+      "sha256": "37f3e423f8f6973b443cb12023094e0c704151cb4c407a6e1c4546aa289d3f8d"
     },
     {
       "path": "tests/eduwork-configure-archive.test.mjs",
