@@ -6,6 +6,7 @@ import { parseArgs } from 'node:util'
 import { fullPath, isFile, isMainModule, pathExists, readJSON, sha256File, statEntry, writeText } from './lib/build-util.mjs'
 import { ZipWriter } from './lib/zip.mjs'
 import { setUpdaterManifest } from '../dsh-electron/scripts/set-updater-manifest.mjs'
+import { desktopVersion } from './desktop-build-plan.mjs'
 
 export async function packWindowsRelease({ candidate, output, development = false, forUpdate = false } = {}) {
   candidate = await realpath(fullPath(candidate))
@@ -14,8 +15,7 @@ export async function packWindowsRelease({ candidate, output, development = fals
     throw new Error('ZIP must be a new file outside the desktop directory')
   }
   const identity = await readJSON(join(candidate, 'resources/app/eduwork.desktop.json'))
-  const versionPattern = development ? /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/ : /^\d+\.\d+\.\d+$/
-  if (!versionPattern.test(identity.productVersion) || identity.shell !== 'electron') {
+  if (desktopVersion(identity.productVersion).prerelease !== development || identity.shell !== 'electron') {
     throw new Error('Package version does not match its selected channel or Electron shell')
   }
   if (forUpdate) {

@@ -1,4 +1,4 @@
-// End-to-end macOS arm64 Electron development-candidate pipeline: Web CI
+// End-to-end macOS arm64 Electron development and stable pipeline: Web CI
 // (build-only), Host, desktop product, native inputs, Electron.app assembly,
 // packaged launch acceptance and the release receipt. Node.js port of
 // ci-eduwork-macos-release.ps1. Requires a macOS arm64 runner.
@@ -16,6 +16,8 @@ import {
 import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
 import { macosStages } from './lib/macos-stages.mjs'
+import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
+import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
 
 export async function ciEduworkMacosRelease({
   coreRoot,
@@ -37,15 +39,33 @@ export async function ciEduworkMacosRelease({
   cacheRoot = '',
   digestBudget = 0,
   lockWaitMs = 0,
+  recipe = '',
 } = {}) {
   if (!isMacOS || process.arch !== 'arm64') throw new Error('Use a macOS arm64 runner')
-  if (!/^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/.test(version ?? '')) throw new Error('macOS currently supports development candidates only')
+  const pythonVersion = (await capture('python3', ['-c', 'import sys; print(".".join(map(str, sys.version_info[:2])))'])).trim()
+  if (Number(pythonVersion.split('.')[0]) < 3 || Number(pythonVersion.split('.')[1]) < 10) {
+    throw new Error(`macOS DMG packaging requires Python 3.10 or newer; found ${pythonVersion}`)
+  }
+  const isDevelopmentVersion = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/.test(version ?? '')
+  desktopVersion(version)
+  if (development && !isDevelopmentVersion) throw new Error('Development artifacts require X.Y.Z-dev.YYYYMMDD.N')
   if (!development && (!releaseNotesApproved || !/^docs\/releases\/[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(releaseNotesFile ?? ''))) {
     throw new Error('A reviewed release notes file and approval are required')
   }
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)
   output = fullPath(output)
+  recipe ||= 'pinned-source'
+  if (!['npm', 'pinned-source'].includes(recipe)) throw new Error('Unknown desktop build recipe')
+  const sourcePlan = recipe === 'pinned-source'
+    ? await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false }) : null
+  verifyPublisherBootstrap ||= sourcePlan?.verifyPublisherBootstrap ?? false
+  if (!development) {
+    const source = await readJSON(join(coreRoot, 'source-receipt.json'))
+    if (source.version !== version && !(version.includes('-') && version.split('-')[0] === source.version.split('-')[0])) {
+      throw new Error('Core source receipt version differs from the requested Release')
+    }
+  }
   // Set before any work: the native-input stage downloads and compiles, and both
   // cache layers read this root.
   if (cacheRoot) setCacheRoot(cacheRoot)
@@ -73,6 +93,8 @@ export async function ciEduworkMacosRelease({
     verifyPublisherBootstrap,
     editionRoot,
     coreRoot,
+    recipe,
+    automaticUpdates: !desktopVersion(version).prerelease,
   }
 
   // The publish stage writes the final receipt, so it needs everything that
@@ -91,6 +113,8 @@ export async function ciEduworkMacosRelease({
     notarized: false,
     softwareAutoUpdate: false,
     sourceSnapshotVerified: verifySnapshot,
+    recipe,
+    automaticUpdates: !desktopVersion(version).prerelease,
     coreCommit: (await capture('git', ['-C', coreRoot, 'rev-parse', 'HEAD'])).trim(),
     editionCommit: (await capture('git', ['-C', editionRoot, 'rev-parse', 'HEAD'])).trim(),
   }
@@ -100,8 +124,10 @@ export async function ciEduworkMacosRelease({
 
   const common = { coreRoot, editionRoot, distributionConfig, version, verifySnapshot, runtimeSource, upstreamSource }
   const stages = [
-    ...sharedDesktopStages(common),
-    ...macosStages({ coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase }),
+    ...(recipe === 'pinned-source'
+      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource })
+      : sharedDesktopStages(common)),
+    ...macosStages({ coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase, recipe }),
   ]
   const workspace = new Workspace({
     root: output,
@@ -159,10 +185,11 @@ if (isMainModule(import.meta.url)) {
       'cache-root': { type: 'string' },
       'digest-budget': { type: 'string' },
       'lock-wait': { type: 'string' },
+      recipe: { type: 'string' },
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
-    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--development] [--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
+    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--recipe npm|pinned-source] [--development] [--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
   }
   await ciEduworkMacosRelease({
     coreRoot: values['core-root'],
@@ -183,5 +210,6 @@ if (isMainModule(import.meta.url)) {
     cacheRoot: values['cache-root'] ?? '',
     digestBudget: Number(values['digest-budget'] ?? 0),
     lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
+    recipe: values.recipe ?? '',
   })
 }

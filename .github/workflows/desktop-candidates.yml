@@ -6,6 +6,12 @@ on:
         description: 'Product SemVer, for example 0.4.0-alpha.1 or 0.4.0'
         required: true
         type: string
+      build_mode:
+        description: 'Build with Node.js or PowerShell'
+        required: true
+        default: node
+        type: choice
+        options: [node, ps1]
       release_notes:
         description: 'Approved docs/releases/<version>.md file (release candidate only)'
         required: false
@@ -32,9 +38,38 @@ concurrency:
   group: desktop-candidate-${{ github.sha }}-${{ inputs.platform || 'both' }}
   cancel-in-progress: false
 jobs:
+  policy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - name: Validate requested build and publication
+        shell: bash
+        env:
+          BUILD_MODE: ${{ inputs.build_mode }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+          SELECTED_PLATFORMS: ${{ inputs.platform }}
+        run: |
+          if [[ "$BUILD_MODE" == node ]]; then
+            node core/scripts/desktop-build-plan.mjs --core ./core --edition ./core --version "$RELEASE_VERSION" >/dev/null
+            [[ "$RELEASE_NOTES_APPROVED" == true ]]
+            [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
+            [[ -s "core/$RELEASE_NOTES" ]]
+          fi
+          if [[ "$PUBLISH_RELEASE" == true ]]; then
+            [[ "$GITHUB_REF" == refs/heads/main ]]
+            [[ "$SELECTED_PLATFORMS" == both ]]
+            [[ "$RELEASE_NOTES_APPROVED" == true ]]
+            [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
+            [[ -s "core/$RELEASE_NOTES" ]]
+          fi
   build:
-    # Manual, read-only candidate builds may validate a maintainer-selected branch before merge.
-    if: github.event_name == 'workflow_dispatch'
+    needs: policy
     strategy:
       fail-fast: false
       matrix:
@@ -52,7 +87,12 @@ jobs:
         with:
           go-version: '1.26.6'
           cache: false
+      - uses: actions/setup-python@v5
+        if: matrix.platform == 'macos'
+        with:
+          python-version: '3.11'
       - name: Build and validate the exact desktop archive
+        if: inputs.build_mode == 'ps1'
         shell: pwsh
         env:
           RELEASE_VERSION: ${{ inputs.version }}
@@ -61,6 +101,23 @@ jobs:
           PUBLISH_RELEASE: ${{ inputs.publish }}
           SELECTED_PLATFORMS: ${{ inputs.platform }}
         run: ./core/scripts/build-desktop-candidate.ps1 -CoreRoot ./core -EditionRoot ./core -Version $env:RELEASE_VERSION -Output "$env:RUNNER_TEMP/ew-candidate"
+      - name: Build and validate the Node stage desktop archive
+        if: inputs.build_mode == 'node'
+        shell: bash
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+          SELECTED_PLATFORMS: ${{ inputs.platform }}
+        run: |
+          args=(--core-root ./core --edition-root ./core
+            --distribution-config config/distributions/generic.json
+            --recipe pinned-source
+            --version "$RELEASE_VERSION" --release-notes-file "$RELEASE_NOTES"
+            --output "$RUNNER_TEMP/ew-candidate")
+          if [[ "$RELEASE_NOTES_APPROVED" == true ]]; then args+=(--release-notes-approved); fi
+          node core/scripts/ci-eduwork-${{ matrix.platform }}-release.mjs "${args[@]}"
       - name: Retain validation reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -87,6 +144,7 @@ jobs:
     with:
       source_run_id: '${{ github.run_id }}'
       version: ${{ inputs.version }}
+      build_mode: ${{ inputs.build_mode }}
       release_notes: ${{ inputs.release_notes }}
       notes_approved: ${{ inputs.notes_approved }}
       publish: true

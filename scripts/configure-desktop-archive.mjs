@@ -76,7 +76,7 @@ export async function configureDesktopArchive({ archive, expectedSHA256, config,
   } else if (source.identity.configurationOwnership && source.identity.configurationOwnership !== 'user') {
     throw new Error('Unknown configuration ownership policy.')
   }
-  const expectedPolicy = /-dev\./.test(source.identity.productVersion) ? 'development' : 'stable'
+  const expectedPolicy = source.identity.productVersion.includes('-') ? 'development' : 'stable'
   if (configSummary.defaultPolicy && configSummary.defaultPolicy !== expectedPolicy) {
     throw new Error('Configuration update policy differs from the CI version channel.')
   }

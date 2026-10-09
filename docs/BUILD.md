@@ -1,224 +1,66 @@
-# 从 npm 装配 EduWork
+# 构建 EduWork
 
-默认装配用于验证下一次发行的真实依赖组合。公版与 ECNU 版调用同一套脚本；机构仓只提供配置、学校服务插件和资源。当前可运行的构建环境是 Windows + PowerShell 7 + Node 24.18.0；macOS 按 [接手计划](MACOS.md)另行适配。
+本指南面向本机开发和桌面候选构建。桌面包由 Node.js 阶段流水线统一编排；Windows x64 与 macOS arm64 分别使用本机工具和原生资源。
 
-## 依赖从哪里来
+## 选择入口
 
-| 输入 | 默认来源 | 校验与例外 |
+| 场景 | 入口 | 产物 |
 | --- | --- | --- |
-| DSH Runtime 0.1.5-rc.2 | 官方 npm 包 | `third_party/dsh/release-v0.1.5-rc.2/npm-runtime/package-lock.json`；`npm ci` 与 SRI |
-| OIDC、Mail、Memory、Shared、Studio | 各自已发布的 npm 包 | `config/assembly.eduwork.json` 指向精确版本、源码提交、tarball SHA-256/SRI |
-| Literature | 已有 npm 发行 | 保留自己的精确锁，不擅自代原作者发布 |
-| 产品 UI、桌面边界与学校适配 | 各自仓库源码 | 由当前审阅提交构建，在装配回执中列出 |
-| 官方 desktop Host / Electron 壳 | 固定 DSH 官方源码 | 此版本没有 `@deepseek-ai/dsh-desktop-host` npm 包；固定提交、源码归档哈希与构建依赖 |
-| Node、Python、浏览器、语音资源 | 独立资源配方 | 按平台/架构准备；不从开发机隐式复制账号或整个环境 |
+| 本机开发 | `node scripts/local-desktop-pipeline.mjs` | 当前平台的开发包，可选择安装 |
+| main 更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
+| 手动候选 | `desktop-candidates.yml`，选择 `node` | 双平台候选 artifact；经授权可发布 GitHub Release |
 
-`assembly.json` 记录 `runtimeMode`、`pluginMode`、运行时锁哈希及每个独立包的实际来源。默认两种模式都是 `npm`。npm 不可用、版本尚未传播或哈希不匹配时停止构建；不会退回旁边的源码仓或旧 `.tgz`。`latest` 仅供用户安装，构建不追随它。
+手动候选使用 Product SemVer：`X.Y.Z` 为 stable，`X.Y.Z-alpha.N`、`-beta.N`、`-rc.N` 和 `-dev.YYYYMMDD.N` 为预发布。本 PR 不修改产品版本。发布说明须先经项目负责人确认并保存为 `docs/releases/<版本>.md`；CI 只读取该文件。发布须从 main 构建，两个平台都完成验收。[发行指南](RELEASE.md)说明后续人工验收和发布授权。
 
-运行时投影会移除未启用的 Codex/Claude 外部运行时、开发调试载荷并消除已核对的重复依赖，保留单独的投影回执。它不会把裁剪后的产物冒充原始 npm tarball。依赖升级时重新生成和审阅锁，而不是在 CI 中运行 `npm update`。
+## 本机构建
 
-### Runtime 与独立模块的兼容基线
-
-默认桌面 Runtime 为 DSH `0.1.5-rc.2`，Studio `0.5.0` 与 Artifact Services `0.2.0` 的独立 npm 安装基线仍为 `0.1.5-rc.1`。产品装配按锁下载并校验 npm 包后投影其运行载荷，不在 Runtime 内执行这些模块 README 的独立安装命令。构建回执记录实际组合，桌面启动与产品能力按该组合验收。独立 Profile 项目则遵循模块自己的 rc.1 peer 与 overrides 要求；不要混用两套安装方法。
-
-## 公版和机构版
-
-在公版仓库根运行：
-
-```powershell
-./scripts/ci-eduwork-web.ps1 -CoreRoot . -EditionRoot . `
-  -DistributionConfig config/distributions/generic.json `
-  -Version 0.3.0-dev.20260911.2 -Output ./dist/verify-generic
-```
-
-机构仓库的 `core.lock.json` 必须指向已经存在的公版提交。将两个仓库分别检出，在机构仓库根运行：
-
-```powershell
-$core = (Resolve-Path ../EduWork).Path
-git -C $core checkout (Get-Content core.lock.json -Raw | ConvertFrom-Json).commit
-& "$core/scripts/ci-eduwork-web.ps1" -CoreRoot $core -EditionRoot . `
-  -DistributionConfig edition/distribution.json `
-  -Version 0.3.0-dev.20260911.2 -Output ./dist/verify-ecnu
-```
-
-这两条命令会审计源码、安装 npm 依赖、构建产品扩展并执行不需要学校账号的 Web 集成验证。GitHub CI 使用 `-BuildOnly` 保留构建检查，业务流程由维护者本地验证。它们不会生成可发行桌面包，也不会发布到 npm、GitHub 或更新渠道。真实 Office、语音、视频质量、系统凭据与生产登录要按 [发行清单](../RELEASE-CHECKLIST.md)另验。
-
-## 启动本机 Web
-
-完成上面的公版验证后，在仓库根目录创建 `.local/`，新建私有启动配置 `.local/web.private.json`。此处的装配路径对应上面命令的 `-Output ./dist/verify-generic`；验证其他装配时替换该路径。
-
-```json
-{
-  "assembly": "dist/verify-generic/assembly",
-  "home": ".local/user-home",
-  "logs": ".local/web-logs",
-  "profileName": "eduwork",
-  "port": 8788
-}
-```
+准备 Git、Node.js 24.18.0 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
 
 在仓库根目录运行：
 
-```powershell
-node scripts/dev-eduwork-web.mjs start .local/web.private.json
-```
-
-配置中的 `assembly`、`home`、`logs`、`userConfig` 和 `enterpriseProfile` 支持绝对路径；相对路径以执行启动命令时的目录为基准。请始终在仓库根目录执行 start、status、stop。后台 worker 和 Windows Profile 链接会继承同一基准，不因切换工作目录改变配置含义。资源环境变量及插件内的文件路径使用绝对路径。
-
-启动器将带认证信息的本机访问地址写入 `.local/web-logs/url.txt`。在浏览器打开该地址，再到设置中配置模型服务和 API Key。退出时把命令中的 `start` 改为 `stop`。私有配置、访问地址、用户目录和日志不提交到 Git。
-
-### Office 与媒体开发资源
-
-GitHub 常规 CI 向脚本传入 `-BuildOnly`，只检查源码、npm 依赖和构建。上面的本地命令不带该开关，仍执行 `--mode clean-ci` 的完整 Web 集成验证并记录缺失资源。它不内置 Python、媒体浏览器、原生转写引擎或模型权重，也不代表完整 Office、音视频能力就绪。从干净检出运行 CI，不将构建目录和私有资源混入源码快照。
-
-本机功能测试需要将以下字段合并进私有启动配置，并替换为已经准备好的实际资源路径：
-
-```json
-{
-  "environment": {
-    "DSH_OFFICE_PYTHON": "C:/EduWorkResources/python/python.exe",
-    "DSH_MEDIA_BROWSER": "C:/EduWorkResources/browser/chrome.exe"
-  },
-  "pluginConfig": {
-    "eduwork-artifact-services": {
-      "transcription": {
-        "local": {
-          "executablePath": "C:/EduWorkResources/whisper/whisper-cli.exe",
-          "modelPath": "C:/EduWorkResources/models/ggml-tiny-q5_1.bin",
-          "model": "whisper-tiny-q5_1",
-          "threads": 4
-        }
-      }
-    }
-  }
-}
-```
-
-Python 环境须安装装配目录中 `d/node_modules/@eduwork/dsh-artifact-services/python/requirements.txt` 所列依赖；浏览器须为兼容的 Chromium 程序。启动器根据装配的 Node 运行时提供 `DSH_MEDIA_NODE_ENV`。Whisper 程序、依赖库和许可证应放在一起，配置路径不会自动下载资源。
-
-执行语音任务前检查 `speech_voices`、`speech_transcription_providers` 的返回结果，只使用报告可用的提供方。共享组件的 `inspectMediaRuntime()` 为 Host 提供媒体就绪状态。缺失资源不能计为通过。资源完整的环境另用 `scripts/test-eduwork-web.mjs` 的 `--mode full-ready` 验证全部 Studio 能力可用；生成文件的实际质量仍需单独验收。
-
-装配后 Artifact Services 包中的 `README.md` 和 `docs/TRANSCRIPTION.md` 说明资源要求与提供方契约。`scripts/prepare-desktop-resources.ps1` 从已验证的输入准备可迁移的 Windows 资源集合，发行前须审阅资源许可证并验收打包结果。
-
-## 缓存和开发模式
-
-默认运行时缓存保存在公版 `dist/dsh-cache/`。两种发行可通过 `-RuntimeSource` 显式复用同一个已验证的不可变运行时；这个参数是缓存路径，不是切换到源码模式。缓存身份必须与当前 npm 锁吻合。装配输出目录必须不存在，每次使用新的目录名；验收完只保留必要产物和回执。
-
-要研究 DSH 源码，显式使用独立的源码构建目录：
-
-```powershell
-./scripts/assemble-eduwork-web.ps1 -CoreRoot . -EditionRoot . `
-  -DistributionConfig config/distributions/generic.json `
-  -RuntimeMode source -Output ./dist/source-experiment `
-  -Version 0.3.0-dev.20260911.2
-```
-
-此时 DSH 使用 `third_party/dsh/development-v0.1.5-rc.1/LOCK.json` 固定的源码构建锁；独立产品插件仍从 npm 安装。只有在研究独立插件时才另传 `-PluginMode locked -AssemblyConfig <明确的开发装配配置>`。开发配置选择的包仍须有完整身份和哈希，不得用于默认 CI 或公开发行。公开仓库不包含未发布的开发包归档。
-
-## 从 Web 到桌面
-
-### 一键本地构建与安装
-
-`scripts/local-desktop-pipeline.mjs` 用一条命令在本机完成构建、打包、安装与启动冒烟，不需要 PowerShell，也不发布任何渠道（GitHub Release、npm、更新源仍是单独授权的流程）：
-
-```
+```sh
 node scripts/local-desktop-pipeline.mjs
 ```
 
-- Windows x64：复用下文完整测试包流水线（等价 `-Development`），验收通过后把同一 ZIP 解压安装到 `%LOCALAPPDATA%\Programs\EduWork`，并对安装副本复核归档哈希与原生运行时。
-- macOS arm64：执行 macOS 开发候选流水线，把验收过的 `.app` 安装到 `~/Applications`，安装后复核 codesign 与原生运行时。
-- Linux：当前没有桌面包，改为执行完整的 Web 装配与功能验证。
+入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定构建工作区。Linux 当前只做 Web 验证。
 
-版本默认取 `source-receipt.json`（非开发版本时自动派生 `X.Y.Z-dev.YYYYMMDD.1`）。安装目标已存在时会拒绝并提示换 `--install-root`；`--skip-install` 只构建不安装；`--workspace` 指定新的构建工作区。构建输入要求与下文完整测试包一致。
+如需只生成某个平台的开发包，在对应系统上运行：
 
-同工作区重复运行只重跑输入发生变化的阶段。常用参数：
-
-| 参数 | 作用 |
-| --- | --- |
-| `--jobs N` | 并发阶段数；`0`（默认）表示按依赖图允许的宽度自动决定 |
-| `--reuse-workspace` | 复用已有工作区与检查点，而不是要求一个新目录 |
-| `--cache-root <dir>` | 原生输入缓存位置，默认 `/tmp/eduwork-native-cache`（Windows 为 `%TEMP%`），也可用 `EDUWORK_TMPDIR` 或 `EDUWORK_CACHE_ROOT` 指定 |
-| `--digest-budget <bytes>` | 单个产物超过该字节数时只比对文件清单与大小，不再逐文件哈希；默认 2 GiB |
-| `--lock-wait <seconds>` | 等待同一工作区锁的秒数；默认 0 表示发现被占用立即失败 |
-| `--runtime-source <dir>` | 已校验的 Runtime 缓存，避免重复投影 |
-| `--no-verify-snapshot` | 跳过源码回执比对，供未提交工作树验证使用 |
-
-流水线在昂贵工作之前做预检（工具、目录、上游缓存完整性、固定 URL 可达性），发现工具缺失或缓存损坏时立即失败。缓存只报告不自动修复。各阶段如何声明输入输出、缓存为何分两层、以及并行宽度如何推导，见[声明式桌面构建流水线提案](proposals/build-pipeline-stages/README.md)与[原生输入缓存](NATIVE-INPUT-CACHE.md)。
-
-### 完整 Windows Electron 测试包
-
-从干净检出运行，准备 Git、Node.js 24.18.0、Go 1.26.6，以及带 x64 C++ 工具、Redist 文件和 Windows SDK x64 SignTool 的 Visual Studio 2022 Build Tools。Node 构建脚本使用 `vswhere` 定位 Visual Studio，并通过 `signtool.exe` 校验可再分发 DLL 的微软签名；仅安装系统 VC++ 运行库不能替代这些构建输入。需要能访问锁定的 GitHub、npm 和资源下载地址。仅做 Web 验证不需要 Go 和 Visual Studio。
-
-在 EduWork 仓库根目录执行以下命令。将版本设为符合 `X.Y.Z-dev.YYYYMMDD.N` 的开发版本。`--development` 只构建和验收，不发布 GitHub Release、npm 或 OSS：
-
-```powershell
-$Version = '0.4.0-dev.20260930.1'
-node ./scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . `
-  --distribution-config config/distributions/generic.json --version $Version `
-  --development --output ../eduwork-electron-test
+```sh
+node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-windows-dev
+node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-macos-dev
 ```
 
-输出目录必须尚不存在，建议放在源码检出目录之外。`publish/` 包含 Electron ZIP、校验和与回执，`evidence-public/` 为脱敏检查结果。这个入口复用 GitHub CI 的脚本：自动准备锁定上游、Host、Node/Python/浏览器/ASR 资源和 Electron，检查解压后的同一 ZIP 并执行启动冒烟。下载和展开资源需要额外磁盘空间；不要将输出或本机配置提交到源码仓。
+将示例版本替换为实际版本，输出目录须尚不存在。`publish/` 保存 ZIP、校验和与回执；macOS 另有 DMG，Windows 另有便携包。`evidence-public/` 保存可公开的检查报告。开发包只上传 artifact，不创建 Release。
 
-机构版在 EduWork-ECNU 根目录先检出 `core.lock.json` 指定的公版提交，再运行：
+当前 macOS 包与原 PowerShell 流程一样，仅使用本地 ad-hoc 签名，不需要 Developer ID 证书或公证。首次打开时可能需要在系统“隐私与安全性”中手动允许。后续若要取消这一步，需在受保护的发行环境中完成 Developer ID 签名、公证，并在目标系统验收 Gatekeeper；仅重新打包 DMG 不会解决信任提示。见 [macOS 支持](MACOS.md)。
 
-```powershell
-$CoreRoot = (Resolve-Path ../EduWork).Path
-$Version = (Get-Content core.lock.json -Raw | ConvertFrom-Json).version
-node "$CoreRoot/scripts/ci-eduwork-windows-release.mjs" --core-root $CoreRoot --edition-root . `
-  --distribution-config edition/distribution.json --version $Version `
-  --development --output ../eduwork-ecnu-electron-test
+## 候选构建做什么
+
+本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.0-rc.2` Runtime，从锁定的上游提交构建 Host、Electron 壳和产品插件客户端，然后安装平台原生资源、打包并启动归档中的应用。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
+
+稳定版要求 Windows 更新契约及 macOS Sparkle 配置；预发布默认关闭软件自动更新。候选的 Windows ZIP 与安装包、macOS ZIP 与 DMG 都会校验哈希、归档内容和启动结果。macOS DMG 从通过 ZIP 验收的同一应用生成，挂载只读镜像后核对应用签名与内容。签名仍是 ad-hoc；系统权限、机构登录、升级体验等人工验收见 [发行指南](RELEASE.md)。
+
+机构版使用相同 Node 入口，先检出 `core.lock.json` 指定的公版提交，再传入机构仓的 `--edition-root` 与 `--distribution-config edition/distribution.json`。公版构建跳过机构专属检查；机构版候选读取 `edition/desktop-build.json` 指定的签名配置描述文件，并检查首次启动激活。旧 PowerShell 候选另在配置了 `validationScript` 时执行机构仓的脚本；Node 流程不依赖该 PowerShell 文件，也不会把未执行的私有脚本记为已验收。私有配置和凭据留在机构仓或受保护的环境中，不写入公版源码。见[首次启动获取签名配置](PUBLISHER_BOOTSTRAP.md)。
+
+## 依赖与复用
+
+桌面开发包与发布候选默认使用同一 DSH `0.2.0-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 npm 配方仅能显式通过 `--recipe npm` 调用。
+
+候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
+
+## Web 构建
+
+需要单独检查 Web 时运行：
+
+```sh
+node scripts/ci-eduwork-web.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --verify-snapshot --output ./dist/verify-generic
 ```
 
-原生资源准备入口是 [prepare-windows-release-inputs.mjs](../scripts/prepare-windows-release-inputs.mjs)，由完整构建脚本调用，无需自行拼接资源路径。完整业务、真实登录和升级仍按实际变更验收；构建启动成功不等于这些项目已经通过。
+机构版先检出其 `core.lock.json` 指定的公版提交，再传入机构根目录和 `edition/distribution.json`。`--build-only` 只做源码、依赖和构建检查；Web 构建不产生桌面安装包。私有本机 Web 配置与 Office、媒体资源准备见 [Artifact Services 平台要求](../packages/dsh-knowledge-studio/packages/artifact-services/docs/PLATFORMS.md)。
 
-### 分阶段开发
+## 旧版 PowerShell 流程（待移除）
 
-先验收 Web，再按 [Electron 构建说明](../dsh-electron/README.md)准备 Host、原生资源和桌面壳。`prepare-desktop-product.ps1` 默认保留 Web 内的全部独立插件；npm 产品拒绝 OIDC/Studio 快照覆盖。公版与 ECNU 各打一个 Electron 包即可做日常业务比较；只有 Host/壳发生变化时才另外生成 Wails 做共同内容验证。
+`desktop-candidates.yml` 暂保留 `ps1` 选项，供已有候选与回执对照；它调用 `scripts/build-desktop-candidate.ps1`。日常构建和新候选优先使用上面的 Node 入口。
 
-日常临时客户端与 Go/Wails 过渡包在本地构建、验证，不增加 GitHub 桌面打包矩阵或临时 Release。GitHub 后续正式桌面构建聚焦 Electron 的两种发行与已验收平台；现有源码/Web CI 和必要的 Mac 构建验证继续保留。Go 过渡包还须通过旧发布包的实际升级验收，不能直接使用独立 Wails 候选替代；详见 [发行与升级分工](RELEASE.md)。
-
-macOS 不是将 Windows 依赖目录复制进 `.app`。先完成 [Mac 路径、资源与签名适配](MACOS.md)，再复用本页的组件锁和同一产品代码。
-
-## 从 CI 原包装配机构配置
-
-机构发行建议使用[首次启动获取配置](PUBLISHER_BOOTSTRAP.md)：CI 产物只内置更新源、公钥和公开默认值，客户端下载签名配置，CI 原包可直接分发，无需本机重装配。真实机构 Client ID 和业务参数不提交源码仓库，不通过 CI secret 注入程序包。
-
-以下方式适用于选择本地静态配置的部署，例如公版加独立的机构配置包。管理员下载 CI ZIP，核对 SHA-256，再加入配置；程序和插件文件保持 CI 原样。启用 publisher bootstrap 的发行首次下载默认配置，之后同样读取 `config/eduwork.jsonc`。管理员可编辑本地文件，也可发布签名默认值更新；详见[配置文件](CONFIGURATION.md)。
-
-仅替换 `config/eduwork.jsonc` 时，可使用以下共用脚本。输入配置必须启用至少一个机构并填写实际 Client ID；不支持在配置中分发用户 Key 或令牌。可省略 `updates`，继承 CI 原包的发行更新源和默认渠道；也可显式设置 GitHub、静态 HTTPS 源或关闭更新。显式 `defaultPolicy` 必须与包版本的渠道一致。
-
-```powershell
-./scripts/configure-desktop-archive.ps1 `
-  -Archive ./downloads/ci-desktop.zip `
-  -ExpectedSHA256 <CI回执中的SHA256> `
-  -Config ./private-config/eduwork.jsonc `
-  -Output ./configured/desktop.zip
-```
-
-例如机构使用公版默认 GitHub 更新时，不需要自建 OSS，可省略 `updates` 或加入：
-
-```json
-"updates": { "provider": "github", "repository": "ecnu/EduWork" }
-```
-
-静态源使用 `provider: "static"` 和 `manifestURL`；关闭更新使用 `provider: "disabled"`。`updates.defaultPolicy` 省略时按 CI 包版本继承；开发包为 development，公测包为 stable。此字段只提供发行默认值，不覆盖老用户主动保存的渠道选择。
-
-脚本保留输入 ZIP，核对全部文件的包内校验值，只替换配置和 `RELEASE-MANIFEST.json`，再逐文件确认程序未变。输出 ZIP、`.sha256` 和 `.receipt.json`，回执记录 CI 原包与装配包的摘要关系，不记录机构 Client ID。自定义 Logo 文件不在此单文件覆盖流程内。
-
-机构下载渠道提供装配后的包，用户解压后即可登录。必须分别验收全新安装、已有配置与数据的升级保留；新安装还要确认机构登录入口、默认模型与更新渠道正确。发布步骤见[更新源部署](UPDATES.md)。
-
-## 更新锁与发布顺序
-
-1. 在本仓库 `packages/` 对应模块完成源码、文档、许可证检查及 DSH 基线测试；按[包维护与发布](PACKAGES.md)冻结待发布 tarball。五个 npm 包独立发版，源码合并不改变默认客户端的 npm 装配路径。
-2. 发布 Shared，再发布依赖该 Shared 版本的 Studio；OIDC、Mail、Memory 分别发布。产品发布权限与插件 npm 发布权限分开。
-3. 从 registry 重新下载，核对版本、SHA-256、SHA1、SRI 与冻结包完全一致，再更新产品锁。
-4. 在干净源码检出中重新装配两版并验收，机构仓更新 `core.lock.json`。不要只在开发工作树里验证。
-5. 通过桌面验收后，按[版本与升级](RELEASE.md)执行发行。构建产物中的校验清单用于核对依赖和最终文件。
-
-
-部分内部包名和生命周期辅助函数为兼容保留历史命名，但不因此启用机构能力。公版使用 `eduwork-web` 组合及明确的通用输入，保留但不启用的历史引用按来源记录中的文件哈希审阅。学校服务与资源由机构发行显式引入。
-
-`scripts/record-npm-package-lock.mjs` 可以执行第 3 步：显式提供 `--package`、`--version`、`--commit`、`--repository`、`--sha256` 和一个新 `--output` 路径。它只读取 registry 并生成锁，不执行发布，不覆盖已有锁。新版本短暂返回 404 时，等 npm 传播完成再核验，不能拿本地包代替 registry 成功记录。
-
-DSH 预发行版的宽范围 peer 可能解析到下一次 rc。应用应使用完整的 DSH 精确锁和 overrides；仅写一个顶层 `dsh@0.1.5-rc.1` 不足以固定所有间接包。依赖冲突时查清包树，不使用 `--force` 或 `--legacy-peer-deps` 隐藏问题。
+旧的静态机构配置重装配脚本 `scripts/configure-desktop-archive.ps1` 仍可处理已经验收的 Windows ZIP。它会改变原包并重新计算哈希，因此机构发布优先使用[签名配置首次启动获取](PUBLISHER_BOOTSTRAP.md)。

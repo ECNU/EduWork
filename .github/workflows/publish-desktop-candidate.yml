@@ -7,9 +7,15 @@ on:
         required: true
         type: string
       version:
-        description: 'Approved product version'
+        description: 'Approved Product SemVer'
         required: true
         type: string
+      build_mode:
+        description: 'Build script used by the source run'
+        required: true
+        default: node
+        type: choice
+        options: [node, ps1]
       release_notes:
         description: 'Approved docs/releases/<version>.md'
         required: true
@@ -31,6 +37,10 @@ on:
         type: string
       version:
         required: true
+        type: string
+      build_mode:
+        required: false
+        default: node
         type: string
       release_notes:
         required: true
@@ -68,6 +78,7 @@ jobs:
           GITHUB_TOKEN: ${{ github.token }}
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           RELEASE_VERSION: ${{ inputs.version }}
+          BUILD_MODE: ${{ inputs.build_mode }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           PUBLISH_RELEASE: ${{ inputs.publish }}

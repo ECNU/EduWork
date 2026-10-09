@@ -25,8 +25,7 @@ import { assembleDesktopCandidate } from '../assemble-desktop-candidate.mjs'
 import { packWindowsRelease } from '../pack-windows-release.mjs'
 import { prepareWindowsReleaseInputs, installWindowsReleaseInputs } from '../prepare-windows-release-inputs.mjs'
 import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
-
-const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
+import { desktopVersion } from '../desktop-build-plan.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -44,7 +43,7 @@ function freeLoopbackPort() {
  * which the orchestrator fixed for the whole workspace, so a re-entry cannot
  * disagree with the run that recorded the checkpoint.
  */
-export function windowsStages({ coreRoot, receiptBase }) {
+export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
   return [
     stage({
       name: 'native-inputs',
@@ -82,7 +81,7 @@ export function windowsStages({ coreRoot, receiptBase }) {
     stage({
       name: 'desktop',
       description: 'Desktop candidate assembly and portable ZIP',
-      requires: ['shell', 'electron', 'install-host', 'native-install'],
+      requires: ['shell', 'electron', recipe === 'pinned-source' ? 'product' : 'install-host', 'native-install'],
       outputs: ['desktop'],
       inputs: (workspace) => ({
         version: workspace.parameters.version,
@@ -92,7 +91,7 @@ export function windowsStages({ coreRoot, receiptBase }) {
       }),
       run: async (workspace) => {
         const { version, development, edition } = workspace.parameters
-        const developmentVersion = DEVELOPMENT_VERSION.test(version)
+        const developmentVersion = desktopVersion(version).prerelease
         const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
         const candidateRoot = workspace.resolvePath('desktop')
         await assembleDesktopCandidate({
@@ -106,15 +105,17 @@ export function windowsStages({ coreRoot, receiptBase }) {
           version,
         })
         const candidate = join(candidateRoot, 'electron-candidate')
-        await annotateCandidate({
-          candidate, coreRoot, name: edition, version, development, developmentVersion,
-        })
+        if (recipe === 'pinned-source') {
+          if (!developmentVersion) await buildTransitionLaunchers(candidate, coreRoot)
+        } else {
+          await annotateCandidate({ candidate, coreRoot, name: edition, version, development, developmentVersion })
+        }
         const asset = `${edition}-${version}-windows-x64-electron.zip`
         await writeJSON(join(candidateRoot, 'package.json'), await packWindowsRelease({
           candidate,
           output: join(candidateRoot, asset),
           development: developmentVersion,
-          forUpdate: workspace.parameters.forUpdate,
+          forUpdate: workspace.parameters.forUpdate && !developmentVersion,
         }))
       },
     }),
@@ -168,9 +169,7 @@ async function annotateCandidate({ candidate, coreRoot, name, version, developme
 
   // The legacy shortcut launcher is a transition artifact; a missing build is a
   // release blocker, not something to skip quietly.
-  await run('go', ['build', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', join(candidate, 'ChatECNU-Work.exe'), './cmd/eduwork-launch'], { cwd: join(coreRoot, 'dsh-desktop') })
-    .catch(() => { throw new Error('Legacy shortcut launcher build failed') })
-  await copyFileTo(join(candidate, 'ChatECNU-Work.exe'), join(candidate, 'EduWork.exe'))
+  await buildTransitionLaunchers(candidate, coreRoot)
 
   if (development) {
     metadata.releaseKind = 'portable-development'
@@ -185,6 +184,12 @@ async function annotateCandidate({ candidate, coreRoot, name, version, developme
   }
 }
 
+async function buildTransitionLaunchers(candidate, coreRoot) {
+  await run('go', ['build', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', join(candidate, 'ChatECNU-Work.exe'), './cmd/eduwork-launch'], { cwd: join(coreRoot, 'dsh-desktop') })
+    .catch(() => { throw new Error('Legacy shortcut launcher build failed') })
+  await copyFileTo(join(candidate, 'ChatECNU-Work.exe'), join(candidate, 'EduWork.exe'))
+}
+
 /**
  * Unpack the shipped ZIP and launch it. Testing the extracted archive, rather
  * than the directory it came from, also exercises relocation of the private
@@ -192,7 +197,7 @@ async function annotateCandidate({ candidate, coreRoot, name, version, developme
  */
 async function acceptWindows({ workspace, coreRoot }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
-  const { edition, development } = workspace.parameters
+  const { edition, development, verifyPublisherBootstrap, recipe } = workspace.parameters
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const archive = packed.output
   const gui = workspace.resolvePath('gui')
@@ -215,18 +220,22 @@ async function acceptWindows({ workspace, coreRoot }) {
       target: desktop, publishDirectory: extractorPublish,
     })
   }
-  await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, '--for-update'])
+  await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, ...(!desktopVersion(workspace.parameters.version).prerelease ? ['--for-update'] : [])])
   await run(join(desktop, 'resources/runtime/node.exe'), [
     join(coreRoot, 'scripts/check-desktop-runtimes.mjs'), desktop, join(evidence, 'native-runtimes.json'),
   ]).catch(() => { throw new Error('Packaged native runtime smoke check failed') })
 
   const frozenProduct = join(desktop, 'resources/product')
-  await copyTree(join(desktop, 'config'), join(gui, 'config'))
   const config = join(gui, 'config/eduwork.jsonc')
-  const text = await readFile(config, 'utf8')
-  if (!/"closeAction"\s*:\s*"tray"/.test(text)) throw new Error('Expected shipped close-to-tray default')
-  await writeText(config, text.replace(/"closeAction"\s*:\s*"tray"/, '"closeAction": "exit"'), { trailingNewline: false })
-  if (await pathExists(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))) {
+  await copyTree(join(desktop, 'config'), join(gui, 'config'))
+  if (recipe === 'npm') {
+    const text = await readFile(config, 'utf8')
+    if (!/"closeAction"\s*:\s*"tray"/.test(text)) throw new Error('Expected shipped close-to-tray default')
+    await writeText(config, text.replace(/"closeAction"\s*:\s*"tray"/, '"closeAction": "exit"'), { trailingNewline: false })
+  }
+  const bootstrapEnabled = await pathExists(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
+  if (verifyPublisherBootstrap && !bootstrapEnabled) throw new Error('Publisher acceptance requires a packaged descriptor')
+  if (bootstrapEnabled && !verifyPublisherBootstrap) {
     // Exercise the offline migration path with an isolated synthetic profile.
     // CI never needs institution credentials or a live configuration server.
     // First-run download/signature/rollback behavior has synthetic Node tests.
@@ -245,14 +254,13 @@ async function acceptWindows({ workspace, coreRoot }) {
   const port = await freeLoopbackPort()
   const stdoutLog = createWriteStream(join(gui, 'app.stdout.log'))
   const stderrLog = createWriteStream(join(gui, 'app.stderr.log'))
+  const environment = { ...process.env, EDUWORK_DESKTOP_TEST_DATA_ROOT: join(gui, 'data') }
+  if (verifyPublisherBootstrap) delete environment.EDUWORK_CONFIG_FILE
+  else environment.EDUWORK_CONFIG_FILE = config
   const appProcess = spawn(join(desktop, 'EduWork-Electron.exe'), [
     `--remote-debugging-port=${port}`, `--remote-debugging-address=127.0.0.1`,
   ], {
-    env: {
-      ...process.env,
-      EDUWORK_DESKTOP_TEST_DATA_ROOT: join(gui, 'data'),
-      EDUWORK_CONFIG_FILE: config,
-    },
+    env: environment,
     stdio: ['ignore', 'pipe', 'pipe'],
     windowsHide: true,
   })
@@ -301,6 +309,9 @@ async function acceptWindows({ workspace, coreRoot }) {
     throw new Error('Desktop teardown reported a pipe failure')
   }
   if (!(await readJSON(join(gui, 'result.json'))).passed) throw new Error('Desktop GUI acceptance failed')
+  if (recipe === 'pinned-source' && edition === 'EduWork') {
+    await runNode(join(coreRoot, 'scripts/verify-generic-first-launch.mjs'), [frozenProduct, config])
+  }
 
   const checks = {
     desktopLaunch: 'passed',
@@ -309,6 +320,18 @@ async function acceptWindows({ workspace, coreRoot }) {
     ...(portableExtractor ? { portableExtractor: 'passed' } : {}),
     asset: { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
     ...(portableExtractor ? { portableExtractorAssets: portableExtractor } : {}),
+  }
+  if (recipe === 'pinned-source') {
+    await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozenProduct])
+    checks.mediaTemplate = 'passed'
+    checks.sourceSnapshot = 'passed'
+  }
+  if (verifyPublisherBootstrap) {
+    const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
+    if (started.configurationRevision < 1 || started.skillsRevision < 1) {
+      throw new Error('First launch did not activate signed publisher content')
+    }
+    checks.publisherFirstLaunch = 'passed'
   }
   await writeJSON(join(gui, 'acceptance-checks.json'), checks)
   return checks
@@ -321,7 +344,8 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   const publicEvidence = workspace.resolvePath('evidence-public')
   const gui = workspace.resolvePath('gui')
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
-  const identity = await readJSON(workspace.resolvePath('web/assembly/assembly.json'))
+  const identity = await readJSON(workspace.resolvePath(
+    workspace.parameters.recipe === 'pinned-source' ? 'product/assembly.json' : 'web/assembly/assembly.json'))
   const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
   const checks = await readJSON(join(gui, 'acceptance-checks.json'))
   await ensureDir(publish)
@@ -341,6 +365,7 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
     distribution: identity.distribution,
     dshVersion: identity.dshVersion,
     dshCommit: identity.dshCommit,
+    recipe: workspace.parameters.recipe,
     managedPackages: identity.managedPackages,
     nativeInputs: {
       vcRedist: inputs.vcRedist,
@@ -358,10 +383,12 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   delete receipt.checks.asset
   delete receipt.checks.portableExtractorAssets
   await writeJSON(join(publish, 'release-receipt.json'), receipt)
-  if (!development) {
+  if (!development && !desktopVersion(workspace.parameters.version).prerelease) {
     await copyFileTo(join(editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))
     await runNode(join(coreRoot, 'scripts/github-update-manifest.mjs'), [join(publish, 'release-receipt.json'), `ecnu/${name}`])
       .catch(() => { throw new Error('GitHub update manifest generation failed') })
+  } else if (!development) {
+    await copyFileTo(join(editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))
   }
 
   // Preserve the Web runner's redacted failure report as well. Raw test homes,

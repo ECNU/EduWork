@@ -30,18 +30,19 @@ Apple Silicon 与 Intel 应分别构建和测试，不能复用 Windows 的运�
 
 ## 开发验证
 
-先准备锁定的核心与插件依赖，完成目标架构的构建，再从打包后的应用运行功能检查。当前 macOS 候选流程只支持 Apple Silicon arm64；不得复用 Windows 运行时。已在 macOS 15.4.1 / arm64 上验证本地候选装配与启动；这不代表其他系统版本或完整功能已通过。
+开发包优先使用[构建指南](BUILD.md#本机构建)中的 Node.js 入口，先准备锁定的核心与插件依赖，再从打包后的应用运行功能检查。当前 macOS 候选流程只支持 Apple Silicon arm64；不得复用 Windows 运行时。macOS 15.4.1 与本机 macOS 27.0 的候选装配及启动已有验证记录；具体验收范围仍以各次回执为准。
 
-`dsh-electron/scripts/prepare-electron.ps1` 在 macOS 上按上游锁定版本下载并校验 Electron ZIP，复用缓存前检查 `Electron.app` 的版本和二进制架构，不匹配则报错。完成产品、壳、Node 和 OpenSSL 输入准备后，可用以下命令装配未签名候选（路径须替换为实际已验证输入，输出目录不得已存在）：
+需要单独定位 Electron 输入或装配步骤时，可使用 Node.js 脚本按上游锁定版本下载并校验 Electron ZIP；复用缓存前检查 `Electron.app` 的版本和二进制架构，不匹配则报错。完成产品、壳、Node 和 OpenSSL 输入准备后，可用以下命令装配候选（路径须替换为实际已验证输入，输出目录不得已存在）：
 
-```powershell
-./dsh-electron/scripts/prepare-electron.ps1 -Upstream $Upstream -Output $ElectronInput
-./dsh-electron/scripts/assemble-macos.ps1 -Product $Product -ShellBuild $ShellBuild `
-  -ElectronRuntime (Join-Path $ElectronInput 'runtime') -Output $Output `
-  -Version $Version -Node $Node -OpenSSL $OpenSSL
+```sh
+node dsh-electron/scripts/prepare-electron.mjs --upstream "$UPSTREAM" --output "$ELECTRON_INPUT"
+node dsh-electron/scripts/assemble-macos.mjs \
+  --product "$PRODUCT" --shell-build "$SHELL_BUILD" \
+  --electron-runtime "$ELECTRON_INPUT/runtime" --output "$OUTPUT" \
+  --version "$VERSION" --node "$NODE" --openssl "$OPENSSL"
 ```
 
-公版的用户配置从包内模板在首次启动时复制到用户目录；已有配置和示例不会被覆盖。机构版推荐[首次启动下载签名配置](PUBLISHER_BOOTSTRAP.md)，CI 原包即可分发，不再要求配置 PKG。选择静态配置部署时仍可传 `-ExternalPublisherConfig <绝对路径>`，保持配置在 `.app` 外。此候选只生成 ad-hoc 签名的 `.app` 与 ZIP，不可视为 Developer ID 签名或公证后的正式发布。
+公版的用户配置从包内模板在首次启动时复制到用户目录；已有配置和示例不会被覆盖。机构版推荐[首次启动下载签名配置](PUBLISHER_BOOTSTRAP.md)，CI 原包即可分发，不再要求配置 PKG。选择静态配置部署时仍可传 `--external-publisher-config <绝对路径>`，保持配置在 `.app` 外。此候选只生成 ad-hoc 签名的 `.app` 与 ZIP，不可视为 Developer ID 签名或公证后的正式发布。
 
 配置、会话、日志、内容更新缓存和渠道偏好保存在 `~/Library/Application Support/<distribution>-electron/`。启用[配置与 Skills 更新](CONTENT_UPDATES.md)后，更新仍在此目录下载、校验和激活，不会修改 `.app`；生效配置统一为该用户目录中的 `config/eduwork.jsonc`，仅保留一份回退备份；旧外部配置只作为首次迁移来源。装配脚本在签名前生成 `Contents/Resources/bundled-skills.json`，记录内置 Skills 的校验值，用来识别本地修改。Windows 继续使用原有绿色版目录和 `RELEASE-MANIFEST.json`。
 
@@ -55,19 +56,11 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 ## CI 开发候选
 
-公版运行 `Build desktop release candidates`，机构版运行 `Build ECNU desktop release candidates`，选择 Windows、Mac 或两者。工作流仅保留验收产物，校验后由维护者发布。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
-
-`scripts/ci-eduwork-macos-release.ps1` 在 `macos-15` arm64 runner 上复用公共装配，生成待验收的开发 ZIP，不自动发布 Release。输入为核心目录、机构目录、发行配置、已确认版本与说明文件：
-
-```powershell
-./core/scripts/ci-eduwork-macos-release.ps1 -CoreRoot ./core -EditionRoot ./institution `
-  -DistributionConfig edition/distribution.json -Version $Version `
-  -ReleaseNotesFile "docs/releases/$Version.md" -ReleaseNotesApproved -Output $Output
-```
+开发包与双平台发布候选的构建入口、版本范围和命令见[构建指南](BUILD.md#选择入口)。开发包在 `macos-15` arm64 runner 上构建、验收并上传 artifact；候选发布须由维护者单独授权。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
 
 构建从校验锁下载 Node、独立 Python 和 Office wheels、Chromium，并从固定源码构建 OpenSSL 与本地 Whisper CPU 引擎，携带离线语音模型。Python 与浏览器复用已有版本，Mac 专属输入记录在 `config/macos-native.lock.json`。Python 调用关闭字节码缓存，应用启动不修改签名包。
 
-CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugDB、桌面启动与退出，以及启动前后的签名完整性。默认桌面冒烟使用合成账号配置，不访问学校服务。维护者可在签名内容源就绪后添加 `-VerifyPublisherBootstrap`，用原包和全新用户目录检查实际配置下载与激活；不登录账号，下载的配置不进入公开产物。学校登录和系统权限仍须由有权限的测试者确认。产物保持 ad-hoc 签名，没有 Apple 公证，是否启用 Sparkle 由更新源配置和产物回执确认；原生安装验收由独立 Mac CI 执行。
+CI 验证解压后的内置浏览器、Python、FFmpeg、转写引擎、LadybugDB、桌面启动与退出，以及启动前后的签名完整性。默认桌面冒烟使用合成账号配置，不访问学校服务。维护者可在签名内容源就绪后添加 `--verify-publisher-bootstrap`，用原包和全新用户目录检查实际配置下载与激活；不登录账号，下载的配置不进入公开产物。学校登录和系统权限仍须由有权限的测试者确认。产物保持 ad-hoc 签名，没有 Apple 公证，是否启用 Sparkle 由更新源配置和产物回执确认；原生安装验收由独立 Mac CI 执行。
 
 ## 发行要求
 
@@ -77,7 +70,7 @@ macOS 包可采用 ZIP 或 DMG，文件名按 [版本与发行规范](RELEASE.md
 
 ## DMG 拖拽安装窗口
 
-DSH 0.1.7 Alpha CI 同时生成 ZIP 和 DMG。共享入口 `scripts/prepare-macos-dmg.ps1` 使用已验收的 ZIP 内应用生成 DMG，挂载最终只读镜像核对应用文件、签名、背景及 Applications 快捷方式；两种下载格式包含相同应用。
+双平台候选 CI 的 Node 入口通过 `scripts/prepare-macos-dmg.mjs` 从已验收 ZIP 内应用生成 DMG；旧 PowerShell 配方使用 `scripts/prepare-macos-dmg.ps1`。两者均挂载最终只读镜像，核对应用文件、签名、背景及 Applications 快捷方式；两种下载格式包含相同应用。
 
 可在 macOS 上为现有应用生成带标题、拖拽指引和 Applications 快捷方式的 DMG。需要 Xcode Command Line Tools 及支持 `venv` 和 `pip` 的 Python 3.10+。
 

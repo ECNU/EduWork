@@ -15,6 +15,7 @@ import {
 } from './lib/build-util.mjs'
 import { resolveEduworkUpstream } from './lib/upstream.mjs'
 import { preflight } from './lib/preflight.mjs'
+import { desktopBuildPlan } from './desktop-build-plan.mjs'
 import { ciEduworkWeb } from './ci-eduwork-web.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
@@ -89,8 +90,8 @@ export async function localDesktopPipeline({
   // Fail before the expensive work rather than minutes into it. The upstream
   // cache is inspected only when it already exists: scanning it reports damage,
   // and it is never repaired or deleted here.
-  const lock = await readJSON(join(coreRoot, 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'))
-  const resolvedUpstream = await resolveEduworkUpstream(lock.commit)
+  const plan = await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false })
+  const resolvedUpstream = await resolveEduworkUpstream(plan.upstreamCommit)
   const checks = await preflight({ coreRoot, upstream: resolvedUpstream })
   for (const note of checks.notes) console.log(`Preflight: ${note}`)
   if (checks.problems.length) {

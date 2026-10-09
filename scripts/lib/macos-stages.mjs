@@ -1,5 +1,5 @@
-// macOS arm64 stages: the locked native inputs, Electron.app assembly, packaged
-// launch acceptance and the publish directory. The shared spine lives in
+// macOS arm64 stages: locked native inputs, Electron.app assembly, packaged
+// launch and installation-image acceptance. The shared spine lives in
 // shared-desktop-stages.mjs; this file only adds what is macOS-specific, so the
 // release orchestrator itself has no platform branch.
 import { createWriteStream } from 'node:fs'
@@ -14,6 +14,7 @@ import {
 import { stage } from './stage-runner.mjs'
 import { assembleMacos } from '../../dsh-electron/scripts/assemble-macos.mjs'
 import { prepareMacosReleaseInputs, installMacosReleaseInputs } from '../prepare-macos-release-inputs.mjs'
+import { prepareMacosDmg } from '../prepare-macos-dmg.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -28,6 +29,7 @@ function freeLoopbackPort() {
 
 export function macosStages({
   coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase,
+  recipe = 'npm',
 }) {
   return [
     // Native inputs depend only on the lock file, never on the product, so a
@@ -65,9 +67,10 @@ export function macosStages({
       run: async (workspace) => {
         const macUpdateConfig = workspace.parameters.macUpdateConfig
           || workspace.resolvePath('product/resources/desktop/mac-updates.json')
-        if (!await pathExists(macUpdateConfig)) {
-          // No update configuration in this edition: an empty stage result keeps
-          // the assembly stage's dependency edge honest.
+        if ((recipe === 'pinned-source' && version.includes('-'))
+          || /-(?:alpha|beta|rc)\./.test(version) || !await pathExists(macUpdateConfig)) {
+          // Alpha, beta and RC candidates use manual installation. An empty
+          // stage result also covers editions without an update configuration.
           await ensureDir(workspace.resolvePath('sparkle'))
           await writeJSON(workspace.resolvePath('sparkle/inputs.json'), { enabled: false })
           return
@@ -78,12 +81,15 @@ export function macosStages({
     stage({
       name: 'desktop',
       description: 'Electron.app assembly',
-      requires: ['shell', 'electron', 'install-host', 'native-install', 'sparkle'],
+      requires: ['shell', 'electron', recipe === 'pinned-source' ? 'product' : 'install-host', 'native-install', 'sparkle'],
       outputs: ['desktop'],
       inputs: () => ({ version, development }),
       run: async (workspace) => {
         const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
         const sparkle = await readJSON(workspace.resolvePath('sparkle/inputs.json'))
+        if (!development && /^\d+\.\d+\.\d+$/.test(version) && sparkle.enabled === false) {
+          throw new Error('Stable macOS release requires Sparkle update configuration')
+        }
         const macOptions = sparkle.enabled === false ? {} : {
           sparkleFramework: sparkle.framework,
           sparkleFeedURL: sparkle.feeds.stable,
@@ -117,9 +123,10 @@ export function macosStages({
     }),
     stage({
       name: 'publish',
-      description: 'Release ZIP and receipt',
+      description: 'Release ZIP, DMG and receipt',
       requires: ['accept'],
       outputs: ['publish'],
+      clean: ['dmg-work'],
       run: async (workspace) => {
         const desktop = workspace.resolvePath('desktop')
         const receipt = await readJSON(join(desktop, 'release-receipt.json'))
@@ -128,6 +135,14 @@ export function macosStages({
         const archive = join(desktop, receipt.asset.name)
         await copyFileTo(archive, join(publish, basename(archive)))
         await copyFileTo(`${archive}.sha256`, join(publish, `${basename(archive)}.sha256`))
+        const identity = await readJSON(workspace.resolvePath('product/assembly.json'))
+        const appName = identity.sourceAlpha ? `${name} Alpha.app` : `${name}.app`
+        const installer = await prepareMacosDmg({
+          app: join(workspace.resolvePath('unpacked'), appName),
+          output: join(publish, `${name}-${version}-macos-arm64-electron.dmg`),
+          workDirectory: workspace.resolvePath('dmg-work'),
+          coreRoot,
+        })
         if (!development && releaseNotesFile) {
           await copyFileTo(join(workspace.parameters.editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))
         }
@@ -139,12 +154,17 @@ export function macosStages({
         const checks = await readJSON(workspace.resolvePath('gui/acceptance-checks.json'))
         const final = {
           ...receiptBase,
-          checks: { sourceAndDependencies: 'passed', ...checks },
+          checks: { sourceAndDependencies: 'passed', ...checks, macosDmg: 'passed' },
           softwareAutoUpdate: receipt.sparkleEnabled,
           bundleVersion: receipt.bundleVersion,
           asset: receipt.asset,
+          installer,
           minimumSystemVersion: receipt.minimumSystemVersion,
           nativeLockSHA256: inputs.nativeLockSHA256,
+          recipe,
+          dshVersion: identity.dshVersion,
+          dshCommit: identity.dshCommit,
+          managedPackages: identity.managedPackages,
           passed: true,
         }
         await writeJSON(join(publish, 'release-receipt.json'), final)
@@ -165,7 +185,8 @@ async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap
   await rm(unpacked, { recursive: true, force: true })
   await ensureDir(unpacked)
   await run('ditto', ['-x', '-k', archive, unpacked])
-  const app = join(unpacked, `${name}.app`)
+  const identity = await readJSON(workspace.resolvePath('product/assembly.json'))
+  const app = join(unpacked, identity.sourceAlpha ? `${name} Alpha.app` : `${name}.app`)
   await run('codesign', ['--verify', '--deep', '--strict', app])
   const frozen = join(app, 'Contents/Resources/product')
   await run(join(app, 'Contents/Resources/runtime/node'), [
@@ -266,8 +287,16 @@ async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap
     stderrLog.end()
   }
   if (!(await readJSON(join(gui, 'result.json'))).passed) throw new Error('macOS desktop smoke failed')
+  if (workspace.parameters.recipe === 'pinned-source' && name === 'EduWork') {
+    await runNode(join(coreRoot, 'scripts/verify-generic-first-launch.mjs'), [frozen, config])
+  }
   await copyFileTo(join(gui, 'result.json'), join(evidence, 'desktop-ui-result.json'))
   const checks = { archiveManifest: 'passed', nativeRuntimes: 'passed', desktopLaunch: 'passed' }
+  if (workspace.parameters.recipe === 'pinned-source') {
+    await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozen])
+    checks.mediaTemplate = 'passed'
+    checks.sourceSnapshot = 'passed'
+  }
   if (name === 'EduWork') {
     if (!await isFile(config) || !await isFile(join(gui, 'examples/organization.jsonc'))) {
       throw new Error('First launch did not create the user configuration and examples')

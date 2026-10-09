@@ -62,7 +62,7 @@ export async function assembleMacos({
   openssl = fullPath(openssl)
   if (await pathExists(output)) throw new Error('macOS output must be a new directory')
   if (!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version ?? '')) throw new Error('An explicit product version is required')
-  if (!updateDefaultPolicy) updateDefaultPolicy = /-dev\./.test(version) ? 'development' : 'stable'
+  if (!updateDefaultPolicy) updateDefaultPolicy = (version ?? '').includes('-') ? 'development' : 'stable'
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
   if (externalPublisherConfig && !isAbsolute(externalPublisherConfig)) throw new Error('External publisher configuration path must be absolute')
   const sparkleEnabled = Boolean(sparkleFramework || sparkleFeedURL || sparklePublicEDKey)
@@ -312,7 +312,7 @@ export async function assembleMacos({
   try {
     await rsync(app, signingApp).catch(() => { throw new Error('Signing-stage copy failed') })
     await run('xattr', ['-cr', signingApp]).catch(() => { throw new Error('Signing-stage metadata cleanup failed') })
-    await run('codesign', ['--force', '--deep', '--sign', '-', '--timestamp=none', signingApp])
+    await run('codesign', ['--force', '--deep', '--sign', '-', '--timestamp=none', '--entitlements', join(scriptRoot, '../entitlements.plist'), signingApp])
       .catch(() => { throw new Error('Local ad-hoc signing failed') })
     await run('codesign', ['--verify', '--deep', '--strict', signingApp])
       .catch(() => { throw new Error('Local ad-hoc signature verification failed') })

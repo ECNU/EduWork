@@ -12,6 +12,7 @@ import {
 import { setDesktopIcon } from '../../scripts/set-desktop-icon.mjs'
 import { setUpdaterManifest } from './set-updater-manifest.mjs'
 import { installDesktopConfig } from '../../scripts/install-desktop-config.mjs'
+import { desktopVersion } from '../../scripts/desktop-build-plan.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -32,7 +33,7 @@ export async function assembleWindows({
   updateManifestURL = '',
   updateDefaultPolicy = '',
 } = {}) {
-  if (!updateDefaultPolicy) updateDefaultPolicy = /-dev[.]/.test(version ?? '') ? 'development' : 'stable'
+  if (!updateDefaultPolicy) updateDefaultPolicy = desktopVersion(version).channel
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
   if (!await isFile(join(electronRuntime, 'electron.exe'))) {
     throw new Error('ElectronRuntime must point to the extracted runtime containing electron.exe, not its cache parent')
@@ -104,6 +105,10 @@ export async function assembleWindows({
   const bootstrap = JSON.parse(await capture(node, [join(scriptRoot, '../../scripts/check-publisher-bootstrap.mjs'), product, config.configurationOwnership])
     .catch(() => { throw new Error('Publisher bootstrap validation failed') }))
   if (bootstrap.enabled) config.updateChannel = bootstrap.softwareUpdates ? 'publisher-bootstrap' : 'disabled-candidate'
+  if (/-(?:alpha|beta|rc)\./.test(version)) {
+    config.updates = { provider: 'disabled', defaultPolicy: 'development' }
+    config.updateChannel = 'disabled-candidate'
+  }
   if (identity.sourceAlpha) {
     config.sourceAlpha = true
     config.appId += '.alpha'
