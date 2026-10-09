@@ -44,12 +44,15 @@ concurrency:
 jobs:
   policy:
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
           path: core
           persist-credentials: false
       - name: Validate requested build and publication
+        id: validate
         shell: bash
         env:
           BUILD_MODE: ${{ inputs.build_mode }}
@@ -60,10 +63,12 @@ jobs:
           PUBLISH_RELEASE: ${{ inputs.publish }}
           SELECTED_PLATFORMS: ${{ inputs.platform }}
         run: |
+          RELEASE_VERSION="${RELEASE_VERSION#"${RELEASE_VERSION%%[![:space:]]*}"}"
+          RELEASE_VERSION="${RELEASE_VERSION%"${RELEASE_VERSION##*[![:space:]]}"}"
           if [[ "$DEVELOPMENT_BUILD" == true ]]; then
             [[ "$BUILD_MODE" == node ]]
             [[ "$PUBLISH_RELEASE" != true ]]
-            [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]]
+            [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]] || { echo '::error::Development version must use X.Y.Z-dev.YYYYMMDD.N'; exit 1; }
             [[ -z "$RELEASE_NOTES" ]]
             [[ "$RELEASE_NOTES_APPROVED" != true ]]
           elif [[ "$BUILD_MODE" == node ]]; then
@@ -79,6 +84,7 @@ jobs:
             [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
             [[ -s "core/$RELEASE_NOTES" ]]
           fi
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
   build:
     needs: policy
     strategy:
@@ -106,7 +112,7 @@ jobs:
         if: inputs.build_mode == 'ps1'
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_VERSION: ${{ needs.policy.outputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           PUBLISH_RELEASE: ${{ inputs.publish }}
@@ -117,7 +123,7 @@ jobs:
         shell: bash
         env:
           DEVELOPMENT_BUILD: ${{ inputs.development }}
-          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_VERSION: ${{ needs.policy.outputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           PUBLISH_RELEASE: ${{ inputs.publish }}
@@ -152,7 +158,7 @@ jobs:
           retention-days: 3
           if-no-files-found: error
   publish:
-    needs: build
+    needs: [policy, build]
     if: inputs.publish
     permissions:
       actions: read
@@ -160,7 +166,7 @@ jobs:
     uses: ./.github/workflows/publish-desktop-candidate.yml
     with:
       source_run_id: '${{ github.run_id }}'
-      version: ${{ inputs.version }}
+      version: ${{ needs.policy.outputs.version }}
       build_mode: ${{ inputs.build_mode }}
       release_notes: ${{ inputs.release_notes }}
       notes_approved: ${{ inputs.notes_approved }}
