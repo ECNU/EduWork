@@ -86,11 +86,12 @@ jobs:
           fi
           echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
   build:
+    name: Build (${{ matrix.platform }})
     needs: policy
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"runner":"windows-latest","platform":"windows"}]' || inputs.platform == 'macos' && '[{"runner":"macos-15","platform":"macos"}]' || '[{"runner":"windows-latest","platform":"windows"},{"runner":"macos-15","platform":"macos"}]') }}
+        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"runner":"windows-latest","platform":"windows"}]' || inputs.platform == 'macos' && '[{"runner":"macos-latest","platform":"macos"}]' || '[{"runner":"windows-latest","platform":"windows"},{"runner":"macos-latest","platform":"macos"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4

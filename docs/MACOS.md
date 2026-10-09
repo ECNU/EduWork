@@ -56,7 +56,7 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 ## CI 开发候选
 
-开发包与双平台发布候选的构建入口、版本范围和命令见[构建指南](BUILD.md#选择入口)。开发包在 `macos-15` arm64 runner 上构建、验收并上传 artifact；候选发布须由维护者单独授权。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
+开发包与双平台发布候选的构建入口、版本范围和命令见[构建指南](BUILD.md#选择入口)。开发包在 `macos-latest` arm64 runner 上构建、验收并上传 artifact；候选发布须由维护者单独授权。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
 
 构建从校验锁下载 Node、独立 Python 和 Office wheels、Chromium，并从固定源码构建 OpenSSL 与本地 Whisper CPU 引擎，携带离线语音模型。Python 与浏览器复用已有版本，Mac 专属输入记录在 `config/macos-native.lock.json`。Python 调用关闭字节码缓存，应用启动不修改签名包。
 

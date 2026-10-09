@@ -50,11 +50,12 @@ jobs:
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]]; then echo '::error::Development version must use X.Y.Z-dev.YYYYMMDD.N'; exit 1; fi
           echo "development_version=$version" >> "$GITHUB_OUTPUT"
   build:
+    name: Build (${{ matrix.platform }})
     needs: version
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"platform":"windows","runner":"windows-latest"}]' || inputs.platform == 'macos' && '[{"platform":"macos","runner":"macos-15"}]' || '[{"platform":"windows","runner":"windows-latest"},{"platform":"macos","runner":"macos-15"}]') }}
+        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"platform":"windows","runner":"windows-latest"}]' || inputs.platform == 'macos' && '[{"platform":"macos","runner":"macos-latest"}]' || '[{"platform":"windows","runner":"windows-latest"},{"platform":"macos","runner":"macos-latest"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4

@@ -52,7 +52,7 @@ export function validateRun(run, {repository, workflow, currentRun}, jobs = []) 
   else {
     // The publishing job can follow the matrix in the same still-running workflow.
     assert.equal(String(run.id), String(currentRun), 'Another build is still running')
-    for (const name of ['build (windows-latest, windows)', 'build (macos-15, macos)']) {
+    for (const name of ['Build (windows)', 'Build (macos)']) {
       const found = jobs.filter(job => job.name === name)
       assert.equal(found.length, 1, 'Missing or ambiguous platform build: ' + name)
       assert.equal(found[0].status, 'completed')

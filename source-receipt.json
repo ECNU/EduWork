@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-09T17:45:33.197Z",
-  "fileSetSHA256": "ab6eb72e272909012f784d9ba6e7d33e6f4dad3969a49ea99313d3e5d51a22d8",
+  "createdAt": "2026-10-09T17:47:51.542Z",
+  "fileSetSHA256": "4cfb6b65f0e3091844cfbb65bb567d21ab9e85708bfeb1b6d7f7a3f23bd05015",
   "files": [
     {
       "path": ".gitattributes",
@@ -25,11 +25,11 @@
     },
     {
       "path": ".github/workflows/desktop-candidates.yml",
-      "sha256": "92ae4b175cc70905eccc1354780994449813e8ab1afa1c758106aeb4ee0ebb0e"
+      "sha256": "5acb1677bbabf64707ac6850c942addbec4f64c84b8d30ad208baa4e5c2d8e36"
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "57e16800aa5500fa6d5e288a721eeeb50bf4ef914316d491f33a1fadc8c47cb2"
+      "sha256": "a71cd921883e569e3128fca27379a2ee8d2cea08a1cd0625a0d72b3f36f70daf"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -53,11 +53,11 @@
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
-      "sha256": "57334a87a7735b9d8ad4ff59df75f464c6d22851ce71bfaa49a744ee2fd0d949"
+      "sha256": "2afedf6aa694bbab5b62a567055739750382acc4d87e3d61b23c52095b87d1c0"
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "2925242621bbb4d0a5c2cf2f66d2ef9b1bd47ba90c531d8a627b910d73aee177"
+      "sha256": "05f674cfb2c158ccea6860eb2bd812ab29ba684bc3b090c016969e3758d0020c"
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
@@ -329,7 +329,7 @@
     },
     {
       "path": "docs/MACOS.md",
-      "sha256": "d4b36f62ff34a4ee0bdcfb970d42dab04a83a4ebc047571f1933cc17c82f56e4"
+      "sha256": "d3346d030529374ec7ce3406419b6f276bf355ea58c4f4154c60ed92d76c3f2c"
     },
     {
       "path": "docs/MEDIA.md",
@@ -5453,7 +5453,7 @@
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
-      "sha256": "31d63465a84073f0a77179d995372a33f137ecd69c13bab621d51a47f9de21eb"
+      "sha256": "4f8298935002d114ef6392dc15e8d28de0da8da648b3c593a06b57656dfc7003"
     },
     {
       "path": "scripts/publish-windows-release.mjs",
