@@ -10,7 +10,7 @@ import skillManagerRemote from '@chatecnu-work/dsh-skill-manager-native/remote'
 import { canonicalSkillName, effectiveDisabledSkills, skillToggleSettings, skillGroups, skillCenterRows } from '../lib/view-model.js'
 declare const __EDUWORK_NATIVE_017__: boolean
 const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
-export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace',...(nativeSettings ? ['uiSession'] : [])]
+export const inject = ['slots','remote']
 const h = React.createElement
 const color = 'var(--dsw-alias-state-business-primary, #9f2636)'
 const border = 'var(--dsw-alias-border-l2, #e1e4eb)'
@@ -316,7 +316,15 @@ function SkillsPanelIcon({ size = 16 }) {
 
 export async function apply(ctx) {
   const unmount = await ctx.remote.$mount(remote), unmountSkills = await ctx.remote.$mount(skillManagerRemote)
-  ctx.inject(['remote.workbench','remote.skillManager'], inner=>{
+  // Updates must remain available before session and skill services are ready.
+  // Only the optional workbench tools depend on those services.
+  ctx.inject(['remote.workbench'], inner=>{
+    const desktop=action=>unwrap(inner.remote.workbench.desktop(action)), updates=createUpdateController(desktop)
+    inner.slots.inject('sidebar.footer.action',()=>inner.slots.register({name:'sidebar.footer.action',id:'eduwork-updates',order:90,inject:()=>({controller:updates})},UpdateFooter))
+    inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-workbench',order:16,inject:()=>({service:desktop,controller:updates})},DesktopSettings))
+    return ()=>updates.dispose()
+  })
+  ctx.inject(['remote.workbench','remote.skillManager','remote.skills','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace',...(nativeSettings ? ['uiSession'] : [])], inner=>{
     const notifications = installNotificationNavigation(inner, view => unwrap(inner.remote.workbench.notificationView(view)))
     inner.on('dispose', () => notifications.close())
     const notificationScope = nativeSettings ? inner.configForms.get('eduwork-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-notifications' })
@@ -339,11 +347,7 @@ export async function apply(ctx) {
     } else {
       inner.slots.inject('settings.plugins.tab',()=>inner.slots.register({name:'settings.plugins.tab',id:'skills',order:-20,label:'技能',inject:()=>({service})},SkillCenter))
     }
-    const desktop=action=>unwrap(inner.remote.workbench.desktop(action)), updates=createUpdateController(desktop)
     const dataImport={pickDirectory:()=>pickImportDirectory(inner.uiWorkspace),preview:path=>unwrap(inner.remote.workbench.inspectImport(path)),start:id=>unwrap(inner.remote.workbench.importData(id)),cancel:()=>unwrap(inner.remote.workbench.cancelImport()),status:()=>unwrap(inner.remote.workbench.importStatus())}
-    inner.on('dispose',()=>updates.dispose())
-    inner.slots.inject('sidebar.footer.action',()=>inner.slots.register({name:'sidebar.footer.action',id:'eduwork-updates',order:90,inject:()=>({controller:updates})},UpdateFooter))
-    inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-workbench',order:16,inject:()=>({service:desktop,controller:updates})},DesktopSettings))
     inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-data-import',order:17,inject:()=>({service:dataImport})},DataImportPanel))
     const concurrency=(nativeSettings ? inner.configForms.get('eduwork-concurrency') : inner.settingsScope.bind({ namespace: 'eduwork-concurrency' }))
     inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-concurrency',order:18,inject:()=>({scope:concurrency})},ConcurrencySettings))
