@@ -448,6 +448,18 @@ The client knows only `eduwork-remote/v1` and one access address. It embeds **no
 login method or service discovery; every institutional difference lives in the relay and the
 institution plugin.
 
+This is also a hard requirement `CONTRIBUTING.md` places on the public edition. Item by item:
+
+| Requirement | How this proposal satisfies it |
+| --- | --- |
+| **No dependency on institution credentials** | The generic plugin reads and requires no institution identity or token; device credentials are created and held by the user on their own machine |
+| **No dependency on a private network** | The relay is an **optional component**; same-LAN, a user's own VPN and port forwarding must all work **without a relay** |
+| **No dependency on an adjacent source repository** | Everything lives in this repository's `dsh-plugins/`, referencing neither EduWork-ECNU nor any external repository |
+
+User-owned infrastructure (VPN, reverse proxy, server) is a **deployment choice on the user's side**,
+not a dependency of the public product: public code paths **must not probe, assume or require** the
+existence of any particular external service.
+
 ## Maintenance cost
 
 | Item | Assessment |
