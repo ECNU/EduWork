@@ -7,6 +7,8 @@ on:
       - 'config/desktop-build.json'
       - 'scripts/desktop-build-plan.mjs'
       - 'dsh-host/prepare-native.mjs'
+      - 'dsh-host/prepare.mjs'
+      - 'dsh-host/test/prepare.test.mjs'
       - 'dsh-host/distribution-policy.mjs'
       - 'third_party/dsh-literature/**'
       - 'dsh-host/test/native-020.test.mjs'
@@ -24,6 +26,9 @@ on:
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-pinned-dsh-source-product.mjs'
+      - 'scripts/prepare-pinned-dsh-product.mjs'
+      - 'scripts/distribution-config-patches.mjs'
+      - 'scripts/test/distribution-config-patches.test.mjs'
       - 'scripts/patch-session-search-runtime.mjs'
       - 'scripts/test/session-search-runtime.test.mjs'
       - 'scripts/test/plugin-locale.test.mjs'
@@ -46,6 +51,29 @@ on:
 permissions:
   contents: read
 jobs:
+  legacy-directory-picker:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/checkout@v4
+        with:
+          repository: deepseek-ai/deepseek-harness
+          ref: fb2c4b9e698e30edb738bca4cf0618587db7d203
+          path: legacy-upstream
+          persist-credentials: false
+      - name: Verify the legacy desktop picker composition against its pinned Runtime
+        env:
+          DSH_HOST_SOURCE: ${{ github.workspace }}/legacy-upstream
+          EDUWORK_TEST_RUNTIME: ${{ runner.temp }}/legacy-runtime
+        run: |
+          node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock core/third_party/dsh/release-v0.1.5-rc.2/LOCK.json --output "$EDUWORK_TEST_RUNTIME"
+          node core/dsh-host/prepare.mjs --upstream "$DSH_HOST_SOURCE" --output "$RUNNER_TEMP/legacy-host"
+          node --test core/dsh-host/test/prepare.test.mjs
   native-host:
     strategy:
       fail-fast: false
@@ -85,13 +113,15 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-pinned-dsh-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/scripts/test/distribution-config-patches.test.mjs
+          if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
@@ -150,6 +180,13 @@ jobs:
         run: |
           node core/scripts/assemble-pinned-dsh-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
           if ($LASTEXITCODE) { throw 'Source product assembly failed' }
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          $env:EDUWORK_TEST_PRODUCT = "$env:RUNNER_TEMP/source-product"
+          $env:EDUWORK_TEST_SOURCE = "$env:RUNNER_TEMP/source-stage"
+          $env:EDUWORK_TEST_DEPENDENCIES = "$env:RUNNER_TEMP/source-deps"
+          $env:EDUWORK_TEST_HOST = "$env:RUNNER_TEMP/native-host"
+          node --test core/scripts/test/distribution-config-patches.test.mjs
+          if ($LASTEXITCODE) { throw 'Assembled edition configuration checks failed' }
           node core/scripts/probe-pinned-dsh-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
           if ($LASTEXITCODE) { throw 'Assembled product qualification failed' }
           node core/scripts/probe-pinned-dsh-literature.mjs --product "$env:RUNNER_TEMP/source-product" --output "$env:RUNNER_TEMP/literature-evidence"

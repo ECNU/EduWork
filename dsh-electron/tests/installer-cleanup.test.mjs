@@ -232,6 +232,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     t.mock.module(electron, { exports: { app, dialog: { showMessageBox: () => assert.fail('No tasks exist during installation') },
       protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
+    const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
     const prior = process.env.EDUWORK_LAUNCHER_TEST
     process.env.EDUWORK_LAUNCHER_TEST = 'launcher-owned'
     t.after(() => { if (prior === undefined) delete process.env.EDUWORK_LAUNCHER_TEST; else process.env.EDUWORK_LAUNCHER_TEST = prior })
@@ -251,6 +252,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail,
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
+      pickDesktopDirectory: pickDirectory,
     })
     mock('eduwork-host-process.mjs', { DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
@@ -261,7 +263,10 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       async start() { calls.push('host') }
       async stop() { calls.push('stop') }
     } })
-    mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: () => ({ attach() {}, dispose() {} }) })
+    mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
+      assert.equal(options.pickDirectory, pickDirectory)
+      return { attach() {}, dispose() {} }
+    } })
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
     mock('main.ts', { createWindow: () => {
       calls.push('window')
