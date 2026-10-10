@@ -1,14 +1,13 @@
 import { app, dialog, ipcMain, Menu, nativeTheme, session } from 'electron'
 import { DESKTOP_IPC, assertDesktopSender } from './ipc.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
-import { installDesktopDirectoryPicker } from './directory-picker.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
-export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, checkUpdates }) {
+export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, checkUpdates, pickDirectory }) {
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -31,7 +30,7 @@ export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, ch
   const shortcuts = installDesktopShortcuts(getWindow, app.getPath('userData'),
     process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux', refreshMenu,
     () => ({ revision: 0, blocked: false }))
-  installDesktopDirectoryPicker(getWindow)
+  ipcMain.handle(DESKTOP_IPC.directoryPick, event => { owner(event); return pickDirectory() })
   installMicrophonePermissions(session.defaultSession, () => getWindow()?.webContents)
   ipcMain.handle(DESKTOP_IPC.boot, event => { owner(event); return getHost().boot() })
   ipcMain.handle(DESKTOP_IPC.bootFailed, (event, message) => {

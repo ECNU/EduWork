@@ -138,6 +138,16 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     if (row.id === 'session-query-sqlite') row.config = { ...row.config, path: join(home, 'session-query-memory.sqlite3') }
   }
   const desktop = [
+    ...shell === 'electron' ? [
+      { id: 'directory-picker', disabled: true },
+      // Legacy desktop Hosts also insert these explicit entries beside auto.
+      { id: 'directory-picker-native', disabled: true },
+      { id: 'ui-directory-picker-native', disabled: true },
+      { insert: [
+        { id: 'eduwork-directory-picker', name: '@eduwork/desktop-services/lib/directory-picker.js' },
+        { id: 'eduwork-directory-flow', name: '@deepseek-ai/dsh-client-ui-directory-picker-native' },
+      ] },
+    ] : [],
     { id: 'credentials', disabled: true },
     { insert: [
       ...baseline.upstreamReveal ? [] : [{ id: 'eduwork-native-reveal', name: '@chatecnu-work/dsh-artifact-preview-native/session-controller' }],
