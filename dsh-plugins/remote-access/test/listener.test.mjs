@@ -1,0 +1,613 @@
+// Tests for the device gate. A fake upstream stands in for the DSH host so the
+// assertions can be about what does and does not reach it, which is the actual
+// acceptance question: an unauthorised device must not reach sessions or files.
+import assert from 'node:assert/strict'
+import http from 'node:http'
+import { mkdtempSync, rmSync, statSync } from 'node:fs'
+import { tmpdir, networkInterfaces } from 'node:os'
+import { join } from 'node:path'
+import test from 'node:test'
+
+import { DEVICE_COOKIE, DeviceStore, createGatedRelay, isLoopbackAddress, readDeviceCookie } from '../lib/listener.js'
+
+const temporaryDirectories = []
+const openHosts = []
+
+function storePath() {
+  const directory = mkdtempSync(join(tmpdir(), 'eduwork-relay-'))
+  temporaryDirectories.push(directory)
+  return join(directory, 'devices.json')
+}
+
+test.after(() => {
+  for (const host of openHosts) host.close()
+  for (const directory of temporaryDirectories) rmSync(directory, { recursive: true, force: true })
+})
+
+/** An upstream that records every request it answers. `/api/stream` is held open
+ * so a test can observe what happens to an established connection. */
+async function fakeHost() {
+  const seen = []
+  const held = []
+  const server = http.createServer((request, response) => {
+    seen.push({ url: request.url, host: request.headers.host })
+    if (request.url === '/api/stream') {
+      response.writeHead(200, { 'content-type': 'text/event-stream' })
+      response.write('event: hello\n\n')
+      held.push({ response, request })
+      return
+    }
+    response.writeHead(200, { 'content-type': 'text/plain' })
+    response.end('from-host')
+  })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  openHosts.push(server)
+  return { server, seen, held, port: server.address().port }
+}
+
+async function startRelay(options) {
+  const relay = createGatedRelay(options)
+  await new Promise(resolve => relay.listen(0, '127.0.0.1', resolve))
+  const { port } = relay.server.address()
+  return { relay, store: relay.store, port, base: `http://127.0.0.1:${String(port)}` }
+}
+
+/** Pair a device end to end and return its cookie header. */
+async function pair(base, store, { name = '测试手机', confirm = true } = {}) {
+  const invitation = store.invite()
+  const response = await fetch(`${base}/__remote/pair?token=${encodeURIComponent(invitation.code)}&name=${encodeURIComponent(name)}`, {
+    redirect: 'manual',
+  })
+  assert.equal(response.status, 302)
+  const setCookie = response.headers.get('set-cookie')
+  assert.ok(setCookie, 'pairing must set a device cookie')
+  const cookie = setCookie.split(';')[0]
+  if (confirm) {
+    const parsed = readDeviceCookie(cookie)
+    store.confirm(parsed.deviceId)
+  }
+  return { cookie, deviceId: readDeviceCookie(cookie).deviceId }
+}
+
+test('readDeviceCookie parses the device cookie and ignores everything else', () => {
+  assert.deepEqual(readDeviceCookie('a=1; eduwork_device=dev-1.secret; b=2'), { deviceId: 'dev-1', secret: 'secret' })
+  assert.equal(readDeviceCookie('a=1; b=2'), undefined)
+  assert.equal(readDeviceCookie('eduwork_device=no-dot'), undefined)
+  assert.equal(readDeviceCookie('eduwork_device=.secret'), undefined)
+  assert.equal(readDeviceCookie('eduwork_device=dev-1.'), undefined)
+  assert.equal(readDeviceCookie(''), undefined)
+  assert.equal(readDeviceCookie(undefined), undefined)
+})
+
+test('a request without a device cookie is answered by the relay and never reaches the host', async () => {
+  const host = await fakeHost()
+  const { relay, base } = await startRelay({ hostPort: host.port, store: new DeviceStore(storePath()) })
+  const response = await fetch(`${base}/api/anything`)
+  assert.equal(response.status, 401)
+  assert.equal(host.seen.length, 0, 'an unauthorised request must not reach the host at all')
+  await relay.close()
+  host.server.close()
+})
+
+test('a forged device cookie is refused and never reaches the host', async () => {
+  const host = await fakeHost()
+  const { relay, base } = await startRelay({ hostPort: host.port, store: new DeviceStore(storePath()) })
+  for (const cookie of ['eduwork_device=dev-1.forged', 'eduwork_device=.x', 'eduwork_device=dev-1.']) {
+    const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+    assert.equal(response.status, 401, `${cookie} must be refused`)
+  }
+  assert.equal(host.seen.length, 0)
+  await relay.close()
+  host.server.close()
+})
+
+test('a paired and confirmed device reaches the host with the host header rewritten', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const { cookie } = await pair(base, store)
+  const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+  assert.equal(response.status, 200)
+  assert.equal(await response.text(), 'from-host')
+  assert.equal(host.seen.length, 1)
+  assert.equal(host.seen[0].host, `127.0.0.1:${String(host.port)}`, 'the phone address must not be forwarded as Host')
+  await relay.close()
+  host.server.close()
+})
+
+test('a pending device is held until the operator decides', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const asked = []
+  const { relay, base } = await startRelay({
+    hostPort: host.port,
+    store,
+    onRequest: async (device) => {
+      asked.push(device.deviceId)
+      return true
+    },
+  })
+  const { cookie, deviceId } = await pair(base, store, { confirm: false })
+  const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+  assert.equal(response.status, 200)
+  assert.deepEqual(asked, [deviceId], 'the operator must be asked about the pending device')
+  assert.equal(store.device(deviceId).status, 'trusted')
+  await relay.close()
+  host.server.close()
+})
+
+test('a device the operator refuses never reaches the host', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store, onRequest: async () => false })
+  const { cookie } = await pair(base, store, { confirm: false })
+  const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+  assert.equal(response.status, 403)
+  assert.equal(host.seen.length, 0, 'a refused device must not reach the host')
+  await relay.close()
+  host.server.close()
+})
+
+test('the operator is asked once, not once per request', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  let asked = 0
+  const { relay, base } = await startRelay({
+    hostPort: host.port,
+    store,
+    onRequest: async () => { asked += 1; return true },
+  })
+  const { cookie } = await pair(base, store, { confirm: false })
+  await Promise.all([1, 2, 3, 4, 5].map(() => fetch(`${base}/api/sessions`, { headers: { cookie } })))
+  assert.equal(asked, 1, 'five concurrent requests must not produce five prompts')
+  await relay.close()
+  host.server.close()
+})
+
+test('an invitation cannot be redeemed twice', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const invitation = store.invite()
+  const first = await fetch(`${base}/__remote/pair?token=${encodeURIComponent(invitation.code)}`, { redirect: 'manual' })
+  assert.equal(first.status, 302)
+  const second = await fetch(`${base}/__remote/pair?token=${encodeURIComponent(invitation.code)}`, { redirect: 'manual' })
+  assert.equal(second.status, 403, 'a replayed invitation must fail')
+  // A wrong code must fail identically, so the response cannot be used to tell
+  // a used invitation from a guessed one.
+  const wrong = await fetch(`${base}/__remote/pair?token=totally-wrong`, { redirect: 'manual' })
+  assert.equal(wrong.status, 403)
+  await relay.close()
+  host.server.close()
+})
+
+test('two devices pair independently and only the revoked one is cut off', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const first = await pair(base, store, { name: '手机 A' })
+  const second = await pair(base, store, { name: '手机 B' })
+  assert.equal((await fetch(`${base}/api/a`, { headers: { cookie: first.cookie } })).status, 200)
+  assert.equal((await fetch(`${base}/api/b`, { headers: { cookie: second.cookie } })).status, 200)
+
+  relay.revoke(first.deviceId)
+
+  assert.equal((await fetch(`${base}/api/a`, { headers: { cookie: first.cookie } })).status, 401)
+  assert.equal((await fetch(`${base}/api/b`, { headers: { cookie: second.cookie } })).status, 200)
+  await relay.close()
+  host.server.close()
+})
+
+test('revoking closes a live connection instead of only refusing the next request', async () => {
+  // The acceptance item in its exact form. An SSE stream is the case that
+  // matters: it keeps delivering model output for as long as it stays open, so a
+  // relay that only refuses the *next* request leaves a revoked device watching
+  // the session.
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const { cookie, deviceId } = await pair(base, store)
+
+  let torn = false
+  const response = await new Promise((resolve, reject) => {
+    const request = http.get({ host: '127.0.0.1', port: new URL(base).port, path: '/api/stream', headers: { cookie } })
+    request.on('response', resolve)
+    request.on('error', reject)
+  })
+  response.on('close', () => { torn = true })
+  response.on('data', () => {})
+  await new Promise(resolve => setTimeout(resolve, 50))
+
+  assert.equal(host.held.length, 1, 'the stream must have reached the host')
+  assert.equal(relay.connections.count(deviceId), 1, 'the stream must be registered as a live connection')
+
+  relay.revoke(deviceId)
+  await new Promise(resolve => setTimeout(resolve, 100))
+
+  assert.equal(relay.connections.count(deviceId), 0, 'revocation must drop the live connection')
+  assert.equal(relay.connections.isSealed(deviceId), true, 'the device must stay sealed')
+  assert.equal(torn, true, 'the stream must actually be torn down, not merely left open')
+  await relay.close()
+})
+
+test('a sealed device cannot open a new connection even in the same instant', async () => {
+  // Otherwise a device that reconnects while the operator is revoking it slips
+  // through the sweep and keeps its stream.
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const { cookie, deviceId } = await pair(base, store)
+  relay.revoke(deviceId)
+  const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+  assert.equal(response.status, 401, 'a revoked device must not authenticate again')
+  assert.equal(host.seen.length, 0)
+  await relay.close()
+})
+
+test('pairing lands on a waiting page rather than holding a request open', async () => {
+  // A direct redirect would leave the phone's browser waiting on the host until
+  // the operator presses y, and timing out if they take a moment. The waiting
+  // page polls instead, so the phone shows progress and taking a minute is free.
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  let upstreamCalled = false
+  const { relay, base } = await startRelay({
+    hostPort: host.port,
+    store,
+    upstreamToken: () => { upstreamCalled = true; return 'tok-123' },
+  })
+  const invitation = store.invite()
+  const pairing = await fetch(`${base}/__remote/pair?token=${encodeURIComponent(invitation.code)}`, { redirect: 'manual' })
+  const location = pairing.headers.get('location') ?? ''
+  assert.equal(pairing.status, 302)
+  assert.equal(location.startsWith('/__remote/waiting'), true, location)
+  assert.equal(decodeURIComponent(location).endsWith('/?token=tok-123'), true, 'the waiting page must carry the host exchange')
+  assert.equal(upstreamCalled, true, 'the host token must be read when the redirect is built')
+
+  const cookie = (pairing.headers.get('set-cookie') ?? '').split(';')[0]
+  const page = await fetch(`${base}${location}`, { headers: { cookie } })
+  const body = await page.text()
+  assert.equal(page.status, 200)
+  assert.equal(body.includes('/__remote/status'), true, 'the page must poll the relay, not the host')
+  assert.equal(host.seen.length, 0, 'the waiting page must not reach the host')
+  await relay.close()
+  host.server.close()
+})
+
+test('the status endpoint tells a device about itself and nothing else', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+
+  const pending = await pair(base, store, { name: '手机', confirm: false })
+  const before = await (await fetch(`${base}/__remote/status`, { headers: { cookie: pending.cookie } })).json()
+  assert.deepEqual(before, { status: 'pending', name: '手机' })
+
+  store.confirm(pending.deviceId)
+  const after = await (await fetch(`${base}/__remote/status`, { headers: { cookie: pending.cookie } })).json()
+  assert.equal(after.status, 'trusted')
+
+  // No credential, and a forged one, both learn nothing.
+  assert.equal((await fetch(`${base}/__remote/status`)).status, 401)
+  assert.equal((await fetch(`${base}/__remote/status`, { headers: { cookie: 'eduwork_device=x.y' } })).status, 401)
+
+  // The endpoint must never leak another device: it answers only about the
+  // caller, so a second device cannot be observed through it.
+  const other = await pair(base, store, { name: '笔记本' })
+  const otherStatus = await (await fetch(`${base}/__remote/status`, { headers: { cookie: other.cookie } })).json()
+  assert.equal(otherStatus.name, '笔记本')
+  assert.equal(JSON.stringify(otherStatus).includes(pending.deviceId), false)
+
+  store.revoke(pending.deviceId)
+  assert.equal((await fetch(`${base}/__remote/status`, { headers: { cookie: pending.cookie } })).status, 401, 'a revoked credential stops answering')
+  await relay.close()
+  host.server.close()
+})
+
+test('isLoopbackAddress recognises this machine and nothing else', () => {
+  // Node reports an IPv4 peer on a dual-stack listener in the mapped form, so a
+  // comparison that forgot to unwrap it would lock the operator out of their own
+  // device list.
+  for (const address of ['127.0.0.1', '127.1.2.3', '::1', '::ffff:127.0.0.1', '::ffff:127.9.9.9']) {
+    assert.equal(isLoopbackAddress(address), true, `${address} is this machine`)
+  }
+  for (const address of ['192.168.1.10', '10.0.0.7', '::ffff:192.168.1.10', '0.0.0.0', '128.0.0.1', '127.0.0.999', '::2', 'localhost', '', undefined, null, 42, {}]) {
+    assert.equal(isLoopbackAddress(address), false, `${String(address)} must not be treated as this machine`)
+  }
+})
+
+test('the device list is readable from this machine', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const { deviceId } = await pair(base, store, { name: '手机' })
+  const response = await fetch(`${base}/__remote/devices`)
+  assert.equal(response.status, 200)
+  const body = await response.json()
+  assert.equal(body.devices.length, 1)
+  assert.equal(body.devices[0].deviceId, deviceId)
+  assert.equal(body.devices[0].name, '手机')
+  assert.deepEqual(body.devices[0].agent, store.device(deviceId).surfaces.agent)
+  await relay.close()
+  host.server.close()
+})
+
+test('the device list is refused to a caller that is not this machine', async () => {
+  // The list carries device names and ids. It is the operator's view, so an
+  // unpaired caller reaching the relay port must not be able to enumerate it.
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const relay = createGatedRelay({ hostPort: host.port, store })
+  // Listen on every interface, then reach it through a real address rather than
+  // loopback, which is the only way to produce a non-loopback peer in a test.
+  await new Promise(resolve => relay.listen(0, '0.0.0.0', resolve))
+  const { port } = relay.server.address()
+  const external = Object.values(networkInterfaces()).flat()
+    .filter(iface => iface && iface.family === 'IPv4' && !iface.internal)
+    .map(iface => iface.address)[0]
+  if (external === undefined) {
+    await relay.close()
+    host.server.close()
+    return
+  }
+  const response = await fetch(`http://${external}:${String(port)}/__remote/devices`)
+  assert.equal(response.status, 403, 'a non-loopback caller must not read the device list')
+  assert.equal((await response.text()).includes('只能在本机查看'), true)
+  await relay.close()
+  host.server.close()
+})
+test('the relay control surface is never forwarded upstream', async () => {
+  const host = await fakeHost()
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  await fetch(`${base}/__remote/devices`)
+  await fetch(`${base}/__remote/pair?token=x`)
+  assert.equal(host.seen.length, 0, 'relay control paths must never reach the host')
+  await relay.close()
+  host.server.close()
+})
+
+test('the store survives a restart', async () => {
+  const path = storePath()
+  const host = await fakeHost()
+  const first = await startRelay({ hostPort: host.port, store: new DeviceStore(path) })
+  const { cookie, deviceId } = await pair(first.base, first.store)
+  await first.relay.close()
+
+  const second = await startRelay({ hostPort: host.port, store: new DeviceStore(path) })
+  assert.equal(second.store.device(deviceId).status, 'trusted', 'a trusted device must stay trusted across a restart')
+  assert.equal((await fetch(`${second.base}/api/sessions`, { headers: { cookie } })).status, 200)
+  await second.relay.close()
+  host.server.close()
+})
+
+test('a revoked device stays revoked across a restart', async () => {
+  const path = storePath()
+  const host = await fakeHost()
+  const first = await startRelay({ hostPort: host.port, store: new DeviceStore(path) })
+  const { cookie, deviceId } = await pair(first.base, first.store)
+  first.relay.revoke(deviceId)
+  await first.relay.close()
+
+  const second = await startRelay({ hostPort: host.port, store: new DeviceStore(path) })
+  assert.equal(second.store.device(deviceId).status, 'revoked')
+  assert.equal((await fetch(`${second.base}/api/sessions`, { headers: { cookie } })).status, 401)
+  await second.relay.close()
+  host.server.close()
+})
+
+test('a burst of requests does not rewrite the store once per request', async () => {
+  // Authentication runs on every request, so persisting the use stamp each time
+  // would turn one page load into hundreds of whole-file rewrites. The stamp is
+  // refreshed on a quiet period instead, and the verdict must not depend on it.
+  const host = await fakeHost()
+  const path = storePath()
+  const store = new DeviceStore(path)
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const { cookie } = await pair(base, store)
+
+  // The first authenticated request necessarily writes: the device has no stamp
+  // yet. That write is the point of the quiet period, not a violation of it, so
+  // it happens before the measurement starts.
+  assert.equal((await fetch(`${base}/api/sessions`, { headers: { cookie } })).status, 200)
+
+  const before = statSync(path).mtimeMs
+  await new Promise(resolve => setTimeout(resolve, 20))
+  for (let index = 0; index < 25; index += 1) {
+    const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+    assert.equal(response.status, 200)
+  }
+  const after = statSync(path).mtimeMs
+  assert.equal(after, before, 'twenty-five requests inside the quiet period must not rewrite the store')
+
+  // The stamp is still eventually recorded, and the credential still works.
+  assert.equal((await fetch(`${base}/api/sessions`, { headers: { cookie } })).status, 200)
+  await relay.close()
+  host.server.close()
+})
+
+test('an unreachable host answers 502 rather than hanging', async () => {
+  const store = new DeviceStore(storePath())
+  // Port 1 is reserved and nothing listens there.
+  const { relay, base } = await startRelay({ hostPort: 1, store })
+  const { cookie } = await pair(base, store)
+  const response = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+  assert.equal(response.status, 502)
+  await relay.close()
+})
+
+// The two tests below guard the host's own idempotency rather than adding any.
+// `dsh-api-session-controller` admits a prompt at most once per `requestId`: a
+// repeat returns `{ accepted: true }` without executing, and the check covers
+// messages still sitting in the agent's inbox as well as those already recorded
+// in the session, so the window where the request arrived but its acknowledgement
+// was lost is covered too. The relay's only job is not to break that — if it
+// re-sent a request the host never saw, or rewrote the id on the way through, the
+// guarantee would be gone and a dropped connection would produce two turns.
+
+test('the relay never re-sends a request it has already forwarded', async () => {
+  // A host that takes the request and then drops the connection, which is what a
+  // network failure mid-prompt looks like from the relay's side. Retrying here
+  // would be the one way this relay could turn a lost acknowledgement into a
+  // second execution.
+  let seen = 0
+  const host = http.createServer((request, response) => {
+    seen += 1
+    request.resume()
+    request.on('end', () => response.socket?.destroy())
+  })
+  await new Promise(resolve => host.listen(0, '127.0.0.1', resolve))
+  openHosts.push(host)
+
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.address().port, store })
+  const { cookie } = await pair(base, store)
+
+  await fetch(`${base}/api/session/prompt`, {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ requestId: 'sub-1', text: '你好' }),
+  }).catch(() => undefined)
+  await new Promise(resolve => setTimeout(resolve, 150))
+
+  assert.equal(seen, 1, 'a failed forward must not be retried by the relay')
+  await relay.close()
+})
+
+test('the request body reaches the host unchanged, requestId included', async () => {
+  // The id has to survive the relay byte for byte: it is the only thing tying a
+  // retry to the original send, so a rewrite here silently disables the dedup.
+  const bodies = []
+  const host = http.createServer((request, response) => {
+    const chunks = []
+    request.on('data', chunk => chunks.push(chunk))
+    request.on('end', () => {
+      bodies.push(Buffer.concat(chunks).toString('utf8'))
+      response.writeHead(200, { 'content-type': 'text/plain' })
+      response.end('ok')
+    })
+  })
+  await new Promise(resolve => host.listen(0, '127.0.0.1', resolve))
+  openHosts.push(host)
+
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.address().port, store })
+  const { cookie } = await pair(base, store)
+  const payload = JSON.stringify({ requestId: 'sub-42', text: '把这句话原样送达', content: [{ type: 'text', text: '你好' }] })
+
+  const response = await fetch(`${base}/api/session/prompt`, {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: payload,
+  })
+
+  assert.equal(response.status, 200)
+  assert.equal(bodies.length, 1)
+  assert.equal(bodies[0], payload, 'the body must arrive byte for byte')
+  assert.equal(JSON.parse(bodies[0]).requestId, 'sub-42')
+  await relay.close()
+})
+
+test('two devices share one host session and both see the same stream', async () => {
+  // This is the mechanism behind "continue the same task from another device".
+  // The session lives in the host, not in either client: the relay must let both
+  // devices onto the same upstream at the same time, and an event the host pushes
+  // once has to reach both. A relay that serialised devices, or that gave each one
+  // its own upstream, would break the acceptance item without failing anything
+  // else.
+  const subscribers = new Set()
+  const host = http.createServer((request, response) => {
+    if (request.url === '/api/stream') {
+      response.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store' })
+      response.write('retry: 1000\n\n')
+      subscribers.add(response)
+      request.on('close', () => subscribers.delete(response))
+      return
+    }
+    response.writeHead(200, { 'content-type': 'application/json' })
+    response.end(JSON.stringify({ sessions: ['s-1'] }))
+  })
+  await new Promise(resolve => host.listen(0, '127.0.0.1', resolve))
+  openHosts.push(host)
+
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.address().port, store })
+  const phone = await pair(base, store, { name: '手机' })
+  const laptop = await pair(base, store, { name: '笔记本' })
+
+  const received = { phone: [], laptop: [] }
+  const openStream = (label, cookie) => new Promise((resolve) => {
+    const request = http.get({ host: '127.0.0.1', port: new URL(base).port, path: '/api/stream', headers: { cookie } })
+    request.on('response', (response) => {
+      response.setEncoding('utf8')
+      response.on('data', (chunk) => received[label].push(chunk))
+      resolve(response)
+    })
+  })
+  const phoneStream = await openStream('phone', phone.cookie)
+  const laptopStream = await openStream('laptop', laptop.cookie)
+  await new Promise(resolve => setTimeout(resolve, 80))
+
+  assert.equal(subscribers.size, 2, 'both devices must be attached to the host at once')
+  assert.equal(relay.connections.count(phone.deviceId), 1)
+  assert.equal(relay.connections.count(laptop.deviceId), 1)
+
+  // One event, pushed once by the host, must arrive at both devices.
+  for (const response of subscribers) response.write('data: 轮次继续\n\n')
+  await new Promise(resolve => setTimeout(resolve, 120))
+
+  for (const label of ['phone', 'laptop']) {
+    assert.ok(received[label].join('').includes('轮次继续'), `${label} must receive the event the host pushed once`)
+  }
+
+  // And a read from either device is answered from the same session.
+  const listing = await (await fetch(`${base}/api/sessions`, { headers: { cookie: laptop.cookie } })).json()
+  assert.deepEqual(listing.sessions, ['s-1'])
+  const fromPhone = await (await fetch(`${base}/api/sessions`, { headers: { cookie: phone.cookie } })).json()
+  assert.deepEqual(fromPhone.sessions, listing.sessions, 'both devices must read the same session')
+
+  // Revoking one device must not disturb the other's stream.
+  relay.revoke(phone.deviceId)
+  await new Promise(resolve => setTimeout(resolve, 100))
+  assert.equal(subscribers.size, 1, 'only the revoked device stream may be dropped')
+  for (const response of subscribers) response.write('data: 仍在继续\n\n')
+  await new Promise(resolve => setTimeout(resolve, 120))
+  assert.ok(received.laptop.join('').includes('仍在继续'), 'the surviving device must keep receiving')
+  assert.equal(received.phone.join('').includes('仍在继续'), false, 'the revoked device must not')
+
+  phoneStream.destroy()
+  laptopStream.destroy()
+  await relay.close()
+})
+test('a retried request with the same requestId is delivered as-is, not deduplicated here', async () => {
+  // The relay must stay out of the decision. Two identical bodies with the same
+  // requestId both reach the host, and the host is the one that decides the
+  // second is a repeat — a relay that swallowed it instead would hide a genuine
+  // second send from the only component able to judge it.
+  const bodies = []
+  const host = http.createServer((request, response) => {
+    const chunks = []
+    request.on('data', chunk => chunks.push(chunk))
+    request.on('end', () => {
+      bodies.push(JSON.parse(Buffer.concat(chunks).toString('utf8')).requestId)
+      response.writeHead(200, { 'content-type': 'text/plain' })
+      response.end('ok')
+    })
+  })
+  await new Promise(resolve => host.listen(0, '127.0.0.1', resolve))
+  openHosts.push(host)
+
+  const store = new DeviceStore(storePath())
+  const { relay, base } = await startRelay({ hostPort: host.address().port, store })
+  const { cookie } = await pair(base, store)
+  const send = () => fetch(`${base}/api/session/prompt`, {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ requestId: 'sub-7', text: '同样一句' }),
+  })
+
+  assert.equal((await send()).status, 200)
+  assert.equal((await send()).status, 200)
+  assert.deepEqual(bodies, ['sub-7', 'sub-7'], 'both attempts must reach the host so its dedup can decide')
+  await relay.close()
+})

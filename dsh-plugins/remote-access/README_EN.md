@@ -34,6 +34,7 @@ publishes itself to other plugins in the same process through
 ## Quick start
 
 ```js
+import { DeviceStore, createGatedRelay } from '@chatecnu-work/dsh-remote-access/listener'
 import { LiveConnections } from '@chatecnu-work/dsh-remote-access/connections'
 import { emptyCredentials, issueCredential, authenticate } from '@chatecnu-work/dsh-remote-access/credentials'
 import { createInvitation, redeemInvitation } from '@chatecnu-work/dsh-remote-access/pairing'
@@ -60,6 +61,15 @@ const verdict = decide(device, 'session:prompt')   // { allowed: true, sideEffec
 //    loses rather than slipping through.
 const live = new LiveConnections()
 live.closeAll(deviceId)
+
+// 7. Put the gate in front of the host, which itself listens only on loopback.
+const relay = createGatedRelay({
+  hostPort: 8901,                       // the host's loopback port
+  store: new DeviceStore('.state/devices.json'),
+  onRequest: async device => confirmInPerson(device),   // a human decides on this machine
+  upstreamToken: () => hostLaunchToken(),
+})
+relay.listen(8899, '0.0.0.0')
 ```
 
 ## Status
@@ -67,12 +77,13 @@ live.closeAll(deviceId)
 | Part | State |
 | --- | --- |
 | Device registry, one-time pairing, device credentials, operation fence, live-connection management | **Implemented**, covered by `node --test` |
-| Assembly into the product runtime, Web client, relay reference implementation, end-to-end encryption | **Planned**, not in this package |
+| Gated relay (`./listener`): admission, pairing entry and waiting page, per-device revocation | **Implemented**, covered by `node --test` |
+| Assembly into the product runtime, a standalone Web client, end-to-end encryption | **Planned**, not in this package |
 
-The package is **pure logic** and performs no I/O: the caller supplies the
-current time, which is what lets the pairing and revocation semantics be tested
-directly. Storage location, listening port and network topology are the
-deployment's decisions.
+The logic modules perform no I/O: the caller supplies the current time, which is
+what lets the pairing and revocation semantics be tested directly. `./listener`
+is the only module holding a file or a socket, and it leaves storage location,
+listening port and topology to the deployment.
 
 ## Documentation
 

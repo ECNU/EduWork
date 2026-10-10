@@ -31,6 +31,7 @@ npm install @chatecnu-work/dsh-remote-access
 ## 快速上手
 
 ```js
+import { DeviceStore, createGatedRelay } from '@chatecnu-work/dsh-remote-access/listener'
 import { LiveConnections } from '@chatecnu-work/dsh-remote-access/connections'
 import { emptyCredentials, issueCredential, authenticate } from '@chatecnu-work/dsh-remote-access/credentials'
 import { createInvitation, redeemInvitation } from '@chatecnu-work/dsh-remote-access/pairing'
@@ -54,6 +55,15 @@ const verdict = decide(device, 'session:prompt')   // { allowed: true, sideEffec
 // 6. 撤销时先封设备再清扫，撤销瞬间正在握手的连接会失败而不是溜过
 const live = new LiveConnections()
 live.closeAll(deviceId)
+
+// 7. 把闸装到宿主前面：宿主只监听回环，中继是唯一的门
+const relay = createGatedRelay({
+  hostPort: 8901,                       // 宿主的回环端口
+  store: new DeviceStore('.state/devices.json'),
+  onRequest: async device => confirmInPerson(device),   // 由人在这台机器上决定
+  upstreamToken: () => hostLaunchToken(),
+})
+relay.listen(8899, '0.0.0.0')
 ```
 
 ## 状态
@@ -61,10 +71,11 @@ live.closeAll(deviceId)
 | 部分 | 状态 |
 | --- | --- |
 | 设备登记表、一次性配对、设备凭据、操作面围栏、活动连接管理 | **已实现**，`node --test` 覆盖 |
-| 装配进产品运行时、Web 客户端、中继参考实现、端到端加密 | **计划中**，本包不含 |
+| 门禁中继（`./listener`）：准入门禁、配对入口与等待页、逐设备撤销 | **已实现**，`node --test` 覆盖 |
+| 装配进产品运行时、独立的 Web 客户端、端到端加密 | **计划中**，本包不含 |
 
-本包含**纯逻辑**，不做任何 I/O：时间由调用方传入，因此配对与撤销语义可以被直接测试。
-存储位置、监听端口与网络拓扑由使用方决定。
+本包的逻辑模块**不做 I/O**：时间由调用方传入，因此配对与撤销语义可以被直接测试。
+`./listener` 是唯一持有文件与网络的模块，它把存储位置、监听端口与拓扑留给使用方决定。
 
 ## 文档
 

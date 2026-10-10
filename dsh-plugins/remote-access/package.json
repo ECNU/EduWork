@@ -10,7 +10,8 @@
     "./pairing": "./lib/pairing.js",
     "./gate": "./lib/gate.js",
     "./connections": "./lib/connections.js",
-    "./credentials": "./lib/credentials.js"
+    "./credentials": "./lib/credentials.js",
+    "./listener": "./lib/listener.js"
   },
   "files": [
     "lib/**/*.js",
