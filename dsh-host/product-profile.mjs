@@ -86,28 +86,6 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const profile = await canonical(join(home, 'profiles', 'desktop'))
   const target = await canonical(join(product, 'd', 'node_modules'))
   if (!inside(home, profile) || !inside(product, target)) throw new Error('Desktop profile or modules link escapes its owned directory')
-  if (native) {
-    const receipt = await json(join(profile, '.eduwork-module-link.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
-    const pending = await json(join(profile, '.eduwork-module-link.pending.json')).catch(error => { if (error.code === 'ENOENT') return null; throw error })
-    if (receipt || pending) {
-      const entry = await lstat(join(home, 'profiles', 'desktop'))
-      if (!entry.isDirectory() || entry.isSymbolicLink()) throw new Error('Legacy runtime profile must be an owned directory')
-      const archive = join(home, 'profiles', 'desktop-legacy')
-      if (await lstat(archive).catch(error => { if (error.code === 'ENOENT') return null; throw error })) throw new Error('Legacy runtime profile archive already exists; resolve the directory conflict before startup')
-      // Keep the old Runtime's module link separate from native plugin dependencies.
-      await rename(profile, archive)
-    }
-  }
-  if (native && !await lstat(profile).catch(error => { if (error.code === 'ENOENT') return null; throw error })) {
-    const legacy = join(home, 'profiles', 'desktop-017')
-    const entry = await lstat(legacy).catch(error => { if (error.code === 'ENOENT') return null; throw error })
-    if (entry) {
-      if (!entry.isDirectory() || entry.isSymbolicLink() || !inside(home, await canonical(legacy))) throw new Error('Legacy desktop profile must be an owned directory')
-      // Desktop startup holds its single-instance lock before preparing the profile.
-      // Rename the complete profile so preferences, dependencies and journals stay together.
-      await rename(legacy, profile)
-    }
-  }
   const link = join(profile, 'node_modules')
   const receiptFile = join(profile, '.eduwork-module-link.json')
   const pendingFile = join(profile, '.eduwork-module-link.pending.json')
