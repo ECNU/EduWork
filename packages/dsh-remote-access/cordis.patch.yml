@@ -1,0 +1,15 @@
+# dsh-remote-access installs disabled and is not enabled by this row.
+#
+# The plugin publishes the device registry as a service. It opens no port, listens on
+# nothing and reaches no network by itself: the gated relay in `./listener` is a separate
+# module that a deployment constructs explicitly, with its own host port, storage path and
+# confirmation callback. Nothing here starts it.
+#
+# Keep it that way on purpose. Remote reach must never appear as a side effect of an
+# upgrade, so the setting defaults off and an operator turns it on in
+# Settings -> Remote access. Override this row only for a deployment that has decided to
+# carry remote access by default, and say so where the decision is visible.
+- insert:
+    - id: remote-access
+      name: '@eduwork/dsh-remote-access'
+      config: {}

@@ -14,10 +14,14 @@
     "./listener": "./lib/listener.js"
   },
   "files": [
+    "cordis.patch.yml",
     "lib/**/*.js",
     "docs/**/*.md",
     "README.md",
-    "README_EN.md"
+    "README_EN.md",
+    "CHANGELOG.md",
+    "CHANGELOG_EN.md",
+    "NOTICE"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
