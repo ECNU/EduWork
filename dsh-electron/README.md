@@ -6,18 +6,18 @@
 
 桌面基底锁定 DSH `0.1.5-rc.2`（`fb2c4b9e698e30edb738bca4cf0618587db7d203`）。Electron 主进程、窗口、`dsh-app://` 和流式 Host 传输从该提交派生，产品适配以可核对的补丁生成，不修改共享的官方源码缓存。Host 适配放在 `../dsh-host/`，供两种桌面宿主复用。
 
-显式 `--native-017` 构建使用 [DSH 0.1.7-rc.2 候选锁](../third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json)：内核、Web 客户端、Desktop Host 和桌面模块均来自 `477b4f420553e8a52c2fbccc464d7561b239c443`。窗口工厂、完整预加载桥接、浏览器 guest 隔离、快捷键、目录选择、主题与语言同步、Host 生命周期、退出确认和故障恢复复用官方实现；输入哈希及产品适配记录在构建回执中。
+显式 `--pinned-dsh-source` 构建使用 [DSH 0.2.0-rc.2 候选锁](../third_party/dsh/candidate-v0.2.0-rc.2/LOCK.json)：内核、Web 客户端、Desktop Host 和桌面模块均来自 `639ed015397290b3745d163aafe02ffee4aa3f84`。窗口工厂、完整预加载桥接、浏览器 guest 隔离、快捷键、目录选择、主题与语言同步、Host 生命周期、退出确认和故障恢复复用官方实现；输入哈希及产品适配记录在构建回执中。
 
 机构登录与系统加密凭据、便携更新、签名配置与技能更新、任务通知和 Studio 由产品适配保留。麦克风权限沿用官方主窗口、主框架和系统授权检查，其他权限默认拒绝，仅允许应用主框架写剪贴板。外部网页使用隔离的原生浏览器，不绕过站点 CSP 或 X-Frame-Options。故障恢复提供退出与重启，不提供会关闭发行版必要插件的“禁用全部插件”。这不是官方安装包的重打包，也不继承其签名。此模式不改变默认发行锁或更新源。
 
 候选壳构建需要同一锁准备的源码、Host 和 npm Runtime；不再使用旧版桌面源码或共享编译缓存：
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --native-017 --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 
-`$ElectronExecutable` 必须是原始 Electron runtime 的可执行文件，不能使用已打包应用的 EXE。输出目录必须尚不存在。[候选 CI](../.github/workflows/validate-core-017.yml) 在 Windows/macOS 构建并启动真实 Electron，使用合成网页检查桥接、受防嵌入策略保护的页面、权限边界与生命周期；真实机构登录、系统录音授权、更新安装及 macOS 人工交互仍须另行验收。
+`$ElectronExecutable` 必须是原始 Electron runtime 的可执行文件，不能使用已打包应用的 EXE。输出目录必须尚不存在。[源码候选资格检查](../.github/workflows/validate-pinned-dsh-source.yml) 在 Windows/macOS 构建并启动真实 Electron，以合成网页检查桥接、受防嵌入策略保护的页面、权限边界与生命周期；[双平台桌面包 CI](../.github/workflows/development-desktop.yml)另行检查已打包应用的归档、原生运行时和基本启动。真实机构登录、系统录音授权、更新安装及 macOS 人工交互仍须另行验收。
 
 每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；公版默认使用 GitHub，用户可通过配置覆盖来源或关闭更新。开发验证使用独立数据目录。
 
@@ -25,18 +25,15 @@ macOS 的运行中 Dock 图标、下次启动窗口的图标和进度条跟随�
 
 ## 构建入口
 
-完整 Windows 测试包使用[构建指南](../docs/BUILD.md#从-web-到桌面)中的入口，包含工具要求、公版与机构版命令及输出位置。在干净的 EduWork 检出目录准备 Git、PowerShell 7、Node.js 24.18.0、Go 1.26.6 和 Visual Studio 2022 C++ Build Tools 后运行：
+完整 Windows 测试包使用[构建指南](../docs/BUILD.md#本机构建)中的 Node.js 入口。在干净的 EduWork 检出目录准备 Git、Node.js 24.18.0、Go 1.26.6 和 Visual Studio 2022 C++ Build Tools 后运行：
 
-```powershell
-$Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
-./scripts/ci-eduwork-windows-release.ps1 -CoreRoot . -EditionRoot . `
-  -DistributionConfig config/distributions/generic.json -Version $Version `
-  -Development -Output ../eduwork-electron-test
+```sh
+node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-electron-test
 ```
 
 版本须为 `X.Y.Z-dev.YYYYMMDD.N`，输出目录须尚不存在。该命令复用 CI 配方，在 `publish/` 生成经过检查的 ZIP，不创建 Release；自动准备锁定上游、Host、原生资源和 Electron，无需填写未定义的本地输入变量。真实登录、媒体质量和升级另做验收。
 
-单独调试 Host 或壳时，可按[共用构建脚本](../scripts/ci-eduwork-windows-release.ps1)查看已准备的 `host/`、`product/`、`inputs/`、`electron/` 和 `shell/`。其中[原生资源准备](../scripts/prepare-windows-release-inputs.ps1)在 `inputs/inputs.json` 记录输入路径与哈希。`assemble-desktop-candidate.ps1` 支持 `electron`、`wails` 和 `both`，只有核对壳一致性时才需要双壳。锁定基线的官方 Host 没有 npm 包，按固定源码构建；macOS 仍需独立适配和真机验收。
+单独调试 Host 或壳时，可按[共用构建脚本](../scripts/ci-eduwork-windows-release.mjs)查看已准备的 `host/`、`product/`、`inputs/`、`electron/` 和 `shell/`。其中[原生资源准备](../scripts/prepare-windows-release-inputs.mjs)在 `inputs/inputs.json` 记录输入路径与哈希。锁定基线的官方 Host 没有 npm 包，按固定源码构建；macOS 仍需独立适配和真机验收。
 
 ## 本机数据与比较
 

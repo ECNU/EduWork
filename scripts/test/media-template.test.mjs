@@ -12,7 +12,7 @@ import {copyProductTree} from '../portable-product-links.mjs'
 
 const sharedSource = fileURLToPath(new URL('../../packages/dsh-knowledge-studio/packages/artifact-services/', import.meta.url))
 const verifier = fileURLToPath(new URL('../verify-media-template.mjs', import.meta.url))
-const assembler = fileURLToPath(new URL('../assemble-017-source-product.mjs', import.meta.url))
+const assembler = fileURLToPath(new URL('../assemble-pinned-dsh-source-product.mjs', import.meta.url))
 const runtime = process.env.EDUWORK_TEST_RUNTIME
 
 async function fixture(t) {
