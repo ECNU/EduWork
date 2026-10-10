@@ -22,7 +22,7 @@ const runtime = resolve(values.runtime), dependencies = resolve(values.dependenc
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
 if (runtimeReceipt.dshVersion !== '0.2.0-rc.2' || runtimeReceipt.dshCommit !== '639ed015397290b3745d163aafe02ffee4aa3f84') throw new Error('This build requires the pinned candidate Runtime')
-const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.core.17', runtimeReceipt.dshVersion)
+const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.pinned.dsh', runtimeReceipt.dshVersion)
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
@@ -106,7 +106,7 @@ for (const [folder, entry] of clients) {
     platform: 'browser', format: 'cjs', target: 'es2022', jsx: 'automatic', minify: true, metafile: true,
     nodePaths: [join(runtime, 'node_modules'), join(dependencies, 'node_modules')],
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-dockkit'],
-    define: { 'process.env.NODE_ENV': '"production"', __EDUWORK_NATIVE_017__: 'true' },
+    define: { 'process.env.NODE_ENV': '"production"', __EDUWORK_PINNED_DSH__: 'true' },
     alias: { ...localAliases, ...(folder === 'packages/dsh-knowledge-studio' ? Object.fromEntries(['process', 'path', 'url'].map(name => [`node:${name}`, join(root, `src/client/shims/${name}.ts`)])) : {}) },
     // ModuleLoader fetches one JS artifact. Embed module CSS just as the
     // official compiler does, with stable per-plugin class names.

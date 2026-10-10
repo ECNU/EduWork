@@ -5422,7 +5422,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			return [...rows.values()];
 		}
-		const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== "undefined" && __EDUWORK_NATIVE_017__;
+		const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== "undefined" && __EDUWORK_PINNED_DSH__;
 		const inject = [
 			"slots",
 			"remote",

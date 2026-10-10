@@ -59,11 +59,9 @@ async function setup() {
   await save(join(profile,'cordis.patch.yml'),[{insert}])
   }
   if(process.platform==='win32') {
-    const linker=fileURLToPath(new URL('./link-studio-web-profile.ps1',import.meta.url))
-    await new Promise((done,fail)=>{
-      const child=spawn('pwsh',['-NoProfile','-File',linker,'-Config',configPath,'-BaseDirectory',configBase],{windowsHide:true,stdio:'inherit'})
-      child.on('error',fail);child.on('exit',code=>code===0?done():fail(new Error('Profile module linking failed')))
-    })
+    const {linkStudioWebProfile}=await import('./link-studio-web-profile.mjs')
+    await linkStudioWebProfile({config:configPath,baseDirectory:configBase})
+      .catch(error=>{throw new Error(`Profile module linking failed: ${error.message}`)})
     for(const name of ['@deepseek-ai/dsh-persona','@chatecnu-work/dsh-skill-control-native','@eduwork/dsh-artifact-services','@eduwork/dsh-knowledge-studio']) {
       if(!await stat(join(profile,'node_modules',name,'package.json')).then(x=>x.isFile()).catch(()=>false))throw new Error('Profile cannot follow the assembled package links. Use a native local assembly path outside redirected AppData.')
     }
