@@ -15,6 +15,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/electronaccess"
 )
 
 // A full offline release currently contains more than 44,000 files because it
@@ -284,6 +286,11 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 	}
 	if err := mergeReleaseData(filepath.Join(packageRoot, "config"), filepath.Join(pending.InstallDir, "config")); err != nil {
 		return rollback(fmt.Errorf("preserve user configuration: %w", err))
+	}
+	if launchName == "EduWork-Electron.exe" {
+		if err := electronaccess.Ensure(pending.InstallDir); err != nil {
+			return rollback(fmt.Errorf("prepare Electron sandbox read access: %w", err))
+		}
 	}
 	healthFile := filepath.Join(transactionDir, "health.ok")
 	_ = os.Remove(healthFile)

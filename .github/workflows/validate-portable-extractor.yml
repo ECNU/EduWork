@@ -3,6 +3,9 @@ on:
   pull_request:
     paths:
       - 'dsh-desktop/internal/portable/**'
+      - 'dsh-desktop/internal/electronaccess/**'
+      - 'dsh-desktop/internal/updater/**'
+      - 'dsh-desktop/cmd/eduwork-updater/**'
       - 'dsh-desktop/cmd/eduwork-extract/**'
       - 'scripts/pack-portable-extractor.ps1'
       - 'scripts/prepare-windows-portable-extractor.ps1'
@@ -32,9 +35,9 @@ jobs:
         working-directory: dsh-desktop
         shell: pwsh
         run: |
-          go test -v ./internal/portable
+          go test -v ./internal/portable ./internal/electronaccess ./internal/updater ./cmd/eduwork-updater
           if ($LASTEXITCODE) { throw 'Extractor tests failed' }
-          go vet ./internal/portable ./cmd/eduwork-extract
+          go vet ./internal/portable ./internal/electronaccess ./internal/updater ./cmd/eduwork-extract
           if ($LASTEXITCODE) { throw 'Extractor static checks failed' }
           go build -trimpath -o "$env:RUNNER_TEMP/eduwork-extract.exe" ./cmd/eduwork-extract
           if ($LASTEXITCODE) { throw 'Extractor build failed' }
