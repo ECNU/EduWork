@@ -22,6 +22,7 @@ import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop
 import { windowsStages } from './lib/windows-stages.mjs'
 import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
+import { desktopSourceIdentity } from './lib/build-source.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
@@ -94,6 +95,9 @@ export async function ciEduworkWindowsRelease({
     if (lock.version !== source.version) throw new Error('Institution/core source versions must agree')
   }
 
+  if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
+  const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
+
   const parameters = {
     kind: development ? 'eduwork-windows-development' : 'eduwork-windows-release',
     name,
@@ -109,6 +113,7 @@ export async function ciEduworkWindowsRelease({
     editionRoot,
     coreRoot,
     recipe,
+    sourceIdentity,
     automaticUpdates: !desktopVersion(version).prerelease,
     verifyPublisherBootstrap: sourcePlan?.verifyPublisherBootstrap ?? false,
   }
@@ -128,9 +133,10 @@ export async function ciEduworkWindowsRelease({
     sourceSnapshotVerified: verifySnapshot,
     sourceVersion: source.version,
     recipe,
+    sourceIdentity,
     automaticUpdates: !desktopVersion(version).prerelease,
-    coreCommit: (await capture('git', ['-C', coreRoot, 'rev-parse', 'HEAD'])).trim(),
-    editionCommit: (await capture('git', ['-C', editionRoot, 'rev-parse', 'HEAD'])).trim(),
+    coreCommit: sourceIdentity.core.commit,
+    editionCommit: sourceIdentity.edition.commit,
   }
   if (development) {
     receiptBase.publication = 'artifact-only'
@@ -143,7 +149,7 @@ export async function ciEduworkWindowsRelease({
   const common = { coreRoot, editionRoot, distributionConfig, version, verifySnapshot, runtimeSource, upstreamSource }
   const stages = [
     ...(recipe === 'pinned-source'
-      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource })
+      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource, verifySnapshot })
       : sharedDesktopStages(common)),
     ...windowsStages({ coreRoot, receiptBase, recipe }),
   ]

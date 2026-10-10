@@ -10,6 +10,7 @@ import {
   capture, copyFileTo, ensureDir, fullPath, isFile, isMacOS, isMainModule,
   pathExists, readJSON, run, sha256File, statEntry, writeJSON, writeText,
 } from '../../scripts/lib/build-util.mjs'
+import { desktopApplicationName } from '../../scripts/lib/local-install.mjs'
 import { relocateMacosCompositor } from './relocate-macos-compositor.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
@@ -102,7 +103,7 @@ export async function assembleMacos({
   if (!await isFile(nodeLicense)) throw new Error('Use the extracted official Node distribution, including LICENSE')
 
   const editionName = identity.distribution === 'eduwork' ? 'EduWork' : 'EduWork-ECNU'
-  const appName = identity.sourceAlpha ? `${editionName} Alpha.app` : `${editionName}.app`
+  const appName = desktopApplicationName({ edition: editionName, platform: 'darwin', sourceAlpha: identity.sourceAlpha })
   const app = join(output, appName)
   await mkdir(output)
   await ditto(electronApp, app).catch(() => { throw new Error('Electron.app copy failed') })
@@ -191,6 +192,7 @@ export async function assembleMacos({
     appId: `org.eduwork.${identity.distribution}.electron`,
     distribution: identity.distribution,
     productName: identity.brand.product.name,
+    applicationName: appName,
     productVersion: version,
     product: '../product',
     node: '../runtime/node',
@@ -281,6 +283,7 @@ export async function assembleMacos({
     dshCommit: identity.dshCommit,
     distribution: identity.distribution,
     productName: identity.brand.product.name,
+    applicationName: appName,
     platform: 'darwin-arm64',
     electronVersion,
     nodeVersion: receipt.host.nodeVersion,

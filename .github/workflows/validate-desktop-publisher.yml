@@ -3,10 +3,34 @@ on:
   pull_request:
     paths:
       - '.github/workflows/*desktop*.yml'
+      - '.github/workflows/validate-pinned-dsh-source.yml'
       - 'scripts/publish-desktop-candidate.mjs'
       - 'config/desktop-build.json'
       - 'scripts/desktop-build-plan.mjs'
       - 'scripts/lib/pinned-source-stages.mjs'
+      - 'scripts/lib/build-source.mjs'
+      - 'scripts/lib/local-install.mjs'
+      - 'scripts/lib/stage-runner.mjs'
+      - 'scripts/lib/build-util.mjs'
+      - 'scripts/lib/native-compile-cache.mjs'
+      - 'scripts/lib/preflight.mjs'
+      - 'scripts/local-desktop-pipeline.mjs'
+      - 'scripts/audit-eduwork-distribution.mjs'
+      - 'scripts/assemble-eduwork-web.mjs'
+      - 'scripts/prepare-macos-release-inputs.mjs'
+      - 'scripts/build-pipeline-diagram.mjs'
+      - 'docs/assets/build-pipeline*'
+      - 'tests/desktop-build-source.test.mjs'
+      - 'tests/build-script-entry.test.mjs'
+      - 'tests/local-desktop-install.test.mjs'
+      - 'tests/stage-runner.test.mjs'
+      - 'tests/parallel-sets.test.mjs'
+      - 'tests/download-cache.test.mjs'
+      - 'tests/native-compile-cache.test.mjs'
+      - 'tests/preflight.test.mjs'
+      - 'tests/macos-native-inputs.test.mjs'
+      - 'tests/edition-skill-replacement.test.mjs'
+      - 'tests/build-pipeline-diagram.test.mjs'
       - 'scripts/lib/windows-stages.mjs'
       - 'scripts/lib/macos-stages.mjs'
       - 'scripts/ci-eduwork-windows-release.mjs'
@@ -24,6 +48,31 @@ on:
 permissions:
   contents: read
 jobs:
+  source-integration:
+    if: github.event_name == 'workflow_dispatch'
+    uses: ./.github/workflows/validate-pinned-dsh-source.yml
+  build-contracts:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Verify source checkpoints, installation and build contracts
+        shell: bash
+        run: >-
+          node --test tests/desktop-build-source.test.mjs tests/local-desktop-install.test.mjs tests/build-script-entry.test.mjs
+          tests/stage-runner.test.mjs tests/parallel-sets.test.mjs tests/download-cache.test.mjs
+          tests/edition-skill-replacement.test.mjs tests/build-pipeline-diagram.test.mjs
+      - name: Verify macOS compile cache and native input installation
+        if: runner.os == 'macOS'
+        run: node --test tests/native-compile-cache.test.mjs tests/macos-native-inputs.test.mjs tests/preflight.test.mjs
   publication:
     runs-on: ubuntu-latest
     steps:

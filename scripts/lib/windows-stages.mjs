@@ -324,7 +324,7 @@ async function acceptWindows({ workspace, coreRoot }) {
   if (recipe === 'pinned-source') {
     await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozenProduct])
     checks.mediaTemplate = 'passed'
-    checks.sourceSnapshot = 'passed'
+    checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
   }
   if (verifyPublisherBootstrap) {
     const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))

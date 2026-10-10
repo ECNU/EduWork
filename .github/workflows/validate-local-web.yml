@@ -54,7 +54,9 @@ jobs:
       - name: Build and verify the generic local Runtime
         if: steps.changes.outputs.build == 'true'
         shell: pwsh
-        run: ./core/scripts/ci-eduwork-web.ps1 -CoreRoot ./core -EditionRoot ./core -DistributionConfig config/distributions/generic.json -BuildOnly
+        run: |
+          node core/scripts/ci-eduwork-web.mjs --core-root ./core --edition-root ./core --distribution-config config/distributions/generic.json --verify-snapshot --build-only
+          if ($LASTEXITCODE) { throw 'Node Web assembly failed' }
       - name: Retain local Web validation evidence
         if: always() && steps.changes.outputs.build == 'true'
         uses: actions/upload-artifact@v4

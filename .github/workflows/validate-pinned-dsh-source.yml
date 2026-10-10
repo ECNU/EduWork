@@ -42,6 +42,7 @@ on:
       - 'dsh-plugins/**'
       - 'packages/**'
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:

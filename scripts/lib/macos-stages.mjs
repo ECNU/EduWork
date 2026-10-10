@@ -136,7 +136,7 @@ export function macosStages({
         await copyFileTo(archive, join(publish, basename(archive)))
         await copyFileTo(`${archive}.sha256`, join(publish, `${basename(archive)}.sha256`))
         const identity = await readJSON(workspace.resolvePath('product/assembly.json'))
-        const appName = identity.sourceAlpha ? `${name} Alpha.app` : `${name}.app`
+        const appName = receipt.applicationName
         const installer = await prepareMacosDmg({
           app: join(workspace.resolvePath('unpacked'), appName),
           output: join(publish, `${name}-${version}-macos-arm64-electron.dmg`),
@@ -156,6 +156,7 @@ export function macosStages({
           ...receiptBase,
           checks: { sourceAndDependencies: 'passed', ...checks, macosDmg: 'passed' },
           softwareAutoUpdate: receipt.sparkleEnabled,
+          applicationName: receipt.applicationName,
           bundleVersion: receipt.bundleVersion,
           asset: receipt.asset,
           installer,
@@ -185,8 +186,7 @@ async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap
   await rm(unpacked, { recursive: true, force: true })
   await ensureDir(unpacked)
   await run('ditto', ['-x', '-k', archive, unpacked])
-  const identity = await readJSON(workspace.resolvePath('product/assembly.json'))
-  const app = join(unpacked, identity.sourceAlpha ? `${name} Alpha.app` : `${name}.app`)
+  const app = join(unpacked, pack.applicationName)
   await run('codesign', ['--verify', '--deep', '--strict', app])
   const frozen = join(app, 'Contents/Resources/product')
   await run(join(app, 'Contents/Resources/runtime/node'), [
@@ -295,7 +295,7 @@ async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap
   if (workspace.parameters.recipe === 'pinned-source') {
     await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozen])
     checks.mediaTemplate = 'passed'
-    checks.sourceSnapshot = 'passed'
+    checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
   }
   if (name === 'EduWork') {
     if (!await isFile(config) || !await isFile(join(gui, 'examples/organization.jsonc'))) {

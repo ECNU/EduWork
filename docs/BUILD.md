@@ -27,6 +27,8 @@ node scripts/local-desktop-pipeline.mjs
 
 入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定构建工作区。Linux 当前只做 Web 验证。
 
+macOS 开发包安装为 `EduWork Alpha.app`（机构版为 `EduWork-ECNU Alpha.app`），与归档中的应用名称一致，已有安装不会被覆盖。开发时可使用 `--no-verify-snapshot` 构建未提交工作树；该选项仅跳过冻结 receipt 的一致性校验，源码与私有配置审计仍会执行，回执记录快照校验未执行。正式候选要求已校验的源码快照。
+
 如需只生成某个平台的开发包，在对应系统上运行：
 
 ```sh
@@ -51,6 +53,8 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 桌面开发包与发布候选默认使用同一 DSH `0.2.0-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 npm 配方仅能显式通过 `--recipe npm` 调用。
 
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
+
+工作区同时绑定公版与机构版的实际源码文件哈希、receipt 哈希及 Git 提交；任一输入变化后须选择新的工作区。`dist`、`node_modules` 等生成目录使用源码审计的统一排除规则，不影响复用；旧版未记录源码身份的 checkpoint 也须更换工作区。
 
 ## Web 构建
 

@@ -7,7 +7,7 @@ import { desktopBuildPlan } from '../desktop-build-plan.mjs'
 import { capture, ensureDir, readJSON, run, runBundledCli, runNode, sha256File, writeText } from './build-util.mjs'
 import { stage } from './stage-runner.mjs'
 
-export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource = '' }) {
+export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource = '', verifySnapshot = true }) {
   const plan = () => desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false })
   const stages = [
     stage({
@@ -17,11 +17,14 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
       inputs: async () => ({
         core: await sha256File(join(coreRoot, 'source-receipt.json')),
         edition: coreRoot === editionRoot ? '' : await sha256File(join(editionRoot, 'core.lock.json')),
+        verifySnapshot,
       }),
       run: async workspace => {
         const output = workspace.resolvePath('source-audit')
         await ensureDir(output)
-        const report = await capture(process.execPath, [join(coreRoot, 'scripts/audit-eduwork-distribution.mjs'), coreRoot, '--verify-receipt'])
+        const args = [join(coreRoot, 'scripts/audit-eduwork-distribution.mjs'), '--root', coreRoot]
+        if (verifySnapshot) args.push('--verify-receipt')
+        const report = await capture(process.execPath, args)
         await writeText(join(output, 'core.json'), report)
         await runNode(join(coreRoot, 'scripts/check-source-docs.mjs'), [coreRoot])
         if (coreRoot !== editionRoot) {

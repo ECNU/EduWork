@@ -18,6 +18,7 @@ import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop
 import { macosStages } from './lib/macos-stages.mjs'
 import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
+import { desktopSourceIdentity } from './lib/build-source.mjs'
 
 export async function ciEduworkMacosRelease({
   coreRoot,
@@ -79,6 +80,9 @@ export async function ciEduworkMacosRelease({
     notesSHA256 = await sha256Text(text)
   }
 
+  if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
+  const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
+
   const parameters = {
     kind: 'eduwork-macos-release',
     version,
@@ -94,6 +98,7 @@ export async function ciEduworkMacosRelease({
     editionRoot,
     coreRoot,
     recipe,
+    sourceIdentity,
     automaticUpdates: !desktopVersion(version).prerelease,
   }
 
@@ -114,9 +119,10 @@ export async function ciEduworkMacosRelease({
     softwareAutoUpdate: false,
     sourceSnapshotVerified: verifySnapshot,
     recipe,
+    sourceIdentity,
     automaticUpdates: !desktopVersion(version).prerelease,
-    coreCommit: (await capture('git', ['-C', coreRoot, 'rev-parse', 'HEAD'])).trim(),
-    editionCommit: (await capture('git', ['-C', editionRoot, 'rev-parse', 'HEAD'])).trim(),
+    coreCommit: sourceIdentity.core.commit,
+    editionCommit: sourceIdentity.edition.commit,
   }
   if (!development && releaseNotesFile) {
     receiptBase.releaseNotes = { approved: true, file: releaseNotesFile, sha256: notesSHA256 }
@@ -125,7 +131,7 @@ export async function ciEduworkMacosRelease({
   const common = { coreRoot, editionRoot, distributionConfig, version, verifySnapshot, runtimeSource, upstreamSource }
   const stages = [
     ...(recipe === 'pinned-source'
-      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource })
+      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource, verifySnapshot })
       : sharedDesktopStages(common)),
     ...macosStages({ coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase, recipe }),
   ]

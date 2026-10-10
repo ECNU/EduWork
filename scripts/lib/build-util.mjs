@@ -334,7 +334,13 @@ export async function runBundledCli(name, args = [], options = {}) {
 }
 
 export function isMainModule(importMetaUrl) {
-  return Boolean(process.argv[1]) && importMetaUrl === pathToFileURL(resolve(process.argv[1])).href
+  if (!process.argv[1]) return false
+  try {
+    return importMetaUrl === pathToFileURL(realpathSync(process.argv[1])).href
+  } catch (error) {
+    if (error.code === 'ENOENT') return false
+    throw error
+  }
 }
 
 export async function fail(message) {
