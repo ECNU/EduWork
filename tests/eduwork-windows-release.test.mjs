@@ -44,8 +44,13 @@ test('approved development releases publish only to the development channel and 
  assert.deepEqual(releasePublication('EduWork',version),{name:`EduWork ${version}`,prerelease:true,make_latest:'false'})
  assert.equal(releasePublication('EduWork','0.3.6').prerelease,false)
  assert.equal(releasePublication('EduWork','0.3.6').make_latest,'true')
+ for (const candidate of ['0.3.6-alpha.1', '0.3.6-beta.2', '0.3.6-rc.1']) {
+  const prerelease = {...row, version: candidate, asset: {...row.asset, name: `EduWork-${candidate}-windows-x64-electron.zip`}}
+  assert.equal(githubUpdateManifest(prerelease, context.repository).channel, 'development')
+  assert.equal(releasePublication('EduWork', candidate).prerelease, true)
+ }
  assert.throws(()=>githubUpdateManifest({...row,kind:'eduwork-windows-development'},context.repository))
- for(const invalid of ['0.3.6-dev.1','0.3.6-rc.1','0.3.6-dev.20260914.0','0.3.6-dev.20260914.03','00.3.6'])assert.throws(()=>releasePublication('EduWork',invalid))
+ for(const invalid of ['0.3.6-dev.1','0.3.6-rc.0','0.3.6-dev.20260914.0','0.3.6-dev.20260914.03','00.3.6'])assert.throws(()=>releasePublication('EduWork',invalid))
 })
 test('release publisher requires approved notes and rejects a Go artifact',()=>{
   for(const row of [{...receipt,releaseNotes:undefined},{...receipt,releaseNotes:{approved:false,sha256:'c'.repeat(64)}},{...receipt,releaseNotes:{approved:true,sha256:''}},{...receipt,shell:'wails'}]) assert.throws(()=>validateReceipt(row,context))

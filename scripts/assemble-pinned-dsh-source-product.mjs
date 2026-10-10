@@ -72,7 +72,7 @@ const composition = [...distribution.patches, ...exclusions, { insert }]
 // stable settings namespace as the native entry identity.
 const memoryBundle = join(modules, '@eduwork/dsh-memory/cordis.patch.yml')
 await writeFile(memoryBundle, (await readFile(memoryBundle, 'utf8')).replace('id: local-memory\n', 'id: memories\n').replace('id: local-memory\r\n', 'id: memories\n'))
-const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.core.17', distribution: distribution.id,
+const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'source-qualification', published: false,
   bundles: ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature'],

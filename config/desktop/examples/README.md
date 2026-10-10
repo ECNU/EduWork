@@ -57,7 +57,7 @@ Windows 更新设置可选择“公测版”或“开发版（含公测版）”
 
 配置不是秘密存储。不要写密码、API Key、client_secret 或登录令牌；个人 Key 在模型设置中输入，登录 Token 由共享 Host 保存在本机受保护存储，并按机构隔离、自动刷新。
 
-只在 CI 包中加入机构配置时，使用[配置装配指南](https://github.com/ECNU/EduWork/blob/main/docs/BUILD.md#从-ci-原包装配机构配置)。支持继承随包默认值、GitHub、静态 HTTPS 源或关闭更新。
+机构发行可按[首次启动获取机构配置](https://github.com/ECNU/EduWork/blob/main/docs/PUBLISHER_BOOTSTRAP.md)接入签名配置，无需修改 CI 桌面包。软件更新源可继承随包默认值，也可使用 GitHub、静态 HTTPS 源或关闭更新。
 
 发行方可随包提供企业模型能力修正，在启动时同步匹配的企业目录。它不改配置文件原文、个人 Provider 或默认模型选择；使用 `modelSource: "discovery"` 的目录仍由服务器提供。公版没有内置任何学校的修正规则。
 

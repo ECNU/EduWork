@@ -23,7 +23,7 @@ export function portableUpdateEdition({configuration={},version,prior=null,distr
  }
  edition.distribution=distribution
  // A feed URL selects the server, not the user's release preference.
- edition.defaultPolicy=configuration.defaultPolicy??(/-dev\./.test(version)?'development':'stable')
+ edition.defaultPolicy=configuration.defaultPolicy??((version??'').includes('-')?'development':'stable')
  if(!['stable','development'].includes(edition.defaultPolicy))throw Error('更新默认渠道必须为 stable 或 development')
  return edition
 }
