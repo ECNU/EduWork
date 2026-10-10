@@ -53,7 +53,7 @@ Signed configuration updates may deliver these defaults through `features`, pres
 
 The Windows public edition defaults to GitHub updates. Use `provider: "github"` with `repository: "ecnu/EduWork"`, or configure a static HTTPS `manifestURL` to override the default. `provider: "disabled"` disables online updates. GitHub uses anonymous requests for published public releases; the development channel also accepts matching prereleases. Do not supply a Token or use a Release HTML page as a static manifest.
 
-For a configuration-only overlay of a CI archive, see the [build guide](https://github.com/ECNU/EduWork/blob/main/docs/BUILD.md#从-ci-原包装配机构配置). The overlay supports inherited defaults, GitHub, static HTTPS and disabled updates.
+Institution distributions can [fetch signed configuration on first launch](https://github.com/ECNU/EduWork/blob/main/docs/PUBLISHER_BOOTSTRAP_EN.md) without modifying the CI desktop archive. Software updates can inherit bundled defaults, use GitHub or static HTTPS, or be disabled.
 
 ## Identity and models
 

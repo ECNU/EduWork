@@ -6,6 +6,16 @@ on:
         description: 'Product SemVer, for example 0.4.0-alpha.1 or 0.4.0'
         required: true
         type: string
+      build_mode:
+        description: 'Build with Node.js or PowerShell'
+        required: true
+        default: node
+        type: choice
+        options: [node, ps1]
+      development:
+        description: 'Build a development artifact without release notes or publication (Node only)'
+        type: boolean
+        default: false
       release_notes:
         description: 'Approved docs/releases/<version>.md file (release candidate only)'
         required: false
@@ -32,13 +42,56 @@ concurrency:
   group: desktop-candidate-${{ github.sha }}-${{ inputs.platform || 'both' }}
   cancel-in-progress: false
 jobs:
+  policy:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.validate.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - name: Validate requested build and publication
+        id: validate
+        shell: bash
+        env:
+          BUILD_MODE: ${{ inputs.build_mode }}
+          DEVELOPMENT_BUILD: ${{ inputs.development }}
+          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+          SELECTED_PLATFORMS: ${{ inputs.platform }}
+        run: |
+          RELEASE_VERSION="${RELEASE_VERSION#"${RELEASE_VERSION%%[![:space:]]*}"}"
+          RELEASE_VERSION="${RELEASE_VERSION%"${RELEASE_VERSION##*[![:space:]]}"}"
+          if [[ "$DEVELOPMENT_BUILD" == true ]]; then
+            [[ "$BUILD_MODE" == node ]]
+            [[ "$PUBLISH_RELEASE" != true ]]
+            [[ "$RELEASE_VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]] || { echo '::error::Development version must use X.Y.Z-dev.YYYYMMDD.N'; exit 1; }
+            [[ -z "$RELEASE_NOTES" ]]
+            [[ "$RELEASE_NOTES_APPROVED" != true ]]
+          elif [[ "$BUILD_MODE" == node ]]; then
+            node core/scripts/desktop-build-plan.mjs --core ./core --edition ./core --version "$RELEASE_VERSION" >/dev/null
+            [[ "$RELEASE_NOTES_APPROVED" == true ]]
+            [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
+            [[ -s "core/$RELEASE_NOTES" ]]
+          fi
+          if [[ "$PUBLISH_RELEASE" == true ]]; then
+            [[ "$GITHUB_REF" == refs/heads/main ]]
+            [[ "$SELECTED_PLATFORMS" == both ]]
+            [[ "$RELEASE_NOTES_APPROVED" == true ]]
+            [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
+            [[ -s "core/$RELEASE_NOTES" ]]
+          fi
+          echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
   build:
-    # Manual, read-only candidate builds may validate a maintainer-selected branch before merge.
-    if: github.event_name == 'workflow_dispatch'
+    name: Build (${{ matrix.platform }})
+    needs: policy
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"runner":"windows-latest","platform":"windows"}]' || inputs.platform == 'macos' && '[{"runner":"macos-15","platform":"macos"}]' || '[{"runner":"windows-latest","platform":"windows"},{"runner":"macos-15","platform":"macos"}]') }}
+        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"runner":"windows-latest","platform":"windows"}]' || inputs.platform == 'macos' && '[{"runner":"macos-latest","platform":"macos"}]' || '[{"runner":"windows-latest","platform":"windows"},{"runner":"macos-latest","platform":"macos"}]') }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -52,15 +105,43 @@ jobs:
         with:
           go-version: '1.26.6'
           cache: false
+      - uses: actions/setup-python@v5
+        if: matrix.platform == 'macos'
+        with:
+          python-version: '3.11'
       - name: Build and validate the exact desktop archive
+        if: inputs.build_mode == 'ps1'
         shell: pwsh
         env:
-          RELEASE_VERSION: ${{ inputs.version }}
+          RELEASE_VERSION: ${{ needs.policy.outputs.version }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           PUBLISH_RELEASE: ${{ inputs.publish }}
           SELECTED_PLATFORMS: ${{ inputs.platform }}
         run: ./core/scripts/build-desktop-candidate.ps1 -CoreRoot ./core -EditionRoot ./core -Version $env:RELEASE_VERSION -Output "$env:RUNNER_TEMP/ew-candidate"
+      - name: Build and validate the Node stage desktop archive
+        if: inputs.build_mode == 'node'
+        shell: bash
+        env:
+          DEVELOPMENT_BUILD: ${{ inputs.development }}
+          RELEASE_VERSION: ${{ needs.policy.outputs.version }}
+          RELEASE_NOTES: ${{ inputs.release_notes }}
+          RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
+          PUBLISH_RELEASE: ${{ inputs.publish }}
+          SELECTED_PLATFORMS: ${{ inputs.platform }}
+        run: |
+          args=(--core-root ./core --edition-root ./core
+            --distribution-config config/distributions/generic.json
+            --recipe pinned-source
+            --version "$RELEASE_VERSION"
+            --output "$RUNNER_TEMP/ew-candidate")
+          if [[ "$DEVELOPMENT_BUILD" == true ]]; then
+            args+=(--development)
+          else
+            args+=(--release-notes-file "$RELEASE_NOTES")
+            if [[ "$RELEASE_NOTES_APPROVED" == true ]]; then args+=(--release-notes-approved); fi
+          fi
+          node core/scripts/ci-eduwork-${{ matrix.platform }}-release.mjs "${args[@]}"
       - name: Retain validation reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -78,7 +159,7 @@ jobs:
           retention-days: 3
           if-no-files-found: error
   publish:
-    needs: build
+    needs: [policy, build]
     if: inputs.publish
     permissions:
       actions: read
@@ -86,7 +167,8 @@ jobs:
     uses: ./.github/workflows/publish-desktop-candidate.yml
     with:
       source_run_id: '${{ github.run_id }}'
-      version: ${{ inputs.version }}
+      version: ${{ needs.policy.outputs.version }}
+      build_mode: ${{ inputs.build_mode }}
       release_notes: ${{ inputs.release_notes }}
       notes_approved: ${{ inputs.notes_approved }}
       publish: true

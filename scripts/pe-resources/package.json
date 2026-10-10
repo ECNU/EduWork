@@ -1,0 +1,8 @@
+{
+  "name": "eduwork-pe-build-resources",
+  "private": true,
+  "version": "1.0.0",
+  "dependencies": {
+    "resedit": "3.1.0"
+  }
+}
