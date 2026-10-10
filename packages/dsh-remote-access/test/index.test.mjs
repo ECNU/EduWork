@@ -7,6 +7,9 @@
 // shaped like the settings service the host actually injects — `register`,
 // `get`, `update` and `describe` — rather than like the internals.
 import assert from 'node:assert/strict'
+import { mkdtempSync, rmSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import test from 'node:test'
 
 import {
@@ -19,6 +22,7 @@ import {
   inject,
   name,
 } from '../src/index.js'
+import { DeviceStore } from '../src/listener.js'
 
 /**
  * A stand-in for the host's settings service.
@@ -259,3 +263,50 @@ test('the schema defaults the flag off and rejects a malformed device list', () 
   assert.deepEqual(parsed.devices, [{ deviceId: 'dev-1' }])
   assert.throws(() => SettingsSchema({ devices: 'nope' }))
 })
+
+test('the two device tables do not see each other, and this records that', () => {
+  // The package ships two places a device can be recorded, and until this test
+  // nothing said so out loud.
+  //
+  // `DeviceRegistry` (here) is the product-facing service: it lives in the host's
+  // settings and holds devices only. `DeviceStore` (../src/listener.js) is what the
+  // relay actually consults: one file holding devices, credentials and invitations
+  // together, so a revocation cannot leave the first two disagreeing. It cannot use
+  // settings, because the relay runs standalone with no Cordis host to inject one.
+  //
+  // Neither is wrong on its own. What is wrong is assuming they are the same table.
+  // A device confirmed through one is unknown to the other, and a product that wires
+  // up both has to keep them in step — which nothing here does. That obligation is
+  // real, undocumented before now, and belongs to whoever assembles the plugin into
+  // the product rather than to either store.
+  //
+  // This test pins the separation rather than the wiring on purpose. If someone
+  // later unifies them, this failing is the intended signal that the documentation
+  // and the integration contract need to change with it.
+  // A real temporary directory, cleaned up at the end: the store writes a file, and
+  // leaving one behind in the repository on every test run would be its own defect.
+  const scratch = mkdtempSync(join(tmpdir(), 'dsh-remote-access-'))
+  try {
+    verifySeparateTables(scratch)
+  } finally {
+    rmSync(scratch, { recursive: true, force: true })
+  }
+})
+
+function verifySeparateTables(scratchDirectory) {
+  const store = new DeviceStore(join(scratchDirectory, 'devices.json'))
+  const host = stubHost({ enabled: true })
+  const registry = new DeviceRegistry({ ctx: host.ctx })
+
+  const invitation = store.invite()
+  store.redeem(invitation.code, '手机')
+  const [device] = store.devices()
+  store.confirm(device.deviceId)
+
+  assert.equal(store.device(device.deviceId).status, DEVICE_STATUS.TRUSTED)
+  assert.deepEqual(registry.list(), [], 'a device trusted by the relay is not in the settings registry')
+  assert.deepEqual(store.devices().length, 1)
+
+  registry.upsert({ deviceId: 'dev-from-settings', name: '笔记本', publicKey: 'k' })
+  assert.equal(store.device('dev-from-settings'), undefined, 'and the other way round')
+}

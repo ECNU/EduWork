@@ -108,6 +108,20 @@ can disagree with the host.
 **`./gate` is input for the next stage.** Its table is complete and tested, and it is
 what a host-side fence should use. In this stage it is not a security boundary.
 
+**The package carries two places a device can be recorded, and they cannot see each
+other.** `DeviceRegistry` in `./` (`src/index.js`) is the product-facing one: it lives
+in the host's settings and holds **devices only**. `DeviceStore` in `./listener` is the
+one the relay actually consults: a single file holding **devices, credentials and
+invitations together**, so that one revocation cannot leave the first two disagreeing.
+The relay cannot use settings — it runs standalone, with no Cordis host to inject one.
+
+Neither is wrong on its own; what is wrong is treating them as the same table. **A
+device confirmed through one is unknown to the other**, and nothing in this package
+keeps them in step. That obligation belongs to whoever assembles the package into the
+product, not to either store. A test in `test/index.test.mjs` pins the separation: if
+someone later merges them, that test failing is the intended reminder that this
+documentation and the integration contract have to change with it.
+
 ## Status
 
 | Part | State |
