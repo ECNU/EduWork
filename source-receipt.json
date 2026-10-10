@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-10T12:18:00.131Z",
-  "fileSetSHA256": "acc953eec3ccb84d8011f95e5ec90fa31bf4e0b1f1f1a4a09b69fab45cf29f67",
+  "fileSetSHA256": "25cb95e6524ac89129f7d9bc4bb25f9effe353a8842eafb5cf033fffadd9bd2b",
   "files": [
     {
       "path": ".gitattributes",
@@ -5169,11 +5169,11 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
-      "sha256": "5577252103532f5e4d73a8e8bbba77792bb9d8d9764f82c42da089bfe1f4528f"
+      "sha256": "010bcc6aa378adc9f93eff86c7545d4b4af39764fb65d93b39ded2fd8d10aa9e"
     },
     {
       "path": "scripts/ci-pinned-dsh-desktop.ps1",
-      "sha256": "aace3cee93fa1e65a78c67f16b7842cbc46f122754617386650927f3cad5bc1d"
+      "sha256": "0952ffe55c29b531280de8f61ba1a7fc1469dc27320fff6fd4f325f4fa1faccc"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -5305,7 +5305,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "d54afc7c9cb82e4df0ac86eb19571288f6017115a9b04b842eb28b47739278f8"
+      "sha256": "ca10a3e3f5cdd0f4509abf5c633c02abded381adcbb903e29abf4f0076e7de97"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -5721,7 +5721,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "83cf53a36a4fa58a6d5592153fca42e0ac78af910c5af5934fb482a19235d771"
+      "sha256": "babfc9dd028ba7faf0fbd960b68bc7db7a333fa920e13d37f5f7dfef0d268f30"
     },
     {
       "path": "tests/fixtures/audit-stack-probe.mjs",
