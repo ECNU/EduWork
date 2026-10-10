@@ -17,7 +17,7 @@ async function fixture(t, platform = 'win32') {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-bootstrap-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   const paths = desktopPaths({ appRoot: join(root, platform === 'darwin' ? 'EduWork.app/Contents/Resources/app' : 'application/resources/app'),
-    platform, userHome: join(root, 'user'), appData: join(root, 'Application Support'), settings: { distribution: 'example', productVersion: version,
+    platform, appData: join(root, 'Application Support'), settings: { distribution: 'example', productVersion: version,
       configurationOwnership: 'publisher', ...(platform === 'darwin' ? { publisherConfig: '../product/resources/desktop/eduwork.jsonc' } : {}), product: '../product', node: '../runtime/node' } })
   const keys = generateKeyPairSync('ed25519')
   const source = { publisher: 'example', baseURL: 'https://updates.example.test/content', publicKey: keys.publicKey.export({ type: 'spki', format: 'pem' }), configuration: true, skills: false }

@@ -2,16 +2,14 @@
 
 [English](CONFIGURATION_EN.md) · [配置示例](../config/desktop/examples/README.md) · [配置与 Skills 更新](CONTENT_UPDATES.md)
 
-公版和机构版 Electron 都只读取一份生效配置：`~/.config/eduwork/eduwork.jsonc`。可以从设置中的“打开配置文件”打开它；编辑保存后，从托盘退出程序再启动。文件里的机构、模型、功能开关和媒体服务就是客户端使用的配置，不再叠加另一份隐藏的学校配置。
+公版和机构版 Electron 都只读取一份生效配置：`config/eduwork.jsonc`。可以从设置中的“打开配置文件”打开它；编辑保存后，从托盘退出程序再启动。文件里的机构、模型、功能开关和媒体服务就是客户端使用的配置，不再叠加另一份隐藏的学校配置。
 
 | 平台 | 生效配置 | 唯一回退备份 |
 | --- | --- | --- |
-| Windows 绿色版 | `%USERPROFILE%/.config/<distribution>/eduwork.jsonc` | 同目录下 `data/configuration/eduwork.previous.jsonc` |
-| macOS | `~/.config/<distribution>/eduwork.jsonc` | 同目录下 `data/configuration/eduwork.previous.jsonc` |
+| Windows 绿色版 | `<程序目录>/config/eduwork.jsonc` | `<程序目录>/data/configuration/eduwork.previous.jsonc` |
+| macOS | `~/Library/Application Support/<distribution>-electron/config/eduwork.jsonc` | 同目录根下 `data/configuration/eduwork.previous.jsonc` |
 
-`distribution` 是发行标识，例如公版为 `eduwork`。两平台的会话、附件、Profile、浏览器凭据和更新状态也存放在同一用户目录，独立于安装位置。首次启动会复制并校验旧目录，保留旧副本；新目录已存在时优先使用新目录，不自动合并。Mac Alpha 使用 `<distribution>-alpha`，正式版目录不存在时可沿用已有 Alpha 目录。密码、API Key 和登录令牌仍由凭据存储管理，不写入 JSONC。
-
-这里只调整用户需要编辑的生效配置路径。发行清单、构建锁、桌面启动配置和随包默认配置仍由构建维护，不需要用户修改；安装包中的配置是初始化模板，以设置中打开的文件为准。
+`distribution` 是发行标识，例如公版为 `eduwork`。Mac 配置和用户数据不写入 `.app`。密码、API Key 和登录令牌仍由凭据存储管理，不写入 JSONC。
 
 ## 在配置文件中查阅选项
 

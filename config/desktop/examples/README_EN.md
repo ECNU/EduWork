@@ -36,10 +36,10 @@ For a gateway on local port 4000, use `http://127.0.0.1:4000/.well-known/litellm
 
 | Platform | Active public-edition configuration |
 | --- | --- |
-| Windows | `%USERPROFILE%/.config/eduwork/eduwork.jsonc` |
-| macOS | `~/.config/eduwork/eduwork.jsonc` |
+| Windows | `<application directory>/config/eduwork.jsonc` |
+| macOS | `~/Library/Application Support/eduwork-electron/config/eduwork.jsonc` |
 
-The `examples/` folder is beside the active file. On both platforms, first launch copies examples into the user configuration directory; do not edit files inside `.app`. If models are missing, check account/team permissions. A working web login alone does not mean CLI OAuth is enabled.
+The `examples/` folder is beside the active file. On macOS, first launch copies examples into the user configuration directory; do not edit files inside `.app`. If models are missing, check account/team permissions. A working web login alone does not mean CLI OAuth is enabled.
 
 ## Other settings
 

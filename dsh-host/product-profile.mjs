@@ -86,6 +86,16 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const profile = await canonical(join(home, 'profiles', native ? 'desktop-native' : 'desktop'))
   const target = await canonical(join(product, 'd', 'node_modules'))
   if (!inside(home, profile) || !inside(product, target)) throw new Error('Desktop profile or modules link escapes its owned directory')
+  if (native && !await lstat(profile).catch(error => { if (error.code === 'ENOENT') return null; throw error })) {
+    const legacy = join(home, 'profiles', 'desktop-017')
+    const entry = await lstat(legacy).catch(error => { if (error.code === 'ENOENT') return null; throw error })
+    if (entry) {
+      if (!entry.isDirectory() || entry.isSymbolicLink() || !inside(home, await canonical(legacy))) throw new Error('Legacy desktop profile must be an owned directory')
+      // Desktop startup holds its single-instance lock before preparing the profile.
+      // Rename the complete profile so preferences, dependencies and journals stay together.
+      await rename(legacy, profile)
+    }
+  }
   const link = join(profile, 'node_modules')
   const receiptFile = join(profile, '.eduwork-module-link.json')
   const pendingFile = join(profile, '.eduwork-module-link.pending.json')

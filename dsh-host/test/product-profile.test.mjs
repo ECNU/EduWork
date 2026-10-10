@@ -48,16 +48,36 @@ test('rc.1 reads independent request and subagent defaults below saved UI choice
   const presets = join(product, 'd/node_modules/@deepseek-ai/dsh-web-app/presets')
   await mkdir(presets, { recursive: true })
   for (const id of ['standard', 'ptc', 'minimal', 'cordis']) await writeFile(join(presets, id+'.patch.yml'), JSON.stringify([{ insert: [{ id: 'preset-'+id, config: { plugins: [] } }] }]))
+  const legacy = join(home, 'profiles/desktop-017')
+  await mkdir(legacy, { recursive: true })
+  await writeFile(join(legacy, 'migration-marker.txt'), 'existing native profile')
+  const savedPreferences = [{ id: 'custom-user-entry', disabled: true, config: { value: 'preserved' } }]
+  await writeFile(join(legacy, 'cordis.patch.yml'), JSON.stringify(savedPreferences))
+  await writeFile(join(legacy, 'package.json'), JSON.stringify({ dependencies: { 'custom-user-plugin': '1.2.3' } }))
+  const rollback = join(home, 'profiles/desktop')
+  await mkdir(rollback, { recursive: true })
+  await writeFile(join(rollback, 'migration-marker.txt'), 'legacy runtime profile')
   const userConfig = join(root, 'eduwork.jsonc')
   const options = { product, home, shell: 'electron', userConfig }
   const configure = async features => {
     await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, features }))
     const { profile } = await prepareProductProfile(options)
     assert.equal(profile, join(await realpath(home), 'profiles/desktop-native'))
+    assert.equal(await readFile(join(profile, 'migration-marker.txt'), 'utf8'), 'existing native profile')
+    await assert.rejects(lstat(legacy), { code: 'ENOENT' })
+    assert.equal(await readFile(join(rollback, 'migration-marker.txt'), 'utf8'), 'legacy runtime profile')
     const patches = JSON.parse(await readFile(join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml')))
     return { profile, subagent: patches.find(row => row.id === 'subagent').config, requests: patches.find(row => row.id === 'eduwork-concurrency').config }
   }
   let current = await configure({})
+  assert.deepEqual(JSON.parse(await readFile(join(current.profile, 'cordis.patch.yml'))), savedPreferences)
+  assert.deepEqual(JSON.parse(await readFile(join(current.profile, 'package.json'))).dependencies, { 'custom-user-plugin': '1.2.3' })
+  // If both names exist, the normalized profile wins without merging the old one.
+  await mkdir(legacy)
+  await writeFile(join(legacy, 'migration-marker.txt'), 'other old profile')
+  await prepareProductProfile(options)
+  assert.equal(await readFile(join(legacy, 'migration-marker.txt'), 'utf8'), 'other old profile')
+  await rm(legacy, { recursive: true })
   assert.deepEqual(current.subagent, { maxActiveSubagents: 2 })
   assert.deepEqual(current.requests, { maxConcurrentRequests: 3 })
   current = await configure({ maxActiveSubagents: 4, maxConcurrentRequests: 6 })

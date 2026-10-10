@@ -19,7 +19,7 @@ import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, na
   trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop } from './product.mjs'
 
-await configureEduworkPaths()
+configureEduworkPaths()
 protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: {
   standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true,
 } }])

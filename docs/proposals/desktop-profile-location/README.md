@@ -2,6 +2,6 @@
 
 **简体中文** | [English](README_EN.md)
 
-状态：已实现。macOS、Windows 的配置与全部用户数据统一到主目录下的 `.config/<distribution>/`，公版为 `.config/eduwork/`。原生 Profile 使用不含版本号的 `dsh/profiles/desktop-native`；首次启动复制校验旧数据并保留旧副本，新目录已存在时不自动合并。
+原生 DSH Profile 的内部名称已从 `desktop-017` 规范为 `desktop-native`，不再绑定 Runtime 版本。启动时若新目录不存在而旧目录存在，则在取得客户端单实例锁后整体改名，保留用户偏好、依赖和写入事务日志；新旧目录同时存在时使用新目录，不自动合并。旧 Runtime 的 `profiles/desktop` 保持独立。
 
-路径、迁移与回退边界见[设计说明](../../dev/desktop-user-directory.md)；生效配置见[配置指南](../../CONFIGURATION.md)。两平台真实凭据、重启与更新安装仍需原生验收。
+本次仅调整内部 Profile 名称。`DSH_HOME`、用户配置文件、会话、附件、浏览器数据和更新状态继续使用原路径，现有导入逻辑不变。实现边界见[设计说明](../../dev/native-profile-name.md)。

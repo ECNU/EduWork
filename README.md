@@ -184,7 +184,7 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 <details>
 <summary>使用学校或企业提供的配置</summary>
 
-1. 在设置中点击 **打开配置文件**，编辑当前生效的 `eduwork.jsonc`。Windows 和 macOS 均位于用户主目录下的 `.config/<distribution>/`，公版为 `.config/eduwork/`；升级会迁入旧配置，以设置中打开的位置为准。
+1. 在设置中点击 **打开配置文件**，编辑当前生效的 `eduwork.jsonc`。Windows 位于程序目录的 `config/`；macOS 位于 `~/Library/Application Support/` 下的发行版专属目录，以设置中打开的位置为准。
 2. 按服务端指南选择旁边 `examples/` 中的示例，将机构条目加入 `organizations`，保留已有配置；需要图像或语音服务时再加入 `media`。只修改示例文件不会生效。
 3. 保存后从托盘或应用菜单完全退出并重新启动，再选择机构登录。
 
