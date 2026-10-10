@@ -3,7 +3,7 @@
 [简体中文](README.md) | **English**
 
 Status: this proposal is a **draft under review and is not implemented**. The protocol name, frames,
-fields, configuration keys, scope vocabulary and commands below are **design intent**; they do not
+fields, configuration keys, operation-surface split and commands below are **design intent**; they do not
 represent shipped functionality or configuration that can be used as-is. Do not change production
 configuration based on an unreleased proposal. Items marked **verified** come from the READMEs and
 type declarations of the installed packages on this machine and can be checked line by line at the
@@ -12,6 +12,39 @@ paths given; items marked **inferred** or **to verify** have not been confirmed 
 Ownership: public edition (EduWork). Institution-specific services and deployment details are separate;
 see [Institution edition boundary](#institution-edition-boundary).
 Related: issue [#116](https://github.com/ECNU/EduWork/issues/116), roadmap [#95](https://github.com/ECNU/EduWork/issues/95).
+
+## Confirmed direction from review
+
+The maintainer confirmed the phase-1 shape in the
+[reply on #116](https://github.com/ECNU/EduWork/issues/116) (2026-10-09). The five points below are
+**confirmed constraints**, not open questions; this proposal has been revised to match them:
+
+1. **The relay connects and forwards; business content is end-to-end encrypted.** The deployer is
+   trusted, but **terminating HTTPS at the relay must not be equated with client-to-Host end-to-end
+   encryption**.
+2. **Pair first, then connect.** First-time trust is established through a short-lived, one-time
+   invitation, **confirmed and stored by the local machine**; after pairing the device identity is
+   retained, and reconnecting proves that identity and re-establishes an encrypted session
+   **without scanning again**. **Per-device revocation is supported, and it must invalidate existing
+   connections.**
+3. **After pairing, the device acts as the owner operating the Agent.** Phase 1 **needs no separate
+   read-only/operable role system**, but remote operations still obey the Agent's, session's and
+   workspace's existing permissions and **do not automatically become full access**. Whether
+   **host-management interfaces** such as pairing management and credential management are exposed
+   must be **clearly distinguished** from operating the Agent.
+4. **Plugin and Server must both be independently usable with public source.** They bind to no
+   EduWork brand, school account or designated public relay; the Server **may live in its own
+   repository**, and the protocol and deployment must be documented. ECNU's preconfigured relay,
+   school identity and authentication come after the public baseline is complete.
+5. **Abuse prevention is separate from device control.** A self-hosted Server may require an access
+   Key issued by the deployer, but that Key **only means "allowed to use this relay" and cannot
+   substitute for device pairing**; the one-time pairing invitation and the long-lived device
+   credential **must not be conflated into a single token**. Encryption **reuses existing protocols
+   and libraries** where possible.
+
+One boundary was confirmed alongside these: **prefer zero kernel patches, but do not bend around the
+security boundary just to keep the patch count at zero** — if the official interfaces do have a gap,
+**list that gap separately** rather than pushing full multi-Peer capability upstream now.
 
 ## Goal
 
@@ -46,7 +79,7 @@ In scope:
 | Remote carrier | A third Connection carrier on the host side with its own admission, bypassing the browser cookie |
 | Device pairing and identity | Asymmetric keys on the device, human confirmation on the host, challenge-response authentication |
 | Revocable device authorization | Per-device registration and revocation; deleting the record disconnects and voids that device's session |
-| Authorization scope fence | Deny-by-default endpoint allowlist; remote authority strictly weaker than the local operator |
+| Operation-surface fence | Deny-by-default endpoint allowlist; remote authority strictly weaker than the local operator; the host management surface is closed by default |
 | Relay access contract | Relay responsibilities, a minimal access description, and a self-hosted reference implementation |
 | Generic web client | Reuse the existing SPA; add pairing and mobile browser adaptation |
 
@@ -153,34 +186,45 @@ carried subject.
 ### Community solution comparison
 
 The four community projects listed in #116 plus the official connection layer, compared along the six
-axes this proposal cares about. The official connection-layer column is verified in this pass; the
-community column **uses the description in #116 as its source** (original: "the above projects are for
-selection and architecture reference; EduWork adaptation verification is not complete") and states its
-independent verification status.
+axes this proposal cares about. The official connection-layer column is verified in this pass, and
+**all four community projects have now completed source-level verification**, each against a pinned
+commit, with file-and-line evidence for every conclusion. The original #116 author's description of
+these projects (original: "the above projects are for selection and architecture reference; EduWork
+adaptation verification is not complete") has been superseded by the verification results; **where the
+two disagree, the verification conclusions below prevail**.
 
 | Solution | Layering and transport | Authentication and pairing | Patches the kernel | Disconnect recovery | Fit for EduWork | Independent verification |
 | --- | --- | --- | --- | --- | --- | --- |
 | **DSH official connection layer** | Carrier-neutral RPC + exact Fetch routes; `/api/remote.mux`; `stream-protocol` frames with native-caller parsers | Process token → authority-bound signed cookie; **single operator Peer**; **no logout** | No | Generation state machine: ready frame, jittered backoff 500 ms→10 s, 3000 ms warning / 15000 ms hard timeout | **The reuse base of this proposal** | **Verified** (in-package README and `.d.ts` on this machine's 0.2.0-rc.2) |
-| `liguobao/ds-harness-remote` | Host / Client / Relay layering; ships protocol documentation and a minimal single-account self-hosted server | See its protocol documentation | No (DSH-native remote plugin) | Claims disconnect recovery | **Closest to this proposal's target shape**; key reference for layering and protocol documentation | Not independently verified (see below) |
-| `zhu1090093659/dsh-web` (`dsh-remote-web-ui`) | QR pairing + mobile UI + cross-device collaboration | QR pairing | Not stated | Not stated | Reference for the **pairing flow and mobile interaction** | Not independently verified |
-| `siberiah2o/dsh-plugin-remote` | Login authentication and HTTP/WebSocket reverse proxy for DSH Web | Login authentication plus proxy-layer access control | No (plugin form) | Not stated | Reference for **gateway access and access control** | Not independently verified |
-| `ChongYep/DSH-Remote` | Tailscale plus a token gateway to the local DSH | Token gateway plus device authorization | **Yes** (#116: "the existing implementation includes kernel patches, so maintenance cost must be assessed") | Not stated | Reference for network access and device authorization; **kernel-patch maintenance cost must be assessed** | Not independently verified |
+| `liguobao/ds-harness-remote` | Three layers (Host / Client / Relay); the relay only checks the envelope and counter and then **forwards the ciphertext verbatim**, storing no ciphertext; the self-hosted server is about 422 lines configured by environment variables | **The local machine generates the X25519 key pair** (the private key never leaves it; `0o600` + atomic write); but **the peer identity is returned by the Server**, and a first connection **pins it automatically with no local human confirmation** | No (official extension points only), but it depends on several **not-fully-public interface shapes** | Yes | **The end-to-end encryption (standard Noise IK) and the IdentityStore pattern are directly borrowable**; **local pairing confirmation is entirely absent and must be implemented here**; `werift` is dead weight in a self-hosted relay-only deployment | **Source-level verification done** (pin `b2beef0c`, see below) |
+| `zhu1090093659/dsh-web` (`dsh-remote-web-ui`) | Standalone DSH plugin; public internet via a Cloudflare tunnel/relay; **fetches the official Web GUI from the local loopback at runtime and injects a script**, shipping no front-end build output | QR pairing: 128-bit token, 10-minute TTL, **pairing repeatable within the window**; after pairing it issues a **long-lived cookie (`Max-Age` 365 days)** plus the host file `remote-web-ui-devices.json` (`0o600`, atomic write) | No (injected through the official `dsh.client.inject` slots) | 10 s heartbeat on mobile + refresh when the service worker reopens | Four things worth borrowing — the pairing state machine, the one-time grant pattern, the device-table persistence, and **zero-fork reuse of the official GUI**; but there is **no business encryption at all** and **revocation does not disconnect**, and both must be implemented here | **Source-level verification done** (pin `fc2f525c`, see below) |
+| `siberiah2o/dsh-plugin-remote` | Three layers: plugin host half → **a separate gateway subprocess** (listening on `0.0.0.0:4080` itself) → browser half; an HTTP + WebSocket reverse proxy | **Its own accounts** (scrypt + HMAC cookie), multi-account, 7-day sessions, revocation by incrementing `sessionEpoch`; **no device concept and no pairing** | No (`dsh.bundle.patch` + `dsh.client`), but it admits `/api` has no middleware seam | Transport keep-alive plus process self-healing; **no business-level idempotency or replay protection** | **No E2E**: TLS is optional and cleartext by default; the gateway terminates TLS and **can decrypt and rewrite bodies** | **Source-level verification done** (pin `19ffcc29`, see below) |
+| `ChongYep/DSH-Remote` | No proxy layer; it **modifies DSH itself**; `tailscale serve` terminates TLS and loops back to loopback, leaving DSH on `127.0.0.1` | **A single deployment-level Bearer token**, replaced whenever the script restarts; **no device concept, no pairing, no per-device revocation** | **Yes, 11 DSH source files**, with the baseline pinned to `5badb15009`; **and it rewrites upstream's security default that rejects `--host 0.0.0.0`** | Shell-level reachability probing plus a retry button; **no idempotency or deduplication** | Public mode: WireGuard + real-certificate TLS as **two layers**, explicitly rejecting a relay that would decrypt; LAN mode: cleartext HTTP | **Source-level verification done** (pin `edf350e1`, see below) |
 
-**Approach: reuse the design, implement it ourselves.**
+**Approach: prefer reuse, and do not presume a from-scratch implementation; where direct reuse is
+impossible, fall back to "reuse the design, implement it ourselves".**
 
-The reasoning matches the calendar proposal's approach:
+Maintainer review comment: "**evaluate the first two first; for now do not presume a from-scratch
+implementation**". On that basis the earlier blanket "implement everything ourselves" is relaxed into a
+case-by-case decision:
 
-- No existing implementation satisfies this proposal's four hard requirements — a **versioned
-  protocol**, **individually revocable device authorization**, **no expansion of remote authority**,
-  and **no duplicate execution after reconnect** — while the most complete candidate's strengths
-  (layering and pairing) are exactly the parts that can be "referenced for information structure and
-  interaction while the code is written here".
+| Disposition | Applies when | Current candidates |
+| --- | --- | --- |
+| **Reuse the source directly** | The licence clearly permits it, the dependencies are acceptable, no kernel patch is introduced, and the security semantics meet the hard requirements | **Nothing qualifies after this round of verification**: each candidate has a hard defect (see the next two sections), so no source is reused directly for now |
+| **Adapt, then reuse** | The upstream interaction direction is right, but the security boundary does not hold | `dsh-remote-web-ui`'s pairing (must become one-time) and revocation (must actively disconnect) |
+| **Reuse the design, implement it ourselves** | The licence is unclear, the dependencies are too heavy, or the security semantics fundamentally do not hold | `ds-harness-remote`'s **Noise IK wrapper, IdentityStore pattern and minimal relay forwarding**; `dsh-remote-web-ui`'s pairing state machine, device-table persistence and zero-fork reuse of the official GUI |
+
+Constraints that still hold:
+
+- No off-the-shelf implementation fully satisfies this proposal's four hard requirements — a
+  **versioned protocol**, **individually revocable device authorization**, **no expansion of remote
+  authority**, and **no duplicate execution after reconnect**; the verified `dsh-remote-web-ui`
+  clearly falls short on the latter two.
 - Adopting one directly would import its licence, version line, dependency lock and the long-term
   duty of tracking upstream. None of the four reuse mechanisms already in this repository (reference
   the design / vendor the source / fork into an independent npm package / runtime patch; see
-  `docs/PACKAGES.md` and the admission-condition table in the calendar proposal) can land a built-in
-  source extension under `dsh-plugins/` **without publishing a new npm package or changing the
-  dependency lock**.
+  `docs/PACKAGES.md`) can land a built-in source extension under `dsh-plugins/` **without publishing a
+  new npm package or changing the dependency lock**.
 - If a specific module of a candidate should be cited, name it during review and we will open a
   separate proposal under that candidate's admission conditions.
 
@@ -198,22 +242,170 @@ The first two entries in the table above were verified at repository level via t
 
 Two findings with practical effect on selection:
 
-1. **`liguobao/ds-harness-remote` has no detected licence.** The repository is active (a commit on
-   the day of verification, not archived), but **no identifiable licence file means its code cannot
-   be reused** — only its design can be referenced. This is consistent with this proposal's
-   "reuse the design, implement it ourselves" approach; if review wants to cite its code directly,
-   **the licence question must be settled first**.
+1. **`liguobao/ds-harness-remote` has a split licence status.** The repository **genuinely has no
+   LICENSE file at its root** (GitHub therefore detects none, and `/license` returns 404), but a
+   `packages/plugin/LICENSE` (**MIT**) and an `apps/vscode/LICENSE` do exist inside it, and the root
+   `package.json`'s `files` field **explicitly includes** `"packages/plugin/LICENSE"`.
+   In other words: **the published npm tarball carries MIT text, the GitHub page carries none**.
+   Strictly speaking, **the npm package is MIT while the legal status of the GitHub repository itself
+   is unclear**. If review wants to cite its source directly, we suggest asking the author to add a
+   LICENSE **at the repository root** so the two agree; until that is done it is handled as "reference
+   the design, do not copy the code".
 2. **`zhu1090093659/dsh-web` is far larger than a remote-UI plugin** (8,536 stars, roughly 1.1 GB).
    Adopting it directly would pull a dependency tree much larger than this feature into the release
    manifest, conflicting with the runtime-slimming direction (#119).
 
-> **Verification statement**: the community column above has **not** completed per-repository
-> source-level verification. Only the repository metadata listed above was verified; the
-> architectural judgements (layering, authentication, disconnect recovery, kernel patches) still
-> **use the description in #116 as their source** and are not source-confirmed. **The architecture
-> conclusions of this proposal do not depend on that column**: they rest on the verified official
-> connection-layer capabilities and the verified Peer contract. The remaining verification will be
-> added during review, and **if it contradicts this document, the verification results prevail**.
+#### `dsh-remote-web-ui` source-level verification conclusions (pin `fc2f525c`)
+
+The maintainer called out three points in review, and **all three hold once checked one by one**:
+
+1. **There is no business-content encryption at all.** Nothing in `src/` calls `createCipheriv` /
+   `crypto.subtle` / nacl / AES. Its README describes the relay as one that **forwards request bytes
+   verbatim**, and openly acknowledges that "the relayed traffic passes infrastructure operated by the
+   package author on Cloudflare's edge, so **the author's worker can observe it**".
+   That is, **TLS ends at the relay and the relay sees application-layer content in cleartext** — it
+   does not meet this proposal's end-to-end encryption hard requirement.
+   One further detail: the WebSocket device credential rides the **query string**, so the origin access
+   log, the relay and the Cloudflare edge all see a URL that authenticates as that device.
+2. **Revocation is per-request and does not cut established long-lived connections.** Its README reads:
+   "**Revocation is per-request**: a paired device whose request is already in flight when 停止 lands
+   completes that request; the next one 403s." Gating is **decided at the entrance only** (one place at
+   the HTTP entrance, one at the WS upgrade), and there is no "revocation closes the socket" path
+   anywhere in the repository — an admitted WebSocket / EventSource survives until the peer closes it.
+3. **The revocation boundary does not cover direct calls to the official `/api`.** Its code notes
+   "NOTHING emits api/gate in the official runtime" and prints the warning "stop() does not revoke an
+   already-redeemed browser credential". In other words revocation binds only the plugin's own
+   `/remote` channel and the pairing cookie; **the harness browser credential the device redeemed
+   earlier is unaffected** (it expires naturally after 30 days). Treating it as a global kick-offline
+   leaves an entrance that nobody governs.
+
+**What is worth borrowing** (the quality is good; implementing along these lines is worthwhile):
+
+- The pairing state machine is plain TS with an injected clock and randomness, so **its security
+  semantics are unit-testable**;
+- The landing-page grant gets real one-time behaviour out of **delete-before-validate** — a one-time
+  pairing invitation can be written the same way;
+- The device table is persisted with `{ mode: 0o600 }` plus an atomic rename, and a revocation whose
+  write fails deletes the store;
+- **It ships no official front-end build output**; instead it fetches the official index from the local
+  loopback at runtime and injects a script, in its own words:
+  "The QR link is the official Web GUI itself ... so **the remote surface can never drift from the
+  official one**." — this is the **zero-fork** route, more stable than this proposal's earlier idea of
+  "reusing `dsh-web-frontend/dist`": it cannot fork when the official front end is upgraded. **Adopted
+  as the first choice for the client boundary** (see [Client boundary](#client-boundary)).
+
+#### `ds-harness-remote` source-level verification conclusions (pin `b2beef0c`)
+
+**It is the only one of the four candidates that genuinely implements end-to-end encryption**, and that
+layer is worth adopting:
+
+- **Standard Noise IK**: `Noise_IK_25519_ChaChaPoly_SHA256`, wrapping a **maintained third-party
+  implementation** (`@lukeburns/clatterjs`), with **no handshake state machine written here**; a suite
+  name mismatch throws.
+- **Static public-key pinning**: the remote static public key is locked at construction time and
+  **compared in constant time** after every read and write; a mismatch destroys the session.
+- **Prologue binding context**: `DSH-REMOTE\0v=1\0connection=…\0host=…\0client=…`, preventing
+  cross-connection or cross-device transplant.
+- **The relay genuinely cannot see content**: the relay only checks that `counter` increases and then
+  **forwards the ciphertext verbatim**; the forwarded payload fields are only
+  `connectionId / targetDeviceId / counter / ciphertext`. What the relay can see is the account, the
+  deviceId, the role, the display name, the **public identity key**, presence, connection time, frame
+  sizes and direction timing; it **cannot see** prompts, sessions, tool input and output, workspace
+  paths or private keys.
+
+**But its root of trust sits on the Server side — exactly what #116 wants changed:**
+
+- The private key really is generated locally and never uploaded, but **the peer identity is returned
+  by the Server**: `handleConnectIncoming` first queries the Server for the peer descriptor and then
+  writes the local pinned trust from it.
+- **The first connection writes the pin directly, with no local human confirmation at all.** Its
+  documentation states this flatly: "there is no additional device code, confirmation event or local
+  human-confirmation UI". So "local trust" is really **automatic trust in the Server's assertion** — a
+  Server that returns a forged descriptor on the first connection can MITM.
+- **The work to turn this into local pairing authorization is small-to-moderate (roughly 150–300 lines
+  plus one confirmation interface), but it has one genuine difficulty** — its `connectionId` **is
+  generated by the Server** and enters the Noise prologue. Making authorization fully independent of
+  the Server requires reworking that layer as well (generating it locally and passing it out of band);
+  otherwise "automatic trust" merely becomes "click confirm in the interface" and **the security
+  property is unchanged**.
+- Conclusion: **its encryption layer is worth borrowing; its authorization layer cannot be copied.**
+
+**Other facts to note:**
+
+- **It does not patch the kernel**, but its integration **depends on several not-fully-public interface
+  shapes**: `ctx.loader.entries()`, the settings two-generation `register` / `configure` split, and
+  `webServer` and `typertGateway` obtained through type assertions. These are the main breakages when
+  following DSH upgrades; this proposal should adopt a more conservative injection style.
+- The default `serverUrl` value `https://dsh.r2049.cn` is a **configurable default, not hard-coded**;
+  but **changing the URL switches the device identity directory** (isolated by a hash of the server
+  origin), which amounts to needing to pair again.
+- Its relay reference implementation is small (about 422 lines, environment-variable configuration, no
+  ciphertext stored), but the self-hosted shape is **relay-only** (`webrtcEnabled: false`, no TURN
+  endpoint), so the WebRTC direct path is unusable in a self-deployment.
+- `werift` (pinned to an exact version) is the Host-side WebRTC implementation, lazily loaded; in a
+  relay-only self-deployment it is **dead weight**, and it is the main source of the 1.56 MB bundle.
+  **This proposal does not pull it in.**
+
+#### `dsh-plugin-remote` and `DSH-Remote` source-level verification conclusions (pin `19ffcc29` / `edf350e1`)
+
+**Both projects have only a "single shared credential" and neither has a device concept — which is
+exactly the gap #116 wants filled.**
+
+| | `siberiah2o/dsh-plugin-remote` | `ChongYep/DSH-Remote` |
+| --- | --- | --- |
+| Layering | Three layers: plugin host half → **a separate gateway subprocess** (listening on `0.0.0.0:4080` itself) → browser half; an HTTP + WebSocket reverse proxy | No proxy layer; it **modifies DSH itself**; on the public internet `tailscale serve` terminates TLS and loops back to loopback |
+| Authentication | **Its own accounts** (scrypt + HMAC cookie), multi-account, 7-day sessions, revocation by incrementing `sessionEpoch` | **A single deployment-level Bearer token**, replaced with a new token whenever the script restarts |
+| Device concept / pairing | **None** | **None** |
+| Kernel patches | **None** (`dsh.bundle.patch` + `dsh.client`) | **Yes, 11 DSH source files**, with the baseline pinned to `5badb15009` |
+| Business-level idempotency / replay protection | **None** (transport keep-alive plus process self-healing only) | **None** (shell-level reachability probing plus a retry button only) |
+| End-to-end encryption | **None.** TLS is optional and needs a PEM you supply; cleartext by default. The gateway terminates TLS and **can decrypt and rewrite bodies** | Public mode: WireGuard + real-certificate TLS as **two layers**; LAN mode: cleartext HTTP |
+| Licence | **No LICENSE** at the root (the README and `package.json` claim MIT) | Root **MIT** ✓ |
+
+**Parts worth borrowing**
+
+- `dsh-plugin-remote`: the **RFC6455 server** in `gateway/websocket.mjs` (its own, pulling in no
+  dependency), the **scrypt + HMAC + `sessionEpoch` revocation + rate limiting** in `gateway/server.mjs`,
+  and the **subprocess supervision** in `lib/index.js` (health polling / backoff / orphan reaping).
+- `DSH-Remote`: the added `packages/client/connection/src/web-token.ts` — **three ways to carry the same
+  token** (`Authorization` header / WebSocket subprotocol / `?token=` exchanged for a cookie) plus
+  `timingSafeEqual` — is a ready-made reference for "validate at the DSH admission point".
+- The least-effort route at the deployment layer: **`tailscale serve` + loopback** (opens no public
+  port, renews real certificates automatically).
+
+**Why they cannot replace this proposal**
+
+- `dsh-plugin-remote` itself admits `/api` has **no middleware seam** to occupy (`lib/index.js`), so it
+  can only put a layer in front; and its gateway **can decrypt and rewrite bodies**, which shows that it
+  is merely an application-layer proxy and that **the remote browser still does not obtain the DSH
+  credential**.
+- Neither has **device identity**, so "pair first, then connect" and "per-device revocation" **must be
+  built here**.
+- `DSH-Remote`'s 11 patches are **all on DSH internal paths and pinned to a single baseline**, so an
+  upgrade conflicts immediately; it also **rewrites upstream's security default that rejects
+  `--host 0.0.0.0`** — precisely the reason for "prefer zero kernel patches".
+
+**⚠️ A pitfall that directly affects this proposal's client route**
+
+`dsh-plugin-remote` injects a script **in place into the reverse proxy's HTML response**. But the DSH web
+profile **enables gzip by default** — in the package installed on this machine,
+`@deepseek-ai/dsh-web-app/cordis.patch.yml` lines 175–177:
+
+```yaml
+compression: gzip
+compressionLevel: 1
+compressionThresholdBytes: 1024
+```
+
+**Rewriting in place corrupts a compressed body.** This proposal's client route is therefore
+"**fetch the official index from the local loopback in full, decompress it, inject on our own server
+side, and then serve it ourselves**", and **not** rewriting the response on the reverse-proxy path. This
+is recorded under [Client boundary](#client-boundary).
+
+> **Verification statement**: in the community column of the table above, **all four rows have completed
+> source-level verification**, each against a pinned commit (`fc2f525c` / `b2beef0c` / `19ffcc29` /
+> `edf350e1`), with file-and-line evidence for every conclusion. None of the four projects was
+> **actually run**; the conclusions come from source and documentation and are **not end-to-end
+> measurements**; **if later measurements disagree, the measurements prevail**.
 
 ## Three-layer responsibilities
 
@@ -226,9 +418,9 @@ Two findings with practical effect on selection:
 │            are open to clients)                              │
 │  New: remote-access host plugin                              │
 │    · remote carrier (a third carrier) with its own admission │
-│    · device registry (public key + scopes + state)           │
+│    · device registry (public key + surfaces + state)         │
 │    · pairing service (the pairing device waits for an answer)│
-│    · scope fence (deny by default, endpoint allowlist)       │
+│    · operation-surface fence (deny by default, allowlist)    │
 │    · audit records (who, when, what — visible on the host)   │
 └──────────────────────────────────────────────────────────────┘
                           │ eduwork-remote/v1
@@ -258,6 +450,32 @@ question.
 
 ### Handshake
 
+The handshake has **two layers**: first a Noise IK encrypted channel is established between the device
+and the Host, and **inside that channel** this application's protocol is negotiated. The
+application-layer `hello` / `welcome` **travel only inside the encrypted channel**, and the relay never
+sees them.
+
+#### Layer 1: the encrypted channel
+
+- **Suite `Noise_IK_25519_ChaChaPoly_SHA256`**, **wrapping a maintained mature implementation rather
+  than writing a handshake state machine here** (the approach `ds-harness-remote` takes; verified: it
+  wraps a third-party Noise library and validates the suite name).
+- **Static public-key pinning**: each end locks the peer's static public key and does a
+  **constant-time comparison** after every read and write; a mismatch destroys the session.
+- **The `prologue` binds context**, containing at least the protocol version, the `connectionId` and
+  both `deviceId`s, preventing cross-connection or cross-device transplant.
+- **The session key is re-negotiated on every connection**; no state from the previous connection is
+  reused.
+
+> **The key difference from `ds-harness-remote`**: its `connectionId` **is generated by the Server** and
+> enters the prologue. This proposal requires the `connectionId` to be **generated by the Host and
+> passed out of band (in the pairing invitation)** — otherwise authorization still rests on the
+> Server's assertion, and "the local machine decides authorization" is empty.
+> This is the **fundamental divide** between this proposal and that one; see
+> [Device pairing and identity](#device-pairing-and-identity).
+
+#### Layer 2: application-layer negotiation
+
 ```
 client → Host
 { "type": "hello",
@@ -273,14 +491,18 @@ Host → client (success)
   "host": { "home": "<used to abbreviate paths>", "appVersion": "0.4.2",
             "dshVersion": "0.2.0-rc.2" },
   "session": { "id": "<this remote session id>", "expiresAt": "<absolute time>" },
-  "scopes": ["session:list", "session:read", "session:prompt"],
+  "surfaces": { "agent": ["session:list", "session:read", "session:prompt"],
+                "host": [] },
   "resume": { "supported": true, "cursorTtlMs": 600000 } }
 
 Host → client (failure)
 { "type": "reject",
-  "code": "unauthorized" | "revoked" | "version-unsupported" | "scope-empty",
+  "code": "unauthorized" | "revoked" | "version-unsupported" | "surface-empty",
   "message": "…" }
 ```
+
+`surfaces.host` defaults to an **empty array** (the host management surface is closed by default); see
+[Operation-surface split v1](#operation-surface-split-v1-deny-by-default).
 
 ### Version and capability rules
 
@@ -296,7 +518,7 @@ Host → client (failure)
   Host→Client: item{streamId,value?} | error{streamId,error{code,message,details}} | end{streamId}
   ```
 
-  v1 only wraps a handshake and scope declaration **around** them. **Do not add a version field to
+  v1 only wraps a handshake and operation-surface declaration **around** them. **Do not add a version field to
   those frames** — version belongs to the handshake, and keeping the frames byte-identical to the
   browser client is what allows sharing the parsers.
 
@@ -317,41 +539,77 @@ Host → client (failure)
   reopened request"; (b) `websocketHeartbeatIntervalMs` is both the Ping period and the Pong deadline,
   and deployments whose network can stall longer than that interval **must raise it**.
 
-### Authorization scope vocabulary v1 (deny by default)
+### Operation-surface split v1 (deny by default)
 
-| Scope | Meaning |
-| --- | --- |
-| `session:list` / `session:read` | List and read sessions |
-| `session:prompt` | Deliver a user message to a session (side effect; requires an idempotency key) |
-| `session:cancel` | Cancel a running turn |
-| `workspace:list` / `workspace:read` | List and read registered workspace files |
-| `artifact:read` / `artifact:download` | Read and download Studio artifacts |
-| `settings:read` | Read settings (excluding credentials) |
-| `approval:respond` | Answer approval prompts. **Separate scope, not granted by default** |
+**Phase 1 introduces no read-only/operable role system** (confirmed by the maintainer). After a
+successful pairing the device **acts as the owner operating the Agent**; but "acts as the owner"
+**does not** mean "can do everything" — remote operations **continue the existing permissions of
+that Agent, session and workspace** and **do not automatically become full access**. Splitting the
+operation surface into the two classes below is how that requirement becomes verifiable in code.
 
-**Not granted in v1**: any credential read or write, plugin install or uninstall, terminal, and
-`workspace:write`.
+| Class | Contents | v1 default |
+| --- | --- | --- |
+| **Agent operation surface** | List/read sessions, deliver user messages (side effect; needs an idempotency key), cancel turns, list/read registered workspace files, read and download Studio artifacts, read settings (excluding credentials) | Available after pairing, **but still bounded by the existing Agent/session/workspace permissions** |
+| **Host management surface** | Pairing and device management, credential read/write, plugin install/uninstall, terminal, `workspace:write`, settings writes | **Closed by default**; whether phase 1 opens any of it needs a separate decision |
+
+**Why the host management surface must be listed separately** (confirmed by the maintainer): pairing
+management and credential management are **host-management interfaces**, and they are a different
+thing from "operating the Agent" — the former governs **who may connect at all**, the latter governs
+**what a connected device may do**. Folding both into one authorization means "can chat" silently
+implies "can change who may connect".
+
+`approval:respond` (answering approval prompts) is likewise listed on its own: letting a remote
+device click "allow" on the host's behalf is equivalent to indirect privilege escalation, so it is
+**separate and not granted by default**.
 
 Reasoning: #116 requires that "**remote operations continue local authority and must not expand
 authorization**". Deny by default plus explicit grants is the only form that can be verified in an
-implementation. `approval:respond` is listed separately because letting a remote device click
-"allow" on the host's behalf is equivalent to indirect privilege escalation.
+implementation.
 
 ### Device pairing and identity
 
-1. The local EduWork opens a "Remote access" panel and generates a **one-time, short-lived** pairing
-   code plus the requested scope list;
-2. The other device opens the access address and enters or scans the pairing code;
+**Pair first, then connect** (confirmed by the maintainer). The four credentials below **must stay
+independent and must not be conflated into a single token**:
+
+| Credential | Purpose | Lifetime | Can it substitute for pairing |
+| --- | --- | --- | --- |
+| **Relay access Key** | Means "allowed to use this relay"; issued by the relay deployer | Managed by the deployer | ❌ **No.** It only addresses abuse; it does not mean the device is trusted |
+| **One-time pairing invitation** | The ticket for establishing first-time device trust | **Short-lived; invalidated on first use** | It *is* the pairing entry point |
+| **Long-lived device credential** | Proves "still the same device" after pairing | Long-lived; **per-device revocable** | It is the *result* of pairing |
+| **Session key** | Business encryption key for one connection | One connection | Re-negotiated on every reconnect |
+
+Flow:
+
+1. The local EduWork opens a "Remote access" panel and generates a **one-time, short-lived**
+   pairing invitation;
+2. The other device opens the access address and enters or scans that invitation;
 3. That device generates an asymmetric key pair **locally** (WebCrypto, private key non-extractable)
-   and sends the **public key** plus device name and requested scopes to the Host;
+   and sends the **public key** plus device name to the Host;
 4. **The Host side must be confirmed by a human on the local machine**, with the interface showing the
-   device name and the scopes about to be granted;
-5. Later connections authenticate by **challenge-response signature**, **not a long-lived bearer token**.
+   device name and the operation surface about to be granted — **device authorization is decided by
+   the machine running the Agent**, not relayed by the server;
+5. Pairing issues a **long-lived device credential**; reconnecting afterwards **needs no scanning**:
+   identity is proven by **challenge-response signature** and the **session key is re-negotiated**;
+   **no long-lived bearer token** is used.
+
+**"One-time" is deliberate**: if an invitation can be reused within its window, then **anyone who
+obtains it can become a new device**. Invalidating it on first use narrows the consequence of a leak
+to "once, and only by beating the real device to it".
 
 ### Revocation
 
-Deleting the device registration record completes revocation: the Host immediately closes that
-device's active connections and voids its scope session.
+Revoking a device means **its currently live connections die immediately**, not merely that its next
+request is refused. Two actions must take effect together:
+
+1. **Refuse new requests**: the device's long-lived credential is voided at once, and later
+   challenge-response attempts never pass;
+2. **Cut established connections**: the Host actively closes every active connection for that device,
+   voids the corresponding session keys, and has the relay disconnect in step.
+
+> The maintainer singled this out in review: the revocation boundary "**must not only be verified as
+> new requests being rejected**". An implementation doing only (1) **fails** the acceptance item
+> "the connection fails after authorization is revoked" — an established long-lived connection can
+> keep receiving events and keep delivering messages.
 
 **Why the device credential must be a second system independent of the cookie** (verified): the
 existing connection layer has "**no logout operation**" — clearing the browser cookie ends one browser
@@ -363,12 +621,28 @@ over plaintext networking can expose the bearer cookie in transit".
 
 ### Transport security boundary
 
+**The relay only connects and forwards; business content is end-to-end encrypted** (confirmed by the
+maintainer as a hard requirement).
+
+- **End-to-end encryption is a layer independent of TLS.** When TLS terminates at the relay, the relay
+  holds plaintext business traffic — **"HTTPS as far as the relay" is not end-to-end encryption**, and
+  neither substitutes for the other.
+- **The only encryption endpoints are the device and the Host.** Even a compromised relay, or one
+  operated by someone else, sees **connection metadata only** (who connected to whom, when, how many
+  bytes, for how long) — never prompts, replies, file contents or artifact bytes. This is an
+  **architectural guarantee**, not a promise not to look.
+- **Candidate handshake: Noise IK** (the approach `ds-harness-remote` already uses; see
+  [Community solution comparison](#community-solution-comparison)), or another reviewed mature
+  implementation with the same properties. **Reuse existing protocols and libraries; do not invent
+  cryptography.**
+- This must ship together with: **static key generation, custody and pinning**, **key rotation**,
+  **independent keys per device**, and **destruction of the relevant key material when a device is
+  revoked**.
 - The local side keeps binding `127.0.0.1` **only**; `dsh web --host 0.0.0.0` **remains unsupported**
   and this proposal **does not relax** the loopback fence.
 - The remote carrier is a **third in-process carrier**; externally it is reachable only through the
   relay or a tunnel the user builds;
-- TLS is terminated by the relay, or provided by the user's own tunnel; the public edition does not
-  manage public TLS certificates;
+- The public edition does not manage public TLS certificates;
 - `trustedHosts` is **not used** for remote access (verified: entries must be canonical bare
   authorities, there is **no wildcard semantics**, and non-canonical spellings fail plugin load).
 
@@ -386,15 +660,39 @@ over plaintext networking can expose the bearer cookie in transit".
 
 ## Client boundary
 
-- **Reuse candidate**: `dsh-web-frontend/dist`. Reason (verified): `ctx.remote` is explicitly designed
-  as a **React-independent** contract, and upstream states that "Web, or a **future TUI**, can reuse
-  its Client face as long as it provides the same contract".
-- If reuse is blocked (for example by coupling between `dist` and the desktop shell's custom scheme),
-  the fallback is a slim client depending only on the `ctx.remote` contract and the `stream-protocol`
-  parsers. **The trade-off is left to review**; see [Open questions](#open-questions).
-- Mobile browser adaptation: the target baseline is mainstream mobile browsers. Desktop-shell and
+- **First choice: reuse the official Web GUI with zero fork.** The verified `dsh-remote-web-ui` shows a
+  route more stable than packaging the build output — **fetch the official index document from the
+  local loopback at runtime and inject a bootstrap script**; the remote surface is therefore **always
+  the official one**, and it does not fork when the official front end is upgraded. In its own words:
+  "The QR link is the official Web GUI itself ... so **the remote surface can never drift from the
+  official one**." This beats this proposal's earlier idea of "reusing `dsh-web-frontend/dist` by
+  packaging it": packaging drifts in version as the official front end is upgraded.
+- **The implementation must bypass gzip** (verified in the package installed on this machine): the
+  official web profile **enables gzip by default** — `@deepseek-ai/dsh-web-app/cordis.patch.yml` lines
+  175–177 are `compression: gzip` / `compressionLevel: 1` / `compressionThresholdBytes: 1024`.
+  The verified `dsh-plugin-remote` injects **in place on the reverse-proxy path**, and that route is
+  broken by a compressed body. This proposal therefore does the following: **fetch the official index in
+  full, decompress it, inject on our own server side, and then serve it ourselves**, **without rewriting
+  the response on the reverse-proxy path**.
+- **The basis for reusability** (verified): `ctx.remote` is explicitly designed as a
+  **React-independent** contract, and upstream also states that "Web, or a **future TUI**, can reuse its
+  Client face as long as it provides the same contract".
+- **Fallback**: if runtime fetching is not feasible (for example the official index has no injection
+  point in the target version), fall back to building a slim client depending only on the `ctx.remote`
+  contract and the `stream-protocol` parsers. **The final trade-off is left to review**; see
+  [Open questions](#open-questions).
+- Mobile browser adaptation: the target baseline is mainstream mobile browsers; desktop-shell and
   `file://` / `dsh-app://` behaviour does **not** apply to the remote client and requires separate
-  acceptance.
+  acceptance. The verified adaptation trigger is a useful reference: portrait orientation +
+  `pointer: coarse` + viewport width < 1100px.
+- **Known fragility (accepted by taking this route)**:
+  - Its adapter layer locates elements with the official CSS Modules' **semantic suffix selectors**, so
+    an official rename of a semantic class name breaks it, and **every official GUI upgrade needs a
+    visual regression pass**;
+  - Injection rests on the premise that "the official index can be fetched and decompressed in full" —
+    if the official side later switches to streaming compression, or moves the bootstrap point out of
+    the HTML document, injection stops working. In that case, fall back to the standalone slim client
+    (above).
 
 ## Deployment
 
@@ -439,8 +737,18 @@ This follows from real link constraints rather than preference:
   deployed wherever an institution or developer chooses, carrying the local compliance requirements
   itself".
 - **The relay is untrusted**: device identity is verified **end to end** (challenge-response
-  signature) rather than taken from the relay's assertion. A compromised relay must not grant
-  escalation.
+  signature) rather than taken from the relay's assertion. Business content is end-to-end encrypted, so
+  the relay **sees connection metadata only**. A compromised relay must lead to neither escalation of
+  authority nor disclosure of content.
+- **No binding to a brand, an account or a public relay** (confirmed by the maintainer): anyone may
+  self-host a relay; it binds to no EduWork brand and no school account, and no single public relay is
+  designated; the protocol and deployment must be documented. **The relay Server may live in its own
+  repository**, outside this repository's release manifest.
+- **The access Key is for abuse prevention only** (confirmed by the maintainer): a self-hosted relay may
+  require an access Key issued by the deployer in order to keep out unauthorized access, but that Key
+  **only means "allowed to use this relay" and cannot substitute for device pairing**. It, the one-time
+  pairing invitation and the long-lived device credential are **three different things** (see
+  [Device pairing and identity](#device-pairing-and-identity)).
 
 ### How "the generic client binds to no school service" is achieved
 
@@ -464,7 +772,8 @@ existence of any particular external service.
 
 | Item | Assessment |
 | --- | --- |
-| Kernel patches | **None.** Contrast `ChongYep/DSH-Remote`, which explicitly includes kernel patches |
+| Kernel patches | **Prefer zero, but it is not a hard constraint** (confirmed by the maintainer). The comparison table shows `ChongYep/DSH-Remote` explicitly includes kernel patches; this proposal aims to work through official plugin interfaces and connection-layer extension points, and **if an interface gap does exist, that gap is listed and discussed separately**, rather than bending around the security boundary to make the patch count zero |
+| Separate repository | The relay Server **may live in its own repository**, outside this repository's release manifest; plugin and Server are both independently usable with public source |
 | Coupling surface to DSH upgrades | The handshake layer and device registration only. Frame format, backoff policy, mux and trust fence are **all reused from upstream**, never copied |
 | New dependencies | Target zero runtime dependencies (consistent with existing `dsh-plugins/`, none of which declares a runtime `dependencies`) |
 | New npm packages | **None.** A built-in source extension rebuilt at assembly time |
@@ -477,11 +786,16 @@ existence of any particular external service.
   configuration identifiers or data paths of existing plugins.
 - **Does not modify** `BrowserAuth` or the loopback fence semantics of `api-request-trust`, and
   **does not modify** the host behaviour of `dsh web`.
-- **Adds no** runtime dependency, **changes no** dependency lock, and **adds no** npm package requiring
-  separate publication.
-- The release manifest gains one plugin registration line, leaving the order and configuration of
-  existing plugins unchanged; there is no historical data migration (first introduction).
-- The only public interface requiring review is the `eduwork-remote/v1` handshake and scope vocabulary.
+- **Adds no** runtime dependency and **changes no** dependency lock. **Whether a separately published
+  npm package is added depends on the plugin-layout conclusion** (see [Open questions](#open-questions)):
+  under `packages/` it adds an independent npm package and carries its version, peer range and
+  provenance publication flow; under `dsh-plugins/` it is rebuilt at assembly time as a built-in source
+  extension and adds no npm package.
+- If it goes under `dsh-plugins/`: the release manifest gains one plugin registration line, leaving the
+  order and configuration of existing plugins unchanged; neither layout involves historical data
+  migration (first introduction).
+- The only public interface requiring review is the `eduwork-remote/v1` handshake and operation-surface
+  split.
 - Desktop and institution-edition behaviour are outside the implementation scope of this proposal;
   desktop behaviour requires separate acceptance.
 
@@ -504,21 +818,35 @@ verification **actually performed** and what remains unverified.
    and local CRUD for the device registry; pairing is exercised on the same LAN with synthetic data
    and the protocol is untouched. Acceptance: the panel works, the registry survives a restart, and
    `node --test` unit tests pass.
-3. **Protocol and handshake**: handshake, version negotiation, capability intersection, scope fence,
-   idempotency keys and `RemoteJournalStream` recovery. Acceptance: synthetic contract tests
-   (mismatched version fails, missing capability is refused, unauthorized endpoint is rejected).
-4. **Relay reference implementation**: a minimal self-hosted server, **not** in the public release
-   manifest; or placed in a separate repository if review decides so.
-5. **Web client**: pairing UX, device credentials, mobile browser adaptation.
+3. **Pairing and authorization**: one-time invitation (**delete-before-validate**), local confirmation
+   interface, long-lived device credential, challenge-response, and **actively disconnecting
+   established connections on revocation**.
+   Acceptance: unit tests cover the invitation being non-replayable; after revocation the **active
+   connection is closed**, not merely new requests refused.
+4. **End-to-end encryption**: handshake selection, static key generation/custody/pinning, session key
+   negotiation and rotation, destruction of the relevant key material after revocation.
+   Acceptance: synthetic contract tests + **a relay-side assertion that no business plaintext is
+   visible**.
+5. **Protocol and recovery**: version negotiation, capability intersection, operation-surface fence,
+   idempotency keys and `RemoteJournalStream` recovery.
+   Acceptance: synthetic contract tests (mismatched version fails, missing capability is refused,
+   unauthorized endpoint is rejected).
+6. **Relay reference implementation**: a minimal self-hosted server, **not** in the public release
+   manifest; may live in a separate repository; **the access Key is strictly separated from device
+   pairing**.
+7. **Web client**: pairing UX, device credentials, mobile browser adaptation.
 
 **#116 acceptance concerns → verification method** (each must be reproducible by someone else):
 
 | Acceptance item | How to verify |
 | --- | --- |
 | Continue the same task across devices | Device A starts a turn → device B lists and reads that session → a message is delivered from B → assert the turn continues in the same session and device A's interface reflects it live |
-| Reconnect does not duplicate execution | Cut the network during `session:prompt` → after reconnect resend the same `requestId` → assert **exactly one** user message in the session |
-| An unauthorized device cannot access | Run once each with no credential, a wrong credential and a wrong scope → assert rejection (401/403) **before any RPC dispatch**, with **no session or file bytes** crossing |
-| The connection fails after revocation | After revocation assert the active connection closes immediately, that device's session is voided, and re-authentication fails |
+| Reconnect does not duplicate execution | Cut the network while delivery is in progress → after reconnect resend the same `requestId` → assert **exactly one** user message in the session |
+| An unauthorized device cannot access | Run once each with no credential, a wrong credential and an unpaired device → assert rejection (401/403) **before any RPC dispatch**, with **no session or file bytes** crossing |
+| The connection fails after revocation | Revoke the device → assert the **established long-lived connection is closed immediately** (WebSocket and stream subscriptions stop receiving events), that device's session is voided, and re-authentication fails. **Asserting only that "new requests are rejected" does not pass** |
+| The invitation cannot be replayed | Pair a second time with the same pairing invitation → assert the second attempt fails, and that the failure happens in **validation**, not merely in an interface prompt |
+| The relay cannot see content | Capture the forwarded bytes on the relay side → assert they are ciphertext and connection metadata only, **containing no prompts, replies or file contents** |
+| Remote access does not expand authorization | The remote end attempts the host management surface (credential read/write, plugin install/uninstall, terminal, `workspace:write`) → assert rejection; remote operations remain bounded by the existing Agent/session/workspace permissions |
 
 Module checks follow the existing CI; real login, Office, audio/video and desktop behaviour are
 accepted locally according to the change's scope. **Browser tests do not replace desktop or mobile
@@ -536,18 +864,50 @@ device acceptance.**
 
 ## Open questions
 
-These need a maintainer decision, and **phase 2 does not start before they are settled**:
+**The trust boundary has been decided by the maintainer** (see
+[Confirmed direction from review](#confirmed-direction-from-review)); the remaining items below do not
+enter phase 2 before the document is final.
 
-- **Choice of trust boundary.** This document takes the purely peripheral route (transport fence plus
-  assembly manifest), which needs no upstream change, on the basis of the Peer contract's "Who the
-  Peer is and what it may do are not recorded here". If maintainers prefer DSH upstream to provide
-  **multi-Peer / device identity** as a first-class capability, say so and we will propose it upstream
-  instead.
-- **Whether the relay belongs in the public repository**; and if so, under `packages/` (requiring npm
-  publication) or as a non-shipping reference implementation under `scripts/`.
-- **The end-to-end encryption algorithm, key custody and who owns rotation**; and what metadata the
-  relay can see.
-- **Whether the remote client reuses `dsh-web-frontend/dist`** or needs a separate slim client.
+**Confirmed; no longer up for debate:**
+
+- ~~Choice of trust boundary~~ → **confirmed**: an independent DSH plugin + web client + a self-hostable
+  relay Server, reusing the official connection layer and plugin interfaces; where an interface gap
+  genuinely exists it is listed and discussed separately, without bending around the security boundary
+  to keep the change at "zero".
+- ~~Whether the relay belongs in the public repository~~ → **confirmed**: the relay Server **may live in
+  its own repository**.
+
+**Still to be settled:**
+
+- **Whether the plugin source lives under `packages/` or under `dsh-plugins/`.** The maintainer requires
+  that "the plugin and the Server must both be **independently usable**, with public source", and
+  `docs/PACKAGES.md` describes `packages/` as "**a plugin can be used by other DSH applications on its
+  own, without installing the EduWork desktop**" — matching that requirement word for word, whereas
+  `dsh-plugins/` is a **built-in source extension rebuilt at assembly time** and is not published
+  separately. The recent precedent `#113` (calendar) put its new plugin under `dsh-plugins/`.
+  The trade-off: `packages/` better satisfies "independently usable", but adds an npm package that must
+  be published separately and carries the maintenance of its version, peer range and provenance
+  publication flow; `dsh-plugins/` costs less, but **cannot be installed into other DSH applications
+  through npm**. **This document is written for `dsh-plugins/` for now (following the `#113` precedent);
+  review should decide.**
+- **Who owns static key custody and rotation**, and **the rekey policy for long-lived connections** —
+  the algorithm is settled as **Noise IK** (see [Handshake](#handshake)), but the key lifecycle is still
+  open. For reference, `ds-harness-remote` likewise lists "long-lived connection rekey and an
+  independent cryptographic security review" as unfinished roadmap items.
+- **How the `connectionId` is generated and passed**: settled as "generated by the Host and passed out
+  of band in the pairing invitation", but the exact encoding and validation remain to be finalised.
+- ~~Evaluation conclusions for the two priority candidates~~ → **completed**: the two source-level
+  verification sections are in [Community solution comparison](#community-solution-comparison).
+  Conclusion: **neither can have its source reused directly** (one lacks a root LICENSE and its
+  authorization layer depends on the Server; the other has no encryption and its revocation is
+  incomplete), but each has modules worth borrowing.
+- **A feasibility test of zero-fork reuse of the official GUI**: the first choice has become "fetch the
+  official index from the local loopback at runtime + inject a script" (see
+  [Client boundary](#client-boundary)), but **whether the injection point exists in the target DSH
+  version needs to be tested**; if it does not, fall back to building a standalone slim client depending
+  only on the `ctx.remote` contract.
+- **Whether the host management surface is open in v1** (pairing management, credential management and
+  so on), and if so what local second confirmation it needs.
 - **Whether `approval:respond` is open in v1**; and if so, what local second confirmation it needs.
 - **The mobile browser target baseline** and the interactions to cover (session list, delivery,
   artifact preview, approvals).
