@@ -53,16 +53,16 @@ test('web package and skill staging use portable paths and commands', async () =
     assert.doesNotMatch(script, /\+ '\\\\'/, name)
     assert.doesNotMatch(script, /npm\.cmd|tar\.exe/, name)
   }
-  for (const name of ['client-ui-branding', 'client-ui-conversation-brand', 'client-ui-skill-live', 'client-ui-component-inventory', 'client-ui-agent-preset-product', 'client-ui-media-artifacts']) {
+  for (const name of ['client-ui-branding', 'client-ui-conversation-brand', 'client-ui-skill-live', 'client-ui-component-inventory', 'client-ui-agent-preset-product', 'client-ui-media-artifacts', 'calendar']) {
     const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
     assert.match(script, /\[IO\.Path\]::DirectorySeparatorChar/, name)
     assert.doesNotMatch(script, /\+ '\\\\'/, name)
   }
-  for (const name of ['client-ui-branding', 'client-ui-component-inventory', 'client-ui-media-artifacts', 'workbench-native', 'activity-insights-native']) {
+  for (const name of ['client-ui-branding', 'client-ui-component-inventory', 'client-ui-media-artifacts', 'workbench-native', 'activity-insights-native', 'calendar']) {
     const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
     assert.match(script, /\$IsWindows[\s\S]*tsdown\.cmd[\s\S]*tsdown/, name)
   }
-  for (const name of ['workbench-native', 'activity-insights-native']) {
+  for (const name of ['workbench-native', 'activity-insights-native', 'calendar']) {
     const script = await readFile(join(root, 'dsh-plugins', name, 'build-client.ps1'), 'utf8')
     assert.match(script, /\$IsWindows[\s\S]*Junction[\s\S]*SymbolicLink/, name)
     assert.doesNotMatch(script, /-ItemType Junction/, name)
