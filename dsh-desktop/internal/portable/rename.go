@@ -10,7 +10,7 @@ import (
 )
 
 const renameWait = 250 * time.Millisecond
-const renameAttempts = 21 // At most five seconds for scanners to release handles.
+const renameTimeout = 5 * time.Second
 
 func checkDirectoryOperations(ctx context.Context, parent *os.Root) (err error) {
 	probe := ".eduwork-check-" + rand.Text()
@@ -27,7 +27,8 @@ func checkDirectoryOperations(ctx context.Context, parent *os.Root) (err error) 
 }
 
 func renameDirectory(ctx context.Context, parent *os.Root, from, to string, progress Reporter) error {
-	for attempt := 0; attempt < renameAttempts; attempt++ {
+	deadline := time.Now().Add(renameTimeout)
+	for attempt := 0; ; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return err
 		}
@@ -42,13 +43,14 @@ func renameDirectory(ctx context.Context, parent *os.Root, from, to string, prog
 		if err == nil {
 			return nil
 		}
-		if !transientRenameError(err) || attempt == renameAttempts-1 {
+		remaining := time.Until(deadline)
+		if !transientRenameError(err) || remaining <= 0 {
 			return err
 		}
 		if attempt == 0 {
 			report(progress, 98, "正在等待安装目录解除占用…")
 		}
-		timer := time.NewTimer(renameWait)
+		timer := time.NewTimer(min(renameWait, remaining))
 		select {
 		case <-ctx.Done():
 			timer.Stop()
@@ -56,5 +58,4 @@ func renameDirectory(ctx context.Context, parent *os.Root, from, to string, prog
 		case <-timer.C:
 		}
 	}
-	panic("unreachable")
 }

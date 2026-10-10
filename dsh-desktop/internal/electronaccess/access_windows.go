@@ -16,6 +16,43 @@ import (
 const restrictedPackages = "S-1-15-2-2"
 const readExecute = windows.FILE_GENERIC_READ | windows.FILE_GENERIC_EXECUTE
 
+var ntSetSecurityObject = windows.NewLazySystemDLL("ntdll.dll").NewProc("NtSetSecurityObject")
+
+// Update only the checked object. SetSecurityInfo also recalculates inherited
+// child ACLs, even when the new ACE itself has NO_INHERITANCE. The native call
+// keeps unrelated children untouched and works on an already running EXE.
+func setObjectDACL(handle windows.Handle, sd *windows.SECURITY_DESCRIPTOR) error {
+	control, _, err := sd.Control()
+	if err != nil {
+		return err
+	}
+	// The native setter consumes AUTO_INHERIT_REQ to preserve AUTO_INHERITED.
+	// Unlike the Win32 tree helper, it does not enumerate child objects.
+	if control&windows.SE_SELF_RELATIVE != 0 {
+		sd, err = sd.ToAbsolute()
+		if err != nil {
+			return err
+		}
+	}
+	request, err := sd.ToSelfRelative()
+	if err != nil {
+		return err
+	}
+	flags := windows.SECURITY_DESCRIPTOR_CONTROL(0)
+	if control&windows.SE_DACL_AUTO_INHERITED != 0 {
+		flags = windows.SE_DACL_AUTO_INHERIT_REQ
+	}
+	if err = request.SetControl(windows.SE_DACL_AUTO_INHERIT_REQ, flags); err != nil {
+		return err
+	}
+	status, _, _ := ntSetSecurityObject.Call(uintptr(handle), uintptr(windows.DACL_SECURITY_INFORMATION), uintptr(unsafe.Pointer(request)))
+	runtime.KeepAlive(request)
+	if status != 0 {
+		return windows.NTStatus(status).Errno()
+	}
+	return nil
+}
+
 type change struct {
 	handle windows.Handle
 	before *windows.SECURITY_DESCRIPTOR
@@ -41,10 +78,7 @@ func Ensure(root string) (err error) {
 		for i := len(changed) - 1; i >= 0; i-- {
 			c := changed[i]
 			if err != nil {
-				dacl, _, e := c.before.DACL()
-				if e == nil {
-					e = windows.SetSecurityInfo(c.handle, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION, nil, nil, dacl, nil)
-				}
+				e := setObjectDACL(c.handle, c.before)
 				if e != nil {
 					err = errors.Join(err, fmt.Errorf("restore runtime permissions: %w", e))
 				}
@@ -96,9 +130,17 @@ func Ensure(root string) (err error) {
 			return e
 		}
 		changed = append(changed, change{h, sd})
-		if e = windows.SetSecurityInfo(h, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION, nil, nil, merged, nil); e != nil {
+		updated, e := sd.ToAbsolute()
+		if e != nil {
+			return e
+		}
+		if e = updated.SetDACL(merged, true, false); e != nil {
+			return e
+		}
+		if e = setObjectDACL(h, updated); e != nil {
 			return fmt.Errorf("write Electron runtime permissions %s: %w", path, e)
 		}
+		runtime.KeepAlive(merged)
 	}
 	return nil
 }

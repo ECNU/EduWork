@@ -70,11 +70,41 @@ func fixture(t *testing.T) string {
 
 func descriptor(t *testing.T, path string) string {
 	t.Helper()
-	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+	sd, err := windows.GetNamedSecurityInfo(path, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.OWNER_SECURITY_INFORMATION|windows.GROUP_SECURITY_INFORMATION)
 	if err != nil {
 		t.Fatal(err)
 	}
 	return sd.String()
+}
+
+func TestLegacyInheritanceDoesNotRewriteChildren(t *testing.T) {
+	root := fixture(t)
+	// Reproduce a legacy, non-auto-inherited child DACL such as the one on
+	// hosted Windows runners. SetKernelObjectSecurity is used only to create
+	// this synthetic legacy state without the normal inheritance conversion.
+	child := filepath.Join(root, "data/credentials.json")
+	p, _ := windows.UTF16PtrFromString(child)
+	h, err := windows.CreateFile(p, windows.WRITE_DAC, windows.FILE_SHARE_READ|windows.FILE_SHARE_WRITE|windows.FILE_SHARE_DELETE, nil, windows.OPEN_EXISTING, 0, 0)
+	if err != nil {
+		t.Fatal(err)
+	}
+	sd, err := windows.SecurityDescriptorFromString("D:(A;ID;FA;;;SY)(A;ID;FA;;;BA)(A;ID;FA;;;OW)")
+	if err != nil {
+		windows.CloseHandle(h)
+		t.Fatal(err)
+	}
+	err = windows.SetKernelObjectSecurity(h, windows.DACL_SECURITY_INFORMATION, sd)
+	windows.CloseHandle(h)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := descriptor(t, child)
+	if err = Ensure(root); err != nil {
+		t.Fatal(err)
+	}
+	if got := descriptor(t, child); got != want {
+		t.Fatalf("rewrote legacy child DACL: %s != %s", got, want)
+	}
 }
 
 func TestEnsurePreservesDataAndIsIdempotent(t *testing.T) {
@@ -113,6 +143,41 @@ func TestEnsurePreservesDataAndIsIdempotent(t *testing.T) {
 		if got := descriptor(t, filepath.Join(root, name)); got != want {
 			t.Fatalf("changed user/other permissions: %s", name)
 		}
+	}
+}
+
+func TestRuntimeKeepsExistingInheritanceAndOwner(t *testing.T) {
+	for _, protected := range []bool{false, true} {
+		t.Run(map[bool]string{false: "inherited", true: "protected"}[protected], func(t *testing.T) {
+			root := fixture(t)
+			if protected {
+				sd, err := windows.GetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
+				if err != nil {
+					t.Fatal(err)
+				}
+				dacl, _, err := sd.DACL()
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = windows.SetNamedSecurityInfo(root, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION|windows.PROTECTED_DACL_SECURITY_INFORMATION, nil, nil, dacl, nil); err != nil {
+					t.Fatal(err)
+				}
+			}
+			before := descriptor(t, root)
+			if err := Ensure(root); err != nil {
+				t.Fatal(err)
+			}
+			if got := strings.ReplaceAll(descriptor(t, root), "(A;;0x1200a9;;;S-1-15-2-2)", ""); got != before {
+				t.Fatalf("changed existing root permissions: %s != %s", got, before)
+			}
+			child := filepath.Join(root, "new-user-file")
+			if err := os.WriteFile(child, []byte("synthetic user data"), 0600); err != nil {
+				t.Fatal(err)
+			}
+			if strings.Contains(descriptor(t, child), ";;;S-1-15-2-2)") {
+				t.Fatal("runtime grant inherited into user file")
+			}
+		})
 	}
 }
 
