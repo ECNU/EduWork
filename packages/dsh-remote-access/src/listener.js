@@ -291,7 +291,21 @@ export function createGatedRelay({ hostPort, store, onRequest, upstreamToken, lo
     if (pendingPrompts.has(deviceId)) return pendingPrompts.get(deviceId)
     const device = store.device(deviceId)
     const answer = Promise.resolve(onRequest?.(device ?? { deviceId, name: '未命名设备' })).then((granted) => {
-      if (granted) store.confirm(deviceId)
+      if (granted) {
+        store.confirm(deviceId)
+      } else if (onRequest !== undefined) {
+        // A refusal has to be recorded, not merely reported. The waiting page polls
+        // every second and a half, so a device left pending puts the same question to
+        // the operator again and again for as long as the phone is open. Revoking ends
+        // it, and it is also the one answer that page knows how to show: this device
+        // was turned down and has to pair again.
+        //
+        // Only a refusal from a configured operator is recorded. A relay with no
+        // `onRequest` has nowhere to ask, which is a deployment that cannot confirm
+        // anyone — not an operator saying no — and it must not start revoking devices
+        // on its own.
+        store.revoke(deviceId)
+      }
       pendingPrompts.delete(deviceId)
       return granted
     })
@@ -359,6 +373,21 @@ export function createGatedRelay({ hostPort, store, onRequest, upstreamToken, lo
         return true
       }
       const device = store.device(cookie.deviceId)
+      // A pending device asking whether it is confirmed yet is what triggers the
+      // question. This endpoint is the only gate the waiting page ever knocks on —
+      // it polls here and nowhere else — so if the prompt is left to armed requests,
+      // the operator is never asked: the phone waits on its page, nothing appears on
+      // this machine, and both sides sit there indefinitely. That is not a slow path,
+      // it is the whole pairing flow failing to complete.
+      if (device?.status === DEVICE_STATUS.PENDING) {
+        promptOnce(cookie.deviceId)
+          .then(() => {
+            const settled = store.device(cookie.deviceId)
+            send(response, 200, { status: settled?.status ?? 'unknown', name: settled?.name ?? '' })
+          })
+          .catch(() => { send(response, 500, { status: 'unknown' }) })
+        return true
+      }
       send(response, 200, { status: device?.status ?? 'unknown', name: device?.name ?? '' })
       return true
     }
@@ -403,7 +432,19 @@ export function createGatedRelay({ hostPort, store, onRequest, upstreamToken, lo
         const headers = { ...request.headers }
         // The Host the upstream sees must be the loopback authority the fence
         // expects; the phone's own address is not one the Host trusts.
-        headers.host = `127.0.0.1:${String(hostPort)}`
+        const authority = `127.0.0.1:${String(hostPort)}`
+        headers.host = authority
+        // Origin has to move with Host, because the host's fence compares the two:
+        // it accepts a request when any browser marker is same-origin with the Host it
+        // was given. Rewriting one and not the other makes every /api call from a real
+        // browser a 403, while leaving both alone would pass — the host also accepts a
+        // non-loopback Host when the deployment listed it as trusted, in which case the
+        // two still agree. A relay is the origin as far as the upstream is concerned,
+        // so it has to say so consistently.
+        if (headers.origin !== undefined) headers.origin = `http://${authority}`
+        // Deliberately left alone: `sec-fetch-site`. A request the browser marked
+        // cross-site must keep saying so, because that check is what still stops a
+        // hostile page in the phone's browser from driving the host through here.
         delete headers.connection
         const upstream = http.request({ host: '127.0.0.1', port: hostPort, method: request.method, path: request.url, headers }, (upstreamResponse) => {
           response.writeHead(upstreamResponse.statusCode ?? 502, upstreamResponse.headers)
@@ -451,12 +492,15 @@ export function createGatedRelay({ hostPort, store, onRequest, upstreamToken, lo
           socket.destroy()
           return
         }
+        const upgradeAuthority = `127.0.0.1:${String(hostPort)}`
+        const upgradeHeaders = { ...request.headers, host: upgradeAuthority }
+        if (upgradeHeaders.origin !== undefined) upgradeHeaders.origin = `http://${upgradeAuthority}`
         const upstream = http.request({
           host: '127.0.0.1',
           port: hostPort,
           method: request.method,
           path: request.url,
-          headers: { ...request.headers, host: `127.0.0.1:${String(hostPort)}` },
+          headers: upgradeHeaders,
         })
         upstream.on('upgrade', (upstreamResponse, upstreamSocket, upstreamHead) => {
           const lines = [`HTTP/1.1 ${String(upstreamResponse.statusCode)} ${upstreamResponse.statusMessage ?? 'Switching Protocols'}`]

@@ -771,3 +771,139 @@ test('the relay does not fence operations, and this records that rather than hid
   await relay.close()
   host.server.close()
 })
+
+test('a browser request survives the fence that compares Origin with Host', async () => {
+  // Reproduces the rules the host applies to /api, from isTrustedApiRequest in
+  // dsh-client-connection: the Host must be loopback (or a listed trusted authority),
+  // a request marked `sec-fetch-site: cross-site` is refused, and an attached Origin
+  // must be same-origin with the Host the host was given.
+  //
+  // Node's fetch sends no Origin at all, and the host returns true the instant it is
+  // absent. That is exactly how a relay which rewrites Host and leaves Origin behind
+  // passes every fetch-based test in this file while turning every request from a real
+  // browser into a 403 — the page loads and then nothing in it works, with the failure
+  // attributed to the network. A browser-shaped request is the only way to see it.
+  const store = new DeviceStore(storePath())
+  const verdicts = []
+  const server = http.createServer((request, response) => {
+    const host = request.headers.host ?? ''
+    const origin = request.headers.origin
+    const crossSite = request.headers['sec-fetch-site'] === 'cross-site'
+    let sameOrigin = true
+    if (origin !== undefined) {
+      try { sameOrigin = new URL(origin).host === host } catch { sameOrigin = false }
+    }
+    const trusted = /^127\.0\.0\.1:\d+$/u.test(host) && sameOrigin && !crossSite
+    verdicts.push({ host, origin, crossSite, trusted })
+    response.writeHead(trusted ? 200 : 403)
+    response.end(trusted ? 'from-host' : 'forbidden')
+  })
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
+  openHosts.push(server)
+  const authority = `127.0.0.1:${String(server.address().port)}`
+
+  const { relay, base } = await startRelay({ hostPort: server.address().port, store })
+  const { cookie } = await pair(base, store)
+
+  // What a browser sends when the page was served by this relay.
+  const browser = await fetch(`${base}/api/sessions`, {
+    headers: { cookie, origin: base, 'sec-fetch-site': 'same-origin' },
+    redirect: 'manual',
+  })
+  // The marker that must NOT be normalised away: a cross-site request has to keep
+  // saying it is one, or the relay becomes a way around the host's own CSRF fence.
+  const hostile = await fetch(`${base}/api/sessions`, {
+    headers: { cookie, origin: 'http://evil.example', 'sec-fetch-site': 'cross-site' },
+    redirect: 'manual',
+  })
+
+  // Close before asserting: an assertion that throws with the servers still listening
+  // leaves the runner holding open handles, so a failure would hang instead of report.
+  await relay.close()
+  server.close()
+
+  assert.equal(browser.status, 200, '带 Origin 的浏览器请求必须穿过宿主的一致性检查')
+  assert.deepEqual(verdicts[0], {
+    host: authority,
+    origin: `http://${authority}`,
+    crossSite: false,
+    trusted: true,
+  })
+  assert.equal(hostile.status, 403, '跨站标记不得被中继抹掉')
+  assert.equal(verdicts[1].crossSite, true)
+})
+
+test('the waiting page can actually be confirmed', async () => {
+  // The whole pairing flow, followed the way a browser follows it: redeem the
+  // invitation, land on the waiting page, and poll the status endpoint until the
+  // device is trusted. Nothing else is requested in between, because nothing else is
+  // what a browser on that page does.
+  //
+  // Confirmation used to hang off an armed request instead. A phone sitting on the
+  // waiting page never sends one, so the operator was never asked and the page span
+  // forever; every test still passed because they all called `store.confirm()`
+  // directly, and the probe passed because it fetched an armed path immediately after
+  // pairing. Following the flow a browser follows is what exposes it.
+  const store = new DeviceStore(storePath())
+  const host = await fakeHost()
+  const asked = []
+  const { relay, base } = await startRelay({
+    hostPort: host.port,
+    store,
+    onRequest: async (device) => { asked.push(device.deviceId); return true },
+  })
+
+  const invitation = store.invite()
+  const paired = await fetch(`${base}/__remote/pair?token=${encodeURIComponent(invitation.code)}`, { redirect: 'manual' })
+  assert.equal(paired.status, 302)
+  const cookie = (paired.headers.get('set-cookie') ?? '').split(';')[0]
+  assert.equal(store.devices()[0].status, 'pending')
+  assert.equal(asked.length, 0, '还没问过')
+
+  // The waiting page's one and only call.
+  const seen = []
+  for (let attempt = 0; attempt < 20; attempt += 1) {
+    const status = await fetch(`${base}/__remote/status`, { headers: { cookie } })
+    const body = await status.json()
+    seen.push(body.status)
+    if (body.status !== 'pending') break
+  }
+  const trusted = seen.at(-1)
+  const askedOnce = asked.length
+
+  await relay.close()
+  host.server.close()
+
+  assert.equal(askedOnce, 1, '轮询状态就该问到操作员，且只问一次')
+  assert.equal(trusted, 'trusted', '确认后轮询必须报告已授权，否则等待页永远转下去')
+  assert.equal(seen[0], 'trusted', '第一次轮询就该触发确认，而不是等到超时')
+})
+
+test('a refused confirmation reports refused rather than staying pending', async () => {
+  // The other half: a device the operator turns down must not be left looking like it
+  // is still waiting, or the page spins and the person believes a click is coming.
+  const store = new DeviceStore(storePath())
+  const host = await fakeHost()
+  const { relay, base } = await startRelay({
+    hostPort: host.port,
+    store,
+    onRequest: async () => false,
+  })
+
+  const invitation = store.invite()
+  const paired = await fetch(`${base}/__remote/pair?token=${encodeURIComponent(invitation.code)}`, { redirect: 'manual' })
+  const cookie = (paired.headers.get('set-cookie') ?? '').split(';')[0]
+
+  const status = await fetch(`${base}/__remote/status`, { headers: { cookie } })
+  const body = await status.json()
+  const armed = await fetch(`${base}/api/sessions`, { headers: { cookie } })
+
+  await relay.close()
+  host.server.close()
+
+  assert.equal(body.status, 'revoked', '被拒绝的设备应报告为已撤销，等待页据此停止轮询')
+  // 401 rather than 403: refusing revokes the device, so its credential stops
+  // authenticating at all. That is the stronger outcome — there is nothing left to
+  // present — and it is why the waiting page can tell the person to pair again.
+  assert.equal(armed.status, 401, '被拒绝的设备凭据必须失效')
+})
