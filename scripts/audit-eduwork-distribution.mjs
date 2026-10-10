@@ -1,13 +1,18 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 const unix = path => path.split(sep).join('/')
 const textExtensions = new Set(['', '.cjs', '.css', '.go', '.html', '.js', '.json', '.jsonc', '.jsx', '.map', '.md', '.mjs', '.mod', '.sum', '.ps1', '.py', '.svg', '.ts', '.tsx', '.txt', '.yaml', '.yml', '.lock', '.toml'])
-const privatePath = /(^|\/)(?:node_modules|dist|\.research|private-config|\.local|\.cache|logs|tmp|\.tmp|\.source-tarballs)(\/|$)/
+// Generated, vendored and machine-local directories. One list drives both the
+// traversal and the "outside the source snapshot" rule, so a path can never be
+// skipped by the walk and still reported as a violation.
+const generatedDirectoryNames = ['node_modules', 'dist', '.research', 'private-config', '.local', '.cache', 'logs', 'tmp', '.tmp', '.source-tarballs']
+const generatedDirectory = new RegExp(`(?:^|/)(?:${generatedDirectoryNames.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:/|$)`)
+const generatedSegments = new Set(generatedDirectoryNames)
 const institutionPlugin = /(?:^|\/)(?:institution-ecnu|oidc-ecnu-web|studio-media-ecnu|tool-ecnu-(?:media|campus-search|vision)|provider-vision-fallback|chatecnu-active-heartbeat|skill-pack-ecnu)(?:\/|$)/
 const institutionPackages = /(?:@[^\s"']+\/)?dsh-(?:bundle-institution-ecnu|bundle-oidc-ecnu-web|studio-media-ecnu|tool-ecnu-(?:media|campus-search|vision)|provider-vision-fallback|chatecnu-active-heartbeat|skill-pack-ecnu)(?:["'\s/@]|$)/
 
@@ -60,27 +65,55 @@ function inspectArchive(root, file, artifact, edition, errors) {
   } catch (error) { errors.push(`${file}: archive inspection failed (${error.message})`) }
 }
 
-function collect(root, directory = root, errors = []) {
+// Iterative so a deep generated tree cannot exhaust the call stack, and it
+// prunes the generated directories the violation rule also rejects. Without
+// the prune the walk visited every file under dist/ only to report each one.
+function collect(root, errors = [], skipped = new Set()) {
   const result = []
-  for (const name of readdirSync(directory).sort()) {
-    const file = resolve(directory, name)
-    const path = unix(relative(root, file))
-    if (path === '.git') continue
-    const item = lstatSync(file)
-    if (item.isSymbolicLink()) { errors.push(`${path}: filesystem link is not a portable source input`); continue }
-    if (item.isDirectory()) result.push(...collect(root, file, errors))
-    else if (item.isFile()) result.push(path)
-    else errors.push(`${path}: unsupported filesystem input`)
+  const pending = [root]
+  while (pending.length) {
+    const directory = pending.pop()
+    let names
+    try {
+      names = readdirSync(directory).sort()
+    } catch (error) {
+      errors.push(`${unix(relative(root, directory))}: directory is unreadable (${error.message})`)
+      continue
+    }
+    for (const name of names) {
+      const file = resolve(directory, name)
+      const path = unix(relative(root, file))
+      if (path === '.git') continue
+      const item = lstatSync(file)
+      if (item.isSymbolicLink()) { errors.push(`${path}: filesystem link is not a portable source input`); continue }
+      if (item.isDirectory()) {
+        if (generatedSegments.has(name)) { skipped.add(path); continue }
+        pending.push(file)
+      } else if (item.isFile()) result.push(path)
+      else errors.push(`${path}: unsupported filesystem input`)
+    }
   }
   return result
+}
+
+/** Hash the actual portable source inputs using the audit's directory exclusions. */
+export function sourceFileSet(root) {
+  root = resolve(root)
+  const errors = []
+  const files = collect(root, errors)
+  if (errors.length) throw new Error(`Source inputs are not portable: ${errors.join('; ')}`)
+  return files.filter(file => file !== 'source-receipt.json')
+    .map(path => ({ path, sha256: sha256(readFileSync(resolve(root, path))) }))
+    .sort((a, b) => a.path.localeCompare(b.path, 'en'))
 }
 
 /** Audit actual source input, not just the edition flag. Copyright/provenance is preserved. */
 export function auditDistribution({ root, edition = 'generic', verifyReceipt = false }) {
   root = resolve(root)
   const errors = [], warnings = []
+  const skipped = new Set()
   if (!['generic', 'ecnu'].includes(edition)) throw new Error(`Unknown distribution: ${edition}`)
-  const files = collect(root, root, errors)
+  const files = collect(root, errors, skipped)
   const json = path => {
     try { return JSON.parse(readFileSync(resolve(root, path), 'utf8').replace(/^\uFEFF/, '')) }
     catch (error) { errors.push(`${path}: invalid JSON (${error.message})`); return null }
@@ -93,7 +126,7 @@ export function auditDistribution({ root, edition = 'generic', verifyReceipt = f
   }
   const artifacts = new Map((receipt?.artifacts ?? []).filter(item => item.path).map(item => [item.path, item]))
   for (const file of files) {
-    if (privatePath.test(file) || /(^|\/)\.env(?:\.|$)/.test(file) && !file.endsWith('.env.example') || /(?:\.exe|\.log|\.p12|\.pfx|\.pem|\.zip)$/i.test(file)) errors.push(`${file}: private or generated content is outside the source snapshot`)
+    if (generatedDirectory.test(file) || /(^|\/)\.env(?:\.|$)/.test(file) && !file.endsWith('.env.example') || /(?:\.exe|\.log|\.p12|\.pfx|\.pem|\.zip)$/i.test(file)) errors.push(`${file}: private or generated content is outside the source snapshot`)
     if (/\.tgz$/i.test(file)) {
       const artifact = artifacts.get(file)
       if (!artifact || sha256(readFileSync(resolve(root, file))) !== artifact.sha256) errors.push(`${file}: archive is not an exact frozen package in the receipt`)
@@ -134,10 +167,10 @@ export function auditDistribution({ root, edition = 'generic', verifyReceipt = f
       if (JSON.stringify(actual) !== JSON.stringify(receipt.files) || sha256(JSON.stringify(actual)) !== receipt.fileSetSHA256) errors.push('Source file set differs from the frozen receipt; export a new reviewed snapshot')
     }
   }
-  return { edition, files: files.length, errors: [...new Set(errors)], warnings }
+  return { edition, files: files.length, skipped: [...skipped].sort(), errors: [...new Set(errors)], warnings }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
   const value = name => args[args.indexOf(name) + 1]
   const root = args.includes('--root') ? value('--root') : dirname(dirname(fileURLToPath(import.meta.url)))

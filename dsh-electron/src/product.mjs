@@ -128,7 +128,7 @@ async function prepareDesktop() {
   user = loadUserConfig(paths.config)
   const { migrateUpdateChannel } = await import('./update-channel-migration.mjs')
   const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
-    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')})
+    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-')?'development':'stable')})
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
   const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })

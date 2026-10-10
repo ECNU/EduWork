@@ -62,7 +62,7 @@ test('source must be the correct successful manually requested workflow', () => 
   validateRun(run, policy)
   for (const changed of [{conclusion: 'failure'}, {event: 'pull_request'}, {path: 'another.yml'}, {repository: {full_name: 'someone/another'}}]) assert.throws(() => validateRun({...run, ...changed}, policy))
   assert.throws(() => validateRun({...run, status: 'in_progress'}, policy))
-  const jobs = ['build (windows-latest, windows)', 'build (macos-15, macos)'].map(name => ({name, status: 'completed', conclusion: 'success'}))
+  const jobs = ['Build (windows)', 'Build (macos)'].map(name => ({name, status: 'completed', conclusion: 'success'}))
   validateRun({...run, status: 'in_progress'}, {...policy, currentRun: '12'}, jobs)
   assert.throws(() => validateRun({...run, status: 'in_progress'}, {...policy, currentRun: '12'}, jobs.slice(0, 1)))
   assert.throws(() => validateRun({...run, status: 'in_progress'}, {...policy, currentRun: '12'}, [...jobs, jobs[0]]))
@@ -87,7 +87,7 @@ test('publication requires Actions, main and approved notes before any network m
 test('build and standalone workflows expose the same guarded cloud publication path', async () => {
   const build = await readFile(new URL('../.github/workflows/desktop-candidates.yml', import.meta.url), 'utf8')
   const publish = await readFile(new URL('../.github/workflows/publish-desktop-candidate.yml', import.meta.url), 'utf8')
-  assert.match(build, /needs: build/)
+  assert.match(build, /needs: \[policy, build\]/)
   assert.match(build, /uses: \.\/\.github\/workflows\/publish-desktop-candidate.yml/)
   assert.match(build, /build-desktop-candidate\.ps1/)
   assert.doesNotMatch(build, /source_alpha:|source_stable:/)
