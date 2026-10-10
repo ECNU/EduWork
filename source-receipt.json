@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-10T08:37:27.643Z",
-  "fileSetSHA256": "dd3e3dd4d12a15737cd26c9f2071692a9c4d1123f0e570346bb2c7a5cfe6babf",
+  "createdAt": "2026-10-10T11:58:12.201Z",
+  "fileSetSHA256": "b20df8c5a8f19f15cc887582b8c603d8cd842b46e563fd13070b7cfc4546f0da",
   "files": [
     {
       "path": ".gitattributes",
@@ -365,11 +365,11 @@
     },
     {
       "path": "docs/proposals/desktop-profile-location/README_EN.md",
-      "sha256": "78bf3904f566feec860988a1714142916e8cbe7ed9e87b52731db08521578338"
+      "sha256": "52889777887e10ec20673a262bce61c14d0ba0e7f0b9919bd40e272b19712b9c"
     },
     {
       "path": "docs/proposals/desktop-profile-location/README.md",
-      "sha256": "2c1aebaf59d2cb471b1766c54c4d41f111f5ef12b2fd060cfd2b194320dd4435"
+      "sha256": "3eac68bcbc373eb277e62928ecb87132515745478edfa666738b98b9c656f05e"
     },
     {
       "path": "docs/proposals/gateway-auth/README_EN.md",
@@ -1353,7 +1353,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "fedee83631b62942553774f2c4d82c3f70be9688b07e23d180c5a80d96121198"
+      "sha256": "0d9767ce254386fd184210f54a9bcc96c18cc7be58fa0e07d03cd93f40556140"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1453,7 +1453,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "9583f4a02544ca6745ac24e634f7c2102ae6296a6e35953b65d4c9e936a92059"
+      "sha256": "e3dfa9d39358857e82529445f3bed5001e47562dca96106572d2764807f1e2f0"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",

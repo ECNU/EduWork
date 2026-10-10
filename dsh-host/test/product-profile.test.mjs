@@ -48,11 +48,17 @@ test('rc.1 reads independent request and subagent defaults below saved UI choice
   const presets = join(product, 'd/node_modules/@deepseek-ai/dsh-web-app/presets')
   await mkdir(presets, { recursive: true })
   for (const id of ['standard', 'ptc', 'minimal', 'cordis']) await writeFile(join(presets, id+'.patch.yml'), JSON.stringify([{ insert: [{ id: 'preset-'+id, config: { plugins: [] } }] }]))
+  const retiredProfile = join(home, 'profiles/desktop-017')
+  await mkdir(retiredProfile, { recursive: true })
+  await writeFile(join(retiredProfile, 'cordis.patch.yml'), '[{"id":"retired-user-plugin","disabled":false}]')
   const userConfig = join(root, 'eduwork.jsonc')
   const options = { product, home, shell: 'electron', userConfig }
   const configure = async features => {
     await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, features }))
     const { profile } = await prepareProductProfile(options)
+    assert.equal(profile, join(await realpath(home), 'profiles/desktop'))
+    assert.equal(await readFile(join(retiredProfile, 'cordis.patch.yml'), 'utf8'), '[{"id":"retired-user-plugin","disabled":false}]')
+    assert.ok(!JSON.parse(await readFile(join(profile, 'cordis.patch.yml'))).some(row => row.id === 'retired-user-plugin'))
     const patches = JSON.parse(await readFile(join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml')))
     return { profile, subagent: patches.find(row => row.id === 'subagent').config, requests: patches.find(row => row.id === 'eduwork-concurrency').config }
   }

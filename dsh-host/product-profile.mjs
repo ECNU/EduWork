@@ -83,7 +83,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   if (owner && (owner.schemaVersion !== 1 || owner.shell !== shell || owner.distribution !== identity.distribution)) throw new Error('This data directory belongs to another desktop edition')
   await mkdir(home, { recursive: true })
   await atomicJSON(ownerFile, { schemaVersion: 1, shell, distribution: identity.distribution })
-  const profile = await canonical(join(home, 'profiles', native ? 'desktop-017' : 'desktop'))
+  const profile = await canonical(join(home, 'profiles', 'desktop'))
   const target = await canonical(join(product, 'd', 'node_modules'))
   if (!inside(home, profile) || !inside(product, target)) throw new Error('Desktop profile or modules link escapes its owned directory')
   const link = join(profile, 'node_modules')
