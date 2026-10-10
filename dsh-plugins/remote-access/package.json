@@ -1,0 +1,25 @@
+{
+  "name": "@chatecnu-work/dsh-remote-access",
+  "version": "0.1.0-dev",
+  "description": "Host-owned device registry and one-time pairing for remote access to a DSH agent",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./registry": "./lib/registry.js",
+    "./pairing": "./lib/pairing.js"
+  },
+  "files": [
+    "lib/**/*.js",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-settings": "0.1.2-rc.1",
+    "@deepseek-ai/schemastery": "3.18.2"
+  },
+  "license": "MIT"
+}
