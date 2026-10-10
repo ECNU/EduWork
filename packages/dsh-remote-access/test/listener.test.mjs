@@ -2,6 +2,7 @@
 // assertions can be about what does and does not reach it, which is the actual
 // acceptance question: an unauthorised device must not reach sessions or files.
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import http from 'node:http'
 import net from 'node:net'
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
@@ -678,6 +679,39 @@ test('a retried request with the same requestId is delivered as-is, not deduplic
  * guarded against is silence, and without a deadline the run would hang instead of
  * reporting it.
  */
+/** A server-to-client WebSocket close frame: FIN + opcode 8, code, then the reason. */
+function webSocketCloseFrame(code, reason) {
+  const text = Buffer.from(reason, 'utf8')
+  const payload = Buffer.alloc(2 + text.length)
+  payload.writeUInt16BE(code, 0)
+  text.copy(payload, 2)
+  return Buffer.concat([Buffer.from([0x88, payload.length]), payload])
+}
+
+/** Collect the raw bytes of an upgrade attempt, rather than a lossy string of them. */
+function rawUpgradeBytes(port, path, cookie) {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(port, '127.0.0.1')
+    const chunks = []
+    socket.setTimeout(6000, () => { socket.destroy(); resolve(Buffer.concat(chunks)) })
+    socket.on('connect', () => {
+      socket.write([
+        `GET ${path} HTTP/1.1`,
+        `Host: 127.0.0.1:${String(port)}`,
+        `Cookie: ${cookie}`,
+        'Connection: Upgrade',
+        'Upgrade: websocket',
+        'Sec-WebSocket-Version: 13',
+        'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+        '', '',
+      ].join('\r\n'))
+    })
+    socket.on('data', chunk => { chunks.push(Buffer.from(chunk)) })
+    socket.on('error', error => { socket.destroy(); reject(error) })
+    socket.on('close', () => resolve(Buffer.concat(chunks)))
+  })
+}
+
 function rawUpgrade(port, path, cookie) {
   return new Promise((resolve, reject) => {
     const socket = net.connect(port, '127.0.0.1')
@@ -722,6 +756,65 @@ test('an upgrade the host refuses is relayed, not left hanging', async () => {
 
   const refusal = await rawUpgrade(port, '/api/remote.mux', cookie)
   assert.match(refusal, /^HTTP\/1\.1 403/u, '调度器拒绝必须传回手机，而不是让它干等')
+  await relay.close()
+  host.server.close()
+})
+
+test('an accepted upgrade is carried, and a close from the host keeps its code', async () => {
+  // Only refusals were covered before this. The accepted path matters more: the host's
+  // live channel is a WebSocket, and it is where session and workspace events reach the
+  // device — `workspace/changes` among them. There is no HTTP endpoint that lists a
+  // workspace, so a device that cannot hold this stream open cannot see workspace
+  // results at all.
+  //
+  // The close frame is the part worth pinning. A close carries a code and a reason, and
+  // they are the only way a client tells a protocol error (1008 here) from the network
+  // having dropped. A relay that pipes messages but swallows the closing handshake
+  // leaves the device unable to say which happened, and nothing else in the suite would
+  // notice: every other upgrade test stops at the refusal.
+  const store = new DeviceStore(storePath())
+  const host = await fakeHost()
+  // Upgraded sockets are not closed by `server.close()`, so the test has to hold them
+  // itself: otherwise the run finishes green and then never exits.
+  const upgradedSockets = []
+  host.server.on('upgrade', (request, socket) => {
+    upgradedSockets.push(socket)
+    const key = String(request.headers['sec-websocket-key'] ?? '')
+    const accept = createHash('sha1')
+      .update(`${key}258EAFA5-E914-47DA-95CA-C5AB0DC85B11`)
+      .digest('base64')
+    socket.write([
+      'HTTP/1.1 101 Switching Protocols',
+      'upgrade: websocket',
+      'connection: Upgrade',
+      `sec-websocket-accept: ${accept}`,
+      '', '',
+    ].join('\r\n'))
+    // Then close the way the host really does when a frame does not parse.
+    setTimeout(() => {
+      socket.write(webSocketCloseFrame(1008, 'invalid Remote stream request'))
+    }, 40)
+  })
+  const { relay, base, port } = await startRelay({ hostPort: host.port, store })
+  const { cookie } = await pair(base, store)
+
+  const bytes = await rawUpgradeBytes(port, '/api/remote.mux', cookie)
+  const text = bytes.toString('latin1')
+  assert.match(text, /^HTTP\/1\.1 101 Switching Protocols/u, '被接受的升级必须到达设备')
+  assert.match(text, /sec-websocket-accept: /iu, '握手响应头必须原样带回，否则设备无法完成握手')
+
+  // The close frame's own bytes, not a re-encoding of them: the relay must not have
+  // understood the frame well enough to rewrite it.
+  const start = bytes.indexOf(webSocketCloseFrame(1008, 'invalid Remote stream request'))
+  assert.ok(start > 0, '关闭帧必须原样到达设备')
+  assert.equal(bytes[start], 0x88, '关闭帧的操作码必须是 8')
+  assert.equal(bytes.readUInt16BE(start + 2), 1008, '关闭码必须保留')
+  assert.equal(
+    bytes.subarray(start + 4).toString('utf8'),
+    'invalid Remote stream request',
+    '关闭原因必须保留',
+  )
+  for (const socket of upgradedSockets) socket.destroy()
   await relay.close()
   host.server.close()
 })
