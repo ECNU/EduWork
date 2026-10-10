@@ -210,7 +210,7 @@ case-by-case decision:
 
 | Disposition | Applies when | Current candidates |
 | --- | --- | --- |
-| **Reuse the source directly** | The licence clearly permits it, the dependencies are acceptable, no kernel patch is introduced, and the security semantics meet the hard requirements | **Nothing qualifies after this round of verification**: each candidate has a hard defect (see the next two sections), so no source is reused directly for now |
+| **Reuse the source directly** | The licence clearly permits it, the dependencies are acceptable, no kernel patch is introduced, and the security semantics meet the hard requirements | **Nothing qualifies after this round of verification**: each of the four candidates has a hard defect (see the verification sections below), so no source is reused directly for now |
 | **Adapt, then reuse** | The upstream interaction direction is right, but the security boundary does not hold | `dsh-remote-web-ui`'s pairing (must become one-time) and revocation (must actively disconnect) |
 | **Reuse the design, implement it ourselves** | The licence is unclear, the dependencies are too heavy, or the security semantics fundamentally do not hold | `ds-harness-remote`'s **Noise IK wrapper, IdentityStore pattern and minimal relay forwarding**; `dsh-remote-web-ui`'s pairing state machine, device-table persistence and zero-fork reuse of the official GUI |
 
