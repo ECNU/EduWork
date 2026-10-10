@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-10T08:37:27.643Z",
-  "fileSetSHA256": "4b505b103053f3cf769ba54a75681bce74139737400bdb2902ee2ecdb11f8c0f",
+  "fileSetSHA256": "12684c0729488614a0e2f046491eb5be12836d696b946ef6cbbf3791aca09ba8",
   "files": [
     {
       "path": ".gitattributes",
@@ -505,7 +505,7 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-updater/window_windows.go",
-      "sha256": "651fa6dfade2627f6c4d5b892b3cad8567afd5c3df37c339fd5d987e1a620067"
+      "sha256": "753b894cb9e73c1d20395197521d19a0fd8cfc91b550c5c9045eea1d5ce80fa8"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-wails-candidate/configuration_other.go",
