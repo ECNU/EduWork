@@ -33,17 +33,20 @@ async function owned(root,path) {
   }
   return target
 }
+function insideUpdateState(dataRoot, health) { return within(resolve(dataRoot), resolve(health)) }
 function argument(argv,key) {
   const hits=argv.flatMap((v,i)=>v===key?[i]:[])
   if(hits.length>1 || (hits.length&&(!argv[hits[0]+1]||argv[hits[0]+1].startsWith('--'))))throw Error('Invalid migration launch arguments')
   return hits.length?argv[hits[0]+1]:undefined
 }
-export async function readMigrationLaunch({root,settings,argv}) {
+export async function readMigrationLaunch({root,dataRoot=join(root,'data'),settings,argv}) {
   let file=argument(argv,'--eduwork-migration'),health=argument(argv,'--update-health-file')
   if(!file&&!health)return null
   if(!file&&health&&isAbsolute(health)) {
-    root=await realpath(root);health=await owned(root,health)
-    const rel=relative(join(root,'data/state/updates/transactions'),health).split(sep)
+    root=await realpath(root)
+    const stateRoot = insideUpdateState(dataRoot, health) ? await realpath(dataRoot) : join(root, 'data')
+    health=await owned(stateRoot,health)
+    const rel=relative(join(stateRoot,'state/updates/transactions'),health).split(sep)
     if(rel.length!==2||rel[0]!==settings.productVersion||rel[1]!=='health.ok')throw Error('Unexpected update health location')
     return {kind:'electron-update-v1',healthFile:health,version:settings.productVersion}
   }
@@ -81,10 +84,10 @@ async function inventory(root) {
 // Called only after the old updater has stopped its application and children.
 // The original data is never changed. A fresh destination is atomically
 // installed; an interrupted attempt is reusable only under its own receipt.
-export async function importLegacyData({root,targetHome,launch,onProgress=()=>{}}) {
+export async function importLegacyData({root,targetRoot=root,targetHome,launch,onProgress=()=>{}}) {
   if(!launch)return null
   if(launch.kind==='electron-update-v1')return null
-  root=await realpath(root);targetHome=await owned(root,targetHome)
+  root=await realpath(root);targetHome=await owned(await realpath(targetRoot),targetHome)
   launch={...launch,sourceHome:await owned(root,launch.sourceHome)}
   if(same(targetHome,launch.sourceHome))throw Error('Migration requires separate source and destination')
   const prior=await lstat(targetHome).catch(e=>{if(e.code==='ENOENT')return null;throw e})

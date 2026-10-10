@@ -2,12 +2,12 @@
 
 [中文](CONFIGURATION.md) · [Examples](../config/desktop/examples/README_EN.md) · [Configuration and Skills updates](CONTENT_UPDATES_EN.md)
 
-Generic and institution Electron editions read one effective file: `config/eduwork.jsonc`. Open it from Settings, edit and save, then fully quit the tray application and restart. Organizations, models, feature switches and media services come from this file, with no hidden institution overlay.
+Generic and institution Electron editions read one effective file: `~/.config/eduwork/eduwork.jsonc`. Open it from Settings, edit and save, then fully quit the tray application and restart. Organizations, models, feature switches and media services come from this file, with no hidden institution overlay.
 
 | Platform | Active file | Only rollback backup |
 | --- | --- | --- |
-| Windows portable | `<installation>/config/eduwork.jsonc` | `<installation>/data/configuration/eduwork.previous.jsonc` |
-| macOS | `~/Library/Application Support/<distribution>-electron/config/eduwork.jsonc` | `data/configuration/eduwork.previous.jsonc` under the same distribution directory |
+| Windows portable | `%USERPROFILE%/.config/<distribution>/eduwork.jsonc` | `data/configuration/eduwork.previous.jsonc` under the same directory |
+| macOS | `~/.config/<distribution>/eduwork.jsonc` | `data/configuration/eduwork.previous.jsonc` under the same directory |
 
 The generic distribution ID is `eduwork`. Mac configuration and user data stay outside `.app`. Passwords, API keys and login tokens remain in credential storage, not JSONC.
 
@@ -49,3 +49,5 @@ Windows update defaults preserve migrated sources; macOS appcasts appear under `
 The effective `eduwork.jsonc` contains Chinese field comments and a complete commented reference for generic options, including paths, accepted values, defaults and mutually exclusive settings. Optional examples stay commented out until real deployment parameters are supplied. Applicable installed-plugin defaults, including institution endpoints, are written into `plugins` in this file. Optional, mutually exclusive and automatically located values remain commented examples. All additional options are listed in the same file. Initial downloads, configuration updates and upgrades of existing files keep this help, personal comments and one rollback backup.
 
 Set `allowInsecureDevelopment` beside `auth` in the organization object to `true` to also accept HTTP for enterprise discovery, authentication endpoints and model APIs. The default is explicitly written as `false` (HTTPS only); an existing `true` is preserved. The obsolete `insecureDevelopmentOrigin` is accepted but ignored. Issuer/resource identity and PKCE checks remain in force. Brand links, media services and software/content feeds retain their own URL rules, documented in the file.
+
+Both platforms keep sessions, attachments, profiles, encrypted browser credentials and update state in this user directory. First launch copies and verifies the legacy tree, retaining the original. An existing new tree takes precedence without merging. Mac Alpha uses `<distribution>-alpha`; stable builds can adopt it only when their own directory is absent. See the [directory design](dev/desktop-user-directory.md) for migration and rollback boundaries.

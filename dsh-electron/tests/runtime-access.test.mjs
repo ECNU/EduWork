@@ -23,7 +23,7 @@ test('native failure retains details and stops startup', () => {
 })
 test('shared product startup repairs before registering or creating windows', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('export function installEduworkFromDmg()'))
+  const configure = source.slice(source.indexOf('export async function configureEduworkPaths()'), source.indexOf('export function installEduworkFromDmg()'))
   assert.ok(configure.indexOf('ensureRuntimeAccess(') < configure.indexOf('attachAppActivation('))
   assert.match(configure, /dialog\.showErrorBox/)
   assert.match(configure, /app\.exit\(1\)/)

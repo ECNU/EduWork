@@ -1,9 +1,7 @@
-# Desktop profile location proposal
+# Desktop profile location
 
 [简体中文](README.md) | **English**
 
-Status: incomplete. This PR identified the profile naming and location issue; a separate PR will design and implement the change. This PR leaves profile paths and user data unchanged.
+Status: implemented. macOS and Windows configuration and all user data live under `.config/<distribution>/` in the user home; the public edition uses `.config/eduwork/`. Native profiles use the version-independent `dsh/profiles/desktop-native` directory. First launch copies and verifies old data, retaining the original; an existing new tree takes precedence without merging.
 
-The Electron launcher sets `DSH_HOME` to the distribution's data directory. The native DSH profile is fixed at `DSH_HOME/profiles/desktop-017`. On macOS, application data is under the user's Application Support directory; the portable Windows build stores it under the installation's `data` directory.
-
-Follow-up work must define the boundary between the profile and user-editable configuration, verify DSH's `DSH_HOME` path requirements, and plan migration and rollback for existing installations. Renaming the directory alone would hide existing settings and state.
+See the [directory design](../../dev/desktop-user-directory.md) for paths, migration and rollback, and the [configuration guide](../../CONFIGURATION_EN.md) for the effective file. Credentials, restart persistence and update installation still require native acceptance on both platforms.

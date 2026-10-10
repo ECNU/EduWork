@@ -10,6 +10,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -69,6 +71,7 @@ func run(args []string) error {
 	f := flag.NewFlagSet("serve", flag.ContinueOnError)
 	root := f.String("root", "", "")
 	edition := f.String("edition", "", "")
+	stateDir := f.String("state-dir", "", "")
 	parent := f.Int("parent-pid", 0, "")
 	if err := f.Parse(args[1:]); err != nil {
 		return err
@@ -88,6 +91,15 @@ func run(args []string) error {
 		return fmt.Errorf("not an Electron installation")
 	}
 	state := filepath.Join(*root, "data/state")
+	if *stateDir != "" {
+		if !filepath.IsAbs(*stateDir) {
+			return fmt.Errorf("update state directory must be absolute")
+		}
+		state = filepath.Clean(*stateDir)
+	}
+	if err := cancelForeignPending(state, *root); err != nil {
+		return err
+	}
 	self, err := os.Executable()
 	if err != nil {
 		return err
@@ -161,4 +173,28 @@ func run(args []string) error {
 	cancel()
 	workers.Wait()
 	return scanner.Err()
+}
+
+// cancelForeignPending 防止共享用户目录中的旧更新安装到另一份程序目录。
+func cancelForeignPending(state, root string) error {
+	pending, err := updater.LoadPending(state)
+	if os.IsNotExist(err) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	target := filepath.Clean(pending.InstallDir)
+	current := filepath.Clean(root)
+	same := target == current
+	if runtime.GOOS == "windows" {
+		same = strings.EqualFold(target, current)
+	}
+	if same || pending.State == "cancelled" {
+		return nil
+	}
+	pending.State = "cancelled"
+	pending.InstallOnNextStart = false
+	pending.Error = "程序安装位置已改变，已取消原目录的待安装更新；请重新下载更新。"
+	return updater.SavePending(state, pending)
 }

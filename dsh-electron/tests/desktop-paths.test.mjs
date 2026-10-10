@@ -3,60 +3,57 @@ import assert from 'node:assert/strict'
 import { resolve, join, relative } from 'node:path'
 import { desktopPaths } from '../src/desktop-paths.mjs'
 
-const settings = { distribution: 'example', productVersion: '0.3.6', configurationOwnership: 'user', product: '../product', node: '../runtime/node' }
+const settings = { distribution: 'eduwork', productVersion: '0.4.2', configurationOwnership: 'user', product: '../product', node: '../runtime/node' }
+const userHome = resolve('synthetic-user')
+function options(platform = 'darwin') {
+  return { platform, userHome, appData: join(userHome, 'Application Support'), settings,
+    appRoot: resolve(platform === 'darwin' ? 'installed/EduWork.app/Contents/Resources/app' : 'installed/resources/app'), exists: () => false }
+}
 
-test('first stable reuses Alpha data without combining two existing macOS homes', () => {
-  const appRoot = resolve('synthetic-installed/Example.app/Contents/Resources/app'), appData = resolve('synthetic-user/Application Support')
-  const options = { appRoot, appData, settings: { ...settings, productVersion: '0.4.0' }, platform: 'darwin' }
-  const alphaOnly = desktopPaths({ ...options, exists: path => path.endsWith('example-electron-alpha') })
-  assert.equal(alphaOnly.home, join(appData, 'example-electron-alpha/dsh'))
-  const both = desktopPaths({ ...options, exists: () => true })
-  assert.equal(both.home, join(appData, 'example-electron/dsh'))
-  const future = desktopPaths({ ...options, settings: { ...settings, productVersion: '1.0.0' }, exists: path => path.endsWith('example-electron-alpha') })
-  assert.equal(future.home, alphaOnly.home)
+for (const platform of ['darwin', 'win32']) test(`${platform} uses the same user layout outside installation`, () => {
+  const paths = desktopPaths(options(platform)), userRoot = join(userHome, '.config/eduwork')
+  assert.equal(paths.userRoot, userRoot)
+  assert.equal(paths.config, join(userRoot, 'eduwork.jsonc'))
+  assert.equal(paths.home, join(userRoot, 'dsh'))
+  assert.equal(paths.userData, join(userRoot, 'browser'))
+  assert.equal(paths.logs, join(userRoot, 'logs'))
+  assert.equal(paths.updateDataRoot, join(userRoot, 'data'))
+  for (const field of ['config', 'home', 'userData', 'logs', 'updateDataRoot']) assert.ok(relative(paths.root, paths[field]).startsWith('..'))
+  const publisher = desktopPaths({ ...options(platform), settings: { ...settings, configurationOwnership: 'publisher' } })
+  assert.equal(publisher.config, paths.config)
 })
 
-test('macOS mutable paths and both editions use the user config directory, including older publisher metadata', () => {
-  const root = resolve('synthetic-installed/Example.app'), appRoot = join(root, 'Contents/Resources/app'), appData = resolve('synthetic-user/Application Support')
-  const options = { appRoot, appData, settings, platform: 'darwin' }
-  const paths = desktopPaths(options), userRoot = join(appData, 'example-electron')
-  assert.equal(paths.root, root)
-  assert.equal(paths.product, join(root, 'Contents/Resources/product'))
-  for (const path of [paths.config, paths.home, paths.userData, paths.logs, paths.updateDataRoot]) {
-    assert.equal(relative(userRoot, path).startsWith('..'), false)
-    assert.equal(relative(root, path).startsWith('..'), true)
-  }
-  assert.equal(paths.skillsManifestPath, join(root, 'Contents/Resources/bundled-skills.json'))
-  const publisherConfig = resolve('synthetic-publisher/config.jsonc')
-  assert.equal(desktopPaths({ ...options, settings: { ...settings, configurationOwnership: 'publisher', publisherConfig } }).config, paths.config)
-  assert.equal(desktopPaths({ ...options, configOverride: publisherConfig }).config, publisherConfig)
-  const testRoot = resolve('synthetic-isolated-test')
-  assert.equal(desktopPaths({ ...options, testRoot }).updateDataRoot, join(testRoot, 'updates'))
+test('legacy source paths and immutable product assets stay platform specific', () => {
+  const mac = desktopPaths(options()), win = desktopPaths(options('win32'))
+  assert.equal(mac.legacy.dataRoot, join(userHome, 'Application Support/eduwork-electron'))
+  assert.equal(mac.legacy.configRoot, join(mac.legacy.dataRoot, 'config'))
+  assert.equal(win.legacy.dataRoot, join(win.root, 'data/eduwork-electron'))
+  assert.equal(win.legacy.configRoot, join(win.root, 'config'))
+  assert.equal(win.legacy.updateDataRoot, join(win.root, 'data'))
+  assert.equal(mac.skillsManifestPath, join(mac.root, 'Contents/Resources/bundled-skills.json'))
+  assert.equal(win.skillsManifestPath, join(win.root, 'RELEASE-MANIFEST.json'))
 })
 
-test('Windows portable config, update state and manifest locations stay compatible', () => {
-  const root = resolve('synthetic-portable'), appRoot = join(root, 'resources/app')
-  const paths = desktopPaths({ appRoot, settings, platform: 'win32' })
-  assert.equal(paths.root, root)
-  assert.equal(paths.config, join(root, 'config/eduwork.jsonc'))
-  assert.equal(paths.home, join(root, 'data/example-electron/dsh'))
-  assert.equal(paths.updateDataRoot, join(root, 'data'))
-  assert.equal(paths.skillsManifestPath, join(root, 'RELEASE-MANIFEST.json'))
-  assert.throws(() => desktopPaths({ appRoot, settings, platform: 'win32', testRoot: 'relative' }))
-  assert.throws(() => desktopPaths({ appRoot, settings, platform: 'win32', testRoot: join(root, 'current') }))
+test('edition and Alpha namespaces remain isolated with deterministic stable adoption', () => {
+  const normal = desktopPaths(options())
+  const edition = desktopPaths({ ...options(), settings: { ...settings, distribution: 'eduwork-example' } })
+  const alpha = desktopPaths({ ...options(), settings: { ...settings, sourceAlpha: true } })
+  assert.notEqual(edition.userRoot, normal.userRoot)
+  assert.equal(alpha.userRoot, normal.userRoot + '-alpha')
+  const reuse = desktopPaths({ ...options(), exists: path => path.endsWith('-alpha') })
+  assert.equal(reuse.userRoot, alpha.userRoot)
+  assert.equal(reuse.legacy.dataRoot, join(userHome, 'Application Support/eduwork-electron-alpha'))
+  assert.equal(desktopPaths({ ...options(), exists: () => true }).userRoot, normal.userRoot)
 })
 
-test('macOS source Alpha isolates all writable state without moving the read-only product', () => {
-  const appRoot = resolve('synthetic-installed/Example Alpha.app/Contents/Resources/app')
-  const options = { appRoot, appData: resolve('synthetic-user/Application Support'), settings, platform: 'darwin' }
-  const normal = desktopPaths(options), alpha = desktopPaths({ ...options, settings: { ...settings, sourceAlpha: true } })
-  assert.equal(alpha.product, normal.product)
-  assert.equal(alpha.skillsManifestPath, normal.skillsManifestPath)
-  for (const field of ['config', 'home', 'userData', 'logs', 'updateDataRoot']) {
-    assert.notEqual(alpha[field], normal[field])
-    assert.equal(relative(join(options.appData, 'example-electron-alpha'), alpha[field]).startsWith('..'), false)
-  }
-  assert.equal(desktopPaths({ ...options, settings: { ...settings, sourceAlpha: false } }).config, normal.config)
-  const windows = { appRoot: resolve('synthetic-portable/resources/app'), settings, platform: 'win32' }
-  assert.deepEqual(desktopPaths({ ...windows, settings: { ...settings, sourceAlpha: true } }), desktopPaths(windows))
+test('test roots isolate configuration too; explicit overrides remain absolute', () => {
+  const testRoot = resolve('isolated-test'), paths = desktopPaths({ ...options(), testRoot })
+  assert.equal(paths.config, join(testRoot, 'eduwork.jsonc'))
+  assert.equal(paths.home, join(testRoot, 'dsh'))
+  assert.equal(paths.legacy, undefined)
+  const override = join(testRoot, 'custom.jsonc')
+  assert.equal(desktopPaths({ ...options(), testRoot, configOverride: override }).config, override)
+  assert.throws(() => desktopPaths({ ...options(), testRoot: 'relative' }))
+  assert.throws(() => desktopPaths({ ...options(), configOverride: 'relative' }))
+  assert.throws(() => desktopPaths({ ...options(), settings: { ...settings, distribution: '../invalid' } }))
 })

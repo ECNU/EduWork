@@ -184,7 +184,7 @@ The gateway must enable native CLI OAuth and grant the account model permissions
 <details>
 <summary>Use a school or enterprise configuration</summary>
 
-1. Select **Open configuration file** in Settings. The active `eduwork.jsonc` is under the application directory's `config/` on Windows. On macOS it lives in a distribution-specific directory under `~/Library/Application Support/`; use the file opened from Settings.
+1. Select **Open configuration file** in Settings. On Windows and macOS, the active `eduwork.jsonc` lives under `.config/<distribution>/` in your user home (`.config/eduwork/` for the public edition). Upgrades migrate the old configuration; use the file opened from Settings.
 2. Follow the server guide and the adjacent `examples/` folder. Add organization entries to `organizations`, preserving existing settings; add `media` if needed. Editing the example alone has no effect.
 3. Save, exit completely through the tray or application menu, and restart. Then select your organization and sign in.
 

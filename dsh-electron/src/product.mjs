@@ -1,7 +1,7 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
-import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -12,6 +12,7 @@ import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
+import { migrateDesktopData } from './desktop-data-migration.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration } from './portable-updates.mjs'
@@ -62,12 +63,26 @@ export function restartDesktop() {
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
 export function isQuitting() { return lifecycle.closing }
-export function configureEduworkPaths() {
+export async function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
-  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
+  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined, userHome: app.getPath('home'),
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
+  const legacyBrowser = paths.legacy && join(paths.legacy.dataRoot, 'browser')
+  let legacyLock = false
+  if (!existsSync(paths.userRoot) && legacyBrowser && existsSync(legacyBrowser)) {
+    app.setPath('userData', legacyBrowser)
+    legacyLock = app.requestSingleInstanceLock()
+    if (!legacyLock) { app.exit(0); throw new Error('请完全退出旧客户端后重新启动。') }
+  }
+  try { await migrateDesktopData(paths, { ownsLegacyLock: legacyLock }) }
+  catch (error) {
+    dialog.showErrorBox('无法迁移用户目录', `${error.message}\n\n旧目录已保留，请完全退出旧客户端后重试。`)
+    app.exit(1)
+    throw error
+  }
+  finally { if (legacyLock) app.releaseSingleInstanceLock() }
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
@@ -102,7 +117,7 @@ export function installEduworkFromDmg() {
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
 async function prepareDesktop() {
   lifecycle.check()
-  migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
+  migrationLaunch = await readMigrationLaunch({root:paths.root,dataRoot:paths.updateDataRoot,settings,argv:process.argv})
   const startupBlue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
   const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
   const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
@@ -117,7 +132,7 @@ async function prepareDesktop() {
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:' + startupBackground + '}progress{width:100%;margin-top:20px;accent-color:' + startupAccent + '}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
-  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+  if (settings.configurationOwnership === 'user')
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
@@ -130,7 +145,7 @@ async function prepareDesktop() {
   const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-')?'development':'stable')})
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
-  const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
+  const priorUpdates = await readFile(join(paths.userRoot,'update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })
   const migrationDefaults = trustedUpdates?.updates ?? settings.updates ?? {}
   const alphaDefaults = process.platform === 'darwin'
@@ -164,7 +179,7 @@ async function prepareDesktop() {
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   const software = process.platform === 'darwin' ? startMacSparkleUpdates({ appPath:app.getAppPath(), version:settings.productVersion, enabled:settings.macSparkle?.enabled === true && user.updates.provider !== 'disabled', feeds:effectiveUpdateDefaults.macFeeds, policy:contentUpdates.policy, onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true}); await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>desktopExit.handoff()})
+  } }) : await startPortableUpdates({dataRoot:paths.updateDataRoot,configRoot:paths.userRoot,root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>desktopExit.handoff()})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,beforeInstall:()=>confirmQuit(),onPolicy:async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
@@ -172,7 +187,7 @@ async function prepareDesktop() {
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) { settings.productName = user.product.name; applyDesktopBrand(app, process.platform, settings); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
-  await importLegacyData({root:paths.root,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
+  await importLegacyData({root:paths.root,targetRoot:paths.userRoot,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
     writeMigrationHealth(migrationLaunch,'importing',`正在复制历史文件 ${progress.copied}/${progress.total}`)})
   if (!safeStorage.isEncryptionAvailable() || (process.platform === 'linux' && safeStorage.getSelectedStorageBackend?.() === 'basic_text')) throw new Error('System credential encryption is unavailable')
   let launch = {}

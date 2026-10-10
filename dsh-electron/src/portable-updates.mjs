@@ -51,17 +51,17 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
  return result
 }
 
-export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform,spawnProcess=spawn}) {
+export async function startPortableUpdates({root,dataRoot=join(root,'data'),configRoot=join(root,'config'),updates={},defaults={},version,distribution,onQuit,platform=process.platform,spawnProcess=spawn}) {
  if(platform!=='win32')return null
- const state=join(root,'data/state/updates')
- const prior=await readFile(join(root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
+ const state=join(dataRoot,'state/updates')
+ const prior=await readFile(join(configRoot,'update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
  const configuration=resolveUpdateConfiguration(defaults,updates,prior)
  const edition=portableUpdateEdition({configuration,version,prior,distribution})
  await mkdir(state,{recursive:true});const path=join(state,'electron-edition.json');await writeFile(path,JSON.stringify(edition))
  const executable=join(root,'resources/update/EduWork-Updater.exe')
  let child
  try {
-  child=spawnProcess(executable,['serve','--root',root,'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
+  child=spawnProcess(executable,['serve','--root',root,'--state-dir',join(dataRoot,'state'),'--edition',path,'--parent-pid',String(process.pid)],{windowsHide:true,stdio:['pipe','pipe','pipe']})
   // Wait for OS process creation before writing to stdin. On denied/missing
   // executables, Node emits an async error and writing early can also emit EPIPE.
   await new Promise((resolve,reject)=>{child.once('spawn',resolve);child.once('error',reject)})

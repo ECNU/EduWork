@@ -20,7 +20,7 @@ const skill=(body='---\nname: example\ndescription: Example skill\n---\nUse the 
 async function fixture(t,permissions={},mac=false) {
   const directory=await mkdtemp(join(tmpdir(),'eduwork-content-'))
   t.after(()=>rm(directory,{recursive:true,force:true}))
-  const paths=mac?desktopPaths({appRoot:join(directory,'Example.app/Contents/Resources/app'),appData:join(directory,'Application Support'),platform:'darwin',
+  const paths=mac?desktopPaths({appRoot:join(directory,'Example.app/Contents/Resources/app'),userHome:join(directory,'user'),appData:join(directory,'Application Support'),platform:'darwin',
     settings:{distribution:'example',productVersion:version,product:'../product',node:'../runtime/node',configurationOwnership:'user'}}):null
   const root=paths?.root??join(directory,'Original app'),product=paths?.product??join(root,'resources/product'),configPath=paths?.config??join(root,'config/eduwork.jsonc')
   await mkdir(join(product,'skills/example'),{recursive:true});await mkdir(dirname(configPath),{recursive:true})

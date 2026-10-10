@@ -53,6 +53,7 @@ test('rc.1 reads independent request and subagent defaults below saved UI choice
   const configure = async features => {
     await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, features }))
     const { profile } = await prepareProductProfile(options)
+    assert.equal(profile, join(await realpath(home), 'profiles/desktop-native'))
     const patches = JSON.parse(await readFile(join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml')))
     return { profile, subagent: patches.find(row => row.id === 'subagent').config, requests: patches.find(row => row.id === 'eduwork-concurrency').config }
   }

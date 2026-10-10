@@ -83,6 +83,7 @@ test('successful process creation keeps the real pipe protocol and scheduled-ins
  });`)
  const bridge=await startPortableUpdates({...options,onQuit:()=>quit.push(true),spawnProcess:(_file,args,settings)=>{
   assert.equal(args[0],'serve')
+  assert.equal(args[args.indexOf('--state-dir')+1],join(options.root,'data/state'))
   const child=spawn(process.execPath,[script],settings)
   createInterface({input:child.stdout}).on('line',line=>actions.push(JSON.parse(line)))
   return child

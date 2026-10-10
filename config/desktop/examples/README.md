@@ -34,10 +34,10 @@
 
 | 平台 | 公版生效配置 |
 | --- | --- |
-| Windows | `<程序目录>/config/eduwork.jsonc` |
-| macOS | `~/Library/Application Support/eduwork-electron/config/eduwork.jsonc` |
+| Windows | `%USERPROFILE%/.config/eduwork/eduwork.jsonc` |
+| macOS | `~/.config/eduwork/eduwork.jsonc` |
 
-`examples/` 与生效配置在同一目录；macOS 首次启动会把示例复制到用户配置目录，不编辑 `.app` 包内文件。没有模型时先确认网关账号/团队权限；查看配置时不要把“能登录网关网页”等同于“已启用 CLI OAuth”。
+`examples/` 与生效配置在同一目录；两平台首次启动会把示例复制到用户配置目录，不编辑 `.app` 包内文件。没有模型时先确认网关账号/团队权限；查看配置时不要把“能登录网关网页”等同于“已启用 CLI OAuth”。
 
 ## 其他配置
 
