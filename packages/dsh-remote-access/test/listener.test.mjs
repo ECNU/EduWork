@@ -3,12 +3,13 @@
 // acceptance question: an unauthorised device must not reach sessions or files.
 import assert from 'node:assert/strict'
 import http from 'node:http'
-import { mkdtempSync, rmSync, statSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
 import { DEVICE_COOKIE, DeviceStore, createGatedRelay, isLoopbackAddress, readDeviceCookie } from '../src/listener.js'
+import { createInvitation, emptyInvitations } from '../src/pairing.js'
 
 const temporaryDirectories = []
 const openHosts = []
@@ -302,6 +303,62 @@ test('the status endpoint tells a device about itself and nothing else', async (
   assert.equal((await fetch(`${base}/__remote/status`, { headers: { cookie: pending.cookie } })).status, 401, 'a revoked credential stops answering')
   await relay.close()
   host.server.close()
+})
+
+test('every way an invitation can fail looks the same from outside', async () => {
+  // The protocol document promises that a wrong code, a spent one, an expired one
+  // and a missing one cannot be told apart. That is a security property, not a
+  // nicety: if the answers differed, the endpoint would confirm which guesses were
+  // closer, and it would also reveal whether an invitation had ever been issued.
+  // Prose in a document does not hold that; this does.
+  const path = storePath()
+  // The store tolerates a missing file rather than creating one, so a first write
+  // is what brings the state file into existence before it can be seeded.
+  new DeviceStore(path).invite()
+  const past = new Date(Date.now() - 3_600_000).toISOString()
+  const expired = createInvitation(emptyInvitations(), { now: past, ttlMs: 60_000 })
+  const seeded = JSON.parse(readFileSync(path, 'utf8'))
+  seeded.invitations = expired.invitations
+  writeFileSync(path, JSON.stringify(seeded))
+
+  const store = new DeviceStore(path)
+  const host = await fakeHost()
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const spendable = store.invite().code
+
+  const answers = []
+  const ask = async (label, query) => {
+    const response = await fetch(`${base}/__remote/pair${query}`, { redirect: 'manual' })
+    const body = await response.text()
+    answers.push({ label, status: response.status, body, cookie: response.headers.get('set-cookie') })
+  }
+
+  await ask('正确的一次', `?token=${encodeURIComponent(spendable)}`)          // succeeds
+  const devicesAfterSuccess = store.devices().length
+  await ask('已用过', `?token=${encodeURIComponent(spendable)}`)
+  await ask('写错了', '?token=edw-inv-not-a-real-code')
+  await ask('已过期', `?token=${encodeURIComponent(expired.code)}`)
+  await ask('根本没带', '')
+
+  const devicesAfterFailures = store.devices().length
+  await relay.close()
+  host.server.close()
+
+  const [first, ...failures] = answers
+  assert.equal(first.status, 302, 'the one good invitation must work')
+  assert.notEqual(first.cookie, null)
+
+  for (const failure of failures) {
+    assert.equal(failure.status, 403, `${failure.label} must be a plain 403`)
+    assert.equal(failure.body, failures[0].body, `${failure.label} must not differ in wording`)
+    assert.equal(failure.cookie, null, `${failure.label} must not hand out a credential`)
+  }
+  // Not merely similar: one string, four causes.
+  assert.equal(new Set(failures.map(entry => `${String(entry.status)}|${entry.body}`)).size, 1)
+  // A failed pairing registers nothing. The one that succeeded did register a
+  // device — that is its job — so the count is the claim, not zero.
+  assert.equal(devicesAfterSuccess, 1, 'the successful pairing registers exactly one device')
+  assert.equal(devicesAfterFailures, devicesAfterSuccess, 'a failed pairing must not register a device')
 })
 
 test('isLoopbackAddress recognises this machine and nothing else', () => {
