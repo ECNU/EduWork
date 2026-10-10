@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:https'
 import { createHash, generateKeyPairSync, sign } from 'node:crypto'
+import { createMacOSAppArchive } from '../scripts/create-macos-archive.mjs'
 
 assert.equal(process.platform, 'darwin', 'Native Sparkle checks require macOS')
 const root=resolve(process.argv[2]), repository=fileURLToPath(new URL('..',import.meta.url))
@@ -78,7 +79,7 @@ int main(){@autoreleasepool {NSArray *versions=@[@"0.3.5",@"0.3.6dev20260920.1",
     return app
   }
   const oldApp=await prepare('1'),newApp=await prepare('2')
-  const zip=join(root,'update.zip');await run('ditto',['-c','-k','--sequesterRsrc','--keepParent',newApp,zip])
+  const zip=join(root,'update.zip');await createMacOSAppArchive(newApp,zip)
   archive=await readFile(zip);signature=sign(null,archive,pair.privateKey).toString('base64')
   const marker=join(evidence,'probe.json')
   const probeRun=await run(join(oldApp,'Contents/MacOS/Electron'),[],{failure:true,env:{EDUWORK_SPARKLE_RESULT:marker}});

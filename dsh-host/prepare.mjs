@@ -50,6 +50,9 @@ export function adaptHostProcess(source) {
 
 export function adaptHostEntry(source) {
   let text = source.replaceAll('\r\n', '\n').replaceAll("'./wire.ts'", "'./wire.js'")
+  text = "import { inspectDesktopQuit } from './quit-inspection.js'\n" + text
+  text = replaceOnce(text, 'const response = url.pathname === DESKTOP_STREAM_PATH',
+    "const response = url.pathname === '/_eduwork/quit-inspection' && request.method === 'GET'\n          ? Response.json(await inspectDesktopQuit(ctx))\n          : url.pathname === DESKTOP_STREAM_PATH")
   // Node streams own their fd even with autoClose:false when destroy() is called.
   // A separate closeSync races their pending Windows I/O and can double-close it.
   text = replaceOnce(text, 'import { closeSync, createReadStream,', 'import { createReadStream,')
@@ -82,9 +85,10 @@ export async function prepare({ upstream, output }) {
   await emit('host-protocol.mjs', transform(input['apps/desktop/src/host-protocol.ts']))
   await emit('desktop-host/lib/index.js', transform(adaptHostEntry(input['apps/desktop-host/src/index.ts'])))
   await emit('desktop-host/lib/wire.js', transform(input['apps/desktop-host/src/wire.ts']))
+  await emit('desktop-host/lib/quit-inspection.js', await readFile(new URL('./quit-inspection.mjs', import.meta.url)))
   await emit('desktop-host/config/desktop.cordis.patch.yml', input['apps/desktop-host/config/desktop.cordis.patch.yml'])
   const manifest = JSON.parse(input['apps/desktop-host/package.json'])
-  manifest.files = ['lib/index.js', 'lib/wire.js', 'config/desktop.cordis.patch.yml']
+  manifest.files = ['lib/index.js', 'lib/wire.js', 'lib/quit-inspection.js', 'config/desktop.cordis.patch.yml']
   // This is a local overlay, never npm-published. The product profile owns dependencies.
   await emit('desktop-host/package.json', JSON.stringify(manifest, null, 2) + '\n')
   await emit('LICENSE-DeepSeek', input.LICENSE)
@@ -92,7 +96,7 @@ export async function prepare({ upstream, output }) {
   const receipt = {
     schemaVersion: 1, upstreamCommit, upstreamVersion: '0.1.5-rc.2', protocolVersion: 3,
     nodeVersion: process.version, preparationVersion: 1, sources, outputs,
-    adaptations: ['preserve-product-agent-presets-roots', 'explicit-candidate-linked-profile', 'stdin-bootstrap', 'stdout-logs-to-stderr', 'bounded-stderr-tail', 'lifecycle-failure-callback', 'stream-owned-pipe-shutdown'],
+    adaptations: ['preserve-product-agent-presets-roots', 'explicit-candidate-linked-profile', 'stdin-bootstrap', 'stdout-logs-to-stderr', 'bounded-stderr-tail', 'lifecycle-failure-callback', 'stream-owned-pipe-shutdown', 'quit-time-task-inspection'],
   }
   await emit('receipt.json', JSON.stringify(receipt, null, 2) + '\n')
   return receipt

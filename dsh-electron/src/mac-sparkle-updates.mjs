@@ -8,14 +8,13 @@ export function editableMacUpdateConfiguration({ defaults = {}, updates = {}, fe
     defaultPolicy: updates.defaultPolicy ?? defaults.defaultPolicy ?? (version.includes('-dev.') ? 'development' : 'stable') }
 }
 
-// Sparkle owns its own native update dialog. The workbench reports only that
-// availability from its delegate; download/install progress stays in that dialog.
+// Sparkle owns download validation and installation; the workbench owns reminders.
 export function startMacSparkleUpdates({ appPath, version, enabled = false, feeds = {}, policy = 'stable', onPolicy = async () => {}, platform = process.platform, loadAddon = require }) {
   if (platform !== 'darwin' || !enabled) return null
   let addon, failure
   try {
     addon = loadAddon(join(appPath, 'native/sparkle.node'))
-    if (['start','check','setFeed','probe','snapshot'].some(name => typeof addon[name] !== 'function')) throw Error('Invalid Sparkle native bridge')
+    if (['start','check','setFeed','probe','snapshot','setAutomaticDownload','install'].some(name => typeof addon[name] !== 'function')) throw Error('Invalid Sparkle native bridge')
     for (const [channel, value] of Object.entries(feeds)) {
       const url = new URL(value)
       if (!['stable','development'].includes(channel) || url.protocol !== 'https:' || url.username || url.password || url.search || url.hash) throw Error('Invalid Sparkle appcast')
@@ -23,14 +22,28 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
     if (!feeds[policy]) throw Error('No Sparkle appcast for the selected channel')
     addon.start(feeds[policy])
   } catch (error) { failure = error }
+  const nativeStatus = () => {
+    const status = addon.snapshot()
+    // Appcast links are external input; never expose executable or credential URLs.
+    try {
+      const url = new URL(status.releaseNotesURL)
+      if (!['https:', 'http:'].includes(url.protocol) || url.username || url.password) throw Error('Unsafe link')
+      status.releaseNotesURL = url.href
+    } catch { delete status.releaseNotesURL }
+    return status
+  }
   const status = () => ({ shell: 'electron', version, phase: failure ? 'error' : 'ready',
-    message: failure ? `macOS 更新组件不可用：${failure.message}` : 'macOS 应用更新由 Sparkle 管理；检查、下载和安装会在系统窗口中进行。',
-    update: { enabled: !failure, nativeUI: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : addon.snapshot()) } })
+    message: failure ? `macOS 更新组件不可用：${failure.message}` : '检查在后台进行；可选择自动下载并在退出时安装，不会强制重启。',
+    update: { enabled: !failure, nativeUI: false, nativeUpdater: true, policy, policies:Object.keys(feeds), ...(failure ? {state:'error',error:failure.message} : nativeStatus()) } })
   return {
     action: async action => {
       if (action === 'status') return status()
-      // Probe only: the native delegate reports availability without a dialog.
-      if (action === 'check-updates-background') { if (!failure) addon.probe(); return status() }
+      // Sparkle chooses quiet checks or background downloads from its persisted preference.
+      if (action === 'check-updates' || action === 'check-updates-background') {
+        if (failure && action === 'check-updates') throw Error(`macOS 更新组件不可用：${failure.message}`)
+        if (!failure) addon.probe()
+        return status()
+      }
       if (action === 'use-stable-updates' || action === 'use-development-updates') {
         if (failure) throw failure
         const next = action === 'use-development-updates' ? 'development' : 'stable'
@@ -40,11 +53,22 @@ export function startMacSparkleUpdates({ appPath, version, enabled = false, feed
         policy = next
         return status()
       }
-      if (action === 'check-updates' || action === 'download-update') {
-        if (failure) throw Error(`macOS 更新组件不可用：${failure.message}`)
-        addon.check(); return status()
+      if (action === 'enable-automatic-download' || action === 'disable-automatic-download') {
+        if (failure) throw failure
+        addon.setAutomaticDownload(action === 'enable-automatic-download')
+        if (action === 'enable-automatic-download') addon.probe()
+        return status()
       }
-      throw Error('macOS Sparkle 仅接受手动检查；后续操作请在系统更新窗口完成')
+      if (action === 'install-update') {
+        if (failure) throw failure
+        addon.install(); return status()
+      }
+      if (action === 'download-update') {
+        if (failure) throw Error(`macOS 更新组件不可用：${failure.message}`)
+        addon.check()
+        return status()
+      }
+      throw Error('不支持此 macOS 更新操作')
     },
     async close() { /* The host process owns the native controller lifetime. */ },
   }

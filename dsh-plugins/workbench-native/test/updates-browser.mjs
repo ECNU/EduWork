@@ -14,7 +14,8 @@ const component=ts.transpileModule(await readFile(new URL('../src/updates.ts',im
  .replace(/import \{ createPortal \} from ['"]react-dom['"];?/,'const {createPortal}=ReactDOM;')
 assert.doesNotMatch(component,/from ['"]react/)
 let policy='stable',state='up_to_date',downloaded=0,scheduled=false
-let content=null,softwareEnabled=true,nativeUI=false
+let content=null,softwareEnabled=true,nativeUI=false,nativeUpdater=false,automaticDownload=false
+let nativeDetails={}
 const actions=[]
 const server=createServer(async(request,response)=>{
  if(request.url==='/react.js'||request.url==='/react-dom.js') {
@@ -28,10 +29,12 @@ const server=createServer(async(request,response)=>{
   if(action==='download-content-update')content={...content,state:'downloading',downloadedBytes:512}
   if(action==='restart-content-update')content={...content,state:'current',configurationRevision:2,skillsRevision:3}
   if(action==='download-update'){state='downloading';downloaded=524288}
+  if(action==='enable-automatic-download')automaticDownload=true
+  if(action==='disable-automatic-download')automaticDownload=false
   if(action==='test-complete')state='ready'
   if(action==='schedule-update')scheduled=true
   if(action==='install-update')state='applying'
-  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{nativeUI,policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled},contentUpdate:content}));return
+  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{nativeUI,nativeUpdater,...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}));return
  }
  response.setHeader('content-type','text/html');response.end(`<html><meta charset="utf-8"><body style="font:14px system-ui;margin:40px;max-width:600px"><div id="root"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script type="module">import {createUpdateController,UpdatePanel,UpdateFooter} from '/component.js';const controller=createUpdateController(async action=>(await fetch('/api/'+action)).json());ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(React.Fragment,null,React.createElement(UpdatePanel,{controller}),React.createElement(UpdateFooter,{controller})));</script></body></html>`)
 })
@@ -60,6 +63,7 @@ try {
  assert.equal(await page.getByRole('radio',{name:'开发版',exact:true}).evaluate(e=>getComputedStyle(e).backgroundColor),'rgb(53, 117, 239)')
  const pill=page.locator('[data-eduwork-update-entry]');assert.equal(await pill.innerText(),'更新')
  await pill.click();await page.getByRole('dialog',{name:'更新',exact:true}).getByRole('button',{name:'下载更新',exact:true}).click();await page.keyboard.press('Escape');await page.getByLabel('更新下载进度').waitFor()
+ await page.waitForFunction(()=>document.querySelector('[aria-label="更新下载进度"]')?.getAttribute('aria-valuenow')==='50')
  assert.equal(await page.getByLabel('更新下载进度').getAttribute('aria-valuenow'),'50')
  assert.equal(await page.getByRole('radio',{name:'开发版',exact:true}).isDisabled(),true)
  await page.screenshot({path:join(evidence,'download-blue.png')})
@@ -97,7 +101,7 @@ try {
  await dialog.getByText('配置 r2 · Skills r3',{exact:true}).waitFor()
  assert.ok(actions.includes('restart-content-update'))
  await page.keyboard.press('Escape')
- nativeUI=true;softwareEnabled=true;state='up_to_date';content={...content,state:'available',latestRevision:4}
+ nativeUI=false;nativeUpdater=true;softwareEnabled=true;state='up_to_date';content={...content,state:'available',latestRevision:4}
  await page.reload();await page.getByText('macOS 应用更新',{exact:true}).waitFor()
  await page.getByText('配置与 Skills 更新',{exact:true}).waitFor()
  await page.getByRole('button',{name:'下载内容更新',exact:true}).click()
@@ -105,7 +109,37 @@ try {
  content={...content,state:'current'};await page.reload()
  await page.getByRole('radio',{name:'仅公测版',exact:true}).click()
  await page.waitForFunction(()=>document.querySelector('[role=radio][aria-checked=true]')?.textContent==='仅公测版')
+ // Native downloads stay inside the shared panel, with no second updater UI.
+ await page.waitForFunction(()=>document.querySelector('[data-eduwork-update-entry]')?.textContent==='更新')
+ await pill.click();await dialog.waitFor()
+ assert.equal(await dialog.getByText(/发现新版本/).count(),1)
+ await dialog.getByRole('button',{name:'下载更新',exact:true}).click()
+ await dialog.getByLabel('更新下载进度').waitFor()
+ assert.equal(await dialog.isVisible(),true)
+ await page.keyboard.press('Escape');await dialog.waitFor({state:'detached'})
  await page.screenshot({path:join(evidence,'mac-software-and-content.png')})
+ nativeUI=false;nativeUpdater=true;state='up_to_date';await page.reload()
+ const automatic=page.getByRole('checkbox',{name:/自动下载，退出时安装/})
+ await automatic.click()
+ await page.waitForFunction(()=>document.querySelector('input[type="checkbox"]')?.checked===true)
+ await page.reload();await automatic.waitFor();assert.equal(await automatic.isChecked(),true)
+ state='ready';await page.reload()
+ await page.getByText(/将在退出应用时安装/).waitFor()
+ assert.equal(await page.getByRole('button',{name:'下次启动时安装',exact:true}).count(),0)
+ assert.equal(await automatic.isDisabled(),true)
+ assert.equal(await pill.innerText(),'退出时更新')
+ await page.screenshot({path:join(evidence,'mac-ready-on-quit.png')})
+ // Unknown length and extraction must not claim that we are still connecting.
+ state='downloading';nativeDetails={totalBytes:0,downloadStage:'downloading'};await page.reload()
+ await page.getByText('后台下载中…',{exact:true}).waitFor()
+ assert.equal(await page.getByLabel('更新下载进度').getAttribute('aria-valuenow'),null)
+ nativeDetails={totalBytes:1048576,downloadStage:'extracting'};await page.reload()
+ await page.getByText('正在解包并校验',{exact:true}).waitFor()
+ assert.equal(await page.getByLabel('更新下载进度').getAttribute('aria-valuenow'),null)
+ state='error';nativeDetails={releaseNotesURL:'https://example.org/notes',error:'此更新需要前往发行页面查看说明。'};await page.reload()
+ await page.getByRole('link',{name:'查看发行说明'}).waitFor()
+ assert.equal(await page.getByRole('link',{name:'查看发行说明'}).getAttribute('href'),'https://example.org/notes')
+ assert.equal(await page.getByRole('button',{name:'下载更新',exact:true}).count(),0)
  assert.deepEqual(errors,[])
  await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,sourceLayout:'0.2.0 / d8691cb UpdateSettings',channelSwitch:true,keyboardSwitch:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
  console.log('Shared update UI acceptance passed')

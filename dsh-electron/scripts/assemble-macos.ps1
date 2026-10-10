@@ -193,6 +193,7 @@ if ($sparkleEnabled) {
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle native bridge compilation failed' }
     & plutil -replace SUFeedURL -string $(if ($UpdateDefaultPolicy -eq 'development') { $SparkleDevelopmentFeedURL } else { $SparkleFeedURL }) $plist
     & plutil -replace SUPublicEDKey -string $SparklePublicEDKey $plist
+    & plutil -replace SUAllowsAutomaticUpdates -bool YES $plist
     & plutil -replace SUEnableAutomaticChecks -bool NO $plist
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle Info.plist setup failed' }
 }
@@ -232,9 +233,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signing failed' }
     & codesign --verify --deep --strict $signingApp
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signature verification failed' }
-    Push-Location $signingRoot
-    try { & ditto -c -k --sequesterRsrc --keepParent $appName $temporaryArchive }
-    finally { Pop-Location }
+    & $Node (Join-Path $PSScriptRoot 'create-macos-archive.mjs') $signingApp $temporaryArchive
     if ($LASTEXITCODE -ne 0) { throw 'macOS ZIP creation failed' }
     Copy-Item -LiteralPath $temporaryArchive -Destination $archive
 } finally { Remove-Item -LiteralPath $signingRoot -Recurse -Force -ErrorAction SilentlyContinue }
