@@ -470,6 +470,24 @@ export function createGatedRelay({ hostPort, store, onRequest, upstreamToken, lo
           socket.pipe(upstreamSocket)
           upstreamSocket.pipe(socket)
         })
+        // A refused upgrade is not an upgrade event. The host answers with an
+        // ordinary HTTP response — a 403 from its own admission check, say — and Node
+        // only emits `upgrade` for a 101. Without this the phone's socket is never
+        // written to at all, so the browser waits for a handshake that will never
+        // arrive: the page loaded, then quietly stopped updating, with no error
+        // anywhere to explain it. Pass the refusal through so the client fails where
+        // the failure actually is.
+        upstream.on('response', (upstreamResponse) => {
+          if (socket.writable) {
+            const lines = [`HTTP/1.1 ${String(upstreamResponse.statusCode)} ${upstreamResponse.statusMessage ?? 'Error'}`]
+            for (const [key, value] of Object.entries(upstreamResponse.headers)) {
+              if (Array.isArray(value)) for (const item of value) lines.push(`${key}: ${item}`)
+              else if (value !== undefined) lines.push(`${key}: ${value}`)
+            }
+            socket.write(`${lines.join('\r\n')}\r\n\r\n`)
+          }
+          socket.destroy()
+        })
         const handle = connections.open(verdict.device.deviceId, {
           close: () => {
             upstream.destroy()

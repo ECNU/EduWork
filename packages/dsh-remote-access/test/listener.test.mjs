@@ -3,6 +3,7 @@
 // acceptance question: an unauthorised device must not reach sessions or files.
 import assert from 'node:assert/strict'
 import http from 'node:http'
+import net from 'node:net'
 import { mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
@@ -667,4 +668,80 @@ test('a retried request with the same requestId is delivered as-is, not deduplic
   assert.equal((await send()).status, 200)
   assert.deepEqual(bodies, ['sub-7', 'sub-7'], 'both attempts must reach the host so its dedup can decide')
   await relay.close()
+})
+
+/**
+ * Send a raw upgrade through the relay and return whatever comes back.
+ *
+ * `fetch` cannot express an upgrade, and the response is what the test is about, so
+ * this speaks the wire format directly. The timeout matters: the failure being
+ * guarded against is silence, and without a deadline the run would hang instead of
+ * reporting it.
+ */
+function rawUpgrade(port, path, cookie) {
+  return new Promise((resolve, reject) => {
+    const socket = net.connect(port, '127.0.0.1')
+    let received = ''
+    socket.setTimeout(6000, () => {
+      socket.destroy()
+      resolve(received)
+    })
+    socket.on('connect', () => {
+      socket.write([
+        `GET ${path} HTTP/1.1`,
+        `Host: 127.0.0.1:${String(port)}`,
+        `Cookie: ${cookie}`,
+        'Connection: Upgrade',
+        'Upgrade: websocket',
+        'Sec-WebSocket-Version: 13',
+        'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==',
+        '', '',
+      ].join('\r\n'))
+    })
+    socket.on('data', chunk => { received += String(chunk) })
+    socket.on('error', error => { socket.destroy(); reject(error) })
+    socket.on('close', () => resolve(received))
+  })
+}
+
+test('an upgrade the host refuses is relayed, not left hanging', async () => {
+  // A host that refuses the stream mux does it with an ordinary HTTP response, not a
+  // 101. Node only emits `upgrade` for a 101, so relaying that event alone leaves the
+  // phone's socket with nothing written to it at all: the browser waits for a
+  // handshake that will never arrive, and the page that loaded stops updating with no
+  // error anywhere. The refusal has to reach the client so it can fail where the
+  // failure actually is.
+  const store = new DeviceStore(storePath())
+  const host = await fakeHost()
+  host.server.on('upgrade', (request, socket) => {
+    socket.write('HTTP/1.1 403 Forbidden\r\ncontent-length: 0\r\nconnection: close\r\n\r\n')
+    socket.destroy()
+  })
+  const { relay, base, port } = await startRelay({ hostPort: host.port, store })
+  const { cookie } = await pair(base, store)
+
+  const refusal = await rawUpgrade(port, '/api/remote.mux', cookie)
+  assert.match(refusal, /^HTTP\/1\.1 403/u, '调度器拒绝必须传回手机，而不是让它干等')
+  await relay.close()
+  host.server.close()
+})
+
+test('a device that is not confirmed cannot open an upgrade either', async () => {
+  // The gate has to cover the long-lived channel, not just requests. A phone that is
+  // waiting for the operator must not be able to hold a stream open in the meantime.
+  const store = new DeviceStore(storePath())
+  const host = await fakeHost()
+  let upgraded = 0
+  host.server.on('upgrade', (request, socket) => {
+    upgraded += 1
+    socket.destroy()
+  })
+  const { relay, base, port } = await startRelay({ hostPort: host.port, store })
+  const { cookie } = await pair(base, store, { confirm: false })
+
+  const answer = await rawUpgrade(port, '/api/remote.mux', cookie)
+  assert.equal(answer, '', '未确认的设备不应拿到任何响应，也不应到达宿主')
+  assert.equal(upgraded, 0, '升级请求不得被转发出去')
+  await relay.close()
+  host.server.close()
 })
