@@ -10,7 +10,7 @@ macOS 使用 Sparkle 的原生窗口检查、下载、校验和安装更新。�
 
 ## 发行配置
 
-机构发行可将以下文件装配到 `resources/desktop/mac-updates.json`。也可在 Mac CI 配方中指定 `-MacUpdateConfig <文件>`。这个文件只包含公开更新地址和验证公钥，不包含私钥或登录配置。
+机构发行可将以下文件装配到 `resources/desktop/mac-updates.json`。也可在 Mac CI 配方中指定 `--mac-update-config <文件>`（Node）或 `-MacUpdateConfig <文件>`（PowerShell）。这个文件只包含公开更新地址和验证公钥，不包含私钥或登录配置。
 
 ```json
 {
@@ -23,7 +23,7 @@ macOS 使用 Sparkle 的原生窗口检查、下载、校验和安装更新。�
 }
 ```
 
-CI 按 `dsh-electron/sparkle.lock.json` 下载并校验框架，编译主进程桥接并签名完整应用。缺少配置时禁用程序更新；配置不完整时构建失败。渠道偏好保存在用户目录；开发渠道清单应同时包含最新开发版与更新的公测版。公测渠道只提供公测版，切换渠道不降级。
+CI 按 `dsh-electron/sparkle.lock.json` 下载并校验框架，编译主进程桥接并签名完整应用。开发构建缺少配置时禁用程序更新，Node stable 构建缺少配置时失败；配置不完整时均构建失败。渠道偏好保存在用户目录；开发渠道清单应同时包含最新开发版与更新的公测版。公测渠道只提供公测版，切换渠道不降级。
 
 `CFBundleVersion` 和 appcast 必须使用同一个编码：`0.3.6-dev.20260920.1` 对应 `0.3.6dev20260920.1`，公测版对应 `0.3.6`。不要直接把含连字符的版本交给 Sparkle：其比较器会忽略该后缀。原生 CI 验证逐日开发版、公测版、下个版本之间的排序。
 
