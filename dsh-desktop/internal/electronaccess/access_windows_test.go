@@ -3,6 +3,7 @@
 package electronaccess
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,47 @@ import (
 
 	"golang.org/x/sys/windows"
 )
+
+func TestShortInstallPathIsAccepted(t *testing.T) {
+	root := fixture(t)
+	p, err := windows.UTF16PtrFromString(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	buffer := make([]uint16, 32768)
+	n, err := windows.GetShortPathName(p, &buffer[0], uint32(len(buffer)))
+	if err != nil || n >= uint32(len(buffer)) {
+		t.Fatalf("get short path: %v", err)
+	}
+	short := windows.UTF16ToString(buffer[:n])
+	if strings.EqualFold(short, root) {
+		t.Skip("8.3 aliases are disabled on this volume")
+	}
+	if err := Ensure(short); err != nil {
+		t.Fatalf("valid short path rejected: %v", err)
+	}
+	if got := descriptor(t, filepath.Join(root, "EduWork-Electron.exe")); !strings.Contains(got, ";;;S-1-15-2-2)") {
+		t.Fatalf("runtime grant missing: %s", got)
+	}
+}
+
+func TestLinkedAncestorDoesNotModifyTarget(t *testing.T) {
+	root := fixture(t)
+	link := filepath.Join(t.TempDir(), "linked-parent")
+	if err := os.Symlink(filepath.Dir(root), link); err != nil {
+		if errors.Is(err, windows.ERROR_PRIVILEGE_NOT_HELD) {
+			t.Skip("symbolic links require Developer Mode or privilege")
+		}
+		t.Fatal(err)
+	}
+	want := descriptor(t, root)
+	if err := Ensure(filepath.Join(link, filepath.Base(root))); err == nil {
+		t.Fatal("accepted redirected ancestor")
+	}
+	if got := descriptor(t, root); got != want {
+		t.Fatal("modified permissions through linked ancestor")
+	}
+}
 
 func fixture(t *testing.T) string {
 	t.Helper()

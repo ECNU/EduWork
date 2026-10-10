@@ -140,7 +140,20 @@ func openSecurity(path string, write bool) (windows.Handle, *windows.SECURITY_DE
 	}
 	actual := strings.TrimPrefix(windows.UTF16ToString(buffer[:n]), `\\?\`)
 	if !strings.EqualFold(filepath.Clean(actual), filepath.Clean(path)) {
-		return fail(fmt.Errorf("redirected runtime path"))
+		// GetFinalPathNameByHandle returns long names, while TEMP and installed
+		// paths can use 8.3 aliases (e.g. RUNNER~1). Expand only those names;
+		// unlike EvalSymlinks this does not accept a redirected ancestor.
+		n, err = windows.GetLongPathName(p, &buffer[0], uint32(len(buffer)))
+		if err != nil {
+			return fail(err)
+		}
+		if n >= uint32(len(buffer)) {
+			return fail(fmt.Errorf("runtime path too long"))
+		}
+		expected := strings.TrimPrefix(windows.UTF16ToString(buffer[:n]), `\\?\`)
+		if !strings.EqualFold(filepath.Clean(actual), filepath.Clean(expected)) {
+			return fail(fmt.Errorf("redirected runtime path"))
+		}
 	}
 	sd, err := windows.GetSecurityInfo(h, windows.SE_FILE_OBJECT, windows.DACL_SECURITY_INFORMATION)
 	if err != nil {
