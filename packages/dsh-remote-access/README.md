@@ -25,7 +25,7 @@ npm install @eduwork/dsh-remote-access
 ```
 
 插件以普通 DSH 插件形式装配，`inject: ['settings']`，把设备登记表挂到
-`ctx.settings` 的 `chatecnu-remote-access` 命名空间下，并通过 `ctx.provide('remoteAccess', …)`
+`ctx.settings` 的 `eduwork-remote-access` 命名空间下，并通过 `ctx.provide('remoteAccess', …)`
 发布给同一进程内的其他插件。
 
 ## 快速上手

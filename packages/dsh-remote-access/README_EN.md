@@ -27,7 +27,7 @@ npm install @eduwork/dsh-remote-access
 ```
 
 The plugin assembles as an ordinary DSH plugin with `inject: ['settings']`, keeps
-its device registry in the `chatecnu-remote-access` settings namespace and
+its device registry in the `eduwork-remote-access` settings namespace and
 publishes itself to other plugins in the same process through
 `ctx.provide('remoteAccess', …)`.
 
