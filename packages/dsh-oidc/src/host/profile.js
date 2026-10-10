@@ -20,7 +20,7 @@ const allowedRootKeys = new Set([
 const allowedOidcKeys = new Set(['issuer', 'clientId', 'scopes'])
 const allowedBrandKeys = new Set([
   'productName', 'organizationName', 'mark', 'logoURL', 'primaryColor',
-  'loginTitle', 'loginDescription', 'loginButtonLabel', 'supportURL',
+  'loginTitle', 'loginDescription', 'loginButtonLabel', 'supportURL', 'language',
 ])
 const allowedProviderKeys = new Set([
   'id', 'displayName', 'adapter', 'baseURL', 'reasoning', 'defaultContextWindow',
@@ -119,6 +119,10 @@ function normalizeBrand(value = {}) {
     if (source[key] !== undefined) result[key] = text(source[key], `brand.${key}`, max)
   }
   if (source.supportURL !== undefined) result.supportURL = exactURL(source.supportURL, 'brand.supportURL')
+  if (source.language !== undefined) {
+    if (!['auto', 'zh-CN', 'en'].includes(source.language)) throw new Error('brand.language must be auto, zh-CN or en')
+    result.language = source.language
+  }
   return Object.freeze(result)
 }
 

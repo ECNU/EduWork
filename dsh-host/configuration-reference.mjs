@@ -40,6 +40,7 @@ export const configurationFields = {
     loginButtonLabel: ['登录按钮文字，最多 40 字符；省略时使用客户端默认文案。', '统一认证登录'],
     loginDescription: ['登录说明，最多 500 字符。', '授权后使用机构提供的模型。'],
     supportURL: ['帮助页面，必须为 HTTPS。', 'https://example.org/help'],
+    language: ['浏览器登录结果页的语言：auto 按浏览器偏好，zh-CN 或 en 固定语言。', 'auto'],
   }),
   ...fields('organizations[].auth.', {
     discoveryUrl: ['完整发现文档 URL；oidc-llm 使用 /.well-known/openid-configuration，LiteLLM 使用 /.well-known/litellm-cli-auth。', 'https://models.example.org/.well-known/openid-configuration'],

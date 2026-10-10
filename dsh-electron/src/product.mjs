@@ -4,7 +4,9 @@ import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname } from 'node:path'
+import { execFile } from 'node:child_process'
 import { EncryptedVault, startNativeBridge } from './native-vault.mjs'
+import { DesktopDirectoryPicker } from './directory-picker.mjs'
 import { prepareProductProfile } from './product-profile.mjs'
 import { DesktopLifecycle } from './lifecycle.mjs'
 import { DesktopExit } from './desktop-exit.mjs'
@@ -23,8 +25,11 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
+import { startupPage } from './startup-page.mjs'
+import { ensureRuntimeAccess } from './runtime-access.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -32,6 +37,9 @@ export function configureWindowNavigation(window) {
   })
 }
 
+const directoryPicker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
+export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
+app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
 let migrationLaunch
 let updateCompleted = false
@@ -45,6 +53,7 @@ let confirmQuit = async () => true
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: async () => {
+    await directoryPicker.close()
     void contentUpdates?.close()
     await lifecycle.close()
     taskNotifications?.close()
@@ -69,6 +78,15 @@ export function configureEduworkPaths() {
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  try {
+    ensureRuntimeAccess({ root: paths.root })
+  } catch (error) {
+    desktopHostLog(`[desktop:runtime-access] ${error.message}\n`)
+    // A native dialog works even when the sandbox cannot start a renderer.
+    dialog.showErrorBox('无法启动 ' + settings.productName, `${error.message}\n\n诊断日志：${paths.logs}`)
+    app.exit(1)
+    throw error
+  }
   applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
   app.setAppLogsPath(paths.logs)
@@ -101,9 +119,10 @@ async function prepareDesktop() {
     icon: startupIcon,
     backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
   attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
-  const title = String(settings.productName).replace(/[<>&"']/gu, '')
   const logo = 'data:image/png;base64,' + readFileSync(startupIcon).toString('base64')
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:' + startupBackground + '}progress{width:100%;margin-top:20px;accent-color:' + startupAccent + '}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({
+    productName: settings.productName, logo, background: startupBackground, accent: startupAccent,
+  })))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
@@ -117,7 +136,7 @@ async function prepareDesktop() {
   user = loadUserConfig(paths.config)
   const { migrateUpdateChannel } = await import('./update-channel-migration.mjs')
   const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
-    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')})
+    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-')?'development':'stable')})
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
   const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })
@@ -179,6 +198,8 @@ async function prepareDesktop() {
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
   // Reassert the edition's immutable ownership after optional test settings.
   Object.assign(process.env, prepared.environment)
+  const gitIdentity = applyHostGitIdentity(process.env)
+  desktopHostLog(`[git] host identity ssh=${gitIdentity.ssh} home=${gitIdentity.home} systemGit=${gitIdentity.systemGitOnPath ? 'on-path' : 'missing'}\n`)
   // The Host runs in the bundled Node process, so it cannot read Electron's
   // process.versions directly. Report the version of this running shell.
   process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
@@ -189,11 +210,12 @@ async function prepareDesktop() {
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } },
     publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(), changed: () => refreshTray() })
-  const bridge = await startNativeBridge({ vault, openExternal: url => shell.openExternal(url),
+  const bridge = await startNativeBridge({ vault, pickDirectory: pickDesktopDirectory, openExternal: url => shell.openExternal(url),
     attention: body => taskNotifications.handle(body),
     workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
-    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path)) })
+    openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
+      process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap

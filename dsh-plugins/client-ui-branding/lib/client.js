@@ -145,7 +145,7 @@ window.__ModuleLoader__.load({
 		}
 		//#endregion
 		//#region src/client/index.ts
-		const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== "undefined" && __EDUWORK_NATIVE_017__;
+		const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== "undefined" && __EDUWORK_PINNED_DSH__;
 		const inject = [
 			"slots",
 			"theme",

@@ -166,8 +166,11 @@ $name $Version — Windows x64 Electron 开发版
     $receipt | ConvertTo-Json -Depth 20 | Set-Content (Join-Path $publish 'release-receipt.json') -Encoding utf8NoBOM
     if (-not $Development) {
         Copy-Item -LiteralPath $notesPath -Destination (Join-Path $publish 'RELEASE-NOTES.md')
-        & node (Join-Path $CoreRoot 'scripts/github-update-manifest.mjs') (Join-Path $publish 'release-receipt.json') "ecnu/$name"
-        if ($LASTEXITCODE -ne 0) { throw 'GitHub update manifest generation failed' }
+        # Other institutions publish their own update feeds from the release receipt.
+        if ($name -in @('EduWork','EduWork-ECNU')) {
+            & node (Join-Path $CoreRoot 'scripts/github-update-manifest.mjs') (Join-Path $publish 'release-receipt.json') "ecnu/$name"
+            if ($LASTEXITCODE -ne 0) { throw 'GitHub update manifest generation failed' }
+        }
     }
 } catch {
     $receipt.error = $_.Exception.Message

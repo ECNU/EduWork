@@ -4,8 +4,8 @@ import { genericMarkSVG, productIdentity } from '../identity.js'
 import { installProductIdentity } from './product-identity.js'
 import { bindDesktopAction, DesktopSettingsTrigger } from './desktop-actions.js'
 
-declare const __EDUWORK_NATIVE_017__: boolean
-const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+declare const __EDUWORK_PINNED_DSH__: boolean
+const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== 'undefined' && __EDUWORK_PINNED_DSH__
 export const inject = ['slots', 'theme', 'connection', 'remote', nativeSettings ? 'configForms' : 'settingsScope']
 
 const h = React.createElement

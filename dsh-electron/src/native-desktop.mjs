@@ -17,7 +17,7 @@ import { redactDiagnostic } from './diagnostics.mjs'
 import { showDesktopWindow } from './window-visibility.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady,
   trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop } from './product.mjs'
+  showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory } from './product.mjs'
 
 configureEduworkPaths()
 protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: {
@@ -63,8 +63,9 @@ function reportFatal(error, source) {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
+  if (!claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
-  bridge = installNativeDesktopBridge({ getHost: () => backend.host, getWindow: () => mainWindow, reportFatal, checkUpdates: checkProductUpdates })
+  bridge = installNativeDesktopBridge({ getHost: () => backend.host, getWindow: () => mainWindow, reportFatal, checkUpdates: checkProductUpdates, pickDirectory: pickDesktopDirectory })
   protocol.handle(SCHEME, request => backend.host?.fetch(request) ?? new Response(null, { status: 503 }))
   powerMonitor.on('shutdown', () => { sessionEnding = true })
   await backend.start(async () => {
@@ -102,10 +103,8 @@ async function main() {
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1') window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
-if (claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) {
-  void app.whenReady().then(main).catch(async error => {
-    if (isQuitting() || recovery.active) return
-    if (entered) { reportFatal(error, 'main'); return }
-    await showDesktopFailure(error)
-  }).catch(error => reportFatal(error, 'main'))
-}
+void app.whenReady().then(main).catch(async error => {
+  if (isQuitting() || recovery.active) return
+  if (entered) { reportFatal(error, 'main'); return }
+  await showDesktopFailure(error)
+}).catch(error => reportFatal(error, 'main'))

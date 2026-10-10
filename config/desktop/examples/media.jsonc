@@ -121,6 +121,8 @@
 //   "loginDescription": "授权后使用机构提供的模型。"
 // organizations[].brand.supportURL：帮助页面，必须为 HTTPS。
 //   "supportURL": "https://example.org/help"
+// organizations[].brand.language：浏览器登录结果页的语言：auto 按浏览器偏好，zh-CN 或 en 固定语言。
+//   "language": "auto"
 // organizations[].auth.discoveryUrl：完整发现文档 URL；oidc-llm 使用 /.well-known/openid-configuration，LiteLLM 使用 /.well-known/litellm-cli-auth。
 //   "discoveryUrl": "https://models.example.org/.well-known/openid-configuration"
 // organizations[].auth.expectedIssuer：预期 issuer，须与发现文档完全一致；可省略，此时按发现地址验证。

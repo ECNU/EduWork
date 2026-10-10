@@ -8,8 +8,8 @@ import {NotificationSettings, installNotificationNavigation} from './notificatio
 import {pickImportDirectory} from '../lib/directory-picker.js'
 import skillManagerRemote from '@chatecnu-work/dsh-skill-manager-native/remote'
 import { canonicalSkillName, effectiveDisabledSkills, skillToggleSettings, skillGroups, skillCenterRows } from '../lib/view-model.js'
-declare const __EDUWORK_NATIVE_017__: boolean
-const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+declare const __EDUWORK_PINNED_DSH__: boolean
+const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== 'undefined' && __EDUWORK_PINNED_DSH__
 export const inject = ['slots','remote','remote.skills','connection','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace',...(nativeSettings ? ['uiSession'] : [])]
 const h = React.createElement
 const color = 'var(--dsw-alias-state-business-primary, #9f2636)'
@@ -217,7 +217,7 @@ function SkillCenter({ service, standalone = false }) {
           h('div', null,
             h('div', { style: { color, fontSize: 11, fontWeight: 750, letterSpacing: '.08em' } }, 'PERSONAL SKILL'),
             h('h2', { style: { margin: '5px 0 4px', fontSize: 22 } }, '创建个人技能'),
-            h('p', { style: { margin: 0, color: secondary, fontSize: 12, lineHeight: 1.55 } }, '创建后立即进入 DSH 标准技能目录，可随时关闭。'),
+            h('p', { style: { margin: 0, color: secondary, fontSize: 12, lineHeight: 1.55 } }, '创建后立即进入标准技能目录，可随时关闭。'),
           ),
           h('button', { type: 'button', disabled: busy === 'create', 'aria-label': '关闭', onClick: () => setCreateOpen(false), style: { ...buttonStyle, padding: '5px 9px' } }, '×'),
         ),

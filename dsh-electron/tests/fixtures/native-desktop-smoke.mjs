@@ -4,6 +4,7 @@ import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { installNativeDesktopBridge } from 'fixture-bridge'
+import { DesktopDirectoryPicker } from '../../src/directory-picker.mjs'
 import { createWindow } from 'fixture-window'
 import { DesktopBackendController } from 'fixture-backend'
 import { DesktopQuitConfirmation } from 'fixture-quit'
@@ -37,8 +38,10 @@ app.whenReady().then(async () => {
   const hostOrigin = `http://127.0.0.1:${hostServer.address().port}`
   const host = { origin: hostOrigin, boot: () => ({ injections: [], streamBaseUrl: hostOrigin }),
     socketHeaders: () => ({}), readLocalePreference: async () => 'zh' }
+  const picker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
   bridge = installNativeDesktopBridge({ getHost: () => host, getWindow: () => mainWindow,
-    reportFatal: error => { failure = error.message }, checkUpdates: async () => ({}) })
+    reportFatal: error => { failure = error.message }, checkUpdates: async () => ({}),
+    pickDirectory: signal => picker.pick(signal) })
   protocol.handle('dsh-app', () => new Response('<!doctype html><html lang="zh"><body><div data-shell-overlay></div><h1>Fixture</h1></body></html>', { headers: { 'content-type': 'text/html' } }))
   mainWindow = createWindow(preload, false, true)
   bridge.attach(mainWindow)
@@ -83,15 +86,15 @@ app.whenReady().then(async () => {
   assert.equal(await evaluate('shortcutInputs[0].code'), 'KeyT')
   assert.equal(await evaluate('shortcutInputs[0].revision'), shortcuts.revision)
   results.push('official shortcut preferences and physical key delivery through the built preload')
-  // Official picker joins concurrent requests instead of opening several dialogs.
+  // All desktop callers share one dialog, with the result owned by the first caller.
   const originalPicker = dialog.showOpenDialog
   dialog.showOpenDialog = async () => { pickerCalls++; return new Promise(resolve => { pickerResolve = resolve }) }
   const picked = evaluate('Promise.all([__DSH_DIRECTORY_PICKER__.pick(),__DSH_DIRECTORY_PICKER__.pick()])')
   await until(() => pickerCalls > 0)
   pickerResolve({ canceled: false, filePaths: [output] })
-  assert.deepEqual(await picked, [output, output]); assert.equal(pickerCalls, 1)
+  assert.deepEqual(await picked, [output, null]); assert.equal(pickerCalls, 1)
   dialog.showOpenDialog = originalPicker
-  results.push('official directory picker deduplicates simultaneous requests')
+  results.push('directory picker rejects concurrent requests without duplicating the selection')
   // Another renderer with the same origin still does not own privileged IPC.
   const foreign = new BrowserWindow({ show: false, webPreferences: { preload, sandbox: true, contextIsolation: true } })
   await foreign.loadURL('dsh-app://app/index.html')
