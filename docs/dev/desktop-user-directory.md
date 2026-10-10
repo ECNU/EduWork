@@ -24,6 +24,12 @@ macOS 和 Windows Electron 公版统一使用用户主目录下的 `.config/eduw
 
 Windows 更新器 `serve --root <安装目录> --state-dir <用户目录/data/state>` 将安装目标与用户状态分离；省略 `--state-dir` 时兼容旧调用方。
 
+## 用户配置与内部配置
+
+本次路径调整面向用户可编辑的 `eduwork.jsonc` 及配套示例；此前确认的用户数据统一迁移继续保留。两平台的旧生效路径分别为 `<application directory>/config/eduwork.jsonc` 和 `~/Library/Application Support/eduwork-electron/config/eduwork.jsonc`，公版新生效路径均为用户主目录下的 `.config/eduwork/eduwork.jsonc`。
+
+发行清单、构建及依赖锁、`eduwork.desktop.json`、随包默认配置、插件 composition 和 Runtime 资源配置继续由构建与产品装配维护，不新增用户配置副本或设置入口。随包默认配置只作为初始化模板；用户只需编辑设置中打开的生效文件。原生 Profile 的生成 bundle、配置更新状态和迁移回执是内部运行状态，不作为需要用户手工编辑的配置公开；Profile 名称仅在内部规范化。
+
 ## 首次迁移
 
 新目录存在时以新目录为准，不自动合并旧目录；新目录不存在时，从当前平台、发行版和 Alpha 选择规则确定唯一旧来源。Windows 将发行版的 `dsh/browser/logs`、安装目录的 `config` 和共享更新数据组合为新布局，不复制其他发行版的运行数据。Mac 使用旧 Application Support 目录。

@@ -11,6 +11,8 @@ Generic and institution Electron editions read one effective file: `~/.config/ed
 
 The generic distribution ID is `eduwork`. Mac configuration and user data stay outside `.app`. Passwords, API keys and login tokens remain in credential storage, not JSONC.
 
+Only the editable, effective configuration changes location. Distribution manifests, build locks, desktop launch settings and bundled defaults remain build-managed. Bundled configuration files are initialization templates; edit the file opened from Settings.
+
 ## Defaults and updates
 
 Generic EduWork does not enable remote configuration by default. Institution editions may download signed defaults on first launch and write them to the same file. Once initialized, packaged bootstrap defaults no longer overwrite locally edited sources or settings.
