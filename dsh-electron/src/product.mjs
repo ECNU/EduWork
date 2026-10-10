@@ -26,6 +26,7 @@ import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
+import { ensureRuntimeAccess } from './runtime-access.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -70,6 +71,15 @@ export function configureEduworkPaths() {
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  try {
+    ensureRuntimeAccess({ root: paths.root })
+  } catch (error) {
+    desktopHostLog(`[desktop:runtime-access] ${error.message}\n`)
+    // A native dialog works even when the sandbox cannot start a renderer.
+    dialog.showErrorBox('无法启动 ' + settings.productName, `${error.message}\n\n诊断日志：${paths.logs}`)
+    app.exit(1)
+    throw error
+  }
   applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
   app.setAppLogsPath(paths.logs)

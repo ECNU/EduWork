@@ -67,7 +67,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
+const electronAdapters = ['runtime-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
