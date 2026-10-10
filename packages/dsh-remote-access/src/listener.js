@@ -486,10 +486,34 @@ export function createGatedRelay({ hostPort, store, onRequest, upstreamToken, lo
       socket.destroy()
       return
     }
-    gate(request, { writeHead: () => {}, end: () => {} })
+    // The gate only returns a verdict; answering is the caller's job, exactly as it is
+    // for ordinary requests. So a refused upgrade is answered through a
+    // response-shaped object that writes to the raw socket, and it carries the same 401
+    // or 403 an ordinary request from the same device would get. Destroying the socket
+    // silently instead would leave the two paths disagreeing about one decision, and in
+    // a packet capture a bare reset is indistinguishable from the network having
+    // dropped. The client sees a failed WebSocket either way; only one of the two says
+    // why.
+    const refusal = {
+      writeHead(status, headers) {
+        const reason = http.STATUS_CODES[status] ?? 'Error'
+        const lines = Object.entries(headers).map(([key, value]) => `${key}: ${String(value)}`)
+        socket.write(`HTTP/1.1 ${String(status)} ${reason}\r\n${lines.join('\r\n')}\r\n\r\n`)
+        return this
+      },
+      end(payload) {
+        if (payload !== undefined && payload !== '') socket.write(payload)
+        // `end`, not `destroy`: destroy discards whatever has not been flushed yet, so
+        // the status line written just above would be thrown away and the client would
+        // be back to seeing nothing — the failure this branch exists to avoid, arrived
+        // at by a subtler route.
+        socket.end()
+      },
+    }
+    gate(request, refusal)
       .then((verdict) => {
         if (!verdict.allowed) {
-          socket.destroy()
+          send(refusal, verdict.status, verdict.body)
           return
         }
         const upgradeAuthority = `127.0.0.1:${String(hostPort)}`

@@ -740,7 +740,10 @@ test('a device that is not confirmed cannot open an upgrade either', async () =>
   const { cookie } = await pair(base, store, { confirm: false })
 
   const answer = await rawUpgrade(port, '/api/remote.mux', cookie)
-  assert.equal(answer, '', '未确认的设备不应拿到任何响应，也不应到达宿主')
+  // The refusal carries a status, matching what an ordinary request from the same
+  // device gets. It used to destroy the socket with nothing written, which made the
+  // two paths disagree and left the failure indistinguishable from a dropped network.
+  assert.match(answer, /^HTTP\/1\.1 40[13]/u, '被拒的升级必须给出状态，而不是静默断链')
   assert.equal(upgraded, 0, '升级请求不得被转发出去')
   await relay.close()
   host.server.close()
