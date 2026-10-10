@@ -5,7 +5,7 @@
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-10T12:18:00.131Z",
-  "fileSetSHA256": "348b461476e131d9e8b71bfd32181c25014c3596a0e45d81a74d9ff1a94bd50e",
+  "fileSetSHA256": "f6420e6d823efa835312262c3fae640aa30af397f16d89d41d694f7af0d5e610",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "75145ed739b9f3d72984d267eb1003b75a2b94a3e1048b9e28685bf1eb1ae8cb"
+      "sha256": "5019bea98ad665742ffb293eba56d99b56748d94ed765b24dc26b35307d03f6a"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -5089,7 +5089,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "2aa185c4881105c08ced27d0b32bd8faafd277d0d8e6148370951e03a9f453cd"
+      "sha256": "8b3a14a5e4d809d9e777d620b009bdffa60f91df4795f5a6ab812d5dd1d3db9f"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -5198,6 +5198,10 @@
     {
       "path": "scripts/dev-studio-web.mjs",
       "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c"
+    },
+    {
+      "path": "scripts/distribution-config-patches.mjs",
+      "sha256": "cf95217b3202d1d01248109b8601d8e9b34a671c75725691f5fec7252b7df01a"
     },
     {
       "path": "scripts/github-update-manifest.mjs",
@@ -5465,7 +5469,7 @@
     },
     {
       "path": "scripts/prepare-pinned-dsh-product.mjs",
-      "sha256": "cbd9958b865905e6f8bdc6409b94174d8b41dfe21365620597f3580bebdf48b8"
+      "sha256": "185f2ed6ea677bd0459c109d5a0a0a73c5a24b8795dab52ddb103daaa17112a3"
     },
     {
       "path": "scripts/prepare-windows-portable-extractor.ps1",
@@ -5546,6 +5550,10 @@
     {
       "path": "scripts/test-eduwork-web.mjs",
       "sha256": "0abcd24e8709d30215ce9e68418ee29628aa7540c9cd9937fb73565f90520360"
+    },
+    {
+      "path": "scripts/test/distribution-config-patches.test.mjs",
+      "sha256": "08bc9f287375774954691fa6e3e8df276a3c8fa8f86acf5c7e60c41991f46e69"
     },
     {
       "path": "scripts/test/macos-update-feed.test.mjs",
