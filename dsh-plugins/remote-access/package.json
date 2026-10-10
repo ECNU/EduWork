@@ -1,7 +1,7 @@
 {
   "name": "@chatecnu-work/dsh-remote-access",
   "version": "0.1.0-dev",
-  "description": "Host-owned device registry, one-time pairing and operation fence for remote access to a DSH agent",
+  "description": "Host-owned device registry, one-time pairing, device credentials and operation fence for remote access to a DSH agent",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -9,11 +9,14 @@
     "./registry": "./lib/registry.js",
     "./pairing": "./lib/pairing.js",
     "./gate": "./lib/gate.js",
-    "./connections": "./lib/connections.js"
+    "./connections": "./lib/connections.js",
+    "./credentials": "./lib/credentials.js"
   },
   "files": [
     "lib/**/*.js",
-    "README.md"
+    "docs/**/*.md",
+    "README.md",
+    "README_EN.md"
   ],
   "scripts": {
     "test": "node --test"
