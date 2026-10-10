@@ -8,7 +8,7 @@ import { tmpdir, networkInterfaces } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 
-import { DEVICE_COOKIE, DeviceStore, createGatedRelay, isLoopbackAddress, readDeviceCookie } from '../lib/listener.js'
+import { DEVICE_COOKIE, DeviceStore, createGatedRelay, isLoopbackAddress, readDeviceCookie } from '../src/listener.js'
 
 const temporaryDirectories = []
 const openHosts = []

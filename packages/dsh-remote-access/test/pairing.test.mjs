@@ -11,7 +11,7 @@ import {
   liveInvitations,
   pruneInvitations,
   redeemInvitation,
-} from '../lib/pairing.js'
+} from '../src/pairing.js'
 
 const NOW = '2026-10-09T12:00:00.000Z'
 const LATER = '2026-10-09T12:05:00.000Z'

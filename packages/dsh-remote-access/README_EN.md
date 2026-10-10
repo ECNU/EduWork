@@ -1,4 +1,4 @@
-# @chatecnu-work/dsh-remote-access
+# @eduwork/dsh-remote-access
 
 English | [中文](README.md)
 
@@ -23,7 +23,7 @@ and a shared LAN, a self-hosted VPN or port forwarding all work without one.
 ## Install
 
 ```bash
-npm install @chatecnu-work/dsh-remote-access
+npm install @eduwork/dsh-remote-access
 ```
 
 The plugin assembles as an ordinary DSH plugin with `inject: ['settings']`, keeps
@@ -34,11 +34,11 @@ publishes itself to other plugins in the same process through
 ## Quick start
 
 ```js
-import { DeviceStore, createGatedRelay } from '@chatecnu-work/dsh-remote-access/listener'
-import { LiveConnections } from '@chatecnu-work/dsh-remote-access/connections'
-import { emptyCredentials, issueCredential, authenticate } from '@chatecnu-work/dsh-remote-access/credentials'
-import { createInvitation, redeemInvitation } from '@chatecnu-work/dsh-remote-access/pairing'
-import { decide } from '@chatecnu-work/dsh-remote-access/gate'
+import { DeviceStore, createGatedRelay } from '@eduwork/dsh-remote-access/listener'
+import { LiveConnections } from '@eduwork/dsh-remote-access/connections'
+import { emptyCredentials, issueCredential, authenticate } from '@eduwork/dsh-remote-access/credentials'
+import { createInvitation, redeemInvitation } from '@eduwork/dsh-remote-access/pairing'
+import { decide } from '@eduwork/dsh-remote-access/gate'
 
 // 1. Mint a one-time invitation. Only `code` goes to the device; the registry
 //    keeps a digest and nothing else.

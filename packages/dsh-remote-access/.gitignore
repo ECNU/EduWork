@@ -1,0 +1,2 @@
+# Build output; `npm run build` copies `src/` here for publishing.
+lib/

@@ -10,8 +10,8 @@ import {
   grantedOperations,
   isAllowed,
   stripHostSurface,
-} from '../lib/gate.js'
-import { DEFAULT_AGENT_SURFACE, DEVICE_STATUS, confirmDevice, emptyRegistry, upsertDevice } from '../lib/registry.js'
+} from '../src/gate.js'
+import { DEFAULT_AGENT_SURFACE, DEVICE_STATUS, confirmDevice, emptyRegistry, upsertDevice } from '../src/registry.js'
 
 const NOW = '2026-10-09T12:00:00.000Z'
 

@@ -1,5 +1,5 @@
 {
-  "name": "@chatecnu-work/dsh-remote-access",
+  "name": "@eduwork/dsh-remote-access",
   "version": "0.1.0-dev",
   "description": "Host-owned device registry, one-time pairing, device credentials and operation fence for remote access to a DSH agent",
   "type": "module",
@@ -20,6 +20,7 @@
     "README_EN.md"
   ],
   "scripts": {
+    "build": "node scripts/build.mjs",
     "test": "node --test"
   },
   "peerDependencies": {

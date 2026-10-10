@@ -1,0 +1,11 @@
+DSH Remote Access
+Copyright (c) 2026 ChatECNU Work contributors
+
+No third-party software is bundled in this package. It has no runtime
+dependencies: the host-side modules use only the Node.js standard library, and
+`scripts/build.mjs` copies `src/` to `lib/` without a bundler.
+
+The device-registry, pairing, credential and connection-admission design was
+written for this package after reading the public documentation and source of
+four community remote-access projects. No file, dependency or runtime asset from
+any of them is included here.

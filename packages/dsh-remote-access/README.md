@@ -1,4 +1,4 @@
-# @chatecnu-work/dsh-remote-access
+# @eduwork/dsh-remote-access
 
 [English](README_EN.md) | 中文
 
@@ -21,7 +21,7 @@
 ## 安装
 
 ```bash
-npm install @chatecnu-work/dsh-remote-access
+npm install @eduwork/dsh-remote-access
 ```
 
 插件以普通 DSH 插件形式装配，`inject: ['settings']`，把设备登记表挂到
@@ -31,11 +31,11 @@ npm install @chatecnu-work/dsh-remote-access
 ## 快速上手
 
 ```js
-import { DeviceStore, createGatedRelay } from '@chatecnu-work/dsh-remote-access/listener'
-import { LiveConnections } from '@chatecnu-work/dsh-remote-access/connections'
-import { emptyCredentials, issueCredential, authenticate } from '@chatecnu-work/dsh-remote-access/credentials'
-import { createInvitation, redeemInvitation } from '@chatecnu-work/dsh-remote-access/pairing'
-import { decide } from '@chatecnu-work/dsh-remote-access/gate'
+import { DeviceStore, createGatedRelay } from '@eduwork/dsh-remote-access/listener'
+import { LiveConnections } from '@eduwork/dsh-remote-access/connections'
+import { emptyCredentials, issueCredential, authenticate } from '@eduwork/dsh-remote-access/credentials'
+import { createInvitation, redeemInvitation } from '@eduwork/dsh-remote-access/pairing'
+import { decide } from '@eduwork/dsh-remote-access/gate'
 
 // 1. 发一条一次性邀请（只把 code 交给设备，登记表里只留摘要）
 const { invitations, code } = createInvitation(emptyInvitations(), { now: new Date().toISOString() })

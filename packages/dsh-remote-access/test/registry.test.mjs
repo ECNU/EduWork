@@ -15,7 +15,7 @@ import {
   revokeDevice,
   trustedDevices,
   upsertDevice,
-} from '../lib/registry.js'
+} from '../src/registry.js'
 
 const NOW = '2026-10-09T12:00:00.000Z'
 const LATER = '2026-10-09T13:00:00.000Z'

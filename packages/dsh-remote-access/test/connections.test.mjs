@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { LiveConnections, OPEN_REFUSED } from '../lib/connections.js'
+import { LiveConnections, OPEN_REFUSED } from '../src/connections.js'
 
 /** A stand-in for a WebSocket or stream controller. */
 function fakeConnection() {

@@ -14,7 +14,7 @@ import {
   normalizeCredentials,
   revokeCredential,
   verifyCredential,
-} from '../lib/credentials.js'
+} from '../src/credentials.js'
 
 const NOW = '2026-10-09T12:00:00.000Z'
 const LATER = '2026-10-09T13:00:00.000Z'
