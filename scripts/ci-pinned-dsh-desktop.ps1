@@ -9,15 +9,14 @@ param(
     [switch]$VerifyPublisherBootstrap,
     [Parameter(Mandatory)][string]$Output
 )
-# Native source assembly. Release inputs come from the checked-in build recipe;
-# the historical filename remains for existing local callers.
+# Native source assembly. Release inputs come from the checked-in build recipe.
 $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 if (-not ($IsWindows -or $IsMacOS)) { throw 'Use a native Windows or macOS runner' }
 $CoreRoot=[IO.Path]::GetFullPath($CoreRoot);$EditionRoot=[IO.Path]::GetFullPath($EditionRoot);$Output=[IO.Path]::GetFullPath($Output)
 $plan = (& node (Join-Path $CoreRoot 'scripts/desktop-build-plan.mjs') --core $CoreRoot --edition $EditionRoot --version $Version) | ConvertFrom-Json
 if ([bool]$Stable -ne [bool]$plan.automaticUpdates) { throw 'Version does not match the explicit source build channel' }
-if (Test-Path $Output) { throw 'Alpha assembly requires a new output directory' }
+if (Test-Path $Output) { throw 'Candidate assembly requires a new output directory' }
 $platform=if ($IsWindows) {'windows'} else {'macos'}
 $name=if ($CoreRoot -eq $EditionRoot) {'EduWork'} else {'EduWork-ECNU'}
 $public=Join-Path $Output 'evidence-public';$publish=Join-Path $Output 'publish'
@@ -44,12 +43,12 @@ try {
     New-Item -ItemType Directory -Path $deps | Out-Null
     Copy-Item (Join-Path $candidate 'source-probe/package*.json') $deps
     & npm ci --prefix $deps --legacy-peer-deps --ignore-scripts --no-audit --no-fund
-    & node (Join-Path $CoreRoot 'scripts/build-017-plugin-clients.mjs') --runtime $runtime --dependencies $deps --output $sourceStage --report (Join-Path $public 'client-build.json') --version $Version
-    & node (Join-Path $CoreRoot 'scripts/assemble-017-source-product.mjs') --runtime $runtime --source $sourceStage --dependencies $deps --host $hostAdapter --output $product
+    & node (Join-Path $CoreRoot 'scripts/build-pinned-dsh-plugin-clients.mjs') --runtime $runtime --dependencies $deps --output $sourceStage --report (Join-Path $public 'client-build.json') --version $Version
+    & node (Join-Path $CoreRoot 'scripts/assemble-pinned-dsh-source-product.mjs') --runtime $runtime --source $sourceStage --dependencies $deps --host $hostAdapter --output $product
     $editionArgs=if ($CoreRoot -ne $EditionRoot) {@('--edition',$EditionRoot)} else {@()}
     if ($PublisherDescriptors) { $editionArgs+=@('--publisher-descriptors',[IO.Path]::GetFullPath($PublisherDescriptors)) }
     if ($Stable) { $editionArgs+=@('--channel','stable') }
-    & node (Join-Path $CoreRoot 'scripts/prepare-017-alpha-product.mjs') --product $product --version $Version --runtime-lock $plan.sourceLock @editionArgs
+    & node (Join-Path $CoreRoot 'scripts/prepare-pinned-dsh-product.mjs') --product $product --version $Version --runtime-lock $plan.sourceLock @editionArgs
     & node (Join-Path $CoreRoot 'scripts/verify-product-release-identity.mjs') $product $Version
     $identity=Get-Content (Join-Path $product 'assembly.json') -Raw | ConvertFrom-Json
     $result.dshVersion=$identity.dshVersion;$result.distribution=$identity.distribution;$result.edition=$name
@@ -58,7 +57,7 @@ try {
     Copy-Item (Join-Path $candidate 'desktop-probe/package*.json') $desktopTools
     & npm ci --prefix $desktopTools --ignore-scripts --no-audit --no-fund
     & (Join-Path $CoreRoot 'dsh-electron/scripts/prepare-electron.ps1') -Upstream $tools -Output (Join-Path $Output 'electron')
-    & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --native-017 --upstream $upstream --runtime $runtime --host $hostAdapter --output $shell
+    & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --pinned-dsh-source --upstream $upstream --runtime $runtime --host $hostAdapter --output $shell
     & (Join-Path $CoreRoot "scripts/prepare-$platform-release-inputs.ps1") -Product $product -Output (Join-Path $Output 'inputs')
     $inputs=Get-Content (Join-Path $Output 'inputs/inputs.json') -Raw | ConvertFrom-Json
     & node (Join-Path $CoreRoot 'scripts/portable-product-links.mjs') $product
@@ -113,7 +112,7 @@ try {
     # Synthetic profile only: downloaded publisher configuration never enters
     # the public payload or logs. Live bootstrap acceptance runs separately.
     try {
-        & (Join-Path $CoreRoot 'scripts/test-017-alpha-desktop.ps1') -CoreRoot $CoreRoot -Product $frozen -Executable $exe -Output (Join-Path $Output 'gui') -PublisherBootstrap:$VerifyPublisherBootstrap
+        & (Join-Path $CoreRoot 'scripts/accept-pinned-dsh-desktop.ps1') -CoreRoot $CoreRoot -Product $frozen -Executable $exe -Output (Join-Path $Output 'gui') -PublisherBootstrap:$VerifyPublisherBootstrap
     } finally {
         # Only synthetic UI evidence is public. Publisher screens and logs may
         # contain school configuration; never upload profiles or credentials.

@@ -52,7 +52,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   const receipt=JSON.parse(await readFile(join(root,'release-receipt.json'),'utf8'))
   const edition=validateReceipt(receipt,{repository,version,commit})
   const unpack=receipt.portableExtractor
-  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name]
+  const stable = releaseChannel(version) === 'stable'
+  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',...(stable ? [updateManifestName] : []),unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name]
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -65,11 +66,12 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   if(files[3].sha256!==receipt.releaseNotes.sha256) throw Error('Release notes differ from the approved source file')
   if(zip.bytes!==receipt.asset.bytes || zip.sha256!==receipt.asset.sha256) throw Error('Downloaded CI artifact differs from the validated ZIP')
   if((await readFile(files[1].path,'utf8')).trim()!==`${zip.sha256}  ${zip.name}`) throw Error('SHA256 sidecar differs')
-  if((await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
-  if(files[5].sha256!==unpack.asset.sha256 || files[5].bytes!==unpack.asset.bytes)throw Error('Portable extractor ZIP differs from the validated asset')
-  if((await readFile(files[6].path,'utf8')).trim()!==`${unpack.asset.sha256}  ${unpack.asset.name}`)throw Error('Portable extractor SHA256 sidecar differs')
-  if(files[7].sha256!==unpack.receipt.sha256 || files[7].bytes!==unpack.receipt.bytes)throw Error('Portable extractor receipt differs from the validated build')
-  validateExtractorReceipt(JSON.parse(await readFile(files[7].path,'utf8')),receipt)
+  if(stable && (await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
+  const setup = stable ? 5 : 4
+  if(files[setup].sha256!==unpack.asset.sha256 || files[setup].bytes!==unpack.asset.bytes)throw Error('Portable extractor ZIP differs from the validated asset')
+  if((await readFile(files[setup+1].path,'utf8')).trim()!==`${unpack.asset.sha256}  ${unpack.asset.name}`)throw Error('Portable extractor SHA256 sidecar differs')
+  if(files[setup+2].sha256!==unpack.receipt.sha256 || files[setup+2].bytes!==unpack.receipt.bytes)throw Error('Portable extractor receipt differs from the validated build')
+  validateExtractorReceipt(JSON.parse(await readFile(files[setup+2].path,'utf8')),receipt)
   return {receipt,edition,files}
 }
 export async function publish(directory) {

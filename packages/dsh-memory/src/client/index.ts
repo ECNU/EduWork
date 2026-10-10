@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import memoryRemote from './remote.js'
 
-declare const __EDUWORK_NATIVE_017__: boolean
-const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+declare const __EDUWORK_PINNED_DSH__: boolean
+const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== 'undefined' && __EDUWORK_PINNED_DSH__
 export const inject = ['slots', 'locale', 'remote', nativeSettings ? 'configForms' : 'settingsScope']
 
 const h = React.createElement

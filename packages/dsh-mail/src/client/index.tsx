@@ -1,8 +1,8 @@
 import { LOCALE_NS, dictionaries } from './locale.js'
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 
-declare const __EDUWORK_NATIVE_017__: boolean
-const nativeSettings = typeof __EDUWORK_NATIVE_017__ !== 'undefined' && __EDUWORK_NATIVE_017__
+declare const __EDUWORK_PINNED_DSH__: boolean
+const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== 'undefined' && __EDUWORK_PINNED_DSH__
 export const inject = ['slots', 'locale', 'remote', 'remote.credentials', nativeSettings ? 'configForms' : 'settingsScope']
 
 const NS = 'dsh-mail-assistant'

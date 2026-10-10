@@ -1,8 +1,8 @@
-name: Qualify pinned DSH candidate
+name: Validate pinned DSH source integration
 on:
   pull_request:
     paths:
-      - '.github/workflows/validate-core-017.yml'
+      - '.github/workflows/validate-pinned-dsh-source.yml'
       - 'third_party/dsh/**'
       - 'config/desktop-build.json'
       - 'scripts/desktop-build-plan.mjs'
@@ -10,7 +10,7 @@ on:
       - 'dsh-host/distribution-policy.mjs'
       - 'third_party/dsh-literature/**'
       - 'dsh-host/test/native-020.test.mjs'
-      - 'dsh-host/upstream-inputs-017.json'
+      - 'dsh-host/upstream-inputs-pinned-source.json'
       - 'dsh-host/native-profile.mjs'
       - 'dsh-host/settings-migration.mjs'
       - 'dsh-host/redacted-log.mjs'
@@ -18,13 +18,13 @@ on:
       - 'dsh-host/test/native-resources*.mjs'
       - 'dsh-host/test/native-settings.test.mjs'
       - 'dsh-host/test/redacted-log.test.mjs'
-      - 'scripts/probe-eduwork-017-host.mjs'
-      - 'scripts/probe-eduwork-017-settings.mjs'
-      - 'scripts/build-017-plugin-clients.mjs'
+      - 'scripts/probe-pinned-dsh-host.mjs'
+      - 'scripts/probe-pinned-dsh-settings.mjs'
+      - 'scripts/build-pinned-dsh-plugin-clients.mjs'
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
-      - 'scripts/assemble-017-source-product.mjs'
-      - 'scripts/prepare-017-alpha-product.mjs'
+      - 'scripts/assemble-pinned-dsh-source-product.mjs'
+      - 'scripts/prepare-pinned-dsh-product.mjs'
       - 'scripts/distribution-config-patches.mjs'
       - 'scripts/test/distribution-config-patches.test.mjs'
       - 'scripts/patch-session-search-runtime.mjs'
@@ -34,17 +34,18 @@ on:
       - 'scripts/test/media-template.test.mjs'
       - 'scripts/portable-product-links.mjs'
       - 'scripts/test/portable-product-links.test.mjs'
-      - 'scripts/probe-017-source-product.mjs'
-      - 'scripts/probe-017-deliverables.mjs'
-      - 'scripts/probe-017-literature.mjs'
+      - 'scripts/probe-pinned-dsh-source-product.mjs'
+      - 'scripts/probe-pinned-dsh-deliverables.mjs'
+      - 'scripts/probe-pinned-dsh-literature.mjs'
       - 'dsh-host/product-profile.mjs'
       - 'dsh-electron/src/**'
       - 'dsh-electron/scripts/**'
       - 'dsh-electron/tests/**'
-      - 'dsh-electron/upstream-inputs-017.json'
+      - 'dsh-electron/upstream-inputs-pinned-source.json'
       - 'dsh-plugins/**'
       - 'packages/**'
   workflow_dispatch:
+  workflow_call:
 permissions:
   contents: read
 jobs:
@@ -91,7 +92,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
-          node core/scripts/probe-017-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
+          node core/scripts/probe-pinned-dsh-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/scripts/test/distribution-config-patches.test.mjs
@@ -111,7 +112,7 @@ jobs:
         run: |
           node core/dsh-host/prepare-native.mjs --upstream upstream --output "$env:RUNNER_TEMP/native-host"
           if ($LASTEXITCODE) { throw 'Pinned Host adaptation failed' }
-          node core/scripts/probe-eduwork-017-host.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-host-evidence"
+          node core/scripts/probe-pinned-dsh-host.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-host-evidence"
           if ($LASTEXITCODE) { throw 'Native Host qualification failed' }
       - name: Build source plugins and qualify native settings and RPC
         shell: pwsh
@@ -125,11 +126,11 @@ jobs:
           $env:EDUWORK_TEST_DEPENDENCIES = $deps
           node --test core/scripts/test/plugin-locale.test.mjs
           if ($LASTEXITCODE) { throw 'Plugin locale regression checks failed' }
-          node core/scripts/build-017-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
+          node core/scripts/build-pinned-dsh-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
           node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-session-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Memory message admission and user intent checks failed' }
-          node core/scripts/probe-eduwork-017-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
+          node core/scripts/probe-pinned-dsh-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
       - name: Build the pinned native shell and exercise real Electron bridges
         shell: pwsh
@@ -139,8 +140,9 @@ jobs:
           Copy-Item "$env:DSH_CANDIDATE/desktop-probe/package*.json" $desktopTools
           npm ci --prefix $desktopTools --ignore-scripts --no-audit --no-fund
           if ($LASTEXITCODE) { throw 'Pinned Electron metadata installation failed' }
-          ./core/dsh-electron/scripts/prepare-electron.ps1 -Upstream "$env:RUNNER_TEMP/desktop-tools" -Output "$env:RUNNER_TEMP/electron"
-          node core/dsh-electron/scripts/build-shell.mjs --native-017 --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
+          node core/dsh-electron/scripts/prepare-electron.mjs --upstream "$env:RUNNER_TEMP/desktop-tools" --output "$env:RUNNER_TEMP/electron"
+          if ($LASTEXITCODE) { throw 'Pinned Electron preparation failed' }
+          node core/dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
           if ($LASTEXITCODE) { throw 'Native desktop build failed' }
           $env:EDUWORK_TEST_NATIVE_SHELL = "$env:RUNNER_TEMP/native-shell"
           node --experimental-test-module-mocks --experimental-transform-types --test core/dsh-electron/tests/installer-cleanup.test.mjs
@@ -151,7 +153,7 @@ jobs:
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |
-          node core/scripts/assemble-017-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
+          node core/scripts/assemble-pinned-dsh-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
           if ($LASTEXITCODE) { throw 'Source product assembly failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           $env:EDUWORK_TEST_PRODUCT = "$env:RUNNER_TEMP/source-product"
@@ -160,9 +162,9 @@ jobs:
           $env:EDUWORK_TEST_HOST = "$env:RUNNER_TEMP/native-host"
           node --test core/scripts/test/distribution-config-patches.test.mjs
           if ($LASTEXITCODE) { throw 'Assembled edition configuration checks failed' }
-          node core/scripts/probe-017-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
+          node core/scripts/probe-pinned-dsh-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
           if ($LASTEXITCODE) { throw 'Assembled product qualification failed' }
-          node core/scripts/probe-017-literature.mjs --product "$env:RUNNER_TEMP/source-product" --output "$env:RUNNER_TEMP/literature-evidence"
+          node core/scripts/probe-pinned-dsh-literature.mjs --product "$env:RUNNER_TEMP/source-product" --output "$env:RUNNER_TEMP/literature-evidence"
           if ($LASTEXITCODE) { throw 'Maintained literature integration failed' }
       - uses: actions/upload-artifact@v4
         if: always()

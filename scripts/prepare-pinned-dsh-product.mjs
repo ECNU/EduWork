@@ -1,4 +1,4 @@
-// Explicit source-built alpha channel. This does not promote npm release locks.
+// Prepare a product from the DSH source recipe without changing npm release locks.
 import assert from 'node:assert/strict'
 import { cp, mkdir, readFile, writeFile, rm, access } from 'node:fs/promises'
 import { join, resolve } from 'node:path'

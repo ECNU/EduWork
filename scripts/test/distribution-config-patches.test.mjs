@@ -171,7 +171,7 @@ test('real edition preparation preserves user organizations through product prof
   git(['init'])
   git(['add', 'edition/distribution.json'])
   git(['-c', 'user.name=Synthetic Fixture', '-c', 'user.email=synthetic@example.invalid', 'commit', '-m', 'Synthetic edition configuration'])
-  execFileSync(process.execPath, [fileURLToPath(new URL('../prepare-017-alpha-product.mjs', import.meta.url)),
+  execFileSync(process.execPath, [fileURLToPath(new URL('../prepare-pinned-dsh-product.mjs', import.meta.url)),
     '--product', product, '--edition', edition, '--version', '0.0.0-alpha.1'], { stdio: 'pipe', windowsHide: true })
   await writeFile(config, JSON.stringify({ schemaVersion: 1, product: { name: 'Synthetic user product' },
     organizations: [{ schemaVersion: 'dsh-oidc/v1alpha1', id: 'synthetic-org', displayName: 'Synthetic organization',
@@ -214,7 +214,7 @@ test('real source assembly retains installed bundle defaults and disabled instru
     { id: 'session-title-llm', config: { maxOutputTokens: 2048 }, disabled: true },
   )
   await writeFile(distributionPath, JSON.stringify(distribution))
-  execFileSync(process.execPath, [fileURLToPath(new URL('../assemble-017-source-product.mjs', import.meta.url)),
+  execFileSync(process.execPath, [fileURLToPath(new URL('../assemble-pinned-dsh-source-product.mjs', import.meta.url)),
     '--runtime', runtime, '--source', source, '--dependencies', process.env.EDUWORK_TEST_DEPENDENCIES,
     '--host', process.env.EDUWORK_TEST_HOST, '--output', product], { stdio: 'pipe', windowsHide: true })
   const boot = await import(pathToFileURL(createRequire(join(product, 'd/package.json')).resolve('@deepseek-ai/dsh-app-boot')).href)
