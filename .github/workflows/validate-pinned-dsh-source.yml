@@ -124,6 +124,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
+          node --test core/dsh-plugins/calendar/test/*.test.mjs
+          if ($LASTEXITCODE) { throw 'Calendar record and local storage checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs

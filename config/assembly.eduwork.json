@@ -173,6 +173,10 @@
     {
       "source": "dsh-plugins/media-openai",
       "package": "dsh-media-openai"
+    },
+    {
+      "source": "dsh-plugins/calendar",
+      "package": "dsh-calendar"
     }
   ],
   "skills": [

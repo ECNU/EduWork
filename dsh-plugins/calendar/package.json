@@ -1,0 +1,54 @@
+{
+  "name": "@eduwork/dsh-calendar",
+  "version": "0.1.0-dev",
+  "private": true,
+  "license": "MIT",
+  "description": "Weekly calendar panel for the EduWork workbench",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./tools": "./lib/tools.js",
+    "./client": "./lib/client.js",
+    "./typert": "./lib/typert.host.js",
+    "./remote": "./lib/typert.remote-client.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib/**/*.js", "README.md", "README_EN.md"],
+  "scripts": {
+    "build:client": "powershell -ExecutionPolicy Bypass -File ./build-client.ps1",
+    "test": "node --check lib/client.js && node --test test/*.test.mjs"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-sidebar"
+      ],
+      "platform": "web",
+      "immediately": true
+    }
+  },
+  "chatecnuWork": {
+    "schemaVersion": 1,
+    "kind": "ui-extension",
+    "uses": ["sidebar.panellist", "main"],
+    "replaces": [],
+    "removable": true
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "4.0.2",
+    "@deepseek-ai/dsh-api-remotes": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-client-ui-primitives": "0.1.5-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-sidebar": "0.1.2-rc.1",
+    "@deepseek-ai/dsh-storage-domain": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-permission-presets": "0.1.5-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.1",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  }
+}
