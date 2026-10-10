@@ -1,7 +1,7 @@
 import { readdirSync, lstatSync, realpathSync } from 'node:fs'
 import { execFileSync } from 'node:child_process'
 import { homedir as defaultHomedir } from 'node:os'
-import path from 'node:path'
+import { posix as path } from 'node:path'
 
 const LAUNCHD_DIR = /^com\.apple\.launchd\.[A-Za-z0-9]+$/
 const SYSTEM_PATH = '/usr/bin:/bin:/usr/sbin:/sbin'

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.1",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-10T12:17:37.814Z",
-  "fileSetSHA256": "ad5c5cbd3a3d365503d93587f56fc0f07b93df0ccf82a0685eb71636dbba82c1",
+  "createdAt": "2026-10-10T12:18:00.131Z",
+  "fileSetSHA256": "57ccaf21b38b6c93df9fe1aeec2e48770e519a7e35828c198b8f544691728ade",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "f8132f32c4aed27859448a7edadd59b66fe6ed652f0315fc30a3472a7aac7c11"
+      "sha256": "23d15769a41d3b03d9cc0634670f34ba959383b0c3121aa3cb15d6c6dc2dc383"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -1025,7 +1025,7 @@
     },
     {
       "path": "dsh-electron/src/host-git-identity.mjs",
-      "sha256": "3820c3a40ed7b5c54cea73791a942b62d47e31490fbd0244083c6eac86b92f2e"
+      "sha256": "d36b85ce8761d6ef21ec98ec4baefb3ec8cce5e7ef5b21005e18d9c06cb05cee"
     },
     {
       "path": "dsh-electron/src/initialize-user-config.mjs",
@@ -1161,7 +1161,7 @@
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
-      "sha256": "929f52a3c8cef6a6672833551edef72a50cf1c2a7a50f5a780a2ecc8dc0815e7"
+      "sha256": "eb2fee041a13a8e8e8bddfd54adb8ea6a0f4389a3f6ef57fd20c1dea9a3152d2"
     },
     {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",

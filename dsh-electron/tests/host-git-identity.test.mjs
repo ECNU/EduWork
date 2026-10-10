@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import path from 'node:path'
+import { posix as path } from 'node:path'
 import { applyHostGitIdentity as applyIdentity } from '../src/host-git-identity.mjs'
 
 const socketRoot = '/tmp-test-root'
@@ -154,7 +154,7 @@ test('PATH without discrete /usr/bin appends system dirs', () => {
     listDir: () => [],
     lstat: mockLstat({}),
   })
-  assert.equal(env.PATH, '/opt/homebrew/bin' + path.delimiter + '/usr/bin:/bin:/usr/sbin:/sbin')
+  assert.equal(env.PATH, '/opt/homebrew/bin:/usr/bin:/bin:/usr/sbin:/sbin')
 })
 
 test('PATH with /usr/bin elsewhere is unchanged', () => {

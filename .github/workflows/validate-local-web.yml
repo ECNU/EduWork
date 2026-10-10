@@ -45,6 +45,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Updater startup and recovery guidance checks failed' }
           node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop notification checks failed' }
+          node --test core/dsh-electron/tests/host-git-identity.test.mjs
+          if ($LASTEXITCODE) { throw 'Host Git identity checks failed' }
       - name: Verify Windows updater manifests and archives
         if: steps.changes.outputs.build == 'true'
         shell: pwsh
