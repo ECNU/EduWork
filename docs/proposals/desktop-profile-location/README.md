@@ -4,14 +4,15 @@
 
 ## 改动边界
 
-本 PR 将原生 DSH Profile 的内部名称从 `desktop-017` 规范为 `desktop-native`，不再绑定 Runtime 版本。只调整 `DSH_HOME/profiles/desktop-017` → `DSH_HOME/profiles/desktop-native`；旧 Runtime 的 `profiles/desktop` 保持独立。
+本 PR 将原生 DSH Profile 的内部名称从 `desktop-017` 规范为 `desktop`，不再绑定 Runtime 版本。只调整 `DSH_HOME/profiles/desktop-017` → `DSH_HOME/profiles/desktop`；已有旧 Runtime 的同名 Profile 通过模块链接回执识别，保留为 `profiles/desktop-legacy`，避免复用其指向 App 的依赖链接。
 
 `DSH_HOME`、`eduwork.jsonc`、examples、会话、附件、浏览器数据和更新状态继续使用原路径。配置的暴露范围、构建资源及现有 Skills、插件导入逻辑不变。
 
 ## 已实现的迁移规则
 
-`prepareProductProfile(...)` 为原生 Runtime 选择 `desktop-native`，旧 Runtime 继续选择 `desktop`。
+`prepareProductProfile(...)` 统一选择 `desktop`；原生启动先隔离已有旧 Runtime 的 Profile。
 
+- `desktop` 带有旧 Runtime 模块链接回执或待完成回执：先整体改名为 `desktop-legacy`；若该保留目录已经存在，报错并要求处理冲突，不覆盖。
 - 新目录不存在且旧目录存在：校验数据目录归属和路径边界，确认旧目录为普通目录后，在同一父目录下整体改名；用户偏好、依赖、插件启停及写入事务日志随目录保留。
 - 新目录已存在：使用新目录，不迁移或合并旧目录，包括新目录为空的情况。
 - 两个目录都不存在：按现有逻辑初始化新 Profile。

@@ -4,14 +4,15 @@
 
 ## Scope
 
-This PR changes the native DSH profile name from `desktop-017` to `desktop-native`, independent of the Runtime version. Only `DSH_HOME/profiles/desktop-017` → `DSH_HOME/profiles/desktop-native` changes. The legacy Runtime keeps `profiles/desktop`.
+This PR changes the native DSH profile name from `desktop-017` to `desktop`, independent of the Runtime version. Only `DSH_HOME/profiles/desktop-017` → `DSH_HOME/profiles/desktop` changes. An existing legacy Runtime profile is identified by its module-link receipt and retained as `profiles/desktop-legacy`, avoiding reuse of its App dependency link.
 
 DSH_HOME, eduwork.jsonc, examples, sessions, attachments, browser data and update state retain their existing locations. Configuration visibility, bundled resources and existing Skills and plugin import behavior remain unchanged.
 
 ## Implemented migration rules
 
-`prepareProductProfile(...)` selects `desktop-native` for the native Runtime and `desktop` for the legacy Runtime.
+`prepareProductProfile(...)` selects `desktop`; native startup first separates an existing legacy Runtime profile.
 
+- If desktop contains a legacy Runtime module-link receipt or pending receipt, rename it to desktop-legacy first. If that archive already exists, fail with a conflict instead of overwriting it.
 - If only the old directory exists, validate ownership and path boundaries, require an ordinary directory, and rename the whole directory within its parent. Preferences, dependencies, plugin activation and write journals move together.
 - If the new directory exists, use it without migrating or merging the old directory, even if the new directory is empty.
 - If neither exists, initialize the new profile using existing behavior.
