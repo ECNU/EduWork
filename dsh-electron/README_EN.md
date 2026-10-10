@@ -8,18 +8,18 @@ An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share th
 
 The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.
 
-An explicit `--native-017` build uses the [DSH 0.1.7-rc.2 candidate lock](../third_party/dsh/candidate-v0.1.7-rc.2/LOCK.json): the core, Web client, Desktop Host and desktop modules all come from `477b4f420553e8a52c2fbccc464d7561b239c443`. It reuses the official window factory, complete preload bridge, isolated browser guests, shortcuts, directory picker, theme and locale synchronization, Host lifecycle, quit confirmation and fatal recovery. Build receipts record input hashes and product adaptations.
+An explicit `--pinned-dsh-source` build uses the [DSH 0.2.0-rc.2 candidate lock](../third_party/dsh/candidate-v0.2.0-rc.2/LOCK.json): the core, Web client, Desktop Host and desktop modules all come from `639ed015397290b3745d163aafe02ffee4aa3f84`. It reuses the official window factory, complete preload bridge, isolated browser guests, shortcuts, directory picker, theme and locale synchronization, Host lifecycle, quit confirmation and fatal recovery. Build receipts record input hashes and product adaptations.
 
 Product adapters retain organization login, encrypted credentials, portable updates, signed configuration and skill updates, task notifications and Studio. Microphone access retains upstream owner-window, main-frame and OS checks; other permissions default to denial except clipboard writes from the application main frame. External pages use isolated native guests without bypassing CSP or X-Frame-Options. Recovery offers exit/restart, without disabling essential distribution plugins. This is not a repackaged official installer and does not inherit its signature. Default release locks and update feeds remain unchanged.
 
 The candidate shell requires source, Host and npm Runtime prepared from the same lock, without the old desktop source or a shared compiler cache:
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --native-017 --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 
-`$ElectronExecutable` must be the pristine Electron runtime executable, not a packaged application's EXE. Output directories must not exist. The [candidate CI](../.github/workflows/validate-core-017.yml) builds and runs real Electron on Windows/macOS against synthetic pages to check native bridges, frame-protected pages, permission boundaries and lifecycle behavior. Real organization login, OS microphone consent, update installation and manual macOS interactions still need separate acceptance.
+`$ElectronExecutable` must be the pristine Electron runtime executable, not a packaged application's EXE. Output directories must not exist. The [source candidate qualification](../.github/workflows/validate-pinned-dsh-source.yml) builds and launches real Electron on Windows/macOS against synthetic pages to check native bridges, frame-protected pages, permission boundaries, and lifecycle behavior. The [dual-platform desktop CI](../.github/workflows/development-desktop.yml) separately checks packaged archives, native runtimes, and basic startup. Real organization login, OS microphone consent, update installation and manual macOS interactions still need separate acceptance.
 
 Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 
@@ -27,18 +27,15 @@ On macOS, the running Dock icon and the next startup window’s icon and progres
 
 ## Build
 
-For a complete Windows test package, use the [build guide](../docs/BUILD.md#从-web-到桌面). It defines prerequisites, public and institutional commands, and output paths. From a clean EduWork checkout with Git, PowerShell 7, Node.js 24.18.0, Go 1.26.6 and Visual Studio 2022 C++ Build Tools:
+For a complete Windows test package, use the Node.js entry point in the [build guide](../docs/BUILD.md#本机构建). From a clean EduWork checkout with Git, Node.js 24.18.0, Go 1.26.6 and Visual Studio 2022 C++ Build Tools:
 
-```powershell
-$Version = (Get-Content source-receipt.json -Raw | ConvertFrom-Json).version
-./scripts/ci-eduwork-windows-release.ps1 -CoreRoot . -EditionRoot . `
-  -DistributionConfig config/distributions/generic.json -Version $Version `
-  -Development -Output ../eduwork-electron-test
+```sh
+node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-electron-test
 ```
 
 Use a development-format version (`X.Y.Z-dev.YYYYMMDD.N`) and a new output directory. This invokes the same recipe as CI and produces a tested ZIP under `publish/`; it does not publish a Release. The recipe resolves pinned upstream source and prepares Host, native resources and Electron without requiring undefined local input variables. Actual login, media quality and upgrades need separate acceptance.
 
-For Host or shell development, inspect [the shared recipe](../scripts/ci-eduwork-windows-release.ps1) for the prepared `host/`, `product/`, `inputs/`, `electron/` and `shell/` directories. [Native input preparation](../scripts/prepare-windows-release-inputs.ps1) records paths and resource hashes in `inputs/inputs.json`. `assemble-desktop-candidate.ps1` supports `electron`, `wails` and `both`; use both only when checking shell parity. The official Host has no npm package at the pinned baseline and is built from fixed upstream source. macOS requires separate adaptation and native acceptance.
+For Host or shell development, inspect [the shared recipe](../scripts/ci-eduwork-windows-release.mjs) for the prepared `host/`, `product/`, `inputs/`, `electron/` and `shell/` directories. [Native input preparation](../scripts/prepare-windows-release-inputs.mjs) records paths and resource hashes in `inputs/inputs.json`. The official Host has no npm package at the pinned baseline and is built from fixed upstream source. macOS requires separate adaptation and native acceptance.
 
 ## Local data and updates
 

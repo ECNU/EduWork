@@ -27,6 +27,7 @@ import { attachAppActivation, attachWindowVisibility } from './window-visibility
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
+import { ensureRuntimeAccess } from './runtime-access.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -71,6 +72,15 @@ export function configureEduworkPaths() {
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  try {
+    ensureRuntimeAccess({ root: paths.root })
+  } catch (error) {
+    desktopHostLog(`[desktop:runtime-access] ${error.message}\n`)
+    // A native dialog works even when the sandbox cannot start a renderer.
+    dialog.showErrorBox('无法启动 ' + settings.productName, `${error.message}\n\n诊断日志：${paths.logs}`)
+    app.exit(1)
+    throw error
+  }
   applyDesktopBrand(app, process.platform, settings)
   app.setPath('userData', paths.userData)
   app.setAppLogsPath(paths.logs)
@@ -119,7 +129,7 @@ async function prepareDesktop() {
   user = loadUserConfig(paths.config)
   const { migrateUpdateChannel } = await import('./update-channel-migration.mjs')
   const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
-    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-dev.')?'development':'stable')})
+    fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-')?'development':'stable')})
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
   const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })

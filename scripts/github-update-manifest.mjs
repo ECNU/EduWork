@@ -1,11 +1,11 @@
 import {readFile,writeFile} from 'node:fs/promises'
 import {dirname,join,resolve} from 'node:path'
 import {pathToFileURL} from 'node:url'
+import {desktopVersion} from './desktop-build-plan.mjs'
 
 export const updateManifestName='update-windows-amd64.json'
 export function releaseChannel(version) {
- if(typeof version!=='string' || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-dev\.\d{8}\.[1-9]\d*)?$/.test(version))throw Error('Release version must be X.Y.Z or X.Y.Z-dev.YYYYMMDD.N')
- return version.includes('-dev.')?'development':'stable'
+ return desktopVersion(version).channel
 }
 export function githubUpdateManifest(receipt,repository) {
  const editions={'ecnu/eduwork':['EduWork','eduwork'],'ecnu/eduwork-ecnu':['EduWork-ECNU','eduwork-chatecnu']}

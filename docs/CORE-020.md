@@ -2,7 +2,7 @@
 
 [English](CORE-020_EN.md)
 
-本组合固定 DSH `0.2.0-rc.2`（提交 `639ed015397290b3745d163aafe02ffee4aa3f84`）。官方 npm 依赖与桌面源码分别校验，锁位于 `third_party/dsh/candidate-v0.2.0-rc.2/`。历史脚本中的 `017` 名称保留，避免改变已有自动化调用接口；本组合不会覆盖旧版 npm 发行锁。
+本组合固定 DSH `0.2.0-rc.2`（提交 `639ed015397290b3745d163aafe02ffee4aa3f84`）。官方 npm 依赖与桌面源码分别校验，锁位于 `third_party/dsh/candidate-v0.2.0-rc.2/`；本组合不会覆盖旧版 npm 发行锁。`validate-pinned-dsh-source.yml` 只检查构建配方锁定的提交；升级上游还需同步更新 Host 源码锚点、插件适配和探针。
 
 ## 发行策略
 
@@ -25,6 +25,6 @@ macOS 首次 stable 启动在没有既有正式版数据目录时沿用 Alpha �
 
 桌面工作流使用 `config/desktop-build.json` 选择源码锁。官方 Runtime 来自精确 npm 锁，产品扩展从该次提交重建，文献包使用单独核验的 npm 版本。升级内核时更新配置与锁；常规发版不改工作流。
 
-统一入口为 `scripts/build-desktop-candidate.ps1`，版本决定渠道：`X.Y.Z` 为 stable；`X.Y.Z-alpha.N`、`beta.N`、`rc.N` 和 `X.Y.Z-dev.YYYYMMDD.N` 为预发布，关闭软件自动更新。`0.4.0-alpha.1` 先供测试，正式 `0.4.0` 才执行 stable 迁移。macOS stable 装配必须提供可信 Sparkle 配置。发布仍要求 main、两个平台成功、确认过的版本说明；产物由 CI 校验和直接上传，失败复用原构建重试。
+手动桌面候选工作流默认选择 Node.js 阶段流水线，按本页锁定的 DSH `0.2.0-rc.2` 组合装配，不调用 PowerShell 脚本。旧候选入口 `scripts/build-desktop-candidate.ps1` 暂留在 `ps1` 选项中，供实包回执对照后移除。版本决定渠道：`X.Y.Z` 为 stable；`X.Y.Z-alpha.N`、`beta.N`、`rc.N` 和 `X.Y.Z-dev.YYYYMMDD.N` 为预发布。`0.4.0-alpha.1` 先供测试，正式 `0.4.0` 才执行 stable 迁移。macOS stable 装配必须提供可信 Sparkle 配置。发布仍要求 main、两个平台成功、确认过的版本说明；产物由 CI 校验和直接上传，失败复用原构建重试。
 
 学校发行版须独立更新兼容 `0.2.0-rc.2` 的签名配置。旧内核的签名配置不能直接换版本号冒用；本仓库不包含学校接入配置或反馈接口草案。

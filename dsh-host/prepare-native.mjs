@@ -1,4 +1,4 @@
-// Explicit 0.1.7 candidate mode. The published desktop build keeps its own pin.
+// Adapt the DSH source commit pinned by the current desktop build recipe.
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { resolve, join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
@@ -9,7 +9,7 @@ import { distributionPolicy } from './distribution-policy.mjs'
 
 const upstreamCommit = '639ed015397290b3745d163aafe02ffee4aa3f84'
 const digest = bytes => createHash('sha256').update(bytes).digest('hex')
-const sources = JSON.parse((await readFile(new URL('./upstream-inputs-017.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''))
+const sources = JSON.parse((await readFile(new URL('./upstream-inputs-pinned-source.json', import.meta.url), 'utf8')).replace(/^\uFEFF/, ''))
 function replace(text, before, after) {
   if (text.split(before).length !== 2) throw new Error(`Pinned native Host anchor changed: ${before.slice(0, 80)}`)
   return text.replace(before, after)
