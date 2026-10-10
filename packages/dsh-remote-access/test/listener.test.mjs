@@ -745,3 +745,29 @@ test('a device that is not confirmed cannot open an upgrade either', async () =>
   await relay.close()
   host.server.close()
 })
+
+
+test('the relay does not fence operations, and this records that rather than hiding it', async () => {
+  // A characterisation test, deliberately asserting a limitation. `./gate` has a
+  // decision table that refuses the host management surface, and the README used to
+  // describe it as though it were in force. It has no caller, so a confirmed device
+  // reaches whatever the host serves — and this is what puts that in the test output
+  // instead of only in prose a reader may skip.
+  //
+  // It is written to fail the day someone wires the fence, which is the point: that
+  // change should be a decision, not a surprise.
+  const store = new DeviceStore(storePath())
+  const host = await fakeHost()
+  const { relay, base } = await startRelay({ hostPort: host.port, store })
+  const { cookie } = await pair(base, store)
+
+  // Paths that name host management. Today every one of them is forwarded untouched.
+  const paths = ['/api/devices', '/api/plugins/install', '/api/terminal']
+  for (const path of paths) {
+    const response = await fetch(`${base}${path}`, { headers: { cookie }, redirect: 'manual' })
+    assert.equal(response.status, 200, `${path} 目前会被原样转发——这正是尚未实现的围栏`)
+  }
+  assert.deepEqual(host.seen.map(entry => entry.url), paths, '宿主确实收到了这些请求')
+  await relay.close()
+  host.server.close()
+})
