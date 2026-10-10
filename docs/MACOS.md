@@ -46,7 +46,7 @@ node dsh-electron/scripts/assemble-macos.mjs \
 
 配置、会话、日志、内容更新缓存和渠道偏好保存在 `~/Library/Application Support/<distribution>-electron/`。启用[配置与 Skills 更新](CONTENT_UPDATES.md)后，更新仍在此目录下载、校验和激活，不会修改 `.app`；生效配置统一为该用户目录中的 `config/eduwork.jsonc`，仅保留一份回退备份；旧外部配置只作为首次迁移来源。装配脚本在签名前生成 `Contents/Resources/bundled-skills.json`，记录内置 Skills 的校验值，用来识别本地修改。Windows 继续使用原有绿色版目录和 `RELEASE-MANIFEST.json`。
 
-macOS 可选接入 Sparkle 原生更新：后台检查，用户确认下载及安装后替换应用并重启。发行必须提供独立的更新清单与签名公钥；没有配置更新源的包保持禁用。配置与 Skills 更新继续在用户目录中完成。装配、签名和渠道规则见 [Mac 更新](MACOS_UPDATES.md)。
+macOS 可选接入 Sparkle 原生更新：后台检查，在共享更新面板中手动下载或启用自动下载，下载完成后提示并在正常退出时安装，也可选择立即重启更新。发行必须提供独立的更新清单与签名公钥；没有配置更新源的包保持禁用。配置与 Skills 更新继续在用户目录中完成。装配、签名和渠道规则见 [Mac 更新](MACOS_UPDATES.md)。
 
 Pull Request 应说明测试的 macOS 版本、硬件架构、构建命令和功能范围。除启动外，还需覆盖文件权限、中文与空格路径、企业登录、工作区、Office 和音视频。使用合成数据；真实机构登录由具备权限的测试者单独验证。
 
