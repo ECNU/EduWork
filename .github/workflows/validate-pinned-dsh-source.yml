@@ -26,6 +26,9 @@ on:
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-pinned-dsh-source-product.mjs'
+      - 'scripts/prepare-pinned-dsh-product.mjs'
+      - 'scripts/distribution-config-patches.mjs'
+      - 'scripts/test/distribution-config-patches.test.mjs'
       - 'scripts/patch-session-search-runtime.mjs'
       - 'scripts/test/session-search-runtime.test.mjs'
       - 'scripts/test/plugin-locale.test.mjs'
@@ -117,6 +120,8 @@ jobs:
           node core/scripts/probe-pinned-dsh-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/scripts/test/distribution-config-patches.test.mjs
+          if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
@@ -175,6 +180,13 @@ jobs:
         run: |
           node core/scripts/assemble-pinned-dsh-source-product.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --source "$env:RUNNER_TEMP/source-stage" --dependencies "$env:RUNNER_TEMP/source-deps" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/source-product"
           if ($LASTEXITCODE) { throw 'Source product assembly failed' }
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          $env:EDUWORK_TEST_PRODUCT = "$env:RUNNER_TEMP/source-product"
+          $env:EDUWORK_TEST_SOURCE = "$env:RUNNER_TEMP/source-stage"
+          $env:EDUWORK_TEST_DEPENDENCIES = "$env:RUNNER_TEMP/source-deps"
+          $env:EDUWORK_TEST_HOST = "$env:RUNNER_TEMP/native-host"
+          node --test core/scripts/test/distribution-config-patches.test.mjs
+          if ($LASTEXITCODE) { throw 'Assembled edition configuration checks failed' }
           node core/scripts/probe-pinned-dsh-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
           if ($LASTEXITCODE) { throw 'Assembled product qualification failed' }
           node core/scripts/probe-pinned-dsh-literature.mjs --product "$env:RUNNER_TEMP/source-product" --output "$env:RUNNER_TEMP/literature-evidence"
