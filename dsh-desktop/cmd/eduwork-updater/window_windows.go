@@ -188,11 +188,13 @@ func runInstallerWindow(identity installerIdentity, apply func(updater.ApplyProg
 			}
 			drawText(buffer, subtitle, 112, 83, 466, 22, smallFont, muted, 0x8024)
 			stage := installerStage(progress.Stage)
+			// Connect node centers first, then paint the circles over the ends.
+			// Keeping both on the same axis also avoids gaps at scaled DPI.
+			for i := 0; i < 3; i++ {
+				roundRect(buffer, 73+i*158, 145, 158, 2, 2, border, border)
+			}
 			for i, label := range []string{"检查更新", "安装更新", "启动自检", "完成"} {
 				x := 64 + i*158
-				if i < 3 {
-					roundRect(buffer, x+13, 145, 132, 2, 2, border, border)
-				}
 				fill, stroke := white, border
 				if i <= stage {
 					fill = pale
