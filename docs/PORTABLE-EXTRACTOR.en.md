@@ -4,7 +4,7 @@
 
 This optional first-download asset is a ZIP containing `EduWork-Setup.exe` or `EduWork-ECNU-Setup.exe`. The EXE embeds the original Windows desktop release ZIP unchanged. The setup UI uses the product name, icon, and actual version from that release, with destination selection, progress, cancellation, and a launch button after installation. GitHub Release assets display their full filename, `EduWork-<version>-windows-x64-setup.zip` or `EduWork-ECNU-<version>-windows-x64-setup.zip`, without a display label replacing it. The setup UI does not add a separate “portable edition” label.
 
-The setup program extracts the application without registering an installation, creating shortcuts, or changing PATH or startup entries. The application's existing behavior determines where configuration and data are stored. Existing destinations are rejected. Application updates continue to use the existing updater.
+The setup program offers one-click and custom installation, with optional desktop shortcut creation. It does not change PATH or startup entries. The application's existing behavior determines where configuration and data are stored. Recognized installations of the same edition can be replaced after confirmation. Application updates continue to use the existing updater.
 
 ## Build
 
