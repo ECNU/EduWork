@@ -149,8 +149,13 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 	sort.Strings(ordered)
 	// Preflight before changing any file; never follow junctions or overwrite
 	// unrelated files merely because the new release uses the same filename.
+	checkedParents := map[string]bool{}
+	report(progress, 98, "正在检查现有应用文件…")
 	for _, name := range ordered {
-		if err = plainParents(root, name); err != nil {
+		if e := ctx.Err(); e != nil {
+			return "", e
+		}
+		if err = plainParents(root, name, checkedParents); err != nil {
 			return "", err
 		}
 		st, e := root.Lstat(name)
@@ -223,10 +228,14 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 	}
 	return target, nil
 }
-func plainParents(root *os.Root, name string) error {
+func plainParents(root *os.Root, name string, checked map[string]bool) error {
 	parts := strings.Split(name, "/")
 	for i := 1; i < len(parts); i++ {
-		st, e := root.Lstat(strings.Join(parts[:i], "/"))
+		parent := strings.Join(parts[:i], "/")
+		if checked[parent] {
+			continue
+		}
+		st, e := root.Lstat(parent)
 		if errors.Is(e, os.ErrNotExist) {
 			return nil
 		}
@@ -236,6 +245,7 @@ func plainParents(root *os.Root, name string) error {
 		if !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
 			return fmt.Errorf("安装路径包含链接或非目录：%s", name)
 		}
+		checked[parent] = true
 	}
 	return nil
 }
