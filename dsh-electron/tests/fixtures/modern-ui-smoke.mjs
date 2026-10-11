@@ -5,8 +5,10 @@ import { writeFile, mkdir } from 'node:fs/promises'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
+import { createRequire } from 'node:module'
 import { createWindow } from 'fixture-window'
 import { startupPage } from '../../src/startup-page.mjs'
+import { stabilizeWindowComposition } from '../../src/window-composition.mjs'
 
 const output = process.env.EDUWORK_UI_EVIDENCE
 const preload = process.env.EDUWORK_UI_PRELOAD
@@ -30,6 +32,14 @@ app.whenReady().then(async () => {
       *{box-sizing:border-box}body{margin:0;font:15px "Segoe UI",system-ui;color:#241a18;background:#faf3ef}#frame{display:grid;grid-template-columns:240px 1fr;height:100vh;padding-top:40px}aside{padding:24px}main{background:#fffdfb;border-radius:16px 0 0;display:grid;place-content:center;padding:36px}h1{font-size:26px;font-weight:600}.card{border:1px solid #e5d4cc;border-radius:20px;background:white;padding:24px;min-width:280px}small{color:#99847c}#frame[data-animating]{transition:grid-template-columns .6s}#frame [data-side]{transition:left .6s}
       </style><div id="frame" data-animating><aside><b>EduWork</b><p>窗口布局验证</p><small>合成验收页面</small></aside><main><h1>准备好，开始高效工作。</h1><div class="card">窗口背景与布局保持一致</div><p><small>验证最大化、最小化、还原及动画恢复</small></p></main><div data-side></div></div>`, { headers: { 'Content-Type': 'text/html;charset=utf-8' } }))
     const window = createWindow(preload, false, true)
+    if (process.platform === 'win32') {
+      assert.equal(stabilizeWindowComposition(window, {
+        loadNative: () => createRequire(join(process.env.EDUWORK_UI_RUNTIME, 'package.json'))('koffi'),
+      }), true)
+      assert.equal(window.isResizable(), true)
+      assert.equal(window.isMaximizable(), true)
+      checks.push('Real HWND accepts the per-window DWM transition fix with native resizing and maximize controls retained')
+    }
     window.setTitle('EduWork · 窗口验证')
     await window.loadURL('dsh-app://app/index.html')
     window.show()

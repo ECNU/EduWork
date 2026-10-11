@@ -17,7 +17,7 @@ await build({ entryPoints: [fileURLToPath(new URL('../tests/fixtures/modern-ui-s
   alias: { 'fixture-window': join(shell, 'src/main.ts') } })
 await writeFile(join(output, 'motion-preload.cjs'), await readFile(new URL('../src/window-motion-preload.cjs', import.meta.url)))
 await writeFile(join(output, 'package.json'), JSON.stringify({ name: 'eduwork-modern-ui-probe', version: '0.0.0', main: 'main.cjs' }))
-const env = { ...process.env, EDUWORK_UI_EVIDENCE: output, EDUWORK_UI_PRELOAD: join(output, 'motion-preload.cjs'),
+const env = { ...process.env, EDUWORK_UI_RUNTIME: runtime, EDUWORK_UI_EVIDENCE: output, EDUWORK_UI_PRELOAD: join(output, 'motion-preload.cjs'),
   EDUWORK_UI_LOGO: 'data:image/png;base64,' + (await readFile(resolve(values.icon))).toString('base64') }
 delete env.ELECTRON_RUN_AS_NODE
 const child = spawn(resolve(values.electron), [output], { env, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
