@@ -6,9 +6,11 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -95,7 +97,7 @@ func TestReplaceRefusesUnknownCollisionAndWrongEdition(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()
 			_, e := next.Replace(ctx, target, func(p Progress) {
-				if mode == "cancel" && p.Percent == 99 {
+				if mode == "cancel" && p.Message == "正在替换应用文件，保留配置和数据…" {
 					cancel()
 				}
 			})
@@ -111,5 +113,116 @@ func TestReplaceRefusesUnknownCollisionAndWrongEdition(t *testing.T) {
 				t.Fatalf("temporary files remain: %v", entries)
 			}
 		})
+	}
+}
+
+func TestReplaceBatchesOnlyOwnedDirectories(t *testing.T) {
+	old := replacementFixture(t, map[string]string{
+		"resources/runtime/a": "old a", "resources/runtime/b": "old b", "resources/runtime/stale": "old",
+		"resources/shared/program": "old program", "retired/component": "old component",
+	})
+	target := filepath.Join(t.TempDir(), "app")
+	if _, err := old.Extract(context.Background(), target, nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(target, "resources/shared/personal"), []byte("mine"), 0600); err != nil {
+		t.Fatal(err)
+	}
+	empty := filepath.Join(target, "resources/empty-user-directory")
+	if err := os.Mkdir(empty, 0700); err != nil {
+		t.Fatal(err)
+	}
+	next := replacementFixture(t, map[string]string{
+		"resources/runtime/a": "new a", "resources/runtime/b": "new b",
+		"resources/shared/program": "new program", "resources/new/component": "new component",
+	})
+	root, err := os.OpenRoot(target)
+	if err != nil {
+		t.Fatal(err)
+	}
+	units, err := replacementPlan(context.Background(), root, old.Manifest, next.Manifest, nil)
+	root.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+	batched := map[string]bool{}
+	for _, unit := range units {
+		batched[unit.name] = unit.dir
+	}
+	if !batched["resources/runtime"] || !batched["retired"] || !batched["resources/new"] {
+		t.Fatalf("owned directories not batched: %+v", units)
+	}
+	if batched["resources"] || batched["resources/shared"] {
+		t.Fatal("directory with user files was batched")
+	}
+	last, replacementUpdates := -1, 0
+	if _, err := next.Replace(context.Background(), target, func(p Progress) {
+		if p.Percent < last {
+			t.Errorf("progress went backwards: %d -> %d (%s)", last, p.Percent, p.Message)
+		}
+		last = p.Percent
+		if strings.HasPrefix(p.Message, "正在替换应用文件…") {
+			replacementUpdates++
+		}
+	}); err != nil {
+		t.Fatal(err)
+	}
+	for name, want := range map[string]string{
+		"resources/runtime/a": "new a", "resources/runtime/b": "new b",
+		"resources/shared/program": "new program", "resources/shared/personal": "mine",
+		"resources/new/component": "new component",
+	} {
+		got, err := os.ReadFile(filepath.Join(target, filepath.FromSlash(name)))
+		if err != nil || string(got) != want {
+			t.Fatalf("%s: %q (%v)", name, got, err)
+		}
+	}
+	if _, err := os.Stat(empty); err != nil {
+		t.Fatal("user's empty directory was lost", err)
+	}
+	for _, name := range []string{"resources/runtime/stale", "retired"} {
+		if _, err := os.Stat(filepath.Join(target, name)); !os.IsNotExist(err) {
+			t.Fatalf("stale program retained: %s", name)
+		}
+	}
+	if last != 100 || replacementUpdates < 2 {
+		t.Fatal("missing replacement progress updates")
+	}
+}
+
+func TestReplaceCancellationRestoresBatchedDirectory(t *testing.T) {
+	old := replacementFixture(t, map[string]string{"resources/runtime/a": "old a", "resources/runtime/stale": "old stale"})
+	target := filepath.Join(t.TempDir(), "app")
+	if _, err := old.Extract(context.Background(), target, nil); err != nil {
+		t.Fatal(err)
+	}
+	next := replacementFixture(t, map[string]string{"resources/runtime/a": "new a", "config/new-default": "default"})
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	canceled := false
+	_, err := next.Replace(ctx, target, func(p Progress) {
+		if strings.HasPrefix(p.Message, "正在替换应用文件…") {
+			b, _ := os.ReadFile(filepath.Join(target, "resources/runtime/a"))
+			if string(b) == "new a" {
+				canceled = true
+				cancel()
+			}
+		}
+	})
+	if !canceled || !errors.Is(err, context.Canceled) {
+		t.Fatalf("expected mid-replacement cancellation: %v", err)
+	}
+	for name, want := range map[string]string{"resources/runtime/a": "old a", "resources/runtime/stale": "old stale"} {
+		b, err := os.ReadFile(filepath.Join(target, name))
+		if err != nil || string(b) != want {
+			t.Fatalf("rollback %s: %q (%v)", name, b, err)
+		}
+	}
+	if _, err := os.Stat(filepath.Join(target, "config/new-default")); !os.IsNotExist(err) {
+		t.Fatal("canceled install left new defaults")
+	}
+	entries, _ := os.ReadDir(filepath.Dir(target))
+	if len(entries) != 1 {
+		t.Fatal("temporary files remain")
 	}
 }

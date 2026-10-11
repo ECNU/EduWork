@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/portable"
@@ -76,8 +77,20 @@ func main() {
 	flag.Parse()
 	if *verify || *target != "" {
 		started := time.Now()
-		result, err := unpackWithOverwrite(context.Background(), *target, *verify, *overwrite, nil)
-		r := map[string]any{"success": err == nil, "target": result, "identity": identity, "seconds": time.Since(started).Seconds()}
+		var stages []map[string]any
+		lastPercent, lastPhase := -1, ""
+		var progress portable.Reporter
+		if *reportPath != "" {
+			progress = func(p portable.Progress) {
+				phase := strings.SplitN(p.Message, "…", 2)[0]
+				if p.Percent != lastPercent || phase != lastPhase {
+					stages = append(stages, map[string]any{"seconds": time.Since(started).Seconds(), "percent": p.Percent, "message": p.Message})
+					lastPercent, lastPhase = p.Percent, phase
+				}
+			}
+		}
+		result, err := unpackWithOverwrite(context.Background(), *target, *verify, *overwrite, progress)
+		r := map[string]any{"success": err == nil, "target": result, "identity": identity, "seconds": time.Since(started).Seconds(), "stages": stages}
 		if err != nil {
 			r["error"] = err.Error()
 		}

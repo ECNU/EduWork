@@ -9,7 +9,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 )
 
@@ -106,7 +105,10 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 	stage := ".eduwork-replace-" + rand.Text()
 	stagePath := filepath.Join(parent, stage)
 	if _, err = a.Extract(ctx, stagePath, func(v Progress) {
-		if v.Percent < 100 {
+		if v.Percent >= 10 && v.Percent < 100 {
+			percent := 10 + (v.Percent-10)*60/88
+			report(progress, percent, fmt.Sprintf("正在解压并校验应用文件… %d%%", percent))
+		} else if v.Percent < 10 {
 			report(progress, v.Percent, v.Message)
 		}
 	}); err != nil {
@@ -121,69 +123,29 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 	if err = checkNotRunning(target); err != nil {
 		return "", err
 	}
-	old := map[string]bool{}
-	next := map[string]bool{}
-	names := map[string]bool{"RELEASE-MANIFEST.json": true}
-	for _, f := range previous.Files {
-		if !privatePath(f.Path) {
-			old[strings.ToLower(f.Path)] = true
-			names[f.Path] = true
-		}
-	}
-	for _, f := range a.Manifest.Files {
-		next[f.Path] = true
-		names[f.Path] = true
-	}
-	next["RELEASE-MANIFEST.json"] = true
-	old["release-manifest.json"] = true
-	ordered := make([]string, 0, len(names))
-	folded := map[string]string{}
-	for name := range names {
-		key := strings.ToLower(name)
-		if other, ok := folded[key]; ok && other != name {
-			return "", errors.New("新旧应用路径大小写冲突")
-		}
-		folded[key] = name
-		ordered = append(ordered, name)
-	}
-	sort.Strings(ordered)
-	// Preflight before changing any file; never follow junctions or overwrite
-	// unrelated files merely because the new release uses the same filename.
-	checkedParents := map[string]bool{}
-	report(progress, 98, "正在检查现有应用文件…")
-	for _, name := range ordered {
-		if e := ctx.Err(); e != nil {
-			return "", e
-		}
-		if err = plainParents(root, name, checkedParents); err != nil {
-			return "", err
-		}
-		st, e := root.Lstat(name)
-		if errors.Is(e, os.ErrNotExist) {
-			continue
-		}
-		if e != nil {
-			return "", e
-		}
-		if !st.Mode().IsRegular() {
-			return "", fmt.Errorf("安装路径包含链接或非文件：%s", name)
-		}
-		if !privatePath(name) && !old[strings.ToLower(name)] {
-			return "", fmt.Errorf("存在不属于旧版应用的同名文件，请另选目录：%s", name)
-		}
+	units, err := replacementPlan(ctx, root, previous, a.Manifest, progress)
+	if err != nil {
+		return "", err
 	}
 	backup := ".eduwork-backup-" + rand.Text()
 	if err = p.Mkdir(backup, 0700); err != nil {
 		return "", err
 	}
-	var backed, installed []string
+	var backed, installed []replacementUnit
 	rollback := func(cause error) (string, error) {
+		report(progress, 95, "正在恢复原有应用，请保持窗口打开…")
 		var restore error
 		for i := len(installed) - 1; i >= 0; i-- {
-			restore = errors.Join(restore, p.Remove(filepath.Join(base, installed[i])))
+			unit := installed[i]
+			name := filepath.Join(base, unit.name)
+			if unit.dir {
+				restore = errors.Join(restore, p.RemoveAll(name))
+			} else {
+				restore = errors.Join(restore, p.Remove(name))
+			}
 		}
 		for i := len(backed) - 1; i >= 0; i-- {
-			name := backed[i]
+			name := backed[i].name
 			restore = errors.Join(restore, p.Rename(filepath.Join(backup, name), filepath.Join(base, name)))
 		}
 		if restore != nil {
@@ -192,60 +154,45 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 		_ = p.RemoveAll(backup)
 		return "", cause
 	}
-	report(progress, 99, "正在替换应用文件，保留配置和数据…")
-	for _, name := range ordered {
+	report(progress, 80, "正在替换应用文件，保留配置和数据…")
+	total, done := 0, 0
+	for _, unit := range units {
+		total += unit.files
+	}
+	for _, unit := range units {
 		if e := ctx.Err(); e != nil {
 			return rollback(e)
 		}
-		if privatePath(name) {
-			if _, e := root.Lstat(name); e == nil {
-				continue
-			}
-		} else if _, e := root.Lstat(name); e == nil {
-			if e = p.MkdirAll(filepath.Dir(filepath.Join(backup, name)), 0700); e != nil {
+		name := unit.name
+		if unit.exists {
+			if e := p.MkdirAll(filepath.Dir(filepath.Join(backup, name)), 0700); e != nil {
 				return rollback(e)
 			}
-			if e = p.Rename(filepath.Join(base, name), filepath.Join(backup, name)); e != nil {
+			if e := p.Rename(filepath.Join(base, name), filepath.Join(backup, name)); e != nil {
 				return rollback(fmt.Errorf("文件被占用或无法写入，请关闭 EduWork 后重试：%w", e))
 			}
-			backed = append(backed, name)
+			backed = append(backed, unit)
 		}
-		if !next[name] {
-			continue
+		if unit.next {
+			if e := root.MkdirAll(filepath.Dir(name), 0755); e != nil {
+				return rollback(e)
+			}
+			if e := p.Rename(filepath.Join(stage, name), filepath.Join(base, name)); e != nil {
+				return rollback(e)
+			}
+			installed = append(installed, unit)
 		}
-		if e := root.MkdirAll(filepath.Dir(name), 0755); e != nil {
-			return rollback(e)
-		}
-		if e := p.Rename(filepath.Join(stage, name), filepath.Join(base, name)); e != nil {
-			return rollback(e)
-		}
-		installed = append(installed, name)
+		done += unit.files
+		report(progress, 80+15*done/total, fmt.Sprintf("正在替换应用文件… %d/%d", done, total))
 	}
+	if e := ctx.Err(); e != nil {
+		return rollback(e)
+	}
+	report(progress, 96, "正在清理旧版临时备份…")
 	if e := p.RemoveAll(backup); e != nil {
 		report(progress, 100, "安装完成，旧版临时备份未能清理。")
 	} else {
 		report(progress, 100, "安装完成，原有配置和数据已保留。")
 	}
 	return target, nil
-}
-func plainParents(root *os.Root, name string, checked map[string]bool) error {
-	parts := strings.Split(name, "/")
-	for i := 1; i < len(parts); i++ {
-		parent := strings.Join(parts[:i], "/")
-		if checked[parent] {
-			continue
-		}
-		st, e := root.Lstat(parent)
-		if errors.Is(e, os.ErrNotExist) {
-			return nil
-		}
-		if e != nil {
-			return e
-		}
-		if !st.IsDir() || st.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("安装路径包含链接或非目录：%s", name)
-		}
-		checked[parent] = true
-	}
-	return nil
 }
