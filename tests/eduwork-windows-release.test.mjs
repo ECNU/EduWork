@@ -1,16 +1,61 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { validateReceipt,releasePublication,validateExtractorReceipt,validatedReleaseFiles } from '../scripts/publish-windows-release.mjs'
-import {mkdtemp,writeFile,rm} from 'node:fs/promises'
+import {mkdtemp,mkdir,writeFile,readFile,readdir,rm} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
-import {join} from 'node:path'
+import {basename,join,resolve,sep} from 'node:path'
 import {createHash} from 'node:crypto'
 import {githubUpdateManifest,githubUpdateManifestBytes} from '../scripts/github-update-manifest.mjs'
+import {windowsStages} from '../scripts/lib/windows-stages.mjs'
+import {fileURLToPath} from 'node:url'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
 const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
 function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
+
+test('Windows publish stage keeps institution artifacts without inventing an ECNU update repository',async t=>{
+ const coreRoot=fileURLToPath(new URL('..',import.meta.url))
+ for(const recipe of ['npm','pinned-source']) for(const [name,distribution] of [['EduWork','eduwork'],['EduWork-ECNU','eduwork-chatecnu'],['ExampleCampus','example-campus']]) {
+  for(const [version,development] of [['0.4.3',false],['0.4.3-alpha.1',false],['0.4.3-dev.20261010.1',true]]) await t.test(`${recipe}: ${name} ${version}`,async t=>{
+   const root=await mkdtemp(join(tmpdir(),'eduwork-publish-stage-'))
+   t.after(async()=>{
+    const target=resolve(root)
+    assert.ok(target.startsWith(resolve(tmpdir())+sep) && basename(target).startsWith('eduwork-publish-stage-'))
+    await rm(target,{recursive:true,force:true})
+   })
+   const file=async(path,content)=>{await mkdir(join(root,path,'..'),{recursive:true});await writeFile(join(root,path),content)}
+   const json=async(path,value)=>file(path,JSON.stringify(value))
+   const asset={name:`${name}-${version}-windows-x64-electron.zip`,bytes:32,sha256:'a'.repeat(64)}
+   const extractor=extractorFiles(name,version)
+   const archive=Buffer.from('Synthetic publication input, not an application')
+   await file(`desktop/${asset.name}`,archive)
+   await json('desktop/package.json',{output:join(root,'desktop',asset.name)})
+   await json(recipe==='pinned-source'?'product/assembly.json':'web/assembly/assembly.json',{distribution,dshVersion:'0.2.0-rc.2',dshCommit:'b'.repeat(40)})
+   await json('inputs/inputs.json',{})
+   await json('gui/acceptance-checks.json',{asset,portableExtractorAssets:extractor})
+   for(const filename of [extractor.asset.name,`${extractor.asset.name}.sha256`,extractor.receipt.name]) await file(`gui/extractor-publish/${filename}`,'Synthetic extractor evidence')
+   await file('RELEASE-NOTES.md','Synthetic approved release notes')
+   const workspace={parameters:{name,version,development,releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,recipe},resolvePath:path=>join(root,path)}
+   const receiptBase={schemaVersion:1,kind:development?'eduwork-windows-development':'eduwork-windows-release',edition:name,version,shell:'electron',platform:'windows-x64'}
+   await windowsStages({coreRoot,receiptBase,recipe}).find(stage=>stage.name==='publish').run(workspace)
+   const files=await readdir(join(root,'publish'))
+   const expectedManifest=version==='0.4.3' && name!=='ExampleCampus'
+   assert.equal(files.includes('update-windows-amd64.json'),expectedManifest)
+   assert.equal(files.includes('RELEASE-NOTES.md'),!development)
+   assert.equal(files.includes(extractor.asset.name),!development)
+   assert.deepEqual(await readFile(join(root,'publish',asset.name)),archive)
+   const published=JSON.parse(await readFile(join(root,'publish/release-receipt.json'),'utf8'))
+   assert.equal(published.distribution,distribution)
+   assert.deepEqual(published.asset,asset)
+   if(expectedManifest){
+    const manifest=JSON.parse(await readFile(join(root,'publish/update-windows-amd64.json'),'utf8'))
+    assert.equal(manifest.artifacts[0].url,`https://github.com/ecnu/${name}/releases/download/v${version}/${asset.name}`)
+    assert.equal(manifest.artifacts[0].sha256,asset.sha256)
+   }
+  })
+ }
+})
 test('release publisher accepts the complete matching Windows receipt',()=>assert.equal(validateReceipt(receipt,context),'EduWork'))
 
 test('release publisher rejects missing or failed packaged native runtime checks',()=>{

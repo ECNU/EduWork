@@ -383,7 +383,8 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   delete receipt.checks.asset
   delete receipt.checks.portableExtractorAssets
   await writeJSON(join(publish, 'release-receipt.json'), receipt)
-  if (!development && !desktopVersion(workspace.parameters.version).prerelease) {
+  // Other institutions publish their own update feeds from the release receipt.
+  if (!development && !desktopVersion(workspace.parameters.version).prerelease && ['EduWork', 'EduWork-ECNU'].includes(name)) {
     await copyFileTo(join(editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))
     await runNode(join(coreRoot, 'scripts/github-update-manifest.mjs'), [join(publish, 'release-receipt.json'), `ecnu/${name}`])
       .catch(() => { throw new Error('GitHub update manifest generation failed') })
