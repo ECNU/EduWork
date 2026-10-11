@@ -16,6 +16,13 @@ var buildIdentity string
 var identity portable.Identity
 
 func unpack(ctx context.Context, target string, verifyOnly bool, report portable.Reporter) (string, error) {
+	return unpackWithOverwrite(ctx, target, verifyOnly, false, report)
+}
+
+func unpackWithOverwrite(ctx context.Context, target string, verifyOnly, overwrite bool, report portable.Reporter) (string, error) {
+	return unpackConfirmed(ctx, target, verifyOnly, overwrite, false, report)
+}
+func unpackConfirmed(ctx context.Context, target string, verifyOnly, overwrite, closeRunning bool, report portable.Reporter) (string, error) {
 	name, err := os.Executable()
 	if err != nil {
 		return "", err
@@ -39,6 +46,20 @@ func unpack(ctx context.Context, target string, verifyOnly bool, report portable
 	if verifyOnly {
 		return "", nil
 	}
+	if overwrite {
+		if closeRunning {
+			if err := ctx.Err(); err != nil {
+				return "", err
+			}
+			if _, err := portable.ExistingInstallation(target, identity); err != nil {
+				return "", err
+			}
+			if err := portable.StopApplication(target); err != nil {
+				return "", err
+			}
+		}
+		return a.Replace(ctx, target, report)
+	}
 	return a.Extract(ctx, target, report)
 }
 
@@ -49,12 +70,13 @@ func main() {
 		return
 	}
 	target := flag.String("extract-to", "", "extract into a new directory without starting the application")
+	overwrite := flag.Bool("overwrite", false, "replace a recognized installation while preserving user state")
 	verify := flag.Bool("verify", false, "verify the embedded archive without extracting")
 	reportPath := flag.String("report", "", "write an exclusive JSON result file for automation")
 	flag.Parse()
 	if *verify || *target != "" {
 		started := time.Now()
-		result, err := unpack(context.Background(), *target, *verify, nil)
+		result, err := unpackWithOverwrite(context.Background(), *target, *verify, *overwrite, nil)
 		r := map[string]any{"success": err == nil, "target": result, "identity": identity, "seconds": time.Since(started).Seconds()}
 		if err != nil {
 			r["error"] = err.Error()

@@ -1,5 +1,5 @@
 // Package portable extracts an unchanged desktop release into a new directory.
-// It deliberately does not implement updates or modify an existing installation.
+// Replace supports explicitly confirmed installation over the same product.
 package portable
 
 import (
