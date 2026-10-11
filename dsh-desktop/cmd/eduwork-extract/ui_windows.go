@@ -227,6 +227,15 @@ func begin() {
 			select {
 			case updates <- p:
 			default:
+				// Keep the newest phase when directory batches finish between UI ticks.
+				select {
+				case <-updates:
+				default:
+				}
+				select {
+				case updates <- p:
+				default:
+				}
 			}
 		})
 		results <- outcome{path, err}
@@ -253,6 +262,10 @@ func tick() {
 	case p := <-updates:
 		text(status, p.Message)
 		call("SendMessageW", progress, 0x402, uintptr(p.Percent), 0)
+		if p.Message == "正在清理旧版临时备份…" {
+			// Replacement has committed; canceling cannot restore a deleted backup.
+			enable(cancelButton, false)
+		}
 	default:
 	}
 	select {
