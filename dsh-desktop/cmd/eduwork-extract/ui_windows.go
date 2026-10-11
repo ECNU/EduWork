@@ -38,6 +38,7 @@ var optionControls []uintptr
 var optionsButton uintptr
 var optionsOpen bool
 var titleLabel uintptr
+var desktopOption, launchOption, inputBrush uintptr
 
 func layoutOptions() {
 	show := uintptr(0)
@@ -45,15 +46,15 @@ func layoutOptions() {
 	if optionsOpen {
 		show = 5
 		label = "收起选项  ﹀"
-		offset = 100
+		offset = 116
 	}
 	for _, c := range optionControls {
 		call("ShowWindow", c, show)
 	}
 	text(optionsButton, label)
-	call("SetWindowPos", status, 0, px(40), px(314+offset), px(480), px(26), 0x14)
-	call("SetWindowPos", progress, 0, px(40), px(348+offset), px(480), px(6), 0x14)
-	r := rect{Right: int32(px(560)), Bottom: int32(px(380 + offset))}
+	call("SetWindowPos", status, 0, px(40), px(378+offset), px(480), px(26), 0x14)
+	call("SetWindowPos", progress, 0, px(40), px(412+offset), px(480), px(6), 0x14)
+	r := rect{Right: int32(px(560)), Bottom: int32(px(444 + offset))}
 	call("AdjustWindowRectEx", uintptr(unsafe.Pointer(&r)), 0x00ca0000, 0, 0)
 	call("SetWindowPos", window, 0, 0, 0, uintptr(r.Right-r.Left), uintptr(r.Bottom-r.Top), 0x16)
 	call("InvalidateRect", window, 0, 1)
@@ -192,6 +193,8 @@ func begin() {
 	}
 	busy = true
 	enable(optionsButton, false)
+	enable(desktopOption, false)
+	enable(launchOption, false)
 	call("ShowWindow", progress, 5)
 	enable(location, false)
 	enable(browseButton, false)
@@ -247,6 +250,8 @@ func tick() {
 		}
 		if r.err != nil {
 			enable(optionsButton, true)
+			enable(desktopOption, true)
+			enable(launchOption, true)
 			enable(location, true)
 			enable(browseButton, true)
 			enable(startButton, true)
@@ -261,6 +266,15 @@ func tick() {
 		}
 		finished = true
 		installed = r.path
+		if call("SendMessageW", desktopOption, 0xf0, 0, 0) == 1 {
+			if err := createDesktopShortcut(installed); err != nil {
+				message(window, fmt.Sprintf("应用已安装，但桌面快捷方式创建失败。\n\n%s", err))
+			}
+		}
+		if call("SendMessageW", launchOption, 0xf0, 0, 0) == 1 {
+			launchInstalled()
+			return
+		}
 		text(status, "安装完成，可以启动应用了。")
 		call("SendMessageW", progress, 0x402, 100, 0)
 		text(startButton, "立即启动")
@@ -272,10 +286,38 @@ func tick() {
 }
 func procedure(h uintptr, m uint32, w, l uintptr) uintptr {
 	switch m {
+	case 0xf:
+		var ps struct {
+			DC                 uintptr
+			Erase              int32
+			Paint              rect
+			Restore, IncUpdate int32
+			Reserved           [32]byte
+		}
+		dc := call("BeginPaint", h, uintptr(unsafe.Pointer(&ps)))
+		if optionsOpen {
+			border := uintptr(0xd4dce6)
+			if call("GetFocus") == location {
+				border = brandRed
+			}
+			pen, _, _ := gdi.NewProc("CreatePen").Call(0, px(1), border)
+			oldPen, _, _ := gdi.NewProc("SelectObject").Call(dc, pen)
+			oldBrush, _, _ := gdi.NewProc("SelectObject").Call(dc, inputBrush)
+			gdi.NewProc("RoundRect").Call(dc, px(40), px(394), px(424), px(438), px(14), px(14))
+			gdi.NewProc("SelectObject").Call(dc, oldPen)
+			gdi.NewProc("SelectObject").Call(dc, oldBrush)
+			gdi.NewProc("DeleteObject").Call(pen)
+		}
+		call("EndPaint", h, uintptr(unsafe.Pointer(&ps)))
+		return 0
+	case 0x133:
+		gdi.NewProc("SetBkColor").Call(w, 0xffffff)
+		gdi.NewProc("SetTextColor").Call(w, 0x181a24)
+		return inputBrush
 	case 0x2b:
 		paintButton(l)
 		return 1
-	case 0x138: // Match native static labels to the window background.
+	case 0x135, 0x138: // Match native static labels to the window background.
 		gdi.NewProc("SetBkMode").Call(w, 1)
 		ink := uintptr(0x635951)
 		if l == titleLabel {
@@ -285,6 +327,10 @@ func procedure(h uintptr, m uint32, w, l uintptr) uintptr {
 		return backgroundBrush
 	case 0x111:
 		switch w & 0xffff {
+		case 100:
+			if w>>16 == 0x100 || w>>16 == 0x200 {
+				call("InvalidateRect", window, 0, 0)
+			}
 		case 104:
 			if busy || finished {
 				return 0
@@ -302,14 +348,7 @@ func procedure(h uintptr, m uint32, w, l uintptr) uintptr {
 			if !finished {
 				begin()
 			} else {
-				cmd := exec.Command(filepath.Join(installed, "EduWork-Electron.exe"))
-				cmd.Dir = installed
-				if err := cmd.Start(); err != nil {
-					message(window, fmt.Sprintf("应用已安装，但启动失败。请检查安全软件记录，或在应用目录中手动启动。\n\n%s", err))
-				} else {
-					_ = cmd.Process.Release()
-					call("DestroyWindow", window)
-				}
+				launchInstalled()
 			}
 		case 2, 103:
 			cancelWork(false)
@@ -340,6 +379,8 @@ func runUI() {
 	cc := struct{ Size, Classes uint32 }{8, 0x20}
 	windows.NewLazySystemDLL("comctl32.dll").NewProc("InitCommonControlsEx").Call(uintptr(unsafe.Pointer(&cc)))
 	font(14, 400)
+	inputBrush, _, _ = gdi.NewProc("CreateSolidBrush").Call(0xffffff)
+	defer gdi.NewProc("DeleteObject").Call(inputBrush)
 	font(28, 600)
 	backgroundBrush, _, _ = gdi.NewProc("CreateSolidBrush").Call(warmBackground)
 	defer gdi.NewProc("DeleteObject").Call(backgroundBrush)
@@ -357,8 +398,8 @@ func runUI() {
 		message(0, "无法创建安装窗口。")
 		return
 	}
-	style := uintptr(0x00c80000 | 0x00020000)
-	r := rect{Right: int32(px(560)), Bottom: int32(px(380))}
+	style := uintptr(0x00c80000 | 0x00020000 | 0x02000000)
+	r := rect{Right: int32(px(560)), Bottom: int32(px(444))}
 	call("AdjustWindowRectEx", uintptr(unsafe.Pointer(&r)), style, 0, 0)
 	width, height := uintptr(r.Right-r.Left), uintptr(r.Bottom-r.Top)
 	x := (call("GetSystemMetrics", 0) - width) / 2
@@ -380,16 +421,19 @@ func runUI() {
 	call("SendMessageW", title, 0x30, fonts[1], 1)
 	control("STATIC", "准备好，开始高效工作。", 0, 40, 154, 480, 26, 0)
 	control("STATIC", "版本 "+identity.Version, 0, 104, 48, 416, 24, 0)
-	pathLabel := control("STATIC", "安装位置 (&D)", 0, 40, 302, 480, 22, 0)
+	pathLabel := control("STATIC", "安装位置 (&D)", 0, 40, 366, 480, 22, 0)
 	home, _ := os.UserHomeDir()
-	location = control("EDIT", filepath.Join(home, identity.Root), 0x00800000|0x10000|0x80, 40, 330, 384, 32, 100)
-	call("SendMessageW", location, 0xc5, 0x3, uintptr(8|(8<<16)))
-	browseButton = control("BUTTON", "浏览… (&B)", 0x10000|0xb, 436, 330, 84, 32, 101)
-	note := control("STATIC", "请选择新目录，已有配置和数据不会被覆盖。", 0, 40, 372, 480, 24, 0)
+	location = control("EDIT", filepath.Join(home, identity.Root), 0x10000|0x80, 54, 406, 356, 22, 100)
+	call("SendMessageW", location, 0xc5, 0x3, 0)
+	browseButton = control("BUTTON", "浏览… (&B)", 0x10000|0xb, 436, 394, 84, 44, 101)
+	note := control("STATIC", "请选择新目录，已有配置和数据不会被覆盖。", 0, 40, 450, 480, 24, 0)
 	optionControls = []uintptr{pathLabel, location, browseButton, note}
 	for _, c := range optionControls {
 		call("ShowWindow", c, 0)
 	}
+	desktopOption = control("BUTTON", "创建桌面快捷方式", 0x10000|0x3, 40, 294, 240, 28, 105)
+	launchOption = control("BUTTON", "安装完成后立即启动", 0x10000|0x3, 288, 294, 232, 28, 106)
+	call("SendMessageW", desktopOption, 0xf1, 1, 0)
 	optionsButton = control("BUTTON", "安装选项  ﹀", 0x10000|0xb, 40, 254, 132, 32, 104)
 	status = control("STATIC", "安装完成后即可使用", 0, 40, 374, 480, 26, 0)
 	progress = control("msctls_progress32", "", 0, 40, 408, 480, 6, 0)
@@ -414,5 +458,16 @@ func runUI() {
 			call("TranslateMessage", uintptr(unsafe.Pointer(&m)))
 			call("DispatchMessageW", uintptr(unsafe.Pointer(&m)))
 		}
+	}
+}
+
+func launchInstalled() {
+	cmd := exec.Command(filepath.Join(installed, "EduWork-Electron.exe"))
+	cmd.Dir = installed
+	if err := cmd.Start(); err != nil {
+		message(window, fmt.Sprintf("应用已安装，但启动失败。请在应用目录中手动启动。\n\n%s", err))
+	} else {
+		_ = cmd.Process.Release()
+		call("DestroyWindow", window)
 	}
 }
