@@ -70,6 +70,14 @@ func paintButton(l uintptr) {
 	if d.Window == startButton {
 		fill, ink = brandRed, 0xffffff
 	}
+	// Keep keyboard focus visible through color without an inset border.
+	if d.State&0x10 != 0 && d.Window != customButton {
+		if d.Window == startButton {
+			fill = 0x3d2ba9
+		} else {
+			fill = 0xf4f5f7
+		}
+	}
 	if d.State&4 != 0 {
 		fill, ink = 0xe5e5e5, 0x888888
 	}
@@ -94,21 +102,6 @@ func paintButton(l uintptr) {
 	oldFont, _, _ := gdi.NewProc("SelectObject").Call(d.DC, fonts[0])
 	call("DrawTextW", d.DC, ptr(readText(d.Window)), ^uintptr(0), uintptr(unsafe.Pointer(&d.Bounds)), 0x25)
 	gdi.NewProc("SelectObject").Call(d.DC, oldFont)
-	if d.State&0x10 != 0 && d.Window != customButton {
-		r := d.Bounds
-		r.Left += 5
-		r.Top += 5
-		r.Right -= 5
-		r.Bottom -= 5
-		pen, _, _ := gdi.NewProc("CreatePen").Call(0, px(1), 0x999999)
-		oldPen, _, _ := gdi.NewProc("SelectObject").Call(d.DC, pen)
-		nullBrush, _, _ := gdi.NewProc("GetStockObject").Call(5)
-		oldBrush, _, _ := gdi.NewProc("SelectObject").Call(d.DC, nullBrush)
-		gdi.NewProc("RoundRect").Call(d.DC, uintptr(r.Left), uintptr(r.Top), uintptr(r.Right), uintptr(r.Bottom), px(10), px(10))
-		gdi.NewProc("SelectObject").Call(d.DC, oldBrush)
-		gdi.NewProc("SelectObject").Call(d.DC, oldPen)
-		gdi.NewProc("DeleteObject").Call(pen)
-	}
 }
 
 func ptr(s string) uintptr { return uintptr(unsafe.Pointer(windows.StringToUTF16Ptr(s))) }
