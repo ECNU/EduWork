@@ -15,6 +15,7 @@ import { stage } from './stage-runner.mjs'
 import { assembleMacos } from '../../dsh-electron/scripts/assemble-macos.mjs'
 import { prepareMacosReleaseInputs, installMacosReleaseInputs } from '../prepare-macos-release-inputs.mjs'
 import { prepareMacosDmg } from '../prepare-macos-dmg.mjs'
+import { verifyPublisherFirstLaunch } from './publisher-acceptance.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -305,7 +306,8 @@ async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap
   }
   if (verifyPublisherBootstrap) {
     const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
-    if (started.configurationRevision < 1 || started.skillsRevision < 1) throw new Error('First launch did not activate signed publisher content')
+    const descriptor = await readJSON(join(frozen, 'resources/desktop/publisher-bootstrap.json'))
+    verifyPublisherFirstLaunch(descriptor, started)
     checks.publisherFirstLaunch = 'passed'
   }
   // The application directory must still verify after the run: acceptance proves

@@ -26,6 +26,7 @@ import { packWindowsRelease } from '../pack-windows-release.mjs'
 import { prepareWindowsReleaseInputs, installWindowsReleaseInputs } from '../prepare-windows-release-inputs.mjs'
 import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
 import { desktopVersion } from '../desktop-build-plan.mjs'
+import { verifyPublisherFirstLaunch } from './publisher-acceptance.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -328,9 +329,8 @@ async function acceptWindows({ workspace, coreRoot }) {
   }
   if (verifyPublisherBootstrap) {
     const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
-    if (started.configurationRevision < 1 || started.skillsRevision < 1) {
-      throw new Error('First launch did not activate signed publisher content')
-    }
+    const descriptor = await readJSON(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
+    verifyPublisherFirstLaunch(descriptor, started)
     checks.publisherFirstLaunch = 'passed'
   }
   await writeJSON(join(gui, 'acceptance-checks.json'), checks)

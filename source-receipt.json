@@ -5,7 +5,7 @@
   "version": "0.4.3",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-10T15:40:21.2858734Z",
-  "fileSetSHA256": "19cde05fd9d083c3f0417c5aafd2ce60110096de31b0950ace3944bd06450fa5",
+  "fileSetSHA256": "d4806400a811a369350cd087f320aa55c8f8802c3c29d653babd6bf0871f6129",
   "files": [
     {
       "path": ".gitattributes",
@@ -5277,7 +5277,7 @@
     },
     {
       "path": "scripts/lib/macos-stages.mjs",
-      "sha256": "ee008e888f54bfec6e114271507a0ee9448e6bc8e888e9f0784076d94bd014d3"
+      "sha256": "6782215305f0defa933d8f699d66f519f3edf96e80439249be0356c3d9a74705"
     },
     {
       "path": "scripts/lib/native-compile-cache.mjs",
@@ -5290,6 +5290,10 @@
     {
       "path": "scripts/lib/preflight.mjs",
       "sha256": "0e988fe51a441f87d92d94293217c7d92cdaeec84d834da208e0cd0de1de4770"
+    },
+    {
+      "path": "scripts/lib/publisher-acceptance.mjs",
+      "sha256": "cb18f03e24840c4db5f91e72e0002ef8f1192642d31672a8368e867ea67a4131"
     },
     {
       "path": "scripts/lib/shared-desktop-stages.mjs",
@@ -5309,7 +5313,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "ca10a3e3f5cdd0f4509abf5c633c02abded381adcbb903e29abf4f0076e7de97"
+      "sha256": "6bf03466926fabf05428ae858adcbf5fc0e12b1f82ffc54e611949a9d8674583"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -5774,6 +5778,10 @@
     {
       "path": "tests/preflight.test.mjs",
       "sha256": "fa13d1bf47f33f05d3335a405f9c715aaedd69989af3c9ad5580efbbb91f221a"
+    },
+    {
+      "path": "tests/publisher-acceptance.test.mjs",
+      "sha256": "73ee8cbe37c03bdd899a7d8378b5283f7cb2ea4349dc871eeec92ea7e1a86251"
     },
     {
       "path": "tests/settings-theme-browser.mjs",
