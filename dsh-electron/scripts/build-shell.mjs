@@ -28,6 +28,8 @@ const source = async path => {
 }
 const files = Object.keys(inputs).filter(path => path !== 'apps/desktop/package.json')
 await mkdir(output, { recursive: false })
+// The native Host serves the workbench; the carrier has no renderer assets.
+if (native) await mkdir(join(output, 'renderer'))
 const rows = []
 for (const file of files) {
   const before = await source(file)
@@ -162,7 +164,7 @@ async function collectNotice(name, from) {
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
 for (const name of Object.keys(alias)) await collectNotice(name, join(upstream, 'apps/desktop/package.json'))
-if (native) for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+if (native) for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'koffi']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })
