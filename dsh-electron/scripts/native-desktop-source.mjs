@@ -29,6 +29,15 @@ export ${source.slice(start, end)}
   })\n`, '')
     const navigation = source.slice(source.indexOf("  window.webContents.on('will-navigate'"), source.indexOf('  return window'))
     replace(navigation, '')
+    // Keep an opaque backing surface during native resize/minimize animations.
+    // Reattaching vibrancy on restore changes the material after the first frame.
+    replace("      vibrancy: 'sidebar' as const,", "      vibrancy: undefined,")
+    replace("      backgroundColor: '#00000000',", "      backgroundColor: '#faf3ef',")
+    const backdropStart = source.indexOf("  if (process.platform === 'darwin') {\n    // Deminiaturize")
+    const backdropEnd = source.indexOf("  window.webContents.on('context-menu'", backdropStart)
+    if (backdropStart < 0 || backdropEnd < 0) throw new Error('Official macOS backdrop boundary changed')
+    source = source.slice(0, backdropStart) + source.slice(backdropEnd)
+    replace('    show,', "    show,\n    backgroundColor: '#faf3ef',")
   }
   if (file.endsWith('/preload-app.ts')) {
     replace("import { PLATFORM_IPC } from './platform-ipc.ts'\n", '')
@@ -38,6 +47,12 @@ export ${source.slice(start, end)}
     replace(onboarding, '')
     const platform = source.slice(source.indexOf("  contextBridge.exposeInMainWorld('dshPlatform'"), source.indexOf('\n}\n\nmarkDocumentPlatform()'))
     replace(platform, '')
+  }
+  if (file.endsWith('/preload-windows.ts')) {
+    // Reuse the palette probe on macOS without installing Windows chrome.
+    replace("  if (process.platform !== 'win32') return", "  if (!['win32', 'darwin'].includes(process.platform)) return")
+    replace('  const mark = (): void => {', "  const mark = (): void => {\n    if (process.platform !== 'win32') return")
+    replace('    const menu = installWindowsMenu()', "    const menu = process.platform === 'win32' ? installWindowsMenu() : { update() {}, dispose() {} }")
   }
   if (file.endsWith('/microphone-permissions.ts')) {
     // Keep the official main-frame/audio/OS checks, with the product's deny

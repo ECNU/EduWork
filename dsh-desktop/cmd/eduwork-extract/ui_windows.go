@@ -33,6 +33,80 @@ type outcome struct {
 
 var results = make(chan outcome, 1)
 var scale = 1.0
+var backgroundBrush uintptr
+var optionControls []uintptr
+var optionsButton uintptr
+var optionsOpen bool
+var titleLabel uintptr
+
+func layoutOptions() {
+	show := uintptr(0)
+	label, offset := "安装选项  ﹀", 0
+	if optionsOpen {
+		show = 5
+		label = "收起选项  ﹀"
+		offset = 100
+	}
+	for _, c := range optionControls {
+		call("ShowWindow", c, show)
+	}
+	text(optionsButton, label)
+	call("SetWindowPos", status, 0, px(40), px(314+offset), px(480), px(26), 0x14)
+	call("SetWindowPos", progress, 0, px(40), px(348+offset), px(480), px(6), 0x14)
+	r := rect{Right: int32(px(560)), Bottom: int32(px(380 + offset))}
+	call("AdjustWindowRectEx", uintptr(unsafe.Pointer(&r)), 0x00ca0000, 0, 0)
+	call("SetWindowPos", window, 0, 0, 0, uintptr(r.Right-r.Left), uintptr(r.Bottom-r.Top), 0x16)
+	call("InvalidateRect", window, 0, 1)
+}
+
+// COLORREF stores red in the low byte.
+const warmBackground = 0xeff3fa
+const brandRed = 0x36269f
+
+type drawItem struct {
+	ControlType, ControlID, ItemID, Action, State uint32
+	Window, DC                                    uintptr
+	Bounds                                        rect
+	Data                                          uintptr
+}
+
+func paintButton(l uintptr) {
+	var item drawItem
+	windows.NewLazySystemDLL("kernel32.dll").NewProc("RtlMoveMemory").Call(uintptr(unsafe.Pointer(&item)), l, unsafe.Sizeof(item))
+	d := &item
+	fill, ink := uintptr(0xffffff), uintptr(0x635951)
+	if d.Window == startButton {
+		fill, ink = brandRed, 0xffffff
+	}
+	if d.State&4 != 0 {
+		fill, ink = 0xe5e5e5, 0x888888
+	}
+	if d.State&1 != 0 && d.Window == startButton {
+		fill = 0x2c1f85
+	}
+	brush, _, _ := gdi.NewProc("CreateSolidBrush").Call(fill)
+	pen, _, _ := gdi.NewProc("CreatePen").Call(0, 1, fill)
+	oldBrush, _, _ := gdi.NewProc("SelectObject").Call(d.DC, brush)
+	oldPen, _, _ := gdi.NewProc("SelectObject").Call(d.DC, pen)
+	gdi.NewProc("RoundRect").Call(d.DC, uintptr(d.Bounds.Left), uintptr(d.Bounds.Top), uintptr(d.Bounds.Right), uintptr(d.Bounds.Bottom), px(14), px(14))
+	gdi.NewProc("SelectObject").Call(d.DC, oldBrush)
+	gdi.NewProc("SelectObject").Call(d.DC, oldPen)
+	gdi.NewProc("DeleteObject").Call(brush)
+	gdi.NewProc("DeleteObject").Call(pen)
+	gdi.NewProc("SetTextColor").Call(d.DC, ink)
+	gdi.NewProc("SetBkMode").Call(d.DC, 1)
+	oldFont, _, _ := gdi.NewProc("SelectObject").Call(d.DC, fonts[0])
+	call("DrawTextW", d.DC, ptr(readText(d.Window)), ^uintptr(0), uintptr(unsafe.Pointer(&d.Bounds)), 0x25)
+	gdi.NewProc("SelectObject").Call(d.DC, oldFont)
+	if d.State&0x10 != 0 {
+		r := d.Bounds
+		r.Left += 5
+		r.Top += 5
+		r.Right -= 5
+		r.Bottom -= 5
+		call("DrawFocusRect", d.DC, uintptr(unsafe.Pointer(&r)))
+	}
+}
 
 func ptr(s string) uintptr { return uintptr(unsafe.Pointer(windows.StringToUTF16Ptr(s))) }
 func call(name string, args ...uintptr) uintptr {
@@ -63,7 +137,7 @@ func control(class, title string, style uintptr, x, y, w, h, id int) uintptr {
 	return r
 }
 func font(size, weight int) uintptr {
-	h, _, _ := gdi.NewProc("CreateFontW").Call(uintptr(int32(-int(float64(size)*scale))), 0, 0, 0, uintptr(weight), 0, 0, 0, 1, 0, 0, 5, 0, ptr("Segoe UI"))
+	h, _, _ := gdi.NewProc("CreateFontW").Call(uintptr(int32(-int(float64(size)*scale))), 0, 0, 0, uintptr(weight), 0, 0, 0, 1, 0, 0, 5, 0, ptr("Microsoft YaHei UI"))
 	fonts = append(fonts, h)
 	return h
 }
@@ -117,6 +191,8 @@ func begin() {
 		return
 	}
 	busy = true
+	enable(optionsButton, false)
+	call("ShowWindow", progress, 5)
 	enable(location, false)
 	enable(browseButton, false)
 	enable(startButton, false)
@@ -170,6 +246,7 @@ func tick() {
 			return
 		}
 		if r.err != nil {
+			enable(optionsButton, true)
 			enable(location, true)
 			enable(browseButton, true)
 			enable(startButton, true)
@@ -195,11 +272,25 @@ func tick() {
 }
 func procedure(h uintptr, m uint32, w, l uintptr) uintptr {
 	switch m {
+	case 0x2b:
+		paintButton(l)
+		return 1
 	case 0x138: // Match native static labels to the window background.
 		gdi.NewProc("SetBkMode").Call(w, 1)
-		return call("GetSysColorBrush", 5)
+		ink := uintptr(0x635951)
+		if l == titleLabel {
+			ink = 0x181a24
+		}
+		gdi.NewProc("SetTextColor").Call(w, ink)
+		return backgroundBrush
 	case 0x111:
 		switch w & 0xffff {
+		case 104:
+			if busy || finished {
+				return 0
+			}
+			optionsOpen = !optionsOpen
+			layoutOptions()
 		case 101:
 			if !busy && !finished {
 				chooseFolder()
@@ -248,8 +339,10 @@ func runUI() {
 	}
 	cc := struct{ Size, Classes uint32 }{8, 0x20}
 	windows.NewLazySystemDLL("comctl32.dll").NewProc("InitCommonControlsEx").Call(uintptr(unsafe.Pointer(&cc)))
-	font(16, 400)
-	font(25, 600)
+	font(14, 400)
+	font(28, 600)
+	backgroundBrush, _, _ = gdi.NewProc("CreateSolidBrush").Call(warmBackground)
+	defer gdi.NewProc("DeleteObject").Call(backgroundBrush)
 	defer func() {
 		for _, f := range fonts {
 			gdi.NewProc("DeleteObject").Call(f)
@@ -258,14 +351,14 @@ func runUI() {
 	icon := call("LoadImageW", instance, 1, 1, px(48), px(48), 0x8000)
 	smallIcon := call("LoadImageW", instance, 1, 1, px(16), px(16), 0x8000)
 	name := windows.StringToUTF16Ptr("EduWorkPortableExtractor")
-	wc := wndClass{Proc: syscall.NewCallback(procedure), Instance: instance, Icon: icon, SmallIcon: smallIcon, Cursor: call("LoadCursorW", 0, 32512), Background: 6, Name: name}
+	wc := wndClass{Proc: syscall.NewCallback(procedure), Instance: instance, Icon: icon, SmallIcon: smallIcon, Cursor: call("LoadCursorW", 0, 32512), Background: backgroundBrush, Name: name}
 	wc.Size = uint32(unsafe.Sizeof(wc))
 	if call("RegisterClassExW", uintptr(unsafe.Pointer(&wc))) == 0 {
 		message(0, "无法创建安装窗口。")
 		return
 	}
 	style := uintptr(0x00c80000 | 0x00020000)
-	r := rect{Right: int32(px(660)), Bottom: int32(px(410))}
+	r := rect{Right: int32(px(560)), Bottom: int32(px(380))}
 	call("AdjustWindowRectEx", uintptr(unsafe.Pointer(&r)), style, 0, 0)
 	width, height := uintptr(r.Right-r.Left), uintptr(r.Bottom-r.Top)
 	x := (call("GetSystemMetrics", 0) - width) / 2
@@ -275,22 +368,38 @@ func runUI() {
 		message(0, "无法创建安装窗口。")
 		return
 	}
-	i := control("STATIC", "", 3, 28, 26, 48, 48, 0)
+	// Windows 11 honors these attributes; older Windows keeps native chrome.
+	dwm := windows.NewLazySystemDLL("dwmapi.dll")
+	caption, corners := uint32(warmBackground), uint32(2)
+	dwm.NewProc("DwmSetWindowAttribute").Call(window, 35, uintptr(unsafe.Pointer(&caption)), 4)
+	dwm.NewProc("DwmSetWindowAttribute").Call(window, 33, uintptr(unsafe.Pointer(&corners)), 4)
+	i := control("STATIC", "", 3, 40, 34, 48, 48, 0)
 	call("SendMessageW", i, 0x170, icon, 0)
-	title := control("STATIC", identity.Product, 0, 92, 26, 530, 38, 0)
+	title := control("STATIC", "安装 "+identity.Product, 0, 40, 102, 480, 44, 0)
+	titleLabel = title
 	call("SendMessageW", title, 0x30, fonts[1], 1)
-	control("STATIC", "版本："+identity.Version, 0, 92, 67, 540, 26, 0)
-	control("STATIC", "选择安装位置，完成后即可使用。", 0, 28, 116, 604, 26, 0)
-	control("STATIC", "安装位置 (&D)", 0, 28, 164, 600, 26, 0)
+	control("STATIC", "准备好，开始高效工作。", 0, 40, 154, 480, 26, 0)
+	control("STATIC", "版本 "+identity.Version, 0, 104, 48, 416, 24, 0)
+	pathLabel := control("STATIC", "安装位置 (&D)", 0, 40, 302, 480, 22, 0)
 	home, _ := os.UserHomeDir()
-	location = control("EDIT", filepath.Join(home, identity.Root), 0x00800000|0x10000|0x80, 28, 196, 498, 34, 100)
+	location = control("EDIT", filepath.Join(home, identity.Root), 0x00800000|0x10000|0x80, 40, 330, 384, 32, 100)
 	call("SendMessageW", location, 0xc5, 0x3, uintptr(8|(8<<16)))
-	browseButton = control("BUTTON", "浏览… (&B)", 0x10000, 538, 196, 94, 34, 101)
-	control("STATIC", "请选择新目录；已有应用、配置和数据不会被覆盖。", 0, 28, 240, 604, 26, 0)
-	status = control("STATIC", "准备就绪。", 0, 28, 283, 604, 25, 0)
-	progress = control("msctls_progress32", "", 0, 28, 316, 604, 10, 0)
-	cancelButton = control("BUTTON", "关闭", 0x10000, 398, 354, 100, 36, 103)
-	startButton = control("BUTTON", "开始安装", 0x10000|1, 510, 354, 122, 36, 102)
+	browseButton = control("BUTTON", "浏览… (&B)", 0x10000|0xb, 436, 330, 84, 32, 101)
+	note := control("STATIC", "请选择新目录，已有配置和数据不会被覆盖。", 0, 40, 372, 480, 24, 0)
+	optionControls = []uintptr{pathLabel, location, browseButton, note}
+	for _, c := range optionControls {
+		call("ShowWindow", c, 0)
+	}
+	optionsButton = control("BUTTON", "安装选项  ﹀", 0x10000|0xb, 40, 254, 132, 32, 104)
+	status = control("STATIC", "安装完成后即可使用", 0, 40, 374, 480, 26, 0)
+	progress = control("msctls_progress32", "", 0, 40, 408, 480, 6, 0)
+	windows.NewLazySystemDLL("uxtheme.dll").NewProc("SetWindowTheme").Call(progress, ptr(" "), ptr(" "))
+	call("SendMessageW", progress, 0x409, 0, brandRed)
+	call("SendMessageW", progress, 0x2001, 0, 0xe0e4ee)
+	call("ShowWindow", progress, 0)
+	cancelButton = control("BUTTON", "关闭", 0x10000|0xb, 440, 202, 80, 44, 103)
+	startButton = control("BUTTON", "立即安装", 0x10000|0xb, 40, 202, 300, 44, 102)
+	layoutOptions()
 	call("SetTimer", window, 1, 100, 0)
 	call("ShowWindow", window, 5)
 	call("UpdateWindow", window)

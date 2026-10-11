@@ -131,7 +131,7 @@ await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'p
 // The pet preload requires only electron; the sandbox loads it as written.
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
 const adapters = {}
-for (const name of ['dock-theme-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+for (const name of ['dock-theme-preload.cjs', 'preload-pet.cjs', 'window-motion-preload.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 if (native) {
   for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
