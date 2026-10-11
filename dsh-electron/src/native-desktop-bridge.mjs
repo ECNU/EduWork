@@ -65,13 +65,18 @@ export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, ch
   // action opens that existing updater; it does not start a second installer.
   ipcMain.handle(DESKTOP_IPC.updatesStatus, event => { owner(event); return { phase: 'idle' } })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, event => { owner(event); return checkUpdates() })
-  if (process.platform === 'win32') {
+  if (['win32', 'darwin'].includes(process.platform)) {
     ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language, color, symbolColor) => {
       let window
       try { window = owner(event) } catch { return }
       const validColor = value => typeof value === 'string' && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
-      if (validColor(color) && validColor(symbolColor)) window.setTitleBarOverlay({ color, symbolColor })
+      if (validColor(color) && validColor(symbolColor)) {
+        window.setBackgroundColor(color)
+        if (process.platform === 'win32') window.setTitleBarOverlay({ color, symbolColor })
+      }
     })
+  }
+  if (process.platform === 'win32') {
     ipcMain.handle(DESKTOP_IPC.windowsMenu, (event, name, x, y) => {
       const window = owner(event)
       if (!['application', 'edit'].includes(name) || !Number.isFinite(x) || !Number.isFinite(y)

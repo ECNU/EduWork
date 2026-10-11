@@ -25,6 +25,7 @@ import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
+import { startupPage } from './startup-page.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -93,17 +94,16 @@ async function prepareDesktop() {
   lifecycle.check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
   const startupBlue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
-  const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
-  const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
+  const startupBackground = startupBlue ? '#f6f7f9' : '#faf3ef'
   const startupIcon = process.platform === 'darwin' ? join(app.getAppPath(), '../brand', startupBlue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon
   if (process.platform === 'darwin') app.dock.setIcon(join(app.getAppPath(), '../brand', startupBlue ? 'dock-blue-1024.png' : 'dock-red-1024.png'))
-  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
+  progressWindow = new BrowserWindow({ width: 600, height: 390, resizable: false, maximizable: false, autoHideMenuBar: true, title: settings.productName,
     icon: startupIcon,
     backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
   attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   const title = String(settings.productName).replace(/[<>&"']/gu, '')
   const logo = 'data:image/png;base64,' + readFileSync(startupIcon).toString('base64')
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent('<!doctype html><meta charset="utf-8"><style>body{font:16px system-ui;padding:36px;color:#313744;background:' + startupBackground + '}progress{width:100%;margin-top:20px;accent-color:' + startupAccent + '}h2{display:flex;align-items:center;gap:12px}</style><h2><img alt="" width="40" height="40" src="' + logo + '">正在启动 ' + title + '</h2><p>正在准备本机工作环境…</p><progress></progress>'))
+  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({ title, logo, blue: startupBlue })))
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
