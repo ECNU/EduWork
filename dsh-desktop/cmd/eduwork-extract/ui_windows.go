@@ -271,16 +271,15 @@ func tick() {
 				message(window, fmt.Sprintf("应用已安装，但桌面快捷方式创建失败。\n\n%s", err))
 			}
 		}
-		if call("SendMessageW", launchOption, 0xf0, 0, 0) == 1 {
-			launchInstalled()
-			return
-		}
 		text(status, "安装完成，可以启动应用了。")
 		call("SendMessageW", progress, 0x402, 100, 0)
 		text(startButton, "立即启动")
 		enable(startButton, true)
 		text(cancelButton, "完成")
 		call("SetFocus", startButton)
+		if call("SendMessageW", launchOption, 0xf0, 0, 0) == 1 {
+			launchInstalled()
+		}
 	default:
 	}
 }
