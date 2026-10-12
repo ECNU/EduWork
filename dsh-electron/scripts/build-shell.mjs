@@ -28,6 +28,8 @@ const source = async path => {
 }
 const files = Object.keys(inputs).filter(path => path !== 'apps/desktop/package.json')
 await mkdir(output, { recursive: false })
+// The native Host serves the workbench; the carrier has no renderer assets.
+if (native) await mkdir(join(output, 'renderer'))
 const rows = []
 for (const file of files) {
   const before = await source(file)
@@ -56,7 +58,9 @@ for (const file of files) {
     replace('  app.exit(1)', '  // Keep the startup error visible so the user can fix configuration and retry.')
     replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
   }
-  if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8')
+  if (file === 'apps/desktop/src/preload-app.ts') {
+    for (const name of ['dock-theme-preload.cjs', 'window-motion-preload.cjs']) text += '\n' + await readFile(join(repository, 'dsh-electron/src', name), 'utf8')
+  }
   if (!native && file === 'apps/desktop/src/locale.ts') {
     const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
     if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')
@@ -67,7 +71,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['runtime-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'startup-page.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs']
+const electronAdapters = ['runtime-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'startup-failure.mjs', 'startup-page.mjs', 'window-motion.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
@@ -119,6 +123,8 @@ await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'p
 }
 const adapters = {}
 adapters['dsh-electron/src/dock-theme-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs')))
+adapters['dsh-electron/src/window-motion-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/window-motion-preload.cjs')))
+adapters['dsh-electron/scripts/window-layout.mjs'] = digest(await readFile(join(repository, 'dsh-electron/scripts/window-layout.mjs')))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 if (native) {
   for (const name of ['native-web-host.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
@@ -162,7 +168,7 @@ async function collectNotice(name, from) {
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
 for (const name of Object.keys(alias)) await collectNotice(name, join(upstream, 'apps/desktop/package.json'))
-if (native) for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+if (native) for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'koffi']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })

@@ -29,6 +29,7 @@ import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
 import { startupPage } from './startup-page.mjs'
+import { attachWindowMotion } from './window-motion.mjs'
 import { ensureRuntimeAccess } from './runtime-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -111,11 +112,11 @@ async function prepareDesktop() {
   lifecycle.check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
   const startupBlue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
-  const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
+  const startupBackground = startupBlue ? '#f6f7f9' : '#faf3ef'
   const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
   const startupIcon = process.platform === 'darwin' ? join(app.getAppPath(), '../brand', startupBlue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon
   if (process.platform === 'darwin') app.dock.setIcon(join(app.getAppPath(), '../brand', startupBlue ? 'dock-blue-1024.png' : 'dock-red-1024.png'))
-  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
+  progressWindow = new BrowserWindow({ width: 600, height: 390, resizable: false, maximizable: false, autoHideMenuBar: true, title: settings.productName,
     icon: startupIcon,
     backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
   attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
@@ -263,6 +264,7 @@ export function attachDockTheme(window) {
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  attachWindowMotion(window)
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
   attachDockTheme(window)
