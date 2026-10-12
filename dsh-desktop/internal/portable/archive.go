@@ -58,12 +58,19 @@ type Archive struct {
 type Progress struct {
 	Percent int
 	Message string
+	Warning bool
 }
 type Reporter func(Progress)
 
 func report(fn Reporter, percent int, message string) {
 	if fn != nil {
-		fn(Progress{percent, message})
+		fn(Progress{Percent: percent, Message: message})
+	}
+}
+
+func warn(fn Reporter, message string) {
+	if fn != nil {
+		fn(Progress{Percent: 100, Message: message, Warning: true})
 	}
 }
 

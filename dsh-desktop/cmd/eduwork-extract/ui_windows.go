@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
@@ -28,8 +29,9 @@ var installed string
 var updates = make(chan portable.Progress, 1)
 
 type outcome struct {
-	path string
-	err  error
+	path     string
+	err      error
+	warnings []string
 }
 
 var results = make(chan outcome, 1)
@@ -194,6 +196,12 @@ func begin() {
 		showFeedback("error", "请选择安装位置", "进入自定义安装，选择应用的安装目录。")
 		return
 	}
+	target, err := filepath.Abs(target)
+	if err != nil {
+		showFeedback("error", "无法安装到此位置", err.Error())
+		return
+	}
+	text(location, target)
 	overwrite := false
 	version, err := portable.ExistingInstallation(target, identity)
 	if err != nil {
@@ -223,7 +231,12 @@ func begin() {
 	var ctx context.Context
 	ctx, cancel = context.WithCancel(context.Background())
 	go func() {
+		var warnings []string
 		path, err := unpackConfirmed(ctx, target, false, overwrite, confirmed, func(p portable.Progress) {
+			if p.Warning {
+				warnings = append(warnings, p.Message)
+				return
+			}
 			select {
 			case updates <- p:
 			default:
@@ -238,7 +251,7 @@ func begin() {
 				}
 			}
 		})
-		results <- outcome{path, err}
+		results <- outcome{path: path, err: err, warnings: warnings}
 	}()
 }
 func cancelWork(closeWindow bool) {
@@ -307,6 +320,10 @@ func tick() {
 			}
 		}
 		showFeedback("complete", "安装完成", "EduWork 已准备就绪。\n开始你的下一项工作吧。")
+		if len(r.warnings) > 0 {
+			text(feedbackHint, "应用已安装，可以正常使用；部分临时文件未能清理。")
+			message(window, "EduWork 已安装，可以正常使用。\n\n"+strings.Join(r.warnings, "\n\n"))
+		}
 		call("SendMessageW", progress, 0x402, 100, 0)
 		text(startButton, "立即启动")
 		enable(startButton, true)
