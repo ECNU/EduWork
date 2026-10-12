@@ -8,6 +8,8 @@ function capabilitiesOf(provider) {
     if(Array.isArray(source[key]))capabilities[key]=source[key].filter(value=>typeof value==='string').map(value=>value)
   }
   if(typeof source.customSize==='boolean')capabilities.customSize=source.customSize
+  if(typeof provider.edit==='function')capabilities.edit=true
+  if(typeof provider.edit==='function'&&Number.isSafeInteger(source.editMaxImages)&&source.editMaxImages>=1&&source.editMaxImages<=16)capabilities.editMaxImages=source.editMaxImages
   return capabilities
 }
 
@@ -53,7 +55,9 @@ export class ImageService {
       available:await isAvailable(provider),capabilities:capabilitiesOf(provider),
     })))
   }
-  async generate(request) {
+  async generate(request) {return this.#run(request,'generate')}
+  async edit(request) {return this.#run(request,'edit')}
+  async #run(request,operation) {
     if(!this.#enabled)throw new Error('Image generation is disabled by host configuration')
     request.signal?.throwIfAborted()
     if(typeof request.prompt!=='string'||!request.prompt.trim())throw new Error('Image prompt must not be empty')
@@ -62,22 +66,33 @@ export class ImageService {
     if(typeof request.projectPath!=='string'||!isAbsolute(request.projectPath))throw new Error('Image generation requires an absolute workspace path')
     const projectPath=await realpath(request.projectPath)
     if(!(await stat(projectPath)).isDirectory())throw new Error('Image workspace is unavailable')
+    if(operation==='edit') {
+      if(!Array.isArray(request.images)||request.images.length<1||request.images.length>16)throw new Error('Image editing requires 1–16 workspace image paths')
+      const inputs=await Promise.all(request.images.map(path=>imageFile(projectPath,path)))
+      if(inputs.some(input=>!['image/png','image/jpeg','image/webp'].includes(input.mime)))throw new Error('Editing inputs must be PNG, JPEG or WebP')
+      const mask=request.mask===undefined?undefined:await imageFile(projectPath,request.mask)
+      if(mask&&mask.mime!=='image/png')throw new Error('Image mask must be PNG')
+      request={...request,images:inputs.map(input=>input.path),mask:mask?.path}
+    }
     let provider
     if(request.provider!==undefined) {
       provider=this.#providers.get(request.provider)
       if(!provider||!await isAvailable(provider))throw new Error('Selected image provider is unavailable; use image_providers')
     } else {
-      const available=(await this.list()).filter(item=>item.available)
+      const available=(await this.list()).filter(item=>item.available&&(operation!=='edit'||item.capabilities.edit===true))
       if(!available.length)throw new Error('No image provider is available; configure a provider before generating images')
       if(available.length!==1)throw new Error('Multiple image providers are available; select one explicitly from image_providers')
       provider=this.#providers.get(available[0].id)
     }
     if(!provider||this.#providers.get(provider.id)!==provider)throw new Error('Image provider was unloaded before generation')
+    if(typeof provider[operation]!=='function')throw new Error('Selected image provider does not support editing; use image_providers')
+    if(operation==='edit'&&request.images.length>(capabilitiesOf(provider).editMaxImages??16))throw new Error('Editing image count exceeds the selected provider capability')
     request.signal?.throwIfAborted()
-    const result=await provider.generate({...request,provider:provider.id,projectPath})
+    const result=await provider[operation]({...request,provider:provider.id,projectPath})
     request.signal?.throwIfAborted()
     if(!result)throw new Error('Image provider did not return an image')
     const image=await imageFile(projectPath,result.path)
+    if(operation==='edit'&&[...request.images,request.mask].filter(Boolean).some(path=>process.platform==='win32'?path.toLowerCase()===image.path.toLowerCase():path===image.path))throw new Error('Image editing must save a new file and preserve its inputs')
     if(result.mime!==undefined&&result.mime!==image.mime)throw new Error('Image provider MIME type does not match its file')
     const normalized={...image,provider:provider.id}
     for(const key of ['size','requestedSize','generationSize','sourceSize','resizeWarning']) {

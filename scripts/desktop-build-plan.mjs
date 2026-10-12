@@ -35,7 +35,7 @@ export function validateBuildRequest({ version, publish, notesApproved, releaseN
   return identity
 }
 
-export async function desktopBuildPlan({ core, edition = core, version }) {
+export async function desktopBuildPlan({ core, edition = core, version, includeLegacyValidation = true }) {
   core = await realpath(core); edition = await realpath(edition)
   const recipe = await read(await inside(core, 'config/desktop-build.json'))
   assert.equal(recipe.schemaVersion, 1)
@@ -46,13 +46,14 @@ export async function desktopBuildPlan({ core, edition = core, version }) {
   versionParts(lock.packageVersion)
   const plan = { schemaVersion: 1, ...desktopVersion(version), core, edition, sourceLock,
     candidate: dirname(sourceLock), upstreamRepository: lock.repository, upstreamCommit: lock.commit,
-    dshVersion: lock.packageVersion, publisherDescriptors: null, verifyPublisherBootstrap: false, validationScript: null }
+    dshVersion: lock.packageVersion, publisherDescriptors: null, verifyPublisherBootstrap: false,
+    validationScript: null }
   if (core !== edition) {
     const institutional = await read(await inside(edition, 'edition/desktop-build.json'))
     assert.equal(institutional.schemaVersion, 1)
     assert.equal(institutional.verifyPublisherBootstrap, true, 'Institution builds must qualify the signed first launch')
     plan.publisherDescriptors = await inside(edition, institutional.publisherDescriptors)
-    plan.validationScript = await inside(edition, institutional.validationScript)
+    if (includeLegacyValidation) plan.validationScript = await inside(edition, institutional.validationScript)
     plan.verifyPublisherBootstrap = true
   }
   return plan

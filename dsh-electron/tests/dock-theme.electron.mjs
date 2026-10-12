@@ -6,6 +6,7 @@ import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { attachWindowVisibility } from '../src/window-visibility.mjs'
+import { startupPage } from '../src/startup-page.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const temporary = mkdtempSync(join(tmpdir(), 'eduwork-theme-'))
@@ -64,7 +65,7 @@ app.whenReady().then(async () => {
     await select('ecnu-liwa', 4, 'dock-red-1024.png')
     // Render the production startup page using each persisted choice.
     const start = source.indexOf('  const startupBlue ='), end = source.indexOf('\n  lifecycle.check()', start)
-    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', `return (async () => {
+    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', 'startupPage', `return (async () => {
       const settings = { productName: 'Theme test' }, paths = { icon: ${JSON.stringify(join(brand, images[0]))} }
       const isQuitting = () => false, tray = undefined
       let progressWindow
@@ -75,11 +76,18 @@ app.whenReady().then(async () => {
       writeFileSync(preference, JSON.stringify({ style }))
       let startupDock
       const startupApp = { getAppPath: () => appRoot, dock: { setIcon(file) { startupDock = file; app.dock.setIcon(file) } } }
-      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility)
+      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility, startupPage)
       assert.equal(startupDock, join(brand, style === 'dsh' ? images[3] : images[2]))
-      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('progress')).accentColor"), color)
+      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).backgroundColor"), color)
       const expected = readFileSync(join(brand, style === 'dsh' ? images[1] : images[0])).toString('base64')
       assert.equal(await splash.webContents.executeJavaScript("document.querySelector('img').src"), 'data:image/png;base64,' + expected)
+      assert.equal(await splash.webContents.executeJavaScript("document.querySelector('[role=progressbar]').hasAttribute('aria-valuenow')"), false, 'Unknown startup duration is not a percentage')
+      splash.webContents.debugger.attach('1.3')
+      await splash.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).animationName"), 'none')
+      await splash.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
+      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).animationName"), 'eduwork-startup-motion')
+      splash.webContents.debugger.detach()
       splash.destroy(); splash = undefined
     }
     for (let i = 0; i < images.length; i++) assert.deepEqual(readFileSync(join(brand, images[i])), originalImages[i])

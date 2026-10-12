@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.1](https://img.shields.io/badge/DSH-0.2.0--rc.1-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.1) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#安装与使用)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.2](https://img.shields.io/badge/DSH-0.2.0--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
@@ -240,3 +240,13 @@ GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构�
 EduWork 基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建，感谢其提供的 Agent 运行时与插件基础。Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。
 
 EduWork 项目代码采用 [MIT 许可证](LICENSE)。第三方组件保留各自的许可证，详见[第三方声明](THIRD_PARTY_NOTICES.md)。
+
+## Star 趋势
+
+<a href="https://www.star-history.com/?repos=ECNU%2FEduWork&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ECNU/EduWork&amp;type=date&amp;theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ECNU/EduWork&amp;type=date" />
+    <img alt="EduWork GitHub Star 数量随时间的变化" src="https://api.star-history.com/chart?repos=ECNU/EduWork&amp;type=date" />
+  </picture>
+</a>

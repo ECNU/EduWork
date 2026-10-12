@@ -214,7 +214,7 @@
     },
     {
       "name": "publish",
-      "description": "Release ZIP and receipt",
+      "description": "Release ZIP, DMG and receipt",
       "requires": [
         "accept"
       ],
@@ -223,7 +223,9 @@
         "publish"
       ],
       "mutableOutputs": [],
-      "clean": []
+      "clean": [
+        "dmg-work"
+      ]
     }
   ]
 }

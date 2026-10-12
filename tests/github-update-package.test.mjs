@@ -18,7 +18,7 @@ test('CI archive format supports stable and development updates in both editions
  for(const [name,distribution] of [['EduWork','eduwork'],['EduWork-ECNU','eduwork-chatecnu']])for(const development of [false,true]){
   const version=development?'0.3.7-dev.20260914.1':'0.3.7',dir=join(root,`${name}-${version}`)
   mkdirSync(join(dir,'resources/app'),{recursive:true});mkdirSync(join(dir,'resources/update'),{recursive:true});mkdirSync(join(dir,'resources/brand'),{recursive:true});mkdirSync(join(dir,'config'),{recursive:true})
-  writeFileSync(join(dir,'resources/app/eduwork.desktop.json'),JSON.stringify({productVersion:version,productName:name,distribution,shell:'electron'}))
+  writeFileSync(join(dir,'resources/app/eduwork.desktop.json'),JSON.stringify({schemaVersion:1,productVersion:version,productName:name,distribution,shell:'electron'}))
   copyFileSync(join(repo,'assets/eduwork/icon.ico'),join(dir,'resources/brand/icon.ico'))
   const deepRelative='resources/'+('dependency/'.repeat(18))+'file.txt'
   mkdirSync(join(dir,deepRelative,'..'),{recursive:true});writeFileSync(join(dir,deepRelative),'Synthetic long-path fixture')
@@ -43,6 +43,7 @@ test('CI archive format supports stable and development updates in both editions
   validateExtractorReceipt(extractorReceipt,{edition:name,version,coreCommit:extractorReceipt.extractor.sourceCommit,asset:{name:zip.split(/[\\/]/).at(-1),bytes:readFileSync(zip).length,sha256:hash},portableExtractor:{asset:extractorReceipt.asset}})
   run(process.execPath,[join(repo,'scripts/verify-windows-release.mjs'),join(extracted,name),'--for-update'])
   run('pwsh',['-NoProfile','-File',manifestScript,'-Executable',join(extracted,name,'resources/update/EduWork-Updater.exe'),'-VerifyOnly'])
+  run(join(extracted,name,'resources/update/EduWork-Updater.exe'),['ensure-runtime-access','--root',join(extracted,name)])
   const m=JSON.parse(readFileSync(join(extracted,name,'RELEASE-MANIFEST.json'),'utf8'))
   assert.equal(m.launch.distribution,distribution);assert.equal(m.launcherVersion,version)
   if(!development){

@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.1](https://img.shields.io/badge/DSH-0.2.0--rc.1-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.1) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.2](https://img.shields.io/badge/DSH-0.2.0--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -244,3 +244,13 @@ When moving between computers, use [history import](docs/数据导入.md) in Set
 EduWork is built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Thanks to the project for its Agent runtime and plugin foundations. Knowledge Studio's source-based creation and learning interactions are inspired by NotebookLM.
 
 EduWork project code uses the [MIT License](LICENSE). Third-party components retain their own licenses; see the [third-party notices](THIRD_PARTY_NOTICES.md).
+
+## Star History
+
+<a href="https://www.star-history.com/?repos=ECNU%2FEduWork&amp;type=date">
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=ECNU/EduWork&amp;type=date&amp;theme=dark" />
+    <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=ECNU/EduWork&amp;type=date" />
+    <img alt="EduWork GitHub star growth over time" src="https://api.star-history.com/chart?repos=ECNU/EduWork&amp;type=date" />
+  </picture>
+</a>

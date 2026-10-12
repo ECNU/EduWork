@@ -91,7 +91,7 @@ function FileDropOverlay({ busy }) {
   }, h('div', { 'aria-hidden': true, style: { fontSize: 32, marginBottom: 8 } }, '⇩'),
   h('strong', { style: { display: 'block', fontSize: 15 } }, busy ? '当前正在处理文件' : '松开即可添加到对话'),
   h('span', { style: { display: 'block', marginTop: 6, color: 'var(--dsw-alias-label-secondary)', fontSize: 12 } },
-    '图片使用 DSH 原生附件，其他文件复制到当前工作区'))), document.body)
+    '图片使用原生附件，其他文件复制到当前工作区'))), document.body)
 }
 
 function AddMenu({ anchor, onFiles, onCommands, close }) {
@@ -135,7 +135,7 @@ function AddMenu({ anchor, onFiles, onCommands, close }) {
   h('button', { type: 'button', role: 'menuitem', style: row, onMouseDown: event => event.preventDefault(), onClick: onCommands },
     h('span', { 'aria-hidden': true, style: { fontSize: 16 } }, '⌘'),
     h('span', null, h('strong', { style: { display: 'block', fontSize: 13 } }, '命令与工作流'),
-      h('small', { style: { color: 'var(--dsw-alias-label-secondary)', fontSize: 11 } }, '打开 DSH 原生命令菜单')))), document.body)
+      h('small', { style: { color: 'var(--dsw-alias-label-secondary)', fontSize: 11 } }, '打开原生命令菜单')))), document.body)
 }
 
 export function WorkspaceFileInput({ sessionId, input, inputActions, locked, onAddImages, openCommands, commandMenuOpen, insertReference, importFiles, importNativeFiles, notify }) {

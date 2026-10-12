@@ -10,7 +10,7 @@
 //     which the runner enforces through `dependsOn` edges.
 import { readdir } from 'node:fs/promises'
 import { join } from 'node:path'
-import { copyFileTo, isDirectory, readJSON, runNode } from './build-util.mjs'
+import { copyFileTo, isDirectory, isFile, readJSON, runNode } from './build-util.mjs'
 import { resolveEduworkUpstream } from './upstream.mjs'
 import { stage } from './stage-runner.mjs'
 import { ciEduworkWeb } from '../ci-eduwork-web.mjs'
@@ -123,6 +123,16 @@ export function sharedDesktopStages({
 
 /** Copy the public Web evidence into the release evidence directory. */
 export async function copyPublicWebEvidence(workspace, destination) {
+  if (workspace.parameters.recipe === 'pinned-source') {
+    for (const [source, target] of [
+      ['source-audit/core.json', 'core-source-audit.json'],
+      ['source-report/client-build.json', 'client-build.json'],
+    ]) {
+      const file = workspace.resolvePath(source)
+      if (await isFile(file)) await copyFileTo(file, join(destination, target))
+    }
+    return
+  }
   const source = workspace.resolvePath('web/evidence/public')
   if (!await isDirectory(source)) return
   for (const entry of await readdir(source, { withFileTypes: true })) {

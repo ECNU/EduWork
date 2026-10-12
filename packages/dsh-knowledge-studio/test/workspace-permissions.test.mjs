@@ -143,7 +143,7 @@ test('configured media reuse the write grant without querying providers; editabl
     const run = i => i === hooks.length ? { kind: 'allow' } : hooks[i](exec, () => run(i + 1))
     return (await run(0)).kind
   }
-  for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate']) {
+  for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate', 'image_edit']) {
     assert.equal(await decision(name, { provider: 'local' }), 'allow')
     assert.equal(await decision(name, { provider: 'remote' }), 'allow')
   }
@@ -153,7 +153,7 @@ test('configured media reuse the write grant without querying providers; editabl
   assert.equal(await decision('video_project', { action: 'init' }), 'allow')
   assert.equal(await decision('video_project', { action: 'render' }), 'ask')
   h.state.mode = 'read-only'
-  for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate', 'media_render'])
+  for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate', 'image_edit', 'media_render'])
     assert.equal(await decision(name, { provider: 'remote' }), 'ask')
   h.state.mode = 'danger-full-access'
   assert.equal(await decision('speech_synthesize', { provider: 'remote' }), 'allow')
@@ -169,6 +169,7 @@ test('local and remote image/speech tools execute under workspace access while r
   wav.writeUInt32LE(8000, 24); wav.writeUInt32LE(16000, 28); wav.writeUInt16LE(2, 32); wav.writeUInt16LE(16, 34)
   wav.write('data', 36); wav.writeUInt32LE(1600, 40)
   await writeFile(join(h.root, 'input.wav'), wav)
+  await writeFile(join(h.root, 'input.png'), png)
   const calls = []
   let available = true
   for (const [id, local] of [['local', true], ['remote', false]]) {
@@ -183,6 +184,11 @@ test('local and remote image/speech tools execute under workspace access while r
       const path = join(request.projectPath, id + '.png')
       await writeFile(path, png)
       return { path }
+    }, async edit(request) {
+      record('edit',request)
+      const path=join(request.projectPath,id+'-edited.png')
+      await writeFile(path,png)
+      return {path}
     } })
     speech.register({ id, local, voices: async () => available ? [{ id: 'voice', title: 'Test' }] : [],
       async synthesize(request) {
@@ -201,6 +207,7 @@ test('local and remote image/speech tools execute under workspace access while r
   installTranscriptionTools(h.ctx, { transcription })
   const requests = provider => [
     ['image_generate', { provider, prompt: 'Synthetic image' }],
+    ['image_edit', {provider,prompt:'Edit synthetic image',images:['input.png']}],
     ['speech_synthesize', { provider, text: 'Synthetic speech' }],
     ['speech_transcribe', { provider, input_path: 'input.wav' }],
   ]
@@ -210,13 +217,13 @@ test('local and remote image/speech tools execute under workspace access while r
       assert.equal(result.isError, false, JSON.stringify(result))
     }
   assert.equal(h.approvals(), 0)
-  assert.equal(calls.length, 6)
+  assert.equal(calls.length, 8)
 
   h.state.mode = 'read-only'
   for (const [name, args] of requests('remote'))
     assert.equal((await h.execute(name, args)).isError, true)
-  assert.equal(h.approvals(), 3)
-  assert.equal(calls.length, 6, 'rejected approval must not reach providers')
+  assert.equal(h.approvals(), 4)
+  assert.equal(calls.length, 8, 'rejected approval must not reach providers')
 
   h.state.mode = 'workspace-write'
   for (const [name, args] of requests('remote'))
@@ -230,6 +237,6 @@ test('local and remote image/speech tools execute under workspace access while r
   for (const provider of ['remote', 'unconfigured'])
     for (const [name, args] of requests(provider))
       assert.equal((await h.execute(name, args)).isError, true)
-  assert.equal(calls.length, 6, 'cancelled, out-of-scope or unavailable calls must not generate')
-  assert.equal(h.approvals(), 3)
+  assert.equal(calls.length, 8, 'cancelled, out-of-scope or unavailable calls must not generate')
+  assert.equal(h.approvals(), 4)
 })

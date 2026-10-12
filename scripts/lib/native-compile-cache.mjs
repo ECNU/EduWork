@@ -6,7 +6,7 @@
 // re-hashed against its manifest before it is admitted. A cache entry is never
 // trusted on the strength of its name.
 import { createHash } from 'node:crypto'
-import { readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
+import { lstat, readdir, readFile, readlink, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, join, relative, sep } from 'node:path'
 import {
   cacheDirectory, copyTreePreservingLinks, ensureDir, pathExists, run,
@@ -47,14 +47,18 @@ async function fileRows(root) {
   const rows = []
   const pending = [root]
   while (pending.length) {
-    const directory = pending.pop()
-    for (const entry of (await readdir(directory, { withFileTypes: true })).sort((a, b) => a.name.localeCompare(b.name, 'en'))) {
-      const path = join(directory, entry.name)
-      const rel = unix(relative(root, path))
-      if (entry.isSymbolicLink()) rows.push({ path: rel, kind: 'link' })
-      else if (entry.isDirectory()) pending.push(path)
-      else if (entry.isFile()) rows.push({ path: rel, kind: 'file', sha256: await sha256(await readFile(path)) })
-      else rows.push({ path: rel, kind: 'other' })
+    const path = pending.pop()
+    const entry = await lstat(path)
+    const rel = unix(relative(root, path))
+    if (entry.isSymbolicLink()) {
+      rows.push({ path: rel, kind: 'link', target: await readlink(path) })
+    } else if (entry.isDirectory()) {
+      rows.push({ path: rel, kind: 'directory', mode: entry.mode & 0o777 })
+      for (const name of await readdir(path)) pending.push(join(path, name))
+    } else if (entry.isFile()) {
+      rows.push({ path: rel, kind: 'file', mode: entry.mode & 0o777, sha256: sha256(await readFile(path)) })
+    } else {
+      throw new Error(`Unsupported native compile output: ${path}`)
     }
   }
   rows.sort((a, b) => a.path.localeCompare(b.path, 'en'))
@@ -62,6 +66,17 @@ async function fileRows(root) {
 }
 
 const MANIFEST = 'manifest.json'
+const MANIFEST_VERSION = 2
+
+async function outputRows(root, names) {
+  const rows = []
+  for (const name of names) {
+    for (const row of await fileRows(join(root, name))) {
+      rows.push({ ...row, path: row.path ? `${name}/${row.path}` : name })
+    }
+  }
+  return rows.sort((a, b) => a.path.localeCompare(b.path, 'en'))
+}
 
 /**
  * Re-hash a restored tree against the manifest it was stored with. Any missing,
@@ -69,19 +84,8 @@ const MANIFEST = 'manifest.json'
  * different bytes into a release. Manifest paths carry the output name as a
  * prefix, so every declared output is verified in one pass.
  */
-async function verifyRestored(stagingRoot, manifest) {
-  const actual = []
-  for (const name of new Set(manifest.files.map(row => row.path.split('/')[0]))) {
-    for (const row of await fileRows(join(stagingRoot, name))) actual.push({ ...row, path: `${name}/${row.path}` })
-  }
-  actual.sort((a, b) => a.path.localeCompare(b.path, 'en'))
-  const expected = manifest.files
-  if (actual.length !== expected.length) return false
-  for (let index = 0; index < actual.length; index += 1) {
-    const a = actual[index], b = expected[index]
-    if (a.path !== b.path || a.kind !== b.kind || a.sha256 !== b.sha256) return false
-  }
-  return true
+async function verifyRestored(stagingRoot, manifest, names) {
+  return JSON.stringify(await outputRows(stagingRoot, names)) === JSON.stringify(manifest.files)
 }
 
 /**
@@ -92,15 +96,23 @@ async function verifyRestored(stagingRoot, manifest) {
  * leaves a partial artifact behind for the next stage to pick up.
  */
 export async function cachedCompile({ key, outputs, build, label = '' }) {
+  const names = Object.keys(outputs).sort()
+  if (!names.length || names.some(name => !name || name === '.' || name === '..' || /[/\\]/.test(name))) {
+    throw new Error('Native cache outputs require distinct single-component names')
+  }
   const root = join(cacheDirectory(), 'objects', key)
   const manifestPath = join(root, MANIFEST)
   if (await pathExists(manifestPath)) {
+    const staging = join(cacheDirectory(), 'restore', `${key}.${process.pid}`)
     try {
       const manifest = JSON.parse(await readFile(manifestPath, 'utf8'))
+      if (manifest.schemaVersion !== MANIFEST_VERSION || manifest.key !== key
+        || JSON.stringify(manifest.outputs) !== JSON.stringify(names) || !Array.isArray(manifest.files)) {
+        throw new Error('cache manifest does not match the requested outputs')
+      }
       // Restore into a staging tree and re-hash it against the manifest before
       // anything is copied to its real destination. A cache entry is admitted on
       // verified bytes, never on its name.
-      const staging = join(cacheDirectory(), 'restore', `${key}.${process.pid}`)
       await rm(staging, { recursive: true, force: true })
       await ensureDir(staging)
       for (const name of Object.keys(outputs)) {
@@ -108,7 +120,7 @@ export async function cachedCompile({ key, outputs, build, label = '' }) {
         if (!await pathExists(source)) throw new Error(`cache entry is missing ${name}`)
         await copyTreePreserving(source, join(staging, name))
       }
-      const verified = await verifyRestored(staging, manifest)
+      const verified = await verifyRestored(staging, manifest, names)
       if (!verified) {
         await rm(staging, { recursive: true, force: true })
         console.log(`Native cache entry failed verification, rebuilding: ${label || key.slice(0, 12)}`)
@@ -126,6 +138,8 @@ export async function cachedCompile({ key, outputs, build, label = '' }) {
     } catch (error) {
       console.log(`Native cache entry unusable (${error.message}), rebuilding: ${label || key.slice(0, 12)}`)
       await rm(root, { recursive: true, force: true })
+    } finally {
+      await rm(staging, { recursive: true, force: true })
     }
   }
 
@@ -134,16 +148,13 @@ export async function cachedCompile({ key, outputs, build, label = '' }) {
   await ensureDir(staging)
   try {
     for (const [name, destination] of Object.entries(outputs)) {
+      await rm(destination, { recursive: true, force: true })
       await build(name, destination)
       if (!await pathExists(destination)) throw new Error(`build did not produce ${destination}`)
       await copyTreePreserving(destination, join(staging, name))
     }
-    const files = []
-    for (const name of Object.keys(outputs)) {
-      for (const row of await fileRows(join(staging, name))) files.push({ ...row, path: `${name}/${row.path}` })
-    }
-    files.sort((a, b) => a.path.localeCompare(b.path, 'en'))
-    await writeFile(join(staging, MANIFEST), JSON.stringify({ schemaVersion: 1, key, label, files }, null, 2) + '\n')
+    const files = await outputRows(staging, names)
+    await writeFile(join(staging, MANIFEST), JSON.stringify({ schemaVersion: MANIFEST_VERSION, key, label, outputs: names, files }, null, 2) + '\n')
     // Rename into place so a concurrent reader sees nothing or a complete entry.
     await ensureDir(dirname(root))
     await rm(root, { recursive: true, force: true })

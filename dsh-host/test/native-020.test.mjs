@@ -8,8 +8,9 @@ import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { runInNewContext } from 'node:vm'
 import { EventEmitter } from 'node:events'
+import { execFileSync } from 'node:child_process'
 import { adaptNativeDesktopSource } from '../../dsh-electron/scripts/native-desktop-source.mjs'
-import { adaptNativeHostEntry, adaptNativeQuitInspection } from '../prepare-native.mjs'
+import { adaptNativeHostEntry, adaptNativeQuitInspection, adaptNativeHostProcess } from '../prepare-native.mjs'
 import { distributionPolicy, disabledDistributionEntries } from '../distribution-policy.mjs'
 import { writeNativeProfile, rewriteLiteraturePatchNames } from '../native-profile.mjs'
 
@@ -101,4 +102,19 @@ test('quit inspector sees official persisted schedules without a loaded Agent', 
   delete services.schedule
   assert.equal((await inspect()).scheduledTasks, false)
   dispose(); await assert.rejects(inspect(), /stopping/)
+})
+
+
+test('bundled Node Host does not leak Electron Node mode to an external editor', {skip: !upstream}, async () => {
+  const adapted = adaptNativeHostProcess(await source('apps/desktop/src/host-process.ts'))
+  const expression = adapted.match(/env: (\(\(\) => \{ const env = \{ \.\.\.this.environment \}; delete env.ELECTRON_RUN_AS_NODE; return env \}\)\(\)),/)?.[1]
+  assert.ok(expression)
+  const original = {ELECTRON_RUN_AS_NODE: '1', PATH: '/synthetic/bin', LANG: 'zh_CN.UTF-8'}
+  const actual = runInNewContext(expression.replaceAll('this.environment', 'parent'), {parent: original})
+  assert.equal(actual.ELECTRON_RUN_AS_NODE, undefined)
+  assert.equal(actual.PATH, original.PATH)
+  assert.equal(actual.LANG, original.LANG)
+  assert.equal(original.ELECTRON_RUN_AS_NODE, '1')
+  const child = execFileSync(process.execPath, ['-e', 'process.stdout.write(String(process.env.ELECTRON_RUN_AS_NODE))'], { env: actual, encoding: 'utf8' })
+  assert.equal(child, 'undefined')
 })

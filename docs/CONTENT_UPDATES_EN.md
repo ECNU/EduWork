@@ -46,7 +46,11 @@ Software follows SemVer; content uses positive integer revisions. A publisher us
 
 Requirements include mandatory `minClient` and `capabilities`, optional `maxClientExclusive`, and an optional exact `dsh` version. The bundle requirements must cover every Skill; an individual upper client bound must match the bundle bound. Installed capability names come from `resources/product/assembly.json`: `package:<name>` for `managedPackages` and `plugin:<name>` for `localPlugins`. Presence does not prove account/model availability. Use client version bounds for required tool API versions; dependencies are never installed by this mechanism.
 
-Use optional `platforms` with `win32`, `darwin` or `linux` for platform-specific scripts. Omission means all platforms and requires publisher validation. Current desktop release acceptance covers Windows; a declaration does not certify the product on another platform.
+Declare compatibility from the configuration fields and tool APIs actually used. Ordinary configuration should omit `requires.dsh` and list only necessary capabilities, not the complete installed plugin inventory. Use the optional exact `dsh` restriction only for content that depends on a particular kernel implementation; it also applies to cached offline content. An upstream rc version change alone does not require new configuration or excluding older clients.
+
+To correct requirements alone, increment and sign the manifest revision while preserving unchanged component bytes and revisions. Signatures, hashes, rollback protection and required capability checks remain enforced. Build inputs, including kernel commits and npm archives, remain pinned independently of these compatibility declarations.
+
+Use optional `platforms` with `win32`, `darwin` or `linux` for platform-specific scripts. Omission means all platforms and requires publisher validation. A platform compatibility check does not replace installation and runtime acceptance on that operating system.
 
 Save a private release plan, with paths relative to the plan file:
 
@@ -56,7 +60,6 @@ Save a private release plan, with paths relative to the plan file:
   "revision": 2,
   "requires": {
     "minClient": "0.3.6-dev.20260916.1",
-    "dsh": "0.1.5-rc.2",
     "capabilities": ["package:@eduwork/dsh-oidc"]
   },
   "configuration": { "revision": 2, "path": "configuration.json" },
@@ -67,7 +70,6 @@ Save a private release plan, with paths relative to the plan file:
       "name": "example",
       "requires": {
         "minClient": "0.3.6-dev.20260916.1",
-        "dsh": "0.1.5-rc.2",
         "capabilities": []
       }
     }]

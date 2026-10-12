@@ -20,6 +20,9 @@ import {
 import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
 import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
 import { windowsStages } from './lib/windows-stages.mjs'
+import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
+import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
+import { desktopSourceIdentity } from './lib/build-source.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
@@ -27,6 +30,7 @@ const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
   '[--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] ' +
+  '[--recipe npm|pinned-source] ' +
   '(--jobs 0 = as many as the graph allows)'
 
 export async function ciEduworkWindowsRelease({
@@ -47,6 +51,7 @@ export async function ciEduworkWindowsRelease({
   cacheRoot = '',
   digestBudget = 0,
   lockWaitMs = 0,
+  recipe = '',
 } = {}) {
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
@@ -55,17 +60,19 @@ export async function ciEduworkWindowsRelease({
   // Set before any work: the native-input stage downloads and compiles, and both
   // cache layers read this root.
   if (cacheRoot) setCacheRoot(cacheRoot)
+  recipe ||= 'pinned-source'
+  if (!['npm', 'pinned-source'].includes(recipe)) throw new Error('Unknown desktop build recipe')
+  const sourcePlan = recipe === 'pinned-source'
+    ? await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false }) : null
 
   // Development artifacts are named for their channel and never carry approved
   // public notes; a public release requires both the flag and a reviewed file.
   const isDevelopmentVersion = DEVELOPMENT_VERSION.test(version ?? '')
+  desktopVersion(version)
   if (development) {
     if (!isDevelopmentVersion) throw new Error('Development artifacts require X.Y.Z-dev.YYYYMMDD.N')
     if (releaseNotesFile || releaseNotesApproved) throw new Error('Development artifacts do not publish Release notes.')
   } else {
-    if (!/^\d+\.\d+\.\d+$/.test(version ?? '') && !isDevelopmentVersion) {
-      throw new Error('GitHub Releases require X.Y.Z or X.Y.Z-dev.YYYYMMDD.N')
-    }
     if (!releaseNotesApproved) throw new Error('Release notes must be discussed and approved before publication.')
     if (!/^docs\/releases\/[A-Za-z0-9][A-Za-z0-9._-]*\.md$/.test(releaseNotesFile ?? '')) {
       throw new Error('Use a reviewed Markdown file under docs/releases in the edition repository.')
@@ -80,13 +87,16 @@ export async function ciEduworkWindowsRelease({
   // The core source receipt fixes which version this checkout may publish. It is
   // read before any build work starts, so a mismatched edition fails fast.
   const source = await readJSON(join(coreRoot, 'source-receipt.json'))
-  if (!development && source.version !== version) {
+  if (!development && source.version !== version && !(version.includes('-') && version.split('-')[0] === source.version.split('-')[0])) {
     throw new Error('Core source receipt version differs from the requested Release')
   }
   if (coreRoot !== editionRoot) {
     const lock = await readJSON(join(editionRoot, 'core.lock.json'))
     if (lock.version !== source.version) throw new Error('Institution/core source versions must agree')
   }
+
+  if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
+  const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
 
   const parameters = {
     kind: development ? 'eduwork-windows-development' : 'eduwork-windows-release',
@@ -102,6 +112,10 @@ export async function ciEduworkWindowsRelease({
     releaseNotesFile,
     editionRoot,
     coreRoot,
+    recipe,
+    sourceIdentity,
+    automaticUpdates: !desktopVersion(version).prerelease,
+    verifyPublisherBootstrap: sourcePlan?.verifyPublisherBootstrap ?? false,
   }
 
   // The publish stage writes the final receipt, so it needs everything that
@@ -118,8 +132,11 @@ export async function ciEduworkWindowsRelease({
     validationProfile: development ? 'ci-build-and-launch-v1' : 'ci-build-launch-and-extract-v2',
     sourceSnapshotVerified: verifySnapshot,
     sourceVersion: source.version,
-    coreCommit: (await capture('git', ['-C', coreRoot, 'rev-parse', 'HEAD'])).trim(),
-    editionCommit: (await capture('git', ['-C', editionRoot, 'rev-parse', 'HEAD'])).trim(),
+    recipe,
+    sourceIdentity,
+    automaticUpdates: !desktopVersion(version).prerelease,
+    coreCommit: sourceIdentity.core.commit,
+    editionCommit: sourceIdentity.edition.commit,
   }
   if (development) {
     receiptBase.publication = 'artifact-only'
@@ -130,7 +147,12 @@ export async function ciEduworkWindowsRelease({
   }
 
   const common = { coreRoot, editionRoot, distributionConfig, version, verifySnapshot, runtimeSource, upstreamSource }
-  const stages = [...sharedDesktopStages(common), ...windowsStages({ coreRoot, receiptBase })]
+  const stages = [
+    ...(recipe === 'pinned-source'
+      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource, verifySnapshot })
+      : sharedDesktopStages(common)),
+    ...windowsStages({ coreRoot, receiptBase, recipe }),
+  ]
   const workspace = new Workspace({
     root: output,
     parameters,
@@ -187,6 +209,7 @@ if (isMainModule(import.meta.url)) {
       'cache-root': { type: 'string' },
       'digest-budget': { type: 'string' },
       'lock-wait': { type: 'string' },
+      recipe: { type: 'string' },
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
@@ -209,5 +232,6 @@ if (isMainModule(import.meta.url)) {
     cacheRoot: values['cache-root'] ?? '',
     digestBudget: Number(values['digest-budget'] ?? 0),
     lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
+    recipe: values.recipe ?? '',
   })
 }

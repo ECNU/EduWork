@@ -8,6 +8,8 @@ Provides generic skill management, desktop updates and diagnostics. The skill ce
 
 DSH 0.1.7 provides a direct Skills sidebar entry alongside Plugins through the official `sidebar.panellist` and `main` slots. The official navigation handles selection and sidebar collapse. Search, toggles, import, creation, personal-skill removal and current-project discovery reuse the same service; switching pages preserves the current session. The plugin list and Settings no longer duplicate the skill entry. DSH 0.1.5 keeps Settings → Plugins → Skills.
 
+Distributions can set `metadata.eduwork.displayName` and `displayDescription` in bundled `SKILL.md` files to supply each card's name and summary. Unspecified fields retain the public product text. These fields do not change skill identifiers, model-facing descriptions, toggles or service availability.
+
 ## Updates and diagnostics
 
 A small blue button appears at the lower left when an update is available, shows download progress, and offers restart/install when ready. Settings and tray actions open the same panel; closing it does not stop a download.

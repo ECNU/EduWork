@@ -12,8 +12,8 @@ export function adaptNativePresetUI(source) {
   replace('const creator = startCreatorDraft !== void 0 && state.rows.some((row) => row.id === "cordis")',
     'const creator = startCreatorDraft !== void 0 && state.rows.some((row) => row.id === "cordis" && row.productEnabled !== false)')
   replace('const selectionAction = row.broken !== void 0 ?', 'const selectionAction = row.productEnabled === false ? t("productDisabled") : row.broken !== void 0 ?')
-  replace('disabled: row.isDefault || row.broken === void 0 && (!developerTools || state.saving),',
-    'disabled: row.productEnabled === false || row.isDefault || row.broken === void 0 && (!developerTools || state.saving),')
+  replace('disabled: row.isDefault || row.broken === void 0 && state.saving,',
+    'disabled: row.productEnabled === false || row.isDefault || row.broken === void 0 && state.saving,')
   // Disabled optional modes have no definition in the native registry. Keep
   // their toggles while using rc.2's shared Coding Tools selection policy.
   replace('"data-tip": t("view"),', `"data-tip": row.productEnabled === false ? t("productEnableToView") : t("view"),

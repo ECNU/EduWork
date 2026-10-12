@@ -117,9 +117,9 @@ GitHub 匿名请求额度按来源 IP 计算。客户端已缓存并限制检查
 
 开发包与公测包均写入 `RELEASE-MANIFEST.json`、逐文件清单和 `wails-host-v1` 启动契约；同一 ZIP 可用于全新安装、Electron 更新及合格 Go 过渡版迁移，不能投放到旧 0.2 更新入口。
 
-Windows 公测 Release 包含八个文件：桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`，以及[Windows 安装包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执。更新清单由同次 CI 的原始桌面 ZIP 尺寸、摘要与发行身份生成，只引用原始 ZIP，解压器 ZIP 用于首次下载。发布器复核更新清单与回执一致、解压器内嵌同一个原始 ZIP，校验每个上传文件的尺寸与摘要后，才将草稿正式发布。普通开发构建仅保留为 CI artifact。需要推送开发渠道时，经负责人确认版本号与说明后再发布 prerelease，并提供同样的更新资产；artifact 本身不会被客户端发现。
+Windows 正式版 Release 的 Windows 产物包含八个文件：桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`，以及[Windows 安装包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执。更新清单由同次 CI 的原始桌面 ZIP 尺寸、摘要与发行身份生成，只引用原始 ZIP，解压器 ZIP 用于首次下载。发布器复核更新清单与回执一致、解压器内嵌同一个原始 ZIP，校验每个上传文件的尺寸与摘要后，才将草稿正式发布。普通开发构建仅保留为 CI artifact；经批准发布的预发布包可作为 GitHub Release 附件手动安装，当前不生成 Windows 自动更新清单。artifact 本身不会被客户端发现。
 
-机构在本机给 CI 原包加入配置后，必须更新 ZIP 尺寸、摘要和包内清单；程序文件保持 CI 原样，不能沿用原 ZIP 哈希。GitHub 原包与机构 OSS 装配包分别校验和发布。操作见[本机配置装配](BUILD.md#从-ci-原包装配机构配置)。
+机构版可按[首次启动获取机构配置](PUBLISHER_BOOTSTRAP.md)分发 CI 原包，无需本机重装配。若仍采用旧版静态配置装配，修改后的 ZIP 必须重新生成尺寸、摘要和包内清单，并与 GitHub 原包分别校验和发布。
 
 发行前用两个实际 CI 桌面版本验收下载、续传、安装、重启及配置/历史保留，再验证错误发行、错误架构、损坏包和不可读 Release 的提示。源码层的网络模拟与事务测试不能代替实际桌面验收；私有仓库阶段保持草稿，不通过公开仓库或内置读取令牌绕过这一限制。macOS 的原生更新、签名与系统授权验收按 [Mac 更新指南](MACOS_UPDATES.md)执行；不能仅凭程序启动成功认定升级通过。
 

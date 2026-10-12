@@ -283,7 +283,11 @@ export async function generateImage({ fetchImpl = fetch, requestImpl = fetchImpl
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ model, prompt, size: generationSize, ...(responseFormat === 'auto' ? {} : { response_format: responseFormat }) }),
   }, MAX_IMAGE_RESPONSE_BYTES)
-  const decoded = decodeJSON(bytes, 'image generation')
+  return decodeImageResponse(bytes,{fetchImpl,signal,generationSize})
+}
+
+async function decodeImageResponse(bytes,{fetchImpl,signal,generationSize}) {
+  const decoded = decodeJSON(bytes, 'image')
   const item = decoded?.data?.[0]
   let image
   if (typeof item?.b64_json === 'string' && item.b64_json) {
@@ -308,6 +312,59 @@ export async function generateImage({ fetchImpl = fetch, requestImpl = fetchImpl
   const format = detectImage(image)
   const imageDimensions = detectImageDimensions(image, format)
   return { bytes: image, format, dimensions: imageDimensions, generationSize, created: Number(decoded.created) || undefined, revisedPrompt: decoded.data[0].revised_prompt }
+}
+
+async function editInput(projectPath,path,signal) {
+  if(typeof path!=='string'||!path)throw new Error('Image editing requires workspace file paths')
+  signal?.throwIfAborted()
+  const root=await realpath(projectPath),canonical=await realpath(resolve(root,path))
+  if(!isContained(root,canonical))throw new Error('Image editing input is outside workspace')
+  const handle=await open(canonical,'r')
+  try {
+    const info=await handle.stat(),current=await stat(await realpath(canonical))
+    if(!info.isFile()||info.dev!==current.dev||info.ino!==current.ino||!isContained(root,await realpath(canonical)))throw new Error('Image editing input changed before reading')
+    if(!info.size||info.size>50*1024*1024)throw new Error('Each image editing input must be non-empty and at most 50 MiB')
+    const buffer=Buffer.alloc(info.size+1)
+    let length=0
+    while(length<buffer.length) {
+      signal?.throwIfAborted()
+      const {bytesRead}=await handle.read(buffer,length,buffer.length-length,null)
+      if(!bytesRead)break
+      length+=bytesRead
+    }
+    if(length!==info.size)throw new Error('Image editing input changed while reading')
+    const bytes=buffer.subarray(0,length),format=detectImage(bytes),dimensions=detectImageDimensions(bytes,format)
+    if(!['image/png','image/jpeg','image/webp'].includes(format.mime))throw new Error('Image editing accepts PNG, JPEG or WebP inputs')
+    return {bytes,format,dimensions}
+  } finally {await handle.close()}
+}
+
+export async function editImage({fetchImpl=fetch,requestImpl=fetchImpl,baseURL,apiKey,model,prompt,size,nativeSizes,responseFormat='auto',images,mask,projectPath,maxImages=1,signal}) {
+  if(!Array.isArray(images)||!images.length||images.length>maxImages||images.length>16)throw new Error(`This provider accepts 1–${maxImages} editing images`)
+  const inputs=[]
+  let total=0
+  for(const path of [...images,...(mask===undefined?[]:[mask])]) {
+    const input=await editInput(projectPath,path,signal)
+    total+=input.bytes.length
+    if(total>100*1024*1024)throw new Error('Image editing inputs exceed 100 MiB in total')
+    inputs.push(input)
+  }
+  const generationSize=selectImageGenerationSize(size,nativeSizes),body=new FormData()
+  body.set('model',model);body.set('prompt',prompt);body.set('size',generationSize)
+  if(responseFormat!=='auto')body.set('response_format',responseFormat)
+  for(let i=0;i<images.length;i++) {
+    const input=inputs[i]
+    body.append(images.length===1?'image':'image[]',new Blob([input.bytes],{type:input.format.mime}),`image-${i+1}${input.format.extension}`)
+  }
+  if(mask!==undefined) {
+    const input=inputs.at(-1)
+    if(input.format.mime!=='image/png'||input.dimensions.size!==inputs[0].dimensions.size)throw new Error('Mask must be PNG with the same dimensions as the first editing image')
+    body.set('mask',new Blob([input.bytes],{type:'image/png'}),'mask.png')
+  }
+  signal?.throwIfAborted()
+  // Fetch supplies the multipart boundary. Credential routing remains identical to generation.
+  const {bytes}=await providerRequest(requestImpl,`${baseURL}/images/edits`,apiKey,{method:'POST',body,signal},MAX_IMAGE_RESPONSE_BYTES)
+  return decodeImageResponse(bytes,{fetchImpl,signal,generationSize})
 }
 
 const AUDIO_TYPES = Object.freeze({

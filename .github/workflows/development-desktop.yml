@@ -1,0 +1,101 @@
+name: Build desktop apps
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Optional development Product SemVer; defaults to the source version and run number'
+        required: false
+        type: string
+      platform:
+        description: 'Platforms to validate; main pushes always build both'
+        required: true
+        default: both
+        type: choice
+        options: [both, windows, macos]
+permissions:
+  contents: read
+concurrency:
+  group: desktop-apps-${{ github.sha }}-${{ inputs.platform || 'both' }}
+  cancel-in-progress: false
+jobs:
+  version:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    outputs:
+      development_version: ${{ steps.resolve.outputs.development_version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - name: Resolve development version
+        id: resolve
+        shell: bash
+        env:
+          REQUESTED_VERSION: ${{ inputs.version }}
+        run: |
+          REQUESTED_VERSION="${REQUESTED_VERSION#"${REQUESTED_VERSION%%[![:space:]]*}"}"
+          REQUESTED_VERSION="${REQUESTED_VERSION%"${REQUESTED_VERSION##*[![:space:]]}"}"
+          if [[ -n "$REQUESTED_VERSION" ]]; then
+            version="$REQUESTED_VERSION"
+          else
+            base=$(node -p "require('./source-receipt.json').version.split('-')[0]")
+            if [[ -z "$base" ]]; then exit 1; fi
+            version="$base-dev.$(date -u +%Y%m%d).$GITHUB_RUN_NUMBER"
+          fi
+          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]]; then echo '::error::Development version must use X.Y.Z-dev.YYYYMMDD.N'; exit 1; fi
+          echo "development_version=$version" >> "$GITHUB_OUTPUT"
+  build:
+    name: Build (${{ matrix.platform }})
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"platform":"windows","runner":"windows-latest"}]' || inputs.platform == 'macos' && '[{"platform":"macos","runner":"macos-latest"}]' || '[{"platform":"windows","runner":"windows-latest"},{"platform":"macos","runner":"macos-latest"}]') }}
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.18.0'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - uses: actions/setup-python@v5
+        if: matrix.platform == 'macos'
+        with:
+          python-version: '3.11'
+      - name: Build and accept desktop app
+        shell: bash
+        env:
+          DEVELOPMENT_VERSION: ${{ needs.version.outputs.development_version }}
+        run: |
+          node core/scripts/ci-eduwork-${{ matrix.platform }}-release.mjs \
+            --core-root ./core --edition-root ./core \
+            --distribution-config config/distributions/generic.json \
+            --version "$DEVELOPMENT_VERSION" --development --recipe pinned-source \
+            --output "$RUNNER_TEMP/ew-development"
+      - name: Retain redacted validation reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-development-validation
+          path: ${{ runner.temp }}/ew-development/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Retain the verified desktop app
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-development
+          path: ${{ runner.temp }}/ew-development/publish
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error

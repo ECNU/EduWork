@@ -20,7 +20,7 @@ const allowedRootKeys = new Set([
 const allowedOidcKeys = new Set(['issuer', 'clientId', 'scopes'])
 const allowedBrandKeys = new Set([
   'productName', 'organizationName', 'mark', 'logoURL', 'primaryColor',
-  'loginTitle', 'loginDescription', 'loginButtonLabel', 'supportURL',
+  'loginTitle', 'loginDescription', 'loginButtonLabel', 'supportURL', 'language',
 ])
 const allowedProviderKeys = new Set([
   'id', 'displayName', 'adapter', 'baseURL', 'reasoning', 'defaultContextWindow',
@@ -119,6 +119,10 @@ function normalizeBrand(value = {}) {
     if (source[key] !== undefined) result[key] = text(source[key], `brand.${key}`, max)
   }
   if (source.supportURL !== undefined) result.supportURL = exactURL(source.supportURL, 'brand.supportURL')
+  if (source.language !== undefined) {
+    if (!['auto', 'zh-CN', 'en'].includes(source.language)) throw new Error('brand.language must be auto, zh-CN or en')
+    result.language = source.language
+  }
   return Object.freeze(result)
 }
 
@@ -262,15 +266,22 @@ export function normalizeEnterpriseProfile(raw) {
   let auth
   if (gateway) {
     const rawAuth = object(source.auth, 'profile.auth')
-    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer', 'experimentalOidcLlm', 'clientId', 'identityMode']), 'profile.auth')
+    exactKeys(rawAuth, new Set(['discoveryUrl', 'expectedIssuer', 'experimentalOidcLlm', 'clientId', 'identityMode', 'additionalScopes']), 'profile.auth')
     const experimental = rawAuth.experimentalOidcLlm === true
     if (rawAuth.experimentalOidcLlm !== undefined && typeof rawAuth.experimentalOidcLlm !== 'boolean') throw new Error('profile.auth.experimentalOidcLlm must be boolean')
-    if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined)) throw new Error('profile.auth clientId and identityMode require experimentalOidcLlm=true')
+    if (!experimental && (rawAuth.clientId !== undefined || rawAuth.identityMode !== undefined || rawAuth.additionalScopes !== undefined)) throw new Error('profile.auth clientId, identityMode and additionalScopes require experimentalOidcLlm=true')
     if (experimental && !['oauth', 'oidc'].includes(rawAuth.identityMode)) throw new Error('profile.auth.identityMode must explicitly select oauth or oidc')
+    if (rawAuth.additionalScopes !== undefined && (!Array.isArray(rawAuth.additionalScopes)
+      || rawAuth.additionalScopes.length > 64
+      || rawAuth.additionalScopes.some(scope => typeof scope !== 'string' || scope.length > 128 || !/^[\x21\x23-\x5b\x5d-\x7e]+$/.test(scope))
+      || new Set(rawAuth.additionalScopes).size !== rawAuth.additionalScopes.length)) {
+      throw new Error('profile.auth.additionalScopes must contain at most 64 unique OAuth scope tokens, each at most 128 characters')
+    }
     auth = Object.freeze({
       discoveryUrl: issuerURL(rawAuth.discoveryUrl, 'profile.auth.discoveryUrl', allowInsecureDevelopment),
       ...(rawAuth.expectedIssuer === undefined ? {} : { expectedIssuer: issuerURL(rawAuth.expectedIssuer, 'profile.auth.expectedIssuer', allowInsecureDevelopment) }),
       ...(experimental ? { experimentalOidcLlm: true, clientId: text(rawAuth.clientId, 'profile.auth.clientId', 256), identityMode: rawAuth.identityMode } : {}),
+      ...(rawAuth.additionalScopes === undefined ? {} : { additionalScopes: Object.freeze([...rawAuth.additionalScopes]) }),
     })
     if (source.provider?.baseURL !== undefined) throw new Error('profile.auth derives provider.baseURL from validated discovery')
     if (source.provider?.modelSource !== undefined && source.provider.modelSource !== 'discovery') throw new Error('profile.auth requires discovery modelSource')

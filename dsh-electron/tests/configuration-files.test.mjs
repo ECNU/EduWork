@@ -19,5 +19,9 @@ test('configuration buttons open only host-selected paths through authenticated 
   assert.deepEqual(opened,[config,join(root,'examples')])
   await assert.rejects(openConfigurationFile(config,'other',()=>{}))
   await assert.rejects(openConfigurationFile(config,'config',async()=> 'Editor unavailable'),/Editor unavailable/)
+  const text=[]
+  await openConfigurationFile(config,'config',async()=> 'No application',async path=>{text.push(path)})
+  assert.deepEqual(text,[config])
+  await assert.rejects(openConfigurationFile(config,'examples',async()=> 'No application',async()=>{}),/No application/)
  }finally{await bridge.close()}
 })

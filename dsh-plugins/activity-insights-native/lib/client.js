@@ -4172,9 +4172,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			hoursMinutes: "{hours} 小时 {minutes} 分",
 			less: "少",
 			more: "多",
-			privacy: "统计在本机即时生成，只读取 DSH 会话事件的时间、类型和用量元数据；不会上传或展示对话正文、工具参数、文件路径及结果内容。",
+			privacy: "统计在本机即时生成，只读取本机会话事件的时间、类型和用量元数据；不会上传或展示对话正文、工具参数、文件路径及结果内容。",
 			coverageHint: "仅汇总模型服务实际返回的 usage。覆盖率不足 100% 时，“累计 Token 数”不代表全部历史用量。",
-			durationHint: "按 DSH 会话统计中的模型运行时间与工具运行时间汇总，不包含关闭或闲置等待。",
+			durationHint: "按会话统计中的模型运行时间与工具运行时间汇总，不包含关闭或闲置等待。",
 			skipped: "有 {count} 个历史会话暂时无法读取，已跳过。"
 		};
 		const en = {

@@ -163,6 +163,11 @@ function assertCheckpointMatches(checkpoint, workspace) {
   if (checkpoint.schemaVersion !== CHECKPOINT_SCHEMA_VERSION) {
     throw new Error(`Checkpoint schema ${checkpoint.schemaVersion} is unsupported (expected ${CHECKPOINT_SCHEMA_VERSION}): ${workspace.checkpointFile}`)
   }
+  if (JSON.stringify(checkpoint.pipeline?.sourceIdentity) !== JSON.stringify(workspace.parameters.sourceIdentity)) {
+    const error = new Error('Source inputs changed since this checkpoint; use a new build workspace')
+    error.code = 'EDUWORK_SOURCE_CHANGED'
+    throw error
+  }
   if (checkpoint.parametersDigest !== workspace.parametersDigest) {
     throw new Error(
       'Checkpoint was written for different pipeline arguments; ' +

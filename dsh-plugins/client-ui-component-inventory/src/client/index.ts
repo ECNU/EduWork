@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react'
 import componentInventoryRemote from '@chatecnu-work/dsh-component-inventory-native/remote'
-import pluginManagerRemote from '@chatecnu-work/dsh-plugin-manager-native/remote'
 import { projectURL, feedbackURL, visibleComponents } from './about.js'
 import styles from './about.module.css'
 
@@ -80,86 +79,6 @@ const success = 'var(--dsw-alias-state-success-primary, #3f9b62)'
 function unwrap(response) {
   if (!response?.ok) throw new Error(response?.error?.message || 'component inventory failed')
   return response.value
-}
-
-const sourceKeys: Record<string, string> = { registry: 'registry', 'local-directory': 'localDirectory', 'local-archive': 'localArchive', 'unknown-local': 'unknownLocal' }
-
-function CommunityPluginManager({ manager, t }) {
-  const [snapshot, setSnapshot] = useState({ status: 'loading', packages: [] })
-  const [spec, setSpec] = useState('')
-  const [trusted, setTrusted] = useState(false)
-  const [notice, setNotice] = useState('')
-  const [job, setJob] = useState(null)
-
-  const refresh = async () => {
-    try {
-      const value = await manager.list()
-      setSnapshot({ status: 'ready', packages: value.packages })
-    } catch {
-      setSnapshot({ status: 'error', packages: [] })
-    }
-  }
-  useEffect(() => { void refresh() }, [])
-  useEffect(() => {
-    if (!job || job.state !== 'running') return
-    const timer = window.setInterval(async () => {
-      try {
-        const next = await manager.job(job.id)
-        setJob(next)
-        if (next.state !== 'running') {
-          window.clearInterval(timer)
-          if (next.snapshot) setSnapshot({ status: 'ready', packages: next.snapshot.packages })
-        }
-      } catch { window.clearInterval(timer) }
-    }, 500)
-    return () => window.clearInterval(timer)
-  }, [job?.id, job?.state])
-
-  const start = async (action, value) => {
-    if (!trusted && (action === 'add-registry' || action === 'import-path')) { setNotice(t('trustRequired')); return }
-    setNotice('')
-    try { setJob(await manager.start(action, value)) } catch (error) { setNotice(error instanceof Error ? error.message : String(error)) }
-  }
-  const pickAndImport = async kind => {
-    if (!trusted) { setNotice(t('trustRequired')); return }
-    try {
-      const result = kind === 'file' ? await manager.selectFile() : await manager.selectDirectory()
-      if (result.path) await start('import-path', result.path)
-    } catch (error) { setNotice(error instanceof Error ? error.message : String(error)) }
-  }
-  const busy = job?.state === 'running'
-  return h('section', { style: { marginBottom: 24, paddingBottom: 22, borderBottom: `1px solid ${border}` } },
-    h('header', { style: { marginBottom: 12 } },
-      h('h3', { style: { margin: '0 0 5px', fontSize: 20 } }, t('managerTitle')),
-      h('p', { style: { margin: 0, color: secondary, fontSize: 13, lineHeight: 1.6 } }, t('managerSubtitle'))),
-    h('div', { style: { border: `1px solid ${border}`, borderRadius: 11, padding: 13, background: layer } },
-      h('div', { style: { display: 'flex', gap: 8 } },
-        h('input', { value: spec, disabled: busy, placeholder: t('packagePlaceholder'), onChange: event => setSpec(event.currentTarget.value),
-          style: { boxSizing: 'border-box', minWidth: 0, flex: 1, height: 38, border: `1px solid ${border}`, borderRadius: 8, padding: '0 11px', background: layer, color: primary } }),
-        h('button', { type: 'button', disabled: busy || !spec.trim(), onClick: () => start('add-registry', spec), style: actionButton(business, true) }, t('installRegistry'))),
-      h('div', { style: { display: 'flex', gap: 8, marginTop: 9 } },
-        h('button', { type: 'button', disabled: busy, onClick: () => pickAndImport('file'), style: actionButton(secondary) }, t('importArchive')),
-        h('button', { type: 'button', disabled: busy, onClick: () => pickAndImport('directory'), style: actionButton(secondary) }, t('importDirectory'))),
-      h('label', { style: { display: 'flex', alignItems: 'flex-start', gap: 8, marginTop: 11, color: secondary, fontSize: 12, lineHeight: 1.5, cursor: 'pointer' } },
-        h('input', { type: 'checkbox', checked: trusted, onChange: event => setTrusted(event.currentTarget.checked), style: { marginTop: 2 } }), t('trust')),
-      notice ? h('p', { role: 'alert', style: { margin: '9px 0 0', color: 'var(--dsw-alias-state-error-primary, #c33)', fontSize: 12 } }, notice) : null),
-    snapshot.status === 'error' ? h('p', { style: { color: 'var(--dsw-alias-state-error-primary, #c33)' } }, t('failure')) :
-      snapshot.status === 'loading' ? h('p', { style: { color: tertiary } }, t('loading')) :
-      snapshot.packages.length === 0 ? h('p', { style: { color: tertiary, fontSize: 12 } }, t('noCommunity')) :
-      h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 9, marginTop: 12 } },
-        ...snapshot.packages.map(plugin => h('article', { key: plugin.name, style: { border: `1px solid ${border}`, borderRadius: 10, padding: '11px 13px', background: layer, minWidth: 0 } },
-          h('strong', { title: plugin.name, style: { display: 'block', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: 13 } }, plugin.name),
-          h('span', { style: { display: 'block', marginTop: 5, color: secondary, fontSize: 11 } }, `${t('installedVersion')} ${plugin.version ?? t('unknown')} · ${t(sourceKeys[plugin.source])}`),
-          h('code', { title: plugin.requested, style: { display: 'block', marginTop: 5, color: tertiary, fontSize: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, plugin.requested),
-          h('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 7, marginTop: 9 } },
-            plugin.updateable ? h('button', { type: 'button', disabled: busy, onClick: () => start('update', plugin.name), style: actionButton(secondary) }, t('update')) : null,
-            h('button', { type: 'button', disabled: busy, onClick: () => { if (window.confirm(t('removeConfirm'))) void start('remove', plugin.name) }, style: actionButton('var(--dsw-alias-state-error-primary, #c33)') }, t('remove')))))),
-    job ? h('div', { role: job.state === 'failed' ? 'alert' : 'status', style: { marginTop: 12, border: `1px solid ${job.state === 'failed' ? 'var(--dsw-alias-state-error-primary, #c33)' : border}`, borderRadius: 10, padding: 12, background: layer } },
-      h('div', { style: { display: 'flex', justifyContent: 'space-between', gap: 10, alignItems: 'center' } },
-        h('strong', { style: { fontSize: 12 } }, job.message || (busy ? t('working') : job.state === 'failed' ? t('operationFailed') : t('operationDone'))),
-        job.requiresRestart ? h('button', { type: 'button', onClick: () => manager.restart(), style: actionButton(business, true) }, t('restart')) : null),
-      job.output ? h('details', { style: { marginTop: 9 } }, h('summary', { style: { cursor: 'pointer', color: secondary, fontSize: 11 } }, t('output')),
-        h('pre', { style: { maxHeight: 190, overflow: 'auto', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', margin: '8px 0 0', padding: 9, borderRadius: 7, background: 'var(--dsw-alias-bg-layer-2, #f6f6f6)', color: secondary, fontSize: 10 } }, job.output)) : null) : null)
 }
 
 function actionButton(color, filled = false) {
@@ -262,14 +181,6 @@ function About({ list, t, renderSlot }) {
     h(ComponentLayers, { components: state.value.components, t }))
 }
 
-function CommunityPlugins({ list, manager, t }) {
-  const { state, retry } = useInventory(list)
-  if (state.status !== 'ready') return h(InventoryStatus, { state, retry, t })
-  // Native import/restart controls remain in Plugins. Local Web has no bridge.
-  return state.value.release.distributionMode === 'desktop-release'
-    ? h(CommunityPluginManager, { manager, t }) : null
-}
-
 export async function apply(ctx) {
   const disposeInventory = await ctx.remote.$mount(componentInventoryRemote)
   ctx.effect(() => () => { void disposeInventory() }, 'component-inventory: remote')
@@ -283,35 +194,5 @@ export async function apply(ctx) {
       inject: () => ({ list }),
     }, About))
   })
-  // This optional remote is not shipped by every composition. About must
-  // remain available even when no native community-plugin service exists.
-  const disposeManager = await ctx.remote.$mount(pluginManagerRemote).catch(() => null)
-  if (!disposeManager) return
-  ctx.effect(() => () => { void disposeManager() }, 'community-plugins: remote')
-  ctx.inject(['remote.productComponents', 'remote.productPluginManager'], surfaceCtx => {
-    const t = surfaceCtx.locale.bind(NS)
-    const list = async () => unwrap(await surfaceCtx.remote.productComponents.list())
-    const manager = {
-      list: async () => unwrap(await surfaceCtx.remote.productPluginManager.list()),
-      selectFile: async () => unwrap(await surfaceCtx.remote.productPluginManager.selectFile()),
-      selectDirectory: async () => unwrap(await surfaceCtx.remote.productPluginManager.selectDirectory()),
-      start: async (action, value) => unwrap(await surfaceCtx.remote.productPluginManager.start(action, value)),
-      job: async jobID => unwrap(await surfaceCtx.remote.productPluginManager.job(jobID)),
-      restart: async () => unwrap(await surfaceCtx.remote.productPluginManager.restart()),
-    }
-    // Mounting a remote descriptor alone does not guarantee a native host.
-    // Probe the read-only service before offering installation controls.
-    let active = true
-    let disposeTab = () => {}
-    surfaceCtx.effect(() => () => { active = false; disposeTab() }, 'community-plugins: tab')
-    void list().then(async value => {
-      if (!active || value.release.distributionMode !== 'desktop-release') return
-      await manager.list()
-      if (!active) return
-      disposeTab = surfaceCtx.slots.inject('settings.plugins.tab', () => surfaceCtx.slots.register({
-        name: 'settings.plugins.tab', id: 'community', order: 20, label: () => t('managerTitle'), locale: NS,
-        inject: () => ({ list, manager }),
-      }, CommunityPlugins))
-    }).catch(() => {})
-  })
+  // Community installation and activation belong to the official Plugins page.
 }

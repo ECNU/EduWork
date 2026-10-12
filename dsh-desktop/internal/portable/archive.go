@@ -18,6 +18,8 @@ import (
 	"path/filepath"
 	"strings"
 	"unicode/utf16"
+
+	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/electronaccess"
 )
 
 const Magic = "EDUWORK-SFX-v1\x00\x00"
@@ -252,6 +254,9 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 	} else if !errors.Is(e, os.ErrNotExist) {
 		return "", e
 	}
+	if err := checkDirectoryOperations(ctx, p); err != nil {
+		return "", fmt.Errorf("无法在此位置创建、重命名或清理安装目录，请选择其他位置：%w", err)
+	}
 	free, err := freeSpace(parent)
 	if err != nil {
 		return "", fmt.Errorf("无法检查磁盘空间：%w", err)
@@ -319,6 +324,9 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 	if err := ctx.Err(); err != nil {
 		return "", err
 	}
+	if err := electronaccess.Ensure(filepath.Join(parent, stage)); err != nil {
+		return "", fmt.Errorf("无法准备程序运行权限：%w", err)
+	}
 	if err := s.Close(); err != nil {
 		return "", err
 	}
@@ -328,8 +336,8 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 	} else if !errors.Is(e, os.ErrNotExist) {
 		return "", e
 	}
-	if err := p.Rename(stage, base); err != nil {
-		return "", fmt.Errorf("无法完成安装，请检查目录权限或安全软件记录：%w", err)
+	if err := renameDirectory(ctx, p, stage, base, progress); err != nil {
+		return "", fmt.Errorf("安装文件已解压，但无法完成目录重命名；请检查占用程序、目录权限或安全软件记录（%s → %s）：%w", filepath.Join(parent, stage), target, err)
 	}
 	stage = ""
 	report(progress, 100, "安装完成，可以启动应用了。")

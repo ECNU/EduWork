@@ -8,7 +8,7 @@ import { pipeline } from 'node:stream/promises'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { desktopVersion } from './desktop-build-plan.mjs'
-import { fullPath, isMainModule, isWindows, pathExists, run, sha256File, writeJSON } from './lib/build-util.mjs'
+import { windowsTarExecutable, fullPath, isMainModule, isWindows, pathExists, run, sha256File, writeJSON } from './lib/build-util.mjs'
 import { getResource, readPEResources, writePEResources } from './lib/windows-pe.mjs'
 import { assertInvokerManifest } from '../dsh-electron/scripts/set-updater-manifest.mjs'
 
@@ -23,7 +23,7 @@ async function hashFile(file) {
 
 function tarEntry(archive, entry, { hash = false, limit = 2 << 20 } = {}) {
   return new Promise((resolve, reject) => {
-    const child = spawn('tar.exe', ['-xOf', archive, entry], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
+    const child = spawn(windowsTarExecutable(), ['-xOf', archive, entry], { windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] })
     const chunks = [], digest = createHash('sha256')
     let size = 0, stderr = ''
     child.stdout.on('data', chunk => {

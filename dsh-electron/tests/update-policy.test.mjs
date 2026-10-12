@@ -22,6 +22,9 @@ test('writing update defaults preserves the actual source, channel, and disabled
 test('package channel is independent of feed URL and preserved old bridge config',()=>{
  const manifestURL='https://updates.example.test/releases-bridge/stable/latest-windows-amd64.json'
  assert.equal(portableUpdateEdition({configuration:{manifestURL},version:'0.3.5-dev.20260913.1'}).defaultPolicy,'development')
+ for (const version of ['0.3.5-alpha.1', '0.3.5-beta.1', '0.3.5-rc.1']) {
+  assert.equal(portableUpdateEdition({configuration:{manifestURL},version}).defaultPolicy,'development')
+ }
  assert.equal(portableUpdateEdition({configuration:{manifestURL},version:'0.3.5'}).defaultPolicy,'stable')
  const prior={schemaVersion:1,enabled:true,manifestBaseURL:'https://updates.example.test/custom',defaultPolicy:'stable'}
  const edition=portableUpdateEdition({configuration:{defaultPolicy:'development'},version:'0.3.5-dev.20260913.1',prior})

@@ -10,6 +10,11 @@ let onboarding = params.has('onboarding'), account = onboarding ? { profileID: p
 const registrations = [], events = new Map()
 const ok = value => Promise.resolve({ ok: true, value })
 const ctx = {
+  locale: {
+    dictionaries: new Map(),
+    register(namespace, values) { this.dictionaries.set(namespace, values); return () => this.dictionaries.delete(namespace) },
+    bind(namespace) { return key => this.dictionaries.get(namespace).zh[key] ?? key },
+  },
   remote: {
     $mount: async () => () => {}, $on: (event, listener) => { events.set(event, listener); return () => events.delete(event) },
     oidcAccounts: {
@@ -25,7 +30,7 @@ const ctx = {
   on: () => () => {}, get: () => undefined,
   inject: (_names, callback) => callback(ctx),
   slots: { inject: (_name, callback) => callback(), register: (definition, component) => { registrations.push({ ...definition, component }); return () => {} } },
-  effect: () => {},
+  effect: setup => setup(),
 }
 window.__ModuleLoader__ = { load: definition => {
   const plugin = definition.factory(name => {
@@ -38,6 +43,10 @@ window.__ModuleLoader__ = { load: definition => {
     const general = registrations.find(item => item.name === 'settings.general.item')
     const welcome = registrations.find(item => item.name === 'settings.onboarding')
     const root = ReactDOM.createRoot(document.getElementById('root'))
+    for (const entry of [footer, general, welcome]) {
+      const inject = entry.inject
+      entry.inject = () => ({ ...inject(), t: ctx.locale.bind(entry.locale) })
+    }
     const render = wide => root.render(React.createElement(React.Fragment, null,
       onboarding && React.createElement(welcome.component, { ...welcome.inject(), complete: () => { onboarding = false; render(wide) } }),
       React.createElement('aside', { style: { position: 'fixed', left: 0, bottom: 0, width: wide ? 240 : 48, overflow: 'hidden', padding: 4 } }, React.createElement(footer.component, { ...footer.inject(), wide })),

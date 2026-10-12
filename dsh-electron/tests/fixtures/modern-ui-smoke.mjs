@@ -27,7 +27,7 @@ app.whenReady().then(async () => {
   const startup = new BrowserWindow({ width: 600, height: 390, resizable: false, maximizable: false,
     autoHideMenuBar: true, title: 'EduWork · 初始化验证', backgroundColor: '#faf3ef', webPreferences: { sandbox: true, contextIsolation: true } })
   try {
-    await startup.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({ title: 'EduWork', logo: process.env.EDUWORK_UI_LOGO })))
+    await startup.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({ productName: 'EduWork', logo: process.env.EDUWORK_UI_LOGO })))
     assert.equal(await startup.webContents.executeJavaScript('document.documentElement.scrollHeight <= innerHeight'), true)
     await sleep(250)
     await writeFile(join(output, '04-初始化页面.png'), await screenshot(startup))

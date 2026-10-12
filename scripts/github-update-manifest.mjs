@@ -1,17 +1,17 @@
 import {readFile,writeFile} from 'node:fs/promises'
 import {dirname,join,resolve} from 'node:path'
 import {pathToFileURL} from 'node:url'
+import {desktopVersion} from './desktop-build-plan.mjs'
 
 export const updateManifestName='update-windows-amd64.json'
 export function releaseChannel(version) {
- if(typeof version!=='string' || !/^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-dev\.\d{8}\.[1-9]\d*)?$/.test(version))throw Error('Release version must be X.Y.Z or X.Y.Z-dev.YYYYMMDD.N')
- return version.includes('-dev.')?'development':'stable'
+ return desktopVersion(version).channel
 }
 export function githubUpdateManifest(receipt,repository) {
  const editions={'ecnu/eduwork':['EduWork','eduwork'],'ecnu/eduwork-ecnu':['EduWork-ECNU','eduwork-chatecnu']}
  const identity=editions[repository?.toLowerCase()]
  const channel=releaseChannel(receipt.version)
- const qualifiedSource=receipt.kind==='eduwork-source-release' && receipt.version==='0.4.0' && receipt.platform==='windows' && receipt.automaticUpdates===true && receipt.checks?.updateContract==='passed'
+ const qualifiedSource=receipt.kind==='eduwork-source-release' && channel==='stable' && receipt.platform==='windows' && receipt.automaticUpdates===true && receipt.checks?.updateContract==='passed'
  if(!identity || receipt.passed!==true || (!qualifiedSource && (receipt.kind!=='eduwork-windows-release' || receipt.platform!=='windows-x64')) || receipt.edition!==identity[0] || receipt.distribution!==identity[1] || receipt.shell!=='electron')throw Error('Update manifest requires a matching validated Electron release')
  const asset=receipt.asset
  if(asset?.name!==`${identity[0]}-${receipt.version}-windows-x64-electron.zip` || !Number.isSafeInteger(asset.bytes) || asset.bytes<1 || asset.bytes>=2**31 || !/^[a-f0-9]{64}$/.test(asset.sha256))throw Error('Invalid update asset')

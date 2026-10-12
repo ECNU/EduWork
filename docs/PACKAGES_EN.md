@@ -34,7 +34,7 @@ CI selects affected development roots; shared-service changes also select Studio
 
 ## Publish independently
 
-`@eduwork/dsh-literature` targets DSH `0.2.0-rc.1`, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs published version `0.1.0` from npm, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.0-rc.1/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
+`@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.0-rc.2/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
 
 Each package keeps its own SemVer, public exports, configuration IDs and persisted paths. Use a new version for every publication; never overwrite an existing npm version. If shared services change version, update Studio's exact dependency and lock; publish and verify shared services before Studio.
 
@@ -50,6 +50,14 @@ Configure Trusted publishing on **each npm package**: GitHub Actions, organizati
 Maintainers can inspect a binding with `npm trust list @eduwork/dsh-oidc --json`, substituting the other package names as needed. To change the repository, workflow or environment, inspect existing bindings first, create the replacement and remove only the matching obsolete binding. Preserve other valid publishers. npm may require account verification in the system browser.
 
 Do not store long-lived npm tokens. If publication is explicitly authorized before CI publication is verified, a maintainer can publish an inspected archive with an authenticated npm CLI and interactive verification, without claiming GitHub provenance.
+
+## Compatibility declarations and build locks
+
+`peerDependencies` describes supported host APIs. Development dependencies, `package-lock.json` and product locks identify exact build inputs. For a verified compatible API series, prefer a bounded peer range over enumerating every rc version. Check prerelease matching and exercise actual plugin loading and tool calls across the supported range; adjacent versions alone do not establish compatibility, and `*` is not a substitute for a boundary.
+
+Reuse an existing npm archive when its declared range covers a kernel upgrade and compatibility checks pass. Correcting an overly narrow published declaration still requires a new npm version because published versions are immutable, but this should not become a routine step for every rc update. Literature `0.1.2` declares `>=0.2.0-rc.1 <0.3.0-0` without changing retrieval behavior.
+
+Bundled source extensions are currently rebuilt for the candidate runtime, with DSH peers describing the adapted API range (currently `>=0.2.0-rc.2 <0.3.0-0`). This qualifies that assembled artifact, not the original npm package on a new host. Maintain truthful source manifests for standalone publication; do not rewrite third-party packages or add compatibility exemptions.
 
 ## Product assembly
 

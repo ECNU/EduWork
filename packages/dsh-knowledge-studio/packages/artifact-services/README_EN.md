@@ -140,13 +140,13 @@ Structured audio/video and editable Remotion projects use `lib/remotion.js`. The
 
 ## DSH composition
 
-Load `@eduwork/dsh-artifact-services/dsh` once. It provides `artifactServices`, six generic skills plus `artifact-images` when enabled and available, ten default tools and two opt-in image tools:
+Load `@eduwork/dsh-artifact-services/dsh` once. It provides `artifactServices`, six generic skills plus `artifact-images` when enabled and available, ten default tools and three opt-in image tools:
 
 | Tools | Responsibilities |
 | --- | --- |
 | `office_document`, `office_spreadsheet`, `office_presentation`, `office_pdf` | Existing Office tool names and workspace-relative paths |
 | `speech_voices`, `speech_synthesize` | Provider/voice/music discovery and speech generation |
-| `image_providers`, `image_generate` | Opt-in image discovery/generation; omitted unless `images.enabled:true` |
+| `image_providers`, `image_generate`, `image_edit` | Opt-in image discovery/generation; omitted unless `images.enabled:true` |
 | `speech_transcription_providers`, `speech_transcribe` | Audio-file transcription provider discovery and transcription |
 | `media_render` | Structured audio/video generation |
 | `video_project` | Editable project init/staging/voice jobs/validation/rendering |
@@ -173,3 +173,5 @@ option.
 ## Platform support
 
 The built-in system TTS adapter supports Windows. Other platforms require a registered speech provider and compatible native resources. See [platform requirements](docs/PLATFORMS.md).
+
+Image providers may implement `edit(request)` with the same workspace, cancellation and output contract as `generate`. Inputs are an `images` path array and optional `mask`; use `images.edit(request)` / `image_edit`. The catalog declares `capabilities.edit:true` only for editing providers, with no generation fallback. Inputs and new output files stay within the workspace and reuse its write permission.

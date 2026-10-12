@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { searchWithAvailableProvider } from '../lib/search-policy.js'
+import { providerSettings, searchWithAvailableProvider } from '../lib/search-policy.js'
 
 function fixture(config = {}, credential) {
   const calls = []
@@ -44,4 +44,25 @@ test('a request uses one settings snapshot and respects cancellation before disp
   assert.equal(await searchWithAvailableProvider(options), 'https://old.example')
   options.signal = AbortSignal.abort()
   await assert.rejects(searchWithAvailableProvider(options), {name:'AbortError'})
+})
+test('inactive or missing providers ignore ambient credentials and fall back to browser', async () => {
+  const row = (id, state, config) => ({ options: { id, config: { stale: true } }, fiber: { state, config } })
+  const editor = rows => ({ entries: () => rows })
+  assert.equal(providerSettings(editor([row('web-search-deepseek', 3, { apiKey: 'test-only' })]), 'web-search-deepseek'), undefined)
+  assert.equal(providerSettings(undefined, 'web-search-deepseek'), undefined)
+  for (const configEditor of [undefined, editor([]), editor([row('other', 2, {})]), editor([row('web-search-deepseek', 3, {})])]) {
+    const {calls, options} = fixture({}, 'ambient-test-key')
+    options.settings = () => providerSettings(configEditor, 'web-search-deepseek')
+    assert.equal(await searchWithAvailableProvider(options), 'browser results')
+    assert.deepEqual(calls, [['browser', 'test']])
+  }
+})
+
+test('cancellation during credential resolution prevents both providers from running', async () => {
+  const controller = new AbortController()
+  const { calls, options } = fixture()
+  options.signal = controller.signal
+  options.resolveCredential = async () => { controller.abort(); return 'test-only' }
+  await assert.rejects(searchWithAvailableProvider(options), { name: 'AbortError' })
+  assert.deepEqual(calls, [])
 })

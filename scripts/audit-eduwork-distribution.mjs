@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { existsSync, lstatSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, lstatSync, readFileSync, readdirSync, realpathSync } from 'node:fs'
 import { dirname, extname, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -96,6 +96,17 @@ function collect(root, errors = [], skipped = new Set()) {
   return result
 }
 
+/** Hash the actual portable source inputs using the audit's directory exclusions. */
+export function sourceFileSet(root) {
+  root = resolve(root)
+  const errors = []
+  const files = collect(root, errors)
+  if (errors.length) throw new Error(`Source inputs are not portable: ${errors.join('; ')}`)
+  return files.filter(file => file !== 'source-receipt.json')
+    .map(path => ({ path, sha256: sha256(readFileSync(resolve(root, path))) }))
+    .sort((a, b) => a.path.localeCompare(b.path, 'en'))
+}
+
 /** Audit actual source input, not just the edition flag. Copyright/provenance is preserved. */
 export function auditDistribution({ root, edition = 'generic', verifyReceipt = false }) {
   root = resolve(root)
@@ -159,7 +170,7 @@ export function auditDistribution({ root, edition = 'generic', verifyReceipt = f
   return { edition, files: files.length, skipped: [...skipped].sort(), errors: [...new Set(errors)], warnings }
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && existsSync(process.argv[1]) && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2)
   const value = name => args[args.indexOf(name) + 1]
   const root = args.includes('--root') ? value('--root') : dirname(dirname(fileURLToPath(import.meta.url)))

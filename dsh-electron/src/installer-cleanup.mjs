@@ -1,7 +1,7 @@
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { readFile, writeFile, mkdtemp, rm, realpath, stat } from 'node:fs/promises'
-import { join, extname, isAbsolute, sep } from 'node:path'
+import { join, basename, extname, isAbsolute, sep } from 'node:path'
 import { tmpdir } from 'node:os'
 import { setTimeout as delay } from 'node:timers/promises'
 
@@ -28,6 +28,10 @@ async function signature(appPath) {
 }
 
 const mountsOf = image => (image['system-entities'] ?? []).map(row => row['mount-point']).filter(Boolean)
+async function installationIdentity(appPath) {
+  const file = await stat(appPath)
+  return `${file.dev}:${file.ino}:${file.birthtimeMs}`
+}
 async function imageIdentity(path) {
   const file = await stat(path)
   if (!file.isFile()) throw new Error('安装镜像不是普通文件。')
@@ -49,6 +53,26 @@ export async function sourceInstaller(appPath, images, identify = signature) {
     return { imagePath, identity: await identify(source), ...await imageIdentity(imagePath) }
   }
   return null
+}
+
+export async function draggedInstaller(appPath, images, identify = signature) {
+  if (!images.length) return null
+  const installed = await realpath(appPath), identity = await identify(installed)
+  let candidate = null
+  for (const image of images) {
+    const mounts = mountsOf(image)
+    if (mounts.length !== 1 || extname(image['image-path'] ?? '').toLowerCase() !== '.dmg') continue
+    const mount = await realpath(mounts[0]).catch(() => null)
+    if (!mount) continue
+    const source = await realpath(join(mount, basename(installed))).catch(() => null)
+    if (!source || !source.startsWith(mount + sep) || source === installed ||
+        await identify(source).catch(() => null) !== identity) continue
+    const match = await sourceInstaller(source, [image], async () => identity)
+    if (!match) continue
+    if (candidate && candidate.imagePath !== match.imagePath) return null
+    candidate = match
+  }
+  return candidate
 }
 
 export async function cleanInstaller(candidate, { appPath, images = mountedImages, identify = signature,
@@ -86,11 +110,32 @@ export async function installFromDmg({ app, shell, dialog, appPath,
   // is false even in a signed bundle. defaultApp identifies Electron CLI runs.
   if (platform !== 'darwin' || defaultApp) return false
   const statePath = join(app.getPath('userData'), 'pending-source-dmg-cleanup.json')
+  const receiptPath = join(app.getPath('userData'), 'dmg-installation.json')
   if (app.isInApplicationsFolder()) {
     try {
-      const candidate = JSON.parse(await readFile(statePath, 'utf8'))
+      let candidate = JSON.parse(await readFile(statePath, 'utf8').catch(error => {
+        if (error.code !== 'ENOENT') throw error
+        return 'null'
+      }))
+      const receipt = JSON.parse(await readFile(receiptPath, 'utf8').catch(error => {
+        if (error.code !== 'ENOENT') throw error
+        return '{}'
+      }))
+      const installation = await installationIdentity(appPath)
+      if (candidate && await identify(appPath) !== candidate.identity) {
+        await rm(statePath, { force: true })
+        candidate = null
+      }
+      if (!candidate && receipt.installation === installation && receipt.cleaned === true) return false
+      if (!candidate) {
+        candidate = await draggedInstaller(appPath, await images(), identify)
+        if (!candidate || receipt.cancelled?.installations.includes(installation) && candidate.imagePath === receipt.cancelled.imagePath &&
+            ['device', 'inode', 'size', 'modified'].every(key => candidate[key] === receipt.cancelled[key])) return false
+        await writeFile(statePath, JSON.stringify(candidate), { mode: 0o600 })
+      }
       await cleanInstaller(candidate, { appPath, images, identify, eject, wait, trash: path => shell.trashItem(path) })
       await rm(statePath, { force: true })
+      await writeFile(receiptPath, JSON.stringify({ installation, cleaned: true }), { mode: 0o600 })
     } catch (error) {
       if (error.code === 'ENOENT') await rm(statePath, { force: true })
       else warn(`安装文件未清理，可手动推出安装卷并移到废纸篓：${error.message}`)
@@ -100,7 +145,6 @@ export async function installFromDmg({ app, shell, dialog, appPath,
   const candidate = await sourceInstaller(appPath, await images(), identify)
   if (!candidate) return false
   await writeFile(statePath, JSON.stringify(candidate), { mode: 0o600 })
-  app.releaseSingleInstanceLock()
   try {
     if (app.moveToApplicationsFolder({ conflictHandler: conflict => {
       if (conflict === 'existsAndRunning') {
@@ -115,6 +159,12 @@ export async function installFromDmg({ app, shell, dialog, appPath,
     await rm(statePath, { force: true })
     await dialog.showMessageBox({ type: 'error', message: '未能安装到“应用程序”目录', detail: `${error.message}\n可以重试，或将应用拖到“应用程序”目录后打开。` })
   }
+  const installations = await Promise.all(['/Applications', join(app.getPath('home'), 'Applications')].map(directory =>
+    installationIdentity(join(directory, basename(appPath))).catch(error => {
+      if (error.code !== 'ENOENT') throw error
+      return null
+    })))
+  await writeFile(receiptPath, JSON.stringify({ cancelled: { ...candidate, installations } }), { mode: 0o600 })
   app.quit()
   return true
 }

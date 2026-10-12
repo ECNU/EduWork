@@ -1,6 +1,7 @@
+import { NS, dictionaries, StudioLocale, useStudioLocale } from './locale.js'
 import {KnowledgeSurface, type Target, type SessionMemory} from './KnowledgeSurface'
 import {StudioIcon} from './StudioIcon'
-import {artifactRequest} from '../../lib/studio-instructions.js'
+import {artifactRequest,parameterVisible} from '../../lib/studio-instructions.js'
 import {StudioEntry,StudioHeaderEntry,StudioBlankEntry} from './StudioEntry'
 import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import {KnowledgeMarkdown as Markdown} from './KnowledgeMarkdown'
@@ -12,62 +13,8 @@ import { ReadingFrame, ReadingLayer } from './ReadingFrame.js'
 // @ts-expect-error Host capability descriptors are shared browser-safe data.
 import { BUILTIN_CAPABILITIES } from '../../lib/capabilities.js'
 
-export const inject = ['slots', 'remote', 'sessions', 'layout']
-const zh =
-  typeof navigator !== 'undefined' &&
-  navigator.language.toLowerCase().startsWith('zh')
+export const inject = ['slots', 'locale', 'remote', 'sessions', 'layout']
 
-const t = zh
-  ? {
-      loading: '正在读取…',
-      noWorkspace: '当前会话不属于任何工作区。',
-      failed: '生成失败',
-      cancel: '取消任务',
-      openSource: '打开原文',
-      back: '返回',
-      close: '关闭 Studio',
-      working: '处理中',
-      error: '操作失败',
-      generate: '开始生成',
-      generating: '正在生成',
-      interruptedArtifact: '生成被中断',
-      askAI: '问问 AI',
-      evidence: '查看依据',
-      submitAnswer: '提交答案',
-      next: '下一个',
-      previous: '上一个',
-      correct: '回答正确',
-      incorrect: '回答错误',
-      flip: '翻到背面',
-      known: '已掌握',
-      review: '再复习',
-      reset: '重新开始',
-    }
-  : {
-      loading: 'Loading…',
-      noWorkspace: 'This session is not attached to a workspace.',
-      failed: 'Generation failed',
-      cancel: 'Cancel task',
-      openSource: 'Open source',
-      back: 'Back',
-      close: 'Close Studio',
-      working: 'Working',
-      error: 'Operation failed',
-      generate: 'Generate',
-      generating: 'Generating',
-      interruptedArtifact: 'Generation interrupted',
-      askAI: 'Ask AI',
-      evidence: 'View evidence',
-      submitAnswer: 'Submit answer',
-      next: 'Next',
-      previous: 'Previous',
-      correct: 'Correct',
-      incorrect: 'Incorrect',
-      flip: 'Show answer',
-      known: 'Got it',
-      review: 'Review again',
-      reset: 'Start over',
-    }
 
 async function unwrap<T = any>(operation: Promise<any>): Promise<T> {
   const result = await operation
@@ -95,6 +42,7 @@ function pendingWorkspace(cwd: string) {
     capabilities: BUILTIN_CAPABILITIES, artifacts: [] }
 }
 function useWorkspace(service: any, cwd: string) {
+  const t = useStudioLocale()
   const [value, setValue] = useState<any>(null)
   const [error, setError] = useState('')
   const [retry, setRetry] = useState(0)
@@ -105,13 +53,13 @@ function useWorkspace(service: any, cwd: string) {
     setError('')
     const load = async () => {
       const warning = setTimeout(() => {
-        if (!disposed) setError(zh ? '工作区服务响应较慢，基础创作仍可使用。' : 'Workspace service is slow. Basic creation remains available.')
+        if (!disposed) setError('workspaceSlow')
       }, 8000)
       try {
         const result = await workspaceRequest(service, cwd)
-        if (!disposed) { setValue(result ? { ...result, requestedCwd: cwd } : result); setError(result ? '' : t.noWorkspace) }
+        if (!disposed) { setValue(result ? { ...result, requestedCwd: cwd } : result); setError(result ? '' : 'noWorkspace') }
       } catch {
-        if (!disposed) setError(zh ? '无法连接工作区服务，请重试。' : 'Cannot connect to workspace service. Retry.')
+        if (!disposed) setError('workspaceUnavailable')
       } finally {
         clearTimeout(warning)
         if (!disposed) timer = setTimeout(load, 2000)
@@ -121,7 +69,7 @@ function useWorkspace(service: any, cwd: string) {
     return () => { disposed = true; clearTimeout(timer) }
   }, [service, cwd, retry])
   return { workspace: value?.requestedCwd === cwd ? value : pendingWorkspace(cwd),
-    error, refresh: () => setRetry(value => value + 1) }
+    error: error ? t(error) : '', refresh: () => setRetry(value => value + 1) }
 }
 
 const colors = {
@@ -188,10 +136,8 @@ function location(value: any) {
   return `L${value.lineStart ?? '?'}${value.lineEnd && value.lineEnd !== value.lineStart ? `–${value.lineEnd}` : ''}`
 }
 
-function parameterVisible(parameter:any,values:Record<string,any>) {
-  return (!parameter.when || Object.entries(parameter.when).every(([key,value])=>values[key]===value)) && (!parameter.whenNot || Object.entries(parameter.whenNot).every(([key,value])=>values[key]!==value)) && (!parameter.whenNonempty || Boolean(values[parameter.whenNonempty]))
-}
 function ParameterDialog({ capability, busy, close, submit }: any) {
+  const t = useStudioLocale()
   const [values, setValues] = useState<Record<string, any>>(() =>
     Object.fromEntries(
       (capability.parameters ?? []).map((parameter: any) => [
@@ -250,7 +196,7 @@ function ParameterDialog({ capability, busy, close, submit }: any) {
           <strong>{capability.title}</strong>
           <button
             type="button"
-            aria-label={t.close}
+            aria-label={t('close')}
             onClick={close}
             style={{ ...button, marginLeft: 'auto', border: 0, fontSize: 17 }}
           >
@@ -316,10 +262,10 @@ function ParameterDialog({ capability, busy, close, submit }: any) {
           }}
         >
           <button type="button" style={button} onClick={close}>
-            {t.cancel}
+            {t('cancel')}
           </button>
           <button type="submit" disabled={busy} style={primaryButton}>
-            {busy ? t.working : t.generate}
+            {busy ? t('working') : t('generate')}
           </button>
         </footer>
       </form>
@@ -334,10 +280,11 @@ function ArtifactShell({ artifact, children }: any) {
   </section>
 }
 function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: any) {
+  const t = useStudioLocale()
   if (!artifact)
     return (
       <ArtifactShell artifact={null} back={back} close={close}>
-        <p>{t.loading}</p>
+        <p>{t('loading')}</p>
       </ArtifactShell>
     )
   if (['running', 'queued'].includes(artifact.status))
@@ -357,7 +304,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
           >
             ◌
           </span>
-          <h2 style={{ fontSize: 18 }}>{t.generating}</h2>
+          <h2 style={{ fontSize: 18 }}>{t('generating')}</h2>
           <p style={{ color: colors.muted, fontSize: 11 }}>
             {artifact.phase === 'retrieve'
               ? '正在检索可核验内容'
@@ -373,8 +320,8 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
         <div style={{ marginTop: '16vh', textAlign: 'center' }}>
           <h2 style={{ color: colors.red, fontSize: 18 }}>
             {artifact.status === 'interrupted'
-              ? t.interruptedArtifact
-              : t.failed}
+              ? t('interruptedArtifact')
+              : t('failed')}
           </h2>
           <p style={{ color: colors.muted, fontSize: 11 }}>
             {artifact.message}
@@ -398,7 +345,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
     if (!question)
       return (
         <ArtifactShell artifact={artifact} back={back} close={close}>
-          <p>{t.error}</p>
+          <p>{t('error')}</p>
         </ArtifactShell>
       )
     const answer = artifact.interaction?.answers?.[question.id]
@@ -481,7 +428,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
               onClick={() => void update('reveal', question.id, true)}
               style={{ ...primaryButton, marginTop: 16 }}
             >
-              {t.submitAnswer}
+              {t('submitAnswer')}
             </button>
           )}
           {revealed && (
@@ -497,7 +444,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
               }}
             >
               <strong style={{ color: correct ? colors.green : colors.red }}>
-                {correct ? `✓ ${t.correct}` : `× ${t.incorrect}`}
+                {correct ? `✓ ${t('correct')}` : `× ${t('incorrect')}`}
               </strong>
               <p style={{ margin: '8px 0 0', lineHeight: 1.65, fontSize: 12 }}>
                 {question.explanation}
@@ -516,11 +463,11 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
                     style={button}
                     onClick={() => void showEvidence(citation(id))}
                   >
-                    {t.evidence} {index + 1}
+                    {t('evidence')} {index + 1}
                   </button>
                 ))}
                 <button style={button} onClick={() => void askAI(question.id)}>
-                  {t.askAI}
+                  {t('askAI')}
                 </button>
               </div>
             </section>
@@ -531,14 +478,14 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
               style={button}
               onClick={() => void update('current', question.id, current - 1)}
             >
-              {t.previous}
+              {t('previous')}
             </button>
             <button
               disabled={current >= questions.length - 1}
               style={{ ...primaryButton, marginLeft: 'auto' }}
               onClick={() => void update('current', question.id, current + 1)}
             >
-              {t.next}
+              {t('next')}
             </button>
           </div>
           {completed === questions.length && (
@@ -546,7 +493,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
               style={{ ...button, width: '100%', marginTop: 12 }}
               onClick={() => void update('reset', '', true)}
             >
-              {t.reset}
+              {t('reset')}
             </button>
           )}
           {questions.some((q:any)=>artifact.interaction?.revealed?.[q.id] && artifact.interaction?.answers?.[q.id]!==q.correctIndex) && <details style={{marginTop:18}}><summary style={{cursor:'pointer'}}>错题回顾</summary>{questions.map((q:any,index:number)=>artifact.interaction?.revealed?.[q.id] && artifact.interaction?.answers?.[q.id]!==q.correctIndex ? <button key={q.id} style={{...button,display:'block',textAlign:'left',marginTop:8,width:'100%'}} onClick={()=>void update('current',q.id,index)}>{index+1}. {q.question}</button>:null)}</details>}
@@ -564,7 +511,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
   if (!card)
     return (
       <ArtifactShell artifact={artifact} back={back} close={close}>
-        <p>{t.error}</p>
+        <p>{t('error')}</p>
       </ArtifactShell>
     )
   const flipped = Boolean(artifact.interaction?.flipped)
@@ -583,7 +530,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
             {current + 1}/{cards.length}
           </span>
           <span style={{ marginLeft: 'auto' }}>
-            {known} {t.known}
+            {known} {t('known')}
           </span>
         </div>
         <button
@@ -616,7 +563,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
           </span>
         </button>
         <p style={{ textAlign: 'center', color: colors.muted, fontSize: 10 }}>
-          {flipped ? '' : t.flip}
+          {flipped ? '' : t('flip')}
         </p>
         {flipped && (
           <>
@@ -629,10 +576,10 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
               }}
             >
               <button style={button} onClick={() => void grade(false)}>
-                {t.review}
+                {t('review')}
               </button>
               <button style={primaryButton} onClick={() => void grade(true)}>
-                {t.known}
+                {t('known')}
               </button>
             </div>
             <div
@@ -650,11 +597,11 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
                   style={button}
                   onClick={() => void showEvidence(citation(id))}
                 >
-                  {t.evidence} {index + 1}
+                  {t('evidence')} {index + 1}
                 </button>
               ))}
               <button style={button} onClick={() => void askAI(card.id)}>
-                {t.askAI}
+                {t('askAI')}
               </button>
             </div>
           </>
@@ -665,14 +612,14 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
             style={button}
             onClick={() => void update('current', card.id, current - 1)}
           >
-            {t.previous}
+            {t('previous')}
           </button>
           <button
             disabled={current >= cards.length - 1}
             style={{ ...button, marginLeft: 'auto' }}
             onClick={() => void update('current', card.id, current + 1)}
           >
-            {t.next}
+            {t('next')}
           </button>
         </div>
         {Object.keys(grades).length === cards.length && (
@@ -680,7 +627,7 @@ function ArtifactPanel({ artifact, back, close, update, askAI, showEvidence }: a
             style={{ ...button, width: '100%', marginTop: 12 }}
             onClick={() => void update('reset', '', true)}
           >
-            {t.reset}
+            {t('reset')}
           </button>
         )}
       </div>
@@ -702,6 +649,7 @@ function DetailsPanel({
   notificationNavigation,
   notificationVisible,
 }: any) {
+  const t = useStudioLocale()
   const sessionId = providedSessionId??useSession((snapshot: any) => snapshot.sessionId)
   const draft = useInput((snapshot:any)=>snapshot.draft)
   const meta = sessionMeta(sessionId)
@@ -817,7 +765,7 @@ function DetailsPanel({
         return
       }
       const target = workspace.id ? workspace : await workspaceRequest(service, meta.cwd)
-      if (!target?.id) throw new Error(t.noWorkspace)
+      if (!target?.id) throw new Error(t('noWorkspace'))
       const result = await unwrap<any>(
         service.invokeStudio(
           target.id,
@@ -860,7 +808,7 @@ function DetailsPanel({
     closePanel ? closePanel() : surface.dismiss(meta)
   if (!meta.cwd)
     return (
-      <div style={{ padding: 20, color: colors.muted }}>{t.noWorkspace}</div>
+      <div style={{ padding: 20, color: colors.muted }}>{t('noWorkspace')}</div>
     )
   if (evidence)
     return (
@@ -886,7 +834,7 @@ function DetailsPanel({
             style={{ ...button, border: 0 }}
             onClick={() => setEvidence(null)}
           >
-            ← {t.back}
+            ← {t('back')}
           </button>
           <strong
             style={{
@@ -898,7 +846,7 @@ function DetailsPanel({
             {evidence.heading || evidence.path}
           </strong>
           <button
-            aria-label={t.close}
+            aria-label={t('close')}
             style={{ ...button, marginLeft: 'auto', border: 0 }}
             onClick={close}
           >
@@ -916,7 +864,7 @@ function DetailsPanel({
             style={button}
             onClick={() => void run(() => openFile(workspace.path, evidence.path))}
           >
-            {t.openSource}
+            {t('openSource')}
           </button>
         </div>
       </section>
@@ -993,6 +941,14 @@ function SidebarStudio(props:any) {
   return <SessionDetails {...props} notificationNavigation={tab.navigation} notificationVisible={tab.visible}/>
 }
 
+
+function LocalizedSessionDetails(props: any) {
+  return <StudioLocale.Provider value={props.t}><SessionDetails {...props} /></StudioLocale.Provider>
+}
+function LocalizedSidebarStudio(props: any) {
+  return <StudioLocale.Provider value={props.t}><SidebarStudio {...props} /></StudioLocale.Provider>
+}
+
 function absoluteWorkspacePath(root: string, relative: string) {
   if (/^[A-Za-z]:[\\/]/.test(relative) || relative.startsWith('/'))
     return relative
@@ -1000,6 +956,8 @@ function absoluteWorkspacePath(root: string, relative: string) {
 }
 
 export async function apply(ctx: any) {
+  ctx.effect(() => ctx.locale.register(NS, dictionaries), 'studio: dictionaries')
+  const t = ctx.locale.bind(NS)
   const disposeRemote = await ctx.remote.$mount(knowledgeStudioRemote)
   const officialSidebar=typeof ctx.layout.openDetails!=='function'
   ctx.inject(['remote.knowledgeStudio', 'remote.session',...(officialSidebar?['sidebarRight','sidebarRightTabs']:[])], (surfaceCtx: any) => {
@@ -1042,8 +1000,8 @@ export async function apply(ctx: any) {
         surfaceCtx.slots.register({name:'conversation.session.header.utilities',id:'knowledge-studio-entry',order:30,
           inject:()=>({surface,sessions:surfaceCtx.sessions})},StudioHeaderEntry))]:[]),
       ...(officialSidebar?[
-        surfaceCtx.sidebarRightTabs.register({id:'@eduwork/dsh-knowledge-studio',kind:'knowledge-studio',title:()=> 'Studio',guide:[{order:30,title:()=> 'Studio',description:()=>zh?'从工作区资料创建成果':'Create artifacts from workspace sources'}]}),
-        surfaceCtx.slots.inject('sidebar.right.pane.tab',()=>surfaceCtx.slots.register({name:'sidebar.right.pane.tab',key:'@eduwork/dsh-knowledge-studio',inject:()=>({surface,service,sessionMeta,openFile,tabHandles,officialSidebar})},SidebarStudio)),
+        surfaceCtx.sidebarRightTabs.register({id:'@eduwork/dsh-knowledge-studio',kind:'knowledge-studio',title:()=> 'Studio',guide:[{order:30,title:()=> 'Studio',description:()=>t('sidebarDescription')}]}),
+        surfaceCtx.slots.inject('sidebar.right.pane.tab',()=>surfaceCtx.slots.register({name:'sidebar.right.pane.tab',locale:NS,key:'@eduwork/dsh-knowledge-studio',inject:()=>({surface,service,sessionMeta,openFile,tabHandles,officialSidebar})},LocalizedSidebarStudio)),
       ]:[surfaceCtx.slots.inject('details', () => {
         let disposeEntry: undefined | (() => void)
         const activation = {
@@ -1051,11 +1009,11 @@ export async function apply(ctx: any) {
             if (disposeEntry) return
             disposeEntry = surfaceCtx.slots.register(
               {
-                name: 'details',
+                name: 'details', locale: NS,
                 priority: -50,
                 inject: () => ({ surface, service, sessionMeta, openFile }),
               },
-              SessionDetails,
+              LocalizedSessionDetails,
             )
           },
           deactivate() {

@@ -1,5 +1,5 @@
 {
   "schemaVersion": 1,
   "runtimeMode": "source",
-  "sourceLock": "third_party/dsh/candidate-v0.2.0-rc.1/LOCK.json"
+  "sourceLock": "third_party/dsh/candidate-v0.2.0-rc.2/LOCK.json"
 }

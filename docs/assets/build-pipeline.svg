@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="2420" height="864" viewBox="0 0 2420 864" role="img" aria-label="EduWork 双平台桌面构建流程">
+<style>
+  .t{font:600 16px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif;fill:#1f2328}
+  .s{font:400 12px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif;fill:#59636e}
+  .h{font:600 17px -apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei","Noto Sans CJK SC","Segoe UI",sans-serif;fill:#1f2328}
+  .p{font:400 11px ui-monospace,SFMono-Regular,Menlo,monospace;fill:#8c959f}
+</style>
+<rect width="2420" height="864" fill="#ffffff"/>
+<rect x="31" y="18" width="2358" height="58" rx="8" fill="#ffffff" stroke="#d0d7de"/>
+<circle cx="47" cy="41" r="5" fill="#1f883d"/>
+<text class="h" x="62" y="46">EduWork 双平台桌面构建流程</text>
+<text class="s" x="47" y="65">Windows x64 与 macOS arm64 共用主流程；蓝色步骤仅在 macOS 执行</text>
+<path d="M258 212 C299.4 212 308.6 342 350 342" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M560 342 C601.4 342 610.6 472 652 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M258 212 C333 212 879 212 954 212" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M560 342 C635 342 879 342 954 342" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M862 472 C903.4 472 912.6 472 954 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M862 472 C903.4 472 912.6 602 954 602" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M862 732 C903.4 732 912.6 602 954 602" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M1059 654 C1059 664 1059 670 1059 680" fill="none" stroke="#0969da" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ahm)"/>
+<path d="M1768 472 C1809.4 472 1818.6 472 1860 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M2070 472 C2111.4 472 2120.6 472 2162 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
+<path d="M1164 342 C1318.56 342 1331.44 472 1486 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M1164 212 C1318.56 212 1331.44 472 1486 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M1164 472 C1318.56 472 1331.44 472 1486 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M1164 732 C1318.56 732 1331.44 472 1486 472" fill="none" stroke="url(#macJoin)" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M1164 602 C1318.56 602 1331.44 472 1486 472" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round"/>
+<path d="M1486 472 H1558" fill="none" stroke="#1f883d" stroke-width="1.8" marker-end="url(#ah)"/>
+<defs>
+  <linearGradient id="macJoin" gradientUnits="userSpaceOnUse" x1="1164" y1="0" x2="1486" y2="0"><stop offset="0" stop-color="#0969da"/><stop offset="1" stop-color="#1f883d"/></linearGradient>
+  <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#1f883d"/></marker>
+  <marker id="ahm" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto"><path d="M0 0 L10 5 L0 10 z" fill="#0969da"/></marker>
+</defs>
+<g data-stage="web"><rect x="48" y="160" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="63" y="190">构建 Web 产品</text>
+<text class="s" x="63" y="215">审计源码并装配 Web</text>
+<text class="p" x="63" y="242">web</text>
+</g>
+<g data-stage="host-adapter"><rect x="350" y="290" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="365" y="320">构建桌面 Host</text>
+<text class="s" x="365" y="345">生成桌面通信适配器</text>
+<text class="p" x="365" y="372">host-adapter</text>
+</g>
+<g data-stage="product"><rect x="652" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="667" y="450">生成桌面产品</text>
+<text class="s" x="667" y="475">汇集 Web 与 Host</text>
+<text class="p" x="667" y="502">product</text>
+</g>
+<g data-stage="electron"><rect x="954" y="160" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="969" y="190">准备 Electron</text>
+<text class="s" x="969" y="215">获取锁定的运行时</text>
+<text class="p" x="969" y="242">electron</text>
+</g>
+<g data-stage="shell"><rect x="954" y="290" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="969" y="320">构建桌面外壳</text>
+<text class="s" x="969" y="345">编译 Electron 界面</text>
+<text class="p" x="969" y="372">shell</text>
+</g>
+<g data-stage="install-host"><rect x="954" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="969" y="450">安装 Host</text>
+<text class="s" x="969" y="475">将适配器写入产品</text>
+<text class="p" x="969" y="502">install-host</text>
+</g>
+<g data-stage="native-inputs"><rect x="652" y="680" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="667" y="710">准备原生资源</text>
+<text class="s" x="667" y="735">获取对应系统的资源</text>
+<text class="p" x="667" y="762">native-inputs</text>
+</g>
+<g data-stage="native-install"><rect x="954" y="550" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="969" y="580">安装原生资源</text>
+<text class="s" x="969" y="605">将资源写入产品</text>
+<text class="p" x="969" y="632">native-install</text>
+</g>
+<g data-stage="sparkle"><rect x="954" y="680" width="210" height="104" rx="8" fill="#ddf4ff" stroke="#0969da" stroke-width="1"/>
+<text class="t" x="969" y="710">准备 Mac 更新</text>
+<text class="s" x="969" y="735">配置 Sparkle 更新组件</text>
+<text class="p" x="969" y="762">sparkle</text>
+<text class="s" x="1150" y="762" text-anchor="end">仅 macOS</text>
+</g>
+<g data-stage="desktop"><rect x="1558" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="1573" y="450">打包桌面应用</text>
+<text class="s" x="1573" y="475">生成目标系统的安装包</text>
+<text class="p" x="1573" y="502">desktop</text>
+</g>
+<g data-stage="accept"><rect x="1860" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="1875" y="450">验收桌面包</text>
+<text class="s" x="1875" y="475">检查打包后的启动</text>
+<text class="p" x="1875" y="502">accept</text>
+</g>
+<g data-stage="publish"><rect x="2162" y="420" width="210" height="104" rx="8" fill="#ffffff" stroke="#d0d7de" stroke-width="1"/>
+<text class="t" x="2177" y="450">生成交付文件</text>
+<text class="s" x="2177" y="475">整理归档与构建回执</text>
+<text class="p" x="2177" y="502">publish</text>
+</g>
+</svg>

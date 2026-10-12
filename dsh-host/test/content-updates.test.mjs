@@ -438,3 +438,25 @@ test('offline clients catch every component from the latest snapshot and unchang
   assert.equal((await manager.check()).state,'error')
   assert.match(manager.snapshot().message,/所有组件/)
 })
+
+test('a newer unpinned revision replaces an active revision pinned to an older runtime',async t=>{
+  // Issue #9: revision 1 pinned the old DSH; after a runtime upgrade revision 2 was offered on every launch but failed to install.
+  const f=await fixture(t)
+  f.release(1)
+  let manager=await f.open();await manager.prepare();await manager.check()
+  assert.equal((await manager.download()).state,'ready')
+  manager=await f.open();await manager.prepare();await manager.ready()
+  assert.match(manager.state.active.configuration,/^1-/)
+  f.options.identity.dshVersion='0.2.0-rc.2'
+  const unpinned={minClient:version,capabilities:requires.capabilities}
+  f.release(2,{configuration:2},{schemaVersion:1,configuration:{features:{visionFallback:true}}},{requires:unpinned})
+  manager=await f.open();await manager.prepare()
+  assert.equal((await manager.check()).state,'available')
+  const downloaded=await manager.download()
+  assert.equal(downloaded.state,'ready',downloaded.message)
+  const restarted=await f.open(),prepared=await restarted.prepare()
+  assert.equal(prepared.configurationRevision,2)
+  await restarted.ready()
+  assert.match(restarted.state.active.configuration,/^2-/)
+  assert.equal((await (await f.open()).check()).state,'current')
+})

@@ -4,7 +4,6 @@
 // package; Linux currently runs the Web assembly and Host validation only.
 // This entry publishes nothing: GitHub Releases, npm and update feeds remain
 // separate, explicitly authorized flows.
-import { rename } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -15,7 +14,9 @@ import {
 } from './lib/build-util.mjs'
 import { resolveEduworkUpstream } from './lib/upstream.mjs'
 import { preflight } from './lib/preflight.mjs'
+import { desktopBuildPlan } from './desktop-build-plan.mjs'
 import { ciEduworkWeb } from './ci-eduwork-web.mjs'
+import { desktopApplicationName, installPreparedApplication } from './lib/local-install.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -72,7 +73,7 @@ export async function localDesktopPipeline({
     // Linux has no supported desktop package yet. Validate what this platform
     // supports end to end: source audit, Web assembly and Host compatibility.
     const output = fullPath(workspace || join(coreRoot, 'dist/local-web-pipeline'))
-    const result = await ciEduworkWeb({ coreRoot, editionRoot, distributionConfig, version, output })
+    const result = await ciEduworkWeb({ coreRoot, editionRoot, distributionConfig, version, output, verifySnapshot, runtimeSource })
     console.log('Linux: Web assembly and validation complete. Desktop packages currently require Windows or macOS.')
     return { schemaVersion: 1, kind: 'eduwork-local-pipeline', platform: process.platform, web: result }
   }
@@ -80,7 +81,8 @@ export async function localDesktopPipeline({
   version = await developmentVersion(coreRoot, version)
   const output = fullPath(workspace || join(coreRoot, `dist/local-desktop-${version}`))
   installRoot = fullPath(installRoot || defaultInstallRoot())
-  const installTarget = isWindows ? join(installRoot, name) : join(installRoot, `${name}.app`)
+  const applicationName = desktopApplicationName({ edition: name, platform: process.platform, sourceAlpha: true })
+  const installTarget = join(installRoot, applicationName)
   if (!skipInstall && await pathExists(installTarget)) {
     throw new Error(`Install target already exists and is never replaced: ${installTarget}. ` +
       'Move it away or pass --install-root <new directory>.')
@@ -89,8 +91,8 @@ export async function localDesktopPipeline({
   // Fail before the expensive work rather than minutes into it. The upstream
   // cache is inspected only when it already exists: scanning it reports damage,
   // and it is never repaired or deleted here.
-  const lock = await readJSON(join(coreRoot, 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'))
-  const resolvedUpstream = await resolveEduworkUpstream(lock.commit)
+  const plan = await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false })
+  const resolvedUpstream = await resolveEduworkUpstream(plan.upstreamCommit)
   const checks = await preflight({ coreRoot, upstream: resolvedUpstream })
   for (const note of checks.notes) console.log(`Preflight: ${note}`)
   if (checks.problems.length) {
@@ -136,6 +138,7 @@ export async function localDesktopPipeline({
     // archive bytes inside the workspace.
     checks: { build: 'passed', packagedLaunch: 'passed' },
     installed: false,
+    applicationName,
   }
 
   if (!skipInstall) {
@@ -149,14 +152,16 @@ export async function localDesktopPipeline({
     await ensureDir(staging)
     if (isWindows) {
       await run('tar.exe', ['-xf', archive, '-C', staging])
-      await rename(join(staging, name), installTarget)
     } else {
       await run('ditto', ['-x', '-k', archive, staging])
-      await rename(join(staging, `${name}.app`), installTarget)
     }
+    if (isMacOS && releaseReceipt.applicationName !== applicationName) {
+      throw new Error('Archive application name differs from the local install target')
+    }
+    await installPreparedApplication({ staging, installRoot, applicationName })
     await removeTree(staging)
     if (isWindows) {
-      await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [installTarget, '--for-update'])
+      await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [installTarget])
       await run(join(installTarget, 'resources/runtime/node.exe'),
         [join(coreRoot, 'scripts/check-desktop-runtimes.mjs'), installTarget, join(output, 'installed-native-runtimes.json')])
     } else {

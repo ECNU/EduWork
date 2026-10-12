@@ -273,3 +273,18 @@ test('one configuration file overrides installed plugin endpoints but cannot add
   await writeFile(userConfig,JSON.stringify({schemaVersion:1,plugins:{'not-installed':{}}}))
   await assert.rejects(prepareProductProfile({product,home,shell:'electron',userConfig}),/not-installed/)
 })
+
+
+test('only Electron profiles replace auto and legacy desktop picker entries with one backend and surface', async t => {
+  const { root, product } = await fixture(t)
+  for (const shell of ['electron', 'wails']) {
+    const { profile } = await prepareProductProfile({ product, home: join(root, shell), shell })
+    const patches = JSON.parse(await readFile(join(profile, 'cordis.patch.yml')))
+    const plugins = patches.flatMap(row => row.insert ?? [])
+    for (const id of ['directory-picker', 'directory-picker-native', 'ui-directory-picker-native']) {
+      assert.equal(patches.some(row => row.id === id && row.disabled), shell === 'electron')
+    }
+    assert.equal(plugins.filter(row => row.id === 'eduwork-directory-picker').length, shell === 'electron' ? 1 : 0)
+    assert.equal(plugins.filter(row => row.id === 'eduwork-directory-flow').length, shell === 'electron' ? 1 : 0)
+  }
+})

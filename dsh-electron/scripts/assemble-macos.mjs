@@ -10,6 +10,7 @@ import {
   capture, copyFileTo, ensureDir, fullPath, isFile, isMacOS, isMainModule,
   pathExists, readJSON, run, sha256File, statEntry, writeJSON, writeText,
 } from '../../scripts/lib/build-util.mjs'
+import { desktopApplicationName } from '../../scripts/lib/local-install.mjs'
 import { relocateMacosCompositor } from './relocate-macos-compositor.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
@@ -62,7 +63,7 @@ export async function assembleMacos({
   openssl = fullPath(openssl)
   if (await pathExists(output)) throw new Error('macOS output must be a new directory')
   if (!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version ?? '')) throw new Error('An explicit product version is required')
-  if (!updateDefaultPolicy) updateDefaultPolicy = /-dev\./.test(version) ? 'development' : 'stable'
+  if (!updateDefaultPolicy) updateDefaultPolicy = (version ?? '').includes('-') ? 'development' : 'stable'
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
   if (externalPublisherConfig && !isAbsolute(externalPublisherConfig)) throw new Error('External publisher configuration path must be absolute')
   const sparkleEnabled = Boolean(sparkleFramework || sparkleFeedURL || sparklePublicEDKey)
@@ -102,7 +103,7 @@ export async function assembleMacos({
   if (!await isFile(nodeLicense)) throw new Error('Use the extracted official Node distribution, including LICENSE')
 
   const editionName = identity.distribution === 'eduwork' ? 'EduWork' : 'EduWork-ECNU'
-  const appName = identity.sourceAlpha ? `${editionName} Alpha.app` : `${editionName}.app`
+  const appName = desktopApplicationName({ edition: editionName, platform: 'darwin', sourceAlpha: identity.sourceAlpha })
   const app = join(output, appName)
   await mkdir(output)
   await ditto(electronApp, app).catch(() => { throw new Error('Electron.app copy failed') })
@@ -191,6 +192,7 @@ export async function assembleMacos({
     appId: `org.eduwork.${identity.distribution}.electron`,
     distribution: identity.distribution,
     productName: identity.brand.product.name,
+    applicationName: appName,
     productVersion: version,
     product: '../product',
     node: '../runtime/node',
@@ -281,6 +283,7 @@ export async function assembleMacos({
     dshCommit: identity.dshCommit,
     distribution: identity.distribution,
     productName: identity.brand.product.name,
+    applicationName: appName,
     platform: 'darwin-arm64',
     electronVersion,
     nodeVersion: receipt.host.nodeVersion,
@@ -312,7 +315,7 @@ export async function assembleMacos({
   try {
     await rsync(app, signingApp).catch(() => { throw new Error('Signing-stage copy failed') })
     await run('xattr', ['-cr', signingApp]).catch(() => { throw new Error('Signing-stage metadata cleanup failed') })
-    await run('codesign', ['--force', '--deep', '--sign', '-', '--timestamp=none', signingApp])
+    await run('codesign', ['--force', '--deep', '--sign', '-', '--timestamp=none', '--entitlements', join(scriptRoot, '../entitlements.plist'), signingApp])
       .catch(() => { throw new Error('Local ad-hoc signing failed') })
     await run('codesign', ['--verify', '--deep', '--strict', signingApp])
       .catch(() => { throw new Error('Local ad-hoc signature verification failed') })

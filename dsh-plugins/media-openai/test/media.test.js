@@ -28,6 +28,7 @@ test('configuration keeps services optional and requires explicit models, capabi
     p => { p.images.nativeSizes = [] }, p => { p.images.defaultSize = '900x800' },
     p => { p.speech.defaultVoice = 'missing' }, p => { p.baseURL = 'https://user:password@example.test' },
     p => { p.baseURL = 'http://remote.example.test' }, p => { p.protocol = 'guess' },
+    p => { p.credentialRef = 'DSH_OIDC_SCHOOL_SESSION' },
   ]) { const changed = config(); mutate(changed.providers[0]); assert.throws(() => normalizeMediaConfig(changed)) }
   assert.throws(() => normalizeMediaConfig({ providers: [data.providers[0], data.providers[0]] }), /唯一/)
   data.providers[0].images = { enabled: false }

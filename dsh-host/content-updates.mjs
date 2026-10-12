@@ -71,13 +71,20 @@ export class ContentUpdates {
   }
   snapshot() { return {...this.view} }
   async save() { await atomic(this.statePath,this.state) }
-  async cached(key) {
+  async cachedManifest(key) {
     if(!reference(key))throw Error('内容缓存标识无效')
     const directory=join(this.store,key)
     if((await lstat(directory)).isSymbolicLink())throw Error('内容缓存不能是符号链接')
     const envelope=await readJSON(join(directory,'manifest.json'))
     const manifest=verifiedManifest(envelope,this.source)
     if(key!==`${manifest.revision}-${manifest.bundle.sha256}`)throw Error('内容缓存身份不一致')
+    return manifest
+  }
+  // Revision floors only need the signed manifest. An older revision may target
+  // a runtime this client no longer has; that must not block its replacement.
+  async cachedRevision(key,name){return (await this.cachedManifest(key)).components[name]}
+  async cached(key) {
+    const manifest=await this.cachedManifest(key),directory=join(this.store,key)
     const reason=incompatible(manifest.requires,this.environment);if(reason)throw Error(reason)
     const bundlePath=join(directory,'bundle.json'),info=await lstat(bundlePath)
     if(!info.isFile()||info.isSymbolicLink()||info.size>CONTENT_LIMIT)throw Error('内容缓存文件无效')
@@ -158,7 +165,7 @@ export class ContentUpdates {
         if(Object.entries(pending.manifest.components).some(([name,revision])=>revision<(this.source.bundled[name]??0)))throw Error('软件内置内容已更新，已取消旧的待生效内容')
         for(const name of Object.keys(pending.manifest.components)) {
           if(!this.source[name])continue
-          const activeRevision=selected[name]?(await this.cached(selected[name])).manifest.components[name]:this.source.bundled[name]??0
+          const activeRevision=selected[name]?await this.cachedRevision(selected[name],name):this.source.bundled[name]??0
           if(pending.manifest.components[name]>activeRevision)selected[name]=this.state.pending
         }
         this.state.trial=this.state.pending;this.state.trialPhase='applying';await this.save()
@@ -284,7 +291,7 @@ export class ContentUpdates {
       for(const [name,revision] of Object.entries(manifest.components)) {
         if(revision<this.view[name+'Revision'])throw Error('内容组件修订号不能倒退')
         const active=this.state.active[name]
-        if(active&&!(repair&&active===key)&&(await this.cached(active)).manifest.components[name]>revision)throw Error('内容组件修订号不能倒退')
+        if(active&&!(repair&&active===key)&&await this.cachedRevision(active,name)>revision)throw Error('内容组件修订号不能倒退')
       }
       await mkdir(temporary)
       await writeFile(join(temporary,'bundle.json'),bytes,{flag:'wx'})

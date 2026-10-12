@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs, isDeepStrictEqual } from 'node:util'
+import { rebuiltDshPeers } from './dsh-compatibility.mjs'
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
 export async function installProductHost({ product, adapter }) {
@@ -31,11 +32,9 @@ export async function installProductHost({ product, adapter }) {
   for (const folder of ['credentials-native', 'desktop-boundary', 'desktop-services']) {
     const source = join(repository, 'dsh-plugins', folder)
     const manifest = JSON.parse(await readFile(join(source, 'package.json'), 'utf8'))
-    // The Web-to-desktop preparation step pins DSH peers to the product's
-    // frozen baseline. Apply the same projection before checking its payload.
-    for (const name of Object.keys(manifest.peerDependencies || {})) {
-      if (name.startsWith('@deepseek-ai/dsh-')) manifest.peerDependencies[name] = identity.dshVersion
-    }
+    // Keep the same API declaration as the Web-to-desktop preparation step;
+    // receipt and executable payload comparisons remain exact.
+    manifest.peerDependencies = rebuiltDshPeers(manifest, identity.dshVersion)
     const destination = join(product, 'd/node_modules', manifest.name)
     const payload = ['package.json']
     const walk = async prefix => {

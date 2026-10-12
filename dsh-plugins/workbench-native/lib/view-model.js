@@ -31,7 +31,7 @@ export function skillCenterRows(catalog=[],settings={}){
   const name=canonicalSkillName(item.name), existing=rows.get(name)
   if(existing){if(item.source==='personal')existing.variants.push({...item,legacy:item.name!==name});continue}
   const label=labels.get(name)
-  rows.set(name,{...item,name,label:label?.label||name,description:label?.description||item.description,group:label?.group||'custom',enabled:!disabled.has(name),available:item.available!==false,variants:[]})
+  rows.set(name,{...item,name,label:item.displayName||label?.label||name,description:item.displayDescription||label?.description||item.description,group:label?.group||'custom',enabled:!disabled.has(name),available:item.available!==false,variants:[]})
  }
  return [...rows.values()]
 }

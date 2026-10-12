@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-literature",
+  "version": "0.1.2",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "ce059263b5ee609824bdafc9adcd28ba8548c767",
+  "publicationStatus": "published",
+  "tarballSHA256": "990f4c81a8d66cc2aece71992cd96deb5a2f7c1380330c2d3a8e00309c6a6d1c",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-literature/-/dsh-literature-0.1.2.tgz",
+    "integrity": "sha512-q2UO+RGA2eIU03g0n45atQqKwfaDgmi3wRPiYGpE+52qhYt33B9NqBN/W454SM9gGXaiBkGOe1YLjAob0BsdUw==",
+    "shasum": "58d24e2ad954dc07f44f0aad4651ebde7023b9a6"
+  },
+  "baseline": {
+    "dshVersion": "0.2.0-rc.2",
+    "commit": "639ed015397290b3745d163aafe02ffee4aa3f84"
+  }
+}

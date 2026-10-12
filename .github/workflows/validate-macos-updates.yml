@@ -26,19 +26,22 @@ on:
       - 'dsh-electron/tests/window-visibility.test.mjs'
       - 'dsh-electron/tests/window-visibility.electron.mjs'
       - 'dsh-electron/sparkle.lock.json'
-      - 'dsh-electron/scripts/assemble-macos.ps1'
+      - 'dsh-electron/scripts/assemble-macos.mjs'
       - 'config/desktop/mac-updates.json'
       - '.github/workflows/desktop-candidates.yml'
       - 'scripts/macos-update-feed.mjs'
       - 'scripts/test/macos-update-feed.test.mjs'
-      - 'scripts/ci-eduwork-macos-release.ps1'
+      - 'scripts/ci-eduwork-macos-release.mjs'
+      - 'scripts/lib/macos-stages.mjs'
+      - 'scripts/prepare-macos-dmg.mjs'
+      - '.github/workflows/development-desktop.yml'
       - '.github/workflows/validate-macos-updates.yml'
   workflow_dispatch:
 permissions:
   contents: read
 jobs:
   sparkle:
-    runs-on: macos-15
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
         with:

@@ -1,12 +1,21 @@
+const canonical=value=>value===true?'on':value===false?'off':String(value)
+
+/** Keep the form and its generated request in sync, including hidden defaults. */
+export function parameterVisible(parameter,values={}) {
+  return (!parameter.when||Object.entries(parameter.when).every(([key,value])=>canonical(values[key])===canonical(value)))
+    &&(!parameter.whenNot||Object.entries(parameter.whenNot).every(([key,value])=>canonical(values[key])!==canonical(value)))
+    &&(!parameter.whenNonempty||Boolean(values[parameter.whenNonempty]))
+}
+
 /** Human-readable Studio request; only options relevant to this capability. */
 export function artifactRequest(capability,parameters={}) {
-  const canonical=value=>value===true?'on':value===false?'off':String(value)
-  const matches=condition=>Object.entries(condition||{}).every(([key,value])=>canonical(parameters[key])===canonical(value))
   const lines=[]
   for(const parameter of capability.parameters||[]) {
     const value=parameters[parameter.id]
-    if(value==null||value===''||(parameter.when&&!matches(parameter.when))||(parameter.whenNot&&matches(parameter.whenNot)))continue
-    const option=parameter.options?.find(option=>canonical(option.value)===canonical(value)&&(!option.when||matches(option.when)))
+    if(value==null||!parameterVisible(parameter,parameters))continue
+    const option=parameter.options?.find(option=>canonical(option.value)===canonical(value)&&parameterVisible(option,parameters))
+    // Empty selections can be explicit choices (e.g. music off); blank text is optional.
+    if(value===''&&!option)continue
     lines.push(`${parameter.label}：${option?.label||String(value)}`)
   }
   return `请基于当前工作区生成${capability.title}，并将成果保存在 Studio。${lines.length?'\n\n'+lines.join('\n'):''}\n\n按 knowledge-studio 技能创建并登记成果，完成后确认其出现在 Studio 最近成果中。保留可核验的资料来源。资料不足时请明确说明。直接使用工作区原始资料。`

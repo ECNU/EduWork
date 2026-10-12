@@ -18,6 +18,8 @@ const response = await ctx.oidcAccounts.modelResourceFetch(profileID, '/quota', 
 
 需要 OAuth Access Token 的机构服务使用 `authorizedFetch(profileID, endpoint, init, authorization?)`。请求前检查到期时间，默认提前 30 分钟刷新；提前量不超过该 Token 实际有效期的一半（例如有效期 10 分钟时，剩余 5 分钟开始刷新），避免短有效期 Token 刚获取就反复刷新。刷新时间随凭据保存在 Host，重启后仍生效；只有到期时间的旧会话先按默认余量处理，首次刷新后自动补齐，无须重新登录。`auth` 模式 GET/HEAD 收到 401 后最多刷新并重试一次。
 
+已审查的 Host 扩展如需调用模型 API 前缀之外的发行者服务，可在单次请求的 `authorization.issuerServicePath` 中指定精确路径，例如 `/user/active`。仅允许 POST，目标必须与已验证 issuer 同源且路径完全一致，不接受查询串、片段、URL 凭据和重定向。路径各段只允许字母、数字、下划线和连字符。该选项由 Host 代码固定，不得转发浏览器或模型给出的值；它不修改持久化白名单。请求继续复用账号刷新、取消与响应隔离；可重复的正文可配合 `retryUnauthorized: true` 最多重试一次。
+
 可安全重复提交的机构请求（例如活跃心跳）可显式传入第四个参数 `{ retryUnauthorized: true }`，为 POST 启用相同的一次恢复；请求正文须为已缓冲的字符串或为空，不接受流式正文。该选项只供受信 Host 代码使用，不进入 HTTP 请求或客户端 RPC，也不扩大目标 origin/路径白名单。模型生成请求不启用此选项，不自动重放；同一授权的正常 Token 刷新或自然到期不会由客户端取消已开始的流，下一次请求重新检查授权。刷新提前量不是最长生成时间，也不能替代服务端对长流式请求的正确处理。见 [公共身份与资源协议](public-resource-protocol.md)。这两个方法都不会自动触发业务请求。
 
 成功重新登录或注销会发出带 `authorizationChanged: true` 的 `oidc/accounts-changed` 事件，即使前后 `state` 都是 `connected`。扩展必须清理旧授权的失败状态及在途结果，不能仅按状态名称去重；普通状态轮询仍只在状态变化时发通知。

@@ -31,9 +31,12 @@ export function detectOidcLlm(raw, profile) {
   const identityMode = profile.auth.identityMode
   includes(extension, 'identity_modes_supported', ['oauth', identityMode])
   includes(extension, 'client_registration_methods_supported', ['static'])
-  const scopes = identityMode === 'oidc'
+  const identityScopes = identityMode === 'oidc'
     ? ['openid', 'profile', 'offline_access', 'llm:models:read', 'llm:invoke']
     : ['llm:profile', 'llm:models:read', 'llm:invoke']
+  // Only request explicitly configured services; discovery is not consent to
+  // every capability advertised by the authorization server.
+  const scopes = [...new Set([...identityScopes, ...(profile.auth.additionalScopes ?? [])])]
   for (const [key, values] of Object.entries({
     response_types_supported: ['code'], grant_types_supported: ['authorization_code', 'refresh_token'],
     code_challenge_methods_supported: ['S256'], token_endpoint_auth_methods_supported: ['none'],
