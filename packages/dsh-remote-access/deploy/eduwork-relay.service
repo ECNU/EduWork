@@ -1,0 +1,38 @@
+[Unit]
+Description=EduWork remote-access relay (forwards opaque bytes only)
+Documentation=https://github.com/ECNU/EduWork/issues/116
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+DynamicUser=yes
+StateDirectory=eduwork-relay
+StateDirectoryMode=0750
+WorkingDirectory=/opt/eduwork-relay
+ExecStart=/usr/bin/node /opt/eduwork-relay/server.mjs
+EnvironmentFile=/etc/eduwork-relay.env
+# The relay holds no key material and needs no credentials. If a future version
+# does, it must not be given one through this file.
+Restart=on-failure
+RestartSec=2
+
+# Loopback only, and no wider than that. The service must not be able to bind a
+# public interface even if it is reconfigured to try: `AF_INET` alone would allow
+# it, so the address is pinned in the environment file and this list is kept
+# minimal rather than treated as the control.
+NoNewPrivileges=yes
+PrivateTmp=yes
+PrivateDevices=yes
+ProtectSystem=strict
+ProtectHome=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+RestrictAddressFamilies=AF_INET AF_INET6
+RestrictNamespaces=yes
+LockPersonality=yes
+MemoryMax=192M
+
+[Install]
+WantedBy=multi-user.target

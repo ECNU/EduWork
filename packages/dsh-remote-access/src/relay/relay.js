@@ -169,30 +169,41 @@ function createLink(hostConnection, sendControl) {
       sendControl(connection, message)
       return true
     },
+    /**
+     * Release what was held, one direction at a time.
+     *
+     * `open` needs only the device's READY, because the relay must be able to carry
+     * the Host's answer the moment the device is listening for it. Releasing held
+     * frames is a different question: a frame may only go in a direction whose
+     * recipient has stopped treating its socket as the relay's control channel.
+     *
+     * This is where that was once wrong. Device frames were handed straight to
+     * `link.host.forward`, so a Host that had not sent READY received device traffic
+     * on a socket it was still reading as a control plane — and the Host's READY
+     * then arrived as data traffic. Nothing dropped and nothing threw; the device
+     * simply stalled against a Host that never saw its `hello`, which is the worst
+     * shape a bug can have.
+     */
+    flush(log) {
+      const toPeer = link.peerReady && link.peer !== undefined ? link.pending : []
+      const toHost = link.hostReady ? link.pendingPeer : []
+      link.pending = link.pending.filter(frame => !toPeer.includes(frame))
+      link.pendingPeer = link.pendingPeer.filter(frame => !toHost.includes(frame))
+      if (toPeer.length > 0) {
+        log(`relay: releasing ${toPeer.length} host frame(s) held during the control hand-off`)
+        for (const frame of toPeer) link.peer.forward(frame.data, frame.isText)
+      }
+      if (toHost.length > 0) {
+        log(`relay: releasing ${toHost.length} device frame(s) held during the control hand-off`)
+        for (const frame of toHost) link.host.forward(frame.data, frame.isText)
+      }
+    },
     /** Set by whichever of the two handlers is the second to see READY. */
     evaluate(log) {
-      // The device's READY is the hinge, and it is the requirement that carries
-      // the weight: by the time the relay sees it, the device has seen
-      // everything this link will ever send it (`linked`, then `ready` back, in
-      // order on one socket). The Host's own READY is *not* a prerequisite for
-      // forwarding towards the Host — the Host is free to answer `hello` as soon
-      // as it knows a device exists, and it usually does, before the device's
-      // READY has even been parsed.
       if (link.open || !link.peerReady || link.peer === undefined) return
       link.open = true
       log('relay: link is transparent in both directions')
-      const held = link.pending
-      link.pending = []
-      if (held.length > 0) {
-        log(`relay: releasing ${held.length} host frame(s) held during the control hand-off`)
-        for (const frame of held) link.peer.forward(frame.data, frame.isText)
-      }
-      const heldFromPeer = link.pendingPeer
-      link.pendingPeer = []
-      if (heldFromPeer.length > 0) {
-        log(`relay: releasing ${heldFromPeer.length} device frame(s) held during the control hand-off`)
-        for (const frame of heldFromPeer) link.host.forward(frame.data, frame.isText)
-      }
+      link.flush(log)
     },
     /** A device left: the link closes and the Host must announce itself again. */
     reopen() {
@@ -368,6 +379,11 @@ export function createRelay({
           link.hostReady = true
           log(`relay: host ${registered.hostId} is forwarding`)
           link.evaluate(log)
+          // Unconditional, and separate from `evaluate`: the link is usually
+          // already open by the time the Host's READY lands, and `evaluate`
+          // returns early in that case. Flushing has to happen on both READYs,
+          // because each one releases a different direction.
+          link.flush(log)
         } else {
           connection.close(1003, 'forwarding has not started')
         }
@@ -376,9 +392,9 @@ export function createRelay({
       // A Host answers `hello` as soon as it knows a device exists, which is
       // routinely before the relay has parsed the device's READY — the two
       // sockets advance independently. That answer is real traffic, so it is
-      // held rather than dropped, and `evaluate` releases it in order the moment
-      // READY lands. Only the device's READY opens the link, but nothing the
-      // Host sends is thrown away while it waits.
+      // held rather than dropped, and `flush` releases it in order the moment
+      // both ends are ready. Only the device's READY opens the link, but nothing
+      // the Host sends is thrown away while it waits.
       if (link.open && link.peer !== undefined) {
         link.peer.forward(data, isText)
       } else if (link.peer !== undefined) {
@@ -459,6 +475,7 @@ export function createRelay({
           link.peerReady = true
           log(`relay: a device on ${hostId} is forwarding`)
           link.evaluate(log)
+          link.flush(log)
         } else if (link.pendingPeer.length >= MAX_PENDING_HOST_FRAMES) {
           connection.close(1011, 'device sent too much before its control hand-off')
         } else {
@@ -470,12 +487,18 @@ export function createRelay({
         }
         return
       }
-      if (link.open) link.host.forward(data, isText)
-      // Past the device's READY the link is one frame away from open at worst,
-      // so a frame that cannot be forwarded means the Host side never completed
-      // its own hand-off. Dropping it silently left the device waiting for an
-      // answer that could not come; saying so lets it reconnect instead.
-      else connection.close(1011, 'host has not finished its control hand-off')
+      // Both ends must be out of their control phase before a frame crosses. The
+      // device being ready says only that the device is listening; it says nothing
+      // about the Host, which may still be reading its socket as the relay's
+      // control channel. Forwarding to it there is the same mistake as releasing
+      // held frames early, so the frame waits in the queue it is already in.
+      if (link.open && link.hostReady) {
+        link.host.forward(data, isText)
+      } else if (link.pendingPeer.length >= MAX_PENDING_HOST_FRAMES) {
+        connection.close(1011, 'host has not finished its control hand-off')
+      } else {
+        link.pendingPeer.push({ data, isText })
+      }
     })
     connection.on('close', () => {
       if (link.peer === connection) {
