@@ -210,6 +210,7 @@ export class HostHandshake {
   #peerSigningKey = null
   #peerAgreementKey = null
   #peerEphemeral = null
+  #device = null
   #state = 'await-hello'
   #session = null
   #sas = null
@@ -232,6 +233,24 @@ export class HostHandshake {
   }
 
   /**
+   * The device this handshake proved.
+   *
+   * Available once `next()` has resolved a `hello`. It is read from the record
+   * the resolver returned, not from the message: the message claimed an id, and
+   * the id is only worth using once the key it arrived with matched the one on
+   * file. A caller that needs to answer this device reads it here rather than
+   * remembering what the frame said.
+   */
+  get deviceId() {
+    return this.#device?.deviceId
+  }
+
+  /** The verified device record, or undefined before `hello` is consumed. */
+  get device() {
+    return this.#device
+  }
+
+  /**
    * Consume one inbound message.
    * @param message - decoded handshake message, or undefined to poll.
    * @returns the next message to send and whether the channel is established.
@@ -250,6 +269,9 @@ export class HostHandshake {
       if (device.publicKey !== hello.Sh || device.agreementKey !== hello.Xh) {
         throw fail(HANDSHAKE_FAILURE.PEER_SIGNATURE)
       }
+      // Recorded only after the keys matched, so `deviceId` never names a device
+      // whose identity was claimed rather than proven.
+      this.#device = device
 
       this.#peerSigningKey = hello.Sh
       this.#peerAgreementKey = await decodePublicKey(hello.Xh, 'ECDH')

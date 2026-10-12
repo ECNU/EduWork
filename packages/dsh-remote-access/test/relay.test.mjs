@@ -261,19 +261,28 @@ test('一个宿主同时只接一个设备，第二个收到 host-busy', async (
   host.connection.close()
 })
 
-test('设备在 READY 之前发数据帧会被明确拒绝', async () => {
+test('设备在 READY 之前发的数据帧会被扣住，READY 一到就按原序补发', async () => {
   const host = await registerHost('host-phase', 'p256:PHASE')
   const peer = await open(`${PEER_PATH}?h=host-phase`)
   await peer.next('linked')
   await host.connection.next('peer-joined')
+  sayReady(host.connection)
 
-  // The device has seen `linked` but has not said READY. Its first frame must be
-  // refused, not forwarded and not ignored: an endpoint left waiting for an
-  // answer that cannot arrive cannot tell that apart from a slow Host.
-  const closed = new Promise((resolve) => peer.on('close', resolve))
+  // A real device sends `ready` and its first handshake frame back to back on
+  // one socket, so the relay reads them in whichever order they arrive. Closing
+  // the device for that race punishes it for something it cannot observe, and
+  // dropping the frame loses the handshake — so it is held, like the Host's.
   peer.say({ t: 'hello', marker: 'before-ready' })
-  const outcome = await closed
-  assert.equal(outcome.code, 1003, 'the sender must be told, not ignored')
+  await new Promise((resolve) => setTimeout(resolve, 80))
+  assert.deepEqual(
+    host.connection.entries.map((entry) => entry.message?.marker).filter(Boolean),
+    [],
+    'nothing may reach the Host before the device says READY',
+  )
+
+  sayReady(peer)
+  const delivered = await host.connection.next((m) => m?.marker === 'before-ready')
+  assert.equal(delivered.marker, 'before-ready')
 
   peer.close()
   host.connection.close()

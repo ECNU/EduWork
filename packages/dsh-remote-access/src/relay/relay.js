@@ -145,6 +145,15 @@ function createLink(hostConnection, sendControl) {
      */
     pending: [],
     /**
+     * Device frames held for the same reason, in the other direction.
+     *
+     * The device sends `ready` and its first handshake frame back to back, and
+     * the relay may read them in either order. Closing the device because its
+     * own READY has not been parsed yet punishes it for a race it cannot
+     * observe, and it is the same mistake as dropping the Host's answer.
+     */
+    pendingPeer: [],
+    /**
      * Send a relay control frame only if the recipient is still in its control phase.
      *
      * Silently dropping is not a loss of information: a connection that is
@@ -178,6 +187,12 @@ function createLink(hostConnection, sendControl) {
         log(`relay: releasing ${held.length} host frame(s) held during the control hand-off`)
         for (const frame of held) link.peer.forward(frame.data, frame.isText)
       }
+      const heldFromPeer = link.pendingPeer
+      link.pendingPeer = []
+      if (heldFromPeer.length > 0) {
+        log(`relay: releasing ${heldFromPeer.length} device frame(s) held during the control hand-off`)
+        for (const frame of heldFromPeer) link.host.forward(frame.data, frame.isText)
+      }
     },
     /** A device left: the link closes and the Host must announce itself again. */
     reopen() {
@@ -189,6 +204,7 @@ function createLink(hostConnection, sendControl) {
       // that no longer exists; replaying them to its successor would be worse
       // than losing them.
       link.pending = []
+      link.pendingPeer = []
     },
   }
   return link
@@ -382,7 +398,15 @@ export function createRelay({
     connection.on('close', () => {
       if (registered === null) return
       if (live.get(registered.hostId) === connection) live.delete(registered.hostId)
-      if (link?.peer !== undefined) link.notify(link.peer, { t: 'peer-gone' })
+      // Tell the device, then close it. A device left holding an open socket
+      // after its Host is gone waits for a reply that nothing can produce, and it
+      // cannot tell that apart from a slow Host — the same failure the relay
+      // avoids when a device leaves. Closing is what makes the end of the link
+      // observable.
+      if (link?.peer !== undefined) {
+        link.notify(link.peer, { t: 'peer-gone' })
+        link.peer.close(1011, 'the host is no longer connected')
+      }
       log(`relay: host ${registered.hostId} left`)
     })
   }
@@ -435,8 +459,14 @@ export function createRelay({
           link.peerReady = true
           log(`relay: a device on ${hostId} is forwarding`)
           link.evaluate(log)
+        } else if (link.pendingPeer.length >= MAX_PENDING_HOST_FRAMES) {
+          connection.close(1011, 'device sent too much before its control hand-off')
         } else {
-          connection.close(1003, 'forwarding has not started')
+          // Held, not dropped and not punished: the device sends `ready` and its
+          // first handshake frame back to back, and the relay may read them in
+          // either order. Closing it for a race it cannot observe is the same
+          // mistake as dropping the Host's answer, in the other direction.
+          link.pendingPeer.push({ data, isText })
         }
         return
       }
