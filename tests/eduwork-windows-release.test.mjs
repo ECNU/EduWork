@@ -8,11 +8,53 @@ import {createHash} from 'node:crypto'
 import {githubUpdateManifest,githubUpdateManifestBytes} from '../scripts/github-update-manifest.mjs'
 import {windowsStages} from '../scripts/lib/windows-stages.mjs'
 import {fileURLToPath} from 'node:url'
+import {execFile} from 'node:child_process'
+import {promisify} from 'node:util'
+import {installProductHost} from '../dsh-host/install-product-host.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
 const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
 function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
+
+test('Windows desktop stage preserves the edition policy of an already qualified Host', async t => {
+ const root=await mkdtemp(join(tmpdir(),'eduwork-frozen-host-'))
+ t.after(async()=>{
+  assert.ok(resolve(root).startsWith(resolve(tmpdir())+sep) && basename(root).startsWith('eduwork-frozen-host-'))
+  await rm(root,{recursive:true,force:true})
+ })
+ const product=join(root,'product'),adapter=join(root,'host'),policyPath='desktop-host/lib/distribution-policy.patch.json'
+ await mkdir(product);await mkdir(join(adapter,'desktop-host/lib'),{recursive:true});await mkdir(join(root,'inputs'))
+ await writeFile(join(product,'assembly.json'),JSON.stringify({dshCommit:'fixture-upstream',dshVersion:'0.2.0-rc.2'}))
+ const payloads={'desktop-host/lib/index.js':'export const fixture = true\n',[policyPath]:'[{"id":"product-analytics","disabled":true}]\n'}
+ for(const [path,bytes] of Object.entries(payloads))await writeFile(join(adapter,path),bytes)
+ await writeFile(join(adapter,'receipt.json'),JSON.stringify({upstreamCommit:'fixture-upstream',upstreamVersion:'0.2.0-rc.2',protocolVersion:3,outputs:Object.fromEntries(Object.entries(payloads).map(([path,bytes])=>[path,createHash('sha256').update(bytes).digest('hex')]))}))
+ await installProductHost({product,adapter})
+ const policyFile=join(product,'d/node_modules/@deepseek-ai/dsh-desktop-host/lib/distribution-policy.patch.json')
+ const policy=JSON.stringify([...JSON.parse(payloads[policyPath]),{id:'retired-edition-plugin',disabled:true}])+'\n'
+ await writeFile(policyFile,policy)
+ // Reinstallation really rejects this legitimate, later edition overlay.
+ // Keep that integrity guard; the desktop stage must consume the frozen product.
+ await assert.rejects(installProductHost({product,adapter}),/another desktop Host/)
+ await writeFile(join(root,'inputs/inputs.json'),JSON.stringify({node:process.execPath}))
+ const assemblyURL=new URL('../dsh-electron/scripts/assemble-windows.mjs',import.meta.url).href
+ const packingURL=new URL('../scripts/pack-windows-release.mjs',import.meta.url).href
+ const stagesURL=new URL('../scripts/lib/windows-stages.mjs',import.meta.url).href
+ const assembler=`import assert from 'node:assert/strict';import {readFile,mkdir,writeFile} from 'node:fs/promises';import {join} from 'node:path';export async function assembleWindows(options){assert.equal(await readFile(${JSON.stringify(policyFile)},'utf8'),${JSON.stringify(policy)});await mkdir(options.output,{recursive:true});await writeFile(join(options.output,'edition-policy.json'),${JSON.stringify(policy)});}`
+ const packer=`import assert from 'node:assert/strict';import {readFile,writeFile} from 'node:fs/promises';import {join} from 'node:path';export async function packWindowsRelease(options){assert.equal(await readFile(join(options.candidate,'edition-policy.json'),'utf8'),${JSON.stringify(policy)});await writeFile(options.output,'Synthetic archive boundary');return {output:options.output};}`
+ // Only native packaging is stubbed. Execute the real stage and Host installer
+ // in a separate module graph, so a duplicate install fails before packaging.
+ const child=`import {registerHooks} from 'node:module';import {join} from 'node:path';
+ const stubs=new Map(${JSON.stringify([[assemblyURL,'data:text/javascript,'+encodeURIComponent(assembler)],[packingURL,'data:text/javascript,'+encodeURIComponent(packer)]])});
+ registerHooks({resolve(s,c,next){const r=next(s,c);return stubs.has(r.url)?{url:stubs.get(r.url),shortCircuit:true}:r}});
+ const {windowsStages}=await import(${JSON.stringify(stagesURL)});
+ const workspace={parameters:{version:'0.4.3-dev.20261011.1',development:true,edition:'ExampleCampus',forUpdate:false},resolvePath:p=>join(${JSON.stringify(root)},p)};
+ await windowsStages({coreRoot:${JSON.stringify(fileURLToPath(new URL('..',import.meta.url)))},receiptBase:{},recipe:'pinned-source'}).find(s=>s.name==='desktop').run(workspace);`
+ await promisify(execFile)(process.execPath,['--input-type=module','-e',child],{windowsHide:true})
+ assert.equal(await readFile(policyFile,'utf8'),policy)
+ const packed=JSON.parse(await readFile(join(root,'desktop/package.json'),'utf8'))
+ assert.equal(packed.output,join(root,'desktop/ExampleCampus-0.4.3-dev.20261011.1-windows-x64-electron.zip'))
+})
 
 test('Windows publish stage keeps institution artifacts without inventing an ECNU update repository',async t=>{
  const coreRoot=fileURLToPath(new URL('..',import.meta.url))

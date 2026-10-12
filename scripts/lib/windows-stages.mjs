@@ -21,7 +21,7 @@ import {
 } from './build-util.mjs'
 import { stage } from './stage-runner.mjs'
 import { copyPublicWebEvidence } from './shared-desktop-stages.mjs'
-import { assembleDesktopCandidate } from '../assemble-desktop-candidate.mjs'
+import { assembleWindows } from '../../dsh-electron/scripts/assemble-windows.mjs'
 import { packWindowsRelease } from '../pack-windows-release.mjs'
 import { prepareWindowsReleaseInputs, installWindowsReleaseInputs } from '../prepare-windows-release-inputs.mjs'
 import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
@@ -95,17 +95,18 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
         const developmentVersion = desktopVersion(version).prerelease
         const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
         const candidateRoot = workspace.resolvePath('desktop')
-        await assembleDesktopCandidate({
-          shell: 'electron',
+        const candidate = join(candidateRoot, 'electron-candidate')
+        // Both recipes install the verified Host before this stage. Package the
+        // frozen product directly, as macOS does, without reinstalling the base
+        // Host over an edition's subsequently applied distribution policy.
+        await assembleWindows({
           product: workspace.resolvePath('product'),
-          hostAdapter: workspace.resolvePath('host'),
-          electronShellBuild: workspace.resolvePath('shell'),
+          shellBuild: workspace.resolvePath('shell'),
           electronRuntime: workspace.resolvePath('electron/runtime'),
           node: inputs.node,
-          outputRoot: candidateRoot,
+          output: candidate,
           version,
         })
-        const candidate = join(candidateRoot, 'electron-candidate')
         if (recipe === 'pinned-source') {
           if (!developmentVersion) await buildTransitionLaunchers(candidate, coreRoot)
         } else {
