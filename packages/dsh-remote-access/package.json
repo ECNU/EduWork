@@ -12,7 +12,11 @@
     "./connections": "./lib/connections.js",
     "./credentials": "./lib/credentials.js",
     "./listener": "./lib/listener.js",
-    "./channel/operations": "./lib/channel/operations.js"
+    "./channel/operations": "./lib/channel/operations.js",
+    "./relay/protocol": "./lib/relay/protocol.js",
+    "./relay/relay": "./lib/relay/relay.js",
+    "./relay/tunnel": "./lib/relay/tunnel.js",
+    "./relay/host": "./lib/relay/host.js"
   },
   "files": [
     "cordis.patch.yml",
@@ -26,7 +30,13 @@
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
-    "test": "node --test"
+    "test": "node --test",
+    "prepare": "node scripts/build.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.2",

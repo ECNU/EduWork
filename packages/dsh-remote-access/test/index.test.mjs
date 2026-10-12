@@ -31,16 +31,33 @@ import { DeviceStore } from '../src/listener.js'
  * `DeviceRegistry` claims to tolerate — a claim that is worth testing rather than
  * trusting, since it is the difference between working and throwing on those
  * hosts.
+ *
+ * `services` names what else the context can offer. `inject` only runs its
+ * callback when every requested name is present, which is how the real container
+ * behaves and the reason a plugin can ask for `connection` on a host that has no
+ * web server without crashing it.
  */
-function stubHost({ enabled = false, devices = [], withGet = true, withRegister = true } = {}) {
-  const state = { [SETTINGS_NAMESPACE]: { enabled, devices } }
+function stubHost({ enabled = false, devices = [], relay, withGet = true, withRegister = true, services = {} } = {}) {
+  const state = { [SETTINGS_NAMESPACE]: { enabled, devices, ...(relay === undefined ? {} : { relay }) } }
   const provided = new Map()
   const registered = []
   const updates = []
+  const effects = []
+  const available = { settings: {}, ...services }
 
   const ctx = {
-    inject(_names, callback) {
+    ...services,
+    inject(names, callback) {
+      const list = Array.isArray(names) ? names : [names]
+      // Presence, not truthiness: a service is an object, so `=== true` would
+      // report every real service as missing.
+      if (!list.every(service => available[service] !== undefined)) return
       callback(ctx)
+    },
+    effect(callback) {
+      effects.push(callback)
+      const dispose = callback()
+      return typeof dispose === 'function' ? dispose : () => {}
     },
     provide(key, value) {
       provided.set(key, value)
@@ -57,7 +74,7 @@ function stubHost({ enabled = false, devices = [], withGet = true, withRegister 
       },
     },
   }
-  return { ctx, state, provided, registered, updates }
+  return { ctx, state, provided, registered, updates, effects }
 }
 
 const device = (deviceId, name = deviceId) => ({ deviceId, name, publicKey: `key-${deviceId}` })
@@ -78,10 +95,43 @@ test('apply registers the namespace and publishes the registry', () => {
   assert.equal(host.registered.length, 1, 'the namespace must be registered exactly once')
   assert.equal(host.registered[0].ns, SETTINGS_NAMESPACE)
   assert.equal(host.registered[0].schema, SettingsSchema)
-  assert.deepEqual(host.registered[0].options.base, { enabled: false, devices: [] })
+  // Empty relay settings, not absent ones: the registry reports "nowhere to dial"
+  // as a pair of empty strings, and a missing field would make the check below
+  // depend on which host wrote the settings file.
+  assert.deepEqual(host.registered[0].options.base, {
+    enabled: false,
+    devices: [],
+    relay: { url: '', hostId: '' },
+  })
 
   assert.equal(host.provided.get('remoteAccess'), registry)
   assert.equal(registry instanceof DeviceRegistry, true)
+})
+
+test('没有 connection 服务时不连出，也不报错', () => {
+  // A desktop profile with no web server is a supported shape. Asking for a
+  // service that is not there must be a no-op, not a crash and not a fallback.
+  const host = stubHost({ enabled: true, relay: { url: 'wss://relay.example', hostId: 'host-1' } })
+  assert.doesNotThrow(() => apply(host.ctx))
+  assert.equal(host.effects.length, 0, 'nothing may be scheduled without a connection to carry calls')
+})
+
+test('开着远连但没有中继地址时，不连出也不报错', () => {
+  const host = stubHost({
+    enabled: true,
+    services: {
+      connection: {
+        operator: {},
+        authenticatedUrl: () => 'http://127.0.0.1:1/?token=x',
+        admit: () => ({ peer: {} }),
+        createSharedFetchHandler: () => ({ fetch: async () => new Response('{}') }),
+      },
+    },
+  })
+  assert.doesNotThrow(() => apply(host.ctx))
+  // The effect is scheduled — the decision is made inside it, where settings are
+  // read live — but nothing is dialled, because there is nowhere to dial to.
+  assert.equal(host.effects.length, 1)
 })
 
 test('remote access is off and empty until the operator turns it on', () => {

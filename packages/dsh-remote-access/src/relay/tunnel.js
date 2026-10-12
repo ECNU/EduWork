@@ -27,7 +27,7 @@
 
 import { buildRelayTranscript, encodePublicKey, PROTOCOL, signTranscript } from '../channel/crypto.js'
 import { HostHandshake } from '../channel/handshake.js'
-import { MESSAGE, RELAY_VERSION, UNAVAILABLE } from './protocol.js'
+import { HOST_PATH, MESSAGE, RELAY_VERSION, UNAVAILABLE } from './protocol.js'
 
 /** How long to wait for the relay to answer a registration before retrying. */
 const DEFAULT_TIMEOUT_MS = 15_000
@@ -185,7 +185,7 @@ export async function createHostTunnel({
   /** One link per connection: a session must not outlive the socket it was made on. */
   let session
 
-  const relayUrl = `${url.replace(/\/+$/u, '')}${'/host'}`
+  const relayUrl = `${url.replace(/\/+$/u, '')}${HOST_PATH}`
   const publicKey = await encodePublicKey(identity.signing.publicKey)
 
   const scheduleReconnect = () => {
