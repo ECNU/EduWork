@@ -35,8 +35,7 @@ import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
 import { startupPage } from './startup-page.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
-import { createRequire } from 'node:module'
-import { stabilizeWindowComposition } from './window-composition.mjs'
+import { attachWindowMotion } from './window-motion.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -298,12 +297,7 @@ export function attachDockTheme(window) {
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
-  stabilizeWindowComposition(window, {
-    // Use the existing locked Runtime's N-API binding, never a renderer import
-    // or a user-selected module path. No new native dependency is downloaded.
-    loadNative: () => createRequire(join(paths.product, 'd/package.json'))('koffi'),
-    warn: message => desktopHostLog(`[window] ${message}\n`),
-  })
+  attachWindowMotion(window)
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
   attachDockTheme(window)
