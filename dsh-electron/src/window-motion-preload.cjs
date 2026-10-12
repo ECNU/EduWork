@@ -7,25 +7,25 @@ if (process.isMainFrame) {
     const style = document.createElement('style')
     style.textContent = `
       html[data-eduwork-resizing] [data-animating],html[data-eduwork-resizing] [data-side]{transition:none!important}
-      html[data-eduwork-motion]{width:var(--eduwork-motion-width)!important;height:var(--eduwork-motion-height)!important;overflow:hidden!important;transform:scale(var(--eduwork-motion-x),var(--eduwork-motion-y));transform-origin:0 0}
+      html[data-eduwork-motion]{width:var(--eduwork-motion-width)!important;height:var(--eduwork-motion-height)!important;overflow:hidden!important}
       html[data-eduwork-motion] body{pointer-events:none}
     `
     document.head.append(style)
     const viewport = () => ({ width: innerWidth, height: innerHeight })
     let layout = viewport(), target = layout, timer, frame, fullscreen = false, draggingUntil = 0, disposed = false
+    // Resize the layout surface only. Never scale the document: glyphs,
+    // icons and controls must retain their physical size in every frame.
     const draw = size => {
       layout = size
       root.style.setProperty('--eduwork-motion-width', `${size.width}px`)
       root.style.setProperty('--eduwork-motion-height', `${size.height}px`)
-      root.style.setProperty('--eduwork-motion-x', target.width / size.width)
-      root.style.setProperty('--eduwork-motion-y', target.height / size.height)
     }
     const finish = () => {
       clearTimeout(timer)
       cancelAnimationFrame(frame)
       root.removeAttribute('data-eduwork-motion')
       root.removeAttribute('data-eduwork-resizing')
-      for (const name of ['width', 'height', 'x', 'y']) root.style.removeProperty(`--eduwork-motion-${name}`)
+      for (const name of ['width', 'height']) root.style.removeProperty(`--eduwork-motion-${name}`)
       layout = viewport()
     }
     const settle = () => {
@@ -36,7 +36,7 @@ if (process.isMainFrame) {
       const from = layout, start = performance.now()
       const tick = now => {
         if (disposed) return
-        const progress = Math.min(1, (now - start) / 180)
+        const progress = Math.min(1, (now - start) / 140)
         const eased = 1 - Math.pow(1 - progress, 3)
         draw({ width: from.width + (target.width - from.width) * eased, height: from.height + (target.height - from.height) * eased })
         if (progress < 1) frame = requestAnimationFrame(tick)
@@ -48,7 +48,7 @@ if (process.isMainFrame) {
       clearTimeout(timer)
       // Fullscreen has a native completion event, especially on macOS. Also
       // release on a bounded watchdog if the completion event is lost.
-      timer = setTimeout(settle, fullscreen ? 1500 : 240)
+      timer = setTimeout(settle, fullscreen ? 1500 : 160)
     }
     const resize = () => {
       const next = viewport()
