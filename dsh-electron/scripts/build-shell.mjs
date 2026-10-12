@@ -134,6 +134,7 @@ await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'p
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
 const adapters = {}
 for (const name of ['dock-theme-preload.cjs', 'preload-pet.cjs', 'window-motion-preload.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+adapters['dsh-electron/scripts/window-layout.mjs'] = digest(await readFile(join(repository, 'dsh-electron/scripts/window-layout.mjs')))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 if (native) {
   for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))

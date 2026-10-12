@@ -2,6 +2,7 @@
 // product, the shell build and the verified Electron runtime. Node.js port of
 // assemble-windows.ps1.
 import { rename } from 'node:fs/promises'
+import { prepareWindowLayout } from './window-layout.mjs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -66,6 +67,7 @@ export async function assembleWindows({
   await copyFileTo(join(shellBuild, 'LICENSE-DeepSeek'), join(app, 'LICENSE-DeepSeek'))
   await copyTree(product, join(output, 'resources/product'), { skipLinks: true })
   const runtimeFiles = await pruneRuntimeFiles(join(output, 'resources/product'), 'win32-x64')
+  await prepareWindowLayout(join(output, 'resources/product'), join(app, 'window-layout-receipt.json'))
   await ensureDir(join(output, 'resources/runtime'))
   await copyFileTo(node, join(output, 'resources/runtime/node.exe'))
   await copyFileTo(nodeLicense, join(output, 'resources/runtime/LICENSE-Node'))
