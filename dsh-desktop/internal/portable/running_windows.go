@@ -71,6 +71,10 @@ func checkNotRunning(target string) error {
 
 // StopApplication is called only after the installer obtains explicit consent.
 func StopApplication(target string) error {
+	target, err := filepath.Abs(target)
+	if err != nil {
+		return err
+	}
 	for i := 0; i < 3; i++ {
 		found, err := applicationProcesses(target, true)
 		if err != nil {

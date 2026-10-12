@@ -78,10 +78,15 @@ func main() {
 	if *verify || *target != "" {
 		started := time.Now()
 		var stages []map[string]any
+		var warnings []string
 		lastPercent, lastPhase := -1, ""
-		var progress portable.Reporter
-		if *reportPath != "" {
-			progress = func(p portable.Progress) {
+		progress := func(p portable.Progress) {
+			if p.Warning {
+				warnings = append(warnings, p.Message)
+				fmt.Fprintln(os.Stderr, p.Message)
+				return
+			}
+			if *reportPath != "" {
 				phase := strings.SplitN(p.Message, "…", 2)[0]
 				if p.Percent != lastPercent || phase != lastPhase {
 					stages = append(stages, map[string]any{"seconds": time.Since(started).Seconds(), "percent": p.Percent, "message": p.Message})
@@ -93,6 +98,9 @@ func main() {
 		r := map[string]any{"success": err == nil, "target": result, "identity": identity, "seconds": time.Since(started).Seconds(), "stages": stages}
 		if err != nil {
 			r["error"] = err.Error()
+		}
+		if len(warnings) > 0 {
+			r["warnings"] = warnings
 		}
 		if *reportPath != "" {
 			b, _ := json.MarshalIndent(r, "", "  ")
