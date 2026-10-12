@@ -11,7 +11,8 @@
     "./gate": "./lib/gate.js",
     "./connections": "./lib/connections.js",
     "./credentials": "./lib/credentials.js",
-    "./listener": "./lib/listener.js"
+    "./listener": "./lib/listener.js",
+    "./channel/operations": "./lib/channel/operations.js"
   },
   "files": [
     "cordis.patch.yml",
