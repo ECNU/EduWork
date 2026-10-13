@@ -48,6 +48,22 @@ const storePath = process.env.EDUWORK_RELAY_STORE ?? '/var/lib/eduwork-relay/hos
 const webRoot = process.env.EDUWORK_RELAY_WEB_ROOT ?? join(here, 'web')
 const frontendRoot = process.env.EDUWORK_RELAY_FRONTEND_ROOT ?? join(here, 'frontend')
 
+// The URL the page is told to load the bootstrap from.
+//
+// This has to be the URL a *browser* can reach, which is not always the path the
+// relay serves it on. When a reverse proxy publishes the relay under a prefix and
+// strips that prefix before forwarding, the relay never sees the prefix, so its
+// own idea of the path is the unprefixed one — and an injected absolute path
+// without the prefix is a 404 in the browser. That failure is silent in the worst
+// way: the page loads, looks fine, and never connects.
+//
+// So it is configuration. The default is what a relay served at the root wants.
+const bootstrapScript = process.env.EDUWORK_RELAY_BOOTSTRAP_SCRIPT ?? '/eduwork-assets/bootstrap.js'
+if (bootstrapScript[0] !== '/') {
+  process.stderr.write(`eduwork-relay: EDUWORK_RELAY_BOOTSTRAP_SCRIPT must start with "/": ${bootstrapScript}\n`)
+  process.exit(1)
+}
+
 function log(line) {
   process.stdout.write(`${new Date().toISOString()} ${line}\n`)
 }
@@ -56,6 +72,7 @@ log(`eduwork-relay: protocol ${RELAY_VERSION}`)
 log(`eduwork-relay: binding ${host}:${String(port)}`)
 log(`eduwork-relay: host registry ${storePath}`)
 log(`eduwork-relay: bootstrap assets ${webRoot}`)
+log(`eduwork-relay: bootstrap url ${bootstrapScript}`)
 log(`eduwork-relay: frontend ${frontendRoot}`)
 
 const relay = createRelay({
@@ -64,7 +81,7 @@ const relay = createRelay({
   storePath,
   webRoot,
   frontendRoot,
-  bootstrapScript: '/eduwork-assets/bootstrap.js',
+  bootstrapScript,
   log,
 })
 

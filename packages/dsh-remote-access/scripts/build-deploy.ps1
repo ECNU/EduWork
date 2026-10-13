@@ -67,10 +67,10 @@ Copy-Item $BootstrapPath (Join-Path $output 'web\bootstrap.js')
 Copy-Item $FrontendRoot (Join-Path $output 'frontend') -Recurse
 
 # The bootstrap must be reachable at the path the index injection names, and that
-# path is a string constant in server.mjs. Check rather than assume.
+# path is configuration rather than a constant, so check the shape and not a value.
 $server = Get-Content (Join-Path $output 'server.mjs') -Raw
-if ($server -notmatch "bootstrapScript:\s*'/eduwork-assets/bootstrap\.js'") {
-  throw "server.mjs no longer names /eduwork-assets/bootstrap.js; the copy above may be at the wrong path"
+if ($server -notmatch "EDUWORK_RELAY_BOOTSTRAP_SCRIPT") {
+  throw "server.mjs no longer reads EDUWORK_RELAY_BOOTSTRAP_SCRIPT; the copy below may be at the wrong path"
 }
 
 $bootstrapBytes = (Get-Item (Join-Path $output 'web\bootstrap.js')).Length
