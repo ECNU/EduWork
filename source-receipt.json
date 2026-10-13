@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "2cf7fade5c6404776a92c5ba28b9b5428d3d84e7a1565d299c8224ac227a84f3",
   "files": [
     {
       "path": ".gitattributes",
@@ -1269,11 +1269,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "cc3daed99c7d18afc5aeeaf7d9db465bce49c1c5a0e6489629a7d2ccf2f5537e"
+      "sha256": "4bb0a950c3602897481b3b69cf0bfffedacd60f7ae6721d037a45d8f6c43d66c"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "dad3a217f0eebd5c3492f9b50ad705b44c7e2dac133ef65eac74141618860fdd"
+      "sha256": "c9691295c515baff6e441c19020f7e9cd729a6e72f38c6714ee650761121bc8c"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "a8fc775e22f7f25dc3ce34f5d66d912f79fa7913ddf296d4be69e1993416ade3"
+      "sha256": "8625c8cec34c2d1a6ccefe1da0ee0caaa354a574152ca6d1fd4f090a1d4b3931"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1534,6 +1534,10 @@
     {
       "path": "dsh-electron/tests/user-config-electron-smoke.mjs",
       "sha256": "80408d92cf80ae2a9238442f189aafd1ed48a8346eb400387c73f0f1745e9f55"
+    },
+    {
+      "path": "dsh-electron/tests/user-guide-menu.test.mjs",
+      "sha256": "70809bab23a956d60ecb2d3a8361d9fc461276358170e05ad2bbdba1681052fd"
     },
     {
       "path": "dsh-electron/tests/window-lifecycle.mjs",

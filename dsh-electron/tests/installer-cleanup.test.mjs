@@ -275,7 +275,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
       assert.equal(options.pickDirectory, pickDirectory)
       assert.equal(options.bootBrand, bootBrand)
-      return { attach() {}, dispose() {} }
+      return { attach() {}, dispose() {}, async probeUserGuide() { calls.push('probe-guide'); return false } }
     } })
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
     mock('main.ts', { createWindow: (_preload, _show, _primary, locale) => {

@@ -118,6 +118,7 @@ async function main() {
   mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true, locale)
   const window = mainWindow
   bridge.attach(window)
+  void bridge.probeUserGuide().catch(() => {})
   configureWindowNavigation(window)
   await attachDesktopWindow(window)
   window.on('session-end', () => { sessionEnding = true })
