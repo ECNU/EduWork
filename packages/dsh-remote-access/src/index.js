@@ -221,6 +221,46 @@ export function apply(ctx, rawConfig = {}) {
  * leaves this process and is never written to settings, which hold a device
  * registry and nothing worth stealing.
  */
+/**
+ * Find the authority the kernel will authenticate this Host as.
+ *
+ * The kernel's own browser transport builds this as
+ * `http://127.0.0.1:${webServer.port}` — `dsh-desktop-host` does exactly that before
+ * handing the URL to the desktop shell — and the session cookie it issues is bound
+ * to that exact authority string, because the cookie *name* is a hash of it.
+ *
+ * An earlier version read `webServer.url` and `webServer.address()`. Neither exists:
+ * the service exposes `{ port, host, register, registerUpgrade, registerFallback,
+ * renderIndex, collectIndexInjections }`. The result was an undefined authority, a
+ * tunnel that never started, and no error anywhere — the plugin simply did nothing
+ * while every unit test passed, because the tests supplied the shape the code
+ * expected rather than the shape the kernel has.
+ *
+ * @returns the authority, or undefined when the kernel has not begun listening.
+ */
+export function authorityFrom(webServer) {
+  // Tolerated because the kernel is free to grow a richer accessor, and a deployment
+  // that has one should not have to wait for this file to be taught about it.
+  const provided = webServer?.url ?? webServer?.address?.()
+  if (typeof provided === 'string' && provided !== '') return new URL(provided).host
+  if (provided !== undefined && typeof provided === 'object' && provided !== null) {
+    const { address, port } = provided
+    if (typeof port === 'number') return `${String(address ?? '127.0.0.1')}:${String(port)}`
+  }
+  const port = webServer?.port
+  if (typeof port !== 'number' || port <= 0) return undefined
+  // `webServer.host` is the configured bind literal, which can be `0.0.0.0`. The
+  // kernel's transport is on loopback — `docs/protocol.md` and the plugin's own
+  // invariants both require the Host to keep binding `127.0.0.1` — so a wildcard
+  // bind is translated to the loopback address the cookie was minted for rather
+  // than reused verbatim, which would name an authority the kernel never sees.
+  const configured = webServer?.host
+  const host = configured === '0.0.0.0' || configured === '::' || configured === undefined
+    ? '127.0.0.1'
+    : configured
+  return `${host}:${String(port)}`
+}
+
 function startTunnel(ctx, registry) {
   ctx.inject(['connection'], (connectionCtx) => {
     connectionCtx.effect(() => {
@@ -235,14 +275,26 @@ function startTunnel(ctx, registry) {
       let kernelHost
       let cancelled = false
 
+      const report = (line) => {
+        if (connectionCtx.logger?.warn !== undefined) connectionCtx.logger.warn(line)
+        else console.warn(line)
+      }
+
       void (async () => {
         // The authority the Host authenticates as. The kernel mounts its browser
         // transport on the loopback interface and binds the cookie it hands out to
         // this exact string, so it is read from the kernel rather than assembled
         // here — an extra or missing detail produces a 401 three layers down with
         // nothing to point at.
-        const authority = await resolveAuthority(connectionCtx)
-        if (cancelled || authority === undefined) return
+        const authority = authorityFrom(connectionCtx.webServer)
+        if (cancelled) return
+        if (authority === undefined) {
+          // Not fatal and not always wrong — the effect can run before the web
+          // server has bound its port — but it must not be silent, because the
+          // other cause is a kernel whose shape has changed.
+          report('remote-access: the web server has no port yet; not dialing out')
+          return
+        }
         kernelHost = new KernelHost({ connection: connectionCtx.connection, authority })
         const identity = await generateIdentity()
         if (cancelled) return
@@ -255,7 +307,13 @@ function startTunnel(ctx, registry) {
           dispatch: kernelDispatch(kernelHost),
           log: (line) => connectionCtx.logger?.info?.(line) ?? console.log(line),
         })
-      })()
+      })().catch((error) => {
+        // Without this the promise rejects into the void: a wrong relay URL, a
+        // refused handshake or a relay that rejects this host id all look exactly
+        // like remote access being switched off.
+        if (cancelled) return
+        report(`remote-access: could not reach the relay at ${url}: ${error instanceof Error ? error.message : String(error)}`)
+      })
 
       return () => {
         cancelled = true
@@ -266,23 +324,6 @@ function startTunnel(ctx, registry) {
       }
     }, 'remote-access: dial out to the relay')
   })
-}
-
-/**
- * Find the authority the kernel will authenticate this Host as.
- *
- * Read from the kernel rather than assembled from a port constant, because the
- * cookie is bound to the exact authority string: an extra or missing detail here
- * produces a 401 three layers down with nothing to point at.
- */
-async function resolveAuthority(connectionCtx) {
-  const provided = connectionCtx.webServer?.url ?? connectionCtx.webServer?.address?.()
-  if (typeof provided === 'string' && provided !== '') return new URL(provided).host
-  if (provided !== undefined && typeof provided === 'object' && provided !== null) {
-    const { address, port } = provided
-    if (typeof port === 'number') return `${String(address ?? '127.0.0.1')}:${String(port)}`
-  }
-  return undefined
 }
 
 /**

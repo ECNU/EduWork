@@ -19,6 +19,7 @@ import {
   SETTINGS_NAMESPACE,
   SettingsSchema,
   apply,
+  authorityFrom,
   inject,
   name,
 } from '../src/index.js'
@@ -106,6 +107,58 @@ test('apply registers the namespace and publishes the registry', () => {
 
   assert.equal(host.provided.get('remoteAccess'), registry)
   assert.equal(registry instanceof DeviceRegistry, true)
+})
+
+test('the authority is read from the shape the kernel actually exposes', () => {
+  // This is the surface `@deepseek-ai/dsh-host-webserver` publishes:
+  //   get port(), get host(), register, registerUpgrade, registerFallback,
+  //   renderIndex, collectIndexInjections
+  // There is no `url` and no `address()`.
+  //
+  // An earlier version of the code read both of those anyway, and the stub in this
+  // file supplied them, so the suite stayed green while the plugin resolved no
+  // authority, never dialled out, and reported nothing. A test that invents the
+  // shape it is testing cannot fail on a wrong shape. These cases use the real one.
+  assert.equal(authorityFrom({ port: 62021, host: '127.0.0.1' }), '127.0.0.1:62021')
+
+  // `dsh-desktop-host` builds its own URL as `http://127.0.0.1:${port}` regardless
+  // of the configured bind, and the cookie name is a hash of the authority, so a
+  // wildcard bind must still resolve to the loopback authority the cookie was
+  // minted for rather than to the literal `0.0.0.0`.
+  assert.equal(authorityFrom({ port: 8080, host: '0.0.0.0' }), '127.0.0.1:8080')
+  assert.equal(authorityFrom({ port: 8080, host: '::' }), '127.0.0.1:8080')
+  assert.equal(authorityFrom({ port: 8080 }), '127.0.0.1:8080')
+
+  // Before the server binds, `port` is 0 or absent. That is "not ready", not a
+  // crash and not an authority made of nothing.
+  assert.equal(authorityFrom({ port: 0, host: '127.0.0.1' }), undefined)
+  assert.equal(authorityFrom({ host: '127.0.0.1' }), undefined)
+  assert.equal(authorityFrom(undefined), undefined)
+  assert.equal(authorityFrom({}), undefined)
+
+  // A kernel that grows a richer accessor is honoured rather than ignored.
+  assert.equal(authorityFrom({ port: 1, url: 'http://127.0.0.1:7711/' }), '127.0.0.1:7711')
+  assert.equal(authorityFrom({ port: 1, address: () => ({ address: '127.0.0.1', port: 7712 }) }), '127.0.0.1:7712')
+})
+
+test('开着远连、中继地址齐全但 web server 还没端口时，不抛错', () => {
+  // The effect runs before the web server binds often enough to matter. It must
+  // report and stand down, not reject into an unhandled promise.
+  const host = stubHost({
+    enabled: true,
+    relay: { url: 'wss://relay.example', hostId: 'host-1' },
+    services: {
+      connection: {
+        operator: {},
+        authenticatedUrl: () => 'http://127.0.0.1:1/?token=x',
+        admit: () => ({ peer: {} }),
+        createSharedFetchHandler: () => ({ fetch: async () => new Response('{}') }),
+      },
+      webServer: { port: 0, host: '127.0.0.1' },
+    },
+  })
+  assert.doesNotThrow(() => apply(host.ctx))
+  assert.equal(host.effects.length, 1)
 })
 
 test('没有 connection 服务时不连出，也不报错', () => {
