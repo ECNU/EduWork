@@ -4,6 +4,7 @@ import {readFile,mkdir,writeFile} from 'node:fs/promises'
 import {join,resolve} from 'node:path'
 import {chromium,expect} from '@playwright/test'
 import {build} from 'esbuild'
+import {verifyOfficePreviewZoom} from './office-preview-zoom-checks.mjs'
 
 const directory=resolve(process.env.STUDIO_OFFICE_CLIENT_OUTPUT||'dist/office-preview-client');await mkdir(directory,{recursive:true})
 const source=await readFile('packages/artifact-services/lib/office-preview-client.js','utf8')
@@ -81,8 +82,10 @@ try {
   await one.getByRole('button',{name:'放大',exact:true}).click()
   assert.equal((await page.evaluate(()=>window.two.getState())).scale,1.2,'continuous document zoom shares the same file identity across entry points')
   await expect(secondFrame.locator('p')).toHaveText('共享 DOCX/XLSX 文件正文')
+  const zoom=await verifyOfficePreviewZoom(page)
   assert.deepEqual(errors,[]);assert.deepEqual(externalRequests,[])
   const result={passed:true,externalModelCalls:false,errors,externalRequests,browserBytes:Buffer.byteLength(source),initial,shared,checks:['two independent module instances share only file reading state','fixed 4:3 page, no reflow in narrow/manual/fit modes','single-page navigation','refresh and reopen retain page and manual zoom','new file hash resets reading state','sandbox and no external resources','warnings outside page','declared page limit keeps available pages readable and reports total','invalid descriptor fails visibly','legacy non-slide HTML remains readable']}
+  result.zoom=zoom;result.checks.push('continuous document fit modes settle at fractional sizes with native and classic scrollbars; manual zoom remains scrollable')
   await writeFile(join(directory,'result.json'),JSON.stringify(result,null,2));console.log(JSON.stringify(result))
 } catch(error) {await writeFile(join(directory,'failure.json'),JSON.stringify({errors,externalRequests,error:String(error)},null,2));await page?.screenshot({path:join(directory,'failure.png')});throw error}
 finally{await browser.close();await new Promise(resolve=>server.close(resolve))}
