@@ -328,8 +328,15 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		return rollback(fmt.Errorf("preserve user configuration: %w", err))
 	}
 	if launchName == "EduWork-Electron.exe" {
+		// Same rule as startup: a denied WRITE_DAC (e.g. an install folder on
+		// another drive owned by someone else) does not prove the sandbox cannot
+		// run; the previous version already ran from this folder. The health
+		// handshake below decides, and rolls back if the new version cannot start.
 		if err := electronaccess.Ensure(pending.InstallDir); err != nil {
-			return rollback(fmt.Errorf("prepare Electron sandbox read access: %w", err))
+			if !errors.Is(err, os.ErrPermission) {
+				return rollback(fmt.Errorf("prepare Electron sandbox read access: %w", err))
+			}
+			// Fall through to the health handshake.
 		}
 	}
 	healthFile := filepath.Join(transactionDir, "health.ok")
