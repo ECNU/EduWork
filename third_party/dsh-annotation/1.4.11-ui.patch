@@ -1,0 +1,197 @@
+diff --git a/client.js b/client.js
+index c8e0c23..3cf9f83 100644
+--- a/client.js
++++ b/client.js
+@@ -861,8 +861,8 @@ window.__ModuleLoader__.load({
+       return s.length > n ? s.slice(0, n) + '…' : s
+     }
+
+-    function placeAbove(rect, height) {
+-      var w = 400
++    function placeAbove(rect, height, width) {
++      var w = width || 400
+       var left = rect.left + rect.width / 2 - w / 2
+       left = Math.max(8, Math.min(left, window.innerWidth - w - 8))
+       // 下方优先：原生选中菜单（移动端长按菜单、桌面 Copy/Search 浮层）锚定在选区
+@@ -971,7 +971,29 @@ window.__ModuleLoader__.load({
+     }
+
+     // ============================== 插件主体 ==============================
++    // Register cleanup with Cordis and replace any previous browser half.
++    // The symbol survives module re-evaluation during development reloads.
++    var activeInstance = Symbol.for('dsh.annotation.active-instance')
+     function apply(ctx) {
++      function start() {
++        if (typeof window[activeInstance] === 'function') window[activeInstance]()
++        var stop = mount(ctx)
++        var stopped = false
++        function dispose() {
++          if (stopped) return
++          stopped = true
++          stop()
++          if (window[activeInstance] === dispose) delete window[activeInstance]
++        }
++        window[activeInstance] = dispose
++        return dispose
++      }
++      if (typeof ctx.effect === 'function') return ctx.effect(start, 'annotation: browser lifecycle')
++      return start()
++    }
++
++    function mount(ctx) {
++      var disposed = false
+       var sessions = ctx.sessions
+
+       // ---------- 当前会话 id 的跨版本解析（覆盖 DSH 0.1.1 ~ 0.2.0-rc.2）----------
+@@ -1175,6 +1197,26 @@ window.__ModuleLoader__.load({
+           + ':' + r.startOffset + ':' + r.endOffset + ':' + sel.toString().length
+       }
+
++      // Anchor the compact toolbar to the selection focus, including backwards
++      // and keyboard selections. The editor retains its separate 400px layout.
++      function actionRect(range) {
++        var sel = window.getSelection()
++        if (sel && sel.focusNode && range.isPointInRange(sel.focusNode, sel.focusOffset)) {
++          var focus = document.createRange()
++          focus.setStart(sel.focusNode, sel.focusOffset)
++          focus.collapse(true)
++          var box = focus.getBoundingClientRect()
++          if (box.height > 0) return box
++        }
++        var rects = range.getClientRects()
++        return rects.length ? rects[rects.length - 1] : range.getBoundingClientRect()
++      }
++
++      function actionPosition(rect) {
++        var box = ui.el && ui.mode === 'actions' ? ui.el.getBoundingClientRect() : null
++        return placeAbove(rect, box && box.height || 40, box && box.width || 80)
++      }
++
+       function onSelection() {
+         if (ui.mode !== 'closed' && host.childNodes.length === 0) {
+           ui.mode = 'closed'
+@@ -1225,7 +1267,7 @@ window.__ModuleLoader__.load({
+             || (source !== null && settleSessionId !== undefined && source.sessionId !== settleSessionId)) return
+           var rect = r.getBoundingClientRect()
+           if (rect.width === 0 || rect.height === 0) return
+-          var p = placeAbove(rect, 40)
++          var p = actionPosition(actionRect(r))
+           if (ui.mode === 'actions' && ui.quote === text && (ui.source && ui.source.sourceUrl) === (source && source.sourceUrl)) {
+             ui.lastKey = key
+             ui.pos = p
+@@ -1269,6 +1311,7 @@ window.__ModuleLoader__.load({
+         anchorRaf = true
+         requestAnimationFrame(function () {
+           anchorRaf = false
++          if (disposed) return
+           if (ui.quotes.length > 0) renderMarkers()
+           updateChip()
+           if (ui.mode === 'editing' && ui.el !== null) positionEditor(ui.el, ui.pos.left, ui.pos.top)
+@@ -1280,20 +1323,20 @@ window.__ModuleLoader__.load({
+             if (annotationRootOf(live.commonAncestorContainer) === ui.selectionRoot
+               && (documentSourceOf(live.commonAncestorContainer)?.sourceUrl || '') === (ui.source && ui.source.sourceUrl || '')
+               && sel.toString().trim() === ui.quote) {
+-              rect = live.getBoundingClientRect()
++              rect = actionRect(live)
+             }
+           }
+           if (rect === null) {
+             var range = locateQuote(ui.quote, ui.source)
+-            if (range !== null) rect = range.getBoundingClientRect()
++            if (range !== null) rect = actionRect(range)
+           }
+-          if (rect === null || rect.width === 0 || rect.height === 0) {
++          if (rect === null || rect.height === 0) {
+             if (lostSince === 0) lostSince = Date.now()
+             if (Date.now() - lostSince > ANCHOR_LOST_MS) { lostSince = 0; closeToolbar() }
+             return
+           }
+           lostSince = 0
+-          var p = placeAbove(rect, 40)
++          var p = actionPosition(rect)
+           if (Math.abs(p.left - ui.pos.left) + Math.abs(p.top - ui.pos.top) > 2) {
+             ui.pos = p
+             if (ui.el !== null && ui.el.style) {
+@@ -1325,6 +1368,25 @@ window.__ModuleLoader__.load({
+       }
+       var observer = new MutationObserver(function (mutations) {
+         if (!mutationRelevant(mutations)) return
++        // Collapse only affected user rows in this microtask, before paint.
++        // Full-history and assistant decoration keep their existing throttles.
++        var changedRows = new Set()
++        var rowSelector = '[data-chat-flow-kind], [data-time-hover-root]'
++        function collectRows(node) {
++          var el = node instanceof Element ? node : node && node.parentElement
++          if (!el) return
++          var row = el.closest(rowSelector)
++          if (row) changedRows.add(row)
++          if (node instanceof Element) {
++            node.querySelectorAll(rowSelector).forEach(function (r) { changedRows.add(r) })
++          }
++        }
++        mutations.forEach(function (mutation) {
++          if (mutation.type === 'attributes') return
++          collectRows(mutation.target)
++          mutation.addedNodes.forEach(collectRows)
++        })
++        if (changedRows.size) decorateAll(Array.from(changedRows))
+         onLayoutChange()
+         // 只有「消息行插入」批次才同步执行气泡装饰（隐藏批注块 + 贴标签）：
+         // MutationObserver 回调在微任务阶段运行，早于浏览器绘制，
+@@ -1482,6 +1544,12 @@ window.__ModuleLoader__.load({
+           ))
+           host.appendChild(bar)
+           ui.el = bar
++          var selection = window.getSelection()
++          if (selection && selection.rangeCount && !selection.isCollapsed) {
++            ui.pos = actionPosition(actionRect(selection.getRangeAt(0)))
++            bar.style.left = ui.pos.left + 'px'
++            bar.style.top = ui.pos.top + 'px'
++          }
+         } else if (ui.mode === 'editing') {
+           var card = document.createElement('div')
+           card.className = 'dsh-ann-card'
+@@ -2691,9 +2759,9 @@ window.__ModuleLoader__.load({
+
+       /** 全局轮询装饰：找所有「携带批注块但未装饰」的用户气泡 → 隐藏批注块 + 贴标签。
+        *  不依赖发送事件链：异步渲染、刷新后的历史消息都能被覆盖。 */
+-      function decorateAll() {
++      function decorateAll(changedRows) {
+         try {
+-          var rows = allMessageRows()
++          var rows = changedRows || allMessageRows()
+           for (var i = rows.length - 1; i >= 0; i--) {
+             var el = rows[i]
+             if (el.hasAttribute('data-pending-steering')) continue
+@@ -2703,10 +2771,11 @@ window.__ModuleLoader__.load({
+             // 最新一条优先消费发送时暂存的数据；其余从气泡文本反解析（须在隐藏前）。
+             var items = null
+             var fromSend = false
+-            if (i === rows.length - 1 && pendingDeco.length > 0) { items = pendingDeco[0].items; fromSend = true }
++            if (!changedRows && i === rows.length - 1 && pendingDeco.length > 0) { items = pendingDeco[0].items; fromSend = true }
+             if (items === null || items.length === 0) { items = parseItemsFromBubble(el); fromSend = false }
+             if (!hideAnnotationBlock(el)) continue // 内容未渲染完 → 留给下轮（发送暂存数据不弹出）
+-            if (fromSend) pendingDeco.shift()
++            if (fromSend || (pendingDeco.length > 0
++              && JSON.stringify(pendingDeco[0].items) === JSON.stringify(items))) pendingDeco.shift()
+             attachBubbleTag(el, items)
+             // 这里绝不清空待发送批注：DOM 层面无法区分「刚发送的消息」与「会话
+             // 切换/刷新后重新渲染的历史消息」，历史消息重装饰曾被误判为已发送而
+@@ -2714,7 +2783,7 @@ window.__ModuleLoader__.load({
+             // watchInputDraft 的「草稿有→空」迁移，其初始化时序洞由订阅重试补齐。
+           }
+           // 助手回复：把「Annotation N：」变为可悬浮的批注芯片（内容取自最近一条带批注的用户消息）。
+-          decorateAssistantAnnotations()
++          if (!changedRows) decorateAssistantAnnotations()
+         } catch (err) {
+           console.warn('[annotation] 装饰扫描失败：', err)
+         }
+@@ -2831,6 +2900,8 @@ window.__ModuleLoader__.load({
+
+       // ---------- 清理 ----------
+       return function () {
++        disposed = true
++        if (assistantDecorateTimer !== null) clearTimeout(assistantDecorateTimer)
+         clearSettle()
+         document.removeEventListener('selectionchange', onSelection)
+         document.removeEventListener('pointerdown', onDocPointerDown, true)
