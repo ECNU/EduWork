@@ -26,6 +26,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Button, Input, Menu, Modal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
+import { PersonalSettings, occurrenceNote } from './personal-settings.js'
 import { dayWindow, layoutWeek, minutesOf, shiftedEnd } from './layout.js'
 import { MonthGrid, monthRange, monthStart, shiftMonth } from './month-view.js'
 
@@ -554,7 +555,7 @@ function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
     entry,
     axisStart: axis.start,
     tint: tintOf(entry.occurrence.source ?? entry.occurrence.uid),
-    note: noteIndex?.get(occurrenceKeyOf(entry.occurrence)),
+    note: occurrenceNote(noteIndex, entry.occurrence),
     onSelect,
   }))))
 
@@ -598,13 +599,16 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }:
   // note can never rewrite a school record and a school sync cannot touch it.
   const [noteDraft, setNoteDraft] = useState<string>(note ?? '')
   const [writingNote, setWritingNote] = useState(false)
+  const [showPersonal, setShowPersonal] = useState(false)
   useEffect(() => {
     setEditing(false)
     setConfirming(false)
     setNoteDraft(note ?? '')
     setWritingNote(false)
     setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' })
-  }, [occurrence, note])
+  }, [occurrenceKeyOf(occurrence)])
+  useEffect(() => { if (!writingNote) setNoteDraft(note ?? '') }, [note, writingNote])
+  useEffect(() => { if (!editing) setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' }) }, [occurrence?.start, occurrence?.end, occurrence?.location, editing])
 
   if (!occurrence) return null
   const date = occurrence.occurrenceDate ?? dateOf(occurrence.start)
@@ -652,6 +656,9 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }:
     key: 'note', variant: 'outline', size: 'sm',
     onClick: () => setWritingNote(!writingNote),
   }, note ? '改笔记' : '写笔记'))
+  actions.push(React.createElement(Button, {
+    key: 'personal', variant: 'outline', size: 'sm', onClick: () => setShowPersonal(!showPersonal),
+  }, showPersonal ? '收起个人设置' : '更多个人设置'))
   // The dialog speaks for one occurrence; the title, the date and the repeat
   // rule belong to the record, and the record has a page of its own.
   if (event) {
@@ -743,6 +750,7 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }:
         React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => { setNoteDraft(note ?? ''); setWritingNote(false) } }, '取消'),
         noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
       : undefined,
+    showPersonal ? React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field }) : undefined,
     event?.source ? React.createElement('div', null, React.createElement(Muted, null, `日历：${event.source === 'manual' ? '个人日程' : event.source}`)) : undefined,
     editing
       ? React.createElement('div', {
@@ -1031,7 +1039,8 @@ function EventRow({ occurrence, tint, note, onOpen, onCancel, onDelete }: any) {
   React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
     React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: 999, background: tint.accent, flex: '0 0 auto' } }),
     React.createElement('span', { style: { fontSize: 13, fontWeight: 550, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, occurrence.title),
-    occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined),
+    occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
+    occurrence.personal?.hidden ? React.createElement(Tag, { tone: 'quiet' }, '已隐藏') : undefined),
   React.createElement('div', { style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
     [clockRange(occurrence), occurrence.location].filter(Boolean).join(' · ')),
   // The reader's note, where the class is: a note nobody can see is a note nobody
@@ -1133,7 +1142,7 @@ function draftProblem(draft: any) {
  * The fields of one record, shared by the new-entry dialog and the entry page:
  * what the reader owns about an entry, as opposed to one date of a series.
  */
-function EventForm({ draft, onChange, autoFocus }: any) {
+function EventForm({ draft, onChange, autoFocus, sourceOwned = false }: any) {
   const set = (patch: any) => onChange({ ...draft, ...patch })
   return React.createElement(React.Fragment, null,
     React.createElement(Field, { label: '标题' },
@@ -1172,9 +1181,9 @@ function EventForm({ draft, onChange, autoFocus }: any) {
         value: draft.location, placeholder: '可留空',
         onChange: (event: any) => set({ location: event.target.value }),
       })),
-    React.createElement(Field, { label: '备注', hint: '随导出写进日历，不会同步到任何服务' },
+    React.createElement(Field, { label: sourceOwned ? '来源备注（只读）' : '备注', hint: sourceOwned ? '自己的备注请写在下方个人设置中' : '随导出写进日历，不会同步到任何服务' },
       React.createElement('textarea', {
-        'aria-label': '备注', value: draft.description, rows: 3, spellCheck: false,
+        'aria-label': sourceOwned ? '来源备注（只读）' : '备注', readOnly: sourceOwned, value: draft.description, rows: 3, spellCheck: false,
         onChange: (event: any) => set({ description: event.target.value }),
         style: {
           width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
@@ -1273,7 +1282,7 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
  * Wide panels show both at once; a narrow one stacks them, because the panel
  * width is the reader's, not ours.
  */
-function EventPage({ event, agenda, noteIndex, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }: any) {
+function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }: any) {
   const [draft, setDraft] = useState(() => draftOf(event))
   const [problem, setProblem] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -1320,7 +1329,8 @@ function EventPage({ event, agenda, noteIndex, onOpenOccurrence, onSave, onResto
     React.createElement('span', { style: { flex: '1 1 auto' } }),
     event.recurrence ? React.createElement(Tag, { tone: 'outline' }, seriesSummary(event)) : undefined,
     event.source ? React.createElement(Muted, null, event.source) : undefined),
-  React.createElement(EventForm, { draft, onChange: setDraft }),
+  React.createElement(EventForm, { draft, onChange: setDraft, sourceOwned: event.source !== 'manual' }),
+  React.createElement(PersonalSettings, { identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false }),
   React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
     React.createElement(Button, {
       variant: 'primary', size: 'sm', disabled: !dirty || busy || Boolean(complaint), onClick: save,
@@ -1369,7 +1379,7 @@ function EventPage({ event, agenda, noteIndex, onOpenOccurrence, onSave, onResto
       key: reactKeyOf(occurrence),
       occurrence,
       tint,
-      note: noteIndex?.get(occurrenceKeyOf(occurrence)),
+      note: occurrenceNote(noteIndex, occurrence),
       onOpen: onOpenOccurrence,
       onCancel: (item: any) => onCancel(item),
       onDelete: (item: any) => onDelete(item),
@@ -1419,6 +1429,7 @@ export function createCalendarPage(service: any) {
     const [monthAnchor, setMonthAnchor] = useState(() => monthStart(localDate()))
     const [calendarSource, setCalendarSource] = useState('*')
     const [snapshot, setSnapshot] = useState<any>(null)
+    const [sourceStatuses, setSourceStatuses] = useState<any[]>([])
     const [week, setWeek] = useState<any>(null)
     const [agenda, setAgenda] = useState<any>(null)
     // The reader's own content, read from the host and kept apart from the
@@ -1450,7 +1461,7 @@ export function createCalendarPage(service: any) {
     currentRange.current = weekRange
     const latestWeekRead = useRef(0)
     const agendaRange = useMemo(
-      () => ({ from: addDays(localDate(), -180), to: addDays(localDate(), 366) }),
+      () => ({ from: addDays(localDate(), -180), to: addDays(localDate(), 366), includeHidden: true }),
       [],
     )
 
@@ -1470,9 +1481,9 @@ export function createCalendarPage(service: any) {
       const records = await service.notes({ scope: 'source' })
       const index = new Map<string, string>()
       for (const record of records ?? []) {
-        const text = record?.note?.text
+        const text = record?.note?.text ?? (record?.note?.off ? '' : undefined)
         if (typeof text !== 'string') continue
-        index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart}`, text)
+        index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart ?? ''}`, text)
       }
       setNoteIndex(index)
     }, [service])
@@ -1481,6 +1492,7 @@ export function createCalendarPage(service: any) {
       setLoading(true)
       try {
         await loadSnapshot()
+        if (service.sourceStatuses) setSourceStatuses(await service.sourceStatuses())
         await loadNotes()
         if (view.kind === 'week') await loadWeek()
         if (view.kind === 'event') await loadAgenda()
@@ -1493,6 +1505,17 @@ export function createCalendarPage(service: any) {
     }, [loadSnapshot, loadNotes, loadWeek, loadAgenda, view.kind])
 
     useEffect(() => { void refresh() }, [refresh])
+    const latestRefresh = useRef(refresh)
+    latestRefresh.current = refresh
+    useEffect(() => {
+      if (!service.subscribe) return
+      let timer: ReturnType<typeof setTimeout> | undefined
+      const dispose = service.subscribe(() => {
+        clearTimeout(timer)
+        timer = setTimeout(() => { void latestRefresh.current() }, 60)
+      })
+      return () => { clearTimeout(timer); dispose() }
+    }, [service])
 
     /** Run one write, then re-read: the panel never guesses what the host stored. */
     const run = useCallback(async (action: () => Promise<unknown>, success?: string) => {
@@ -1527,6 +1550,9 @@ export function createCalendarPage(service: any) {
 
     const current = view.kind === 'event'
       ? events.find((event: any) => event.uid === view.id && event.source === view.source)
+      : undefined
+    const selectedOccurrence = dialog?.kind === 'event'
+      ? [...(week?.occurrences ?? []), ...(agenda ?? [])].find(item => occurrenceKeyOf(item) === occurrenceKeyOf(dialog.occurrence)) ?? dialog.occurrence
       : undefined
     const weekCount = week?.occurrences?.length ?? 0
     /** The week on screen is today's, so an entry started from here means today. */
@@ -1660,6 +1686,8 @@ export function createCalendarPage(service: any) {
       },
       React.createElement(IconWarning), problem)
       : undefined,
+    sourceStatuses.length > 0 ? React.createElement('div', { role: 'status', style: { display: 'flex', gap: 12, flexWrap: 'wrap', padding: '6px 16px', fontSize: 12, color: SECONDARY } },
+      ...sourceStatuses.map(item => React.createElement('span', { key: item.source }, `${item.label}：${item.state === 'error' ? '同步失败，保留上次数据' : item.state === 'loading' ? '同步中' : item.state === 'ready' ? '已更新' : '等待同步'}`))) : undefined,
     view.kind === 'week'
       ? React.createElement(displayMode === 'month' ? MonthGrid : WeekGrid, {
           anchor: displayMode === 'month' ? monthAnchor : anchor,
@@ -1671,6 +1699,7 @@ export function createCalendarPage(service: any) {
         })
       : React.createElement(EventPage, {
         event: current,
+        service, run,
         agenda,
         noteIndex,
         busy,
@@ -1686,10 +1715,10 @@ export function createCalendarPage(service: any) {
       }),
     dialog?.kind === 'event'
       ? React.createElement(EventDialog, {
-        occurrence: dialog.occurrence,
+        occurrence: selectedOccurrence,
         event: events.find((item: any) =>
       item.uid === dialog.occurrence?.uid && item.source === dialog.occurrence?.source),
-        note: noteIndex.get(occurrenceKeyOf(dialog.occurrence)),
+        note: occurrenceNote(noteIndex, dialog.occurrence),
         service,
         run,
         onEdit: openEvent,
@@ -1769,6 +1798,22 @@ export async function apply(ctx: any) {
     const call = (method: string) => (input?: any) => unwrap(surface.remote.calendar[method](input))
     const service = {
       snapshot: () => unwrap(surface.remote.calendar.snapshot()),
+      sourceStatuses: () => unwrap(surface.remote.calendar.sourceStatuses()),
+      subscribe(listener: () => void) {
+        let active = true
+        const controller = new AbortController()
+        let stream: any
+        let retry: ReturnType<typeof setTimeout> | undefined
+        const observe = async () => {
+          try {
+            stream = surface.remote.calendar.changes(controller.signal)
+            for await (const _change of stream) { if (active) listener() }
+          } catch { /* Carrier loss ends a generation; reopen after reconnect. */ }
+          finally { if (active) retry = setTimeout(() => { void observe() }, 1000) }
+        }
+        void observe()
+        return () => { active = false; clearTimeout(retry); controller.abort(); stream?.dispose?.() }
+      },
       occurrences: call('occurrences'),
       importIcs: call('importIcs'),
       exportIcs: call('exportIcs'),
@@ -1782,6 +1827,8 @@ export async function apply(ctx: any) {
       putNote: call('putNote'),
       removeNote: call('removeNote'),
       notes: call('notes'),
+      setPersonal: call('setPersonal'),
+      personalFor: call('personalFor'),
       unlinkedNotes: () => unwrap(surface.remote.calendar.unlinkedNotes({})),
     }
     surface.slots.inject('main', () => surface.slots.register(

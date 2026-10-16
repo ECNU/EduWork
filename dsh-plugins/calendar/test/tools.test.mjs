@@ -113,12 +113,14 @@ test('the registered surface is calendar tools and notes, behind one write gate'
     'calendar_notes',
     'calendar_put_note',
     'calendar_remove_note',
+    'calendar_read_personal',
+    'calendar_personal_settings',
   ])
   assert.deepEqual(handlers.map(entry => entry.name), ['tools/pre-execute'])
   // A new tool that is not the read one must be declared in WRITE_TOOLS, or it
   // would write with no approval in front of it.
   for (const entry of registered) {
-    if (['calendar_list_events', 'calendar_notes'].includes(entry.name)) continue
+    if (['calendar_list_events', 'calendar_notes', 'calendar_read_personal'].includes(entry.name)) continue
     assert.ok(WRITE_TOOLS.has(entry.name), `${entry.name} is gated`)
   }
   assert.ok(!WRITE_TOOLS.has('calendar_list_events'), 'reading is not gated')
@@ -304,4 +306,23 @@ test('Agent moving an overnight entry preserves its complete duration', {skip:!r
   const {definition}=await tool('calendar_update_event',backing)
   await definition.execute({uid:'overnight',start:'2026-10-21T22:00'}, {})
   assert.equal(backing.calls[0].record.end,'2026-10-22T01:00')
+})
+
+
+test('Agent personal settings share the service identity and the calendar write permission gate', { skip: !runtime }, async () => {
+  const calls = []
+  const backing = {
+    async setPersonal(input) { calls.push(input) },
+    personalFor(input) { return { note: { text: input.originalStart ? 'Once' : 'Series' }, reminder: { kind: 'relative', minutes: 15 } } },
+  }
+  const { definition, handlers } = await tool('calendar_personal_settings', backing)
+  const args = { source: 'example:timetable', uid: 'same', originalStart: '2026-10-06T09:00', patch: { hidden: false }, clear: ['note'] }
+  const result = await definition.execute(args)
+  assert.deepEqual(calls, [{ ...args, scope: 'source' }])
+  assert.equal(result.settings.note.text, 'Once')
+  const decide = handlers[0].handler
+  const decision = await decide({ name: 'calendar_personal_settings', agent: { session: {} } }, () => 'allow')
+  assert.equal(decision.kind, 'ask')
+  const read = (await tool('calendar_read_personal', backing)).definition
+  assert.equal((await read.execute({ source: args.source, uid: args.uid })).settings.note.text, 'Series')
 })

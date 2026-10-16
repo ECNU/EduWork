@@ -14,7 +14,25 @@
 import { randomUUID } from 'node:crypto'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { decideCalendarPermission } from './tool-permission.js'
-import { inheritedEndOf } from './model.js'
+import { inheritedEndOf, PersonalPatchSchema, PersonalViewSchema } from './model.js'
+import { z } from 'zod'
+
+// Project the shared model into the Runtime tool-author subset. These unions
+// have disjoint strict-object branches. Date/range refinements stay enforced by
+// the service, because the tool schema subset cannot express those constraints.
+function personalToolSchema(node) {
+  if (node.anyOf) return { oneOf: node.anyOf.map(personalToolSchema) }
+  const result = { type: node.type }
+  for (const key of ['enum', 'const', 'description']) if (node[key] !== undefined) result[key] = node[key]
+  if (node.type === 'object') {
+    result.additionalProperties = false
+    result.properties = Object.fromEntries(Object.entries(node.properties ?? {}).map(([key, value]) => [key, {
+      ...personalToolSchema(value), ...(node.required?.includes(key) ? { required: true } : {}),
+    }]))
+  }
+  if (node.items) result.items = personalToolSchema(node.items)
+  return result
+}
 
 export const name = 'dsh-calendar-tools'
 export const inject = ['tools', 'calendar', 'permissionPresets']
@@ -410,7 +428,7 @@ export function apply(ctx) {
   const noteIdentity = {
     source: {...sourceParameter, required:true},
     uid: {type:'string',required:true,description:'Event uid returned by calendar_list_events.'},
-    originalStart: {type:'string',required:true,description:'Stable originalStart returned by calendar_list_events, not the current start. Targets this one occurrence.'},
+    originalStart: {type:'string',description:'Stable originalStart returned by calendar_list_events. Omit for the whole event; supply it for one occurrence, never use the moved start.'},
   }
   const noteFields = {
     source:{type:'string',required:true},uid:{type:'string',required:true},
@@ -424,7 +442,7 @@ export function apply(ctx) {
       render:(_args,value)=>[{type:'text',text:value.notes.length?value.notes.map(n=>`${n.source} / ${n.uid} / ${n.originalStart ?? '整条日程'}：${n.text}`).join('\n'):'没有符合条件的笔记。'}]},
     execute(args) {
       const records=args.unlinkedOnly?ctx.calendar.unlinkedNotes().filter(r=>r.scope==='source'):ctx.calendar.notes({scope:'source'})
-      return {notes:records.filter(r=>(args.source===undefined||r.source===args.source)&&(args.uid===undefined||r.uid===args.uid)&&(args.originalStart===undefined||r.originalStart===args.originalStart))
+      return {notes:records.filter(r=>r.note?.text!==undefined).filter(r=>(args.source===undefined||r.source===args.source)&&(args.uid===undefined||r.uid===args.uid)&&(args.originalStart===undefined||r.originalStart===args.originalStart))
         .map(r=>({source:r.source,uid:r.uid,text:r.note?.text ?? '',...(r.originalStart?{originalStart:r.originalStart}:{}),...(r.reason?{reason:r.reason}:{})}))}
     },
     presentCall:()=>({card:'generic',title:'Calendar · 读笔记',kind:'read'}),
@@ -448,6 +466,37 @@ export function apply(ctx) {
     output:{schema:{type:'object',additionalProperties:false,properties:{removed:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.removed?'已删除笔记。':'这次日程没有笔记。'}]},
     execute:args=>ctx.calendar.removeNote({...args,scope:'source'}),
     presentCall:()=>({card:'generic',title:'Calendar · 清空笔记',kind:'write'}),
+  }))
+
+  const patchSchema = personalToolSchema(z.toJSONSchema(PersonalPatchSchema))
+  const viewSchema = personalToolSchema(z.toJSONSchema(PersonalViewSchema.omit({ legacyExtensions: true })))
+  const settingsOutput = {
+    schema: { type: 'object', additionalProperties: false, properties: { settings: { ...viewSchema, required: true }, legacyExtensions: { type: 'string' } } },
+    render: (_args, value) => [{ type: 'text', text: JSON.stringify(value.settings) }],
+  }
+  ctx.tools.register(defineTool({
+    name: 'calendar_read_personal',
+    description: 'Read effective private note, remark, display and reminder settings for an event or occurrence. Omit originalStart for series defaults. Settings inherit per field; off disables that field. These values are local and excluded from ICS.',
+    parameters: noteIdentity,
+    output: settingsOutput,
+    execute: args => {
+      const { legacyExtensions, ...settings } = ctx.calendar.personalFor({ ...args, scope: 'source' })
+      return { settings, ...(legacyExtensions ? { legacyExtensions: JSON.stringify(legacyExtensions) } : {}) }
+    },
+    presentCall: () => ({ card: 'generic', title: 'Calendar · 读个人设置', kind: 'read' }),
+  }))
+  ctx.tools.register(defineTool({
+    name: 'calendar_personal_settings',
+    description: 'Change private note, remark, hidden and reminder settings. Omit originalStart for the whole event. patch contains only changed fields; clear names fields to restore inheritance. reminder is relative {kind:relative,minutes}, fixed {kind:fixed,at:local datetime}, or {off:true}. This saves and calculates reminders; actual delivery requires a Host scheduler adapter.',
+    parameters: { ...noteIdentity, patch: patchSchema, clear: { type: 'array', items: { type: 'string', enum: ['note', 'remark', 'hidden', 'reminder'] } } },
+    output: settingsOutput,
+    async execute(args) {
+      await ctx.calendar.setPersonal({ ...args, scope: 'source' })
+      const { patch, clear, ...ref } = args
+      const { legacyExtensions, ...settings } = ctx.calendar.personalFor({ ...ref, scope: 'source' })
+      return { settings, ...(legacyExtensions ? { legacyExtensions: JSON.stringify(legacyExtensions) } : {}) }
+    },
+    presentCall: () => ({ card: 'generic', title: 'Calendar · 改个人设置', kind: 'write' }),
   }))
 
 }

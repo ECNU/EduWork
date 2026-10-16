@@ -179,8 +179,14 @@ const call = (method) => async (input) => {
   if (!response.ok) throw new Error(method + ': ' + await response.text());
   return await response.json();
 };
-const calendarService = {};
-for (const method of ${JSON.stringify(methods)}) calendarService[method] = call(method);
+const calendarService = {
+  subscribe(listener) {
+    const stream = new EventSource('/changes');
+    stream.onmessage = () => listener();
+    return () => stream.close();
+  },
+};
+for (const method of ${JSON.stringify(methods)}) calendarService[method] = method === 'sourceStatuses' ? () => call(method)() : call(method);
 ReactDOM.createRoot(document.querySelector('#calendar')).render(
   elt(calendarPanel.createCalendarPage(calendarService)),
 );
@@ -206,6 +212,14 @@ async function serve(calendar, panel, methods) {
   const primitives = await readFile(join(pluginRoot, 'test', 'support', 'browser-primitives.js'), 'utf8')
   const server = createServer(async (request, response) => {
     try {
+      if (request.url === '/changes') {
+        response.writeHead(200, { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache' })
+        const controller = new AbortController()
+        response.on('close', () => controller.abort())
+        for await (const change of calendar.changes(controller.signal)) response.write(`data: ${JSON.stringify(change)}\n\n`)
+        response.end()
+        return
+      }
       if (request.url === '/panel.js') {
         response.setHeader('Content-Type', 'text/javascript')
         response.end(panel)
@@ -317,7 +331,7 @@ async function withBrowser(calendar, panel, methods, body) {
 
 const METHODS = [
   'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applySource', 'applyOverride', 'removeOverride',
-  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent', 'putNote', 'removeNote', 'notes',
+  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses',
 ]
 
 const panel = await bundlePanel()
@@ -894,6 +908,105 @@ await acceptance('全天导入拒绝无效结束日期，合法的一天仍正�
       })
     })
   })
+})
+
+await acceptance('外部同步和 Agent 笔记修改自动刷新已打开面板', async () => {
+  await withRoot('eduwork-browser-external-refresh-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek }) => {
+      const day = await dayInWeek(1)
+      await calendar.applySource({ source: SOURCE, complete: true, events: [{ uid: 'external', title: 'External class', start: `${day}T09:00`, end: `${day}T11:00` }] })
+      const block = page.getByRole('button', { name: /External class/ })
+      await block.waitFor({ timeout: 3000 })
+      await calendar.putNote({ source: SOURCE, uid: 'external', originalStart: `${day}T09:00`, text: 'Agent wrote this' })
+      await block.getByText('笔记：Agent wrote this', { exact: true }).waitFor({ timeout: 3000 })
+      await calendar.applySource({ source: SOURCE, complete: true, events: [] })
+      await block.waitFor({ state: 'detached', timeout: 3000 })
+    })
+  }))
+})
+
+await acceptance('整门课笔记、单次覆盖、恢复默认和提醒设置可从面板保存', async () => {
+  await withRoot('eduwork-browser-personal-settings-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, call }) => {
+      const day = await dayInWeek(1)
+      await call('applySource', { source: SOURCE, events: [{ uid: 'settings', title: 'Personal settings class', start: `${day}T09:00`, end: `${day}T11:00`, recurrence: { freq: 'weekly', count: 3 } }] })
+      const block = page.getByRole('button', { name: /Personal settings class/ })
+      await block.waitFor()
+      await block.click()
+      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await page.getByRole('combobox', { name: '设置范围' }).selectOption('series')
+      await page.getByRole('combobox', { name: '笔记设置' }).selectOption('custom')
+      await page.getByRole('textbox', { name: '默认笔记' }).fill('Every class note')
+      await page.getByRole('combobox', { name: '提醒设置' }).selectOption('relative')
+      await page.getByRole('spinbutton', { name: '提前分钟数' }).fill('15')
+      await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
+      await poll(async () => calendar.personalFor({ source: SOURCE, uid: 'settings' }).note?.text, 'Every class note', 'series note was saved')
+      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await block.getByText('笔记：Every class note').waitFor()
+      await block.click()
+      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await page.getByRole('combobox', { name: '笔记设置' }).selectOption('custom')
+      await page.getByRole('textbox', { name: '默认笔记' }).fill('Only this class')
+      await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
+      const ref = { source: SOURCE, uid: 'settings', originalStart: `${day}T09:00` }
+      await poll(async () => calendar.personalFor(ref).note?.text, 'Only this class', 'one class overrides the default')
+      await page.getByRole('dialog').getByText(/我的笔记\s*Only this class/).waitFor({ timeout: 3000 })
+      await page.getByRole('combobox', { name: '笔记设置' }).selectOption('inherit')
+      await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
+      await poll(async () => calendar.personalFor(ref).note?.text, 'Every class note', 'restore the default')
+      await page.getByRole('dialog').getByText(/我的笔记\s*Every class note/).waitFor({ timeout: 3000 })
+      assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'relative', minutes: 15 })
+    })
+  }))
+})
+
+await acceptance('来源状态显示失败并保留已有课表，重试成功后自动恢复', async () => {
+  await withRoot('eduwork-browser-source-status-', async root => withCalendar(root, async calendar => {
+    let fail = true
+    const handle = calendar.registerSource({ provider: 'example.edu', account: 'student', feed: 'timetable', label: '测试课表',
+      fetch: async () => { if (fail) throw new Error('token=never-display'); return { complete: true, events: [] } } })
+    await withBrowser(calendar, panel, METHODS, async ({ page }) => {
+      await page.getByText('测试课表：同步失败，保留上次数据', { exact: true }).waitFor({ timeout: 3000 })
+      fail = false
+      await handle.sync()
+      await page.getByText('测试课表：已更新', { exact: true }).waitFor({ timeout: 3000 })
+      assert.ok(!(await page.locator('body').innerText()).includes('token=never-display'))
+    })
+    handle.dispose()
+  }))
+})
+
+await acceptance('隐藏单次后可从日程页恢复，私人备注与固定提醒仍保留', async () => {
+  await withRoot('eduwork-browser-hidden-settings-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, call }) => {
+      const day = await dayInWeek(1)
+      await call('applySource', { source: SOURCE, events: [{ uid: 'hidden', title: 'Hidden settings class', start: `${day}T09:00`, end: `${day}T11:00`, description: 'Source text' }] })
+      const block = page.getByRole('button', { name: /09:00.*Hidden settings class/ })
+      await block.waitFor(); await block.click()
+      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await page.getByRole('combobox', { name: '备注设置' }).selectOption('custom')
+      await page.getByRole('textbox', { name: '我的备注' }).fill('Private remark')
+      await page.getByRole('combobox', { name: '提醒设置' }).selectOption('fixed')
+      await page.getByLabel('固定提醒时间', { exact: true }).fill(`${day}T20:00`)
+      await page.getByRole('combobox', { name: '显示设置' }).selectOption('hide')
+      await page.getByRole('button', { name: '保存个人设置', exact: true }).click()
+      const ref = { source: SOURCE, uid: 'hidden', originalStart: `${day}T09:00` }
+      await poll(() => calendar.personalFor(ref).hidden, true, 'hidden persisted')
+      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await block.waitFor({ state: 'detached' })
+      await page.getByRole('button', { name: '日程', exact: true }).click()
+      await page.getByRole('menuitem', { name: /Hidden settings class/ }).click()
+      await page.getByRole('button', { name: /Hidden settings class.*已隐藏/ }).click({ timeout: 3000 })
+      const dialog = page.getByRole('dialog')
+      await dialog.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await dialog.getByRole('combobox', { name: '显示设置' }).selectOption('show')
+      await dialog.getByRole('button', { name: '保存个人设置', exact: true }).click()
+      await poll(() => calendar.personalFor(ref).hidden, false, 'shown again')
+      assert.equal(calendar.personalFor(ref).remark.text, 'Private remark')
+      assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'fixed', at: `${day}T20:00` })
+      assert.equal(calendar.getEvent({ source: SOURCE, uid: 'hidden' }).description, 'Source text')
+    })
+  }))
 })
 
 console.log(report.join('\n'))

@@ -76,15 +76,26 @@ export const ScopeSchema = z.enum(SCOPE)
  * happens at, which is what keeps a note attached across a reschedule; it is
  * absent on an annotation that speaks for the whole series.
  */
-export const AnnotationSchema = z
-  .object({
-    scope: ScopeSchema,
-    source: z.string().min(1),
-    uid: z.string().min(1),
-    originalStart: LocalTimeSchema.optional(),
-    note: z.object({ text: z.string() }).strict().optional(),
-  })
-  .strict()
+const off = z.object({ off: z.literal(true) }).strict()
+export const PersonalFields = {
+  note: z.union([z.object({ text: z.string() }).strict(), off]).optional(),
+  remark: z.union([z.object({ text: z.string() }).strict(), off]).optional(),
+  hidden: z.boolean().optional(),
+  reminder: z.union([
+    z.object({ kind: z.literal('relative'), minutes: z.number().int().min(0).max(525600) }).strict(),
+    z.object({ kind: z.literal('fixed'), at: LocalTimeSchema.refine(value => value.length === 16, 'fixed reminder needs a clock time') }).strict(),
+    off,
+  ]).optional(),
+}
+export const PersonalPatchSchema = z.object(PersonalFields).strict()
+export const PersonalViewSchema = PersonalPatchSchema.extend({ legacyDescription: z.string().optional(), legacyExtensions: z.record(z.string(), z.unknown()).optional() })
+export const AnnotationSchema = z.object({
+  scope: ScopeSchema,
+  source: z.string().min(1),
+  uid: z.string().min(1),
+  originalStart: LocalTimeSchema.optional(),
+  ...PersonalFields,
+}).strict()
 
 /**
  * Supported recurrence subset. Deliberately narrower than RRULE: rules outside

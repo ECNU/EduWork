@@ -4285,12 +4285,34 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* happens at, which is what keeps a note attached across a reschedule; it is
 		* absent on an annotation that speaks for the whole series.
 		*/
+		const off = object({ off: literal(true) }).strict();
+		const PersonalFields = {
+			note: union([object({ text: string() }).strict(), off]).optional(),
+			remark: union([object({ text: string() }).strict(), off]).optional(),
+			hidden: boolean().optional(),
+			reminder: union([
+				object({
+					kind: literal("relative"),
+					minutes: number().int().min(0).max(525600)
+				}).strict(),
+				object({
+					kind: literal("fixed"),
+					at: LocalTimeSchema.refine((value) => value.length === 16, "fixed reminder needs a clock time")
+				}).strict(),
+				off
+			]).optional()
+		};
+		const PersonalPatchSchema = object(PersonalFields).strict();
+		const PersonalViewSchema = PersonalPatchSchema.extend({
+			legacyDescription: string().optional(),
+			legacyExtensions: record(string(), unknown()).optional()
+		});
 		const AnnotationSchema = object({
 			scope: ScopeSchema,
 			source: string().min(1),
 			uid: string().min(1),
 			originalStart: LocalTimeSchema.optional(),
-			note: object({ text: string() }).strict().optional()
+			...PersonalFields
 		}).strict();
 		/**
 		* Supported recurrence subset. Deliberately narrower than RRULE: rules outside
@@ -4377,7 +4399,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			* was originally scheduled for, so personal content keyed by it stays attached.
 			*/
 			originalStart: LocalTimeSchema,
-			overridden: boolean().optional()
+			overridden: boolean().optional(),
+			personal: PersonalViewSchema.optional()
 		}).strict();
 		const occurrences = object({
 			schemaVersion: number().int().positive(),
@@ -4385,6 +4408,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}).strict();
 		/** Bounds of a range query; either side may be omitted. */
 		const rangeSchema = object({
+			includeHidden: boolean().optional(),
 			from: LocalTimeSchema.optional(),
 			to: LocalTimeSchema.optional()
 		}).strict();
@@ -4471,6 +4495,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}).strict();
 		const applySourceOutcome = object({
 			applied: number().int().nonnegative(),
+			removed: number().int().nonnegative().optional(),
 			moved: number().int().nonnegative(),
 			cancelled: number().int().nonnegative(),
 			unattributable: array(object({
@@ -4555,6 +4580,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const noteResult = result("@eduwork/dsh-calendar#CalendarAnnotation", annotation);
 		const notesResult = result("@eduwork/dsh-calendar#CalendarAnnotations", array(annotation));
 		const unlinkedNotesResult = result("@eduwork/dsh-calendar#CalendarUnlinkedAnnotations", array(unlinkedNote));
+		const changeResult = result("@eduwork/dsh-calendar#CalendarChange", object({ revision: number().int().nonnegative() }).strict());
+		const personalParameter = jsonParameter("setPersonal", "input", noteRefInput.extend({
+			patch: PersonalPatchSchema.optional(),
+			clear: array(_enum(Object.keys(PersonalFields))).optional()
+		}).strict());
+		const personalResult = result("@eduwork/dsh-calendar#CalendarPersonalWrite", object({ annotation: AnnotationSchema.nullable() }).strict());
+		const personalReadParameter = jsonParameter("personalFor", "input", noteRefInput);
+		const personalReadResult = result("@eduwork/dsh-calendar#CalendarPersonalView", PersonalViewSchema);
+		const sourceStatusesResult = result("@eduwork/dsh-calendar#CalendarSourceStatuses", array(object({
+			source: string(),
+			label: string(),
+			state: _enum([
+				"idle",
+				"loading",
+				"ready",
+				"error"
+			]),
+			updatedAt: string().optional(),
+			error: _enum([
+				"incomplete_snapshot",
+				"unattributable",
+				"sync_failed",
+				"sync_timeout"
+			]).optional()
+		}).strict()));
 		//#endregion
 		//#region lib/typert-descriptors.js
 		const pkg = "@eduwork/dsh-calendar";
@@ -4584,23 +4634,249 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		var typert_remote_client_default = {
 			package: "@eduwork/dsh-calendar",
 			descriptors: Object.freeze([
-				descriptor("snapshot", 53, [], snapshotResult),
-				descriptor("occurrences", 72, [rangeParameter], occurrencesResult),
-				descriptor("importIcs", 94, [importParameter], importResult),
-				descriptor("exportIcs", 110, [exportParameter], exportResult),
-				descriptor("putEvent", 133, [eventParameter], eventResult),
-				descriptor("deleteEvent", 142, [deleteEventParameter], removalResult),
-				descriptor("applyOverride", 152, [overrideParameter], eventResult),
-				descriptor("removeOverride", 161, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 170, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 179, [restoreParameter], eventResult),
-				descriptor("applySource", 214, [applySourceParameter], applySourceResult),
-				descriptor("putNote", 227, [putNoteParameter], noteResult),
-				descriptor("removeNote", 241, [removeNoteParameter], removalResult),
-				descriptor("notes", 250, [notesParameter], notesResult),
-				descriptor("unlinkedNotes", 270, [unlinkedNotesParameter], unlinkedNotesResult)
+				descriptor("snapshot", 99, [], snapshotResult),
+				descriptor("occurrences", 121, [rangeParameter], occurrencesResult),
+				descriptor("importIcs", 146, [importParameter], importResult),
+				descriptor("exportIcs", 164, [exportParameter], exportResult),
+				descriptor("putEvent", 187, [eventParameter], eventResult),
+				descriptor("deleteEvent", 208, [deleteEventParameter], removalResult),
+				descriptor("applyOverride", 218, [overrideParameter], eventResult),
+				descriptor("removeOverride", 227, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 236, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 245, [restoreParameter], eventResult),
+				descriptor("applySource", 306, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 347, [putNoteParameter], noteResult),
+				descriptor("removeNote", 361, [removeNoteParameter], removalResult),
+				descriptor("notes", 370, [notesParameter], notesResult),
+				Object.freeze({
+					...descriptor("changes", 272, [], changeResult),
+					mode: "stream",
+					cancellation: { parameter: "signal" }
+				}),
+				descriptor("personalFor", 323, [personalReadParameter], personalReadResult),
+				descriptor("sourceStatuses", 76, [], sourceStatusesResult),
+				descriptor("setPersonal", 317, [personalParameter], personalResult),
+				descriptor("unlinkedNotes", 390, [unlinkedNotesParameter], unlinkedNotesResult)
 			])
 		};
+		//#endregion
+		//#region src/personal-settings.ts
+		const border = "1px solid var(--dsw-alias-border-l2, #0000001f)";
+		const control = {
+			width: "100%",
+			boxSizing: "border-box",
+			padding: "7px 8px",
+			borderRadius: 8,
+			border,
+			background: "var(--dsw-alias-bg-layer-1, #fff)",
+			color: "var(--dsw-alias-label-primary, #222)",
+			font: "inherit"
+		};
+		const modes = (once) => [
+			...once ? [["inherit", "沿用整条日程"]] : [],
+			["custom", "填写内容"],
+			["off", "不显示内容"]
+		];
+		const fieldNames = [
+			"note",
+			"remark",
+			"hidden",
+			"reminder"
+		];
+		/** Read a resolved note, with a fallback for clients reading an older occurrence shape. */
+		function occurrenceNote(index, occurrence) {
+			const base = `${occurrence.source ?? "manual"}\u0000${occurrence.uid}\u0000`;
+			return index?.get(base + occurrence.originalStart) ?? index?.get(base) ?? "";
+		}
+		function draftOf$1(own, effective, once) {
+			const text = (field) => ({
+				mode: own[field]?.off ? "off" : own[field] ? "custom" : once ? "inherit" : "off",
+				text: effective[field]?.text ?? ""
+			});
+			const reminder = own.reminder;
+			return {
+				note: text("note"),
+				remark: text("remark"),
+				hidden: own.hidden === void 0 ? once ? "inherit" : "show" : own.hidden ? "hide" : "show",
+				reminder: {
+					mode: reminder?.off ? "off" : reminder?.kind ?? (once ? "inherit" : "off"),
+					minutes: String(effective.reminder?.minutes ?? 15),
+					at: effective.reminder?.at ?? ""
+				}
+			};
+		}
+		/** One editor for both series defaults and occurrence overrides. */
+		function PersonalSettings({ identity, service, run, Field, allowOccurrence = true }) {
+			const [target, setTarget] = (0, react.useState)(allowOccurrence && identity.originalStart ? "once" : "series");
+			const [form, setForm] = (0, react.useState)(null);
+			const [baseline, setBaseline] = (0, react.useState)(null);
+			const [effective, setEffective] = (0, react.useState)({});
+			const [problem, setProblem] = (0, react.useState)("");
+			const [busy, setBusy] = (0, react.useState)(false);
+			const once = target === "once";
+			const ref = {
+				scope: identity.scope ?? "source",
+				source: identity.source ?? "manual",
+				uid: identity.uid,
+				...once ? { originalStart: identity.originalStart } : {}
+			};
+			const load = (0, react.useCallback)(async () => {
+				const [records, resolved] = await Promise.all([service.notes(ref), service.personalFor(ref)]);
+				return {
+					resolved,
+					draft: draftOf$1(records.find((row) => row.originalStart === ref.originalStart) ?? {}, resolved, once)
+				};
+			}, [service, JSON.stringify(ref)]);
+			(0, react.useEffect)(() => {
+				let active = true;
+				setForm(null);
+				setProblem("");
+				load().then(({ resolved, draft }) => {
+					if (active) {
+						setForm(draft);
+						setBaseline(draft);
+						setEffective(resolved);
+					}
+				}).catch((error) => {
+					if (active) setProblem(String(error.message ?? error));
+				});
+				return () => {
+					active = false;
+				};
+			}, [load]);
+			const change = (field, value) => setForm({
+				...form,
+				[field]: value
+			});
+			const select = (label, value, options, onChange) => react.default.createElement(Field, { label }, react.default.createElement("select", {
+				"aria-label": label,
+				value,
+				style: control,
+				onChange: (event) => onChange(event.target.value)
+			}, ...options.map(([value, label]) => react.default.createElement("option", {
+				key: value,
+				value
+			}, label))));
+			const save = async () => {
+				setProblem("");
+				if (form.reminder.mode === "relative" && (form.reminder.minutes.trim() === "" || !Number.isInteger(Number(form.reminder.minutes)) || Number(form.reminder.minutes) < 0 || Number(form.reminder.minutes) > 525600)) {
+					setProblem("提前分钟数请填写 0 到 525600 的整数");
+					return;
+				}
+				if (form.reminder.mode === "fixed" && !form.reminder.at) {
+					setProblem("请选择固定提醒时间");
+					return;
+				}
+				const patch = {}, clear = [];
+				for (const field of fieldNames) {
+					if (JSON.stringify(form[field]) === JSON.stringify(baseline[field])) continue;
+					const value = form[field];
+					const mode = field === "hidden" ? value : value.mode;
+					if (mode === "inherit") clear.push(field);
+					else if (field === "hidden") patch.hidden = mode === "hide";
+					else if (mode === "off") patch[field] = { off: true };
+					else if (field === "reminder") patch.reminder = mode === "relative" ? {
+						kind: "relative",
+						minutes: Number(value.minutes)
+					} : {
+						kind: "fixed",
+						at: value.at
+					};
+					else patch[field] = { text: value.text };
+				}
+				setBusy(true);
+				try {
+					if (await run(() => service.setPersonal({
+						...ref,
+						patch,
+						clear
+					}), "个人设置已保存")) {
+						const { draft, resolved } = await load();
+						setBaseline(draft);
+						setForm(draft);
+						setEffective(resolved);
+					}
+				} catch (error) {
+					setProblem(error.message);
+				} finally {
+					setBusy(false);
+				}
+			};
+			const textField = (field, label) => react.default.createElement("div", { key: field }, select(`${label}设置`, form[field].mode, modes(once), (mode) => change(field, {
+				...form[field],
+				mode
+			})), form[field].mode === "custom" ? react.default.createElement(Field, { label: field === "note" ? "默认笔记" : "我的备注" }, react.default.createElement("textarea", {
+				"aria-label": field === "note" ? "默认笔记" : "我的备注",
+				style: control,
+				rows: 3,
+				value: form[field].text,
+				onChange: (event) => change(field, {
+					...form[field],
+					text: event.target.value
+				})
+			})) : void 0);
+			return react.default.createElement("section", {
+				"aria-label": "个人设置",
+				style: {
+					padding: 12,
+					borderRadius: 10,
+					border,
+					background: "var(--dsw-alias-bg-layer-2, #f6f6f6)",
+					fontSize: 13
+				}
+			}, react.default.createElement("strong", null, "个人设置"), react.default.createElement("p", { style: {
+				color: "var(--dsw-alias-label-secondary, #666)",
+				fontSize: 12
+			} }, "笔记、备注和隐藏仅保存在本机。相对提醒随改期调整；固定时间提醒独立保留。当前仅保存和计算提醒，尚未接入到点通知。"), allowOccurrence && identity.originalStart ? select("设置范围", target, [["once", "仅这一次"], ["series", "整条日程"]], setTarget) : void 0, !form ? react.default.createElement("p", null, problem || "正在读取个人设置…") : react.default.createElement(react.default.Fragment, null, textField("note", "笔记"), textField("remark", "备注"), select("显示设置", form.hidden, [
+				...once ? [["inherit", "沿用整条日程"]] : [],
+				["show", "显示"],
+				["hide", "隐藏"]
+			], (value) => change("hidden", value)), select("提醒设置", form.reminder.mode, [
+				...once ? [["inherit", "沿用整条日程"]] : [],
+				["off", "关闭提醒"],
+				["relative", "提前提醒"],
+				["fixed", "固定时间"]
+			], (mode) => change("reminder", {
+				...form.reminder,
+				mode
+			})), form.reminder.mode === "relative" ? react.default.createElement(Field, { label: "提前分钟数" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+				"aria-label": "提前分钟数",
+				type: "number",
+				min: 0,
+				max: 525600,
+				value: form.reminder.minutes,
+				onChange: (event) => change("reminder", {
+					...form.reminder,
+					minutes: event.target.value
+				})
+			})) : void 0, form.reminder.mode === "fixed" ? react.default.createElement(Field, { label: "固定提醒时间" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+				"aria-label": "固定提醒时间",
+				type: "datetime-local",
+				value: form.reminder.at,
+				onChange: (event) => change("reminder", {
+					...form.reminder,
+					at: event.target.value
+				})
+			})) : void 0, effective.legacyDescription !== void 0 ? react.default.createElement("div", { style: {
+				margin: "12px 0",
+				whiteSpace: "pre-wrap"
+			} }, react.default.createElement("strong", null, "旧备注备份（归属待确认）"), react.default.createElement("p", null, effective.legacyDescription), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "outline",
+				size: "sm",
+				onClick: () => change("remark", {
+					mode: "custom",
+					text: effective.legacyDescription
+				})
+			}, "复制到我的备注")) : void 0, effective.legacyExtensions ? react.default.createElement("details", null, react.default.createElement("summary", null, "旧附加信息备份（归属待确认）"), react.default.createElement("pre", { style: {
+				whiteSpace: "pre-wrap",
+				overflowWrap: "anywhere"
+			} }, JSON.stringify(effective.legacyExtensions, null, 2))) : void 0, problem ? react.default.createElement("p", { role: "alert" }, problem) : void 0, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				size: "sm",
+				variant: "primary",
+				disabled: busy || JSON.stringify(form) === JSON.stringify(baseline),
+				onClick: save
+			}, "保存个人设置")));
+		}
 		//#endregion
 		//#region src/layout.js
 		/** Minutes in a whole day; also the exclusive upper bound of the axis. */
@@ -4911,7 +5187,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						date,
 						identity,
 						onSelect,
-						note: noteIndex?.get(identity),
+						note: occurrenceNote(noteIndex, occurrence),
 						tint: tintOf(occurrence.source ?? occurrence.uid)
 					});
 				}), entries.length > 3 ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -5561,7 +5837,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				entry,
 				axisStart: axis.start,
 				tint: tintOf(entry.occurrence.source ?? entry.occurrence.uid),
-				note: noteIndex?.get(occurrenceKeyOf(entry.occurrence)),
+				note: occurrenceNote(noteIndex, entry.occurrence),
 				onSelect
 			}))));
 			const nowLine = nowVisible ? react.default.createElement("div", {
@@ -5617,6 +5893,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 			const [noteDraft, setNoteDraft] = (0, react.useState)(note ?? "");
 			const [writingNote, setWritingNote] = (0, react.useState)(false);
+			const [showPersonal, setShowPersonal] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				setEditing(false);
 				setConfirming(false);
@@ -5627,7 +5904,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					end: occurrence?.end ?? "",
 					location: occurrence?.location ?? ""
 				});
-			}, [occurrence, note]);
+			}, [occurrenceKeyOf(occurrence)]);
+			(0, react.useEffect)(() => {
+				if (!writingNote) setNoteDraft(note ?? "");
+			}, [note, writingNote]);
+			(0, react.useEffect)(() => {
+				if (!editing) setForm({
+					start: occurrence?.start ?? "",
+					end: occurrence?.end ?? "",
+					location: occurrence?.location ?? ""
+				});
+			}, [
+				occurrence?.start,
+				occurrence?.end,
+				occurrence?.location,
+				editing
+			]);
 			if (!occurrence) return null;
 			const date = occurrence.occurrenceDate ?? dateOf(occurrence.start);
 			const series = Boolean(event?.recurrence);
@@ -5670,6 +5962,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				size: "sm",
 				onClick: () => setWritingNote(!writingNote)
 			}, note ? "改笔记" : "写笔记"));
+			actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				key: "personal",
+				variant: "outline",
+				size: "sm",
+				onClick: () => setShowPersonal(!showPersonal)
+			}, showPersonal ? "收起个人设置" : "更多个人设置"));
 			if (event) actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				key: "record",
 				variant: "ghost",
@@ -5805,7 +6103,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setNoteDraft(note ?? "");
 					setWritingNote(false);
 				}
-			}, "取消"), noteDraft !== (note ?? "") ? react.default.createElement(Muted, null, "笔记只属于这次日程") : void 0)) : void 0, event?.source ? react.default.createElement("div", null, react.default.createElement(Muted, null, `日历：${event.source === "manual" ? "个人日程" : event.source}`)) : void 0, editing ? react.default.createElement("div", { style: {
+			}, "取消"), noteDraft !== (note ?? "") ? react.default.createElement(Muted, null, "笔记只属于这次日程") : void 0)) : void 0, showPersonal ? react.default.createElement(PersonalSettings, {
+				identity: noteRefOf(occurrence),
+				service,
+				run,
+				Field
+			}) : void 0, event?.source ? react.default.createElement("div", null, react.default.createElement(Muted, null, `日历：${event.source === "manual" ? "个人日程" : event.source}`)) : void 0, editing ? react.default.createElement("div", { style: {
 				marginTop: 4,
 				padding: 12,
 				borderRadius: 10,
@@ -6246,7 +6549,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				whiteSpace: "nowrap",
 				overflow: "hidden",
 				textOverflow: "ellipsis"
-			} }, occurrence.title), occurrence.overridden ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "info" }, "已改期") : void 0), react.default.createElement("div", { style: {
+			} }, occurrence.title), occurrence.overridden ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "info" }, "已改期") : void 0, occurrence.personal?.hidden ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "quiet" }, "已隐藏") : void 0), react.default.createElement("div", { style: {
 				marginTop: 2,
 				fontSize: 12,
 				color: SECONDARY,
@@ -6359,7 +6662,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* The fields of one record, shared by the new-entry dialog and the entry page:
 		* what the reader owns about an entry, as opposed to one date of a series.
 		*/
-		function EventForm({ draft, onChange, autoFocus }) {
+		function EventForm({ draft, onChange, autoFocus, sourceOwned = false }) {
 			const set = (patch) => onChange({
 				...draft,
 				...patch
@@ -6400,10 +6703,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				placeholder: "可留空",
 				onChange: (event) => set({ location: event.target.value })
 			})), react.default.createElement(Field, {
-				label: "备注",
-				hint: "随导出写进日历，不会同步到任何服务"
+				label: sourceOwned ? "来源备注（只读）" : "备注",
+				hint: sourceOwned ? "自己的备注请写在下方个人设置中" : "随导出写进日历，不会同步到任何服务"
 			}, react.default.createElement("textarea", {
-				"aria-label": "备注",
+				"aria-label": sourceOwned ? "来源备注（只读）" : "备注",
+				readOnly: sourceOwned,
 				value: draft.description,
 				rows: 3,
 				spellCheck: false,
@@ -6549,7 +6853,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* Wide panels show both at once; a narrow one stacks them, because the panel
 		* width is the reader's, not ours.
 		*/
-		function EventPage({ event, agenda, noteIndex, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }) {
+		function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }) {
 			const [draft, setDraft] = (0, react.useState)(() => draftOf(event));
 			const [problem, setProblem] = (0, react.useState)(null);
 			const [confirmingDelete, setConfirmingDelete] = (0, react.useState)(false);
@@ -6607,7 +6911,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}), react.default.createElement("strong", { style: { fontSize: 13 } }, "日程信息"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), event.recurrence ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, seriesSummary(event)) : void 0, event.source ? react.default.createElement(Muted, null, event.source) : void 0), react.default.createElement(EventForm, {
 				draft,
-				onChange: setDraft
+				onChange: setDraft,
+				sourceOwned: event.source !== "manual"
+			}), react.default.createElement(PersonalSettings, {
+				identity: {
+					source: event.source,
+					uid: event.uid
+				},
+				service,
+				run,
+				Field,
+				allowOccurrence: false
 			}), react.default.createElement("div", { style: {
 				display: "flex",
 				gap: 8,
@@ -6678,7 +6992,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				key: reactKeyOf(occurrence),
 				occurrence,
 				tint,
-				note: noteIndex?.get(occurrenceKeyOf(occurrence)),
+				note: occurrenceNote(noteIndex, occurrence),
 				onOpen: onOpenOccurrence,
 				onCancel: (item) => onCancel(item),
 				onDelete: (item) => onDelete(item)
@@ -6737,6 +7051,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const [monthAnchor, setMonthAnchor] = (0, react.useState)(() => monthStart(localDate()));
 				const [calendarSource, setCalendarSource] = (0, react.useState)("*");
 				const [snapshot, setSnapshot] = (0, react.useState)(null);
+				const [sourceStatuses, setSourceStatuses] = (0, react.useState)([]);
 				const [week, setWeek] = (0, react.useState)(null);
 				const [agenda, setAgenda] = (0, react.useState)(null);
 				const [noteIndex, setNoteIndex] = (0, react.useState)(() => /* @__PURE__ */ new Map());
@@ -6773,7 +7088,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const latestWeekRead = (0, react.useRef)(0);
 				const agendaRange = (0, react.useMemo)(() => ({
 					from: addDays(localDate(), -180),
-					to: addDays(localDate(), 366)
+					to: addDays(localDate(), 366),
+					includeHidden: true
 				}), []);
 				const loadSnapshot = (0, react.useCallback)(async () => {
 					setSnapshot(await service.snapshot());
@@ -6795,9 +7111,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					const records = await service.notes({ scope: "source" });
 					const index = /* @__PURE__ */ new Map();
 					for (const record of records ?? []) {
-						const text = record?.note?.text;
+						const text = record?.note?.text ?? (record?.note?.off ? "" : void 0);
 						if (typeof text !== "string") continue;
-						index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart}`, text);
+						index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart ?? ""}`, text);
 					}
 					setNoteIndex(index);
 				}, [service]);
@@ -6805,6 +7121,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setLoading(true);
 					try {
 						await loadSnapshot();
+						if (service.sourceStatuses) setSourceStatuses(await service.sourceStatuses());
 						await loadNotes();
 						if (view.kind === "week") await loadWeek();
 						if (view.kind === "event") await loadAgenda();
@@ -6824,6 +7141,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				(0, react.useEffect)(() => {
 					refresh();
 				}, [refresh]);
+				const latestRefresh = (0, react.useRef)(refresh);
+				latestRefresh.current = refresh;
+				(0, react.useEffect)(() => {
+					if (!service.subscribe) return;
+					let timer;
+					const dispose = service.subscribe(() => {
+						clearTimeout(timer);
+						timer = setTimeout(() => {
+							latestRefresh.current();
+						}, 60);
+					});
+					return () => {
+						clearTimeout(timer);
+						dispose();
+					};
+				}, [service]);
 				/** Run one write, then re-read: the panel never guesses what the host stored. */
 				const run = (0, react.useCallback)(async (action, success) => {
 					setBusy(true);
@@ -6862,6 +7195,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					});
 				}, []);
 				const current = view.kind === "event" ? events.find((event) => event.uid === view.id && event.source === view.source) : void 0;
+				const selectedOccurrence = dialog?.kind === "event" ? [...week?.occurrences ?? [], ...agenda ?? []].find((item) => occurrenceKeyOf(item) === occurrenceKeyOf(dialog.occurrence)) ?? dialog.occurrence : void 0;
 				const weekCount = week?.occurrences?.length ?? 0;
 				/** The week on screen is today's, so an entry started from here means today. */
 				const createDate = displayMode === "month" ? monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor : anchor === startOfWeek() ? localDate() : anchor;
@@ -7067,7 +7401,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					flex: "0 0 auto",
 					color: "var(--dsw-alias-state-error-primary, #d4553f)",
 					background: "color-mix(in srgb, var(--dsw-alias-state-error-primary, #d4553f) 8%, transparent)"
-				} }, react.default.createElement(IconWarning), problem) : void 0, view.kind === "week" ? react.default.createElement(displayMode === "month" ? MonthGrid : WeekGrid, {
+				} }, react.default.createElement(IconWarning), problem) : void 0, sourceStatuses.length > 0 ? react.default.createElement("div", {
+					role: "status",
+					style: {
+						display: "flex",
+						gap: 12,
+						flexWrap: "wrap",
+						padding: "6px 16px",
+						fontSize: 12,
+						color: SECONDARY
+					}
+				}, ...sourceStatuses.map((item) => react.default.createElement("span", { key: item.source }, `${item.label}：${item.state === "error" ? "同步失败，保留上次数据" : item.state === "loading" ? "同步中" : item.state === "ready" ? "已更新" : "等待同步"}`))) : void 0, view.kind === "week" ? react.default.createElement(displayMode === "month" ? MonthGrid : WeekGrid, {
 					anchor: displayMode === "month" ? monthAnchor : anchor,
 					tintOf,
 					occurrenceKeyOf,
@@ -7080,6 +7424,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					onCreate: createAt
 				}) : react.default.createElement(EventPage, {
 					event: current,
+					service,
+					run,
 					agenda,
 					noteIndex,
 					busy,
@@ -7105,9 +7451,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						source: occurrence.source
 					}), `已取消 ${shortDate(occurrence.occurrenceDate ?? dateOf(occurrence.start))} 的日程`)
 				}), dialog?.kind === "event" ? react.default.createElement(EventDialog, {
-					occurrence: dialog.occurrence,
+					occurrence: selectedOccurrence,
 					event: events.find((item) => item.uid === dialog.occurrence?.uid && item.source === dialog.occurrence?.source),
-					note: noteIndex.get(occurrenceKeyOf(dialog.occurrence)),
+					note: occurrenceNote(noteIndex, dialog.occurrence),
 					service,
 					run,
 					onEdit: openEvent,
@@ -7194,6 +7540,30 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const call = (method) => (input) => unwrap(surface.remote.calendar[method](input));
 				const service = {
 					snapshot: () => unwrap(surface.remote.calendar.snapshot()),
+					sourceStatuses: () => unwrap(surface.remote.calendar.sourceStatuses()),
+					subscribe(listener) {
+						let active = true;
+						const controller = new AbortController();
+						let stream;
+						let retry;
+						const observe = async () => {
+							try {
+								stream = surface.remote.calendar.changes(controller.signal);
+								for await (const _change of stream) if (active) listener();
+							} catch {} finally {
+								if (active) retry = setTimeout(() => {
+									observe();
+								}, 1e3);
+							}
+						};
+						observe();
+						return () => {
+							active = false;
+							clearTimeout(retry);
+							controller.abort();
+							stream?.dispose?.();
+						};
+					},
 					occurrences: call("occurrences"),
 					importIcs: call("importIcs"),
 					exportIcs: call("exportIcs"),
@@ -7207,6 +7577,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					putNote: call("putNote"),
 					removeNote: call("removeNote"),
 					notes: call("notes"),
+					setPersonal: call("setPersonal"),
+					personalFor: call("personalFor"),
 					unlinkedNotes: () => unwrap(surface.remote.calendar.unlinkedNotes({}))
 				};
 				surface.slots.inject("main", () => surface.slots.register({

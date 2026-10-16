@@ -9,7 +9,7 @@
 // Nothing here leaves the machine. Records are never uploaded and never logged.
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { assertEventKeyBudget, eventKey, isEncodedKey } from './keys.js'
-import { LocalDatesSchema, StoredEventSchema, assertOrderedRecord, assertOrderedSpan, buildSnapshot, dropRetiredFields, inheritedEndOf, normalizeEvent, occurrencesIn, overlaps } from './model.js'
+import { LocalDatesSchema, StoredEventSchema, assertOrderedRecord, assertOrderedSpan, buildSnapshot, dropRetiredFields, inheritedEndOf, normalizeEvent, occurrencesOf, occurrencesIn, overlaps } from './model.js'
 
 /**
  * Domain layout: events keyed by source and identifier.
@@ -171,6 +171,7 @@ export class CalendarStore {
 
   /** Close the domain, draining queued writes. Idempotent. */
   async close() {
+    await this.writes
     await this.domain?.close()
   }
 
@@ -500,15 +501,20 @@ export class CalendarStore {
    *   `{ uid, title, start, end?, location?, recurrence?, movedFrom?, cancelledDates? }`.
    * @returns `{ applied, moved, cancelled, unattributable }`.
    */
-  async applySource(input) {
+  async applySource(input, { isCurrent = () => true } = {}) {
     const source = input?.source
     if (typeof source !== 'string' || !source) throw new Error('a source snapshot must name its source')
+    if (source === MANUAL_SOURCE) throw new Error('reserved calendar source')
     if (!Array.isArray(input?.events)) throw new Error('a source snapshot must carry an events array')
+    if (input.complete === false) throw new Error('incomplete source snapshot cannot be applied')
     // The whole snapshot is one queued task. Every entry below reads the record it
     // is about to change, and two polls of the same source can overlap; inside one
     // task the read is of the record as it is when that entry is reached, which is
     // also what makes an entry see the one before it.
-    return await this.enqueueWrite(async () => await this.applySourceEntries(source, input.events))
+    return await this.enqueueWrite(async () => {
+      if (!isCurrent()) throw new Error('superseded_snapshot')
+      return await this.applySourceEntries(source, input.events, input.complete === true)
+    })
   }
 
   /**
@@ -521,9 +527,10 @@ export class CalendarStore {
    * @param incomingEvents - The snapshot's entries.
    * @returns the report described by {@link CalendarStore.applySource}.
    */
-  async applySourceEntries(source, incomingEvents) {
+  async applySourceEntries(source, incomingEvents, complete = false) {
     const { events: eventTable } = this.requireTables()
     const report = { applied: 0, moved: 0, cancelled: 0, unattributable: [] }
+    const plans = new Map()
 
     for (const incoming of incomingEvents) {
       const { movedFrom, cancelledDates, ...fields } = incoming
@@ -533,11 +540,18 @@ export class CalendarStore {
       // one. Reading by `uid` alone is what let one source's class overwrite
       // another's while keeping the first source's name on the record.
       const key = recordKey(source, incoming.uid)
-      const stored = eventTable.get(key)
+      const prior = plans.get(key)
+      const stored = prior?.record ?? eventTable.get(key)
       const wanted = normalizeEvent({ ...fields, source })
       // On the first sight of an event every field is the baseline; afterwards the
       // baseline is what is already stored.
-      const previous = stored ?? wanted
+      const previous = { ...(stored ?? wanted) }
+      // A full snapshot replaces source exceptions as well as source records.
+      // User decisions are merged from their separate receipt after planning.
+      if (complete && !prior) {
+        delete previous.exceptions
+        delete previous.overrides
+      }
 
       // A changed recurrence rule is a change to which classes exist, and
       // `movedFrom` cannot make that attributable: it names one occurrence, while
@@ -547,6 +561,18 @@ export class CalendarStore {
       if (stored && !sameSchedule(wanted.recurrence, stored.recurrence)) {
         report.unattributable.push({ uid: incoming.uid, reason: 'recurrence_changed' })
         continue
+      }
+
+      if (stored && movedFrom) {
+        const day = dateOf(movedFrom)
+        const baseline = { ...stored, overrides: undefined, exceptions: undefined }
+        const originals = stored.recurrence
+          ? occurrencesOf(baseline, { from: day, to: day }).map(item => item.originalStart)
+          : [stored.originalStart ?? stored.start]
+        if (!originals.some(anchor => anchor === movedFrom || (movedFrom.length === 10 && anchor.slice(0, 10) === movedFrom))) {
+          report.unattributable.push({ uid: incoming.uid, reason: 'no_such_original_occurrence' })
+          continue
+        }
       }
 
       // A moved anchor is a change to *when* one class happens, which is what
@@ -595,10 +621,29 @@ export class CalendarStore {
       // payload too: an adapter is not the last word on whether a class can end
       // before it starts, and storing one it sent puts a class on the calendar that
       // no view can draw.
-      const local = this.localDatesOf(key, stored)
-      await this.commit(mergePersonalDates(local, normalizeEvent(record)))
-      if (!this.requireTables().localDates.get(key)) await this.requireTables().localDates.put(key, local)
+      const local = prior?.local ?? this.localDatesOf(key, stored)
+      const next = mergePersonalDates(local, normalizeEvent(record))
+      assertOrderedRecord(next)
+      assertEventKeyBudget(next)
+      plans.set(key, { record: next, local })
       report.applied += 1
+    }
+    if (complete && report.unattributable.length > 0) {
+      return { ...report, applied: 0, moved: 0, cancelled: 0, removed: 0 }
+    }
+    // Plan every entry before writing. A bad later entry must not leave a valid
+    // prefix committed. Multiple changes to one series read the preceding plan.
+    for (const [key, plan] of plans) {
+      await this.commit(plan.record)
+      if (!this.requireTables().localDates.get(key)) await this.requireTables().localDates.put(key, plan.local)
+    }
+    if (complete) {
+      report.removed = 0
+      for (const [key, event] of [...eventTable.entries()]) {
+        if (event.source !== source || plans.has(key)) continue
+        await eventTable.delete(key)
+        report.removed += 1
+      }
     }
     return report
   }

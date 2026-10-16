@@ -11,7 +11,7 @@
 // and the JSON backend in a temporary directory. Nothing calls a private helper.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { createRequire, registerHooks } from 'node:module'
 import { tmpdir } from 'node:os'
 import { basename, join, resolve, sep } from 'node:path'
@@ -713,4 +713,378 @@ test('a reschedule may not leave the class ending before it starts', { skip: !ru
       assert.ok(moved.end > moved.start)
     })
   })
+})
+
+
+test('a rejected source batch preserves every event, note and personal change', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-batch-validation-', async root => {
+    await withCalendar(root, async calendar => {
+      await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T09:00')] })
+      await calendar.applyOverride({ source: SOURCE, uid: 'MATH101-01', date: '2026-10-13', patch: { location: 'Personal room' } })
+      await calendar.putNote({ source: SOURCE, uid: 'MATH101-01', originalStart: '2026-10-06T09:00', text: 'Keep my note' })
+      const before = calendar.snapshot()
+      const notes = calendar.notes({ source: SOURCE })
+      await assert.rejects(calendar.applySource({ source: SOURCE, events: [
+        classOn('2026-10-06T09:00', { title: 'Must not partially update' }),
+        { uid: 'bad', title: 'Invalid later entry', start: '2026-02-30T09:00' },
+      ] }), /date|exist/i)
+      assert.deepEqual(calendar.snapshot(), before)
+      assert.deepEqual(calendar.notes({ source: SOURCE }), notes)
+    })
+  })
+})
+
+
+test('a complete source snapshot removes only its missing events and keeps personal notes', { skip: !runtime }, async () => {
+  await withRoot('calendar-complete-source-', async root => withCalendar(root, async calendar => {
+    const first = classOn('2026-10-06T09:00')
+    const second = { ...first, uid: 'removed', title: 'No longer listed' }
+    await calendar.applySource({ source: SOURCE, events: [first, second] })
+    await calendar.putEvent({ uid: 'personal', title: 'Personal', start: first.start })
+    await calendar.applySource({ source: 'other', events: [{ ...first }] })
+    await calendar.putNote({ source: SOURCE, uid: second.uid, originalStart: first.start, text: 'Keep removed class note' })
+    const report = await calendar.applySource({ source: SOURCE, complete: true, events: [first] })
+    assert.equal(report.removed, 1)
+    assert.deepEqual(calendar.snapshot().events.map(e => `${e.source}/${e.uid}`).sort(), [`${SOURCE}/${first.uid}`, 'manual/personal', 'other/MATH101-01'].sort())
+    const empty = await calendar.applySource({ source: SOURCE, complete: true, events: [] })
+    assert.equal(empty.removed, 1)
+    assert.equal(calendar.snapshot().events.length, 2)
+    assert.equal(calendar.notes({ source: SOURCE, uid: second.uid })[0].note.text, 'Keep removed class note')
+  }))
+})
+
+test('an incomplete source result is refused and an unattributable full snapshot changes nothing', { skip: !runtime }, async () => {
+  await withRoot('calendar-incomplete-source-', async root => withCalendar(root, async calendar => {
+    const first = classOn('2026-10-06T09:00')
+    const second = { ...first, uid: 'second', title: 'Second' }
+    await calendar.applySource({ source: SOURCE, events: [first, second] })
+    const before = calendar.snapshot()
+    await assert.rejects(calendar.applySource({ source: SOURCE, complete: false, events: [] }), /incomplete/i)
+    assert.deepEqual(calendar.snapshot(), before)
+    const report = await calendar.applySource({ source: SOURCE, complete: true, events: [
+      { ...first, title: 'Must not partially change' },
+      { ...second, start: '2026-10-07T09:00' },
+    ] })
+    assert.equal(report.unattributable.length, 1)
+    assert.equal(report.applied, 0)
+    assert.deepEqual(calendar.snapshot(), before)
+  }))
+})
+
+
+test('registered sources isolate accounts and ignore a superseded late response', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-coordinator-', async root => withCalendar(root, async calendar => {
+    const replies = []
+    const config = { provider: 'example.edu', account: 'student-1', feed: 'timetable', label: 'My classes',
+      fetch: ({ signal }) => new Promise(resolve => replies.push({ resolve, signal })) }
+    const first = calendar.registerSource(config)
+    assert.equal(replies.length, 1, 'registration starts the first refresh')
+    const latest = first.sync()
+    assert.equal(replies.length, 2)
+    replies[1].resolve({ complete: true, events: [classOn('2026-10-06T09:00', { title: 'Newest' })] })
+    assert.equal((await latest).state, 'ready')
+    replies[0].resolve({ complete: true, events: [classOn('2026-10-06T09:00', { title: 'Outdated' })] })
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(calendar.getEvent({ source: first.source, uid: 'MATH101-01' }).title, 'Newest')
+    const other = calendar.registerSource({ ...config, account: 'student-2', fetch: async () => ({ complete: true, events: [classOn('2026-10-06T09:00')] }) })
+    await other.sync()
+    assert.notEqual(other.source, first.source)
+    assert.equal(calendar.snapshot().events.length, 2)
+    first.dispose()
+    const again = calendar.registerSource({ ...config, label: 'Renamed display label', fetch: async () => ({ complete: true, events: [] }) })
+    assert.equal(again.source, first.source, 'stable account identity survives re-login and a label change')
+    again.dispose()
+    other.dispose()
+  }))
+})
+
+
+test('source startup, login, reconnect and polling share failure-safe synchronization', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-lifecycle-', async root => withCalendar(root, async calendar => {
+    let notify, disposed = false, broken = false
+    const reasons = []
+    let polled
+    const poll = new Promise(resolve => { polled = resolve })
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'calendar', pollIntervalMs: 1000,
+      subscribe(callback) { notify = callback; return () => { disposed = true } },
+      async fetch({ reason }) {
+        reasons.push(reason)
+        if (reason === 'periodic') polled()
+        if (broken) throw new Error('private-token-not-public')
+        return { complete: true, events: [{ uid: 'one', title: 'Keep', start: '2026-10-06T09:00' }] }
+      } })
+    await source.sync()
+    assert.equal(typeof notify, 'function')
+    await notify('login')
+    await notify('reconnect')
+    await Promise.race([poll, new Promise((_, reject) => setTimeout(() => reject(new Error('poll did not run')), 2000))])
+    assert.ok(['startup', 'login', 'reconnect', 'periodic'].every(reason => reasons.includes(reason)))
+    broken = true
+    const other = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'timetable',
+      fetch: async () => ({ complete: true, events: [{ uid: 'two', title: 'Other', start: '2026-10-07T09:00' }] }) })
+    const results = await calendar.syncSources()
+    assert.deepEqual(results.map(r => r.state).sort(), ['error', 'ready'])
+    assert.equal(calendar.getEvent({ source: source.source, uid: 'one' }).title, 'Keep')
+    assert.ok(calendar.getEvent({ source: other.source, uid: 'two' }))
+    assert.ok(!JSON.stringify(calendar.sourceStatuses()).includes('private-token'))
+    source.dispose()
+    other.dispose()
+    assert.equal(disposed, true)
+    const before = reasons.length
+    await notify('reconnect')
+    assert.equal(reasons.length, before, 'disposed adapters cannot write again')
+  }))
+})
+
+
+test('change subscriptions cover source and personal commits and stop on cancellation', { skip: !runtime }, async () => {
+  await withRoot('calendar-change-stream-', async root => withCalendar(root, async calendar => {
+    const controller = new AbortController()
+    const stream = calendar.changes(controller.signal)[Symbol.asyncIterator]()
+    const initial = (await stream.next()).value.revision
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T09:00')] })
+    const changed = (await stream.next()).value.revision
+    assert.ok(changed > initial)
+    await calendar.putNote({ source: SOURCE, uid: 'MATH101-01', text: 'External edit' })
+    assert.ok((await stream.next()).value.revision > changed)
+    const pending = stream.next()
+    controller.abort()
+    assert.equal((await pending).done, true)
+  }))
+})
+
+
+test('personal fields inherit independently and clearing a note preserves reminder settings', { skip: !runtime }, async () => {
+  await withRoot('calendar-personal-fields-', async root => {
+    const ref = { source: SOURCE, uid: 'MATH101-01' }
+    const once = { ...ref, originalStart: '2026-10-06T09:00' }
+    await withCalendar(root, async calendar => {
+      await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T09:00')] })
+      await calendar.setPersonal({ ...ref, patch: { note: { text: 'Series note' }, reminder: { kind: 'relative', minutes: 15 }, hidden: true } })
+      await calendar.setPersonal({ ...once, patch: { hidden: false, note: { off: true } } })
+      const effective = calendar.personalFor(once)
+      assert.equal(effective.hidden, false)
+      assert.deepEqual(effective.note, { off: true })
+      assert.deepEqual(effective.reminder, { kind: 'relative', minutes: 15 })
+      await calendar.setPersonal({ ...once, clear: ['note'] })
+      assert.equal(calendar.personalFor(once).note.text, 'Series note')
+      await calendar.putNote({ ...once, text: 'One class note' })
+      await calendar.setPersonal({ ...once, patch: { reminder: { off: true } } })
+      assert.equal((await calendar.removeNote(once)).removed, true)
+      assert.equal(calendar.personalFor(once).note.text, 'Series note')
+      assert.deepEqual(calendar.personalFor(once).reminder, { off: true })
+      assert.equal(calendar.occurrences({ from: '2026-10-06', to: '2026-10-20' }).occurrences.length, 1)
+      assert.equal(calendar.occurrences({ from: '2026-10-06', to: '2026-10-20', includeHidden: true }).occurrences.length, 3)
+    })
+    await withCalendar(root, async calendar => {
+      assert.equal(calendar.personalFor(once).hidden, false)
+      assert.deepEqual(calendar.personalFor(once).reminder, { off: true }, 'settings survive restart')
+      const stored = calendar.notes(ref).find(record => record.originalStart)
+      assert.equal(stored.note, undefined, 'inheritance is never written back')
+    })
+  })
+})
+
+
+test('editing an imported description preserves a private remark across source refreshes', { skip: !runtime }, async () => {
+  await withRoot('calendar-private-remark-', async root => withCalendar(root, async calendar => {
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T09:00', { description: 'School description' })] })
+    const event = calendar.getEvent({ source: SOURCE, uid: 'MATH101-01' })
+    await calendar.putEvent({ ...event, description: 'My private remark' })
+    assert.equal(calendar.getEvent({ source: SOURCE, uid: event.uid }).description, 'School description')
+    await calendar.applySource({ source: SOURCE, complete: true, events: [classOn(event.start, { description: 'School changed description' })] })
+    assert.equal(calendar.personalFor(event).remark.text, 'My private remark')
+    assert.equal(calendar.getEvent({ source: SOURCE, uid: event.uid }).description, 'School changed description')
+    assert.ok(!calendar.exportIcs().text.includes('My private remark'), 'private remarks do not leave in ICS')
+  }))
+})
+
+
+test('old unattributed descriptions remain available for review after upgrade and refresh', { skip: !runtime }, async () => {
+  await withRoot('calendar-legacy-description-', async root => {
+    await mkdir(join(root, 'storages'), { recursive: true })
+    const record = { ...classOn('2026-10-06T09:00'), source: SOURCE, description: 'Possibly a user note in an old version', extensions: { 'X-LOCAL-REMINDER': '15' } }
+    await writeFile(join(root, 'storages', 'calendar.json'), JSON.stringify({
+      unit: { name: 'calendar', version: 1 }, global: null, tables: { events: { [record.uid]: record } },
+    }))
+    await withCalendar(root, async calendar => {
+      await calendar.applySource({ source: SOURCE, events: [classOn(record.start, { description: 'Fresh school text' })] })
+      assert.equal(calendar.personalFor(record).legacyDescription, record.description)
+      assert.deepEqual(calendar.personalFor(record).legacyExtensions, record.extensions)
+      assert.equal(calendar.personalFor(record).remark, undefined, 'unknown old ownership is not guessed')
+    })
+    await withCalendar(root, calendar => {
+      assert.equal(calendar.personalFor(record).legacyDescription, record.description, 'backup survives restart')
+    })
+  })
+})
+
+
+test('relative reminders follow moves and cancellations while fixed reminders retain their own time', { skip: !runtime }, async () => {
+  await withRoot('calendar-reminder-plan-', async root => withCalendar(root, async calendar => {
+    const ref = { source: SOURCE, uid: 'MATH101-01' }
+    const first = { ...ref, originalStart: '2026-10-06T09:00' }
+    const second = { ...ref, originalStart: '2026-10-13T09:00' }
+    const range = { from: '2026-10-05', to: '2026-10-20' }
+    await calendar.applySource({ source: SOURCE, events: [classOn(first.originalStart)] })
+    await calendar.setPersonal({ ...ref, patch: { reminder: { kind: 'relative', minutes: 15 } } })
+    await calendar.setPersonal({ ...second, patch: { reminder: { kind: 'fixed', at: '2026-10-13T20:00' } } })
+    let tasks = calendar.reminderPlan(range).tasks
+    const initial = tasks.find(task => task.ref.originalStart === first.originalStart)
+    assert.equal(initial.at, '2026-10-06T08:45')
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T10:00', { movedFrom: first.originalStart })] })
+    tasks = calendar.reminderPlan(range).tasks
+    assert.equal(tasks.find(task => task.id === initial.id).at, '2026-10-06T09:45')
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-08T14:00', { movedFrom: first.originalStart })] })
+    tasks = calendar.reminderPlan(range).tasks
+    assert.equal(tasks.find(task => task.id === initial.id).at, '2026-10-08T13:45')
+    assert.equal(tasks.find(task => task.kind === 'fixed').at, '2026-10-13T20:00')
+    await calendar.putNote({ ...first, text: 'Keep after cancellation' })
+    await calendar.applySource({ source: SOURCE, events: [classOn(first.originalStart, { cancelledDates: [first.originalStart, second.originalStart] })] })
+    tasks = calendar.reminderPlan(range).tasks
+    assert.equal(tasks.some(task => task.id === initial.id), false)
+    assert.equal(tasks.find(task => task.kind === 'fixed').at, '2026-10-13T20:00', 'fixed personal reminders are independent of class attendance')
+    assert.equal(calendar.notes(first)[0].note.text, 'Keep after cancellation')
+    assert.equal(new Set(tasks.map(task => task.id)).size, tasks.length)
+  }))
+})
+
+
+test('scheduler reconciliation updates stable reminder IDs, removes cancelled tasks and retries failures', { skip: !runtime }, async () => {
+  await withRoot('calendar-reminder-scheduler-', async root => withCalendar(root, async calendar => {
+    const ref = { source: SOURCE, uid: 'MATH101-01' }
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T09:00', { recurrence: undefined })] })
+    await calendar.setPersonal({ ...ref, patch: { reminder: { kind: 'relative', minutes: 15 } } })
+    let calls = 0, fail = false
+    const jobs = new Map()
+    const binding = calendar.registerReminderScheduler({
+      async replace({ owner, tasks }) {
+        assert.equal(owner, 'calendar')
+        ++calls
+        if (fail) throw new Error('adapter private error')
+        jobs.clear()
+        for (const task of tasks) jobs.set(task.id, task)
+      },
+    }, { from: '2026-10-05', to: '2026-10-20' })
+    await binding.refresh()
+    assert.equal(jobs.size, 1)
+    const id = [...jobs.keys()][0]
+    await calendar.applySource({ source: SOURCE, events: [classOn('2026-10-06T10:00', { recurrence: undefined, movedFrom: '2026-10-06T09:00' })] })
+    await binding.refresh()
+    assert.equal(jobs.size, 1)
+    assert.equal(jobs.get(id).at, '2026-10-06T09:45')
+    const before = calls
+    await calendar.putNote({ ...ref, text: 'A note does not create another reminder' })
+    await binding.refresh()
+    assert.equal(calls, before)
+    fail = true
+    await calendar.setPersonal({ ...ref, patch: { reminder: { off: true } } })
+    await binding.refresh()
+    assert.equal(binding.status().state, 'error')
+    assert.equal(binding.status().error, 'scheduler_failed')
+    fail = false
+    await binding.refresh()
+    assert.equal(jobs.size, 0)
+    assert.equal(binding.status().state, 'ready')
+    binding.dispose()
+  }))
+})
+
+
+test('source updates and file imports cannot impersonate the manual or registered-source namespace', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-reserved-', async root => withCalendar(root, async calendar => {
+    await calendar.putEvent({ uid: 'mine', title: 'My event', start: '2026-10-06T09:00' })
+    const before = calendar.snapshot()
+    await assert.rejects(calendar.applySource({ source: 'manual', complete: true, events: [] }), /reserved/i)
+    const text = 'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n'
+    await assert.rejects(calendar.importIcs({ source: 'manual', text }), /reserved/i)
+    await assert.rejects(calendar.importIcs({ source: 'sync:registered', text }), /reserved/i)
+    assert.deepEqual(calendar.snapshot(), before)
+  }))
+})
+
+
+test('queued note removal observes preceding writes and preserves concurrently saved reminder fields', { skip: !runtime }, async () => {
+  await withRoot('calendar-note-clear-queue-', async root => withCalendar(root, async calendar => {
+    const ref = { source: SOURCE, uid: 'queued-note', originalStart: '2026-10-06T09:00' }
+    const write = calendar.putNote({ ...ref, text: 'Queued write' })
+    const clear = calendar.removeNote(ref)
+    const reminder = calendar.setPersonal({ ...ref, patch: { reminder: { kind: 'relative', minutes: 30 }, hidden: false } })
+    const [, removed] = await Promise.all([write, clear, reminder])
+    assert.equal(removed.removed, true)
+    assert.equal(calendar.personalFor(ref).note, undefined)
+    assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'relative', minutes: 30 })
+    assert.equal(calendar.personalFor(ref).hidden, false)
+  }))
+})
+
+
+test('a source adapter that never answers times out and can be disposed without clearing prior data', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-timeout-', async root => withCalendar(root, async calendar => {
+    const handle = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'slow', timeoutMs: 20,
+      fetch: () => new Promise(() => {}) })
+    await calendar.applySource({ source: handle.source, events: [{ uid: 'old', title: 'Cached', start: '2026-10-06T09:00' }] })
+    await new Promise(resolve => setTimeout(resolve, 100))
+    assert.equal(handle.status().state, 'error')
+    assert.equal(handle.status().error, 'sync_timeout')
+    assert.equal(calendar.getEvent({ source: handle.source, uid: 'old' }).title, 'Cached')
+    handle.dispose()
+    assert.deepEqual(calendar.sourceStatuses(), [])
+  }))
+})
+
+
+test('a later complete snapshot can restore school cancellations and moves while keeping personal exceptions', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-restoration-', async root => withCalendar(root, async calendar => {
+    const base = classOn('2026-10-06T09:00')
+    const ref = { source: SOURCE, uid: base.uid }
+    await calendar.applySource({ source: SOURCE, complete: true, events: [base] })
+    await calendar.cancelOccurrence({ ...ref, date: '2026-10-13' })
+    await calendar.applyOverride({ ...ref, date: '2026-10-20', patch: { location: 'My room' } })
+    await calendar.applySource({ source: SOURCE, complete: true, events: [{ ...base, cancelledDates: ['2026-10-06'] }] })
+    assert.equal(calendar.occurrences({ from: '2026-10-06', to: '2026-10-06' }).occurrences.length, 0)
+    await calendar.applySource({ source: SOURCE, complete: true, events: [{ ...base, cancelledDates: [] }] })
+    assert.equal(calendar.occurrences({ from: '2026-10-06', to: '2026-10-06' }).occurrences.length, 1)
+    await calendar.applySource({ source: SOURCE, complete: true, events: [{ ...base, start: '2026-10-08T14:00', movedFrom: base.start }] })
+    await calendar.applySource({ source: SOURCE, complete: true, events: [base] })
+    const week = calendar.occurrences({ from: '2026-10-05', to: '2026-10-25' }).occurrences
+    assert.equal(week.find(item => item.originalStart === base.start).start, base.start)
+    assert.equal(week.some(item => item.originalStart === '2026-10-13T09:00'), false)
+    assert.equal(week.find(item => item.originalStart === '2026-10-20T09:00').location, 'My room')
+  }))
+})
+
+
+test('logging out a registered account hides its cached classes without deleting notes or identity', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-account-visibility-', async root => withCalendar(root, async calendar => {
+    const config = { provider: 'example.edu', account: 'student-a', feed: 'timetable',
+      fetch: async () => ({ complete: true, events: [classOn('2026-10-06T09:00')] }) }
+    const handle = calendar.registerSource(config)
+    await handle.sync()
+    await calendar.putNote({ source: handle.source, uid: 'MATH101-01', text: 'Account A note' })
+    assert.equal(calendar.snapshot().events.length, 1)
+    handle.dispose()
+    assert.equal(calendar.snapshot().events.length, 0)
+    assert.equal(calendar.occurrences({ from: '2026-10-06', to: '2026-10-06' }).occurrences.length, 0)
+    assert.equal(calendar.notes({ source: handle.source })[0].note.text, 'Account A note')
+    const again = calendar.registerSource(config)
+    await again.sync()
+    assert.equal(again.source, handle.source)
+    assert.equal(calendar.snapshot().events.length, 1)
+    again.dispose()
+  }))
+})
+
+
+test('source moves must name an original instance instead of merely sharing its day', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-exact-anchor-', async root => withCalendar(root, async calendar => {
+    const base = classOn('2026-10-06T09:00')
+    await calendar.applySource({ source: SOURCE, complete: true, events: [base] })
+    const before = calendar.snapshot()
+    for (const movedFrom of ['2026-10-06T13:00', '2026-10-07T09:00', '2028-10-06T09:00']) {
+      const report = await calendar.applySource({ source: SOURCE, complete: true, events: [{ ...base, start: '2026-10-08T14:00', movedFrom }] })
+      assert.equal(report.unattributable[0]?.reason, 'no_such_original_occurrence')
+      assert.deepEqual(calendar.snapshot(), before)
+    }
+  }))
 })

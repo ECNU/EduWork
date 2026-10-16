@@ -79,7 +79,7 @@ async function withCalendar(root, body) {
     assert.deepEqual(typert.remoteMethods(ctx.calendar).map(marker => marker.method), [
       'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applyOverride',
       'removeOverride', 'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent',
-      'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes',
+      'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes', 'changes', 'setPersonal', 'personalFor', 'sourceStatuses',
     ])
     return await body(ctx.calendar)
   } finally {
@@ -159,7 +159,7 @@ test('records round-trip, emit changes, survive a restart and import idempotentl
 
       stop()
       assert.ok(changes.length >= 4, `durable writes emit changes, saw ${changes.length}`)
-      assert.ok(changes.every(change => change.domain === 'calendar'), 'only this domain is reported')
+      assert.ok(changes.every(change => ['calendar', 'calendar_personal'].includes(change.domain)), 'only calendar-owned domains are reported')
       // The key names the record's source as well as its identifier, which is what
       // keeps two sources' records of the same identifier apart in one table.
       const { eventKey } = await import('../lib/keys.js')

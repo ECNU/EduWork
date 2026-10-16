@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { occurrenceNote } from './personal-settings.js'
 import { Button } from '@deepseek-ai/dsh-client-ui-primitives'
 
 const pad = (n: number) => String(n).padStart(2, '0')
@@ -91,7 +92,7 @@ export function MonthGrid({ anchor, occurrences, noteIndex, onSelect, onCreate, 
       const identity = occurrenceKeyOf(occurrence)
       return React.createElement(MonthEntry, {
         key: identity, occurrence, date, identity, onSelect,
-        note: noteIndex?.get(identity), tint: tintOf(occurrence.source ?? occurrence.uid),
+        note: occurrenceNote(noteIndex, occurrence), tint: tintOf(occurrence.source ?? occurrence.uid),
       })
     }),
     entries.length > 3 ? React.createElement(Button, {

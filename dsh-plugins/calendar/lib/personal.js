@@ -13,8 +13,9 @@
 // moves that class: the key holds the instant the series originally produced,
 // not the time the class currently happens at.
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
-import { AnnotationSchema, SCOPE } from './model.js'
-import { annotationKey } from './keys.js'
+import { AnnotationSchema, PersonalPatchSchema, SCOPE } from './model.js'
+import { annotationKey, eventKey } from './keys.js'
+import { z } from 'zod'
 
 export { AnnotationSchema, SCOPE }
 
@@ -32,6 +33,9 @@ export const personalDomain = defineDomain({
   layout: 'per-record',
   tables: {
     annotations: domainTable(AnnotationSchema),
+    source_receipts: domainTable(z.object({
+      source: z.string().min(1), uid: z.string().min(1), legacyDescription: z.string().optional(), legacyExtensions: z.record(z.string(), z.unknown()).optional(),
+    }).strict()),
   },
 })
 
@@ -63,12 +67,13 @@ export class PersonalStore {
   async open() {
     const domain = await this.ctx.storageDomain.open(personalDomain)
     this.domain = domain
-    this.tables = { annotations: domain.table('annotations') }
+    this.tables = { annotations: domain.table('annotations'), receipts: domain.table('source_receipts') }
     return domain
   }
 
   /** Close the domain, draining queued writes. Idempotent. */
   async close() {
+    await Promise.all(this.chains.values())
     await this.domain?.close()
   }
 
@@ -89,7 +94,9 @@ export class PersonalStore {
   enqueue(targetKey, work) {
     const previous = this.chains.get(targetKey) ?? Promise.resolve()
     const run = previous.then(work, work)
-    this.chains.set(targetKey, run.then(() => undefined, () => undefined))
+    const settled = run.then(() => undefined, () => undefined)
+    this.chains.set(targetKey, settled)
+    void settled.then(() => { if (this.chains.get(targetKey) === settled) this.chains.delete(targetKey) })
     return run
   }
 
@@ -113,16 +120,50 @@ export class PersonalStore {
    * @param patch - Fields to merge; `undefined` values are ignored.
    * @returns the stored record.
    */
-  async patch(ref, patch) {
+  async patch(ref, patch, clear = []) {
+    patch = PersonalPatchSchema.parse(patch)
+    if (!Array.isArray(clear) || clear.some(field => !['note', 'remark', 'hidden', 'reminder'].includes(field))) throw new Error('unknown personal field')
+    return await this.enqueue(annotationKey(ref), () => this.writeFields(ref, patch, clear))
+  }
+
+  /** The read, merge and commit body; callers hold this target's queue. */
+  async writeFields(ref, patch, clear) {
+    const key = annotationKey(ref)
+    const current = this.requireTable().get(key)
+    const merged = { ...current, ...defined(patch), ...identityOf(ref) }
+    for (const field of clear) delete merged[field]
+    const record = AnnotationSchema.parse(merged)
+    if (!['note', 'remark', 'hidden', 'reminder'].some(field => record[field] !== undefined)) {
+      await this.requireTable().delete(key)
+      return undefined
+    }
+    await this.requireTable().put(key, record)
+    return record
+  }
+
+  /** Clear one field inside the same queue as patches, including its existence check. */
+  async clearField(ref, field) {
+    if (!['note', 'remark', 'hidden', 'reminder'].includes(field)) throw new Error('unknown personal field')
     return await this.enqueue(annotationKey(ref), async () => {
-      const key = annotationKey(ref)
-      const current = this.requireTable().get(key)
-      const merged = { ...current, ...defined(patch), ...identityOf(ref) }
-      const record = AnnotationSchema.parse(merged)
-      await this.requireTable().put(key, record)
-      return record
+      if (this.get(ref)?.[field] === undefined) return false
+      await this.writeFields(ref, {}, [field])
+      return true
     })
   }
+
+  /** Record source ownership once; only pre-upgrade descriptions need a review copy. */
+  async rememberSource(event, legacy = false) {
+    if (event.source === 'manual') return
+    const key = eventKey(event)
+    await this.enqueue(`receipt:${key}`, async () => {
+      if (this.tables.receipts.get(key)) return
+      await this.tables.receipts.put(key, { source: event.source, uid: event.uid,
+        ...(legacy && event.description ? { legacyDescription: event.description } : {}),
+        ...(legacy && Object.keys(event.extensions ?? {}).length ? { legacyExtensions: event.extensions } : {}) })
+    })
+  }
+
+  sourceInfo(ref) { return this.tables.receipts.get(eventKey(ref)) }
 
   /** Drop one annotation entirely. @returns true when a record was removed. */
   async remove(ref) {

@@ -7,7 +7,7 @@
 // Every remote method takes one object argument and returns one value; the
 // descriptors that point at those schemas are in `lib/typert-descriptors.js`.
 import { z } from 'zod'
-import { AnnotationSchema, EventFields, EventSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
+import { AnnotationSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
 
 const snapshot = z.object({
   schemaVersion: z.number().int().positive(),
@@ -35,6 +35,7 @@ const occurrence = z.object({
    */
   originalStart: LocalTimeSchema,
   overridden: z.boolean().optional(),
+  personal: PersonalViewSchema.optional(),
 }).strict()
 
 const occurrences = z.object({
@@ -44,6 +45,7 @@ const occurrences = z.object({
 
 /** Bounds of a range query; either side may be omitted. */
 export const rangeSchema = z.object({
+  includeHidden: z.boolean().optional(),
   from: LocalTimeSchema.optional(),
   to: LocalTimeSchema.optional(),
 }).strict()
@@ -135,6 +137,7 @@ const applySourceInput = z.object({
 
 const applySourceOutcome = z.object({
   applied: z.number().int().nonnegative(),
+  removed: z.number().int().nonnegative().optional(),
   moved: z.number().int().nonnegative(),
   cancelled: z.number().int().nonnegative(),
   unattributable: z.array(z.object({
@@ -224,3 +227,19 @@ export const applySourceResult = result('@eduwork/dsh-calendar#CalendarApplySour
 export const noteResult = result('@eduwork/dsh-calendar#CalendarAnnotation', annotation)
 export const notesResult = result('@eduwork/dsh-calendar#CalendarAnnotations', z.array(annotation))
 export const unlinkedNotesResult = result('@eduwork/dsh-calendar#CalendarUnlinkedAnnotations', z.array(unlinkedNote))
+
+export const changeResult = result('@eduwork/dsh-calendar#CalendarChange', z.object({ revision: z.number().int().nonnegative() }).strict())
+
+export const personalParameter = jsonParameter('setPersonal', 'input', noteRefInput.extend({
+  patch: PersonalPatchSchema.optional(),
+  clear: z.array(z.enum(Object.keys(PersonalFields))).optional(),
+}).strict())
+export const personalResult = result('@eduwork/dsh-calendar#CalendarPersonalWrite', z.object({ annotation: AnnotationSchema.nullable() }).strict())
+
+export const personalReadParameter = jsonParameter('personalFor', 'input', noteRefInput)
+export const personalReadResult = result('@eduwork/dsh-calendar#CalendarPersonalView', PersonalViewSchema)
+
+export const sourceStatusesResult = result('@eduwork/dsh-calendar#CalendarSourceStatuses', z.array(z.object({
+  source: z.string(), label: z.string(), state: z.enum(['idle', 'loading', 'ready', 'error']),
+  updatedAt: z.string().optional(), error: z.enum(['incomplete_snapshot', 'unattributable', 'sync_failed', 'sync_timeout']).optional(),
+}).strict()))

@@ -17,9 +17,11 @@
 import { Service } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { buildIcs, parseIcs } from './ics.js'
-import { SCHEMA_VERSION, seriesInstants } from './model.js'
+import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord } from './model.js'
 import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
+import { SourceCoordinator } from './sources.js'
+import { reminderPlan, bindReminderScheduler } from './reminders.js'
 
 export const name = 'dsh-calendar'
 
@@ -35,31 +37,78 @@ export class CalendarService extends TypertRemoteService {
   constructor(ctx) {
     super(ctx, 'calendar')
     for (const initialize of remoteInitializers) initialize.call(this)
+    this.lifetime = new AbortController()
+    this.revision = 0
+    this.listeners = new Set()
+    ctx.on('domain/changed', change => {
+      if (!['calendar', 'calendar_personal'].includes(change?.domain)) return
+      this.invalidate(change)
+    })
     this.store = new CalendarStore(ctx)
     this.personal = new PersonalStore(ctx)
+    this.sources = new SourceCoordinator(async (batch, guard) => {
+      const report = await this.store.applySource(batch, guard)
+      if (guard.isCurrent()) await this.rememberSources()
+      return report
+    }, () => this.invalidate())
     ctx.effect(() => async () => {
+      this.lifetime.abort()
+      this.reminderBinding?.dispose()
+      this.sources.close()
       await this.personal.close()
       await this.store.close()
     }, 'dsh-calendar: close the calendar domains')
+  }
+
+  invalidate(change = {}) {
+    ++this.revision
+    for (const listener of this.listeners) {
+      try { listener({ ...change, revision: this.revision }) } catch { /* Observers cannot reject writes. */ }
+    }
+  }
+
+  /** Institution adapters register stable identities and a fetch closure; no credentials are stored. */
+  registerSource(config) { return this.sources.register(config) }
+
+  /** Refresh registered sources independently; each result carries its own status. */
+  syncSources(input = {}) { return this.sources.syncAll(input.reason ?? 'manual') }
+
+  sourceStatuses() { return this.sources.statuses() }
+
+  /** Relative rules use the current occurrence time; fixed rules retain their own time. */
+  reminderPlan(range) { return reminderPlan(this, range) }
+
+  /** Delivery is optional; the adapter owns persistence, Session selection and dispatch. */
+  registerReminderScheduler(adapter, range) {
+    if (this.reminderBinding) throw new Error('calendar reminder scheduler is already registered')
+    const binding = bindReminderScheduler(this, adapter, range)
+    this.reminderBinding = binding
+    const dispose = binding.dispose
+    binding.dispose = () => { dispose(); if (this.reminderBinding === binding) this.reminderBinding = undefined }
+    return binding
   }
 
   /** Open the domains before the service is handed to anyone. */
   async [Service.init]() {
     await this.store.open()
     await this.personal.open()
+    for (const event of this.store.snapshot().events) await this.personal.rememberSource(event, true)
   }
 
   /** @returns the public snapshot: `{ schemaVersion, events }`. */
   snapshot() {
-    return this.store.snapshot()
+    const snapshot = this.store.snapshot()
+    return { ...snapshot, events: snapshot.events.filter(event => this.isSourceVisible(event.source)) }
   }
+
+  isSourceVisible(source) { return !source?.startsWith('sync:') || this.sources.isRegistered(source) }
 
   /**
    * @param range - Optional `{ from, to }` inclusive local-time bounds.
    * @returns events overlapping the range, as stored.
    */
   listEvents(range) {
-    return this.store.listEvents(range)
+    return this.store.listEvents(range).filter(event => this.isSourceVisible(event.source))
   }
 
   /**
@@ -72,7 +121,10 @@ export class CalendarService extends TypertRemoteService {
   occurrences(range) {
     return {
       schemaVersion: SCHEMA_VERSION,
-      occurrences: this.store.listOccurrences(range),
+      occurrences: this.store.listOccurrences(range).filter(occurrence => this.isSourceVisible(occurrence.source)).map(occurrence => {
+        const personal = this.personalFor(occurrence)
+        return Object.keys(personal).length ? { ...occurrence, personal } : occurrence
+      }).filter(occurrence => range?.includeHidden === true || !occurrence.personal?.hidden),
     }
   }
 
@@ -93,12 +145,14 @@ export class CalendarService extends TypertRemoteService {
    */
   async importIcs(input) {
     const source = input.source ?? 'ics'
+    if (source === 'manual' || source.startsWith('sync:')) throw new Error('reserved calendar source')
     const parsed = parseIcs(input.text, { source })
     const written = await this.store.importSnapshot(parsed, {
       source,
       replace: input.replace !== false,
       complete: parsed.skipped.length === 0,
     })
+    await this.rememberSources()
     return { ...written, skipped: parsed.skipped, degraded: parsed.degraded }
   }
 
@@ -108,7 +162,7 @@ export class CalendarService extends TypertRemoteService {
    * @returns `{ text }`.
    */
   exportIcs(options = {}) {
-    const snapshot = this.store.snapshot()
+    const snapshot = this.snapshot()
     return {
       text: buildIcs(snapshot, { name: options.name ?? '我的日历' }),
     }
@@ -130,8 +184,20 @@ export class CalendarService extends TypertRemoteService {
    * @param event - Event fields.
    * @returns the stored event.
    */
-  putEvent(event) {
-    return this.store.putEvent(event)
+  async putEvent(event) {
+    const record = normalizeEvent(event)
+    assertOrderedRecord(record)
+    const existing = this.store.getEvent(record.uid, record.source)
+    if (existing && record.source !== 'manual') {
+      // This is a user edit, not a source import. Keep source DESCRIPTION intact.
+      const remark = record.description !== existing.description ? { text: record.description ?? '' } : undefined
+      const saved = await this.store.putEvent({ ...record, description: existing.description })
+      if (remark) await this.personal.patch({ source: record.source, uid: record.uid }, { remark })
+      return saved
+    }
+    const saved = await this.store.putEvent(record)
+    await this.personal.rememberSource(saved)
+    return saved
   }
 
   /**
@@ -181,13 +247,15 @@ export class CalendarService extends TypertRemoteService {
   }
 
   /**
-   * Merge a snapshot in, keyed by `uid`.
+   * Merge a snapshot in, keyed by source and `uid`.
    * @param snapshot - `{ events }`.
    * @param options - `source` and `replace`, as in `importIcs`.
    * @returns counts of the records written and removed.
    */
-  importSnapshot(snapshot, options) {
-    return this.store.importSnapshot(snapshot, options)
+  async importSnapshot(snapshot, options) {
+    const report = await this.store.importSnapshot(snapshot, options)
+    await this.rememberSources()
+    return report
   }
 
   /**
@@ -196,7 +264,31 @@ export class CalendarService extends TypertRemoteService {
    * @returns the disposer that stops observing.
    */
   onChanged(listener) {
-    return this.store.onChanged(listener)
+    this.listeners.add(listener)
+    return () => this.listeners.delete(listener)
+  }
+
+  /** Bounded invalidation stream carried by the existing Remote stream transport. */
+  async *changes(signal) {
+    signal = signal ? AbortSignal.any([signal, this.lifetime.signal]) : this.lifetime.signal
+    let pending = true
+    let wake
+    const notify = () => { pending = true; wake?.() }
+    const dispose = this.onChanged(notify)
+    const stop = () => wake?.()
+    signal?.addEventListener('abort', stop, { once: true })
+    try {
+      while (!signal?.aborted) {
+        if (!pending) await new Promise(resolve => { wake = resolve })
+        wake = undefined
+        if (signal?.aborted) break
+        pending = false
+        yield { revision: this.revision }
+      }
+    } finally {
+      dispose()
+      signal?.removeEventListener('abort', stop)
+    }
   }
 
   /**
@@ -211,8 +303,36 @@ export class CalendarService extends TypertRemoteService {
    *   `unattributable` means data arrived that could not be attributed to one
    *   occurrence, and nothing was changed for those entries.
    */
-  applySource(input) {
-    return this.store.applySource(input)
+  async applySource(input) {
+    const report = await this.store.applySource(input)
+    await this.rememberSources()
+    return report
+  }
+
+  async rememberSources() {
+    for (const event of this.store.snapshot().events) await this.personal.rememberSource(event)
+  }
+
+  /** Patch independent personal fields; clear removes overrides to restore inheritance. */
+  async setPersonal(input) {
+    const { patch = {}, clear = [], ...ref } = input
+    return { annotation: await this.personal.patch(ref, patch, clear) ?? null }
+  }
+
+  /** Resolve inheritance at read time, retaining explicit false and off values. */
+  personalFor(input) {
+    const { scope = 'source', source, uid, originalStart } = input
+    const series = this.personal.get({ scope, source, uid })
+    const once = originalStart ? this.personal.get({ scope, source, uid, originalStart }) : undefined
+    const result = {}
+    for (const field of ['note', 'remark', 'hidden', 'reminder']) {
+      const value = once?.[field] ?? series?.[field]
+      if (value !== undefined) result[field] = value
+    }
+    const legacy = this.personal.sourceInfo({ source, uid })
+    if (legacy?.legacyDescription !== undefined) result.legacyDescription = legacy.legacyDescription
+    if (legacy?.legacyExtensions !== undefined) result.legacyExtensions = legacy.legacyExtensions
+    return result
   }
 
   /**
@@ -239,7 +359,7 @@ export class CalendarService extends TypertRemoteService {
    * @returns `{ removed }`.
    */
   async removeNote(input) {
-    return { removed: await this.personal.remove(input) }
+    return { removed: await this.personal.clearField(input, 'note') }
   }
 
   /**
@@ -272,7 +392,6 @@ export class CalendarService extends TypertRemoteService {
     const report = []
     for (const scope of ['source', 'personal']) {
       for (const record of this.personal.list(scope)) {
-        if (!record.originalStart) continue
         const event = events.find(row => row.uid === record.uid && (row.source ?? 'manual') === record.source)
         if (!event) {
           report.push({ ...record, reason: 'source_record_gone' })
@@ -281,7 +400,7 @@ export class CalendarService extends TypertRemoteService {
         // Asked against the series' own instants, not against a windowed
         // rendering: a class moved by an override still owns the instant it was
         // originally scheduled for, so its note is linked, not orphaned.
-        if (!seriesInstants(event).includes(record.originalStart)) {
+        if (record.originalStart && !seriesInstants(event).includes(record.originalStart)) {
           report.push({ ...record, reason: 'no_such_occurrence' })
         }
       }
@@ -368,6 +487,26 @@ Remote('notes')(CalendarService.prototype.notes, {
 
 Remote('unlinkedNotes')(CalendarService.prototype.unlinkedNotes, {
   kind: 'method', name: 'unlinkedNotes', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote({ mode: 'stream' })(CalendarService.prototype.changes, {
+  kind: 'method', name: 'changes', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('setPersonal')(CalendarService.prototype.setPersonal, {
+  kind: 'method', name: 'setPersonal', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('personalFor')(CalendarService.prototype.personalFor, {
+  kind: 'method', name: 'personalFor', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('sourceStatuses')(CalendarService.prototype.sourceStatuses, {
+  kind: 'method', name: 'sourceStatuses', static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 
