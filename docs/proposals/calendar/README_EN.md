@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Status: the public calendar, private notes and Agent tools are implemented. A source-write service exists; real school adapters, automatic sync and reminders are not connected. See the plugin [README](../../../dsh-plugins/calendar/README.md) for usage. This proposal describes the current contract and integration boundaries.
+Status: the public calendar, personal settings, source sync coordination and Agent tools are implemented. Reminder settings, calculation and scheduler-adapter reconciliation exist; real school fetching and actual notification delivery are not integrated. See the plugin [README](../../../dsh-plugins/calendar/README_EN.md) and [integration guide](INTEGRATION_EN.md).
 
 Ownership: public edition (EduWork). Institution data integration is a separate proposal; see [Institution boundary](#institution-boundary).
 
@@ -193,7 +193,7 @@ The first deliverable conclusion of this proposal (feasibility already verified)
 
 ## Agent read and write boundary
 
-`lib/tools.js` exposes eight tools through the same `calendar` service: list, create, update, delete and adjust one occurrence, plus `calendar_notes`, `calendar_put_note` and `calendar_remove_note`. See the plugin README for parameters.
+`lib/tools.js` exposes ten tools through the same `calendar` service: list, create, update, delete and adjust one occurrence, plus `calendar_notes`, `calendar_put_note` and `calendar_remove_note`. See the plugin README for parameters.
 
 - Reads are bounded: by default 180 days before today to 366 days after today, with a maximum span of 3660 days.
 - Updates, deletion and occurrence actions must reuse the returned `source` and `uid`. Notes also require the original `originalStart`, not the moved time.
@@ -206,34 +206,37 @@ The first deliverable conclusion of this proposal (feasibility already verified)
 The host owns events and private notes. The panel and Agent use the same service; the client does not store a second calendar.
 
 - Events use `source + uid`, so identifiers shared by separate sources do not collide. `lib/keys.js` owns key encoding.
-- Private notes live in the separate `calendar_personal` domain, referenced by `scope`, `source`, `uid` and, for one occurrence, `originalStart`. Deleting or replacing source records does not cascade to notes.
+- Notes, private remarks, visibility and reminder settings live in the separate `calendar_personal` domain, referenced by `scope`, `source`, `uid` and, for one occurrence, `originalStart`. Deleting or replacing source records does not cascade to notes.
 - A recurring series keeps its baseline start and recurrence. Moves override an original instance. If that instance cannot be identified, or the entire recurrence changes, source writes report the ambiguity and retain the existing record.
 - Event reads, merges and commits run in one queued write task; notes queue by target. This guarantee is limited to one process.
+- Unattributed source descriptions and extension metadata from old versions retain a review backup. New private content is not stored in source `description` or `extensions`.
 - Development-era bare identifiers and older combined keys are migrated. Existing destination records are preserved. Records without a known source remain intact and appear in `needsReview`.
 
 The plugin does not upload data on its own. Tool reads enter the current conversation. Institution credentials remain the institution adapter's responsibility; public events and notes contain no tokens.
 
 ## Reminder boundary
 
-Reminder settings, due-time calculation and notification delivery are not implemented. Future work should reuse the existing scheduler and notification mechanisms after confirming the target Runtime and desktop delivery path.
+Reminder settings persist separately with series defaults, occurrence overrides, restoring inheritance and explicit off. Relative times follow current occurrences, including cross-day moves, and cancelled classes stop producing relative reminders. Fixed personal reminders keep their selected time independently of class cancellation.
 
-Relative reminders and user-selected fixed times need separate handling. Moves, cancellations and repeated sync require checks for adjustment, stopping and deduplication. Note-preservation tests do not establish reminder correctness.
+`reminderPlan` produces stable task IDs. `registerReminderScheduler` reconciles complete plans with a replaceable Host adapter, skips unchanged plans and replaces changed/cancelled tasks under the same IDs. The adapter owns durable deduplication and delivery. No independent notification engine or desktop/session notification binding is introduced here.
+
+The existing `@deepseek-ai/dsh-schedule` delivers into an original Session. Its adapter must provide real Session selection and permission semantics; a Session is never fabricated. Current checks establish planning and adapter reconciliation, not delivered notifications. See the [integration guide](INTEGRATION_EN.md).
 
 ## Institution boundary
 
 - The public edition contains no school-specific logic: no academic-system address, scraper, academic calendar or holiday rules.
-- A data source is currently only the `source` string (ownership, grouping and tint follow it): writing from an injecting side, replacing one source's records and tinting by source all work, but there is **no source registration** — nothing records a source's name, colour or sync policy. That is the half of the roadmap's "data-source registration" still missing; its shape is under [Open questions](#open-questions).
+- Sources register a stable provider, account, feed and fetch function through `calendar.registerSource`. The public coordinator handles startup, login/reconnection callbacks, periodic refresh, timeouts, stale results and independent source status. Complete snapshots and incremental writes have distinct semantics.
 - Following the edition boundaries ([`docs/EDITIONS.md`](../../EDITIONS.md)), the institution edition supplies an adapter under `edition/plugins/`: it converts school data to the public structure above and injects it through the host-side entry point provided by the public edition.
 - Raising the institution lock depends on a public **release**: assembly in institution mode validates the public commit and the source receipt, so institution integration happens after this work lands and is released, and is outside this proposal.
 - An offline path also works: the institution side saves an academic-system page, parses it into ICS or the JSON above, and uses the generic import, with no dependency on a school API.
-- `applySource` supports source writes and attributable moves, but is not a complete synchronizer. Startup, periodic and reconnection fetches, stale-response protection and complete-snapshot cleanup remain integration work.
+- Institution adapters convert school-specific data to source batches and connect real login/reconnection events through the supplied subscription callback. No school API format is fixed by the public plugin.
 - Academic calendars and timetables currently share one panel with source filtering. Separate institution entries and default views remain a future extension.
 
 ## Compatibility boundary
 
 - Adds one standalone plugin; existing public exports, configuration keys and data paths are unchanged.
 - Adds no runtime dependency, changes no dependency lock, and adds no npm package that needs separate publishing (built-in source extensions are rebuilt during assembly).
-- Two public interfaces ask for review: the event data structure, and the remote method surface the client half reads and writes through (currently 15 methods). Both are defined in `lib/typert-schemas.js` and `lib/typert-descriptors.js`, in one description shared by the host and the client.
+- Two public interfaces ask for review: the event data structure, and the remote method surface the client half reads and writes through (currently 19 methods). Both are defined in `lib/typert-schemas.js` and `lib/typert-descriptors.js`, in one description shared by the host and the client.
 - The release manifest gains one plugin entry; the order and configuration of existing plugins do not change.
 - Development-era records have read compatibility and key migration. A missing source must not be inferred as a personal event; the migration report preserves that ambiguity.
 - The desktop shell, updater and institution repository are untouched; reminders are a separate proposal.
@@ -241,7 +244,7 @@ Relative reminders and user-selected fixed times need separate handling. Moves, 
 
 ## Development split and acceptance
 
-Week/month views, event and private-note storage, ICS import/export, a source-write entry point and eight Agent tools are available. Real institution fetching, automatic sync, reminders and separate institution entries remain future work.
+Week/month views, events and personal settings, ICS, source sync coordination, reminder planning/reconciliation and ten Agent tools are available. Real institution fetching, actual notification delivery and separate institution entries remain future work.
 
 Prepare a Runtime, set `EDUWORK_TEST_RUNTIME`, and run in the plugin directory:
 
@@ -258,7 +261,7 @@ Each PR reports actual checks, Runtime versions and untested scope. Complete Web
 
 - The final shape and naming of the event contract.
 - The form of the institution injection entry point: a host-side service, release configuration, or both.
-- **The shape of source registration**: where a source's name, colour, order and sync policy are recorded (plugin configuration, release configuration, or the institution adapter's own declaration), and how an unregistered source degrades. Today only the `source` string exists: tinting by source and replacing one source's records are implemented, registration itself is not.
+- **Source presentation**: registration already provides labels and poll intervals; colours, ordering and institution-entry default views can follow later needs.
 - Ownership of the reminder contract: a new notification category or an existing one, and the target runtime baseline.
 - Sidebar label wording, and whether the release manifest can override plugin configuration.
 - Whether to reuse an existing implementation through a fork or vendoring; if so, which candidate.

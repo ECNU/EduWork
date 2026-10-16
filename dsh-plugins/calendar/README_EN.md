@@ -13,9 +13,11 @@ A local calendar and schedule manager. The week view arranges time within a day;
 - An event description is exported in ICS. A private note belongs to one occurrence, is stored separately and is excluded from ICS. Rescheduling preserves the note when the occurrence retains its original identity.
 - Import an ICS file by selection, drag-and-drop or pasted text. The filename supplies the default calendar name. Distinct calendars coexist; a matching identifier within one calendar updates that event. Missing entries are preserved unless removal is explicitly enabled for that calendar.
 - Copy or download ICS. It excludes private notes and is not a complete backup.
-- Agent tools read, create, edit and delete events; move, reset, cancel or restore one occurrence; and read, save or clear private notes. Writes follow the project's existing session permission policy.
+- Personal settings support series defaults, occurrence overrides and restoring inheritance for notes, private remarks, visibility and relative/fixed reminders. Hidden occurrences remain manageable from the event menu and record page.
+- Agent tools read and edit events, occurrences, notes and personal settings. Writes follow the existing session permission policy.
+- Open panels refresh after external source or Agent writes and resubscribe after disconnection.
 
-Events and private notes are stored on this machine. Reminder settings and notification delivery are not implemented.
+Events and personal settings stay on this machine. Relative and fixed reminder settings are persisted and due times are calculated. The public plugin does not yet deliver notifications.
 
 ## Agent tools
 
@@ -26,13 +28,16 @@ Events and private notes are stored on this machine. Reminder settings and notif
 | `calendar_delete_event` | Delete an entire event |
 | `calendar_occurrence` | Move, reset, cancel or restore one occurrence |
 | `calendar_notes` | Read private notes, including preserved notes whose occurrence can no longer be found |
-| `calendar_put_note` / `calendar_remove_note` | Save or clear a private note for one occurrence |
+| `calendar_put_note` / `calendar_remove_note` | Save or clear a private note for a series or occurrence |
+| `calendar_read_personal` / `calendar_personal_settings` | Read, patch or restore personal settings by field |
 
-Use the `source` and `uid` returned by a read for imported events. Notes additionally require the returned `originalStart`, rather than the current rescheduled time. Editing a whole event and editing one occurrence are separate operations.
+Use the `source` and `uid` returned by a read for imported events. Occurrence settings require the returned `originalStart`, rather than the rescheduled time. Omit it to address series defaults. Editing a whole event and editing one occurrence are separate operations.
 
 ## Institution integration
 
-The public plugin supplies generic events without school credentials, data fetching or institution-specific timetable rules. Timetables and academic calendars can enter the `calendar` service as distinct sources. Live school synchronization and separate academic-calendar/timetable entries are not integrated. Attributing a school reschedule requires information identifying the original occurrence; ambiguous changes are reported rather than guessed. Automatic association after a change to the entire recurrence rule is unsupported.
+The public plugin registers sources and coordinates automatic sync. Institution plugins own authentication, fetching and conversion. Stable identities separate accounts and logical feeds; failures retain cached data, and unregistering hides cached events without deleting notes. Real school APIs and separate academic-calendar/timetable entries are not integrated. Attributing a school reschedule requires information identifying the original occurrence; ambiguous changes are reported rather than guessed. Automatic association after a change to the entire recurrence rule is unsupported. See the [source and reminder interface guide](../../docs/proposals/calendar/INTEGRATION_EN.md).
+
+Source descriptions and private remarks are stored separately. Private content is excluded from ICS. Unattributed descriptions and extension metadata from older versions are backed up for review in personal settings.
 
 ## Build and validation
 
