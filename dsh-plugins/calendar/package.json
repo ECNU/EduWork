@@ -3,7 +3,7 @@
   "version": "0.1.0-dev",
   "private": true,
   "license": "MIT",
-  "description": "Weekly calendar panel for the EduWork workbench",
+  "description": "Local calendar and schedule panel for the EduWork workbench",
   "type": "module",
   "main": "lib/index.js",
   "exports": {
@@ -16,8 +16,9 @@
   },
   "files": ["lib/**/*.js", "README.md", "README_EN.md"],
   "scripts": {
-    "build:client": "powershell -ExecutionPolicy Bypass -File ./build-client.ps1",
-    "test": "node --check lib/client.js && node --test test/*.test.mjs"
+    "build:client": "node ./build-client.mjs",
+    "test": "node --check lib/client.js && node test/support/bundle-panel.mjs && node --test test/*.test.mjs",
+    "test:browser": "node test/browser-acceptance.mjs"
   },
   "dsh": {
     "client": {
