@@ -2,13 +2,13 @@
 
 [简体中文](README.md) | **English**
 
-Status: steps 1–4 of this proposal are implemented; the code and its usage are documented in the plugin's [README](../../../dsh-plugins/calendar/README.md), and step 5 (the institution injection entry point) has not started. Field names and configuration keys follow the plugin documentation and code; this proposal records boundaries and trade-offs. The verification actually performed, and the parts left unverified, are listed under [Development split and acceptance](#development-split-and-acceptance).
+Status: the public calendar, private notes and Agent tools are implemented. A source-write service exists; real school adapters, automatic sync and reminders are not connected. See the plugin [README](../../../dsh-plugins/calendar/README.md) for usage. This proposal describes the current contract and integration boundaries.
 
 Ownership: public edition (EduWork). Institution data integration is a separate proposal; see [Institution boundary](#institution-boundary).
 
 ## Goal
 
-Introduce a standalone calendar and schedule plugin in the public edition: a week view, local event storage, ICS import and export, and an **open data structure** that the institution edition can use to inject school data (academic calendar, class timetable). A timetable is one data source for the calendar module, not a public-edition concept of its own.
+Introduce a standalone calendar and schedule plugin in the public edition: week/month views, local event and private-note storage, ICS import and export, and an **open data structure** that the institution edition can use to inject school data (academic calendar, class timetable). A timetable is one data source for the calendar module, not a public-edition concept of its own.
 
 The plugin can be used by other DSH applications without installing the EduWork desktop client. It adds no runtime dependency and does not depend on institution credentials, private networks or an adjacent institution repository.
 
@@ -32,7 +32,8 @@ Included:
 
 | Capability | Description |
 | --- | --- |
-| Week view | First view: events grouped by week, with previous and next week, current week and today markers |
+| Week/month views | Arrange time by week or browse a month, with navigation, today and source filtering |
+| Private notes and Agent tools | Store notes separately; tools read and write events, descriptions and private notes |
 | Local event storage | Events are kept on this machine and survive across sessions |
 | ICS import and export | Parse and emit a minimal `VEVENT` set, matching common academic-calendar and timetable data |
 | Open data structure | The event contract defined by the public edition, used by the institution edition to inject data |
@@ -44,7 +45,7 @@ Excluded:
 | --- | --- |
 | Reminders triggered at a point in time | Separate proposal, see [Reminder boundary](#reminder-boundary) |
 | Scraping the academic system, academic calendar, holiday shifts | Institution edition, see [Institution boundary](#institution-boundary) |
-| Month view, agenda view, drag-and-drop editing | Later as needed |
+| Agenda view and dragging existing events | Later as needed |
 | CalDAV, ICS subscription sync, meeting invitations | Out of scope |
 | Lecture notes and other course attachments | Later milestone |
 
@@ -87,7 +88,7 @@ This repository already has four established reuse mechanisms. All four could ca
 
 This proposal argues for **reusing the design while implementing the code in this repository**:
 
-- The survey itself points this way: no existing implementation covers local storage, reminders, data injection and a week view at the same time, and the most complete candidate is strongest at month view, agenda view and drag and drop, none of which is in scope here.
+- The survey itself points this way: no existing implementation covers local storage, reminders, data injection and a week view at the same time, and the most complete candidate covers more views and drag interactions but lacks the source and personal-data boundaries needed here.
 - Adopting one directly would bring its licence, version line, dependency lock and the duty of following upstream along with it, while the things this proposal actually depends on — the open contract, the host-side injection entry point and notification integration — are not provided by any third party.
 - Implementing it here can reuse the existing theme variables and UI primitives, so the styling matches the existing panels from the start instead of being adopted and then reworked.
 
@@ -105,15 +106,16 @@ The core of the public contract. Fields follow ICS semantics so that no single d
 
 | Field | Type | Required | ICS | Notes |
 | --- | --- | --- | --- | --- |
-| `uid` | string | yes | `UID` | Stable event identity; preserved on import, generated locally otherwise |
+| `uid` | string | yes | `UID` | Stable identifier within one source; use together with `source` |
 | `title` | string | yes | `SUMMARY` | Title, for example "standup" or "health check"; in an injected timetable it is the course name |
 | `start` | string | yes | `DTSTART` | Local time `YYYY-MM-DDTHH:mm`, or a date `YYYY-MM-DD` |
-| `end` | string | no | `DTEND` | Without it the event is a date entry or has zero length |
+| `end` | string | no | `DTEND` | Inclusive for all-day events; timed ends must be later than starts and use the same format |
 | `location` | string | no | `LOCATION` | Room or other place |
-| `description` | string | no | `DESCRIPTION` | Notes |
+| `description` | string | no | `DESCRIPTION` | Event description exported to ICS, separate from private notes |
 | `recurrence` | object | no | `RRULE` | See [Recurrence boundary](#recurrence-boundary) |
 | `exceptions` | string[] | no | `EXDATE` | Cancelled instances |
-| `source` | string | no | — | Origin: manual, imported or institution-injected |
+| `source` | string | no | — | Source namespace, default `manual`; separate sources may share a `uid` |
+| `originalStart` | string | No | — | Original identity of a moved non-recurring event; recurring instances derive it from the immutable baseline |
 | `extensions` | object | no | `X-*` | Verbatim store for unrecognised fields |
 
 Example (synthetic data):
@@ -138,7 +140,8 @@ Example (synthetic data):
 Conventions:
 
 - What this proposal asks for is an **open structure**: fields may be added, unrecognised fields are kept verbatim, the structure carries `schemaVersion`, and adding optional fields does not change the major version.
-- Field naming and time semantics (local time in the first version, without time-zone conversion) are implementation details to be settled during review and do not affect the conclusions above.
+- Values use local dates or times. UTC input is converted to local time; unsupported external timezones are reported rather than silently accepted as local.
+- Source identities must survive sign-in again; separate accounts need separate sources. Adapters must not use temporary credentials or mutable display names as identity.
 - The public contract defines the shape only, not the storage location or file name.
 
 ## Why the public edition has no course entity
@@ -147,7 +150,7 @@ The first version carried a course in the public contract (a `courses` table, re
 
 - A calendar's unit of data is "something is scheduled at this time"; a lesson is one source and one grouping of that schedule. Course catalogues, teachers and default rooms are registrar data, and the public edition contains no school-specific logic.
 - A "course" entity only has content while somebody maintains its classes, term and curriculum. The public edition has no such source, so that table did nothing beyond surviving an export and an import.
-- The institution edition injects a timetable as a **data source**: one lesson is one event, owned and tinted by its `source`, repeated weekly through `recurrence`. The same event structure therefore carries mail, activities and personal plans, with no extra entity per source.
+- The institution edition injects a timetable as a **data source**: an event can describe a repeating series and a class meeting is one expanded instance; `source` identifies ownership and `recurrence` describes supported repetition. The same event structure therefore carries mail, activities and personal plans, with no extra entity per source.
 
 Future lecture notes, assignments and grades attach by course; when that day comes, the injecting side brings the course identity (in `extensions` or within its `source` scope) without changing the public event contract.
 
@@ -172,6 +175,11 @@ Import and export use a minimal in-house implementation and add no third-party c
 - No full `VTIMEZONE` implementation, no `VALARM` (reminders belong to the notification pipeline), no CalDAV or subscriptions
 - Import is an explicit user action; nothing is fetched in the background
 
+- The panel adds or updates by default. Removing omitted events requires an explicit choice and affects only the selected source.
+- Malformed component structure is rejected before any write. Partly readable input reports skipped entries and never cleans up omitted records. A complete, valid empty calendar can explicitly clear its source.
+- ICS all-day ends are exclusive and must be strictly later than starts before conversion to the internal inclusive date range.
+- Export carries source identity to keep equal identifiers from different sources apart. Private notes are excluded from ICS.
+
 ## Presentation boundary
 
 The first deliverable conclusion of this proposal (feasibility already verified):
@@ -185,41 +193,31 @@ The first deliverable conclusion of this proposal (feasibility already verified)
 
 ## Agent read and write boundary
 
-The panel is not the only writer: `lib/tools.js` opens the same `calendar` service to the model in a session through five tools — `calendar_list_events` reads one range, while `calendar_create_event`, `calendar_update_event`, `calendar_delete_event` and `calendar_occurrence` write, the last one acting on a single date of a series (move, reset, cancel, restore).
+`lib/tools.js` exposes eight tools through the same `calendar` service: list, create, update, delete and adjust one occurrence, plus `calendar_notes`, `calendar_put_note` and `calendar_remove_note`. See the plugin README for parameters.
 
-Three boundaries:
-
-- **Every window is finite**: without `from` a read starts 180 days before today, without `to` it ends a year later, and one call may not span more than 3660 days. A weekly series with no end date expands up to whatever bound it is given, so no bound at all would mean four thousand years of dates.
-- **A write carries only the fields it changes**: a field left out keeps its stored value and an empty string clears one, while moving a start keeps the entry's duration. An interface that demands a whole record is hostile to a model — one field forgotten there is one field silently lost.
-- **The default answer for a write is a confirmation**: `tools/pre-execute` decides from the tool name — reads pass, writes ask, a session already running without approvals passes, and a write with no session behind it is denied (`lib/tool-permission.js`). The tools and the panel write the same records through the same validation; no second data path is added.
-
-Moving one date and updating the whole record are two tools, which is exactly `RECURRENCE-ID` against the series: the model chooses which one it means instead of a `scope` argument deciding it implicitly.
-
-![After the model calls calendar_create_event, the write waits for confirmation, where the user either declines or allows it once](../../images/calendar-agent.png)
+- Reads are bounded: by default 180 days before today to 366 days after today, with a maximum span of 3660 days.
+- Updates, deletion and occurrence actions must reuse the returned `source` and `uid`. Notes also require the original `originalStart`, not the moved time.
+- Whole-event edits and single-occurrence changes remain separate. Omitted fields keep their values, and moving a start preserves duration.
+- Writes reuse `tools/pre-execute` session permissions: reads pass, ordinary writes ask, approval-free sessions pass, and writes without session context are denied.
+- Tools and the panel share service validation. Registration and service integration are tested; each PR reports separately whether a real model conversation was exercised.
 
 ## Data shape and storage
 
-Events are held by the host half; the client half reads a snapshot and renders it. Reasons:
+The host owns events and private notes. The panel and Agent use the same service; the client does not store a second calendar.
 
-- Institution injection needs a host-side entry point; client-only storage cannot be injected into.
-- Later agent tools and reminders need the same data.
-- Reminders (separate proposal) subscribe to the same data on the host side instead of parsing it again.
+- Events use `source + uid`, so identifiers shared by separate sources do not collide. `lib/keys.js` owns key encoding.
+- Private notes live in the separate `calendar_personal` domain, referenced by `scope`, `source`, `uid` and, for one occurrence, `originalStart`. Deleting or replacing source records does not cascade to notes.
+- A recurring series keeps its baseline start and recurrence. Moves override an original instance. If that instance cannot be identified, or the entire recurrence changes, source writes report the ambiguity and retain the existing record.
+- Event reads, merges and commits run in one queued write task; notes queue by target. This guarantee is limited to one process.
+- Development-era bare identifiers and older combined keys are migrated. Existing destination records are preserved. Records without a known source remain intact and appear in `needsReview`.
 
-The concrete local storage backend (host storage service or a plugin-owned file) is decided during implementation and is not part of the public contract.
-
-Privacy:
-
-- Events stay on this machine; nothing is uploaded and nothing is written to logs.
-- Reminders show only title and place, never the description body, following the existing desktop notification default.
-- Institution data access keeps the existing constraints: tokens never enter the plugin, are never written to disk and never logged.
+The plugin does not upload data on its own. Tool reads enter the current conversation. Institution credentials remain the institution adapter's responsibility; public events and notes contain no tokens.
 
 ## Reminder boundary
 
-Reminders triggered at a point in time are outside this proposal because they cross the plugin and desktop-shell boundary:
+Reminder settings, due-time calculation and notification delivery are not implemented. Future work should reuse the existing scheduler and notification mechanisms after confirming the target Runtime and desktop delivery path.
 
-- [Desktop notifications](../../DESKTOP_NOTIFICATIONS_EN.md) currently have four categories — attention, completed, final failure and Studio results — and no "point in time" channel; extending them means a new category and a change to the local event bridge.
-- Whether a due reminder can be delivered in a cold session (tray-resident application with no active session) depends on the runtime baseline; the current release line and the candidate line differ here, so the core team must confirm the target baseline.
-- Reminders are therefore a separate proposal: settle the event contract and the usable baseline first, then implement.
+Relative reminders and user-selected fixed times need separate handling. Moves, cancellations and repeated sync require checks for adjustment, stopping and deduplication. Note-preservation tests do not establish reminder correctness.
 
 ## Institution boundary
 
@@ -228,29 +226,33 @@ Reminders triggered at a point in time are outside this proposal because they cr
 - Following the edition boundaries ([`docs/EDITIONS.md`](../../EDITIONS.md)), the institution edition supplies an adapter under `edition/plugins/`: it converts school data to the public structure above and injects it through the host-side entry point provided by the public edition.
 - Raising the institution lock depends on a public **release**: assembly in institution mode validates the public commit and the source receipt, so institution integration happens after this work lands and is released, and is outside this proposal.
 - An offline path also works: the institution side saves an academic-system page, parses it into ICS or the JSON above, and uses the generic import, with no dependency on a school API.
+- `applySource` supports source writes and attributable moves, but is not a complete synchronizer. Startup, periodic and reconnection fetches, stale-response protection and complete-snapshot cleanup remain integration work.
+- Academic calendars and timetables currently share one panel with source filtering. Separate institution entries and default views remain a future extension.
 
 ## Compatibility boundary
 
 - Adds one standalone plugin; existing public exports, configuration keys and data paths are unchanged.
 - Adds no runtime dependency, changes no dependency lock, and adds no npm package that needs separate publishing (built-in source extensions are rebuilt during assembly).
-- Two public interfaces ask for review: the event data structure, and the remote method surface the client half reads and writes through (currently 10 methods). Both are defined in `lib/typert-schemas.js` and `lib/typert-descriptors.js`, in one description shared by the host and the client.
+- Two public interfaces ask for review: the event data structure, and the remote method surface the client half reads and writes through (currently 15 methods). Both are defined in `lib/typert-schemas.js` and `lib/typert-descriptors.js`, in one description shared by the host and the client.
 - The release manifest gains one plugin entry; the order and configuration of existing plugins do not change.
-- No released data format to migrate: this is the plugin's first introduction. The record contract dropped `courseId` during development, and such an older record is read compatibly and rewritten into the current shape once when the store opens.
+- Development-era records have read compatibility and key migration. A missing source must not be inferred as a personal event; the migration report preserves that ambiguity.
 - The desktop shell, updater and institution repository are untouched; reminders are a separate proposal.
 - Desktop behaviour needs independent acceptance; this proposal is verified on a Web assembly first.
 
 ## Development split and acceptance
 
-1. Plugin skeleton and registration: the sidebar entry and the main-area panel work (delivered).
-2. Event model and local storage: synthetic round trip, survival across restarts, `node --test` unit tests (delivered).
-3. Week view: week navigation, current week and today markers; a UI verification script and screenshots (delivered).
-4. ICS import and export: field mapping on synthetic samples, line folding and escaping, syntax check of the output; a round trip that keeps unrecognised fields (delivered).
-5. Institution injection entry point: define the host-side entry point in the public edition, verify it with a synthetic adapter and no institution data (not started).
-6. Agent read and write interface: five tools covering a range read and four kinds of write, every write behind one confirmation; unit tests and registration in the assembly (delivered).
+Week/month views, event and private-note storage, ICS import/export, a source-write entry point and eight Agent tools are available. Real institution fetching, automatic sync, reminders and separate institution entries remain future work.
 
-Verification performed: the plugin's unit tests pass (81 cases) on both pinned runtime lines — `release-v0.1.5-rc.2` for the generic Web product and `candidate-v0.2.0-rc.2` for the desktop candidate; the interface was walked through end to end in a generic Web assembly on this machine; the desktop candidate line's client is rebuilt and checked by the candidate assembly pipeline, but the full candidate product was not run here.
+Prepare a Runtime, set `EDUWORK_TEST_RUNTIME`, and run in the plugin directory:
 
-Every pull request reports the verification actually performed and the parts left unverified. Module checks follow the existing CI; real sign-in, Office, audio and video, and desktop behaviour are accepted locally according to the change. macOS desktop notifications need acceptance on real hardware; a browser test is not a substitute.
+```sh
+npm test
+npm run test:browser
+```
+
+Product client builds use the repository's locked compiler. Test esbuild bundles are only test fixtures, not product build replacements. Repository browser tests use the real panel and service with UI primitive substitutes; they do not establish full-workbench or desktop acceptance.
+
+Each PR reports actual checks, Runtime versions and untested scope. Complete Web interaction, model conversations, real school APIs and Electron require separate acceptance. Internal verification logs stay outside this proposal.
 
 ## Open questions
 
@@ -260,4 +262,4 @@ Every pull request reports the verification actually performed and the parts lef
 - Ownership of the reminder contract: a new notification category or an existing one, and the target runtime baseline.
 - Sidebar label wording, and whether the release manifest can override plugin configuration.
 - Whether to reuse an existing implementation through a fork or vendoring; if so, which candidate.
-- Whether a month view or other views are needed, and their scheduling.
+- Scheduling for an agenda view, dragging existing events and separate institution entries.
