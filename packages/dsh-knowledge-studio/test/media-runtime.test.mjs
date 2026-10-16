@@ -4,12 +4,14 @@ import {mkdtemp,mkdir,writeFile,rm,realpath} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {createMediaRuntime,inspectMediaRuntime} from '../packages/artifact-services/lib/runtime.js'
+import {renderMedia} from '../packages/artifact-services/lib/media.js'
+import {prepareComposition} from '../packages/artifact-services/lib/remotion.js'
 import {mediaParameters} from '../lib/capabilities.js'
 
 test('capability discovery does not download a browser and silent video is an explicit selection',async()=>{
   const missing=await inspectMediaRuntime({environment:{}})
   assert.equal(missing.available,false)
-  assert.match(missing.reason,/浏览器/)
+  assert.match(missing.reason,/^本机媒体/)
   const invalid=await inspectMediaRuntime({environment:{DSH_MEDIA_NODE_ENV:'relative'}})
   assert.equal(invalid.available,false)
   assert.doesNotMatch(invalid.reason,/relative/)
@@ -40,4 +42,16 @@ test('managed media uses the supplied browser and rejects incomplete or mixed ru
   await writeFile(join(root,'node_modules','remotion','package.json'),'{"version":"4.0.499"}')
   await assert.rejects(createMediaRuntime({environment}),/version mismatch/)
   await assert.rejects(createMediaRuntime({environment,signal:AbortSignal.abort()}),{name:'AbortError'})
+})
+
+test('the packaged Studio template bundles without a webpack cache beside the installed package',async t=>{
+  const directory=await mkdtemp(join(tmpdir(),'artifact-media-'))
+  t.after(()=>rm(directory,{recursive:true,force:true}))
+  const bundles=[]
+  const renderer={selectComposition:async()=>({}),makeCancelSignal:()=>({cancelSignal:()=>{},cancel:()=>{}}),renderMedia:async()=>{}}
+  const runtime={managedRequire:name=>name==='@remotion/bundler'?{bundle:async options=>{bundles.push(options);return 'serve-url'}}:renderer}
+  const request={id:'cache',kind:'video',title:'Synthetic',segments:[{heading:'Synthetic',bullets:['Synthetic'],narration:''}],options:{narration:'off',subtitles:'off'}}
+  await renderMedia(request,directory,undefined,()=>{},undefined,{runtime})
+  await prepareComposition({entryPoint:join(directory,'src/index.ts'),id:'EcnuVideo',runtime})
+  assert.deepEqual(bundles.map(options=>options.enableCaching),[false,true])
 })

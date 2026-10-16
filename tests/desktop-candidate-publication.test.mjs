@@ -7,7 +7,7 @@ import {createHash} from 'node:crypto'
 import {githubUpdateManifestBytes, updateManifestName} from '../scripts/github-update-manifest.mjs'
 import {bundleVersion} from '../scripts/macos-update-feed.mjs'
 import {desktopVersion} from '../scripts/desktop-build-plan.mjs'
-import {assetNames, validateRun, validateCandidateReceipt, validatedCandidateFiles, verifyRemoteAssets, publishCandidate} from '../scripts/publish-desktop-candidate.mjs'
+import {assetNames, nodeNpmAssetNames, validateRun, validateCandidateReceipt, validatedCandidateFiles, validatedNodeNpmFiles, verifyRemoteAssets, publishCandidate} from '../scripts/publish-desktop-candidate.mjs'
 
 const globalContext = {product: 'EduWork', version: '0.3.6-dev.20260928.2', distribution: 'eduwork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40)}
 const context = globalContext
@@ -121,4 +121,46 @@ for (const platform of ['windows', 'macos']) test('alpha SemVer ' + platform + '
   assert.equal(data.names.includes(updateManifestName), false)
   assert.equal(data.names[2], `${platform}-alpha-receipt.json`)
   assert.throws(() => validateCandidateReceipt({...data.receipt, automaticUpdates: true}, data.context), /automaticUpdates/)
+})
+
+async function macosNodeFixture(deltaFrom) {
+  const directory = await mkdtemp(join(tmpdir(), 'eduwork-macos-publication-'))
+  const context = {product: 'EduWork', version: '0.4.4', platform: 'macos', repository: 'ECNU/EduWork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40), releaseNotes: 'docs/releases/0.4.4.md'}
+  const names = nodeNpmAssetNames(context.product, context.version, 'macos', deltaFrom)
+  const file = async (name, body) => {
+    await writeFile(join(directory, name), body)
+    return {name, bytes: Buffer.byteLength(body), sha256: hash(body)}
+  }
+  const asset = await file(names[0], 'synthetic archive')
+  await writeFile(join(directory, names[1]), `${asset.sha256}  ${asset.name}\n`)
+  const notes = await file(names[3], '# EduWork 0.4.4\n')
+  const dmg = await file(names[4], 'synthetic installer')
+  await writeFile(join(directory, names[5]), `${dmg.sha256}  ${dmg.name}\n`)
+  const deltas = []
+  for (const [index, from] of deltaFrom.entries()) deltas.push({from, ...await file(names[6 + index], 'patch from ' + from)})
+  const receipt = {schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version, edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true, coreCommit: context.coreCommit, editionCommit: context.editionCommit, recipe: 'pinned-source', releaseNotes: {approved: true, file: context.releaseNotes, sha256: notes.sha256}, checks: Object.fromEntries(['sourceAndDependencies', 'archiveManifest', 'nativeRuntimes', 'desktopLaunch', 'mediaTemplate', 'sourceSnapshot', 'readOnlyApplication', 'macosDmg'].map(name => [name, 'passed'])), softwareAutoUpdate: true, bundleVersion: bundleVersion(context.version), asset, installer: {asset: dmg, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}, deltas}
+  await writeFile(join(directory, names[2]), JSON.stringify(receipt))
+  return {directory, names, context}
+}
+test('stable macOS publishes exactly the delta updates its receipt verifies', async t => {
+  const data = await macosNodeFixture(['0.4.3', '0.4.2'])
+  t.after(() => rm(data.directory, {recursive: true, force: true}))
+  const checked = await validatedNodeNpmFiles(data.directory, data.context)
+  assert.deepEqual(checked.files.slice(6).map(file => file.name), ['EduWork-0.4.4-macos-arm64-electron-from-0.4.3.delta', 'EduWork-0.4.4-macos-arm64-electron-from-0.4.2.delta'])
+  await writeFile(join(data.directory, 'EduWork-0.4.4-macos-arm64-electron-from-0.4.1.delta'), 'unlisted patch')
+  await assert.rejects(validatedNodeNpmFiles(data.directory, data.context), /Unexpected macOS files/)
+  await rm(join(data.directory, 'EduWork-0.4.4-macos-arm64-electron-from-0.4.1.delta'))
+  await writeFile(join(data.directory, data.names[7]), 'changed patch')
+  await assert.rejects(validatedNodeNpmFiles(data.directory, data.context), /delta update differs from the build receipt/)
+  await rm(join(data.directory, data.names[7]))
+  await assert.rejects(validatedNodeNpmFiles(data.directory, data.context), /Unexpected macOS files/)
+})
+test('Windows candidates add each delta update with its SHA-256 sidecar', () => {
+  assert.deepEqual(nodeNpmAssetNames('EduWork', '0.4.4', 'windows', ['0.4.3']).slice(-2),
+    ['EduWork-0.4.4-windows-x64-electron-from-0.4.3.zip', 'EduWork-0.4.4-windows-x64-electron-from-0.4.3.zip.sha256'])
+})
+test('macOS without delta updates keeps the fixed release files', async t => {
+  const data = await macosNodeFixture([])
+  t.after(() => rm(data.directory, {recursive: true, force: true}))
+  assert.equal((await validatedNodeNpmFiles(data.directory, data.context)).files.length, 6)
 })

@@ -2,7 +2,7 @@
 
 [简体中文](MACOS_UPDATES.md) | **English**
 
-Sparkle provides native checks, downloads, verification, installation and relaunch. Startup probes do not open a dialog. Users confirm downloads and installation; macOS may request authorization for a protected destination. Windows retains its portable updater. Configuration, sessions, credentials and Skills remain outside the app, and content updates remain available in the shared settings panel.
+Sparkle owns downloads, verification and installation; EduWork shows their status in its shared update panel without a second updater window. Checks run in the background. Users can enable automatic downloads, receive an in-app reminder when ready, and install on normal application exit without a forced restart. Manual download and immediate restart remain available; cancelling the task exit confirmation leaves installation retryable. Closing a window does not quit the application. macOS may still request authorization for a protected destination. Windows retains its portable updater. Configuration, sessions, credentials and Skills remain outside the app, and content updates remain available in the shared settings panel.
 
 Older Mac builds without Sparkle require one manual replacement before this update path becomes available.
 
@@ -12,12 +12,14 @@ An edition may supply `resources/desktop/mac-updates.json`, or pass `--mac-updat
 
 Channel preferences live in the user directory. The development appcast should offer the newest development or stable release; the stable appcast offers stable releases only. Switching channels must not downgrade. Assembly and appcasts share a version encoding: `0.3.6-dev.20260920.1` becomes `0.3.6dev20260920.1`, while stable remains `0.3.6`. Sparkle ignores hyphenated suffixes; native CI verifies this encoding with Sparkle's actual comparator.
 
+Stable macOS releases also publish one Sparkle patch from each of the three previous stable releases, `EduWork-<version>-macos-arm64-electron-from-<previous>.delta`. After package acceptance, CI downloads the earlier ZIPs from their Releases, checks the SHA-256 digests GitHub records, creates each patch with the `BinaryDelta` tool from the pinned Sparkle, applies it to the earlier version and compares the result with the accepted application file by file. Patches larger than half of the full ZIP are skipped; development builds have none. Local builds may pass `--delta-bases <dir>` with earlier ZIPs; the build receipt lists the patches under `deltas`. Sparkle selects the patch for the installed version without client configuration and downloads the full ZIP when no patch matches or a modified application no longer accepts it.
+
 Each distribution retains its own Ed25519 private key outside the repository. Sign the verified archive with:
 
 ```sh
 node scripts/macos-update-feed.mjs sign app.zip release-receipt.json mac-updates.json private-key.pem https://downloads.example.org/app.zip appcast.xml
 ```
 
-This only writes the appcast. It does not upload files, publish a GitHub Release or change an update channel. Upload the complete ZIP before its appcast; update the development feed when publishing a stable release too. Back up the private key securely and never include it in source, artifacts or logs.
+Patches listed in the receipt must sit beside the ZIP; the command verifies and signs them too, and their appcast URLs share the ZIP's directory. This only writes the appcast. It does not upload files, publish a GitHub Release or change an update channel. Upload the complete ZIP and its patches before the appcast; update the development feed when publishing a stable release too. Back up the private key securely and never include it in source, artifacts or logs.
 
-EdDSA update verification does not replace Apple Developer ID signing or notarization. Initial launches of ad-hoc builds may still show macOS security prompts. Native CI uses disposable keys to test the real bridge, HTTPS probing, rejection of invalid signatures and in-place application replacement. Authorization dialogs, Gatekeeper and user interaction still require native user acceptance.
+EdDSA update verification does not replace Apple Developer ID signing or notarization. Initial launches of ad-hoc builds may still show macOS security prompts. Native CI uses disposable keys to test the real bridge, HTTPS probing, rejection of invalid signatures, patch installation with fallback to the full ZIP, and in-place application replacement. Authorization dialogs, Gatekeeper and user interaction still require native user acceptance.

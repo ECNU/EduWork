@@ -1,7 +1,8 @@
 // Downloads, builds and verifies the locked macOS arm64 native inputs (Node
-// runtime, private Python + Office wheels, Chromium, OpenSSL, whisper.cpp), then
-// installs them into the product's native resource directory. Node.js port of
-// prepare-macos-release-inputs.ps1. Requires a macOS arm64 runner.
+// runtime, private Python + Office wheels, OpenSSL, whisper.cpp), then installs
+// them into the product's native resource directory. Requires a macOS arm64
+// runner. The desktop executable is the product's Chromium, so unlike the older
+// prepare-macos-release-inputs.ps1 this ships no browser.
 //
 // The work is split so the expensive half can be cached: `prepare` builds a
 // self-contained native input tree whose only input is the native lock, and
@@ -12,7 +13,7 @@
 // product's own transcription catalog, which only exists once a product is
 // installed. `install` compares the lock against that catalog instead, keeping
 // `prepare` independent of any product.
-import { chmod, rm } from 'node:fs/promises'
+import { chmod, readdir, rm } from 'node:fs/promises'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
@@ -58,9 +59,7 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
   const lock = await readJSON(join(core, 'config/macos-native.lock.json'))
   const python = await readJSON(join(core, 'dsh-desktop/internal/productruntime/builtin/python-runtime-manifest.json'))
   const nodeLock = await readJSON(join(core, 'dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json'))
-  if (lock.platform !== 'darwin-arm64' || lock.browser.version !== nodeLock.environment.browserAutomation.browserVersion) {
-    throw new Error('macOS native lock does not match the qualified runtime')
-  }
+  if (lock.platform !== 'darwin-arm64') throw new Error('macOS native lock targets another platform')
   const downloadAsset = async (asset, name, directory = output) => {
     if (!/^https:\/\//.test(asset.url ?? '') || !/^[a-f0-9]{64}$/.test(asset.sha256 ?? '')) {
       throw new Error('Downloads require HTTPS and a pinned SHA-256')
@@ -92,13 +91,6 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
   // Prevent library imports from creating __pycache__ in the signed application.
   await writeText(join(output, 'office-python'), '#!/bin/sh\nexec "$(dirname "$0")/p/bin/python3" -B "$@"')
   await chmod(join(output, 'office-python'), 0o755)
-
-  const browserArchive = await downloadAsset(lock.browser, 'chromium.zip')
-  const browserRoot = join(output, 'browser')
-  await ensureDir(browserRoot)
-  await run('ditto', ['-x', '-k', browserArchive, browserRoot])
-  const browser = join(browserRoot, 'chrome-mac-arm64', lock.browser.executable)
-  if (await sha256File(browser) !== lock.browser.executableSHA256) throw new Error('Chromium executable differs from its lock')
 
   // Every download happens before the first compile. The model used to be
   // fetched last, so a network failure discarded several minutes of OpenSSL and
@@ -160,9 +152,6 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
     node,
     openssl,
     platform: 'darwin-arm64',
-    browserVersion: lock.browser.version,
-    browserExecutable: lock.browser.executable,
-    browserExecutableSHA256: lock.browser.executableSHA256,
     whisperVersion: lock.whisper.version,
     speechModel: model,
     nativeLockSHA256: await sha256File(join(core, 'config/macos-native.lock.json')),
@@ -204,9 +193,13 @@ export async function installMacosReleaseInputs({ inputs, product } = {}) {
   // link-preserving copy is required; the link-rejecting one is for payloads
   // that must not depend on anything outside themselves.
   await copyTreePreservingLinks(join(inputs, 'python'), join(resources, 'p'))
+  // The standalone interpreter links CPython statically and its extension
+  // modules resolve symbols from it; the shared library only serves embedding.
+  const embedding = (await readdir(join(resources, 'p/lib'))).filter(name => /^libpython\d+\.\d+\.dylib$/.test(name))
+  if (embedding.length !== 1) throw new Error('Expected one CPython embedding library in the macOS Python runtime')
+  await rm(join(resources, 'p/lib', embedding[0]))
   await copyFileTo(join(inputs, 'office-python'), join(resources, 'office-python'))
   await chmod(join(resources, 'office-python'), 0o755)
-  await copyTreePreservingLinks(join(inputs, 'browser/chrome-mac-arm64'), join(resources, 'b'))
   await copyFileTo(join(inputs, 'speech/whisper-cli'), join(resources, 'a/whisper-cli'))
   await copyFileTo(join(inputs, 'speech/model.bin'), join(resources, 'a/model.bin'))
   await copyTree(join(inputs, 'licenses'), join(resources, 'licenses'))
@@ -215,10 +208,8 @@ export async function installMacosReleaseInputs({ inputs, product } = {}) {
     platform: 'darwin-arm64',
     environment: {
       DSH_OFFICE_PYTHON: 'r/office-python',
-      DSH_MEDIA_BROWSER: `r/b/${manifest.browserExecutable}`,
       DSH_MEDIA_NODE_ENV: 'd',
     },
-    browser: { version: manifest.browserVersion, executableSHA256: manifest.browserExecutableSHA256 },
     pluginConfig: {
       'eduwork-artifact-services': {
         transcription: { local: { executablePath: 'r/a/whisper-cli', modelPath: 'r/a/model.bin' } },

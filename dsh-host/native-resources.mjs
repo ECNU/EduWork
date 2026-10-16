@@ -64,6 +64,8 @@ export async function prepareNativeResources({ product }) {
   catch (error) { if (error.code === 'ENOENT') return { environment: {}, pluginConfig: {} }; throw error }
   if (manifest.schemaVersion !== 1 || manifest.platform !== `${process.platform}-${process.arch}`) throw new Error('Desktop resource platform or schema mismatch')
   const environment = {}
+  // Electron products use the desktop executable as Chromium. Frozen products
+  // for the Wails bridge still name the browser they carry.
   const types = { DSH_OFFICE_PYTHON: 'file', DSH_MEDIA_BROWSER: 'file', DSH_MEDIA_NODE_ENV: 'directory' }
   for (const [name, path] of Object.entries(manifest.environment ?? {})) {
     if (!Object.hasOwn(types, name)) throw new Error('Unsupported desktop resource environment key')

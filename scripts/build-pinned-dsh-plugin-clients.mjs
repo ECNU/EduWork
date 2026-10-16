@@ -89,6 +89,7 @@ const clients = Object.entries({ 'dsh-mail': 'index.tsx', 'dsh-memory': 'index.t
 for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar']) {
   clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
+clients.push(['dsh-plugins/desktop-pet', 'src/client.js'])
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {
   const root = join(repository, 'dsh-plugins', folder)

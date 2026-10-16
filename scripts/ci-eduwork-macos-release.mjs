@@ -19,6 +19,7 @@ import { macosStages } from './lib/macos-stages.mjs'
 import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
 import { desktopSourceIdentity } from './lib/build-source.mjs'
+import { deltaBaseArchives } from './update-delta-bases.mjs'
 
 export async function ciEduworkMacosRelease({
   coreRoot,
@@ -28,6 +29,7 @@ export async function ciEduworkMacosRelease({
   releaseNotesFile = '',
   development = false,
   macUpdateConfig = '',
+  deltaBases = '',
   releaseNotesApproved = false,
   verifyPublisherBootstrap = false,
   verifySnapshot = true,
@@ -81,6 +83,7 @@ export async function ciEduworkMacosRelease({
   }
 
   if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
+  const bases = await deltaBaseArchives(deltaBases, version)
   const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
 
   const parameters = {
@@ -93,6 +96,7 @@ export async function ciEduworkMacosRelease({
     runtimeSource,
     upstreamSource: upstreamSource ? fullPath(upstreamSource) : '',
     macUpdateConfig: macUpdateConfig ? fullPath(macUpdateConfig) : '',
+    deltaBases: bases,
     releaseNotesFile,
     verifyPublisherBootstrap,
     editionRoot,
@@ -133,7 +137,7 @@ export async function ciEduworkMacosRelease({
     ...(recipe === 'pinned-source'
       ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource, verifySnapshot })
       : sharedDesktopStages(common)),
-    ...macosStages({ coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase, recipe }),
+    ...macosStages({ coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase, recipe, deltaBases: bases }),
   ]
   const workspace = new Workspace({
     root: output,
@@ -180,6 +184,7 @@ if (isMainModule(import.meta.url)) {
       'release-notes-file': { type: 'string' },
       development: { type: 'boolean' },
       'mac-update-config': { type: 'string' },
+      'delta-bases': { type: 'string' },
       'release-notes-approved': { type: 'boolean' },
       'verify-publisher-bootstrap': { type: 'boolean' },
       'no-verify-snapshot': { type: 'boolean' },
@@ -195,7 +200,7 @@ if (isMainModule(import.meta.url)) {
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
-    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--recipe npm|pinned-source] [--development] [--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] [--mac-update-config <json>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
+    throw new Error('Use --core-root --edition-root --distribution-config --version --output [--recipe npm|pinned-source] [--development] [--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] [--mac-update-config <json>] [--delta-bases <dir>] [--release-notes-file <docs/releases/*.md>] [--release-notes-approved] [--verify-publisher-bootstrap] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] (--jobs 0 = as many as the graph allows)')
   }
   await ciEduworkMacosRelease({
     coreRoot: values['core-root'],
@@ -205,6 +210,7 @@ if (isMainModule(import.meta.url)) {
     releaseNotesFile: values['release-notes-file'] ?? '',
     development: Boolean(values.development),
     macUpdateConfig: values['mac-update-config'] ?? '',
+    deltaBases: values['delta-bases'] ?? '',
     releaseNotesApproved: Boolean(values['release-notes-approved']),
     verifyPublisherBootstrap: Boolean(values['verify-publisher-bootstrap']),
     verifySnapshot: !values['no-verify-snapshot'],

@@ -11,7 +11,10 @@ export function validateAttentionRequest(body) {
     if (Object.keys(body).some(key => !['action', 'sessionId', 'artifactId'].includes(key)) || !text(body.sessionId, 256) || body.artifactId !== undefined && !text(body.artifactId, 256)) throw Error('Invalid attention view')
     return body
   }
-  if (body.action !== 'sync' || Object.keys(body).some(key => !['action', 'instance', 'items', 'preferences'].includes(key)) || !text(body.instance, 80) || !Array.isArray(body.items) || body.items.length > 200) throw Error('Invalid attention snapshot')
+  if (body.action !== 'sync' || Object.keys(body).some(key => !['action', 'instance', 'items', 'running', 'preferences'].includes(key)) || !text(body.instance, 80) || !Array.isArray(body.items) || body.items.length > 200) throw Error('Invalid attention snapshot')
+  // Running sessions are only counted; they never become notification actions.
+  if (!Array.isArray(body.running) || body.running.length > 200 || new Set(body.running).size !== body.running.length
+    || body.running.some(id => !text(id, 256) || !id)) throw Error('Invalid running sessions')
   const keys = new Set()
   for (const item of body.items) {
     if (!item || Object.keys(item).some(key => !['key', 'kind', 'sessionId', 'artifactId', 'title', 'createdAt'].includes(key)) || !text(item.key, 600) || keys.has(item.key) || !kinds.has(item.kind)
@@ -29,7 +32,7 @@ export class TaskNotifications {
   constructor({ foreground, show, publish, dismiss, changed, now = Date.now }) {
     Object.assign(this, { foreground, show, publish, dismiss, changed, now })
     this.items = new Map(); this.notified = new Set(); this.sessionId = ''; this.nextPopup = 0
-    this.delivery = 'available'
+    this.delivery = 'available'; this.running = []; this.acknowledged = 0
   }
   handle(value) {
     const body = validateAttentionRequest(value)
@@ -40,10 +43,14 @@ export class TaskNotifications {
       return { openKey, delivery: this.delivery }
     }
     if (this.instance !== body.instance) { this.notified.clear(); this.openKey = null; this.dismiss(); this.instance = body.instance }
-    const priorPreferences = this.preferences
-    this.items = new Map(body.items.map(item => [item.key, item])); this.preferences = body.preferences
+    const priorPreferences = this.preferences, prior = this.items
+    this.items = new Map(body.items.map(item => [item.key, item])); this.preferences = body.preferences; this.running = body.running
     const seen = []
-    for (const item of this.items.values()) if (this.foreground() && this.sessionId === item.sessionId && !human(item) && (!item.artifactId || item.artifactId === this.artifactId)) { seen.push(item.key); this.items.delete(item.key) }
+    for (const item of this.items.values()) if (this.foreground() && this.sessionId === item.sessionId && !human(item) && (!item.artifactId || item.artifactId === this.artifactId)) {
+      seen.push(item.key); this.items.delete(item.key)
+      // Work finished in the conversation on screen: a brief cue, no pending mark.
+      if (item.kind !== 'failed' && !prior.has(item.key)) this.acknowledged++
+    }
     if (this.popupKey && !this.items.has(this.popupKey) || !body.preferences.enabled || priorPreferences?.preview && !body.preferences.preview) { this.dismiss(); this.popupKey = null }
     for (const key of this.notified) if (!this.items.has(key)) this.notified.delete(key)
     const pending = [...this.items.values()].filter(item => !this.notified.has(item.key))
@@ -62,7 +69,7 @@ export class TaskNotifications {
         catch { this.delivery = 'unavailable' }
       }
     }
-    const revision = JSON.stringify([body.preferences, [...this.items.values()]])
+    const revision = JSON.stringify([body.preferences, [...this.items.values()], this.running, this.acknowledged])
     if (revision !== this.revision) { this.revision = revision; this.changed() }
     return { seen }
   }

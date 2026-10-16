@@ -1,0 +1,50 @@
+{
+  "name": "@eduwork/dsh-desktop-pet",
+  "version": "0.1.0-dev.20261012.1",
+  "private": true,
+  "description": "Desktop pet for the EduWork Electron desktop app",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./typert": "./lib/typert.host.js",
+    "./remote": "./lib/typert.remote-client.js",
+    "./skin": "./lib/skin.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "skins",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "build:skins": "node scripts/build-page-skins.mjs && node scripts/build-huashi-skin.mjs"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-settings"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.0-rc.2 <0.3.0-0",
+    "@eduwork/desktop-services": "*",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  }
+}

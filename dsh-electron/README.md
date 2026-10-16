@@ -10,6 +10,8 @@
 
 机构登录与系统加密凭据、便携更新、签名配置与技能更新、任务通知和 Studio 由产品适配保留。麦克风权限沿用官方主窗口、主框架和系统授权检查，其他权限默认拒绝，仅允许应用主框架写剪贴板。外部网页使用隔离的原生浏览器，不绕过站点 CSP 或 X-Frame-Options。故障恢复提供退出与重启，不提供会关闭发行版必要插件的“禁用全部插件”。这不是官方安装包的重打包，也不继承其签名。此模式不改变默认发行锁或更新源。
 
+联网搜索、交互浏览器、Studio 导出和视频渲染都把 EduWork 自身的可执行文件当作 Chromium 启动，发行包不再另带浏览器。入口 [`desktop-main.mjs`](src/desktop-main.mjs) 在任何桌面模块运行前分流：带 `--remote-debugging-pipe`（Playwright），或同时带 `--remote-debugging-port` 与 `--enable-automation`（Remotion）时，进入[自动化浏览器](src/automation-browser.mjs)模式。这种进程不占单实例锁，不读写应用配置，只使用调用方给出的 `--user-data-dir`。主进程用窗口和会话分区实现浏览器级 CDP，页面命令经 `webContents.debugger` 转发；Playwright 走管道，Remotion 走只监听 127.0.0.1、路径带随机令牌的 WebSocket，不开启 Chromium 自身的调试端口。网页权限请求一律拒绝（剪贴板写入和全屏除外），不发送客户端证书，下载一律取消，User-Agent 与 Chrome 相同。只带 `--remote-debugging-port` 的启动仍是普通桌面程序，供下文的窗口验收使用。
+
 候选壳构建需要同一锁准备的源码、Host 和 npm Runtime；不再使用旧版桌面源码或共享编译缓存：
 
 ```powershell

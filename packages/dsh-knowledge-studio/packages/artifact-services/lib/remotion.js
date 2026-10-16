@@ -1,8 +1,8 @@
 /** Shared rendering backend for structured templates and editable projects. */
-export async function prepareComposition({entryPoint, outDir, publicDir, inputProps, id, runtime, onProgress=()=>{}}) {
+export async function prepareComposition({entryPoint, outDir, publicDir, inputProps, id, runtime, enableCaching=true, onProgress=()=>{}}) {
   const bundler=runtime?.managedRequire ? runtime.managedRequire('@remotion/bundler') : await import('@remotion/bundler')
   const renderer=runtime?.managedRequire ? runtime.managedRequire('@remotion/renderer') : await import('@remotion/renderer')
-  const serveUrl=await bundler.bundle({entryPoint,...(outDir?{outDir}:{}),...(publicDir?{publicDir}:{}),onProgress:percent=>onProgress('bundle',percent),
+  const serveUrl=await bundler.bundle({entryPoint,enableCaching,...(outDir?{outDir}:{}),...(publicDir?{publicDir}:{}),onProgress:percent=>onProgress('bundle',percent),
     ...(runtime?.nodeModules?{webpackOverride:configuration=>({...configuration,
       resolve:{...configuration.resolve,modules:[runtime.nodeModules],symlinks:false},
       resolveLoader:{...configuration.resolveLoader,modules:[runtime.nodeModules],symlinks:false}})}:{})})

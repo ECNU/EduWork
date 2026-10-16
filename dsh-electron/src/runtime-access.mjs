@@ -1,9 +1,8 @@
 import { execFileSync } from 'node:child_process'
 import { join } from 'node:path'
 
-// Run before app readiness / BrowserWindow creation. This also covers an old
-// updater installing new files without preserving their Windows ACLs, and ZIP
-// extraction by tools that cannot carry NTFS permissions.
+// Explicit diagnostic/repair helper. Ordinary startup must not call it: an
+// absent expected ACE or denied WRITE_DAC does not prove the sandbox cannot run.
 export function ensureRuntimeAccess({ root, platform = process.platform, execute = execFileSync }) {
   if (platform !== 'win32') return
   const helper = join(root, 'resources/update/EduWork-Updater.exe')

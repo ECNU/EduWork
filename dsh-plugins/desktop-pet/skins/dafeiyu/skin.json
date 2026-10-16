@@ -1,0 +1,156 @@
+{
+  "schemaVersion": 1,
+  "id": "dafeiyu",
+  "name": {
+    "zh-CN": "大肥鱼",
+    "en": "Dafeiyu"
+  },
+  "description": {
+    "zh-CN": "DeepSeek 社区二创的鲸鱼娘，使用 whale-girl 的动作立绘。",
+    "en": "The DeepSeek fan character, using the whale-girl sprites."
+  },
+  "author": "ZipZipPipe (character); whale-girl (vlln)",
+  "license": "MIT",
+  "frame": {
+    "width": 256,
+    "height": 256
+  },
+  "anchors": {
+    "badge": [
+      196,
+      52
+    ]
+  },
+  "animations": {
+    "idle": {
+      "sheet": "idle.png",
+      "frames": 3,
+      "frameMs": [
+        1000,
+        160,
+        700
+      ],
+      "playback": "blink"
+    },
+    "eat": {
+      "sheet": "eat.png",
+      "frames": 3,
+      "frameMs": [
+        700,
+        500,
+        1000
+      ],
+      "repeat": 2
+    },
+    "play": {
+      "sheet": "play.png",
+      "frames": 3,
+      "fps": 4,
+      "repeat": 3
+    },
+    "stretch": {
+      "sheet": "wake.png",
+      "frames": 2,
+      "frameMs": [
+        1400,
+        1600
+      ],
+      "playback": "once"
+    },
+    "greet": {
+      "sheet": "welcome.png",
+      "frames": 2,
+      "fps": 3,
+      "repeat": 3
+    },
+    "think": {
+      "sheet": "think.png",
+      "frames": 1
+    },
+    "work": {
+      "sheet": "working.png",
+      "frames": 3,
+      "fps": 3
+    },
+    "attention": {
+      "sheet": "wait.png",
+      "frames": 1,
+      "motion": "sway"
+    },
+    "done": {
+      "sheet": "celebrate.png",
+      "frames": 3,
+      "fps": 4
+    },
+    "react": {
+      "sheet": "joy.png",
+      "frames": 2,
+      "fps": 5,
+      "repeat": 3
+    },
+    "failed": {
+      "sheet": "failed.png",
+      "frames": 4,
+      "frameMs": [
+        150,
+        1000,
+        800,
+        1050
+      ],
+      "playback": "once",
+      "motion": "shake"
+    },
+    "sleep": {
+      "sheet": "sleep.png",
+      "frames": 2,
+      "fps": 1
+    },
+    "drag": {
+      "sheet": "drag.png",
+      "frames": 1,
+      "motion": "dangle"
+    },
+    "peek": {
+      "sheet": "peek.png",
+      "frames": 1
+    }
+  },
+  "states": {
+    "idle": [
+      "idle",
+      "eat",
+      "play",
+      "stretch"
+    ],
+    "working": [
+      "think",
+      "work"
+    ]
+  },
+  "lines": {
+    "done": {
+      "zh-CN": [
+        "做完啦，快来看看！"
+      ],
+      "en": [
+        "All done! Come and see."
+      ]
+    },
+    "attention": {
+      "zh-CN": [
+        "这里需要你一下～"
+      ],
+      "en": [
+        "I need you here."
+      ]
+    },
+    "failed": {
+      "zh-CN": [
+        "呜…出了点问题"
+      ],
+      "en": [
+        "Oops, something went wrong."
+      ]
+    }
+  }
+}

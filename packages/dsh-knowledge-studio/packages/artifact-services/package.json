@@ -8,6 +8,7 @@
   "exports": {
     ".": "./lib/index.js",
     "./office": "./lib/office.js",
+    "./official-office": "./lib/official-office.js",
     "./office-tools": "./lib/office-tools.js",
     "./speech": "./lib/speech.js",
     "./images": "./lib/images.js",
@@ -48,6 +49,8 @@
     "THIRD_PARTY_NOTICES.md",
     "docs/TRANSCRIPTION.md",
     "docs/OFFICE_PREVIEW.md",
+    "docs/OFFICE_PROCESSING.md",
+    "docs/OFFICE_PROCESSING_EN.md",
     "docs/PLATFORMS.md"
   ],
   "dependencies": {

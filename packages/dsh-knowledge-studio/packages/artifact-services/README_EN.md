@@ -4,6 +4,8 @@
 
 Reusable Office generation and preview, TTS/ASR providers and media rendering for applications and DSH conversation tools. Studio uses the same components. The package does not import Studio, its index, an institution login or a desktop shell.
 
+Word, Excel and PowerPoint can reuse the host's official Office skills, structural checks and LibreOffice Kit, including legacy DOC/XLS/PPT reading and conversion and Excel recalculation. Studio Office PDF exports share the converter and preserve the original files. See [official Office workflows](docs/OFFICE_PROCESSING_EN.md) for host requirements and format boundaries.
+
 Version: `@eduwork/dsh-artifact-services@0.2.0`, paired with Studio `0.5.0`. DSH integration targets exactly `0.1.5-rc.1`; low-level application APIs need Node 22.19+ or 24 and the relevant runtimes. This stable package version still targets an upstream DSH release candidate.
 
 For DSH integration, the consuming host must pin every direct and transitive `@deepseek-ai/dsh*` package to `0.1.5-rc.1` through complete root-level npm `overrides` and a verified lockfile. Pinning only the top-level DSH package allows upstream caret peer ranges to resolve rc.2, which can cause `ERESOLVE` with Studio's exact rc.1 peers. The installation examples assume this host configuration. Use `npm ci` with the assembly lockfile; do not bypass conflicts with `--force` or `--legacy-peer-deps`.

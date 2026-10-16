@@ -193,7 +193,7 @@
     },
     {
       "name": "publish",
-      "description": "Release ZIP, receipt and update manifest",
+      "description": "Release ZIP, delta updates, receipt and update manifest",
       "requires": [
         "accept"
       ],

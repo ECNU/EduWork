@@ -4,7 +4,10 @@ on:
     paths:
       - 'dsh-desktop/internal/portable/**'
       - 'dsh-desktop/internal/electronaccess/**'
+      - 'dsh-desktop/internal/winacl/**'
+      - 'dsh-desktop/internal/workspaceaccess/**'
       - 'dsh-desktop/internal/updater/**'
+      - 'dsh-desktop/internal/updatecontrol/**'
       - 'dsh-desktop/cmd/eduwork-updater/**'
       - 'dsh-desktop/cmd/eduwork-extract/**'
       - 'scripts/portable-extractor.mjs'
@@ -12,6 +15,9 @@ on:
       - 'scripts/pe-resources/**'
       - 'scripts/ci-eduwork-windows-release.mjs'
       - 'scripts/publish-windows-release.mjs'
+      - 'scripts/github-update-manifest.mjs'
+      - 'scripts/windows-update-delta.mjs'
+      - 'scripts/test/windows-update-delta.test.mjs'
       - 'tests/eduwork-windows-release.test.mjs'
       - 'tests/github-update-package.test.mjs'
       - 'scripts/portable-extractor.manifest'
@@ -35,10 +41,10 @@ jobs:
         working-directory: dsh-desktop
         shell: bash
         run: |
-          go test -v ./internal/portable ./internal/electronaccess ./internal/updater ./cmd/eduwork-updater
-          go vet ./internal/portable ./internal/electronaccess ./internal/updater ./cmd/eduwork-extract
+          go test -v ./internal/portable ./internal/electronaccess ./internal/workspaceaccess ./internal/winacl ./internal/updater ./internal/updatecontrol ./cmd/eduwork-updater
+          go vet ./internal/portable ./internal/electronaccess ./internal/workspaceaccess ./internal/winacl ./internal/updater ./cmd/eduwork-extract
           go build -trimpath -o "$RUNNER_TEMP/eduwork-extract.exe" ./cmd/eduwork-extract
       - name: Build both branded packages and verify release publication inputs
         shell: bash
         run: |
-          node --test tests/github-update-package.test.mjs tests/eduwork-windows-release.test.mjs
+          node --test tests/github-update-package.test.mjs tests/eduwork-windows-release.test.mjs scripts/test/windows-update-delta.test.mjs

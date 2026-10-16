@@ -23,6 +23,9 @@ export default class DesktopServices extends Service {
       if (!studio) return false
       const { artifact } = await studio.readArtifact(target.artifactId)
       return !artifact.deletedAt && artifact.sessionId === target.sessionId
+    }, goal: sessionId => {
+      const agent = ctx.get('agents')?.get(sessionId)
+      return agent && ctx.get('goals')?.get(agent)
     } })
     observeDesktopAttention(ctx, this.attention)
     if (scope) ctx.effect(() => scope.watch(() => this.attention.changed()))
@@ -37,8 +40,20 @@ export default class DesktopServices extends Service {
     if (!response.ok) throw Error('Desktop notifications unavailable')
     return response.json()
   }
+  // The desktop pet window belongs to the shell; its plugin reaches it only
+  // through this authenticated seam and never sees the bridge credential.
+  async pet(body) {
+    const { nativeBridge } = await this.ctx.desktopBoundary.ready
+    const response = await fetch(nativeBridge.baseURL + '/v1/extensions/pet', {
+      method: 'POST', headers: { authorization: 'Bearer ' + nativeBridge.token, 'content-type': 'application/json' },
+      body: JSON.stringify(body), signal: AbortSignal.timeout(10_000),
+    })
+    if (response.status === 501) return { supported: false }
+    if (!response.ok) throw new Error('Desktop pet request failed')
+    return response.json()
+  }
   async workbench(action) {
-    if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update'].includes(action)) throw new Error('Unsupported desktop action')
+    if (!['status', 'check-updates', 'diagnostics', 'download-update', 'schedule-update', 'install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update','enable-automatic-download','disable-automatic-download'].includes(action)) throw new Error('Unsupported desktop action')
     const { nativeBridge } = await this.ctx.desktopBoundary.ready
     const response = await fetch(nativeBridge.baseURL + '/v1/extensions/workbench', {
       method: 'POST', headers: { authorization: 'Bearer ' + nativeBridge.token, 'content-type': 'application/json' },

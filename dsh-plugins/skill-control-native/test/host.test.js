@@ -20,16 +20,20 @@ const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
   }
   return nextResolve(specifier, context)
 } })
-const [{ Context, Service }, { SkillRegistry }, { SettingsProvider }, { CredentialProvider, credentialRef }, skillSettings, skillControl] = await Promise.all([
-  import('@deepseek-ai/cordis'), import('@deepseek-ai/dsh-skill'), import('@deepseek-ai/dsh-settings'),
+const [{ Context, Service }, { SkillRegistry }, { CredentialProvider, credentialRef }, skillSettings, skillControl] = await Promise.all([
+  import('@deepseek-ai/cordis'), import('@deepseek-ai/dsh-skill'),
   import('@deepseek-ai/dsh-credentials'), import('../../skill-settings-native/lib/index.js'), import('../lib/index.js'),
 ])
 
-class MemorySettings extends SettingsProvider {
-  constructor(ctx) { super(ctx); this.document = {} }
+class MemorySettings extends Service {
+  constructor(ctx) { super(ctx,'settings'); this.document = {} }
   get writable() { return true }
   async load() { return structuredClone(this.document) }
   async persist(ns, section) { this.document[String(ns)] = structuredClone(section) }
+  register(ns,_schema,{base}={}) {this.document[String(ns)]??=structuredClone(base??{});return ()=>{}}
+  get(ns) {return this.document[String(ns)]}
+  describe() {return Object.entries(this.document).map(([ns,value])=>({ns,value}))}
+  async update(ns,patch) {this.document[String(ns)]={...this.document[String(ns)],...patch};this.ctx.emit('settings/updated',ns)}
 }
 class MemoryCredentials extends CredentialProvider {
   constructor(ctx) { super(ctx); this.refs = new Set() }
@@ -61,6 +65,7 @@ test('real Host follows optional Shared attachment, provider/credential changes,
   let available = false
   let deferred
   class SharedFixture extends Service {
+    officeSkill(skill) {return skill?.name==='artifact-documents'?{...skill,content:'Shared official workflow\n'+skill.content}:skill}
     constructor(scope) {
       super(scope, 'artifactServices')
       this.images = { list: async () => {
@@ -92,10 +97,12 @@ test('real Host follows optional Shared attachment, provider/credential changes,
     const withImage = ['artifact-documents', 'artifact-images', 'knowledge-studio']
     const all = ['artifact-documents', 'artifact-images', 'institution-search', 'knowledge-studio']
     await eventually(names, publicOnly) // Public products need no Shared package.
+    assert.ok(!(await ctx.skills.get('artifact-documents',{cwd:root})).content.includes('Shared official workflow'))
 
     let shared = ctx.plugin(SharedFixture)
     await shared
     await eventually(names, publicOnly)
+    assert.match((await ctx.skills.get('artifact-documents',{cwd:root})).content,/Shared official workflow/)
     available = true
     ctx.emit('artifact-services/images-changed')
     await eventually(names, withImage) // An already cached catalog follows live provider readiness.
@@ -119,6 +126,7 @@ test('real Host follows optional Shared attachment, provider/credential changes,
 
     await shared.dispose()
     await eventually(names, publicOnly) // Detaching the optional service invalidates cached visibility.
+    assert.ok(!(await ctx.skills.get('artifact-documents',{cwd:root})).content.includes('Shared official workflow'))
     shared = ctx.plugin(SharedFixture)
     await shared
     await eventually(names, withImage) // Reattaching does not need a synthetic change event.
@@ -135,6 +143,12 @@ test('real Host follows optional Shared attachment, provider/credential changes,
     assert.deepEqual(await inFlight, publicOnly)
     deferred = undefined
     await eventually(names, publicOnly)
+    // A user's project skill wins intact, even when it has the product name.
+    const custom=join(root,'.dsh/skills/artifact-documents')
+    await mkdir(custom,{recursive:true})
+    await writeFile(join(custom,'SKILL.md'),'---\nname: artifact-documents\ndescription: Project override\n---\nProject-specific workflow\n')
+    shared=ctx.plugin(SharedFixture);await shared
+    await eventually(async()=> (await ctx.skills.get('artifact-documents',{cwd:root}))?.content,'Project-specific workflow')
     await controlled.dispose()
     assert.deepEqual(await names(), [])
     console.log(JSON.stringify({ dshVersion: marker.dshVersion, dshCommit: marker.dshCommit,

@@ -125,3 +125,15 @@ test('installed-plugin options accept JSON objects and reject malformed entries'
   writeFileSync(file,JSON.stringify({schemaVersion:1,plugins}))
   assert.deepEqual(JSON.parse(JSON.stringify(loadUserConfig(file).pluginConfig)),plugins)
 })
+
+test('desktop pet defaults are file-owned and validated before the Host starts', t => {
+  const { file } = fixture(t)
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1 }))
+  assert.deepEqual(loadUserConfig(file).pet, { enabled: false, skin: 'eduwork-page', size: 100, bubbles: true, sleep: true })
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, desktop: { pet: { enabled: true, skin: 'ecnu-huashi', size: 150 } } }))
+  assert.deepEqual(loadUserConfig(file).pet, { enabled: true, skin: 'ecnu-huashi', size: 150, bubbles: true, sleep: true })
+  for (const pet of [{ enabled: 'yes' }, { skin: '../pets' }, { size: 45 }, { size: 105 }, { size: 210 }, { position: 'left' }]) {
+    writeFileSync(file, JSON.stringify({ schemaVersion: 1, desktop: { pet } }))
+    assert.throws(() => loadUserConfig(file), /desktop\.pet/)
+  }
+})

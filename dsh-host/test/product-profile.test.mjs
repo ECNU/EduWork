@@ -288,3 +288,33 @@ test('only Electron profiles replace auto and legacy desktop picker entries with
     assert.equal(plugins.filter(row => row.id === 'eduwork-directory-flow').length, shell === 'electron' ? 1 : 0)
   }
 })
+
+test('only the native Electron product inserts the desktop pet with file-owned defaults', async t => {
+  const { root, product, home } = await fixture(t)
+  const userConfig = join(root, 'eduwork.jsonc')
+  await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, desktop: { pet: { enabled: true, size: 80 } } }))
+  const legacy = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
+  assert.equal(JSON.parse(await readFile(join(legacy.profile, 'cordis.patch.yml'))).some(row => row.insert?.some(plugin => plugin.id === 'eduwork-desktop-pet')), false)
+  await writeFile(join(product, 'assembly.json'), JSON.stringify({ distribution: 'eduwork', dshVersion: '0.1.7-rc.2', dshCommit: '477b4f420553e8a52c2fbccc464d7561b239c443', bundles: ['@deepseek-ai/dsh-base'] }))
+  const yaml = join(product, 'd/node_modules/yaml')
+  await mkdir(yaml, { recursive: true })
+  await writeFile(join(yaml, 'package.json'), '{"type":"module","exports":"./index.js"}')
+  await writeFile(join(yaml, 'index.js'), 'export const parse = JSON.parse')
+  const presets = join(product, 'd/node_modules/@deepseek-ai/dsh-web-app/presets')
+  await mkdir(presets, { recursive: true })
+  for (const id of ['standard', 'ptc', 'minimal', 'cordis']) await writeFile(join(presets, id + '.patch.yml'), JSON.stringify([{ insert: [{ id: 'preset-' + id, config: { plugins: [] } }] }]))
+  const { profile } = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
+  const rows = JSON.parse(await readFile(join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml')))
+  const pet = rows.flatMap(row => row.insert ?? []).find(plugin => plugin.id === 'eduwork-desktop-pet')
+  assert.deepEqual(pet, { id: 'eduwork-desktop-pet', name: '@eduwork/dsh-desktop-pet', config: { enabled: true, skin: 'eduwork-page', size: 80, bubbles: true, sleep: true } })
+})
+
+test('only Windows Electron profiles offer the workspace permission repair', async t => {
+  const { root, product } = await fixture(t)
+  for (const [shell, platform] of [['electron', 'win32'], ['electron', 'darwin'], ['wails', 'win32']]) {
+    const { profile } = await prepareProductProfile({ product, home: join(root, shell + '-' + platform), shell, platform })
+    const plugins = JSON.parse(await readFile(join(profile, 'cordis.patch.yml'))).flatMap(row => row.insert ?? [])
+    assert.deepEqual(plugins.filter(row => row.id === 'eduwork-workspace-access').map(row => row.name),
+      shell === 'electron' && platform === 'win32' ? ['@eduwork/desktop-services/lib/workspace-access.js'] : [])
+  }
+})

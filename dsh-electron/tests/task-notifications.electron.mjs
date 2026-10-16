@@ -27,12 +27,12 @@ const broker = new TaskNotifications({ foreground: () => window.isFocused(), sho
 tray.on('balloon-show', () => events.push('balloon-show'))
 tray.on('balloon-click', () => adapter.balloonClick())
 try {
-  broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, items: [{ key: 'fixture-approval', kind: 'approval', sessionId: 'fixture', title: '', createdAt: Date.now() }] })
+  broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, running: [], items: [{ key: 'fixture-approval', kind: 'approval', sessionId: 'fixture', title: '', createdAt: Date.now() }] })
   await new Promise(resolve => setTimeout(resolve, 5000))
   const menuItems = broker.menu().length
   broker.menu()[0].click()
   const target = broker.handle({ action: 'view', sessionId: 'fixture' }).openKey
-  broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, items: [] })
+  broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, running: [], items: [] })
   assert.equal(menuItems, 1)
   assert.equal(target, 'fixture-approval')
   assert.equal(broker.menu().length, 0)

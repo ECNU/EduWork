@@ -10,6 +10,8 @@ import {pipeline} from 'node:stream/promises'
 import {githubUpdateManifestBytes, updateManifestName} from './github-update-manifest.mjs'
 import {validateExtractorReceipt, validatedReleaseFiles} from './publish-windows-release.mjs'
 import {bundleVersion} from './macos-update-feed.mjs'
+import {deltaName} from './macos-update-delta.mjs'
+import {windowsDeltaName} from './windows-update-delta.mjs'
 import {desktopVersion} from './desktop-build-plan.mjs'
 
 const sha = /^[a-f0-9]{40}$/
@@ -28,7 +30,7 @@ export function assetNames(product, version, platform) {
   const extra = platform === 'windows' ? `${product}-${version}-windows-x64-setup.zip` : zip.replace(/\.zip$/, '.dmg')
   return [zip, zip + '.sha256', `${platform}-${desktopVersion(version).prerelease?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', ...(!desktopVersion(version).prerelease ? [updateManifestName] : [])] : [])]
 }
-export function nodeNpmAssetNames(product, version, platform) {
+export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
   assert.match(product, /^[A-Za-z0-9-]+$/)
   desktopVersion(version)
   assert.ok(['windows', 'macos'].includes(platform))
@@ -37,9 +39,10 @@ export function nodeNpmAssetNames(product, version, platform) {
   if (platform === 'windows') {
     const setup = `${product}-${version}-windows-x64-setup.zip`
     names.push(...(!desktopVersion(version).prerelease ? [updateManifestName] : []), setup, `${setup}.sha256`, `${setup}.json`)
+    for (const delta of deltaFrom.map(from => windowsDeltaName(product, version, from))) names.push(delta, `${delta}.sha256`)
   } else {
     const dmg = `${product}-${version}-macos-arm64-electron.dmg`
-    names.push(dmg, `${dmg}.sha256`)
+    names.push(dmg, `${dmg}.sha256`, ...deltaFrom.map(from => deltaName(product, version, from)))
   }
   return names
 }
@@ -130,10 +133,11 @@ export async function validatedNodeNpmFiles(directory, context) {
     if (context.requirePublisherBootstrap) assert.equal(checked.receipt.checks.publisherFirstLaunch, 'passed')
     return checked
   }
-  const names = nodeNpmAssetNames(context.product, context.version, 'macos')
+  const receipt = await json(join(directory, 'release-receipt.json'))
+  const deltas = receipt.deltas ?? []
+  const names = nodeNpmAssetNames(context.product, context.version, 'macos', deltas.map(delta => delta.from))
   const name = names[0]
   assert.deepEqual((await readdir(directory)).sort(), [...names].sort(), 'Unexpected macOS files')
-  const receipt = await json(join(directory, 'release-receipt.json'))
   for (const [key, value] of Object.entries({
     schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version,
     edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true,
@@ -167,6 +171,10 @@ export async function validatedNodeNpmFiles(directory, context) {
   assert.equal(files[3].sha256, receipt.releaseNotes.sha256, 'macOS release notes differ from the build receipt')
   assert.deepEqual(receipt.installer.asset, {name: names[4], bytes: files[4].bytes, sha256: files[4].sha256})
   assert.equal((await readFile(files[5].path, 'utf8')).trim(), `${files[4].sha256}  ${names[4]}`)
+  for (const [index, delta] of deltas.entries()) {
+    const file = files[6 + index]
+    assert.deepEqual(delta, {from: delta.from, name: file.name, bytes: file.bytes, sha256: file.sha256}, 'macOS delta update differs from the build receipt')
+  }
   return {files, receipt}
 }
 export function verifyRemoteAssets(assets, files) {
@@ -241,8 +249,11 @@ export async function publishCandidate(env = process.env) {
     assert.equal((await lstat(archive)).size, artifact.size_in_bytes)
     assert.equal('sha256:' + await hashFile(archive), artifact.digest, 'Actions artifact digest mismatch')
     const names = execFileSync('unzip', ['-Z1', archive], {encoding: 'utf8'}).trim().split(/\r?\n/)
+    // The receipt lists the delta updates; every other file name is fixed.
+    const deltas = buildMode === 'node'
+      ? JSON.parse(execFileSync('unzip', ['-p', archive, 'release-receipt.json'], {encoding: 'utf8'})).deltas ?? [] : []
     const expected = buildMode === 'ps1' ? assetNames(product, version, platform)
-      : nodeNpmAssetNames(product, version, platform)
+      : nodeNpmAssetNames(product, version, platform, deltas.map(delta => delta.from))
     assert.deepEqual(names.sort(), expected.sort(), 'Unexpected paths in artifact archive')
     await mkdir(directory, {recursive: true})
     execFileSync('unzip', ['-q', archive, '-d', directory])
@@ -269,7 +280,8 @@ export async function publishCandidate(env = process.env) {
   const notesAsset = join(root, 'RELEASE-NOTES.md')
   await writeFile(notesAsset, notes)
   files.push({name: 'RELEASE-NOTES.md', path: notesAsset, bytes: Buffer.byteLength(notes), sha256: await hashFile(notesAsset)})
-  assert.equal(files.length, desktopVersion(version).prerelease ? 12 : 13)
+  // Windows delta updates carry a SHA-256 sidecar for the updater; macOS ones are signed in the appcast.
+  assert.equal(files.length, (desktopVersion(version).prerelease ? 12 : 13) + 2 * (receipts[0].deltas?.length ?? 0) + (receipts[1].deltas?.length ?? 0))
   const result = {verified: true, published: false, buildMode, repository, sourceRun: run.id, editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
   if (env.PUBLISH_RELEASE === 'true') {
     const tag = result.tag

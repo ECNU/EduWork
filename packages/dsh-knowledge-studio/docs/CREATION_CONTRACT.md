@@ -6,7 +6,7 @@
 
 | 能力 | 对话入口 | Studio 适配 | 共同实现 |
 | --- | --- | --- | --- |
-| Office | office_document / office_spreadsheet / office_presentation | officeSpec 转换，governed Office 操作或导出 | runOffice、规范化请求、同一 Python 文件组件 |
+| Office | 官方 Office 工作流与 office_document / office_spreadsheet / office_presentation | officeSpec 转换，governed Office 操作或导出 | runOffice 适配、官方结构检查和 LibreOffice Kit 转换；模板创建使用同一 Python 组件 |
 | Office 预览 | 宿主 artifact-preview-native 与媒体成果 UI | ArtifactEngine.export(preview) 与 Studio UI | renderOfficePreview 与 mountOfficePreview，读取实际文件 |
 | 语音 | speech_synthesize | 媒体生成适配 | 同一 SpeechService、提供方和音色目录 |
 | 结构化音视频 | media_render | studio-media 转换 scenes/segments | renderMedia、时间轴、字幕、混音和渲染模板 |

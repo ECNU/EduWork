@@ -38,3 +38,15 @@ test('a cancelled installation never starts the helper; concurrent quit requests
   await new Promise(resolve => setImmediate(resolve)); assert.equal(closes, 1)
   release(); await pending; assert.equal(exit.complete, true)
 })
+
+test('native updater termination uses the normal quit guard and cancellation permits a later retry', async () => {
+  const calls=[];let approve=false
+  const exit=new DesktopExit({confirm:async()=>{calls.push('confirm');return approve},
+    close:async()=>calls.push('close'),quit:()=>calls.push('quit'),relaunch:assert.fail,failed:assert.fail})
+  const coordinator=updateCoordinator({content:{snapshot:()=>({})},
+    software:{action:async action=>{if(action==='install-update')await exit.request();return {}}}})
+  await coordinator.action('install-update')
+  assert.deepEqual(calls,['confirm']);assert.equal(exit.complete,false)
+  approve=true;await coordinator.action('install-update')
+  assert.deepEqual(calls,['confirm','confirm','close','quit']);assert.equal(exit.complete,true)
+})

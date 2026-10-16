@@ -47,12 +47,14 @@ test('client exposes an additive toolbar entry and keeps retired knowledge views
     "slots.inject('settings.section'",
     'data-knowledge-studio-overlay',
     'data-knowledge-studio-welcome-dialog',
-    'openStudio',
     'autoPrepare',
     '我的笔记本',
     'addWorkspaceSource',
     'retrievalMode',
   ]) assert.equal(source.includes(rejected), false, `client source still contains rejected concept ${rejected}`)
+
+  // Match the retired overlay handler, not helpers such as openStudioFilePreview.
+  assert.doesNotMatch(source, /\bopenStudio\b/, 'the retired Studio overlay handler must stay removed')
 
   assert.match(remote, /service: 'knowledgeStudio'/)
   assert.match(remote, /descriptor\('workspaceForPath'/)

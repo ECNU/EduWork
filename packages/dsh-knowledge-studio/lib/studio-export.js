@@ -1,7 +1,8 @@
 import {runOffice,normalizeOfficeRequest} from '@eduwork/dsh-artifact-services/office'
+import {convertOfficeFile,officialOfficeRuntime} from '@eduwork/dsh-artifact-services/official-office'
 import {createMediaRuntime} from '@eduwork/dsh-artifact-services/runtime'
 import {renderOfficePreview,assertOfficeSourceSize} from '@eduwork/dsh-artifact-services/office-preview'
-import { mkdir, writeFile, readFile, stat } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, writeFile, readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { contentMarkdown } from './studio-content.js'
 import { officeSpec } from './office-spec.js'
@@ -65,6 +66,19 @@ export async function exportDocument(artifact, directory, format, {signal}={}) {
     const body = artifact.kind === 'report' ? reportHTML(artifact) : `<pre>${escapeHTML(contentMarkdown(artifact))}</pre>`
     await writeFile(path, `<!doctype html><html lang="zh"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><title>${escapeHTML(artifact.title)}</title><style>body{margin:0;background:#f6f4ef;color:#202e3b;font:20px/1.7 system-ui}section{box-sizing:border-box;min-height:100vh;padding:7vw;page-break-after:always;border-bottom:1px solid #ddd}h1{font-size:48px;max-width:1000px}li{margin:18px 0}small,p{color:#64717a}pre{white-space:pre-wrap;padding:5vw;font:inherit}.report{box-sizing:border-box;max-width:860px;margin:auto;padding:40px;background:white;font-size:16px;overflow-wrap:anywhere}.report h1{font-size:32px;line-height:1.3}.report h2{font-size:23px;margin-top:1.6em}.report h3{font-size:19px}.report h1,.report h2,.report h3,.report h4,.report h5,.report h6{break-after:avoid}.report p{color:inherit;orphans:3;widows:3}.report code{white-space:pre-wrap;font:0.9em/1.6 monospace}.report table{border-collapse:collapse;width:100%;font-size:0.9em;table-layout:fixed}.report th,.report td{border:1px solid #cdd3d8;padding:8px;text-align:left}.report th{background:#eef1f3}.report tr{break-inside:avoid}@media print{body:has(.report){background:white}.report{max-width:none;padding:0;font-size:11pt}.report h1{font-size:24pt}.report h2{font-size:17pt}.report h3{font-size:14pt}section{min-height:0;height:95vh}}</style>${body}</html>`)
   } else if (format === 'pdf') {
+    const officeFormat=officeFormatFor(artifact.kind)
+    if(officeFormat&&officialOfficeRuntime()) {
+      // Export the saved Office file, including external edits. Do not rebuild
+      // its contents as HTML or silently print with a different renderer.
+      const original=artifact.exports?.find(file=>file.format===officeFormat)
+        ?? await exportDocument(artifact,directory,officeFormat,{signal})
+      const conversionDirectory=await mkdtemp(join(directory,`${artifact.id}-pdf-`))
+      try {
+        const pdfPath=join(conversionDirectory,`${artifact.id}.pdf`)
+        const conversion=await convertOfficeFile({inputPath:original.path,outputPath:pdfPath,signal})
+        return {format,path:pdfPath,fileName:`${artifact.id}.pdf`,provider:conversion.provider,sourcePath:original.path}
+      } catch(error) {await rm(conversionDirectory,{recursive:true,force:true});throw error}
+    }
     const html=await exportDocument(artifact,directory,'html')
     const {chromium}=await import('playwright-core')
     const {browserExecutable}=await createMediaRuntime()

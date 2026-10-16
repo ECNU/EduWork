@@ -67,7 +67,7 @@
     "test:ui": "node scripts/ui-smoke.mjs && node scripts/artifact-ui-smoke.mjs && node scripts/studio-flow-smoke.mjs && node scripts/artifact-evidence-smoke.mjs",
     "test:host": "node scripts/host-smoke.mjs",
     "test:host:preferences": "node scripts/host-preference-smoke.mjs",
-    "test:exports": "node scripts/export-smoke.mjs && node scripts/office-preview-client-smoke.mjs && node scripts/office-preview-scaling-smoke.mjs && node scripts/office-metrics-layout-smoke.mjs && node scripts/office-fixed-page-smoke.mjs && node scripts/office-adaptive-smoke.mjs",
+    "test:exports": "node scripts/office-preview-zoom-smoke.mjs && node scripts/export-smoke.mjs && node scripts/office-preview-client-smoke.mjs && node scripts/office-preview-scaling-smoke.mjs && node scripts/office-metrics-layout-smoke.mjs && node scripts/office-fixed-page-smoke.mjs && node scripts/office-adaptive-smoke.mjs",
     "audit": "node scripts/audit-public.mjs",
     "check": "npm run typecheck && npm run build && npm test && npm run test:p0 && npm run audit && npm run pack:release",
     "pack:release": "node scripts/pack-release.mjs",
@@ -170,7 +170,8 @@
     "unpdf": "1.8.1",
     "zod": "^4.4.3",
     "jszip": "3.10.1",
-    "esbuild": "0.28.1"
+    "esbuild": "0.28.1",
+    "@deepseek-ai/dsh-util-workspace-path": "0.1.5-rc.1"
   },
   "engines": {
     "node": ">=22.19.0"

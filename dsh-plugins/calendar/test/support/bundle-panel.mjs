@@ -1,9 +1,9 @@
 // Bundle the calendar panel's client half for a headless render.
 //
 // The client half is TypeScript written against the product's primitives package
-// and the desktop shell's runtime. To render it in a test, the same esbuild pass
-// the release build runs is applied, with only `@deepseek-ai/dsh-client-ui-primitives`
-// mapped to a plain-element stand-in. Everything else — the panel's own logic,
+// and the desktop shell's runtime. This esbuild bundle is only a test fixture;
+// product artifacts use the locked tsdown build. The test maps UI primitives
+// to a plain-element stand-in. Everything else — the panel's own logic,
 // which service methods it calls, and the code that reads a note back — is the
 // real source, so a render proves the real client wiring rather than a copy of it.
 import { mkdir } from 'node:fs/promises'

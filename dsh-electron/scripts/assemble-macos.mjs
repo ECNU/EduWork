@@ -11,7 +11,10 @@ import {
   pathExists, readJSON, run, sha256File, statEntry, writeJSON, writeText,
 } from '../../scripts/lib/build-util.mjs'
 import { desktopApplicationName } from '../../scripts/lib/local-install.mjs'
+import { pruneRuntimeFiles } from '../../scripts/lib/runtime-file-policy.mjs'
 import { relocateMacosCompositor } from './relocate-macos-compositor.mjs'
+import { createMacOSAppArchive } from './create-macos-archive.mjs'
+import { pruneElectronLocales } from './electron-locales.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -107,7 +110,9 @@ export async function assembleMacos({
   const app = join(output, appName)
   await mkdir(output)
   await ditto(electronApp, app).catch(() => { throw new Error('Electron.app copy failed') })
+  const electronLocales = await pruneElectronLocales(app, 'darwin')
   const resources = join(app, 'Contents/Resources')
+  await rm(join(resources, 'default_app.asar'))
   const appPayload = join(resources, 'app')
   await mkdir(appPayload)
   for (const folder of ['lib', 'renderer', 'third-party']) {
@@ -132,6 +137,7 @@ export async function assembleMacos({
   }
   await mkdir(join(resources, 'product'))
   await rsync(product, join(resources, 'product')).catch(() => { throw new Error('Product copy failed') })
+  const runtimeFiles = await pruneRuntimeFiles(join(resources, 'product'), 'darwin-arm64')
   await relocateMacosCompositor({
     packageRoot: join(resources, 'product/d/node_modules/@remotion/compositor-darwin-arm64'),
     receipt: join(resources, 'compositor-relocation.json'),
@@ -168,9 +174,15 @@ export async function assembleMacos({
   await run(node, ['-e', ladybugSmoke, ladybugPackage])
     .catch(() => { throw new Error('Bundled LadybugDB native smoke test failed') })
   await mkdir(join(resources, 'runtime'))
-  await copyFileTo(node, join(resources, 'runtime/node'))
+  const bundledNode = join(resources, 'runtime/node')
+  await copyFileTo(node, bundledNode)
   await copyFileTo(nodeLicense, join(resources, 'runtime/LICENSE-Node'))
-  await chmod(join(resources, 'runtime/node'), 0o755)
+  await chmod(bundledNode, 0o755)
+  // Native addons resolve Node-API through exported symbols; -x drops only the
+  // local debugging symbols. Stripping voids the official signature.
+  await run('strip', ['-x', bundledNode]).catch(() => { throw new Error('Bundled Node symbol stripping failed') })
+  await run('codesign', ['--force', '--sign', '-', '--timestamp=none', bundledNode])
+    .catch(() => { throw new Error('Bundled Node ad-hoc signing failed') })
 
   let ownership = 'user'
   const policyPath = join(product, 'resources/desktop/configuration-policy.json')
@@ -249,14 +261,20 @@ export async function assembleMacos({
   // plist. Must run before the ad-hoc signature is created below.
   await run(node, [join(scriptRoot, 'build-dock-plugin.mjs'), app])
     .catch(() => { throw new Error('Dock tile plugin compilation failed') })
+  const headers = join(nodeRoot, 'include/node')
+  if (!await isFile(join(headers, 'node_api.h'))) throw new Error('Official Node distribution must include N-API headers')
+  const native = join(appPayload, 'native')
+  await mkdir(native)
+  // The desktop pet window needs this guard in every macOS build (electron#53889).
+  await run('clang++', [
+    '-std=c++17', '-fobjc-arc', '-dynamiclib', '-undefined', 'dynamic_lookup', '-mmacosx-version-min=15.0',
+    '-I', headers, '-framework', 'AppKit', join(scriptRoot, '../native/prevent-activation.mm'),
+    '-o', join(native, 'prevent-activation.node'),
+  ]).catch(() => { throw new Error('Desktop pet activation guard compilation failed') })
   if (sparkleEnabled) {
     await copyFileTo(join(scriptRoot, '../LICENSE-Sparkle'), join(resources, 'LICENSE-Sparkle'))
     const frameworkTarget = join(app, 'Contents/Frameworks/Sparkle.framework')
     await ditto(sparkleFramework, frameworkTarget).catch(() => { throw new Error('Sparkle framework copy failed') })
-    const headers = join(nodeRoot, 'include/node')
-    if (!await isFile(join(headers, 'node_api.h'))) throw new Error('Official Node distribution must include N-API headers')
-    const native = join(appPayload, 'native')
-    await mkdir(native)
     await run('clang++', [
       '-std=c++17', '-fobjc-arc', '-dynamiclib', '-undefined', 'dynamic_lookup',
       '-I', headers, '-F', join(app, 'Contents/Frameworks'),
@@ -267,6 +285,8 @@ export async function assembleMacos({
     ]).catch(() => { throw new Error('Sparkle native bridge compilation failed') })
     await plutilReplace(plist, 'SUFeedURL', updateDefaultPolicy === 'development' ? sparkleDevelopmentFeedURL : sparkleFeedURL)
     await plutilReplace(plist, 'SUPublicEDKey', sparklePublicEDKey)
+    await run('plutil', ['-replace', 'SUAllowsAutomaticUpdates', '-bool', 'YES', plist])
+      .catch(() => { throw new Error('Sparkle Info.plist setup failed') })
     await run('plutil', ['-replace', 'SUEnableAutomaticChecks', '-bool', 'NO', plist])
       .catch(() => { throw new Error('Sparkle Info.plist setup failed') })
   }
@@ -286,6 +306,7 @@ export async function assembleMacos({
     applicationName: appName,
     platform: 'darwin-arm64',
     electronVersion,
+    electronLocales,
     nodeVersion: receipt.host.nodeVersion,
     minimumSystemVersion: '15.0',
     ladybugNativePatched: true,
@@ -300,6 +321,7 @@ export async function assembleMacos({
     bundleVersion: effectiveBundleVersion,
     published: false,
     assembledAt: new Date().toISOString(),
+    runtimeFiles,
   }
   await writeJSON(join(resources, 'release.json'), release)
   // Seal the immutable Skill baseline into the app before signing. Mutable content
@@ -319,7 +341,7 @@ export async function assembleMacos({
       .catch(() => { throw new Error('Local ad-hoc signing failed') })
     await run('codesign', ['--verify', '--deep', '--strict', signingApp])
       .catch(() => { throw new Error('Local ad-hoc signature verification failed') })
-    await run('ditto', ['-c', '-k', '--sequesterRsrc', '--keepParent', appName, temporaryArchive], { cwd: signingRoot })
+    await createMacOSAppArchive(signingApp, temporaryArchive)
       .catch(() => { throw new Error('macOS ZIP creation failed') })
     await copyFileTo(temporaryArchive, archive)
   } finally {

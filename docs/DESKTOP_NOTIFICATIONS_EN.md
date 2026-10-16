@@ -9,8 +9,8 @@ The Electron client can notify you about questions, approvals, completed turns a
 | Event | Behavior |
 | --- | --- |
 | Questions, plan review, permission approval | Ask the user to return; clear the pending item after an answer, rejection or cancellation |
-| Completed root conversation turn | Notify completion; reading that conversation in the foreground marks it as read |
-| Final turn error, blocked turn or output limit | Notify that attention is needed; failures and cancellations are never reported as success |
+| Completed root conversation turn | Notify completion; reading that conversation in the foreground marks it as read. While a background subagent still works, or goal mode will start another round, wait until the conversation really finishes |
+| Final turn error, blocked turn, output limit, or a blocked goal (including an exhausted round limit or a round that cannot be queued) | Notify that attention is needed; failures and cancellations are never reported as success |
 | Completed or failed Studio artifact | Notify independently after the turn's revisions settle, ignoring intermediate attempts |
 
 Individual tools, child agents, streaming chunks, automatic retries and routine token refreshes do not notify. Foreground use stays quiet; items from other conversations remain in the tray. Events are coalesced, deduplicated and rate limited. Reconnecting does not replay history.

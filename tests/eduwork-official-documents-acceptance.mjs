@@ -7,7 +7,7 @@ import {fileURLToPath} from 'node:url'
 import {createRequire} from 'node:module'
 import {execFile} from 'node:child_process'
 import {parseArgs,promisify} from 'node:util'
-const {values}=parseArgs({options:Object.fromEntries(['product','home','evidence','url-file'].map(k=>[k,{type:'string'}]))})
+const {values}=parseArgs({options:Object.fromEntries(['product','home','evidence','url-file','browser'].map(k=>[k,{type:'string'}]))})
 for(const k of ['product','home','evidence','url-file'])assert.ok(values[k],k)
 const product=resolve(values.product),home=resolve(values.home),evidence=resolve(values.evidence)
 assert.doesNotMatch(product,/[\\/]current(?:[\\/]|$)/i)
@@ -16,7 +16,10 @@ const workspace=join(evidence,'preview-workspace-web');await mkdir(workspace,{re
 const url=(await readFile(resolve(values['url-file']),'utf8')).trim();assert.equal(new URL(url).hostname,'127.0.0.1')
 const resources=JSON.parse(await readFile(join(product,'desktop-resources.json'),'utf8'))
 const {chromium}=createRequire(join(product,'d/package.json'))('playwright-core')
-const browser=await chromium.launch({headless:true,executablePath:resolve(product,resources.environment.DSH_MEDIA_BROWSER)})
+// Electron products carry no browser: pass the desktop executable as --browser.
+const executablePath=values.browser?resolve(values.browser):resources.environment.DSH_MEDIA_BROWSER&&resolve(product,resources.environment.DSH_MEDIA_BROWSER)
+assert.ok(executablePath,'--browser is required for a product without its own browser')
+const browser=await chromium.launch({headless:true,executablePath})
 const page=await browser.newPage({viewport:{width:1440,height:960},locale:'zh-CN'})
 page.setDefaultTimeout(20000)
 const result={passed:false,syntheticSession:true,officialRenderer:true,checks:[]}

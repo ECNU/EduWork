@@ -103,7 +103,7 @@ GitHub 托管的构建产物由 GitHub 托管的发布任务读取、校验和�
 
 | 构建方式 | 版本 | 产物与发布范围 |
 | --- | --- | --- |
-| `node`（默认） | `X.Y.Z` 及 alpha、beta、rc、dev 预发布版本 | Node 阶段编排、`config/desktop-build.json` 锁定的 DSH 候选组合；Windows ZIP 与安装包、macOS ZIP 与 DMG，以及校验和与平台回执。stable 另带 Windows 更新清单。可发布双平台预发布或正式 Release。 |
+| `node`（默认） | `X.Y.Z` 及 alpha、beta、rc、dev 预发布版本 | Node 阶段编排、`config/desktop-build.json` 锁定的 DSH 候选组合；Windows ZIP 与安装包、macOS ZIP 与 DMG，以及校验和与平台回执。stable 另带 Windows 更新清单和两端的增量更新包。可发布双平台预发布或正式 Release。 |
 | `ps1` | 同一版本范围 | 旧 PowerShell 入口、锁定源码配方，暂供配方与回执对照。 |
 
 `node` 构建即使只保留 artifact，也要求已确认的版本说明，以便之后直接发布同一份产物。公开 Release 会再次核对运行来源、源码提交、版号、说明、两平台归档哈希、启动验收及安装包检查；已有同标签、同文件名但不同字节的资产不会被覆盖。macOS stable 包必须带 Sparkle 配置和公钥，DMG 从已验收 ZIP 的应用生成并进行只读镜像核对；当前仍为 ad-hoc 签名，Developer ID 签名、公证和 appcast 私钥签名须按独立发行验收流程完成。机构版需另按其私有发行配置和验收流程执行。

@@ -22,7 +22,7 @@ async function fixture(t) {
   async function put(path,text) {await mkdir(dirname(path),{recursive:true});await writeFile(path,text)}
   for(const [from,to,files] of [
     [source,studio,['studio-export.js','video-poster.js','studio-content.js','export-recovery.js','office-spec.js','mindmap.js','studio-slides.js']],
-    [join(source,'packages','artifact-services'),shared,['runtime.js','music.js','office.js','office-preview.js','presentation-contract.js','structured-spec.js']],
+    [join(source,'packages','artifact-services'),shared,['runtime.js','music.js','office.js','official-office.js','office-preview.js','presentation-contract.js','structured-spec.js']],
   ]) {
     await mkdir(join(to,'lib'),{recursive:true})
     await copyFile(join(from,'package.json'),join(to,'package.json'))

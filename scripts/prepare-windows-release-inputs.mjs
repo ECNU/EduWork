@@ -1,7 +1,8 @@
 // Downloads and verifies the locked Windows x64 native inputs (private Python,
-// Office wheels, Node runtime, Chromium, CPU ASR engine, VS redistributables),
-// then installs them into a product's native resource directory. Node.js port
-// of prepare-windows-release-inputs.ps1. Requires a Windows runner.
+// Office wheels, Node runtime, CPU ASR engine, VS redistributables), then
+// installs them into a product's native resource directory. Requires a Windows
+// runner. Unlike the older prepare-windows-release-inputs.ps1 it ships no
+// browser: the desktop executable is the product's Chromium.
 //
 // The work is split so the expensive half can be cached: `prepare` downloads,
 // extracts and verifies everything into a self-contained input tree whose only
@@ -121,20 +122,6 @@ export async function prepareWindowsReleaseInputs({ output } = {}) {
   const nodeArchive = await downloadAsset(nodeAsset, downloads)
   await extract(nodeArchive, join(output, 'node'))
   const node = join(output, `node/${nodeAsset.archiveRoot}/node.exe`)
-  // Browser resources have an independent qualified version. The npm Runtime's
-  // newer Playwright must not silently select a different Chromium revision.
-  const browserVersion = nodeLock.environment.browserAutomation.browserVersion
-  if (!/^\d+\.\d+\.\d+\.\d+$/.test(browserVersion)) throw new Error('Invalid locked Chromium version')
-  const browserURL = `https://cdn.playwright.dev/builds/cft/${browserVersion}/win64/chrome-win64.zip`
-  const browserExecutable = nodeLock.environment.browserAutomation.executables['windows-amd64']
-  const browserAsset = browserExecutable.archive
-  if (browserAsset.url !== browserURL) throw new Error('Browser archive URL differs from the qualified version')
-  const browserArchive = await downloadAsset(browserAsset, downloads)
-  const browserArchiveSHA256 = await sha256File(browserArchive)
-  await extract(browserArchive, join(output, 'browsers'))
-  const chromes = await findFiles(join(output, 'browsers'), 'chrome.exe')
-  if (chromes.length !== 1) throw new Error('Expected one downloaded Chromium executable')
-  if (await sha256File(chromes[0]) !== browserExecutable.sha256) throw new Error('Chromium executable differs from the pinned resource')
 
   const catalog = await sourceTranscriptionCatalog(core, node)
   const asrAssets = catalog.engine.binaries.filter(binary => binary.platform === 'win32' && binary.arch === 'x64')
@@ -179,9 +166,6 @@ export async function prepareWindowsReleaseInputs({ output } = {}) {
     node,
     vcRedist: vcFiles,
     vcVersion,
-    browserVersion,
-    browserURL,
-    browserArchiveSHA256,
     asrSHA256: asrAssets[0].sha256,
     modelSHA256: models[0].sha256,
     asrEngineVersion: catalog.engine.version,
@@ -231,7 +215,6 @@ export async function installWindowsReleaseInputs({ inputs, product } = {}) {
     outputRoot: product,
     pythonArchive,
     pythonWheelRoot: join(inputs, 'wheels'),
-    browserSource: dirname((await findFiles(join(inputs, 'browsers'), 'chrome.exe'))[0]),
     asrSource: dirname((await findFiles(join(inputs, 'whisper'), 'whisper-cli.exe'))[0]),
     asrModel: await findOne(join(inputs, 'downloads'), models[0].filename ?? 'ggml-tiny-q5_1.bin'),
     vcRedistSource: join(inputs, 'vc-redist'),
@@ -244,7 +227,6 @@ export async function installWindowsReleaseInputs({ inputs, product } = {}) {
   await writeText(join(notices, 'NATIVE-COMPONENTS.txt'), [
     'Python: python-build-standalone; license files retained inside r/p.',
     'Office wheels: dist-info licenses retained inside r/v/Lib/site-packages.',
-    'Chromium: complete official Playwright Chromium payload retained in r/b.',
     `Whisper.cpp ${manifest.asrEngineVersion} and Whisper tiny q5_1: MIT, licenses in this directory.`,
     `Microsoft Visual C++ redistributable DLLs: Visual Studio ${manifest.vcVersion}, x64 Redist directory, Microsoft Authenticode verified.`,
     'Redistribution list: https://learn.microsoft.com/visualstudio/releases/2022/redistribution',

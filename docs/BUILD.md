@@ -48,6 +48,8 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 机构版使用相同 Node 入口，先检出 `core.lock.json` 指定的公版提交，再传入机构仓的 `--edition-root` 与 `--distribution-config edition/distribution.json`。公版构建跳过机构专属检查；机构版候选读取 `edition/desktop-build.json` 指定的签名配置描述文件，并检查首次启动激活。旧 PowerShell 候选另在配置了 `validationScript` 时执行机构仓的脚本；Node 流程不依赖该 PowerShell 文件，也不会把未执行的私有脚本记为已验收。私有配置和凭据留在机构仓或受保护的环境中，不写入公版源码。见[首次启动获取签名配置](PUBLISHER_BOOTSTRAP.md)。
 
+两端组装 product 时共用一份运行时文件精简规则：源码映射、调试符号和 Python 字节码及缓存沿用 Windows 原有规则，扩展到两端；其余删除类别为 TypeScript 声明（保留 typescript 包）及构建缓存、非目标平台的 LibreOffice 和 node-pty 资源、fs-ext 编译输出和工程文件、Domino 测试资料及 Koffi 导入库。未识别的文件保留，删除统计记在 release 回执的 `runtimeFiles` 中。
+
 ## 依赖与复用
 
 桌面开发包与发布候选默认使用同一 DSH `0.2.0-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 npm 配方仅能显式通过 `--recipe npm` 调用。
@@ -55,6 +57,8 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
 
 工作区同时绑定公版与机构版的实际源码文件哈希、receipt 哈希及 Git 提交；任一输入变化后须选择新的工作区。`dist`、`node_modules` 等生成目录使用源码审计的统一排除规则，不影响复用；旧版未记录源码身份的 checkpoint 也须更换工作区。
+
+组装产品时不带运行时用不到的包：DSH 的 Typert 生成器与测试工具、产品未启用的实验性语音输入（SenseVoice）、文献检索只抽文字时不需要的 canvas，以及 Studio 用 webpack 打包时不需要的 rspack。只被这些包依赖的包一并去掉，完整清单记在 `assembly.json` 的 `omittedPackages` 中。Remotion 读取视频工程的 tsconfig 时会用到 TypeScript，因此保留。为避免启动时加载 rspack，对 Remotion 打包器应用了一个按 SHA-256 校验的补丁，记录在 `runtimePatches` 中。两端的 Electron 只保留中文和英文资源，其他系统语言下 Chromium 自带的菜单和对话框显示英文；macOS 不带只供嵌入 Python 使用的 libpython。
 
 ## Web 构建
 

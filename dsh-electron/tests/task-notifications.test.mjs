@@ -8,11 +8,11 @@ function setup() {
   let focused = false, time = 10000
   const popups = [], shown = [], dismissed = []
   const shell = new TaskNotifications({ foreground: () => focused, now: () => time, show: () => shown.push(true), publish: value => popups.push(value), dismiss: () => dismissed.push(true), changed() {} })
-  const sync = (items, preferences = {}) => shell.handle({ action: 'sync', instance: 'host-a', items, preferences: { ...notificationDefaults, ...preferences } })
+  const sync = (items, preferences = {}, running = []) => shell.handle({ action: 'sync', instance: 'host-a', items, running, preferences: { ...notificationDefaults, ...preferences } })
   return { shell, sync, popups, shown, dismissed, focus: value => { focused = value }, advance: () => { time += 5000 } }
 }
-function host(bridge = async () => ({ seen: [] })) {
-  return new DesktopAttention({ bridge, preferences: () => notificationDefaults, now: () => 10000, schedule: () => 1, cancel() {} })
+function host(bridge = async () => ({ seen: [] }), goal) {
+  return new DesktopAttention({ bridge, preferences: () => notificationDefaults, goal, now: () => 10000, schedule: () => 1, cancel() {} })
 }
 
 test('foreground suppresses popups; only viewing the matching conversation consumes a completed notice', () => {
@@ -109,9 +109,10 @@ test('snapshot failures are contained and can recover without losing pending wor
 })
 
 test('bridge contract rejects commands, arbitrary URLs, oversized or ambiguous state', () => {
-  const good = { action: 'sync', instance: 'a', items: [item('a')], preferences: notificationDefaults }
+  const good = { action: 'sync', instance: 'a', items: [item('a')], running: ['session-b'], preferences: notificationDefaults }
   assert.equal(validateAttentionRequest(good), good)
   for (const bad of [ { ...good, command: 'run' }, { ...good, items: [item('a', 'approval', { url: 'https://example.org' })] },
+    { ...good, running: undefined }, { ...good, running: ['s', 's'] }, { ...good, running: [''] }, { ...good, running: ['a\nb'] },
     { ...good, items: [item('a'), item('a')] }, { ...good, preferences: { ...notificationDefaults, sound: 'yes' } },
     { action: 'view', sessionId: '../a', url: 'file://secret' } ]) assert.throws(() => validateAttentionRequest(bad))
 })
@@ -135,4 +136,60 @@ test('Windows uses tray quiet-time flags; macOS failure never bypasses native co
   assert.equal(notifications[0].value.silent, true)
   notifications[0].events.failed(); assert.equal(failed.length, 1)
   notifications[0].events.click(); assert.equal(clicked.at(-1), 'b')
+})
+
+test('an armed goal holds its turn until the driver continues, blocks or completes it', () => {
+  let view
+  const h = host(undefined, id => view?.[id]), round = (id, turn) => { h.event({ id }, { type: 'turn/start', data: { turn } }, true); h.event({ id }, { type: 'turn/end', data: { turn, reason: { kind: 'completed' } } }, true) }
+  const kinds = () => [...h.items.values()].map(item => item.kind), armed = { phase: 'active', activation: 'armed', roundsStarted: 3, maxGoalRounds: 3 }
+  view = { a: armed, b: armed, c: armed, d: armed }
+  // The next round starts: nothing to report yet. At the limit the driver blocks the goal after the turn.
+  round('a', 1); round('a', 2); assert.deepEqual(kinds(), [])
+  h.goalChanged('a', 'edit'); assert.deepEqual(kinds(), [])
+  h.goalChanged('a', 'block'); h.goalChanged('a', 'block'); assert.deepEqual(kinds(), ['failed'])
+  round('b', 1); h.goalChanged('b', 'complete'); assert.deepEqual(kinds(), ['failed', 'completed'])
+  // A pause or clear is the user's own stop; a goal never held here is not reported.
+  round('c', 1); h.goalChanged('c', 'pause'); h.goalChanged('d', 'block'); assert.deepEqual(kinds(), ['failed', 'completed'])
+  view = { e: { ...armed, activation: 'disarmed' }, f: { ...armed, phase: 'blocked', activation: 'disarmed' } }
+  round('e', 1); round('f', 1); assert.deepEqual(kinds(), ['failed', 'completed', 'completed', 'failed'])
+})
+
+test('a working background subagent holds completion for the turn it wakes', () => {
+  const h = host(), root = (type, data) => h.event({ id: 'a' }, { type, data }, true)
+  root('turn/start', { turn: 1 }); h.subagent('child', 'turn/start', 'a'); h.subagent('fork', 'turn/start', undefined)
+  root('turn/end', { turn: 1, reason: { kind: 'completed' } })
+  assert.equal(h.items.size, 0)
+  h.subagent('grandchild', 'turn/start', 'a'); h.subagent('child', 'turn/end'); h.subagent('grandchild', 'turn/end'); h.subagent('fork', 'turn/end')
+  assert.equal(h.delegated.size, 0)
+  // The settled subagent wakes the conversation, which then finishes for real.
+  root('turn/start', { turn: 2 }); root('turn/end', { turn: 2, reason: { kind: 'completed' } })
+  assert.equal([...h.items.values()][0].kind, 'completed')
+  root('turn/start', { turn: 3 }); h.subagent('child', 'turn/start', 'a'); root('turn/end', { turn: 3, reason: { kind: 'error' } })
+  assert.equal([...h.items.values()][0].kind, 'failed')
+})
+
+test('running lists root turns and generating Studio results once per session', async () => {
+  const synced = [], h = host(async body => { synced.push(body); return { seen: [] } }), event = (id, type, data, root = true) => h.event({ id }, { type, data }, root)
+  event('a', 'turn/start', { turn: 1 }); event('child', 'turn/start', { turn: 1 }, false)
+  h.studio('w', [{ id: 'artifact_a', sessionId: 'a', version: 1, status: 'running', updatedAt: new Date(11000).toISOString() },
+    { id: 'artifact_b', sessionId: 'b', version: 1, status: 'queued', updatedAt: new Date(11000).toISOString() },
+    { id: 'artifact_c', version: 1, status: 'running', updatedAt: new Date(11000).toISOString() }])
+  assert.deepEqual(h.running(), ['a', 'b'])
+  await h.flush(); assert.deepEqual(synced.at(-1).running, ['a', 'b'])
+  event('a', 'turn/end', { turn: 1, reason: { kind: 'completed' } }); assert.deepEqual(h.running(), ['a', 'b'])
+  h.studio('w', [{ id: 'artifact_a', sessionId: 'a', version: 2, status: 'completed', updatedAt: new Date(12000).toISOString() }])
+  assert.deepEqual(h.running(), [])
+  const f = setup(); f.sync([], {}, ['a', 'b'])
+  assert.deepEqual(f.shell.running, ['a', 'b'])
+})
+
+test('a result finished in the conversation on screen is acknowledged once, without a pending entry', () => {
+  const f = setup(), changes = []
+  f.shell.changed = () => changes.push(f.shell.acknowledged)
+  f.focus(true); f.shell.handle({ action: 'view', sessionId: 'session-a' })
+  assert.deepEqual(f.sync([item('done', 'completed')]).seen, ['done']); assert.equal(f.shell.acknowledged, 1); assert.equal(f.shell.items.size, 0)
+  f.sync([item('bad', 'failed')]); assert.equal(f.shell.acknowledged, 1)
+  f.focus(false); f.sync([item('later', 'completed')]); f.focus(true)
+  f.sync([item('later', 'completed')]); assert.equal(f.shell.acknowledged, 1)
+  assert.equal(changes[0], 1)
 })

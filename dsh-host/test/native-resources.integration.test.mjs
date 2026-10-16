@@ -53,12 +53,13 @@ test('relocatable native closure runs real Office creation/preview and system TT
   let transcription
   if (process.env.EDUWORK_NATIVE_MEDIA_TEST === '1') {
     const { createMediaRuntime, getMediaFFmpegPath } = await import(pathToFileURL(join(shared, 'lib/runtime.js')))
-    const runtime = await createMediaRuntime({ environment: childEnv })
+    // Electron products carry no browser: their desktop executable serves as one.
+    const browser = environment.DSH_MEDIA_BROWSER ?? process.env.EDUWORK_NATIVE_RESOURCE_BROWSER
+    assert.ok(browser, 'Set EDUWORK_NATIVE_RESOURCE_BROWSER to the desktop executable')
+    const runtime = await createMediaRuntime({ environment: { ...childEnv, DSH_MEDIA_BROWSER: browser } })
     const ffmpegPath = await getMediaFFmpegPath({ runtime })
-    for (const path of [runtime.browserExecutable, ffmpegPath]) {
-      const rel = relative(canonical, await realpath(path))
-      assert.ok(!isAbsolute(rel) && !rel.startsWith('..'), 'media executable must belong to this product')
-    }
+    const rel = relative(canonical, await realpath(ffmpegPath))
+    assert.ok(!isAbsolute(rel) && !rel.startsWith('..'), 'FFmpeg must belong to this product')
     const { createWhisperCppTranscriptionProvider } = await import(pathToFileURL(join(shared, 'lib/transcription-whisper.js')))
     const provider = createWhisperCppTranscriptionProvider({ ...pluginConfig['eduwork-artifact-services'].transcription.local, ffmpegPath })
     assert.equal(await provider.available(), true)

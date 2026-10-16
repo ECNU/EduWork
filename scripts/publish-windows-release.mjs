@@ -4,6 +4,7 @@ import { createHash } from 'node:crypto'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {githubUpdateManifestBytes,updateManifestName,releaseChannel} from './github-update-manifest.mjs'
+import {windowsDeltaName} from './windows-update-delta.mjs'
 
 export function releasePublication(edition,version) {
   const prerelease=releaseChannel(version)==='development'
@@ -53,7 +54,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   const edition=validateReceipt(receipt,{repository,version,commit})
   const unpack=receipt.portableExtractor
   const stable = releaseChannel(version) === 'stable'
-  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',...(stable ? [updateManifestName] : []),unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name]
+  const deltas = receipt.deltas ?? []
+  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',...(stable ? [updateManifestName] : []),unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -72,6 +74,11 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   if((await readFile(files[setup+1].path,'utf8')).trim()!==`${unpack.asset.sha256}  ${unpack.asset.name}`)throw Error('Portable extractor SHA256 sidecar differs')
   if(files[setup+2].sha256!==unpack.receipt.sha256 || files[setup+2].bytes!==unpack.receipt.bytes)throw Error('Portable extractor receipt differs from the validated build')
   validateExtractorReceipt(JSON.parse(await readFile(files[setup+2].path,'utf8')),receipt)
+  for (const [index,delta] of deltas.entries()) {
+    const file=files[setup+3+2*index]
+    if(delta.name!==windowsDeltaName(edition,version,delta.from) || file.bytes!==delta.bytes || file.sha256!==delta.sha256)throw Error('Delta update differs from the validated build: '+delta.name)
+    if((await readFile(files[setup+4+2*index].path,'utf8')).trim()!==`${delta.sha256}  ${delta.name}`)throw Error('Delta update SHA256 sidecar differs: '+delta.name)
+  }
   return {receipt,edition,files}
 }
 export async function publish(directory) {

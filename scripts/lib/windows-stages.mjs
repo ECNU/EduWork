@@ -26,6 +26,7 @@ import { packWindowsRelease } from '../pack-windows-release.mjs'
 import { prepareWindowsReleaseInputs, installWindowsReleaseInputs } from '../prepare-windows-release-inputs.mjs'
 import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
 import { desktopVersion } from '../desktop-build-plan.mjs'
+import { createWindowsDeltas } from '../windows-update-delta.mjs'
 import { verifyPublisherFirstLaunch } from './publisher-acceptance.mjs'
 
 function freeLoopbackPort() {
@@ -52,7 +53,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
       outputs: ['inputs'],
       // The inputs are a function of the pinned runtime manifests and the
       // reviewed source catalog, never of the product, so a product change does
-      // not re-download Python, Node, Chromium or the ASR engine.
+      // not re-download Python, Node or the ASR engine.
       inputs: async (workspace) => ({
         node: await sha256File(join(coreRoot, 'dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json')),
         python: await sha256File(join(coreRoot, 'dsh-desktop/internal/productruntime/builtin/python-runtime-manifest.json')),
@@ -135,9 +136,10 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
     }),
     stage({
       name: 'publish',
-      description: 'Release ZIP, receipt and update manifest',
+      description: 'Release ZIP, delta updates, receipt and update manifest',
       requires: ['accept'],
       outputs: ['publish'],
+      inputs: async (workspace) => ({ deltaBases: await Promise.all(workspace.parameters.deltaBases.map(sha256File)) }),
       run: async (workspace) => {
         await publishWindows({ workspace, coreRoot, receiptBase })
       },
@@ -187,7 +189,7 @@ async function annotateCandidate({ candidate, coreRoot, name, version, developme
 }
 
 async function buildTransitionLaunchers(candidate, coreRoot) {
-  await run('go', ['build', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', join(candidate, 'ChatECNU-Work.exe'), './cmd/eduwork-launch'], { cwd: join(coreRoot, 'dsh-desktop') })
+  await run('go', ['build', '-buildvcs=false', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', join(candidate, 'ChatECNU-Work.exe'), './cmd/eduwork-launch'], { cwd: join(coreRoot, 'dsh-desktop') })
     .catch(() => { throw new Error('Legacy shortcut launcher build failed') })
   await copyFileTo(join(candidate, 'ChatECNU-Work.exe'), join(candidate, 'EduWork.exe'))
 }
@@ -338,9 +340,9 @@ async function acceptWindows({ workspace, coreRoot }) {
   return checks
 }
 
-/** Copy the shipped ZIP, write the receipt and generate the update manifest. */
+/** Copy the shipped ZIP and delta updates, write the receipt and generate the update manifest. */
 async function publishWindows({ workspace, coreRoot, receiptBase }) {
-  const { name, development, releaseNotesFile, editionRoot } = workspace.parameters
+  const { name, version, development, releaseNotesFile, editionRoot, deltaBases } = workspace.parameters
   const publish = workspace.resolvePath('publish')
   const publicEvidence = workspace.resolvePath('evidence-public')
   const gui = workspace.resolvePath('gui')
@@ -354,6 +356,7 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   if (await isFile(`${packed.output}.sha256`)) {
     await copyFileTo(`${packed.output}.sha256`, join(publish, `${basename(packed.output)}.sha256`))
   }
+  const deltas = await createWindowsDeltas({ archive: packed.output, bases: deltaBases, product: name, version, output: publish })
   if (!development) {
     const extractorPublish = join(gui, 'extractor-publish')
     for (const name of [checks.portableExtractorAssets.asset.name, `${checks.portableExtractorAssets.asset.name}.sha256`, checks.portableExtractorAssets.receipt.name]) {
@@ -372,12 +375,10 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
       vcRedist: inputs.vcRedist,
       asrSHA256: inputs.asrSHA256,
       modelSHA256: inputs.modelSHA256,
-      browserVersion: inputs.browserVersion,
-      browserURL: inputs.browserURL,
-      browserArchiveSHA256: inputs.browserArchiveSHA256,
     },
     checks: { sourceAndDependencies: 'passed', ...checks, asset: undefined, portableExtractorAssets: undefined },
     asset: checks.asset,
+    deltas,
     ...(!development ? { portableExtractor: checks.portableExtractorAssets } : {}),
     passed: true,
   }
@@ -385,7 +386,7 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   delete receipt.checks.portableExtractorAssets
   await writeJSON(join(publish, 'release-receipt.json'), receipt)
   // Other institutions publish their own update feeds from the release receipt.
-  if (!development && !desktopVersion(workspace.parameters.version).prerelease && ['EduWork', 'EduWork-ECNU'].includes(name)) {
+  if (!development && !desktopVersion(version).prerelease && ['EduWork', 'EduWork-ECNU'].includes(name)) {
     await copyFileTo(join(editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))
     await runNode(join(coreRoot, 'scripts/github-update-manifest.mjs'), [join(publish, 'release-receipt.json'), `ecnu/${name}`])
       .catch(() => { throw new Error('GitHub update manifest generation failed') })

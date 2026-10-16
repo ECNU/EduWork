@@ -43,7 +43,10 @@ export async function renderMedia(request,directory,signal,onProgress=()=>{},pro
   onProgress('准备视频渲染')
   const inputProps={scenes,fps,aspect:options.aspect,subtitles:options.subtitles,bgm}
   const runtime=context.runtime || await createMediaRuntime({signal})
-  const prepared=await prepareComposition({entryPoint:join(here,'video-template.js'),outDir:join(directory,'bundle'),id:'StudioVideo',inputProps,runtime})
+  // The template ships inside the installed package. Remotion keeps its webpack
+  // cache beside the nearest package.json, which would modify a signed or
+  // read-only installation, so this bundle is never cached.
+  const prepared=await prepareComposition({entryPoint:join(here,'video-template.js'),outDir:join(directory,'bundle'),id:'StudioVideo',inputProps,runtime,enableCaching:false})
   const format=request.kind==='audio'?'wav':'mp4',output=join(directory,request.id+'.'+format)
   let previous=-1
   await renderComposition(prepared,{output,format,signal,onProgress:(_,progress)=>{

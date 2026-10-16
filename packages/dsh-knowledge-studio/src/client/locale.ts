@@ -28,7 +28,10 @@ export const dictionaries = {
     "reset": "重新开始",
     "workspaceSlow": "工作区服务响应较慢，基础创作仍可使用。",
     "workspaceUnavailable": "无法连接工作区服务，请重试。",
-    "sidebarDescription": "从工作区资料创建成果"
+    "sidebarDescription": "从工作区资料创建成果",
+    "previewFile": "打开文件预览",
+    "previewFileHint": "在文件标签页查看原文件，可缩放或与 Studio 并排查看。",
+    "openingPreview": "正在打开预览…"
   },
   "en": {
     "loading": "Loading…",
@@ -56,7 +59,10 @@ export const dictionaries = {
     "reset": "Start over",
     "workspaceSlow": "Workspace service is slow. Basic creation remains available.",
     "workspaceUnavailable": "Cannot connect to workspace service. Retry.",
-    "sidebarDescription": "Create artifacts from workspace sources"
+    "sidebarDescription": "Create artifacts from workspace sources",
+    "previewFile": "Open file preview",
+    "previewFileHint": "View the saved file in a file tab. Zoom or view it alongside Studio.",
+    "openingPreview": "Opening preview…"
   }
 }
 type Translate = (key: string, values?: Record<string, unknown>) => string

@@ -1,15 +1,16 @@
 import {readFileSync} from 'node:fs'
 import {dirname} from 'node:path'
 import {fileURLToPath} from 'node:url'
+import {withOfficialOfficeSkill} from './official-office.js'
 
 export function installArtifactSkills(ctx,{images}={}) {
   const disposers=[]
   const register=(kind,metadata)=>{
     const path=fileURLToPath(new URL(`../skills/${kind}/SKILL.md`,import.meta.url)),raw=readFileSync(path,'utf8')
     const description=raw.match(/^description: (.+)$/m)?.[1] || kind
-    return ctx.skills.register({name:'artifact-'+kind,description,whenToUse:description,
+    return ctx.skills.register(withOfficialOfficeSkill({name:'artifact-'+kind,description,whenToUse:description,
       invocation:{modelInvocable:true,userInvocable:true},source:'bundled',path,resourceBase:{kind:'directory',path:dirname(path)},
-      ...(metadata?{metadata}:{}),content:raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/,'').trim()})
+      ...(metadata?{metadata}:{}),content:raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n/,'').trim()}))
   }
   for(const kind of ['documents','spreadsheets','presentations','pdfs','speech','video'])disposers.push(register(kind))
   let disposed=false,revision=0,imageDisposer

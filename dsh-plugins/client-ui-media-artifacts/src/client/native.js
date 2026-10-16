@@ -1,7 +1,8 @@
-// DSH 0.1.7 owns file intake and deliverable/tool cards. Keep only the product
-// preview formats still shared with Studio until native renderer acceptance.
+// DSH owns file intake, deliverable cards and general document previews.
+// Extend its public Sidebar only for audio/video playback.
 import previewRemote from '@chatecnu-work/dsh-artifact-preview-native/remote'
 import { installSidebarPreview } from './sidebar-preview.js'
+import { installDocumentPreviewLayout } from './document-preview-layout.js'
 
 export const inject = ['slots', 'remote', 'sidebarRight', 'sidebarRightTabs']
 const unwrap = async operation => {
@@ -10,6 +11,7 @@ const unwrap = async operation => {
   throw new Error(result.error?.message || '文件预览暂时不可用')
 }
 export async function apply(ctx) {
+  installDocumentPreviewLayout(ctx)
   const dispose = await ctx.remote.$mount(previewRemote)
   ctx.inject(['remote.artifactPreview'], inner => {
     installSidebarPreview(inner, {

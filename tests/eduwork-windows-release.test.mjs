@@ -4,13 +4,15 @@ import { validateReceipt,releasePublication,validateExtractorReceipt,validatedRe
 import {mkdtemp,mkdir,writeFile,readFile,readdir,rm} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {basename,join,resolve,sep} from 'node:path'
-import {createHash} from 'node:crypto'
+import {createHash,randomBytes} from 'node:crypto'
 import {githubUpdateManifest,githubUpdateManifestBytes} from '../scripts/github-update-manifest.mjs'
 import {windowsStages} from '../scripts/lib/windows-stages.mjs'
 import {fileURLToPath} from 'node:url'
 import {execFile} from 'node:child_process'
 import {promisify} from 'node:util'
 import {installProductHost} from '../dsh-host/install-product-host.mjs'
+import {windowsDeltaName} from '../scripts/windows-update-delta.mjs'
+import {ZipWriter} from '../scripts/lib/zip.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
 const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
 function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
@@ -78,7 +80,7 @@ test('Windows publish stage keeps institution artifacts without inventing an ECN
    await json('gui/acceptance-checks.json',{asset,portableExtractorAssets:extractor})
    for(const filename of [extractor.asset.name,`${extractor.asset.name}.sha256`,extractor.receipt.name]) await file(`gui/extractor-publish/${filename}`,'Synthetic extractor evidence')
    await file('RELEASE-NOTES.md','Synthetic approved release notes')
-   const workspace={parameters:{name,version,development,releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,recipe},resolvePath:path=>join(root,path)}
+   const workspace={parameters:{name,version,development,releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,recipe,deltaBases:[]},resolvePath:path=>join(root,path)}
    const receiptBase={schemaVersion:1,kind:development?'eduwork-windows-development':'eduwork-windows-release',edition:name,version,shell:'electron',platform:'windows-x64'}
    await windowsStages({coreRoot,receiptBase,recipe}).find(stage=>stage.name==='publish').run(workspace)
    const files=await readdir(join(root,'publish'))
@@ -97,6 +99,48 @@ test('Windows publish stage keeps institution artifacts without inventing an ECN
    }
   })
  }
+})
+test('Windows publish stage publishes delta updates in the receipt and the update manifest',async t=>{
+ const root=await mkdtemp(join(tmpdir(),'eduwork-publish-delta-'))
+ t.after(async()=>{
+  assert.ok(resolve(root).startsWith(resolve(tmpdir())+sep) && basename(root).startsWith('eduwork-publish-delta-'))
+  await rm(root,{recursive:true,force:true})
+ })
+ const digest=bytes=>createHash('sha256').update(bytes).digest('hex')
+ const file=async(path,content)=>{await mkdir(join(root,path,'..'),{recursive:true});await writeFile(join(root,path),content)}
+ const release=async(path,version,files)=>{
+  const manifest=Buffer.from(JSON.stringify({schemaVersion:1,version,launcherVersion:version,flavor:'offline',files:Object.entries(files).map(([name,bytes])=>({path:name,bytes:bytes.length,sha256:digest(bytes)}))}))
+  await mkdir(join(root,path,'..'),{recursive:true})
+  const zip=await ZipWriter.create(join(root,path))
+  await zip.addEntry('EduWork/RELEASE-MANIFEST.json',manifest)
+  for(const [name,bytes] of Object.entries(files))await zip.addEntry('EduWork/'+name,bytes)
+  await zip.close()
+  return manifest
+ }
+ // Incompressible, so the unchanged runtime dominates the full archive.
+ const runtime=randomBytes(64<<10)
+ const asset={name:'EduWork-0.4.4-windows-x64-electron.zip'}
+ const previous=await release('bases/EduWork-0.4.3-windows-x64-electron.zip','0.4.3',{'EduWork-Electron.exe':runtime,'resources/app.js':Buffer.from('old app')})
+ await release('desktop/'+asset.name,'0.4.4',{'EduWork-Electron.exe':runtime,'resources/app.js':Buffer.from('new app')})
+ const archive=await readFile(join(root,'desktop',asset.name))
+ Object.assign(asset,{bytes:archive.length,sha256:digest(archive)})
+ const extractor=extractorFiles('EduWork','0.4.4')
+ await file('desktop/package.json',JSON.stringify({output:join(root,'desktop',asset.name)}))
+ await file('product/assembly.json',JSON.stringify({distribution:'eduwork',dshVersion:'0.2.0-rc.2',dshCommit:'b'.repeat(40)}))
+ await file('inputs/inputs.json','{}')
+ await file('gui/acceptance-checks.json',JSON.stringify({asset,portableExtractorAssets:extractor}))
+ for(const filename of [extractor.asset.name,`${extractor.asset.name}.sha256`,extractor.receipt.name])await file(`gui/extractor-publish/${filename}`,'Synthetic extractor evidence')
+ await file('RELEASE-NOTES.md','Synthetic approved release notes')
+ const workspace={parameters:{name:'EduWork',version:'0.4.4',development:false,releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,recipe:'pinned-source',deltaBases:[join(root,'bases/EduWork-0.4.3-windows-x64-electron.zip')]},resolvePath:path=>join(root,path)}
+ const receiptBase={schemaVersion:1,kind:'eduwork-windows-release',edition:'EduWork',version:'0.4.4',shell:'electron',platform:'windows-x64'}
+ await windowsStages({coreRoot:fileURLToPath(new URL('..',import.meta.url)),receiptBase,recipe:'pinned-source'}).find(stage=>stage.name==='publish').run(workspace)
+ const name=windowsDeltaName('EduWork','0.4.4','0.4.3'),delta=await readFile(join(root,'publish',name))
+ const recorded={from:'0.4.3',fromManifestSha256:digest(previous),name,bytes:delta.length,sha256:digest(delta)}
+ assert.deepEqual(JSON.parse(await readFile(join(root,'publish/release-receipt.json'),'utf8')).deltas,[recorded])
+ assert.equal(await readFile(join(root,'publish',name+'.sha256'),'utf8'),`${recorded.sha256}  ${name}\n`)
+ const url=`https://github.com/ecnu/EduWork/releases/download/v0.4.4/${name}`
+ assert.deepEqual(JSON.parse(await readFile(join(root,'publish/update-windows-amd64.json'),'utf8')).artifacts[0].deltas,
+  [{fromVersion:'0.4.3',fromManifestSha256:recorded.fromManifestSha256,fileName:name,bytes:recorded.bytes,sha256:recorded.sha256,url,sha256Url:url+'.sha256'}])
 })
 test('release publisher accepts the complete matching Windows receipt',()=>assert.equal(validateReceipt(receipt,context),'EduWork'))
 
@@ -167,7 +211,7 @@ test('portable extractor is mandatory and must bind the same clean core and payl
  for(const bad of [{...child,version:'other'},{...child,distribution:'eduwork-chatecnu'},{...child,payload:{...child.payload,sha256:'2'.repeat(64)}},{...child,asset:{...child.asset,bytes:7}},{...child,extractor:{...child.extractor,sourceDirty:true}},{...child,extractor:{...child.extractor,sourceCommit:'3'.repeat(40)}},{...child,checks:{...child.checks,extraction:'skipped'}},{...child,checks:{...child.checks,executionLevel:'requireAdministrator'}}])assert.throws(()=>validateExtractorReceipt(bad,receipt))
 })
 
-async function publicationFixture(t,edition='EduWork') {
+async function publicationFixture(t,edition='EduWork',deltas=[]) {
  const root=await mkdtemp(join(tmpdir(),'eduwork-publication-'))
  t.after(()=>rm(root,{recursive:true,force:true}))
  const ctx={...context,repository:'ECNU/'+edition}
@@ -178,10 +222,12 @@ async function publicationFixture(t,edition='EduWork') {
  row.portableExtractor=extractorFiles(edition,row.version)
  row.portableExtractor.asset.bytes=unpack.length;row.portableExtractor.asset.sha256=digest(unpack)
  row.releaseNotes.sha256=digest(notes)
+ row.deltas=deltas.map(({from,bytes})=>({from,fromManifestSha256:'9'.repeat(64),name:windowsDeltaName(edition,row.version,from),bytes:bytes.length,sha256:digest(bytes)}))
  const child={schemaVersion:1,kind:'eduwork-portable-extractor',format:'zip-containing-self-extracting-exe',version:row.version,distribution:row.distribution,payload:row.asset,asset:row.portableExtractor.asset,extractor:{name:`${edition}-Setup.exe`,bytes:12,sha256:'1'.repeat(64),sourceCommit:row.coreCommit,sourceDirty:false},checks:{embeddedArchive:'passed',manifestIdentity:'passed',outerZIP:'passed',extraction:'passed',executionLevel:'asInvoker'}}
  const childBytes=JSON.stringify(child)
  row.portableExtractor.receipt.bytes=Buffer.byteLength(childBytes);row.portableExtractor.receipt.sha256=digest(childBytes)
  const files={[row.asset.name]:archive,[row.asset.name+'.sha256']:`${row.asset.sha256}  ${row.asset.name}\n`,'RELEASE-NOTES.md':notes,'release-receipt.json':JSON.stringify(row),'update-windows-amd64.json':githubUpdateManifestBytes(row,ctx.repository),[row.portableExtractor.asset.name]:unpack,[row.portableExtractor.asset.name+'.sha256']:`${row.portableExtractor.asset.sha256}  ${row.portableExtractor.asset.name}\n`,[row.portableExtractor.receipt.name]:childBytes}
+ deltas.forEach(({bytes},index)=>{const delta=row.deltas[index];files[delta.name]=bytes;files[delta.name+'.sha256']=`${delta.sha256}  ${delta.name}\n`})
  for(const [name,value] of Object.entries(files))await writeFile(join(root,name),value)
  return {root,ctx,row}
 }
@@ -193,6 +239,19 @@ test('publication validates eight files for both editions while the updater keep
   assert.equal(githubUpdateManifest(row,ctx.repository).artifacts.length,1)
   assert.equal(githubUpdateManifest(row,ctx.repository).artifacts[0].fileName,row.asset.name)
  }
+})
+test('publication verifies every delta update and its sidecar before upload',async t=>{
+ const deltas=[{from:'0.2.8',bytes:Buffer.from('Synthetic delta from 0.2.8')},{from:'0.2.9',bytes:Buffer.from('Synthetic delta from 0.2.9')}]
+ const {root,ctx,row}=await publicationFixture(t,'EduWork',deltas)
+ assert.equal((await validatedReleaseFiles(root,ctx)).files.length,12)
+ assert.deepEqual(githubUpdateManifest(row,ctx.repository).artifacts[0].deltas.map(delta=>delta.fileName),row.deltas.map(delta=>delta.name))
+ const mutations=[
+  async({root,row})=>writeFile(join(root,row.deltas[1].name),'changed'),
+  async({root,row})=>writeFile(join(root,row.deltas[1].name+'.sha256'),'0'.repeat(64)+'  '+row.deltas[1].name),
+  async({root,row})=>rm(join(root,row.deltas[0].name)),
+  async({root})=>writeFile(join(root,windowsDeltaName('EduWork','0.3.0','0.2.7')),'unrecorded'),
+ ]
+ for(const mutate of mutations){const fixture=await publicationFixture(t,'EduWork',deltas);await mutate(fixture);await assert.rejects(()=>validatedReleaseFiles(fixture.root,fixture.ctx))}
 })
 test('publication rejects missing, modified, unrecorded or mismatched extractor assets before upload',async t=>{
  const mutations=[

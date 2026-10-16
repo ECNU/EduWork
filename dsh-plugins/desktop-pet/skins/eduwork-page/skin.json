@@ -1,0 +1,151 @@
+{
+  "schemaVersion": 1,
+  "id": "eduwork-page",
+  "name": {
+    "zh-CN": "小页",
+    "en": "Page"
+  },
+  "description": {
+    "zh-CN": "从 EduWork 折页标志里长出来的纸页精灵。",
+    "en": "A paper sprite grown from the folded page in the EduWork logo."
+  },
+  "author": "EduWork contributors",
+  "license": "CC-BY-4.0",
+  "frame": {
+    "width": 192,
+    "height": 208
+  },
+  "anchors": {
+    "badge": [
+      150,
+      36
+    ]
+  },
+  "animations": {
+    "idle": {
+      "frames": [
+        "idle.svg",
+        "blink.svg"
+      ],
+      "fps": 7,
+      "playback": "blink"
+    },
+    "flap": {
+      "frames": [
+        "flap-1.svg",
+        "flap-2.svg"
+      ],
+      "fps": 4,
+      "playback": "pingpong",
+      "repeat": 3
+    },
+    "greet": {
+      "frames": [
+        "greet.svg",
+        "greet-2.svg"
+      ],
+      "fps": 4,
+      "repeat": 3
+    },
+    "think": {
+      "image": "think.svg"
+    },
+    "work": {
+      "frames": [
+        "work-1.svg",
+        "work-2.svg",
+        "work-3.svg"
+      ],
+      "fps": 3
+    },
+    "attention": {
+      "frames": [
+        "attention-1.svg",
+        "attention-2.svg"
+      ],
+      "fps": 1.5
+    },
+    "done": {
+      "frames": [
+        "happy-1.svg",
+        "happy-2.svg"
+      ],
+      "frameMs": [
+        700,
+        900
+      ],
+      "motion": "hop"
+    },
+    "failed": {
+      "frames": [
+        "failed-1.svg",
+        "failed-2.svg"
+      ],
+      "playback": "once",
+      "frameMs": [
+        1600,
+        1
+      ]
+    },
+    "sleep": {
+      "image": "sleep.svg"
+    },
+    "drag": {
+      "image": "drag.svg",
+      "motion": "dangle"
+    },
+    "react": {
+      "frames": [
+        "react-1.svg",
+        "react-2.svg",
+        "react-3.svg"
+      ],
+      "playback": "once",
+      "frameMs": [
+        140,
+        260,
+        700
+      ]
+    },
+    "peek": {
+      "image": "peek.svg"
+    }
+  },
+  "states": {
+    "idle": [
+      "idle",
+      "flap",
+      "greet"
+    ],
+    "working": [
+      "think",
+      "work"
+    ]
+  },
+  "lines": {
+    "done": {
+      "zh-CN": [
+        "写好啦，点我看看！"
+      ],
+      "en": [
+        "All done! Click me."
+      ]
+    },
+    "attention": {
+      "zh-CN": [
+        "需要你来看一下～"
+      ],
+      "en": [
+        "I need your input."
+      ]
+    },
+    "failed": {
+      "zh-CN": [
+        "这页出了点问题…"
+      ],
+      "en": [
+        "Something went wrong."
+      ]
+    }
+  }
+}

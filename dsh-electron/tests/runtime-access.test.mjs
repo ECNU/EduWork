@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { ensureRuntimeAccess } from '../src/runtime-access.mjs'
 
-test('Windows startup runs the bundled helper synchronously, without a shell or elevation', () => {
+test('explicit runtime repair uses the bundled helper without a shell or elevation', () => {
   const root = 'C:\\Synthetic EduWork'
   const calls = []
   ensureRuntimeAccess({ root, platform: 'win32', execute: (...args) => calls.push(args) })
@@ -18,13 +18,19 @@ test('Windows startup runs the bundled helper synchronously, without a shell or 
 test('other platforms do not run the Windows helper', () => {
   for (const platform of ['darwin', 'linux']) ensureRuntimeAccess({ root: '/synthetic', platform, execute: () => assert.fail('unexpected helper') })
 })
-test('native failure retains details and stops startup', () => {
+test('explicit native repair failure retains the Windows error', () => {
   assert.throws(() => ensureRuntimeAccess({ root: 'C:\\Synthetic', platform: 'win32', execute: () => { throw Object.assign(new Error('exit 1'), { stderr: 'Access is denied.' }) } }), /无法准备 Windows 程序运行权限[\s\S]*Access is denied/)
 })
-test('shared product startup repairs before registering or creating windows', () => {
+test('normal product startup does not inspect or mutate runtime ACLs', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('export function installEduworkFromDmg()'))
-  assert.ok(configure.indexOf('ensureRuntimeAccess(') < configure.indexOf('attachAppActivation('))
-  assert.match(configure, /dialog\.showErrorBox/)
-  assert.match(configure, /app\.exit\(1\)/)
+  assert.doesNotMatch(configure, /ensureRuntimeAccess\(|ensure-runtime-access|WRITE_DAC.*execFile/)
+  assert.ok(configure.includes('attachAppActivation('))
+})
+test('upgrade health still follows actual main-window loading', () => {
+  const source = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
+  const load = source.indexOf('await window.loadURL(')
+  const ready = source.indexOf('await desktopReady()')
+  assert.ok(load > 0 && ready > load)
+  assert.match(source.slice(load, ready), /recovery\.active/)
 })

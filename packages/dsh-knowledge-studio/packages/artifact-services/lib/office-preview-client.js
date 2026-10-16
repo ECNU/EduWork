@@ -12,7 +12,7 @@ button,select,input{font:inherit;color:inherit;background:var(--dsw-alias-bg-bas
 button{cursor:pointer}button:hover:enabled{background:var(--dsw-alias-interactive-bg-hover,#edf1f6)}button:disabled{opacity:.4;cursor:default}button:focus-visible,input:focus-visible,select:focus-visible,.viewport:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#3777ba);outline-offset:-2px}
 .title{width:100%;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.page-number{width:49px;text-align:center;padding:3px}.page-count{white-space:nowrap}.expand{margin-left:auto}
 .viewport{flex:1;min-height:0;min-width:0;overflow:auto;overscroll-behavior:contain;position:relative;padding:12px}
-.stage{position:relative;margin:auto;flex:none;background:white;box-shadow:0 2px 10px #1f293722}.page-frame{display:block;position:absolute;top:0;left:0;border:0;transform-origin:0 0;background:white}
+.stage{position:relative;margin:auto;flex:none;overflow:hidden;background:white;box-shadow:0 2px 10px #1f293722}.page-frame{display:block;position:absolute;top:0;left:0;border:0;transform-origin:0 0;background:white}
 .warnings{flex:none;max-height:100px;overflow:auto;padding:6px 10px;background:var(--dsw-alias-bg-layer-2,#fff7e8);color:var(--dsw-alias-state-warn-label,#765324);font-size:11px}.warnings p{margin:3px 0}.error{padding:20px;color:var(--dsw-alias-state-error-primary,#9c2635);background:var(--dsw-alias-bg-base,#fff)}
 `
 function savedState(win,key,count) {
@@ -91,13 +91,19 @@ export function mountOfficePreview(container,initialOptions) {
   const plus=button('+','放大',()=>change({mode:'manual',scale:scale*1.2}))
   const expand=button('展开阅读','展开阅读',()=>options.onExpand?.());expand.className='expand'
   const frame=create('iframe','page-frame');frame.setAttribute('sandbox','');frame.setAttribute('referrerpolicy','no-referrer');frame.dataset.officeFilePreview='';stage.append(frame)
-  function measure() {
+  function measure(entries) {
     if(destroyed||!source)return
-    const width=Math.max(1,viewport.clientWidth-24),height=Math.max(1,viewport.clientHeight-24)
+    // clientWidth/clientHeight round fractional layouts up. That can make the
+    // stage overflow, toggle scrollbars and feed alternating sizes back into
+    // ResizeObserver. Its content box retains fractions and excludes padding
+    // and scrollbars; synchronous renders use the same CSS-pixel dimensions.
+    const box=entries?.[0]?.contentRect,computed=box?null:win.getComputedStyle(viewport)
+    const width=Math.max(1,box?.width??(parseFloat(computed.width)||0)-24-(viewport.offsetWidth-viewport.clientWidth))
+    const height=Math.max(1,box?.height??(parseFloat(computed.height)||0)-24-(viewport.offsetHeight-viewport.clientHeight))
     scale=state.mode==='manual'?state.scale:!source.fixed?Math.min(1,width/source.width):state.mode==='fit-width'?width/source.width:Math.min(width/source.width,height/source.height)
     scale=clamp(scale,.01,8)
     const frameHeight=source.fixed?source.height:height/scale
-    Object.assign(stage.style,{width:`${source.width*scale}px`,height:`${frameHeight*scale}px`,marginTop:`${source.fixed?Math.max(0,(height-frameHeight*scale)/2):0}px`})
+    Object.assign(stage.style,{width:`${source.width*scale}px`,height:`${source.fixed?frameHeight*scale:height}px`,marginTop:`${source.fixed?Math.max(0,(height-frameHeight*scale)/2):0}px`})
     Object.assign(frame.style,{width:`${source.width}px`,height:`${frameHeight}px`,transform:`scale(${scale})`})
     mode.options[2].textContent=`${Math.round(scale*100)}%`;mode.value=state.mode
     minus.disabled=scale<=.1;plus.disabled=scale>=4

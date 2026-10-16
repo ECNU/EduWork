@@ -23,6 +23,7 @@ import { windowsStages } from './lib/windows-stages.mjs'
 import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
 import { desktopSourceIdentity } from './lib/build-source.mjs'
+import { deltaBaseArchives } from './update-delta-bases.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
@@ -30,7 +31,7 @@ const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
   '[--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] ' +
-  '[--recipe npm|pinned-source] ' +
+  '[--recipe npm|pinned-source] [--delta-bases <dir>] ' +
   '(--jobs 0 = as many as the graph allows)'
 
 export async function ciEduworkWindowsRelease({
@@ -52,6 +53,7 @@ export async function ciEduworkWindowsRelease({
   digestBudget = 0,
   lockWaitMs = 0,
   recipe = '',
+  deltaBases = '',
 } = {}) {
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
@@ -97,6 +99,7 @@ export async function ciEduworkWindowsRelease({
 
   if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
   const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
+  const bases = await deltaBaseArchives(deltaBases, version)
 
   const parameters = {
     kind: development ? 'eduwork-windows-development' : 'eduwork-windows-release',
@@ -116,6 +119,7 @@ export async function ciEduworkWindowsRelease({
     sourceIdentity,
     automaticUpdates: !desktopVersion(version).prerelease,
     verifyPublisherBootstrap: sourcePlan?.verifyPublisherBootstrap ?? false,
+    deltaBases: bases,
   }
 
   // The publish stage writes the final receipt, so it needs everything that
@@ -210,6 +214,7 @@ if (isMainModule(import.meta.url)) {
       'digest-budget': { type: 'string' },
       'lock-wait': { type: 'string' },
       recipe: { type: 'string' },
+      'delta-bases': { type: 'string' },
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
@@ -233,5 +238,6 @@ if (isMainModule(import.meta.url)) {
     digestBudget: Number(values['digest-budget'] ?? 0),
     lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
     recipe: values.recipe ?? '',
+    deltaBases: values['delta-bases'] ?? '',
   })
 }

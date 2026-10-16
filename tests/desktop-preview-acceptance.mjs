@@ -5,7 +5,8 @@
 // node tests/desktop-preview-acceptance.mjs --shell wails --cdp http://127.0.0.1:9334
 //   --product <candidate/resources/product> --home <isolated-dsh-home>
 //   --evidence <ignored-new-evidence-directory> --large
-// Electron uses --shell electron with its own CDP endpoint and isolated home.
+// Electron uses --shell electron with its own CDP endpoint and isolated home,
+// plus --browser <desktop executable> because its product carries no browser.
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -15,7 +16,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { basename, join, resolve } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
 
-const { values } = parseArgs({ options: { ...Object.fromEntries(['product', 'cdp', 'url-file', 'evidence', 'shell', 'phase', 'home'].map(name => [name, { type: 'string' }])), large: { type: 'boolean' } } })
+const { values } = parseArgs({ options: { ...Object.fromEntries(['product', 'cdp', 'url-file', 'evidence', 'shell', 'phase', 'home', 'browser'].map(name => [name, { type: 'string' }])), large: { type: 'boolean' } } })
 for (const name of ['product', 'evidence', 'shell']) assert.ok(values[name], `--${name} is required`)
 assert.ok(['electron', 'wails', 'web'].includes(values.shell))
 if (values.shell !== 'web') assert.equal(new URL(values.cdp).hostname, '127.0.0.1')
@@ -40,6 +41,9 @@ result.nativeResourcesManifestSha256 = hash(await readFile(join(product, 'deskto
 const run = promisify(execFile)
 const resources = JSON.parse(await readFile(join(product, 'desktop-resources.json'), 'utf8'))
 const environment = { ...process.env, ...Object.fromEntries(Object.entries(resources.environment).map(([key, value]) => [key, resolve(product, value)])) }
+// Electron products carry no browser: pass the desktop executable as --browser.
+if (values.browser) environment.DSH_MEDIA_BROWSER = resolve(values.browser)
+assert.ok(environment.DSH_MEDIA_BROWSER, '--browser is required for a product without its own browser')
 const shared = join(product, 'd/node_modules/@eduwork/dsh-artifact-services')
 const { chromium } = createRequire(join(product, 'd/package.json'))('playwright-core')
 const browser = values.shell === 'web'

@@ -113,6 +113,14 @@ export const configurationFields = {
     sound: ['允许系统通知声音；仍受系统勿扰控制。', false],
     preview: ['在通知和托盘条目显示会话或成果标题；默认关闭，不显示回答正文、命令或文件内容。', false],
   }),
+  'desktop.pet': ['桌面宠物默认值，仅 Electron 客户端；设置 → 桌面宠物中保存的个人选择优先，托盘和右键菜单里的“隐藏 / 显示桌宠”也保存在这里。', {}],
+  ...fields('desktop.pet.', {
+    enabled: ['显示桌面宠物；公版默认关闭。', true],
+    skin: ['形象 ID；内置 eduwork-page（小页·红）、eduwork-page-blue（小页·蓝）、dafeiyu（大肥鱼）和 ecnu-huashi（小花狮），找不到时使用 eduwork-page。', 'eduwork-page'],
+    size: ['大小百分比，50–200，10 的倍数；100 约为 128 像素高。', 100],
+    bubbles: ['状态变化时显示简短气泡；是否显示会话标题跟随 desktop.notifications.preview。', true],
+    sleep: ['用户离开或长时间没有活动时打盹，动画暂停。', true],
+  }),
   updates: ['软件更新源；空对象沿用发行包的默认渠道与平台设置。', {}],
   ...fields('updates.', {
     provider: ['github/static/disabled；static 须填 manifestURL，github 不可同时填写 manifestURL。', 'github'],

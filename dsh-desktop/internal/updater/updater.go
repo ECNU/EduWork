@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -49,6 +50,27 @@ type Artifact struct {
 	SHA256URL string `json:"sha256Url"`
 	GitCommit string `json:"gitCommit"`
 	Shell     string `json:"shell,omitempty"`
+	// Deltas are optional smaller packages for exact earlier releases. Older
+	// clients ignore the field and keep downloading the complete artifact.
+	Deltas []DeltaArtifact `json:"deltas,omitempty"`
+}
+
+// A DeltaArtifact upgrades one exact installed build: FromManifestSHA256 is the
+// SHA-256 of that build's RELEASE-MANIFEST.json, so a rebuilt release with the
+// same version never receives a delta made for another file set.
+type DeltaArtifact struct {
+	FromVersion        string `json:"fromVersion"`
+	FromManifestSHA256 string `json:"fromManifestSha256"`
+	FileName           string `json:"fileName"`
+	Bytes              int64  `json:"bytes"`
+	SHA256             string `json:"sha256"`
+	URL                string `json:"url"`
+	SHA256URL          string `json:"sha256Url"`
+}
+
+func (delta DeltaArtifact) artifact(full Artifact) Artifact {
+	return Artifact{Flavor: full.Flavor, Shell: full.Shell, GitCommit: full.GitCommit,
+		FileName: delta.FileName, Bytes: delta.Bytes, SHA256: strings.ToLower(delta.SHA256), URL: delta.URL, SHA256URL: delta.SHA256URL}
 }
 
 type Manifest struct {
@@ -228,10 +250,24 @@ func selectArtifact(base *url.URL, channel string, artifacts []Artifact, flavor 
 			if err := validateArtifactURL(base, channel, artifact.SHA256URL); err != nil {
 				return Artifact{}, fmt.Errorf("invalid SHA-256 sidecar URL: %w", err)
 			}
+			// An unusable delta never hides the complete package.
+			var deltas []DeltaArtifact
+			for _, delta := range artifact.Deltas {
+				if validDeltaIdentity(delta) && validateArtifactURL(base, channel, delta.URL) == nil && validateArtifactURL(base, channel, delta.SHA256URL) == nil {
+					deltas = append(deltas, delta)
+				}
+			}
+			artifact.Deltas = deltas
 			return artifact, nil
 		}
 	}
 	return Artifact{}, fmt.Errorf("release manifest has no %s artifact", flavor)
+}
+
+func validDeltaIdentity(delta DeltaArtifact) bool {
+	_, err := parseVersion(delta.FromVersion)
+	return err == nil && delta.Bytes > 0 && sha256Pattern.MatchString(strings.ToLower(delta.SHA256)) &&
+		sha256Pattern.MatchString(strings.ToLower(delta.FromManifestSHA256)) && filepath.Base(delta.FileName) == delta.FileName && delta.FileName != ""
 }
 
 func validateArtifactURL(base *url.URL, channel, target string) error {

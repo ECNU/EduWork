@@ -7,6 +7,7 @@ import {mindmapPNG} from './mindmap-export'
 import {slideOutline} from '../../lib/studio-slides.js'
 import {mountOfficePreview,type OfficePreview} from '@eduwork/dsh-artifact-services/office-preview-client'
 import {canRetryOfficeExport,officeFormatFor} from '../../lib/export-recovery.js'
+import {useStudioLocale} from './locale.js'
 
 const btn:React.CSSProperties={border:'1px solid var(--dsw-alias-border-l2, #ddd7d0)',background:'transparent',borderRadius:7,padding:'6px 9px',font:'inherit',fontSize:12,color:'inherit',cursor:'pointer'}
 const secondary:React.CSSProperties={borderTop:'1px solid var(--dsw-alias-border-l2, #e8e2da)',padding:'14px 0',marginTop:12}
@@ -43,6 +44,23 @@ function MediaPreview({id,format,exportFile}:{id:string;format:string;exportFile
     {error?<div role="alert" style={{padding:24,background:'var(--dsw-alias-bg-layer-2, #f7f3ed)',borderRadius:10}}>预览暂时不可用。{error}<p><button style={btn} onClick={()=>setAttempt(v=>v+1)}>重试预览</button></p></div>:!url?<div role="status" style={{padding:40,textAlign:'center',background:'var(--dsw-alias-bg-layer-2, #f3eee8)',borderRadius:10}}>正在载入{format==='mp4'?'视频':'音频'}预览…</div>:format==='mp4'?<video controls preload="auto" src={url} poster={poster||undefined} onError={()=>setError('浏览器无法读取此视频，可下载文件查看。')} style={{width:'100%',maxHeight:'65vh',objectFit:'contain',display:'block',background:'#151515',borderRadius:10}}/>:<div style={{padding:24,background:'var(--dsw-alias-bg-layer-2, #f2eef6)',borderRadius:10}}><audio controls preload="metadata" src={url} onError={()=>setError('浏览器无法读取此音频，可下载文件收听。')} style={{width:'100%',display:'block'}}/></div>}
   </div>
 }
+export function SavedFilePreview({path,format,previewFile}:any) {
+  const t=useStudioLocale()
+  const [busy,setBusy]=useState(false),[error,setError]=useState('')
+  const request=useRef(0)
+  useEffect(()=>{request.current++;setBusy(false);setError('');return()=>{request.current++}},[path])
+  const open=async()=>{
+    const id=++request.current;setBusy(true);setError('')
+    try{await previewFile(path)}catch(error:any){if(request.current===id)setError(error.message||String(error))}
+    finally{if(request.current===id)setBusy(false)}
+  }
+  return <div data-studio-file-preview aria-busy={busy} style={{padding:20,border:'1px solid var(--dsw-alias-border-l2)',borderRadius:8}}>
+    <button type="button" style={btn} disabled={busy} onClick={()=>void open()}>{busy?t('openingPreview'):`${t('previewFile')} · ${format.toUpperCase()}`}</button>
+    <p style={{fontSize:12,color:'var(--dsw-alias-label-secondary)'}}>{t('previewFileHint')}</p>
+    {error&&<p role="alert">{error}</p>}
+  </div>
+}
+
 function OfficeFilePreview({artifact,exportFile,expanded,expand}:any) {
   const format=officeFormatFor(artifact.kind),label=format?.toUpperCase(),savedFile=artifact.exports?.find((file:any)=>file.format===format)?.path
   const [preview,setPreview]=useState<OfficePreview|null>(null),[error,setError]=useState(''),[attempt,setAttempt]=useState(0)
@@ -65,14 +83,18 @@ function OfficeFilePreview({artifact,exportFile,expanded,expand}:any) {
   return <div data-studio-office-preview>
     {error?<div role="alert">{error}{savedFile&&<p>可使用上方下载按钮读取原文件。</p>}<p><button style={btn} onClick={()=>setAttempt(value=>value+1)}>重试预览</button></p></div>:preview?<div ref={container} style={{height:'65vh',minHeight:300}}/>:<p role="status">正在读取 {label} 文件预览…</p>}
     <p style={{fontSize:11,color:'var(--dsw-alias-label-secondary, #80766b)'}}>预览读取已生成的 {label} 文件；复杂排版请在 Office 或 WPS 中查看。</p>
-    {artifact.kind==='slides'&&<details style={secondary} data-studio-slide-notes><summary style={summaryStyle}>讲稿与文字大纲 · {artifact.content?.slides?.length} 页</summary>{artifact.content?.slides?.map((slide:any,index:number)=><article key={slide.id||index} style={{padding:'12px 0'}}><h3>第 {index+1} 页{(slide.title||slide.heading||slide.quote)&&` · ${slide.title||slide.heading||slide.quote}`}</h3><ul>{slideOutline(slide).map((text:string,index:number)=><li key={index}>{text}</li>)}</ul>{(slide.notes||slide.speaker_notes)&&<p style={{whiteSpace:'pre-wrap'}}>{slide.notes||slide.speaker_notes}</p>}</article>)}</details>}
+
   </div>
 }
-export function StudioArtifact({artifact,back,close,manage,exportFile,askAI,showEvidence,expanded,expand,memory,remember,children}:any) {
-  if(!artifact)return <div style={{padding:20}}>正在读取成果… <button style={btn} onClick={back}>返回</button></div>
-  return <ArtifactView key={artifact.id} {...{artifact,back,close,manage,exportFile,askAI,showEvidence,expanded,expand,memory,remember,children}}/>
+function SlideNotes({artifact}:any) {
+  return <>{artifact.kind==='slides'&&<details style={secondary} data-studio-slide-notes><summary style={summaryStyle}>讲稿与文字大纲 · {artifact.content?.slides?.length} 页</summary>{artifact.content?.slides?.map((slide:any,index:number)=><article key={slide.id||index} style={{padding:'12px 0'}}><h3>第 {index+1} 页{(slide.title||slide.heading||slide.quote)&&` · ${slide.title||slide.heading||slide.quote}`}</h3><ul>{slideOutline(slide).map((text:string,index:number)=><li key={index}>{text}</li>)}</ul>{(slide.notes||slide.speaker_notes)&&<p style={{whiteSpace:'pre-wrap'}}>{slide.notes||slide.speaker_notes}</p>}</article>)}</details>}</>
 }
-function ArtifactView({artifact,back,close,manage,exportFile,askAI,showEvidence,expanded,expand,memory,remember,children}:any) {
+
+export function StudioArtifact({artifact,back,close,manage,exportFile,previewFile,askAI,showEvidence,expanded,expand,memory,remember,children}:any) {
+  if(!artifact)return <div style={{padding:20}}>正在读取成果… <button style={btn} onClick={back}>返回</button></div>
+  return <ArtifactView key={artifact.id} {...{artifact,back,close,manage,exportFile,previewFile,askAI,showEvidence,expanded,expand,memory,remember,children}}/>
+}
+function ArtifactView({artifact,back,close,manage,exportFile,previewFile,askAI,showEvidence,expanded,expand,memory,remember,children}:any) {
   const [error,setError]=useState(''),[busy,setBusy]=useState(false),[rename,setRename]=useState(false),[title,setTitle]=useState(''),[remove,setRemove]=useState(false),[actions,setActions]=useState(false)
   const [download,setDownload]=useState<{url:string;name:string;format:string;identity:string}|null>(null)
   const identity=JSON.stringify([artifact.id,artifact.version??0,(artifact.exports??[]).map((file:any)=>[file.format,file.path])])
@@ -124,7 +146,8 @@ function ArtifactView({artifact,back,close,manage,exportFile,askAI,showEvidence,
     {artifact.draft?.text&&<details data-studio-draft style={{padding:14,borderBottom:'1px solid var(--dsw-alias-border-l2, #ddd)'}}><summary style={summaryStyle}>{artifact.exportState?.validatedAt?'生成原文 · 正文已校验':retryExport?'生成原文 · 导出未完成':'未完成草稿 · 尚未校验'}</summary><p style={{fontSize:12}}>原始文本已保留，可下载查看。{artifact.draft.text.length>10000?'下方预览前 10000 字符，下载包含全部草稿。':''}</p><button style={btn} disabled={busy} onClick={()=>run(()=>file('draft'))}>下载完整草稿</button><pre style={{maxHeight:240,overflow:'auto',whiteSpace:'pre-wrap',fontSize:12}}>{artifact.draft.text.slice(0,10000)}</pre></details>}
     {['quiz','flashcards'].includes(artifact.kind)?<div style={{flex:1,minHeight:0}}>{artifact.status==='completed'?children:null}</div>:<div style={{overflow:'auto',padding:18,flex:1,fontSize:13,lineHeight:1.7}}>
       {isMedia&&artifact.exports?.some((f:any)=>f.format===primary)&&<MediaPreview id={`${artifact.id}:${artifact.version??0}:${artifact.exports.find((f:any)=>f.format===primary).path??''}`} format={primary} exportFile={exportFile}/>}
-      {isMedia&&content?<details style={secondary} data-studio-script><summary style={summaryStyle}>{artifact.kind==='video'?'分镜与旁白':'逐字稿'} · {itemsOf(content).length} {artifact.kind==='video'?'个场景':'段'}</summary>{articles}</details>:officeFormatFor(artifact.kind)&&artifact.exports?.some((file:any)=>file.format===officeFormatFor(artifact.kind))?<OfficeFilePreview {...{artifact,exportFile,expanded,expand}}/>:artifact.kind==='mindmap'?content&&<MindMap {...{artifact,askAI,showEvidence,expanded,expand,memory,remember}}/>:artifact.kind==='table'?<div style={{overflowX:'auto'}}><table style={{borderCollapse:'collapse',width:'100%'}}><thead><tr>{content?.columns.map((c:string,i:number)=><th key={i} style={{padding:10,borderBottom:'2px solid var(--dsw-alias-border-l2, #ccc)',textAlign:'left',background:'var(--dsw-alias-bg-layer-2, #edf3ef)'}}>{c}</th>)}</tr></thead><tbody>{content?.rows.map((row:any)=><tr key={row.id}>{row.cells.map((cell:string,i:number)=><td key={i} style={{padding:10,borderBottom:'1px solid var(--dsw-alias-border-l2, #e8e2da)',minWidth:90}}>{cell}</td>)}</tr>)}</tbody></table></div>:articles}
+      {isMedia&&content?<details style={secondary} data-studio-script><summary style={summaryStyle}>{artifact.kind==='video'?'分镜与旁白':'逐字稿'} · {itemsOf(content).length} {artifact.kind==='video'?'个场景':'段'}</summary>{articles}</details>:officeFormatFor(artifact.kind)&&artifact.exports?.some((file:any)=>file.format===officeFormatFor(artifact.kind))?previewFile?<SavedFilePreview path={artifact.exports.find((file:any)=>file.format===officeFormatFor(artifact.kind)).path} format={officeFormatFor(artifact.kind)} previewFile={previewFile}/>:<OfficeFilePreview {...{artifact,exportFile,expanded,expand}}/>:artifact.kind==='mindmap'?content&&<MindMap {...{artifact,askAI,showEvidence,expanded,expand,memory,remember}}/>:artifact.kind==='table'?<div style={{overflowX:'auto'}}><table style={{borderCollapse:'collapse',width:'100%'}}><thead><tr>{content?.columns.map((c:string,i:number)=><th key={i} style={{padding:10,borderBottom:'2px solid var(--dsw-alias-border-l2, #ccc)',textAlign:'left',background:'var(--dsw-alias-bg-layer-2, #edf3ef)'}}>{c}</th>)}</tr></thead><tbody>{content?.rows.map((row:any)=><tr key={row.id}>{row.cells.map((cell:string,i:number)=><td key={i} style={{padding:10,borderBottom:'1px solid var(--dsw-alias-border-l2, #e8e2da)',minWidth:90}}>{cell}</td>)}</tr>)}</tbody></table></div>:articles}
+      {officeFormatFor(artifact.kind)&&artifact.exports?.some((file:any)=>file.format===officeFormatFor(artifact.kind))&&<SlideNotes artifact={artifact}/>}
       {content&&artifact.citations?.length>0&&<details style={secondary} data-studio-sources><summary style={summaryStyle}>参考来源 · {new Set(artifact.citations?.map((c:any)=>c.path)).size} 份资料</summary><p style={{fontSize:11,color:'var(--dsw-alias-label-secondary, #80766b)'}}>{artifact.sourceScope}</p>{artifact.citations?.map((c:any,index:number)=><div key={c.evidenceId} style={{padding:'10px 0',borderBottom:'1px solid var(--dsw-alias-border-l2, #eee)',overflowWrap:'anywhere'}}><button style={{...btn,textAlign:'left',border:0,padding:0}} onClick={()=>showEvidence(c)}>[{index+1}] {c.path} · {c.locator==='page'?`第 ${c.pageStart} 页`:`第 ${c.lineStart} 行`}{c.fresh===false?' · 原文已变化':''}</button><p style={{fontSize:11,color:'var(--dsw-alias-label-secondary, #80766b)',margin:'5px 0'}}>{itemsOf(content).filter((item:any)=>item.evidenceIds?.includes(c.evidenceId)).map((item:any)=>item.title||item.heading||item.label||(artifact.kind==='table'?`第 ${content.rows.indexOf(item)+1} 行`:artifact.kind==='audio'?`第 ${content.segments.indexOf(item)+1} 段`:item.id)).join('、')}</p></div>)}</details>}
     </div>}
   </section>

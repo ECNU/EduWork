@@ -10,6 +10,7 @@ import {installTranscriptionTools} from './transcription-tools.js'
 import {ImageService} from './images.js'
 import {installImageTools} from './image-tools.js'
 import {inspectMediaRuntime} from './runtime.js'
+import {withOfficialOfficeSkill} from './official-office.js'
 
 export const name='dsh-artifact-services'
 export class ArtifactServices extends Service {
@@ -34,6 +35,7 @@ export class ArtifactServices extends Service {
   }
   registerSpeechProvider(provider) {return this.media.registerSpeech(provider)}
   mediaReadiness() {return inspectMediaRuntime()}
+  officeSkill(skill) {return withOfficialOfficeSkill(skill)}
   registerImageProvider(provider) {return this.images.register(provider)}
   refreshImageProviders() {this.ctx.emit('artifact-services/images-changed')}
   registerTranscriptionProvider(provider) {return this.transcription.register(provider)}

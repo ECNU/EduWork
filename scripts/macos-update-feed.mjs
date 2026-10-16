@@ -1,9 +1,10 @@
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
-import { join, resolve } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { desktopVersion } from './desktop-build-plan.mjs'
+import { deltaName } from './macos-update-delta.mjs'
 
 // Sparkle ignores hyphenated suffixes. Encode the supported prerelease grammar
 // without a hyphen so every development build sorts before its stable release.
@@ -21,11 +22,17 @@ export function validateMacUpdateConfig(raw) {
   return raw
 }
 const xml = value => String(value).replace(/[<>&"']/g, c => ({'<':'&lt;','>':'&gt;','&':'&amp;','"':'&quot;',"'":'&apos;'}[c]))
-export function appcast({version,url,bytes,signature}) {
+function enclosure({url,bytes,signature},attributes='') {
   const target = new URL(url)
   if (target.protocol !== 'https:' || target.username || target.password || target.hash || target.search) throw Error('Archive URL must be fixed HTTPS')
   if (!Number.isSafeInteger(bytes) || bytes <= 0 || Buffer.from(signature,'base64').length !== 64) throw Error('Invalid signed archive')
-  return `<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>EduWork updates</title><item><title>${xml(version)}</title><sparkle:version>${xml(bundleVersion(version))}</sparkle:version><sparkle:shortVersionString>${xml(version)}</sparkle:shortVersionString><sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion><enclosure url="${xml(url)}" length="${bytes}" type="application/octet-stream" sparkle:edSignature="${xml(signature)}"/></item></channel></rss>\n`
+  return `<enclosure url="${xml(url)}" length="${bytes}" type="application/octet-stream"${attributes} sparkle:edSignature="${xml(signature)}"/>`
+}
+// Sparkle selects the delta whose source matches the installed bundle version
+// and downloads the full archive when none applies.
+export function appcast({version,url,bytes,signature,deltas=[]}) {
+  const patches = deltas.map(delta => enclosure(delta,` sparkle:deltaFrom="${xml(bundleVersion(delta.from))}"`)).join('')
+  return `<?xml version="1.0" encoding="utf-8"?>\n<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle"><channel><title>EduWork updates</title><item><title>${xml(version)}</title><sparkle:version>${xml(bundleVersion(version))}</sparkle:version><sparkle:shortVersionString>${xml(version)}</sparkle:shortVersionString><sparkle:minimumSystemVersion>15.0</sparkle:minimumSystemVersion>${enclosure({url,bytes,signature})}${patches && `<sparkle:deltas>${patches}</sparkle:deltas>`}</item></channel></rss>\n`
 }
 async function main() {
   const [mode,...args] = process.argv.slice(2)
@@ -51,7 +58,14 @@ async function main() {
     if (!(receipt.sparkleEnabled ?? receipt.softwareAutoUpdate) || receipt.bundleVersion !== bundleVersion(receipt.version) || receipt.asset.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw Error('Archive does not match the verified Sparkle receipt')
     const key = createPrivateKey(await readFile(keyFile))
     if (key.asymmetricKeyType !== 'ed25519' || createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('base64') !== config.publicEDKey) throw Error('Signing key differs from the bundled trust anchor')
-    await writeFile(output,appcast({version:receipt.version,url,bytes:bytes.length,signature:sign(null,bytes,key).toString('base64')}),{flag:'wx'})
+    // Delta updates listed in the receipt sit beside the archive, locally and at the download URL.
+    const deltas = []
+    for (const {from,sha256} of receipt.deltas ?? []) {
+      const name = deltaName(receipt.edition,receipt.version,from), patch = await readFile(join(dirname(archive),name))
+      if (createHash('sha256').update(patch).digest('hex') !== sha256) throw Error('Delta update does not match the verified Sparkle receipt')
+      deltas.push({from,url:new URL(name,url).href,bytes:patch.length,signature:sign(null,patch,key).toString('base64')})
+    }
+    await writeFile(output,appcast({version:receipt.version,url,bytes:bytes.length,signature:sign(null,bytes,key).toString('base64'),deltas}),{flag:'wx'})
     return
   }
   throw Error('Expected prepare, version or sign')

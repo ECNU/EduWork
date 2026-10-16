@@ -11,8 +11,11 @@ const desktop = resolve(process.argv[2])
 const mac = process.platform === 'darwin'
 const resources = join(desktop, mac ? 'Contents/Resources' : 'resources')
 const product = join(resources, 'product')
-const { environment, pluginConfig } = await prepareNativeResources({ product })
-assert.ok(environment.DSH_MEDIA_BROWSER && environment.DSH_OFFICE_PYTHON, 'Offline native resources are required')
+const native = await prepareNativeResources({ product })
+const { pluginConfig } = native
+assert.ok(native.environment.DSH_OFFICE_PYTHON, 'Offline native resources are required')
+// The desktop executable itself serves as Chromium (automation-browser.mjs).
+const environment = { ...native.environment, DSH_MEDIA_BROWSER: join(desktop, mac ? 'Contents/MacOS/Electron' : 'EduWork-Electron.exe') }
 const run = async (executable, args) => promisify(execFile)(executable, args, { windowsHide: true, timeout: 30_000, encoding: 'utf8' })
 const node = join(resources, mac ? 'runtime/node' : 'runtime/node.exe')
 const nodeVersion = (await run(node, ['--version'])).stdout.trim()
@@ -27,7 +30,7 @@ Object.assign(process.env, environment)
 const modules = join(product, 'd/node_modules')
 const load = path => import(pathToFileURL(join(modules, path)))
 const { browserExecutable } = await load('@chatecnu-work/dsh-tool-browser/lib/core.js')
-assert.equal(await realpath(browserExecutable()), await realpath(environment.DSH_MEDIA_BROWSER), 'Search must select the bundled browser without system browsers')
+assert.equal(await realpath(browserExecutable()), await realpath(environment.DSH_MEDIA_BROWSER), 'Search must select the desktop executable without system browsers')
 const { chromium } = await load('playwright-core/index.mjs')
 const browser = await chromium.launch({ executablePath: browserExecutable(), headless: true })
 let browserVersion
@@ -37,6 +40,7 @@ try {
   await page.setContent('<title>EduWork runtime</title><main>Bundled Chromium ready</main>')
   assert.equal(await page.title(), 'EduWork runtime')
   assert.equal(await page.locator('main').innerText(), 'Bundled Chromium ready')
+  assert.equal((await page.pdf()).subarray(0, 5).toString(), '%PDF-')
 } finally { await browser.close() }
 
 const python = JSON.parse((await run(environment.DSH_OFFICE_PYTHON, ['-I', '-X', 'utf8', '-c', 'import json,sys,docx,pptx,openpyxl,xlsxwriter,pypdf,reportlab,PIL,lxml.etree; print(json.dumps({"version":sys.version.split()[0],"imports":["docx","pptx","openpyxl","xlsxwriter","pypdf","reportlab","PIL","lxml.etree"]}))'])).stdout)

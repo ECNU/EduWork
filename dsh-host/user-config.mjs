@@ -61,10 +61,15 @@ export function parseUserConfig(path, body, { overlay } = {}) {
     allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media', 'contentUpdates', 'plugins'], '配置')
     if (value.schemaVersion !== 1) throw new Error('schemaVersion 必须是 1')
     allowed(value.product ?? {}, ['name', 'logoFile'], 'product')
-    allowed(value.desktop ?? {}, ['closeAction', 'notifications'], 'desktop')
+    allowed(value.desktop ?? {}, ['closeAction', 'notifications', 'pet'], 'desktop')
     allowed(value.desktop?.notifications ?? {}, ['enabled', 'attention', 'completed', 'failed', 'studio', 'sound', 'preview'], 'desktop.notifications')
     const notifications = { enabled: true, attention: true, completed: true, failed: true, studio: true, sound: false, preview: false, ...value.desktop?.notifications }
     if (Object.values(notifications).some(item => typeof item !== 'boolean')) throw Error('desktop.notifications 中各项必须为布尔值')
+    allowed(value.desktop?.pet ?? {}, ['enabled', 'skin', 'size', 'bubbles', 'sleep'], 'desktop.pet')
+    const pet = { enabled: false, skin: 'eduwork-page', size: 100, bubbles: true, sleep: true, ...value.desktop?.pet }
+    if ([pet.enabled, pet.bubbles, pet.sleep].some(item => typeof item !== 'boolean')) throw new Error('desktop.pet 的 enabled、bubbles、sleep 必须为布尔值')
+    if (typeof pet.skin !== 'string' || !/^[a-z0-9][a-z0-9-]{0,63}$/u.test(pet.skin)) throw new Error('desktop.pet.skin 必须是形象 ID，例如 eduwork-page')
+    if (!Number.isSafeInteger(pet.size) || pet.size < 50 || pet.size > 200 || pet.size % 10) throw new Error('desktop.pet.size 必须是 50–200 之间、10 的倍数')
     const closeAction = value.desktop?.closeAction ?? 'tray'
     if (!['tray', 'exit'].includes(closeAction)) throw new Error('desktop.closeAction 必须为 tray 或 exit')
     const product = {}
@@ -116,7 +121,7 @@ export function parseUserConfig(path, body, { overlay } = {}) {
     }
     const features = { ...value.features }
     if (features.maxConcurrentRequests === undefined && features.maxParallelSubagents !== undefined) features.maxConcurrentRequests = features.maxParallelSubagents + 1
-    return { source, product, pluginConfig, organizations: value.organizations ?? [], closeAction, notifications, updates, features, contentUpdates: contentUpdateSource(value.contentUpdates),
+    return { source, product, pluginConfig, organizations: value.organizations ?? [], closeAction, notifications, pet, updates, features, contentUpdates: contentUpdateSource(value.contentUpdates),
       ...(value.media !== undefined ? { media: normalizeMediaConfig(value.media) } : {}) }
   } catch (error) {
     throw new Error(`请检查配置文件 ${path}\n${error.message}`, { cause: error })

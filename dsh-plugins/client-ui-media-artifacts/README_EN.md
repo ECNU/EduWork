@@ -2,7 +2,7 @@
 
 [简体中文](README.md)
 
-The 0.1.7 candidate builds `src/client/native.js`. Upstream components own attachment intake and deliverable cards; this entry retains only the extended preview sidebar shared with Studio. The legacy card and attachment adapters documented below remain in the default release Runtime.
+DSH 0.2 desktop builds use `src/client/native.js`. Official components own attachment intake, deliverable cards and general file preview; this entry adds audio/video playback and preview layout stabilization. The legacy card and attachment adapters below remain for older hosts.
 
 This replaceable DSH client plugin is a narrow compatibility derivative of
 `@deepseek-ai/dsh-client-ui-deliverables@0.1.2-rc.1`. It replaces that one
@@ -33,8 +33,9 @@ Supported raster images are handed directly to Conversation's official
 remains available from the same add menu. No new session message block type is
 introduced.
 
-The native preview boundary only reads or reveals regular files within the
-active session workspace. Unsupported formats fall back to the DSH host opener.
+The media extension only reads or reveals regular files within the owning
+session workspace. Official document previews use the official file service's
+read permissions. Unsupported formats fall back to the DSH host opener.
 First-party `write`, `edit` and mutating `str_replace_editor` calls keep the
 official DSH argument-based derivation. Product tools may additionally publish
 successful output paths through DSH `presentCall` locations; merely mentioning
@@ -44,12 +45,16 @@ and preview behavior grounded in tool/runtime facts.
 The precise upstream commit, approved difference surface and retirement
 condition are declared in `package.json` and `UPSTREAM.md`.
 
-Development builds with Shared Artifact Services' `office-preview-client`
-mount the same browser viewer used by Knowledge Studio for DOCX, XLSX and PPTX files. The
-viewer reads the saved file's preview descriptor, preserves its page geometry,
-and provides shared paging, whole-page zoom and expanded reading. Unsupported
-Office objects are reported by the shared converter; this is not a second
-layout engine or a promise of exact PowerPoint rendering.
+DSH 0.2 uses the official document viewer: Word and PowerPoint are converted to
+PDF, spreadsheets use the official sheet view, and PDF, images, HTML, Markdown
+and text remain official. Studio opens saved Office artifacts in the same file
+tabs; generation, downloads and interactive artifacts remain in Studio. Older
+hosts retain Artifact Services' Office preview adapter. PDF/HTML exports are
+unchanged.
+
+Official preview scrollports reserve space for classic scrollbars to prevent
+repeated auto-fit rendering at boundary window sizes. Fit-width and manual zoom
+remain available.
 
 `build-client.ps1` accepts `-DshLockPath`, `-ArtifactServices` and `-Output`.
 Source assembly profiles build into their own derived package directory.

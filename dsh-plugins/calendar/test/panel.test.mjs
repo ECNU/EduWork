@@ -28,8 +28,8 @@ const runtimeParent = pathToFileURL(join(runtime ?? process.cwd(), 'package.json
 
 // The panel is loaded from a bundle because it is TypeScript written against the
 // shell's runtime; `test/support/bundle-panel.mjs` produces it with the same
-// esbuild pass the release build uses. The bundling is done by the package's own
-// test script, so a stale bundle cannot be mistaken for a passing test.
+// esbuild fixture builder. Product builds use locked tsdown instead. The package
+// test script rebuilds the fixture, so a stale bundle cannot pass unnoticed.
 const panelUrl = new URL('./.render/calendar-panel.cjs', import.meta.url)
 
 /**

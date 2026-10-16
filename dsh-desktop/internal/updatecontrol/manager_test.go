@@ -242,3 +242,15 @@ func TestManagerSchedulesVerifiedUpdateAndReportsRelaunch(t *testing.T) {
 		t.Fatalf("relaunched status = %#v", status)
 	}
 }
+
+func TestSnapshotShowsDeltaVerificationAsADownloadStage(t *testing.T) {
+	manager := &Manager{state: "downloading", download: updater.DownloadStatus{State: "verifying", CheckedFiles: 1, TotalFiles: 2}}
+	if snapshot := manager.snapshotLocked(); snapshot.State != "downloading" || snapshot.DownloadStage != "verifying" || snapshot.CheckedFiles != 1 || snapshot.TotalFiles != 2 {
+		t.Fatalf("verification is not visible: %#v", snapshot)
+	}
+	// A rejected delta goes back to downloading the complete package.
+	manager.download = updater.DownloadStatus{State: "downloading", TotalBytes: 10}
+	if snapshot := manager.snapshotLocked(); snapshot.DownloadStage != "" || snapshot.TotalFiles != 0 {
+		t.Fatalf("fallback still shows verification: %#v", snapshot)
+	}
+}

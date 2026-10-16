@@ -2,6 +2,7 @@ package updater
 
 import (
 	"archive/zip"
+	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
@@ -193,6 +194,7 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 	if err := validatePendingPaths(stateDir, pending); err != nil {
 		return err
 	}
+	sweepCommittedTransactions(stateDir)
 	transactionDir := filepath.Join(stateDir, "updates", "transactions", sanitizePathPart(pending.Version))
 	extractDir := filepath.Join(transactionDir, "extracted")
 	backupDir := filepath.Join(transactionDir, "backup")
@@ -212,7 +214,13 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 	if err := os.MkdirAll(extractDir, 0o700); err != nil {
 		return err
 	}
-	packageRoot, manifest, err := extractAndVerifyReleaseWithProgress(pending.ZIPPath, extractDir, pending, progress)
+	stage := extractAndVerifyReleaseWithProgress
+	if pending.DeltaFrom != "" {
+		stage = func(zipPath, target string, pending PendingUpdate, progress ApplyProgressFunc) (string, releaseManifest, error) {
+			return stageDeltaRelease(zipPath, pending.InstallDir, target, pending, progress)
+		}
+	}
+	packageRoot, manifest, err := stage(pending.ZIPPath, extractDir, pending, progress)
 	if err != nil {
 		return err
 	}
@@ -313,14 +321,32 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 	_ = command.Process.Release()
 	_ = os.Remove(PendingFile(stateDir))
 	_ = os.Remove(pending.ZIPPath)
+	_ = os.Remove(rejectedDeltaFile(stateDir, pending.Version))
 	_ = os.Remove(filepath.Dir(pending.ZIPPath))
 	reportApply(progress, "cleanup", "正在完成更新并清理临时文件", 99)
 	// The health marker has already been observed, so the extracted package
 	// and rollback backup no longer serve a recovery purpose. Remove the
 	// current transaction only. Other backups may belong to an interrupted
 	// update and must not be swept away by an unrelated successful install.
-	_ = os.RemoveAll(transactionDir)
+	// After a delta, backup names of files the new version has already loaded
+	// share their data with the installation and cannot be deleted yet; mark
+	// the transaction so the next update removes it once nothing runs.
+	if os.RemoveAll(transactionDir) != nil {
+		_ = os.WriteFile(filepath.Join(transactionDir, committedMarker), nil, 0o600)
+	}
 	return nil
+}
+
+const committedMarker = "committed"
+
+func sweepCommittedTransactions(stateDir string) {
+	root := filepath.Join(stateDir, "updates", "transactions")
+	entries, _ := os.ReadDir(root)
+	for _, entry := range entries {
+		if _, err := os.Stat(filepath.Join(root, entry.Name(), committedMarker)); err == nil {
+			_ = os.RemoveAll(filepath.Join(root, entry.Name()))
+		}
+	}
 }
 
 func extractAndVerifyRelease(zipPath, target string, pending PendingUpdate) (string, releaseManifest, error) {
@@ -328,85 +354,214 @@ func extractAndVerifyRelease(zipPath, target string, pending PendingUpdate) (str
 }
 
 func extractAndVerifyReleaseWithProgress(zipPath, target string, pending PendingUpdate, progress ApplyProgressFunc) (string, releaseManifest, error) {
-	archive, err := zip.OpenReader(zipPath)
+	packageRoot, actualFiles, err := extractRelease(zipPath, target, progress, 12, 33)
 	if err != nil {
 		return "", releaseManifest{}, err
 	}
+	manifest, err := readReleaseManifest(packageRoot)
+	if err != nil {
+		return "", releaseManifest{}, err
+	}
+	return packageRoot, manifest, verifyRelease(packageRoot, manifest, actualFiles, pending, progress)
+}
+
+// A delta ZIP has the layout of a full release but carries only the next
+// RELEASE-MANIFEST.json, every file under user-managed roots such as config/,
+// files the product rewrites at startup and the files whose identity changed.
+// Every other declared file is
+// hard-linked from the current installation, or copied when the volume has no
+// hard links. The Electron runtime files are always copied because the sandbox
+// ACL step refuses linked paths. The staged tree then passes the same complete
+// verification as an extracted full package, so a locally modified program
+// file fails here, before the installation is touched.
+func stageDeltaRelease(zipPath, installDir, target string, pending PendingUpdate, progress ApplyProgressFunc) (string, releaseManifest, error) {
+	packageRoot, actualFiles, err := extractRelease(zipPath, target, progress, 12, 8)
+	if err != nil {
+		return "", releaseManifest{}, err
+	}
+	manifest, err := readReleaseManifest(packageRoot)
+	if err != nil {
+		return "", releaseManifest{}, err
+	}
+	reused, err := reusedFiles(manifest, actualFiles)
+	if err != nil {
+		return "", releaseManifest{}, err
+	}
+	lastPercent := -1
+	for index, item := range reused {
+		percent := 20 + 25*(index+1)/len(reused)
+		if percent != lastPercent {
+			reportApply(progress, "extract", fmt.Sprintf("正在复用未变化的组件（%d / %d）", index+1, len(reused)), percent)
+			lastPercent = percent
+		}
+		destination := filepath.Join(packageRoot, filepath.FromSlash(item.Path))
+		if err := reuseInstalledFile(filepath.Join(installDir, filepath.FromSlash(item.Path)), destination, !electronaccess.Governs(item.Path)); err != nil {
+			return "", releaseManifest{}, fmt.Errorf("reuse installed %s: %w", item.Path, err)
+		}
+		actualFiles[item.Path] = struct{}{}
+	}
+	return packageRoot, manifest, verifyRelease(packageRoot, manifest, actualFiles, pending, progress)
+}
+
+// reusedFiles lists the declared files a delta does not carry. They come from
+// the installation, so none may sit under a user-managed root.
+func reusedFiles(manifest releaseManifest, carried map[string]struct{}) ([]releaseFile, error) {
+	var reused []releaseFile
+	for _, item := range manifest.Files {
+		if _, ok := carried[item.Path]; ok {
+			continue
+		}
+		if !validReleasePath(item.Path) || userManagedRoot(strings.Split(item.Path, "/")[0]) {
+			return nil, fmt.Errorf("delta update cannot reuse %q from the installation", item.Path)
+		}
+		reused = append(reused, item)
+	}
+	return reused, nil
+}
+
+// preflightDelta checks, while the current version still runs, that every file
+// a delta reuses is intact in the installation. Staging repeats the check after
+// the application exits; this pass lets an installation that the delta cannot
+// serve download the complete package instead of showing a failed update.
+// checked reports progress as files are verified.
+func preflightDelta(ctx context.Context, zipPath, installDir string, checked func(done, total int)) error {
+	archive, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return err
+	}
 	defer archive.Close()
+	carried := map[string]struct{}{}
+	var manifestEntry *zip.File
+	for _, item := range archive.File {
+		parts := strings.SplitN(filepath.ToSlash(filepath.Clean(item.Name)), "/", 2)
+		if len(parts) != 2 {
+			continue
+		}
+		carried[parts[1]] = struct{}{}
+		if parts[1] == "RELEASE-MANIFEST.json" {
+			manifestEntry = item
+		}
+	}
+	if manifestEntry == nil {
+		return errors.New("delta update has no release manifest")
+	}
+	reader, err := manifestEntry.Open()
+	if err != nil {
+		return err
+	}
+	data, err := io.ReadAll(io.LimitReader(reader, maxReleaseManifestBytes+1))
+	_ = reader.Close()
+	if err != nil {
+		return err
+	}
+	manifest, err := decodeReleaseManifest(data)
+	if err != nil {
+		return err
+	}
+	reused, err := reusedFiles(manifest, carried)
+	if err != nil {
+		return err
+	}
+	checked(0, len(reused))
+	for index, item := range reused {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		path := filepath.Join(installDir, filepath.FromSlash(item.Path))
+		if info, err := os.Stat(path); err != nil || !info.Mode().IsRegular() || info.Size() != item.Bytes {
+			return fmt.Errorf("installed %s differs from the release", item.Path)
+		}
+		if err := verifyFileSHA256(path, item.SHA256); err != nil {
+			return fmt.Errorf("installed %s differs from the release: %w", item.Path, err)
+		}
+		checked(index+1, len(reused))
+	}
+	return nil
+}
+
+// extractRelease writes a release-shaped ZIP below target and returns its
+// single top-level directory with the relative paths of the files it held.
+func extractRelease(zipPath, target string, progress ApplyProgressFunc, basePercent, spanPercent int) (string, map[string]struct{}, error) {
+	archive, err := zip.OpenReader(zipPath)
+	if err != nil {
+		return "", nil, err
+	}
+	defer archive.Close()
+	if len(archive.File) == 0 {
+		return "", nil, errors.New("release ZIP is empty")
+	}
 	var rootName string
 	actualFiles := map[string]struct{}{}
 	lastExtractPercent := -1
 	for index, item := range archive.File {
-		percent := 12
-		if len(archive.File) > 0 {
-			percent += 33 * (index + 1) / len(archive.File)
-		}
+		percent := basePercent + spanPercent*(index+1)/len(archive.File)
 		if percent != lastExtractPercent {
 			reportApply(progress, "extract", fmt.Sprintf("正在解压更新组件（%d / %d）", index+1, len(archive.File)), percent)
 			lastExtractPercent = percent
 		}
 		clean := filepath.ToSlash(filepath.Clean(item.Name))
 		if clean == "." || strings.HasPrefix(clean, "../") || strings.HasPrefix(clean, "/") || strings.Contains(clean, ":") {
-			return "", releaseManifest{}, fmt.Errorf("unsafe ZIP entry %q", item.Name)
+			return "", nil, fmt.Errorf("unsafe ZIP entry %q", item.Name)
 		}
 		parts := strings.Split(clean, "/")
 		if rootName == "" {
 			rootName = parts[0]
 		} else if parts[0] != rootName {
-			return "", releaseManifest{}, errors.New("release ZIP must contain exactly one top-level directory")
+			return "", nil, errors.New("release ZIP must contain exactly one top-level directory")
 		}
 		destination := filepath.Join(target, filepath.FromSlash(clean))
 		if !pathInside(target, destination) {
-			return "", releaseManifest{}, errors.New("release ZIP entry escapes extraction directory")
+			return "", nil, errors.New("release ZIP entry escapes extraction directory")
 		}
 		if item.FileInfo().IsDir() {
 			if err := os.MkdirAll(destination, 0o755); err != nil {
-				return "", releaseManifest{}, err
+				return "", nil, err
 			}
 			continue
 		}
 		if !item.Mode().IsRegular() {
-			return "", releaseManifest{}, fmt.Errorf("release ZIP contains unsupported entry %q", item.Name)
+			return "", nil, fmt.Errorf("release ZIP contains unsupported entry %q", item.Name)
 		}
 		if err := os.MkdirAll(filepath.Dir(destination), 0o755); err != nil {
-			return "", releaseManifest{}, err
+			return "", nil, err
 		}
 		reader, err := item.Open()
 		if err != nil {
-			return "", releaseManifest{}, err
+			return "", nil, err
 		}
 		file, err := os.OpenFile(destination, os.O_CREATE|os.O_EXCL|os.O_WRONLY, item.Mode().Perm())
 		if err != nil {
 			_ = reader.Close()
-			return "", releaseManifest{}, err
+			return "", nil, err
 		}
 		_, copyErr := io.Copy(file, reader)
 		closeErr := errors.Join(file.Close(), reader.Close())
 		if copyErr != nil || closeErr != nil {
-			return "", releaseManifest{}, errors.Join(copyErr, closeErr)
+			return "", nil, errors.Join(copyErr, closeErr)
 		}
 		if len(parts) > 1 {
 			actualFiles[strings.Join(parts[1:], "/")] = struct{}{}
 		}
 	}
-	if rootName == "" {
-		return "", releaseManifest{}, errors.New("release ZIP is empty")
-	}
-	packageRoot := filepath.Join(target, rootName)
-	manifestPath := filepath.Join(packageRoot, "RELEASE-MANIFEST.json")
-	data, err := os.ReadFile(manifestPath)
+	return filepath.Join(target, rootName), actualFiles, nil
+}
+
+func readReleaseManifest(packageRoot string) (releaseManifest, error) {
+	data, err := os.ReadFile(filepath.Join(packageRoot, "RELEASE-MANIFEST.json"))
 	if err != nil {
-		return "", releaseManifest{}, err
+		return releaseManifest{}, err
 	}
-	manifest, err := decodeReleaseManifest(data)
-	if err != nil {
-		return "", releaseManifest{}, err
-	}
+	return decodeReleaseManifest(data)
+}
+
+// verifyRelease checks the release identity, every declared file's size and
+// SHA-256, and that the tree holds no undeclared file.
+func verifyRelease(packageRoot string, manifest releaseManifest, actualFiles map[string]struct{}, pending PendingUpdate, progress ApplyProgressFunc) error {
 	if manifest.SchemaVersion != 1 || manifest.LauncherVersion != pending.Version || !strings.EqualFold(manifest.Flavor, pending.Flavor) {
-		return "", releaseManifest{}, errors.New("release manifest does not match the pending update")
+		return errors.New("release manifest does not match the pending update")
 	}
 	if err := validateReleaseLaunch(pending, manifest); err != nil {
-		return "", releaseManifest{}, err
+		return err
 	}
 	expected := map[string]struct{}{"RELEASE-MANIFEST.json": {}}
 	lastVerifyPercent := -1
@@ -419,35 +574,65 @@ func extractAndVerifyReleaseWithProgress(zipPath, target string, pending Pending
 			reportApply(progress, "verify-files", fmt.Sprintf("正在校验更新组件（%d / %d）", index+1, len(manifest.Files)), percent)
 			lastVerifyPercent = percent
 		}
-		clean := filepath.ToSlash(filepath.Clean(item.Path))
-		if clean != item.Path || clean == "." || strings.HasPrefix(clean, "../") || strings.HasPrefix(clean, "/") || strings.Contains(clean, ":") {
-			return "", releaseManifest{}, fmt.Errorf("unsafe release payload path %q", item.Path)
+		if !validReleasePath(item.Path) {
+			return fmt.Errorf("unsafe release payload path %q", item.Path)
 		}
 		if item.Bytes < 0 || !sha256Pattern.MatchString(item.SHA256) {
-			return "", releaseManifest{}, fmt.Errorf("invalid release payload identity for %s", item.Path)
+			return fmt.Errorf("invalid release payload identity for %s", item.Path)
 		}
-		if _, duplicate := expected[clean]; duplicate {
-			return "", releaseManifest{}, fmt.Errorf("duplicate release payload path %s", clean)
+		if _, duplicate := expected[item.Path]; duplicate {
+			return fmt.Errorf("duplicate release payload path %s", item.Path)
 		}
-		expected[clean] = struct{}{}
-		path := filepath.Join(packageRoot, filepath.FromSlash(clean))
+		expected[item.Path] = struct{}{}
+		path := filepath.Join(packageRoot, filepath.FromSlash(item.Path))
 		info, err := os.Stat(path)
 		if err != nil || !info.Mode().IsRegular() || info.Size() != item.Bytes {
-			return "", releaseManifest{}, fmt.Errorf("release payload size mismatch for %s", clean)
+			return fmt.Errorf("release payload size mismatch for %s", item.Path)
 		}
 		if err := verifyFileSHA256(path, item.SHA256); err != nil {
-			return "", releaseManifest{}, fmt.Errorf("release payload hash mismatch for %s: %w", clean, err)
+			return fmt.Errorf("release payload hash mismatch for %s: %w", item.Path, err)
 		}
 	}
 	if len(actualFiles) != len(expected) {
-		return "", releaseManifest{}, errors.New("release ZIP contains undeclared or missing files")
+		return errors.New("release ZIP contains undeclared or missing files")
 	}
 	for name := range actualFiles {
 		if _, ok := expected[name]; !ok {
-			return "", releaseManifest{}, fmt.Errorf("release ZIP contains undeclared file %s", name)
+			return fmt.Errorf("release ZIP contains undeclared file %s", name)
 		}
 	}
-	return packageRoot, manifest, nil
+	return nil
+}
+
+func validReleasePath(path string) bool {
+	clean := filepath.ToSlash(filepath.Clean(path))
+	return clean == path && clean != "." && !strings.HasPrefix(clean, "../") && !strings.HasPrefix(clean, "/") && !strings.Contains(clean, ":")
+}
+
+// userManagedRoot names the top-level paths a release never replaces.
+func userManagedRoot(name string) bool {
+	switch strings.ToLower(name) {
+	case "data", "config", ".env", ".env.local":
+		return true
+	}
+	return false
+}
+
+func reuseInstalledFile(source, target string, link bool) error {
+	info, err := os.Lstat(source)
+	if err != nil {
+		return err
+	}
+	if !info.Mode().IsRegular() {
+		return errors.New("installed path is not a regular file")
+	}
+	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
+		return err
+	}
+	if link && os.Link(source, target) == nil {
+		return nil
+	}
+	return copyFileReplace(source, target, info.Mode().Perm())
 }
 
 func decodeReleaseManifest(data []byte) (releaseManifest, error) {
@@ -468,9 +653,7 @@ func collectManagedRoots(installDir string, next releaseManifest) ([]string, err
 		if path == "" || path == "." || path == ".." || path != filepath.ToSlash(filepath.Clean(path)) || strings.HasPrefix(path, "../") || strings.HasPrefix(path, "/") || strings.Contains(path, ":") {
 			return fmt.Errorf("invalid managed release path %q", path)
 		}
-		name := strings.Split(path, "/")[0]
-		lower := strings.ToLower(name)
-		if lower != "data" && lower != "config" && lower != ".env" && lower != ".env.local" {
+		if name := strings.Split(path, "/")[0]; !userManagedRoot(name) {
 			roots[name] = struct{}{}
 		}
 		return nil
@@ -578,6 +761,9 @@ func validatePendingPaths(stateDir string, pending PendingUpdate) error {
 }
 
 func recordApplyFailure(stateDir string, pending PendingUpdate, applyErr error) error {
+	if pending.DeltaFrom != "" {
+		rejectDelta(stateDir, pending.Version, pending.ZIPPath, applyErr)
+	}
 	pending.State = "error"
 	pending.Error = applyErr.Error()
 	pending.InstallOnNextStart = false

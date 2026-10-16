@@ -9,6 +9,8 @@ on:
       - 'dsh-host/prepare-native.mjs'
       - 'dsh-host/prepare.mjs'
       - 'dsh-host/test/prepare.test.mjs'
+      - 'dsh-host/quit-inspection.mjs'
+      - 'dsh-host/test/quit-inspection.test.mjs'
       - 'dsh-host/distribution-policy.mjs'
       - 'third_party/dsh-literature/**'
       - 'dsh-host/test/native-020.test.mjs'
@@ -31,6 +33,11 @@ on:
       - 'scripts/test/distribution-config-patches.test.mjs'
       - 'scripts/patch-session-search-runtime.mjs'
       - 'scripts/test/session-search-runtime.test.mjs'
+      - 'scripts/patch-remotion-bundler-runtime.mjs'
+      - 'scripts/omit-runtime-packages.mjs'
+      - 'scripts/test/runtime-omissions.test.mjs'
+      - 'scripts/patch-remotion-renderer-runtime.mjs'
+      - 'scripts/test/remotion-renderer-runtime.test.mjs'
       - 'scripts/test/plugin-locale.test.mjs'
       - 'scripts/verify-media-template.mjs'
       - 'scripts/test/media-template.test.mjs'
@@ -113,8 +120,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/quit-confirmation.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
+          node --test core/dsh-electron/tests/electron-locales.test.mjs
+          if ($LASTEXITCODE) { throw 'Electron locale selection checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-pinned-dsh-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
@@ -122,10 +131,12 @@ jobs:
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/scripts/test/distribution-config-patches.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
+          node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
+          if ($LASTEXITCODE) { throw 'Windows workspace permission repair checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
-          node --test core/dsh-plugins/calendar/test/*.test.mjs
-          if ($LASTEXITCODE) { throw 'Calendar record and local storage checks failed' }
+          npm --prefix core/dsh-plugins/calendar test
+          if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs
@@ -134,6 +145,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Shared media template build and assembly checks failed' }
           node --test core/dsh-plugins/workbench-native/test/data-import.test.mjs core/dsh-plugins/workbench-native/test/import-catalog.test.mjs
           if ($LASTEXITCODE) { throw 'Historical directory import qualification failed' }
+          node --test core/dsh-plugins/desktop-pet/test/*.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs
+          if ($LASTEXITCODE) { throw 'Desktop pet plugin and placement checks failed' }
       - name: Qualify authenticated Host transport and update admission
         shell: pwsh
         run: |
@@ -177,6 +190,13 @@ jobs:
           $electron = if ($IsWindows) { "$env:RUNNER_TEMP/electron/runtime/electron.exe" } else { "$env:RUNNER_TEMP/electron/runtime/Electron.app/Contents/MacOS/Electron" }
           node core/dsh-electron/scripts/probe-native-desktop.mjs --shell "$env:RUNNER_TEMP/native-shell" --runtime "$env:RUNNER_TEMP/native-runtime" --electron $electron --output "$env:RUNNER_TEMP/native-desktop-evidence"
           if ($LASTEXITCODE) { throw 'Native Electron acceptance failed' }
+          $env:EDUWORK_TEST_EVIDENCE = "$env:RUNNER_TEMP/desktop-pet-evidence"
+          $pet = Start-Process -FilePath $electron -ArgumentList 'core/dsh-electron/tests/desktop-pet.electron.mjs' -NoNewWindow -Wait -PassThru
+          if ($pet.ExitCode) { throw 'Desktop pet Electron checks failed' }
+          $env:EDUWORK_TEST_ELECTRON = $electron
+          $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-electron/tests/automation-browser.test.mjs
+          if ($LASTEXITCODE) { throw 'Desktop executable as the automation browser failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |
@@ -189,10 +209,14 @@ jobs:
           $env:EDUWORK_TEST_HOST = "$env:RUNNER_TEMP/native-host"
           node --test core/scripts/test/distribution-config-patches.test.mjs
           if ($LASTEXITCODE) { throw 'Assembled edition configuration checks failed' }
+          node --test core/scripts/test/runtime-omissions.test.mjs
+          if ($LASTEXITCODE) { throw 'Assembled product package omission checks failed' }
           node core/scripts/probe-pinned-dsh-source-product.mjs --product "$env:RUNNER_TEMP/source-product" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/assembled-evidence"
           if ($LASTEXITCODE) { throw 'Assembled product qualification failed' }
           node core/scripts/probe-pinned-dsh-literature.mjs --product "$env:RUNNER_TEMP/source-product" --output "$env:RUNNER_TEMP/literature-evidence"
           if ($LASTEXITCODE) { throw 'Maintained literature integration failed' }
+          node --test core/scripts/test/remotion-renderer-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Loopback-only video render server checks failed' }
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -209,4 +233,5 @@ jobs:
             ${{ runner.temp }}/native-shell/source-receipt.json
             ${{ runner.temp }}/native-desktop-evidence/report.json
             ${{ runner.temp }}/native-desktop-evidence/electron.log
+            ${{ runner.temp }}/desktop-pet-evidence/desktop-pet.json
           if-no-files-found: ignore

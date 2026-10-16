@@ -41,15 +41,18 @@ export function productInventory(environment = process.env) {
   // Older macOS receipts omitted Python metadata but used this same layout.
   const python = native.python?.executable ?? (mac ? 'r/p/bin/python3' : native.python && `${native.python.baseRoot}/python.exe`)
   const office = native.environment?.DSH_OFFICE_PYTHON
-  const browser = native.environment?.DSH_MEDIA_BROWSER
+  // The Electron shell is the Chromium; earlier products carried their own.
+  const electron = shell === 'electron'
+  const browser = electron ? null : native.environment?.DSH_MEDIA_BROWSER
+  const browserReady = electron ? file(environment.DSH_MEDIA_BROWSER ?? '') : available(browser)
   const asr = native.pluginConfig?.['eduwork-artifact-services']?.transcription?.local
   const remotion = json(join(root, 'd/node_modules/remotion/package.json'))
   const ffmpeg = `d/node_modules/@remotion/compositor-${native.platform}${mac ? '' : '-msvc'}/ffmpeg${mac ? '' : '.exe'}`
   components.push(
     row('python', 'runtime', native.python?.version, available(python) ? 'ready' : 'missing', source, python, [], ['office-suite']),
     row('office-suite', 'capability', native.python?.version, available(office) ? 'ready' : 'missing', source, office, ['python'], ['documents', 'pdfs', 'presentations', 'spreadsheets'], { environmentLockSHA256: native.python?.environmentLockSHA256 }),
-    row('chromium', 'capability', native.browser?.version, available(browser) ? 'ready' : 'missing', source, browser, ['nodejs'], ['video-production']),
-    row('video-production', 'capability', remotion?.version, remotion && available(ffmpeg) && available(browser) ? 'ready' : 'missing', source, 'd/node_modules/remotion', ['nodejs', 'chromium'], ['video-creation'], { renderer: 'Remotion / FFmpeg' }),
+    row('chromium', 'capability', electron ? environment.EDUWORK_CHROMIUM_VERSION : native.browser?.version, browserReady ? 'ready' : 'missing', source, browser, [electron ? 'electron' : 'nodejs'], ['video-production']),
+    row('video-production', 'capability', remotion?.version, remotion && available(ffmpeg) && browserReady ? 'ready' : 'missing', source, 'd/node_modules/remotion', ['nodejs', 'chromium'], ['video-creation'], { renderer: 'Remotion / FFmpeg' }),
     row('local-asr', 'capability', native.asr?.model ?? 'whisper.cpp', asr && available(asr.executablePath) && available(asr.modelPath) ? 'ready' : 'missing', source, asr?.executablePath, [], ['audio-transcription']),
     row('system-tts', 'capability', null, 'available', 'system', null, [], ['audio-creation'], { engine: process.platform === 'win32' ? 'Windows SAPI' : 'System voices' }),
   )

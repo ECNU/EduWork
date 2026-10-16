@@ -1,0 +1,153 @@
+{
+  "schemaVersion": 1,
+  "id": "ecnu-huashi",
+  "name": {
+    "zh-CN": "小花狮",
+    "en": "Huashi"
+  },
+  "description": {
+    "zh-CN": "华东师范大学的吉祥物小花狮。",
+    "en": "The East China Normal University mascot."
+  },
+  "author": "EduWork contributors (drawing); character © East China Normal University",
+  "license": "LicenseRef-ECNU-Mascot",
+  "frame": {
+    "width": 192,
+    "height": 208
+  },
+  "anchors": {
+    "badge": [
+      150,
+      34
+    ]
+  },
+  "animations": {
+    "idle": {
+      "frames": [
+        "idle.svg",
+        "blink.svg"
+      ],
+      "fps": 7,
+      "playback": "blink"
+    },
+    "wag": {
+      "frames": [
+        "wag-1.svg",
+        "wag-2.svg"
+      ],
+      "fps": 5,
+      "playback": "pingpong",
+      "repeat": 3
+    },
+    "greet": {
+      "frames": [
+        "greet.svg",
+        "greet-2.svg"
+      ],
+      "fps": 4,
+      "repeat": 3
+    },
+    "think": {
+      "image": "think.svg"
+    },
+    "work": {
+      "frames": [
+        "work-1.svg",
+        "work-2.svg",
+        "work-3.svg"
+      ],
+      "fps": 2,
+      "frameMs": [
+        900,
+        500,
+        900
+      ]
+    },
+    "attention": {
+      "frames": [
+        "attention-1.svg",
+        "attention-2.svg"
+      ],
+      "fps": 1.5
+    },
+    "done": {
+      "frames": [
+        "happy-1.svg",
+        "happy-2.svg"
+      ],
+      "fps": 3,
+      "motion": "hop"
+    },
+    "failed": {
+      "frames": [
+        "failed-1.svg",
+        "failed-2.svg"
+      ],
+      "playback": "once",
+      "frameMs": [
+        1600,
+        1
+      ]
+    },
+    "sleep": {
+      "image": "sleep.svg"
+    },
+    "drag": {
+      "image": "drag.svg",
+      "motion": "dangle"
+    },
+    "react": {
+      "frames": [
+        "react-1.svg",
+        "react-2.svg",
+        "react-3.svg"
+      ],
+      "playback": "once",
+      "frameMs": [
+        140,
+        260,
+        700
+      ]
+    },
+    "peek": {
+      "image": "peek.svg"
+    }
+  },
+  "states": {
+    "idle": [
+      "idle",
+      "wag",
+      "greet"
+    ],
+    "working": [
+      "think",
+      "work"
+    ]
+  },
+  "lines": {
+    "done": {
+      "zh-CN": [
+        "做完啦，点我看看！"
+      ],
+      "en": [
+        "Done! Click me."
+      ]
+    },
+    "attention": {
+      "zh-CN": [
+        "需要你来看一下～"
+      ],
+      "en": [
+        "I need your input."
+      ]
+    },
+    "failed": {
+      "zh-CN": [
+        "遇到一点问题…"
+      ],
+      "en": [
+        "Something went wrong."
+      ]
+    }
+  }
+}

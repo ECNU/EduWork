@@ -13,18 +13,18 @@ export const inject = ['tools', 'fs', 'permissionPresets']
 
 const definitions = Object.freeze({
   document: Object.freeze({
-    name: 'office_document', actions: ['create', 'edit', 'inspect', 'validate'],
-    description: 'Create, edit, inspect, or validate a DOCX through the shared Office service.',
+    name: 'office_document', actions: ['create', 'edit', 'inspect', 'validate', 'convert'],
+    description: 'Create/edit DOCX, inspect DOCX or legacy DOC, or convert DOC/DOCX to a new DOCX/PDF with the bundled official LibreOffice Kit. Convert DOC to DOCX before editing; do not rename the extension.',
     spec: 'Create example: {"blocks":[{"type":"title","text":"Title"},{"type":"paragraph","text":"Body"}]}. Use blocks, not top-level title/paragraphs. Edit example: {"operations":[{"op":"replace_text","find":"Old","replace":"New"}]}. Rich formatting: artifact-documents skill.',
   }),
   spreadsheet: Object.freeze({
-    name: 'office_spreadsheet', actions: ['create', 'edit', 'inspect', 'validate'],
-    description: 'Create, edit, inspect, or validate an XLSX through the shared Office service.',
+    name: 'office_spreadsheet', actions: ['create', 'edit', 'inspect', 'validate', 'convert', 'recalculate'],
+    description: 'Create/edit XLSX, inspect XLSX or legacy XLS, convert XLS/XLSX to a new XLSX/PDF, or recalculate XLSX formulas into a new XLSX with the official LibreOffice Kit.',
     spec: 'Create example: {"sheets":[{"name":"Data","rows":[["Name","Value"],["Example",1]],"header":true}]}. Cells may be scalars or {"type":"text","value":"=literal"} / {"type":"formula","value":"=SUM(B2:B3)"}. Edit example: {"operations":[{"op":"set","sheet":"Data","cell":"B2","value":2}]}. See artifact-spreadsheets skill.',
   }),
   presentation: Object.freeze({
-    name: 'office_presentation', actions: ['create', 'inspect', 'validate'],
-    description: 'Create, inspect, or validate a themed PPTX through the shared Office service.',
+    name: 'office_presentation', actions: ['create', 'inspect', 'validate', 'convert'],
+    description: 'Create a themed PPTX, inspect PPTX or legacy PPT, or convert PPT/PPTX to a new PPTX/PDF with the official LibreOffice Kit. For arbitrary slide editing use the loaded official Office workflow.',
     spec: 'Create example: {"theme":"modern-clean","slides":[{"layout":"summary","title":"Title","bullets":["One point"],"speaker_notes":"Full notes"}]}. Advanced layouts/themes: artifact-presentations skill. External decks need no brand markers.',
   }),
   pdf: Object.freeze({
@@ -43,7 +43,7 @@ function requireWorkspace(exec) {
 function tool(format, definition, ctx) {
   return defineTool({
     name: definition.name,
-    description: `${definition.description} Creates workspace files; it does not register Studio artifacts. If the host provides present, call it for the verified final output before the final response. If the user requests a Studio artifact, use knowledge_studio_create_artifact instead. Supply project-relative paths; never construct shell commands for this operation.`,
+    description: `${definition.description} This deterministic adapter is also used by Studio. Load the corresponding artifact skill for the official flexible authoring/editing workflow. Creates workspace files; it does not register Studio artifacts. If the host provides present, call it for the verified final output before the final response. If the user requests a Studio artifact, use knowledge_studio_create_artifact instead. Supply project-relative paths to this tool.`,
     parameters: {
       action: { type: 'string', required: true, enum: definition.actions, description: 'Deterministic office operation.' },
       input_path: { type: 'string', description: 'One project-relative input file, when required.' },
@@ -64,7 +64,7 @@ function tool(format, definition, ctx) {
       render: (_args, value) => [{ type: 'text', text: `<office_format>${value.format}</office_format>\n<office_action>${value.action}</office_action>${value.relativePath ? `\n<artifact>${value.relativePath}</artifact>` : ''}\n<report>\n${value.reportJSON}\n</report>` }],
       presentationMeta: (_args, value) => officePresentationMeta(value),
     },
-    timeoutMs: 190_000,
+    timeoutMs: 310_000,
     async execute(args, exec) {
       const request = normalizeOfficeRequest(format, args)
       const cwd = requireWorkspace(exec)

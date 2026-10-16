@@ -4,6 +4,8 @@
 
 为应用和 DSH 对话工具提供 Office 生成与预览、TTS/ASR Provider 及媒体渲染。Studio 使用同一组组件；本包不依赖 Studio、其索引、机构登录或桌面壳。
 
+Word、Excel、PowerPoint 可复用宿主的官方 Office 技能、结构校验和 LibreOffice Kit，支持旧 DOC/XLS/PPT 读取及转换、Excel 公式重算。Studio 的 Office PDF 导出使用同一转换器，原文件保留。宿主要求和格式边界见[官方 Office 工作流](docs/OFFICE_PROCESSING.md)。
+
 版本为 `@eduwork/dsh-artifact-services@0.2.0`，与 Studio `0.5.0` 配套。DSH 集成目标严格为 `0.1.5-rc.1`；底层应用 API 要求 Node 22.19+ 或 24，以及所用能力的运行环境。插件的稳定版本号不代表上游 DSH 已脱离 rc。
 
 DSH Host 须通过完整的根级 npm `overrides` 和校验过的锁文件，将直接与间接 `@deepseek-ai/dsh*` 依赖统一锁定到 `0.1.5-rc.1`。只锁顶层包可能使上游 caret peer 解析到 rc.2，与 Studio 的精确 rc.1 peer 冲突并触发 `ERESOLVE`。安装示例以此配置为前提；使用装配锁文件执行 `npm ci`，不要通过 `--force` 或 `--legacy-peer-deps` 绕过冲突。

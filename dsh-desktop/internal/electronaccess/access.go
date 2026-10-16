@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"regexp"
+	"strings"
 )
 
 var runtimeFiles = []string{
@@ -17,6 +18,18 @@ var runtimeFiles = []string{
 }
 
 var localeFile = regexp.MustCompile(`^[A-Za-z0-9_-]+\.pak$`)
+
+// Governs reports whether Ensure inspects an installation-relative file.
+// Ensure refuses hard-linked files, so an updater must copy, not link, them.
+func Governs(relative string) bool {
+	for _, name := range runtimeFiles {
+		if strings.EqualFold(relative, name) {
+			return true
+		}
+	}
+	directory, name, nested := strings.Cut(relative, "/")
+	return nested && strings.EqualFold(directory, "locales") && localeFile.MatchString(name)
+}
 
 func runtimePaths(root string) ([]string, error) {
 	root, err := filepath.Abs(root)

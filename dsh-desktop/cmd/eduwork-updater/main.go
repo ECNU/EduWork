@@ -17,6 +17,7 @@ import (
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/electronaccess"
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/updatecontrol"
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/updater"
+	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/workspaceaccess"
 )
 
 func main() {
@@ -28,6 +29,32 @@ func main() {
 func run(args []string) error {
 	if len(args) == 0 {
 		return fmt.Errorf("expected serve or apply-update")
+	}
+	if args[0] == "check-workspace-access" || args[0] == "repair-workspace-access" {
+		f := flag.NewFlagSet(args[0], flag.ContinueOnError)
+		root := f.String("root", "", "")
+		expected := f.String("expected", "", "")
+		if err := f.Parse(args[1:]); err != nil {
+			return err
+		}
+		if f.NArg() != 0 {
+			return fmt.Errorf("unexpected workspace arguments")
+		}
+		var result workspaceaccess.Result
+		var err error
+		if args[0] == "check-workspace-access" {
+			result, err = workspaceaccess.Check(*root)
+		} else {
+			result, err = workspaceaccess.Repair(*root, *expected)
+		}
+		if err != nil {
+			// Preserve transaction evidence even when verification/rollback fails.
+			if result.Fingerprint != "" {
+				_ = json.NewEncoder(os.Stdout).Encode(result)
+			}
+			return err
+		}
+		return json.NewEncoder(os.Stdout).Encode(result)
 	}
 	if args[0] == "ensure-runtime-access" {
 		f := flag.NewFlagSet("ensure-runtime-access", flag.ContinueOnError)

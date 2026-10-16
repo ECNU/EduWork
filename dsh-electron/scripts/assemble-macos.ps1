@@ -180,19 +180,23 @@ foreach ($row in @(
 }
 & $Node (Join-Path $PSScriptRoot 'build-dock-plugin.mjs') $app
 if ($LASTEXITCODE -ne 0) { throw 'Dock tile plugin compilation failed' }
+$headers = Join-Path $nodeRoot 'include/node'
+if (-not (Test-Path -LiteralPath (Join-Path $headers 'node_api.h') -PathType Leaf)) { throw 'Official Node distribution must include N-API headers' }
+$native = Join-Path $appPayload 'native'
+New-Item -ItemType Directory -Path $native | Out-Null
+# The desktop pet window needs this guard in every macOS build (electron#53889).
+& clang++ -std=c++17 -fobjc-arc -dynamiclib -undefined dynamic_lookup -mmacosx-version-min=15.0 -I $headers -framework AppKit (Join-Path $PSScriptRoot '../native/prevent-activation.mm') -o (Join-Path $native 'prevent-activation.node')
+if ($LASTEXITCODE -ne 0) { throw 'Desktop pet activation guard compilation failed' }
 if ($sparkleEnabled) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../LICENSE-Sparkle') -Destination (Join-Path $resources 'LICENSE-Sparkle')
     $frameworkTarget = Join-Path $app 'Contents/Frameworks/Sparkle.framework'
     & ditto --noextattr --noqtn --noacl $SparkleFramework $frameworkTarget
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle framework copy failed' }
-    $headers = Join-Path $nodeRoot 'include/node'
-    if (-not (Test-Path -LiteralPath (Join-Path $headers 'node_api.h') -PathType Leaf)) { throw 'Official Node distribution must include N-API headers' }
-    $native = Join-Path $appPayload 'native'
-    New-Item -ItemType Directory -Path $native | Out-Null
     & clang++ -std=c++17 -fobjc-arc -dynamiclib -undefined dynamic_lookup -I $headers -F (Join-Path $app 'Contents/Frameworks') -framework Sparkle -framework AppKit '-Wl,-rpath,@loader_path/../../../Frameworks' (Join-Path $PSScriptRoot '../native/sparkle-addon.mm') -o (Join-Path $native 'sparkle.node')
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle native bridge compilation failed' }
     & plutil -replace SUFeedURL -string $(if ($UpdateDefaultPolicy -eq 'development') { $SparkleDevelopmentFeedURL } else { $SparkleFeedURL }) $plist
     & plutil -replace SUPublicEDKey -string $SparklePublicEDKey $plist
+    & plutil -replace SUAllowsAutomaticUpdates -bool YES $plist
     & plutil -replace SUEnableAutomaticChecks -bool NO $plist
     if ($LASTEXITCODE -ne 0) { throw 'Sparkle Info.plist setup failed' }
 }
@@ -232,9 +236,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signing failed' }
     & codesign --verify --deep --strict $signingApp
     if ($LASTEXITCODE -ne 0) { throw 'Local ad-hoc signature verification failed' }
-    Push-Location $signingRoot
-    try { & ditto -c -k --sequesterRsrc --keepParent $appName $temporaryArchive }
-    finally { Pop-Location }
+    & $Node (Join-Path $PSScriptRoot 'create-macos-archive.mjs') $signingApp $temporaryArchive
     if ($LASTEXITCODE -ne 0) { throw 'macOS ZIP creation failed' }
     Copy-Item -LiteralPath $temporaryArchive -Destination $archive
 } finally { Remove-Item -LiteralPath $signingRoot -Recurse -Force -ErrorAction SilentlyContinue }

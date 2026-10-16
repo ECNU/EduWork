@@ -61,7 +61,9 @@ func matchesGitHubAssetURL(raw, repository, version, name string) bool {
 	return len(parts) == 3 && strings.EqualFold(parts[0]+"/"+parts[1], repository) && parts[2] == "releases/download/v"+version+"/"+name
 }
 
-func validateGitHubArtifact(repository, distribution, version string, artifact Artifact) error {
+// deltaFrom is empty for the complete package and names the source version of
+// a delta package, whose asset is EduWork-<version>-windows-x64-electron-from-<from>.zip.
+func validateGitHubArtifact(repository, distribution, version, deltaFrom string, artifact Artifact) error {
 	name, err := githubPackageName(distribution)
 	if err != nil {
 		return err
@@ -71,6 +73,9 @@ func validateGitHubArtifact(repository, distribution, version string, artifact A
 		return errors.New("invalid GitHub repository or product version")
 	}
 	expected := name + "-" + version + "-windows-x64-electron.zip"
+	if deltaFrom != "" {
+		expected = name + "-" + version + "-windows-x64-electron-from-" + deltaFrom + ".zip"
+	}
 	if artifact.FileName != expected || artifact.Shell != "electron" || artifact.Flavor != "offline" || artifact.Bytes < 1 || artifact.Bytes >= 2<<30 || !sha256Pattern.MatchString(artifact.SHA256) {
 		return errors.New("GitHub update artifact identity or checksum is invalid")
 	}
@@ -307,7 +312,7 @@ func checkGitHub(ctx context.Context, config Config) (Status, error) {
 		return Status{}, errors.New("GitHub update manifest does not match this product/version/platform")
 	}
 	artifact := manifest.Artifacts[0]
-	if err := validateGitHubArtifact(config.GitHubRepository, config.Distribution, version, artifact); err != nil {
+	if err := validateGitHubArtifact(config.GitHubRepository, config.Distribution, version, "", artifact); err != nil {
 		return Status{}, err
 	}
 	zipAsset, zipOK := assets[artifact.FileName]
@@ -315,6 +320,18 @@ func checkGitHub(ctx context.Context, config Config) (Status, error) {
 	if !zipOK || !sideOK || zipAsset.State != "uploaded" || sidecar.State != "uploaded" || !matchesGitHubAssetURL(zipAsset.URL, config.GitHubRepository, version, artifact.FileName) || !matchesGitHubAssetURL(sidecar.URL, config.GitHubRepository, version, artifact.FileName+".sha256") || zipAsset.Size != artifact.Bytes || zipAsset.Digest != "sha256:"+artifact.SHA256 || sidecar.Size <= 0 || sidecar.Size > maxSidecarBytes {
 		return Status{}, errors.New("GitHub release assets differ from the update manifest")
 	}
+	// Keep only deltas whose ZIP and sidecar are uploaded assets of this release
+	// with the declared size and digest. Anything else falls back to the full ZIP.
+	var deltas []DeltaArtifact
+	for _, delta := range artifact.Deltas {
+		asset, assetOK := assets[delta.FileName]
+		side, sideOK := assets[delta.FileName+".sha256"]
+		if validDeltaIdentity(delta) && validateGitHubArtifact(config.GitHubRepository, config.Distribution, version, delta.FromVersion, delta.artifact(artifact)) == nil &&
+			assetOK && sideOK && asset.State == "uploaded" && side.State == "uploaded" && asset.Size == delta.Bytes && asset.Digest == "sha256:"+strings.ToLower(delta.SHA256) && side.Size > 0 && side.Size <= maxSidecarBytes {
+			deltas = append(deltas, delta)
+		}
+	}
+	artifact.Deltas = deltas
 	state := "up_to_date"
 	if comparison > 0 {
 		state = "available"

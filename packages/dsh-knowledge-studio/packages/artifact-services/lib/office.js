@@ -1,7 +1,10 @@
 import { execFile as nodeExecFile } from 'node:child_process'
-import { isAbsolute, join, posix, win32 } from 'node:path'
+import { extname, isAbsolute, join, posix, win32 } from 'node:path'
+import {mkdtemp,rm,stat} from 'node:fs/promises'
+import {tmpdir} from 'node:os'
 import {fileURLToPath} from 'node:url'
 import {structuredSpec} from './structured-spec.js'
+import {convertOfficeFile,officialOfficeRuntime,officeInputPath,officeOutputPath} from './official-office.js'
 
 export const PYTHON_ENV = 'DSH_OFFICE_PYTHON'
 const runner = fileURLToPath(new URL('../python/runner.py', import.meta.url))
@@ -16,29 +19,33 @@ const MIME = Object.freeze({
 
 const CONTRACTS = Object.freeze({
   document: Object.freeze({
-    extension: '.docx', module: 'documents',
+    extension: '.docx', legacy: '.doc', module: 'documents',
     actions: Object.freeze({
       create: { command: 'create_document', write: true, output: true, spec: true },
       edit: { command: 'edit_document', write: true, input: true, output: true, spec: true },
       inspect: { command: 'inspect_document', input: true },
       validate: { command: 'validate_document', input: true },
+      convert: { write: true, input: true, output: true },
     }),
   }),
   spreadsheet: Object.freeze({
-    extension: '.xlsx', module: 'spreadsheets',
+    extension: '.xlsx', legacy: '.xls', module: 'spreadsheets',
     actions: Object.freeze({
       create: { command: 'create_workbook', write: true, output: true, spec: true },
       edit: { command: 'edit_workbook', write: true, input: true, output: true, spec: true },
       inspect: { command: 'inspect_workbook', input: true },
       validate: { command: 'validate_workbook', input: true },
+      convert: { write: true, input: true, output: true },
+      recalculate: { write: true, input: true, output: true },
     }),
   }),
   presentation: Object.freeze({
-    extension: '.pptx', module: 'presentations',
+    extension: '.pptx', legacy: '.ppt', module: 'presentations',
     actions: Object.freeze({
       create: { command: 'create_presentation', write: true, output: true, spec: true },
       inspect: { command: 'inspect_presentation', input: true },
       validate: { command: 'validate_presentation', input: true, strict: true },
+      convert: { write: true, input: true, output: true },
     }),
   }),
   pdf: Object.freeze({
@@ -67,8 +74,10 @@ export function normalizeRelativePath(value, field, extension) {
     throw new Error(`${field} must be a project-relative path`)
   }
   const normalized = raw.replace(/\\/g, '/').replace(/^\.\//, '')
+  if(normalized.includes(':'))throw new Error(`${field} contains an invalid path component`)
   if (normalized.split('/').some(part => part === '..' || part === '')) throw new Error(`${field} must stay inside the current project`)
-  if (!normalized.toLowerCase().endsWith(extension)) throw new Error(`${field} must end with ${extension}`)
+  const extensions=Array.isArray(extension)?extension:[extension]
+  if (!extensions.includes(extname(normalized).toLowerCase())) throw new Error(`${field} must end with ${extensions.join(' or ')}`)
   return normalized
 }
 
@@ -96,8 +105,10 @@ export function normalizeOfficeRequest(format, args) {
   const action = text(args.action, 'action', 32).toLowerCase()
   const { contract, operation } = contractFor(format, action)
   const normalized = { format, action, write: operation.write === true }
-  if (operation.input) normalized.inputPath = normalizeRelativePath(args.input_path, 'input_path', contract.extension)
-  if (operation.output) normalized.outputPath = normalizeRelativePath(args.output_path, 'output_path', contract.extension)
+  const readable=contract.legacy&&['inspect','validate','convert'].includes(action)?[contract.extension,contract.legacy]:contract.extension
+  if (operation.input) normalized.inputPath = normalizeRelativePath(args.input_path, 'input_path', readable)
+  if (operation.output) normalized.outputPath = normalizeRelativePath(args.output_path, 'output_path', action==='convert'?[contract.extension,'.pdf']:contract.extension)
+  if (normalized.inputPath&&normalized.outputPath&&normalized.inputPath.toLowerCase()===normalized.outputPath.toLowerCase())throw new Error('Office output must be a new file; the source is never overwritten')
   if (operation.inputs) normalized.inputPaths = normalizeInputs(args.input_paths_json, contract.extension)
   if (operation.spec) normalized.specJSON = JSON.stringify(structuredSpec(args,MAX_SPEC_CHARACTERS))
   if (operation.pages) normalized.pages = text(args.pages, 'pages', 2048)
@@ -107,8 +118,9 @@ export function normalizeOfficeRequest(format, args) {
 
 export function buildOfficeInvocation(request, projectPath) {
   const { contract, operation } = contractFor(request.format, request.action)
+  if(!operation.command)throw new Error('Official conversion operations must run through runOffice')
   const absolute = relativePath => join(projectPath, ...relativePath.split('/'))
-  const args = ['-I', '-X', 'utf8', runner, `${contract.module}.${operation.command}`, '--project-root', projectPath]
+  const args = ['-I', '-B', '-X', 'utf8', runner, `${contract.module}.${operation.command}`, '--project-root', projectPath]
   if (request.inputPath !== undefined) args.push('--input', absolute(request.inputPath))
   for (const input of request.inputPaths ?? []) args.push('--input', absolute(input))
   if (request.outputPath !== undefined) args.push('--output', absolute(request.outputPath))
@@ -140,6 +152,41 @@ function execFilePromise(command, args, options, execFileImpl = nodeExecFile) {
 }
 
 export async function runOffice({ request, projectPath, signal, environment = process.env, execFileImpl }) {
+  signal?.throwIfAborted()
+  const {contract}=contractFor(request.format,request.action)
+  if(['convert','recalculate'].includes(request.action)) {
+    const inputPath=await officeInputPath(projectPath,request.inputPath)
+    // Check the installed runtime before creating output directories.
+    officialOfficeRuntime(environment,{required:true})
+    const outputPath=await officeOutputPath(projectPath,request.outputPath)
+    const conversion=await convertOfficeFile({inputPath,outputPath,signal,environment,recalculate:request.action==='recalculate'})
+    return {invocation:{artifact:request.outputPath,mime:extname(outputPath).toLowerCase()==='.pdf'?MIME.pdf:MIME[request.format]},report:{ok:true,operation:request.action,relative_path:request.outputPath,source:request.inputPath,conversion}}
+  }
+  if(contract.legacy&&extname(request.inputPath??'').toLowerCase()===contract.legacy) {
+    const inputPath=await officeInputPath(projectPath,request.inputPath)
+    const directory=await mkdtemp(join(tmpdir(),'dsh-office-read-'))
+    try {
+      const input='converted'+contract.extension
+      const conversion=await convertOfficeFile({inputPath,outputPath:join(directory,input),signal,environment})
+      const result=await runOffice({request:{...request,inputPath:input},projectPath:directory,signal,environment,execFileImpl})
+      // Never return the private temporary path as a user artifact.
+      return {...result,report:{...result.report,path:inputPath,project_relative_path:request.inputPath,relative_path:request.inputPath,source:request.inputPath,conversion}}
+    } finally {await rm(directory,{recursive:true,force:true})}
+  }
+  if(request.action==='validate'&&request.format!=='pdf'&&!request.strict) {
+    const runtime=officialOfficeRuntime(environment)
+    if(runtime) {
+      const inputPath=await officeInputPath(projectPath,request.inputPath)
+      if((await stat(inputPath)).size>256*1024*1024)throw new Error('Office input exceeds the 256 MiB validation limit')
+      const checker=fileURLToPath(new URL('../python/official_check.py',import.meta.url))
+      const stdout=await execFilePromise(privatePython(environment),['-I','-B','-X','utf8',checker,runtime.checker,inputPath],{
+        cwd:projectPath,env:environment,windowsHide:true,timeout:180_000,signal,encoding:'utf8',maxBuffer:2*1024*1024,
+      },execFileImpl)
+      const check=JSON.parse(stdout.trim())
+      if(check.verdict!=='pass')throw new Error('Official Office structure validation failed')
+      return {invocation:{mime:MIME[request.format]},report:{ok:true,valid:true,structural_valid:true,operation:'validate',provider:'dsh-office',project_relative_path:request.inputPath,summary:{...check.summary,...(request.format==='presentation'?{slide_count:check.summary.slides}:{})},checks:check.checks}}
+    }
+  }
   const invocation = buildOfficeInvocation(request, projectPath)
   const stdout = await execFilePromise(privatePython(environment), invocation.args, {
     cwd: projectPath, env: environment, windowsHide: true, timeout: 180_000,

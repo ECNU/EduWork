@@ -74,7 +74,13 @@ export function apply(ctx, rawConfig = {}) {
         }))
         return filterObservation(observation, effectiveDisabled(settingsSource()), configured, capabilities, availableBindings)
       },
-      get(candidate, options) { return delegate.get(candidate, options) },
+      async get(candidate, options) {
+        const skill=await delegate.get(candidate, options)
+        // Only enrich the product's bundled skills. Project/user overrides keep
+        // their own content and resource base, including matching skill names.
+        return candidate.source==='bundled'&&imageSource?.officeSkill
+          ? imageSource.officeSkill(skill) : skill
+      },
     }
   })
 
@@ -82,7 +88,7 @@ export function apply(ctx, rawConfig = {}) {
   // their ordinary skills. A dependency scope follows late mount/replacement
   // and invalidates both positive and negative catalog caches on every change.
   ctx.inject(['artifactServices'], (sharedCtx) => {
-    const source = { images: sharedCtx.artifactServices.images }
+    const source = { images: sharedCtx.artifactServices.images, officeSkill: sharedCtx.artifactServices.officeSkill?.bind(sharedCtx.artifactServices) }
     imageSource = source
     invalidate()
     sharedCtx.on('artifact-services/images-changed', () => { invalidate() })

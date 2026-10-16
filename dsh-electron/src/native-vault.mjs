@@ -1,7 +1,7 @@
 import { createServer } from 'node:http'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
-import { dirname } from 'node:path'
+import { dirname, isAbsolute } from 'node:path'
 
 const MAX_BODY = 512 * 1024
 const REF = /^[A-Za-z_][A-Za-z0-9_]{0,511}$/u
@@ -51,7 +51,7 @@ export function externalBrowserURL(value) {
   return url.href
 }
 
-export async function startNativeBridge({ vault, openExternal, openConfiguration, workbench, attention, pickDirectory }) {
+export async function startNativeBridge({ vault, openExternal, openConfiguration, workbench, attention, pet, pickDirectory, workspaceAccess }) {
   const token = randomBytes(32).toString('base64url')
   const authorization = Buffer.from('Bearer ' + token)
   const sockets = new Set()
@@ -86,13 +86,31 @@ export async function startNativeBridge({ vault, openExternal, openConfiguration
         } finally { response.removeListener('close', disconnected) }
         return
       }
+      if (request.url === '/v1/desktop/workspace-access') {
+        if (!body || Object.keys(body).length !== 1 || typeof body.path !== 'string' || body.path.length > 32767 || !isAbsolute(body.path)) throw new Error('Invalid workspace path')
+        if (!workspaceAccess) { response.writeHead(501).end(); return }
+        const controller = new AbortController()
+        const disconnected = () => controller.abort()
+        response.once('close', disconnected)
+        try {
+          if (response.destroyed) controller.abort()
+          const result = await workspaceAccess(body.path, controller.signal)
+          if (!response.destroyed) response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(result))
+        } finally { response.removeListener('close', disconnected) }
+        return
+      }
       if (request.url === '/v1/extensions/attention') {
         if (!attention) { response.writeHead(501).end(); return }
         const result = JSON.stringify(await attention(body))
         response.writeHead(200, { 'Content-Type': 'application/json' }).end(result); return
       }
+      if (request.url === '/v1/extensions/pet') {
+        if (!pet) { response.writeHead(501).end(); return }
+        const result = JSON.stringify(await pet(body))
+        response.writeHead(200, { 'Content-Type': 'application/json' }).end(result); return
+      }
       if (request.url === '/v1/extensions/workbench') {
-        if (!body || Object.keys(body).length !== 1 || !['status','check-updates','diagnostics','download-update','schedule-update','install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update'].includes(body.action)) throw new Error('Invalid desktop action')
+        if (!body || Object.keys(body).length !== 1 || !['status','check-updates','diagnostics','download-update','schedule-update','install-update','use-stable-updates','use-development-updates','download-content-update','restart-content-update','enable-automatic-download','disable-automatic-download'].includes(body.action)) throw new Error('Invalid desktop action')
         if (!workbench) { response.writeHead(501).end(); return }
         response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(await workbench(body.action))); return
       }

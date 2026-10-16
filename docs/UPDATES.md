@@ -24,6 +24,7 @@ GitHub Releases 可以作为唯一发行来源，不要求同时购买 OSS。两
 | GitHub CI 创建 Release | 生成 ZIP、校验文件、回执、已确认的说明及更新清单；全部上传校验后才发布，不切换 OSS 指针 |
 | 直接从 GitHub 自动发现和安装 | 已实现 Windows 来源适配，共用现有下载与安装器；按用户所选渠道接收已发布公测版或开发版 |
 | 私有仓库、草稿、没有已发布版本 | 提示尚无可读取的版本；不内置 GitHub Token，不影响正常使用应用 |
+| 增量更新 | 公测版为前 3 个公测版提供增量包，匹配的安装只下载变化的文件；其余情况下载完整包，见[增量更新](#增量更新) |
 | macOS 程序更新 | 已接入 Sparkle：按 appcast 检查、下载并验签，用户确认后安装与重启；旧包首次迁移和系统授权边界见 [Mac 更新](MACOS_UPDATES.md) |
 
 Windows 使用 `dsh-electron/src/portable-updates.mjs` 调用共用更新辅助程序，核心实现在 `dsh-desktop/internal/updater/`。GitHub 适配位于 `github.go`，不使用上游 DSH 的更新源，也不另建 `electron-updater` 安装路径。其他平台的下载页入口不等于支持 Windows 安装协议。
@@ -47,6 +48,14 @@ GitHub 公测渠道通过 `/repos/{owner}/{repo}/releases/latest` 读取非 prer
 元数据缓存 15 分钟，过期后使用 ETag 条件请求；不可读与限流结果同样退避 15 分钟。手动连续点击不会反复请求 GitHub。错误会明确显示，不当作“已是最新版本”。客户端匿名请求，不读取学校登录令牌或 GitHub 凭据；只允许配置仓库的对应 tag 资产及 GitHub 下载服务器上的 HTTPS 跳转。
 
 GitHub 的 `update-windows-amd64.json` 必须由 `scripts/github-update-manifest.mjs` 生成，保持输出字节原样，不添加缩进或末尾换行。该紧凑格式兼容旧客户端的 JSON 缓存；新版缓存保留完整响应字节，并在读取旧缓存时重新获取。发现更新和安装前的完整性检查都以 GitHub 资产 SHA-256 为准，不能只比较解析后的 JSON 内容。重复检查和重启后的检查也应纳入更新验收。
+
+## 增量更新
+
+公测版发布时，CI 为前 3 个公测版各生成一个增量包 `EduWork-<版本>-windows-x64-electron-from-<旧版本>.zip` 及其 `.sha256`，在 `update-windows-amd64.json` 的同一个 artifact 下以 `deltas` 列出。增量包与完整包结构相同，只含新的 `RELEASE-MANIFEST.json`、内容变化的文件、`config/` 等用户管理的目录，以及 Host 启动时改写的 venv 配置；条目从完整包原样复制。增量包超过完整包一半时不生成；开发版不生成。
+
+更新器按当前版本和本机 `RELEASE-MANIFEST.json` 的 SHA-256 选择增量包。下载完成后、应用仍在运行时，先核对要从安装目录复用的文件；没有对应条目、下载失败或本机程序文件被改过时，改下完整包。安装时只把“解压完整包”换成“解压增量包并复用安装目录中未变化的文件”（同一磁盘上使用硬链接），之后的逐文件校验、替换、启动自检和回滚与完整包相同。某个版本的增量安装失败过一次后，该版本改用完整包。
+
+增量包由已安装版本的更新器安装，因此从支持增量的版本之后的下一个版本起生效；旧客户端忽略 `deltas`，照常下载完整包。静态更新源可在 artifact 中写同样的 `deltas`（每项含 `fromVersion`、`fromManifestSha256`、`fileName`、`bytes`、`sha256`、`url`、`sha256Url`），文件与完整包放在同一版本目录。
 
 ## 静态 HTTPS 更新源的现有要求
 
@@ -117,7 +126,7 @@ GitHub 匿名请求额度按来源 IP 计算。客户端已缓存并限制检查
 
 开发包与公测包均写入 `RELEASE-MANIFEST.json`、逐文件清单和 `wails-host-v1` 启动契约；同一 ZIP 可用于全新安装、Electron 更新及合格 Go 过渡版迁移，不能投放到旧 0.2 更新入口。
 
-Windows 正式版 Release 的 Windows 产物包含八个文件：桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`，以及[Windows 安装包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执。更新清单由同次 CI 的原始桌面 ZIP 尺寸、摘要与发行身份生成，只引用原始 ZIP，解压器 ZIP 用于首次下载。发布器复核更新清单与回执一致、解压器内嵌同一个原始 ZIP，校验每个上传文件的尺寸与摘要后，才将草稿正式发布。普通开发构建仅保留为 CI artifact；经批准发布的预发布包可作为 GitHub Release 附件手动安装，当前不生成 Windows 自动更新清单。artifact 本身不会被客户端发现。
+Windows 正式版 Release 的 Windows 产物包含八个文件：桌面 ZIP 及 `.sha256`、`release-receipt.json`、已批准的 `RELEASE-NOTES.md`、`update-windows-amd64.json`，以及[Windows 安装包 ZIP](PORTABLE-EXTRACTOR.md) 及其 `.sha256` 和 `.json` 回执；另有每个[增量包](#增量更新)及其 `.sha256`。更新清单由同次 CI 的原始桌面 ZIP 尺寸、摘要与发行身份生成，只引用原始 ZIP，解压器 ZIP 用于首次下载。发布器复核更新清单与回执一致、解压器内嵌同一个原始 ZIP，校验每个上传文件的尺寸与摘要后，才将草稿正式发布。普通开发构建仅保留为 CI artifact；经批准发布的预发布包可作为 GitHub Release 附件手动安装，当前不生成 Windows 自动更新清单。artifact 本身不会被客户端发现。
 
 机构版可按[首次启动获取机构配置](PUBLISHER_BOOTSTRAP.md)分发 CI 原包，无需本机重装配。若仍采用旧版静态配置装配，修改后的 ZIP 必须重新生成尺寸、摘要和包内清单，并与 GitHub 原包分别校验和发布。
 

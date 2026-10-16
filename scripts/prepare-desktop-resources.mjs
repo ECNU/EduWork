@@ -1,13 +1,13 @@
 // Prepares the locked native desktop resources (private Python + Office wheels,
-// offline browser, CPU transcription engine) for a new Windows x64 product
-// candidate. Node.js port of prepare-desktop-resources.ps1. The recipe itself
-// remains Windows x64 only; other platforms get their own recipes later.
+// CPU transcription engine) for a new Windows x64 product candidate. The
+// desktop executable is the product's Chromium, so unlike the older
+// prepare-desktop-resources.ps1 this ships no browser.
 import { readdir, rm, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, isAbsolute, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import {
-  copyFileTo, copyTree, ensureDir, fullPath, isDirectory, isFile, isMainModule,
+  copyFileTo, ensureDir, fullPath, isDirectory, isFile, isMainModule,
   pathExists, readJSON, run, sha256File, writeJSON,
 } from './lib/build-util.mjs'
 
@@ -31,13 +31,11 @@ export async function prepareDesktopResources({
   outputRoot,
   pythonArchive,
   pythonWheelRoot,
-  browserSource,
   asrSource,
   asrModel,
   vcRedistSource,
   mediaEnvironmentRelativePath = 'd',
   pythonManifest = join(scriptRoot, '../dsh-desktop/internal/productruntime/builtin/python-runtime-manifest.json'),
-  nodeManifest = join(scriptRoot, '../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json'),
 } = {}) {
   if (process.platform !== 'win32' || process.arch !== 'x64') throw new Error('This resource recipe requires Windows x64')
   outputRoot = fullPath(outputRoot)
@@ -48,10 +46,10 @@ export async function prepareDesktopResources({
   if (isAbsolute(mediaEnvironmentRelativePath) || /(^|[\\/])\.\.([\\/]|$)/.test(mediaEnvironmentRelativePath)) {
     throw new Error('Media environment must be inside the new product')
   }
-  for (const path of [pythonArchive, asrModel, pythonManifest, nodeManifest]) {
+  for (const path of [pythonArchive, asrModel, pythonManifest]) {
     if (!await isFile(path)) throw new Error(`Required resource file is missing: ${path}`)
   }
-  for (const path of [pythonWheelRoot, browserSource, asrSource, vcRedistSource]) {
+  for (const path of [pythonWheelRoot, asrSource, vcRedistSource]) {
     if (!await isDirectory(path)) throw new Error(`Required resource directory is missing: ${path}`)
   }
   const vcLibraries = []
@@ -61,14 +59,12 @@ export async function prepareDesktopResources({
     vcLibraries.push(matches[0])
   }
   const manifest = await readJSON(pythonManifest)
-  const nodeLock = await readJSON(nodeManifest)
   const asset = manifest.assets['windows-amd64']
   if (manifest.schemaVersion !== 2 || asset.archiveRoot !== 'python') throw new Error('Unsupported private Python manifest')
   const assertHash = async (path, expected) => {
     if (await sha256File(path) !== String(expected).toLowerCase()) throw new Error(`Locked resource checksum mismatch: ${path}`)
   }
   await assertHash(pythonArchive, asset.sha256)
-  await assertHash(join(browserSource, 'chrome.exe'), nodeLock.environment.browserAutomation.executables['windows-amd64'].sha256)
   const wheels = []
   for (const packageEntry of manifest.environment.packages) {
     const wheel = packageEntry.assets['windows-amd64'] ?? packageEntry.assets.any
@@ -141,8 +137,7 @@ export async function prepareDesktopResources({
     await rm(cache, { recursive: true, force: true })
   }
 
-  console.log('Copying the offline browser and CPU transcription engine...')
-  await copyTree(browserSource, join(resourceRoot, 'b'))
+  console.log('Copying the CPU transcription engine...')
   await ensureDir(join(resourceRoot, 'a'))
   for (const name of ['whisper-cli.exe', 'whisper.dll', 'ggml.dll', 'ggml-base.dll', 'ggml-cpu.dll']) {
     await copyFileTo(join(asrSource, name), join(resourceRoot, `a/${name}`))
@@ -160,7 +155,6 @@ export async function prepareDesktopResources({
     platform: 'win32-x64',
     environment: {
       DSH_OFFICE_PYTHON: 'r/v/Scripts/python.exe',
-      DSH_MEDIA_BROWSER: 'r/b/chrome.exe',
       DSH_MEDIA_NODE_ENV: mediaEnvironmentRelativePath.replaceAll('\\', '/'),
     },
     python: {
@@ -170,10 +164,6 @@ export async function prepareDesktopResources({
       runtimeId: manifest.runtimeId,
       archiveSHA256: asset.sha256,
       environmentLockSHA256: environmentLock,
-    },
-    browser: {
-      executableSHA256: nodeLock.environment.browserAutomation.executables['windows-amd64'].sha256,
-      version: nodeLock.environment.browserAutomation.browserVersion,
     },
     asr: { model: 'whisper-tiny-q5_1', filesSHA256: asrHashes },
     pluginConfig: {
@@ -206,29 +196,25 @@ if (isMainModule(import.meta.url)) {
       'output-root': { type: 'string' },
       'python-archive': { type: 'string' },
       'python-wheel-root': { type: 'string' },
-      'browser-source': { type: 'string' },
       'asr-source': { type: 'string' },
       'asr-model': { type: 'string' },
       'vcredist-source': { type: 'string' },
       'media-environment-relative-path': { type: 'string' },
       'python-manifest': { type: 'string' },
-      'node-manifest': { type: 'string' },
     },
   })
-  const required = ['output-root', 'python-archive', 'python-wheel-root', 'browser-source', 'asr-source', 'asr-model', 'vcredist-source']
+  const required = ['output-root', 'python-archive', 'python-wheel-root', 'asr-source', 'asr-model', 'vcredist-source']
   if (required.some(name => !values[name])) {
-    throw new Error('Use --output-root --python-archive --python-wheel-root --browser-source --asr-source --asr-model --vcredist-source [--media-environment-relative-path d] [--python-manifest <json>] [--node-manifest <json>]')
+    throw new Error('Use --output-root --python-archive --python-wheel-root --asr-source --asr-model --vcredist-source [--media-environment-relative-path d] [--python-manifest <json>]')
   }
   await prepareDesktopResources({
     outputRoot: values['output-root'],
     pythonArchive: values['python-archive'],
     pythonWheelRoot: values['python-wheel-root'],
-    browserSource: values['browser-source'],
     asrSource: values['asr-source'],
     asrModel: values['asr-model'],
     vcRedistSource: values['vcredist-source'],
     mediaEnvironmentRelativePath: values['media-environment-relative-path'] ?? 'd',
     ...(values['python-manifest'] ? { pythonManifest: values['python-manifest'] } : {}),
-    ...(values['node-manifest'] ? { nodeManifest: values['node-manifest'] } : {}),
   })
 }

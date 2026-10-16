@@ -8,6 +8,7 @@ import {KnowledgeMarkdown as Markdown} from './KnowledgeMarkdown'
 
 import { knowledgeStudioRemote } from './remote.js'
 import { StudioArtifact } from './StudioArtifact.js'
+import { openStudioFilePreview } from './file-preview.js'
 import { WorkspaceHome } from './WorkspaceHome.js'
 import { ReadingFrame, ReadingLayer } from './ReadingFrame.js'
 // @ts-expect-error Host capability descriptors are shared browser-safe data.
@@ -644,6 +645,7 @@ function DetailsPanel({
   service,
   sessionMeta,
   openFile,
+  previewFile,
   closePanel,
   officialSidebar,
   notificationNavigation,
@@ -877,6 +879,7 @@ function DetailsPanel({
         memory={surface.sessionState(sessionId).mindmaps?.[artifactId]}
         remember={(value:any)=>surface.remember(sessionId,{mindmaps:{...surface.sessionState(sessionId).mindmaps,[artifactId]:value}})}
         showEvidence={showEvidence} askAI={askArtifact}
+        previewFile={previewFile ? (path:string)=>previewFile(sessionId,path) : undefined}
         exportFile={async(format:string)=>(await unwrap<any>(service.exportArtifact(artifactId,format))).file}
         manage={async(action:string,value:string)=>{
           if(action==='retry') {
@@ -990,6 +993,9 @@ export async function apply(ctx: any) {
           result?.error?.message || 'Failed to open workspace file',
         )
     }
+    const previewFile = officialSidebar
+      ? (sessionId:string,path:string)=>openStudioFilePreview(surfaceCtx.sidebarRight,sessionId,path)
+      : undefined
     const disposers = [
       ...(!officialSidebar?[
       surfaceCtx.slots.inject('shell.overlay',()=>surfaceCtx.slots.register({name:'shell.overlay',id:'knowledge-studio-reader',order:0,inject:()=>({surface})},ReadingLayer)),
@@ -1001,7 +1007,7 @@ export async function apply(ctx: any) {
           inject:()=>({surface,sessions:surfaceCtx.sessions})},StudioHeaderEntry))]:[]),
       ...(officialSidebar?[
         surfaceCtx.sidebarRightTabs.register({id:'@eduwork/dsh-knowledge-studio',kind:'knowledge-studio',title:()=> 'Studio',guide:[{order:30,title:()=> 'Studio',description:()=>t('sidebarDescription')}]}),
-        surfaceCtx.slots.inject('sidebar.right.pane.tab',()=>surfaceCtx.slots.register({name:'sidebar.right.pane.tab',locale:NS,key:'@eduwork/dsh-knowledge-studio',inject:()=>({surface,service,sessionMeta,openFile,tabHandles,officialSidebar})},LocalizedSidebarStudio)),
+        surfaceCtx.slots.inject('sidebar.right.pane.tab',()=>surfaceCtx.slots.register({name:'sidebar.right.pane.tab',locale:NS,key:'@eduwork/dsh-knowledge-studio',inject:()=>({surface,service,sessionMeta,openFile,previewFile,tabHandles,officialSidebar})},LocalizedSidebarStudio)),
       ]:[surfaceCtx.slots.inject('details', () => {
         let disposeEntry: undefined | (() => void)
         const activation = {

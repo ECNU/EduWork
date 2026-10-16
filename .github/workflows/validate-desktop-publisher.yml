@@ -12,6 +12,7 @@ on:
       - 'scripts/lib/local-install.mjs'
       - 'scripts/lib/stage-runner.mjs'
       - 'scripts/lib/build-util.mjs'
+      - 'scripts/lib/runtime-file-policy.mjs'
       - 'scripts/lib/native-compile-cache.mjs'
       - 'scripts/lib/preflight.mjs'
       - 'scripts/local-desktop-pipeline.mjs'
@@ -22,6 +23,9 @@ on:
       - 'docs/assets/build-pipeline*'
       - 'tests/desktop-build-source.test.mjs'
       - 'tests/build-script-entry.test.mjs'
+      - 'tests/runtime-file-policy.test.mjs'
+      - 'dsh-electron/scripts/assemble-macos.mjs'
+      - 'dsh-electron/scripts/assemble-windows.mjs'
       - 'tests/local-desktop-install.test.mjs'
       - 'tests/stage-runner.test.mjs'
       - 'tests/parallel-sets.test.mjs'
@@ -38,9 +42,16 @@ on:
       - 'scripts/publish-windows-release.mjs'
       - 'scripts/prepare-pinned-dsh-product.mjs'
       - 'scripts/macos-update-feed.mjs'
+      - 'scripts/macos-update-delta.mjs'
+      - 'scripts/windows-update-delta.mjs'
+      - 'scripts/update-delta-bases.mjs'
+      - 'scripts/github-update-manifest.mjs'
       - 'tests/windows-package-preflight.test.mjs'
       - 'tests/desktop-build-plan.test.mjs'
       - 'scripts/test/macos-update-feed.test.mjs'
+      - 'scripts/test/macos-update-delta.test.mjs'
+      - 'scripts/test/windows-update-delta.test.mjs'
+      - 'scripts/test/update-delta-bases.test.mjs'
       - 'tests/desktop-candidate-publication.test.mjs'
       - 'scripts/verify-generic-first-launch.mjs'
       - 'tests/generic-first-launch.test.mjs'
@@ -70,6 +81,7 @@ jobs:
           node --test tests/desktop-build-source.test.mjs tests/local-desktop-install.test.mjs tests/build-script-entry.test.mjs
           tests/stage-runner.test.mjs tests/parallel-sets.test.mjs tests/download-cache.test.mjs
           tests/edition-skill-replacement.test.mjs tests/build-pipeline-diagram.test.mjs
+          tests/runtime-file-policy.test.mjs
       - name: Verify macOS compile cache and native input installation
         if: runner.os == 'macOS'
         run: node --test tests/native-compile-cache.test.mjs tests/macos-native-inputs.test.mjs tests/preflight.test.mjs
@@ -80,4 +92,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.18.0'
-      - run: node --test tests/windows-package-preflight.test.mjs tests/desktop-build-plan.test.mjs tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs tests/generic-first-launch.test.mjs scripts/test/macos-update-feed.test.mjs
+      - run: node --test tests/windows-package-preflight.test.mjs tests/desktop-build-plan.test.mjs tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs tests/generic-first-launch.test.mjs scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/windows-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs
