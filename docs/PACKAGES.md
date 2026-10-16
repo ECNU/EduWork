@@ -2,12 +2,13 @@
 
 **简体中文** | [English](PACKAGES_EN.md)
 
-EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管理和发布。Issue、PR、协议和开发文档统一在 `ecnu/EduWork`；机构专属实现留在 EduWork-ECNU。插件可被其他 DSH 应用单独使用，不需要安装 EduWork 桌面端。
+EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管理和发布。Issue、PR、协议和开发文档统一在 `ecnu/EduWork`；机构专属实现留在 EduWork-ECNU。插件按各自的宿主要求复用；其中桌宠依赖 EduWork Electron 桌面桥接，其他 DSH 客户端需先集成同样的接口。
 
 ## 源码布局
 
 | npm 包 | 源码与说明 | 开发安装根目录 |
 | --- | --- | --- |
+| `@eduwork/dsh-desktop-pet` | [桌面宠物与宿主要求](../packages/dsh-desktop-pet/README.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [文献检索、引用与全文](../packages/dsh-literature/README.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [身份、凭据与模型接入](../packages/dsh-oidc/README.md) | `packages/dsh-oidc` |
 | `@eduwork/dsh-memory` | [本地记忆与历史检索](../packages/dsh-memory/README.md) | `packages/dsh-memory` |
@@ -15,7 +16,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office、语音、图像与媒体服务](../packages/dsh-knowledge-studio/packages/artifact-services/README.md) | 与 Studio 共用已有 workspace |
 
-五个开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
+六个开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
 
 ## 兼容声明与构建锁
 
@@ -42,7 +43,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 自动检查只运行受影响的开发根。共享服务变更会连带检查 Studio；仅修改 Markdown 或文档图片时，只检查入口与链接。UI、真实服务登录、邮件、Office 与音视频全流程，按实际行为改动在本地做专项验收。普通 CI 不下载浏览器、不调用真实模型、不发布 npm 或桌面 Release。
 
-## 六个独立的 npm 包
+## 七个独立的 npm 包
 
 各包使用自己的 SemVer，保持现有包名、公开导出、配置标识和数据路径。每次发布使用新版本，不覆盖已经发布的版本。若共享服务版本变化，同步 Studio 的精确依赖与开发锁；先发布并核验共享服务，再发布 Studio。
 
@@ -62,6 +63,9 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 不要保存长期 npm Token。若必须在完成 CI 发布验证前发布，由维护者在明确授权后用自己的 npm CLI 与交互验证发布已检查的 tarball；不能声称拥有 GitHub provenance。
 
 ## 客户端装配
+
+`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.0-rc.2/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
+
 
 `@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.0-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 

@@ -60,7 +60,7 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
 | 部分 | 位置 | 负责 |
 | --- | --- | --- |
 | 桌宠窗口 | `dsh-electron/src/desktop-pet.mjs` | 透明、置顶、不可聚焦的小窗口；点击穿透、拖拽、收边、位置记忆、右键菜单、离开检测 |
-| 桌宠插件 | [`dsh-plugins/desktop-pet`](../dsh-plugins/desktop-pet/README.md) | 设置、内置形象与校验、桌宠页面（状态与动画）、设置页 |
+| 桌宠插件 | [`packages/dsh-desktop-pet`](../packages/dsh-desktop-pet/README.md) | 设置、内置形象与校验、桌宠页面（状态与动画）、设置页 |
 | 会话状态 | `dsh-plugins/desktop-services` | 现有通知同步，另外只读地附带正在运行的会话列表；通知条目的产生规则不变 |
 
 - Host 中的桌宠插件经 `desktop-services` 的带鉴权本地桥把设置发给桌面壳，自己拿不到桥凭据。
@@ -99,7 +99,7 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
 - 素材约定：第 0 帧是静止姿势；各动画脚底对齐、角色占画面比例一致；角色朝左，向右拖动时自动镜像。
 - 安全：SVG 必须有 `viewBox`，不能含脚本、`foreignObject`、事件属性、DOCTYPE 或指向文件外部的引用；PNG 和 WebP 按文件头核对类型，单张不超过 4096×4096。整包不超过 20 MB，单段动画不超过 64 帧、30 fps。文字只按纯文本显示。
 
-内置形象位于 `dsh-plugins/desktop-pet/skins/`，每款一个目录，许可与署名见 [`skins/LICENSE`](../dsh-plugins/desktop-pet/skins/LICENSE)：
+内置形象位于 `packages/dsh-desktop-pet/skins/`，每款一个目录，许可与署名见 [`skins/LICENSE`](../packages/dsh-desktop-pet/skins/LICENSE)：
 
 | 形象 | ID | 来源 | 许可 |
 | --- | --- | --- | --- |
@@ -124,9 +124,9 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
 ## 开发与验证
 
 ```sh
-node --test dsh-plugins/desktop-pet/test/*.test.mjs dsh-electron/tests/desktop-pet-core.test.mjs dsh-electron/tests/task-notifications.test.mjs
+node --test packages/dsh-desktop-pet/test/*.test.mjs dsh-electron/tests/desktop-pet-core.test.mjs dsh-electron/tests/task-notifications.test.mjs
 ```
 
-- `dsh-plugins/desktop-pet/test/host.test.mjs` 需要把 `EDUWORK_TEST_RUNTIME` 设为已验证 Runtime 的 `d` 目录。
+- `packages/dsh-desktop-pet/test/host.test.mjs` 默认使用包内锁定的开发依赖；可把 `EDUWORK_TEST_RUNTIME` 设为已验证 Runtime 的 `d` 目录来验证产品装配。
 - 真实 Electron 检查（窗口属性、文件访问范围、IPC 来源、隐藏与关闭后的进程）：`EDUWORK_TEST_EVIDENCE=<新目录> <Electron 可执行文件> dsh-electron/tests/desktop-pet.electron.mjs`。
 - 点击穿透、不抢焦点、全屏空间、真实鼠标拖拽与收边、多显示器、长时间空闲耗电需要在两个平台的发行包上原生验收。

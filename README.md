@@ -46,7 +46,7 @@ EduWork 的重点是把教育工作需要的能力组合好：**开放的机构�
 | [邮件助手](packages/dsh-mail/README.md) · `@eduwork/dsh-mail` | 读取 IMAP 邮件，经授权通过 SMTP 发送邮件。 | 连接邮箱并配置相应权限。 |
 | [浏览器](dsh-plugins/tool-browser/README.md)与[媒体服务接入](dsh-plugins/media-openai/README.md) | 浏览网页；连接 OpenAI 兼容的图像生成、云端 TTS 服务。 | 网页需联网；云端媒体需另配服务。 |
 | [技能管理](dsh-plugins/skill-settings-native/README.md)与[工作台设置](dsh-plugins/workbench-native/README.md) | 管理技能，提供历史导入、通知和更新设置等桌面能力。 | 随发行版提供。 |
-| [桌面宠物](docs/DESKTOP_PET.md) · `@eduwork/dsh-desktop-pet` | 桌面上的小宠物，随会话状态变化，点击打开需要处理或已完成的会话；可选形象和大小。 | 仅桌面客户端；默认关闭，在“设置 → 桌面宠物”中开启。 |
+| [桌面宠物](packages/dsh-desktop-pet/README.md) · `@eduwork/dsh-desktop-pet` | 桌面上的小宠物，随会话状态变化，点击打开需要处理或已完成的会话；可选形象和大小。 | 独立 npm 插件，随客户端提供；需要 EduWork 桌面桥接。默认关闭，在“设置 → 桌面宠物”中开启。 |
 
 **随包提供不等于所有外部服务都已开通。** 公版不包含学校账号、模型额度或私人凭据。完整组合见[发行清单](config/distributions/generic.json)；公共 npm 插件也可供匹配版本的其他 DSH 应用独立使用。
 

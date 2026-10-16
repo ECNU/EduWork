@@ -13,7 +13,7 @@ import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import { patchRemotionBundlerRuntime } from './patch-remotion-bundler-runtime.mjs'
 import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
-import assert from 'node:assert/strict'
+import { verifyPublishedPackageInputs } from './published-package-inputs.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (Object.values(values).length !== 5) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
@@ -28,13 +28,8 @@ const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
 if (receipt.dshVersion !== '0.2.0-rc.2' || receipt.dshCommit !== '639ed015397290b3745d163aafe02ffee4aa3f84') throw new Error('Unqualified candidate Runtime')
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
 const sourceMediaTemplate = await verifyMediaTemplate(join(paths.source, 'packages/dsh-knowledge-studio/packages/artifact-services'))
-const literatureLock = await json(join(repository, 'third_party/dsh/candidate-v0.2.0-rc.2/literature.json'))
-const literatureManifest = await json(join(paths.dependencies, 'node_modules', literatureLock.name, 'package.json'))
-const productDependencyLock = await json(join(paths.dependencies, 'package-lock.json'))
-assert.equal(literatureLock.publicationStatus, 'published')
-assert.equal(literatureManifest.name, literatureLock.name)
-assert.equal(literatureManifest.version, literatureLock.version)
-assert.equal(productDependencyLock.packages['node_modules/' + literatureLock.name]?.integrity, literatureLock.npm.integrity)
+const publishedLocks = await Promise.all(['literature.json', 'desktop-pet.json'].map(file => json(join(repository, 'third_party/dsh/candidate-v0.2.0-rc.2', file))))
+await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
 await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
@@ -51,8 +46,9 @@ for (const entry of await readdir(join(paths.dependencies, 'node_modules'), { wi
   if (entry.name.startsWith('@')) for (const item of await readdir(join(paths.dependencies, 'node_modules', entry.name))) await copyDependency(`${entry.name}/${item}`)
   else await copyDependency(entry.name)
 }
-// The desktop pet is inserted by the Electron profile, not the distribution.
-const sourceFolders = [...distribution.plugins.map(row => row.source), 'dsh-plugins/skill-control-native', 'dsh-plugins/desktop-pet',
+// Published packages were copied from the locked npm dependencies above.
+// Never rebuild or overwrite them with workspace source.
+const sourceFolders = [...distribution.plugins.map(row => row.source), 'dsh-plugins/skill-control-native',
   ...['dsh-mail', 'dsh-memory', 'dsh-oidc', 'dsh-knowledge-studio'].map(name => 'packages/' + name),
   'packages/dsh-knowledge-studio/packages/artifact-services']
 const sourcePackages = []
@@ -86,7 +82,7 @@ const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pi
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'source-qualification', published: false,
   bundles,
-  sourcePackages, externalPackages: [literatureLock], omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
+  sourcePackages, externalPackages: publishedLocks, omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
 }
 await writeFile(join(paths.output, 'assembly.json'), JSON.stringify(identity, null, 2) + '\n')
 await writeFile(join(paths.output, 'composition.json'), JSON.stringify(composition, null, 2) + '\n')
@@ -99,7 +95,7 @@ const runtimeManifest = await json(runtimeManifestPath)
 const installed = await json(join(paths.output, 'assembly.json'))
 installed.omittedPackages = omitted.packages
 await writeFile(join(paths.output, 'assembly.json'), JSON.stringify(installed, null, 2) + '\n')
-for (const name of [...sourcePackages, literatureLock.name, ...Object.keys(installed.desktopHost.nativePlugins)]) {
+for (const name of [...sourcePackages, ...publishedLocks.map(lock => lock.name), ...Object.keys(installed.desktopHost.nativePlugins)]) {
   const manifest = await json(join(modules, name, 'package.json'))
   runtimeManifest.dependencies[name] = manifest.version
 }

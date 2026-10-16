@@ -60,7 +60,7 @@ The pet stores no account or model keys and does not access the network.
 | Part | Location | Responsibility |
 | --- | --- | --- |
 | Pet window | `dsh-electron/src/desktop-pet.mjs` | Small transparent, always-on-top, non-focusable window; click-through, dragging, tucking, remembered positions, context menu, away detection |
-| Pet plugin | [`dsh-plugins/desktop-pet`](../dsh-plugins/desktop-pet/README_EN.md) | Settings, built-in characters and their validation, the pet page (state and animation), the settings page |
+| Pet plugin | [`packages/dsh-desktop-pet`](../packages/dsh-desktop-pet/README_EN.md) | Settings, built-in characters and their validation, the pet page (state and animation), the settings page |
 | Conversation status | `dsh-plugins/desktop-services` | The existing notification sync, which also carries a read-only list of running conversations; the rules that create notification items are unchanged |
 
 - The plugin's Host part sends settings to the desktop shell over the authenticated local bridge of `desktop-services`; it never receives the bridge credential.
@@ -99,7 +99,7 @@ A character package is data only: a `skin.json` manifest and images, no scripts 
 - Artwork conventions: frame 0 is the still pose; feet line up and the character keeps the same scale across animations; the character faces left and is mirrored when dragged to the right.
 - Safety: SVG needs a `viewBox` and may not contain scripts, `foreignObject`, event attributes, a DOCTYPE or references outside the file. PNG and WebP must match their file headers, at most 4096×4096 each. A package is at most 20 MB, an animation at most 64 frames and 30 fps. Text is shown as plain text only.
 
-The built-in characters live in `dsh-plugins/desktop-pet/skins/`, one directory each; see [`skins/LICENSE`](../dsh-plugins/desktop-pet/skins/LICENSE) for licenses and attribution:
+The built-in characters live in `packages/dsh-desktop-pet/skins/`, one directory each; see [`skins/LICENSE`](../packages/dsh-desktop-pet/skins/LICENSE) for licenses and attribution:
 
 | Character | ID | Source | License |
 | --- | --- | --- | --- |
@@ -124,9 +124,9 @@ Characters are added and maintained by contributors through pull requests; the a
 ## Development and verification
 
 ```sh
-node --test dsh-plugins/desktop-pet/test/*.test.mjs dsh-electron/tests/desktop-pet-core.test.mjs dsh-electron/tests/task-notifications.test.mjs
+node --test packages/dsh-desktop-pet/test/*.test.mjs dsh-electron/tests/desktop-pet-core.test.mjs dsh-electron/tests/task-notifications.test.mjs
 ```
 
-- `dsh-plugins/desktop-pet/test/host.test.mjs` needs `EDUWORK_TEST_RUNTIME` set to a verified Runtime's `d` directory.
+- `packages/dsh-desktop-pet/test/host.test.mjs` uses the package's locked development dependencies; set `EDUWORK_TEST_RUNTIME` to a verified Runtime's `d` directory to test that product instead.
 - Real Electron checks (window properties, file access, IPC origin, processes after hiding and closing): `EDUWORK_TEST_EVIDENCE=<new directory> <Electron executable> dsh-electron/tests/desktop-pet.electron.mjs`.
 - Click-through, focus, full-screen spaces, real-pointer dragging and tucking, multiple displays and long idle power use need native acceptance on both platforms' release packages.

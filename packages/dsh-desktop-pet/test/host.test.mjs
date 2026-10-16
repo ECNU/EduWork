@@ -2,11 +2,11 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire, registerHooks } from 'node:module'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { pathToFileURL, fileURLToPath } from 'node:url'
 
-// Real Cordis and typert Runtime from a prepared product `d` directory.
-const runtime = process.env.EDUWORK_TEST_RUNTIME
-test('the Host plugin sends validated settings, lists built-in skins and closes the pet on dispose', { skip: !runtime }, async t => {
+// Use either the package's locked development dependencies or a real product.
+const runtime = process.env.EDUWORK_TEST_RUNTIME || fileURLToPath(new URL('../', import.meta.url))
+test('the Host plugin sends validated settings, lists built-in skins and closes the pet on dispose', async t => {
   const req = createRequire(join(runtime, 'package.json'))
   const { Context, Service } = await import(pathToFileURL(req.resolve('@deepseek-ai/cordis')))
   const hook = registerHooks({ resolve(name, context, next) {
@@ -35,4 +35,43 @@ test('the Host plugin sends validated settings, lists built-in skins and closes 
   await fiber.dispose()
   await new Promise(resolve => setTimeout(resolve, 50))
   assert.equal(calls.at(-1).enabled, false)
+})
+
+test('dispose waits for pending configuration and hides before a replacement starts', { timeout: 10_000 }, async t => {
+  const req = createRequire(join(runtime, 'package.json'))
+  const { Context, Service } = await import(pathToFileURL(req.resolve('@deepseek-ai/cordis')))
+  const hook = registerHooks({ resolve(name, context, next) {
+    return next(name, /^(@deepseek-ai\/|zod$)/.test(name) ? { ...context, parentURL: pathToFileURL(join(runtime, 'package.json')).href } : context)
+  } })
+  const { default: DesktopPet } = await import('../lib/index.js')
+  hook.deregister()
+  const ctx = new Context(), calls = []
+  t.after(() => ctx.fiber.dispose())
+  const entered = Promise.withResolvers(), pending = Promise.withResolvers()
+  const desktop = new Service(ctx, 'desktopServices')
+  desktop.pet = async body => {
+    calls.push(body.enabled)
+    if (calls.length === 1) { entered.resolve(); await pending.promise }
+    return { supported: true }
+  }
+  const first = ctx.plugin(DesktopPet, { enabled: true })
+  await first
+  const previous = ctx.desktopPet
+  await entered.promise
+  let disposed = false
+  const stopping = first.dispose().then(() => { disposed = true })
+  await new Promise(resolve => setImmediate(resolve))
+  assert.equal(disposed, false)
+  assert.deepEqual(calls, [true])
+  pending.resolve()
+  await stopping
+  assert.deepEqual(calls, [true, false])
+  await previous.apply()
+  assert.deepEqual(calls, [true, false])
+  const second = ctx.plugin(DesktopPet, { enabled: true })
+  await second
+  await ctx.desktopPet.applied
+  assert.deepEqual(calls, [true, false, true])
+  await second.dispose()
+  assert.deepEqual(calls, [true, false, true, false])
 })

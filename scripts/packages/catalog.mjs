@@ -1,8 +1,9 @@
 export const repository = 'ecnu/EduWork'
 
-// Five independently installed development roots, six independently published packages.
+// Six independently installed development roots, seven independently published packages.
 // Studio retains its existing shared-services workspace and exact dependency contract.
 export const packages = [
+  { id: 'dsh-desktop-pet', name: '@eduwork/dsh-desktop-pet', directory: 'packages/dsh-desktop-pet', group: 'dsh-desktop-pet' },
   { id: 'dsh-literature', name: '@eduwork/dsh-literature', directory: 'packages/dsh-literature', group: 'dsh-literature' },
   { id: 'dsh-oidc', name: '@eduwork/dsh-oidc', directory: 'packages/dsh-oidc', group: 'dsh-oidc' },
   { id: 'dsh-memory', name: '@eduwork/dsh-memory', directory: 'packages/dsh-memory', group: 'dsh-memory' },

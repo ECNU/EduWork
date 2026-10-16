@@ -45,7 +45,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Updater startup and recovery guidance checks failed' }
           node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop notification checks failed' }
-          node --test core/dsh-plugins/desktop-pet/test/*.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs
+          node --test core/packages/dsh-desktop-pet/test/page-clock.test.mjs core/packages/dsh-desktop-pet/test/pet-state.test.mjs core/packages/dsh-desktop-pet/test/skin.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop pet checks failed' }
           node --test core/dsh-electron/tests/host-git-identity.test.mjs
           if ($LASTEXITCODE) { throw 'Host Git identity checks failed' }

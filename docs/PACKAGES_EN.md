@@ -2,10 +2,11 @@
 
 [简体中文](PACKAGES.md) | **English**
 
-EduWork maintains its public plugins in one source repository. Each npm package retains its identity, version and independent installation/publication. Issues, PRs, protocols and development documentation belong to `ecnu/EduWork`; institutional implementations remain in EduWork-ECNU. Other DSH applications can use individual plugins without the EduWork desktop client.
+EduWork maintains its public plugins in one source repository. Each npm package retains its identity, version and independent installation/publication. Issues, PRs, protocols and development documentation belong to `ecnu/EduWork`; institutional implementations remain in EduWork-ECNU. Each plugin documents its host requirements. The desktop pet requires the EduWork Electron desktop bridge; other DSH clients must integrate that interface first.
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [Literature search, citations and full text](../packages/dsh-literature/README_EN.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [Identity, credentials and models](../packages/dsh-oidc/README_EN.md) | `packages/dsh-oidc` |
 | `@eduwork/dsh-memory` | [Local memory and retrieval](../packages/dsh-memory/README_EN.md) | `packages/dsh-memory` |
@@ -13,7 +14,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README_EN.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office, speech, images and media](../packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Studio's existing workspace |
 
-Five development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
+Six development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
 
 ## Develop and check
 
@@ -60,6 +61,9 @@ Reuse an existing npm archive when its declared range covers a kernel upgrade an
 Bundled source extensions are currently rebuilt for the candidate runtime, with DSH peers describing the adapted API range (currently `>=0.2.0-rc.2 <0.3.0-0`). This qualifies that assembled artifact, not the original npm package on a new host. Maintain truthful source manifests for standalone publication; do not rewrite third-party packages or add compatibility exemptions.
 
 ## Product assembly
+
+`@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.0-rc.2/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
+
 
 `config/assembly.eduwork.json` still consumes published registry archives through exact version/SRI/SHA-256 locks in `third_party/npm-015-rc1/`. Editing package source cannot silently change a desktop build. Follow [the build guide](BUILD.md): publish, verify the registry, update locks, then build the product. A development workspace link is not release evidence.
 

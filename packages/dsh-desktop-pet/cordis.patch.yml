@@ -1,0 +1,5 @@
+- insert:
+    - id: eduwork-desktop-pet
+      name: '@eduwork/dsh-desktop-pet'
+      config:
+        enabled: false

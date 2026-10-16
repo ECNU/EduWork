@@ -28,6 +28,8 @@ on:
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
       - 'scripts/assemble-pinned-dsh-source-product.mjs'
+      - 'scripts/published-package-inputs.mjs'
+      - 'scripts/test/published-package-inputs.test.mjs'
       - 'scripts/prepare-pinned-dsh-product.mjs'
       - 'scripts/distribution-config-patches.mjs'
       - 'scripts/test/distribution-config-patches.test.mjs'
@@ -129,7 +131,7 @@ jobs:
           node core/scripts/probe-pinned-dsh-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
-          node --test core/scripts/test/distribution-config-patches.test.mjs
+          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
           if ($LASTEXITCODE) { throw 'Windows workspace permission repair checks failed' }
@@ -145,7 +147,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Shared media template build and assembly checks failed' }
           node --test core/dsh-plugins/workbench-native/test/data-import.test.mjs core/dsh-plugins/workbench-native/test/import-catalog.test.mjs
           if ($LASTEXITCODE) { throw 'Historical directory import qualification failed' }
-          node --test core/dsh-plugins/desktop-pet/test/*.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs
+          node --test core/packages/dsh-desktop-pet/test/*.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop pet plugin and placement checks failed' }
       - name: Qualify authenticated Host transport and update admission
         shell: pwsh
@@ -207,7 +209,7 @@ jobs:
           $env:EDUWORK_TEST_SOURCE = "$env:RUNNER_TEMP/source-stage"
           $env:EDUWORK_TEST_DEPENDENCIES = "$env:RUNNER_TEMP/source-deps"
           $env:EDUWORK_TEST_HOST = "$env:RUNNER_TEMP/native-host"
-          node --test core/scripts/test/distribution-config-patches.test.mjs
+          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs
           if ($LASTEXITCODE) { throw 'Assembled edition configuration checks failed' }
           node --test core/scripts/test/runtime-omissions.test.mjs
           if ($LASTEXITCODE) { throw 'Assembled product package omission checks failed' }

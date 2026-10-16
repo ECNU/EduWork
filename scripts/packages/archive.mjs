@@ -43,6 +43,23 @@ export function inspectArchive(bytes, selected, expectedVersion) {
       assert.ok(files.has(entry.slice(2).replace(/\.js$/, '.d.ts')), `Missing literature declaration for ${entry}`)
     }
   }
+  if (selected.id === 'dsh-desktop-pet') {
+    for (const file of ['LICENSE', 'skins/LICENSE', 'README.md', 'README_EN.md', 'cordis.patch.yml',
+      'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']) {
+      assert.ok(files.has(file), `Missing desktop pet runtime or license file ${file}`)
+    }
+    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi']) {
+      assert.ok(files.has(`skins/${id}/skin.json`), `Missing built-in character ${id}`)
+      const references = value => {
+        if (typeof value === 'string' && /\.(svg|png|webp)$/i.test(value)) {
+          assert.ok(files.has(`skins/${id}/${value}`), `Missing packed character image ${id}/${value}`)
+        } else if (value && typeof value === 'object') Object.values(value).forEach(references)
+      }
+      references(JSON.parse(files.get(`skins/${id}/skin.json`)))
+    }
+    assert.ok(!manifest.private, 'Desktop pet archive must be publishable')
+    assert.ok(!manifest.peerDependencies?.['@eduwork/desktop-services'], 'Host service injection is not an npm dependency')
+  }
   for (const [file, content] of files) {
     assert.ok(!/(^|\/)(node_modules|\.git|\.local|dist|test|tests)(\/|$)|\.(tgz|log|map)$/.test(file), `Unexpected packed file ${file}`)
     if (!/\.(js|mjs|ts|json|md|yml|yaml|py|ps1|txt)$/.test(file)) continue

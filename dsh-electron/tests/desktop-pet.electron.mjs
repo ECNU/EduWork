@@ -18,7 +18,7 @@ if (!evidence) throw new Error('Set EDUWORK_TEST_EVIDENCE to an isolated output 
 const userData = mkdtempSync(join(tmpdir(), 'eduwork-pet-electron-'))
 app.setPath('userData', userData)
 protocol.registerSchemesAsPrivileged([{ scheme: PET_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
-const packageRoot = fileURLToPath(new URL('../../dsh-plugins/desktop-pet/', import.meta.url))
+const packageRoot = fileURLToPath(new URL('../../packages/dsh-desktop-pet/', import.meta.url))
 const preload = fileURLToPath(new URL('../src/preload-pet.cjs', import.meta.url))
 const wait = ms => new Promise(resolve => setTimeout(resolve, ms))
 async function until(check, label, timeout = 10_000) {

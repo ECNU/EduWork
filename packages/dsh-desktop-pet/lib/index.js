@@ -22,14 +22,22 @@ export default class DesktopPet extends TypertRemoteService {
     super(ctx, 'desktopPet')
     for (const init of initializers) init.call(this)
     this.config = config
+    this.disposed = false
     this.skins = readBuiltinSkins(fileURLToPath(new URL('../skins/', import.meta.url)), message => ctx.logger.warn(message))
     this.applied = Promise.resolve()
-    const apply = () => { this.applied = this.applied.then(() => this.apply()) }
+    const apply = () => { if (!this.disposed) this.applied = this.applied.then(() => this.apply()) }
     ctx.on('loader/volatile-update', apply)
     apply()
     // Stopping or disabling the plugin removes the pet; the shell keeps no copy.
     const services = ctx.desktopServices
-    ctx.effect(() => () => { void this.skins.then(skins => services.pet({ ...this.request(skins), enabled: false })).catch(() => {}) })
+    ctx.effect(() => () => {
+      this.disposed = true
+      // Let the loader await the last request and the final hide before it
+      // starts a replacement instance. Older work must not hide a new pet.
+      this.applied = this.applied.then(async () => services.pet({ ...this.request(await this.skins), enabled: false }))
+        .catch(error => ctx.logger.warn(`desktop-pet cleanup: ${error.message}`))
+      return this.applied
+    })
   }
   request(skins) {
     const selected = this.config.skin.get(), id = skins.has(selected) ? selected : DEFAULT_SKIN
@@ -37,7 +45,11 @@ export default class DesktopPet extends TypertRemoteService {
       size: this.config.size.get(), bubbles: this.config.bubbles.get(), sleep: this.config.sleep.get() }
   }
   async apply() {
-    try { this.supported = (await this.ctx.desktopServices.pet(this.request(await this.skins))).supported !== false }
+    try {
+      const skins = await this.skins
+      if (this.disposed) return
+      this.supported = (await this.ctx.desktopServices.pet(this.request(skins))).supported !== false
+    }
     catch (error) { this.ctx.logger.warn(`desktop-pet: ${error.message}`) }
   }
   async status() {

@@ -22,14 +22,14 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])
   assert.deepEqual(changedGroups(['packages/dsh-oidc/src/host/model-provider.ts']), ['dsh-oidc'])
   assert.deepEqual(changedGroups(['packages/dsh-mail/README.md', 'README.md']), [])
-  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 5)
+  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 6)
   assert.equal(needsProductBuild(['packages/dsh-oidc/src/host/model-provider.ts', 'docs/PACKAGES.md']), false)
   assert.equal(needsProductBuild(['third_party/npm-015-rc1/dsh-oidc/LOCK.json']), true)
   assert.equal(needsProductBuild(['dsh-host/entry.mjs']), true)
   assert.throws(() => selectPackage('../../private'), /Unknown package/)
 })
-test('six separate package identities retain registry dependency contracts and product npm locks', async () => {
-  assert.equal(new Set(packages.map(p => p.name)).size, 6)
+test('seven separate package identities retain registry dependency contracts and product npm locks', async () => {
+  assert.equal(new Set(packages.map(p => p.name)).size, 7)
   for (const selected of packages) {
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
@@ -41,6 +41,11 @@ test('six separate package identities retain registry dependency contracts and p
   const assembly = JSON.parse(await readFile(new URL('../config/assembly.eduwork.json', import.meta.url)))
   for (const selected of packages) {
     const declaration = assembly.externalPackages.find(p => p.name === selected.name)
+    if (selected.id === 'dsh-desktop-pet') {
+      // Electron-only DSH 0.2 package; never add it to the legacy 0.1.x product.
+      assert.equal(declaration, undefined)
+      continue
+    }
     if (selected.id === 'dsh-literature') {
       // The DSH 0.2 fork is independent of the current 0.1.7 client assembly.
       // Publishing it must not replace an incompatible legacy release dependency.
@@ -76,4 +81,20 @@ test('publication rejects the wrong package, missing entry points and archive tr
   assert.throws(() => inspectArchive(tarball({ 'package/package.json': files['package/package.json'] }), selected, '1.2.3'), /Missing packed export/)
   assert.throws(() => inspectArchive(tarball({ ...files, 'package/../escape.js': 'bad' }), selected, '1.2.3'), /Unsafe archive path/)
   assert.throws(() => inspectArchive(tarball({ ...files, 'package/node_modules/dependency.js': 'bad' }), selected, '1.2.3'), /Unexpected packed file/)
+})
+
+test('desktop pet publication rejects a package missing a referenced character image', () => {
+  const selected = selectPackage('dsh-desktop-pet')
+  const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ecnu/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
+  const files = Object.fromEntries(['LICENSE', 'skins/LICENSE', 'README.md', 'README_EN.md', 'cordis.patch.yml',
+    'lib/index.js', 'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']
+    .map(file => ['package/' + file, 'fixture']))
+  files['package/package.json'] = JSON.stringify(manifest)
+  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi']) {
+    files[`package/skins/${id}/skin.json`] = JSON.stringify({ animations: { idle: { image: 'idle.svg' } } })
+    files[`package/skins/${id}/idle.svg`] = '<svg/>'
+  }
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
+  delete files['package/skins/dafeiyu/idle.svg']
+  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image dafeiyu\/idle.svg/)
 })
