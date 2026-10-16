@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.4",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-16T01:49:16.965Z",
-  "fileSetSHA256": "5578aba6c4164f287ae86c11a7bd2688689123f1850e846cc7cc1a8aa36610c1",
+  "createdAt": "2026-10-16T05:17:36.664Z",
+  "fileSetSHA256": "ee413e6799b1ec260b19cca7d48754a0723bf0c2c34774bf8168d29253a5ef38",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "6500c8fb1d16d741220f9010d46dde687236576aef025c29c1a1af07299c97f3"
+      "sha256": "7cf9775740633cf588068396afe3be6c62544a04e06f9b6461e2254273d228b9"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -69,7 +69,7 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "8e99d330fb72fb18fdb3c16b66c53c306b722d26fc08d2a62bb32df3a3851688"
+      "sha256": "879c00e9d81bfe549df4d97f9f774e6b685bf4cd4cf256cd71bfec6ce3c96be2"
     },
     {
       "path": "AGENTS.md",
@@ -173,7 +173,7 @@
     },
     {
       "path": "config/assembly.eduwork.json",
-      "sha256": "b38f00e94f4fb40cb9fe5363476de8881b5dc6bff48175483475e67bb014b7b2"
+      "sha256": "af8b389bd75e784cae22f54916da304553a475597d2d50b6a8331e2eb8d35a3d"
     },
     {
       "path": "config/desktop-build.json",
@@ -213,7 +213,7 @@
     },
     {
       "path": "config/distributions/generic.json",
-      "sha256": "d9b0e435dabe7908f0c9a45b7bd12a8ddbd9d1dd52dec40bb2f12704a773846b"
+      "sha256": "a5c5975eb0afe21e19542b4799120fb654e4a398f063236ee8d08b460199667f"
     },
     {
       "path": "config/macos-native.lock.json",
@@ -296,6 +296,14 @@
       "sha256": "e552cf012bc5df2f3723561b73c9394b23910d41743519d286a6fbea53c65575"
     },
     {
+      "path": "docs/images/calendar-agent.png",
+      "sha256": "bad6a9fab4448c483e98e0869d6cf13b5e1ea987cd91ae0d45911a53979a2f47"
+    },
+    {
+      "path": "docs/images/calendar-week.png",
+      "sha256": "3d5825069adb95bfec9eb8d89f387bd069703ff3bfecc5bb76aa12b02f79294b"
+    },
+    {
       "path": "docs/images/litellm-models.png",
       "sha256": "9949f64b8d1ef6207433f59d81a78ae4e35cb5453f1b7d486b06816ee8f8f0bd"
     },
@@ -305,7 +313,7 @@
     },
     {
       "path": "docs/images/README_EN.md",
-      "sha256": "d23a0e097586104dd7bcff6e3141390acb317829a02a1ea381dd7a1af99e65fa"
+      "sha256": "ac99f436e846cbaa815fdd6743e5c2dfa0661fceca9c23017a081901386b59d2"
     },
     {
       "path": "docs/images/readme-hero-en.svg",
@@ -317,7 +325,7 @@
     },
     {
       "path": "docs/images/README.md",
-      "sha256": "b1dc2f70b93a73d60c9aa58b2c7dd74be2eb3b6f2fe1c0d5bd842f92c10aad97"
+      "sha256": "a8b624bcb29617da992b890dcf8fea18517abd078f6027f4d83ed29b20d5a5f0"
     },
     {
       "path": "docs/images/skills.png",
@@ -370,6 +378,22 @@
     {
       "path": "docs/proposals/build-pipeline-stages/README.md",
       "sha256": "179cfef14e96cd2c7d499211908ce44eca8286704ffd536e4e514eb99795ffdb"
+    },
+    {
+      "path": "docs/proposals/calendar/INTEGRATION_EN.md",
+      "sha256": "8d702d41ea6b6174877846763d12dd7727377d5d9f33bd5b9b925ba04fa8b5d4"
+    },
+    {
+      "path": "docs/proposals/calendar/INTEGRATION.md",
+      "sha256": "3fdd89d00a291857a72e03f3d5c03619c3b12b3065bfc4779e0843e9e960b8cc"
+    },
+    {
+      "path": "docs/proposals/calendar/README_EN.md",
+      "sha256": "fd7ff8ec881ce5b9bc845b8846edc140cb20f9100d406ae4e017105683085873"
+    },
+    {
+      "path": "docs/proposals/calendar/README.md",
+      "sha256": "1b1cb259a77bea7a50edffec0083c8f5bb9b535d280ab53d9ab2645a7d6859a9"
     },
     {
       "path": "docs/proposals/desktop-profile-location/README_EN.md",
@@ -1902,6 +1926,182 @@
     {
       "path": "dsh-plugins/brand-settings-native/test/preset-policy.test.mjs",
       "sha256": "261cddd97ab1605a853fe4d06877ae8ddc6890eb08858abf61fc3cb56e73e0df"
+    },
+    {
+      "path": "dsh-plugins/calendar/build-client.mjs",
+      "sha256": "f2360d51dc691d57e0d5019b9497fb9371a9e5f21cb719d676573f189a5975dd"
+    },
+    {
+      "path": "dsh-plugins/calendar/build-client.ps1",
+      "sha256": "3e3835093828515391e249de2cc47862f832158c3fdcc399f51c463e87e18dcc"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/client.js",
+      "sha256": "03affd54b2f737890df70e83df1af19f6470d05bf83d243817626f22d73ec517"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/ics.js",
+      "sha256": "a06d8c5bbf6efd5e217641e696935d255b5256c10e0184e854bfea6464755355"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/index.js",
+      "sha256": "ac54b07b7a14e29e360ba398db5507665182ccf4d1eea06034acf1c0912e8b13"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/keys.js",
+      "sha256": "74466697bb3254fc275f29e8202bd45984c29e9f9ee6da36429a50c56fa6b0dd"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/model.js",
+      "sha256": "d0cc75f8e68b60c3855d01ba1082080cf0b2f4d9be92a74c8e9ab60495f1dfee"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/personal.js",
+      "sha256": "c0b9b55f4f3121c4a2e15f7a3395f2ed637b69312b51a89b29f6d8788c64f733"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/reminders.js",
+      "sha256": "9c6005ee09dd8acf19ca748a68aab1e4d4ff1e7700238d03fc0f5fe4dd4170ca"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/sources.js",
+      "sha256": "767dfe6f402f1c68681291c5c048325d37e4323fb999dbfcacdb83e0cf90cfdd"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/store.js",
+      "sha256": "213abea7ec85e5f646ab2e1046bd130aebb86de1bfbb815f4336caba7ece0986"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/tool-permission.js",
+      "sha256": "1684f7ee05ff5201a9ea62dff4f74391ebeee601abd0099ed2fa0202f183fcf8"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/tools.js",
+      "sha256": "b0431cbd59d8b0ba7eaf92d8fbb86c61375dba404604f44f457eb4213b1e1ccc"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/typert-descriptors.js",
+      "sha256": "7fb84753e5e1a237fe86cc979b9b4b577bec95ae4e794b87c9e9f7dd108a1384"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/typert-schemas.js",
+      "sha256": "702623ac3b7b310d55e36df8755ab7c17b66d9f770998facb51aaab25e8f2550"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/typert.host.js",
+      "sha256": "bd69f2769bc62a951cf2c39d1dcebf5bf279169ddb9d6a9c4bb496fa212b06b4"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/typert.remote-client.js",
+      "sha256": "fae92dabc53c89f6201872d4e72d2a9279a2fd851581739df4fdb241113fb158"
+    },
+    {
+      "path": "dsh-plugins/calendar/package.json",
+      "sha256": "980f1f0190ebcfd6d51e5a30b4f6510174075d7d8aed8db41cda08c8658af420"
+    },
+    {
+      "path": "dsh-plugins/calendar/README_EN.md",
+      "sha256": "5e49192911188649d2c302355dec6413d5f3c243c4c0b711670e20961041ab3a"
+    },
+    {
+      "path": "dsh-plugins/calendar/README.md",
+      "sha256": "1a1678fce34a7a2a376b4439ad701a8b68e79e601359211663dbdb2fdbcc7f1f"
+    },
+    {
+      "path": "dsh-plugins/calendar/src/client.ts",
+      "sha256": "e1e3f6d71cabed7077c2ce44e1ce4f6d91593212b6c3632d5728228cdb6cfb94"
+    },
+    {
+      "path": "dsh-plugins/calendar/src/layout.js",
+      "sha256": "e35e90555d42ce9b75cbb7f1992d6e945d49185b334f57492d32624db1ca6895"
+    },
+    {
+      "path": "dsh-plugins/calendar/src/month-view.ts",
+      "sha256": "b6989214686839ddee119296c6b04e097e58fa6d2bd4459034c0c349fe1e730b"
+    },
+    {
+      "path": "dsh-plugins/calendar/src/personal-settings.ts",
+      "sha256": "c084c8ce7560db2dd2906849887baa29318081aabdb9cb035dd35d470fad2b4d"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/browser-acceptance.mjs",
+      "sha256": "b4b41610c8cb656e1dc5fbbc8f746a1d0c2fc2d4934e278ba1bd20b8a2867e1a"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/ics.test.mjs",
+      "sha256": "bc428f3ce05d3b12d45946c2f30318e8ec7897f4bcef45c27be3265fc036689e"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/import.test.mjs",
+      "sha256": "737b43048f29b0d6f9eb5ce28cdb9a0be577f1f59ee080a4abc8f5da2cfadd45"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/layout.test.mjs",
+      "sha256": "b153c678f58d1d189303a8e00af98823863608cddd0fc148c4f8811d6a4670db"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/model.test.mjs",
+      "sha256": "484cf4e65de7409cedb24962171b407f18a593f187daff9d9e37cba00f73287f"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/occurrence.test.mjs",
+      "sha256": "5caf1d8bd379cf97fc99cee972ee014bb098cc595024b2da29cfe243d729f465"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/panel.test.mjs",
+      "sha256": "2f51a42f52f8e8b90ebbd87bf7c05802300a2711e0384d1c0213add366e0b6cd"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/remote.test.mjs",
+      "sha256": "ffcd69ca5ab19d8d41af76c8bb175ca033e5885345594252881a359439718ab4"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/rendered-keys.test.mjs",
+      "sha256": "b8997e891818fd224fc92f917def41396e14ef42324eb0611e7fcc2b555a3033"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/store.test.mjs",
+      "sha256": "eae752762c6ec3b3577f67487f9635d6a4f6d73c4b2eea9bf3bb20bc7eb2a682"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/browser-primitives.js",
+      "sha256": "5d321c0a1d4171c2b8877f848730741774a24a50567da810f2aeffc032d84c6c"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/bundle-panel.mjs",
+      "sha256": "55a516b54a9a0a32f948110c6320032cd6492b970148eff3d6b451d4b96f5515"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/client-artifact.mjs",
+      "sha256": "42f60def668bd99ce6031747cd51f28dda931d8caa769a3d500446dc390c914a"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/load-bundle.mjs",
+      "sha256": "bbebe6349cb6a25d3cac9fdefc4e0b576dc9d51bedf6a6da9cfaa3b12afbf0c1"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/mini-dom.js",
+      "sha256": "a594130f46798be40f28e100b95d2089d880090f8d537ba68340daed2f3a6d31"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/ui-primitives-stub.js",
+      "sha256": "d629aceb578bfcf20407051f4b2675cec8f9531c5ad7203ccad870080026bf28"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/sync.test.mjs",
+      "sha256": "b5f0ce9a8f08e94e06bb34d4314ff89470968bfce9959c13621ecc302e9bed0e"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/tools.test.mjs",
+      "sha256": "55dca355739654c517e5acbdc7aedcad7f08cb1dc877ea9dfc6b9e494b7c9ac4"
+    },
+    {
+      "path": "dsh-plugins/calendar/tsconfig.json",
+      "sha256": "9bc4b5f5ca7e314af3775b317cab2ce1f5b63726e559446e9fc9949925f4661e"
+    },
+    {
+      "path": "dsh-plugins/calendar/tsdown.config.ts",
+      "sha256": "0533e9fa355eb5b34e1751eace5ac6f2c60efa70dbd1becf4af284e95c8bd5bb"
     },
     {
       "path": "dsh-plugins/client-ui-agent-preset-product/build-client.mjs",
@@ -5733,7 +5933,7 @@
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
-      "sha256": "2fd8c431688ac2bf02ae49a823c06b8cc90a80615c6e3d7451d975bb3487faf0"
+      "sha256": "d68fc385d16104e92d6ea64de025d93daa6a23f6b80ea12103817d4acea233ff"
     },
     {
       "path": "scripts/build-desktop-candidate.ps1",
@@ -5745,7 +5945,7 @@
     },
     {
       "path": "scripts/build-pinned-dsh-plugin-clients.mjs",
-      "sha256": "8b2d6724c3eaf166ec75bd440c70d096c75a13574ae5cbf361121d5aed429b99"
+      "sha256": "8933f79d87034f7187fb2ec79f0ff78bf39bb3b8029d026c378bde29987a7f26"
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
@@ -6357,7 +6557,7 @@
     },
     {
       "path": "tests/eduwork-assembly-policy.test.mjs",
-      "sha256": "35f8999a964debe3f4b8a1ea86ab4b4400e49a1c0577e0a365f335127808ad17"
+      "sha256": "c58dc20f33f196b96a0ab80e9a0980ce70ba5b3dde51842f7fb83c1c01475e1c"
     },
     {
       "path": "tests/eduwork-configure-archive.test.mjs",
@@ -6381,7 +6581,7 @@
     },
     {
       "path": "tests/eduwork-source-audit.test.mjs",
-      "sha256": "6298f878f96618628030b9c9fe3fcda73e754146429d8d6b1cdefddfe39acc15"
+      "sha256": "767cf5365c6e46578fe73ad9bc3e52119eb94a547c28788b823c8272ba2f8cd1"
     },
     {
       "path": "tests/eduwork-source-reproducibility.test.mjs",

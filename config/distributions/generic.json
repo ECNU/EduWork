@@ -129,6 +129,12 @@
       "source": "dsh-plugins/activity-insights-native",
       "id": "eduwork-activity-insights-native",
       "name": "@chatecnu-work/dsh-activity-insights-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/calendar",
+      "id": "eduwork-calendar",
+      "name": "@eduwork/dsh-calendar"
     }
   ],
   "skills": [
@@ -226,6 +232,14 @@
         {
           "id": "eduwork-search",
           "name": "@chatecnu-work/dsh-tool-browser/search-auto"
+        }
+      ]
+    },
+    {
+      "insert": [
+        {
+          "id": "eduwork-calendar-tools",
+          "name": "@eduwork/dsh-calendar/tools"
         }
       ]
     },

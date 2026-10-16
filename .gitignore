@@ -10,3 +10,4 @@ private-config/
 *.log
 .DS_Store
 Thumbs.db
+dsh-plugins/calendar/test/.render/

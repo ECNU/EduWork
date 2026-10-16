@@ -1,12 +1,13 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { promisify } from 'node:util'
-import { auditDistribution } from '../scripts/audit-eduwork-distribution.mjs'
+import { auditDistribution, sourceFileSet } from '../scripts/audit-eduwork-distribution.mjs'
 
 const run = promisify(execFile)
 const here = dirname(fileURLToPath(import.meta.url))
@@ -72,5 +73,26 @@ test('source audit still reports a real violation inside a kept directory', asyn
     await writeFile(join(root, 'src', 'leak.mjs'), `export const leak = "${privatePath}"\n`)
     const report = auditDistribution({ root })
     assert.ok(report.errors.some(error => error.includes('developer-specific absolute path')), JSON.stringify(report.errors))
+  } finally { await rm(root, { recursive: true, force: true }) }
+})
+
+test('calendar render fixtures do not change the frozen source receipt across runtimes', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-audit-render-'))
+  try {
+    await writeFile(join(root, 'entry.mjs'), 'export const kept = true\n')
+    const files = sourceFileSet(root)
+    await writeFile(join(root, 'source-receipt.json'), JSON.stringify({
+      schemaVersion: 1, edition: 'generic', files,
+      fileSetSHA256: createHash('sha256').update(JSON.stringify(files)).digest('hex'),
+    }))
+    const renderRoot = join(root, 'dsh-plugins', 'calendar', 'test', '.render')
+    await mkdir(renderRoot, { recursive: true })
+    for (const runtime of ['runtime-one', 'runtime-two']) {
+      await writeFile(join(renderRoot, 'calendar-panel.cjs'), `module.exports = '${runtime}'\n`)
+      assert.deepEqual(sourceFileSet(root), files)
+      const report = auditDistribution({ root, verifyReceipt: true })
+      assert.deepEqual(report.errors, [])
+      assert.ok(report.skipped.includes('dsh-plugins/calendar/test/.render'))
+    }
   } finally { await rm(root, { recursive: true, force: true }) }
 })
