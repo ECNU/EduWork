@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.3",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-12T02:52:59.037Z",
-  "fileSetSHA256": "ad64711f55ae83f1ee7ed3affc8812670cb72f6f09710c3bbf8d801238c714a7",
+  "createdAt": "2026-10-16T02:02:52.926Z",
+  "fileSetSHA256": "c67144df81603687c627577a746dca796bb0541b2c1a5b0d1a06ac9828212b47",
   "files": [
     {
       "path": ".gitattributes",
@@ -69,7 +69,7 @@
     },
     {
       "path": ".gitignore",
-      "sha256": "8e99d330fb72fb18fdb3c16b66c53c306b722d26fc08d2a62bb32df3a3851688"
+      "sha256": "879c00e9d81bfe549df4d97f9f774e6b685bf4cd4cf256cd71bfec6ce3c96be2"
     },
     {
       "path": "AGENTS.md",
@@ -373,11 +373,11 @@
     },
     {
       "path": "docs/proposals/calendar/README_EN.md",
-      "sha256": "3509d2eb09ce3ac5559cb7f02354373f75a4a91832a536c63b2346187f5afca5"
+      "sha256": "e84d55618db286d4c213b22d4e249e8aa19f7ac27a1300b58103666976907932"
     },
     {
       "path": "docs/proposals/calendar/README.md",
-      "sha256": "06022e89ae944970a195c01798e61621e50c97c196403105600a65ed21f7d10f"
+      "sha256": "81320b64655e487ec042ee8bb1309cce04c00cf973c815b27fad5b7501ee9ea9"
     },
     {
       "path": "docs/proposals/desktop-profile-location/README_EN.md",
@@ -1796,44 +1796,56 @@
       "sha256": "261cddd97ab1605a853fe4d06877ae8ddc6890eb08858abf61fc3cb56e73e0df"
     },
     {
+      "path": "dsh-plugins/calendar/build-client.mjs",
+      "sha256": "f2360d51dc691d57e0d5019b9497fb9371a9e5f21cb719d676573f189a5975dd"
+    },
+    {
       "path": "dsh-plugins/calendar/build-client.ps1",
       "sha256": "3e3835093828515391e249de2cc47862f832158c3fdcc399f51c463e87e18dcc"
     },
     {
       "path": "dsh-plugins/calendar/lib/client.js",
-      "sha256": "eb38ac947f150497f08cb594f21001945d4f084dcd7b6df87d0269a2d158e538"
+      "sha256": "1e7047702a22e180b1d1a71cbd0534a8715394d8d9fd8b069f07693d0ff6bde2"
     },
     {
       "path": "dsh-plugins/calendar/lib/ics.js",
-      "sha256": "bf5a17eb3864d719604ba9e03b0d441b66796e91dde9032dcac20a80400bbfc0"
+      "sha256": "a06d8c5bbf6efd5e217641e696935d255b5256c10e0184e854bfea6464755355"
     },
     {
       "path": "dsh-plugins/calendar/lib/index.js",
-      "sha256": "7b256c13123db9eccb17e4f706ea104b695601df73d6e2e18b56141fc87f27d6"
+      "sha256": "ea455f362711f876f61ed794e8e3efd1d311e5e1ba3d2524fbf0f7d2e4c15206"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/keys.js",
+      "sha256": "74466697bb3254fc275f29e8202bd45984c29e9f9ee6da36429a50c56fa6b0dd"
     },
     {
       "path": "dsh-plugins/calendar/lib/model.js",
-      "sha256": "0a713e3b03e5d48c99b54a1c4fb20c7f75fe2e41b889a561ff6242ac728d6cf8"
+      "sha256": "fbf22175bf7bf8064b047b835bea1ae060c6582040faf1df3c9484e321963ceb"
+    },
+    {
+      "path": "dsh-plugins/calendar/lib/personal.js",
+      "sha256": "7ac86ea70975da6882514489345e4dce529189e7a7968fc2d6df64098d2eb759"
     },
     {
       "path": "dsh-plugins/calendar/lib/store.js",
-      "sha256": "1d853976f340d7693bf6dda9d5b3565a9eaaca07ea707d5bc0ff2a4a95f3895b"
+      "sha256": "40f56b3f62ce32d8b3be2489384a95672419b81caaa7fc8040eccc6af0b7dcb8"
     },
     {
       "path": "dsh-plugins/calendar/lib/tool-permission.js",
-      "sha256": "84117a23cd1238b9994645b66df82e24fc1fb7a87d13b03c406a2a7dc721b64e"
+      "sha256": "3e7e332f9ee52240ddb2fbd57d655688fde85a9d949d325f8e6a5528ec2a1466"
     },
     {
       "path": "dsh-plugins/calendar/lib/tools.js",
-      "sha256": "c4bd0a3132355e6dfea2e230f1a692744e6bb81e5dd19cab4f93619e31bf4081"
+      "sha256": "34cd11d7ae2051195b054bd7d47598560b8b3606d5bdcd6ad72532e6b9c6f4c8"
     },
     {
       "path": "dsh-plugins/calendar/lib/typert-descriptors.js",
-      "sha256": "e9586df6983f4b564b4e2ea46cf7c9b589cf3bdb4c22dd86ae50c6c8e2eb523b"
+      "sha256": "519e426dcec2b9d59d46b4b550c8ef965a10d541053e9e01b65c675492d1a101"
     },
     {
       "path": "dsh-plugins/calendar/lib/typert-schemas.js",
-      "sha256": "eeb044291a60d3f3caec17fbe692730c0228eb7351915a9ee209a1b47a505da7"
+      "sha256": "7138dd4869ad456b42a9c534b3dbc8d71295025fdc5f15cbacf549e802a2d6d4"
     },
     {
       "path": "dsh-plugins/calendar/lib/typert.host.js",
@@ -1845,27 +1857,43 @@
     },
     {
       "path": "dsh-plugins/calendar/package.json",
-      "sha256": "682b6eab0c96fabae648944ec5128dd85fc1bbc76232510413571e0486cfd288"
+      "sha256": "980f1f0190ebcfd6d51e5a30b4f6510174075d7d8aed8db41cda08c8658af420"
     },
     {
       "path": "dsh-plugins/calendar/README_EN.md",
-      "sha256": "8bee4e05bb4594387918d96bca2bb906dbae95b2affc5e5e4dbf9d657b3df825"
+      "sha256": "50efeeb0bb52927cbc17cad32f9c1c9c3f9e0f75d97cf68ab2840b961c18ee78"
     },
     {
       "path": "dsh-plugins/calendar/README.md",
-      "sha256": "34d61edf4f971b8d5f13366371d0049058cfb6027eec6efc62d840b1e411ced4"
+      "sha256": "b680f541ec38919ab7a35e560123fec3c75e526137242a908ec98616f52bb9dd"
     },
     {
       "path": "dsh-plugins/calendar/src/client.ts",
-      "sha256": "084110245e5365c366988430d38b8182a24bb4e8f451a55f3a4ff828d35bb5e0"
+      "sha256": "4251463863068afb8cde3dd73c40027648a4191e26f34f97f36b79a6b95967d5"
     },
     {
       "path": "dsh-plugins/calendar/src/layout.js",
       "sha256": "e35e90555d42ce9b75cbb7f1992d6e945d49185b334f57492d32624db1ca6895"
     },
     {
+      "path": "dsh-plugins/calendar/src/month-view.ts",
+      "sha256": "e6dbc3fe73e6f7d6f15d39754556712b3b9084576f6832d6fff703e2316ec455"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/.render/calendar-panel.cjs",
+      "sha256": "4dd863c40f19453fb00536f783d6e7126df8f097da9c7a3021bbc3d9c09a68fc"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/browser-acceptance.mjs",
+      "sha256": "7df0403169391b0daa6f36367aaffba0a884207411849e5232b0a6916d8a8ab0"
+    },
+    {
       "path": "dsh-plugins/calendar/test/ics.test.mjs",
-      "sha256": "39cd677579f44a99d18d25d1120a31d6b06c2c3ecbe4d2390cb9ae239ca0db00"
+      "sha256": "bc428f3ce05d3b12d45946c2f30318e8ec7897f4bcef45c27be3265fc036689e"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/import.test.mjs",
+      "sha256": "737b43048f29b0d6f9eb5ce28cdb9a0be577f1f59ee080a4abc8f5da2cfadd45"
     },
     {
       "path": "dsh-plugins/calendar/test/layout.test.mjs",
@@ -1880,16 +1908,52 @@
       "sha256": "5caf1d8bd379cf97fc99cee972ee014bb098cc595024b2da29cfe243d729f465"
     },
     {
+      "path": "dsh-plugins/calendar/test/panel.test.mjs",
+      "sha256": "bc858f37ba8b56ad95b75419c4801d670f44b2d2fc180a1ac15cbfd376039a32"
+    },
+    {
       "path": "dsh-plugins/calendar/test/remote.test.mjs",
-      "sha256": "3a74ae054052f6a2e04e92856464daba0d28897e9ad3d4280cbb356b20523970"
+      "sha256": "ab656abd9e121cf45fae208601c3194f1f1c3e41d05fde78ca583c840f7bcb1b"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/rendered-keys.test.mjs",
+      "sha256": "b8997e891818fd224fc92f917def41396e14ef42324eb0611e7fcc2b555a3033"
     },
     {
       "path": "dsh-plugins/calendar/test/store.test.mjs",
-      "sha256": "861999288e2af6ada92522a1b4053f6c6db63b6f53a27939c8e0d4b024c3b83a"
+      "sha256": "c9897066e5156aab7ae02f6f4a772038821151023853d0bcb1841826ea099182"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/browser-primitives.js",
+      "sha256": "5d321c0a1d4171c2b8877f848730741774a24a50567da810f2aeffc032d84c6c"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/bundle-panel.mjs",
+      "sha256": "0712157dabbc70922bee5e1300a5d4ad0de8a36ae4a800a7f9ced7739357a76b"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/client-artifact.mjs",
+      "sha256": "42f60def668bd99ce6031747cd51f28dda931d8caa769a3d500446dc390c914a"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/load-bundle.mjs",
+      "sha256": "bbebe6349cb6a25d3cac9fdefc4e0b576dc9d51bedf6a6da9cfaa3b12afbf0c1"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/mini-dom.js",
+      "sha256": "a594130f46798be40f28e100b95d2089d880090f8d537ba68340daed2f3a6d31"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/support/ui-primitives-stub.js",
+      "sha256": "d629aceb578bfcf20407051f4b2675cec8f9531c5ad7203ccad870080026bf28"
+    },
+    {
+      "path": "dsh-plugins/calendar/test/sync.test.mjs",
+      "sha256": "f9221366f41f30e5a37a6a7193eb07715fe015237d3e08bfc053f5a6cfdbacb5"
     },
     {
       "path": "dsh-plugins/calendar/test/tools.test.mjs",
-      "sha256": "73089b7ae65094a789ca33cf722f2e03e92eb977956b42d3cc312182f373b28f"
+      "sha256": "5132b179f4d28772fc5d9dca4bd1ab5d1dbb04176fc393bd402c0a001ebf2919"
     },
     {
       "path": "dsh-plugins/calendar/tsconfig.json",
