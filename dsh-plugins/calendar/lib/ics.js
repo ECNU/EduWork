@@ -24,7 +24,17 @@
 // - Timezones: no conversion except for an explicit `Z` stamp, whose instant is
 //   unambiguous. A `TZID` parameter is kept in `extensions` and written back, but
 //   the wall clock is what this version stores.
-import { WEEKDAYS } from './model.js'
+// - Identity: a record is `(source, uid)`, and two sources number their entries
+//   independently, so the plain `uid` is not unique in a file. The exported `UID`
+//   therefore carries the source as well (see `lib/keys.js`), and an import reads
+//   that back. A file written by anything else has a plain `UID`, which is taken to
+//   belong to the single source the import named — the behaviour there is unchanged.
+import { WEEKDAYS, isRealLocalTime } from './model.js'
+import { decodeIdentity, encodeIdentity } from './keys.js'
+
+/** The source an entry belongs to when it does not name one. */
+const DEFAULT_SOURCE = 'manual'
+const SOURCE_KEY = 'X-EDUWORK-SOURCE'
 
 /** Property names an earlier shape of this plugin wrote for a course; read and discarded. */
 const RETIRED_PROPERTIES = new Set([
@@ -52,7 +62,7 @@ const isTextProperty = name => TEXT_PROPERTIES.has(name) || name.startsWith('X-'
 /** Properties a `VEVENT` is read for; anything else is preserved in `extensions`. */
 const CONSUMED_PROPERTIES = new Set([
   'UID', 'SUMMARY', 'DTSTART', 'DTEND', 'LOCATION', 'DESCRIPTION',
-  'RRULE', 'EXDATE', 'RECURRENCE-ID', 'STATUS',
+  'RRULE', 'EXDATE', 'RECURRENCE-ID', 'STATUS', SOURCE_KEY,
 ])
 
 const encoder = new TextEncoder()
@@ -171,28 +181,40 @@ export function parseContentLine(line) {
  * properties and children, so a `VALARM` inside a `VEVENT` can never be mistaken
  * for a `VEVENT` property.
  * @param text - Calendar text.
- * @returns top-level components.
+ * @returns top-level components; malformed or unfinished input throws before import.
  */
 export function parseComponents(text) {
   const components = []
   const stack = []
   for (const line of unfoldLines(text)) {
     const parsed = parseContentLine(line)
-    if (!parsed) continue
+    if (!parsed) {
+      if (line.trim()) throw new Error('the text is not a calendar file: invalid content line')
+      continue
+    }
     if (parsed.name === 'BEGIN') {
-      stack.push({ name: parsed.value.trim().toUpperCase(), properties: [], children: [] })
+      const name = parsed.value.trim().toUpperCase()
+      if (!/^[A-Z0-9-]+$/.test(name)) throw new Error('invalid calendar component name')
+      if ((name === 'VCALENDAR' && stack.length)
+        || (name === 'VEVENT' && stack.length && stack.at(-1).name !== 'VCALENDAR')) {
+        throw new Error(`invalid calendar nesting for ${name}`)
+      }
+      stack.push({ name, properties: [], children: [] })
       continue
     }
     if (parsed.name === 'END') {
       const component = stack.pop()
-      if (!component) continue
+      const name = parsed.value.trim().toUpperCase()
+      if (!component || component.name !== name) throw new Error(`unmatched calendar END:${name}`)
       if (stack.length) stack[stack.length - 1].children.push(component)
       else components.push(component)
       continue
     }
     const current = stack[stack.length - 1]
-    if (current) current.properties.push(parsed)
+    if (!current) throw new Error('calendar property outside a component')
+    current.properties.push(parsed)
   }
+  if (stack.length) throw new Error(`unfinished calendar component ${stack.at(-1).name}`)
   return components
 }
 
@@ -208,24 +230,73 @@ function singleValue(component, name) {
   return isTextProperty(name) ? unescapeText(value) : value
 }
 
+/** Whether a `TZID` names UTC, however the file spells it. */
+function isUtcZoneName(tzid) {
+  const upper = String(tzid ?? '').trim().toUpperCase()
+  return upper === 'UTC' || upper === 'GMT' || upper === 'Z' || upper === 'ETC/UTC' || upper === 'ETC/GMT'
+}
+
+/** The IANA zone of the machine this runs on, or `undefined` when it has none. */
+function localZoneName() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone
+  } catch {
+    return undefined
+  }
+}
+
+/**
+ * Whether a `TZID` names a zone this version can read without a timezone database.
+ *
+ * Two kinds can be read exactly. A zone that *is* UTC names an instant all by
+ * itself, so it converts the same way a `Z` suffix does. The zone of the machine
+ * running this needs no conversion at all: the digits in the file are what the
+ * clock on the wall says, which is the form these records are stored in.
+ *
+ * Anything else would have to be converted, and converting needs the zone's
+ * offsets across the year — including its daylight-saving transitions — which this
+ * version does not carry. Keeping the wall clock and noting the zone name is the
+ * one answer that is worse than saying nothing: the record then reads 09:00 to
+ * every caller, none of which look at the zone name, so a class four hours away
+ * looks correct. So those entries are refused by name instead.
+ * @param tzid - The `TZID` parameter value, for example `Asia/Shanghai`.
+ * @returns whether the zone can be read exactly.
+ */
+export function isReadableZone(tzid) {
+  const name = String(tzid ?? '').trim()
+  if (!name) return true
+  if (isUtcZoneName(name)) return true
+  return name === localZoneName()
+}
+
 /**
  * Read one date or date-time property value.
  * @param value - Property value, for example `20260316T080000Z`.
- * @param params - Property parameters, used for `VALUE=DATE`.
+ * @param params - Property parameters, used for `VALUE=DATE` and `TZID`.
  * @returns a local `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm` string, or undefined.
  */
 export function parseDateValue(value, params = {}) {
   const text = String(value ?? '').trim()
-  if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(text)) return text
+  if (/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/.test(text)) return isRealLocalTime(text) ? text : undefined
   const dateOnly = text.match(/^(\d{4})(\d{2})(\d{2})$/)
-  if (dateOnly) return `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}`
+  // `20260230` has the shape of a date and is not one, so it is refused here rather
+  // than carried into a record that no week can place.
+  if (dateOnly) {
+    const date = `${dateOnly[1]}-${dateOnly[2]}-${dateOnly[3]}`
+    return isRealLocalTime(date) ? date : undefined
+  }
   const dateTime = text.match(/^(\d{4})(\d{2})(\d{2})T(\d{2})(\d{2})(\d{2})?(Z?)$/)
   if (!dateTime) return undefined
   const [, year, month, day, hour, minute, , zone] = dateTime
+  if (!isRealLocalTime(`${year}-${month}-${day}`)) return undefined
+  if (Number(hour) > 23 || Number(minute) > 59) return undefined
   if (params.VALUE === 'DATE') return `${year}-${month}-${day}`
+  // A `TZID` that names UTC is the same instant as a `Z` suffix, written differently.
+  const utcByZone = params.TZID && isUtcZoneName(params.TZID)
+  if (!isReadableZone(params.TZID)) return undefined
   // A UTC stamp is the one conversion this version performs, because the instant
   // it names is unambiguous. Everything else is wall-clock local time.
-  if (zone === 'Z') {
+  if (zone === 'Z' || utcByZone) {
     const utc = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day), Number(hour), Number(minute)))
     return `${utc.getFullYear()}-${pad(utc.getMonth() + 1)}-${pad(utc.getDate())}T${pad(utc.getHours())}:${pad(utc.getMinutes())}`
   }
@@ -353,20 +424,54 @@ function readVevent(component, source) {
   const start = startProperty ? parseDateValue(startProperty.value, startProperty.params) : undefined
   const recurrenceProperty = propertiesNamed(component, 'RECURRENCE-ID')[0]
   const recurrenceDate = recurrenceProperty ? parseDateValue(recurrenceProperty.value, recurrenceProperty.params) : undefined
-  const uid = singleValue(component, 'UID')
+  // A `UID` written by this plugin carries the source it belongs to; anything else
+  // belongs to the source the import named. Both halves of the identity come from
+  // here, so the master and a `RECURRENCE-ID` block of the same series agree even
+  // when the file holds two sources that numbered their entries the same.
+  const written = singleValue(component, 'UID')
+  const identity = decodeIdentity(written)
+  const uid = identity ? identity.uid : written
+  const owner = identity ? identity.source : singleValue(component, SOURCE_KEY) || source
   const cancelled = String(singleValue(component, 'STATUS') ?? '').toUpperCase() === 'CANCELLED'
+  if (recurrenceProperty && !recurrenceDate) {
+    return { skipped: { uid, reason: 'RECURRENCE-ID is not a readable supported date and time' } }
+  }
   if (!start) {
     // A cancellation often carries only `RECURRENCE-ID` and `STATUS`, and the
     // series it belongs to is the one this file also lists.
     if (recurrenceDate && cancelled) return { uid, date: String(recurrenceDate).slice(0, 10), cancelled: true }
+    // An unreadable zone is worth saying out loud: the reader can act on "this file
+    // is in a zone I cannot convert", where "unreadable DTSTART" only says the line
+    // did not work.
+    const zone = startProperty?.params?.TZID
+    if (zone && !isReadableZone(zone)) {
+      return { skipped: { uid, reason: `DTSTART is in the timezone ${zone}, which cannot be converted without a timezone database` } }
+    }
     return { skipped: { uid, reason: 'a VEVENT without a readable DTSTART cannot be placed' } }
   }
   const endProperty = propertiesNamed(component, 'DTEND')[0]
   const rawEnd = endProperty ? parseDateValue(endProperty.value, endProperty.params) : undefined
+  if (endProperty && rawEnd === undefined) {
+    return { skipped: { uid, reason: 'DTEND is not a readable supported date and time' } }
+  }
   const allDay = !String(start).includes('T')
+  if (rawEnd !== undefined && String(rawEnd).includes('T') === allDay) {
+    return { skipped: { uid, reason: 'DTEND must use the same date or date-time format as DTSTART' } }
+  }
+  // Validate the exclusive ICS end before converting it to our inclusive end.
+  // Otherwise an invalid explicit end would disappear as if it were omitted.
+  if (allDay && rawEnd !== undefined && rawEnd <= start) {
+    return { skipped: { uid, reason: `DTEND ${rawEnd} is not after DTSTART ${start}` } }
+  }
   // ICS ends an all-day event on the next day, exclusively; our records hold the
   // last day it covers. Timed ends are literal.
-  const end = rawEnd === undefined ? undefined : (!allDay ? rawEnd : (rawEnd > start ? shiftDay(rawEnd, -1) : undefined))
+  const end = rawEnd === undefined ? undefined : (allDay ? shiftDay(rawEnd, -1) : rawEnd)
+  // An entry whose end precedes its start on one day is reported like any other
+  // entry this file cannot place, so one bad line does not fail the whole import
+  // and does not reach the store as a record that would be refused there anyway.
+  if (end !== undefined && !allDay && end.slice(0, 10) === start.slice(0, 10) && end <= start) {
+    return { skipped: { uid, reason: `DTEND ${end} is not after DTSTART ${start}` } }
+  }
   const extensions = {}
   for (const property of component.properties) {
     if (CONSUMED_PROPERTIES.has(property.name) || RETIRED_PROPERTIES.has(property.name)) continue
@@ -377,7 +482,7 @@ function readVevent(component, source) {
     uid: uid || `${String(start).slice(0, 10)}-${(singleValue(component, 'SUMMARY') ?? 'event').slice(0, 24)}`,
     title: singleValue(component, 'SUMMARY') || '未命名事件',
     start,
-    source,
+    source: owner,
     extensions,
   }
   if (end) record.end = end
@@ -401,7 +506,8 @@ function readVevent(component, source) {
   for (const property of propertiesNamed(component, 'EXDATE')) {
     for (const part of property.value.split(',')) {
       const date = parseDateValue(part, property.params)
-      if (date) exceptions.push(String(date).slice(0, 10))
+      if (!date) return { skipped: { uid, reason: 'EXDATE is not a readable supported date and time' } }
+      exceptions.push(String(date).slice(0, 10))
     }
   }
   if (exceptions.length) record.exceptions = [...new Set(exceptions)].sort()
@@ -409,6 +515,10 @@ function readVevent(component, source) {
   return {
     record,
     uid: record.uid,
+    // The source comes from the `UID` when this plugin wrote it, so the series an
+    // override belongs to is looked up by both halves of the identity and not by a
+    // `uid` that two sources are free to share.
+    identity: { source: record.source, uid: record.uid },
     date: recurrenceDate ? String(recurrenceDate).slice(0, 10) : undefined,
     cancelled,
     degraded,
@@ -421,6 +531,9 @@ function readVevent(component, source) {
     },
   }
 }
+
+/** Both halves of an identity as one map key. */
+const identityKey = identity => `${identity?.source}\u0000${identity?.uid}`
 
 /**
  * Import one calendar.
@@ -435,10 +548,24 @@ export function parseIcs(text, options = {}) {
   const source = typeof options.source === 'string' && options.source ? options.source : 'ics'
   const components = parseComponents(text)
   const calendar = components.find(component => component.name === 'VCALENDAR')
+  // One import names one calendar. Silently choosing the first would discard
+  // later components and could turn an incomplete selection into a deletion.
+  if (calendar ? components.length !== 1 : components.some(component => component.name !== 'VEVENT')) {
+    throw new Error('a calendar import must contain one VCALENDAR or complete standalone VEVENTs')
+  }
   const vevents = (calendar ? calendar.children : components).filter(component => component.name === 'VEVENT')
 
+  // Nothing here can be read as a calendar, so this text is not one. Saying so is
+  // the whole difference between "this source is now empty" and "the reader picked
+  // the wrong file": both produce no events, and a caller that cannot tell them
+  // apart empties the calendar on a mis-click. A `VCALENDAR` with no entries is a
+  // valid empty calendar and is not this case.
+  if (!calendar && vevents.length === 0) {
+    throw new Error('the text is not a calendar file: no calendar component was found in it')
+  }
+
   const events = []
-  const byUid = new Map()
+  const byIdentity = new Map()
   const pending = []
   const skipped = []
   const degraded = []
@@ -447,24 +574,26 @@ export function parseIcs(text, options = {}) {
     const read = readVevent(component, source)
     if (read.skipped) { skipped.push(read.skipped); continue }
     degraded.push(...(read.degraded ?? []))
-    if (read.cancelled && !read.record) { pending.push({ uid: read.uid, date: read.date, cancelled: true }); continue }
-    if (read.date) { pending.push({ uid: read.uid, date: read.date, cancelled: read.cancelled, record: read.record, carried: read.carried }); continue }
+    if (read.cancelled && !read.record) { pending.push({ ...read, identity: read.identity ?? { source, uid: read.uid } }); continue }
+    if (read.date) { pending.push(read); continue }
     if (read.cancelled) {
       // A cancelled series is left out, and said so rather than vanishing.
       skipped.push({ uid: read.record.uid, reason: 'the event is cancelled' })
       continue
     }
     events.push(read.record)
-    byUid.set(read.record.uid, read.record)
+    byIdentity.set(identityKey(read.identity), read.record)
   }
 
   for (const entry of pending) {
-    const master = entry.uid ? byUid.get(entry.uid) : undefined
+    const master = entry.identity ? byIdentity.get(identityKey(entry.identity)) : undefined
     if (!master) {
       // An override whose series is not in this file is still a lesson: keep it
       // as an event of its own instead of dropping the time it carries.
-      if (entry.record) { events.push(entry.record); byUid.set(entry.record.uid, entry.record) }
-      else skipped.push({ uid: entry.uid, reason: `a cancellation for an unknown series (${entry.date})` })
+      if (entry.record) {
+        events.push(entry.record)
+        byIdentity.set(identityKey({ source: entry.record.source, uid: entry.record.uid }), entry.record)
+      } else skipped.push({ uid: entry.uid, reason: `a cancellation for an unknown series (${entry.date})` })
       continue
     }
     if (entry.cancelled) {
@@ -478,6 +607,23 @@ export function parseIcs(text, options = {}) {
   }
 
   return { events, skipped, degraded }
+}
+
+/**
+ * The `UID` an exported entry carries.
+ *
+ * A bare `uid` is written when the entry belongs to the source a file is read back
+ * as anyway, so a calendar made of this machine's own entries stays readable to
+ * other programs and to a person looking at the text. An entry from another source
+ * carries that source, because two sources really do number their entries
+ * independently and a bare `uid` would make the second one overwrite the first on
+ * the way back in.
+ * @param event - A stored record.
+ */
+function exportedUid(event) {
+  const source = event.source
+  if (!source || source === DEFAULT_SOURCE) return event.uid
+  return encodeIdentity({ source, uid: event.uid })
 }
 
 /**
@@ -497,7 +643,8 @@ export function buildIcs(snapshot = {}, options = {}) {
   for (const event of events) {
     const allDay = !String(event.start).includes('T')
     lines.push('BEGIN:VEVENT')
-    lines.push(`UID:${escapeText(event.uid)}`)
+    lines.push(`UID:${escapeText(exportedUid(event))}`)
+    if (!event.source || event.source === DEFAULT_SOURCE) lines.push(`${SOURCE_KEY}:${DEFAULT_SOURCE}`)
     lines.push(`SUMMARY:${escapeText(event.title)}`)
     lines.push(`DTSTART${allDay ? ';VALUE=DATE' : ''}:${stamp(event.start, event.start)}`)
     if (event.end) lines.push(`DTEND${allDay ? ';VALUE=DATE' : ''}:${stamp(allDay ? shiftDay(event.end, 1) : event.end, event.start)}`)
@@ -516,7 +663,9 @@ export function buildIcs(snapshot = {}, options = {}) {
     for (const override of event.overrides ?? []) {
       const movedStart = override.start ?? occurrenceStart(event, override.date)
       lines.push('BEGIN:VEVENT')
-      lines.push(`UID:${escapeText(event.uid)}`)
+      // The same identity as the master, or the override would not find its series.
+      lines.push(`UID:${escapeText(exportedUid(event))}`)
+      if (!event.source || event.source === DEFAULT_SOURCE) lines.push(`${SOURCE_KEY}:${DEFAULT_SOURCE}`)
       lines.push(`RECURRENCE-ID${allDay ? ';VALUE=DATE' : ''}:${stamp(occurrenceStart(event, override.date), event.start)}`)
       if (override.title) lines.push(`SUMMARY:${escapeText(override.title)}`)
       lines.push(`DTSTART${allDay ? ';VALUE=DATE' : ''}:${stamp(movedStart, event.start)}`)

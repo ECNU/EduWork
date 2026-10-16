@@ -79,6 +79,7 @@ async function withCalendar(root, body) {
     assert.deepEqual(typert.remoteMethods(ctx.calendar).map(marker => marker.method), [
       'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applyOverride',
       'removeOverride', 'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent',
+      'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes',
     ])
     return await body(ctx.calendar)
   } finally {
@@ -111,12 +112,17 @@ test('records round-trip, emit changes, survive a restart and import idempotentl
 
       const snapshot = await calendar.snapshot()
       assert.equal(snapshot.schemaVersion, 2)
-      assert.deepEqual(Object.keys(snapshot), ['schemaVersion', 'events'])
+      assert.deepEqual(Object.keys(snapshot), ['schemaVersion', 'events', 'needsReview'])
+      assert.deepEqual(snapshot.needsReview, [], 'a store in the current shape has nothing to review')
       assert.deepEqual(snapshot.events.map(row => row.uid), ['event-fixture-1', 'event-fixture-2'])
-      assert.equal(calendar.getEvent('event-fixture-1').title, '示例日程')
+      assert.equal(calendar.getEvent({ uid: 'event-fixture-1' }).title, '示例日程')
       assert.deepEqual(calendar.listEvents({ from: '2026-03-02', to: '2026-03-02T23:59' }).map(row => row.uid), ['event-fixture-1'])
       assert.deepEqual(calendar.listEvents({ from: '2026-03-09' }).map(row => row.uid), [])
 
+      // Importing the same snapshot twice replaces rather than duplicates. The
+      // import uses an identifier the user's own record already uses, so what this
+      // also pins is that the two are different records: an identifier is unique
+      // within its source, and a fixture `event-fixture-1` is not the user's.
       const imported = await calendar.importSnapshot(
         { schemaVersion: 2, events: [exampleEvent] },
         { source: 'fixture' },
@@ -127,8 +133,14 @@ test('records round-trip, emit changes, survive a restart and import idempotentl
         { source: 'fixture' },
       )
       assert.deepEqual(repeated, { events: 1, removedEvents: 0 })
-      assert.equal(calendar.snapshot().events.length, 2, 'a repeated import replaces instead of duplicating')
-      assert.equal(calendar.getEvent('event-fixture-1').source, 'fixture', 'the import stamps its own source')
+      assert.equal(calendar.snapshot().events.length, 3, 'a repeated import replaces instead of duplicating')
+      assert.equal(
+        calendar.snapshot().events.filter(row => row.uid === 'event-fixture-1').length,
+        2,
+        'the imported record and the user\'s record share an identifier and are still two records',
+      )
+      assert.equal(calendar.getEvent({ uid: 'event-fixture-1', source: 'fixture' }).source, 'fixture', 'the import stamps its own source')
+      assert.equal(calendar.getEvent({ uid: 'event-fixture-1' }).source, 'manual', 'and the user\'s own record is untouched by it')
       await assert.rejects(calendar.importSnapshot({ note: 'nothing to import' }, {}), /an events array/)
 
       // A rejected import must not leave half of its records behind: every
@@ -143,28 +155,40 @@ test('records round-trip, emit changes, survive a restart and import idempotentl
         }, { source: 'fixture' }),
       )
       assert.equal(calendar.snapshot().events.length, before, 'nothing is written when a record is rejected')
-      assert.equal(calendar.getEvent('event-good'), undefined)
+      assert.equal(calendar.getEvent({ uid: 'event-good', source: 'fixture' }), undefined)
 
       stop()
       assert.ok(changes.length >= 4, `durable writes emit changes, saw ${changes.length}`)
       assert.ok(changes.every(change => change.domain === 'calendar'), 'only this domain is reported')
-      assert.ok(changes.some(change => change.table === 'events' && String(change.key) === 'event-fixture-1'))
+      // The key names the record's source as well as its identifier, which is what
+      // keeps two sources' records of the same identifier apart in one table.
+      const { eventKey } = await import('../lib/keys.js')
+      assert.ok(
+        changes.some(change => change.table === 'events'
+          && String(change.key) === eventKey({ source: 'manual', uid: 'event-fixture-1' })),
+        `a write reports the record it changed, saw ${changes.map(change => String(change.key)).join(', ')}`,
+      )
 
       assert.deepEqual(await calendar.deleteEvent({ uid: 'event-fixture-2' }), { removed: true })
       assert.deepEqual(await calendar.deleteEvent({ uid: 'event-fixture-2' }), { removed: false }, 'a second delete removes nothing')
-      return { events: calendar.snapshot().events.map(row => row.uid) }
+      return { events: calendar.snapshot().events.map(row => `${row.source}/${row.uid}`).sort() }
     })
-    assert.deepEqual(observed, { events: ['event-fixture-1'] })
-
+    assert.deepEqual(observed, {
+      events: ['fixture/event-fixture-1', 'manual/event-fixture-1'],
+    })
     const entries = await readdir(join(root, 'storages'))
     assert.ok(entries.some(name => name.startsWith('calendar')), `the domain document is on disk: ${entries.join(', ')}`)
 
-    // Restart: a fresh scope over the same directory sees what was written.
+    // Restart: a fresh scope over the same directory sees what was written, both
+    // records of the shared identifier included.
     const reopened = await withCalendar(root, async calendar => ({
-      events: calendar.snapshot().events.map(row => row.uid),
-      source: calendar.getEvent('event-fixture-1').source,
+      events: calendar.snapshot().events.map(row => `${row.source}/${row.uid}`).sort(),
+      fixture: calendar.getEvent({ uid: 'event-fixture-1', source: 'fixture' }).source,
     }))
-    assert.deepEqual(reopened, { events: ['event-fixture-1'], source: 'fixture' })
+    assert.deepEqual(reopened, {
+      events: ['fixture/event-fixture-1', 'manual/event-fixture-1'],
+      fixture: 'fixture',
+    })
   })
 })
 
@@ -203,7 +227,7 @@ test('a range query expands series, honours exceptions and applies overrides', {
       // A change on another date keeps the first, and dropping one restores the
       // series for that date only.
       await calendar.applyOverride({ uid: 'event-fixture-1', date: '2026-03-30', patch: { location: '示例楼 303' } })
-      assert.equal(calendar.getEvent('event-fixture-1').overrides.length, 2)
+      assert.equal(calendar.getEvent({ uid: 'event-fixture-1' }).overrides.length, 2)
       const cleared = await calendar.removeOverride({ uid: 'event-fixture-1', date: '2026-03-23' })
       assert.deepEqual(cleared.overrides, [{ date: '2026-03-30', location: '示例楼 303' }])
       assert.deepEqual(
@@ -214,7 +238,7 @@ test('a range query expands series, honours exceptions and applies overrides', {
         calendar.applyOverride({ uid: 'event-missing', date: '2026-03-23', patch: { location: 'x' } }),
         /no event event-missing/,
       )
-      return calendar.getEvent('event-fixture-1').overrides.length
+      return calendar.getEvent({ uid: 'event-fixture-1' }).overrides.length
     })
     assert.equal(moved, 1)
 
@@ -222,7 +246,7 @@ test('a range query expands series, honours exceptions and applies overrides', {
     // domain still validates them on the way back in.
     const reopened = await withCalendar(root, calendar => {
       const [occurrence] = calendar.occurrences({ from: '2026-03-30', to: '2026-04-05' }).occurrences
-      return { start: occurrence.start, location: occurrence.location, overrides: calendar.getEvent('event-fixture-1').overrides.length }
+      return { start: occurrence.start, location: occurrence.location, overrides: calendar.getEvent({ uid: 'event-fixture-1' }).overrides.length }
     })
     assert.deepEqual(reopened, { start: '2026-03-30T08:00', location: '示例楼 303', overrides: 1 })
   })
@@ -255,7 +279,7 @@ test('the declared wire schemas parse what the service really returns', { skip: 
       assert.equal(byMethod.get('cancelOccurrence').parameters[0].codec.schema.safeParse(cancelInput).success, true)
       assert.equal(byMethod.get('cancelOccurrence').result.schema.safeParse(await calendar.cancelOccurrence(cancelInput)).success, true, 'a cancelled record matches its declared schema')
       assert.equal(byMethod.get('restoreOccurrence').result.schema.safeParse(await calendar.restoreOccurrence(cancelInput)).success, true)
-      assert.equal(byMethod.get('applyOverride').result.schema.safeParse(calendar.getEvent(uid)).success, true)
+      assert.equal(byMethod.get('applyOverride').result.schema.safeParse(calendar.getEvent({ uid, source: 'manual' })).success, true)
       assert.equal(byMethod.get('removeOverride').result.schema.safeParse(await calendar.removeOverride({ uid, date: '2026-03-09' })).success, true)
       assert.equal(byMethod.get('putEvent').result.schema.safeParse(await calendar.putEvent(exampleEvent)).success, true)
       assert.equal(byMethod.get('putEvent').parameters[0].codec.schema.safeParse({ uid: 'event-fixture-9', title: '缺开始时间' }).success, false, 'a create has to carry what the record needs')
@@ -278,12 +302,14 @@ test('a stored record that breaks the schema fails the open instead of being ser
     const path = join(storages, document)
     const stored = JSON.parse(await readFile(path, 'utf8'))
     // Strip a required field from the event wherever the medium keeps it, and
-    // leave the rest of the document — its unit header included — untouched.
+    // leave the rest of the document — its unit header included — untouched. The
+    // record is found by what it holds rather than by its key, because the key
+    // names its source as well as its identifier.
     const corrupt = node => {
       if (!node || typeof node !== 'object') return false
-      const record = node['event-fixture-1']
-      if (record && typeof record === 'object' && 'title' in record) {
-        delete record.title
+      if (Array.isArray(node)) return node.some(corrupt)
+      if (node.uid === 'event-fixture-1' && 'title' in node) {
+        delete node.title
         return true
       }
       return Object.values(node).some(corrupt)
@@ -300,6 +326,131 @@ test('a stored record that breaks the schema fails the open instead of being ser
 
 /** Join content lines the way a calendar file is written. */
 const calendarText = (...lines) => lines.join('\r\n') + '\r\n'
+
+test('a key migration never overwrites the record already at the key it moves to', { skip: !runtime }, async () => {
+  await withRoot('eduwork-calendar-migrate-collision-', async root => {
+    // Both keys can be present at once: a version that wrote the new key shipped
+    // and this store was then opened by a version that still wrote the old one, or
+    // a hand-edited file. The record at the key now in use is the one the calendar
+    // has been reading, so it is the newer of the two, and a migration that writes
+    // first and asks later replaces it with the stale copy — turning a harmless
+    // leftover into lost work.
+    const { eventKey } = await import('../lib/keys.js')
+    await mkdir(join(root, 'storages'), { recursive: true })
+    const record = (uid, title) => ({
+      uid, title, start: '2026-03-02T08:00', end: '2026-03-02T09:35', source: 'manual', extensions: {},
+    })
+    const current = eventKey({ source: 'manual', uid: 'fixture-1' })
+    await writeFile(join(root, 'storages', 'calendar.json'), JSON.stringify({
+      unit: { name: 'calendar', version: 1 },
+      global: null,
+      tables: {
+        events: {
+          // The intermediate shape, which joined the two parts with a NUL.
+          'manual\u0000fixture-1': record('fixture-1', '迁移前的旧内容'),
+          [current]: record('fixture-1', '迁移后的新内容'),
+        },
+      },
+    }, null, 2))
+
+    const observed = await withCalendar(root, calendar => calendar.getEvent({ uid: 'fixture-1' }).title)
+    assert.equal(observed, '迁移后的新内容', 'the record at the current key is what the calendar reads')
+
+    const stored = JSON.parse(await readFile(join(root, 'storages', 'calendar.json'), 'utf8'))
+    assert.deepEqual(
+      Object.keys(stored.tables.events),
+      [current],
+      'the stale copy under the old key is dropped rather than left to be migrated again',
+    )
+    assert.equal(
+      stored.tables.events[current].title,
+      '迁移后的新内容',
+      'and it did not overwrite the live record on its way out',
+    )
+  })
+})
+
+test('an event key and the keys of its annotations come from one encoder', { skip: !runtime }, async () => {
+  // Two spellings of "source and identifier" is how a record and the notes attached
+  // to it drift apart: one of the two gets amended and the note is silently orphaned.
+  const { annotationKey, eventKey } = await import('../lib/keys.js')
+  const ref = { source: 'ecnu:timetable', uid: 'course@2026-1' }
+  const key = eventKey(ref)
+  assert.ok(
+    annotationKey({ ...ref, originalStart: '2026-10-06T09:00' }).startsWith(`${key}__`),
+    'an annotation of a record is keyed under that record',
+  )
+  assert.ok(annotationKey(ref).startsWith(`${key}__`), 'including the whole-series annotation')
+
+  await withRoot('eduwork-calendar-key-agreement-', async root => {
+    await withCalendar(root, async calendar => {
+      await calendar.putEvent({ uid: 'course@2026-1', title: '数据结构', start: '2026-10-06T09:00' })
+      await calendar.putNote({ scope: 'source', source: 'manual', uid: 'course@2026-1', text: '记得带书' })
+
+      // Read both documents off disk: agreement has to hold in what was stored, not
+      // only in what each module would build on its own.
+      const events = JSON.parse(await readFile(join(root, 'storages', 'calendar.json'), 'utf8'))
+      assert.deepEqual(
+        Object.keys(events.tables.events),
+        [eventKey({ source: 'manual', uid: 'course@2026-1' })],
+        'the record is stored under the shared encoder',
+      )
+
+      // The personal domain is `per-record`, so its annotation is its own file under
+      // the table directory, named by the key this module built.
+      const key = annotationKey({ source: 'manual', uid: 'course@2026-1' })
+      const annotation = JSON.parse(await readFile(
+        join(root, 'storages', 'calendar_personal', 'annotations', `${key}.json`), 'utf8',
+      ))
+      assert.deepEqual(
+        Object.keys(annotation),
+        ['version', 'record'],
+        'the file is one version-stamped record document, which is what `per-record` means',
+      )
+      assert.equal(annotation.record.note.text, '记得带书', 'the note is stored under the shared encoder')
+      assert.ok(
+        key.startsWith(`${Object.keys(events.tables.events)[0]}__`),
+        'so the note sits under the record, not beside it',
+      )
+    })
+  })
+})
+
+test('a legacy record with no source keeps its own key and is reported, not given an invented one', { skip: !runtime }, async () => {
+  await withRoot('eduwork-calendar-migrate-sourceless-', async root => {
+    // `source` became a required part of the key while the field itself is optional
+    // in the schema an older store was written against, so a record can arrive with
+    // no source at all. Writing it under a key built from `undefined` strands it:
+    // it is still on disk, but no read and no delete can name it, so the entry can
+    // be neither shown nor removed. Its identity is unknown, not "manual".
+    await mkdir(join(root, 'storages'), { recursive: true })
+    await writeFile(join(root, 'storages', 'calendar.json'), JSON.stringify({
+      unit: { name: 'calendar', version: 1 },
+      global: null,
+      tables: {
+        events: {
+          'stranded-1': {
+            uid: 'stranded-1', title: '来源不明的一条', start: '2026-03-02T08:00', end: '2026-03-02T09:35',
+            extensions: {},
+          },
+        },
+      },
+    }, null, 2))
+
+    const report = await withCalendar(root, calendar => calendar.snapshot().needsReview)
+    assert.equal(report.length, 1, 'the record is surfaced for a human instead of silently stranded')
+    assert.equal(report[0].key, 'stranded-1')
+    assert.match(String(report[0].reason), /source/)
+
+    const stored = JSON.parse(await readFile(join(root, 'storages', 'calendar.json'), 'utf8'))
+    assert.deepEqual(
+      Object.keys(stored.tables.events),
+      ['stranded-1'],
+      'and it is left exactly where it was, so nothing is lost and nothing is invented',
+    )
+    assert.equal(stored.tables.events['stranded-1'].title, '来源不明的一条', 'the content is untouched')
+  })
+})
 
 test('a store written before the record contract changed is folded into it', { skip: !runtime }, async () => {
   await withRoot('eduwork-calendar-legacy-', async root => {
@@ -343,11 +494,21 @@ test('a store written before the record contract changed is folded into it', { s
     assert.deepEqual(observed, { uid: 'legacy-fixture-1', title: '数据结构', retired: false, occurrences: 1 })
 
     // The fold is durable, and it is also what drops the retired table from the
-    // document: the next write rewrites the whole unit without it.
+    // document: the next write rewrites the whole unit without it. The record also
+    // moves to the key the current contract reads, so a calendar written before
+    // keys carried a source is still found rather than reopened empty.
+    const { eventKey } = await import('../lib/keys.js')
     const stored = JSON.parse(await readFile(join(root, 'storages', 'calendar.json'), 'utf8'))
     assert.equal(stored.unit.version, 1)
-    assert.deepEqual(Object.keys(stored.tables), ['events'])
-    assert.equal('courseId' in stored.tables.events['legacy-fixture-1'], false)
+    assert.equal('courses' in stored.tables, false)
+    assert.ok(stored.tables.events)
+    const keys = Object.keys(stored.tables.events)
+    assert.deepEqual(
+      keys,
+      [eventKey({ source: 'manual', uid: 'legacy-fixture-1' })],
+      'the legacy key is replaced by the key the same encoder builds for source and identifier',
+    )
+    assert.equal('courseId' in stored.tables.events[keys[0]], false)
   })
 })
 
@@ -387,7 +548,7 @@ test('an imported calendar becomes occurrences a view can render', { skip: !runt
       )
       const report = await calendar.importIcs({ text })
       assert.deepEqual(report, { events: 1, removedEvents: 0, skipped: [], degraded: [] })
-      assert.equal(calendar.getEvent('entry-series-1').source, 'ics')
+      assert.equal(calendar.getEvent({ uid: 'entry-series-1', source: 'ics' }).source, 'ics')
 
       // The moved entry lands on the day it moved to, and the cancelled date is
       // gone rather than left as an entry that does not happen.
@@ -441,7 +602,7 @@ test('re-importing a source replaces that source and leaves the rest alone', { s
       const replaced = await calendar.importIcs({ text: second, source: 'registrar' })
       assert.deepEqual(replaced, { events: 1, removedEvents: 1, skipped: [], degraded: [] })
       assert.deepEqual(calendar.snapshot().events.map(event => event.uid).sort(), ['entry-b', 'entry-manual'])
-      assert.equal(calendar.getEvent('entry-b').start, '2026-03-03T10:00', 'the new copy of the entry wins')
+      assert.equal(calendar.getEvent({ uid: 'entry-b', source: 'registrar' }).start, '2026-03-03T10:00', 'the new copy of the entry wins')
 
       // Without `replace` the import only adds and updates: the entry it no
       // longer lists is restored rather than removed.
@@ -453,7 +614,7 @@ test('re-importing a source replaces that source and leaves the rest alone', { s
       // all: an import only ever speaks for its own records.
       await calendar.putEvent({ uid: 'entry-manual', title: '自己加的', description: '自己写的备注', start: '2026-03-04T10:00' })
       await calendar.importIcs({ text: second, source: 'registrar' })
-      assert.equal(calendar.getEvent('entry-manual').description, '自己写的备注')
+      assert.equal(calendar.getEvent({ uid: 'entry-manual' }).description, '自己写的备注')
       return undefined
     })
   })
@@ -489,6 +650,90 @@ test('a cancelled date can be put back, and only a series can be cancelled', { s
       )
       await assert.rejects(calendar.restoreOccurrence({ uid: 'event-missing', date: '2026-03-16' }), /no event event-missing/)
       return undefined
+    })
+  })
+})
+
+test('a span that points backwards is refused even when the two ends are on different dates', { skip: !runtime }, async () => {
+  await withRoot('eduwork-calendar-span-dates-', async root => {
+    await withCalendar(root, async calendar => {
+      // Comparing only the clock reading lets this through: 10月6日 10:00 is "after"
+      // 10月7日 09:00 as a string of digits, and the record is nonsense. The instant,
+      // not the clock, is what has to point forwards.
+      await assert.rejects(
+        calendar.putEvent({ uid: 'backwards-1', title: '倒着的', start: '2026-10-07T09:00', end: '2026-10-06T10:00' }),
+        /end/i,
+      )
+      assert.deepEqual(calendar.snapshot().events, [], 'and nothing was stored')
+
+      // The overnight case is the one where the clock reading really does go
+      // backwards, and it must keep working: the end is on a later date.
+      await calendar.putEvent({ uid: 'overnight-1', title: '晚课', start: '2026-10-07T22:00', end: '2026-10-08T01:00' })
+      assert.deepEqual(calendar.snapshot().events.map(event => event.uid), ['overnight-1'])
+
+      // A whole-day entry carries no clock, so there is no span to compare.
+      await calendar.putEvent({ uid: 'allday-1', title: '全天', start: '2026-10-09' })
+      assert.equal(calendar.getEvent({ uid: 'allday-1' })?.start, '2026-10-09')
+    })
+  })
+})
+
+test('a per-date change may not leave the occurrence ending before it starts', { skip: !runtime }, async () => {
+  await withRoot('eduwork-calendar-span-override-', async root => {
+    await withCalendar(root, async calendar => {
+      await calendar.putEvent({
+        uid: 'series-1',
+        title: '公开课',
+        start: '2026-10-13T09:00',
+        end: '2026-10-13T10:00',
+        recurrence: { freq: 'weekly', byDay: ['tu'], count: 8 },
+      })
+
+      // The record's own span is fine; it is the occurrence the override produces
+      // that is not. Checking only the record would let this through.
+      await assert.rejects(
+        calendar.applyOverride({ uid: 'series-1', date: '2026-10-13', patch: { start: '2026-10-13T11:00', end: '2026-10-13T10:00' } }),
+        /end/i,
+        'the moved occurrence is what has to make sense, not the series it came from',
+      )
+      assert.equal(calendar.getEvent({ uid: 'series-1' }).overrides, undefined, 'and no override was stored')
+
+      // Moving only the start is the ordinary case and must keep working: the
+      // occurrence inherits the series' length.
+      const moved = await calendar.applyOverride({ uid: 'series-1', date: '2026-10-13', patch: { start: '2026-10-13T15:00' } })
+      assert.equal(moved.overrides[0].start, '2026-10-13T15:00')
+      assert.equal(
+        calendar.occurrences({ from: '2026-10-13', to: '2026-10-13' }).occurrences[0].end,
+        '2026-10-13T16:00',
+        'the occurrence keeps the series length',
+      )
+    })
+  })
+})
+
+test('an edit and a delete submitted together do not resurrect the record', { skip: !runtime }, async () => {
+  await withRoot('eduwork-calendar-edit-delete-', async root => {
+    await withCalendar(root, async calendar => {
+      // Two things the user asked for at the same moment. Whichever order they settle
+      // in, the answer cannot be "deleted, and then the old copy came back": a delete
+      // that reports success has to mean the record is gone.
+      await calendar.putEvent({ uid: 'race-1', title: '旧标题', start: '2026-10-13T09:00', end: '2026-10-13T10:00' })
+
+      const [editResult, deleteResult] = await Promise.allSettled([
+        calendar.putEvent({ uid: 'race-1', title: '新标题', start: '2026-10-13T09:00', end: '2026-10-13T10:00' }),
+        calendar.deleteEvent({ uid: 'race-1' }),
+      ])
+
+      assert.equal(deleteResult.status, 'fulfilled', 'the delete settled')
+      const removed = deleteResult.value.removed
+      const stillThere = calendar.getEvent({ uid: 'race-1' })
+      if (editResult.status === 'rejected') {
+        assert.equal(removed, false, 'a delete that removed nothing must say so')
+        assert.ok(stillThere, 'and the record the edit wrote is what is left')
+      } else {
+        assert.equal(removed, true, 'a delete that reports a removal removed something')
+        assert.equal(stillThere, undefined, 'so the record is gone, not back from the dead')
+      }
     })
   })
 })

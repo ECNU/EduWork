@@ -12,6 +12,8 @@ export const WRITE_TOOLS = new Set([
   'calendar_update_event',
   'calendar_delete_event',
   'calendar_occurrence',
+  'calendar_put_note',
+  'calendar_remove_note',
 ])
 
 const WRITE_REASON = 'Allow the Agent to create, change or delete entries in the local calendar'

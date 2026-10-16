@@ -27,9 +27,64 @@ export const SCHEMA_VERSION = 2
 export const LocalTimeSchema = z
   .string()
   .regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/, 'expected YYYY-MM-DD or YYYY-MM-DDTHH:mm')
+  .refine(isRealLocalTime, 'expected a date and time that exist')
+
+/**
+ * Whether a local time string names a moment that exists.
+ *
+ * The shape check above is not enough on its own: `2026-02-30` and `25:00` match
+ * it and are not dates or times. A record holding one cannot be placed on a week —
+ * the arithmetic that expands a series walks forward from it and lands nowhere —
+ * so the two are separated here rather than discovered later by a view.
+ *
+ * A date is checked by rebuilding it and asking for its parts back, which is what
+ * makes February 29th count in a leap year and 2026's not.
+ * @param value - `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`.
+ * @returns whether the value names a real date and, when it carries one, a real time.
+ */
+export function isRealLocalTime(value) {
+  const parts = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(String(value ?? ''))
+  if (!parts) return false
+  const [, year, month, day, hour, minute] = parts
+  const numbers = [year, month, day].map(Number)
+  const rebuilt = new Date(Date.UTC(numbers[0], numbers[1] - 1, numbers[2]))
+  if (rebuilt.getUTCFullYear() !== numbers[0]
+    || rebuilt.getUTCMonth() !== numbers[1] - 1
+    || rebuilt.getUTCDate() !== numbers[2]) return false
+  if (hour === undefined) return true
+  return Number(hour) <= 23 && Number(minute) <= 59
+}
 
 /** Weekday codes accepted in `recurrence.byDay`, as in RRULE. */
 export const WEEKDAYS = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
+
+/** Ownership of a record: the school side, or the user's own. */
+export const SCOPE = ['source', 'personal']
+
+/** Which of the two ownership layers a record belongs to. */
+export const ScopeSchema = z.enum(SCOPE)
+
+/**
+ * One annotation: what the user attached to one occurrence, or to a whole series.
+ *
+ * This is the model both halves read — the personal store validates records with
+ * it and the remote face derives its wire schemas from it — so the two cannot
+ * drift into accepting different shapes for the same record. It lives here
+ * beside the event model for that reason.
+ *
+ * `originalStart` is the instant the series produced, not the time the class now
+ * happens at, which is what keeps a note attached across a reschedule; it is
+ * absent on an annotation that speaks for the whole series.
+ */
+export const AnnotationSchema = z
+  .object({
+    scope: ScopeSchema,
+    source: z.string().min(1),
+    uid: z.string().min(1),
+    originalStart: LocalTimeSchema.optional(),
+    note: z.object({ text: z.string() }).strict().optional(),
+  })
+  .strict()
 
 /**
  * Supported recurrence subset. Deliberately narrower than RRULE: rules outside
@@ -93,10 +148,18 @@ export const EventFields = {
 export const EventSchema = z
   .object({
     ...EventFields,
+    // One-off identity survives edits to the displayed time.
+    originalStart: LocalTimeSchema.optional(),
     exceptions: z.array(LocalTimeSchema).optional(),
     overrides: OverridesSchema.optional(),
   })
   .strict()
+
+/** Explicit local decisions; imported overrides are never recorded here. */
+export const LocalDatesSchema = z.object({
+  overrides: z.array(OverrideSchema),
+  exceptions: z.array(LocalTimeSchema),
+}).strict()
 
 /**
  * Fields this contract retired. A store written before the change still holds
@@ -130,6 +193,14 @@ export function dropRetiredFields(event) {
 
 /**
  * Validate one event and fill its defaults.
+ *
+ * This is deliberately *shape* validation only. Whether the span points forwards
+ * is a rule about a finished record, and a school's payload is not one: a timetable
+ * that moves a class sends the new `DTSTART` and leaves the old `DTEND` in place,
+ * so a move genuinely arrives looking backwards and is settled afterwards by
+ * deriving the end from the series' length. Enforcing the span here would reject
+ * that move — and every later one — instead of correcting it. The store applies
+ * {@link assertOrderedSpan} to the record it actually writes.
  * @param input - Event fields as supplied by a caller, an import or an adapter.
  * @returns the durable record.
  */
@@ -139,6 +210,43 @@ export function normalizeEvent(input) {
     if (candidate[key] === undefined || candidate[key] === null) delete candidate[key]
   }
   return EventSchema.parse(candidate)
+}
+
+/**
+ * Validate the finished range at the shared write boundary.
+ * All-day ends are inclusive, so equal dates describe one day. Timed ends
+ * must be later, and both boundaries must use the same date/time format.
+ * @param candidate - Event or occurrence fields after inheritance is resolved.
+ * @param what - Label used in validation errors.
+ */
+export function assertOrderedSpan(candidate, what = 'an entry') {
+  const { start, end } = candidate
+  if (end === undefined || start === undefined) return
+  if (!isRealLocalTime(start) || !isRealLocalTime(end)) return
+  const timed = String(start).includes('T')
+  if (timed !== String(end).includes('T')) {
+    throw new Error(`${what} must use the same date or date-time format for start and end`)
+  }
+  if (end < start || (timed && end === start)) {
+    throw new Error(`${what} cannot end at ${end} when it starts at ${start}`)
+  }
+}
+
+/**
+ * Refuse a record whose own span, or any span one of its dates produces, is backwards.
+ *
+ * The record's `start`/`end` describe the series, and an override may replace them
+ * for one date, so a record can be fine while an occurrence of it is not. Which
+ * occurrence a date produces is `occurrenceOf`'s answer, so the check asks it
+ * rather than re-deriving the inheritance rule and drifting from it.
+ * @param record - A validated record, before it is written.
+ */
+export function assertOrderedRecord(record) {
+  assertOrderedSpan(record)
+  // Validate the occurrence itself, even when it moved outside its original day.
+  for (const override of record.overrides ?? []) {
+    assertOrderedSpan(occurrenceOf(record, override.date, override), `the occurrence on ${override.date}`)
+  }
 }
 
 /** Events in display order: by start, then by title for a stable tie-break. */
@@ -202,6 +310,21 @@ function shiftDate(date, days) {
   value.setDate(value.getDate() + days)
   return formatDate(value)
 }
+
+/**
+ * The date `days` away, without leaving the calendar's own range.
+ *
+ * Callers use this to widen a scan for occurrences an override may have moved,
+ * and the widening has to stop at the end of the representable range: pushing
+ * `9999-12-31` out by a year yields the five-digit year `10000`, which then
+ * compares as a *smaller* string and silently empties the scan. That is not a
+ * hypothetical — it turns "every occurrence of a series that has an override"
+ * into an empty list whenever the range is left open.
+ */
+function shiftDateClamped(date, days) {
+  const shifted = shiftDate(date, days)
+  return shifted.length > 10 ? '9999-12-31' : shifted
+}
 /** Monday of the week a date belongs to. */
 function weekStart(date) {
   return shiftDate(date, -((parseDate(date).getDay() + 6) % 7))
@@ -217,6 +340,36 @@ function dateOf(value) {
 /** `THH:mm` part of a local time string, empty for a whole-day value. */
 function timeOf(value) {
   return value.length > 10 ? value.slice(10) : ''
+}
+
+/** Whole minutes since local midnight of a `THH:mm` part. */
+function minutesOf(clock) {
+  return Number(clock.slice(1, 3)) * 60 + Number(clock.slice(4, 6))
+}
+
+/**
+ * The end an occurrence inherits from its series, keeping the series' duration.
+ *
+ * An occurrence is the series moved to another day, so what it inherits is a
+ * *duration*, not a clock reading. A class running 09:00–11:35 that the school
+ * moves to 14:00 ends at 16:35; carrying the old `11:35` across would leave it
+ * finishing before it began. The days part is carried separately so a record
+ * spanning days, or a session running past midnight, keeps its span instead of
+ * having its end pulled back onto its own start date.
+ *
+ * A whole-day record keeps its clock: `end` is a date with no time, so there is
+ * no reading to move.
+ * @param start - The occurrence's own start.
+ * @param seriesStart - The series' start, which defines the duration's origin.
+ * @param seriesEnd - The series' end.
+ */
+export function inheritedEndOf(start, seriesStart, seriesEnd) {
+  const clock = timeOf(seriesEnd)
+  const days = daysBetween(dateOf(seriesStart), dateOf(seriesEnd))
+  const date = shiftDate(dateOf(start), days)
+  if (!clock) return date
+  const minutes = minutesOf(timeOf(start)) + (minutesOf(clock) - minutesOf(timeOf(seriesStart)))
+  return `${shiftDate(date, Math.floor(minutes / 1440))}T${pad(Math.floor((minutes % 1440) / 60))}:${pad(minutes % 60)}`
 }
 
 /**
@@ -251,22 +404,29 @@ function recurrenceDates(recurrence, start, limit) {
  * One occurrence of an event. `occurrenceDate` is the date the series produced
  * and `occurrenceId` is the stable key built from it — the same key the view,
  * a later reminder and any feature that hangs off one date of a series uses.
+ *
+ * `originalStart` is that same instant as a full local time, and it is the
+ * occurrence's *identity*: it names the class rather than the moment, so it stays
+ * put when the class is moved. Everything the user attaches to one occurrence is
+ * keyed by it, which is what makes a note survive the school rescheduling the
+ * class. `start` is where the class actually happens and does change.
  */
 function occurrenceOf(event, date, override) {
   const { overrides: _overrides, exceptions: _exceptions, ...series } = event
   const start = override?.start ?? `${date}${timeOf(event.start)}`
-  // The stored end keeps the number of days it sits past the start: a whole-day
-  // record covering three days, or a session that runs past midnight, must not
-  // have that end pulled back onto its own start date — it would claim to finish
-  // before it began, and a multi-day record would silently lose its span. The
-  // offset is applied to the occurrence's own start, so each week of a repeating
-  // whole-day series carries the same span.
+  // What the occurrence inherits from the series is its duration: see
+  // `inheritedEndOf` for why carrying the clock reading instead is wrong once a
+  // school moves a class to a different time of day.
   const inheritedEnd = event.end
-    ? `${shiftDate(dateOf(start), daysBetween(dateOf(event.start), dateOf(event.end)))}${timeOf(event.end)}`
+    ? inheritedEndOf(start, event.start, event.end)
     : undefined
   const occurrence = {
     ...series,
     start,
+    // Identity keeps the *series'* time, never the moved one's: after a school
+    // reschedule `start` is 14:00 while `originalStart` still reads 09:00, which
+    // is what lets a note written before the move stay attached after it.
+    originalStart: !event.recurrence && event.originalStart ? event.originalStart : `${date}${timeOf(event.start)}`,
     occurrenceId: `${event.uid}#${date}`,
     occurrenceDate: date,
   }
@@ -300,7 +460,7 @@ export function occurrencesOf(event, range = {}) {
     const single = occurrenceOf(event, anchor, overrides.get(anchor))
     return overlaps(single, range) ? [single] : []
   }
-  const dates = recurrenceDates(event.recurrence, event.start, overrides.size ? shiftDate(to, 366) : to)
+  const dates = recurrenceDates(event.recurrence, event.start, overrides.size ? shiftDateClamped(to, 366) : to)
   const list = []
   for (const date of dates) {
     if (exceptions.has(date)) continue
@@ -308,6 +468,26 @@ export function occurrencesOf(event, range = {}) {
     list.push(occurrenceOf(event, date, overrides.get(date)))
   }
   return list.filter(occurrence => overlaps(occurrence, range))
+}
+
+/**
+ * The instants one series produces — the identities of its occurrences.
+ *
+ * This is deliberately separate from {@link occurrencesOf}: that one answers a
+ * display question (which occurrences fall in a window, after overrides moved
+ * them) and a caller with no window gets a scan bounded by the calendar range.
+ * This answers the identity question, so it ignores where an override moved an
+ * occurrence to and whether anything overlaps anything: a class that was moved
+ * still owns the instant it was originally scheduled for, which is exactly the
+ * instant a note written before the move is keyed by.
+ * @param event - Stored event.
+ * @returns `YYYY-MM-DDTHH:mm` instants, in series order.
+ */
+export function seriesInstants(event) {
+  const anchor = dateOf(event.start)
+  const time = timeOf(event.start)
+  if (!event.recurrence) return [event.originalStart ?? `${anchor}${time}`]
+  return recurrenceDates(event.recurrence, event.start, '9999-12-31').map(date => `${date}${time}`)
 }
 
 /** Occurrences in display order: by start, then by the occurrence key. */

@@ -17,7 +17,8 @@
 import { Service } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { buildIcs, parseIcs } from './ics.js'
-import { SCHEMA_VERSION } from './model.js'
+import { SCHEMA_VERSION, seriesInstants } from './model.js'
+import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
 
 export const name = 'dsh-calendar'
@@ -35,12 +36,17 @@ export class CalendarService extends TypertRemoteService {
     super(ctx, 'calendar')
     for (const initialize of remoteInitializers) initialize.call(this)
     this.store = new CalendarStore(ctx)
-    ctx.effect(() => async () => { await this.store.close() }, 'dsh-calendar: close the calendar domain')
+    this.personal = new PersonalStore(ctx)
+    ctx.effect(() => async () => {
+      await this.personal.close()
+      await this.store.close()
+    }, 'dsh-calendar: close the calendar domains')
   }
 
-  /** Open the domain before the service is handed to anyone. */
+  /** Open the domains before the service is handed to anyone. */
   async [Service.init]() {
     await this.store.open()
+    await this.personal.open()
   }
 
   /** @returns the public snapshot: `{ schemaVersion, events }`. */
@@ -75,6 +81,12 @@ export class CalendarService extends TypertRemoteService {
    * so a second import of the same source replaces the first one instead of
    * piling up next to it; anything the text did not carry is reported rather
    * than dropped quietly.
+   *
+   * A file the reader could only partly read does not replace its source. The
+   * entries that could not be read are indistinguishable from entries the file no
+   * longer lists, and acting on that gap would delete classes that are still there.
+   * So a partial read writes what it could read and removes nothing; the next
+   * import of a file that reads cleanly is what settles the question.
    * @param input - `{ text, source?, replace? }`; `source` defaults to `ics` and
    *   `replace` to true.
    * @returns `{ events, removedEvents, skipped, degraded }`.
@@ -82,7 +94,11 @@ export class CalendarService extends TypertRemoteService {
   async importIcs(input) {
     const source = input.source ?? 'ics'
     const parsed = parseIcs(input.text, { source })
-    const written = await this.store.importSnapshot(parsed, { source, replace: input.replace !== false })
+    const written = await this.store.importSnapshot(parsed, {
+      source,
+      replace: input.replace !== false,
+      complete: parsed.skipped.length === 0,
+    })
     return { ...written, skipped: parsed.skipped, degraded: parsed.degraded }
   }
 
@@ -98,9 +114,12 @@ export class CalendarService extends TypertRemoteService {
     }
   }
 
-  /** @returns the stored event, or undefined. */
-  getEvent(uid) {
-    return this.store.getEvent(uid)
+  /**
+   * @param input - `{ uid, source? }`.
+   * @returns the stored event, or undefined.
+   */
+  getEvent(input) {
+    return this.store.getEvent(input.uid, input.source)
   }
 
   /**
@@ -117,48 +136,48 @@ export class CalendarService extends TypertRemoteService {
 
   /**
    * Remove one event.
-   * @param input - `{ uid }`.
+   * @param input - `{ uid, source? }`; `source` defaults to the user's own records.
    * @returns `{ removed }`.
    */
   async deleteEvent(input) {
-    return { removed: await this.store.deleteEvent(input.uid) }
+    return { removed: await this.store.deleteEvent(input.uid, input.source) }
   }
 
   /**
    * Move, rename or relocate one date a series produces.
-   * @param input - `{ uid, date, patch }`: the series, the date it produces, and
-   *   the fields to change.
+   * @param input - `{ uid, date, patch, source? }`: the series, the date it
+   *   produces, and the fields to change.
    * @returns the stored record.
    */
   applyOverride(input) {
-    return this.store.applyOverride(input.uid, input.date, input.patch)
+    return this.store.applyOverride(input.uid, input.date, input.patch, input.source)
   }
 
   /**
    * Drop a per-date change, so that occurrence follows the series again.
-   * @param input - `{ uid, date }`.
+   * @param input - `{ uid, date, source? }`.
    * @returns the stored record.
    */
   removeOverride(input) {
-    return this.store.removeOverride(input.uid, input.date)
+    return this.store.removeOverride(input.uid, input.date, input.source)
   }
 
   /**
    * Cancel one date a series produces, so that occurrence does not happen.
-   * @param input - `{ uid, date }`.
+   * @param input - `{ uid, date, source? }`.
    * @returns the stored record.
    */
   cancelOccurrence(input) {
-    return this.store.cancelOccurrence(input.uid, input.date)
+    return this.store.cancelOccurrence(input.uid, input.date, input.source)
   }
 
   /**
    * Undo a cancellation, so that occurrence follows the series again.
-   * @param input - `{ uid, date }`.
+   * @param input - `{ uid, date, source? }`.
    * @returns the stored record.
    */
   restoreOccurrence(input) {
-    return this.store.restoreOccurrence(input.uid, input.date)
+    return this.store.restoreOccurrence(input.uid, input.date, input.source)
   }
 
   /**
@@ -178,6 +197,96 @@ export class CalendarService extends TypertRemoteService {
    */
   onChanged(listener) {
     return this.store.onChanged(listener)
+  }
+
+  /**
+   * Apply a school snapshot. The one entry point a timetable adapter needs.
+   *
+   * The original timetable is frozen on the first call; later changes to one
+   * class arrive as `movedFrom` / `cancelledDates` and are recorded against the
+   * instant the series originally produced, so everything the user attached to
+   * that class stays attached when the class moves.
+   * @param input - `{ source, events, complete? }`, as in `CalendarStore.applySource`.
+   * @returns `{ applied, moved, cancelled, unattributable }`; a non-empty
+   *   `unattributable` means data arrived that could not be attributed to one
+   *   occurrence, and nothing was changed for those entries.
+   */
+  applySource(input) {
+    return this.store.applySource(input)
+  }
+
+  /**
+   * Write the user's own content against one occurrence, or a whole series.
+   *
+   * `originalStart` is the occurrence's identity, not its current time: the note
+   * follows the class when the school moves it. Omitting the field targets the
+   * whole series.
+   * @param input - `{ scope?, source, uid, originalStart?, text }`.
+   * @returns the stored annotation.
+   */
+  putNote(input) {
+    const { text, ...ref } = input
+    if (typeof text !== 'string') throw new Error('a note needs text')
+    return this.personal.patch(ref, { note: { text } })
+  }
+
+  /**
+   * Drop the user's content for one occurrence, or a whole series.
+   *
+   * Clearing is a removal rather than an empty note, so "never wrote one" and
+   * "emptied it" are the same state and no blank record is left behind.
+   * @param input - `{ scope?, source, uid, originalStart? }`.
+   * @returns `{ removed }`.
+   */
+  async removeNote(input) {
+    return { removed: await this.personal.remove(input) }
+  }
+
+  /**
+   * The user's notes, optionally narrowed to one event or one occurrence.
+   * @param input - `{ scope?, source?, uid?, originalStart? }`.
+   * @returns matching annotations in the scope.
+   */
+  notes(input = {}) {
+    const scope = input.scope ?? 'source'
+    return this.personal.list(scope).filter(record => {
+      if (input.source !== undefined && record.source !== input.source) return false
+      if (input.uid !== undefined && record.uid !== input.uid) return false
+      if (input.originalStart !== undefined && record.originalStart !== input.originalStart) return false
+      return true
+    })
+  }
+
+  /**
+   * The annotations whose class no longer exists in the source layer.
+   *
+   * A reschedule keeps the class's identity, so a moved class is still linked. An
+   * annotation is reported here when its `originalStart` is not one of the
+   * instants its series produces — the case where personal content would
+   * otherwise disappear silently. Nothing is deleted: the report exists so the
+   * content can be shown and the association decided by a person.
+   * @returns `[{ scope, source, uid, originalStart, reason }]`.
+   */
+  unlinkedNotes() {
+    const events = this.store.snapshot().events
+    const report = []
+    for (const scope of ['source', 'personal']) {
+      for (const record of this.personal.list(scope)) {
+        if (!record.originalStart) continue
+        const event = events.find(row => row.uid === record.uid && (row.source ?? 'manual') === record.source)
+        if (!event) {
+          report.push({ ...record, reason: 'source_record_gone' })
+          continue
+        }
+        // Asked against the series' own instants, not against a windowed
+        // rendering: a class moved by an override still owns the instant it was
+        // originally scheduled for, so its note is linked, not orphaned.
+        if (!seriesInstants(event).includes(record.originalStart)) {
+          report.push({ ...record, reason: 'no_such_occurrence' })
+        }
+      }
+    }
+    return report
   }
 }
 
@@ -234,6 +343,31 @@ Remote('deleteEvent')(CalendarService.prototype.deleteEvent, {
 
 Remote('putEvent')(CalendarService.prototype.putEvent, {
   kind: 'method', name: 'putEvent', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('applySource')(CalendarService.prototype.applySource, {
+  kind: 'method', name: 'applySource', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('putNote')(CalendarService.prototype.putNote, {
+  kind: 'method', name: 'putNote', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('removeNote')(CalendarService.prototype.removeNote, {
+  kind: 'method', name: 'removeNote', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('notes')(CalendarService.prototype.notes, {
+  kind: 'method', name: 'notes', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('unlinkedNotes')(CalendarService.prototype.unlinkedNotes, {
+  kind: 'method', name: 'unlinkedNotes', static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 

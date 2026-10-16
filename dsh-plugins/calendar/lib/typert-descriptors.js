@@ -6,6 +6,8 @@
 // that true by construction instead of by review. `sourceLocation` points at the
 // method that implements the descriptor in `lib/index.js`.
 import {
+  applySourceParameter,
+  applySourceResult,
   cancelParameter,
   deleteEventParameter,
   eventParameter,
@@ -14,13 +16,20 @@ import {
   exportResult,
   importParameter,
   importResult,
+  noteResult,
+  notesParameter,
+  notesResult,
   occurrencesResult,
   overrideParameter,
+  putNoteParameter,
   rangeParameter,
   removalResult,
+  removeNoteParameter,
   removeOverrideParameter,
   restoreParameter,
   snapshotResult,
+  unlinkedNotesParameter,
+  unlinkedNotesResult,
 } from './typert-schemas.js'
 
 const pkg = '@eduwork/dsh-calendar'
@@ -44,14 +53,19 @@ const descriptor = (method, line, parameters, result) => Object.freeze({
 })
 
 export const descriptors = Object.freeze([
-  descriptor('snapshot', 47, [], snapshotResult),
-  descriptor('occurrences', 66, [rangeParameter], occurrencesResult),
-  descriptor('importIcs', 82, [importParameter], importResult),
-  descriptor('exportIcs', 94, [exportParameter], exportResult),
-  descriptor('deleteEvent', 123, [deleteEventParameter], removalResult),
-  descriptor('applyOverride', 133, [overrideParameter], eventResult),
-  descriptor('removeOverride', 142, [removeOverrideParameter], eventResult),
-  descriptor('cancelOccurrence', 151, [cancelParameter], eventResult),
-  descriptor('restoreOccurrence', 160, [restoreParameter], eventResult),
-  descriptor('putEvent', 114, [eventParameter], eventResult),
+  descriptor('snapshot', 53, [], snapshotResult),
+  descriptor('occurrences', 72, [rangeParameter], occurrencesResult),
+  descriptor('importIcs', 94, [importParameter], importResult),
+  descriptor('exportIcs', 110, [exportParameter], exportResult),
+  descriptor('putEvent', 133, [eventParameter], eventResult),
+  descriptor('deleteEvent', 142, [deleteEventParameter], removalResult),
+  descriptor('applyOverride', 152, [overrideParameter], eventResult),
+  descriptor('removeOverride', 161, [removeOverrideParameter], eventResult),
+  descriptor('cancelOccurrence', 170, [cancelParameter], eventResult),
+  descriptor('restoreOccurrence', 179, [restoreParameter], eventResult),
+  descriptor('applySource', 214, [applySourceParameter], applySourceResult),
+  descriptor('putNote', 227, [putNoteParameter], noteResult),
+  descriptor('removeNote', 241, [removeNoteParameter], removalResult),
+  descriptor('notes', 250, [notesParameter], notesResult),
+  descriptor('unlinkedNotes', 270, [unlinkedNotesParameter], unlinkedNotesResult),
 ])

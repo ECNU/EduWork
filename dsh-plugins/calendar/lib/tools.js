@@ -14,6 +14,7 @@
 import { randomUUID } from 'node:crypto'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { decideCalendarPermission } from './tool-permission.js'
+import { inheritedEndOf } from './model.js'
 
 export const name = 'dsh-calendar-tools'
 export const inject = ['tools', 'calendar', 'permissionPresets']
@@ -83,6 +84,7 @@ function recordFields(event) {
     start: event.start,
     end: event.end,
     location: event.location,
+    description: event.description,
     source: event.source,
     until: event.recurrence?.until,
     repeats: Boolean(event.recurrence),
@@ -104,7 +106,7 @@ function lineOf(entry) {
     when,
     entry.title,
     entry.location ? `· ${entry.location}` : '',
-    entry.repeats ? '· 每周重复' : '',
+    entry.repeats ? '· 重复日程' : '',
     `[uid ${entry.uid}]`,
   ].filter(Boolean).join(' ')
 }
@@ -118,7 +120,7 @@ function recordLine(prefix, event) {
     : end === ''
       ? `${dateOf(event.start)} ${clock}`
       : `${dateOf(event.start)} ${clock}–${end}`
-  return `${prefix} ${when} ${event.title}${event.location ? ` · ${event.location}` : ''}${event.recurrence ? ' · 每周重复' : ''} [uid ${event.uid}]`
+  return `${prefix} ${when} ${event.title}${event.location ? ` · ${event.location}` : ''}${event.recurrence ? ' · 重复日程' : ''} [uid ${event.uid}]`
 }
 
 /**
@@ -133,16 +135,8 @@ function recordLine(prefix, event) {
  * @returns The new end, or `undefined`.
  */
 function movedEnd(existing, start) {
-  if (!existing.end) return undefined
-  if (clockOf(start) === '' || clockOf(existing.start) === '') {
-    if (clockOf(start) !== '' || clockOf(existing.start) === '') return undefined
-    if (clockOf(existing.end) !== '') return undefined
-    return shiftDate(dateOf(existing.end), daysBetween(dateOf(existing.start), dateOf(start)))
-  }
-  if (clockOf(existing.end) === '') return undefined
-  const duration = clockMinutes(clockOf(existing.end)) - clockMinutes(clockOf(existing.start))
-  if (duration <= 0) return undefined
-  return `${dateOf(start)}T${clockAt(Math.min(23 * 60 + 59, clockMinutes(clockOf(start)) + duration))}`
+  if (!existing.end || Boolean(clockOf(start)) !== Boolean(clockOf(existing.start))) return undefined
+  return inheritedEndOf(start, existing.start, existing.end)
 }
 
 /**
@@ -169,10 +163,21 @@ function updatedRecord(existing, args) {
     record.recurrence = undefined
     record.exceptions = undefined
     record.overrides = undefined
-  } else if (args.repeat === 'weekly' || (args.until !== undefined && existing.recurrence)) {
-    record.recurrence = withoutEmpty({ ...(existing.recurrence ?? {}), freq: 'weekly', until: args.until })
+  } else if (args.repeat !== undefined) {
+    record.recurrence = recurrenceFor(args)
+  } else if (args.until !== undefined && existing.recurrence) {
+    record.recurrence = withoutEmpty({...existing.recurrence, until:args.until})
   }
   return record
+}
+
+const WEEK_CODES = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
+const repeatParameter = {type:'string',enum:['none','daily','weekly','custom'],description:'none, daily, weekly on the start weekday, or custom selected weekdays.'}
+const weekdaysParameter = {type:'array',items:{type:'string',enum:WEEK_CODES},description:'Required with repeat custom. mo, tu, we, th, fr, sa, su.'}
+function recurrenceFor(args) {
+  if (args.repeat === 'none') return undefined
+  if (args.repeat === 'custom' && !args.weekdays?.length) throw new Error('custom repeat needs at least one weekday')
+  return withoutEmpty({freq:'weekly',byDay:args.repeat === 'daily'?WEEK_CODES:args.repeat === 'custom'?args.weekdays:undefined,until:args.until})
 }
 
 const occurrenceSchema = {
@@ -186,6 +191,8 @@ const occurrenceSchema = {
     end: { type: 'string' },
     location: { type: 'string' },
     source: { type: 'string' },
+    originalStart: { type: 'string', description: 'Stable original start to pass to note tools; use this rather than current start.' },
+    description: { type: 'string' },
     repeats: { type: 'boolean', required: true },
   },
 }
@@ -200,6 +207,7 @@ const recordSchema = {
     end: { type: 'string' },
     location: { type: 'string' },
     source: { type: 'string' },
+    description: { type: 'string' },
     until: { type: 'string' },
     repeats: { type: 'boolean', required: true },
   },
@@ -209,6 +217,24 @@ const timeParameter = description => ({
   type: 'string',
   description: `${description} A local wall-clock time written as YYYY-MM-DDTHH:mm, or YYYY-MM-DD for a whole-day value.`,
 })
+
+/**
+ * Which layer an entry belongs to.
+ *
+ * An identifier is only unique within the source that issued it, so two entries
+ * can share one `uid` — a school class and the reader's own entry, or two
+ * timetables that number their courses independently. A tool that names only the
+ * identifier is therefore ambiguous, and resolving it by assuming the local layer
+ * reaches the wrong entry rather than failing to find the right one. Every write
+ * names its layer; reads report the layer of each entry they return.
+ */
+const sourceParameter = {
+  type: 'string',
+  description: 'Which layer the entry belongs to, as a read reported it. Omit for an entry the user created locally.',
+}
+
+/** The layer an entry created here belongs to, matching the store's default. */
+const MANUAL_SOURCE = 'manual'
 
 /**
  * Register the calendar tools.
@@ -256,6 +282,8 @@ export function apply(ctx) {
           start: occurrence.start,
           end: occurrence.end,
           location: occurrence.location,
+          description: occurrence.description,
+          originalStart: occurrence.originalStart,
           source: occurrence.source,
           repeats: Boolean(occurrence.recurrence),
         })),
@@ -273,8 +301,9 @@ export function apply(ctx) {
       end: timeParameter('When it ends. Defaults to the start time with no end, which the panel shows as a short block.'),
       location: { type: 'string', description: 'Where it happens.' },
       description: { type: 'string', description: 'A note kept with the entry.' },
-      repeat: { type: 'string', enum: ['none', 'weekly'], description: 'Set to weekly to repeat every week.' },
-      until: { type: 'string', description: 'Last date of the repetition, `YYYY-MM-DD`. Only with `repeat: "weekly"`.' },
+      repeat: repeatParameter,
+      weekdays: weekdaysParameter,
+      until: { type: 'string', description: 'Last date of the repetition, `YYYY-MM-DD`. Only with a repeating entry.' },
     },
     output: {
       schema: { type: 'object', additionalProperties: false, properties: { event: { ...recordSchema, required: true } } },
@@ -288,7 +317,7 @@ export function apply(ctx) {
         end: args.end,
         location: args.location,
         description: args.description,
-        recurrence: args.repeat === 'weekly' ? withoutEmpty({ freq: 'weekly', until: args.until }) : undefined,
+        recurrence: args.repeat && args.repeat !== 'none' ? recurrenceFor(args) : undefined,
       })
       return { event: recordFields(await ctx.calendar.putEvent(record)) }
     },
@@ -300,12 +329,14 @@ export function apply(ctx) {
     description: 'Change one stored entry of this machine\'s local calendar, identified by the `uid` a read returned. Only the fields the call carries change; an empty string clears `location` or `description`. A moved start keeps the entry\'s duration unless `end` is given. This changes the whole entry, including every date of a repeating one: use `calendar_occurrence` to change a single date.',
     parameters: {
       uid: { type: 'string', required: true, description: 'Identity of the stored entry, as returned by a read.' },
+      source: sourceParameter,
       title: { type: 'string' },
       start: timeParameter('New start.'),
       end: timeParameter('New end.'),
       location: { type: 'string', description: 'New place; an empty string removes it.' },
       description: { type: 'string', description: 'New note; an empty string removes it.' },
-      repeat: { type: 'string', enum: ['none', 'weekly'], description: 'Set to weekly to repeat every week, none to make it a single entry.' },
+      repeat: repeatParameter,
+      weekdays: weekdaysParameter,
       until: { type: 'string', description: 'Last date of the repetition, `YYYY-MM-DD`.' },
     },
     output: {
@@ -313,7 +344,7 @@ export function apply(ctx) {
       render: (_args, value) => [{ type: 'text', text: recordLine('已更新：', value.event) }],
     },
     async execute(args) {
-      const existing = ctx.calendar.getEvent(args.uid)
+      const existing = ctx.calendar.getEvent({ uid: args.uid, source: args.source ?? MANUAL_SOURCE })
       if (!existing) throw new Error(`没有 uid 为 ${args.uid} 的日程`)
       return { event: recordFields(await ctx.calendar.putEvent(updatedRecord(existing, args))) }
     },
@@ -325,6 +356,7 @@ export function apply(ctx) {
     description: 'Delete one stored entry of this machine\'s local calendar, including every date of a repeating one. Use `calendar_occurrence` with action `cancel` to drop a single date instead. Deleting what is not there reports `removed: false` rather than failing.',
     parameters: {
       uid: { type: 'string', required: true, description: 'Identity of the stored entry, as returned by a read.' },
+      source: sourceParameter,
     },
     output: {
       schema: {
@@ -335,7 +367,7 @@ export function apply(ctx) {
       render: (_args, value) => [{ type: 'text', text: value.removed ? `已删除 ${value.uid}` : `没有 uid 为 ${value.uid} 的日程，未做改动` }],
     },
     async execute(args) {
-      const { removed } = await ctx.calendar.deleteEvent({ uid: args.uid })
+      const { removed } = await ctx.calendar.deleteEvent({ uid: args.uid, source: args.source ?? MANUAL_SOURCE })
       return { uid: args.uid, removed }
     },
     presentCall: args => ({ card: 'generic', title: 'Calendar · 删除日程', kind: 'write', rawInput: args.uid }),
@@ -346,6 +378,7 @@ export function apply(ctx) {
     description: 'Change one date a repeating entry produces, leaving the rest of the series alone — the `RECURRENCE-ID` case. `move` changes that date only, `reset` makes it follow the series again, `cancel` drops it, and `restore` brings a cancelled date back. A single, non-repeating entry has no dates to act on: update or delete it instead.',
     parameters: {
       uid: { type: 'string', required: true, description: 'Identity of the repeating entry, as returned by a read.' },
+      source: sourceParameter,
       date: { type: 'string', required: true, description: 'The date the series produces, `YYYY-MM-DD`.' },
       action: { type: 'string', required: true, enum: ['move', 'reset', 'cancel', 'restore'] },
       start: timeParameter('New start for this date, for action `move`.'),
@@ -362,7 +395,7 @@ export function apply(ctx) {
     },
     async execute(args) {
       const patch = withoutEmpty({ start: args.start, end: args.end, title: args.title, location: args.location })
-      const input = { uid: args.uid, date: args.date, patch }
+      const input = { uid: args.uid, date: args.date, patch, source: args.source ?? MANUAL_SOURCE }
       if (args.action === 'move') {
         if (Object.keys(patch).length === 0) throw new Error('move 需要至少给出 start、end、title 或 location 之一')
         return { event: recordFields(await ctx.calendar.applyOverride(input)) }
@@ -373,4 +406,48 @@ export function apply(ctx) {
     },
     presentCall: args => ({ card: 'generic', title: `Calendar · ${args.action} 单次`, kind: 'write', rawInput: `${args.date ?? ''} ${args.uid ?? ''}`.trim() }),
   }))
+
+  const noteIdentity = {
+    source: {...sourceParameter, required:true},
+    uid: {type:'string',required:true,description:'Event uid returned by calendar_list_events.'},
+    originalStart: {type:'string',required:true,description:'Stable originalStart returned by calendar_list_events, not the current start. Targets this one occurrence.'},
+  }
+  const noteFields = {
+    source:{type:'string',required:true},uid:{type:'string',required:true},
+    originalStart:{type:'string'},text:{type:'string',required:true},reason:{type:'string'},
+  }
+  ctx.tools.register(defineTool({
+    name:'calendar_notes',
+    description:'Read the user’s private calendar notes, separately from the event description that is exported in ICS. Filter by source, uid and originalStart. unlinkedOnly reads preserved notes whose original class can no longer be found.',
+    parameters:{source:sourceParameter,uid:{type:'string'},originalStart:{type:'string'},unlinkedOnly:{type:'boolean'}},
+    output:{schema:{type:'object',additionalProperties:false,properties:{notes:{type:'array',required:true,items:{type:'object',additionalProperties:false,properties:noteFields}}}},
+      render:(_args,value)=>[{type:'text',text:value.notes.length?value.notes.map(n=>`${n.source} / ${n.uid} / ${n.originalStart ?? '整条日程'}：${n.text}`).join('\n'):'没有符合条件的笔记。'}]},
+    execute(args) {
+      const records=args.unlinkedOnly?ctx.calendar.unlinkedNotes().filter(r=>r.scope==='source'):ctx.calendar.notes({scope:'source'})
+      return {notes:records.filter(r=>(args.source===undefined||r.source===args.source)&&(args.uid===undefined||r.uid===args.uid)&&(args.originalStart===undefined||r.originalStart===args.originalStart))
+        .map(r=>({source:r.source,uid:r.uid,text:r.note?.text ?? '',...(r.originalStart?{originalStart:r.originalStart}:{}),...(r.reason?{reason:r.reason}:{})}))}
+    },
+    presentCall:()=>({card:'generic',title:'Calendar · 读笔记',kind:'read'}),
+  }))
+  ctx.tools.register(defineTool({
+    name:'calendar_put_note',
+    description:'Write or replace the user’s private note on one calendar occurrence using its source, uid and originalStart from calendar_list_events. The note follows a reschedule and is never written into school fields or ICS. Empty text clears the note. This writes user data and uses the calendar write permission gate.',
+    parameters:{...noteIdentity,text:{type:'string',required:true,description:'Private note text. Empty string clears it.'}},
+    output:{schema:{type:'object',additionalProperties:false,properties:{saved:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.saved?'已保存笔记。':'已清空笔记。'}]},
+    async execute(args) {
+      const {text,...ref}=args
+      if(text==='') {await ctx.calendar.removeNote({...ref,scope:'source'});return {saved:false}}
+      await ctx.calendar.putNote({...ref,scope:'source',text});return {saved:true}
+    },
+    presentCall:args=>({card:'generic',title:'Calendar · 写笔记',kind:'write',rawInput:args.text}),
+  }))
+  ctx.tools.register(defineTool({
+    name:'calendar_remove_note',
+    description:'Remove only the user’s private note for one calendar occurrence. Use the source, uid and stable originalStart returned by calendar_list_events or calendar_notes. This does not delete the event or its exported description.',
+    parameters:noteIdentity,
+    output:{schema:{type:'object',additionalProperties:false,properties:{removed:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.removed?'已删除笔记。':'这次日程没有笔记。'}]},
+    execute:args=>ctx.calendar.removeNote({...args,scope:'source'}),
+    presentCall:()=>({card:'generic',title:'Calendar · 清空笔记',kind:'write'}),
+  }))
+
 }

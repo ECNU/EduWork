@@ -488,3 +488,60 @@ test('a date-only UNTIL keeps meaning the end of that day', { skip: !runtime }, 
     model.occurrencesOf(events[0], range).map(occurrence => occurrence.occurrenceDate),
   )
 })
+
+// The identity of a record is `(source, uid)`, and two sources legitimately number
+// their entries independently — a timetable export and a personal calendar can both
+// contain `MATH101`. An exported file that writes the bare `uid` therefore holds two
+// identical `UID:` lines, and reading it back cannot tell them apart: one record
+// overwrites the other. The source travels inside the exported `UID`, and a file that
+// did not come from here — a bare `uid` — is still read as one source, as before.
+test('an exported file keeps two sources that number their entries the same apart', { skip: !runtime }, async () => {
+  const { ics } = await load()
+  const events = [
+    { uid: 'MATH101', source: 'ecnu:timetable', title: '高等数学 A', start: '2026-03-02T08:00', end: '2026-03-02T09:35', extensions: {} },
+    { uid: 'MATH101', source: 'ecnu:postgraduate', title: '研究生讨论班', start: '2026-03-02T15:00', end: '2026-03-02T17:00', extensions: {} },
+  ]
+  const text = ics.buildIcs({ events })
+  const { events: back } = ics.parseIcs(text)
+  assert.equal(back.length, 2, `both records should survive, got ${back.map(event => `${event.source}/${event.uid}`).join(', ')}`)
+  assert.deepEqual(
+    back.map(event => `${event.source}/${event.uid}/${event.title}`).sort(),
+    ['ecnu:postgraduate/MATH101/研究生讨论班', 'ecnu:timetable/MATH101/高等数学 A'],
+  )
+})
+
+test('a UID that did not come from here is still one source', { skip: !runtime }, async () => {
+  const { ics } = await load()
+  const { events } = ics.parseIcs(calendar(
+    ...WRAPPER,
+    'BEGIN:VEVENT',
+    'UID:MATH101',
+    'SUMMARY:别人的课表',
+    'DTSTART:20260302T080000',
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ), { source: 'ecnu:timetable' })
+  assert.equal(events.length, 1)
+  assert.equal(events[0].uid, 'MATH101', 'a foreign uid is taken as it is')
+  assert.equal(events[0].source, 'ecnu:timetable', 'and belongs to the source the import named')
+})
+
+test('only a uid carrying a source is encoded, so a foreign reader still sees a plain one', { skip: !runtime }, async () => {
+  const { ics } = await load()
+  const manual = ics.buildIcs({ events: [{ uid: 'plain-1', source: 'manual', title: '自己的事', start: '2026-03-02T08:00', extensions: {} }] })
+  assert.ok(manual.includes('UID:plain-1'), `a source-less entry keeps its uid readable, got:\n${manual}`)
+  const foreign = ics.buildIcs({ events: [{ uid: 'plain-2', source: 'ecnu:timetable', title: '学校的课', start: '2026-03-02T08:00', extensions: {} }] })
+  assert.equal(foreign.includes('UID:plain-2'), false, 'an entry from another source carries that source in its UID')
+})
+
+test('a UID with characters a key cannot hold still round trips', { skip: !runtime }, async () => {
+  const { ics } = await load()
+  // A colon, a slash, a space and a non-BMP character: nothing about a uid is restricted.
+  const uid = 'a:b/c d\u0000😀 课程#1'
+  const events = [{ uid, source: 'ecnu:timetable', title: '奇怪的编号', start: '2026-03-02T08:00', extensions: {} }]
+  const text = ics.buildIcs({ events })
+  const { events: back } = ics.parseIcs(text)
+  assert.equal(back.length, 1)
+  assert.equal(back[0].uid, uid, 'the uid came back exactly')
+  assert.equal(back[0].source, 'ecnu:timetable', 'and so did the source')
+})

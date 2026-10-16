@@ -63,8 +63,12 @@ async function service(events = []) {
   const calls = []
   return {
     calls,
+    records,
     occurrences: range => ({ schemaVersion: 2, occurrences: occurrencesIn(records, range) }),
-    getEvent: uid => records.find(event => event.uid === uid),
+    // `getEvent` names the source as well as the identifier, because an identifier
+    // is only unique within the source that issued it. Reading the argument the way
+    // the real service does is what keeps this stand-in honest.
+    getEvent: ({ uid, source = 'manual' }) => records.find(event => event.uid === uid && (event.source ?? 'manual') === source),
     putEvent: async input => {
       const record = normalizeEvent(input)
       calls.push({ method: 'putEvent', record })
@@ -98,7 +102,7 @@ async function tool(name, backing, preset) {
   return { definition, registered, handlers }
 }
 
-test('the registered surface is the five calendar tools, behind one write gate', { skip: !runtime }, async () => {
+test('the registered surface is calendar tools and notes, behind one write gate', { skip: !runtime }, async () => {
   const { registered, handlers } = await tool('calendar_list_events', await service())
   assert.deepEqual(registered.map(entry => entry.name), [
     'calendar_list_events',
@@ -106,12 +110,15 @@ test('the registered surface is the five calendar tools, behind one write gate',
     'calendar_update_event',
     'calendar_delete_event',
     'calendar_occurrence',
+    'calendar_notes',
+    'calendar_put_note',
+    'calendar_remove_note',
   ])
   assert.deepEqual(handlers.map(entry => entry.name), ['tools/pre-execute'])
   // A new tool that is not the read one must be declared in WRITE_TOOLS, or it
   // would write with no approval in front of it.
   for (const entry of registered) {
-    if (entry.name === 'calendar_list_events') continue
+    if (['calendar_list_events', 'calendar_notes'].includes(entry.name)) continue
     assert.ok(WRITE_TOOLS.has(entry.name), `${entry.name} is gated`)
   }
   assert.ok(!WRITE_TOOLS.has('calendar_list_events'), 'reading is not gated')
@@ -151,7 +158,7 @@ test('list reads the window through the service and renders one line per date', 
   assert.equal(value.events[0].uid, 'series-1')
   assert.equal(value.events[0].repeats, true)
   const text = definition.output.render({}, value)[0].text
-  assert.match(text, /2026-10-07 15:00–16:00 组会 · 理科楼 305 · 每周重复/)
+  assert.match(text, /2026-10-07 15:00–16:00 组会 · 理科楼 305 · 重复日程/)
   assert.match(text, /共 2 条/)
 })
 
@@ -208,13 +215,13 @@ test('delete and the single-date actions reach the matching service methods', { 
   const backing = await service([WEEKLY])
   const remove = await tool('calendar_delete_event', backing)
   assert.deepEqual(await remove.definition.execute({ uid: 'series-1' }, {}), { uid: 'series-1', removed: true })
-  assert.deepEqual(backing.calls[0], { method: 'deleteEvent', input: { uid: 'series-1' } })
+  assert.deepEqual(backing.calls[0], { method: 'deleteEvent', input: { uid: 'series-1', source: 'manual' } })
 
   const one = await tool('calendar_occurrence', backing)
   await one.definition.execute({ uid: 'series-1', date: '2026-10-14', action: 'move', start: '2026-10-15T15:00' }, {})
   assert.deepEqual(backing.calls[1], {
     method: 'applyOverride',
-    input: { uid: 'series-1', date: '2026-10-14', patch: { start: '2026-10-15T15:00' } },
+    input: { uid: 'series-1', date: '2026-10-14', patch: { start: '2026-10-15T15:00' }, source: 'manual' },
   })
   await assert.rejects(
     () => one.definition.execute({ uid: 'series-1', date: '2026-10-14', action: 'move' }, {}),
@@ -226,6 +233,41 @@ test('delete and the single-date actions reach the matching service methods', { 
   assert.equal(backing.calls[3].method, 'removeOverride')
   await one.definition.execute({ uid: 'series-1', date: '2026-10-14', action: 'restore' }, {})
   assert.equal(backing.calls[4].method, 'restoreOccurrence')
+})
+
+test('a write names the layer it means, so an imported entry is reachable and the local one is safe', { skip: !runtime }, async () => {
+  // Two records of one identifier is the case the layer exists for. An agent that
+  // could only name the identifier would silently edit or delete whichever the
+  // default happened to be, which is the wrong record half the time.
+  const shared = { ...WEEKLY, source: 'ecnu:timetable', title: '高等数学 A' }
+  const backing = await service([shared, { ...WEEKLY, source: 'manual', title: '自己加的复习' }])
+
+  const update = await tool('calendar_update_event', backing)
+  await update.definition.execute({ uid: 'series-1', source: 'ecnu:timetable', title: '高等数学 B' }, {})
+  assert.equal(backing.calls[0].record.title, '高等数学 B', 'the named layer is the one that changed')
+  assert.equal(backing.calls[0].record.source, 'ecnu:timetable', 'and it keeps belonging to that layer')
+
+  const remove = await tool('calendar_delete_event', backing)
+  await remove.definition.execute({ uid: 'series-1', source: 'ecnu:timetable' }, {})
+  assert.deepEqual(backing.calls[1], {
+    method: 'deleteEvent',
+    input: { uid: 'series-1', source: 'ecnu:timetable' },
+  })
+
+  const one = await tool('calendar_occurrence', backing)
+  await one.definition.execute(
+    { uid: 'series-1', source: 'ecnu:timetable', date: '2026-10-14', action: 'cancel' }, {},
+  )
+  assert.deepEqual(backing.calls[2], {
+    method: 'cancelOccurrence',
+    input: { uid: 'series-1', date: '2026-10-14', patch: {}, source: 'ecnu:timetable' },
+  })
+
+  // The local record of the same identifier is untouched by all three, and a call
+  // that names no layer still reaches the local one, which is the default.
+  assert.equal(backing.records.find(record => record.source === 'manual').title, '自己加的复习')
+  await remove.definition.execute({ uid: 'series-1' }, {})
+  assert.deepEqual(backing.calls[3], { method: 'deleteEvent', input: { uid: 'series-1', source: 'manual' } })
 })
 
 test('writes ask first, unless the session already runs without approvals', { skip: !runtime }, async () => {
@@ -244,4 +286,22 @@ test('writes ask first, unless the session already runs without approvals', { sk
   assert.deepEqual(await decide('standard', { name: 'calendar_list_events', agent }), { decision: undefined, continued: 1 })
   assert.deepEqual(await decide('standard', { name: 'calendar_list_events' }), { decision: undefined, continued: 1 })
   assert.equal((await decide('standard', { name: 'calendar_update_event' })).decision.kind, 'deny')
+})
+
+
+test('Agent repeat options use the same daily and custom weekdays as the panel', {skip:!runtime}, async()=> {
+  const backing=await service()
+  const {definition}=await tool('calendar_create_event',backing)
+  await definition.execute({title:'Daily',start:'2026-10-19T09:00',repeat:'daily'}, {})
+  assert.equal(backing.calls[0].record.recurrence.byDay.length,7)
+  await definition.execute({title:'Custom',start:'2026-10-19T09:00',repeat:'custom',weekdays:['tu','th'],until:'2026-10-31'}, {})
+  assert.deepEqual(backing.calls[1].record.recurrence.byDay,['tu','th'])
+  await assert.rejects(()=>definition.execute({title:'Missing days',start:'2026-10-19T09:00',repeat:'custom'}, {}),/weekday/)
+})
+
+test('Agent moving an overnight entry preserves its complete duration', {skip:!runtime}, async()=> {
+  const backing=await service([{uid:'overnight',title:'夜间',start:'2026-10-19T23:00',end:'2026-10-20T02:00'}])
+  const {definition}=await tool('calendar_update_event',backing)
+  await definition.execute({uid:'overnight',start:'2026-10-21T22:00'}, {})
+  assert.equal(backing.calls[0].record.end,'2026-10-22T01:00')
 })

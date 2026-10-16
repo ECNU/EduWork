@@ -55,8 +55,9 @@ test('host and client faces describe the same calendar methods', { skip: !runtim
   }))
   assert.deepEqual(shape(client.descriptors), shape(host.invocations))
   assert.deepEqual(host.invocations.map(descriptor => descriptor.method), [
-    'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'deleteEvent',
-    'applyOverride', 'removeOverride', 'cancelOccurrence', 'restoreOccurrence', 'putEvent',
+    'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'putEvent',
+    'deleteEvent', 'applyOverride', 'removeOverride', 'cancelOccurrence', 'restoreOccurrence',
+    'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes',
   ])
 })
 
@@ -95,12 +96,21 @@ test('the wire schemas accept the real shapes and reject the wrong ones', { skip
     start: '2026-03-02T08:00',
     occurrenceId: 'event-fixture-1#2026-03-02',
     occurrenceDate: '2026-03-02',
+    // The instant the series produced. It is required, and it is not the same
+    // field as `start`: a class the school moved keeps its identity here.
+    originalStart: '2026-03-02T08:00',
   }
   const payload = extra => ({ schemaVersion: 2, occurrences: [{ ...occurrence, ...extra }] })
   assert.equal(occurrences.result.schema.safeParse(payload({})).success, true)
   assert.equal(occurrences.result.schema.safeParse(payload({ overridden: true })).success, true)
   assert.equal(occurrences.result.schema.safeParse(payload({ overrides: [] })).success, false, 'series bookkeeping stays out of the wire shape')
   assert.equal(occurrences.result.schema.safeParse(payload({ occurrenceDate: '2026-03-02T08:00' })).success, false)
+  assert.equal(
+    occurrences.result.schema.safeParse(payload({ originalStart: '2026-03-02T14:00' })).success,
+    true,
+    'a moved class keeps its own identity while reporting a different start',
+  )
+  assert.equal(occurrences.result.schema.safeParse(payload({ originalStart: undefined })).success, false, 'identity is not optional')
 
   // The write methods read one object argument each, and nothing else.
   const importSchema = byMethod.get('importIcs').parameters[0].codec.schema
@@ -135,6 +145,41 @@ test('the wire schemas accept the real shapes and reject the wrong ones', { skip
   }).success, true)
   assert.equal(putEventSchema.safeParse({ uid: 'manual-fixture-1', title: '示例日程' }).success, false)
   assert.equal(putEventSchema.safeParse({ uid: 'manual-fixture-1', title: '示例日程', start: '2026-03-02T08:00', courseId: 'x' }).success, false)
+
+  // A school snapshot: the shape an adapter sends, including the field that makes
+  // a change attributable to one occurrence.
+  const sourceSchema = byMethod.get('applySource').parameters[0].codec.schema
+  const timetable = { source: 'ecnu:timetable', events: [{ uid: 'MATH101-01', title: '高等数学 A', start: '2026-10-06T09:00' }] }
+  assert.equal(sourceSchema.safeParse(timetable).success, true)
+  assert.equal(sourceSchema.safeParse({ ...timetable, complete: true }).success, true)
+  assert.equal(sourceSchema.safeParse({
+    source: 'ecnu:timetable',
+    events: [{ uid: 'MATH101-01', title: '高等数学 A', start: '2026-10-06T14:00', movedFrom: '2026-10-06T09:00' }],
+  }).success, true, 'a reschedule says where it moved from')
+  assert.equal(sourceSchema.safeParse({
+    source: 'ecnu:timetable',
+    events: [{ uid: 'MATH101-01', title: '高等数学 A', start: '2026-10-06T09:00', cancelledDates: ['2026-10-13'] }],
+  }).success, true)
+  assert.equal(sourceSchema.safeParse({ events: [] }).success, false, 'a snapshot without a source is not attributable')
+  assert.equal(sourceSchema.safeParse({
+    source: 'ecnu:timetable',
+    events: [{ uid: 'MATH101-01', title: '高等数学 A', start: '2026-10-06T09:00', teacher: 'x' }],
+  }).success, false, 'an unknown field is not silently carried to storage')
+
+  // A note: ownership is expressible, and text is required.
+  const noteSchema = byMethod.get('putNote').parameters[0].codec.schema
+  assert.equal(noteSchema.safeParse({ source: 'ecnu:timetable', uid: 'MATH101-01', originalStart: '2026-10-06T09:00', text: '期末要背 P187' }).success, true)
+  assert.equal(noteSchema.safeParse({ scope: 'personal', source: 'manual', uid: 'x', text: '' }).success, true)
+  assert.equal(noteSchema.safeParse({ source: 'ecnu:timetable', uid: 'MATH101-01' }).success, false, 'a note without text is not a note')
+  assert.equal(noteSchema.safeParse({ scope: 'school', source: 'a', uid: 'b', text: 'x' }).success, false, 'scope is the two ownerships and nothing else')
+
+  // Clearing a note names the target and nothing else: it is a removal, not an
+  // empty note, so a text field here would be a shape this contract does not have.
+  const clearSchema = byMethod.get('removeNote').parameters[0].codec.schema
+  assert.equal(clearSchema.safeParse({ source: 'ecnu:timetable', uid: 'MATH101-01', originalStart: '2026-10-06T09:00' }).success, true)
+  assert.equal(clearSchema.safeParse({ source: 'ecnu:timetable', uid: 'MATH101-01' }).success, true)
+  assert.equal(clearSchema.safeParse({ source: 'ecnu:timetable', uid: 'MATH101-01', text: '' }).success, false)
+  assert.equal(clearSchema.safeParse({ uid: 'MATH101-01' }).success, false)
 })
 
 test('the manifest passes the loader validation and stays owned by this package', { skip: !runtime }, async () => {
