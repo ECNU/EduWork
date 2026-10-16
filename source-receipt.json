@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.4",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-16T03:38:28.580Z",
-  "fileSetSHA256": "c7322d80754f3b26d47c1a7380971873c0ef7862b32e547a4a36d2142408d17b",
+  "createdAt": "2026-10-16T03:44:26.232Z",
+  "fileSetSHA256": "a71f4b74da81c60005d9f269ade1ef8a5001f51e1cfd3867d2e093461b9bbf28",
   "files": [
     {
       "path": ".gitattributes",
@@ -1977,7 +1977,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/tools.js",
-      "sha256": "5c000756bf1efe61257d81d7997b5481a060fc46fe094c5ef73ae8a5800e25a1"
+      "sha256": "b0431cbd59d8b0ba7eaf92d8fbb86c61375dba404604f44f457eb4213b1e1ccc"
     },
     {
       "path": "dsh-plugins/calendar/lib/typert-descriptors.js",

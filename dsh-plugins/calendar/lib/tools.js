@@ -344,7 +344,7 @@ export function apply(ctx) {
 
   ctx.tools.register(defineTool({
     name: 'calendar_update_event',
-    description: 'Change one stored entry of this machine\'s local calendar, identified by the `uid` a read returned. Only the fields the call carries change; an empty string clears `location` or `description`. A moved start keeps the entry\'s duration unless `end` is given. This changes the whole entry, including every date of a repeating one: use `calendar_occurrence` to change a single date.',
+    description: 'Change one stored entry of this machine\'s local calendar, identified by the `uid` a read returned. Only the fields the call carries change; an empty string clears `location` or `description`. A moved start keeps the entry\'s duration unless `end` is given. This changes the whole entry, including every date of a repeating one: use `calendar_occurrence` to change a single date. Description edits on imported events become private remarks; read them with calendar_read_personal.',
     parameters: {
       uid: { type: 'string', required: true, description: 'Identity of the stored entry, as returned by a read.' },
       source: sourceParameter,
@@ -352,7 +352,7 @@ export function apply(ctx) {
       start: timeParameter('New start.'),
       end: timeParameter('New end.'),
       location: { type: 'string', description: 'New place; an empty string removes it.' },
-      description: { type: 'string', description: 'New note; an empty string removes it.' },
+      description: { type: 'string', description: 'New description. Imported events save this as a private remark, readable with calendar_read_personal. An empty string clears the content.' },
       repeat: repeatParameter,
       weekdays: weekdaysParameter,
       until: { type: 'string', description: 'Last date of the repetition, `YYYY-MM-DD`.' },
@@ -449,7 +449,7 @@ export function apply(ctx) {
   }))
   ctx.tools.register(defineTool({
     name:'calendar_put_note',
-    description:'Write or replace the user’s private note on one calendar occurrence using its source, uid and originalStart from calendar_list_events. The note follows a reschedule and is never written into school fields or ICS. Empty text clears the note. This writes user data and uses the calendar write permission gate.',
+    description:'Write or replace a private note using source and uid. Omit originalStart for the whole event; supply the stable originalStart from calendar_list_events for one occurrence. The note follows a reschedule and is never written into school fields or ICS. Empty text clears the note. This writes user data and uses the calendar write permission gate.',
     parameters:{...noteIdentity,text:{type:'string',required:true,description:'Private note text. Empty string clears it.'}},
     output:{schema:{type:'object',additionalProperties:false,properties:{saved:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.saved?'已保存笔记。':'已清空笔记。'}]},
     async execute(args) {
@@ -461,7 +461,7 @@ export function apply(ctx) {
   }))
   ctx.tools.register(defineTool({
     name:'calendar_remove_note',
-    description:'Remove only the user’s private note for one calendar occurrence. Use the source, uid and stable originalStart returned by calendar_list_events or calendar_notes. This does not delete the event or its exported description.',
+    description:'Remove only a private note field. Use source and uid; omit originalStart for the whole event, or supply its stable originalStart for one occurrence. Clearing an occurrence restores its inherited note. This does not delete the event or its exported description.',
     parameters:noteIdentity,
     output:{schema:{type:'object',additionalProperties:false,properties:{removed:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.removed?'已删除笔记。':'这次日程没有笔记。'}]},
     execute:args=>ctx.calendar.removeNote({...args,scope:'source'}),
