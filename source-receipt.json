@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.4",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-16T03:44:26.232Z",
-  "fileSetSHA256": "a71f4b74da81c60005d9f269ade1ef8a5001f51e1cfd3867d2e093461b9bbf28",
+  "createdAt": "2026-10-16T05:17:36.664Z",
+  "fileSetSHA256": "ee413e6799b1ec260b19cca7d48754a0723bf0c2c34774bf8168d29253a5ef38",
   "files": [
     {
       "path": ".gitattributes",
@@ -2022,10 +2022,6 @@
     {
       "path": "dsh-plugins/calendar/src/personal-settings.ts",
       "sha256": "c084c8ce7560db2dd2906849887baa29318081aabdb9cb035dd35d470fad2b4d"
-    },
-    {
-      "path": "dsh-plugins/calendar/test/.render/calendar-panel.cjs",
-      "sha256": "35790bb083a3b5a1728f8c7b5da41f744e48c6ac395ed4289b9176170effecae"
     },
     {
       "path": "dsh-plugins/calendar/test/browser-acceptance.mjs",
@@ -5937,7 +5933,7 @@
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
-      "sha256": "2fd8c431688ac2bf02ae49a823c06b8cc90a80615c6e3d7451d975bb3487faf0"
+      "sha256": "d68fc385d16104e92d6ea64de025d93daa6a23f6b80ea12103817d4acea233ff"
     },
     {
       "path": "scripts/build-desktop-candidate.ps1",
@@ -6585,7 +6581,7 @@
     },
     {
       "path": "tests/eduwork-source-audit.test.mjs",
-      "sha256": "6298f878f96618628030b9c9fe3fcda73e754146429d8d6b1cdefddfe39acc15"
+      "sha256": "767cf5365c6e46578fe73ad9bc3e52119eb94a547c28788b823c8272ba2f8cd1"
     },
     {
       "path": "tests/eduwork-source-reproducibility.test.mjs",

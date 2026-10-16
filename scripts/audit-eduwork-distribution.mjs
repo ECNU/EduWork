@@ -10,7 +10,7 @@ const textExtensions = new Set(['', '.cjs', '.css', '.go', '.html', '.js', '.jso
 // Generated, vendored and machine-local directories. One list drives both the
 // traversal and the "outside the source snapshot" rule, so a path can never be
 // skipped by the walk and still reported as a violation.
-const generatedDirectoryNames = ['node_modules', 'dist', '.research', 'private-config', '.local', '.cache', 'logs', 'tmp', '.tmp', '.source-tarballs']
+const generatedDirectoryNames = ['node_modules', 'dist', '.research', 'private-config', '.local', '.cache', '.render', 'logs', 'tmp', '.tmp', '.source-tarballs']
 const generatedDirectory = new RegExp(`(?:^|/)(?:${generatedDirectoryNames.map(name => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})(?:/|$)`)
 const generatedSegments = new Set(generatedDirectoryNames)
 const institutionPlugin = /(?:^|\/)(?:institution-ecnu|oidc-ecnu-web|studio-media-ecnu|tool-ecnu-(?:media|campus-search|vision)|provider-vision-fallback|chatecnu-active-heartbeat|skill-pack-ecnu)(?:\/|$)/
