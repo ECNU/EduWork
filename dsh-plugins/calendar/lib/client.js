@@ -4,6 +4,7 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+		//#region \0rolldown/runtime.js
 		var __create = Object.create;
 		var __defProp = Object.defineProperty;
 		var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -24,10 +25,12 @@ window.__ModuleLoader__.load({
 			value: mod,
 			enumerable: true
 		}) : target, mod));
+		//#endregion
 		let react = require("react");
 		react = __toESM(react, 1);
 		let _deepseek_ai_dsh_client_ui_primitives = require("@deepseek-ai/dsh-client-ui-primitives");
 		_deepseek_ai_dsh_client_ui_primitives = __toESM(_deepseek_ai_dsh_client_ui_primitives, 1);
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/core.js
 		var _a$1;
 		function $constructor(name, initializer, params) {
 			function init(inst, def) {
@@ -85,6 +88,8 @@ window.__ModuleLoader__.load({
 			if (newConfig) Object.assign(globalConfig, newConfig);
 			return globalConfig;
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/util.js
 		function getEnumValues(entries) {
 			const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 			return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -395,6 +400,8 @@ window.__ModuleLoader__.load({
 			};
 			return { ...iss };
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/errors.js
 		const initializer$1 = (inst, def) => {
 			inst.name = "$ZodError";
 			Object.defineProperty(inst, "_zod", {
@@ -453,6 +460,8 @@ window.__ModuleLoader__.load({
 			processError(error);
 			return fieldErrors;
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/parse.js
 		const _parse = (_Err) => (schema, value, _ctx, _params) => {
 			const ctx = _ctx ? {
 				..._ctx,
@@ -565,6 +574,8 @@ window.__ModuleLoader__.load({
 		const _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
 			return _safeParseAsync(_Err)(schema, value, _ctx);
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/regexes.js
 		/**
 		* @deprecated CUID v1 is deprecated by its authors due to information leakage
 		* (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -627,6 +638,8 @@ window.__ModuleLoader__.load({
 		const boolean$1 = /^(?:true|false)$/i;
 		const lowercase = /^[^A-Z]*$/;
 		const uppercase = /^[^a-z]*$/;
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/checks.js
 		const $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 			var _a;
 			inst._zod ?? (inst._zod = {});
@@ -983,6 +996,8 @@ window.__ModuleLoader__.load({
 				payload.value = def.tx(payload.value);
 			};
 		});
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/doc.js
 		var Doc = class {
 			constructor(args = []) {
 				this.content = [];
@@ -1012,11 +1027,15 @@ window.__ModuleLoader__.load({
 				return new F(...args, lines.join("\n"));
 			}
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/versions.js
 		const version = {
 			major: 4,
 			minor: 4,
 			patch: 3
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/schemas.js
 		const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 			var _a;
 			inst ?? (inst = {});
@@ -2245,6 +2264,8 @@ window.__ModuleLoader__.load({
 				payload.issues.push(issue(_iss));
 			}
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/registries.js
 		var _a;
 		var $ZodRegistry = class {
 			constructor() {
@@ -2290,6 +2311,8 @@ window.__ModuleLoader__.load({
 		}
 		(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 		const globalRegistry = globalThis.__zod_globalRegistry;
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/api.js
 		// @__NO_SIDE_EFFECTS__
 		function _string(Class, params) {
 			return new Class({
@@ -2793,6 +2816,8 @@ window.__ModuleLoader__.load({
 			ch._zod.check = fn;
 			return ch;
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/to-json-schema.js
 		function initializeContext(params) {
 			let target = params?.target ?? "draft-2020-12";
 			if (target === "draft-4") target = "draft-04";
@@ -3084,6 +3109,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			extractDefs(ctx, schema);
 			return finalize(ctx, schema);
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/json-schema-processors.js
 		const formatMap = {
 			guid: "uuid",
 			url: "uri",
@@ -3344,6 +3371,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const seen = ctx.seen.get(schema);
 			seen.ref = def.innerType;
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/iso.js
 		const ZodISODateTime = /*@__PURE__*/ $constructor("ZodISODateTime", (inst, def) => {
 			$ZodISODateTime.init(inst, def);
 			ZodStringFormat.init(inst, def);
@@ -3372,6 +3401,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function duration(params) {
 			return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/errors.js
 		const initializer = (inst, issues) => {
 			$ZodError.init(inst, issues);
 			inst.name = "ZodError";
@@ -3392,7 +3423,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		};
 		const ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, { Parent: Error });
-		const parse = /* @__PURE__ */ _parse(ZodRealError);
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/parse.js
+		const parse$1 = /* @__PURE__ */ _parse(ZodRealError);
 		const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 		const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
 		const safeParseAsync = /* @__PURE__ */ _safeParseAsync(ZodRealError);
@@ -3404,6 +3437,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const safeDecode = /* @__PURE__ */ _safeDecode(ZodRealError);
 		const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 		const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/schemas.js
 		const _installedGroups = /* @__PURE__ */ new WeakMap();
 		function _installLazyMethods(inst, group, methods) {
 			const proto = Object.getPrototypeOf(inst);
@@ -3450,7 +3485,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			inst.def = def;
 			inst.type = def.type;
 			Object.defineProperty(inst, "_def", { value: def });
-			inst.parse = (data, params) => parse(inst, data, params, { callee: inst.parse });
+			inst.parse = (data, params) => parse$1(inst, data, params, { callee: inst.parse });
 			inst.safeParse = (data, params) => safeParse(inst, data, params);
 			inst.parseAsync = async (data, params) => parseAsync(inst, data, params, { callee: inst.parseAsync });
 			inst.safeParseAsync = async (data, params) => safeParseAsync(inst, data, params);
@@ -4195,8 +4230,68 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function superRefine(fn, params) {
 			return /* @__PURE__ */ _superRefine(fn, params);
 		}
+		//#endregion
+		//#region lib/model.js
 		/** Local time string: `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm` where a clock applies. */
-		const LocalTimeSchema = string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/, "expected YYYY-MM-DD or YYYY-MM-DDTHH:mm");
+		const LocalTimeSchema = string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/, "expected YYYY-MM-DD or YYYY-MM-DDTHH:mm").refine(isRealLocalTime, "expected a date and time that exist");
+		/**
+		* Whether a local time string names a moment that exists.
+		*
+		* The shape check above is not enough on its own: `2026-02-30` and `25:00` match
+		* it and are not dates or times. A record holding one cannot be placed on a week —
+		* the arithmetic that expands a series walks forward from it and lands nowhere —
+		* so the two are separated here rather than discovered later by a view.
+		*
+		* A date is checked by rebuilding it and asking for its parts back, which is what
+		* makes February 29th count in a leap year and 2026's not.
+		* @param value - `YYYY-MM-DD` or `YYYY-MM-DDTHH:mm`.
+		* @returns whether the value names a real date and, when it carries one, a real time.
+		*/
+		function isRealLocalTime(value) {
+			const parts = /^(\d{4})-(\d{2})-(\d{2})(?:T(\d{2}):(\d{2}))?$/.exec(String(value ?? ""));
+			if (!parts) return false;
+			const [, year, month, day, hour, minute] = parts;
+			const numbers = [
+				year,
+				month,
+				day
+			].map(Number);
+			const rebuilt = new Date(Date.UTC(numbers[0], numbers[1] - 1, numbers[2]));
+			if (rebuilt.getUTCFullYear() !== numbers[0] || rebuilt.getUTCMonth() !== numbers[1] - 1 || rebuilt.getUTCDate() !== numbers[2]) return false;
+			if (hour === void 0) return true;
+			return Number(hour) <= 23 && Number(minute) <= 59;
+		}
+		/** Weekday codes accepted in `recurrence.byDay`, as in RRULE. */
+		const WEEKDAYS$2 = [
+			"mo",
+			"tu",
+			"we",
+			"th",
+			"fr",
+			"sa",
+			"su"
+		];
+		/** Which of the two ownership layers a record belongs to. */
+		const ScopeSchema = _enum(["source", "personal"]);
+		/**
+		* One annotation: what the user attached to one occurrence, or to a whole series.
+		*
+		* This is the model both halves read — the personal store validates records with
+		* it and the remote face derives its wire schemas from it — so the two cannot
+		* drift into accepting different shapes for the same record. It lives here
+		* beside the event model for that reason.
+		*
+		* `originalStart` is the instant the series produced, not the time the class now
+		* happens at, which is what keeps a note attached across a reschedule; it is
+		* absent on an annotation that speaks for the whole series.
+		*/
+		const AnnotationSchema = object({
+			scope: ScopeSchema,
+			source: string().min(1),
+			uid: string().min(1),
+			originalStart: LocalTimeSchema.optional(),
+			note: object({ text: string() }).strict().optional()
+		}).strict();
 		/**
 		* Supported recurrence subset. Deliberately narrower than RRULE: rules outside
 		* it (monthly, yearly, BYMONTHDAY, BYSETPOS) are not represented here — the
@@ -4208,24 +4303,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			interval: number().int().positive().optional(),
 			count: number().int().positive().optional(),
 			until: LocalTimeSchema.optional(),
-			byDay: array(_enum([
-				"mo",
-				"tu",
-				"we",
-				"th",
-				"fr",
-				"sa",
-				"su"
-			])).optional()
+			byDay: array(_enum(WEEKDAYS$2)).optional()
 		}).strict();
-		const OverridesSchema = array(object({
+		/**
+		* One single-occurrence change to a series — the `RECURRENCE-ID` case of ICS:
+		* one date of the series is moved, renamed or relocated. `date` is the date the
+		* series itself produced, so the change survives later edits to the series
+		* time; every other field is optional and inherited from the series, which
+		* keeps "moved to Friday, room changed" down to two fields.
+		*
+		* A cancellation is not an override: it is listed in `exceptions` (`EXDATE`),
+		* and an extra date that belongs to no series is a plain event of its own.
+		*/
+		const OverrideSchema = object({
 			date: string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
 			title: string().min(1).optional(),
 			start: LocalTimeSchema.optional(),
 			end: LocalTimeSchema.optional(),
 			location: string().optional(),
 			description: string().optional()
-		}).strict().refine((value) => Object.keys(value).length > 1, "an override must change at least one field")).refine((list) => new Set(list.map((entry) => entry.date)).size === list.length, "each date may be overridden once");
+		}).strict().refine((value) => Object.keys(value).length > 1, "an override must change at least one field");
+		const OverridesSchema = array(OverrideSchema).refine((list) => new Set(list.map((entry) => entry.date)).size === list.length, "each date may be overridden once");
 		/**
 		* Fields every event-shaped value carries — the stored record and the
 		* occurrence handed to a view. Shared so the two cannot drift apart.
@@ -4244,18 +4342,41 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		/** Durable shape of one event: the shared fields plus series bookkeeping. */
 		const EventSchema = object({
 			...EventFields,
+			originalStart: LocalTimeSchema.optional(),
 			exceptions: array(LocalTimeSchema).optional(),
 			overrides: OverridesSchema.optional()
 		}).strict();
+		object({
+			overrides: array(OverrideSchema),
+			exceptions: array(LocalTimeSchema)
+		}).strict();
 		EventSchema.extend(Object.fromEntries(["courseId"].map((field) => [field, unknown().optional()])));
+		//#endregion
+		//#region lib/typert-schemas.js
 		const snapshot = object({
 			schemaVersion: number().int().positive(),
-			events: array(EventSchema)
+			events: array(EventSchema),
+			/**
+			* Records found on disk that cannot be placed in a layer, so no read can name
+			* them. Empty in a healthy store; a non-empty list means a human has to decide
+			* where those records belong.
+			*/
+			needsReview: array(object({
+				key: string(),
+				uid: unknown().optional(),
+				reason: string().min(1)
+			})).default([])
 		}).strict();
 		const occurrence = object({
 			...EventFields,
 			occurrenceId: string().min(1),
 			occurrenceDate: string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD"),
+			/**
+			* The instant the series produced, which is the occurrence's identity rather
+			* than its current time: a class the school moved still reports the instant it
+			* was originally scheduled for, so personal content keyed by it stays attached.
+			*/
+			originalStart: LocalTimeSchema,
 			overridden: boolean().optional()
 		}).strict();
 		const occurrences = object({
@@ -4292,15 +4413,26 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		/** What to call the exported calendar. */
 		const exportInput = object({ name: string().min(1).optional() }).strict();
 		const exportOutcome = object({ text: string() }).strict();
+		/**
+		* Which record of which source to act on.
+		*
+		* `source` is optional and defaults to the user's own records, but a caller that
+		* knows which layer it is editing should say so: an identifier is only unique
+		* within its source, so naming the source is what keeps an edit from reaching a
+		* different class that happens to share the identifier.
+		*/
+		const sourceRef = { source: string().min(1).optional() };
 		/** One date of one series. */
 		const occurrenceInput = object({
 			uid: string().min(1),
-			date: dateSchema
+			date: dateSchema,
+			...sourceRef
 		}).strict();
 		/** The changeable fields of one occurrence; `date` is the series' own date. */
 		const overrideInput = object({
 			uid: string().min(1),
 			date: dateSchema,
+			...sourceRef,
 			patch: object({
 				title: string().min(1).optional(),
 				start: LocalTimeSchema.optional(),
@@ -4309,8 +4441,73 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				description: string().optional()
 			}).strict()
 		}).strict();
-		const uidInput = object({ uid: string().min(1) }).strict();
+		const uidInput = object({
+			uid: string().min(1),
+			...sourceRef
+		}).strict();
 		const removalOutcome = object({ removed: boolean() }).strict();
+		/**
+		* One event of a school snapshot.
+		*
+		* `movedFrom` is what makes a reschedule attributable: it names the instant the
+		* changed class was originally scheduled for. Without it a changed anchor cannot
+		* be matched to one occurrence, and the service reports that instead of guessing.
+		*/
+		const sourceEvent = object({
+			uid: string().min(1),
+			title: string().min(1),
+			start: LocalTimeSchema,
+			end: LocalTimeSchema.optional(),
+			location: string().optional(),
+			description: string().optional(),
+			recurrence: RecurrenceSchema.optional(),
+			movedFrom: LocalTimeSchema.optional(),
+			cancelledDates: array(LocalTimeSchema).optional()
+		}).strict();
+		const applySourceInput = object({
+			source: string().min(1),
+			events: array(sourceEvent),
+			complete: boolean().optional()
+		}).strict();
+		const applySourceOutcome = object({
+			applied: number().int().nonnegative(),
+			moved: number().int().nonnegative(),
+			cancelled: number().int().nonnegative(),
+			unattributable: array(object({
+				uid: string(),
+				reason: string()
+			}).strict())
+		}).strict();
+		/** A note the user wrote, attached to one occurrence or to a whole series. */
+		const noteInput = object({
+			scope: ScopeSchema.optional(),
+			source: string().min(1),
+			uid: string().min(1),
+			originalStart: LocalTimeSchema.optional(),
+			text: string()
+		}).strict();
+		const noteRefInput = object({
+			scope: ScopeSchema.optional(),
+			source: string().min(1),
+			uid: string().min(1),
+			originalStart: LocalTimeSchema.optional()
+		}).strict();
+		/**
+		* A note the user wrote, attached to one occurrence or to a whole series.
+		*
+		* The stored shape is the shared model rather than a restatement of it: the
+		* personal store validates records against `AnnotationSchema` and this face
+		* reports them, so a second copy here could accept a record the store would
+		* reject — which is exactly what "add a reminder" would have made drift.
+		*/
+		const annotation = AnnotationSchema;
+		const notesInput = object({
+			scope: ScopeSchema.optional(),
+			source: string().min(1).optional(),
+			uid: string().min(1).optional(),
+			originalStart: LocalTimeSchema.optional()
+		}).strict();
+		const unlinkedNote = annotation.extend({ reason: string().min(1) });
 		/** Wrap a zod schema in the descriptor shape the gateway reads. */
 		const result = (typeSymbol, schema) => Object.freeze({
 			mode: "strict",
@@ -4343,12 +4540,23 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const restoreParameter = jsonParameter("restoreOccurrence", "input", occurrenceInput);
 		const deleteEventParameter = jsonParameter("deleteEvent", "input", uidInput);
 		const eventParameter = jsonParameter("putEvent", "event", EventSchema);
+		const applySourceParameter = jsonParameter("applySource", "input", applySourceInput);
+		const putNoteParameter = jsonParameter("putNote", "input", noteInput);
+		const removeNoteParameter = jsonParameter("removeNote", "input", noteRefInput);
+		const notesParameter = jsonParameter("notes", "input", notesInput);
+		const unlinkedNotesParameter = jsonParameter("unlinkedNotes", "input", object({}).strict());
 		const snapshotResult = result("@eduwork/dsh-calendar#CalendarSnapshot", snapshot);
 		const occurrencesResult = result("@eduwork/dsh-calendar#CalendarOccurrences", occurrences);
 		const importResult = result("@eduwork/dsh-calendar#CalendarImport", importOutcome);
 		const exportResult = result("@eduwork/dsh-calendar#CalendarExport", exportOutcome);
 		const eventResult = result("@eduwork/dsh-calendar#CalendarEvent", EventSchema);
 		const removalResult = result("@eduwork/dsh-calendar#CalendarRemoval", removalOutcome);
+		const applySourceResult = result("@eduwork/dsh-calendar#CalendarApplySource", applySourceOutcome);
+		const noteResult = result("@eduwork/dsh-calendar#CalendarAnnotation", annotation);
+		const notesResult = result("@eduwork/dsh-calendar#CalendarAnnotations", array(annotation));
+		const unlinkedNotesResult = result("@eduwork/dsh-calendar#CalendarUnlinkedAnnotations", array(unlinkedNote));
+		//#endregion
+		//#region lib/typert-descriptors.js
 		const pkg = "@eduwork/dsh-calendar";
 		/**
 		* @param method - Method name, which is also the service's own method name.
@@ -4371,21 +4579,30 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				column: 3
 			}
 		});
+		//#endregion
+		//#region lib/typert.remote-client.js
 		var typert_remote_client_default = {
 			package: "@eduwork/dsh-calendar",
 			descriptors: Object.freeze([
-				descriptor("snapshot", 47, [], snapshotResult),
-				descriptor("occurrences", 66, [rangeParameter], occurrencesResult),
-				descriptor("importIcs", 82, [importParameter], importResult),
-				descriptor("exportIcs", 94, [exportParameter], exportResult),
-				descriptor("deleteEvent", 123, [deleteEventParameter], removalResult),
-				descriptor("applyOverride", 133, [overrideParameter], eventResult),
-				descriptor("removeOverride", 142, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 151, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 160, [restoreParameter], eventResult),
-				descriptor("putEvent", 114, [eventParameter], eventResult)
+				descriptor("snapshot", 53, [], snapshotResult),
+				descriptor("occurrences", 72, [rangeParameter], occurrencesResult),
+				descriptor("importIcs", 94, [importParameter], importResult),
+				descriptor("exportIcs", 110, [exportParameter], exportResult),
+				descriptor("putEvent", 133, [eventParameter], eventResult),
+				descriptor("deleteEvent", 142, [deleteEventParameter], removalResult),
+				descriptor("applyOverride", 152, [overrideParameter], eventResult),
+				descriptor("removeOverride", 161, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 170, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 179, [restoreParameter], eventResult),
+				descriptor("applySource", 214, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 227, [putNoteParameter], noteResult),
+				descriptor("removeNote", 241, [removeNoteParameter], removalResult),
+				descriptor("notes", 250, [notesParameter], notesResult),
+				descriptor("unlinkedNotes", 270, [unlinkedNotesParameter], unlinkedNotesResult)
 			])
 		};
+		//#endregion
+		//#region src/layout.js
 		/** Minutes in a whole day; also the exclusive upper bound of the axis. */
 		const MINUTES_IN_DAY = 1440;
 		const pad2$1 = (value) => String(value).padStart(2, "0");
@@ -4569,6 +4786,175 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			for (const [date, list] of days) placed.set(date, layoutDay(list, options));
 			return placed;
 		}
+		//#endregion
+		//#region src/month-view.ts
+		const pad = (n) => String(n).padStart(2, "0");
+		const local = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+		const parse = (date) => {
+			const [year, month, day] = date.split("-").map(Number);
+			return new Date(year, month - 1, day);
+		};
+		const shift = (date, days) => {
+			const result = parse(date);
+			result.setDate(result.getDate() + days);
+			return local(result);
+		};
+		const monthStart = (date) => `${date.slice(0, 7)}-01`;
+		const shiftMonth = (date, count) => {
+			const result = parse(monthStart(date));
+			result.setMonth(result.getMonth() + count);
+			return local(result);
+		};
+		function monthRange(date) {
+			const first = monthStart(date);
+			const from = shift(first, -((parse(first).getDay() + 6) % 7));
+			return {
+				from,
+				to: shift(from, 41)
+			};
+		}
+		const BORDER = "1px solid var(--dsw-alias-border-l1, #00000014)";
+		const COLUMNS = {
+			display: "grid",
+			gridTemplateColumns: "repeat(7, minmax(0, 1fr))"
+		};
+		const WEEKDAYS$1 = [
+			"周一",
+			"周二",
+			"周三",
+			"周四",
+			"周五",
+			"周六",
+			"周日"
+		];
+		function coversDate(occurrence, date) {
+			const start = occurrence.start.slice(0, 10);
+			let end = occurrence.end?.slice(0, 10) ?? start;
+			if (occurrence.end?.endsWith("T00:00") && end > start) end = shift(end, -1);
+			return start <= date && end >= date;
+		}
+		function MonthEntry({ occurrence, date, note, tint, identity, onSelect }) {
+			const time = occurrence.start.length > 10 ? occurrence.start.slice(0, 10) === date ? occurrence.start.slice(11, 16) : "续" : "全天";
+			return react.default.createElement("button", {
+				type: "button",
+				"data-occurrence": identity,
+				"aria-label": `${date} ${time} ${occurrence.title}${note ? ` 笔记：${note}` : ""}`,
+				onClick: () => onSelect(occurrence),
+				style: {
+					display: "block",
+					width: "100%",
+					boxSizing: "border-box",
+					textAlign: "left",
+					padding: "5px 6px",
+					marginBottom: 3,
+					border: 0,
+					borderLeft: `3px solid ${tint.accent}`,
+					borderRadius: 5,
+					background: tint.background,
+					color: "var(--dsw-alias-label-primary, #222)",
+					font: "inherit",
+					fontSize: 12,
+					cursor: "pointer",
+					whiteSpace: "nowrap",
+					overflow: "hidden",
+					textOverflow: "ellipsis"
+				}
+			}, `${time} ${occurrence.title}${note ? " · 笔记" : ""}`);
+		}
+		/** Calendar cells share occurrence identities with the week, including multi-day entries. */
+		function MonthGrid({ anchor, occurrences, noteIndex, onSelect, onCreate, tintOf, occurrenceKeyOf }) {
+			const [expanded, setExpanded] = (0, react.useState)({});
+			const range = monthRange(anchor);
+			const today = local(/* @__PURE__ */ new Date());
+			const days = Array.from({ length: 42 }, (_, index) => shift(range.from, index));
+			const cell = (date) => {
+				const entries = occurrences.filter((item) => coversDate(item, date));
+				const outside = date.slice(0, 7) !== anchor.slice(0, 7);
+				return react.default.createElement("div", {
+					key: date,
+					role: "gridcell",
+					"aria-label": date,
+					style: {
+						minWidth: 0,
+						minHeight: 112,
+						padding: "6px 5px",
+						boxSizing: "border-box",
+						borderRight: BORDER,
+						borderBottom: BORDER,
+						background: outside ? "var(--dsw-alias-bg-layer-2, #f7f8fa)" : "var(--dsw-alias-bg-base, #fff)"
+					}
+				}, react.default.createElement("div", { style: {
+					display: "flex",
+					justifyContent: "space-between",
+					alignItems: "center",
+					marginBottom: 5
+				} }, react.default.createElement("span", {
+					"aria-current": date === today ? "date" : void 0,
+					style: {
+						fontSize: 12,
+						fontWeight: date === today ? 700 : 500,
+						borderRadius: 20,
+						padding: "3px 7px",
+						color: date === today ? "#fff" : outside ? "var(--dsw-alias-label-tertiary, #999)" : "inherit",
+						background: date === today ? "var(--dsw-alias-state-business-primary, #4d6bfe)" : "transparent"
+					}
+				}, Number(date.slice(8))), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "ghost",
+					size: "sm",
+					"aria-label": `在 ${date} 新建日程`,
+					onClick: () => onCreate(date, 540, 600)
+				}, "+")), ...(expanded[date] ? entries : entries.slice(0, 3)).map((occurrence) => {
+					const identity = occurrenceKeyOf(occurrence);
+					return react.default.createElement(MonthEntry, {
+						key: identity,
+						occurrence,
+						date,
+						identity,
+						onSelect,
+						note: noteIndex?.get(identity),
+						tint: tintOf(occurrence.source ?? occurrence.uid)
+					});
+				}), entries.length > 3 ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "ghost",
+					size: "sm",
+					"aria-expanded": Boolean(expanded[date]),
+					onClick: () => setExpanded({
+						...expanded,
+						[date]: !expanded[date]
+					})
+				}, expanded[date] ? "收起" : `还有 ${entries.length - 3} 条`) : void 0);
+			};
+			return react.default.createElement("div", { style: {
+				flex: "1 1 auto",
+				minHeight: 0,
+				overflow: "auto"
+			} }, react.default.createElement("div", {
+				role: "grid",
+				"aria-label": "月日历",
+				style: { minWidth: 640 }
+			}, react.default.createElement("div", {
+				role: "row",
+				style: {
+					...COLUMNS,
+					borderBottom: BORDER
+				}
+			}, ...WEEKDAYS$1.map((day) => react.default.createElement("div", {
+				key: day,
+				role: "columnheader",
+				style: {
+					padding: 10,
+					textAlign: "center",
+					fontSize: 12,
+					color: "var(--dsw-alias-label-secondary, #666)"
+				}
+			}, day))), ...Array.from({ length: 6 }, (_, row) => react.default.createElement("div", {
+				key: row,
+				role: "row",
+				style: COLUMNS
+			}, ...days.slice(row * 7, row * 7 + 7).map(cell)))));
+		}
+		//#endregion
+		//#region src/client.ts
 		/**
 		* Resolve one icon from the loaded primitives package.
 		* @param names - the names it may be exported under, older generation first.
@@ -4581,7 +4967,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				...props
 			}) : () => null;
 		};
-		const IconAlarmClock = icon(["IconAlarmClockOutline16", "IconAlarmClockOutlineRegular"], 16);
+		icon(["IconAlarmClockOutline16", "IconAlarmClockOutlineRegular"], 16);
 		const IconArchive = icon(["IconArchiveOutline20", "IconArchiveOutlineRegular"], 20);
 		const IconCheck = icon(["IconCheckOutline16", "IconCheckOutlineRegular"], 16);
 		const IconChevronDown = icon(["IconChevronDownOutline14", "IconChevronDownOutlineRegular"], 14);
@@ -4617,8 +5003,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			sa: "周六",
 			su: "周日"
 		};
-		/** Source an import writes unless the reader says otherwise; the scope that is replaced. */
-		const DEFAULT_SOURCE = "ics";
 		/**
 		* The `uid` of an entry created here. The caller owns it — the host stores the
 		* record it is handed — so it has to be one no import would ever produce.
@@ -4735,9 +5119,38 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		/** The note of a record: a field of its own, written out as `DESCRIPTION`. */
 		const noteOf = (event) => typeof event?.description === "string" ? event.description : "";
+		/**
+		* The identity one occurrence's personal content hangs on.
+		*
+		* `originalStart` is the instant the series produced, so this key survives the
+		* school moving the class: the reading is taken from the occurrence before its
+		* time is used for anything, and it is what the host indexes annotations by.
+		* @param occurrence - a rendered occurrence.
+		* @returns a stable key, or `''` when the host did not report an identity.
+		*/
+		const occurrenceKeyOf = (occurrence) => occurrence?.originalStart ? `${occurrence.source ?? "manual"}\u0000${occurrence.uid}\u0000${occurrence.originalStart}` : "";
+		/**
+		* The reference the host needs to find or write one occurrence's personal content.
+		*
+		* The ownership is named explicitly rather than left to be inferred from which
+		* table a record turns up in, so a note can never land on the school side by
+		* accident.
+		* @param occurrence - a rendered occurrence.
+		* @returns `{ scope, source, uid, originalStart }`, without empty fields.
+		*/
+		function noteRefOf(occurrence) {
+			const ref = {
+				scope: "source",
+				source: occurrence?.source ?? "manual",
+				uid: occurrence?.uid
+			};
+			if (occurrence?.originalStart) ref.originalStart = occurrence.originalStart;
+			return ref;
+		}
 		/** One line describing how often a stored series repeats. */
 		function seriesSummary(event) {
 			if (!event.recurrence) return "单次";
+			if ((event.recurrence.interval ?? 1) === 1 && event.recurrence.byDay?.length === 7) return `每天${event.recurrence.until ? ` · 至 ${shortDate(dateOf(event.recurrence.until))}` : ""}`;
 			const days = (event.recurrence.byDay ?? []).map((code) => WEEKDAY_BY_CODE[code]).filter(Boolean).join("、");
 			const interval = event.recurrence.interval;
 			const every = interval && interval > 1 ? `每 ${interval} 周` : "每周";
@@ -4766,6 +5179,20 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			color: SECONDARY,
 			...style
 		} }, children);
+		/**
+		* The React key of one drawn occurrence.
+		*
+		* `occurrenceId` is `uid#date`, which is only unique within a source: a personal
+		* entry and an imported class can both be numbered `MATH101-01` and both fall on the
+		* same date. React matches children by key, so handing it that value alone gives two
+		* different records one identity, and from then on the view stops reconciling — a
+		* record it no longer holds keeps its place on screen, and a reader who deletes a
+		* class watches it stay there. The source is part of the identity because the uid
+		* is not.
+		* @param occurrence - a rendered occurrence.
+		* @returns a key no two sources can share.
+		*/
+		const reactKeyOf = (occurrence) => `${occurrence?.source ?? ""}\u0000${occurrence?.occurrenceId ?? ""}`;
 		/** Icon-only button with the product's tooltip, used for every row-level action. */
 		function IconButton({ label, icon, onClick, danger, disabled }) {
 			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
@@ -4788,7 +5215,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* layout gave it: `100 / lanes` percent, inset by a hairline so neighbours stay
 		* apart.
 		*/
-		function Block({ entry, axisStart, tint, onSelect }) {
+		function Block({ entry, axisStart, tint, note, onSelect }) {
 			const [hovered, hover] = useHover();
 			const width = 100 / entry.lanes;
 			const height = entry.height * PX_PER_MINUTE;
@@ -4803,6 +5230,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				type: "button",
 				title: label,
 				"aria-label": label,
+				"data-occurrence": occurrenceKeyOf(entry.occurrence),
 				onClick: () => onSelect(entry.occurrence),
 				...hover,
 				style: {
@@ -4843,7 +5271,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				fontSize: 11,
 				lineHeight: "15px",
 				color: SECONDARY
-			} }, entry.occurrence.location) : void 0);
+			} }, entry.occurrence.location) : void 0, inner >= 50 && note ? react.default.createElement("div", { style: {
+				...line,
+				fontSize: 11,
+				lineHeight: "15px",
+				color: PRIMARY,
+				opacity: .75
+			} }, `笔记：${note}`) : void 0);
 		}
 		/**
 		* The week: a day header row and the hour axis below it. The axis is one scroll
@@ -4855,7 +5289,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* double click starts a one-hour one there: between them the view is writable
 		* rather than only readable.
 		*/
-		function WeekGrid({ anchor, occurrences, onSelect, onCreate }) {
+		function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }) {
 			const [now, setNow] = (0, react.useState)(() => /* @__PURE__ */ new Date());
 			(0, react.useEffect)(() => {
 				const timer = setInterval(() => setNow(/* @__PURE__ */ new Date()), 6e4);
@@ -4908,6 +5342,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			* shown in the day header: visible whatever the axis is scrolled to, and not
 			* claiming a time it does not have. A record that covers several days is shown
 			* on each of them, the way a calendar draws a multi-day bar.
+			*
+			* What a block says about its date is worked out here, per day, and not where it
+			* is drawn: the day it sits under is the one fact the drawing does not add, and
+			* two blocks of one multi-day record with the same label would be one thing said
+			* twice — indistinguishable to a screen reader and to anyone reading the page.
 			*/
 			const allDayByDay = (0, react.useMemo)(() => {
 				const first = anchor;
@@ -4919,10 +5358,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					const spanned = occurrence.end && clockOf(occurrence.end) === "" && dateOf(occurrence.end) > start ? dateOf(occurrence.end) : start;
 					const from = start < first ? first : start;
 					const to = spanned > last ? last : spanned;
+					const covers = spanned > start;
+					const spokenOn = (date) => covers ? date > start ? shortDate(date) : `${shortDate(start)}–${shortDate(spanned)}` : shortDate(start);
 					for (let date = from; date <= to; date = addDays(date, 1)) {
+						const chip = {
+							occurrence,
+							label: `全天 · ${spokenOn(date)} ${occurrence.title}`
+						};
 						const list = map.get(date);
-						if (list) list.push(occurrence);
-						else map.set(date, [occurrence]);
+						if (list) list.push(chip);
+						else map.set(date, [chip]);
 					}
 				}
 				return map;
@@ -4938,11 +5383,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					flexDirection: "column",
 					gap: 2,
 					marginTop: 4
-				} }, ...list.slice(0, 2).map((occurrence) => {
+				} }, ...list.slice(0, 2).map(({ occurrence, label }) => {
 					const tint = tintOf(occurrence.source ?? occurrence.uid);
-					const label = `全天 · ${occurrence.end && dateOf(occurrence.end) > dateOf(occurrence.start) ? `${shortDate(dateOf(occurrence.start))}–${shortDate(dateOf(occurrence.end))}` : shortDate(dateOf(occurrence.start))} ${occurrence.title}`;
 					return react.default.createElement("button", {
-						key: occurrence.occurrenceId,
+						key: reactKeyOf(occurrence),
 						type: "button",
 						title: label,
 						"aria-label": label,
@@ -5113,10 +5557,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: PRIMARY,
 				fontVariantNumeric: "tabular-nums"
 			} }, `${clockAt(dragging.from)}–${clockAt(dragging.to)}`) : void 0) : void 0, ...(byDay.get(day.key) ?? []).map((entry) => react.default.createElement(Block, {
-				key: entry.occurrence.occurrenceId,
+				key: reactKeyOf(entry.occurrence),
 				entry,
 				axisStart: axis.start,
 				tint: tintOf(entry.occurrence.source ?? entry.occurrence.uid),
+				note: noteIndex?.get(occurrenceKeyOf(entry.occurrence)),
 				onSelect
 			}))));
 			const nowLine = nowVisible ? react.default.createElement("div", {
@@ -5162,7 +5607,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, axisRow));
 		}
 		/** The details of one occurrence, and every change the panel can make to it. */
-		function EventDialog({ occurrence, event, service, onClose, run, onEdit }) {
+		function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }) {
 			const [editing, setEditing] = (0, react.useState)(false);
 			const [confirming, setConfirming] = (0, react.useState)(false);
 			const [form, setForm] = (0, react.useState)({
@@ -5170,15 +5615,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				end: occurrence?.end ?? "",
 				location: occurrence?.location ?? ""
 			});
+			const [noteDraft, setNoteDraft] = (0, react.useState)(note ?? "");
+			const [writingNote, setWritingNote] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				setEditing(false);
 				setConfirming(false);
+				setNoteDraft(note ?? "");
+				setWritingNote(false);
 				setForm({
 					start: occurrence?.start ?? "",
 					end: occurrence?.end ?? "",
 					location: occurrence?.location ?? ""
 				});
-			}, [occurrence]);
+			}, [occurrence, note]);
 			if (!occurrence) return null;
 			const date = occurrence.occurrenceDate ?? dateOf(occurrence.start);
 			const series = Boolean(event?.recurrence);
@@ -5200,7 +5649,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const save = () => series ? service.applyOverride({
 				uid: occurrence.uid,
 				date,
-				patch
+				patch,
+				source: occurrence.source
 			}) : service.putEvent(withoutEmpty({
 				...event,
 				start: patch.start ?? event?.start,
@@ -5212,13 +5662,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				key: "when",
 				variant: "outline",
 				size: "sm",
-				onClick: () => wholeDay && event ? onEdit(event.uid) : setEditing(true)
+				onClick: () => wholeDay && event ? onEdit(event.uid, event.source) : setEditing(true)
 			}, wholeDay ? "改日期或地点" : series ? "改期或改地点" : "改时间或地点"));
+			actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				key: "note",
+				variant: "outline",
+				size: "sm",
+				onClick: () => setWritingNote(!writingNote)
+			}, note ? "改笔记" : "写笔记"));
 			if (event) actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				key: "record",
 				variant: "ghost",
 				size: "sm",
-				onClick: () => onEdit(event.uid)
+				onClick: () => onEdit(event.uid, event.source)
 			}, "编辑日程信息"));
 			if (occurrence.overridden) actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				key: "undo",
@@ -5227,7 +5683,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				disabled: false,
 				onClick: () => run(() => service.removeOverride({
 					uid: occurrence.uid,
-					date
+					date,
+					source: occurrence.source
 				}), "已恢复原定安排").then((ok) => ok && onClose())
 			}, "撤销改期"));
 			if (series) actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -5236,7 +5693,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				size: "sm",
 				onClick: () => run(() => service.cancelOccurrence({
 					uid: occurrence.uid,
-					date
+					date,
+					source: occurrence.source
 				}), `已取消：${shortDate(date)}`).then((ok) => ok && onClose())
 			}, "取消这一次"));
 			else actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -5275,14 +5733,79 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				fontSize: 13,
 				color: PRIMARY,
 				fontVariantNumeric: "tabular-nums"
-			} }, `${monthOf(date)}${dayNumber(date)}日 ${weekdayOf(date)} ${clockRange(occurrence)}`), occurrence.overridden ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "info" }, "已改期") : void 0, series ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, "重复日程中的一次") : react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "quiet" }, "单次日程")), occurrence.location ? react.default.createElement("div", { style: {
+			} }, `${monthOf(dateOf(occurrence.start))}${dayNumber(dateOf(occurrence.start))}日 ${weekdayOf(dateOf(occurrence.start))} ${clockRange(occurrence)}`), occurrence.overridden ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "info" }, "已改期") : void 0, series ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, "重复日程中的一次") : react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "quiet" }, "单次日程")), occurrence.location ? react.default.createElement("div", { style: {
 				fontSize: 13,
 				color: PRIMARY
-			} }, `地点：${occurrence.location}`) : void 0, occurrence.description ? react.default.createElement("div", { style: {
+			} }, `地点：${occurrence.location}`) : void 0, occurrence.description ? react.default.createElement("div", null, react.default.createElement(Muted, { style: {
+				display: "block",
+				marginBottom: 2
+			} }, event?.source && event.source !== "manual" ? `日历备注（${event.source}）` : "日程备注"), react.default.createElement("div", { style: {
 				fontSize: 12,
 				color: SECONDARY,
 				whiteSpace: "pre-wrap"
-			} }, occurrence.description) : void 0, event?.source ? react.default.createElement("div", null, react.default.createElement(Muted, null, `来源：${event.source}`)) : void 0, editing ? react.default.createElement("div", { style: {
+			} }, occurrence.description)) : void 0, note && !writingNote ? react.default.createElement("div", { style: {
+				padding: "8px 10px",
+				borderRadius: 8,
+				background: LAYER,
+				whiteSpace: "pre-wrap",
+				fontSize: 13
+			} }, react.default.createElement(Muted, { style: {
+				display: "block",
+				marginBottom: 3
+			} }, "我的笔记"), note) : void 0, writingNote ? react.default.createElement("div", { style: {
+				marginTop: 4,
+				padding: 12,
+				borderRadius: 10,
+				background: LAYER,
+				display: "flex",
+				flexDirection: "column",
+				gap: 10
+			} }, react.default.createElement(Field, {
+				label: "我的笔记",
+				hint: "只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。"
+			}, react.default.createElement("textarea", {
+				value: noteDraft,
+				rows: 4,
+				spellCheck: false,
+				autoFocus: true,
+				placeholder: "例如：期末要背 P187",
+				onChange: (event) => setNoteDraft(event.target.value),
+				style: {
+					width: "100%",
+					boxSizing: "border-box",
+					padding: "6px 8px",
+					borderRadius: 8,
+					resize: "vertical",
+					border: CARD_BORDER,
+					background: "var(--dsw-alias-bg-layer-1, #fff)",
+					color: PRIMARY,
+					fontSize: 13,
+					fontFamily: "inherit",
+					lineHeight: 1.5
+				}
+			})), react.default.createElement("div", { style: {
+				display: "flex",
+				gap: 8,
+				alignItems: "center",
+				flexWrap: "wrap"
+			} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "primary",
+				size: "sm",
+				disabled: noteDraft === (note ?? ""),
+				onClick: () => run(() => noteDraft.trim() === "" ? service.removeNote(noteRefOf(occurrence)) : service.putNote({
+					...noteRefOf(occurrence),
+					text: noteDraft
+				}), noteDraft.trim() === "" ? "已清空笔记" : "笔记已保存").then((ok) => {
+					if (ok) setWritingNote(false);
+				})
+			}, "保存笔记"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "ghost",
+				size: "sm",
+				onClick: () => {
+					setNoteDraft(note ?? "");
+					setWritingNote(false);
+				}
+			}, "取消"), noteDraft !== (note ?? "") ? react.default.createElement(Muted, null, "笔记只属于这次日程") : void 0)) : void 0, event?.source ? react.default.createElement("div", null, react.default.createElement(Muted, null, `日历：${event.source === "manual" ? "个人日程" : event.source}`)) : void 0, editing ? react.default.createElement("div", { style: {
 				marginTop: 4,
 				padding: 12,
 				borderRadius: 10,
@@ -5340,7 +5863,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				variant: "primary",
 				size: "sm",
 				style: { background: "var(--dsw-alias-state-error-primary, #d4553f)" },
-				onClick: () => run(() => service.deleteEvent({ uid: occurrence.uid }), "已删除这条日程").then((ok) => ok && onClose())
+				onClick: () => run(() => service.deleteEvent({
+					uid: occurrence.uid,
+					source: occurrence.source
+				}), "已删除这条日程").then((ok) => ok && onClose())
 			}, "删除"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
@@ -5355,11 +5881,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			if (text.trim() === "") throw new Error("文件是空的");
 			return text;
 		}
+		/** File names identify separate calendars; selecting the same name updates that calendar. */
+		const calendarNameOf = (name) => {
+			const label = name.replace(/\.(ics|ical|txt)$/i, "").trim() || "导入日历";
+			return label === "manual" ? "manual 日历" : label;
+		};
+		const freshCalendarName = (names) => {
+			let name = "导入日历";
+			for (let index = 2; names.includes(name); index += 1) name = `导入日历 ${index}`;
+			return name;
+		};
 		/** The import dialog: drop a file or paste text, then read what the import did. */
-		function ImportDialog({ initialText, initialName, service, onClose, run }) {
+		function ImportDialog({ initialText, initialName, calendars = [], service, onClose, run }) {
 			const [text, setText] = (0, react.useState)(initialText ?? "");
-			const [source, setSource] = (0, react.useState)(DEFAULT_SOURCE);
-			const [replace, setReplace] = (0, react.useState)(true);
+			const [source, setSource] = (0, react.useState)(() => initialName ? calendarNameOf(initialName) : freshCalendarName(calendars));
+			const sourceEdited = (0, react.useRef)(false);
+			const [replace, setReplace] = (0, react.useState)(false);
 			const [name, setName] = (0, react.useState)(initialName ?? "");
 			const [dragging, setDragging] = (0, react.useState)(false);
 			const [problem, setProblem] = (0, react.useState)(null);
@@ -5370,18 +5907,23 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				try {
 					setText(await readCalendarFile(file));
 					setName(file.name);
+					if (!sourceEdited.current) setSource(calendarNameOf(file.name));
 					setProblem(null);
 				} catch (error) {
 					setProblem(messageOf(error));
 				}
 			}, []);
 			const submit = async () => {
+				if (!source.trim() || source.trim() === "manual") {
+					setProblem("请填写日历名称，个人日程保留名 manual 不可用于导入");
+					return;
+				}
 				setBusy(true);
 				setProblem(null);
 				try {
 					setOutcome(await service.importIcs({
 						text,
-						source: source.trim() === "" ? DEFAULT_SOURCE : source.trim(),
+						source: source.trim(),
 						replace
 					}));
 				} catch (error) {
@@ -5396,7 +5938,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				onClose,
 				title: outcome ? "导入结果" : "导入日历",
 				closeLabel: "关闭",
-				description: outcome ? `来源 ${source.trim() === "" ? DEFAULT_SOURCE : source.trim()}` : "粘贴日历文本，或把 .ics 文件拖到这里；同一来源的旧记录会被替换，自己手动改过的记录不受影响。",
+				description: outcome ? `日历「${source.trim()}」` : "选择文件或粘贴文本。不同日历分开保存，默认保留已有日程。",
 				footer: react.default.createElement("div", { style: {
 					display: "flex",
 					gap: 8,
@@ -5408,6 +5950,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						setOutcome(null);
 						setText("");
 						setName("");
+						setSource(freshCalendarName([...calendars, source]));
+						sourceEdited.current = false;
+						setReplace(false);
 					}
 				}, "再导一份"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 					variant: "primary",
@@ -5420,7 +5965,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}, "取消"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 					variant: "primary",
 					size: "sm",
-					disabled: text.trim() === "" || busy,
+					disabled: text.trim() === "" || source.trim() === "" || source.trim() === "manual" || busy,
 					onClick: submit
 				}, busy ? "正在导入…" : "导入")))
 			}, outcome ? react.default.createElement("div", { style: {
@@ -5526,16 +6071,31 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				alignItems: "flex-end",
 				flexWrap: "wrap"
 			} }, react.default.createElement("div", { style: { flex: "1 1 200px" } }, react.default.createElement(Field, {
-				label: "来源",
-				hint: "同一来源再次导入会替换它自己的旧记录"
+				label: "日历名称",
+				hint: "同一日历中相同编号会更新。更新旧日历时选择原名，不同日历请用不同名称"
 			}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
 				value: source,
-				onChange: (event) => setSource(event.target.value)
-			}))), react.default.createElement("div", { style: { paddingBottom: 18 } }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Switch, {
+				list: "calendar-import-names",
+				onChange: (event) => {
+					sourceEdited.current = true;
+					setSource(event.target.value);
+				}
+			})), react.default.createElement("datalist", { id: "calendar-import-names" }, ...calendars.map((name) => react.default.createElement("option", {
+				key: name,
+				value: name
+			})))), react.default.createElement("div", { style: {
+				paddingBottom: 18,
+				display: "flex",
+				alignItems: "center",
+				gap: 8
+			} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Switch, {
 				checked: replace,
 				onChange: setReplace,
-				label: "替换同来源的旧记录"
-			}))), problem ? react.default.createElement("div", { style: {
+				label: "移除该日历中此次未列出的日程"
+			}), react.default.createElement("span", { style: {
+				fontSize: 12,
+				color: SECONDARY
+			} }, "移除该日历中此次未列出的日程"))), problem ? react.default.createElement("div", { style: {
 				display: "flex",
 				alignItems: "center",
 				gap: 6,
@@ -5630,7 +6190,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, problem) : void 0);
 		}
 		/** One entry row of the agenda: date, time, place, and the actions that fit a row. */
-		function EventRow({ occurrence, tint, onOpen, onCancel, onDelete }) {
+		function EventRow({ occurrence, tint, note, onOpen, onCancel, onDelete }) {
 			const [hovered, hover] = useHover();
 			const date = dateOf(occurrence.start);
 			const series = Boolean(occurrence.recurrence);
@@ -5693,7 +6253,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				whiteSpace: "nowrap",
 				overflow: "hidden",
 				textOverflow: "ellipsis"
-			} }, [clockRange(occurrence), occurrence.location].filter(Boolean).join(" · "))), react.default.createElement("div", { style: {
+			} }, [clockRange(occurrence), occurrence.location].filter(Boolean).join(" · ")), note ? react.default.createElement("div", { style: {
+				marginTop: 2,
+				fontSize: 12,
+				color: SECONDARY,
+				whiteSpace: "nowrap",
+				overflow: "hidden",
+				textOverflow: "ellipsis"
+			} }, `笔记：${note}`) : void 0), react.default.createElement("div", { style: {
 				display: "flex",
 				gap: 2,
 				opacity: hovered ? 1 : 0,
@@ -5711,15 +6278,42 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		/** Days between two `YYYY-MM-DD` dates, so a whole-day range keeps its span. */
 		const daysBetween = (from, to) => Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 864e5);
+		const REPEAT_LABELS = {
+			none: "不重复",
+			daily: "每天",
+			weekly: "每周",
+			custom: "自选星期"
+		};
+		const WEEK_CODES = [
+			"mo",
+			"tu",
+			"we",
+			"th",
+			"fr",
+			"sa",
+			"su"
+		];
+		const weekdayCodeOf = (date) => WEEK_CODES[(parseDate(date).getDay() + 6) % 7];
+		const repeatModeOf = (event) => {
+			const rule = event?.recurrence;
+			if (!rule) return "none";
+			if ((rule.interval ?? 1) === 1 && rule.byDay?.length === 7) return "daily";
+			if ((rule.interval ?? 1) === 1 && (!rule.byDay?.length || rule.byDay.length === 1 && rule.byDay[0] === weekdayCodeOf(dateOf(event.start)))) return "weekly";
+			return "custom";
+		};
 		/** The editable fields of a stored record, as the form holds them. */
 		const draftOf = (event) => ({
 			title: event?.title ?? "",
 			date: dateOf(event?.start ?? "") || localDate(),
 			start: clockOf(event?.start),
 			end: clockOf(event?.end),
+			endDayOffset: event?.end && clockOf(event?.start) !== "" ? daysBetween(dateOf(event.start), dateOf(event.end)) : 0,
 			location: event?.location ?? "",
 			description: noteOf(event),
 			repeat: Boolean(event?.recurrence),
+			repeatMode: repeatModeOf(event),
+			days: event?.recurrence?.byDay ?? [weekdayCodeOf(dateOf(event?.start ?? "") || localDate())],
+			interval: event?.recurrence?.interval ?? 1,
 			until: event?.recurrence?.until ? dateOf(event.recurrence.until) : ""
 		});
 		/**
@@ -5736,13 +6330,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				uid: base.uid ?? newUid(),
 				title: draft.title.trim(),
 				start: timed ? `${draft.date}T${draft.start}` : draft.date,
-				end: timed ? draft.end === "" ? void 0 : `${draft.date}T${draft.end}` : base.end ? addDays(dateOf(base.end), shift) : void 0,
+				end: timed ? draft.end === "" ? void 0 : `${addDays(draft.date, draft.endDayOffset ?? 0)}T${draft.end}` : base.end ? addDays(dateOf(base.end), shift) : void 0,
 				location: draft.location.trim(),
 				description: draft.description.trim(),
 				recurrence: draft.repeat ? withoutEmpty({
-					...base.recurrence ?? {},
 					freq: "weekly",
-					until: draft.until
+					byDay: draft.repeatMode === "daily" ? WEEK_CODES : draft.repeatMode === "custom" ? draft.days : [weekdayCodeOf(draft.date)],
+					interval: draft.repeatMode === "custom" ? Number(draft.interval) : void 0,
+					until: draft.until,
+					count: draft.until === (base.recurrence?.until ? dateOf(base.recurrence.until) : "") && draft.repeatMode === repeatModeOf(base) ? base.recurrence?.count : void 0
 				}) : void 0,
 				exceptions: draft.repeat ? base.exceptions : void 0,
 				overrides: draft.repeat ? base.overrides : void 0
@@ -5752,7 +6348,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function draftProblem(draft) {
 			if (draft.title.trim() === "") return "标题不能为空";
 			if (draft.date === "") return "需要选一个日期";
-			if (draft.start !== "" && draft.end !== "" && draft.end <= draft.start) return "结束时间要晚于开始时间";
+			if (draft.start === "" && draft.end !== "") return "需要填写开始时间；全天日程请同时清空开始与结束时间";
+			if (draft.endDayOffset < 0) return "结束日期不能早于开始日期";
+			if (draft.repeatMode === "custom" && draft.days.length === 0) return "请至少选择一个重复星期";
+			if (draft.repeat && draft.until && draft.until < draft.date) return "重复结束日期不能早于开始日期";
+			if (draft.start !== "" && draft.end !== "" && (draft.endDayOffset ?? 0) === 0 && draft.end <= draft.start) return "结束时间要晚于开始时间";
 			return null;
 		}
 		/**
@@ -5788,7 +6388,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				type: "time",
 				value: draft.end,
 				onChange: (event) => set({ end: event.target.value })
-			})))), react.default.createElement(Field, { label: "地点" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+			})))), draft.start !== "" && draft.end !== "" && draft.endDayOffset !== 0 ? react.default.createElement(Field, {
+				label: "跨天结束日期",
+				hint: "这条日程跨过午夜；修改日期会保留这个天数跨度"
+			}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+				type: "date",
+				value: addDays(draft.date, draft.endDayOffset),
+				onChange: (event) => set({ endDayOffset: event.target.value ? daysBetween(draft.date, event.target.value) : -1 })
+			})) : void 0, react.default.createElement(Field, { label: "地点" }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
 				value: draft.location,
 				placeholder: "可留空",
 				onChange: (event) => set({ location: event.target.value })
@@ -5796,6 +6403,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				label: "备注",
 				hint: "随导出写进日历，不会同步到任何服务"
 			}, react.default.createElement("textarea", {
+				"aria-label": "备注",
 				value: draft.description,
 				rows: 3,
 				spellCheck: false,
@@ -5813,22 +6421,61 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					fontFamily: "inherit",
 					lineHeight: 1.5
 				}
-			})), react.default.createElement("div", { style: {
-				display: "flex",
-				alignItems: "center",
-				gap: 8,
-				marginBottom: 12
-			} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Switch, {
-				checked: draft.repeat,
-				label: "每周重复",
-				onChange: (next) => set({
-					repeat: next,
-					until: next ? draft.until : ""
-				})
-			}), react.default.createElement("span", { style: {
-				fontSize: 13,
-				color: PRIMARY
-			} }, "每周重复"), react.default.createElement(Muted, null, "按开始日期的星期")), draft.repeat ? react.default.createElement(Field, {
+			})), react.default.createElement(Field, { label: "重复" }, react.default.createElement("select", {
+				"aria-label": "重复",
+				value: draft.repeatMode,
+				onChange: (event) => {
+					const mode = event.target.value;
+					set({
+						repeatMode: mode,
+						repeat: mode !== "none",
+						days: mode === "custom" && draft.repeatMode !== "custom" ? [weekdayCodeOf(draft.date)] : draft.days
+					});
+				},
+				style: {
+					width: "100%",
+					padding: "8px 10px",
+					border: CARD_BORDER,
+					borderRadius: 8,
+					background: PAGE_BACKGROUND,
+					color: PRIMARY,
+					font: "inherit"
+				}
+			}, ...Object.entries(REPEAT_LABELS).map(([value, label]) => react.default.createElement("option", {
+				key: value,
+				value
+			}, label)))), draft.repeatMode === "custom" ? react.default.createElement("div", { style: { marginBottom: 14 } }, react.default.createElement("div", {
+				role: "group",
+				"aria-label": "重复星期",
+				style: {
+					display: "flex",
+					gap: 6,
+					flexWrap: "wrap",
+					marginBottom: 10
+				}
+			}, ...WEEK_CODES.map((code, index) => react.default.createElement("button", {
+				key: code,
+				type: "button",
+				"aria-pressed": draft.days.includes(code),
+				onClick: () => set({ days: WEEK_CODES.filter((day) => day === code ? !draft.days.includes(day) : draft.days.includes(day)) }),
+				style: {
+					padding: "7px 11px",
+					borderRadius: 8,
+					border: draft.days.includes(code) ? "1px solid var(--dsw-alias-state-business-primary, #4d6bfe)" : CARD_BORDER,
+					color: draft.days.includes(code) ? "var(--dsw-alias-state-business-primary, #4d6bfe)" : SECONDARY,
+					background: draft.days.includes(code) ? "var(--dsw-alias-interactive-bg-hover, #edf1ff)" : PAGE_BACKGROUND,
+					cursor: "pointer"
+				}
+			}, WEEKDAYS[index]))), react.default.createElement(Field, {
+				label: "每隔几周",
+				hint: "1 表示每周，2 表示隔周"
+			}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
+				type: "number",
+				min: 1,
+				max: 52,
+				value: draft.interval,
+				onChange: (event) => set({ interval: Math.max(1, Math.min(52, Number(event.target.value) || 1)) })
+			}))) : void 0, draft.repeat ? react.default.createElement(Field, {
 				label: "重复到",
 				hint: "留空表示一直重复"
 			}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Input, {
@@ -5850,13 +6497,23 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				};
 			});
 			const [problem, setProblem] = (0, react.useState)(null);
+			const [submitting, setSubmitting] = (0, react.useState)(false);
+			const saving = (0, react.useRef)(false);
 			const complaint = draftProblem(draft);
 			const submit = async () => {
+				if (saving.current) return;
 				if (complaint) {
 					setProblem(complaint);
 					return;
 				}
-				if (await run(() => service.putEvent(recordOf(draft)), "已新建日程")) onSaved();
+				saving.current = true;
+				setSubmitting(true);
+				try {
+					if (await run(() => service.putEvent(recordOf(draft)), "已新建日程")) onSaved();
+				} finally {
+					saving.current = false;
+					setSubmitting(false);
+				}
 			};
 			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Modal, {
 				open: true,
@@ -5868,16 +6525,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					display: "flex",
 					gap: 8,
 					alignItems: "center"
-				} }, react.default.createElement(Muted, null, draft.repeat ? "每周重复" : "单次日程"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				} }, react.default.createElement(Muted, null, REPEAT_LABELS[draft.repeatMode] ?? "单次日程"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 					variant: "ghost",
 					size: "sm",
 					onClick: onClose
 				}, "取消"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 					variant: "primary",
 					size: "sm",
-					disabled: Boolean(complaint),
+					disabled: Boolean(complaint) || submitting,
 					onClick: submit
-				}, "新建"))
+				}, submitting ? "正在保存…" : "新建"))
 			}, react.default.createElement("div", null, react.default.createElement(EventForm, {
 				draft,
 				onChange: setDraft,
@@ -5892,15 +6549,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* Wide panels show both at once; a narrow one stacks them, because the panel
 		* width is the reader's, not ours.
 		*/
-		function EventPage({ event, agenda, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }) {
+		function EventPage({ event, agenda, noteIndex, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }) {
 			const [draft, setDraft] = (0, react.useState)(() => draftOf(event));
 			const [problem, setProblem] = (0, react.useState)(null);
+			const [confirmingDelete, setConfirmingDelete] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				setDraft(draftOf(event));
 				setProblem(null);
+				setConfirmingDelete(false);
 			}, [event]);
 			const uuid = event?.uid;
-			const occurrences = (0, react.useMemo)(() => (agenda ?? []).filter((occurrence) => occurrence.uid === uuid), [agenda, uuid]);
+			const source = event?.source;
+			const occurrences = (0, react.useMemo)(() => (agenda ?? []).filter((occurrence) => occurrence.uid === uuid && occurrence.source === source), [
+				agenda,
+				uuid,
+				source
+			]);
 			const groups = (0, react.useMemo)(() => {
 				const map = /* @__PURE__ */ new Map();
 				for (const occurrence of occurrences) {
@@ -5954,12 +6618,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				size: "sm",
 				disabled: !dirty || busy || Boolean(complaint),
 				onClick: save
-			}, "保存更改"), dirty ? react.default.createElement(Muted, null, complaint ?? "有未保存的改动") : void 0, react.default.createElement("span", { style: { flex: "1 1 auto" } }), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+			}, "保存更改"), dirty ? react.default.createElement(Muted, null, complaint ?? "有未保存的改动") : void 0, react.default.createElement("span", { style: { flex: "1 1 auto" } }), confirmingDelete ? react.default.createElement(react.default.Fragment, null, react.default.createElement("span", { style: { fontSize: 13 } }, "确定删除这条日程？"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "primary",
+				size: "sm",
+				style: { background: "var(--dsw-alias-state-error-primary, #d4553f)" },
+				onClick: () => onDelete(event)
+			}, "删除"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				variant: "ghost",
+				size: "sm",
+				onClick: () => setConfirmingDelete(false)
+			}, "取消")) : react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
 				icon: react.default.createElement(IconTrash),
 				style: { color: "var(--dsw-alias-state-error-primary, #d4553f)" },
-				onClick: () => onDelete(event)
+				onClick: () => setConfirmingDelete(true)
 			}, "删除这条日程")));
 			const cancelledCard = exceptions.length === 0 ? void 0 : react.default.createElement("section", { style: {
 				padding: 16,
@@ -6002,9 +6675,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					top: 0
 				}
 			}, monthOf(`${month}-01`)), ...items.map((occurrence) => react.default.createElement(EventRow, {
-				key: occurrence.occurrenceId,
+				key: reactKeyOf(occurrence),
 				occurrence,
 				tint,
+				note: noteIndex?.get(occurrenceKeyOf(occurrence)),
 				onOpen: onOpenOccurrence,
 				onCancel: (item) => onCancel(item),
 				onDelete: (item) => onDelete(item)
@@ -6045,14 +6719,27 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				gap: 12
 			} }, infoCard, cancelledCard), listCard));
 		}
-		/** The panel: the week, the entry list behind a menu, and the dialogs. */
+		/**
+		* The panel: the week, the entry list behind a menu, and the dialogs.
+		*
+		* Exported so the panel's own wiring can be rendered and driven in a test. The
+		* behaviour that matters here is which host methods are called and what is drawn
+		* from their answers, and that is only testable if the test can mount this rather
+		* than a copy of it.
+		* @param service - the calendar surface, as the shell's gateway exposes it.
+		* @returns the panel component.
+		*/
 		function createCalendarPage(service) {
 			return function CalendarPanel() {
 				const [view, setView] = (0, react.useState)({ kind: "week" });
 				const [anchor, setAnchor] = (0, react.useState)(() => startOfWeek());
+				const [displayMode, setDisplayMode] = (0, react.useState)("week");
+				const [monthAnchor, setMonthAnchor] = (0, react.useState)(() => monthStart(localDate()));
+				const [calendarSource, setCalendarSource] = (0, react.useState)("*");
 				const [snapshot, setSnapshot] = (0, react.useState)(null);
 				const [week, setWeek] = (0, react.useState)(null);
 				const [agenda, setAgenda] = (0, react.useState)(null);
+				const [noteIndex, setNoteIndex] = (0, react.useState)(() => /* @__PURE__ */ new Map());
 				const [loading, setLoading] = (0, react.useState)(true);
 				const [problem, setProblem] = (0, react.useState)(null);
 				const [toast, setToast] = (0, react.useState)(null);
@@ -6061,27 +6748,64 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const [dropping, setDropping] = (0, react.useState)(false);
 				const [busy, setBusy] = (0, react.useState)(false);
 				const events = snapshot?.events ?? [];
-				const weekRange = {
+				(0, react.useEffect)(() => {
+					if (snapshot && calendarSource !== "*" && !snapshot.events.some((event) => event.source === calendarSource)) setCalendarSource("*");
+				}, [snapshot, calendarSource]);
+				/**
+				* The ranges the panel reads, held stable for as long as the week they describe.
+				*
+				* These are inputs to the read effects through `refresh`, so a fresh object on
+				* every render would make `refresh` a new function on every render, re-run the
+				* effect that calls it, and re-read and redraw without end. The panel then never
+				* settles on one answer: a class deleted through it stays drawn, because each
+				* pass lays the new answer over the old drawing instead of replacing it.
+				*/
+				const weekRange = (0, react.useMemo)(() => displayMode === "month" ? monthRange(monthAnchor) : {
 					from: anchor,
 					to: addDays(anchor, 6)
-				};
-				const agendaRange = {
+				}, [
+					anchor,
+					displayMode,
+					monthAnchor
+				]);
+				const currentRange = (0, react.useRef)(weekRange);
+				currentRange.current = weekRange;
+				const latestWeekRead = (0, react.useRef)(0);
+				const agendaRange = (0, react.useMemo)(() => ({
 					from: addDays(localDate(), -180),
 					to: addDays(localDate(), 366)
-				};
+				}), []);
 				const loadSnapshot = (0, react.useCallback)(async () => {
 					setSnapshot(await service.snapshot());
 				}, [service]);
 				const loadWeek = (0, react.useCallback)(async () => {
-					setWeek(await service.occurrences(weekRange));
-				}, [service, anchor]);
+					const read = ++latestWeekRead.current;
+					const result = await service.occurrences(weekRange);
+					if (read === latestWeekRead.current && currentRange.current === weekRange) setWeek(result);
+				}, [service, weekRange]);
 				const loadAgenda = (0, react.useCallback)(async () => {
 					setAgenda((await service.occurrences(agendaRange)).occurrences);
 				}, [service, view.id]);
+				/**
+				* Read every note once and index it by the identity of the class it is about.
+				* One read covers the week view, the entry page and the dialog, so there is no
+				* path that shows an entry without its note.
+				*/
+				const loadNotes = (0, react.useCallback)(async () => {
+					const records = await service.notes({ scope: "source" });
+					const index = /* @__PURE__ */ new Map();
+					for (const record of records ?? []) {
+						const text = record?.note?.text;
+						if (typeof text !== "string") continue;
+						index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart}`, text);
+					}
+					setNoteIndex(index);
+				}, [service]);
 				const refresh = (0, react.useCallback)(async () => {
 					setLoading(true);
 					try {
 						await loadSnapshot();
+						await loadNotes();
 						if (view.kind === "week") await loadWeek();
 						if (view.kind === "event") await loadAgenda();
 						setProblem(null);
@@ -6092,6 +6816,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					}
 				}, [
 					loadSnapshot,
+					loadNotes,
 					loadWeek,
 					loadAgenda,
 					view.kind
@@ -6114,12 +6839,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						setBusy(false);
 					}
 				}, [refresh]);
-				const openEvent = (0, react.useCallback)((uid) => {
+				/**
+				* Open one record. Its identifier alone is ambiguous once two sources number
+				* their entries independently, so the source is part of what is opened.
+				*/
+				const openEvent = (0, react.useCallback)((uid, source) => {
 					setDialog(null);
 					setMenuOpen(false);
 					setView({
 						kind: "event",
-						id: uid
+						id: uid,
+						source
 					});
 				}, []);
 				/** A drag or a double click in the week asks for a new entry over that span. */
@@ -6131,14 +6861,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						end: clockAt(Math.max(to, from + 15))
 					});
 				}, []);
-				const current = view.kind === "event" ? events.find((event) => event.uid === view.id) : void 0;
+				const current = view.kind === "event" ? events.find((event) => event.uid === view.id && event.source === view.source) : void 0;
 				const weekCount = week?.occurrences?.length ?? 0;
 				/** The week on screen is today's, so an entry started from here means today. */
-				const createDate = anchor === startOfWeek() ? localDate() : anchor;
+				const createDate = displayMode === "month" ? monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor : anchor === startOfWeek() ? localDate() : anchor;
 				const title = view.kind === "week" ? "我的日历" : current?.title ?? "日程";
-				const subtitle = view.kind === "week" ? `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条` : [
+				const subtitle = view.kind === "week" ? displayMode === "month" ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条` : [
 					current?.location,
-					current?.source,
+					current?.source === "manual" ? "个人日程" : current?.source,
 					current && noteOf(current) !== "" ? "有备注" : ""
 				].filter(Boolean).join(" · ");
 				const menuItems = events.length === 0 ? [{
@@ -6146,8 +6876,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					id: "none",
 					text: "还没有日程"
 				}] : events.map((event) => ({
-					id: event.uid,
-					label: event.title,
+					id: `${event.source}\u0000${event.uid}`,
+					label: `${event.source === "manual" ? event.title : `${event.title}（${event.source}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ""}`,
 					icon: react.default.createElement(IconClock)
 				}));
 				return react.default.createElement("div", {
@@ -6211,30 +6941,49 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				} }, title), react.default.createElement("div", { style: {
 					fontSize: 12,
 					color: SECONDARY
-				} }, loading ? "正在读取…" : subtitle)), react.default.createElement("span", { style: { flex: "1 1 auto" } }), view.kind === "week" ? react.default.createElement(react.default.Fragment, null, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+				} }, loading ? "正在读取…" : subtitle)), react.default.createElement("span", { style: { flex: "1 1 auto" } }), view.kind === "week" ? react.default.createElement(react.default.Fragment, null, react.default.createElement("div", {
+					role: "group",
+					"aria-label": "日历视图",
+					style: {
+						display: "flex",
+						gap: 2,
+						padding: 3,
+						borderRadius: 10,
+						background: LAYER,
+						marginRight: 6
+					}
+				}, ...["week", "month"].map((mode) => react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					key: mode,
+					size: "sm",
+					variant: displayMode === mode ? "outline" : "ghost",
+					"aria-pressed": displayMode === mode,
+					onClick: () => {
+						if (mode === displayMode) return;
+						if (mode === "month") setMonthAnchor(monthStart(anchor === startOfWeek() ? localDate() : anchor));
+						else setAnchor(startOfWeek(monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor));
+						setDisplayMode(mode);
+					}
+				}, mode === "week" ? "周" : "月"))), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 					variant: "outline",
 					size: "sm",
-					disabled: anchor === startOfWeek(),
-					onClick: () => setAnchor(startOfWeek())
-				}, "今天"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-					label: "上一周",
-					side: "bottom"
-				}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "ghost",
-					size: "sm",
-					"aria-label": "上一周",
-					icon: react.default.createElement(IconChevronLeft),
-					onClick: () => setAnchor(addDays(anchor, -7))
-				})), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
-					label: "下一周",
-					side: "bottom"
-				}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "ghost",
-					size: "sm",
-					"aria-label": "下一周",
-					icon: react.default.createElement(IconChevronRight),
-					onClick: () => setAnchor(addDays(anchor, 7))
-				}))) : void 0, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					onClick: () => {
+						setAnchor(startOfWeek());
+						setMonthAnchor(monthStart(localDate()));
+					}
+				}, "今天"), ...[-1, 1].map((direction) => {
+					const label = `${direction < 0 ? "上一" : "下一"}${displayMode === "month" ? "月" : "周"}`;
+					return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+						key: direction,
+						label,
+						side: "bottom"
+					}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "ghost",
+						size: "sm",
+						"aria-label": label,
+						icon: react.default.createElement(direction < 0 ? IconChevronLeft : IconChevronRight),
+						onClick: () => displayMode === "month" ? setMonthAnchor(shiftMonth(monthAnchor, direction)) : setAnchor(addDays(anchor, direction * 7))
+					}));
+				})) : void 0, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 					variant: "primary",
 					size: "sm",
 					icon: react.default.createElement(IconPlus),
@@ -6246,8 +6995,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					open: menuOpen,
 					onClose: () => setMenuOpen(false),
 					items: menuItems,
-					selectedId: view.id,
-					onSelect: (id) => events.some((event) => event.uid === id) ? openEvent(id) : void 0,
+					selectedId: view.kind === "event" ? `${view.source}\u0000${view.id}` : void 0,
+					onSelect: (id) => {
+						const [source, uid] = String(id).split("\0");
+						if (events.some((event) => event.uid === uid && event.source === source)) openEvent(uid, source);
+					},
 					align: "end",
 					anchor: react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 						variant: "ghost",
@@ -6275,7 +7027,38 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					disabled: loading,
 					icon: react.default.createElement(IconRefresh),
 					onClick: () => void refresh()
-				}))), problem ? react.default.createElement("div", { style: {
+				}))), view.kind === "week" && events.length > 0 ? react.default.createElement("div", {
+					role: "group",
+					"aria-label": "筛选日历",
+					style: {
+						display: "flex",
+						gap: 6,
+						padding: "9px 16px",
+						overflowX: "auto",
+						flex: "0 0 auto",
+						borderBottom: HAIRLINE
+					}
+				}, ...["*", ...new Set(events.map((event) => event.source))].map((source) => react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					key: source,
+					size: "sm",
+					variant: calendarSource === source ? "outline" : "ghost",
+					"aria-pressed": calendarSource === source,
+					onClick: () => setCalendarSource(source),
+					style: {
+						whiteSpace: "nowrap",
+						borderRadius: 20
+					}
+				}, source !== "*" ? react.default.createElement("span", {
+					"aria-hidden": true,
+					style: {
+						display: "inline-block",
+						width: 7,
+						height: 7,
+						borderRadius: "50%",
+						background: tintOf(source).accent,
+						marginRight: 6
+					}
+				}) : void 0, source === "*" ? "全部日历" : source === "manual" ? "个人日程" : source))) : void 0, problem ? react.default.createElement("div", { style: {
 					display: "flex",
 					alignItems: "center",
 					gap: 6,
@@ -6284,43 +7067,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					flex: "0 0 auto",
 					color: "var(--dsw-alias-state-error-primary, #d4553f)",
 					background: "color-mix(in srgb, var(--dsw-alias-state-error-primary, #d4553f) 8%, transparent)"
-				} }, react.default.createElement(IconWarning), problem) : void 0, view.kind === "week" ? events.length === 0 && weekCount === 0 && !loading ? react.default.createElement("div", { style: {
-					flex: "1 1 auto",
-					display: "grid",
-					placeItems: "center",
-					padding: 24
-				} }, react.default.createElement("div", { style: {
-					maxWidth: 380,
-					padding: 20,
-					borderRadius: 12,
-					border: CARD_BORDER,
-					background: LAYER,
-					textAlign: "center"
-				} }, react.default.createElement(IconAlarmClock), react.default.createElement("div", { style: {
-					margin: "8px 0 4px",
-					fontSize: 14,
-					fontWeight: 600
-				} }, "日历还是空的"), react.default.createElement(Muted, null, "先新建一条日程，或把从教务系统、其他日历导出的 .ics 文件拖进这个面板。双击时间轴上的空白处也能新建。"), react.default.createElement("div", { style: {
-					marginTop: 12,
-					display: "flex",
-					gap: 8,
-					justifyContent: "center"
-				} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "primary",
-					size: "sm",
-					icon: react.default.createElement(IconPlus),
-					onClick: () => setDialog({
-						kind: "create",
-						date: createDate
-					})
-				}, "新建日程"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
-					variant: "outline",
-					size: "sm",
-					icon: react.default.createElement(IconFolderOpen),
-					onClick: () => setDialog({ kind: "import" })
-				}, "导入日历")))) : react.default.createElement(WeekGrid, {
-					anchor,
-					occurrences: week?.occurrences ?? [],
+				} }, react.default.createElement(IconWarning), problem) : void 0, view.kind === "week" ? react.default.createElement(displayMode === "month" ? MonthGrid : WeekGrid, {
+					anchor: displayMode === "month" ? monthAnchor : anchor,
+					tintOf,
+					occurrenceKeyOf,
+					occurrences: (week?.occurrences ?? []).filter((item) => calendarSource === "*" || item.source === calendarSource),
+					noteIndex,
 					onSelect: (occurrence) => setDialog({
 						kind: "event",
 						occurrence
@@ -6329,6 +7081,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}) : react.default.createElement(EventPage, {
 					event: current,
 					agenda,
+					noteIndex,
 					busy,
 					onOpenOccurrence: (occurrence) => setDialog({
 						kind: "event",
@@ -6337,18 +7090,24 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					onSave: (event) => run(() => service.putEvent(event), "日程信息已保存"),
 					onRestore: (event, date) => run(() => service.restoreOccurrence({
 						uid: event.uid,
-						date
+						date,
+						source: event.source
 					}), `已恢复 ${shortDate(date)} 的日程`),
-					onDelete: (event) => run(() => service.deleteEvent({ uid: event.uid }), "已删除这条日程").then((ok) => {
+					onDelete: (event) => run(() => service.deleteEvent({
+						uid: event.uid,
+						source: event.source
+					}), "已删除这条日程").then((ok) => {
 						if (ok) setView({ kind: "week" });
 					}),
 					onCancel: (occurrence) => run(() => service.cancelOccurrence({
 						uid: occurrence.uid,
-						date: occurrence.occurrenceDate ?? dateOf(occurrence.start)
+						date: occurrence.occurrenceDate ?? dateOf(occurrence.start),
+						source: occurrence.source
 					}), `已取消 ${shortDate(occurrence.occurrenceDate ?? dateOf(occurrence.start))} 的日程`)
 				}), dialog?.kind === "event" ? react.default.createElement(EventDialog, {
 					occurrence: dialog.occurrence,
-					event: events.find((item) => item.uid === dialog.occurrence?.uid),
+					event: events.find((item) => item.uid === dialog.occurrence?.uid && item.source === dialog.occurrence?.source),
+					note: noteIndex.get(occurrenceKeyOf(dialog.occurrence)),
 					service,
 					run,
 					onEdit: openEvent,
@@ -6364,6 +7123,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}) : void 0, dialog?.kind === "import" ? react.default.createElement(ImportDialog, {
 					initialText: dialog.text,
 					initialName: dialog.name,
+					calendars: [...new Set(events.map((event) => event.source).filter((name) => name && name !== "manual"))],
 					service,
 					run,
 					onClose: () => {
@@ -6442,7 +7202,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					cancelOccurrence: call("cancelOccurrence"),
 					restoreOccurrence: call("restoreOccurrence"),
 					deleteEvent: call("deleteEvent"),
-					putEvent: call("putEvent")
+					putEvent: call("putEvent"),
+					applySource: call("applySource"),
+					putNote: call("putNote"),
+					removeNote: call("removeNote"),
+					notes: call("notes"),
+					unlinkedNotes: () => unwrap(surface.remote.calendar.unlinkedNotes({}))
 				};
 				surface.slots.inject("main", () => surface.slots.register({
 					name: "main",
@@ -6459,7 +7224,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				await disposeRemote();
 			};
 		}
+		//#endregion
 		exports.apply = apply;
+		exports.createCalendarPage = createCalendarPage;
 		exports.inject = inject;
 		return module.exports;
 	}

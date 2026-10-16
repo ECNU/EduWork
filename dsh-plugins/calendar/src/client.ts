@@ -27,6 +27,7 @@ import { Button, Input, Menu, Modal, Switch, Tag, Toast, Tooltip, writeClipboard
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
 import { dayWindow, layoutWeek, minutesOf, shiftedEnd } from './layout.js'
+import { MonthGrid, monthRange, monthStart, shiftMonth } from './month-view.js'
 
 /**
  * Resolve one icon from the loaded primitives package.
@@ -60,9 +61,6 @@ const PANEL_ID = 'calendar'
 const WEEKDAYS = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
 /** Recurrence weekday codes, for the summary line of a stored series. */
 const WEEKDAY_BY_CODE: Record<string, string> = { mo: '周一', tu: '周二', we: '周三', th: '周四', fr: '周五', sa: '周六', su: '周日' }
-
-/** Source an import writes unless the reader says otherwise; the scope that is replaced. */
-const DEFAULT_SOURCE = 'ics'
 
 /**
  * The `uid` of an entry created here. The caller owns it — the host stores the
@@ -185,9 +183,41 @@ async function unwrap(operation: any) {
 /** The note of a record: a field of its own, written out as `DESCRIPTION`. */
 const noteOf = (event: any) => (typeof event?.description === 'string' ? event.description : '')
 
+/**
+ * The identity one occurrence's personal content hangs on.
+ *
+ * `originalStart` is the instant the series produced, so this key survives the
+ * school moving the class: the reading is taken from the occurrence before its
+ * time is used for anything, and it is what the host indexes annotations by.
+ * @param occurrence - a rendered occurrence.
+ * @returns a stable key, or `''` when the host did not report an identity.
+ */
+const occurrenceKeyOf = (occurrence: any) =>
+  occurrence?.originalStart ? `${occurrence.source ?? 'manual'}\u0000${occurrence.uid}\u0000${occurrence.originalStart}` : ''
+
+/**
+ * The reference the host needs to find or write one occurrence's personal content.
+ *
+ * The ownership is named explicitly rather than left to be inferred from which
+ * table a record turns up in, so a note can never land on the school side by
+ * accident.
+ * @param occurrence - a rendered occurrence.
+ * @returns `{ scope, source, uid, originalStart }`, without empty fields.
+ */
+function noteRefOf(occurrence: any) {
+  const ref: Record<string, unknown> = {
+    scope: 'source',
+    source: occurrence?.source ?? 'manual',
+    uid: occurrence?.uid,
+  }
+  if (occurrence?.originalStart) ref.originalStart = occurrence.originalStart
+  return ref
+}
+
 /** One line describing how often a stored series repeats. */
 function seriesSummary(event: any) {
   if (!event.recurrence) return '单次'
+  if ((event.recurrence.interval ?? 1) === 1 && event.recurrence.byDay?.length === 7) return `每天${event.recurrence.until ? ` · 至 ${shortDate(dateOf(event.recurrence.until))}` : ''}`
   const days = (event.recurrence.byDay ?? []).map((code: string) => WEEKDAY_BY_CODE[code]).filter(Boolean).join('、')
   const interval = event.recurrence.interval
   const every = interval && interval > 1 ? `每 ${interval} 周` : '每周'
@@ -210,6 +240,22 @@ function Field({ label, children, hint }: any) {
 
 const Muted = ({ children, style }: any) => React.createElement('span', { style: { fontSize: 12, color: SECONDARY, ...style } }, children)
 
+/**
+ * The React key of one drawn occurrence.
+ *
+ * `occurrenceId` is `uid#date`, which is only unique within a source: a personal
+ * entry and an imported class can both be numbered `MATH101-01` and both fall on the
+ * same date. React matches children by key, so handing it that value alone gives two
+ * different records one identity, and from then on the view stops reconciling — a
+ * record it no longer holds keeps its place on screen, and a reader who deletes a
+ * class watches it stay there. The source is part of the identity because the uid
+ * is not.
+ * @param occurrence - a rendered occurrence.
+ * @returns a key no two sources can share.
+ */
+const reactKeyOf = (occurrence: any) =>
+  `${occurrence?.source ?? ''}\u0000${occurrence?.occurrenceId ?? ''}`
+
 /** Icon-only button with the product's tooltip, used for every row-level action. */
 function IconButton({ label, icon, onClick, danger, disabled }: any) {
   return React.createElement(Tooltip, { label, side: 'bottom' },
@@ -227,7 +273,7 @@ function IconButton({ label, icon, onClick, danger, disabled }: any) {
  * layout gave it: `100 / lanes` percent, inset by a hairline so neighbours stay
  * apart.
  */
-function Block({ entry, axisStart, tint, onSelect }: any) {
+function Block({ entry, axisStart, tint, note, onSelect }: any) {
   const [hovered, hover] = useHover()
   const width = 100 / entry.lanes
   const height = entry.height * PX_PER_MINUTE
@@ -240,6 +286,9 @@ function Block({ entry, axisStart, tint, onSelect }: any) {
     type: 'button',
     title: label,
     'aria-label': label,
+    // Names the occurrence the block stands for, so a test acts on the same
+    // identity the note is stored under rather than on a button's position.
+    'data-occurrence': occurrenceKeyOf(entry.occurrence),
     onClick: () => onSelect(entry.occurrence),
     ...hover,
     style: {
@@ -258,6 +307,11 @@ function Block({ entry, axisStart, tint, onSelect }: any) {
   }, entry.occurrence.title),
   inner >= 34 && entry.occurrence.location
     ? React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: SECONDARY } }, entry.occurrence.location)
+    : undefined,
+  // The reader's own note, when the block has room for it. A note that is only
+  // visible after opening the class is a note the reader has to remember writing.
+  inner >= 50 && note
+    ? React.createElement('div', { style: { ...line, fontSize: 11, lineHeight: '15px', color: PRIMARY, opacity: .75 } }, `笔记：${note}`)
     : undefined)
 }
 
@@ -271,7 +325,7 @@ function Block({ entry, axisStart, tint, onSelect }: any) {
  * double click starts a one-hour one there: between them the view is writable
  * rather than only readable.
  */
-function WeekGrid({ anchor, occurrences, onSelect, onCreate }: any) {
+function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000)
@@ -321,6 +375,11 @@ function WeekGrid({ anchor, occurrences, onSelect, onCreate }: any) {
    * shown in the day header: visible whatever the axis is scrolled to, and not
    * claiming a time it does not have. A record that covers several days is shown
    * on each of them, the way a calendar draws a multi-day bar.
+   *
+   * What a block says about its date is worked out here, per day, and not where it
+   * is drawn: the day it sits under is the one fact the drawing does not add, and
+   * two blocks of one multi-day record with the same label would be one thing said
+   * twice — indistinguishable to a screen reader and to anyone reading the page.
    */
   const allDayByDay = useMemo(() => {
     const first = anchor
@@ -334,10 +393,17 @@ function WeekGrid({ anchor, occurrences, onSelect, onCreate }: any) {
         : start
       const from = start < first ? first : start
       const to = spanned > last ? last : spanned
+      const covers = spanned > start
+      // What one of those blocks says: on the first day it covers it speaks for the
+      // whole record, and on each later day it names the day it is actually on.
+      const spokenOn = (date: string) => (covers
+        ? (date > start ? shortDate(date) : `${shortDate(start)}–${shortDate(spanned)}`)
+        : shortDate(start))
       for (let date = from; date <= to; date = addDays(date, 1)) {
+        const chip = { occurrence, label: `全天 · ${spokenOn(date)} ${occurrence.title}` }
         const list = map.get(date)
-        if (list) list.push(occurrence)
-        else map.set(date, [occurrence])
+        if (list) list.push(chip)
+        else map.set(date, [chip])
       }
     }
     return map
@@ -354,14 +420,10 @@ function WeekGrid({ anchor, occurrences, onSelect, onCreate }: any) {
     const list = allDayByDay.get(date) ?? []
     if (list.length === 0) return undefined
     return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 } },
-      ...list.slice(0, 2).map((occurrence: any) => {
+      ...list.slice(0, 2).map(({ occurrence, label }: any) => {
         const tint = tintOf(occurrence.source ?? occurrence.uid)
-        const span = occurrence.end && dateOf(occurrence.end) > dateOf(occurrence.start)
-          ? `${shortDate(dateOf(occurrence.start))}–${shortDate(dateOf(occurrence.end))}`
-          : shortDate(dateOf(occurrence.start))
-        const label = `全天 · ${span} ${occurrence.title}`
         return React.createElement('button', {
-          key: occurrence.occurrenceId,
+          key: reactKeyOf(occurrence),
           type: 'button',
           title: label,
           'aria-label': label,
@@ -488,10 +550,11 @@ function WeekGrid({ anchor, occurrences, onSelect, onCreate }: any) {
       : undefined)
     : undefined,
   ...(byDay.get(day.key) ?? []).map(entry => React.createElement(Block, {
-    key: entry.occurrence.occurrenceId,
+    key: reactKeyOf(entry.occurrence),
     entry,
     axisStart: axis.start,
     tint: tintOf(entry.occurrence.source ?? entry.occurrence.uid),
+    note: noteIndex?.get(occurrenceKeyOf(entry.occurrence)),
     onSelect,
   }))))
 
@@ -522,7 +585,7 @@ function WeekGrid({ anchor, occurrences, onSelect, onCreate }: any) {
 }
 
 /** The details of one occurrence, and every change the panel can make to it. */
-function EventDialog({ occurrence, event, service, onClose, run, onEdit }: any) {
+function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }: any) {
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [form, setForm] = useState({
@@ -530,11 +593,18 @@ function EventDialog({ occurrence, event, service, onClose, run, onEdit }: any) 
     end: occurrence?.end ?? '',
     location: occurrence?.location ?? '',
   })
+  // The reader's own note about this one class, kept apart from anything the
+  // school provided. It is edited on its own and saved on its own, so writing a
+  // note can never rewrite a school record and a school sync cannot touch it.
+  const [noteDraft, setNoteDraft] = useState<string>(note ?? '')
+  const [writingNote, setWritingNote] = useState(false)
   useEffect(() => {
     setEditing(false)
     setConfirming(false)
+    setNoteDraft(note ?? '')
+    setWritingNote(false)
     setForm({ start: occurrence?.start ?? '', end: occurrence?.end ?? '', location: occurrence?.location ?? '' })
-  }, [occurrence])
+  }, [occurrence, note])
 
   if (!occurrence) return null
   const date = occurrence.occurrenceDate ?? dateOf(occurrence.start)
@@ -563,7 +633,7 @@ function EventDialog({ occurrence, event, service, onClose, run, onEdit }: any) 
    * gets edited.
    */
   const save = () => (series
-    ? service.applyOverride({ uid: occurrence.uid, date, patch })
+    ? service.applyOverride({ uid: occurrence.uid, date, patch, source: occurrence.source })
     : service.putEvent(withoutEmpty({
       ...event,
       start: patch.start ?? event?.start,
@@ -575,26 +645,30 @@ function EventDialog({ occurrence, event, service, onClose, run, onEdit }: any) 
   if (!editing) {
     actions.push(React.createElement(Button, {
       key: 'when', variant: 'outline', size: 'sm',
-      onClick: () => (wholeDay && event ? onEdit(event.uid) : setEditing(true)),
+      onClick: () => (wholeDay && event ? onEdit(event.uid, event.source) : setEditing(true)),
     }, wholeDay ? '改日期或地点' : series ? '改期或改地点' : '改时间或地点'))
   }
+  actions.push(React.createElement(Button, {
+    key: 'note', variant: 'outline', size: 'sm',
+    onClick: () => setWritingNote(!writingNote),
+  }, note ? '改笔记' : '写笔记'))
   // The dialog speaks for one occurrence; the title, the date and the repeat
   // rule belong to the record, and the record has a page of its own.
   if (event) {
     actions.push(React.createElement(Button, {
-      key: 'record', variant: 'ghost', size: 'sm', onClick: () => onEdit(event.uid),
+      key: 'record', variant: 'ghost', size: 'sm', onClick: () => onEdit(event.uid, event.source),
     }, '编辑日程信息'))
   }
   if (occurrence.overridden) {
     actions.push(React.createElement(Button, {
       key: 'undo', variant: 'ghost', size: 'sm', disabled: false,
-      onClick: () => run(() => service.removeOverride({ uid: occurrence.uid, date }), '已恢复原定安排').then(ok => ok && onClose()),
+      onClick: () => run(() => service.removeOverride({ uid: occurrence.uid, date, source: occurrence.source }), '已恢复原定安排').then(ok => ok && onClose()),
     }, '撤销改期'))
   }
   if (series) {
     actions.push(React.createElement(Button, {
       key: 'cancel', variant: 'ghost', size: 'sm',
-      onClick: () => run(() => service.cancelOccurrence({ uid: occurrence.uid, date }), `已取消：${shortDate(date)}`).then(ok => ok && onClose()),
+      onClick: () => run(() => service.cancelOccurrence({ uid: occurrence.uid, date, source: occurrence.source }), `已取消：${shortDate(date)}`).then(ok => ok && onClose()),
     }, '取消这一次'))
   } else {
     actions.push(React.createElement(Button, {
@@ -618,16 +692,58 @@ function EventDialog({ occurrence, event, service, onClose, run, onEdit }: any) 
   React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 10 } },
     React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' } },
       React.createElement('span', { style: { fontSize: 13, color: PRIMARY, fontVariantNumeric: 'tabular-nums' } },
-        `${monthOf(date)}${dayNumber(date)}日 ${weekdayOf(date)} ${clockRange(occurrence)}`),
+        `${monthOf(dateOf(occurrence.start))}${dayNumber(dateOf(occurrence.start))}日 ${weekdayOf(dateOf(occurrence.start))} ${clockRange(occurrence)}`),
       occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
       series ? React.createElement(Tag, { tone: 'outline' }, '重复日程中的一次') : React.createElement(Tag, { tone: 'quiet' }, '单次日程')),
     occurrence.location
       ? React.createElement('div', { style: { fontSize: 13, color: PRIMARY } }, `地点：${occurrence.location}`)
       : undefined,
     occurrence.description
-      ? React.createElement('div', { style: { fontSize: 12, color: SECONDARY, whiteSpace: 'pre-wrap' } }, occurrence.description)
+      ? React.createElement('div', null,
+        React.createElement(Muted, { style: { display: 'block', marginBottom: 2 } },
+          event?.source && event.source !== 'manual' ? `日历备注（${event.source}）` : '日程备注'),
+        React.createElement('div', { style: { fontSize: 12, color: SECONDARY, whiteSpace: 'pre-wrap' } }, occurrence.description))
       : undefined,
-    event?.source ? React.createElement('div', null, React.createElement(Muted, null, `来源：${event.source}`)) : undefined,
+    // The reader's note about this class. It follows the class when the school
+    // moves it, which is why it is shown with the occurrence rather than the
+    // record, and why it lives outside the school's own fields.
+    note && !writingNote
+      ? React.createElement('div', {
+        style: { padding: '8px 10px', borderRadius: 8, background: LAYER, whiteSpace: 'pre-wrap', fontSize: 13 },
+      },
+      React.createElement(Muted, { style: { display: 'block', marginBottom: 3 } }, '我的笔记'),
+      note)
+      : undefined,
+    writingNote
+      ? React.createElement('div', {
+        style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
+      },
+      React.createElement(Field, { label: '我的笔记', hint: '只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。' },
+        React.createElement('textarea', {
+          value: noteDraft, rows: 4, spellCheck: false, autoFocus: true,
+          placeholder: '例如：期末要背 P187',
+          onChange: (event: any) => setNoteDraft(event.target.value),
+          style: {
+            width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
+            border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)', color: PRIMARY, fontSize: 13,
+            fontFamily: 'inherit', lineHeight: 1.5,
+          },
+        })),
+      React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
+        React.createElement(Button, {
+          variant: 'primary', size: 'sm',
+          disabled: noteDraft === (note ?? ''),
+          onClick: () => run(
+            () => (noteDraft.trim() === ''
+              ? service.removeNote(noteRefOf(occurrence))
+              : service.putNote({ ...noteRefOf(occurrence), text: noteDraft })),
+            noteDraft.trim() === '' ? '已清空笔记' : '笔记已保存',
+          ).then((ok: boolean) => { if (ok) setWritingNote(false) }),
+        }, '保存笔记'),
+        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => { setNoteDraft(note ?? ''); setWritingNote(false) } }, '取消'),
+        noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
+      : undefined,
+    event?.source ? React.createElement('div', null, React.createElement(Muted, null, `日历：${event.source === 'manual' ? '个人日程' : event.source}`)) : undefined,
     editing
       ? React.createElement('div', {
         style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
@@ -663,7 +779,7 @@ function EventDialog({ occurrence, event, service, onClose, run, onEdit }: any) 
       React.createElement(Button, {
         variant: 'primary', size: 'sm',
         style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-        onClick: () => run(() => service.deleteEvent({ uid: occurrence.uid }), '已删除这条日程').then(ok => ok && onClose()),
+        onClick: () => run(() => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }), '已删除这条日程').then(ok => ok && onClose()),
       }, '删除'),
       React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirming(false) }, '取消'))
       : undefined))
@@ -680,11 +796,23 @@ async function readCalendarFile(file: File) {
   return text
 }
 
+/** File names identify separate calendars; selecting the same name updates that calendar. */
+const calendarNameOf = (name: string) => {
+  const label = name.replace(/\.(ics|ical|txt)$/i, '').trim() || '导入日历'
+  return label === 'manual' ? 'manual 日历' : label
+}
+const freshCalendarName = (names: string[]) => {
+  let name = '导入日历'
+  for (let index = 2; names.includes(name); index += 1) name = `导入日历 ${index}`
+  return name
+}
+
 /** The import dialog: drop a file or paste text, then read what the import did. */
-function ImportDialog({ initialText, initialName, service, onClose, run }: any) {
+function ImportDialog({ initialText, initialName, calendars = [], service, onClose, run }: any) {
   const [text, setText] = useState(initialText ?? '')
-  const [source, setSource] = useState(DEFAULT_SOURCE)
-  const [replace, setReplace] = useState(true)
+  const [source, setSource] = useState(() => initialName ? calendarNameOf(initialName) : freshCalendarName(calendars))
+  const sourceEdited = useRef(false)
+  const [replace, setReplace] = useState(false)
   const [name, setName] = useState(initialName ?? '')
   const [dragging, setDragging] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
@@ -697,6 +825,7 @@ function ImportDialog({ initialText, initialName, service, onClose, run }: any) 
       const next = await readCalendarFile(file)
       setText(next)
       setName(file.name)
+      if (!sourceEdited.current) setSource(calendarNameOf(file.name))
       setProblem(null)
     } catch (error) {
       setProblem(messageOf(error))
@@ -704,10 +833,11 @@ function ImportDialog({ initialText, initialName, service, onClose, run }: any) 
   }, [])
 
   const submit = async () => {
+    if (!source.trim() || source.trim() === 'manual') { setProblem('请填写日历名称，个人日程保留名 manual 不可用于导入'); return }
     setBusy(true)
     setProblem(null)
     try {
-      const result = await service.importIcs({ text, source: source.trim() === '' ? DEFAULT_SOURCE : source.trim(), replace })
+      const result = await service.importIcs({ text, source: source.trim(), replace })
       setOutcome(result)
     } catch (error) {
       setProblem(messageOf(error))
@@ -724,19 +854,19 @@ function ImportDialog({ initialText, initialName, service, onClose, run }: any) 
     title: outcome ? '导入结果' : '导入日历',
     closeLabel: '关闭',
     description: outcome
-      ? `来源 ${source.trim() === '' ? DEFAULT_SOURCE : source.trim()}`
-      : '粘贴日历文本，或把 .ics 文件拖到这里；同一来源的旧记录会被替换，自己手动改过的记录不受影响。',
+      ? `日历「${source.trim()}」`
+      : '选择文件或粘贴文本。不同日历分开保存，默认保留已有日程。',
     footer: React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
       outcome
         ? React.createElement(React.Fragment, null,
-          React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => { setOutcome(null); setText(''); setName('') } }, '再导一份'),
+          React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => { setOutcome(null); setText(''); setName(''); setSource(freshCalendarName([...calendars, source])); sourceEdited.current = false; setReplace(false) } }, '再导一份'),
           React.createElement('span', { style: { flex: '1 1 auto' } }),
           React.createElement(Button, { variant: 'primary', size: 'sm', onClick: onClose }, '完成'))
         : React.createElement(React.Fragment, null,
           React.createElement(Muted, null, count > 0 ? `识别到 ${count} 条日程` : '等待日历文本'),
           React.createElement('span', { style: { flex: '1 1 auto' } }),
           React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '取消'),
-          React.createElement(Button, { variant: 'primary', size: 'sm', disabled: text.trim() === '' || busy, onClick: submit }, busy ? '正在导入…' : '导入'))),
+          React.createElement(Button, { variant: 'primary', size: 'sm', disabled: text.trim() === '' || source.trim() === '' || source.trim() === 'manual' || busy, onClick: submit }, busy ? '正在导入…' : '导入'))),
   },
   outcome
     ? React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 12 } },
@@ -805,10 +935,12 @@ function ImportDialog({ initialText, initialName, service, onClose, run }: any) 
       }),
       React.createElement('div', { style: { display: 'flex', gap: 12, alignItems: 'flex-end', flexWrap: 'wrap' } },
         React.createElement('div', { style: { flex: '1 1 200px' } },
-          React.createElement(Field, { label: '来源', hint: '同一来源再次导入会替换它自己的旧记录' },
-            React.createElement(Input, { value: source, onChange: (event: any) => setSource(event.target.value) }))),
-        React.createElement('div', { style: { paddingBottom: 18 } },
-          React.createElement(Switch, { checked: replace, onChange: setReplace, label: '替换同来源的旧记录' }))),
+          React.createElement(Field, { label: '日历名称', hint: '同一日历中相同编号会更新。更新旧日历时选择原名，不同日历请用不同名称' },
+            React.createElement(Input, { value: source, list: 'calendar-import-names', onChange: (event: any) => { sourceEdited.current = true; setSource(event.target.value) } })),
+          React.createElement('datalist', { id: 'calendar-import-names' }, ...calendars.map((name: string) => React.createElement('option', { key: name, value: name })))),
+        React.createElement('div', { style: { paddingBottom: 18, display: 'flex', alignItems: 'center', gap: 8 } },
+          React.createElement(Switch, { checked: replace, onChange: setReplace, label: '移除该日历中此次未列出的日程' }),
+          React.createElement('span', { style: { fontSize: 12, color: SECONDARY } }, '移除该日历中此次未列出的日程'))),
       problem ? React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--dsw-alias-state-error-primary, #d4553f)' } },
         React.createElement(IconWarning), problem) : undefined))
 }
@@ -877,7 +1009,7 @@ function ExportDialog({ service, onClose, toast }: any) {
 }
 
 /** One entry row of the agenda: date, time, place, and the actions that fit a row. */
-function EventRow({ occurrence, tint, onOpen, onCancel, onDelete }: any) {
+function EventRow({ occurrence, tint, note, onOpen, onCancel, onDelete }: any) {
   const [hovered, hover] = useHover()
   const date = dateOf(occurrence.start)
   const series = Boolean(occurrence.recurrence)
@@ -901,7 +1033,14 @@ function EventRow({ occurrence, tint, onOpen, onCancel, onDelete }: any) {
     React.createElement('span', { style: { fontSize: 13, fontWeight: 550, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, occurrence.title),
     occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined),
   React.createElement('div', { style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-    [clockRange(occurrence), occurrence.location].filter(Boolean).join(' · '))),
+    [clockRange(occurrence), occurrence.location].filter(Boolean).join(' · ')),
+  // The reader's note, where the class is: a note nobody can see is a note nobody
+  // trusts to have been kept.
+  note
+    ? React.createElement('div', {
+      style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
+    }, `笔记：${note}`)
+    : undefined),
   React.createElement('div', { style: { display: 'flex', gap: 2, opacity: hovered ? 1 : 0, transition: 'opacity .12s ease' } },
     series
       ? React.createElement(IconButton, {
@@ -917,15 +1056,30 @@ function EventRow({ occurrence, tint, onOpen, onCancel, onDelete }: any) {
 /** Days between two `YYYY-MM-DD` dates, so a whole-day range keeps its span. */
 const daysBetween = (from: string, to: string) => Math.round((parseDate(to).getTime() - parseDate(from).getTime()) / 86_400_000)
 
+const REPEAT_LABELS: Record<string, string> = { none: '不重复', daily: '每天', weekly: '每周', custom: '自选星期' }
+const WEEK_CODES = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
+const weekdayCodeOf = (date: string) => WEEK_CODES[(parseDate(date).getDay() + 6) % 7]
+const repeatModeOf = (event: any) => {
+  const rule = event?.recurrence
+  if (!rule) return 'none'
+  if ((rule.interval ?? 1) === 1 && rule.byDay?.length === 7) return 'daily'
+  if ((rule.interval ?? 1) === 1 && (!rule.byDay?.length || (rule.byDay.length === 1 && rule.byDay[0] === weekdayCodeOf(dateOf(event.start))))) return 'weekly'
+  return 'custom'
+}
+
 /** The editable fields of a stored record, as the form holds them. */
 const draftOf = (event: any) => ({
   title: event?.title ?? '',
   date: dateOf(event?.start ?? '') || localDate(),
   start: clockOf(event?.start),
   end: clockOf(event?.end),
+  endDayOffset: event?.end && clockOf(event?.start) !== '' ? daysBetween(dateOf(event.start), dateOf(event.end)) : 0,
   location: event?.location ?? '',
   description: noteOf(event),
   repeat: Boolean(event?.recurrence),
+  repeatMode: repeatModeOf(event),
+  days: event?.recurrence?.byDay ?? [weekdayCodeOf(dateOf(event?.start ?? '') || localDate())],
+  interval: event?.recurrence?.interval ?? 1,
   until: event?.recurrence?.until ? dateOf(event.recurrence.until) : '',
 })
 
@@ -945,13 +1099,19 @@ function recordOf(draft: any, base: any = {}) {
     start: timed ? `${draft.date}T${draft.start}` : draft.date,
     // A whole-day entry keeps the span it had, moved by however far its date moved.
     end: timed
-      ? (draft.end === '' ? undefined : `${draft.date}T${draft.end}`)
+      ? (draft.end === '' ? undefined : `${addDays(draft.date, draft.endDayOffset ?? 0)}T${draft.end}`)
       : (base.end ? addDays(dateOf(base.end), shift) : undefined),
     location: draft.location.trim(),
     description: draft.description.trim(),
     // A single entry owns no series bookkeeping: turning the repeat off drops the
     // dates that were cancelled or moved while it was a series.
-    recurrence: draft.repeat ? withoutEmpty({ ...(base.recurrence ?? {}), freq: 'weekly', until: draft.until }) : undefined,
+    recurrence: draft.repeat ? withoutEmpty({
+      freq: 'weekly',
+      byDay: draft.repeatMode === 'daily' ? WEEK_CODES : draft.repeatMode === 'custom' ? draft.days : [weekdayCodeOf(draft.date)],
+      interval: draft.repeatMode === 'custom' ? Number(draft.interval) : undefined,
+      until: draft.until,
+      count: draft.until === (base.recurrence?.until ? dateOf(base.recurrence.until) : '') && draft.repeatMode === repeatModeOf(base) ? base.recurrence?.count : undefined,
+    }) : undefined,
     exceptions: draft.repeat ? base.exceptions : undefined,
     overrides: draft.repeat ? base.overrides : undefined,
   })
@@ -961,7 +1121,11 @@ function recordOf(draft: any, base: any = {}) {
 function draftProblem(draft: any) {
   if (draft.title.trim() === '') return '标题不能为空'
   if (draft.date === '') return '需要选一个日期'
-  if (draft.start !== '' && draft.end !== '' && draft.end <= draft.start) return '结束时间要晚于开始时间'
+  if (draft.start === '' && draft.end !== '') return '需要填写开始时间；全天日程请同时清空开始与结束时间'
+  if (draft.endDayOffset < 0) return '结束日期不能早于开始日期'
+  if (draft.repeatMode === 'custom' && draft.days.length === 0) return '请至少选择一个重复星期'
+  if (draft.repeat && draft.until && draft.until < draft.date) return '重复结束日期不能早于开始日期'
+  if (draft.start !== '' && draft.end !== '' && (draft.endDayOffset ?? 0) === 0 && draft.end <= draft.start) return '结束时间要晚于开始时间'
   return null
 }
 
@@ -996,6 +1160,13 @@ function EventForm({ draft, onChange, autoFocus }: any) {
             type: 'time', value: draft.end,
             onChange: (event: any) => set({ end: event.target.value }),
           })))),
+    draft.start !== '' && draft.end !== '' && draft.endDayOffset !== 0
+      ? React.createElement(Field, { label: '跨天结束日期', hint: '这条日程跨过午夜；修改日期会保留这个天数跨度' },
+        React.createElement(Input, {
+          type: 'date', value: addDays(draft.date, draft.endDayOffset),
+          onChange: (event: any) => set({ endDayOffset: event.target.value ? daysBetween(draft.date, event.target.value) : -1 }),
+        }))
+      : undefined,
     React.createElement(Field, { label: '地点' },
       React.createElement(Input, {
         value: draft.location, placeholder: '可留空',
@@ -1003,7 +1174,7 @@ function EventForm({ draft, onChange, autoFocus }: any) {
       })),
     React.createElement(Field, { label: '备注', hint: '随导出写进日历，不会同步到任何服务' },
       React.createElement('textarea', {
-        value: draft.description, rows: 3, spellCheck: false,
+        'aria-label': '备注', value: draft.description, rows: 3, spellCheck: false,
         onChange: (event: any) => set({ description: event.target.value }),
         style: {
           width: '100%', boxSizing: 'border-box', padding: '6px 8px', borderRadius: 8, resize: 'vertical',
@@ -1011,13 +1182,26 @@ function EventForm({ draft, onChange, autoFocus }: any) {
           fontFamily: 'inherit', lineHeight: 1.5,
         },
       })),
-    React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 } },
-      React.createElement(Switch, {
-        checked: draft.repeat, label: '每周重复',
-        onChange: (next: boolean) => set({ repeat: next, until: next ? draft.until : '' }),
-      }),
-      React.createElement('span', { style: { fontSize: 13, color: PRIMARY } }, '每周重复'),
-      React.createElement(Muted, null, '按开始日期的星期')),
+    React.createElement(Field, { label: '重复' },
+      React.createElement('select', {
+        'aria-label': '重复', value: draft.repeatMode,
+        onChange: (event: any) => {
+          const mode = event.target.value
+          set({ repeatMode: mode, repeat: mode !== 'none', days: mode === 'custom' && draft.repeatMode !== 'custom' ? [weekdayCodeOf(draft.date)] : draft.days })
+        },
+        style: { width: '100%', padding: '8px 10px', border: CARD_BORDER, borderRadius: 8, background: PAGE_BACKGROUND, color: PRIMARY, font: 'inherit' },
+      }, ...Object.entries(REPEAT_LABELS).map(([value, label]) => React.createElement('option', { key: value, value }, label)))),
+    draft.repeatMode === 'custom'
+      ? React.createElement('div', { style: { marginBottom: 14 } },
+        React.createElement('div', { role: 'group', 'aria-label': '重复星期', style: { display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 10 } },
+          ...WEEK_CODES.map((code, index) => React.createElement('button', {
+            key: code, type: 'button', 'aria-pressed': draft.days.includes(code),
+            onClick: () => set({ days: WEEK_CODES.filter(day => day === code ? !draft.days.includes(day) : draft.days.includes(day)) }),
+            style: { padding: '7px 11px', borderRadius: 8, border: draft.days.includes(code) ? '1px solid var(--dsw-alias-state-business-primary, #4d6bfe)' : CARD_BORDER, color: draft.days.includes(code) ? 'var(--dsw-alias-state-business-primary, #4d6bfe)' : SECONDARY, background: draft.days.includes(code) ? 'var(--dsw-alias-interactive-bg-hover, #edf1ff)' : PAGE_BACKGROUND, cursor: 'pointer' },
+          }, WEEKDAYS[index]))),
+        React.createElement(Field, { label: '每隔几周', hint: '1 表示每周，2 表示隔周' },
+          React.createElement(Input, { type: 'number', min: 1, max: 52, value: draft.interval, onChange: (event: any) => set({ interval: Math.max(1, Math.min(52, Number(event.target.value) || 1)) }) })))
+      : undefined,
     draft.repeat
       ? React.createElement(Field, { label: '重复到', hint: '留空表示一直重复' },
         React.createElement(Input, {
@@ -1040,15 +1224,25 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
     }
   })
   const [problem, setProblem] = useState<string | null>(null)
+  const [submitting, setSubmitting] = useState(false)
+  const saving = useRef(false)
   const complaint = draftProblem(draft)
 
   const submit = async () => {
+    if (saving.current) return
     if (complaint) {
       setProblem(complaint)
       return
     }
-    const created = await run(() => service.putEvent(recordOf(draft)), '已新建日程')
-    if (created) onSaved()
+    saving.current = true
+    setSubmitting(true)
+    try {
+      const created = await run(() => service.putEvent(recordOf(draft)), '已新建日程')
+      if (created) onSaved()
+    } finally {
+      saving.current = false
+      setSubmitting(false)
+    }
   }
 
   return React.createElement(Modal, {
@@ -1058,12 +1252,12 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
     closeLabel: '关闭',
     description: '写进本机日历，随时可以再改。',
     footer: React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center' } },
-      React.createElement(Muted, null, draft.repeat ? '每周重复' : '单次日程'),
+      React.createElement(Muted, null, REPEAT_LABELS[draft.repeatMode] ?? '单次日程'),
       React.createElement('span', { style: { flex: '1 1 auto' } }),
       React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '取消'),
       React.createElement(Button, {
-        variant: 'primary', size: 'sm', disabled: Boolean(complaint), onClick: submit,
-      }, '新建')),
+        variant: 'primary', size: 'sm', disabled: Boolean(complaint) || submitting, onClick: submit,
+      }, submitting ? '正在保存…' : '新建')),
   },
   React.createElement('div', null,
     React.createElement(EventForm, { draft, onChange: setDraft, autoFocus: true }),
@@ -1079,14 +1273,16 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
  * Wide panels show both at once; a narrow one stacks them, because the panel
  * width is the reader's, not ours.
  */
-function EventPage({ event, agenda, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }: any) {
+function EventPage({ event, agenda, noteIndex, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }: any) {
   const [draft, setDraft] = useState(() => draftOf(event))
   const [problem, setProblem] = useState<string | null>(null)
-  useEffect(() => { setDraft(draftOf(event)); setProblem(null) }, [event])
+  const [confirmingDelete, setConfirmingDelete] = useState(false)
+  useEffect(() => { setDraft(draftOf(event)); setProblem(null); setConfirmingDelete(false) }, [event])
   const uuid = event?.uid
+  const source = event?.source
   const occurrences = useMemo(
-    () => (agenda ?? []).filter((occurrence: any) => occurrence.uid === uuid),
-    [agenda, uuid],
+    () => (agenda ?? []).filter((occurrence: any) => occurrence.uid === uuid && occurrence.source === source),
+    [agenda, uuid, source],
   )
   const groups = useMemo(() => {
     const map = new Map<string, any[]>()
@@ -1131,11 +1327,23 @@ function EventPage({ event, agenda, onOpenOccurrence, onSave, onRestore, onCance
     }, '保存更改'),
     dirty ? React.createElement(Muted, null, complaint ?? '有未保存的改动') : undefined,
     React.createElement('span', { style: { flex: '1 1 auto' } }),
-    React.createElement(Button, {
-      variant: 'ghost', size: 'sm', icon: React.createElement(IconTrash),
-      style: { color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-      onClick: () => onDelete(event),
-    }, '删除这条日程')))
+    // Deleting takes out every date of the record, so it is asked about here too: the
+    // dialog over one occurrence asks before the same act, and a page that did it on
+    // one click would make the safer path the more roundabout one.
+    confirmingDelete
+      ? React.createElement(React.Fragment, null,
+        React.createElement('span', { style: { fontSize: 13 } }, '确定删除这条日程？'),
+        React.createElement(Button, {
+          variant: 'primary', size: 'sm',
+          style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+          onClick: () => onDelete(event),
+        }, '删除'),
+        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirmingDelete(false) }, '取消'))
+      : React.createElement(Button, {
+        variant: 'ghost', size: 'sm', icon: React.createElement(IconTrash),
+        style: { color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+        onClick: () => setConfirmingDelete(true),
+      }, '删除这条日程')))
 
   const cancelledCard = exceptions.length === 0 ? undefined : React.createElement('section', {
     style: { padding: 16, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)' },
@@ -1158,9 +1366,10 @@ function EventPage({ event, agenda, onOpenOccurrence, onSave, onRestore, onCance
       style: { padding: '6px 12px', background: LAYER, fontSize: 12, color: SECONDARY, position: 'sticky', top: 0 },
     }, monthOf(`${month}-01`)),
     ...items.map((occurrence: any) => React.createElement(EventRow, {
-      key: occurrence.occurrenceId,
+      key: reactKeyOf(occurrence),
       occurrence,
       tint,
+      note: noteIndex?.get(occurrenceKeyOf(occurrence)),
       onOpen: onOpenOccurrence,
       onCancel: (item: any) => onCancel(item),
       onDelete: (item: any) => onDelete(item),
@@ -1192,14 +1401,29 @@ function EventPage({ event, agenda, onOpenOccurrence, onSave, onRestore, onCance
     listCard))
 }
 
-/** The panel: the week, the entry list behind a menu, and the dialogs. */
-function createCalendarPage(service: any) {
+/**
+ * The panel: the week, the entry list behind a menu, and the dialogs.
+ *
+ * Exported so the panel's own wiring can be rendered and driven in a test. The
+ * behaviour that matters here is which host methods are called and what is drawn
+ * from their answers, and that is only testable if the test can mount this rather
+ * than a copy of it.
+ * @param service - the calendar surface, as the shell's gateway exposes it.
+ * @returns the panel component.
+ */
+export function createCalendarPage(service: any) {
   return function CalendarPanel() {
-    const [view, setView] = useState<{ kind: string; id?: string }>({ kind: 'week' })
+    const [view, setView] = useState<{ kind: string; id?: string; source?: string }>({ kind: 'week' })
     const [anchor, setAnchor] = useState(() => startOfWeek())
+    const [displayMode, setDisplayMode] = useState<'week' | 'month'>('week')
+    const [monthAnchor, setMonthAnchor] = useState(() => monthStart(localDate()))
+    const [calendarSource, setCalendarSource] = useState('*')
     const [snapshot, setSnapshot] = useState<any>(null)
     const [week, setWeek] = useState<any>(null)
     const [agenda, setAgenda] = useState<any>(null)
+    // The reader's own content, read from the host and kept apart from the
+    // entries: it belongs to the person, not to any data source.
+    const [noteIndex, setNoteIndex] = useState<Map<string, string>>(() => new Map())
     const [loading, setLoading] = useState(true)
     const [problem, setProblem] = useState<string | null>(null)
     const [toast, setToast] = useState<string | null>(null)
@@ -1209,17 +1433,55 @@ function createCalendarPage(service: any) {
     const [busy, setBusy] = useState(false)
 
     const events = snapshot?.events ?? []
-    const weekRange = { from: anchor, to: addDays(anchor, 6) }
-    const agendaRange = { from: addDays(localDate(), -180), to: addDays(localDate(), 366) }
+    useEffect(() => {
+      if (snapshot && calendarSource !== '*' && !snapshot.events.some((event: any) => event.source === calendarSource)) setCalendarSource('*')
+    }, [snapshot, calendarSource])
+    /**
+     * The ranges the panel reads, held stable for as long as the week they describe.
+     *
+     * These are inputs to the read effects through `refresh`, so a fresh object on
+     * every render would make `refresh` a new function on every render, re-run the
+     * effect that calls it, and re-read and redraw without end. The panel then never
+     * settles on one answer: a class deleted through it stays drawn, because each
+     * pass lays the new answer over the old drawing instead of replacing it.
+     */
+    const weekRange = useMemo(() => displayMode === 'month' ? monthRange(monthAnchor) : ({ from: anchor, to: addDays(anchor, 6) }), [anchor, displayMode, monthAnchor])
+    const currentRange = useRef(weekRange)
+    currentRange.current = weekRange
+    const latestWeekRead = useRef(0)
+    const agendaRange = useMemo(
+      () => ({ from: addDays(localDate(), -180), to: addDays(localDate(), 366) }),
+      [],
+    )
 
     const loadSnapshot = useCallback(async () => { setSnapshot(await service.snapshot()) }, [service])
-    const loadWeek = useCallback(async () => { setWeek(await service.occurrences(weekRange)) }, [service, anchor])
+    const loadWeek = useCallback(async () => {
+      const read = ++latestWeekRead.current
+      const result = await service.occurrences(weekRange)
+      if (read === latestWeekRead.current && currentRange.current === weekRange) setWeek(result)
+    }, [service, weekRange])
     const loadAgenda = useCallback(async () => { setAgenda((await service.occurrences(agendaRange)).occurrences) }, [service, view.id])
+    /**
+     * Read every note once and index it by the identity of the class it is about.
+     * One read covers the week view, the entry page and the dialog, so there is no
+     * path that shows an entry without its note.
+     */
+    const loadNotes = useCallback(async () => {
+      const records = await service.notes({ scope: 'source' })
+      const index = new Map<string, string>()
+      for (const record of records ?? []) {
+        const text = record?.note?.text
+        if (typeof text !== 'string') continue
+        index.set(`${record.source}\u0000${record.uid}\u0000${record.originalStart}`, text)
+      }
+      setNoteIndex(index)
+    }, [service])
 
     const refresh = useCallback(async () => {
       setLoading(true)
       try {
         await loadSnapshot()
+        await loadNotes()
         if (view.kind === 'week') await loadWeek()
         if (view.kind === 'event') await loadAgenda()
         setProblem(null)
@@ -1228,7 +1490,7 @@ function createCalendarPage(service: any) {
       } finally {
         setLoading(false)
       }
-    }, [loadSnapshot, loadWeek, loadAgenda, view.kind])
+    }, [loadSnapshot, loadNotes, loadWeek, loadAgenda, view.kind])
 
     useEffect(() => { void refresh() }, [refresh])
 
@@ -1248,10 +1510,14 @@ function createCalendarPage(service: any) {
       }
     }, [refresh])
 
-    const openEvent = useCallback((uid: string) => {
+    /**
+     * Open one record. Its identifier alone is ambiguous once two sources number
+     * their entries independently, so the source is part of what is opened.
+     */
+    const openEvent = useCallback((uid: string, source?: string) => {
       setDialog(null)
       setMenuOpen(false)
-      setView({ kind: 'event', id: uid })
+      setView({ kind: 'event', id: uid, source })
     }, [])
 
     /** A drag or a double click in the week asks for a new entry over that span. */
@@ -1259,18 +1525,24 @@ function createCalendarPage(service: any) {
       setDialog({ kind: 'create', date, start: clockAt(from), end: clockAt(Math.max(to, from + 15)) })
     }, [])
 
-    const current = view.kind === 'event' ? events.find((event: any) => event.uid === view.id) : undefined
+    const current = view.kind === 'event'
+      ? events.find((event: any) => event.uid === view.id && event.source === view.source)
+      : undefined
     const weekCount = week?.occurrences?.length ?? 0
     /** The week on screen is today's, so an entry started from here means today. */
-    const createDate = anchor === startOfWeek() ? localDate() : anchor
+    const createDate = displayMode === 'month' ? (monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor) : anchor === startOfWeek() ? localDate() : anchor
     const title = view.kind === 'week' ? '我的日历' : (current?.title ?? '日程')
     const subtitle = view.kind === 'week'
-      ? `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条`
-      : [current?.location, current?.source, current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
+      ? displayMode === 'month' ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条`
+      : [current?.location, current?.source === 'manual' ? '个人日程' : current?.source, current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
 
     const menuItems = events.length === 0
       ? [{ type: 'label' as const, id: 'none', text: '还没有日程' }]
-      : events.map((event: any) => ({ id: event.uid, label: event.title, icon: React.createElement(IconClock) }))
+      : events.map((event: any) => ({
+        id: `${event.source}\u0000${event.uid}`,
+        label: `${event.source === 'manual' ? event.title : `${event.title}（${event.source}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ''}`,
+        icon: React.createElement(IconClock),
+      }))
 
     return React.createElement('div', {
       onDragEnter: (event: any) => { if (event.dataTransfer?.types?.includes('Files')) { event.preventDefault(); setDropping(true) } },
@@ -1313,20 +1585,29 @@ function createCalendarPage(service: any) {
     React.createElement('span', { style: { flex: '1 1 auto' } }),
     view.kind === 'week'
       ? React.createElement(React.Fragment, null,
+        React.createElement('div', { role: 'group', 'aria-label': '日历视图', style: { display: 'flex', gap: 2, padding: 3, borderRadius: 10, background: LAYER, marginRight: 6 } },
+          ...(['week', 'month'] as const).map(mode => React.createElement(Button, {
+            key: mode, size: 'sm', variant: displayMode === mode ? 'outline' : 'ghost', 'aria-pressed': displayMode === mode,
+            onClick: () => {
+              if (mode === displayMode) return
+              if (mode === 'month') setMonthAnchor(monthStart(anchor === startOfWeek() ? localDate() : anchor))
+              else setAnchor(startOfWeek(monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor))
+              setDisplayMode(mode)
+            },
+          }, mode === 'week' ? '周' : '月'))),
         React.createElement(Button, {
-          variant: 'outline', size: 'sm', disabled: anchor === startOfWeek(),
-          onClick: () => setAnchor(startOfWeek()),
+          variant: 'outline', size: 'sm',
+          onClick: () => { setAnchor(startOfWeek()); setMonthAnchor(monthStart(localDate())) },
         }, '今天'),
-        React.createElement(Tooltip, { label: '上一周', side: 'bottom' },
-          React.createElement(Button, {
-            variant: 'ghost', size: 'sm', 'aria-label': '上一周', icon: React.createElement(IconChevronLeft),
-            onClick: () => setAnchor(addDays(anchor, -7)),
-          })),
-        React.createElement(Tooltip, { label: '下一周', side: 'bottom' },
-          React.createElement(Button, {
-            variant: 'ghost', size: 'sm', 'aria-label': '下一周', icon: React.createElement(IconChevronRight),
-            onClick: () => setAnchor(addDays(anchor, 7)),
-          })))
+        ...[-1, 1].map(direction => {
+          const label = `${direction < 0 ? '上一' : '下一'}${displayMode === 'month' ? '月' : '周'}`
+          return React.createElement(Tooltip, { key: direction, label, side: 'bottom' },
+            React.createElement(Button, {
+              variant: 'ghost', size: 'sm', 'aria-label': label,
+              icon: React.createElement(direction < 0 ? IconChevronLeft : IconChevronRight),
+              onClick: () => displayMode === 'month' ? setMonthAnchor(shiftMonth(monthAnchor, direction)) : setAnchor(addDays(anchor, direction * 7)),
+            }))
+        }))
       : undefined,
     React.createElement(Button, {
       variant: 'primary', size: 'sm', icon: React.createElement(IconPlus),
@@ -1336,8 +1617,11 @@ function createCalendarPage(service: any) {
       open: menuOpen,
       onClose: () => setMenuOpen(false),
       items: menuItems,
-      selectedId: view.id,
-      onSelect: (id: string) => (events.some((event: any) => event.uid === id) ? openEvent(id) : undefined),
+      selectedId: view.kind === 'event' ? `${view.source}\u0000${view.id}` : undefined,
+      onSelect: (id: string) => {
+        const [source, uid] = String(id).split('\u0000')
+        if (events.some((event: any) => event.uid === uid && event.source === source)) openEvent(uid, source)
+      },
       align: 'end',
       anchor: React.createElement(Button, {
         variant: 'ghost', size: 'sm',
@@ -1359,6 +1643,14 @@ function createCalendarPage(service: any) {
         icon: React.createElement(IconRefresh),
         onClick: () => void refresh(),
       }))),
+    view.kind === 'week' && events.length > 0
+      ? React.createElement('div', { role: 'group', 'aria-label': '筛选日历', style: { display: 'flex', gap: 6, padding: '9px 16px', overflowX: 'auto', flex: '0 0 auto', borderBottom: HAIRLINE } },
+        ...['*', ...new Set(events.map((event: any) => event.source))].map((source: any) => React.createElement(Button, {
+          key: source, size: 'sm', variant: calendarSource === source ? 'outline' : 'ghost', 'aria-pressed': calendarSource === source,
+          onClick: () => setCalendarSource(source), style: { whiteSpace: 'nowrap', borderRadius: 20 },
+        }, source !== '*' ? React.createElement('span', { 'aria-hidden': true, style: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: tintOf(source).accent, marginRight: 6 } }) : undefined,
+        source === '*' ? '全部日历' : source === 'manual' ? '个人日程' : source)))
+      : undefined,
     problem
       ? React.createElement('div', {
         style: {
@@ -1369,47 +1661,35 @@ function createCalendarPage(service: any) {
       React.createElement(IconWarning), problem)
       : undefined,
     view.kind === 'week'
-      ? (events.length === 0 && weekCount === 0 && !loading
-        ? React.createElement('div', { style: { flex: '1 1 auto', display: 'grid', placeItems: 'center', padding: 24 } },
-          React.createElement('div', {
-            style: { maxWidth: 380, padding: 20, borderRadius: 12, border: CARD_BORDER, background: LAYER, textAlign: 'center' },
-          },
-          React.createElement(IconAlarmClock),
-          React.createElement('div', { style: { margin: '8px 0 4px', fontSize: 14, fontWeight: 600 } }, '日历还是空的'),
-          React.createElement(Muted, null, '先新建一条日程，或把从教务系统、其他日历导出的 .ics 文件拖进这个面板。双击时间轴上的空白处也能新建。'),
-          React.createElement('div', { style: { marginTop: 12, display: 'flex', gap: 8, justifyContent: 'center' } },
-            React.createElement(Button, {
-              variant: 'primary', size: 'sm', icon: React.createElement(IconPlus),
-              onClick: () => setDialog({ kind: 'create', date: createDate }),
-            }, '新建日程'),
-            React.createElement(Button, {
-              variant: 'outline', size: 'sm', icon: React.createElement(IconFolderOpen),
-              onClick: () => setDialog({ kind: 'import' }),
-            }, '导入日历'))))
-        : React.createElement(WeekGrid, {
-          anchor,
-          occurrences: week?.occurrences ?? [],
+      ? React.createElement(displayMode === 'month' ? MonthGrid : WeekGrid, {
+          anchor: displayMode === 'month' ? monthAnchor : anchor,
+          tintOf, occurrenceKeyOf,
+          occurrences: (week?.occurrences ?? []).filter((item: any) => calendarSource === '*' || item.source === calendarSource),
+          noteIndex,
           onSelect: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
           onCreate: createAt,
-        }))
+        })
       : React.createElement(EventPage, {
         event: current,
         agenda,
+        noteIndex,
         busy,
         onOpenOccurrence: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
         onSave: (event: any) => run(() => service.putEvent(event), '日程信息已保存'),
-        onRestore: (event: any, date: string) => run(() => service.restoreOccurrence({ uid: event.uid, date }), `已恢复 ${shortDate(date)} 的日程`),
-        onDelete: (event: any) => run(() => service.deleteEvent({ uid: event.uid }), '已删除这条日程')
+        onRestore: (event: any, date: string) => run(() => service.restoreOccurrence({ uid: event.uid, date, source: event.source }), `已恢复 ${shortDate(date)} 的日程`),
+        onDelete: (event: any) => run(() => service.deleteEvent({ uid: event.uid, source: event.source }), '已删除这条日程')
           .then((ok: boolean) => { if (ok) setView({ kind: 'week' }) }),
         onCancel: (occurrence: any) => run(
-          () => service.cancelOccurrence({ uid: occurrence.uid, date: occurrence.occurrenceDate ?? dateOf(occurrence.start) }),
+          () => service.cancelOccurrence({ uid: occurrence.uid, date: occurrence.occurrenceDate ?? dateOf(occurrence.start), source: occurrence.source }),
           `已取消 ${shortDate(occurrence.occurrenceDate ?? dateOf(occurrence.start))} 的日程`,
         ),
       }),
     dialog?.kind === 'event'
       ? React.createElement(EventDialog, {
         occurrence: dialog.occurrence,
-        event: events.find((item: any) => item.uid === dialog.occurrence?.uid),
+        event: events.find((item: any) =>
+      item.uid === dialog.occurrence?.uid && item.source === dialog.occurrence?.source),
+        note: noteIndex.get(occurrenceKeyOf(dialog.occurrence)),
         service,
         run,
         onEdit: openEvent,
@@ -1431,6 +1711,7 @@ function createCalendarPage(service: any) {
       ? React.createElement(ImportDialog, {
         initialText: dialog.text,
         initialName: dialog.name,
+        calendars: [...new Set(events.map((event: any) => event.source).filter((name: any) => name && name !== 'manual'))],
         service,
         run,
         onClose: () => { setDialog(null); void refresh() },
@@ -1497,6 +1778,11 @@ export async function apply(ctx: any) {
       restoreOccurrence: call('restoreOccurrence'),
       deleteEvent: call('deleteEvent'),
       putEvent: call('putEvent'),
+      applySource: call('applySource'),
+      putNote: call('putNote'),
+      removeNote: call('removeNote'),
+      notes: call('notes'),
+      unlinkedNotes: () => unwrap(surface.remote.calendar.unlinkedNotes({})),
     }
     surface.slots.inject('main', () => surface.slots.register(
       { name: 'main', key: PANEL_ID },
