@@ -129,6 +129,12 @@
       "source": "dsh-plugins/activity-insights-native",
       "id": "eduwork-activity-insights-native",
       "name": "@chatecnu-work/dsh-activity-insights-native"
+    },
+    {
+      "root": "core",
+      "source": "dsh-plugins/remote-access",
+      "id": "eduwork-remote-access",
+      "name": "@chatecnu-work/dsh-remote-access"
     }
   ],
   "skills": [

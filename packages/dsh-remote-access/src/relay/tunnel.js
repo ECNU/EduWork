@@ -27,7 +27,34 @@
 
 import { buildRelayTranscript, encodePublicKey, PROTOCOL, signTranscript } from '../channel/crypto.js'
 import { HostHandshake } from '../channel/handshake.js'
+import { RemoteChannel } from '../stream/channel.js'
 import { HOST_PATH, MESSAGE, RELAY_VERSION, UNAVAILABLE } from './protocol.js'
+
+/**
+ * Map a thrown value to the wire failure shape, the way the Gateway's `rpcError`
+ * does.
+ *
+ * Transcribed rather than imported: the Gateway does not expose that mapper through
+ * its `exports` map, and reaching into `lib/types/...` by path would tie this package
+ * to a file layout the Gateway never promised. What the transcription has to keep is
+ * the one property that matters: a `RemoteError` is identified **structurally** and
+ * keeps its own code, so a Host failure arrives at the device as itself rather than
+ * as a generic internal error.
+ */
+function toWireFailure(error) {
+  const remote = error !== null && typeof error === 'object'
+    && error.isDSHRemoteError === true && typeof error.code === 'string'
+    ? error
+    : undefined
+  if (remote !== undefined) {
+    return { code: remote.code, message: remote.message, details: remote.details }
+  }
+  return {
+    code: 'gateway/internal',
+    message: error instanceof Error ? error.message : String(error),
+    details: {},
+  }
+}
 
 /** How long to wait for the relay to answer a registration before retrying. */
 const DEFAULT_TIMEOUT_MS = 15_000
@@ -76,12 +103,25 @@ function toBytes(data) {
  * list, no reason that distinguishes "no such device" from "not confirmed yet"
  * beyond what the operator needs to do about it.
  */
+/**
+ * Why a device or a call was refused.
+ *
+ * The codes are strings, not HTTP statuses, and every one of them becomes the
+ * `code` of a failure envelope. That matters because the device decodes envelopes
+ * with `parseConnectionResponse`, which requires a string `code` and a record
+ * `details` — so a numeric status here is not a stylistic choice, it is an envelope
+ * the device refuses to decode. A refusal that cannot be decoded does not report a
+ * refusal; it reports a transport error, which is the opposite of the point.
+ *
+ * The status that used to live in `code` is kept in `status`, where a caller can
+ * still reach it.
+ */
 export const REFUSAL = Object.freeze({
-  NOT_PAIRED: { code: 401, message: 'this device is not paired with the host' },
-  NOT_TRUSTED: { code: 403, message: 'this device has not been confirmed on the host' },
-  REVOKED: { code: 403, message: 'this device has been revoked' },
-  OPERATION: { code: 403, message: 'this operation is not allowed for this device' },
-  MALFORMED: { code: 400, message: 'the request is not a Host RPC envelope' },
+  NOT_PAIRED: { code: 'remote-access/not-paired', status: 401, message: 'this device is not paired with the host' },
+  NOT_TRUSTED: { code: 'remote-access/not-trusted', status: 403, message: 'this device has not been confirmed on the host' },
+  REVOKED: { code: 'remote-access/revoked', status: 403, message: 'this device has been revoked' },
+  OPERATION: { code: 'remote-access/operation-refused', status: 403, message: 'this operation is not allowed for this device' },
+  MALFORMED: { code: 'remote-access/malformed', status: 400, message: 'the request is not a Host RPC envelope' },
 })
 
 /**
@@ -92,12 +132,24 @@ export const REFUSAL = Object.freeze({
  * refusal went out as `{ok, response}` with no `result` — the device could see
  * that something was wrong but not what, and the whole error path was broken in
  * a way that looked like a test assertion failure.
+ *
+ * The `details` field is not optional. `parseConnectionResponse` requires it to be
+ * a record and refuses the envelope without it, so omitting it turned every refusal
+ * into a transport error at the device — the failure mode this whole family of
+ * defects shares.
  */
 function refuse(id, refusal, detail) {
   return {
     type: 'server-response',
     rpcId: id,
-    result: { ok: false, error: { code: refusal.code, message: detail ?? refusal.message } },
+    result: {
+      ok: false,
+      error: {
+        code: refusal.code,
+        message: detail ?? refusal.message,
+        details: { status: refusal.status },
+      },
+    },
   }
 }
 
@@ -169,6 +221,14 @@ export async function createHostTunnel({
   devices,
   decide,
   dispatch,
+  /**
+   * The Gateway's `wireStream.open`, called as `(endpoint, payload, uplink, peer, signal)`.
+   * Optional: a deployment that only needs unary calls can leave it out, and an `open`
+   * frame then fails the one stream it named rather than the connection.
+   */
+  openStream = async () => {
+    throw new Error('remote-access: this host does not serve Remote streams')
+  },
   onDevice = () => {},
   log = () => {},
   WebSocketImpl = globalThis.WebSocket,
@@ -205,57 +265,73 @@ export async function createHostTunnel({
     return true
   }
 
-  /** Sealed replies are queued per device so two prompts cannot interleave. */
+  /**
+   * Send one already-serialized frame.
+   *
+   * Separate from {@link sendSealed} because the channel produces text, not values:
+   * routing it through a `JSON.stringify` of a string would double-encode it and the
+   * device would open a frame whose payload is the JSON of the JSON it expected.
+   */
+  const sendSealedText = async (text) => {
+    if (session === undefined || socket?.readyState !== 1) return false
+    socket.send(await session.seal(new TextEncoder().encode(text)))
+    return true
+  }
+
+  /**
+   * The channel for the current session, built when the handshake completes.
+   *
+   * One per session, because a session must not outlive the socket it was made on and
+   * neither must the streams it carries. It owns the envelope vocabulary and the
+   * logical-stream frames; the tunnel keeps the socket, the registration and the
+   * decision about who may act.
+   */
+  let channel
+
+  /**
+   * The admission gate, asked once per call and once per stream.
+   *
+   * Deliberately a function rather than a decision made when the channel was built:
+   * the device registry is live, so a device revoked while its socket is up has to be
+   * refused on its next request. Reading the record again here is what makes
+   * revocation an action rather than a note.
+   */
+  const gate = (endpoint) => {
+    const deviceId = session?.deviceId
+    if (deviceId === undefined) return REFUSAL.NOT_PAIRED
+    const device = devices.get(deviceId)
+    const verdict = judgeCall({ device, devices, decide })
+    if (!verdict.allowed) {
+      log(`remote-access: refused ${endpoint} from ${String(deviceId)}: ${verdict.refusal.code}`)
+      return verdict.refusal
+    }
+    const operation = decide(device, endpoint)
+    if (!operation.allowed) {
+      log(`remote-access: refused ${endpoint} for ${String(deviceId)}: ${operation.reason}`)
+      return REFUSAL.OPERATION
+    }
+    return true
+  }
+
+  /** Sealed frames on an established session: calls and logical streams alike. */
   const handleData = async (bytes) => {
-    if (session === undefined) return
-    let plain
+    if (channel === undefined) return
+    let text
     try {
-      plain = await session.open(bytes)
+      text = new TextDecoder().decode(await session.open(bytes))
     } catch (error) {
       // A frame that will not authenticate ends the link. There is nothing to
-      // answer: the sender cannot be trusted to read a reply, and continuing
-      // would mean guessing which side lost sync.
+      // answer: the sender cannot be trusted to read a reply, and continuing would
+      // mean guessing which side lost sync.
       log(`remote-access: dropping a frame that did not authenticate: ${error.message}`)
       closeQuietly(socket, 1002, 'frame did not authenticate')
       return
     }
-
-    const call = readCall(plain)
-    if (call === undefined) {
-      await sendSealed({ type: 'server-response', rpcId: '_', result: { ok: false, error: { code: REFUSAL.MALFORMED.code, message: REFUSAL.MALFORMED.message } } })
-      return
-    }
-
-    const device = devices.get(session.deviceId)
-    const verdict = judgeCall({ device, devices, decide })
-    if (!verdict.allowed) {
-      // Refused here, before dispatch. This is acceptance item one: an
-      // unauthorised device is answered by the Host without its bytes ever
-      // reaching the Host's RPC.
-      log(`remote-access: refused ${call.method} from ${session.deviceId}`)
-      await sendSealed(refuse(call.rpcId, verdict.refusal))
-      return
-    }
-
-    const operation = decide(device, call.method)
-    if (!operation.allowed) {
-      log(`remote-access: refused ${call.method} for ${session.deviceId}: ${operation.reason}`)
-      await sendSealed(refuse(call.rpcId, REFUSAL.OPERATION))
-      return
-    }
-
-    let response
-    try {
-      response = await dispatch({ ...call, device })
-    } catch (error) {
-      log(`remote-access: dispatch failed for ${call.method}: ${error.message}`)
-      response = {
-        type: 'server-response',
-        rpcId: call.rpcId,
-        result: { ok: false, error: { code: 500, message: 'the host failed to handle this call' } },
-      }
-    }
-    await sendSealed(response)
+    // The channel parses and routes; it throws only for a frame that is not JSON,
+    // which the old code answered with a malformed-request refusal. A stream frame
+    // and a call envelope are distinguished there, in one place, rather than by a
+    // second parser here.
+    await channel.receive(text)
   }
 
   const handleHandshake = async (frame) => {
@@ -269,6 +345,27 @@ export async function createHostTunnel({
     session.deviceId = handshake.deviceId
     log(`remote-access: end-to-end channel established with ${String(handshake.deviceId)}`)
     onDevice(handshake.deviceId)
+    // Built here rather than when the socket opened, because the device identity —
+    // and therefore every decision the gate makes — only exists once the handshake
+    // has proved it.
+    channel = new RemoteChannel({
+      dispatchRpc: async (endpoint, payload, signal, peer, rpcId) => {
+        const device = devices.get(session.deviceId)
+        const response = await dispatch({ rpcId, method: endpoint, payload, device, peer, signal })
+        // The relay's dispatcher answers with an envelope because that is what it
+        // hands back to the device. The channel owns the envelope, so only the result
+        // is taken from it; passing the envelope through would nest it twice.
+        return response?.result ?? response
+      },
+      open: (endpoint, payload, uplink, peer, signal) => openStream(endpoint, payload, uplink, peer, signal),
+      failure: (error) => toWireFailure(error),
+      // The channel hands over one complete text frame, already serialized and in the
+      // Gateway's frame vocabulary. Re-parsing it here only to re-seal it would be a
+      // round trip through JSON that can lose and cannot gain.
+      send: async (text) => { await sendSealedText(text) },
+      peer: undefined,
+      gate,
+    })
   }
 
   let handshake
@@ -314,12 +411,43 @@ export async function createHostTunnel({
         log(`remote-access: relay closed the connection (${String(event.code)} ${String(event.reason ?? '')})`)
       }
       session = undefined
+      // The channel dies with its session. Its streams were carried by that socket,
+      // and leaving them open would keep Host methods running for a peer that is gone.
+      //
+      // Closing a channel ends every stream on it, and a stream that fails may surface
+      // its failure synchronously — a Host method's uplink reader, for instance, can be
+      // waiting inside `for await` and see the inbox fail. This runs inside a socket
+      // event handler, where a throw would become an uncaught exception in a callback
+      // that has no caller to report it to, so the teardown is contained and logged
+      // instead. The reconnect below is what matters for the user; a failure while
+      // unwinding streams must not be allowed to skip it.
+      try {
+        channel?.close('the relay link closed')
+      } catch (error) {
+        log(`remote-access: error closing streams after the relay link ended: ${String(error?.message ?? error)}`)
+      }
+      channel = undefined
       scheduleReconnect()
     })
-    current.addEventListener('message', (event) => {
-      void (async () => {
-        try {
-          if (stage.control) {
+    // Inbound frames are taken one at a time, in arrival order.
+    //
+    // A sealed frame has to be decrypted before it can be routed, and decryption is
+    // asynchronous, so handling each message in its own floating task lets two frames
+    // that arrived in order finish out of order. For two independent unary calls that
+    // only reorders replies. For a logical stream it loses data: an `item` routed
+    // before the `open` that created its stream has nothing to join, the value is
+    // discarded, and the Host method waits for something the device already sent.
+    //
+    // This was a real intermittent failure — a stream test failed about one run in
+    // three with a timeout on the uplink — not a theoretical one.
+    //
+    // What is serialised is the *routing*. The reply to a unary call is left un-awaited
+    // so that a slow Host method cannot hold up the frames behind it, because a stream
+    // `cancel` is one of them. See `RemoteChannel.receive`.
+    let inbound = Promise.resolve()
+    const handleMessage = async (event) => {
+      try {
+        if (stage.control) {
             if (typeof event.data !== 'string') return
             const message = JSON.parse(event.data)
             if (message.t === 'challenge') {
@@ -393,11 +521,16 @@ export async function createHostTunnel({
           }
           await handleHandshake(JSON.parse(event.data))
           return
-        } catch (error) {
-          log(`remote-access: ${error.message}`)
-          fail('dropping the link after an error')
-        }
-      })()
+      } catch (error) {
+        log(`remote-access: ${error.message}`)
+        fail('dropping the link after an error')
+      }
+    }
+    current.addEventListener('message', (event) => {
+      // Chained rather than awaited by the listener, which cannot await: the chain is
+      // what gives the frames their order. `handleMessage` contains its own failure, so
+      // this never rejects and the chain cannot stall.
+      inbound = inbound.then(() => handleMessage(event))
     })
   }
 

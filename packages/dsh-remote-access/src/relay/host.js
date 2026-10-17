@@ -162,10 +162,34 @@ export class KernelHost {
    * unambiguous.
    */
   async dispatch({ endpoint, payload, rpcId }) {
-    const failure = (code, message) => ({
+    /**
+     * A failure envelope the device's decoder will accept.
+     *
+     * Two rules, both of which an earlier version of this method broke, and the first
+     * hid the second:
+     *
+     *   - `details` must be present and a record. The old shape was
+     *     `{ code, message }`, which `parseConnectionResponse` refuses outright, so
+     *     every refusal built here reached the device as a transport error rather
+     *     than as the reason the Host had written down.
+     *   - `code` must be a **string**. The old code passed the HTTP status number
+     *     straight through, which the same decoder rejects — and adding `details`
+     *     alone did not fix it, because the failure simply moved to the next check.
+     *     An HTTP status is not a stable failure code: it says how the request was
+     *     answered, not what went wrong, so it becomes a namespaced code with the
+     *     status preserved as a detail.
+     */
+    const failure = (code, message, details = {}) => ({
       type: 'server-response',
       rpcId,
-      result: { ok: false, error: { code, message } },
+      result: {
+        ok: false,
+        error: {
+          code: typeof code === 'string' && code !== '' ? code : 'host/http-error',
+          message,
+          details: typeof code === 'string' && code !== '' ? details : { ...details, status: code },
+        },
+      },
     })
 
     let cookie

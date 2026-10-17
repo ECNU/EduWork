@@ -58,6 +58,29 @@ export function operationForEndpoint(endpoint) {
 }
 
 /**
+ * Endpoints the Gateway itself serves, which carry no Host business method.
+ *
+ * They are not in the operation table because that table is a list of *operations a
+ * device may ask the Host to perform*, and these are not operations. `$events` is the
+ * connection's own generation source: the Gateway opens it when the client mounts and
+ * the Host forwards only the events the application selected for forwarding. Refusing
+ * it does not withhold a capability — it prevents the connection from reaching
+ * `connected` at all, which is why it has to be named here rather than left to the
+ * table.
+ *
+ * Named individually rather than matched by a `$` prefix, and that is deliberate: a
+ * prefix rule would admit every future Gateway-internal endpoint without anyone
+ * looking, which is exactly the review this list exists to force. Adding one means
+ * editing this comment and this set.
+ */
+export const CONNECTION_ENDPOINTS = Object.freeze(new Set([
+  // The forwarded-event stream and its result channel. Both are Gateway-owned; the
+  // result channel is how a client listener answers a Host waterfall.
+  '$events',
+  '$events/result',
+]))
+
+/**
  * Decide one inbound call.
  *
  * The order inside `decide` is the security property, and it is preserved here:
@@ -68,6 +91,14 @@ export function operationForEndpoint(endpoint) {
  * @returns `{ allowed: true, operation, sideEffect }` or `{ allowed: false, reason }`.
  */
 export function decideEndpoint(device, endpoint) {
+  if (typeof endpoint === 'string' && CONNECTION_ENDPOINTS.has(endpoint.trim())) {
+    // Still gated on the device: a connection endpoint is reachable only by a device
+    // the Host trusts. What it skips is the operation lookup, because there is no
+    // operation to look up.
+    const verdict = decide(device, 'session:read')
+    if (!verdict.allowed) return { allowed: false, reason: verdict.reason }
+    return { allowed: true, operation: endpoint.trim(), sideEffect: false }
+  }
   const operation = operationForEndpoint(endpoint)
   if (operation === undefined) {
     // Refused as an unknown operation, not as a mapping miss. A caller that got

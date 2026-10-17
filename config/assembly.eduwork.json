@@ -171,6 +171,10 @@
       "package": "dsh-activity-insights-native"
     },
     {
+      "source": "dsh-plugins/remote-access",
+      "package": "dsh-remote-access"
+    },
+    {
       "source": "dsh-plugins/media-openai",
       "package": "dsh-media-openai"
     }

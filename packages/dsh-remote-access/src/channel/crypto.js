@@ -26,7 +26,17 @@ export const TRANSCRIPT = Object.freeze({
 /** Frame header layout. The header is authenticated as AEAD additional data. */
 export const FRAME = Object.freeze({ VERSION: 0x02, HEADER_BYTES: 11, TAG_BYTES: 16 })
 export const DIRECTION = Object.freeze({ PEER_TO_HOST: 0x01, HOST_TO_PEER: 0x02 })
-export const KIND = Object.freeze({ RPC: 0x01 })
+
+/**
+ * What a frame carries.
+ *
+ * The distinction exists so that one connection can hold two independent streams
+ * whose sequence numbers do not interfere: each `Session` counts its own, so a
+ * frame's sequence only has to be contiguous within its kind. `open()` does not
+ * check this byte on receipt — it is authenticated as part of the header, not
+ * dispatched on — so adding a kind changes nothing about the frame format.
+ */
+export const KIND = Object.freeze({ RPC: 0x01, STREAM: 0x02 })
 
 const subtle = () => {
   const c = globalThis.crypto

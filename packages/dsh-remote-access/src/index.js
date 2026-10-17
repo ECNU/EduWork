@@ -2,6 +2,7 @@ import z from '@deepseek-ai/schemastery'
 
 import { generateIdentity } from './channel/crypto.js'
 import { decideEndpoint } from './channel/operations.js'
+import { probe } from './probe.js'
 import { KernelHost, kernelDispatch } from './relay/host.js'
 import { createHostTunnel } from './relay/tunnel.js'
 import {
@@ -21,10 +22,53 @@ import {
 export const name = 'remote-access'
 export const inject = ['settings']
 
+/**
+ * Module-level markers.
+ *
+ * These exist because a boot that produced no trace was ambiguous: nothing
+ * distinguished "the kernel never imported this module" from "it imported and
+ * `apply` was never called" from "`apply` ran and could not write". Those three have
+ * completely different causes — a loader that skipped the row, a compatibility
+ * preflight that disabled it, and an unwritable directory — and only the last is a
+ * problem with the trace itself.
+ *
+ * Three markers, at three points, in one line each. `module evaluated` is here;
+ * `apply called` is the first line of `apply`; `after settings register` is after the
+ * only step that can throw before the first marker inside `apply` would have been
+ * reached. Where the sequence stops is the diagnosis.
+ */
+try {
+  probe('module evaluated', `inject=${JSON.stringify(inject)} pid=${String(process.pid)}`)
+} catch (error) {
+  // A trace that can stop the module from loading has inverted its own purpose. This
+  // is belt-and-braces: `probe` already swallows everything, and the module still must
+  // not be the thing that breaks the boot.
+  void error
+}
+
 export { DEFAULT_AGENT_SURFACE, DEVICE_STATUS }
 
 /** Settings namespace that durably holds the registry. */
 export const SETTINGS_NAMESPACE = 'eduwork-remote-access'
+
+/**
+ * The spellings this plugin's settings row may be filed under, best first.
+ *
+ * The identifier is not the plugin name: `scripts/assemble-017-source-product.mjs`
+ * writes each distribution plugin's row with the *entry id* from
+ * `config/distributions/generic.json`, and the settings form keys rows by that id.
+ * The profile in front of a running application is not always this repository's, so
+ * the id it was assembled under is not something this file can assume — it is
+ * something it has to look for.
+ *
+ * Ordered so the intended name is tried first and the shorter legacy spelling second,
+ * and read as a list rather than a fallback chain so a third spelling is one entry
+ * rather than another branch.
+ */
+export const SETTINGS_NAMESPACE_CANDIDATES = Object.freeze([
+  SETTINGS_NAMESPACE,
+  'remote-access',
+])
 
 /**
  * Where this Host dials out, and who it claims to be when it gets there.
@@ -47,8 +91,22 @@ export const SettingsSchema = z.object({
   relay: RelaySchema.default({ url: '', hostId: '' }),
 })
 
-// DSH rc.1 needs the volatile wrapper; older hosts do not have it.
-export const Config = typeof z.string.volatile === 'function'
+/**
+ * The editable fields, wrapped for the settings form.
+ *
+ * `typeof z.string().volatile` — note the call — and not `typeof z.string.volatile`.
+ * The two differ by one parenthesis and by the entire feature: `typeof` binds tighter
+ * than `===`, so the second form parses as `typeof (z.string.volatile === 'function')`,
+ * which is the string `'boolean'`, which is never `'function'`. `Config` was therefore
+ * `undefined` on every boot, and an undefined `Config` is not a degraded settings
+ * panel — it is no panel at all, silently, while everything else about the plugin
+ * looks correct.
+ *
+ * The `? :` remains rather than being replaced by a plain call because on a host whose
+ * schemastery predates `volatile()` the correct behaviour is to expose no editable
+ * fields, not to fail the import.
+ */
+export const Config = typeof z.string().volatile === 'function'
   ? z.object(Object.fromEntries(
       Object.entries(SettingsSchema.dict).map(([key, field]) => [key, field.volatile()]),
     ))
@@ -85,13 +143,31 @@ export class DeviceRegistry {
     this.#now = now ?? (() => new Date().toISOString())
   }
 
-  /** Current settings, tolerating hosts that only expose `describe()`. */
+  /**
+   * Current settings, tolerating hosts that only expose `describe()`.
+   *
+   * ## Why the namespace is looked up rather than assumed
+   *
+   * This plugin's settings row is identified by the profile entry id, and the plugin
+   * name is not that id: the profile writes `id: remote-access`, while this file
+   * carried a longer namespace of its own. The settings service keys rows by the id,
+   * so looking up the wrong spelling finds nothing, `baseSettings` falls back to its
+   * defaults, and the registry reports `enabled: false` while the operator's file
+   * plainly says `true` — a plugin that is switched on reading itself as switched off.
+   *
+   * Both spellings are tried, in order, against whatever the service actually serves.
+   * The first that resolves wins; if neither does, the defaults apply and nothing is
+   * dialled, which is the safe direction to fail in.
+   */
   #settings() {
     const { settings } = this.#ctx
-    const value = typeof settings.get === 'function'
-      ? settings.get(SETTINGS_NAMESPACE)
-      : settings.describe().find(row => row.ns === SETTINGS_NAMESPACE)?.value
-    return baseSettings(value ?? {})
+    for (const namespace of SETTINGS_NAMESPACE_CANDIDATES) {
+      const value = typeof settings.get === 'function'
+        ? settings.get(namespace)
+        : settings.describe().find(row => row.ns === namespace)?.value
+      if (value !== undefined && value !== null) return baseSettings(value)
+    }
+    return baseSettings({})
   }
 
   /** Remote access is opt-in; every entry point checks this first. */
@@ -192,15 +268,40 @@ export class DeviceRegistry {
 }
 
 export function apply(ctx, rawConfig = {}) {
+  // The first line of `apply`, deliberately before anything that can throw. Together
+  // with the module-level marker this separates "not imported" from "imported but not
+  // applied" from "applied and then failed".
+  probe('apply called', `rawConfigKeys=${JSON.stringify(Object.keys(rawConfig))}`)
+
   ctx.inject(['settings'], (settingsCtx) => {
-    if (typeof settingsCtx.settings.register !== 'function') return
+    if (typeof settingsCtx.settings.register !== 'function') {
+      probe('settings register skipped', 'the service exposes no register()')
+      return
+    }
     settingsCtx.settings.register(SETTINGS_NAMESPACE, SettingsSchema, {
       base: baseSettings(rawConfig),
     })
+    probe('settings registered', SETTINGS_NAMESPACE)
   })
 
   const registry = new DeviceRegistry({ ctx })
   ctx.provide('remoteAccess', registry)
+  probe('registry provided', `enabled=${String(registry.enabled)} relayUrl=${JSON.stringify(registry.relay.url)} hostId=${JSON.stringify(registry.relay.hostId)}`)
+
+  // Which spellings the settings service actually serves, printed once per boot. The
+  // registry looks the row up by id, and the id is assembled from the distribution
+  // rather than being the plugin name — so this line is what turns the lookup from a
+  // guess into something a trace can confirm.
+  try {
+    const served = typeof ctx.settings?.describe === 'function'
+      ? ctx.settings.describe().map(row => row.ns)
+      : undefined
+    if (served !== undefined) {
+      probe('settings rows', `ours=${String(served.some(ns => SETTINGS_NAMESPACE_CANDIDATES.includes(ns)))} all=${JSON.stringify(served)}`)
+    }
+  } catch (error) {
+    probe('settings rows', `describe threw: ${String(error?.message ?? error)}`)
+  }
 
   startTunnel(ctx, registry)
 
@@ -262,14 +363,33 @@ export function authorityFrom(webServer) {
 }
 
 function startTunnel(ctx, registry) {
-  ctx.inject(['connection'], (connectionCtx) => {
+  // `typertGateway` carries the two entry points a remote carrier needs, and it is a
+  // declared service key rather than an internal — `dsh-tool-cordis`'s catalog lists
+  // `key: 'typertGateway'` with `wireStream` on it. Injecting both means the effect
+  // only runs where there is something to dispatch to.
+  //
+  // `webServer` is in the list because Cordis refuses to read a service the context
+  // did not declare: `connectionCtx.webServer` throws `cannot get property "webServer"
+  // without inject` rather than returning `undefined`. That is what stopped this
+  // tunnel on three consecutive boots, and it was invisible from the outside — the
+  // plugin loaded, registered its settings row, passed both of its guards and then
+  // died on the line that reads the port, with the failure only visible in a trace
+  // this plugin wrote itself.
+  ctx.inject(['connection', 'typertGateway', 'webServer'], (connectionCtx) => {
     connectionCtx.effect(() => {
       // Read live, inside the effect. Checking these before registering it would
       // mean the setting only takes effect after a restart — and an operator who
       // turns remote access on and sees nothing happen will conclude it is broken.
-      if (!registry.enabled) return undefined
+      probe('effect ran', `enabled=${String(registry.enabled)} url=${JSON.stringify(registry.relay.url)} hostId=${JSON.stringify(registry.relay.hostId)}`)
+      if (!registry.enabled) {
+        probe('not dialing', 'remote access is disabled')
+        return undefined
+      }
       const { url, hostId } = registry.relay
-      if (url === '' || hostId === '') return undefined
+      if (url === '' || hostId === '') {
+        probe('not dialing', 'relay url and host id must both be set')
+        return undefined
+      }
 
       let tunnel
       let kernelHost
@@ -280,24 +400,73 @@ function startTunnel(ctx, registry) {
         else console.warn(line)
       }
 
+      /** Sleep, but give up early when the effect has been torn down. */
+      const pause = (ms) => new Promise((resolve) => {
+        const timer = setTimeout(resolve, ms)
+        timer.unref?.()
+      })
+
+      /**
+       * Wait for a value the effect ran too early to see.
+       *
+       * Both of the things this waits for appear *after* `connection`, and the binding
+       * is a value read at this moment rather than a live reference that fills in
+       * later:
+       *
+       *   - `typertGateway` injects `typert`, so it mounts once the registry does. On a
+       *     real boot the effect read it fully empty — `wireStream`, `dispatchRpc` and
+       *     `invoke` all `undefined` — and then dialled with no stream entry point at
+       *     all, which is a tunnel that serves unary calls and silently cannot serve a
+       *     single stream.
+       *   - `webServer` binds its port asynchronously, which is why the port was still
+       *     zero and the tunnel stood down with "no port yet".
+       *
+       * Neither is an error: both are "not yet". Standing down on the first look is
+       * what turned a plugin that was switched on and correctly configured into one
+       * that did nothing on every boot.
+       */
+      const waitFor = async (read, { attempts = 40, intervalMs = 250 } = {}) => {
+        for (let attempt = 0; attempt < attempts; attempt += 1) {
+          if (cancelled) return undefined
+          const value = read()
+          if (value !== undefined) return value
+          await pause(intervalMs)
+        }
+        return undefined
+      }
+
       void (async () => {
         // The authority the Host authenticates as. The kernel mounts its browser
         // transport on the loopback interface and binds the cookie it hands out to
         // this exact string, so it is read from the kernel rather than assembled
         // here — an extra or missing detail produces a 401 three layers down with
         // nothing to point at.
-        const authority = authorityFrom(connectionCtx.webServer)
+        const authority = await waitFor(() => authorityFrom(connectionCtx.webServer))
         if (cancelled) return
         if (authority === undefined) {
           // Not fatal and not always wrong — the effect can run before the web
           // server has bound its port — but it must not be silent, because the
           // other cause is a kernel whose shape has changed.
-          report('remote-access: the web server has no port yet; not dialing out')
+          probe('no authority', 'the web server never reported a port')
+          report('remote-access: the web server never reported a port; not dialing out')
           return
         }
+        probe('authority', authority)
+
+        // Waited for only once the decision to dial is firm, so a disabled or
+        // unconfigured plugin does not sit in this loop.
+        const gateway = await waitFor(
+          () => (typeof connectionCtx.typertGateway?.dispatchRpc === 'function' ? connectionCtx.typertGateway : undefined),
+        )
+        if (cancelled) return
+        probe('gateway service', gateway === undefined
+          ? 'never appeared; streams will be unavailable'
+          : `wireStream=${typeof gateway.wireStream?.open} dispatchRpc=${typeof gateway.dispatchRpc} invoke=${typeof gateway.invoke}`)
+
         kernelHost = new KernelHost({ connection: connectionCtx.connection, authority })
         const identity = await generateIdentity()
         if (cancelled) return
+        probe('dialing', url)
         tunnel = await createHostTunnel({
           url,
           hostId,
@@ -305,18 +474,37 @@ function startTunnel(ctx, registry) {
           devices: liveDevices(registry),
           decide: decideEndpoint,
           dispatch: kernelDispatch(kernelHost),
-          log: (line) => connectionCtx.logger?.info?.(line) ?? console.log(line),
+          /**
+           * The Gateway's own logical-stream entry point, taken from the service the
+           * kernel mounted.
+           *
+           * This is the in-process carrier the Gateway documents: `wireStream.open`
+           * is what its own WebSocket adapter calls, so a stream opened here takes the
+           * same path a browser's would without any of the HTTP machinery in between.
+           * The fallback refuses the one stream that asked rather than failing the
+           * tunnel, because a Host without the gateway can still serve unary calls.
+           */
+          openStream: typeof gateway?.wireStream?.open === 'function'
+            ? (endpoint, payload, uplink, peer, signal) => gateway.wireStream.open(endpoint, payload, uplink, peer, signal)
+            : undefined,
+          log: (line) => {
+            probe('tunnel', line)
+            connectionCtx.logger?.info?.(line) ?? console.log(line)
+          },
         })
+        probe('tunnel returned', `connected=${String(tunnel.connected)}`)
       })().catch((error) => {
         // Without this the promise rejects into the void: a wrong relay URL, a
         // refused handshake or a relay that rejects this host id all look exactly
         // like remote access being switched off.
         if (cancelled) return
+        probe('dial failed', `${error?.name}: ${error?.message}`)
         report(`remote-access: could not reach the relay at ${url}: ${error instanceof Error ? error.message : String(error)}`)
       })
 
       return () => {
         cancelled = true
+        probe('tearing down', 'effect disposed')
         tunnel?.stop()
         // The cookie is a real credential; dropping it on teardown means a Host
         // that stops serving does not keep one lying around in memory.
