@@ -31,6 +31,9 @@
 /** The channel the kernel mounts its browser RPC transport on. */
 const DEFAULT_API_PATH = '/api'
 
+/** How many side-effecting answers are remembered per tunnel. */
+const MAX_REMEMBERED_MUTATIONS = 256
+
 /**
  * Ask the kernel for a browser cookie bound to one authority.
  *
@@ -80,6 +83,8 @@ export class KernelHost {
   #shared
   /** Cached cookie *promise*, so two calls cannot race into two mints. */
   #cookie
+  /** Successful answers to side-effecting calls, keyed by `rpcId`. */
+  #mutations = new Map()
 
   constructor({
     connection,
@@ -154,6 +159,34 @@ export class KernelHost {
   }
 
   /**
+   * Run one call, at most once per `requestId` when it changes something.
+   *
+   * The kernel's `/api` handler executes every request it receives; it does not
+   * remember request ids. A device that loses its connection mid-prompt and
+   * resends the same request (as the protocol says it may) would therefore run the
+   * prompt twice. `rpcId` is the client's stable identity for one logical call, so
+   * remembering the answer here is what turns "the Host does not duplicate side
+   * effects" from a comment into a fact.
+   *
+   * Only successful answers are remembered: a transport failure is not a decision,
+   * and the device must be free to retry it. The map is bounded because a long
+   * session would otherwise keep every prompt it ever ran.
+   */
+  async dispatch(call) {
+    if (call.sideEffect !== true) return this.#run(call)
+    const cached = this.#mutations.get(call.rpcId)
+    if (cached !== undefined) return cached
+    const response = await this.#run(call)
+    if (response?.result?.ok === true) {
+      this.#mutations.set(call.rpcId, response)
+      if (this.#mutations.size > MAX_REMEMBERED_MUTATIONS) {
+        this.#mutations.delete(this.#mutations.keys().next().value)
+      }
+    }
+    return response
+  }
+
+  /**
    * Run one call and return the envelope to seal.
    *
    * The reply is always an envelope, including when the kernel could not be
@@ -161,7 +194,7 @@ export class KernelHost {
    * slow Host, and the whole point of the fence above is that its answers are
    * unambiguous.
    */
-  async dispatch({ endpoint, payload, rpcId }) {
+  async #run({ endpoint, payload, rpcId }) {
     /**
      * A failure envelope the device's decoder will accept.
      *
@@ -248,5 +281,10 @@ export class KernelHost {
  * which is what makes the tunnel testable on its own.
  */
 export function kernelDispatch(host) {
-  return (call) => host.dispatch({ endpoint: call.method, payload: call.payload, rpcId: call.rpcId })
+  return (call) => host.dispatch({
+    endpoint: call.method,
+    payload: call.payload,
+    rpcId: call.rpcId,
+    sideEffect: call.sideEffect,
+  })
 }

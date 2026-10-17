@@ -204,6 +204,7 @@ export class HostHandshake {
   #identity
   #hostId
   #resolveDevice
+  #onUnknownDevice
   #ephemeral = null
   #hostNonce = null
   #transcript = null
@@ -217,11 +218,16 @@ export class HostHandshake {
 
   /**
    * @param options - host identity, host id, and the registry lookup for a device id.
+   * @param options.onUnknownDevice - called with `{ deviceId, publicKey, agreementKey }`
+   *   when a `hello` names a device the registry does not know, so the operator can
+   *   see it and confirm it. It runs before the rejection; whatever it does, the
+   *   handshake still fails. A device is never trusted by having asked.
    */
-  constructor({ identity, hostId, resolveDevice }) {
+  constructor({ identity, hostId, resolveDevice, onUnknownDevice = async () => {} }) {
     this.#identity = identity
     this.#hostId = hostId
     this.#resolveDevice = resolveDevice
+    this.#onUnknownDevice = onUnknownDevice
   }
 
   get session() {
@@ -264,7 +270,23 @@ export class HostHandshake {
         throw fail(HANDSHAKE_FAILURE.PROTOCOL)
       }
       const device = await this.#resolveDevice(hello.deviceId)
-      if (device === undefined) throw fail(HANDSHAKE_FAILURE.DEVICE_UNKNOWN)
+      if (device === undefined) {
+        // A device that was never paired still has to be able to *ask*. Its keys are
+        // handed to the operator as a pending record — never trusted — so the device
+        // can be confirmed on this machine; the handshake still fails below, and
+        // nothing about the device is believed until then.
+        try {
+          await this.#onUnknownDevice({
+            deviceId: hello.deviceId,
+            publicKey: hello.Sh,
+            agreementKey: hello.Xh,
+          })
+        } catch {
+          // The rejection below is the answer either way. A failure to record the
+          // sighting must not turn into a different handshake failure.
+        }
+        throw fail(HANDSHAKE_FAILURE.DEVICE_UNKNOWN)
+      }
       if (device.status === 'revoked') throw fail(HANDSHAKE_FAILURE.DEVICE_REVOKED)
       if (device.publicKey !== hello.Sh || device.agreementKey !== hello.Xh) {
         throw fail(HANDSHAKE_FAILURE.PEER_SIGNATURE)

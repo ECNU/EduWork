@@ -25,6 +25,29 @@ import {
 } from '../src/index.js'
 import { DeviceStore } from '../src/listener.js'
 
+test('Config 已定义，并且键与 SettingsSchema 一致', async () => {
+  // Imported here rather than through the named list above so that this test reads
+  // the very export the settings form reads. It exists because the defect it catches
+  // was invisible in every other way: `Config` was built with
+  // `typeof z.string.volatile === 'function'`, and `typeof` binds tighter than `===`,
+  // so the guard evaluated `typeof false` — the string `'boolean'` — and was never
+  // true. `Config` was `undefined` on every boot, which is not a degraded panel but
+  // no panel, while the plugin registered its namespace and passed every other test.
+  //
+  // A test that restates the guard instead of importing the result would have passed
+  // throughout, which is exactly what happened.
+  const { Config } = await import('../src/index.js')
+
+  assert.notEqual(Config, undefined, 'Config collapsed to undefined; the volatile guard is wrong')
+  assert.deepEqual(Object.keys(Config.dict).sort(), Object.keys(SettingsSchema.dict).sort())
+
+  // And the guard itself, asserted directly: the parenthesis is the whole feature, so
+  // a future edit that drops it fails here rather than in a missing settings panel.
+  const z = (await import('@deepseek-ai/schemastery')).default
+  assert.equal(typeof z.string().volatile, 'function', 'this schemastery has no volatile()')
+  assert.equal(typeof z.string.volatile, 'undefined', 'the un-called form is undefined, which is why it cannot be the guard')
+})
+
 /**
  * A stand-in for the host's settings service.
  *
@@ -48,6 +71,12 @@ function stubHost({ enabled = false, devices = [], relay, withGet = true, withRe
 
   const ctx = {
     ...services,
+    // Reading an optional service is `get`, not `inject`: the credentials store is
+    // used when a host has one, and its absence must not keep the tunnel from
+    // starting. The real container answers this without declaring a dependency.
+    get(name) {
+      return available[name]
+    },
     inject(names, callback) {
       const list = Array.isArray(names) ? names : [names]
       // Presence, not truthiness: a service is an object, so `=== true` would
@@ -155,6 +184,11 @@ test('开着远连、中继地址齐全但 web server 还没端口时，不抛�
         createSharedFetchHandler: () => ({ fetch: async () => new Response('{}') }),
       },
       webServer: { port: 0, host: '127.0.0.1' },
+      // The effect now waits on the Gateway too, because a remote carrier needs the
+      // stream entry point it publishes. An empty object is enough for this test: the
+      // question is whether a portless web server is survived, not whether a stream
+      // can be opened.
+      typertGateway: {},
     },
   })
   assert.doesNotThrow(() => apply(host.ctx))
@@ -179,6 +213,8 @@ test('开着远连但没有中继地址时，不连出也不报错', () => {
         admit: () => ({ peer: {} }),
         createSharedFetchHandler: () => ({ fetch: async () => new Response('{}') }),
       },
+      webServer: { port: 7711, host: '127.0.0.1' },
+      typertGateway: {},
     },
   })
   assert.doesNotThrow(() => apply(host.ctx))
@@ -358,6 +394,38 @@ test('a host without a settings registrar is left alone rather than crashed into
   assert.equal(host.registered.length, 0)
   // The service is still published: the host may register settings itself.
   assert.equal(host.provided.get('remoteAccess'), registry)
+})
+
+test('the row is written under the spelling the host actually serves', async () => {
+  // The real settings service keys rows by the profile entry id, `remote-access`,
+  // while this package's own namespace is `eduwork-remote-access`. Reads already
+  // tried both spellings; writes used only the first, which on that host is a
+  // namespace with no row — so the first `upsert` would throw and pairing could
+  // never record a device. The successful read spelling has to be remembered.
+  const host = stubHost({ enabled: true })
+  host.state['remote-access'] = host.state[SETTINGS_NAMESPACE]
+  delete host.state[SETTINGS_NAMESPACE]
+
+  const registry = apply(host.ctx)
+  await registry.upsert(device('dev-1', '手机'))
+
+  assert.equal(host.updates.at(-1).ns, 'remote-access')
+  assert.deepEqual(host.state['remote-access'].devices.map(entry => entry.deviceId), ['dev-1'])
+})
+
+test('the agreement key survives normalization and confirmation', async () => {
+  // Pairing records this key from the device's `hello`; the handshake compares it
+  // on every reconnect. `normalizeDevice` used to drop it, so the stored record
+  // looked complete and every confirmed device failed with
+  // `peer-signature-invalid` — a failure the tunnel tests could not see because
+  // they hand the handshake a plain map rather than a normalized registry.
+  const host = stubHost({ enabled: true })
+  const registry = apply(host.ctx)
+  await registry.upsert({ deviceId: 'dev-1', name: '手机', publicKey: 'k1', agreementKey: 'a1' })
+
+  assert.equal(registry.find('dev-1').agreementKey, 'a1')
+  await registry.confirm('dev-1')
+  assert.equal(registry.find('dev-1').agreementKey, 'a1', 'confirm must not drop the key the handshake needs')
 })
 
 test('the schema defaults the flag off and rejects a malformed device list', () => {

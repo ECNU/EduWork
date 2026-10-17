@@ -36,6 +36,19 @@ test('closing twice closes the underlying connection once', () => {
   assert.equal(connection.state.closed, 1)
 })
 
+test('detach forgets a connection without closing the transport it shares', () => {
+  // A device that leaves on its own has already closed its side. On the Host the
+  // entry's `connection` is the shared relay socket, so invoking close() here would
+  // disconnect the Host and every other device with it.
+  const live = new LiveConnections()
+  const connection = fakeConnection()
+  const handle = live.open('dev-1', connection)
+  assert.equal(handle.detach(), true)
+  assert.equal(connection.state.closed, 0, 'the transport must not be closed')
+  assert.equal(live.count('dev-1'), 0)
+  assert.equal(handle.detach(), false, 'detaching twice is a no-op')
+})
+
 test('revocation closes every established connection for that device', () => {
   // The acceptance item: refusing later requests is not enough, because an
   // established stream keeps delivering events until it is closed.

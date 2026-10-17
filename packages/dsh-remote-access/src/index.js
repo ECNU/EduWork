@@ -1,7 +1,10 @@
 import z from '@deepseek-ai/schemastery'
 
-import { generateIdentity } from './channel/crypto.js'
+import { adminUrl, registerAdminSurface } from './admin.js'
+import { randomToken } from './channel/crypto.js'
 import { decideEndpoint } from './channel/operations.js'
+import { LiveConnections } from './connections.js'
+import { loadHostIdentity } from './host-identity.js'
 import { probe } from './probe.js'
 import { KernelHost, kernelDispatch } from './relay/host.js'
 import { createHostTunnel } from './relay/tunnel.js'
@@ -137,6 +140,16 @@ function baseSettings(raw = {}) {
 export class DeviceRegistry {
   #ctx
   #now
+  /**
+   * The namespace the row was actually found under.
+   *
+   * The profile entry id is the settings namespace — `remote-access` in this
+   * deployment — while the plugin's own name is `eduwork-remote-access`. Reads try
+   * both; a write has to use the one that exists, or it fails on a namespace with
+   * no row. Remembering the successful spelling is what keeps `upsert` and
+   * `revoke` from writing somewhere the host cannot find.
+   */
+  #namespace
 
   constructor({ ctx, now }) {
     this.#ctx = ctx
@@ -156,8 +169,8 @@ export class DeviceRegistry {
    * plainly says `true` — a plugin that is switched on reading itself as switched off.
    *
    * Both spellings are tried, in order, against whatever the service actually serves.
-   * The first that resolves wins; if neither does, the defaults apply and nothing is
-   * dialled, which is the safe direction to fail in.
+   * The first that resolves wins and is remembered for writes; if neither does, the
+   * defaults apply and nothing is dialled, which is the safe direction to fail in.
    */
   #settings() {
     const { settings } = this.#ctx
@@ -165,9 +178,18 @@ export class DeviceRegistry {
       const value = typeof settings.get === 'function'
         ? settings.get(namespace)
         : settings.describe().find(row => row.ns === namespace)?.value
-      if (value !== undefined && value !== null) return baseSettings(value)
+      if (value !== undefined && value !== null) {
+        this.#namespace = namespace
+        return baseSettings(value)
+      }
     }
     return baseSettings({})
+  }
+
+  /** The row this plugin writes through; see {@link DeviceRegistry.#namespace}. */
+  #settingsNamespace() {
+    this.#settings()
+    return this.#namespace ?? SETTINGS_NAMESPACE
   }
 
   /** Remote access is opt-in; every entry point checks this first. */
@@ -202,7 +224,7 @@ export class DeviceRegistry {
   }
 
   async #persist(registry) {
-    await this.#ctx.settings.update(SETTINGS_NAMESPACE, { devices: registry.devices })
+    await this.#ctx.settings.update(this.#settingsNamespace(), { devices: registry.devices })
     return registry
   }
 
@@ -285,6 +307,9 @@ export function apply(ctx, rawConfig = {}) {
   })
 
   const registry = new DeviceRegistry({ ctx })
+  // One registry across the whole plugin lifetime: a device session that outlives a
+  // settings read must still be closable when the operator revokes it.
+  const connections = new LiveConnections()
   ctx.provide('remoteAccess', registry)
   probe('registry provided', `enabled=${String(registry.enabled)} relayUrl=${JSON.stringify(registry.relay.url)} hostId=${JSON.stringify(registry.relay.hostId)}`)
 
@@ -303,7 +328,7 @@ export function apply(ctx, rawConfig = {}) {
     probe('settings rows', `describe threw: ${String(error?.message ?? error)}`)
   }
 
-  startTunnel(ctx, registry)
+  startTunnel(ctx, registry, connections)
 
   return registry
 }
@@ -362,7 +387,7 @@ export function authorityFrom(webServer) {
   return `${host}:${String(port)}`
 }
 
-function startTunnel(ctx, registry) {
+function startTunnel(ctx, registry, connections) {
   // `typertGateway` carries the two entry points a remote carrier needs, and it is a
   // declared service key rather than an internal — `dsh-tool-cordis`'s catalog lists
   // `key: 'typertGateway'` with `wireStream` on it. Injecting both means the effect
@@ -394,10 +419,33 @@ function startTunnel(ctx, registry) {
       let tunnel
       let kernelHost
       let cancelled = false
+      let disposeAdmin = () => {}
 
       const report = (line) => {
         if (connectionCtx.logger?.warn !== undefined) connectionCtx.logger.warn(line)
         else console.warn(line)
+      }
+
+      const announce = (line) => {
+        if (connectionCtx.logger?.info !== undefined) connectionCtx.logger.info(line)
+        else console.log(line)
+      }
+
+      // The operator's surface: list, confirm, revoke. Served on the kernel's existing
+      // loopback web server rather than a port of our own. The URL contains a per-boot
+      // token and is printed once below — a page nobody can find is the same as no page.
+      const adminToken = randomToken()
+      let adminRegistered = false
+      try {
+        disposeAdmin = registerAdminSurface({
+          webServer: connectionCtx.webServer,
+          token: adminToken,
+          registry,
+          connections,
+        })
+        adminRegistered = true
+      } catch (error) {
+        report(`remote-access: the device page could not be registered: ${error instanceof Error ? error.message : String(error)}`)
       }
 
       /** Sleep, but give up early when the effect has been torn down. */
@@ -452,6 +500,11 @@ function startTunnel(ctx, registry) {
           return
         }
         probe('authority', authority)
+        if (adminRegistered) {
+          const url = adminUrl(authority, adminToken)
+          probe('admin page', url)
+          announce(`remote-access: device page ${url}`)
+        }
 
         // Waited for only once the decision to dial is firm, so a disabled or
         // unconfigured plugin does not sit in this loop.
@@ -464,9 +517,36 @@ function startTunnel(ctx, registry) {
           : `wireStream=${typeof gateway.wireStream?.open} dispatchRpc=${typeof gateway.dispatchRpc} invoke=${typeof gateway.invoke}`)
 
         kernelHost = new KernelHost({ connection: connectionCtx.connection, authority })
-        const identity = await generateIdentity()
+        // The relay binds `hostId` to this key on the first registration and refuses
+        // a different one forever, and every paired device pins it. A fresh identity
+        // per boot would therefore work exactly once. The credential store keeps it;
+        // see `src/host-identity.js` for what happens when the host has none.
+        const { identity, source } = await loadHostIdentity(connectionCtx.get('credentials'), probe)
+        if (source === 'ephemeral') {
+          report('remote-access: no credential store is available; this host identity will not survive a restart')
+        }
         if (cancelled) return
         probe('dialing', url)
+        /**
+         * A device that is not paired yet is still allowed to *ask*: its `hello`
+         * carries the identity it wants to use, and the operator sees it on the device
+         * page. Recording it as pending is not trusting it — the handshake still fails,
+         * and nothing about the device is believed until `confirm` on this machine.
+         *
+         * The cap exists because anyone who learns the host id can reach the relay's
+         * peer endpoint; without a limit that is a way to fill the settings row.
+         */
+        const MAX_PENDING_DEVICES = 16
+        const rememberUnknownDevice = async ({ deviceId, publicKey, agreementKey }) => {
+          const devices = registry.read().devices
+          if (devices.some(device => device.deviceId === deviceId)) return
+          if (devices.filter(device => device.status === DEVICE_STATUS.PENDING).length >= MAX_PENDING_DEVICES) {
+            probe('pending device', 'ignored: too many unconfirmed devices')
+            return
+          }
+          await registry.upsert({ deviceId, name: '待确认设备', publicKey, agreementKey })
+          probe('pending device', deviceId)
+        }
         tunnel = await createHostTunnel({
           url,
           hostId,
@@ -474,6 +554,8 @@ function startTunnel(ctx, registry) {
           devices: liveDevices(registry),
           decide: decideEndpoint,
           dispatch: kernelDispatch(kernelHost),
+          connections,
+          onUnknownDevice: rememberUnknownDevice,
           /**
            * The Gateway's own logical-stream entry point, taken from the service the
            * kernel mounted.
@@ -495,16 +577,17 @@ function startTunnel(ctx, registry) {
         probe('tunnel returned', `connected=${String(tunnel.connected)}`)
       })().catch((error) => {
         // Without this the promise rejects into the void: a wrong relay URL, a
-        // refused handshake or a relay that rejects this host id all look exactly
-        // like remote access being switched off.
+        // refused handshake, an unreadable stored identity or a relay that rejects
+        // this host id all look exactly like remote access being switched off.
         if (cancelled) return
         probe('dial failed', `${error?.name}: ${error?.message}`)
-        report(`remote-access: could not reach the relay at ${url}: ${error instanceof Error ? error.message : String(error)}`)
+        report(`remote-access: the tunnel to ${url} could not start: ${error instanceof Error ? error.message : String(error)}`)
       })
 
       return () => {
         cancelled = true
         probe('tearing down', 'effect disposed')
+        disposeAdmin()
         tunnel?.stop()
         // The cookie is a real credential; dropping it on teardown means a Host
         // that stops serving does not keep one lying around in memory.

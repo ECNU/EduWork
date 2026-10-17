@@ -372,6 +372,31 @@ export function createRelay({
         return
       }
 
+      // A Host may refuse the device it is talking to without giving up its relay
+      // link. Closing the link instead would also drop whatever device the Host is
+      // serving, and anyone who knows the host id could bounce it with one bad
+      // handshake — so this is a control message the relay honours directly.
+      if (isText) {
+        let control
+        try {
+          control = JSON.parse(data)
+        } catch {
+          control = undefined
+        }
+        if (control?.t === 'drop-peer') {
+          const refused = link?.peer
+          if (refused !== undefined) {
+            // Reopen before closing: the peer's own close handler must not report
+            // a departure the Host itself caused.
+            link.reopen()
+            sendControl(refused, { t: 'peer-gone' })
+            refused.close(1008, 'the host refused this device')
+            log(`relay: host ${registered.hostId} refused its device`)
+          }
+          return
+        }
+      }
+
       // Everything after registration but before READY is still the relay's
       // control channel; the link is not transparent yet. See createLink.
       if (!link.hostReady) {
@@ -503,7 +528,15 @@ export function createRelay({
     connection.on('close', () => {
       if (link.peer === connection) {
         link.reopen()
-        link.notify(link.host, { t: 'peer-gone' })
+        // Unconditional, unlike `notify`: a device leaving is exactly what the Host
+        // must hear, and `notify` suppresses control frames to an end that is already
+        // forwarding. Without this the Host keeps the dead session, and the next
+        // device's `hello` is read as sealed traffic — the link then dies.
+        try {
+          sendControl(link.host, { t: 'peer-gone' })
+        } catch {
+          // The Host socket is going away too; its close handler owns that path.
+        }
       }
       log(`relay: a device left ${hostId}`)
     })

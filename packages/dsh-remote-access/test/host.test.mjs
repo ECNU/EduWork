@@ -179,6 +179,53 @@ test('一次调用走完整条路：铸 cookie、POST 到正确端点、拿回�
   ])
 })
 
+test('副作用调用按 requestId 只执行一次，读调用不缓存', async () => {
+  // The kernel's /api handler does not remember request ids, so a device that loses
+  // its connection mid-prompt and resends the same request would run it twice. The
+  // adapter is where "at-most-once by requestId" is actually enforced.
+  const kernel = fakeKernel({ authority: AUTHORITY, handler: okHandler })
+  const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })
+
+  const prompt = { endpoint: 'session/prompt', payload: { args: {} }, rpcId: 'prompt-1', sideEffect: true }
+  const first = await host.dispatch(prompt)
+  const second = await host.dispatch({ ...prompt })
+  assert.deepEqual(second, first)
+  assert.equal(kernel.calls.length, 1, 'the same prompt must not reach the kernel twice')
+
+  await host.dispatch({ ...prompt, rpcId: 'prompt-2' })
+  assert.equal(kernel.calls.length, 2, 'a fresh request id is a fresh call')
+
+  const read = { endpoint: 'session/list', payload: {}, rpcId: 'read-1' }
+  await host.dispatch(read)
+  await host.dispatch({ ...read })
+  assert.equal(kernel.calls.length, 4, 'reads are cheap to repeat and must reflect current state')
+})
+
+test('失败的副作用调用不被记住，设备可以重试', async () => {
+  let attempts = 0
+  const kernel = fakeKernel({
+    authority: AUTHORITY,
+    handler: async (endpoint, payload, rpcId) => {
+      attempts += 1
+      return {
+        type: 'server-response',
+        rpcId,
+        result: attempts === 1
+          ? { ok: false, error: { code: 'gateway/internal', message: 'transient', details: {} } }
+          : { ok: true, value: { endpoint, payload } },
+      }
+    },
+  })
+  const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })
+  const call = { endpoint: 'session/prompt', payload: { args: {} }, rpcId: 'retry-1', sideEffect: true }
+
+  const failed = await host.dispatch(call)
+  assert.equal(failed.result.ok, false)
+  const retried = await host.dispatch({ ...call })
+  assert.equal(retried.result.ok, true, 'a failure is not a decision; the retry must reach the kernel')
+  assert.equal(attempts, 2)
+})
+
 test('payload 原样透传，宿主不解析它', async () => {
   // Parameter names differ per method upstream (`session/create` takes `request`,
   // `session/list` takes `_request`). A Host that parsed this would be asserting a
@@ -213,7 +260,11 @@ test('铸 cookie 失败时返回 500 信封，而不是抛给隧道', async () =
   assert.equal(reply.type, 'server-response')
   assert.equal(reply.rpcId, 'rpc-3')
   assert.equal(reply.result.ok, false)
-  assert.equal(reply.result.error.code, 500)
+  // A string code with the HTTP status kept as a detail. The decoder the device
+  // uses requires a string `code` and a record `details`; a bare numeric status is
+  // neither a stable failure code nor an acceptable envelope.
+  assert.equal(reply.result.error.code, 'host/http-error')
+  assert.deepEqual(reply.result.error.details, { status: 500 })
   assert.match(reply.result.error.message, /cookie/u)
   // And the failure is not cached: a Host that could not authenticate once must
   // be able to try again rather than stay broken for the life of the process.
@@ -261,7 +312,8 @@ test('内核回的不是信封时，转成 500 信封而不是伪装成成功', 
   // The kernel's own words are carried through: the caller is the operator's own
   // device, and a bare 500 would hide the only useful diagnostic.
   assert.match(reply.result.error.message, /handler exploded/u)
-  assert.equal(reply.result.error.code, 500)
+  assert.equal(reply.result.error.code, 'host/http-error')
+  assert.deepEqual(reply.result.error.details, { status: 500 })
 })
 
 test('admit 返回对象，读 rejection 而不是当布尔用', async () => {

@@ -282,6 +282,66 @@ test('设备在宿主 READY 之前发的帧被扣住，READY 一到就补发', a
   }
 })
 
+test('宿主可以只断开一台设备而保留自己的中继连接', async () => {
+  // An unpaired device that cannot finish its handshake must not be able to bounce
+  // the Host: closing the relay link would also drop the device the Host is serving,
+  // and anyone who learns the host id could repeat it. `drop-peer` refuses the peer
+  // and leaves the Host registered.
+  const hostIdentity = await generateIdentity()
+  const hostId = `e2e-drop-${Math.random().toString(36).slice(2, 10)}`
+  const { host, answer } = await registerHost(hostId, hostIdentity)
+  assert.equal(answer.t, 'registered')
+
+  const first = await connect(`${base}/peer?h=${encodeURIComponent(hostId)}`)
+  await first.nextText(message => message.t === 'linked')
+  await host.nextText(message => message.t === 'peer-joined')
+
+  host.sendJson({ t: 'drop-peer' })
+  const refused = await first.nextText(message => message.t === 'peer-gone', 5000)
+  assert.equal(refused.t, 'peer-gone')
+  for (let attempt = 0; attempt < 100 && first.socket.readyState !== 3; attempt += 1) {
+    await new Promise(resolve => setTimeout(resolve, 20))
+  }
+  assert.equal(first.socket.readyState, 3, 'the refused device socket must close')
+
+  // The Host is still registered: a second device attaches to the same link.
+  const second = await connect(`${base}/peer?h=${encodeURIComponent(hostId)}`)
+  try {
+    const linked = await second.nextText(message => message.t === 'linked' || message.t === 'unavailable', 5000)
+    assert.equal(linked.t, 'linked', 'the Host must still be serving after refusing one device')
+    await host.nextText(message => message.t === 'peer-joined', 5000)
+  } finally {
+    second.socket.close()
+    host.socket.close()
+  }
+})
+
+test('设备离开时宿主总能收到 peer-gone，即使链路已经在转发', async () => {
+  // `notify` suppresses control frames to an end that is already forwarding, which is
+  // right for `peer-joined` but wrong for `peer-gone`: the Host must hear that its
+  // device left or it keeps a dead session and parses the next device's hello as
+  // sealed traffic.
+  const hostIdentity = await generateIdentity()
+  const hostId = `e2e-gone-${Math.random().toString(36).slice(2, 10)}`
+  const { host, answer } = await registerHost(hostId, hostIdentity)
+  assert.equal(answer.t, 'registered')
+
+  const peer = await connect(`${base}/peer?h=${encodeURIComponent(hostId)}`)
+  await peer.nextText(message => message.t === 'linked')
+  await host.nextText(message => message.t === 'peer-joined')
+  host.sendJson({ t: 'ready' })
+  peer.sendJson({ t: 'ready' })
+  await new Promise(resolve => setTimeout(resolve, 80))
+
+  peer.socket.close()
+  try {
+    const gone = await host.nextText(message => message.t === 'peer-gone', 5000)
+    assert.equal(gone.t, 'peer-gone')
+  } finally {
+    host.socket.close()
+  }
+})
+
 test('未知 hostId 的设备收到 unavailable，而不是被接到别处', async () => {
   const peer = await connect(`${base}/peer?h=${encodeURIComponent('no-such-host-anywhere')}`)
   try {

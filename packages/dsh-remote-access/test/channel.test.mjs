@@ -22,9 +22,11 @@ import {
   domainSeparate,
   encodeEphemeral,
   encodePublicKey,
+  exportIdentity,
   fromBase64url,
   generateEphemeral,
   generateIdentity,
+  importIdentity,
   signTranscript,
   splitFrame,
   toBase64url,
@@ -274,6 +276,49 @@ test('base64url 编解码无填充且可往返', async () => {
   }
 })
 
+test('未登记设备的 hello 先记录为待确认，再被拒绝', async () => {
+  // The operator can only confirm a device it has seen. The sighting is recorded
+  // before the rejection, and it is recorded as pending — never as trusted.
+  const hostIdentity = await generateIdentity()
+  const peerIdentity = await generateIdentity()
+  const seen = []
+  const host = new HostHandshake({
+    identity: hostIdentity,
+    hostId: 'host-test-1',
+    resolveDevice: async () => undefined,
+    onUnknownDevice: async (hello) => { seen.push(hello) },
+  })
+  const peer = new PeerHandshake({ identity: peerIdentity, deviceId: 'device-new', hostId: 'host-test-1' })
+  const hello = await peer.next(undefined)
+
+  await assert.rejects(() => host.next(hello.send), (error) => {
+    assert.equal(error.reason, HANDSHAKE_FAILURE.DEVICE_UNKNOWN)
+    return true
+  })
+  assert.deepEqual(seen, [{
+    deviceId: 'device-new',
+    publicKey: await encodePublicKey(peerIdentity.signing.publicKey),
+    agreementKey: await encodePublicKey(peerIdentity.agreement.publicKey),
+  }])
+})
+
+test('记录待确认设备失败时，拒绝理由不变', async () => {
+  const hostIdentity = await generateIdentity()
+  const peerIdentity = await generateIdentity()
+  const host = new HostHandshake({
+    identity: hostIdentity,
+    hostId: 'host-test-1',
+    resolveDevice: async () => undefined,
+    onUnknownDevice: async () => { throw new Error('the store is down') },
+  })
+  const peer = new PeerHandshake({ identity: peerIdentity, deviceId: 'device-new', hostId: 'host-test-1' })
+  const hello = await peer.next(undefined)
+  await assert.rejects(() => host.next(hello.send), (error) => {
+    assert.equal(error.reason, HANDSHAKE_FAILURE.DEVICE_UNKNOWN)
+    return true
+  })
+})
+
 test('转录对字段顺序敏感', async () => {
   const base = {
     hostId: 'h',
@@ -293,4 +338,59 @@ test('转录对字段顺序敏感', async () => {
   const separated = domainSeparate(TRANSCRIPT.HELLO, normal)
   assert.notDeepEqual(separated, normal)
   assert.ok(separated.length > normal.length)
+})
+
+test('宿主的长期身份序列化后可以原样读回，签名与协商仍然成立', async () => {
+  // The Host generates this identity once, stores it in the credential vault and
+  // loads it again on every later boot. If the round trip lost either private half,
+  // the relay would see a different key and refuse the host.
+  const identity = await generateIdentity({ extractable: true })
+  const payload = await exportIdentity(identity)
+  const restored = await importIdentity(payload)
+
+  assert.equal(await encodePublicKey(restored.signing.publicKey), await encodePublicKey(identity.signing.publicKey))
+  assert.equal(await encodePublicKey(restored.agreement.publicKey), await encodePublicKey(identity.agreement.publicKey))
+
+  // The private halves must still be the same keys, not just the same public text.
+  const transcript = new TextEncoder().encode('identity round trip')
+  const before = await signTranscript(identity.signing.privateKey, transcript)
+  assert.equal(await verifyTranscript(restored.signing.publicKey, transcript, before), true)
+  const after = await signTranscript(restored.signing.privateKey, transcript)
+  assert.equal(await verifyTranscript(identity.signing.publicKey, transcript, after), true)
+
+  const ephemeral = await generateEphemeral()
+  const fromRestored = await deriveSecret(restored.agreement.privateKey, ephemeral.publicKey)
+  const fromEphemeral = await deriveSecret(ephemeral.privateKey, restored.agreement.publicKey)
+  assert.deepEqual([...fromRestored], [...fromEphemeral], 'the static-static secret must survive the round trip')
+
+  // Imported private keys come back non-extractable: the export happens once,
+  // when the identity is created, and nothing afterwards needs to read it back out.
+  assert.equal(restored.signing.privateKey.extractable, false)
+  assert.equal(restored.agreement.privateKey.extractable, false)
+})
+
+test('公钥与私钥不配对的身份载荷被拒绝', async () => {
+  const one = await generateIdentity({ extractable: true })
+  const two = await generateIdentity({ extractable: true })
+
+  const wrongSigning = await exportIdentity(one)
+  wrongSigning.signing.public = await encodePublicKey(two.signing.publicKey)
+  await assert.rejects(() => importIdentity(wrongSigning), /signing key with the wrong public key/)
+
+  const wrongAgreement = await exportIdentity(one)
+  wrongAgreement.agreement.public = await encodePublicKey(two.agreement.publicKey)
+  await assert.rejects(() => importIdentity(wrongAgreement), /agreement key with the wrong public key/)
+
+  await assert.rejects(() => importIdentity({ version: 2 }), /unsupported shape/)
+  await assert.rejects(() => importIdentity(null), /unsupported shape/)
+  await assert.rejects(() => importIdentity({ version: 1 }), /missing a key/)
+})
+
+test('默认生成的设备身份不可导出', async () => {
+  // A device's private key never leaves the browser; only the Host asks for an
+  // extractable identity, and it passes the option explicitly.
+  const device = await generateIdentity()
+  assert.equal(device.signing.privateKey.extractable, false)
+  assert.equal(device.agreement.privateKey.extractable, false)
+  await assert.rejects(() => exportIdentity(device))
 })

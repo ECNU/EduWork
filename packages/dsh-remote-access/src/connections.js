@@ -59,15 +59,30 @@ export class LiveConnections {
     return {
       deviceId,
       close: () => this.#closeEntry(entry),
+      /**
+       * Forget the entry without closing its connection.
+       *
+       * A device that leaves on its own has already closed its side; calling
+       * `connection.close()` here would close the transport the Host shares with
+       * the relay, dropping every other device with it. Detach is for "this
+       * connection ended", close is for "the operator wants it ended".
+       */
+      detach: () => this.#detachEntry(entry),
     }
   }
 
-  #closeEntry(entry) {
+  #detachEntry(entry) {
     if (entry.closed) return false
     entry.closed = true
     const live = this.#byDevice.get(entry.deviceId)
     live?.delete(entry)
     if (live?.size === 0) this.#byDevice.delete(entry.deviceId)
+    return true
+  }
+
+  #closeEntry(entry) {
+    if (entry.closed) return false
+    this.#detachEntry(entry)
     try {
       entry.connection.close()
     } catch {

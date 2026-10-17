@@ -213,6 +213,10 @@ export function deviceResolver({ devices }) {
  * @param options.decide     `(device, endpoint) => verdict`, from `channel/operations.js`.
  * @param options.dispatch   `({ rpcId, method, payload, device }) => response envelope`.
  * @param options.onDevice   called with a device id the first time it is seen.
+ * @param options.onUnknownDevice - called with a `hello` from a device the registry
+ *   does not know (`{ deviceId, publicKey, agreementKey }`); the handshake still fails.
+ * @param options.connections - `LiveConnections`; a device session is registered there
+ *   so a revocation can close the socket rather than only refuse the next call.
  */
 export async function createHostTunnel({
   url,
@@ -230,6 +234,8 @@ export async function createHostTunnel({
     throw new Error('remote-access: this host does not serve Remote streams')
   },
   onDevice = () => {},
+  onUnknownDevice = async () => {},
+  connections,
   log = () => {},
   WebSocketImpl = globalThis.WebSocket,
   backoffMs = DEFAULT_BACKOFF_MS,
@@ -343,6 +349,29 @@ export async function createHostTunnel({
     // the key recorded when it was paired. Nothing in the frame told us this, and
     // `deviceId` is only available because that check passed.
     session.deviceId = handshake.deviceId
+    // Register the live session so a revocation can close it rather than only
+    // refusing the next call. `open` refuses a device sealed by an earlier
+    // revocation, which closes the race: a socket that finished its handshake just
+    // after the operator pressed revoke loses instead of slipping through.
+    try {
+      liveHandle = connections?.open(session.deviceId, {
+        // Revocation ends the *device* connection, not the Host's relay link: ask
+        // the relay to refuse the peer and drop it. Closing the shared socket here
+        // would also disconnect the Host and interrupt any other device.
+        close: () => {
+          try {
+            socket.send(JSON.stringify({ t: 'drop-peer' }))
+          } catch {
+            // The socket is already gone; the close handler cleans up.
+          }
+          detachPeer('device revoked')
+        },
+      })
+    } catch (error) {
+      log(`remote-access: refusing a session for a revoked device: ${String(error?.message ?? error)}`)
+      closeQuietly(socket, 1008, 'device revoked')
+      return
+    }
     log(`remote-access: end-to-end channel established with ${String(handshake.deviceId)}`)
     onDevice(handshake.deviceId)
     // Built here rather than when the socket opened, because the device identity —
@@ -351,7 +380,19 @@ export async function createHostTunnel({
     channel = new RemoteChannel({
       dispatchRpc: async (endpoint, payload, signal, peer, rpcId) => {
         const device = devices.get(session.deviceId)
-        const response = await dispatch({ rpcId, method: endpoint, payload, device, peer, signal })
+        // The same verdict the gate used, passed down so only a call that changes
+        // something gets the adapter's at-most-once memory. Reads are cheap to repeat
+        // and their answers should reflect the current state.
+        const verdict = decide(device, endpoint)
+        const response = await dispatch({
+          rpcId,
+          method: endpoint,
+          payload,
+          device,
+          peer,
+          signal,
+          sideEffect: verdict?.sideEffect === true,
+        })
         // The relay's dispatcher answers with an envelope because that is what it
         // hands back to the device. The channel owns the envelope, so only the result
         // is taken from it; passing the envelope through would nest it twice.
@@ -369,11 +410,40 @@ export async function createHostTunnel({
   }
 
   let handshake
+  /** The live-connection entry for the device on the current socket, once it has a session. */
+  let liveHandle
   /** Which of the three stages the current socket is in. */
   const stage = { control: true }
 
+  /**
+   * Tear down the device side of the current link without touching the relay socket.
+   *
+   * The socket is shared by every device the Host serves, so it must not be closed
+   * when one device leaves or is revoked. Detaching the live entry, closing the
+   * channel's streams and returning to the control stage is the whole cleanup; the
+   * next `peer-joined` starts a new handshake on the same socket.
+   */
+  const detachPeer = (reason) => {
+    const handle = liveHandle
+    liveHandle = undefined
+    handle?.detach?.()
+    try {
+      channel?.close(reason)
+    } catch (error) {
+      log(`remote-access: error closing streams after ${reason}: ${String(error?.message ?? error)}`)
+    }
+    channel = undefined
+    handshake = undefined
+    session = undefined
+    stage.control = true
+  }
+
   const connect = () => {
     if (stopped) return
+    // A reconnect starts a new session; the old socket's entry must not linger in
+    // the live registry, or a later revocation would try to close something already gone.
+    liveHandle?.detach()
+    liveHandle = undefined
     session = undefined
     stage.control = true
     let opened = false
@@ -404,6 +474,9 @@ export async function createHostTunnel({
     current.addEventListener('error', () => fail('relay connection error'))
     current.addEventListener('close', (event) => {
       clearTimeout(registrationTimer)
+      // The session died with the socket; its live-registry entry must die with it.
+      liveHandle?.detach()
+      liveHandle = undefined
       if (stopped || socket !== current) return
       if (opened && event?.code === 1000) {
         // The relay closed us deliberately and cleanly. Retrying immediately
@@ -447,6 +520,24 @@ export async function createHostTunnel({
     let inbound = Promise.resolve()
     const handleMessage = async (event) => {
       try {
+        // `peer-gone` arrives as text and, once the peer is attached, the relay's
+        // control frame is indistinguishable from a sealed frame by type alone —
+        // whether it lands during the handshake or after the session. Handling it
+        // before the sealed path is what keeps a device disconnect from being read as
+        // a frame that failed to authenticate, which used to drop the Host's whole
+        // relay link and interrupt whatever else it was serving.
+        if (typeof event.data === 'string' && stage.control === false) {
+          let control
+          try {
+            control = JSON.parse(event.data)
+          } catch {
+            control = undefined
+          }
+          if (control?.t === 'peer-gone') {
+            detachPeer('the device left')
+            return
+          }
+        }
         if (stage.control) {
             if (typeof event.data !== 'string') return
             const message = JSON.parse(event.data)
@@ -485,6 +576,7 @@ export async function createHostTunnel({
                 identity,
                 hostId,
                 resolveDevice: deviceResolver({ devices }),
+                onUnknownDevice,
               })
               // Said here, and it has to be: the device will not speak until the
               // Host does, so waiting for its `hello` before announcing the
@@ -498,6 +590,8 @@ export async function createHostTunnel({
             if (message.t === 'peer-gone') {
               // Back to the control stage. A new device runs a new handshake, and
               // reusing the old one would mean two sessions on one key.
+              liveHandle?.detach()
+              liveHandle = undefined
               handshake = undefined
               session = undefined
               stage.control = true
@@ -523,6 +617,23 @@ export async function createHostTunnel({
           return
       } catch (error) {
         log(`remote-access: ${error.message}`)
+        // A device that cannot complete its handshake is a problem with that
+        // device, not with the relay link. Closing the link would also drop a
+        // device the Host is serving, and anyone who knows the host id could
+        // bounce the Host with one bad hello. Ask the relay to refuse just this
+        // peer and go back to waiting for the next one.
+        if (session === undefined && stage.control === false) {
+          liveHandle?.detach()
+          liveHandle = undefined
+          handshake = undefined
+          stage.control = true
+          try {
+            current.send(JSON.stringify({ t: 'drop-peer' }))
+          } catch {
+            // The socket is already gone; the close handler reconnects.
+          }
+          return
+        }
         fail('dropping the link after an error')
       }
     }
@@ -547,6 +658,8 @@ export async function createHostTunnel({
     stop() {
       stopped = true
       clearTimeout(timer)
+      liveHandle?.detach()
+      liveHandle = undefined
       session = undefined
       try {
         socket?.close(1000, 'host is shutting down')

@@ -106,6 +106,13 @@ export function normalizeDevice(raw) {
   return {
     deviceId: requireText(raw.deviceId, 'deviceId'),
     publicKey: requireText(raw.publicKey, 'publicKey'),
+    // Optional rather than required so a registry written by an earlier version
+    // still loads. A record without it cannot complete a handshake, and that
+    // device has to pair again — but losing it silently is what this field is
+    // here to prevent: pairing records it from the device's `hello`, and
+    // normalization dropping it made every confirmed device fail with
+    // `peer-signature-invalid` while the record looked complete.
+    agreementKey: optionalText(raw.agreementKey, 'agreementKey'),
     name: requireText(raw.name, 'name'),
     status,
     surfaces: {

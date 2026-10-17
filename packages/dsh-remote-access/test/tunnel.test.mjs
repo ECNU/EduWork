@@ -18,6 +18,7 @@ import { after, before, test } from 'node:test'
 import { encodePublicKey, generateIdentity } from '../src/channel/crypto.js'
 import { PeerHandshake } from '../src/channel/handshake.js'
 import { decideEndpoint } from '../src/channel/operations.js'
+import { LiveConnections } from '../src/connections.js'
 import { DEVICE_STATUS } from '../src/registry.js'
 import { PEER_PATH } from '../src/relay/protocol.js'
 import { createRelay } from '../src/relay/relay.js'
@@ -180,7 +181,11 @@ async function nextPayloadFrame(link) {
   for (;;) {
     const frame = await link.next()
     if (typeof frame !== 'string') return new Uint8Array(frame)
-    if (JSON.parse(frame).t === 'ready') continue
+    const control = JSON.parse(frame)
+    // `peer-gone` is the relay telling the device its Host refused it; it is a
+    // control message, not handshake traffic. Skipping it is what lets the device
+    // observe the close that follows instead of failing the parse.
+    if (control.t === 'ready' || control.t === 'peer-gone') continue
     return frame
   }
 }
@@ -224,8 +229,18 @@ async function rpc(link, session, message) {
 
 const envelope = (method, rpcId = 'rpc-1') => ({ type: 'client-request', rpcId, method, payload: { args: {} } })
 
+/** Wait for a condition the relay delivers asynchronously, or fail. */
+async function until(predicate, label, { timeoutMs = 3_000 } = {}) {
+  const deadline = Date.now() + timeoutMs
+  for (;;) {
+    if (predicate()) return
+    if (Date.now() > deadline) assert.fail(`${label}: timed out`)
+    await sleep(10)
+  }
+}
+
 /** Start a Host and wait until the relay has it, so a device can attach. */
-async function startHost({ hostId, devices, dispatch, log = () => {}, backoffMs }) {
+async function startHost({ hostId, devices, dispatch, openStream, connections, log = () => {}, backoffMs }) {
   const identity = await generateIdentity()
   const tunnel = await createHostTunnel({
     url: relayUrl,
@@ -234,6 +249,10 @@ async function startHost({ hostId, devices, dispatch, log = () => {}, backoffMs 
     devices,
     decide: decideEndpoint,
     dispatch,
+    // Passed through only when a test supplies one: the option is optional, and a
+    // deployment that serves no streams should get the default that refuses them.
+    ...(openStream === undefined ? {} : { openStream }),
+    ...(connections === undefined ? {} : { connections }),
     log,
     ...(backoffMs === undefined ? {} : { backoffMs }),
   })
@@ -306,7 +325,12 @@ test('门禁之外的调用被拒，而且派发函数一次都没被调用', as
   for (const method of ['workspace/delete', 'device/revoke', 'session/create', 'terminal/open', 'session/nope']) {
     const reply = await rpc(link, session, envelope(method, `rpc-${method}`))
     assert.equal(reply.result.ok, false, `${method} must be refused`)
-    assert.equal(reply.result.error.code, 403, `${method} must be refused as forbidden`)
+    // A string code with the HTTP status kept as a detail. The device decodes with
+    // `parseConnectionResponse`, which refuses a numeric `code` and a missing
+    // `details` — so a refusal in the old shape arrived as a transport error rather
+    // than as the refusal it was.
+    assert.equal(reply.result.error.code, 'remote-access/operation-refused', `${method} must be refused as forbidden`)
+    assert.deepEqual(reply.result.error.details, { status: 403 })
   }
   assert.equal(dispatches, 0, 'a refused call must never reach the dispatcher')
 
@@ -368,10 +392,74 @@ test('设备被撤销后，同一个已建立的会话不再放行调用', async
   device.record.status = DEVICE_STATUS.REVOKED
   const refused = await rpc(link, session, envelope('session/list', 'after'))
   assert.equal(refused.result.ok, false)
-  assert.equal(refused.result.error.code, 403)
+  assert.equal(refused.result.error.code, 'remote-access/revoked')
+  assert.deepEqual(refused.result.error.details, { status: 403 })
   assert.equal(dispatches, 1, 'the revoked call must not reach the dispatcher')
 
   link.socket.close()
+  tunnel.stop()
+})
+
+test('撤销立即关闭设备的活动连接，而不是等它下一次调用', async () => {
+  const hostId = 'host-revoke-closes'
+  const device = await pairedDevice()
+  const devices = new Map([[device.deviceId, device.record]])
+  const connections = new LiveConnections()
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    connections,
+    dispatch: async ({ rpcId }) => ({ type: 'server-response', rpcId, result: { ok: true, value: {} } }),
+  })
+  const link = await dialDevice(hostId)
+  await proveDevice(link, device, hostId)
+  await sleep(80)
+  assert.equal(connections.count(device.deviceId), 1, 'an established session is tracked per device')
+
+  // Revocation closes the socket now. Waiting for the device's next request would
+  // let an open stream keep receiving events after access was withdrawn.
+  device.record.status = DEVICE_STATUS.REVOKED
+  assert.equal(connections.closeAll(device.deviceId), 1)
+
+  for (let attempt = 0; attempt < 100 && link.socket.readyState !== 3; attempt += 1) await sleep(20)
+  assert.equal(link.socket.readyState, 3, 'the device must observe a closed socket, not only a refused call')
+  assert.equal(connections.count(device.deviceId), 0)
+
+  tunnel.stop()
+})
+
+test('设备断开后宿主保持中继连接，下一台设备可直接接入', async () => {
+  const hostId = 'host-peer-gone'
+  const device = await pairedDevice()
+  const devices = new Map([[device.deviceId, device.record]])
+  const logs = []
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    log: line => logs.push(line),
+    dispatch: async ({ rpcId }) => ({ type: 'server-response', rpcId, result: { ok: true, value: {} } }),
+  })
+  const first = await dialDevice(hostId)
+  await proveDevice(first, device, hostId)
+  await sleep(80)
+  assert.equal(tunnel.connected, true)
+
+  // The device leaves. The relay says `peer-gone`; a Host that treats that text
+  // frame as sealed traffic drops its whole relay link and reconnects, interrupting
+  // whatever else it serves. It has to stay registered instead.
+  first.socket.close()
+  await sleep(300)
+  assert.equal(tunnel.connected, true, 'the relay link must survive a device disconnect')
+  assert.equal(logs.some(line => /dropping the link/.test(line)), false)
+  assert.equal(logs.some(line => /relay closed the connection/.test(line)), false,
+    'the host must not close its own relay socket when a device leaves')
+
+  // And the next device attaches to the same link without a reconnect.
+  const second = await dialDevice(hostId)
+  const { session } = await proveDevice(second, device, hostId)
+  const reply = await rpc(second, session, envelope('session/list', 'after-peer-gone'))
+  assert.equal(reply.result.ok, true)
+  second.socket.close()
   tunnel.stop()
 })
 
@@ -434,5 +522,184 @@ test('重放的帧不会被执行第二次，而是断开链路', async () => {
   )
   assert.deepEqual(seen, ['rpc-once'], 'the replayed bytes must not become a second call')
 
+  tunnel.stop()
+})
+
+test('逻辑流穿过中继：ready 帧下行，上行项到达宿主方法', async () => {
+  // The stream half of the carrier, over the real relay. Before this the tunnel only
+  // recognised `client-request` frames, so a logical stream was answered as a
+  // malformed request and the device saw a refusal for something it never asked for.
+  const hostId = 'host-streams'
+  const device = await pairedDevice()
+  const devices = new Map([[device.deviceId, device.record]])
+  const seen = []
+  const opened = []
+  let uplinkFailure
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    dispatch: async () => assert.fail('a stream open must not reach the unary dispatcher'),
+    openStream: async (endpoint, payload, uplink, peer, signal) => {
+      opened.push({ endpoint, payload })
+      // The uplink ends one of two ways: the client half-closes, or the carrier goes
+      // away and the inbox is failed. Only the first is what this test is about, so the
+      // second is recorded on its own rather than appended to `seen` — and it is caught,
+      // because a reader whose only fate is to be failed by a teardown must not turn
+      // that teardown into an unhandled rejection. That rejection was previously
+      // attributed to whichever test happened to be running when the socket closed,
+      // which made this test fail about one run in three with a message about the relay
+      // link instead of about streams.
+      const drained = (async () => {
+        try {
+          for await (const item of uplink) seen.push(item)
+          seen.push('ENDED')
+        } catch (error) {
+          uplinkFailure ??= String(error?.message ?? error)
+        }
+      })()
+      return (async function* () {
+        yield { type: 'ready', clientId: 'c1', host: { home: '/home/host' } }
+        await new Promise(resolve => {
+          if (signal.aborted) resolve()
+          else signal.addEventListener('abort', resolve, { once: true })
+        })
+        // Join the reader before this generator is collected, so a test that finishes
+        // while the carrier is closing cannot leave the rejection dangling.
+        await drained
+      })()
+    },
+  })
+  const link = await dialDevice(hostId)
+  const { session } = await proveDevice(link, device, hostId)
+  await sleep(80)
+
+  // The frame vocabulary is the Gateway's, and `$events` is opened with an empty args
+  // object because that is what the Gateway's own remote-event stream declares.
+  link.socket.send(await session.seal(new TextEncoder().encode(JSON.stringify({
+    type: 'open', streamId: 's1', endpoint: '$events', payload: { args: {} },
+  }))))
+  const first = JSON.parse(frameText(await session.open(await nextPayloadFrame(link))))
+  assert.equal(first.type, 'item')
+  assert.equal(first.streamId, 's1')
+  assert.deepEqual(first.value, { type: 'ready', clientId: 'c1', host: { home: '/home/host' } })
+  assert.deepEqual(opened, [{ endpoint: '$events', payload: { args: {} } }])
+
+  link.socket.send(await session.seal(new TextEncoder().encode(JSON.stringify({
+    type: 'item', streamId: 's1', value: { hello: 'host' },
+  }))))
+  link.socket.send(await session.seal(new TextEncoder().encode(JSON.stringify({
+    type: 'end', streamId: 's1',
+  }))))
+  await until(() => seen.length >= 2, 'the uplink item and its half-close')
+  assert.deepEqual(seen, [{ hello: 'host' }, 'ENDED'])
+  // The half-close above is what should have ended this uplink, not the carrier
+  // failing underneath it. Without this the catch around the reader would happily
+  // absorb a real transport fault and the test would pass for the wrong reason.
+  assert.equal(uplinkFailure, undefined, 'the uplink ended by half-close, not by a transport failure')
+
+  link.socket.close()
+  tunnel.stop()
+})
+
+test('连续发出 open 与 item：顺序必须保住，不能因为解密慢而丢项', async () => {
+  // A regression test for a real intermittent failure, written so that it fails
+  // deterministically rather than one run in three.
+  //
+  // Inbound frames have to be decrypted before they can be routed, and decryption is
+  // asynchronous. When every message was handled in its own floating task, an `item`
+  // could finish decrypting before the `open` that created its stream, find no stream
+  // to join, and be dropped — the Host method then waited for a value the device had
+  // already sent. The fix serialises the routing in the tunnel.
+  //
+  // The distinguishing detail is that nothing here waits for a reply before sending
+  // the next frame: open, item and end leave in one burst, so they are in flight
+  // together and only arrival order can save them.
+  const hostId = 'host-stream-order'
+  const device = await pairedDevice()
+  const devices = new Map([[device.deviceId, device.record]])
+  const seen = []
+  let finished
+  const done = new Promise((resolve) => {
+    finished = resolve
+  })
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    dispatch: async () => assert.fail('a stream open must not reach the unary dispatcher'),
+    openStream: async (endpoint, payload, uplink) => {
+      void (async () => {
+        try {
+          for await (const item of uplink) seen.push(item)
+          seen.push('ENDED')
+        } catch (error) {
+          seen.push(`FAILED ${String(error?.message ?? error)}`)
+        } finally {
+          finished()
+        }
+      })()
+      return (async function* () {
+        yield { type: 'ready', clientId: 'c-order', host: { home: '/home/host' } }
+        await new Promise(() => {})
+      })()
+    },
+  })
+  const link = await dialDevice(hostId)
+  const { session } = await proveDevice(link, device, hostId)
+  await sleep(80)
+
+  // Sealed one after another, sent without waiting for any reply in between. Several
+  // items rather than one, because what makes the defect likely is the number of
+  // decryptions in flight at once: with a single item the misordering only sometimes
+  // happens, and a regression test that only sometimes fails is a coin flip rather
+  // than a guard.
+  const items = [1, 2, 3, 4, 5, 6]
+  for (const frame of [
+    { type: 'open', streamId: 's-order', endpoint: '$events', payload: { args: {} } },
+    ...items.map(n => ({ type: 'item', streamId: 's-order', value: { n } })),
+    { type: 'end', streamId: 's-order' },
+  ]) {
+    link.socket.send(await session.seal(new TextEncoder().encode(JSON.stringify(frame))))
+  }
+
+  await Promise.race([
+    done,
+    sleep(3_000).then(() => assert.fail('the uplink never ended: an item was dropped as unroutable')),
+  ])
+  // Every item arrived, in order, and the half-close came last. A dropped `item`
+  // shows up as a missing element; a reordered pair as the wrong sequence.
+  assert.deepEqual(seen, [...items.map(n => ({ n })), 'ENDED'])
+
+  link.socket.close()
+  tunnel.stop()
+})
+
+test('流端点上的操作围栏同样生效', async () => {
+  // The gate is asked per endpoint, and it is asked for a stream open too. Otherwise
+  // the fence would cover every unary call and no stream, which is the half of the
+  // surface that carries live data.
+  const hostId = 'host-stream-fence'
+  const device = await pairedDevice()
+  const devices = new Map([[device.deviceId, device.record]])
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    dispatch: async () => assert.fail('nothing should be dispatched'),
+    openStream: async () => assert.fail('a refused stream must not reach the dispatcher'),
+  })
+  const link = await dialDevice(hostId)
+  const { session } = await proveDevice(link, device, hostId)
+  await sleep(80)
+
+  // `terminal/open` is outside the operation table, so the fence refuses it.
+  link.socket.send(await session.seal(new TextEncoder().encode(JSON.stringify({
+    type: 'open', streamId: 's1', endpoint: 'terminal/open', payload: { args: {} },
+  }))))
+  const frame = JSON.parse(frameText(await session.open(await nextPayloadFrame(link))))
+  assert.equal(frame.type, 'error')
+  assert.equal(frame.streamId, 's1')
+  assert.equal(frame.error.code, 'remote-access/operation-refused')
+  assert.deepEqual(frame.error.details, { status: 403 })
+
+  link.socket.close()
   tunnel.stop()
 })
