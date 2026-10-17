@@ -164,14 +164,20 @@ async function importPublic(algorithm, text) {
  * force challenge-response onto a raw ECDH comparison, and a single ECDSA pair
  * cannot do key agreement at all.
  *
- * All four private keys are created non-extractable, so a compromised settings
- * file yields nothing but the public halves.
+ * The default keeps all four private keys non-extractable, which is what a device
+ * wants: its identity never leaves the browser. The Host is the one caller that
+ * must pass `extractable: true`, because its long-term identity has to survive a
+ * restart — the relay binds `hostId` to the public key of the first registration
+ * and refuses a different one forever, and a paired device pins that key. Only
+ * {@link exportIdentity} reads the private halves, and the Host stores them in the
+ * credential store; they never enter configuration or a log.
  *
+ * @param options.extractable - whether the private keys can be exported.
  * @returns `{ signing, agreement }`, each `{ publicKey, privateKey }`.
  */
-export async function generateIdentity() {
-  const signing = await subtle().generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign', 'verify'])
-  const agreement = await subtle().generateKey({ name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits'])
+export async function generateIdentity({ extractable = false } = {}) {
+  const signing = await subtle().generateKey({ name: 'ECDSA', namedCurve: 'P-256' }, extractable, ['sign', 'verify'])
+  const agreement = await subtle().generateKey({ name: 'ECDH', namedCurve: 'P-256' }, extractable, ['deriveBits'])
   return { signing, agreement }
 }
 
@@ -200,6 +206,106 @@ export async function decodePublicKey(text, algorithm = 'ECDSA') {
     throw new Error('channel: public key must be a 65-byte uncompressed P-256 point')
   }
   return importPublic(algorithm, text.slice(5))
+}
+
+/**
+ * Serialize a static identity into the payload a credential record holds.
+ *
+ * Only the private half is serialized, and the public half travels beside it
+ * because WebCrypto cannot derive a public key from an EC private key — the
+ * handshake needs both. The result is plain JSON: base64url PKCS#8 for each
+ * private key and the existing `p256:` form for each public key.
+ *
+ * Requires an identity generated with `extractable: true`. A non-extractable one
+ * throws `InvalidAccessError`, which is the right answer for a device key: it must
+ * not be exportable at all.
+ *
+ * @param identity - `{ signing, agreement }` from {@link generateIdentity}.
+ * @returns `{ version: 1, signing: { private, public }, agreement: { private, public } }`.
+ */
+export async function exportIdentity(identity) {
+  const signing = identity?.signing
+  const agreement = identity?.agreement
+  if (signing?.privateKey === undefined || signing?.publicKey === undefined
+    || agreement?.privateKey === undefined || agreement?.publicKey === undefined) {
+    throw new Error('channel: exportIdentity needs signing and agreement key pairs')
+  }
+  return {
+    version: 1,
+    signing: {
+      private: toBase64url(new Uint8Array(await subtle().exportKey('pkcs8', signing.privateKey))),
+      public: await encodePublicKey(signing.publicKey),
+    },
+    agreement: {
+      private: toBase64url(new Uint8Array(await subtle().exportKey('pkcs8', agreement.privateKey))),
+      public: await encodePublicKey(agreement.publicKey),
+    },
+  }
+}
+
+/**
+ * Rebuild a static identity from {@link exportIdentity}'s payload.
+ *
+ * The imported private keys are non-extractable again — the export happened once,
+ * when the identity was created, and nothing in the running process needs to
+ * export it after that. The two key pairs are then checked against each other,
+ * because a record whose public half does not match its private half would
+ * otherwise fail much later as an unexplained signature or decryption error.
+ *
+ * @param payload - the stored payload.
+ * @returns `{ signing, agreement }`, each `{ publicKey, privateKey }`.
+ * @throws when the payload is malformed or its halves do not belong together.
+ */
+export async function importIdentity(payload) {
+  if (payload === null || typeof payload !== 'object' || payload.version !== 1) {
+    throw new Error('channel: identity payload has an unsupported shape')
+  }
+  const signing = payload.signing
+  const agreement = payload.agreement
+  if (typeof signing?.private !== 'string' || typeof signing?.public !== 'string'
+    || typeof agreement?.private !== 'string' || typeof agreement?.public !== 'string') {
+    throw new Error('channel: identity payload is missing a key')
+  }
+  const identity = {
+    signing: {
+      privateKey: await subtle().importKey(
+        'pkcs8', fromBase64url(signing.private), { name: 'ECDSA', namedCurve: 'P-256' }, false, ['sign'],
+      ),
+      publicKey: await decodePublicKey(signing.public, 'ECDSA'),
+    },
+    agreement: {
+      privateKey: await subtle().importKey(
+        'pkcs8', fromBase64url(agreement.private), { name: 'ECDH', namedCurve: 'P-256' }, false, ['deriveBits'],
+      ),
+      publicKey: await decodePublicKey(agreement.public, 'ECDH'),
+    },
+  }
+  await assertIdentityConsistent(identity)
+  return identity
+}
+
+/**
+ * Prove that each stored private key matches the public key stored beside it.
+ *
+ * Signing has a direct check. Agreement has none on its own, so both directions
+ * are derived against one ephemeral key and compared: they can only meet if the
+ * two static halves are the same pair.
+ *
+ * @param identity - imported identity, both pairs.
+ * @throws when a pair does not belong together.
+ */
+async function assertIdentityConsistent(identity) {
+  const transcript = utf8('eduwork-remote-access:identity-check')
+  const signature = await signTranscript(identity.signing.privateKey, transcript)
+  if (!await verifyTranscript(identity.signing.publicKey, transcript, signature)) {
+    throw new Error('channel: identity payload pairs a signing key with the wrong public key')
+  }
+  const ephemeral = await generateEphemeral()
+  const secretFromPrivate = await deriveSecret(identity.agreement.privateKey, ephemeral.publicKey)
+  const secretFromPublic = await deriveSecret(ephemeral.privateKey, identity.agreement.publicKey)
+  if (!bytesEqual(secretFromPrivate, secretFromPublic)) {
+    throw new Error('channel: identity payload pairs an agreement key with the wrong public key')
+  }
 }
 
 /**
