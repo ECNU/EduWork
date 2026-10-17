@@ -1,3 +1,5 @@
+import { join } from 'node:path'
+
 import z from '@deepseek-ai/schemastery'
 
 import { adminUrl, registerAdminSurface } from './admin.js'
@@ -8,6 +10,7 @@ import { loadHostIdentity } from './host-identity.js'
 import { probe } from './probe.js'
 import { KernelHost, kernelDispatch } from './relay/host.js'
 import { createHostTunnel } from './relay/tunnel.js'
+import { exportWebSnapshot } from './web-snapshot.js'
 import {
   DEFAULT_AGENT_SURFACE,
   DEVICE_STATUS,
@@ -442,6 +445,27 @@ function startTunnel(ctx, registry, connections) {
           token: adminToken,
           registry,
           connections,
+          // The remote browser needs the Host's rendered shell, not just the static
+          // dist: the index injections and the client bundles are Host-owned. Taking
+          // the snapshot here keeps the cookie in this process, where it belongs.
+          exportWeb: async () => {
+            const home = process.env.DSH_HOME
+            if (typeof home !== 'string' || home === '') {
+              throw new Error('web snapshot: DSH_HOME is not set in this process')
+            }
+            const authority = authorityFrom(connectionCtx.webServer)
+            if (authority === undefined) throw new Error('web snapshot: the web server has not bound a port yet')
+            return exportWebSnapshot({
+              webServer: connectionCtx.webServer,
+              connection: connectionCtx.connection,
+              authority,
+              directory: join(home, 'remote-access', 'web-snapshot'),
+              log: (line) => {
+                probe('web snapshot', line)
+                announce(line)
+              },
+            })
+          },
         })
         adminRegistered = true
       } catch (error) {

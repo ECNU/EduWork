@@ -39,6 +39,14 @@ export const ENDPOINT_OPERATIONS = Object.freeze({
   'session/page': 'session:read',
   'session/prompt': 'session:prompt',
   'session/cancel': 'session:cancel',
+  // The control stream carries approvals and Agent question prompts, and these two
+  // endpoints are how a paired terminal answers them. They are Agent-surface
+  // actions scoped to the session they name — not host management, and not a way to
+  // reach device pairing or credentials — so they ride on operations the device
+  // already holds.
+  'session/control': 'session:read',
+  'userQuestions/answer': 'session:prompt',
+  'userQuestions/attachWait': 'session:read',
   'workspace/list': 'workspace:list',
   'workspace/read': 'workspace:read',
   'artifact/read': 'artifact:read',

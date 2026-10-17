@@ -353,6 +353,26 @@ test('未知 hostId 的设备收到 unavailable，而不是被接到别处', asy
   }
 })
 
+test('同一把钥匙的新连接替换旧连接，而不是被 host-already-online 拒绝', async () => {
+  // An application restart can begin registering before the relay has processed the
+  // old socket's close. The key is the same, so this is the same Host: replace the
+  // stale connection. The tunnel treats `denied` as final, so a refusal here would
+  // leave the restarted Host permanently offline.
+  const hostIdentity = await generateIdentity()
+  const hostId = `e2e-restart-${Math.random().toString(36).slice(2, 10)}`
+
+  const first = await registerHost(hostId, hostIdentity)
+  assert.equal(first.answer.t, 'registered')
+
+  const second = await registerHost(hostId, hostIdentity)
+  try {
+    assert.equal(second.answer.t, 'registered', JSON.stringify(second.answer))
+  } finally {
+    first.host.socket.close()
+    second.host.socket.close()
+  }
+})
+
 test('同一个 hostId 换一把钥匙注册会被拒', async () => {
   const hostIdentity = await generateIdentity()
   const hostId = `e2e-bound-${Math.random().toString(36).slice(2, 10)}`

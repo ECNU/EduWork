@@ -253,6 +253,15 @@ export function createRelay({
       if (target !== undefined && existsSync(target)) return sendFile(response, target, request.method === 'HEAD')
     }
 
+    // The client bundle combo (`/plugins/??a,b&rev=...`) is a dynamic concatenation,
+    // not a file: the Host builds it per query. A mirrored deployment saves the exact
+    // response under a hash of path + query, which is what the browser will ask for.
+    if (frontendRoot !== undefined && url.pathname === '/plugins/' && url.search !== '') {
+      const key = createHash('sha256').update(`${url.pathname}${url.search}`).digest('hex')
+      const target = join(frontendRoot, 'plugins', 'combo', `${key}.js`)
+      if (existsSync(target)) return sendFile(response, target, request.method === 'HEAD')
+    }
+
     if (frontendRoot !== undefined) {
       const target = resolveStatic(frontendRoot, url.pathname)
       if (target !== undefined && existsSync(target) && extname(target) !== '') {
@@ -353,8 +362,23 @@ export function createRelay({
           return connection.close(1008, 'hostId already bound')
         }
         if (live.has(message.hostId)) {
-          sendControl(connection, { t: 'denied', reason: 'host-already-online' })
-          return connection.close(1008, 'hostId already online')
+          const previous = live.get(message.hostId)
+          if (previous !== undefined && previous !== connection) {
+            // The key matched above, so this is the same Host reconnecting before the
+            // relay noticed the old socket — exactly what an application restart
+            // looks like. Refusing would leave the new instance unregistered for
+            // good, because the tunnel treats `denied` as final.
+            log(`relay: replacing the previous connection for ${message.hostId}`)
+            try {
+              previous.close(1000, 'replaced by a newer registration')
+            } catch {
+              // Already gone; the replacement is what matters.
+            }
+            live.delete(message.hostId)
+          } else {
+            sendControl(connection, { t: 'denied', reason: 'host-already-online' })
+            return connection.close(1008, 'hostId already online')
+          }
         }
         if (existing === undefined) {
           hosts.set(message.hostId, { publicKey: message.publicKey, registeredAt: new Date().toISOString() })

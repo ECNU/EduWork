@@ -245,9 +245,12 @@ button.danger { border-color: #ef4444; color: #ef4444; }
  * @param options.token - per-boot random path segment.
  * @param options.registry - `DeviceRegistry`.
  * @param options.connections - `LiveConnections`, so revoke can close the live socket.
+ * @param options.exportWeb - optional `() => Promise<object>` that takes a snapshot of
+ *   the Host's rendered web shell for the relay. A capability, not a device action:
+ *   it exposes the operator's own page to the operator's own machine.
  * @returns a disposer that removes every route.
  */
-export function registerAdminSurface({ webServer, token, registry, connections }) {
+export function registerAdminSurface({ webServer, token, registry, connections, exportWeb }) {
   const base = `${ADMIN_PATH}/${token}`
   const disposers = []
 
@@ -277,6 +280,21 @@ export function registerAdminSurface({ webServer, token, registry, connections }
     }
     try {
       sendJson(response, 200, snapshot())
+    } catch (error) {
+      sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
+    }
+  })
+
+  // Take a snapshot of the Host's own rendered shell for the relay to mirror. The
+  // page it captures is the operator's own, and the cookie is minted in-process;
+  // this is the one route that writes files, and only under the Host's own home.
+  on(`${base}/export-web`, async (request, response) => {
+    if (request.method !== 'POST') return sendJson(response, 405, { ok: false, error: 'use POST' })
+    if (typeof exportWeb !== 'function') {
+      return sendJson(response, 501, { ok: false, error: 'this host does not export its web shell' })
+    }
+    try {
+      sendJson(response, 200, { ok: true, ...(await exportWeb()) })
     } catch (error) {
       sendJson(response, 500, { ok: false, error: error instanceof Error ? error.message : String(error) })
     }
