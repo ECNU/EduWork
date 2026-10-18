@@ -9,6 +9,7 @@ import { parseArgs } from 'node:util'
 import { stageLegacySettings, importLegacySettings } from '../dsh-host/settings-migration.mjs'
 import { writeNativeProfile, nativePresetPatches } from '../dsh-host/native-profile.mjs'
 import { syncNativeOptionalPresets } from '../dsh-plugins/brand-settings-native/lib/preset-policy.js'
+import { verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, output: { type: 'string' }, source: { type: 'string' }, dependencies: { type: 'string' }, 'full-product': { type: 'boolean' }, serve: { type: 'boolean' } } })
 if (!values.runtime || !values.output) throw new Error('Use --runtime <candidate Runtime> --output <new synthetic directory>')
@@ -23,11 +24,11 @@ const distribution = JSON.parse(await readFile(join(repository, 'config/distribu
 const localPackages = new Map()
 for (const row of [...distribution.plugins, { name: '@chatecnu-work/dsh-skill-control-native', source: 'dsh-plugins/skill-control-native' }]) {
   const root = join(repository, row.source)
-  localPackages.set(row.name, { root, manifest: JSON.parse(await readFile(join(root, 'package.json'), 'utf8')) })
+  const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+  localPackages.set(manifest.name, { root, manifest })
 }
 const receipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-assert.equal(receipt.dshVersion, '0.2.0-rc.2')
-assert.equal(receipt.dshCommit, '639ed015397290b3745d163aafe02ffee4aa3f84')
+verifyPinnedDshReceipt(receipt)
 await mkdir(output)
 const home = join(output, 'home'), profileDir = join(home, 'profiles', 'settings-probe')
 await mkdir(profileDir, { recursive: true })
@@ -57,7 +58,17 @@ registerHooks({ resolve(specifier, context, next) {
     if (typeof target !== 'string') throw new Error(`Unsupported shared service export: ${specifier}`)
     return { url: pathToFileURL(join(artifactRoot, target)).href, shortCircuit: true }
   }
-  if (specifier.startsWith('@deepseek-ai/')) return next(specifier, runtimeContext)
+  if (specifier.startsWith('@deepseek-ai/')) {
+    try { return next(specifier, runtimeContext) }
+    catch (error) {
+      if (!values.dependencies || !['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(error.code)) throw error
+      // Optional official providers live in the separately locked product
+      // dependencies. Core peers must still resolve from the selected Runtime.
+      resolvingFallback = true
+      try { return { url: pathToFileURL(dependenciesRequire.resolve(specifier)).href, shortCircuit: true } }
+      finally { resolvingFallback = false }
+    }
+  }
   try { return next(specifier, context) }
   catch (error) {
     if (!['ERR_MODULE_NOT_FOUND', 'MODULE_NOT_FOUND'].includes(error.code)) throw error
@@ -93,8 +104,12 @@ if (values['full-product']) {
   rows.push({ id: 'local-memory-sqlite', name: '@deepseek-ai/dsh-storage-sqlite', config: { path: join(home, 'memory.sqlite3') } })
   for (const plugin of distribution.plugins) {
     if (['eduwork-brand-settings', 'eduwork-skill-settings', 'eduwork-request-concurrency'].includes(plugin.id)) continue
-    const { root, manifest } = localPackages.get(plugin.name)
-    rows.push({ id: plugin.id, name: pathToFileURL(join(root, manifest.main ?? 'lib/index.js')).href, config: plugin.config ?? {} })
+    const packageName = plugin.name.split('/').slice(0, plugin.name.startsWith('@') ? 2 : 1).join('/')
+    const { root, manifest } = localPackages.get(packageName)
+    const subpath = plugin.name === packageName ? '.' : '.' + plugin.name.slice(packageName.length)
+    const target = manifest.exports?.[subpath] ?? (subpath === '.' ? manifest.main ?? 'lib/index.js' : undefined)
+    if (typeof target !== 'string') throw new Error(`Unsupported product plugin export: ${plugin.name}`)
+    rows.push({ id: plugin.id, name: pathToFileURL(join(root, target)).href, config: plugin.config ?? {} })
   }
 }
 const productPatches = [

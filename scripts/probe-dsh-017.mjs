@@ -5,17 +5,17 @@ import { createHash } from 'node:crypto'
 import { createRequire } from 'node:module'
 import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { validateNpmRuntimeLock } from '../dsh-desktop/scripts/prepare-dsh-runtime.mjs'
+import { pinnedDshDirectory } from './pinned-dsh-contract.mjs'
 
-const repository = fileURLToPath(new URL('../', import.meta.url))
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, output: { type: 'string' } } })
 if (!values.runtime || !values.output) throw new Error('Use --runtime <prepared candidate> --output <new synthetic directory>')
 const runtime = resolve(values.runtime), output = resolve(values.output)
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const hash = bytes => createHash('sha256').update(bytes).digest('hex')
-const contractRoot = join(repository, 'third_party/dsh/candidate-v0.1.7-rc.2')
+const contractRoot = pinnedDshDirectory
 const lock = await json(join(contractRoot, 'LOCK.json'))
 const manifest = await json(join(contractRoot, 'npm-runtime/package.json'))
 const packageLockBytes = await readFile(join(contractRoot, 'npm-runtime/package-lock.json'))
@@ -97,7 +97,8 @@ try {
 
   const { Context } = await load('@deepseek-ai/cordis')
   const { SessionId } = await load('@deepseek-ai/dsh-session')
-  const { default: Persistence } = await load('@deepseek-ai/dsh-session-persistence-jsonl')
+  const persistenceModule = await load('@deepseek-ai/dsh-session-persistence-jsonl')
+  const Persistence = persistenceModule.default ?? persistenceModule
   report.sessions = []
   for (const corrupt of [false, true]) {
     const name = corrupt ? 'corrupt-log-refusal' : 'v3-extension-preservation'

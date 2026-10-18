@@ -65,7 +65,10 @@ test('real Host follows optional Shared attachment, provider/credential changes,
   let available = false
   let deferred
   class SharedFixture extends Service {
-    officeSkill(skill) {return skill?.name==='artifact-documents'?{...skill,content:'Shared official workflow\n'+skill.content}:skill}
+    officeProvider(delegate) {return {name:delegate.name,list:options=>delegate.list(options),async get(candidate,options){
+      const skill=await delegate.get(candidate,options)
+      return candidate.source==='bundled'&&skill?.name==='artifact-documents'?{...skill,content:'Shared official workflow\n'+skill.content}:skill
+    }}}
     constructor(scope) {
       super(scope, 'artifactServices')
       this.images = { list: async () => {

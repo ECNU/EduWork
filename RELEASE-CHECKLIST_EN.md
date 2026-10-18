@@ -2,7 +2,7 @@
 
 [简体中文](RELEASE-CHECKLIST.md)
 
-The desktop build recipe pins DSH `0.2.0-rc.2`. Public and institutional editions reuse the common product and Electron recipe. GitHub CI checks source, locked dependencies, ZIP integrity and actual startup. Real models, sign-in/restart, Office, media and upgrades receive local acceptance appropriate to the change; receipts record only checks actually performed.
+The desktop build uses the pinned DSH combination selected by the [build recipe](config/desktop-build.json); the selected lock and assembly receipt identify the exact version. Public and institutional editions reuse the common product and Electron recipe. GitHub CI checks source, locked dependencies, ZIP integrity and actual startup. Real models, sign-in/restart, Office, media and upgrades receive local acceptance appropriate to the change; receipts record only checks actually performed.
 
 Before a release, verify:
 

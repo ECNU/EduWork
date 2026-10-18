@@ -14,6 +14,9 @@ test('first stable reuses Alpha data without combining two existing macOS homes'
   assert.equal(both.home, join(appData, 'example-electron/dsh'))
   const future = desktopPaths({ ...options, settings: { ...settings, productVersion: '1.0.0' }, exists: path => path.endsWith('example-electron-alpha') })
   assert.equal(future.home, alphaOnly.home)
+  const dev = { ...options, settings: { ...settings, productVersion: '0.4.4-dev.20261016.1' } }
+  assert.equal(desktopPaths({ ...dev, exists: () => true }).home, both.home)
+  assert.equal(desktopPaths({ ...dev, exists: path => path.endsWith('example-electron-alpha') }).home, alphaOnly.home)
 })
 
 test('macOS mutable paths and both editions use the user config directory, including older publisher metadata', () => {

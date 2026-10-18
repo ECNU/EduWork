@@ -31,6 +31,10 @@ Windows 使用 `dsh-electron/src/portable-updates.mjs` 调用共用更新辅助�
 
 ## GitHub 配置与默认值
 
+设置页的「启用软件更新」决定是否检查、下载软件更新，正式版和开发版均默认开启。关闭后会记住选择，重启和升级不会重新开启；配置与 Skills 的签名内容更新仍独立运行。更新渠道可另外选择，重新开启软件更新时沿用原来的来源和渠道。正在检查、下载或已有待安装包时，先完成当前更新再修改开关。
+
+macOS 的「自动下载，退出时安装」是开启软件更新后的附加选项。关闭该附加选项仍会检查新版本并提示，由用户决定下载；关闭「启用软件更新」才会停止软件更新检查。
+
 公版无需额外配置。要显式选择 GitHub，可在 `config/eduwork.jsonc` 中写入：
 
 ```json
@@ -41,7 +45,7 @@ Windows 使用 `dsh-electron/src/portable-updates.mjs` 调用共用更新辅助�
 }
 ```
 
-`repository` 只接受 `owner/repo`，不接受 URL 或 Token。`updates` 中省略来源时使用随包默认值；旧安装的有效 `config/update.bridge.json` 优先于新的随包默认源。显式 `manifestURL` 切换到静态源；显式 `provider: github` 切回 GitHub。两种来源不要混填。`provider: disabled` 关闭在线检查。修改后从托盘退出并重新启动。
+`repository` 只接受 `owner/repo`，不接受 URL 或 Token。`updates` 中省略来源时使用随包默认值；旧安装的有效 `config/update.bridge.json` 优先于新的随包默认源。显式 `manifestURL` 切换到静态源；显式 `provider: github` 切回 GitHub。两种来源不要混填。来源配置修改后从托盘退出并重新启动。旧配置的 `provider: disabled` 在首次使用新开关时视为关闭；之后以界面保存的选择为准，重新开启时复用保留的来源或随包可信来源。开关保存在独立的软件更新偏好文件中，不改写用户的更新源配置。
 
 GitHub 公测渠道通过 `/repos/{owner}/{repo}/releases/latest` 读取非 prerelease 的 `vX.Y.Z`。开发渠道同时读取 Release 列表，接收标为 prerelease 的 `vX.Y.Z-dev.YYYYMMDD.N`，与公测候选按 SemVer 比较取较新者。列表分页读取，超过 200 个记录时提示发行方归档，不悄悄选取不完整结果。草稿、其他格式标签、错误发行/平台/壳、错误大小或摘要都不能作为更新；所有来源均不降级。
 

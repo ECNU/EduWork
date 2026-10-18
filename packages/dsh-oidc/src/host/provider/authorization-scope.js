@@ -9,6 +9,10 @@ export class AuthorizationScopedAdapter {
   providerInfo(provider) { return this.inner.providerInfo(provider) }
   providerRetryPolicy(provider) { return this.inner.providerRetryPolicy(provider) }
   imageRequestPricing(provider, model) { return this.inner.imageRequestPricing(provider, model) }
+  imageRequestTarget(provider, model, image) {
+    return this.inner.imageRequestTarget?.(provider, model, image)
+      ?? { width: image.width, height: image.height, maxBytes: image.bytes }
+  }
   listModels(provider) { return this.inner.listModels(provider) }
   resolveModel(provider, model, signal) { return this.inner.resolveModel(provider, model, signal) }
 

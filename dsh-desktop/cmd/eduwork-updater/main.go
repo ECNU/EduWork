@@ -179,7 +179,9 @@ func run(args []string) error {
 		default:
 			err = fmt.Errorf("unsupported desktop action")
 		}
-		result := map[string]any{"id": request.ID, "status": manager.Status()}
+		status := manager.Status()
+		status.Busy = busy.Load()
+		result := map[string]any{"id": request.ID, "status": status}
 		if err != nil {
 			result["error"] = err.Error()
 		}

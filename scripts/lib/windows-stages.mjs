@@ -109,7 +109,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
           version,
         })
         if (recipe === 'pinned-source') {
-          if (!developmentVersion) await buildTransitionLaunchers(candidate, coreRoot)
+          if (workspace.parameters.forUpdate) await buildTransitionLaunchers(candidate, coreRoot)
         } else {
           await annotateCandidate({ candidate, coreRoot, name: edition, version, development, developmentVersion })
         }
@@ -118,7 +118,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
           candidate,
           output: join(candidateRoot, asset),
           development: developmentVersion,
-          forUpdate: workspace.parameters.forUpdate && !developmentVersion,
+          forUpdate: workspace.parameters.forUpdate,
         }))
       },
     }),
@@ -224,7 +224,7 @@ async function acceptWindows({ workspace, coreRoot }) {
       target: desktop, publishDirectory: extractorPublish,
     })
   }
-  await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, ...(!desktopVersion(workspace.parameters.version).prerelease ? ['--for-update'] : [])])
+  await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, ...(workspace.parameters.forUpdate ? ['--for-update'] : [])])
   await run(join(desktop, 'resources/runtime/node.exe'), [
     join(coreRoot, 'scripts/check-desktop-runtimes.mjs'), desktop, join(evidence, 'native-runtimes.json'),
   ]).catch(() => { throw new Error('Packaged native runtime smoke check failed') })
@@ -320,6 +320,7 @@ async function acceptWindows({ workspace, coreRoot }) {
   const checks = {
     desktopLaunch: 'passed',
     archiveManifest: 'passed',
+    ...(workspace.parameters.forUpdate ? { updateContract: 'passed' } : {}),
     nativeRuntimes: 'passed',
     ...(portableExtractor ? { portableExtractor: 'passed' } : {}),
     asset: { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
@@ -386,7 +387,7 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   delete receipt.checks.portableExtractorAssets
   await writeJSON(join(publish, 'release-receipt.json'), receipt)
   // Other institutions publish their own update feeds from the release receipt.
-  if (!development && !desktopVersion(version).prerelease && ['EduWork', 'EduWork-ECNU'].includes(name)) {
+  if (!development && ['EduWork', 'EduWork-ECNU'].includes(name)) {
     await copyFileTo(join(editionRoot, releaseNotesFile), join(publish, 'RELEASE-NOTES.md'))
     await runNode(join(coreRoot, 'scripts/github-update-manifest.mjs'), [join(publish, 'release-receipt.json'), `ecnu/${name}`])
       .catch(() => { throw new Error('GitHub update manifest generation failed') })

@@ -14,7 +14,7 @@ import {installProductHost} from '../dsh-host/install-product-host.mjs'
 import {windowsDeltaName} from '../scripts/windows-update-delta.mjs'
 import {ZipWriter} from '../scripts/lib/zip.mjs'
 const context={repository:'ECNU/EduWork',version:'0.3.0',commit:'a'.repeat(40)}
-const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
+const receipt={schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',automaticUpdates:true,passed:true,version:'0.3.0',edition:'EduWork',shell:'electron',platform:'windows-x64',coreCommit:'d'.repeat(40),editionCommit:context.commit,checks:Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor','updateContract'].map(key=>[key,'passed'])),asset:{name:'EduWork-0.3.0-windows-x64-electron.zip',bytes:1024,sha256:'b'.repeat(64)}}
 function extractorFiles(edition,version) {return {asset:{name:`${edition}-${version}-windows-x64-setup.zip`,bytes:2048,sha256:'e'.repeat(64)},receipt:{name:`${edition}-${version}-windows-x64-setup.zip.json`,bytes:512,sha256:'f'.repeat(64)}}}
 receipt.portableExtractor=extractorFiles('EduWork',receipt.version)
 receipt.releaseNotes={approved:true,sha256:'c'.repeat(64)}
@@ -84,7 +84,7 @@ test('Windows publish stage keeps institution artifacts without inventing an ECN
    const receiptBase={schemaVersion:1,kind:development?'eduwork-windows-development':'eduwork-windows-release',edition:name,version,shell:'electron',platform:'windows-x64'}
    await windowsStages({coreRoot,receiptBase,recipe}).find(stage=>stage.name==='publish').run(workspace)
    const files=await readdir(join(root,'publish'))
-   const expectedManifest=version==='0.4.3' && name!=='ExampleCampus'
+   const expectedManifest=!development && name!=='ExampleCampus'
    assert.equal(files.includes('update-windows-amd64.json'),expectedManifest)
    assert.equal(files.includes('RELEASE-NOTES.md'),!development)
    assert.equal(files.includes(extractor.asset.name),!development)

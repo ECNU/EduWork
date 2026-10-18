@@ -117,7 +117,7 @@ export async function ciEduworkWindowsRelease({
     coreRoot,
     recipe,
     sourceIdentity,
-    automaticUpdates: !desktopVersion(version).prerelease,
+    automaticUpdates: desktopVersion(version).automaticUpdates,
     verifyPublisherBootstrap: sourcePlan?.verifyPublisherBootstrap ?? false,
     deltaBases: bases,
   }
@@ -138,7 +138,7 @@ export async function ciEduworkWindowsRelease({
     sourceVersion: source.version,
     recipe,
     sourceIdentity,
-    automaticUpdates: !desktopVersion(version).prerelease,
+    automaticUpdates: desktopVersion(version).automaticUpdates,
     coreCommit: sourceIdentity.core.commit,
     editionCommit: sourceIdentity.edition.commit,
   }

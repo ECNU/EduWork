@@ -20,10 +20,8 @@ export function adaptNativeFileReferenceUI(source) {
   replace('clipboardText: this.__clipboardText,', 'fileBytes: this.__fileBytes,\nclipboardText: this.__clipboardText,')
   replace('clipboardText: chip.getTextContent(),', 'fileBytes: chip.getLatest().__fileBytes,\nclipboardText: chip.getTextContent(),')
   replace('clipboardText: occurrence.clipboardText', 'fileBytes: occurrence.fileBytes,\nclipboardText: occurrence.clipboardText')
-  // An asynchronous reference-decoration rescan dirties multiple text nodes.
-  // It must not insert a no-op history entry after the actual file removal.
-  const rescan = 'function rescanTextRefs(editor) {\n\t\t\teditor.update(() => {\n\t\t\t\tfor (const node of nl().getAllTextNodes()) node.markDirty();\n\t\t\t});\n\t\t}'
-  replace(rescan, rescan.replace('\n\t\t\t});', '\n\t\t\t}, { tag: "history-merge" });'))
+  // Upstream 0.2.1 merges reference-decoration rescans into Lexical history.
+  // Keep that implementation instead of carrying our previous backport.
   replace('decorate() {\n\t\t\t\treturn (0, react_jsx_runtime.jsx)(ReferenceChip, {', `decorate(editor) {
         return (0, react_jsx_runtime.jsx)(ReferenceChip, {
           editor,

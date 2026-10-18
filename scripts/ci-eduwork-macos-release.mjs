@@ -103,7 +103,7 @@ export async function ciEduworkMacosRelease({
     coreRoot,
     recipe,
     sourceIdentity,
-    automaticUpdates: !desktopVersion(version).prerelease,
+    automaticUpdates: desktopVersion(version).automaticUpdates,
   }
 
   // The publish stage writes the final receipt, so it needs everything that
@@ -124,7 +124,7 @@ export async function ciEduworkMacosRelease({
     sourceSnapshotVerified: verifySnapshot,
     recipe,
     sourceIdentity,
-    automaticUpdates: !desktopVersion(version).prerelease,
+    automaticUpdates: desktopVersion(version).automaticUpdates,
     coreCommit: sourceIdentity.core.commit,
     editionCommit: sourceIdentity.edition.commit,
   }

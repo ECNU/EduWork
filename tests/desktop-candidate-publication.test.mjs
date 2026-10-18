@@ -21,14 +21,14 @@ async function fixture(platform, context = globalContext) {
     if (sidecar) await writeFile(join(directory, name + '.sha256'), `${meta.sha256}  ${name}\n`)
     return meta
   }
-  const receipt = {schemaVersion: 1, kind: desktopVersion(context.version).prerelease ? 'eduwork-source-alpha' : 'eduwork-source-release', edition: context.product, version: context.version, distribution: context.distribution, coreCommit: context.coreCommit, editionCommit: context.editionCommit, platform, shell: 'electron', passed: true, automaticUpdates: !desktopVersion(context.version).prerelease, dshVersion: '0.1.7-rc.2', checks: Object.fromEntries(['sourceSnapshot', 'archiveManifest', 'mediaTemplate', 'nativeRuntimes', 'desktopLaunch', 'portableExtractor', 'updateContract', 'macosDmg', 'readOnlyApplication'].map(name => [name, 'passed'])), asset: await file(names[0], 'synthetic archive')}
+  const receipt = {schemaVersion: 1, kind: desktopVersion(context.version).prerelease ? 'eduwork-source-alpha' : 'eduwork-source-release', edition: context.product, version: context.version, distribution: context.distribution, coreCommit: context.coreCommit, editionCommit: context.editionCommit, platform, shell: 'electron', passed: true, automaticUpdates: true, dshVersion: '0.1.7-rc.2', checks: Object.fromEntries(['sourceSnapshot', 'archiveManifest', 'mediaTemplate', 'nativeRuntimes', 'desktopLaunch', 'portableExtractor', 'updateContract', 'macosDmg', 'readOnlyApplication'].map(name => [name, 'passed'])), asset: await file(names[0], 'synthetic archive')}
   const extra = await file(names[3], 'synthetic installer')
   if (platform === 'windows') {
     const extractor = {schemaVersion: 1, kind: 'eduwork-portable-extractor', format: 'zip-containing-self-extracting-exe', version: context.version, distribution: context.distribution, payload: receipt.asset, asset: extra, extractor: {name: 'EduWork-Setup.exe', bytes: 1, sha256: 'c'.repeat(64), sourceCommit: context.coreCommit, sourceDirty: false}, checks: {executionLevel: 'asInvoker', embeddedArchive: 'passed', manifestIdentity: 'passed', outerZIP: 'passed', extraction: 'passed'}}
     receipt.portableExtractor = {asset: extra, receipt: await file(names[5], JSON.stringify(extractor), false)}
   } else receipt.installer = {asset: extra, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}
-  if (platform === 'windows' && !desktopVersion(context.version).prerelease) await file(updateManifestName, githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), false)
-  if (platform === 'macos') Object.assign(receipt, {sparkleEnabled: !desktopVersion(context.version).prerelease, bundleVersion: bundleVersion(context.version)})
+  if (platform === 'windows') await file(updateManifestName, githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), false)
+  if (platform === 'macos') Object.assign(receipt, {sparkleEnabled: true, bundleVersion: bundleVersion(context.version)})
   await writeFile(join(directory, names[2]), JSON.stringify(receipt))
   return {directory, names, receipt, context: {...context, platform}}
 }
@@ -113,14 +113,14 @@ for (const platform of ['windows', 'macos']) test('stable ' + platform + ' carri
   }
 })
 
-for (const platform of ['windows', 'macos']) test('alpha SemVer ' + platform + ' remains a prerelease without stable update metadata', async t => {
+for (const platform of ['windows', 'macos']) test('alpha SemVer ' + platform + ' remains a prerelease with usable update metadata', async t => {
   const data = await fixture(platform, { ...context, version: '0.4.0-alpha.1' })
   t.after(() => rm(data.directory, { recursive: true, force: true }))
   await validatedCandidateFiles(data.directory, data.context)
-  assert.equal(data.receipt.automaticUpdates, false)
-  assert.equal(data.names.includes(updateManifestName), false)
+  assert.equal(data.receipt.automaticUpdates, true)
+  assert.equal(data.names.includes(updateManifestName), platform === 'windows')
   assert.equal(data.names[2], `${platform}-alpha-receipt.json`)
-  assert.throws(() => validateCandidateReceipt({...data.receipt, automaticUpdates: true}, data.context), /automaticUpdates/)
+  assert.throws(() => validateCandidateReceipt({...data.receipt, automaticUpdates: false}, data.context), /automaticUpdates/)
 })
 
 async function macosNodeFixture(deltaFrom) {
@@ -138,7 +138,7 @@ async function macosNodeFixture(deltaFrom) {
   await writeFile(join(directory, names[5]), `${dmg.sha256}  ${dmg.name}\n`)
   const deltas = []
   for (const [index, from] of deltaFrom.entries()) deltas.push({from, ...await file(names[6 + index], 'patch from ' + from)})
-  const receipt = {schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version, edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true, coreCommit: context.coreCommit, editionCommit: context.editionCommit, recipe: 'pinned-source', releaseNotes: {approved: true, file: context.releaseNotes, sha256: notes.sha256}, checks: Object.fromEntries(['sourceAndDependencies', 'archiveManifest', 'nativeRuntimes', 'desktopLaunch', 'mediaTemplate', 'sourceSnapshot', 'readOnlyApplication', 'macosDmg'].map(name => [name, 'passed'])), softwareAutoUpdate: true, bundleVersion: bundleVersion(context.version), asset, installer: {asset: dmg, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}, deltas}
+  const receipt = {schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version, edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true, coreCommit: context.coreCommit, editionCommit: context.editionCommit, recipe: 'pinned-source', releaseNotes: {approved: true, file: context.releaseNotes, sha256: notes.sha256}, checks: Object.fromEntries(['sourceAndDependencies', 'archiveManifest', 'nativeRuntimes', 'desktopLaunch', 'mediaTemplate', 'sourceSnapshot', 'readOnlyApplication', 'macosDmg'].map(name => [name, 'passed'])), automaticUpdates: true, softwareAutoUpdate: true, bundleVersion: bundleVersion(context.version), asset, installer: {asset: dmg, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}, deltas}
   await writeFile(join(directory, names[2]), JSON.stringify(receipt))
   return {directory, names, context}
 }

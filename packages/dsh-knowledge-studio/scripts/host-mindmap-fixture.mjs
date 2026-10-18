@@ -9,7 +9,8 @@ import {exportDocument} from '../lib/studio-export.js'
 /** Before Host boot only: public registry + synthetic persisted legacy artifacts. */
 export async function seedHostMindmap(runtime,home,session,{office=false}={}) {
   const require=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(require.resolve(name)))
-  const {Context}=await load('@deepseek-ai/cordis'),{default:Jsonl}=await load('@deepseek-ai/dsh-session-persistence-jsonl')
+  const {Context}=await load('@deepseek-ai/cordis')
+  const jsonlModule=await load('@deepseek-ai/dsh-session-persistence-jsonl'),Jsonl=jsonlModule.default??jsonlModule
   const context=new Context()
   let workspaceId
   try {

@@ -52,7 +52,7 @@ try {
   await page.addInitScript(({ workspace }) => {
     window.__DSH_HOST_PATHS__ = { pathFor: file => file.name.startsWith('pasted') ? '' : workspace + '/' + file.name }
   }, { workspace })
-  await page.addLocatorHandler(page.getByRole('dialog', { name: '内测声明' }), d => d.getByRole('button', { name: '继续', exact: true }).click())
+  await page.addLocatorHandler(page.getByRole('dialog', { name: /^(内测声明|预览版说明)$/ }), d => d.getByRole('button', { name: '继续', exact: true }).click())
   await page.addLocatorHandler(page.getByRole('dialog', { name: '添加一个 API Key 开始使用' }), d => d.getByRole('button', { name: '稍后配置', exact: true }).click())
   await page.goto(ready.url)
   const rpc = (method, args) => page.evaluate(async ({ method, args }) => {

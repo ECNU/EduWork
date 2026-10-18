@@ -6,6 +6,7 @@ on:
       - 'third_party/dsh/**'
       - 'config/desktop-build.json'
       - 'scripts/desktop-build-plan.mjs'
+      - 'scripts/pinned-dsh-contract.mjs'
       - 'dsh-host/prepare-native.mjs'
       - 'dsh-host/prepare.mjs'
       - 'dsh-host/test/prepare.test.mjs'
@@ -14,6 +15,8 @@ on:
       - 'dsh-host/distribution-policy.mjs'
       - 'third_party/dsh-literature/**'
       - 'dsh-host/test/native-020.test.mjs'
+      - 'dsh-host/test/native-021.test.mjs'
+      - 'dsh-host/dsh-compatibility.mjs'
       - 'dsh-host/upstream-inputs-pinned-source.json'
       - 'dsh-host/native-profile.mjs'
       - 'dsh-host/settings-migration.mjs'
@@ -24,9 +27,12 @@ on:
       - 'dsh-host/test/redacted-log.test.mjs'
       - 'scripts/probe-pinned-dsh-host.mjs'
       - 'scripts/probe-pinned-dsh-settings.mjs'
+      - 'scripts/probe-dsh-017.mjs'
       - 'scripts/build-pinned-dsh-plugin-clients.mjs'
       - 'scripts/native-preset-ui.mjs'
       - 'scripts/native-file-reference-ui.mjs'
+      - 'scripts/native-web-search-ui.mjs'
+      - 'scripts/test/native-web-search-ui.test.mjs'
       - 'scripts/assemble-pinned-dsh-source-product.mjs'
       - 'scripts/published-package-inputs.mjs'
       - 'scripts/test/published-package-inputs.test.mjs'
@@ -117,6 +123,8 @@ jobs:
         run: |
           node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
+          node --test core/dsh-host/test/native-021.test.mjs core/dsh-host/test/dsh-compatibility.test.mjs core/scripts/test/npm-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Pinned Runtime and Schedule migration checks failed' }
           $env:EDUWORK_TEST_UPSTREAM = (Resolve-Path upstream).Path
           node --test core/dsh-plugins/client-ui-branding/test/identity.test.mjs
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
@@ -130,6 +138,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned npm Runtime preparation failed' }
           node core/scripts/probe-pinned-dsh-deliverables.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/deliverables-evidence"
           if ($LASTEXITCODE) { throw 'Native deliverable qualification failed' }
+          node core/scripts/probe-dsh-017.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/session-migration-evidence"
+          if ($LASTEXITCODE) { throw 'Historical session migration checks failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
@@ -141,7 +151,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
-          node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs
+          node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs core/dsh-electron/tests/software-update-control.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution policy, desktop and channel migration checks failed' }
           node --test core/scripts/test/media-template.test.mjs
           if ($LASTEXITCODE) { throw 'Shared media template build and assembly checks failed' }
@@ -168,10 +178,14 @@ jobs:
           $env:EDUWORK_TEST_DEPENDENCIES = $deps
           node --test core/scripts/test/plugin-locale.test.mjs
           if ($LASTEXITCODE) { throw 'Plugin locale regression checks failed' }
+          node --test core/scripts/test/native-web-search-ui.test.mjs
+          if ($LASTEXITCODE) { throw 'Search provider restoration checks failed' }
           node core/scripts/build-pinned-dsh-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
           node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-session-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
           if ($LASTEXITCODE) { throw 'Memory message admission and user intent checks failed' }
+          node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-query-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
+          if ($LASTEXITCODE) { throw 'Memory history query checks failed' }
           node core/scripts/probe-pinned-dsh-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }
       - name: Build the pinned native shell and exercise real Electron bridges
@@ -231,6 +245,7 @@ jobs:
             ${{ runner.temp }}/client-build.json
             ${{ runner.temp }}/assembled-evidence/report.json
             ${{ runner.temp }}/deliverables-evidence/report.json
+            ${{ runner.temp }}/session-migration-evidence/report.json
             ${{ runner.temp }}/literature-evidence/report.json
             ${{ runner.temp }}/native-shell/source-receipt.json
             ${{ runner.temp }}/native-desktop-evidence/report.json

@@ -9,6 +9,7 @@ import {spawnSync} from 'node:child_process'
 import {buildVideoTemplate} from '../../packages/dsh-knowledge-studio/scripts/build-video-template.mjs'
 import {verifyMediaTemplate} from '../verify-media-template.mjs'
 import {copyProductTree} from '../portable-product-links.mjs'
+import {pinnedDshContract} from '../pinned-dsh-contract.mjs'
 
 const sharedSource = fileURLToPath(new URL('../../packages/dsh-knowledge-studio/packages/artifact-services/', import.meta.url))
 const verifier = fileURLToPath(new URL('../verify-media-template.mjs', import.meta.url))
@@ -77,7 +78,7 @@ test('source assembly fails before copying the Runtime when media assets were no
   const {root} = await fixture(t)
   const source = join(root, 'source'), inputRuntime = join(root, 'runtime'), output = join(root, 'product')
   await mkdir(inputRuntime)
-  await writeFile(join(inputRuntime, '.chatecnu-dsh-runtime.json'), JSON.stringify({dshVersion:'0.2.0-rc.2', dshCommit:'639ed015397290b3745d163aafe02ffee4aa3f84'}))
+  await writeFile(join(inputRuntime, '.chatecnu-dsh-runtime.json'), JSON.stringify({dshVersion:pinnedDshContract.packageVersion, dshCommit:pinnedDshContract.commit}))
   await mkdir(join(source, 'config/distributions'), {recursive:true})
   await writeFile(join(source, 'config/distributions/generic.json'), '{}')
   const result = spawnSync(process.execPath, [assembler, '--runtime', inputRuntime, '--source', source, '--dependencies', join(root, 'deps'), '--host', join(root, 'host'), '--output', output], {encoding:'utf8'})

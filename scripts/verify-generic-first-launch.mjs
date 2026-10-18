@@ -10,7 +10,7 @@ export function verifyGenericFirstLaunch(identity, config) {
   const stable = releaseIdentity(identity.version, identity.dshVersion).publishable
   assert.equal(identity.sourceRelease, stable)
   assert.equal(identity.sourceAlpha, !stable)
-  assert.equal(identity.automaticUpdates, stable)
+  assert.equal(identity.automaticUpdates, true)
   assert.deepEqual(config.organizations, [])
   assert.equal(config.product.name, 'EduWork')
   if (stable) {
@@ -18,11 +18,17 @@ export function verifyGenericFirstLaunch(identity, config) {
     assert.equal(config.updates.repository, 'ECNU/EduWork')
     assert.equal(config.updates.defaultPolicy, 'stable')
   } else {
-    // macOS normalization retains an empty feed map even when updates are
-    // disabled. No feed URL or other update source may survive in an Alpha.
     const { macFeeds, ...policy } = config.updates
-    if (Object.hasOwn(config.updates, 'macFeeds')) assert.deepEqual(macFeeds, {})
-    assert.deepEqual(policy, { provider: 'disabled', defaultPolicy: 'development' })
+    assert.deepEqual(policy, {provider:'github', repository:'ECNU/EduWork', defaultPolicy:'development'})
+  }
+  if (Object.hasOwn(config.updates, 'macFeeds')) {
+    const feeds = config.updates.macFeeds
+    assert.ok(feeds && typeof feeds === 'object' && !Array.isArray(feeds))
+    for (const [channel, value] of Object.entries(feeds)) {
+      assert.ok(['stable','development'].includes(channel))
+      const url = new URL(value)
+      assert.ok(url.protocol === 'https:' && !url.username && !url.password && !url.search && !url.hash)
+    }
   }
   return { passed: true, channel: stable ? 'stable' : 'development', provider: config.updates.provider }
 }

@@ -1,7 +1,7 @@
 /**
  * `@eduwork/dsh-literature/tool`: model-facing literature tools over
  * `ctx.literature`. Owns the tool names, schemas, validation, presentation,
- * and the publisher-PDF-link subagent fallback; the literature seam owns
+ * and the publisher-PDF-link extraction fallback; the literature seam owns
  * retrieval, merging, and extraction.
  * @module @eduwork/dsh-literature/tool
  */
@@ -13,6 +13,7 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { SubagentResult, SubagentRun } from '@deepseek-ai/dsh-subagent'
 import type { JobOutcome } from '@deepseek-ai/dsh-jobs'
+import { extractPdfLink } from './pdf-link.js'
 import type {} from '@deepseek-ai/dsh-fs'
 import {
   LiteratureError,
@@ -35,9 +36,9 @@ declare module '@deepseek-ai/dsh-jobs' {
 /** Config: how the full-text fallback resolves publisher PDF links. */
 export interface Config {
   /**
-   * The `ctx.subagents` provider name used to extract a publisher PDF link
-   * from a landing page (default `spawn`). The provider must support
-   * `outputSchema` and `toolFilter`.
+   * Legacy `ctx.subagents.start` provider (default `spawn`), requiring
+   * `outputSchema` and `toolFilter`. Hosts without that API use one read-only
+   * extraction on the calling model and reject custom legacy providers.
    */
   readonly subagentProvider?: string
 }
@@ -298,10 +299,11 @@ export function apply(ctx: Context, config: Config = {}): void {
    */
   async function resolvePublisherPdfUrl(input: string, parent: Agent, signal: AbortSignal): Promise<string | null> {
     const subagents = ctx.get('subagents')
-    if (subagents === undefined) {
+    if (subagents === undefined && ctx.get('llm') === undefined) {
       throw new LiteratureError('publisher PDF link resolution requires the subagents service', 'LITERATURE_FULLTEXT_UNAVAILABLE')
     }
-    if (subagents.getProvider(subagentProvider) === undefined) {
+    const legacy = typeof subagents?.start === 'function'
+    if (legacy && subagents.getProvider(subagentProvider) === undefined) {
       throw new LiteratureError(
         `publisher PDF link resolution requires the subagent provider "${subagentProvider}" (load a provider such as @deepseek-ai/dsh-subagent-spawn-in-process)`,
         'LITERATURE_FULLTEXT_UNAVAILABLE',
@@ -321,7 +323,15 @@ export function apply(ctx: Context, config: Config = {}): void {
       doi = record.doi
       page = await ctx.literature.landingPage(record.doi, signal)
     }
-    const run = await subagents.start(subagentProvider, {
+    // Newer DSH child Agents inherit their preset's tools. Use one bounded,
+    // read-only model extraction instead of silently dropping toolFilter.
+    if (!legacy) {
+      if (subagentProvider !== 'spawn') throw new LiteratureError('Custom PDF subagent providers require the legacy subagent API; use the default read-only extraction on this host', 'LITERATURE_FULLTEXT_UNAVAILABLE')
+      return extractPdfLink(ctx, parent, pdfLinkPrompt(page, {
+        ...(title !== undefined ? { title } : {}), ...(doi !== undefined ? { doi } : {}),
+      }), PDF_LINK_SCHEMA, signal)
+    }
+    const run = await subagents!.start(subagentProvider, {
       label: 'literature PDF link',
       prompt: [{ type: 'text', text: pdfLinkPrompt(page, {
         ...(title !== undefined ? { title } : {}),

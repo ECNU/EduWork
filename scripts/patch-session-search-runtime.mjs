@@ -7,10 +7,13 @@ import { join } from 'node:path'
 export const sessionSearchPatch = Object.freeze({
   id: 'session-search-live-persistence-v1',
   package: '@deepseek-ai/dsh-session-query-sqlite',
-  version: '0.2.0-rc.2',
+  version: '0.2.1-rc.2',
   file: 'lib/index.js',
   beforeSHA256: 'dbecf83320e10d93d735b3d01384ab817a0b90102ccecb0a22c013c71dfe70a0',
 })
+// The rc.2 npm artifact still contains the identical live-flush implementation.
+// Keep both explicitly reviewed versions subject to the same complete hash.
+const reviewedVersions = new Set(['0.2.0-rc.2', '0.2.1-rc.2'])
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 
 export function patchSessionSearchSource(input) {
@@ -32,11 +35,11 @@ export function patchSessionSearchSource(input) {
 export async function patchSessionSearchRuntime(modules) {
   const root = join(modules, sessionSearchPatch.package)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-  if (manifest.name !== sessionSearchPatch.package || manifest.version !== sessionSearchPatch.version) {
+  if (manifest.name !== sessionSearchPatch.package || !reviewedVersions.has(manifest.version)) {
     throw new Error('Session search backport requires a newly qualified Runtime')
   }
   const path = join(root, sessionSearchPatch.file)
   const output = patchSessionSearchSource(await readFile(path))
   await writeFile(path, output)
-  return { ...sessionSearchPatch, afterSHA256: sha256(output) }
+  return { ...sessionSearchPatch, version: manifest.version, afterSHA256: sha256(output) }
 }

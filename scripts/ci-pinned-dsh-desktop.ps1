@@ -15,13 +15,13 @@ $PSNativeCommandUseErrorActionPreference=$true
 if (-not ($IsWindows -or $IsMacOS)) { throw 'Use a native Windows or macOS runner' }
 $CoreRoot=[IO.Path]::GetFullPath($CoreRoot);$EditionRoot=[IO.Path]::GetFullPath($EditionRoot);$Output=[IO.Path]::GetFullPath($Output)
 $plan = (& node (Join-Path $CoreRoot 'scripts/desktop-build-plan.mjs') --core $CoreRoot --edition $EditionRoot --version $Version) | ConvertFrom-Json
-if ([bool]$Stable -ne [bool]$plan.automaticUpdates) { throw 'Version does not match the explicit source build channel' }
+if ([bool]$Stable -ne (-not [bool]$plan.prerelease)) { throw 'Version does not match the explicit source build channel' }
 if (Test-Path $Output) { throw 'Candidate assembly requires a new output directory' }
 $platform=if ($IsWindows) {'windows'} else {'macos'}
 $name=if ($CoreRoot -eq $EditionRoot) {'EduWork'} else {'EduWork-ECNU'}
 $public=Join-Path $Output 'evidence-public';$publish=Join-Path $Output 'publish'
 New-Item -ItemType Directory -Path $public,$publish | Out-Null
-$result=[ordered]@{schemaVersion=1;kind=$(if ($Stable) {'eduwork-source-release'} else {'eduwork-source-alpha'});version=$Version;platform=$platform;shell='electron';passed=$false;automaticUpdates=[bool]$Stable;published=$false;checks=@{}}
+$result=[ordered]@{schemaVersion=1;kind=$(if ($Stable) {'eduwork-source-release'} else {'eduwork-source-alpha'});version=$Version;platform=$platform;shell='electron';passed=$false;automaticUpdates=[bool]$plan.automaticUpdates;published=$false;checks=@{}}
 try {
     $result.coreCommit=(& git -C $CoreRoot rev-parse HEAD).Trim();$result.editionCommit=(& git -C $EditionRoot rev-parse HEAD).Trim()
     & node (Join-Path $CoreRoot 'scripts/audit-eduwork-distribution.mjs') $CoreRoot --verify-receipt
@@ -65,7 +65,7 @@ try {
     $assembler=@{Product=$product;ShellBuild=$shell;ElectronRuntime=(Join-Path $Output 'electron/runtime');Output=$assembled;Version=$Version;Node=$inputs.node}
     if ($IsMacOS) {
         $assembler.OpenSSL=$inputs.openssl
-        if ($Stable) {
+        if ($plan.automaticUpdates) {
             $macConfig=Join-Path $product 'resources/desktop/mac-updates.json'
             if (-not (Test-Path $macConfig)) { throw 'Stable macOS source release requires a trusted appcast configuration' }
             & node (Join-Path $CoreRoot 'scripts/macos-update-feed.mjs') prepare $macConfig (Join-Path $Output 'sparkle')
@@ -78,27 +78,27 @@ try {
     $unpacked=Join-Path $Output 'unpacked';New-Item -ItemType Directory -Path $unpacked | Out-Null
     if ($IsWindows) {
         $archive=Join-Path $publish "$name-$Version-windows-x64-electron.zip"
-        if ($Stable) {
+        if ($plan.automaticUpdates) {
             Push-Location (Join-Path $CoreRoot 'dsh-desktop')
             try { & go build -trimpath -ldflags '-s -w -H windowsgui' -o (Join-Path $assembled 'ChatECNU-Work.exe') ./cmd/eduwork-launch }
             finally { Pop-Location }
             Copy-Item (Join-Path $assembled 'ChatECNU-Work.exe') (Join-Path $assembled 'EduWork.exe')
         }
-        & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $assembled -Output $archive -Development:(-not $Stable) -ForUpdate:$Stable
+        & (Join-Path $CoreRoot 'scripts/pack-windows-release.ps1') -Candidate $assembled -Output $archive -Development:(-not $Stable) -ForUpdate:([bool]$plan.automaticUpdates)
         $desktop=Join-Path $unpacked $name
         $archiveHash=(Get-FileHash -LiteralPath $archive -Algorithm SHA256).Hash.ToLowerInvariant()
         $result.portableExtractor=& (Join-Path $CoreRoot 'scripts/prepare-windows-portable-extractor.ps1') -Archive $archive -ExpectedSHA256 $archiveHash -OutputDirectory (Join-Path $Output 'portable-extractor') -Target $desktop -PublishDirectory $publish
         $result.checks.portableExtractor='passed'
-        $verifyArgs=if ($Stable) {@('--for-update')} else {@()}
+        $verifyArgs=@('--for-update')
         & node (Join-Path $CoreRoot 'scripts/verify-windows-release.mjs') $desktop @verifyArgs
-        if ($Stable) { $result.checks.updateContract='passed' }
+        $result.checks.updateContract='passed'
         $frozen=Join-Path $desktop 'resources/product';$node=Join-Path $desktop 'resources/runtime/node.exe';$exe=Join-Path $desktop 'EduWork-Electron.exe'
     } else {
         $pack=Get-Content (Join-Path $Output 'desktop/release-receipt.json') -Raw | ConvertFrom-Json
         $archive=Join-Path $publish $pack.asset.name
         Copy-Item (Join-Path $Output "desktop/$($pack.asset.name)"),(Join-Path $Output "desktop/$($pack.asset.name).sha256") $publish
         & ditto -x -k $archive $unpacked
-        $desktop=Join-Path $unpacked $(if ($Stable) {"$name.app"} else {"$name Alpha.app"})
+        $desktop=Join-Path $unpacked "$name.app"
         & codesign --verify --deep --strict $desktop
         $frozen=Join-Path $desktop 'Contents/Resources/product';$node=Join-Path $desktop 'Contents/Resources/runtime/node';$exe=Join-Path $desktop 'Contents/MacOS/Electron'
         $result.developerIDSigned=$false;$result.notarized=$false;$result.minimumSystemVersion=$pack.minimumSystemVersion
@@ -137,8 +137,8 @@ try {
     $result | ConvertTo-Json -Depth 16 | Set-Content (Join-Path $publish "$platform-$(if ($Stable) {'release'} else {'alpha'})-receipt.json") -Encoding utf8NoBOM
     # The GitHub update manifest only exists for the ECNU editions; institutional
     # editions publish their own update source from the receipt.
-    if ($Stable -and $IsWindows -and $name -in @('EduWork','EduWork-ECNU')) {
-        & node (Join-Path $CoreRoot 'scripts/github-update-manifest.mjs') (Join-Path $publish 'windows-release-receipt.json') "ECNU/$name"
+    if ($IsWindows -and $name -in @('EduWork','EduWork-ECNU')) {
+        & node (Join-Path $CoreRoot 'scripts/github-update-manifest.mjs') (Join-Path $publish "windows-$(if ($Stable) {'release'} else {'alpha'})-receipt.json") "ECNU/$name"
     }
 } catch { $result.error=$_.Exception.Message;Write-Host $_.ScriptStackTrace;throw }
 finally { $result | ConvertTo-Json -Depth 16 | Set-Content (Join-Path $public 'desktop-release-result.json') -Encoding utf8NoBOM }

@@ -35,7 +35,7 @@ CI selects affected development roots; shared-service changes also select Studio
 
 ## Publish independently
 
-`@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.0-rc.2/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
+`@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.1-rc.2/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
 
 Each package keeps its own SemVer, public exports, configuration IDs and persisted paths. Use a new version for every publication; never overwrite an existing npm version. If shared services change version, update Studio's exact dependency and lock; publish and verify shared services before Studio.
 
@@ -62,7 +62,7 @@ Bundled source extensions are currently rebuilt for the candidate runtime, with 
 
 ## Product assembly
 
-`@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.0-rc.2/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
+`@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
 
 
 `config/assembly.eduwork.json` still consumes published registry archives through exact version/SRI/SHA-256 locks in `third_party/npm-015-rc1/`. Editing package source cannot silently change a desktop build. Follow [the build guide](BUILD.md): publish, verify the registry, update locks, then build the product. A development workspace link is not release evidence.

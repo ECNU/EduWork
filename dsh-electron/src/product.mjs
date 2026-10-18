@@ -18,8 +18,9 @@ import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
-import { startPortableUpdates, editablePortableUpdateConfiguration } from './portable-updates.mjs'
+import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
 import { startMacSparkleUpdates, editableMacUpdateConfiguration } from './mac-sparkle-updates.mjs'
+import { softwareUpdateControl, updatesWhenEnabled } from './software-update-control.mjs'
 import { workbenchAction } from './workbench-support.mjs'
 import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
@@ -139,6 +140,9 @@ async function prepareDesktop() {
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
   const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })
+  // A publisher seed may contain only a release preference. Keep its trusted
+  // source as a fallback; explicit package and user choices still take priority.
+  const updateSourceDefaults = resolveUpdateConfiguration(trustedUpdates?.updates, settings.updates)
   const migrationDefaults = trustedUpdates?.updates ?? settings.updates ?? {}
   const alphaDefaults = process.platform === 'darwin'
     ? { ...migrationDefaults, macFeeds: settings.macSparkle?.enabled === true
@@ -154,7 +158,7 @@ async function prepareDesktop() {
     }})
   user=loadUserConfig(paths.config)
   const updateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:settings.updates,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     configurationDefaults:{updates:updateDefaults},
@@ -167,15 +171,22 @@ async function prepareDesktop() {
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
   const effectiveUpdateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:settings.updates,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
-  const software = process.platform === 'darwin' ? startMacSparkleUpdates({ appPath:app.getAppPath(), version:settings.productVersion, enabled:settings.macSparkle?.enabled === true && user.updates.provider !== 'disabled', feeds:effectiveUpdateDefaults.macFeeds, policy:contentUpdates.policy, onPolicy:async policy=>{
-    await mkdir(join(paths.updateDataRoot,'state'),{recursive:true}); await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  } }) : await startPortableUpdates({root:paths.root,updates:user.updates,defaults:settings.updates,version:settings.productVersion,distribution:settings.distribution,onQuit:()=>desktopExit.handoff()})
-  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:async policy=>{
+  const saveUpdatePolicy = async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
-  }})
+  }
+  const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
+    policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
+    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
+    start:({policy,applyScheduled})=>process.platform==='darwin'
+      ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
+        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
+      : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
+        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
+  portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
+    beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) { settings.productName = user.product.name; applyDesktopBrand(app, process.platform, settings); progressWindow.setTitle(user.product.name) }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')

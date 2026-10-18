@@ -4,9 +4,10 @@ import {createHash} from 'node:crypto'
 import {createRequire} from 'node:module'
 import {mkdir,readFile,writeFile} from 'node:fs/promises'
 import {join,resolve} from 'node:path'
-import {fileURLToPath,pathToFileURL} from 'node:url'
+import {pathToFileURL} from 'node:url'
 import {parseArgs} from 'node:util'
 import {validateNpmRuntimeLock} from '../dsh-desktop/scripts/prepare-dsh-runtime.mjs'
+import {pinnedDshDirectory} from './pinned-dsh-contract.mjs'
 import {TranscriptionService} from '../packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription.js'
 import {createDshTranscriptionProvider,transcribeDshWave} from '../packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-dsh.js'
 
@@ -15,7 +16,7 @@ if(!values.runtime||!values.output)throw new Error('Use --runtime <prepared cand
 const runtime=resolve(values.runtime),output=resolve(values.output)
 const json=async path=>JSON.parse(await readFile(path,'utf8'))
 const hash=bytes=>createHash('sha256').update(bytes).digest('hex')
-const contract=fileURLToPath(new URL('../third_party/dsh/candidate-v0.2.0-rc.2/',import.meta.url))
+const contract=pinnedDshDirectory
 const lock=await json(join(contract,'LOCK.json')),manifest=await json(join(contract,'npm-runtime/package.json'))
 const packageLockBytes=await readFile(join(contract,'npm-runtime/package-lock.json'))
 validateNpmRuntimeLock({manifest,lock,packageLockBytes,packageLock:JSON.parse(packageLockBytes)})

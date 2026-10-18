@@ -51,7 +51,8 @@ async function copyTree(source, target, { mappings = [], warnings = [], progress
 }
 
 export async function openImportStore(root, compression = 'zstd') {
-  const [{ Context }, { default: Jsonl }] = await Promise.all([import('@deepseek-ai/cordis'), import('@deepseek-ai/dsh-session-persistence-jsonl')])
+  const [{ Context }, jsonlModule] = await Promise.all([import('@deepseek-ai/cordis'), import('@deepseek-ai/dsh-session-persistence-jsonl')])
+  const Jsonl = jsonlModule.default ?? jsonlModule
   const ctx = new Context()
   try { await ctx.plugin(Jsonl, { root, compression }); return { persistence: ctx.sessionPersistence, close: () => ctx.fiber.dispose() } }
   catch (error) { await ctx.fiber.dispose(); throw error }

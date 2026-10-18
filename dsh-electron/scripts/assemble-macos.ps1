@@ -63,7 +63,7 @@ $nodeLicense = Join-Path $nodeRoot 'LICENSE'
 if (-not (Test-Path -LiteralPath $nodeLicense -PathType Leaf)) { throw 'Use the extracted official Node distribution, including LICENSE' }
 
 $editionName = if ($identity.distribution -eq 'eduwork') { 'EduWork' } else { 'EduWork-ECNU' }
-$appName = if ($identity.sourceAlpha) { "$editionName Alpha.app" } else { "$editionName.app" }
+$appName = if ($identity.sourceAlpha -and -not $identity.automaticUpdates) { "$editionName Alpha.app" } else { "$editionName.app" }
 $app = Join-Path $Output $appName
 New-Item -ItemType Directory -Path $Output | Out-Null
 & ditto --noextattr --noqtn --noacl $electronApp $app
@@ -151,7 +151,7 @@ if ($sparkleEnabled) {
 }
 $bootstrap = (& $Node (Join-Path $PSScriptRoot '../../scripts/check-publisher-bootstrap.mjs') $Product $ownership) | ConvertFrom-Json
 if ($LASTEXITCODE -ne 0) { throw 'Publisher bootstrap validation failed' }
-if ($identity.sourceAlpha) {
+if ($identity.sourceAlpha -and -not $identity.automaticUpdates) {
     if ($sparkleEnabled) { throw 'Source Alpha does not enable software updates' }
     $desktop.updates=@{provider='disabled';defaultPolicy='development'}
     $desktop.sourceAlpha=$true;$desktop.appId+='.alpha'
@@ -185,7 +185,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $headers 'node_api.h') -PathType Lea
 $native = Join-Path $appPayload 'native'
 New-Item -ItemType Directory -Path $native | Out-Null
 # The desktop pet window needs this guard in every macOS build (electron#53889).
-& clang++ -std=c++17 -fobjc-arc -dynamiclib -undefined dynamic_lookup -mmacosx-version-min=15.0 -I $headers -framework AppKit (Join-Path $PSScriptRoot '../native/prevent-activation.mm') -o (Join-Path $native 'prevent-activation.node')
+& clang++ -std=c++17 -fobjc-arc -dynamiclib -undefined dynamic_lookup '-mmacosx-version-min=15.0' -I $headers -framework AppKit (Join-Path $PSScriptRoot '../native/prevent-activation.mm') -o (Join-Path $native 'prevent-activation.node')
 if ($LASTEXITCODE -ne 0) { throw 'Desktop pet activation guard compilation failed' }
 if ($sparkleEnabled) {
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot '../LICENSE-Sparkle') -Destination (Join-Path $resources 'LICENSE-Sparkle')

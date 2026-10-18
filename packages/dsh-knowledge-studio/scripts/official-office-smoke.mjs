@@ -17,6 +17,7 @@ process.env.DSH_OFFICE_PYTHON=resolve(values.python)
 const runtimeParent=pathToFileURL(join(runtime,'package.json')).href
 const hooks=registerHooks({resolve(specifier,context,next){
   if(specifier.startsWith('@deepseek-ai/'))return next(specifier,{...context,parentURL:runtimeParent})
+  if(specifier.startsWith('@eduwork/dsh-artifact-services/'))return next(new URL('../packages/artifact-services/lib/'+specifier.slice('@eduwork/dsh-artifact-services/'.length)+'.js',import.meta.url).href,context)
   return next(specifier,context)
 }})
 const [{Context},{default:prompt},{default:tools},{default:fs},sessions,office,{exportWithOfficeTools},{exportDocument},{withOfficialOfficeSkill,convertOfficeFile,officialOfficeRuntime}]=await Promise.all([
@@ -25,7 +26,7 @@ const [{Context},{default:prompt},{default:tools},{default:fs},sessions,office,{
 ])
 // Python -I ignores PYTHONDONTWRITEBYTECODE: the installed scripts must stay
 // unchanged even during validation and conversion of user-owned documents.
-const bytecodeRoots=[resolve(import.meta.dirname,'../packages/artifact-services/python'),dirname(officialOfficeRuntime().checker)]
+const bytecodeRoots=[resolve(import.meta.dirname,'../packages/artifact-services/python'),join(officialOfficeRuntime().office,'assets')]
 async function bytecodeSnapshot() {
   const files=[]
   async function visit(directory) {
@@ -73,7 +74,7 @@ try {
   mode='workspace-write'
   await call('office_document',{action:'convert',input_path:'legacy.doc',output_path:'converted.docx'})
   await call('office_document',{action:'edit',input_path:'converted.docx',output_path:'edited.docx',spec:{operations:[{op:'append_blocks',blocks:[{type:'paragraph',text:'Official conversion edited successfully'}]}]}})
-  assert.equal((await call('office_document',{action:'validate',input_path:'edited.docx'})).report.provider,'dsh-office')
+  assert.equal((await call('office_document',{action:'validate',input_path:'edited.docx'})).report.valid,true)
   await call('office_document',{action:'convert',input_path:'edited.docx',output_path:'edited.pdf'})
   assert.equal((await readFile(join(root,'edited.pdf'))).subarray(0,5).toString(),'%PDF-')
   assert.equal((await execute('office_document',{action:'convert',input_path:'legacy.doc',output_path:'converted.docx'})).isError,true)
@@ -85,7 +86,7 @@ try {
     const inspection=await call(tool,{action:'inspect',input_path:'legacy.'+extension})
     assert.ok((inspection.report.sheets??inspection.report.slides).length)
     await call(tool,{action:'convert',input_path:'legacy.'+extension,output_path:'converted.'+modern})
-    assert.equal((await call(tool,{action:'validate',input_path:'converted.'+modern})).report.provider,'dsh-office')
+    assert.equal((await call(tool,{action:'validate',input_path:'converted.'+modern})).report.valid,true)
     assert.equal(await digest(join(root,'legacy.'+extension)),before)
   }
   const cancelled=new AbortController();cancelled.abort()
@@ -129,11 +130,11 @@ try {
   for(const [kind,upstream] of [['documents','office-docx'],['spreadsheets','office-xlsx'],['presentations','office-pptx']]) {
     const directory=resolve(import.meta.dirname,'../packages/artifact-services/skills',kind)
     const raw=await readFile(join(directory,'SKILL.md'),'utf8')
-    const skill=withOfficialOfficeSkill({name:'artifact-'+kind,content:raw.replace(/^---[\s\S]*?---\s*/,''),resourceBase:{kind:'directory',path:directory}})
+    const skill=await withOfficialOfficeSkill({name:'artifact-'+kind,content:raw.replace(/^---[\s\S]*?---\s*/,''),resourceBase:{kind:'directory',path:directory}})
     assert.ok(skill.resourceBase.path.endsWith(upstream))
     const original=await readFile(join(skill.resourceBase.path,'SKILL.md'),'utf8')
     assert.ok(skill.content.includes(original.replace(/^---\r?\n[\s\S]*?\r?\n---(?:\r?\n|$)/,'').trim()))
-    assert.ok(skill.content.includes('Installed LibreOffice Kit'));assert.ok(skill.content.includes('Full Access'))
+    assert.ok(skill.content.includes('office-render'));assert.ok(skill.content.includes('Full Access'))
     events.push({skill:skill.name,originalWorkflowIncluded:true,status:'passed'})
   }
   assert.equal(approvals,1,'standing workspace access is reused')

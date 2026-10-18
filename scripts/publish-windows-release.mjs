@@ -17,8 +17,9 @@ export function validateReceipt(receipt, {repository, version, commit}) {
   if (!edition || !/^[a-f0-9]{40}$/.test(commit)) throw Error('Invalid release repository/version/commit')
   if (receipt.schemaVersion !== 1 || receipt.kind !== 'eduwork-windows-release' || receipt.passed !== true || receipt.version !== version || receipt.edition !== edition || receipt.shell !== 'electron' || receipt.platform !== 'windows-x64' || receipt.editionCommit !== commit) throw Error('Release identity or validation does not match this workflow')
   if (receipt.validationProfile !== 'ci-build-launch-and-extract-v2') throw Error('Unknown release validation scope')
+  if (receipt.automaticUpdates !== true) throw Error('Release must support user-controlled software updates')
   if (receipt.releaseNotes?.approved !== true || !/^[a-f0-9]{64}$/.test(receipt.releaseNotes?.sha256 ?? '')) throw Error('Discussed and approved release notes are required')
-  for (const check of ['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor']) {
+  for (const check of ['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor','updateContract']) {
     if (receipt.checks?.[check] !== 'passed') throw Error('Release check did not pass: '+check)
   }
   if (receipt.asset?.name !== `${edition}-${version}-windows-x64-electron.zip` || !/^[a-f0-9]{64}$/.test(receipt.asset.sha256) || !Number.isSafeInteger(receipt.asset.bytes) || receipt.asset.bytes < 1) throw Error('Invalid release ZIP')
@@ -53,9 +54,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   const receipt=JSON.parse(await readFile(join(root,'release-receipt.json'),'utf8'))
   const edition=validateReceipt(receipt,{repository,version,commit})
   const unpack=receipt.portableExtractor
-  const stable = releaseChannel(version) === 'stable'
   const deltas = receipt.deltas ?? []
-  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',...(stable ? [updateManifestName] : []),unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
+  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -68,8 +68,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   if(files[3].sha256!==receipt.releaseNotes.sha256) throw Error('Release notes differ from the approved source file')
   if(zip.bytes!==receipt.asset.bytes || zip.sha256!==receipt.asset.sha256) throw Error('Downloaded CI artifact differs from the validated ZIP')
   if((await readFile(files[1].path,'utf8')).trim()!==`${zip.sha256}  ${zip.name}`) throw Error('SHA256 sidecar differs')
-  if(stable && (await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
-  const setup = stable ? 5 : 4
+  if((await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
+  const setup = 5
   if(files[setup].sha256!==unpack.asset.sha256 || files[setup].bytes!==unpack.asset.bytes)throw Error('Portable extractor ZIP differs from the validated asset')
   if((await readFile(files[setup+1].path,'utf8')).trim()!==`${unpack.asset.sha256}  ${unpack.asset.name}`)throw Error('Portable extractor SHA256 sidecar differs')
   if(files[setup+2].sha256!==unpack.receipt.sha256 || files[setup+2].bytes!==unpack.receipt.bytes)throw Error('Portable extractor receipt differs from the validated build')

@@ -23,10 +23,13 @@ export async function readWorkspaceAttachments(ctx, paths, exec, maxBytes) {
   }
   const workspace = workspaceOf(exec)
   const workspaceTarget = await ctx.fs.resolve(workspace, { signal: exec.signal })
+  // Relative attachments follow the official working_directory tool. Changing
+  // directory does not extend this operation's original workspace boundary.
+  const cwd = ctx.get?.('workingDirectory')?.get(exec.agent.session) ?? workspace
   const attachments = []
   let total = 0
   for (const raw of paths) {
-    const target = await ctx.fs.resolve(raw.trim(), { cwd: workspace, signal: exec.signal })
+    const target = await ctx.fs.resolve(raw.trim(), { cwd, signal: exec.signal })
     if (!ctx.fs.contains(workspaceTarget, target)) throw new Error(`Attachment is outside the session workspace: ${raw}`)
     const info = await ctx.fs.stat(target, exec.signal)
     if (info === undefined || info.type !== 'file') throw new Error(`Attachment is not a regular file: ${raw}`)

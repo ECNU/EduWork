@@ -41,6 +41,18 @@ const logs = []
 const report = { success: false, scope: 'assembled source product; synthetic credentials; no source import hooks', boots: [], rpc: [] }
 let memoryId, previewSessionId
 try {
+  // Exercise the actual import-store factory, including its upstream plugin
+  // resolution, rather than the injected stores used by migration unit tests.
+  const { openImportStore } = await import(pathToFileURL(join(product, 'd/node_modules/@eduwork/workbench-native/lib/data-import.js')).href)
+  const store = await openImportStore(join(output, 'synthetic-import-store'))
+  try {
+    const created = await store.persistence.create({ version: 4, id: 'synthetic-import', createdAt: 1, isSeeded: false, delegationDepth: 0 })
+    await created.flush(); await created.close()
+    const reopened = await store.persistence.open('synthetic-import', 'read')
+    try { assert.equal(reopened.header.id, 'synthetic-import'); assert.deepEqual((await reopened.read()).events, []) }
+    finally { await reopened.close() }
+    report.importStore = ['default-factory', 'create', 'reopen']
+  } finally { await store.close() }
   for (const round of [1, 2]) {
     const prepared = await prepareProductProfile({ product, home, shell: 'electron', userConfig: config })
     host = new DesktopHostProcess(process.execPath, join(product, 'd'), prepared.profile, undefined,

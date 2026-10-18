@@ -64,10 +64,10 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.0-rc.2/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
+`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
 
 
-`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.0-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
+`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.1-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 
 `config/assembly.eduwork.json` 仍通过 `third_party/npm-015-rc1/*/LOCK.json` 获取已发布 npm 包，版本、SRI 和 tarball SHA-256 都固定。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 

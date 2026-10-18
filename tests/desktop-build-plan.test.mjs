@@ -7,7 +7,7 @@ import { desktopVersion, desktopBuildPlan, validateBuildRequest } from '../scrip
 
 test('product prerelease semantics are consistent across future versions', () => {
   for (const version of ['0.4.0-alpha.1', '0.4.0-beta.2', '1.0.0-rc.1', '0.3.6-dev.20260928.2']) {
-    assert.deepEqual(desktopVersion(version), { version, prerelease: true, channel: 'development', automaticUpdates: false })
+    assert.deepEqual(desktopVersion(version), { version, prerelease: true, channel: 'development', automaticUpdates: true })
   }
   assert.deepEqual(desktopVersion('1.2.3'), { version: '1.2.3', prerelease: false, channel: 'stable', automaticUpdates: true })
   for (const value of ['../0.4.0', '0.4.0-alpha.0', '0.4.0-alpha.01', '00.4.0', '0.4.0+local', '0.4.0-preview']) assert.throws(() => desktopVersion(value))

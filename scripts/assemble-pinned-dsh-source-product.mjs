@@ -14,6 +14,7 @@ import { patchRemotionBundlerRuntime } from './patch-remotion-bundler-runtime.mj
 import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
 import { verifyPublishedPackageInputs } from './published-package-inputs.mjs'
+import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (Object.values(values).length !== 5) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
@@ -25,10 +26,10 @@ for (const source of [repository, paths.runtime, paths.source, paths.dependencie
 }
 const json = async file => JSON.parse(await readFile(file, 'utf8'))
 const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
-if (receipt.dshVersion !== '0.2.0-rc.2' || receipt.dshCommit !== '639ed015397290b3745d163aafe02ffee4aa3f84') throw new Error('Unqualified candidate Runtime')
+verifyPinnedDshReceipt(receipt)
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
 const sourceMediaTemplate = await verifyMediaTemplate(join(paths.source, 'packages/dsh-knowledge-studio/packages/artifact-services'))
-const publishedLocks = await Promise.all(['literature.json', 'desktop-pet.json'].map(file => json(join(repository, 'third_party/dsh/candidate-v0.2.0-rc.2', file))))
+const publishedLocks = await Promise.all(['literature.json', 'desktop-pet.json'].map(file => json(join(pinnedDshDirectory, file))))
 await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
 await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')

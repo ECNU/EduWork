@@ -7,13 +7,9 @@ export const omittedRoots = Object.freeze([
   // Build and test tooling: DSH packages ship generated Typert metadata.
   '@deepseek-ai/dsh-typert-generator', '@deepseek-ai/dsh-client-test-runtime', '@deepseek-ai/dsh-loader-smoke',
   '@deepseek-ai/dsh-llm-mock-server', '@deepseek-ai/dsh-llm-replay', '@deepseek-ai/dsh-session-snapshot',
-  // The product does not compose the experimental voice input bundle, the only user of SenseVoice.
-  '@deepseek-ai/dsh-experimental-voice-input-bundle', '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice',
 ])
 // Declared dependencies of retained packages that the product never reaches.
 export const omittedEdges = Object.freeze({
-  // The CLI package lists the voice input bundle for CLI compositions.
-  '@deepseek-ai/dsh': ['@deepseek-ai/dsh-experimental-voice-input-bundle'],
   // Literature only extracts text; pdf.js skips its canvas polyfills when absent.
   'pdfjs-dist': ['@napi-rs/canvas'],
   // Studio bundles with webpack; the bundler patch loads rspack only for rspack: true.

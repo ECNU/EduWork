@@ -6,13 +6,14 @@ import { readFile } from 'node:fs/promises'
 import { resolve, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { probeLiterature } from '../packages/dsh-literature/scripts/probe-runtime.mjs'
+import { pinnedDshContract, pinnedDshDirectory } from './pinned-dsh-contract.mjs'
 const { values } = parseArgs({ options: { product: { type: 'string' }, output: { type: 'string' } } })
 if (!values.product || !values.output) throw new Error('Use --product <assembled candidate> --output <synthetic directory>')
 const product = resolve(values.product), output = resolve(values.output)
 const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
 assert.equal(identity.pluginMode, 'source-qualification')
-assert.equal(identity.dshVersion, '0.2.0-rc.2')
-const published = JSON.parse(await readFile(new URL('../third_party/dsh/candidate-v0.2.0-rc.2/literature.json', import.meta.url), 'utf8'))
+assert.equal(identity.dshVersion, pinnedDshContract.packageVersion)
+const published = JSON.parse(await readFile(join(pinnedDshDirectory, 'literature.json'), 'utf8'))
 assert.ok(!identity.sourcePackages.includes(published.name))
 assert.deepEqual(identity.externalPackages.filter(item => item.name === published.name), [published])
 const manifest = JSON.parse(await readFile(join(product, 'd/package.json'), 'utf8'))

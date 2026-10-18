@@ -81,7 +81,7 @@ export async function localDesktopPipeline({
   version = await developmentVersion(coreRoot, version)
   const output = fullPath(workspace || join(coreRoot, `dist/local-desktop-${version}`))
   installRoot = fullPath(installRoot || defaultInstallRoot())
-  const applicationName = desktopApplicationName({ edition: name, platform: process.platform, sourceAlpha: true })
+  const applicationName = desktopApplicationName({ edition: name, platform: process.platform, sourceAlpha: false })
   const installTarget = join(installRoot, applicationName)
   if (!skipInstall && await pathExists(installTarget)) {
     throw new Error(`Install target already exists and is never replaced: ${installTarget}. ` +

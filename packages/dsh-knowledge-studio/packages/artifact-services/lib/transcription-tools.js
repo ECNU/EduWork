@@ -21,7 +21,8 @@ export function installTranscriptionTools(ctx,service) {
       if(!cwd)throw new Error('Transcription requires an Agent workspace')
       const rootLocator=await ctx.fs.resolve('.',{cwd,signal:exec.signal})
       const root=await realpath(ctx.fs.processPath(rootLocator))
-      const locator=await ctx.fs.resolve(args.input_path,{cwd,signal:exec.signal})
+      const current=ctx.get?.('workingDirectory')?.get(exec.agent.session)??cwd
+      const locator=await ctx.fs.resolve(args.input_path,{cwd:current,signal:exec.signal})
       const input=await transcriptionInput(ctx.fs.processPath(locator))
       assertWithinWorkspace(root,input.path)
       const providers=await service.transcription.list()

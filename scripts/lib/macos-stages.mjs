@@ -70,10 +70,8 @@ export function macosStages({
       run: async (workspace) => {
         const macUpdateConfig = workspace.parameters.macUpdateConfig
           || workspace.resolvePath('product/resources/desktop/mac-updates.json')
-        if ((recipe === 'pinned-source' && version.includes('-'))
-          || /-(?:alpha|beta|rc)\./.test(version) || !await pathExists(macUpdateConfig)) {
-          // Alpha, beta and RC candidates use manual installation. An empty
-          // stage result also covers editions without an update configuration.
+        if (!await pathExists(macUpdateConfig)) {
+          // Local assemblies may omit the update service; published builds require it.
           await ensureDir(workspace.resolvePath('sparkle'))
           await writeJSON(workspace.resolvePath('sparkle/inputs.json'), { enabled: false })
           return
@@ -90,8 +88,8 @@ export function macosStages({
       run: async (workspace) => {
         const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
         const sparkle = await readJSON(workspace.resolvePath('sparkle/inputs.json'))
-        if (!development && /^\d+\.\d+\.\d+$/.test(version) && sparkle.enabled === false) {
-          throw new Error('Stable macOS release requires Sparkle update configuration')
+        if (!development && sparkle.enabled === false) {
+          throw new Error('macOS release requires Sparkle update configuration')
         }
         const macOptions = sparkle.enabled === false ? {} : {
           sparkleFramework: sparkle.framework,

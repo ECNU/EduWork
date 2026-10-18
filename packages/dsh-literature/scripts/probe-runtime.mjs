@@ -37,8 +37,8 @@ try {
   const ownerCtx = new Context()
   const workspace = join(output, 'calling-workspace')
   await mkdir(workspace)
-  const parent = { id: 'literature-session', ctx: ownerCtx, status: 'running',
-    session: { header: { cwd: workspace } }, inject() {} }
+  const parent = { options: { provider: 'probe', model: 'pdf' }, id: 'literature-session', ctx: ownerCtx, status: 'running',
+    session: { header: { cwd: workspace }, requestHeader: () => undefined }, inject() {} }
   ctx.provide('agents')
   ctx.set('agents', { get: id => id === parent.id ? parent : undefined })
   await ctx.plugin((await load('@deepseek-ai/dsh-jobs-local')).default)
@@ -69,17 +69,47 @@ try {
   report.checks.push('official job_kill propagates cancellation and settles the producer')
   const unavailability = () => new LiteratureError('synthetic retrieval unavailable', 'LITERATURE_FULLTEXT_UNAVAILABLE')
   ctx.literature.landingPage = async () => '<a href="https://example.test/paper.pdf">PDF</a>'
-  ctx.provide('subagents')
-  for (const mode of ['completed', 'refusal', 'aborted']) {
-    let disposed = 0, started
-    ctx.set('subagents', { getProvider: () => ({}), start: async (_name, options) => {
-      assert.equal(options.parent, parent); assert.deepEqual(options.toolFilter, { allow: [] })
-      assert.equal(options.outputSchema.required[0], 'pdfUrl')
+  const { LlmRuntime, LlmAdapter } = await load('@deepseek-ai/dsh-llm')
+  await ctx.plugin(LlmRuntime)
+  let currentMode, disposed = 0, started
+  // The old published package remains a valid input to older desktop builds.
+  // Use its legacy fixture only when that API actually exists in the Runtime;
+  // a 0.2.1 product still has to exercise the new LLM path.
+  const { SubagentRuntime } = await load('@deepseek-ai/dsh-subagent')
+  const legacy = typeof SubagentRuntime.prototype.start === 'function'
+  if (legacy) {
+    ctx.provide('subagents')
+    ctx.set('subagents', { getProvider: () => ({}), start: async (_provider, options) => {
       started = options
-      return { result: mode === 'aborted'
+      assert.equal(options.parent, parent)
+      assert.deepEqual(options.toolFilter, { allow: [] })
+      assert.equal(options.outputSchema.required[0], 'pdfUrl')
+      return { result: currentMode === 'aborted'
         ? new Promise((_, reject) => options.signal.addEventListener('abort', () => reject(options.signal.reason), { once: true }))
-        : Promise.resolve({ stopReason: mode, structured: { pdfUrl: 'https://example.test/paper.pdf' } }), dispose: async () => { disposed++ } }
+        : Promise.resolve({ stopReason: currentMode, structured: { pdfUrl: 'https://example.test/paper.pdf' } }), dispose: async () => { disposed++ } }
     } })
+  }
+  ctx.llm.registerAdapter(['probe'], new class extends LlmAdapter {
+    async resolveModel(provider,model){ return {provider,id:model,name:model,defaultMaxTokens:128} }
+    async *stream(options){
+      started=options
+      assert.deepEqual(options.tools.map(tool=>tool.name),['structured_output'])
+      assert.equal(options.sessionId,parent.id)
+      try {
+        if(currentMode==='aborted') {
+          await new Promise((_,reject)=>{
+            if(options.signal.aborted){reject(options.signal.reason);return}
+            options.signal.addEventListener('abort',()=>reject(options.signal.reason),{once:true})
+          })
+        } else if(currentMode==='completed') {
+          yield {type:'tool-call-delta',index:0,id:'result',name:'structured_output',argumentsDelta:'{"pdfUrl":"https://example.test/paper.pdf"}'}
+          yield {type:'finish',reason:{kind:'tool-calls'}}
+        } else {yield {type:'finish',reason:{kind:'refusal'}}}
+      } finally {disposed++}
+    }
+  }())
+  for (const mode of ['completed', 'refusal', 'aborted']) {
+    currentMode=mode;disposed=0;started=undefined
     ctx.literature.fulltext = async input => {
       if (input !== 'https://example.test/paper.pdf') throw unavailability()
       return { id: 'fallback', source: 'dblp', files: [{ path: 'paper.md', content: 'PDF fallback', kind: 'markdown' }], summary: 'PDF fallback' }
@@ -93,7 +123,7 @@ try {
     await ctx.jobs.wait(job.value.jobId, 1000, parent.id)
     assert.equal(disposed, 1)
     assert.equal(ctx.jobs.get(job.value.jobId, parent.id).status, mode === 'completed' ? 'completed' : mode === 'aborted' ? 'killed' : 'failed')
-    report.checks.push(`publisher PDF Subagent ${mode}: output/terminal state and disposal verified`)
+    report.checks.push(`publisher PDF ${legacy ? 'legacy subagent fixture' : 'LLM extraction'} ${mode}: output/terminal state and disposal verified`)
   }
   abortSeen = false
   ctx.literature.fulltext = (_input, signal) => new Promise((_, reject) => signal.addEventListener('abort', () => { abortSeen = true; reject(signal.reason) }, { once: true }))

@@ -132,7 +132,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
         const args = ['--product', product, '--version', version, '--runtime-lock', selected.sourceLock]
         if (coreRoot !== editionRoot) args.push('--edition', editionRoot)
         if (selected.publisherDescriptors) args.push('--publisher-descriptors', selected.publisherDescriptors)
-        if (selected.automaticUpdates) args.push('--channel', 'stable')
+        if (!selected.prerelease) args.push('--channel', 'stable')
         await runNode(join(coreRoot, 'scripts/prepare-pinned-dsh-product.mjs'), args)
         await runNode(join(coreRoot, 'scripts/verify-product-release-identity.mjs'), [product, version])
       },

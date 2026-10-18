@@ -13,16 +13,16 @@
 - **全文获取**：尝试 arXiv 源文件、HTML、PDF，以及可访问的出版方 PDF，提取内容写入当前会话工作区。
 - **后台任务**：全文获取默认通过 DSH Jobs 执行，支持查询结果与取消；写入遵循当前会话的沙箱策略。
 
-全文是否可用取决于来源服务、网络和访问权限，不承诺获取付费或受限全文。出版方 PDF 链接解析的回退路径会使用宿主配置的 Subagent；本包不自带模型或账号。
+全文是否可用取决于来源服务、网络和访问权限，不承诺获取付费或受限全文。出版方 PDF 链接解析使用宿主模型，本包不自带模型或账号。DSH 0.2.0 沿用无操作工具的 Subagent；0.2.1 改用同一模型的一次结构化抽取，不执行返回的工具，也不继承 Agent 自动重试。失败后可重试全文任务，取消任务会中止抽取。
 
-兼容声明为 `>=0.2.0-rc.1 <0.3.0-0`。实际工具与 Jobs 验证覆盖 rc.1、rc.2；未来版本仍需行为验收。官方插件管理器将预发布版本计入范围，npm 默认只接纳与范围端点同一补丁版本的预发布；例如 `0.2.1-rc.1` 在两者中匹配结果不同。
+兼容 DSH 0.2.x，并显式接纳 0.2.1 预发布系列；新旧 API 都需行为验收。旧版 invariant 导出保留，其 peer 为可选，0.2.1 不再为它安装旧内核组件。
 
 ## 安装与使用
 
 要求 Node.js `24.18.0+` 和 DSH `0.2.x（从 0.2.0-rc.1 起）`；其他内核版本尚未验证。
 
 ```sh
-dsh plugin add @eduwork/dsh-literature@0.1.2
+dsh plugin add @eduwork/dsh-literature@0.1.3
 ```
 
 也可以从源码构建：
@@ -42,7 +42,7 @@ node scripts/packages/manage.mjs pack dsh-literature
 
 ## 配置与维护
 
-核心 `literature` 条目支持 `enabledSources`（`dblp`、`arxiv`）、`searchMaxResults`、`timeoutMs` 及下载/提取大小限制；工具条目 `tool-literature` 的 `subagentProvider` 默认是 `spawn`。不配置来源列表时使用全部已注册且可用的来源，空列表表示全部停用。
+核心 `literature` 条目支持 `enabledSources`（`dblp`、`arxiv`）、`searchMaxResults`、`timeoutMs` 及下载/提取大小限制；工具条目 `tool-literature` 的 `subagentProvider` 只用于旧版子代理，默认是 `spawn`；新版只读抽取使用调用方当前模型，自定义旧子代理提供者会明确报不兼容。不配置来源列表时使用全部已注册且可用的来源，空列表表示全部停用。
 
 源码保留四层结构：`src/core` 负责检索协调和内容提取，`src/dblp`、`src/arxiv` 对接来源，`src/tool` 对接 DSH 工具与 Jobs。对应的 npm 导出为 `/core`、`/dblp`、`/arxiv`、`/tool`，同时提供 TypeScript 类型声明。原上游的五个包收为一个包，减少跨包版本配套工作。
 

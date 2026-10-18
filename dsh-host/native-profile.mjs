@@ -186,7 +186,7 @@ export function nativeEntryIds(patches) {
 // Generated deployment defaults are an ordinary bundle BELOW the native user
 // patch. Never regenerate the latter: Settings writes it through configEditor.
 // This profile lives beside the 0.1.5 profile for rollback, in the same DSH home.
-export async function writeNativeProfile({ profile, home, bundles, patches, parse = JSON.parse, yaml, migrateSchedule = false }) {
+export async function writeNativeProfile({ profile, home, bundles, patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
   const name = '@eduwork/generated-profile'
   const bundle = join(profile, 'node_modules', name)
   for (const path of [profile, join(profile, 'node_modules'), join(profile, 'node_modules/@eduwork'), bundle]) {
@@ -247,7 +247,15 @@ export async function writeNativeProfile({ profile, home, bundles, patches, pars
     }
   }
   const scheduleBundle = '@deepseek-ai/dsh-experimental-schedule-bundle'
-  if (migrateSchedule && !savedManifest.eduwork?.scheduleBundleMigrated) {
+  if (builtinSchedule) {
+    // 0.2.1 ships Schedule in web-app. Retire only its obsolete activation;
+    // retain settings, session state and all other user-installed bundles.
+    for (let index = savedBundles.length - 1; index >= 0; index--) {
+      if (savedBundles[index] === scheduleBundle) savedBundles.splice(index, 1)
+    }
+    if (savedManifest.dependencies) delete savedManifest.dependencies[scheduleBundle]
+  }
+  if (migrateSchedule && !builtinSchedule && !savedManifest.eduwork?.scheduleBundleMigrated) {
     // Previous web-app rows were disabled by default. Only explicit activation
     // selects the optional bundle; preserve partial activation and configuration.
     const saved = parse(await readFile(preferencesPath, 'utf8').catch(error => { missing(error); return '[]' }))

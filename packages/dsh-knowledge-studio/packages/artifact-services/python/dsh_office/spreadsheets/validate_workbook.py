@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import zipfile
 from typing import Any
+from ..documents.shared import validate_ooxml_archive
 
 from .shared import (
     EXIT_VALIDATION,
@@ -56,6 +57,7 @@ def main() -> int:
         )
 
     try:
+        validate_ooxml_archive(input_path)
         workbook = openpyxl.load_workbook(input_path, read_only=True, data_only=False)
     except Exception as exc:
         return invalid_result(

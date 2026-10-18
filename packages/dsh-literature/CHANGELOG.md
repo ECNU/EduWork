@@ -1,5 +1,13 @@
 # 变更记录 / Changelog
 
+## 0.1.3
+
+- 兼容 DSH 0.2.1 删除旧子代理启动接口后的出版方 PDF 链接抽取，使用调用方模型进行只读结构化抽取，不执行模型返回的工具。
+- 保留 DSH 0.2.0 的受限子代理路径；新旧路径均支持任务取消。结构化抽取失败后可重试全文任务，不继承 Agent 自动重试。
+- 明确接纳 0.2.1 预发布版本，旧 invariant peer 改为可选，避免新宿主为兼容导出安装旧内核组件。
+
+Supports publisher PDF link extraction on DSH 0.2.1 through one read-only structured model call, while retaining the restricted subagent path on 0.2.0. Returned tools are never executed. Cancellation propagates; direct extraction does not inherit Agent-loop retries. Explicitly accepts 0.2.1 prereleases and makes the legacy invariant peer optional.
+
 ## 0.1.2
 
 - DSH peer 改为 `>=0.2.0-rc.1 <0.3.0-0`，同一 0.2 API 系列不再逐个枚举 rc；0.3 及其预发布版本仍需适配。

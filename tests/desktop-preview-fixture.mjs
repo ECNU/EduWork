@@ -20,7 +20,9 @@ const require = createRequire(join(product, 'd/package.json'))
 const load = name => import(pathToFileURL(require.resolve(name)))
 const { Context } = await load('@deepseek-ai/cordis')
 const { default: Sessions } = await load('@deepseek-ai/dsh-session')
-const { default: Jsonl } = await load('@deepseek-ai/dsh-session-persistence-jsonl')
+const jsonlModule = await load('@deepseek-ai/dsh-session-persistence-jsonl')
+// 0.2.1 exports an apply/Config plugin; older release fixtures use its class.
+const Jsonl = jsonlModule.default ?? jsonlModule
 const { createUserMessage, createAssistantMessage, createToolResultMessage, AssistantStreamAccumulator } = await load('@deepseek-ai/dsh-llm')
 const ctx = new Context()
 const files = fixture.files || ['preview-report.docx', 'preview-table.xlsx', 'preview-slides.pptx', 'preview-audio.wav', 'preview-video.mp4']

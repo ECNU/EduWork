@@ -12,9 +12,10 @@ import { loadImportFormats, findSessionCandidates, prepareImportCatalogs, inspec
 const runtime = process.env.EDUWORK_TEST_RUNTIME
 async function fixture(t) {
   const require = createRequire(join(runtime, 'package.json')), load = name => import(pathToFileURL(require.resolve(name)))
-  const [{ Context }, { default: Jsonl }, formats] = await Promise.all([
+  const [{ Context }, jsonlModule, formats] = await Promise.all([
     load('@deepseek-ai/cordis'), load('@deepseek-ai/dsh-session-persistence-jsonl'), loadImportFormats(load),
   ])
+  const Jsonl = jsonlModule.default ?? jsonlModule
   if (formats.currentVersion < 4) { t.skip('V4 corpus migration requires the native candidate Runtime'); return }
   const root = await mkdtemp(join(tmpdir(), 'eduwork-import-corpus-'))
   t.after(() => rm(root, { recursive: true, force: true }))

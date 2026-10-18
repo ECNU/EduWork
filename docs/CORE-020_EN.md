@@ -2,6 +2,8 @@
 
 [中文](CORE-020.md)
 
+This page records the 0.2.0 combination. See [DSH 0.2.1 integration](CORE-021_EN.md) for the current recipe.
+
 This combination pins DSH `0.2.0-rc.2`, commit `639ed015397290b3745d163aafe02ffee4aa3f84`. Official npm dependencies and desktop sources are verified separately using `third_party/dsh/candidate-v0.2.0-rc.2/`; the previous npm release lock is retained. `validate-pinned-dsh-source.yml` checks only the commit selected by the build recipe. An upstream upgrade also requires updates to Host source anchors, plugin adapters, and probes.
 
 ## Distribution policy

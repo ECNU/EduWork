@@ -1,0 +1,15 @@
+{
+  "name": "@eduwork/dsh-browser-upstream",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": { ".": "./lib/index.js" },
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-sandbox-policy": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
+    "@chatecnu-work/dsh-tool-browser": "0.1.0-dev"
+  }
+}

@@ -35,6 +35,7 @@ const baselines = {
   '0.1.7-alpha.2': { commit: '00102833dfaee1da9f48a3a8eae9d34005a75218', native: true },
   '0.1.7-rc.2': { commit: '477b4f420553e8a52c2fbccc464d7561b239c443', native: true, configurableSubagents: true },
   '0.2.0-rc.2': { commit: '639ed015397290b3745d163aafe02ffee4aa3f84', native: true, configurableSubagents: true, upstreamReveal: true, migrateSchedule: true },
+  '0.2.1-rc.2': { commit: '687f282e8625c6b8d11ff58211a90524be2e4317', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
 }
 export function qualifiedDesktopBaseline(identity) {
   const baseline = Object.hasOwn(baselines, identity?.dshVersion) ? baselines[identity.dshVersion] : undefined

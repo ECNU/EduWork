@@ -11,7 +11,7 @@ export function desktopVersion(version) {
   versionParts(version)
   assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-(?:(?:alpha|beta|rc)\.[1-9]\d*|dev\.\d{8}\.[1-9]\d*))?$/, 'Unsupported desktop release version')
   const prerelease = version.includes('-')
-  return { version, prerelease, channel: prerelease ? 'development' : 'stable', automaticUpdates: !prerelease }
+  return { version, prerelease, channel: prerelease ? 'development' : 'stable', automaticUpdates: true }
 }
 
 const read = async path => JSON.parse((await readFile(path, 'utf8')).replace(/^\uFEFF/, ''))

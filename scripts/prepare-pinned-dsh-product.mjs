@@ -13,10 +13,11 @@ import { readPublisherBootstrap } from '../dsh-host/publisher-bootstrap.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
+import { usePinnedBrowser } from './pinned-browser.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
-const release=desktopVersion(values.version), stable=release.automaticUpdates
+const release=desktopVersion(values.version), stable=!release.prerelease
 if(values.channel && values.channel!==release.channel) throw Error('Version does not match the explicit source build channel')
 const product=resolve(values.product)
 const read=async file=>JSON.parse(await readFile(file,'utf8'))
@@ -29,9 +30,9 @@ assert.equal(identity.dshVersion,runtimeLock.packageVersion)
 assert.equal(identity.dshCommit,runtimeLock.commit)
 assert.notEqual(identity.sourceAlpha,true,'Prepare each source Alpha only once')
 const resources=join(product,'resources/desktop')
-const generic=await read(new URL('../config/distributions/generic.json',import.meta.url))
+const generic=usePinnedBrowser(await read(new URL('../config/distributions/generic.json',import.meta.url)))
 generic.packages=generic.packages.map(name=>name==='@shlv/dsh-literature'?'@eduwork/dsh-literature':name)
-const pluginNames=generic.plugins.map(plugin=>plugin.name)
+const pluginNames=[...new Set(generic.plugins.map(plugin=>plugin.name.replace(/\/search-auto$/, ''))) ]
 if(values.edition){
   const edition=resolve(values.edition), distribution=await read(join(edition,'edition/distribution.json'))
   const require=createRequire(join(product,'d/package.json')), {build}=require('esbuild')
@@ -94,23 +95,17 @@ function noCredentials(value){if(!value||typeof value!=='object')return;for(cons
   noCredentials(item)
 }}
 noCredentials(configuration)
-configuration.updates=stable?{...configuration.updates,defaultPolicy:'stable',...(policy.ownership==='user'?{provider:'github',repository:'ECNU/EduWork'}:{})}:{provider:'disabled'}
+// Release channels select versions; the user's desktop setting controls updates.
+configuration.updates={...configuration.updates,defaultPolicy:release.channel,...(policy.ownership==='user'?{provider:'github',repository:'ECNU/EduWork'}:{})}
 const body=documentConfiguration(JSON.stringify(configuration,null,2)+'\n')
 parseUserConfig(join(resources,'eduwork.jsonc'),body)
 await writeFile(join(resources,'eduwork.jsonc'),body)
-// Preserve signed publisher configuration and its compatibility checks. Software
-// update channels stay disabled until this explicit Alpha has been accepted.
-for(const name of ['publisher-bootstrap.json','publisher-bootstrap.darwin.json']){
-  const path=join(resources,name)
-  const descriptor=await read(path).catch(error=>{if(error.code!=='ENOENT')throw error})
-  if(descriptor){descriptor.updates=stable?{...descriptor.updates}:{provider:'disabled'};await save(path,descriptor)}
-}
+// Preserve trusted publisher sources for both software and signed configuration.
 for(const platform of ['win32','darwin']) await readPublisherBootstrap({ownership:policy.ownership,product,platform})
-if(!stable) await rm(join(resources,'mac-updates.json'),{force:true})
 identity.localPlugins={};identity.managedPackages={}
 for(const name of pluginNames) identity.localPlugins[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:true}
 for(const name of generic.packages) identity.managedPackages[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:identity.sourcePackages.includes(name)}
-Object.assign(identity,{version:values.version,qualification:'Pinned DSH source build; package and component receipts retained',automaticUpdates:stable,
+Object.assign(identity,{version:values.version,qualification:'Pinned DSH source build; package and component receipts retained',automaticUpdates:release.automaticUpdates,
   sourceAlpha:!stable,sourceRelease:stable,releaseChannel:stable?'stable':'development',published:false})
 await save(join(product,'assembly.json'),identity)
-console.log(JSON.stringify({distribution:identity.distribution,version:identity.version,dshVersion:identity.dshVersion,sourceAlpha:!stable,automaticUpdates:stable}))
+console.log(JSON.stringify({distribution:identity.distribution,version:identity.version,dshVersion:identity.dshVersion,sourceAlpha:!stable,automaticUpdates:release.automaticUpdates}))

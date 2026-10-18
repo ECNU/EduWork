@@ -65,6 +65,18 @@ test('refuses altered lock bytes and non-registry tarballs even if newly hashed'
   }
 })
 
+test('0.2.1 candidate pins the published runtime and drops retired optional bundles', async () => {
+  const input = await contract(join(root, 'third_party/dsh/candidate-v0.2.1-rc.2'))
+  assert.equal(validateNpmRuntimeLock(input), input.lock.runtime.npm.packageLockSHA256)
+  assert.equal(input.lock.packageVersion, '0.2.1-rc.2')
+  for (const name of ['invariants', 'subagent-in-process-driver', 'experimental-schedule-bundle']) {
+    assert.equal(input.packageLock.packages[`node_modules/@deepseek-ai/dsh-${name}`], undefined)
+  }
+  for (const name of ['web-deepseek-api', 'experimental-inspector-profile', 'schedule']) {
+    assert.equal(input.packageLock.packages[`node_modules/@deepseek-ai/dsh-${name}`].version, input.lock.packageVersion)
+  }
+})
+
 test('refuses DSH family drift, missing integrity and unpinned direct dependencies', async () => {
   const drift = await contract()
   drift.packageLock.packages['node_modules/@deepseek-ai/dsh-agent'].version = '0.1.5'

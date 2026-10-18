@@ -37,6 +37,10 @@ export class TransformingEnterpriseAdapter {
   providerInfo(provider) { return this.inner.providerInfo(provider) }
   providerRetryPolicy(provider) { return this.inner.providerRetryPolicy(provider) }
   imageRequestPricing(provider, model) { return this.inner.imageRequestPricing(provider, model) }
+  imageRequestTarget(provider, model, image) {
+    return this.inner.imageRequestTarget?.(provider, model, image)
+      ?? { width: image.width, height: image.height, maxBytes: image.bytes }
+  }
 
   async listModels(provider) {
     const models = await this.inner.listModels(provider)

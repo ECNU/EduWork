@@ -88,6 +88,14 @@ test('workspace attachment I/O accepts bounded files and rejects boundary escape
   await assert.rejects(readWorkspaceAttachments(ctx, ['inside.txt'], exec, 2), /exceed the configured 2 byte limit/)
   await assert.rejects(readWorkspaceAttachments(ctx, ['.'], exec, 32), /not a regular file/)
 
+  const child = join(workspace, 'child')
+  await mkdir(child); await writeFile(join(child, 'inside.txt'), 'current-directory')
+  let current = child
+  ctx.get = name => name === 'workingDirectory' ? { get(session) { assert.equal(session, exec.agent.session); return current } } : undefined
+  assert.equal((await readWorkspaceAttachments(ctx, ['inside.txt'], exec, 32))[0].content.toString(), 'current-directory')
+  current = root
+  await assert.rejects(readWorkspaceAttachments(ctx, ['outside.txt'], exec, 32), /outside the session workspace/)
+  // Managed downloads remain anchored to the project, including after cd.
   const destination = await writeWorkspaceAttachment(ctx, { filename: '../reply.txt', bytes: Buffer.from('reply') }, exec)
   const attachmentRoot = await realpath(join(workspace, '.dsh-mail-assistant', 'attachments'))
   assert.equal(workspaceInternals.within(attachmentRoot, destination), true)

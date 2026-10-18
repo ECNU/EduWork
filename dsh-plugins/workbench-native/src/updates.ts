@@ -19,7 +19,7 @@ export function createUpdateController(service) {
  const poll=async()=>{await read();if(!stopped)timer=setTimeout(poll,[view.status?.update?.state,view.status?.contentUpdate?.state].some(state=>['checking','downloading','applying'].includes(state))?350:2500)}
  const run=async(action)=>{
   if(view.working)return
-  const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':''
+  const started=Date.now(),working=action==='check-updates'?'checking':action==='download-update'?'downloading':action.startsWith('use-')?'switching':action.includes('software-updates')?'settings':''
   publish({error:'',working})
   try{const status=await service(action);publish({status});if(status.phase==='error'&&!status.update?.error)publish({error:status.message})}catch(e){publish({error:e.message})}
   finally{if(working)await new Promise(resolve=>setTimeout(resolve,Math.max(0,450-(Date.now()-started))));await read();publish({working:''})}
@@ -49,8 +49,10 @@ function ContentPanel({controller,content:c,working}) {
 }
 export function UpdatePanel({controller}) {
  const {status,error,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate,state=working||s?.state||status?.phase
- const busy=['checking','downloading','applying','switching'].includes(state)
+ const busy=['checking','downloading','applying','switching','settings'].includes(state)
  const enabled=status&&status.shell!=='web'&&(s?.enabled!==false||c?.enabled)
+ const softwareEnabled=s?.userEnabled??s?.enabled
+ const toggleLocked=Boolean(working)||s?.busy||s?.installOnQuit||s?.installOnNextStart||['checking','downloading','ready','applying'].includes(s?.state)
  const policy=s?.policy||c?.policy||'stable',locked=busy||state==='ready'||s?.busy||['checking','downloading','ready'].includes(c?.state)
  const channels=[['stable','仅公测版'],['development','开发版']].filter(([value])=>!s?.policies||s.policies.includes(value))
  const setPolicy=async value=>{if(locked||value===policy)return;await controller.run(value==='development'?'use-development-updates':'use-stable-updates');await controller.run('check-updates')}
@@ -65,12 +67,15 @@ export function UpdatePanel({controller}) {
    h('div',{style:{minWidth:0}},
     h('div',{style:{fontSize:14}},(s?.nativeUpdater||s?.nativeUI)?'macOS 应用更新':'自动更新'),
     h('p',{style:{...note,overflowWrap:'anywhere'}},status?.version?`当前版本 ${status.version}`:'读取当前版本…'),
-    h('p',{style:note},(s?.nativeUpdater||s?.nativeUI)?'检查在后台进行，不打断当前工作。':enabled?'启动时在后台检查，发现新版本后在左下角提示。':status?'当前未启用自动更新。':'正在读取更新状态…')),
-   h('button',{type:'button',style:{...button,flexShrink:0},disabled:locked||!enabled,onClick:()=>controller.run('check-updates')},state==='checking'?'检查中…':'检查更新')),
+    h('p',{style:note},!status?'正在读取更新状态…':softwareEnabled?'启动时在后台检查，发现新版本后提示。':c?.enabled?'软件更新已关闭，配置与 Skills 更新不受影响。':'软件更新已关闭。')),
+   h('button',{type:'button',style:{...button,flexShrink:0},disabled:locked||!enabled,onClick:()=>controller.run('check-updates')},state==='checking'?'检查中…':!softwareEnabled&&c?.enabled?'检查内容更新':'检查更新')),
+  s?.canToggle&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
+   h('input',{type:'checkbox',checked:Boolean(softwareEnabled),disabled:toggleLocked,onChange:e=>controller.run(e.target.checked?'enable-software-updates':'disable-software-updates')}),
+   h('span',null,'启用软件更新',h('p',{style:note},working==='settings'?'正在保存设置…':toggleLocked?'更新正在处理，完成后可修改此设置。':'关闭后停止软件更新检查；重新开启后沿用所选渠道。'))),
   s?.enabled&&typeof s.automaticDownload==='boolean'&&h('label',{style:{display:'flex',gap:8,alignItems:'flex-start',marginTop:12,fontSize:13}},
    h('input',{type:'checkbox',checked:s.automaticDownload,disabled:locked||Boolean(working),onChange:e=>controller.run(e.target.checked?'enable-automatic-download':'disable-automatic-download')}),
    h('span',null,'自动下载，退出时安装',h('p',{style:note},'下载完成后提醒；不会强制重启。关闭窗口不等于退出应用。'))),
-  enabled&&s&&channels.length>1&&h(React.Fragment,null,
+  (enabled||s?.canToggle)&&s&&channels.length>1&&h(React.Fragment,null,
    h('div',{role:'radiogroup','aria-label':'更新渠道',style:{display:'flex',gap:8,marginTop:12}},
     ...channels.map(([value,label],index)=>h('button',{
      key:value,type:'button',role:'radio','aria-checked':policy===value,'aria-disabled':locked,tabIndex:policy===value?0:-1,

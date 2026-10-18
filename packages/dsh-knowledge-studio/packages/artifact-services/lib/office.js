@@ -173,19 +173,9 @@ export async function runOffice({ request, projectPath, signal, environment = pr
       return {...result,report:{...result.report,path:inputPath,project_relative_path:request.inputPath,relative_path:request.inputPath,source:request.inputPath,conversion}}
     } finally {await rm(directory,{recursive:true,force:true})}
   }
-  if(request.action==='validate'&&request.format!=='pdf'&&!request.strict) {
-    const runtime=officialOfficeRuntime(environment)
-    if(runtime) {
-      const inputPath=await officeInputPath(projectPath,request.inputPath)
-      if((await stat(inputPath)).size>256*1024*1024)throw new Error('Office input exceeds the 256 MiB validation limit')
-      const checker=fileURLToPath(new URL('../python/official_check.py',import.meta.url))
-      const stdout=await execFilePromise(privatePython(environment),['-I','-B','-X','utf8',checker,runtime.checker,inputPath],{
-        cwd:projectPath,env:environment,windowsHide:true,timeout:180_000,signal,encoding:'utf8',maxBuffer:2*1024*1024,
-      },execFileImpl)
-      const check=JSON.parse(stdout.trim())
-      if(check.verdict!=='pass')throw new Error('Official Office structure validation failed')
-      return {invocation:{mime:MIME[request.format]},report:{ok:true,valid:true,structural_valid:true,operation:'validate',provider:'dsh-office',project_relative_path:request.inputPath,summary:{...check.summary,...(request.format==='presentation'?{slide_count:check.summary.slides}:{})},checks:check.checks}}
-    }
+  if(request.action==='validate'&&request.format!=='pdf') {
+    const inputPath=await officeInputPath(projectPath,request.inputPath)
+    if((await stat(inputPath)).size>256*1024*1024)throw new Error('Office input exceeds the 256 MiB validation limit')
   }
   const invocation = buildOfficeInvocation(request, projectPath)
   const stdout = await execFilePromise(privatePython(environment), invocation.args, {

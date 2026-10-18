@@ -45,6 +45,8 @@ test('omitted packages leave with what only they reach; declared and retained us
   await install(runtime, 'node_modules/hoisted-root', { name: 'hoisted-root' })
   await install(runtime, 'node_modules/app', { name: 'app', dependencies: { shared: '1' } })
   await install(runtime, 'node_modules/@deepseek-ai/dsh', { name: '@deepseek-ai/dsh', dependencies: { '@deepseek-ai/dsh-experimental-voice-input-bundle': '1' } })
+  await install(runtime, 'node_modules/@deepseek-ai/dsh-experimental-voice-input-bundle', { name: '@deepseek-ai/dsh-experimental-voice-input-bundle', dependencies: { '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice': '1' } })
+  await install(runtime, 'node_modules/@deepseek-ai/dsh-experimental-speech-to-text-sensevoice', { name: '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice' })
   await install(runtime, 'node_modules/pdfjs-dist', { name: 'pdfjs-dist', optionalDependencies: { '@napi-rs/canvas': '1' } })
   await install(runtime, 'node_modules/@napi-rs/canvas', { name: '@napi-rs/canvas', optionalDependencies: { '@napi-rs/canvas-darwin-arm64': '1' } })
   await install(runtime, 'node_modules/@napi-rs/canvas-darwin-arm64', { name: '@napi-rs/canvas-darwin-arm64' }, 'native')
@@ -58,7 +60,7 @@ test('omitted packages leave with what only they reach; declared and retained us
   assert.deepEqual(result.packages.map(item => item.replace(/@1\.0\.0$/, '')).sort(), [
     ...omittedRoots, 'nested', '@napi-rs/canvas', '@napi-rs/canvas-darwin-arm64', '@rspack/core', 'vitest', 'chai',
   ].sort())
-  for (const kept of ['typescript', 'shared', 'hoisted-root', 'app', 'vite', 'webpack', 'pdfjs-dist', 'css-loader']) {
+  for (const kept of ['typescript', 'shared', 'hoisted-root', 'app', 'vite', 'webpack', 'pdfjs-dist', 'css-loader', '@deepseek-ai/dsh-experimental-voice-input-bundle', '@deepseek-ai/dsh-experimental-speech-to-text-sensevoice']) {
     assert.ok(await exists(join(runtime, 'node_modules', kept, 'package.json')), kept)
   }
   for (const gone of [...omittedRoots, 'vitest', '@rspack/core', '@napi-rs/canvas-darwin-arm64']) assert.equal(await exists(join(runtime, 'node_modules', gone)), false, gone)

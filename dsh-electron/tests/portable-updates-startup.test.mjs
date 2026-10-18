@@ -61,6 +61,39 @@ test('disabling automatic updates does not bypass required component startup',as
  assert.equal(JSON.parse(await readFile(join(options.root,'data/state/updates/electron-edition.json'),'utf8')).enabled,false)
 })
 
+test('an explicit disabled backend leaves the configured source and pending transaction untouched',async t=>{
+ const options=await fixture(t)
+ const files={
+  'config/eduwork.jsonc':'// custom source\n{"updates":{"provider":"static","manifestURL":"https://example.org/stable/latest-windows-amd64.json"}}',
+  'config/update.bridge.json':'{"schemaVersion":1,"enabled":true,"manifestBaseURL":"https://example.org"}',
+  'data/state/pending-update.json':'synthetic scheduled install',
+  'data/state/updates/electron-edition.json':'previous updater state',
+ }
+ for(const [path,bytes] of Object.entries(files)){
+  await mkdir(join(options.root,path,'..'),{recursive:true})
+  await writeFile(join(options.root,path),bytes)
+ }
+ assert.equal(await startPortableUpdates({...options,enabled:false,spawnProcess:()=>assert.fail('Paused package must not start the helper')}),null)
+ for(const [path,bytes] of Object.entries(files))assert.equal(await readFile(join(options.root,path),'utf8'),bytes,path)
+ // A later stable launch still uses the ordinary, failure-reporting path.
+ await assert.rejects(startPortableUpdates({...options,version:'0.4.4',enabled:true,spawnProcess:denied('EACCES')}),{code:'EDUWORK_UPDATER_START_FAILED'})
+ assert.equal(await readFile(join(options.root,'data/state/pending-update.json'),'utf8'),files['data/state/pending-update.json'])
+})
+
+test('enabling updates during a running session never applies a scheduled package',async t=>{
+ const options=await fixture(t),script=join(options.root,'no-install-helper.mjs'),actions=[]
+ await writeFile(script,`import {createInterface} from 'node:readline';
+ createInterface({input:process.stdin}).on('line',line=>{const {id,action}=JSON.parse(line);
+ process.stdout.write(JSON.stringify({id,status:{enabled:true,state:'idle',action}})+'\\n');});`)
+ const bridge=await startPortableUpdates({...options,applyScheduled:false,spawnProcess:(_file,_args,settings)=>{
+  const child=spawn(process.execPath,[script],settings)
+  createInterface({input:child.stdout}).on('line',line=>actions.push(JSON.parse(line).status.action))
+  return child
+ }})
+ assert.deepEqual(actions,['check-updates'])
+ await bridge.close()
+})
+
 test('configuration errors retain their own diagnosis before spawning a helper',async t=>{
  const options=await fixture(t)
  await assert.rejects(startPortableUpdates({...options,updates:{provider:'invalid'},spawnProcess:()=>assert.fail('Invalid configuration must not spawn')}),/不支持/)

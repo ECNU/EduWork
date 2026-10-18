@@ -40,6 +40,7 @@ type Config struct {
 }
 
 type Snapshot struct {
+	Busy               bool   `json:"busy"`
 	Enabled            bool   `json:"enabled"`
 	State              string `json:"state"`
 	Policy             string `json:"policy"`

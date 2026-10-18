@@ -12,7 +12,7 @@ export async function seedHostSession(runtime,home) {
   const require=createRequire(join(runtime,'package.json'))
   const load=name=>import(pathToFileURL(require.resolve(name)))
   const {Context}=await load('@deepseek-ai/cordis')
-  const {default:Jsonl}=await load('@deepseek-ai/dsh-session-persistence-jsonl')
+  const jsonlModule=await load('@deepseek-ai/dsh-session-persistence-jsonl'),Jsonl=jsonlModule.default??jsonlModule
   const {default:SessionStore,SessionId,SessionSeq,SESSION_FORMAT_VERSION}=await load('@deepseek-ai/dsh-session')
   const {createUserMessage}=await load('@deepseek-ai/dsh-llm')
   const context=new Context(),now=Date.now(),sessionId='studio-toolbar-fixture'

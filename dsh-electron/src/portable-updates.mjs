@@ -51,8 +51,10 @@ export function editablePortableUpdateConfiguration({defaults={},updates={},prio
  return result
 }
 
-export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,platform=process.platform,spawnProcess=spawn}) {
- if(platform!=='win32')return null
+export async function startPortableUpdates({root,updates={},defaults={},version,distribution,onQuit,enabled=true,applyScheduled=true,platform=process.platform,spawnProcess=spawn}) {
+ // Callers may omit this backend entirely without touching pending installs.
+ // The shared software-update controller owns the user's persisted choice.
+ if(platform!=='win32'||!enabled)return null
  const state=join(root,'data/state/updates')
  const prior=await readFile(join(root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
  const configuration=resolveUpdateConfiguration(defaults,updates,prior)
@@ -85,7 +87,7 @@ export async function startPortableUpdates({root,updates={},defaults={},version,
  })
  const call=action=>new Promise((resolve,reject)=>{if(exited||closing){reject(Error(lastError||'更新服务已退出'));return};const id=++sequence;pending.set(id,{resolve,reject});child.stdin.write(JSON.stringify({id,action})+'\n',error=>{if(error){pending.delete(id);reject(error)}})})
  const format=s=>({shell:'electron',version,phase:s.state,message:s.enabled?'自动检查更新；下载后可立即重启或下次启动安装。':'当前未配置更新渠道，请检查 config/eduwork.jsonc 的 updates。',update:s})
- try {await call('apply-scheduled');await call('check-updates')}
+ try {if(applyScheduled)await call('apply-scheduled');await call('check-updates')}
  catch(error){child.stdin.end();await done;lines.close();throw error}
  return {action:async action=>format(await call(action)),async close(){closing=true;child.stdin.end();await done;lines.close()}}
 }

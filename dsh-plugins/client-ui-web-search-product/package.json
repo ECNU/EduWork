@@ -1,0 +1,28 @@
+{
+  "name": "@eduwork/dsh-client-ui-web-search-product",
+  "version": "0.1.0-dev",
+  "private": true,
+  "type": "module",
+  "description": "Official search settings with deployment-default provider restoration",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-api-remotes"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis": "~4.0.5"
+  },
+  "license": "MIT"
+}

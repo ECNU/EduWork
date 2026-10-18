@@ -5,12 +5,13 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { writeNativeProfile } from '../dsh-host/native-profile.mjs'
+import { pinnedDshContract } from './pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' } } })
 if (!values.runtime || !values.host || !values.output) throw new Error('Use --runtime <candidate> --host <prepared native Host> --output <new directory>')
 const runtime = resolve(values.runtime), hostRoot = resolve(values.host), output = resolve(values.output)
 const receipt = JSON.parse(await readFile(join(hostRoot, 'receipt.json'), 'utf8'))
-assert.equal(receipt.upstreamCommit, '639ed015397290b3745d163aafe02ffee4aa3f84')
+assert.equal(receipt.upstreamCommit, pinnedDshContract.commit)
 assert.equal(receipt.protocolVersion, 4)
 await mkdir(output)
 await symlink(join(runtime, 'node_modules'), join(hostRoot, 'desktop-host/node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
@@ -72,7 +73,7 @@ const createHost = () => new DesktopHostProcess(process.execPath, runtime, profi
   DSH_HOME: home, DSH_TELEMETRY_DISABLED: '1' }, undefined, undefined, undefined, undefined,
   { hostEntry: join(hostRoot, 'desktop-host/lib/index.js'), bootstrap: {}, onLog: text => logs.push(text) })
 let host = createHost()
-const report = { success: false, version: '0.2.0-rc.2', protocol: 4, scope: 'real Host, authenticated HTTP, synthetic media' }
+const report = { success: false, version: pinnedDshContract.packageVersion, protocol: 4, scope: 'real Host, authenticated HTTP, synthetic media' }
 try {
   const ready = await host.start()
   const origin = new URL(ready.url).origin
@@ -82,7 +83,9 @@ try {
   const privacy = await (await request('/api/__probe/privacy', { method: 'POST' })).json()
   assert.equal(privacy.before.length, 6, 'Expected all official statistics and feedback entries')
   assert.ok(privacy.before.every(row => !row.enabled))
-  assert.ok(privacy.changes.every(change => change.changed && change.application === 'overridden'), JSON.stringify(privacy.changes))
+  // An already-enabled lower-priority row need not write a preference. The
+  // effective application must still be overridden, now and after restart.
+  assert.ok(privacy.changes.every(change => change.application === 'overridden'), JSON.stringify(privacy.changes))
   assert.ok(privacy.after.every(row => !row.enabled), 'Plugin manager re-enabled a distribution-disabled entry')
   const unauthenticated = await fetch(origin + '/api/__probe/ping')
   assert.notEqual(unauthenticated.status, 200); await unauthenticated.body?.cancel()

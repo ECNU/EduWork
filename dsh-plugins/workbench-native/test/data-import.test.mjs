@@ -12,7 +12,8 @@ import { inspectSession, loadImportFormats } from '../lib/import-inspection.js'
 const runtime = process.env.EDUWORK_TEST_RUNTIME
 test('legacy v0 descriptor v2 imports losslessly and remains usable by the current subagent runtime', {skip:!runtime},async t=>{
  const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
- const [{Context},{default:Jsonl},{sessionFormatCatalog:formats},{foldSubagentDescriptor}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog'),load('@deepseek-ai/dsh-subagent')])
+ const [{Context},jsonlModule,{sessionFormatCatalog:formats},{foldSubagentDescriptor}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog'),load('@deepseek-ai/dsh-subagent')])
+ const Jsonl=jsonlModule.default??jsonlModule
  const root=await mkdtemp(join(tmpdir(),'eduwork-descriptor-v2-'));t.after(()=>rm(root,{recursive:true,force:true}))
  const source=join(root,'old'),home=join(root,'new'),cwd=join(root,'workspace')
  await mkdir(home);await mkdir(cwd)
@@ -39,7 +40,8 @@ test('legacy v0 descriptor v2 imports losslessly and remains usable by the curre
 
 for (const location of ['external', 'inside-program']) test(`missing ${location} workspace preserves and registers the conversation in a new empty directory`, {skip:!runtime},async t=>{
  const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
- const [{Context},{default:Jsonl},{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
+ const [{Context},jsonlModule,{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
+ const Jsonl=jsonlModule.default??jsonlModule
  const root=await mkdtemp(join(tmpdir(),'eduwork-cross-machine-'));t.after(()=>rm(root,{recursive:true,force:true}))
  const source=join(root,'old'),home=join(root,'new'),missing=join(location==='external'?root:source,'not-on-this-machine','project')
  await mkdir(home)
@@ -60,7 +62,8 @@ for (const location of ['external', 'inside-program']) test(`missing ${location}
 })
 test('imports old and current logs through official persistence, keeps conflicts and skips repeats', { skip: !runtime }, async () => {
  const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
- const [{Context},{default:Jsonl}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl')])
+ const [{Context},jsonlModule]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl')])
+ const Jsonl=jsonlModule.default??jsonlModule
  const loadFormats=()=>loadImportFormats(load)
  const formats=await loadFormats()
  const runImport=async(importer,source)=>{importer.preview(source);await importer.running;assert.equal(importer.status().state,'ready',JSON.stringify(importer.status()));assert.ok(importer.status().total,JSON.stringify(importer.status()));importer.start(importer.status().id);await importer.running}
@@ -108,7 +111,8 @@ test('imports old and current logs through official persistence, keeps conflicts
 
 test('preflight accounts for future, malformed, mixed-generation and compressed logs before writing sessions', { skip: !runtime }, async () => {
  const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
- const [{Context},{default:Jsonl},{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
+ const [{Context},jsonlModule,{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
+ const Jsonl=jsonlModule.default??jsonlModule
  const openStore=async(root,compression='zstd')=>{const ctx=new Context();await ctx.plugin(Jsonl,{root,compression});return {persistence:ctx.sessionPersistence,close:()=>ctx.fiber.dispose()}}
  const root=await mkdtemp(join(tmpdir(),'eduwork-import-preflight-')),source=join(root,'旧客户端'),home=join(root,'target'),workspace=join(source,'workspace')
  await mkdir(home);await mkdir(workspace,{recursive:true});await writeFile(join(source,'release.json'),'{"version":"0.2.0-dev.20260909.3"}')

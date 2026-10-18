@@ -8,11 +8,11 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.0-rc.2](https://img.shields.io/badge/DSH-0.2.0--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.0-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#安装与使用)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.2](https://img.shields.io/badge/DSH-0.2.1--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
-[发行版关系](#从-dsh-到学校发行版) · [插件](#随包插件) · [技能](#随包技能) · [单点登录](#单点登录与开放模型接入) · [Studio](#knowledge-studio) · [开始使用](#安装与使用)
+[项目官网](https://ecnu.github.io/EduWork/) · [发行版关系](#从-dsh-到学校发行版) · [插件](#随包插件) · [技能](#随包技能) · [单点登录](#单点登录与开放模型接入) · [Studio](#knowledge-studio) · [开始使用](#安装与使用)
 
 </div>
 

@@ -2,10 +2,11 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { ENTERPRISE_DEFAULT_RETRY_POLICY, resolveEnterpriseProfiles } from '../src/host/provider/core.js'
 import { assertServiceableEnterpriseProviders, profilesFrom, resolveEnterpriseImageAccess } from '../src/host/provider/index.js'
+import { AuthorizationScopedAdapter } from '../src/host/provider/authorization-scope.js'
 import { TransformingEnterpriseAdapter, canonicalReasoningReplay } from '../src/host/provider/transform-adapter.js'
 
 test('provider route uses bounded defaults and classic OpenAI-compatible roles', () => {
@@ -301,4 +302,25 @@ test('non-reasoning models force the adapter internal off level', async () => {
   const { adapter, streamed } = harness(() => ({ reasoning: false, supportsReasoningEffort: false }))
   for await (const _chunk of adapter.stream({ provider: 'campus', model: 'plain', messages: [], reasoningEffort: 'high' })) {}
   assert.equal(streamed[0].reasoningEffort, 'off')
+})
+
+test('both enterprise wrappers preserve image request targets and old adapter identity sizing', async () => {
+  const image = { width: 640, height: 480, bytes: 1000 }
+  const target = { width: 320, height: 240, maxBytes: 500 }
+  const inner = new class extends LlmAdapter { imageRequestTarget(provider, model, input) {
+    assert.equal(provider, 'campus'); assert.equal(model, 'vision'); assert.equal(input, image)
+    return target
+  } }()
+  const transformed = new TransformingEnterpriseAdapter(inner, {})
+  const scoped = new AuthorizationScopedAdapter(transformed, undefined, () => { throw new Error('metadata must not acquire authorization') })
+  assert.equal(scoped.imageRequestTarget('campus', 'vision', image), target)
+  for (const Adapter of [TransformingEnterpriseAdapter, AuthorizationScopedAdapter])
+    assert.deepEqual(new Adapter({}, {}).imageRequestTarget('campus', 'vision', image), { width: 640, height: 480, maxBytes: 1000 })
+  const ctx = new Context()
+  try {
+    await ctx.plugin(LlmRuntime)
+    ctx.llm.registerAdapter(['campus'], scoped)
+    // Older supported hosts do not expose this method; the forwarding contract above still applies.
+    if (ctx.llm.imageRequestTarget) assert.equal(ctx.llm.imageRequestTarget('campus', 'vision', image), target)
+  } finally { await ctx.fiber.dispose() }
 })

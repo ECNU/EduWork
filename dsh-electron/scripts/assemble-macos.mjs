@@ -106,7 +106,7 @@ export async function assembleMacos({
   if (!await isFile(nodeLicense)) throw new Error('Use the extracted official Node distribution, including LICENSE')
 
   const editionName = identity.distribution === 'eduwork' ? 'EduWork' : 'EduWork-ECNU'
-  const appName = desktopApplicationName({ edition: editionName, platform: 'darwin', sourceAlpha: identity.sourceAlpha })
+  const appName = desktopApplicationName({ edition: editionName, platform: 'darwin', sourceAlpha: identity.sourceAlpha && identity.automaticUpdates !== true })
   const app = join(output, appName)
   await mkdir(output)
   await ditto(electronApp, app).catch(() => { throw new Error('Electron.app copy failed') })
@@ -219,9 +219,9 @@ export async function assembleMacos({
   }
   const bootstrap = JSON.parse(await capture(node, [join(scriptRoot, '../../scripts/check-publisher-bootstrap.mjs'), product, ownership])
     .catch(() => { throw new Error('Publisher bootstrap validation failed') }))
-  if (identity.sourceAlpha) {
+  if (identity.sourceAlpha && identity.automaticUpdates !== true) {
     if (sparkleEnabled) throw new Error('Source Alpha does not enable software updates')
-    desktop.updates = { provider: 'disabled', defaultPolicy: 'development' }
+    desktop.updates = { ...desktop.updates, defaultPolicy: 'development' }
     desktop.sourceAlpha = true
     desktop.appId += '.alpha'
   }

@@ -32,8 +32,11 @@ export function installImageTools(ctx,service) {
       if(typeof cwd!=='string'||!cwd)throw new Error('Image editing requires an Agent workspace')
       if(!Array.isArray(args.images)||!args.images.length||args.images.length>16)throw new Error('Image editing requires 1–16 workspace image paths')
       exec.signal?.throwIfAborted()
-      const locate=async path=>ctx.fs.processPath(await ctx.fs.resolve(path,{cwd,signal:exec.signal}))
-      const projectPath=await realpath(await locate('.'))
+      const current=ctx.get?.('workingDirectory')?.get(exec.agent.session)??cwd
+      const locate=async path=>ctx.fs.processPath(await ctx.fs.resolve(path,{cwd:current,signal:exec.signal}))
+      // Input paths follow current cwd; output and path fences stay anchored
+      // to the project so cd cannot grant new workspace access.
+      const projectPath=await realpath(ctx.fs.processPath(await ctx.fs.resolve('.',{cwd,signal:exec.signal})))
       const images=await Promise.all(args.images.map(locate)),mask=args.mask===undefined?undefined:await locate(args.mask)
       const result=await service.images.edit({...args,images,mask,projectPath,execution:exec,sessionId:exec.agent.session.id,signal:exec.signal})
       return {reportJSON:JSON.stringify(result),relativePath:result.relativePath,mime:result.mime}

@@ -1,5 +1,5 @@
 {
-  "apps/desktop/src/main.ts": "1fd424f16514d82d79665e0e8a1e2448dd8636126d3a37be7fa888d883b6ea3a",
+  "apps/desktop/src/main.ts": "e345eda0425f2df795d20413bb87bb9a3ddc46e71ceb1cec0755ad1cca3fb847",
   "apps/desktop/src/ipc.ts": "b7ee202112d7485c524741ffcfe257c5c4f6dca18281aa5ac01c4510b69c6a08",
   "apps/desktop/src/locale.ts": "8426a3943be0dfe81d0f0ecef1d9fe3cc03dc6cd79d3b8177a316f12ac09b242",
   "apps/desktop/src/single-instance.ts": "dc6a6e263a6fdedc3f1cfacb97eb6f60dd5b04ad5d3b02daae4640f2e30a5150",
@@ -20,7 +20,7 @@
   "apps/desktop/src/preload-windows.ts": "776cf6acd3ab4286844913a9f94bf7d3979186d846cda9f53e25a072d2f7e218",
   "apps/desktop/src/preload-menu.ts": "456b5004c2c0c7f511e7b2d732ad1bfc394712cb26c9f38d8852aba75c0d1c60",
   "apps/desktop/src/windows-layout.ts": "c032247c34d9794171aa3bd67534d511aca9f8963058d9976fb57f8c06a24628",
-  "apps/desktop/package.json": "eef6bc1131564aac2af0667487236edc5c1be721747b4ac81c9442937d34252c",
+  "apps/desktop/package.json": "913095d3048ad424335acccf8e3193bb9523961604709062a430f57c4ac22479",
   "apps/desktop/src/login-shell-environment.ts": "d8a6730a92c057ad70fb7fa163df72aca13eff9cfe54edb7a823594e8680e348",
   "apps/desktop/src/duration-env.ts": "f230ed09a0094871e30d3eac559b9674fc122b01539348b661df4b3dd1b534aa"
 }

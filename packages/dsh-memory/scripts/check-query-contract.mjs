@@ -49,7 +49,8 @@ try {
   assert.ok(formatSessionReferenceMention(String(session.id), 'Synthetic history').includes(uri))
   let persistedQuery = false
   if (SESSION_FORMAT_VERSION >= 1) {
-    const { default: Jsonl } = await load('@deepseek-ai/dsh-session-persistence-jsonl')
+    const jsonlModule = await load('@deepseek-ai/dsh-session-persistence-jsonl')
+    const Jsonl = jsonlModule.default ?? jsonlModule
     const cold = new Context()
     fibers.push(await cold.plugin(SessionStore))
     fibers.push(await cold.plugin(Projections))

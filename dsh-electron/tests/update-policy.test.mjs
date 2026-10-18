@@ -2,6 +2,30 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {portableUpdateEdition,resolveUpdateConfiguration,editablePortableUpdateConfiguration} from '../src/portable-updates.mjs'
 
+test('a publisher seed with only a release preference retains its trusted source across dev and stable',()=>{
+ const trusted={provider:'static',manifestURL:'https://publisher.example/releases/stable/latest-windows-amd64.json'}
+ const defaults=resolveUpdateConfiguration(trusted,{defaultPolicy:'development'})
+ const dev=editablePortableUpdateConfiguration({defaults,updates:{defaultPolicy:'development'},version:'0.4.4-dev.20261016.1'})
+ assert.equal(dev.provider,'static')
+ assert.equal(dev.manifestURL,'https://publisher.example/releases/development/latest-windows-amd64.json')
+ const stable=portableUpdateEdition({configuration:dev,version:'0.4.4'})
+ assert.equal(stable.enabled,true)
+ assert.equal(stable.manifestBaseURL,'https://publisher.example/releases')
+ assert.equal(stable.defaultPolicy,'development')
+ for(const updates of [
+  {provider:'disabled'},
+  {provider:'github',repository:'example/custom'},
+  {provider:'static',manifestURL:'https://custom.example/releases/stable/latest-windows-amd64.json',defaultPolicy:'stable'},
+ ]){
+  const expected=portableUpdateEdition({configuration:updates,version:'0.4.4'})
+  const actual=portableUpdateEdition({configuration:editablePortableUpdateConfiguration({defaults,updates,version:'0.4.4'}),version:'0.4.4'})
+  for(const key of ['enabled','provider','repository','manifestBaseURL'])assert.equal(actual[key],expected[key],key)
+ }
+ const override=resolveUpdateConfiguration(trusted,{provider:'github',repository:'example/package'})
+ assert.equal(override.manifestURL,undefined)
+ assert.equal(portableUpdateEdition({configuration:override,version:'0.4.4'}).repository,'example/package')
+})
+
 test('writing update defaults preserves the actual source, channel, and disabled choice across restarts', () => {
  const defaults={provider:'github',repository:'example/product',defaultPolicy:'development'},version='0.3.6-dev.1'
  const cases=[

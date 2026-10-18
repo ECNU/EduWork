@@ -5,12 +5,15 @@ import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promi
 import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
+import { adaptNativeWebSearchUI } from './native-web-search-ui.mjs'
+import { usePinnedBrowser } from './pinned-browser.mjs'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { buildVideoTemplate } from '../packages/dsh-knowledge-studio/scripts/build-video-template.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
+import { verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -21,7 +24,7 @@ if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-if (runtimeReceipt.dshVersion !== '0.2.0-rc.2' || runtimeReceipt.dshCommit !== '639ed015397290b3745d163aafe02ffee4aa3f84') throw new Error('This build requires the pinned candidate Runtime')
+verifyPinnedDshReceipt(runtimeReceipt)
 const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.pinned.dsh', runtimeReceipt.dshVersion)
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
@@ -35,7 +38,7 @@ const { build, transform } = require('esbuild')
 // Literature and desktop pet are published npm inputs in the product dependency lock.
 // Package changes go through its own check/pack/publication workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
-const distribution = JSON.parse(await readFile(distributionPath, 'utf8'))
+const distribution = usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8')))
 distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)
 await writeFile(distributionPath, JSON.stringify(distribution, null, 2) + '\n')
 // The legacy npm 0.1.5 assembly retains its adapter; this pinned native Runtime
@@ -132,6 +135,7 @@ for (const [folder, upstream] of [
   ['client-ui-conversation-brand', 'ui-conversation'],
   ['client-ui-agent-preset-product', 'ui-agent-preset'],
   ['client-ui-skill-live', 'ui-skill'],
+  ['client-ui-web-search-product', 'ui-settings-web-search'],
 ]) {
   const root = join(repository, 'dsh-plugins', folder)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
@@ -157,6 +161,7 @@ for (const [folder, upstream] of [
   if (upstream === 'ui-skill') {
     replaceOnce('ctx.on("connection/reset", clearAll);', 'ctx.on("connection/reset", clearAll);\nctx.remote.$on("settings/document-updated", clearAll);')
   }
+  if (upstream === 'ui-settings-web-search') client = adaptNativeWebSearchUI(client)
   if (upstream === 'ui-agent-preset') client = adaptNativePresetUI(client)
   await mkdir(join(root, 'lib'), { recursive: true })
   await writeFile(join(root, 'lib/client.js'), client)

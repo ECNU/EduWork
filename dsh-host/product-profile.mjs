@@ -171,7 +171,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     // These deployment defaults remain below preferences saved by the UI.
     const limits = [{ id: 'eduwork-concurrency', config: { maxConcurrentRequests: user?.features?.maxConcurrentRequests ?? 3 } }]
     if (baseline.configurableSubagents) limits.push({ id: 'subagent', config: { maxActiveSubagents: user?.features?.maxActiveSubagents ?? 2 } })
-    await writeNativeProfile({ profile, home, bundles: identity.bundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse, yaml, migrateSchedule: baseline.migrateSchedule === true })
+    await writeNativeProfile({ profile, home, bundles: identity.bundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse, yaml, migrateSchedule: baseline.migrateSchedule === true, builtinSchedule: baseline.builtinSchedule === true })
   } else {
     await writeFile(join(profile, 'package.json'), JSON.stringify({ name: 'eduwork-desktop-profile', private: true, type: 'module', dsh: { profile: { bundles: identity.bundles } } }, null, 2) + '\n')
     await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...bundleRows, ...desktop, ...patches], null, 2) + '\n')

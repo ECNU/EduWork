@@ -5,13 +5,13 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import * as productDeliveries from '../dsh-plugins/tool-artifact-publish/lib/native.js'
+import { verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, output: { type: 'string' } } })
 if (!values.runtime || !values.output) throw new Error('Use --runtime <candidate> --output <new synthetic directory>')
 const runtime = resolve(values.runtime), output = resolve(values.output)
 const receipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
-assert.equal(receipt.dshVersion, '0.2.0-rc.2')
-assert.equal(receipt.dshCommit, '639ed015397290b3745d163aafe02ffee4aa3f84')
+verifyPinnedDshReceipt(receipt)
 await mkdir(output)
 const require = createRequire(join(runtime, 'package.json'))
 const load = name => import(pathToFileURL(require.resolve(name)).href)

@@ -24,6 +24,7 @@ export function apply(ctx, rawConfig = {}) {
   let invalidate = () => {}
   let imageSource
   let filesystem
+  let officeFilesystem
   const settingsSource = () => (typeof ctx.settings.get === 'function'
     ? ctx.settings.get(SETTINGS_NAMESPACE)
     : ctx.settings.describe().find(row => row.ns === SETTINGS_NAMESPACE)?.value)
@@ -41,7 +42,7 @@ export function apply(ctx, rawConfig = {}) {
     return {
       name: config.providerName,
       async list(options) {
-        const observation = await delegate.list(options)
+        const observation = await (officeFilesystem??delegate).list(options)
         const candidates = Array.isArray(observation) ? observation : observation.candidates
         const refs = [...new Set(candidates.map(requiredCredential).filter(Boolean))]
         const configured = new Set()
@@ -75,11 +76,7 @@ export function apply(ctx, rawConfig = {}) {
         return filterObservation(observation, effectiveDisabled(settingsSource()), configured, capabilities, availableBindings)
       },
       async get(candidate, options) {
-        const skill=await delegate.get(candidate, options)
-        // Only enrich the product's bundled skills. Project/user overrides keep
-        // their own content and resource base, including matching skill names.
-        return candidate.source==='bundled'&&imageSource?.officeSkill
-          ? imageSource.officeSkill(skill) : skill
+        return (officeFilesystem??delegate).get(candidate, options)
       },
     }
   })
@@ -88,13 +85,15 @@ export function apply(ctx, rawConfig = {}) {
   // their ordinary skills. A dependency scope follows late mount/replacement
   // and invalidates both positive and negative catalog caches on every change.
   ctx.inject(['artifactServices'], (sharedCtx) => {
-    const source = { images: sharedCtx.artifactServices.images, officeSkill: sharedCtx.artifactServices.officeSkill?.bind(sharedCtx.artifactServices) }
+    const source = { images: sharedCtx.artifactServices.images, officeProvider: sharedCtx.artifactServices.officeProvider?.bind(sharedCtx.artifactServices) }
     imageSource = source
+    officeFilesystem = source.officeProvider?.(filesystem,{enabled:name=>!effectiveDisabled(settingsSource()).has(name)})
     invalidate()
     sharedCtx.on('artifact-services/images-changed', () => { invalidate() })
     sharedCtx.effect(() => () => {
       if (imageSource !== source) return
       imageSource = undefined
+      officeFilesystem = undefined
       invalidate()
     })
   })

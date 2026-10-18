@@ -2,6 +2,8 @@
 
 [English](CORE-020_EN.md)
 
+本页保留 0.2.0 组合的发行记录。当前配方见 [DSH 0.2.1 集成说明](CORE-021.md)。
+
 本组合固定 DSH `0.2.0-rc.2`（提交 `639ed015397290b3745d163aafe02ffee4aa3f84`）。官方 npm 依赖与桌面源码分别校验，锁位于 `third_party/dsh/candidate-v0.2.0-rc.2/`；本组合不会覆盖旧版 npm 发行锁。`validate-pinned-dsh-source.yml` 只检查构建配方锁定的提交；升级上游还需同步更新 Host 源码锚点、插件适配和探针。
 
 ## 发行策略

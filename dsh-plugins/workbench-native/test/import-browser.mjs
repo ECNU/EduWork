@@ -14,7 +14,8 @@ assert.ok(runtime,'Set EDUWORK_TEST_RUNTIME to the installed product/d directory
 const req=createRequire(join(runtime,'package.json')),load=name=>import(pathToFileURL(req.resolve(name)))
 const ts=createRequire(join(process.env.EDUWORK_TEST_BUILD_TOOLS || join(root,'.cache/client-build-tools'),'package.json'))('typescript')
 const {chromium}=req('playwright-core')
-const [{Context},{default:Jsonl},{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
+const [{Context},jsonlModule,{sessionFormatCatalog:formats}]=await Promise.all([load('@deepseek-ai/cordis'),load('@deepseek-ai/dsh-session-persistence-jsonl'),load('@deepseek-ai/dsh-session-format-catalog')])
+ const Jsonl=jsonlModule.default??jsonlModule
 const hook=registerHooks({resolve(name,ctx,next){return next(name,name==='zod'?{...ctx,parentURL:pathToFileURL(join(runtime,'package.json')).href}:ctx)}})
 const {descriptors}=await import('../lib/typert-schemas.js');hook.deregister()
 const validate=(method,value)=>descriptors.find(d=>d.method===method).result.schema.parse(value)

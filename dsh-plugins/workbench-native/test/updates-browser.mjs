@@ -15,7 +15,7 @@ const component=ts.transpileModule(await readFile(new URL('../src/updates.ts',im
 assert.doesNotMatch(component,/from ['"]react/)
 let policy='stable',state='up_to_date',downloaded=0,scheduled=false
 let content=null,softwareEnabled=true,nativeUI=false,nativeUpdater=false,automaticDownload=false
-let nativeDetails={}
+let nativeDetails={},canToggle=false
 const actions=[]
 const server=createServer(async(request,response)=>{
  if(request.url==='/react.js'||request.url==='/react-dom.js') {
@@ -31,10 +31,12 @@ const server=createServer(async(request,response)=>{
   if(action==='download-update'){state='downloading';downloaded=524288}
   if(action==='enable-automatic-download')automaticDownload=true
   if(action==='disable-automatic-download')automaticDownload=false
+  if(action==='enable-software-updates'){softwareEnabled=true;state='up_to_date'}
+  if(action==='disable-software-updates'){softwareEnabled=false;state='disabled'}
   if(action==='test-complete')state='ready'
   if(action==='schedule-update')scheduled=true
   if(action==='install-update')state='applying'
-  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{nativeUI,nativeUpdater,...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}));return
+  response.setHeader('content-type','application/json');response.end(JSON.stringify({version:'0.3.5-dev.20260912.1',shell:'wails',phase:state,update:{nativeUI,nativeUpdater,...(canToggle?{canToggle:true,userEnabled:softwareEnabled}:{}),...(nativeUI||nativeUpdater?{automaticDownload,installOnQuit:automaticDownload&&state==='ready'}:{}),policies:['stable','development'],state,policy,enabled:softwareEnabled,latestVersion:'0.3.5',downloadedBytes:downloaded,totalBytes:1048576,installOnNextStart:scheduled,...nativeDetails},contentUpdate:content}));return
  }
  response.setHeader('content-type','text/html');response.end(`<html><meta charset="utf-8"><body style="font:14px system-ui;margin:40px;max-width:600px"><div id="root"></div><script src="/react.js"></script><script src="/react-dom.js"></script><script type="module">import {createUpdateController,UpdatePanel,UpdateFooter} from '/component.js';const controller=createUpdateController(async action=>(await fetch('/api/'+action)).json());ReactDOM.createRoot(document.querySelector('#root')).render(React.createElement(React.Fragment,null,React.createElement(UpdatePanel,{controller}),React.createElement(UpdateFooter,{controller})));</script></body></html>`)
 })
@@ -112,7 +114,7 @@ try {
  // Native downloads stay inside the shared panel, with no second updater UI.
  await page.waitForFunction(()=>document.querySelector('[data-eduwork-update-entry]')?.textContent==='更新')
  await pill.click();await dialog.waitFor()
- assert.equal(await dialog.getByText(/发现新版本/).count(),1)
+ assert.equal(await dialog.getByText(/^发现新版本 /).count(),1)
  await dialog.getByRole('button',{name:'下载更新',exact:true}).click()
  await dialog.getByLabel('更新下载进度').waitFor()
  assert.equal(await dialog.isVisible(),true)
@@ -146,6 +148,27 @@ try {
  await page.getByRole('link',{name:'查看发行说明'}).waitFor()
  assert.equal(await page.getByRole('link',{name:'查看发行说明'}).getAttribute('href'),'https://example.org/notes')
  assert.equal(await page.getByRole('button',{name:'下载更新',exact:true}).count(),0)
+ // The actual React control works by keyboard; only the backend is synthetic.
+ canToggle=true;softwareEnabled=true;nativeUI=false;nativeUpdater=false;state='up_to_date';scheduled=false;nativeDetails={};content=null
+ await page.reload()
+ const software=page.getByRole('checkbox',{name:'启用软件更新',exact:false})
+ await software.waitFor();assert.equal(await software.isChecked(),true)
+ await software.focus();await page.keyboard.press('Space')
+ await page.getByText('软件更新已关闭。',{exact:true}).waitFor()
+ await page.reload();await software.waitFor();assert.equal(await software.isChecked(),false)
+ assert.equal(await page.getByRole('button',{name:'检查更新',exact:true}).isDisabled(),true)
+ assert.equal(await page.getByRole('radiogroup',{name:'更新渠道'}).count(),1)
+ content={enabled:true,state:'current',configuration:true,configurationRevision:8}
+ await page.reload();await page.getByRole('button',{name:'检查内容更新'}).waitFor()
+ assert.equal(await page.getByRole('button',{name:'检查内容更新'}).isEnabled(),true)
+ await page.screenshot({path:join(evidence,'software-disabled-content-enabled.png')})
+ await software.focus();await page.keyboard.press('Space')
+ await page.getByText('当前已是最新版本',{exact:true}).waitFor()
+ await page.waitForFunction(()=>!document.querySelector('input[type="checkbox"]').disabled)
+ await page.screenshot({path:join(evidence,'software-enabled.png')})
+ nativeDetails={busy:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
+ nativeDetails={installOnQuit:true};await page.reload();await software.waitFor();assert.equal(await software.isDisabled(),true)
+ assert.ok(actions.includes('disable-software-updates')&&actions.includes('enable-software-updates'))
  assert.deepEqual(errors,[])
  await writeFile(join(evidence,'update-browser.json'),JSON.stringify({passed:true,sourceLayout:'0.2.0 / d8691cb UpdateSettings',channelSwitch:true,keyboardSwitch:true,themes:['blue','red'],persisted:true,bluePill:true,downloadProgress:50,progressAfterReloadAndModalClose:true,scheduleNextStart:true,channelLockedDuringDownload:true,actions:actions.filter(a=>a!=='status'),errors},null,2))
  console.log('Shared update UI acceptance passed')

@@ -28,7 +28,7 @@ export function assetNames(product, version, platform) {
   assert.ok(['windows', 'macos'].includes(platform))
   const zip = `${product}-${version}-${platform === 'windows' ? 'windows-x64' : 'macos-arm64'}-electron.zip`
   const extra = platform === 'windows' ? `${product}-${version}-windows-x64-setup.zip` : zip.replace(/\.zip$/, '.dmg')
-  return [zip, zip + '.sha256', `${platform}-${desktopVersion(version).prerelease?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', ...(!desktopVersion(version).prerelease ? [updateManifestName] : [])] : [])]
+  return [zip, zip + '.sha256', `${platform}-${desktopVersion(version).prerelease?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', updateManifestName] : [])]
 }
 export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
   assert.match(product, /^[A-Za-z0-9-]+$/)
@@ -38,7 +38,7 @@ export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
   const names = [zip, `${zip}.sha256`, 'release-receipt.json', 'RELEASE-NOTES.md']
   if (platform === 'windows') {
     const setup = `${product}-${version}-windows-x64-setup.zip`
-    names.push(...(!desktopVersion(version).prerelease ? [updateManifestName] : []), setup, `${setup}.sha256`, `${setup}.json`)
+    names.push(updateManifestName, setup, `${setup}.sha256`, `${setup}.json`)
     for (const delta of deltaFrom.map(from => windowsDeltaName(product, version, from))) names.push(delta, `${delta}.sha256`)
   } else {
     const dmg = `${product}-${version}-macos-arm64-electron.dmg`
@@ -67,7 +67,7 @@ export function validateCandidateReceipt(receipt, context) {
   const {product, version, distribution, platform, coreCommit, editionCommit} = context
   assert.match(coreCommit, sha)
   assert.match(editionCommit, sha)
-  for (const [key, value] of Object.entries({schemaVersion: 1, kind: desktopVersion(version).prerelease?'eduwork-source-alpha':'eduwork-source-release', version, distribution, platform, shell: 'electron', passed: true, automaticUpdates: !desktopVersion(version).prerelease, coreCommit, editionCommit})) {
+  for (const [key, value] of Object.entries({schemaVersion: 1, kind: desktopVersion(version).prerelease?'eduwork-source-alpha':'eduwork-source-release', version, distribution, platform, shell: 'electron', passed: true, automaticUpdates: desktopVersion(version).automaticUpdates, coreCommit, editionCommit})) {
     assert.equal(receipt[key], value, 'Candidate identity mismatch: ' + key)
   }
   assert.ok(typeof receipt.dshVersion === 'string' && receipt.dshVersion.length > 0)
@@ -76,13 +76,11 @@ export function validateCandidateReceipt(receipt, context) {
   assert.equal(receipt.asset.name, assetNames(product, version, platform)[0])
   if (platform === 'windows') {
     assert.equal(receipt.checks.portableExtractor, 'passed')
-    if (!desktopVersion(version).prerelease) assert.equal(receipt.checks.updateContract, 'passed')
+    assert.equal(receipt.checks.updateContract, 'passed')
   }
   else {
-    if (!desktopVersion(version).prerelease) {
-      assert.equal(receipt.sparkleEnabled, true, 'Stable macOS requires Sparkle updates')
-      assert.equal(receipt.bundleVersion, bundleVersion(version), 'Sparkle bundle version mismatch')
-    }
+    assert.equal(receipt.sparkleEnabled, true, 'macOS release requires Sparkle updates')
+    assert.equal(receipt.bundleVersion, bundleVersion(version), 'Sparkle bundle version mismatch')
     assert.equal(receipt.checks.macosDmg, 'passed')
     assert.equal(receipt.checks.readOnlyApplication, 'passed')
     for (const check of ['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow']) assert.equal(receipt.installer.checks[check], 'passed', check)
@@ -112,7 +110,7 @@ export async function validatedCandidateFiles(directory, context) {
     await verifyFile(receipt.portableExtractor.asset, names[3])
     await verifyFile(receipt.portableExtractor.receipt, names[5], false)
     validateExtractorReceipt(await json(join(directory, names[5])), {...receipt, edition: context.product})
-    if (!desktopVersion(context.version).prerelease) assert.equal(await readFile(join(directory, updateManifestName), 'utf8'), githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), 'Update manifest differs from verified artifact')
+    assert.equal(await readFile(join(directory, updateManifestName), 'utf8'), githubUpdateManifestBytes(receipt, 'ECNU/' + context.product), 'Update manifest differs from verified artifact')
   } else await verifyFile(receipt.installer.asset, names[3])
   return {files, receipt}
 }
@@ -141,6 +139,7 @@ export async function validatedNodeNpmFiles(directory, context) {
   for (const [key, value] of Object.entries({
     schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version,
     edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true,
+    automaticUpdates: true,
     coreCommit: context.coreCommit, editionCommit: context.editionCommit,
   })) assert.equal(receipt[key], value, 'macOS candidate identity mismatch: ' + key)
   assert.equal(receipt.releaseNotes?.approved, true)
@@ -153,10 +152,8 @@ export async function validatedNodeNpmFiles(directory, context) {
     assert.equal(receipt.checks?.[check], 'passed', check)
   }
   assert.equal(receipt.checks?.macosDmg, 'passed')
-  if (!desktopVersion(context.version).prerelease) {
-    assert.equal(receipt.softwareAutoUpdate, true, 'Stable macOS requires Sparkle updates')
-    assert.equal(receipt.bundleVersion, bundleVersion(context.version), 'Sparkle bundle version mismatch')
-  }
+  assert.equal(receipt.softwareAutoUpdate, true, 'macOS release requires Sparkle updates')
+  assert.equal(receipt.bundleVersion, bundleVersion(context.version), 'Sparkle bundle version mismatch')
   for (const check of ['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow']) {
     assert.equal(receipt.installer?.checks?.[check], 'passed', check)
   }
@@ -281,7 +278,7 @@ export async function publishCandidate(env = process.env) {
   await writeFile(notesAsset, notes)
   files.push({name: 'RELEASE-NOTES.md', path: notesAsset, bytes: Buffer.byteLength(notes), sha256: await hashFile(notesAsset)})
   // Windows delta updates carry a SHA-256 sidecar for the updater; macOS ones are signed in the appcast.
-  assert.equal(files.length, (desktopVersion(version).prerelease ? 12 : 13) + 2 * (receipts[0].deltas?.length ?? 0) + (receipts[1].deltas?.length ?? 0))
+  assert.equal(files.length, 13 + 2 * (receipts[0].deltas?.length ?? 0) + (receipts[1].deltas?.length ?? 0))
   const result = {verified: true, published: false, buildMode, repository, sourceRun: run.id, editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
   if (env.PUBLISH_RELEASE === 'true') {
     const tag = result.tag
