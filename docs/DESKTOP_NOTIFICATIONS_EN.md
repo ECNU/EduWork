@@ -2,7 +2,7 @@
 
 [简体中文](DESKTOP_NOTIFICATIONS.md)
 
-The Electron client can notify you about questions, approvals, completed turns and Studio artifacts while running in the background. Clicking a notification or tray item returns to its conversation. Questions and approvals are still handled inside the application.
+The Electron client can notify you about questions, approvals, completed turns, Studio artifacts and calendar reminders while running in the background. Clicking a notification or tray item returns to its conversation, artifact or calendar panel. Questions and approvals are still handled inside the application.
 
 ## Events and pending items
 
@@ -12,6 +12,7 @@ The Electron client can notify you about questions, approvals, completed turns a
 | Completed root conversation turn | Notify completion; reading that conversation in the foreground marks it as read. While a background subagent still works, or goal mode will start another round, wait until the conversation really finishes |
 | Final turn error, blocked turn, output limit, or a blocked goal (including an exhausted round limit or a round that cannot be queued) | Notify that attention is needed; failures and cancellations are never reported as success |
 | Completed or failed Studio artifact | Notify independently after the turn's revisions settle, ignoring intermediate attempts |
+| Due calendar reminder | Open the calendar without creating a conversation or running a model; relative reminders follow moves and cancellations, while fixed reminders keep their specified time |
 
 Individual tools, child agents, streaming chunks, automatic retries and routine token refreshes do not notify. Foreground use stays quiet; items from other conversations remain in the tray. Events are coalesced, deduplicated and rate limited. Reconnecting does not replay history.
 
@@ -39,7 +40,11 @@ Settings → General → Desktop notifications offers the master switch, categor
 }
 ```
 
-Sound and previews are off by default. Notifications never include answer bodies, commands, file contents or tokens. The application must remain running, including minimized to the tray; quitting, logging out or shutting down stops notifications. Pending items are process-local and old popups are not replayed after restart. No push server is required.
+Sound and previews are off by default. Notifications never include answer bodies, commands, file contents or tokens. The application must remain running, including minimized to the tray; quitting, logging out or shutting down stops notifications. Conversation and Studio pending items are process-local and old popups are not replayed after restart. No push server is required.
+
+Calendar reminder settings and records are persisted separately from the process-local conversation notification list. On restart, the calendar catches up only reminders due within the last 24 hours, avoiding a flood of historical popups. Marking a record read in the calendar persists that state and withdraws its tray item. Opening the calendar from a tray item does not itself mark the record read.
+
+Calendar reminders follow the desktop notification master switch, sound, title-preview and quiet-foreground policies. Conversation and Studio category switches do not control the calendar; disable a particular event's reminder in the calendar. Records remain available there when system popups are disabled or unavailable. An older desktop shell without calendar support retains the records; saving a setting or accepting a bridge request does not prove the user saw a popup.
 
 ## Windows and macOS
 
@@ -55,7 +60,7 @@ Exact Studio artifact navigation and read acknowledgements need the Studio clien
 
 ## Development and validation
 
-The Host observes live DSH session events and question lifetimes, then synchronizes structured state to Electron through an authenticated local bridge. Clicks are revalidated by the Host and use public conversation/right-sidebar navigation APIs. The renderer receives neither bridge credentials nor notification APIs for running commands or granting approvals.
+The Host observes live DSH session events and question lifetimes, while the calendar service generates due reminders from its schedules. Both synchronize structured state to Electron through an authenticated local bridge. Clicks are revalidated by the Host and use public conversation, right-sidebar or calendar-panel navigation APIs. The renderer receives neither bridge credentials nor notification APIs for running commands or granting approvals.
 
 ```sh
 node --test dsh-electron/tests/task-notifications.test.mjs dsh-electron/tests/native-vault.test.mjs

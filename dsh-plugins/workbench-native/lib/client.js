@@ -4161,11 +4161,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					codec("NotificationState", object({
 						desktop: boolean(),
 						delivery: _enum(["available", "unavailable"]),
-						target: object({
+						target: union([object({
 							key: string(),
 							sessionId: string(),
 							artifactId: string().optional()
-						}).strict().nullable()
+						}).strict(), object({
+							key: string(),
+							panel: literal("calendar"),
+							reminderId: string().regex(/^[a-f0-9]{64}$/)
+						}).strict()]).nullable()
 					}).strict())
 				],
 				[
@@ -5055,6 +5059,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					}
 					const target = result.target;
 					if (target) {
+						if (target.panel === "calendar") {
+							ctx.layout.selectPanel("calendar");
+							openedKey = target.key;
+							return;
+						}
 						const ownNavigation = ++navigation;
 						ctx.uiWorkspace.openSession(target.sessionId);
 						if (target.artifactId) for (let attempt = 0; attempt < 20; attempt++) {
@@ -6030,6 +6039,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"sessions",
 				nativeSettings ? "configForms" : "settingsScope",
 				"uiWorkspace",
+				"layout",
 				...nativeSettings ? ["uiSession"] : []
 			], (inner) => {
 				const notifications = installNotificationNavigation(inner, (view) => unwrap(inner.remote.workbench.notificationView(view)));

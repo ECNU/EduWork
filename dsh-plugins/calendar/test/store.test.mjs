@@ -79,7 +79,7 @@ async function withCalendar(root, body) {
     assert.deepEqual(typert.remoteMethods(ctx.calendar).map(marker => marker.method), [
       'snapshot', 'deleteCalendar', 'occurrences', 'importIcs', 'exportIcs', 'applyOverride',
       'removeOverride', 'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent',
-      'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes', 'changes', 'setPersonal', 'personalFor', 'sourceStatuses',
+      'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes', 'changes', 'setPersonal', 'personalFor', 'sourceStatuses', 'reminders', 'ackReminder',
     ])
     return await body(ctx.calendar)
   } finally {

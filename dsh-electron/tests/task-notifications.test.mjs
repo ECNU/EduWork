@@ -15,6 +15,54 @@ function host(bridge = async () => ({ seen: [] }), goal) {
   return new DesktopAttention({ bridge, preferences: () => notificationDefaults, goal, now: () => 10000, schedule: () => 1, cancel() {} })
 }
 
+test('awaiting a concurrent notification flush waits until its new items reach the desktop', async () => {
+  const f = setup()
+  let release, first = true, settled = false
+  const blocked = new Promise(resolve => { release = resolve })
+  const h = host(async body => {
+    if (first) { first = false; await blocked }
+    return f.shell.handle(body)
+  })
+  const initial = h.flush()
+  h.put(item('queued-approval', 'approval'))
+  const updated = h.flush().then(result => { settled = true; return result })
+  try {
+    await new Promise(resolve => setImmediate(resolve))
+    assert.equal(settled, false, 'an earlier in-flight snapshot cannot acknowledge a newly added notice')
+    release()
+    assert.equal(await updated, true)
+    assert.equal(f.shell.items.get('queued-approval')?.kind, 'approval')
+  } finally { release(); await Promise.allSettled([initial, updated]); h.close() }
+})
+
+test('calendar reminders notify without a Session and click back to the calendar', async () => {
+  const f = setup(), h = host(body => f.shell.handle(body))
+  const reminderId = 'a'.repeat(64)
+  h.put({ key: 'calendar:' + reminderId, kind: 'calendar', sessionId: '', reminderId, title: '数学课' })
+  await h.flush()
+  assert.equal(f.popups.length, 1)
+  assert.equal(f.popups[0].title, '日历提醒')
+  assert.ok(!f.popups[0].content.includes('数学课'), 'private previews stay off by default')
+  f.shell.activate('calendar:' + reminderId)
+  const result = await h.view({ sessionId: '' })
+  assert.deepEqual(result.target, { key: 'calendar:' + reminderId, reminderId, panel: 'calendar' })
+  h.remove('calendar:' + reminderId)
+  await h.flush()
+  assert.equal(f.shell.menu().length, 0)
+})
+
+test('calendar notices respect the notification master switch and stay unread while viewing a conversation', () => {
+  const f = setup(), reminderId = 'b'.repeat(64)
+  const notice = { key: 'calendar:' + reminderId, kind: 'calendar', reminderId, sessionId: '', title: '日历', createdAt: 1 }
+  f.sync([notice], { enabled: false })
+  assert.equal(f.popups.length, 0)
+  f.focus(true)
+  f.shell.handle({ action: 'view', sessionId: '' })
+  assert.deepEqual(f.sync([notice]).seen, [])
+  assert.equal(f.shell.menu().length, 1)
+  assert.throws(() => f.sync([{ ...notice, sessionId: 'unrelated-session' }]), /Invalid attention/)
+})
+
 test('foreground suppresses popups; only viewing the matching conversation consumes a completed notice', () => {
   const f = setup(); f.focus(true)
   f.shell.handle({ action: 'view', sessionId: 'another-session' })

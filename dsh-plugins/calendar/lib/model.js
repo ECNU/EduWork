@@ -64,6 +64,13 @@ export const SCOPE = ['source', 'personal']
 /** Which of the two ownership layers a record belongs to. */
 export const ScopeSchema = z.enum(SCOPE)
 
+/** One durable inbox receipt; shared by storage and the Remote view. */
+export const ReminderReceiptSchema = z.object({
+  id: z.string().regex(/^[a-f0-9]{64}$/), title: z.string(),
+  ref: z.object({ scope: ScopeSchema, source: z.string(), uid: z.string(), originalStart: LocalTimeSchema.optional() }).strict(),
+  at: LocalTimeSchema, kind: z.enum(['relative', 'fixed']), deliveredAt: z.string(), read: z.boolean(), nativeSent: z.boolean(),
+}).strict()
+
 /**
  * One annotation: what the user attached to one occurrence, or to a whole series.
  *

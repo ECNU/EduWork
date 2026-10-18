@@ -91,7 +91,11 @@ ctx.effect(() => () => binding.dispose(), 'calendar: detach reminders')
 
 The adapter must replace only calendar-owned jobs, durably deduplicate by `task.id`, update unchanged IDs and cancel absent jobs. Retrying a plan must not produce additional delivery. The default plan contains future tasks within the next year, recomputed after data/settings changes and every minute as the window advances. `binding.refresh()` waits for reconciliation; `binding.status()` reports failures. Failed plans are retried rather than acknowledged.
 
-The public plugin has no actual delivery adapter bound. Existing `@deepseek-ai/dsh-schedule` targets an original Session; integration must select a real Session and reuse its permission semantics. No Session is fabricated and no second desktop notification timer is introduced. Planning and adapter checks are not delivered-notification acceptance.
+The default Host-side `ReminderDelivery` reuses `reminderPlan` and invalidations and stores receipts in the independent `calendar_reminders` domain. Relative reminders follow moves and stop on cancellation; fixed reminders remain independent. Browsers do not own timers: due reminders enter a durable in-app inbox, with optional `desktopServices.calendarReminder` forwarding to the existing desktop notification channel. No model or Session is started. `calendar.reminders()` returns channel status, unread count and the latest 100 receipts; `ackReminder({id})` persists read state and clears the tray item.
+
+Keep the Host running. Restart catches up at most 24 hours and receipts remain for 30 days. Stable identity plus scheduled time deduplicates inbox receipts. Bridge failures retry without removing the in-app receipt. OS visibility depends on notification preferences, foreground policy and quiet settings. Bridge acceptance does not prove a user saw the popup. Bridge dispatch and receipt acknowledgment are not a cross-process transaction; a crash can repeat an OS popup, so exactly-once delivery is not promised. Old shells report calendar delivery unavailable rather than bypassing policy or starting a model.
+
+`registerReminderScheduler` remains an optional Host planning interface; integrations must avoid double delivery. DSH Schedule is a separate Session-reminder path.
 
 ## Panel invalidation
 

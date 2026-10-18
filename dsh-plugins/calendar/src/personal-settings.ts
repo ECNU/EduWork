@@ -89,7 +89,7 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
     background: 'var(--dsw-alias-bg-layer-2, #f6f6f6)', fontSize: 13 } },
     React.createElement('strong', null, '个人设置'),
     React.createElement('p', { style: { color: 'var(--dsw-alias-label-secondary, #666)', fontSize: 12 } },
-      '笔记、备注和隐藏仅保存在本机。相对提醒随改期调整；固定时间提醒独立保留。当前仅保存和计算提醒，尚未接入到点通知。'),
+      '笔记、备注和隐藏仅保存在本机。提前提醒随改期调整、停课取消；固定时间提醒独立保留。到点后进入提醒记录，桌面端支持系统通知。需保持 EduWork 运行，不会启动模型。'),
     allowOccurrence && identity.originalStart ? select('设置范围', target, [['once', '仅这一次'], ['series', '整条日程']], setTarget) : undefined,
     !form ? React.createElement('p', null, problem || '正在读取个人设置…') : React.createElement(React.Fragment, null,
       textField('note', '笔记'), textField('remark', '备注'),

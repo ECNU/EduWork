@@ -4273,6 +4273,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		];
 		/** Which of the two ownership layers a record belongs to. */
 		const ScopeSchema = _enum(["source", "personal"]);
+		/** One durable inbox receipt; shared by storage and the Remote view. */
+		const ReminderReceiptSchema = object({
+			id: string().regex(/^[a-f0-9]{64}$/),
+			title: string(),
+			ref: object({
+				scope: ScopeSchema,
+				source: string(),
+				uid: string(),
+				originalStart: LocalTimeSchema.optional()
+			}).strict(),
+			at: LocalTimeSchema,
+			kind: _enum(["relative", "fixed"]),
+			deliveredAt: string(),
+			read: boolean(),
+			nativeSent: boolean()
+		}).strict();
 		/**
 		* One annotation: what the user attached to one occurrence, or to a whole series.
 		*
@@ -4558,6 +4574,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			})
 		});
 		const rangeParameter = jsonParameter("occurrences", "range", rangeSchema);
+		const remindersResult = result("@eduwork/dsh-calendar#ReminderInbox", object({
+			channel: _enum([
+				"in-app",
+				"system",
+				"unavailable"
+			]),
+			unread: number().int().nonnegative(),
+			items: array(ReminderReceiptSchema.omit({ nativeSent: true }))
+		}).strict());
+		const ackReminderParameter = jsonParameter("ackReminder", "input", object({ id: string().regex(/^[a-f0-9]{64}$/) }).strict());
+		const ackReminderResult = result("@eduwork/dsh-calendar#ReminderAcknowledgement", object({ updated: boolean() }).strict());
 		const importParameter = jsonParameter("importIcs", "input", importInput);
 		const exportParameter = jsonParameter("exportIcs", "options", exportInput);
 		const overrideParameter = jsonParameter("applyOverride", "input", overrideInput);
@@ -4637,30 +4664,32 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		var typert_remote_client_default = {
 			package: "@eduwork/dsh-calendar",
 			descriptors: Object.freeze([
-				descriptor("snapshot", 104, [], snapshotResult),
-				descriptor("occurrences", 126, [rangeParameter], occurrencesResult),
-				descriptor("importIcs", 151, [importParameter], importResult),
-				descriptor("exportIcs", 170, [exportParameter], exportResult),
-				descriptor("putEvent", 193, [eventParameter], eventResult),
-				descriptor("deleteEvent", 214, [deleteEventParameter], removalResult),
-				descriptor("deleteCalendar", 219, [deleteCalendarParameter], deleteCalendarResult),
-				descriptor("applyOverride", 232, [overrideParameter], eventResult),
-				descriptor("removeOverride", 241, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 250, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 259, [restoreParameter], eventResult),
-				descriptor("applySource", 321, [applySourceParameter], applySourceResult),
-				descriptor("putNote", 364, [putNoteParameter], noteResult),
-				descriptor("removeNote", 378, [removeNoteParameter], removalResult),
-				descriptor("notes", 387, [notesParameter], notesResult),
+				descriptor("snapshot", 116, [], snapshotResult),
+				descriptor("occurrences", 138, [rangeParameter], occurrencesResult),
+				descriptor("importIcs", 163, [importParameter], importResult),
+				descriptor("exportIcs", 182, [exportParameter], exportResult),
+				descriptor("putEvent", 205, [eventParameter], eventResult),
+				descriptor("deleteEvent", 226, [deleteEventParameter], removalResult),
+				descriptor("deleteCalendar", 231, [deleteCalendarParameter], deleteCalendarResult),
+				descriptor("applyOverride", 244, [overrideParameter], eventResult),
+				descriptor("removeOverride", 253, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 262, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 271, [restoreParameter], eventResult),
+				descriptor("applySource", 333, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 376, [putNoteParameter], noteResult),
+				descriptor("removeNote", 390, [removeNoteParameter], removalResult),
+				descriptor("notes", 399, [notesParameter], notesResult),
 				Object.freeze({
-					...descriptor("changes", 287, [], changeResult),
+					...descriptor("changes", 299, [], changeResult),
 					mode: "stream",
 					cancellation: { parameter: "signal" }
 				}),
-				descriptor("personalFor", 340, [personalReadParameter], personalReadResult),
-				descriptor("sourceStatuses", 81, [], sourceStatusesResult),
-				descriptor("setPersonal", 334, [personalParameter], personalResult),
-				descriptor("unlinkedNotes", 407, [unlinkedNotesParameter], unlinkedNotesResult)
+				descriptor("personalFor", 352, [personalReadParameter], personalReadResult),
+				descriptor("sourceStatuses", 83, [], sourceStatusesResult),
+				descriptor("setPersonal", 346, [personalParameter], personalResult),
+				descriptor("unlinkedNotes", 419, [unlinkedNotesParameter], unlinkedNotesResult),
+				descriptor("reminders", 111, [], remindersResult),
+				descriptor("ackReminder", 113, [ackReminderParameter], ackReminderResult)
 			])
 		};
 		//#endregion
@@ -4831,7 +4860,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, react.default.createElement("strong", null, "个人设置"), react.default.createElement("p", { style: {
 				color: "var(--dsw-alias-label-secondary, #666)",
 				fontSize: 12
-			} }, "笔记、备注和隐藏仅保存在本机。相对提醒随改期调整；固定时间提醒独立保留。当前仅保存和计算提醒，尚未接入到点通知。"), allowOccurrence && identity.originalStart ? select("设置范围", target, [["once", "仅这一次"], ["series", "整条日程"]], setTarget) : void 0, !form ? react.default.createElement("p", null, problem || "正在读取个人设置…") : react.default.createElement(react.default.Fragment, null, textField("note", "笔记"), textField("remark", "备注"), select("显示设置", form.hidden, [
+			} }, "笔记、备注和隐藏仅保存在本机。提前提醒随改期调整、停课取消；固定时间提醒独立保留。到点后进入提醒记录，桌面端支持系统通知。需保持 EduWork 运行，不会启动模型。"), allowOccurrence && identity.originalStart ? select("设置范围", target, [["once", "仅这一次"], ["series", "整条日程"]], setTarget) : void 0, !form ? react.default.createElement("p", null, problem || "正在读取个人设置…") : react.default.createElement(react.default.Fragment, null, textField("note", "笔记"), textField("remark", "备注"), select("显示设置", form.hidden, [
 				...once ? [["inherit", "沿用整条日程"]] : [],
 				["show", "显示"],
 				["hide", "隐藏"]
@@ -7070,6 +7099,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const [calendarSource, setCalendarSource] = (0, react.useState)("*");
 				const [snapshot, setSnapshot] = (0, react.useState)(null);
 				const [sourceStatuses, setSourceStatuses] = (0, react.useState)([]);
+				const [reminderInbox, setReminderInbox] = (0, react.useState)({
+					channel: "in-app",
+					unread: 0,
+					items: []
+				});
 				const [week, setWeek] = (0, react.useState)(null);
 				const [agenda, setAgenda] = (0, react.useState)(null);
 				const [noteIndex, setNoteIndex] = (0, react.useState)(() => /* @__PURE__ */ new Map());
@@ -7141,6 +7175,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					try {
 						await loadSnapshot();
 						if (service.sourceStatuses) setSourceStatuses(await service.sourceStatuses());
+						if (service.reminders) setReminderInbox(await service.reminders());
 						await loadNotes();
 						if (view.kind === "week") await loadWeek();
 						if (view.kind === "event") await loadAgenda();
@@ -7370,7 +7405,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					size: "sm",
 					icon: react.default.createElement(IconDownload),
 					onClick: () => setDialog({ kind: "export" })
-				}, "导出"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
+				}, "导出"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "ghost",
+					size: "sm",
+					"aria-label": "提醒记录",
+					onClick: () => setDialog({ kind: "reminders" })
+				}, reminderInbox.unread ? `提醒 · ${reminderInbox.unread}` : "提醒"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tooltip, {
 					label: "刷新",
 					side: "bottom"
 				}, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
@@ -7509,7 +7549,47 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						setDialog(null);
 						refresh();
 					}
-				}) : void 0, dialog?.kind === "delete-calendar" ? react.default.createElement(Modal, {
+				}) : void 0, dialog?.kind === "reminders" ? react.default.createElement(Modal, {
+					open: true,
+					title: "提醒记录",
+					closeLabel: "关闭",
+					onClose: () => setDialog(null),
+					footer: react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "ghost",
+						size: "sm",
+						onClick: () => setDialog(null)
+					}, "关闭")
+				}, react.default.createElement("p", {
+					role: "status",
+					style: {
+						fontSize: 12,
+						color: SECONDARY
+					}
+				}, reminderInbox.channel === "system" ? "桌面通知已接入。系统勿扰和应用通知设置可能阻止弹窗。" : reminderInbox.channel === "unavailable" ? "系统通知暂不可用，提醒记录仍保留在这里。" : "当前使用应用内提醒。系统弹窗请在新版桌面端使用。"), react.default.createElement("p", { style: {
+					fontSize: 12,
+					color: SECONDARY
+				} }, "需保持 EduWork 运行。重启后补发最近24小时内的到点提醒；记录保留30天，此处显示最近100条。"), reminderInbox.items.length === 0 ? react.default.createElement("p", null, "还没有到点提醒") : react.default.createElement("ul", { style: {
+					padding: 0,
+					listStyle: "none"
+				} }, ...reminderInbox.items.map((item) => react.default.createElement("li", {
+					key: item.id,
+					style: {
+						borderBottom: HAIRLINE,
+						padding: "12px 0",
+						display: "flex",
+						alignItems: "center",
+						gap: 12
+					}
+				}, react.default.createElement("div", { style: { flex: 1 } }, react.default.createElement("strong", null, item.title), react.default.createElement("div", { style: {
+					fontSize: 12,
+					color: SECONDARY,
+					marginTop: 4
+				} }, `${item.at.replace("T", " ")} · ${sourceName(item.ref.source)} · ${item.kind === "fixed" ? "固定提醒" : "提前提醒"}`)), item.read ? react.default.createElement(Muted, null, "已读") : react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					variant: "outline",
+					size: "sm",
+					disabled: busy,
+					onClick: () => run(() => service.ackReminder({ id: item.id }), "已标为已读")
+				}, "标为已读"))))) : void 0, dialog?.kind === "delete-calendar" ? react.default.createElement(Modal, {
 					open: true,
 					title: "删除导入日历",
 					closeLabel: "关闭",
@@ -7602,6 +7682,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const service = {
 					snapshot: () => unwrap(surface.remote.calendar.snapshot()),
 					sourceStatuses: () => unwrap(surface.remote.calendar.sourceStatuses()),
+					reminders: () => unwrap(surface.remote.calendar.reminders()),
+					ackReminder: call("ackReminder"),
 					subscribe(listener) {
 						let active = true;
 						const controller = new AbortController();

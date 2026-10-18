@@ -5,16 +5,21 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { startNativeBridge } from '../../../dsh-electron/src/native-vault.mjs'
 import { TaskNotifications } from '../../../dsh-electron/src/task-notifications.mjs'
+import { notificationDefaults } from '../lib/attention.js'
 
 const runtime = process.env.EDUWORK_TEST_RUNTIME
-test('real Cordis settings, session events and authenticated desktop bridge preserve pending decisions', { skip: !runtime }, async t => {
+test('real Cordis session events and authenticated desktop bridge preserve pending decisions under both configuration APIs', { skip: !runtime }, async t => {
   const req = createRequire(join(runtime, 'package.json')), load = name => import(pathToFileURL(req.resolve(name)))
   const [{ Context, Service }, { default: Settings }, { default: Sessions }] = await Promise.all([load('@deepseek-ai/cordis'), load('@deepseek-ai/dsh-settings'), load('@deepseek-ai/dsh-session')])
   const hook = registerHooks({ resolve(name, context, next) { return next(name, name.startsWith('@deepseek-ai/') ? { ...context, parentURL: pathToFileURL(join(runtime, 'package.json')).href } : context) } })
   const { default: Desktop } = await import('../lib/index.js')
   hook.deregister()
   const shell = new TaskNotifications({ foreground: () => false, show() {}, publish() {}, dismiss() {}, changed() {} })
-  const bridge = await startNativeBridge({ vault: { flush: async () => {} }, attention: value => shell.handle(value) })
+  let bridgeUnavailable = true
+  const bridge = await startNativeBridge({ vault: { flush: async () => {} }, attention: value => {
+    if (bridgeUnavailable) throw new Error('fixture bridge unavailable')
+    return shell.handle(value)
+  } })
   t.after(() => bridge.close())
   class MemorySettings extends Settings {
     writable = true
@@ -26,13 +31,26 @@ test('real Cordis settings, session events and authenticated desktop bridge pres
   const boundary = new Service(ctx, 'desktopBoundary'); boundary.ready = Promise.resolve(bridge.bootstrap)
   new Sessions(ctx)
   const agents = new Service(ctx, 'agents'); agents.roots = () => [{ id: 'fixture' }]
-  await ctx.plugin(MemorySettings)
-  await ctx.plugin(Desktop, { notifications: { preview: true } })
+  const nativeSettings = typeof Settings.prototype.register !== 'function'
+  if (nativeSettings) {
+    // Native forms belong to Loader; this test supplies its presentation seam.
+    // Full Loader/configuration wiring is exercised in desktop acceptance.
+    const presentation = new Service(ctx, 'settings')
+    presentation.configure = () => () => {}
+  } else await ctx.plugin(MemorySettings)
+  const preferences = { ...notificationDefaults, preview: !nativeSettings }
+  await ctx.plugin(Desktop, nativeSettings
+    ? preferences
+    : { notifications: { preview: true } })
   const service = ctx.desktopServices
   assert.ok(service?.attention)
-  assert.equal(ctx.settings.get('eduwork-notifications').preview, true)
-  await ctx.settings.update('eduwork-notifications', { preview: false })
-  assert.equal(ctx.settings.get('eduwork-notifications').preview, false)
+  if (!nativeSettings) {
+    assert.equal(ctx.settings.get('eduwork-notifications').preview, true)
+    await ctx.settings.update('eduwork-notifications', { preview: false })
+    assert.equal(ctx.settings.get('eduwork-notifications').preview, false)
+  }
+  await assert.rejects(service.calendarReminder({ id: 'd'.repeat(64), title: 'Unavailable' }), /暂时不可用/)
+  bridgeUnavailable = false
   const session = ctx.sessions.create('fixture')
   session.append('turn/start', { turn: 0 })
   session.append('approval/asked', { id: 'permit', toolName: 'fixture' })
@@ -50,6 +68,21 @@ test('real Cordis settings, session events and authenticated desktop bridge pres
   assert.equal((await call({ action: 'view', sessionId: '' }, { origin: 'dsh-app://app', authorization: 'Bearer ' + token })).status, 403)
   assert.equal((await call({ action: 'view', sessionId: '' }, {})).status, 403)
   assert.equal((await call({ action: 'execute', command: 'bad' }, { authorization: 'Bearer ' + token })).status, 400)
+  const id = 'c'.repeat(64)
+  await service.calendarReminder({ id, title: '上课提醒' })
+  assert.equal(shell.items.get('calendar:' + id).kind, 'calendar')
+  await service.dismissCalendarReminder(id)
+  assert.equal(shell.items.has('calendar:' + id), false)
+  // An older shell does not advertise calendar support. Do not send it unknown
+  // rows: that would reject the entire snapshot, including approval notices.
+  const nativeBridge = service.notificationBridge.bind(service)
+  service.notificationBridge = async body => { const result = await nativeBridge(body); delete result.calendarReminders; return result }
+  await service.attention.flush()
+  await assert.rejects(service.calendarReminder({ id, title: 'Unsupported' }), /尚不支持/)
+  service.attention.put({ key: 'still-works', kind: 'approval', sessionId: 'fixture', title: '' })
+  await service.attention.flush()
+  assert.equal(shell.items.get('still-works').kind, 'approval')
+  assert.equal(shell.items.has('calendar:' + id), false)
 })
 
 test('real session headers attribute subagent turns to the conversation that delegated them', { skip: !runtime }, async t => {

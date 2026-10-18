@@ -18,7 +18,7 @@ A local calendar and schedule manager. The week view arranges time within a day;
 - Agent tools read and edit events, occurrences, notes and personal settings. Writes follow the existing session permission policy.
 - Open panels refresh after external source or Agent writes and resubscribe after disconnection.
 
-Events and personal settings stay on this machine. Relative and fixed reminder settings are persisted and due times are calculated. The public plugin does not yet deliver notifications.
+Events and personal settings stay on this machine. Due relative and fixed reminders enter the Reminder inbox. Desktop builds use system notifications; browsers provide in-app reminders. No model or conversation is started. Keep the app running; restart catches up at most 24 hours, and receipts remain for 30 days. OS popups respect the notification master switch, foreground policy and system quiet settings.
 
 ## Agent tools
 

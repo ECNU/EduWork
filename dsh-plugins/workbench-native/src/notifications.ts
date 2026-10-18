@@ -49,6 +49,11 @@ export function installNotificationNavigation(ctx, invoke, environment = window)
       if (snapshot.desktop !== result.desktop || snapshot.delivery !== result.delivery) { snapshot = { desktop: result.desktop, delivery: result.delivery }; listeners.forEach(listener => listener()) }
       const target = result.target
       if (target) {
+        if (target.panel === 'calendar') {
+          ctx.layout.selectPanel('calendar')
+          openedKey = target.key
+          return
+        }
         const ownNavigation = ++navigation
         // Controller navigation selects the real session; no synthetic answer or approval.
         ctx.uiWorkspace.openSession(target.sessionId)

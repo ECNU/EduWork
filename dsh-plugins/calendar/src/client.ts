@@ -1447,6 +1447,7 @@ export function createCalendarPage(service: any) {
     const [calendarSource, setCalendarSource] = useState('*')
     const [snapshot, setSnapshot] = useState<any>(null)
     const [sourceStatuses, setSourceStatuses] = useState<any[]>([])
+    const [reminderInbox, setReminderInbox] = useState<any>({ channel: 'in-app', unread: 0, items: [] })
     const [week, setWeek] = useState<any>(null)
     const [agenda, setAgenda] = useState<any>(null)
     // The reader's own content, read from the host and kept apart from the
@@ -1511,6 +1512,7 @@ export function createCalendarPage(service: any) {
       try {
         await loadSnapshot()
         if (service.sourceStatuses) setSourceStatuses(await service.sourceStatuses())
+        if (service.reminders) setReminderInbox(await service.reminders())
         await loadNotes()
         if (view.kind === 'week') await loadWeek()
         if (view.kind === 'event') await loadAgenda()
@@ -1681,6 +1683,8 @@ export function createCalendarPage(service: any) {
       variant: 'ghost', size: 'sm', icon: React.createElement(IconDownload),
       onClick: () => setDialog({ kind: 'export' }),
     }, '导出'),
+    React.createElement(Button, { variant: 'ghost', size: 'sm', 'aria-label': '提醒记录', onClick: () => setDialog({ kind: 'reminders' }) },
+      reminderInbox.unread ? `提醒 · ${reminderInbox.unread}` : '提醒'),
     React.createElement(Tooltip, { label: '刷新', side: 'bottom' },
       React.createElement(Button, {
         variant: 'ghost', size: 'sm', 'aria-label': '刷新', disabled: loading,
@@ -1769,6 +1773,22 @@ export function createCalendarPage(service: any) {
         onClose: () => { setDialog(null); void refresh() },
       })
       : undefined,
+    dialog?.kind === 'reminders'
+      ? React.createElement(Modal, {
+        open: true, title: '提醒记录', closeLabel: '关闭', onClose: () => setDialog(null),
+        footer: React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setDialog(null) }, '关闭'),
+      }, React.createElement('p', { role: 'status', style: { fontSize: 12, color: SECONDARY } },
+        reminderInbox.channel === 'system' ? '桌面通知已接入。系统勿扰和应用通知设置可能阻止弹窗。'
+          : reminderInbox.channel === 'unavailable' ? '系统通知暂不可用，提醒记录仍保留在这里。' : '当前使用应用内提醒。系统弹窗请在新版桌面端使用。'),
+      React.createElement('p', { style: { fontSize: 12, color: SECONDARY } }, '需保持 EduWork 运行。重启后补发最近24小时内的到点提醒；记录保留30天，此处显示最近100条。'),
+      reminderInbox.items.length === 0 ? React.createElement('p', null, '还没有到点提醒')
+        : React.createElement('ul', { style: { padding: 0, listStyle: 'none' } }, ...reminderInbox.items.map((item: any) => React.createElement('li', { key: item.id, style: { borderBottom: HAIRLINE, padding: '12px 0', display: 'flex', alignItems: 'center', gap: 12 } },
+          React.createElement('div', { style: { flex: 1 } }, React.createElement('strong', null, item.title),
+            React.createElement('div', { style: { fontSize: 12, color: SECONDARY, marginTop: 4 } }, `${item.at.replace('T', ' ')} · ${sourceName(item.ref.source)} · ${item.kind === 'fixed' ? '固定提醒' : '提前提醒'}`)),
+          item.read ? React.createElement(Muted, null, '已读') : React.createElement(Button, { variant: 'outline', size: 'sm', disabled: busy,
+            onClick: () => run(() => service.ackReminder({ id: item.id }), '已标为已读'),
+          }, '标为已读')))))
+      : undefined,
     dialog?.kind === 'delete-calendar'
       ? React.createElement(Modal, {
         open: true, title: '删除导入日历', closeLabel: '关闭', onClose: () => { if (!busy) setDialog(null) },
@@ -1833,6 +1853,8 @@ export async function apply(ctx: any) {
     const service = {
       snapshot: () => unwrap(surface.remote.calendar.snapshot()),
       sourceStatuses: () => unwrap(surface.remote.calendar.sourceStatuses()),
+      reminders: () => unwrap(surface.remote.calendar.reminders()),
+      ackReminder: call('ackReminder'),
       subscribe(listener: () => void) {
         let active = true
         const controller = new AbortController()

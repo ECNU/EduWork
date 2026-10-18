@@ -331,7 +331,7 @@ async function withBrowser(calendar, panel, methods, body) {
 
 const METHODS = [
   'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applySource', 'applyOverride', 'removeOverride',
-  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses',
+  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'reminders', 'ackReminder',
 ]
 
 const panel = await bundlePanel()
@@ -956,6 +956,28 @@ await acceptance('整门课笔记、单次覆盖、恢复默认和提醒设置�
       await poll(async () => calendar.personalFor(ref).note?.text, 'Every class note', 'restore the default')
       await page.getByRole('dialog').getByText(/我的笔记\s*Every class note/).waitFor({ timeout: 3000 })
       assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'relative', minutes: 15 })
+    })
+  }))
+})
+
+await acceptance('提醒到点后自动进入提醒记录，标为已读后重开仍保持', async () => {
+  await withRoot('eduwork-browser-reminder-inbox-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, call, errors }) => {
+      const now = new Date(), pad = x => String(x).padStart(2, '0')
+      const at = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}T${pad(now.getHours())}:${pad(now.getMinutes())}`
+      await call('putEvent', { uid: 'due', title: '我的到点提醒', start: `${await dayInWeek(1)}T09:00` })
+      await call('setPersonal', { source: 'manual', uid: 'due', patch: { reminder: { kind: 'fixed', at } } })
+      await page.getByRole('button', { name: '提醒记录', exact: true }).click({ timeout: 3000 })
+      const dialog = page.getByRole('dialog')
+      await dialog.getByText('我的到点提醒', { exact: true }).waitFor({ timeout: 4000 })
+      assert.ok((await dialog.innerText()).includes('应用内提醒'))
+      await dialog.getByRole('button', { name: '标为已读', exact: true }).click()
+      await poll(async () => (await call('reminders')).unread, 0, 'receipt acknowledged')
+      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await page.reload()
+      await page.getByRole('button', { name: '提醒记录', exact: true }).click()
+      await page.getByRole('dialog').getByText('已读', { exact: true }).waitFor()
+      assert.deepEqual(errors, [])
     })
   }))
 })

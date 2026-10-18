@@ -2,7 +2,7 @@
 
 [简体中文](README.md) | **English**
 
-Status: the public calendar, personal settings, source sync coordination and Agent tools are implemented. Reminder settings, calculation and scheduler-adapter reconciliation exist; real school fetching and actual notification delivery are not integrated. See the plugin [README](../../../dsh-plugins/calendar/README_EN.md) and [integration guide](INTEGRATION_EN.md).
+Status: the public calendar, personal settings, source registration and pushed updates and Agent tools are implemented. Reminder planning, a durable inbox and optional system notification delivery are implemented without starting a model; real school fetching remains unintegrated. See the plugin [README](../../../dsh-plugins/calendar/README_EN.md) and [integration guide](INTEGRATION_EN.md).
 
 Ownership: public edition (EduWork). Institution data integration is a separate proposal; see [Institution boundary](#institution-boundary).
 
@@ -218,9 +218,9 @@ The plugin does not upload data on its own. Tool reads enter the current convers
 
 Reminder settings persist separately with series defaults, occurrence overrides, restoring inheritance and explicit off. Relative times follow current occurrences, including cross-day moves, and cancelled classes stop producing relative reminders. Fixed personal reminders keep their selected time independently of class cancellation.
 
-`reminderPlan` produces stable task IDs. `registerReminderScheduler` reconciles complete plans with a replaceable Host adapter, skips unchanged plans and replaces changed/cancelled tasks under the same IDs. The adapter owns durable deduplication and delivery. No independent notification engine or desktop/session notification binding is introduced here.
+`reminderPlan` produces stable task IDs. `registerReminderScheduler` reconciles complete plans with a replaceable Host adapter, skips unchanged plans and replaces changed/cancelled tasks under the same IDs. The adapter owns durable deduplication and delivery. Default Host delivery reuses these plans, persists receipts and forwards through the existing desktop notification channel; browsers provide an in-app inbox.
 
-The existing `@deepseek-ai/dsh-schedule` delivers into an original Session. Its adapter must provide real Session selection and permission semantics; a Session is never fabricated. Current checks establish planning and adapter reconciliation, not delivered notifications. See the [integration guide](INTEGRATION_EN.md).
+DSH Schedule remains a separate Session-reminder path. Calendar system notifications require neither a Session nor a model; the app must run and notification policy still applies. See the [integration guide](INTEGRATION_EN.md).
 
 ## Institution boundary
 

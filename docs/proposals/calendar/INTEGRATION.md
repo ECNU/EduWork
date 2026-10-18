@@ -94,7 +94,11 @@ ctx.effect(() => () => binding.dispose(), 'calendar: detach reminders')
 
 适配器必须按 owner 仅替换日历任务、按 `task.id` 持久化去重、更新同编号时间并取消缺席任务；重试同一计划不能产生额外投递。默认提交未来一年内的未来任务，数据/设置变化后重算，并每分钟推进窗口。`binding.refresh()` 可等待重算，`binding.status()` 报告错误；失败计划不标为已完成，下次刷新重试。
 
-公版尚未绑定实际投递适配器。现有 `@deepseek-ai/dsh-schedule` 面向原始 Session；真正接入必须选择真实 Session 并沿用权限语义。这里不伪造 Session，也不另建桌面通知计时器。计算与适配器测试不等于到点通知验收。
+默认投递由 `ReminderDelivery` 在 Host 内执行，使用独立的 `calendar_reminders` 域保存回执，复用 `reminderPlan` 和变化通知。提前提醒随改期重排、停课取消；固定提醒保持独立。浏览器不承担计时，到点生成应用内记录；可选 `desktopServices.calendarReminder` 转交现有桌面通知通道，不启动模型或伪造 Session。`calendar.reminders()` 返回通知通道、未读数和最近100条记录；`ackReminder({id})` 持久化已读并撤下托盘项。
+
+应用必须运行。重启仅补发最近24小时的到点任务，回执保留30天；同一身份和计划时刻的回执持久化去重。桌面桥失败后重试，不撤销应用内记录。系统弹窗是否可见仍取决于通知开关、前后台和勿扰策略；桥接成功不代表用户已经看见。桥接和回执确认不是跨进程事务，崩溃边界仍可能重复系统弹窗，不能承诺严格仅一次。旧桌面壳不识别日历通知时显示不可用，不绕过权限或改成模型任务。
+
+`registerReminderScheduler` 保留为可选 Host 计划接口；接入方应避免同时启用另一套实际投递。DSH `schedule` 仍是会话提醒，独立于本系统通知路径。
 
 ## 面板通知
 

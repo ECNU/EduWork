@@ -22,6 +22,7 @@ import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
 import { SourceRegistry } from './sources.js'
 import { reminderPlan, bindReminderScheduler } from './reminders.js'
+import { ReminderDelivery } from './reminder-delivery.js'
 import { applySourceInput } from './typert-schemas.js'
 
 export const name = 'dsh-calendar'
@@ -62,6 +63,7 @@ export class CalendarService extends TypertRemoteService {
     ctx.effect(() => async () => {
       this.lifetime.abort()
       this.reminderBinding?.dispose()
+      await this.reminderDelivery?.close()
       this.sources.close()
       await this.personal.close()
       await this.store.close()
@@ -98,7 +100,17 @@ export class CalendarService extends TypertRemoteService {
     await this.store.open()
     await this.personal.open()
     for (const event of this.store.snapshot().events) await this.personal.rememberSource(event, true)
+    this.reminderDelivery = new ReminderDelivery(this, this.ctx)
+    await this.reminderDelivery.open()
   }
+
+  /** Host-only drain used by integrations after changing schedules. */
+  checkReminders() { return this.reminderDelivery.refresh() }
+
+  /** Durable reminder history; receipt ids identify one scheduled delivery. */
+  reminders() { return this.reminderDelivery.inbox() }
+
+  ackReminder(input) { return this.reminderDelivery.ack(input.id) }
 
   /** @returns the public snapshot: `{ schemaVersion, events }`. */
   snapshot() {
@@ -532,5 +544,9 @@ Remote('sourceStatuses')(CalendarService.prototype.sourceStatuses, {
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 
+for (const name of ['reminders', 'ackReminder']) Remote(name)(CalendarService.prototype[name], {
+  kind: 'method', name, static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
 
 export default CalendarService

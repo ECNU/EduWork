@@ -7,7 +7,7 @@
 // Every remote method takes one object argument and returns one value; the
 // descriptors that point at those schemas are in `lib/typert-descriptors.js`.
 import { z } from 'zod'
-import { AnnotationSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
+import { AnnotationSchema, ReminderReceiptSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
 
 const snapshot = z.object({
   schemaVersion: z.number().int().positive(),
@@ -204,6 +204,9 @@ const jsonParameter = (method, name, schema) => Object.freeze({
 })
 
 export const rangeParameter = jsonParameter('occurrences', 'range', rangeSchema)
+export const remindersResult = result('@eduwork/dsh-calendar#ReminderInbox', z.object({ channel: z.enum(['in-app', 'system', 'unavailable']), unread: z.number().int().nonnegative(), items: z.array(ReminderReceiptSchema.omit({ nativeSent: true })) }).strict())
+export const ackReminderParameter = jsonParameter('ackReminder', 'input', z.object({ id: z.string().regex(/^[a-f0-9]{64}$/) }).strict())
+export const ackReminderResult = result('@eduwork/dsh-calendar#ReminderAcknowledgement', z.object({ updated: z.boolean() }).strict())
 export const importParameter = jsonParameter('importIcs', 'input', importInput)
 export const exportParameter = jsonParameter('exportIcs', 'options', exportInput)
 export const overrideParameter = jsonParameter('applyOverride', 'input', overrideInput)

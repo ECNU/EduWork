@@ -21,7 +21,7 @@ async function loadNavigation() {
 for (const native of [true, false]) test(`notification navigation follows ${native ? 'DSH 0.2 UI adapter' : 'legacy selection'} and releases subscriptions`, { skip: !runtime }, async () => {
   const navigation = await loadNavigation()
   let sessionId = 'one', target
-  const listeners = new Set(), views = [], opened = [], tabs = []
+  const listeners = new Set(), views = [], opened = [], tabs = [], panels = []
   const source = {
     getSnapshot: () => native ? { props: { sessionId } } : { current: sessionId },
     subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
@@ -34,6 +34,7 @@ for (const native of [true, false]) test(`notification navigation follows ${nati
     } : source },
     ...(native ? { uiSession: { adapter: { current: source } } } : {}),
     uiWorkspace: { openSession: id => { opened.push(id); select(id) } },
+    layout: { selectPanel: id => panels.push(id) },
     get: name => {
       assert.equal(name, 'sidebarRight')
       return { openTab: (kind, options) => tabs.push({ kind, options }) }
@@ -59,6 +60,10 @@ for (const native of [true, false]) test(`notification navigation follows ${nati
     assert.equal(views.at(-1).sessionId, 'one')
     select('two'); await settle()
     assert.equal(views.at(-1).sessionId, 'two')
+    target = { key: 'calendar:test', panel: 'calendar', reminderId: 'a'.repeat(64) }
+    environment.dispatchEvent(new Event('focus')); await settle()
+    assert.deepEqual(panels, ['calendar'])
+    assert.deepEqual(opened, [])
     target = { key: 'completed:three', sessionId: 'three' }
     environment.dispatchEvent(new Event('focus')); await settle()
     assert.deepEqual(opened, ['three'])

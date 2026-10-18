@@ -119,18 +119,27 @@ export class DesktopAttention {
       this.timer = this.schedule(() => { this.timer = null; void this.flush() }, 200)
     }
   }
-  async flush() {
-    if (this.closed || this.sending) return
-    this.sending = true; this.dirty = false
-    try {
-      const result = await this.bridge({ action: 'sync', instance: this.instance, items: [...this.items.values()], running: this.running(), preferences: this.preferences() })
-      for (const key of result.seen ?? []) this.items.delete(key)
-    } catch { this.dirty = true }
-    finally {
-      this.sending = false
-      // Also repairs a transient bridge failure, without interrupting the agent.
-      if (!this.closed && !this.timer) this.timer = this.schedule(() => { this.timer = null; void this.flush() }, this.dirty ? 1000 : 5000)
+  flush() {
+    // Each caller waits for a snapshot taken after preceding sends finish.
+    // Merely joining an older send would miss notices added while it was pending.
+    const send = async () => {
+      if (this.closed) return false
+      this.dirty = false
+      try {
+        const result = await this.bridge({ action: 'sync', instance: this.instance, items: [...this.items.values()], running: this.running(), preferences: this.preferences() })
+        this.calendarSupported = result.calendarReminders === true
+        for (const key of result.seen ?? []) this.items.delete(key)
+        if (result.delivery === 'unavailable') { this.dirty = true; return false }
+        return true
+      } catch { this.dirty = true; return false }
+      finally {
+        // Also repairs a transient bridge failure, without interrupting the agent.
+        if (!this.closed && !this.timer) this.timer = this.schedule(() => { this.timer = null; void this.flush() }, this.dirty ? 1000 : 5000)
+      }
     }
+    const pending = (this.flushTail ?? Promise.resolve()).then(send, send)
+    this.flushTail = pending
+    return pending
   }
   async view(view) {
     if (view.openedKey && this.items.has(view.openedKey) && !human(this.items.get(view.openedKey))) this.remove(view.openedKey)
@@ -139,7 +148,9 @@ export class DesktopAttention {
     if (target && !await this.validateTarget(target)) { this.remove(target.key); target = null }
     if (target && !this.items.has(target.key)) target = null
     // The host is authoritative: a toast clicked after a decision is stale.
-    return { desktop: true, target: target ? { key: target.key, sessionId: target.sessionId, ...(target.artifactId ? { artifactId: target.artifactId } : {}) } : null,
+    return { desktop: true, target: target ? target.kind === 'calendar'
+      ? { key: target.key, panel: 'calendar', reminderId: target.reminderId }
+      : { key: target.key, sessionId: target.sessionId, ...(target.artifactId ? { artifactId: target.artifactId } : {}) } : null,
       delivery: response.delivery }
   }
   close() { this.closed = true; this.cancel(this.timer); this.items.clear(); this.titles.clear(); this.turns.clear(); this.delegated.clear(); this.goalRounds.clear(); this.studioSeen.clear(); this.studioRunning.clear() }

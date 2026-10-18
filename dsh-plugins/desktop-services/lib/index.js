@@ -40,6 +40,20 @@ export default class DesktopServices extends Service {
     if (!response.ok) throw Error('Desktop notifications unavailable')
     return response.json()
   }
+  /** Host-only calendar delivery; the shell owns opt-out, sound and private previews. */
+  async calendarReminder(receipt) {
+    if (this.attention.calendarSupported === undefined && !await this.attention.flush()) {
+      throw new Error('桌面通知暂时不可用，请稍后重试')
+    }
+    if (!this.attention.calendarSupported) throw new Error('当前桌面端尚不支持日历通知，请更新桌面应用')
+    this.attention.put({ key: 'calendar:' + receipt.id, kind: 'calendar', sessionId: '', reminderId: receipt.id, title: receipt.title })
+    if (!await this.attention.flush()) throw new Error('Desktop calendar notifications unavailable')
+  }
+  /** Remove a calendar notice without exposing the notification queue to callers. */
+  async dismissCalendarReminder(id) {
+    this.attention.remove('calendar:' + id)
+    return this.attention.flush()
+  }
   // The desktop pet window belongs to the shell; its plugin reaches it only
   // through this authenticated seam and never sees the bridge credential.
   async pet(body) {

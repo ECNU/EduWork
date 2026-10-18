@@ -324,7 +324,7 @@ export async function apply(ctx) {
     inner.slots.inject('settings.general.item',()=>inner.slots.register({name:'settings.general.item',id:'eduwork-workbench',order:16,inject:()=>({service:desktop,controller:updates})},DesktopSettings))
     return ()=>updates.dispose()
   })
-  ctx.inject(['remote.workbench','remote.skillManager','remote.skills','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace',...(nativeSettings ? ['uiSession'] : [])], inner=>{
+  ctx.inject(['remote.workbench','remote.skillManager','remote.skills','sessions',nativeSettings ? 'configForms' : 'settingsScope','uiWorkspace','layout',...(nativeSettings ? ['uiSession'] : [])], inner=>{
     const notifications = installNotificationNavigation(inner, view => unwrap(inner.remote.workbench.notificationView(view)))
     inner.on('dispose', () => notifications.close())
     const notificationScope = nativeSettings ? inner.configForms.get('eduwork-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-notifications' })

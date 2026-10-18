@@ -89,6 +89,109 @@ async function withCalendar(root, body) {
 
 const SOURCE = 'ecnu:timetable'
 
+test('due reminders enter the durable calendar inbox once, survive restart and can be marked read without a Session', { skip: !runtime }, async t => {
+  let now = Date.parse('2040-01-02T09:00:00')
+  t.mock.method(Date, 'now', () => now)
+  await withRoot('calendar-reminder-inbox-', async root => {
+    let id
+    await withCalendar(root, async calendar => {
+      await calendar.putEvent({ uid: 'reminder', title: '上课', start: '2040-01-02T10:00' })
+      await calendar.setPersonal({ source: 'manual', uid: 'reminder', patch: { reminder: { kind: 'relative', minutes: 15 } } })
+      await calendar.checkReminders()
+      assert.equal(calendar.reminders().items.length, 0)
+      now = Date.parse('2040-01-02T09:45:01')
+      await calendar.checkReminders()
+      const inbox = calendar.reminders()
+      assert.equal(inbox.items.length, 1)
+      assert.equal(inbox.items[0].title, '上课')
+      assert.equal(inbox.items[0].read, false)
+      assert.equal(inbox.channel, 'in-app')
+      id = inbox.items[0].id
+      await calendar.checkReminders()
+      assert.equal(calendar.reminders().items.length, 1)
+    })
+    await withCalendar(root, async calendar => {
+      await calendar.checkReminders()
+      assert.equal(calendar.reminders().items.length, 1)
+      assert.equal(calendar.reminders().items[0].id, id)
+      await calendar.ackReminder({ id })
+      assert.equal(calendar.reminders().items[0].read, true)
+    })
+  })
+})
+
+test('moving a class moves its due reminder, cancellation stops relative reminders and fixed reminders stay independent', { skip: !runtime }, async t => {
+  let now = Date.parse('2040-01-02T09:00:00')
+  t.mock.method(Date, 'now', () => now)
+  await withRoot('calendar-reminder-moves-', async root => withCalendar(root, async calendar => {
+    for (const uid of ['moved', 'cancelled', 'fixed']) {
+      await calendar.putEvent({ uid, title: uid, start: '2040-01-02T10:00', recurrence: { freq: 'weekly', count: 2 } })
+      await calendar.setPersonal({ source: 'manual', uid, patch: { reminder: uid === 'fixed'
+        ? { kind: 'fixed', at: '2040-01-02T09:45' } : { kind: 'relative', minutes: 15 } } })
+    }
+    await calendar.applyOverride({ uid: 'moved', date: '2040-01-02', patch: { start: '2040-01-02T11:00' } })
+    for (const uid of ['cancelled', 'fixed']) await calendar.cancelOccurrence({ uid, date: '2040-01-02' })
+    now = Date.parse('2040-01-02T09:45:01')
+    await calendar.checkReminders()
+    assert.deepEqual(calendar.reminders().items.map(row => row.title), ['fixed'])
+    now = Date.parse('2040-01-02T10:45:01')
+    await calendar.checkReminders()
+    assert.deepEqual(calendar.reminders().items.map(row => row.title).sort(), ['fixed', 'moved'])
+    assert.equal(calendar.reminders().items.find(row => row.title === 'moved').at, '2040-01-02T10:45')
+  }))
+})
+
+test('restart catches up only recent due reminders and reminder-off prevents delivery', { skip: !runtime }, async t => {
+  let now = Date.parse('2040-01-02T09:00:00')
+  t.mock.method(Date, 'now', () => now)
+  await withRoot('calendar-reminder-catchup-', async root => {
+    await withCalendar(root, async calendar => {
+      for (const uid of ['recent', 'ancient', 'off']) {
+        await calendar.putEvent({ uid, title: uid, start: '2040-01-04T10:00' })
+        await calendar.setPersonal({ source: 'manual', uid, patch: { reminder: { kind: 'fixed', at: uid === 'ancient' ? '2040-01-02T10:00' : '2040-01-03T10:00' } } })
+      }
+      await calendar.setPersonal({ source: 'manual', uid: 'off', patch: { reminder: { off: true } } })
+    })
+    now = Date.parse('2040-01-04T09:00:00')
+    await withCalendar(root, async calendar => {
+      await calendar.checkReminders()
+      assert.deepEqual(calendar.reminders().items.map(row => row.title), ['recent'])
+    })
+  })
+})
+
+test('desktop delivery retries a bridge failure without duplicating the durable inbox receipt', { skip: !runtime }, async t => {
+  let now = Date.parse('2040-01-02T09:00:00'), fail = true
+  t.mock.method(Date, 'now', () => now)
+  const calls = [], dismissed = []
+  await withRoot('calendar-reminder-native-retry-', async root => withCalendar(root, async (calendar, ctx) => {
+    const { Service } = await load('@deepseek-ai/cordis')
+    await ctx.plugin(class extends Service {
+      constructor(ctx) { super(ctx, 'desktopServices') }
+      async calendarReminder(receipt) { calls.push(receipt.id); if (fail) throw Error('bridge unavailable') }
+      async dismissCalendarReminder(id) { dismissed.push(id) }
+    })
+    await calendar.putEvent({ uid: 'retry', title: 'Retry reminder', start: '2040-01-02T10:00' })
+    await calendar.setPersonal({ source: 'manual', uid: 'retry', patch: { reminder: { kind: 'relative', minutes: 15 } } })
+    now = Date.parse('2040-01-02T09:45:01')
+    await calendar.checkReminders()
+    assert.equal(calendar.reminders().items.length, 1)
+    assert.equal(calendar.reminders().channel, 'unavailable')
+    fail = false
+    await calendar.checkReminders()
+    assert.equal(calendar.reminders().channel, 'system')
+    assert.equal(calendar.reminders().items.length, 1)
+    assert.equal(calls.length, 2)
+    assert.equal(calls[0], calls[1])
+    await calendar.checkReminders()
+    assert.equal(calls.length, 2)
+    const id = calendar.reminders().items[0].id
+    await calendar.ackReminder({ id })
+    assert.equal(calendar.reminders().items[0].read, true)
+    assert.deepEqual(dismissed, [id], 'marking a reminder read also withdraws its desktop notice through the service')
+  }))
+})
+
 test('deleting an imported calendar removes only its events and keeps private notes across restart', { skip: !runtime }, async () => {
   await withRoot('calendar-delete-source-', async root => {
     await withCalendar(root, async calendar => {
