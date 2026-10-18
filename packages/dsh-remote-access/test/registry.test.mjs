@@ -3,6 +3,7 @@ import test from 'node:test'
 
 import {
   DEFAULT_AGENT_SURFACE,
+  DEFAULT_HOST_SURFACE,
   DEVICE_STATUS,
   REGISTRY_VERSION,
   confirmDevice,
@@ -104,10 +105,10 @@ test('confirmation is the only transition into trusted, and stamps pairedAt once
   assert.deepEqual(record.surfaces.agent, [...DEFAULT_AGENT_SURFACE].sort())
 })
 
-test('confirmation never grants the host surface on its own', () => {
+test('confirmation grants only the narrow host surface', () => {
   const paired = upsertDevice(emptyRegistry(), device(), NOW)
   const confirmed = confirmDevice(paired, 'dev-1', { agent: ['session:read'] }, LATER)
-  assert.deepEqual(findDevice(confirmed, 'dev-1').surfaces.host, [])
+  assert.deepEqual(findDevice(confirmed, 'dev-1').surfaces.host, [...DEFAULT_HOST_SURFACE].sort())
 })
 
 test('confirmation refuses an unknown device', () => {

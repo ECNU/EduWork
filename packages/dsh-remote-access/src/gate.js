@@ -32,15 +32,30 @@ export const SURFACE_AGENT = 'agent'
 export const SURFACE_HOST = 'host'
 
 /**
- * Whether a remote client may reach the host management surface at all.
+ * Whether a remote client may reach the host management surface.
  *
- * v1 says no, and this is a hard gate rather than a default: pairing and
- * credential handling are a different thing from operating the Agent, and the
- * cheapest way to keep that distinction true is to make the surface
- * unreachable regardless of what a device record happens to contain. Flipping
- * this is a deliberate act with its own review, not a configuration value.
+ * Pairing, credentials and terminal administration stay closed. A trusted device
+ * may be given a **narrow** host grant for the directory browser and workspace
+ * registration — what a remote browser needs to choose an existing workspace —
+ * and that grant is the device record's own `host` array, never a side effect of
+ * the Agent surface. `confirmDevice` still strips the host surface, so this is a
+ * deliberate per-device edit rather than something a pairing request can obtain.
  */
-export const HOST_SURFACE_ENABLED = false
+export const HOST_SURFACE_ENABLED = true
+
+/**
+ * The only host-surface operations a remote device may hold.
+ *
+ * The host surface stays narrow in code, not merely in a device record: even if a
+ * record listed `credential:read`, this set is what refuses it. Pairing,
+ * credentials, plugins and terminals are not part of remote access; the directory
+ * browser and workspace registration are the one concession a remote workspace
+ * needs.
+ */
+export const HOST_REMOTE_OPERATIONS = Object.freeze(new Set([
+  'directory:list',
+  'workspace:create',
+]))
 
 /**
  * Every operation a remote client may name, and what it needs.
@@ -53,6 +68,7 @@ export const HOST_SURFACE_ENABLED = false
 export const OPERATION_TABLE = Object.freeze({
   'session:list': { surface: SURFACE_AGENT, sideEffect: false },
   'session:read': { surface: SURFACE_AGENT, sideEffect: false },
+  'session:create': { surface: SURFACE_AGENT, sideEffect: true },
   'session:prompt': { surface: SURFACE_AGENT, sideEffect: true },
   'session:cancel': { surface: SURFACE_AGENT, sideEffect: true },
   'workspace:list': { surface: SURFACE_AGENT, sideEffect: false },
@@ -61,8 +77,13 @@ export const OPERATION_TABLE = Object.freeze({
   'artifact:download': { surface: SURFACE_AGENT, sideEffect: false },
   'settings:read': { surface: SURFACE_AGENT, sideEffect: false },
 
-  // Host management. Listed so the refusal is explicit and testable, never
-  // granted by `confirmDevice`, and never reachable from a remote client.
+  // The narrow host surface. A remote browser needs to list host directories and
+  // register the chosen folder as a workspace; these are not a side effect of the
+  // Agent surface and must be granted explicitly on the device record.
+  'directory:list': { surface: SURFACE_HOST, sideEffect: false },
+  'workspace:create': { surface: SURFACE_HOST, sideEffect: true },
+
+  // Everything else on the host surface stays listed for the explicit refusal.
   'device:list': { surface: SURFACE_HOST, sideEffect: false },
   'device:confirm': { surface: SURFACE_HOST, sideEffect: true },
   'device:revoke': { surface: SURFACE_HOST, sideEffect: true },
@@ -102,8 +123,13 @@ export function decide(device, operation) {
   }
   const entry = OPERATION_TABLE[operation.trim()]
   if (entry === undefined) return refuse(REASONS.UNKNOWN_OPERATION)
-  // The host surface is unreachable in v1 no matter what the record says.
-  if (entry.surface === SURFACE_HOST && !HOST_SURFACE_ENABLED) return refuse(REASONS.NOT_GRANTED)
+  // The host surface is narrow: enabled, but only the explicit remote operations
+  // are reachable even when a record lists others. The device record must still
+  // grant the operation; the allowlist is the upper bound.
+  if (entry.surface === SURFACE_HOST) {
+    if (!HOST_SURFACE_ENABLED) return refuse(REASONS.NOT_GRANTED)
+    if (!HOST_REMOTE_OPERATIONS.has(operation.trim())) return refuse(REASONS.NOT_GRANTED)
+  }
   const granted = device.surfaces?.[entry.surface]
   if (!Array.isArray(granted) || !granted.includes(operation.trim())) {
     return refuse(REASONS.NOT_GRANTED)

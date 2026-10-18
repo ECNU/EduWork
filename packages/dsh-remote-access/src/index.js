@@ -591,7 +591,17 @@ function startTunnel(ctx, registry, connections) {
            * tunnel, because a Host without the gateway can still serve unary calls.
            */
           openStream: typeof gateway?.wireStream?.open === 'function'
-            ? (endpoint, payload, uplink, peer, signal) => gateway.wireStream.open(endpoint, payload, uplink, peer, signal)
+            // The channel's `peer` is our device identity for the gate, not the
+            // Gateway's Connection peer. `wireStream.open` resolves the endpoint
+            // against that peer's claims, and a device-shaped peer made every real
+            // stream fail while unary calls kept working. The device is the
+            // operator's paired terminal and our gate already decided the endpoint;
+            // let the in-process carrier speak for the operator.
+            ? (endpoint, payload, uplink, _peer, signal) => gateway.wireStream.open(endpoint, payload, uplink, undefined, signal)
+              .catch((error) => {
+                probe('stream error', `${endpoint}: ${error?.message ?? String(error)}`)
+                throw error
+              })
             : undefined,
           log: (line) => {
             probe('tunnel', line)

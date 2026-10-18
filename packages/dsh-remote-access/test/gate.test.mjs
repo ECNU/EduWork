@@ -11,7 +11,7 @@ import {
   isAllowed,
   stripHostSurface,
 } from '../src/gate.js'
-import { DEFAULT_AGENT_SURFACE, DEVICE_STATUS, confirmDevice, emptyRegistry, upsertDevice } from '../src/registry.js'
+import { DEFAULT_AGENT_SURFACE, DEFAULT_HOST_SURFACE, DEVICE_STATUS, confirmDevice, emptyRegistry, upsertDevice } from '../src/registry.js'
 
 const NOW = '2026-10-09T12:00:00.000Z'
 
@@ -92,12 +92,20 @@ test('a device with an empty agent grant can do nothing', () => {
   assert.deepEqual(grantedOperations(device), [])
 })
 
-test('the host surface is unreachable even when the record lists it', () => {
-  // The record is not allowed to be the last word: pairing and credential
-  // handling must stay out of reach of a remote client in v1.
-  assert.equal(HOST_SURFACE_ENABLED, false)
-  const device = trustedDevice({ surfaces: { agent: ['session:list'], host: ['device:list', 'device:revoke'] } })
-  for (const operation of ['device:list', 'device:confirm', 'device:revoke', 'invitation:create', 'credential:read']) {
+test('the remote host surface is narrow even when the record lists more', () => {
+  // The record is not allowed to be the last word. Enabling the host surface for
+  // the remote workspace picker does not open pairing, credentials, plugins or
+  // terminals: the code-level allowlist is the upper bound.
+  assert.equal(HOST_SURFACE_ENABLED, true)
+  const device = trustedDevice({
+    surfaces: {
+      agent: ['session:list'],
+      host: ['directory:list', 'workspace:create', 'device:list', 'device:revoke', 'credential:read'],
+    },
+  })
+  assert.equal(isAllowed(device, 'directory:list'), true)
+  assert.equal(isAllowed(device, 'workspace:create'), true)
+  for (const operation of ['device:list', 'device:confirm', 'device:revoke', 'invitation:create', 'credential:read', 'plugin:install', 'terminal:open']) {
     assert.equal(isAllowed(device, operation), false, `${operation} must stay unreachable`)
   }
   assert.equal(isAllowed(device, 'session:list'), true, 'the agent surface still works')
@@ -116,9 +124,9 @@ test('stripHostSurface removes the host grant and keeps the agent one', () => {
   assert.deepEqual(stripped, { agent: ['session:list'], host: [] })
 })
 
-test('a confirmed device gets exactly the default agent surface', () => {
+test('a confirmed device gets exactly the default surfaces', () => {
   const device = trustedDevice()
-  assert.deepEqual(grantedOperations(device), [...DEFAULT_AGENT_SURFACE].sort())
+  assert.deepEqual(grantedOperations(device), [...DEFAULT_AGENT_SURFACE, ...DEFAULT_HOST_SURFACE].sort())
 })
 
 test('grantedOperations is empty for anything not trusted', () => {

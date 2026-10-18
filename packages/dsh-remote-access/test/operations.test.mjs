@@ -46,7 +46,7 @@ test('映射表里没有指向门禁未知操作的死条目', () => {
 })
 
 test('未列出的端点一律拒绝，不按名字猜', () => {
-  for (const endpoint of ['session/create', 'session/rename', 'workspace/delete', 'workspace/archiveSession', 'device/revoke', 'plugin/install', 'terminal/open', 'session/nope', '', '   ']) {
+  for (const endpoint of ['session/rename', 'workspace/delete', 'workspace/archiveSession', 'device/revoke', 'plugin/install', 'terminal/open', 'session/nope', '', '   ']) {
     assert.equal(operationForEndpoint(endpoint), undefined, `${endpoint} must not resolve`)
     assert.deepEqual(
       decideEndpoint(trustedDevice(), endpoint),
@@ -108,8 +108,13 @@ test('只有无副作用的端点可以断线重试', () => {
 })
 
 test('每条放行的判决都带回副作用标记，供调用方决定能否重试', () => {
+  // The mapped endpoints span both surfaces now, so the fully granted device is
+  // the one that can reach every entry.
+  const fullyGranted = trustedDevice({
+    surfaces: { agent: Object.keys(OPERATION_TABLE), host: Object.keys(OPERATION_TABLE) },
+  })
   for (const endpoint of Object.keys(ENDPOINT_OPERATIONS)) {
-    const verdict = decideEndpoint(trustedDevice(), endpoint)
+    const verdict = decideEndpoint(fullyGranted, endpoint)
     assert.equal(verdict.allowed, true, `${endpoint} should be reachable by a fully granted device`)
     assert.equal(typeof verdict.sideEffect, 'boolean')
     assert.equal(verdict.sideEffect, !isRetryable(endpoint))

@@ -37,18 +37,39 @@ import { DENY_REASONS, OPERATION_TABLE, decide } from '../gate.js'
 export const ENDPOINT_OPERATIONS = Object.freeze({
   'session/list': 'session:list',
   'session/page': 'session:read',
+  'session/create': 'session:create',
+  'session/modelCatalog': 'session:read',
+  'session/initializeDefaultModel': 'session:create',
   'session/prompt': 'session:prompt',
   'session/cancel': 'session:cancel',
+  'agentPresets/list': 'settings:read',
+  'permissionPresets/catalog': 'settings:read',
   // The control stream carries approvals and Agent question prompts, and these two
   // endpoints are how a paired terminal answers them. They are Agent-surface
   // actions scoped to the session they name — not host management, and not a way to
   // reach device pairing or credentials — so they ride on operations the device
   // already holds.
   'session/control': 'session:read',
+  // The session state/history stream. The workspace list already rides its own
+  // stream; without this one a remote click on a session shows "历史加载失败" even
+  // though the session itself is readable.
+  'session/follow': 'session:read',
   'userQuestions/answer': 'session:prompt',
   'userQuestions/attachWait': 'session:read',
+  // Read-only catalogs the Web UI paints its composer and settings from. They are
+  // preferences/model metadata, not credential or host administration.
+  'llm/listProviders': 'settings:read',
+  'llm/listConfigurableProviders': 'settings:read',
+  'job/list': 'session:read',
   'workspace/list': 'workspace:list',
   'workspace/read': 'workspace:read',
+  'workspace/create': 'workspace:create',
+  'workspace/follow': 'workspace:read',
+  'workspace/initializeDefault': 'workspace:create',
+  // The remote workspace browser. `list` is read-only; registering the selected
+  // folder as a workspace is the narrow host grant.
+  'directoryPicker/list': 'directory:list',
+  'directoryPicker/createDirectory': 'workspace:create',
   'artifact/read': 'artifact:read',
   'artifact/download': 'artifact:download',
   'settings/describe': 'settings:read',

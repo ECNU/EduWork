@@ -24,6 +24,7 @@ import {
   name,
 } from '../src/index.js'
 import { DeviceStore } from '../src/listener.js'
+import { DEFAULT_HOST_SURFACE } from '../src/registry.js'
 
 test('Config 已定义，并且键与 SettingsSchema 一致', async () => {
   // Imported here rather than through the named list above so that this test reads
@@ -301,7 +302,7 @@ test('confirm is the only path into trusted, and it is what grants the agent sur
   // arrives here and not before. Sorted is what normalization produces; comparing
   // against the constant directly would fail on ordering alone.
   assert.deepEqual(confirmed.surfaces.agent, [...DEFAULT_AGENT_SURFACE].sort())
-  assert.deepEqual(confirmed.surfaces.host, [], 'confirming must never open the host surface')
+  assert.deepEqual(confirmed.surfaces.host, [...DEFAULT_HOST_SURFACE].sort(), 'confirmation grants only the narrow host surface')
 })
 
 test('a device loaded from persisted settings is normalized, not trusted blindly', async () => {

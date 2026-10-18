@@ -42,6 +42,7 @@ export const OPERATION_SURFACES = Object.freeze(['agent', 'host'])
 export const DEFAULT_AGENT_SURFACE = Object.freeze([
   'session:list',
   'session:read',
+  'session:create',
   'session:prompt',
   'session:cancel',
   'workspace:list',
@@ -49,6 +50,19 @@ export const DEFAULT_AGENT_SURFACE = Object.freeze([
   'artifact:read',
   'artifact:download',
   'settings:read',
+])
+
+/**
+ * The narrow host surface a confirmed remote device gets by default.
+ *
+ * This is what makes the in-app workspace browser usable from a remote terminal:
+ * browsing the host's directories and registering the chosen folder. `gate.js`
+ * keeps a code-level allowlist over the host surface, so this default cannot be
+ * widened by editing a device record — only these two operations are reachable.
+ */
+export const DEFAULT_HOST_SURFACE = Object.freeze([
+  'directory:list',
+  'workspace:create',
 ])
 
 const STATUS_VALUES = new Set(Object.values(DEVICE_STATUS))
@@ -203,8 +217,10 @@ export function confirmDevice(registry, deviceId, surfaces, now) {
   if (device === undefined) fail(`cannot confirm unknown device "${deviceId}"`)
   if (device.status === DEVICE_STATUS.REVOKED) fail(`device "${deviceId}" is revoked`)
   const agent = surfaces?.agent === undefined ? [...DEFAULT_AGENT_SURFACE] : surfaces.agent
-  // Host management is never granted by confirmation; it needs its own decision.
-  const host = surfaces?.host ?? []
+  // The narrow host surface is part of a confirmed device: the remote workspace
+  // browser needs directory listing and workspace registration. Everything else on
+  // the host surface stays refused by the gate's allowlist.
+  const host = surfaces?.host === undefined ? [...DEFAULT_HOST_SURFACE] : surfaces.host
   return upsertDevice(current, {
     ...device,
     status: DEVICE_STATUS.TRUSTED,
