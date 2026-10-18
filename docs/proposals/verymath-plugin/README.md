@@ -15,7 +15,7 @@
 
 | 项目 | 内容 |
 | --- | --- |
-| 插件名 | `@louisultra/dsh-verymath`（npm scope 归属个人；如官方收录后希望改 scope 或 vendor，可协商） |
+| 插件名 | `@louisultra/dsh-verymath`（当前发布在作者个人 scope 下；如收录，按 EduWork 的发布约定迁移到官方 scope，作者负责迁移并弃用旧包） |
 | 版本 | 0.3.2 |
 | 许可 | MIT（包本体）。`UPSTREAM.json` 记录 8 个 VeryMath 上游仓库：7 个 MIT 仓库的内容被改编/收录，另有 1 个 GPLv3 仓库（Sagemath-skill）**未收录任何代码**，仅按接口契约做干净房间重实现；SageMath 文档语料（CC BY-SA 3.0）独立于包分发 |
 | DSH 兼容 | peer 依赖 `>=0.2.0-rc.1 <0.3.0-0`；**实测仅覆盖 DSH 0.2.0-rc.2 + EduWork 0.4.3**，rc.1 与后续 0.2.x 未逐版验证 |
@@ -56,6 +56,29 @@
 1. **文档收录**：README/docs 增加社区插件条目，链接 npm 与仓库（最小改动）。
 2. **依赖推荐**：发行配置中作为可选插件推荐（按 DSH 插件机制装 npm 包）。
 3. **更深集成**：把源码 vendor 进官方仓库或改 npm scope——如需要，作者愿意配合调整（可保留完整开发历史与署名）。
+
+## 接入准备度
+
+**已对齐仓库约定**
+
+- TypeScript 严格模式全开：`strict`、`noUncheckedIndexedAccess`、`exactOptionalPropertyTypes`、`noImplicitOverride`
+- 构建产物与 `dsh-plugins/` 现有插件同形：ESM、`lib/index.js` + `lib/*.d.ts`、`exports` 显式声明
+- 源码注释全英文、模块级说明标注上游出处与「未复制上游代码」；无 `TODO`/`FIXME` 残留
+- 许可与溯源齐备：MIT + `NOTICE.md` + `UPSTREAM.json`（8 个上游仓库，40 位 commit）
+- 测试可复现：102 个 vitest 合成测试 + runtime probe（真实 DSH 插件 API、不调模型），已配置 GitHub Actions（typecheck / build / test / runtime probe）
+- 文档中英双语，与公版「README 中文 + README_EN 英文」的习惯一致
+
+**迁移时按对方约定调整**
+
+- npm scope 与发布流程（`@eduwork`）、发布凭据归属
+- 插件目录位置与是否需要 vendor 源码；如需 vendor，按仓库当时的 lint/CI 约定补齐检查项（公版当前没有 ESLint/Prettier 规则，本包也保持一致）
+- peer 依赖版本区间随 EduWork 采用的 DSH 版本调整
+
+**明确未覆盖**
+
+- Windows 未测试（路径与外部二进制发现逻辑未验证）
+- MATLAB、Sage 执行需要用户自备环境；语料与 license 不在包内
+- 能力示例目前只有中文版
 
 ## 迁移待决事项
 

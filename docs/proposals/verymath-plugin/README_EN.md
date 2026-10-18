@@ -15,7 +15,7 @@ Bring VeryMath's mathematical learning and research capabilities into EduWork as
 
 | Item | Content |
 | --- | --- |
-| Plugin name | `@louisultra/dsh-verymath` (personal npm scope; can be renamed or vendored if adopted officially) |
+| Plugin name | `@louisultra/dsh-verymath` (currently published under the author's personal scope; on adoption it moves to the official scope following EduWork's release conventions, with the author performing the migration and deprecating the old package) |
 | Version | 0.3.2 |
 | License | MIT (package). `UPSTREAM.json` records 8 VeryMath upstream repositories: content from 7 MIT repositories is adapted/bundled, and 1 GPLv3 repository (Sagemath-skill) contributes **no code** — only an interface contract, re-implemented clean-room; the SageMath documentation corpus (CC BY-SA 3.0) is distributed separately |
 | DSH compat | peer range `>=0.2.0-rc.1 <0.3.0-0`; **verified only on DSH 0.2.0-rc.2 + EduWork 0.4.3** — rc.1 and later 0.2.x releases are not individually tested |
@@ -55,9 +55,32 @@ Skill content and Python scripts are adapted from 7 MIT repositories under the V
 
 1. **Documentation listing**: add a community-plugin entry to README/docs linking npm and the repository (smallest change).
 2. **Dependency recommendation**: recommend it as an optional plugin in the distribution config (installed via the DSH plugin mechanism from npm).
-3. **Deeper integration**: vendor the source into the official repository or rename the npm scope — the author is willing to adjust if desired (full development history and attribution can be preserved in the migration).
+3. **Deeper integration**: vendor the source into the official repository and move the package to the official scope. The author will carry out both, preserving the full commit history and attribution.
 
 ## Maintenance
+
+## Adoption readiness
+
+**Already aligned with the repository's conventions**
+
+- TypeScript strict mode fully on: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`
+- Build output matches the existing `dsh-plugins/` shape: ESM, `lib/index.js` + `lib/*.d.ts`, explicit `exports`
+- Source comments are English-only; module headers state the upstream origin and note that no upstream code was copied; no `TODO`/`FIXME` left
+- Licensing and provenance complete: MIT + `NOTICE.md` + `UPSTREAM.json` (8 upstream repos, full 40-character commits)
+- Reproducible tests: 102 vitest unit tests + a runtime probe against the real DSH plugin API (no model calls), wired into GitHub Actions (typecheck / build / test / runtime probe)
+- Documentation in Chinese with an English mirror, matching the repository's README convention
+
+**Will be adjusted to the host repository at migration time**
+
+- npm scope and release flow (`@eduwork`), and who owns the publish credential
+- Plugin directory location, and whether the source is vendored; if vendored, the checks are extended to whatever lint/CI conventions the repository has at that time (the public repo currently has no ESLint/Prettier rules, and this package matches that)
+- peer-dependency ranges follow the DSH version EduWork ships
+
+**Known gaps**
+
+- Windows untested (path and external-binary discovery unverified)
+- MATLAB and Sage execution need the user's own environment; corpus and licence are not bundled
+- Capability examples are currently Chinese-only
 
 ## Open migration questions
 
