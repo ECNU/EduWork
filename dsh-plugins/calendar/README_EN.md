@@ -20,6 +20,8 @@ A local calendar and schedule manager. The week view arranges time within a day;
 
 Events and personal settings stay on this machine. Due relative and fixed reminders enter the Reminder inbox. Desktop builds use system notifications; browsers provide in-app reminders. No model or conversation is started. Keep the app running; restart catches up at most 24 hours, and receipts remain for 30 days. OS popups respect the notification master switch, foreground policy and system quiet settings.
 
+The bundled calendar-management Skill guides event queries, changes, private settings and source imports. Editions may attach references; their plugins initialize school data before any conversation. `calendar_import_source` imports batches with stable IDs in user-owned sources; managed sources require explicit Host opt-in.
+
 ## Agent tools
 
 | Tool | Purpose |
@@ -33,6 +35,10 @@ Events and personal settings stay on this machine. Due relative and fixed remind
 | `calendar_read_personal` / `calendar_personal_settings` | Read, patch or restore personal settings by field |
 
 Use the `source` and `uid` returned by a read for imported events. Occurrence settings require the returned `originalStart`, rather than the rescheduled time. Omit it to address series defaults. Editing a whole event and editing one occurrence are separate operations.
+
+Agent-visible event text includes reusable source/uid/originalStart references. Personal writes reject nonexistent event or occurrence references; preserved unlinked notes remain readable.
+
+ICS files carrying managed institution sources cannot overwrite those sources; their registered writer must update them. ICS is not a complete private-data backup.
 
 ## Institution integration
 

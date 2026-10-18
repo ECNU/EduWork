@@ -14,8 +14,9 @@
 import { randomUUID } from 'node:crypto'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { decideCalendarPermission } from './tool-permission.js'
-import { inheritedEndOf, PersonalPatchSchema, PersonalViewSchema } from './model.js'
+import { inheritedEndOf, occurrencesOf, PersonalPatchSchema, PersonalViewSchema } from './model.js'
 import { z } from 'zod'
+import { sourceEvent, applySourceOutcome } from './typert-schemas.js'
 
 // Project the shared model into the Runtime tool-author subset. These unions
 // have disjoint strict-object branches. Date/range refinements stay enforced by
@@ -111,21 +112,22 @@ function recordFields(event) {
 
 /** One line describing one occurrence, as both the model and the reader see it. */
 function lineOf(entry) {
+  const actualDate = dateOf(entry.start)
   const clock = clockOf(entry.start)
   const end = entry.end ? clockOf(entry.end) : ''
   const when = clock === ''
     ? entry.end && dateOf(entry.end) > dateOf(entry.start)
-      ? `${entry.date} – ${dateOf(entry.end)} 全天`
-      : `${entry.date} 全天`
+      ? `${actualDate} – ${dateOf(entry.end)} 全天`
+      : `${actualDate} 全天`
     : end === ''
-      ? `${entry.date} ${clock}`
-      : `${entry.date} ${clock}–${end}`
+      ? `${actualDate} ${clock}`
+      : `${actualDate} ${clock}–${end}`
   return [
     when,
     entry.title,
     entry.location ? `· ${entry.location}` : '',
     entry.repeats ? '· 重复日程' : '',
-    `[uid ${entry.uid}]`,
+    `ref=${JSON.stringify({ source: entry.source ?? MANUAL_SOURCE, uid: entry.uid, originalStart: entry.originalStart ?? entry.start })}`,
   ].filter(Boolean).join(' ')
 }
 
@@ -138,7 +140,20 @@ function recordLine(prefix, event) {
     : end === ''
       ? `${dateOf(event.start)} ${clock}`
       : `${dateOf(event.start)} ${clock}–${end}`
-  return `${prefix} ${when} ${event.title}${event.location ? ` · ${event.location}` : ''}${event.recurrence ? ' · 重复日程' : ''} [uid ${event.uid}]`
+  return `${prefix} ${when} ${event.title}${event.location ? ` · ${event.location}` : ''}${event.recurrence ? ' · 重复日程' : ''} ref=${JSON.stringify({ source: event.source ?? MANUAL_SOURCE, uid: event.uid })}`
+}
+
+/** Model guesses must not create private records that attach to no event. */
+function assertPersonalTarget(calendar, ref) {
+  const event = calendar.getEvent(ref)
+  if (!event) throw new Error('event_not_found: use the exact source and uid from calendar_list_events')
+  if (ref.originalStart !== undefined) {
+    const day = dateOf(ref.originalStart)
+    const valid = event.recurrence
+      ? occurrencesOf({ ...event, overrides: undefined, exceptions: undefined }, { from: day, to: day }).some(item => item.originalStart === ref.originalStart)
+      : (event.originalStart ?? event.start) === ref.originalStart
+    if (!valid) throw new Error('occurrence_not_found: use originalStart from calendar_list_events, not the moved time')
+  }
 }
 
 /**
@@ -203,7 +218,7 @@ const occurrenceSchema = {
   additionalProperties: false,
   properties: {
     uid: { type: 'string', required: true, description: 'Identity of the stored record, for a later write.' },
-    date: { type: 'string', required: true, description: 'The date this occurrence falls on.' },
+    date: { type: 'string', required: true, description: 'Original occurrence date for calendar_occurrence. Actual display date is in start.' },
     title: { type: 'string', required: true },
     start: { type: 'string', required: true, description: 'Local start, `YYYY-MM-DDTHH:mm` or `YYYY-MM-DD`.' },
     end: { type: 'string' },
@@ -454,6 +469,7 @@ export function apply(ctx) {
     output:{schema:{type:'object',additionalProperties:false,properties:{saved:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.saved?'已保存笔记。':'已清空笔记。'}]},
     async execute(args) {
       const {text,...ref}=args
+      assertPersonalTarget(ctx.calendar, ref)
       if(text==='') {await ctx.calendar.removeNote({...ref,scope:'source'});return {saved:false}}
       await ctx.calendar.putNote({...ref,scope:'source',text});return {saved:true}
     },
@@ -464,7 +480,7 @@ export function apply(ctx) {
     description:'Remove only a private note field. Use source and uid; omit originalStart for the whole event, or supply its stable originalStart for one occurrence. Clearing an occurrence restores its inherited note. This does not delete the event or its exported description.',
     parameters:noteIdentity,
     output:{schema:{type:'object',additionalProperties:false,properties:{removed:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.removed?'已删除笔记。':'这次日程没有笔记。'}]},
-    execute:args=>ctx.calendar.removeNote({...args,scope:'source'}),
+    async execute(args) { assertPersonalTarget(ctx.calendar, args); return ctx.calendar.removeNote({...args,scope:'source'}) },
     presentCall:()=>({card:'generic',title:'日历 · 清空笔记',kind:'write'}),
   }))
 
@@ -491,12 +507,28 @@ export function apply(ctx) {
     parameters: { ...noteIdentity, patch: patchSchema, clear: { type: 'array', items: { type: 'string', enum: ['note', 'remark', 'hidden', 'reminder'] } } },
     output: settingsOutput,
     async execute(args) {
+      assertPersonalTarget(ctx.calendar, args)
       await ctx.calendar.setPersonal({ ...args, scope: 'source' })
       const { patch, clear, ...ref } = args
       const { legacyExtensions, ...settings } = ctx.calendar.personalFor({ ...ref, scope: 'source' })
       return { settings, ...(legacyExtensions ? { legacyExtensions: JSON.stringify(legacyExtensions) } : {}) }
     },
     presentCall: () => ({ card: 'generic', title: '日历 · 改个人设置', kind: 'write' }),
+  }))
+
+  ctx.tools.register(defineTool({
+    name: 'calendar_import_source',
+    description: 'Import or update a verified batch with stable event uids. Use a stable user-owned source agent:<name>; replaying the same IDs updates rather than duplicates. mode=merge (default) updates supplied entries and deletes nothing; mode=replace removes absent entries ONLY in this source, including clearing with an empty array. Never replace from failed or incomplete data. Managed sync: sources require explicit Host opt-in. Keep movedFrom when dates change. Private notes and settings are preserved. Increasing revision prevents old versions from overwriting new ones.',
+    parameters: {
+      source: { type: 'string', required: true, description: 'Stable source, e.g. agent:semester-2026. Never use manual or invent a managed source.' },
+      events: { type: 'array', required: true, items: personalToolSchema(z.toJSONSchema(sourceEvent)) },
+      mode: { type: 'string', enum: ['merge', 'replace'], description: 'merge updates without deleting absent entries (default); replace is an explicitly requested complete replacement.' },
+      revision: { type: 'number', description: 'Positive increasing integer for versioned datasets. Reuse only for the identical batch.' },
+    },
+    output: { schema: personalToolSchema(z.toJSONSchema(applySourceOutcome)),
+      render: (_args, value) => [{ type: 'text', text: `写入 ${value.applied} 项，移除 ${value.removed ?? 0} 项，无法关联 ${value.unattributable.length} 项。` }] },
+    execute: ({ mode = 'merge', ...batch }) => ctx.calendar.importSource({ ...batch, ...(mode === 'replace' ? { complete: true } : {}) }),
+    presentCall: args => ({ card: 'generic', title: '日历 · 批量更新来源', kind: 'write', rawInput: `${args.source} / ${args.events?.length ?? 0} 项${args.mode === 'replace' ? ' / 完整替换' : ' / 合并'}` }),
   }))
 
 }

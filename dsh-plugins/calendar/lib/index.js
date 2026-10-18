@@ -338,6 +338,19 @@ export class CalendarService extends TypertRemoteService {
     return report
   }
 
+  /** Agent/user batch imports have their own namespace; managed sources require Host opt-in. */
+  async importSource(input) {
+    if (typeof input?.source !== 'string') throw new Error('source required')
+    if (input.source.startsWith('sync:')) {
+      const { source, ...batch } = input
+      const result = await this.sources.agentApply(source, batch)
+      if (result.state !== 'ready') throw new Error(result.error ?? 'superseded_snapshot')
+      return result.report
+    }
+    if (!/^agent:.+/.test(input.source)) throw new Error('reserved calendar source: use agent:<stable-name>')
+    return this.applySource(input)
+  }
+
   async rememberSources() {
     for (const event of this.store.snapshot().events) await this.personal.rememberSource(event)
   }

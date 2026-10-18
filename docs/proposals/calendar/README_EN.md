@@ -193,7 +193,7 @@ The first deliverable conclusion of this proposal (feasibility already verified)
 
 ## Agent read and write boundary
 
-`lib/tools.js` exposes ten tools through the same `calendar` service: list, create, update, delete and adjust one occurrence, plus `calendar_notes`, `calendar_put_note` and `calendar_remove_note`. See the plugin README for parameters.
+`lib/tools.js` exposes eleven tools through the same `calendar` service: list, create, update, delete and adjust one occurrence, plus `calendar_notes`, `calendar_put_note` and `calendar_remove_note`. The source batch tool is `calendar_import_source`; see the plugin README for parameters.
 
 - Reads are bounded: by default 180 days before today to 366 days after today, with a maximum span of 3660 days.
 - Updates, deletion and occurrence actions must reuse the returned `source` and `uid`. Notes also require the original `originalStart`, not the moved time.
@@ -229,7 +229,7 @@ DSH Schedule remains a separate Session-reminder path. Calendar system notificat
 - Following the edition boundaries ([`docs/EDITIONS.md`](../../EDITIONS.md)), the institution edition supplies an adapter under `edition/plugins/`: it converts school data to the public structure above and injects it through the host-side entry point provided by the public edition.
 - Raising the institution lock depends on a public **release**: assembly in institution mode validates the public commit and the source receipt, so institution integration happens after this work lands and is released, and is outside this proposal.
 - An offline path also works: the institution side saves an academic-system page, parses it into ICS or the JSON above, and uses the generic import, with no dependency on a school API.
-- Institution adapters convert school-specific data to source batches and connect real login/reconnection events through the supplied subscription callback. No school API format is fixed by the public plugin.
+- Institution adapters handle real login/reconnection events, fetch and convert school-specific data, then submit batches through the source-bound writer. No school API format is fixed by the public plugin.
 - Academic calendars and timetables currently share one panel with source filtering. Separate institution entries and default views remain a future extension.
 
 ## Compatibility boundary
@@ -244,7 +244,7 @@ DSH Schedule remains a separate Session-reminder path. Calendar system notificat
 
 ## Development split and acceptance
 
-Week/month views, events and personal settings, ICS, source sync coordination, reminder planning/reconciliation and ten Agent tools are available. Real institution fetching, actual notification delivery and separate institution entries remain future work.
+Week/month views, events and personal settings, ICS, source registration and pushed updates, reminder planning/reconciliation and eleven Agent tools are available. Real institution fetching and separate institution entries remain future work. Due reminders use an in-app inbox and optional desktop system notifications.
 
 Prepare a Runtime, set `EDUWORK_TEST_RUNTIME`, and run in the plugin directory:
 

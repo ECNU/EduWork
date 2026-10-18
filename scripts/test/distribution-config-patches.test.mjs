@@ -2,7 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { execFileSync } from 'node:child_process'
-import { cp, mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
+import { cp, mkdtemp, mkdir, readFile, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { pathToFileURL, fileURLToPath } from 'node:url'
@@ -18,6 +18,45 @@ const initial = () => [{ insert: [{ id: 'account', name: 'synthetic-account', co
 const compose = (composition, patches, warnings = []) => composeEntries([
   mergeDistributionConfigPatches(composition, patches, composeEntries),
 ], message => warnings.push(message))
+
+test('real edition preparation replaces the public calendar Skill and retains edition references', {
+  skip: !process.env.EDUWORK_TEST_PREPARED_PRODUCT,
+}, async t => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-edition-skills-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const input = process.env.EDUWORK_TEST_PREPARED_PRODUCT
+  const product = join(root, 'product'), edition = join(root, 'edition')
+  await mkdir(join(product, 'd'), { recursive: true })
+  // Runtime packages are read-only in this fixture; output metadata stays isolated.
+  await symlink(join(input, 'd/node_modules'), join(product, 'd/node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
+  for (const file of ['assembly.json', 'composition.json', 'd/package.json']) {
+    await writeFile(join(product, file), await readFile(join(input, file)))
+  }
+  for (const directory of ['resources', 'skills']) await cp(join(input, directory), join(product, directory), { recursive: true })
+  const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+  delete identity.sourceAlpha
+  delete identity.sourceRelease
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
+  await mkdir(join(edition, 'edition'), { recursive: true })
+  await writeFile(join(edition, 'edition/distribution.json'), JSON.stringify({
+    id: identity.distribution, brand: identity.brand, capabilities: identity.capabilities,
+    plugins: [], resources: [], skills: [{ name: 'calendar-management', replace: true,
+      sourcePackage: '@eduwork/dsh-calendar', sourcePath: 'skills/calendar-management',
+      references: [{ title: 'Synthetic academic calendar', path: '../../resources/calendar/guide.md' }],
+    }],
+  }))
+  const git = args => execFileSync('git', ['-C', edition, ...args], { stdio: 'pipe', windowsHide: true })
+  git(['init'])
+  git(['add', 'edition/distribution.json'])
+  git(['-c', 'user.name=Synthetic Fixture', '-c', 'user.email=synthetic@example.invalid', 'commit', '-m', 'Synthetic edition'])
+  execFileSync(process.execPath, [fileURLToPath(new URL('../prepare-pinned-dsh-product.mjs', import.meta.url)),
+    '--product', product, '--edition', edition, '--version', '0.0.0-alpha.1'], { stdio: 'pipe', windowsHide: true })
+  const body = await readFile(join(product, 'skills/calendar-management/SKILL.md'), 'utf8')
+  const publicBody = await readFile(join(input, 'd/node_modules/@eduwork/dsh-calendar/skills/calendar-management/SKILL.md'), 'utf8')
+  assert.ok(body.startsWith(publicBody.trimEnd()))
+  assert.equal(body.split('## 发行版参考资料').length, 2)
+  assert.ok(body.includes('[Synthetic academic calendar](<../../resources/calendar/guide.md>)'))
+})
 
 test('edition config updates retain other product fields and preserve disabled', { skip: !runtime }, () => {
   const composition = initial(), patches = [{ id: 'account', config: { backend: 'web' }, disabled: true }]

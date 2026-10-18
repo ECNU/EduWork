@@ -40,6 +40,13 @@ Optional revision is an increasing positive integer persisted after successful w
 
 Input is validated before queued writes. Storage has no cross-record transaction: disk failure stops remaining writes and cleanup, without rolling back already completed writes.
 
+## Agent imports and the bundled Skill
+
+The public calendar-management Skill uses the same service and permissions as the panel. `calendar_import_source` supports stable IDs in user-owned `agent:<name>` sources; mode defaults to merge; replace has deletion semantics, including empty-source clearing. Host batches retain their separate complete validation.
+
+Managed sources deny Agent batch writes by default. The Host can explicitly opt in with allowAgentUpdates:true; session write permission still applies. Data plugins call their source handle directly.
+
+An edition may select the same sourcePackage/sourcePath and append its own data and guidance links through a references list in the Skill body. It does not copy the Skill instructions. Static calendar initialization runs in the edition plugin once the service is ready, independently of conversations.
 
 ## Personal fields and inheritance
 

@@ -14,6 +14,7 @@ import { desktopVersion } from './desktop-build-plan.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 import { usePinnedBrowser } from './pinned-browser.mjs'
+import { copyDshBundledSkills, resolveDshSkillChild } from './lib/dsh-skills.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -67,7 +68,14 @@ if(values.edition){
   }
   Object.assign(identity,{distribution:distribution.id,brand:distribution.brand,capabilities:distribution.capabilities,
     editionCommit:execFileSync('git',['rev-parse','HEAD'],{cwd:edition,encoding:'utf8',windowsHide:true}).trim(),sourcePackages:[...identity.sourcePackages,...entries.map(entry=>entry.name)]})
-  for(const skill of distribution.skills) await cp(join(edition,skill.source),join(product,'skills',skill.name),{recursive:true})
+  const skillRoot=join(product,'skills')
+  for(const skill of distribution.skills??[]){
+    if(skill.replace!==true) continue
+    assert.equal(generic.skills.filter(coreSkill=>coreSkill.name===skill.name).length,1,
+      `Skill replacement must select one core skill: ${skill.name}`)
+    await rm(resolveDshSkillChild(skillRoot,skill.name),{recursive:true,force:true})
+  }
+  await copyDshBundledSkills({repository:edition,packageRoot:join(product,'d/node_modules'),skillRoot,skills:distribution.skills??[]})
   for(const resource of distribution.resources){
     assert.equal(resource.root,'edition')
     await mkdir(resolve(product,'resources',resource.target,'..'),{recursive:true})

@@ -139,6 +139,12 @@
   ],
   "skills": [
     {
+      "name": "calendar-management",
+      "sourcePackage": "@eduwork/dsh-calendar",
+      "sourcePath": "skills/calendar-management",
+      "defaultEnabled": true
+    },
+    {
       "name": "browser",
       "source": "dsh-skills/browser",
       "defaultEnabled": true

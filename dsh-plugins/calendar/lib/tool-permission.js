@@ -15,6 +15,7 @@ export const WRITE_TOOLS = new Set([
   'calendar_put_note',
   'calendar_remove_note',
   'calendar_personal_settings',
+  'calendar_import_source',
 ])
 
 const WRITE_REASON = '允许智能体在本地日历中创建、修改或删除日程及个人设置'

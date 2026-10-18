@@ -1083,6 +1083,7 @@ test('Agent tools persist notes against source identity, move a class, read desc
       assert.equal(notes.notes[0].text,'Read chapter 3')
       assert.equal(notes.notes[0].originalStart,originalStart)
       assert.equal((await run('calendar_notes',{unlinkedOnly:true})).notes.length,0)
+      await calendar.applySource({ source: 'Other', events: [{ uid, title: 'Other event', start: originalStart }] })
       await run('calendar_put_note',{uid,source:'Other',originalStart,text:'Other calendar'})
       await run('calendar_remove_note',{uid,source:'Other',originalStart})
       assert.equal((await run('calendar_notes',{uid,source:'manual'})).notes.length,1)

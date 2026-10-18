@@ -191,7 +191,7 @@
 
 ## Agent 读写边界
 
-`lib/tools.js` 通过同一份 `calendar` 服务提供十个工具：读取日程、新建、修改、删除、改单次，以及 `calendar_notes`、`calendar_put_note`、`calendar_remove_note`。具体参数见插件 README。
+`lib/tools.js` 通过同一份 `calendar` 服务提供十一个工具：读取日程、新建、修改、删除、改单次，以及 `calendar_notes`、`calendar_put_note`、`calendar_remove_note`。另有按来源批量更新的 `calendar_import_source`；具体参数见插件 README。
 
 - 读取区间有上限，缺省从今天前 180 天到后 366 天，单次最多 3660 天。
 - 修改、删除与改单次必须沿用读取结果的 `source` 和 `uid`。写笔记还要使用 `originalStart`，不能用改期后的当前时间代替。
@@ -242,7 +242,7 @@ DSH `schedule` 的会话提醒与本模块的系统通知路径独立。日历�
 
 ## 开发拆分与验收
 
-当前已提供周/月视图、日程与个人设置、ICS、来源登记与更新、提醒计算/调度适配器入口，以及十个 Agent 工具。真实机构取数、实际通知投递和独立机构入口留待后续。
+当前已提供周/月视图、日程与个人设置、ICS、来源登记与批量更新、提醒计算/调度适配器入口，以及十一个 Agent 工具。真实机构取数和独立机构入口留待后续；提醒到点记录与可选桌面系统通知已接入。
 
 在插件目录准备 Runtime 并设置 `EDUWORK_TEST_RUNTIME` 后执行：
 

@@ -42,6 +42,13 @@ try {
 
 整批输入先校验，再串行提交。存储没有跨记录事务：磁盘故障中止后续提交/清理，不承诺回滚先前写入。
 
+## Agent 批量更新与技能
+
+公版附带 `calendar-management` 技能，逐条工具与 `calendar_import_source` 共用 calendar 服务和写权限检查。个人批量导入使用 `agent:<稳定名称>`；稳定 uid 保证重复导入更新原事项。工具的 mode 默认为 merge（合并），replace 表示完整替换；数据插件的 complete 字段仍独立校验结果完整性。`mode:'replace'` 有删除语义，完整空数组须明确确认意图。
+
+托管来源默认不允许 Agent 批量更新；Host 可在登记时明确设置 `allowAgentUpdates:true`，工具仍须通过会话写权限。数据插件直接调用来源操作对象，不绕 Agent 工具取数。
+
+机构装配可以引用公版技能的同一 sourcePackage/sourcePath，通过 references 列表附加参考资料链接到技能正文；不复制完整指令。静态校历的初始化由机构插件在服务就绪后完成，独立于技能对话。学校数据与初始化代码留在机构侧。
 
 ## 个人内容与继承
 

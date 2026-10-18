@@ -2,7 +2,7 @@
 // Node.js port of install-bundled-dsh-skills.ps1.
 import { readFile, readdir } from 'node:fs/promises'
 import { createRequire } from 'node:module'
-import { isAbsolute, join, resolve, sep } from 'node:path'
+import { dirname, isAbsolute, join, resolve, sep } from 'node:path'
 import { copyTree, ensureDir, fullPath, isDirectory, isFile, pathExists, readJSON, writeText } from './build-util.mjs'
 
 export function resolveDshSkillChild(root, relative) {
@@ -69,6 +69,25 @@ export async function copyDshBundledSkills({ repository, packageRoot, skillRoot,
       const value = yaml.parse(header[1])
       value.metadata = JSON.parse(JSON.stringify(skill.metadata))
       await writeText(file, '---\n' + yaml.stringify(value) + '---' + body.slice(header[0].length), { trailingNewline: false })
+    }
+    if (skill.references !== undefined) {
+      if (!Array.isArray(skill.references)) throw new Error('Skill references must be a list')
+      const productRoot = dirname(fullPath(skillRoot))
+      const prefix = productRoot + sep
+      const links = skill.references.map(reference => {
+        if (typeof reference.title !== 'string' || !reference.title.trim() || /[\r\n]/.test(reference.title)
+          || typeof reference.path !== 'string' || !reference.path || /^[a-z][a-z0-9+.-]*:/i.test(reference.path) || isAbsolute(reference.path) || /[<>\r\n]/.test(reference.path)) throw new Error('Invalid Skill reference')
+        const linkPath = reference.path.replaceAll('\\', '/')
+        const destination = resolve(target, linkPath)
+        const contained = process.platform === 'linux' ? destination.startsWith(prefix) : destination.toLowerCase().startsWith(prefix.toLowerCase())
+        if (!contained) throw new Error('Skill reference escapes the product')
+        const title = reference.title.replace(/[\\[\]]/g, '\\$&')
+        return `- [${title}](<${linkPath}>)`
+      })
+      if (links.length) {
+        const file = join(target, 'SKILL.md')
+        await writeText(file, (await readFile(file, 'utf8')).trimEnd() + '\n\n## 发行版参考资料\n\n' + links.join('\n') + '\n')
+      }
     }
     console.log(String(skill.name))
     installed.push(String(skill.name))

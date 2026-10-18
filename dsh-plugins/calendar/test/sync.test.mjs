@@ -272,6 +272,24 @@ test('one update receipt can be submitted only once, including concurrent submis
   }))
 })
 
+test('bulk agent imports replay stable IDs and cannot replace a managed source without opt-in', { skip: !runtime }, async () => {
+  await withRoot('calendar-agent-import-', async root => withCalendar(root, async calendar => {
+    const batch = { source: 'agent:semester', complete: true, events: [{ uid: 'exam', title: 'Exam', start: '2026-12-07' }] }
+    await calendar.importSource(batch)
+    await calendar.importSource(batch)
+    assert.equal(calendar.snapshot().events.length, 1)
+    await assert.rejects(calendar.importSource({ ...batch, source: 'manual' }), /reserved/)
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    await source.apply({ complete: true, events: batch.events })
+    await assert.rejects(calendar.importSource({ ...batch, source: source.source, events: [] }), /source_agent_write_denied/)
+    assert.equal(calendar.snapshot().events.length, 2)
+    source.dispose()
+    const permitted = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar', allowAgentUpdates: true })
+    await calendar.importSource({ ...batch, source: permitted.source, events: [] })
+    assert.equal(calendar.snapshot().events.length, 1)
+  }))
+})
+
 test('source revisions survive restart and reject old or redefined versions while retaining private settings', { skip: !runtime }, async () => {
   await withRoot('calendar-source-revision-', async root => {
     const config = { provider: 'example.edu', account: 'public', feed: 'calendar:2026' }

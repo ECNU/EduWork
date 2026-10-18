@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-18T12:58:18.760Z",
-  "fileSetSHA256": "4f7f9f036507dd0d1c48ad065ae240c22109540e78643a68bb7b52506ca17035",
+  "createdAt": "2026-10-18T13:00:52.617Z",
+  "fileSetSHA256": "243a090488bf4f3b719396fe01578fb4fedb478b438e0b1af8afcc6bde5a1772",
   "files": [
     {
       "path": ".gitattributes",
@@ -217,7 +217,7 @@
     },
     {
       "path": "config/distributions/generic.json",
-      "sha256": "a5c5975eb0afe21e19542b4799120fb654e4a398f063236ee8d08b460199667f"
+      "sha256": "bbc4aefe184cc8da0de4a9e00c58b09f9260f246b94ef48c0a06a17e173c4edb"
     },
     {
       "path": "config/macos-native.lock.json",
@@ -393,19 +393,19 @@
     },
     {
       "path": "docs/proposals/calendar/INTEGRATION_EN.md",
-      "sha256": "1f3c069d743c91857e78484e1bd4808a4a87f6ac4444acbe227e7dcf498ba475"
+      "sha256": "ba9d5110d6a1245d91f52942f96e915f9b96ff7d872b2764073bf46e2700a01b"
     },
     {
       "path": "docs/proposals/calendar/INTEGRATION.md",
-      "sha256": "82297c73c2217fb50b38f65116933d33790380fafc6d535dad53602f38872fe3"
+      "sha256": "53a52a455af7b5620ad2c67fc6e7b16bedddc496f55abe0a72e88dc80526e8a0"
     },
     {
       "path": "docs/proposals/calendar/README_EN.md",
-      "sha256": "677cfbd2477b2b26a8eab527331a94c146f6fed7b83839e18a8da08766bcf472"
+      "sha256": "42392f124d2b8c6bc09b9b0d56bb7312834087778276b451cf5644b2ed8a2b12"
     },
     {
       "path": "docs/proposals/calendar/README.md",
-      "sha256": "1ca1627e0ddc54ba59926dc9b6b2041fe7630b79e7483e2f232df3cce7fb773d"
+      "sha256": "bc73c8d896daac8c8fcdd7e56c78c57052b98adb36fe1795e1fa12489064ceed"
     },
     {
       "path": "docs/proposals/desktop-profile-location/README_EN.md",
@@ -1997,7 +1997,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/client.js",
-      "sha256": "91aaedaebe37be35b3d2650bf5c311dbaf4ad963dd061256c1e6ed6e08554de0"
+      "sha256": "c5501e87904d5ceb16f10b48d1918f8689c08ba5c50609b6d72fc5c48344a337"
     },
     {
       "path": "dsh-plugins/calendar/lib/ics.js",
@@ -2005,7 +2005,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/index.js",
-      "sha256": "a5f9538ba6d0cc52e942fbfcc2a7d769a6b0da2f83b439e75368da34a5bf33b8"
+      "sha256": "b6f2df55571ab7e158fd42d7b0d3528757d9730f66d1441384288b8513274ab6"
     },
     {
       "path": "dsh-plugins/calendar/lib/keys.js",
@@ -2029,7 +2029,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/sources.js",
-      "sha256": "72fd469e093b0d99c2d0b8a60c71e2794f34c4c07bb1f737fe351e6b1b58174d"
+      "sha256": "159bb6c9edb9fcd3a9cf915daa7f820ebbcb082e2d926ad4d64dbecab579f36e"
     },
     {
       "path": "dsh-plugins/calendar/lib/store.js",
@@ -2037,15 +2037,15 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/tool-permission.js",
-      "sha256": "464b00fb52d984bcc62810a19d5efab6b7726a3f8174e81aeeb63e604f11cd9f"
+      "sha256": "61a919e25da417b0ab7ef0f429e1fc1afb6f23450b88f71dee145169759259ba"
     },
     {
       "path": "dsh-plugins/calendar/lib/tools.js",
-      "sha256": "aaac63667b3d9d784ef293de9cf532f1171807c47e405fc184319be697a3a83f"
+      "sha256": "20f7ec33665fb78b13f9e1fe5937876a571235e3ec3b75347ed21d4abb7c1b77"
     },
     {
       "path": "dsh-plugins/calendar/lib/typert-descriptors.js",
-      "sha256": "b7b3f2fcd6016ffc031d775183a12e77e85b72cf7efd1d5b32f633b8e126eee9"
+      "sha256": "ebd058ed365c5ff7f5817e0588e1aca073aa8e01782ad7cf71d13bc08b330fa5"
     },
     {
       "path": "dsh-plugins/calendar/lib/typert-schemas.js",
@@ -2061,15 +2061,19 @@
     },
     {
       "path": "dsh-plugins/calendar/package.json",
-      "sha256": "b133362de305e0ee00719472fba829906238dc1b5027c7fca7cda2316b142b35"
+      "sha256": "daaefe4fe377c5b33a8eeac945a92b9f8f48efabd38d41fa99651db1c211969c"
     },
     {
       "path": "dsh-plugins/calendar/README_EN.md",
-      "sha256": "fa46b5aa0add209220225134d3b543e415f77ed02b73136f56c0f098389ad332"
+      "sha256": "c1c4889342443dbf28a6685efe30142bbd39f65ae7c47a4ac3addd755b044dba"
     },
     {
       "path": "dsh-plugins/calendar/README.md",
-      "sha256": "17a6889e7bd01cbec975957858bfb68630c846b85885dd6e27a75d4daf6ff55a"
+      "sha256": "f6e3efc78efdc2e60711d309081975cdefc26151ee0e99e79dfb84bb310f92ab"
+    },
+    {
+      "path": "dsh-plugins/calendar/skills/calendar-management/SKILL.md",
+      "sha256": "caa164422312f644ef8355338ebf2587541647e3f86724301d853b15eef3b116"
     },
     {
       "path": "dsh-plugins/calendar/src/client.ts",
@@ -2101,7 +2105,7 @@
     },
     {
       "path": "dsh-plugins/calendar/test/import.test.mjs",
-      "sha256": "737b43048f29b0d6f9eb5ce28cdb9a0be577f1f59ee080a4abc8f5da2cfadd45"
+      "sha256": "357a42fae1205dbcecdd79e9f338240eb63cfdaf5b0465ed882ae3f857a20939"
     },
     {
       "path": "dsh-plugins/calendar/test/layout.test.mjs",
@@ -2157,11 +2161,11 @@
     },
     {
       "path": "dsh-plugins/calendar/test/sync.test.mjs",
-      "sha256": "17a55e686ec0d80ed491dc1b2e1078cf75e176152ae24f2b4cdc318ef1ec943c"
+      "sha256": "24b980c55bd2ae17f403dadbdfe4aef0cfe38f15d5af326ba3eed0b733066eb2"
     },
     {
       "path": "dsh-plugins/calendar/test/tools.test.mjs",
-      "sha256": "cad6c40553613025c760eba8a31822bd260e521d0418edcba0625a76eee58087"
+      "sha256": "40fc45d0557c706c48e6217b538f6efc04fe6d3054003c9b65bd692af506b595"
     },
     {
       "path": "dsh-plugins/calendar/tsconfig.json",
@@ -2649,7 +2653,7 @@
     },
     {
       "path": "dsh-plugins/desktop-services/lib/index.js",
-      "sha256": "ec4361b78903d688c5f629382d192e986ebf8744cced16381120d718ed64c74d"
+      "sha256": "33252eacb26e2f6a87ad6625ee3990d448e57591e6deee64a5a79dc9a920023a"
     },
     {
       "path": "dsh-plugins/desktop-services/lib/workspace-access.js",
@@ -2989,7 +2993,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert-schemas.js",
-      "sha256": "7adcc98eff7da14e0f3c99eec9b918ffe078eb08e4f92463f9d81a03904faf9c"
+      "sha256": "84740741876abf3ec15394b47670e805faf9f8cd10fea816d141f6878d11d0a2"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/typert.host.js",
@@ -6201,7 +6205,7 @@
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
-      "sha256": "3a48a2ffe4fe37bd59b47cae11b2b06927fb7ecfc731caf6c01facefb9831ec1"
+      "sha256": "50ab1ff293126b8c143a1dd40871baaeed784879b01e691912ebd45a9142c6d5"
     },
     {
       "path": "scripts/lib/local-install.mjs",
@@ -6461,7 +6465,7 @@
     },
     {
       "path": "scripts/prepare-pinned-dsh-product.mjs",
-      "sha256": "955925ef80ce9e41e7e4e23de86fa8284c2ddec87673400b56e2e9dbe2e6aee1"
+      "sha256": "56b018af74aeb5fb1d69fa7951cf0d1f06dcd508745808d874dceb77916bdbcf"
     },
     {
       "path": "scripts/prepare-windows-portable-extractor.ps1",
@@ -6549,7 +6553,7 @@
     },
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
-      "sha256": "08bc9f287375774954691fa6e3e8df276a3c8fa8f86acf5c7e60c41991f46e69"
+      "sha256": "31e9915fa962314ce6b84c7c9d76c5094672bcf8475a57ee9920e028113cc242"
     },
     {
       "path": "scripts/test/generated-client-normalization.test.mjs",
@@ -6605,7 +6609,7 @@
     },
     {
       "path": "scripts/test/source-skills.test.mjs",
-      "sha256": "f83bd7407a90e915cfc96071de5d84448ddff460ba0d4d0dd95df6eb5575bd9d"
+      "sha256": "e0077bf09a6f372c6e85f588b9930c8a2bce317d5165a2a7ed8459363bfecd76"
     },
     {
       "path": "scripts/test/update-delta-bases.test.mjs",
@@ -7260,9 +7264,9 @@
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
-      "sha256": "3a48a2ffe4fe37bd59b47cae11b2b06927fb7ecfc731caf6c01facefb9831ec1",
+      "sha256": "50ab1ff293126b8c143a1dd40871baaeed784879b01e691912ebd45a9142c6d5",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Node.js port of the reviewed bundled-skill compatibility helper. Generic product selections do not register the legacy institution plugin; this preserves older explicitly selected distribution bindings only. No institution endpoint or credential exemption."
+      "reason": "Preserves the inactive legacy institution binding; generic calendar references are optional, confined to the assembled product and appended to the shared Skill body. No institution endpoint, credential or activation exemption."
     }
   ]
 }

@@ -23,8 +23,9 @@ export class SourceRegistry {
     const source = sourceIdentity(config)
     if (this.entries.has(source)) throw new Error('source is already registered')
     if (config.label !== undefined && typeof config.label !== 'string') throw new Error('source label must be text')
+    if (config.allowAgentUpdates !== undefined && typeof config.allowAgentUpdates !== 'boolean') throw new Error('invalid agent source permission')
     const entry = { source, label: config.label ?? config.feed, active: true, registered: true,
-      generation: 0, state: 'idle' }
+      allowAgentUpdates: config.allowAgentUpdates === true, generation: 0, state: 'idle' }
     this.entries.set(source, entry)
     const handle = Object.freeze({ source,
       apply: async batch => this.begin(entry, batch?.complete === true).apply(batch),
@@ -90,6 +91,12 @@ export class SourceRegistry {
         }
       },
     })
+  }
+
+  agentApply(source, batch) {
+    const entry = this.entries.get(source)
+    if (!entry?.allowAgentUpdates) throw new Error('source_agent_write_denied')
+    return this.begin(entry, batch?.complete === true).apply(batch)
   }
   remove(entry) {
     if (!entry.registered) return

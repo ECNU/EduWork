@@ -115,6 +115,7 @@ test('the registered surface is calendar tools and notes, behind one write gate'
     'calendar_remove_note',
     'calendar_read_personal',
     'calendar_personal_settings',
+    'calendar_import_source',
   ])
   assert.deepEqual(handlers.map(entry => entry.name), ['tools/pre-execute'])
   // A new tool that is not the read one must be declared in WRITE_TOOLS, or it
@@ -124,6 +125,18 @@ test('the registered surface is calendar tools and notes, behind one write gate'
     assert.ok(WRITE_TOOLS.has(entry.name), `${entry.name} is gated`)
   }
   assert.ok(!WRITE_TOOLS.has('calendar_list_events'), 'reading is not gated')
+})
+
+test('the bulk import tool delegates stable records to the shared service behind the write gate', { skip: !runtime }, async () => {
+  const calls = []
+  const batch = { source: 'agent:semester', complete: true, revision: 1,
+    events: [{ uid: 'exam', title: 'Exam', start: '2026-12-07' }] }
+  const report = { applied: 1, removed: 0, moved: 0, cancelled: 0, unattributable: [] }
+  const { definition } = await tool('calendar_import_source', { importSource: async input => { calls.push(input); return report } })
+  const { complete, ...input } = batch
+  assert.deepEqual(await definition.execute({ ...input, mode: 'replace' }), report)
+  assert.deepEqual(calls, [batch])
+  assert.ok(WRITE_TOOLS.has('calendar_import_source'))
 })
 
 test('every tool describes its arguments and its answer', { skip: !runtime }, async () => {
@@ -162,6 +175,47 @@ test('list reads the window through the service and renders one line per date', 
   const text = definition.output.render({}, value)[0].text
   assert.match(text, /2026-10-07 15:00–16:00 组会 · 理科楼 305 · 重复日程/)
   assert.match(text, /共 2 条/)
+})
+
+test('model-visible calendar text carries the exact source and original occurrence reference', { skip: !runtime }, async () => {
+  const backing = await service([{ ...WEEKLY, source: 'sync:stable-source' }])
+  const { definition } = await tool('calendar_list_events', backing)
+  const value = await definition.execute({ from: '2026-10-07', to: '2026-10-07' })
+  const text = definition.output.render({}, value).map(item => item.text).join('\n')
+  assert.ok(text.includes(JSON.stringify({ source: 'sync:stable-source', uid: 'series-1', originalStart: '2026-10-07T15:00' })))
+})
+
+test('model-visible moved occurrences display their actual date while retaining the original reference', { skip: !runtime }, async () => {
+  const backing = await service([{ ...WEEKLY, source: 'source-a', overrides: [{ date: '2026-10-07', start: '2026-10-09T14:00', end: '2026-10-09T15:00' }] }])
+  const { definition } = await tool('calendar_list_events', backing)
+  const value = await definition.execute({ from: '2026-10-09', to: '2026-10-09' })
+  const text = definition.output.render({}, value)[0].text
+  assert.match(text, /2026-10-09 14:00/)
+  assert.equal(value.events[0].originalStart, '2026-10-07T15:00')
+})
+
+test('Agent bulk import expresses merge and replace without confusing completeness with deletion', { skip: !runtime }, async () => {
+  const calls = []
+  const { definition } = await tool('calendar_import_source', { importSource: async input => { calls.push(input); return { applied: 0, moved: 0, cancelled: 0, unattributable: [] } } })
+  await definition.execute({ source: 'agent:plan', mode: 'merge', events: [] })
+  await definition.execute({ source: 'agent:plan', mode: 'replace', events: [] })
+  assert.deepEqual(calls, [{ source: 'agent:plan', events: [] }, { source: 'agent:plan', events: [], complete: true }])
+})
+
+test('Agent personal writes reject invented event references before creating orphan settings', { skip: !runtime }, async () => {
+  const backing = await service()
+  backing.putNote = async input => backing.calls.push(input)
+  backing.removeNote = async input => backing.calls.push(input)
+  backing.setPersonal = async input => backing.calls.push(input)
+  for (const [name, args] of [
+    ['calendar_put_note', { text: 'Must not save' }],
+    ['calendar_remove_note', {}],
+    ['calendar_personal_settings', { patch: { reminder: { kind: 'relative', minutes: 15 } } }],
+  ]) {
+    const { definition } = await tool(name, backing)
+    await assert.rejects(definition.execute({ source: 'invented', uid: 'missing', ...args }), /event_not_found/)
+  }
+  assert.deepEqual(backing.calls, [])
 })
 
 test('list keeps every window bounded', { skip: !runtime }, async () => {
@@ -312,6 +366,7 @@ test('Agent moving an overnight entry preserves its complete duration', {skip:!r
 test('Agent personal settings share the service identity and the calendar write permission gate', { skip: !runtime }, async () => {
   const calls = []
   const backing = {
+    getEvent: () => ({ uid: 'same', start: '2026-10-06T09:00' }),
     async setPersonal(input) { calls.push(input) },
     personalFor(input) { return { note: { text: input.originalStart ? 'Once' : 'Series' }, reminder: { kind: 'relative', minutes: 15 } } },
   }

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url'
 import { copySourceSkills } from '../copy-source-skills.mjs'
 import { copyProductTree } from '../portable-product-links.mjs'
 import { writeBundledSkillsManifest } from '../write-bundled-skills-manifest.mjs'
+import { copyDshBundledSkills } from '../lib/dsh-skills.mjs'
 
 const repository = fileURLToPath(new URL('../../', import.meta.url))
 const sharedSource = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services/skills')
@@ -57,4 +58,28 @@ test('repository-only skills do not require artifact service references', async 
   await copySourceSkills({ repository: join(root, 'repository'), packages, skills: [{ name: 'sample', source: 'sample' }], output })
   assert.equal(await readFile(join(output, 'sample/SKILL.md'), 'utf8'), '# Synthetic skill\n')
   await assert.rejects(access(join(output, 'shared')), { code: 'ENOENT' })
+})
+
+test('edition references appear in the loaded Skill body without duplicating its public instructions', async t => {
+  const { root, packages } = await fixture(t)
+  const repository = join(root, 'reference-repository')
+  await mkdir(join(repository, 'sample'), { recursive: true })
+  await writeFile(join(repository, 'sample/SKILL.md'), '---\nname: sample\ndescription: Synthetic skill.\n---\n\n# Shared instructions\n')
+  const output = join(root, 'reference-product/skills')
+  await copyDshBundledSkills({ repository, packageRoot: packages, skillRoot: output,
+    skills: [{ name: 'sample', source: 'sample', references: [{ title: 'Institution calendar', path: '../../resources/calendar.json' }] }] })
+  const content = await readFile(join(output, 'sample/SKILL.md'), 'utf8')
+  assert.match(content, /# Shared instructions/)
+  assert.ok(content.includes('[Institution calendar](<../../resources/calendar.json>)'))
+})
+
+test('edition Skill references cannot escape the product or introduce remote resource paths', async t => {
+  const { root, packages } = await fixture(t)
+  const repository = join(root, 'bounded-repository')
+  await mkdir(join(repository, 'sample'), { recursive: true })
+  await writeFile(join(repository, 'sample/SKILL.md'), '# Shared instructions\n')
+  for (const [index, path] of ['../../../outside.md', '..\\..\\..\\outside.md', 'https://example.invalid/calendar.json'].entries()) {
+    await assert.rejects(copyDshBundledSkills({ repository, packageRoot: packages, skillRoot: join(root, `bounded-product-${index}/skills`),
+      skills: [{ name: 'sample', source: 'sample', references: [{ title: 'Reference', path }] }] }), /reference/i)
+  }
 })

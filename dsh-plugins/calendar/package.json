@@ -14,11 +14,7 @@
     "./remote": "./lib/typert.remote-client.js",
     "./package.json": "./package.json"
   },
-  "files": [
-    "lib/**/*.js",
-    "README.md",
-    "README_EN.md"
-  ],
+  "files": ["lib/**/*.js", "skills/**/*", "README.md", "README_EN.md"],
   "scripts": {
     "build:client": "node ./build-client.mjs",
     "test": "node --check lib/client.js && node test/support/bundle-panel.mjs && node --test test/*.test.mjs",
@@ -40,10 +36,7 @@
   "chatecnuWork": {
     "schemaVersion": 1,
     "kind": "ui-extension",
-    "uses": [
-      "sidebar.panellist",
-      "main"
-    ],
+    "uses": ["sidebar.panellist", "main"],
     "replaces": [],
     "removable": true
   },
