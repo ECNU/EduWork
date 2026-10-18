@@ -17,21 +17,24 @@
 | --- | --- |
 | 插件名 | `@louisultra/dsh-verymath`（npm scope 归属个人；如官方收录后希望改 scope 或 vendor，可协商） |
 | 版本 | 0.3.1 |
-| 许可 | MIT（包本体）；技能内容与脚本改编自 VeryMath 的 MIT 项目，来源提交见包内 `UPSTREAM.json`；SageMath 语料（CC BY-SA）独立于包分发 |
-| DSH 兼容 | 0.2.x（从 0.2.0-rc.1 起），已在 EduWork 0.4.3 上实测装载 |
-| 平台 | macOS（Apple Silicon）实测；Windows 预期可用（依赖 PATH 中的 Node 与 Python），尚未实测 |
+| 许可 | MIT（包本体）。`UPSTREAM.json` 记录 8 个 VeryMath 上游仓库：7 个 MIT 仓库的内容被改编/收录，另有 1 个 GPLv3 仓库（Sagemath-skill）**未收录任何代码**，仅按接口契约做干净房间重实现；SageMath 文档语料（CC BY-SA 3.0）独立于包分发 |
+| DSH 兼容 | peer 依赖 `>=0.2.0-rc.1 <0.3.0-0`；**实测仅覆盖 DSH 0.2.0-rc.2 + EduWork 0.4.3**，rc.1 与后续 0.2.x 未逐版验证 |
+| Node | `>=24.18.0`（`package.json` 的 `engines` 要求） |
+| 平台 | 仅 macOS（Apple Silicon）实测；**Windows 未测试**（路径与二进制发现逻辑未验证，涉及 TeX / MATLAB / osqp 等外部环境的场景尤其如此） |
 
 ## 能力清单
 
-**14 个模型工具**：术语库查询/存词/构建（`verymath_glossary_query/upsert/build`）、Python/Sage/Beamer/OSQP 环境探测（`verymath_python_check`、`verymath_sage_check`、`verymath_beamer_check`、`verymath_osqp_check`）、QP 求解 + 独立 KKT 验证（`verymath_osqp_solve`）、论文结构校验（`verymath_paper_validate`）、论文依赖图引擎（`verymath_paper_graph`）、OCR 错误候选定位（`verymath_ocr_scan`）、Lean 禁用词扫描（`verymath_lean_detect_sorry`，无需 Lean 工具链）、Sage 语料反幻觉查询（`verymath_sage_search`）、研究工作区闸门校验（`verymath_research_gate`）。
+**14 个模型工具**：术语库查询/存词/构建（`verymath_glossary_query/upsert/build`）、Python/Sage/Beamer/OSQP 环境探测（`verymath_python_check`、`verymath_sage_check`、`verymath_beamer_check`、`verymath_osqp_check`）、QP 求解 + 独立 KKT 验证（`verymath_osqp_solve`）、论文结构校验（`verymath_paper_validate`）、论文依赖图引擎（`verymath_paper_graph`）、OCR 错误候选定位（`verymath_ocr_scan`）、Lean 禁用词扫描（`verymath_lean_detect_sorry`，无需 Lean 工具链，需本机 Python 3）、Sage 语料反幻觉查询（`verymath_sage_search`）、研究工作区闸门校验（`verymath_research_gate`）。
 
 **16 个捆绑技能**（经插件技能提供器注册进 DSH 技能目录）：`math-glossary`、`math-paper-reading`、`graph-theory-paper-reading`、`after-ocr`、`paper-writing`、`math-beamer`、`discover-math-problems`、`proof-blueprint-review`、`open-problem-research-pipeline`、`least-squares`、`invariant-computation`、`mixed-integer-programming`、`osqp-solver`、`lean-formalization`、`lean-setup`、`matlab-runner`。
+
+每项能力的场景示例（谁在什么情况下用、可复制提示词、输入样例、预期产物、运行条件与验证情况）见 [`capability-examples.md`](capability-examples.md)。
 
 ## 兼容边界
 
 - **不改动 EduWork 公共接口**：插件只通过 DSH 插件 API（工具注册、技能注册、fs 服务）接入；工作区写入走既有沙箱授权，不扩大权限范围。
-- **外部环境按需检查**：Python/Sage/TeX/Lean/MATLAB 均为用户自装，插件只探测并给缺失依赖提示，不自动安装、不捆绑重依赖（Sage 语料独立放置 `~/.verymath/sagemath-corpus`，MATLAB 经 MathWorks 官方 MCP server 配置）。
-- **许可证隔离**：Sagemath-skill 包本身（GPLv3）不收录——经评审后采用干净房间方式，以 TypeScript 重新实现查询契约（不含 GPL 代码），语料（CC BY-SA 3.0）独立分发，MIT 包内无 GPL 文件。
+- **外部环境按需检查**：Python/Sage/TeX/Lean/MATLAB 均为用户自装，插件只探测并给缺失依赖提示，不自动安装、不捆绑重依赖。Sage 只提供**文档查询**，不执行 Sage 代码；语料取自 SageMath 官方 Sphinx 参考手册（10.9.beta9，CC BY-SA 3.0，3196 篇），默认放 `~/.verymath/sagemath-corpus`。MATLAB 需用户自装 MATLAB + license，并经 MathWorks 官方 MCP server 配置，这部分不在插件 API 之内。
+- **许可证隔离**：Sagemath-skill 包本身（GPLv3）不收录；查询与打分的契约按公开文档以 TypeScript 干净房间重实现（MIT 包内无 GPL 代码）。需要说明的是，这一边界目前由作者自证：实现只依据该技能公开文档描述的检索/打分行为，未复制其源码；如维护者需要更严格的过程说明，我可以补充。
 - **验证边界**：只做结构层验证（依赖完整性、环检测），不验证数学证明的正确性——与上游 skill_base 的能力边界声明一致。
 
 ## 验收条件与验证证据
@@ -39,14 +42,14 @@
 | 验收条件 | 证据 |
 | --- | --- |
 | 官方插件机制安装/启用/卸载 | `dsh plugin add/remove` + `--dump-config` 实测（npm tarball 装入干净 DSH_HOME） |
-| "任务 → Agent 调用 → 产物落工作区 → 继续处理" | 10+ headless 场景全过（真实模型）：真实论文结构提取（arXiv 1311.4600）、真实 QP 求解（解与解析 KKT 吻合）、真实 MATLAB 计算、真实 OCR、Beamer 现场编译出 PDF |
-| 脚本/模板随技能且实际可调用 | 上游脚本逐字节收录（diff 验证）；上游 9 仓库离线测试套件全部通过（201 个），部分随包携带作回归门；100 个 vitest 合成测试 + runtime probe（真实 DSH API、无远程模型）全绿 |
+| "任务 → Agent 调用 → 产物落工作区 → 继续处理" | 14 项能力均有实跑记录（真实模型，macOS）：论文结构提取（arXiv 1311.4600）、QP 求解（解与解析 KKT 吻合）、MATLAB 计算、OCR 后校对、Beamer 编译出 PDF 等。实跑中发现 1 个工具缺陷，已在 0.3.2 修复 |
+| 脚本/模板随技能且实际可调用 | 上游 **Python 脚本**逐字节收录（diff 验证；SKILL.md、frontmatter 与部分测试按 DSH 约定有适配，逐条见 `UPSTREAM.json`）；上游 **8 个仓库的 9 套**离线测试共 201 个全部通过，部分套件随包携带作回归门；**102 个** vitest 合成测试 + runtime probe（真实 DSH API、无远程模型）全绿 |
 | 缺失依赖提示 | 四个环境探测工具（python/sage/beamer/osqp）；Lean 禁用词扫描无需工具链；缺失时给结构化安装提示 |
-| 上游溯源 | 包内 `UPSTREAM.json`（8 个上游仓库 commit 级记录）+ `NOTICE.md` + 接入矩阵文档 |
+| 上游溯源 | 包内 `UPSTREAM.json`（8 个上游仓库，均为 40 位 commit 哈希）+ `NOTICE.md` + 接入矩阵文档 |
 
 ## 上游适配与差异
 
-技能内容与 Python 脚本改编自 VeryMath 八个 MIT 仓库（commit 级溯源记录在案）。与上游的主要差异：上游部分关键路径依赖模型现场手写 JSON（论文依赖图合并/拓扑、术语库 upsert 不变量），插件用 TypeScript 实现确定性引擎补齐；术语查询带例句与子领域消歧。
+技能内容与 Python 脚本改编自 VeryMath 的 7 个 MIT 仓库（commit 级溯源记录在案）；另有 1 个 GPLv3 仓库仅作为接口契约参考，未收录代码。与上游的主要差异：上游部分关键路径依赖模型现场手写 JSON（论文依赖图合并/拓扑、术语库 upsert 不变量），插件用 TypeScript 实现确定性引擎补齐；术语查询带例句与子领域消歧。
 
 ## 收录方式（供维护者选择）
 
@@ -54,6 +57,17 @@
 2. **依赖推荐**：发行配置中作为可选插件推荐（按 DSH 插件机制装 npm 包）。
 3. **更深集成**：把源码 vendor 进官方仓库或改 npm scope——如需要，作者愿意配合调整（可保留完整开发历史与署名）。
 
+## 迁移待决事项
+
+若维护者选择收录（第一条路径），以下事项需要先定：
+
+1. 插件在 EduWork 仓库中的位置（`dsh-plugins/` 下新建，或其他约定）
+2. `@eduwork` npm 发布由谁执行、作者需要什么权限（协作成员 / token 归属）
+3. 示例文档放插件目录内的 `docs/`，还是 EduWork 的文档目录
+4. 现有 `LouisUltra/dsh-verymath` 仓库与 `@louisultra/dsh-verymath` 包的处置（归档 + npm deprecate 指向新包为一种选择）
+5. 提交历史并入方式（`git subtree` 或维护者偏好的方式），以保留作者署名
+6. 迁移后以哪份文档为准（插件仓库 vs EduWork 仓库），避免两份示例漂移
+
 ## 维护
 
-插件由作者独立维护（issue 与 PR 在 https://github.com/LouisUltra/dsh-verymath）；上游 VeryMath 演进的适配以 `UPSTREAM.json` 记录的版本为基线。
+作者已表示愿意作为主要维护者把插件贡献到 EduWork 仓库维护（见 PR 讨论），迁移细节（目录位置、`@eduwork` 发布、旧仓库与旧 npm 包处置、提交历史并入方式）待维护者确认；在迁移完成前，issue 与 PR 仍在 https://github.com/LouisUltra/dsh-verymath。上游 VeryMath 演进的适配以 `UPSTREAM.json` 记录的版本为基线。
