@@ -35,6 +35,12 @@ foreach ($file in $files | Sort-Object -Property FullName -Unique) {
     # these comments, preserving executable strings and license attribution.
     $content = $content -replace '(?m)^(\s*//[#]?\s*region\s+(?:\\0dsh-css:)?)/home/runner/work/deepseek-harness/deepseek-harness/', '$1<dsh-upstream>/'
     $content = $content -replace '(?mi)^(\s*//[#]?\s*region\s+(?:\\0dsh-css:)?)[A-Z]:[\\/][^\r\n]*?[\\/]eduwork-dsh-[a-f0-9]{12}[\\/]', '$1<dsh-upstream>/'
+    # Keep dependency identity while removing the Runtime's local directory.
+    # Only region comments change; executable strings and licenses stay intact.
+    $content = [regex]::Replace($content, '(?m)^(\s*//[#]?\s*region\s+(?:\\0dsh-css:)?)[^\r\n]*?[\\/]node_modules[\\/]([^\r\n]*)$', {
+        param($match)
+        $match.Groups[1].Value + 'node_modules/' + $match.Groups[2].Value.Replace('\', '/')
+    })
     $content = $content -replace '(?m)^//# sourceMappingURL=.*?\s*$', ''
     $content = $content -replace '(?m)[ \t]+(?=\r?$)', ''
     $content = $content.TrimEnd("`r", "`n") + "`n"

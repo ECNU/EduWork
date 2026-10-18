@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-18T12:49:54.547Z",
-  "fileSetSHA256": "3bca7a91a5ea32b07a5d877ef1a4a009abcdd855371f0ed8ef7e95f56420fe68",
+  "createdAt": "2026-10-18T12:53:22.861Z",
+  "fileSetSHA256": "db17e7675d74006cd24bd64e701bb8c42114803f7f2f8b01b02f6da52a8ab4c9",
   "files": [
     {
       "path": ".gitattributes",
@@ -1997,7 +1997,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/client.js",
-      "sha256": "03affd54b2f737890df70e83df1af19f6470d05bf83d243817626f22d73ec517"
+      "sha256": "6cf5d2008676ca167d13eaf73c2a5662d1d7013f8a06857623322f452e1b02c5"
     },
     {
       "path": "dsh-plugins/calendar/lib/ics.js",
@@ -2933,7 +2933,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/build-client.mjs",
-      "sha256": "aa05f656140da20559c4da16e8d2b3eeb6bb801cf414f1f9d3d3fc82d1ee3454"
+      "sha256": "53acbf8f6419b21b3de1c3639da54c4b35df8c05e402b5d22034755e6c50fb2c"
     },
     {
       "path": "dsh-plugins/workbench-native/build-client.ps1",
@@ -2941,7 +2941,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/client.js",
-      "sha256": "6dee751cf297da79771bd1fabc47012cb5d512c52efaebb17161deb86aef540c"
+      "sha256": "c4c07d117b3ab8ee1abbc5c8c620d801be314407ecf7c1aa7894abe575166196"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/data-import.js",
@@ -3032,6 +3032,10 @@
       "sha256": "73e17b90559422abbc6076c78e9d9087c27fbba7a734cdaeed3965e834898efd"
     },
     {
+      "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
+      "sha256": "fee0dac7cecc55b503a888df51d96417f636578f419a1ce37d867605bcd7f907"
+    },
+    {
       "path": "dsh-plugins/workbench-native/test/concurrency-browser.mjs",
       "sha256": "879c5702ca71baa7027fcd6151963668f2b216d44ecbb06534c2dc058a73f375"
     },
@@ -3050,6 +3054,10 @@
     {
       "path": "dsh-plugins/workbench-native/test/import-catalog.test.mjs",
       "sha256": "a9f987c9f53b897dbdcd45d1fcef59b75d4a38f4f83e68d58230344c2441b9f0"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/import-store.test.mjs",
+      "sha256": "a7cfbd7715201fac039b28ddd6ff8f8d14fbffb121409209a305959b29f59346"
     },
     {
       "path": "dsh-plugins/workbench-native/test/notifications-browser.mjs",
@@ -6297,11 +6305,11 @@
     },
     {
       "path": "scripts/normalize-generated-client.mjs",
-      "sha256": "1faaa954f0b978f67800a8fc5bccf1946d263f5dc976b257ba7fb305890911dd"
+      "sha256": "6bd49da4227501a84dfcc30639729495f082bf4471c9af64003768e74939b9bd"
     },
     {
       "path": "scripts/normalize-generated-client.ps1",
-      "sha256": "59aa83e446d06a357990a89baa6a54118171c71c43a5ad886e72e207e4c5cb0a"
+      "sha256": "a084e3279eaa35c29a03cfb71408fa4d8e2b959dbe44a4396872a3eaf4c4e62a"
     },
     {
       "path": "scripts/omit-runtime-packages.mjs",
@@ -6534,6 +6542,10 @@
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
       "sha256": "08bc9f287375774954691fa6e3e8df276a3c8fa8f86acf5c7e60c41991f46e69"
+    },
+    {
+      "path": "scripts/test/generated-client-normalization.test.mjs",
+      "sha256": "4e93ff3561362abbdd40f8d86dfeaac660d3280f26499892f45f2ad73fcfc9e1"
     },
     {
       "path": "scripts/test/macos-update-delta.test.mjs",

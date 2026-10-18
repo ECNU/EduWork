@@ -32,6 +32,10 @@ export function normalizeGeneratedClientText(original) {
   // these comments, preserving executable strings and license attribution.
   content = content.replace(/^(\s*\/\/#?\s*region\s+(?:\\0dsh-css:)?)\/home\/runner\/work\/deepseek-harness\/deepseek-harness\//gm, '$1<dsh-upstream>/')
   content = content.replace(/^(\s*\/\/#?\s*region\s+(?:\\0dsh-css:)?)[A-Z]:[\\/][^\r\n]*?[\\/]eduwork-dsh-[a-f0-9]{12}[\\/]/gim, '$1<dsh-upstream>/')
+  // Dependency identity is stable; the selected Runtime's filesystem location
+  // is not. Normalize only region provenance, never code or license comments.
+  content = content.replace(/^(\s*\/\/#?\s*region\s+(?:\\0dsh-css:)?)[^\r\n]*?[\\/]node_modules[\\/]([^\r\n]*)$/gm,
+    (_, prefix, module) => `${prefix}node_modules/${module.replaceAll('\\', '/')}`)
   content = content.replace(/^\/\/# sourceMappingURL=.*?\s*$/gm, '')
   content = content.replace(/[ \t]+(?=\r?$)/gm, '')
   return content.replace(/[\r\n]+$/, '') + '\n'

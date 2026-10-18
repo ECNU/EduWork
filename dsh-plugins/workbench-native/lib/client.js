@@ -4,6 +4,7 @@ window.__ModuleLoader__.load({
 		var module = { exports: {} };
 		var exports = module.exports;
 		Object.defineProperty(exports, Symbol.toStringTag, { value: "Module" });
+		//#region \0rolldown/runtime.js
 		var __create = Object.create;
 		var __defProp = Object.defineProperty;
 		var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
@@ -24,9 +25,11 @@ window.__ModuleLoader__.load({
 			value: mod,
 			enumerable: true
 		}) : target, mod));
+		//#endregion
 		let react = require("react");
 		react = __toESM(react, 1);
 		let react_dom = require("react-dom");
+		//#region lib/diagnostic-download.js
 		function downloadDiagnosticArchive(result) {
 			if (!result.archive || !/^EduWork-diagnostics-[\w-]+\.zip$/.test(result.filename || "")) throw new Error(result.message || "诊断包未生成，请重试。");
 			const bytes = Uint8Array.from(atob(result.archive), (char) => char.charCodeAt(0));
@@ -40,6 +43,8 @@ window.__ModuleLoader__.load({
 			link.remove();
 			setTimeout(() => URL.revokeObjectURL(url), 6e4);
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/core.js
 		var _a$1;
 		function $constructor(name, initializer, params) {
 			function init(inst, def) {
@@ -97,6 +102,8 @@ window.__ModuleLoader__.load({
 			if (newConfig) Object.assign(globalConfig, newConfig);
 			return globalConfig;
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/util.js
 		function getEnumValues(entries) {
 			const numericValues = Object.values(entries).filter((v) => typeof v === "number");
 			return Object.entries(entries).filter(([k, _]) => numericValues.indexOf(+k) === -1).map(([_, v]) => v);
@@ -407,6 +414,8 @@ window.__ModuleLoader__.load({
 			};
 			return { ...iss };
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/errors.js
 		const initializer$1 = (inst, def) => {
 			inst.name = "$ZodError";
 			Object.defineProperty(inst, "_zod", {
@@ -465,6 +474,8 @@ window.__ModuleLoader__.load({
 			processError(error);
 			return fieldErrors;
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/parse.js
 		const _parse = (_Err) => (schema, value, _ctx, _params) => {
 			const ctx = _ctx ? {
 				..._ctx,
@@ -577,6 +588,8 @@ window.__ModuleLoader__.load({
 		const _safeDecodeAsync = (_Err) => async (schema, value, _ctx) => {
 			return _safeParseAsync(_Err)(schema, value, _ctx);
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/regexes.js
 		/**
 		* @deprecated CUID v1 is deprecated by its authors due to information leakage
 		* (timestamps embedded in the id). Use {@link cuid2} instead.
@@ -639,6 +652,8 @@ window.__ModuleLoader__.load({
 		const boolean$1 = /^(?:true|false)$/i;
 		const lowercase = /^[^A-Z]*$/;
 		const uppercase = /^[^a-z]*$/;
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/checks.js
 		const $ZodCheck = /*@__PURE__*/ $constructor("$ZodCheck", (inst, def) => {
 			var _a;
 			inst._zod ?? (inst._zod = {});
@@ -995,6 +1010,8 @@ window.__ModuleLoader__.load({
 				payload.value = def.tx(payload.value);
 			};
 		});
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/doc.js
 		var Doc = class {
 			constructor(args = []) {
 				this.content = [];
@@ -1024,11 +1041,15 @@ window.__ModuleLoader__.load({
 				return new F(...args, lines.join("\n"));
 			}
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/versions.js
 		const version = {
 			major: 4,
 			minor: 4,
 			patch: 3
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/schemas.js
 		const $ZodType = /*@__PURE__*/ $constructor("$ZodType", (inst, def) => {
 			var _a;
 			inst ?? (inst = {});
@@ -1884,115 +1905,6 @@ window.__ModuleLoader__.load({
 			result.value = merged.data;
 			return result;
 		}
-		const $ZodRecord = /*@__PURE__*/ $constructor("$ZodRecord", (inst, def) => {
-			$ZodType.init(inst, def);
-			inst._zod.parse = (payload, ctx) => {
-				const input = payload.value;
-				if (!isPlainObject(input)) {
-					payload.issues.push({
-						expected: "record",
-						code: "invalid_type",
-						input,
-						inst
-					});
-					return payload;
-				}
-				const proms = [];
-				const values = def.keyType._zod.values;
-				if (values) {
-					payload.value = {};
-					const recordKeys = /* @__PURE__ */ new Set();
-					for (const key of values) if (typeof key === "string" || typeof key === "number" || typeof key === "symbol") {
-						recordKeys.add(typeof key === "number" ? key.toString() : key);
-						const keyResult = def.keyType._zod.run({
-							value: key,
-							issues: []
-						}, ctx);
-						if (keyResult instanceof Promise) throw new Error("Async schemas not supported in object keys currently");
-						if (keyResult.issues.length) {
-							payload.issues.push({
-								code: "invalid_key",
-								origin: "record",
-								issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-								input: key,
-								path: [key],
-								inst
-							});
-							continue;
-						}
-						const outKey = keyResult.value;
-						const result = def.valueType._zod.run({
-							value: input[key],
-							issues: []
-						}, ctx);
-						if (result instanceof Promise) proms.push(result.then((result) => {
-							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
-							payload.value[outKey] = result.value;
-						}));
-						else {
-							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
-							payload.value[outKey] = result.value;
-						}
-					}
-					let unrecognized;
-					for (const key in input) if (!recordKeys.has(key)) {
-						unrecognized = unrecognized ?? [];
-						unrecognized.push(key);
-					}
-					if (unrecognized && unrecognized.length > 0) payload.issues.push({
-						code: "unrecognized_keys",
-						input,
-						inst,
-						keys: unrecognized
-					});
-				} else {
-					payload.value = {};
-					for (const key of Reflect.ownKeys(input)) {
-						if (key === "__proto__") continue;
-						if (!Object.prototype.propertyIsEnumerable.call(input, key)) continue;
-						let keyResult = def.keyType._zod.run({
-							value: key,
-							issues: []
-						}, ctx);
-						if (keyResult instanceof Promise) throw new Error("Async schemas not supported in object keys currently");
-						if (typeof key === "string" && number$1.test(key) && keyResult.issues.length) {
-							const retryResult = def.keyType._zod.run({
-								value: Number(key),
-								issues: []
-							}, ctx);
-							if (retryResult instanceof Promise) throw new Error("Async schemas not supported in object keys currently");
-							if (retryResult.issues.length === 0) keyResult = retryResult;
-						}
-						if (keyResult.issues.length) {
-							if (def.mode === "loose") payload.value[key] = input[key];
-							else payload.issues.push({
-								code: "invalid_key",
-								origin: "record",
-								issues: keyResult.issues.map((iss) => finalizeIssue(iss, ctx, config())),
-								input: key,
-								path: [key],
-								inst
-							});
-							continue;
-						}
-						const result = def.valueType._zod.run({
-							value: input[key],
-							issues: []
-						}, ctx);
-						if (result instanceof Promise) proms.push(result.then((result) => {
-							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
-							payload.value[keyResult.value] = result.value;
-						}));
-						else {
-							if (result.issues.length) payload.issues.push(...prefixIssues(key, result.issues));
-							payload.value[keyResult.value] = result.value;
-						}
-					}
-				}
-				if (proms.length) return Promise.all(proms).then(() => payload);
-				return payload;
-			};
-		});
 		const $ZodEnum = /*@__PURE__*/ $constructor("$ZodEnum", (inst, def) => {
 			$ZodType.init(inst, def);
 			const values = getEnumValues(def.entries);
@@ -2257,6 +2169,8 @@ window.__ModuleLoader__.load({
 				payload.issues.push(issue(_iss));
 			}
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/registries.js
 		var _a;
 		var $ZodRegistry = class {
 			constructor() {
@@ -2302,6 +2216,8 @@ window.__ModuleLoader__.load({
 		}
 		(_a = globalThis).__zod_globalRegistry ?? (_a.__zod_globalRegistry = registry());
 		const globalRegistry = globalThis.__zod_globalRegistry;
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/api.js
 		// @__NO_SIDE_EFFECTS__
 		function _string(Class, params) {
 			return new Class({
@@ -2805,6 +2721,8 @@ window.__ModuleLoader__.load({
 			ch._zod.check = fn;
 			return ch;
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/to-json-schema.js
 		function initializeContext(params) {
 			let target = params?.target ?? "draft-2020-12";
 			if (target === "draft-4") target = "draft-04";
@@ -3096,6 +3014,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			extractDefs(ctx, schema);
 			return finalize(ctx, schema);
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/core/json-schema-processors.js
 		const formatMap = {
 			guid: "uuid",
 			url: "uri",
@@ -3260,39 +3180,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const isSimpleIntersection = (val) => "allOf" in val && Object.keys(val).length === 1;
 			json.allOf = [...isSimpleIntersection(a) ? a.allOf : [a], ...isSimpleIntersection(b) ? b.allOf : [b]];
 		};
-		const recordProcessor = (schema, ctx, _json, params) => {
-			const json = _json;
-			const def = schema._zod.def;
-			json.type = "object";
-			const keyType = def.keyType;
-			const patterns = keyType._zod.bag?.patterns;
-			if (def.mode === "loose" && patterns && patterns.size > 0) {
-				const valueSchema = process(def.valueType, ctx, {
-					...params,
-					path: [
-						...params.path,
-						"patternProperties",
-						"*"
-					]
-				});
-				json.patternProperties = {};
-				for (const pattern of patterns) json.patternProperties[pattern.source] = valueSchema;
-			} else {
-				if (ctx.target === "draft-07" || ctx.target === "draft-2020-12") json.propertyNames = process(def.keyType, ctx, {
-					...params,
-					path: [...params.path, "propertyNames"]
-				});
-				json.additionalProperties = process(def.valueType, ctx, {
-					...params,
-					path: [...params.path, "additionalProperties"]
-				});
-			}
-			const keyValues = keyType._zod.values;
-			if (keyValues) {
-				const validKeyValues = [...keyValues].filter((v) => typeof v === "string" || typeof v === "number");
-				if (validKeyValues.length > 0) json.required = validKeyValues;
-			}
-		};
 		const nullableProcessor = (schema, ctx, json, params) => {
 			const def = schema._zod.def;
 			const inner = process(def.innerType, ctx, params);
@@ -3356,6 +3243,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const seen = ctx.seen.get(schema);
 			seen.ref = def.innerType;
 		};
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/iso.js
 		const ZodISODateTime = /*@__PURE__*/ $constructor("ZodISODateTime", (inst, def) => {
 			$ZodISODateTime.init(inst, def);
 			ZodStringFormat.init(inst, def);
@@ -3384,6 +3273,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function duration(params) {
 			return /* @__PURE__ */ _isoDuration(ZodISODuration, params);
 		}
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/errors.js
 		const initializer = (inst, issues) => {
 			$ZodError.init(inst, issues);
 			inst.name = "ZodError";
@@ -3404,6 +3295,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 		};
 		const ZodRealError = /*@__PURE__*/ $constructor("ZodError", initializer, { Parent: Error });
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/parse.js
 		const parse = /* @__PURE__ */ _parse(ZodRealError);
 		const parseAsync = /* @__PURE__ */ _parseAsync(ZodRealError);
 		const safeParse = /* @__PURE__ */ _safeParse(ZodRealError);
@@ -3416,6 +3309,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const safeDecode = /* @__PURE__ */ _safeDecode(ZodRealError);
 		const safeEncodeAsync = /* @__PURE__ */ _safeEncodeAsync(ZodRealError);
 		const safeDecodeAsync = /* @__PURE__ */ _safeDecodeAsync(ZodRealError);
+		//#endregion
+		//#region ../../../../../../software/EduWork-ECNU/resources/product/d/node_modules/zod/v4/classic/schemas.js
 		const _installedGroups = /* @__PURE__ */ new WeakMap();
 		function _installLazyMethods(inst, group, methods) {
 			const proto = Object.getPrototypeOf(inst);
@@ -3967,27 +3862,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				right
 			});
 		}
-		const ZodRecord = /*@__PURE__*/ $constructor("ZodRecord", (inst, def) => {
-			$ZodRecord.init(inst, def);
-			ZodType.init(inst, def);
-			inst._zod.processJSONSchema = (ctx, json, params) => recordProcessor(inst, ctx, json, params);
-			inst.keyType = def.keyType;
-			inst.valueType = def.valueType;
-		});
-		function record(keyType, valueType, params) {
-			if (!valueType || !valueType._zod) return new ZodRecord({
-				type: "record",
-				keyType: string(),
-				valueType: keyType,
-				...normalizeParams(valueType)
-			});
-			return new ZodRecord({
-				type: "record",
-				keyType,
-				valueType,
-				...normalizeParams(params)
-			});
-		}
 		const ZodEnum = /*@__PURE__*/ $constructor("ZodEnum", (inst, def) => {
 			$ZodEnum.init(inst, def);
 			ZodType.init(inst, def);
@@ -4207,6 +4081,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function superRefine(fn, params) {
 			return /* @__PURE__ */ _superRefine(fn, params);
 		}
+		//#endregion
+		//#region lib/typert-schemas.js
 		const pkg$1 = "@eduwork/workbench-native";
 		const codec = (name, schema) => ({
 			mode: "strict",
@@ -4219,12 +4095,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const row$1 = object({
 			name: string(),
 			description: string(),
+			displayName: string().max(128).optional(),
+			displayDescription: string().max(1024).optional(),
 			source: _enum(["builtin", "personal"]),
 			available: boolean(),
 			requirement: string(),
 			removable: boolean()
 		}).strict();
-		const update = record(string(), union([
+		const update = object({ policies: array(string()).optional() }).catchall(union([
 			string(),
 			number(),
 			boolean()
@@ -4263,6 +4141,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				reason: string()
 			}).strict())
 		}).strict());
+		//#endregion
+		//#region lib/typert.remote-client.js
 		var typert_remote_client_default = {
 			package: "@eduwork/workbench-native",
 			descriptors: [
@@ -4339,7 +4219,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 							"use-stable-updates",
 							"use-development-updates",
 							"download-content-update",
-							"restart-content-update"
+							"restart-content-update",
+							"enable-automatic-download",
+							"disable-automatic-download",
+							"enable-software-updates",
+							"disable-software-updates"
 						]))
 					}],
 					codec("Desktop", object({
@@ -4370,6 +4254,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}))
 		};
+		//#endregion
+		//#region src/updates.ts
 		const h$4 = react.default.createElement;
 		const accent = "var(--dsw-alias-state-business-primary, #3575ef)";
 		const border$1 = "var(--dsw-alias-border-l2, #ddd)";
@@ -4383,16 +4269,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			fontSize: 13,
 			whiteSpace: "nowrap"
 		};
-		const primary = {
+		const primary$1 = {
 			...button,
 			background: accent,
 			borderColor: accent,
 			color: "#fff"
 		};
-		const secondary = "var(--dsw-alias-label-secondary, #777)";
+		const secondary$1 = "var(--dsw-alias-label-secondary, #777)";
 		const note = {
 			margin: "4px 0 0",
-			color: secondary,
+			color: secondary$1,
 			fontSize: 12,
 			lineHeight: 1.55
 		};
@@ -4438,7 +4324,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 			const run = async (action) => {
 				if (view.working) return;
-				const started = Date.now(), working = action === "check-updates" ? "checking" : action === "download-update" ? "downloading" : action.startsWith("use-") ? "switching" : "";
+				const started = Date.now(), working = action === "check-updates" ? "checking" : action === "download-update" ? "downloading" : action.startsWith("use-") ? "switching" : action.includes("software-updates") ? "settings" : "";
 				publish({
 					error: "",
 					working
@@ -4487,7 +4373,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		function useUpdates(controller) {
 			return (0, react.useSyncExternalStore)(controller.subscribe, controller.getSnapshot, controller.getSnapshot);
 		}
-		const percent = (s) => s?.totalBytes > 0 ? Math.min(100, Math.floor(s.downloadedBytes / s.totalBytes * 100)) : 0;
+		const percent = (s) => s?.downloadStage === "verifying" ? s.totalFiles > 0 ? Math.min(100, Math.floor(s.checkedFiles / s.totalFiles * 100)) : 0 : s?.totalBytes > 0 ? Math.min(100, Math.floor(s.downloadedBytes / s.totalBytes * 100)) : 0;
 		const size = (n) => n < 1048576 ? Math.ceil(Math.max(0, n || 0) / 1024) + " KB" : (Math.max(0, n || 0) / 1048576).toFixed(1) + " MB";
 		function ContentPanel({ controller, content: c, working }) {
 			if (!c?.enabled) return null;
@@ -4532,7 +4418,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, h$4("button", {
 				type: "button",
 				disabled: Boolean(working),
-				style: primary,
+				style: primary$1,
 				onClick: () => controller.run(c.state === "available" ? "download-content-update" : "restart-content-update")
 			}, c.state === "available" ? "下载内容更新" : "重启使内容生效")), c.state === "ready" && h$4("p", { style: note }, "可以继续使用；重启前请先完成正在运行的任务。"));
 		}
@@ -4542,26 +4428,35 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"checking",
 				"downloading",
 				"applying",
-				"switching"
+				"switching",
+				"settings"
 			].includes(state);
 			const enabled = status && status.shell !== "web" && (s?.enabled !== false || c?.enabled);
-			const policy = s?.policy || c?.policy || "stable", locked = busy || state === "ready" || [
+			const softwareEnabled = s?.userEnabled ?? s?.enabled;
+			const toggleLocked = Boolean(working) || s?.busy || s?.installOnQuit || s?.installOnNextStart || [
+				"checking",
+				"downloading",
+				"ready",
+				"applying"
+			].includes(s?.state);
+			const policy = s?.policy || c?.policy || "stable", locked = busy || state === "ready" || s?.busy || [
 				"checking",
 				"downloading",
 				"ready"
 			].includes(c?.state);
-			const channels = [["stable", "仅公测版"], ["development", "开发版"]].filter(([value]) => !s?.nativeUI || s.policies?.includes(value));
+			const channels = [["stable", "仅公测版"], ["development", "开发版"]].filter(([value]) => !s?.policies || s.policies.includes(value));
 			const setPolicy = async (value) => {
 				if (locked || value === policy) return;
 				await controller.run(value === "development" ? "use-development-updates" : "use-stable-updates");
 				await controller.run("check-updates");
 			};
-			const progress = percent(s), determinate = state === "downloading" && s?.totalBytes > 0;
-			const message = state === "available" ? `发现新版本 ${s.latestVersion}` : state === "downloading" ? `正在下载 ${s.latestVersion}` : state === "checking" ? "正在检查更新…" : state === "switching" ? "正在切换更新渠道…" : state === "applying" ? "正在退出并安装更新…" : state === "installed" ? "更新已完成" : state === "up_to_date" ? "当前已是最新版本" : null;
-			return h$4("div", { "data-eduwork-update-panel": true }, h$4("div", { style: row }, h$4("div", { style: { minWidth: 0 } }, h$4("div", { style: { fontSize: 14 } }, s?.nativeUI ? "macOS 应用更新" : "自动更新"), h$4("p", { style: {
+			const verifying = state === "downloading" && s?.downloadStage === "verifying";
+			const progress = percent(s), determinate = verifying ? s.totalFiles > 0 : state === "downloading" && s?.downloadStage !== "extracting" && s?.totalBytes > 0;
+			const message = state === "available" ? `发现新版本 ${s.latestVersion}` : verifying ? "正在校验本机文件" : state === "downloading" ? `${s.downloadStage === "extracting" ? "正在准备安装" : "正在下载"} ${s.latestVersion}` : state === "checking" ? "正在检查更新…" : state === "switching" ? "正在切换更新渠道…" : state === "applying" ? "正在退出并安装更新…" : state === "installed" ? "更新已完成" : state === "up_to_date" ? "当前已是最新版本" : null;
+			return h$4("div", { "data-eduwork-update-panel": true }, h$4("div", { style: row }, h$4("div", { style: { minWidth: 0 } }, h$4("div", { style: { fontSize: 14 } }, s?.nativeUpdater || s?.nativeUI ? "macOS 应用更新" : "自动更新"), h$4("p", { style: {
 				...note,
 				overflowWrap: "anywhere"
-			} }, status?.version ? `当前版本 ${status.version}` : "读取当前版本…"), h$4("p", { style: note }, s?.nativeUI ? "点击检查后，在系统更新窗口确认下载与安装；配置和数据保留在用户目录。" : enabled ? "启动时在后台检查，发现新版本后在左下角提示。" : status ? "当前未启用自动更新。" : "正在读取更新状态…")), h$4("button", {
+			} }, status?.version ? `当前版本 ${status.version}` : "读取当前版本…"), h$4("p", { style: note }, !status ? "正在读取更新状态…" : softwareEnabled ? "启动时在后台检查，发现新版本后提示。" : c?.enabled ? "软件更新已关闭，配置与 Skills 更新不受影响。" : "软件更新已关闭。")), h$4("button", {
 				type: "button",
 				style: {
 					...button,
@@ -4569,7 +4464,29 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				},
 				disabled: locked || !enabled,
 				onClick: () => controller.run("check-updates")
-			}, state === "checking" ? "检查中…" : "检查更新")), enabled && s && channels.length > 1 && h$4(react.default.Fragment, null, h$4("div", {
+			}, state === "checking" ? "检查中…" : !softwareEnabled && c?.enabled ? "检查内容更新" : "检查更新")), s?.canToggle && h$4("label", { style: {
+				display: "flex",
+				gap: 8,
+				alignItems: "flex-start",
+				marginTop: 12,
+				fontSize: 13
+			} }, h$4("input", {
+				type: "checkbox",
+				checked: Boolean(softwareEnabled),
+				disabled: toggleLocked,
+				onChange: (e) => controller.run(e.target.checked ? "enable-software-updates" : "disable-software-updates")
+			}), h$4("span", null, "启用软件更新", h$4("p", { style: note }, working === "settings" ? "正在保存设置…" : toggleLocked ? "更新正在处理，完成后可修改此设置。" : "关闭后停止软件更新检查；重新开启后沿用所选渠道。"))), s?.enabled && typeof s.automaticDownload === "boolean" && h$4("label", { style: {
+				display: "flex",
+				gap: 8,
+				alignItems: "flex-start",
+				marginTop: 12,
+				fontSize: 13
+			} }, h$4("input", {
+				type: "checkbox",
+				checked: s.automaticDownload,
+				disabled: locked || Boolean(working),
+				onChange: (e) => controller.run(e.target.checked ? "enable-automatic-download" : "disable-automatic-download")
+			}), h$4("span", null, "自动下载，退出时安装", h$4("p", { style: note }, "下载完成后提醒；不会强制重启。关闭窗口不等于退出应用。"))), (enabled || s?.canToggle) && s && channels.length > 1 && h$4(react.default.Fragment, null, h$4("div", {
 				role: "radiogroup",
 				"aria-label": "更新渠道",
 				style: {
@@ -4585,7 +4502,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"aria-disabled": locked,
 				tabIndex: policy === value ? 0 : -1,
 				style: {
-					...policy === value ? primary : {
+					...policy === value ? primary$1 : {
 						...button,
 						background: "transparent"
 					},
@@ -4619,11 +4536,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"aria-live": "polite",
 				style: {
 					fontSize: 12,
-					color: secondary
+					color: secondary$1
 				}
 			}, message), state === "available" && s && h$4("button", {
 				type: "button",
-				style: primary,
+				style: primary$1,
 				onClick: () => controller.run("download-update")
 			}, "下载更新")), s?.enabled !== false && [
 				"checking",
@@ -4631,7 +4548,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"applying"
 			].includes(state) && h$4("div", null, h$4("style", null, "@keyframes eduwork-update-progress{from{transform:translateX(-100%)}to{transform:translateX(334%)}}[data-eduwork-update-indeterminate]{animation:eduwork-update-progress 1.4s linear infinite}@media(prefers-reduced-motion:reduce){[data-eduwork-update-indeterminate]{animation:none}}"), h$4("div", {
 				role: "progressbar",
-				"aria-label": state === "downloading" ? "更新下载进度" : "更新处理进度",
+				"aria-label": verifying ? "本机文件校验进度" : state === "downloading" ? "更新下载进度" : "更新处理进度",
 				"aria-valuemin": 0,
 				"aria-valuemax": 100,
 				...determinate ? { "aria-valuenow": progress } : {},
@@ -4655,12 +4572,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				...row,
 				marginTop: 6,
 				fontSize: 11,
-				color: secondary,
+				color: secondary$1,
 				fontVariantNumeric: "tabular-nums"
 			} }, h$4("span", { style: {
 				minWidth: 0,
 				overflowWrap: "anywhere"
-			} }, s?.fileName || "正在下载发行包"), h$4("span", { style: { flexShrink: 0 } }, determinate ? `${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%` : "正在连接…")), state === "downloading" && h$4("p", { style: note }, "下载期间可以继续对话，关闭此面板不影响下载。")), state === "ready" && h$4("div", { style: {
+			} }, verifying ? "增量更新沿用的本机文件" : s?.downloadStage === "extracting" ? "正在解包并校验" : s?.fileName || "正在下载发行包"), h$4("span", { style: { flexShrink: 0 } }, verifying ? determinate ? `已检查 ${s.checkedFiles} / ${s.totalFiles} 个 · ${progress}%` : "正在准备…" : determinate ? `${size(s.downloadedBytes)} / ${size(s.totalBytes)} · ${progress}%` : s?.downloadStage === "extracting" ? "请稍候…" : "后台下载中…")), state === "downloading" && h$4("p", { style: note }, "下载期间可以继续对话，关闭此面板不影响下载。")), state === "ready" && h$4("div", { style: {
 				marginTop: 12,
 				padding: 11,
 				border: `1px solid ${border$1}`,
@@ -4671,19 +4588,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					margin: 0,
 					fontSize: 12
 				}
-			}, s.installOnNextStart ? `版本 ${s.latestVersion} 已校验，将在下次启动时安装。` : `版本 ${s.latestVersion} 已下载并校验。`), h$4("p", { style: note }, "可继续使用当前版本。重启安装前，请先完成正在运行的任务。"), h$4("div", { style: {
+			}, s.installOnQuit ? `版本 ${s.latestVersion} 已下载并校验，将在退出应用时安装。` : s.installOnNextStart ? `版本 ${s.latestVersion} 已校验，将在下次启动时安装。` : `版本 ${s.latestVersion} 已下载并校验。`), h$4("p", { style: note }, "可继续使用当前版本。重启安装前，请先完成正在运行的任务。"), h$4("div", { style: {
 				display: "flex",
 				justifyContent: "flex-end",
 				flexWrap: "wrap",
 				gap: 8,
 				marginTop: 10
-			} }, !s.installOnNextStart && h$4("button", {
+			} }, !s.installOnQuit && !s.installOnNextStart && h$4("button", {
 				type: "button",
 				style: button,
 				onClick: () => controller.run("schedule-update")
 			}, "下次启动时安装"), h$4("button", {
 				type: "button",
-				style: primary,
+				style: primary$1,
 				onClick: () => controller.run("install-update")
 			}, "立即重启更新"))), !busy && (error || s?.error) && h$4("p", {
 				role: "alert",
@@ -4697,7 +4614,16 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				controller,
 				content: c,
 				working
-			}), status?.url && h$4("a", {
+			}), s?.releaseNotesURL && h$4("a", {
+				href: s.releaseNotesURL,
+				target: "_blank",
+				rel: "noopener noreferrer",
+				style: {
+					...button,
+					display: "inline-block",
+					marginTop: 12
+				}
+			}, "查看发行说明"), status?.url && h$4("a", {
 				href: status.url,
 				target: "_blank",
 				rel: "noopener noreferrer",
@@ -4725,7 +4651,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"ready",
 				"applying"
 			].includes(state);
-			const label = softwareVisible ? state === "available" ? "更新" : state === "downloading" ? `下载 ${percent(s)}%` : state === "ready" ? "重启更新" : "正在更新…" : c?.state === "downloading" ? `内容 ${percent(c)}%` : c?.state === "ready" ? "内容待生效" : "更新";
+			const label = softwareVisible ? state === "available" ? "更新" : state === "downloading" ? s?.downloadStage === "verifying" ? `校验 ${percent(s)}%` : s?.totalBytes > 0 ? `下载 ${percent(s)}%` : "正在下载…" : state === "ready" ? s.installOnQuit ? "退出时更新" : "重启更新" : "正在更新…" : c?.state === "downloading" ? `内容 ${percent(c)}%` : c?.state === "ready" ? "内容待生效" : "更新";
 			const visible = wide && (softwareVisible || c?.enabled && [
 				"available",
 				"downloading",
@@ -4800,6 +4726,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				style: button
 			}, "×")), h$4(UpdatePanel, { controller }))), document.body));
 		}
+		//#endregion
+		//#region src/data-import.ts
 		const h$3 = react.default.createElement;
 		function DataImportPanel({ service }) {
 			const [job, setJob] = (0, react.useState)(null), [error, setError] = (0, react.useState)(""), [choosing, setChoosing] = (0, react.useState)(false);
@@ -4921,6 +4849,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: "var(--dsw-alias-label-secondary)"
 			} }, "已有数据、模型配置和登录信息不变。跨机时，程序目录之外的项目文件需要另外复制。"));
 		}
+		//#endregion
+		//#region src/concurrency.ts
 		const h$2 = react.default.createElement;
 		function ConcurrencySettings({ scope }) {
 			const snapshot = (0, react.useSyncExternalStore)((listener) => scope.subscribe(listener), () => scope.getSnapshot(), () => scope.getSnapshot());
@@ -5012,6 +4942,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}, error));
 		}
+		//#endregion
+		//#region src/notifications.ts
 		const h$1 = react.default.createElement;
 		const labels = {
 			enabled: "桌面弹窗",
@@ -5098,7 +5030,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					return () => listeners.delete(listener);
 				}
 			};
-			const current = () => ctx.sessions.list.getSnapshot().current ?? "";
+			const selection = ctx.uiSession?.adapter.current ?? ctx.sessions.list;
+			const current = () => {
+				const value = selection.getSnapshot();
+				return value.props?.sessionId ?? value.current ?? "";
+			};
 			const poll = async () => {
 				if (disposed || busy) return;
 				busy = true;
@@ -5155,7 +5091,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				else if (value.visible === false && visibleArtifact?.artifactId === value.artifactId) visibleArtifact = void 0;
 				focus();
 			};
-			const unsubscribe = ctx.sessions.list.subscribe(focus);
+			const unsubscribe = selection.subscribe(focus);
 			environment.addEventListener("focus", focus);
 			environment.addEventListener("eduwork:studio-visibility", studioVisibility);
 			poll();
@@ -5172,9 +5108,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			};
 		}
+		//#endregion
+		//#region lib/directory-picker.js
 		async function pickImportDirectory(workspace, bridge = globalThis.go?.main?.Startup) {
 			return (typeof bridge?.PickDirectory === "function" ? await bridge.PickDirectory() : await workspace.pickDirectory()) || null;
 		}
+		//#endregion
+		//#region node_modules/@chatecnu-work/dsh-skill-manager-native/lib/typert-schemas.js
 		const skillSummarySchema = object({
 			name: string().min(1).max(64),
 			description: string().min(1).max(1024),
@@ -5218,6 +5158,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}).strict();
 		const sourcePathSchema = string().min(1).max(4096);
 		const skillNameSchema = string().min(1).max(64).regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
+		//#endregion
+		//#region node_modules/@chatecnu-work/dsh-skill-manager-native/lib/typert.remote-client.js
 		const pkg = "@chatecnu-work/dsh-skill-manager-native";
 		const source = {
 			file: "dsh-plugins/skill-manager-native/lib/index.js",
@@ -5243,6 +5185,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				descriptor("trashPersonalSkill", [jsonParameter("name", skillNameSchema, `${pkg}#SkillName`)], skillSummaryResult)
 			]
 		};
+		//#endregion
+		//#region node_modules/@chatecnu-work/dsh-skill-settings-native/lib/policy.js
 		const SKILL_NAME = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
 		const SKILL_ALIASES = Object.freeze({
 			documents: "artifact-documents",
@@ -5282,6 +5226,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				enabled: [...enabledNames].sort()
 			};
 		}
+		//#endregion
+		//#region lib/view-model.js
 		const bundledSkillCatalog = Object.freeze([
 			Object.freeze({
 				name: "artifact-documents",
@@ -5412,8 +5358,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				rows.set(name, {
 					...item,
 					name,
-					label: label?.label || name,
-					description: label?.description || item.description,
+					label: item.displayName || label?.label || name,
+					description: item.displayDescription || label?.description || item.description,
 					group: label?.group || "custom",
 					enabled: !disabled.has(name),
 					available: item.available !== false,
@@ -5422,20 +5368,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}
 			return [...rows.values()];
 		}
+		//#endregion
+		//#region src/client.ts
 		const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== "undefined" && __EDUWORK_PINNED_DSH__;
-		const inject = [
-			"slots",
-			"remote",
-			"remote.skills",
-			"connection",
-			"sessions",
-			nativeSettings ? "configForms" : "settingsScope",
-			"uiWorkspace",
-			...nativeSettings ? ["uiSession"] : []
-		];
+		const inject = ["slots", "remote"];
 		const h = react.default.createElement;
 		const color = "var(--dsw-alias-state-business-primary, #9f2636)";
 		const border = "var(--dsw-alias-border-l2, #e1e4eb)";
+		const primary = "var(--dsw-alias-label-primary, #352622)";
+		const secondary = "var(--dsw-alias-label-secondary, #75635c)";
+		const surface = "var(--dsw-alias-bg-layer-1, #fffaf7)";
+		const mutedSurface = "var(--dsw-alias-bg-layer-3, #f2ece8)";
+		const danger = "var(--dsw-alias-state-error-primary, #a82332)";
 		const panelStyle = Object.freeze({
 			position: "fixed",
 			inset: 0,
@@ -5461,8 +5405,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			border: `1px solid ${border}`,
 			borderRadius: 9,
 			padding: "8px 12px",
-			background: "#fffaf7",
-			color: "#352622",
+			background: surface,
+			color: primary,
 			cursor: "pointer",
 			fontSize: 13
 		});
@@ -5598,7 +5542,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				lineHeight: "28px"
 			} }, "技能"), h("p", { style: {
 				margin: 0,
-				color: "#75635c",
+				color: secondary,
 				fontSize: 13,
 				lineHeight: 1.6
 			} }, "按用途选择技能。在对话和 Studio 中创作，共用同一套制作与文件预览能力。")), h("div", { style: {
@@ -5645,17 +5589,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}), error && h("p", {
 				role: "alert",
 				style: {
-					color: "#a82332",
+					color: danger,
 					fontSize: 12
 				}
 			}, error), notice && h("p", {
 				role: "status",
 				style: {
-					color: "#357a55",
+					color: "var(--dsw-alias-state-success-primary, #357a55)",
 					fontSize: 12
 				}
 			}, notice), !service.hasSession() && h("p", { style: {
-				color: "#8a766f",
+				color: secondary,
 				fontSize: 12
 			} }, "打开一个项目后，还会显示该项目专属的技能。"), rows.length === 0 && h("p", { role: "status" }, "没有匹配的技能。"), ...skillGroups.filter((group) => rows.some((row) => row.group === group.id)).map((group) => h("section", {
 				key: group.id,
@@ -5664,7 +5608,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, h("h4", { style: {
 				margin: "0 0 10px",
 				fontSize: 14,
-				color: "#66534d"
+				color: secondary
 			} }, group.label), h("div", { style: {
 				display: "grid",
 				gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))",
@@ -5690,7 +5634,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, row.label), h("code", { style: {
 				display: "block",
 				marginTop: 2,
-				color: "#8a766f",
+				color: secondary,
 				fontSize: 11
 			} }, row.name)), h("button", {
 				type: "button",
@@ -5704,14 +5648,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					flex: "none",
 					minWidth: 52,
 					padding: "5px 9px",
-					background: row.enabled ? color : "#f2ece8",
-					color: row.enabled ? "white" : "#75635c",
+					background: row.enabled ? color : mutedSurface,
+					color: row.enabled ? "white" : secondary,
 					borderColor: row.enabled ? color : border
 				}
 			}, busy === row.name ? "…" : row.enabled ? "已开启" : "已关闭")), h("p", { style: {
 				minHeight: 38,
 				margin: "10px 0 8px",
-				color: "#66534d",
+				color: secondary,
 				fontSize: 12,
 				lineHeight: 1.55
 			} }, row.description), h("div", { style: {
@@ -5719,13 +5663,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				alignItems: "center",
 				justifyContent: "space-between",
 				gap: 8,
-				color: "#8a766f",
+				color: secondary,
 				fontSize: 11
 			} }, h("div", { style: {
 				display: "flex",
 				gap: 7,
 				flexWrap: "wrap"
-			} }, h("span", null, row.source === "builtin" ? "产品内置" : row.source === "personal" ? "个人技能" : row.source === "session" ? "会话可用" : "项目技能"), !row.available && h("span", { style: { color: "#a26b22" } }, row.requirement || "需要配置相应服务")), row.removable && h("button", {
+			} }, h("span", null, row.source === "builtin" ? "产品内置" : row.source === "personal" ? "个人技能" : row.source === "session" ? "会话可用" : "项目技能"), !row.available && h("span", { style: { color: secondary } }, row.requirement || "需要配置相应服务")), row.removable && h("button", {
 				type: "button",
 				disabled: busy !== "",
 				onClick: () => {
@@ -5737,15 +5681,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					...buttonStyle,
 					flex: "none",
 					padding: "4px 8px",
-					borderColor: "#edc9cd",
-					background: "#fff7f7",
-					color: "#a82332",
+					borderColor: border,
+					background: surface,
+					color: danger,
 					fontSize: 11
 				}
 			}, "移除")), row.variants.length > 0 && h("details", { style: {
 				marginTop: 10,
 				fontSize: 12,
-				color: "#66534d"
+				color: secondary
 			} }, h("summary", { style: { cursor: "pointer" } }, "已安装的自定义版本"), ...row.variants.map((variant) => h("div", {
 				key: `${variant.source}:${variant.name}`,
 				style: { marginTop: 10 }
@@ -5790,7 +5734,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				fontSize: 22
 			} }, "创建个人技能"), h("p", { style: {
 				margin: 0,
-				color: "#75635c",
+				color: secondary,
 				fontSize: 12,
 				lineHeight: 1.55
 			} }, "创建后立即进入标准技能目录，可随时关闭。")), h("button", {
@@ -5826,7 +5770,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					border: `1px solid ${border}`,
 					borderRadius: 9,
 					padding: "0 10px",
-					background: "white"
+					background: surface,
+					color: primary
 				}
 			})), h("label", { style: {
 				display: "block",
@@ -5851,7 +5796,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					border: `1px solid ${border}`,
 					borderRadius: 9,
 					padding: "0 10px",
-					background: "white"
+					background: surface,
+					color: primary
 				}
 			})), h("label", { style: {
 				display: "block",
@@ -5876,7 +5822,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					border: `1px solid ${border}`,
 					borderRadius: 9,
 					padding: 10,
-					background: "white",
+					background: surface,
+					color: primary,
 					lineHeight: 1.55
 				}
 			})), error && h("p", {
@@ -5885,8 +5832,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					margin: "13px 0 0",
 					padding: 9,
 					borderRadius: 8,
-					background: "#fff0f0",
-					color: "#a82332",
+					background: mutedSurface,
+					color: danger,
 					fontSize: 12
 				}
 			}, error), h("div", { style: {
@@ -5915,7 +5862,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"aria-label": "移除个人技能",
 				style: cardStyle
 			}, h("div", { style: {
-				color: "#a82332",
+				color: danger,
 				fontSize: 11,
 				fontWeight: 750,
 				letterSpacing: ".08em"
@@ -5924,7 +5871,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				fontSize: 21
 			} }, `移除“${pendingRemoval.label}”？`), h("p", { style: {
 				margin: 0,
-				color: "#66534d",
+				color: secondary,
 				fontSize: 13,
 				lineHeight: 1.65
 			} }, "该技能会移出 Agent 的个人技能目录，并保留在本地回收区。历史会话不受影响；已经注入当前会话的内容可能持续到新建会话。"), error && h("p", {
@@ -5933,8 +5880,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					margin: "13px 0 0",
 					padding: 9,
 					borderRadius: 8,
-					background: "#fff0f0",
-					color: "#a82332",
+					background: mutedSurface,
+					color: danger,
 					fontSize: 12
 				}
 			}, error), h("div", { style: {
@@ -5953,8 +5900,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				onClick: removeSkill,
 				style: {
 					...primaryStyle,
-					background: "#a82332",
-					borderColor: "#a82332"
+					background: danger,
+					borderColor: danger
 				}
 			}, busy === `remove:${pendingRemoval.name}` ? "正在移除…" : "移除")))));
 		}
@@ -6057,7 +6004,34 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		}
 		async function apply(ctx) {
 			const unmount = await ctx.remote.$mount(typert_remote_client_default), unmountSkills = await ctx.remote.$mount(TYPERT_REMOTE);
-			ctx.inject(["remote.workbench", "remote.skillManager"], (inner) => {
+			ctx.inject(["remote.workbench"], (inner) => {
+				const desktop = (action) => unwrap(inner.remote.workbench.desktop(action)), updates = createUpdateController(desktop);
+				inner.slots.inject("sidebar.footer.action", () => inner.slots.register({
+					name: "sidebar.footer.action",
+					id: "eduwork-updates",
+					order: 90,
+					inject: () => ({ controller: updates })
+				}, UpdateFooter));
+				inner.slots.inject("settings.general.item", () => inner.slots.register({
+					name: "settings.general.item",
+					id: "eduwork-workbench",
+					order: 16,
+					inject: () => ({
+						service: desktop,
+						controller: updates
+					})
+				}, DesktopSettings));
+				return () => updates.dispose();
+			});
+			ctx.inject([
+				"remote.workbench",
+				"remote.skillManager",
+				"remote.skills",
+				"sessions",
+				nativeSettings ? "configForms" : "settingsScope",
+				"uiWorkspace",
+				...nativeSettings ? ["uiSession"] : []
+			], (inner) => {
 				const notifications = installNotificationNavigation(inner, (view) => unwrap(inner.remote.workbench.notificationView(view)));
 				inner.on("dispose", () => notifications.close());
 				const notificationScope = nativeSettings ? inner.configForms.get("eduwork-notifications") : inner.settingsScope.bind({ namespace: "eduwork-notifications" });
@@ -6113,7 +6087,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					label: "技能",
 					inject: () => ({ service })
 				}, SkillCenter));
-				const desktop = (action) => unwrap(inner.remote.workbench.desktop(action)), updates = createUpdateController(desktop);
 				const dataImport = {
 					pickDirectory: () => pickImportDirectory(inner.uiWorkspace),
 					preview: (path) => unwrap(inner.remote.workbench.inspectImport(path)),
@@ -6121,22 +6094,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					cancel: () => unwrap(inner.remote.workbench.cancelImport()),
 					status: () => unwrap(inner.remote.workbench.importStatus())
 				};
-				inner.on("dispose", () => updates.dispose());
-				inner.slots.inject("sidebar.footer.action", () => inner.slots.register({
-					name: "sidebar.footer.action",
-					id: "eduwork-updates",
-					order: 90,
-					inject: () => ({ controller: updates })
-				}, UpdateFooter));
-				inner.slots.inject("settings.general.item", () => inner.slots.register({
-					name: "settings.general.item",
-					id: "eduwork-workbench",
-					order: 16,
-					inject: () => ({
-						service: desktop,
-						controller: updates
-					})
-				}, DesktopSettings));
 				inner.slots.inject("settings.general.item", () => inner.slots.register({
 					name: "settings.general.item",
 					id: "eduwork-data-import",
@@ -6156,6 +6113,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				await unmount();
 			};
 		}
+		//#endregion
 		exports.apply = apply;
 		exports.inject = inject;
 		return module.exports;
