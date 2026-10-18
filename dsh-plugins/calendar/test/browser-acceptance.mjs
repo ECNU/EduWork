@@ -962,13 +962,11 @@ await acceptance('整门课笔记、单次覆盖、恢复默认和提醒设置�
 
 await acceptance('来源状态显示失败并保留已有课表，重试成功后自动恢复', async () => {
   await withRoot('eduwork-browser-source-status-', async root => withCalendar(root, async calendar => {
-    let fail = true
-    const handle = calendar.registerSource({ provider: 'example.edu', account: 'student', feed: 'timetable', label: '测试课表',
-      fetch: async () => { if (fail) throw new Error('token=never-display'); return { complete: true, events: [] } } })
+    const handle = calendar.registerSource({ provider: 'example.edu', account: 'student', feed: 'timetable', label: '测试课表' })
+    handle.beginUpdate().fail('token=never-display')
     await withBrowser(calendar, panel, METHODS, async ({ page }) => {
       await page.getByText('测试课表：同步失败，保留上次数据', { exact: true }).waitFor({ timeout: 3000 })
-      fail = false
-      await handle.sync()
+      await handle.apply({ complete: true, events: [] })
       await page.getByText('测试课表：已更新', { exact: true }).waitFor({ timeout: 3000 })
       assert.ok(!(await page.locator('body').innerText()).includes('token=never-display'))
     })

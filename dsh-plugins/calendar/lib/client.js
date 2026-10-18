@@ -4491,7 +4491,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const applySourceInput = object({
 			source: string().min(1),
 			events: array(sourceEvent),
-			complete: boolean().optional()
+			complete: boolean().optional(),
+			revision: number().int().positive().optional()
 		}).strict();
 		const applySourceOutcome = object({
 			applied: number().int().nonnegative(),
@@ -4634,29 +4635,29 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		var typert_remote_client_default = {
 			package: "@eduwork/dsh-calendar",
 			descriptors: Object.freeze([
-				descriptor("snapshot", 99, [], snapshotResult),
-				descriptor("occurrences", 121, [rangeParameter], occurrencesResult),
-				descriptor("importIcs", 146, [importParameter], importResult),
-				descriptor("exportIcs", 164, [exportParameter], exportResult),
-				descriptor("putEvent", 187, [eventParameter], eventResult),
-				descriptor("deleteEvent", 208, [deleteEventParameter], removalResult),
-				descriptor("applyOverride", 218, [overrideParameter], eventResult),
-				descriptor("removeOverride", 227, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 236, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 245, [restoreParameter], eventResult),
-				descriptor("applySource", 306, [applySourceParameter], applySourceResult),
-				descriptor("putNote", 347, [putNoteParameter], noteResult),
-				descriptor("removeNote", 361, [removeNoteParameter], removalResult),
-				descriptor("notes", 370, [notesParameter], notesResult),
+				descriptor("snapshot", 104, [], snapshotResult),
+				descriptor("occurrences", 126, [rangeParameter], occurrencesResult),
+				descriptor("importIcs", 151, [importParameter], importResult),
+				descriptor("exportIcs", 170, [exportParameter], exportResult),
+				descriptor("putEvent", 193, [eventParameter], eventResult),
+				descriptor("deleteEvent", 214, [deleteEventParameter], removalResult),
+				descriptor("applyOverride", 224, [overrideParameter], eventResult),
+				descriptor("removeOverride", 233, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 242, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 251, [restoreParameter], eventResult),
+				descriptor("applySource", 313, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 356, [putNoteParameter], noteResult),
+				descriptor("removeNote", 370, [removeNoteParameter], removalResult),
+				descriptor("notes", 379, [notesParameter], notesResult),
 				Object.freeze({
-					...descriptor("changes", 272, [], changeResult),
+					...descriptor("changes", 279, [], changeResult),
 					mode: "stream",
 					cancellation: { parameter: "signal" }
 				}),
-				descriptor("personalFor", 323, [personalReadParameter], personalReadResult),
-				descriptor("sourceStatuses", 76, [], sourceStatusesResult),
-				descriptor("setPersonal", 317, [personalParameter], personalResult),
-				descriptor("unlinkedNotes", 390, [unlinkedNotesParameter], unlinkedNotesResult)
+				descriptor("personalFor", 332, [personalReadParameter], personalReadResult),
+				descriptor("sourceStatuses", 81, [], sourceStatusesResult),
+				descriptor("setPersonal", 326, [personalParameter], personalResult),
+				descriptor("unlinkedNotes", 399, [unlinkedNotesParameter], unlinkedNotesResult)
 			])
 		};
 		//#endregion

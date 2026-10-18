@@ -2,50 +2,44 @@
 
 [简体中文](INTEGRATION.md) | **English**
 
-This guide is for institution plugins and Host integrators. The public plugin owns generic events, personal settings and sync coordination. Institutions provide authorization, API conversion and real lifecycle events. See [features and limits](../../../dsh-plugins/calendar/README_EN.md).
+The public calendar validates, stores and displays events and private settings. Data plugins own authentication, fetching, conversion, polling, timeouts, login/reconnect and retries. See [features and limits](../../../dsh-plugins/calendar/README_EN.md).
 
-## Source registration
+## Source registration and pushed writes
 
-An institution plugin depends on `calendar` and registers academic calendars and timetables separately for each signed-in account. `adapter` below is supplied by that institution:
+Register a stable provider/account/feed identity on the Host, without fetch callbacks or timers:
 
 ```js
 const source = ctx.calendar.registerSource({
-  provider: 'example-campus',
-  account: adapter.stableAccountId,
-  feed: 'timetable',
-  label: 'My timetable',
-  pollIntervalMs: 300000,
-  timeoutMs: 30000,
-  fetch: async ({ signal, reason }) => {
-    const data = await adapter.fetchTimetable({ signal, reason })
-    return { complete: true, events: adapter.toCalendarEvents(data) }
-  },
-  subscribe: notify => adapter.onSyncTrigger(notify),
+  provider: 'example-campus', account: adapter.stableAccountId,
+  feed: 'timetable', label: 'My timetable',
 })
-ctx.effect(() => () => source.dispose(), 'calendar: unregister timetable')
+ctx.effect(() => () => source.dispose(), 'unregister timetable')
+const update = source.beginUpdate()
+try {
+  const data = await adapter.fetchTimetable()
+  await update.apply({ complete: true, revision: data.revision,
+    events: adapter.toCalendarEvents(data) })
+} catch {
+  update.fail('sync_failed')
+}
 ```
 
-`provider`, `account` and `feed` are nonempty stable identifiers. Their tuple determines the source ID; labels, tokens and transient sessions do not. Account identity separation does not replace institution authorization.
+The returned handle binds writes to its own source. `source.apply(batch)` submits existing data directly; call `beginUpdate()` before external work to supersede older requests. Each receipt accepts one submission. A late receipt returns `superseded`. Managed `sync:` sources cannot be impersonated by ordinary applySource or file import.
 
-Registration starts a refresh. Polling defaults to five minutes, with a one-second minimum; requests default to a 30-second timeout. Optional `subscribe` returns an unsubscribe function and invokes `notify('login')` / `notify('reconnect')` for real institution events. `source.sync()` retries one source; `calendar.syncSources()` refreshes sources independently. `calendar.sourceStatuses()` returns labels, states, last success times and safe error codes, not raw adapter exceptions.
+Provider, account and feed must be stable, nonempty identifiers, independent of labels, tokens or sessions. A shared academic calendar may use an explicit shared account; personal timetables use separate stable account IDs. Handles do not replace Host authorization.
 
-A newer request supersedes earlier responses. Fetch should honor its AbortSignal; the coordinator also ends timeout waits. Disposal stops polling and fetching, hides that account's cached events and stops its reminder plans without deleting data or personal settings. Registering the same identity restores them. Credentials stay in the adapter closure or credential service, never in events. The public plugin fixes no school URL or API format.
+`setActive(false)` hides cached events and suspends their reminder plans, retaining private data. Reactivation or registration under the same identity restores them. `dispose()` unregisters. `status()` and `calendar.sourceStatuses()` expose safe public state; `update.fail(code)` reports external failure without exposing exceptions or credentials. Fetch cancellation, timers and retry policies remain in the data plugin.
 
-## Complete snapshots and incremental writes
+## Complete and incremental batches
 
-Registered fetch adapters must return `{complete:true, events:[...]}`. Failures throw; unfinished pagination or partial parsing must not be represented as a successful empty result. Incomplete or unattributable full results retain the previous snapshot.
+A batch is `{events, complete?, revision?}`. Omitting complete updates supplied entries without deleting absent ones. Explicit false rejects incomplete data. True replaces this source only; a successful empty full snapshot clears it.
 
-Events use `uid/title/start/end?/location?/description?/recurrence?`. Source descriptions belong to the school. A moved occurrence carries `movedFrom`; cancellations carry `cancelledDates`, naming original instances. The recurring baseline and rule remain immutable. Missing original identity or a changed whole recurrence is reported as `unattributable`, without guessed association.
+Events carry `uid/title/start/end?/location?/description?/recurrence?/movedFrom?/cancelledDates?`. Retain stable IDs and original instance references when moving dates. Unattributable changes and entire recurrence-rule redefinitions are reported, not guessed; an unattributable full batch leaves the old snapshot intact. Source descriptions and private remarks remain separate.
 
-A Host may also call:
+Optional revision is an increasing positive integer persisted after successful writes. After restart, older/missing versions and conflicting content under the same version reject; the same batch can be replayed. Record order does not redefine its content. Revision is not part of uid and does not replace original occurrence identity.
 
-```js
-await ctx.calendar.applySource({ source: source.source, complete: true, events })
-```
+Input is validated before queued writes. Storage has no cross-record transaction: disk failure stops remaining writes and cleanup, without rolling back already completed writes.
 
-The entire batch is validated before committing. Successful full snapshots remove absent records of that source; successful empty snapshots clear it. Full snapshots also replace source moves/cancellations, allowing school restoration, while retaining user overrides and personal content. The storage has no cross-record transaction: disk failures stop further commits and cleanup, without promising rollback of writes already completed.
-
-Omitting `complete` preserves incremental behavior with no absence cleanup. Explicit `complete:false` rejects. File import has its own replace option and cannot use the reserved `manual` or `sync:` source namespace.
 
 ## Personal fields and inheritance
 

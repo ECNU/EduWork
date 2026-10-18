@@ -35,7 +35,7 @@ Use the `source` and `uid` returned by a read for imported events. Occurrence se
 
 ## Institution integration
 
-The public plugin registers sources and coordinates automatic sync. Institution plugins own authentication, fetching and conversion. Stable identities separate accounts and logical feeds; failures retain cached data, and unregistering hides cached events without deleting notes. Real school APIs and separate academic-calendar/timetable entries are not integrated. Attributing a school reschedule requires information identifying the original occurrence; ambiguous changes are reported rather than guessed. Automatic association after a change to the entire recurrence rule is unsupported. See the [source and reminder interface guide](../../docs/proposals/calendar/INTEGRATION_EN.md).
+The public plugin registers, enables and updates sources. Institution plugins own authentication, fetching, conversion, polling and login/reconnect retries. Stable identities separate accounts and logical feeds; failures retain cached data, and unregistering hides cached events without deleting notes. Real school APIs and separate academic-calendar/timetable entries are not integrated. Attributing a school reschedule requires information identifying the original occurrence; ambiguous changes are reported rather than guessed. Automatic association after a change to the entire recurrence rule is unsupported. See the [source and reminder interface guide](../../docs/proposals/calendar/INTEGRATION_EN.md).
 
 Source descriptions and private remarks are stored separately. Private content is excluded from ICS. Unattributed descriptions and extension metadata from older versions are backed up for review in personal settings.
 

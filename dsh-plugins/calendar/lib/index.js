@@ -20,12 +20,20 @@ import { buildIcs, parseIcs } from './ics.js'
 import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord } from './model.js'
 import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
-import { SourceCoordinator } from './sources.js'
+import { SourceRegistry } from './sources.js'
 import { reminderPlan, bindReminderScheduler } from './reminders.js'
+import { applySourceInput } from './typert-schemas.js'
 
 export const name = 'dsh-calendar'
 
 const remoteInitializers = []
+
+function assertImportSources(events, source) {
+  const managed = value => typeof value === 'string' && value.startsWith('sync:')
+  if (managed(source) || (Array.isArray(events) && events.some(event => managed(event?.source)))) {
+    throw new Error('source_handle_required: 托管日历须通过登记来源更新，不能通过文件或旧批量入口覆盖')
+  }
+}
 
 /** The calendar service (`ctx.calendar`). Reads are synchronous; writes resolve after the record is durable. */
 export class CalendarService extends TypertRemoteService {
@@ -46,8 +54,8 @@ export class CalendarService extends TypertRemoteService {
     })
     this.store = new CalendarStore(ctx)
     this.personal = new PersonalStore(ctx)
-    this.sources = new SourceCoordinator(async (batch, guard) => {
-      const report = await this.store.applySource(batch, guard)
+    this.sources = new SourceRegistry(async (batch, guard) => {
+      const report = await this.store.applySource(applySourceInput.parse(batch), guard)
       if (guard.isCurrent()) await this.rememberSources()
       return report
     }, () => this.invalidate())
@@ -67,11 +75,8 @@ export class CalendarService extends TypertRemoteService {
     }
   }
 
-  /** Institution adapters register stable identities and a fetch closure; no credentials are stored. */
+  /** Host-only: register identity and receive a source-bound writer. */
   registerSource(config) { return this.sources.register(config) }
-
-  /** Refresh registered sources independently; each result carries its own status. */
-  syncSources(input = {}) { return this.sources.syncAll(input.reason ?? 'manual') }
 
   sourceStatuses() { return this.sources.statuses() }
 
@@ -147,6 +152,7 @@ export class CalendarService extends TypertRemoteService {
     const source = input.source ?? 'ics'
     if (source === 'manual' || source.startsWith('sync:')) throw new Error('reserved calendar source')
     const parsed = parseIcs(input.text, { source })
+    assertImportSources(parsed.events, source)
     const written = await this.store.importSnapshot(parsed, {
       source,
       replace: input.replace !== false,
@@ -253,6 +259,7 @@ export class CalendarService extends TypertRemoteService {
    * @returns counts of the records written and removed.
    */
   async importSnapshot(snapshot, options) {
+    assertImportSources(snapshot?.events, options?.source)
     const report = await this.store.importSnapshot(snapshot, options)
     await this.rememberSources()
     return report
@@ -304,7 +311,9 @@ export class CalendarService extends TypertRemoteService {
    *   occurrence, and nothing was changed for those entries.
    */
   async applySource(input) {
-    const report = await this.store.applySource(input)
+    if (input?.source?.startsWith('sync:')) throw new Error('source_handle_required')
+    if (!Array.isArray(input?.events)) throw new Error('a source snapshot must carry an events array')
+    const report = await this.store.applySource(applySourceInput.parse(input))
     await this.rememberSources()
     return report
   }
@@ -420,6 +429,7 @@ Remote('snapshot')(CalendarService.prototype.snapshot, {
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 
+
 Remote('occurrences')(CalendarService.prototype.occurrences, {
   kind: 'method', name: 'occurrences', static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
@@ -509,5 +519,6 @@ Remote('sourceStatuses')(CalendarService.prototype.sourceStatuses, {
   kind: 'method', name: 'sourceStatuses', static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
+
 
 export default CalendarService

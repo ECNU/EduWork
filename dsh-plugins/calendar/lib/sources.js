@@ -1,8 +1,6 @@
-// Institution plugins own authentication and conversion. This coordinator accepts
-// complete, validated calendar batches and owns ordering and lifecycle only.
 import { createHash } from 'node:crypto'
 
-/** Stable across re-login and display-name changes. Never pass access tokens here. */
+/** Stable across re-login. Public feeds use an explicit shared account such as "public". */
 export function sourceIdentity({ provider, account, feed }) {
   for (const value of [provider, account, feed]) {
     if (typeof value !== 'string' || !value.trim()) throw new Error('source needs stable provider, account and feed identifiers')
@@ -10,112 +8,97 @@ export function sourceIdentity({ provider, account, feed }) {
   return `sync:${createHash('sha256').update(JSON.stringify([provider, account, feed])).digest('base64url')}`
 }
 
-export class SourceCoordinator {
+/** Registration and pushed writes only. Data plugins own fetching, timers and retries. */
+export class SourceRegistry {
   constructor(apply, changed = () => {}) {
-    this.changed = changed
     this.apply = apply
+    this.changed = changed
     this.entries = new Map()
     this.closed = false
   }
 
-  /** Host-only: fetch receives { signal, reason }; credentials stay in its closure. */
   register(config) {
     if (this.closed) throw new Error('calendar sources are closed')
+    if (['fetch', 'subscribe', 'pollIntervalMs', 'timeoutMs'].some(key => key in config)) throw new Error('source fetching belongs to the data plugin')
     const source = sourceIdentity(config)
     if (this.entries.has(source)) throw new Error('source is already registered')
-    if (typeof config.fetch !== 'function') throw new Error('source needs a fetch adapter')
-    const interval = config.pollIntervalMs ?? 300000
-    if (!Number.isSafeInteger(interval) || interval < 1000 || interval > 2147483647) throw new Error('poll interval must be at least 1000 ms')
-    const timeoutMs = config.timeoutMs ?? 30000
-    if (!Number.isSafeInteger(timeoutMs) || timeoutMs < 10 || timeoutMs > 2147483647) throw new Error('invalid source timeout')
     if (config.label !== undefined && typeof config.label !== 'string') throw new Error('source label must be text')
-    const entry = { source, timeoutMs, label: config.label ?? config.feed, generation: 0, active: true, fetch: config.fetch,
-      state: 'idle', controller: undefined }
+    const entry = { source, label: config.label ?? config.feed, active: true, registered: true,
+      generation: 0, state: 'idle' }
     this.entries.set(source, entry)
-    const handle = { source, sync: (reason = 'manual') => this.sync(entry, reason),
-      dispose: () => this.remove(entry), status: () => this.status(entry) }
-    try {
-      entry.unsubscribe = config.subscribe?.(reason => {
-        if (!['login', 'reconnect'].includes(reason)) throw new Error('unsupported source trigger')
-        return handle.sync(reason)
-      })
-      entry.timer = setInterval(() => { void handle.sync('periodic') }, interval)
-      entry.timer.unref?.()
-    } catch (error) {
-      this.remove(entry)
-      throw error
-    }
-    // Failure is a status, not an unhandled startup rejection.
-    void handle.sync('startup')
+    const handle = Object.freeze({ source,
+      apply: async batch => this.begin(entry, batch?.complete === true).apply(batch),
+      beginUpdate: () => this.begin(entry),
+      setActive: active => {
+        if (typeof active !== 'boolean' || !entry.registered) throw new Error('invalid source activation')
+        entry.active = active
+        ++entry.generation
+        entry.state = 'idle'
+        this.changed()
+      },
+      dispose: () => this.remove(entry),
+      status: () => this.status(entry),
+    })
+    this.changed()
     return handle
   }
 
-  status(entry) {
-    const { source, label, state, updatedAt, error } = entry
+  status({ source, label, state, updatedAt, error }) {
     return { source, label, state, ...(updatedAt ? { updatedAt } : {}), ...(error ? { error } : {}) }
   }
+  statuses() { return [...this.entries.values()].filter(entry => entry.active).map(entry => this.status(entry)) }
+  isRegistered(source) { return this.entries.get(source)?.active === true }
 
-  isRegistered(source) { return this.entries.has(source) }
-
-  statuses() { return [...this.entries.values()].map(entry => this.status(entry)) }
-
-  async sync(entry, reason) {
-    if (!entry.active) return { state: 'stopped', source: entry.source }
-    const generation = ++entry.generation
-    entry.controller?.abort()
-    const controller = new AbortController()
-    entry.controller = controller
+  /** Call before external work starts; a later request invalidates this receipt. */
+  begin(entry, supersede = true) {
+    if (!entry.registered || !entry.active) throw new Error('source_inactive')
+    const generation = supersede ? ++entry.generation : entry.generation
+    const isCurrent = () => entry.registered && entry.active && entry.generation === generation
     entry.state = 'loading'
     entry.error = undefined
     this.changed()
-    const isCurrent = () => entry.active && generation === entry.generation
-    let abort
-    const cancelled = new Promise((_, reject) => {
-      abort = () => reject(new Error('sync_timeout'))
-      controller.signal.addEventListener('abort', abort, { once: true })
-    })
-    const timeout = setTimeout(() => controller.abort(), entry.timeoutMs)
-    timeout.unref?.()
-    try {
-      const batch = await Promise.race([entry.fetch({ signal: controller.signal, reason }), cancelled])
-      if (!isCurrent()) return { state: 'superseded', source: entry.source }
-      if (batch?.complete !== true || !Array.isArray(batch.events)) throw new Error('incomplete_snapshot')
-      const report = await this.apply({ source: entry.source, events: batch.events, complete: true }, { isCurrent })
-      if (!isCurrent()) return { state: 'superseded', source: entry.source }
-      if (report.unattributable.length) throw new Error('unattributable')
-      entry.state = 'ready'
-      entry.updatedAt = new Date().toISOString()
-      this.changed()
-      return { ...this.status(entry), report }
-    } catch (error) {
-      if (!isCurrent()) return { state: 'superseded', source: entry.source }
+    let settled = false
+    let submitted = false
+    const fail = code => {
+      if (!isCurrent() || settled) return { state: 'superseded', source: entry.source }
+      settled = true
       entry.state = 'error'
-      // Adapter exceptions may contain URLs or credentials. Only public codes leave here.
-      entry.error = error?.message === 'sync_timeout' ? 'sync_timeout' : error?.message === 'incomplete_snapshot' ? 'incomplete_snapshot'
-        : error?.message === 'unattributable' ? 'unattributable' : 'sync_failed'
+      entry.error = ['incomplete_snapshot', 'unattributable', 'sync_timeout'].includes(code) ? code : 'sync_failed'
       this.changed()
       return this.status(entry)
-    } finally {
-      clearTimeout(timeout)
-      controller.signal.removeEventListener('abort', abort)
     }
+    return Object.freeze({
+      fail,
+      apply: async batch => {
+        if (!isCurrent() || settled || submitted) return { state: 'superseded', source: entry.source }
+        submitted = true
+        try {
+          if (batch?.source !== undefined && batch.source !== entry.source) throw new Error('source_mismatch')
+          if (batch?.complete === false || !Array.isArray(batch?.events)) throw new Error('incomplete_snapshot')
+          const report = await this.apply({ ...batch, source: entry.source }, { isCurrent })
+          if (!isCurrent()) return { state: 'superseded', source: entry.source }
+          if (report.unattributable.length) { fail('unattributable'); return { ...this.status(entry), report } }
+          settled = true
+          entry.state = 'ready'
+          entry.updatedAt = new Date().toISOString()
+          this.changed()
+          return { ...this.status(entry), report }
+        } catch (error) {
+          if (!isCurrent()) return { state: 'superseded', source: entry.source }
+          fail(error.message)
+          throw error
+        }
+      },
+    })
   }
-
-  syncAll(reason = 'manual') {
-    return Promise.all([...this.entries.values()].map(entry => this.sync(entry, reason)))
-  }
-
   remove(entry) {
-    if (!entry.active) return
+    if (!entry.registered) return
+    entry.registered = false
     entry.active = false
     ++entry.generation
-    entry.controller?.abort()
-    clearInterval(entry.timer)
-    try { entry.unsubscribe?.() } catch { /* Cleanup must continue for every registered source. */ }
     this.entries.delete(entry.source)
     this.changed()
   }
-
   close() {
     this.closed = true
     for (const entry of this.entries.values()) this.remove(entry)

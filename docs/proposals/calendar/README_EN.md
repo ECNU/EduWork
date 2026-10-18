@@ -225,7 +225,7 @@ The existing `@deepseek-ai/dsh-schedule` delivers into an original Session. Its 
 ## Institution boundary
 
 - The public edition contains no school-specific logic: no academic-system address, scraper, academic calendar or holiday rules.
-- Sources register a stable provider, account, feed and fetch function through `calendar.registerSource`. The public coordinator handles startup, login/reconnection callbacks, periodic refresh, timeouts, stale results and independent source status. Complete snapshots and incremental writes have distinct semantics.
+- Sources register stable provider/account/feed identities through `calendar.registerSource` and receive a source-bound writer. Data plugins own fetching, polling, timeouts and login/reconnection retries. The public calendar retains activation, stale submission/version checks and independent status; full and incremental batches differ explicitly.
 - Following the edition boundaries ([`docs/EDITIONS.md`](../../EDITIONS.md)), the institution edition supplies an adapter under `edition/plugins/`: it converts school data to the public structure above and injects it through the host-side entry point provided by the public edition.
 - Raising the institution lock depends on a public **release**: assembly in institution mode validates the public commit and the source receipt, so institution integration happens after this work lands and is released, and is outside this proposal.
 - An offline path also works: the institution side saves an academic-system page, parses it into ICS or the JSON above, and uses the generic import, with no dependency on a school API.

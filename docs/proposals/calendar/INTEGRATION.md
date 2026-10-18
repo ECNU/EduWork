@@ -2,50 +2,46 @@
 
 **简体中文** | [English](INTEGRATION_EN.md)
 
-本页面向机构插件与 Host 集成开发者。公版负责通用日程、个人设置和同步协调；学校授权、接口格式、登录事件及数据转换由机构插件提供。[功能与限制](../../../dsh-plugins/calendar/README.md)。
+公版保存、校验和展示日程与个人设置。数据插件负责授权、取数、格式转换、定时、超时、登录/重连和重试。[功能与限制](../../../dsh-plugins/calendar/README.md)。
 
-## 注册自动同步来源
+## 登记与写入来源
 
-机构插件依赖 `calendar` 服务，并在每个已登录账号下分别注册校历和课表。下面的 `adapter` 由机构实现，不是公版内置接口：
+Host 侧登记稳定身份，获取只能提交本来源的操作对象；登记本身不发请求或创建轮询。
 
 ```js
 const source = ctx.calendar.registerSource({
-  provider: 'example-campus',
-  account: adapter.stableAccountId,
-  feed: 'timetable',
-  label: '我的课表',
-  pollIntervalMs: 300000,
-  timeoutMs: 30000,
-  fetch: async ({ signal, reason }) => {
-    const data = await adapter.fetchTimetable({ signal, reason })
-    return { complete: true, events: adapter.toCalendarEvents(data) }
-  },
-  subscribe: notify => adapter.onSyncTrigger(notify),
+  provider: 'example-campus', account: adapter.stableAccountId,
+  feed: 'timetable', label: '我的课表',
 })
-ctx.effect(() => () => source.dispose(), 'calendar: unregister timetable')
+ctx.effect(() => () => source.dispose(), 'unregister timetable')
+
+// Call before fetching, so a later request invalidates an older response.
+const update = source.beginUpdate()
+try {
+  const data = await adapter.fetchTimetable()
+  await update.apply({ complete: true, revision: data.revision,
+    events: adapter.toCalendarEvents(data) })
+} catch {
+  update.fail('sync_failed')
+}
 ```
 
-- `provider`、`account`、`feed` 是非空、稳定的标识。公版将三者编码为来源编号；展示名称、令牌、临时会话编号不参与身份。账号隔离是数据身份隔离，不替代机构授权控制。
-- 注册后立即检查更新，默认每 5 分钟检查一次；间隔最小 1 秒。默认请求超时 30 秒。`subscribe` 可省略；提供时返回取消订阅函数，并用 `notify('login')` / `notify('reconnect')` 接入真实事件。
-- `source.sync()` 主动重试，`calendar.syncSources()` 独立刷新所有已注册来源。一个来源失败不阻断其他来源。`calendar.sourceStatuses()` 返回各来源的名称、状态、最近成功时间和公开错误码，不传出接口异常原文。
-- 新请求开始后，旧请求即使晚到也不提交。取数应响应 `signal`；公版也会结束超时等待。注销会终止取数和轮询，隐藏该账号缓存并停止生成对应提醒计划，保留数据与个人设置；用相同身份重新注册即可恢复。
-- 登录凭据只留在适配器闭包或机构凭据服务中，不写入日程。公版不固定学校 URL 或接口格式。
+- `provider/account/feed` 是稳定、非空的身份。显示名称、令牌和会话编号不参与身份。公共校历可用显式的共享 account，个人课表按稳定账号分开。
+- `source.apply(batch)` 用于已有数据直接提交；取数前使用 `beginUpdate()`，同一来源旧请求晚到时返回 `superseded`，不提交。一次 update 只能提交一次。
+- 来源由操作对象限定。注册的 `sync:` 来源不能通过普通 `applySource` 或文件导入冒充；事件内也不能指定其他来源。
+- `source.setActive(false)` 隐藏账号缓存并停止其提醒计划，保留数据和笔记；恢复启用或同身份重新登记可恢复。`dispose()` 注销登记。Host 插件仍沿用宿主的授权体系，来源编号不是授权凭据。
+- `source.status()` / `calendar.sourceStatuses()` 返回公开状态，`update.fail(code)` 标记外部失败并保留数据；不透传异常、URL 或凭据。网络计时器、取消与重试由数据插件处理。
 
-## 完整结果与增量写入
+## 完整与增量结果
 
-注册来源的 `fetch` 必须返回 `{ complete: true, events: [...] }`。请求失败应抛错；分页未结束或解析不完整不能返回成功空数组。不完整结果或无法关联的完整结果保留整份旧快照。
+输入为 `{events, complete?, revision?}`。省略 `complete` 是增量，缺席不删除；显式 `false` 拒绝，不能把不完整数据当成功结果。`true` 是完整替换，成功后只清理本来源缺席记录；完整空数组清空本来源。
 
-`events` 使用 `uid/title/start/end?/location?/description?/recurrence?`。来源层的 `description` 是学校说明。一次调课携带 `movedFrom`，停课携带 `cancelledDates`，二者都引用原实例，不用当前显示时间猜测身份。重复系列的基线开始和规则不能随同步改写；若学校无法提供可关联的原实例信息，返回 `unattributable`，不猜关联。
+`events` 使用 `uid/title/start/end?/location?/description?/recurrence?/movedFrom?/cancelledDates?`。同一事项保留稳定 uid。来源的 description 不属于私人备注。调课需用 movedFrom 指向原实例，整系列规则变更或无法关联时报告 `unattributable`；完整结果有此问题时整批不提交。
 
-Host 也可直接调用：
+版本化数据可带递增正整数 `revision`。版本随成功写入持久保存，重启后拒绝低版本、缺失版本和同版本不同内容；同版本相同批次可重放。版本不放进 uid。修改日期仍须保留原实例关联，不能仅依赖版本号。
 
-```js
-await ctx.calendar.applySource({ source: source.source, complete: true, events })
-```
+整批输入先校验，再串行提交。存储没有跨记录事务：磁盘故障中止后续提交/清理，不承诺回滚先前写入。
 
-整批先校验再提交。成功的完整结果删除本来源缺席的日程；成功的完整空数组清空本来源。新完整结果也替换来源的调课/停课状态，因此学校恢复上课时旧取消状态不会残留。用户的覆盖与笔记独立保留。存储没有跨记录事务：磁盘写入故障会中止后续提交和清理，不承诺回滚此前已完成的写入。
-
-省略 `complete` 是兼容的增量写入，不按缺席清理；显式 `complete:false` 被拒绝。文件导入有自己的“是否替换”选项，不能借用保留来源 `manual` 或 `sync:`。
 
 ## 个人内容与继承
 

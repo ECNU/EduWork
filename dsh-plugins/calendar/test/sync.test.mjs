@@ -81,13 +81,93 @@ async function withCalendar(root, body) {
     await ctx.plugin(storageDomain, { backend: 'json' })
     await ctx.plugin(CalendarService)
     assert.ok(ctx.calendar, 'the service is reachable as ctx.calendar')
-    return await body(ctx.calendar)
+    return await body(ctx.calendar, ctx)
   } finally {
     await ctx.fiber.dispose()
   }
 }
 
 const SOURCE = 'ecnu:timetable'
+
+test('file and legacy snapshot imports cannot bypass a managed source writer', { skip: !runtime }, async () => {
+  await withRoot('calendar-managed-import-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    const event = { uid: 'exam', title: 'School exam', start: '2026-10-20' }
+    await source.apply({ complete: true, events: [event] })
+    const text = calendar.exportIcs().text.replace('School exam', 'Must not overwrite')
+    await assert.rejects(calendar.importIcs({ source: 'ics:user', text }), /source_handle_required/)
+    await assert.rejects(calendar.importSnapshot({ events: [{ ...event, source: source.source, title: 'Must not overwrite' }] }), /source_handle_required/)
+    assert.equal(calendar.getEvent({ source: source.source, uid: event.uid }).title, 'School exam')
+  }))
+})
+
+test('concurrent incremental pushes retain both updates rather than superseding one another', { skip: !runtime }, async () => {
+  await withRoot('calendar-push-increments-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    await Promise.all([
+      source.apply({ events: [{ uid: 'a', title: 'A', start: '2026-10-06' }] }),
+      source.apply({ events: [{ uid: 'b', title: 'B', start: '2026-10-07' }] }),
+    ])
+    assert.deepEqual(calendar.snapshot().events.map(event => event.uid).sort(), ['a', 'b'])
+  }))
+})
+
+test('reordering a versioned snapshot does not redefine its content', { skip: !runtime }, async () => {
+  await withRoot('calendar-revision-order-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    const events = [{ uid: 'a', title: 'A', start: '2026-10-06' }, { uid: 'b', title: 'B', start: '2026-10-07' }]
+    await source.apply({ revision: 1, complete: true, events })
+    await source.apply({ revision: 1, complete: true, events: [...events].reverse() })
+    assert.equal(calendar.snapshot().events.length, 2)
+  }))
+})
+
+test('one update receipt can be submitted only once, including concurrent submissions', { skip: !runtime }, async () => {
+  await withRoot('calendar-receipt-once-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    const request = source.beginUpdate()
+    const first = request.apply({ complete: true, events: [{ uid: 'one', title: 'First', start: '2026-10-06' }] })
+    const second = request.apply({ complete: true, events: [] })
+    assert.equal((await second).state, 'superseded')
+    assert.equal((await first).state, 'ready')
+    assert.equal(calendar.snapshot().events.length, 1)
+  }))
+})
+
+test('source revisions survive restart and reject old or redefined versions while retaining private settings', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-revision-', async root => {
+    const config = { provider: 'example.edu', account: 'public', feed: 'calendar:2026' }
+    const base = { uid: 'exam', title: 'Exam week', start: '2026-12-07' }
+    await withCalendar(root, async calendar => {
+      const source = calendar.registerSource(config)
+      await source.apply({ complete: true, revision: 2, events: [base] })
+      await calendar.putNote({ source: source.source, uid: base.uid, text: 'Keep my review plan' })
+    })
+    await withCalendar(root, async calendar => {
+      const source = calendar.registerSource(config)
+      await assert.rejects(source.apply({ complete: true, revision: 1, events: [] }), /stale_revision/)
+      await assert.rejects(source.apply({ complete: true, revision: 2, events: [] }), /revision_conflict/)
+      await source.apply({ complete: true, revision: 2, events: [base] })
+      assert.equal(calendar.snapshot().events.length, 1)
+      assert.equal(calendar.notes({ source: source.source })[0].note.text, 'Keep my review plan')
+    })
+  })
+})
+
+test('source registration accepts pushed batches without fetching and binds writes to its own identity', { skip: !runtime }, async () => {
+  await withRoot('calendar-pushed-source-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar:2026' })
+    assert.equal(calendar.snapshot().events.length, 0)
+    await source.apply({ complete: true, revision: 1, events: [{ uid: 'exam', title: 'Exam week', start: '2026-12-07' }] })
+    assert.equal(calendar.snapshot().events[0].source, source.source)
+    assert.equal(calendar.sourceStatuses()[0].state, 'ready')
+    await assert.rejects(calendar.applySource({ source: source.source, complete: true, events: [] }), /source_handle_required/)
+    assert.equal(calendar.snapshot().events.length, 1)
+    await assert.rejects(source.apply({ source: 'another-source', complete: true, events: [] }), /source_mismatch/)
+    source.dispose()
+    assert.equal(calendar.snapshot().events.length, 0)
+  }))
+})
 /**
  * A weekly class on Tuesdays, the shape a school adapter delivers.
  *
@@ -772,67 +852,43 @@ test('an incomplete source result is refused and an unattributable full snapshot
 })
 
 
-test('registered sources isolate accounts and ignore a superseded late response', { skip: !runtime }, async () => {
-  await withRoot('calendar-source-coordinator-', async root => withCalendar(root, async calendar => {
-    const replies = []
-    const config = { provider: 'example.edu', account: 'student-1', feed: 'timetable', label: 'My classes',
-      fetch: ({ signal }) => new Promise(resolve => replies.push({ resolve, signal })) }
+test('registered writers isolate accounts and a newer request supersedes an old receipt', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-order-', async root => withCalendar(root, async calendar => {
+    const config = { provider: 'example.edu', account: 'student-1', feed: 'timetable' }
     const first = calendar.registerSource(config)
-    assert.equal(replies.length, 1, 'registration starts the first refresh')
-    const latest = first.sync()
-    assert.equal(replies.length, 2)
-    replies[1].resolve({ complete: true, events: [classOn('2026-10-06T09:00', { title: 'Newest' })] })
-    assert.equal((await latest).state, 'ready')
-    replies[0].resolve({ complete: true, events: [classOn('2026-10-06T09:00', { title: 'Outdated' })] })
-    await new Promise(resolve => setImmediate(resolve))
+    const older = first.beginUpdate()
+    const newer = first.beginUpdate()
+    await newer.apply({ complete: true, events: [classOn('2026-10-06T09:00', { title: 'Newest' })] })
+    assert.equal((await older.apply({ complete: true, events: [classOn('2026-10-06T09:00', { title: 'Outdated' })] })).state, 'superseded')
     assert.equal(calendar.getEvent({ source: first.source, uid: 'MATH101-01' }).title, 'Newest')
-    const other = calendar.registerSource({ ...config, account: 'student-2', fetch: async () => ({ complete: true, events: [classOn('2026-10-06T09:00')] }) })
-    await other.sync()
+    const other = calendar.registerSource({ ...config, account: 'student-2' })
+    await other.apply({ complete: true, events: [classOn('2026-10-06T09:00')] })
     assert.notEqual(other.source, first.source)
     assert.equal(calendar.snapshot().events.length, 2)
     first.dispose()
-    const again = calendar.registerSource({ ...config, label: 'Renamed display label', fetch: async () => ({ complete: true, events: [] }) })
-    assert.equal(again.source, first.source, 'stable account identity survives re-login and a label change')
+    const again = calendar.registerSource({ ...config, label: 'Renamed' })
+    assert.equal(again.source, first.source)
+    await assert.rejects(first.apply({ complete: true, events: [] }), /source_inactive/)
     again.dispose()
     other.dispose()
   }))
 })
 
-
-test('source startup, login, reconnect and polling share failure-safe synchronization', { skip: !runtime }, async () => {
-  await withRoot('calendar-source-lifecycle-', async root => withCalendar(root, async calendar => {
-    let notify, disposed = false, broken = false
-    const reasons = []
-    let polled
-    const poll = new Promise(resolve => { polled = resolve })
-    const source = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'calendar', pollIntervalMs: 1000,
-      subscribe(callback) { notify = callback; return () => { disposed = true } },
-      async fetch({ reason }) {
-        reasons.push(reason)
-        if (reason === 'periodic') polled()
-        if (broken) throw new Error('private-token-not-public')
-        return { complete: true, events: [{ uid: 'one', title: 'Keep', start: '2026-10-06T09:00' }] }
-      } })
-    await source.sync()
-    assert.equal(typeof notify, 'function')
-    await notify('login')
-    await notify('reconnect')
-    await Promise.race([poll, new Promise((_, reject) => setTimeout(() => reject(new Error('poll did not run')), 2000))])
-    assert.ok(['startup', 'login', 'reconnect', 'periodic'].every(reason => reasons.includes(reason)))
-    broken = true
-    const other = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'timetable',
-      fetch: async () => ({ complete: true, events: [{ uid: 'two', title: 'Other', start: '2026-10-07T09:00' }] }) })
-    const results = await calendar.syncSources()
-    assert.deepEqual(results.map(r => r.state).sort(), ['error', 'ready'])
+test('failed and incomplete external updates retain old data while another writer updates', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-errors-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    await source.apply({ complete: true, events: [{ uid: 'one', title: 'Keep', start: '2026-10-06' }] })
+    source.beginUpdate().fail('private-token-never-display')
+    assert.equal(source.status().error, 'sync_failed')
+    await assert.rejects(source.apply({ complete: false, events: [] }), /incomplete/)
+    const other = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'timetable' })
+    await other.apply({ complete: true, events: [{ uid: 'two', title: 'Other', start: '2026-10-07' }] })
     assert.equal(calendar.getEvent({ source: source.source, uid: 'one' }).title, 'Keep')
-    assert.ok(calendar.getEvent({ source: other.source, uid: 'two' }))
+    assert.equal(calendar.getEvent({ source: other.source, uid: 'two' }).title, 'Other')
     assert.ok(!JSON.stringify(calendar.sourceStatuses()).includes('private-token'))
+    assert.equal(typeof calendar.syncSources, 'undefined', 'calendar owns no polling or fetching')
     source.dispose()
     other.dispose()
-    assert.equal(disposed, true)
-    const before = reasons.length
-    await notify('reconnect')
-    assert.equal(reasons.length, before, 'disposed adapters cannot write again')
   }))
 })
 
@@ -1019,16 +1075,18 @@ test('queued note removal observes preceding writes and preserves concurrently s
 })
 
 
-test('a source adapter that never answers times out and can be disposed without clearing prior data', { skip: !runtime }, async () => {
-  await withRoot('calendar-source-timeout-', async root => withCalendar(root, async calendar => {
-    const handle = calendar.registerSource({ provider: 'example.edu', account: 'a', feed: 'slow', timeoutMs: 20,
-      fetch: () => new Promise(() => {}) })
-    await calendar.applySource({ source: handle.source, events: [{ uid: 'old', title: 'Cached', start: '2026-10-06T09:00' }] })
-    await new Promise(resolve => setTimeout(resolve, 100))
-    assert.equal(handle.status().state, 'error')
-    assert.equal(handle.status().error, 'sync_timeout')
-    assert.equal(calendar.getEvent({ source: handle.source, uid: 'old' }).title, 'Cached')
-    handle.dispose()
+test('source activation suspends visibility and invalidates pending external writes', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-suspend-', async root => withCalendar(root, async calendar => {
+    const config = { provider: 'example.edu', account: 'a', feed: 'calendar' }
+    const source = calendar.registerSource(config)
+    await source.apply({ complete: true, events: [{ uid: 'one', title: 'Keep', start: '2026-10-06' }] })
+    const request = source.beginUpdate()
+    source.setActive(false)
+    assert.equal(calendar.snapshot().events.length, 0)
+    assert.equal((await request.apply({ complete: true, events: [] })).state, 'superseded')
+    source.setActive(true)
+    assert.equal(calendar.snapshot().events.length, 1)
+    source.dispose()
     assert.deepEqual(calendar.sourceStatuses(), [])
   }))
 })
@@ -1057,10 +1115,9 @@ test('a later complete snapshot can restore school cancellations and moves while
 
 test('logging out a registered account hides its cached classes without deleting notes or identity', { skip: !runtime }, async () => {
   await withRoot('calendar-source-account-visibility-', async root => withCalendar(root, async calendar => {
-    const config = { provider: 'example.edu', account: 'student-a', feed: 'timetable',
-      fetch: async () => ({ complete: true, events: [classOn('2026-10-06T09:00')] }) }
+    const config = { provider: 'example.edu', account: 'student-a', feed: 'timetable' }
     const handle = calendar.registerSource(config)
-    await handle.sync()
+    await handle.apply({ complete: true, events: [classOn('2026-10-06T09:00')] })
     await calendar.putNote({ source: handle.source, uid: 'MATH101-01', text: 'Account A note' })
     assert.equal(calendar.snapshot().events.length, 1)
     handle.dispose()
@@ -1068,7 +1125,7 @@ test('logging out a registered account hides its cached classes without deleting
     assert.equal(calendar.occurrences({ from: '2026-10-06', to: '2026-10-06' }).occurrences.length, 0)
     assert.equal(calendar.notes({ source: handle.source })[0].note.text, 'Account A note')
     const again = calendar.registerSource(config)
-    await again.sync()
+    await again.apply({ complete: true, events: [classOn('2026-10-06T09:00')] })
     assert.equal(again.source, handle.source)
     assert.equal(calendar.snapshot().events.length, 1)
     again.dispose()

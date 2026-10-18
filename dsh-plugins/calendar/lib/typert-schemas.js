@@ -117,7 +117,7 @@ const removalOutcome = z.object({ removed: z.boolean() }).strict()
  * changed class was originally scheduled for. Without it a changed anchor cannot
  * be matched to one occurrence, and the service reports that instead of guessing.
  */
-const sourceEvent = z.object({
+export const sourceEvent = z.object({
   uid: z.string().min(1),
   title: z.string().min(1),
   start: LocalTimeSchema,
@@ -129,13 +129,14 @@ const sourceEvent = z.object({
   cancelledDates: z.array(LocalTimeSchema).optional(),
 }).strict()
 
-const applySourceInput = z.object({
+export const applySourceInput = z.object({
   source: z.string().min(1),
   events: z.array(sourceEvent),
   complete: z.boolean().optional(),
+  revision: z.number().int().positive().optional(),
 }).strict()
 
-const applySourceOutcome = z.object({
+export const applySourceOutcome = z.object({
   applied: z.number().int().nonnegative(),
   removed: z.number().int().nonnegative().optional(),
   moved: z.number().int().nonnegative(),

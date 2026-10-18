@@ -8,6 +8,8 @@
 //
 // Nothing here leaves the machine. Records are never uploaded and never logged.
 import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
+import { createHash } from 'node:crypto'
+import { z } from 'zod'
 import { assertEventKeyBudget, eventKey, isEncodedKey } from './keys.js'
 import { LocalDatesSchema, StoredEventSchema, assertOrderedRecord, assertOrderedSpan, buildSnapshot, dropRetiredFields, inheritedEndOf, normalizeEvent, occurrencesOf, occurrencesIn, overlaps } from './model.js'
 
@@ -34,6 +36,7 @@ export const calendarDomain = defineDomain({
   tables: {
     events: domainTable(StoredEventSchema),
     local_dates: domainTable(LocalDatesSchema),
+    source_versions: domainTable(z.object({ revision: z.number().int().positive(), digest: z.string() }).strict()),
   },
 })
 
@@ -44,6 +47,12 @@ export const calendarDomain = defineDomain({
  * makes it the default for the event methods the panel calls.
  */
 const MANUAL_SOURCE = 'manual'
+
+function canonical(value) {
+  if (Array.isArray(value)) return value.map(canonical)
+  if (value && typeof value === 'object') return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]))
+  return value
+}
 
 /**
  * The storage key of one record: its source and its identifier together.
@@ -94,7 +103,7 @@ export class CalendarStore {
   async open() {
     const domain = await this.ctx.storageDomain.open(calendarDomain)
     this.domain = domain
-    this.tables = { events: domain.table('events'), localDates: domain.table('local_dates') }
+    this.tables = { events: domain.table('events'), localDates: domain.table('local_dates'), sourceVersions: domain.table('source_versions') }
     this.needsReview = []
     await this.foldRetiredFields()
     await this.rekeyBySource()
@@ -513,7 +522,18 @@ export class CalendarStore {
     // also what makes an entry see the one before it.
     return await this.enqueueWrite(async () => {
       if (!isCurrent()) throw new Error('superseded_snapshot')
-      return await this.applySourceEntries(source, input.events, input.complete === true)
+      const versions = this.requireTables().sourceVersions
+      const versionKey = createHash('sha256').update(source).digest('hex')
+      const previous = versions.get(versionKey)
+      const revision = input.revision
+      if (revision !== undefined && (!Number.isSafeInteger(revision) || revision < 1)) throw new Error('invalid_revision')
+      if (previous && (revision === undefined || revision < previous.revision)) throw new Error('stale_revision')
+      const ordered = [...input.events].sort((a, b) => a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0)
+      const digest = createHash('sha256').update(JSON.stringify(canonical({ events: ordered, complete: input.complete === true }))).digest('hex')
+      if (previous && previous.revision === revision && previous.digest !== digest) throw new Error('revision_conflict')
+      const report = await this.applySourceEntries(source, input.events, input.complete === true)
+      if (revision !== undefined && !report.unattributable.length) await versions.put(versionKey, { revision, digest })
+      return report
     })
   }
 
