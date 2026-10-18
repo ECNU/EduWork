@@ -29,15 +29,8 @@ if (action === 'list') {
       'dsh-mail': ['check'],
       'dsh-memory': ['build', 'test'],
       'dsh-knowledge-studio': ['typecheck', 'build', 'test', 'audit'],
-      'dsh-remote-access': ['build', 'test'],
     }
-    const wanted = scripts[selected.group]
-    // A group that is missing here used to fail as `scripts[...] is not iterable`,
-    // which points at this line rather than at the absent entry that caused it.
-    if (wanted === undefined) {
-      throw new Error(`no check scripts are registered for group "${selected.group}"; add it to the map above`)
-    }
-    for (const script of wanted) npm(['run', script], { cwd, stdio: 'inherit' })
+    for (const script of scripts[selected.group]) npm(['run', script], { cwd, stdio: 'inherit' })
   }
   if (action === 'pack') {
     const output = resolve(root, argument || `dist/npm-packages/${id}`)
