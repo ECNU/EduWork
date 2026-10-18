@@ -98,3 +98,13 @@ test('changing source during import fails before making the destination availabl
  await assert.rejects(importLegacyData({...f,onProgress:()=>writeFile(join(f.sourceHome,'sessions/a.json'),'changed during import')}),/being written|changed/)
  await assert.rejects(readdir(f.targetHome),{code:'ENOENT'})
 })
+
+test('health marker replacement retries while the updater holds the file', async () => {
+  const { replaceHealthFile } = await import('../src/legacy-migration.mjs')
+  let calls = 0
+  const move = async () => { if (++calls < 3) throw Object.assign(new Error('locked'), { code: 'EPERM' }) }
+  await replaceHealthFile('a', 'b', { move, sleep: async () => {} })
+  assert.equal(calls, 3)
+  await assert.rejects(replaceHealthFile('a', 'b', { move: async () => { throw Object.assign(new Error('gone'), { code: 'ENOENT' }) }, sleep: async () => {} }), { code: 'ENOENT' })
+  await assert.rejects(replaceHealthFile('a', 'b', { move: async () => { throw Object.assign(new Error('locked'), { code: 'EBUSY' }) }, sleep: async () => {}, attempts: 4 }), { code: 'EBUSY' })
+})
