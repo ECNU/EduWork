@@ -2,145 +2,106 @@
 
 English | [中文](README.md)
 
-Lets a **second device** see and continue, over the Web, the sessions, tasks and
-workspace results a DSH agent is already running on this machine.
+Lets **another device** view and continue the workspaces, sessions, and tasks of a local EduWork/DSH Agent through a browser, across networks.
 
-This is a **DSH plugin**: device registry, one-time pairing, device credentials,
-live-connection management and a relay gate. The operation fence's decision table
-lives in `./gate` but is **not wired up yet** — see below. It binds to no school, no
-institution domain and no public service — the relay is an optional component,
-and a shared LAN, a self-hosted VPN or port forwarding all work without one.
+This package is a **DSH plugin** with a self-hostable **relay** and a **device bootstrap**: the Host and the device communicate end to end, the relay forwards ciphertext only and never holds the Host's launch credential, and the remote browser loads the **Web UI the Host renders itself** rather than a separate client.
+
+> Status: prototype (`0.1.0-dev`, not published to npm). It has passed 309 package tests, protocol-level device acceptance, and a desktop browser plus a real phone on Wi-Fi. The real invite flow, the relay access key, end-to-end approvals/questions, and iOS background reconnect are not finished. The public interface and acceptance conditions are in the [proposal](../../docs/proposals/remote-access/README_EN.md); npm publication, product dependency locks, and desktop Releases are approved separately.
 
 ## What it does
 
-| Capability | Detail |
-| --- | --- |
-| **Per-device identity** | Each device holds its own credential and can be withdrawn on its own, without touching the others |
-| **One-time pairing** | A short-lived invitation that is spent on first use; a replay, a late attempt and a typo are indistinguishable |
-| **Confirmation on this machine** | A device takes effect only after a human confirms it **here**, never on the remote side's own say-so |
-| **Revocation disconnects** | Revocation invalidates the credential **and** tears down the device's established streams — refusing the next request is not revocation |
+- **URL-first**: a phone opens `https://<relay>/eduwork/?h=<hostId>` and loads the Host's Web UI.
+- **Workspaces and sessions**: the remote side sees the Host's own workspace list, opens or continues existing sessions, reads history, sends prompts, and receives streamed events.
+- **Host confirmation**: a new device appears as pending on the Host and takes effect only after a person confirms it on the local admin page. Each device has its own identity and can be revoked separately; revocation also closes its live connections.
+- **Approvals and questions**: `session/control` and `userQuestions/*` are admitted, so the remote side uses the same control path as the local client (end-to-end acceptance still pending).
+- **Directory selection**: the remote side can choose or create a folder through the Host's directory browser to use as a workspace (a narrow Host surface; see below).
+- **No public service dependency**: the relay is self-hostable, and the protocol assumes no school, institutional domain, or specific external service.
 
-### Why the operation fence does not count yet
+## Components
 
-`decide()` in `./gate` lists what a remote client may do — sessions and workspace,
-read-only plus a single `prompt` — and refuses the host management surface
-(pairing, credentials, plugin install, terminal, `workspace:write`). The table is a
-pure function with tests behind it, but **nothing calls it**: `./listener` admits by
-path and never looks at an operation.
+| Component | Location | Role |
+| --- | --- | --- |
+| Host plugin | `src/index.js` | Device registry, Host identity, tunnel, gate, admin page, web-shell snapshot |
+| Relay | `src/relay/relay.js` | Self-hosted; `/host` registration, `/peer` attach, static shell and combo serving, bootstrap injection |
+| Device bootstrap | `deploy/web/bootstrap.js` | Device key, handshake, sealed channel, Gateway mux adapter, recovery |
+| Host admin page | Host loopback web server | List/confirm/revoke/remove devices; per-boot token |
+| Deployment sample | `deploy/` | systemd, Caddy, environment, web-shell mirror script |
 
-The more important point is not that it is unwired, but that **wiring it would not
-take the authority back**. For the phone to get through the host's own door, the
-relay has to hand it the host's launch credential (see "Known trade-offs" below).
-The phone therefore holds a **full host browser session**, and no HTTP relay
-standing in front of it can subtract from what the host has already granted. A real
-fence has to be enforced by the **host**, in its own authorization layer.
+## Security model
 
-So: `decide()` is input for the next stage, not this stage's security boundary. **Do
-not read the existence of the `./gate` export as meaning a remote client cannot
-reach host management.**
+**Trust boundary**: the relay is untrusted. It sees the hostId, connection times, and frame sizes/timing; it **can replace the bootstrap it serves**, so the deployer must be trusted. End-to-end encryption protects against parties other than the relay operator.
 
-## Install
+**Device identity**: the device key lives in browser IndexedDB; the Host identity in `ctx.credentials`; the device registry in a settings row. An unconfirmed device is refused at the gate before any endpoint lookup.
+
+**Operation surface**: `OPERATION_TABLE` in `gate.js` is the only authorization table, and `channel/operations.js` maps Host RPC endpoints to operations. Unknown endpoints are refused as `unknown-operation`; names are never guessed.
+
+| Surface | Admitted | Refused |
+| --- | --- | --- |
+| Agent | `session:list`/`read`/`create`/`prompt`/`cancel`, `workspace:list`/`read`, `artifact:read`/`download`, `settings:read`, read-only model/job catalogs | Everything else |
+| Host (narrow) | `directory:list`, `workspace:create` | Credentials, pairing, plugin install/uninstall, terminal, invitations |
+
+**Revocation** seals the device first and then sweeps; an established long connection is closed, not merely refused on its next request.
+
+**Idempotency**: side-effecting calls carry a client-generated `requestId`, and the Host admits them at most once; the relay does not deduplicate for the Host.
+
+## Install and configure
+
+### 1. Compose the plugin
+
+Add this package to the DSH profile's `dsh.profile.bundles` and configure it in the profile's `cordis.patch.yml`:
+
+```yaml
+- {
+    "id": "remote-access",
+    "config":
+      {
+        enabled: true,
+        devices: [],
+        relay: { url: "wss://<relay-host>/eduwork", hostId: "<host-id>" }
+      }
+  }
+```
+
+The plugin writes `devices` (Host identity and confirmed devices); it normally needs no manual editing. `hostId` is the Host's unique identifier on the relay, and the first registration binds the Host public key.
+
+### 2. Deploy the relay
+
+See [`deploy/README_EN.md`](deploy/README_EN.md): systemd, Caddy, environment, frontend mirror. The remote URL is `https://<relay-host>/eduwork/?h=<hostId>`.
+
+### 3. Confirm the first device
+
+1. The phone opens the URL; the bootstrap creates a device identity and connects to the Host.
+2. The Host log prints `admin page http://127.0.0.1:<port>/remote-access-admin/<token>/`; open it locally and confirm the pending device.
+3. Reload the same tab on the phone; the device becomes trusted, and the workspace list and session history are available.
+
+> The one-time invite (`pairing.js`) is still module-level; the current flow is pending+confirm. The relay access key is not implemented. Do not paste real hostIds, device ids, or workspace paths into public issues or screenshots.
+
+## Known limitations
+
+- **The real invite flow** is not wired; the current flow is pending+confirm.
+- **No relay access key**: knowing the hostId only allows a connection attempt and still requires Host confirmation.
+- **Approvals/questions** lack end-to-end acceptance.
+- **Local directory dialog**: the profile composition was switched for remote directory selection, so the local machine also gets the in-app dialog; restoring native locally is a follow-up.
+- **iOS background** suspends the WebSocket; the current version needs a manual reload. Automatic reconnect is a follow-up.
+- **Single device**: one device per Host at a time.
+- **The bootstrap can be replaced by the relay operator**; deployer trust is a precondition.
+- The preview notice keeps its acknowledgement in process memory for a non-loopback browser and reappears after a refresh.
+
+## Development and testing
 
 ```bash
-npm install @eduwork/dsh-remote-access
+node scripts/build.mjs                  # src -> lib
+node --test test/*.test.mjs             # 309 tests
 ```
 
-The plugin assembles as an ordinary DSH plugin with `inject: ['settings']`, keeps
-its device registry in the `eduwork-remote-access` settings namespace and
-publishes itself to other plugins in the same process through
-`ctx.provide('remoteAccess', …)`.
-
-## Quick start
-
-```js
-import { DeviceStore, createGatedRelay } from '@eduwork/dsh-remote-access/listener'
-import { LiveConnections } from '@eduwork/dsh-remote-access/connections'
-import { emptyCredentials, issueCredential, authenticate } from '@eduwork/dsh-remote-access/credentials'
-import { createInvitation, redeemInvitation } from '@eduwork/dsh-remote-access/pairing'
-import { decide } from '@eduwork/dsh-remote-access/gate'
-
-// 1. Mint a one-time invitation. Only `code` goes to the device; the registry
-//    keeps a digest and nothing else.
-const { invitations, code } = createInvitation(emptyInvitations(), { now: new Date().toISOString() })
-
-// 2. The device redeems it. Consumption happens before validation, so a replay
-//    and a typo leave identical state behind.
-const { invitations: remaining } = redeemInvitation(invitations, code, new Date().toISOString())
-
-// 3. Only a digest is stored; the plaintext secret exists exactly once.
-const { store, secret } = issueCredential(emptyCredentials(), deviceId, new Date().toISOString())
-
-// 4. Verify the credential on every request (constant-time comparison).
-const { ok } = authenticate(store, deviceId, secret, new Date().toISOString())
-
-// 5. Decide whether an operation is allowed (deny by default).
-const verdict = decide(device, 'session:prompt')   // { allowed: true, sideEffect: true }
-
-// 6. Revoke: seal the device first, then sweep — a connection mid-handshake
-//    loses rather than slipping through.
-const live = new LiveConnections()
-live.closeAll(deviceId)
-
-// 7. Put the gate in front of the host, which itself listens only on loopback.
-const relay = createGatedRelay({
-  hostPort: 8901,                       // the host's loopback port
-  store: new DeviceStore('.state/devices.json'),
-  onRequest: async device => confirmInPerson(device),   // a human decides on this machine
-  upstreamToken: () => hostLaunchToken(),
-})
-relay.listen(8899, '0.0.0.0')
-```
-
-## Known trade-offs
-
-**The phone holds the host's own session credential.** For the phone to get through
-the host's door, the relay has to pass on the host's launch credential. This is the
-heaviest trade-off of the stage: what the phone receives is not a trimmed-down set of
-permissions but a **full host browser session**. That, and not whether `./gate` is
-wired, is why the operation fence above does not count.
-
-**The relay does not deduplicate for the host.** A call with a side effect carries a
-client-generated `requestId` straight through, and the host's `hasPromptRequest`
-decides — it covers both the queued-but-not-yet-run window and the already-in-the-
-event-stream one. A second dedup layer here would only be another piece of state that
-can disagree with the host.
-
-**`./gate` is input for the next stage.** Its table is complete and tested, and it is
-what a host-side fence should use. In this stage it is not a security boundary.
-
-**The package carries two places a device can be recorded, and they cannot see each
-other.** `DeviceRegistry` in `./` (`src/index.js`) is the product-facing one: it lives
-in the host's settings and holds **devices only**. `DeviceStore` in `./listener` is the
-one the relay actually consults: a single file holding **devices, credentials and
-invitations together**, so that one revocation cannot leave the first two disagreeing.
-The relay cannot use settings — it runs standalone, with no Cordis host to inject one.
-
-Neither is wrong on its own; what is wrong is treating them as the same table. **A
-device confirmed through one is unknown to the other**, and nothing in this package
-keeps them in step. That obligation belongs to whoever assembles the package into the
-product, not to either store. A test in `test/index.test.mjs` pins the separation: if
-someone later merges them, that test failing is the intended reminder that this
-documentation and the integration contract have to change with it.
-
-## Status
-
-| Part | State |
-| --- | --- |
-| Device registry, one-time pairing, device credentials, live-connection management | **Implemented**, covered by `node --test` |
-| Gated relay (`./listener`): admission, pairing entry and waiting page, per-device revocation | **Implemented**, covered by `node --test` |
-| Operation fence (`./gate`): the decision table itself | **Implemented but unwired** — it has no caller; see above |
-| A host-side enforcement fence, assembly into the product runtime, a standalone Web client, end-to-end encryption | **Planned**, not in this package |
-
-The logic modules perform no I/O: the caller supplies the current time, which is
-what lets the pairing and revocation semantics be tested directly. `./listener`
-is the only module holding a file or a socket, and it leaves storage location,
-listening port and topology to the deployment.
+The tests cover device registry/credentials/pairing/revocation, the gate, handshake, frame sequence, logical streams, relay registration and forwarding, the tunnel, the web-shell snapshot, and the admin page. Real-device acceptance is recorded in the PR description; synthetic tests do not replace real-network or desktop behaviour.
 
 ## Documentation
 
-- [Remote access protocol v1](docs/protocol.md) — the contract between device,
-  relay and host, covering credential separation, the order of the gate, the
-  three actions revocation performs, and the idempotency rules.
+- [Remote access proposal](../../docs/proposals/remote-access/README_EN.md) — public interface, trust boundary, compatibility, and acceptance.
+- [Protocol v2](docs/protocol.md) — the wire protocol between device, relay, and Host.
+- [Relay deployment](deploy/README_EN.md) — self-hosting, Caddy, web-shell mirror, and troubleshooting.
+- [Changelog](CHANGELOG_EN.md).
 
 ## License
 
