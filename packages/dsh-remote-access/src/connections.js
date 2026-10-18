@@ -71,6 +71,14 @@ export class LiveConnections {
     }
   }
 
+  /**
+   * Forget a revocation seal for a device the operator re-confirmed after removal.
+   * A live revocation never calls this; only an explicit re-pairing does.
+   */
+  unseal(deviceId) {
+    this.#sealed.delete(deviceId)
+  }
+
   #detachEntry(entry) {
     if (entry.closed) return false
     entry.closed = true

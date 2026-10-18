@@ -276,9 +276,16 @@ export async function createHostTunnel({
    */
   let sendChain = Promise.resolve()
   const sealAndSend = (payload) => {
+    // Bind the queue entry to the link it was created for. `detachPeer` and a
+    // reconnect replace `session`/`socket`; without this check a frame queued for the
+    // old session could seal with the new session's sequence and either corrupt the
+    // new device's stream or write to a socket that no longer carries it.
+    const boundSession = session
+    const boundSocket = socket
     const run = sendChain.then(async () => {
-      if (session === undefined || socket?.readyState !== 1) return false
-      socket.send(await session.seal(payload))
+      if (boundSession === undefined || boundSession !== session) return false
+      if (boundSocket === undefined || boundSocket !== socket || boundSocket.readyState !== 1) return false
+      boundSocket.send(await boundSession.seal(payload))
       return true
     })
     sendChain = run.then(() => undefined, () => undefined)
@@ -332,25 +339,49 @@ export async function createHostTunnel({
     return true
   }
 
+  /**
+   * Refuse the current device without touching the relay link.
+   *
+   * The relay socket is shared with every other device and with the Host's own
+   * registration, so a bad frame from one device may only drop that device. The relay
+   * has a `drop-peer` control frame for exactly this.
+   */
+  const dropPeer = (reason) => {
+    try {
+      socket?.send(JSON.stringify({ t: 'drop-peer' }))
+    } catch {
+      // The socket is already gone; detaching the device is still correct.
+    }
+    detachPeer(reason)
+  }
+
   /** Sealed frames on an established session: calls and logical streams alike. */
   const handleData = async (bytes) => {
-    if (channel === undefined) return
+    // Capture the channel for this frame. A disconnect can clear the shared
+    // `channel` while `session.open` is awaiting; reading it again afterwards is how
+    // the old code produced "Cannot read properties of undefined (reading 'receive')"
+    // on a reconnect, which then looked like a relay failure.
+    const active = channel
+    if (active === undefined) return
     let text
     try {
       text = new TextDecoder().decode(await session.open(bytes))
     } catch (error) {
-      // A frame that will not authenticate ends the link. There is nothing to
-      // answer: the sender cannot be trusted to read a reply, and continuing would
-      // mean guessing which side lost sync.
+      // A frame that will not authenticate ends *this device's* channel, not the
+      // shared relay link: the sender cannot be trusted to read a reply, and a
+      // pending device must not be able to bounce the Host's registration.
       log(`remote-access: dropping a frame that did not authenticate: ${error.message}`)
-      closeQuietly(socket, 1002, 'frame did not authenticate')
+      dropPeer('frame did not authenticate')
       return
     }
-    // The channel parses and routes; it throws only for a frame that is not JSON,
-    // which the old code answered with a malformed-request refusal. A stream frame
-    // and a call envelope are distinguished there, in one place, rather than by a
-    // second parser here.
-    await channel.receive(text)
+    try {
+      // Routing completes before this returns; a slow Host method is left detached so
+      // that a stream cancel or an approval answer behind it is not stuck in the queue.
+      await active.receive(text, { awaitReply: false })
+    } catch (error) {
+      log(`remote-access: dropping the peer after an invalid frame: ${String(error?.message ?? error)}`)
+      dropPeer('invalid frame')
+    }
   }
 
   const handleHandshake = async (frame) => {
@@ -397,6 +428,10 @@ export async function createHostTunnel({
         // something gets the adapter's at-most-once memory. Reads are cheap to repeat
         // and their answers should reflect the current state.
         const verdict = decide(device, endpoint)
+        if (verdict?.allowed !== true) {
+          // A revocation between the gate and the dispatch must not let the call run.
+          throw new Error(`remote-access: ${endpoint} is no longer allowed`)
+        }
         const response = await dispatch({
           rpcId,
           method: endpoint,
@@ -413,6 +448,9 @@ export async function createHostTunnel({
       },
       open: (endpoint, payload, uplink, peer, signal) => openStream(endpoint, payload, uplink, peer, signal),
       failure: (error) => toWireFailure(error),
+      onDetachedFailure: (error) => {
+        log(`remote-access: a detached call failed: ${String(error?.message ?? error)}`)
+      },
       // The channel hands over one complete text frame, already serialized and in the
       // Gateway's frame vocabulary. Re-parsing it here only to re-seal it would be a
       // round trip through JSON that can lose and cannot gain.
@@ -492,9 +530,18 @@ export async function createHostTunnel({
       liveHandle = undefined
       if (stopped || socket !== current) return
       if (opened && event?.code === 1000) {
-        // The relay closed us deliberately and cleanly. Retrying immediately
-        // would hammer a relay that has already made a decision about us.
-        log(`remote-access: relay closed the connection (${String(event.code)} ${String(event.reason ?? '')})`)
+        // Deliberate replacement by a newer registration of the same host. Reconnecting
+        // would replace that newer instance, and the two would keep kicking each other.
+        log(`remote-access: relay replaced this connection (${String(event.code)} ${String(event.reason ?? '')}); not reconnecting`)
+        stopped = true
+        session = undefined
+        try {
+          channel?.close('replaced by a newer registration')
+        } catch {
+          // Nothing left to close.
+        }
+        channel = undefined
+        return
       }
       session = undefined
       // The channel dies with its session. Its streams were carried by that socket,
@@ -623,6 +670,13 @@ export async function createHostTunnel({
           // Sealed frames are binary — `seal()` returns one byte string, so there
           // is no header to decode and nothing to base64.
           if (session !== undefined) {
+            // After READY the only legal frames are sealed binary. The relay's
+            // `peer-gone` is handled above; any other text frame is a protocol
+            // error from this device, not a relay control frame.
+            if (typeof event.data === 'string') {
+              dropPeer('unexpected text frame after the handshake')
+              return
+            }
             await handleData(toBytes(event.data))
             return
           }

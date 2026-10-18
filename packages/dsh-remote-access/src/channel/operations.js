@@ -102,31 +102,41 @@ export function operationForEndpoint(endpoint) {
  * looking, which is exactly the review this list exists to force. Adding one means
  * editing this comment and this set.
  */
-export const CONNECTION_ENDPOINTS = Object.freeze(new Set([
-  // The forwarded-event stream and its result channel. Both are Gateway-owned; the
-  // result channel is how a client listener answers a Host waterfall.
+export const CONNECTION_ENDPOINTS = Object.freeze([
+  // The forwarded-event stream. Reading it is part of a read-only connection.
   '$events',
+  // The result channel answers a Host waterfall — which is how an approval is granted
+  // or refused. That is a state change, so it needs `session:prompt`, not `session:read`.
   '$events/result',
-]))
+])
 
 /**
  * Decide one inbound call.
  *
- * The order inside `decide` is the security property, and it is preserved here:
- * an unknown or revoked device is refused before the Host endpoint is even
- * looked at, so a device cannot learn which endpoints exist by probing with a
- * credential it does not have.
+ * The device is judged before the operation name is resolved, so an unknown, pending
+ * or revoked device cannot use the returned reason to learn whether a Host endpoint
+ * exists. (The production path also calls `judgeCall` first; this ordering keeps the
+ * unit contract the same as the deployed one.)
  *
  * @returns `{ allowed: true, operation, sideEffect }` or `{ allowed: false, reason }`.
  */
 export function decideEndpoint(device, endpoint) {
-  if (typeof endpoint === 'string' && CONNECTION_ENDPOINTS.has(endpoint.trim())) {
-    // Still gated on the device: a connection endpoint is reachable only by a device
-    // the Host trusts. What it skips is the operation lookup, because there is no
-    // operation to look up.
-    const verdict = decide(device, 'session:read')
-    if (!verdict.allowed) return { allowed: false, reason: verdict.reason }
-    return { allowed: true, operation: endpoint.trim(), sideEffect: false }
+  if (device === undefined || device === null) {
+    return { allowed: false, reason: DENY_REASONS.UNKNOWN_DEVICE }
+  }
+  if (device.status !== 'trusted') {
+    return { allowed: false, reason: DENY_REASONS.NOT_TRUSTED }
+  }
+  if (typeof endpoint === 'string') {
+    const name = endpoint.trim()
+    if (name === '$events') {
+      return { allowed: true, operation: '$events', sideEffect: false }
+    }
+    if (name === '$events/result') {
+      const verdict = decide(device, 'session:prompt')
+      if (!verdict.allowed) return { allowed: false, reason: verdict.reason }
+      return { allowed: true, operation: '$events/result', sideEffect: true }
+    }
   }
   const operation = operationForEndpoint(endpoint)
   if (operation === undefined) {

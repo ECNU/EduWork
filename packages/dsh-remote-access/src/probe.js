@@ -71,6 +71,9 @@ export function probePaths(env = process.env) {
   if (typeof override === 'string' && override.trim() !== '') {
     return [join(override, 'wiring-probe.log')]
   }
+  // The trace is a debugging aid, not a production default: it records host ids,
+  // device ids and settings namespaces, so an operator must opt in explicitly.
+  if (env.EDUWORK_REMOTE_PROBE !== '1') return []
   if (typeof env.NODE_TEST_CONTEXT === 'string' && env.NODE_TEST_CONTEXT !== '') {
     return []
   }

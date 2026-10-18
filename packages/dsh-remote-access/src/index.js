@@ -525,8 +525,12 @@ function startTunnel(ctx, registry, connections) {
         }
         probe('authority', authority)
         if (adminRegistered) {
+          // The per-boot token must not be written to a persistent trace. The operator
+          // reads the URL once from the host's own log; the trace only records that the
+          // page was registered.
           const url = adminUrl(authority, adminToken)
-          probe('admin page', url)
+          probe('admin page', 'registered')
+          console.log(`remote-access: admin page ${url}`)
           announce(`remote-access: device page ${url}`)
         }
 

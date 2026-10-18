@@ -42,7 +42,6 @@ export const OPERATION_SURFACES = Object.freeze(['agent', 'host'])
 export const DEFAULT_AGENT_SURFACE = Object.freeze([
   'session:list',
   'session:read',
-  'session:create',
   'session:prompt',
   'session:cancel',
   'workspace:list',

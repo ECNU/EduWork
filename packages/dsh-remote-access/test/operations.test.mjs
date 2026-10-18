@@ -65,10 +65,20 @@ test('设备先于操作被裁决，未授权设备问不出端点是否存在',
 
   for (const device of [pending, revoked]) {
     assert.deepEqual(decideEndpoint(device, 'session/list'), { allowed: false, reason: 'device-not-trusted' })
-    assert.deepEqual(decideEndpoint(device, 'session/nope'), { allowed: false, reason: 'unknown-operation' })
+    assert.deepEqual(decideEndpoint(device, 'session/nope'), { allowed: false, reason: 'device-not-trusted' })
   }
   assert.deepEqual(decideEndpoint(undefined, 'session/list'), { allowed: false, reason: 'unknown-device' })
   assert.deepEqual(decideEndpoint(null, 'session/list'), { allowed: false, reason: 'unknown-device' })
+})
+
+test('只读设备不能回答审批 waterfall', () => {
+  const readOnly = trustedDevice({ surfaces: { agent: ['session:read'], host: [] } })
+  assert.deepEqual(decideEndpoint(readOnly, '$events'), { allowed: true, operation: '$events', sideEffect: false })
+  const refused = decideEndpoint(readOnly, '$events/result')
+  assert.equal(refused.allowed, false)
+  assert.equal(refused.reason, 'operation-not-granted')
+  const prompt = trustedDevice({ surfaces: { agent: ['session:read', 'session:prompt'], host: [] } })
+  assert.deepEqual(decideEndpoint(prompt, '$events/result'), { allowed: true, operation: '$events/result', sideEffect: true })
 })
 
 test('设备没有拿到的那一项被拒，拿到的才放行', () => {

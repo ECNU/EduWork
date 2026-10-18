@@ -38,8 +38,8 @@ export const SURFACE_HOST = 'host'
  * may be given a **narrow** host grant for the directory browser and workspace
  * registration — what a remote browser needs to choose an existing workspace —
  * and that grant is the device record's own `host` array, never a side effect of
- * the Agent surface. `confirmDevice` still strips the host surface, so this is a
- * deliberate per-device edit rather than something a pairing request can obtain.
+ * the Agent surface. `confirmDevice` grants this narrow default; a record can still
+ * withhold it, and this set remains the code-level upper bound.
  */
 export const HOST_SURFACE_ENABLED = true
 
@@ -52,10 +52,10 @@ export const HOST_SURFACE_ENABLED = true
  * browser and workspace registration are the one concession a remote workspace
  * needs.
  */
-export const HOST_REMOTE_OPERATIONS = Object.freeze(new Set([
+export const HOST_REMOTE_OPERATIONS = Object.freeze([
   'directory:list',
   'workspace:create',
-]))
+])
 
 /**
  * Every operation a remote client may name, and what it needs.
@@ -128,7 +128,7 @@ export function decide(device, operation) {
   // grant the operation; the allowlist is the upper bound.
   if (entry.surface === SURFACE_HOST) {
     if (!HOST_SURFACE_ENABLED) return refuse(REASONS.NOT_GRANTED)
-    if (!HOST_REMOTE_OPERATIONS.has(operation.trim())) return refuse(REASONS.NOT_GRANTED)
+    if (!HOST_REMOTE_OPERATIONS.includes(operation.trim())) return refuse(REASONS.NOT_GRANTED)
   }
   const granted = device.surfaces?.[entry.surface]
   if (!Array.isArray(granted) || !granted.includes(operation.trim())) {

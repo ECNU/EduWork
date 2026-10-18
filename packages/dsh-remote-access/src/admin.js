@@ -116,7 +116,7 @@ button.danger { border-color: #ef4444; color: #ef4444; }
 </head>
 <body>
 <h1>远程访问 · 设备授权</h1>
-<p class="intro">设备第一次连接会以“待确认”出现在这里。确认之后它才能建立端到端信道；撤销会立即断开它当前的活动连接。</p>
+<p class="intro">设备第一次连接会以“待确认”出现在这里。确认之后它才能使用 Agent；未确认的设备无法建立信道。撤销或移除会立即断开它当前的活动连接。</p>
 <div id="state"></div>
 <table>
   <thead><tr><th>设备</th><th>身份</th><th>状态</th><th>操作</th></tr></thead>
@@ -192,7 +192,10 @@ button.danger { border-color: #ef4444; color: #ef4444; }
       status.appendChild(tag)
       tr.appendChild(status)
       tr.appendChild(document.createElement('td'))
-      if (device.status === 'pending') button(tr, '确认', 'primary', 'confirm', device.deviceId)
+      if (device.status === 'pending') {
+        button(tr, '确认', 'primary', 'confirm', device.deviceId)
+        button(tr, '移除', '', 'remove', device.deviceId)
+      }
       if (device.status === 'trusted') {
         button(tr, '撤销', 'danger', 'revoke', device.deviceId)
         button(tr, '移除', '', 'remove', device.deviceId)
@@ -316,7 +319,12 @@ export function registerAdminSurface({ webServer, token, registry, connections, 
     })
   }
 
-  mutate('confirm', deviceId => registry.confirm(deviceId))
+  mutate('confirm', async (deviceId) => {
+    await registry.confirm(deviceId)
+    // A device that was revoked and then removed carries a seal; re-confirming it is
+    // the operator's explicit reset, so it must be able to connect again.
+    connections?.unseal?.(deviceId)
+  })
   mutate('revoke', async (deviceId) => {
     await registry.revoke(deviceId)
     // Revocation is not finished by rewriting the record. Any socket this device
@@ -324,7 +332,12 @@ export function registerAdminSurface({ webServer, token, registry, connections, 
     // stream keep receiving events after the operator withdrew access.
     connections?.closeAll(deviceId)
   })
-  mutate('remove', deviceId => registry.remove(deviceId))
+  mutate('remove', async (deviceId) => {
+    await registry.remove(deviceId)
+    // A removed device must not keep an open stream; closing it here makes "remove"
+    // mean the same thing as "revoke" for the transport.
+    connections?.closeAll(deviceId)
+  })
 
   return () => {
     for (const dispose of disposers.splice(0)) {

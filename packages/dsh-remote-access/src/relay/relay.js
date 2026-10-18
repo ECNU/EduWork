@@ -64,8 +64,10 @@ function loadHosts(path) {
   try {
     const parsed = JSON.parse(readFileSync(path, 'utf8'))
     return new Map(Object.entries(parsed.hosts ?? {}))
-  } catch {
-    return new Map()
+  } catch (error) {
+    // A corrupt or unreadable store is not an empty store: silently starting over
+    // would let the next registration rebind any hostId and bypass TOFU.
+    throw new Error(`relay: cannot read the host store at ${path}: ${error instanceof Error ? error.message : String(error)}`)
   }
 }
 
@@ -80,7 +82,13 @@ function saveHosts(path, hosts) {
 
 /** Resolve a request path inside a root, refusing anything that escapes it. */
 function resolveStatic(root, pathname) {
-  const decoded = decodeURIComponent(pathname)
+  let decoded
+  try {
+    decoded = decodeURIComponent(pathname)
+  } catch {
+    // A malformed percent escape is a bad request, not a reason to take the relay down.
+    return undefined
+  }
   const target = resolve(root, `.${normalize(decoded)}`)
   const boundary = resolve(root) + sep
   if (target !== resolve(root) && !target.startsWith(boundary)) return undefined

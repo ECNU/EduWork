@@ -47,6 +47,7 @@ export const HANDSHAKE_FAILURE = Object.freeze({
   PEER_SIGNATURE: 'peer-signature-invalid',
   DEVICE_UNKNOWN: 'device-unknown',
   DEVICE_REVOKED: 'device-revoked',
+  DEVICE_PENDING: 'device-pending',
 })
 
 function fail(reason) {
@@ -288,6 +289,12 @@ export class HostHandshake {
         throw fail(HANDSHAKE_FAILURE.DEVICE_UNKNOWN)
       }
       if (device.status === 'revoked') throw fail(HANDSHAKE_FAILURE.DEVICE_REVOKED)
+      // A pending device must not establish a channel: the relay has one device slot per
+      // Host, and allowing a pending handshake would let anyone who knows the hostId
+      // occupy it and push the real phone out. The record is still reported to the
+      // operator as pending so it can be confirmed, but the channel only opens after
+      // that confirmation.
+      if (device.status !== 'trusted') throw fail(HANDSHAKE_FAILURE.DEVICE_PENDING)
       if (device.publicKey !== hello.Sh || device.agreementKey !== hello.Xh) {
         throw fail(HANDSHAKE_FAILURE.PEER_SIGNATURE)
       }
