@@ -70,9 +70,9 @@ const Menu = ({ children, selectedId, className, open, anchor, items = [], onSel
  */
 const Modal = ({ open, title, description, children, footer, onClose, className }) => {
   if (!open) return null
-  return h('div', { className: cx('ui-modal', className), style: { position: 'fixed', inset: 0 } },
+  return h('div', { className: cx('ui-modal', className), style: { position: 'fixed', inset: 0, zIndex: 1000, overflowY: 'auto' } },
     h('div', { 'data-backdrop': '', onClick: onClose, style: { position: 'absolute', inset: 0 } }),
-    h('div', { role: 'dialog', 'aria-label': title, style: { position: 'relative' } },
+    h('div', { role: 'dialog', 'aria-label': title, style: { position: 'relative', background: 'white' } },
       title ? h('h2', null, title) : null,
       description ? h('p', null, description) : null,
       children,

@@ -307,7 +307,7 @@ export function apply(ctx) {
         })),
       }
     },
-    presentCall: args => ({ card: 'generic', title: 'Calendar · 读日程', kind: 'read', rawInput: `${args.from ?? ''} – ${args.to ?? ''}`.trim() }),
+    presentCall: args => ({ card: 'generic', title: '日历 · 读日程', kind: 'read', rawInput: `${args.from ?? ''} – ${args.to ?? ''}`.trim() }),
   }))
 
   ctx.tools.register(defineTool({
@@ -339,7 +339,7 @@ export function apply(ctx) {
       })
       return { event: recordFields(await ctx.calendar.putEvent(record)) }
     },
-    presentCall: args => ({ card: 'generic', title: `Calendar · 新建 ${args.title}`, kind: 'write', rawInput: `${args.start ?? ''} ${args.title ?? ''}`.trim() }),
+    presentCall: args => ({ card: 'generic', title: `日历 · 新建 ${args.title}`, kind: 'write', rawInput: `${args.start ?? ''} ${args.title ?? ''}`.trim() }),
   }))
 
   ctx.tools.register(defineTool({
@@ -366,7 +366,7 @@ export function apply(ctx) {
       if (!existing) throw new Error(`没有 uid 为 ${args.uid} 的日程`)
       return { event: recordFields(await ctx.calendar.putEvent(updatedRecord(existing, args))) }
     },
-    presentCall: args => ({ card: 'generic', title: 'Calendar · 改日程', kind: 'write', rawInput: args.uid }),
+    presentCall: args => ({ card: 'generic', title: '日历 · 改日程', kind: 'write', rawInput: args.uid }),
   }))
 
   ctx.tools.register(defineTool({
@@ -388,7 +388,7 @@ export function apply(ctx) {
       const { removed } = await ctx.calendar.deleteEvent({ uid: args.uid, source: args.source ?? MANUAL_SOURCE })
       return { uid: args.uid, removed }
     },
-    presentCall: args => ({ card: 'generic', title: 'Calendar · 删除日程', kind: 'write', rawInput: args.uid }),
+    presentCall: args => ({ card: 'generic', title: '日历 · 删除日程', kind: 'write', rawInput: args.uid }),
   }))
 
   ctx.tools.register(defineTool({
@@ -422,7 +422,7 @@ export function apply(ctx) {
       if (args.action === 'cancel') return { event: recordFields(await ctx.calendar.cancelOccurrence(input)) }
       return { event: recordFields(await ctx.calendar.restoreOccurrence(input)) }
     },
-    presentCall: args => ({ card: 'generic', title: `Calendar · ${args.action} 单次`, kind: 'write', rawInput: `${args.date ?? ''} ${args.uid ?? ''}`.trim() }),
+    presentCall: args => ({ card: 'generic', title: `日历 · ${args.action} 单次`, kind: 'write', rawInput: `${args.date ?? ''} ${args.uid ?? ''}`.trim() }),
   }))
 
   const noteIdentity = {
@@ -445,7 +445,7 @@ export function apply(ctx) {
       return {notes:records.filter(r=>r.note?.text!==undefined).filter(r=>(args.source===undefined||r.source===args.source)&&(args.uid===undefined||r.uid===args.uid)&&(args.originalStart===undefined||r.originalStart===args.originalStart))
         .map(r=>({source:r.source,uid:r.uid,text:r.note?.text ?? '',...(r.originalStart?{originalStart:r.originalStart}:{}),...(r.reason?{reason:r.reason}:{})}))}
     },
-    presentCall:()=>({card:'generic',title:'Calendar · 读笔记',kind:'read'}),
+    presentCall:()=>({card:'generic',title:'日历 · 读笔记',kind:'read'}),
   }))
   ctx.tools.register(defineTool({
     name:'calendar_put_note',
@@ -457,7 +457,7 @@ export function apply(ctx) {
       if(text==='') {await ctx.calendar.removeNote({...ref,scope:'source'});return {saved:false}}
       await ctx.calendar.putNote({...ref,scope:'source',text});return {saved:true}
     },
-    presentCall:args=>({card:'generic',title:'Calendar · 写笔记',kind:'write',rawInput:args.text}),
+    presentCall:args=>({card:'generic',title:'日历 · 写笔记',kind:'write',rawInput:args.text}),
   }))
   ctx.tools.register(defineTool({
     name:'calendar_remove_note',
@@ -465,7 +465,7 @@ export function apply(ctx) {
     parameters:noteIdentity,
     output:{schema:{type:'object',additionalProperties:false,properties:{removed:{type:'boolean',required:true}}},render:(_args,v)=>[{type:'text',text:v.removed?'已删除笔记。':'这次日程没有笔记。'}]},
     execute:args=>ctx.calendar.removeNote({...args,scope:'source'}),
-    presentCall:()=>({card:'generic',title:'Calendar · 清空笔记',kind:'write'}),
+    presentCall:()=>({card:'generic',title:'日历 · 清空笔记',kind:'write'}),
   }))
 
   const patchSchema = personalToolSchema(z.toJSONSchema(PersonalPatchSchema))
@@ -483,7 +483,7 @@ export function apply(ctx) {
       const { legacyExtensions, ...settings } = ctx.calendar.personalFor({ ...args, scope: 'source' })
       return { settings, ...(legacyExtensions ? { legacyExtensions: JSON.stringify(legacyExtensions) } : {}) }
     },
-    presentCall: () => ({ card: 'generic', title: 'Calendar · 读个人设置', kind: 'read' }),
+    presentCall: () => ({ card: 'generic', title: '日历 · 读个人设置', kind: 'read' }),
   }))
   ctx.tools.register(defineTool({
     name: 'calendar_personal_settings',
@@ -496,7 +496,7 @@ export function apply(ctx) {
       const { legacyExtensions, ...settings } = ctx.calendar.personalFor({ ...ref, scope: 'source' })
       return { settings, ...(legacyExtensions ? { legacyExtensions: JSON.stringify(legacyExtensions) } : {}) }
     },
-    presentCall: () => ({ card: 'generic', title: 'Calendar · 改个人设置', kind: 'write' }),
+    presentCall: () => ({ card: 'generic', title: '日历 · 改个人设置', kind: 'write' }),
   }))
 
 }

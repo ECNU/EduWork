@@ -89,6 +89,41 @@ async function withCalendar(root, body) {
 
 const SOURCE = 'ecnu:timetable'
 
+test('deleting an imported calendar removes only its events and keeps private notes across restart', { skip: !runtime }, async () => {
+  await withRoot('calendar-delete-source-', async root => {
+    await withCalendar(root, async calendar => {
+      for (const source of ['imported-a', 'imported-b', 'manual']) {
+        await calendar.putEvent({ source, uid: 'shared', title: source, start: '2026-10-19T09:00' })
+      }
+      await calendar.putNote({ source: 'imported-a', uid: 'shared', text: 'Keep my note' })
+      await calendar.applyOverride({ source: 'imported-a', uid: 'shared', date: '2026-10-19', patch: { start: '2026-10-19T10:00' } })
+      assert.deepEqual(await calendar.deleteCalendar({ source: 'imported-a' }), { removedEvents: 1 })
+      assert.deepEqual(await calendar.deleteCalendar({ source: 'imported-a' }), { removedEvents: 0 })
+      assert.deepEqual(calendar.snapshot().events.map(e => e.source).sort(), ['imported-b', 'manual'])
+      assert.equal(calendar.unlinkedNotes()[0].note.text, 'Keep my note')
+    })
+    await withCalendar(root, async calendar => {
+      assert.equal(calendar.getEvent({ source: 'imported-a', uid: 'shared' }), undefined)
+      assert.equal(calendar.notes({ source: 'imported-a' })[0].note.text, 'Keep my note')
+      await calendar.putEvent({ source: 'imported-a', uid: 'shared', title: 'Reimported', start: '2026-10-19T09:00' })
+      assert.equal(calendar.occurrences({ from: '2026-10-19', to: '2026-10-19' }).occurrences.find(e => e.source === 'imported-a').start, '2026-10-19T09:00')
+    })
+  })
+})
+
+test('whole-calendar deletion rejects default and managed calendars without changing them', { skip: !runtime }, async () => {
+  await withRoot('calendar-delete-guard-', async root => withCalendar(root, async calendar => {
+    const handle = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })
+    await handle.apply({ events: [{ uid: 'same', title: 'Managed', start: '2026-10-19' }] })
+    await calendar.putEvent({ uid: 'same', title: 'Personal', start: '2026-10-19' })
+    const before = calendar.snapshot()
+    for (const source of [undefined, '', ' ', 'manual', handle.source]) {
+      await assert.rejects(calendar.deleteCalendar({ source }), /不能删除|请选择/)
+    }
+    assert.deepEqual(calendar.snapshot(), before)
+  }))
+})
+
 test('file and legacy snapshot imports cannot bypass a managed source writer', { skip: !runtime }, async () => {
   await withRoot('calendar-managed-import-', async root => withCalendar(root, async calendar => {
     const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar' })

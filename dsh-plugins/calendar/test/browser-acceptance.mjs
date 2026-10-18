@@ -331,7 +331,7 @@ async function withBrowser(calendar, panel, methods, body) {
 
 const METHODS = [
   'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applySource', 'applyOverride', 'removeOverride',
-  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses',
+  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses',
 ]
 
 const panel = await bundlePanel()
@@ -956,6 +956,49 @@ await acceptance('整门课笔记、单次覆盖、恢复默认和提醒设置�
       await poll(async () => calendar.personalFor(ref).note?.text, 'Every class note', 'restore the default')
       await page.getByRole('dialog').getByText(/我的笔记\s*Every class note/).waitFor({ timeout: 3000 })
       assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'relative', minutes: 15 })
+    })
+  }))
+})
+
+await acceptance('同步日历用可读名称显示，内部来源不暴露为名称', async () => {
+  await withRoot('eduwork-browser-source-label-', async root => withCalendar(root, async calendar => {
+    const handle = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'calendar', label: '学校校历' })
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, errors }) => {
+      const day = await dayInWeek(1)
+      await handle.apply({ events: [{ uid: 'label', title: '可读名称课程', start: `${day}T09:00`, end: `${day}T10:00` }] })
+      await page.getByRole('group', { name: '筛选日历' }).getByRole('button', { name: '学校校历', exact: true }).waitFor({ timeout: 3000 })
+      assert.equal(await page.getByRole('button', { name: '删除所选日历', exact: true }).count(), 0)
+      await page.getByRole('button', { name: /09:00.*可读名称课程/ }).click()
+      await page.getByText('日历：学校校历', { exact: true }).waitFor({ timeout: 3000 })
+      assert.ok(!(await page.locator('body').innerText()).includes(handle.source))
+      await page.getByRole('button', { name: '关闭', exact: true }).click()
+      await page.getByRole('button', { name: '导入', exact: true }).click()
+      assert.equal(await page.locator('#calendar-import-names option').count(), 0, 'managed calendars cannot be file import targets')
+      assert.deepEqual(errors, [])
+    })
+    handle.dispose()
+  }))
+})
+
+await acceptance('删除导入日历须确认，可取消，删除后其他日历与笔记保留', async () => {
+  await withRoot('eduwork-browser-delete-calendar-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek, call, errors }) => {
+      const day = await dayInWeek(1)
+      for (const source of ['导入A', '导入B', 'manual']) await call('putEvent', { source, uid: 'shared', title: source, start: `${day}T09:00` })
+      await call('putNote', { source: '导入A', uid: 'shared', text: '保留我的笔记' })
+      const filters = page.getByRole('group', { name: '筛选日历' })
+      await filters.getByRole('button', { name: '导入A', exact: true }).click()
+      await page.getByRole('button', { name: '删除所选日历', exact: true }).click({ timeout: 3000 })
+      await page.getByRole('dialog').getByRole('button', { name: '取消', exact: true }).click()
+      assert.equal(calendar.snapshot().events.length, 3)
+      await page.getByRole('button', { name: '删除所选日历', exact: true }).click()
+      await page.getByRole('dialog').getByRole('button', { name: '删除日历', exact: true }).click()
+      await poll(async () => calendar.snapshot().events.map(e => e.source).sort(), ['manual', '导入B'].sort(), 'only the chosen calendar is removed')
+      await poll(() => filters.getByRole('button', { name: '导入A', exact: true }).count(), 0, 'deleted calendar filter disappears')
+      assert.equal(calendar.unlinkedNotes()[0].note.text, '保留我的笔记')
+      await filters.getByRole('button', { name: '个人日程', exact: true }).click()
+      assert.equal(await page.getByRole('button', { name: '删除所选日历', exact: true }).count(), 0)
+      assert.deepEqual(errors, [])
     })
   }))
 })

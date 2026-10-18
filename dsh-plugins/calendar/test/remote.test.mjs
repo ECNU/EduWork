@@ -56,7 +56,7 @@ test('host and client faces describe the same calendar methods', { skip: !runtim
   assert.deepEqual(shape(client.descriptors), shape(host.invocations))
   assert.deepEqual(host.invocations.map(descriptor => descriptor.method), [
     'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'putEvent',
-    'deleteEvent', 'applyOverride', 'removeOverride', 'cancelOccurrence', 'restoreOccurrence',
+    'deleteEvent', 'deleteCalendar', 'applyOverride', 'removeOverride', 'cancelOccurrence', 'restoreOccurrence',
     'applySource', 'putNote', 'removeNote', 'notes', 'changes', 'personalFor', 'sourceStatuses', 'setPersonal', 'unlinkedNotes',
   ])
 })

@@ -281,7 +281,7 @@ test('writes ask first, unless the session already runs without approvals', { sk
     return { decision, continued }
   }
   assert.deepEqual(await decide('standard', { name: 'calendar_create_event', agent }), {
-    decision: { kind: 'ask', reason: 'Allow the Agent to create, change or delete entries in the local calendar' },
+    decision: { kind: 'ask', reason: '允许智能体在本地日历中创建、修改或删除日程及个人设置' },
     continued: 0,
   })
   assert.deepEqual(await decide('danger-full-access', { name: 'calendar_delete_event', agent }), { decision: undefined, continued: 1 })

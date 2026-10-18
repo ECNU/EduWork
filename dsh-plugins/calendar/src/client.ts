@@ -23,7 +23,7 @@
 // same in both; each icon is resolved from whichever set is loaded, so the panel
 // draws on either runtime instead of importing a name one of them lacks.
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Button, Input, Menu, Modal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Button, Input, Menu, Modal as PrimitiveModal, Switch, Tag, Toast, Tooltip, writeClipboard } from '@deepseek-ai/dsh-client-ui-primitives'
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
@@ -92,6 +92,19 @@ const HAIRLINE = '.5px solid var(--dsw-alias-border-l1, #00000014)'
 const CARD_BORDER = '1px solid var(--dsw-alias-border-l2, #0000001f)'
 const LAYER = 'var(--dsw-alias-bg-layer-2, #f6f6f6)'
 const HOVER = 'var(--dsw-alias-interactive-bg-hover, #0000000a)'
+
+/** The shared Modal leaves its size and scrolling to the consuming surface. */
+function Modal({ children, className, contentClassName, ...props }: React.ComponentProps<typeof PrimitiveModal>) {
+  return React.createElement(PrimitiveModal, {
+    ...props,
+    className: ['eduwork-calendar-dialog', className].filter(Boolean).join(' '),
+    contentClassName: ['eduwork-calendar-dialog-content', contentClassName].filter(Boolean).join(' '),
+  }, React.createElement('style', null, `
+    .eduwork-calendar-dialog { width: min(640px, 100%); max-height: 100%; }
+    .eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }
+    .eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }
+  `), children)
+}
 
 /** The hues a source is drawn in, as the product's static palette names; the fallbacks are for themes without them. */
 const TINTS: Record<string, string> = { blue: '#4d6bfe', amber: '#d99a2b', green: '#2f9e68', deepseek: '#4d6bfe', red: '#d4553f' }
@@ -173,6 +186,10 @@ function withoutEmpty(input: Record<string, unknown>) {
 }
 
 const messageOf = (error: unknown) => (error instanceof Error ? error.message : String(error))
+
+/** Keep stable source identifiers out of display names, including account hashes. */
+const calendarLabel = (source: string, statuses: any[] = []) => source === 'manual' ? '个人日程'
+  : statuses.find(item => item.source === source)?.label || (source?.startsWith('sync:') ? '同步日历' : source)
 
 /** Unwrap one remote result: the gateway answers with `{ ok, value }` or `{ ok, error }`. */
 async function unwrap(operation: any) {
@@ -586,7 +603,7 @@ function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
 }
 
 /** The details of one occurrence, and every change the panel can make to it. */
-function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }: any) {
+function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, sourceName }: any) {
   const [editing, setEditing] = useState(false)
   const [confirming, setConfirming] = useState(false)
   const [form, setForm] = useState({
@@ -708,7 +725,7 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }:
     occurrence.description
       ? React.createElement('div', null,
         React.createElement(Muted, { style: { display: 'block', marginBottom: 2 } },
-          event?.source && event.source !== 'manual' ? `日历备注（${event.source}）` : '日程备注'),
+          event?.source && event.source !== 'manual' ? `日历备注（${sourceName(event.source)}）` : '日程备注'),
         React.createElement('div', { style: { fontSize: 12, color: SECONDARY, whiteSpace: 'pre-wrap' } }, occurrence.description))
       : undefined,
     // The reader's note about this class. It follows the class when the school
@@ -751,7 +768,7 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }:
         noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
       : undefined,
     showPersonal ? React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field }) : undefined,
-    event?.source ? React.createElement('div', null, React.createElement(Muted, null, `日历：${event.source === 'manual' ? '个人日程' : event.source}`)) : undefined,
+    event?.source ? React.createElement('div', null, React.createElement(Muted, null, `日历：${sourceName(event.source)}`)) : undefined,
     editing
       ? React.createElement('div', {
         style: { marginTop: 4, padding: 12, borderRadius: 10, background: LAYER, display: 'flex', flexDirection: 'column', gap: 10 },
@@ -1282,7 +1299,7 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
  * Wide panels show both at once; a narrow one stacks them, because the panel
  * width is the reader's, not ours.
  */
-function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }: any) {
+function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy, sourceName }: any) {
   const [draft, setDraft] = useState(() => draftOf(event))
   const [problem, setProblem] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
@@ -1328,7 +1345,7 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     React.createElement('strong', { style: { fontSize: 13 } }, '日程信息'),
     React.createElement('span', { style: { flex: '1 1 auto' } }),
     event.recurrence ? React.createElement(Tag, { tone: 'outline' }, seriesSummary(event)) : undefined,
-    event.source ? React.createElement(Muted, null, event.source) : undefined),
+    event.source ? React.createElement(Muted, null, sourceName(event.source)) : undefined),
   React.createElement(EventForm, { draft, onChange: setDraft, sourceOwned: event.source !== 'manual' }),
   React.createElement(PersonalSettings, { identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false }),
   React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
@@ -1444,6 +1461,7 @@ export function createCalendarPage(service: any) {
     const [busy, setBusy] = useState(false)
 
     const events = snapshot?.events ?? []
+    const sourceName = (source: string) => calendarLabel(source, sourceStatuses)
     useEffect(() => {
       if (snapshot && calendarSource !== '*' && !snapshot.events.some((event: any) => event.source === calendarSource)) setCalendarSource('*')
     }, [snapshot, calendarSource])
@@ -1560,13 +1578,13 @@ export function createCalendarPage(service: any) {
     const title = view.kind === 'week' ? '我的日历' : (current?.title ?? '日程')
     const subtitle = view.kind === 'week'
       ? displayMode === 'month' ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条`
-      : [current?.location, current?.source === 'manual' ? '个人日程' : current?.source, current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
+      : [current?.location, sourceName(current?.source), current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
 
     const menuItems = events.length === 0
       ? [{ type: 'label' as const, id: 'none', text: '还没有日程' }]
       : events.map((event: any) => ({
         id: `${event.source}\u0000${event.uid}`,
-        label: `${event.source === 'manual' ? event.title : `${event.title}（${event.source}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ''}`,
+        label: `${event.source === 'manual' ? event.title : `${event.title}（${sourceName(event.source)}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ''}`,
         icon: React.createElement(IconClock),
       }))
 
@@ -1675,7 +1693,10 @@ export function createCalendarPage(service: any) {
           key: source, size: 'sm', variant: calendarSource === source ? 'outline' : 'ghost', 'aria-pressed': calendarSource === source,
           onClick: () => setCalendarSource(source), style: { whiteSpace: 'nowrap', borderRadius: 20 },
         }, source !== '*' ? React.createElement('span', { 'aria-hidden': true, style: { display: 'inline-block', width: 7, height: 7, borderRadius: '50%', background: tintOf(source).accent, marginRight: 6 } }) : undefined,
-        source === '*' ? '全部日历' : source === 'manual' ? '个人日程' : source)))
+        source === '*' ? '全部日历' : sourceName(source))),
+        calendarSource !== '*' && calendarSource !== 'manual' && !calendarSource.startsWith('sync:')
+          ? React.createElement(Button, { size: 'sm', variant: 'ghost', disabled: busy, onClick: () => setDialog({ kind: 'delete-calendar', source: calendarSource }), style: { marginLeft: 'auto', whiteSpace: 'nowrap' } }, '删除所选日历')
+          : undefined)
       : undefined,
     problem
       ? React.createElement('div', {
@@ -1699,6 +1720,7 @@ export function createCalendarPage(service: any) {
         })
       : React.createElement(EventPage, {
         event: current,
+        sourceName,
         service, run,
         agenda,
         noteIndex,
@@ -1716,6 +1738,7 @@ export function createCalendarPage(service: any) {
     dialog?.kind === 'event'
       ? React.createElement(EventDialog, {
         occurrence: selectedOccurrence,
+        sourceName,
         event: events.find((item: any) =>
       item.uid === dialog.occurrence?.uid && item.source === dialog.occurrence?.source),
         note: occurrenceNote(noteIndex, dialog.occurrence),
@@ -1740,11 +1763,22 @@ export function createCalendarPage(service: any) {
       ? React.createElement(ImportDialog, {
         initialText: dialog.text,
         initialName: dialog.name,
-        calendars: [...new Set(events.map((event: any) => event.source).filter((name: any) => name && name !== 'manual'))],
+        calendars: [...new Set(events.map((event: any) => event.source).filter((name: any) => name && name !== 'manual' && !name.startsWith('sync:')))],
         service,
         run,
         onClose: () => { setDialog(null); void refresh() },
       })
+      : undefined,
+    dialog?.kind === 'delete-calendar'
+      ? React.createElement(Modal, {
+        open: true, title: '删除导入日历', closeLabel: '关闭', onClose: () => { if (!busy) setDialog(null) },
+        footer: React.createElement('div', { style: { display: 'flex', justifyContent: 'flex-end', gap: 8 } },
+          React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setDialog(null) }, '取消'),
+          React.createElement(Button, { variant: 'primary', size: 'sm', disabled: busy, style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+            onClick: () => run(() => service.deleteCalendar({ source: dialog.source }), '已删除导入日历，私人笔记与备注已保留').then(ok => { if (ok) { setDialog(null); setCalendarSource('*') } }),
+          }, busy ? '正在删除…' : '删除日历')),
+      }, React.createElement('p', null, `确定删除“${sourceName(dialog.source)}”及其中的全部日程？`),
+      React.createElement('p', null, '私人笔记、备注和提醒设置会保留，可通过智能体查看失联笔记。重新导入同一日历后，仍可关联到同编号的日程。'))
       : undefined,
     dialog?.kind === 'export'
       ? React.createElement(ExportDialog, { service, toast: setToast, onClose: () => setDialog(null) })
@@ -1822,6 +1856,7 @@ export async function apply(ctx: any) {
       cancelOccurrence: call('cancelOccurrence'),
       restoreOccurrence: call('restoreOccurrence'),
       deleteEvent: call('deleteEvent'),
+      deleteCalendar: call('deleteCalendar'),
       putEvent: call('putEvent'),
       applySource: call('applySource'),
       putNote: call('putNote'),

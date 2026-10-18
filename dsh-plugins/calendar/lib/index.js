@@ -215,6 +215,14 @@ export class CalendarService extends TypertRemoteService {
     return { removed: await this.store.deleteEvent(input.uid, input.source) }
   }
 
+  /** Remove an imported calendar, retaining the user's annotations for recovery. */
+  async deleteCalendar(input) {
+    const source = input?.source
+    if (typeof source !== 'string' || !source.trim()) throw new Error('请选择要删除的导入日历')
+    if (source === 'manual' || source.startsWith('sync:')) throw new Error('不能删除个人默认日历或学校同步日历')
+    return this.store.deleteCalendar(source)
+  }
+
   /**
    * Move, rename or relocate one date a series produces.
    * @param input - `{ uid, date, patch, source? }`: the series, the date it
@@ -429,6 +437,10 @@ Remote('snapshot')(CalendarService.prototype.snapshot, {
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 
+Remote('deleteCalendar')(CalendarService.prototype.deleteCalendar, {
+  kind: 'method', name: 'deleteCalendar', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
 
 Remote('occurrences')(CalendarService.prototype.occurrences, {
   kind: 'method', name: 'occurrences', static: false, private: false,

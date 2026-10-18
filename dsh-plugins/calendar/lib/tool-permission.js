@@ -17,7 +17,7 @@ export const WRITE_TOOLS = new Set([
   'calendar_personal_settings',
 ])
 
-const WRITE_REASON = 'Allow the Agent to create, change or delete entries in the local calendar'
+const WRITE_REASON = '允许智能体在本地日历中创建、修改或删除日程及个人设置'
 
 /**
  * Decide one calendar tool call.
@@ -28,7 +28,7 @@ const WRITE_REASON = 'Allow the Agent to create, change or delete entries in the
  */
 export function decideCalendarPermission(ctx, exec, next) {
   if (!WRITE_TOOLS.has(exec.name)) return next()
-  if (!exec.agent) return Promise.resolve({ kind: 'deny', reason: 'Calendar writes require an Agent-backed session' })
+  if (!exec.agent) return Promise.resolve({ kind: 'deny', reason: '日历写入需要关联智能体会话' })
   if (ctx.permissionPresets.current(exec.agent.session) === 'danger-full-access') return next()
   return Promise.resolve({ kind: 'ask', reason: WRITE_REASON })
 }

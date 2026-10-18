@@ -77,7 +77,7 @@ async function withCalendar(root, body) {
     assert.ok(ctx.calendar, 'the service is reachable as ctx.calendar')
     // Only marked methods may cross to the client half.
     assert.deepEqual(typert.remoteMethods(ctx.calendar).map(marker => marker.method), [
-      'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applyOverride',
+      'snapshot', 'deleteCalendar', 'occurrences', 'importIcs', 'exportIcs', 'applyOverride',
       'removeOverride', 'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'putEvent',
       'applySource', 'putNote', 'removeNote', 'notes', 'unlinkedNotes', 'changes', 'setPersonal', 'personalFor', 'sourceStatuses',
     ])

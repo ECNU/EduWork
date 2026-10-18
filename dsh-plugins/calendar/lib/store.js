@@ -344,6 +344,22 @@ export class CalendarStore {
     })
   }
 
+  /** Remove one imported calendar in the shared write queue. Personal data and
+   * revision receipts survive: removing a calendar must not reset stale-update protection. */
+  async deleteCalendar(source) {
+    return this.enqueueWrite(async () => {
+      const { events, localDates } = this.requireTables()
+      let removedEvents = 0
+      for (const [key, event] of events.entries()) {
+        if (event.source !== source) continue
+        await events.delete(key)
+        await localDates.delete(key)
+        ++removedEvents
+      }
+      return { removedEvents }
+    })
+  }
+
   /**
    * Record a per-date change to a series — the `RECURRENCE-ID` case: the
    * occurrence the series produces on `date` is moved, renamed or relocated.

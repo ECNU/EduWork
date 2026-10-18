@@ -14,11 +14,16 @@
     "./remote": "./lib/typert.remote-client.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib/**/*.js", "README.md", "README_EN.md"],
+  "files": [
+    "lib/**/*.js",
+    "README.md",
+    "README_EN.md"
+  ],
   "scripts": {
     "build:client": "node ./build-client.mjs",
     "test": "node --check lib/client.js && node test/support/bundle-panel.mjs && node --test test/*.test.mjs",
-    "test:browser": "node test/browser-acceptance.mjs"
+    "test:browser": "node test/browser-acceptance.mjs",
+    "test:desktop": "node test/desktop-acceptance.mjs"
   },
   "dsh": {
     "client": {
@@ -35,7 +40,10 @@
   "chatecnuWork": {
     "schemaVersion": 1,
     "kind": "ui-extension",
-    "uses": ["sidebar.panellist", "main"],
+    "uses": [
+      "sidebar.panellist",
+      "main"
+    ],
     "replaces": [],
     "removable": true
   },

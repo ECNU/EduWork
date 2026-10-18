@@ -4565,6 +4565,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const cancelParameter = jsonParameter("cancelOccurrence", "input", occurrenceInput);
 		const restoreParameter = jsonParameter("restoreOccurrence", "input", occurrenceInput);
 		const deleteEventParameter = jsonParameter("deleteEvent", "input", uidInput);
+		const deleteCalendarParameter = jsonParameter("deleteCalendar", "input", object({ source: string().trim().min(1) }).strict());
+		const deleteCalendarResult = result("@eduwork/dsh-calendar#CalendarDeletion", object({ removedEvents: number().int().nonnegative() }).strict());
 		const eventParameter = jsonParameter("putEvent", "event", EventSchema);
 		const applySourceParameter = jsonParameter("applySource", "input", applySourceInput);
 		const putNoteParameter = jsonParameter("putNote", "input", noteInput);
@@ -4641,23 +4643,24 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				descriptor("exportIcs", 170, [exportParameter], exportResult),
 				descriptor("putEvent", 193, [eventParameter], eventResult),
 				descriptor("deleteEvent", 214, [deleteEventParameter], removalResult),
-				descriptor("applyOverride", 224, [overrideParameter], eventResult),
-				descriptor("removeOverride", 233, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 242, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 251, [restoreParameter], eventResult),
-				descriptor("applySource", 313, [applySourceParameter], applySourceResult),
-				descriptor("putNote", 356, [putNoteParameter], noteResult),
-				descriptor("removeNote", 370, [removeNoteParameter], removalResult),
-				descriptor("notes", 379, [notesParameter], notesResult),
+				descriptor("deleteCalendar", 219, [deleteCalendarParameter], deleteCalendarResult),
+				descriptor("applyOverride", 232, [overrideParameter], eventResult),
+				descriptor("removeOverride", 241, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 250, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 259, [restoreParameter], eventResult),
+				descriptor("applySource", 321, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 364, [putNoteParameter], noteResult),
+				descriptor("removeNote", 378, [removeNoteParameter], removalResult),
+				descriptor("notes", 387, [notesParameter], notesResult),
 				Object.freeze({
-					...descriptor("changes", 279, [], changeResult),
+					...descriptor("changes", 287, [], changeResult),
 					mode: "stream",
 					cancellation: { parameter: "signal" }
 				}),
-				descriptor("personalFor", 332, [personalReadParameter], personalReadResult),
+				descriptor("personalFor", 340, [personalReadParameter], personalReadResult),
 				descriptor("sourceStatuses", 81, [], sourceStatusesResult),
-				descriptor("setPersonal", 326, [personalParameter], personalResult),
-				descriptor("unlinkedNotes", 399, [unlinkedNotesParameter], unlinkedNotesResult)
+				descriptor("setPersonal", 334, [personalParameter], personalResult),
+				descriptor("unlinkedNotes", 407, [unlinkedNotesParameter], unlinkedNotesResult)
 			])
 		};
 		//#endregion
@@ -5303,6 +5306,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const CARD_BORDER = "1px solid var(--dsw-alias-border-l2, #0000001f)";
 		const LAYER = "var(--dsw-alias-bg-layer-2, #f6f6f6)";
 		const HOVER = "var(--dsw-alias-interactive-bg-hover, #0000000a)";
+		/** The shared Modal leaves its size and scrolling to the consuming surface. */
+		function Modal({ children, className, contentClassName, ...props }) {
+			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+				...props,
+				className: ["eduwork-calendar-dialog", className].filter(Boolean).join(" "),
+				contentClassName: ["eduwork-calendar-dialog-content", contentClassName].filter(Boolean).join(" ")
+			}, react.default.createElement("style", null, `
+    .eduwork-calendar-dialog { width: min(640px, 100%); max-height: 100%; }
+    .eduwork-calendar-dialog-content { min-height: 0; overflow-y: auto; }
+    .eduwork-calendar-dialog > :not(.eduwork-calendar-dialog-content) { flex-shrink: 0; }
+  `), children);
+		}
 		/** The hues a source is drawn in, as the product's static palette names; the fallbacks are for themes without them. */
 		const TINTS = {
 			blue: "#4d6bfe",
@@ -5388,6 +5403,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return output;
 		}
 		const messageOf = (error) => error instanceof Error ? error.message : String(error);
+		/** Keep stable source identifiers out of display names, including account hashes. */
+		const calendarLabel = (source, statuses = []) => source === "manual" ? "个人日程" : statuses.find((item) => item.source === source)?.label || (source?.startsWith("sync:") ? "同步日历" : source);
 		/** Unwrap one remote result: the gateway answers with `{ ok, value }` or `{ ok, error }`. */
 		async function unwrap(operation) {
 			const result = await operation;
@@ -5884,7 +5901,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, axisRow));
 		}
 		/** The details of one occurrence, and every change the panel can make to it. */
-		function EventDialog({ occurrence, event, note, service, onClose, run, onEdit }) {
+		function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, sourceName }) {
 			const [editing, setEditing] = (0, react.useState)(false);
 			const [confirming, setConfirming] = (0, react.useState)(false);
 			const [form, setForm] = (0, react.useState)({
@@ -6003,7 +6020,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				style: { color: "var(--dsw-alias-state-error-primary, #d4553f)" },
 				onClick: () => setConfirming(true)
 			}, "删除日程"));
-			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+			return react.default.createElement(Modal, {
 				open: true,
 				onClose,
 				title: occurrence.title,
@@ -6038,7 +6055,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, `地点：${occurrence.location}`) : void 0, occurrence.description ? react.default.createElement("div", null, react.default.createElement(Muted, { style: {
 				display: "block",
 				marginBottom: 2
-			} }, event?.source && event.source !== "manual" ? `日历备注（${event.source}）` : "日程备注"), react.default.createElement("div", { style: {
+			} }, event?.source && event.source !== "manual" ? `日历备注（${sourceName(event.source)}）` : "日程备注"), react.default.createElement("div", { style: {
 				fontSize: 12,
 				color: SECONDARY,
 				whiteSpace: "pre-wrap"
@@ -6109,7 +6126,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				service,
 				run,
 				Field
-			}) : void 0, event?.source ? react.default.createElement("div", null, react.default.createElement(Muted, null, `日历：${event.source === "manual" ? "个人日程" : event.source}`)) : void 0, editing ? react.default.createElement("div", { style: {
+			}) : void 0, event?.source ? react.default.createElement("div", null, react.default.createElement(Muted, null, `日历：${sourceName(event.source)}`)) : void 0, editing ? react.default.createElement("div", { style: {
 				marginTop: 4,
 				padding: 12,
 				borderRadius: 10,
@@ -6237,7 +6254,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			};
 			const count = text.trim() === "" ? 0 : text.split(/\r\n|\r|\n/).filter((line) => line.startsWith("BEGIN:VEVENT")).length;
-			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+			return react.default.createElement(Modal, {
 				open: true,
 				onClose,
 				title: outcome ? "导入结果" : "导入日历",
@@ -6433,7 +6450,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				URL.revokeObjectURL(url);
 			};
 			const lines = text === "" ? 0 : text.split("\r\n").length;
-			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+			return react.default.createElement(Modal, {
 				open: true,
 				onClose,
 				title: "导出日历",
@@ -6820,7 +6837,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setSubmitting(false);
 				}
 			};
-			return react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Modal, {
+			return react.default.createElement(Modal, {
 				open: true,
 				onClose,
 				title: "新建日程",
@@ -6854,7 +6871,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* Wide panels show both at once; a narrow one stacks them, because the panel
 		* width is the reader's, not ours.
 		*/
-		function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy }) {
+		function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy, sourceName }) {
 			const [draft, setDraft] = (0, react.useState)(() => draftOf(event));
 			const [problem, setProblem] = (0, react.useState)(null);
 			const [confirmingDelete, setConfirmingDelete] = (0, react.useState)(false);
@@ -6910,7 +6927,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					borderRadius: 999,
 					background: tint.accent
 				}
-			}), react.default.createElement("strong", { style: { fontSize: 13 } }, "日程信息"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), event.recurrence ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, seriesSummary(event)) : void 0, event.source ? react.default.createElement(Muted, null, event.source) : void 0), react.default.createElement(EventForm, {
+			}), react.default.createElement("strong", { style: { fontSize: 13 } }, "日程信息"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), event.recurrence ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, seriesSummary(event)) : void 0, event.source ? react.default.createElement(Muted, null, sourceName(event.source)) : void 0), react.default.createElement(EventForm, {
 				draft,
 				onChange: setDraft,
 				sourceOwned: event.source !== "manual"
@@ -7064,6 +7081,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const [dropping, setDropping] = (0, react.useState)(false);
 				const [busy, setBusy] = (0, react.useState)(false);
 				const events = snapshot?.events ?? [];
+				const sourceName = (source) => calendarLabel(source, sourceStatuses);
 				(0, react.useEffect)(() => {
 					if (snapshot && calendarSource !== "*" && !snapshot.events.some((event) => event.source === calendarSource)) setCalendarSource("*");
 				}, [snapshot, calendarSource]);
@@ -7203,7 +7221,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const title = view.kind === "week" ? "我的日历" : current?.title ?? "日程";
 				const subtitle = view.kind === "week" ? displayMode === "month" ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条` : [
 					current?.location,
-					current?.source === "manual" ? "个人日程" : current?.source,
+					sourceName(current?.source),
 					current && noteOf(current) !== "" ? "有备注" : ""
 				].filter(Boolean).join(" · ");
 				const menuItems = events.length === 0 ? [{
@@ -7212,7 +7230,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					text: "还没有日程"
 				}] : events.map((event) => ({
 					id: `${event.source}\u0000${event.uid}`,
-					label: `${event.source === "manual" ? event.title : `${event.title}（${event.source}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ""}`,
+					label: `${event.source === "manual" ? event.title : `${event.title}（${sourceName(event.source)}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ""}`,
 					icon: react.default.createElement(IconClock)
 				}));
 				return react.default.createElement("div", {
@@ -7393,7 +7411,19 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						background: tintOf(source).accent,
 						marginRight: 6
 					}
-				}) : void 0, source === "*" ? "全部日历" : source === "manual" ? "个人日程" : source))) : void 0, problem ? react.default.createElement("div", { style: {
+				}) : void 0, source === "*" ? "全部日历" : sourceName(source))), calendarSource !== "*" && calendarSource !== "manual" && !calendarSource.startsWith("sync:") ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+					size: "sm",
+					variant: "ghost",
+					disabled: busy,
+					onClick: () => setDialog({
+						kind: "delete-calendar",
+						source: calendarSource
+					}),
+					style: {
+						marginLeft: "auto",
+						whiteSpace: "nowrap"
+					}
+				}, "删除所选日历") : void 0) : void 0, problem ? react.default.createElement("div", { style: {
 					display: "flex",
 					alignItems: "center",
 					gap: 6,
@@ -7425,6 +7455,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					onCreate: createAt
 				}) : react.default.createElement(EventPage, {
 					event: current,
+					sourceName,
 					service,
 					run,
 					agenda,
@@ -7453,6 +7484,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					}), `已取消 ${shortDate(occurrence.occurrenceDate ?? dateOf(occurrence.start))} 的日程`)
 				}), dialog?.kind === "event" ? react.default.createElement(EventDialog, {
 					occurrence: selectedOccurrence,
+					sourceName,
 					event: events.find((item) => item.uid === dialog.occurrence?.uid && item.source === dialog.occurrence?.source),
 					note: occurrenceNote(noteIndex, dialog.occurrence),
 					service,
@@ -7470,14 +7502,42 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}) : void 0, dialog?.kind === "import" ? react.default.createElement(ImportDialog, {
 					initialText: dialog.text,
 					initialName: dialog.name,
-					calendars: [...new Set(events.map((event) => event.source).filter((name) => name && name !== "manual"))],
+					calendars: [...new Set(events.map((event) => event.source).filter((name) => name && name !== "manual" && !name.startsWith("sync:")))],
 					service,
 					run,
 					onClose: () => {
 						setDialog(null);
 						refresh();
 					}
-				}) : void 0, dialog?.kind === "export" ? react.default.createElement(ExportDialog, {
+				}) : void 0, dialog?.kind === "delete-calendar" ? react.default.createElement(Modal, {
+					open: true,
+					title: "删除导入日历",
+					closeLabel: "关闭",
+					onClose: () => {
+						if (!busy) setDialog(null);
+					},
+					footer: react.default.createElement("div", { style: {
+						display: "flex",
+						justifyContent: "flex-end",
+						gap: 8
+					} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "ghost",
+						size: "sm",
+						disabled: busy,
+						onClick: () => setDialog(null)
+					}, "取消"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
+						variant: "primary",
+						size: "sm",
+						disabled: busy,
+						style: { background: "var(--dsw-alias-state-error-primary, #d4553f)" },
+						onClick: () => run(() => service.deleteCalendar({ source: dialog.source }), "已删除导入日历，私人笔记与备注已保留").then((ok) => {
+							if (ok) {
+								setDialog(null);
+								setCalendarSource("*");
+							}
+						})
+					}, busy ? "正在删除…" : "删除日历"))
+				}, react.default.createElement("p", null, `确定删除“${sourceName(dialog.source)}”及其中的全部日程？`), react.default.createElement("p", null, "私人笔记、备注和提醒设置会保留，可通过智能体查看失联笔记。重新导入同一日历后，仍可关联到同编号的日程。")) : void 0, dialog?.kind === "export" ? react.default.createElement(ExportDialog, {
 					service,
 					toast: setToast,
 					onClose: () => setDialog(null)
@@ -7573,6 +7633,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					cancelOccurrence: call("cancelOccurrence"),
 					restoreOccurrence: call("restoreOccurrence"),
 					deleteEvent: call("deleteEvent"),
+					deleteCalendar: call("deleteCalendar"),
 					putEvent: call("putEvent"),
 					applySource: call("applySource"),
 					putNote: call("putNote"),

@@ -12,6 +12,7 @@ A local calendar and schedule manager. The week view arranges time within a day;
 - Move or cancel one occurrence without changing the others, undo a move, and restore cancelled dates from the record page reached through the event menu.
 - An event description is exported in ICS. A private note belongs to one occurrence, is stored separately and is excluded from ICS. Rescheduling preserves the note when the occurrence retains its original identity.
 - Import an ICS file by selection, drag-and-drop or pasted text. The filename supplies the default calendar name. Distinct calendars coexist; a matching identifier within one calendar updates that event. Missing entries are preserved unless removal is explicitly enabled for that calendar.
+- Select an imported calendar to delete it with confirmation. Other calendars, private notes, remarks and reminder settings are preserved. The default personal calendar and managed school calendars cannot be deleted through this action. Managed calendars display their registered labels.
 - Copy or download ICS. It excludes private notes and is not a complete backup.
 - Personal settings support series defaults, occurrence overrides and restoring inheritance for notes, private remarks, visibility and relative/fixed reminders. Hidden occurrences remain manageable from the event menu and record page.
 - Agent tools read and edit events, occurrences, notes and personal settings. Writes follow the existing session permission policy.
@@ -46,3 +47,5 @@ The project-pinned compiler builds the client through `build-client.mjs` / `buil
 After preparing the project Runtime, set `EDUWORK_TEST_RUNTIME` to its `product/d` directory and run `npm test` in this plugin directory. Run `npm run test:browser` for browser panel checks; the default browser channel is locally installed Edge, overridable through `EDUWORK_BROWSER_CHANNEL`.
 
 Browser checks mount the real panel and calendar service with stand-ins for base UI primitives. They verify panel interactions, not the full desktop shell, a live model conversation or a school API.
+
+After starting the full desktop with isolated data, set `EDUWORK_DESKTOP_TEST_CDP` to its loopback debugging address and run `npm run test:desktop`. This check uses the product's actual UI primitives, fills and saves recurring events at two window sizes, and removes its own test records. Use a dedicated acceptance environment.
