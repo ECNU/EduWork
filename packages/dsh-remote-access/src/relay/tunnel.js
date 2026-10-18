@@ -264,12 +264,29 @@ export async function createHostTunnel({
     timer.unref?.()
   }
 
-  /** Send one sealed frame, or drop it if the link is already gone. */
-  const sendSealed = async (value) => {
-    if (session === undefined || socket?.readyState !== 1) return false
-    socket.send(await session.seal(new TextEncoder().encode(JSON.stringify(value))))
-    return true
+  /**
+   * Serialize sealed sends.
+   *
+   * `Session.seal` reserves its sequence synchronously, but it is asynchronous on the
+   * wire: two concurrent callers can finish in the other order, and the device's
+   * `open` refuses a sequence that is not exactly next. A stream item overtaking the
+   * response (or the `$events` ready frame) makes the device drop every later frame,
+   * which is indistinguishable from a dead stream — the workspace list simply never
+   * arrives. One chain keeps sealing and sending in call order.
+   */
+  let sendChain = Promise.resolve()
+  const sealAndSend = (payload) => {
+    const run = sendChain.then(async () => {
+      if (session === undefined || socket?.readyState !== 1) return false
+      socket.send(await session.seal(payload))
+      return true
+    })
+    sendChain = run.then(() => undefined, () => undefined)
+    return run
   }
+
+  /** Send one sealed frame, or drop it if the link is already gone. */
+  const sendSealed = (value) => sealAndSend(new TextEncoder().encode(JSON.stringify(value)))
 
   /**
    * Send one already-serialized frame.
@@ -278,11 +295,7 @@ export async function createHostTunnel({
    * routing it through a `JSON.stringify` of a string would double-encode it and the
    * device would open a frame whose payload is the JSON of the JSON it expected.
    */
-  const sendSealedText = async (text) => {
-    if (session === undefined || socket?.readyState !== 1) return false
-    socket.send(await session.seal(new TextEncoder().encode(text)))
-    return true
-  }
+  const sendSealedText = (text) => sealAndSend(new TextEncoder().encode(text))
 
   /**
    * The channel for the current session, built when the handshake completes.
