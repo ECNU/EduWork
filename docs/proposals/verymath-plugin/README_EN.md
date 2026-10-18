@@ -16,7 +16,7 @@ Bring VeryMath's mathematical learning and research capabilities into EduWork as
 | Item | Content |
 | --- | --- |
 | Plugin name | `@louisultra/dsh-verymath` (personal npm scope; can be renamed or vendored if adopted officially) |
-| Version | 0.3.1 |
+| Version | 0.3.2 |
 | License | MIT (package). `UPSTREAM.json` records 8 VeryMath upstream repositories: content from 7 MIT repositories is adapted/bundled, and 1 GPLv3 repository (Sagemath-skill) contributes **no code** — only an interface contract, re-implemented clean-room; the SageMath documentation corpus (CC BY-SA 3.0) is distributed separately |
 | DSH compat | peer range `>=0.2.0-rc.1 <0.3.0-0`; **verified only on DSH 0.2.0-rc.2 + EduWork 0.4.3** — rc.1 and later 0.2.x releases are not individually tested |
 | Node | `>=24.18.0` (`engines` in `package.json`) |

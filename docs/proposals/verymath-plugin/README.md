@@ -16,7 +16,7 @@
 | 项目 | 内容 |
 | --- | --- |
 | 插件名 | `@louisultra/dsh-verymath`（npm scope 归属个人；如官方收录后希望改 scope 或 vendor，可协商） |
-| 版本 | 0.3.1 |
+| 版本 | 0.3.2 |
 | 许可 | MIT（包本体）。`UPSTREAM.json` 记录 8 个 VeryMath 上游仓库：7 个 MIT 仓库的内容被改编/收录，另有 1 个 GPLv3 仓库（Sagemath-skill）**未收录任何代码**，仅按接口契约做干净房间重实现；SageMath 文档语料（CC BY-SA 3.0）独立于包分发 |
 | DSH 兼容 | peer 依赖 `>=0.2.0-rc.1 <0.3.0-0`；**实测仅覆盖 DSH 0.2.0-rc.2 + EduWork 0.4.3**，rc.1 与后续 0.2.x 未逐版验证 |
 | Node | `>=24.18.0`（`package.json` 的 `engines` 要求） |
