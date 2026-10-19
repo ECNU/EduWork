@@ -15,11 +15,12 @@
 - 自托管中继：`/host` 注册与 hostId 绑定、`/peer` 设备接入、同键重连替换旧连接、单设备链路、静态 Web 壳与 `/plugins` combo 服务、bootstrap 注入；中继只转发密文。注册使用 `eduwork-relay/2` 的持有证明（nonce+hostId+publicKey 签名），验签失败不能替换已有主机。
 - 会话隔离与幂等：异步响应、流事件和发送队列绑定发起会话，设备断开后的迟到帧被丢弃；宿主按 `(deviceId, requestId, endpoint, payload)` 去重成功副作用并合并并发同键请求。
 - DSH 0.2.1 接入：官方 owner `Peer`（`browserPeer`/`operator`）传给 `wireStream.open` 与共享 fetch 处理器；响应信封按公开契约严格解码，不再读取客户端私有 bundle 路径。
+- 新确认设备默认获得 `session:create`，远端 UI 首次进入时可以创建会话；中继在 WebSocket 升级前的原始套接字重置不再终止整个进程。
 - 逻辑流：`$events`、`workspace/follow`、`session/control`、`session/follow` 与 unary 共用密封通道；工作区列表、会话历史、流式事件可用。
 - 门禁接线：`gate.js` 的 `OPERATION_TABLE` 是唯一授权表，`channel/operations.js` 映射宿主端点；Agent 面放行会话/工作区/artifact/settings 只读与 prompt/cancel/create，Host 面代码级白名单只放行 `directory:list` 与 `workspace:create`。
 - Web 壳复用：宿主用进程内 cookie 导出渲染后的 index、注入行与 `/plugins` combo；中继镜像；远端浏览器跑宿主自己的 UI。
 - 应用内目录浏览组合（`dsh-host-directory-picker-browse` + `dsh-client-ui-directory-picker-browse`），供远端选择工作区目录；本机也使用同一对话框（已知限制）。
-- 319 项包内测试；协议级设备验收、桌面浏览器与真实手机（Wi-Fi）验收通过。
+- 320 项包内测试；协议级设备验收、桌面浏览器与真实手机（Wi-Fi）验收通过。
 
 **未完成 / 已知限制**
 

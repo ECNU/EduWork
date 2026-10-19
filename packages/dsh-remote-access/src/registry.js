@@ -40,6 +40,7 @@ export const OPERATION_SURFACES = Object.freeze(['agent', 'host'])
  * phase-1 acceptance items require.
  */
 export const DEFAULT_AGENT_SURFACE = Object.freeze([
+  'session:create',
   'session:list',
   'session:read',
   'session:prompt',

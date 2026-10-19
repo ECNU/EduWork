@@ -248,6 +248,15 @@ export function createRelay({
   const server = createServer((request, response) => {
     serve(request, response)
   })
+  // Attach this before the upgrade handler: a client can reset the TCP connection
+  // between `connection` and `upgrade`, and an unhandled `error` event on that raw
+  // socket would terminate the whole relay. The WebSocket connection installs its
+  // own handler later; this one only keeps the pre-upgrade window safe.
+  server.on('connection', (socket) => {
+    socket.on('error', (error) => {
+      log(`relay: connection error: ${String(error?.message ?? error)}`)
+    })
+  })
 
   function serve(request, response) {
     const url = new URL(request.url ?? '/', 'http://relay.invalid')

@@ -103,6 +103,7 @@ test('confirmation is the only transition into trusted, and stamps pairedAt once
   assert.equal(record.pairedAt, NOW, 'pairedAt records first sighting and must not be restamped')
   assert.equal(record.lastSeenAt, LATER)
   assert.deepEqual(record.surfaces.agent, [...DEFAULT_AGENT_SURFACE].sort())
+  assert.ok(record.surfaces.agent.includes('session:create'), 'the remote UI must be able to create its first session')
 })
 
 test('confirmation grants only the narrow host surface', () => {

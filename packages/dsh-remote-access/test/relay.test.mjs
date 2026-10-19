@@ -10,6 +10,7 @@
 
 import assert from 'node:assert/strict'
 import { mkdtempSync, rmSync } from 'node:fs'
+import { createConnection } from 'node:net'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
@@ -35,6 +36,35 @@ before(async () => {
 after(async () => {
   await relay.close()
   rmSync(store, { recursive: true, force: true })
+})
+
+test('a reset during an invalid upgrade does not take the relay down', async () => {
+  const port = relay.server.address().port
+  await new Promise((resolve) => {
+    const socket = createConnection({ host: '127.0.0.1', port })
+    const finish = () => {
+      socket.destroy()
+      resolve()
+    }
+    socket.once('error', finish)
+    socket.once('connect', () => {
+      socket.write(
+        'GET /not-a-relay-path HTTP/1.1\r\n'
+        + 'Host: 127.0.0.1\r\n'
+        + 'Upgrade: websocket\r\n'
+        + 'Connection: Upgrade\r\n'
+        + 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\n'
+        + 'Sec-WebSocket-Version: 13\r\n'
+        + '\r\n',
+      )
+      // Reset rather than a clean FIN: the relay must treat a peer disappearing
+      // during the upgrade as one failed connection, not as a process failure.
+      setTimeout(finish, 10)
+    })
+  })
+  await new Promise((resolve) => setTimeout(resolve, 100))
+  const response = await fetch(`http://127.0.0.1:${String(port)}/`)
+  assert.equal(response.status, 404)
 })
 
 /**
