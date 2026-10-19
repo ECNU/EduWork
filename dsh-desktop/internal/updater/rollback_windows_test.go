@@ -84,18 +84,24 @@ func TestLockedOldExecutableDoesNotRemoveUntouchedProgram(t *testing.T) {
 	assertFileValue(t, filepath.Join(f.installDir, "data/user/keep.txt"), "user-data")
 }
 
-func TestUpdateRetryPreservesIncompleteBackup(t *testing.T) {
+func TestUpdateRetryRetainsIncompleteBackupAndContinues(t *testing.T) {
 	f := newApplyFixture(t, "0.3.7", "healthy")
 	p, _ := LoadPending(f.stateDir)
-	backup := filepath.Join(f.stateDir, "updates/transactions", p.Version, "backup/resources/version.txt")
-	writeFixtureFile(t, backup, []byte("only remaining old program"))
-	err := applyAndRestart(f.stateDir, p, nil)
-	var recovery *rollbackFailure
-	if !errors.As(err, &recovery) || !strings.Contains(err.Error(), "requires recovery") {
-		t.Fatalf("unexpected error: %v", err)
+	transactions := filepath.Join(f.stateDir, "updates/transactions")
+	writeFixtureFile(t, filepath.Join(transactions, p.Version, "backup/resources/version.txt"), []byte("only remaining old program"))
+	if err := applyAndRestart(f.stateDir, p, nil); err != nil {
+		t.Fatalf("retry refused: %v", err)
 	}
-	assertFileValue(t, backup, "only remaining old program")
-	assertFileValue(t, filepath.Join(f.installDir, "resources/version.txt"), "old-version")
+	assertFileValue(t, filepath.Join(f.installDir, "resources/version.txt"), "new-version")
+	retained, _ := filepath.Glob(filepath.Join(transactions, p.Version+".interrupted-*", "backup/resources/version.txt"))
+	if len(retained) != 1 {
+		t.Fatalf("previous backup not retained: %v", retained)
+	}
+	assertFileValue(t, retained[0], "only remaining old program")
+	trace, _ := os.ReadFile(filepath.Join(f.stateDir, "updates/update-trace.jsonl"))
+	if !strings.Contains(string(trace), "previous-backup-retained") {
+		t.Fatalf("retained backup not traced: %s", trace)
+	}
 }
 
 func TestSuccessfulUpdateDoesNotDeleteOtherRecoveryBackup(t *testing.T) {

@@ -231,9 +231,16 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 	extractDir := filepath.Join(transactionDir, "extracted")
 	backupDir := filepath.Join(transactionDir, "backup")
 	// A previous interrupted/failed rollback may contain the only intact old
-	// program. Never erase it when retrying this version.
+	// program. Never erase it when retrying this version. A retry is started by
+	// the program now installed, so that installation runs; keep the old backup
+	// beside the transaction and continue, rather than refusing every retry
+	// (with background updates the user would stay on this version for good).
+	// If the new version then fails, rollback restores the current files.
 	if entries, err := os.ReadDir(backupDir); err == nil && len(entries) > 0 {
-		return &rollbackFailure{Cause: errors.New("previous update backup requires recovery before retry"), Backup: backupDir}
+		retained := transactionDir + ".interrupted-" + time.Now().UTC().Format("20060102T150405Z")
+		if err := os.Rename(transactionDir, retained); err != nil {
+			return &rollbackFailure{Cause: fmt.Errorf("previous update backup requires recovery before retry: %w", err), Backup: backupDir}
+		}
 	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return &rollbackFailure{Cause: err, Backup: backupDir}
 	}
