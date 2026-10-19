@@ -206,7 +206,7 @@ test('没有 operator 时回退到 browserPeer 或 createPeer，并把结果缓�
   assert.equal(creations, 1, 'the owner Peer must be stable across calls')
 })
 
-test('共享处理器拿到的是宿主 operator Peer，而不是 undefined', async () => {
+test('共享处理器拿到的是宿主 owner Peer，而不是 undefined', async () => {
   const kernel = fakeKernel({ authority: AUTHORITY, handler: okHandler })
   const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })
 
