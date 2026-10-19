@@ -9,7 +9,7 @@
 ```text
 DSH Web Client
   └─ settings.section: Mail assistant
-       ├─ settingsScope        namespaced non-secret settings
+       ├─ configForms        namespaced non-secret settings
        └─ remote.credentials   write-only app password
 
 DSH Host
@@ -30,7 +30,7 @@ The plugin does not provide a Credential, Settings, Filesystem, Permission Prese
 
 Non-secret fields live in the `dsh-mail-assistant` settings namespace. The app password uses the fixed credential reference `DSH_MAIL_ASSISTANT_PASSWORD`. The Host resolves it at the beginning of every tool call and never caches it across operations, so rotation applies to the next call.
 
-The settings page reads and writes non-secret configuration through `settingsScope.bind({ namespace: 'dsh-mail-assistant' })`, using revision-fenced atomic mutations to avoid overwriting concurrent updates. For the app password it only invokes `credentials.describe/set/unset`: it can observe configured/writable state, but it cannot read the credential value back into the browser.
+The settings page reads and writes non-secret configuration through `configForms.get('dsh-mail-assistant')`, using revision-fenced atomic mutations to avoid overwriting concurrent updates. For the app password it only invokes `credentials.describe/set/unset`: it can observe configured/writable state, but it cannot read the credential value back into the browser.
 
 ## Message identity and pagination
 
@@ -58,7 +58,7 @@ Outbound attachments use `ctx.fs`: resolve from the session `cwd`, verify contai
 
 The Host artifact embeds the IMAP/SMTP implementation libraries in `lib/index.js`. Users do not install a second protocol runtime after npm, source-package, or offline-product installation, and plugin dependencies cannot collide with a product's private Node runtime during updates.
 
-DSH `0.1.5-rc.1` does not expose `writeBytes`. Attachment download therefore requires a local Host filesystem. The plugin resolves the logical destination with `ctx.fs`, creates the directory, resolves real workspace and directory paths, rechecks containment to reject pre-existing symlinks or junctions, and finally performs a random-name `wx` exclusive write. Replace this local adapter when DSH provides an official binary-write seam.
+DSH `0.2.1-rc.2` does not expose `writeBytes`. Attachment download therefore requires a local Host filesystem. The plugin resolves the logical destination with `ctx.fs`, creates the directory, resolves real workspace and directory paths, rechecks containment to reject pre-existing symlinks or junctions, and finally performs a random-name `wx` exclusive write. Replace this local adapter when DSH provides an official binary-write seam.
 
 ## Extension rules
 

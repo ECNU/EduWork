@@ -2,12 +2,12 @@
 
 [简体中文](EDUWORK-MIGRATION.md) | **English**
 
-Starting with `0.1.0`, the npm package is `@eduwork/dsh-mail`, replacing `dsh-mail-assistant`. The current installation example pins `0.1.1`. Source is maintained under `EduWork/packages/dsh-mail`.
+Starting with `0.1.0`, the npm package is `@eduwork/dsh-mail`, replacing `dsh-mail-assistant`. The current installation example pins `0.2.0`. Source is maintained under `EduWork/packages/dsh-mail`.
 
 ## Installation and migration
 
 ```sh
-dsh plugin --profile web add @eduwork/dsh-mail@0.1.1
+dsh plugin --profile web add @eduwork/dsh-mail@0.2.0
 ```
 
 Back up an existing Profile's package.json and cordis.patch.yml, then update its dependency and dsh.profile.bundles entries. Update module name paths in custom patches too. Do not enable both package identities together; restart the Host after switching. These are separate npm packages, so updating the old package cannot migrate an installation automatically.

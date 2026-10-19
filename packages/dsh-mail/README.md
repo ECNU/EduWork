@@ -1,12 +1,12 @@
 # DSH Mail Assistant
 
-> npm 包：`@eduwork/dsh-mail@0.1.1`。旧无作用域包仅供迁移；安装切换与数据兼容见 [迁移说明](docs/EDUWORK-MIGRATION.md)。
+> npm 包：`@eduwork/dsh-mail@0.2.0`。旧无作用域包仅供迁移；安装切换与数据兼容见 [迁移说明](docs/EDUWORK-MIGRATION.md)。
 
 **简体中文** | [English](README_EN.md)
 
 面向 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 的安全型邮件助手插件。它通过标准 IMAP 读取邮件、通过标准 SMTP 发送纯文本邮件，但刻意不成为另一个邮箱客户端。
 
-版本 `0.1.1` 面向 DeepSeek Harness `0.1.5-rc.1`，支持范围见[兼容性](docs/compatibility.md)。
+版本 `0.2.0` 面向 DeepSeek Harness `0.2.1-rc.2`，支持范围见[兼容性](docs/compatibility.md)。
 
 ## 定位与边界
 
@@ -37,12 +37,12 @@
 
 ## 安装
 
-要求：Node.js 22+、DSH `0.1.5-rc.1`，且所用 Profile 已包含 Settings、Credentials、Tools、Filesystem、Permission Presets、Approval 和 Web Client 官方能力。
+要求：Node.js 24.18+、DSH `0.2.1-rc.2`，且所用 Profile 已包含 Settings、Credentials、Tools、Filesystem、Permission Presets、Approval 和 Web Client 官方能力。
 
 普通使用请固定经过复核的 npm 精确版本：
 
 ```bash
-dsh plugin --profile web add @eduwork/dsh-mail@0.1.1
+dsh plugin --profile web add @eduwork/dsh-mail@0.2.0
 ```
 
 需要审计、开发或验证尚未发布的改动时，再从源码安装：

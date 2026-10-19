@@ -2,6 +2,12 @@
 
 [简体中文](CHANGELOG.md) | **English**
 
+## 0.2.0 — 2026-10-19
+
+- Require DSH 0.2.1-rc.2 or a compatible 0.2.x stable Host; use the official configForms settings surface in standalone builds.
+- Include the locale-service integration and scoped session/permission compatibility fixes already used by EduWork.
+- Preserve disabled-by-default reading/sending, read-only IMAP, credential references and per-send approval.
+
 ## 0.1.1 - 2026-09-11
 
 - Added exact peer support for official DeepSeek Harness `0.1.5-rc.1` and accepted the Tool/Agent, Session, Permission Presets, Filesystem, Credentials, Settings, and Web Client seams.

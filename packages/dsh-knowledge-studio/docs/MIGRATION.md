@@ -2,7 +2,7 @@
 
 ## Current compatibility boundary
 
-The release pair is Studio `0.5.0` and Shared `0.2.0`, validated against official DSH `0.1.5-rc.1` / `183f08e9c6dde7e36cd2318eaee70b0da08fb35e`. Do not infer support for other DSH versions from retained compatibility code. Historical Studio 0.4.0 / Shared 0.1.0 installation instructions targeted an older host and are not upgrade instructions for this pair.
+The release pair is Studio `0.6.0` and Shared `0.3.0`, validated against official DSH `0.2.1-rc.2`. Do not infer support for other DSH versions from retained compatibility code. Historical Studio 0.4.0 / Shared 0.1.0 installation instructions targeted an older host and are not upgrade instructions for this pair.
 
 Install both exact package versions into an isolated consumer first. Preserve the prior package archives and Profile configuration for rollback. Existing installations, sessions and output files are not migrated merely by passing source tests.
 

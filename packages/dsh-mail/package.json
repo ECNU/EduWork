@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-mail",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "Standards-based IMAP/SMTP mail assistant for DeepSeek Harness with explicit read/send controls and approval-aware delivery",
   "keywords": [
     "deepseek-harness",
@@ -79,7 +79,7 @@
     "prepare": "npm run build"
   },
   "engines": {
-    "node": ">=22.0.0"
+    "node": ">=24.18.0"
   },
   "license": "MIT",
   "publishConfig": {
@@ -87,23 +87,23 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ecnu/EduWork.git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
     "directory": "packages/dsh-mail"
   },
   "bugs": {
-    "url": "https://github.com/ecnu/EduWork/issues"
+    "url": "https://github.com/ECNU/EduWork/issues"
   },
-  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-mail#readme",
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-mail#readme",
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-api-remotes": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-settings": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1",
-    "@deepseek-ai/dsh-credentials": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1",
-    "@deepseek-ai/dsh-permission-presets": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1",
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-credentials": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-permission-presets": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-client-locale": "0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1"
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {
@@ -135,7 +135,7 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/schemastery": "3.18.2",
+    "@deepseek-ai/schemastery": "3.18.5",
     "@types/node": "^26.0.0",
     "@types/react": "^18.3.28",
     "imapflow": "^1.7.0",
@@ -143,7 +143,10 @@
     "nodemailer": "^9.1.0",
     "react": "^18.3.1",
     "tsdown": "0.22.14",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@deepseek-ai/cordis": "4.0.5",
+    "semver": "7.7.4"
   },
   "directories": {
     "doc": "docs",

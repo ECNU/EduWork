@@ -9,7 +9,7 @@
 ```text
 DSH Web Client
   └─ settings.section: 邮件助手设置页
-       ├─ settingsScope        绑定命名空间的非敏感配置
+       ├─ configForms        绑定命名空间的非敏感配置
        └─ remote.credentials   授权码只写
 
 DSH Host
@@ -30,7 +30,7 @@ DSH Host
 
 非敏感字段保存在 `dsh-mail-assistant` settings namespace。授权码使用固定 Credential Ref `DSH_MAIL_ASSISTANT_PASSWORD`。Host 在每个工具调用开始时重新解析引用，不跨操作缓存密码，因此轮换后的值会在下一次调用生效。
 
-设置页通过 `settingsScope.bind({ namespace: 'dsh-mail-assistant' })` 读写非敏感配置，并使用 revision fence 的原子 mutation 避免覆盖并发更新。它对授权码只能调用 `credentials.describe/set/unset`：可看到“是否配置”和“是否可写”，不能读回实际值。
+设置页通过 `configForms.get('dsh-mail-assistant')` 读写非敏感配置，并使用 revision fence 的原子 mutation 避免覆盖并发更新。它对授权码只能调用 `credentials.describe/set/unset`：可看到“是否配置”和“是否可写”，不能读回实际值。
 
 ## 邮件标识
 
@@ -66,7 +66,7 @@ handle 用于完整性检查和防误用，不是授权令牌，也不包含密�
 
 Host 产物会把 IMAP/SMTP 运行依赖编入 `lib/index.js`。因此通过 npm、源码包或产品离线装配安装后，终端用户都不需要再安装 Node 依赖；这也避免了插件依赖与宿主随版本更新的私有 Node 运行时互相覆盖。
 
-DSH `0.1.5-rc.1` 暂无 `writeBytes`。下载附件因此只在本地 Host FS 上可用：插件先用 `ctx.fs` 解析逻辑路径，创建目录后再解析工作区与目标目录的真实路径并重新验证包含关系，最后把随机文件名以 `wx` 独占模式写入。这样会拒绝预置符号链接或目录联接造成的工作区逃逸。未来官方提供二进制写 seam 后，应删除这段本地适配，直接复用官方能力。
+DSH `0.2.1-rc.2` 暂无 `writeBytes`。下载附件因此只在本地 Host FS 上可用：插件先用 `ctx.fs` 解析逻辑路径，创建目录后再解析工作区与目标目录的真实路径并重新验证包含关系，最后把随机文件名以 `wx` 独占模式写入。这样会拒绝预置符号链接或目录联接造成的工作区逃逸。未来官方提供二进制写 seam 后，应删除这段本地适配，直接复用官方能力。
 
 ## 后续扩展规则
 

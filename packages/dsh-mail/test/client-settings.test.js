@@ -31,8 +31,8 @@ test('agent capabilities cannot be enabled before their account path is ready', 
   assert.match(source, /const sendReady =/)
 })
 
-test('settings use the rc.1 reactive scope and fenced atomic mutations', () => {
-  assert.match(source, /settingsScope\.bind\(\{ namespace: NS \}\)/)
+test('settings use the official configuration form and fenced atomic mutations', () => {
+  assert.match(source, /configForms\.get\(NS\)/)
   assert.match(source, /useSyncExternalStore\(subscribe, getSnapshot, getSnapshot\)/)
   assert.match(source, /service\.scope\.mutate\(ops, snapshot\.revision\)/)
   assert.match(source, /disabled=\{busy \|\| !snapshot\.writable\}/)

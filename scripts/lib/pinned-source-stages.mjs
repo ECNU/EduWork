@@ -76,7 +76,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
     }),
     stage({
       name: 'source-dependencies',
-      description: 'Install pinned source build dependencies',
+      description: 'Install locked npm plugins and product build dependencies',
       requires: ['source-audit'],
       outputs: ['dependencies'],
       inputs: async () => ({ lock: await sha256File(join((await plan()).candidate, 'source-probe/package-lock.json')) }),
@@ -103,7 +103,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
     }),
     stage({
       name: 'source-clients',
-      description: 'Rebuild the candidate plugin clients',
+      description: 'Build product-owned extensions against published npm packages',
       requires: ['source-audit', 'runtime', 'source-dependencies'],
       outputs: ['source'],
       run: async workspace => {
@@ -118,7 +118,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
     }),
     stage({
       name: 'product',
-      description: 'Assemble the pinned source product and edition',
+      description: 'Assemble npm plugins, product extensions and the optional edition',
       requires: ['source-audit', 'runtime', 'source-dependencies', 'source-clients', 'host-adapter'],
       mutableOutputs: ['product'],
       run: async workspace => {

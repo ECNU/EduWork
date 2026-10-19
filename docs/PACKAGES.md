@@ -2,7 +2,7 @@
 
 **简体中文** | [English](PACKAGES_EN.md)
 
-EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管理和发布。Issue、PR、协议和开发文档统一在 `ecnu/EduWork`；机构专属实现留在 EduWork-ECNU。插件按各自的宿主要求复用；其中桌宠依赖 EduWork Electron 桌面桥接，其他 DSH 客户端需先集成同样的接口。
+EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管理和发布。Issue、PR、协议和开发文档统一在 `ECNU/EduWork`；机构专属实现留在 EduWork-ECNU。插件按各自的宿主要求复用；其中桌宠依赖 EduWork Electron 桌面桥接，其他 DSH 客户端需先集成同样的接口。
 
 ## 源码布局
 
@@ -24,7 +24,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 内核升级时先核对 API 与行为：兼容声明已覆盖且验证通过的包直接复用现有 npm 产物，不因宿主升级重发。若已发布包的声明过窄，修正元数据仍需新的 npm 版本，不能覆盖旧包，但这不应成为每次 rc 升级的固定步骤。文献包从 `0.1.2` 起声明 `>=0.2.0-rc.1 <0.3.0-0`，检索实现不变。
 
-内置源码扩展目前在候选装配时重建，并将其 DSH peers 声明为已适配的 API 范围（当前为 `>=0.2.0-rc.2 <0.3.0-0`）；这只说明该次装配经过验证，不能视作原 npm 包支持了新版本。对外发布时维护源 manifest 的真实兼容范围，不改写第三方包或配置兼容性豁免。
+桌面专属扩展仍在装配时构建，其适配结果只代表该次产品构建。已独立发布的插件直接使用 npm 产物，不重建客户端、改写 peer 声明或修改 bundle；包自身的兼容范围在其发布流程中维护。
 
 ## 本地开发
 
@@ -56,7 +56,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 3. 在 **Run workflow** 的来源选择 `main`，将该 SHA 填入 `source_commit`，再选择包和 `publish=true`。工作流锁定触发时的提交；如果它与填写的 SHA 不一致，发布会停止，需要重新核对源码。稳定版本使用 `latest`，预发布版本使用 `dev`；产品版本号不参与 npm 版本判断。
 4. 工作流构建并检查选定包，只发布同一工作流生成、校验通过的 tarball；发布 job 不重建、不执行包生命周期脚本。核验 npm 中的包版本、integrity 和 provenance 后，再更新客户端的精确依赖锁。
 
-发布需要在 **每个 npm 包** 的 Trusted publishing 中设置 GitHub Actions：组织 `ecnu`、仓库 `EduWork`、workflow `packages-release.yml`、environment `npm`。GitHub 对应 environment 也叫 `npm`。此处带 provenance 的发布路径要求公开仓库和有效的绑定；仅检查打包时使用 `publish=false`。详见 [npm 官方 Trusted publishing 说明](https://docs.npmjs.com/trusted-publishers/)。
+发布需要在 **每个 npm 包** 的 Trusted publishing 中设置 GitHub Actions：组织 `ECNU`、仓库 `EduWork`、workflow `packages-release.yml`、environment `npm`。绑定和包内仓库地址必须与 GitHub 返回的 `ECNU/EduWork` 大小写一致，npm 来源证明校验区分大小写。GitHub 对应 environment 也叫 `npm`。此处带 provenance 的发布路径要求公开仓库和有效的绑定；仅检查打包时使用 `publish=false`。详见 [npm 官方 Trusted publishing 说明](https://docs.npmjs.com/trusted-publishers/)。
 
 维护者可用 `npm trust list @eduwork/dsh-oidc --json` 检查绑定，其他包替换包名即可。调整仓库、工作流或 environment 时，先核对现有绑定，再创建新绑定并删除对应的旧绑定，不删除其他有效发布入口。npm 可能要求在系统浏览器完成账户验证。
 
@@ -64,11 +64,19 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
+当前 DSH 0.2.1 配方的七个独立包全部从 npm 装配：桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。`third_party/dsh/candidate-v0.2.1-rc.2/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
+
+装配先验证组件锁与 npm 安装一致，再构建产品自身的桌面扩展。媒体模板、PDF runtime、插件客户端和随包 skills 均使用发布包里的文件；不再从 `packages/` 覆盖。`assembly.json` 区分 `externalPackages` 与 `sourcePackages`，并保存发布包文件摘要，在产品装配和机构扩展后检查是否被改写。锁不一致、缺包或存在 workspace 链接时立即失败，不回退到源码。
+
+`source-probe` 中与 DSH Runtime 共用的顶层依赖必须锁为相同版本和 integrity；需要不同版本的传递依赖由 npm 放在对应包的子目录。升级锁后检查这项约束，避免合并目录时悄悄改变插件的依赖。完整插件安装锁保留在产品 `d/.eduwork-plugin-install-lock.json`，摘要写入装配回执。
+
+插件变更顺序为：源码测试 → 发布 npm → 核验 registry 原包 → 更新产品组件锁和 npm 锁 → 整包验收。兼容范围与产品精确锁分别维护；正式装配不使用 `latest`。本地插件开发仍使用各包自己的开发根，不将未发布源码混入客户端。机构版复用公版的 npm 依赖，可增加自身扩展、配置与 skills，但不能覆盖已锁定的公共包。
+
 `@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
 
 
 `@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.1-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 
-`config/assembly.eduwork.json` 仍通过 `third_party/npm-015-rc1/*/LOCK.json` 获取已发布 npm 包，版本、SRI 和 tarball SHA-256 都固定。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
+历史 DSH 0.1.5 配方的 `config/assembly.eduwork.json` 保留 `third_party/npm-015-rc1/*/LOCK.json`，不用于当前默认桌面构建。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 
 组件锁保存对应 npm 包的版本、来源提交和内容校验值。更新包时，核验 registry 中的实际产物，再同步锁文件；不要将开发目录的 workspace 链接作为发行输入。

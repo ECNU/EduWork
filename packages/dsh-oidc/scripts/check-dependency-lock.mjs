@@ -7,13 +7,13 @@ const lock = JSON.parse(await readFile(new URL('package-lock.json', root), 'utf8
 assert.equal(lock.lockfileVersion, 3)
 assert.equal(lock.version, manifest.version)
 assert.deepEqual(lock.packages[''].devDependencies, manifest.devDependencies)
-const baseline = '0.1.5-rc.1'
+const baseline = '0.2.1-rc.2'
 const required = Object.keys(manifest.peerDependencies).filter(name => name.startsWith('@deepseek-ai/dsh-'))
 for (const name of required) {
   assert.equal(manifest.devDependencies[name], baseline, `${name}: development baseline must be exact`)
   assert.equal(lock.packages[`node_modules/${name}`]?.version, baseline, `${name}: lock must match the development baseline`)
 }
-for (const [name, version] of [['@deepseek-ai/cordis', '4.0.2'], ['@earendil-works/pi-ai', '0.85.1']]) {
+for (const [name, version] of [['@deepseek-ai/cordis', '4.0.5'], ['@earendil-works/pi-ai', '1.1.0']]) {
   assert.equal(manifest.devDependencies[name], version)
   assert.equal(lock.packages[`node_modules/${name}`]?.version, version)
 }

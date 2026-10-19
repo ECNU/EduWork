@@ -6,7 +6,13 @@ Sign in with an organization and use its authorized models directly.
 
 The current source supports LiteLLM native OAuth and explicitly enabled experimental oidc-llm 0.1. Both reuse browser/loopback transport, PKCE, Host sessions, refresh, logout and the DSH Provider. Model requests use the current Access Token; this client no longer provisions or stores organization model API keys. Personal API-key settings remain independent.
 
-These capabilities are published in `@eduwork/dsh-oidc@0.3.0-dev.2` and included in EduWork `0.3.6-dev.20260921.1`. Desktop users edit the bundled `eduwork.jsonc` without installing this npm package separately; see the [LiteLLM setup guide](docs/gateway-auth/litellm-setup.en.md). Legacy OIDC + Key Binding profiles are explicitly rejected; see [migration](docs/key-binding-protocol.en.md). Servers may retain legacy endpoints for older clients.
+Version `@eduwork/dsh-oidc@0.3.0` targets Node.js 24.18+ and DSH 0.2.1-rc.2. It supports a standalone local DSH Web profile; no EduWork desktop bridge is required for that backend. Organization model access requires a compatible gateway and a public profile configured by its operator.
+
+```sh
+dsh plugin --profile web add @eduwork/dsh-oidc@0.3.0
+```
+
+Set `EDUWORK_OIDC_PROFILE` to the absolute path of your profile JSON before starting DSH. The default bundle uses the Web backend. EduWork desktop users continue to use their distribution configuration. Legacy Key Binding profiles require [migration](docs/key-binding-protocol.en.md).
 
 ## Getting started
 
@@ -15,7 +21,7 @@ These capabilities are published in `@eduwork/dsh-oidc@0.3.0-dev.2` and included
 3. Use backend: desktop for desktop Hosts or backend: web for local Web. [Identity-only OIDC](examples/identity-only.example.json) remains available without organization models.
 4. Sign-in discovers the current authorization's model catalog. Passive account refresh must not replace a personal model selected later.
 
-The current source classifies discovered models by `type`; only `llm` enters chat. If the server returns only IDs, supply `provider.models[].type` using actual model IDs before upgrading. Server type metadata takes precedence; specialist and unresolved types remain outside chat. This requires an updated plugin/client and coordinated configuration, and is not part of the published version above. See the [model reference](docs/enterprise-profile.en.md).
+The current source classifies discovered models by `type`; only `llm` enters chat. If the server returns only IDs, supply `provider.models[].type` using actual model IDs before upgrading. Server type metadata takes precedence; specialist and unresolved types remain outside chat. For servers returning only IDs, update the profile model types before enabling the provider. See the [model reference](docs/enterprise-profile.en.md).
 
 Validate from source:
 

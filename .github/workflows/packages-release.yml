@@ -62,7 +62,7 @@ jobs:
           if-no-files-found: error
   publish:
     needs: pack
-    if: inputs.publish && github.repository == 'ecnu/EduWork'
+    if: inputs.publish && github.repository == 'ECNU/EduWork'
     runs-on: ubuntu-latest
     environment: npm
     permissions:

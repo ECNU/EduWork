@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.2.0 — 2026-10-19
+
+- Support standalone DSH 0.2.1-rc.2 and compatible 0.2.x stable Hosts through configForms.
+- Align the bundle entry `memories` with its existing settings namespace so automatic legacy settings import and the settings page resolve the same entry. Storage domains, SQLite filenames and export format remain unchanged.
+- Include current scoped history queries and locale integration; keep memory controls, pagination, corrections, retention and undo.
+
 ## 0.1.1
 
 - Require the exact DSH 0.1.5-rc.1 Host baseline; upgrade older Hosts before installing.

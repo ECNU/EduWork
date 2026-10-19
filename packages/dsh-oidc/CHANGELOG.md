@@ -4,6 +4,12 @@
 
 所有重要变更均记录于此。格式遵循 Keep a Changelog 原则；项目使用语义化版本，并遵循[兼容性与发布策略](docs/compatibility.md)中对 1.0 之前版本的说明。
 
+## [0.3.0] — 2026-10-19
+
+- 适配 DSH 0.2.1-rc.2 与兼容的 0.2.x 正式版，采用 pi-ai 1.1.0，移除已退役的 DSH 依赖声明。
+- 发布已在 EduWork 使用的 Web 优先 OIDC／Token 模型接入、额外服务显式授权及模型能力声明。
+- 保留刷新令牌轮换、退出登录隔离和思考历史回放处理；升级前须迁移已删除的旧 Key Binding/native backend 配置。
+
 ## [0.3.0-dev.2] - 2026-09-21
 
 - 使用 `allowInsecureDevelopment` 单一开关显式允许 HTTP 测试服务，默认关闭；HTTPS 行为不变。

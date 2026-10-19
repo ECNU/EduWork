@@ -2,7 +2,7 @@
 
 [简体中文](development.md) | **English**
 
-The plugin version is `0.2.3`. Its development baseline is DSH `0.1.5-rc.1`, Cordis `4.0.2`, and pi-ai `0.85.1`. Product versions do not determine plugin versions; consult the registry for npm publication status. Source is maintained in EduWork; migration does not overwrite published npm packages.
+The plugin version is `0.3.0`. Its development baseline is DSH `0.2.1-rc.2`, Cordis `4.0.5`, and pi-ai `1.1.0`. Product versions do not determine plugin versions; consult the registry for npm publication status. Source is maintained in EduWork; migration does not overwrite published npm packages.
 
 ## Verify a clean checkout
 

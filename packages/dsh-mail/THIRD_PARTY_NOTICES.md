@@ -13,3 +13,5 @@
 项目参考了 MIT 许可的社区项目 [`STARDUSTLC666/dsh-email`](https://github.com/STARDUSTLC666/dsh-email) 在 ImapFlow、Nodemailer、MailParser 与 DSH 之间的组合思路，但重新设计了权限、凭据、只读 IMAP、工作区、邮件不可信内容和审批边界。没有任何第三方项目为本插件背书。
 
 直接和间接依赖的精确版本记录在 `package-lock.json`。每次公开发布前必须重新审查锁文件、许可证检查结果和最终 npm tarball。
+
+仅开发使用的官方 DSH Host 包含 LibreOffice Kit（MPL-2.0）与 sharp/libvips 原生包（Apache-2.0 / LGPL-3.0-or-later）。它们不打入邮件插件压缩包，许可证随各自的包保留。

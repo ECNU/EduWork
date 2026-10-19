@@ -2,8 +2,11 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
-import { explicitMemoryRequest, executionSources, memoryMessageSource } from '../lib/session-context.js'
-import { MemoryCore } from '../lib/core.js'
+// Product qualification supplies the installed npm directory; package development
+// keeps using its own build output. Neither path rebuilds or modifies the package.
+const memoryRoot = process.argv[3] ? path.resolve(process.argv[3]) : path.resolve(import.meta.dirname, '..')
+const { explicitMemoryRequest, executionSources, memoryMessageSource } = await import(pathToFileURL(path.join(memoryRoot, 'lib/session-context.js')))
+const { MemoryCore } = await import(pathToFileURL(path.join(memoryRoot, 'lib/core.js')))
 
 // Read packages from an already prepared isolated runtime; never install or mutate it.
 const runtime = process.argv[2]

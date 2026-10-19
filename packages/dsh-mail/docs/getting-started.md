@@ -4,8 +4,8 @@
 
 ## 前置条件
 
-- Node.js 22+；
-- DeepSeek Harness `0.1.5-rc.1`；
+- Node.js 24.18+；
+- DeepSeek Harness `0.2.1-rc.2`；
 - Profile 中已经有 Settings、Credentials、Tools、Filesystem、Permission Presets、Approval 和 Web Client；
 - 一个开启了 IMAP/SMTP 的邮箱账号，以及邮箱服务商签发的客户端授权码或应用专用密码。
 
@@ -14,7 +14,7 @@
 普通使用固定经过复核的 npm 精确版本：
 
 ```bash
-dsh plugin --profile web add @eduwork/dsh-mail@0.1.1
+dsh plugin --profile web add @eduwork/dsh-mail@0.2.0
 ```
 
 需要审计、开发或验证尚未发布的改动时，使用源码 checkout：
@@ -65,10 +65,10 @@ npm ci
 npm run check
 ```
 
-要复核 DSH `0.1.5-rc.1` 的真实运行时契约，把 `DSH_RUNTIME_ROOT` 指向该版本的干净 Runtime 后运行：
+要复核开发锁中的 DSH `0.2.1-rc.2` API 契约，运行：
 
 ```bash
-npm run accept:dsh-015-rc1
+npm run check:dsh
 ```
 
-此验收使用无网络发送模拟器检查 Agent 会话、审批拒绝、单次允许与 Full Access 路径，不需要真实邮箱。真实 IMAP/SMTP 互操作只在专用测试账号和隔离 Profile 中执行。
+该检查核对公开 API 和客户端设置接入；`npm test` 使用合成数据覆盖权限、附件和邮件解析，不代表真实邮箱投递验收。真实 IMAP/SMTP 互操作只在专用测试账号和隔离 Profile 中执行。

@@ -1,5 +1,11 @@
 # Changelog
 
+## Studio 0.6.0 / Artifact Services 0.3.0 — 2026-10-19
+
+- Support standalone DSH 0.2.1-rc.2 and compatible 0.2.x stable Hosts; require Node.js 24.18+.
+- Publish official Office skill/LibreOffice Kit integration, official file-preview handoff, image editing and current session/runtime compatibility already used by EduWork.
+- Keep the shared-service version pinned and retain existing workspace artifacts and settings. Optional Office, speech and media runtimes still require separate provisioning.
+
 ## Studio 0.5.0 / Artifact Services 0.2.0
 
 - Studio pins Shared 0.2.0; both DSH integrations require official 0.1.5-rc.1. A stable plugin version does not imply a stable upstream host.

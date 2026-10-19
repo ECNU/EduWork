@@ -8,15 +8,15 @@
 
 ## 安装
 
-版本 **0.1.1** 要求 Node.js 22.13+，目标基底为 DSH `0.1.5-rc.1`；Host 的 DSH 包必须版本一致，不能混入 alpha 或旧 rc。插件稳定版本号不代表上游已脱离 rc。安装精确版本：
+版本 **0.2.0** 要求 Node.js 24.18+ 和 DSH 0.2.1-rc.2 或兼容的 0.2.x 正式版。包声明 API 范围，开发与验收依赖另行精确锁定；其他预发布系列需要单独核对兼容性。
 
 ```sh
-dsh plugin --profile web add @eduwork/dsh-memory@0.1.1
+dsh plugin --profile web add @eduwork/dsh-memory@0.2.0
 dsh --profile web --dump-config
 dsh --profile web
 ```
 
-旧版 `@eduwork/dsh-memory@0.1.0` 对应 DSH `0.1.2-rc.1`，安装 0.1.1 前须先升级 Host，不要在同一 Profile 同时加载两个版本。包中包含预构建客户端、Host、TYPERT 和 bundle，用户无需编译。安装后重启相应 Profile。
+0.2.0 之前的包面向旧 DSH API。升级前先更新宿主，保留同一 DSH_HOME，并替换原插件；不要同时加载两个版本。包中包含预构建客户端、Host、Remote 和 bundle，安装后重启相应 Profile。
 
 ## 使用
 
@@ -51,3 +51,5 @@ DSH Session V3 与 Memory 域和导出版本相互独立。旧会话读取和受
 MIT；见 LICENSE、NOTICE 与 SECURITY.md。
 
 源码、Issue 与 PR 统一在 [EduWork](https://github.com/ecnu/EduWork/tree/main/packages/dsh-memory)。开发命令在 `EduWork/packages/dsh-memory` 中执行，npm 安装保持独立；发布流程见[包维护说明](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES.md)。
+
+若旧 Profile 在 `cordis.patch.yml` 中显式覆盖了 `id: local-memory`，升级时改为 `id: memories`；配置内容保持不变。仅通过界面保存的旧 `settings.yaml` 由 DSH 按原 `memories` 命名空间迁移。不要删除原 `DSH_HOME` 或 SQLite 数据库。

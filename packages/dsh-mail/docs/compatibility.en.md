@@ -2,20 +2,19 @@
 
 [简体中文](compatibility.md) | **English**
 
-`@eduwork/dsh-mail@0.1.1` targets official DeepSeek Harness `0.1.5-rc.1` while retaining exact peer ranges for previously accepted baselines. See [migration](EDUWORK-MIGRATION.en.md) for the old unscoped package.
+`@eduwork/dsh-mail@0.2.0` targets official DeepSeek Harness `0.2.1-rc.2` with peer range `>=0.2.1-rc.2 <0.3.0-0`; older DSH Hosts must keep the earlier plugin. See [migration](EDUWORK-MIGRATION.en.md) for the old unscoped package.
 
 ## Reviewed baseline
 
-- DeepSeek Harness `0.1.5-rc.1` (current release baseline);
-- DeepSeek Harness `0.1.2-rc.1`, `0.1.3-alpha.1`, `0.1.3-alpha.2`, and `0.1.5-alpha.1` (previously accepted compatibility baselines);
-- Node.js 22+;
+- DeepSeek Harness `0.2.1-rc.2` (current release baseline);
+- Node.js 24.18+;
 - dynamic Web Client Bundle;
 - local Host filesystem;
 - IMAP4rev1/IMAP4rev2 and SMTP Submission with username plus password/app-password authentication.
 
 The DSH Profile provides `settings`, `credentials`, `tools`, `permissionPresets`, `approval`, and `fs`. The settings page also depends on official Remotes, Renderer, and Settings Client packages. Ordinary sending requires an interactive approval path; Full Access does not prompt.
 
-DSH `0.1.5-rc.1` requires plugins to use the Agent explicitly from tool execution context. Mail reads the current session from each execution's `exec.agent`, uses `agent.session` for permission presets and workspace resolution, does not depend on a global Agent, does not create or resume Sessions, and does not use ordinary subprocess handles. The ToolRuntime, Permission Presets, Credentials, Settings, Renderer, and Settings Client seams are accepted.
+DSH `0.2.1-rc.2` requires plugins to use the Agent explicitly from tool execution context. Mail reads the current session from each execution's `exec.agent`, uses `agent.session` for permission presets and workspace resolution, does not depend on a global Agent, does not create or resume Sessions, and does not use ordinary subprocess handles. The ToolRuntime, Permission Presets, Credentials, Settings, Renderer, and Settings Client seams are accepted.
 
 The official generic-file upload, Workspace Files, and `readByteRange()` can support future large-attachment improvements, but they cannot yet replace the Host binary write needed for IMAP downloads: `ctx.fs` still has no `writeBytes()`. This version therefore retains the local download adapter with workspace containment, real-path revalidation, and exclusive random filenames.
 
@@ -29,7 +28,7 @@ The official generic-file upload, Workspace Files, and `readByteRange()` can sup
 
 ## DSH binary-write limitation
 
-The current DSH `0.1.5-rc.1` release baseline exposes `ctx.fs.readBytes` but no `writeBytes`:
+The current DSH `0.2.1-rc.2` release baseline exposes `ctx.fs.readBytes` but no `writeBytes`:
 
 - outbound local attachments use the official seam end to end;
 - downloads require `ctx.fs.processPath()` and the Host Node process to share one filesystem;

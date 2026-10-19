@@ -6,17 +6,15 @@
 
 Word、Excel、PowerPoint 可复用宿主的官方 Office 技能、结构校验和 LibreOffice Kit，支持旧 DOC/XLS/PPT 读取及转换、Excel 公式重算。Studio 的 Office PDF 导出使用同一转换器，原文件保留。宿主要求和格式边界见[官方 Office 工作流](docs/OFFICE_PROCESSING.md)。
 
-版本为 `@eduwork/dsh-artifact-services@0.2.0`，与 Studio `0.5.0` 配套。DSH 集成目标严格为 `0.1.5-rc.1`；底层应用 API 要求 Node 22.19+ 或 24，以及所用能力的运行环境。插件的稳定版本号不代表上游 DSH 已脱离 rc。
+版本为 `@eduwork/dsh-artifact-services@0.3.0`，与 Studio `0.6.0` 配套。DSH 集成目标严格为 `0.2.1-rc.2`；底层应用 API 要求 Node 24.18+，以及所用能力的运行环境。插件的稳定版本号不代表上游 DSH 已脱离 rc。
 
-DSH Host 须通过完整的根级 npm `overrides` 和校验过的锁文件，将直接与间接 `@deepseek-ai/dsh*` 依赖统一锁定到 `0.1.5-rc.1`。只锁顶层包可能使上游 caret peer 解析到 rc.2，与 Studio 的精确 rc.1 peer 冲突并触发 `ERESOLVE`。安装示例以此配置为前提；使用装配锁文件执行 `npm ci`，不要通过 `--force` 或 `--legacy-peer-deps` 绕过冲突。
-
-上述 rc.1 条件适用于独立 npm 安装。EduWork 桌面使用 rc.2 Runtime 与固定插件载荷的产品组合，不在 Runtime 内重新执行本段安装命令；详见[产品构建指南](https://github.com/ecnu/EduWork/blob/main/docs/BUILD.md)。
+DSH 集成要求完整且版本一致的官方 0.2.1-rc.2 宿主，或兼容的 0.2.x 正式版。不要使用 `--force` 或 `--legacy-peer-deps` 绕过依赖冲突。
 
 ## 安装与配置
 
-在 Node 项目中安装精确版本 `@eduwork/dsh-artifact-services@0.2.0`。本地验证也可安装已检查的压缩包：
+在 Node 项目中安装精确版本 `@eduwork/dsh-artifact-services@0.3.0`。本地验证也可安装已检查的压缩包：
 ```sh
-npm install ./eduwork-dsh-artifact-services-0.2.0.tgz
+npm install ./eduwork-dsh-artifact-services-0.3.0.tgz
 ```
 
 使用 Studio 时，在同一命令中安装配套 Studio 包，只启用 Studio bundle，由其注册一次 Shared。见[源码构建与 Profile 激活](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/docs/USAGE.md)。普通 Node 应用直接调用下述 API；DSH Host 还需加载一次 `/dsh` 适配器。

@@ -1,4 +1,4 @@
-export const repository = 'ecnu/EduWork'
+export const repository = 'ECNU/EduWork'
 
 // Six independently installed development roots, seven independently published packages.
 // Studio retains its existing shared-services workspace and exact dependency contract.

@@ -29,7 +29,7 @@ export function inspectArchive(bytes, selected, expectedVersion) {
   const manifest = JSON.parse(files.get('package.json'))
   assert.equal(manifest.name, selected.name)
   assert.equal(manifest.version, expectedVersion)
-  assert.equal(manifest.repository.url, 'git+https://github.com/ecnu/EduWork.git')
+  assert.equal(manifest.repository.url, 'git+https://github.com/ECNU/EduWork.git')
   assert.equal(manifest.repository.directory, selected.directory)
   for (const entry of Object.values(manifest.exports || {})) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')

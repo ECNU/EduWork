@@ -30,7 +30,7 @@ npm run verify
 
 ## macOS 验证计划
 
-Memory 包本身是 JavaScript，不携带 .node 动态库。DSH 0.1.5-rc.1 的 storage-sqlite 和 session-query-sqlite 均使用 Node 内置 `node:sqlite`，不是独立 better-sqlite3 扩展，因此这条存储路径没有额外的插件原生 ABI 重编译步骤。仍须使用包含 node:sqlite/FTS5 的受支持 Node Host，不能据此推断任意 Electron 内嵌 Node 都兼容。
+Memory 包本身是 JavaScript，不携带 .node 动态库。DSH 0.2.1-rc.2 的 storage-sqlite 和 session-query-sqlite 均使用 Node 内置 `node:sqlite`，不是独立 better-sqlite3 扩展，因此这条存储路径没有额外的插件原生 ABI 重编译步骤。仍须使用包含 node:sqlite/FTS5 的受支持 Node Host，不能据此推断任意 Electron 内嵌 Node 都兼容。
 
 macOS 尚未实测。发布 mac 产品前应分别验证 arm64/x64 的原生 Node 与 npm ci、SQLite 建库/重开/FTS5、上述三个契约、Host/Web、用户目录路径及权限。不要复制 Windows node_modules；完整 DSH 中的 PTY、FFI 等原生依赖由主产品另外核对架构、签名及打包，不属于 Memory 存储后端的通过证据。
 

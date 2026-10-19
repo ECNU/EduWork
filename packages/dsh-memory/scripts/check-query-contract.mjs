@@ -3,7 +3,9 @@ import { createRequire } from 'node:module'
 import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
 import { pathToFileURL } from 'node:url'
 import path from 'node:path'
-import { encodeSessionReferenceUri, formatSessionReferenceMention } from '../lib/core.js'
+// Accept the immutable installed npm package during product qualification.
+const memoryRoot = process.argv[3] ? path.resolve(process.argv[3]) : path.resolve(import.meta.dirname, '..')
+const { encodeSessionReferenceUri, formatSessionReferenceMention } = await import(pathToFileURL(path.join(memoryRoot, 'lib/core.js')))
 
 assert.ok(process.argv[2], 'Pass the isolated runtime directory containing node_modules')
 const require = createRequire(path.join(path.resolve(process.argv[2]), 'package.json'))

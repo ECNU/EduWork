@@ -1,4 +1,4 @@
-// Prepare a product from the DSH source recipe without changing npm release locks.
+// Add release metadata and optional edition extensions without changing npm packages.
 import assert from 'node:assert/strict'
 import { cp, mkdir, readFile, writeFile, rm, access } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
@@ -15,6 +15,7 @@ import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 import { usePinnedBrowser } from './pinned-browser.mjs'
 import { copyDshBundledSkills, resolveDshSkillChild } from './lib/dsh-skills.mjs'
+import { verifyPublishedPackageFiles } from './published-package-inputs.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -24,7 +25,8 @@ const product=resolve(values.product)
 const read=async file=>JSON.parse(await readFile(file,'utf8'))
 const save=async(file,value)=>writeFile(file,JSON.stringify(value,null,2)+'\n')
 const identity=await read(join(product,'assembly.json'))
-assert.equal(identity.pluginMode,'source-qualification')
+assert.equal(identity.pluginMode,'npm')
+assert.ok(identity.publishedPackageFiles, 'Missing published package byte receipt')
 const recipe=await read(new URL('../config/desktop-build.json',import.meta.url))
 const runtimeLock=await read(values['runtime-lock']??new URL('../'+recipe.sourceLock,import.meta.url))
 assert.equal(identity.dshVersion,runtimeLock.packageVersion)
@@ -42,6 +44,7 @@ if(values.edition){
   const entries=[]
   for(const plugin of distribution.plugins){
     const destination=join(product,'d/node_modules',plugin.name)
+    assert.ok(!identity.externalPackages.some(item=>item.name===plugin.name), `Edition cannot overwrite a published package: ${plugin.name}`)
     await cp(join(edition,plugin.source),destination,{recursive:true})
     const manifest=await read(join(destination,'package.json'))
     manifest.peerDependencies=rebuiltDshPeers(manifest,identity.dshVersion,{editionOwned:true})
@@ -113,7 +116,8 @@ for(const platform of ['win32','darwin']) await readPublisherBootstrap({ownershi
 identity.localPlugins={};identity.managedPackages={}
 for(const name of pluginNames) identity.localPlugins[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:true}
 for(const name of generic.packages) identity.managedPackages[name]={version:(await read(join(product,'d/node_modules',name,'package.json'))).version,source:identity.sourcePackages.includes(name)}
-Object.assign(identity,{version:values.version,qualification:'Pinned DSH source build; package and component receipts retained',automaticUpdates:release.automaticUpdates,
+await verifyPublishedPackageFiles(identity.publishedPackageFiles,join(product,'d/node_modules'))
+Object.assign(identity,{version:values.version,qualification:'Locked npm plugins with product and edition extensions; component receipts retained',automaticUpdates:release.automaticUpdates,
   sourceAlpha:!stable,sourceRelease:stable,releaseChannel:stable?'stable':'development',published:false})
 await save(join(product,'assembly.json'),identity)
 console.log(JSON.stringify({distribution:identity.distribution,version:identity.version,dshVersion:identity.dshVersion,sourceAlpha:!stable,automaticUpdates:release.automaticUpdates}))

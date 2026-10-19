@@ -2,7 +2,7 @@
 
 **简体中文** | [English](development.en.md)
 
-当前插件版本为 `0.2.3`，开发基线是 DSH `0.1.5-rc.1`、Cordis `4.0.2`、pi-ai `0.85.1`。产品版本不决定插件版本；npm 发布状态以 registry 为准。源码位于 EduWork 的 `packages/dsh-oidc`。
+当前插件版本为 `0.3.0`，开发基线是 DSH `0.2.1-rc.2`、Cordis `4.0.5`、pi-ai `1.1.0`。产品版本不决定插件版本；npm 发布状态以 registry 为准。源码位于 EduWork 的 `packages/dsh-oidc`。
 
 ## 从干净 checkout 验证
 

@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'))
-const expectedDsh = '0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1'
+const expectedDsh = '>=0.2.1-rc.2 <0.3.0-0'
 const dshPeers = [
   '@deepseek-ai/dsh-api-remotes',
   '@deepseek-ai/dsh-client-ui-renderer',
@@ -20,8 +20,8 @@ for (const name of dshPeers) {
     throw new Error(`Expected ${name} peer ${expectedDsh}, got ${manifest.peerDependencies?.[name] ?? '<missing>'}`)
   }
 }
-if (manifest.peerDependencies?.['@deepseek-ai/cordis'] !== '4.0.2') {
-  throw new Error('Expected @deepseek-ai/cordis peer 4.0.2')
+if (manifest.peerDependencies?.['@deepseek-ai/cordis'] !== '>=4.0.5 <4.1.0') {
+  throw new Error('Expected the supported Cordis 4.0 API range')
 }
 const lockRoot = lock.packages?.['']
 if (lockRoot?.name !== manifest.name || lockRoot?.version !== manifest.version) {
@@ -54,7 +54,7 @@ const requiredContracts = [
   ['live Tool Agent permission seam', permissionSource, /const agent = exec\.agent/],
   ['Session-backed permission preset', permissionSource, /permissionPresets\.current\(agent\.session\)/],
   ['Session workspace cwd', workspaceSource, /exec\.agent\?\.session\?\.header\?\.cwd/],
-  ['Client settings scope', clientSource, /settingsScope\.bind\(\{ namespace: NS \}\)/],
+  ['Client configuration form', clientSource, /configForms\.get\(NS\)/],
   ['Profile row id', patchSource, /id:\s*dsh-mail-assistant/],
 ]
 for (const [label, source, pattern] of requiredContracts) {

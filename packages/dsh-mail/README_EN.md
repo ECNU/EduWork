@@ -1,12 +1,12 @@
 # DSH Mail Assistant
 
-> npm package: `@eduwork/dsh-mail@0.1.1`. The previous unscoped package is retained only for migration. See [migration and data compatibility](docs/EDUWORK-MIGRATION.en.md).
+> npm package: `@eduwork/dsh-mail@0.2.0`. The previous unscoped package is retained only for migration. See [migration and data compatibility](docs/EDUWORK-MIGRATION.en.md).
 
 [简体中文](README.md) | **English**
 
 A security-focused mail assistant plugin for [DeepSeek Harness (DSH)](https://github.com/deepseek-ai/deepseek-harness). It reads through standard IMAP and sends through standard SMTP, while deliberately refusing to become another full mail client.
 
-Current version: `0.1.1`, reviewed against the public interfaces and an actual runtime of DeepSeek Harness `0.1.5-rc.1`. Complete your own security and compliance review before connecting a critical mailbox. See [compatibility](docs/compatibility.en.md) for the full support matrix.
+Current version: `0.2.0`, reviewed against the public interfaces and an actual runtime of DeepSeek Harness `0.2.1-rc.2`. Complete your own security and compliance review before connecting a critical mailbox. See [compatibility](docs/compatibility.en.md) for the full support matrix.
 
 ## Scope
 
@@ -37,12 +37,12 @@ See the complete [security model](docs/security-model.en.md).
 
 ## Install
 
-Prerequisites: Node.js 22+, DSH `0.1.5-rc.1`, and a Profile with the official Settings, Credentials, Tools, Filesystem, Permission Presets, Approval, and Web Client capabilities.
+Prerequisites: Node.js 24.18+, DSH `0.2.1-rc.2`, and a Profile with the official Settings, Credentials, Tools, Filesystem, Permission Presets, Approval, and Web Client capabilities.
 
 For normal use, pin the reviewed exact npm version:
 
 ```bash
-dsh plugin --profile web add @eduwork/dsh-mail@0.1.1
+dsh plugin --profile web add @eduwork/dsh-mail@0.2.0
 ```
 
 Use a source checkout for auditing, development, or unpublished changes:
@@ -100,7 +100,7 @@ Approval for `mail_send` controls one execution; it does not validate the recipi
 
 The plugin uses official DSH seams: `ctx.credentials`, `ctx.settings`, `settings.section`, `ctx.tools`, `ctx.permissionPresets`, `tools/pre-execute`, `ctx.fs`, and the Client Loader. Ordinary permissions route sends through the composed Approval service; Full Access proceeds without a prompt. It does not fork the upstream Web client.
 
-DSH `0.1.5-rc.1` has bounded binary reads but no binary-write filesystem seam. `mail_get_attachment` therefore uses `ctx.fs` to resolve and fence the local destination before an exclusive local write. A remote/non-local FS Provider may not support that one tool. See [compatibility](docs/compatibility.en.md).
+DSH `0.2.1-rc.2` has bounded binary reads but no binary-write filesystem seam. `mail_get_attachment` therefore uses `ctx.fs` to resolve and fence the local destination before an exclusive local write. A remote/non-local FS Provider may not support that one tool. See [compatibility](docs/compatibility.en.md).
 
 ## Documentation
 

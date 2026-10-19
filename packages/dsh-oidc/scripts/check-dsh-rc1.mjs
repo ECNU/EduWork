@@ -9,7 +9,8 @@ import { WebServer } from '@deepseek-ai/dsh-host-webserver'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { LlmRuntime, assertUsableApiKey, resolveImageAttachmentAccess, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import { Config as PiAiConfig, PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
-import { SettingsProvider } from '@deepseek-ai/dsh-settings'
+import { SettingsForms } from '@deepseek-ai/dsh-settings'
+import { satisfies } from 'semver'
 import { Remote, TypertRemoteService, remoteMethods } from '@deepseek-ai/dsh-typert-protocol'
 import { createProvider } from '@earendil-works/pi-ai'
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy'
@@ -20,8 +21,8 @@ import OidcAccountService from '../src/host/index.js'
 const require = createRequire(import.meta.url)
 const root = new URL('../', import.meta.url)
 const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))
-const supportedDshVersions = new Set(['0.1.2-rc.1', '0.1.3-alpha.1', '0.1.3-alpha.2', '0.1.5-alpha.1', '0.1.5-rc.1'])
-const expectedDshPeerRange = '0.1.2-rc.1 || 0.1.3-alpha.1 || 0.1.3-alpha.2 || 0.1.5-alpha.1 || 0.1.5-rc.1'
+const supportedDshVersions = new Set(['0.2.1-rc.2'])
+const expectedDshPeerRange = '>=0.2.1-rc.2 <0.3.0-0'
 
 for (const [name, version] of Object.entries(manifest.peerDependencies)) {
   if (name.startsWith('@deepseek-ai/dsh-')) {
@@ -49,7 +50,9 @@ const installedDshVersion = [...installedVersions][0]
 assert.equal(installedDshVersion, process.env.DSH_OIDC_EXPECT_DSH ?? manifest.devDependencies['@deepseek-ai/dsh-llm'],
   'the active Runtime differs from the selected development/CI baseline')
 
-assert.equal(typeof SettingsProvider.prototype.installSection, 'function', 'settings.installSection is unavailable')
+assert.equal(typeof SettingsForms.prototype.configure, 'function', 'settings.configure is unavailable')
+for (const version of ['0.2.1-rc.2','0.2.1','0.2.2']) assert.ok(satisfies(version, expectedDshPeerRange))
+for (const version of ['0.1.5-rc.1','0.2.0','0.3.0-rc.1','0.3.0']) assert.ok(!satisfies(version, expectedDshPeerRange))
 assert.equal(typeof LlmRuntime.prototype.registerAdapter, 'function', 'llm.registerAdapter is unavailable')
 assert.equal(typeof LlmRuntime.prototype.registerConfigurableProviders, 'function', 'llm.registerConfigurableProviders is unavailable')
 assert.equal(typeof PiAiAdapter.prototype.prepareCall, 'function', 'PiAiAdapter.prepareCall is unavailable')
@@ -77,23 +80,6 @@ assert.deepEqual(enterpriseProviderConfig(new Map([[example.id, example]])).prov
 const discovered = { ...example, provider: { ...example.provider, baseURL: 'https://models.example.edu/v1' } }
 const providerBase = settingsBase(enterpriseProviderConfig(new Map([[example.id, discovered]])))
 assert.doesNotThrow(() => PiAiConfig(providerBase), 'the public Enterprise Profile must satisfy the reviewed PiAi settings schema')
-class ProbeSettingsProvider extends SettingsProvider {
-  load() { return Promise.resolve({}) }
-  persist() { return Promise.resolve() }
-}
-const settingsCtx = new Context()
-const settingsProvider = new ProbeSettingsProvider(settingsCtx)
-let providerSource
-assert.doesNotThrow(() => settingsProvider.installSection(
-  settingsCtx,
-  'provider-enterprise',
-  PiAiConfig,
-  providerBase,
-  { setSource(source) { providerSource = source }, onChange() {} },
-), 'the public Enterprise Profile must install through the reviewed SettingsProvider')
-assert.equal(providerSource().providers['example-ai'].displayName, 'Example AI')
-assert.equal(providerSource().providers['example-ai'].models.length, 2)
-
 const clientContracts = [
   ['@deepseek-ai/dsh-api-remotes', 'lib/client.js', '$mount'],
   ['@deepseek-ai/dsh-client-ui-settings-models', 'lib/client.js', 'settings.models.footer'],
@@ -106,9 +92,8 @@ const clientContracts = [
   ['@deepseek-ai/dsh-client-ui-sidebar', 'lib/client.js', 'sidebar.footer.action'],
   ['@deepseek-ai/dsh-client-ui-theme', 'lib/client.js', 'overrideTokens'],
 ]
-if (['0.1.5-alpha.1', '0.1.5-rc.1'].includes(installedDshVersion)) clientContracts.push(
+clientContracts.push(
   ['@deepseek-ai/dsh-api-remotes', 'lib/index.js', 'credentials/reference-updated'],
-  ['@deepseek-ai/dsh-agent-default-model', 'lib/index.js', 'saveSelection(next)'],
   ['@deepseek-ai/dsh-client-ui-model-selection', 'lib/types/client/service.d.ts', 'directoryFor'],
   ['@deepseek-ai/dsh-api-session-controller', 'lib/types/client/contract/sessions.d.ts', 'subagentAddress'],
 )

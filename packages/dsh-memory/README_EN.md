@@ -8,17 +8,17 @@ Local memory and conversation recall for DeepSeek Harness.
 
 ## Install
 
-Version **0.1.1** requires Node.js 22.13+ and DeepSeek Harness **0.1.5-rc.1**. Align every DSH runtime package to that exact baseline; do not mix alpha or older rc packages into the Host. The plugin's stable version number does not change the upstream rc status.
+Version **0.2.0** requires Node.js 24.18+ and DSH 0.2.1-rc.2 or a compatible stable 0.2.x release. The package declares an API range; development and acceptance use an exact lock. Other prerelease series require their own compatibility check.
 
 Install the exact npm version:
 
 ```sh
-dsh plugin --profile web add @eduwork/dsh-memory@0.1.1
+dsh plugin --profile web add @eduwork/dsh-memory@0.2.0
 dsh --profile web --dump-config
 dsh --profile web
 ```
 
-The previous `@eduwork/dsh-memory@0.1.0` targets DSH `0.1.2-rc.1`; upgrade the Host before installing 0.1.1. Do not install both versions in one profile.
+Versions before 0.2.0 target older DSH APIs. Upgrade the Host first, keep the same DSH_HOME, and replace the existing plugin instead of loading two copies.
 The package includes a DSH bundle, Host, prebuilt Client and Remote descriptors; consumers do not need to compile it. Restart the selected profile after installation.
 
 For development: `npm ci`, `npm run build`, `npm test`, then `npm pack --pack-destination artifacts` (create the directory first).
@@ -72,3 +72,5 @@ Module checks and npm publication use the shared EduWork workflow. See [package 
 MIT. See [NOTICE](NOTICE), [UPSTREAM.md](UPSTREAM.md) and [SECURITY.md](SECURITY.md).
 
 Source, issues and PRs are maintained in [EduWork](https://github.com/ecnu/EduWork/tree/main/packages/dsh-memory). Run development commands from `EduWork/packages/dsh-memory`. npm installation remains independent. See [package publication](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES_EN.md).
+
+If an older Profile explicitly overrides `id: local-memory` in `cordis.patch.yml`, rename that entry to `id: memories` when upgrading, keeping its configuration. DSH imports legacy UI-saved `settings.yaml` under the existing `memories` namespace. Keep the original `DSH_HOME` and SQLite databases.

@@ -6,7 +6,13 @@
 
 当前源码提供 LiteLLM native OAuth 和显式启用的 oidc-llm 0.1 实验接入。两者共用浏览器/loopback、PKCE、Host 会话、刷新、退出与 DSH Provider；模型请求使用当前 Access Token，客户端不再申请或保存机构模型 API Key。个人 API Key 设置独立保留。
 
-上述能力已随 `@eduwork/dsh-oidc@0.3.0-dev.2` 发布，并包含在 EduWork `0.3.6-dev.20260921.1` 中。桌面用户直接编辑随包提供的 `eduwork.jsonc`，无需单独安装本 npm 包，步骤见 [LiteLLM 接入指南](docs/gateway-auth/litellm-setup.md)。旧 OIDC + Key Binding 配置会被明确拒绝，迁移见[旧方案迁移](docs/key-binding-protocol.md)。服务端可继续保留旧接口供旧客户端使用。
+版本 `@eduwork/dsh-oidc@0.3.0` 面向 Node.js 24.18+ 和 DSH 0.2.1-rc.2，可独立安装到本机 DSH Web Profile；Web 后端不依赖 EduWork 桌面桥接。机构模型接入需要部署者提供兼容网关和公开 Profile 配置。
+
+```sh
+dsh plugin --profile web add @eduwork/dsh-oidc@0.3.0
+```
+
+启动 DSH 前，将 `EDUWORK_OIDC_PROFILE` 设为 Profile JSON 文件的绝对路径。默认 bundle 使用 Web 后端；EduWork 桌面用户继续使用发行配置。旧 Key Binding 配置需要先[迁移](docs/key-binding-protocol.md)。
 
 ## 开始接入
 
@@ -15,7 +21,7 @@
 3. 在桌面 Host 使用 backend: desktop，本机 Web 使用 backend: web。仅身份登录仍可使用[纯身份示例](examples/identity-only.example.json)；该模式不提供企业模型。
 4. 登录后自动读取当前授权的模型目录。账户刷新不应覆盖用户后来选择的个人模型。
 
-当前源码按模型 `type` 注册，仅 `llm` 进入对话。服务器只返回 ID 时，升级前须按实际模型 ID 补充 `provider.models[].type`；服务端类型优先，专用及类型未知的模型不进入对话。这项改动需要新插件/客户端与配置同步，尚不属于上述已发布版本。详见[模型说明](docs/enterprise-profile.md)。
+当前源码按模型 `type` 注册，仅 `llm` 进入对话。服务器只返回 ID 时，升级前须按实际模型 ID 补充 `provider.models[].type`；服务端类型优先，专用及类型未知的模型不进入对话。仅返回 ID 的服务端需同时补齐配置中的模型类型。详见[模型说明](docs/enterprise-profile.md)。
 
 从源码验证：
 

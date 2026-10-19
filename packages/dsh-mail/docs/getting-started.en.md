@@ -4,8 +4,8 @@
 
 ## Requirements
 
-- Node.js 22+;
-- DeepSeek Harness `0.1.5-rc.1`;
+- Node.js 24.18+;
+- DeepSeek Harness `0.2.1-rc.2`;
 - a Profile with Settings, Credentials, Tools, Filesystem, Permission Presets, Approval, and Web Client;
 - an IMAP/SMTP-enabled mailbox and provider-issued app password.
 
@@ -14,7 +14,7 @@
 For normal use, pin the reviewed exact npm version:
 
 ```bash
-dsh plugin --profile web add @eduwork/dsh-mail@0.1.1
+dsh plugin --profile web add @eduwork/dsh-mail@0.2.0
 ```
 
 For auditing, development, or unpublished changes, use a source checkout:
@@ -63,10 +63,10 @@ npm ci
 npm run check
 ```
 
-To verify the real DSH `0.1.5-rc.1` contract, point `DSH_RUNTIME_ROOT` at a clean runtime of that exact version and run:
+To verify the DSH `0.2.1-rc.2` API contract in the development lock, run:
 
 ```bash
-npm run accept:dsh-015-rc1
+npm run check:dsh
 ```
 
-This uses a no-network delivery simulator to cover Agent-session, rejection, one-time approval, and Full Access paths without a real mailbox. Run real IMAP/SMTP interoperability only with a dedicated test account in an isolated Profile.
+This checks public APIs and client settings integration. `npm test` uses synthetic data for permissions, attachments and mail parsing; it does not establish real mailbox delivery. Run real IMAP/SMTP interoperability only with a dedicated test account in an isolated Profile.

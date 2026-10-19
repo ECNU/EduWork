@@ -8,7 +8,7 @@ Media-specific probes are `media-capacity-smoke.mjs` (six MP3 probes, one mediab
 
 This repository is an npm workspace. `lib/` contains maintained Host JavaScript alongside generated `client.js`, `pdf-runtime.js`, `pdfjs.js` and the shared video template. Do not clear `lib` during builds.
 
-The current candidate locks official DSH 0.1.5-rc.1, commit `183f08e9c6dde7e36cd2318eaee70b0da08fb35e`. Final assembly tests must use the same verified runtime for both the host launcher and every plugin DSH import. Setting only `STUDIO_TEST_DSH_RUNTIME` does not change Node resolution from a symlinked plugin checkout. `scripts/verify-dsh-runtime.mjs` checks both package importers against an assembly runtime receipt; use an isolated dependency layout and never modify a shared runtime. `scripts/session-v3-smoke.mjs` exercises actual V3 sessions, production artifact settlement, and persistence-handle round trips without a model service.
+The current candidate locks official DSH 0.2.1-rc.2. Final assembly tests must use the same verified runtime for both the host launcher and every plugin DSH import. Setting only `STUDIO_TEST_DSH_RUNTIME` does not change Node resolution from a symlinked plugin checkout. `scripts/verify-dsh-runtime.mjs` checks both package importers against an assembly runtime receipt; use an isolated dependency layout and never modify a shared runtime. `scripts/session-v3-smoke.mjs` exercises actual V3 sessions, production artifact settlement, and persistence-handle round trips without a model service.
 
 ```sh
 npm ci

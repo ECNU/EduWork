@@ -1,6 +1,6 @@
 # DSH compatibility
 
-Studio 0.5.0 and Artifact Services 0.2.0 target DSH 0.1.5-rc.1. Use the package manifests and dependency locks to select a consistent host; retained compatibility code does not imply support for every other DSH version.
+Studio 0.6.0 and Artifact Services 0.3.0 target DSH 0.2.1-rc.2. Use the package manifests and dependency locks to select a consistent host; retained compatibility code does not imply support for every other DSH version.
 
 ## Host interfaces
 

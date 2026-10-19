@@ -6,18 +6,16 @@ Reusable Office generation and preview, TTS/ASR providers and media rendering fo
 
 Word, Excel and PowerPoint can reuse the host's official Office skills, structural checks and LibreOffice Kit, including legacy DOC/XLS/PPT reading and conversion and Excel recalculation. Studio Office PDF exports share the converter and preserve the original files. See [official Office workflows](docs/OFFICE_PROCESSING_EN.md) for host requirements and format boundaries.
 
-Version: `@eduwork/dsh-artifact-services@0.2.0`, paired with Studio `0.5.0`. DSH integration targets exactly `0.1.5-rc.1`; low-level application APIs need Node 22.19+ or 24 and the relevant runtimes. This stable package version still targets an upstream DSH release candidate.
+Version: `@eduwork/dsh-artifact-services@0.3.0`, paired with Studio `0.6.0`. DSH integration targets exactly `0.2.1-rc.2`; low-level application APIs need Node 24.18+ and the relevant runtimes. This stable package version still targets an upstream DSH release candidate.
 
-For DSH integration, the consuming host must pin every direct and transitive `@deepseek-ai/dsh*` package to `0.1.5-rc.1` through complete root-level npm `overrides` and a verified lockfile. Pinning only the top-level DSH package allows upstream caret peer ranges to resolve rc.2, which can cause `ERESOLVE` with Studio's exact rc.1 peers. The installation examples assume this host configuration. Use `npm ci` with the assembly lockfile; do not bypass conflicts with `--force` or `--legacy-peer-deps`.
-
-The rc.1 requirement above applies to independent npm installation. EduWork desktop combines an rc.2 Runtime with pinned plugin payloads; do not rerun these install commands inside that Runtime. See the [product build guide](https://github.com/ecnu/EduWork/blob/main/docs/BUILD.md).
+DSH integration requires a coherent official 0.2.1-rc.2 Host or a compatible 0.2.x stable release. Do not bypass peer conflicts using `--force` or `--legacy-peer-deps`. EduWork desktop uses its own reviewed product lock; plugin publication does not update that lock automatically.
 
 ## Install and configure
 
-Install `@eduwork/dsh-artifact-services@0.2.0` exactly in the consuming Node project. For local acceptance, install the reviewed archive:
+Install `@eduwork/dsh-artifact-services@0.3.0` exactly in the consuming Node project. For local acceptance, install the reviewed archive:
 
 ```sh
-npm install ./eduwork-dsh-artifact-services-0.2.0.tgz
+npm install ./eduwork-dsh-artifact-services-0.3.0.tgz
 ```
 
 For Studio, install its matching archive in the same command and activate only the Studio bundle, which registers Shared once. See [source build and Profile activation](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/docs/USAGE.md). Plain Node applications import the APIs below; DSH hosts additionally load the `/dsh` adapter once.

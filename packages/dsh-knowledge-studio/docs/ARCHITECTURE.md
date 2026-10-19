@@ -2,7 +2,7 @@
 
 ## Studio navigation and artifact lifecycle
 
-On official DSH `0.1.5-rc.1`, Studio registers a native Sidebar tab and Start entry. The host owns collapse/fullscreen, per-session tab restoration and global main panels. Studio renders inside that tab without an overlay, custom expand control or parallel fullscreen state. Drafts, artifact selection and learning progress remain per session.
+On official DSH `0.2.1-rc.2`, Studio registers a native Sidebar tab and Start entry. The host owns collapse/fullscreen, per-session tab restoration and global main panels. Studio renders inside that tab without an overlay, custom expand control or parallel fullscreen state. Drafts, artifact selection and learning progress remain per session.
 
 Legacy hosts retain `plugins/dsh-knowledge-studio/ui-preferences.json` and preference RPC compatibility. The current Sidebar client neither reads nor writes that preference and does not use it to open new-session tabs. Those files remain intact for older integrations.
 

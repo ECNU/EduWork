@@ -4,6 +4,12 @@
 
 All notable changes are documented here. The format follows Keep a Changelog principles and the project uses Semantic Versioning with pre-1.0 qualifications described in `docs/compatibility.en.md`.
 
+## [0.3.0] — 2026-10-19
+
+- Target DSH 0.2.1-rc.2 and compatible 0.2.x stable Hosts with pi-ai 1.1.0; remove retired DSH dependency declarations.
+- Publish the Web-first OIDC/token-model integration, explicit extension-service authorization and typed model capabilities already used by EduWork.
+- Preserve refresh-token rotation, logout isolation and reasoning replay handling. The removed legacy Key Binding/native backend must be migrated before upgrading.
+
 ## [0.3.0-dev.2] - 2026-09-21
 
 - Explicitly allow HTTP test services through the single `allowInsecureDevelopment` flag, disabled by default; HTTPS behavior is unchanged.

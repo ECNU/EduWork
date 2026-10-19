@@ -34,7 +34,7 @@ test('seven separate package identities retain registry dependency contracts and
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
     assert.equal(pkg.repository.directory, selected.directory)
-    assert.equal(pkg.repository.url, 'git+https://github.com/ecnu/EduWork.git')
+    assert.equal(pkg.repository.url, 'git+https://github.com/ECNU/EduWork.git')
     assert.equal(pkg.publishConfig.access, 'public')
     for (const version of Object.values(pkg.dependencies || {})) assert.ok(!/^(file:|link:|workspace:)/.test(version))
   }
@@ -73,9 +73,11 @@ function tarball(files) {
 }
 test('publication rejects the wrong package, missing entry points and archive traversal', () => {
   const selected = selectPackage('dsh-oidc')
-  const manifest = { name: selected.name, version: '1.2.3', repository: { url: 'git+https://github.com/ecnu/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
+  const manifest = { name: selected.name, version: '1.2.3', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
   const files = { 'package/package.json': JSON.stringify(manifest), 'package/lib/index.js': 'export default {}' }
   assert.equal(inspectArchive(tarball(files), selected, '1.2.3').manifest.name, selected.name)
+  const wrongCasing = { ...manifest, repository: { ...manifest.repository, url: 'git+https://github.com/ecnu/EduWork.git' } }
+  assert.throws(() => inspectArchive(tarball({ ...files, 'package/package.json': JSON.stringify(wrongCasing) }), selected, '1.2.3'))
   assert.throws(() => inspectArchive(tarball(files), selectPackage('dsh-mail'), '1.2.3'))
   assert.throws(() => inspectArchive(tarball(files), selected, '9.9.9'))
   assert.throws(() => inspectArchive(tarball({ 'package/package.json': files['package/package.json'] }), selected, '1.2.3'), /Missing packed export/)
@@ -85,7 +87,7 @@ test('publication rejects the wrong package, missing entry points and archive tr
 
 test('desktop pet publication rejects a package missing a referenced character image', () => {
   const selected = selectPackage('dsh-desktop-pet')
-  const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ecnu/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
+  const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
   const files = Object.fromEntries(['LICENSE', 'skins/LICENSE', 'README.md', 'README_EN.md', 'cordis.patch.yml',
     'lib/index.js', 'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']
     .map(file => ['package/' + file, 'fixture']))

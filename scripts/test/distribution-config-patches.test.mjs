@@ -210,6 +210,14 @@ test('real edition preparation preserves user organizations through product prof
   git(['init'])
   git(['add', 'edition/distribution.json'])
   git(['-c', 'user.name=Synthetic Fixture', '-c', 'user.email=synthetic@example.invalid', 'commit', '-m', 'Synthetic edition configuration'])
+  const editionFile = join(edition, 'edition/distribution.json')
+  const originalEdition = await readFile(editionFile, 'utf8')
+  await writeFile(editionFile, JSON.stringify({ ...JSON.parse(originalEdition), plugins: [
+    { id: 'synthetic-replacement', name: identity.externalPackages[0].name, source: 'unpublished-replacement' },
+  ] }))
+  assert.throws(() => execFileSync(process.execPath, [fileURLToPath(new URL('../prepare-pinned-dsh-product.mjs', import.meta.url)),
+    '--product', product, '--edition', edition, '--version', '0.0.0-alpha.1'], { stdio: 'pipe', windowsHide: true }), /Edition cannot overwrite a published package/)
+  await writeFile(editionFile, originalEdition)
   execFileSync(process.execPath, [fileURLToPath(new URL('../prepare-pinned-dsh-product.mjs', import.meta.url)),
     '--product', product, '--edition', edition, '--version', '0.0.0-alpha.1'], { stdio: 'pipe', windowsHide: true })
   await writeFile(config, JSON.stringify({ schemaVersion: 1, product: { name: 'Synthetic user product' },

@@ -1,5 +1,4 @@
-// Explicit source qualification build. This does not publish npm artifacts or
-// change the release assembly's dependency locks.
+// Build product-owned extensions only. Published plugins are immutable npm inputs.
 import { createRequire } from 'node:module'
 import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promises'
 import { join, resolve, relative, sep } from 'node:path'
@@ -11,9 +10,9 @@ import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
 import { releaseIdentity } from '../dsh-host/release-policy.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
-import { buildVideoTemplate } from '../packages/dsh-knowledge-studio/scripts/build-video-template.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
-import { verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
+import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
+import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -25,18 +24,19 @@ const runtime = resolve(values.runtime), dependencies = resolve(values.dependenc
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
 verifyPinnedDshReceipt(runtimeReceipt)
+const publishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
+await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies, runtime })
 const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.pinned.dsh', runtimeReceipt.dshVersion)
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
-for (const folder of ['dsh-plugins', 'config/distributions', 'packages/dsh-mail', 'packages/dsh-memory', 'packages/dsh-oidc', 'packages/dsh-knowledge-studio']) {
+for (const folder of ['dsh-plugins', 'config/distributions']) {
   await cp(join(sourceRepository, folder), join(repository, folder), { recursive: true,
     filter: path => !relative(sourceRepository, path).split(/[\\/]/).some(part => ['node_modules', '.git', 'test', 'tests', '.research'].includes(part)),
   })
 }
-const { build, transform } = require('esbuild')
-// Literature and desktop pet are published npm inputs in the product dependency lock.
-// Package changes go through its own check/pack/publication workflow.
+const { build } = require('esbuild')
+// Every independently published plugin goes through its own npm release workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
 const distribution = usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8')))
 distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)
@@ -46,11 +46,10 @@ await writeFile(distributionPath, JSON.stringify(distribution, null, 2) + '\n')
 await copyFile(join(repository, 'dsh-plugins/artifact-preview-native/lib/reveal-upstream.js'),
   join(repository, 'dsh-plugins/artifact-preview-native/lib/reveal.js'))
 const { transform: transformCSS } = require('lightningcss')
-const sharedRoot = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services')
+const sharedRoot = join(dependencies, 'node_modules/@eduwork/dsh-artifact-services')
 const shared = JSON.parse(await readFile(join(sharedRoot, 'package.json'), 'utf8'))
 const sharedAliases = Object.fromEntries(Object.entries(shared.exports).map(([key, path]) => [shared.name + (key === '.' ? '' : key.slice(1)), join(sharedRoot, path)]))
-const report = { scope: 'source candidate client bundles; unpublished', dshVersion: runtimeReceipt.dshVersion, productRelease, packages: [] }
-await buildVideoTemplate({ artifactRoot: sharedRoot, transform })
+const report = { scope: 'product-owned extension bundles; published plugins are not rebuilt', dshVersion: runtimeReceipt.dshVersion, productRelease, packages: [], externalPackages: publishedLocks }
 report.mediaTemplate = await verifyMediaTemplate(sharedRoot)
 // These are separately rebuilt, private candidate artifacts. Their DSH peers
 // describe this target, not the default-version npm builds in the source tree.
@@ -76,19 +75,8 @@ async function prepareCandidateManifests(directory) {
     }
   }
 }
-for (const directory of ['dsh-plugins', 'packages']) await prepareCandidateManifests(join(repository, directory))
-// Memory's maintained build copies its JS Host modules verbatim. Studio's PDF
-// runtime is generated separately and is required for real document indexing.
-for (const folder of ['dsh-memory', 'dsh-mail', 'dsh-oidc']) {
-  const root = join(repository, 'packages', folder)
-  await cp(join(root, 'src/host'), join(root, 'lib'), { recursive: true })
-}
-await build({ entryPoints: [join(repository, 'packages/dsh-knowledge-studio/src/host/pdf-runtime.ts')],
-  outfile: join(repository, 'packages/dsh-knowledge-studio/lib/pdf-runtime.js'), bundle: true, platform: 'node',
-  format: 'esm', target: 'node24', nodePaths: [join(dependencies, 'node_modules'), join(runtime, 'node_modules')],
-})
-const clients = Object.entries({ 'dsh-mail': 'index.tsx', 'dsh-memory': 'index.ts', 'dsh-oidc': 'index.ts', 'dsh-knowledge-studio': 'index.tsx' })
-  .map(([folder, entry]) => [`packages/${folder}`, `src/client/${entry}`])
+await prepareCandidateManifests(join(repository, 'dsh-plugins'))
+const clients = []
 for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar']) {
   clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
@@ -110,7 +98,7 @@ for (const [folder, entry] of clients) {
     nodePaths: [join(runtime, 'node_modules'), join(dependencies, 'node_modules')],
     external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/cordis', '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-primitives', '@deepseek-ai/dsh-client-ui-dockkit'],
     define: { 'process.env.NODE_ENV': '"production"', __EDUWORK_PINNED_DSH__: 'true' },
-    alias: { ...localAliases, ...(folder === 'packages/dsh-knowledge-studio' ? Object.fromEntries(['process', 'path', 'url'].map(name => [`node:${name}`, join(root, `src/client/shims/${name}.ts`)])) : {}) },
+    alias: localAliases,
     // ModuleLoader fetches one JS artifact. Embed module CSS just as the
     // official compiler does, with stable per-plugin class names.
     plugins: [{ name: 'native-module-css', setup(builder) {

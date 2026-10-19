@@ -2,9 +2,9 @@
 
 ## Runtime requirements
 
-Studio 0.5.0 / Shared 0.2.0 require Node 22.19+ or 24 and official DSH 0.1.5-rc.1. Install the matching exact npm versions after publication, or both reviewed local archives. Verify registry availability rather than inferring it from this document. Enable optional npm dependencies so LadybugDB can select its native platform package. Windows x64 and Linux x64 are CI targets; other listed native platforms are not yet covered by this project's CI.
+Studio 0.6.0 / Shared 0.3.0 require Node 24.18+ and official DSH 0.2.1-rc.2. Install the matching exact npm versions after publication, or both reviewed local archives. Verify registry availability rather than inferring it from this document. Enable optional npm dependencies so LadybugDB can select its native platform package. Windows x64 and Linux x64 are CI targets; other listed native platforms are not yet covered by this project's CI.
 
-The two package versions are coupled: Studio `0.5.0` requires Artifact Services `0.2.0` in this release. When installing from locally built archives, supply both tarballs in the same npm install. Do not use `--force` or `--legacy-peer-deps` to resolve a mismatched DSH host.
+The two package versions are coupled: Studio `0.6.0` requires Artifact Services `0.3.0` in this release. When installing from locally built archives, supply both tarballs in the same npm install. Do not use `--force` or `--legacy-peer-deps` to resolve a mismatched DSH host.
 
 After installing into a Profile project, add `@eduwork/dsh-knowledge-studio` to its existing `dsh.profile.bundles` list without replacing other entries. The bundle patch registers `@eduwork/dsh-artifact-services/dsh` and Studio. Restart the host. A custom assembly that registers these services itself must not also activate a second Studio bundle.
 

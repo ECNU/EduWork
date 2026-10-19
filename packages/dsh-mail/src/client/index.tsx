@@ -1,9 +1,7 @@
 import { LOCALE_NS, dictionaries } from './locale.js'
 import React, { useEffect, useMemo, useState, useSyncExternalStore } from 'react'
 
-declare const __EDUWORK_PINNED_DSH__: boolean
-const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== 'undefined' && __EDUWORK_PINNED_DSH__
-export const inject = ['slots', 'locale', 'remote', 'remote.credentials', nativeSettings ? 'configForms' : 'settingsScope']
+export const inject = ['slots', 'locale', 'remote', 'remote.credentials', 'configForms']
 
 const NS = 'dsh-mail-assistant'
 const PASSWORD_REF = 'DSH_MAIL_ASSISTANT_PASSWORD'
@@ -87,7 +85,7 @@ function MailSettings({ t, service }: any) {
         setPassword('')
       }
       const ops = Object.entries(draft).map(([field, value]) => ({ op: 'set', path: [field], value }))
-      await service.scope.mutate(ops, snapshot.revision)
+      if (await service.scope.mutate(ops, snapshot.revision) === false) throw new Error(t('error'))
       setNotice(t('saved'))
     } catch (cause: any) {
       setError(passwordStored ? t('credentialPartial') : (cause?.message || `${t('error')}`))
@@ -160,7 +158,7 @@ function MailSettings({ t, service }: any) {
 export function apply(ctx: any) {
   ctx.effect(() => ctx.locale.register(LOCALE_NS, dictionaries), 'mail: dictionaries')
   const t = ctx.locale.bind(LOCALE_NS)
-  const service = { scope: (nativeSettings ? ctx.configForms.get(NS) : ctx.settingsScope.bind({ namespace: NS })), credentials: ctx.remote.credentials }
+  const service = { scope: ctx.configForms.get(NS), credentials: ctx.remote.credentials }
   ctx.slots.inject('settings.section', () => ctx.slots.register({
     name: 'settings.section', id: 'mail-assistant', locale: LOCALE_NS, order: 25, label: () => t('nav'), inject: () => ({ service }),
   }, MailSettings))

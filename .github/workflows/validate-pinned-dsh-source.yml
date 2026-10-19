@@ -41,6 +41,9 @@ on:
       - 'scripts/test/distribution-config-patches.test.mjs'
       - 'scripts/patch-session-search-runtime.mjs'
       - 'scripts/test/session-search-runtime.test.mjs'
+      - 'scripts/settings-navigation-icons.mjs'
+      - 'scripts/patch-settings-navigation-runtime.mjs'
+      - 'scripts/test/settings-navigation-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
       - 'scripts/test/runtime-omissions.test.mjs'
@@ -150,7 +153,9 @@ jobs:
           npm --prefix core/dsh-plugins/calendar test
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
-          if ($LASTEXITCODE) { throw 'Session search live persistence regression checks failed' }
+          if ($LASTEXITCODE) { throw 'Session search checks failed' }
+          node --test core/scripts/test/settings-navigation-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Settings navigation adapter checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs core/dsh-electron/tests/software-update-control.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution policy, desktop and channel migration checks failed' }
           node --test core/scripts/test/media-template.test.mjs
@@ -166,7 +171,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned Host adaptation failed' }
           node core/scripts/probe-pinned-dsh-host.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-host-evidence"
           if ($LASTEXITCODE) { throw 'Native Host qualification failed' }
-      - name: Build source plugins and qualify native settings and RPC
+      - name: Install npm plugins, build product extensions and qualify settings and RPC
         shell: pwsh
         run: |
           $deps = "$env:RUNNER_TEMP/source-deps"
@@ -182,9 +187,9 @@ jobs:
           if ($LASTEXITCODE) { throw 'Search provider restoration checks failed' }
           node core/scripts/build-pinned-dsh-plugin-clients.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --output "$env:RUNNER_TEMP/source-stage" --report "$env:RUNNER_TEMP/client-build.json"
           if ($LASTEXITCODE) { throw 'Candidate client build failed' }
-          node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-session-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
+          node core/packages/dsh-memory/scripts/check-session-contract.mjs "$env:RUNNER_TEMP/native-runtime" "$deps/node_modules/@eduwork/dsh-memory"
           if ($LASTEXITCODE) { throw 'Memory message admission and user intent checks failed' }
-          node "$env:RUNNER_TEMP/source-stage/packages/dsh-memory/scripts/check-query-contract.mjs" "$env:RUNNER_TEMP/native-runtime"
+          node core/packages/dsh-memory/scripts/check-query-contract.mjs "$env:RUNNER_TEMP/native-runtime" "$deps/node_modules/@eduwork/dsh-memory"
           if ($LASTEXITCODE) { throw 'Memory history query checks failed' }
           node core/scripts/probe-pinned-dsh-settings.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --dependencies $deps --source "$env:RUNNER_TEMP/source-stage" --full-product --output "$env:RUNNER_TEMP/settings-evidence"
           if ($LASTEXITCODE) { throw 'Product settings and RPC qualification failed' }

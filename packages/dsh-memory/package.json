@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-memory",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "license": "MIT",
   "description": "Local memory and conversation recall for DeepSeek Harness",
   "type": "module",
@@ -51,45 +51,47 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": "4.0.2",
-    "@deepseek-ai/dsh-api-remotes": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-locale": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-renderer": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-client-ui-settings": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-commands": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-llm": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-settings": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-session-query": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-storage-domain": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-typert-protocol": "0.1.5-rc.1",
-    "@deepseek-ai/schemastery": "3.18.2",
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-commands": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-session-query": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0",
     "react": "^18.2.0",
-    "zod": "^4.4.3"
+    "zod": "^4.4.3",
+    "@deepseek-ai/dsh-storage-sqlite": ">=0.2.1-rc.2 <0.3.0-0"
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ecnu/EduWork.git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
     "directory": "packages/dsh-memory"
   },
-  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-memory#readme",
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-memory#readme",
   "bugs": {
-    "url": "https://github.com/ecnu/EduWork/issues"
+    "url": "https://github.com/ECNU/EduWork/issues"
   },
   "engines": {
-    "node": ">=22.13.0"
+    "node": ">=24.18.0"
   },
   "publishConfig": {
     "access": "public"
   },
-  "dependencies": {
-    "@deepseek-ai/dsh-storage-sqlite": "0.1.5-rc.1"
-  },
   "devDependencies": {
-    "@deepseek-ai/dsh": "0.1.5-rc.1",
+    "@deepseek-ai/dsh": "0.2.1-rc.2",
     "esbuild": "0.25.9",
     "playwright": "1.63.0",
     "zod": "4.4.3",
-    "react": "18.3.1"
+    "react": "18.3.1",
+    "@deepseek-ai/dsh-storage-sqlite": "0.2.1-rc.2",
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/schemastery": "3.18.5",
+    "semver": "7.7.4"
   }
 }

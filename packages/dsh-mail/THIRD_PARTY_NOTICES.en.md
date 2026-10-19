@@ -13,3 +13,5 @@
 The project was informed by the MIT-licensed integration approach in [`STARDUSTLC666/dsh-email`](https://github.com/STARDUSTLC666/dsh-email), but redesigns the permission, credential, read-only IMAP, workspace, untrusted-content, and approval boundaries. No third-party project endorses this plugin.
 
 Exact direct and transitive versions are recorded in `package-lock.json`. Review the lockfile, license-check output, and final npm tarball before every public release.
+
+The development-only official DSH Host includes LibreOffice Kit (MPL-2.0) and sharp/libvips native packages (Apache-2.0 / LGPL-3.0-or-later). They are not bundled in the mail plugin archive; their license files remain with their own packages.

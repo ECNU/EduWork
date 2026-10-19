@@ -95,12 +95,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ecnu/EduWork.git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
     "directory": "packages/dsh-desktop-pet"
   },
-  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-desktop-pet#readme",
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-desktop-pet#readme",
   "bugs": {
-    "url": "https://github.com/ecnu/EduWork/issues"
+    "url": "https://github.com/ECNU/EduWork/issues"
   },
   "keywords": [
     "dsh",

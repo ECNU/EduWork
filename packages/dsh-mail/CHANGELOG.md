@@ -2,6 +2,12 @@
 
 **简体中文** | [English](CHANGELOG.en.md)
 
+## 0.2.0 — 2026-10-19
+
+- 最低宿主升级为 DSH 0.2.1-rc.2，兼容同一 API 系列的 0.2.x 正式版；独立设置页接入官方 configForms。
+- 同步已在 EduWork 使用的语言服务、会话与权限兼容修正。
+- 保留默认关闭的收发开关、只读 IMAP、凭据引用和逐次发信审批。
+
 ## 0.1.1 - 2026-09-11
 
 - 新增官方 DeepSeek Harness `0.1.5-rc.1` 的精确 peer 支持，并完成 Tool/Agent、Session、Permission Presets、Filesystem、Credentials、Settings 与 Web Client 接缝验收。

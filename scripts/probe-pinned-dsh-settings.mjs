@@ -1,4 +1,4 @@
-// Source-only qualification; never loads an installed user's profile or secrets.
+// Qualify product extensions alongside published npm plugins using synthetic data.
 import assert from 'node:assert/strict'
 import { createRequire, registerHooks } from 'node:module'
 import { mkdir, readFile, writeFile } from 'node:fs/promises'
@@ -12,16 +12,21 @@ import { syncNativeOptionalPresets } from '../dsh-plugins/brand-settings-native/
 import { verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, output: { type: 'string' }, source: { type: 'string' }, dependencies: { type: 'string' }, 'full-product': { type: 'boolean' }, serve: { type: 'boolean' } } })
-if (!values.runtime || !values.output) throw new Error('Use --runtime <candidate Runtime> --output <new synthetic directory>')
+if (!values.runtime || !values.output || !values.dependencies) throw new Error('Use --runtime <candidate Runtime> --dependencies <locked npm install> --output <new synthetic directory>')
 const repository = values.source ? resolve(values.source) : fileURLToPath(new URL('../', import.meta.url))
 const runtime = resolve(values.runtime), output = resolve(values.output)
 const require = createRequire(join(runtime, 'package.json'))
 const dependenciesRequire = values.dependencies ? createRequire(join(resolve(values.dependencies), 'package.json')) : null
 let resolvingFallback = false
-const artifactRoot = join(repository, 'packages/dsh-knowledge-studio/packages/artifact-services')
+const artifactRoot = join(resolve(values.dependencies), 'node_modules/@eduwork/dsh-artifact-services')
 const artifactManifest = JSON.parse(await readFile(join(artifactRoot, 'package.json'), 'utf8'))
 const distribution = JSON.parse(await readFile(join(repository, 'config/distributions/generic.json'), 'utf8'))
 const localPackages = new Map()
+for (const name of ['dsh-mail', 'dsh-memory', 'dsh-oidc', 'dsh-knowledge-studio']) {
+  const root = join(resolve(values.dependencies), 'node_modules/@eduwork', name)
+  const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
+  localPackages.set(manifest.name, { root, manifest })
+}
 for (const row of [...distribution.plugins, { name: '@chatecnu-work/dsh-skill-control-native', source: 'dsh-plugins/skill-control-native' }]) {
   const root = join(repository, row.source)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
@@ -89,16 +94,22 @@ const { loadProfileDirectory } = await load('@deepseek-ai/dsh-app-boot')
 const { createLaunchEnvironmentSnapshot } = await load('@deepseek-ai/dsh-launch-environment')
 const { parse } = await load('yaml')
 const entry = (id, file, config = {}) => ({ id, name: pathToFileURL(join(repository, file)).href, config })
+const publishedEntry = (id, name, config = {}) => {
+  const { root, manifest } = name === '@eduwork/dsh-artifact-services'
+    ? { root: artifactRoot, manifest: artifactManifest } : localPackages.get(name)
+  const file = manifest.exports[name === '@eduwork/dsh-artifact-services' ? './dsh' : '.']
+  return { id, name: pathToFileURL(join(root, file)).href, config }
+}
 const rows = [
   entry('chatecnu-brand', 'dsh-plugins/brand-settings-native/lib/index.js', { product: { name: 'Synthetic edition' } }),
   entry('chatecnu-skills', 'dsh-plugins/skill-settings-native/lib/index.js'),
   entry('synthetic-skill-provider', 'dsh-plugins/skill-control-native/lib/index.js'),
   entry('eduwork-concurrency', 'dsh-plugins/request-concurrency/lib/native.js'),
-  entry('dsh-mail-assistant', 'packages/dsh-mail/src/host/index.js'),
-  entry('memories', 'packages/dsh-memory/src/host/index.js'),
-  entry('dsh-artifact-services', 'packages/dsh-knowledge-studio/packages/artifact-services/lib/dsh.js', { skills: false }),
-  entry('dsh-knowledge-studio', 'packages/dsh-knowledge-studio/lib/index.js', { skills: false }),
-  entry('enterprise-oidc', 'packages/dsh-oidc/src/host/index.js', { allowEmptyProfiles: true, profilePathEnv: 'EDUWORK_SYNTHETIC_NO_PROFILE' }),
+  publishedEntry('dsh-mail-assistant', '@eduwork/dsh-mail'),
+  publishedEntry('memories', '@eduwork/dsh-memory'),
+  publishedEntry('dsh-artifact-services', '@eduwork/dsh-artifact-services', { skills: false }),
+  publishedEntry('dsh-knowledge-studio', '@eduwork/dsh-knowledge-studio', { skills: false }),
+  publishedEntry('enterprise-oidc', '@eduwork/dsh-oidc', { allowEmptyProfiles: true, profilePathEnv: 'EDUWORK_SYNTHETIC_NO_PROFILE' }),
 ]
 if (values['full-product']) {
   rows.push({ id: 'local-memory-sqlite', name: '@deepseek-ai/dsh-storage-sqlite', config: { path: join(home, 'memory.sqlite3') } })

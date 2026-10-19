@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdir } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { chromium } from 'playwright'
 import path from 'node:path'
 
@@ -18,23 +18,26 @@ try {
   page.on('console', message => { if (message.type() === 'error') errors.push(message.text()) })
   await page.goto(bootstrapURL, { waitUntil: 'domcontentloaded', timeout: 30_000 })
   await page.waitForTimeout(4_000)
+  await page.getByRole('dialog').first().waitFor({ state: 'visible', timeout: 15_000 }).catch(() => {})
 
   const continueButton = page.getByRole('button', { name: /^(继续|Continue)$/ }).last()
   if (await continueButton.isVisible().catch(() => false)) {
     await continueButton.click()
-    await page.waitForTimeout(500)
+    await page.getByRole('button', { name: /^(添加 API Key|Add API Key|Add an API key)$/ }).waitFor({ state: 'visible', timeout: 10_000 }).catch(() => {})
+  }
+  // The stock 0.2.1 welcome dialog offers account login or API-key setup.
+  // Open the latter so its explicit "Configure later" action can finish
+  // onboarding without credentials or a request to an external account service.
+  const addKey = page.getByRole('button', { name: /^(添加 API Key|Add API Key|Add an API key)$/ })
+  if (await addKey.isVisible().catch(() => false)) {
+    await addKey.click()
+    await page.getByRole('button', { name: /^(稍后配置|Configure later)$/ }).waitFor({ state: 'visible', timeout: 10_000 })
   }
   const postpone = page.getByRole('button', { name: /^(稍后配置|Configure later|Maybe later)$/ }).last()
   if (await postpone.isVisible().catch(() => false)) await postpone.click()
-  for (let attempt = 0; attempt < 4; attempt += 1) {
-    const dialog = page.getByRole('dialog').last()
-    if (!await dialog.isVisible().catch(() => false)) break
-    const buttons = dialog.getByRole('button')
-    if (await buttons.count() === 0) break
-    await buttons.last().click()
-    await page.waitForTimeout(300)
-  }
   await page.keyboard.press('Escape')
+  const more = page.getByText(/^(更多|More)$/).last()
+  if (await more.isVisible().catch(() => false)) await more.click()
 
   const settings = page.getByText(/^(设置|Settings)$/).last()
   await settings.waitFor({ state: 'visible', timeout: 15_000 })
@@ -43,9 +46,9 @@ try {
   await personalization.waitFor({ state: 'visible', timeout: 10_000 })
   await personalization.click()
 
-  const memory = page.getByRole('switch', { name: /^(启用本地 Memory|Enable local memories)$/ })
+  const memory = page.getByRole('switch', { name: /^(启用本地记忆|Enable local memories)$/ })
   const history = page.getByRole('switch', { name: /^(允许检索过往对话|Reference prior chats)$/ })
-  const external = page.getByRole('switch', { name: /^(允许从使用工具的聊天生成 Memory|Allow local memory generation from tool-assisted chats)$/ })
+  const external = page.getByRole('switch', { name: /^(允许从使用工具的聊天生成记忆|Allow local memory generation from tool-assisted chats)$/ })
   await memory.waitFor({ state: 'visible', timeout: 10_000 })
   await history.waitFor({ state: 'visible', timeout: 10_000 })
   assert.equal(await memory.getAttribute('aria-checked'), 'true', 'Memory must be enabled by default')
@@ -72,11 +75,11 @@ try {
   })
   await page.getByText(/已导入 31 条|Imported 31/).waitFor({ state: 'visible', timeout: 20_000 })
 
-  const manage = page.getByRole('button', { name: /^(管理 Memory|Manage memories)$/ })
+  const manage = page.getByRole('button', { name: /^(管理记忆|Manage memories)$/ })
   await manage.click()
-  const memorySearch = page.getByRole('searchbox', { name: /^(搜索 Memory|Search memories)$/ })
+  const memorySearch = page.getByRole('searchbox', { name: /^(搜索记忆|Search memories)$/ })
   await memorySearch.waitFor({ state: 'visible', timeout: 20_000 })
-  const memoryDialog = page.getByRole('dialog', { name: /^(目前记住的内容|What DSH remembers)$/ })
+  const memoryDialog = page.getByRole('dialog', { name: /^(目前记住的内容|What the app remembers)$/ })
   await memoryDialog.getByText(/第 1 \/ 4 页，共 31 条|Page 1 of 4, 31 total/).waitFor({ state: 'visible', timeout: 20_000 })
   assert.equal(await memoryDialog.locator('article').count(), 10, 'the manager must render only one ten-record page')
   await memoryDialog.getByRole('button', { name: /^(下一页|Next)$/ }).click()
@@ -102,7 +105,7 @@ try {
 
   card = page.getByText(originalMemory, { exact: true }).locator('xpath=ancestor::article')
   await card.getByRole('button', { name: /^(删除|Delete)$/ }).click()
-  await page.getByText(/^(没有匹配的 Memory。|No matching memories\.)$/).waitFor({ state: 'visible', timeout: 20_000 })
+  await page.getByText(/^(没有匹配的记忆。|No matching memories\.)$/).waitFor({ state: 'visible', timeout: 20_000 })
   await page.getByRole('button', { name: /^(撤销|Undo)$/ }).click()
   await page.getByText(originalMemory, { exact: true }).waitFor({ state: 'visible', timeout: 20_000 })
 
@@ -119,9 +122,9 @@ try {
   await page.getByText(originalMemory, { exact: true }).locator('xpath=ancestor::article').getByText(/^(用户已保留|Retained by user)$/).waitFor({ state: 'visible', timeout: 20_000 })
 
   const body = await page.locator('body').innerText()
-  assert.match(body, /Memory 仅保存在这台设备上|Memory stays on this device/)
+  assert.match(body, /记忆仅保存在这台设备上|Memory stays on this device/)
   assert.match(body, /不会把全部历史对话注入当前上下文|Full history is never injected wholesale/)
-  assert.match(body, /目前记住的内容|What DSH remembers/)
+  assert.match(body, /目前记住的内容|What the app remembers/)
   assert.match(body, /来源仅供追溯，不能在这里修改|Sources are read-only evidence/)
   assert.doesNotMatch(body, /Failed to load plugins/i)
   assert.deepEqual(errors, [], `DSH Memory Web emitted browser errors:\n${errors.join('\n')}`)
@@ -129,6 +132,8 @@ try {
 } finally {
   if (page) {
     await mkdir(path.dirname(path.resolve(screenshotPath)), { recursive: true })
+    await writeFile(screenshotPath + '.txt', await page.locator('body').innerText()).catch(() => {})
+    await writeFile(screenshotPath + '.aria.txt', await page.locator('body').ariaSnapshot()).catch(() => {})
     await page.screenshot({ path: path.resolve(screenshotPath), fullPage: true }).catch(() => {})
   }
   await browser.close()

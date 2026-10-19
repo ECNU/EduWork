@@ -8,6 +8,8 @@ The current source supports LiteLLM native contract 1, explicitly enabled experi
 
 `@eduwork/dsh-oidc@0.3.0-dev.2` removes Key Binding model flows and backend: native account bridging; old profiles fail explicitly. EduWork `0.3.6-dev.20260921.1` uses this package. New clients use Tokens, so confirm server support and migrate old profiles before upgrading. Servers may retain legacy endpoints for older clients. Future distributions must pin reviewed package versions and product locks; never overwrite an existing npm version.
 
+Current npm 0.3.0 requires Node.js 24.18+ and DSH `>=0.2.1-rc.2 <0.3.0-0`. The tested development baseline is 0.2.1-rc.2; other prerelease lines require separate verification. The default Web backend does not require EduWork desktop bridges.
+
 ## Validation
 
 Package checks cover types, builds, shared identity/gateway regressions, schemas, documentation, secrets and packaging. Real OIDC/LiteLLM, desktop encryption, restart and UI require separately identified acceptance evidence.

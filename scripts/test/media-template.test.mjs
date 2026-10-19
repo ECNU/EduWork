@@ -74,9 +74,10 @@ test('rejects a directory at the runtime entry point', async t => {
   await assert.rejects(verifyMediaTemplate(artifactRoot), /Invalid or empty media template/)
 })
 
-test('source assembly fails before copying the Runtime when media assets were not built', async t => {
-  const {root} = await fixture(t)
+test('assembly fails before copying the Runtime when the npm media template is missing', async t => {
+  const {root, artifactRoot} = await fixture(t)
   const source = join(root, 'source'), inputRuntime = join(root, 'runtime'), output = join(root, 'product')
+  await copyProductTree(artifactRoot, join(root, 'deps/node_modules/@eduwork/dsh-artifact-services'))
   await mkdir(inputRuntime)
   await writeFile(join(inputRuntime, '.chatecnu-dsh-runtime.json'), JSON.stringify({dshVersion:pinnedDshContract.packageVersion, dshCommit:pinnedDshContract.commit}))
   await mkdir(join(source, 'config/distributions'), {recursive:true})

@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-artifact-services",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "type": "module",
   "description": "Shared Office, speech and media services for applications and DSH tools",
   "license": "MIT",
@@ -64,9 +64,9 @@
     "react-dom": "18.3.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.2",
-    "@deepseek-ai/dsh-skill": "0.1.5-rc.1",
-    "@deepseek-ai/dsh-tools": "0.1.5-rc.1"
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-skill": {
@@ -81,15 +81,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ecnu/EduWork.git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
     "directory": "packages/dsh-knowledge-studio/packages/artifact-services"
   },
-  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-knowledge-studio/packages/artifact-services#readme",
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-knowledge-studio/packages/artifact-services#readme",
   "bugs": {
-    "url": "https://github.com/ecnu/EduWork/issues"
+    "url": "https://github.com/ECNU/EduWork/issues"
   },
   "engines": {
-    "node": ">=22.19.0"
+    "node": ">=24.18.0"
   },
   "publishConfig": {
     "access": "public",

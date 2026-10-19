@@ -1,4 +1,6 @@
-# Keep legacy domain, instance IDs and database paths for in-place upgrades.
+# Keep legacy storage domains and database paths for in-place upgrades.
+# DSH 0.2.1 keys config forms by entry id; match the former settings namespace
+# so its automatic settings.yaml migration preserves existing preferences.
 - id: session-query-sqlite
   config:
     path: !!js dshHomePath('session-query-memory.sqlite3')
@@ -13,7 +15,7 @@
       name: '@deepseek-ai/dsh-storage-sqlite'
       config:
         path: !!js dshHomePath('memory.sqlite3')
-    - id: local-memory
+    - id: memories
       name: '@eduwork/dsh-memory'
       config:
         enabled: true

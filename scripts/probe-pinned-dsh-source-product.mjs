@@ -12,7 +12,7 @@ import { TaskNotifications } from '../dsh-electron/src/task-notifications.mjs'
 const { values } = parseArgs({ options: Object.fromEntries(['product', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (!values.product || !values.host || !values.output) throw new Error('Use --product --host --output (new synthetic directory)')
 const product = resolve(values.product), hostRoot = resolve(values.host), output = resolve(values.output)
-assert.equal(JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8')).pluginMode, 'source-qualification')
+assert.equal(JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8')).pluginMode, 'npm')
 await mkdir(output)
 const home = join(output, 'home'), config = join(output, 'eduwork.jsonc')
 await writeFile(config, '{"schemaVersion":1,"product":{"name":"Synthetic desktop"},"desktop":{"notifications":{"preview":true}}}\n')

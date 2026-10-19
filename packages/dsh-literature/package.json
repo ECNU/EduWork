@@ -96,12 +96,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/ecnu/EduWork.git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
     "directory": "packages/dsh-literature"
   },
-  "homepage": "https://github.com/ecnu/EduWork/tree/main/packages/dsh-literature#readme",
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-literature#readme",
   "bugs": {
-    "url": "https://github.com/ecnu/EduWork/issues"
+    "url": "https://github.com/ECNU/EduWork/issues"
   },
   "keywords": [
     "dsh",
