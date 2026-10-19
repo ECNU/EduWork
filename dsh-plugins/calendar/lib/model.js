@@ -173,6 +173,42 @@ export const EventSchema = z
   })
   .strict()
 
+/** Omitted fields stay unchanged; null explicitly clears an optional field. */
+export const EventPatchSchema = z.object({
+  title: EventFields.title.optional(),
+  start: LocalTimeSchema.optional(),
+  end: LocalTimeSchema.nullable().optional(),
+  location: z.string().nullable().optional(),
+  description: z.string().nullable().optional(),
+  recurrence: RecurrenceSchema.nullable().optional(),
+  until: LocalTimeSchema.nullable().optional(),
+}).strict()
+
+/** Apply a sparse edit to the latest record, preserving its duration and identity. */
+export function patchEvent(existing, input) {
+  const patch = EventPatchSchema.parse(input)
+  const record = { ...existing }
+  for (const field of ['title', 'start', 'end', 'location', 'description', 'recurrence']) {
+    if (patch[field] !== undefined) record[field] = patch[field] ?? undefined
+  }
+  if (patch.start !== undefined && patch.end === undefined) {
+    record.end = existing.end && (patch.start.length === existing.start.length)
+      ? inheritedEndOf(patch.start, existing.start, existing.end) : undefined
+  }
+  if (patch.recurrence === null) {
+    record.exceptions = undefined
+    record.overrides = undefined
+  } else if (patch.until !== undefined && record.recurrence) {
+    record.recurrence = { ...record.recurrence, until: patch.until ?? undefined }
+  }
+  if (!existing.recurrence && !record.recurrence && patch.start !== undefined) {
+    record.originalStart = existing.originalStart ?? existing.start
+  }
+  const result = normalizeEvent(record)
+  assertOrderedRecord(result)
+  return result
+}
+
 /** Explicit local decisions; imported overrides are never recorded here. */
 export const LocalDatesSchema = z.object({
   overrides: z.array(OverrideSchema),

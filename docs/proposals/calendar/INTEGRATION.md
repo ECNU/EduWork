@@ -42,6 +42,12 @@ try {
 
 整批输入先校验，再串行提交。存储没有跨记录事务：磁盘故障中止后续提交/清理，不承诺回滚先前写入。
 
+## 修改已有日程
+
+界面和 Agent 通过同一个 `calendar.updateEvent({ uid, source, patch })` 修改字段。省略的字段保留，`end`、`location`、`description`、`recurrence` 可用 `null` 清空；修改开始时间但省略结束时间时，按队列内最新记录保留时长。`until` 只修改现有重复规则的截止日期。
+
+读取最新记录、合并、校验和提交共用事件写入队列，与来源更新串行。导入日程的 `description` 修改保存为私人备注，单改备注不会写来源事件。`putEvent` 是完整记录写入入口，用于创建或明确替换，编辑器不能将旧快照传回此入口。
+
 ## Agent 批量更新与技能
 
 公版附带 `calendar-management` 技能，逐条工具与 `calendar_import_source` 共用 calendar 服务和写权限检查。个人批量导入使用 `agent:<稳定名称>`；稳定 uid 保证重复导入更新原事项。工具的 mode 默认为 merge（合并），replace 表示完整替换；数据插件的 complete 字段仍独立校验结果完整性。`mode:'replace'` 有删除语义，完整空数组须明确确认意图。

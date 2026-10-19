@@ -331,7 +331,7 @@ async function withBrowser(calendar, panel, methods, body) {
 
 const METHODS = [
   'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'applySource', 'applyOverride', 'removeOverride',
-  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'reminders', 'ackReminder',
+  'cancelOccurrence', 'restoreOccurrence', 'deleteEvent', 'deleteCalendar', 'putEvent', 'updateEvent', 'putNote', 'removeNote', 'notes', 'setPersonal', 'personalFor', 'sourceStatuses', 'reminders', 'ackReminder',
 ]
 
 const panel = await bundlePanel()
@@ -1068,6 +1068,32 @@ await acceptance('隐藏单次后可从日程页恢复，私人备注与固定�
       assert.equal(calendar.personalFor(ref).remark.text, 'Private remark')
       assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'fixed', at: `${day}T20:00` })
       assert.equal(calendar.getEvent({ source: SOURCE, uid: 'hidden' }).description, 'Source text')
+    })
+  }))
+})
+
+await acceptance('编辑只发送改动字段，同步更新后保存备注不覆盖课程', async () => {
+  await withRoot('calendar-browser-sparse-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
+      const day = await dayInWeek(1)
+      await call('putEvent', { uid: 'sparse-ui', source: 'manual', title: 'Sparse original', start: `${day}T09:00`, end: `${day}T10:00`, location: 'A' })
+      await refresh()
+      await page.getByRole('button', { name: /Sparse original/ }).click()
+      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      let sent
+      await page.route('**/api/updateEvent', async route => {
+        sent = route.request().postDataJSON().args[0]
+        // Another writer lands after the editor opened, before its save.
+        await calendar.updateEvent({ uid: 'sparse-ui', source: 'manual', patch: { title: 'Synced title', location: 'B' } })
+        await route.continue()
+      })
+      await page.getByLabel('备注', { exact: true }).fill('Private from browser')
+      await page.getByRole('button', { name: '保存更改', exact: true }).click()
+      await poll(() => calendar.getEvent({ uid: 'sparse-ui', source: 'manual' }).description, 'Private from browser', 'private remark saved')
+      assert.deepEqual(sent, { uid: 'sparse-ui', source: 'manual', patch: { description: 'Private from browser' } })
+      const event = calendar.getEvent({ uid: 'sparse-ui', source: 'manual' })
+      assert.equal(event.title, 'Synced title')
+      assert.equal(event.location, 'B')
     })
   }))
 })

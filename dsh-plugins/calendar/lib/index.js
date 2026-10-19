@@ -17,7 +17,7 @@
 import { Service } from '@deepseek-ai/cordis'
 import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import { buildIcs, parseIcs } from './ics.js'
-import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord } from './model.js'
+import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord, EventPatchSchema, patchEvent } from './model.js'
 import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
 import { SourceRegistry } from './sources.js'
@@ -195,8 +195,8 @@ export class CalendarService extends TypertRemoteService {
   }
 
   /**
-   * Insert or replace one event: how the panel creates a personal entry and how
-   * editing one of its own fields lands. The caller owns the `uid`, so a record
+   * Insert or replace one complete event. Editors must use updateEvent so
+   * unrelated fields cannot be replaced by an older client snapshot. The caller owns the `uid`, so a record
    * can be written, corrected and replayed without asking the store for an
    * identity first.
    * @param event - Event fields.
@@ -218,11 +218,27 @@ export class CalendarService extends TypertRemoteService {
     return saved
   }
 
-  /**
-   * Remove one event.
-   * @param input - `{ uid, source? }`; `source` defaults to the user's own records.
-   * @returns `{ removed }`.
-   */
+  /** Apply a sparse edit after reading the latest record inside the write queue. */
+  async updateEvent(input) {
+    const patch = EventPatchSchema.parse(input.patch)
+    return this.store.enqueueWrite(async () => {
+      const existing = this.store.getEvent(input.uid, input.source)
+      if (!existing) throw new Error(`event_not_found: ${input.uid}`)
+      const eventPatch = { ...patch }
+      const privateRemark = existing.source !== 'manual' && patch.description !== undefined
+      if (privateRemark) delete eventPatch.description
+      // Validate all event changes before persisting either layer. A remark-only
+      // edit never writes the source event, even when a sync is running.
+      const record = patchEvent(existing, eventPatch)
+      if (Object.keys(eventPatch).length) await this.store.commit(record)
+      if (privateRemark) await this.personal.patch({ source: existing.source, uid: existing.uid }, {
+        remark: { text: patch.description ?? '' },
+      })
+      return record
+    })
+  }
+
+  /** Remove one event identified by source and uid. */
   async deleteEvent(input) {
     return { removed: await this.store.deleteEvent(input.uid, input.source) }
   }
@@ -509,6 +525,11 @@ Remote('deleteEvent')(CalendarService.prototype.deleteEvent, {
 
 Remote('putEvent')(CalendarService.prototype.putEvent, {
   kind: 'method', name: 'putEvent', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+Remote('updateEvent')(CalendarService.prototype.updateEvent, {
+  kind: 'method', name: 'updateEvent', static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 

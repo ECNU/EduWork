@@ -7,7 +7,7 @@
 // Every remote method takes one object argument and returns one value; the
 // descriptors that point at those schemas are in `lib/typert-descriptors.js`.
 import { z } from 'zod'
-import { AnnotationSchema, ReminderReceiptSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
+import { AnnotationSchema, ReminderReceiptSchema, PersonalViewSchema, PersonalPatchSchema, PersonalFields, EventFields, EventSchema, EventPatchSchema, LocalTimeSchema, RecurrenceSchema, ScopeSchema } from './model.js'
 
 const snapshot = z.object({
   schemaVersion: z.number().int().positive(),
@@ -249,3 +249,5 @@ export const sourceStatusesResult = result('@eduwork/dsh-calendar#CalendarSource
   source: z.string(), label: z.string(), state: z.enum(['idle', 'loading', 'ready', 'error']),
   updatedAt: z.string().optional(), error: z.enum(['incomplete_snapshot', 'unattributable', 'sync_failed', 'sync_timeout']).optional(),
 }).strict()))
+
+export const updateEventParameter = jsonParameter('updateEvent', 'input', z.object({ uid: z.string().min(1), ...sourceRef, patch: EventPatchSchema }).strict())

@@ -58,7 +58,7 @@ function harness(service, preset = 'standard') {
 
 /** A calendar service over plain records, using the real occurrence rules. */
 async function service(events = []) {
-  const { normalizeEvent, occurrencesIn } = await loadModel()
+  const { normalizeEvent, occurrencesIn, patchEvent } = await loadModel()
   const records = [...events]
   const calls = []
   return {
@@ -72,6 +72,13 @@ async function service(events = []) {
     putEvent: async input => {
       const record = normalizeEvent(input)
       calls.push({ method: 'putEvent', record })
+      return record
+    },
+    updateEvent: async input => {
+      const existing = records.find(event => event.uid === input.uid && (event.source ?? 'manual') === (input.source ?? 'manual'))
+      if (!existing) throw new Error(`没有 uid 为 ${input.uid} 的日程`)
+      const record = patchEvent(existing, input.patch)
+      calls.push({ method: 'updateEvent', input, record })
       return record
     },
     deleteEvent: async input => { calls.push({ method: 'deleteEvent', input }); return { removed: true } },

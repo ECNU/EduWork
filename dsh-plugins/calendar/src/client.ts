@@ -27,7 +27,7 @@ import { Button, Input, Menu, Modal as PrimitiveModal, Switch, Tag, Toast, Toolt
 import * as primitives from '@deepseek-ai/dsh-client-ui-primitives'
 import calendarRemote from '../lib/typert.remote-client.js'
 import { PersonalSettings, occurrenceNote } from './personal-settings.js'
-import { dayWindow, layoutWeek, minutesOf, shiftedEnd } from './layout.js'
+import { dayWindow, layoutWeek, minutesOf } from './layout.js'
 import { MonthGrid, monthRange, monthStart, shiftMonth } from './month-view.js'
 
 /**
@@ -634,15 +634,9 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
   // owns the date and the place instead of offering two blank time fields.
   const wholeDay = clockOf(occurrence.start) === ''
   const changed = form.start !== (occurrence.start ?? '') || form.end !== (occurrence.end ?? '') || form.location !== (occurrence.location ?? '')
-  // The form opens with the occurrence's own end filled in, so a start that moved
-  // on its own would carry the old clock time over and could finish before it
-  // begins. Leaving the end as it opened means "same length", not "same clock".
-  const keptLength = !wholeDay && form.end === (occurrence.end ?? '')
-    ? shiftedEnd(form.start, occurrence.start ?? form.start, occurrence.end ?? '')
-    : undefined
   const patch = withoutEmpty({
     start: form.start !== occurrence.start ? form.start : undefined,
-    end: keptLength ?? (form.end !== (occurrence.end ?? '') ? form.end : undefined),
+    end: form.end !== (occurrence.end ?? '') ? form.end : undefined,
     location: form.location !== (occurrence.location ?? '') ? form.location : undefined,
   })
 
@@ -655,12 +649,11 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
    */
   const save = () => (series
     ? service.applyOverride({ uid: occurrence.uid, date, patch, source: occurrence.source })
-    : service.putEvent(withoutEmpty({
-      ...event,
-      start: patch.start ?? event?.start,
-      end: patch.end ?? event?.end,
-      location: patch.location ?? event?.location,
-    })))
+    : service.updateEvent({ uid: occurrence.uid, source: occurrence.source, patch: {
+      ...(form.start !== occurrence.start ? { start: form.start } : {}),
+      ...(form.end !== (occurrence.end ?? '') ? { end: form.end || null } : {}),
+      ...(form.location !== (occurrence.location ?? '') ? { location: form.location || null } : {}),
+    } }))
 
   const actions = []
   if (!editing) {
@@ -1143,6 +1136,21 @@ function recordOf(draft: any, base: any = {}) {
   })
 }
 
+/** Send only fields changed in the editor, never a stale full record. */
+function patchOf(draft: any, base: any) {
+  const initial = draftOf(base)
+  const next = recordOf(draft, base)
+  const patch: any = {}
+  if (draft.title !== initial.title) patch.title = next.title
+  if (draft.date !== initial.date || draft.start !== initial.start) patch.start = next.start
+  if (draft.end !== initial.end || draft.endDayOffset !== initial.endDayOffset) patch.end = next.end ?? null
+  if (draft.location !== initial.location) patch.location = next.location ?? null
+  if (draft.description !== initial.description) patch.description = next.description ?? null
+  const recurrenceChanged = ['repeat', 'repeatMode', 'days', 'interval', 'until'].some(field => JSON.stringify(draft[field]) !== JSON.stringify(initial[field]))
+  if (recurrenceChanged) patch.recurrence = next.recurrence ?? null
+  return patch
+}
+
 /** Why a draft cannot be saved yet, or `null` when it can. */
 function draftProblem(draft: any) {
   if (draft.title.trim() === '') return '标题不能为空'
@@ -1331,7 +1339,7 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
       setProblem(complaint)
       return
     }
-    if (dirty) onSave(recordOf(draft, event))
+    if (dirty) onSave({ uid: event.uid, source: event.source, patch: patchOf(draft, event) })
   }
 
   // The pieces are built apart and assembled at the end: one nested expression
@@ -1730,7 +1738,7 @@ export function createCalendarPage(service: any) {
         noteIndex,
         busy,
         onOpenOccurrence: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
-        onSave: (event: any) => run(() => service.putEvent(event), '日程信息已保存'),
+        onSave: (input: any) => run(() => service.updateEvent(input), '日程信息已保存'),
         onRestore: (event: any, date: string) => run(() => service.restoreOccurrence({ uid: event.uid, date, source: event.source }), `已恢复 ${shortDate(date)} 的日程`),
         onDelete: (event: any) => run(() => service.deleteEvent({ uid: event.uid, source: event.source }), '已删除这条日程')
           .then((ok: boolean) => { if (ok) setView({ kind: 'week' }) }),
@@ -1880,6 +1888,7 @@ export async function apply(ctx: any) {
       deleteEvent: call('deleteEvent'),
       deleteCalendar: call('deleteCalendar'),
       putEvent: call('putEvent'),
+      updateEvent: call('updateEvent'),
       applySource: call('applySource'),
       putNote: call('putNote'),
       removeNote: call('removeNote'),

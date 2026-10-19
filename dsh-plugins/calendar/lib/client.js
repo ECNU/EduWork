@@ -4384,6 +4384,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			exceptions: array(LocalTimeSchema).optional(),
 			overrides: OverridesSchema.optional()
 		}).strict();
+		/** Explicit local decisions; imported overrides are never recorded here. */
+		/** Omitted fields stay unchanged; null explicitly clears an optional field. */
+		const EventPatchSchema = object({
+			title: EventFields.title.optional(),
+			start: LocalTimeSchema.optional(),
+			end: LocalTimeSchema.nullable().optional(),
+			location: string().nullable().optional(),
+			description: string().nullable().optional(),
+			recurrence: RecurrenceSchema.nullable().optional(),
+			until: LocalTimeSchema.nullable().optional()
+		}).strict();
 		object({
 			overrides: array(OverrideSchema),
 			exceptions: array(LocalTimeSchema)
@@ -4635,6 +4646,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				"sync_timeout"
 			]).optional()
 		}).strict()));
+		const updateEventParameter = jsonParameter("updateEvent", "input", object({
+			uid: string().min(1),
+			...sourceRef,
+			patch: EventPatchSchema
+		}).strict());
 		//#endregion
 		//#region lib/typert-descriptors.js
 		const pkg = "@eduwork/dsh-calendar";
@@ -4669,25 +4685,26 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				descriptor("importIcs", 163, [importParameter], importResult),
 				descriptor("exportIcs", 182, [exportParameter], exportResult),
 				descriptor("putEvent", 205, [eventParameter], eventResult),
-				descriptor("deleteEvent", 226, [deleteEventParameter], removalResult),
-				descriptor("deleteCalendar", 231, [deleteCalendarParameter], deleteCalendarResult),
-				descriptor("applyOverride", 244, [overrideParameter], eventResult),
-				descriptor("removeOverride", 253, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 262, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 271, [restoreParameter], eventResult),
-				descriptor("applySource", 333, [applySourceParameter], applySourceResult),
-				descriptor("putNote", 389, [putNoteParameter], noteResult),
-				descriptor("removeNote", 403, [removeNoteParameter], removalResult),
-				descriptor("notes", 412, [notesParameter], notesResult),
+				descriptor("updateEvent", 222, [updateEventParameter], eventResult),
+				descriptor("deleteEvent", 242, [deleteEventParameter], removalResult),
+				descriptor("deleteCalendar", 247, [deleteCalendarParameter], deleteCalendarResult),
+				descriptor("applyOverride", 260, [overrideParameter], eventResult),
+				descriptor("removeOverride", 269, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 278, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 287, [restoreParameter], eventResult),
+				descriptor("applySource", 349, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 405, [putNoteParameter], noteResult),
+				descriptor("removeNote", 419, [removeNoteParameter], removalResult),
+				descriptor("notes", 428, [notesParameter], notesResult),
 				Object.freeze({
-					...descriptor("changes", 299, [], changeResult),
+					...descriptor("changes", 315, [], changeResult),
 					mode: "stream",
 					cancellation: { parameter: "signal" }
 				}),
-				descriptor("personalFor", 365, [personalReadParameter], personalReadResult),
+				descriptor("personalFor", 381, [personalReadParameter], personalReadResult),
 				descriptor("sourceStatuses", 83, [], sourceStatusesResult),
-				descriptor("setPersonal", 359, [personalParameter], personalResult),
-				descriptor("unlinkedNotes", 432, [unlinkedNotesParameter], unlinkedNotesResult),
+				descriptor("setPersonal", 375, [personalParameter], personalResult),
+				descriptor("unlinkedNotes", 448, [unlinkedNotesParameter], unlinkedNotesResult),
 				descriptor("reminders", 111, [], remindersResult),
 				descriptor("ackReminder", 113, [ackReminderParameter], ackReminderResult)
 			])
@@ -4914,22 +4931,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		//#region src/layout.js
 		/** Minutes in a whole day; also the exclusive upper bound of the axis. */
 		const MINUTES_IN_DAY = 1440;
-		const pad2$1 = (value) => String(value).padStart(2, "0");
-		/** Local midnight of a `YYYY-MM-DD` date. */
-		function parseDay(date) {
-			const [year, month, day] = date.split("-").map(Number);
-			return new Date(year, month - 1, day);
-		}
-		/** Whole days from one local date to another. */
-		function dayGap(from, to) {
-			return Math.round((parseDay(to) - parseDay(from)) / 864e5);
-		}
-		/** The local `YYYY-MM-DD` date `days` away. */
-		function shiftDay(date, days) {
-			const value = parseDay(date);
-			value.setDate(value.getDate() + days);
-			return `${value.getFullYear()}-${pad2$1(value.getMonth() + 1)}-${pad2$1(value.getDate())}`;
-		}
 		/**
 		* Minutes from local midnight of a local time string.
 		* @param value - `YYYY-MM-DDTHH:mm`, or anything else.
@@ -4942,28 +4943,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return void 0;
 			if (hours < 0 || hours > 23 || minutes < 0 || minutes > 59) return void 0;
 			return hours * 60 + minutes;
-		}
-		/**
-		* The end that keeps an entry's length when only its start moved.
-		*
-		* An edit form that opens with both fields filled hands back an end that never
-		* moved, so saving a new start on its own would keep the old clock time and can
-		* finish before it begins. Carrying the span instead keeps a 90-minute entry 90
-		* minutes long, and follows a start that crosses into another day.
-		* @param start - New local start, `YYYY-MM-DDTHH:mm`.
-		* @param from - Start the entry had.
-		* @param to - End the entry had.
-		* @returns Local end that keeps `to - from`, or `undefined` when a value has no clock.
-		*/
-		function shiftedEnd(start, from, to) {
-			const startMinutes = minutesOf(start);
-			const fromMinutes = minutesOf(from);
-			const toMinutes = minutesOf(to);
-			if (startMinutes === void 0 || fromMinutes === void 0 || toMinutes === void 0) return void 0;
-			const at = startMinutes + (dayGap(from.slice(0, 10), to.slice(0, 10)) * MINUTES_IN_DAY + (toMinutes - fromMinutes));
-			const date = shiftDay(start.slice(0, 10), Math.floor(at / MINUTES_IN_DAY));
-			const clock = (at % MINUTES_IN_DAY + MINUTES_IN_DAY) % MINUTES_IN_DAY;
-			return `${date}T${pad2$1(Math.floor(clock / 60))}:${pad2$1(clock % 60)}`;
 		}
 		/**
 		* Vertical bounds of the axis, in minutes.
@@ -5972,10 +5951,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const series = Boolean(event?.recurrence);
 			const wholeDay = clockOf(occurrence.start) === "";
 			form.start !== (occurrence.start ?? "") || form.end !== (occurrence.end ?? "") || (form.location, occurrence.location);
-			const keptLength = !wholeDay && form.end === (occurrence.end ?? "") ? shiftedEnd(form.start, occurrence.start ?? form.start, occurrence.end ?? "") : void 0;
 			const patch = withoutEmpty({
 				start: form.start !== occurrence.start ? form.start : void 0,
-				end: keptLength ?? (form.end !== (occurrence.end ?? "") ? form.end : void 0),
+				end: form.end !== (occurrence.end ?? "") ? form.end : void 0,
 				location: form.location !== (occurrence.location ?? "") ? form.location : void 0
 			});
 			/**
@@ -5990,12 +5968,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				date,
 				patch,
 				source: occurrence.source
-			}) : service.putEvent(withoutEmpty({
-				...event,
-				start: patch.start ?? event?.start,
-				end: patch.end ?? event?.end,
-				location: patch.location ?? event?.location
-			}));
+			}) : service.updateEvent({
+				uid: occurrence.uid,
+				source: occurrence.source,
+				patch: {
+					...form.start !== occurrence.start ? { start: form.start } : {},
+					...form.end !== (occurrence.end ?? "") ? { end: form.end || null } : {},
+					...form.location !== (occurrence.location ?? "") ? { location: form.location || null } : {}
+				}
+			});
 			const actions = [];
 			if (!editing) actions.push(react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				key: "when",
@@ -6694,6 +6675,25 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				overrides: draft.repeat ? base.overrides : void 0
 			});
 		}
+		/** Send only fields changed in the editor, never a stale full record. */
+		function patchOf(draft, base) {
+			const initial = draftOf(base);
+			const next = recordOf(draft, base);
+			const patch = {};
+			if (draft.title !== initial.title) patch.title = next.title;
+			if (draft.date !== initial.date || draft.start !== initial.start) patch.start = next.start;
+			if (draft.end !== initial.end || draft.endDayOffset !== initial.endDayOffset) patch.end = next.end ?? null;
+			if (draft.location !== initial.location) patch.location = next.location ?? null;
+			if (draft.description !== initial.description) patch.description = next.description ?? null;
+			if ([
+				"repeat",
+				"repeatMode",
+				"days",
+				"interval",
+				"until"
+			].some((field) => JSON.stringify(draft[field]) !== JSON.stringify(initial[field]))) patch.recurrence = next.recurrence ?? null;
+			return patch;
+		}
 		/** Why a draft cannot be saved yet, or `null` when it can. */
 		function draftProblem(draft) {
 			if (draft.title.trim() === "") return "标题不能为空";
@@ -6935,7 +6935,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					setProblem(complaint);
 					return;
 				}
-				if (dirty) onSave(recordOf(draft, event));
+				if (dirty) onSave({
+					uid: event.uid,
+					source: event.source,
+					patch: patchOf(draft, event)
+				});
 			};
 			const infoCard = react.default.createElement("section", { style: {
 				padding: 16,
@@ -7505,7 +7509,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						kind: "event",
 						occurrence
 					}),
-					onSave: (event) => run(() => service.putEvent(event), "日程信息已保存"),
+					onSave: (input) => run(() => service.updateEvent(input), "日程信息已保存"),
 					onRestore: (event, date) => run(() => service.restoreOccurrence({
 						uid: event.uid,
 						date,
@@ -7717,6 +7721,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					deleteEvent: call("deleteEvent"),
 					deleteCalendar: call("deleteCalendar"),
 					putEvent: call("putEvent"),
+					updateEvent: call("updateEvent"),
 					applySource: call("applySource"),
 					putNote: call("putNote"),
 					removeNote: call("removeNote"),

@@ -1060,6 +1060,38 @@ test('a source can restore its own cancelled date without undoing a user cancell
 })
 
 
+test('a concurrent source revision and Agent private remark preserve both updates in real storage', { skip: !runtime }, async () => {
+  await withRoot('calendar-source-remark-race-', async root => {
+    const config = { provider: 'example.edu', account: 'public', feed: 'remark-race' }
+    const before = { uid: 'same-class', title: 'Old title', location: 'A', start: '2040-10-09T09:00', description: 'School description' }
+    await withCalendar(root, async calendar => {
+      const source = calendar.registerSource(config)
+      await source.apply({ revision: 1, events: [before] })
+      const registered = []
+      const { apply } = await import('../lib/tools.js')
+      apply({ calendar, tools: { register: tool => registered.push(tool) }, permissionPresets: { current: () => 'standard' }, on: () => {} })
+      const update = registered.find(tool => tool.name === 'calendar_update_event')
+      const [result] = await Promise.all([
+        source.apply({ revision: 2, events: [{ ...before, title: 'New title', location: 'B' }] }),
+        update.execute({ source: source.source, uid: before.uid, description: 'Private remark' }),
+      ])
+      assert.equal(result.state, 'ready')
+      const event = calendar.getEvent({ source: source.source, uid: before.uid })
+      assert.equal(event.title, 'New title')
+      assert.equal(event.location, 'B')
+      assert.equal(event.description, 'School description')
+      assert.equal(calendar.personalFor({ source: source.source, uid: before.uid }).remark.text, 'Private remark')
+    })
+    await withCalendar(root, async calendar => {
+      const source = calendar.registerSource(config)
+      const event = calendar.getEvent({ source: source.source, uid: before.uid })
+      assert.equal(event.title, 'New title')
+      assert.equal(event.location, 'B')
+      assert.equal(calendar.personalFor({ source: source.source, uid: before.uid }).remark.text, 'Private remark')
+    })
+  })
+})
+
 test('Agent tools persist notes against source identity, move a class, read descriptions and remove notes', {skip:!runtime}, async()=> {
   await withRoot('calendar-agent-notes-', async root=> {
     let uid
@@ -1246,6 +1278,58 @@ test('ICS all-day exclusive ends round trip without losing a day', { skip: !runt
       const before = calendar.snapshot()
       await calendar.importIcs({ source: 'all-day', text: calendar.exportIcs().text })
       assert.deepEqual(calendar.snapshot(), before)
+    })
+  })
+})
+
+
+test('sparse edits retain concurrent fields and latest duration across restart', { skip: !runtime }, async () => {
+  await withRoot('calendar-sparse-', async root => {
+    await withCalendar(root, async calendar => {
+      await calendar.putEvent({ uid: 'edit', title: 'Original', start: '2040-10-09T09:00', end: '2040-10-09T10:00', location: 'A' })
+      await Promise.all([
+        calendar.updateEvent({ uid: 'edit', patch: { title: 'Renamed', end: '2040-10-09T11:00' } }),
+        calendar.updateEvent({ uid: 'edit', patch: { start: '2040-10-09T14:00', location: null } }),
+      ])
+      const event = calendar.getEvent({ uid: 'edit' })
+      assert.equal(event.title, 'Renamed')
+      assert.equal(event.end, '2040-10-09T16:00')
+      assert.equal(event.originalStart, '2040-10-09T09:00')
+      assert.equal(event.location, undefined)
+      await assert.rejects(calendar.updateEvent({ uid: 'edit', patch: { end: '2040-10-09T12:00' } }))
+      await assert.rejects(calendar.updateEvent({ uid: 'edit', patch: { source: 'other' } }))
+      await calendar.updateEvent({ uid: 'edit', patch: { description: 'After failure' } })
+    })
+    await withCalendar(root, async calendar => {
+      const event = calendar.getEvent({ uid: 'edit' })
+      assert.equal(event.title, 'Renamed')
+      assert.equal(event.end, '2040-10-09T16:00')
+      assert.equal(event.description, 'After failure')
+    })
+  })
+})
+
+test('remark-only edits never rewrite a source record and survive reverse sync order', { skip: !runtime }, async () => {
+  await withRoot('calendar-remark-order-', async root => {
+    await withCalendar(root, async calendar => {
+      const source = calendar.registerSource({ provider: 'example.edu', account: 'public', feed: 'order' })
+      const before = { uid: 'class', title: 'Old', start: '2040-10-09T09:00', description: 'School' }
+      await source.apply({ revision: 1, events: [before] })
+      const ref = { uid: 'class', source: source.source }
+      const stored = calendar.getEvent(ref)
+      await calendar.updateEvent({ ...ref, patch: { description: 'Private' } })
+      assert.strictEqual(calendar.getEvent(ref), stored)
+      await Promise.all([
+        calendar.updateEvent({ ...ref, patch: { description: null } }),
+        source.apply({ revision: 2, events: [{ ...before, title: 'New' }] }),
+      ])
+      assert.equal(calendar.getEvent(ref).title, 'New')
+      assert.equal(calendar.personalFor(ref).remark.text, '')
+      await calendar.updateEvent({ ...ref, patch: { location: 'User room', description: 'Mixed' } })
+      assert.equal(calendar.getEvent(ref).title, 'New')
+      assert.equal(calendar.getEvent(ref).description, 'School')
+      assert.equal(calendar.getEvent(ref).location, 'User room')
+      assert.equal(calendar.personalFor(ref).remark.text, 'Mixed')
     })
   })
 })

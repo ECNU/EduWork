@@ -14,7 +14,7 @@
 import { randomUUID } from 'node:crypto'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { decideCalendarPermission } from './tool-permission.js'
-import { inheritedEndOf, occurrencesOf, PersonalPatchSchema, PersonalViewSchema } from './model.js'
+import { occurrencesOf, PersonalPatchSchema, PersonalViewSchema } from './model.js'
 import { z } from 'zod'
 import { sourceEvent, applySourceOutcome } from './typert-schemas.js'
 
@@ -154,54 +154,6 @@ function assertPersonalTarget(calendar, ref) {
       : (event.originalStart ?? event.start) === ref.originalStart
     if (!valid) throw new Error('occurrence_not_found: use originalStart from calendar_list_events, not the moved time')
   }
-}
-
-/**
- * The end an entry keeps when its start moved without a new end.
- *
- * The duration is what a reader means by "move it to five", so it is carried
- * over: the same number of minutes for a timed entry, the same span in days for a
- * whole-day one. An entry that carried no end, or whose old end cannot be read as
- * a clock, keeps none.
- * @param existing - The stored record.
- * @param start - The new start.
- * @returns The new end, or `undefined`.
- */
-function movedEnd(existing, start) {
-  if (!existing.end || Boolean(clockOf(start)) !== Boolean(clockOf(existing.start))) return undefined
-  return inheritedEndOf(start, existing.start, existing.end)
-}
-
-/**
- * The record one update describes, on top of the record it changes.
- *
- * Only what the call carries moves: a field left out keeps its stored value and an
- * empty string clears one. Turning the repeat off drops the dates that were
- * cancelled or moved while it was a series, exactly as the panel does, because a
- * single entry owns no series bookkeeping.
- * @param existing - The stored record.
- * @param args - Tool arguments.
- * @returns The record to store.
- */
-function updatedRecord(existing, args) {
-  const record = { ...existing }
-  const moves = args.start !== undefined
-  if (moves) record.start = args.start
-  if (args.end !== undefined) record.end = args.end === '' ? undefined : args.end
-  else if (moves) record.end = movedEnd(existing, args.start)
-  if (args.title !== undefined) record.title = args.title
-  if (args.location !== undefined) record.location = args.location === '' ? undefined : args.location
-  if (args.description !== undefined) record.description = args.description === '' ? undefined : args.description
-  if (args.repeat === 'none') {
-    record.recurrence = undefined
-    record.exceptions = undefined
-    record.overrides = undefined
-  } else if (args.repeat !== undefined) {
-    record.recurrence = recurrenceFor(args)
-  } else if (args.until !== undefined && existing.recurrence) {
-    record.recurrence = withoutEmpty({...existing.recurrence, until:args.until})
-  }
-  return record
 }
 
 const WEEK_CODES = ['mo', 'tu', 'we', 'th', 'fr', 'sa', 'su']
@@ -377,9 +329,13 @@ export function apply(ctx) {
       render: (_args, value) => [{ type: 'text', text: recordLine('已更新：', value.event) }],
     },
     async execute(args) {
-      const existing = ctx.calendar.getEvent({ uid: args.uid, source: args.source ?? MANUAL_SOURCE })
-      if (!existing) throw new Error(`没有 uid 为 ${args.uid} 的日程`)
-      return { event: recordFields(await ctx.calendar.putEvent(updatedRecord(existing, args))) }
+      const patch = {}
+      for (const field of ['title', 'start', 'end', 'location', 'description']) {
+        if (args[field] !== undefined) patch[field] = args[field] === '' ? null : args[field]
+      }
+      if (args.repeat !== undefined) patch.recurrence = recurrenceFor(args) ?? null
+      else if (args.until !== undefined) patch.until = args.until || null
+      return { event: recordFields(await ctx.calendar.updateEvent({ uid: args.uid, source: args.source ?? MANUAL_SOURCE, patch })) }
     },
     presentCall: args => ({ card: 'generic', title: '日历 · 改日程', kind: 'write', rawInput: args.uid }),
   }))
