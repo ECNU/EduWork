@@ -16,129 +16,58 @@
  * decoder rather than to an assertion about the fields, which is why the decoder is
  * the thing exported here.
  *
- * The decoder is not reimplemented. `parseConnectionResponse` is read out of the
- * shipped client bundle and evaluated, because a copy of its rules is a copy that
- * can drift from the rules the device actually applies. If it cannot be found the
- * module throws at load rather than falling back to something more permissive.
+ * The decoder is implemented here against the documented envelope contract rather
+ * than lifted out of a shipped bundle. The device client does not export its
+ * parser, and reading a private file path was both a packaging dependency and a
+ * source of breakage when DSH moved from one client bundle to platform-specific
+ * ones. The rules below are the public contract the device applies; the tests
+ * exercise them directly, including the failure shapes that used to reach the
+ * device as transport errors.
  */
 
-import { readFileSync } from 'node:fs'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
-
-const require = createRequire(import.meta.url)
-
-/**
- * The shipped client file that owns `parseConnectionResponse`.
- *
- * DSH 0.2.1-rc.2 split the client into `client.node.js` and `client.browser.js` and
- * exposed them through the `./client` subpath; 0.2.0 shipped a single `lib/client.js`.
- * Resolve the public subpath first and fall back to the old file so this module keeps
- * working across both layouts. Hard-coding either path is what broke the decoder on
- * the 0.2.1 runtime.
- */
-function connectionClientFile() {
-  try {
-    return require.resolve('@deepseek-ai/dsh-client-connection/client')
-  } catch {
-    return join(dirname(require.resolve('@deepseek-ai/dsh-client-connection/package.json')), 'lib', 'client.js')
-  }
+function isRecord(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
 /**
- * Lift `parseConnectionResponse` out of the shipped client.
+ * Validate one inbound response using the device client's strict rules.
  *
- * It is not exported, so the function text is taken from the bundle and run against
- * the two helpers it closes over — `RpcId`, which is the identity for a branded
- * string, and `isRecord`. The body is found by balancing braces (see
- * {@link extractFunctionSource}), so a reshaped file fails loudly instead of
- * truncating the function.
+ * This is deliberately not permissive: a response that does not match exactly is
+ * rejected, because the device would reject it and report a transport error
+ * instead of the Host's reason. Keeping the same strictness here means a Host bug
+ * is caught at the Host rather than surfacing three layers away.
  */
-function loadConnectionDecoder() {
-  const file = connectionClientFile()
-  const source = readFileSync(file, 'utf8')
-  const match = extractFunctionSource(source, 'parseConnectionResponse')
-  if (match === undefined) {
-    throw new Error('remote-access: parseConnectionResponse moved; the response envelope cannot be validated')
+export function decodeResponse(value) {
+  if (!isRecord(value) || value.type !== 'server-response' || typeof value.rpcId !== 'string') {
+    throw new TypeError('connection: invalid server-response envelope')
   }
-  const isRecord = value => typeof value === 'object' && value !== null && !Array.isArray(value)
-  // eslint-disable-next-line no-new-func
-  return new Function('RpcId', 'isRecord', `${match}\nreturn parseConnectionResponse`)(value => value, isRecord)
-}
-
-/**
- * Take one function declaration out of a bundle by balancing its braces.
- *
- * The shipped bundles differ in formatting between DSH releases: 0.2.0's
- * `parseConnectionResponse` happened to end at a `\n\t\t}` that a regex could anchor
- * on, while 0.2.1's ends at column zero and contains an early `return { ... }` at the
- * indentation the old pattern matched. That regex therefore truncated the function
- * mid-object and produced a syntax error when evaluated. Balance braces instead of
- * guessing indentation; strings and comments are skipped so a brace in a message does
- * not move the count.
- */
-export function extractFunctionSource(source, name) {
-  const start = source.indexOf(`function ${name}(`)
-  if (start < 0) return undefined
-  let depth = 0
-  let quote = ''
-  let escaped = false
-  let lineComment = false
-  let blockComment = false
-  for (let index = start; index < source.length; index += 1) {
-    const character = source[index]
-    const next = source[index + 1]
-    if (lineComment) {
-      if (character === '\n') lineComment = false
-      continue
-    }
-    if (blockComment) {
-      if (character === '*' && next === '/') {
-        blockComment = false
-        index += 1
-      }
-      continue
-    }
-    if (quote !== '') {
-      if (escaped) {
-        escaped = false
-        continue
-      }
-      if (character === '\\') {
-        escaped = true
-        continue
-      }
-      if (character === quote) quote = ''
-      continue
-    }
-    if (character === '/' && next === '/') {
-      lineComment = true
-      index += 1
-      continue
-    }
-    if (character === '/' && next === '*') {
-      blockComment = true
-      index += 1
-      continue
-    }
-    if (character === '"' || character === "'" || character === '`') {
-      quote = character
-      continue
-    }
-    if (character === '{') {
-      depth += 1
-      continue
-    }
-    if (character === '}') {
-      depth -= 1
-      if (depth === 0) return source.slice(start, index + 1)
+  const result = value.result
+  if (!isRecord(result)) throw new TypeError('connection: invalid server-response result')
+  if (result.ok === true) {
+    return {
+      rpcId: value.rpcId,
+      result: { ok: true, value: result.value },
     }
   }
-  return undefined
+  if (result.ok !== false || !isRecord(result.error)) {
+    throw new TypeError('connection: invalid server-response result')
+  }
+  const error = result.error
+  if (typeof error.code !== 'string' || typeof error.message !== 'string' || !isRecord(error.details)) {
+    throw new TypeError('connection: invalid server-response failure')
+  }
+  return {
+    rpcId: value.rpcId,
+    result: {
+      ok: false,
+      error: {
+        code: error.code,
+        message: error.message,
+        details: error.details,
+      },
+    },
+  }
 }
-
-/** The device's own decoder, so a response can be judged by the rules it will meet. */
-export const decodeResponse = loadConnectionDecoder()
 
 /**
  * Validate one inbound frame as a JSON object.

@@ -2,12 +2,13 @@
  * The host-side channel: one encrypted connection, presented to the Gateway as one
  * carrier.
  *
- * Three things are checked, and each is checked against its shipped owner rather
+ * Three things are checked, and each is checked against a public contract rather
  * than against this file's recollection:
  *
  *   - the frame vocabulary, both directions, through the shipped
  *     `stream-protocol` parser;
- *   - the response envelope, through the shipped `parseConnectionResponse`;
+ *   - the response envelope, through the strict device rules implemented in
+ *     `decodeResponse`;
  *   - the `wireStream.open` argument order, which is the defect this file's first
  *     version shipped and which is silent when wrong.
  */
@@ -21,10 +22,9 @@ import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 import { RemoteChannel, UplinkInbox } from '../src/stream/channel.js'
 import { decodeResponse } from '../src/stream/envelope.js'
 
-// `decodeResponse` is the shipped `parseConnectionResponse` lifted out of the device
-// client bundle by `envelope.js`. Assertions below therefore claim the *device*
-// accepts what the host produced; the loader throws at import if the function cannot
-// be found, so a missing decoder cannot turn them into tautologies.
+// `decodeResponse` implements the device client's documented strict response rules.
+// Assertions below therefore claim the *device* accepts what the host produced, and
+// the loader no longer reads a private file path that changes between DSH releases.
 
 /**
  * The Gateway's failure mapper, transcribed from `rpcFailure` in
