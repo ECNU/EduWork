@@ -129,15 +129,16 @@ export class KernelHost {
    * The official owner `Peer` a call speaks for.
    *
    * DSH exposes the browser/owner Peer as `browserPeer` on the connection
-   * service; some builds also expose a long-lived `operator`. Use whichever the
-   * service provides, and fall back to its public `createPeer` factory rather than
-   * passing `undefined` into the Gateway, which fails later at `peer.signal`.
-   * The resolved Peer is cached because the Gateway expects a stable identity and
-   * because creating one per call would accumulate scopes.
+   * service; some builds also expose a long-lived `operator`. Prefer the property
+   * the installed 0.2.1 service actually defines, then fall back to the public
+   * `createPeer` factory rather than passing `undefined` into the Gateway, which
+   * fails later at `peer.signal`. The resolved Peer is cached because the Gateway
+   * expects a stable identity and because creating one per call would accumulate
+   * scopes.
    */
   get peer() {
     if (this.#peer !== undefined) return this.#peer
-    const candidate = this.#connection.operator ?? this.#connection.browserPeer
+    const candidate = this.#connection.browserPeer ?? this.#connection.operator
     if (candidate !== undefined) {
       this.#peer = candidate
       return this.#peer
