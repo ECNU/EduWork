@@ -60,6 +60,7 @@ function fakeKernel({
 }) {
   const calls = []
   const mints = []
+  const sharedPeers = []
   const fetchImpl = async (url) => {
     const parsed = new URL(String(url))
     const host = parsed.host
@@ -91,7 +92,8 @@ function fakeKernel({
     },
     createSharedFetchHandler(apiPath) {
       return {
-        async fetch(request) {
+        async fetch(request, peer) {
+          sharedPeers.push(peer)
           const host = request.headers.get('host')
           const cookie = request.headers.get('cookie')
           const value = jar.value(authority)
@@ -118,7 +120,7 @@ function fakeKernel({
       }
     },
   }
-  return { connection, fetchImpl, calls, mints, jar }
+  return { connection, fetchImpl, calls, mints, jar, sharedPeers }
 }
 
 const AUTHORITY = '127.0.0.1:62021'
@@ -177,6 +179,16 @@ test('一次调用走完整条路：铸 cookie、POST 到正确端点、拿回�
   assert.deepEqual(kernel.calls, [
     { endpoint: 'session/list', payload: { args: { _request: {} } }, rpcId: 'rpc-1' },
   ])
+})
+
+test('共享处理器拿到的是宿主 operator Peer，而不是 undefined', async () => {
+  const kernel = fakeKernel({ authority: AUTHORITY, handler: okHandler })
+  const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })
+
+  await host.dispatch({ endpoint: 'session/list', payload: {}, rpcId: 'peer-1' })
+
+  assert.equal(kernel.sharedPeers.length, 1)
+  assert.equal(kernel.sharedPeers[0], kernel.connection.operator)
 })
 
 test('副作用调用按 requestId 只执行一次，读调用不缓存', async () => {

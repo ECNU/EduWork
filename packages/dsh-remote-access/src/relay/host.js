@@ -286,7 +286,7 @@ export class KernelHost {
 
     let response
     try {
-      response = await this.#shared.fetch(request)
+      response = await this.#shared.fetch(request, this.peer)
     } catch (error) {
       return failure(500, `the host failed to handle this call: ${error.message}`)
     }
