@@ -326,7 +326,7 @@ test('门禁之外的调用被拒，而且派发函数一次都没被调用', as
     const reply = await rpc(link, session, envelope(method, `rpc-${method}`))
     assert.equal(reply.result.ok, false, `${method} must be refused`)
     // A string code with the HTTP status kept as a detail. The device decodes with
-    // `parseConnectionResponse`, which refuses a numeric `code` and a missing
+    // The device's strict envelope decoder refuses a numeric `code` and a missing
     // `details` — so a refusal in the old shape arrived as a transport error rather
     // than as the refusal it was.
     assert.equal(reply.result.error.code, 'remote-access/operation-refused', `${method} must be refused as forbidden`)

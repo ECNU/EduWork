@@ -382,7 +382,7 @@ describe('中继侧的宿主适配器也遵守同一个信封', () => {
   it('KernelHost 的失败信封能被设备解码器接受', async () => {
     // The same defect class as the one this channel's envelope work exists to avoid,
     // found in the relay's own Host adapter: its `failure` helper emitted
-    // `{ code, message }` with no `details`, and `parseConnectionResponse` refuses
+    // `{ code, message }` with no `details`, and the device's strict response decoder refuses
     // that. So every refusal it built — "the host could not authenticate to itself",
     // a rejected call, a non-envelope body — reached the device as a transport error
     // instead of as the reason the Host had written down.
