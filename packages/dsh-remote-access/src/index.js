@@ -146,11 +146,12 @@ export class DeviceRegistry {
   /**
    * The namespace the row was actually found under.
    *
-   * The profile entry id is the settings namespace — `remote-access` in this
-   * deployment — while the plugin's own name is `eduwork-remote-access`. Reads try
-   * both; a write has to use the one that exists, or it fails on a namespace with
-   * no row. Remembering the successful spelling is what keeps `upsert` and
-   * `revoke` from writing somewhere the host cannot find.
+   * The profile entry id is the settings namespace — `eduwork-remote-access` in the
+   * current deployment, `remote-access` in profiles written before the row was
+   * renamed away from the base plugin's id — while the plugin's own name is
+   * `eduwork-remote-access`. Reads try both; a write has to use the one that exists,
+   * or it fails on a namespace with no row. Remembering the successful spelling is
+   * what keeps `upsert` and `revoke` from writing somewhere the host cannot find.
    */
   #namespace
 
@@ -165,11 +166,12 @@ export class DeviceRegistry {
    * ## Why the namespace is looked up rather than assumed
    *
    * This plugin's settings row is identified by the profile entry id, and the plugin
-   * name is not that id: the profile writes `id: remote-access`, while this file
-   * carried a longer namespace of its own. The settings service keys rows by the id,
-   * so looking up the wrong spelling finds nothing, `baseSettings` falls back to its
-   * defaults, and the registry reports `enabled: false` while the operator's file
-   * plainly says `true` — a plugin that is switched on reading itself as switched off.
+   * name is not that id: the profile writes `id: eduwork-remote-access` (older
+   * profiles wrote `id: remote-access`), while this file carried a longer namespace
+   * of its own. The settings service keys rows by the id, so looking up the wrong
+   * spelling finds nothing, `baseSettings` falls back to its defaults, and the
+   * registry reports `enabled: false` while the operator's file plainly says `true` —
+   * a plugin that is switched on reading itself as switched off.
    *
    * Both spellings are tried, in order, against whatever the service actually serves.
    * The first that resolves wins and is remembered for writes; if neither does, the
@@ -313,7 +315,14 @@ export function apply(ctx, rawConfig = {}) {
   // One registry across the whole plugin lifetime: a device session that outlives a
   // settings read must still be closable when the operator revokes it.
   const connections = new LiveConnections()
-  ctx.provide('remoteAccess', registry)
+  // Do not publish this under `remoteAccess`: since DSH 0.2.1-rc.2 the base bundle
+  // owns that name (`@deepseek-ai/dsh-api-remote-access`), and its service is a
+  // policy API (`allows`/`source`/`snapshotFor`), not a device registry. Providing
+  // the same name made one of the two fail, and a profile row that reused the base
+  // plugin's id replaced it outright — which starved the Client half and left every
+  // UI plugin pending. The registry gets its own name; the relay does not need the
+  // shared service.
+  ctx.provide('eduworkDeviceRegistry', registry)
   probe('registry provided', `enabled=${String(registry.enabled)} relayUrl=${JSON.stringify(registry.relay.url)} hostId=${JSON.stringify(registry.relay.hostId)}`)
 
   // Which spellings the settings service actually serves, printed once per boot. The

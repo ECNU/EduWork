@@ -29,24 +29,112 @@ import { dirname, join } from 'node:path'
 const require = createRequire(import.meta.url)
 
 /**
+ * The shipped client file that owns `parseConnectionResponse`.
+ *
+ * DSH 0.2.1-rc.2 split the client into `client.node.js` and `client.browser.js` and
+ * exposed them through the `./client` subpath; 0.2.0 shipped a single `lib/client.js`.
+ * Resolve the public subpath first and fall back to the old file so this module keeps
+ * working across both layouts. Hard-coding either path is what broke the decoder on
+ * the 0.2.1 runtime.
+ */
+function connectionClientFile() {
+  try {
+    return require.resolve('@deepseek-ai/dsh-client-connection/client')
+  } catch {
+    return join(dirname(require.resolve('@deepseek-ai/dsh-client-connection/package.json')), 'lib', 'client.js')
+  }
+}
+
+/**
  * Lift `parseConnectionResponse` out of the shipped client.
  *
  * It is not exported, so the function text is taken from the bundle and run against
  * the two helpers it closes over — `RpcId`, which is the identity for a branded
- * string, and `isRecord`. The pattern is anchored on the function name and requires
- * the body to end at the bundle's own indentation, so a reshaped file fails loudly
- * instead of silently matching nothing.
+ * string, and `isRecord`. The body is found by balancing braces (see
+ * {@link extractFunctionSource}), so a reshaped file fails loudly instead of
+ * truncating the function.
  */
 function loadConnectionDecoder() {
-  const file = join(dirname(require.resolve('@deepseek-ai/dsh-client-connection/package.json')), 'lib', 'client.js')
+  const file = connectionClientFile()
   const source = readFileSync(file, 'utf8')
-  const match = /function parseConnectionResponse\(value\) \{[\s\S]*?\n\t\t\}/.exec(source)
-  if (match === null) {
+  const match = extractFunctionSource(source, 'parseConnectionResponse')
+  if (match === undefined) {
     throw new Error('remote-access: parseConnectionResponse moved; the response envelope cannot be validated')
   }
   const isRecord = value => typeof value === 'object' && value !== null && !Array.isArray(value)
   // eslint-disable-next-line no-new-func
-  return new Function('RpcId', 'isRecord', `${match[0]}\nreturn parseConnectionResponse`)(value => value, isRecord)
+  return new Function('RpcId', 'isRecord', `${match}\nreturn parseConnectionResponse`)(value => value, isRecord)
+}
+
+/**
+ * Take one function declaration out of a bundle by balancing its braces.
+ *
+ * The shipped bundles differ in formatting between DSH releases: 0.2.0's
+ * `parseConnectionResponse` happened to end at a `\n\t\t}` that a regex could anchor
+ * on, while 0.2.1's ends at column zero and contains an early `return { ... }` at the
+ * indentation the old pattern matched. That regex therefore truncated the function
+ * mid-object and produced a syntax error when evaluated. Balance braces instead of
+ * guessing indentation; strings and comments are skipped so a brace in a message does
+ * not move the count.
+ */
+export function extractFunctionSource(source, name) {
+  const start = source.indexOf(`function ${name}(`)
+  if (start < 0) return undefined
+  let depth = 0
+  let quote = ''
+  let escaped = false
+  let lineComment = false
+  let blockComment = false
+  for (let index = start; index < source.length; index += 1) {
+    const character = source[index]
+    const next = source[index + 1]
+    if (lineComment) {
+      if (character === '\n') lineComment = false
+      continue
+    }
+    if (blockComment) {
+      if (character === '*' && next === '/') {
+        blockComment = false
+        index += 1
+      }
+      continue
+    }
+    if (quote !== '') {
+      if (escaped) {
+        escaped = false
+        continue
+      }
+      if (character === '\\') {
+        escaped = true
+        continue
+      }
+      if (character === quote) quote = ''
+      continue
+    }
+    if (character === '/' && next === '/') {
+      lineComment = true
+      index += 1
+      continue
+    }
+    if (character === '/' && next === '*') {
+      blockComment = true
+      index += 1
+      continue
+    }
+    if (character === '"' || character === "'" || character === '`') {
+      quote = character
+      continue
+    }
+    if (character === '{') {
+      depth += 1
+      continue
+    }
+    if (character === '}') {
+      depth -= 1
+      if (depth === 0) return source.slice(start, index + 1)
+    }
+  }
+  return undefined
 }
 
 /** The device's own decoder, so a response can be judged by the rules it will meet. */

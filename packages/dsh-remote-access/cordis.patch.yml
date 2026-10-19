@@ -9,7 +9,13 @@
 # upgrade, so the setting defaults off and an operator turns it on in
 # Settings -> Remote access. Override this row only for a deployment that has decided to
 # carry remote access by default, and say so where the decision is visible.
+#
+# The row id must stay unique. Since DSH 0.2.1-rc.2 the base bundle has
+# `id: remote-access` for `@deepseek-ai/dsh-api-remote-access`; a second row with
+# that id replaces the base plugin instead of adding to it, so its Client half never
+# mounts and the UI plugins stay pending. Keep this name aligned with the profile row
+# that configures the plugin.
 - insert:
-    - id: remote-access
+    - id: eduwork-remote-access
       name: '@eduwork/dsh-remote-access'
       config: {}

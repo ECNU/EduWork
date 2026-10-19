@@ -13,43 +13,18 @@
  */
 
 import assert from 'node:assert/strict'
-import { createRequire } from 'node:module'
-import { dirname, join } from 'node:path'
 import { describe, it } from 'node:test'
 
 import { parseRemoteStreamServerMessage } from '@deepseek-ai/dsh-api-gateway/stream-protocol'
 import { RemoteError, remoteErrorOf } from '@deepseek-ai/dsh-typert-protocol'
 
 import { RemoteChannel, UplinkInbox } from '../src/stream/channel.js'
+import { decodeResponse } from '../src/stream/envelope.js'
 
-const require = createRequire(import.meta.url)
-
-/**
- * The client's own response decoder, evaluated from the shipped source.
- *
- * `parseConnectionResponse` is not exported, so the function is lifted out of the
- * bundle and run against a minimal `isRecord` and `RpcId`. This is what lets the
- * assertions below claim the *device* accepts what the host produced. If the lifted
- * function cannot be found the loader throws, because a silently missing decoder
- * would turn every envelope assertion into a tautology.
- */
-function loadClientDecoder() {
-  const file = join(dirname(require.resolve('@deepseek-ai/dsh-client-connection/package.json')), 'lib', 'client.js')
-  const source = require('node:fs').readFileSync(file, 'utf8')
-  const match = /function parseConnectionResponse\(value\) \{[\s\S]*?\n\t\t\}/.exec(source)
-  if (match === null) throw new Error('stream-channel: parseConnectionResponse moved; the envelope check would be vacuous')
-  // eslint-disable-next-line no-new-func
-  return new Function(
-    'RpcId',
-    'isRecord',
-    `${match[0]}\nreturn parseConnectionResponse`,
-  )(
-    value => value,
-    value => typeof value === 'object' && value !== null && !Array.isArray(value),
-  )
-}
-
-const decodeResponse = loadClientDecoder()
+// `decodeResponse` is the shipped `parseConnectionResponse` lifted out of the device
+// client bundle by `envelope.js`. Assertions below therefore claim the *device*
+// accepts what the host produced; the loader throws at import if the function cannot
+// be found, so a missing decoder cannot turn them into tautologies.
 
 /**
  * The Gateway's failure mapper, transcribed from `rpcFailure` in

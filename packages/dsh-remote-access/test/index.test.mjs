@@ -135,7 +135,10 @@ test('apply registers the namespace and publishes the registry', () => {
     relay: { url: '', hostId: '' },
   })
 
-  assert.equal(host.provided.get('remoteAccess'), registry)
+  assert.equal(host.provided.get('eduworkDeviceRegistry'), registry)
+  // `remoteAccess` belongs to `@deepseek-ai/dsh-api-remote-access` in the base bundle.
+  // Publishing it here is what made the two services collide on DSH 0.2.1-rc.2.
+  assert.equal(host.provided.has('remoteAccess'), false)
   assert.equal(registry instanceof DeviceRegistry, true)
 })
 
@@ -393,8 +396,9 @@ test('a host without a settings registrar is left alone rather than crashed into
   const host = stubHost({ withRegister: false })
   const registry = apply(host.ctx)
   assert.equal(host.registered.length, 0)
-  // The service is still published: the host may register settings itself.
-  assert.equal(host.provided.get('remoteAccess'), registry)
+  // The service is still published under its own name: the host may register
+  // settings itself.
+  assert.equal(host.provided.get('eduworkDeviceRegistry'), registry)
 })
 
 test('the row is written under the spelling the host actually serves', async () => {

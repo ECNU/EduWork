@@ -6,7 +6,7 @@ Lets **another device** view and continue the workspaces, sessions, and tasks of
 
 This package is a **DSH plugin** with a self-hostable **relay** and a **device bootstrap**: the Host and the device communicate end to end, the relay forwards handshake metadata and sealed business frames and never holds the Host's launch credential, and the remote browser loads the **Web UI the Host renders itself** rather than a separate client.
 
-> Status: prototype (`0.1.0-dev`, not published to npm). It has passed 309 package tests, protocol-level device acceptance, and a desktop browser plus a real phone on Wi-Fi. The real invite flow, the relay access key, end-to-end approvals/questions, and iOS background reconnect are not finished. The public interface and acceptance conditions are in the [proposal](../../docs/proposals/remote-access/README_EN.md); npm publication, product dependency locks, and desktop Releases are approved separately.
+> Status: prototype (`0.1.0-dev`, not published to npm). It has passed 310 package tests, protocol-level device acceptance, and a desktop browser plus a real phone on Wi-Fi. The real invite flow, the relay access key, end-to-end approvals/questions, and iOS background reconnect are not finished. The public interface and acceptance conditions are in the [proposal](../../docs/proposals/remote-access/README_EN.md); npm publication, product dependency locks, and desktop Releases are approved separately.
 
 ## What it does
 
@@ -52,7 +52,7 @@ Add this package to the DSH profile's `dsh.profile.bundles` and configure it in 
 
 ```yaml
 - {
-    "id": "remote-access",
+    "id": "eduwork-remote-access",
     "config":
       {
         enabled: true,
@@ -61,6 +61,8 @@ Add this package to the DSH profile's `dsh.profile.bundles` and configure it in 
       }
   }
 ```
+
+The row id must differ from `remote-access`, which `@deepseek-ai/dsh-api-remote-access` owns in the base bundle since DSH 0.2.1-rc.2. Reusing that id replaces the base plugin instead of adding to it, so its Client half never mounts and the UI plugins stay pending.
 
 The plugin writes `devices` (Host identity and confirmed devices); it normally needs no manual editing. `hostId` is the Host's unique identifier on the relay, and the first registration binds the Host public key.
 
