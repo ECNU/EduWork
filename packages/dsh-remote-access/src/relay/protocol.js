@@ -7,8 +7,14 @@
  * difference.
  */
 
-/** Relay protocol version. Bumped only on an incompatible control-frame change. */
-export const RELAY_VERSION = 'eduwork-relay/1'
+/**
+ * Relay protocol version. Bumped only on an incompatible control-frame change.
+ *
+ * v2 made `register` proof-of-possession mandatory: the relay verifies the
+ * Host's signature over `{nonce, hostId, publicKey}` before binding or replacing
+ * a connection. A v1 Host sends a signature over the nonce alone and is refused.
+ */
+export const RELAY_VERSION = 'eduwork-relay/2'
 
 /** Upgrade path a Host dials out to. */
 export const HOST_PATH = '/host'

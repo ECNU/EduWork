@@ -11,7 +11,7 @@
 | 文件 | 用途 |
 | --- | --- |
 | `server.mjs` | 中继入口；从 `EDUWORK_RELAY_*` 读配置 |
-| `relay.js`、`protocol.js`、`websocket.js` | 从构建产物 `lib/relay/` 复制到 `/opt/eduwork-relay/` |
+| `relay.js`、`protocol.js`、`websocket.js`、`registration.js` | 从构建产物 `lib/relay/` 复制到 `/opt/eduwork-relay/` |
 | `web/bootstrap.js` | 设备端脚本；中继通过 `EDUWORK_RELAY_BOOTSTRAP_SCRIPT` 注入 |
 | `eduwork-relay.service` | systemd unit（loopback、动态用户、状态目录） |
 | `eduwork-relay.env` | 环境变量样例；安装到 `/etc/eduwork-relay.env` |
@@ -27,7 +27,7 @@ node scripts/build.mjs
 
 # 服务器上
 install -d /opt/eduwork-relay/web /opt/eduwork-relay/frontend
-install -m 0644 lib/relay/relay.js lib/relay/protocol.js lib/relay/websocket.js /opt/eduwork-relay/
+install -m 0644 lib/relay/relay.js lib/relay/protocol.js lib/relay/websocket.js lib/relay/registration.js /opt/eduwork-relay/
 install -m 0755 deploy/server.mjs /opt/eduwork-relay/server.mjs
 install -m 0644 deploy/web/bootstrap.js /opt/eduwork-relay/web/bootstrap.js
 install -m 0644 deploy/eduwork-relay.service /etc/systemd/system/eduwork-relay.service
@@ -35,6 +35,7 @@ install -m 0600 deploy/eduwork-relay.env /etc/eduwork-relay.env
 ```
 
 - `EDUWORK_RELAY_BIND` 保持 `127.0.0.1`；公网入口由 Caddy 终止 TLS。
+- 中继与宿主必须一起升级到 `eduwork-relay/2`：v2 要求注册签名覆盖 nonce、hostId 和公钥，v1 宿主会被拒绝。先停宿主或安排同一维护窗口，避免只升级一边导致远连不可用。
 - `EDUWORK_RELAY_STORE` 必须落在 unit 的 `StateDirectory` 里；它是 trust-on-first-use 的 hostId→公钥绑定，丢失后别人可以抢注该 hostId。
 - `EDUWORK_RELAY_FRONTEND_ROOT` 指向下面第 3 步的镜像目录。
 - `EDUWORK_RELAY_BOOTSTRAP_SCRIPT` 是**浏览器能取到的 URL**；反向代理剥掉前缀时不能写中继内部路径。

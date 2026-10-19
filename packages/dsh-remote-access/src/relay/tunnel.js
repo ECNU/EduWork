@@ -613,7 +613,11 @@ export async function createHostTunnel({
                 v: RELAY_VERSION,
                 hostId,
                 publicKey,
-                sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript(message.nonce)),
+                sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript({
+                  nonce: message.nonce,
+                  hostId,
+                  publicKey,
+                })),
               }))
               return
             }

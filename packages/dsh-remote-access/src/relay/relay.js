@@ -18,12 +18,13 @@
  *    relay and what trust assumption it implies.
  */
 
-import { createHash } from 'node:crypto'
+import { createHash, randomBytes } from 'node:crypto'
 import { createReadStream, existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { dirname, extname, join, normalize, resolve, sep } from 'node:path'
 
 import { HOST_PATH, MESSAGE, PEER_PATH, RELAY_VERSION, UNAVAILABLE } from './protocol.js'
+import { isRegistrationShapeValid, verifyHostRegistration } from './registration.js'
 import { acceptUpgrade, refuseUpgrade } from './websocket.js'
 
 /** True when a text frame is the explicit hand-off to transparent forwarding. */
@@ -339,7 +340,9 @@ export function createRelay({
   })
 
   function attachHost(connection) {
-    const nonce = createHash('sha256').update(String(Date.now())).update(String(Math.random())).digest('base64url')
+    // A challenge must be unpredictable, not merely unique: a predictable nonce
+    // lets an observer precompute a proof for a registration it has not seen.
+    const nonce = randomBytes(32).toString('base64url')
     let registered = null
     let link = null
     sendControl(connection, { t: 'challenge', v: RELAY_VERSION, nonce })
@@ -359,10 +362,25 @@ export function createRelay({
         if (typeof message.hostId !== 'string' || typeof message.publicKey !== 'string' || typeof message.sig !== 'string') {
           return connection.close(1003, 'register is missing a field')
         }
-        // The relay does not verify the signature itself — it has no crypto
-        // primitives and no business holding any. It records the binding and
-        // checks every later registration against it. Verification of this key
-        // happens on the devices, in the end-to-end handshake.
+        if (!isRegistrationShapeValid(message)) {
+          sendControl(connection, { t: 'denied', reason: 'invalid-registration' })
+          return connection.close(1003, 'register field is invalid')
+        }
+        // Verify before consulting `hosts` or `live`: an invalid signature must
+        // not be able to learn whether an id is bound, and it must never replace
+        // a connection or create a binding. The proof binds this nonce, this id
+        // and this key, so a signature copied from another registration or
+        // another host id fails here.
+        if (!verifyHostRegistration({
+          nonce,
+          hostId: message.hostId,
+          publicKey: message.publicKey,
+          sig: message.sig,
+        })) {
+          log(`relay: refusing hostId ${message.hostId}: registration signature is invalid`)
+          sendControl(connection, { t: 'denied', reason: 'bad-signature' })
+          return connection.close(1008, 'host signature invalid')
+        }
         const existing = hosts.get(message.hostId)
         if (existing !== undefined && existing.publicKey !== message.publicKey) {
           log(`relay: refusing hostId ${message.hostId}: already bound to another key`)
@@ -372,10 +390,11 @@ export function createRelay({
         if (live.has(message.hostId)) {
           const previous = live.get(message.hostId)
           if (previous !== undefined && previous !== connection) {
-            // The key matched above, so this is the same Host reconnecting before the
-            // relay noticed the old socket — exactly what an application restart
-            // looks like. Refusing would leave the new instance unregistered for
-            // good, because the tunnel treats `denied` as final.
+            // The key matched above and the signature is valid, so this is the same
+            // Host reconnecting before the relay noticed the old socket — exactly
+            // what an application restart looks like. Refusing would leave the new
+            // instance unregistered for good, because the tunnel treats `denied`
+            // as final.
             log(`relay: replacing the previous connection for ${message.hostId}`)
             try {
               previous.close(1000, 'replaced by a newer registration')

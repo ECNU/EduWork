@@ -121,12 +121,13 @@ function connect(url) {
 async function registerHost(hostId, identity) {
   const host = await connect(`${base}/host`)
   const challenge = await host.nextText(message => message.t === 'challenge')
+  const publicKey = await encodePublicKey(identity.signing.publicKey)
   host.sendJson({
     t: 'register',
     v: RELAY_VERSION,
     hostId,
-    publicKey: await encodePublicKey(identity.signing.publicKey),
-    sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript(challenge.nonce)),
+    publicKey,
+    sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript({ nonce: challenge.nonce, hostId, publicKey })),
   })
   const answer = await host.nextText(message => message.t === 'registered' || message.t === 'denied')
   return { host, answer }

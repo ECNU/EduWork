@@ -19,7 +19,7 @@
 
 - 应用层协议字符串：`eduwork-remote/2`（握手消息的 `v` 与 bootstrap/宿主一致）。
 - 帧头版本字节：`0x02`；帧头 11 字节，GCM tag 16 字节。
-- 中继注册帧有自己的 `v`（`RELAY_VERSION`）；不匹配即拒绝。
+- 中继注册帧有自己的 `v`（`RELAY_VERSION`，当前 `eduwork-relay/2`）；不匹配即拒绝。`eduwork-relay/1` 的注册签名只覆盖 nonce，已废弃。
 - v1（`eduwork-remote/1`）是遗留的 listener 协议，见 [protocol-v1.md](protocol-v1.md)。
 
 ## 3. 标识与凭据
@@ -37,10 +37,11 @@
 
 - 宿主：`wss://<relay>/<prefix>/host`。连接后中继发 `challenge`；宿主回 `register`（hostId、publicKey、sig）；中继回 `registered` 或 `denied`。
 - 设备：`wss://<relay>/<prefix>/peer?h=<hostId>`。中继把设备接到该 host 的链路，并在两端 `ready` 后才放行数据帧；设备先发的帧被扣住，READY 后按原序补发。
-- 中继对 hostId 做 trust-on-first-use 绑定：第一次注册记下公钥，换钥注册回 `host-id-taken`。同一个 host 已有在线连接时，**同钥**新连接替换旧连接（旧 socket 以 1000 关闭），不同钥仍拒绝。
+- 中继对 hostId 做 trust-on-first-use 绑定，但**注册必须证明持有私钥**：`challenge` 是每次连接新生成的 32 字节随机数；宿主对长度前缀编码的 `eduwork-relay-v2 || nonce || hostId || publicKey` 做 ECDSA P-256/SHA-256 签名。中继**先验签，再读写绑定或替换连接**。
+- 首次注册：验签通过才记下公钥；失败回 `denied`/`bad-signature`，不落盘。换钥注册回 `host-id-taken`。
+- 同一 host 已有在线连接时，**同钥且签名有效**的新连接替换旧连接（旧 socket 以 1000 关闭）；同钥但签名无效回 `bad-signature`，旧连接不受影响。不同钥仍拒绝。
 - 同一 host 同时只接一个设备；已有设备时新设备收到 `host-busy` / 对应关闭。
-- 中继**不验证** `register` 的签名（它没有密码学原语）；设备在握手里验证宿主公钥，这是信任的落点。
-- 中继转发两个方向的消息，不解析、不改写、不去重。
+- 中继不解析、不改写、不去重业务内容；它只验证注册身份并转发两个方向的帧。它不持有任何长期私钥。
 
 ## 5. 握手
 

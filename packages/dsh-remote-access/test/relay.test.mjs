@@ -14,10 +14,11 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { after, before, test } from 'node:test'
 
-import { encodePublicKey, generateIdentity } from '../src/channel/crypto.js'
+import { buildRelayTranscript, encodePublicKey, generateIdentity, randomNonce, signTranscript } from '../src/channel/crypto.js'
 import { HostHandshake, PeerHandshake } from '../src/channel/handshake.js'
 import { HOST_PATH, MESSAGE, PEER_PATH, RELAY_VERSION, UNAVAILABLE } from '../src/relay/protocol.js'
 import { createRelay } from '../src/relay/relay.js'
+import { buildHostRegistrationTranscript, verifyHostRegistration } from '../src/relay/registration.js'
 import { wrapClientSocket } from '../src/relay/websocket.js'
 
 let relay
@@ -123,17 +124,26 @@ const sayReady = (connection) => connection.say({ t: MESSAGE.READY })
  * serves one device after another. So this deliberately does not say READY —
  * `linkedPair` does it after `peer-joined`.
  */
-async function registerHost(hostId, publicKey, origin = base) {
+async function registerHost(hostId, identity, origin = base) {
+  identity ??= await generateIdentity()
   const connection = await open(HOST_PATH, origin)
-  await connection.next('challenge')
-  connection.say({ t: 'register', v: RELAY_VERSION, hostId, publicKey, sig: 'test-signature' })
+  const challenge = await connection.next('challenge')
+  const publicKey = await encodePublicKey(identity.signing.publicKey)
+  connection.say({
+    t: 'register',
+    v: RELAY_VERSION,
+    hostId,
+    publicKey,
+    sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript({ nonce: challenge.nonce, hostId, publicKey })),
+  })
   const registered = await connection.next((m) => m?.t === 'registered' || m?.t === 'denied')
   return { connection, registered }
 }
 
 /** Register a Host, attach a device, and complete both control hand-offs. */
-async function linkedPair(hostId, publicKey = 'p256:LINK', origin = base) {
-  const host = await registerHost(hostId, publicKey, origin)
+async function linkedPair(hostId, identity, origin = base) {
+  identity ??= await generateIdentity()
+  const host = await registerHost(hostId, identity, origin)
   const peer = await open(`${PEER_PATH}?h=${hostId}`, origin)
   const linked = await peer.next('linked')
   // `peer-joined` is withheld from a Host that is already forwarding, so this
@@ -145,25 +155,121 @@ async function linkedPair(hostId, publicKey = 'p256:LINK', origin = base) {
 }
 
 test('宿主注册后绑定 hostId，重复注册同一把密钥被接受', async () => {
-  const first = await registerHost('host-repeat', 'p256:AAAA')
+  const identity = await generateIdentity()
+  const first = await registerHost('host-repeat', identity)
   assert.equal(first.registered.t, 'registered')
   assert.equal(first.registered.hostId, 'host-repeat')
-  first.connection.close()
 
-  const second = await registerHost('host-repeat', 'p256:AAAA')
+  // Keep the first socket open: the same key re-registering is exactly the
+  // restart/reconnect path, and it must replace the stale connection.
+  const second = await registerHost('host-repeat', identity)
   assert.equal(second.registered.t, 'registered', 'the same key must be allowed to reclaim its id')
+  first.connection.close()
   second.connection.close()
 })
 
 test('同一 hostId 换一把密钥注册会被拒——防止 hostId 被抢占', async () => {
-  const first = await registerHost('host-taken', 'p256:AAAA')
+  const first = await registerHost('host-taken', await generateIdentity())
   assert.equal(first.registered.t, 'registered')
   first.connection.close()
 
-  const second = await registerHost('host-taken', 'p256:BBBB')
+  const second = await registerHost('host-taken', await generateIdentity())
   assert.equal(second.registered.t, 'denied')
   assert.equal(second.registered.reason, 'host-id-taken')
   second.connection.close()
+})
+
+test('中继注册 transcript 与宿主实现逐字节一致', async () => {
+  const nonce = randomNonce()
+  const hostId = 'host-transcript'
+  const publicKey = await encodePublicKey((await generateIdentity()).signing.publicKey)
+  assert.equal(
+    Buffer.from(buildRelayTranscript({ nonce, hostId, publicKey })).toString('hex'),
+    buildHostRegistrationTranscript({ nonce, hostId, publicKey }).toString('hex'),
+  )
+})
+
+test('注册签名绑定 hostId 与公钥，不能挪用到另一个身份', async () => {
+  const nonce = randomNonce()
+  const hostId = 'host-bound-a'
+  const identity = await generateIdentity()
+  const publicKey = await encodePublicKey(identity.signing.publicKey)
+  const sig = await signTranscript(identity.signing.privateKey, buildRelayTranscript({ nonce, hostId, publicKey }))
+
+  assert.equal(verifyHostRegistration({ nonce, hostId, publicKey, sig }), true)
+  assert.equal(
+    verifyHostRegistration({ nonce, hostId: 'host-bound-b', publicKey, sig }),
+    false,
+    'the same proof must not claim a different host id',
+  )
+  assert.equal(
+    verifyHostRegistration({ nonce, hostId, publicKey: await encodePublicKey((await generateIdentity()).signing.publicKey), sig }),
+    false,
+    'the same proof must not authorize a different key',
+  )
+})
+
+test('首次注册签名无效时拒绝且不写入绑定', async () => {
+  const hostId = 'host-bad-first'
+  const identity = await generateIdentity()
+  const publicKey = await encodePublicKey(identity.signing.publicKey)
+  const connection = await open(HOST_PATH)
+  const challenge = await connection.next('challenge')
+  connection.say({
+    t: 'register',
+    v: RELAY_VERSION,
+    hostId,
+    publicKey,
+    // A valid signature over a different challenge is still not a proof for
+    // this registration.
+    sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript({
+      nonce: randomNonce(),
+      hostId,
+      publicKey,
+    })),
+  })
+  const denied = await connection.next('denied')
+  assert.equal(denied.reason, 'bad-signature')
+  assert.equal(relay.hosts.has(hostId), false, 'an unproven registration must not be stored')
+  connection.close()
+
+  const peer = await open(`${PEER_PATH}?h=${hostId}`)
+  assert.equal((await peer.next('unavailable')).reason, UNAVAILABLE.UNKNOWN_HOST)
+  peer.close()
+})
+
+test('已有绑定时，同公钥的无效签名不能顶掉在线宿主', async () => {
+  const hostId = 'host-bad-replace'
+  const identity = await generateIdentity()
+  const publicKey = await encodePublicKey(identity.signing.publicKey)
+  const first = await registerHost(hostId, identity)
+  assert.equal(first.registered.t, 'registered')
+
+  const challenger = await open(HOST_PATH)
+  await challenger.next('challenge')
+  challenger.say({
+    t: 'register',
+    v: RELAY_VERSION,
+    hostId,
+    publicKey,
+    sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript({
+      nonce: randomNonce(),
+      hostId,
+      publicKey,
+    })),
+  })
+  const denied = await challenger.next('denied')
+  assert.equal(denied.reason, 'bad-signature')
+  challenger.close()
+
+  // The old connection must still be the one a device reaches. If the invalid
+  // registration had replaced it, this link would time out or fail.
+  const peer = await open(`${PEER_PATH}?h=${hostId}`)
+  const linked = await peer.next('linked')
+  assert.equal(linked.t, 'linked')
+  await first.connection.next('peer-joined')
+  peer.close()
+  first.connection.close()
 })
 
 test('未注册的 hostId 会收到 unavailable 而不是静默挂起', async () => {
@@ -174,7 +280,7 @@ test('未注册的 hostId 会收到 unavailable 而不是静默挂起', async ()
 })
 
 test('宿主不在线时设备收到 host-offline', async () => {
-  const host = await registerHost('host-offline-case', 'p256:CCCC')
+  const host = await registerHost('host-offline-case')
   host.connection.close()
   await new Promise((resolve) => setTimeout(resolve, 60))
 
@@ -185,7 +291,7 @@ test('宿主不在线时设备收到 host-offline', async () => {
 })
 
 test('中继原样转发两个方向的消息，包括二进制', async () => {
-  const { host, peer } = await linkedPair('host-forward', 'p256:DDDD')
+  const { host, peer } = await linkedPair('host-forward')
 
   peer.say({ t: 'hello', marker: 'from-peer' })
   host.connection.say({ t: 'host', marker: 'from-host' })
@@ -207,7 +313,7 @@ test('中继原样转发两个方向的消息，包括二进制', async () => {
 })
 
 test('设备 READY 之前到达的宿主帧会被扣住，链路打开后按原序补发而非丢弃', async () => {
-  const host = await registerHost('host-held', 'p256:HELD')
+  const host = await registerHost('host-held')
   const peer = await open(`${PEER_PATH}?h=host-held`)
   await peer.next('linked')
   await host.connection.next('peer-joined')
@@ -234,7 +340,7 @@ test('设备 READY 之前到达的宿主帧会被扣住，链路打开后按原�
 })
 
 test('设备断开会让宿主收到 peer-gone，宿主可以再接一个设备', async () => {
-  const { host, peer } = await linkedPair('host-recycle', 'p256:EEEE')
+  const { host, peer } = await linkedPair('host-recycle')
 
   peer.close()
   await host.connection.next('peer-gone')
@@ -250,7 +356,7 @@ test('设备断开会让宿主收到 peer-gone，宿主可以再接一个设备'
 })
 
 test('一个宿主同时只接一个设备，第二个收到 host-busy', async () => {
-  const { host, peer } = await linkedPair('host-busy-case', 'p256:FFFF')
+  const { host, peer } = await linkedPair('host-busy-case')
 
   const second = await open(`${PEER_PATH}?h=host-busy-case`)
   const message = await second.next('unavailable')
@@ -262,7 +368,7 @@ test('一个宿主同时只接一个设备，第二个收到 host-busy', async (
 })
 
 test('设备在 READY 之前发的数据帧会被扣住，READY 一到就按原序补发', async () => {
-  const host = await registerHost('host-phase', 'p256:PHASE')
+  const host = await registerHost('host-phase')
   const peer = await open(`${PEER_PATH}?h=host-phase`)
   await peer.next('linked')
   await host.connection.next('peer-joined')
@@ -289,7 +395,7 @@ test('设备在 READY 之前发的数据帧会被扣住，READY 一到就按原�
 })
 
 test('两端都 READY 之后链路才放行，且数据帧不再需要控制帧让路', async () => {
-  const { host, peer } = await linkedPair('host-sequence', 'p256:SEQ')
+  const { host, peer } = await linkedPair('host-sequence')
 
   peer.say({ t: 'hello', marker: 'after-ready' })
   const atHost = await host.connection.next((m) => m?.marker === 'after-ready')
@@ -304,7 +410,7 @@ test('两端都 READY 之后链路才放行，且数据帧不再需要控制帧�
 })
 
 test('宿主 ready 的守卫帧不会泄露给设备', async () => {
-  const { host, peer } = await linkedPair('host-guard', 'p256:GUARD')
+  const { host, peer } = await linkedPair('host-guard')
 
   peer.say({ t: 'hello', marker: 'first' })
   await host.connection.next((m) => m?.marker === 'first')
@@ -322,7 +428,7 @@ test('绑定关系落盘：重启后同一个 hostId 仍要求同一把密钥', 
   const path = join(store, 'binding.json')
 
   /** Register on a fresh relay and return the outcome. */
-  const claim = async (port, hostId, publicKey) => {
+  const claim = async (port, hostId, identity) => {
     const socket = new WebSocket(`ws://127.0.0.1:${port}${HOST_PATH}`)
     const connection = wrapClientSocket(socket)
     const seen = []
@@ -343,9 +449,16 @@ test('绑定关系落盘：重启后同一个 hostId 仍要求同一把密钥', 
     })
     const challenge = await waitFor((m) => m?.t === 'challenge')
     assert.equal(challenge.t, 'challenge')
+    const publicKey = await encodePublicKey(identity.signing.publicKey)
     // Not `connection.say`: this helper builds a bare wrapped socket, not the
     // queueing connection the rest of the file uses.
-    connection.send(JSON.stringify({ t: 'register', v: RELAY_VERSION, hostId, publicKey, sig: 'x' }))
+    connection.send(JSON.stringify({
+      t: 'register',
+      v: RELAY_VERSION,
+      hostId,
+      publicKey,
+      sig: await signTranscript(identity.signing.privateKey, buildRelayTranscript({ nonce: challenge.nonce, hostId, publicKey })),
+    }))
     const outcome = await waitFor((m) => m?.t === 'registered' || m?.t === 'denied')
     connection.close()
     return outcome
@@ -354,18 +467,19 @@ test('绑定关系落盘：重启后同一个 hostId 仍要求同一把密钥', 
   const first = createRelay({ port: 0, storePath: path })
   await new Promise((resolve) => first.listen(resolve))
   const port1 = first.server.address().port
-  assert.equal((await claim(port1, 'persisted', 'p256:GGGG')).t, 'registered')
+  const boundKey = await generateIdentity()
+  assert.equal((await claim(port1, 'persisted', boundKey)).t, 'registered')
   await first.close()
 
   const second = createRelay({ port: 0, storePath: path })
   await new Promise((resolve) => second.listen(resolve))
   const port2 = second.server.address().port
   assert.equal(
-    (await claim(port2, 'persisted', 'p256:HHHH')).t,
+    (await claim(port2, 'persisted', await generateIdentity())).t,
     'denied',
     'a restart must not forget the binding',
   )
-  assert.equal((await claim(port2, 'persisted', 'p256:GGGG')).t, 'registered')
+  assert.equal((await claim(port2, 'persisted', boundKey)).t, 'registered')
   await second.close()
 })
 
@@ -378,7 +492,7 @@ test('端到端：设备经中继与宿主完成握手，加密 RPC 双向通过
   const agreementKey = await encodePublicKey(peerIdentity.agreement.publicKey)
   const devices = new Map([[deviceId, { deviceId, publicKey, agreementKey, status: 'trusted' }]])
 
-  const { host, peer } = await linkedPair(hostId, await encodePublicKey(hostIdentity.signing.publicKey))
+  const { host, peer } = await linkedPair(hostId, hostIdentity)
 
   const hostHandshake = new HostHandshake({
     identity: hostIdentity,
@@ -447,7 +561,7 @@ test('端到端：设备经中继与宿主完成握手，加密 RPC 双向通过
 })
 
 test('中继原样转发，不改写也不解析它无权理解的内容', async () => {
-  const { host, peer } = await linkedPair('host-opaque', 'p256:IIII')
+  const { host, peer } = await linkedPair('host-opaque')
 
   const payload = {
     t: 'hello',

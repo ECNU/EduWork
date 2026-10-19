@@ -11,7 +11,7 @@ This directory is a **deployment sample**, not a runtime dependency of the npm p
 | File | Purpose |
 | --- | --- |
 | `server.mjs` | Relay entry point; reads `EDUWORK_RELAY_*` |
-| `relay.js`, `protocol.js`, `websocket.js` | Copied from the build output `lib/relay/` into `/opt/eduwork-relay/` |
+| `relay.js`, `protocol.js`, `websocket.js`, `registration.js` | Copied from the build output `lib/relay/` into `/opt/eduwork-relay/` |
 | `web/bootstrap.js` | Device-side script; injected via `EDUWORK_RELAY_BOOTSTRAP_SCRIPT` |
 | `eduwork-relay.service` | systemd unit (loopback, dynamic user, state directory) |
 | `eduwork-relay.env` | Environment sample; installed at `/etc/eduwork-relay.env` |
@@ -27,7 +27,7 @@ node scripts/build.mjs
 
 # On the server
 install -d /opt/eduwork-relay/web /opt/eduwork-relay/frontend
-install -m 0644 lib/relay/relay.js lib/relay/protocol.js lib/relay/websocket.js /opt/eduwork-relay/
+install -m 0644 lib/relay/relay.js lib/relay/protocol.js lib/relay/websocket.js lib/relay/registration.js /opt/eduwork-relay/
 install -m 0755 deploy/server.mjs /opt/eduwork-relay/server.mjs
 install -m 0644 deploy/web/bootstrap.js /opt/eduwork-relay/web/bootstrap.js
 install -m 0644 deploy/eduwork-relay.service /etc/systemd/system/eduwork-relay.service
@@ -35,6 +35,7 @@ install -m 0600 deploy/eduwork-relay.env /etc/eduwork-relay.env
 ```
 
 - Keep `EDUWORK_RELAY_BIND` at `127.0.0.1`; Caddy terminates TLS.
+- Upgrade the relay and the Host together to `eduwork-relay/2`: v2 requires the registration signature to cover the nonce, host id and public key, and a v1 Host is refused. Stop the Host or schedule one maintenance window; upgrading only one side makes remote access unavailable.
 - `EDUWORK_RELAY_STORE` must live under the unit's `StateDirectory`. It is the trust-on-first-use hostId→public-key binding; losing it lets someone else claim the hostId.
 - `EDUWORK_RELAY_FRONTEND_ROOT` points at the mirror from step 3.
 - `EDUWORK_RELAY_BOOTSTRAP_SCRIPT` is the **URL a browser can fetch**, not the relay's internal path, because the reverse proxy strips the prefix.

@@ -131,6 +131,13 @@ export function concatBytes(...parts) {
   return out
 }
 
+/** Prefix a byte array with its big-endian 32-bit length. */
+function lengthPrefixed(part) {
+  const header = new Uint8Array(4)
+  new DataView(header.buffer).setUint32(0, part.length)
+  return concatBytes(header, part)
+}
+
 /**
  * Decode a base64url string into a public key object of the given algorithm.
  *
@@ -605,11 +612,28 @@ export function buildTranscript(fields) {
 
 /**
  * Build the relay-registration transcript.
- * @param nonce - the relay's one-time challenge, base64url.
+ *
+ * The signature must bind the value being claimed (`hostId`), the key that will
+ * be stored for it (`publicKey`), and the relay's fresh challenge. A signature
+ * over the nonce alone proves possession but lets a relay or a replayer move the
+ * same proof to another host id; binding all three is what makes the proof
+ * specific to this registration.
+ *
+ * Fields are length-prefixed rather than separated, so no two field tuples can
+ * produce the same byte string.
+ *
+ * @param fields.nonce - the relay's one-time challenge, base64url.
+ * @param fields.hostId - the id the Host claims.
+ * @param fields.publicKey - the `p256:` key the Host presents for that id.
  * @returns the byte string the host signs to claim its `hostId`.
  */
-export function buildRelayTranscript(nonce) {
-  return concatBytes(utf8(TRANSCRIPT.RELAY), fromBase64url(nonce))
+export function buildRelayTranscript({ nonce, hostId, publicKey }) {
+  return concatBytes(
+    lengthPrefixed(utf8(TRANSCRIPT.RELAY)),
+    lengthPrefixed(fromBase64url(nonce)),
+    lengthPrefixed(utf8(hostId)),
+    lengthPrefixed(utf8(publicKey)),
+  )
 }
 
 /**
