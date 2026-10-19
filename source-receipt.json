@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-18T13:00:52.617Z",
-  "fileSetSHA256": "243a090488bf4f3b719396fe01578fb4fedb478b438e0b1af8afcc6bde5a1772",
+  "createdAt": "2026-10-19T07:13:51.166Z",
+  "fileSetSHA256": "3bce005b7ee73c59f114db2823d7ed2bc8d686856901064ed65fad0447173280",
   "files": [
     {
       "path": ".gitattributes",
@@ -2101,7 +2101,7 @@
     },
     {
       "path": "dsh-plugins/calendar/test/ics.test.mjs",
-      "sha256": "bc428f3ce05d3b12d45946c2f30318e8ec7897f4bcef45c27be3265fc036689e"
+      "sha256": "cd0c982c6c5f15a3f55cdf9ca302a595e06770b1209b78502016a5adc29ff495"
     },
     {
       "path": "dsh-plugins/calendar/test/import.test.mjs",

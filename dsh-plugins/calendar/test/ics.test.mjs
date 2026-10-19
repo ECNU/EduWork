@@ -83,28 +83,67 @@ test('an all-day VEVENT keeps our inclusive end', { skip: !runtime }, async () =
   assert.equal(events[0].end, '2026-03-22')
 })
 
-test('a UTC stamp becomes local time and a TZID is remembered', { skip: !runtime }, async () => {
+test('a UTC stamp becomes local time', { skip: !runtime }, async () => {
   const { ics } = await load()
-  const { events } = ics.parseIcs(calendar(
+  const { events, skipped } = ics.parseIcs(calendar(
     ...WRAPPER,
     'BEGIN:VEVENT',
     'UID:fixture-utc',
     'SUMMARY:线上课',
     'DTSTART:20260302T000000Z',
     'END:VEVENT',
-    'BEGIN:VEVENT',
-    'UID:fixture-tzid',
-    'SUMMARY:另一节线上课',
-    'DTSTART;TZID=Asia/Shanghai:20260303T080000',
-    'END:VEVENT',
     'END:VCALENDAR',
   ))
   const utc = new Date(Date.UTC(2026, 2, 2, 0, 0))
-  assert.equal(events[0].start, `${utc.getFullYear()}-${String(utc.getMonth() + 1).padStart(2, '0')}-${String(utc.getDate()).padStart(2, '0')}T${String(utc.getHours()).padStart(2, '0')}:00`)
-  // No timezone database in this version: the wall clock is kept and the zone is
-  // recorded rather than silently dropped.
-  assert.equal(events[1].start, '2026-03-03T08:00')
-  assert.equal(events[1].extensions['X-EDUWORK-TZID'], 'Asia/Shanghai')
+  assert.equal(events.length, 1)
+  assert.deepEqual(skipped, [])
+  assert.equal(events[0].start, `${utc.getFullYear()}-${String(utc.getMonth() + 1).padStart(2, '0')}-${String(utc.getDate()).padStart(2, '0')}T${String(utc.getHours()).padStart(2, '0')}:${String(utc.getMinutes()).padStart(2, '0')}`)
+})
+
+test('a local TZID retains its wall time and timezone metadata', { skip: !runtime }, async () => {
+  const { ics } = await load()
+  const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  assert.ok(localZone, 'The Runtime must expose its local IANA timezone')
+  const { events, skipped } = ics.parseIcs(calendar(
+    ...WRAPPER,
+    'BEGIN:VEVENT',
+    'UID:fixture-local-tzid',
+    'SUMMARY:本地线上课',
+    `DTSTART;TZID=${localZone}:20260303T080000`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ))
+  assert.equal(events.length, 1)
+  assert.deepEqual(skipped, [])
+  assert.equal(events[0].start, '2026-03-03T08:00')
+  assert.equal(events[0].extensions['X-EDUWORK-TZID'], localZone)
+})
+
+test('a non-local TZID is reported and skipped without dropping other events', { skip: !runtime }, async () => {
+  const { ics } = await load()
+  const localZone = Intl.DateTimeFormat().resolvedOptions().timeZone
+  const otherZone = ['Asia/Shanghai', 'America/New_York'].find(zone => zone !== localZone)
+  const { events, skipped } = ics.parseIcs(calendar(
+    ...WRAPPER,
+    'BEGIN:VEVENT',
+    'UID:fixture-local',
+    'SUMMARY:本地安排',
+    'DTSTART:20260303T090000',
+    'END:VEVENT',
+    'BEGIN:VEVENT',
+    'UID:fixture-other-tzid',
+    'SUMMARY:异地线上课',
+    `DTSTART;TZID=${otherZone}:20260303T080000`,
+    'END:VEVENT',
+    'END:VCALENDAR',
+  ))
+  assert.deepEqual(events.map(event => ({ uid: event.uid, start: event.start })), [
+    { uid: 'fixture-local', start: '2026-03-03T09:00' },
+  ])
+  assert.equal(skipped.length, 1)
+  assert.equal(skipped[0].uid, 'fixture-other-tzid')
+  assert.ok(skipped[0].reason.includes(otherZone))
+  assert.match(skipped[0].reason, /cannot be converted without a timezone database/)
 })
 
 test('folded lines are rejoined and a bare LF file is accepted', { skip: !runtime }, async () => {
