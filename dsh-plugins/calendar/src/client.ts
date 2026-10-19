@@ -1307,11 +1307,32 @@ function CreateDialog({ defaultDate, defaultStart, defaultEnd, service, onClose,
  * Wide panels show both at once; a narrow one stacks them, because the panel
  * width is the reader's, not ours.
  */
-function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy, sourceName }: any) {
-  const [draft, setDraft] = useState(() => draftOf(event))
+type EventEditor = { event: any; draft: any; dirty: string[]; pending?: { draft: any; dirty: string[] } }
+
+function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy, sourceName }: any) {
+  const [editor, setEditor] = useState<EventEditor>(() => ({ event, draft: draftOf(event), dirty: [] }))
   const [problem, setProblem] = useState<string | null>(null)
   const [confirmingDelete, setConfirmingDelete] = useState(false)
-  useEffect(() => { setDraft(draftOf(event)); setProblem(null); setConfirmingDelete(false) }, [event])
+  // A snapshot replaces object identities even when another calendar changed.
+  // Adopt fresh values before rendering children, retaining only local edits.
+  if (editor.event !== event) {
+    const incoming = draftOf(event)
+    const protectedFields = [...new Set([...editor.dirty, ...(editor.pending?.dirty ?? [])])]
+    const dirty = protectedFields.filter(field => editor.pending?.dirty.includes(field)
+      || JSON.stringify(editor.draft[field]) !== JSON.stringify(incoming[field]))
+    setEditor({ ...editor, event, draft: { ...incoming, ...Object.fromEntries(dirty.map(field => [field, editor.draft[field]])) }, dirty })
+  }
+  const { draft } = editor
+  const changeDraft = (draft: any) => {
+    setProblem(null)
+    setEditor(current => {
+      const baseline = draftOf(current.event)
+      // Compare later typing with the values being saved, not the old server
+      // values: reverting to an old value is still a new edit during a save.
+      if (current.pending) for (const field of current.pending.dirty) baseline[field] = current.pending.draft[field]
+      return { ...current, draft, dirty: Object.keys(draft).filter(field => JSON.stringify(draft[field]) !== JSON.stringify(baseline[field])) }
+    })
+  }
   const uuid = event?.uid
   const source = event?.source
   const occurrences = useMemo(
@@ -1332,14 +1353,33 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
   const tint = tintOf(event.source ?? event.uid)
   const exceptions = (event.exceptions ?? []).map(dateOf)
   const complaint = draftProblem(draft)
-  const dirty = JSON.stringify(draft) !== JSON.stringify(draftOf(event))
+  const dirty = editor.dirty.length > 0
 
   const save = () => {
     if (complaint) {
       setProblem(complaint)
       return
     }
-    if (dirty) onSave({ uid: event.uid, source: event.source, patch: patchOf(draft, event) })
+    if (!dirty) return
+    const submitted = editor
+    void run(async () => {
+      setEditor(current => ({ ...current, pending: { draft: submitted.draft, dirty: submitted.dirty } }))
+      try {
+        await service.updateEvent({ uid: event.uid, source: event.source, patch: patchOf(submitted.draft, submitted.event) })
+      } catch (error) {
+        setEditor(current => {
+          const baseline = draftOf(current.event)
+          return { ...current, pending: undefined, dirty: Object.keys(current.draft).filter(field =>
+            JSON.stringify(current.draft[field]) !== JSON.stringify(baseline[field])) }
+        })
+        throw error
+      }
+      // Acknowledge only the values sent by this save. Later typing stays dirty.
+      // run() refreshes afterwards, so clean fields take normalized server values.
+      setEditor(current => ({ ...current, pending: undefined, dirty: current.dirty.filter(field =>
+        !submitted.dirty.includes(field) || JSON.stringify(current.draft[field]) !== JSON.stringify(submitted.draft[field])) }))
+      setConfirmingDelete(false)
+    }, '日程信息已保存')
   }
 
   // The pieces are built apart and assembled at the end: one nested expression
@@ -1354,7 +1394,7 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     React.createElement('span', { style: { flex: '1 1 auto' } }),
     event.recurrence ? React.createElement(Tag, { tone: 'outline' }, seriesSummary(event)) : undefined,
     event.source ? React.createElement(Muted, null, sourceName(event.source)) : undefined),
-  React.createElement(EventForm, { draft, onChange: setDraft, sourceOwned: event.source !== 'manual' }),
+  React.createElement(EventForm, { draft, onChange: changeDraft, sourceOwned: event.source !== 'manual' }),
   React.createElement(PersonalSettings, { identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false }),
   React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
     React.createElement(Button, {
@@ -1731,6 +1771,7 @@ export function createCalendarPage(service: any) {
           onCreate: createAt,
         })
       : React.createElement(EventPage, {
+        key: JSON.stringify([view.source, view.id]),
         event: current,
         sourceName,
         service, run,
@@ -1738,7 +1779,6 @@ export function createCalendarPage(service: any) {
         noteIndex,
         busy,
         onOpenOccurrence: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
-        onSave: (input: any) => run(() => service.updateEvent(input), '日程信息已保存'),
         onRestore: (event: any, date: string) => run(() => service.restoreOccurrence({ uid: event.uid, date, source: event.source }), `已恢复 ${shortDate(date)} 的日程`),
         onDelete: (event: any) => run(() => service.deleteEvent({ uid: event.uid, source: event.source }), '已删除这条日程')
           .then((ok: boolean) => { if (ok) setView({ kind: 'week' }) }),

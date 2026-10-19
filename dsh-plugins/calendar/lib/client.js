@@ -4384,7 +4384,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			exceptions: array(LocalTimeSchema).optional(),
 			overrides: OverridesSchema.optional()
 		}).strict();
-		/** Explicit local decisions; imported overrides are never recorded here. */
 		/** Omitted fields stay unchanged; null explicitly clears an optional field. */
 		const EventPatchSchema = object({
 			title: EventFields.title.optional(),
@@ -6895,20 +6894,40 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				color: "var(--dsw-alias-state-error-primary, #d4553f)"
 			} }, problem) : void 0));
 		}
-		/**
-		* One stored entry: what it is on the left, the dates it produces on the right.
-		* Wide panels show both at once; a narrow one stacks them, because the panel
-		* width is the reader's, not ours.
-		*/
-		function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onSave, onRestore, onCancel, onDelete, busy, sourceName }) {
-			const [draft, setDraft] = (0, react.useState)(() => draftOf(event));
+		function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, onRestore, onCancel, onDelete, busy, sourceName }) {
+			const [editor, setEditor] = (0, react.useState)(() => ({
+				event,
+				draft: draftOf(event),
+				dirty: []
+			}));
 			const [problem, setProblem] = (0, react.useState)(null);
 			const [confirmingDelete, setConfirmingDelete] = (0, react.useState)(false);
-			(0, react.useEffect)(() => {
-				setDraft(draftOf(event));
+			if (editor.event !== event) {
+				const incoming = draftOf(event);
+				const dirty = [...new Set([...editor.dirty, ...editor.pending?.dirty ?? []])].filter((field) => editor.pending?.dirty.includes(field) || JSON.stringify(editor.draft[field]) !== JSON.stringify(incoming[field]));
+				setEditor({
+					...editor,
+					event,
+					draft: {
+						...incoming,
+						...Object.fromEntries(dirty.map((field) => [field, editor.draft[field]]))
+					},
+					dirty
+				});
+			}
+			const { draft } = editor;
+			const changeDraft = (draft) => {
 				setProblem(null);
-				setConfirmingDelete(false);
-			}, [event]);
+				setEditor((current) => {
+					const baseline = draftOf(current.event);
+					if (current.pending) for (const field of current.pending.dirty) baseline[field] = current.pending.draft[field];
+					return {
+						...current,
+						draft,
+						dirty: Object.keys(draft).filter((field) => JSON.stringify(draft[field]) !== JSON.stringify(baseline[field]))
+					};
+				});
+			};
 			const uuid = event?.uid;
 			const source = event?.source;
 			const occurrences = (0, react.useMemo)(() => (agenda ?? []).filter((occurrence) => occurrence.uid === uuid && occurrence.source === source), [
@@ -6929,17 +6948,46 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const tint = tintOf(event.source ?? event.uid);
 			const exceptions = (event.exceptions ?? []).map(dateOf);
 			const complaint = draftProblem(draft);
-			const dirty = JSON.stringify(draft) !== JSON.stringify(draftOf(event));
+			const dirty = editor.dirty.length > 0;
 			const save = () => {
 				if (complaint) {
 					setProblem(complaint);
 					return;
 				}
-				if (dirty) onSave({
-					uid: event.uid,
-					source: event.source,
-					patch: patchOf(draft, event)
-				});
+				if (!dirty) return;
+				const submitted = editor;
+				run(async () => {
+					setEditor((current) => ({
+						...current,
+						pending: {
+							draft: submitted.draft,
+							dirty: submitted.dirty
+						}
+					}));
+					try {
+						await service.updateEvent({
+							uid: event.uid,
+							source: event.source,
+							patch: patchOf(submitted.draft, submitted.event)
+						});
+					} catch (error) {
+						setEditor((current) => {
+							const baseline = draftOf(current.event);
+							return {
+								...current,
+								pending: void 0,
+								dirty: Object.keys(current.draft).filter((field) => JSON.stringify(current.draft[field]) !== JSON.stringify(baseline[field]))
+							};
+						});
+						throw error;
+					}
+					setEditor((current) => ({
+						...current,
+						pending: void 0,
+						dirty: current.dirty.filter((field) => !submitted.dirty.includes(field) || JSON.stringify(current.draft[field]) !== JSON.stringify(submitted.draft[field]))
+					}));
+					setConfirmingDelete(false);
+				}, "日程信息已保存");
 			};
 			const infoCard = react.default.createElement("section", { style: {
 				padding: 16,
@@ -6962,7 +7010,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}), react.default.createElement("strong", { style: { fontSize: 13 } }, "日程信息"), react.default.createElement("span", { style: { flex: "1 1 auto" } }), event.recurrence ? react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Tag, { tone: "outline" }, seriesSummary(event)) : void 0, event.source ? react.default.createElement(Muted, null, sourceName(event.source)) : void 0), react.default.createElement(EventForm, {
 				draft,
-				onChange: setDraft,
+				onChange: changeDraft,
 				sourceOwned: event.source !== "manual"
 			}), react.default.createElement(PersonalSettings, {
 				identity: {
@@ -7498,6 +7546,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					}),
 					onCreate: createAt
 				}) : react.default.createElement(EventPage, {
+					key: JSON.stringify([view.source, view.id]),
 					event: current,
 					sourceName,
 					service,
@@ -7509,7 +7558,6 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						kind: "event",
 						occurrence
 					}),
-					onSave: (input) => run(() => service.updateEvent(input), "日程信息已保存"),
 					onRestore: (event, date) => run(() => service.restoreOccurrence({
 						uid: event.uid,
 						date,
