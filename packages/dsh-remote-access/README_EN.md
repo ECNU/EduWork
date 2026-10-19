@@ -6,7 +6,7 @@ Lets **another device** view and continue the workspaces, sessions, and tasks of
 
 This package is a **DSH plugin** with a self-hostable **relay** and a **device bootstrap**: the Host and the device communicate end to end, the relay forwards handshake metadata and sealed business frames and never holds the Host's launch credential, and the remote browser loads the **Web UI the Host renders itself** rather than a separate client.
 
-> Status: prototype (`0.1.0-dev`, not published to npm). It has passed 315 package tests, protocol-level device acceptance, and a desktop browser plus a real phone on Wi-Fi. The real invite flow, the relay access key, end-to-end approvals/questions, and iOS background reconnect are not finished. The public interface and acceptance conditions are in the [proposal](../../docs/proposals/remote-access/README_EN.md); npm publication, product dependency locks, and desktop Releases are approved separately.
+> Status: prototype (`0.1.0-dev`, not published to npm). It has passed 317 package tests, protocol-level device acceptance, and a desktop browser plus a real phone on Wi-Fi. The real invite flow, the relay access key, end-to-end approvals/questions, and iOS background reconnect are not finished. The public interface and acceptance conditions are in the [proposal](../../docs/proposals/remote-access/README_EN.md); npm publication, product dependency locks, and desktop Releases are approved separately.
 
 ## What it does
 
@@ -42,7 +42,7 @@ This package is a **DSH plugin** with a self-hostable **relay** and a **device b
 
 **Revocation** seals the device first and then sweeps; an established long connection is closed, not merely refused on its next request.
 
-**Idempotency**: side-effecting calls carry a client-generated `requestId`, and the Host admits them at most once; the relay does not deduplicate for the Host.
+**Idempotency**: side-effecting calls carry a client-generated `requestId`; the Host deduplicates successful results by `(deviceId, requestId, endpoint, payload)`, joins concurrent copies, and does not cache failures. The cache is bounded and does not survive a process restart, so a retry can still execute twice; clients must handle an unknown outcome according to the operation's semantics.
 
 ## Install and configure
 

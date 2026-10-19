@@ -97,7 +97,7 @@
 
 `$events` 与 `$events/result` 是 Gateway 内部端点，单独列在 `CONNECTION_ENDPOINTS`，仍要求 trusted 设备。
 
-**幂等**：有副作用的 unary 带客户端生成的 `requestId`；宿主按 `requestId` 至多一次。中继不缓存、不去重。
+**幂等**：有副作用的 unary 带客户端生成的 `requestId`；宿主按 `(deviceId, requestId, endpoint, payload)` 记住成功结果，并发同键请求合并；失败不缓存。缓存有界、进程重启后丢失，因此“至多一次”只覆盖仍命中缓存的成功结果；未知结果由客户端按操作语义处理。
 
 ## 8. 门禁
 
@@ -121,7 +121,7 @@
 
 - 设备掉线：宿主收到 `peer-gone`，关闭该设备的流；宿主的中继链路保留。
 - 宿主重连中继：同钥替换旧连接；设备重连后重新握手。
-- 设备重连：客户端重建 mux 与传输；有副作用的请求用原 `requestId` 重发时至多一次。
+- 设备重连：客户端重建 mux 与传输；有副作用的请求用原 `requestId` 重发时，只有宿主缓存仍命中才至多一次，缓存淘汰或宿主重启后可能再次执行。
 - 关闭原因：`device-unknown`、`device-revoked`、`host-busy`、`host-id-taken`、`host-already-online`、`transport`。中继关闭码 1008/1000 用于拒绝与替换。
 
 ## 11. 兼容性

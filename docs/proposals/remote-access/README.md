@@ -39,7 +39,7 @@
 - 应用层：`client-request`/`server-response` 信封；逻辑流帧 `open/item/end/cancel/error`；unary 与流共用密封通道。
 - 流：`$events`（Gateway 转发事件，连接世代来源）、`workspace/follow`（工作区状态流）、`session/control`（审批/提问控制流）、`session/follow`（会话历史/状态流）。
 - 门禁：`ENDPOINT_OPERATIONS` 把宿主 RPC 端点映射到 `surface:operation`；`gate.js` 的 `OPERATION_TABLE` 是唯一授权表。Agent 面：会话 list/read/create/prompt/cancel、工作区 list/read、artifact read/download、settings read、只读模型/任务目录。Host 面：代码级白名单只放行 `directory:list` 与 `workspace:create`；凭据、配对、插件、终端、邀请仍拒绝。未知端点按 `unknown-operation` 拒绝，不按名字猜。
-- 有副作用的调用带客户端生成的 `requestId`；重连重发由宿主至多一次缓存吸收。
+- 有副作用的调用带客户端生成的 `requestId`；宿主按 `(deviceId, requestId, endpoint, payload)` 去重成功结果并合并并发同键请求，失败不缓存；缓存有界且不跨重启，未知结果由客户端按操作语义处理。
 
 ## Web UI 复用
 
@@ -73,7 +73,7 @@
 
 1. 未配对设备被拒绝；错误不泄露端点是否存在。
 2. 配对设备可 `session/list`、`session/page`、`session/prompt`，收到流式事件；控制流可用。
-3. 断线重连不重复执行有副作用的操作（`requestId` 至多一次）。
+3. 断线重连时，命中宿主缓存的同一副作用请求不重复执行；缓存淘汰或宿主重启后的未知结果由客户端处理。
 4. 撤销设备后，其已建立连接立即断开，后续握手被拒。
 5. 远端浏览器从**中继**加载宿主渲染的 UI，工作区列表与会话历史正确显示；移动网络可用。
 6. 中继只看到密文；设备无法访问凭据/配对/插件/终端/邀请管理。

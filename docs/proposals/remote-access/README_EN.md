@@ -39,7 +39,7 @@ The relay can see the hostId, connection times, and frame sizes/timing; it canno
 - Application layer: `client-request`/`server-response` envelopes; logical-stream frames `open/item/end/cancel/error`; unary calls and streams share one sealed channel.
 - Streams: `$events` (Gateway forwarded events, the connection-generation source), `workspace/follow` (workspace state), `session/control` (approvals and questions), `session/follow` (session history/state).
 - Gate: `ENDPOINT_OPERATIONS` maps Host RPC endpoints to `surface:operation`; `OPERATION_TABLE` in `gate.js` is the only authorization table. Agent surface: session list/read/create/prompt/cancel, workspace list/read, artifact read/download, settings read, read-only model/job catalogs. Host surface: a code-level allowlist admits only `directory:list` and `workspace:create`; credentials, pairing, plugins, terminal, and invitations remain refused. Unknown endpoints are refused as `unknown-operation`; names are never guessed.
-- Calls with side effects carry a client-generated `requestId`; a reconnect resend is absorbed by the Host's at-most-once cache.
+- Calls with side effects carry a client-generated `requestId`; the Host deduplicates successful results by `(deviceId, requestId, endpoint, payload)` and joins concurrent copies, while failures are not cached. The cache is bounded and does not survive a restart; clients handle an unknown outcome according to the operation's semantics.
 
 ## Reusing the Web UI
 
@@ -73,7 +73,7 @@ Choosing a workspace remotely needs a Host directory listing. The official remot
 
 1. An unpaired device is refused; the error does not reveal whether an endpoint exists.
 2. A paired device can `session/list`, `session/page`, and `session/prompt`, receives streamed events, and can use the control stream.
-3. A reconnect does not repeat a side-effecting operation (`requestId` at-most-once).
+3. A reconnect does not repeat a side-effecting operation when the Host's cache still holds the same request; after eviction or a Host restart, the client handles the unknown outcome.
 4. Revoking a device immediately closes its live connection and refuses subsequent handshakes.
 5. A remote browser loads the Host-rendered UI from the **relay**; the workspace list and session history render correctly; it works on a mobile network.
 6. The relay sees only ciphertext; the device cannot reach credentials, pairing, plugins, terminal, or invitation administration.

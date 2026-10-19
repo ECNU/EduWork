@@ -226,6 +226,67 @@ test('失败的副作用调用不被记住，设备可以重试', async () => {
   assert.equal(attempts, 2)
 })
 
+test('副作用去重绑定设备、端点和 payload，不跨请求复用', async () => {
+  const kernel = fakeKernel({ authority: AUTHORITY, handler: okHandler })
+  const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })
+  const base = {
+    endpoint: 'session/prompt',
+    payload: { args: { text: 'a' } },
+    rpcId: 'same-id',
+    sideEffect: true,
+  }
+
+  await host.dispatch({ ...base, device: { deviceId: 'device-a' } })
+  await host.dispatch({ ...base, device: { deviceId: 'device-b' } })
+  assert.equal(kernel.calls.length, 2, 'the same rpcId from another device is another call')
+
+  await host.dispatch({ ...base, device: { deviceId: 'device-a' }, payload: { args: { text: 'b' } } })
+  assert.equal(kernel.calls.length, 3, 'a reused rpcId with another payload is another call')
+
+  await host.dispatch({ ...base, device: { deviceId: 'device-a' }, endpoint: 'session/cancel' })
+  assert.equal(kernel.calls.length, 4, 'the method is part of the request identity')
+
+  // The exact same tuple is a retry and still comes from the cache.
+  await host.dispatch({ ...base, device: { deviceId: 'device-a' } })
+  assert.equal(kernel.calls.length, 4)
+})
+
+test('并发到达的同一副作用请求合并为一次执行', async () => {
+  let attempts = 0
+  let release
+  const blocked = new Promise((resolve) => {
+    release = resolve
+  })
+  const kernel = fakeKernel({
+    authority: AUTHORITY,
+    handler: async (endpoint, payload, rpcId) => {
+      attempts += 1
+      await blocked
+      return { type: 'server-response', rpcId, result: { ok: true, value: { endpoint, payload } } }
+    },
+  })
+  const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })
+  const call = {
+    endpoint: 'session/prompt',
+    payload: { args: {} },
+    rpcId: 'inflight-1',
+    sideEffect: true,
+    device: { deviceId: 'device-a' },
+  }
+
+  const first = host.dispatch(call)
+  const second = host.dispatch({ ...call })
+  for (let i = 0; i < 100 && attempts === 0; i += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 5))
+  }
+  assert.equal(attempts, 1, 'the second copy must join the first, not start a second kernel call')
+  release()
+
+  const [a, b] = await Promise.all([first, second])
+  assert.equal(attempts, 1)
+  assert.deepEqual(b, a)
+})
+
 test('payload 原样透传，宿主不解析它', async () => {
   // Parameter names differ per method upstream (`session/create` takes `request`,
   // `session/list` takes `_request`). A Host that parsed this would be asserting a

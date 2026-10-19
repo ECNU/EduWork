@@ -68,6 +68,18 @@ export async function mintCookie({ connection, authority, fetchImpl = globalThis
 }
 
 /**
+ * A stable identity for one side-effecting call.
+ *
+ * The client's `rpcId` is only unique within one device's request stream, and a
+ * device is free to reuse an id for a different payload. Keying the cache on the
+ * id alone would let device B receive device A's answer, or let a different
+ * prompt be treated as a retry of the first. The whole tuple is the identity.
+ */
+function mutationKey({ device, endpoint, payload, rpcId }) {
+  return JSON.stringify([device?.deviceId ?? null, rpcId, endpoint, payload])
+}
+
+/**
  * A kernel-backed Host.
  *
  * Owns the cookie, converts one tunnelled call into one kernel request, and
@@ -83,8 +95,10 @@ export class KernelHost {
   #shared
   /** Cached cookie *promise*, so two calls cannot race into two mints. */
   #cookie
-  /** Successful answers to side-effecting calls, keyed by `rpcId`. */
+  /** Successful answers to side-effecting calls, keyed by {@link mutationKey}. */
   #mutations = new Map()
+  /** Side-effecting calls currently running, so a concurrent retry joins rather than repeats. */
+  #inflight = new Map()
 
   constructor({
     connection,
@@ -159,7 +173,7 @@ export class KernelHost {
   }
 
   /**
-   * Run one call, at most once per `requestId` when it changes something.
+   * Run one call, at most once per logical request when it changes something.
    *
    * The kernel's `/api` handler executes every request it receives; it does not
    * remember request ids. A device that loses its connection mid-prompt and
@@ -168,22 +182,42 @@ export class KernelHost {
    * remembering the answer here is what turns "the Host does not duplicate side
    * effects" from a comment into a fact.
    *
-   * Only successful answers are remembered: a transport failure is not a decision,
-   * and the device must be free to retry it. The map is bounded because a long
-   * session would otherwise keep every prompt it ever ran.
+   * The key is the whole `(device, rpcId, endpoint, payload)` tuple, not the id
+   * alone: `rpcId` is scoped to the device that generated it, and a reused id with
+   * a different payload is a different call. In-flight calls are joined by the
+   * same key, so two copies that arrive together cannot both reach the kernel.
+   *
+   * Only successful answers are remembered: a transport or kernel failure is not
+   * a decision, and the device must be free to retry it. The completed map is
+   * bounded; eviction means a very old retry can execute again, which is the
+   * documented limit of this in-memory at-most-once guarantee.
    */
   async dispatch(call) {
     if (call.sideEffect !== true) return this.#run(call)
-    const cached = this.#mutations.get(call.rpcId)
+    const key = mutationKey(call)
+    const cached = this.#mutations.get(key)
     if (cached !== undefined) return cached
-    const response = await this.#run(call)
-    if (response?.result?.ok === true) {
-      this.#mutations.set(call.rpcId, response)
-      if (this.#mutations.size > MAX_REMEMBERED_MUTATIONS) {
-        this.#mutations.delete(this.#mutations.keys().next().value)
-      }
-    }
-    return response
+    const running = this.#inflight.get(key)
+    if (running !== undefined) return running
+
+    const pending = this.#run(call).then(
+      (response) => {
+        this.#inflight.delete(key)
+        if (response?.result?.ok === true) {
+          this.#mutations.set(key, response)
+          if (this.#mutations.size > MAX_REMEMBERED_MUTATIONS) {
+            this.#mutations.delete(this.#mutations.keys().next().value)
+          }
+        }
+        return response
+      },
+      (error) => {
+        this.#inflight.delete(key)
+        throw error
+      },
+    )
+    this.#inflight.set(key, pending)
+    return pending
   }
 
   /**
@@ -286,5 +320,8 @@ export function kernelDispatch(host) {
     payload: call.payload,
     rpcId: call.rpcId,
     sideEffect: call.sideEffect,
+    // Kept on the call so the mutation cache can scope an id to the device that
+    // generated it. The kernel request built below still ignores it.
+    device: call.device,
   })
 }
