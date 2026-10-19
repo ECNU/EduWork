@@ -1254,6 +1254,141 @@ await acceptance('保存失败后草稿保留，后台刷新后仍可重试', as
   }))
 })
 
+await acceptance('个人设置保存中继续编辑笔记、备注和提醒，后续草稿保留', async () => {
+  await withRoot('calendar-browser-personal-pending-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-pending' }
+      await call('putEvent', { ...ref, title: 'Personal pending', start: `${day}T09:00` })
+      await refresh()
+      await page.getByRole('button', { name: /Personal pending/ }).click()
+      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
+      const remark = page.getByLabel('我的备注', { exact: true })
+      const save = page.getByRole('button', { name: '保存个人设置', exact: true })
+      let release
+      const gate = new Promise(done => { release = done })
+      await page.route('**/api/setPersonal', async route => { await gate; await route.continue() })
+      try {
+        await remark.fill('Submitted remark')
+        const request = page.waitForRequest(request => request.url().endsWith('/api/setPersonal'))
+        await save.click(); await request
+        await remark.fill('Later remark')
+        await page.getByLabel('笔记设置', { exact: true }).selectOption('custom')
+        await page.getByLabel('默认笔记', { exact: true }).fill('Later note')
+        await page.getByLabel('提醒设置', { exact: true }).selectOption('relative')
+        await page.getByLabel('提前分钟数', { exact: true }).fill('12')
+      } finally { release() }
+      await poll(() => calendar.personalFor(ref).remark?.text, 'Submitted remark', 'only the submitted values were saved')
+      await poll(() => save.isEnabled(), true, 'later input remains dirty after the save and reload')
+      assert.equal(await remark.inputValue(), 'Later remark')
+      assert.equal(await page.getByLabel('默认笔记', { exact: true }).inputValue(), 'Later note')
+      assert.equal(await page.getByLabel('提前分钟数', { exact: true }).inputValue(), '12')
+      await page.unroute('**/api/setPersonal')
+      await save.click()
+      await poll(() => calendar.personalFor(ref).remark?.text, 'Later remark', 'the later values were stored')
+      await poll(() => save.isDisabled(), true, 'the second save is clean')
+      assert.equal(calendar.personalFor(ref).remark.text, 'Later remark')
+      assert.equal(calendar.personalFor(ref).note.text, 'Later note')
+      assert.deepEqual(calendar.personalFor(ref).reminder, { kind: 'relative', minutes: 12 })
+    })
+  }))
+})
+
+await acceptance('个人设置保存失败可保留草稿重试', async () => {
+  await withRoot('calendar-browser-personal-retry-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'personal-retry' }
+      await call('putEvent', { ...ref, title: 'Personal retry', start: `${day}T09:00` })
+      await refresh()
+      await page.getByRole('button', { name: /Personal retry/ }).click()
+      await page.getByRole('button', { name: '编辑日程信息', exact: true }).click()
+      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
+      const remark = page.getByLabel('我的备注', { exact: true })
+      const save = page.getByRole('button', { name: '保存个人设置', exact: true })
+      await remark.fill('Retain on failure')
+      await page.route('**/api/setPersonal', route => route.fulfill({ status: 503, body: 'Synthetic personal save rejected' }))
+      await save.click()
+      await page.getByText(/setPersonal: Synthetic personal save rejected/).waitFor()
+      assert.equal(await remark.inputValue(), 'Retain on failure')
+      assert.equal(calendar.personalFor(ref).remark, undefined)
+      await page.unroute('**/api/setPersonal')
+      await save.click()
+      await poll(() => calendar.personalFor(ref).remark?.text, 'Retain on failure', 'retry stores the retained draft')
+      await poll(() => save.isDisabled(), true, 'retry completes')
+    })
+  }))
+})
+
+await acceptance('切换设置范围后，旧保存的迟到读取不覆盖当前草稿', async () => {
+  await withRoot('calendar-browser-personal-scope-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek }) => {
+      const day = await dayInWeek(1), ref = { source: SOURCE, uid: 'personal-scope' }
+      await call('applySource', { source: SOURCE, events: [{ uid: ref.uid, title: 'Personal scope', start: `${day}T09:00`, recurrence: { freq: 'weekly', count: 3 } }] })
+      await call('setPersonal', { ...ref, patch: { remark: { text: 'Series remark' } } })
+      await page.getByRole('button', { name: /Personal scope/ }).click()
+      await page.getByRole('button', { name: '更多个人设置', exact: true }).click()
+      await page.getByLabel('备注设置', { exact: true }).selectOption('custom')
+      const remark = page.getByLabel('我的备注', { exact: true })
+      const save = page.getByRole('button', { name: '保存个人设置', exact: true })
+      let release
+      const gate = new Promise(done => { release = done })
+      const isOnce = request => request.url().endsWith('/api/personalFor') && request.postDataJSON()?.args?.[0]?.originalStart
+      const oldResponse = page.waitForResponse(response => isOnce(response.request()))
+      await page.route('**/api/personalFor', async route => { if (isOnce(route.request())) await gate; await route.continue() })
+      try {
+        await remark.fill('Saved for one occurrence')
+        const request = page.waitForRequest(isOnce)
+        await save.click(); await request
+        await page.getByLabel('设置范围', { exact: true }).selectOption('series')
+        await poll(() => remark.inputValue(), 'Series remark', 'series editor loaded')
+        await remark.fill('Unsaved series remark')
+      } finally { release() }
+      // Observe completion of the old read before asserting it cannot replace this target.
+      await (await oldResponse).finished()
+      await page.unrouteAll({ behavior: 'wait' })
+      await page.evaluate(() => new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve))))
+      assert.equal(await remark.inputValue(), 'Unsaved series remark')
+      assert.equal(await save.isEnabled(), true)
+      await save.click()
+      await poll(() => calendar.personalFor(ref).remark?.text, 'Unsaved series remark', 'current target remains independently saveable')
+      assert.equal(calendar.personalFor({ ...ref, originalStart: `${day}T09:00` }).remark.text, 'Saved for one occurrence')
+    })
+  }))
+})
+
+await acceptance('快捷笔记保存期间暂锁编辑，失败保留输入且可重试', async () => {
+  await withRoot('calendar-browser-note-pending-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, call, dayInWeek, refresh }) => {
+      const day = await dayInWeek(1), ref = { source: 'manual', uid: 'note-pending' }
+      await call('putEvent', { ...ref, title: 'Note pending', start: `${day}T09:00` })
+      await refresh()
+      await page.getByRole('button', { name: /Note pending/ }).click()
+      await page.getByRole('button', { name: '写笔记', exact: true }).click()
+      const input = page.getByRole('textbox', { name: '我的笔记' })
+      const save = page.getByRole('button', { name: '保存笔记', exact: true })
+      let release
+      const gate = new Promise(done => { release = done })
+      await page.route('**/api/putNote', async route => { await gate; await route.fulfill({ status: 503, body: 'Synthetic note save rejected' }) })
+      try {
+        await input.fill('Pending note')
+        const request = page.waitForRequest(request => request.url().endsWith('/api/putNote'))
+        await save.click(); await request
+        assert.equal(await input.isDisabled(), true)
+        assert.equal(await save.isDisabled(), true)
+        assert.equal(await page.getByRole('button', { name: '取消', exact: true }).isDisabled(), true)
+      } finally { release() }
+      await page.getByText(/putNote: Synthetic note save rejected/).waitFor()
+      await poll(() => input.isEnabled(), true, 'failed save unlocks the retained note')
+      assert.equal(await input.inputValue(), 'Pending note')
+      await page.unroute('**/api/putNote')
+      await input.fill('Corrected note')
+      await save.click()
+      await input.waitFor({ state: 'detached' })
+      assert.equal(calendar.notes(ref)[0]?.note.text, 'Corrected note')
+    })
+  }))
+})
+
 console.log(report.join('\n'))
 console.log(failures === 0 ? '\n真实浏览器验收全部通过' : `\n真实浏览器验收有 ${failures} 项失败`)
 process.exitCode = failures === 0 ? 0 : 1

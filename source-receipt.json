@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-19T06:56:02.884Z",
-  "fileSetSHA256": "d81ef4b41311295e37eacaaeffdada0ece1467d59401f767268a4724ee15a20a",
+  "createdAt": "2026-10-19T16:05:00.667Z",
+  "fileSetSHA256": "8e6f5eb1ffbcff4e2dcd0eb07b4e8ab034863248b36b813eddf92a1167ca1836",
   "files": [
     {
       "path": ".gitattributes",
@@ -1029,7 +1029,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "e16e199454dbb4af848ecf52de0f6a58da720c27fd73afe8e4703f6e0c9fb3de"
+      "sha256": "73f14a6f12fd5c691ae101f4d5895cba1366ae5a42857a3716a80eeccd5b6618"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1061,7 +1061,7 @@
     },
     {
       "path": "dsh-electron/scripts/probe-native-desktop.mjs",
-      "sha256": "45afe42348329a5dc529d3c9bd084f76916921b8bfc3e35e533acc3a0b7046ef"
+      "sha256": "97053d97517608289380c5225e859dc206c44950c597f2495a74e26c6932a592"
     },
     {
       "path": "dsh-electron/scripts/relocate-macos-compositor.mjs",
@@ -1114,6 +1114,10 @@
     {
       "path": "dsh-electron/src/desktop-main.mjs",
       "sha256": "747944ff00f0b8e02df07f6470ed3251500e7e0bf2be887174d220cf17c84051"
+    },
+    {
+      "path": "dsh-electron/src/desktop-menu.mjs",
+      "sha256": "d72b628171c6501b36b1643b987541e32ab26bc05bfe0364d95c8b6b203915f5"
     },
     {
       "path": "dsh-electron/src/desktop-paths.mjs",
@@ -1173,7 +1177,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "199b945d9d6da8b2a5b6c22b2746c872f4f8361227e9b95a61e5e976a8b635a7"
+      "sha256": "b0286dc1bdc1e28bff8557ce3eaa16822d90f8efe69f2f1a71e34ffc0c93410d"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1197,7 +1201,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "fc97165514e9e2d8c24d94a9a4c39369002a8369ce5f559887a3317fed33c09f"
+      "sha256": "4db78523d2e2cccf09fe8d40e9008610e596dc1d21d0992cc9338300fe06a368"
     },
     {
       "path": "dsh-electron/src/quit-confirmation.mjs",
@@ -1305,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/tests/dock-theme.electron.mjs",
-      "sha256": "49c5eec965fa30e607f99ab49c1ca2e77e22104da83fa595bd0d1a9f742b1858"
+      "sha256": "7a3f36b154235b8309ae68896e823c744dd57ea78be06e7e7d002352939626cf"
     },
     {
       "path": "dsh-electron/tests/electron-locales.test.mjs",
@@ -1321,7 +1325,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "3b28be375e83cda4462a4cc9b03f473d43f2d9985b506b3136478d64fd00c149"
+      "sha256": "ed92e17e9cf4ddfb66c57aa813d05a38a984a506def70ba01b1713b384d88c09"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1997,7 +2001,7 @@
     },
     {
       "path": "dsh-plugins/calendar/lib/client.js",
-      "sha256": "496bceea397268979081bfdfd926322d367c506d0836afa9d017b86052c02f12"
+      "sha256": "44dba355f5ef361ec99c796f610b5a2597bfc8fe5d216dd76561e15465692b9b"
     },
     {
       "path": "dsh-plugins/calendar/lib/ics.js",
@@ -2077,7 +2081,7 @@
     },
     {
       "path": "dsh-plugins/calendar/src/client.ts",
-      "sha256": "e49cd50fb2d821a8ab6ab2ebe08314b33750c91d17b617b0df46f66cc3fc8c36"
+      "sha256": "18bbcfed3799fe64257659bbcccbe5ad1708e743cd87858c4554848567078911"
     },
     {
       "path": "dsh-plugins/calendar/src/layout.js",
@@ -2089,11 +2093,11 @@
     },
     {
       "path": "dsh-plugins/calendar/src/personal-settings.ts",
-      "sha256": "99bd7c691ae27efc88d8c7cc43e48e158a72ca88d31faff29c5da5c22b5dc276"
+      "sha256": "92777a196d127f81d1de440e971bfa50bbca0b6c5589fccbee5b07b098f020d6"
     },
     {
       "path": "dsh-plugins/calendar/test/browser-acceptance.mjs",
-      "sha256": "1037ec7fc9b851f6705d82115f4e03cfa23d978ccfb4d98d714b950bc58aaaf3"
+      "sha256": "c26d9842f077d2a6c854618c693cc08e9d324c5178a44c5685fbb843072391c2"
     },
     {
       "path": "dsh-plugins/calendar/test/desktop-acceptance.mjs",
@@ -7296,9 +7300,9 @@
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
-      "sha256": "50ab1ff293126b8c143a1dd40871baaeed784879b01e691912ebd45a9142c6d5",
+      "sha256": "3a48a2ffe4fe37bd59b47cae11b2b06927fb7ecfc731caf6c01facefb9831ec1",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Preserves the inactive legacy institution binding; generic calendar references are optional, confined to the assembled product and appended to the shared Skill body. No institution endpoint, credential or activation exemption."
+      "reason": "Node.js port of the reviewed bundled-skill compatibility helper. Generic product selections do not register the legacy institution plugin; this preserves older explicitly selected distribution bindings only. No institution endpoint or credential exemption."
     }
   ]
 }

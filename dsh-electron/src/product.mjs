@@ -1,6 +1,7 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
+import { removeWindowMenu } from './desktop-menu.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
@@ -118,6 +119,7 @@ async function prepareDesktop() {
   progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
     icon: startupIcon,
     backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+  removeWindowMenu(progressWindow)
   attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   const logo = 'data:image/png;base64,' + readFileSync(startupIcon).toString('base64')
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({
@@ -378,6 +380,7 @@ export async function showDesktopFailure(error) {
   const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+    removeWindowMenu(progressWindow)
     attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   }
   progressWindow.setSize(660, page.executable ? 700 : 470)

@@ -4,6 +4,7 @@ import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
+import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
@@ -19,13 +20,12 @@ export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, ch
   }
   const guests = new DesktopBrowserGuests(() => getHost()?.origin)
   const applicationItems = () => [
-    { label: locale.messages.checkForUpdates ?? '检查更新', click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
-    { type: 'separator' }, { role: 'quit' },
+    { label: locale.messages.checkUpdatesMenu, click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
+    { type: 'separator' }, { role: 'quit', label: locale.messages.quit },
   ]
-  const refreshMenu = () => Menu.setApplicationMenu(Menu.buildFromTemplate([
+  const refreshMenu = () => setDesktopApplicationMenu(Menu.buildFromTemplate([
     { label: app.getName(), submenu: applicationItems() },
-    shortcuts.fileMenu(locale.messages), { role: 'editMenu' },
-    { role: 'viewMenu', submenu: [{ role: 'reload' }, { role: 'toggleDevTools' }, { role: 'resetZoom' }, { role: 'zoomIn' }, { role: 'zoomOut' }, { role: 'togglefullscreen' }] },
+    shortcuts.fileMenu(locale.messages), desktopEditMenu(locale), desktopViewMenu(locale),
   ]))
   const shortcuts = installDesktopShortcuts(getWindow, app.getPath('userData'),
     process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux', refreshMenu,

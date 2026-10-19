@@ -1,4 +1,4 @@
-import { app, BrowserWindow, clipboard, dialog, nativeTheme, protocol, session, webContents } from 'electron'
+import { app, BrowserWindow, Menu, clipboard, dialog, nativeTheme, protocol, session, webContents } from 'electron'
 import { createServer } from 'node:http'
 import { writeFileSync } from 'node:fs'
 import { join } from 'node:path'
@@ -11,6 +11,7 @@ import { DesktopQuitConfirmation } from 'fixture-quit'
 import { DesktopFatalRecovery } from 'fixture-recovery'
 import { resolveDesktopLocale } from 'fixture-locale'
 import { installMicrophonePermissions } from 'fixture-permissions'
+import { removeWindowMenu } from 'fixture-menu'
 const output = process.env.EDUWORK_PROBE_OUTPUT, results = [], limitations = []
 app.setPath('userData', join(output, 'browser-data'))
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true } }])
@@ -42,6 +43,12 @@ app.whenReady().then(async () => {
   bridge = installNativeDesktopBridge({ getHost: () => host, getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, checkUpdates: async () => ({}),
     pickDirectory: signal => picker.pick(signal) })
+  // Exercise real native windows before/after application-menu refresh, including
+  // the separate recovery-window path. Alt must not resurrect a removed menu.
+  const progress = new BrowserWindow({ show: false, width: 580, height: 280 })
+  removeWindowMenu(progress)
+  const recoveryWindow = new BrowserWindow({ show: false, width: 660, height: 470 })
+  removeWindowMenu(recoveryWindow)
   protocol.handle('dsh-app', () => new Response('<!doctype html><html lang="zh"><body><div data-shell-overlay></div><h1>Fixture</h1></body></html>', { headers: { 'content-type': 'text/html' } }))
   mainWindow = createWindow(preload, false, true)
   bridge.attach(mainWindow)
@@ -50,12 +57,30 @@ app.whenReady().then(async () => {
   const contract = await evaluate(`({platform:document.documentElement.dataset.platform,browser:typeof dshDesktop.browser.acquire,keyboard:typeof dshDesktop.keyboard.subscribe,shortcuts:typeof dshDesktop.shortcuts.get,locale:typeof __DSH_LOCALE__.read,paths:typeof __DSH_HOST_PATHS__.pathFor,account:typeof window.dshPlatform})`)
   assert.deepEqual(contract, { platform: process.platform, browser: 'function', keyboard: 'function', shortcuts: 'function', locale: 'function', paths: 'function', account: 'undefined' })
   assert.equal((await evaluate('__DSH_LOCALE__.read()')).preference, 'zh')
+  const nativeMenu = () => Menu.getApplicationMenu()
+  assert.deepEqual(nativeMenu().items.slice(-2).map(item => item.label), ['编辑', '视图'])
+  assert.equal(nativeMenu().items[0].submenu.items[0].label, '检查更新…')
+  assert.ok(nativeMenu().items.find(item => item.role === 'editmenu').submenu.items.some(item => item.role === 'copy'))
   if (process.platform === 'win32') {
     assert.deepEqual(await evaluate(`Array.from(document.querySelector('[data-windows-menu]').shadowRoot.querySelectorAll('button'),element=>element.textContent)`), ['应用', '编辑'])
     await evaluate(`document.documentElement.lang='en'`)
     await until(async () => (await evaluate(`document.querySelector('[data-windows-menu]').shadowRoot.querySelector('button').textContent`)) === 'Application')
     results.push('sandboxed Windows caption menu mounts and responds to language changes')
   }
+  await evaluate(`document.documentElement.lang='en'; __DSH_LOCALE__.onChange('en')`)
+  await until(() => nativeMenu().items.at(-1).label === 'View')
+  assert.equal(nativeMenu().items[0].submenu.items[0].label, 'Check for Updates…')
+  assert.equal(nativeMenu().items.at(-2).label, 'Edit')
+  if (process.platform !== 'darwin') {
+    for (const window of [progress, recoveryWindow]) {
+      assert.equal(window.isMenuBarVisible(), false)
+      window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Alt' })
+      window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Alt' })
+      assert.equal(window.isMenuBarVisible(), false)
+    }
+  }
+  progress.destroy(); recoveryWindow.destroy()
+  results.push('startup/recovery windows stay menu-free through locale refresh; native Edit/View and update labels follow locale')
   await evaluate(`document.documentElement.setAttribute('data-ds-theme-source','dark')`)
   await until(() => nativeTheme.themeSource === 'dark')
   results.push('built preload and theme synchronization')

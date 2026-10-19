@@ -616,6 +616,7 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
   // note can never rewrite a school record and a school sync cannot touch it.
   const [noteDraft, setNoteDraft] = useState<string>(note ?? '')
   const [writingNote, setWritingNote] = useState(false)
+  const [savingNote, setSavingNote] = useState(false)
   const [showPersonal, setShowPersonal] = useState(false)
   useEffect(() => {
     setEditing(false)
@@ -737,7 +738,7 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
       },
       React.createElement(Field, { label: '我的笔记', hint: '只属于这次日程。改期后保留，独立于日程备注，不随 ICS 导出。' },
         React.createElement('textarea', {
-          value: noteDraft, rows: 4, spellCheck: false, autoFocus: true,
+          value: noteDraft, rows: 4, spellCheck: false, autoFocus: true, disabled: savingNote,
           placeholder: '例如：期末要背 P187',
           onChange: (event: any) => setNoteDraft(event.target.value),
           style: {
@@ -749,15 +750,22 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
       React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
         React.createElement(Button, {
           variant: 'primary', size: 'sm',
-          disabled: noteDraft === (note ?? ''),
-          onClick: () => run(
-            () => (noteDraft.trim() === ''
-              ? service.removeNote(noteRefOf(occurrence))
-              : service.putNote({ ...noteRefOf(occurrence), text: noteDraft })),
-            noteDraft.trim() === '' ? '已清空笔记' : '笔记已保存',
-          ).then((ok: boolean) => { if (ok) setWritingNote(false) }),
+          disabled: savingNote || noteDraft === (note ?? ''),
+          onClick: async () => {
+            if (savingNote) return
+            setSavingNote(true)
+            try {
+              const ok = await run(
+                () => (noteDraft.trim() === ''
+                  ? service.removeNote(noteRefOf(occurrence))
+                  : service.putNote({ ...noteRefOf(occurrence), text: noteDraft })),
+                noteDraft.trim() === '' ? '已清空笔记' : '笔记已保存',
+              )
+              if (ok) setWritingNote(false)
+            } finally { setSavingNote(false) }
+          },
         }, '保存笔记'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => { setNoteDraft(note ?? ''); setWritingNote(false) } }, '取消'),
+        React.createElement(Button, { variant: 'ghost', size: 'sm', disabled: savingNote, onClick: () => { setNoteDraft(note ?? ''); setWritingNote(false) } }, '取消'),
         noteDraft !== (note ?? '') ? React.createElement(Muted, null, '笔记只属于这次日程') : undefined))
       : undefined,
     showPersonal ? React.createElement(PersonalSettings, { identity: noteRefOf(occurrence), service, run, Field }) : undefined,

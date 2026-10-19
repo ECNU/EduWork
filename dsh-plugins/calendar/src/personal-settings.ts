@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState } from 'react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { Button, Input } from '@deepseek-ai/dsh-client-ui-primitives'
 
 const border = '1px solid var(--dsw-alias-border-l2, #0000001f)'
@@ -40,13 +40,18 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
     const own = records.find((row: any) => row.originalStart === ref.originalStart) ?? {}
     return { resolved, draft: draftOf(own, resolved, once) }
   }, [service, key])
+  // Each target has its own loader identity, including switching away and back.
+  // A late save must never reset the editor for a different target or mount.
+  const currentLoad = useRef<typeof load | null>(load)
+  currentLoad.current = load
   useEffect(() => {
     let active = true
     setForm(null)
     setProblem('')
+    setBusy(false)
     load().then(({ resolved, draft }) => { if (active) { setForm(draft); setBaseline(draft); setEffective(resolved) } })
       .catch(error => { if (active) setProblem(String(error.message ?? error)) })
-    return () => { active = false }
+    return () => { active = false; if (currentLoad.current === load) currentLoad.current = null }
   }, [load])
   const change = (field: string, value: any) => setForm({ ...form, [field]: value })
   const select = (label: string, value: string, options: string[][], onChange: (value: string) => void) =>
@@ -54,6 +59,7 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
       onChange: (event: any) => onChange(event.target.value) },
       ...options.map(([value, label]) => React.createElement('option', { key: value, value }, label))))
   const save = async () => {
+    if (busy || !form) return
     setProblem('')
     if (form.reminder.mode === 'relative' && (form.reminder.minutes.trim() === '' || !Number.isInteger(Number(form.reminder.minutes)) || Number(form.reminder.minutes) < 0 || Number(form.reminder.minutes) > 525600)) {
       setProblem('提前分钟数请填写 0 到 525600 的整数'); return
@@ -74,11 +80,19 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
     setBusy(true)
     try {
       if (await run(() => service.setPersonal({ ...ref, patch, clear }), '个人设置已保存')) {
+        if (currentLoad.current !== load) return
         const { draft, resolved } = await load()
-        setBaseline(draft); setForm(draft); setEffective(resolved)
+        if (currentLoad.current !== load) return
+        setBaseline(draft)
+        // The closure's form is the submitted snapshot. Confirm only fields
+        // unchanged since then, keeping later input as an unsaved draft.
+        setForm((current: any) => current && Object.fromEntries(fieldNames.map(field => [field,
+          JSON.stringify(current[field]) === JSON.stringify(form[field]) ? draft[field] : current[field],
+        ])))
+        setEffective(resolved)
       }
-    } catch (error: any) { setProblem(error.message) }
-    finally { setBusy(false) }
+    } catch (error: any) { if (currentLoad.current === load) setProblem(error.message) }
+    finally { if (currentLoad.current === load) setBusy(false) }
   }
   const textField = (field: 'note' | 'remark', label: string) => React.createElement('div', { key: field },
     select(`${label}设置`, form[field].mode, modes(once), mode => change(field, { ...form[field], mode })),

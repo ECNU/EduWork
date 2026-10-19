@@ -4776,10 +4776,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					draft: draftOf$1(records.find((row) => row.originalStart === ref.originalStart) ?? {}, resolved, once)
 				};
 			}, [service, JSON.stringify(ref)]);
+			const currentLoad = (0, react.useRef)(load);
+			currentLoad.current = load;
 			(0, react.useEffect)(() => {
 				let active = true;
 				setForm(null);
 				setProblem("");
+				setBusy(false);
 				load().then(({ resolved, draft }) => {
 					if (active) {
 						setForm(draft);
@@ -4791,6 +4794,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				});
 				return () => {
 					active = false;
+					if (currentLoad.current === load) currentLoad.current = null;
 				};
 			}, [load]);
 			const change = (field, value) => setForm({
@@ -4807,6 +4811,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				value
 			}, label))));
 			const save = async () => {
+				if (busy || !form) return;
 				setProblem("");
 				if (form.reminder.mode === "relative" && (form.reminder.minutes.trim() === "" || !Number.isInteger(Number(form.reminder.minutes)) || Number(form.reminder.minutes) < 0 || Number(form.reminder.minutes) > 525600)) {
 					setProblem("提前分钟数请填写 0 到 525600 的整数");
@@ -4840,15 +4845,17 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						patch,
 						clear
 					}), "个人设置已保存")) {
+						if (currentLoad.current !== load) return;
 						const { draft, resolved } = await load();
+						if (currentLoad.current !== load) return;
 						setBaseline(draft);
-						setForm(draft);
+						setForm((current) => current && Object.fromEntries(fieldNames.map((field) => [field, JSON.stringify(current[field]) === JSON.stringify(form[field]) ? draft[field] : current[field]])));
 						setEffective(resolved);
 					}
 				} catch (error) {
-					setProblem(error.message);
+					if (currentLoad.current === load) setProblem(error.message);
 				} finally {
-					setBusy(false);
+					if (currentLoad.current === load) setBusy(false);
 				}
 			};
 			const textField = (field, label) => react.default.createElement("div", { key: field }, select(`${label}设置`, form[field].mode, modes(once), (mode) => change(field, {
@@ -5918,6 +5925,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			});
 			const [noteDraft, setNoteDraft] = (0, react.useState)(note ?? "");
 			const [writingNote, setWritingNote] = (0, react.useState)(false);
+			const [savingNote, setSavingNote] = (0, react.useState)(false);
 			const [showPersonal, setShowPersonal] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				setEditing(false);
@@ -6093,6 +6101,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				rows: 4,
 				spellCheck: false,
 				autoFocus: true,
+				disabled: savingNote,
 				placeholder: "例如：期末要背 P187",
 				onChange: (event) => setNoteDraft(event.target.value),
 				style: {
@@ -6116,16 +6125,23 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "primary",
 				size: "sm",
-				disabled: noteDraft === (note ?? ""),
-				onClick: () => run(() => noteDraft.trim() === "" ? service.removeNote(noteRefOf(occurrence)) : service.putNote({
-					...noteRefOf(occurrence),
-					text: noteDraft
-				}), noteDraft.trim() === "" ? "已清空笔记" : "笔记已保存").then((ok) => {
-					if (ok) setWritingNote(false);
-				})
+				disabled: savingNote || noteDraft === (note ?? ""),
+				onClick: async () => {
+					if (savingNote) return;
+					setSavingNote(true);
+					try {
+						if (await run(() => noteDraft.trim() === "" ? service.removeNote(noteRefOf(occurrence)) : service.putNote({
+							...noteRefOf(occurrence),
+							text: noteDraft
+						}), noteDraft.trim() === "" ? "已清空笔记" : "笔记已保存")) setWritingNote(false);
+					} finally {
+						setSavingNote(false);
+					}
+				}
 			}, "保存笔记"), react.default.createElement(_deepseek_ai_dsh_client_ui_primitives.Button, {
 				variant: "ghost",
 				size: "sm",
+				disabled: savingNote,
 				onClick: () => {
 					setNoteDraft(note ?? "");
 					setWritingNote(false);
