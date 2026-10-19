@@ -19,7 +19,7 @@
 - 门禁接线：`gate.js` 的 `OPERATION_TABLE` 是唯一授权表，`channel/operations.js` 映射宿主端点；Agent 面放行会话/工作区/artifact/settings 只读与 prompt/cancel/create，Host 面代码级白名单只放行 `directory:list` 与 `workspace:create`。
 - Web 壳复用：宿主用进程内 cookie 导出渲染后的 index、注入行与 `/plugins` combo；中继镜像；远端浏览器跑宿主自己的 UI。
 - 应用内目录浏览组合（`dsh-host-directory-picker-browse` + `dsh-client-ui-directory-picker-browse`），供远端选择工作区目录；本机也使用同一对话框（已知限制）。
-- 318 项包内测试；协议级设备验收、桌面浏览器与真实手机（Wi-Fi）验收通过。
+- 319 项包内测试；协议级设备验收、桌面浏览器与真实手机（Wi-Fi）验收通过。
 
 **未完成 / 已知限制**
 

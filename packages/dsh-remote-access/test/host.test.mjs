@@ -181,6 +181,31 @@ test('一次调用走完整条路：铸 cookie、POST 到正确端点、拿回�
   ])
 })
 
+test('没有 operator 时回退到 browserPeer 或 createPeer，并把结果缓存', () => {
+  const browserPeer = { principal: { kind: 'owner' }, interactions: 'answer', signal: new AbortController().signal }
+  const withBrowser = new KernelHost({
+    connection: { browserPeer, createSharedFetchHandler: () => ({}) },
+    authority: AUTHORITY,
+  })
+  assert.equal(withBrowser.peer, browserPeer)
+
+  const created = { principal: { kind: 'owner' }, interactions: 'answer', signal: new AbortController().signal }
+  let creations = 0
+  const withFactory = new KernelHost({
+    connection: {
+      createSharedFetchHandler: () => ({}),
+      createPeer: () => {
+        creations += 1
+        return created
+      },
+    },
+    authority: AUTHORITY,
+  })
+  assert.equal(withFactory.peer, created)
+  assert.equal(withFactory.peer, created)
+  assert.equal(creations, 1, 'the owner Peer must be stable across calls')
+})
+
 test('共享处理器拿到的是宿主 operator Peer，而不是 undefined', async () => {
   const kernel = fakeKernel({ authority: AUTHORITY, handler: okHandler })
   const host = new KernelHost({ connection: kernel.connection, authority: AUTHORITY, fetchImpl: kernel.fetchImpl })

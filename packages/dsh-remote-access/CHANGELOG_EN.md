@@ -19,7 +19,7 @@ This package is **not published to npm** and is not part of a public release. Th
 - Gate wired: `OPERATION_TABLE` in `gate.js` is the only authorization table; `channel/operations.js` maps Host endpoints. The Agent surface admits session/workspace/artifact/settings reads plus prompt/cancel/create; the Host surface has a code-level allowlist for `directory:list` and `workspace:create` only.
 - Web-shell reuse: the Host exports its rendered index, injection rows, and `/plugins` combos with an in-process cookie; the relay mirrors them; the remote browser runs the Host's own UI.
 - In-app directory browsing composition (`dsh-host-directory-picker-browse` + `dsh-client-ui-directory-picker-browse`) for remote workspace selection; the local machine also gets the same dialog (a known limitation).
-- 318 package tests; protocol-level device acceptance and desktop-browser plus real-phone (Wi-Fi) acceptance pass.
+- 319 package tests; protocol-level device acceptance and desktop-browser plus real-phone (Wi-Fi) acceptance pass.
 
 **Unfinished / known limitations**
 

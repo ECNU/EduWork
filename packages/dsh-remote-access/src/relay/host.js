@@ -93,6 +93,8 @@ export class KernelHost {
   #fetchImpl
   #Request
   #shared
+  /** Resolved owner Peer; the connection service may expose it as `operator` or `browserPeer`. */
+  #peer
   /** Cached cookie *promise*, so two calls cannot race into two mints. */
   #cookie
   /** Successful answers to side-effecting calls, keyed by {@link mutationKey}. */
@@ -124,14 +126,30 @@ export class KernelHost {
   }
 
   /**
-   * The `Peer` a call speaks for.
+   * The official owner `Peer` a call speaks for.
    *
-   * Passed to the kernel so the call is attributed the same way a local one is.
-   * It is cached because the kernel's operator peer is a single long-lived
-   * object; minting a new one per call would accumulate disposables.
+   * DSH exposes the browser/owner Peer as `browserPeer` on the connection
+   * service; some builds also expose a long-lived `operator`. Use whichever the
+   * service provides, and fall back to its public `createPeer` factory rather than
+   * passing `undefined` into the Gateway, which fails later at `peer.signal`.
+   * The resolved Peer is cached because the Gateway expects a stable identity and
+   * because creating one per call would accumulate scopes.
    */
   get peer() {
-    return this.#connection.operator
+    if (this.#peer !== undefined) return this.#peer
+    const candidate = this.#connection.operator ?? this.#connection.browserPeer
+    if (candidate !== undefined) {
+      this.#peer = candidate
+      return this.#peer
+    }
+    if (typeof this.#connection.createPeer === 'function') {
+      this.#peer = this.#connection.createPeer({
+        principal: { kind: 'owner' },
+        interactions: 'answer',
+      })
+      return this.#peer
+    }
+    throw new Error('remote-access: the connection service exposed no owner Peer')
   }
 
   /**
