@@ -606,11 +606,11 @@ function startTunnel(ctx, registry, connections) {
           openStream: typeof gateway?.wireStream?.open === 'function'
             // The channel's `peer` is our device identity for the gate, not the
             // Gateway's Connection peer. `wireStream.open` resolves the endpoint
-            // against that peer's claims, and a device-shaped peer made every real
-            // stream fail while unary calls kept working. The device is the
-            // operator's paired terminal and our gate already decided the endpoint;
-            // let the in-process carrier speak for the operator.
-            ? (endpoint, payload, uplink, _peer, signal) => gateway.wireStream.open(endpoint, payload, uplink, undefined, signal)
+            // against that peer's claims and expects the official Peer (the one
+            // carrying `signal`, lifecycle and interaction), so pass the Host's
+            // operator Peer here. The device was already authorized by `decideEndpoint`
+            // above; the operator Peer is the identity the in-process gateway speaks for.
+            ? (endpoint, payload, uplink, _peer, signal) => gateway.wireStream.open(endpoint, payload, uplink, kernelHost.peer, signal)
               .catch((error) => {
                 probe('stream error', `${endpoint}: ${error?.message ?? String(error)}`)
                 throw error
