@@ -4,7 +4,7 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-19T16:05:00.667Z",
+  "createdAt": "2026-10-19T16:05:40.436Z",
   "fileSetSHA256": "8e6f5eb1ffbcff4e2dcd0eb07b4e8ab034863248b36b813eddf92a1167ca1836",
   "files": [
     {
@@ -7300,9 +7300,9 @@
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
-      "sha256": "3a48a2ffe4fe37bd59b47cae11b2b06927fb7ecfc731caf6c01facefb9831ec1",
+      "sha256": "50ab1ff293126b8c143a1dd40871baaeed784879b01e691912ebd45a9142c6d5",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Node.js port of the reviewed bundled-skill compatibility helper. Generic product selections do not register the legacy institution plugin; this preserves older explicitly selected distribution bindings only. No institution endpoint or credential exemption."
+      "reason": "Preserves the inactive legacy institution binding; generic calendar references are optional, confined to the assembled product and appended to the shared Skill body. No institution endpoint, credential or activation exemption."
     }
   ]
 }
