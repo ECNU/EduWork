@@ -177,6 +177,23 @@ export function readCall(bytes) {
 }
 
 /**
+ * Whether a remote `session/create` names a workspace rather than a raw path.
+ *
+ * The kernel's `session/create` accepts either `workspaceId` or `cwd`; the `cwd`
+ * form creates whatever directory the caller names. A remote device is allowed to
+ * create a session, not to choose an arbitrary Host path, so only the workspace
+ * form is admitted. The payload is deliberately read through the few shapes the
+ * Gateway has used (`{ request }`, `{ args: { request } }`, or the request itself)
+ * without interpreting the rest of it.
+ */
+export function isWorkspaceScopedSessionCreate(payload) {
+  const request = payload?.request ?? payload?.args?.request ?? payload?.args ?? payload
+  if (request === null || typeof request !== 'object') return false
+  if (typeof request.workspaceId !== 'string' || request.workspaceId === '') return false
+  return request.cwd === undefined
+}
+
+/**
  * Judge one call for one device.
  *
  * Split out from the tunnel so the decision can be asserted on its own, and so
@@ -431,6 +448,14 @@ export async function createHostTunnel({
         if (verdict?.allowed !== true) {
           // A revocation between the gate and the dispatch must not let the call run.
           throw new Error(`remote-access: ${endpoint} is no longer allowed`)
+        }
+        if (endpoint === 'session/create' && !isWorkspaceScopedSessionCreate(payload)) {
+          log('remote-access: refused session/create without a workspace')
+          const error = new Error('remote session creation must name a workspace')
+          error.code = 'remote-access/workspace-required'
+          error.details = {}
+          error.isDSHRemoteError = true
+          throw error
         }
         const response = await dispatch({
           rpcId,

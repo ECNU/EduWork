@@ -6,7 +6,7 @@
 
 本包是一个 **DSH 插件**，配套可自托管的**中继**和**设备端 bootstrap**：宿主与设备端到端加密，中继转发握手元数据与密文业务帧，不持有宿主启动凭据。远端浏览器加载的是**宿主自己渲染的 Web UI**，而不是另做的客户端。
 
-> 状态：原型（`0.1.0-dev`，未发布 npm）。已通过 320 项包内测试、协议级设备验收、桌面浏览器与真实手机（Wi-Fi）验收；邀请码真实流程、中继访问密钥、审批/提问端到端、iOS 切后台重连尚未完成。公共接口与验收条件见[提案](../../docs/proposals/remote-access/README.md)；npm 发布、产品依赖锁与桌面 Release 另行授权。
+> 状态：原型（`0.1.0-dev`，未发布 npm）。已通过 321 项包内测试、协议级设备验收、桌面浏览器与真实手机（Wi-Fi）验收；邀请码真实流程、中继访问密钥、审批/提问端到端、iOS 切后台重连尚未完成。公共接口与验收条件见[提案](../../docs/proposals/remote-access/README.md)；npm 发布、产品依赖锁与桌面 Release 另行授权。
 
 ## 它能做什么
 
@@ -39,6 +39,8 @@
 | --- | --- | --- |
 | Agent | `session:list`/`read`/`create`/`prompt`/`cancel`、`workspace:list`/`read`、`artifact:read`/`download`、`settings:read`、只读模型/任务目录 | 其余 |
 | Host（窄） | `directory:list`、`workspace:create` | 凭据、配对、插件装卸、终端、邀请 |
+
+远端 `session:create` 只接受已注册工作区的 `workspaceId`；直接携带 `cwd` 的请求在隧道层被拒绝，避免远端选择任意宿主路径。
 
 **撤销**：先封设备再清扫；已建长连接被切断，不只是拒绝下一个请求。
 

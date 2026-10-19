@@ -22,7 +22,7 @@ import { LiveConnections } from '../src/connections.js'
 import { DEVICE_STATUS } from '../src/registry.js'
 import { PEER_PATH } from '../src/relay/protocol.js'
 import { createRelay } from '../src/relay/relay.js'
-import { createHostTunnel } from '../src/relay/tunnel.js'
+import { createHostTunnel, isWorkspaceScopedSessionCreate } from '../src/relay/tunnel.js'
 
 const AGENT_GRANT = ['session:list', 'session:read', 'session:prompt', 'session:cancel', 'workspace:list', 'settings:read']
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
@@ -300,6 +300,50 @@ test('已确认设备的只读调用被放行，派发函数收到主机端点�
   // The method reaches the dispatcher untouched, because the parameter names
   // differ per method upstream and this layer does not own that schema.
   assert.deepEqual(seen, ['session/list'])
+
+  link.socket.close()
+  tunnel.stop()
+})
+
+test('远端 session/create 只接受 workspaceId，不接受任意 cwd', async () => {
+  assert.equal(isWorkspaceScopedSessionCreate({ request: { workspaceId: 'ws-1' } }), true)
+  assert.equal(isWorkspaceScopedSessionCreate({ args: { request: { workspaceId: 'ws-1' } } }), true)
+  assert.equal(isWorkspaceScopedSessionCreate({ workspaceId: 'ws-1' }), true)
+  assert.equal(isWorkspaceScopedSessionCreate({ request: { cwd: 'C:\\arbitrary' } }), false)
+  assert.equal(isWorkspaceScopedSessionCreate({ request: { workspaceId: 'ws-1', cwd: 'C:\\arbitrary' } }), false)
+  assert.equal(isWorkspaceScopedSessionCreate({}), false)
+
+  const hostId = 'host-scopes-session-create'
+  const device = await pairedDevice()
+  device.record.surfaces.agent.push('session:create')
+  const devices = new Map([[device.deviceId, device.record]])
+  let dispatches = 0
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    dispatch: async () => {
+      dispatches += 1
+      return { type: 'server-response', rpcId: 'x', result: { ok: true, value: {} } }
+    },
+  })
+  const link = await dialDevice(hostId)
+  const { session } = await proveDevice(link, device, hostId)
+  await sleep(80)
+
+  const cwdOnly = await rpc(link, session, {
+    ...envelope('session/create', 'rpc-cwd'),
+    payload: { args: { request: { cwd: 'C:\\arbitrary' } } },
+  })
+  assert.equal(cwdOnly.result.ok, false)
+  assert.equal(cwdOnly.result.error.code, 'remote-access/workspace-required')
+  assert.equal(dispatches, 0, 'a raw cwd must never reach the Host dispatcher')
+
+  const scoped = await rpc(link, session, {
+    ...envelope('session/create', 'rpc-workspace'),
+    payload: { args: { request: { workspaceId: 'ws-1' } } },
+  })
+  assert.equal(scoped.result.ok, true)
+  assert.equal(dispatches, 1)
 
   link.socket.close()
   tunnel.stop()
