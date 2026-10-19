@@ -275,13 +275,11 @@ export async function createHostTunnel({
    * arrives. One chain keeps sealing and sending in call order.
    */
   let sendChain = Promise.resolve()
-  const sealAndSend = (payload) => {
-    // Bind the queue entry to the link it was created for. `detachPeer` and a
-    // reconnect replace `session`/`socket`; without this check a frame queued for the
-    // old session could seal with the new session's sequence and either corrupt the
-    // new device's stream or write to a socket that no longer carries it.
-    const boundSession = session
-    const boundSocket = socket
+  const sealAndSend = (boundSession, boundSocket, payload) => {
+    // The caller decides which session and socket this frame belongs to. Binding
+    // here, rather than reading `session` when the queue reaches the front, is
+    // what keeps a slow response for device A from being sealed with device B's
+    // session after A disconnects and B attaches to the same relay link.
     const run = sendChain.then(async () => {
       if (boundSession === undefined || boundSession !== session) return false
       if (boundSocket === undefined || boundSocket !== socket || boundSocket.readyState !== 1) return false
@@ -292,17 +290,17 @@ export async function createHostTunnel({
     return run
   }
 
-  /** Send one sealed frame, or drop it if the link is already gone. */
-  const sendSealed = (value) => sealAndSend(new TextEncoder().encode(JSON.stringify(value)))
-
   /**
-   * Send one already-serialized frame.
+   * Send one already-serialized frame for a specific session.
    *
-   * Separate from {@link sendSealed} because the channel produces text, not values:
-   * routing it through a `JSON.stringify` of a string would double-encode it and the
-   * device would open a frame whose payload is the JSON of the JSON it expected.
+   * The channel passes the session it was built for, so an async answer that
+   * outlives its device is dropped instead of being delivered to the next one.
    */
-  const sendSealedText = (text) => sealAndSend(new TextEncoder().encode(text))
+  const sendSealedText = (boundSession, boundSocket, text) => sealAndSend(
+    boundSession,
+    boundSocket,
+    new TextEncoder().encode(text),
+  )
 
   /**
    * The channel for the current session, built when the handshake completes.
@@ -322,8 +320,7 @@ export async function createHostTunnel({
    * refused on its next request. Reading the record again here is what makes
    * revocation an action rather than a note.
    */
-  const gate = (endpoint) => {
-    const deviceId = session?.deviceId
+  const gateFor = (deviceId, endpoint) => {
     if (deviceId === undefined) return REFUSAL.NOT_PAIRED
     const device = devices.get(deviceId)
     const verdict = judgeCall({ device, devices, decide })
@@ -421,9 +418,12 @@ export async function createHostTunnel({
     // Built here rather than when the socket opened, because the device identity —
     // and therefore every decision the gate makes — only exists once the handshake
     // has proved it.
+    const channelSession = session
+    const channelSocket = socket
+    const channelDeviceId = session.deviceId
     channel = new RemoteChannel({
       dispatchRpc: async (endpoint, payload, signal, peer, rpcId) => {
-        const device = devices.get(session.deviceId)
+        const device = devices.get(channelDeviceId)
         // The same verdict the gate used, passed down so only a call that changes
         // something gets the adapter's at-most-once memory. Reads are cheap to repeat
         // and their answers should reflect the current state.
@@ -453,10 +453,12 @@ export async function createHostTunnel({
       },
       // The channel hands over one complete text frame, already serialized and in the
       // Gateway's frame vocabulary. Re-parsing it here only to re-seal it would be a
-      // round trip through JSON that can lose and cannot gain.
-      send: async (text) => { await sendSealedText(text) },
+      // round trip through JSON that can lose and cannot gain. The session/socket
+      // pair is the one this channel was built for, not whichever is current when a
+      // slow answer finally arrives.
+      send: async (text) => { await sendSealedText(channelSession, channelSocket, text) },
       peer: undefined,
-      gate,
+      gate: (endpoint) => gateFor(channelDeviceId, endpoint),
     })
   }
 

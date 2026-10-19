@@ -463,6 +463,69 @@ test('设备断开后宿主保持中继连接，下一台设备可直接接入',
   tunnel.stop()
 })
 
+test('设备断开后，迟到的响应只属于原会话，不会发给下一台设备', async () => {
+  const hostId = 'host-late-response'
+  const firstDevice = await pairedDevice()
+  const secondDevice = await pairedDevice()
+  const devices = new Map([
+    [firstDevice.deviceId, firstDevice.record],
+    [secondDevice.deviceId, secondDevice.record],
+  ])
+  let started = false
+  let release
+  const blocked = new Promise((resolve) => {
+    release = resolve
+  })
+  const tunnel = await startHost({
+    hostId,
+    devices,
+    dispatch: async ({ rpcId }) => {
+      started = true
+      await blocked
+      return { type: 'server-response', rpcId, result: { ok: true, value: { sessions: ['late'] } } }
+    },
+  })
+
+  const first = await dialDevice(hostId)
+  const { session: firstSession } = await proveDevice(first, firstDevice, hostId)
+  await sleep(80)
+  first.socket.send(await firstSession.seal(new TextEncoder().encode(JSON.stringify(envelope('session/list', 'late-rpc')))))
+  await until(() => started, 'the first dispatch starts')
+
+  // The device is gone before its slow call answers. The next device attaches to
+  // the same Host relay link and must never receive the first call's response.
+  first.socket.close()
+  await sleep(250)
+  const second = await dialDevice(hostId)
+  await proveDevice(second, secondDevice, hostId)
+  await until(() => tunnel.deviceId === secondDevice.deviceId, 'the second device is the live session')
+  await sleep(80)
+
+  release()
+  let late
+  const deadline = Date.now() + 600
+  while (Date.now() < deadline) {
+    try {
+      const frame = await second.next(Math.max(1, deadline - Date.now()))
+      // A binary frame after the handshake is sealed traffic; the only thing this
+      // device should receive from the Host is the signed `ready`. Anything else is
+      // the previous session's answer leaking across.
+      if (typeof frame !== 'string') {
+        late = { binary: frame.byteLength }
+        break
+      }
+      const message = JSON.parse(frame)
+      if (message.t !== 'ready') late = message
+    } catch {
+      break
+    }
+  }
+  assert.equal(late, undefined, `the next device received the old session's frame: ${JSON.stringify(late)}`)
+
+  second.socket.close()
+  tunnel.stop()
+})
+
 test('宿主被中继拒绝时停止重试，而不是空转', async () => {
   const hostId = 'host-denied'
   const first = await startHost({ hostId, devices: new Map(), dispatch: async () => ({}) })
