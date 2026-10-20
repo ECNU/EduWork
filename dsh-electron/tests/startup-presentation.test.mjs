@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
 
-const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
+const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false, startupWindowHidden: false }
 
 test('the main BootPage is shown only when no other startup surface or stop condition applies', () => {
   assert.equal(shouldPresentMainWindow(allowed), true)
@@ -22,6 +22,17 @@ test('legacy npm builds append motion support but not the native brand IPC prelo
   const guard = append.indexOf('if (native)')
   assert.ok(guard >= 0, 'brand preload must be native-only')
   assert.ok(guard < append.indexOf('boot-brand-preload.cjs'), 'brand preload is appended before its native guard')
+})
+
+test('startup completion records a hidden dedicated window before destroying it', () => {
+  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const start = source.indexOf('export async function desktopReady')
+  const end = source.indexOf('\n}\n', start)
+  assert.ok(start >= 0 && end > start, 'desktopReady boundary changed')
+  const ready = source.slice(start, end)
+  assert.match(ready, /!progressWindow\.isVisible\(\)/)
+  assert.ok(ready.indexOf('isVisible()') < ready.indexOf('progressWindow.destroy()'), 'hidden state must be captured before destruction')
+  assert.match(ready, /return \{ startupWindowHidden \}/)
 })
 
 test('startup recovery drops the tray before the stale BootPage window', () => {

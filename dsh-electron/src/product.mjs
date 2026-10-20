@@ -302,10 +302,14 @@ export async function desktopReady(shouldContinue = () => true) {
   if (!shouldContinue()) return
   updateCompleted = true
   migrationLaunch = null
+  // A dedicated download/migration window hidden by the user must not turn
+  // into an automatic main-window show when startup finishes.
+  const startupWindowHidden = Boolean(progressWindow && !progressWindow.isDestroyed() && !progressWindow.isVisible())
   if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
   progressWindow = undefined
   desktopPet?.start()
   void portableUpdates?.action('check-updates-background').catch(()=>{})
+  return { startupWindowHidden }
 }
 
 function savedEduworkStyle() {

@@ -7,6 +7,7 @@ import { EventEmitter } from 'node:events'
 import { registerHooks } from 'node:module'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { DesktopLifecycle } from '../src/lifecycle.mjs'
+import { attachAppActivation } from '../src/window-visibility.mjs'
 import { tmpdir } from 'node:os'
 import { sourceInstaller, draggedInstaller, cleanInstaller, installFromDmg } from '../src/installer-cleanup.mjs'
 
@@ -214,10 +215,10 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation']) {
+for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation', 'deferred-restored-completion', 'deferred-hidden-completion']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
-    let guard = async () => true, completed, startupWindowPresent = scenario === 'deferred-presentation'
+    let guard = async () => true, completed, mainWindow, startupWindowPresent = scenario.startsWith('deferred-')
     const done = new Promise(resolve => { completed = resolve })
     const exit = new DesktopExit({ confirm: () => guard(), close: () => lifecycle.close(),
       relaunch: () => assert.fail('Installer restart belongs to Electron'), quit: () => app.quit(), failed: assert.fail })
@@ -251,8 +252,9 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       desktopWebRoot: () => '/synthetic/web', desktopStartupWindowPresent: () => startupWindowPresent,
       nativeBootstrap() {}, desktopReady: async () => {
         calls.push('desktop-ready')
-        if (scenario === 'deferred-presentation') startupWindowPresent = false
+        if (scenario.startsWith('deferred-')) startupWindowPresent = false
         setTimeout(completed, 0)
+        return { startupWindowHidden: scenario === 'deferred-hidden-completion' }
       },
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail,
@@ -275,7 +277,9 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
     mock('main.ts', { createWindow: () => {
       calls.push('window')
-      return Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {}, isDestroyed: () => false, show() { if (scenario === 'deferred-presentation') calls.push('window-show') } })
+      return mainWindow = Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {}, isDestroyed: () => false, isMinimized: () => false,
+        show() { if (scenario.startsWith('deferred-')) calls.push('window-show') },
+        focus() { if (scenario.startsWith('deferred-')) calls.push('window-focus') } })
     } })
     await import(new URL(`native-desktop.mjs?scenario=${scenario}`, source))
     await Promise.race([done, new Promise((_, reject) => {
@@ -284,8 +288,13 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     })])
     if (scenario === 'installed') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready'])
-    } else if (scenario === 'deferred-presentation') {
+    } else if (scenario === 'deferred-presentation' || scenario === 'deferred-restored-completion') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready', 'window-show'])
+    } else if (scenario === 'deferred-hidden-completion') {
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready'])
+      attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
+      app.emit('activate')
+      assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {

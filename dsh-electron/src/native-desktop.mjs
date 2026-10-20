@@ -142,7 +142,7 @@ async function main() {
   // The static page paints the upstream BootPage without the Host, so show
   // the real window while configuration and the Host start in parallel. A
   // first-run download or migration window remains the visible startup surface.
-  const presentInitialWindow = () => {
+  const presentInitialWindow = (startupWindowHidden = false) => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
       startupFailure: Boolean(startupFailure),
@@ -150,12 +150,13 @@ async function main() {
       recoveryActive: recovery.active,
       destroyed: window.isDestroyed(),
       startupWindowPresent: desktopStartupWindowPresent(),
+      startupWindowHidden,
     })) return
     initialPresentationDone = true
     window.show()
   }
   const pageLoaded = window.loadURL(`${SCHEME}://app/index.html`)
-  void pageLoaded.then(presentInitialWindow).catch(() => {})
+  void pageLoaded.then(() => presentInitialWindow()).catch(() => {})
   const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
   try { await pageLoaded } catch (error) {
     // A startup failure closes this window and aborts its navigation.
@@ -170,9 +171,10 @@ async function main() {
     return
   }
   started = true
-  await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
-  // A deferred show waits until the first-run download or migration window is gone.
-  if (backend.host && backend.state.phase === 'ready') presentInitialWindow()
+  const completion = await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
+  // A deferred show waits until the first-run download or migration window is
+  // gone, and inherits a hidden dedicated window instead of overriding it.
+  if (backend.host && backend.state.phase === 'ready') presentInitialWindow(completion?.startupWindowHidden === true)
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
