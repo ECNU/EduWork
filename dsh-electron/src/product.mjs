@@ -310,10 +310,16 @@ export async function desktopReady(shouldContinue = () => true) {
   updateCompleted = true
   migrationLaunch = null
   // A dedicated download/migration window hidden by the user must not turn
-  // into an automatic main-window show when startup finishes. If the main
-  // window was visible before the handoff, return to it after the window closes.
-  const startupWindowHidden = Boolean(progressWindow && !progressWindow.isDestroyed() && !progressWindow.isVisible())
-  const completion = startupWindowCompletion({ mainHiddenForStartup: mainWindowHiddenForStartup, startupWindowHidden })
+  // into an automatic main-window show when startup finishes. If it is still
+  // visible, return to the main window when the main was hidden for the handoff
+  // or had already been hidden by the user before the dedicated window appeared.
+  const hadStartupWindow = Boolean(progressWindow && !progressWindow.isDestroyed())
+  const startupWindowHidden = hadStartupWindow && !progressWindow.isVisible()
+  const mainVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
+  const completion = startupWindowCompletion({
+    hadStartupWindow, mainHiddenForStartup: mainWindowHiddenForStartup, startupWindowHidden,
+    mainPresented: mainWindowPresented, mainVisible,
+  })
   mainWindowHiddenForStartup = false
   if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
   progressWindow = undefined

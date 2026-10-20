@@ -15,11 +15,14 @@ export function startupWindowPresentation({ mainPresented, mainVisible }) {
   }
 }
 
-// When startup completes, return to a main window hidden for the handoff only
-// if the user did not hide the dedicated window in the meantime.
-export function startupWindowCompletion({ mainHiddenForStartup, startupWindowHidden }) {
+// When startup completes, return to the main window if the dedicated window is
+// still visible and the main window is not. This covers both a main window we
+// hid for the handoff and one the user had hidden before the dedicated window
+// appeared and then actively restored from the Dock or tray.
+export function startupWindowCompletion({ hadStartupWindow, mainHiddenForStartup, startupWindowHidden, mainPresented, mainVisible }) {
   return {
     startupWindowHidden,
-    restoreMainWindow: mainHiddenForStartup && !startupWindowHidden,
+    restoreMainWindow: Boolean(hadStartupWindow && !startupWindowHidden
+      && (mainHiddenForStartup || (mainPresented && !mainVisible))),
   }
 }
