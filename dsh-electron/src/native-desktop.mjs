@@ -16,8 +16,9 @@ import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
 import { showDesktopWindow } from './window-visibility.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
+import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
-  trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
+  desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory } from './product.mjs'
 
 configureEduworkPaths()
@@ -139,13 +140,22 @@ async function main() {
   entered = true
 
   // The static page paints the upstream BootPage without the Host, so show
-  // the real window while configuration and the Host start in parallel.
-  const pageLoaded = window.loadURL(`${SCHEME}://app/index.html`)
-  void pageLoaded.then(() => {
-    if (initialPresentationDone || startupFailure || isQuitting() || recovery.active || window.isDestroyed()) return
+  // the real window while configuration and the Host start in parallel. A
+  // first-run download or migration window remains the visible startup surface.
+  const presentInitialWindow = () => {
+    if (!shouldPresentMainWindow({
+      presented: initialPresentationDone,
+      startupFailure: Boolean(startupFailure),
+      quitting: isQuitting(),
+      recoveryActive: recovery.active,
+      destroyed: window.isDestroyed(),
+      startupWindowPresent: desktopStartupWindowPresent(),
+    })) return
     initialPresentationDone = true
     window.show()
-  }).catch(() => {})
+  }
+  const pageLoaded = window.loadURL(`${SCHEME}://app/index.html`)
+  void pageLoaded.then(presentInitialWindow).catch(() => {})
   const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
   try { await pageLoaded } catch (error) {
     // A startup failure closes this window and aborts its navigation.
@@ -161,6 +171,8 @@ async function main() {
   }
   started = true
   await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
+  // A deferred show waits until the first-run download or migration window is gone.
+  if (backend.host && backend.state.phase === 'ready') presentInitialWindow()
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })

@@ -112,6 +112,9 @@ export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDeskto
 export function desktopWebRoot() {
   return join(paths.product, 'd/node_modules/@deepseek-ai/dsh-web-frontend/dist')
 }
+export function desktopStartupWindowPresent() {
+  return Boolean(progressWindow && !progressWindow.isDestroyed())
+}
 function startupAppearance() {
   const blue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
   return {
@@ -460,7 +463,12 @@ export async function showDesktopFailure(error) {
   })
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
   // Destroy the stale BootPage only after the recovery window exists; destroying
-  // the last window first would quit the application on Windows.
+  // the last window first would quit the application on Windows. The tray must
+  // not keep a show action bound to that stale window either.
+  if (tray) {
+    try { if (!tray.isDestroyed?.()) tray.destroy() } catch (error) { desktopHostLog(`[desktop:tray] ${error.message}\n`) }
+    tray = undefined
+  }
   if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.destroy(); mainWindow = undefined }
   progressWindow.show()
 }

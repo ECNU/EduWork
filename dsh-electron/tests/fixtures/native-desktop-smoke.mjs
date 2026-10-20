@@ -44,7 +44,9 @@ app.whenReady().then(async () => {
     socketHeaders: () => ({}), readLocalePreference: async () => 'zh' }
   const webRoot = join(output, 'web')
   await mkdir(join(webRoot, 'assets'), { recursive: true })
-  await writeFile(join(webRoot, 'index.html'), `<!doctype html><html lang="zh"><body>
+  await writeFile(join(webRoot, 'index.html'), `<!doctype html><html lang="zh"><head>
+    <style>[data-dsh-boot-spinner]{animation:fixture-spin .8s linear infinite}@keyframes fixture-spin{to{transform:rotate(360deg)}}</style>
+  </head><body>
     <div data-shell-overlay></div><h1>Fixture</h1>
     <div data-dsh-boot><div><div>HARNESS</div><div data-dsh-boot-spinner></div><div>Loading plugins…</div></div></div>
   </body></html>`)
@@ -87,7 +89,14 @@ app.whenReady().then(async () => {
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Updated Brand')
   await mainWindow.loadURL('dsh-app://app/index.html')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Synthetic EduWork')
-  results.push('upstream BootPage wordmark follows the desktop identity without copying the page, including reloads')
+  mainWindow.webContents.debugger.attach('1.3')
+  try {
+    await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('[data-dsh-boot-spinner]')).animationName`), 'none')
+    await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
+    assert.equal(await evaluate(`getComputedStyle(document.querySelector('[data-dsh-boot-spinner]')).animationName`), 'fixture-spin')
+  } finally { mainWindow.webContents.debugger.detach() }
+  results.push('upstream BootPage wordmark follows the desktop identity, including reloads, and honors reduced motion')
   let releaseHost
   hostWait = () => new Promise(resolve => { releaseHost = resolve })
   let bootSettled = false
