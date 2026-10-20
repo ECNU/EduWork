@@ -22,6 +22,8 @@ const response = await ctx.oidcAccounts.modelResourceFetch(profileID, '/quota', 
 
 可安全重复提交的机构请求（例如活跃心跳）可显式传入第四个参数 `{ retryUnauthorized: true }`，为 POST 启用相同的一次恢复；请求正文须为已缓冲的字符串或为空，不接受流式正文。该选项只供受信 Host 代码使用，不进入 HTTP 请求或客户端 RPC，也不扩大目标 origin/路径白名单。模型生成请求不启用此选项，不自动重放；同一授权的正常 Token 刷新或自然到期不会由客户端取消已开始的流，下一次请求重新检查授权。刷新提前量不是最长生成时间，也不能替代服务端对长流式请求的正确处理。见 [公共身份与资源协议](public-resource-protocol.md)。这两个方法都不会自动触发业务请求。
 
+需要确认“登录者是本机构成员”的自有服务（例如机构自建的远程访问中继）可以调用 `identityToken(profileID)`，取得 `{ token, expiresAt }`：当前已通过签名、issuer、audience、nonce 与时间校验的 ID Token，以及它的 `exp`（Unix 秒）。这是 Host 专属方法，**没有 Remote 标记**。仅 `auth` 网关的 `oidc` 身份模式提供；Access Token 需要刷新或 ID Token 剩余不到 10 分钟时先刷新一次。刷新响应不含新 ID Token 时继续返回旧的，直到过期后要求重新登录。ID Token 含用户姓名等资料，只能发给机构自己运营、并按本机构 issuer 的 JWKS 验证它的服务；不得写入日志、转发给浏览器或模型。
+
 成功重新登录或注销会发出带 `authorizationChanged: true` 的 `oidc/accounts-changed` 事件，即使前后 `state` 都是 `connected`。扩展必须清理旧授权的失败状态及在途结果，不能仅按状态名称去重；普通状态轮询仍只在状态变化时发通知。
 
 ## 客户端账户菜单

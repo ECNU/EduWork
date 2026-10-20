@@ -325,6 +325,39 @@ test('draft refresh is single-flight, accepts optional refreshed ID Token and pe
   assert.equal(f.records.size, 0)
 })
 
+test('identity tokens are the verified ones, renewed by a refresh before they lapse', async t => {
+  const f = await fixture(t)
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
+  await f.login()
+  const claims = token => JSON.parse(Buffer.from(token.split('.')[1], 'base64url'))
+  const first = await f.backend.identityToken('draft')
+  assert.equal(claims(first.token).sub, 'alice')
+  assert.equal(first.expiresAt, claims(first.token).exp)
+  assert.deepEqual(await f.backend.identityToken('draft'), first)
+  assert.equal(f.calls.filter(c => c.body?.get?.('grant_type') === 'refresh_token').length, 0)
+  let now = Date.now()
+  f.backend.now = () => now
+  // Close to expiry it refreshes first; a refresh without a new ID Token leaves the old one while it lasts.
+  now += 25 * 60 * 1000
+  assert.equal((await f.backend.identityToken('draft')).token, first.token)
+  assert.equal(f.calls.filter(c => c.body?.get?.('grant_type') === 'refresh_token').length, 1)
+  now += 6 * 60 * 1000
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_identity_token_unavailable' })
+  f.controls.refreshID = true
+  f.controls.claim = { exp: Math.floor(now / 1000) + 3600 }
+  const renewed = await f.backend.identityToken('draft')
+  assert.equal(renewed.expiresAt, Math.floor(now / 1000) + 3600)
+  assert.equal(claims(renewed.token).sub, 'alice')
+  await f.backend.logout('draft')
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
+})
+
+test('OAuth-only sign-in offers no identity token', async t => {
+  const f = await fixture(t, 'oauth')
+  await f.login()
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_identity_token_unavailable' })
+})
+
 test('draft token scopes are explicit, never expanded, and checked after rotation', async t => {
   const f = await fixture(t)
   await f.login()

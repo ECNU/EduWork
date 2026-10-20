@@ -4,6 +4,10 @@
 
 All notable changes are documented here. The format follows Keep a Changelog principles and the project uses Semantic Versioning with pre-1.0 qualifications described in `docs/compatibility.en.md`.
 
+## [Unreleased]
+
+- Add the Host-only `identityToken(profileID)`: services the organization runs, such as a remote access relay, can confirm who is signed in from the current verified ID Token; gateway sign-in keeps the ID Token a refresh brings.
+
 ## [0.3.0] — 2026-10-19
 
 - Target DSH 0.2.1-rc.2 and compatible 0.2.x stable Hosts with pi-ai 1.1.0; remove retired DSH dependency declarations.

@@ -9,6 +9,7 @@ import { bufferResourceResponse, validateResourceRead } from './model-resource-t
 import { accessTokenNeedsRefresh } from './token-lifetime.js'
 
 const seconds = backend => Math.floor(backend.now() / 1000)
+const ID_TOKEN_MARGIN_SECONDS = 10 * 60
 const fingerprint = (profile, descriptor) => createHash('sha256').update(JSON.stringify({ auth: profile.auth, descriptor })).digest('hex')
 const query = (url, key, required = false) => {
   const values = url.searchParams.getAll(key)
@@ -173,6 +174,9 @@ function withGatewayAuth(Base) {
         }
         session.oidcAudience = audience
         if (claims.auth_time !== undefined) session.authTime = claims.auth_time
+        // Kept for identityToken(); a refresh without a new one keeps the last.
+        session.idToken = raw.id_token
+        session.idTokenExpiresAt = claims.exp
       }
       const info = await gatewayJSON(this.fetch, descriptor.userInfoEndpoint, { headers: { authorization: `Bearer ${session.accessToken}`, accept: 'application/json' } })
       session.identity = oidcLlmIdentity(info)
@@ -274,6 +278,20 @@ function withGatewayAuth(Base) {
         if ((cause.code === 'gateway_unavailable' || cause.status === 429 || cause.status >= 500) && session.expiresAt > seconds(this)) return this.gatewayCurrent(profile, session, epoch)
         throw cause
       }
+    }
+
+    async identityToken(profileID) {
+      const profile = this.profile(profileID)
+      if (!profile.auth) return super.identityToken(profileID)
+      const epoch = this.accountEpoch(profile)
+      let session = await this.loadSession(profile)
+      if (!session) throw protocolError('oidc_login_required', 'Gateway sign-in is required')
+      if (session.identityMode !== 'oidc') throw protocolError('oidc_identity_token_unavailable', 'This sign-in does not issue ID Tokens')
+      // One refresh renews both: an ID Token close to expiry would not outlast the use it is for.
+      if (accessTokenNeedsRefresh(session, this.now) || !(session.idTokenExpiresAt - seconds(this) > ID_TOKEN_MARGIN_SECONDS)) session = await this.refresh(profile, session)
+      await this.gatewayCurrent(profile, session, epoch)
+      if (!(session.idTokenExpiresAt > seconds(this))) throw protocolError('oidc_identity_token_unavailable', 'The issuer did not renew the ID Token; please sign in again')
+      return { token: session.idToken, expiresAt: session.idTokenExpiresAt }
     }
 
     async modelAuthorization(profileID, expectedBaseURL) {

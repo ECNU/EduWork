@@ -116,6 +116,11 @@ export class OidcAccountService extends TypertRemoteService {
   modelResourceFetch(profileID, relativePath, options) {
     return this.callBackend('modelResourceFetch', profileID, relativePath, options)
   }
+  // Host-only: the current verified ID Token, for services that admit this
+  // organization's members. Never relayed to a renderer.
+  identityToken(profileID) {
+    return this.callBackend('identityToken', profileID)
+  }
   // Host-only readiness check for explicitly configured model-service adapters.
   modelAuthorization(profileID, expectedBaseURL) {
     return this.callBackend('modelAuthorization', profileID, expectedBaseURL)
