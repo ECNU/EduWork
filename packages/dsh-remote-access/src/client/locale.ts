@@ -2,7 +2,7 @@ export const NS = 'settings.remoteAccess'
 
 const zh = {
   locale: 'zh-CN', nav: '远程访问', title: '远程访问',
-  intro: '在手机或其他电脑的浏览器里使用这台电脑上的 EduWork。连接经中继服务器转发并端到端加密，中继看不到内容。新设备要先在这里确认，之后可随时移除。',
+  intro: '在手机或其他电脑的浏览器里远程使用这台电脑。连接经中继服务器转发并端到端加密，中继看不到内容。新设备要先在这里确认，之后可随时移除。',
   loading: '正在读取远程访问状态…', saveFailed: '设置未保存，请重试。',
   enabled: '允许远程访问',
   relay: '中继服务器', relayHint: '中继服务器的地址，例如 https://remote.example.edu',
@@ -25,7 +25,7 @@ const zh = {
 
 const en: typeof zh = {
   locale: 'en', nav: 'Remote access', title: 'Remote access',
-  intro: 'Use EduWork on this computer from a browser on your phone or another computer. The connection passes through a relay server and is end-to-end encrypted, so the relay cannot read it. Each new device must be confirmed here first and can be removed at any time.',
+  intro: 'Use this computer remotely from a browser on your phone or another computer. The connection passes through a relay server and is end-to-end encrypted, so the relay cannot read it. Each new device must be confirmed here first and can be removed at any time.',
   loading: 'Loading remote access…', saveFailed: 'The setting was not saved. Please try again.',
   enabled: 'Allow remote access',
   relay: 'Relay server', relayHint: 'Address of the relay server, for example https://remote.example.edu',

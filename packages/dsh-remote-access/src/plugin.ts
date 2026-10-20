@@ -59,7 +59,7 @@ export default class RemoteDevices extends TypertRemoteService {
     super(ctx, 'remoteDevices')
     this.config = config
     this.dsh = ctx
-    this.logger = ctx.logger('remote-access')
+    this.logger = ctx.logger('eduwork-remote-access')
     const restart = (): void => { this.settled = this.settled.then(() => this.restart()) }
     ctx.on('loader/volatile-update', restart)
     restart()

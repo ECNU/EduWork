@@ -4,7 +4,7 @@
  * of paired devices. Remote devices never see this page; the gate refuses its
  * methods to them.
  */
-import { useCallback, useEffect, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
+import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { encode } from 'uqr'
 import type { PanelStatus } from '../plugin.ts'
 import TYPERT from '../typert.ts'
@@ -150,6 +150,7 @@ function TextSetting({ label, hint, value, disabled, type = 'text', onSave }: {
   label: string; hint: string; value: string; disabled: boolean; type?: 'text' | 'url' | 'password'; onSave(value: string): void
 }) {
   const [draft, setDraft] = useState(value)
+  const hintId = useId()
   useEffect(() => setDraft(value), [value])
   const commit = (): void => {
     const next = draft.trim()
@@ -157,13 +158,15 @@ function TextSetting({ label, hint, value, disabled, type = 'text', onSave }: {
     if (type === 'password') setDraft('')
   }
   return (
-    <label style={{ display: 'grid', gap: 4, fontSize: 13 }}>
-      {label}
-      <input style={input} type={type} value={draft} disabled={disabled} autoComplete={type === 'password' ? 'new-password' : 'off'}
-        onChange={event => setDraft(event.currentTarget.value)} onBlur={commit}
-        onKeyDown={event => event.key === 'Enter' && commit()} />
-      <span style={{ ...note, margin: 0 }}>{hint}</span>
-    </label>
+    <div style={{ display: 'grid', gap: 4, fontSize: 13 }}>
+      <label style={{ display: 'grid', gap: 4 }}>
+        {label}
+        <input style={input} type={type} value={draft} disabled={disabled} autoComplete={type === 'password' ? 'new-password' : 'off'}
+          aria-describedby={hintId} onChange={event => setDraft(event.currentTarget.value)} onBlur={commit}
+          onKeyDown={event => event.key === 'Enter' && commit()} />
+      </label>
+      <span id={hintId} style={{ ...note, margin: 0 }}>{hint}</span>
+    </div>
   )
 }
 
