@@ -248,13 +248,14 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         if (scenario === 'installer-exit') { app.quit(); return true }
         return false
       }, prepareEduworkDesktop: async () => { calls.push('prepare'); return {} },
+      desktopWebRoot: () => '/synthetic/web',
       nativeBootstrap() {}, desktopReady: async () => { calls.push('desktop-ready'); completed() },
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail,
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
     })
-    mock('eduwork-host-process.mjs', { DesktopHostProcess: class {
+    mock('eduwork-host-process.mjs', { staticDesktopResponse: () => undefined, DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
         assert.equal(options.environment.PATH, 'synthetic-login-shell-path')
         assert.equal(options.environment.EDUWORK_LAUNCHER_TEST, 'launcher-owned')
@@ -278,7 +279,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       t.after(() => clearTimeout(timer))
     })])
     if (scenario === 'installed') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'prepare', 'host', 'window', 'desktop-ready'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready'])
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {
