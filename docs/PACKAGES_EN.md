@@ -13,8 +13,9 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | `@eduwork/dsh-mail` | [Mail assistant](../packages/dsh-mail/README_EN.md) | `packages/dsh-mail` |
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README_EN.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office, speech, images and media](../packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Studio's existing workspace |
+| `@eduwork/dsh-remote-access` | [Remote access and self-hosted relay](../packages/dsh-remote-access/README_EN.md) | `packages/dsh-remote-access` |
 
-Six development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
+Seven development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
 
 ## Develop and check
 
@@ -65,7 +66,7 @@ Desktop-specific extensions are still built during assembly; their adaptation on
 `@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
 
 
-The current DSH 0.2.1 recipe installs all seven independent packages from npm: desktop pet, literature, mail, memory, OIDC, Studio and shared services. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.2/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source.
+The current DSH 0.2.1 recipe installs all seven independent packages from npm: desktop pet, literature, mail, memory, OIDC, Studio and shared services. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.2/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source. The remote access package is not assembled into the client yet; it joins in the order below once published and verified.
 
 Assembly validates the npm inputs before building product-owned extensions. Media templates, the PDF runtime, plugin clients and bundled skills come from published packages. Nothing under `packages/` overwrites them. `assembly.json` distinguishes `externalPackages` from `sourcePackages` and records package file hashes, checked after assembly and edition preparation. Missing packages, inconsistent locks or workspace links fail without a source fallback.
 
