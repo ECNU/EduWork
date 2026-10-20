@@ -1,0 +1,201 @@
+import assert from 'node:assert/strict'
+import { createServer } from 'node:http'
+import test from 'node:test'
+import { WebSocket } from 'ws'
+import { PROTOCOL } from '../../src/protocol/constants.ts'
+import { Close } from '../../src/protocol/close-codes.ts'
+import { hostIdOf, RELAY_PATHS, signRegistration } from '../../src/protocol/relay.ts'
+import { Relay, type RelayOptions } from '../../src/relay/relay.ts'
+
+const ORIGIN = 'https://relay.test'
+const KEY = 'operator-issued-key'
+
+async function startRelay(options: Partial<RelayOptions> = {}) {
+  const relay = new Relay({ origin: ORIGIN, accessKeys: [KEY], timeoutMs: 300, ...options })
+  const server = createServer((_request, response) => response.writeHead(404).end())
+  server.on('upgrade', (request, socket, head) => relay.upgrade(request, socket, head) || socket.destroy())
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  const base = `ws://127.0.0.1:${(server.address() as { port: number }).port}`
+  return { base, stop: () => { relay.close(); server.close() } }
+}
+
+/** A ws client that queues what it receives. */
+class Peer {
+  readonly socket: WebSocket
+  readonly closed: Promise<{ code: number; reason: string }>
+  readonly #queue: (string | Buffer)[] = []
+  #wake: (() => void) | undefined
+
+  constructor(url: string, options: { autoPong?: boolean } = {}) {
+    this.socket = new WebSocket(url, options)
+    this.socket.on('message', (data: Buffer, isBinary) => {
+      this.#queue.push(isBinary ? data : data.toString())
+      this.#wake?.()
+    })
+    this.closed = new Promise(resolve => this.socket.on('close', (code, reason) => resolve({ code, reason: reason.toString() })))
+  }
+
+  async next(): Promise<string | Buffer> {
+    while (this.#queue.length === 0) await new Promise<void>(resolve => { this.#wake = resolve })
+    return this.#queue.shift()!
+  }
+
+  async json(): Promise<Record<string, unknown>> {
+    return JSON.parse(await this.next() as string)
+  }
+
+  send(message: object | Uint8Array): void {
+    this.socket.send(message instanceof Uint8Array ? message : JSON.stringify(message))
+  }
+
+  async code(): Promise<number> {
+    return (await this.closed).code
+  }
+}
+
+async function identity() {
+  const keys = await crypto.subtle.generateKey('Ed25519', false, ['sign', 'verify']) as CryptoKeyPair
+  return { ...keys, hostId: await hostIdOf(keys.publicKey) }
+}
+
+async function register(base: string, host: Awaited<ReturnType<typeof identity>>, change: (message: Record<string, unknown>) => void = () => {}) {
+  const peer = new Peer(base + RELAY_PATHS.host)
+  const { nonce } = await peer.json() as { nonce: string }
+  const message = { t: 'register', protocol: PROTOCOL, hostId: host.hostId, accessKey: KEY, sig: await signRegistration(host.privateKey, ORIGIN, nonce) }
+  change(message)
+  peer.send(message)
+  return peer
+}
+
+/** Device connects; the Host accepts on a fresh socket; both ends are returned once the device saw `open`. */
+async function pair(base: string, control: Peer, hostId: string) {
+  const device = new Peer(base + RELAY_PATHS.connect + hostId)
+  const { id } = await control.json()
+  const host = new Peer(base + RELAY_PATHS.accept)
+  host.socket.once('open', () => host.send({ t: 'accept', id }))
+  assert.deepEqual(await device.json(), { t: 'open' })
+  return { device, host }
+}
+
+test('a registered Host serves each device on its own socket; bytes pass through untouched', async () => {
+  const { base, stop } = await startRelay()
+  const host = await identity()
+  const control = await register(base, host)
+  assert.deepEqual(await control.json(), { t: 'registered' })
+  const first = await pair(base, control, host.hostId), second = await pair(base, control, host.hostId)
+  first.device.send(Uint8Array.of(1, 2, 3))
+  second.host.send(Uint8Array.of(9))
+  assert.deepEqual(await first.host.next(), Buffer.from([1, 2, 3]))
+  assert.deepEqual(await second.device.next(), Buffer.from([9]))
+  stop()
+})
+
+test('registration needs an issued key and a fresh signature for this relay and protocol', async () => {
+  const { base, stop } = await startRelay()
+  const host = await identity()
+  const other = await identity()
+  const otherRelay = await signRegistration(host.privateKey, 'https://elsewhere.test', 'nonce')
+  const cases: [string, (message: Record<string, unknown>) => void, number][] = [
+    ['unknown key', m => { m.accessKey = 'guess' }, Close.unauthorized],
+    ['signature for another relay', m => { m.sig = otherRelay }, Close.unauthorized],
+    ['claims another Host id', m => { m.hostId = other.hostId }, Close.unauthorized],
+    ['other protocol', m => { m.protocol = 'eduwork-remote/2' }, Close.upgradeRequired],
+    ['not a register message', m => { m.t = 'hello' }, Close.protocolError],
+  ]
+  for (const [name, change, code] of cases) assert.equal(await (await register(base, host, change)).code(), code, name)
+
+  // A signature captured from one challenge does not answer the next.
+  const first = new Peer(base + RELAY_PATHS.host)
+  const { nonce } = await first.json() as { nonce: string }
+  const captured = await signRegistration(host.privateKey, ORIGIN, nonce)
+  first.socket.close()
+  assert.equal(await (await register(base, host, m => { m.sig = captured })).code(), Close.unauthorized, 'replayed signature')
+
+  const silent = new Peer(base + RELAY_PATHS.host)
+  assert.equal(await silent.code(), Close.timeout)
+  stop()
+})
+
+test('a newer verified registration replaces the old one; a refused one leaves it alone', async () => {
+  const { base, stop } = await startRelay()
+  const host = await identity()
+  const old = await register(base, host)
+  await old.json()
+  const refused = await register(base, host, m => { m.accessKey = 'guess' })
+  assert.equal(await refused.code(), Close.unauthorized)
+  await pair(base, old, host.hostId)
+  const current = await register(base, host)
+  await current.json()
+  assert.equal(await old.code(), Close.replaced)
+  await pair(base, current, host.hostId)
+  stop()
+})
+
+test('devices are refused for absent Hosts, unanswered connects and over the per-Host cap', async () => {
+  const { base, stop } = await startRelay({ maxConnectionsPerHost: 2 })
+  assert.equal(await new Peer(base + RELAY_PATHS.connect + 'nobody').code(), Close.hostOffline)
+  const host = await identity()
+  const control = await register(base, host)
+  await control.json()
+
+  const unanswered = new Peer(base + RELAY_PATHS.connect + host.hostId)
+  await control.json()
+  assert.equal(await unanswered.code(), Close.timeout)
+
+  await pair(base, control, host.hostId)
+  await pair(base, control, host.hostId)
+  assert.equal(await new Peer(base + RELAY_PATHS.connect + host.hostId).code(), Close.overLimit)
+
+  const bogus = new Peer(base + RELAY_PATHS.accept)
+  bogus.socket.once('open', () => bogus.send({ t: 'accept', id: 'made-up' }))
+  assert.equal(await bogus.code(), Close.protocolError)
+  stop()
+})
+
+test('a waiting device learns at once when its Host goes offline', async () => {
+  const { base, stop } = await startRelay({ timeoutMs: 5000 })
+  const host = await identity()
+  const control = await register(base, host)
+  await control.json()
+  const device = new Peer(base + RELAY_PATHS.connect + host.hostId)
+  await control.json()
+  control.socket.close()
+  assert.equal(await device.code(), Close.hostOffline)
+  stop()
+})
+
+test('closing one end closes the other, passing application codes through', async () => {
+  const { base, stop } = await startRelay()
+  const host = await identity()
+  const control = await register(base, host)
+  await control.json()
+  const a = await pair(base, control, host.hostId)
+  a.host.socket.close(Close.forbidden, 'revoked')
+  assert.deepEqual(await a.device.closed, { code: Close.forbidden, reason: 'revoked' })
+  const b = await pair(base, control, host.hostId)
+  b.device.socket.close()
+  assert.equal(await b.host.code(), Close.peerClosed)
+  stop()
+})
+
+test('text on a paired connection, or data before open, is a protocol error', async () => {
+  const { base, stop } = await startRelay({ timeoutMs: 5000 })
+  const host = await identity()
+  const control = await register(base, host)
+  await control.json()
+  const paired = await pair(base, control, host.hostId)
+  paired.device.send({ t: 'open' })
+  assert.equal(await paired.host.code(), Close.protocolError)
+
+  const eager = new Peer(base + RELAY_PATHS.connect + host.hostId)
+  eager.socket.once('open', () => eager.send(Uint8Array.of(1)))
+  assert.equal(await eager.code(), Close.protocolError)
+  stop()
+})
+
+test('a socket that stops answering pings is dropped', async () => {
+  const { base, stop } = await startRelay({ heartbeatMs: 50 })
+  const deaf = new Peer(base + RELAY_PATHS.host, { autoPong: false })
+  assert.equal(await deaf.code(), 1006)
+  stop()
+})

@@ -11,7 +11,7 @@
  * the relay needs no account database to know who may serve under an id.
  */
 import { base64url, fromBase64url, utf8 } from './bytes.ts'
-import { PROTOCOL } from './version.ts'
+import { PROTOCOL } from './constants.ts'
 
 export const RELAY_PATHS = { host: '/v1/host', accept: '/v1/host/accept', connect: '/v1/connect/' } as const
 

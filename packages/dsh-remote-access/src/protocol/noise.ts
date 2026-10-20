@@ -7,10 +7,9 @@ import Noise from 'noise-handshake'
 import Cipher from 'noise-handshake/cipher.js'
 import { generateKeyPair as generate } from 'noise-handshake/dh.js'
 import { utf8 } from './bytes.ts'
-import { PROTOCOL } from './version.ts'
+import { MAX_MESSAGE, PROTOCOL } from './constants.ts'
 
-/** Largest Noise transport message; its plaintext is one 16-byte tag shorter. */
-export const MAX_MESSAGE = 65535
+/** Largest plaintext of one Noise transport message: one 16-byte tag shorter than the message. */
 export const MAX_PLAINTEXT = MAX_MESSAGE - 16
 // noise-handshake encodes 32 of the 64 nonce bits; stop before the counter wraps.
 const NONCE_LIMIT = 2 ** 32

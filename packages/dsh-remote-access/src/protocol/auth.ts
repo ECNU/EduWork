@@ -5,7 +5,7 @@
  * replayed on another. Both sides derive the pairing code from the same hash.
  */
 import { base64url, concat, fromBase64url, randomBytes, utf8 } from './bytes.ts'
-import { PROTOCOL } from './version.ts'
+import { PROTOCOL } from './constants.ts'
 
 const AUTH_CONTEXT = utf8(`${PROTOCOL} device-auth\0`)
 const CODE_CONTEXT = utf8(`${PROTOCOL} pairing-code\0`)
