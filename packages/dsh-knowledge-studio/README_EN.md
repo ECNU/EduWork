@@ -43,7 +43,7 @@ npm install ./eduwork-dsh-artifact-services-0.3.0.tgz ./eduwork-dsh-knowledge-st
 
 See [usage and Profile activation](docs/USAGE.md). Loading the Studio bundle registers shared services once. Do not also activate a duplicate shared service or legacy Office plugin.
 
-Completion and failure can use the host's [plugin notification protocol](../../docs/PLUGIN_NOTIFICATIONS.md). This service is optional: Studio continues to work without it and owns its artifact status and navigation.
+Completion and failure can use the host's [plugin notification protocol](https://github.com/ECNU/EduWork/blob/main/docs/PLUGIN_NOTIFICATIONS.md). This service is optional: Studio continues to work without it and owns its artifact status and navigation.
 
 ## Capabilities and runtime
 
