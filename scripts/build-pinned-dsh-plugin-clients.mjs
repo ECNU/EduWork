@@ -13,6 +13,7 @@ import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
+import { verifyPluginNotificationConsumers } from './plugin-notification-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -26,6 +27,7 @@ const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-ru
 verifyPinnedDshReceipt(runtimeReceipt)
 const publishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
 await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies, runtime })
+await verifyPluginNotificationConsumers(join(dependencies, 'node_modules'), publishedLocks.map(lock => lock.name))
 const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.pinned.dsh', runtimeReceipt.dshVersion)
 await mkdir(repository)
 // Copy the maintained plugin source into a disposable qualification tree.
@@ -77,8 +79,8 @@ async function prepareCandidateManifests(directory) {
 }
 await prepareCandidateManifests(join(repository, 'dsh-plugins'))
 const clients = []
-for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar']) {
-  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
+for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications']) {
+  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {

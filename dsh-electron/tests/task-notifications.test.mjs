@@ -35,34 +35,6 @@ test('awaiting a concurrent notification flush waits until its new items reach t
   } finally { release(); await Promise.allSettled([initial, updated]); h.close() }
 })
 
-test('calendar reminders notify without a Session and click back to the calendar', async () => {
-  const f = setup(), h = host(body => f.shell.handle(body))
-  const reminderId = 'a'.repeat(64)
-  h.put({ key: 'calendar:' + reminderId, kind: 'calendar', sessionId: '', reminderId, title: '数学课' })
-  await h.flush()
-  assert.equal(f.popups.length, 1)
-  assert.equal(f.popups[0].title, '日历提醒')
-  assert.ok(!f.popups[0].content.includes('数学课'), 'private previews stay off by default')
-  f.shell.activate('calendar:' + reminderId)
-  const result = await h.view({ sessionId: '' })
-  assert.deepEqual(result.target, { key: 'calendar:' + reminderId, reminderId, panel: 'calendar' })
-  h.remove('calendar:' + reminderId)
-  await h.flush()
-  assert.equal(f.shell.menu().length, 0)
-})
-
-test('calendar notices respect the notification master switch and stay unread while viewing a conversation', () => {
-  const f = setup(), reminderId = 'b'.repeat(64)
-  const notice = { key: 'calendar:' + reminderId, kind: 'calendar', reminderId, sessionId: '', title: '日历', createdAt: 1 }
-  f.sync([notice], { enabled: false })
-  assert.equal(f.popups.length, 0)
-  f.focus(true)
-  f.shell.handle({ action: 'view', sessionId: '' })
-  assert.deepEqual(f.sync([notice]).seen, [])
-  assert.equal(f.shell.menu().length, 1)
-  assert.throws(() => f.sync([{ ...notice, sessionId: 'unrelated-session' }]), /Invalid attention/)
-})
-
 test('foreground suppresses popups; only viewing the matching conversation consumes a completed notice', () => {
   const f = setup(); f.focus(true)
   f.shell.handle({ action: 'view', sessionId: 'another-session' })
@@ -83,17 +55,6 @@ test('background coalesces and deduplicates, protects previews, and respects opt
   assert.equal(f.shell.menu().length, 1)
   f.sync([item('c')], { enabled: true }); assert.equal(f.popups.length, 1)
   f.advance(); f.sync([item('d')], { preview: true }); assert.equal(f.popups[1].content, 'Private title')
-})
-
-test('viewing a Studio artifact consumes only its own notice in a foreground window', () => {
-  const f = setup(); f.focus(true)
-  const a = item('a', 'studio', { artifactId: 'artifact_a' }), b = item('b', 'studio', { artifactId: 'artifact_b' })
-  f.shell.handle({ action: 'view', sessionId: 'session-a', artifactId: 'artifact_a' })
-  assert.deepEqual(f.sync([a, b]).seen, ['a'])
-  assert.equal(f.shell.items.has('b'), true)
-  f.focus(false)
-  f.shell.handle({ action: 'view', sessionId: 'session-a', artifactId: 'artifact_b' })
-  assert.deepEqual(f.sync([b]).seen, [])
 })
 
 test('resolved or cancelled requests leave tray; stale clicks do not reopen an action', async () => {
@@ -136,16 +97,6 @@ test('question observer preserves the real answer, rejection, and abort lifetime
   const failure = Error('answerer unavailable')
   await assert.rejects(h.question({ agent: { id: 's' } }, async () => { throw failure }), error => error === failure)
   assert.equal(h.items.size, 0)
-})
-
-test('Studio ignores history/intermediate attempts, notices independent results, and clears deleted results', () => {
-  const h = host(), row = { id: 'artifact_a', sessionId: 's', version: 1, status: 'completed', title: 'Studio', updatedAt: new Date(5000).toISOString() }
-  h.studio('w', [row]); assert.equal(h.items.size, 0)
-  row.version = 2; row.updatedAt = new Date(11000).toISOString(); row.lifecycle = { state: 'open' }
-  h.studio('w', [row]); assert.equal(h.items.size, 0)
-  row.lifecycle.state = 'settled'; h.studio('w', [row]); assert.equal([...h.items.values()][0].kind, 'studio')
-  h.studio('w', [row]); assert.equal(h.items.size, 1)
-  h.studio('w', []); assert.equal(h.items.size, 0)
 })
 
 test('snapshot failures are contained and can recover without losing pending work', async () => {
@@ -216,21 +167,6 @@ test('a working background subagent holds completion for the turn it wakes', () 
   assert.equal([...h.items.values()][0].kind, 'failed')
 })
 
-test('running lists root turns and generating Studio results once per session', async () => {
-  const synced = [], h = host(async body => { synced.push(body); return { seen: [] } }), event = (id, type, data, root = true) => h.event({ id }, { type, data }, root)
-  event('a', 'turn/start', { turn: 1 }); event('child', 'turn/start', { turn: 1 }, false)
-  h.studio('w', [{ id: 'artifact_a', sessionId: 'a', version: 1, status: 'running', updatedAt: new Date(11000).toISOString() },
-    { id: 'artifact_b', sessionId: 'b', version: 1, status: 'queued', updatedAt: new Date(11000).toISOString() },
-    { id: 'artifact_c', version: 1, status: 'running', updatedAt: new Date(11000).toISOString() }])
-  assert.deepEqual(h.running(), ['a', 'b'])
-  await h.flush(); assert.deepEqual(synced.at(-1).running, ['a', 'b'])
-  event('a', 'turn/end', { turn: 1, reason: { kind: 'completed' } }); assert.deepEqual(h.running(), ['a', 'b'])
-  h.studio('w', [{ id: 'artifact_a', sessionId: 'a', version: 2, status: 'completed', updatedAt: new Date(12000).toISOString() }])
-  assert.deepEqual(h.running(), [])
-  const f = setup(); f.sync([], {}, ['a', 'b'])
-  assert.deepEqual(f.shell.running, ['a', 'b'])
-})
-
 test('a result finished in the conversation on screen is acknowledged once, without a pending entry', () => {
   const f = setup(), changes = []
   f.shell.changed = () => changes.push(f.shell.acknowledged)
@@ -240,4 +176,14 @@ test('a result finished in the conversation on screen is acknowledged once, with
   f.focus(false); f.sync([item('later', 'completed')]); f.focus(true)
   f.sync([item('later', 'completed')]); assert.equal(f.shell.acknowledged, 1)
   assert.equal(changes[0], 1)
+})
+
+test('running includes live root turns and optional plugin activity without subagent duplicates', async () => {
+  const h = host(), session = { id: 'root' }
+  h.notifications = { running: () => ['plugin:task'] }
+  h.event(session, { type: 'turn/start', data: { turn: 1 } }, true)
+  h.event({ id: 'child' }, { type: 'turn/start', data: { turn: 1 } }, false)
+  assert.deepEqual(h.running(), ['root', 'plugin:task'])
+  h.event(session, { type: 'turn/end', data: { turn: 1, reason: { kind: 'completed' } } }, true)
+  assert.deepEqual(h.running(), ['plugin:task'])
 })

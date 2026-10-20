@@ -68,7 +68,10 @@ export async function startNativeBridge({ vault, openExternal, openConfiguration
       const parts = []
       for await (const part of request) {
         length += part.length
-        if (length > MAX_BODY) { response.writeHead(413).end(); request.destroy(); return }
+        // The bounded attention snapshot contains up to 200 core and 200 plugin
+        // rows, including multibyte titles/previews. Other bridge limits stay put.
+        const limit = request.url === '/v1/extensions/attention' ? 2 * 1024 * 1024 : MAX_BODY
+        if (length > limit) { response.writeHead(413).end(); request.destroy(); return }
         parts.push(part)
       }
       const body = JSON.parse(Buffer.concat(parts).toString('utf8'))

@@ -1903,6 +1903,13 @@ export async function apply(ctx: any) {
   // host `calendar` service callable from this half.
   const disposeRemote = await ctx.remote.$mount(calendarRemote)
   ctx.inject(['remote.calendar'], (surface: any) => {
+    surface.inject(['notificationActions', 'layout'], (inner: any) => {
+      inner.effect(() => inner.notificationActions.register('calendar', async ({ target, signal }: any) => {
+        const inbox = await unwrap(surface.remote.calendar.reminders())
+        if (signal.aborted || !inbox.items.some((row: any) => row.id === target.reminderId && !row.read)) return false
+        inner.layout.selectPanel(PANEL_ID)
+      }))
+    })
     // The gateway checks the argument count of every call, so the one method
     // that takes none is called with none.
     const call = (method: string) => (input?: any) => unwrap(surface.remote.calendar[method](input))

@@ -36,6 +36,7 @@ for (const native of [true, false]) test(`notification navigation follows ${nati
     uiWorkspace: { openSession: id => { opened.push(id); select(id) } },
     layout: { selectPanel: id => panels.push(id) },
     get: name => {
+      if (name === 'notificationActions') return { visible: () => [], dispatch: async plugin => panels.push(plugin.source) }
       assert.equal(name, 'sidebarRight')
       return { openTab: (kind, options) => tabs.push({ kind, options }) }
     },
@@ -60,7 +61,7 @@ for (const native of [true, false]) test(`notification navigation follows ${nati
     assert.equal(views.at(-1).sessionId, 'one')
     select('two'); await settle()
     assert.equal(views.at(-1).sessionId, 'two')
-    target = { key: 'calendar:test', panel: 'calendar', reminderId: 'a'.repeat(64) }
+    target = { key: 'plugin:test', plugin: { source: 'calendar', target: { reminderId: 'a'.repeat(64) } } }
     environment.dispatchEvent(new Event('focus')); await settle()
     assert.deepEqual(panels, ['calendar'])
     assert.deepEqual(opened, [])
@@ -70,18 +71,9 @@ for (const native of [true, false]) test(`notification navigation follows ${nati
     environment.dispatchEvent(new Event('focus')); await settle()
     assert.equal(views.at(-1).sessionId, 'three')
     assert.equal(views.at(-1).openedKey, 'completed:three')
-    const artifactId = 'artifact_' + 'a'.repeat(32)
-    target = { key: 'studio:four', sessionId: 'four', artifactId }
-    environment.dispatchEvent(new Event('focus'))
-    await until(() => tabs.length === 1)
-    await settle()
-    assert.deepEqual(tabs, [{ kind: 'knowledge-studio', options: { params: { artifactId } } }])
+    target = { key: 'plugin:studio', plugin: { source: 'studio', target: {} } }
     environment.dispatchEvent(new Event('focus')); await settle()
-    assert.equal(views.at(-1).sessionId, 'four')
-    assert.equal(views.at(-1).openedKey, 'studio:four')
-    environment.dispatchEvent(new CustomEvent('eduwork:studio-visibility', { detail: { sessionId: 'four', artifactId, visible: true } }))
-    await settle()
-    assert.equal(views.at(-1).artifactId, artifactId)
+    assert.deepEqual(panels, ['calendar', 'studio'])
     select('five'); await settle()
     assert.equal(views.at(-1).sessionId, 'five')
     assert.equal(views.at(-1).artifactId, undefined)

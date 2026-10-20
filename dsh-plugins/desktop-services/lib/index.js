@@ -17,17 +17,39 @@ export default class DesktopServices extends Service {
       : null
     if (!scope) ctx.effect(() => ctx.settings.configure({ auto: false }))
     const preferences = () => scope ? scope.get() : Object.fromEntries(Object.keys(notificationDefaults).map(key => [key, config[key].get()]))
-    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences, validateTarget: async target => {
-      if (!target.artifactId) return true
-      const studio = ctx.get('knowledgeStudio')
-      if (!studio) return false
-      const { artifact } = await studio.readArtifact(target.artifactId)
-      return !artifact.deletedAt && artifact.sessionId === target.sessionId
-    }, goal: sessionId => {
+    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences, goal: sessionId => {
       const agent = ctx.get('agents')?.get(sessionId)
       return agent && ctx.get('goals')?.get(agent)
     } })
     observeDesktopAttention(ctx, this.attention)
+    // Plugin notification availability must never gate Agent notifications.
+    ctx.inject(['notifications'], inner => {
+      const registry = inner.notifications.registry
+      if (inner.notifications.version !== 1) return
+      registry.legacyPreferences = preferences
+      this.attention.notifications = registry
+      const transport = {
+        ready: async () => {
+          await this.attention.flush()
+          if (!this.attention.connected) throw Error('Desktop notifications unavailable')
+          if (!this.attention.pluginSupported) throw Error('Desktop does not support plugin notification protocol 1')
+        },
+        flush: async () => {
+          await this.attention.flush()
+          if (!this.attention.connected) throw Error('Desktop notifications unavailable')
+          if (!this.attention.pluginSupported) throw Error('Desktop does not support plugin notification protocol 1')
+        },
+      }
+      registry.transport = transport
+      const unsubscribe = registry.subscribe(() => this.attention.changed())
+      this.attention.changed()
+      inner.effect(() => () => {
+        unsubscribe()
+        if (registry.transport === transport) registry.transport = undefined
+        if (this.attention.notifications === registry) this.attention.notifications = undefined
+        this.attention.changed()
+      })
+    })
     if (scope) ctx.effect(() => scope.watch(() => this.attention.changed()))
     else ctx.on('loader/volatile-update', () => this.attention.changed())
   }
@@ -39,20 +61,6 @@ export default class DesktopServices extends Service {
     })
     if (!response.ok) throw Error('Desktop notifications unavailable')
     return response.json()
-  }
-  /** Host-only calendar delivery; the shell owns opt-out, sound and private previews. */
-  async calendarReminder(receipt) {
-    if (this.attention.calendarSupported === undefined && !await this.attention.flush()) {
-      throw new Error('桌面通知暂时不可用，请稍后重试')
-    }
-    if (!this.attention.calendarSupported) throw new Error('当前桌面端尚不支持日历通知，请更新桌面应用')
-    this.attention.put({ key: 'calendar:' + receipt.id, kind: 'calendar', sessionId: '', reminderId: receipt.id, title: receipt.title })
-    if (!await this.attention.flush()) throw new Error('Desktop calendar notifications unavailable')
-  }
-  /** Remove a calendar notice without exposing the notification queue to callers. */
-  async dismissCalendarReminder(id) {
-    this.attention.remove('calendar:' + id)
-    return this.attention.flush()
   }
   // The desktop pet window belongs to the shell; its plugin reaches it only
   // through this authenticated seam and never sees the bridge credential.

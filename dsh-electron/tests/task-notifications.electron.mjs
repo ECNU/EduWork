@@ -10,6 +10,8 @@ import { fileURLToPath } from 'node:url'
 import { TaskNotifications, nativeNotificationAdapter } from '../src/task-notifications.mjs'
 import { applyDesktopBrand } from '../src/desktop-brand.mjs'
 import { notificationDefaults } from '../../dsh-plugins/desktop-services/lib/attention.js'
+import { DesktopAttention } from '../../dsh-plugins/desktop-services/lib/attention.js'
+import { NotificationRegistry } from '../../dsh-plugins/notifications/lib/registry.js'
 
 const evidence = process.env.EDUWORK_TEST_EVIDENCE
 if (!evidence) throw Error('Set EDUWORK_TEST_EVIDENCE to an isolated output directory')
@@ -38,9 +40,32 @@ try {
   assert.equal(broker.menu().length, 0)
   assert.ok(events.includes('native-api-called'))
   assert.ok(events.includes('window-restored'))
+  window.hide()
+  const registry = new NotificationRegistry()
+  const attention = new DesktopAttention({ notifications: registry, bridge: async body => broker.handle(body),
+    preferences: () => notificationDefaults, schedule: () => 0, cancel() {} })
+  registry.transport = {
+    async ready() { await attention.flush(); assert.equal(attention.pluginSupported, true) },
+    async flush() { assert.equal(await attention.flush(), true) },
+  }
+  const source = registry.register({ version: 1, source: 'native-fixture', label: '插件测试',
+    events: [{ id: 'reminder', label: '插件提醒', level: 'info', requiresAction: false, actions: ['open'] }],
+    onAction: ({ target }) => target })
+  const { key } = await source.publish({ id: 'one', event: 'reminder', title: 'Synthetic private title', target: { id: 'synthetic' } })
+  assert.equal(broker.menu().length, 1)
+  assert.equal(broker.menu()[0].label, '插件提醒')
+  broker.menu()[0].click()
+  const pluginTarget = (await attention.view({ sessionId: '' })).target.plugin
+  assert.equal(pluginTarget.key, key)
+  assert.deepEqual(pluginTarget.target, { id: 'synthetic' })
+  await attention.view({ sessionId: '', openedKey: key })
+  await attention.flush()
+  assert.equal(broker.menu().length, 0)
+  source.dispose(); registry.close(); attention.close()
   await mkdir(evidence, { recursive: true })
   await writeFile(join(evidence, 'native-notifications.json'), JSON.stringify({ success: true, platform: process.platform, electron: process.versions.electron, productName: app.getName(), events, menuItems, target, cleared: broker.menu().length === 0,
-    scope: 'Native tray/notification API and programmatic menu navigation; does not certify visual delivery, OS permissions, historical toast clicks or DND.' }, null, 2))
+    pluginProtocol: 1, pluginNavigation: true,
+    scope: 'Native tray/notification API and programmatic Agent/plugin menu navigation; does not certify visual delivery, OS permissions, historical toast clicks or DND.' }, null, 2))
 } finally { broker.close(); tray.destroy(); window.destroy(); app.quit() }
 }
 void app.whenReady().then(run).catch(error => { console.error(error); app.exit(1) })

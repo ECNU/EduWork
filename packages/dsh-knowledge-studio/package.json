@@ -1,6 +1,7 @@
 {
   "name": "@eduwork/dsh-knowledge-studio",
-  "version": "0.6.0",
+  "version": "0.6.1",
+  "eduworkNotificationProtocol": 1,
   "dshKnowledgeStudio": {
     "capabilities": [
       "configurableSkills"
@@ -50,6 +51,7 @@
         "@deepseek-ai/dsh-api-session-controller",
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-workspace",
         "@deepseek-ai/dsh-client-locale"
       ],
       "platform": "web",
@@ -91,6 +93,7 @@
     "@deepseek-ai/dsh-api-session-controller": ">=0.2.1-rc.2 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.1-rc.2 <0.3.0-0",
     "@deepseek-ai/dsh-client-ui-layout": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-workspace": ">=0.2.1-rc.2 <0.3.0-0",
     "@deepseek-ai/dsh-fs": ">=0.2.1-rc.2 <0.3.0-0",
     "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.2 <0.3.0-0",
     "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0-0",
@@ -145,6 +148,9 @@
       "optional": true
     },
     "@deepseek-ai/dsh-client-ui-layout": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-workspace": {
       "optional": true
     },
     "react": {

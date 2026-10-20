@@ -24,6 +24,12 @@
   "plugins": [
     {
       "root": "core",
+      "source": "dsh-plugins/notifications",
+      "id": "eduwork-plugin-notifications",
+      "name": "@eduwork/notifications"
+    },
+    {
+      "root": "core",
       "source": "dsh-plugins/request-concurrency",
       "id": "eduwork-request-concurrency",
       "name": "@eduwork/dsh-request-concurrency",

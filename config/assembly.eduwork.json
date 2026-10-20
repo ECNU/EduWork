@@ -177,6 +177,14 @@
     {
       "source": "dsh-plugins/calendar",
       "package": "dsh-calendar"
+    },
+    {
+      "source": "dsh-plugins/notifications",
+      "package": "notifications",
+      "requiredFiles": [
+        "lib/index.js",
+        "lib/client.js"
+      ]
     }
   ],
   "skills": [
