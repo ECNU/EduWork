@@ -19,7 +19,7 @@ import { ACCESS_KEY, startRelay, until } from './loopback.ts'
 
 /** A stand-in for DSH that records what reached it. */
 function fakeAdapter() {
-  const seen = { api: [] as string[], peers: 0, disposed: 0 }
+  const seen = { api: [] as string[], bodies: [] as string[], peers: 0, disposed: 0 }
   const adapter: HostAdapter = {
     createPeer: () => {
       seen.peers++
@@ -28,6 +28,7 @@ function fakeAdapter() {
     page: async () => new Response('<!doctype html>'),
     api: async request => {
       seen.api.push(new URL(request.url).pathname)
+      seen.bodies.push(await request.text())
       return Response.json({ type: 'server-response', rpcId: 'r', result: { ok: true, value: [] } })
     },
     async *openStream() { yield 'event' },
@@ -78,9 +79,15 @@ test('pair with an invite and the owner\'s approval, work, reconnect, and lose a
   const revoked = Promise.withResolvers<Header>()
   const client = new TunnelClient(first.channel, revoked.resolve)
   assert.equal((await client.fetch({ method: 'POST', url: '/api/session/list', body: new TextEncoder().encode('{}') })).status, 200)
-  const refused = await (await client.fetch({ method: 'POST', url: '/api/credentials/set', headers: { 'content-type': 'application/json' }, body: new TextEncoder().encode('{"rpcId":"x"}') })).json()
+  const rpc = async (url: string, body: unknown) => client.fetch({ method: 'POST', url, headers: { 'content-type': 'application/json' }, body: new TextEncoder().encode(JSON.stringify(body)) })
+  const refused = await (await rpc('/api/credentials/set', { rpcId: 'x' })).json()
   assert.equal(refused.result.error.code, FORBIDDEN)
-  assert.deepEqual(seen.api, ['/api/session/list'])
+  const acknowledge = { rpcId: 'n', payload: { args: { ns: 'ui-settings-general', ops: [{ op: 'set', path: ['welcomeNoticeVersion'], value: 'v2' }] } } }
+  assert.equal((await rpc('/api/settings/mutate', acknowledge)).status, 200)
+  const theme = { rpcId: 't', payload: { args: { ns: 'ui-settings-general', ops: [{ op: 'set', path: ['theme'], value: 'dark' }] } } }
+  assert.equal((await (await rpc('/api/settings/mutate', theme)).json()).result.error.code, FORBIDDEN)
+  assert.deepEqual(seen.api, ['/api/session/list', '/api/settings/mutate'])
+  assert.deepEqual(JSON.parse(seen.bodies[1]!), acknowledge, 'the checked call reaches DSH unchanged')
 
   const again = await connectDevice(relay, link, phone)
   assert.deepEqual(again.reply, { t: 'ready', host: 'Lab PC' }, 'a paired device reconnects without an invite')

@@ -44,9 +44,9 @@ Choose "Remove" under "Paired devices" on the computer to disconnect a device at
 
 ## What remote devices can do
 
-They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results.
+They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results; in EduWork they can also use Studio results and the calendar.
 
-They cannot open windows or programs on the computer, register or remove workspaces, manage plugins or credentials, change settings, use terminals or run code, or manage remote access itself. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
+They cannot open windows or programs or show notifications on the computer, register or remove workspaces, change settings or manage accounts, plugins, credentials, skills or memories, use terminals or run code, or manage remote access itself. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
 
 ## Security
 
