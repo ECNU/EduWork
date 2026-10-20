@@ -14,6 +14,7 @@ import { desktopVersion } from './desktop-build-plan.mjs'
 import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 import { usePinnedBrowser } from './pinned-browser.mjs'
+import { withPluginNotifications } from './plugin-notification-contract.mjs'
 import { copyDshBundledSkills, resolveDshSkillChild } from './lib/dsh-skills.mjs'
 import { verifyPublishedPackageFiles } from './published-package-inputs.mjs'
 
@@ -33,7 +34,7 @@ assert.equal(identity.dshVersion,runtimeLock.packageVersion)
 assert.equal(identity.dshCommit,runtimeLock.commit)
 assert.notEqual(identity.sourceAlpha,true,'Prepare each source Alpha only once')
 const resources=join(product,'resources/desktop')
-const generic=usePinnedBrowser(await read(new URL('../config/distributions/generic.json',import.meta.url)))
+const generic=withPluginNotifications(usePinnedBrowser(await read(new URL('../config/distributions/generic.json',import.meta.url))))
 generic.packages=generic.packages.map(name=>name==='@shlv/dsh-literature'?'@eduwork/dsh-literature':name)
 const pluginNames=[...new Set(generic.plugins.map(plugin=>plugin.name.replace(/\/search-auto$/, ''))) ]
 if(values.edition){

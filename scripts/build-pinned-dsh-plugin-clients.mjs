@@ -13,7 +13,7 @@ import { rebuiltDshPeers } from '../dsh-host/dsh-compatibility.mjs'
 import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
-import { verifyPluginNotificationConsumers } from './plugin-notification-contract.mjs'
+import { verifyPluginNotificationConsumers, withPluginNotifications } from './plugin-notification-contract.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
@@ -40,7 +40,7 @@ for (const folder of ['dsh-plugins', 'config/distributions']) {
 const { build } = require('esbuild')
 // Every independently published plugin goes through its own npm release workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
-const distribution = usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8')))
+const distribution = withPluginNotifications(usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8'))))
 distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)
 await writeFile(distributionPath, JSON.stringify(distribution, null, 2) + '\n')
 // The legacy npm 0.1.5 assembly retains its adapter; this pinned native Runtime

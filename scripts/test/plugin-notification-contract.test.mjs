@@ -1,9 +1,23 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { verifyPluginNotificationConsumers } from '../plugin-notification-contract.mjs'
+import { verifyPluginNotificationConsumers, withPluginNotifications } from '../plugin-notification-contract.mjs'
+
+test('current product selects protocol service without changing the archived Web combination', async () => {
+  const legacy = JSON.parse(await readFile(new URL('../../config/distributions/generic.json', import.meta.url), 'utf8'))
+  const original = structuredClone(legacy)
+  const current = withPluginNotifications(legacy)
+  assert.deepEqual(legacy, original)
+  assert.equal(legacy.plugins.some(row => row.name === '@eduwork/notifications'), false)
+  assert.deepEqual(current.plugins[0], {
+    root: 'core', source: 'dsh-plugins/notifications',
+    id: 'eduwork-plugin-notifications', name: '@eduwork/notifications',
+  })
+  assert.deepEqual(current.plugins.slice(1), legacy.plugins)
+  assert.throws(() => withPluginNotifications(current), /exactly once/)
+})
 
 test('assembly rejects old npm consumers instead of silently dropping plugin notifications', async t => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-notification-contract-'))

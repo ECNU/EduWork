@@ -1,6 +1,20 @@
 import { readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
+// Keep the archived 0.1.5 Web recipe and its original Studio package intact.
+// The current pinned product selects the new protocol as a complete set.
+export function withPluginNotifications(distribution) {
+  const result = structuredClone(distribution)
+  if (result.plugins.some(row => row.id === 'eduwork-plugin-notifications' || row.name === '@eduwork/notifications')) {
+    throw Error('Plugin notification service must be selected exactly once')
+  }
+  result.plugins.unshift({
+    root: 'core', source: 'dsh-plugins/notifications',
+    id: 'eduwork-plugin-notifications', name: '@eduwork/notifications',
+  })
+  return result
+}
+
 // The new shell no longer interprets old Studio/calendar records. Refuse an
 // apparently successful product build with incompatible published consumers.
 export async function verifyPluginNotificationConsumers(modules, selected = ['@eduwork/dsh-knowledge-studio', '@eduwork/dsh-desktop-pet']) {

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-20T14:34:59.068Z",
-  "fileSetSHA256": "2ce5e0b0d8685fb3f4a49b50a827b22d3a8cbd1c6a06162b0a55911ee6865164",
+  "createdAt": "2026-10-20T14:46:59.728Z",
+  "fileSetSHA256": "346a89af27cc90d12816e7b436f58d4a962d189bb56be337d7bdc119e90c956a",
   "files": [
     {
       "path": ".gitattributes",
@@ -217,7 +217,7 @@
     },
     {
       "path": "config/distributions/generic.json",
-      "sha256": "c7bcaa4298d12f91d753d772c5dfb78752f68fa84cd12152db90005ea940b2df"
+      "sha256": "bbc4aefe184cc8da0de4a9e00c58b09f9260f246b94ef48c0a06a17e173c4edb"
     },
     {
       "path": "config/macos-native.lock.json",
@@ -377,7 +377,7 @@
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
-      "sha256": "327bcf572d55c87c5c57cac7657df82cce63339f7e38e3e879dfcdc1f0f2daa8"
+      "sha256": "f52f2e82fae0b3dece771a77d7e4582c6d01034d52b684b4db411774b5bddad2"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -6113,7 +6113,7 @@
     },
     {
       "path": "scripts/build-pinned-dsh-plugin-clients.mjs",
-      "sha256": "f07187d99720e4908aba21f47c620aa56798bf01bf03a5047511ca8a2eea51d7"
+      "sha256": "573d5df6a53bd98ea43ac66c1bb4d419ee6c4d2d29b5830ea073cd0cbee0588d"
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
@@ -6457,7 +6457,7 @@
     },
     {
       "path": "scripts/plugin-notification-contract.mjs",
-      "sha256": "97b712cea1e9e4b92fda5f521fdd98ce50683589970b78e36361dce26ae4aeca"
+      "sha256": "a12c366c1fd0e6e2c9ecbaface1b9fa1134ab3fe11bfcc3b41b3902538b9f972"
     },
     {
       "path": "scripts/portable-extractor.manifest",
@@ -6521,7 +6521,7 @@
     },
     {
       "path": "scripts/prepare-pinned-dsh-product.mjs",
-      "sha256": "bce563dda08544b606aac7395f2e73ea92093eefc3e12f60dec0360ac0f65032"
+      "sha256": "01f298ba229dfe2916450e0b96ad8a10fffcf8f0ad46d71247469695af74f890"
     },
     {
       "path": "scripts/prepare-windows-portable-extractor.ps1",
@@ -6649,7 +6649,7 @@
     },
     {
       "path": "scripts/test/plugin-notification-contract.test.mjs",
-      "sha256": "3634ae8ae28d33139002fb31d1248349c3eb8f3f399baa12a16ff5be04739baa"
+      "sha256": "1907cb0438f74ccb4ec4d859fb818396a7e65833fe8cc9560b6680268eb14213"
     },
     {
       "path": "scripts/test/portable-product-links.test.mjs",
