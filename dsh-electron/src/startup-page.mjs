@@ -1,6 +1,6 @@
 const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 
-export function startupPage({ productName, logo, background, accent }) {
+export function startupPage({ productName, logo, background, accent, message = '正在准备本机工作环境…' }) {
   return `<!doctype html><html lang="zh-CN"><meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${escape(productName)}</title>
@@ -22,8 +22,8 @@ export function startupPage({ productName, logo, background, accent }) {
       }
     </style>
     <h2><img alt="" width="40" height="40" src="${escape(logo)}">正在启动 ${escape(productName)}</h2>
-    <p role="status">正在准备本机工作环境…</p>
-    <div class="startup-progress" role="progressbar" aria-label="正在准备本机工作环境" aria-busy="true">
+    <p role="status">${escape(message)}</p>
+    <div class="startup-progress" role="progressbar" aria-label="${escape(message)}" aria-busy="true">
       <span class="startup-progress-bar" aria-hidden="true"></span>
     </div></html>`
 }

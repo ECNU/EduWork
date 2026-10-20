@@ -27,10 +27,12 @@ test('normal product startup does not inspect or mutate runtime ACLs', () => {
   assert.doesNotMatch(configure, /ensureRuntimeAccess\(|ensure-runtime-access|WRITE_DAC.*execFile/)
   assert.ok(configure.includes('attachAppActivation('))
 })
-test('upgrade health still follows actual main-window loading', () => {
+test('upgrade health still follows actual main-window loading and Host readiness', () => {
   const source = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
-  const load = source.indexOf('await window.loadURL(')
-  const ready = source.indexOf('await desktopReady()')
-  assert.ok(load > 0 && ready > load)
+  const load = source.indexOf('const pageLoaded = window.loadURL(')
+  const awaitedLoad = source.indexOf('await pageLoaded', load)
+  const ready = source.indexOf('await desktopReady(', awaitedLoad)
+  assert.ok(load > 0 && awaitedLoad > load && ready > awaitedLoad)
   assert.match(source.slice(load, ready), /recovery\.active/)
+  assert.match(source.slice(ready, ready + 300), /backend\.host.*backend\.state\.phase === 'ready'/s)
 })

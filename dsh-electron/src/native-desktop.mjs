@@ -11,12 +11,12 @@ import { createWindow } from './main.ts'
 import { SCHEME } from './ipc.ts'
 import { resolveDesktopLocale } from './locale.ts'
 import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
-import { DesktopHostProcess } from './eduwork-host-process.mjs'
+import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
 import { showDesktopWindow } from './window-visibility.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
-import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady,
+import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory } from './product.mjs'
 
@@ -26,14 +26,15 @@ configureEduworkPaths()
 protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: {
   standard: true, secure: true, supportFetchAPI: true, corsEnabled: true, stream: true, codeCache: true,
 } }, { scheme: PET_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true } }])
-let mainWindow, bridge, product, entered = false, sessionEnding = false, recoveryExit = false
+let mainWindow, bridge, product, entered = false, started = false, sessionEnding = false, recoveryExit = false
+let startupTask, startupFailure, startupFailureShown = false, initialPresentationDone = false
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
 app.on('will-quit', () => loginShellRead.abort())
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
-  if (state.phase === 'error' && entered && !isQuitting()) reportFatal(state.failure, 'host')
+  if (state.phase === 'error' && started && !isQuitting()) reportFatal(state.failure, 'host')
 })
 // Keep the product's resource teardown, with the official controller as its one
 // Host owner (including a failed or still-starting child).
@@ -49,7 +50,7 @@ const recovery = new DesktopFatalRecovery({
   exit: () => { recoveryExit = true; app.quit() },
   restart: () => { recoveryExit = true; restartDesktop() },
   writeReport: (error, source) => writeCrashReport(app.getPath('logs'), {
-    source, phase: entered ? 'running' : 'startup', error, rendererConsole: [], time: new Date(),
+    source, phase: started ? 'running' : 'startup', error, rendererConsole: [], time: new Date(),
     app: { name: app.getName(), version: app.getVersion(), platform: process.platform, arch: process.arch,
       electron: process.versions.electron, node: process.versions.node, locale: locale().id },
   }),
@@ -64,14 +65,8 @@ function reportFatal(error, source) {
     recoveryExit = true; app.quit()
   })
 }
-async function main() {
-  if (await installEduworkFromDmg() || isQuitting()) return
-  if (!claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) return
-  void pruneCrashReports(app.getPath('logs')).catch(() => {})
-  bridge = installNativeDesktopBridge({ getHost: () => backend.host, getWindow: () => mainWindow, reportFatal, checkUpdates: checkProductUpdates, pickDirectory: pickDesktopDirectory })
-  protocol.handle(SCHEME, request => backend.host?.fetch(request) ?? new Response(null, { status: 503 }))
-  powerMonitor.on('shutdown', () => { sessionEnding = true })
-  await backend.start(async () => {
+function startBackend() {
+  return backend.start(async () => {
     product = await prepareEduworkDesktop()
     const inherited = await readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), { signal: loginShellRead.signal })
     const editionVariable = name => name.startsWith('EDUWORK_') || name.startsWith('CHATECNU_')
@@ -79,13 +74,56 @@ async function main() {
     // Edition bootstrap and resource paths remain owned by the launcher.
     for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
   })
-  if (isQuitting()) return
+}
+// One startup attempt serves the main launch and every early boot/locale request.
+function startOnce() { return startupTask ??= startBackend() }
+async function waitForHost() {
+  await startOnce()
+  if (isQuitting()) throw new Error('Desktop is shutting down')
+  if (!backend.host) throw new Error('Desktop Host is unavailable')
+}
+async function handleStartupFailure(error) {
+  if (startupFailureShown || isQuitting() || recovery.active) return
+  startupFailure = error
+  startupFailureShown = true
+  desktopHostLog(`[desktop:startup] ${redactDiagnostic(error instanceof Error ? error.message : String(error))}\n`)
+  try { await showDesktopFailure(error) }
+  catch (failure) { reportFatal(failure, 'main') }
+}
+async function main() {
+  if (await installEduworkFromDmg() || isQuitting()) return
+  if (!claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) return
+  void pruneCrashReports(app.getPath('logs')).catch(() => {})
+  bridge = installNativeDesktopBridge({
+    getHost: () => backend.host,
+    waitForHost,
+    getWindow: () => mainWindow,
+    reportFatal,
+    // The boot page reports the same startup failure after its IPC rejects;
+    // the dedicated startup recovery already presents it once.
+    onBootFailure: error => { if (startupFailure) { void handleStartupFailure(startupFailure); return } reportFatal(error, 'web-boot') },
+    checkUpdates: checkProductUpdates,
+    pickDirectory: pickDesktopDirectory,
+    bootBrand: () => app.getName(),
+  })
+  const webRoot = desktopWebRoot()
+  protocol.handle(SCHEME, request => {
+    const staticResponse = staticDesktopResponse(request, webRoot)
+    if (staticResponse) return staticResponse
+    const host = backend.host
+    return host ? host.fetch(request) : Promise.resolve(new Response(null, { status: 503 }))
+  })
+  powerMonitor.on('shutdown', () => { sessionEnding = true })
+
   mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true)
   const window = mainWindow
   bridge.attach(window)
   configureWindowNavigation(window)
   await attachDesktopWindow(window)
   window.on('session-end', () => { sessionEnding = true })
+  // Any earlier presentation (Dock activation, tray) ends the initial show;
+  // hiding it afterwards must not bring it back when startup completes.
+  window.on('show', () => { initialPresentationDone = true })
   if (process.platform === 'darwin') {
     window.on('focus', () => { sessionEnding = false })
     window.on('show', () => { sessionEnding = false })
@@ -99,11 +137,31 @@ async function main() {
     if (details.reason !== 'clean-exit' && !window.isDestroyed()) reportFatal(new Error(`Desktop renderer exited: ${details.reason}`), 'renderer')
   })
   entered = true
-  await window.loadURL(`${SCHEME}://app/index.html`)
-  if (isQuitting() || recovery.active || window.isDestroyed()) return
-  await desktopReady()
-  window.show()
-  if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1') window.webContents.openDevTools({ mode: 'detach' })
+
+  // The static page paints the upstream BootPage without the Host, so show
+  // the real window while configuration and the Host start in parallel.
+  const pageLoaded = window.loadURL(`${SCHEME}://app/index.html`)
+  void pageLoaded.then(() => {
+    if (initialPresentationDone || startupFailure || isQuitting() || recovery.active || window.isDestroyed()) return
+    initialPresentationDone = true
+    window.show()
+  }).catch(() => {})
+  const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
+  try { await pageLoaded } catch (error) {
+    // A startup failure closes this window and aborts its navigation.
+    if (startupFailure || isQuitting()) return
+    throw error
+  }
+  if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
+  // A Host can fail between reporting ready and the success receipt.
+  if (!backend.host || backend.state.phase !== 'ready') {
+    const failure = backend.state.phase === 'error' ? backend.state.failure : new Error('Desktop Host did not stay ready')
+    await handleStartupFailure(failure)
+    return
+  }
+  started = true
+  await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
+  if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
 void app.whenReady().then(main).catch(async error => {
