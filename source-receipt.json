@@ -5,7 +5,7 @@
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-19T16:05:40.436Z",
-  "fileSetSHA256": "8e6f5eb1ffbcff4e2dcd0eb07b4e8ab034863248b36b813eddf92a1167ca1836",
+  "fileSetSHA256": "7fcf95b8bb8c56311a359b5e8eb2607b1965df328ee147f34bb8f75af17289ee",
   "files": [
     {
       "path": ".gitattributes",
@@ -33,7 +33,7 @@
     },
     {
       "path": ".github/workflows/packages-release.yml",
-      "sha256": "43eaacae16c5674bdd1115c09b920a91c6dec4012aba5446ad7866fcb053fc46"
+      "sha256": "f382eef0d2abac37d2655fc55f9fc65578fe74c4162eb50987cd304c5cfafb8e"
     },
     {
       "path": ".github/workflows/packages.yml",
@@ -277,11 +277,11 @@
     },
     {
       "path": "docs/CORE-021_EN.md",
-      "sha256": "b161df685c35413a49a3c844d322aaece6505bb69819d20b19f0c6ed33aebc4f"
+      "sha256": "52d49548daf82e8125a3560b88015e1586860535e83c16f7d0f4d684422f986b"
     },
     {
       "path": "docs/CORE-021.md",
-      "sha256": "be583df2de4090417b50581db5050bab76b8cccdc98af1231c4279af2e15dcca"
+      "sha256": "fc8f0809fab738cf5206632ea84aab665306e8ef43dc5433f8fafdc7f8a2d20b"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -369,11 +369,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "ab528aa8b452b3a28e5ce5d56910a5301f5211ea2cc1959e2ceab66da988ea5f"
+      "sha256": "c95e808c50d5fe9f0eefb6ae5dda509a169200885328bda1c702a5929f8858ed"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "3f6dd67ae1a23025bee2bfc9af18d4d6a11a365d1881cc7160a1779fa33c0322"
+      "sha256": "e3bcd66b7b023288d5afe240d254a55c72ab3d49a71cfb2c81a445698b6b4621"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -3130,6 +3130,58 @@
     {
       "path": "LICENSE",
       "sha256": "dc719b536b8f7a51cd0ffaf928d37146894a3996119cb07d4fb7b67e551882dc"
+    },
+    {
+      "path": "packages/dsh-annotation/cordis.patch.yml",
+      "sha256": "fe13f9b352ce66242471a2f546d444ef5cfd13c7a453560501aca8863630e142"
+    },
+    {
+      "path": "packages/dsh-annotation/lib/client.js",
+      "sha256": "fe4beca3fffc1b6f940267a5cead9388e56cb73bd62348828f128b8d6eb6412b"
+    },
+    {
+      "path": "packages/dsh-annotation/lib/index.js",
+      "sha256": "4632774fb87871dbcd96000366f8aca5503f05f0662c7af2024f2cc88bb4f243"
+    },
+    {
+      "path": "packages/dsh-annotation/LICENSE",
+      "sha256": "dc719b536b8f7a51cd0ffaf928d37146894a3996119cb07d4fb7b67e551882dc"
+    },
+    {
+      "path": "packages/dsh-annotation/package-lock.json",
+      "sha256": "b03ab7eaa73e72e8c94bacf3e028a3752fb8c0c1ae84726c5387135917ba0138"
+    },
+    {
+      "path": "packages/dsh-annotation/package.json",
+      "sha256": "f5ad54fb5c8e428ad8bf67b4c08e1f768019b9e173685946e6f303099ea4c678"
+    },
+    {
+      "path": "packages/dsh-annotation/README_EN.md",
+      "sha256": "6fe8b74a98dc8f8a04eebbcfe51ba13510644837f00793512d058046049630ce"
+    },
+    {
+      "path": "packages/dsh-annotation/README.md",
+      "sha256": "d9fa22dd3d6e67f06250f0c81e40619f5cfad5501ccdacf4e0f751b7f18f8068"
+    },
+    {
+      "path": "packages/dsh-annotation/scripts/build.mjs",
+      "sha256": "46d11b77db35ff864d05d7b2c6bb23a5a3baf110c28cb0d5d1553729b494b8cc"
+    },
+    {
+      "path": "packages/dsh-annotation/src/client/index.js",
+      "sha256": "9c9652950a01d8b9b14423507f9c7f3331387a63b6fc9e57f2e41d495a2f8a3d"
+    },
+    {
+      "path": "packages/dsh-annotation/src/client/reference.js",
+      "sha256": "04dcd5f0f28da6ae9d86332b3bc84f9fbfe961e20916d3debe339b8d0b617734"
+    },
+    {
+      "path": "packages/dsh-annotation/src/index.js",
+      "sha256": "4632774fb87871dbcd96000366f8aca5503f05f0662c7af2024f2cc88bb4f243"
+    },
+    {
+      "path": "packages/dsh-annotation/test/annotation.test.mjs",
+      "sha256": "7129a8bf212ac435884359398b749dbed4341260410664421d3fdf397a1eba4a"
     },
     {
       "path": "packages/dsh-desktop-pet/CHANGELOG.md",
@@ -6357,11 +6409,11 @@
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "6447ec0f78da958086137f884f6c994a4e98030e5b7e1e5cdd1a37d79fbb4bdb"
+      "sha256": "7058af9238a1ef92a0e87874c4ab8783f6dfd6713e50b7e597349ef1a2d794cf"
     },
     {
       "path": "scripts/packages/manage.mjs",
-      "sha256": "83e3b71b5f44228b8d8d29b9297afff056b0cd6fcf9814e91252fd07c4101931"
+      "sha256": "123611acdcb8a3f885d81c66c5a2c202ddc76a4e1dc7ef4852664eb42e4a2cfe"
     },
     {
       "path": "scripts/packages/npm.mjs",
@@ -6809,7 +6861,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "749dccf893559667da3d66e2e8dd076a082facedfca5c632d06cf0922a9bd0c7"
+      "sha256": "fe2e315ccd1c4857a15c1718641df648e1ec2148a66175f2e501d4a8b258c54c"
     },
     {
       "path": "tests/parallel-sets.test.mjs",

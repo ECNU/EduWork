@@ -6,7 +6,7 @@ The current build recipe selects DSH `0.2.1-rc.2`, upstream commit `687f282e8625
 
 ## Capabilities and migration
 
-- Reuse the official plugin manager, browser and Office capabilities. The new DeepSeek Search / Fetch API providers use native settings; existing EduWork search defaults, user choices and browser fallback remain available.
+- Reuse the official plugin manager, browser and Office capabilities. Optional [selection quotes and notes](../packages/dsh-annotation/README_EN.md) install from the Plugins page. The new DeepSeek Search / Fetch API providers use native settings; existing EduWork search defaults, user choices and browser fallback remain available.
 - Schedule is now part of the upstream base composition. Upgrades remove dependency and activation references to the retired experimental Schedule bundle while preserving task storage, settings and other plugins. The obsolete bundle is no longer installed.
 - Official developer tools are available as an optional bundle. Request capture is not enabled by default. Enable diagnostics through the official plugin mechanism when needed and inspect exported data.
 - Literature and desktop pets continue to use published npm versions selected by their component locks. A core upgrade alone does not require republishing plugins to change version declarations.
