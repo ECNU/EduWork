@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
+import { shouldPresentMainWindow, startupWindowCompletion, startupWindowPresentation } from '../src/startup-presentation.mjs'
 
 const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false, startupWindowHidden: false }
 
@@ -10,6 +10,15 @@ test('the main BootPage is shown only when no other startup surface or stop cond
   for (const key of Object.keys(allowed)) {
     assert.equal(shouldPresentMainWindow({ ...allowed, [key]: true }), false, key)
   }
+})
+
+test('startup window handoff covers download-first, main-first and hidden intent', () => {
+  assert.deepEqual(startupWindowPresentation({ mainPresented: false, mainVisible: false }), { hideMain: false, showStartupWindow: true })
+  assert.deepEqual(startupWindowPresentation({ mainPresented: true, mainVisible: true }), { hideMain: true, showStartupWindow: true })
+  assert.deepEqual(startupWindowPresentation({ mainPresented: true, mainVisible: false }), { hideMain: false, showStartupWindow: false })
+  assert.deepEqual(startupWindowCompletion({ mainHiddenForStartup: false, startupWindowHidden: false }), { startupWindowHidden: false, restoreMainWindow: false })
+  assert.deepEqual(startupWindowCompletion({ mainHiddenForStartup: true, startupWindowHidden: false }), { startupWindowHidden: false, restoreMainWindow: true })
+  assert.deepEqual(startupWindowCompletion({ mainHiddenForStartup: true, startupWindowHidden: true }), { startupWindowHidden: true, restoreMainWindow: false })
 })
 
 test('legacy npm builds append motion support but not the native brand IPC preload', () => {
@@ -32,7 +41,22 @@ test('startup completion records a hidden dedicated window before destroying it'
   const ready = source.slice(start, end)
   assert.match(ready, /!progressWindow\.isVisible\(\)/)
   assert.ok(ready.indexOf('isVisible()') < ready.indexOf('progressWindow.destroy()'), 'hidden state must be captured before destruction')
-  assert.match(ready, /return \{ startupWindowHidden \}/)
+  assert.match(ready, /startupWindowCompletion/)
+  assert.match(ready, /return completion/)
+})
+
+test('startup window handoff is wired into the production window and presentation logic', () => {
+  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const create = source.slice(source.indexOf('function createProgressWindow'), source.indexOf('function showDesktopMessageBox'))
+  assert.match(create, /startupWindowPresentation/)
+  assert.match(create, /mainWindow\.hide\(\)/)
+  assert.match(create, /show: false/)
+  assert.match(create, /if \(presentation\.showStartupWindow\) progressWindow\.show\(\)/)
+  const attach = source.slice(source.indexOf('export async function attachDesktopWindow'), source.indexOf('const show = attachWindowVisibility'))
+  assert.match(attach, /mainWindowPresented = false/)
+  assert.match(attach, /window\.on\('show', \(\) => \{ mainWindowPresented = true \}\)/)
+  const native = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
+  assert.match(native, /completion\?\.restoreMainWindow/)
 })
 
 test('startup recovery drops the tray before the stale BootPage window', () => {

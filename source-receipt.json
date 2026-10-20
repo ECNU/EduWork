@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-20T09:44:46.991Z",
-  "fileSetSHA256": "4af11385a9985e1d8fe2fc4d86ea59172b8351d668bf4d138205b86905dc9068",
+  "createdAt": "2026-10-20T15:40:12.634Z",
+  "fileSetSHA256": "5acc35220e9ef6371506a17c12e6a7e44a5377be2fd86849d492238d82d01ef3",
   "files": [
     {
       "path": ".gitattributes",
@@ -1193,7 +1193,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "fb14abeeeaa42449629282f5596bd97953e1ee194aa49841fc406c69edf58b3e"
+      "sha256": "373d7def959c8d8e2949347ecc9d350a765ecf6dcaa2e8b4c556b1362e702915"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1213,7 +1213,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "a655c7349a14f55ec08fa64f52824c559e2591c35f966f862e7ba00f0d44802a"
+      "sha256": "9679a18e7f04ded0fb5ff6b29d4d1c35f7b5ff2547319d3e656f2fb44fcc4b13"
     },
     {
       "path": "dsh-electron/src/quit-confirmation.mjs",
@@ -1237,7 +1237,7 @@
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
-      "sha256": "d3abacf51a61f9264ec4d88e5670e7b18c01c13ce580a91ff26c8624094baaea"
+      "sha256": "18345303fa0355cb011182ae055c0f930769e00d8b4eef5980d4cd2f4f720396"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1361,7 +1361,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "6d36a8918eac3294ecec3d7358fb0628cab7108a5ae07bdfa99cf2801ea28f5d"
+      "sha256": "dd66db2b29a88d0e1dacb048eb49e79be7d71fc1dcb84eea313b7acac82440ef"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1429,7 +1429,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "bbfd319ec134d80520e1fd09ed947ee3491b7443e81d915832e7e252331ed8c8"
+      "sha256": "a2bb9e00680a55cdc980ed2f8761f1483aa4261327303c58d3530d245dbcd5a6"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",

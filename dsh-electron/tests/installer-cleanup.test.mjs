@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation', 'deferred-restored-completion', 'deferred-hidden-completion']) {
+for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation', 'deferred-restored-completion', 'deferred-hidden-completion', 'main-first-handoff', 'main-hidden-handoff']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     let guard = async () => true, completed, mainWindow, startupWindowPresent = scenario.startsWith('deferred-')
@@ -254,7 +254,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         calls.push('desktop-ready')
         if (scenario.startsWith('deferred-')) startupWindowPresent = false
         setTimeout(completed, 0)
-        return { startupWindowHidden: scenario === 'deferred-hidden-completion' }
+        return { startupWindowHidden: scenario === 'deferred-hidden-completion' || scenario === 'main-hidden-handoff', restoreMainWindow: scenario === 'main-first-handoff' }
       },
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail,
@@ -278,7 +278,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     mock('main.ts', { createWindow: () => {
       calls.push('window')
       return mainWindow = Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {}, isDestroyed: () => false, isMinimized: () => false,
-        show() { if (scenario.startsWith('deferred-')) calls.push('window-show') },
+        show() { if (scenario.startsWith('deferred-') || scenario.startsWith('main-')) calls.push('window-show') },
         focus() { if (scenario.startsWith('deferred-')) calls.push('window-focus') } })
     } })
     await import(new URL(`native-desktop.mjs?scenario=${scenario}`, source))
@@ -295,6 +295,12 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
       app.emit('activate')
       assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
+    } else if (scenario === 'main-first-handoff') {
+      assert.equal(calls.filter(call => call === 'window-show').length, 2)
+      assert.ok(calls.includes('desktop-ready'))
+    } else if (scenario === 'main-hidden-handoff') {
+      assert.equal(calls.filter(call => call === 'window-show').length, 1)
+      assert.ok(calls.includes('desktop-ready'))
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {

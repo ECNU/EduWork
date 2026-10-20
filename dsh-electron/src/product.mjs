@@ -34,6 +34,7 @@ import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
 import { startupPage } from './startup-page.mjs'
+import { startupWindowCompletion, startupWindowPresentation } from './startup-presentation.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -49,6 +50,8 @@ let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, 
 let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
+let mainWindowPresented = false
+let mainWindowHiddenForStartup = false
 let portableUpdates
 let contentUpdates, managedContent = {}
 let publisher
@@ -128,8 +131,12 @@ function startupAppearance() {
 // created for first-run configuration downloads, legacy migration or recovery.
 function createProgressWindow(message) {
   if (progressWindow && !progressWindow.isDestroyed()) return progressWindow
+  const mainPresent = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindowPresented)
+  const mainVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
+  const presentation = startupWindowPresentation({ mainPresented: mainPresent, mainVisible })
+  if (presentation.hideMain) { mainWindowHiddenForStartup = true; mainWindow.hide() }
   const appearance = startupAppearance()
-  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
+  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, show: false, title: settings.productName,
     icon: appearance.icon,
     backgroundColor: appearance.background, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
   removeWindowMenu(progressWindow)
@@ -138,7 +145,7 @@ function createProgressWindow(message) {
   void progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({
     productName: settings.productName, logo, background: appearance.background, accent: appearance.accent, message,
   }))).catch(error => desktopHostLog(`[desktop:startup] ${error.message}\n`))
-  progressWindow.show()
+  if (presentation.showStartupWindow) progressWindow.show()
   return progressWindow
 }
 function showDesktopMessageBox(options) {
@@ -303,13 +310,16 @@ export async function desktopReady(shouldContinue = () => true) {
   updateCompleted = true
   migrationLaunch = null
   // A dedicated download/migration window hidden by the user must not turn
-  // into an automatic main-window show when startup finishes.
+  // into an automatic main-window show when startup finishes. If the main
+  // window was visible before the handoff, return to it after the window closes.
   const startupWindowHidden = Boolean(progressWindow && !progressWindow.isDestroyed() && !progressWindow.isVisible())
+  const completion = startupWindowCompletion({ mainHiddenForStartup: mainWindowHiddenForStartup, startupWindowHidden })
+  mainWindowHiddenForStartup = false
   if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
   progressWindow = undefined
   desktopPet?.start()
   void portableUpdates?.action('check-updates-background').catch(()=>{})
-  return { startupWindowHidden }
+  return completion
 }
 
 function savedEduworkStyle() {
@@ -341,6 +351,9 @@ export function attachDockTheme(window) {
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  mainWindowPresented = false
+  mainWindowHiddenForStartup = false
+  window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
   attachDockTheme(window)
@@ -474,5 +487,7 @@ export async function showDesktopFailure(error) {
     tray = undefined
   }
   if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.destroy(); mainWindow = undefined }
+  mainWindowPresented = false
+  mainWindowHiddenForStartup = false
   progressWindow.show()
 }

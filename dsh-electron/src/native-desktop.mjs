@@ -173,8 +173,14 @@ async function main() {
   started = true
   const completion = await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
   // A deferred show waits until the first-run download or migration window is
-  // gone, and inherits a hidden dedicated window instead of overriding it.
-  if (backend.host && backend.state.phase === 'ready') presentInitialWindow(completion?.startupWindowHidden === true)
+  // gone, and inherits a hidden dedicated window instead of overriding it. If
+  // the main window was already visible before the handoff, return to it.
+  if (backend.host && backend.state.phase === 'ready') {
+    if (completion?.restoreMainWindow && !isQuitting() && !recovery.active && !window.isDestroyed()) {
+      initialPresentationDone = true
+      window.show()
+    } else presentInitialWindow(completion?.startupWindowHidden === true)
+  }
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
