@@ -4,6 +4,7 @@
  * actions, and the gate refuses them to remote devices. Every settings change
  * restarts remote access, which disconnects all devices.
  */
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
 import { hostname } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -41,6 +42,14 @@ const Config = z.object({
 
 const STATE = (): string => dshHomePath('plugins', 'dsh-remote-access', 'state.json')
 
+/**
+ * The async context the plugin was loaded in. A settings change reaches the
+ * plugin inside DSH's configuration transaction; connections started there
+ * would carry it into every later request, and DSH refuses a settings write
+ * from inside a transaction. Remote access starts in this context instead.
+ */
+const loadContext = AsyncLocalStorage.snapshot()
+
 export default class RemoteDevices extends TypertRemoteService {
   static inject = ['webServer', 'connection', 'typertGateway']
   static Config = Config
@@ -60,7 +69,7 @@ export default class RemoteDevices extends TypertRemoteService {
     this.config = config
     this.dsh = ctx
     this.logger = ctx.logger('eduwork-remote-access')
-    const restart = (): void => { this.settled = this.settled.then(() => this.restart()) }
+    const restart = (): void => { this.settled = loadContext(() => this.settled.then(() => this.restart())) }
     ctx.on('loader/volatile-update', restart)
     restart()
     ctx.effect(() => () => {

@@ -2,6 +2,7 @@
 // switched on and configured, then registered with a real relay, and stopped
 // with its fiber. Run `node scripts/build.ts` first.
 import assert from 'node:assert/strict'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -57,4 +58,28 @@ test('remote access runs only while switched on and configured, and stops with t
 
   await fiber.dispose()
   assert.equal((await running.status()).state, 'off')
+})
+
+test('remote access starts outside the settings change that switched it on', async t => {
+  const home = await mkdtemp(join(tmpdir(), 'remote-access-plugin-'))
+  process.env.DSH_HOME = home
+  const distIndex = join(home, 'index.html')
+  await writeFile(distIndex, '<!doctype html><head></head>')
+  const relay = await startRelay(t)
+  // Stands in for DSH's configuration transaction, which refuses nested settings writes.
+  const transaction = new AsyncLocalStorage<boolean>()
+  const started: (boolean | undefined)[] = []
+  const ctx = new Context()
+  t.after(() => ctx.fiber.dispose())
+  const connection = { ...services.connection, createSharedFetchHandler: () => {
+    started.push(transaction.getStore())
+    return services.connection.createSharedFetchHandler()
+  } }
+  for (const [name, value] of Object.entries({ ...services, connection })) ctx.provide(name, value)
+  await transaction.run(true, () => ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay, accessKey: ACCESS_KEY }))
+  const service: InstanceType<Plugin['default']> = ctx.get('remoteDevices')
+  await service.status()
+  transaction.run(true, () => ctx.emit('loader/volatile-update'))
+  await service.status()
+  assert.deepEqual(started, [undefined, undefined])
 })
