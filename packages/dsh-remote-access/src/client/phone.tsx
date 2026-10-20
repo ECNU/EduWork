@@ -5,6 +5,7 @@
  * sidebar over the whole width and closes it once a Session or a panel is
  * chosen, and puts the sidebar's two controls (open it, new Session) at the
  * top left, where DSH itself puts them while its sidebar is hidden on macOS.
+ * The settings dialog fills the screen likewise, its sections a row of tabs.
  * Everything else is DSH's, unchanged.
  */
 import { IconNewChatOutlineRegular, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
@@ -21,6 +22,8 @@ const PHONE = '(max-width: 767px)'
 const PANEL = 'data-eduwork-remote-panel'
 /** DSH's frame: its children are the columns, the overlay layer and the resize handle. */
 const FRAME = 'div:has(> [data-shell-overlay])'
+/** DSH's settings dialog: the section list (`nav`: title, then cells) beside the content (header, then the section). */
+const SETTINGS = '[data-shortcut-modal="settings"]'
 
 const css = `
 .eduwork-remote-controls { display: none; position: absolute; top: 8px; left: 8px; gap: 4px }
@@ -41,6 +44,17 @@ const css = `
   ${FRAME}[data-sidebar-collapsed]:not([data-rightbar-fullscreen]) .eduwork-remote-controls { display: flex }
   /* Unlike the conversation, global panels leave no room for the controls in their heading. */
   html[${PANEL}] ${FRAME} > :first-child + * { padding-top: 52px }
+  /* Beside the section list, a section would get a column a few characters wide. */
+  ${SETTINGS} { flex-direction: column; width: 100%; height: 100%; max-width: none; border-radius: 0 }
+  ${SETTINGS} > nav { width: auto; gap: 12px; padding: 22px 0 8px }
+  ${SETTINGS} > nav > :first-child { padding: 0 24px }
+  ${SETTINGS} > nav > :last-child { flex-direction: row; overflow-x: auto; padding: 0 16px; scrollbar-width: none }
+  ${SETTINGS} > nav > :last-child > * { flex: none }
+  /* Below the tabs, the content column has to shrink to what is left of the screen for the section to scroll. */
+  ${SETTINGS} > :last-child { min-height: 0 }
+  /* The section's actions and the close button go up beside the title. */
+  ${SETTINGS} > :last-child > :first-child { position: absolute; top: 0; right: 0 }
+  ${SETTINGS} > :last-child > :last-child { padding-top: 16px }
 }`
 
 interface Observable<T> { getSnapshot(): T; subscribe(listener: () => void): () => void }
