@@ -11,6 +11,9 @@
     "./typert": "./lib/typert.js",
     "./package.json": "./package.json"
   },
+  "bin": {
+    "eduwork-remote-relay": "lib/relay.js"
+  },
   "files": [
     "lib",
     "cordis.patch.yml",
