@@ -5,13 +5,14 @@ import { WebSocket } from 'ws'
 import { PROTOCOL } from '../../src/protocol/constants.ts'
 import { Close } from '../../src/protocol/close-codes.ts'
 import { hostIdOf, RELAY_PATHS, signRegistration } from '../../src/protocol/relay.ts'
+import { IssuerUnavailable } from '../../src/relay/id-token.ts'
 import { Relay, type RelayOptions } from '../../src/relay/relay.ts'
 
 const ORIGIN = 'https://relay.test'
 const KEY = 'operator-issued-key'
 
 async function startRelay(options: Partial<RelayOptions> = {}) {
-  const relay = new Relay({ origin: ORIGIN, accessKeys: [KEY], timeoutMs: 300, ...options })
+  const relay = new Relay({ origin: ORIGIN, accessKeys: [KEY], timeoutMs: 300, address: request => String(request.headers['x-real-ip']), ...options })
   const server = createServer((_request, response) => response.writeHead(404).end())
   server.on('upgrade', (request, socket, head) => relay.upgrade(request, socket, head) || socket.destroy())
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
@@ -26,7 +27,7 @@ class Peer {
   readonly #queue: (string | Buffer)[] = []
   #wake: (() => void) | undefined
 
-  constructor(url: string, options: { autoPong?: boolean } = {}) {
+  constructor(url: string, options: { autoPong?: boolean; headers?: Record<string, string> } = {}) {
     this.socket = new WebSocket(url, options)
     this.socket.on('message', (data: Buffer, isBinary) => {
       this.#queue.push(isBinary ? data : data.toString())
@@ -58,8 +59,8 @@ async function identity() {
   return { ...keys, hostId: await hostIdOf(keys.publicKey) }
 }
 
-async function register(base: string, host: Awaited<ReturnType<typeof identity>>, change: (message: Record<string, unknown>) => void = () => {}) {
-  const peer = new Peer(base + RELAY_PATHS.host)
+async function register(base: string, host: Awaited<ReturnType<typeof identity>>, change: (message: Record<string, unknown>) => void = () => {}, address = '192.0.2.1') {
+  const peer = new Peer(base + RELAY_PATHS.host, { headers: { 'x-real-ip': address } })
   const { nonce } = await peer.json() as { nonce: string }
   const message = { t: 'register', protocol: PROTOCOL, hostId: host.hostId, accessKey: KEY, sig: await signRegistration(host.privateKey, ORIGIN, nonce) }
   change(message)
@@ -199,5 +200,69 @@ test('a socket that stops answering pings is dropped', async () => {
   const { base, stop } = await startRelay({ heartbeatMs: 50 })
   const deaf = new Peer(base + RELAY_PATHS.host, { autoPong: false })
   assert.equal(await deaf.code(), 1006)
+  stop()
+})
+
+/** Stands in for an issuer: `member:<subject>:<exp>` is valid, `down` finds the issuer unreachable. */
+const issuer = {
+  verify: async (token: string) => {
+    const [kind, subject, exp] = token.split(':')
+    if (kind === 'down') throw new IssuerUnavailable('issuer unreachable')
+    if (kind !== 'member') throw new Error('invalid')
+    return { subject: subject!, expiresAt: Number(exp) }
+  },
+}
+const idToken = (subject: string, seconds = 3600) => (m: Record<string, unknown>) => {
+  delete m.accessKey
+  m.idToken = `member:${subject}:${Math.floor(Date.now() / 1000) + seconds}`
+}
+
+test('members register by ID Token, a few Hosts each, for as long as the token lasts', async () => {
+  const { base, stop } = await startRelay({ idTokens: issuer, maxHostsPerMember: 2 })
+  const [a, b, c, d] = [await identity(), await identity(), await identity(), await identity()]
+  const first = await register(base, a, idToken('alice'))
+  assert.deepEqual(await first.json(), { t: 'registered' })
+  const brief = await register(base, b, idToken('alice', 1))
+  assert.deepEqual(await brief.json(), { t: 'registered' })
+  assert.equal(await (await register(base, c, idToken('alice'))).code(), Close.unauthorized, 'a third Host of the same member')
+  assert.deepEqual(await (await register(base, c, idToken('bob'))).json(), { t: 'registered' })
+  // The same Host registering again counts once.
+  const again = await register(base, a, idToken('alice'))
+  assert.deepEqual(await again.json(), { t: 'registered' })
+  assert.equal(await first.code(), Close.replaced)
+  await pair(base, again, a.hostId)
+  // b's token lasts a second: the relay ends that registration, which makes room for another of alice's Hosts.
+  assert.equal(await brief.code(), Close.timeout)
+  assert.deepEqual(await (await register(base, d, idToken('alice'))).json(), { t: 'registered' })
+  stop()
+})
+
+test('refused registrations make an address wait; an unreachable issuer is not a refusal', async () => {
+  const keysOnly = await startRelay()
+  const host = await identity()
+  assert.equal(await (await register(keysOnly.base, host, idToken('alice'))).code(), Close.unauthorized, 'a relay that admits no organization')
+  keysOnly.stop()
+
+  const { base, stop } = await startRelay({ idTokens: issuer, refusalsPerMinute: 2 })
+  const token = (value: string) => (m: Record<string, unknown>) => {
+    delete m.accessKey
+    m.idToken = value
+  }
+  assert.equal(await (await register(base, host, token('down'))).code(), Close.unavailable)
+  assert.equal(await (await register(base, host, m => { m.idToken = 'member:alice:9999999999' })).code(), Close.unauthorized, 'both credentials')
+  assert.equal(await (await register(base, host, token('forged'))).code(), Close.unauthorized, 'an invalid token')
+  assert.equal(await (await register(base, host)).code(), Close.overLimit, 'even a valid key waits')
+  assert.deepEqual(await (await register(base, host, undefined, '192.0.2.9')).json(), { t: 'registered' }, 'another address')
+  stop()
+})
+
+test('a Host is asked to accept only so many connections a minute', async () => {
+  const { base, stop } = await startRelay({ connectsPerMinute: 2 })
+  const host = await identity()
+  const control = await register(base, host)
+  await control.json()
+  await pair(base, control, host.hostId)
+  await pair(base, control, host.hostId)
+  assert.equal(await new Peer(base + RELAY_PATHS.connect + host.hostId).code(), Close.overLimit)
   stop()
 })

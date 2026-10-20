@@ -4,7 +4,8 @@
  * and never sees plaintext.
  *
  *   Host   → /v1/host             relay: challenge; Host: register; relay: registered, then one `connect` per device;
- *                                  the Host may send `ping` at any time and the relay answers `pong`
+ *                                  the Host may send `ping` at any time and the relay answers `pong`; a registration
+ *                                  by ID Token ends when the token expires, so the Host registers again before then
  *   Host   → /v1/host/accept      Host: accept { id } as the first frame, then the paired byte pipe
  *   Device → /v1/connect/<hostId> relay: open once the Host accepted, then the paired byte pipe
  *
@@ -24,15 +25,19 @@ export type RelayToHost =
   /** A device is waiting; open {@link RELAY_PATHS.accept} and send `accept` with this id within the accept deadline. */
   | { readonly t: 'connect'; readonly id: string }
   | { readonly t: 'pong' }
-export interface Register {
+/**
+ * What admits a Host to the relay, never who may reach it: an access key the
+ * operator issued, or an ID Token from the sign-in of an organization the
+ * operator admits.
+ */
+export type RelayCredential = { readonly accessKey: string } | { readonly idToken: string }
+export type Register = {
   readonly t: 'register'
   /** End-to-end protocol the Host speaks; the relay refuses versions its web client does not. */
   readonly protocol: string
   readonly hostId: string
-  /** Credential issued by the relay operator; it only decides who may use this relay. */
-  readonly accessKey: string
   readonly sig: string
-}
+} & RelayCredential
 export interface Accept { readonly t: 'accept'; readonly id: string }
 export interface Open { readonly t: 'open' }
 

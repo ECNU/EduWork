@@ -22,6 +22,10 @@ RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
 
 `RELAY_ORIGIN` 是用户访问中继的公开地址；`RELAY_ACCESS_KEYS` 是发给电脑主人的接入密钥，多个用逗号分隔。中继默认监听 `127.0.0.1:8787`，可用 `HOST`、`PORT` 修改；`/healthz` 返回 `ok`，可用于监控。
 
+学校或企业也可以让成员凭自己的登录使用中继，不必逐个发接入密钥：`RELAY_OIDC_ISSUER` 填机构 OpenID Connect 登录的 issuer（例如 `https://sso.example.edu`），`RELAY_OIDC_CLIENT_IDS` 填桌面应用在该登录中的 client ID，多个用逗号分隔。电脑以登录得到的 ID Token 注册，中继用 issuer 公布的公钥验证，只记录用户标识，不记录 Token；Token 到期前电脑会自动换新的。两种方式可以同时启用。
+
+中继限制每个账号最多同时注册 5 台电脑，每台电脑每分钟最多接受 60 个设备连接，同一地址一分钟内注册被拒 10 次后要等待。中继在反向代理后面时，用 `RELAY_CLIENT_IP_HEADER` 指定代理传递客户端地址的请求头（例如 `x-real-ip`），否则所有用户共用代理的地址。
+
 ### 在电脑上开启
 
 在 DSH 中安装插件后重启：
@@ -31,6 +35,8 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
 打开“设置 → 远程访问”，填写中继服务器和接入密钥，勾选“允许远程访问”。显示“已连接中继服务器”后即可添加设备。远程访问默认关闭。
+
+机构的发行版可以预置自己的中继和登录（插件设置 `organization: { relay, oidcProfileId }`，`oidcProfileId` 是 [dsh-oidc](../dsh-oidc/README.md) 中的机构配置）。这时设置页不显示中继和接入密钥：登录机构账号并勾选“允许远程访问”即可，退出登录后远程访问随之停止。
 
 ### 添加和移除设备
 
@@ -54,7 +60,7 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 
 - 电脑和设备之间端到端加密，中继只转发密文。配对链接固定了电脑的公钥，中继无法冒充电脑。
 - 设备密钥由浏览器生成且不可导出，电脑只保存设备公钥。每次连接都要用设备密钥签名。
-- 接入密钥只决定谁能使用这台中继，不能用来连接别人的电脑。它保存在 DSH 的凭据里（`EDUWORK_REMOTE_ACCESS_KEY`），不写进插件设置。
+- 接入密钥和机构登录只决定谁能使用这台中继，不能用来连接别人的电脑。接入密钥保存在 DSH 的凭据里（`EDUWORK_REMOTE_ACCESS_KEY`），不写进插件设置；机构登录的 ID Token 只发给发行版预置的中继，设置页不能更改这个地址。
 - 手机上打开的网页由中继提供，部署中继的人可以修改它。请只使用你信任的中继。
 
 协议细节见[协议文档](docs/PROTOCOL.md)。

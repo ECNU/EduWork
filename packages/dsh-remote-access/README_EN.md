@@ -22,6 +22,10 @@ RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
 
 `RELAY_ORIGIN` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `/healthz` answers `ok` for monitoring.
 
+A school or company can instead let its members use the relay with their own sign-in, without handing out access keys: set `RELAY_OIDC_ISSUER` to the issuer of the organization's OpenID Connect sign-in (for example `https://sso.example.edu`) and `RELAY_OIDC_CLIENT_IDS` to the desktop application's client IDs in it, separated by commas. Computers register with the ID Token their sign-in issued; the relay checks it against the keys the issuer publishes and keeps only the user's identifier, never the token. Computers switch to a new token before theirs expires. Both ways can be enabled together.
+
+The relay lets each account register at most 5 computers at a time and each computer accept at most 60 device connections a minute; an address with 10 refused registrations in a minute has to wait. Behind a reverse proxy, set `RELAY_CLIENT_IP_HEADER` to the header in which the proxy passes the client's address (for example `x-real-ip`); otherwise all users share the proxy's address.
+
 ### Turn it on on the computer
 
 Install the plugin in DSH and restart it:
@@ -31,6 +35,8 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
 Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected to the relay server", you can add devices. Remote access is off by default.
+
+An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then shows no relay or access key: sign in with the organization's account and select "Allow remote access". Signing out stops remote access.
 
 ### Add and remove devices
 
@@ -54,7 +60,7 @@ They cannot open windows or programs or show notifications on the computer, regi
 
 - Traffic between the computer and the device is end-to-end encrypted; the relay only forwards ciphertext. The pairing link pins the computer's public key, so the relay cannot impersonate the computer.
 - The browser generates the device key as non-extractable; the computer stores only its public key. Every connection is signed with the device key.
-- An access key only decides who may use the relay; it cannot be used to connect to someone else's computer. It is kept in DSH's credentials (`EDUWORK_REMOTE_ACCESS_KEY`), not in the plugin's settings.
+- An access key or an organization sign-in only decides who may use the relay; neither can be used to connect to someone else's computer. The access key is kept in DSH's credentials (`EDUWORK_REMOTE_ACCESS_KEY`), not in the plugin's settings; the ID Token of an organization sign-in goes only to the relay the distribution preset, which the settings page cannot change.
 - The relay serves the page you open on your phone, so whoever runs the relay can change it. Use only relays you trust.
 
 See the [protocol document](docs/PROTOCOL.md) (Chinese) for details.

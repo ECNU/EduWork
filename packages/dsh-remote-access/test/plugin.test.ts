@@ -91,3 +91,44 @@ test('remote access starts outside the settings change that switched it on', asy
   await service.status()
   assert.deepEqual(started, [undefined, undefined])
 })
+
+test('with an organization set, remote access uses its relay and follows its sign-in', async t => {
+  const home = await mkdtemp(join(tmpdir(), 'remote-access-plugin-'))
+  process.env.DSH_HOME = home
+  const distIndex = join(home, 'index.html')
+  await writeFile(distIndex, '<!doctype html><head></head>')
+  // `member:<exp>` stands in for an ID Token of the organization's sign-in.
+  const relay = await startRelay(t, { accessKeys: [], idTokens: { verify: async token => ({ subject: 'alice', expiresAt: Number(token.split(':')[1]) }) } })
+  const account = { state: 'signed_out', tokens: 0 }
+  const oidcAccounts = {
+    status: async (profileID: string) => ({ profileID, state: account.state, displayName: 'Example University' }),
+    identityToken: async () => {
+      account.tokens++
+      const expiresAt = Math.floor(Date.now() / 1000) + 3600
+      return { token: `member:${expiresAt}`, expiresAt }
+    },
+  }
+  const ctx = new Context()
+  t.after(() => ctx.fiber.dispose())
+  for (const [name, value] of Object.entries({ ...services, credentials: credentials(new Map()), oidcAccounts })) ctx.provide(name, value)
+  // The relay set on the settings page does not count; the token goes only to the organization's.
+  await ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay: 'https://elsewhere.example', organization: { relay, oidcProfileId: 'example' } })
+  const service: InstanceType<Plugin['default']> = ctx.get('remoteDevices')
+  const organization = { name: 'Example University', relay }
+  assert.deepEqual(await service.status(), { state: 'sign-in', organization })
+
+  account.state = 'connected'
+  ctx.emit('oidc/accounts-changed', { profileID: 'other' })
+  assert.equal((await service.status()).state, 'sign-in', 'another sign-in changes nothing')
+  ctx.emit('oidc/accounts-changed', { profileID: 'example' })
+  await until(async () => {
+    const status = await service.status()
+    return status.state === 'on' && status.link.state === 'online'
+  }, 'registration by ID Token')
+  assert.deepEqual((await service.status()).organization, organization)
+  assert.equal(account.tokens, 1)
+
+  account.state = 'signed_out'
+  ctx.emit('oidc/accounts-changed', { profileID: 'example' })
+  assert.deepEqual(await service.status(), { state: 'sign-in', organization })
+})

@@ -101,7 +101,7 @@ async function until<T>(read: () => T | undefined, what: string, ms = 15_000): P
 }
 
 const startHost = (store: HostStore): RemoteAccess => {
-  const access = new RemoteAccess({ adapter: fakeDsh(), store, relay: origin, accessKey: ACCESS_KEY, hostName: 'Lab PC', warn: () => {} })
+  const access = new RemoteAccess({ adapter: fakeDsh(), store, relay: origin, credential: async () => ({ credential: { accessKey: ACCESS_KEY } }), hostName: 'Lab PC', warn: () => {} })
   access.start()
   return access
 }

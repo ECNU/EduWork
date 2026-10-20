@@ -4,6 +4,11 @@
  * actions, and the gate refuses them to remote devices. Every change to the
  * settings or the access key restarts remote access, which disconnects all
  * devices.
+ *
+ * A distribution may set an organization instead: a relay the organization
+ * runs, which admits a Host by the ID Token of its sign-in (dsh-oidc). The
+ * relay is then fixed, so the token goes nowhere else, and remote access
+ * follows that sign-in, starting with it and stopping with it.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
@@ -15,24 +20,39 @@ import { Remote, TypertRemoteService } from '@deepseek-ai/dsh-typert-protocol'
 import z from '@deepseek-ai/schemastery'
 import { HostStore } from './devices/store.ts'
 import { createHostAdapter, type DshServices } from './host/adapter.ts'
+import type { Admission } from './relay-link/link.ts'
 import { RemoteAccess, type RemoteAccessStatus } from './remote-access.ts'
 import { ACCESS_KEY_REF } from './typert.ts'
+
+/** The part of dsh-oidc's Host service used here. */
+interface OidcAccounts {
+  status(profileID: string): Promise<{ readonly state: string; readonly displayName: string }>
+  identityToken(profileID: string): Promise<{ readonly token: string; readonly expiresAt: number }>
+}
 
 declare module '@deepseek-ai/cordis' {
   interface Context extends DshServices {
     credentials: { resolve(ref: string): Promise<{ readonly value: string } | undefined> }
+    oidcAccounts: OidcAccounts
   }
   interface Events {
     'loader/volatile-update'(): void
     'credentials/reference-updated'(ref: string): void
+    'oidc/accounts-changed'(event: { readonly profileID: string }): void
   }
 }
 
-export type PanelStatus =
+/** The organization running the relay, when the distribution set one. */
+export interface Organization { readonly name: string; readonly relay: string }
+
+export type PanelStatus = (
   /** Switched off, or the relay or the access key is missing. */
   | { readonly state: 'off' }
+  /** Waiting for the user to sign in to the organization. */
+  | { readonly state: 'sign-in' }
   | { readonly state: 'failed'; readonly message: string }
   | ({ readonly state: 'on' } & RemoteAccessStatus)
+) & { readonly organization?: Organization }
 
 const Config = z.object({
   enabled: z.boolean().default(false).volatile(),
@@ -41,6 +61,12 @@ const Config = z.object({
   hostName: z.string().default('').volatile(),
   /** `index.html` of the published frontend; found the way the official web app finds it when empty. */
   distIndex: z.string().default(''),
+  /** Set by a distribution, not the settings page: when `relay` is set, it replaces the relay and the access key above. */
+  organization: z.object({
+    relay: z.string().default(''),
+    /** The dsh-oidc profile whose sign-in admits this Host. */
+    oidcProfileId: z.string().default(''),
+  }),
 })
 
 const STATE = (): string => dshHomePath('plugins', 'dsh-remote-access', 'state.json')
@@ -65,7 +91,10 @@ export default class RemoteDevices extends TypertRemoteService {
   private settled = Promise.resolve()
   private disposed = false
   private failure: string | undefined
+  private signedOut = false
+  private organization: Organization | undefined
   private access: RemoteAccess | undefined
+  private accounts: OidcAccounts | undefined
 
   constructor(ctx: Context, config: Schemastery.TypeT<typeof Config>) {
     super(ctx, 'remoteDevices')
@@ -75,6 +104,18 @@ export default class RemoteDevices extends TypertRemoteService {
     const restart = (): void => { this.settled = loadContext(() => this.settled.then(() => this.restart())) }
     ctx.on('loader/volatile-update', restart)
     ctx.on('credentials/reference-updated', ref => ref === ACCESS_KEY_REF && restart())
+    const { oidcProfileId } = config.organization
+    if (oidcProfileId !== '') {
+      ctx.on('oidc/accounts-changed', event => event.profileID === oidcProfileId && restart())
+      ctx.inject(['oidcAccounts'], inner => {
+        this.accounts = inner.oidcAccounts
+        restart()
+        inner.effect(() => () => {
+          this.accounts = undefined
+          restart()
+        })
+      })
+    }
     restart()
     ctx.effect(() => () => {
       this.disposed = true
@@ -86,8 +127,10 @@ export default class RemoteDevices extends TypertRemoteService {
   @Remote
   async status(): Promise<PanelStatus> {
     await this.settled
-    if (this.access !== undefined) return { state: 'on', ...this.access.status() }
-    return this.failure === undefined ? { state: 'off' } : { state: 'failed', message: this.failure }
+    const organization = this.organization && { organization: this.organization }
+    if (this.access !== undefined) return { state: 'on', ...this.access.status(), ...organization }
+    if (this.signedOut) return { state: 'sign-in', ...organization }
+    return this.failure === undefined ? { state: 'off', ...organization } : { state: 'failed', message: this.failure, ...organization }
   }
 
   @Remote
@@ -124,16 +167,27 @@ export default class RemoteDevices extends TypertRemoteService {
     this.access?.stop()
     this.access = undefined
     this.failure = undefined
-    const { enabled, relay, hostName, distIndex } = this.config
-    if (this.disposed || !enabled.get() || relay.get() === '') return
+    this.signedOut = false
+    const { enabled, hostName, distIndex, organization } = this.config
+    const { accounts } = this, profileID = organization.oidcProfileId
+    const managed = organization.relay !== ''
+    const relay = managed ? organization.relay : this.config.relay.get()
+    this.organization = managed ? { name: profileID, relay } : undefined
     try {
-      const accessKey = (await this.dsh.credentials.resolve(ACCESS_KEY_REF))?.value
-      if (accessKey === undefined) return
+      const account = managed ? await accounts?.status(profileID) : undefined
+      if (account !== undefined) this.organization = { name: account.displayName, relay }
+      if (this.disposed || !enabled.get() || relay === '') return
+      let credential: (() => Promise<Admission>) | undefined
+      if (!managed) credential = await this.accessKey()
+      else if (accounts === undefined) throw new Error(`sign-in "${profileID}" is not available`)
+      else if (account!.state === 'connected') credential = member(accounts, profileID)
+      else this.signedOut = true
+      if (credential === undefined) return
       const access = new RemoteAccess({
         adapter: createHostAdapter(this.dsh, distIndex || frontendIndex()),
         store: await HostStore.open(STATE()),
-        relay: relay.get(),
-        accessKey,
+        relay,
+        credential,
         hostName: hostName.get() || hostname(),
         warn: message => this.logger.warn(message),
       })
@@ -144,6 +198,20 @@ export default class RemoteDevices extends TypertRemoteService {
       this.logger.warn(message)
       this.failure = message
     }
+  }
+
+  /** The access key in DSH's credentials; undefined until one is saved. */
+  private async accessKey(): Promise<(() => Promise<Admission>) | undefined> {
+    const accessKey = (await this.dsh.credentials.resolve(ACCESS_KEY_REF))?.value
+    return accessKey === undefined ? undefined : async () => ({ credential: { accessKey } })
+  }
+}
+
+/** The current ID Token of the organization's sign-in, for every registration. */
+function member(accounts: OidcAccounts, profileID: string): () => Promise<Admission> {
+  return async () => {
+    const { token, expiresAt } = await accounts.identityToken(profileID)
+    return { credential: { idToken: token }, expiresAt }
   }
 }
 

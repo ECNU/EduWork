@@ -15,7 +15,7 @@ import { prologue } from '../src/protocol/noise.ts'
 import { RELAY_PATHS } from '../src/protocol/relay.ts'
 import { TunnelClient } from '../src/protocol/tunnel.ts'
 import { RemoteAccess, type RemoteAccessOptions } from '../src/remote-access.ts'
-import { ACCESS_KEY, startRelay, until } from './loopback.ts'
+import { startRelay, until, withKey } from './loopback.ts'
 
 /** A stand-in for DSH that records what reached it. */
 function fakeAdapter() {
@@ -40,7 +40,7 @@ function fakeAdapter() {
 async function startHost(t: TestContext, relay: string, overrides: Partial<RemoteAccessOptions> = {}) {
   const store = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'remote-access-')), 'state.json'))
   const { adapter, seen } = fakeAdapter()
-  const access = new RemoteAccess({ adapter, store, relay, accessKey: ACCESS_KEY, hostName: 'Lab PC', warn: () => {}, ...overrides })
+  const access = new RemoteAccess({ adapter, store, relay, credential: withKey(), hostName: 'Lab PC', warn: () => {}, ...overrides })
   access.start()
   t.after(() => access.stop())
   return { access, seen, store }
@@ -149,12 +149,12 @@ test('stopping disconnects every device, including one still waiting for approva
 
 test('a wrong access key stops the link; a second Host with the same identity replaces the first', async t => {
   const relay = await startRelay(t)
-  const wrong = await startHost(t, relay, { accessKey: 'guessed' })
+  const wrong = await startHost(t, relay, { credential: withKey('guessed') })
   await until(() => wrong.access.status().link.state === 'refused', 'refusal')
 
   const first = await startHost(t, relay)
   await until(() => first.access.status().link.state === 'online', 'registration')
-  const twin = new RemoteAccess({ adapter: fakeAdapter().adapter, store: first.store, relay, accessKey: ACCESS_KEY, hostName: 'Twin', warn: () => {} })
+  const twin = new RemoteAccess({ adapter: fakeAdapter().adapter, store: first.store, relay, credential: withKey(), hostName: 'Twin', warn: () => {} })
   twin.start()
   t.after(() => twin.stop())
   await until(() => first.access.status().link.state === 'replaced', 'replacement')

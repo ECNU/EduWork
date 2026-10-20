@@ -2,28 +2,34 @@
  * The Host's side of the relay. It keeps one registered control socket and,
  * for every device the relay announces, opens a fresh socket and hands it on
  * for the end-to-end handshake. A refused registration or a replaced identity
- * stops it until the owner acts; anything else is retried with backoff.
+ * stops it until the owner acts; anything else is retried with backoff. A
+ * credential that expires is replaced by registering again shortly before,
+ * on a new control socket; devices already connected are not affected.
  */
 import type { SocketLike } from '../protocol/channel.ts'
 import { Close } from '../protocol/close-codes.ts'
 import { PROTOCOL } from '../protocol/constants.ts'
-import { parseControl, RELAY_PATHS, signRegistration } from '../protocol/relay.ts'
+import { parseControl, RELAY_PATHS, signRegistration, type RelayCredential } from '../protocol/relay.ts'
 import type { HostIdentity } from '../devices/store.ts'
 
 export type LinkState =
   | { readonly state: 'connecting' }
   | { readonly state: 'online' }
   | { readonly state: 'offline'; readonly reason: string; readonly retryAt: number }
-  /** The relay refused the access key, the signature or the protocol version. */
+  /** The relay refused the credential, the signature or the protocol version. */
   | { readonly state: 'refused'; readonly reason: string }
   /** Another process registered with this Host identity. */
   | { readonly state: 'replaced' }
   | { readonly state: 'stopped' }
 
+/** A credential for one registration and, for one that expires, when (Unix seconds). */
+export interface Admission { readonly credential: RelayCredential; readonly expiresAt?: number }
+
 export interface RelayLinkOptions {
   /** The relay's public address, e.g. `https://remote.example.edu`. */
   readonly relay: string
-  readonly accessKey: string
+  /** Asked before every registration. */
+  credential(): Promise<Admission>
   readonly identity: HostIdentity
   /** A device is waiting on this socket; it is open and accepted at the relay. */
   accept(socket: SocketLike): void
@@ -31,20 +37,28 @@ export interface RelayLinkOptions {
   readonly pingMs?: number
   readonly pongMs?: number
   readonly backoffMs?: readonly number[]
+  /** Register again this long before the credential expires, but no sooner than `renewAfterMs` after registering. */
+  readonly renewBeforeMs?: number
+  readonly renewAfterMs?: number
 }
 
 export class RelayLink {
-  readonly #options: RelayLinkOptions & Required<Pick<RelayLinkOptions, 'pingMs' | 'pongMs' | 'backoffMs'>>
+  readonly #options: RelayLinkOptions & Required<Pick<RelayLinkOptions, 'pingMs' | 'pongMs' | 'backoffMs' | 'renewBeforeMs' | 'renewAfterMs'>>
   readonly #origin: string
   #control: WebSocket | undefined
+  /** The registration being renewed, kept until the new one is in place. */
+  #retiring: WebSocket | undefined
   /** The next ping or reconnect. */
   #timer: ReturnType<typeof setTimeout> | undefined
   #pongDeadline: ReturnType<typeof setTimeout> | undefined
+  #renewal: ReturnType<typeof setTimeout> | undefined
   #failures = 0
   #stopped = true
 
   constructor(options: RelayLinkOptions) {
-    this.#options = { pingMs: 25_000, pongMs: 10_000, backoffMs: [1000, 2000, 5000, 10_000, 30_000, 60_000], ...options }
+    this.#options = {
+      pingMs: 25_000, pongMs: 10_000, backoffMs: [1000, 2000, 5000, 10_000, 30_000, 60_000], renewBeforeMs: 5 * 60_000, renewAfterMs: 30_000, ...options,
+    }
     this.#origin = new URL(options.relay).origin
   }
 
@@ -60,24 +74,33 @@ export class RelayLink {
   }
 
   #connect(): void {
-    this.#options.onState({ state: 'connecting' })
+    if (this.#retiring === undefined) this.#options.onState({ state: 'connecting' })
     const control = new WebSocket(this.#url(RELAY_PATHS.host))
     this.#control = control
+    let expiresAt: number | undefined
     control.addEventListener('message', ({ data }) => {
       const message = typeof data === 'string' ? parseControl(data) : undefined
+      // The registration being replaced still passes on devices until the relay closes it.
+      if (message?.t === 'connect' && typeof message.id === 'string') return this.#open(message.id)
+      if (this.#control !== control) return
       if (message?.t === 'challenge' && typeof message.nonce === 'string') {
-        void signRegistration(this.#options.identity.signingKey, this.#origin, message.nonce).then(sig => control.send(JSON.stringify({
-          t: 'register', protocol: PROTOCOL, hostId: this.#options.identity.hostId, accessKey: this.#options.accessKey, sig,
-        })), () => this.#retry('could not sign the registration'))
+        void Promise.all([this.#options.credential(), signRegistration(this.#options.identity.signingKey, this.#origin, message.nonce)]).then(([admission, sig]) => {
+          expiresAt = admission.expiresAt
+          control.send(JSON.stringify({ t: 'register', protocol: PROTOCOL, hostId: this.#options.identity.hostId, sig, ...admission.credential }))
+        }, (error: Error) => this.#control === control && this.#retry(`no credential: ${error.message}`))
       } else if (message?.t === 'registered') {
         this.#failures = 0
+        this.#retiring?.close()
+        this.#retiring = undefined
         this.#options.onState({ state: 'online' })
         this.#ping(control)
+        if (expiresAt !== undefined) {
+          const { renewBeforeMs, renewAfterMs } = this.#options
+          this.#renewal = setTimeout(() => this.#renew(), Math.max(expiresAt * 1000 - Date.now() - renewBeforeMs, renewAfterMs))
+        }
       } else if (message?.t === 'pong') {
         clearTimeout(this.#pongDeadline)
         this.#ping(control)
-      } else if (message?.t === 'connect' && typeof message.id === 'string') {
-        this.#open(message.id)
       } else {
         control.close(Close.protocolError, 'unexpected relay message')
       }
@@ -96,6 +119,14 @@ export class RelayLink {
       control.send(JSON.stringify({ t: 'ping' }))
       this.#pongDeadline = setTimeout(() => this.#retry('relay stopped answering'), this.#options.pongMs)
     }, this.#options.pingMs)
+  }
+
+  /** Register again on a new control socket; the relay closes the current one once the new one is in place. */
+  #renew(): void {
+    clearTimeout(this.#timer)
+    clearTimeout(this.#pongDeadline)
+    this.#retiring = this.#control
+    this.#connect()
   }
 
   #open(id: string): void {
@@ -121,13 +152,16 @@ export class RelayLink {
     this.#options.onState(state)
   }
 
-  /** Abandon the current control socket; its later events are ignored. */
+  /** Abandon the control socket, and one being renewed; their later events are ignored. */
   #drop(): void {
     clearTimeout(this.#timer)
     clearTimeout(this.#pongDeadline)
-    const control = this.#control
+    clearTimeout(this.#renewal)
+    const control = this.#control, retiring = this.#retiring
     this.#control = undefined
+    this.#retiring = undefined
     control?.close()
+    retiring?.close()
   }
 
   #url(path: string): string {

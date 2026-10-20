@@ -12,14 +12,15 @@ import { formatPairingLink } from './protocol/auth.ts'
 import { Channel, type SocketLike } from './protocol/channel.ts'
 import { Close } from './protocol/close-codes.ts'
 import { prologue } from './protocol/noise.ts'
-import { RelayLink, type LinkState } from './relay-link/link.ts'
+import { RelayLink, type Admission, type LinkState } from './relay-link/link.ts'
 
 export interface RemoteAccessOptions {
   readonly adapter: HostAdapter
   readonly store: HostStore
   /** The relay's public address, e.g. `https://remote.example.edu`. */
   readonly relay: string
-  readonly accessKey: string
+  /** What admits this Host to the relay, asked before every registration. */
+  credential(): Promise<Admission>
   /** Shown to devices while pairing and once connected. */
   readonly hostName: string
   readonly warn: (message: string) => void
@@ -56,7 +57,7 @@ export class RemoteAccess {
     this.#connections = new Connections(compressPages(options.adapter), options.warn)
     this.#link = new RelayLink({
       relay: options.relay,
-      accessKey: options.accessKey,
+      credential: () => options.credential(),
       identity: options.store.identity,
       accept: socket => void this.#serve(socket).catch(error => options.warn(String(error))),
       onState: state => {

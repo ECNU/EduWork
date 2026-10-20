@@ -143,10 +143,16 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
         <p role="status" style={note}>{summary(settings, status, t)}</p>
       </section>
       <section style={{ ...section, display: 'grid', gap: 12 }}>
-        <TextSetting label={t('relay')} hint={t('relayHint')} value={settings.relay} disabled={locked} type="url"
-          onSave={value => save('relay', value)} />
-        <TextSetting label={t('accessKey')} hint={`${t('accessKeyHint')} ${accessKey.configured ? t('accessKeySet') : t('accessKeyMissing')}`}
-          value="" disabled={!accessKey.writable} type="password" onSave={value => value !== '' && saveAccessKey(value)} />
+        {status.organization === undefined
+          ? (
+            <>
+              <TextSetting label={t('relay')} hint={t('relayHint')} value={settings.relay} disabled={locked} type="url"
+                onSave={value => save('relay', value)} />
+              <TextSetting label={t('accessKey')} hint={`${t('accessKeyHint')} ${accessKey.configured ? t('accessKeySet') : t('accessKeyMissing')}`}
+                value="" disabled={!accessKey.writable} type="password" onSave={value => value !== '' && saveAccessKey(value)} />
+            </>
+          )
+          : <p style={{ ...note, margin: 0 }}>{t('organization', { organization: status.organization.name, relay: status.organization.relay })}</p>}
         <TextSetting label={t('hostName')} hint={t('hostNameHint')} value={settings.hostName} disabled={locked}
           onSave={value => save('hostName', value)} />
       </section>
@@ -160,10 +166,11 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
 function summary(settings: Settings, status: PanelStatus, t: Translate): string {
   if (status.state === 'failed') return t('failed', { message: status.message })
   if (status.state === 'off') return settings.enabled ? t('unconfigured') : ''
+  if (status.state === 'sign-in') return t('signIn', { organization: status.organization!.name })
   const { link } = status
   if (link.state === 'online') return t('linkOnline')
   if (link.state === 'offline') return t('linkOffline', { reason: link.reason })
-  if (link.state === 'refused') return t('linkRefused', { reason: link.reason })
+  if (link.state === 'refused') return t(status.organization === undefined ? 'linkRefused' : 'linkRefusedMember', { reason: link.reason })
   if (link.state === 'replaced') return t('linkReplaced')
   return t('linkConnecting')
 }
