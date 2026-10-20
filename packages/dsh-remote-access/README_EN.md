@@ -52,7 +52,7 @@ They cannot open windows or programs or show notifications on the computer, regi
 
 - Traffic between the computer and the device is end-to-end encrypted; the relay only forwards ciphertext. The pairing link pins the computer's public key, so the relay cannot impersonate the computer.
 - The browser generates the device key as non-extractable; the computer stores only its public key. Every connection is signed with the device key.
-- An access key only decides who may use the relay; it cannot be used to connect to someone else's computer.
+- An access key only decides who may use the relay; it cannot be used to connect to someone else's computer. It is kept in DSH's credentials (`EDUWORK_REMOTE_ACCESS_KEY`), not in the plugin's settings.
 - The relay serves the page you open on your phone, so whoever runs the relay can change it. Use only relays you trust.
 
 See the [protocol document](docs/PROTOCOL.md) (Chinese) for details.

@@ -7,15 +7,15 @@
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { encode } from 'uqr'
 import type { PanelStatus } from '../plugin.ts'
-import TYPERT from '../typert.ts'
+import TYPERT, { ACCESS_KEY_REF } from '../typert.ts'
 import { dictionaries, NS, type Key } from './locale.ts'
 
-export const inject = ['slots', 'locale', 'remote', 'configForms']
+export const inject = ['slots', 'locale', 'remote', 'remote.credentials', 'configForms']
 
 /** The Loader entry inserted by cordis.patch.yml. */
 const ENTRY = 'eduwork-remote-access'
 
-/** What the page edits directly; the access key is redacted from it. */
+/** The plugin's settings; the access key is a DSH credential instead. */
 interface Settings { enabled: boolean; relay: string; hostName: string }
 
 interface ConfigForm {
@@ -24,7 +24,7 @@ interface ConfigForm {
   set(field: string, value: unknown): Promise<boolean>
 }
 
-type RemoteResult = Promise<{ ok: true; value: PanelStatus } | { ok: false; error?: { code?: string; message?: string } }>
+type RemoteResult<T = PanelStatus> = Promise<{ ok: true; value: T } | { ok: false; error?: { code?: string; message?: string } }>
 interface Service {
   status(): Promise<PanelStatus>
   createInvite(): Promise<PanelStatus>
@@ -33,18 +33,29 @@ interface Service {
   revoke(key: string): Promise<PanelStatus>
 }
 
+/** What DSH tells about a credential, never its value. */
+interface CredentialInfo { configured: boolean; writable: boolean }
+interface Credentials {
+  describe(refs: string[]): RemoteResult<Record<string, CredentialInfo>>
+  set(ref: string, value: string): RemoteResult<void>
+}
+
 type Translate = (key: Key, values?: Record<string, string>) => string
 
 interface Surface {
   locale: { register(ns: string, dictionaries: object): () => void; bind(ns: string): (key: string) => string }
-  remote: { $mount(remote: object): Promise<() => Promise<void>>; remoteDevices: Record<keyof Service, (...args: unknown[]) => RemoteResult> }
+  remote: {
+    $mount(remote: object): Promise<() => Promise<void>>
+    remoteDevices: Record<keyof Service, (...args: unknown[]) => RemoteResult>
+    credentials: Credentials
+  }
   configForms: { get(entry: string): ConfigForm }
   slots: { inject(name: string, register: () => () => void): void; register(entry: object, component: (props: Props) => ReactNode): () => void }
   effect(execute: () => () => void, label?: string): void
   inject(deps: string[], callback: (surface: Surface) => void): void
 }
 
-interface Props { scope: ConfigForm; service: Service; t: Translate }
+interface Props { scope: ConfigForm; service: Service; credentials: Credentials; t: Translate }
 
 const POLL_MS = 1000
 
@@ -62,7 +73,7 @@ const strong: CSSProperties = { ...button, borderColor: accent, background: acce
 const input: CSSProperties = { width: '100%', maxWidth: 360, boxSizing: 'border-box', border: `1px solid ${border}`, borderRadius: 8, padding: '6px 10px', background: layer, color: primary, fontSize: 13 }
 const row: CSSProperties = { display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 16 }
 
-async function unwrap(result: RemoteResult): Promise<PanelStatus> {
+async function unwrap<T>(result: RemoteResult<T>): Promise<T> {
   const settled = await result
   if (settled.ok) return settled.value
   throw new Error(settled.error?.message || settled.error?.code || 'remote access unavailable')
@@ -71,10 +82,11 @@ async function unwrap(result: RemoteResult): Promise<PanelStatus> {
 const time = (iso: string | number, t: Translate): string =>
   new Date(iso).toLocaleString(t('locale'), { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' })
 
-function RemoteAccessSettings({ scope, service, t }: Props) {
+function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
   const subscribe = useCallback((listener: () => void) => scope.subscribe(listener), [scope])
   const snapshot = useSyncExternalStore(subscribe, () => scope.getSnapshot())
   const [status, setStatus] = useState<PanelStatus>()
+  const [accessKey, setAccessKey] = useState<CredentialInfo>()
   const [error, setError] = useState('')
   const settings = snapshot.value
   const locked = snapshot.status !== 'ready' || !snapshot.writable
@@ -90,6 +102,12 @@ function RemoteAccessSettings({ scope, service, t }: Props) {
     }
   }, [service])
 
+  const describeKey = useCallback(async (): Promise<void> => {
+    const described = await unwrap(credentials.describe([ACCESS_KEY_REF]))
+    setAccessKey(described[ACCESS_KEY_REF])
+  }, [credentials])
+  useEffect(() => void describeKey().catch((cause: Error) => setError(cause.message)), [describeKey])
+
   const act = (action: () => Promise<PanelStatus>): void => {
     setError('')
     action().then(setStatus, (cause: Error) => setError(cause.message))
@@ -98,6 +116,10 @@ function RemoteAccessSettings({ scope, service, t }: Props) {
     setError('')
     scope.set(field, value).then(accepted => accepted || setError(t('saveFailed')), () => setError(t('saveFailed')))
   }
+  const saveAccessKey = (value: string): void => {
+    setError('')
+    unwrap(credentials.set(ACCESS_KEY_REF, value)).then(describeKey).catch(() => setError(t('saveFailed')))
+  }
 
   const header = (
     <div>
@@ -105,7 +127,7 @@ function RemoteAccessSettings({ scope, service, t }: Props) {
       <p style={note}>{t('intro')}</p>
     </div>
   )
-  if (settings === undefined || status === undefined) {
+  if (settings === undefined || status === undefined || accessKey === undefined) {
     return <div style={{ color: primary }}>{header}<p role={error ? 'alert' : 'status'} style={note}>{error || t('loading')}</p></div>
   }
   return (
@@ -122,8 +144,8 @@ function RemoteAccessSettings({ scope, service, t }: Props) {
       <section style={{ ...section, display: 'grid', gap: 12 }}>
         <TextSetting label={t('relay')} hint={t('relayHint')} value={settings.relay} disabled={locked} type="url"
           onSave={value => save('relay', value)} />
-        <TextSetting label={t('accessKey')} hint={`${t('accessKeyHint')} ${status.accessKeySet ? t('accessKeySet') : t('accessKeyMissing')}`}
-          value="" disabled={locked} type="password" onSave={value => value !== '' && save('accessKey', value)} />
+        <TextSetting label={t('accessKey')} hint={`${t('accessKeyHint')} ${accessKey.configured ? t('accessKeySet') : t('accessKeyMissing')}`}
+          value="" disabled={!accessKey.writable} type="password" onSave={value => value !== '' && saveAccessKey(value)} />
         <TextSetting label={t('hostName')} hint={t('hostNameHint')} value={settings.hostName} disabled={locked}
           onSave={value => save('hostName', value)} />
       </section>
@@ -269,8 +291,9 @@ export async function apply(ctx: Surface): Promise<() => Promise<void>> {
       revoke: key => unwrap(remote.revoke(key)),
     }
     const scope = surface.configForms.get(ENTRY)
+    const credentials = surface.remote.credentials
     surface.slots.inject('settings.section', () => surface.slots.register({
-      name: 'settings.section', id: 'remote-access', order: 16, label: () => t('nav'), locale: NS, inject: () => ({ scope, service, t }),
+      name: 'settings.section', id: 'remote-access', order: 16, label: () => t('nav'), locale: NS, inject: () => ({ scope, service, credentials, t }),
     }, RemoteAccessSettings))
   })
   return unmount

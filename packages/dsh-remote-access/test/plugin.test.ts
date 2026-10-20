@@ -1,6 +1,6 @@
 // The built plugin in a Cordis context with stand-in DSH services: off until
-// switched on and configured, then registered with a real relay, and stopped
-// with its fiber. Run `node scripts/build.ts` first.
+// switched on, configured and given the access key, then registered with a
+// real relay, and stopped with its fiber. Run `node scripts/build.ts` first.
 import assert from 'node:assert/strict'
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { mkdtemp, writeFile } from 'node:fs/promises'
@@ -9,6 +9,7 @@ import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { parsePairingLink } from '../src/protocol/auth.ts'
+import { ACCESS_KEY_REF } from '../src/typert.ts'
 import { ACCESS_KEY, startRelay, until } from './loopback.ts'
 
 type Plugin = typeof import('../src/plugin.ts')
@@ -23,30 +24,36 @@ const services = {
   typertGateway: { wireStream: { open: async () => [], failure: () => ({ code: 'internal', message: '', details: {} }) } },
 }
 
-test('remote access runs only while switched on and configured, and stops with the plugin', async t => {
+/** DSH's credential service over the values stored so far. */
+const credentials = (stored: Map<string, string>) => ({
+  resolve: async (ref: string) => stored.has(ref) ? { value: stored.get(ref)! } : undefined,
+})
+
+test('remote access runs only while switched on and configured, starts once the access key is stored, and stops with the plugin', async t => {
   const home = await mkdtemp(join(tmpdir(), 'remote-access-plugin-'))
   process.env.DSH_HOME = home
   const distIndex = join(home, 'index.html')
   await writeFile(distIndex, '<!doctype html><head></head>')
   const relay = await startRelay(t)
+  const stored = new Map<string, string>()
   const ctx = new Context()
   t.after(() => ctx.fiber.dispose())
-  for (const [name, value] of Object.entries(services)) ctx.provide(name, value)
+  for (const [name, value] of Object.entries({ ...services, credentials: credentials(stored) })) ctx.provide(name, value)
   const load = async (config: object): Promise<{ fiber: { dispose(): Promise<void> }; service: InstanceType<Plugin['default']> }> => {
     const fiber = await ctx.plugin(RemoteDevices, { distIndex, ...config })
     return { fiber, service: ctx.get('remoteDevices') }
   }
 
   const off = await load({})
-  assert.deepEqual(await off.service.status(), { accessKeySet: false, state: 'off' })
+  assert.deepEqual(await off.service.status(), { state: 'off' })
   await assert.rejects(off.service.createInvite(), /not running/)
   await off.fiber.dispose()
 
-  const unconfigured = await load({ enabled: true, accessKey: ACCESS_KEY })
-  assert.deepEqual(await unconfigured.service.status(), { accessKeySet: true, state: 'off' }, 'no relay yet')
-  await unconfigured.fiber.dispose()
-
-  const { fiber, service: running } = await load({ enabled: true, relay, accessKey: ACCESS_KEY, hostName: 'Lab PC' })
+  const { fiber, service: running } = await load({ enabled: true, relay, hostName: 'Lab PC' })
+  assert.deepEqual(await running.status(), { state: 'off' }, 'no access key yet')
+  // The settings page stores the key through DSH, which announces the change.
+  stored.set(ACCESS_KEY_REF, ACCESS_KEY)
+  ctx.emit('credentials/reference-updated', ACCESS_KEY_REF)
   await until(async () => {
     const status = await running.status()
     return status.state === 'on' && status.link.state === 'online'
@@ -75,8 +82,9 @@ test('remote access starts outside the settings change that switched it on', asy
     started.push(transaction.getStore())
     return services.connection.createSharedFetchHandler()
   } }
-  for (const [name, value] of Object.entries({ ...services, connection })) ctx.provide(name, value)
-  await transaction.run(true, () => ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay, accessKey: ACCESS_KEY }))
+  const stored = new Map([[ACCESS_KEY_REF, ACCESS_KEY]])
+  for (const [name, value] of Object.entries({ ...services, connection, credentials: credentials(stored) })) ctx.provide(name, value)
+  await transaction.run(true, () => ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay }))
   const service: InstanceType<Plugin['default']> = ctx.get('remoteDevices')
   await service.status()
   transaction.run(true, () => ctx.emit('loader/volatile-update'))

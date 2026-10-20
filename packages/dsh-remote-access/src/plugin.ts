@@ -1,8 +1,9 @@
 /**
  * The DSH plugin. While switched on and configured it runs remote access for
  * this Host; its methods give the settings page the status and the owner's
- * actions, and the gate refuses them to remote devices. Every settings change
- * restarts remote access, which disconnects all devices.
+ * actions, and the gate refuses them to remote devices. Every change to the
+ * settings or the access key restarts remote access, which disconnects all
+ * devices.
  */
 import { AsyncLocalStorage } from 'node:async_hooks'
 import { createRequire } from 'node:module'
@@ -15,25 +16,27 @@ import z from '@deepseek-ai/schemastery'
 import { HostStore } from './devices/store.ts'
 import { createHostAdapter, type DshServices } from './host/adapter.ts'
 import { RemoteAccess, type RemoteAccessStatus } from './remote-access.ts'
+import { ACCESS_KEY_REF } from './typert.ts'
 
 declare module '@deepseek-ai/cordis' {
-  interface Context extends DshServices {}
+  interface Context extends DshServices {
+    credentials: { resolve(ref: string): Promise<{ readonly value: string } | undefined> }
+  }
   interface Events {
     'loader/volatile-update'(): void
+    'credentials/reference-updated'(ref: string): void
   }
 }
 
-/** The page reads the other settings itself; the access key is redacted from it, so only its presence is told. */
-export type PanelStatus = { readonly accessKeySet: boolean } & (
+export type PanelStatus =
   /** Switched off, or the relay or the access key is missing. */
   | { readonly state: 'off' }
   | { readonly state: 'failed'; readonly message: string }
-  | ({ readonly state: 'on' } & RemoteAccessStatus))
+  | ({ readonly state: 'on' } & RemoteAccessStatus)
 
 const Config = z.object({
   enabled: z.boolean().default(false).volatile(),
   relay: z.string().default('').volatile(),
-  accessKey: z.string().role('secret').default('').volatile(),
   /** Shown to devices; the computer's name when empty. */
   hostName: z.string().default('').volatile(),
   /** `index.html` of the published frontend; found the way the official web app finds it when empty. */
@@ -51,12 +54,12 @@ const STATE = (): string => dshHomePath('plugins', 'dsh-remote-access', 'state.j
 const loadContext = AsyncLocalStorage.snapshot()
 
 export default class RemoteDevices extends TypertRemoteService {
-  static inject = ['webServer', 'connection', 'typertGateway']
+  static inject = ['webServer', 'connection', 'typertGateway', 'credentials']
   static Config = Config
 
   private readonly config: Schemastery.TypeT<typeof Config>
   /** The providing context's services; `this.ctx` is the caller's when reached through a proxy. */
-  private readonly dsh: DshServices
+  private readonly dsh: Context
   private readonly logger
   /** Restarts run one after another; methods wait for the latest. */
   private settled = Promise.resolve()
@@ -71,6 +74,7 @@ export default class RemoteDevices extends TypertRemoteService {
     this.logger = ctx.logger('eduwork-remote-access')
     const restart = (): void => { this.settled = loadContext(() => this.settled.then(() => this.restart())) }
     ctx.on('loader/volatile-update', restart)
+    ctx.on('credentials/reference-updated', ref => ref === ACCESS_KEY_REF && restart())
     restart()
     ctx.effect(() => () => {
       this.disposed = true
@@ -82,9 +86,8 @@ export default class RemoteDevices extends TypertRemoteService {
   @Remote
   async status(): Promise<PanelStatus> {
     await this.settled
-    const accessKeySet = this.config.accessKey.get() !== ''
-    if (this.access !== undefined) return { accessKeySet, state: 'on', ...this.access.status() }
-    return this.failure === undefined ? { accessKeySet, state: 'off' } : { accessKeySet, state: 'failed', message: this.failure }
+    if (this.access !== undefined) return { state: 'on', ...this.access.status() }
+    return this.failure === undefined ? { state: 'off' } : { state: 'failed', message: this.failure }
   }
 
   @Remote
@@ -121,14 +124,16 @@ export default class RemoteDevices extends TypertRemoteService {
     this.access?.stop()
     this.access = undefined
     this.failure = undefined
-    const { enabled, relay, accessKey, hostName, distIndex } = this.config
-    if (this.disposed || !enabled.get() || relay.get() === '' || accessKey.get() === '') return
+    const { enabled, relay, hostName, distIndex } = this.config
+    if (this.disposed || !enabled.get() || relay.get() === '') return
     try {
+      const accessKey = (await this.dsh.credentials.resolve(ACCESS_KEY_REF))?.value
+      if (accessKey === undefined) return
       const access = new RemoteAccess({
         adapter: createHostAdapter(this.dsh, distIndex || frontendIndex()),
         store: await HostStore.open(STATE()),
         relay: relay.get(),
-        accessKey: accessKey.get(),
+        accessKey,
         hostName: hostName.get() || hostname(),
         warn: message => this.logger.warn(message),
       })
