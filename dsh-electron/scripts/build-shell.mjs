@@ -69,7 +69,9 @@ for (const file of files) {
     replace('  app.exit(1)', '  // Keep the startup error visible so the user can fix configuration and retry.')
     replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
   }
-  if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8')
+  if (file === 'apps/desktop/src/preload-app.ts') {
+    for (const name of ['dock-theme-preload.cjs', 'window-motion-preload.cjs']) text += '\n' + await readFile(join(repository, 'dsh-electron/src', name), 'utf8')
+  }
   if (!native && file === 'apps/desktop/src/locale.ts') {
     const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
     if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')

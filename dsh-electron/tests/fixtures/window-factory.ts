@@ -1,4 +1,4 @@
-// MIT: DeepSeek Harness, pinned input main.ts SHA256 20606a9e55be87e14d96ea3495a69d096db7c42760c0984d63c3cff2fb4f9c00
+// MIT: DeepSeek Harness, pinned input main.ts SHA256 e345eda0425f2df795d20413bb87bb9a3ddc46e71ceb1cec0755ad1cca3fb847
 function createWindow(preload: string, show = false, primary = false): BrowserWindow {
   const window = new BrowserWindow({
     width: 1280,
@@ -107,5 +107,6 @@ function createWindow(preload: string, show = false, primary = false): BrowserWi
   })
   return window
 }
+
 
 async function main() {}

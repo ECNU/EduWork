@@ -16,10 +16,12 @@ test('window factory keeps native fullscreen and editing behavior without reatta
 })
 
 test('startup branding cannot inject markup and status remains addressable', () => {
-  const page = startupPage({ title: '<img onerror="oops">', logo: '" onerror="oops' })
+  const page = startupPage({ productName: '<img onerror="oops">', logo: '" onerror="oops' })
   assert.ok(!page.includes('<img onerror='))
   assert.ok(page.includes('&lt;img'))
   assert.ok(page.includes('role="status"'))
-  assert.ok(page.includes('<progress aria-label='))
-  assert.ok(startupPage({ title: 'EduWork', logo: '', blue: true }).includes('#2575ff'))
+  assert.ok(page.includes('role="progressbar"'))
+  assert.ok(!page.includes('aria-valuenow'))
+  assert.ok(page.includes('animation:eduwork-startup-motion'))
+  assert.ok(startupPage({ productName: 'EduWork', logo: '', accent: '#2575ff' }).includes('#2575ff'))
 })
