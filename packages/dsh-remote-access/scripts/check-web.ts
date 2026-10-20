@@ -3,12 +3,12 @@
 // DSH serves a small document that uses the carrier hooks the way DSH's
 // client does. In Chromium and WebKit: pair through the page while the Host
 // owner approves, load the document through the Service Worker, call an RPC,
-// read a stream, download a file and an upload larger than the credit window,
+// read a stream, fetch and download a file, send an upload larger than the credit window,
 // survive the Host going away and coming back, and lose access on revocation.
 //
 //   node scripts/build.ts && node scripts/check-web.ts [chromium|webkit ...]
 import assert from 'node:assert/strict'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdtemp, readFile } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -48,6 +48,8 @@ window.exercise = async () => {
   }
   return result
 }
+// A download the browser manages itself, as DSH's export and document previews start them.
+window.save = () => Object.assign(document.createElement('a'), { href: 'api/file?path=notes.txt', download: 'notes.txt' }).click()
 document.getElementById('state').textContent = 'loaded'
 `
 
@@ -103,7 +105,7 @@ async function check(name: keyof typeof engines): Promise<Record<string, unknown
   await until(() => access.status().link.state === 'online' || undefined, 'the Host online')
   const browser = await engines[name].launch()
   try {
-    const page: Page = await browser.newPage()
+    const page: Page = await browser.newPage({ acceptDownloads: true })
     await page.goto(access.createInvite())
     await page.getByRole('button', { name: /开始配对|Pair/ }).click()
     const request = await until(() => access.status().pending[0], 'the pairing request')
@@ -122,6 +124,10 @@ async function check(name: keyof typeof engines): Promise<Record<string, unknown
     assert.equal(result.file, 'hello from the Host')
     assert.equal(result.uploaded, 'true')
     assert.deepEqual(result.refused, { kind: 'remote', code: 'remote-access/forbidden', details: { endpoint: 'terminal/create' } })
+    const download = page.waitForEvent('download')
+    await frame.evaluate(() => (window as unknown as { save(): void }).save())
+    assert.equal(await (await download).failure(), null, 'the browser saves a download through the tunnel')
+    assert.equal(await readFile((await (await download).path())!, 'utf8'), 'hello from the Host')
 
     // The Host goes away and comes back; the page reconnects without reloading the interface.
     access.stop()

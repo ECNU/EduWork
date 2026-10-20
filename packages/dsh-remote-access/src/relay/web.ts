@@ -26,7 +26,8 @@ export function webClient(dir: string, origin: string): (request: IncomingMessag
   const socketOrigin = origin.replace(/^http/, 'ws')
   const page = [
     // The crypto library compiles small WebAssembly hash functions; nothing evaluates JavaScript.
-    "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", `connect-src 'self' ${socketOrigin}`, "img-src 'self' data:", "frame-src 'self'",
+    // WebKit loads a download saved from a Blob (see web/preamble.ts) as a frame.
+    "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", `connect-src 'self' ${socketOrigin}`, "img-src 'self' data:", "frame-src 'self' blob:",
     "base-uri 'none'", "form-action 'none'", "frame-ancestors 'none'",
   ].join('; ')
   return async (request, response) => {
