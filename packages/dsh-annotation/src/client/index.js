@@ -124,7 +124,9 @@ function Editor({ draft, t, onAdd, onCancel }) {
   const [ref, position] = useFloating(draft)
   const submit = () => onAdd(note)
   return h('div', { ref, [UI]: '', role: 'dialog', style: { ...card, ...position, width: 320, maxWidth: 'calc(100vw - 16px)', maxHeight: 'calc(100vh - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 12 } },
-    h('blockquote', { style: { margin: '0 0 8px', padding: '0 0 0 8px', borderLeft: `3px solid ${border}`, color: secondary, maxHeight: 96, overflow: 'auto', whiteSpace: 'pre-wrap' } }, draft.quote),
+    h('details', { style: { marginBottom: 8, color: secondary } },
+      h('summary', { style: { cursor: 'pointer', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, draft.quote),
+      h('blockquote', { style: { margin: '8px 0 0', padding: '0 0 0 8px', borderLeft: `3px solid ${border}`, maxHeight: 96, overflow: 'auto', whiteSpace: 'pre-wrap' } }, draft.quote)),
     h('textarea', {
       autoFocus: true, value: note, maxLength: MAX_NOTE, rows: 3, placeholder: t('notePlaceholder'),
       onChange: event => setNote(event.target.value),
