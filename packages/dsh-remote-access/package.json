@@ -1,0 +1,39 @@
+{
+  "name": "@eduwork/dsh-remote-access",
+  "version": "0.1.0",
+  "description": "End-to-end encrypted remote access to a DSH host through a self-hosted relay",
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "node --test \"test/**/*.test.ts\"",
+    "check": "npm run typecheck && npm test"
+  },
+  "dependencies": {
+    "noise-handshake": "4.2.0",
+    "sodium-javascript": "0.8.0"
+  },
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "packages/dsh-remote-access"
+  },
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-remote-access#readme",
+  "bugs": {
+    "url": "https://github.com/ECNU/EduWork/issues"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "@types/ws": "8.18.2",
+    "esbuild": "0.28.2",
+    "playwright-core": "1.64.1",
+    "typescript": "7.0.2",
+    "ws": "8.22.0"
+  }
+}
