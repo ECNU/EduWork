@@ -58,3 +58,61 @@ test('bundle registers a codec source and inserts through the official event', a
   injected.insert(value, { captureInsertion: () => ({ start: 2, end: 5, draftRev: 7 }) })
   assert.deepEqual(JSON.parse(JSON.stringify(bails[0].slice(1))), ['slash/input-insert-reference', { reference: value, span: { start: 5, end: 5, draftRev: 7 } }])
 })
+
+test('annotation UI confirms Enter after composition and dismisses only outside the preview', async () => {
+  let factory, overlay, stateIndex = 0
+  const effects = [], listeners = new Map(), removed = []
+  const target = { quote: '原文', x: 10, y: 10 }
+  const React = {
+    createElement: (type, props, ...children) => ({ type, props, children }),
+    useEffect: fn => effects.push(fn), useLayoutEffect() {},
+    useRef: () => ({ current: null }),
+    useState: initial => [stateIndex++ === 0 ? target : initial, () => {}],
+    useSyncExternalStore: () => ({ quote: '原文', note: '批注' }),
+  }
+  const events = {
+    addEventListener: (name, fn) => listeners.set(name, fn),
+    removeEventListener: (name, fn) => { assert.equal(listeners.get(name), fn); removed.push(name) },
+  }
+  const window = { ...events, __ModuleLoader__: { load: entry => { factory = entry.factory } } }
+  vm.runInNewContext(await readFile(new URL('../lib/client.js', import.meta.url), 'utf8'), { window, document: { ...events, body: {} } })
+  const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal: node => node } })[name])
+  const scope = {
+    effect: fn => fn(), inputTriggers: { registerSource() {} },
+    slots: { inject: (_, fn) => fn(), register: (_, component) => { overlay = component } },
+  }
+  plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
+  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t })
+  const editorNode = tree.children[1]
+  let added = 0, prevented = 0
+  const editor = editorNode.type({ ...editorNode.props, onAdd: () => added++ })
+  const keydown = editor.children[1].props.onKeyDown
+  const key = extra => keydown({ key: 'Enter', nativeEvent: {}, preventDefault: () => prevented++, ...extra })
+  key({ nativeEvent: { isComposing: true } })
+  key({ nativeEvent: { keyCode: 229 } })
+  key({ shiftKey: true })
+  assert.equal(added, 0)
+  assert.equal(prevented, 0)
+  key({})
+  key({ metaKey: true })
+  assert.equal(added, 2)
+  assert.equal(prevented, 2)
+
+  effects.length = 0
+  const previewNode = tree.children[2]
+  let closed = 0
+  const preview = previewNode.type({ ...previewNode.props, onClose: () => closed++ })
+  const inside = {}
+  preview.props.ref.current = { contains: node => node === inside }
+  const cleanup = effects[0]()
+  listeners.get('pointerdown')({ target: inside })
+  listeners.get('focusin')({ target: inside })
+  assert.equal(closed, 0)
+  listeners.get('pointerdown')({ target: {} })
+  listeners.get('focusin')({ target: {} })
+  listeners.get('blur')()
+  listeners.get('keydown')({ key: 'Escape' })
+  assert.equal(closed, 4)
+  cleanup()
+  assert.deepEqual(removed.sort(), ['blur', 'focusin', 'keydown', 'pointerdown'])
+})

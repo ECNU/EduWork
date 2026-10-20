@@ -11,11 +11,11 @@ const MARKER = 'data-eduwork-annotation-marker'
 
 const copy = {
   zh: {
-    quote: '引用', notePlaceholder: '添加批注（可选）', add: '加入输入框', cancel: '取消', close: '关闭',
+    quote: '批注', notePlaceholder: '添加批注（可选）', add: '加入输入框', cancel: '取消', close: '关闭',
     notePrefix: '批注：', noted: '批注', preview: '引用内容', invalid: '引用内容已损坏。', insertFailed: '当前无法插入引用，请稍后再试。',
   },
   en: {
-    quote: 'Quote', notePlaceholder: 'Add a note (optional)', add: 'Add to message', cancel: 'Cancel', close: 'Close',
+    quote: 'Annotate', notePlaceholder: 'Add a note (optional)', add: 'Add to message', cancel: 'Cancel', close: 'Close',
     notePrefix: 'Note: ', noted: 'note', preview: 'Quoted text', invalid: 'This quote is damaged.', insertFailed: 'The quote cannot be inserted right now. Try again later.',
   },
 }
@@ -113,9 +113,10 @@ function useFloating(target) {
 function QuoteButton({ target, t, onClick }) {
   const [ref, position] = useFloating(target)
   return h('button', {
-    ref, [UI]: '', type: 'button', style: { ...card, ...position, padding: '5px 12px', cursor: 'pointer' },
+    ref, [UI]: '', type: 'button', style: { ...card, ...position, display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', cursor: 'pointer' },
     onMouseDown: event => event.preventDefault(), onClick,
-  }, t('quote'))
+  }, h('svg', { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, 'aria-hidden': true },
+    h('path', { d: 'M8 3v10M3 8h10' })), t('quote'))
 }
 
 function Editor({ draft, t, onAdd, onCancel }) {
@@ -128,9 +129,9 @@ function Editor({ draft, t, onAdd, onCancel }) {
       autoFocus: true, value: note, maxLength: MAX_NOTE, rows: 3, placeholder: t('notePlaceholder'),
       onChange: event => setNote(event.target.value),
       onKeyDown: (event) => {
-        if (event.nativeEvent.isComposing) return
+        if (event.nativeEvent.isComposing || event.nativeEvent.keyCode === 229) return
         if (event.key === 'Escape') onCancel()
-        if (event.key === 'Enter' && (event.ctrlKey || event.metaKey)) { event.preventDefault(); submit() }
+        if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); submit() }
       },
       style: { width: '100%', boxSizing: 'border-box', resize: 'vertical', border: `1px solid ${border}`, borderRadius: 7, padding: 7, font: 'inherit', background: 'transparent', color: primary },
     }),
@@ -140,12 +141,22 @@ function Editor({ draft, t, onAdd, onCancel }) {
 }
 
 function Preview({ annotation, t, onClose }) {
+  const ref = useRef(null)
   useEffect(() => {
     const onKey = (event) => { if (event.key === 'Escape') onClose() }
+    const onOutside = (event) => { if (!ref.current?.contains(event.target)) onClose() }
     document.addEventListener('keydown', onKey)
-    return () => document.removeEventListener('keydown', onKey)
+    document.addEventListener('pointerdown', onOutside, true)
+    document.addEventListener('focusin', onOutside)
+    window.addEventListener('blur', onClose)
+    return () => {
+      document.removeEventListener('keydown', onKey)
+      document.removeEventListener('pointerdown', onOutside, true)
+      document.removeEventListener('focusin', onOutside)
+      window.removeEventListener('blur', onClose)
+    }
   }, [onClose])
-  return h('div', { [UI]: '', role: 'dialog', style: { ...card, left: '50%', bottom: 160, transform: 'translateX(-50%)', width: 'min(560px, calc(100vw - 32px))', padding: 14 } },
+  return h('div', { ref, [UI]: '', role: 'dialog', style: { ...card, left: '50%', bottom: 160, transform: 'translateX(-50%)', width: 'min(560px, calc(100vw - 32px))', padding: 14 } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
       h('strong', null, t('preview')),
       h('button', { type: 'button', onClick: onClose, style: button(false) }, t('close'))),
