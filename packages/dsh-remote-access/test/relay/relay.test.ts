@@ -82,6 +82,8 @@ test('a registered Host serves each device on its own socket; bytes pass through
   const host = await identity()
   const control = await register(base, host)
   assert.deepEqual(await control.json(), { t: 'registered' })
+  control.send({ t: 'ping' })
+  assert.deepEqual(await control.json(), { t: 'pong' })
   const first = await pair(base, control, host.hostId), second = await pair(base, control, host.hostId)
   first.device.send(Uint8Array.of(1, 2, 3))
   second.host.send(Uint8Array.of(9))

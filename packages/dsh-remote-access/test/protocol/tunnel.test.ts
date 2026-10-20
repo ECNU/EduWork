@@ -229,3 +229,9 @@ test('ping is answered by the Host and fails once the channel is gone', async ()
   device.close()
   await assert.rejects(client.ping(), ChannelClosed)
 })
+
+test('the Host closes a connection whose device went silent', async () => {
+  const { device, host } = await channelPair()
+  void serveTunnel(host, handler({}), 50)
+  await assert.rejects(device.receive(), (error: ChannelClosed) => error.code === Close.timeout)
+})

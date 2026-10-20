@@ -24,5 +24,5 @@ declare module 'noise-handshake/cipher.js' {
 }
 
 declare module 'noise-handshake/dh.js' {
-  export function generateKeyPair(): { publicKey: Uint8Array; secretKey: Uint8Array }
+  export function generateKeyPair(secretKey?: Uint8Array): { publicKey: Uint8Array; secretKey: Uint8Array }
 }

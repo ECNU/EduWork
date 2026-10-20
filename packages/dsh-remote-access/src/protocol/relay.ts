@@ -3,7 +3,8 @@
  * and a Host socket are paired, the relay forwards binary messages verbatim
  * and never sees plaintext.
  *
- *   Host   → /v1/host             relay: challenge; Host: register; relay: registered, then one `connect` per device
+ *   Host   → /v1/host             relay: challenge; Host: register; relay: registered, then one `connect` per device;
+ *                                  the Host may send `ping` at any time and the relay answers `pong`
  *   Host   → /v1/host/accept      Host: accept { id } as the first frame, then the paired byte pipe
  *   Device → /v1/connect/<hostId> relay: open once the Host accepted, then the paired byte pipe
  *
@@ -22,6 +23,7 @@ export type RelayToHost =
   | { readonly t: 'registered' }
   /** A device is waiting; open {@link RELAY_PATHS.accept} and send `accept` with this id within the accept deadline. */
   | { readonly t: 'connect'; readonly id: string }
+  | { readonly t: 'pong' }
 export interface Register {
   readonly t: 'register'
   /** End-to-end protocol the Host speaks; the relay refuses versions its web client does not. */

@@ -63,8 +63,11 @@ interface Exchange {
   fail(reason: unknown): void
 }
 
-/** Host side: serve the device's exchanges until the channel closes. */
-export async function serveTunnel(channel: Channel, handler: TunnelHandler): Promise<void> {
+/**
+ * Host side: serve the device's exchanges until the channel closes.
+ * @param idleMs - close the channel when no frame arrived for this long; the device pings well within it.
+ */
+export async function serveTunnel(channel: Channel, handler: TunnelHandler, idleMs = 90_000): Promise<void> {
   const exchanges = new Map<number, { abort: AbortController; credit?: Credit; body?: IncomingBody; uplink?: Inbox<unknown> }>()
   const reject = (detail: string): void => channel.close(Close.protocolError, detail)
   let lastId = 0
@@ -115,10 +118,17 @@ export async function serveTunnel(channel: Channel, handler: TunnelHandler): Pro
     })()
   }
 
+  let idle: ReturnType<typeof setTimeout> | undefined
+  const arm = (): void => {
+    clearTimeout(idle)
+    idle = setTimeout(() => channel.close(Close.timeout, 'device went silent'), idleMs)
+  }
+  arm()
   try {
     for (;;) {
       const { header, body } = await channel.receive()
       if (channel.signal.aborted) break
+      arm()
       if (header.t === 'ping' && header.id === undefined) {
         channel.send({ t: 'pong' })
         continue
@@ -145,6 +155,7 @@ export async function serveTunnel(channel: Channel, handler: TunnelHandler): Pro
   } catch {
     // The channel closed; fall through to abort what is still running.
   }
+  clearTimeout(idle)
   for (const { abort } of exchanges.values()) abort.abort(channel.signal.reason)
 }
 

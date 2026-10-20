@@ -15,7 +15,8 @@ export const MAX_PLAINTEXT = MAX_MESSAGE - 16
 const NONCE_LIMIT = 2 ** 32
 
 export interface KeyPair { publicKey: Uint8Array; secretKey: Uint8Array }
-export const generateKeyPair = (): KeyPair => generate()
+/** A new static key pair, or the pair of a stored secret key. */
+export const generateKeyPair = (secretKey?: Uint8Array): KeyPair => generate(secretKey)
 
 export interface Session {
   /** Handshake hash: unique per connection; the device signs it and both sides derive the pairing code from it. */

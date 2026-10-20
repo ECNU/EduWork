@@ -1,5 +1,6 @@
 // In-memory WebSocket pair for protocol tests: asynchronous delivery, a real
 // bufferedAmount, and switches to stall delivery or tamper with messages.
+import { after } from 'node:test'
 import { Channel, type SocketLike } from '../src/protocol/channel.ts'
 import { generateKeyPair, prologue } from '../src/protocol/noise.ts'
 
@@ -68,6 +69,10 @@ export function socketPair(): [TestSocket, TestSocket] {
 export const hostKeys = generateKeyPair()
 export const hostPrologue = prologue('relay', 'host-id')
 
+const open = new Set<Channel>()
+// Close what a test file left open so Host-side timers do not hold the process.
+after(() => { for (const channel of open) channel.close() })
+
 /** Two ends of a completed handshake over a fresh socket pair. */
 export async function channelPair(): Promise<{ device: Channel; host: Channel; sockets: [TestSocket, TestSocket] }> {
   const sockets = socketPair()
@@ -75,5 +80,6 @@ export async function channelPair(): Promise<{ device: Channel; host: Channel; s
     Channel.connect(sockets[0], hostKeys.publicKey, hostPrologue, AbortSignal.timeout(2000)),
     Channel.accept(sockets[1], hostKeys, hostPrologue, AbortSignal.timeout(2000)),
   ])
+  open.add(device)
   return { device, host, sockets }
 }

@@ -93,7 +93,8 @@ export class Relay {
       if (ws.readyState !== WebSocket.OPEN) return
       this.#hosts.get(hostId)?.close(Close.replaced, 'registered again elsewhere')
       this.#hosts.set(hostId, ws)
-      ws.on('message', () => ws.close(Close.protocolError, 'unexpected message'))
+      // Hosts probe the control socket because their WebSocket cannot see protocol pings.
+      ws.on('message', (data, isBinary) => control(data, isBinary)?.t === 'ping' ? send(ws, { t: 'pong' }) : ws.close(Close.protocolError, 'unexpected message'))
       ws.on('close', () => {
         if (this.#hosts.get(hostId) !== ws) return
         this.#hosts.delete(hostId)
@@ -158,7 +159,8 @@ function pipe(from: WebSocket, to: WebSocket): void {
     })
     if (to.bufferedAmount >= HIGH_WATER) from.pause()
   })
-  from.on('close', (code, reason) => to.close(code >= 4000 && code < 5000 ? code : Close.peerClosed, reason.toString()))
+  // A deliberate close (1000 or an application code) reaches the other end as is; anything else is a lost peer.
+  from.on('close', (code, reason) => to.close(code === Close.normal || (code >= 4000 && code < 5000) ? code : Close.peerClosed, reason.toString()))
 }
 
 /** A device sent data before its Host accepted. */
