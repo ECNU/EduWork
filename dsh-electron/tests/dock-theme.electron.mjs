@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { attachWindowVisibility } from '../src/window-visibility.mjs'
 import { startupPage } from '../src/startup-page.mjs'
+import { startupWindowPresentation } from '../src/startup-presentation.mjs'
 import { removeWindowMenu } from '../src/desktop-menu.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
@@ -68,10 +69,10 @@ app.whenReady().then(async () => {
     const appearanceStart = source.indexOf('function startupAppearance()')
     const prepareStart = source.indexOf('async function prepareDesktop()', appearanceStart)
     if (appearanceStart < 0 || prepareStart < 0) throw new Error('Startup window boundary changed')
-    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', 'startupPage', 'removeWindowMenu', 'desktopHostLog', `return (async () => {
+    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', 'startupPage', 'removeWindowMenu', 'desktopHostLog', 'startupWindowPresentation', `return (async () => {
       const settings = { productName: 'Theme test' }, paths = { icon: ${JSON.stringify(join(brand, images[0]))} }
       const isQuitting = () => false, tray = undefined
-      let progressWindow
+      let progressWindow, mainWindow, mainWindowPresented = false, mainWindowHiddenForStartup = false
       ${source.slice(appearanceStart, prepareStart)}
       const appearance = startupAppearance()
       app.dock.setIcon(appearance.dock)
@@ -83,7 +84,7 @@ app.whenReady().then(async () => {
       writeFileSync(preference, JSON.stringify({ style }))
       let startupDock
       const startupApp = { getAppPath: () => appRoot, dock: { setIcon(file) { startupDock = file; app.dock.setIcon(file) } } }
-      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility, startupPage, removeWindowMenu)
+      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility, startupPage, removeWindowMenu, () => {}, startupWindowPresentation)
       assert.equal(startupDock, join(brand, style === 'dsh' ? images[3] : images[2]))
       assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).backgroundColor"), color)
       const expected = readFileSync(join(brand, style === 'dsh' ? images[1] : images[0])).toString('base64')
