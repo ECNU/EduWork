@@ -1,9 +1,11 @@
 :root { color-scheme: light dark; --accent: #9f2636; --line: #e7dfda; --muted: #746762; font: 15px/1.6 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
 @media (prefers-color-scheme: dark) { :root { --line: #3a3330; --muted: #b3a7a2; } }
-html, body { margin: 0; height: 100%; }
+/* Pulling down at the top of DSH would otherwise reload the page and reconnect. */
+html, body { margin: 0; height: 100%; overscroll-behavior: none; }
 [hidden] { display: none !important; }
 main { height: 100dvh; }
-iframe { display: block; width: 100%; height: 100%; border: 0; }
+/* DSH cannot see the notch or the home indicator from inside the frame, so the frame keeps clear of them. */
+iframe { display: block; box-sizing: border-box; width: 100%; height: 100%; border: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
 .card { box-sizing: border-box; max-width: 480px; margin: 0 auto; padding: max(32px, env(safe-area-inset-top)) 20px 32px; display: grid; gap: 14px; }
 h1 { margin: 0; font-size: 20px; }
 .note { margin: 0; color: var(--muted); font-size: 13px; }

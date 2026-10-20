@@ -5,7 +5,8 @@
  * sidebar over the whole width and closes it once a Session or a panel is
  * chosen, and puts the sidebar's two controls (open it, new Session) at the
  * top left, where DSH itself puts them while its sidebar is hidden on macOS.
- * The settings dialog fills the screen likewise, its sections a row of tabs.
+ * The settings dialog fills the screen likewise, its sections a row of tabs,
+ * and the open Session's row shows the actions a pointer would reveal.
  * Settings say they are view only on any remote device, which may not change
  * them. Everything else is DSH's, unchanged.
  */
@@ -27,6 +28,8 @@ const FRAME = 'div:has(> [data-shell-overlay])'
 const SETTINGS = '[data-shortcut-modal="settings"]'
 
 const css = `
+/* iOS zooms into a field whose text is under 16px as it takes focus, and stays zoomed. */
+@supports (-webkit-touch-callout: none) { input, textarea, select, [contenteditable="true"] { font-size: 16px !important } }
 /* The other header actions act on the Host's desktop. */
 ${SETTINGS} [data-slot="settings.action"] > :not(.eduwork-remote-view-only) { display: none }
 .eduwork-remote-view-only { font-size: 12px; line-height: 28px; white-space: nowrap; color: var(--dsw-alias-label-secondary) }
@@ -46,6 +49,9 @@ ${SETTINGS} [data-slot="settings.action"] > :not(.eduwork-remote-view-only) { di
   /* No room for the conversation's width handles; off to the side, they would let it scroll sideways. */
   ${FRAME} [data-width-handle] { display: none }
   ${FRAME}[data-sidebar-collapsed]:not([data-rightbar-fullscreen]) .eduwork-remote-controls { display: flex }
+  /* A touch opens a Session rather than hovering its row, so the open one shows its actions in place of its time. */
+  ${FRAME} [role="treeitem"][aria-selected="true"] > :last-child:has(button) { display: inline-flex }
+  ${FRAME} [role="treeitem"][aria-selected="true"] > :nth-child(n+3):not(:last-child) { display: none }
   /* Unlike the conversation, global panels leave no room for the controls in their heading. */
   html[${PANEL}] ${FRAME} > :first-child + * { padding-top: 52px }
   /* Beside the section list, a section would get a column a few characters wide. */
