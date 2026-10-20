@@ -2,11 +2,9 @@
 // stand-in adapter, and devices speaking the protocol over real WebSockets.
 import assert from 'node:assert/strict'
 import { mkdtemp } from 'node:fs/promises'
-import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test, { type TestContext } from 'node:test'
-import { setTimeout as sleep } from 'node:timers/promises'
 import { FORBIDDEN } from '../src/connections/handler.ts'
 import { HostStore } from '../src/devices/store.ts'
 import type { HostAdapter } from '../src/host/adapter.ts'
@@ -16,23 +14,8 @@ import { Close } from '../src/protocol/close-codes.ts'
 import { prologue } from '../src/protocol/noise.ts'
 import { RELAY_PATHS } from '../src/protocol/relay.ts'
 import { TunnelClient } from '../src/protocol/tunnel.ts'
-import { Relay } from '../src/relay/relay.ts'
 import { RemoteAccess, type RemoteAccessOptions } from '../src/remote-access.ts'
-
-const ACCESS_KEY = 'issued-to-this-host'
-
-async function startRelay(t: TestContext) {
-  const server = createServer((_request, response) => response.writeHead(404).end())
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-  const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
-  const relay = new Relay({ origin, accessKeys: [ACCESS_KEY] })
-  server.on('upgrade', (request, socket, head) => relay.upgrade(request, socket, head) || socket.destroy())
-  t.after(() => {
-    relay.close()
-    server.close()
-  })
-  return origin
-}
+import { ACCESS_KEY, startRelay, until } from './loopback.ts'
 
 /** A stand-in for DSH that records what reached it. */
 function fakeAdapter() {
@@ -51,11 +34,6 @@ function fakeAdapter() {
     streamFailure: error => ({ code: 'internal', message: String(error), details: {} }),
   }
   return { adapter, seen }
-}
-
-async function until(condition: () => boolean, what: string): Promise<void> {
-  for (let i = 0; i < 200 && !condition(); i++) await sleep(10)
-  assert.ok(condition(), `timed out waiting for ${what}`)
 }
 
 async function startHost(t: TestContext, relay: string, overrides: Partial<RemoteAccessOptions> = {}) {

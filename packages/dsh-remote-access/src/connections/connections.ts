@@ -30,7 +30,7 @@ export class Connections {
       await serveTunnel(channel, remoteHandler(this.#adapter, peer, name => {
         if (this.#refused.has(name)) return
         this.#refused.add(name)
-        this.#warn(`remote-access: refused ${name} for remote devices`)
+        this.#warn(`refused ${name} for remote devices`)
       }))
     } finally {
       channels.delete(channel)

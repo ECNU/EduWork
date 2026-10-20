@@ -46,7 +46,7 @@ export class HostStore {
     let state: Stored
     try {
       state = JSON.parse(await readFile(path, 'utf8')) as Stored
-      if (state.version !== 1) throw new Error(`remote-access: unsupported state version ${String(state.version)} in ${path}`)
+      if (state.version !== 1) throw new Error(`unsupported state version ${String(state.version)} in ${path}`)
     } catch (error) {
       if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error
       const signing = await crypto.subtle.generateKey('Ed25519', true, ['sign', 'verify']) as CryptoKeyPair

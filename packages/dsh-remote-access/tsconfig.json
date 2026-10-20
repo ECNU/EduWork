@@ -5,6 +5,7 @@
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
     "types": ["node"],
+    "jsx": "react-jsx",
     "strict": true,
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,

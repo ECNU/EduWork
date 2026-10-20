@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import test from 'node:test'
 import { allowed, allowsApiRequest, allowsEndpoint, REFUSED } from '../../src/gate/gate.ts'
+import { descriptors } from '../../src/typert.ts'
 
 const refused = new Set(Object.values(REFUSED).flat())
 
@@ -14,6 +15,10 @@ test('every endpoint and route of an assembled product is classified on purpose'
   }
   const both = [...allowed.endpoints, ...allowed.routes].filter(name => refused.has(name))
   assert.deepEqual(both, [], 'listed as both allowed and refused')
+})
+
+test('the settings page\'s own methods are refused by name', () => {
+  for (const { namespace, method } of descriptors) assert.ok(refused.has(`${namespace}/${method}`), method)
 })
 
 test('the first-version boundary holds', () => {

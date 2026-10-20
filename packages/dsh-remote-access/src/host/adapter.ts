@@ -56,18 +56,16 @@ const BUNDLE_HEADERS = ['content-type', 'cache-control', 'etag', 'last-modified'
 
 /**
  * @param dsh - the Host's services.
- * @param frontend.distIndex - `index.html` of the published `@deepseek-ai/dsh-web-frontend` the Host serves.
- * @param frontend.head - markup placed first in the remote document's `<head>`: the base URL and the transport hook.
+ * @param distIndex - `index.html` of the published `@deepseek-ai/dsh-web-frontend` the Host serves.
  */
-export function createHostAdapter(dsh: DshServices, frontend: { distIndex: string; head: string }): HostAdapter {
+export function createHostAdapter(dsh: DshServices, distIndex: string): HostAdapter {
   const api = dsh.connection.createSharedFetchHandler('/api')
-  const distRoot = dirname(frontend.distIndex)
+  const distRoot = dirname(distIndex)
 
+  /** The document as the Host renders it for its own browser; the web client adds its transport hook. */
   async function document(): Promise<Response> {
-    const html = dsh.webServer.renderIndex(await readFile(frontend.distIndex, 'utf8'))
-    return new Response(html.replace(/<head(?:\s[^>]*)?>/i, open => open + frontend.head), {
-      headers: { 'content-type': TYPES['.html']!, 'cache-control': 'no-store' },
-    })
+    const html = dsh.webServer.renderIndex(await readFile(distIndex, 'utf8'))
+    return new Response(html, { headers: { 'content-type': TYPES['.html']!, 'cache-control': 'no-store' } })
   }
 
   async function distFile(pathname: string): Promise<Response> {

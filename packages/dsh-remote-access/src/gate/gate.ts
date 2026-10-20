@@ -84,7 +84,10 @@ export const REFUSED: Readonly<Record<string, readonly string[]>> = {
     'terminal/attach', 'terminal/close', 'terminal/create', 'terminal/environment', 'terminal/list', 'terminal/rename',
     'terminal/retain', 'terminal/shells',
   ],
-  'belongs to remote access itself': ['remoteAccess/follow'],
+  'belongs to remote access itself': [
+    'remoteAccess/follow',
+    'remoteDevices/cancelInvite', 'remoteDevices/createInvite', 'remoteDevices/decide', 'remoteDevices/revoke', 'remoteDevices/status',
+  ],
 }
 
 const ENDPOINT = /^[A-Za-z0-9_$.-]+(?:\/[A-Za-z0-9_$.-]+)*$/

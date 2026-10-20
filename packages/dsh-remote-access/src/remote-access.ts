@@ -57,7 +57,7 @@ export class RemoteAccess {
       relay: options.relay,
       accessKey: options.accessKey,
       identity: options.store.identity,
-      accept: socket => void this.#serve(socket).catch(error => options.warn(`remote-access: ${String(error)}`)),
+      accept: socket => void this.#serve(socket).catch(error => options.warn(String(error))),
       onState: state => {
         this.#state = state
         this.#changed()
@@ -127,7 +127,7 @@ export class RemoteAccess {
     try {
       const device = await this.#pairing.admit(channel, this.#options.hostName)
       if (device === undefined) return
-      this.#options.store.seen(device.key, new Date().toISOString()).catch(error => this.#options.warn(`remote-access: ${String(error)}`))
+      this.#options.store.seen(device.key, new Date().toISOString()).catch(error => this.#options.warn(String(error)))
       const served = this.#connections.serve(channel, device.key)
       this.#changed()
       await served
