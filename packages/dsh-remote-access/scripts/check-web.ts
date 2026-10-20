@@ -2,7 +2,8 @@
 // installs no browsers). A real relay serves lib/web; a Host with a stand-in
 // DSH serves a small document that uses the carrier hooks the way DSH's
 // client does. In Chromium and WebKit: pair through the page while the Host
-// owner approves, load the document through the Service Worker, call an RPC,
+// owner approves, load the document through the Service Worker (its script
+// gzipped by the Host and unpacked by the worker), call an RPC,
 // read a stream, fetch and download a file, send an upload larger than the credit window,
 // survive the Host going away and coming back, and lose access on revocation.
 //
@@ -53,13 +54,19 @@ window.save = () => Object.assign(document.createElement('a'), { href: 'api/file
 document.getElementById('state').textContent = 'loaded'
 `
 
+/** The `accept-encoding` of each request for the document's script. */
+const scriptEncodings: (string | null)[] = []
+
 function fakeDsh(): HostAdapter {
   return {
     createPeer: () => ({ dispose: async () => {} }),
     async page(request) {
       const { pathname } = new URL(request.url)
       if (pathname === '/') return new Response('<!doctype html><html><head><title>DSH</title><script type="module" src="./assets/app.js"></script></head><body><p id="state">loading</p></body></html>', { headers: { 'content-type': 'text/html; charset=utf-8' } })
-      if (pathname === '/assets/app.js') return new Response(APP, { headers: { 'content-type': 'text/javascript' } })
+      if (pathname === '/assets/app.js') {
+        scriptEncodings.push(request.headers.get('accept-encoding'))
+        return new Response(APP, { headers: { 'content-type': 'text/javascript', 'cache-control': 'public, max-age=31536000, immutable' } })
+      }
       return new Response(null, { status: 404 })
     },
     async api(request) {
@@ -115,6 +122,7 @@ async function check(name: keyof typeof engines): Promise<Record<string, unknown
     await page.waitForURL(`${origin}/h/${store.identity.hostId}/`)
     const app = page.frameLocator('iframe')
     await app.locator('#state', { hasText: 'loaded' }).waitFor()
+    assert.equal(scriptEncodings.at(-1), 'gzip', 'the worker asks for the script gzipped')
     const frame = page.frames().find(candidate => candidate.url().endsWith('/app/'))!
     const result = await frame.evaluate(() => (window as unknown as { exercise(): Promise<Record<string, unknown>> }).exercise())
     assert.deepEqual(result.rpc, { type: 'server-response', rpcId: 'r1', result: { ok: true, value: ['s1'] } })

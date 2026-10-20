@@ -37,17 +37,23 @@ async function answer(request: Request, hostId: string, url: string): Promise<Re
   const reply = await viaLoader(hostId, {
     method: request.method,
     url,
-    headers: [...request.headers],
+    // The Host gzips the frontend's files for the tunnel; this worker unpacks them.
+    headers: [...request.headers, ['accept-encoding', 'gzip']],
     ...request.method !== 'GET' && request.method !== 'HEAD' && { body: await request.arrayBuffer() },
   })
   if ('error' in reply) return Response.error()
   const headers = new Headers(reply.headers)
+  let body = reply.body
+  if (headers.get('content-encoding') === 'gzip') {
+    body = await new Response(new Blob([body]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer()
+    headers.delete('content-encoding')
+  }
   const isDocument = request.mode === 'navigate' && (url === '/' || url.startsWith('/?'))
   if (isDocument && headers.get('content-type')?.startsWith('text/html')) {
-    const html = new TextDecoder().decode(reply.body).replace(/<head(\s[^>]*)?>/i, head => head + PREAMBLE)
+    const html = new TextDecoder().decode(body).replace(/<head(\s[^>]*)?>/i, head => head + PREAMBLE)
     return new Response(html, { status: reply.status, headers })
   }
-  const response = new Response(NULL_BODY.has(reply.status) || request.method === 'HEAD' ? null : reply.body, { status: reply.status, headers })
+  const response = new Response(NULL_BODY.has(reply.status) || request.method === 'HEAD' ? null : body, { status: reply.status, headers })
   if (cache !== undefined && response.ok) await cache.put(request, response.clone())
   return response
 }

@@ -3,6 +3,7 @@
  * in device sockets; each is handshaken, admitted by pairing and then served
  * by the connection manager through the Host adapter.
  */
+import { compressPages } from './connections/compression.ts'
 import { Connections } from './connections/connections.ts'
 import { Pairing, type PairingOptions, type PendingDevice } from './devices/pairing.ts'
 import type { Device, HostStore } from './devices/store.ts'
@@ -52,7 +53,7 @@ export class RemoteAccess {
   constructor(options: RemoteAccessOptions) {
     this.#options = options
     this.#pairing = new Pairing(options.store, () => this.#changed(), options.pairing)
-    this.#connections = new Connections(options.adapter, options.warn)
+    this.#connections = new Connections(compressPages(options.adapter), options.warn)
     this.#link = new RelayLink({
       relay: options.relay,
       accessKey: options.accessKey,
