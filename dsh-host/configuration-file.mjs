@@ -11,7 +11,7 @@ const canonical = value => JSON.stringify(value, (_, item) => object(item) ? Obj
 const hash = value => digest(canonical(value) ?? 'undefined')
 const keyed = value => Array.isArray(value) && value.length > 0 && value.every(item => object(item) && typeof item.id === 'string') && new Set(value.map(item => item.id)).size === value.length
 const own = (value, key) => value && Object.hasOwn(value, key) ? value[key] : undefined
-const business = value => Object.fromEntries(['organizations', 'features', 'media'].filter(key => value[key] !== undefined).map(key => [key, value[key]]))
+const business = value => Object.fromEntries(['organizations', 'features', 'media', 'remoteAccess'].filter(key => value[key] !== undefined).map(key => [key, value[key]]))
 
 // Only fingerprints are retained: this is merge metadata, not another config.
 export function configurationFingerprints(value) {
@@ -220,7 +220,7 @@ export class ConfigurationFile {
     const update = legacy ? { ...business(current.value), ...patch, features: { ...current.value.features, ...patch.features } }
       : mergeConfiguration(business(current.value), previous, patch, conflicts)
     const next = { ...current.value }
-    for (const name of ['organizations', 'features', 'media']) {
+    for (const name of ['organizations', 'features', 'media', 'remoteAccess']) {
       if (update[name] === undefined) delete next[name]
       else next[name] = update[name]
     }

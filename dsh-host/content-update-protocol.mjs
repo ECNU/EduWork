@@ -87,7 +87,7 @@ function authenticatedBundle(bytes, manifest) {
   if(!object(bundle)||bundle.schemaVersion!==1||Object.keys(bundle).some(k=>!['schemaVersion','configuration','skills'].includes(k)))throw Error('内容包结构无效')
   for(const name of ['configuration','skills'])if((bundle[name]!==undefined)!==(manifest.components[name]!==undefined))throw Error('内容组件与清单不一致')
   if(bundle.configuration!==undefined) {
-    if(!object(bundle.configuration)||!Object.keys(bundle.configuration).length||Object.keys(bundle.configuration).some(k=>!['organizations','features','media'].includes(k)))throw Error('配置更新只能修改机构目录、功能开关和媒体服务')
+    if(!object(bundle.configuration)||!Object.keys(bundle.configuration).length||Object.keys(bundle.configuration).some(k=>!['organizations','features','media','remoteAccess'].includes(k)))throw Error('配置更新只能修改机构目录、功能开关、媒体服务和远程访问')
     if(Buffer.byteLength(JSON.stringify(bundle.configuration))>1024*1024)throw Error('配置更新超过 1 MiB')
     const safe = value => {
       if(!value || typeof value!=='object')return
