@@ -31,7 +31,7 @@ const APP = `
 const transport = globalThis.__DSH_TRANSPORT__
 const plain = value => Object.getPrototypeOf(value) === Object.prototype
 window.exercise = async () => {
-  const result = {}
+  const result = { marked: document.documentElement.hasAttribute('data-eduwork-remote') }
   const rpc = await transport.fetch(new URL('api/session/list', document.baseURI), {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rpcId: 'r1' }) })
   result.rpc = await rpc.json()
@@ -125,6 +125,7 @@ async function check(name: keyof typeof engines): Promise<Record<string, unknown
     assert.equal(scriptEncodings.at(-1), 'gzip', 'the worker asks for the script gzipped')
     const frame = page.frames().find(candidate => candidate.url().endsWith('/app/'))!
     const result = await frame.evaluate(() => (window as unknown as { exercise(): Promise<Record<string, unknown>> }).exercise())
+    assert.equal(result.marked, true, 'the preamble marks the document of a remote device')
     assert.deepEqual(result.rpc, { type: 'server-response', rpcId: 'r1', result: { ok: true, value: ['s1'] } })
     assert.deepEqual(result.items, [{ endpoint: '$events', n: 1 }, { nested: { n: 2 } }])
     assert.equal(result.rpcPlain, true, 'RPC results are objects of the iframe realm')

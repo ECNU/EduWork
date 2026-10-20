@@ -55,6 +55,8 @@ function dispositionName(header: string): string | undefined {
 }
 
 if (tunnel !== undefined) {
+  // The client plugin fits DSH's interface to a phone only on remote devices.
+  document.documentElement.setAttribute('data-eduwork-remote', '')
   Object.assign(globalThis, {
     __DSH_TRANSPORT__: {
       async fetch(input: string | URL, init: RequestInit): Promise<Response> {

@@ -6,7 +6,7 @@
 
 The package has two parts:
 
-- **DSH plugin**: runs on the computer being accessed. Its settings page switches remote access on and off and adds and removes devices.
+- **DSH plugin**: runs on the computer being accessed. Its settings page switches remote access on and off and adds and removes devices, and it fits DSH's interface to phone screens.
 - **Relay service**: runs on a server with a public address. It forwards ciphertext and serves the page you open on your phone.
 
 ## Use
@@ -45,6 +45,8 @@ Choose "Remove" under "Paired devices" on the computer to disconnect a device at
 ## What remote devices can do
 
 They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results; in EduWork they can also use Studio results and the calendar.
+
+A phone shows DSH's own interface, only fitted to the narrow screen: the session list (workspace folders, search, new session and so on) opens full screen from the top-left corner and closes once you pick a session or a panel; conversations show durations, retries, approvals and questions as on the computer.
 
 They cannot open windows or programs or show notifications on the computer, register or remove workspaces, change settings or manage accounts, plugins, credentials, skills or memories, use terminals or run code, or manage remote access itself. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
 

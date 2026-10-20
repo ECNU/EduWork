@@ -2,13 +2,14 @@
  * The settings page on the Host's own screen: the switch and the relay
  * settings, the pairing QR code, confirmation of waiting devices and the list
  * of paired devices. Remote devices never see this page; the gate refuses its
- * methods to them.
+ * methods to them, and they get DSH fitted to a phone instead (phone.tsx).
  */
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { encode } from 'uqr'
 import type { PanelStatus } from '../plugin.ts'
 import TYPERT, { ACCESS_KEY_REF } from '../typert.ts'
 import { dictionaries, NS, type Key } from './locale.ts'
+import { inject as phoneInject, phone, REMOTE, type PhoneSurface } from './phone.tsx'
 
 export const inject = ['slots', 'locale', 'remote', 'remote.credentials', 'configForms']
 
@@ -52,7 +53,7 @@ interface Surface {
   configForms: { get(entry: string): ConfigForm }
   slots: { inject(name: string, register: () => () => void): void; register(entry: object, component: (props: Props) => ReactNode): () => void }
   effect(execute: () => () => void, label?: string): void
-  inject(deps: string[], callback: (surface: Surface) => void): void
+  inject<S = Surface>(deps: string[], callback: (surface: S) => void): void
 }
 
 interface Props { scope: ConfigForm; service: Service; credentials: Credentials; t: Translate }
@@ -276,12 +277,17 @@ function QrCode({ text, label }: { text: string; label: string }) {
   )
 }
 
-export async function apply(ctx: Surface): Promise<() => Promise<void>> {
-  const unmount = await ctx.remote.$mount({ package: TYPERT.package, descriptors: TYPERT.invocations })
+export async function apply(ctx: Surface): Promise<(() => Promise<void>) | undefined> {
   ctx.effect(() => ctx.locale.register(NS, dictionaries), 'remote-access: dictionaries')
+  const bound = ctx.locale.bind(NS)
+  const t: Translate = (key, values = {}) => bound(key).replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? '')
+  // A remote device gets DSH fitted to a phone instead of this page, whose methods the gate refuses it.
+  if (document.documentElement.hasAttribute(REMOTE)) {
+    ctx.inject<PhoneSurface>(phoneInject, surface => phone(surface, t))
+    return
+  }
+  const unmount = await ctx.remote.$mount({ package: TYPERT.package, descriptors: TYPERT.invocations })
   ctx.inject(['remote.remoteDevices'], surface => {
-    const bound = surface.locale.bind(NS)
-    const t: Translate = (key, values = {}) => bound(key).replace(/\{(\w+)\}/g, (_, name: string) => values[name] ?? '')
     const remote = surface.remote.remoteDevices
     const service: Service = {
       status: () => unwrap(remote.status()),

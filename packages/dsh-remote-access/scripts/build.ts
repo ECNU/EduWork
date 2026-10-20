@@ -33,7 +33,7 @@ const results = await Promise.all([
   // The settings page, in the module format DSH clients load plugin pages in.
   build({
     ...web, entryPoints: ['src/client/index.tsx'], outfile: 'lib/client.js', format: 'cjs', target: 'es2022', jsx: 'automatic',
-    external: ['react', 'react/*'],
+    external: ['react', 'react/*', '@deepseek-ai/dsh-client-ui-primitives'],
     banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
     footer: { js: 'return module.exports; } });' },
   }),
