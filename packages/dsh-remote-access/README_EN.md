@@ -46,7 +46,7 @@ Choose "Remove" under "Paired devices" on the computer to disconnect a device at
 
 They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results; in EduWork they can also use Studio results and the calendar.
 
-A phone shows DSH's own interface, only fitted to the narrow screen: the session list (workspace folders, search, new session and so on) opens full screen from the top-left corner and closes once you pick a session or a panel; settings also fill the screen, with the sections as a row of tabs; conversations show durations, retries, approvals and questions as on the computer.
+A phone shows DSH's own interface, only fitted to the narrow screen: the session list (workspace folders, search, new session and so on) opens full screen from the top-left corner and closes once you pick a session or a panel; settings also fill the screen, with the sections as a row of tabs, and are view only on remote devices; conversations show durations, retries, approvals and questions as on the computer.
 
 They cannot open windows or programs or show notifications on the computer, register or remove workspaces, change settings or manage accounts, plugins, credentials, skills or memories, use terminals or run code, or manage remote access itself. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
 

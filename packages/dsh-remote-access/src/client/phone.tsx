@@ -6,7 +6,8 @@
  * chosen, and puts the sidebar's two controls (open it, new Session) at the
  * top left, where DSH itself puts them while its sidebar is hidden on macOS.
  * The settings dialog fills the screen likewise, its sections a row of tabs.
- * Everything else is DSH's, unchanged.
+ * Settings say they are view only on any remote device, which may not change
+ * them. Everything else is DSH's, unchanged.
  */
 import { IconNewChatOutlineRegular, IconPanelLeftOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
 import type { ReactNode } from 'react'
@@ -26,6 +27,9 @@ const FRAME = 'div:has(> [data-shell-overlay])'
 const SETTINGS = '[data-shortcut-modal="settings"]'
 
 const css = `
+/* The other header actions act on the Host's desktop. */
+${SETTINGS} [data-slot="settings.action"] > :not(.eduwork-remote-view-only) { display: none }
+.eduwork-remote-view-only { font-size: 12px; line-height: 28px; white-space: nowrap; color: var(--dsw-alias-label-secondary) }
 .eduwork-remote-controls { display: none; position: absolute; top: 8px; left: 8px; gap: 4px }
 .eduwork-remote-controls button {
   display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0;
@@ -63,7 +67,7 @@ export interface PhoneSurface {
   layout: { panelInfo: Observable<{ activePanelId: string | null }>; toggleSidebar(): void }
   uiSession: { adapter: { current: Observable<{ key: string | undefined }> } }
   uiWorkspace: { startSession(): void }
-  slots: { inject(name: string, register: () => () => void): void; register(entry: object, component: (props: Props) => ReactNode): () => void }
+  slots: { inject(name: string, register: () => () => void): void; register<P>(entry: object, component: (props: P) => ReactNode): () => void }
   effect(execute: () => () => void, label?: string): void
 }
 
@@ -76,6 +80,11 @@ function Controls({ toggleSidebar, startSession, t }: Props) {
       <button type="button" aria-label={t('newSession')} onClick={startSession}><IconNewChatOutlineRegular size={18} /></button>
     </div>
   )
+}
+
+/** The gate refuses every settings change from a device, which DSH would show only as the control springing back. */
+function ViewOnly({ t }: { t(key: Key): string }) {
+  return <span className="eduwork-remote-view-only">{t('settingsViewOnly')}</span>
 }
 
 export function phone(ctx: PhoneSurface, t: (key: Key) => string): void {
@@ -130,4 +139,7 @@ export function phone(ctx: PhoneSurface, t: (key: Key) => string): void {
   ctx.slots.inject('shell.overlay', () => ctx.slots.register({
     name: 'shell.overlay', id: 'remote-access.phone', inject: () => ({ toggleSidebar: () => layout.toggleSidebar(), startSession: () => uiWorkspace.startSession(), t }),
   }, Controls))
+  ctx.slots.inject('settings.action', () => ctx.slots.register({
+    name: 'settings.action', id: 'remote-access.view-only', inject: () => ({ t }),
+  }, ViewOnly))
 }
