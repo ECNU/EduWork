@@ -1,17 +1,17 @@
 export const SOURCE = 'eduwork-annotation'
-export const MAX_QUOTE = 4000
 export const MAX_NOTE = 2000
 
 const LABEL_CHARS = 16
 
 function clean(text, max) {
-  return String(text ?? '').replace(/\r\n?/g, '\n').replace(/[\uE100-\uE11D\uFFFC]/gu, '').trim().slice(0, max)
+  const value = String(text ?? '').replace(/\r\n?/g, '\n').replace(/[\uE100-\uE11D\uFFFC]/gu, '').trim()
+  return max === undefined ? value : value.slice(0, max)
 }
 
 // The chip's ref carries the whole annotation, so undo, session switches and
 // failed-send restoration need no plugin-side store.
 export function encode(quote, note) {
-  const q = clean(quote, MAX_QUOTE)
+  const q = clean(quote)
   if (q === '') return undefined
   const n = clean(note, MAX_NOTE)
   return JSON.stringify(n === '' ? { q } : { q, n })

@@ -1,6 +1,7 @@
-import React, { useEffect, useRef, useState, useSyncExternalStore } from 'react'
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { SOURCE, MAX_NOTE, decode, reference, text } from './reference.js'
+import { place } from './position.js'
 
 export const inject = ['locale']
 const h = React.createElement
@@ -59,7 +60,7 @@ function readSelection(marker) {
   if (!ownsSelection(marker, element)) return null
   const rects = range.getClientRects()
   const rect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect()
-  return { quote, x: rect.right, y: rect.bottom }
+  return { quote, x: rect.right, y: rect.bottom, range: range.cloneRange() }
 }
 
 function useSelectionTarget(marker, paused) {
@@ -82,14 +83,46 @@ function useSelectionTarget(marker, paused) {
   return [target, setTarget]
 }
 
-function place(x, y, width) {
-  return { left: Math.max(8, Math.min(x - width, window.innerWidth - width - 8)), top: Math.min(y + 8, window.innerHeight - 48) }
+function useFloating(target) {
+  const ref = useRef(null)
+  const [position, setPosition] = useState({ left: 8, top: 8 })
+  useLayoutEffect(() => {
+    const panel = ref.current
+    const update = () => {
+      const rects = target.range?.getClientRects()
+      const anchor = rects?.length ? rects[rects.length - 1] : null
+      const size = panel.getBoundingClientRect()
+      const next = place(anchor?.right ?? target.x, anchor?.bottom ?? target.y,
+        size.width, size.height, window.innerWidth, window.innerHeight, anchor?.top ?? target.y)
+      setPosition(previous => previous.left === next.left && previous.top === next.top ? previous : next)
+    }
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(panel)
+    document.addEventListener('scroll', update, true)
+    window.addEventListener('resize', update)
+    return () => {
+      observer.disconnect()
+      document.removeEventListener('scroll', update, true)
+      window.removeEventListener('resize', update)
+    }
+  }, [target])
+  return [ref, position]
+}
+
+function QuoteButton({ target, t, onClick }) {
+  const [ref, position] = useFloating(target)
+  return h('button', {
+    ref, [UI]: '', type: 'button', style: { ...card, ...position, padding: '5px 12px', cursor: 'pointer' },
+    onMouseDown: event => event.preventDefault(), onClick,
+  }, t('quote'))
 }
 
 function Editor({ draft, t, onAdd, onCancel }) {
   const [note, setNote] = useState('')
+  const [ref, position] = useFloating(draft)
   const submit = () => onAdd(note)
-  return h('div', { [UI]: '', role: 'dialog', style: { ...card, ...place(draft.x, draft.y, 320), width: 320, padding: 12 } },
+  return h('div', { ref, [UI]: '', role: 'dialog', style: { ...card, ...position, width: 320, maxWidth: 'calc(100vw - 16px)', maxHeight: 'calc(100vh - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 12 } },
     h('blockquote', { style: { margin: '0 0 8px', padding: '0 0 0 8px', borderLeft: `3px solid ${border}`, color: secondary, maxHeight: 96, overflow: 'auto', whiteSpace: 'pre-wrap' } }, draft.quote),
     h('textarea', {
       autoFocus: true, value: note, maxLength: MAX_NOTE, rows: 3, placeholder: t('notePlaceholder'),
@@ -131,11 +164,10 @@ function AnnotationOverlay({ sessionId, previews, insert, t, inputActions }) {
     if (value !== undefined) insert(value, inputActions)
   }
   return h('span', { [MARKER]: '', ref: marker, hidden: true },
-    target && !draft ? createPortal(h('button', {
-      [UI]: '', type: 'button', style: { ...card, ...place(target.x, target.y, 64), padding: '5px 12px', cursor: 'pointer' },
-      onMouseDown: event => event.preventDefault(),
+    target && !draft ? createPortal(h(QuoteButton, {
+      target, t,
       onClick: () => { setDraft(target); setTarget(null); document.getSelection()?.removeAllRanges() },
-    }, t('quote')), document.body) : null,
+    }), document.body) : null,
     draft ? createPortal(h(Editor, { draft, t, onAdd: add, onCancel: () => setDraft(null) }), document.body) : null,
     preview ? createPortal(h(Preview, { annotation: preview, t, onClose: () => previews.close(sessionId) }), document.body) : null)
 }
