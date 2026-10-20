@@ -153,7 +153,7 @@ jobs:
           node core/scripts/probe-dsh-017.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/session-migration-evidence"
           if ($LASTEXITCODE) { throw 'Historical session migration checks failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
-          node --test core/dsh-plugins/desktop-services/test/attention-host.test.mjs core/dsh-plugins/workbench-native/test/notifications-navigation.test.mjs
+          node --test core/dsh-plugins/desktop-services/test/attention-host.test.mjs core/dsh-plugins/desktop-services/test/quit-network.test.mjs core/dsh-plugins/workbench-native/test/notifications-navigation.test.mjs
           if ($LASTEXITCODE) { throw 'Agent and plugin notification integration checks failed' }
           node --test core/tests/node-runtime-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Node security pin and official web-fetch checks failed' }
