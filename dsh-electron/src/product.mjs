@@ -34,6 +34,7 @@ import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
 import { startupPage } from './startup-page.mjs'
+import { startupWindowCompletion, startupWindowPresentation } from './startup-presentation.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -48,6 +49,9 @@ app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
 let migrationLaunch
 let updateCompleted = false
+let desktopFailureShown = false
+let mainWindowPresented = false
+let mainWindowHiddenForStartup = false
 let portableUpdates
 let contentUpdates, managedContent = {}
 let publisher
@@ -108,23 +112,52 @@ export function installEduworkFromDmg() {
   return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
 }
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
+export function desktopWebRoot() {
+  return join(paths.product, 'd/node_modules/@deepseek-ai/dsh-web-frontend/dist')
+}
+export function desktopStartupWindowPresent() {
+  return Boolean(progressWindow && !progressWindow.isDestroyed())
+}
+function startupAppearance() {
+  const blue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
+  return {
+    background: blue ? '#f6f7f9' : '#faf8f4',
+    accent: blue ? '#2575ff' : '#9f2636',
+    icon: process.platform === 'darwin' ? join(app.getAppPath(), '../brand', blue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon,
+    dock: process.platform === 'darwin' ? join(app.getAppPath(), '../brand', blue ? 'dock-blue-1024.png' : 'dock-red-1024.png') : undefined,
+  }
+}
+// Ordinary startup presents the main window's BootPage. This window is only
+// created for first-run configuration downloads, legacy migration or recovery.
+function createProgressWindow(message) {
+  if (progressWindow && !progressWindow.isDestroyed()) return progressWindow
+  const mainPresent = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindowPresented)
+  const mainVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
+  const presentation = startupWindowPresentation({ mainPresented: mainPresent, mainVisible })
+  if (presentation.hideMain) { mainWindowHiddenForStartup = true; mainWindow.hide() }
+  const appearance = startupAppearance()
+  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, show: false, title: settings.productName,
+    icon: appearance.icon,
+    backgroundColor: appearance.background, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+  removeWindowMenu(progressWindow)
+  attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
+  const logo = 'data:image/png;base64,' + readFileSync(appearance.icon).toString('base64')
+  void progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({
+    productName: settings.productName, logo, background: appearance.background, accent: appearance.accent, message,
+  }))).catch(error => desktopHostLog(`[desktop:startup] ${error.message}\n`))
+  if (presentation.showStartupWindow) progressWindow.show()
+  return progressWindow
+}
+function showDesktopMessageBox(options) {
+  const parent = [progressWindow, mainWindow].find(window => window && !window.isDestroyed())
+  return parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
+}
 async function prepareDesktop() {
   lifecycle.check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
-  const startupBlue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
-  const startupBackground = startupBlue ? '#f6f7f9' : '#faf8f4'
-  const startupAccent = startupBlue ? '#2575ff' : '#9f2636'
-  const startupIcon = process.platform === 'darwin' ? join(app.getAppPath(), '../brand', startupBlue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon
-  if (process.platform === 'darwin') app.dock.setIcon(join(app.getAppPath(), '../brand', startupBlue ? 'dock-blue-1024.png' : 'dock-red-1024.png'))
-  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, title: settings.productName,
-    icon: startupIcon,
-    backgroundColor: startupBackground, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
-  removeWindowMenu(progressWindow)
-  attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
-  const logo = 'data:image/png;base64,' + readFileSync(startupIcon).toString('base64')
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({
-    productName: settings.productName, logo, background: startupBackground, accent: startupAccent,
-  })))
+  const appearance = startupAppearance()
+  if (appearance.dock) app.dock.setIcon(appearance.dock)
+  if (migrationLaunch) createProgressWindow('正在迁移旧版历史数据…')
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
@@ -152,7 +185,7 @@ async function prepareDesktop() {
     : migrationDefaults
   await migrateAlphaUpdates({version:settings.productVersion,dataRoot:paths.updateDataRoot,config:paths.config,logs:paths.logs,
     defaults:alphaDefaults,priorUpdates,policy:updatePolicy,choose:async ({policy})=>{
-      const result=await dialog.showMessageBox(progressWindow,{type:'question',title:'更新设置',
+      const result=await showDesktopMessageBox({type:'question',title:'更新设置',
         message:'旧测试版关闭了自动更新，是否启用？',
         detail:`当前更新渠道为${policy==='development'?'开发版':'正式版'}。启用后会自动检查新版本；保留关闭也可以继续使用。`,
         buttons:['启用自动更新','保持关闭'],defaultId:0,cancelId:1,noLink:true})
@@ -167,7 +200,8 @@ async function prepareDesktop() {
     policy: updatePolicy}).init()
   lifecycle.check()
   managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
-    void progressWindow.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
+    const window = createProgressWindow('首次启动，正在下载并校验发行配置…')
+    void window.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
   } })
   try { await contentUpdates.configurationFile.document() }
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
@@ -190,7 +224,16 @@ async function prepareDesktop() {
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
     beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
-  if (user.product.name) { settings.productName = user.product.name; applyDesktopBrand(app, process.platform, settings); progressWindow.setTitle(user.product.name) }
+  if (user.product.name) {
+    settings.productName = user.product.name
+    applyDesktopBrand(app, process.platform, settings)
+    if (progressWindow && !progressWindow.isDestroyed()) progressWindow.setTitle(user.product.name)
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.setTitle(user.product.name)
+      try { mainWindow.webContents.send('eduwork:boot-brand', user.product.name) } catch { /* BootPage only */ }
+    }
+    refreshTray()
+  }
   await writeMigrationHealth(migrationLaunch,'starting','正在迁移旧版历史数据')
   await importLegacyData({root:paths.root,targetHome:paths.home,launch:migrationLaunch,onProgress:progress=>
     writeMigrationHealth(migrationLaunch,'importing',`正在复制历史文件 ${progress.copied}/${progress.total}`)})
@@ -256,15 +299,33 @@ async function prepareDesktop() {
   return { profile: prepared.profile, node: paths.node }
 }
 export function nativeBootstrap() { if (!bootstrap) throw new Error('Native desktop bridge is not ready'); return bootstrap }
-export async function desktopReady() {
+export async function desktopReady(shouldContinue = () => true) {
+  if (!shouldContinue()) return
   await contentUpdates?.ready()
+  // Never commit a successful migration receipt after a failed, cancelled or
+  // quitting Host launch.
+  if (!shouldContinue()) return
   await writeMigrationHealth(migrationLaunch,'ready')
+  if (!shouldContinue()) return
   updateCompleted = true
   migrationLaunch = null
+  // A dedicated download/migration window hidden by the user must not turn
+  // into an automatic main-window show when startup finishes. If it is still
+  // visible, return to the main window when the main was hidden for the handoff
+  // or had already been hidden by the user before the dedicated window appeared.
+  const hadStartupWindow = Boolean(progressWindow && !progressWindow.isDestroyed())
+  const startupWindowHidden = hadStartupWindow && !progressWindow.isVisible()
+  const mainVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
+  const completion = startupWindowCompletion({
+    hadStartupWindow, mainHiddenForStartup: mainWindowHiddenForStartup, startupWindowHidden,
+    mainPresented: mainWindowPresented, mainVisible,
+  })
+  mainWindowHiddenForStartup = false
   if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
   progressWindow = undefined
   desktopPet?.start()
   void portableUpdates?.action('check-updates-background').catch(()=>{})
+  return completion
 }
 
 function savedEduworkStyle() {
@@ -296,6 +357,9 @@ export function attachDockTheme(window) {
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  mainWindowPresented = false
+  mainWindowHiddenForStartup = false
+  window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
   attachDockTheme(window)
@@ -373,7 +437,8 @@ export function checkProductUpdates() {
  return mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));").catch(()=>{})
 }
 export async function showDesktopFailure(error) {
-  if (isQuitting()) return
+  if (isQuitting() || desktopFailureShown) return
+  desktopFailureShown = true
   try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
@@ -420,5 +485,15 @@ export async function showDesktopFailure(error) {
     }
   })
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
+  // Destroy the stale BootPage only after the recovery window exists; destroying
+  // the last window first would quit the application on Windows. The tray must
+  // not keep a show action bound to that stale window either.
+  if (tray) {
+    try { if (!tray.isDestroyed?.()) tray.destroy() } catch (error) { desktopHostLog(`[desktop:tray] ${error.message}\n`) }
+    tray = undefined
+  }
+  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.destroy(); mainWindow = undefined }
+  mainWindowPresented = false
+  mainWindowHiddenForStartup = false
   progressWindow.show()
 }

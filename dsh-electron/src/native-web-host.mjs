@@ -2,14 +2,25 @@ import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { DesktopHostProcess as NativeHost } from './eduwork-native-host-process.mjs'
 import { authenticateWebHost, forwardWebRequest, serveWebDocument } from './web-document.mjs'
+import { classifyDesktopRequest } from './desktop-web-paths.mjs'
+
+// The static frontend is shell-owned and already present in the product tree.
+// It must not wait for the Host process that the same page is about to boot.
+export function staticDesktopResponse(request, webRoot) {
+  const route = classifyDesktopRequest(request)
+  if (route.kind === 'forbidden') return Promise.resolve(new Response(null, { status: 403 }))
+  if (route.kind === 'static') return serveWebDocument(request, webRoot)
+  return undefined
+}
 
 // Preserve the product shell's lifecycle contract while the pinned official
 // 0.1.7 Host owns Web transport. Credentials never cross the renderer bridge.
 export class DesktopHostProcess {
-  #host; #ready; #cookie; #runtime
+  #host; #ready; #cookie; #runtime; #webRoot
   constructor(node, projectDir, inspectPort, options = {}) {
     if (!process.env.EDUWORK_PRODUCT_ROOT) throw new Error('Product Runtime location is unavailable')
     this.#runtime = join(process.env.EDUWORK_PRODUCT_ROOT, 'd')
+    this.#webRoot = join(this.#runtime, 'node_modules/@deepseek-ai/dsh-web-frontend/dist')
     this.#host = new NativeHost(node, this.#runtime, projectDir, inspectPort, options.environment ?? process.env,
       options.onFailure, undefined, { pnpm: join(this.#runtime, 'node_modules/pnpm/bin/pnpm.mjs'), nodeBin: dirname(node) },
       undefined, { bootstrap: options.bootstrap, onLog: options.onLog })
@@ -43,12 +54,9 @@ export class DesktopHostProcess {
     return preference ?? null
   }
   fetch(request) {
-    const url = new URL(request.url)
-    if (url.protocol !== 'dsh-app:' || url.hostname !== 'app') return Promise.resolve(new Response(null, { status: 403 }))
+    const staticResponse = staticDesktopResponse(request, this.#webRoot)
+    if (staticResponse) return staticResponse
     if (!this.#ready) return Promise.resolve(new Response(null, { status: 503 }))
-    if (['/', '/index.html', '/favicon.ico', '/manifest.webmanifest'].includes(url.pathname) || url.pathname.startsWith('/assets/')) {
-      return serveWebDocument(request, join(this.#runtime, 'node_modules/@deepseek-ai/dsh-web-frontend/dist'))
-    }
     return forwardWebRequest(request, this.#ready.origin, this.#cookie)
   }
   socketHeaders(details, ownerId) {
