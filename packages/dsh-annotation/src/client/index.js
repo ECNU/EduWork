@@ -99,10 +99,15 @@ function useFloating(target) {
     update()
     const observer = new ResizeObserver(update)
     observer.observe(panel)
+    // A range can move without a scroll or a panel resize (streamed text,
+    // an image loading above it, or a font change). Sample only while this
+    // floating UI is mounted; do not keep a frame loop running per session.
+    const movement = window.setInterval(update, 100)
     document.addEventListener('scroll', update, true)
     window.addEventListener('resize', update)
     return () => {
       observer.disconnect()
+      window.clearInterval(movement)
       document.removeEventListener('scroll', update, true)
       window.removeEventListener('resize', update)
     }
@@ -171,8 +176,9 @@ function AnnotationOverlay({ sessionId, previews, insert, t, inputActions }) {
   const preview = useSyncExternalStore(previews.subscribe, () => previews.get(sessionId))
   const add = (note) => {
     const value = reference(draft.quote, note, t)
-    setDraft(null)
-    if (value !== undefined) insert(value, inputActions)
+    // The official composer may reject an insertion while submitting or
+    // after a draft revision changes. Keep the editor and note for retry.
+    if (value !== undefined && insert(value, inputActions) === true) setDraft(null)
   }
   return h('span', { [MARKER]: '', ref: marker, hidden: true },
     target && !draft ? createPortal(h(QuoteButton, {
@@ -215,12 +221,14 @@ export function apply(ctx) {
         sessionId, previews,
         insert(value, inputActions) {
           const actx = scope.sessions.scope(sessionId)
-          if (actx === undefined) return
+          if (actx === undefined) return false
           const caret = inputActions.captureInsertion()
           const span = { start: caret.end, end: caret.end, draftRev: caret.draftRev }
           const input = scope.get('conversation')?.input?.for(actx)
-          if (actx.bail(actx, 'slash/input-insert-reference', { reference: value, span }) === true) input?.focus()
+          const accepted = actx.bail(actx, 'slash/input-insert-reference', { reference: value, span }) === true
+          if (accepted) input?.focus()
           else input?.notify('error', t('insertFailed'))
+          return accepted
         },
       }),
     }, AnnotationOverlay))

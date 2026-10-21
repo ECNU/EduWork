@@ -37,13 +37,14 @@ test('bundle registers a codec source and inserts through the official event', a
   const React = { createElement: () => null, useEffect() {}, useLayoutEffect() {}, useRef() {}, useState() {}, useSyncExternalStore() {} }
   const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal() {} } })[name])
   const effects = [], sources = [], slots = [], bails = []
-  const actx = { bail: (...args) => { bails.push(args); return true } }
+  let accepted = true, focused = 0, notified = 0
+  const actx = { bail: (...args) => { bails.push(args); return accepted } }
   const scope = {
     effect: fn => effects.push(fn()),
     inputTriggers: { registerSource: src => { sources.push(src); return () => {} } },
     slots: { inject: (_name, fn) => fn(), register: (spec, component) => { slots.push({ spec, component }); return () => {} } },
     sessions: { scope: id => id === 's1' ? actx : undefined },
-    get: () => ({ input: { for: () => ({ focus() {}, notify() {} }) } }),
+    get: () => ({ input: { for: () => ({ focus() { focused++ }, notify() { notified++ } }) } }),
   }
   const ctx = { effect: fn => effects.push(fn()), locale: { register: () => () => {}, bind: () => t }, inject: (_deps, fn) => fn(scope) }
   plugin.apply(ctx)
@@ -55,19 +56,25 @@ test('bundle registers a codec source and inserts through the official event', a
   await assert.rejects(source.codec.serialize('{}'))
   assert.equal(slots[0].spec.name, 'conversation.input.overlay')
   const injected = slots[0].spec.inject('s1')
-  injected.insert(value, { captureInsertion: () => ({ start: 2, end: 5, draftRev: 7 }) })
+  const actions = { captureInsertion: () => ({ start: 2, end: 5, draftRev: 7 }) }
+  assert.equal(injected.insert(value, actions), true)
   assert.deepEqual(JSON.parse(JSON.stringify(bails[0].slice(1))), ['slash/input-insert-reference', { reference: value, span: { start: 5, end: 5, draftRev: 7 } }])
+  accepted = undefined
+  assert.equal(injected.insert(value, actions), false)
+  assert.equal(focused, 1)
+  assert.equal(notified, 1)
+  assert.equal(slots[0].spec.inject('missing-session').insert(value, actions), false)
 })
 
 test('annotation UI confirms Enter after composition and dismisses only outside the preview', async () => {
   let factory, overlay, stateIndex = 0
-  const effects = [], listeners = new Map(), removed = []
+  const effects = [], listeners = new Map(), removed = [], draftChanges = []
   const target = { quote: '原文', x: 10, y: 10 }
   const React = {
     createElement: (type, props, ...children) => ({ type, props, children }),
     useEffect: fn => effects.push(fn), useLayoutEffect() {},
     useRef: () => ({ current: null }),
-    useState: initial => [stateIndex++ === 0 ? target : initial, () => {}],
+    useState: initial => stateIndex++ === 0 ? [target, value => draftChanges.push(value)] : [initial, () => {}],
     useSyncExternalStore: () => ({ quote: '原文', note: '批注' }),
   }
   const events = {
@@ -82,8 +89,14 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
     slots: { inject: (_, fn) => fn(), register: (_, component) => { overlay = component } },
   }
   plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
-  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t })
+  let accepted = false
+  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t, insert: () => accepted })
   const editorNode = tree.children[1]
+  editorNode.props.onAdd('保留这条批注')
+  assert.deepEqual(draftChanges, [], 'rejected insertion must keep the mounted editor and its note')
+  accepted = true
+  editorNode.props.onAdd('保留这条批注')
+  assert.deepEqual(draftChanges, [null], 'only an accepted insertion closes the editor')
   let added = 0, prevented = 0
   const editor = editorNode.type({ ...editorNode.props, onAdd: () => added++ })
   const keydown = editor.children[1].props.onKeyDown

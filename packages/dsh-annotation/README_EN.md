@@ -18,6 +18,8 @@ Requires a client compatible with the DSH 0.2 API series (`>=0.2.0-rc.2 <0.3.0-0
 
 References are saved with the draft and can be mixed with ordinary text and file references. Sending uses the client's native flow, so queueing or steering into a running turn follows your settings. To change a note, remove the reference and quote again.
 
+If the composer cannot accept a reference yet, the editor keeps the quote and note for retry. Floating controls follow the selected text as you scroll and as the layout changes, for example when an image loads.
+
 ## Development
 
 ```sh
