@@ -18,7 +18,7 @@ Six development roots retain their own dependency locks without repository-wide 
 
 ## Develop and check
 
-Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.18.0. From the repository root:
+Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.22.1. From the repository root:
 
 ```sh
 node scripts/packages/manage.mjs list

@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 export const notificationDefaults = Object.freeze({ enabled: true, attention: true, completed: true, failed: true, studio: true, sound: false, preview: false })
 const human = item => item.kind === 'question' || item.kind === 'approval'
-const safeTitle = value => typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/gu, ' ').slice(0, 120) : ''
+const safeTitle = value => typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/gu, ' ').slice(0, 120).toWellFormed() : ''
 
 /** Observe live work only. Never answer, cancel, or change an agent's policy. */
 export class DesktopAttention {

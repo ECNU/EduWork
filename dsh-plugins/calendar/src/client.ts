@@ -1905,8 +1905,9 @@ export async function apply(ctx: any) {
   ctx.inject(['remote.calendar'], (surface: any) => {
     surface.inject(['notificationActions', 'layout'], (inner: any) => {
       inner.effect(() => inner.notificationActions.register('calendar', async ({ target, signal }: any) => {
-        const inbox = await unwrap(surface.remote.calendar.reminders())
-        if (signal.aborted || !inbox.items.some((row: any) => row.id === target.reminderId && !row.read)) return false
+        // Host onAction already validated this ID against the complete receipt
+        // table. The inbox is paginated and cannot validate an older target.
+        if (signal.aborted || typeof target?.reminderId !== 'string') return false
         inner.layout.selectPanel(PANEL_ID)
       }))
     })

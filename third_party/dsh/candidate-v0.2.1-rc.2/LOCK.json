@@ -6,10 +6,10 @@
   "pnpmVersion": "11.28.5",
   "pnpmLockSHA256": "4637cca3b89c4c8d5a147321710e597aa62ec2444a3772ab542be5690893dfe4",
   "node": {
-    "version": "24.18.0",
-    "windowsX64Archive": "node-v24.18.0-win-x64.zip",
-    "windowsX64URL": "https://nodejs.org/dist/v24.18.0/node-v24.18.0-win-x64.zip",
-    "windowsX64SHA256": "0ae68406b42d7725661da979b1403ec9926da205c6770827f33aac9d8f26e821"
+    "version": "24.22.1",
+    "windowsX64Archive": "node-v24.22.1-win-x64.zip",
+    "windowsX64URL": "https://nodejs.org/dist/v24.22.1/node-v24.22.1-win-x64.zip",
+    "windowsX64SHA256": "d2046d28c2c3dcd211ac5145c0bf30e2047ef9dfb306693c8c6e2eccd8b95fa5"
   },
   "runtime": {
     "defaultSource": "npm",

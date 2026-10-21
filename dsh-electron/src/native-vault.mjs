@@ -2,6 +2,7 @@ import { createServer } from 'node:http'
 import { randomBytes, timingSafeEqual } from 'node:crypto'
 import { mkdir, readFile, rename, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute } from 'node:path'
+import { ATTENTION_MAX_BYTES } from './task-notifications.mjs'
 
 const MAX_BODY = 512 * 1024
 const REF = /^[A-Za-z_][A-Za-z0-9_]{0,511}$/u
@@ -70,7 +71,8 @@ export async function startNativeBridge({ vault, openExternal, openConfiguration
         length += part.length
         // The bounded attention snapshot contains up to 200 core and 200 plugin
         // rows, including multibyte titles/previews. Other bridge limits stay put.
-        const limit = request.url === '/v1/extensions/attention' ? 2 * 1024 * 1024 : MAX_BODY
+        // Per-source queues plus the core Agent allowance; other bridge limits stay put.
+        const limit = request.url === '/v1/extensions/attention' ? ATTENTION_MAX_BYTES : MAX_BODY
         if (length > limit) { response.writeHead(413).end(); request.destroy(); return }
         parts.push(part)
       }

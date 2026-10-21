@@ -7,6 +7,7 @@ import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { attachWindowVisibility } from '../src/window-visibility.mjs'
 import { startupPage } from '../src/startup-page.mjs'
+import { startupWindowPresentation } from '../src/startup-presentation.mjs'
 import { removeWindowMenu } from '../src/desktop-menu.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
@@ -65,19 +66,25 @@ app.whenReady().then(async () => {
     await window.loadURL('dsh-app://app/index.html')
     await select('ecnu-liwa', 4, 'dock-red-1024.png')
     // Render the production startup page using each persisted choice.
-    const start = source.indexOf('  const startupBlue ='), end = source.indexOf('\n  lifecycle.check()', start)
-    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', 'startupPage', 'removeWindowMenu', `return (async () => {
+    const appearanceStart = source.indexOf('function startupAppearance()')
+    const prepareStart = source.indexOf('async function prepareDesktop()', appearanceStart)
+    if (appearanceStart < 0 || prepareStart < 0) throw new Error('Startup window boundary changed')
+    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', 'startupPage', 'removeWindowMenu', 'desktopHostLog', 'startupWindowPresentation', `return (async () => {
       const settings = { productName: 'Theme test' }, paths = { icon: ${JSON.stringify(join(brand, images[0]))} }
       const isQuitting = () => false, tray = undefined
-      let progressWindow
-      ${source.slice(start, end)}
-      return progressWindow
+      let progressWindow, mainWindow, mainWindowPresented = false, mainWindowHiddenForStartup = false
+      ${source.slice(appearanceStart, prepareStart)}
+      const appearance = startupAppearance()
+      app.dock.setIcon(appearance.dock)
+      const window = createProgressWindow('正在准备本机工作环境…')
+      for (let i = 0; i < 100 && window.webContents.isLoading(); i++) await new Promise(resolve => setTimeout(resolve, 20))
+      return window
     })()`)
     for (const [style, color] of [['dsh', 'rgb(37, 117, 255)'], ['ecnu-liwa', 'rgb(159, 38, 54)']]) {
       writeFileSync(preference, JSON.stringify({ style }))
       let startupDock
       const startupApp = { getAppPath: () => appRoot, dock: { setIcon(file) { startupDock = file; app.dock.setIcon(file) } } }
-      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility, startupPage, removeWindowMenu)
+      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility, startupPage, removeWindowMenu, () => {}, startupWindowPresentation)
       assert.equal(startupDock, join(brand, style === 'dsh' ? images[3] : images[2]))
       assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).backgroundColor"), color)
       const expected = readFileSync(join(brand, style === 'dsh' ? images[1] : images[0])).toString('base64')

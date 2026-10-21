@@ -137,6 +137,50 @@ test('Windows uses tray quiet-time flags; macOS failure never bypasses native co
   notifications[0].events.click(); assert.equal(clicked.at(-1), 'b')
 })
 
+test('Windows serializes balloons and a dismissed bubble cannot click the next target', () => {
+  const shown = [], clicks = []
+  const adapter = nativeNotificationAdapter({ platform: 'win32', productName: 'test',
+    getTray: () => ({ displayBalloon: value => shown.push(value), removeBalloon() {} }),
+    activate: key => clicks.push(key), failed() {} })
+  adapter.publish({ title: 'First', content: '', key: 'a' })
+  assert.equal(adapter.publish({ title: 'Second', content: '', key: 'b' }), false)
+  adapter.dismiss()
+  assert.equal(adapter.publish({ title: 'Second', content: '', key: 'b' }), false)
+  adapter.balloonClick()
+  assert.deepEqual(clicks, [])
+  adapter.publish({ title: 'Second', content: '', key: 'b' })
+  adapter.balloonClick(); assert.deepEqual(clicks, ['b'])
+  adapter.publish({ title: 'Third', content: '', key: 'c' })
+  adapter.balloonClosed(); adapter.balloonClick()
+  assert.deepEqual(clicks, ['b']); assert.equal(shown.length, 3)
+})
+
+test('a busy display adapter leaves the queued notification eligible for the next sync', () => {
+  const f = setup(); let busy = true
+  f.shell.publish = value => { if (busy) return false; f.popups.push(value) }
+  f.sync([item('a')]); assert.equal(f.shell.notified.has('a'), false)
+  busy = false; f.advance(); f.sync([item('a')]); assert.equal(f.popups.length, 1)
+})
+
+test('missing Windows hide events cannot stall queues or redirect late clicks to another item', () => {
+  let now = 0, reopened = 0
+  const clicks = [], shown = []
+  const adapter = nativeNotificationAdapter({ platform: 'win32', productName: 'test', now: () => now,
+    getTray: () => ({ displayBalloon: value => shown.push(value), removeBalloon() {} }),
+    activate: key => clicks.push(key), show: () => reopened++, failed() {} })
+  adapter.publish({ title: 'Suppressed', content: '', key: 'old' })
+  now = 59999
+  assert.equal(adapter.publish({ title: 'Next', content: '', key: 'next' }), false)
+  now = 60000
+  assert.notEqual(adapter.publish({ title: 'Next', content: '', key: 'next' }), false)
+  adapter.balloonClick() // The event may still belong to the old balloon.
+  assert.deepEqual(clicks, []); assert.equal(reopened, 1); assert.equal(shown.length, 2)
+  adapter.balloonClosed()
+  adapter.publish({ title: 'Third', content: '', key: 'third' })
+  adapter.balloonClick()
+  assert.deepEqual(clicks, []); assert.equal(reopened, 2)
+})
+
 test('an armed goal holds its turn until the driver continues, blocks or completes it', () => {
   let view
   const h = host(undefined, id => view?.[id]), round = (id, turn) => { h.event({ id }, { type: 'turn/start', data: { turn } }, true); h.event({ id }, { type: 'turn/end', data: { turn, reason: { kind: 'completed' } } }, true) }

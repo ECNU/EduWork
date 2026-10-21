@@ -1,10 +1,15 @@
 const kinds = new Set(['question', 'approval', 'completed', 'failed'])
-const text = (value, max) => typeof value === 'string' && value.length <= max && !/[\x00-\x1f\x7f]/u.test(value)
+const text = (value, max) => typeof value === 'string' && value.length <= max && value.isWellFormed() && !/[\x00-\x1f\x7f]/u.test(value)
 const human = item => ['question', 'approval'].includes(item.kind) || item.kind === 'plugin' && item.requiresAction
 const category = item => human(item) ? 'attention' : item.kind
 const label = item => item.kind === 'plugin' ? item.label : labels[item.kind]
 const priority = item => ['question', 'approval'].includes(item.kind) ? 3 : human(item) ? 2 : item.kind === 'failed' || item.level === 'error' ? 1 : 0
 const labels = { question: '需要补充信息', approval: '需要授权确认', completed: '任务已完成', failed: '任务需要处理' }
+// Keep these wire limits aligned with NotificationRegistry. Each plugin source
+// has its own allowance; none can consume the Agent's 200 slots.
+export const ATTENTION_SOURCE_LIMIT = 16
+export const ATTENTION_QUEUE_LIMIT = 200
+export const ATTENTION_MAX_BYTES = 12 * 1024 * 1024
 
 /** Small authenticated wire contract. No commands, URLs, or notification actions. */
 export function validateAttentionRequest(body) {
@@ -13,11 +18,13 @@ export function validateAttentionRequest(body) {
     if (Object.keys(body).some(key => !['action', 'sessionId'].includes(key)) || !text(body.sessionId, 256)) throw Error('Invalid attention view')
     return body
   }
-  if (body.action !== 'sync' || Object.keys(body).some(key => !['action', 'instance', 'items', 'running', 'preferences'].includes(key)) || !text(body.instance, 80) || !Array.isArray(body.items) || body.items.length > 400) throw Error('Invalid attention snapshot')
+  if (body.action !== 'sync' || Object.keys(body).some(key => !['action', 'instance', 'items', 'running', 'preferences'].includes(key)) || !text(body.instance, 80) || !Array.isArray(body.items) || body.items.length > (ATTENTION_SOURCE_LIMIT + 1) * ATTENTION_QUEUE_LIMIT) throw Error('Invalid attention snapshot')
   // Running sessions are only counted; they never become notification actions.
   if (!Array.isArray(body.running) || body.running.length > 200 || new Set(body.running).size !== body.running.length
     || body.running.some(id => !text(id, 256) || !id)) throw Error('Invalid running sessions')
   const keys = new Set()
+  const sourceCounts = new Map()
+  let agentCount = 0
   for (const item of body.items) {
     if (!item || !text(item.key, 600) || !item.key || keys.has(item.key) || !text(item.title, 120) ||
       !Number.isSafeInteger(item.createdAt) || item.createdAt < 0) throw Error('Invalid attention item')
@@ -26,8 +33,12 @@ export function validateAttentionRequest(body) {
         !/^plugin:[a-f0-9]{64}$/.test(item.key) || !text(item.source, 96) || !text(item.event, 96) || !text(item.label, 120) ||
         !['info','success','warning','error'].includes(item.level) || typeof item.requiresAction !== 'boolean' || !text(item.preview, 400) ||
         !Number.isSafeInteger(item.revision) || item.revision < 1 || !Number.isSafeInteger(item.alert) || item.alert < 1) throw Error('Invalid plugin notification')
+      const count = (sourceCounts.get(item.source) ?? 0) + 1
+      sourceCounts.set(item.source, count)
+      if (count > ATTENTION_QUEUE_LIMIT || sourceCounts.size > ATTENTION_SOURCE_LIMIT) throw Error('Invalid source queue size')
     } else if (Object.keys(item).some(key => !['key','kind','sessionId','title','createdAt'].includes(key)) ||
       !kinds.has(item.kind) || !text(item.sessionId, 256) || !item.sessionId) throw Error('Invalid Agent notification')
+    else if (++agentCount > ATTENTION_QUEUE_LIMIT) throw Error('Invalid Agent queue size')
     keys.add(item.key)
   }
   const preferences = body.preferences
@@ -65,14 +76,34 @@ export class TaskNotifications {
     // Leave its entry in the tray, but never replay old popups after a focus change.
     if (this.foreground() || !body.preferences.enabled) for (const item of pending) this.notified.set(item.key, item.alert ?? 1)
     else if (this.now() >= this.nextPopup) {
-      const eligible = pending.filter(item => item.kind === 'plugin' ? priority(this.items.get(this.popupKey) ?? {}) <= priority(item) : body.preferences[category(item)])
-      for (const item of pending) this.notified.set(item.key, item.alert ?? 1)
-      if (eligible.length) {
-        const item = eligible.sort((a, b) => priority(b) - priority(a))[0]
-        const title = eligible.length > 1 ? `${eligible.length} 项工作有新进展` : label(item)
+      // Keep the core Agent's existing coalescing policy. Plugin sources use
+      // round-robin dispatch with FIFO inside each source, without interpreting
+      // their business severity. Waiting sources are not marked as displayed.
+      const agents = pending.filter(item => item.kind !== 'plugin')
+      const eligibleAgents = agents.filter(item => body.preferences[category(item)])
+      for (const item of agents) if (!body.preferences[category(item)]) this.notified.set(item.key, item.alert ?? 1)
+      const queues = new Map()
+      for (const item of pending) if (item.kind === 'plugin') {
+        const queue = queues.get(item.source) ?? []; queue.push(item); queues.set(item.source, queue)
+      }
+      const sources = [...queues.keys()]
+      const source = sources[(sources.indexOf(this.lastPluginSource) + 1) % (sources.length || 1)]
+      const active = this.items.get(this.popupKey)
+      const waitingForAgent = active && active.kind !== 'plugin' && human(active)
+      const item = eligibleAgents.sort((a, b) => priority(b) - priority(a))[0]
+        ?? (!waitingForAgent && source ? queues.get(source)[0] : undefined)
+      if (item) {
+        const title = item.kind !== 'plugin' && eligibleAgents.length > 1 ? `${eligibleAgents.length} 项工作有新进展` : label(item)
         const content = body.preferences.preview && item.title ? (item.preview || item.title) : '点击返回应用查看。'
         this.nextPopup = this.now() + 5000
-        try { this.popupKey = item.key; this.delivery = 'available'; this.publish({ title, content, sound: body.preferences.sound, key: item.key }) }
+        try {
+          const accepted = this.publish({ title, content, sound: body.preferences.sound, key: item.key })
+          if (accepted !== false) {
+            this.popupKey = item.key; this.delivery = 'available'
+            if (item.kind === 'plugin') { this.lastPluginSource = item.source; this.notified.set(item.key, item.alert) }
+            else for (const row of agents) this.notified.set(row.key, row.alert ?? 1)
+          }
+        }
         catch { this.delivery = 'unavailable' }
       }
     }
@@ -91,19 +122,41 @@ export class TaskNotifications {
 /** Presentation only: never interpret plugin targets or complete business work.
  * Windows deliberately keeps tray balloons for the portable distribution.
  * Toast identity/activation registration is deferred to installation issue #176.
- * This adapter has one live balloon target, not one independent OS queue per
- * source; source FIFO work must also validate click ownership at this boundary. */
-export function nativeNotificationAdapter({ platform, Notification, getTray, productName, activate, failed }) {
-  let current, balloonKey
+ * Windows has one live balloon target. Electron does not forward every native
+ * hide event (including quiet-time suppression), so waiting is bounded. After
+ * an unacknowledged expiry, balloon clicks only reopen the app: the native event
+ * has no ID and must never select an unrelated item. Tray/pet actions keep IDs.
+ * This is display serialization, not business completion. */
+export function nativeNotificationAdapter({ platform, Notification, getTray, productName, activate, show = () => {}, failed, now = Date.now }) {
+  let current, balloon, ambiguous = false
+  const expire = () => {
+    if (balloon && now() - balloon.startedAt >= 60000) {
+      ambiguous = true; balloon = null
+    }
+  }
   return {
-    balloonClick() { if (balloonKey) activate(balloonKey) },
-    dismiss() { current?.close(); current = null; if (balloonKey) getTray()?.removeBalloon?.(); balloonKey = null },
+    balloonClick() {
+      expire()
+      if (ambiguous) { show(); return }
+      const previous = balloon; balloon = null
+      if (previous && !previous.revoked) activate(previous.key)
+    },
+    balloonClosed() { balloon = null },
+    dismiss() {
+      current?.close(); current = null
+      // Keep the native slot until Windows acknowledges removal. A late click
+      // on the removed bubble must never target the next queued notification.
+      if (balloon && !balloon.revoked) { balloon.revoked = true; getTray()?.removeBalloon?.() }
+    },
     publish({ title, content, sound, key }) {
       if (platform === 'win32') {
         const tray = getTray()
-        if (!tray) { failed(); return }
-        balloonKey = key
-        tray.displayBalloon({ title: `${productName} · ${title}`, content, noSound: !sound, respectQuietTime: true })
+        if (!tray) { failed(); return false }
+        expire()
+        if (balloon) return false
+        balloon = { key, revoked: false, startedAt: now() }
+        try { tray.displayBalloon({ title: `${productName} · ${title}`, content, noSound: !sound, respectQuietTime: true }) }
+        catch (error) { balloon = null; throw error }
       } else if (platform === 'darwin' && Notification.isSupported()) {
         current?.close()
         const notification = new Notification({ title: `${productName} · ${title}`, body: content, silent: !sound })
@@ -111,7 +164,7 @@ export function nativeNotificationAdapter({ platform, Notification, getTray, pro
         notification.on('click', () => activate(key))
         notification.on('failed', () => failed())
         notification.show()
-      } else failed()
+      } else { failed(); return false }
     },
   }
 }

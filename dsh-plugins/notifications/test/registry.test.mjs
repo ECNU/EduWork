@@ -155,15 +155,18 @@ test('only a foreground view may consume plugin notices; a failing view callback
   assert.equal(view.target.key, 'approval:s:1')
 })
 
-test('200 plugin notices never displace 200 core decisions and overflow is explicit', async () => {
+test('source FIFO overflow removes its oldest notice without displacing core decisions', async () => {
   const f = fixture(), handle = f.registry.register(definition())
   for (let i = 0; i < 200; i++) {
     f.attention.put({ key: `approval:s:${i}`, kind: 'approval', sessionId: 's', title: '' })
     await handle.publish(notice({ id: `${i}` }))
   }
   assert.equal(f.shell.items.size, 400)
-  await assert.rejects(handle.publish(notice({ id: 'overflow' })), /capacity/)
+  const oldest = f.registry.snapshot()[0].key
+  assert.equal((await handle.publish(notice({ id: 'overflow' }))).status, 'accepted')
   assert.equal(f.shell.items.size, 400)
+  assert.equal(f.shell.items.has(oldest), false)
+  assert.equal([...f.shell.items.values()].filter(item => item.kind === 'approval').length, 200)
 })
 
 test('no desktop adapter is not claimed as a delivered notification', async () => {

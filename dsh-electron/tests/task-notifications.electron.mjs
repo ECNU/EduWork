@@ -22,12 +22,13 @@ async function run() {
 const events = [], window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
 const tray = new Tray(nativeImage.createFromPath(fileURLToPath(new URL('../../assets/eduwork/icon-32.png', import.meta.url))))
 tray.setToolTip('EduWork notification test')
-const adapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName, activate: key => broker.activate(key), failed: () => events.push('native-failed') })
+const adapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName, activate: key => broker.activate(key), show: () => window.show(), failed: () => events.push('native-failed') })
 const broker = new TaskNotifications({ foreground: () => window.isFocused(), show: () => { events.push('window-restored'); window.show(); window.focus() },
-  publish: value => { adapter.publish(value); events.push('native-api-called') }, dismiss: () => adapter.dismiss(),
+  publish: value => { const result = adapter.publish(value); events.push('native-api-called'); return result }, dismiss: () => adapter.dismiss(),
   changed: () => tray.setContextMenu(Menu.buildFromTemplate(broker.menu())) })
 tray.on('balloon-show', () => events.push('balloon-show'))
 tray.on('balloon-click', () => adapter.balloonClick())
+tray.on('balloon-closed', () => adapter.balloonClosed())
 try {
   broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, running: [], items: [{ key: 'fixture-approval', kind: 'approval', sessionId: 'fixture', title: '', createdAt: Date.now() }] })
   await new Promise(resolve => setTimeout(resolve, 5000))

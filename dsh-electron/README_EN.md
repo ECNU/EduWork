@@ -29,7 +29,7 @@ On macOS, the running Dock icon and the next startup window’s icon and progres
 
 ## Build
 
-For a complete Windows test package, use the Node.js entry point in the [build guide](../docs/BUILD.md#本机构建). From a clean EduWork checkout with Git, Node.js 24.18.0, Go 1.26.6 and Visual Studio 2022 C++ Build Tools:
+For a complete Windows test package, use the Node.js entry point in the [build guide](../docs/BUILD.md#本机构建). From a clean EduWork checkout with Git, Node.js 24.22.1, Go 1.26.6 and Visual Studio 2022 C++ Build Tools:
 
 ```sh
 node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-electron-test

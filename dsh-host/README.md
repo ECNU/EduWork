@@ -57,7 +57,7 @@ Wails 2 在 Windows 上会缓冲 AssetServer 响应直到 EOF，因此有限静�
 
 `--probe` 在不开窗口时检查实际官方 Host 首页和传输注入。该入口独立于 `main.go` 和旧更新器。
 
-`dsh-desktop/scripts/assemble-official-host.ps1` 接收 `-Product`、`-HostAdapter`、`-Output`、带相邻 `LICENSE` 的 Node 24.18.0 及可选 `-Version`，回执分别记录产品和壳版本。拒绝已存在的输出目录及 `current`。`build-official-host.ps1` 可重建已退出的独立构建 exe，无需重复制全部 Runtime。
+`dsh-desktop/scripts/assemble-official-host.ps1` 接收 `-Product`、`-HostAdapter`、`-Output`、带相邻 `LICENSE` 的 Node 24.22.1 及可选 `-Version`，回执分别记录产品和壳版本。拒绝已存在的输出目录及 `current`。`build-official-host.ps1` 可重建已退出的独立构建 exe，无需重复制全部 Runtime。
 
 构建使用校验过的 go-webview2 派生源码与独立 Go modfile，不修改原 `go.mod`、模块缓存或 `main.go`。仅显式设置 `EDUWORK_DESKTOP_CDP_PORT` 为 1024–65535 的整数时启用诊断 CDP，且只监听 loopback。
 

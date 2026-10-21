@@ -36,7 +36,7 @@ jobs:
           cache: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Check long paths, corruption, cancellation and existing data
         working-directory: dsh-desktop
         shell: bash

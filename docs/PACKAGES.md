@@ -28,7 +28,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 ## 本地开发
 
-Node 版本和 DSH 兼容范围以各包的 manifest 与锁文件为准；统一 CI 使用 Node 24.18.0。从 EduWork 根目录执行，以 OIDC 为例：
+Node 版本和 DSH 兼容范围以各包的 manifest 与锁文件为准；统一 CI 使用 Node 24.22.1。从 EduWork 根目录执行，以 OIDC 为例：
 
 ```sh
 node scripts/packages/manage.mjs list
