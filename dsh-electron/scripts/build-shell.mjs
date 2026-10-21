@@ -67,7 +67,7 @@ for (const file of files) {
     replace('  app.exit(1)', '  // Keep the startup error visible so the user can fix configuration and retry.')
     replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
   }
-  if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8')
+  if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); if (native) text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8') }
   if (!native && file === 'apps/desktop/src/locale.ts') {
     const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
     if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')
@@ -78,7 +78,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'quit-confirmation.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'startup-page.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
+const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'quit-confirmation.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'startup-page.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
@@ -131,7 +131,8 @@ await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'p
 // The pet preload requires only electron; the sandbox loads it as written.
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
 const adapters = {}
-for (const name of ['dock-theme-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+for (const name of ['dock-theme-preload.cjs', 'boot-motion-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+if (native) adapters['dsh-electron/src/boot-brand-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs')))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 if (native) {
   for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
