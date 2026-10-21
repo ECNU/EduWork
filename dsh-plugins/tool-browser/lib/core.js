@@ -1,18 +1,90 @@
+import { lookup as dnsLookup } from 'node:dns/promises'
 import fs from 'node:fs'
 import path from 'node:path'
 
 const allowedProtocols = new Set(['http:', 'https:'])
-const privateHostPatterns = [
-  /^localhost$/i,
-  /^127(?:\.\d{1,3}){3}$/,
-  /^10(?:\.\d{1,3}){3}$/,
-  /^192\.168(?:\.\d{1,3}){2}$/,
-  /^172\.(?:1[6-9]|2\d|3[01])(?:\.\d{1,3}){2}$/,
-  /^169\.254(?:\.\d{1,3}){2}$/,
-  /^\[?::1\]?$/,
-  /\.local$/i,
-  /\.internal$/i,
-]
+// Names that only resolve inside a LAN, VPN or this machine. Single-label hosts
+// (http://router/) are included because they come from local search domains.
+const privateNameSuffixes = ['localhost', 'local', 'internal', 'intranet', 'lan', 'home', 'corp', 'localdomain', 'home.arpa']
+
+// Address ranges that are not public unicast destinations (RFC 6890 special-purpose
+// registries). IPv6 outside 2000::/3 is never public; IPv4 embedded in mapped,
+// NAT64 and 6to4 addresses is classified by its IPv4 part.
+const privateIPv4Ranges = [
+  ['0.0.0.0', 8], ['10.0.0.0', 8], ['100.64.0.0', 10], ['127.0.0.0', 8], ['169.254.0.0', 16],
+  ['172.16.0.0', 12], ['192.0.0.0', 24], ['192.0.2.0', 24], ['192.88.99.0', 24], ['192.168.0.0', 16],
+  ['198.18.0.0', 15], ['198.51.100.0', 24], ['203.0.113.0', 24], ['224.0.0.0', 4], ['240.0.0.0', 4],
+].map(([address, bits]) => [ipv4Bytes(address), bits])
+const privateIPv6Ranges = [
+  ['2001::', 23], ['2001:db8::', 32], ['3fff::', 20],
+].map(([address, bits]) => [ipv6Bytes(address), bits])
+
+function ipv4Bytes(value) {
+  const parts = value.split('.')
+  if (parts.length !== 4 || !parts.every(part => /^\d{1,3}$/.test(part) && Number(part) <= 255)) return undefined
+  return parts.map(Number)
+}
+
+function ipv6Bytes(value) {
+  let text = value
+  let tail = []
+  const dotted = text.match(/:(\d+\.\d+\.\d+\.\d+)$/)
+  if (dotted) {
+    tail = ipv4Bytes(dotted[1])
+    if (!tail) return undefined
+    text = `${text.slice(0, dotted.index)}:0:0`
+  }
+  const halves = text.split('::')
+  if (halves.length > 2) return undefined
+  const groups = halves.map(half => half === '' ? [] : half.split(':'))
+  const missing = 8 - groups.reduce((sum, list) => sum + list.length, 0)
+  if (halves.length === 1 ? missing !== 0 : missing < 1) return undefined
+  const all = halves.length === 1 ? groups[0] : [...groups[0], ...Array(missing).fill('0'), ...groups[1]]
+  if (!all.every(group => /^[0-9a-f]{1,4}$/i.test(group))) return undefined
+  const bytes = all.flatMap(group => { const n = parseInt(group, 16); return [n >> 8, n & 255] })
+  if (tail.length) bytes.splice(12, 4, ...tail)
+  return bytes
+}
+
+function inRange(bytes, [base, bits]) {
+  for (let i = 0; i < bits; i += 8) {
+    const mask = bits - i >= 8 ? 255 : (255 << (8 - (bits - i))) & 255
+    if ((bytes[i / 8] & mask) !== (base[i / 8] & mask)) return false
+  }
+  return true
+}
+
+function isPrivateIPv4(bytes) {
+  return privateIPv4Ranges.some(range => inRange(bytes, range))
+}
+
+/** Whether a textual IPv4/IPv6 address (brackets allowed) is not a public unicast destination. */
+export function isPrivateAddress(raw) {
+  const value = String(raw ?? '').replace(/^\[|\]$/g, '').replace(/%.*$/, '')
+  const v4 = ipv4Bytes(value)
+  if (v4) return isPrivateIPv4(v4)
+  const v6 = ipv6Bytes(value)
+  if (!v6) return true
+  if ((v6[0] & 0xe0) !== 0x20) return !isZeroPrefixedIPv4(v6) || isPrivateIPv4(v6.slice(12))
+  if (v6[0] === 0x20 && v6[1] === 0x02) return isPrivateIPv4(v6.slice(2, 6))
+  return privateIPv6Ranges.some(range => inRange(v6, range))
+}
+
+// ::ffff:a.b.c.d (mapped) and 64:ff9b::a.b.c.d (well-known NAT64) carry an IPv4
+// destination; every other address outside 2000::/3 is private on its own.
+function isZeroPrefixedIPv4(v6) {
+  const mapped = v6.slice(0, 10).every(b => b === 0) && v6[10] === 255 && v6[11] === 255
+  const nat64 = v6[0] === 0 && v6[1] === 0x64 && v6[2] === 0xff && v6[3] === 0x9b && v6.slice(4, 12).every(b => b === 0)
+  return mapped || nat64
+}
+
+function isIPLiteral(hostname) {
+  return ipv4Bytes(hostname) !== undefined || hostname.startsWith('[')
+}
+
+function hostnameOf(raw) {
+  return new URL(normalizeURL(raw)).hostname.toLowerCase().replace(/\.+$/, '')
+}
 
 export function normalizeURL(raw) {
   if (typeof raw !== 'string' || raw.trim().length === 0) throw new Error('url is required')
@@ -24,9 +96,39 @@ export function normalizeURL(raw) {
   return parsed.toString()
 }
 
+/**
+ * Whether the URL names this machine or a private network without resolving it:
+ * private IP literals, localhost and LAN-only suffixes, and single-label hosts.
+ */
 export function isPrivateTarget(raw) {
-  const hostname = new URL(normalizeURL(raw)).hostname
-  return privateHostPatterns.some(pattern => pattern.test(hostname))
+  const hostname = hostnameOf(raw)
+  if (isIPLiteral(hostname)) return isPrivateAddress(hostname)
+  if (!hostname.includes('.')) return true
+  return privateNameSuffixes.some(suffix => hostname === suffix || hostname.endsWith(`.${suffix}`))
+}
+
+/**
+ * Like isPrivateTarget, and also resolves the hostname: any private address in
+ * the answer makes the target private. A lookup that fails or exceeds timeoutMs
+ * counts as private, so the caller asks instead of allowing silently.
+ */
+export async function resolvesToPrivateTarget(raw, { lookup = dnsLookup, timeoutMs = 3000 } = {}) {
+  if (isPrivateTarget(raw)) return true
+  const hostname = hostnameOf(raw)
+  if (isIPLiteral(hostname)) return false
+  let timer
+  try {
+    const answers = await Promise.race([
+      lookup(hostname, { all: true, verbatim: true }),
+      new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('DNS lookup timed out')), timeoutMs) }),
+    ])
+    return !Array.isArray(answers) || answers.length === 0 || answers.some(answer => isPrivateAddress(answer.address))
+  } catch {
+    // Unresolvable or slow names are treated as private; see the doc comment.
+    return true
+  } finally {
+    clearTimeout(timer)
+  }
 }
 
 export function searchURL(engine, query) {
