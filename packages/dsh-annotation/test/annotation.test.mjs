@@ -4,6 +4,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { decode, encode, reference } from '../src/client/reference.js'
 import { place } from '../src/client/position.js'
+import { annotations, occurrenceSpan, messageOrigin } from '../src/client/draft.js'
 
 const t = key => ({ notePrefix: '批注：', noted: '批注', invalid: 'invalid' })[key] ?? key
 
@@ -28,6 +29,44 @@ test('reference carries the annotation and stands alone as text', () => {
   assert.equal(reference('  ', 'x', t), undefined)
   assert.equal(decode('not json'), undefined)
   assert.equal(decode(encode('\uFFFC')), undefined)
+})
+
+test('message origin survives native draft round trips without leaking into model text', () => {
+  const origin = { sessionId: 'session-a', messageId: 'message-a' }
+  const value = reference('原文', '备注', t, origin)
+  assert.deepEqual(decode(value.ref).origin, origin)
+  assert.ok(!value.clipboardText.includes('session-a'))
+  assert.equal(decode(reference('旧批注', '', t).ref).origin, undefined)
+})
+
+test('native occurrence adapter edits exactly one chip after mixed references and emoji', () => {
+  const value = reference('同一段原文🙂', '旧批注', t)
+  const prefix = '🙂问题 ', file = '@报告.docx', between = '\n再问 '
+  const first = { ...value, occurrenceId: 8, offset: prefix.length + file.length + between.length, length: value.clipboardText.length }
+  const state = { phase: 'plain', draftRev: 19, draft: prefix + file + between + value.clipboardText + value.clipboardText,
+    occurrences: [{ source: 'file', ref: 'file', clipboardText: file, occurrenceId: 1, offset: prefix.length, length: file.length }, first,
+      { ...first, occurrenceId: 9, offset: first.offset + first.length }] }
+  assert.deepEqual(occurrenceSpan(state, first), { start: prefix.length + 1 + between.length, end: prefix.length + 2 + between.length, draftRev: 19 })
+  assert.deepEqual(occurrenceSpan(state, state.occurrences[2]), { start: prefix.length + 2 + between.length, end: prefix.length + 3 + between.length, draftRev: 19 })
+  assert.equal(occurrenceSpan(state, { ...first, ref: 'stale' }), undefined)
+  assert.equal(occurrenceSpan(state, { ...first, occurrenceId: 99 }), undefined)
+  for (const phase of ['claimed', 'adjudicating', 'submitting']) assert.equal(occurrenceSpan({ ...state, phase }, first), undefined)
+  assert.equal(occurrenceSpan({ ...state, draft: 'changed elsewhere' }, first), undefined)
+  assert.deepEqual(annotations(state.occurrences).map(item => [item.occurrenceId, item.number]), [[8, 1], [9, 2]])
+  assert.deepEqual(annotations(state.occurrences.slice(2)).map(item => item.number), [1])
+})
+
+test('source identity resolves only a finalized closing response, never by matching text', () => {
+  const nodes = new Map([
+    ['answer', { kind: 'assistant-step', data: { status: 'settled', turn: 2, finalNode: { messageId: 'm2' } } }],
+    ['tail', { kind: 'turn-tail', data: { closing: { finalNode: { messageId: 'm2' } } } }],
+    ['user', { kind: 'user' }],
+    ['stream', { kind: 'assistant-step', data: { status: 'running' } }],
+    ['earlier', { kind: 'assistant-step', data: { status: 'settled', turn: 2, finalNode: { messageId: 'm1' } } }],
+  ])
+  const chat = { nodes, locations: { getTurn: () => ['answer', 'tail'] } }
+  assert.deepEqual(messageOrigin(chat, 'answer', 's2'), { sessionId: 's2', messageId: 'm2' })
+  for (const key of ['user', 'stream', 'earlier', 'missing']) assert.equal(messageOrigin(chat, key, 's2'), undefined)
 })
 
 test('bundle registers a codec source and inserts through the official event', async () => {
@@ -55,7 +94,19 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(await source.codec.serialize(value.ref), value.clipboardText)
   await assert.rejects(source.codec.serialize('{}'))
   assert.equal(slots[0].spec.name, 'conversation.input.overlay')
+  assert.deepEqual(slots.map(slot => slot.spec.name), ['conversation.input.overlay', 'conversation.input.left', 'conversation.chat.turnTail'])
   const injected = slots[0].spec.inject('s1')
+  const panels = injected.previews
+  panels.open('s1', { kind: 'entry', occurrenceId: 4 })
+  const unlock = panels.lock('s1')
+  assert.equal(panels.open('s1', { kind: 'list' }), false)
+  assert.equal(panels.get('s1').occurrenceId, 4, 'switching panels must not replace an unfinished editor')
+  assert.equal(panels.get('s1').blocked, true)
+  assert.equal(panels.open('s2', { kind: 'list' }), true, 'editing lock is session scoped')
+  unlock()
+  assert.equal(panels.open('s1', { kind: 'list' }), true)
+  panels.lock('s1'); panels.close('s1')
+  assert.equal(panels.open('s1', { kind: 'list' }), true, 'teardown releases the UI lock')
   const actions = { captureInsertion: () => ({ start: 2, end: 5, draftRev: 7 }) }
   assert.equal(injected.insert(value, actions), true)
   assert.deepEqual(JSON.parse(JSON.stringify(bails[0].slice(1))), ['slash/input-insert-reference', { reference: value, span: { start: 5, end: 5, draftRev: 7 } }])
@@ -75,7 +126,7 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
     useEffect: fn => effects.push(fn), useLayoutEffect() {},
     useRef: () => ({ current: null }),
     useState: initial => stateIndex++ === 0 ? [target, value => draftChanges.push(value)] : [initial, () => {}],
-    useSyncExternalStore: () => ({ quote: '原文', note: '批注' }),
+    useSyncExternalStore: () => ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }),
   }
   const events = {
     addEventListener: (name, fn) => listeners.set(name, fn),
@@ -86,11 +137,12 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
   const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal: node => node } })[name])
   const scope = {
     effect: fn => fn(), inputTriggers: { registerSource() {} },
-    slots: { inject: (_, fn) => fn(), register: (_, component) => { overlay = component } },
+    slots: { inject: (_, fn) => fn(), register: (spec, component) => { if (spec.name === 'conversation.input.overlay') overlay = component } },
   }
   plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
   let accepted = false
-  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t, insert: () => accepted })
+  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t, insert: () => accepted,
+    useInput: fn => fn({ occurrences: [] }), useConversation: fn => fn({ views: { get() {} } }) })
   const editorNode = tree.children[1]
   editorNode.props.onAdd('保留这条批注')
   assert.deepEqual(draftChanges, [], 'rejected insertion must keep the mounted editor and its note')

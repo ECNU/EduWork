@@ -10,18 +10,26 @@ function clean(text, max) {
 
 // The chip's ref carries the whole annotation, so undo, session switches and
 // failed-send restoration need no plugin-side store.
-export function encode(quote, note) {
+export function encode(quote, note, origin) {
   const q = clean(quote)
   if (q === '') return undefined
   const n = clean(note, MAX_NOTE)
-  return JSON.stringify(n === '' ? { q } : { q, n })
+  const o = validOrigin(origin)
+  return JSON.stringify({ q, ...(n === '' ? {} : { n }), ...(o ? { o } : {}) })
+}
+
+function validOrigin(value) {
+  return typeof value?.sessionId === 'string' && value.sessionId !== ''
+    && typeof value.messageId === 'string' && value.messageId !== ''
+    ? { sessionId: value.sessionId, messageId: value.messageId } : undefined
 }
 
 export function decode(ref) {
   try {
     const value = JSON.parse(ref)
     if (typeof value?.q !== 'string' || value.q === '') return undefined
-    return { quote: value.q, note: typeof value.n === 'string' ? value.n : '' }
+    const origin = validOrigin(value.o)
+    return { quote: value.q, note: typeof value.n === 'string' ? value.n : '', ...(origin ? { origin } : {}) }
   } catch {
     return undefined
   }
@@ -40,8 +48,8 @@ export function label(annotation, t) {
   return annotation.note === '' ? `“${head}”` : `“${head}” · ${t('noted')}`
 }
 
-export function reference(quote, note, t) {
-  const ref = encode(quote, note)
+export function reference(quote, note, t, origin) {
+  const ref = encode(quote, note, origin)
   if (ref === undefined) return undefined
   const annotation = decode(ref)
   return { source: SOURCE, ref, label: label(annotation, t), clipboardText: text(annotation, t) }
