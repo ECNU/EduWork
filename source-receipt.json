@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-21T01:55:33.390Z",
-  "fileSetSHA256": "64b233a313fc68bec29eac827891a6a95cc8b76e854e56db047cf3e09b0d869f",
+  "createdAt": "2026-10-21T01:57:25.177Z",
+  "fileSetSHA256": "01a27c7ea81859bc1e916b8d5896b0706c1aeaf1ab64ad687453168f3341ea7e",
   "files": [
     {
       "path": ".gitattributes",
@@ -3165,7 +3165,7 @@
     },
     {
       "path": "packages/dsh-annotation/lib/client.js",
-      "sha256": "6bf25ec4950b24ab8caaf0e6fee97ec432912f6ddf750cdbc9307143e20d7840"
+      "sha256": "c10555e407ca1316ffd6ab9759c495e3846f8c5a4dfd7f94c0a0ddd731f8a023"
     },
     {
       "path": "packages/dsh-annotation/lib/index.js",
@@ -3197,7 +3197,7 @@
     },
     {
       "path": "packages/dsh-annotation/src/client/index.js",
-      "sha256": "00deb75787a7b79feaa04b5b35315d78bd765255b215b68e5a98cea1a024e7eb"
+      "sha256": "071aaee3832242f4a53926acfdec541ec183f5ed757fa9877067bd36df0b0c84"
     },
     {
       "path": "packages/dsh-annotation/src/client/position.js",

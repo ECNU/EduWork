@@ -161,7 +161,9 @@ function Preview({ annotation, t, onClose }) {
       window.removeEventListener('blur', onClose)
     }
   }, [onClose])
-  return h('div', { ref, [UI]: '', role: 'dialog', style: { ...card, left: '50%', bottom: 160, transform: 'translateX(-50%)', width: 'min(560px, calc(100vw - 32px))', padding: 14 } },
+  // Bound the whole preview, not only the quote: long notes must remain
+  // readable and the dialog must fit even when the window is short.
+  return h('div', { ref, [UI]: '', role: 'dialog', style: { ...card, left: '50%', bottom: 'min(160px, 20vh)', transform: 'translateX(-50%)', width: 'min(560px, calc(100vw - 32px))', maxHeight: 'calc(100vh - min(160px, 20vh) - 16px)', boxSizing: 'border-box', overflowY: 'auto', padding: 14 } },
     h('div', { style: { display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 } },
       h('strong', null, t('preview')),
       h('button', { type: 'button', onClick: onClose, style: button(false) }, t('close'))),
