@@ -6,7 +6,7 @@ All notable changes are documented here. The format follows Keep a Changelog pri
 
 ## [Unreleased]
 
-- Add the Host-only `identityToken(profileID)`: services the organization runs, such as a remote access relay, can confirm who is signed in from the current verified ID Token; gateway sign-in keeps the ID Token a refresh brings.
+- Add the Host-only `identityToken(profileID)`, which returns the current verified ID Token so that services the organization runs, such as a remote access relay, can confirm who is signed in; gateway sign-in also keeps the new ID Token a refresh brings.
 
 ## [0.3.0] — 2026-10-19
 

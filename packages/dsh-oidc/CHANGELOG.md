@@ -6,7 +6,7 @@
 
 ## [未发布]
 
-- 新增 Host 专属的 `identityToken(profileID)`：机构自有服务（例如远程访问中继）可凭当前已验证的 ID Token 确认登录者身份；网关登录在刷新时保存新的 ID Token。
+- 新增仅限宿主调用的 `identityToken(profileID)`，返回当前已验证的 ID Token，供机构自有服务（例如远程访问中继）确认登录者身份；网关登录刷新时一并保存新的 ID Token。
 
 ## [0.3.0] — 2026-10-19
 
