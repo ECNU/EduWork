@@ -1,51 +1,60 @@
 {
   "platform": "windows",
   "generatedFrom": "stage declarations in scripts/lib/*-stages.mjs",
-  "stages": 11,
-  "maxParallelism": 2,
+  "stages": 15,
+  "maxParallelism": 4,
   "waves": [
     {
       "wave": 0,
       "stages": [
-        "web",
+        "source-audit",
         "native-inputs"
       ]
     },
     {
       "wave": 1,
       "stages": [
-        "host-adapter",
-        "electron"
+        "upstream",
+        "runtime",
+        "source-dependencies",
+        "electron-tools"
       ]
     },
     {
       "wave": 2,
+      "stages": [
+        "host-adapter",
+        "source-clients",
+        "electron"
+      ]
+    },
+    {
+      "wave": 3,
       "stages": [
         "product",
         "shell"
       ]
     },
     {
-      "wave": 3,
-      "stages": [
-        "install-host",
-        "native-install"
-      ]
-    },
-    {
       "wave": 4,
       "stages": [
-        "desktop"
+        "native-install"
       ]
     },
     {
       "wave": 5,
       "stages": [
-        "accept"
+        "desktop"
       ]
     },
     {
       "wave": 6,
+      "stages": [
+        "accept"
+      ]
+    },
+    {
+      "wave": 7,
       "stages": [
         "publish"
       ]
@@ -53,22 +62,60 @@
   ],
   "detail": [
     {
-      "name": "web",
-      "description": "Web assembly and source audit",
+      "name": "source-audit",
+      "description": "Verify the public source and institution pin",
       "requires": [],
       "dependsOn": [],
       "outputs": [
-        "web",
-        "web/assembly"
+        "source-audit"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "upstream",
+      "description": "Fetch the pinned DSH source",
+      "requires": [
+        "source-audit"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "upstream"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "runtime",
+      "description": "Install the candidate DSH npm Runtime",
+      "requires": [
+        "source-audit"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "runtime"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "source-dependencies",
+      "description": "Install locked npm plugins and product build dependencies",
+      "requires": [
+        "source-audit"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "dependencies"
       ],
       "mutableOutputs": [],
       "clean": []
     },
     {
       "name": "host-adapter",
-      "description": "Desktop Host adapter build",
+      "description": "Adapt the pinned native Host",
       "requires": [
-        "web"
+        "upstream"
       ],
       "dependsOn": [],
       "outputs": [
@@ -78,10 +125,30 @@
       "clean": []
     },
     {
-      "name": "product",
-      "description": "Shared desktop product tree",
+      "name": "source-clients",
+      "description": "Build product-owned extensions against published npm packages",
       "requires": [
-        "web",
+        "source-audit",
+        "runtime",
+        "source-dependencies"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "source"
+      ],
+      "mutableOutputs": [],
+      "clean": [
+        "source-report"
+      ]
+    },
+    {
+      "name": "product",
+      "description": "Assemble npm plugins, product extensions and the optional edition",
+      "requires": [
+        "source-audit",
+        "runtime",
+        "source-dependencies",
+        "source-clients",
         "host-adapter"
       ],
       "dependsOn": [],
@@ -92,10 +159,23 @@
       "clean": []
     },
     {
-      "name": "electron",
-      "description": "Electron runtime download",
+      "name": "electron-tools",
+      "description": "Install the candidate Electron tooling",
       "requires": [
-        "web"
+        "source-audit"
+      ],
+      "dependsOn": [],
+      "outputs": [
+        "desktop-tools"
+      ],
+      "mutableOutputs": [],
+      "clean": []
+    },
+    {
+      "name": "electron",
+      "description": "Verify the candidate Electron runtime",
+      "requires": [
+        "electron-tools"
       ],
       "dependsOn": [],
       "outputs": [
@@ -106,28 +186,16 @@
     },
     {
       "name": "shell",
-      "description": "Electron shell build",
+      "description": "Build the pinned DSH Electron shell",
       "requires": [
-        "web",
-        "host-adapter"
+        "upstream",
+        "runtime",
+        "host-adapter",
+        "electron-tools"
       ],
       "dependsOn": [],
       "outputs": [
         "shell"
-      ],
-      "mutableOutputs": [],
-      "clean": []
-    },
-    {
-      "name": "install-host",
-      "description": "Install the Host adapter into the product",
-      "requires": [],
-      "dependsOn": [
-        "product",
-        "host-adapter"
-      ],
-      "outputs": [
-        "product/d/node_modules/@deepseek-ai/dsh-desktop-host"
       ],
       "mutableOutputs": [],
       "clean": []
@@ -165,7 +233,7 @@
       "requires": [
         "shell",
         "electron",
-        "install-host",
+        "product",
         "native-install"
       ],
       "dependsOn": [],

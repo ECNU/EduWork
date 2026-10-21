@@ -1,6 +1,6 @@
 // macOS arm64 stages: locked native inputs, Electron.app assembly, packaged
 // launch and installation-image acceptance. The shared spine lives in
-// shared-desktop-stages.mjs; this file only adds what is macOS-specific, so the
+// pinned-source-stages.mjs; this file only adds what is macOS-specific, so the
 // release orchestrator itself has no platform branch.
 import { createWriteStream } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
@@ -12,6 +12,7 @@ import {
   sleep, writeJSON,
 } from './build-util.mjs'
 import { stage } from './stage-runner.mjs'
+import { desktopBuildRecipe } from '../desktop-build-plan.mjs'
 import { assembleMacos } from '../../dsh-electron/scripts/assemble-macos.mjs'
 import { verifyMacOSAppArchive } from '../../dsh-electron/scripts/create-macos-archive.mjs'
 import { prepareMacosReleaseInputs, installMacosReleaseInputs } from '../prepare-macos-release-inputs.mjs'
@@ -32,8 +33,9 @@ function freeLoopbackPort() {
 
 export function macosStages({
   coreRoot, name, version, development, releaseNotesFile, verifyPublisherBootstrap, receiptBase,
-  recipe = 'npm', deltaBases = [],
+  recipe = 'pinned-source', deltaBases = [],
 }) {
+  desktopBuildRecipe(recipe)
   return [
     // Native inputs depend only on the lock file, never on the product, so a
     // product change does not rebuild OpenSSL or whisper.cpp.
@@ -82,7 +84,7 @@ export function macosStages({
     stage({
       name: 'desktop',
       description: 'Electron.app assembly',
-      requires: ['shell', 'electron', recipe === 'pinned-source' ? 'product' : 'install-host', 'native-install', 'sparkle'],
+      requires: ['shell', 'electron', 'product', 'native-install', 'sparkle'],
       outputs: ['desktop'],
       inputs: () => ({ version, development }),
       run: async (workspace) => {
@@ -301,16 +303,14 @@ async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap
     stderrLog.end()
   }
   if (!(await readJSON(join(gui, 'result.json'))).passed) throw new Error('macOS desktop smoke failed')
-  if (workspace.parameters.recipe === 'pinned-source' && name === 'EduWork') {
+  if (name === 'EduWork') {
     await runNode(join(coreRoot, 'scripts/verify-generic-first-launch.mjs'), [frozen, config])
   }
   await copyFileTo(join(gui, 'result.json'), join(evidence, 'desktop-ui-result.json'))
   const checks = { archiveManifest: 'passed', nativeRuntimes: 'passed', desktopLaunch: 'passed' }
-  if (workspace.parameters.recipe === 'pinned-source') {
-    await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozen])
-    checks.mediaTemplate = 'passed'
-    checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
-  }
+  await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozen])
+  checks.mediaTemplate = 'passed'
+  checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
   if (name === 'EduWork') {
     if (!await isFile(config) || !await isFile(join(gui, 'examples/organization.jsonc'))) {
       throw new Error('First launch did not create the user configuration and examples')

@@ -3,7 +3,7 @@
 // launch acceptance and the release receipt. Node.js port of
 // ci-eduwork-windows-release.ps1. Requires a Windows runner.
 //
-// The work itself lives in stage declarations: shared-desktop-stages.mjs holds
+// The work itself lives in stage declarations: pinned-source-stages.mjs holds
 // the spine every platform shares, windows-stages.mjs adds what is Windows
 // specific. This file validates the arguments, enters the workspace and writes
 // the receipt; it contains no build steps.
@@ -18,9 +18,9 @@ import {
   sha256File, writeJSON,
 } from './lib/build-util.mjs'
 import { Workspace, maxParallelism, runStages } from './lib/stage-runner.mjs'
-import { copyPublicWebEvidence, sharedDesktopStages } from './lib/shared-desktop-stages.mjs'
+import { copyPublicWebEvidence } from './lib/desktop-build-evidence.mjs'
 import { windowsStages } from './lib/windows-stages.mjs'
-import { desktopBuildPlan, desktopVersion } from './desktop-build-plan.mjs'
+import { desktopBuildPlan, desktopVersion, desktopBuildRecipe } from './desktop-build-plan.mjs'
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
 import { desktopSourceIdentity } from './lib/build-source.mjs'
 import { deltaBaseArchives } from './update-delta-bases.mjs'
@@ -31,7 +31,7 @@ const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
   '[--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] ' +
-  '[--recipe npm|pinned-source] [--delta-bases <dir>] ' +
+  '[--recipe pinned-source] [--delta-bases <dir>] ' +
   '(--jobs 0 = as many as the graph allows)'
 
 export async function ciEduworkWindowsRelease({
@@ -55,6 +55,7 @@ export async function ciEduworkWindowsRelease({
   recipe = '',
   deltaBases = '',
 } = {}) {
+  recipe = desktopBuildRecipe(recipe)
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)
@@ -62,10 +63,7 @@ export async function ciEduworkWindowsRelease({
   // Set before any work: the native-input stage downloads and compiles, and both
   // cache layers read this root.
   if (cacheRoot) setCacheRoot(cacheRoot)
-  recipe ||= 'pinned-source'
-  if (!['npm', 'pinned-source'].includes(recipe)) throw new Error('Unknown desktop build recipe')
-  const sourcePlan = recipe === 'pinned-source'
-    ? await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false }) : null
+  const sourcePlan = await desktopBuildPlan({ core: coreRoot, edition: editionRoot, version, includeLegacyValidation: false })
 
   // Development artifacts are named for their channel and never carry approved
   // public notes; a public release requires both the flag and a reviewed file.
@@ -118,7 +116,7 @@ export async function ciEduworkWindowsRelease({
     recipe,
     sourceIdentity,
     automaticUpdates: desktopVersion(version).automaticUpdates,
-    verifyPublisherBootstrap: sourcePlan?.verifyPublisherBootstrap ?? false,
+    verifyPublisherBootstrap: sourcePlan.verifyPublisherBootstrap,
     deltaBases: bases,
   }
 
@@ -150,11 +148,8 @@ export async function ciEduworkWindowsRelease({
     }
   }
 
-  const common = { coreRoot, editionRoot, distributionConfig, version, verifySnapshot, runtimeSource, upstreamSource }
   const stages = [
-    ...(recipe === 'pinned-source'
-      ? pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource, verifySnapshot })
-      : sharedDesktopStages(common)),
+    ...pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSource, verifySnapshot }),
     ...windowsStages({ coreRoot, receiptBase, recipe }),
   ]
   const workspace = new Workspace({

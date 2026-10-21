@@ -28,10 +28,12 @@
 | --- | --- | --- |
 | 本地 Windows x64 / macOS arm64 开发构建 | `node scripts/local-desktop-pipeline.mjs` | 已接入阶段流水线 |
 | 双平台开发包工作流 | `development-desktop.yml` → 两平台 Node 阶段入口 | main 更新后自动构建并保留已验收的 artifact |
-| 手动双平台候选与发布 | `desktop-candidates.yml` → `node` | Node 编排与锁定的 DSH `0.2.0-rc.2` 候选配方，支持 alpha/beta/rc/dev/stable |
+| 手动双平台候选与发布 | `desktop-candidates.yml` → `node` | Node 编排与锁定的 DSH `0.2.1-rc.2` 候选配方，支持 alpha/beta/rc/dev/stable |
 | 旧版源码候选 | `desktop-candidates.yml` → `ps1` | 暂留作锁定源码配方的对照入口 |
 
-开发包以及 `node` 与 `ps1` 候选都使用 `config/desktop-build.json` 选择 `0.2.0-rc.2` 组合：锁定的 npm Runtime、上游源码 Host 和重建的产品插件客户端。Node 流程不调用 PowerShell。两个平台经归档和应用启动检查后，发布任务核对 ZIP、DMG、哈希、回执、Windows 安装包及已批准说明，再上传 GitHub Release。macOS DMG 使用 ZIP 内同一应用并核对只读镜像；stable 构建要求 Sparkle 配置。开发包只上传 artifact，手动候选才可经授权发布。
+开发包以及 `node` 与 `ps1` 候选都使用 `config/desktop-build.json` 选择 `0.2.1-rc.2` 组合：锁定的 npm Runtime 与已发布插件、上游源码 Host，以及产品专属扩展。Node 流程不调用 PowerShell。两个平台经归档和应用启动检查后，发布任务核对 ZIP、DMG、哈希、回执、Windows 安装包及已批准说明，再上传 GitHub Release。macOS DMG 使用 ZIP 内同一应用并核对只读镜像；stable 构建要求 Sparkle 配置。开发包只上传 artifact，手动候选才可经授权发布。
+
+旧 `--recipe npm`、`ci-eduwork-windows-release.ps1` 和 `ci-eduwork-macos-release.ps1` 已退役；旧命令会在下载或构建前提示迁移到 Node 入口。默认和显式 `--recipe pinned-source` 都使用上面的组合，npm Runtime 与插件装配继续保留。`desktop-candidates.yml` 的 `ps1` 选项使用 `build-desktop-candidate.ps1`，属于保留的锁定源码路线。机构仓若仍调用已退役脚本，应在升级公版锁时迁移入口及发布回执读取方式。
 
 ## 后续事项
 

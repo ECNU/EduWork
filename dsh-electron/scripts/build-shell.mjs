@@ -1,26 +1,26 @@
-import { readFile, writeFile, mkdir, copyFile, symlink, readdir } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, copyFile, readdir } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
-import { fileURLToPath, pathToFileURL } from 'node:url'
+import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativeDesktopSource } from './native-desktop-source.mjs'
 import { adaptHostQuit } from './host-quit-adaptation.mjs'
 import { pinnedDshContract } from '../../scripts/pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, runtime: { type: 'string' }, 'pinned-dsh-source': { type: 'boolean' } } })
-if (!values.upstream || !values.host || !values.output) throw new Error('Use --upstream <pinned source> --host <prepared host> --output <new directory>')
+if (!values['pinned-dsh-source']) throw new Error('The legacy Electron shell build is retired. Use --pinned-dsh-source with --runtime, or scripts/local-desktop-pipeline.mjs. See docs/BUILD.md.')
+if (!values.upstream || !values.host || !values.output) throw new Error('Use --upstream <pinned source> --host <prepared host> --output <new directory> --pinned-dsh-source --runtime <pinned npm Runtime>')
 const upstream = resolve(values.upstream), output = resolve(values.output), host = resolve(values.host)
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
-const native = values['pinned-dsh-source'] === true
-if (native && !values.runtime) throw new Error('The native shell requires --runtime <pinned npm Runtime>')
-const lock = native ? pinnedDshContract : JSON.parse(await readFile(join(repository, 'third_party/dsh/release-v0.1.5-rc.2/LOCK.json'), 'utf8'))
+if (!values.runtime) throw new Error('The native shell requires --runtime <pinned npm Runtime>')
+const lock = pinnedDshContract
 const coreLock = lock
 const digest = data => createHash('sha256').update(data).digest('hex')
-const inputs = JSON.parse(await readFile(join(repository, native ? 'dsh-electron/upstream-inputs-pinned-source.json' : 'dsh-electron/upstream-inputs.json'), 'utf8'))
+const inputs = JSON.parse(await readFile(join(repository, 'dsh-electron/upstream-inputs-pinned-source.json'), 'utf8'))
 const hostReceipt = JSON.parse(await readFile(join(host, 'receipt.json'), 'utf8'))
 if (hostReceipt.upstreamCommit !== coreLock.commit) throw new Error('Host and selected core commits differ')
-for (const name of native ? ['host-process.mjs', 'node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs'] : ['host-process.mjs', 'host-protocol.mjs']) {
+for (const name of ['host-process.mjs', 'node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs']) {
   if (digest(await readFile(join(host, name))) !== hostReceipt.outputs[name]) throw new Error('Prepared Host bytes differ from receipt')
 }
 const source = async path => {
@@ -34,46 +34,8 @@ const rows = []
 for (const file of files) {
   const before = await source(file)
   let text = before.toString('utf8')
-  if (native) text = adaptNativeDesktopSource(file, text)
-  if (!native && file === 'apps/desktop/src/main.ts') {
-    const replace = (from, to) => { if (text.split(from).length !== 2) throw new Error('Official Electron anchor changed: ' + from.slice(0, 80)); text = text.replace(from, to) }
-    replace("import { DesktopHostProcess } from './host-process.ts'", "import { DesktopHostProcess } from './eduwork-host-process.mjs'\nimport { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation, showDesktopFailure, checkProductUpdates, setDesktopQuitGuard } from './product.mjs'\nimport { fetchDesktopProtocolResponse } from './media-transport.mjs'\nimport { DesktopQuitConfirmation, inspectLegacyDesktopQuit } from './quit-confirmation.mjs'")
-    replace('  let host: DesktopHostProcess | undefined', `  let host: DesktopHostProcess | undefined
-  const quit = new DesktopQuitConfirmation({
-    locale: () => resolveDesktopLocale(app.getLocale()),
-    inspect: () => host === undefined ? undefined : inspectLegacyDesktopQuit(host),
-    show: options => dialog.showMessageBox(options),
-    focus: () => { if (process.platform === 'darwin') app.focus({ steal: true }) },
-  })
-  setDesktopQuitGuard(() => quit.confirm())
-  app.on('will-quit', () => quit.dispose())`)
-    replace('  const checkAndPrompt = async (manual: boolean): Promise<void> => {', '  const checkAndPrompt = async (manual: boolean): Promise<void> => {\n    if (manual) await checkProductUpdates()\n    return\n    // Upstream installer updates are inactive for the portable product distribution.')
-    replace("const SCHEME = 'dsh-app'", "configureEduworkPaths()\nconst SCHEME = 'dsh-app'")
-    // macOS routes standard editing shortcuts through native menu roles.
-    // Keep the application menu first and preserve other platforms' menus.
-    replace("      { role: 'quit' },\n    ],\n  }]))", "      { role: 'quit' },\n    ],\n  }, ...(process.platform === 'darwin' ? [{ role: 'editMenu' as const }] : [])]))")
-    replace('  const resources = runtimeResources()', '  if (await installEduworkFromDmg() || isQuitting()) return\n  if (!claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })) return\n  const product = await prepareEduworkDesktop()\n  const resources = { ...runtimeResources(), node: product.node }')
-    replace('const ownsDesktopInstance = claimDesktopSingleInstance(app, () => { focusPrimaryWindow() })\n\nif (ownsDesktopInstance) void app.whenReady()', 'void app.whenReady()')
-    replace('  const development = developmentProject()', '  const development = product.profile')
-    replace('new DesktopHostProcess(resources.node, projectDir, hostInspectPort)', 'new DesktopHostProcess(resources.node, projectDir, hostInspectPort, { bootstrap: nativeBootstrap(), allowLinkedProfile: true, onLog: desktopHostLog })')
-    replace('    await next.start()', "    trackHost(next)\n    await next.start()\n    if (isQuitting()) throw new Error('Desktop is shutting down')")
-    replace("  await mainWindow.loadURL(`${SCHEME}://app/index.html`)", "  await mainWindow.loadURL(`${SCHEME}://app/index.html`)\n  await desktopReady()")
-    replace('  mainWindow = createMainWindow()', '  mainWindow = createMainWindow()\n  await attachDesktopWindow(mainWindow)')
-    replace("  window.webContents.setWindowOpenHandler(() => ({ action: 'deny' }))\n  window.webContents.on('will-navigate', (event, url) => {\n    if (new URL(url).protocol !== `${SCHEME}:`) event.preventDefault()\n  })", '  configureWindowNavigation(window)')
-    replace("process.env.DSH_DESKTOP_OPEN_DEVTOOLS !== '0'", "process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1'")
-    replace("  app.on('before-quit', (event) => {\n    if (shellInstallerOwnsQuit) return\n    if (host === undefined) return\n    event.preventDefault()\n    const active = host\n    host = undefined\n    void active.stop().finally(() => { app.quit() })\n  })", '  // Product lifecycle also owns Hosts which have not reached ready yet.')
-    replace('  const message = error instanceof Error ? error.message : String(error)', '  if (isQuitting()) return\n  const message = error instanceof Error ? error.message : String(error)')
-    replace('  dialog.showErrorBox(resolveDesktopLocale(app.getLocale()).messages.startupFailed, message)', '  await showDesktopFailure(error)')
-    replace('  app.exit(1)', '  // Keep the startup error visible so the user can fix configuration and retry.')
-    replace('    return active.fetch(request)', '    return fetchDesktopProtocolResponse(active, request, isQuitting)')
-  }
-  if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); if (native) text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8') }
-  if (!native && file === 'apps/desktop/src/locale.ts') {
-    const before = "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  return locale.toLowerCase().startsWith('zh')\n    ? { id: 'zh-CN', messages: zh }\n    : { id: 'en', messages: en }\n}"
-    if (!text.includes(before)) throw new Error('Official desktop locale adapter anchor changed')
-    text = "import { app } from 'electron'\n" + text.replace(before,
-      "export function resolveDesktopLocale(locale: string): DesktopLocale {\n  const selected: DesktopLocale = locale.toLowerCase().startsWith('zh') ? { id: 'zh-CN', messages: zh } : { id: 'en', messages: en }\n  const messages = Object.fromEntries(Object.entries(selected.messages).map(([key, value]) => [key, value.replaceAll('DeepSeek Harness', app.getName())])) as unknown as DesktopMessages\n  return { ...selected, messages }\n}")
-  }
+  text = adaptNativeDesktopSource(file, text)
+  if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8') }
   const target = join(output, file.slice('apps/desktop/'.length))
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
@@ -98,23 +60,16 @@ await copyFile(join(repository, 'dsh-host/desktop-log.mjs'), join(output, 'src/d
 const vendor = 'vendor/jsonc-parser'
 await mkdir(join(output, 'src', vendor), { recursive: true })
 for (const name of ['parser.js', 'scanner.js', 'string-intern.js', 'package.json', 'LICENSE.md', 'README.md']) await copyFile(join(repository, 'dsh-host', vendor, name), join(output, 'src', vendor, name))
-if (native) {
+{
   await writeFile(join(output, 'src/eduwork-native-host-process.mjs'), adaptHostQuit(await readFile(join(host, 'host-process.mjs'), 'utf8')))
   for (const name of ['node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs']) await copyFile(join(host, name), join(output, 'src', name))
   await copyFile(join(repository, 'dsh-electron/src/native-web-host.mjs'), join(output, 'src/eduwork-host-process.mjs'))
   for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
-} else {
-  await copyFile(join(host, 'host-process.mjs'), join(output, 'src/eduwork-host-process.mjs'))
-  await copyFile(join(host, 'host-protocol.mjs'), join(output, 'src/host-protocol.mjs'))
 }
 await copyFile(join(host, 'LICENSE-DeepSeek'), join(output, 'LICENSE-DeepSeek'))
 const manifest = JSON.parse(await source('apps/desktop/package.json'))
 await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name: '@eduwork/desktop-electron', scripts: {}, devDependencies: {} }, null, 2))
-if (!native) await symlink(join(upstream, 'apps/desktop/node_modules'), join(output, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
-const require = createRequire(join(upstream, 'package.json'))
-const desktopRequire = createRequire(join(upstream, 'apps/desktop/package.json'))
-const alias = native ? {} : Object.fromEntries(['electron-updater', 'semver', 'tar', '@deepseek-ai/dsh-home-paths'].map(name => [name, desktopRequire.resolve(name)]))
-if (native) {
+{
   const runtime = resolve(values.runtime)
   const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
   if (runtimeReceipt.dshCommit !== lock.commit || runtimeReceipt.dshVersion !== lock.packageVersion) throw new Error('Native shell compiler Runtime differs from the core lock')
@@ -123,18 +78,14 @@ if (native) {
   const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(runtime, 'node_modules')], external: ['electron'], logLevel: 'warning' }
   await build({ ...common, entryPoints: [join(output, 'src/desktop-main.mjs')], outfile: join(output, 'lib/main.js'), format: 'esm', banner: { js: "import { createRequire as __eduworkRequire } from 'node:module'; const require = __eduworkRequire(import.meta.url);" } })
   await build({ ...common, entryPoints: [join(output, 'src/preload-app.ts')], outfile: join(output, 'lib/preload-app.cjs'), format: 'cjs' })
-} else {
-const { build } = await import(pathToFileURL(require.resolve('tsdown')).href)
-await build({ config: false, cwd: output, alias, failOnWarn: true, entry: ['src/main.ts'], outDir: 'lib', format: ['esm'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { alwaysBundle: [/.*/u], neverBundle: ['electron'] } })
-await build({ config: false, cwd: output, entry: { preload: 'src/preload.ts', 'preload-app': 'src/preload-app.ts' }, outDir: 'lib', format: ['cjs'], platform: 'node', target: 'es2024', fixedExtension: false, dts: false, clean: false, deps: { neverBundle: ['electron'] } })
 }
 // The pet preload requires only electron; the sandbox loads it as written.
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
 const adapters = {}
 for (const name of ['dock-theme-preload.cjs', 'boot-motion-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
-if (native) adapters['dsh-electron/src/boot-brand-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs')))
+adapters['dsh-electron/src/boot-brand-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs')))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
-if (native) {
+{
   for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
   adapters['dsh-electron/scripts/native-desktop-source.mjs'] = digest(await readFile(join(repository, 'dsh-electron/scripts/native-desktop-source.mjs')))
 }
@@ -175,8 +126,7 @@ async function collectNotice(name, from) {
   notices.push({ name: manifest.name, version: manifest.version, license: manifest.license, files: copies })
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
-for (const name of Object.keys(alias)) await collectNotice(name, join(upstream, 'apps/desktop/package.json'))
-if (native) for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })

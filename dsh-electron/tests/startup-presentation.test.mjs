@@ -26,18 +26,6 @@ test('startup window handoff covers download-first, main-first and hidden intent
   assert.deepEqual(completion({ startupWindowHidden: true, mainPresented: true }), { startupWindowHidden: true, restoreMainWindow: false })
 })
 
-test('legacy npm builds append motion support but not the native brand IPC preload', () => {
-  const source = readFileSync(new URL('../scripts/build-shell.mjs', import.meta.url), 'utf8')
-  const start = source.indexOf("if (file === 'apps/desktop/src/preload-app.ts')")
-  const end = source.indexOf("if (!native && file === 'apps/desktop/src/locale.ts')", start)
-  assert.ok(start >= 0 && end > start, 'preload append boundary changed')
-  const append = source.slice(start, end)
-  assert.match(append, /boot-motion-preload\.cjs/)
-  const guard = append.indexOf('if (native)')
-  assert.ok(guard >= 0, 'brand preload must be native-only')
-  assert.ok(guard < append.indexOf('boot-brand-preload.cjs'), 'brand preload is appended before its native guard')
-})
-
 test('startup completion records a hidden dedicated window before destroying it', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const start = source.indexOf('export async function desktopReady')

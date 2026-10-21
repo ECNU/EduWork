@@ -54,7 +54,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 ## 依赖与复用
 
-桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 npm 配方仅能显式通过 `--recipe npm` 调用。
+桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
 
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
 

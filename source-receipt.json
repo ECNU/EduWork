@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-20T16:25:31.170Z",
-  "fileSetSHA256": "080535e04da836583283b98f8bbccc4c2432d1b14f36fea2709458b219732b48",
+  "createdAt": "2026-10-21T08:59:47.042Z",
+  "fileSetSHA256": "1eb96bc23cda43bfd70fa9653c7a72a4f5800f95174097916f12b9e22952961b",
   "files": [
     {
       "path": ".gitattributes",
@@ -229,27 +229,27 @@
     },
     {
       "path": "docs/assets/build-pipeline-macos.json",
-      "sha256": "3572fb24720471eaf69704f6acd203995bb7772ca274a1f4302887caa70d13fc"
+      "sha256": "e154aedec90f3d54364feee523c539b06991c55f14ecc28c9ffbe6431ed6a155"
     },
     {
       "path": "docs/assets/build-pipeline-windows.json",
-      "sha256": "12c06bccf2f14c46c93dd1e288420fbf879b1442280a8079738755a88a904c1e"
+      "sha256": "fa0bc48941c0a375b4bb2f8ab09579339c194c501c988b8b216d0a1ac245f056"
     },
     {
       "path": "docs/assets/build-pipeline.drawio",
-      "sha256": "ab399957e77384967e641dda1f0361228d7a816fb1c0e23a785509cf907259cd"
+      "sha256": "6509a97463986933033bec8142b1c3f8d88e344924453b2d605e88593bc1902f"
     },
     {
       "path": "docs/assets/build-pipeline.mmd",
-      "sha256": "baecdac4f6dfcb4832c8d6f18b7c9e5e13fdcace302f8480aee851fdef8b77ae"
+      "sha256": "851a924f024e3949070e0587073872ecc5c1fa0209e7fea7c9af86a34ff4f923"
     },
     {
       "path": "docs/assets/build-pipeline.svg",
-      "sha256": "10096cff97d86d71a1962773a68c7aee261faf2ae48d979b6b9159a2b3878ae0"
+      "sha256": "facc5bfe17d3d2f5bf066aef96a230f61d2aed4959bfac891720e2ecdfac1f1a"
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "bb9290bd657a9faadcb5cfa838a1f79f42028896782318de8ad7269f8b59eb33"
+      "sha256": "60ef48d7a9763531320828473c947c98dcd9570c22f011e4b28cf6e5c5a525a8"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -385,11 +385,11 @@
     },
     {
       "path": "docs/proposals/build-pipeline-stages/README_EN.md",
-      "sha256": "5e4b03408c14e68d8637d438183a7edcccb1687edb12e309c73838f0beff24d1"
+      "sha256": "5920082a71456797bc3d68c5ec1f21cc9b527a3f822fc083a9f91831934beda0"
     },
     {
       "path": "docs/proposals/build-pipeline-stages/README.md",
-      "sha256": "179cfef14e96cd2c7d499211908ce44eca8286704ffd536e4e514eb99795ffdb"
+      "sha256": "2229f7ff2d91ad7b7ab699902491539091b8ae89e3c6c24c82a79ae454ca6c85"
     },
     {
       "path": "docs/proposals/calendar/INTEGRATION_EN.md",
@@ -1029,7 +1029,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "34c46c05bb709267b52ea6f453d6be352145b5dee728c2082c346291a2e00a13"
+      "sha256": "307f74fbe6670bca48fcbebe52b244a75df6fc2f286cb7d6b13e740b88a4f117"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1429,7 +1429,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "1ec98bf88385e0c1d088d690abb2207f8e98b19786cabee64ea5753505065e7b"
+      "sha256": "b1221287e32883de9bbb976d9449cb7d25ac22c7dda178d3f10702bdaddee908"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
@@ -1482,10 +1482,6 @@
     {
       "path": "dsh-electron/upstream-inputs-pinned-source.json",
       "sha256": "5e1b58e39d6edbdc74262c5b13d1ab99bd8ec5bc5c41da083bbaf54630f917b6"
-    },
-    {
-      "path": "dsh-electron/upstream-inputs.json",
-      "sha256": "d96d148657434c15b4939db4123ab82e6bbdf469b120b31df0e4da34a0e8e8af"
     },
     {
       "path": "dsh-host/bridge.mjs",
@@ -6101,7 +6097,7 @@
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
-      "sha256": "029177056eb2477caac3c5a284980ab992bb4cc559cf934630c30da2f8a37d57"
+      "sha256": "b0b5e36273cdf5a2d6d6b7ed5aeab6c6236d67e6724b149bcecb70ba95ed83b7"
     },
     {
       "path": "scripts/check-bundled-configuration.mjs",
@@ -6121,11 +6117,11 @@
     },
     {
       "path": "scripts/ci-eduwork-macos-release.mjs",
-      "sha256": "348b52f8b78b274edd3a82414124af0e108632fbe7961a6f3a5b938c28c1af45"
+      "sha256": "fa3b0afe3cf581fbeb1855a30ab6f6cea219e8086d2c4530d8c47981aef34012"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.ps1",
-      "sha256": "cdd99dbd0ecdfc8a69c537beca90724f624246d95a54b1633b155a5897859d30"
+      "sha256": "15ef18b428b74d0153430a93377e73a8ecc04a3c68c8fa3a419d16e3d34dfee1"
     },
     {
       "path": "scripts/ci-eduwork-web.mjs",
@@ -6137,11 +6133,11 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.mjs",
-      "sha256": "a0ae8654383f48e92b11f0beeb740926787c8dfedfd1b8efe0b7791cbebfca0a"
+      "sha256": "badff97f7d95db32e1b342d99033043b62128969217c35dd3206568ff9947d0c"
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
-      "sha256": "010bcc6aa378adc9f93eff86c7545d4b4af39764fb65d93b39ded2fd8d10aa9e"
+      "sha256": "3de5c67bedd0f64e61e501d054317c8284229c787ba66352ee1335edf3df10d3"
     },
     {
       "path": "scripts/ci-pinned-dsh-desktop.ps1",
@@ -6181,7 +6177,7 @@
     },
     {
       "path": "scripts/desktop-build-plan.mjs",
-      "sha256": "04ccc74d4d4c9c98e90b7e89cfef944b3d264be8326197c4510c31bf09354309"
+      "sha256": "aa81d87d5a21301c1fc30ac1bd19e5bb7b93742e9b5795e58d305f2472780d9a"
     },
     {
       "path": "scripts/dev-eduwork-web.mjs",
@@ -6232,6 +6228,10 @@
       "sha256": "755ec21adf8116d5a66f800b55f39409fb72f1f49eb720423d82041f3c4eb1e6"
     },
     {
+      "path": "scripts/lib/desktop-build-evidence.mjs",
+      "sha256": "df3aa538cdf3e18547d1571dbe6cfdd01379d4c8e86918a3b0e67349d3dcea2e"
+    },
+    {
       "path": "scripts/lib/dsh-packages.mjs",
       "sha256": "48d19c19204e24f73f8375afc52a2e67619b9f0f072f0d20e6e78a7e8f879485"
     },
@@ -6245,7 +6245,7 @@
     },
     {
       "path": "scripts/lib/macos-stages.mjs",
-      "sha256": "256b7e0a7bf1e9035d55f4fdb7ffc57f81fdfa6fd8b8a33dc6381b40fc786f08"
+      "sha256": "011ddf87c6e1d1c421059304b739c9911bb6da66b8c5c16fcfb51a17a58ebb6a"
     },
     {
       "path": "scripts/lib/native-compile-cache.mjs",
@@ -6268,10 +6268,6 @@
       "sha256": "546cd9697644c792b19afa9d0c450e42c2549f09c946d50ea39bd83be16b585c"
     },
     {
-      "path": "scripts/lib/shared-desktop-stages.mjs",
-      "sha256": "5ba948c37bdc53cf7ad00ea51854b8e175b03c23d39c8002236400849ed963ab"
-    },
-    {
       "path": "scripts/lib/stage-runner.mjs",
       "sha256": "afb192e846c2f36819b252f94909ad9cfd46c8735aa6f84809b62b608fbb5d6d"
     },
@@ -6285,7 +6281,7 @@
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "6c456a853ca485794d102d63eb05e24608ba4a2204ae2aa9492b3c368a4cc942"
+      "sha256": "56229a1e5f8e326545f0a39d567c9feaadaed68328dec4216120e4990e1a2adc"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -6701,15 +6697,15 @@
     },
     {
       "path": "tests/build-pipeline-diagram.test.mjs",
-      "sha256": "b5e9c11da998ee00aea838746d158ffa958f18d0071732520133c291f4ee4869"
+      "sha256": "dc74c67fa0eef81ce252a0df0eaa9bbbb0ad0d9db2027be5acbf626a3cd930a2"
     },
     {
       "path": "tests/build-script-entry.test.mjs",
-      "sha256": "81eebd7e572dab8e28e0b95c438c0d78d439c4c8b1381133bfb0f5a1ab1f8aff"
+      "sha256": "2ed32c0a4803f91db6a32076f1e8bf51e2f4ca5ecf1b396974e62d12ad6b4d84"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",
-      "sha256": "024d55f3a7f73f82d882522901e249c3b640eecf85eaeda40d3a22a95d893f05"
+      "sha256": "f5b647ee1d247998f74c81a2163d04ad63924b233b8fd1045f83a3355c19b5e2"
     },
     {
       "path": "tests/desktop-build-source.test.mjs",
@@ -6789,7 +6785,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "ff194913eb73b02724dfed93cbd184e6b0527f723155e32b94ef9804b50b384a"
+      "sha256": "71f19f62ccbd03f5e9c276eafaa3f2951d73c1b9187f85e50e2c945ae0aad7bb"
     },
     {
       "path": "tests/fixtures/audit-stack-probe.mjs",
