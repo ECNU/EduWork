@@ -7,6 +7,7 @@
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { encode } from 'uqr'
 import type { PanelStatus } from '../plugin.ts'
+import { Close } from '../protocol/close-codes.ts'
 import TYPERT, { ACCESS_KEY_REF } from '../typert.ts'
 import { dictionaries, NS, type Key } from './locale.ts'
 import { inject as phoneInject, phone, REMOTE, type PhoneSurface } from './phone.tsx'
@@ -148,7 +149,7 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
             <>
               <TextSetting label={t('relay')} hint={t('relayHint')} value={settings.relay} disabled={locked} type="url"
                 onSave={value => save('relay', value)} />
-              <TextSetting label={t('accessKey')} hint={`${t('accessKeyHint')} ${accessKey.configured ? t('accessKeySet') : t('accessKeyMissing')}`}
+              <TextSetting label={t('accessKey')} hint={t(accessKey.configured ? 'accessKeySet' : 'accessKeyHint')}
                 value="" disabled={!accessKey.writable} type="password" onSave={value => value !== '' && saveAccessKey(value)} />
             </>
           )
@@ -163,14 +164,15 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
   )
 }
 
+/** What the user can act on; the Host logs the details. */
 function summary(settings: Settings, status: PanelStatus, t: Translate): string {
-  if (status.state === 'failed') return t('failed', { message: status.message })
+  if (status.state === 'failed') return t('failed')
   if (status.state === 'off') return settings.enabled ? t('unconfigured') : ''
   if (status.state === 'sign-in') return t('signIn', { organization: status.organization!.name })
   const { link } = status
   if (link.state === 'online') return t('linkOnline')
-  if (link.state === 'offline') return t('linkOffline', { reason: link.reason })
-  if (link.state === 'refused') return t(status.organization === undefined ? 'linkRefused' : 'linkRefusedMember', { reason: link.reason })
+  if (link.state === 'offline') return t('linkOffline')
+  if (link.state === 'refused') return t(link.code === Close.upgradeRequired ? 'linkUpgrade' : status.organization === undefined ? 'linkRefused' : 'linkRefusedMember')
   if (link.state === 'replaced') return t('linkReplaced')
   return t('linkConnecting')
 }

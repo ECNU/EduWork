@@ -50,7 +50,8 @@ export type PanelStatus = (
   | { readonly state: 'off' }
   /** Waiting for the user to sign in to the organization. */
   | { readonly state: 'sign-in' }
-  | { readonly state: 'failed'; readonly message: string }
+  /** Could not start; the reason is in the log. */
+  | { readonly state: 'failed' }
   | ({ readonly state: 'on' } & RemoteAccessStatus)
 ) & { readonly organization?: Organization }
 
@@ -90,7 +91,7 @@ export default class RemoteDevices extends TypertRemoteService {
   /** Restarts run one after another; methods wait for the latest. */
   private settled = Promise.resolve()
   private disposed = false
-  private failure: string | undefined
+  private failed = false
   private signedOut = false
   private organization: Organization | undefined
   private access: RemoteAccess | undefined
@@ -130,7 +131,7 @@ export default class RemoteDevices extends TypertRemoteService {
     const organization = this.organization && { organization: this.organization }
     if (this.access !== undefined) return { state: 'on', ...this.access.status(), ...organization }
     if (this.signedOut) return { state: 'sign-in', ...organization }
-    return this.failure === undefined ? { state: 'off', ...organization } : { state: 'failed', message: this.failure, ...organization }
+    return { state: this.failed ? 'failed' : 'off', ...organization }
   }
 
   @Remote
@@ -166,7 +167,7 @@ export default class RemoteDevices extends TypertRemoteService {
   private async restart(): Promise<void> {
     this.access?.stop()
     this.access = undefined
-    this.failure = undefined
+    this.failed = false
     this.signedOut = false
     const { enabled, hostName, distIndex, organization } = this.config
     const { accounts } = this, profileID = organization.oidcProfileId
@@ -194,9 +195,8 @@ export default class RemoteDevices extends TypertRemoteService {
       access.start()
       this.access = access
     } catch (error) {
-      const message = error instanceof Error ? error.message : String(error)
-      this.logger.warn(message)
-      this.failure = message
+      this.logger.warn(error instanceof Error ? error.message : String(error))
+      this.failed = true
     }
   }
 

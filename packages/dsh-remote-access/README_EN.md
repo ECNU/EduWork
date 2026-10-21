@@ -34,7 +34,7 @@ Install the plugin in DSH and restart it:
 dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
-Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected to the relay server", you can add devices. Remote access is off by default.
+Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected", you can add devices. Remote access is off by default.
 
 An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then shows no relay or access key: sign in with the organization's account and select "Allow remote access". Signing out stops remote access.
 

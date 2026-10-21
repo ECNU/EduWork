@@ -16,8 +16,8 @@ export type LinkState =
   | { readonly state: 'connecting' }
   | { readonly state: 'online' }
   | { readonly state: 'offline'; readonly reason: string; readonly retryAt: number }
-  /** The relay refused the credential, the signature or the protocol version. */
-  | { readonly state: 'refused'; readonly reason: string }
+  /** The relay refused the credential or the signature (`Close.unauthorized`), or the protocol version (`Close.upgradeRequired`). */
+  | { readonly state: 'refused'; readonly code: number; readonly reason: string }
   /** Another process registered with this Host identity. */
   | { readonly state: 'replaced' }
   | { readonly state: 'stopped' }
@@ -107,7 +107,7 @@ export class RelayLink {
     })
     control.addEventListener('close', ({ code, reason }) => {
       if (this.#control !== control) return
-      if (code === Close.unauthorized || code === Close.upgradeRequired) this.#halt({ state: 'refused', reason })
+      if (code === Close.unauthorized || code === Close.upgradeRequired) this.#halt({ state: 'refused', code, reason })
       else if (code === Close.replaced) this.#halt({ state: 'replaced' })
       else this.#retry(reason || `closed (${code})`)
     })

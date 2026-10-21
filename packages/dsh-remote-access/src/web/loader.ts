@@ -27,7 +27,8 @@ const note = (content: string): HTMLParagraphElement => h('p', { className: 'not
 function failure(error: unknown): string {
   if (error instanceof Refused) return text.refused[error.reason]
   if (error instanceof ChannelClosed && error.code === Close.hostOffline) return text.hostOffline
-  return fill(text.connectFailed, { message: error instanceof Error ? error.message : String(error) })
+  console.warn(error)
+  return text.connectFailed
 }
 
 // ---- `/`: paired computers and pairing ----

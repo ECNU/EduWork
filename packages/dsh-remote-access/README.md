@@ -34,7 +34,7 @@ RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
 dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
-打开“设置 → 远程访问”，填写中继服务器和接入密钥，勾选“允许远程访问”。显示“已连接中继服务器”后即可添加设备。远程访问默认关闭。
+打开“设置 → 远程访问”，填写中继服务器和接入密钥，勾选“允许远程访问”。显示“已连接”后即可添加设备。远程访问默认关闭。
 
 机构的发行版可以预置自己的中继和登录（插件设置 `organization: { relay, oidcProfileId }`，`oidcProfileId` 是 [dsh-oidc](../dsh-oidc/README.md) 中的机构配置）。这时设置页不显示中继和接入密钥：登录机构账号并勾选“允许远程访问”即可，退出登录后远程访问随之停止。
 

@@ -61,6 +61,8 @@ export class RemoteAccess {
       identity: options.store.identity,
       accept: socket => void this.#serve(socket).catch(error => options.warn(String(error))),
       onState: state => {
+        // The settings page says what to do; why stays in the log.
+        if (state.state === 'offline' || state.state === 'refused') options.warn(`relay ${state.state}: ${state.reason}`)
         this.#state = state
         this.#changed()
       },
