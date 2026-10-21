@@ -17,7 +17,9 @@
 
 ## 本机构建
 
-准备 Git、Node.js 24.18.0 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
+准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
+
+Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json) 为准；构建机、随包 Node 和 Host 回执必须匹配。升级 Node 后需重新准备 Host 与桌面壳，不能复用旧版本回执。下载资源继续核对清单中的官方 SHA-256，整包验收会再次检查实际携带的 Node 版本。机构仓升级公版锁时，也要同步其构建机与 CI 的 Node 版本。
 
 在仓库根目录运行：
 

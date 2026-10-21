@@ -1,3 +1,4 @@
+import { assertPinnedNodeVersion } from './lib/node-runtime-contract.mjs'
 // End-to-end Windows x64 Electron release pipeline: Web CI (build-only), Host,
 // desktop product, native inputs, Electron assembly, immutable ZIP, packaged
 // launch acceptance and the release receipt. Node.js port of
@@ -56,6 +57,7 @@ export async function ciEduworkWindowsRelease({
   deltaBases = '',
 } = {}) {
   recipe = desktopBuildRecipe(recipe)
+  assertPinnedNodeVersion()
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)

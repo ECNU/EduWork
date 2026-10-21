@@ -1,3 +1,4 @@
+import { assertPinnedNodeVersion } from './lib/node-runtime-contract.mjs'
 import assert from 'node:assert/strict'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -19,7 +20,7 @@ const environment = { ...native.environment, DSH_MEDIA_BROWSER: join(desktop, ma
 const run = async (executable, args) => promisify(execFile)(executable, args, { windowsHide: true, timeout: 30_000, encoding: 'utf8' })
 const node = join(resources, mac ? 'runtime/node' : 'runtime/node.exe')
 const nodeVersion = (await run(node, ['--version'])).stdout.trim()
-assert.match(nodeVersion, /^v24\./)
+assertPinnedNodeVersion(nodeVersion, 'Extracted desktop Node.js')
 
 // Do not let the CI machine's installed browser or a maintainer override mask
 // a missing connection between the product resource manifest and its tools.

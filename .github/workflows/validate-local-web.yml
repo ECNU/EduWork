@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Select product assembly changes
         id: changes
         shell: pwsh

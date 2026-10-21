@@ -19,7 +19,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - run: node --test tests/package-maintenance.test.mjs
       - run: node scripts/check-source-docs.mjs
       - id: changed
@@ -38,7 +38,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
           cache: npm
           cache-dependency-path: packages/${{ matrix.package }}/package-lock.json
       - uses: actions/setup-python@v5

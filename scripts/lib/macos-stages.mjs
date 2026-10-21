@@ -45,7 +45,7 @@ export function macosStages({
       outputs: ['inputs'],
       inputs: async (workspace) => ({
         lock: await sha256File(join(coreRoot, 'config/macos-native.lock.json')),
-        node: version,
+        node: await sha256File(join(coreRoot, 'dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json')),
       }),
       run: async (workspace) => {
         await prepareMacosReleaseInputs({ output: workspace.resolvePath('inputs') })

@@ -1,3 +1,4 @@
+import { assertPinnedNodeVersion } from './lib/node-runtime-contract.mjs'
 // End-to-end macOS arm64 Electron development and stable pipeline: Web CI
 // (build-only), Host, desktop product, native inputs, Electron.app assembly,
 // packaged launch acceptance and the release receipt. Node.js port of
@@ -45,6 +46,7 @@ export async function ciEduworkMacosRelease({
   recipe = '',
 } = {}) {
   recipe = desktopBuildRecipe(recipe)
+  assertPinnedNodeVersion()
   if (!isMacOS || process.arch !== 'arm64') throw new Error('Use a macOS arm64 runner')
   const pythonVersion = (await capture('python3', ['-c', 'import sys; print(".".join(map(str, sys.version_info[:2])))'])).trim()
   if (Number(pythonVersion.split('.')[0]) < 3 || Number(pythonVersion.split('.')[1]) < 10) {

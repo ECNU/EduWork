@@ -27,7 +27,9 @@ if (-not $Version) { $Version=$identity.version }
 & $Node (Join-Path $core 'scripts/verify-product-release-identity.mjs') $Product $Version
 if ($LASTEXITCODE -ne 0) { throw 'Product release identity verification failed' }
 $nodeVersion=(& $Node --version).Trim()
-if ($LASTEXITCODE -ne 0 -or $nodeVersion -ne 'v24.18.0' -or $hostReceipt.nodeVersion -ne $nodeVersion) { throw 'Candidate Node must match the prepared Host Node 24.18.0' }
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect packaged Node runtime' }
+$expectedNodeVersion = 'v' + (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json') -Raw | ConvertFrom-Json).nodeVersion
+if ($nodeVersion -ne $expectedNodeVersion -or $hostReceipt.nodeVersion -ne $nodeVersion) { throw "Packaged Node must match pinned $expectedNodeVersion and the prepared Host; rebuild the Host with the pinned Node" }
 $nodeLicense=Join-Path (Split-Path $Node -Parent) 'LICENSE'
 if (-not (Test-Path -LiteralPath $nodeLicense -PathType Leaf)) { throw 'Node LICENSE must accompany the supplied Node runtime' }
 function Copy-Tree([string]$Source,[string]$Destination) {

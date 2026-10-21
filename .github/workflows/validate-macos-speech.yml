@@ -19,7 +19,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Check speech provider contracts
         run: node --test packages/dsh-knowledge-studio/test/speech-macos.test.mjs
       - name: Verify native system voices and WAV output

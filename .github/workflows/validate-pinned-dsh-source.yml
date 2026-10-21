@@ -77,7 +77,7 @@ jobs:
           path: core
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - uses: actions/checkout@v4
         with:
           repository: deepseek-ai/deepseek-harness
@@ -104,7 +104,7 @@ jobs:
           path: core
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Resolve the pinned build recipe
         id: upstream
         shell: pwsh
@@ -144,6 +144,8 @@ jobs:
           node core/scripts/probe-dsh-017.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/session-migration-evidence"
           if ($LASTEXITCODE) { throw 'Historical session migration checks failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/tests/node-runtime-contract.test.mjs
+          if ($LASTEXITCODE) { throw 'Node security pin and official web-fetch checks failed' }
           node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
