@@ -88,7 +88,11 @@ export class TaskNotifications {
   close() { this.dismiss(); this.items.clear(); this.notified.clear() }
 }
 
-/** Windows portable uses the existing tray; macOS delegates to Notification. */
+/** Presentation only: never interpret plugin targets or complete business work.
+ * Windows deliberately keeps tray balloons for the portable distribution.
+ * Toast identity/activation registration is deferred to installation issue #176.
+ * This adapter has one live balloon target, not one independent OS queue per
+ * source; source FIFO work must also validate click ownership at this boundary. */
 export function nativeNotificationAdapter({ platform, Notification, getTray, productName, activate, failed }) {
   let current, balloonKey
   return {

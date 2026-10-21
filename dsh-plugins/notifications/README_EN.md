@@ -7,3 +7,5 @@ Registers business sources and handles deduplication, updates, withdrawal and cl
 EduWork loads this plugin during assembly. Business plugins optionally inject the Host `notifications` service and the client `notificationActions` service through Cordis. Without a presentation adapter, acceptance is not reported as desktop delivery.
 
 See the [protocol and integration examples](../../docs/PLUGIN_NOTIFICATIONS.md) for fields, lifecycle, account isolation and compatibility. This service does not replace Agent approval or business storage.
+
+This protocol is a candidate: independent source queues are pending. The protocol document describes the current shared capacity and concurrent-call limits. Windows keeps tray balloons; Toast integration is deferred to the installer migration.

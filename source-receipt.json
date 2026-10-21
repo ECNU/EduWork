@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.6",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-20T14:46:59.728Z",
-  "fileSetSHA256": "346a89af27cc90d12816e7b436f58d4a962d189bb56be337d7bdc119e90c956a",
+  "createdAt": "2026-10-21T01:38:19.178Z",
+  "fileSetSHA256": "76bb04b21295117cfc2110772e9af8c81003f4695b40e7dbbfdd4ff7166646c2",
   "files": [
     {
       "path": ".gitattributes",
@@ -377,7 +377,7 @@
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
-      "sha256": "f52f2e82fae0b3dece771a77d7e4582c6d01034d52b684b4db411774b5bddad2"
+      "sha256": "5a20778298b828855ae8ee5f2eb68090677bee3dc7056fe0830d51a41ad96f1f"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -1229,7 +1229,7 @@
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
-      "sha256": "0539a753f0fb2744fd18418fe497ba20eac911674230dff5f0515137b58884ca"
+      "sha256": "a2c044d1c5699320cec7c83336424991a6be55da851d00c61d2725d397721d1f"
     },
     {
       "path": "dsh-electron/src/update-channel-migration.mjs",
@@ -2753,7 +2753,7 @@
     },
     {
       "path": "dsh-plugins/notifications/lib/registry.js",
-      "sha256": "1495749f5ee4aa0ac11985770c158ca75ea0e293bb19e72658a0d65fe6ef94f6"
+      "sha256": "b832d9323e23ff4cb26bf0fe78aa2e2375d20f7e4f08a94fb968b758588551ba"
     },
     {
       "path": "dsh-plugins/notifications/package.json",
@@ -2761,11 +2761,11 @@
     },
     {
       "path": "dsh-plugins/notifications/README_EN.md",
-      "sha256": "ed2851b222a1756a3912f96e266880f25839e692d11216eb0eb749cce2219365"
+      "sha256": "ca0f1281a7ac1a3d5ed9bee91245c162963235aee16ea738daeea4d6ed45b940"
     },
     {
       "path": "dsh-plugins/notifications/README.md",
-      "sha256": "85d69243e23c714f1c467efa0ef54c15d560989d907f9d43c73ac57b732f258c"
+      "sha256": "1550285c3837f41db655059cf8ea2bfd8d009d12b0cdd515f9fadbabc4bff6e4"
     },
     {
       "path": "dsh-plugins/notifications/src/client.ts",

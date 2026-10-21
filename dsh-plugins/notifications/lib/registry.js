@@ -11,8 +11,9 @@ const clone = value => {
 }
 const fingerprint = value => JSON.stringify(value)
 
-/** Host-only registry. Business records stay with their plugins; display rows
- * are consumed by the existing notification manager, not another OS queue. */
+/** Host-only registry; business records stay with their plugins. Source/scope
+ * registration isolates identity, not capacity: this candidate still has a
+ * shared plugin limit. See docs/PLUGIN_NOTIFICATIONS.md before extending it. */
 export class NotificationRegistry {
   version = NOTIFICATION_PROTOCOL
   sources = new Map()
@@ -61,6 +62,8 @@ export class NotificationRegistry {
       return 'plugin:' + createHash('sha256').update(JSON.stringify([source.id, source.scope, source.generation, value])).digest('hex')
     }
     const remove = notificationId => {
+      // Only committed records are removed. Pending publish() calls must be
+      // serialized by the caller until same-ID cancellation is implemented.
       requireCurrent()
       const key = keyFor(notificationId), record = this.records.get(key)
       if (record) { record.resolved = true; record.revision++; this.changed() }
@@ -80,6 +83,9 @@ export class NotificationRegistry {
         requireCurrent()
         return { status: previous.resolved ? 'resolved' : this.enabled(source, event) ? 'accepted' : 'disabled', key, delivery: this.transport ? 'desktop' : 'none' }
       }
+      // TODO(#189): replace this shared quota with source-isolated bounded FIFO.
+      // Capacity must compare old/new state and must not use requiresAction as
+      // an eviction priority. The shell rejects oversized snapshots as a whole.
       if ((!previous || previous.resolved || previous.viewed && !event.requiresAction) &&
         [...this.records.values()].filter(row => !row.resolved && (!row.viewed || row.source.events.get(row.data.event).requiresAction)).length >= 200) throw Error('Notification capacity reached')
       const record = { key, source, data, signature, revision: (previous?.revision ?? 0) + 1,
