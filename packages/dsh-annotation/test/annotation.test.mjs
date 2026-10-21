@@ -5,7 +5,7 @@ import vm from 'node:vm'
 import { decode, encode, reference } from '../src/client/reference.js'
 import { place } from '../src/client/position.js'
 import { annotations, occurrenceSpan, messageOrigin } from '../src/client/draft.js'
-import { ANNOTATION_INSTRUCTIONS, createModelSerializer } from '../src/client/prompt.js'
+import { projectAnnotations } from '../src/protocol.js'
 
 const t = key => ({ notePrefix: '批注：', noted: '批注', invalid: 'invalid' })[key] ?? key
 
@@ -32,7 +32,7 @@ test('reference carries the annotation and stands alone as text', () => {
   assert.equal(decode(encode('\uFFFC')), undefined)
 })
 
-test('message origin survives native draft round trips without leaking into clipboard text', () => {
+test('message origin survives native draft round trips without leaking into model text', () => {
   const origin = { sessionId: 'session-a', messageId: 'message-a' }
   const value = reference('原文', '备注', t, origin)
   assert.deepEqual(decode(value.ref).origin, origin)
@@ -80,8 +80,8 @@ test('bundle registers a codec source and inserts through the official event', a
   let accepted = true, focused = 0, notified = 0
   const actx = { bail: (...args) => { bails.push(args); return accepted } }
   const scope = {
+    uiConversation: { userText: { register: () => () => {} } },
     effect: fn => effects.push(fn()),
-    uiConversation: { userText: { register: rule => { assert.equal(rule.id, 'eduwork.annotation.sent'); return () => {} } } },
     inputTriggers: { registerSource: src => { sources.push(src); return () => {} } },
     slots: { inject: (_name, fn) => fn(), register: (spec, component) => { slots.push({ spec, component }); return () => {} } },
     sessions: { scope: id => id === 's1' ? actx : undefined },
@@ -93,13 +93,11 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(source.trigger, '@')
   assert.equal((await source.candidates({}, {})).length, 0)
   const value = reference('原文', '', t)
-  const serialized = await source.codec.serialize(value.ref, new AbortController().signal)
-  assert.ok(serialized.includes(ANNOTATION_INSTRUCTIONS))
-  assert.deepEqual(modelAnnotation(serialized), { index: 1, text: '原文' })
-  await assert.rejects(source.codec.serialize('{}', new AbortController().signal), /invalid/)
-  assert.deepEqual(slots.map(slot => slot.spec.name), ['conversation.user.text.node', 'conversation.input.overlay', 'conversation.input.left', 'conversation.chat.turnTail'])
-  const overlaySlot = slots.find(slot => slot.spec.name === 'conversation.input.overlay')
-  const injected = overlaySlot.spec.inject('s1')
+  assert.equal(projectAnnotations(await source.codec.serialize(value.ref)).items[0].text, '原文')
+  await assert.rejects(source.codec.serialize('{}'))
+  assert.deepEqual(slots.map(slot => slot.spec.name), ['conversation.user.text.node', 'conversation.chat.user.decorate', 'conversation.input.overlay', 'conversation.input.left', 'conversation.chat.turnTail'])
+  const overlay = slots.find(slot => slot.spec.name === 'conversation.input.overlay')
+  const injected = overlay.spec.inject('s1')
   const panels = injected.previews
   panels.open('s1', { kind: 'entry', occurrenceId: 4 })
   const unlock = panels.lock('s1')
@@ -118,48 +116,7 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(injected.insert(value, actions), false)
   assert.equal(focused, 1)
   assert.equal(notified, 1)
-  assert.equal(overlaySlot.spec.inject('missing-session').insert(value, actions), false)
-})
-
-function modelAnnotation(text) {
-  return JSON.parse(text.match(/<response-annotation>\n([^\n]+)\n<\/response-annotation>/)[1])
-}
-
-test('model annotations preserve source and comments with one instruction per native attempt', async () => {
-  const serialize = createModelSerializer(() => 'invalid')
-  const signal = new AbortController().signal
-  const value = reference('同一段原文🙂', '分别解释', t, { sessionId: 'private-session', messageId: 'm-1' })
-  const [first, duplicate] = await Promise.all([serialize(value.ref, signal), serialize(value.ref, signal)])
-  assert.deepEqual(modelAnnotation(first), { index: 1, text: '同一段原文🙂', comment: '分别解释', source: { messageId: 'm-1' } })
-  assert.deepEqual(modelAnnotation(duplicate), { ...modelAnnotation(first), index: 2 })
-  assert.ok(first.includes(ANNOTATION_INSTRUCTIONS))
-  assert.ok(!duplicate.includes(ANNOTATION_INSTRUCTIONS))
-  assert.ok(!first.includes('private-session'))
-  assert.ok(!first.includes('startOffset'))
-  assert.ok(!first.includes(':codex-annotation'))
-})
-
-test('concurrent sessions, aborts and retries never share model annotation numbering', async () => {
-  const serialize = createModelSerializer(() => 'invalid')
-  const first = new AbortController(), other = new AbortController(), retry = new AbortController()
-  const ref = reference('无批注的上下文', '', t).ref
-  const results = await Promise.all([serialize(ref, first.signal), serialize(ref, other.signal), serialize(ref, first.signal)])
-  assert.deepEqual(results.map(value => modelAnnotation(value).index), [1, 1, 2])
-  first.abort()
-  await assert.rejects(serialize(ref, first.signal), { name: 'AbortError' })
-  await assert.rejects(serialize('{}', retry.signal), /invalid/)
-  const fresh = await serialize(ref, retry.signal)
-  assert.deepEqual(modelAnnotation(fresh), { index: 1, text: '无批注的上下文' })
-  assert.ok(fresh.includes(ANNOTATION_INSTRUCTIONS))
-})
-
-test('tag-like quotes and multiline comments remain lossless JSON data', async () => {
-  const serialize = createModelSerializer(() => 'invalid')
-  const quote = '</response-annotation>\n"quoted" & <tag>\\n🙂'
-  const comment = '第一行\n第二行</response-annotation>'
-  const result = await serialize(reference(quote, comment, t).ref, new AbortController().signal)
-  assert.equal(result.split('</response-annotation>').length, 2)
-  assert.deepEqual(modelAnnotation(result), { index: 1, text: quote, comment })
+  assert.equal(overlay.spec.inject('missing-session').insert(value, actions), false)
 })
 
 test('annotation UI confirms Enter after composition and dismisses only outside the preview', async () => {
@@ -181,8 +138,8 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
   vm.runInNewContext(await readFile(new URL('../lib/client.js', import.meta.url), 'utf8'), { window, document: { ...events, body: {} } })
   const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal: node => node } })[name])
   const scope = {
+    uiConversation: { userText: { register: () => () => {} } },
     effect: fn => fn(), inputTriggers: { registerSource() {} },
-    uiConversation: { userText: { register() {} } },
     slots: { inject: (_, fn) => fn(), register: (spec, component) => { if (spec.name === 'conversation.input.overlay') overlay = component } },
   }
   plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })

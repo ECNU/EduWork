@@ -10,12 +10,18 @@ function clean(text, max) {
 
 // The chip's ref carries the whole annotation, so undo, session switches and
 // failed-send restoration need no plugin-side store.
-export function encode(quote, note, origin) {
+export function encode(quote, note, origin, context) {
   const q = clean(quote)
   if (q === '') return undefined
   const n = clean(note, MAX_NOTE)
   const o = validOrigin(origin)
-  return JSON.stringify({ q, ...(n === '' ? {} : { n }), ...(o ? { o } : {}) })
+  const c = validContext(context)
+  return JSON.stringify({ q, ...(n === '' ? {} : { n }), ...(o ? { o } : {}), ...(c ? { c } : {}) })
+}
+
+function validContext(value) {
+  return typeof value?.before === 'string' && typeof value.after === 'string'
+    ? { before: clean(value.before).slice(-320), after: clean(value.after).slice(0, 320) } : undefined
 }
 
 function validOrigin(value) {
@@ -29,15 +35,14 @@ export function decode(ref) {
     const value = JSON.parse(ref)
     if (typeof value?.q !== 'string' || value.q === '') return undefined
     const origin = validOrigin(value.o)
-    return { quote: value.q, note: typeof value.n === 'string' ? value.n : '', ...(origin ? { origin } : {}) }
+    const context = validContext(value.c)
+    return { quote: value.q, note: typeof value.n === 'string' ? value.n : '', ...(origin ? { origin } : {}), ...(context ? { context } : {}) }
   } catch {
     return undefined
   }
 }
 
-// Copy/paste and plain-text draft restores carry only this projection, so it
-// must remain understandable on its own. Structured native sends add the
-// model-facing annotation instructions through the codec in prompt.js.
+// Clipboard stays readable. The send codec uses the versioned wire protocol.
 export function text(annotation, t) {
   const quoted = annotation.quote.split('\n').map(line => `> ${line}`).join('\n')
   return `\n${quoted}\n${annotation.note === '' ? '' : `${t('notePrefix')}${annotation.note}\n`}`
@@ -49,8 +54,8 @@ export function label(annotation, t) {
   return annotation.note === '' ? `“${head}”` : `“${head}” · ${t('noted')}`
 }
 
-export function reference(quote, note, t, origin) {
-  const ref = encode(quote, note, origin)
+export function reference(quote, note, t, origin, context) {
+  const ref = encode(quote, note, origin, context)
   if (ref === undefined) return undefined
   const annotation = decode(ref)
   return { source: SOURCE, ref, label: label(annotation, t), clipboardText: text(annotation, t) }

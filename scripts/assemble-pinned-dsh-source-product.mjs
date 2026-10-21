@@ -12,6 +12,7 @@ import { copySourceSkills } from './copy-source-skills.mjs'
 import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import { patchSettingsNavigationRuntime } from './patch-settings-navigation-runtime.mjs'
+import { patchChatUserContentRuntime } from './patch-chat-user-content-runtime.mjs'
 import { patchRemotionBundlerRuntime } from './patch-remotion-bundler-runtime.mjs'
 import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
@@ -40,7 +41,7 @@ console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
 await writeFile(join(paths.output, 'd/.eduwork-plugin-install-lock.json'), pluginInstallLock)
 const modules = join(paths.output, 'd/node_modules')
-const runtimePatches = [await patchSessionSearchRuntime(modules), await patchSettingsNavigationRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
+const runtimePatches = [await patchSessionSearchRuntime(modules), await patchSettingsNavigationRuntime(modules), await patchChatUserContentRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
 const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's npm lock. Published plugin bytes must remain unchanged.
