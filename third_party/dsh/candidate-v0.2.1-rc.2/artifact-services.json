@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-artifact-services",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "repository": "https://github.com/ECNU/EduWork",
-  "commit": "788ea375ad499a36bc7569c82c6d0367e104f0cf",
+  "commit": "8f4697f5e74e0f2b3f172626f8259866fe28ec35",
   "publicationStatus": "published",
-  "tarballSHA256": "e1e3397b9f96c4a0a3ca56fed57b2f8d67f10cc3efef42891b9f5053b43d3436",
+  "tarballSHA256": "1822f051cdac3063f0129705f3af8673ea25da7c47caaabf8807b48f26c4887b",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-artifact-services/-/dsh-artifact-services-0.3.0.tgz",
-    "integrity": "sha512-5qakUmybbpKrCH/taJ3sRgVmeriR6dOvBCzNLHvNQAApmuBLzQtRi9si2kAL59YhVJS15D4QYqQxmELFyWKIxA==",
-    "shasum": "95afca47761719eab75dd3dc6f4ee127ec473722"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-artifact-services/-/dsh-artifact-services-0.3.1.tgz",
+    "integrity": "sha512-MxE+AxFA9wFpm7eqeLF8hzFhw930pdknIoAHE+Alrl+6YBNcqboLJ7AFXyvz/gCG6A0z4AOPgGjK2gSJEzZuMQ==",
+    "shasum": "365c715a9cedec67d43e849252735b0d94675bb0"
   },
   "baseline": {
     "dshVersion": "0.2.1-rc.2",

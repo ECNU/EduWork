@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T08:31:30.000Z",
-  "fileSetSHA256": "dd8ed87399ffa002b89b8ce71f141feb05060779291d143decb8ca139c00a332",
+  "createdAt": "2026-10-22T08:55:27.615Z",
+  "fileSetSHA256": "ee803a08cf119fa475d74f42197afded97915525d50a699713ea33f0fd6b4bdc",
   "files": [
     {
       "path": ".gitattributes",
@@ -7197,7 +7197,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/artifact-services.json",
-      "sha256": "b2188c257af575061677f43566200a02e828a4969f25985a1c629d659b96c6fe"
+      "sha256": "e83a61f93b3baeaf961b6edcd75e498804d3c33ffc52dde24cccfbbcfd32a812"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json",
@@ -7213,7 +7213,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/knowledge-studio.json",
-      "sha256": "3eee24263aeaa75564d2156ffa07beb8705b94fb05de0a2d7fb28b2d5bd1f700"
+      "sha256": "e5405b4f22f8b6e5d2b72b678d5aa456b43de750b3d9bdde953292ed1da48c3e"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/literature.json",
@@ -7225,7 +7225,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/mail.json",
-      "sha256": "694ec7caf09fd43f4cef3f6a6346e85642c8fad7654cfd50bd4e3a46c620fc47"
+      "sha256": "1d719b0a79f64a11351fe66c7636ad771209d83fc6aa179d99e9222b7e9ea9d9"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/memory.json",
@@ -7245,11 +7245,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/source-probe/package-lock.json",
-      "sha256": "cca85ac8376c2f8b753cb288ef4b8646936b7e1cdeadb75b97dcae43df386227"
+      "sha256": "189c3b2d5746bef642d565dbedc60428796b85c14db6b1f0a9ecde380c7ec3bb"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/source-probe/package.json",
-      "sha256": "00d1a3f99e9407428387448d2335e6342a711452b319c2853dcb1bc00af7bcfd"
+      "sha256": "012c0de2e52b8f4336b495301d6486d77e8c816ccfa9f4c0642c919ab7506aeb"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
