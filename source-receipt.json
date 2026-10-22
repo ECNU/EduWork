@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T16:44:45.955Z",
-  "fileSetSHA256": "b33fad247ca60f55beac699367f35317d3b6bb2b4c5ed8c5dae9e42a978f5e6f",
+  "createdAt": "2026-10-22T16:49:59.625Z",
+  "fileSetSHA256": "c15e1df34b8bba7c06ce293bbb4804e060dbc8aa770678c1212099429cc7e513",
   "files": [
     {
       "path": ".gitattributes",
@@ -5689,11 +5689,11 @@
     },
     {
       "path": "packages/dsh-oidc/CHANGELOG.en.md",
-      "sha256": "5142639f456480f582fe6157e199f3c9dc8939b0f32a3d7a99d1f99063b03efc"
+      "sha256": "8a5f534c4fed15765a5b7b2db15e29cd75d80849aae89d4dbbbab42e3a7fd99d"
     },
     {
       "path": "packages/dsh-oidc/CHANGELOG.md",
-      "sha256": "556943570f18bd0fb5d5c558ea95528547685ac75a68b1d44d1ad41fb42cf62c"
+      "sha256": "4bb2c72e3e96733c673af4fa8a8343163a75d9a16e5eb8750a0f07b87f4616b8"
     },
     {
       "path": "packages/dsh-oidc/CODE_OF_CONDUCT.en.md",
@@ -5945,11 +5945,11 @@
     },
     {
       "path": "packages/dsh-oidc/package-lock.json",
-      "sha256": "74f53c81042fbd5ce317d05e516a24a0eca12e33c8eb32e7fb8730dc31f0e26e"
+      "sha256": "86483e881e5af8d135fdb400789055226516d5b71c2ec3c121303f475539237e"
     },
     {
       "path": "packages/dsh-oidc/package.json",
-      "sha256": "cffe0436857c88d7e124910f966e3e40bf66d6daf65ab6e96f62116a44bfaada"
+      "sha256": "e81058b4891b6161d6aab2fe14fda4c0e70240e059e86bf1222a0ca7a602694a"
     },
     {
       "path": "packages/dsh-oidc/protocol/openapi.yaml",
@@ -6269,11 +6269,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "22ebc04448254bbeb2a4317fb4cdb2cf0ca085b7413090c0be78708313e39535"
+      "sha256": "7df1facf53a10da92bb23644ede4094c3af07a141f0226a423f316d70df1aa3f"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "9686c02160034cf353aa0643e90025e2ece55fc2f6c0cc1101fbaa28aea5bfb2"
+      "sha256": "154202cdf5021b629bc758d6095de8a604bbf39fd0fd8c0db2a5ac5a8d57c143"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",

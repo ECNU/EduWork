@@ -42,7 +42,7 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 
 机构的发行版可以预置自己的中继和登录（插件设置 `organization: { relay, oidcProfileId }`，`oidcProfileId` 是 [dsh-oidc](../dsh-oidc/README.md) 中的机构配置）。这时设置页不显示中继和接入密钥：登录机构账号并勾选“允许远程访问”即可，退出登录后远程访问随之停止。
 
-机构登录模式还要求宿主安装提供 `identityToken(profileID)` 接口的 `@eduwork/dsh-oidc`；已发布的 `0.3.0` 尚不包含该接口。使用接入密钥的独立部署不依赖 OIDC 插件。
+机构登录模式还要求宿主安装提供 `identityToken(profileID)` 接口的 `@eduwork/dsh-oidc@0.3.1` 或后续兼容版本；旧版 `0.3.0` 不包含该接口。使用接入密钥的独立部署不依赖 OIDC 插件。
 
 ### 添加和移除设备
 

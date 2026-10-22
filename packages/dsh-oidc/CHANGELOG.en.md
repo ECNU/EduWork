@@ -4,7 +4,7 @@
 
 All notable changes are documented here. The format follows Keep a Changelog principles and the project uses Semantic Versioning with pre-1.0 qualifications described in `docs/compatibility.en.md`.
 
-## [Unreleased]
+## [0.3.1] — 2026-10-23
 
 - Add the Host-only `identityToken(profileID)`, which returns the current verified ID Token so that services the organization runs, such as a remote access relay, can confirm who is signed in; gateway sign-in also keeps the new ID Token a refresh brings.
 
