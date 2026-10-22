@@ -42,6 +42,8 @@ Open Settings → Remote access, enter the relay server and the access key, and 
 
 An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then shows no relay or access key: sign in with the organization's account and select "Allow remote access". Signing out stops remote access.
 
+Organization sign-in also requires a host installation of `@eduwork/dsh-oidc` that provides `identityToken(profileID)`; the published `0.3.0` does not include this API. Standalone deployments using an access key do not depend on the OIDC plugin.
+
 ### Add and remove devices
 
 1. On the computer, choose "Add a device". A QR code and a link appear; the link works once, for 10 minutes.

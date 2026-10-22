@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T16:36:38.795Z",
-  "fileSetSHA256": "7a9466bde85c4caa6bbc4684352b8b57096a203f2b5cd98def900c22524e0595",
+  "createdAt": "2026-10-22T16:44:45.955Z",
+  "fileSetSHA256": "b33fad247ca60f55beac699367f35317d3b6bb2b4c5ed8c5dae9e42a978f5e6f",
   "files": [
     {
       "path": ".gitattributes",
@@ -33,7 +33,7 @@
     },
     {
       "path": ".github/workflows/packages-release.yml",
-      "sha256": "1370c8205f9930a0dd7aab612dda5d1636d45e4dd94ff5e7f748e70e9261a4f4"
+      "sha256": "2b921a1a1152956b3f41feb6465010f5730189a8fc3dde6d025e82609cc53fac"
     },
     {
       "path": ".github/workflows/packages.yml",
@@ -6245,7 +6245,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "10f6ef7768070ee1d4227d5e4cd586c8ddf9813d76e8e2a52a5810948488caa4"
+      "sha256": "48c30da5a33cb4552ed987be8b68f4a3a80430c1699a170e088a6eecf8ee3138"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6261,19 +6261,19 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "9b39ff48c9661d43377f44fb9a2d9768ce394c78af2a7d2da847ba618429e547"
+      "sha256": "27cb152aeea30279e6f0722ee3d69dbc4359fddd3d52a44e1de7e943cee85b9e"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "b6f94a14333a818021820a9860f251139ba090a385d1a786022cfbc6f1829690"
+      "sha256": "3df981f4a8628b406531b9d6f447b0def1612d0a08c82f4591561620f831e9f6"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "a5901f8b5d1d8e52eea6027709a2d9ab34b1f410b54eeae78c505bcafcda1d95"
+      "sha256": "22ebc04448254bbeb2a4317fb4cdb2cf0ca085b7413090c0be78708313e39535"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "4837a2d4b3839c7a3cf8d6000fe2c6fd7b64bab2a7764425ccf242f3f8ec1b25"
+      "sha256": "9686c02160034cf353aa0643e90025e2ece55fc2f6c0cc1101fbaa28aea5bfb2"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",
@@ -6869,7 +6869,7 @@
     },
     {
       "path": "scripts/packages/archive.mjs",
-      "sha256": "b1290fdc026d36a60308e2603401880e5d53f12df3a97fff782d530e0699a7ce"
+      "sha256": "fd5cbfe677103979b6bf108bdc8fed03ab81b2017e4ce8bc37017cc31a8602cb"
     },
     {
       "path": "scripts/packages/catalog.mjs",
@@ -7345,7 +7345,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "2350d4d9f320ef538d06bef78532b2af616f24bf2a667699f63b2d66de828314"
+      "sha256": "e12cb2c2acc2b21f7b156724e1ca0a74d576d369f908f8d27b8d91275be22fd7"
     },
     {
       "path": "tests/parallel-sets.test.mjs",

@@ -60,6 +60,14 @@ export function inspectArchive(bytes, selected, expectedVersion) {
     assert.ok(!manifest.private, 'Desktop pet archive must be publishable')
     assert.ok(!manifest.peerDependencies?.['@eduwork/desktop-services'], 'Host service injection is not an npm dependency')
   }
+  if (selected.id === 'dsh-remote-access') {
+    assert.equal(manifest.bin?.['eduwork-remote-relay'], 'lib/relay.js', 'Missing remote relay command')
+    for (const file of ['lib/relay.js', 'lib/web/index.html', 'lib/web/loader.js', 'lib/web/loader.css',
+      'lib/web/sw.js', 'lib/web/preamble.js', 'lib/web/manifest.webmanifest', 'lib/web/icon.svg', 'lib/web/icon.png',
+      'lib/THIRD_PARTY_LICENSES.txt', 'docs/PROTOCOL.md', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md']) {
+      assert.ok(files.has(file), `Missing remote runtime, protocol or license file ${file}`)
+    }
+  }
   for (const [file, content] of files) {
     assert.ok(!/(^|\/)(node_modules|\.git|\.local|dist|test|tests)(\/|$)|\.(tgz|log|map)$/.test(file), `Unexpected packed file ${file}`)
     if (!/\.(js|mjs|ts|json|md|yml|yaml|py|ps1|txt)$/.test(file)) continue

@@ -100,3 +100,21 @@ test('desktop pet publication rejects a package missing a referenced character i
   delete files['package/skins/dafeiyu/idle.svg']
   assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image dafeiyu\/idle.svg/)
 })
+
+test('remote publication rejects a missing relay command, browser runtime or protocol', () => {
+  const selected = selectPackage('dsh-remote-access')
+  const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' }, bin: { 'eduwork-remote-relay': 'lib/relay.js' } }
+  const files = Object.fromEntries(['lib/index.js', 'lib/relay.js', 'lib/web/index.html', 'lib/web/loader.js', 'lib/web/loader.css',
+    'lib/web/sw.js', 'lib/web/preamble.js', 'lib/web/manifest.webmanifest', 'lib/web/icon.svg', 'lib/web/icon.png',
+    'lib/THIRD_PARTY_LICENSES.txt', 'docs/PROTOCOL.md', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md']
+    .map(file => ['package/' + file, 'fixture']))
+  files['package/package.json'] = JSON.stringify(manifest)
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
+  for (const file of ['lib/relay.js', 'lib/web/sw.js', 'docs/PROTOCOL.md']) {
+    const incomplete = { ...files }
+    delete incomplete['package/' + file]
+    assert.throws(() => inspectArchive(tarball(incomplete), selected, '0.1.0'), /Missing remote runtime, protocol or license file/)
+  }
+  files['package/package.json'] = JSON.stringify({ ...manifest, bin: {} })
+  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing remote relay command/)
+})
