@@ -234,3 +234,29 @@ func TestOverwriteLeaseCoversRollback(t *testing.T) {
 	}
 	release()
 }
+
+func TestProcessRecognitionAcrossShortAndLongPaths(t *testing.T) {
+	target := t.TempDir()
+	name, _ := windows.UTF16PtrFromString(target)
+	buffer := make([]uint16, 32768)
+	n, err := windows.GetShortPathName(name, &buffer[0], uint32(len(buffer)))
+	if err != nil || n == 0 || n >= uint32(len(buffer)) {
+		t.Fatalf("short path: %d (%v)", n, err)
+	}
+	alias := windows.UTF16ToString(buffer[:n])
+	client := startGuardProcess(t, alias, "client", "")
+	helper := startGuardProcess(t, filepath.Join(alias, "data/state/updates/helper"), "helper", "")
+	if err := StopApplication(target); !errors.Is(err, installguard.ErrUpdateActive) {
+		t.Fatalf("short-path helper not protected: %v", err)
+	}
+	assertGuardProcessAlive(t, client)
+	assertGuardProcessAlive(t, helper)
+	_ = helper.Process.Kill()
+	_ = helper.Wait()
+	if err := StopApplication(target); err != nil {
+		t.Fatal(err)
+	}
+	if err := checkNotRunning(alias); err != nil {
+		t.Fatal("short-path client not closed", err)
+	}
+}

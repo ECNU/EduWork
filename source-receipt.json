@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T14:43:02.456Z",
-  "fileSetSHA256": "93942a8fbca11c0571b06014d135a6e5e9ac770ca3373aa1b1aa03a87cc7c6d3",
+  "createdAt": "2026-10-22T14:56:38.206Z",
+  "fileSetSHA256": "b87e0b1035deaab2bc8b2dfa00b7ae3907617d8585855e1484ccbf6b2a430f77",
   "files": [
     {
       "path": ".gitattributes",
@@ -533,11 +533,11 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/shortcut_windows_test.go",
-      "sha256": "dcf21e97b06077a0dc0505463ee7414af1c5fc4043e970f9fba78d34f9efad25"
+      "sha256": "064ddf8b8e94f2d736699c5fa6ffd7c91e49295044b92ea4cdb467da82f2b326"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/shortcut_windows.go",
-      "sha256": "6efec6781886c4940262748b72b0c9bd13fed4860c73b46f5decaeb48e168dd9"
+      "sha256": "93b29357318e06c8d12ded84223ca16dca468d6116e8f887eaa092745007aa46"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/ui_windows.go",
@@ -817,7 +817,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/running_windows.go",
-      "sha256": "1808f447a9bf66a55bf6cf7b4933679b30f50fb0532f0098f2ab60eb154e8ef2"
+      "sha256": "db25c37d9a9df97ef1bdc0007c7b4722a361a0f223271883e7fb91e4051653be"
     },
     {
       "path": "dsh-desktop/internal/portable/space_other.go",
@@ -829,7 +829,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/update_guard_windows_test.go",
-      "sha256": "a6957b20f8ef1b8598f22ce096a5a577cba6bccff80b26e90460523257d1cb2a"
+      "sha256": "adc64ceb7878467a7a4539878d5b0b259e79bac2c49d6d3948bd74498932b9af"
     },
     {
       "path": "dsh-desktop/internal/productruntime/builtin/builtin.go",

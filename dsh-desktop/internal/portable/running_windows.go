@@ -25,7 +25,9 @@ func processImage(process windows.Handle) (string, error) {
 	if err := windows.QueryFullProcessImageName(process, 0, &buf[0], &size); err != nil {
 		return "", err
 	}
-	return windows.UTF16ToString(buf[:size]), nil
+	// QueryFullProcessImageName can retain an 8.3 launch spelling, while the
+	// installation path resolves to its long spelling (notably on CI runners).
+	return filepath.EvalSymlinks(windows.UTF16ToString(buf[:size]))
 }
 
 // Classify the entire snapshot before closing any process. Helpers are never
