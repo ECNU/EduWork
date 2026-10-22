@@ -36,7 +36,8 @@ export function decode(ref) {
 }
 
 // Copy/paste and plain-text draft restores carry only this projection, so it
-// must stand on its own as the model input.
+// must remain understandable on its own. Structured native sends add the
+// model-facing annotation instructions through the codec in prompt.js.
 export function text(annotation, t) {
   const quoted = annotation.quote.split('\n').map(line => `> ${line}`).join('\n')
   return `\n${quoted}\n${annotation.note === '' ? '' : `${t('notePrefix')}${annotation.note}\n`}`

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T01:16:59.842Z",
-  "fileSetSHA256": "32c164bb3ef3dfb3c95ffbaf813704c6a1559307d7fb14479d5467ff44d1aef5",
+  "createdAt": "2026-10-22T01:21:37.160Z",
+  "fileSetSHA256": "484aa130e8399aefe76fe1020db67e4feb2a24423750e3b37f914c16e916d634",
   "files": [
     {
       "path": ".gitattributes",
@@ -3209,7 +3209,7 @@
     },
     {
       "path": "packages/dsh-annotation/lib/client.js",
-      "sha256": "2073a1865762abf51aa89603c9519cb3decceb222e2ea255718260d7f858d815"
+      "sha256": "7a9c3e84ba89f041f5b3be9ee6a29ba1d39006546159ae63236541f518d4e0f8"
     },
     {
       "path": "packages/dsh-annotation/lib/index.js",
@@ -3229,11 +3229,11 @@
     },
     {
       "path": "packages/dsh-annotation/README_EN.md",
-      "sha256": "71dcef94b896557aed7197448b90d2016f19f34cf99a7466cc3326a2252c4e90"
+      "sha256": "21e06367bd1416f5cd685cd2c295658b20d9890e7c992b2bdcefa4098db5d9f2"
     },
     {
       "path": "packages/dsh-annotation/README.md",
-      "sha256": "21397e118c313cd85b2cd9c17cc168149b9193970f087a7991dd6251a68e4960"
+      "sha256": "48239564e7629557a12d12cce60a866eed5698c9a7ac253f667750591ec6ea3e"
     },
     {
       "path": "packages/dsh-annotation/scripts/build.mjs",
@@ -3245,15 +3245,19 @@
     },
     {
       "path": "packages/dsh-annotation/src/client/index.js",
-      "sha256": "62320cee8caa70f42a4256a4dae46dda9b868a0cb129295568456363109b35ab"
+      "sha256": "39f1e02138379c8ee01546cf90b94660613d8308b00577c37157a80168da2e1d"
     },
     {
       "path": "packages/dsh-annotation/src/client/position.js",
       "sha256": "0da1acca24f2b1dd55d30d015db9ecce4244fea9624e0d80be428728ebe1080d"
     },
     {
+      "path": "packages/dsh-annotation/src/client/prompt.js",
+      "sha256": "d18e14304da9d181fb506dad326df8088a07033f7756c12aee47a21123b673e5"
+    },
+    {
       "path": "packages/dsh-annotation/src/client/reference.js",
-      "sha256": "f2845cba80e4ae78dee1445d5a87c6b0734aa848c554066d68dbcca113881266"
+      "sha256": "a7653ad9c105acb1f2acd93677b5395a2d039ec2203f82d32fafc474ecadfdad"
     },
     {
       "path": "packages/dsh-annotation/src/index.js",
@@ -3261,7 +3265,7 @@
     },
     {
       "path": "packages/dsh-annotation/test/annotation.test.mjs",
-      "sha256": "df692d30c67b0a2ed5cbb6f7c27bf3ec08e1a341096d9b22a4336aa0634d5c96"
+      "sha256": "bef547aab74d4ae4794bf2ecf0bfcd1a83b15046c1957d7646cf72a636f7f04f"
     },
     {
       "path": "packages/dsh-desktop-pet/CHANGELOG.md",

@@ -5,6 +5,7 @@ import vm from 'node:vm'
 import { decode, encode, reference } from '../src/client/reference.js'
 import { place } from '../src/client/position.js'
 import { annotations, occurrenceSpan, messageOrigin } from '../src/client/draft.js'
+import { ANNOTATION_INSTRUCTIONS, createModelSerializer } from '../src/client/prompt.js'
 
 const t = key => ({ notePrefix: '批注：', noted: '批注', invalid: 'invalid' })[key] ?? key
 
@@ -31,7 +32,7 @@ test('reference carries the annotation and stands alone as text', () => {
   assert.equal(decode(encode('\uFFFC')), undefined)
 })
 
-test('message origin survives native draft round trips without leaking into model text', () => {
+test('message origin survives native draft round trips without leaking into clipboard text', () => {
   const origin = { sessionId: 'session-a', messageId: 'message-a' }
   const value = reference('原文', '备注', t, origin)
   assert.deepEqual(decode(value.ref).origin, origin)
@@ -91,8 +92,10 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(source.trigger, '@')
   assert.equal((await source.candidates({}, {})).length, 0)
   const value = reference('原文', '', t)
-  assert.equal(await source.codec.serialize(value.ref), value.clipboardText)
-  await assert.rejects(source.codec.serialize('{}'))
+  const serialized = await source.codec.serialize(value.ref, new AbortController().signal)
+  assert.ok(serialized.includes(ANNOTATION_INSTRUCTIONS))
+  assert.deepEqual(modelAnnotation(serialized), { index: 1, text: '原文' })
+  await assert.rejects(source.codec.serialize('{}', new AbortController().signal), /invalid/)
   assert.equal(slots[0].spec.name, 'conversation.input.overlay')
   assert.deepEqual(slots.map(slot => slot.spec.name), ['conversation.input.overlay', 'conversation.input.left', 'conversation.chat.turnTail'])
   const injected = slots[0].spec.inject('s1')
@@ -115,6 +118,47 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(focused, 1)
   assert.equal(notified, 1)
   assert.equal(slots[0].spec.inject('missing-session').insert(value, actions), false)
+})
+
+function modelAnnotation(text) {
+  return JSON.parse(text.match(/<response-annotation>\n([^\n]+)\n<\/response-annotation>/)[1])
+}
+
+test('model annotations preserve source and comments with one instruction per native attempt', async () => {
+  const serialize = createModelSerializer(() => 'invalid')
+  const signal = new AbortController().signal
+  const value = reference('同一段原文🙂', '分别解释', t, { sessionId: 'private-session', messageId: 'm-1' })
+  const [first, duplicate] = await Promise.all([serialize(value.ref, signal), serialize(value.ref, signal)])
+  assert.deepEqual(modelAnnotation(first), { index: 1, text: '同一段原文🙂', comment: '分别解释', source: { messageId: 'm-1' } })
+  assert.deepEqual(modelAnnotation(duplicate), { ...modelAnnotation(first), index: 2 })
+  assert.ok(first.includes(ANNOTATION_INSTRUCTIONS))
+  assert.ok(!duplicate.includes(ANNOTATION_INSTRUCTIONS))
+  assert.ok(!first.includes('private-session'))
+  assert.ok(!first.includes('startOffset'))
+  assert.ok(!first.includes(':codex-annotation'))
+})
+
+test('concurrent sessions, aborts and retries never share model annotation numbering', async () => {
+  const serialize = createModelSerializer(() => 'invalid')
+  const first = new AbortController(), other = new AbortController(), retry = new AbortController()
+  const ref = reference('无批注的上下文', '', t).ref
+  const results = await Promise.all([serialize(ref, first.signal), serialize(ref, other.signal), serialize(ref, first.signal)])
+  assert.deepEqual(results.map(value => modelAnnotation(value).index), [1, 1, 2])
+  first.abort()
+  await assert.rejects(serialize(ref, first.signal), { name: 'AbortError' })
+  await assert.rejects(serialize('{}', retry.signal), /invalid/)
+  const fresh = await serialize(ref, retry.signal)
+  assert.deepEqual(modelAnnotation(fresh), { index: 1, text: '无批注的上下文' })
+  assert.ok(fresh.includes(ANNOTATION_INSTRUCTIONS))
+})
+
+test('tag-like quotes and multiline comments remain lossless JSON data', async () => {
+  const serialize = createModelSerializer(() => 'invalid')
+  const quote = '</response-annotation>\n"quoted" & <tag>\\n🙂'
+  const comment = '第一行\n第二行</response-annotation>'
+  const result = await serialize(reference(quote, comment, t).ref, new AbortController().signal)
+  assert.equal(result.split('</response-annotation>').length, 2)
+  assert.deepEqual(modelAnnotation(result), { index: 1, text: quote, comment })
 })
 
 test('annotation UI confirms Enter after composition and dismisses only outside the preview', async () => {

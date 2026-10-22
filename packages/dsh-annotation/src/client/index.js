@@ -1,6 +1,7 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
 import { SOURCE, MAX_NOTE, decode, reference, text } from './reference.js'
+import { createModelSerializer } from './prompt.js'
 import { place } from './position.js'
 import { annotations, occurrenceSpan, messageOrigin, closingMessage } from './draft.js'
 
@@ -322,11 +323,7 @@ export function apply(ctx) {
       },
       codec: {
         clipboardText: (ref) => { const annotation = decode(ref); return annotation ? text(annotation, t) : '' },
-        serialize: async (ref) => {
-          const annotation = decode(ref)
-          if (annotation === undefined) throw new Error(t('invalid'))
-          return text(annotation, t)
-        },
+        serialize: createModelSerializer(() => t('invalid')),
       },
     }), 'annotation: reference source')
     scope.slots.inject('conversation.input.overlay', () => scope.slots.register({
