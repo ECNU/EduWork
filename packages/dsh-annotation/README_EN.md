@@ -6,7 +6,7 @@
 
 ## Installation
 
-This package has not been published to npm yet and cannot currently be installed by name as a released package. Once published, choose “Add plugin” on the EduWork Plugins page, enter `@eduwork/dsh-annotation`, install and enable it. Disable or remove it on the same page.
+Choose “Add plugin” on the EduWork Plugins page, enter `@eduwork/dsh-annotation`, install and enable it. Disable or remove it on the same page. Other compatible DSH clients can also install this independent npm package through their plugin manager.
 
 Requires a DSH client providing the official Chat view and composer extensions (`>=0.2.1-rc.2 <0.3.0-0`). Numbered buttons above sent bubbles require EduWork's `conversation.chat.user.decorate` extension seat. Clients without it independently render quote cards through official user-text slots; native text surfaces such as queued messages also use these cards.
 

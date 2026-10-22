@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T05:15:38.548Z",
-  "fileSetSHA256": "a7d977db332076059ae258e92867924e5e2dd20e2889b808f1064786ef60a697",
+  "createdAt": "2026-10-22T05:37:38.567Z",
+  "fileSetSHA256": "e8237264b7c0a334459a434aef6b7ba0b891086902f8d9acccf9d6966dbf00cb",
   "files": [
     {
       "path": ".gitattributes",
@@ -3229,11 +3229,11 @@
     },
     {
       "path": "packages/dsh-annotation/README_EN.md",
-      "sha256": "8d4375a4f7ecc78a0a4deaceec33b3c21d73a7cd6920134756c0b1d13b797a70"
+      "sha256": "8cad4345b28be82adca925158401061e89f6ae0cea6b64694642e3070a381971"
     },
     {
       "path": "packages/dsh-annotation/README.md",
-      "sha256": "8d13912b9d5af724f0e835fff37f1a63ac045924f341213176e2661df9bddbaa"
+      "sha256": "3db2734bafd13d260ee0803bc9aca17b7ef0d4f426c095535e95a46d74ca9abe"
     },
     {
       "path": "packages/dsh-annotation/scripts/build.mjs",
