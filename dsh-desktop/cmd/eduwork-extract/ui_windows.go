@@ -581,7 +581,7 @@ func showFeedback(mode, title, detail string) {
 	text(feedbackDetail, detail)
 	text(feedbackHint, "")
 	if mode == "confirm" {
-		text(feedbackHint, "继续将关闭此目录中的应用及后台进程。未保存内容可能丢失。")
+		text(feedbackHint, "先尝试正常退出，未退出的进程将强制结束；未保存内容可能丢失。更新进行中请等待完成。")
 	}
 	if mode == "error" {
 		text(feedbackHint, "调整安装选项后可重新尝试。")

@@ -48,18 +48,7 @@ func unpackConfirmed(ctx context.Context, target string, verifyOnly, overwrite, 
 		return "", nil
 	}
 	if overwrite {
-		if closeRunning {
-			if err := ctx.Err(); err != nil {
-				return "", err
-			}
-			if _, err := portable.ExistingInstallation(target, identity); err != nil {
-				return "", err
-			}
-			if err := portable.StopApplication(target); err != nil {
-				return "", err
-			}
-		}
-		return a.Replace(ctx, target, report)
+		return a.ReplaceWithOptions(ctx, target, portable.ReplaceOptions{CloseRunning: closeRunning}, report)
 	}
 	return a.Extract(ctx, target, report)
 }

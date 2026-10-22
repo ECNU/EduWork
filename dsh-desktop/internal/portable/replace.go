@@ -10,6 +10,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/installguard"
 )
 
 // ExistingInstallation only recognizes the same Electron product and edition.
@@ -75,6 +77,16 @@ func privatePath(name string) bool {
 // Replace verifies the entire new release in a sibling directory, then replaces
 // only manifest-owned program files. Unknown files and private state stay put.
 func (a *Archive) Replace(ctx context.Context, target string, progress Reporter) (result string, err error) {
+	return a.ReplaceWithOptions(ctx, target, ReplaceOptions{}, progress)
+}
+
+type ReplaceOptions struct {
+	CloseRunning bool // Requires explicit confirmation of possible unsaved data loss.
+}
+
+// CloseRunning may only be enabled after explicit confirmation. The same lease
+// covers update admission, process shutdown, replacement and rollback.
+func (a *Archive) ReplaceWithOptions(ctx context.Context, target string, options ReplaceOptions, progress Reporter) (result string, err error) {
 	target, err = filepath.Abs(target)
 	if err != nil {
 		return "", err
@@ -84,6 +96,12 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 		return "", err
 	}
 	defer release()
+	if err = ctx.Err(); err != nil {
+		return "", err
+	}
+	if err = installguard.CheckUpdateIdle(target); err != nil {
+		return "", err
+	}
 	root, err := os.OpenRoot(target)
 	if err != nil {
 		return "", err
@@ -92,6 +110,11 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 	previous, err := installedManifest(root, a.Identity)
 	if err != nil {
 		return "", err
+	}
+	if options.CloseRunning {
+		if err = stopApplication(ctx, target); err != nil {
+			return "", err
+		}
 	}
 	if err = checkNotRunning(target); err != nil {
 		return "", err
@@ -167,6 +190,9 @@ func (a *Archive) Replace(ctx context.Context, target string, progress Reporter)
 	}
 	for _, unit := range units {
 		if e := ctx.Err(); e != nil {
+			return rollback(e)
+		}
+		if e := installguard.CheckUpdateIdle(target); e != nil {
 			return rollback(e)
 		}
 		name := unit.name
