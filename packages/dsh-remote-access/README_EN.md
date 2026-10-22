@@ -28,6 +28,8 @@ A school or company can instead let its members use the relay with their own sig
 
 The relay lets each account register at most 5 computers at a time and each computer accept at most 60 device connections a minute; an address with 10 refused registrations in a minute has to wait. Behind a reverse proxy, set `RELAY_CLIENT_IP_HEADER` to the header in which the proxy passes the client's address (for example `x-real-ip`); otherwise all users share the proxy's address.
 
+By default no other page may embed the relay's page. When an organization's site needs to embed it in an iframe, list the origins of the pages allowed to in `RELAY_FRAME_ANCESTORS`, separated by spaces: `self` for pages of the relay's own origin, or an origin such as `https://portal.example.edu` for others. Shells and env files strip quotes, so `self` and `'self'` are the same; quote the whole value when it lists several, for example `RELAY_FRAME_ANCESTORS="self https://portal.example.edu"`. Do not give the iframe a `sandbox` attribute: the relay's page runs scripts, registers a Service Worker and downloads files. The embedding page should be on the same site as the relay (the same registrable domain, such as `portal.example.edu` and `remote.example.edu`): embedded across sites, Safari and other WebKit browsers cannot load the computer's interface in it.
+
 ### Turn it on on the computer
 
 Install the plugin in DSH and restart it:
@@ -66,6 +68,7 @@ They cannot open windows or programs or show notifications on the computer, regi
 - The relay serves the page you open on your phone, so whoever runs the relay can change it. Use only relays you trust.
 - The DSH interface on your phone is provided by the computer it connects to and runs on the relay's domain, and browsers separate data only by domain. So the interface one computer provides can use this browser's pairings with other computers to connect to them. Pair only with your own computers.
 - Likewise, when the relay shares a domain with other sites, their scripts can use the pairings here to connect to computers, and the interface of any paired computer can use those sites as the user and read the data they keep in the browser. Give the relay a domain of its own (a subdomain, for example), and never share one with a sign-in service or other sites that you sign in to.
+- Pages allowed to embed the relay's page can show it within their own and cover parts of it to trick users into clicking (approving a command, say). Allow only pages you trust.
 
 See the [protocol document](docs/PROTOCOL.md) (Chinese) for details.
 

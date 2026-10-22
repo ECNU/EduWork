@@ -19,17 +19,33 @@ const FILES: Readonly<Record<string, string>> = {
   'icon.png': 'image/png',
 }
 
+const KEYWORD = /^'?(self|none)'?$/
+const ORIGIN = /^https?:\/\/(\*\.)?[a-z\d.-]+(:\d+)?\/?$/i
+
+/**
+ * The CSP `frame-ancestors` sources from `RELAY_FRAME_ANCESTORS`: `'none'`, or
+ * `'self'` and origins such as `https://example.edu`, separated by spaces.
+ * The keywords may lack their quotes, which env files strip. Undefined for
+ * anything else.
+ */
+export function frameAncestors(value: string): string | undefined {
+  const sources = value.trim().split(/\s+/).map(source => source.replace(KEYWORD, "'$1'").replace(/\/$/, ''))
+  if (sources.includes("'none'")) return sources.length === 1 ? "'none'" : undefined
+  return sources.every(source => source === "'self'" || ORIGIN.test(source)) ? sources.join(' ') : undefined
+}
+
 /**
  * @param dir - the built web client.
  * @param url - the relay's base URL, as `relayBase` gives it; the loader page may only connect back to it.
+ * @param ancestors - the pages that may embed the loader page, as {@link frameAncestors} gives them; none by default.
  */
-export function webClient(dir: string, url: string): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
+export function webClient(dir: string, url: string, ancestors = "'none'"): (request: IncomingMessage, response: ServerResponse) => Promise<void> {
   const { origin, pathname: base } = new URL(url)
   const page = [
     // The crypto library compiles small WebAssembly hash functions; nothing evaluates JavaScript.
     // WebKit loads a download saved from a Blob (see web/preamble.ts) as a frame.
     "default-src 'self'", "script-src 'self' 'wasm-unsafe-eval'", `connect-src 'self' ${url.replace(/^http/, 'ws')}`, "img-src 'self' data:", "frame-src 'self' blob:",
-    "base-uri 'self'", "form-action 'none'", "frame-ancestors 'none'",
+    "base-uri 'self'", "form-action 'none'", `frame-ancestors ${ancestors}`,
   ].join('; ')
   const notFound = (response: ServerResponse): void => void response.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' }).end('not found')
   return async (request, response) => {

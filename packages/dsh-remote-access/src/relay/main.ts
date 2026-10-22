@@ -11,6 +11,8 @@
  * RELAY_OIDC_CLIENT_IDS   comma-separated client IDs of the applications whose sign-in counts
  *                         (at least the keys, or the issuer with its client IDs, is required)
  * RELAY_CLIENT_IP_HEADER  header in which the reverse proxy passes the client's address, e.g. x-real-ip
+ * RELAY_FRAME_ANCESTORS   pages that may embed the relay's page in a frame: 'self', or origins such as
+ *                         https://example.edu, separated by spaces (default 'none': no page may)
  * HOST, PORT              listening address (default 127.0.0.1:8787)
  *
  * `<RELAY_URL>healthz` answers `ok` for monitoring.
@@ -20,7 +22,7 @@ import { fileURLToPath } from 'node:url'
 import { relayBase } from '../protocol/relay.ts'
 import { IdTokens } from './id-token.ts'
 import { Relay } from './relay.ts'
-import { webClient } from './web.ts'
+import { frameAncestors, webClient } from './web.ts'
 
 const list = (value = ''): string[] => value.split(',').map(item => item.trim()).filter(Boolean)
 const url = relayBase(process.env.RELAY_URL ?? '')
@@ -28,8 +30,13 @@ const accessKeys = list(process.env.RELAY_ACCESS_KEYS)
 const issuer = process.env.RELAY_OIDC_ISSUER ?? ''
 const clientIds = list(process.env.RELAY_OIDC_CLIENT_IDS)
 const header = process.env.RELAY_CLIENT_IP_HEADER?.toLowerCase()
+const ancestors = frameAncestors(process.env.RELAY_FRAME_ANCESTORS || 'none')
 if (url === undefined || (accessKeys.length === 0 && issuer === '') || (issuer === '') !== (clientIds.length === 0)) {
   console.error('Set RELAY_URL (e.g. https://remote.example.edu), and RELAY_ACCESS_KEYS or RELAY_OIDC_ISSUER with RELAY_OIDC_CLIENT_IDS.')
+  process.exit(2)
+}
+if (ancestors === undefined) {
+  console.error("RELAY_FRAME_ANCESTORS takes 'self' or origins such as https://example.edu, separated by spaces, or 'none'.")
   process.exit(2)
 }
 
@@ -39,7 +46,7 @@ const relay = new Relay({
   ...issuer !== '' && { idTokens: new IdTokens({ issuer, clientIds }) },
   ...header !== undefined && { address: request => String(request.headers[header] ?? '') },
 })
-const web = webClient(fileURLToPath(new URL('./web/', import.meta.url)), url)
+const web = webClient(fileURLToPath(new URL('./web/', import.meta.url)), url, ancestors)
 const server = createServer((request, response) => {
   web(request, response).catch(error => {
     console.error(error)

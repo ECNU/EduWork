@@ -7,7 +7,8 @@
 // read a stream, fetch and download a file, send an upload larger than the credit window,
 // survive the Host going away and coming back, and lose access on revocation.
 // Each engine runs against a relay at the root of its domain and one below a
-// path of its own, which must not see a single request outside that path.
+// path of its own, which must not see a single request outside that path; the
+// latter also inside a frame of another page of its domain, as a portal embeds it.
 //
 //   node scripts/build.ts && node scripts/check-web.ts [chromium|webkit ...]
 import assert from 'node:assert/strict'
@@ -16,7 +17,7 @@ import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { chromium, webkit, type Page } from 'playwright-core'
+import { chromium, webkit, type Frame } from 'playwright-core'
 import { HostStore } from '../src/devices/store.ts'
 import type { HostAdapter } from '../src/host/adapter.ts'
 import { Relay } from '../src/relay/relay.ts'
@@ -86,15 +87,20 @@ function fakeDsh(): HostAdapter {
   }
 }
 
-/** A relay below `path` on its own server; `strays` collects every request that reached the domain outside it. */
-async function serve(path: string) {
+/** The portal of the relay's domain, outside its path: it embeds the relay page named after `#`. */
+const PORTAL = '/portal/'
+const PORTAL_PAGE = '<!doctype html><iframe style="width:390px;height:844px" onload="document.body.dataset.framed = 1"></iframe><script>document.querySelector("iframe").src = decodeURIComponent(location.hash.slice(1))</script>'
+
+/** A relay below `path` on its own server, which lets pages of its domain embed it only when `embedded`; `strays` collects every other request that reached the domain outside it. */
+async function serve(path: string, embedded: boolean) {
   const server = createServer()
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const url = `http://127.0.0.1:${(server.address() as { port: number }).port}${path}`
   const relay = new Relay({ url, accessKeys: [ACCESS_KEY] })
-  const web = webClient(fileURLToPath(new URL('../lib/web/', import.meta.url)), url)
+  const web = webClient(fileURLToPath(new URL('../lib/web/', import.meta.url)), url, embedded ? "'self'" : undefined)
   const strays: string[] = []
   server.on('request', (request, response) => {
+    if (request.url === PORTAL) return void response.writeHead(200, { 'content-type': 'text/html' }).end(PORTAL_PAGE)
     if (!request.url!.startsWith(path)) strays.push(request.url!)
     void web(request, response)
   })
@@ -119,24 +125,30 @@ const startHost = (store: HostStore, relay: string): RemoteAccess => {
   return access
 }
 
-async function check(name: keyof typeof engines, path: string): Promise<Record<string, unknown>> {
-  const { url, strays, close } = await serve(path)
+async function check(name: keyof typeof engines, path: string, embedded: boolean): Promise<Record<string, unknown>> {
+  const { url, strays, close } = await serve(path, embedded)
   const store = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'check-web-')), 'state.json'))
   let access = startHost(store, url)
   await until(() => access.status().link.state === 'online' || undefined, 'the Host online')
   const browser = await engines[name].launch()
   try {
-    const page: Page = await browser.newPage({ acceptDownloads: true })
-    await page.goto(access.createInvite())
-    await page.getByRole('button', { name: /开始配对|Pair/ }).click()
+    const page = await browser.newPage({ acceptDownloads: true })
+    let loader: Frame = page.mainFrame()
+    if (embedded) {
+      await page.goto(`${new URL(url).origin}${PORTAL}#${encodeURIComponent(access.createInvite())}`)
+      loader = (await (await page.waitForSelector('iframe')).contentFrame())!
+    } else {
+      await page.goto(access.createInvite())
+    }
+    await loader.getByRole('button', { name: /开始配对|Pair/ }).click()
     const request = await until(() => access.status().pending[0], 'the pairing request')
-    assert.equal((await page.locator('.code').textContent())?.replace(' ', ''), request.code, 'both screens show the same code')
+    assert.equal((await loader.locator('.code').textContent())?.replace(' ', ''), request.code, 'both screens show the same code')
     access.decide(request.key, true)
 
-    await page.waitForURL(`${url}h/${store.identity.hostId}/`)
-    const scope = await page.evaluate(() => navigator.serviceWorker.ready.then(registration => registration.scope))
+    await loader.waitForURL(`${url}h/${store.identity.hostId}/`)
+    const scope = await loader.evaluate(() => navigator.serviceWorker.ready.then(registration => registration.scope))
     assert.equal(scope, `${url}h/`, 'the worker is scoped to the relay\'s computers')
-    const app = page.frameLocator('iframe')
+    const app = loader.frameLocator('iframe')
     await app.locator('#state', { hasText: 'loaded' }).waitFor()
     assert.equal(scriptEncodings.at(-1), 'gzip', 'the worker asks for the script gzipped')
     const frame = page.frames().find(candidate => candidate.url().endsWith('/app/'))!
@@ -156,15 +168,22 @@ async function check(name: keyof typeof engines, path: string): Promise<Record<s
 
     // The Host goes away and comes back; the page reconnects without reloading the interface.
     access.stop()
-    await page.locator('#bar:not([hidden])').waitFor()
+    await loader.locator('#bar:not([hidden])').waitFor()
     access = startHost(store, url)
-    await page.locator('#bar').waitFor({ state: 'hidden', timeout: 20_000 })
+    await loader.locator('#bar').waitFor({ state: 'hidden', timeout: 20_000 })
     const again = await frame.evaluate(() => (window as unknown as { exercise(): Promise<{ file: string }> }).exercise())
     assert.equal(again.file, 'hello from the Host', 'the same iframe works after reconnecting')
 
     await access.revoke(request.key)
-    await page.locator('.card', { hasText: /移除|removed/ }).waitFor()
+    await loader.locator('.card', { hasText: /移除|removed/ }).waitFor()
     assert.deepEqual(strays, [], 'every request stays below the relay\'s path')
+    if (!embedded) {
+      // Unless the relay lets it, the portal gets no loader page in its frame.
+      const portal = await browser.newPage()
+      await portal.goto(`${new URL(url).origin}${PORTAL}#${encodeURIComponent(url)}`)
+      await portal.waitForSelector('body[data-framed]')
+      assert.equal(await portal.evaluate(() => Boolean(document.querySelector('iframe')!.contentDocument?.querySelector('main'))), false, 'the loader page refuses to be framed')
+    }
     return { pairingCode: request.code }
   } finally {
     access.stop()
@@ -174,5 +193,7 @@ async function check(name: keyof typeof engines, path: string): Promise<Record<s
 }
 
 for (const name of selected) {
-  for (const path of ['/', '/eduwork-remote/']) console.log(name, path, await check(name, path))
+  for (const [path, embedded] of [['/', false], ['/eduwork-remote/', false], ['/eduwork-remote/', true]] as const) {
+    console.log(name, path, embedded ? 'embedded' : '', await check(name, path, embedded))
+  }
 }
