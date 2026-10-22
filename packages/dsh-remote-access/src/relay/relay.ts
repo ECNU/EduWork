@@ -5,10 +5,12 @@
  * works end to end and one slow device never delays another.
  *
  * A Host is admitted by an access key the operator issued, or by an ID Token
- * of an organization the operator admits; such a registration lasts until the
- * token expires. Limits keep one address from guessing credentials, one
- * member from holding many registrations and one Host from being flooded with
- * connections.
+ * of an organization the operator admits. What an ID Token admits, the
+ * registration and the connections paired under it, lasts until the token
+ * expires, unless the Host registers again with a newer one; a Host that only
+ * lost its control socket keeps its connections. Limits keep one address from
+ * guessing credentials, one member from holding many registrations and one
+ * Host from being flooded with connections.
  */
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto'
 import type { IncomingMessage } from 'node:http'
@@ -63,6 +65,10 @@ export class Relay {
   readonly #refusals: RateLimit
   readonly #connects: RateLimit
   readonly #connections = new Map<string, number>()
+  /** Both ends of every paired connection, by Host. */
+  readonly #pairs = new Map<string, Set<WebSocket>>()
+  /** When the credential of each Host admitted by ID Token runs out. */
+  readonly #deadlines = new Map<string, NodeJS.Timeout>()
   readonly #waiting = new Map<string, { device: WebSocket; hostId: string; timer: NodeJS.Timeout }>()
   readonly #alive = new WeakSet<WebSocket>()
   readonly #heartbeat: NodeJS.Timeout
@@ -117,6 +123,7 @@ export class Relay {
   /** Stop accepting and close every socket as unavailable. */
   close(): void {
     clearInterval(this.#heartbeat)
+    for (const deadline of this.#deadlines.values()) clearTimeout(deadline)
     for (const socket of this.#server.clients) socket.close(Close.unavailable, 'relay stopped')
     this.#server.close()
   }
@@ -157,12 +164,12 @@ export class Relay {
       this.#hosts.set(hostId, registration)
       if (member !== undefined) this.#members.set(member, hosts!.add(hostId))
       // A Host registered by ID Token is a member only while the token lasts; it registers again before then.
-      const expiry = expiresAt === undefined ? undefined
-        : setTimeout(() => ws.close(Close.timeout, 'credential expired'), Math.min(expiresAt * 1000 - Date.now(), 2 ** 31 - 1))
+      clearTimeout(this.#deadlines.get(hostId))
+      this.#deadlines.delete(hostId)
+      if (expiresAt !== undefined) this.#deadlines.set(hostId, setTimeout(() => this.#expire(hostId), Math.min(expiresAt * 1000 - Date.now(), 2 ** 31 - 1)))
       // Hosts probe the control socket because their WebSocket cannot see protocol pings.
       ws.on('message', (data, isBinary) => control(data, isBinary)?.t === 'ping' ? send(ws, { t: 'pong' }) : ws.close(Close.protocolError, 'unexpected message'))
       ws.on('close', () => {
-        clearTimeout(expiry)
         if (this.#hosts.get(hostId) !== registration) return
         this.#hosts.delete(hostId)
         this.#release(hostId, registration)
@@ -184,6 +191,13 @@ export class Relay {
       if (error instanceof IssuerUnavailable) throw error
       return undefined
     }
+  }
+
+  /** The Host's credential ran out: end its registration and every connection paired under it. */
+  #expire(hostId: string): void {
+    this.#deadlines.delete(hostId)
+    this.#hosts.get(hostId)?.ws.close(Close.timeout, 'credential expired')
+    for (const ws of this.#pairs.get(hostId) ?? []) ws.close(Close.timeout, 'credential expired')
   }
 
   #release(hostId: string, { member }: Registration): void {
@@ -225,6 +239,15 @@ export class Relay {
       waiting.device.off('message', early)
       pipe(waiting.device, ws)
       pipe(ws, waiting.device)
+      const pairs = this.#pairs.get(waiting.hostId) ?? new Set<WebSocket>()
+      this.#pairs.set(waiting.hostId, pairs)
+      for (const end of [waiting.device, ws]) {
+        pairs.add(end)
+        end.on('close', () => {
+          pairs.delete(end)
+          if (pairs.size === 0 && this.#pairs.get(waiting.hostId) === pairs) this.#pairs.delete(waiting.hostId)
+        })
+      }
       send(waiting.device, { t: 'open' })
     })
   }

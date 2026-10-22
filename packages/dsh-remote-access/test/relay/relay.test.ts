@@ -289,6 +289,45 @@ test('a malformed frame ends only the connection that sent it', async () => {
   await pair(base, control, host.hostId)
   stop()
 })
+
+test('connections end with the credential that admitted their Host, unless it registered again in time', async () => {
+  const { base, stop } = await startRelay({ idTokens: issuer })
+  const [lapsing, renewed, dropped] = [await identity(), await identity(), await identity()]
+  const pairs = []
+  for (const host of [lapsing, renewed, dropped]) {
+    const control = await register(base, host, idToken(host.hostId, 1))
+    await control.json()
+    pairs.push({ control, ...await pair(base, control, host.hostId) })
+  }
+  // One Host registers again with a later token before the first runs out; another loses its control
+  // socket, as on a brief network loss, and registers again with a fresh token.
+  await (await register(base, renewed, idToken(renewed.hostId))).json()
+  pairs[2]!.control.socket.terminate()
+  await (await register(base, dropped, idToken(dropped.hostId))).json()
+
+  assert.equal(await pairs[0]!.device.code(), Close.timeout, 'a lapsed credential ends its connections')
+  assert.equal(await pairs[0]!.host.code(), Close.timeout)
+  for (const { device, host } of pairs.slice(1)) {
+    device.send(Uint8Array.of(7))
+    assert.deepEqual(await host.next(), Buffer.from([7]), 'a renewed credential keeps them')
+  }
+  stop()
+})
+
+test('a connection outlives a lost control socket only as long as the credential', async () => {
+  const { base, stop } = await startRelay({ idTokens: issuer })
+  const host = await identity()
+  const control = await register(base, host, idToken('alice', 2))
+  await control.json()
+  const { device, host: end } = await pair(base, control, host.hostId)
+  control.socket.terminate()
+  await new Promise(resolve => setTimeout(resolve, 200))
+  device.send(Uint8Array.of(1))
+  assert.deepEqual(await end.next(), Buffer.from([1]), 'still open after the control socket is gone')
+  assert.equal(await device.code(), Close.timeout)
+  stop()
+})
+
 test('endpoints are only below the relay\'s path', async () => {
   const { base, stop } = await startRelay()
   const root = base.replace(/remote\/$/, '')

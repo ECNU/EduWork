@@ -4,7 +4,9 @@
  * for the end-to-end handshake. A refused registration or a replaced identity
  * stops it until the owner acts; anything else is retried with backoff. A
  * credential that expires is replaced by registering again shortly before,
- * on a new control socket; devices already connected are not affected.
+ * on a new control socket; devices already connected are not affected. A
+ * renewal that fails keeps the registration in place, which the relay ends
+ * when its credential expires, and is tried again with backoff.
  */
 import type { SocketLike } from '../protocol/channel.ts'
 import { Close } from '../protocol/close-codes.ts'
@@ -85,7 +87,7 @@ export class RelayLink {
         void Promise.all([this.#options.credential(), signRegistration(this.#options.identity.signingKey, this.#options.relay, message.nonce)]).then(([admission, sig]) => {
           expiresAt = admission.expiresAt
           control.send(JSON.stringify({ t: 'register', protocol: PROTOCOL, hostId: this.#options.identity.hostId, sig, ...admission.credential }))
-        }, (error: Error) => this.#control === control && this.#retry(`no credential: ${error.message}`))
+        }, (error: Error) => this.#control === control && this.#failed(`no credential: ${error.message}`))
       } else if (message?.t === 'registered') {
         this.#failures = 0
         this.#retiring?.close()
@@ -107,7 +109,7 @@ export class RelayLink {
       if (this.#control !== control) return
       if (code === Close.unauthorized || code === Close.upgradeRequired) this.#halt({ state: 'refused', code, reason })
       else if (code === Close.replaced) this.#halt({ state: 'replaced' })
-      else this.#retry(reason || `closed (${code})`)
+      else this.#failed(reason || `closed (${code})`)
     })
   }
 
@@ -125,6 +127,19 @@ export class RelayLink {
     clearTimeout(this.#pongDeadline)
     this.#retiring = this.#control
     this.#connect()
+  }
+
+  /** The control socket failed before or after registering; a renewal falls back on the registration it was to replace. */
+  #failed(reason: string): void {
+    const retiring = this.#retiring
+    if (retiring === undefined || retiring.readyState !== WebSocket.OPEN) return this.#retry(reason)
+    const control = this.#control
+    this.#control = retiring
+    this.#retiring = undefined
+    control?.close()
+    this.#ping(retiring)
+    const delays = this.#options.backoffMs
+    this.#renewal = setTimeout(() => this.#renew(), delays[Math.min(this.#failures++, delays.length - 1)]!)
   }
 
   #open(id: string): void {
