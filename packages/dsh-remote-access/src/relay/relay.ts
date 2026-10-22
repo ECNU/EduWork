@@ -107,6 +107,8 @@ export class Relay {
     this.#server.handleUpgrade(request, socket, head, ws => {
       this.#alive.add(ws)
       ws.on('pong', () => this.#alive.add(ws))
+      // A malformed frame or a broken socket ends only this connection; its close handlers clean up.
+      ws.on('error', () => ws.terminate())
       route(ws)
     })
     return true

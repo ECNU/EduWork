@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
+import { connect } from 'node:net'
 import test from 'node:test'
 import { WebSocket } from 'ws'
 import { PROTOCOL } from '../../src/protocol/constants.ts'
@@ -270,6 +271,24 @@ test('a Host is asked to accept only so many connections a minute', async () => 
   stop()
 })
 
+test('a malformed frame ends only the connection that sent it', async () => {
+  const { base, stop } = await startRelay()
+  const host = await identity()
+  const control = await register(base, host)
+  await control.json()
+  // Upgrade by hand, then send a text frame without the mask every client frame must carry.
+  const { port } = new URL(base)
+  const raw = connect(Number(port), '127.0.0.1')
+  raw.write(`GET ${new URL(base).pathname}${RELAY_PATHS.host} HTTP/1.1\r\nHost: relay.test\r\nUpgrade: websocket\r\nConnection: Upgrade\r\n`
+    + 'Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==\r\nSec-WebSocket-Version: 13\r\n\r\n')
+  await new Promise(resolve => raw.once('data', resolve))
+  raw.write(Buffer.from([0x81, 0x01, 0x41]))
+  await new Promise(resolve => raw.on('close', resolve))
+  control.send({ t: 'ping' })
+  assert.deepEqual(await control.json(), { t: 'pong' })
+  await pair(base, control, host.hostId)
+  stop()
+})
 test('endpoints are only below the relay\'s path', async () => {
   const { base, stop } = await startRelay()
   const root = base.replace(/remote\/$/, '')
