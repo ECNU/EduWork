@@ -13,7 +13,7 @@
 
 ### 部署中继
 
-需要 Node.js 24.18 或更新版本，以及为中继域名提供 HTTPS 并转发 WebSocket 的反向代理。
+需要 Node.js 24.22.1 或更新版本，以及为中继域名提供 HTTPS 并转发 WebSocket 的反向代理。
 
 ```sh
 RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \

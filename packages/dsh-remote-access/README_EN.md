@@ -13,7 +13,7 @@ The package has two parts:
 
 ### Deploy the relay
 
-You need Node.js 24.18 or later and a reverse proxy that serves HTTPS for the relay's domain and forwards WebSockets.
+You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the relay's domain and forwards WebSockets.
 
 ```sh
 RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
