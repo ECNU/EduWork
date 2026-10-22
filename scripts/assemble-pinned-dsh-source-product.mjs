@@ -68,6 +68,7 @@ if (mediaTemplate.sha256 !== sourceMediaTemplate.sha256) throw new Error('Assemb
 await cp(join(repository, 'config/desktop'), join(paths.output, 'resources/desktop'), { recursive: true })
 await copySourceSkills({ repository, packages: modules, skills: distribution.skills, output: join(paths.output, 'skills') })
 const insert = [
+  { id: 'eduwork-annotation', name: '@eduwork/dsh-annotation' },
   { id: 'eduwork-artifact-services', name: '@eduwork/dsh-artifact-services/dsh', config: { skills: false, images: { enabled: false } } },
   { id: 'eduwork-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', config: { skills: false } },
   { id: 'enterprise-oidc', name: '@eduwork/dsh-oidc', config: { backend: 'desktop', allowEmptyProfiles: true, profilePathEnv: 'EDUWORK_OIDC_PROFILE' } },

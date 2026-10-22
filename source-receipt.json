@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T05:37:38.567Z",
-  "fileSetSHA256": "e8237264b7c0a334459a434aef6b7ba0b891086902f8d9acccf9d6966dbf00cb",
+  "createdAt": "2026-10-22T05:54:03.222Z",
+  "fileSetSHA256": "0b3a1b40010575709b3b7eb6e58377ae5b2e461f9f6baedde3d6cc57339ba599",
   "files": [
     {
       "path": ".gitattributes",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "692f9c41c598b66536b992e599e96819adecddb210147d52cf9f4df1b5941d70"
+      "sha256": "bebc020337a51ae31596300bf48dd31d3726be3c5b85c930f96ed4c7690f40d3"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -277,11 +277,11 @@
     },
     {
       "path": "docs/CORE-021_EN.md",
-      "sha256": "52d49548daf82e8125a3560b88015e1586860535e83c16f7d0f4d684422f986b"
+      "sha256": "bd6d6fcb73032ee3416c060a7051482e27dedb02f7c5169d9d7ad4a51fa987cb"
     },
     {
       "path": "docs/CORE-021.md",
-      "sha256": "fc8f0809fab738cf5206632ea84aab665306e8ef43dc5433f8fafdc7f8a2d20b"
+      "sha256": "830582e084a08057f2f4c7c8762ab1dd9555013e3b12b93476f4b239f71d6a29"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -369,11 +369,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "48196c027186f0b1dd1ac19f29ff79294a037e7b4c652cf95f2749184ea0833f"
+      "sha256": "10af222f78c4b870d8a534a9ef60aa8c79f61d16bc3e5ed7063efbb39548c6eb"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "13f06cf703a77a34599a2d7f5354b87984ef578f2f87b42f9725650ea38363fc"
+      "sha256": "4eba66786a9f6790c6d99da6dcc4521567b06bc2afeeaa809a864d03d9ed722c"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -6217,7 +6217,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "ff2363da10176f10ce9cc3b2d6dcd7de0aa11fd27168a017d380cd58a604a0e5"
+      "sha256": "d863339a985213dc973c3eb38afae496fc5fa63081c74e0b5a624822bc83774f"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -6693,7 +6693,7 @@
     },
     {
       "path": "scripts/probe-pinned-dsh-source-product.mjs",
-      "sha256": "6721aa13bf33e447d7df8d3afea19d671a7fef82bd205a1f66f7b7c368ea95d2"
+      "sha256": "d216e7abc264fdfdc241aaecd733c63e0edd8b07a6025e48a13b5a144622e95f"
     },
     {
       "path": "scripts/project-eduwork-runtime.mjs",
@@ -6709,7 +6709,7 @@
     },
     {
       "path": "scripts/published-package-inputs.mjs",
-      "sha256": "4f6a8097f536c7124beb3ef1f99262b9d33e00ee7436052c58d73369e4aa532b"
+      "sha256": "ee2fa9e918ca93cf79dca94a297629e112905070242a4e879362c1ad8abf1063"
     },
     {
       "path": "scripts/record-npm-package-lock.mjs",
@@ -7192,6 +7192,10 @@
       "sha256": "5eac29885924a418c2cc893a376d632f1aaf816c8c3c814792678b9d7c23aca4"
     },
     {
+      "path": "third_party/dsh/candidate-v0.2.1-rc.2/annotation.json",
+      "sha256": "d275748074c3f5ed583211a4ea87d9904016b48bdc24d416a873bb768b2d1cb0"
+    },
+    {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/artifact-services.json",
       "sha256": "b2188c257af575061677f43566200a02e828a4969f25985a1c629d659b96c6fe"
     },
@@ -7241,11 +7245,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/source-probe/package-lock.json",
-      "sha256": "86be8113336a086abc7fd18d669da58057a97e23dc984508c2cfb353daed48af"
+      "sha256": "cca85ac8376c2f8b753cb288ef4b8646936b7e1cdeadb75b97dcae43df386227"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.1-rc.2/source-probe/package.json",
-      "sha256": "f76bf378af35cf218cac44a1f7f4465ff9fa10de18be3a34fea460592ba977dc"
+      "sha256": "00d1a3f99e9407428387448d2335e6342a711452b319c2853dcb1bc00af7bcfd"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",

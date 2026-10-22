@@ -144,7 +144,8 @@ try {
     for (const id of ['literature', 'literature-dblp', 'literature-arxiv', 'tool-literature']) {
       assert.ok(plugins.some(row => row.patchId === id && row.enabled && row.fiberPhase === 'active'), `Literature plugin not active: ${id}`)
     }
-    report.boots.push({ round, plugins: plugins.length, authenticated: true })
+    assert.ok(plugins.some(row => row.patchId === 'eduwork-annotation' && row.enabled && row.fiberPhase === 'active'), 'Published annotation plugin did not activate')
+    report.boots.push({ round, plugins: plugins.length, authenticated: true, annotation: 'active' })
     await host.stop(); host = undefined
   }
   assert.ok(secrets.size > 0, 'Installed connection did not exercise the native credential bridge')

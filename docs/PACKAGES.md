@@ -65,7 +65,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-当前 DSH 0.2.1 配方从 npm 装配七个独立包：桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注不随客户端装配，由用户在插件页按需安装。`third_party/dsh/candidate-v0.2.1-rc.2/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
+当前 DSH 0.2.1 配方从 npm 装配八个独立包：选段批注、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注从下一次客户端构建起预装；插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.2/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
 
 装配先验证组件锁与 npm 安装一致，再构建产品自身的桌面扩展。媒体模板、PDF runtime、插件客户端和随包 skills 均使用发布包里的文件；不再从 `packages/` 覆盖。`assembly.json` 区分 `externalPackages` 与 `sourcePackages`，并保存发布包文件摘要，在产品装配和机构扩展后检查是否被改写。锁不一致、缺包或存在 workspace 链接时立即失败，不回退到源码。
 

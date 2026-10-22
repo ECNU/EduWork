@@ -6,7 +6,7 @@
 
 ## 能力与迁移
 
-- 沿用官方插件管理器、浏览器和 Office 能力。可选的[选段引用与批注](../packages/dsh-annotation/README.md)在插件页安装。新增官方 DeepSeek Search / Fetch API 提供者由原生设置管理；保留 EduWork 既有搜索默认值、用户选择及浏览器回退。
+- 沿用官方插件管理器、浏览器和 Office 能力。[选段引用与批注](../packages/dsh-annotation/README.md)以独立 npm 包预装，其他兼容客户端也可在插件页安装。新增官方 DeepSeek Search / Fetch API 提供者由原生设置管理；保留 EduWork 既有搜索默认值、用户选择及浏览器回退。
 - Schedule 已并入官方基础组合。升级清除旧实验 Schedule bundle 的依赖和激活引用，保留任务存储、配置及其他插件；不再安装已停止发布的实验 bundle。
 - 官方开发者工具以可选 bundle 提供，产品不默认启用请求采集。需要排错时按官方插件管理方式启用并检查导出内容。
 - 文献和桌宠继续使用组件锁中已发布的 npm 版本。升级内核不会仅为改版本声明而重新发布插件。
