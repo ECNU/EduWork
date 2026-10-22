@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T05:54:03.222Z",
-  "fileSetSHA256": "0b3a1b40010575709b3b7eb6e58377ae5b2e461f9f6baedde3d6cc57339ba599",
+  "createdAt": "2026-10-22T06:04:21.840Z",
+  "fileSetSHA256": "f4985a0e23cd5dbb88a6848c1441c9e3e45dd61ea431688e6c7f635e10263ab7",
   "files": [
     {
       "path": ".gitattributes",
@@ -369,11 +369,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "10af222f78c4b870d8a534a9ef60aa8c79f61d16bc3e5ed7063efbb39548c6eb"
+      "sha256": "794369e57cc750e668824075832e200de3c92d1b58e58fb879f060ecaf2351e1"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "4eba66786a9f6790c6d99da6dcc4521567b06bc2afeeaa809a864d03d9ed722c"
+      "sha256": "d9a97419c3f05432aeba3e1a702d6012dc3a028fecc52f3140f0e1948916c38f"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -1557,7 +1557,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "84b8c3e4b5df9080091686ba59cb5b587e01590e3eddaa0d65924578b6b50cf6"
+      "sha256": "e86a7fcd3b1b9f7bf0dbe37e1cb8bf6fecd95968c382a5203eceda8c16cbe102"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -1581,7 +1581,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "abdea83f8319e66c9e72d98c6791dd37b58e6f90d988eb087660c41d09aed882"
+      "sha256": "8bed595d0223dd5795a3a08f86950d83e0c0cc00cffca750f88d349f2cdf4336"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1673,7 +1673,7 @@
     },
     {
       "path": "dsh-host/test/native-settings.test.mjs",
-      "sha256": "b1f4d04bbaaa8746753add0228b4b9c96fdb2e603f77fcf7334e34c426d8bbbb"
+      "sha256": "d9be8b0f23a81dc64a242eb25a1963af82d5fc9b410ca41415e8ca050359c3bd"
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
@@ -6217,7 +6217,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "d863339a985213dc973c3eb38afae496fc5fa63081c74e0b5a624822bc83774f"
+      "sha256": "d7aae91f98a3cb4ed422cd71ec3f0f8fc65e35b40a36087cf6b79a9c180e012a"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",

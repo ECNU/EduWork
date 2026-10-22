@@ -68,14 +68,14 @@ if (mediaTemplate.sha256 !== sourceMediaTemplate.sha256) throw new Error('Assemb
 await cp(join(repository, 'config/desktop'), join(paths.output, 'resources/desktop'), { recursive: true })
 await copySourceSkills({ repository, packages: modules, skills: distribution.skills, output: join(paths.output, 'skills') })
 const insert = [
-  { id: 'eduwork-annotation', name: '@eduwork/dsh-annotation' },
   { id: 'eduwork-artifact-services', name: '@eduwork/dsh-artifact-services/dsh', config: { skills: false, images: { enabled: false } } },
   { id: 'eduwork-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', config: { skills: false } },
   { id: 'enterprise-oidc', name: '@eduwork/dsh-oidc', config: { backend: 'desktop', allowEmptyProfiles: true, profilePathEnv: 'EDUWORK_OIDC_PROFILE' } },
   ...distribution.plugins.map(row => ({ id: row.id, name: row.name, config: row.source === 'dsh-plugins/brand-settings-native' ? distribution.brand : row.config ?? {} })),
 ]
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
-const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature']
+const optionalBundles = ['@eduwork/dsh-annotation']
+const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
 const lowerLayers = await loadDistributionBundleLayers(join(paths.output, 'd'), bundles, boot)
@@ -83,7 +83,7 @@ const composition = [...mergeDistributionConfigPatches([{ insert }], distributio
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'npm', published: false,
-  bundles,
+  bundles, optionalBundles,
   sourcePackages, externalPackages: publishedLocks, publishedPackageFiles: publishedFiles,
   pluginInstallLockSHA256: createHash('sha256').update(pluginInstallLock).digest('hex'),
   omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
