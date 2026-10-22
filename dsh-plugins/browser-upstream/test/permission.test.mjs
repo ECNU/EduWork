@@ -15,7 +15,10 @@ test('preserves read access and public interaction confirmations', () => {
   assert.equal(browserPermission(context, call('browser_navigate', { url: 'https://example.org/' }), allow).kind, 'allow')
   assert.equal(browserPermission(context, call('browser_navigate', { url: 'http://localhost/' }), allow).kind, 'ask')
   for (const name of ['browser_click', 'browser_type', 'browser_evaluate', 'browser_file_upload', 'browser_take_screenshot', 'browser_close', 'browser_future_interaction']) {
-    assert.equal(browserPermission(context, call(name), allow).kind, 'ask')
+    const decision = browserPermission(context, call(name), allow)
+    assert.equal(decision.kind, 'ask')
+    assert.equal(decision.displayReason.en, decision.reason)
+    assert.equal(decision.displayReason.zh, '允许智能体操作网页，或访问内网、本机等非公开浏览器地址')
     assert.equal(browserPermission(ctx('danger-full-access'), call(name), allow).kind, 'allow')
   }
   assert.equal(browserPermission(context, call('browser_tabs', { action: 'list' }), allow).kind, 'allow')

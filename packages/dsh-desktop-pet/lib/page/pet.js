@@ -154,6 +154,7 @@ function placeBubble() {
 function announce() {
   const { state, target, count } = status
   if (!['attention', 'failed', 'done'].includes(state)) return
+  if (target.kind === 'plugin') return say(target.label + (target.title ? ' · ' + target.title : ''), 4000, target.key)
   if (target.title) return say(copy.titles[state] + target.title, 4000, target.key)
   const lines = localize(skin.lines[state], locale)
   say(state === 'done' && count > 1 ? copy.doneMany(count) : lines ? pick(lines, Math.random) : copy[state], 4000, target.key)
@@ -279,11 +280,11 @@ api.on('status', value => {
   running = value.running
   if (running > 0) workingUntil = Infinity
   else if (workingUntil === Infinity) workingUntil = now + PACE.workingGrace
-  if (previous.state !== status.state || previous.target?.key !== status.target?.key || previous.count !== status.count) {
+  if (previous.state !== status.state || previous.target?.key !== status.target?.key || previous.count !== status.count || previous.target?.alert !== status.target?.alert) {
     activity(now)
-    if (status.state === 'done' && (previous.state !== 'done' || status.count > previous.count)) startShot('done', now, PACE.celebrate)
+    if (status.state === 'done' && (status.target?.kind !== 'plugin' || status.target.level === 'success') && (previous.state !== 'done' || status.count > previous.count)) startShot('done', now, PACE.celebrate)
     if (status.state === 'failed' && previous.target?.key !== status.target.key) startShot('failed', now, PACE.failed)
-    if (previous.state !== status.state || previous.target?.key !== status.target?.key) announce()
+    if (previous.state !== status.state || previous.target?.key !== status.target?.key || previous.target?.alert !== status.target?.alert) announce()
   }
   // An item viewed in the app takes its announcement with it.
   if (bubbleFor && !value.items.some(item => item.key === bubbleFor)) { bubble.hidden = true; bubbleUntil = 0; bubbleFor = null }

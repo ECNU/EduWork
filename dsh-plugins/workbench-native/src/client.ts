@@ -329,7 +329,7 @@ export async function apply(ctx) {
     inner.on('dispose', () => notifications.close())
     const notificationScope = nativeSettings ? inner.configForms.get('eduwork-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-notifications' })
     inner.slots.inject('settings.general.item', () => inner.slots.register({ name: 'settings.general.item', id: 'eduwork-notifications', order: 19,
-      inject: () => ({ scope: notificationScope, status: notifications.status }) }, NotificationSettings))
+      inject: () => ({ scope: notificationScope, pluginScope: nativeSettings ? inner.configForms.get('eduwork-plugin-notifications') : inner.settingsScope.bind({ namespace: 'eduwork-plugin-notifications' }), status: notifications.status }) }, NotificationSettings))
     // Native Session catalogs no longer carry selection. Follow the same
     // public current binding as the official UI without acquiring a new one.
     const currentSession = nativeSettings ? inner.uiSession.adapter.current : inner.sessions.list

@@ -22,8 +22,9 @@ const newest = (a, b) => b.createdAt - a.createdAt
  * @param {number} running sessions with live work
  */
 export function deriveStatus(items, running) {
-  for (const [state, kinds] of [['attention', HUMAN], ['failed', ['failed']], ['done', ['completed', 'studio']]]) {
-    const rows = items.filter(item => kinds.includes(item.kind)).sort(newest)
+  for (const [state, kinds] of [['attention', HUMAN], ['failed', ['failed']], ['done', ['completed']]]) {
+    const rows = items.filter(item => kinds.includes(item.kind) || item.kind === 'plugin' && (state === 'attention' ? item.requiresAction : state === 'failed' ? !item.requiresAction && item.level === 'error' : !item.requiresAction && item.level !== 'error'))
+      .sort((a, b) => state === 'attention' ? Number(HUMAN.includes(b.kind)) - Number(HUMAN.includes(a.kind)) || newest(a, b) : newest(a, b))
     if (rows.length) return { state, target: rows[0], count: rows.length }
   }
   return running > 0 ? { state: 'working', target: null, count: running } : { state: 'idle', target: null, count: 0 }

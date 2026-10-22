@@ -15,6 +15,7 @@ import { installLockedDshPackage, copyDshPackagePayload } from './lib/dsh-packag
 import { copyDshBundledSkills } from './lib/dsh-skills.mjs'
 import { prepareWebRuntime } from './prepare-eduwork-web-runtime.mjs'
 import { provisionBuildTools } from './prepare-eduwork-build-tools.mjs'
+import { verifyPluginNotificationConsumers } from './plugin-notification-contract.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -160,6 +161,8 @@ export async function assembleEduworkWeb({
   }
 
   const selectedPlugins = [...(distribution.plugins ?? [])]
+  if (selectedPlugins.some(entry => entry.name === '@eduwork/notifications'))
+    await verifyPluginNotificationConsumers(modules, distribution.packages ?? [])
   // The skill provider lives in agent presets, rather than as a duplicate host row.
   selectedPlugins.push({ root: 'core', source: 'dsh-plugins/skill-control-native', name: '@chatecnu-work/dsh-skill-control-native' })
   const local = {}

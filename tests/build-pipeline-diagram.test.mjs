@@ -8,7 +8,7 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { buildPipelineDiagrams } from '../scripts/build-pipeline-diagram.mjs'
-import { sharedDesktopStages } from '../scripts/lib/shared-desktop-stages.mjs'
+import { pinnedSourceStages } from '../scripts/lib/pinned-source-stages.mjs'
 import { macosStages } from '../scripts/lib/macos-stages.mjs'
 import { windowsStages } from '../scripts/lib/windows-stages.mjs'
 
@@ -53,7 +53,7 @@ test('the rendered svg names every stage once and explains it in Chinese', async
       upstreamSource: '',
     }
     const stages = [
-      ...sharedDesktopStages(common),
+      ...pinnedSourceStages(common),
       ...macosStages({
         coreRoot, name: 'EduWork', version: '0.0.0', development: true, releaseNotesFile: '', receiptBase: {},
       }),
@@ -64,16 +64,19 @@ test('the rendered svg names every stage once and explains it in Chinese', async
     for (const entry of stages) {
       assert.ok(svg.includes(`>${entry.name}</text>`), `${entry.name} is missing from the svg`)
     }
-    assert.equal(svg.match(/>web<\/text>/g)?.length, 1, 'shared stages must appear once')
+    assert.equal(svg.match(/>source-audit<\/text>/g)?.length, 1, 'shared stages must appear once')
     assert.equal(svg.match(/>sparkle<\/text>/g)?.length, 1, 'the macOS branch must appear once')
-    assert.match(svg, /构建 Web 产品/)
+    assert.match(svg, /安装 npm 插件/)
     assert.match(svg, /准备 Mac 更新/)
     assert.match(svg, /仅 macOS/)
     assert.match(svg, / d="M\d+ \d+ C/)
     assert.doesNotMatch(svg, />可并行</)
     assert.doesNotMatch(svg, /\bin \d|\bout \d|mutable output/)
     const mermaid = await readFile(join(output, 'build-pipeline.mmd'), 'utf8')
-    assert.equal(mermaid.match(/--- join/g)?.length, 5, 'the package must show each prerequisite')
+    // Product is already upstream of native_install. Keep both platform joins
+    // without drawing that redundant dependency again.
+    assert.deepEqual([...mermaid.matchAll(/^  (\w+) --- join/gm)].map(match => match[1]).sort(),
+      ['electron', 'native_install', 'shell', 'sparkle'])
     assert.match(mermaid, /join --> desktop/)
   } finally {
     await rm(output, { recursive: true, force: true })

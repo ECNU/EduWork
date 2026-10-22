@@ -1,0 +1,3 @@
+- insert:
+    - id: eduwork-annotation
+      name: '@eduwork/dsh-annotation'

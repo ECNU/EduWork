@@ -17,7 +17,9 @@
 
 ## 本机构建
 
-准备 Git、Node.js 24.18.0 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
+准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
+
+Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json) 为准；构建机、随包 Node 和 Host 回执必须匹配。升级 Node 后需重新准备 Host 与桌面壳，不能复用旧版本回执。下载资源继续核对清单中的官方 SHA-256，整包验收会再次检查实际携带的 Node 版本。机构仓升级公版锁时，也要同步其构建机与 CI 的 Node 版本。
 
 在仓库根目录运行：
 
@@ -44,7 +46,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 当前内核、迁移规则及保留的适配见 [DSH 0.2.1 集成说明](CORE-021.md)。
 
-本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.1-rc.2` Runtime 和七个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
+本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.1-rc.2` Runtime 和八个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
 
 稳定版要求 Windows 更新契约及 macOS Sparkle 配置；预发布默认关闭软件自动更新。候选的 Windows ZIP 与安装包、macOS ZIP 与 DMG 都会校验哈希、归档内容和启动结果。macOS DMG 从通过 ZIP 验收的同一应用生成，挂载只读镜像后核对应用签名与内容。签名仍是 ad-hoc；系统权限、机构登录、升级体验等人工验收见 [发行指南](RELEASE.md)。
 
@@ -54,7 +56,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 ## 依赖与复用
 
-桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 npm 配方仅能显式通过 `--recipe npm` 调用。
+桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
 
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
 

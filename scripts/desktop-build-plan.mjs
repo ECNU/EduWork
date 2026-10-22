@@ -5,6 +5,14 @@ import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { versionParts } from '../dsh-host/release-policy.mjs'
 
+// The recipe name is retained in receipts and existing callers. npm Runtime
+// and plugin packages are still inputs to this single supported desktop route.
+export function desktopBuildRecipe(value = '') {
+  if (value === 'npm') throw new Error('The legacy --recipe npm desktop build is retired. Remove --recipe npm or use --recipe pinned-source; npm Runtime and plugin assembly remain supported. See docs/BUILD.md.')
+  if (value && value !== 'pinned-source') throw new Error('Unknown desktop build recipe: ' + value)
+  return 'pinned-source'
+}
+
 // One product version policy shared by assembly, receipts and publication.
 // Deliberately exclude build metadata and unqualified prerelease labels from filenames.
 export function desktopVersion(version) {

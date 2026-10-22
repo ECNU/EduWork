@@ -31,5 +31,8 @@ export function decideCalendarPermission(ctx, exec, next) {
   if (!WRITE_TOOLS.has(exec.name)) return next()
   if (!exec.agent) return Promise.resolve({ kind: 'deny', reason: '日历写入需要关联智能体会话' })
   if (ctx.permissionPresets.current(exec.agent.session) === 'danger-full-access') return next()
-  return Promise.resolve({ kind: 'ask', reason: WRITE_REASON })
+  return Promise.resolve({ kind: 'ask', reason: WRITE_REASON, displayReason: {
+    zh: WRITE_REASON,
+    en: 'Allow the Agent to create, modify or delete events and personal settings in the local calendar',
+  } })
 }

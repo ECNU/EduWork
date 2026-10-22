@@ -26,6 +26,7 @@ npm install @eduwork/dsh-desktop-pet
 - 将包的 bundle 加入 DSH 组合。它使用稳定入口 `eduwork-desktop-pet`，默认 `enabled: false`；已有 EduWork 产品配置会插入同一入口，无需重复添加。
 - 桌面壳从安装后的包加载 `lib/page/` 和 `skins/`，继续使用原有通知事项及打开会话回调。设置页的“隐藏/显示”与壳菜单通过现有事件接线。
 - 普通托盘和系统通知独立于桌宠开关，授权操作仍在应用内完成。
+- 支持[插件通知协议](https://github.com/ECNU/EduWork/blob/main/docs/PLUGIN_NOTIFICATIONS.md)的通用提醒性质、待办状态和标签；业务插件通过通知服务接入，不直接控制桌宠。需要配套支持协议 1 的桌面壳。
 
 服务接受两种请求：
 

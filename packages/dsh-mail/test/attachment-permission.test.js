@@ -18,7 +18,10 @@ test('attachment downloads honor the session write mode without granting SMTP pe
   const next = () => { nextCalls++; return { kind: 'allow' } }
   assert.equal((await decideMailPermission(ctx, exec, next)).kind, 'allow')
   mode = 'read-only'
-  assert.equal((await decideMailPermission(ctx, exec, next)).kind, 'ask')
+  const download = await decideMailPermission(ctx, exec, next)
+  assert.equal(download.kind, 'ask')
+  assert.equal(download.displayReason.en, download.reason)
+  assert.equal(download.displayReason.zh, '允许将这封邮件的附件保存到当前工作区')
   assert.equal(nextCalls, 1, 'no attachment access before approval')
   mode = 'workspace-write'; root = '/different'
   assert.equal((await decideMailPermission(ctx, exec, next)).kind, 'deny')

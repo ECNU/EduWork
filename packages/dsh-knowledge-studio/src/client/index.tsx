@@ -685,6 +685,15 @@ function DetailsPanel({
   }, [notificationNavigation?.revision, sessionId])
 
   useEffect(() => {
+    const open = (event: any) => {
+      if (event.detail?.sessionId !== sessionId || typeof event.detail.artifactId !== 'string') return
+      setEvidence(null); setDialog(null); setArtifactId(event.detail.artifactId)
+    }
+    window.addEventListener('eduwork:studio-open-notification', open)
+    return () => window.removeEventListener('eduwork:studio-open-notification', open)
+  }, [sessionId])
+
+  useEffect(() => {
     if (!artifactId || notificationVisible !== true) return
     const report = (visible: boolean) => window.dispatchEvent(new CustomEvent('eduwork:studio-visibility', { detail: { sessionId, artifactId, visible } }))
     report(true)
@@ -965,6 +974,41 @@ export async function apply(ctx: any) {
   const officialSidebar=typeof ctx.layout.openDetails!=='function'
   ctx.inject(['remote.knowledgeStudio', 'remote.session',...(officialSidebar?['sidebarRight','sidebarRightTabs']:[])], (surfaceCtx: any) => {
     const service = surfaceCtx.remote.knowledgeStudio
+    surfaceCtx.inject(['notificationActions', 'uiWorkspace', ...(officialSidebar ? ['uiSession'] : [])], (inner: any) => {
+      let visible: any = null
+      const visibility = (event: any) => {
+        const value = event.detail
+        if (value?.visible) visible = { target: { artifactId: value.artifactId, sessionId: value.sessionId } }
+        else if (visible?.target.artifactId === value?.artifactId) visible = null
+      }
+      window.addEventListener('eduwork:studio-visibility', visibility)
+      inner.effect(() => () => window.removeEventListener('eduwork:studio-visibility', visibility))
+      inner.effect(() => inner.notificationActions.register('studio', async ({ target, signal }: any) => {
+        const { artifact } = await unwrap(service.readArtifact(target.artifactId))
+        if (signal.aborted || artifact.deletedAt || artifact.sessionId !== target.sessionId) return false
+        inner.uiWorkspace.openSession(target.sessionId)
+        for (let attempt = 0; attempt < 20; attempt++) {
+          await new Promise(resolve => setTimeout(resolve, 50))
+          if (signal.aborted) return false
+          const selected = officialSidebar
+            ? inner.uiSession.adapter.current.getSnapshot().props?.sessionId
+            : surfaceCtx.sessions.list.getSnapshot().current
+          if (selected !== target.sessionId) return false
+          try {
+            if (officialSidebar) surfaceCtx.sidebarRight.openTab('knowledge-studio', { params: { artifactId: target.artifactId } })
+            else {
+              const current = surface.currentTarget()
+              if (!current || current.sessionId !== target.sessionId) throw Error('Studio session not ready')
+              surface.remember(target.sessionId, { artifactId: target.artifactId })
+              surface.open(current)
+              window.dispatchEvent(new CustomEvent('eduwork:studio-open-notification', { detail: target }))
+            }
+            return
+          }
+          catch (error) { if (attempt === 19) throw error }
+        }
+      }, () => visible))
+    })
     let preferenceWrites=Promise.resolve()
     const tabHandles=new Map<string,any>()
     const layout=officialSidebar?{

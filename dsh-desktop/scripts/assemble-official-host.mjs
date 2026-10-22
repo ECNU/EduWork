@@ -1,3 +1,4 @@
+import { assertPreparedNode } from '../../scripts/lib/node-runtime-contract.mjs'
 // Assembles the independent Wails candidate from the frozen desktop product
 // and the prepared official Host adapter. Node.js port of
 // assemble-official-host.ps1.
@@ -39,7 +40,7 @@ export async function assembleOfficialHost({ product, hostAdapter, output, versi
   await runNode(join(core, 'scripts/verify-product-release-identity.mjs'), [product, version])
     .catch(() => { throw new Error('Product release identity verification failed') })
   const nodeVersion = (await capture(node, ['--version'])).trim()
-  if (nodeVersion !== 'v24.18.0' || hostReceipt.nodeVersion !== nodeVersion) throw new Error('Candidate Node must match the prepared Host Node 24.18.0')
+  assertPreparedNode(nodeVersion, hostReceipt.nodeVersion)
   const nodeLicense = join(dirname(node), 'LICENSE')
   if (!await isFile(nodeLicense)) throw new Error('Node LICENSE must accompany the supplied Node runtime')
 

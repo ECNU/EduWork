@@ -27,7 +27,7 @@ macOS 的运行中 Dock 图标、下次启动窗口的图标和进度条跟随�
 
 ## 构建入口
 
-完整 Windows 测试包使用[构建指南](../docs/BUILD.md#本机构建)中的 Node.js 入口。在干净的 EduWork 检出目录准备 Git、Node.js 24.18.0、Go 1.26.6 和 Visual Studio 2022 C++ Build Tools 后运行：
+完整 Windows 测试包使用[构建指南](../docs/BUILD.md#本机构建)中的 Node.js 入口。在干净的 EduWork 检出目录准备 Git、Node.js 24.22.1、Go 1.26.6 和 Visual Studio 2022 C++ Build Tools 后运行：
 
 ```sh
 node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-electron-test

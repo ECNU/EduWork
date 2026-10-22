@@ -186,7 +186,8 @@ export function nativeEntryIds(patches) {
 // Generated deployment defaults are an ordinary bundle BELOW the native user
 // patch. Never regenerate the latter: Settings writes it through configEditor.
 // This profile lives beside the 0.1.5 profile for rollback, in the same DSH home.
-export async function writeNativeProfile({ profile, home, bundles, patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
+export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
+  if (!Array.isArray(optionalBundles) || optionalBundles.some(value => typeof value !== 'string' || !bundles.includes(value))) throw new Error('Optional bundles must belong to the product bundle list')
   const name = '@eduwork/generated-profile'
   const bundle = join(profile, 'node_modules', name)
   for (const path of [profile, join(profile, 'node_modules'), join(profile, 'node_modules/@eduwork'), bundle]) {
@@ -236,6 +237,20 @@ export async function writeNativeProfile({ profile, home, bundles, patches, pars
   // absent legacy/fork bundle means disabled, not an invitation to re-enable it.
   const inheritedBundles = savedManifest.dsh?.profile?.bundles === undefined ? bundles
     : bundles.filter(value => value !== '@eduwork/dsh-literature')
+  // Seed newly bundled optional plugins once, then let the native plugin
+  // manager own activation. A prior manual install with no active bundle is
+  // already disabled. Preserve that choice and avoid a second product entry.
+  let defaults = inheritedBundles
+  if (optionalBundles.length) {
+    const provisioned = savedManifest.eduwork?.optionalBundles ?? []
+    if (!Array.isArray(provisioned) || provisioned.some(value => typeof value !== 'string')) throw new Error('Invalid provisioned optional bundle list')
+    defaults = inheritedBundles.filter(value => !optionalBundles.includes(value))
+    for (const value of optionalBundles) {
+      const manuallyDisabled = Object.hasOwn(savedManifest.dependencies ?? {}, value) && !savedBundles.includes(value)
+      if (!provisioned.includes(value) && !manuallyDisabled) defaults.push(value)
+    }
+    savedManifest.eduwork = { ...savedManifest.eduwork, optionalBundles: [...new Set([...provisioned, ...optionalBundles])] }
+  }
   if (bundles.includes('@eduwork/dsh-literature')) {
     for (let i = 0; i < savedBundles.length; i++) {
       if (savedBundles[i] === '@shlv/dsh-literature') savedBundles[i] = '@eduwork/dsh-literature'
@@ -277,7 +292,7 @@ export async function writeNativeProfile({ profile, home, bundles, patches, pars
   // Keep them on restart; only the generated product bundle is kept last.
   await writeChanged(manifestPath, json({ name: 'eduwork-desktop-profile', private: true, type: 'module', ...savedManifest,
     dsh: { ...savedManifest.dsh, profile: { ...savedManifest.dsh?.profile,
-      bundles: [...new Set([...inheritedBundles, ...savedBundles].filter(value => value !== name)), name] } } }))
+      bundles: [...new Set([...defaults, ...savedBundles].filter(value => value !== name)), name] } } }))
   // Exclusive create protects both a saved native preference and an in-flight
   // settings update. Absence is the only condition that initializes the file.
   try { await writeFile(join(profile, 'cordis.patch.yml'), '[]\n', { flag: 'wx', mode: 0o600 }) }

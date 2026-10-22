@@ -58,6 +58,8 @@ npm install ./eduwork-dsh-artifact-services-0.3.0.tgz ./eduwork-dsh-knowledge-st
 
 安装本地 tarball 不会自动启用目标 Profile；启用步骤、独立 Web 启动及运行环境配置见 [使用指南](docs/USAGE.md)。加载 Studio bundle 时会注册共享服务；不要另装第二份共享服务或旧 Office 执行插件。
 
+成果完成与失败可接入宿主的[插件通知协议](https://github.com/ECNU/EduWork/blob/main/docs/PLUGIN_NOTIFICATIONS.md)。通知服务可选，未安装时仍可使用 Studio；成果状态和点击导航由 Studio 自己管理。
+
 Office 需要另行准备 Python 3.12+ 和共享包的 `python/requirements.txt`，以 `DSH_OFFICE_PYTHON` 指向解释器。PDF、视频使用 Chromium；可注入已准备的运行时，独立渲染首次使用可准备 Remotion 浏览器；Studio 的能力检查本身不会下载组件，离线使用须事先配置。共享媒体运行时固定 Remotion `4.0.520`、mediabunny `1.55.5`、React/React DOM `18.3.1`。Windows System.Speech 和 macOS 系统 say 可使用本机已安装的音色离线配音；其他系统或厂商可通过统一接口注册语音提供方。音频转写通过共享 ASR 服务扩展，本地 whisper.cpp 可执行文件与模型需宿主另行准备，不随 npm 包分发。详见 [扩展接口](docs/ARCHITECTURE.md)。
 
 ## 开发与边界

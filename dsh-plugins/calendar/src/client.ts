@@ -1903,6 +1903,14 @@ export async function apply(ctx: any) {
   // host `calendar` service callable from this half.
   const disposeRemote = await ctx.remote.$mount(calendarRemote)
   ctx.inject(['remote.calendar'], (surface: any) => {
+    surface.inject(['notificationActions', 'layout'], (inner: any) => {
+      inner.effect(() => inner.notificationActions.register('calendar', async ({ target, signal }: any) => {
+        // Host onAction already validated this ID against the complete receipt
+        // table. The inbox is paginated and cannot validate an older target.
+        if (signal.aborted || typeof target?.reminderId !== 'string') return false
+        inner.layout.selectPanel(PANEL_ID)
+      }))
+    })
     // The gateway checks the argument count of every call, so the one method
     // that takes none is called with none.
     const call = (method: string) => (input?: any) => unwrap(surface.remote.calendar[method](input))

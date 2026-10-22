@@ -43,6 +43,8 @@ npm install ./eduwork-dsh-artifact-services-0.3.0.tgz ./eduwork-dsh-knowledge-st
 
 See [usage and Profile activation](docs/USAGE.md). Loading the Studio bundle registers shared services once. Do not also activate a duplicate shared service or legacy Office plugin.
 
+Completion and failure can use the host's [plugin notification protocol](https://github.com/ECNU/EduWork/blob/main/docs/PLUGIN_NOTIFICATIONS.md). This service is optional: Studio continues to work without it and owns its artifact status and navigation.
+
 ## Capabilities and runtime
 
 Conversation tools and Studio use the same generation and actual-file preview services, with Studio adding source citations and learning interactions. Editable React video projects are a conversation tool capability, not a separate Studio editor. Editable DOCX/PPTX/XLSX use the shared Python engine; PDF, CSV, HTML and Markdown are additional export formats. Audio/video output includes WAV/MP4, optional narration, captions, BGM and video previews. Speech providers share one application interface; Windows System.Speech and macOS system say provide offline narration with installed voices. Other platforms need an extension provider.

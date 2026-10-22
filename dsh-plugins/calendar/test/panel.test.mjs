@@ -355,6 +355,32 @@ test('the checked-in client artifact still declares itself to the module loader'
   assert.match(artifact, /data-occurrence/, 'the published panel names the occurrences it draws')
 })
 
+test('a Host-validated notification outside the inbox page still opens the calendar', { skip: !runtime }, async () => {
+  const primitives = fileURLToPath(new URL('./support/ui-primitives-stub.js', import.meta.url))
+  const [{ exports: client }] = loadClientArtifact(fileURLToPath(new URL('../lib/client.js', import.meta.url)),
+    name => name === '@deepseek-ai/dsh-client-ui-primitives' ? require(primitives) : require(name))
+  let navigate, inboxReads = 0
+  const panels = [], disposers = []
+  const surface = {
+    remote: { calendar: { reminders() { inboxReads++; return { reminders: Array.from({ length: 100 }, (_, i) => ({ id: `recent-${i}` })) } } } },
+    slots: { inject() {}, register() {} },
+    layout: { selectPanel: id => panels.push(id) },
+    notificationActions: { register(source, handler) { assert.equal(source, 'calendar'); navigate = handler; return () => { navigate = undefined } } },
+    effect: callback => disposers.push(callback()),
+    inject: (_dependencies, callback) => callback(surface),
+  }
+  const unmount = await client.apply({ remote: { $mount: async () => () => {} }, inject: (_dependencies, callback) => callback(surface) })
+  const controller = new AbortController()
+  await navigate({ target: { reminderId: 'older-than-first-100' }, signal: controller.signal })
+  assert.equal(panels.length, 1)
+  assert.equal(inboxReads, 0, 'the UI must not revalidate the complete Host result against a paginated inbox')
+  controller.abort()
+  assert.equal(await navigate({ target: { reminderId: 'older-than-first-100' }, signal: controller.signal }), false)
+  assert.equal(panels.length, 1)
+  for (const dispose of disposers) dispose()
+  await unmount()
+})
+
 test('clearing a note removes it instead of leaving a blank one behind', { skip: !runtime }, async () => {
   await withRoot('eduwork-panel-clear-', async (root) => {
     await withCalendar(root, async ({ host }) => {

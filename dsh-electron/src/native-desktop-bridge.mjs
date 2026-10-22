@@ -8,7 +8,7 @@ import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './d
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
-export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, checkUpdates, pickDirectory }) {
+export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand }) {
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -19,6 +19,16 @@ export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, ch
     return window
   }
   const guests = new DesktopBrowserGuests(() => getHost()?.origin)
+  // Boot and locale requests start before the Host exists now. They join the
+  // one startup attempt, then revalidate that the waiting frame still owns it.
+  const currentHost = async event => {
+    owner(event)
+    if (waitForHost) await waitForHost()
+    owner(event)
+    const host = getHost()
+    if (!host) throw new Error('Desktop Host is unavailable')
+    return host
+  }
   const applicationItems = () => [
     { label: locale.messages.checkUpdatesMenu, click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
     { type: 'separator' }, { role: 'quit', label: locale.messages.quit },
@@ -32,11 +42,26 @@ export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, ch
     () => ({ revision: 0, blocked: false }))
   ipcMain.handle(DESKTOP_IPC.directoryPick, event => { owner(event); return pickDirectory() })
   installMicrophonePermissions(session.defaultSession, () => getWindow()?.webContents)
-  ipcMain.handle(DESKTOP_IPC.boot, event => { owner(event); return getHost().boot() })
+  ipcMain.handle(DESKTOP_IPC.boot, async event => {
+    const host = await currentHost(event)
+    return host.boot()
+  })
   ipcMain.handle(DESKTOP_IPC.bootFailed, (event, message) => {
     owner(event)
     if (typeof message !== 'string') throw new Error('Invalid boot diagnostic')
-    reportFatal(new Error(message.slice(0, 4000)), 'web-boot')
+    const error = new Error(message.slice(0, 4000))
+    if (onBootFailure) { onBootFailure(error); return }
+    reportFatal(error, 'web-boot')
+  })
+  ipcMain.on('eduwork:boot-brand', event => {
+    // This value only labels the upstream BootPage; never expose Host state.
+    let value = ''
+    try {
+      const window = getWindow()
+      if (window && !window.isDestroyed() && event.sender === window.webContents
+        && event.senderFrame === event.sender.mainFrame && typeof bootBrand === 'function') value = bootBrand()
+    } catch { /* A label failure must never block the page. */ }
+    event.returnValue = value
   })
   ipcMain.handle(DESKTOP_IPC.browserAcquire, (event, workspace) => { owner(event); return guests.acquire(event.sender, workspace) })
   ipcMain.handle(DESKTOP_IPC.browserRelease, (event, lease) => { owner(event); return guests.release(event.sender, lease) })
@@ -44,8 +69,8 @@ export function installNativeDesktopBridge({ getHost, getWindow, reportFatal, ch
     callback(getHost()?.socketHeaders(details, getWindow()?.webContents.id) ?? {})
   })
   ipcMain.handle(DESKTOP_IPC.localeBootstrap, async event => {
-    owner(event)
-    const preference = await getHost().readLocalePreference()
+    const host = await currentHost(event)
+    const preference = await host.readLocalePreference()
     locale = resolveDesktopStartupLocale(preference, languages)
     refreshMenu()
     return { languages, preference }

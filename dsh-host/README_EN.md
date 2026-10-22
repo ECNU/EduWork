@@ -97,7 +97,7 @@ index and transport injection without opening a window. This is a candidate
 entrypoint, not a replacement for `main.go` or the existing updater.
 
 `dsh-desktop/scripts/assemble-official-host.ps1` assembles a new independent
-candidate directory. Supply `-Product`, `-HostAdapter`, `-Output`, Node 24.18.0
+candidate directory. Supply `-Product`, `-HostAdapter`, `-Output`, Node 24.22.1
 with its adjacent `LICENSE`, and optional `-Version`. It retains the separate
 product version and shell version in its receipt. It refuses existing output and
 `current`. `build-official-host.ps1` supports rebuilding a closed candidate's
