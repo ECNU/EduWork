@@ -1,7 +1,7 @@
 /**
  * ID Tokens from one OpenID Connect issuer, as a relay that admits an
  * organization's members checks them: an RS256 signature by a key the
- * issuer publishes, this issuer, one of the given clients as audience, and
+ * issuer publishes, this issuer, issued to one of the given clients, and
  * still valid. The relay keeps only the subject; it never logs a token.
  */
 import { fromBase64url } from '../protocol/bytes.ts'
@@ -56,10 +56,13 @@ export class IdTokens {
     const signed = new TextEncoder().encode(`${header}.${payload}`)
     if (!await crypto.subtle.verify('RSASSA-PKCS1-v1_5', key, fromBase64url(signature), signed)) throw new Error('bad signature')
     const claims = decode(payload)
-    const { clientIds } = this.#options
     const audience = Array.isArray(claims.aud) ? claims.aud : [claims.aud]
-    if (claims.iss !== this.#options.issuer || !audience.some(value => clientIds.includes(value as string))
-      || (audience.length > 1 && !clientIds.includes(claims.azp as string))) throw new Error('token is not for this relay')
+    // The client the token was issued to: its authorized party, or else its only audience. It must be one of
+    // ours and in the audience, so a token for several audiences counts only with `azp` naming one of ours.
+    const client = claims.azp ?? (audience.length === 1 ? audience[0] : undefined)
+    if (claims.iss !== this.#options.issuer || !this.#options.clientIds.includes(client as string) || !audience.includes(client)) {
+      throw new Error('token is not for this relay')
+    }
     const now = this.#options.now() / 1000
     const { sub, exp, iat, nbf } = claims
     if (typeof sub !== 'string' || sub === '' || typeof exp !== 'number' || typeof iat !== 'number' || (nbf !== undefined && typeof nbf !== 'number')) {

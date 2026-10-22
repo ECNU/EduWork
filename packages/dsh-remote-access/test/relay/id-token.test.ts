@@ -35,6 +35,7 @@ test('a token this issuer signed for one of the clients names its member until i
   const { token, verifier, now } = issuer()
   assert.deepEqual(await verifier.verify(token()), { subject: 'alice', expiresAt: now + 3600 })
   assert.equal((await verifier.verify(token({ aud: ['web-app', 'other'], azp: 'web-app' }))).subject, 'alice')
+  assert.equal((await verifier.verify(token({ azp: CLIENT }))).subject, 'alice')
 })
 
 test('tokens from elsewhere, for others, expired or tampered with are refused', async () => {
@@ -45,6 +46,9 @@ test('tokens from elsewhere, for others, expired or tampered with are refused', 
     ['another issuer', token({ iss: 'https://sso.example.org' })],
     ['another client', token({ aud: 'someone-else' })],
     ['several audiences without this client as the authorized party', token({ aud: [CLIENT, 'other'] })],
+    ['several audiences, authorized to another party', token({ aud: [CLIENT, 'other'], azp: 'other' })],
+    ['our audience, authorized to another party', token({ azp: 'other' })],
+    ['authorized to our client, which is not in the audience', token({ aud: 'other', azp: CLIENT })],
     ['expired', token({ exp: now - 120 })],
     ['not yet valid', token({ nbf: now + 600 })],
     ['issued in the future', token({ iat: now + 600 })],
