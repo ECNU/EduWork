@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/electronaccess"
+	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/installguard"
 )
 
 // A full offline release currently contains more than 44,000 files because it
@@ -80,6 +81,20 @@ func LaunchPendingHelperFor(stateDir, current string, parentPID int) error {
 	if err != nil {
 		return err
 	}
+	release, err := installguard.Acquire(pending.InstallDir)
+	if err != nil {
+		return err
+	}
+	defer release()
+	// Re-read under the lease before copying a helper or changing its state.
+	latest, err := LoadPending(stateDir)
+	if err != nil {
+		return err
+	}
+	if latest.InstallDir != pending.InstallDir {
+		return errors.New("pending installation changed")
+	}
+	pending = latest
 	if pending.State != "ready" && pending.State != "error" {
 		return fmt.Errorf("pending update is not ready (state %s)", pending.State)
 	}
@@ -162,9 +177,26 @@ func ApplyPendingWithProgress(pendingPath string, parentPID int, progress ApplyP
 	if err != nil {
 		return err
 	}
-	if err := waitForProcessExit(parentPID, 45*time.Second); err != nil {
+	if err := validatePendingPaths(stateDir, pending); err != nil {
+		return err
+	}
+	waitErr := waitForProcessExit(parentPID, 45*time.Second)
+	release, err := installguard.Acquire(pending.InstallDir)
+	if err != nil {
+		return err
+	}
+	defer release()
+	latest, _, err := loadPendingPath(pendingPath)
+	if err != nil {
+		return err
+	}
+	if latest.InstallDir != pending.InstallDir {
+		return errors.New("pending installation changed")
+	}
+	pending = latest
+	if waitErr != nil {
 		reportApply(progress, "failed", "无法开始更新，正在保留当前版本", 100)
-		return recordApplyFailure(stateDir, pending, err)
+		return recordApplyFailure(stateDir, pending, waitErr)
 	}
 	oldExecutable := filepath.Join(pending.InstallDir, pending.ExecutableName)
 	applyErr := applyAndRestart(stateDir, pending, progress)

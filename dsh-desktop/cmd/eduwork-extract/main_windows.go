@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/ecnu/chatecnu-work-dsh-desktop/internal/portable"
@@ -16,6 +17,13 @@ var buildIdentity string
 var identity portable.Identity
 
 func unpack(ctx context.Context, target string, verifyOnly bool, report portable.Reporter) (string, error) {
+	return unpackWithOverwrite(ctx, target, verifyOnly, false, report)
+}
+
+func unpackWithOverwrite(ctx context.Context, target string, verifyOnly, overwrite bool, report portable.Reporter) (string, error) {
+	return unpackConfirmed(ctx, target, verifyOnly, overwrite, false, report)
+}
+func unpackConfirmed(ctx context.Context, target string, verifyOnly, overwrite, closeRunning bool, report portable.Reporter) (string, error) {
 	name, err := os.Executable()
 	if err != nil {
 		return "", err
@@ -39,6 +47,9 @@ func unpack(ctx context.Context, target string, verifyOnly bool, report portable
 	if verifyOnly {
 		return "", nil
 	}
+	if overwrite {
+		return a.ReplaceWithOptions(ctx, target, portable.ReplaceOptions{CloseRunning: closeRunning}, report)
+	}
 	return a.Extract(ctx, target, report)
 }
 
@@ -49,15 +60,36 @@ func main() {
 		return
 	}
 	target := flag.String("extract-to", "", "extract into a new directory without starting the application")
+	overwrite := flag.Bool("overwrite", false, "replace a recognized installation while preserving user state")
 	verify := flag.Bool("verify", false, "verify the embedded archive without extracting")
 	reportPath := flag.String("report", "", "write an exclusive JSON result file for automation")
 	flag.Parse()
 	if *verify || *target != "" {
 		started := time.Now()
-		result, err := unpack(context.Background(), *target, *verify, nil)
-		r := map[string]any{"success": err == nil, "target": result, "identity": identity, "seconds": time.Since(started).Seconds()}
+		var stages []map[string]any
+		var warnings []string
+		lastPercent, lastPhase := -1, ""
+		progress := func(p portable.Progress) {
+			if p.Warning {
+				warnings = append(warnings, p.Message)
+				fmt.Fprintln(os.Stderr, p.Message)
+				return
+			}
+			if *reportPath != "" {
+				phase := strings.SplitN(p.Message, "…", 2)[0]
+				if p.Percent != lastPercent || phase != lastPhase {
+					stages = append(stages, map[string]any{"seconds": time.Since(started).Seconds(), "percent": p.Percent, "message": p.Message})
+					lastPercent, lastPhase = p.Percent, phase
+				}
+			}
+		}
+		result, err := unpackWithOverwrite(context.Background(), *target, *verify, *overwrite, progress)
+		r := map[string]any{"success": err == nil, "target": result, "identity": identity, "seconds": time.Since(started).Seconds(), "stages": stages}
 		if err != nil {
 			r["error"] = err.Error()
+		}
+		if len(warnings) > 0 {
+			r["warnings"] = warnings
 		}
 		if *reportPath != "" {
 			b, _ := json.MarshalIndent(r, "", "  ")

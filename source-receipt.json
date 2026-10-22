@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T13:33:11.406Z",
-  "fileSetSHA256": "52a3735d3b2df2f73c1997baa19802ac38cc1263821e7ac819dc58e7562f76dd",
+  "createdAt": "2026-10-22T15:41:43.918Z",
+  "fileSetSHA256": "4c3dcf193e67830612f8ef9fef066ca402848101a042a7597eff867073f5c3de",
   "files": [
     {
       "path": ".gitattributes",
@@ -65,7 +65,7 @@
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
-      "sha256": "26a965fed7009b98109288fd4982512980c0a59911c6df001537bcdf0d0ee99d"
+      "sha256": "1bc51eee5fcca1110701572d4bfc9cbc1dcab10bc6662c854f59c638e631cd10"
     },
     {
       "path": ".github/workflows/website.yml",
@@ -381,11 +381,11 @@
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
-      "sha256": "46716fbf6ba523af67769cb7426776a29fbf93f201b4ccda57f8559b00a66376"
+      "sha256": "eefab7a74da0ab96e9879fb26d16636ced31b4b09d278d2b50bd1a762caac9a1"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.md",
-      "sha256": "5acc1c787ed9a93687644aef60f27e1b4ec0dd316c6c62dc29c6001232207c14"
+      "sha256": "b99d0f3487497cb2cf380a33fb77c179f5146d22c7a91e0ad53c7302e032bb28"
     },
     {
       "path": "docs/proposals/build-pipeline-stages/README_EN.md",
@@ -529,11 +529,19 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/main_windows.go",
-      "sha256": "f75aa7cb8cf121d7aebd4b7df5298474b12ae14072227397788d272b147599c9"
+      "sha256": "21a0a055f0c6f10ae8cfa8bacaf5e40c7242b0b0e4d358fc8c37bf33c29afde2"
+    },
+    {
+      "path": "dsh-desktop/cmd/eduwork-extract/shortcut_windows_test.go",
+      "sha256": "064ddf8b8e94f2d736699c5fa6ffd7c91e49295044b92ea4cdb467da82f2b326"
+    },
+    {
+      "path": "dsh-desktop/cmd/eduwork-extract/shortcut_windows.go",
+      "sha256": "93b29357318e06c8d12ded84223ca16dca468d6116e8f887eaa092745007aa46"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/ui_windows.go",
-      "sha256": "4c1b13ae7fc9da3775c7944e7102bbfe724267353f39140f54fbae6e9a71451e"
+      "sha256": "94b6048c389fd3835a3a8c112883e124eeacde683b7043683287b94be275c277"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows_test.go",
@@ -716,6 +724,22 @@
       "sha256": "1c7a84143a75f7a27d2bb04cf1c1bfdf71da294fbe1ecbaf8117658e0b2e6bb5"
     },
     {
+      "path": "dsh-desktop/internal/installguard/guard_test.go",
+      "sha256": "e73737dab5142fb2eac42f197a26e7aaf5ffe87625737d6b25ba9896dc7cb4d0"
+    },
+    {
+      "path": "dsh-desktop/internal/installguard/guard.go",
+      "sha256": "65bb289597986558e082140b23274b193c1836a1539880c58e2c87cda292b602"
+    },
+    {
+      "path": "dsh-desktop/internal/installguard/lock_other.go",
+      "sha256": "a354e60885ae69ebaa1c4f7aaa7afc7371cdffc44e624eda53063a7c1860c55f"
+    },
+    {
+      "path": "dsh-desktop/internal/installguard/lock_windows.go",
+      "sha256": "f75254b17fed6568a6c39de257a7ce43cace2a4bd4193b6f0109886297ebb27c"
+    },
+    {
       "path": "dsh-desktop/internal/nativevault/bridge_core_test.go",
       "sha256": "9d8881a595aaccad8954d2a96033aadf868308322a8204b0c647c46996cf67bb"
     },
@@ -749,7 +773,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/archive.go",
-      "sha256": "13fb4379bbf50d9fa3e9282e6a43b86286d7118ce43ba34b8a25fb3741ee8287"
+      "sha256": "ff7811f56ddd64c6be8134eb863181211c82e190e6448af138c0b6a84ee7082a"
     },
     {
       "path": "dsh-desktop/internal/portable/rename_other.go",
@@ -768,12 +792,44 @@
       "sha256": "46cec388013446e43cc24a09fd27b63e5f546505f5972a1a0e03c40aa232868a"
     },
     {
+      "path": "dsh-desktop/internal/portable/replace_plan.go",
+      "sha256": "7695da038f71c7a85ed92450669ab2088a272ee69811f8ffdeea9f55d95b68bf"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/replace_test.go",
+      "sha256": "35587fd44824ac9f5ec39fb77d2dac819b42f695876f389bffa104ac7a8bae10"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/replace_windows_test.go",
+      "sha256": "d55aa51209b3e8d508a0f52381e0f2455ace9179428d04afdf1ce2b8ad7b7ed8"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/replace.go",
+      "sha256": "1c812364d17880a06fa039844122f26bec61d11d02b470ba31e07f05d5be18f8"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/running_other.go",
+      "sha256": "feab936d9134a707ad9bb3c307a7d260829c8525a2e7ed14c0aaad8cde6fcfe9"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/running_windows_test.go",
+      "sha256": "558dfcc29bd36ffd0bf220e0e45eb07197490cf7ad61247fba3062314109d886"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/running_windows.go",
+      "sha256": "db25c37d9a9df97ef1bdc0007c7b4722a361a0f223271883e7fb91e4051653be"
+    },
+    {
       "path": "dsh-desktop/internal/portable/space_other.go",
       "sha256": "935e591283f1a7831da605ee66e68e8e9109557c69a4392b4e8eded5031a3921"
     },
     {
       "path": "dsh-desktop/internal/portable/space_windows.go",
       "sha256": "9154f4a23f1b91165277aac5c970d7aa5f800b552b359bcb1602913d0ec4bc92"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/update_guard_windows_test.go",
+      "sha256": "adc64ceb7878467a7a4539878d5b0b259e79bac2c49d6d3948bd74498932b9af"
     },
     {
       "path": "dsh-desktop/internal/productruntime/builtin/builtin.go",
@@ -841,7 +897,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
-      "sha256": "49e3d4382a58781032e4431494251301fc8cf19f98c7b6a156faf3f13d79441f"
+      "sha256": "0e19ea11a8da29f3fc9b1ad6f6cad14b214f69d8fa7fe02d41308e7cc3eb6f44"
     },
     {
       "path": "dsh-desktop/internal/updater/delta_test.go",
@@ -870,6 +926,10 @@
     {
       "path": "dsh-desktop/internal/updater/github.go",
       "sha256": "d9696ed894b1ca2f23f91f950b6ba436146c80d9d2ef1aef70045c0970310615"
+    },
+    {
+      "path": "dsh-desktop/internal/updater/install_guard_test.go",
+      "sha256": "abf4a22422fc5586e584a97bdf827a2830f5217f80ffecd9e1a23f66011c8730"
     },
     {
       "path": "dsh-desktop/internal/updater/process_other.go",
@@ -7257,7 +7317,7 @@
     },
     {
       "path": "tests/github-update-package.test.mjs",
-      "sha256": "e28bc426a8941b034b3646e2ce27f0d1d09fc9edb09c1757b8cb67f7f5e765e3"
+      "sha256": "8798ca6d7bfe6b78947ce954e9a680bd8456f2d5d4e98c880c57a9946a63807f"
     },
     {
       "path": "tests/local-desktop-install.test.mjs",
