@@ -335,7 +335,7 @@ test('an organization relay for remote access reaches the installed plugin, whic
     const { profile } = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
     return JSON.parse(await readFile(join(profile, 'cordis.patch.yml'), 'utf8')).flatMap(row => row.insert ?? []).find(row => row.id === 'eduwork-remote-access').config
   }
-  assert.deepEqual(await plugin({ remoteAccess: { relay: 'https://remote.example.edu', oidcProfileId: 'university' } }),
-    { enabled: false, organization: { relay: 'https://remote.example.edu', oidcProfileId: 'university' } })
+  assert.deepEqual(await plugin({ remoteAccess: { relay: 'https://example.edu/eduwork-remote/', oidcProfileId: 'university' } }),
+    { enabled: false, organization: { relay: 'https://example.edu/eduwork-remote/', oidcProfileId: 'university' } })
   assert.deepEqual(await plugin({}), { enabled: false })
 })

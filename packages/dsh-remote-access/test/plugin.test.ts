@@ -61,7 +61,7 @@ test('remote access runs only while switched on and configured, starts once the 
   const status = await running.createInvite()
   assert.ok(status.state === 'on' && status.invite !== undefined)
   assert.equal(parsePairingLink(new URL(status.invite.link).hash)?.hostId, status.hostId)
-  assert.ok(status.invite.link.startsWith(`${relay}/#`))
+  assert.ok(status.invite.link.startsWith(`${relay}#`))
 
   await fiber.dispose()
   assert.equal((await running.status()).state, 'off')

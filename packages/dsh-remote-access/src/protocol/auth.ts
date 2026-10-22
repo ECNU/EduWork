@@ -71,8 +71,9 @@ export interface PairingLink {
 
 export const newInvite = (): string => base64url(randomBytes(16))
 
+/** The link a device opens to pair: the relay's base URL (see `relayBase`), the rest in the fragment, which browsers never send. */
 export function formatPairingLink(relay: string, { hostId, hostKey, invite }: PairingLink): string {
-  return `${new URL('/', relay).href}#${hostId}.${base64url(hostKey)}.${invite}`
+  return `${relay}#${hostId}.${base64url(hostKey)}.${invite}`
 }
 
 export function parsePairingLink(fragment: string): PairingLink | undefined {

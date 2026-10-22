@@ -16,11 +16,13 @@ The package has two parts:
 You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the relay's domain and forwards WebSockets.
 
 ```sh
-RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
+RELAY_URL=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
   npx -p @eduwork/dsh-remote-access eduwork-remote-relay
 ```
 
-`RELAY_ORIGIN` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `/healthz` answers `ok` for monitoring.
+`RELAY_URL` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `<RELAY_URL>healthz` answers `ok` for monitoring.
+
+The relay can also share a domain with other sites under a path of its own, for example `RELAY_URL=https://example.edu/eduwork-remote/`. The reverse proxy must pass the path on unchanged, keeping that prefix; the relay's pages, Service Worker and connections all stay below it. Enter the same address on the computer.
 
 A school or company can instead let its members use the relay with their own sign-in, without handing out access keys: set `RELAY_OIDC_ISSUER` to the issuer of the organization's OpenID Connect sign-in (for example `https://sso.example.edu`) and `RELAY_OIDC_CLIENT_IDS` to the desktop application's client IDs in it, separated by commas. Computers register with the ID Token their sign-in issued; the relay checks it against the keys the issuer publishes and keeps only the user's identifier, never the token. Computers switch to a new token before theirs expires. Both ways can be enabled together.
 
@@ -62,6 +64,7 @@ They cannot open windows or programs or show notifications on the computer, regi
 - The browser generates the device key as non-extractable; the computer stores only its public key. Every connection is signed with the device key.
 - An access key or an organization sign-in only decides who may use the relay; neither can be used to connect to someone else's computer. The access key is kept in DSH's credentials (`EDUWORK_REMOTE_ACCESS_KEY`), not in the plugin's settings; the ID Token of an organization sign-in goes only to the relay the distribution preset, which the settings page cannot change.
 - The relay serves the page you open on your phone, so whoever runs the relay can change it. Use only relays you trust.
+- Browsers separate data by domain. When the relay shares a domain with other sites, their scripts can also use the device keys here to connect to computers, and the computer's DSH interface runs on that domain too. Give the relay a domain of its own where you can.
 
 See the [protocol document](docs/PROTOCOL.md) (Chinese) for details.
 

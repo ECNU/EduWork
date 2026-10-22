@@ -1,5 +1,6 @@
 /**
- * The Service Worker behind every `/h/<hostId>/app/` iframe. It answers the
+ * The Service Worker behind every `h/<hostId>/app/` iframe, scoped to `h/`
+ * below the relay's base URL. It answers the
  * iframe's requests through the loader page of the same Host: the document
  * (given the preamble first in its head), static files and plugin bundles
  * (cached per Host, since their URLs carry content hashes), and file
@@ -16,16 +17,19 @@ const worker = globalThis as unknown as {
   addEventListener(type: 'fetch', listener: (event: FetchEvent) => void): void
   skipWaiting(): Promise<void>
   clients: { claim(): Promise<void>; matchAll(options: { type: 'window'; includeUncontrolled: true }): Promise<readonly WindowClient[]> }
+  registration: { readonly scope: string }
 }
 
-const PREAMBLE = '<base href="./"><script src="/preamble.js"></script>'
+/** The relay's base URL, one level above the scope. */
+const base = new URL('../', worker.registration.scope)
+const PREAMBLE = `<base href="./"><script src="${base.pathname}preamble.js"></script>`
 const NULL_BODY = new Set([101, 204, 205, 304])
 
 worker.addEventListener('install', event => event.waitUntil(worker.skipWaiting()))
 worker.addEventListener('activate', event => event.waitUntil(worker.clients.claim()))
 worker.addEventListener('fetch', event => {
   const url = new URL(event.request.url)
-  const target = url.origin === location.origin ? parseHostPath(url.pathname) : undefined
+  const target = url.origin === base.origin && url.pathname.startsWith(base.pathname) ? parseHostPath(url.pathname.slice(base.pathname.length)) : undefined
   if (target === undefined || !target.rest.startsWith('app/')) return
   event.respondWith(answer(event.request, target.hostId, `/${target.rest.slice('app/'.length)}${url.search}`))
 })
@@ -61,7 +65,7 @@ async function answer(request: Request, hostId: string, url: string): Promise<Re
 /** Ask the loader page of this Host, which owns its tunnel. */
 async function viaLoader(hostId: string, request: BridgeRequest): Promise<BridgeResponse> {
   const windows = await worker.clients.matchAll({ type: 'window', includeUncontrolled: true })
-  const loader = windows.find(client => new URL(client.url).pathname === hostPath(hostId))
+  const loader = windows.find(client => new URL(client.url).pathname === base.pathname + hostPath(hostId))
   if (loader === undefined) return { error: `no loader page is open for ${appPath(hostId)}` }
   const { port1, port2 } = new MessageChannel()
   const reply = new Promise<BridgeResponse>(resolve => {

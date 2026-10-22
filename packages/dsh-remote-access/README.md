@@ -16,11 +16,13 @@
 需要 Node.js 24.22.1 或更新版本，以及为中继域名提供 HTTPS 并转发 WebSocket 的反向代理。
 
 ```sh
-RELAY_ORIGIN=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
+RELAY_URL=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
   npx -p @eduwork/dsh-remote-access eduwork-remote-relay
 ```
 
-`RELAY_ORIGIN` 是用户访问中继的公开地址；`RELAY_ACCESS_KEYS` 是发给电脑主人的接入密钥，多个用逗号分隔。中继默认监听 `127.0.0.1:8787`，可用 `HOST`、`PORT` 修改；`/healthz` 返回 `ok`，可用于监控。
+`RELAY_URL` 是用户访问中继的公开地址；`RELAY_ACCESS_KEYS` 是发给电脑主人的接入密钥，多个用逗号分隔。中继默认监听 `127.0.0.1:8787`，可用 `HOST`、`PORT` 修改；`<RELAY_URL>healthz` 返回 `ok`，可用于监控。
+
+中继也可以和其他网站共用域名，放在单独的路径下，例如 `RELAY_URL=https://example.edu/eduwork-remote/`。反向代理须按原路径转发、不去掉这段前缀；中继的网页、Service Worker 和连接都只在这个路径下。电脑上填写同一个地址。
 
 学校或企业也可以让成员凭自己的登录使用中继，不必逐个发接入密钥：`RELAY_OIDC_ISSUER` 填机构 OpenID Connect 登录的 issuer（例如 `https://sso.example.edu`），`RELAY_OIDC_CLIENT_IDS` 填桌面应用在该登录中的 client ID，多个用逗号分隔。电脑以登录得到的 ID Token 注册，中继用 issuer 公布的公钥验证，只记录用户标识，不记录 Token；Token 到期前电脑会自动换新的。两种方式可以同时启用。
 
@@ -62,6 +64,7 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 - 设备密钥由浏览器生成且不可导出，电脑只保存设备公钥。每次连接都要用设备密钥签名。
 - 接入密钥和机构登录只决定谁能使用这台中继，不能用来连接别人的电脑。接入密钥保存在 DSH 的凭据里（`EDUWORK_REMOTE_ACCESS_KEY`），不写进插件设置；机构登录的 ID Token 只发给发行版预置的中继，设置页不能更改这个地址。
 - 手机上打开的网页由中继提供，部署中继的人可以修改它。请只使用你信任的中继。
+- 浏览器按域名隔离数据。中继与其他网站共用域名时，那些网站的脚本也能使用这里的设备密钥连接电脑，电脑上的 DSH 界面也会运行在这个域名下。条件允许时，请为中继使用单独的域名。
 
 协议细节见[协议文档](docs/PROTOCOL.md)。
 

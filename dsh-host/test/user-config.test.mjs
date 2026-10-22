@@ -138,18 +138,21 @@ test('desktop pet defaults are file-owned and validated before the Host starts',
   }
 })
 
-test('remote access names a relay origin and one of the configured sign-ins', t => {
+test('remote access names a relay address and one of the configured sign-ins', t => {
   const { file } = fixture(t)
   const organizations = [{ id: 'university' }]
   writeFileSync(file, JSON.stringify({ schemaVersion: 1, organizations, remoteAccess: { relay: 'https://remote.example.edu/', oidcProfileId: 'university' } }))
-  assert.deepEqual(loadUserConfig(file).remoteAccess, { relay: 'https://remote.example.edu', oidcProfileId: 'university' })
+  assert.deepEqual(loadUserConfig(file).remoteAccess, { relay: 'https://remote.example.edu/', oidcProfileId: 'university' })
   writeFileSync(file, JSON.stringify({ schemaVersion: 1, organizations, remoteAccess: { relay: 'http://127.0.0.1:47950', oidcProfileId: 'university' } }))
-  assert.equal(loadUserConfig(file).remoteAccess.relay, 'http://127.0.0.1:47950')
+  assert.equal(loadUserConfig(file).remoteAccess.relay, 'http://127.0.0.1:47950/')
+  // A relay sharing a domain under a path of its own.
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, organizations, remoteAccess: { relay: 'https://example.edu/eduwork-remote', oidcProfileId: 'university' } }))
+  assert.equal(loadUserConfig(file).remoteAccess.relay, 'https://example.edu/eduwork-remote/')
   writeFileSync(file, JSON.stringify({ schemaVersion: 1, organizations }))
   assert.equal(loadUserConfig(file).remoteAccess, undefined)
   for (const remoteAccess of [
     { relay: 'http://remote.example.edu', oidcProfileId: 'university' },
-    { relay: 'https://remote.example.edu/relay', oidcProfileId: 'university' },
+    { relay: 'https://remote.example.edu/relay#fragment', oidcProfileId: 'university' },
     { relay: 'https://user:secret@remote.example.edu', oidcProfileId: 'university' },
     { relay: 'https://remote.example.edu/?key=x', oidcProfileId: 'university' },
     { relay: 'https://remote.example.edu', oidcProfileId: 'another' },

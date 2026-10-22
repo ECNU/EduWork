@@ -30,7 +30,7 @@ export class Refused extends Error {
 
 /** Reach the Host through the relay, shake hands and authenticate; resolves with the Host's first answer. */
 async function open(host: { hostId: string; hostKey: Uint8Array }, device: CryptoKeyPair, pairing?: { invite: string; name: string }) {
-  const url = new URL(RELAY_PATHS.connect + host.hostId, location.href)
+  const url = new URL(RELAY_PATHS.connect + host.hostId, document.baseURI)
   url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
   const socket = new WebSocket(url)
   await new Promise<void>((resolve, reject) => {

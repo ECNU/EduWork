@@ -22,8 +22,8 @@ import { IssuerUnavailable, type IdTokens } from './id-token.ts'
 import { RateLimit } from './limits.ts'
 
 export interface RelayOptions {
-  /** Public origin Hosts and devices reach, e.g. `https://remote.example.edu`; bound into every registration. */
-  readonly origin: string
+  /** Base URL Hosts and devices reach, as `relayBase` gives it, e.g. `https://example.edu/eduwork-remote/`; bound into every registration. */
+  readonly url: string
   /** Credentials the operator issued to Host owners. */
   readonly accessKeys?: readonly string[]
   /** Admits the members of an organization by the ID Tokens its sign-in issues. */
@@ -66,6 +66,8 @@ export class Relay {
   readonly #waiting = new Map<string, { device: WebSocket; hostId: string; timer: NodeJS.Timeout }>()
   readonly #alive = new WeakSet<WebSocket>()
   readonly #heartbeat: NodeJS.Timeout
+  /** The path below which the relay's endpoints are, ending in `/`. */
+  readonly #path: string
 
   constructor(options: RelayOptions) {
     this.#options = {
@@ -73,6 +75,7 @@ export class Relay {
       refusalsPerMinute: 10, connectsPerMinute: 60, address: request => request.socket.remoteAddress ?? '', ...options,
     }
     this.#keys = this.#options.accessKeys.map(digest)
+    this.#path = new URL(options.url).pathname
     this.#refusals = new RateLimit(this.#options.refusalsPerMinute)
     this.#connects = new RateLimit(this.#options.connectsPerMinute)
     this.#heartbeat = setInterval(() => {
@@ -93,7 +96,9 @@ export class Relay {
 
   /** Take over an HTTP upgrade; false when the path is not a relay endpoint. */
   upgrade(request: IncomingMessage, socket: Duplex, head: Buffer): boolean {
-    const path = new URL(request.url ?? '/', 'http://relay').pathname
+    const pathname = new URL(request.url ?? '/', 'http://relay').pathname
+    if (!pathname.startsWith(this.#path)) return false
+    const path = pathname.slice(this.#path.length)
     let route: ((ws: WebSocket) => void) | undefined
     if (path === RELAY_PATHS.host) route = ws => this.#host(ws, this.#options.address(request))
     else if (path === RELAY_PATHS.accept) route = ws => this.#accept(ws)
@@ -129,7 +134,7 @@ export class Relay {
         this.#refusals.take(address)
         ws.close(Close.unauthorized, reason)
       }
-      if (!await verifyRegistration(hostId, this.#options.origin, nonce, sig)) return refuse('registration refused')
+      if (!await verifyRegistration(hostId, this.#options.url, nonce, sig)) return refuse('registration refused')
       let admission: Admission | undefined
       try {
         admission = await this.#admit(message)

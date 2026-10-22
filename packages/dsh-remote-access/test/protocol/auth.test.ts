@@ -39,8 +39,8 @@ test('both ends derive the same six-digit pairing code from the handshake hash',
 
 test('pairing links keep the Host key and invite in the fragment', () => {
   const link = { hostId: base64url(randomBytes(32)), hostKey: randomBytes(32), invite: newInvite() }
-  const url = new URL(formatPairingLink('https://relay.example/some/path', link))
-  assert.equal(url.origin + url.pathname, 'https://relay.example/')
+  const url = new URL(formatPairingLink('https://relay.example/remote/', link))
+  assert.equal(url.origin + url.pathname, 'https://relay.example/remote/')
   assert.deepEqual(parsePairingLink(url.hash), link)
   for (const broken of ['', '#a.b.c', `#${link.hostId}.${base64url(link.hostKey)}`, `${url.hash}.extra`, url.hash.replace(/.$/, '+')]) {
     assert.equal(parsePairingLink(broken), undefined, broken)

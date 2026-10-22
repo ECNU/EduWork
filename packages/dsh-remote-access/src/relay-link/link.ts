@@ -26,7 +26,7 @@ export type LinkState =
 export interface Admission { readonly credential: RelayCredential; readonly expiresAt?: number }
 
 export interface RelayLinkOptions {
-  /** The relay's public address, e.g. `https://remote.example.edu`. */
+  /** The relay's base URL, as `relayBase` gives it. */
   readonly relay: string
   /** Asked before every registration. */
   credential(): Promise<Admission>
@@ -44,7 +44,6 @@ export interface RelayLinkOptions {
 
 export class RelayLink {
   readonly #options: RelayLinkOptions & Required<Pick<RelayLinkOptions, 'pingMs' | 'pongMs' | 'backoffMs' | 'renewBeforeMs' | 'renewAfterMs'>>
-  readonly #origin: string
   #control: WebSocket | undefined
   /** The registration being renewed, kept until the new one is in place. */
   #retiring: WebSocket | undefined
@@ -59,7 +58,6 @@ export class RelayLink {
     this.#options = {
       pingMs: 25_000, pongMs: 10_000, backoffMs: [1000, 2000, 5000, 10_000, 30_000, 60_000], renewBeforeMs: 5 * 60_000, renewAfterMs: 30_000, ...options,
     }
-    this.#origin = new URL(options.relay).origin
   }
 
   start(): void {
@@ -84,7 +82,7 @@ export class RelayLink {
       if (message?.t === 'connect' && typeof message.id === 'string') return this.#open(message.id)
       if (this.#control !== control) return
       if (message?.t === 'challenge' && typeof message.nonce === 'string') {
-        void Promise.all([this.#options.credential(), signRegistration(this.#options.identity.signingKey, this.#origin, message.nonce)]).then(([admission, sig]) => {
+        void Promise.all([this.#options.credential(), signRegistration(this.#options.identity.signingKey, this.#options.relay, message.nonce)]).then(([admission, sig]) => {
           expiresAt = admission.expiresAt
           control.send(JSON.stringify({ t: 'register', protocol: PROTOCOL, hostId: this.#options.identity.hostId, sig, ...admission.credential }))
         }, (error: Error) => this.#control === control && this.#retry(`no credential: ${error.message}`))
@@ -165,7 +163,7 @@ export class RelayLink {
   }
 
   #url(path: string): string {
-    const url = new URL(path, this.#origin)
+    const url = new URL(path, this.#options.relay)
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:'
     return url.href
   }

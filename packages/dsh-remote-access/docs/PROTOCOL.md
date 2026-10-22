@@ -12,15 +12,15 @@
 
 ## 中继
 
-中继的 WebSocket 路径如下。文本帧是控制消息（JSON，带字段 `t`），二进制帧是端到端密文，单条消息不超过 65535 字节。
+中继有一个公开的基础地址，可以带路径，例如 `https://example.edu/eduwork-remote/`；规范形式以 `/` 结尾，不含用户名、查询和片段。下文的路径都在这个地址之下，网页客户端的页面和 Service Worker 也一样。中继的 WebSocket 路径如下。文本帧是控制消息（JSON，带字段 `t`），二进制帧是端到端密文，单条消息不超过 65535 字节。
 
 | 路径 | 连接方 | 过程 |
 | --- | --- | --- |
-| `/v1/host` | 宿主 | 中继发 `challenge {nonce}`；宿主回 `register {protocol, hostId, sig, accessKey}` 或 `register {protocol, hostId, sig, idToken}`；中继回 `registered`。此后每有一台设备接入，中继发 `connect {id}`。宿主可随时发 `ping`，中继回 `pong`。 |
-| `/v1/host/accept` | 宿主 | 宿主第一条消息发 `accept {id}`，此后这条连接与对应设备的连接成对转发。 |
-| `/v1/connect/<hostId>` | 设备 | 宿主接受后中继发 `open`，此后成对转发。 |
+| `v1/host` | 宿主 | 中继发 `challenge {nonce}`；宿主回 `register {protocol, hostId, sig, accessKey}` 或 `register {protocol, hostId, sig, idToken}`；中继回 `registered`。此后每有一台设备接入，中继发 `connect {id}`。宿主可随时发 `ping`，中继回 `pong`。 |
+| `v1/host/accept` | 宿主 | 宿主第一条消息发 `accept {id}`，此后这条连接与对应设备的连接成对转发。 |
+| `v1/connect/<hostId>` | 设备 | 宿主接受后中继发 `open`，此后成对转发。 |
 
-注册签名覆盖 `` `eduwork-remote/1 relay-register\0<中继公开 origin>\0<nonce>` ``，用 hostId 对应的 Ed25519 密钥签名。nonce 每次连接新生成，签名绑定中继地址，不能在别处重放。同一 hostId 的新注册会顶替旧的，旧连接以 4409 关闭。
+注册签名覆盖 `` `eduwork-remote/1 relay-register\0<中继基础地址>\0<nonce>` ``，用 hostId 对应的 Ed25519 密钥签名。nonce 每次连接新生成，签名绑定中继的完整基础地址，不能在别处重放，包括同一域名下其他路径的中继。同一 hostId 的新注册会顶替旧的，旧连接以 4409 关闭。
 
 注册凭据二选一：`accessKey` 是中继运营者发的接入密钥；`idToken` 是中继接纳的机构登录签发的 OpenID Connect ID Token（RS256，issuer 和 audience 由中继配置）。凭据只决定谁能使用这台中继，不决定谁能连接哪台电脑。以 ID Token 注册时，中继记下其中的 `sub` 作为账号，Token 过期时以 4408 关闭控制连接；宿主在过期前 5 分钟用新的 Token 在另一条控制连接上重新注册，新注册顶替旧的，已连接的设备不受影响。
 
@@ -72,7 +72,7 @@ ready ──主人移除设备──▶ revoked
 
 **配对码**：双方各自计算 `SHA-256("eduwork-remote/1 pairing-code\0" ‖ 握手哈希)` 前 4 字节（大端）对 1 000 000 取模，补足 6 位显示。两边的码一致，说明设备连到的正是这台宿主，中间没有第三方。
 
-**配对链接**：`https://<中继>/#<hostId>.<宿主 Noise 公钥>.<邀请>`，三段都是 base64url。浏览器不会把 `#` 之后的内容发给中继。邀请为 16 字节随机数，10 分钟内有效、只能用一次；新生成的邀请使旧邀请作废。
+**配对链接**：`<中继基础地址>#<hostId>.<宿主 Noise 公钥>.<邀请>`，三段都是 base64url。浏览器不会把 `#` 之后的内容发给中继。邀请为 16 字节随机数，10 分钟内有效、只能用一次；新生成的邀请使旧邀请作废。
 
 ## 隧道
 

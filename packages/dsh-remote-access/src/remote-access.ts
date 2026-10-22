@@ -12,12 +12,13 @@ import { formatPairingLink } from './protocol/auth.ts'
 import { Channel, type SocketLike } from './protocol/channel.ts'
 import { Close } from './protocol/close-codes.ts'
 import { prologue } from './protocol/noise.ts'
+import { relayBase } from './protocol/relay.ts'
 import { RelayLink, type Admission, type LinkState } from './relay-link/link.ts'
 
 export interface RemoteAccessOptions {
   readonly adapter: HostAdapter
   readonly store: HostStore
-  /** The relay's public address, e.g. `https://remote.example.edu`. */
+  /** The relay's public address, e.g. `https://remote.example.edu` or `https://example.edu/eduwork-remote/`. */
   readonly relay: string
   /** What admits this Host to the relay, asked before every registration. */
   credential(): Promise<Admission>
@@ -42,6 +43,7 @@ const HANDSHAKE_MS = 10_000
 
 export class RemoteAccess {
   readonly #options: RemoteAccessOptions
+  readonly #relay: string
   readonly #pairing: Pairing
   readonly #connections: Connections
   readonly #link: RelayLink
@@ -53,10 +55,13 @@ export class RemoteAccess {
 
   constructor(options: RemoteAccessOptions) {
     this.#options = options
+    const relay = relayBase(options.relay)
+    if (relay === undefined) throw new Error(`not a relay address: ${options.relay}`)
+    this.#relay = relay
     this.#pairing = new Pairing(options.store, () => this.#changed(), options.pairing)
     this.#connections = new Connections(compressPages(options.adapter), options.warn)
     this.#link = new RelayLink({
-      relay: options.relay,
+      relay,
       credential: () => options.credential(),
       identity: options.store.identity,
       accept: socket => void this.#serve(socket).catch(error => options.warn(String(error))),
@@ -95,7 +100,7 @@ export class RemoteAccess {
   createInvite(): string {
     const { identity } = this.#options.store
     const { secret } = this.#pairing.invite()
-    this.#inviteLink = formatPairingLink(this.#options.relay, { hostId: identity.hostId, hostKey: identity.noise.publicKey, invite: secret })
+    this.#inviteLink = formatPairingLink(this.#relay, { hostId: identity.hostId, hostKey: identity.noise.publicKey, invite: secret })
     this.#changed()
     return this.#inviteLink
   }

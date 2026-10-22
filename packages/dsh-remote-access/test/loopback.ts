@@ -10,18 +10,18 @@ export const ACCESS_KEY = 'issued-to-this-host'
 /** The credential option of a Host that registers with an access key. */
 export const withKey = (accessKey = ACCESS_KEY) => async () => ({ credential: { accessKey } })
 
-/** A relay accepting {@link ACCESS_KEY}, closed after the test; resolves with its origin. */
+/** A relay accepting {@link ACCESS_KEY} below a path, as when it shares a domain, closed after the test; resolves with its base URL. */
 export async function startRelay(t: TestContext, options: Partial<RelayOptions> = {}): Promise<string> {
   const server = createServer((_request, response) => response.writeHead(404).end())
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-  const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
-  const relay = new Relay({ origin, accessKeys: [ACCESS_KEY], ...options })
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/remote/`
+  const relay = new Relay({ url, accessKeys: [ACCESS_KEY], ...options })
   server.on('upgrade', (request, socket, head) => relay.upgrade(request, socket, head) || socket.destroy())
   t.after(() => {
     relay.close()
     server.close()
   })
-  return origin
+  return url
 }
 
 export async function until(condition: () => boolean | Promise<boolean>, what: string): Promise<void> {

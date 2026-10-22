@@ -8,15 +8,16 @@ import { hostIdOf, RELAY_PATHS, signRegistration } from '../../src/protocol/rela
 import { IssuerUnavailable } from '../../src/relay/id-token.ts'
 import { Relay, type RelayOptions } from '../../src/relay/relay.ts'
 
-const ORIGIN = 'https://relay.test'
+// A relay sharing its domain, below a path of its own.
+const RELAY = 'https://relay.test/remote/'
 const KEY = 'operator-issued-key'
 
 async function startRelay(options: Partial<RelayOptions> = {}) {
-  const relay = new Relay({ origin: ORIGIN, accessKeys: [KEY], timeoutMs: 300, address: request => String(request.headers['x-real-ip']), ...options })
+  const relay = new Relay({ url: RELAY, accessKeys: [KEY], timeoutMs: 300, address: request => String(request.headers['x-real-ip']), ...options })
   const server = createServer((_request, response) => response.writeHead(404).end())
   server.on('upgrade', (request, socket, head) => relay.upgrade(request, socket, head) || socket.destroy())
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-  const base = `ws://127.0.0.1:${(server.address() as { port: number }).port}`
+  const base = `ws://127.0.0.1:${(server.address() as { port: number }).port}/remote/`
   return { base, stop: () => { relay.close(); server.close() } }
 }
 
@@ -34,6 +35,8 @@ class Peer {
       this.#wake?.()
     })
     this.closed = new Promise(resolve => this.socket.on('close', (code, reason) => resolve({ code, reason: reason.toString() })))
+    // A refused upgrade fails the handshake; its close (1006) says enough.
+    this.socket.on('error', () => {})
   }
 
   async next(): Promise<string | Buffer> {
@@ -62,7 +65,7 @@ async function identity() {
 async function register(base: string, host: Awaited<ReturnType<typeof identity>>, change: (message: Record<string, unknown>) => void = () => {}, address = '192.0.2.1') {
   const peer = new Peer(base + RELAY_PATHS.host, { headers: { 'x-real-ip': address } })
   const { nonce } = await peer.json() as { nonce: string }
-  const message = { t: 'register', protocol: PROTOCOL, hostId: host.hostId, accessKey: KEY, sig: await signRegistration(host.privateKey, ORIGIN, nonce) }
+  const message = { t: 'register', protocol: PROTOCOL, hostId: host.hostId, accessKey: KEY, sig: await signRegistration(host.privateKey, RELAY, nonce) }
   change(message)
   peer.send(message)
   return peer
@@ -110,7 +113,7 @@ test('registration needs an issued key and a fresh signature for this relay and 
   // A signature captured from one challenge does not answer the next.
   const first = new Peer(base + RELAY_PATHS.host)
   const { nonce } = await first.json() as { nonce: string }
-  const captured = await signRegistration(host.privateKey, ORIGIN, nonce)
+  const captured = await signRegistration(host.privateKey, RELAY, nonce)
   first.socket.close()
   assert.equal(await (await register(base, host, m => { m.sig = captured })).code(), Close.unauthorized, 'replayed signature')
 
@@ -264,5 +267,14 @@ test('a Host is asked to accept only so many connections a minute', async () => 
   await pair(base, control, host.hostId)
   await pair(base, control, host.hostId)
   assert.equal(await new Peer(base + RELAY_PATHS.connect + host.hostId).code(), Close.overLimit)
+  stop()
+})
+
+test('endpoints are only below the relay\'s path', async () => {
+  const { base, stop } = await startRelay()
+  const root = base.replace(/remote\/$/, '')
+  for (const path of [RELAY_PATHS.host, RELAY_PATHS.connect + 'x', 'other/' + RELAY_PATHS.host]) {
+    assert.equal(await new Peer(root + path).code(), 1006, path)
+  }
   stop()
 })

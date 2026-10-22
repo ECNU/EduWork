@@ -1,17 +1,18 @@
 /**
  * What the three parts of the web client say to each other. The loader page
- * at `/h/<hostId>/` owns the encrypted tunnel; the DSH interface runs in its
- * iframe at `/h/<hostId>/app/`, whose preamble sends RPCs and streams through
+ * at `h/<hostId>/` owns the encrypted tunnel; the DSH interface runs in its
+ * iframe at `h/<hostId>/app/`, whose preamble sends RPCs and streams through
  * the parent's tunnel; the Service Worker answers the iframe's other requests
  * (the document, static files, file downloads and uploads) through the loader.
+ * Paths are below the relay's base URL.
  */
 
-export const hostPath = (hostId: string): string => `/h/${hostId}/`
-export const appPath = (hostId: string): string => `/h/${hostId}/app/`
+export const hostPath = (hostId: string): string => `h/${hostId}/`
+export const appPath = (hostId: string): string => `h/${hostId}/app/`
 
-/** The host id of a path under `/h/<hostId>/`, and the rest of it. */
-export function parseHostPath(pathname: string): { hostId: string; rest: string } | undefined {
-  const match = /^\/h\/([A-Za-z0-9_-]{43})\/(.*)$/.exec(pathname)
+/** The host id of a path below the base, `h/<hostId>/…`, and the rest of it. */
+export function parseHostPath(path: string): { hostId: string; rest: string } | undefined {
+  const match = /^h\/([A-Za-z0-9_-]{43})\/(.*)$/.exec(path)
   return match === null ? undefined : { hostId: match[1]!, rest: match[2]! }
 }
 

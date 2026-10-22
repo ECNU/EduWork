@@ -40,7 +40,7 @@ When an organization runs its own [remote access](../packages/dsh-remote-access/
 
 ```jsonc
 "remoteAccess": {
-  // The organization relay's HTTPS address: scheme and host only.
+  // The organization relay's HTTPS address, with the relay's path when it shares a domain, e.g. https://example.edu/eduwork-remote/.
   "relay": "https://remote.example.edu",
   // An organizations[].id: a gateway sign-in with identityMode oidc.
   "oidcProfileId": "example-university"

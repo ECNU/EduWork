@@ -1,9 +1,10 @@
 /**
- * The loader page. At `/` it lists the computers this browser is paired with
- * and pairs a new one from an invite link. At `/h/<hostId>/` it keeps that
- * computer connected, shows its DSH interface in an iframe and carries the
- * iframe's traffic: RPCs and streams for the preamble, everything else for
- * the Service Worker.
+ * The loader page. At the relay's base URL it lists the computers this browser
+ * is paired with and pairs a new one from an invite link. At `h/<hostId>/` it
+ * keeps that computer connected, shows its DSH interface in an iframe and
+ * carries the iframe's traffic: RPCs and streams for the preamble, everything
+ * else for the Service Worker. The relay names its base URL in the page's
+ * `<base>`, so relative URLs here resolve below it.
  */
 import { parsePairingLink, type PairingLink } from '../protocol/auth.ts'
 import { ChannelClosed } from '../protocol/channel.ts'
@@ -20,6 +21,7 @@ function h<K extends keyof HTMLElementTagNameMap>(tag: K, props: Partial<HTMLEle
   return element
 }
 
+const base = new URL(document.baseURI)
 const main = document.querySelector('main')!
 const show = (...children: Child[]): void => main.replaceChildren(h('div', { className: 'card' }, ...children))
 const note = (content: string): HTMLParagraphElement => h('p', { className: 'note', textContent: content })
@@ -31,13 +33,13 @@ function failure(error: unknown): string {
   return text.connectFailed
 }
 
-// ---- `/`: paired computers and pairing ----
+// ---- the base URL: paired computers and pairing ----
 
 async function home(): Promise<void> {
   const link = parsePairingLink(location.hash)
   if (link !== undefined) {
     const href = location.href
-    history.replaceState(null, '', '/')
+    history.replaceState(null, '', base)
     return showPairing(link, href)
   }
   const hosts = await pairedHosts()
@@ -48,7 +50,8 @@ async function home(): Promise<void> {
     const url = parseUrl(paste.value.trim())
     const pasted = url === undefined ? undefined : parsePairingLink(url.hash)
     if (url === undefined || pasted === undefined) return void (error.textContent = text.badLink)
-    if (url.origin !== location.origin) return location.assign(url)
+    // A link to another relay opens there.
+    if (url.origin + url.pathname !== base.href) return location.assign(url)
     showPairing(pasted, url.href)
   }
   show(
@@ -110,7 +113,7 @@ function showPairingForm(link: PairingLink): void {
       show(note(text.paired))
       location.replace(hostPath(host.hostId))
     } catch (error) {
-      show(note(failure(error)), h('a', { className: 'button', href: '/?list', textContent: text.back }))
+      show(note(failure(error)), h('a', { className: 'button', href: '?list', textContent: text.back }))
     }
   }
   show(
@@ -121,15 +124,16 @@ function showPairingForm(link: PairingLink): void {
   )
 }
 
-// ---- `/h/<hostId>/`: one connected computer ----
+// ---- `h/<hostId>/`: one connected computer ----
 
 async function openHost(hostId: string): Promise<void> {
   const host = await pairedHost(hostId)
-  if (host === undefined) return location.replace('/?list')
+  if (host === undefined) return location.replace('?list')
   if (!('serviceWorker' in navigator)) return show(note(text.noServiceWorker))
   document.title = host.name
   const updating = navigator.serviceWorker.controller !== null
-  const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/h/' })
+  // Scoped to this relay's computers, so the worker leaves other pages of a shared domain alone.
+  const registration = await navigator.serviceWorker.register('sw.js', { scope: 'h/' })
   await activated(registration)
   // A worker replacing the one this page started with may speak a newer bridge; let the user reload when it suits them.
   if (updating) navigator.serviceWorker.addEventListener('controllerchange', () => banner(text.update, text.reload, () => location.reload()), { once: true })
@@ -203,7 +207,7 @@ function status(host: PairedHost, link: HostLink, state: HostLinkState): void {
   if (state.state === 'unpaired') {
     bar.hidden = true
     void forgetHost(host.hostId)
-    show(note(text.refused[state.reason]), h('a', { className: 'button', href: '/?list', textContent: text.back }))
+    show(note(text.refused[state.reason]), h('a', { className: 'button', href: '?list', textContent: text.back }))
   }
 }
 
@@ -211,5 +215,5 @@ function banner(message: string, action: string, onAction: () => void): void {
   document.body.append(h('div', { id: 'banner' }, message, h('button', { textContent: action, onclick: onAction })))
 }
 
-const target = parseHostPath(location.pathname)
+const target = parseHostPath(location.pathname.slice(base.pathname.length))
 void (target !== undefined && target.rest === '' ? openHost(target.hostId) : home()).catch(error => show(note(failure(error))))

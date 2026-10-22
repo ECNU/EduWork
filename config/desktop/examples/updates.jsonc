@@ -360,7 +360,7 @@
 //   "language": "zh-CN"
 // remoteAccess：机构提供的远程访问：经机构的中继、凭机构登录在手机等设备上使用这台电脑，用户仍须在设置中开启。不填则由用户自己填写中继和接入密钥。
 //   "remoteAccess": {}
-// remoteAccess.relay：机构中继的 HTTPS 地址，只含协议和域名；本机测试可用 http://127.0.0.1。
+// remoteAccess.relay：机构中继的 HTTPS 地址；与其他服务共用域名时带上中继的路径，如 https://example.edu/eduwork-remote/。本机测试可用 http://127.0.0.1。
 //   "relay": "https://remote.example.edu"
 // remoteAccess.oidcProfileId：接入所凭的登录，对应 organizations[].id；须为 identityMode 为 oidc 的网关登录。
 //   "oidcProfileId": "example"

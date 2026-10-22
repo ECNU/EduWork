@@ -59,7 +59,7 @@ HTTP UAT 只需把对应企业对象中与 `auth` 同级的开关改为：
 
 ```jsonc
 "remoteAccess": {
-  // 机构中继的 HTTPS 地址，只含协议和域名。
+  // 机构中继的 HTTPS 地址；与其他服务共用域名时带上中继的路径，如 https://example.edu/eduwork-remote/。
   "relay": "https://remote.example.edu",
   // 对应 organizations[].id；须为 identityMode 为 oidc 的网关登录。
   "oidcProfileId": "example-university"

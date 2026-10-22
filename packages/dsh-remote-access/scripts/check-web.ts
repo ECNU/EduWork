@@ -6,6 +6,8 @@
 // gzipped by the Host and unpacked by the worker), call an RPC,
 // read a stream, fetch and download a file, send an upload larger than the credit window,
 // survive the Host going away and coming back, and lose access on revocation.
+// Each engine runs against a relay at the root of its domain and one below a
+// path of its own, which must not see a single request outside that path.
 //
 //   node scripts/build.ts && node scripts/check-web.ts [chromium|webkit ...]
 import assert from 'node:assert/strict'
@@ -84,13 +86,24 @@ function fakeDsh(): HostAdapter {
   }
 }
 
-const server = createServer()
-await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
-const origin = `http://127.0.0.1:${(server.address() as { port: number }).port}`
-const relay = new Relay({ origin, accessKeys: [ACCESS_KEY] })
-const web = webClient(fileURLToPath(new URL('../lib/web/', import.meta.url)), origin)
-server.on('request', (request, response) => void web(request, response))
-server.on('upgrade', (request, socket, head) => relay.upgrade(request, socket, head) || socket.destroy())
+/** A relay below `path` on its own server; `strays` collects every request that reached the domain outside it. */
+async function serve(path: string) {
+  const server = createServer()
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
+  const url = `http://127.0.0.1:${(server.address() as { port: number }).port}${path}`
+  const relay = new Relay({ url, accessKeys: [ACCESS_KEY] })
+  const web = webClient(fileURLToPath(new URL('../lib/web/', import.meta.url)), url)
+  const strays: string[] = []
+  server.on('request', (request, response) => {
+    if (!request.url!.startsWith(path)) strays.push(request.url!)
+    void web(request, response)
+  })
+  server.on('upgrade', (request, socket, head) => {
+    if (!request.url!.startsWith(path)) strays.push(request.url!)
+    if (!relay.upgrade(request, socket, head)) socket.destroy()
+  })
+  return { url, strays, close: () => { relay.close(); server.close() } }
+}
 
 async function until<T>(read: () => T | undefined, what: string, ms = 15_000): Promise<T> {
   for (const deadline = Date.now() + ms; Date.now() < deadline; await new Promise(resolve => setTimeout(resolve, 50))) {
@@ -100,15 +113,16 @@ async function until<T>(read: () => T | undefined, what: string, ms = 15_000): P
   throw new Error(`timed out waiting for ${what}`)
 }
 
-const startHost = (store: HostStore): RemoteAccess => {
-  const access = new RemoteAccess({ adapter: fakeDsh(), store, relay: origin, credential: async () => ({ credential: { accessKey: ACCESS_KEY } }), hostName: 'Lab PC', warn: () => {} })
+const startHost = (store: HostStore, relay: string): RemoteAccess => {
+  const access = new RemoteAccess({ adapter: fakeDsh(), store, relay, credential: async () => ({ credential: { accessKey: ACCESS_KEY } }), hostName: 'Lab PC', warn: () => {} })
   access.start()
   return access
 }
 
-async function check(name: keyof typeof engines): Promise<Record<string, unknown>> {
+async function check(name: keyof typeof engines, path: string): Promise<Record<string, unknown>> {
+  const { url, strays, close } = await serve(path)
   const store = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'check-web-')), 'state.json'))
-  let access = startHost(store)
+  let access = startHost(store, url)
   await until(() => access.status().link.state === 'online' || undefined, 'the Host online')
   const browser = await engines[name].launch()
   try {
@@ -119,7 +133,9 @@ async function check(name: keyof typeof engines): Promise<Record<string, unknown
     assert.equal((await page.locator('.code').textContent())?.replace(' ', ''), request.code, 'both screens show the same code')
     access.decide(request.key, true)
 
-    await page.waitForURL(`${origin}/h/${store.identity.hostId}/`)
+    await page.waitForURL(`${url}h/${store.identity.hostId}/`)
+    const scope = await page.evaluate(() => navigator.serviceWorker.ready.then(registration => registration.scope))
+    assert.equal(scope, `${url}h/`, 'the worker is scoped to the relay\'s computers')
     const app = page.frameLocator('iframe')
     await app.locator('#state', { hasText: 'loaded' }).waitFor()
     assert.equal(scriptEncodings.at(-1), 'gzip', 'the worker asks for the script gzipped')
@@ -141,23 +157,22 @@ async function check(name: keyof typeof engines): Promise<Record<string, unknown
     // The Host goes away and comes back; the page reconnects without reloading the interface.
     access.stop()
     await page.locator('#bar:not([hidden])').waitFor()
-    access = startHost(store)
+    access = startHost(store, url)
     await page.locator('#bar').waitFor({ state: 'hidden', timeout: 20_000 })
     const again = await frame.evaluate(() => (window as unknown as { exercise(): Promise<{ file: string }> }).exercise())
     assert.equal(again.file, 'hello from the Host', 'the same iframe works after reconnecting')
 
     await access.revoke(request.key)
     await page.locator('.card', { hasText: /移除|removed/ }).waitFor()
+    assert.deepEqual(strays, [], 'every request stays below the relay\'s path')
     return { pairingCode: request.code }
   } finally {
     access.stop()
     await browser.close()
+    close()
   }
 }
 
-try {
-  for (const name of selected) console.log(name, await check(name))
-} finally {
-  relay.close()
-  server.close()
+for (const name of selected) {
+  for (const path of ['/', '/eduwork-remote/']) console.log(name, path, await check(name, path))
 }

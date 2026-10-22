@@ -124,10 +124,11 @@ export function parseUserConfig(path, body, { overlay } = {}) {
       allowed(value.remoteAccess, ['relay', 'oidcProfileId'], 'remoteAccess')
       const url = new URL(text(value.remoteAccess.relay, 'remoteAccess.relay', 2048))
       if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))
-        || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('remoteAccess.relay 请填写中继的 HTTPS 地址，只含协议和域名，例如 https://remote.example.edu')
+        || url.username || url.password || url.search || url.hash) throw new Error('remoteAccess.relay 请填写中继的 HTTPS 地址，例如 https://remote.example.edu 或 https://example.edu/eduwork-remote/')
       const oidcProfileId = text(value.remoteAccess.oidcProfileId, 'remoteAccess.oidcProfileId', 64)
       if (!(value.organizations ?? []).some(organization => organization?.id === oidcProfileId)) throw new Error('remoteAccess.oidcProfileId 必须对应 organizations 中的一项')
-      remoteAccess = { relay: url.origin, oidcProfileId }
+      // The relay's base URL: a path of its own when it shares a domain, always ending in `/`.
+      remoteAccess = { relay: url.origin + url.pathname.replace(/\/?$/, '/'), oidcProfileId }
     }
     const features = { ...value.features }
     if (features.maxConcurrentRequests === undefined && features.maxParallelSubagents !== undefined) features.maxConcurrentRequests = features.maxParallelSubagents + 1
