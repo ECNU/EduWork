@@ -81,6 +81,7 @@ test('bundle registers a codec source and inserts through the official event', a
   const actx = { bail: (...args) => { bails.push(args); return accepted } }
   const scope = {
     effect: fn => effects.push(fn()),
+    uiConversation: { userText: { register: rule => { assert.equal(rule.id, 'eduwork.annotation.sent'); return () => {} } } },
     inputTriggers: { registerSource: src => { sources.push(src); return () => {} } },
     slots: { inject: (_name, fn) => fn(), register: (spec, component) => { slots.push({ spec, component }); return () => {} } },
     sessions: { scope: id => id === 's1' ? actx : undefined },
@@ -96,9 +97,9 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.ok(serialized.includes(ANNOTATION_INSTRUCTIONS))
   assert.deepEqual(modelAnnotation(serialized), { index: 1, text: '原文' })
   await assert.rejects(source.codec.serialize('{}', new AbortController().signal), /invalid/)
-  assert.equal(slots[0].spec.name, 'conversation.input.overlay')
-  assert.deepEqual(slots.map(slot => slot.spec.name), ['conversation.input.overlay', 'conversation.input.left', 'conversation.chat.turnTail'])
-  const injected = slots[0].spec.inject('s1')
+  assert.deepEqual(slots.map(slot => slot.spec.name), ['conversation.user.text.node', 'conversation.input.overlay', 'conversation.input.left', 'conversation.chat.turnTail'])
+  const overlaySlot = slots.find(slot => slot.spec.name === 'conversation.input.overlay')
+  const injected = overlaySlot.spec.inject('s1')
   const panels = injected.previews
   panels.open('s1', { kind: 'entry', occurrenceId: 4 })
   const unlock = panels.lock('s1')
@@ -117,7 +118,7 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(injected.insert(value, actions), false)
   assert.equal(focused, 1)
   assert.equal(notified, 1)
-  assert.equal(slots[0].spec.inject('missing-session').insert(value, actions), false)
+  assert.equal(overlaySlot.spec.inject('missing-session').insert(value, actions), false)
 })
 
 function modelAnnotation(text) {
@@ -181,6 +182,7 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
   const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal: node => node } })[name])
   const scope = {
     effect: fn => fn(), inputTriggers: { registerSource() {} },
+    uiConversation: { userText: { register() {} } },
     slots: { inject: (_, fn) => fn(), register: (spec, component) => { if (spec.name === 'conversation.input.overlay') overlay = component } },
   }
   plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })

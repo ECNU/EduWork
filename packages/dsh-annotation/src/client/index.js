@@ -2,6 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalSto
 import { createPortal } from 'react-dom'
 import { SOURCE, MAX_NOTE, decode, reference, text } from './reference.js'
 import { createModelSerializer } from './prompt.js'
+import { SENT_ANNOTATION, sentAnnotationRule } from './sent.js'
 import { place } from './position.js'
 import { annotations, occurrenceSpan, messageOrigin, closingMessage } from './draft.js'
 
@@ -19,6 +20,7 @@ const copy = {
     editFailed: '引用已变化或输入框暂不可编辑。内容已保留，请取消后重新打开，或稍后重试。',
     noteLabel: '批注内容', list: '待发送批注', readonly: '这条引用已不在当前草稿中，仅供查看。',
     finishEdit: '请先保存或取消正在编辑的批注。',
+    expandQuote: '展开原文', collapseQuote: '收起原文',
   },
   en: {
     quote: 'Annotate', notePlaceholder: 'Add a note (optional)', add: 'Add to message', cancel: 'Cancel', close: 'Close',
@@ -27,6 +29,7 @@ const copy = {
     editFailed: 'The reference changed or the composer is not editable. Your note is preserved. Cancel and reopen it, or retry later.',
     noteLabel: 'Annotation text', list: 'Pending annotations', readonly: 'This reference is no longer in the current draft and is read-only.',
     finishEdit: 'Save or cancel the current edit before opening another annotation.',
+    expandQuote: 'Show full quote', collapseQuote: 'Collapse quote',
   },
 }
 
@@ -37,6 +40,31 @@ const secondary = 'var(--dsw-alias-label-secondary, #666)'
 const accent = 'var(--dsw-alias-state-business-primary, #9f2636)'
 const card = { position: 'fixed', zIndex: 1000, background: layer, color: primary, border: `1px solid ${border}`, borderRadius: 10, boxShadow: '0 6px 24px rgba(0,0,0,.12)', fontSize: 13 }
 const button = filled => ({ border: `1px solid ${filled ? accent : border}`, borderRadius: 7, padding: '5px 10px', background: filled ? accent : 'transparent', color: filled ? '#fff' : primary, cursor: 'pointer', fontSize: 12 })
+
+// Render only a display projection via DSH's public user-text node slot. React
+// escapes quote/note strings; no Markdown/HTML parsing or transcript mutation.
+// Inline-only elements also fit the official Queue and compact text surfaces.
+function SentAnnotation({ node, interactive, t }) {
+  const { index, quote, note } = node.data
+  const [expanded, setExpanded] = useState(false)
+  const collapsible = interactive && (quote.length > 240 || quote.split('\n').length > 4)
+  const collapsed = collapsible && !expanded
+  return h('span', {
+    'data-eduwork-sent-annotation': index,
+    style: { display: 'inline-block', verticalAlign: 'top', boxSizing: 'border-box', width: '100%', minWidth: 0,
+      margin: '4px 0', padding: '10px 12px', border: `1px solid ${border}`, borderRadius: 10,
+      background: layer, color: primary, whiteSpace: 'normal', lineHeight: 1.55, overflowWrap: 'anywhere' },
+  },
+  h('span', { style: { display: 'block', marginBottom: 6, fontSize: 12, color: secondary, fontWeight: 600 } }, `${t('number')} ${index}`),
+  h('span', { 'data-annotation-quote': '', style: {
+    display: collapsed ? '-webkit-box' : 'block', paddingLeft: 10, borderLeft: `2px solid ${border}`,
+    color: secondary, whiteSpace: 'pre-wrap', ...(collapsed ? { WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' } : {}),
+  } }, quote),
+  collapsible ? h('button', { type: 'button', 'aria-expanded': expanded, onClick: () => setExpanded(value => !value),
+    style: { ...button(false), marginTop: 6 },
+  }, t(expanded ? 'collapseQuote' : 'expandQuote')) : null,
+  note === '' ? null : h('span', { 'data-annotation-note': '', style: { display: 'block', marginTop: 8, whiteSpace: 'pre-wrap' } }, note))
+}
 
 function createPreviews() {
   const values = new Map()
@@ -302,6 +330,12 @@ export function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, copy), 'annotation: dictionaries')
   const t = ctx.locale.bind(NS)
   const previews = createPreviews()
+  ctx.inject(['uiConversation', 'slots'], scope => {
+    scope.effect(() => scope.uiConversation.userText.register(sentAnnotationRule), 'annotation: sent text projection')
+    scope.slots.inject('conversation.user.text.node', () => scope.slots.register({
+      name: 'conversation.user.text.node', key: SENT_ANNOTATION, priority: 100, locale: NS,
+    }, SentAnnotation))
+  })
   ctx.inject(['inputTriggers', 'slots', 'sessions'], (scope) => {
     // Codec-only source: the official submit path serializes our chips, and
     // the empty candidate group never shows in the @ menu.
