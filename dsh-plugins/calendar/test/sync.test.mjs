@@ -167,9 +167,17 @@ test('desktop delivery retries a bridge failure without duplicating the durable 
   await withRoot('calendar-reminder-native-retry-', async root => withCalendar(root, async (calendar, ctx) => {
     const { Service } = await load('@deepseek-ai/cordis')
     await ctx.plugin(class extends Service {
-      constructor(ctx) { super(ctx, 'desktopServices') }
-      async calendarReminder(receipt) { calls.push(receipt.id); if (fail) throw Error('bridge unavailable') }
-      async dismissCalendarReminder(id) { dismissed.push(id) }
+      constructor(ctx) { super(ctx, 'notifications'); this.version = 1 }
+      register(inner) {
+        const controller = new AbortController()
+        const handle = {
+          signal: controller.signal,
+          async publish(receipt) { calls.push(receipt.id); if (fail) throw Error('bridge unavailable'); return { delivery: 'desktop' } },
+          withdraw(id) { dismissed.push(id) }, dispose() { controller.abort() },
+        }
+        inner.effect(() => () => handle.dispose())
+        return handle
+      }
     })
     await calendar.putEvent({ uid: 'retry', title: 'Retry reminder', start: '2040-01-02T10:00' })
     await calendar.setPersonal({ source: 'manual', uid: 'retry', patch: { reminder: { kind: 'relative', minutes: 15 } } })

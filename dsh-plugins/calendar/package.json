@@ -27,6 +27,7 @@
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-ui-primitives",
         "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-sidebar"
       ],
       "platform": "web",
@@ -45,6 +46,7 @@
     "@deepseek-ai/dsh-api-remotes": ">=0.1.5-rc.1 <0.2.2",
     "@deepseek-ai/dsh-client-ui-primitives": ">=0.1.5-rc.2 <0.2.2",
     "@deepseek-ai/dsh-client-ui-renderer": ">=0.1.2-rc.1 <0.2.2",
+    "@deepseek-ai/dsh-client-ui-layout": ">=0.1.2-rc.1 <0.2.2",
     "@deepseek-ai/dsh-client-ui-sidebar": ">=0.1.2-rc.1 <0.2.2",
     "@deepseek-ai/dsh-storage-domain": ">=0.1.5-rc.1 <0.2.2",
     "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.2",

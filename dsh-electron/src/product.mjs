@@ -264,10 +264,11 @@ async function prepareDesktop() {
   process.env.EDUWORK_CHROMIUM_VERSION = process.versions.chrome
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
+  const showNotificationWindow = () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
-    activate: key => taskNotifications.activate(key), failed: () => { taskNotifications.delivery = 'unavailable' } })
+    activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
-    show: () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } },
+    show: showNotificationWindow,
     publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(),
     changed: () => { refreshTray(); desktopPet.update(taskNotifications) } })
   // The pet page comes from the product's pet plugin; it never loads from a user plugin directory.
@@ -421,6 +422,7 @@ export async function attachDesktopWindow(window) {
     }
     refreshTray()
     tray.on('balloon-click', () => notificationAdapter?.balloonClick())
+    tray.on('balloon-closed', () => notificationAdapter?.balloonClosed())
     tray.on('double-click', show)
   } catch (error) {
     tray?.destroy(); tray = undefined

@@ -44,6 +44,8 @@ on:
       - 'scripts/settings-navigation-icons.mjs'
       - 'scripts/patch-settings-navigation-runtime.mjs'
       - 'scripts/test/settings-navigation-runtime.test.mjs'
+      - 'scripts/patch-chat-user-content-runtime.mjs'
+      - 'scripts/test/chat-user-content-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
       - 'scripts/test/runtime-omissions.test.mjs'
@@ -77,7 +79,7 @@ jobs:
           path: core
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - uses: actions/checkout@v4
         with:
           repository: deepseek-ai/deepseek-harness
@@ -104,7 +106,7 @@ jobs:
           path: core
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Resolve the pinned build recipe
         id: upstream
         shell: pwsh
@@ -144,6 +146,10 @@ jobs:
           node core/scripts/probe-dsh-017.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/session-migration-evidence"
           if ($LASTEXITCODE) { throw 'Historical session migration checks failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/dsh-plugins/desktop-services/test/attention-host.test.mjs core/dsh-plugins/workbench-native/test/notifications-navigation.test.mjs
+          if ($LASTEXITCODE) { throw 'Agent and plugin notification integration checks failed' }
+          node --test core/tests/node-runtime-contract.test.mjs
+          if ($LASTEXITCODE) { throw 'Node security pin and official web-fetch checks failed' }
           node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
@@ -155,6 +161,7 @@ jobs:
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search checks failed' }
           node --test core/scripts/test/settings-navigation-runtime.test.mjs
+          node --test core/scripts/test/chat-user-content-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Settings navigation adapter checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs core/dsh-electron/tests/software-update-control.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution policy, desktop and channel migration checks failed' }

@@ -60,7 +60,8 @@ test('Windows desktop stage preserves the edition policy of an already qualified
 
 test('Windows publish stage keeps institution artifacts without inventing an ECNU update repository',async t=>{
  const coreRoot=fileURLToPath(new URL('..',import.meta.url))
- for(const recipe of ['npm','pinned-source']) for(const [name,distribution] of [['EduWork','eduwork'],['EduWork-ECNU','eduwork-chatecnu'],['ExampleCampus','example-campus']]) {
+ const recipe='pinned-source'
+ for(const [name,distribution] of [['EduWork','eduwork'],['EduWork-ECNU','eduwork-chatecnu'],['ExampleCampus','example-campus']]) {
   for(const [version,development] of [['0.4.3',false],['0.4.3-alpha.1',false],['0.4.3-dev.20261010.1',true]]) await t.test(`${recipe}: ${name} ${version}`,async t=>{
    const root=await mkdtemp(join(tmpdir(),'eduwork-publish-stage-'))
    t.after(async()=>{
@@ -75,7 +76,7 @@ test('Windows publish stage keeps institution artifacts without inventing an ECN
    const archive=Buffer.from('Synthetic publication input, not an application')
    await file(`desktop/${asset.name}`,archive)
    await json('desktop/package.json',{output:join(root,'desktop',asset.name)})
-   await json(recipe==='pinned-source'?'product/assembly.json':'web/assembly/assembly.json',{distribution,dshVersion:'0.2.0-rc.2',dshCommit:'b'.repeat(40)})
+   await json('product/assembly.json',{distribution,dshVersion:'0.2.0-rc.2',dshCommit:'b'.repeat(40)})
    await json('inputs/inputs.json',{})
    await json('gui/acceptance-checks.json',{asset,portableExtractorAssets:extractor})
    for(const filename of [extractor.asset.name,`${extractor.asset.name}.sha256`,extractor.receipt.name]) await file(`gui/extractor-publish/${filename}`,'Synthetic extractor evidence')

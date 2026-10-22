@@ -6,7 +6,7 @@ const item = (key, kind, createdAt = 1) => ({ key, kind, createdAt, title: '' })
 const frames = (...ms) => ms.map((value, i) => ({ file: `${i}.svg`, ms: value }))
 
 test('status priority: attention, failed, done, working, idle; clicks open the newest item', () => {
-  const items = [item('done-old', 'completed', 1), item('studio', 'studio', 3), item('bad', 'failed', 2), item('ask', 'approval', 1), item('question', 'question', 4)]
+  const items = [item('done-old', 'completed', 1), { ...item('plugin', 'plugin', 3), level: 'success', requiresAction: false }, item('bad', 'failed', 2), item('ask', 'approval', 1), item('question', 'question', 4)]
   assert.deepEqual(deriveStatus(items, 2), { state: 'attention', target: items[4], count: 2 })
   assert.deepEqual(deriveStatus(items.slice(0, 3), 2), { state: 'failed', target: items[2], count: 1 })
   assert.deepEqual(deriveStatus(items.slice(0, 2), 2), { state: 'done', target: items[1], count: 2 })
@@ -18,7 +18,7 @@ test('badges: ? for attention, ! for failed, count for several results', () => {
   assert.equal(badgeText(deriveStatus([item('a', 'question')], 0)), '?')
   assert.equal(badgeText(deriveStatus([item('a', 'failed')], 0)), '!')
   assert.equal(badgeText(deriveStatus([item('a', 'completed')], 0)), '!')
-  assert.equal(badgeText(deriveStatus([item('a', 'completed'), item('b', 'studio')], 0)), '2')
+  assert.equal(badgeText(deriveStatus([item('a', 'completed'), { ...item('b', 'plugin'), level: 'success', requiresAction: false }], 0)), '2')
   assert.equal(badgeText(deriveStatus([], 3)), '')
 })
 

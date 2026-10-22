@@ -6,6 +6,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [Literature search, citations and full text](../packages/dsh-literature/README_EN.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [Identity, credentials and models](../packages/dsh-oidc/README_EN.md) | `packages/dsh-oidc` |
@@ -15,11 +16,11 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | `@eduwork/dsh-artifact-services` | [Office, speech, images and media](../packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Studio's existing workspace |
 | `@eduwork/dsh-remote-access` | [Remote access and self-hosted relay](../packages/dsh-remote-access/README_EN.md) | `packages/dsh-remote-access` |
 
-Seven development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
+Eight development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
 
 ## Develop and check
 
-Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.18.0. From the repository root:
+Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.22.1. From the repository root:
 
 ```sh
 node scripts/packages/manage.mjs list
@@ -66,7 +67,7 @@ Desktop-specific extensions are still built during assembly; their adaptation on
 `@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
 
 
-The current DSH 0.2.1 recipe installs all seven independent packages from npm: desktop pet, literature, mail, memory, OIDC, Studio and shared services. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.2/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source. The remote access package is not assembled into the client yet; it joins in the order below once published and verified.
+The current DSH 0.2.1 recipe installs seven independent packages from npm: desktop pet, literature, mail, memory, OIDC, Studio and shared services. Selection annotations are not assembled into the client; users install them on the Plugins page. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.2/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source. The remote access package is not assembled into the client yet; it joins in the order below once published and verified.
 
 Assembly validates the npm inputs before building product-owned extensions. Media templates, the PDF runtime, plugin clients and bundled skills come from published packages. Nothing under `packages/` overwrites them. `assembly.json` distinguishes `externalPackages` from `sourcePackages` and records package file hashes, checked after assembly and edition preparation. Missing packages, inconsistent locks or workspace links fail without a source fallback.
 

@@ -6,6 +6,7 @@ import { Config, liveSettings, KnowledgeStudioSettingsSchema, mergeDefaultSettin
 import { installKnowledgeStudioSkill } from './skill.js'
 import { installKnowledgeStudioTools } from './tools.js'
 import { mediaParameters } from './capabilities.js'
+import { installStudioNotifications } from './notifications.js'
 import {StudioUIPreferences} from './ui-preferences.js'
 
 export const name = 'dsh-knowledge-studio'
@@ -27,6 +28,7 @@ export class KnowledgeStudioService extends TypertRemoteService {
     this.artifacts = new ArtifactEngine(ctx, this.manager, {...config,mediaProviders:this.mediaProviders})
     this.registry = new StudioRegistry()
     this.uiPreferences = new StudioUIPreferences(config.uiPreferencesPath)
+    installStudioNotifications(ctx, this)
     installKnowledgeStudioTools(ctx, this.manager, this.artifacts,{indexedRetrievalTools:config.indexedRetrievalTools===true})
     if(config.skills!==false) {
       const disposeSkill = installKnowledgeStudioSkill(ctx)

@@ -34,7 +34,9 @@ const rpc = (method, args = {}) => page.evaluate(async ({ method, args, id }) =>
   return envelope.result.value
 }, { method, args, id: 'desktop-smoke-' + (++sequence) })
 try {
-  await page.reload({ waitUntil: 'domcontentloaded' })
+  // The release runner has just launched this isolated app. Reloading while
+  // its preload is still requesting the Host can destroy the IPC sender frame.
+  await page.waitForLoadState('domcontentloaded')
   if (!values['launch-only']) {
   await page.getByRole('button', { name: /^(设置|Settings)$/ }).waitFor()
   for (let attempt = 0; attempt < 8; attempt++) {
@@ -47,25 +49,36 @@ try {
   }
   await check('official-protocol-brand-and-renderer', async () => {
     // The official narrow sidebar keeps the button but omits its text label.
-    if (!values['launch-only']) await page.getByRole('button', { name: /^(新建会话|New session)$/i }).first().waitFor()
-    phase = 'renderer-body'
-    await page.waitForFunction(() => document.body.innerText.trim().length > 0)
+    // Loading text and the product title can both precede the actual app frame.
+    phase = 'renderer-ready'
+    await page.getByRole('button', { name: /^(新建会话|New session)$/i }).first().waitFor()
     // The official document title exists before the branding plugin mounts.
     await waitForTitle('initial-product-title', identity.brand.product.name)
     // Navigation can reset either the bare title or a session-qualified title.
     // Exercise the mounted plugin, rather than accepting a transient brand.
+    const titles = []
     for (const [title, expected] of [
       ['Synthetic session — DeepSeek Harness', 'Synthetic session — ' + identity.brand.product.name],
       ['DeepSeek Harness', identity.brand.product.name],
     ]) {
-      await page.evaluate(title => { document.title = title }, title)
-      await waitForTitle('navigation-title: ' + title, expected)
+      phase = 'navigation-title: ' + title; expectedTitle = expected
+      // The branding MutationObserver runs in this microtask checkpoint. Read
+      // its projection in the same evaluation: a later React navigation effect
+      // may legitimately restore the title of the real (non-synthetic) session
+      // before a separate CDP request or requestAnimationFrame poll sees it.
+      const observed = await page.evaluate(async title => {
+        document.title = title
+        await Promise.resolve()
+        return document.title
+      }, title)
+      titles.push({ input: title, expected, observed })
+      assert.equal(observed, expected, phase)
     }
     assert.equal(await page.title(), identity.brand.product.name)
     const transport = await page.evaluate(() => ({ ownsHost: globalThis.__DSH_TRANSPORT__?.ownsHost,
       scheme: location.protocol, nodeExposed: typeof globalThis.require !== 'undefined' || typeof globalThis.process !== 'undefined' }))
     assert.equal(transport.ownsHost, true); assert.equal(transport.scheme, values.shell === 'electron' ? 'dsh-app:' : 'http:'); assert.equal(transport.nodeExposed, false)
-    return transport
+    return { ...transport, titles }
   })
   await check('settings-over-official-pipe', async () => {
     const result = await rpc('settings/describe')

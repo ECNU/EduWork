@@ -17,10 +17,11 @@ import { createServer } from 'node:net'
 import { basename, join } from 'node:path'
 import {
   copyFileTo, copyTree, ensureDir, isFile, isWindows, pathExists, readJSON, run,
-  runNode, sha256File, sleep, statEntry, writeJSON, writeText,
+  runNode, sha256File, sleep, statEntry, writeJSON,
 } from './build-util.mjs'
 import { stage } from './stage-runner.mjs'
-import { copyPublicWebEvidence } from './shared-desktop-stages.mjs'
+import { desktopBuildRecipe } from '../desktop-build-plan.mjs'
+import { copyPublicWebEvidence } from './desktop-build-evidence.mjs'
 import { assembleWindows } from '../../dsh-electron/scripts/assemble-windows.mjs'
 import { packWindowsRelease } from '../pack-windows-release.mjs'
 import { prepareWindowsReleaseInputs, installWindowsReleaseInputs } from '../prepare-windows-release-inputs.mjs'
@@ -45,7 +46,8 @@ function freeLoopbackPort() {
  * which the orchestrator fixed for the whole workspace, so a re-entry cannot
  * disagree with the run that recorded the checkpoint.
  */
-export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
+export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' }) {
+  desktopBuildRecipe(recipe)
   return [
     stage({
       name: 'native-inputs',
@@ -83,7 +85,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
     stage({
       name: 'desktop',
       description: 'Desktop candidate assembly and portable ZIP',
-      requires: ['shell', 'electron', recipe === 'pinned-source' ? 'product' : 'install-host', 'native-install'],
+      requires: ['shell', 'electron', 'product', 'native-install'],
       outputs: ['desktop'],
       inputs: (workspace) => ({
         version: workspace.parameters.version,
@@ -92,12 +94,12 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
         edition: workspace.parameters.edition,
       }),
       run: async (workspace) => {
-        const { version, development, edition } = workspace.parameters
+        const { version, edition } = workspace.parameters
         const developmentVersion = desktopVersion(version).prerelease
         const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
         const candidateRoot = workspace.resolvePath('desktop')
         const candidate = join(candidateRoot, 'electron-candidate')
-        // Both recipes install the verified Host before this stage. Package the
+        // The recipe installs the verified Host before this stage. Package the
         // frozen product directly, as macOS does, without reinstalling the base
         // Host over an edition's subsequently applied distribution policy.
         await assembleWindows({
@@ -108,11 +110,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
           output: candidate,
           version,
         })
-        if (recipe === 'pinned-source') {
-          if (workspace.parameters.forUpdate) await buildTransitionLaunchers(candidate, coreRoot)
-        } else {
-          await annotateCandidate({ candidate, coreRoot, name: edition, version, development, developmentVersion })
-        }
+        if (workspace.parameters.forUpdate) await buildTransitionLaunchers(candidate, coreRoot)
         const asset = `${edition}-${version}-windows-x64-electron.zip`
         await writeJSON(join(candidateRoot, 'package.json'), await packWindowsRelease({
           candidate,
@@ -147,47 +145,6 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'npm' }) {
   ]
 }
 
-/**
- * Add the product metadata the portable package needs: the plugin policy, the
- * release kind and the user-facing README that ships in the ZIP, plus the Go
- * legacy launcher the update contract requires.
- */
-async function annotateCandidate({ candidate, coreRoot, name, version, development, developmentVersion }) {
-  const metadataPath = join(candidate, 'release.json')
-  const metadata = await readJSON(metadataPath)
-  metadata.pluginPolicy = 'npm-exact-locks'
-  metadata.releaseKind = developmentVersion ? 'portable-development' : 'portable-public-test'
-  await writeJSON(metadataPath, metadata)
-
-  const releaseLabel = developmentVersion ? '开发版 / Development' : '公测版 / Public beta'
-  await writeText(join(candidate, 'README.txt'), [
-    `${name} ${version} — Windows x64 Electron ${releaseLabel}`,
-    '',
-    '解压整个目录后运行 EduWork-Electron.exe。公版可在模型设置中填写自己的 API Key；企业服务见 config/eduwork.jsonc 和 config/examples。',
-    '数据保存在本目录 data 下。移动整个目录前请退出程序。首次使用原生组件不需要另外安装 Node/Python/Office。',
-    '此包支持全新安装与现有 Windows 更新器安装。公版默认从 GitHub 获取更新，设置中可选择公测或开发渠道；机构可通过 config/eduwork.jsonc 配置自己的更新源。自动更新保留 data 和 config；不要手工覆盖工作目录。仓库未公开或没有已发布版本时，不会提供在线更新。',
-    '',
-    'Extract the complete folder and run EduWork-Electron.exe. Configure a model API key or consult config/eduwork.jsonc and config/examples for enterprise services.',
-    'Keep the data and config folders; close the app before moving the whole directory. This ZIP supports new installations and the Windows updater. The public edition uses GitHub with public-beta/development channel selection; institutions can configure another source. Private repositories and draft releases are unavailable to the anonymous updater.',
-  ].join('\n'))
-
-  // The legacy shortcut launcher is a transition artifact; a missing build is a
-  // release blocker, not something to skip quietly.
-  await buildTransitionLaunchers(candidate, coreRoot)
-
-  if (development) {
-    metadata.releaseKind = 'portable-development'
-    await writeJSON(metadataPath, metadata)
-    await writeText(join(candidate, 'README.txt'), [
-      `${name} ${version} — Windows x64 Electron 开发版`,
-      '',
-      '解压后运行 EduWork-Electron.exe。配置见 config/eduwork.jsonc 和 config/examples。',
-      '此包由 GitHub CI 构建，包含 Go 过渡版到 Electron 的更新契约；开发包不创建 GitHub Release。',
-      '由维护者完成实包升级验收后配置开发更新清单，不能投放到 0.2 旧入口。',
-    ].join('\n'))
-  }
-}
-
 async function buildTransitionLaunchers(candidate, coreRoot) {
   await run('go', ['build', '-buildvcs=false', '-trimpath', '-ldflags', '-s -w -H windowsgui', '-o', join(candidate, 'ChatECNU-Work.exe'), './cmd/eduwork-launch'], { cwd: join(coreRoot, 'dsh-desktop') })
     .catch(() => { throw new Error('Legacy shortcut launcher build failed') })
@@ -201,7 +158,7 @@ async function buildTransitionLaunchers(candidate, coreRoot) {
  */
 async function acceptWindows({ workspace, coreRoot }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
-  const { edition, development, verifyPublisherBootstrap, recipe } = workspace.parameters
+  const { edition, development, verifyPublisherBootstrap } = workspace.parameters
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const archive = packed.output
   const gui = workspace.resolvePath('gui')
@@ -232,11 +189,6 @@ async function acceptWindows({ workspace, coreRoot }) {
   const frozenProduct = join(desktop, 'resources/product')
   const config = join(gui, 'config/eduwork.jsonc')
   await copyTree(join(desktop, 'config'), join(gui, 'config'))
-  if (recipe === 'npm') {
-    const text = await readFile(config, 'utf8')
-    if (!/"closeAction"\s*:\s*"tray"/.test(text)) throw new Error('Expected shipped close-to-tray default')
-    await writeText(config, text.replace(/"closeAction"\s*:\s*"tray"/, '"closeAction": "exit"'), { trailingNewline: false })
-  }
   const bootstrapEnabled = await pathExists(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
   if (verifyPublisherBootstrap && !bootstrapEnabled) throw new Error('Publisher acceptance requires a packaged descriptor')
   if (bootstrapEnabled && !verifyPublisherBootstrap) {
@@ -313,7 +265,7 @@ async function acceptWindows({ workspace, coreRoot }) {
     throw new Error('Desktop teardown reported a pipe failure')
   }
   if (!(await readJSON(join(gui, 'result.json'))).passed) throw new Error('Desktop GUI acceptance failed')
-  if (recipe === 'pinned-source' && edition === 'EduWork') {
+  if (edition === 'EduWork') {
     await runNode(join(coreRoot, 'scripts/verify-generic-first-launch.mjs'), [frozenProduct, config])
   }
 
@@ -326,11 +278,9 @@ async function acceptWindows({ workspace, coreRoot }) {
     asset: { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: await sha256File(archive) },
     ...(portableExtractor ? { portableExtractorAssets: portableExtractor } : {}),
   }
-  if (recipe === 'pinned-source') {
-    await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozenProduct])
-    checks.mediaTemplate = 'passed'
-    checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
-  }
+  await runNode(join(coreRoot, 'scripts/verify-media-template.mjs'), [frozenProduct])
+  checks.mediaTemplate = 'passed'
+  checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
   if (verifyPublisherBootstrap) {
     const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
     const descriptor = await readJSON(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
@@ -349,7 +299,7 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   const gui = workspace.resolvePath('gui')
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const identity = await readJSON(workspace.resolvePath(
-    workspace.parameters.recipe === 'pinned-source' ? 'product/assembly.json' : 'web/assembly/assembly.json'))
+    'product/assembly.json'))
   const inputs = await readJSON(workspace.resolvePath('inputs/inputs.json'))
   const checks = await readJSON(join(gui, 'acceptance-checks.json'))
   await ensureDir(publish)

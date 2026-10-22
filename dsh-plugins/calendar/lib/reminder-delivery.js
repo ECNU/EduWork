@@ -22,6 +22,20 @@ export class ReminderDelivery {
     this.unsubscribe = this.calendar.onChanged(change => {
       if (change?.domain !== 'calendar_reminders') this.arm(0)
     })
+    this.ctx.inject(['notifications'], inner => {
+      if (inner.notifications.version !== 1) throw Error('Calendar requires notification protocol 1')
+      const handle = inner.notifications.register(inner, {
+        version: 1, source: 'calendar', label: '日历',
+        events: [{ id: 'reminder', label: '日历提醒', level: 'info', requiresAction: false, actions: ['open'] }],
+        onAction: ({ target }) => {
+          const receipt = this.receipts.get(target.reminderId)
+          return this.active && receipt && !receipt.read && this.calendar.isSourceVisible(receipt.ref.source) ? target : false
+        },
+      })
+      this.notifications = handle
+      inner.effect(() => () => { handle.dispose(); if (this.notifications === handle) this.notifications = undefined })
+      this.arm(0)
+    })
     await this.refresh()
   }
   arm(delay) {
@@ -57,17 +71,21 @@ export class ReminderDelivery {
             changed = true
           }
         }
-        const desktop = this.ctx.get('desktopServices')
-        this.channel = desktop?.calendarReminder ? 'system' : 'in-app'
+        const notifications = this.notifications
+        if (!notifications) this.channel = 'in-app'
         for (const [id, receipt] of this.receipts.entries()) {
           if (Date.parse(receipt.deliveredAt) < now - 30 * 86400000) {
-            await desktop?.dismissCalendarReminder?.(id)
+            notifications?.withdraw(id)
             await this.receipts.delete(id); changed = true; continue
           }
-          if (receipt.read || receipt.nativeSent || !desktop?.calendarReminder || !current.has(id)
+          if (receipt.read || !current.has(id) || !this.calendar.isSourceVisible(receipt.ref.source)) notifications?.withdraw(id)
+          if (receipt.read || receipt.nativeSent || !notifications || !current.has(id)
             || !this.calendar.isSourceVisible(receipt.ref.source) || new Date(receipt.at).getTime() < now - 86400000) continue
           try {
-            await desktop.calendarReminder(receipt)
+            const result = await notifications.publish({ id, event: 'reminder', title: receipt.title.replace(/[\x00-\x1f\x7f]/gu, ' ').slice(0, 120), target: { reminderId: id } })
+            if (!this.active || notifications.signal.aborted) return
+            this.channel = result.delivery === 'desktop' ? 'system' : 'in-app'
+            if (result.delivery !== 'desktop' && result.status !== 'disabled') continue
             await this.receipts.put(id, { ...receipt, nativeSent: true })
             changed = true
           } catch { this.channel = 'unavailable'; delay = Math.min(delay, 1000) }
@@ -90,13 +108,13 @@ export class ReminderDelivery {
       const receipt = this.receipts.get(id)
       if (!receipt) return { updated: false }
       await this.receipts.put(id, { ...receipt, read: true })
-      await this.ctx.get('desktopServices')?.dismissCalendarReminder?.(id)
+      this.notifications?.withdraw(id)
       this.calendar.invalidate({ domain: 'calendar_reminders' })
       return { updated: true }
     })
   }
   async close() {
-    this.active = false; clearTimeout(this.timer); this.unsubscribe?.()
+    this.active = false; this.notifications?.dispose(); clearTimeout(this.timer); this.unsubscribe?.()
     await this.tail
     await this.domain?.close()
   }

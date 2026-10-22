@@ -28,10 +28,12 @@ The diagram summarizes the shared product, Host, and native-input preparation th
 | --- | --- | --- |
 | Local Windows x64 / macOS arm64 development build | `node scripts/local-desktop-pipeline.mjs` | Uses the staged pipeline |
 | Dual-platform development workflow | `development-desktop.yml` → both Node stage entries | Automatically builds and retains accepted artifacts after main changes |
-| Manual dual-platform candidate and publication | `desktop-candidates.yml` → `node` | Node stages and the pinned DSH `0.2.0-rc.2` candidate recipe; supports alpha/beta/rc/dev/stable |
+| Manual dual-platform candidate and publication | `desktop-candidates.yml` → `node` | Node stages and the pinned DSH `0.2.1-rc.2` candidate recipe; supports alpha/beta/rc/dev/stable |
 | Legacy source candidate | `desktop-candidates.yml` → `ps1` | Retained for comparison with the pinned source recipe |
 
-Development builds and both `node` and `ps1` candidates use `config/desktop-build.json` to select the `0.2.0-rc.2` combination: the pinned npm Runtime, upstream-source Host, and rebuilt product plugin clients. The Node path invokes no PowerShell scripts. After archive and packaged-app launch checks on both platforms, publication verifies ZIPs, the DMG, hashes, receipts, the Windows installer, and approved notes before uploading a GitHub Release. The macOS DMG contains the app accepted from the ZIP and is checked as a read-only image; stable builds require Sparkle configuration. Development builds retain artifacts only; manual candidates can be published after authorization.
+Development builds and both `node` and `ps1` candidates use `config/desktop-build.json` to select the `0.2.1-rc.2` combination: the pinned npm Runtime and published plugins, upstream-source Host, and product-specific extensions. The Node path invokes no PowerShell scripts. After archive and packaged-app launch checks on both platforms, publication verifies ZIPs, the DMG, hashes, receipts, the Windows installer, and approved notes before uploading a GitHub Release. The macOS DMG contains the app accepted from the ZIP and is checked as a read-only image; stable builds require Sparkle configuration. Development builds retain artifacts only; manual candidates can be published after authorization.
+
+The legacy `--recipe npm`, `ci-eduwork-windows-release.ps1`, and `ci-eduwork-macos-release.ps1` entries are retired and fail before downloads or builds with Node-entry migration instructions. Both the default and explicit `--recipe pinned-source` use the combination above; npm Runtime and plugin assembly remain supported. The `ps1` option in `desktop-candidates.yml` uses `build-desktop-candidate.ps1`, which remains a supported pinned-source entry. Institutions still calling retired scripts must migrate their entry and release-receipt handling when upgrading the public core pin.
 
 ## Follow-up
 

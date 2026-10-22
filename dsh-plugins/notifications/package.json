@@ -1,0 +1,30 @@
+{
+  "name": "@eduwork/notifications",
+  "version": "0.1.0-dev.1",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "README.md",
+    "README_EN.md"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/cordis": ">=4.0.2 <4.1.0",
+    "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
+    "@deepseek-ai/dsh-settings": ">=0.1.5-rc.2 <0.3.0-0"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}

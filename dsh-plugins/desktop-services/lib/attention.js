@@ -2,19 +2,17 @@ import { randomUUID } from 'node:crypto'
 
 export const notificationDefaults = Object.freeze({ enabled: true, attention: true, completed: true, failed: true, studio: true, sound: false, preview: false })
 const human = item => item.kind === 'question' || item.kind === 'approval'
-const safeTitle = value => typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/gu, ' ').slice(0, 120) : ''
+const safeTitle = value => typeof value === 'string' ? value.replace(/[\x00-\x1f\x7f]/gu, ' ').slice(0, 120).toWellFormed() : ''
 
 /** Observe live work only. Never answer, cancel, or change an agent's policy. */
 export class DesktopAttention {
-  constructor({ bridge, preferences, validateTarget = async () => true, goal = () => undefined, now = Date.now, schedule = setTimeout, cancel = clearTimeout }) {
-    Object.assign(this, { bridge, preferences, validateTarget, goal, now, schedule, cancel })
+  constructor({ bridge, preferences, validateTarget = async () => true, goal = () => undefined, notifications, now = Date.now, schedule = setTimeout, cancel = clearTimeout }) {
+    Object.assign(this, { bridge, preferences, validateTarget, goal, notifications, now, schedule, cancel })
     this.items = new Map()
     this.titles = new Map()
     this.turns = new Map()
     this.delegated = new Map()
     this.goalRounds = new Map()
-    this.studioSeen = new Map()
-    this.studioRunning = new Map()
     this.startedAt = now()
     this.instance = randomUUID()
     this.closed = false
@@ -40,7 +38,7 @@ export class DesktopAttention {
     if (event.type === 'turn/start') {
       this.turns.set(sessionId, data.turn)
       this.goalRounds.delete(sessionId)
-      for (const row of this.items.values()) if (row.sessionId === sessionId && !row.artifactId) this.remove(row.key)
+      for (const row of this.items.values()) if (row.sessionId === sessionId) this.remove(row.key)
       this.changed()
     }
     if (event.type === 'approval/asked') this.put({ key: `approval:${sessionId}:${data.id}`, kind: 'approval', sessionId, title: this.titles.get(sessionId) })
@@ -83,34 +81,8 @@ export class DesktopAttention {
     try { return await next() }
     finally { request.signal?.removeEventListener('abort', clear); clear() }
   }
-  studio(workspaceId, rows) {
-    const current = new Set(), running = this.running().join()
-    for (const row of rows) {
-      current.add(row.id)
-      if (row.sessionId && !row.deletedAt && ['queued', 'running'].includes(row.status)) this.studioRunning.set(row.id, { sessionId: row.sessionId, workspaceId })
-      else this.studioRunning.delete(row.id)
-      const signature = `${row.version}:${row.status}:${row.lifecycle?.state ?? ''}`
-      const previous = this.studioSeen.get(row.id)
-      this.studioSeen.set(row.id, { signature, workspaceId })
-      // Ignore pre-start history, but include new short jobs between polls.
-      if (previous?.signature === signature || Date.parse(row.updatedAt) < this.startedAt) continue
-      for (const item of this.items.values()) if (item.artifactId === row.id) this.remove(item.key)
-      if (!row.sessionId || !['completed', 'failed'].includes(row.status) || row.lifecycle?.state === 'open') continue
-      if (row.lifecycle?.reason === 'aborted' || row.lifecycle?.reason === 'interrupted') continue
-      this.put({ key: `studio:${row.id}:${row.version}:${row.status}`, kind: row.status === 'completed' ? 'studio' : 'failed',
-        sessionId: row.sessionId, artifactId: row.id, title: row.title })
-    }
-    for (const [id, row] of this.studioSeen) if (row.workspaceId === workspaceId && !current.has(id)) {
-      this.studioSeen.delete(id)
-      for (const item of this.items.values()) if (item.artifactId === id) this.remove(item.key)
-    }
-    for (const [id, row] of this.studioRunning) if (row.workspaceId === workspaceId && !current.has(id)) this.studioRunning.delete(id)
-    if (this.running().join() !== running) this.changed()
-  }
-  /** Root sessions with a live turn or a Studio result being generated. */
-  running() {
-    return [...new Set([...this.turns.keys(), ...[...this.studioRunning.values()].map(row => row.sessionId)])].slice(0, 200)
-  }
+  /** The shared display snapshot includes optional plugin activity. */
+  running() { return [...new Set([...this.turns.keys(), ...(this.notifications?.running() ?? [])])].slice(0, 200) }
   changed() {
     const wasDirty = this.dirty
     this.dirty = true
@@ -126,12 +98,13 @@ export class DesktopAttention {
       if (this.closed) return false
       this.dirty = false
       try {
-        const result = await this.bridge({ action: 'sync', instance: this.instance, items: [...this.items.values()], running: this.running(), preferences: this.preferences() })
-        this.calendarSupported = result.calendarReminders === true
+        const result = await this.bridge({ action: 'sync', instance: this.instance, items: [...this.items.values(), ...(this.pluginSupported ? this.notifications?.snapshot() ?? [] : [])], running: this.running(), preferences: this.preferences() })
+        this.connected = true
+        this.pluginSupported = result.pluginNotifications === 1
         for (const key of result.seen ?? []) this.items.delete(key)
         if (result.delivery === 'unavailable') { this.dirty = true; return false }
         return true
-      } catch { this.dirty = true; return false }
+      } catch { this.connected = false; this.dirty = true; return false }
       finally {
         // Also repairs a transient bridge failure, without interrupting the agent.
         if (!this.closed && !this.timer) this.timer = this.schedule(() => { this.timer = null; void this.flush() }, this.dirty ? 1000 : 5000)
@@ -142,18 +115,21 @@ export class DesktopAttention {
     return pending
   }
   async view(view) {
-    if (view.openedKey && this.items.has(view.openedKey) && !human(this.items.get(view.openedKey))) this.remove(view.openedKey)
-    const response = await this.bridge({ action: 'view', sessionId: view.sessionId, ...(view.artifactId ? { artifactId: view.artifactId } : {}) })
+    if (view.openedKey && this.issuedPlugin?.key === view.openedKey) {
+      this.notifications?.seen(view.openedKey, this.issuedPlugin.revision)
+      this.issuedPlugin = null
+    } else if (view.openedKey && this.items.has(view.openedKey) && !human(this.items.get(view.openedKey))) this.remove(view.openedKey)
+    const response = await this.bridge({ action: 'view', sessionId: view.sessionId })
+    if (response.foreground) this.notifications?.observeViews(view.visible)
+    const plugin = await this.notifications?.activate(response.openKey)
+    if (plugin) this.issuedPlugin = plugin
     let target = this.items.get(response.openKey)
     if (target && !await this.validateTarget(target)) { this.remove(target.key); target = null }
     if (target && !this.items.has(target.key)) target = null
-    // The host is authoritative: a toast clicked after a decision is stale.
-    return { desktop: true, target: target ? target.kind === 'calendar'
-      ? { key: target.key, panel: 'calendar', reminderId: target.reminderId }
-      : { key: target.key, sessionId: target.sessionId, ...(target.artifactId ? { artifactId: target.artifactId } : {}) } : null,
-      delivery: response.delivery }
+    return { desktop: true, target: plugin ? { key: plugin.key, plugin } : target ? { key: target.key, sessionId: target.sessionId } : null,
+      delivery: response.delivery, sources: this.notifications?.catalog() ?? [], pluginProtocol: this.pluginSupported ? 1 : 0 }
   }
-  close() { this.closed = true; this.cancel(this.timer); this.items.clear(); this.titles.clear(); this.turns.clear(); this.delegated.clear(); this.goalRounds.clear(); this.studioSeen.clear(); this.studioRunning.clear() }
+  close() { this.closed = true; this.cancel(this.timer); this.items.clear(); this.titles.clear(); this.turns.clear(); this.delegated.clear(); this.goalRounds.clear() }
 }
 
 export function observeDesktopAttention(ctx, attention) {
@@ -181,19 +157,6 @@ export function observeDesktopAttention(ctx, attention) {
   })
   ctx.on('goal/changed', ({ agent, change }) => attention.goalChanged(String(agent.id), change.operation))
   ctx.on('user-questions/request', (request, next) => attention.question(request, next), { prepend: true })
-  let disposed = false, timer
-  const pollStudio = async () => {
-    try {
-      const service = ctx.get('knowledgeStudio'), registry = ctx.get('workspaceRegistry')
-      if (service && registry) for (const workspace of registry.list()) {
-        const { artifacts } = await service.listArtifacts(workspace.id)
-        if (disposed) return
-        attention.studio(String(workspace.id), artifacts)
-      }
-    } catch { /* A Studio fault is reported by Studio; no repeated notification errors. */ }
-    if (!disposed) timer = setTimeout(pollStudio, 3000)
-  }
-  void pollStudio()
   attention.changed()
-  ctx.effect(() => () => { disposed = true; clearTimeout(timer); attention.close() })
+  ctx.effect(() => () => attention.close())
 }
