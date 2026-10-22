@@ -1,4 +1,5 @@
 import { ANNOTATION_INSTRUCTIONS } from './prompt.js'
+import { parseAnnotations } from '../protocol.js'
 
 export const SENT_ANNOTATION = 'eduwork.annotation.sent'
 const OPEN = '<response-annotation>\n'
@@ -24,6 +25,16 @@ export const sentAnnotationRule = {
   id: SENT_ANNOTATION,
   order: 5,
   match(text, from) {
+    // Queue/Steer and clients without the optional Chat decoration seat still
+    // use native userText. Keep these surfaces readable through their existing
+    // node slot; the decorator removes these records before rendering its body.
+    const parsed = parseAnnotations(text)
+    const span = parsed?.spans.find(span => span.start >= from)
+    if (span) return { id: SENT_ANNOTATION, start: span.start, end: span.end, data: {
+      items: parsed.items.slice(span.first, span.first + span.count).map((item, offset) => ({
+        index: span.first + offset + 1, quote: item.text, note: item.comment ?? '',
+      })),
+    } }
     for (let open = text.indexOf(OPEN, from); open >= 0; open = text.indexOf(OPEN, open + OPEN.length)) {
       // The codec always writes one JSON line, with tag characters escaped.
       // Do not consume an arbitrary multiline document that happens to use tags.

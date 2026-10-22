@@ -6,9 +6,9 @@
 
 ## 安装
 
-在 EduWork 的「插件」页选择「添加插件」，填写 `@eduwork/dsh-annotation`，安装后启用。停用和卸载在同一页面完成。
+本包尚未发布 npm，当前不能按包名安装正式包。发布后，可在 EduWork 的「插件」页选择「添加插件」，填写 `@eduwork/dsh-annotation`，安装后启用。停用和卸载在同一页面完成。
 
-需要提供官方 Chat 视图与输入框扩展的 DSH 客户端（`>=0.2.1-rc.2 <0.3.0-0`）。已发送批注的气泡上方展示还需要 EduWork 的 `conversation.chat.user.decorate` 扩展入口；未提供该入口的客户端会显示原始消息文本。
+需要提供官方 Chat 视图与输入框扩展的 DSH 客户端（`>=0.2.1-rc.2 <0.3.0-0`）。已发送批注在气泡上方显示编号，需要 EduWork 的 `conversation.chat.user.decorate` 扩展入口；未提供该入口的客户端通过官方文本插槽显示引用卡片，仍可独立使用。排队等原生文本界面也使用卡片显示。
 
 ## 使用
 
@@ -44,6 +44,8 @@ node scripts/packages/manage.mjs check dsh-annotation
 
 发送时，引用 codec 生成带版本的中间片段，宿主 `agent/pre-step` 将同一条用户消息里的片段整理成一次固定 prompt、`<eduwork-response-annotations>` JSON 和问题正文。消息角色、ID、附件以及原生 Queue/Steer 流程保留。JSON 对 XML 边界和原生引用符号转义；摘录与前后文明确作为引用材料处理。重试不会重复包装。
 
-展示组件只投影消息文本，不删除持久化内容；编号、摘录、批注与上下文都从消息自身恢复。未知版本、损坏格式、代码示例保留原文。`src/protocol.js` 是发送与展示共用的协议实现。通用气泡装饰入口由 `scripts/patch-chat-user-content-runtime.mjs` 对锁定的 Runtime 副本适配，并写入构建回执；正文、附件与消息操作仍由原生组件负责。
+`agent/pre-step` 整理后的内容会由官方 Agent 写入会话历史，不是仅存在于临时模型请求中。展示组件只投影消息文本；编号、摘录、批注与上下文都从消息自身恢复，不维护第二套存储。未知版本、未知字段、损坏格式、代码示例保留原文，不静默删除额外数据。`src/protocol.js` 是发送与展示共用的协议实现；原生文本卡片沿用 `uiConversation.userText` 和 `conversation.user.text.node`，也兼容旧版测试消息。
+
+通用气泡装饰入口由 `scripts/patch-chat-user-content-runtime.mjs` 对锁定的 Runtime 副本适配，并写入构建回执。补丁不含批注业务逻辑，插件未启用时回到原生渲染；正文、附件与消息操作仍由原生组件负责。补丁严格核对包版本和文件 SHA-256，上游文件变化时停止装配，必须重新评估或移除适配，不能跳过检查。未加补丁的官方客户端使用上述卡片回退；上游提供等价扩展入口后应移除此补丁。
 
 许可证：MIT。

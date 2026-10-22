@@ -10,15 +10,17 @@ Each item contains text selected from an earlier assistant response and may incl
 
 const MAX_WIRE = 1024 * 1024
 const json = value => JSON.stringify(value).replace(/[<>&@\u2028\u2029]/gu, ch => `\\u${ch.charCodeAt(0).toString(16).padStart(4, '0')}`)
+const record = (value, keys) => value !== null && typeof value === 'object' && !Array.isArray(value)
+  && Object.keys(value).every(key => keys.includes(key))
 
 function item(value) {
-  if (!value || typeof value.text !== 'string' || value.text.trim() === '') return undefined
+  if (!record(value, ['text', 'comment', 'source', 'context']) || typeof value.text !== 'string' || value.text.trim() === '') return undefined
   if (value.comment !== undefined && typeof value.comment !== 'string') return undefined
   const source = value.source
-  if (source !== undefined && (!source || typeof source.sessionId !== 'string' || !source.sessionId
+  if (source !== undefined && (!record(source, ['sessionId', 'messageId']) || typeof source.sessionId !== 'string' || !source.sessionId
     || typeof source.messageId !== 'string' || !source.messageId)) return undefined
   const context = value.context
-  if (context !== undefined && (!context || typeof context.before !== 'string' || typeof context.after !== 'string'
+  if (context !== undefined && (!record(context, ['before', 'after']) || typeof context.before !== 'string' || typeof context.after !== 'string'
     || context.before.length > 320 || context.after.length > 320)) return undefined
   return { text: value.text, ...(value.comment ? { comment: value.comment } : {}),
     ...(source ? { source: { sessionId: source.sessionId, messageId: source.messageId } } : {}),
@@ -60,7 +62,9 @@ function codeRanges(text) {
 }
 
 // Unknown versions, damaged envelopes and ordinary code samples stay visible.
-export function projectAnnotations(text) {
+// Spans let native text-only surfaces render notes without taking ownership of
+// ordinary text or file references. The Chat decorator uses the same parser.
+export function parseAnnotations(text) {
   if (typeof text !== 'string' || text.length > MAX_WIRE * 4) return undefined
   try {
     if (text.startsWith(START)) {
@@ -69,19 +73,19 @@ export function projectAnnotations(text) {
       const end = text.indexOf(`\n${CLOSE}\n${END}`, prefix.length)
       if (end < 0) return undefined
       const value = JSON.parse(text.slice(prefix.length, end))
-      if (value?.version !== 1 || !Array.isArray(value.items) || !value.items.length) return undefined
+      if (!record(value, ['version', 'items']) || value.version !== 1 || !Array.isArray(value.items) || !value.items.length) return undefined
       const items = value.items.map(item)
       if (items.some(value => !value)) return undefined
       const tail = text.slice(end + `\n${CLOSE}\n${END}`.length)
       if (tail && !tail.startsWith('\n\n')) return undefined
-      return { items, body: tail.slice(2), mode: 'envelope' }
+      return { items, body: tail.slice(2), mode: 'envelope', spans: [{ start: 0, end: end + `\n${CLOSE}\n${END}`.length, first: 0, count: items.length }] }
     }
     // Payload strings can contain Markdown backticks; do not let quoted source
     // change the Markdown state of a later reference in the same message.
     const masked = text.replace(/<eduwork-annotation-ref-v1>[\s\S]*?<\/eduwork-annotation-ref-v1>/g,
       match => match.replace(/[^\n]/g, ' '))
     const protectedRanges = codeRanges(masked)
-    const items = [], pieces = []
+    const items = [], pieces = [], spans = []
     let cursor = 0, scan = 0
     while (true) {
       const start = text.indexOf(REF_OPEN, scan)
@@ -92,13 +96,21 @@ export function projectAnnotations(text) {
       if (end < 0) return undefined
       const value = item(JSON.parse(text.slice(scan, end)))
       if (!value) return undefined
+      spans.push({ start, end: end + REF_CLOSE.length, first: items.length, count: 1 })
       items.push(value); pieces.push(text.slice(cursor, start))
       cursor = end + REF_CLOSE.length; scan = cursor
     }
     if (!items.length) return undefined
     pieces.push(text.slice(cursor))
-    return { items, body: pieces.join('').trim(), mode: 'fragments' }
+    return { items, body: pieces.join('').trim(), mode: 'fragments', spans }
   } catch { return undefined }
+}
+
+export function projectAnnotations(text) {
+  const parsed = parseAnnotations(text)
+  if (!parsed) return undefined
+  const { items, body, mode } = parsed
+  return { items, body, mode }
 }
 
 export function prepareMessage(message) {

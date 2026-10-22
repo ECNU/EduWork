@@ -6,9 +6,9 @@
 
 ## Installation
 
-On the EduWork Plugins page, choose “Add plugin”, enter `@eduwork/dsh-annotation`, install and enable it. Disable or remove it on the same page.
+This package has not been published to npm yet and cannot currently be installed by name as a released package. Once published, choose “Add plugin” on the EduWork Plugins page, enter `@eduwork/dsh-annotation`, install and enable it. Disable or remove it on the same page.
 
-Requires a DSH client providing the official Chat view and composer extensions (`>=0.2.1-rc.2 <0.3.0-0`). Sent annotations above the bubble also require EduWork's `conversation.chat.user.decorate` extension seat; clients without it display the original message text.
+Requires a DSH client providing the official Chat view and composer extensions (`>=0.2.1-rc.2 <0.3.0-0`). Numbered buttons above sent bubbles require EduWork's `conversation.chat.user.decorate` extension seat. Clients without it independently render quote cards through official user-text slots; native text surfaces such as queued messages also use these cards.
 
 ## Usage
 
@@ -44,6 +44,8 @@ Selection reads the official Chat row's `data-chat-node-key` to identify its mes
 
 On submission, the reference codec emits versioned intermediate fragments. The host's `agent/pre-step` hook gathers them within each user message into one fixed prompt, `<eduwork-response-annotations>` JSON, and the question body. Role, message ID, attachments, and native Queue/Steer behavior are preserved. JSON escapes XML boundaries and native reference symbols; selections and context are explicitly quoted source material. Retries do not wrap an envelope twice.
 
-The renderer projects message text without deleting persisted content. Numbers, quotes, notes, and context are restored from the message itself. Unknown versions, malformed data, and code examples remain visible. `src/protocol.js` implements the shared send/display protocol. `scripts/patch-chat-user-content-runtime.mjs` adds a generic decoration seat to a copy of the pinned Runtime and records the patch in the build receipt. Native components still own body text, attachments, and message actions.
+The official Agent persists the content returned by `agent/pre-step` in conversation history; it is not confined to a temporary model request. The renderer projects message text, restoring numbers, quotes, notes, and context from the message itself without a second store. Unknown versions, unknown fields, malformed data, and code examples remain visible instead of silently dropping data. `src/protocol.js` implements the shared send/display protocol. Native text cards use `uiConversation.userText` and `conversation.user.text.node`, retaining compatibility with older test messages.
+
+`scripts/patch-chat-user-content-runtime.mjs` adds a generic decoration seat to a copy of the pinned Runtime and records the patch in the build receipt. It contains no annotation logic and falls back to native rendering when the plugin is disabled; native components retain ownership of body text, attachments, and message actions. The patch verifies the package version and file SHA-256. Upstream changes stop assembly and require re-evaluation or removal rather than bypassing verification. Unpatched official clients use the card fallback above. Retire this patch when upstream provides an equivalent extension seat.
 
 License: MIT.

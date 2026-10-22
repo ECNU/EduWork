@@ -1,4 +1,4 @@
-import React, { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { projectAnnotations } from '../protocol.js'
 import { place } from './position.js'
@@ -21,19 +21,26 @@ function Detail({ item, number, anchor, t, onClose, onEnter, onLeave }) {
     update()
     const observer = new ResizeObserver(update)
     observer.observe(ref.current)
+    const visibility = new IntersectionObserver(entries => { if (!entries[0]?.isIntersecting) onClose() })
+    visibility.observe(anchor)
     const outside = event => { if (!ref.current?.contains(event.target) && !anchor.contains(event.target)) onClose() }
     const key = event => { if (event.key === 'Escape') { event.preventDefault(); onClose() } }
     const scroll = event => { if (!ref.current?.contains(event.target)) update() }
     document.addEventListener('pointerdown', outside, true)
+    document.addEventListener('focusin', outside, true)
     document.addEventListener('keydown', key)
     document.addEventListener('scroll', scroll, true)
     window.addEventListener('resize', update)
+    window.addEventListener('blur', onClose)
     return () => {
       observer.disconnect()
+      visibility.disconnect()
       document.removeEventListener('pointerdown', outside, true)
+      document.removeEventListener('focusin', outside, true)
       document.removeEventListener('keydown', key)
       document.removeEventListener('scroll', scroll, true)
       window.removeEventListener('resize', update)
+      window.removeEventListener('blur', onClose)
     }
   }, [anchor, onClose])
   return createPortal(h('div', {
@@ -55,7 +62,7 @@ function Detail({ item, number, anchor, t, onClose, onEnter, onLeave }) {
 
 // The owner keeps attachments, bubble, native text rendering and actions.
 export function AnnotatedContent({ content, renderContent, t }) {
-  const projection = projectAnnotations(content.text)
+  const projection = useMemo(() => projectAnnotations(content.text), [content.text])
   const [active, setActive] = useState(null)
   const timer = useRef(null)
   const close = useRef(() => setActive(null)).current
@@ -70,7 +77,7 @@ export function AnnotatedContent({ content, renderContent, t }) {
       style: { display: 'flex', justifyContent: 'flex-end', alignItems: 'center', flexWrap: 'wrap', gap: 6, color: secondary, fontSize: 13 } },
     h('span', { style: { marginRight: 2 } }, t('number')),
     ...projection.items.map((item, index) => h('button', {
-      key: index, type: 'button', 'aria-label': `${t('number')} ${index + 1}`, 'aria-expanded': active?.index === index,
+      key: index, type: 'button', 'aria-label': `${t('number')} ${index + 1}`, 'aria-expanded': active?.index === index, 'aria-haspopup': 'dialog',
       onMouseEnter: event => { cancel(); setActive({ index, anchor: event.currentTarget }) },
       onFocus: event => { cancel(); setActive({ index, anchor: event.currentTarget }) },
       onClick: event => { cancel(); setActive({ index, anchor: event.currentTarget }) },

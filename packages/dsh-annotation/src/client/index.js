@@ -68,6 +68,13 @@ function SentAnnotation({ node, interactive, t }) {
   note === '' ? null : h('span', { 'data-annotation-note': '', style: { display: 'block', marginTop: 8, whiteSpace: 'pre-wrap' } }, note))
 }
 
+function SentAnnotations(props) {
+  const items = props.node.data.items
+  return items ? h(React.Fragment, null, ...items.map(item => h(SentAnnotation, {
+    ...props, key: item.index, node: { ...props.node, data: item },
+  }))) : h(SentAnnotation, props)
+}
+
 function createPreviews() {
   const values = new Map()
   const locked = new Set()
@@ -340,7 +347,7 @@ export function apply(ctx) {
     scope.effect(() => scope.uiConversation.userText.register(sentAnnotationRule), 'annotation: sent text projection')
     scope.slots.inject('conversation.user.text.node', () => scope.slots.register({
       name: 'conversation.user.text.node', key: SENT_ANNOTATION, priority: 100, locale: NS,
-    }, SentAnnotation))
+    }, SentAnnotations))
   })
   ctx.inject(['inputTriggers', 'slots', 'sessions'], (scope) => {
     // Codec-only source: the official submit path serializes our chips, and
