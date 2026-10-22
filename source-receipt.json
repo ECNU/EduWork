@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T05:51:24.936Z",
-  "fileSetSHA256": "b6973a69bc68ced62d9f13950d86c6fd0107ebf0f74ebe3dc5fbaa43b0dcbeeb",
+  "createdAt": "2026-10-22T09:27:33.462Z",
+  "fileSetSHA256": "d239fcb2c7027bcc9829134bee664a23f63d0deba577b88d89799a8dff02fae1",
   "files": [
     {
       "path": ".gitattributes",
@@ -185,19 +185,19 @@
     },
     {
       "path": "config/desktop/eduwork.jsonc",
-      "sha256": "6a21e14499516e1fe9d4ac528e6558ba5cf6cba00931072ee76faf9c93251d5a"
+      "sha256": "4c215d97587f1e3df175ed9ffa64cd2cb45c19cfb66752c9af3f7c903562daf5"
     },
     {
       "path": "config/desktop/examples/litellm.jsonc",
-      "sha256": "8cf83aee22aa17b754eae2fd0a0d775d98831a6c32bbd7c28c070e895b67e145"
+      "sha256": "8feb4b86455b76dc200bc4a62612c1c2cd837cbff50575493e565441390f1698"
     },
     {
       "path": "config/desktop/examples/media.jsonc",
-      "sha256": "968e6f22abcebebf8cf3e6e1350ba0f6691ab8093d6579b541e84724ee4c37bf"
+      "sha256": "79961b3008b55ca9637ca7c93f07dc8f07b4be708d23882dbae97b29c8edf707"
     },
     {
       "path": "config/desktop/examples/organization.jsonc",
-      "sha256": "40558015ea5c4ca424915e2ebd7ffcc2f315ec084c7224c8d9a29cc1e408f878"
+      "sha256": "2ac204cac29f0be10e36091196c0c463b6f4636330220228f1237b4c472c3797"
     },
     {
       "path": "config/desktop/examples/README_EN.md",
@@ -209,7 +209,7 @@
     },
     {
       "path": "config/desktop/examples/updates.jsonc",
-      "sha256": "47b74abb16b89b82c75dd73e24a62952b1e1aa9e5fe816c2e50bb0514f0fcc30"
+      "sha256": "54c8f17d2eff19f1bfc738ef6c91af589a9dd42c1e56d7bfe5ec1249dc7202a3"
     },
     {
       "path": "config/desktop/mac-updates.json",
@@ -253,11 +253,11 @@
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
-      "sha256": "f7102d1840d9966414bddab8958f5a35f0a9a5ffb526b320065fa82ecc1ca667"
+      "sha256": "bef51ab2e6998df2d634ede45626f122d9f3aabec6979e396c3e90208aa904e4"
     },
     {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "791766bbffb459163af33c97120488c08c473b9d73f240b5353a30484683d535"
+      "sha256": "f02d04579e597495539ca41ed54d3fa40d4c592561c6ad1837f9ecaf4bb9d640"
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
@@ -1509,7 +1509,7 @@
     },
     {
       "path": "dsh-host/configuration-reference.mjs",
-      "sha256": "4d93c52dcdcffda7a989b98121a9ac0a890049d7568b8c92f6c79ffac45e65d8"
+      "sha256": "5c555ae4897a51b7f41c15fca3c8e4f4d648e1e4d449812469f608150b31986e"
     },
     {
       "path": "dsh-host/content-update-protocol.mjs",
@@ -1625,7 +1625,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "555d87132d844275e774ad67a35c3c0da94dc3dadbd32e1508a3ee75b8a8e87a"
+      "sha256": "8638a1afdaeea0c55a8b6727af277910bd94df87cbc18de746af185d530625bf"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
@@ -1689,7 +1689,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "3f8636cc6a1b5e74a34a9a86f3d58f1fa253daa33d0455b8459648ba58fb3df1"
+      "sha256": "7d41c8d57e18a9b780de8cba9829768c5a810b28958643cb5f668e9e84755ef6"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
@@ -1709,7 +1709,7 @@
     },
     {
       "path": "dsh-host/test/user-config.test.mjs",
-      "sha256": "beec0a4b2cfcb26125694f53e3c64ddddcfae02913d1eb8afd9852d4a49712df"
+      "sha256": "766d51641e6158f0ea4323a2fa7dc91d7792b16af204a7f1b1e0aba6a3997501"
     },
     {
       "path": "dsh-host/test/wails-migration.test.mjs",
@@ -1725,7 +1725,7 @@
     },
     {
       "path": "dsh-host/user-config.mjs",
-      "sha256": "11840698910190639ab065370661a12bb3875476523271d15e675062d74648e3"
+      "sha256": "2466b542631c4816b931dd3c4af4b1da7719ac6890a9fd4ff1394be6732a246b"
     },
     {
       "path": "dsh-host/vendor/jsonc-parser/LICENSE.md",
@@ -6133,7 +6133,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/oidc-llm.test.js",
-      "sha256": "0fa482c5ab7ccfd9bed27553cebdc96f37f5675719093edbc620e59203655a9e"
+      "sha256": "780ea01cae9e507dfe4fef5e042ee6c28e98b91c4f00eadcb870b48611027afe"
     },
     {
       "path": "packages/dsh-oidc/test/oidc.test.js",
@@ -6193,7 +6193,7 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/PROTOCOL.md",
-      "sha256": "2ef2c8ba548bcae7c0441487dc0846b3d2ee64ac6e0a984331a6d499e3557b2f"
+      "sha256": "49af8c18044e85dd51c1ceb5502d48d444c665667a0218c4417e0103cbd1ae67"
     },
     {
       "path": "packages/dsh-remote-access/LICENSE",
@@ -6209,11 +6209,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "0e4c0c0a39e2f7fa04d51c63ea333e8de1c6e3fed86934a271734fda598ec07d"
+      "sha256": "84e15405a1dc947f960e0f90799f0679eac971d4565d9fa0c4d4a424c50078d2"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "e278753fe558527263980b3839f55e95f6f2724464c251fcadcc829f6a2f39a2"
+      "sha256": "32b38933f6faca2c5cfc28e257601341009cb30868fa5604c3c5db5e8681fece"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",
@@ -6221,15 +6221,15 @@
     },
     {
       "path": "packages/dsh-remote-access/scripts/check-web.ts",
-      "sha256": "13533dec3b54ab5445e85195b339fd29af3ec147d2deeed860bac54ea6daee94"
+      "sha256": "ca0c133da7df8aa10d41d64556ac0b9be1f7606a82c3d439ea62c098bb923e64"
     },
     {
       "path": "packages/dsh-remote-access/src/client/index.tsx",
-      "sha256": "5cc47b71f8db8855fcdb97df6d65ee4a424a0369b422657ba81c4b200db22b6f"
+      "sha256": "a263c5626c8bce7f66fd3a18559afc865b8e7f90fecf60018e179c2291c390f7"
     },
     {
       "path": "packages/dsh-remote-access/src/client/locale.ts",
-      "sha256": "b915272090288fa433a620ec6a4e2a2e886124c76469560bd55cbde8fe9a7abb"
+      "sha256": "474264096e32f819a723ccc2e70d34f99b9bf17d87af7e11fdefacaf6615a951"
     },
     {
       "path": "packages/dsh-remote-access/src/client/phone.tsx",
@@ -6265,11 +6265,11 @@
     },
     {
       "path": "packages/dsh-remote-access/src/plugin.ts",
-      "sha256": "5fe6cd15e85bcd97f471340ef42c12a80477f57d0a1667075f59437244c88eb3"
+      "sha256": "b9b5034f6ef95b11234fce87b71907f41b0117592f237a76e1e11a1ad891eb77"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/auth.ts",
-      "sha256": "4d5417db54e0e3545d2a323a64bd0b695279305c526e82f2b3c9b31df2651ed7"
+      "sha256": "465e6c08dfa14cb9de02a20124c12727102faada4a35d74f310f2106a2bc3555"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/body.ts",
@@ -6305,7 +6305,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/relay.ts",
-      "sha256": "5796b4a1ebf2891a3b16a01b1066a0b29e13c428f1f2f71f8eea16f0f276d93c"
+      "sha256": "387c2ed3250c3699df259f321b96b08f0b57a0a91322e51c482ca71cb5fb319e"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/tunnel.ts",
@@ -6313,11 +6313,11 @@
     },
     {
       "path": "packages/dsh-remote-access/src/relay-link/link.ts",
-      "sha256": "a08b2a4090d109cdc1f3ed9790c664a92dbb41c413e8e3273975bc179309c876"
+      "sha256": "308ebd180545f8f220b9c780d43db27fc6250bd2670a9ed7323482e430562d46"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/id-token.ts",
-      "sha256": "8f44024fa7470b3d77f65a17a0e62b61336e5d91e4eb577fab296de5bc028830"
+      "sha256": "d3f71c96a1ab4f28862592c0fe5d646957071c978c31ee910338ae3b895f5a9f"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/limits.ts",
@@ -6325,19 +6325,19 @@
     },
     {
       "path": "packages/dsh-remote-access/src/relay/main.ts",
-      "sha256": "be7eb03d5802c77995dc606fbbe82f61868397672bf978f800eaa892423b27c7"
+      "sha256": "d205211bfdcc670ffcb3d28a76af0398ac6dfc654a552119f57d7d44dcf2a0d8"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/relay.ts",
-      "sha256": "cbfd560df41948fb05140d91d80a1b08a292914978be8a5864d81c3d4029c4e9"
+      "sha256": "632eca572b72c6e6cee97225cdfaac5b4d4dc5dd32a272d771a599ec69f2453e"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/web.ts",
-      "sha256": "360092b59b57f67e717c31d43eb396ceed557421960ff8da8212c21cde29d22d"
+      "sha256": "48f0af2c0b75273682eb22cc5937fbbfa2741c3a358e52eb87572ba64ed7ee3b"
     },
     {
       "path": "packages/dsh-remote-access/src/remote-access.ts",
-      "sha256": "bf79d3a16571685b871ce978cf6830f44384a7c3b0af9f4a2d1aadfccf22d7cc"
+      "sha256": "7d14c809f08fb19f5f7fe26dbdd4ae88c8b06d9e0a57d014f7b8bec26187c595"
     },
     {
       "path": "packages/dsh-remote-access/src/typert.ts",
@@ -6345,19 +6345,19 @@
     },
     {
       "path": "packages/dsh-remote-access/src/web/bridge.ts",
-      "sha256": "5e27e9ff65d96f972fddb359a827e66ff249f9befa3b22af106b650b37c45d34"
+      "sha256": "2d3448162b5b44f7c48e4cc809baff4f1ffe0157334e49683c063b60a0cac2b8"
     },
     {
       "path": "packages/dsh-remote-access/src/web/connection.ts",
-      "sha256": "243ac4d1bcb4181d7f8b6ff76b3305afade55142aa84fc2a287f6272688f3400"
+      "sha256": "fa252564059d9c18a108db1da45b76b253913c2b70a1f6a5edc4fcce93f78774"
     },
     {
       "path": "packages/dsh-remote-access/src/web/hosts.ts",
-      "sha256": "f248bcb007cff5d3409dbcfbd6fded8cd117b157868780af6d6f5d4c816de517"
+      "sha256": "602492bf1af31b185dcfc638d1745709a5a5303922cc8878daa74dc985786afd"
     },
     {
       "path": "packages/dsh-remote-access/src/web/loader.ts",
-      "sha256": "d294e0e840810b63208e4d76d3dffe0cdbf9bd7cd46b73050fde9e494ef0bc04"
+      "sha256": "036accb0430442dfecbc7bdd4efc9964dfcd9f563db641a50e4e758f58a5f516"
     },
     {
       "path": "packages/dsh-remote-access/src/web/preamble.ts",
@@ -6373,7 +6373,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/web/static/index.html",
-      "sha256": "f6f7df141ce52f013ee1f9e4e3d57c99f810a382c34847292acd18f6a7395f34"
+      "sha256": "52cc584f4059bbe200a52300d24f0bb4c6f3f9e7079dec458777322ad82e3780"
     },
     {
       "path": "packages/dsh-remote-access/src/web/static/loader.css",
@@ -6381,15 +6381,15 @@
     },
     {
       "path": "packages/dsh-remote-access/src/web/static/manifest.webmanifest",
-      "sha256": "2acff09bcf7a55f36056ba9dffb441ab20ff3d05355a6b54151d411e450527c8"
+      "sha256": "944b71d8b60ca6dfdd63b7d78514ad1a812e59d5b0aef8d6e41f438c0f7a6691"
     },
     {
       "path": "packages/dsh-remote-access/src/web/sw.ts",
-      "sha256": "177dda26e6f4be85ce7817ca2abcc45b97ee193f38c36980d15e3f4a862365a0"
+      "sha256": "a8a660cee123a8011a3055e6d107ca4f63d18a75e970e24e73bf7f6a9b344e15"
     },
     {
       "path": "packages/dsh-remote-access/src/web/text.ts",
-      "sha256": "fc02808046511394b078ae05a4ded2f88df67d4bced07a03624cd4f03de9e510"
+      "sha256": "a040a3f0cb46602c5689634892a81d3eb0781c42cc6304b1757bdd6cf9d8a8ed"
     },
     {
       "path": "packages/dsh-remote-access/test/connections/compression.test.ts",
@@ -6413,15 +6413,15 @@
     },
     {
       "path": "packages/dsh-remote-access/test/loopback.ts",
-      "sha256": "cbfb9be802d70edfa13f63b4e31befb332570db67bd937935bf46928e764d5b7"
+      "sha256": "b6eee0656c0f64bd565ee274c2a9d7840bcfe370465804ef1675a6d38bcbe8b1"
     },
     {
       "path": "packages/dsh-remote-access/test/plugin.test.ts",
-      "sha256": "446dcd33900af79c6efc0c0e19e0e1826c7999157af158134b8257709b76a058"
+      "sha256": "fa10e2bb7300fb25630713d8723575394d9bde60da73dbd8e34d319e85bf8a2b"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/auth.test.ts",
-      "sha256": "02faa254d028e3941e8fcae639cd78528bff95ba09be87d4b9c937561fab8f1f"
+      "sha256": "1cf8b53f0fdd165e140ac93c8a8dcb041ea7bb940c57e54ee043ad21701f8e6f"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/channel.test.ts",
@@ -6433,7 +6433,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/relay.test.ts",
-      "sha256": "6441df424fcd80714d363541208f80ac3abfdfed518d61b35fbfa35f51e0379d"
+      "sha256": "ddf3f972a9c8ae7ada4d55f2702fcba2f1cef71d55c0316e9e22a33d10336b8b"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/tunnel.test.ts",
@@ -6441,19 +6441,19 @@
     },
     {
       "path": "packages/dsh-remote-access/test/relay-link.test.ts",
-      "sha256": "88e4fab22996aefbfcfae12e8ad7347c5a133723ecc14ddb8875defc6e9fcdf2"
+      "sha256": "d9c45ee15a72e22171bb7f4bb0c7c52472bd404c97c252126adbebeb47741a41"
     },
     {
       "path": "packages/dsh-remote-access/test/relay/id-token.test.ts",
-      "sha256": "a0298688990880708899692ce7b0f13c121d38fd12b2a40f35e82ae7fb39b7db"
+      "sha256": "cbc427094ab158e07e25dd39fa698240b4b5c988074b319a24436df80ad4bddc"
     },
     {
       "path": "packages/dsh-remote-access/test/relay/relay.test.ts",
-      "sha256": "828f7d87ce88e4dc621130d04e15f3f49a979fc32f0c1db817fd5a35be6a21aa"
+      "sha256": "b44604eea0fe23af7de3227b757f3a0e6080c032fe99ba5c610cbbe124f22e21"
     },
     {
       "path": "packages/dsh-remote-access/test/relay/web.test.ts",
-      "sha256": "a619f4234efa7e144737975a5a77475077c376fd081431b477964fe5a2bda777"
+      "sha256": "325354d59f3f4e11a4c19f2d8e1250213ea808fa61e59a84334efaceb4a14f16"
     },
     {
       "path": "packages/dsh-remote-access/test/remote-access.test.ts",
