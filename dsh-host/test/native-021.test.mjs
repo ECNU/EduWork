@@ -6,6 +6,13 @@ import { tmpdir } from 'node:os'
 import { writeNativeProfile } from '../native-profile.mjs'
 import { qualifiedDesktopBaseline } from '../dsh-compatibility.mjs'
 import { pinnedDshContract, verifyPinnedDshReceipt } from '../../scripts/pinned-dsh-contract.mjs'
+import { adaptNativeHostEntry } from '../prepare-native.mjs'
+
+const upstream = process.env.EDUWORK_TEST_UPSTREAM
+const hostEntry = 'apps/desktop-host/src/index.ts'
+// Reviewed: this upstream entry binds 127.0.0.1 with an ephemeral port. An
+// earlier upstream change once went back to a fixed --port 19387.
+const reviewedHostEntry = '1f61890c63da8898cef678479450d7647163530c416751d161dde6b397c654d3'
 
 test('selected Runtime remains bound to both its version and source commit', () => {
   const receipt = { dshVersion: '0.2.1-rc.3', dshCommit: '1f81c047fc48fa190a683e469daa699857e9afe8' }
@@ -41,4 +48,16 @@ test('upgrade retires the Schedule bundle while preserving preferences, tasks an
   assert.equal(await readFile(join(home, 'schedule.json'), 'utf8'), tasks)
   await writeNativeProfile(options)
   assert.equal(await readFile(join(profile, 'package.json'), 'utf8'), first)
+})
+
+test('the pinned Host entry is the reviewed loopback, ephemeral-port revision', async () => {
+  const inputs = JSON.parse(await readFile(new URL('../upstream-inputs-pinned-source.json', import.meta.url), 'utf8'))
+  assert.equal(inputs[hostEntry], reviewedHostEntry, 'recheck the Host listen address and port before updating this hash')
+})
+
+test('the adapted Host entry listens only on 127.0.0.1 with port 0', { skip: !upstream }, async () => {
+  const adapted = adaptNativeHostEntry(await readFile(join(upstream, hostEntry), 'utf8'))
+  const args = adapted.match(/args: (\[[^\]]*'--port'[^\]]*\])/)?.[1]
+  assert.deepEqual(JSON.parse(args.replaceAll("'", '"')), ['--no-open', '--host', '127.0.0.1', '--port', '0'])
+  assert.doesNotMatch(adapted, /19387|0\.0\.0\.0|'::'/)
 })

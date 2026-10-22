@@ -4,7 +4,7 @@ import { createDesktopPet } from './desktop-pet.mjs'
 import { removeWindowMenu } from './desktop-menu.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
-import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
+import { readFile, writeFile, access, mkdir, stat, rename } from 'node:fs/promises'
 import { join, isAbsolute, dirname } from 'node:path'
 import { execFile } from 'node:child_process'
 import { createRequire } from 'node:module'
@@ -312,7 +312,9 @@ async function prepareDesktop() {
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
-  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
+  const startRecord = join(paths.logs, 'desktop-start.json'), startTemporary = `${startRecord}.${process.pid}.tmp`
+  await writeFile(startTemporary, JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2)), { mode: 0o600 })
+  await rename(startTemporary, startRecord)
   lifecycle.check()
   return { profile: prepared.profile, node: paths.node }
 }
