@@ -131,6 +131,7 @@ export class Relay {
   #host(ws: WebSocket, address: string): void {
     const nonce = base64url(randomBytes(32))
     const deadline = setTimeout(() => ws.close(Close.timeout, 'registration timed out'), this.#options.timeoutMs)
+    ws.on('close', () => clearTimeout(deadline))
     send(ws, { t: 'challenge', nonce })
     ws.once('message', async (data, isBinary) => {
       clearTimeout(deadline)
@@ -229,6 +230,7 @@ export class Relay {
 
   #accept(ws: WebSocket): void {
     const deadline = setTimeout(() => ws.close(Close.timeout, 'accept timed out'), this.#options.timeoutMs)
+    ws.on('close', () => clearTimeout(deadline))
     ws.once('message', (data, isBinary) => {
       clearTimeout(deadline)
       const message = control(data, isBinary)

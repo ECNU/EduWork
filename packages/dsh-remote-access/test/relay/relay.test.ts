@@ -290,6 +290,22 @@ test('a malformed frame ends only the connection that sent it', async () => {
   stop()
 })
 
+test('a connection that goes before registering or accepting leaves no timer behind', async () => {
+  const { base, stop } = await startRelay({ timeoutMs: 60_000 })
+  const timers = (): number => process.getActiveResourcesInfo().filter(resource => resource === 'Timeout').length
+  const before = timers()
+  for (const path of [RELAY_PATHS.host, RELAY_PATHS.accept]) {
+    const peer = new Peer(base + path)
+    await new Promise(resolve => peer.socket.once('open', resolve))
+    peer.socket.close()
+    await peer.closed
+  }
+  // The relay sees the close a moment after the client does.
+  await new Promise(resolve => setTimeout(resolve, 100))
+  assert.ok(timers() <= before)
+  stop()
+})
+
 test('connections end with the credential that admitted their Host, unless it registered again in time', async () => {
   const { base, stop } = await startRelay({ idTokens: issuer })
   const [lapsing, renewed, dropped] = [await identity(), await identity(), await identity()]
