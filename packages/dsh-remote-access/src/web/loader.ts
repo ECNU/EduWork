@@ -120,6 +120,7 @@ function showPairingForm(link: PairingLink): void {
     h('h1', { textContent: text.pairTitle }),
     h('label', {}, text.deviceName, name),
     note(text.deviceNameHint),
+    note(text.pairOwn),
     h('button', { className: 'primary', textContent: text.pairGo, onclick: () => void start() }),
   )
 }
