@@ -64,7 +64,7 @@ jobs:
           persist-credentials: false
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Check shared update coordination
         run: node --test scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs dsh-electron/tests/window-visibility.test.mjs dsh-electron/tests/create-macos-archive.test.mjs dsh-electron/tests/desktop-exit.test.mjs dsh-electron/tests/quit-confirmation.test.mjs dsh-host/test/quit-inspection.test.mjs
       - name: Prepare the pinned Electron test runtime

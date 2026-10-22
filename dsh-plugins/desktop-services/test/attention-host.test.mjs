@@ -13,6 +13,7 @@ test('real Cordis session events and authenticated desktop bridge preserve pendi
   const [{ Context, Service }, { default: Settings }, { default: Sessions }] = await Promise.all([load('@deepseek-ai/cordis'), load('@deepseek-ai/dsh-settings'), load('@deepseek-ai/dsh-session')])
   const hook = registerHooks({ resolve(name, context, next) { return next(name, name.startsWith('@deepseek-ai/') ? { ...context, parentURL: pathToFileURL(join(runtime, 'package.json')).href } : context) } })
   const { default: Desktop } = await import('../lib/index.js')
+  const { default: Notifications } = await import('../../notifications/lib/index.js')
   hook.deregister()
   const shell = new TaskNotifications({ foreground: () => false, show() {}, publish() {}, dismiss() {}, changed() {} })
   let bridgeUnavailable = true
@@ -31,6 +32,7 @@ test('real Cordis session events and authenticated desktop bridge preserve pendi
   const boundary = new Service(ctx, 'desktopBoundary'); boundary.ready = Promise.resolve(bridge.bootstrap)
   new Sessions(ctx)
   const agents = new Service(ctx, 'agents'); agents.roots = () => [{ id: 'fixture' }]
+  agents.get = () => undefined
   const nativeSettings = typeof Settings.prototype.register !== 'function'
   if (nativeSettings) {
     // Native forms belong to Loader; this test supplies its presentation seam.
@@ -38,6 +40,7 @@ test('real Cordis session events and authenticated desktop bridge preserve pendi
     const presentation = new Service(ctx, 'settings')
     presentation.configure = () => () => {}
   } else await ctx.plugin(MemorySettings)
+  const notificationPlugin = await ctx.plugin(Notifications, { events: {} })
   const preferences = { ...notificationDefaults, preview: !nativeSettings }
   await ctx.plugin(Desktop, nativeSettings
     ? preferences
@@ -49,7 +52,10 @@ test('real Cordis session events and authenticated desktop bridge preserve pendi
     await ctx.settings.update('eduwork-notifications', { preview: false })
     assert.equal(ctx.settings.get('eduwork-notifications').preview, false)
   }
-  await assert.rejects(service.calendarReminder({ id: 'd'.repeat(64), title: 'Unavailable' }), /暂时不可用/)
+  const notices = ctx.notifications.register(ctx, { version: 1, source: 'fixture', label: 'Fixture',
+    events: [{ id: 'reminder', label: 'Reminder', level: 'info', requiresAction: false, actions: ['open'] }], onAction: ({ target }) => target })
+  const publish = id => notices.publish({ id, event: 'reminder', title: 'Reminder', target: { id } })
+  await assert.rejects(publish('unavailable'), /unavailable/)
   bridgeUnavailable = false
   const session = ctx.sessions.create('fixture')
   session.append('turn/start', { turn: 0 })
@@ -68,21 +74,27 @@ test('real Cordis session events and authenticated desktop bridge preserve pendi
   assert.equal((await call({ action: 'view', sessionId: '' }, { origin: 'dsh-app://app', authorization: 'Bearer ' + token })).status, 403)
   assert.equal((await call({ action: 'view', sessionId: '' }, {})).status, 403)
   assert.equal((await call({ action: 'execute', command: 'bad' }, { authorization: 'Bearer ' + token })).status, 400)
-  const id = 'c'.repeat(64)
-  await service.calendarReminder({ id, title: '上课提醒' })
-  assert.equal(shell.items.get('calendar:' + id).kind, 'calendar')
-  await service.dismissCalendarReminder(id)
-  assert.equal(shell.items.has('calendar:' + id), false)
-  // An older shell does not advertise calendar support. Do not send it unknown
-  // rows: that would reject the entire snapshot, including approval notices.
+  const { key } = await publish('one')
+  assert.equal(shell.items.get(key).kind, 'plugin')
+  notices.withdraw('one'); await service.attention.flush()
+  assert.equal(shell.items.has(key), false)
   const nativeBridge = service.notificationBridge.bind(service)
-  service.notificationBridge = async body => { const result = await nativeBridge(body); delete result.calendarReminders; return result }
+  service.notificationBridge = async body => { const result = await nativeBridge(body); delete result.pluginNotifications; return result }
   await service.attention.flush()
-  await assert.rejects(service.calendarReminder({ id, title: 'Unsupported' }), /尚不支持/)
+  await assert.rejects(publish('unsupported'), /does not support/)
   service.attention.put({ key: 'still-works', kind: 'approval', sessionId: 'fixture', title: '' })
   await service.attention.flush()
   assert.equal(shell.items.get('still-works').kind, 'approval')
-  assert.equal(shell.items.has('calendar:' + id), false)
+  await notificationPlugin.dispose()
+  assert.ok(ctx.desktopServices.attention === service.attention, 'disabling plugin notices must not recreate the core observer')
+  assert.equal(service.attention.notifications, undefined)
+  session.append('turn/start', { turn: 1 })
+  assert.equal(service.attention.closed, false)
+  assert.equal(service.attention.turns.get('fixture'), 1)
+  session.append('turn/end', { turn: 1, reason: { kind: 'completed' } })
+  assert.ok([...service.attention.items.values()].some(row => row.kind === 'completed'), 'completion reaches Host observer')
+  await service.attention.flush()
+  assert.equal([...shell.items.values()].some(row => row.kind === 'completed'), true)
 })
 
 test('real session headers attribute subagent turns to the conversation that delegated them', { skip: !runtime }, async t => {

@@ -1,5 +1,12 @@
 # 变更记录 / Changelog
 
+## 0.1.1 — 未发布 / Unreleased
+
+- 按插件通知协议 1 的通用属性展示来源事件，移除 Studio／日历专用判断。
+- 保留 Agent 授权优先级；普通通知不触发成功庆祝，静默更新不重复气泡。
+- Render source events through generic protocol 1 properties, without Studio/calendar branches.
+- Preserve Agent approval priority; ordinary notices do not celebrate success, and quiet updates do not repeat bubbles.
+
 ## 0.1.0
 
 - 首次独立打包，提供桌宠设置、状态与动画、内置小页（红、蓝）、大肥鱼和小花狮。

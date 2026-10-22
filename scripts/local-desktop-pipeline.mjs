@@ -1,3 +1,4 @@
+import { assertPinnedNodeVersion } from './lib/node-runtime-contract.mjs'
 // One-command local pipeline: build the Web assembly, Host, native inputs and
 // the Electron desktop package for this machine's platform, then install the
 // verified archive locally. Windows and macOS produce and install a desktop
@@ -65,9 +66,7 @@ export async function localDesktopPipeline({
   const name = coreRoot === editionRoot ? 'EduWork' : 'EduWork-ECNU'
   // The pinned compiler workspace uses the corepack/npm entries bundled with
   // Node.js 24; newer Node releases no longer ship corepack.
-  if (!process.version.startsWith('v24.')) {
-    throw new Error(`EduWork builds require the pinned Node.js 24 toolchain (24.18.0); this is ${process.version}`)
-  }
+  assertPinnedNodeVersion()
 
   if (!isWindows && !isMacOS) {
     // Linux has no supported desktop package yet. Validate what this platform

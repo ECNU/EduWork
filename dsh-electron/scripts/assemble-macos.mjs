@@ -1,3 +1,4 @@
+import { assertPreparedNode } from '../../scripts/lib/node-runtime-contract.mjs'
 // Assembles the unsigned macOS arm64 Electron candidate: Electron.app payload,
 // frozen product, native relocations, optional Sparkle updater, ad-hoc signed
 // ZIP. Node.js port of assemble-macos.ps1. Requires macOS arm64.
@@ -95,7 +96,7 @@ export async function assembleMacos({
     .catch(() => { throw new Error('Product release identity verification failed') })
   const receipt = await readJSON(join(shellBuild, 'source-receipt.json'))
   if (identity.dshCommit !== receipt.dshCommit || identity.dshVersion !== receipt.dshVersion) throw new Error('Electron and product DSH versions differ')
-  if ((await capture(node, ['--version'])).trim() !== receipt.host.nodeVersion) throw new Error('Node and qualified Host runtime versions differ')
+  assertPreparedNode((await capture(node, ['--version'])).trim(), receipt.host.nodeVersion)
   const electronApp = join(electronRuntime, 'Electron.app')
   if (!await isFile(join(electronApp, 'Contents/MacOS/Electron'))) throw new Error('ElectronRuntime must contain Electron.app')
   const electronVersion = (await capture('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', join(electronApp, 'Contents/Info.plist')])

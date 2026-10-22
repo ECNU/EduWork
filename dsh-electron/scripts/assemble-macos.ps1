@@ -53,7 +53,10 @@ $identity = Get-Content -LiteralPath (Join-Path $Product 'assembly.json') -Raw |
 if ($LASTEXITCODE -ne 0) { throw 'Product release identity verification failed' }
 $receipt = Get-Content -LiteralPath (Join-Path $ShellBuild 'source-receipt.json') -Raw | ConvertFrom-Json
 if ($identity.dshCommit -ne $receipt.dshCommit -or $identity.dshVersion -ne $receipt.dshVersion) { throw 'Electron and product DSH versions differ' }
-if ((& $Node --version).Trim() -ne $receipt.host.nodeVersion) { throw 'Node and qualified Host runtime versions differ' }
+$nodeVersion = (& $Node --version).Trim()
+if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect packaged Node runtime' }
+$expectedNodeVersion = 'v' + (Get-Content -LiteralPath (Join-Path $PSScriptRoot '../../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json') -Raw | ConvertFrom-Json).nodeVersion
+if ($nodeVersion -ne $expectedNodeVersion -or $receipt.host.nodeVersion -ne $nodeVersion) { throw "Packaged Node must match pinned $expectedNodeVersion and the prepared Host; rebuild the Host with the pinned Node" }
 $electronApp = Join-Path $ElectronRuntime 'Electron.app'
 if (-not (Test-Path -LiteralPath (Join-Path $electronApp 'Contents/MacOS/Electron') -PathType Leaf)) { throw 'ElectronRuntime must contain Electron.app' }
 $electronVersion = (& plutil -extract CFBundleShortVersionString raw (Join-Path $electronApp 'Contents/Info.plist')).Trim()

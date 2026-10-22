@@ -7746,6 +7746,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		async function apply(ctx) {
 			const disposeRemote = await ctx.remote.$mount(typert_remote_client_default);
 			ctx.inject(["remote.calendar"], (surface) => {
+				surface.inject(["notificationActions", "layout"], (inner) => {
+					inner.effect(() => inner.notificationActions.register("calendar", async ({ target, signal }) => {
+						if (signal.aborted || typeof target?.reminderId !== "string") return false;
+						inner.layout.selectPanel(PANEL_ID);
+					}));
+				});
 				const call = (method) => (input) => unwrap(surface.remote.calendar[method](input));
 				const service = {
 					snapshot: () => unwrap(surface.remote.calendar.snapshot()),

@@ -39,7 +39,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - run: node scripts/packages/release.mjs preflight ${{ inputs.package }}
       - uses: actions/setup-python@v5
         if: inputs.package == 'dsh-knowledge-studio' || inputs.package == 'dsh-artifact-services'
@@ -75,7 +75,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
           registry-url: https://registry.npmjs.org
       - run: npm install --global npm@11.6.2
       - uses: actions/download-artifact@v4

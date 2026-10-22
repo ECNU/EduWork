@@ -1,3 +1,4 @@
+import { assertPreparedNode } from '../../scripts/lib/node-runtime-contract.mjs'
 // Assembles the independent Windows Electron candidate from the frozen desktop
 // product, the shell build and the verified Electron runtime. Node.js port of
 // assemble-windows.ps1.
@@ -50,7 +51,7 @@ export async function assembleWindows({
   const receipt = await readJSON(join(shellBuild, 'source-receipt.json'))
   if (identity.dshCommit !== receipt.dshCommit) throw new Error('Electron and product DSH versions differ')
   const nodeVersion = (await capture(node, ['--version'])).trim()
-  if (nodeVersion !== receipt.host.nodeVersion) throw new Error('Node and qualified Host runtime versions differ')
+  assertPreparedNode(nodeVersion, receipt.host.nodeVersion)
   const nodeLicense = join(dirname(node), 'LICENSE')
   if (!await isFile(nodeLicense)) throw new Error('Use the extracted official Node distribution, including its LICENSE beside node.exe')
 

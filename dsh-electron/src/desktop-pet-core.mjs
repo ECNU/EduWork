@@ -83,7 +83,7 @@ export function untuckPetPosition(placed, geometry, displays) {
 export function petStatus(notifications) {
   const preview = notifications.preferences?.preview === true
   return {
-    items: [...notifications.items.values()].map(item => ({ key: item.key, kind: item.kind, createdAt: item.createdAt, title: preview ? item.title : '' })),
+    items: [...notifications.items.values()].map(item => ({ key: item.key, kind: item.kind, createdAt: item.createdAt, title: preview ? item.title : '', ...(item.kind === 'plugin' ? { level: item.level, requiresAction: item.requiresAction, label: item.label, alert: item.alert } : {}) })),
     running: notifications.running.length, acknowledged: notifications.acknowledged,
   }
 }

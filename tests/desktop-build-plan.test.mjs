@@ -3,7 +3,24 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { desktopVersion, desktopBuildPlan, validateBuildRequest } from '../scripts/desktop-build-plan.mjs'
+import { desktopVersion, desktopBuildPlan, desktopBuildRecipe, validateBuildRequest } from '../scripts/desktop-build-plan.mjs'
+import { windowsStages } from '../scripts/lib/windows-stages.mjs'
+import { macosStages } from '../scripts/lib/macos-stages.mjs'
+
+test('desktop builds only select the pinned recipe while keeping the existing explicit name', () => {
+  assert.equal(desktopBuildRecipe(), 'pinned-source')
+  assert.equal(desktopBuildRecipe('pinned-source'), 'pinned-source')
+  assert.throws(() => desktopBuildRecipe('npm'), /retired/)
+  assert.throws(() => desktopBuildRecipe('typo'), /Unknown desktop build recipe/)
+  for (const catalog of [windowsStages, macosStages]) {
+    for (const recipe of [undefined, 'pinned-source']) {
+      const desktop = catalog({ coreRoot: '/synthetic', recipe }).find(stage => stage.name === 'desktop')
+      assert.ok(desktop.requires.includes('product'))
+      assert.ok(!desktop.requires.includes('install-host'))
+    }
+    assert.throws(() => catalog({ recipe: 'npm' }), /retired/)
+  }
+})
 
 test('product prerelease semantics are consistent across future versions', () => {
   for (const version of ['0.4.0-alpha.1', '0.4.0-beta.2', '1.0.0-rc.1', '0.3.6-dev.20260928.2']) {

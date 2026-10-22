@@ -16,7 +16,7 @@ jobs:
           fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
-          node-version: '24.18.0'
+          node-version: '24.22.1'
       - name: Select product assembly changes
         id: changes
         shell: pwsh
@@ -43,7 +43,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Content lifecycle checks failed' }
           node --test core/dsh-electron/tests/software-update-control.test.mjs core/dsh-electron/tests/portable-updates-startup.test.mjs core/dsh-electron/tests/startup-failure.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/runtime-access.test.mjs core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
           if ($LASTEXITCODE) { throw 'Updater startup and recovery guidance checks failed' }
-          node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs
+          node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs core/dsh-plugins/notifications/test/*.test.mjs core/scripts/test/plugin-notification-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop notification checks failed' }
           node --test core/packages/dsh-desktop-pet/test/page-clock.test.mjs core/packages/dsh-desktop-pet/test/pet-state.test.mjs core/packages/dsh-desktop-pet/test/skin.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop pet checks failed' }
