@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T15:41:43.918Z",
-  "fileSetSHA256": "4c3dcf193e67830612f8ef9fef066ca402848101a042a7597eff867073f5c3de",
+  "createdAt": "2026-10-22T16:00:43.738Z",
+  "fileSetSHA256": "7d94e4e767eee8f3b67b34330c5b4ca4478f2d608b3486beddf69af1eb6a71e9",
   "files": [
     {
       "path": ".gitattributes",
@@ -6269,11 +6269,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "84e15405a1dc947f960e0f90799f0679eac971d4565d9fa0c4d4a424c50078d2"
+      "sha256": "132e0bf23f28ce43ff888b5c02e03785acadb1723384221429c73bb3db04863f"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "32b38933f6faca2c5cfc28e257601341009cb30868fa5604c3c5db5e8681fece"
+      "sha256": "0e8808b06e63dd58a36a585eb9c5ada9697bf466c90cc8e50722d611662c4421"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",

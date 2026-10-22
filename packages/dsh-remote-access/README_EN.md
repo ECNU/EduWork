@@ -69,6 +69,10 @@ They cannot open windows or programs or show notifications on the computer, regi
 
 See the [protocol document](docs/PROTOCOL.md) (Chinese) for details.
 
+## Contribution origins
+
+[@JunieXD](https://github.com/JunieXD) implemented this plugin in [#192](https://github.com/ECNU/EduWork/pull/192), building on [@Paraso42](https://github.com/Paraso42)'s remote-access prototype in [#180](https://github.com/ECNU/EduWork/pull/180): mapping DSH host integration points, endpoint allowlists and refusal reasons, the device trust and revocation model, and validation scenarios for reconnection, avoiding duplicate execution, and deployment across networks. @Paraso42 is a co-contributor to remote access; #192 defines the current protocol and implementation.
+
 ## Development
 
 From this package directory:

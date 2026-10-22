@@ -69,6 +69,10 @@ dsh plugin --profile web add @eduwork/dsh-remote-access
 
 协议细节见[协议文档](docs/PROTOCOL.md)。
 
+## 贡献来源
+
+本插件由 [@JunieXD](https://github.com/JunieXD) 在 [#192](https://github.com/ECNU/EduWork/pull/192) 中实现，承接了 [@Paraso42](https://github.com/Paraso42) 在 [#180](https://github.com/ECNU/EduWork/pull/180) 中的远程访问原型贡献：DSH 宿主接入点梳理、接口白名单与拒绝原因、设备信任与撤销模型，以及断线重连、避免重复执行和跨网络部署的验收场景。@Paraso42 是远程访问功能的合作贡献者；当前协议与实现以 #192 为准。
+
 ## 开发
 
 在本包目录运行：
