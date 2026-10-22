@@ -1,7 +1,7 @@
 /**
- * The computers this browser is paired with, in IndexedDB. Each has its own
- * device key, generated non-extractable: page scripts can sign with it but
- * cannot read it out.
+ * The computers this browser is paired with through this relay, in IndexedDB.
+ * Each has its own device key, generated non-extractable: page scripts can
+ * sign with it but cannot read it out.
  */
 export interface PairedHost {
   readonly hostId: string
@@ -14,10 +14,12 @@ export interface PairedHost {
 }
 
 const STORE = 'hosts'
+/** One database per relay, so that relays below different paths of one domain each list only their own computers. */
+const DATABASE = `eduwork-remote ${new URL(document.baseURI).pathname}`
 
 function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open('eduwork-remote', 1)
+    const request = indexedDB.open(DATABASE, 1)
     request.onupgradeneeded = () => request.result.createObjectStore(STORE, { keyPath: 'hostId' })
     request.onsuccess = () => resolve(request.result)
     request.onerror = () => reject(request.error)
