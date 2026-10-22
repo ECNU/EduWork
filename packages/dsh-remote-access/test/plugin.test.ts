@@ -99,10 +99,11 @@ test('with an organization set, remote access uses its relay and follows its sig
   await writeFile(distIndex, '<!doctype html><head></head>')
   // `member:<exp>` stands in for an ID Token of the organization's sign-in.
   const relay = await startRelay(t, { accessKeys: [], idTokens: { verify: async token => ({ subject: 'alice', expiresAt: Number(token.split(':')[1]) }) } })
-  const account = { state: 'signed_out', tokens: 0 }
+  const account = { state: 'signed_out', tokens: 0, renewed: true }
   const oidcAccounts = {
     status: async (profileID: string) => ({ profileID, state: account.state, displayName: 'Example University' }),
     identityToken: async () => {
+      if (!account.renewed) throw Object.assign(new Error('The issuer did not renew the ID Token; please sign in again'), { code: 'oidc_identity_token_unavailable' })
       account.tokens++
       const expiresAt = Math.floor(Date.now() / 1000) + 3600
       return { token: `member:${expiresAt}`, expiresAt }
@@ -127,6 +128,20 @@ test('with an organization set, remote access uses its relay and follows its sig
   }, 'registration by ID Token')
   assert.deepEqual((await service.status()).organization, organization)
   assert.equal(account.tokens, 1)
+
+  // Once the sign-in yields no ID Token, remote access waits for the user to sign in again, then resumes.
+  account.renewed = false
+  ctx.emit('oidc/accounts-changed', { profileID: 'example' })
+  await until(async () => {
+    const status = await service.status()
+    return status.state === 'on' && status.link.state === 'lapsed'
+  }, 'the lapsed sign-in')
+  account.renewed = true
+  ctx.emit('oidc/accounts-changed', { profileID: 'example' })
+  await until(async () => {
+    const status = await service.status()
+    return status.state === 'on' && status.link.state === 'online'
+  }, 'registration after signing in again')
 
   account.state = 'signed_out'
   ctx.emit('oidc/accounts-changed', { profileID: 'example' })

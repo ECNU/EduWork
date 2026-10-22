@@ -20,8 +20,8 @@ export interface RemoteAccessOptions {
   readonly store: HostStore
   /** The relay's public address, e.g. `https://remote.example.edu` or `https://example.edu/eduwork-remote/`. */
   readonly relay: string
-  /** What admits this Host to the relay, asked before every registration. */
-  credential(): Promise<Admission>
+  /** What admits this Host to the relay, asked before every registration; undefined when only the owner can renew it. */
+  credential(): Promise<Admission | undefined>
   /** Shown to devices while pairing and once connected. */
   readonly hostName: string
   readonly warn: (message: string) => void

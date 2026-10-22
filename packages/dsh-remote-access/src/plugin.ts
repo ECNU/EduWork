@@ -178,7 +178,7 @@ export default class RemoteDevices extends TypertRemoteService {
       const account = managed ? await accounts?.status(profileID) : undefined
       if (account !== undefined) this.organization = { name: account.displayName, relay }
       if (this.disposed || !enabled.get() || relay === '') return
-      let credential: (() => Promise<Admission>) | undefined
+      let credential: (() => Promise<Admission | undefined>) | undefined
       if (!managed) credential = await this.accessKey()
       else if (accounts === undefined) throw new Error(`sign-in "${profileID}" is not available`)
       else if (account!.state === 'connected') credential = member(accounts, profileID)
@@ -207,11 +207,18 @@ export default class RemoteDevices extends TypertRemoteService {
   }
 }
 
-/** The current ID Token of the organization's sign-in, for every registration. */
-function member(accounts: OidcAccounts, profileID: string): () => Promise<Admission> {
+/** The current ID Token of the organization's sign-in, for every registration; none once only signing in again brings one. */
+function member(accounts: OidcAccounts, profileID: string): () => Promise<Admission | undefined> {
   return async () => {
-    const { token, expiresAt } = await accounts.identityToken(profileID)
-    return { credential: { idToken: token }, expiresAt }
+    try {
+      const { token, expiresAt } = await accounts.identityToken(profileID)
+      return { credential: { idToken: token }, expiresAt }
+    } catch (error) {
+      // The sign-in ended, or its issuer no longer renews the ID Token: only signing in again helps. Anything else is tried again.
+      const { code } = error as { code?: unknown }
+      if (code === 'oidc_login_required' || code === 'oidc_identity_token_unavailable') return undefined
+      throw error
+    }
   }
 }
 

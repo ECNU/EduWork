@@ -24,7 +24,7 @@ RELAY_URL=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
 
 中继也可以和其他网站共用域名，放在单独的路径下，例如 `RELAY_URL=https://example.edu/eduwork-remote/`。反向代理须按原路径转发、不去掉这段前缀；中继的网页、Service Worker 和连接都只在这个路径下。电脑上填写同一个地址。
 
-学校或企业也可以让成员凭自己的登录使用中继，不必逐个发接入密钥：`RELAY_OIDC_ISSUER` 填机构 OpenID Connect 登录的 issuer（例如 `https://sso.example.edu`），`RELAY_OIDC_CLIENT_IDS` 填桌面应用在该登录中的 client ID，多个用逗号分隔。电脑以登录得到的 ID Token 注册，中继用 issuer 公布的公钥验证，只记录用户标识，不记录 Token。Token 到期前电脑会自动换新的；到期仍未换新时，中继断开这台电脑现有的远程连接。两种方式可以同时启用。
+学校或企业也可以让成员凭自己的登录使用中继，不必逐个发接入密钥：`RELAY_OIDC_ISSUER` 填机构 OpenID Connect 登录的 issuer（例如 `https://sso.example.edu`），`RELAY_OIDC_CLIENT_IDS` 填桌面应用在该登录中的 client ID，多个用逗号分隔。电脑以登录得到的 ID Token 注册，中继用 issuer 公布的公钥验证，只记录用户标识，不记录 Token。Token 到期前电脑会自动换新的；到期仍未换新时，中继断开这台电脑现有的远程连接。机构登录失效、需要重新登录时，电脑停止连接中继，设置页提示重新登录。两种方式可以同时启用。
 
 中继限制每个账号最多同时注册 5 台电脑，每台电脑每分钟最多接受 60 个设备连接，同一地址一分钟内注册被拒 10 次后要等待。中继在反向代理后面时，用 `RELAY_CLIENT_IP_HEADER` 指定代理传递客户端地址的请求头（例如 `x-real-ip`），否则所有用户共用代理的地址。
 

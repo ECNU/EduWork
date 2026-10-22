@@ -174,6 +174,7 @@ function summary(settings: Settings, status: PanelStatus, t: Translate): string 
   if (link.state === 'offline') return t('linkOffline')
   if (link.state === 'refused') return t(link.code === Close.upgradeRequired ? 'linkUpgrade' : status.organization === undefined ? 'linkRefused' : 'linkRefusedMember')
   if (link.state === 'replaced') return t('linkReplaced')
+  if (link.state === 'lapsed') return t('linkLapsed', { organization: status.organization!.name })
   return t('linkConnecting')
 }
 
