@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T08:25:36.308Z",
-  "fileSetSHA256": "e852b31fa4406e5bd4fbde1d6ce707f99060ebab33a58ee43a10e2d8b1a08864",
+  "createdAt": "2026-10-22T08:31:30.000Z",
+  "fileSetSHA256": "dd8ed87399ffa002b89b8ce71f141feb05060779291d143decb8ca139c00a332",
   "files": [
     {
       "path": ".gitattributes",
@@ -3749,7 +3749,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/CHANGELOG.md",
-      "sha256": "e10f40a9e4e0fe9bc10c139767e79f8134f58044f1d91cefee09ac851ebe024d"
+      "sha256": "661e1c099b16a180ee15134958e0654af6ca68c186cde72e8333c74a2f019239"
     },
     {
       "path": "packages/dsh-knowledge-studio/cordis.patch.yml",
@@ -3965,11 +3965,11 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/package-lock.json",
-      "sha256": "b470116021eef050315efd7dc7e0b52db0e5e978dc15557c1d56c64e5228a6dc"
+      "sha256": "23a4c0f43eb00e468b1df4241ebf8aacfbe609f7c06be8dc812ebc734f23f5a6"
     },
     {
       "path": "packages/dsh-knowledge-studio/package.json",
-      "sha256": "887938ef61ac38da99c18c0453df05de90c2d424b3f0ba15253a6ba91ebcc257"
+      "sha256": "18cae9df60a8464cf014ca83118915c0b031aeb48064b509149d334d2eed3489"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/contracts/presentation-metrics.json",
@@ -4213,7 +4213,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/package.json",
-      "sha256": "0ab7faad98aff14162333cb9f9ac5c64f19b6b92d4d4b6be457ffbe3bef89e80"
+      "sha256": "f04c6c42bad9d28c96cc59cec59565a3c6e27135fc4cb07f7efa6b1621f350e5"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/python/dsh_office/__init__.py",
@@ -5177,11 +5177,11 @@
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.en.md",
-      "sha256": "18038da433de3d923ffd0ad0e16a61b69faf37dd5d0fde1f0391780ac5802de9"
+      "sha256": "c3216a8c11a03e2d1a387d6e2581ec47abd94d0c7d33917000a151a9df060766"
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.md",
-      "sha256": "d35cc2c72c1a69b1100d1aafb74053aecf36f9ea8fc00d4efc37f432961bf553"
+      "sha256": "03675c9e02d5efc3c40a8585139d9cf74aa61670a40fdaeaa7d67a3ba3cd739e"
     },
     {
       "path": "packages/dsh-mail/CODE_OF_CONDUCT.en.md",
@@ -5289,11 +5289,11 @@
     },
     {
       "path": "packages/dsh-mail/package-lock.json",
-      "sha256": "4c0471855975339d1a22b5f125ba73e3579c84c0eb4c6e26f3a7cdb3ec7a2598"
+      "sha256": "a5b554cf0a2900ee52a0156daec8c5b76ba456a8908377d0eacb95812ffd31f7"
     },
     {
       "path": "packages/dsh-mail/package.json",
-      "sha256": "a6d3e5547aa4e049d88eeadd033f59e3006a27b73159007c1a04d6dc761eb821"
+      "sha256": "c8f946230b2022fb22cbcbbe2dbb457adb1fa9a55ecdf6ec40c37cc5fd980802"
     },
     {
       "path": "packages/dsh-mail/README_EN.md",

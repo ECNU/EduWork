@@ -1,5 +1,12 @@
 # Changelog
 
+## Studio 0.6.2 / Artifact Services 0.3.1 — 2026-10-22
+
+- Office、图像、语音和音视频工具的审批提示接入官方 DSH 中英文展示机制，保留原有权限判断与审批行为。
+- Studio 精确依赖 Artifact Services 0.3.1；图像编辑的审批提示明确显示编辑操作。
+- Localize Office, image, speech and media tool approval prompts through the official DSH panel, retaining permission decisions and approval behavior.
+- Pin Artifact Services 0.3.1 in Studio; distinguish image editing from image generation in approval copy.
+
 ## Studio 0.6.1 — Unreleased
 
 - Use the optional plugin notification protocol 1 for artifact completion and failure.
