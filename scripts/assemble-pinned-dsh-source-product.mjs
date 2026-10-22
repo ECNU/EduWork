@@ -74,7 +74,8 @@ const insert = [
   ...distribution.plugins.map(row => ({ id: row.id, name: row.name, config: row.source === 'dsh-plugins/brand-settings-native' ? distribution.brand : row.config ?? {} })),
 ]
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
-const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature']
+const optionalBundles = ['@eduwork/dsh-annotation']
+const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
 const lowerLayers = await loadDistributionBundleLayers(join(paths.output, 'd'), bundles, boot)
@@ -82,7 +83,7 @@ const composition = [...mergeDistributionConfigPatches([{ insert }], distributio
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'npm', published: false,
-  bundles,
+  bundles, optionalBundles,
   sourcePackages, externalPackages: publishedLocks, publishedPackageFiles: publishedFiles,
   pluginInstallLockSHA256: createHash('sha256').update(pluginInstallLock).digest('hex'),
   omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,

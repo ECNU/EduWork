@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.md) | **English**
 
+## 0.2.1 — 2026-10-22
+
+- Show email-send and attachment-save approval prompts in the active DSH UI language (Chinese or English), using the official approval panel.
+- Preserve existing permission decisions, original reasons and per-call approval behavior.
+
 ## 0.2.0 — 2026-10-19
 
 - Require DSH 0.2.1-rc.2 or a compatible 0.2.x stable Host; use the official configForms settings surface in standalone builds.

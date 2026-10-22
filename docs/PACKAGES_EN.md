@@ -35,6 +35,12 @@ Studio/shared-service Node tests generate real Office files. Prepare a separate 
 
 CI selects affected development roots; shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
 
+## Localized approval prompts
+
+When a plugin asks for approval through `tools/pre-execute`, retain the existing `reason` as a stable explanation and supply `displayReason: { zh: '中文提示', en: 'English prompt' }`. The official DSH approval panel resolves that copy in the current UI language. Do not select a single string using the Host's system language or replace the approval panel. Legacy requests without `displayReason` still display `reason`.
+
+Translate only fixed plugin copy. Keep tool names, paths, recipients and user/model-provided content intact. Language changes must not affect permission modes, denial conditions, approval triggers or allow-once semantics. New approval points should cover both languages, language changes and existing permission branches; see the official-panel regression in `scripts/test/plugin-locale.test.mjs`.
+
 ## Publish independently
 
 `@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.1-rc.2/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
@@ -67,7 +73,9 @@ Desktop-specific extensions are still built during assembly; their adaptation on
 `@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
 
 
-The current DSH 0.2.1 recipe installs seven independent packages from npm: desktop pet, literature, mail, memory, OIDC, Studio and shared services. Selection annotations are not assembled into the client; users install them on the Plugins page. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.2/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source. The remote access package is not assembled into the client yet; it joins in the order below once published and verified.
+The current DSH 0.2.1 recipe installs eight independent packages from npm: selection annotations, desktop pet, literature, mail, memory, OIDC, Studio and shared services. Selection annotations are included from the next client build, remain independently maintained, and can also be installed from npm in other compatible DSH clients. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.2/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source. The remote access package is not assembled into the client yet; it joins in the order below once published and verified.
+
+Annotations use a native DSH bundle, enabled once when first provided by the product. The native plugin manager then owns activation. `optionalBundles` in `assembly.json` identifies these optional bundled packages, and the profile records which names have been provisioned. Prior manual installs retain their activation without duplicate registration; disabled bundles remain disabled after restart. Existing core bundle rules stay unchanged.
 
 Assembly validates the npm inputs before building product-owned extensions. Media templates, the PDF runtime, plugin clients and bundled skills come from published packages. Nothing under `packages/` overwrites them. `assembly.json` distinguishes `externalPackages` from `sourcePackages` and records package file hashes, checked after assembly and edition preparation. Missing packages, inconsistent locks or workspace links fail without a source fallback.
 

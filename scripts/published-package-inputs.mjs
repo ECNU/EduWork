@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 
 export async function readPublishedPackageLocks(candidate) {
-  const names = ['desktop-pet', 'literature', 'mail', 'memory', 'oidc', 'knowledge-studio', 'artifact-services']
+  const names = ['annotation', 'desktop-pet', 'literature', 'mail', 'memory', 'oidc', 'knowledge-studio', 'artifact-services']
   return Promise.all(names.map(name => json(join(candidate, name + '.json'))))
 }
 

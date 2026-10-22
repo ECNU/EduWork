@@ -16,7 +16,10 @@ export function decideMailPermission(ctx, exec, next) {
     return Promise.resolve({ kind: 'deny', reason: 'Mail sending requires an Agent-backed session' })
   }
   if (ctx.permissionPresets.current(agent.session) === 'danger-full-access') return next()
-  return Promise.resolve({ kind: 'ask', reason: SEND_APPROVAL_REASON })
+  return Promise.resolve({ kind: 'ask', reason: SEND_APPROVAL_REASON, displayReason: {
+    en: SEND_APPROVAL_REASON,
+    zh: '允许通过已配置的 SMTP 账号发送这封邮件。请核对工具调用中显示的收件人、主题和附件。',
+  } })
 }
 
 async function decideAttachmentWrite(ctx, exec, next) {
@@ -35,7 +38,11 @@ async function decideAttachmentWrite(ctx, exec, next) {
     }
     return next()
   }
-  return { kind: 'ask', reason: 'Save this mail attachment in the current workspace' }
+  const reason = 'Save this mail attachment in the current workspace'
+  return { kind: 'ask', reason, displayReason: {
+    en: reason,
+    zh: '允许将这封邮件的附件保存到当前工作区',
+  } }
 }
 
 export const internals = Object.freeze({ SEND_APPROVAL_REASON })

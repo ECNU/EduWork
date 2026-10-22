@@ -28,10 +28,10 @@ async function setup() {
       bundle: true, write: false, format: 'cjs', platform: 'node', jsx: 'automatic',
       nodePaths: [process.env.EDUWORK_TEST_DEPENDENCIES, runtime].filter(Boolean).map(path => join(path, 'node_modules')),
       external: ['react', 'react-dom', '@deepseek-ai/*'],
-      alias: Object.fromEntries(['presentation-contract', 'office-preview-client'].map(name => [
+      alias: { '@chatecnu-work/dsh-tool-browser/core': join(root, 'dsh-plugins/tool-browser/lib/core.js'), ...Object.fromEntries(['presentation-contract', 'office-preview-client'].map(name => [
         `@eduwork/dsh-artifact-services/${name}`,
         join(root, 'packages/dsh-knowledge-studio/packages/artifact-services/lib', `${name}.js`),
-      ])),
+      ])) },
       plugins: [{ name: 'rpc-transport-fixture', setup(build) {
         build.onLoad({ filter: /[\\/]client[\\/]remote\.(?:js|ts)$/ }, () => ({ contents: 'export default {}; export const knowledgeStudioRemote = {}', loader: 'js' }))
       } }],
@@ -111,4 +111,70 @@ test('account, mail and nested Studio surfaces render the active DSH language', 
   profile.brand.loginButtonLabel = 'Institution sign-in'
   locale.setLocale('zh')
   assert.match(draw().account, /Institution sign-in/, 'publisher-provided wording is retained')
+})
+
+test('plugin approval reasons render through the official panel and follow locale changes', { skip: !runtime }, async () => {
+  const { React: R, renderToStaticMarkup: render, load, LocaleRuntime } = await setup()
+  const require = createRequire(join(runtime, 'package.json'))
+  const locale = new LocaleRuntime({ emit() {} }, undefined, { languages: ['en'], preference: 'zh' })
+  locale.addLanguage({ id: 'fr', label: 'Français', fallback: 'en' })
+  let approval, Panel, onRequest, pending
+  // Exercise the pinned upstream request consumer and panel. Only visual
+  // primitives and the outer slot/transport plumbing are test fixtures.
+  runInNewContext(await readFile(join(runtime, 'node_modules/@deepseek-ai/dsh-client-ui-approval/lib/client.js'), 'utf8'), {
+    console,
+    window: { __ModuleLoader__: { load: definition => {
+      approval = definition.factory(name => name === '@deepseek-ai/dsh-client-ui-primitives' ? {
+        Button: ({ children }) => R.createElement('button', null, children),
+        StateDot: () => R.createElement('span'),
+      } : require(name))
+    } } },
+  })
+  const dispose = []
+  approval.apply({
+    locale, effect: fn => dispose.push(fn()), inject() {},
+    sessions: { scopeOf: () => 'synthetic-session' },
+    uiSession: { registerPendingInteraction: () => value => { pending = value; return () => { pending = undefined } } },
+    slots: { inject: (_, fn) => fn(), register: (_, component) => { Panel = component } },
+    remote: { $on: (_, handler) => { onRequest = handler } },
+  })
+  const browser = await load('dsh-plugins/browser-upstream/lib/permission.js')
+  const mail = await load('packages/dsh-mail/src/host/permission.js')
+  const calendar = await load('dsh-plugins/calendar/lib/tool-permission.js')
+  const agent = { session: { header: { cwd: '/synthetic' } } }
+  const ctx = { sandboxPolicy: { resolve: () => ({ mode: 'read-only' }) }, permissionPresets: { current: () => 'read-only' } }
+  const next = () => { throw new Error('these writes must still ask for approval') }
+  const decisions = [
+    browser.browserPermission(ctx, { name: 'mcp__playwright-mcp__browser_click', agent }, next),
+    await mail.decideMailPermission(ctx, { name: 'mail_send', agent }, next),
+    await mail.decideMailPermission(ctx, { name: 'mail_get_attachment', agent }, next),
+    await calendar.decideCalendarPermission(ctx, { name: 'calendar_create_event', agent }, next),
+    { kind: 'ask', reason: 'Legacy caller supplied this reason' },
+  ]
+  try {
+    for (const decision of decisions) {
+      assert.equal(decision.kind, 'ask')
+      const wire = JSON.parse(JSON.stringify({ toolName: 'synthetic-tool', reason: decision.reason, displayReason: decision.displayReason }))
+      const result = onRequest.call({}, wire, next)
+      try {
+        const original = pending.reason
+        for (const language of ['zh', 'en', 'fr', 'zh']) {
+          locale.setLocale(language)
+          const html = render(R.createElement(Panel, {
+            matched: pending, renderSlot: () => null,
+            resolveReason: value => locale.resolveText(value), t: locale.bind('approval'),
+          }))
+          const expected = decision.displayReason?.[language === 'zh' ? 'zh' : 'en'] ?? decision.reason
+          assert.ok(html.includes(expected), `${language}: ${expected}`)
+          assert.match(html, language === 'zh' ? /允许一次/ : /Allow once/)
+          assert.equal(pending.reason, original, 'display language must not rewrite the audit reason')
+        }
+      } finally {
+        await pending.answer('rejected')
+        assert.equal(await result, 'rejected')
+      }
+    }
+  } finally {
+    for (const fn of dispose) fn?.()
+  }
 })

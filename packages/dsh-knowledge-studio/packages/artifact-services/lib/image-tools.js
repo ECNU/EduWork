@@ -5,7 +5,11 @@ import {decideWorkspaceWrite} from './tool-permissions.js'
 export function installImageTools(ctx,service) {
   ctx.on('tools/pre-execute',(exec,next)=>{
     if(!['image_generate','image_edit'].includes(exec.name))return next()
-    return decideWorkspaceWrite(ctx,exec,next,'Generate an image in the current workspace using the selected provider')
+    const reason='Generate an image in the current workspace using the selected provider'
+    return decideWorkspaceWrite(ctx,exec,next,reason,{displayReason:{
+      en:exec.name==='image_edit'?'Edit an image in the current workspace using the selected provider':reason,
+      zh:exec.name==='image_edit'?'允许使用所选服务在当前工作区编辑图片':'允许使用所选服务在当前工作区生成图片',
+    }})
   })
   const output={
     schema:{type:'object',additionalProperties:false,properties:{reportJSON:{type:'string',required:true},relativePath:{type:'string'},mime:{type:'string'}}},

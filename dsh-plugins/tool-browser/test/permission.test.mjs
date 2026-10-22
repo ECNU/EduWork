@@ -10,7 +10,10 @@ test('managed browser checks canonical tool arguments before interacting with pa
   for (const args of [{ action: 'click' }, { action: 'type' }, { action: 'screenshot' },
     { action: 'close_tab' }, { action: 'navigate', url: 'http://127.0.0.1' },
     { action: 'snapshot', mode: 'visible' }]) {
-    assert.equal((await decideBrowserPermission(ctx, { ...exec, arguments: args }, next)).kind, 'ask')
+    const decision = await decideBrowserPermission(ctx, { ...exec, arguments: args }, next)
+    assert.equal(decision.kind, 'ask')
+    assert.equal(decision.displayReason.en, decision.reason)
+    assert.equal(decision.displayReason.zh, '允许智能体操作网页，或打开可见的托管浏览器窗口')
   }
   for (const args of [{ action: 'snapshot' }, { action: 'tabs' },
     { action: 'navigate', url: 'https://example.org' }]) {

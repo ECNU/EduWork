@@ -6,6 +6,46 @@ import { join } from 'node:path'
 import { writeNativeProfile, rebaseNativeConfig, legacyPresetPatches, nativeEntryIds } from '../native-profile.mjs'
 import { stageLegacySettings, importLegacySettings } from '../settings-migration.mjs'
 
+for (const existing of [false, true]) test(`optional npm bundle is provisioned once and stays disabled after restart (existing=${existing})`, async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-bundle-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const path = join(profile, 'package.json'), bundle = '@eduwork/dsh-annotation'
+  const preferences = '[{"id":"eduwork-annotation","disabled":true}]'
+  if (existing) {
+    await writeFile(path, JSON.stringify({ dependencies: { 'synthetic-addon': '1.0.0' }, dsh: { profile: { bundles: ['synthetic-addon'] } }, eduwork: { unrelated: true } }))
+    await writeFile(join(profile, 'cordis.patch.yml'), preferences)
+  }
+  const options = { profile, bundles: ['synthetic-core', bundle], optionalBundles: [bundle], patches: [] }
+  await writeNativeProfile(options)
+  await writeNativeProfile(options)
+  const installed = JSON.parse(await readFile(path, 'utf8'))
+  assert.equal(installed.dsh.profile.bundles.filter(value => value === bundle).length, 1)
+  if (existing) {
+    assert.ok(installed.dsh.profile.bundles.includes('synthetic-addon'))
+    assert.equal(installed.eduwork.unrelated, true)
+    assert.equal(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'), preferences)
+  }
+  // The native plugin manager disables a whole bundle by removing activation.
+  installed.dsh.profile.bundles = installed.dsh.profile.bundles.filter(value => value !== bundle)
+  await writeFile(path, JSON.stringify(installed))
+  await writeNativeProfile(options)
+  await writeNativeProfile(options)
+  assert.ok(!JSON.parse(await readFile(path, 'utf8')).dsh.profile.bundles.includes(bundle))
+})
+
+for (const enabled of [false, true]) test(`a prior manual annotation install retains its activation (enabled=${enabled})`, async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-manual-bundle-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const path = join(profile, 'package.json'), bundle = '@eduwork/dsh-annotation'
+  await writeFile(path, JSON.stringify({ dependencies: { [bundle]: '0.1.0' }, dsh: { profile: { bundles: enabled ? [bundle] : [] } } }))
+  const options = { profile, bundles: [bundle], optionalBundles: [bundle], patches: [] }
+  await writeNativeProfile(options)
+  await writeNativeProfile(options)
+  const saved = JSON.parse(await readFile(path, 'utf8'))
+  assert.equal(saved.dsh.profile.bundles.filter(value => value === bundle).length, enabled ? 1 : 0)
+  assert.equal(saved.dependencies[bundle], '0.1.0')
+})
+
 test('literature fork migrates the bundle without losing source preferences or disabled tools', async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-literature-migrate-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
