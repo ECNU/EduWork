@@ -9,5 +9,9 @@ export function decideBrowserPermission(ctx, exec, next) {
   const sensitive = args.mode === 'visible' || sensitiveActions.has(args.action)
     || (args.action === 'navigate' && typeof args.url === 'string' && isPrivateTarget(args.url))
   if (!sensitive || ctx.permissionPresets.current(exec.agent.session) === 'danger-full-access') return next()
-  return Promise.resolve({ kind: 'ask', reason: 'Allow the Agent to interact with a web page or open a visible managed browser' })
+  const reason = 'Allow the Agent to interact with a web page or open a visible managed browser'
+  return Promise.resolve({ kind: 'ask', reason, displayReason: {
+    en: reason,
+    zh: '允许智能体操作网页，或打开可见的托管浏览器窗口',
+  } })
 }

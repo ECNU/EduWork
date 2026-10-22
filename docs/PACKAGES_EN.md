@@ -34,6 +34,12 @@ Studio/shared-service Node tests generate real Office files. Prepare a separate 
 
 CI selects affected development roots; shared-service changes also select Studio. Markdown/image-only changes run documentation and entry-point checks. Browser, real login/mail, Office and media acceptance remain targeted local work for relevant behavior changes. Ordinary CI does not install browsers, call real models or publish packages/desktop Releases.
 
+## Localized approval prompts
+
+When a plugin asks for approval through `tools/pre-execute`, retain the existing `reason` as a stable explanation and supply `displayReason: { zh: '中文提示', en: 'English prompt' }`. The official DSH approval panel resolves that copy in the current UI language. Do not select a single string using the Host's system language or replace the approval panel. Legacy requests without `displayReason` still display `reason`.
+
+Translate only fixed plugin copy. Keep tool names, paths, recipients and user/model-provided content intact. Language changes must not affect permission modes, denial conditions, approval triggers or allow-once semantics. New approval points should cover both languages, language changes and existing permission branches; see the official-panel regression in `scripts/test/plugin-locale.test.mjs`.
+
 ## Publish independently
 
 `@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.1-rc.2/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.

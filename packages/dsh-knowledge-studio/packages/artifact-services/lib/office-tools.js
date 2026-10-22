@@ -84,10 +84,15 @@ function tool(format, definition, ctx) {
 
 export function apply(ctx) {
   const byName = new Map(Object.entries(definitions).map(([format, definition]) => [definition.name, format]))
+  const labels = { document: 'Word 文档', spreadsheet: 'Excel 表格', presentation: 'PowerPoint 演示文稿', pdf: 'PDF 文件' }
   ctx.on('tools/pre-execute', (exec, next) => {
     const format = byName.get(exec.name)
     if (format === undefined || !actionNeedsApproval(format, exec.arguments ?? {})) return next()
-    return decideWorkspaceWrite(ctx, exec, next, `Create or modify a ${format} artifact in the current workspace`)
+    const reason = `Create or modify a ${format} artifact in the current workspace`
+    return decideWorkspaceWrite(ctx, exec, next, reason, { displayReason: {
+      en: reason,
+      zh: `允许在当前工作区创建或修改 ${labels[format]}`,
+    } })
   })
   for (const [format, definition] of Object.entries(definitions)) ctx.tools.register(tool(format, definition, ctx))
 }

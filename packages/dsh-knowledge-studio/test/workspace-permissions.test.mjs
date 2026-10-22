@@ -33,13 +33,14 @@ async function harness(t, { mode = 'workspace-write', outcome = 'rejected', poli
   await ctx.plugin(tools.default)
   await ctx.plugin(fs.default, { cwd: directory })
   let approvals = 0
+  const requests = []
   ctx.provide('permissionPresets', { current: () => policy ? 'custom' : mode })
   const state = { mode, workspaceRoot: root }
   if (policy) ctx.provide('sandboxPolicy', { resolve: ({ session }) => {
     assert.equal(session.header.cwd, root)
     return { ...state }
   } })
-  ctx.provide('approval', { request: async () => { approvals++; return outcome } })
+  ctx.provide('approval', { request: async request => { approvals++; requests.push(request); return outcome } })
   officeTools(ctx)
   const id = sessions.SessionId('permission-test')
   const session = sessions.Session.create(id, [], {
@@ -51,7 +52,7 @@ async function harness(t, { mode = 'workspace-write', outcome = 'rejected', poli
     agent, signal: new AbortController().signal, callId: 'permissions-' + (++call),
     name, arguments: args, ...extra,
   })
-  return { ctx, directory, root, state, agent, execute, approvals: () => approvals }
+  return { ctx, directory, root, state, agent, execute, requests, approvals: () => approvals }
 }
 
 const create = output_path => ({
@@ -85,6 +86,11 @@ test('read-only approval is one call, rejection is final, and later hooks still 
   const rejected = await harness(t, { mode: 'read-only' })
   assert.equal((await rejected.execute('office_document', create('denied.docx'))).isError, true)
   assert.equal(rejected.approvals(), 1)
+  assert.equal(rejected.requests[0].reason, 'Create or modify a document artifact in the current workspace')
+  assert.deepEqual(rejected.requests[0].displayReason, {
+    en: rejected.requests[0].reason,
+    zh: '允许在当前工作区创建或修改 Word 文档',
+  }, 'the official tool runtime forwards localized copy to the approval service')
   assert.deepEqual(await readdir(rejected.root), [])
   const once = await harness(t, { mode: 'read-only', outcome: 'allowed-once' })
   for (const path of ['one.docx', 'two.docx'])
@@ -141,7 +147,16 @@ test('configured media reuse the write grant without querying providers; editabl
   const decision = async (name, args) => {
     const exec = { name, arguments: args, agent: h.agent }
     const run = i => i === hooks.length ? { kind: 'allow' } : hooks[i](exec, () => run(i + 1))
-    return (await run(0)).kind
+    const result = await run(0)
+    if (result.kind === 'ask') {
+      assert.match(result.displayReason.zh, /^允许/)
+      assert.match(result.displayReason.en, /current workspace|workspace audio/)
+      if (name === 'image_edit') {
+        assert.match(result.displayReason.en, /^Edit an image/)
+        assert.match(result.displayReason.zh, /编辑图片/)
+      } else assert.equal(result.displayReason.en, result.reason)
+    }
+    return result.kind
   }
   for (const name of ['speech_synthesize', 'speech_transcribe', 'image_generate', 'image_edit']) {
     assert.equal(await decision(name, { provider: 'local' }), 'allow')

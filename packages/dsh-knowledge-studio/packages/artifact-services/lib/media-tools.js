@@ -27,7 +27,8 @@ export function installMediaTools(ctx,service) {
     // Rendering an editable project runs its React source; a file-write grant
     // alone does not authorize that arbitrary code. Fixed media templates do.
     const executesCode=exec.name==='video_project'&&!['init','stage','stage-voiceover','stage-bgm'].includes(exec.arguments?.action)
-    return decideWorkspaceWrite(ctx,exec,next,reason,{executesCode})
+    const zh=exec.name==='video_project'?'允许在当前工作区创建或修改可编辑的视频项目':exec.name==='speech_synthesize'?'允许使用所选服务在当前工作区生成语音':'允许按所选媒体设置在当前工作区渲染音频或视频'
+    return decideWorkspaceWrite(ctx,exec,next,reason,{executesCode,displayReason:{en:reason,zh}})
   })
   const schema={type:'object',additionalProperties:false,properties:{reportJSON:{type:'string',required:true},relativePath:{type:'string'},mime:{type:'string'}}}
   const output={schema,render:(_,v)=>[{type:'text',text:v.reportJSON}],presentationMeta:(_,v)=>v.relativePath?{relativePath:v.relativePath,mime:v.mime}:{}}

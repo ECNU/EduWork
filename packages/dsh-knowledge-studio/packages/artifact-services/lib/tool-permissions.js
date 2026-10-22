@@ -11,7 +11,7 @@ export function artifactPolicy(ctx, exec) {
 }
 
 /** Fixed workspace operations reuse write access; arbitrary code needs separate approval. */
-export async function decideWorkspaceWrite(ctx, exec, next, reason, { executesCode = false } = {}) {
+export async function decideWorkspaceWrite(ctx, exec, next, reason, { executesCode = false, displayReason } = {}) {
   if (!exec.agent) return { kind: 'deny', reason: 'Artifact writes require an Agent-backed session' }
   if (!exec.agent.session.header.cwd) return { kind: 'deny', reason: 'Artifact writes require a session workspace' }
   const policy = artifactPolicy(ctx, exec)
@@ -29,5 +29,7 @@ export async function decideWorkspaceWrite(ctx, exec, next, reason, { executesCo
     }
     return next()
   }
-  return { kind: 'ask', reason }
+  // Keep the audit reason stable. DSH resolves the optional display copy using
+  // the viewer's current language, including after a pending prompt is shown.
+  return { kind: 'ask', reason, ...(displayReason === undefined ? {} : { displayReason }) }
 }

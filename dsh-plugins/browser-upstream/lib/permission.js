@@ -25,5 +25,9 @@ export function browserPermission(ctx, exec, next) {
   const name = exec.name.slice(prefix.length)
   if ((readTools.has(name) && exec.arguments?.filename === undefined) || (name === 'browser_tabs' && exec.arguments?.action === 'list')) return next()
   if (name === 'browser_navigate' && !isPrivateTarget(exec.arguments?.url)) return next()
-  return { kind: 'ask', reason: 'Allow the Agent to interact with a web page or access a private browser target' }
+  const reason = 'Allow the Agent to interact with a web page or access a private browser target'
+  return { kind: 'ask', reason, displayReason: {
+    en: reason,
+    zh: '允许智能体操作网页，或访问内网、本机等非公开浏览器地址',
+  } }
 }

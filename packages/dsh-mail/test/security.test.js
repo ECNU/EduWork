@@ -124,6 +124,10 @@ test('host implementation pins read-only IMAP and delegates send approval to DSH
   assert.deepEqual(await decideMailPermission(context('workspace-write'), { name: 'mail_send', agent: { session } }, next), {
     kind: 'ask',
     reason: 'Send this email through the configured SMTP account. Review the recipients, subject, and attachments shown in the tool call.',
+    displayReason: {
+      en: 'Send this email through the configured SMTP account. Review the recipients, subject, and attachments shown in the tool call.',
+      zh: '允许通过已配置的 SMTP 账号发送这封邮件。请核对工具调用中显示的收件人、主题和附件。',
+    },
   })
   assert.equal(decideMailPermission(context('danger-full-access'), { name: 'mail_send', agent: { session } }, next), nextResult)
   assert.deepEqual(await decideMailPermission(context('workspace-write'), { name: 'mail_send' }, next), {
