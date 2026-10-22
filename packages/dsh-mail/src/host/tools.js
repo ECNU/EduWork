@@ -1,6 +1,5 @@
 import { PASSWORD_REF_NAME, TOOL_NAMES } from './constants.js'
 import { assertConfigured } from './config.js'
-import { downloadAttachment, findMail, listMailFolders, readMail, replyHeaders, sendMail } from './mail-client.js'
 import { safeError, untrustedMailText, validateAddressList } from './sanitize.js'
 import { readWorkspaceAttachments, writeWorkspaceAttachment } from './workspace-files.js'
 
@@ -138,7 +137,9 @@ export function installTools(ctx, getSettings) {
         ensureObject(rawArgs)
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        return await listMailFolders(settings, await passwordFor(ctx), exec.signal)
+        const password = await passwordFor(ctx)
+        const { listMailFolders } = await import('./mail-client.js')
+        return await listMailFolders(settings, password, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not list mailbox folders'))
       }
@@ -168,7 +169,9 @@ export function installTools(ctx, getSettings) {
         const args = ensureObject(rawArgs)
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        return await findMail(settings, await passwordFor(ctx), args, exec.signal)
+        const password = await passwordFor(ctx)
+        const { findMail } = await import('./mail-client.js')
+        return await findMail(settings, password, args, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not search the mailbox'))
       }
@@ -190,7 +193,9 @@ export function installTools(ctx, getSettings) {
         const handle = boundedString(args.handle, 'handle', { required: true, max: 4096 })
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        return await readMail(settings, await passwordFor(ctx), handle, exec.signal)
+        const password = await passwordFor(ctx)
+        const { readMail } = await import('./mail-client.js')
+        return await readMail(settings, password, handle, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not read the message'))
       }
@@ -212,7 +217,9 @@ export function installTools(ctx, getSettings) {
         const handle = boundedString(args.handle, 'handle', { required: true, max: 8192 })
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        const file = await downloadAttachment(settings, await passwordFor(ctx), handle, exec.signal)
+        const password = await passwordFor(ctx)
+        const { downloadAttachment } = await import('./mail-client.js')
+        const file = await downloadAttachment(settings, password, handle, exec.signal)
         const path = await writeWorkspaceAttachment(ctx, file, exec)
         return { path, filename: file.filename, contentType: file.contentType, size: file.bytes.length }
       } catch (error) {
@@ -256,6 +263,7 @@ export function installTools(ctx, getSettings) {
         assertConfigured(settings, 'send')
         const password = await passwordFor(ctx)
         const attachments = await readWorkspaceAttachments(ctx, args.attachments, exec, settings.maxAttachmentBytes)
+        const { replyHeaders, sendMail } = await import('./mail-client.js')
         const headers = args.replyTo === undefined ? {} : await replyHeaders(settings, password, args.replyTo, exec.signal)
         return await sendMail(settings, password, { ...args, ...headers, attachments }, exec.signal)
       } catch (error) {
