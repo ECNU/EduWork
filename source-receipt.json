@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T14:20:46.943Z",
-  "fileSetSHA256": "576d95380f9e5227ffea4ce83d15354fcd693a9f14f8ed117ffcaeb136accf8f",
+  "createdAt": "2026-10-23T16:24:06.890Z",
+  "fileSetSHA256": "21e0f6ee6a960a026e8f460e9dbfa14d1191e957df89c489e56e3f46cfbe607b",
   "files": [
     {
       "path": ".gitattributes",
@@ -1257,7 +1257,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "2d69aeb375e540c0f34e283d41213335c69ed509cbd648e2f81a041b6c0d3b05"
+      "sha256": "be65382e39795de99f5d95a2643eb4c8dd4bb69d9dd7d0863a3c8dba76327448"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1413,7 +1413,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "91d0f30c5489adab0c772dd53f0fb261e41ed07ba8f9f52bf4d91a0ba4b3099b"
+      "sha256": "b29de9b4c97a9ef5d28810e2e4a1e521e3dda8e9ea053218617f23b8b992b7a5"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",

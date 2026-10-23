@@ -31,7 +31,14 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   }
   const applicationItems = () => [
     { label: locale.messages.checkUpdatesMenu, click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
-    { type: 'separator' }, { role: 'quit', label: locale.messages.quit },
+    { type: 'separator' },
+    ...(process.platform === 'darwin' ? [
+      { role: 'hide', label: locale.messages.hideApplication.replaceAll('DeepSeek Harness', app.getName()) },
+      { role: 'hideOthers', label: locale.messages.hideOtherApplications },
+      { role: 'unhide', label: locale.messages.showAllApplications },
+      { type: 'separator' },
+    ] : []),
+    { role: 'quit', label: locale.messages.quit },
   ]
   const refreshMenu = () => setDesktopApplicationMenu(Menu.buildFromTemplate([
     { label: app.getName(), submenu: applicationItems() },

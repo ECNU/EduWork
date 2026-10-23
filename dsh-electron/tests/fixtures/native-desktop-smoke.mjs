@@ -56,6 +56,10 @@ app.whenReady().then(async () => {
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },
     checkUpdates: async () => ({}), pickDirectory: signal => picker.pick(signal),
     bootBrand: () => 'Synthetic EduWork' })
+  const visibilityRoles = () => Menu.getApplicationMenu().items[0].submenu.items
+    .map(item => item.role).filter(role => ['hide', 'hideothers', 'unhide'].includes(role))
+  const expectedVisibilityRoles = process.platform === 'darwin' ? ['hide', 'hideothers', 'unhide'] : []
+  assert.deepEqual(visibilityRoles(), expectedVisibilityRoles, 'application visibility commands must be ready before Host boot')
   // Exercise real native windows before/after application-menu refresh, including
   // the separate recovery-window path. Alt must not resurrect a removed menu.
   const progress = new BrowserWindow({ show: false, width: 580, height: 280 })
@@ -111,7 +115,12 @@ app.whenReady().then(async () => {
   hostWait = async () => {}
   results.push('boot IPC joins the pending startup, returns the ready Host and propagates failure')
   assert.equal((await evaluate('__DSH_LOCALE__.read()')).preference, 'zh')
+  assert.deepEqual(visibilityRoles(), expectedVisibilityRoles, 'locale refresh must preserve application visibility commands')
+  results.push('application visibility commands match the platform before Host boot and after locale refresh')
   const nativeMenu = () => Menu.getApplicationMenu()
+  if (process.platform === 'darwin') {
+    assert.ok(nativeMenu().items[0].submenu.items.find(item => item.role === 'hide').label.includes(app.getName()))
+  }
   assert.deepEqual(nativeMenu().items.slice(-2).map(item => item.label), ['编辑', '视图'])
   assert.equal(nativeMenu().items[0].submenu.items[0].label, '检查更新…')
   assert.ok(nativeMenu().items.find(item => item.role === 'editmenu').submenu.items.some(item => item.role === 'copy'))
