@@ -2,9 +2,21 @@
 
 [简体中文](README.md) | **English**
 
-Status: **Planned, pending review; not implemented.** This proposal defines intended behavior and implementation boundaries. It does not describe an available feature.
+Status: **An isolated first-stage experiment exists; default products do not include it. Promotion remains planned.** The experiment and the intended complete design are distinguished below; this is not a delivered release.
 
-## Goal and interaction
+## Current experiment
+
+Following [Codex `/side`](https://github.com/openai/codex/blob/7d592f6dd9988e349e3164feaa21d0fc14bbac8a/codex-rs/tui/src/app/side.rs), the first stage provides temporary side chats with **no promotion action**. User messages and completed assistant answers can start an independent snapshot. Inherited history is reference material; only new side requests are active instructions. Opening does not call a model. History uses ordinary conversation rendering; dedicated folding is deferred.
+
+One side chat is allowed per window. Reopening the same boundary reuses it; another boundary requires closing the existing chat. The last model request before the cutoff determines model selection, falling back to the deployment default. The source Agent preset is mounted afresh, with current permissions. Subagents, schedules, long-lived background work, nested side forks and dedicated worktrees are prohibited.
+
+Messages stay in memory, outside persistence, lists, search and automatic history-memory indexes. Temporary drafts, view preferences and sidebar tabs are not persisted in the browser. Collapse, main-session navigation, artifact preview and window hiding retain state; explicit close, refresh and actual exit end it. Abrupt disconnections expire through a 45-second lease plus cleanup polling. Failed cleanup remains non-renewable and retries. Explicit file changes and external operations are not rolled back.
+
+Pinned DSH `0.2.1-rc.2` provides exact forks, turn closure, Agent scopes, embedded chat and sidebar tabs. **The published npm Runtime lacks the complete temporary-lifetime contract.** The experiment adds `ephemeral` factory options and metadata, handling them in persistence, queries, discovery events and client storage. Hash-guarded derivatives of npm compiled outputs retain corresponding source changes and file receipts. They only write new experimental directories, identify themselves as `experimental-side-chat`, and cannot serve as default npm caches or product locks. Formal integration requires an agreed upstream contract and compatible published version.
+
+See the [experimental package](../../../packages/dsh-side-chat/README_EN.md) for implementation and commands. Automation covers real Runtime model loops, cutoff, persistence/search isolation, ordinary persistence, independent cancellation, background-tool restrictions, open/close races, leases and cleanup retries. Browser acceptance uses an isolated Host and deterministic model. This does not replace real-provider, multimodal, Office, OIDC or audiovisual acceptance. Complex tool/attachment history, missing attachments, source deletion, narrow windows and multiple windows still need dedicated acceptance. Experiments disable updates, do not publish npm packages, and do not change default component locks.
+
+## Complete design intent (planned)
 
 Users can choose “Open side chat” on any user or assistant message in an existing conversation and ask follow-up questions in a right panel while keeping their place in the original conversation. For example, they can discuss a grading rubric beside a course-planning conversation without interrupting its subsequent planning work.
 
@@ -21,7 +33,7 @@ A side chat has a new session ID, its own input, generation state and cancellati
 | Models and tools | Reuses ordinary capabilities, permission rules and global concurrency limits | Existing execution rules |
 | Saving | User explicitly chooses a folder to retain it | Persisted normally |
 
-## Proposed initial scope
+## Complete design boundaries (planned, including promotion)
 
 1. **History cutoff.** Inherit the currently visible branch from its beginning through the selected message, inclusive, with no later messages. Subsequent additions, edits and regenerations in either conversation do not affect the other. Inherited history is initially collapsed and can be expanded. Selecting a user message does not automatically replay its request; the user sends a new follow-up.
 2. **Message boundaries.** Provide the action on every user message and completed assistant message, excluding internal tool events as separate entry points. A streaming assistant message must complete or stop first to avoid copying partial output or incomplete tool calls. Historical tool calls and results must form valid context and must never be executed again. Long histories follow ordinary context-compaction rules with a visible indication when compaction is used; sending every original word on every request is not guaranteed.
@@ -34,13 +46,13 @@ A side chat has a new session ID, its own input, generation state and cancellati
 
 The initial version excludes multiple side panels, branching within a side chat, automatic merge-back, cross-device temporary-chat synchronization and crash recovery. Save the conversation for long-term retention.
 
-## Implementation assessment
+## Further promotion assessment
 
-**Feasible, with an expected medium-to-large change across layers.** The repository uses the pinned DSH `0.2.1-rc.2` Runtime and already has conversation UI slots, session scopes and artifact-side-panel integration. These provide integration points, but support for safe branching at arbitrary messages, two complete chat panels, isolated temporary storage and atomic saving has not been verified. Existing slots do not establish feature readiness.
+**Promotion still requires design across layers.** The first stage verifies precise cutoffs, two chat panels and temporary-storage isolation in the experimental Runtime. Atomic promotion, independent attachment retention and arbitrary folder classification remain unimplemented.
 
 Reuse ordinary message projections, input, model execution, tool permissions and attachment services, adding an explicit temporary lifecycle. The UI owns only the action and panel. The temporary marker must reach backend session queries, search, memory scans, export and notification routing; hiding list entries in the frontend is insufficient. Change lifecycle state only after permanent storage and attachment references commit successfully. Cleanup and saving must share state constraints to prevent deletion races or duplicate saves.
 
-Before implementation, inspect branching, session mounting and persistence interfaces in the pinned Runtime. Verify valid snapshots from user messages and assistant messages containing tool results, and establish how conversation folders relate to working directories. If required interfaces are missing, coordinate DSH extension contracts before integrating EduWork. Preserve existing npm and component locks; do not deliver through edits to installed official packages or a second chat engine. Reuse existing layout facilities when allocating space between artifact preview and chat.
+Formal integration needs agreed DSH contracts and published versions, plus further checks of complex tool/attachment history and folder/cwd relationships. Preserve npm and component locks; experimental derivatives cannot masquerade as official packages. Reuse the existing conversation engine and layout facilities.
 
 ## Planned acceptance checks
 
@@ -49,4 +61,4 @@ Before implementation, inspect branching, session mounting and persistence inter
 - Stop owned tasks on close. Failed cleanup remains retryable without restoring access. Preserve source data and retain usable snapshots after source deletion.
 - Save into any accessible folder, retry failures and repeated clicks, and exercise save/close races without losing messages, duplicating sessions or deleting attachments. Reopen the complete saved conversation after restart.
 
-These are planned checks. No feature or desktop acceptance validation has been performed for this proposal.
+These checks concern the complete design and cannot be replaced by first-stage tests. Decisions remain on promotion identity, atomic save/close, and whether arbitrary folders classify conversations separately or change tool working directories.
