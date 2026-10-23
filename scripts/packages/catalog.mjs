@@ -1,6 +1,6 @@
 export const repository = 'ECNU/EduWork'
 
-// Seven independently installed development roots, eight independently published packages.
+// Eight independently installed development roots, nine independently published packages.
 // Studio retains its existing shared-services workspace and exact dependency contract.
 export const packages = [
   { id: 'dsh-annotation', name: '@eduwork/dsh-annotation', directory: 'packages/dsh-annotation', group: 'dsh-annotation' },
@@ -11,6 +11,7 @@ export const packages = [
   { id: 'dsh-mail', name: '@eduwork/dsh-mail', directory: 'packages/dsh-mail', group: 'dsh-mail' },
   { id: 'dsh-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', directory: 'packages/dsh-knowledge-studio', group: 'dsh-knowledge-studio' },
   { id: 'dsh-artifact-services', name: '@eduwork/dsh-artifact-services', directory: 'packages/dsh-knowledge-studio/packages/artifact-services', group: 'dsh-knowledge-studio' },
+  { id: 'dsh-remote-access', name: '@eduwork/dsh-remote-access', directory: 'packages/dsh-remote-access', group: 'dsh-remote-access' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
 export function selectPackage(id) {

@@ -29,7 +29,7 @@ const jwt = claims => {
 async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authChanges = {}) {
   const raw = profileRaw(mode)
   const profile = normalizeEnterpriseProfile({ ...raw, auth: { ...raw.auth, ...authChanges }, ...(provider === undefined ? {} : { provider }) }), records = new Map(), calls = [], routes = []
-  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
+  const controls = { user: 'alice', expiresIn: 1800, omitID: false, refreshID: false, refreshFailure: undefined, claim: {}, omitIssuer: false, scope: undefined, quotaGate: undefined, models: [{ id: 'model-a', type: 'llm' }] }
   let authorization, callbackResult, serial = 0
   const ctx = { credentials: { resolve: async ref => records.has(ref) ? { value: records.get(ref) } : undefined,
     set: async (ref, value) => { records.set(ref, value) }, unset: async ref => { records.delete(ref) } }, logger: { warn() {} }, effect() {} }
@@ -45,6 +45,7 @@ async function fixture(t, mode = 'oidc', metadataChanges = {}, provider, authCha
         assert.equal(init.body.get('client_id'), 'public-client')
         assert.equal(init.body.get('resource'), base)
         const refresh = init.body.get('grant_type') === 'refresh_token'
+        if (refresh && controls.refreshFailure) return json(controls.refreshFailure.body, controls.refreshFailure.status)
         if (!refresh) {
           assert.equal(init.body.get('redirect_uri'), authorization.searchParams.get('redirect_uri'))
           assert.equal(createHash('sha256').update(init.body.get('code_verifier')).digest('base64url'), authorization.searchParams.get('code_challenge'))
@@ -323,6 +324,61 @@ test('draft refresh is single-flight, accepts optional refreshed ID Token and pe
   f.controls.claim = { nonce: 'wrong' }
   await assert.rejects(f.backend.refresh(f.profile, saved), /sign in again/)
   assert.equal(f.records.size, 0)
+})
+
+test('identity tokens are the verified ones, renewed by a refresh before they lapse', async t => {
+  const f = await fixture(t)
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
+  await f.login()
+  const claims = token => JSON.parse(Buffer.from(token.split('.')[1], 'base64url'))
+  const first = await f.backend.identityToken('draft')
+  assert.equal(claims(first.token).sub, 'alice')
+  assert.equal(first.expiresAt, claims(first.token).exp)
+  assert.deepEqual(await f.backend.identityToken('draft'), first)
+  assert.equal(f.calls.filter(c => c.body?.get?.('grant_type') === 'refresh_token').length, 0)
+  let now = Date.now()
+  f.backend.now = () => now
+  // Close to expiry it refreshes first; a refresh without a new ID Token leaves the old one while it lasts.
+  now += 25 * 60 * 1000
+  assert.equal((await f.backend.identityToken('draft')).token, first.token)
+  assert.equal(f.calls.filter(c => c.body?.get?.('grant_type') === 'refresh_token').length, 1)
+  now += 6 * 60 * 1000
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_identity_token_unavailable' })
+  f.controls.refreshID = true
+  f.controls.claim = { exp: Math.floor(now / 1000) + 3600 }
+  const renewed = await f.backend.identityToken('draft')
+  assert.equal(renewed.expiresAt, Math.floor(now / 1000) + 3600)
+  assert.equal(claims(renewed.token).sub, 'alice')
+  await f.backend.logout('draft')
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
+})
+
+test('a failed refresh withholds the identity token; only a rejected grant ends the sign-in', async t => {
+  const f = await fixture(t)
+  await f.login()
+  let now = Date.now()
+  f.backend.now = () => now
+  f.controls.refreshID = true
+  now += 25 * 60 * 1000
+  // The issuer is briefly unavailable: no token now, the sign-in stays, and the next attempt renews it.
+  f.controls.refreshFailure = { status: 503, body: {} }
+  await assert.rejects(f.backend.identityToken('draft'), error => error.code !== 'oidc_login_required')
+  assert.equal(f.records.size, 1)
+  f.controls.refreshFailure = undefined
+  f.controls.claim = { exp: Math.floor(now / 1000) + 3600 }
+  assert.equal((await f.backend.identityToken('draft')).expiresAt, Math.floor(now / 1000) + 3600)
+  // The issuer rejects the refresh token: the sign-in ends.
+  now += 55 * 60 * 1000
+  f.controls.refreshFailure = { status: 400, body: { error: 'invalid_grant' } }
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
+  assert.equal(f.records.size, 0)
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_login_required' })
+})
+
+test('OAuth-only sign-in offers no identity token', async t => {
+  const f = await fixture(t, 'oauth')
+  await f.login()
+  await assert.rejects(f.backend.identityToken('draft'), { code: 'oidc_identity_token_unavailable' })
 })
 
 test('draft token scopes are explicit, never expanded, and checked after rotation', async t => {

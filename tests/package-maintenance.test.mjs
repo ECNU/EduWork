@@ -22,14 +22,14 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])
   assert.deepEqual(changedGroups(['packages/dsh-oidc/src/host/model-provider.ts']), ['dsh-oidc'])
   assert.deepEqual(changedGroups(['packages/dsh-mail/README.md', 'README.md']), [])
-  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 7)
+  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 8)
   assert.equal(needsProductBuild(['packages/dsh-oidc/src/host/model-provider.ts', 'docs/PACKAGES.md']), false)
   assert.equal(needsProductBuild(['third_party/npm-015-rc1/dsh-oidc/LOCK.json']), true)
   assert.equal(needsProductBuild(['dsh-host/entry.mjs']), true)
   assert.throws(() => selectPackage('../../private'), /Unknown package/)
 })
-test('eight separate package identities retain registry dependency contracts and product npm locks', async () => {
-  assert.equal(new Set(packages.map(p => p.name)).size, 8)
+test('nine separate package identities retain registry dependency contracts and product npm locks', async () => {
+  assert.equal(new Set(packages.map(p => p.name)).size, 9)
   for (const selected of packages) {
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
@@ -41,7 +41,7 @@ test('eight separate package identities retain registry dependency contracts and
   const assembly = JSON.parse(await readFile(new URL('../config/assembly.eduwork.json', import.meta.url)))
   for (const selected of packages) {
     const declaration = assembly.externalPackages.find(p => p.name === selected.name)
-    if (selected.id === 'dsh-desktop-pet' || selected.id === 'dsh-annotation') {
+    if (selected.id === 'dsh-desktop-pet' || selected.id === 'dsh-annotation' || selected.id === 'dsh-remote-access') {
       // DSH 0.2 packages; never add them to the legacy 0.1.x product.
       assert.equal(declaration, undefined)
       continue
@@ -99,4 +99,22 @@ test('desktop pet publication rejects a package missing a referenced character i
   assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
   delete files['package/skins/dafeiyu/idle.svg']
   assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing packed character image dafeiyu\/idle.svg/)
+})
+
+test('remote publication rejects a missing relay command, browser runtime or protocol', () => {
+  const selected = selectPackage('dsh-remote-access')
+  const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' }, bin: { 'eduwork-remote-relay': 'lib/relay.js' } }
+  const files = Object.fromEntries(['lib/index.js', 'lib/relay.js', 'lib/web/index.html', 'lib/web/loader.js', 'lib/web/loader.css',
+    'lib/web/sw.js', 'lib/web/preamble.js', 'lib/web/manifest.webmanifest', 'lib/web/icon.svg', 'lib/web/icon.png',
+    'lib/THIRD_PARTY_LICENSES.txt', 'docs/PROTOCOL.md', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE', 'THIRD_PARTY_NOTICES.md']
+    .map(file => ['package/' + file, 'fixture']))
+  files['package/package.json'] = JSON.stringify(manifest)
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
+  for (const file of ['lib/relay.js', 'lib/web/sw.js', 'docs/PROTOCOL.md']) {
+    const incomplete = { ...files }
+    delete incomplete['package/' + file]
+    assert.throws(() => inspectArchive(tarball(incomplete), selected, '0.1.0'), /Missing remote runtime, protocol or license file/)
+  }
+  files['package/package.json'] = JSON.stringify({ ...manifest, bin: {} })
+  assert.throws(() => inspectArchive(tarball(files), selected, '0.1.0'), /Missing remote relay command/)
 })

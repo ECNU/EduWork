@@ -460,3 +460,17 @@ test('a newer unpinned revision replaces an active revision pinned to an older r
   assert.match(restarted.state.active.configuration,/^2-/)
   assert.equal((await (await f.open()).check()).state,'current')
 })
+
+test('signed configuration sets and moves the organization relay for remote access',async t=>{
+  const f=await fixture(t)
+  const organizations=[{id:'university'}]
+  const offer=(revision,relay)=>f.release(revision,{configuration:revision},{schemaVersion:1,configuration:{organizations,remoteAccess:{relay,oidcProfileId:'university'}}})
+  offer(1,'https://remote.example.test')
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare();await manager.ready()
+  assert.deepEqual(loadUserConfig(f.configPath).remoteAccess,{relay:'https://remote.example.test/',oidcProfileId:'university'})
+  offer(2,'https://relay.example.test')
+  await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare();await manager.ready()
+  assert.equal(loadUserConfig(f.configPath).remoteAccess.relay,'https://relay.example.test/')
+})

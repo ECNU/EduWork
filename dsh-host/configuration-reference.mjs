@@ -177,6 +177,9 @@ export const configurationFields = {
     title: ['音色显示名称，默认取 id。', '示例音色'],
     language: ['可选语言标识。', 'zh-CN'],
   }),
+  remoteAccess: ['机构提供的远程访问：经机构的中继、凭机构登录在手机等设备上使用这台电脑，用户仍须在设置中开启。不填则由用户自己填写中继和接入密钥。', {}],
+  'remoteAccess.relay': ['机构中继的 HTTPS 地址；与其他服务共用域名时带上中继的路径，如 https://example.edu/eduwork-remote/。本机测试可用 http://127.0.0.1。', 'https://remote.example.edu'],
+  'remoteAccess.oidcProfileId': ['接入所凭的登录，对应 organizations[].id；须为 identityMode 为 oidc 的网关登录。', 'example'],
   plugins: ['已安装插件的选项，以插件 ID 为键；不会安装新插件。下方列出可编辑默认值；设置中保存的个人偏好可能优先。', {}],
   ...pluginConfigurationFields,
 }

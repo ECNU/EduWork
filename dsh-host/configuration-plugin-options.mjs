@@ -144,4 +144,5 @@ export const managedPluginConfiguration = {
   'eduwork-request-concurrency.maxParallelSubagents': 'features.maxParallelSubagents',
   'eduwork-media-openai.providers': 'media.providers',
   'eduwork-artifact-services.images': 'media.providers',
+  'eduwork-remote-access.organization': 'remoteAccess',
 }

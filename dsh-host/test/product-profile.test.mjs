@@ -318,3 +318,24 @@ test('only Windows Electron profiles offer the workspace permission repair', asy
       shell === 'electron' && platform === 'win32' ? ['@eduwork/desktop-services/lib/workspace-access.js'] : [])
   }
 })
+
+test('an organization relay for remote access reaches the installed plugin, which the user still switches on', async t => {
+  const { root, product, home } = await fixture(t)
+  // A stand-in for dsh-oidc's profile check, which the product runs before any organization reaches the Host.
+  const oidc = join(product, 'd/node_modules/@eduwork/dsh-oidc')
+  await mkdir(oidc, { recursive: true })
+  await writeFile(join(oidc, 'package.json'), JSON.stringify({ name: '@eduwork/dsh-oidc', type: 'module', exports: { './profile': './profile.js' } }))
+  await writeFile(join(oidc, 'profile.js'), 'export const loadEnterpriseProfiles = () => new Map()\n')
+  const composition = JSON.parse(await readFile(join(product, 'composition.json'), 'utf8'))
+  composition.push({ insert: [{ id: 'eduwork-remote-access', name: '@eduwork/dsh-remote-access', config: { enabled: false } }] })
+  await writeFile(join(product, 'composition.json'), JSON.stringify(composition))
+  const userConfig = join(root, 'eduwork.jsonc')
+  const plugin = async config => {
+    await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, organizations: [{ id: 'university' }], ...config }))
+    const { profile } = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
+    return JSON.parse(await readFile(join(profile, 'cordis.patch.yml'), 'utf8')).flatMap(row => row.insert ?? []).find(row => row.id === 'eduwork-remote-access').config
+  }
+  assert.deepEqual(await plugin({ remoteAccess: { relay: 'https://example.edu/eduwork-remote/', oidcProfileId: 'university' } }),
+    { enabled: false, organization: { relay: 'https://example.edu/eduwork-remote/', oidcProfileId: 'university' } })
+  assert.deepEqual(await plugin({}), { enabled: false })
+})

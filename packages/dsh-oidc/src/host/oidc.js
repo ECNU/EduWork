@@ -557,6 +557,11 @@ export class WebOidcBackend {
     throw publicError('oidc_resource_not_configured', 'Identity-only sign-in has no model resources; configure gateway authorization')
   }
 
+  async identityToken(profileID) {
+    this.profile(profileID)
+    throw publicError('oidc_identity_token_unavailable', 'Identity tokens are offered for gateway sign-in only')
+  }
+
   async reconcile(profileID) {
     const profile = this.profile(profileID)
     const session = await this.activeSession(profile)

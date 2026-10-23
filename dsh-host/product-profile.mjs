@@ -76,6 +76,8 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const media = await loadMediaProviders(product, shell === 'electron' && user ? { ...user, media: user.media ?? { providers: [] } } : user)
   pluginConfig = mergeConfig(pluginConfig, { 'eduwork-media-openai': media,
     'eduwork-artifact-services': { images: { enabled: media.providers.some(provider => provider.images?.enabled) } } })
+  // The organization's relay admits its members by their sign-in; the user still switches remote access on.
+  if (user?.remoteAccess) pluginConfig = mergeConfig(pluginConfig, { 'eduwork-remote-access': { organization: user.remoteAccess } })
   const resources = await prepareNativeResources({ product })
   pluginConfig = mergeConfig(resources.pluginConfig, pluginConfig)
   const ownerFile = join(home, '.eduwork-desktop-home.json')

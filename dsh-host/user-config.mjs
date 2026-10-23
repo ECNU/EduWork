@@ -56,9 +56,9 @@ export function parseUserConfig(path, body, { overlay } = {}) {
     }
     unique(tree)
     const original = jsonc.getNodeValue(tree)
-    if (overlay) allowed(overlay, ['organizations', 'features', 'media'], '内容配置')
+    if (overlay) allowed(overlay, ['organizations', 'features', 'media', 'remoteAccess'], '内容配置')
     const value = overlay ? { ...original, ...overlay, features: { ...original.features, ...overlay.features } } : original
-    allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media', 'contentUpdates', 'plugins'], '配置')
+    allowed(value, ['schemaVersion', 'product', 'organizations', 'desktop', 'updates', 'features', 'media', 'remoteAccess', 'contentUpdates', 'plugins'], '配置')
     if (value.schemaVersion !== 1) throw new Error('schemaVersion 必须是 1')
     allowed(value.product ?? {}, ['name', 'logoFile'], 'product')
     allowed(value.desktop ?? {}, ['closeAction', 'notifications', 'pet'], 'desktop')
@@ -119,10 +119,21 @@ export function parseUserConfig(path, body, { overlay } = {}) {
       if (!/^[a-z][a-z0-9-]{0,127}$/u.test(id)) throw new Error('plugins 中的插件 ID 无效')
       allowed(settings, Object.keys(settings ?? {}), `plugins.${id}`)
     }
+    let remoteAccess
+    if (value.remoteAccess !== undefined) {
+      allowed(value.remoteAccess, ['relay', 'oidcProfileId'], 'remoteAccess')
+      const url = new URL(text(value.remoteAccess.relay, 'remoteAccess.relay', 2048))
+      if ((url.protocol !== 'https:' && !(url.protocol === 'http:' && ['localhost', '127.0.0.1', '[::1]'].includes(url.hostname)))
+        || url.username || url.password || url.search || url.hash) throw new Error('remoteAccess.relay 请填写中继的 HTTPS 地址，例如 https://remote.example.edu 或 https://example.edu/eduwork-remote/')
+      const oidcProfileId = text(value.remoteAccess.oidcProfileId, 'remoteAccess.oidcProfileId', 64)
+      if (!(value.organizations ?? []).some(organization => organization?.id === oidcProfileId)) throw new Error('remoteAccess.oidcProfileId 必须对应 organizations 中的一项')
+      // The relay's base URL: a path of its own when it shares a domain, always ending in `/`.
+      remoteAccess = { relay: url.origin + url.pathname.replace(/\/?$/, '/'), oidcProfileId }
+    }
     const features = { ...value.features }
     if (features.maxConcurrentRequests === undefined && features.maxParallelSubagents !== undefined) features.maxConcurrentRequests = features.maxParallelSubagents + 1
     return { source, product, pluginConfig, organizations: value.organizations ?? [], closeAction, notifications, pet, updates, features, contentUpdates: contentUpdateSource(value.contentUpdates),
-      ...(value.media !== undefined ? { media: normalizeMediaConfig(value.media) } : {}) }
+      ...(value.media !== undefined ? { media: normalizeMediaConfig(value.media) } : {}), ...(remoteAccess ? { remoteAccess } : {}) }
   } catch (error) {
     throw new Error(`请检查配置文件 ${path}\n${error.message}`, { cause: error })
   }

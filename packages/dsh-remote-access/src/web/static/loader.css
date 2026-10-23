@@ -1,0 +1,24 @@
+:root { color-scheme: light dark; --accent: #9f2636; --line: #e7dfda; --muted: #746762; font: 15px/1.6 system-ui, -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif; }
+@media (prefers-color-scheme: dark) { :root { --line: #3a3330; --muted: #b3a7a2; } }
+/* Pulling down at the top of DSH would otherwise reload the page and reconnect. */
+html, body { margin: 0; height: 100%; overscroll-behavior: none; }
+[hidden] { display: none !important; }
+main { height: 100dvh; }
+/* DSH cannot see the notch or the home indicator from inside the frame, so the frame keeps clear of them. */
+iframe { display: block; box-sizing: border-box; width: 100%; height: 100%; border: 0; padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.card { box-sizing: border-box; max-width: 480px; margin: 0 auto; padding: max(32px, env(safe-area-inset-top)) 20px 32px; display: grid; gap: 14px; }
+h1 { margin: 0; font-size: 20px; }
+.note { margin: 0; color: var(--muted); font-size: 13px; }
+.code { margin: 8px 0; font-size: 40px; font-weight: 650; letter-spacing: 6px; font-variant-numeric: tabular-nums; text-align: center; }
+label { display: grid; gap: 6px; font-size: 14px; }
+input { font: inherit; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; }
+button, .button { font: inherit; padding: 10px 16px; border: 1px solid var(--line); border-radius: 10px; background: transparent; color: inherit; cursor: pointer; text-align: center; text-decoration: none; }
+.primary { border-color: var(--accent); background: var(--accent); color: #fff; }
+ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+li { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; }
+li span { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+li .button, li button { padding: 6px 12px; font-size: 13px; }
+#bar, #banner { position: fixed; left: 0; right: 0; z-index: 1; display: flex; align-items: center; justify-content: center; gap: 12px; padding: 6px 12px; font-size: 13px; background: #221b18; color: #fff; }
+#bar { top: 0; padding-top: max(6px, env(safe-area-inset-top)); }
+#banner { bottom: 0; padding-bottom: max(6px, env(safe-area-inset-bottom)); }
+#bar button, #banner button { padding: 2px 10px; font-size: 12px; border-color: #fff6; }

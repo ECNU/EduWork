@@ -16,8 +16,9 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | `@eduwork/dsh-mail` | [邮件助手](../packages/dsh-mail/README.md) | `packages/dsh-mail` |
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office、语音、图像与媒体服务](../packages/dsh-knowledge-studio/packages/artifact-services/README.md) | 与 Studio 共用已有 workspace |
+| `@eduwork/dsh-remote-access` | [远程访问与自托管中继](../packages/dsh-remote-access/README.md) | `packages/dsh-remote-access` |
 
-七个开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
+八个开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
 
 ## 兼容声明与构建锁
 
@@ -50,7 +51,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 这里只翻译插件提供的固定提示。工具名、路径、收件人及用户或模型提供的内容保持原样；权限模式、拒绝条件、审批触发时机及“允许一次”的含义不随语言变化。新增审批点应验证中英文、语言切换及原有权限分支，可参考 `scripts/test/plugin-locale.test.mjs` 的官方面板回归测试。
 
-## 八个独立的 npm 包
+## 九个独立的 npm 包
 
 各包使用自己的 SemVer，保持现有包名、公开导出、配置标识和数据路径。每次发布使用新版本，不覆盖已经发布的版本。若共享服务版本变化，同步 Studio 的精确依赖与开发锁；先发布并核验共享服务，再发布 Studio。
 
@@ -71,7 +72,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-当前 DSH 0.2.1 配方从 npm 装配八个独立包：选段批注、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注从下一次客户端构建起预装；插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.2/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
+当前 DSH 0.2.1 配方从 npm 装配八个独立包：选段批注、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注从下一次客户端构建起预装；插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.2/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。远程访问包尚未装配进客户端，发布并核验后按下文顺序加入。
 
 批注使用 DSH 原生 bundle，首次预装时默认启用一次，此后由原生插件管理器保存启停选择。`assembly.json` 的 `optionalBundles` 标明这类可选预装包，Profile 记录已处理的包名；已手动安装的包复用原有激活记录，不重复注册，已停用的包不会因重启再次启用。原有核心 bundle 的规则保持不变。
 

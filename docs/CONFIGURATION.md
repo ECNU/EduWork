@@ -2,7 +2,7 @@
 
 [English](CONFIGURATION_EN.md) · [配置示例](../config/desktop/examples/README.md) · [配置与 Skills 更新](CONTENT_UPDATES.md)
 
-公版和机构版 Electron 都只读取一份生效配置：`config/eduwork.jsonc`。可以从设置中的“打开配置文件”打开它；编辑保存后，从托盘退出程序再启动。文件里的机构、模型、功能开关和媒体服务就是客户端使用的配置，不再叠加另一份隐藏的学校配置。
+公版和机构版 Electron 都只读取一份生效配置：`config/eduwork.jsonc`。可以从设置中的“打开配置文件”打开它；编辑保存后，从托盘退出程序再启动。文件里的机构、模型、功能开关、媒体服务和远程访问就是客户端使用的配置，不再叠加另一份隐藏的学校配置。
 
 | 平台 | 生效配置 | 唯一回退备份 |
 | --- | --- | --- |
@@ -52,6 +52,21 @@ HTTP UAT 只需把对应企业对象中与 `auth` 同级的开关改为：
 需要固定测试配置时，把现有 `contentUpdates.configuration` 改为 `false`；Skills 可继续更新。把 `contentUpdates.skills` 也设为 `false` 可停用全部远程内容更新。不要用不完整的 `contentUpdates` 对象替换现有的来源和公钥。
 
 软件的 `updates` 与配置的 `contentUpdates` 分开管理。软件更新渠道的“开发版／公测版”不等于服务端的“UAT／生产”。无需修改程序资源、签名缓存或创建 UAT 配置服务才能测试。长期联调建议使用独立安装和数据目录，避免混用两个环境的会话与登录状态。
+
+## 机构远程访问
+
+机构自建[远程访问](../packages/dsh-remote-access/README.md)中继、让成员凭机构登录接入时，在 `remoteAccess` 中填写中继地址和所凭的登录：
+
+```jsonc
+"remoteAccess": {
+  // 机构中继的 HTTPS 地址；与其他服务共用域名时带上中继的路径，如 https://example.edu/eduwork-remote/。
+  "relay": "https://remote.example.edu",
+  // 对应 organizations[].id；须为 identityMode 为 oidc 的网关登录。
+  "oidcProfileId": "example-university"
+}
+```
+
+用户登录该机构账号后，在“设置 → 远程访问”勾选“允许远程访问”即可，不用填写中继和接入密钥；远程访问仍默认关闭。设置页不能更改这个中继，登录得到的 ID Token 只发给它。中继须设置 `RELAY_OIDC_ISSUER` 和 `RELAY_OIDC_CLIENT_IDS`，与这项登录的 issuer 和 client ID 一致。中继地址可以随签名的配置更新下发和更换，见[配置与 Skills 更新](CONTENT_UPDATES.md)。
 
 ## 已安装插件的配置
 

@@ -2,7 +2,7 @@
 
 [中文](CONTENT_UPDATES.md) · [Software updates](UPDATES.md) · [Distribution assembly](BUILD.md)
 
-Electron can download small publisher-signed content bundles for organization model catalogs, feature switches, media configuration and official Skills. Generic EduWork does not enable remote content management by default. Administrators explicitly configure the source, public key and permitted components.
+Electron can download small publisher-signed content bundles for organization model catalogs, feature switches, media configuration, the remote access relay and official Skills. Generic EduWork does not enable remote content management by default. Administrators explicitly configure the source, public key and permitted components.
 
 ## User experience
 
@@ -12,7 +12,7 @@ Content can be downloaded separately. Downloading available software also starts
 
 ## Ownership and scope
 
-- Configuration may update `organizations`, `features` and `media` only. Signed defaults merge into the editable file; locally modified fields and custom entries are retained.
+- Configuration may update `organizations`, `features`, `media` and `remoteAccess` only. Signed defaults merge into the editable file; locally modified fields and custom entries are retained.
 - Skills bundles contain a complete publisher Skills snapshot, including references and auxiliary scripts using existing runtimes.
 - Program files, plugins, npm packages, Python, Node and browsers remain whole-application updates. Content cannot carry executable binaries or runtime directories.
 - Personal/workspace Skills, user models, credentials, conversations and desktop preferences are preserved. Locally modified bundled Skills prevent online replacement and should be saved as personal Skills first.
@@ -47,6 +47,8 @@ Software follows SemVer; content uses positive integer revisions. A publisher us
 Requirements include mandatory `minClient` and `capabilities`, optional `maxClientExclusive`, and an optional exact `dsh` version. The bundle requirements must cover every Skill; an individual upper client bound must match the bundle bound. Installed capability names come from `resources/product/assembly.json`: `package:<name>` for `managedPackages` and `plugin:<name>` for `localPlugins`. Presence does not prove account/model availability. Use client version bounds for required tool API versions; dependencies are never installed by this mechanism.
 
 Declare compatibility from the configuration fields and tool APIs actually used. Ordinary configuration should omit `requires.dsh` and list only necessary capabilities, not the complete installed plugin inventory. Use the optional exact `dsh` restriction only for content that depends on a particular kernel implementation; it also applies to cached offline content. An upstream rc version change alone does not require new configuration or excluding older clients.
+
+Configuration with `remoteAccess` should also require the `package:@eduwork/dsh-remote-access` capability and set `minClient` to the first client version that supports `remoteAccess`: earlier clients do not know the section and would reject the whole configuration bundle, whereas with both they only ask to update the software first.
 
 To correct requirements alone, increment and sign the manifest revision while preserving unchanged component bytes and revisions. Signatures, hashes, rollback protection and required capability checks remain enforced. Build inputs, including kernel commits and npm archives, remain pinned independently of these compatibility declarations.
 

@@ -31,6 +31,7 @@ if (action === 'list') {
       'dsh-mail': ['check'],
       'dsh-memory': ['build', 'test'],
       'dsh-knowledge-studio': ['typecheck', 'build', 'test', 'audit'],
+      'dsh-remote-access': ['check'],
     }
     for (const script of scripts[selected.group]) npm(['run', script], { cwd, stdio: 'inherit' })
   }

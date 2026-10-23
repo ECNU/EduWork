@@ -34,6 +34,21 @@ Set the existing `contentUpdates.configuration` field to `false` to freeze local
 
 Software `updates` and configuration `contentUpdates` are separate. Development/stable release channels do not select UAT/production services. Local testing requires no edits to app resources or signed caches, and no separate UAT content server. A separate installation/data directory is recommended for sustained testing so accounts and conversations stay separate.
 
+## Organization remote access
+
+When an organization runs its own [remote access](../packages/dsh-remote-access/README_EN.md) relay and admits members by their organization sign-in, set the relay and the sign-in in `remoteAccess`:
+
+```jsonc
+"remoteAccess": {
+  // The organization relay's HTTPS address, with the relay's path when it shares a domain, e.g. https://example.edu/eduwork-remote/.
+  "relay": "https://remote.example.edu",
+  // An organizations[].id: a gateway sign-in with identityMode oidc.
+  "oidcProfileId": "example-university"
+}
+```
+
+After signing in to that organization, users select "Allow remote access" under Settings → Remote access, without entering a relay or an access key; remote access stays off by default. The settings page cannot change this relay, and the ID Token of the sign-in goes only to it. Configure the relay's `RELAY_OIDC_ISSUER` and `RELAY_OIDC_CLIENT_IDS` with that sign-in's issuer and client ID. A signed configuration update can deliver or change the relay address; see [content updates](CONTENT_UPDATES_EN.md).
+
 ## Installed plugin settings
 
 Optional `plugins` entries use the plugin ID from the edition composition, for example `"plugins": {"example-service": {"baseURL": "https://uat.example.test/v1"}}`. These options merge into that installed plugin on restart; they cannot install plugins. Unknown IDs fail with a configuration error. Use the edition/plugin documentation for accepted options. Institution service endpoints must be switched alongside account and media endpoints for UAT. Remote content configuration does not overwrite this local section.
