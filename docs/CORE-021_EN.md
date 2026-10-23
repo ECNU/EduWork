@@ -18,6 +18,8 @@ Remove the loopback-address/ephemeral-port patch and the file-reference rescan u
 
 Active-session persistence can still disrupt searches: the relevant implementation in the locked npm package is byte-identical to the previous version. Keep the [search consistency backport](SESSION-SEARCH-BACKPORT.md), its complete file-hash check, and the upstream-failure/regression tests. Remove it when upstream provides an equivalent fix.
 
+The desktop first-paint theme backport is limited to the DSH `0.2.1-rc.2` `@deepseek-ai/dsh-client-ui-theme` version and its original SHA-256. It reuses the first-paint preference before Host settings take over, and falls back to the system theme with a warning when reading fails. Remove it and re-run acceptance when upstream provides an equivalent startup-theme interface.
+
 ## Building and verification
 
 See the [build guide](BUILD.md) for entry points. Assembly stages read the version and commit from one recipe, while individual source hashes and npm integrity checks remain mandatory. `validate-pinned-dsh-source.yml` exercises the actual Host, Electron bridges, assembled product, settings and plugins on Windows/macOS.

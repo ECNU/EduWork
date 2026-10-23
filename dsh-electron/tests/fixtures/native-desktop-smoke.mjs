@@ -69,6 +69,9 @@ app.whenReady().then(async () => {
   await assertThemeRead([[themeRow('dark')], [{ ...themeRow('light'), name: '@synthetic/other-theme' }]], 'dark')
   await assertThemeRead([[themeRow('dark')], [themeRow('unsupported')]], 'system')
   await assertThemeRead([[themeRow('dark')], '- id: [broken'], 'system')
+  const themeWarnings = []
+  assert.equal(await readStartupTheme(themeHome, error => themeWarnings.push(error)), 'system')
+  assert.equal(themeWarnings.length, 1, 'malformed theme preferences must be reported')
   await assertThemeRead([[themeRow('dark')], 'ui-theme: {preference: dark}'], 'system')
   globalThis.__eduworkThemeExpressionExecuted = false
   const themeExpression = '(globalThis.__eduworkThemeExpressionExecuted = true, "dark")'

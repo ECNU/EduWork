@@ -7,13 +7,13 @@ import { startupThemeResponse } from './startup-theme.mjs'
 
 // The static frontend is shell-owned and already present in the product tree.
 // It must not wait for the Host process that the same page is about to boot.
-export function staticDesktopResponse(request, webRoot, home) {
+export function staticDesktopResponse(request, webRoot, home, warn = () => {}) {
   const route = classifyDesktopRequest(request)
   if (route.kind === 'forbidden') return Promise.resolve(new Response(null, { status: 403 }))
   if (route.kind === 'static') {
     const response = serveWebDocument(request, webRoot)
     if (request.method === 'GET' && ['/', '/index.html'].includes(route.url.pathname)) {
-      return response.then(value => value.ok ? startupThemeResponse(value, home) : value)
+      return response.then(value => value.ok ? startupThemeResponse(value, home, warn) : value)
     }
     return response
   }
@@ -61,7 +61,8 @@ export class DesktopHostProcess {
     return preference ?? null
   }
   fetch(request) {
-    const staticResponse = staticDesktopResponse(request, this.#webRoot, process.env.DSH_HOME)
+    const staticResponse = staticDesktopResponse(request, this.#webRoot, process.env.DSH_HOME,
+      () => process.stderr.write('[startup-theme] startup theme preference unavailable; using system\n'))
     if (staticResponse) return staticResponse
     if (!this.#ready) return Promise.resolve(new Response(null, { status: 503 }))
     return forwardWebRequest(request, this.#ready.origin, this.#cookie)

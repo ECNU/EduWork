@@ -5,6 +5,10 @@ import { applyEntryPatches, entryListSchema } from '@deepseek-ai/cordis-plugin-i
 import { bootThemeInjections } from '../upstream/packages/client/ui-theme/src/boot-theme.ts'
 import { DEFAULT_PREFERENCE, isThemePreference } from '../upstream/packages/client/ui-theme/src/theme-settings.ts'
 
+const PROFILE_DIRECTORY = 'desktop-017'
+const THEME_ENTRY_ID = 'ui-theme'
+const THEME_PACKAGE = '@deepseek-ai/dsh-client-ui-theme'
+
 async function readPatches(path) {
   const text = await readFile(path, 'utf8').catch(error => { if (error.code !== 'ENOENT') throw error })
   if (text === undefined) return []
@@ -13,28 +17,28 @@ async function readPatches(path) {
   return patches
 }
 
-export async function readStartupTheme(home) {
+export async function readStartupTheme(home, warn = () => {}) {
   try {
-    const profile = join(home, 'profiles', 'desktop-017')
+    const profile = join(home, 'profiles', PROFILE_DIRECTORY)
     const layers = await Promise.all([
       join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml'),
       join(profile, 'cordis.patch.yml'),
       join(home, 'cordis.patch.yml'),
     ].map(readPatches))
-    const name = '@deepseek-ai/dsh-client-ui-theme'
-    const entries = applyEntryPatches([{ id: 'ui-theme', name, config: {} }], layers.flat(), () => {})
-      .filter(entry => entry.id === 'ui-theme')
+    const entries = applyEntryPatches([{ id: THEME_ENTRY_ID, name: THEME_PACKAGE, config: {} }], layers.flat(), () => {})
+      .filter(entry => entry.id === THEME_ENTRY_ID)
     const entry = entries.length === 1 ? entries[0] : undefined
-    const preference = entry?.name === name && !entry.disabled ? entry.config?.preference : undefined
+    const preference = entry?.name === THEME_PACKAGE && !entry.disabled ? entry.config?.preference : undefined
     return isThemePreference(preference) ? preference : DEFAULT_PREFERENCE
-  } catch {
+  } catch (error) {
+    warn(error)
     // Host startup still owns configuration errors; early painting must not bypass its recovery.
     return DEFAULT_PREFERENCE
   }
 }
 
-export async function startupThemeResponse(response, home) {
-  const [html, preference] = await Promise.all([response.text(), readStartupTheme(home)])
+export async function startupThemeResponse(response, home, warn = () => {}) {
+  const [html, preference] = await Promise.all([response.text(), readStartupTheme(home, warn)])
   const [style, script] = bootThemeInjections(preference)
   // Keep the Host readiness gate pending, and put the palette after the static stylesheet.
   const themed = html.replace('</head>', `<style>${style.text}</style></head>`)

@@ -18,6 +18,8 @@
 
 活跃会话自动落盘引发的搜索冲突在此版本仍存在：锁定 npm 包中的查询实现与此前版本逐字节相同。因此保留[搜索一致性补丁](SESSION-SEARCH-BACKPORT.md)，继续检查完整文件哈希，并运行官方失败对照和修复回归。上游提供等价修复后应删除它。
 
+桌面首屏主题延续补丁限定 DSH `0.2.1-rc.2` 的 `@deepseek-ai/dsh-client-ui-theme` 版本与原始 SHA-256；它在 Host 设置接管前复用首屏偏好，读取失败时回退系统主题并记录警告。上游提供等价的启动主题接口后应删除该补丁并重新验收。
+
 ## 构建与验证
 
 [构建指南](BUILD.md)说明入口。各装配阶段从同一配方读取版本和提交，额外的输入文件哈希及 npm integrity 校验保持不变。`validate-pinned-dsh-source.yml` 在 Windows/macOS 验证实际 Host、Electron 桥接、已装配产品、设置与插件。

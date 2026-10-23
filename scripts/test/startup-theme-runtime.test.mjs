@@ -144,3 +144,13 @@ test('packaged ThemeRuntime keeps the bootstrap palette until Host settings arri
     assert.deepEqual(fixture.writes, [])
   })
 })
+
+test('startup theme profile matches the native desktop profile', async () => {
+  const [theme, profile] = await Promise.all([
+    readFile(new URL('../../dsh-electron/src/startup-theme.mjs', import.meta.url), 'utf8'),
+    readFile(new URL('../../dsh-host/product-profile.mjs', import.meta.url), 'utf8'),
+  ])
+  const profileDirectory = /const PROFILE_DIRECTORY = '([^']+)'/.exec(theme)?.[1]
+  assert.ok(profileDirectory, 'startup theme must declare its profile directory')
+  assert.ok(profile.includes(`native ? '${profileDirectory}'`), 'startup theme profile must match the native desktop profile')
+})
