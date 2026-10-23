@@ -64,6 +64,8 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 组装产品时不带运行时用不到的包：DSH 的 Typert 生成器与测试工具、产品未启用的实验性语音输入（SenseVoice）、文献检索只抽文字时不需要的 canvas，以及 Studio 用 webpack 打包时不需要的 rspack。只被这些包依赖的包一并去掉，完整清单记在 `assembly.json` 的 `omittedPackages` 中。Remotion 读取视频工程的 tsconfig 时会用到 TypeScript，因此保留。为避免启动时加载 rspack，对 Remotion 打包器应用了一个按 SHA-256 校验的补丁，记录在 `runtimePatches` 中。两端的 Electron 只保留中文和英文资源，其他系统语言下 Chromium 自带的菜单和对话框显示英文；macOS 不带只供嵌入 Python 使用的 libpython。
 
+产品装配另对锁定的 DSH client-modules 应用 `client-module-ctime-only-rebuild-v1`：旧更新器清理硬链接备份时，文件 ctime 会变化，但 mtime 和内容不变，此时不应触发插件重载。输入版本与完整 SHA-256 均受校验，输出摘要记录在 `assembly.json.runtimePatches`。正常构建更新时间或真实内容变化仍会重载；更换上游版本后须复核或移除此适配。首次升级验收要求见[更新指南](UPDATES.md#ci-产物与发行验收)。
+
 ## Web 构建
 
 需要单独检查 Web 时运行：

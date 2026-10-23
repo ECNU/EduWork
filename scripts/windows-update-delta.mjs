@@ -3,7 +3,8 @@
 // content changed, and the files the updater never takes from an installation:
 // user-managed roots and the venv configuration the Host rewrites at startup.
 // Entries are copied from the release ZIP without recompression. The updater
-// links every other file from the installation and verifies the staged tree
+// reuses every other file from the installation (copying watched product files)
+// and verifies the staged tree
 // against the complete manifest.
 import { createHash } from 'node:crypto'
 import { rm, stat } from 'node:fs/promises'

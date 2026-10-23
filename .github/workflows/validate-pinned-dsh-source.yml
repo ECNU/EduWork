@@ -46,6 +46,8 @@ on:
       - 'scripts/test/settings-navigation-runtime.test.mjs'
       - 'scripts/patch-chat-user-content-runtime.mjs'
       - 'scripts/test/chat-user-content-runtime.test.mjs'
+      - 'scripts/patch-client-module-metadata-runtime.mjs'
+      - 'scripts/test/client-module-metadata-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
       - 'scripts/test/runtime-omissions.test.mjs'
@@ -160,6 +162,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search checks failed' }
+          node --test core/scripts/test/client-module-metadata-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Client module metadata rebuild checks failed' }
           node --test core/scripts/test/settings-navigation-runtime.test.mjs
           node --test core/scripts/test/chat-user-content-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Settings navigation adapter checks failed' }
