@@ -22,7 +22,5 @@
   "apps/desktop/src/windows-layout.ts": "c032247c34d9794171aa3bd67534d511aca9f8963058d9976fb57f8c06a24628",
   "apps/desktop/package.json": "913095d3048ad424335acccf8e3193bb9523961604709062a430f57c4ac22479",
   "apps/desktop/src/login-shell-environment.ts": "d8a6730a92c057ad70fb7fa163df72aca13eff9cfe54edb7a823594e8680e348",
-  "apps/desktop/src/duration-env.ts": "f230ed09a0094871e30d3eac559b9674fc122b01539348b661df4b3dd1b534aa",
-  "packages/client/ui-theme/src/boot-theme.ts": "871b90625fd3ba8a99ae61406243ed17381aa919f935c812e926eafb026bf8df",
-  "packages/client/ui-theme/src/theme-settings.ts": "f767181d6eed53034cee90c92a2a63f4b4b0875a1383edc9296cb78e184dd633"
+  "apps/desktop/src/duration-env.ts": "f230ed09a0094871e30d3eac559b9674fc122b01539348b661df4b3dd1b534aa"
 }

@@ -93,7 +93,7 @@ async function handleStartupFailure(error) {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
-  if (!claimDesktopSingleInstance(app, () => showDesktopWindow(mainWindow))) return
+  if (!claimDesktopSingleInstance(app, () => started && showDesktopWindow(mainWindow))) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({
     getHost: () => backend.host,
@@ -109,7 +109,7 @@ async function main() {
   })
   const webRoot = desktopWebRoot()
   protocol.handle(SCHEME, request => {
-    const staticResponse = staticDesktopResponse(request, webRoot, process.env.DSH_HOME)
+    const staticResponse = staticDesktopResponse(request, webRoot)
     if (staticResponse) return staticResponse
     const host = backend.host
     return host ? host.fetch(request) : Promise.resolve(new Response(null, { status: 503 }))
@@ -139,9 +139,7 @@ async function main() {
   })
   entered = true
 
-  // The static page paints the upstream BootPage without the Host, so show
-  // the real window while configuration and the Host start in parallel. A
-  // first-run download or migration window remains the visible startup surface.
+  // Match upstream: load the document, start the Host, then present the window.
   const presentInitialWindow = (startupWindowHidden = false) => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
@@ -156,13 +154,12 @@ async function main() {
     window.show()
   }
   const pageLoaded = window.loadURL(`${SCHEME}://app/index.html`)
-  void pageLoaded.then(() => presentInitialWindow()).catch(() => {})
-  const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
   try { await pageLoaded } catch (error) {
     // A startup failure closes this window and aborts its navigation.
     if (startupFailure || isQuitting()) return
     throw error
   }
+  const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.
   if (!backend.host || backend.state.phase !== 'ready') {

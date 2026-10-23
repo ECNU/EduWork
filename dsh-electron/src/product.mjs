@@ -98,7 +98,7 @@ export function configureEduworkPaths() {
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
-  attachAppActivation({ app, windows: () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows().filter(window => !desktopPet?.owns(window))] })
+  attachAppActivation({ app, windows: () => [progressWindow, updateCompleted ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))] })
   // Own the process tree from the beginning of startup, including when the
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
@@ -264,7 +264,7 @@ async function prepareDesktop() {
   process.env.EDUWORK_CHROMIUM_VERSION = process.versions.chrome
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
-  const showNotificationWindow = () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
+  const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
@@ -365,8 +365,9 @@ export async function attachDesktopWindow(window) {
   window.setIcon(paths.icon)
   attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
-  const show = attachWindowVisibility({ app, window, isQuitting,
+  const showWindow = attachWindowVisibility({ app, window, isQuitting,
     shouldExit: () => user?.closeAction === 'exit', hasTray: () => Boolean(tray) })
+  const show = () => updateCompleted && showWindow()
   const action = value => {
     show()
     if (!['new-session', 'settings'].includes(value) || window.isDestroyed()) return
@@ -434,7 +435,7 @@ export async function attachDesktopWindow(window) {
 }
 
 export function checkProductUpdates() {
- if (!mainWindow || mainWindow.isDestroyed()) return
+ if (!updateCompleted || !mainWindow || mainWindow.isDestroyed()) return
  mainWindow.show();mainWindow.focus()
  return mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));").catch(()=>{})
 }

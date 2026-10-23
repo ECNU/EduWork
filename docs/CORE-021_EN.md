@@ -18,7 +18,7 @@ Remove the loopback-address/ephemeral-port patch and the file-reference rescan u
 
 Active-session persistence can still disrupt searches: the relevant implementation in the locked npm package is byte-identical to the previous version. Keep the [search consistency backport](SESSION-SEARCH-BACKPORT.md), its complete file-hash check, and the upstream-failure/regression tests. Remove it when upstream provides an equivalent fix.
 
-The desktop first paint reuses DSH's theme styles and config patch semantics, reading only the theme preference from EduWork's generated config, desktop Profile and user patches; the Host still loads the complete Profile. The theme handoff patch is limited to DSH `0.2.1-rc.2`, the original SHA-256 of `@deepseek-ai/dsh-client-ui-theme`, and the desktop boot context. The Web client keeps upstream behavior. Read failures fall back to the system theme with a warning that contains no config contents. Remove the patch and re-run acceptance when upstream supports the equivalent desktop theme handoff.
+The desktop follows DSH startup presentation: load the static page, then show the main window after the Host resolves its configuration. The upstream Host and client own the theme; configuration downloads, migrations and startup failures keep their existing dedicated windows.
 
 ## Building and verification
 

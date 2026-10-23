@@ -1,12 +1,11 @@
 import { app, BrowserWindow, Menu, clipboard, dialog, nativeTheme, protocol, session, webContents } from 'electron'
 import { createServer } from 'node:http'
 import { writeFileSync } from 'node:fs'
-import { mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { installNativeDesktopBridge } from 'fixture-bridge'
 import { staticDesktopResponse } from 'fixture-static'
-import { readStartupTheme } from 'fixture-startup-theme'
 import { DesktopDirectoryPicker } from '../../src/directory-picker.mjs'
 import { createWindow } from 'fixture-window'
 import { DesktopBackendController } from 'fixture-backend'
@@ -43,78 +42,15 @@ app.whenReady().then(async () => {
   const hostOrigin = `http://127.0.0.1:${hostServer.address().port}`
   const host = { origin: hostOrigin, boot: () => ({ injections: [], streamBaseUrl: hostOrigin }),
     socketHeaders: () => ({}), readLocalePreference: async () => 'zh' }
-  const themeHome = join(output, 'theme-home')
-  const themeProfile = join(themeHome, 'profiles', 'desktop-017')
-  const themeBundle = join(themeProfile, 'node_modules', '@eduwork', 'generated-profile')
-  const themeFiles = [join(themeBundle, 'cordis.patch.yml'), join(themeProfile, 'cordis.patch.yml'), join(themeHome, 'cordis.patch.yml')]
-  await mkdir(themeBundle, { recursive: true })
-  const setThemeLayers = async (layers = []) => Promise.all(themeFiles.map((file, index) =>
-    writeFile(file, typeof layers[index] === 'string' ? layers[index] : JSON.stringify(layers[index] ?? []))))
-  const themeRow = preference => ({ id: 'ui-theme', name: '@deepseek-ai/dsh-client-ui-theme', config: { preference } })
-  const themeFilesSnapshot = async () => ({ paths: (await readdir(themeHome, { recursive: true })).sort(),
-    contents: await Promise.all(themeFiles.map(file => readFile(file, 'utf8'))) })
-  const assertThemeRead = async (layers, expected) => {
-    await setThemeLayers(layers)
-    const before = await themeFilesSnapshot()
-    assert.equal(await readStartupTheme(themeHome), expected)
-    assert.deepEqual(await themeFilesSnapshot(), before, 'reading startup theme must not rewrite or create preferences')
-  }
-  const missingThemeHome = join(output, 'missing-theme-home')
-  assert.equal(await readStartupTheme(missingThemeHome), 'system')
-  assert.equal(await readdir(missingThemeHome).catch(error => error.code), 'ENOENT')
-  await assertThemeRead([[themeRow('dark')]], 'dark')
-  await assertThemeRead([[themeRow('dark')], [themeRow('light')]], 'light')
-  await assertThemeRead([[themeRow('light')], [themeRow('dark')], [themeRow('system')]], 'system')
-  await assertThemeRead([[themeRow('dark')], [], [{ id: 'ui-theme', config: { fontSize: 16 } }]], 'system')
-  await assertThemeRead([[themeRow('dark')], [{ ...themeRow('light'), name: '@synthetic/other-theme' }]], 'dark')
-  await assertThemeRead([[themeRow('dark')], [themeRow('unsupported')]], 'system')
-  await assertThemeRead([[themeRow('dark')], '- id: [broken'], 'system')
-  await assertThemeRead([[themeRow('dark')], 'ui-theme: {preference: dark}'], 'system')
-  globalThis.__eduworkThemeExpressionExecuted = false
-  const themeExpression = '(globalThis.__eduworkThemeExpressionExecuted = true, "dark")'
-  await assertThemeRead([[themeRow('dark')], `- id: ui-theme\n  config:\n    preference: !!js ${JSON.stringify(themeExpression)}\n`], 'system')
-  await assertThemeRead([[themeRow('dark')], `- id: ui-theme\n  config: !!js ${JSON.stringify(themeExpression)}\n`], 'system')
-  await assertThemeRead([[themeRow('dark')], `- id: unrelated\n  config: !!js ${JSON.stringify(themeExpression)}\n`], 'dark')
-  assert.equal(globalThis.__eduworkThemeExpressionExecuted, false, 'startup theme must not evaluate Loader expressions')
-  delete globalThis.__eduworkThemeExpressionExecuted
-  await setThemeLayers()
-  results.push('startup theme reads generated/profile/home patches without writes, preserving replacement/name guards and never evaluating expressions')
   const webRoot = join(output, 'web')
   await mkdir(join(webRoot, 'assets'), { recursive: true })
   await writeFile(join(webRoot, 'index.html'), `<!doctype html><html lang="zh"><head>
-    <style>body{background:#fff}[data-dsh-boot-spinner]{animation:fixture-spin .8s linear infinite}@keyframes fixture-spin{to{transform:rotate(360deg)}}</style>
+    <style>[data-dsh-boot-spinner]{animation:fixture-spin .8s linear infinite}@keyframes fixture-spin{to{transform:rotate(360deg)}}</style>
   </head><body>
-    <script>
-      window.firstPageScript = {
-        preference: document.documentElement.dataset.dsThemeSource,
-        dark: document.body.hasAttribute('data-ds-dark-theme'),
-        background: getComputedStyle(document.body).backgroundColor,
-        colorScheme: getComputedStyle(document.documentElement).colorScheme,
-        darkMedia: matchMedia('(prefers-color-scheme: dark)').matches,
-        bootGate: typeof globalThis.__DSH_BOOT_READY__?.promise?.then === 'function',
-      }
-      window.fixtureBoot = { hostReady: false, entryStarted: false, error: null }
-      const bootGate = globalThis.__DSH_BOOT_READY__
-      bootGate.promise.then(() => { fixtureBoot.entryStarted = true }, () => {})
-      dshDesktopBoot.ready().then(() => {
-        fixtureBoot.hostReady = true
-        bootGate.resolve()
-      }, error => { fixtureBoot.error = error.message; bootGate.reject(error) })
-    </script>
     <div data-shell-overlay></div><h1>Fixture</h1>
     <div data-dsh-boot><div><div>HARNESS</div><div data-dsh-boot-spinner></div><div>Loading plugins…</div></div></div>
   </body></html>`)
   await writeFile(join(webRoot, 'assets', 'marker.txt'), 'static-before-host')
-  await setThemeLayers([[], '- id: [broken'])
-  const themeWarnings = [], originalWarn = console.warn
-  console.warn = (...args) => themeWarnings.push(args)
-  try {
-    const response = await staticDesktopResponse(new Request('dsh-app://app/index.html'), webRoot, themeHome)
-    assert.equal(response.status, 200)
-    assert.match(await response.text(), /const preference = "system"/)
-    assert.deepEqual(themeWarnings, [['[startup-theme] startup theme preference unavailable; using system']])
-  } finally { console.warn = originalWarn }
-  await setThemeLayers()
   const picker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
   bridge = installNativeDesktopBridge({ getHost: () => host, waitForHost: () => hostWait(), getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },
@@ -127,7 +63,7 @@ app.whenReady().then(async () => {
   const recoveryWindow = new BrowserWindow({ show: false, width: 660, height: 470 })
   removeWindowMenu(recoveryWindow)
   protocol.handle('dsh-app', request => {
-    const asset = staticDesktopResponse(request, webRoot, themeHome)
+    const asset = staticDesktopResponse(request, webRoot)
     if (asset) return asset
     return staticHostReady
       ? new Response('host:' + new URL(request.url).pathname, { headers: { 'content-type': 'text/plain' } })
@@ -135,43 +71,16 @@ app.whenReady().then(async () => {
   })
   mainWindow = createWindow(preload, false, true)
   bridge.attach(mainWindow)
-  const evaluate = code => mainWindow.webContents.executeJavaScript(code, true)
-  const originalNativeTheme = nativeTheme.themeSource
-  for (const [preference, nativeSource] of [['system', 'system'], ['system', 'light'], ['system', 'dark'], ['dark', 'light'], ['light', 'dark']]) {
-    await setThemeLayers([[], [themeRow(preference)]])
-    nativeTheme.themeSource = nativeSource
-    const nativeDark = nativeTheme.shouldUseDarkColors
-    const expectedDark = preference === 'system' ? nativeDark : preference === 'dark'
-    let allowHost
-    const pendingHost = new Promise(resolve => { allowHost = resolve })
-    hostWait = () => pendingHost
-    await mainWindow.loadURL('dsh-app://app/index.html')
-    assert.deepEqual(await evaluate('firstPageScript'), {
-      preference, dark: expectedDark, background: expectedDark ? 'rgb(21, 21, 23)' : 'rgb(255, 255, 255)',
-      colorScheme: expectedDark ? 'dark' : 'light', darkMedia: nativeDark, bootGate: true,
-    }, `${preference} preference with native ${nativeSource} must color the document before its first script`)
-    await tick(); await tick()
-    assert.deepEqual(await evaluate('fixtureBoot'), { hostReady: false, entryStarted: false, error: null })
-    allowHost()
-    await until(async () => (await evaluate('fixtureBoot.entryStarted')) === true)
-    assert.deepEqual(await evaluate('fixtureBoot'), { hostReady: true, entryStarted: true, error: null })
-  }
-  hostWait = async () => {}
-  await setThemeLayers()
-  nativeTheme.themeSource = originalNativeTheme
   await mainWindow.loadURL('dsh-app://app/index.html')
-  results.push('startup theme colors the first page script for native system/light/dark and explicit overrides without releasing the Host boot gate')
+  const evaluate = code => mainWindow.webContents.executeJavaScript(code, true)
   const contract = await evaluate(`({platform:document.documentElement.dataset.platform,browser:typeof dshDesktop.browser.acquire,keyboard:typeof dshDesktop.keyboard.subscribe,shortcuts:typeof dshDesktop.shortcuts.get,locale:typeof __DSH_LOCALE__.read,paths:typeof __DSH_HOST_PATHS__.pathFor,account:typeof window.dshPlatform})`)
   assert.deepEqual(contract, { platform: process.platform, browser: 'function', keyboard: 'function', shortcuts: 'function', locale: 'function', paths: 'function', account: 'undefined' })
   const staticChecks = await evaluate(`Promise.all([
     fetch('/assets/marker.txt').then(response => response.text()),
     fetch('/api/settings/describe').then(response => response.status),
     fetch('/index.html', { method: 'POST' }).then(response => response.status),
-    fetch('/index.html', { method: 'HEAD' }).then(async response => [response.status, await response.text()]),
-    fetch('/assets/marker.txt', { method: 'POST' }).then(response => response.status),
-    fetch('/api/settings/describe', { method: 'POST' }).then(response => response.status),
   ])`)
-  assert.deepEqual(staticChecks, ['static-before-host', 503, 405, [200, ''], 405, 503])
+  assert.deepEqual(staticChecks, ['static-before-host', 503, 405])
   staticHostReady = true
   assert.equal(await evaluate(`fetch('/api/settings/describe').then(response => response.text())`), 'host:/api/settings/describe')
   results.push('shell static document and assets load before the Host; API stays behind readiness; POST is rejected')
