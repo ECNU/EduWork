@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T15:37:17.469Z",
-  "fileSetSHA256": "9855a1db4822887d18bbac4caca5ea3fb2e076258bf04bd965c28c027239d3d0",
+  "createdAt": "2026-10-23T15:37:53.669Z",
+  "fileSetSHA256": "24a398f48512aef0934ea2782cfd2a61e40ab15e65b21a1e80caa1ae2cd89758",
   "files": [
     {
       "path": ".gitattributes",
@@ -3077,7 +3077,7 @@
     },
     {
       "path": "dsh-plugins/tool-browser/test/search-provider-lazy.test.mjs",
-      "sha256": "1315341265d343c7a1a32ba268dc069df9a2c9266595e044706f984b9f0c915d"
+      "sha256": "11b6ff0f843db4e2418a4b536f4570eb57bfc355fd59ba410d91bbfa946148c6"
     },
     {
       "path": "dsh-plugins/tool-browser/test/search-runtime.test.mjs",
