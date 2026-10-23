@@ -109,6 +109,41 @@ func TestStageDeltaReleaseRejectsModifiedInstalledFile(t *testing.T) {
 	assertFileValue(t, filepath.Join(installDir, "resources", "same.dat"), "locally patched")
 }
 
+func TestDeltaProductFilesStayIndependentOfBackupCleanup(t *testing.T) {
+	installDir := t.TempDir()
+	files := map[string][]byte{
+		"resources/product/d/node_modules/plugin/lib/panel.js": []byte("client bundle"),
+		"resources/product/d/node_modules/plugin/lib/chunk.js": []byte("lazy chunk"),
+		"resources/product/custom-ui/index.html":               []byte("frontend"),
+	}
+	for name, bytes := range files {
+		writeFixtureFile(t, filepath.Join(installDir, filepath.FromSlash(name)), bytes)
+	}
+	archive := writeReleaseZIP(t, deltaManifest(files), map[string][]byte{})
+	root, _, err := stageDeltaRelease(archive, installDir, t.TempDir(), PendingUpdate{Version: deltaTestVersion, Flavor: "offline", DeltaFrom: "0.4.3"}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for name, bytes := range files {
+		oldPath, newPath := filepath.Join(installDir, filepath.FromSlash(name)), filepath.Join(root, filepath.FromSlash(name))
+		oldInfo, err := os.Stat(oldPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		newInfo, err := os.Stat(newPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if os.SameFile(oldInfo, newInfo) {
+			t.Fatalf("product file still shares its backup: %s", name)
+		}
+		if err := os.Remove(oldPath); err != nil {
+			t.Fatal(err)
+		}
+		assertFileValue(t, newPath, string(bytes))
+	}
+}
+
 func TestStageDeltaReleaseNeverReusesUserManagedFiles(t *testing.T) {
 	installDir := filepath.Join(t.TempDir(), "portable")
 	writeFixtureFile(t, filepath.Join(installDir, "config", "eduwork.jsonc"), []byte("{}"))

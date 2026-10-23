@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T16:49:59.625Z",
-  "fileSetSHA256": "c15e1df34b8bba7c06ce293bbb4804e060dbc8aa770678c1212099429cc7e513",
+  "createdAt": "2026-10-23T14:20:46.943Z",
+  "fileSetSHA256": "576d95380f9e5227ffea4ce83d15354fcd693a9f14f8ed117ffcaeb136accf8f",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "3faf097dbead13a3f86b55a480ebad49b87b3b5f06cbeb849433da8fb07d097a"
+      "sha256": "f182215b017f4f4290eb3a1c05f36a00294a394641c84b4e5d5e3ed52a911ae2"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "bebc020337a51ae31596300bf48dd31d3726be3c5b85c930f96ed4c7690f40d3"
+      "sha256": "7e3cd641a298952feda76d1a997ad8db9a8b5df5e5375fbed080dc9a3acee744"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -517,7 +517,7 @@
     },
     {
       "path": "docs/UPDATES.md",
-      "sha256": "6706b25d9bcc609ce96374a109a3934359a1892f9eb7d693e3e422889d2d9c02"
+      "sha256": "9ee38af0de126e4abd3259fa5edfdd9643a7ecdcdbc9d4d6120613875a049712"
     },
     {
       "path": "docs/USER_GUIDE.md",
@@ -897,11 +897,11 @@
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
-      "sha256": "0e19ea11a8da29f3fc9b1ad6f6cad14b214f69d8fa7fe02d41308e7cc3eb6f44"
+      "sha256": "51dbc5fb80ea51cc48200de2761529fee787085944206e53228a3e5ae1297fc6"
     },
     {
       "path": "dsh-desktop/internal/updater/delta_test.go",
-      "sha256": "816d0d707fbb0c64283d1b1188005e0256b0ce7b8d9d77ab6d30b0ee43fede11"
+      "sha256": "3612999d648060c40f6870338b398de21ca8b2ba01c76b3e96d14f12c35f2723"
     },
     {
       "path": "dsh-desktop/internal/updater/download.go",
@@ -6537,11 +6537,11 @@
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
-      "sha256": "92737acecd99b6f6b905d33b1be18149b1afa5c07086a4cfaaafe978cb943fc1"
+      "sha256": "247f038a8926a7f7e4783f712b7a5f41be7cd7645eaf1eccdb74401bb43cbe75"
     },
     {
       "path": "RELEASE-CHECKLIST.md",
-      "sha256": "2a451bc6da79c25d26db31bf0dd3e1011414d0586ff92eaa2b8f285c22736e0f"
+      "sha256": "19bdca559a9cbf94d25d30c4d3d14f4274ec99e1e906784ec8de6ff178605bba"
     },
     {
       "path": "scripts/accept-pinned-dsh-desktop.ps1",
@@ -6565,7 +6565,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "d7aae91f98a3cb4ed422cd71ec3f0f8fc65e35b40a36087cf6b79a9c180e012a"
+      "sha256": "9f3647fe3119dcc46677e3ceec4718e2d342347cfef41b48847da2492225a6f8"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -6896,6 +6896,10 @@
       "sha256": "04faa824808d153d88a8bf6ed858c0dcd22affa5cfc9bb58ac2034a485ee9434"
     },
     {
+      "path": "scripts/patch-client-module-metadata-runtime.mjs",
+      "sha256": "3c6749fe97cb971a9870e017967150b381673e8eb6012dc41dde7b085994889a"
+    },
+    {
       "path": "scripts/patch-eduwork-source-reproducibility.mjs",
       "sha256": "7131a5ab4a618b6443d412f0f378d5f59d8e2fcb3055e645233ca070de66b774"
     },
@@ -7092,6 +7096,10 @@
       "sha256": "e47a27819d7539e4fe2cbe9e752372ea71ae79bff6dc8482d5193d90412d92e4"
     },
     {
+      "path": "scripts/test/client-module-metadata-runtime.test.mjs",
+      "sha256": "fb4e9f3d6260292c457ae7fab3c426a35693a7a074dc04901296738c6f6d18f5"
+    },
+    {
       "path": "scripts/test/distribution-config-patches.test.mjs",
       "sha256": "bc9539a679b477157129e4ff54a6e87609d1de80205dab167a52e9214f7b54ec"
     },
@@ -7193,7 +7201,7 @@
     },
     {
       "path": "scripts/windows-update-delta.mjs",
-      "sha256": "a0b417aa3b8df639f24d7fc7d9f1d36c351416cadb0ada6bf0902d92288a8e16"
+      "sha256": "028bd57c9b9e90993a68cf858398b1426cf76c60953d26384639e2eaffe8c323"
     },
     {
       "path": "scripts/with-eduwork-upstream-lock.ps1",
