@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
+import { EventEmitter } from 'node:events'
+import { attachAppActivation } from '../src/window-visibility.mjs'
 import { shouldPresentMainWindow, startupWindowCompletion, startupWindowPresentation } from '../src/startup-presentation.mjs'
 
 const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false, startupWindowHidden: false }
@@ -50,21 +52,28 @@ function startupHarness() {
   const readyEnd = source.indexOf('\n}\n', readyStart)
   assert.ok(appearanceStart >= 0 && createStart > appearanceStart && messageStart > createStart && readyStart > messageStart && readyEnd > readyStart,
     'production startup window boundaries changed')
+  const activationStart = source.indexOf('attachAppActivation({ app')
+  const activation = source.slice(activationStart, source.indexOf('\n', activationStart))
   class FakeWindow {
-    constructor(options = {}) { this.options = options; this.visible = false; this.destroyed = false; this.showCalls = 0; this.hideCalls = 0; this.webContents = {} }
+    static windows = []
+    static getAllWindows() { return this.windows.filter(window => !window.destroyed) }
+    constructor(options = {}) { this.options = options; this.visible = false; this.destroyed = false; this.showCalls = 0; this.hideCalls = 0; this.webContents = {}; FakeWindow.windows.push(this) }
     show() { this.visible = true; this.showCalls++ }
     hide() { this.visible = false; this.hideCalls++ }
+    isMinimized() { return false }
+    focus() { this.focused = true }
     isVisible() { return this.visible }
     isDestroyed() { return this.destroyed }
     destroy() { this.destroyed = true; this.visible = false }
     loadURL() { return Promise.resolve() }
   }
-  const app = { getAppPath: () => '/app', dock: { setIcon() {} }, getPath: () => '/userData' }
+  const app = Object.assign(new EventEmitter(), { getAppPath: () => '/app', dock: { setIcon() {} }, getPath: () => '/userData' })
   const processFixture = { platform: 'darwin' }
   const build = new Function('BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility',
     'startupPage', 'removeWindowMenu', 'desktopHostLog', 'startupWindowPresentation', 'startupWindowCompletion',
-    'app', 'settings', 'paths', 'isQuitting', 'tray', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates',
+    'app', 'settings', 'paths', 'isQuitting', 'tray', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'attachAppActivation',
     `let progressWindow, mainWindow, mainWindowPresented = false, mainWindowHiddenForStartup = false, migrationLaunch = null, updateCompleted = false
+    ${activation}
     ${source.slice(appearanceStart, createStart)}
     ${source.slice(createStart, messageStart)}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
@@ -72,6 +81,7 @@ function startupHarness() {
       main: null,
       setMain(window) { mainWindow = window; mainWindowPresented = false; mainWindowHiddenForStartup = false },
       markPresented() { mainWindowPresented = true },
+      activate() { app.emit('activate') },
       createProgressWindow,
       desktopReady,
       state: () => ({ mainWindowPresented, mainWindowHiddenForStartup, progressWindow }),
@@ -79,13 +89,29 @@ function startupHarness() {
   const harness = build(FakeWindow, processFixture, joinPath, () => Buffer.from('icon'), () => 'ecnu-liwa',
     () => {}, () => '<html></html>', () => {}, () => {}, startupWindowPresentation, startupWindowCompletion,
     app, { productName: 'Fixture' }, { icon: '/icon.png' }, () => false, undefined,
-    { ready: async () => {} }, async () => {}, { start() {} }, { action: () => Promise.resolve() })
+    { ready: async () => {} }, async () => {}, { start() {}, owns: window => Boolean(window.options.pet) }, { action: () => Promise.resolve() }, options => attachAppActivation({ ...options, platform: 'darwin' }))
   const main = new FakeWindow()
   harness.main = main
   harness.setMain(main)
   return { harness, main, FakeWindow }
 }
 const joinPath = (base, ...parts) => [base, ...parts].join('/').replaceAll('//', '/')
+
+test('Dock activation waits for Host completion while preserving startup and recovery windows', async () => {
+  const { harness, main, FakeWindow } = startupHarness()
+  new FakeWindow({ pet: true })
+  harness.activate()
+  assert.equal(main.visible, false)
+  const download = harness.createProgressWindow('download')
+  download.hide()
+  harness.activate()
+  assert.equal(download.visible, true)
+  assert.equal(main.visible, false)
+  await harness.desktopReady()
+  harness.activate()
+  assert.equal(main.visible, true)
+  assert.equal(main.focused, true)
+})
 
 test('production window handoff preserves an active restore of a hidden download window', async () => {
   const { harness, main } = startupHarness()
@@ -136,7 +162,7 @@ test('startup window handoff is wired into the production window and presentatio
   assert.match(create, /mainWindow\.hide\(\)/)
   assert.match(create, /show: false/)
   assert.match(create, /if \(presentation\.showStartupWindow\) progressWindow\.show\(\)/)
-  const attach = source.slice(source.indexOf('export async function attachDesktopWindow'), source.indexOf('const show = attachWindowVisibility'))
+  const attach = source.slice(source.indexOf('export async function attachDesktopWindow'), source.indexOf('const showWindow = attachWindowVisibility'))
   assert.match(attach, /mainWindowPresented = false/)
   assert.match(attach, /window\.on\('show', \(\) => \{ mainWindowPresented = true \}\)/)
   const native = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')

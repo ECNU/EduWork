@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T14:20:46.943Z",
-  "fileSetSHA256": "576d95380f9e5227ffea4ce83d15354fcd693a9f14f8ed117ffcaeb136accf8f",
+  "createdAt": "2026-10-23T17:55:36.454Z",
+  "fileSetSHA256": "de678c20a0308174d14284a2571b1ddcc6e88f9b56f47c81b93c8e1d093dc5f0",
   "files": [
     {
       "path": ".gitattributes",
@@ -277,11 +277,11 @@
     },
     {
       "path": "docs/CORE-021_EN.md",
-      "sha256": "bd6d6fcb73032ee3416c060a7051482e27dedb02f7c5169d9d7ad4a51fa987cb"
+      "sha256": "e12e423db1e8222de05a893a799803aa6caefab29685dabe7c2d6b80656c3277"
     },
     {
       "path": "docs/CORE-021.md",
-      "sha256": "830582e084a08057f2f4c7c8762ab1dd9555013e3b12b93476f4b239f71d6a29"
+      "sha256": "8164b37773156d5b779ec1e8ede58a4ead77cb6f49d28e6b8b3b67f64dd39f78"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -1261,7 +1261,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "373d7def959c8d8e2949347ecc9d350a765ecf6dcaa2e8b4c556b1362e702915"
+      "sha256": "5ae15d8f45a3f3c5f3be2b113c77305631ea2a1ae4b52bebab4c3ba3baf61d87"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1281,7 +1281,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "cc05224582f70befb6014fe1598f036c2b9c4bc3126362f0e1086220284f2f35"
+      "sha256": "c4969e5fede3e8c0d1cc700d22ba34cb9c4de63188230714e04792df299f5420"
     },
     {
       "path": "dsh-electron/src/quit-confirmation.mjs",
@@ -1429,7 +1429,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "dd66db2b29a88d0e1dacb048eb49e79be7d71fc1dcb84eea313b7acac82440ef"
+      "sha256": "b18c5826ffc38c8572d5d2b4118865a926344988dd29c3f6575a8db18a1fa03a"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "b1221287e32883de9bbb976d9449cb7d25ac22c7dda178d3f10702bdaddee908"
+      "sha256": "ba470b083582e08ca88f5025c33c018e459c48d1862d3d19a99b5d50d0845910"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",

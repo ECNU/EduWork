@@ -18,6 +18,8 @@ Remove the loopback-address/ephemeral-port patch and the file-reference rescan u
 
 Active-session persistence can still disrupt searches: the relevant implementation in the locked npm package is byte-identical to the previous version. Keep the [search consistency backport](SESSION-SEARCH-BACKPORT.md), its complete file-hash check, and the upstream-failure/regression tests. Remove it when upstream provides an equivalent fix.
 
+The desktop follows DSH startup presentation: load the static page, then show the main window after the Host resolves its configuration. The upstream Host and client own the theme; configuration downloads, migrations and startup failures keep their existing dedicated windows.
+
 ## Building and verification
 
 See the [build guide](BUILD.md) for entry points. Assembly stages read the version and commit from one recipe, while individual source hashes and npm integrity checks remain mandatory. `validate-pinned-dsh-source.yml` exercises the actual Host, Electron bridges, assembled product, settings and plugins on Windows/macOS.
