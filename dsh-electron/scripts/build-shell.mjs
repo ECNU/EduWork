@@ -36,11 +36,11 @@ for (const file of files) {
   let text = before.toString('utf8')
   text = adaptNativeDesktopSource(file, text)
   if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8') }
-  const target = join(output, file.slice('apps/desktop/'.length))
+  const target = join(output, file.startsWith('apps/desktop/') ? file.slice('apps/desktop/'.length) : join('upstream', file))
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'quit-confirmation.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'startup-page.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
+const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'quit-confirmation.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'startup-page.mjs', 'startup-theme.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
@@ -126,7 +126,7 @@ async function collectNotice(name, from) {
   notices.push({ name: manifest.name, version: manifest.version, license: manifest.license, files: copies })
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
-for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', '@deepseek-ai/cordis-plugin-include', '@deepseek-ai/cordis-plugin-loader', '@deepseek-ai/cordis', '@deepseek-ai/schemastery', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })

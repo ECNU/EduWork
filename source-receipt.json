@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T16:49:59.625Z",
-  "fileSetSHA256": "c15e1df34b8bba7c06ce293bbb4804e060dbc8aa770678c1212099429cc7e513",
+  "createdAt": "2026-10-23T07:03:14.873Z",
+  "fileSetSHA256": "1d7337149131c8d100c14d0bd85de5c190f4ee8f334289ca5cd2713850250274",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "3faf097dbead13a3f86b55a480ebad49b87b3b5f06cbeb849433da8fb07d097a"
+      "sha256": "1de2d232eb5e6d2b1b757b204810e2577a6f49e3cc7923917b67ad3426f8cad1"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1097,7 +1097,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "307f74fbe6670bca48fcbebe52b244a75df6fc2f286cb7d6b13e740b88a4f117"
+      "sha256": "49ea96b2ea317c8909be5f79fc375bbbdc14a09afb51203023c9b25a0aef5938"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1129,7 +1129,7 @@
     },
     {
       "path": "dsh-electron/scripts/probe-native-desktop.mjs",
-      "sha256": "6df456b17daab22324cc54c7f8869d00161482b75da5aeebbe9c30b6a60e32a5"
+      "sha256": "c04e22cd6a2ef4922f94963ebb658b09651814cc6d0f6156668a467d76914581"
     },
     {
       "path": "dsh-electron/scripts/relocate-macos-compositor.mjs",
@@ -1261,7 +1261,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "373d7def959c8d8e2949347ecc9d350a765ecf6dcaa2e8b4c556b1362e702915"
+      "sha256": "8e8260b8f66e2f1088e5be23d50c10837a2143798120d6f40366e86d63ea1150"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1269,7 +1269,7 @@
     },
     {
       "path": "dsh-electron/src/native-web-host.mjs",
-      "sha256": "53195e2bed2a8710244c77ca9cd09110b91ebb63088e6ab3d062ac14c70bfd90"
+      "sha256": "ede0eaf8a29dd6599e59045a92a1a6232ee1b5125dbdabc4d7ed4878bd1b578c"
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
@@ -1306,6 +1306,10 @@
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
       "sha256": "bbabb560fbee41dbd8f8dce7ca4c0c07faf891351df9d55879e54ff76b12a223"
+    },
+    {
+      "path": "dsh-electron/src/startup-theme.mjs",
+      "sha256": "4915ad4d9095666b25d9dc1396d9b6e6c8c0fb5e1a3f7b645dcfe7c458fb1446"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1413,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "91d0f30c5489adab0c772dd53f0fb261e41ed07ba8f9f52bf4d91a0ba4b3099b"
+      "sha256": "2c79d58c0f71035ddb30a9995c8ad68f7b8b2b548dac99ec84a949efcb0f9fe0"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1549,7 +1553,7 @@
     },
     {
       "path": "dsh-electron/upstream-inputs-pinned-source.json",
-      "sha256": "5e1b58e39d6edbdc74262c5b13d1ab99bd8ec5bc5c41da083bbaf54630f917b6"
+      "sha256": "f8b7dab4663f8072a755f0952e6be8b6a972d9ee11f99ee00d049eee8d68acdf"
     },
     {
       "path": "dsh-host/bridge.mjs",
@@ -6565,7 +6569,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "d7aae91f98a3cb4ed422cd71ec3f0f8fc65e35b40a36087cf6b79a9c180e012a"
+      "sha256": "87726dbe6fb73dd923ccf6a5bdc412d4579ec706e80dc5a9ca405e288abd058f"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -6916,6 +6920,10 @@
       "sha256": "2e9243f6cb30b258124b1422f8a4e8a1372600e59772bfce95dcbb05ced65a2b"
     },
     {
+      "path": "scripts/patch-startup-theme-runtime.mjs",
+      "sha256": "4a9f62b23d167c2f32aa15a3859555286f716c3204962cd1010197bb0b87a32b"
+    },
+    {
       "path": "scripts/pe-resources/package-lock.json",
       "sha256": "fc4870a8334a199227066192f759f996d26b9d6ab70348eb4b131315726a904d"
     },
@@ -7158,6 +7166,10 @@
     {
       "path": "scripts/test/source-skills.test.mjs",
       "sha256": "e0077bf09a6f372c6e85f588b9930c8a2bce317d5165a2a7ed8459363bfecd76"
+    },
+    {
+      "path": "scripts/test/startup-theme-runtime.test.mjs",
+      "sha256": "a6d02d0527c7e757ac3b5f4ee51ed387c4b0fa35f27080fd7295229a50f60445"
     },
     {
       "path": "scripts/test/update-delta-bases.test.mjs",

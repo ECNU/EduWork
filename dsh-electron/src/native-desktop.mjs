@@ -109,7 +109,7 @@ async function main() {
   })
   const webRoot = desktopWebRoot()
   protocol.handle(SCHEME, request => {
-    const staticResponse = staticDesktopResponse(request, webRoot)
+    const staticResponse = staticDesktopResponse(request, webRoot, process.env.DSH_HOME)
     if (staticResponse) return staticResponse
     const host = backend.host
     return host ? host.fetch(request) : Promise.resolve(new Response(null, { status: 503 }))
