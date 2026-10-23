@@ -17,10 +17,11 @@ import { DESKTOP_IPC, SCHEME } from './ipc.ts'
 import { WINDOWS_TITLEBAR_HEIGHT } from './windows-layout.ts'
 import { resolveDesktopLocale } from './locale.ts'
 import { app } from 'electron'
-const currentDesktopLocale = () => resolveDesktopLocale(app.getLocale())
 const chromeFallbackFill = () => nativeTheme.shouldUseDarkColors ? '#1b1b1c' : '#f9fafb'
 export ${source.slice(start, end)}
 `
+    replace('function createWindow(preload: string, show = false, primary = false)',
+      'function createWindow(preload: string, show = false, primary = false, currentDesktopLocale = () => resolveDesktopLocale(app.getLocale()))')
     // Match only the handler. Platform blocks following it belong to the
     // official window factory, including Windows/macOS fullscreen events.
     replace(`  window.webContents.setWindowOpenHandler(({ url }) => {
@@ -49,6 +50,11 @@ export ${source.slice(start, end)}
     // Disabling all plugins also disables this distribution's essential login,
     // Studio and service adapters. Offer restart/exit, not that destructive path.
     replace(': [messages.exitApplication, messages.restartApplication, messages.disableThirdPartyPlugins]', ': [messages.exitApplication, messages.restartApplication]')
+  }
+  if (file.endsWith('/quit-confirmation.ts')) {
+    // Host inspection errors can contain private configuration values.
+    replace("await inspection.catch((error: unknown) => {\n      console.warn('desktop quit: task inspection unavailable', error)",
+      "await inspection.catch(() => {\n      console.warn('desktop quit: task inspection unavailable')")
   }
   return source
 }

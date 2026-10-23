@@ -257,7 +257,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         return { startupWindowHidden: scenario === 'deferred-hidden-completion' || scenario === 'main-hidden-handoff', restoreMainWindow: scenario === 'main-first-handoff' }
       },
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
-      attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail,
+      attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
     })
@@ -275,7 +275,8 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       return { attach() {}, dispose() {} }
     } })
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
-    mock('main.ts', { createWindow: () => {
+    mock('main.ts', { createWindow: (_preload, _show, _primary, locale) => {
+      assert.equal(typeof locale, 'function')
       calls.push('window')
       return mainWindow = Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {}, isDestroyed: () => false, isMinimized: () => false,
         show() { if (scenario.startsWith('deferred-') || scenario.startsWith('main-')) calls.push('window-show') },
@@ -288,6 +289,8 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     })])
     if (scenario === 'installed') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready'])
+      app.emit('second-instance')
+      assert.equal(calls.at(-1), 'activate-current-window')
     } else if (scenario === 'deferred-presentation' || scenario === 'deferred-restored-completion') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready', 'window-show'])
     } else if (scenario === 'deferred-hidden-completion') {

@@ -10,9 +10,7 @@ on:
       - 'dsh-electron/tests/desktop-exit.test.mjs'
       - 'dsh-electron/src/initialize-user-config.mjs'
       - 'dsh-electron/src/product.mjs'
-      - 'dsh-electron/src/quit-confirmation.mjs'
       - 'dsh-electron/src/native-desktop.mjs'
-      - 'dsh-electron/tests/quit-confirmation.test.mjs'
       - 'dsh-host/prepare.mjs'
       - 'dsh-host/quit-inspection.mjs'
       - 'dsh-host/test/quit-inspection.test.mjs'
@@ -66,7 +64,7 @@ jobs:
         with:
           node-version: '24.22.1'
       - name: Check shared update coordination
-        run: node --test scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs dsh-electron/tests/window-visibility.test.mjs dsh-electron/tests/create-macos-archive.test.mjs dsh-electron/tests/desktop-exit.test.mjs dsh-electron/tests/quit-confirmation.test.mjs dsh-host/test/quit-inspection.test.mjs
+        run: node --test scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs dsh-electron/tests/window-visibility.test.mjs dsh-electron/tests/create-macos-archive.test.mjs dsh-electron/tests/desktop-exit.test.mjs dsh-host/test/quit-inspection.test.mjs
       - name: Prepare the pinned Electron test runtime
         run: |
           npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --ignore-scripts --no-audit --no-fund electron@44.0.0
