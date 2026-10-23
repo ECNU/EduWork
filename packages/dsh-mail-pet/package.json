@@ -1,0 +1,92 @@
+{
+  "name": "@eduwork/dsh-mail-pet",
+  "version": "0.1.0",
+  "eduworkNotificationProtocol": 1,
+  "description": "Opt-in new-mail watcher that publishes arrivals through the EduWork plugin notification protocol",
+  "type": "module",
+  "license": "MIT",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test test/*.test.mjs",
+    "build": "node scripts/build.mjs",
+    "check": "npm run build && npm test"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-slots"
+      ],
+      "platform": "web"
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "imapflow": "^1.7.6"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-storage-domain": "^0.2.1-rc.2",
+    "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.0-rc.2 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-slots": ">=0.2.0-rc.2 <0.3.0-0",
+    "react": "^18.2.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-storage-domain": {
+      "optional": true
+    },
+    "@deepseek-ai/schemastery": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-renderer": {
+      "optional": true
+    },
+    "@deepseek-ai/dsh-client-ui-slots": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "zod": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "esbuild": "0.28.1",
+    "react": "18.3.1"
+  },
+  "engines": {
+    "node": ">=24.18.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "packages/dsh-mail-pet"
+  },
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-mail-pet#readme",
+  "bugs": {
+    "url": "https://github.com/ECNU/EduWork/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "desktop-pet",
+    "eduwork"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
+}
