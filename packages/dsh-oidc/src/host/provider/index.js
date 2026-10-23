@@ -2,7 +2,8 @@ import { AsyncLocalStorage } from 'node:async_hooks'
 import { launchEnvironmentOf } from '@deepseek-ai/dsh-launch-environment'
 import { LlmError, assertUsableApiKey, resolveImageAttachmentAccess, resolveRetryPolicy } from '@deepseek-ai/dsh-llm'
 import { Config as PiAiConfig, PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
-import { createProvider } from '@earendil-works/pi-ai'
+// The package root re-exports TypeBox; keep the startup path on the models subpath.
+import { createProvider } from '@earendil-works/pi-ai/models'
 import { openAICompletionsApi } from '@earendil-works/pi-ai/api/openai-completions.lazy'
 import {
   configurableEntries, ENTERPRISE_DEFAULT_MAX_REQUEST_IMAGE_BYTES, ENTERPRISE_DEFAULT_REQUEST_IMAGE_MAX_BYTES,
