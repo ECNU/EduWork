@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T07:03:14.873Z",
-  "fileSetSHA256": "1d7337149131c8d100c14d0bd85de5c190f4ee8f334289ca5cd2713850250274",
+  "createdAt": "2026-10-23T08:21:36.699Z",
+  "fileSetSHA256": "073b89d6f6a2db172e5a0a702cd9c3219feb8858d809ed7fde9b1ad849f75f5c",
   "files": [
     {
       "path": ".gitattributes",
@@ -277,11 +277,11 @@
     },
     {
       "path": "docs/CORE-021_EN.md",
-      "sha256": "bd6d6fcb73032ee3416c060a7051482e27dedb02f7c5169d9d7ad4a51fa987cb"
+      "sha256": "561bea5b6528780a2831a72c68be0871f8baccb29b3ce7b86527d7a5874c6275"
     },
     {
       "path": "docs/CORE-021.md",
-      "sha256": "830582e084a08057f2f4c7c8762ab1dd9555013e3b12b93476f4b239f71d6a29"
+      "sha256": "1802ed01405b71fdc28dc656bca633f023be0681cc589ac4098c33c78984ccfa"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -1269,7 +1269,7 @@
     },
     {
       "path": "dsh-electron/src/native-web-host.mjs",
-      "sha256": "ede0eaf8a29dd6599e59045a92a1a6232ee1b5125dbdabc4d7ed4878bd1b578c"
+      "sha256": "609b005c41ea468df0b4679cf8e79ef108d4d0f3414d37fd9b82c0ab2d63d71c"
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/startup-theme.mjs",
-      "sha256": "4915ad4d9095666b25d9dc1396d9b6e6c8c0fb5e1a3f7b645dcfe7c458fb1446"
+      "sha256": "8b4d7027f127fcfed95446d0f024d9b683a1375a27e8ed5e3726d0637e1b809d"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1417,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "2c79d58c0f71035ddb30a9995c8ad68f7b8b2b548dac99ec84a949efcb0f9fe0"
+      "sha256": "9e9485c4e4de3ff37e8c3b47bb15ec2968da222b9164d2afdd8f5ac1dc5cabc5"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -7169,7 +7169,7 @@
     },
     {
       "path": "scripts/test/startup-theme-runtime.test.mjs",
-      "sha256": "a6d02d0527c7e757ac3b5f4ee51ed387c4b0fa35f27080fd7295229a50f60445"
+      "sha256": "9946b61c89c721f1363a74b814e9d7a1f4b4a47f471d41d6a693e52abc030818"
     },
     {
       "path": "scripts/test/update-delta-bases.test.mjs",
