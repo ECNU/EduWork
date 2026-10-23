@@ -5,6 +5,8 @@ import { pathToFileURL } from 'node:url'
 import { nativeSettingsEntryIds } from './settings-migration.mjs'
 import { isDeepStrictEqual } from 'node:util'
 
+export const NATIVE_PROFILE_DIRECTORY = 'desktop-017'
+
 const missing = error => { if (error.code !== 'ENOENT') throw error }
 
 // Take complete definitions from the pinned official bundle. Only the skill

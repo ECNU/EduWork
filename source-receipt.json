@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T15:31:43.039Z",
-  "fileSetSHA256": "9b0fd49b81eb921fa76b90e7dc2c6d0919e2c8224c87a37a253c3bddeb2385a9",
+  "createdAt": "2026-10-23T15:34:52.143Z",
+  "fileSetSHA256": "66b986086038399c6799f5ce60863459c45891a3334b10e1ef553bfd5126751f",
   "files": [
     {
       "path": ".gitattributes",
@@ -277,11 +277,11 @@
     },
     {
       "path": "docs/CORE-021_EN.md",
-      "sha256": "561bea5b6528780a2831a72c68be0871f8baccb29b3ce7b86527d7a5874c6275"
+      "sha256": "5bd9d734674125539718573868cbae4067477e97c827dbcddca60b42d2934187"
     },
     {
       "path": "docs/CORE-021.md",
-      "sha256": "1802ed01405b71fdc28dc656bca633f023be0681cc589ac4098c33c78984ccfa"
+      "sha256": "e929bba3b40d3f5326da387e51ff79f468adf215e31b4154ae4cec45bbc863de"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -1269,7 +1269,7 @@
     },
     {
       "path": "dsh-electron/src/native-web-host.mjs",
-      "sha256": "609b005c41ea468df0b4679cf8e79ef108d4d0f3414d37fd9b82c0ab2d63d71c"
+      "sha256": "ede0eaf8a29dd6599e59045a92a1a6232ee1b5125dbdabc4d7ed4878bd1b578c"
     },
     {
       "path": "dsh-electron/src/portable-updates.mjs",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/startup-theme.mjs",
-      "sha256": "8b4d7027f127fcfed95446d0f024d9b683a1375a27e8ed5e3726d0637e1b809d"
+      "sha256": "6dc50dc254c99f8a31b3187226fcc5501ac1f94dbe232a5662233f902ad101df"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1417,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "9e9485c4e4de3ff37e8c3b47bb15ec2968da222b9164d2afdd8f5ac1dc5cabc5"
+      "sha256": "e15e81ab3ff3a1375fe73ac0284f897ce9c55c42696c8a130189bde585a1308a"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1621,7 +1621,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "e86a7fcd3b1b9f7bf0dbe37e1cb8bf6fecd95968c382a5203eceda8c16cbe102"
+      "sha256": "d153d98b9ca55d1dc8ef5448fcfaede8bb11f4b3a414641aef04623b9fe583c4"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -1645,7 +1645,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "426877964c5ca05f8d2e258ff095b343df801574bcffedf02d8acf98a5872ae9"
+      "sha256": "f1605714284f56d34188c87691fc618ef63b09fc7e3e02cb160f9d279892738b"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -6925,7 +6925,7 @@
     },
     {
       "path": "scripts/patch-startup-theme-runtime.mjs",
-      "sha256": "4a9f62b23d167c2f32aa15a3859555286f716c3204962cd1010197bb0b87a32b"
+      "sha256": "5915350e006abfb2330ef668e5a44fadccc02251202f51df955ba335baa024e3"
     },
     {
       "path": "scripts/pe-resources/package-lock.json",
@@ -7177,7 +7177,7 @@
     },
     {
       "path": "scripts/test/startup-theme-runtime.test.mjs",
-      "sha256": "9946b61c89c721f1363a74b814e9d7a1f4b4a47f471d41d6a693e52abc030818"
+      "sha256": "c26a832d19840a6476fffa25c6363098e7135aec9d956a23f342a14ad6684df2"
     },
     {
       "path": "scripts/test/update-delta-bases.test.mjs",

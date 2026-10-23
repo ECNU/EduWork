@@ -9,7 +9,7 @@ import { loadEnterpriseModelUpdates } from './enterprise-model-updates.mjs'
 import { createRequire } from 'node:module'
 import { pathToFileURL } from 'node:url'
 import { bundledConfigurationPlugins } from './configuration-plugin-options.mjs'
-import { writeNativeProfile, legacyPresetPatches, nativePresetPatches } from './native-profile.mjs'
+import { NATIVE_PROFILE_DIRECTORY, writeNativeProfile, legacyPresetPatches, nativePresetPatches } from './native-profile.mjs'
 import { qualifiedDesktopBaseline } from './dsh-compatibility.mjs'
 
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
@@ -85,7 +85,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   if (owner && (owner.schemaVersion !== 1 || owner.shell !== shell || owner.distribution !== identity.distribution)) throw new Error('This data directory belongs to another desktop edition')
   await mkdir(home, { recursive: true })
   await atomicJSON(ownerFile, { schemaVersion: 1, shell, distribution: identity.distribution })
-  const profile = await canonical(join(home, 'profiles', native ? 'desktop-017' : 'desktop'))
+  const profile = await canonical(join(home, 'profiles', native ? NATIVE_PROFILE_DIRECTORY : 'desktop'))
   const target = await canonical(join(product, 'd', 'node_modules'))
   if (!inside(home, profile) || !inside(product, target)) throw new Error('Desktop profile or modules link escapes its owned directory')
   const link = join(profile, 'node_modules')

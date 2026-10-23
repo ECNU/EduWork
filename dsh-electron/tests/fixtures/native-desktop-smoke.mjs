@@ -69,9 +69,6 @@ app.whenReady().then(async () => {
   await assertThemeRead([[themeRow('dark')], [{ ...themeRow('light'), name: '@synthetic/other-theme' }]], 'dark')
   await assertThemeRead([[themeRow('dark')], [themeRow('unsupported')]], 'system')
   await assertThemeRead([[themeRow('dark')], '- id: [broken'], 'system')
-  const themeWarnings = []
-  assert.equal(await readStartupTheme(themeHome, error => themeWarnings.push(error)), 'system')
-  assert.equal(themeWarnings.length, 1, 'malformed theme preferences must be reported')
   await assertThemeRead([[themeRow('dark')], 'ui-theme: {preference: dark}'], 'system')
   globalThis.__eduworkThemeExpressionExecuted = false
   const themeExpression = '(globalThis.__eduworkThemeExpressionExecuted = true, "dark")'
@@ -108,6 +105,16 @@ app.whenReady().then(async () => {
     <div data-dsh-boot><div><div>HARNESS</div><div data-dsh-boot-spinner></div><div>Loading plugins…</div></div></div>
   </body></html>`)
   await writeFile(join(webRoot, 'assets', 'marker.txt'), 'static-before-host')
+  await setThemeLayers([[], '- id: [broken'])
+  const themeWarnings = [], originalWarn = console.warn
+  console.warn = (...args) => themeWarnings.push(args)
+  try {
+    const response = await staticDesktopResponse(new Request('dsh-app://app/index.html'), webRoot, themeHome)
+    assert.equal(response.status, 200)
+    assert.match(await response.text(), /const preference = "system"/)
+    assert.deepEqual(themeWarnings, [['[startup-theme] startup theme preference unavailable; using system']])
+  } finally { console.warn = originalWarn }
+  await setThemeLayers()
   const picker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
   bridge = installNativeDesktopBridge({ getHost: () => host, waitForHost: () => hostWait(), getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },

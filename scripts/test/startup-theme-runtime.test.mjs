@@ -10,7 +10,7 @@ import { patchStartupThemeRuntime, patchStartupThemeSource, startupThemePatch } 
 const runtime = process.env.EDUWORK_TEST_RUNTIME
 const originalPath = runtime && join(runtime, 'node_modules', startupThemePatch.package, startupThemePatch.file)
 
-function themeFixture(source, { preference, systemDark = false, dom = true, hostPreference } = {}) {
+function themeFixture(source, { preference, systemDark = false, dom = true, desktop = true, hostPreference } = {}) {
   let ThemeRuntime, value
   const subscribers = new Set(), mediaListeners = new Set(), writes = [], events = []
   const section = preference => ({ preference, fontSize: 14, codeFontSize: 11, terminalFontSize: 13,
@@ -39,6 +39,7 @@ function themeFixture(source, { preference, systemDark = false, dom = true, host
       return {}
     }).ThemeRuntime
   } } } }
+  if (desktop) sandbox.dshDesktopBoot = {}
   if (dom) {
     sandbox.document = { documentElement: { dataset: { dsThemeSource: preference } },
       body: { style: { getPropertyValue: () => '' } }, querySelector: () => ({}) }
@@ -143,14 +144,15 @@ test('packaged ThemeRuntime keeps the bootstrap palette until Host settings arri
     assert.equal(fixture.theme.getTheme().active.colorScheme, 'dark')
     assert.deepEqual(fixture.writes, [])
   })
-})
-
-test('startup theme profile matches the native desktop profile', async () => {
-  const [theme, profile] = await Promise.all([
-    readFile(new URL('../../dsh-electron/src/startup-theme.mjs', import.meta.url), 'utf8'),
-    readFile(new URL('../../dsh-host/product-profile.mjs', import.meta.url), 'utf8'),
-  ])
-  const profileDirectory = /const PROFILE_DIRECTORY = '([^']+)'/.exec(theme)?.[1]
-  assert.ok(profileDirectory, 'startup theme must declare its profile directory')
-  assert.ok(profile.includes(`native ? '${profileDirectory}'`), 'startup theme profile must match the native desktop profile')
+  await t.test('Web keeps the upstream default even when the document has a bootstrap theme', () => {
+    for (const preference of ['dark', 'light']) {
+      const systemDark = preference === 'light'
+      const fixture = themeFixture(patched, { preference, systemDark, desktop: false })
+      assert.equal(fixture.theme.getTheme().preference, 'system')
+      assert.equal(fixture.theme.getTheme().active.colorScheme, systemDark ? 'dark' : 'light')
+      fixture.setHostPreference(preference)
+      assert.equal(fixture.theme.getTheme().active.colorScheme, preference)
+      assert.deepEqual(fixture.writes, [])
+    }
+  })
 })

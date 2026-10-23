@@ -2,8 +2,7 @@ import { createHash } from 'node:crypto'
 import { readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 
-// Preserve the Host bootstrap preference until durable settings arrive.
-// Apply only to copied Runtime bytes; retire when upstream adopts it at startup.
+// Preserve the early desktop palette until Host settings arrive; leave Web startup unchanged.
 export const startupThemePatch = Object.freeze({
   id: 'startup-theme-preference-v1',
   package: '@deepseek-ai/dsh-client-ui-theme',
@@ -18,7 +17,7 @@ export function patchStartupThemeSource(input) {
   const source = input.toString('utf8')
   const anchor = '\t\t\t\tthis.preference = DEFAULT_PREFERENCE;'
   if (source.split(anchor).length !== 2) throw new Error('Startup theme initialization anchor changed')
-  return source.replace(anchor, `\t\t\t\tconst bootstrapPreference = typeof document === "undefined" ? undefined : document.documentElement.dataset.dsThemeSource;
+  return source.replace(anchor, `\t\t\t\tconst bootstrapPreference = typeof document !== "undefined" && globalThis.dshDesktopBoot ? document.documentElement.dataset.dsThemeSource : undefined;
 \t\t\t\tthis.preference = isThemePreference(bootstrapPreference) ? bootstrapPreference : DEFAULT_PREFERENCE;`)
 }
 
