@@ -402,8 +402,10 @@ func extractAndVerifyReleaseWithProgress(zipPath, target string, pending Pending
 // files the product rewrites at startup and the files whose identity changed.
 // Every other declared file is
 // hard-linked from the current installation, or copied when the volume has no
-// hard links. The Electron runtime files are always copied because the sandbox
-// ACL step refuses linked paths. The staged tree then passes the same complete
+// hard links. Electron runtime files are copied because the sandbox ACL step
+// refuses links. Product files are copied because unlinking their old backup
+// after launch changes ctime and can trigger plugin hot reload in the new Host.
+// The staged tree then passes the same complete
 // verification as an extracted full package, so a locally modified program
 // file fails here, before the installation is touched.
 func stageDeltaRelease(zipPath, installDir, target string, pending PendingUpdate, progress ApplyProgressFunc) (string, releaseManifest, error) {
@@ -427,7 +429,7 @@ func stageDeltaRelease(zipPath, installDir, target string, pending PendingUpdate
 			lastPercent = percent
 		}
 		destination := filepath.Join(packageRoot, filepath.FromSlash(item.Path))
-		if err := reuseInstalledFile(filepath.Join(installDir, filepath.FromSlash(item.Path)), destination, !electronaccess.Governs(item.Path)); err != nil {
+		if err := reuseInstalledFile(filepath.Join(installDir, filepath.FromSlash(item.Path)), destination, canLinkDeltaFile(item.Path)); err != nil {
 			return "", releaseManifest{}, fmt.Errorf("reuse installed %s: %w", item.Path, err)
 		}
 		actualFiles[item.Path] = struct{}{}
@@ -648,6 +650,13 @@ func userManagedRoot(name string) bool {
 		return true
 	}
 	return false
+}
+
+// Keep the boundary at the product tree, not a particular client.js filename:
+// plugins choose their client entry paths and can carry lazy-loaded assets.
+// Other immutable resources can still share storage until backup cleanup.
+func canLinkDeltaFile(path string) bool {
+	return !electronaccess.Governs(path) && !strings.HasPrefix(strings.ToLower(path), "resources/product/")
 }
 
 func reuseInstalledFile(source, target string, link bool) error {
