@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T15:34:52.143Z",
-  "fileSetSHA256": "66b986086038399c6799f5ce60863459c45891a3334b10e1ef553bfd5126751f",
+  "createdAt": "2026-10-23T15:39:59.689Z",
+  "fileSetSHA256": "ffc5fdcf7bcafd33a2f191be5cd6f8d786675bc89bd56d233d4a938182a8c745",
   "files": [
     {
       "path": ".gitattributes",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/startup-theme.mjs",
-      "sha256": "6dc50dc254c99f8a31b3187226fcc5501ac1f94dbe232a5662233f902ad101df"
+      "sha256": "83cf7bbfebb66ba5685e9ae9ec6528485aab069e7fff0a689c9accbab7eadb3c"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",

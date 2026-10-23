@@ -20,6 +20,7 @@ async function readPatches(path) {
 export async function readStartupTheme(home) {
   try {
     const profile = join(home, 'profiles', NATIVE_PROFILE_DIRECTORY)
+    // shortcut: only saved product preferences; use an upstream read-only bootstrap for custom bundles/expressions.
     const layers = await Promise.all([
       join(profile, 'node_modules/@eduwork/generated-profile/cordis.patch.yml'),
       join(profile, 'cordis.patch.yml'),
