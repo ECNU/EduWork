@@ -26,10 +26,10 @@ for (const file of await readdir(lib, { recursive: true })) {
   }
 }
 
-let executing = false, networkImports = 0, connections = 0
+let executingConfiguredTool = false, networkImports = 0, connections = 0
 const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
   if (/^(?:node:)?(?:net|tls|dns)$/.test(specifier)) {
-    assert.ok(executing, 'Mail protocol libraries loaded before a configured tool execution')
+    assert.ok(executingConfiguredTool, 'Mail protocol libraries loaded before a configured tool execution')
     networkImports++
   }
   return nextResolve(specifier, context)
@@ -55,22 +55,24 @@ try {
   assert.equal(registered.size, 5)
   assert.match(guard({ name: 'mail_find' }), /reading is disabled/)
   assert.match(guard({ name: 'mail_send' }), /sending is disabled/)
-  const exec = { signal: AbortSignal.abort(new Error('Mail operation cancelled')),
+  const abortedExec = { signal: AbortSignal.abort(new Error('Mail operation cancelled')),
     agent: { session: { header: { cwd: process.cwd() } } } }
-  const execute = (name, args) => registered.get(name).execute(args, exec)
-  await assert.rejects(execute('mail_find', {}), /Mail assistant is not configured/)
+  const activeExec = { ...abortedExec, signal: new AbortController().signal }
+  const execute = (exec, name, args) => registered.get(name).execute(args, exec)
+  await assert.rejects(execute(abortedExec, 'mail_find', {}), /Mail assistant is not configured/)
   Object.assign(settings, { email: 'user@example.com', imapHost: 'imap.example.test', smtpHost: 'smtp.example.test' })
-  await assert.rejects(execute('mail_find', {}), /Mail password is not configured/)
+  await assert.rejects(execute(abortedExec, 'mail_find', {}), /Mail password is not configured/)
   assert.equal(networkImports, 0)
 
   credential = { value: 'synthetic-password' }
-  executing = true
-  await assert.rejects(execute('mail_find', { cursor: 'invalid' }), /Invalid mail handle/)
+  executingConfiguredTool = true
+  await assert.rejects(execute(abortedExec, 'mail_find', { cursor: 'invalid' }), /Mail operation cancelled/)
   assert.ok(networkImports > 0, 'First use must load the bundled mail client')
-  await assert.rejects(execute('mail_list_folders', {}), /Mail operation cancelled/)
-  await assert.rejects(execute('mail_read', { handle: 'invalid' }), /Invalid mail handle/)
-  await assert.rejects(execute('mail_get_attachment', { handle: 'invalid' }), /Invalid mail handle/)
-  await assert.rejects(execute('mail_send', { to: ['recipient@example.com'], subject: 'Synthetic', text: 'Cancelled' }), /Mail operation cancelled/)
+  await assert.rejects(execute(activeExec, 'mail_find', { cursor: 'invalid' }), /Invalid mail handle/)
+  await assert.rejects(execute(abortedExec, 'mail_list_folders', {}), /Mail operation cancelled/)
+  await assert.rejects(execute(activeExec, 'mail_read', { handle: 'invalid' }), /Invalid mail handle/)
+  await assert.rejects(execute(activeExec, 'mail_get_attachment', { handle: 'invalid' }), /Invalid mail handle/)
+  await assert.rejects(execute(abortedExec, 'mail_send', { to: ['recipient@example.com'], subject: 'Synthetic', text: 'Cancelled' }), /Mail operation cancelled/)
   assert.equal(connections, 0, 'Cancelled first use must not open an IMAP or SMTP connection')
 } finally {
   hooks.deregister()
