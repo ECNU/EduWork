@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T05:23:17.043Z",
-  "fileSetSHA256": "f7fa2a0a8ca57fd229de93192a72f500506fecdbd35336d88cf8fcf255b9a05f",
+  "createdAt": "2026-10-23T08:18:57.555Z",
+  "fileSetSHA256": "67c9b336561e3a842e7fbe86a59475f0f899dfb132bd6764b5e4ba2a60e7b9b9",
   "files": [
     {
       "path": ".gitattributes",
@@ -3076,6 +3076,10 @@
       "sha256": "6eac6aa8bd9430000fcb79a8b9d8f88c93360a68effd49fd0e7ac90dd2250d92"
     },
     {
+      "path": "dsh-plugins/tool-browser/test/search-provider-lazy.test.mjs",
+      "sha256": "1315341265d343c7a1a32ba268dc069df9a2c9266595e044706f984b9f0c915d"
+    },
+    {
       "path": "dsh-plugins/tool-browser/test/search-runtime.test.mjs",
       "sha256": "848170ede1e8f47e32be064ee8ad57b8cac1d3a5e8d0c95ee5e01d6c2916d9f9"
     },
@@ -5989,7 +5993,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/check-dsh-rc1.mjs",
-      "sha256": "c4d03845d6f0ecba61c44744657a6656b367c00fd521ea6330f72c0d705229b7"
+      "sha256": "72108d76cd4d83413918a547cc9c77af85f7127094e3fd45332f16161aae95d7"
     },
     {
       "path": "packages/dsh-oidc/scripts/check-licenses.mjs",
