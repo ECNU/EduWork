@@ -123,6 +123,7 @@ async function passwordFor(ctx) {
 }
 
 async function loadMailClient(exec) {
+  exec.signal?.throwIfAborted()
   const client = await import('./mail-client.js')
   // A cancellation during the deferred import must not continue into the protocol runtime.
   exec.signal?.throwIfAborted()

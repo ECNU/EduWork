@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T15:38:37.429Z",
-  "fileSetSHA256": "a83b4547c5ce8e989814ed587ba201412bc622ae26044b114ab9177682fa8548",
+  "createdAt": "2026-10-23T15:39:57.638Z",
+  "fileSetSHA256": "08b6f2eff7cd0508b411bdf7893d0c523c6da7e6d3976900bcece6922e806cd0",
   "files": [
     {
       "path": ".gitattributes",
@@ -5377,7 +5377,7 @@
     },
     {
       "path": "packages/dsh-mail/scripts/check-host-bundle.mjs",
-      "sha256": "ec5f23a80b2863d6cb8265118ffdc8b90719cce42399a25c7653249d69bf2098"
+      "sha256": "73f3a0d9141f2fdfae6a7fb9d0e15b46a45b90af449e6ebf485c78c8e85ab21c"
     },
     {
       "path": "packages/dsh-mail/scripts/check-licenses.mjs",
@@ -5445,7 +5445,7 @@
     },
     {
       "path": "packages/dsh-mail/src/host/tools.js",
-      "sha256": "d1e965043224b9e0e0035b55a6bd5f3c4d8c3a6a470ea208b2636e539fd1a8b2"
+      "sha256": "68d6849e6dc522822c0a8da20c16cc9b71013a7648aa6f88100aedd1f33be2f4"
     },
     {
       "path": "packages/dsh-mail/src/host/workspace-files.js",

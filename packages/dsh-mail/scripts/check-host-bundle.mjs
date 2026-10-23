@@ -27,10 +27,12 @@ for (const file of await readdir(lib, { recursive: true })) {
 }
 
 let executingConfiguredTool = false, networkImports = 0, connections = 0
+let cancelDuringImport
 const hooks = registerHooks({ resolve(specifier, context, nextResolve) {
   if (/^(?:node:)?(?:net|tls|dns)$/.test(specifier)) {
     assert.ok(executingConfiguredTool, 'Mail protocol libraries loaded before a configured tool execution')
     networkImports++
+    cancelDuringImport?.abort(new Error('Mail operation cancelled during import'))
   }
   return nextResolve(specifier, context)
 } })
@@ -65,8 +67,12 @@ try {
   assert.equal(networkImports, 0)
 
   credential = { value: 'synthetic-password' }
-  executingConfiguredTool = true
   await assert.rejects(execute(abortedExec, 'mail_find', { cursor: 'invalid' }), /Mail operation cancelled/)
+  assert.equal(networkImports, 0, 'A previously cancelled call must not load protocol libraries')
+  cancelDuringImport = new AbortController()
+  executingConfiguredTool = true
+  await assert.rejects(execute({ ...activeExec, signal: cancelDuringImport.signal }, 'mail_find', { cursor: 'invalid' }), /Mail operation cancelled during import/)
+  assert.equal(cancelDuringImport.signal.aborted, true)
   assert.ok(networkImports > 0, 'First use must load the bundled mail client')
   await assert.rejects(execute(activeExec, 'mail_find', { cursor: 'invalid' }), /Invalid mail handle/)
   await assert.rejects(execute(abortedExec, 'mail_list_folders', {}), /Mail operation cancelled/)
