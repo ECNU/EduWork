@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T16:21:04.469Z",
-  "fileSetSHA256": "bbb5158d9dbbb5b89d47975d0d61024b1b4b9e553d3f34bab7df62b000a4bba8",
+  "createdAt": "2026-10-24T17:41:57.983Z",
+  "fileSetSHA256": "665c669fe7112343095d4769c5bd26b77c662d7f1b4dbb01658a1bf376bc605b",
   "files": [
     {
       "path": ".gitattributes",
@@ -37,7 +37,7 @@
     },
     {
       "path": ".github/workflows/packages.yml",
-      "sha256": "3c6b7dc7db3a987105ab3b1425f70b45f1d845ece2c7297de613dcbb9a7d1de4"
+      "sha256": "8074cd05a375493c725323a3e65bf62d64d7629fb3aff5ab636fe3caea8b480a"
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
@@ -426,6 +426,14 @@
     {
       "path": "docs/proposals/gateway-auth/README.md",
       "sha256": "d13ae9078d13599580d471e5a61b6233271cad9c572b7bc583a74de5ee9eae7f"
+    },
+    {
+      "path": "docs/proposals/side-chat/README_EN.md",
+      "sha256": "e8edec5c0621c03235bc82c66ad3cb18ac47876abb260af3e8a9c91cbb11d7fd"
+    },
+    {
+      "path": "docs/proposals/side-chat/README.md",
+      "sha256": "a8ff3db2afcd004ab0de7586d2eb2c77baeac67569258b8bfe91465e971136f9"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
@@ -3273,7 +3281,7 @@
     },
     {
       "path": "packages/dsh-annotation/lib/client.js",
-      "sha256": "6939f54cb218656f9deaa65c4ece7084df26ba464227edd9e614dfb7396e8955"
+      "sha256": "d82dee85561bf9936e8180ae7588af497f16b1190e287d96c9efb3fd4844a01f"
     },
     {
       "path": "packages/dsh-annotation/lib/index.js",
@@ -3293,11 +3301,11 @@
     },
     {
       "path": "packages/dsh-annotation/README_EN.md",
-      "sha256": "8cad4345b28be82adca925158401061e89f6ae0cea6b64694642e3070a381971"
+      "sha256": "61863d7654140171f0878c3caf0162461ebac0c5f2cf399563d51e0b94670ea6"
     },
     {
       "path": "packages/dsh-annotation/README.md",
-      "sha256": "3db2734bafd13d260ee0803bc9aca17b7ef0d4f426c095535e95a46d74ca9abe"
+      "sha256": "34dd6ea3edc1d18bfbed2add11ff05be61694bfa8c4fd7fa2fdfeb33720dfb86"
     },
     {
       "path": "packages/dsh-annotation/scripts/build.mjs",
@@ -3313,7 +3321,7 @@
     },
     {
       "path": "packages/dsh-annotation/src/client/index.js",
-      "sha256": "bf0b86e79bfe4690f4a9315db85a2a30b0f49c7ae6176e6ab9dafc6c6be49648"
+      "sha256": "67a9af66b276dbbf239913c5abea011b780f823e09d7291e06258ece7866fdb1"
     },
     {
       "path": "packages/dsh-annotation/src/client/position.js",
@@ -3326,6 +3334,10 @@
     {
       "path": "packages/dsh-annotation/src/client/reference.js",
       "sha256": "f4afcd739e1590f58519c27037bc7ec00acf928bfc816c655e4befda1f7afa8f"
+    },
+    {
+      "path": "packages/dsh-annotation/src/client/selection-actions.js",
+      "sha256": "a73ec4d51db0999178565c62a3969ba0f1a19be54099b530d88e7755d47b1d32"
     },
     {
       "path": "packages/dsh-annotation/src/client/sent.js",
@@ -3341,7 +3353,7 @@
     },
     {
       "path": "packages/dsh-annotation/test/annotation.test.mjs",
-      "sha256": "3af1b196530cba08761f2274cf58a614311f32bc23390483531d26480fbb2377"
+      "sha256": "497a782a56a1c61dc64251da25b0bc4668b31e1c26d3689cbbe6cc20fb9f070c"
     },
     {
       "path": "packages/dsh-annotation/test/protocol.test.mjs",
@@ -6544,6 +6556,82 @@
       "sha256": "b3a68b06ac9a594d8ef7f3eabcdbbf3eaf4afb9f855e885505b11fb2dd91bd28"
     },
     {
+      "path": "packages/dsh-side-chat/.gitignore",
+      "sha256": "676b91f455a7988044510489387fab13294b310b164fae41301ac730692497b8"
+    },
+    {
+      "path": "packages/dsh-side-chat/cordis.patch.yml",
+      "sha256": "323b77f6ad2b190cd8c9e6d6999903977d1a14810a050170166a6b078b18ec47"
+    },
+    {
+      "path": "packages/dsh-side-chat/LICENSE",
+      "sha256": "dc719b536b8f7a51cd0ffaf928d37146894a3996119cb07d4fb7b67e551882dc"
+    },
+    {
+      "path": "packages/dsh-side-chat/package-lock.json",
+      "sha256": "ac4919e754b003e843fd9ce55e497b592f474dcb43323f12d07b147724e9d5d3"
+    },
+    {
+      "path": "packages/dsh-side-chat/package.json",
+      "sha256": "3c51e09e00cdbfef1ab444c2457f5d05139770fbaac1f67265a47b4dba0c5b74"
+    },
+    {
+      "path": "packages/dsh-side-chat/README_EN.md",
+      "sha256": "08deebdf0f7949269618206f2add41b211d5aaa5c8f9732d28c55a9dcbaee6cb"
+    },
+    {
+      "path": "packages/dsh-side-chat/README.md",
+      "sha256": "095caf5510e8e0d1834533e7c0740af84121495d59dd0db12b4a6c4a03796ce9"
+    },
+    {
+      "path": "packages/dsh-side-chat/runtime-extension.mjs",
+      "sha256": "a1c242cb19380b0c490a31305d5e37d6d290f6e062308e8e8d360b21fb8eee71"
+    },
+    {
+      "path": "packages/dsh-side-chat/scripts/browser-test.mjs",
+      "sha256": "743f77b55b8ee5e3bf0499d110500e9eac7cc346cc58a42715dd974b787e1198"
+    },
+    {
+      "path": "packages/dsh-side-chat/scripts/build.mjs",
+      "sha256": "608eb61c5ce87891dc96bf7bdef6ce526d2989ba72ec951e65560d6376ff9904"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/boundary.js",
+      "sha256": "15227b90abe8808f3a3c6567d730687d120c5d9d85e6b83d0163b06e649218bb"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/client/composer-alignment.js",
+      "sha256": "f6bbc5fc301508255d8fdc91292ad5bc91c81faa41555d5a8047488614b782db"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/client/controller.js",
+      "sha256": "e52dac266359eacf228b891beb875ddfd654959e7ad2c6c9e73a049ecec98c0d"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/client/index.jsx",
+      "sha256": "cac7254688c2fe898d5a74cb37c04c7fd8598d0f8051559958645a1ff2695641"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/index.js",
+      "sha256": "c29c3a61d4fcd59b3f8a511ccca2ed3dcd2e297752e0009be3909fa47f2c1ef2"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/service.js",
+      "sha256": "fa49d03b259f6f4149c75b8bfc792eaef3b4a99a1f6d14e9b74bebf95dd3e005"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/browser-model.mjs",
+      "sha256": "df2a3ed21cdf2b5e335c5a907a30fbcaa2c03c7233acd256866b10275ee8230b"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/controller.test.mjs",
+      "sha256": "ac23d3a990f6407e55aa81ff92072ee14bb2de62651aed19554ec007736cb395"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/runtime.test.mjs",
+      "sha256": "eebcb55cabd0deac4298b82da1f431acde8370ea84580df1a01aec1add2fb4d5"
+    },
+    {
       "path": "README_EN.md",
       "sha256": "f720b8bfdf97b22e326988fdb158f3f7270b10bc42c2e50ffd8155aefd1aa6bd"
     },
@@ -6588,8 +6676,12 @@
       "sha256": "fce53c7b2bfd5621a574096f1ecf3ed969b8dd389de3042157dbe081bdb98852"
     },
     {
+      "path": "scripts/assemble-side-chat-experiment.mjs",
+      "sha256": "ed39c46a634c0ba342264bd92879fdf0166635f472e1230cdab4e5be5a705a23"
+    },
+    {
       "path": "scripts/audit-eduwork-distribution.mjs",
-      "sha256": "d68fc385d16104e92d6ea64de025d93daa6a23f6b80ea12103817d4acea233ff"
+      "sha256": "da1543eb1fe6f320990d933a1a7123f93d01d8fcfb2aef99d7ada1b72dc0644e"
     },
     {
       "path": "scripts/build-desktop-candidate.ps1",
@@ -6606,6 +6698,10 @@
     {
       "path": "scripts/build-pipeline-diagram.mjs",
       "sha256": "bcc18ae1926b01e73e56e70b43335ba08ceb1937eef2ddc6e3b11d3368bcfc70"
+    },
+    {
+      "path": "scripts/build-side-chat-experiment.mjs",
+      "sha256": "6f28651e1f3af5768c59d7252d8e31d4a1ecb8723836cd90cb86d14d2de628fd"
     },
     {
       "path": "scripts/check-bundled-configuration.mjs",
@@ -6697,7 +6793,7 @@
     },
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c"
+      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa"
     },
     {
       "path": "scripts/distribution-config-patches.mjs",
@@ -6925,7 +7021,7 @@
     },
     {
       "path": "scripts/patch-chat-user-content-runtime.mjs",
-      "sha256": "85f0e92063772a02b8c7afd307e76fb003ad36b2312707ebc16f41eeea8e16b0"
+      "sha256": "73d220f38079edf376442bcc95096f3d824c9f1048cfd3667772ef20129804a3"
     },
     {
       "path": "scripts/patch-client-module-metadata-runtime.mjs",
@@ -7082,6 +7178,10 @@
     {
       "path": "scripts/probe-pinned-dsh-source-product.mjs",
       "sha256": "d216e7abc264fdfdc241aaecd733c63e0edd8b07a6025e48a13b5a144622e95f"
+    },
+    {
+      "path": "scripts/probe-side-chat-runtime.mjs",
+      "sha256": "424114f132f9fdeae297d6c7b7b758ff6839df14ab20fe90ca707764777de173"
     },
     {
       "path": "scripts/project-eduwork-runtime.mjs",
@@ -7325,7 +7425,7 @@
     },
     {
       "path": "tests/eduwork-source-audit.test.mjs",
-      "sha256": "767cf5365c6e46578fe73ad9bc3e52119eb94a547c28788b823c8272ba2f8cd1"
+      "sha256": "6b92d13057b1bd933b2403e3b3fc464b95ababa78cb2fceb1528535dc34e2164"
     },
     {
       "path": "tests/eduwork-source-reproducibility.test.mjs",
@@ -7950,9 +8050,9 @@
   "reviewedCompatibility": [
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
+      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Legacy composition remains inactive for eduwork-web product identities. Parent, worker and Windows linker share the invocation directory when resolving local configuration paths. Bundle selection and service registration are unchanged; no institution endpoint or credential exemption."
+      "reason": "Legacy institution composition remains inactive for eduwork-web identities. Qualified native products reuse the native preset/profile writer and preserve saved bundle activation. No institution endpoint, credential or activation exemption."
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",

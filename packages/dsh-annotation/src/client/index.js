@@ -6,6 +6,7 @@ import { annotations, occurrenceSpan, messageOrigin, closingMessage } from './dr
 import { fragment } from '../protocol.js'
 import { AnnotatedContent } from './history.js'
 import { SENT_ANNOTATION, sentAnnotationRule } from './sent.js'
+import { createSelectionActions } from './selection-actions.js'
 
 export const inject = ['locale']
 const h = React.createElement
@@ -21,7 +22,7 @@ const copy = {
     count: '条批注', number: '批注', edit: '编辑', remove: '删除', save: '保存', empty: '暂无待发送批注',
     editFailed: '引用已变化或输入框暂不可编辑。内容已保留，请取消后重新打开，或稍后重试。',
     noteLabel: '批注内容', list: '待发送批注', readonly: '这条引用已不在当前草稿中，仅供查看。',
-    finishEdit: '请先保存或取消正在编辑的批注。',
+    finishEdit: '请先保存或取消正在编辑的批注。', selectionActions: '选区操作',
   },
   en: {
     selectedText: 'Selected text:', expandQuote: 'Expand quote', collapseQuote: 'Collapse quote',
@@ -30,7 +31,7 @@ const copy = {
     count: 'annotations', number: 'Annotation', edit: 'Edit', remove: 'Delete', save: 'Save', empty: 'No pending annotations',
     editFailed: 'The reference changed or the composer is not editable. Your note is preserved. Cancel and reopen it, or retry later.',
     noteLabel: 'Annotation text', list: 'Pending annotations', readonly: 'This reference is no longer in the current draft and is read-only.',
-    finishEdit: 'Save or cancel the current edit before opening another annotation.',
+    finishEdit: 'Save or cancel the current edit before opening another annotation.', selectionActions: 'Selection actions',
   },
 }
 
@@ -182,13 +183,20 @@ function useFloating(target) {
   return [ref, position]
 }
 
-function QuoteButton({ target, t, onClick }) {
+function SelectionToolbar({ target, t, onAnnotate, actions, onAction }) {
   const [ref, position] = useFloating(target)
-  return h('button', {
-    ref, [UI]: '', type: 'button', style: { ...card, ...position, display: 'flex', alignItems: 'center', gap: 4, padding: '5px 12px', cursor: 'pointer' },
-    onMouseDown: event => event.preventDefault(), onClick,
-  }, h('svg', { width: 14, height: 14, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, 'aria-hidden': true },
-    h('path', { d: 'M8 3v10M3 8h10' })), t('quote'))
+  const icon = kind => h('svg', { width: 16, height: 16, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    h('path', { d: kind === 'side-chat' ? 'M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M13 4v16M4 7h5M4 12h5M4 17h5' : 'M5 4h14a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H9l-6 4V6a2 2 0 0 1 2-2ZM8 9h8M8 13h5' }))
+  return h('div', {
+    ref, [UI]: '', 'data-eduwork-selection-toolbar': '', role: 'toolbar', 'aria-label': t('selectionActions'),
+    style: { ...card, ...position, display: 'flex', alignItems: 'center', padding: 4, borderRadius: 12, maxWidth: 'calc(100vw - 16px)' },
+    onMouseDown: event => event.preventDefault(),
+  },
+  h('style', null, '[data-eduwork-selection-toolbar] button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:32px;padding:6px 10px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;white-space:nowrap;cursor:pointer}[data-eduwork-selection-toolbar] button:hover{background:var(--dsw-alias-bg-layer-2,#f5f2f1)}[data-eduwork-selection-toolbar] button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#9f2636);outline-offset:-2px}[data-eduwork-selection-toolbar] button:disabled{opacity:.5;cursor:default}'),
+  h('button', { type: 'button', onClick: onAnnotate }, icon('annotation'), t('quote')),
+  ...actions.map(action => h(React.Fragment, { key: action.id },
+    h('span', { 'aria-hidden': true, style: { height: 18, width: 1, margin: '0 3px', background: border } }),
+    h('button', { type: 'button', onClick: () => onAction(action) }, icon(action.icon), action.label()))))
 }
 
 function Editor({ draft, t, onAdd, onCancel }) {
@@ -295,7 +303,7 @@ function MessageAnnotations({ sessionId, turn, previews, useInput, useConversati
     }, String(item.number))))
 }
 
-function AnnotationOverlay({ sessionId, previews, insert, mutate, t, inputActions, useInput, useConversation }) {
+function AnnotationOverlay({ sessionId, previews, selectionActions, reportError, insert, mutate, t, inputActions, useInput, useConversation }) {
   const marker = useRef(null)
   const [draft, setDraft] = useState(null)
   const chat = useConversation(state => state.views.get('chat'))
@@ -306,6 +314,7 @@ function AnnotationOverlay({ sessionId, previews, insert, mutate, t, inputAction
   const occurrences = useInput(state => state.occurrences)
   const items = annotations(occurrences)
   const preview = useSyncExternalStore(previews.subscribe, () => previews.get(sessionId))
+  const availableActions = useSyncExternalStore(selectionActions.subscribe, selectionActions.getSnapshot)
   useLayoutEffect(() => draft ? previews.lock(sessionId) : undefined, [draft, previews, sessionId])
   useEffect(() => () => previews.close(sessionId), [previews, sessionId])
   const add = (note) => {
@@ -315,9 +324,21 @@ function AnnotationOverlay({ sessionId, previews, insert, mutate, t, inputAction
     if (value !== undefined && insert(value, inputActions) === true) setDraft(null)
   }
   return h('span', { [MARKER]: '', ref: marker, hidden: true },
-    target && !draft ? createPortal(h(QuoteButton, {
-      target, t,
-      onClick: () => {
+    target && !draft ? createPortal(h(SelectionToolbar, {
+      target, t, actions: availableActions.filter(action => action.available?.(sessionId) !== false),
+      onAction: async action => {
+        if (previews.isLocked(sessionId)) { previews.open(sessionId, { kind: 'list' }); return }
+        const value = reference(target.quote, '', t, target.origin, target.context)
+        let atSeq
+        for (const node of chatRef.current?.nodes.values() ?? []) {
+          if (node.kind === 'turn-tail' && node.data.closing?.finalNode.messageId === target.origin.messageId) atSeq = node.data.seq
+        }
+        if (!value || !Number.isSafeInteger(atSeq)) return
+        const payload = { sourceSessionId: sessionId, atSeq, reference: value }
+        setTarget(null); document.getSelection()?.removeAllRanges()
+        try { await action.run(payload) } catch { reportError(t('insertFailed')) }
+      },
+      onAnnotate: () => {
         if (previews.isLocked(sessionId)) { previews.open(sessionId, { kind: 'list' }); return }
         previews.close(sessionId)
         setDraft(target); setTarget(null); document.getSelection()?.removeAllRanges()
@@ -343,6 +364,8 @@ export function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, copy), 'annotation: dictionaries')
   const t = ctx.locale.bind(NS)
   const previews = createPreviews()
+  const selectionActions = createSelectionActions()
+  ctx.provide('annotationSelection', selectionActions)
   ctx.inject(['uiConversation', 'slots'], scope => {
     scope.effect(() => scope.uiConversation.userText.register(sentAnnotationRule), 'annotation: sent text projection')
     scope.slots.inject('conversation.user.text.node', () => scope.slots.register({
@@ -383,7 +406,11 @@ export function apply(ctx) {
     scope.slots.inject('conversation.input.overlay', () => scope.slots.register({
       name: 'conversation.input.overlay', id: 'eduwork-annotation', order: 10, locale: NS,
       inject: sessionId => ({
-        sessionId, previews,
+        sessionId, previews, selectionActions,
+        reportError(message) {
+          const actx = scope.sessions.scope(sessionId)
+          if (actx) scope.get('conversation')?.input?.for(actx).notify('error', message)
+        },
         insert(value, inputActions) {
           const actx = scope.sessions.scope(sessionId)
           if (actx === undefined) return false

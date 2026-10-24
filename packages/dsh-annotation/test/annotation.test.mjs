@@ -87,7 +87,7 @@ test('bundle registers a codec source and inserts through the official event', a
     sessions: { scope: id => id === 's1' ? actx : undefined },
     get: () => ({ input: { for: () => ({ focus() { focused++ }, notify() { notified++ } }) } }),
   }
-  const ctx = { effect: fn => effects.push(fn()), locale: { register: () => () => {}, bind: () => t }, inject: (_deps, fn) => fn(scope) }
+  const ctx = { provide() {}, effect: fn => effects.push(fn()), locale: { register: () => () => {}, bind: () => t }, inject: (_deps, fn) => fn(scope) }
   plugin.apply(ctx)
   const [source] = sources
   assert.equal(source.trigger, '@')
@@ -128,7 +128,7 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
     useEffect: fn => effects.push(fn), useLayoutEffect() {},
     useRef: () => ({ current: null }),
     useState: initial => stateIndex++ === 0 ? [target, value => draftChanges.push(value)] : [initial, () => {}],
-    useSyncExternalStore: () => ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }),
+    useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot?.() ?? ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }),
   }
   const events = {
     addEventListener: (name, fn) => listeners.set(name, fn),
@@ -142,9 +142,9 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
     effect: fn => fn(), inputTriggers: { registerSource() {} },
     slots: { inject: (_, fn) => fn(), register: (spec, component) => { if (spec.name === 'conversation.input.overlay') overlay = component } },
   }
-  plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
+  plugin.apply({ provide() {}, effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
   let accepted = false
-  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t, insert: () => accepted,
+  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get: () => ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }) }, selectionActions: { subscribe() {}, getSnapshot: () => [] }, t, insert: () => accepted,
     useInput: fn => fn({ occurrences: [] }), useConversation: fn => fn({ views: { get() {} } }) })
   const editorNode = tree.children[1]
   editorNode.props.onAdd('保留这条批注')
