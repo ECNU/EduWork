@@ -1,5 +1,6 @@
-import React, { useEffect, useSyncExternalStore } from 'react'
+import React, { useEffect, useRef, useSyncExternalStore } from 'react'
 import { SideChatController, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
+import { alignComposerDocks } from './composer-alignment.js'
 
 const h = React.createElement
 const NS = 'eduworkSideChat'
@@ -33,7 +34,11 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   const resource = useResource(info.tab.contentId)
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const chat = state.chat
+  const root = useRef(null)
+  useEffect(() => chat && root.current ? alignComposerDocks(root.current, chat.sourceSessionId) : undefined,
+    [chat?.sessionId, chat?.sourceSessionId])
   return h('section', {
+    ref: root,
     'data-eduwork-side-chat': '', 'aria-label': t('title'),
     style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   },

@@ -99,6 +99,15 @@ async function selectSourceReply() {
 
 const closeSide = () => page.locator('[data-dockkit-tab]').filter({ hasText: /^(侧边聊天|Side chat)$/ }).locator('[data-dockkit-tab-close]').click()
 
+async function assertComposerAlignment() {
+  await waitFor(async () => page.evaluate(() => {
+    const cards = [...document.querySelectorAll('[data-composer-card]')].filter(node => node.getBoundingClientRect().height > 0)
+    const side = cards.find(node => node.closest('[data-eduwork-side-chat]'))
+    const main = cards.find(node => !node.closest('[data-eduwork-side-chat]'))
+    return side && main && Math.abs(side.getBoundingClientRect().bottom - main.getBoundingClientRect().bottom) <= 1
+  }), 'Main and side composer cards do not share a bottom baseline')
+}
+
 try {
   const identity = await json(join(product, 'assembly.json'))
   assert.equal(identity.experimental, true)
@@ -195,9 +204,18 @@ try {
     const pane = await side.boundingBox(), composer = await side.locator('[data-composer-seat]').boundingBox()
     assert.ok(composer.y > pane.y + pane.height / 2, 'empty composer should sit at the bottom')
     assert.ok(pane.y + pane.height - composer.y - composer.height < 32, 'empty composer should align with pane bottom')
+    await assertComposerAlignment()
+    // Exercise conditional footer content without changing either session's
+    // transcript: native pills disappearing must release the shared space.
+    const hiddenFooters = await page.addStyleTag({ content: '[data-composer-dock] > * { display:none !important }' })
+    await assertComposerAlignment()
+    await waitFor(() => page.locator('[data-composer-dock]').evaluateAll(nodes => nodes.every(node => node.getBoundingClientRect().height <= 5)), 'Empty footers did not release their clearance')
+    await hiddenFooters.evaluate(node => node.remove())
+    await assertComposerAlignment()
     await page.screenshot({ path: join(output, 'screenshots/side-empty.png'), fullPage: true })
     if (!desktopApp) {
       await page.setViewportSize({ width: 1200, height: 640 })
+      await assertComposerAlignment()
       const smallPane = await side.boundingBox(), smallComposer = await side.locator('[data-composer-seat]').boundingBox()
       assert.ok(smallPane.y + smallPane.height - smallComposer.y - smallComposer.height < 32)
       assert.ok(smallComposer.y > smallPane.y + smallPane.height / 2)
@@ -257,6 +275,7 @@ try {
     assert.equal(model.editedSideNote, true)
     assert.equal(model.sourceDraftLeak, false)
     assert.equal(await side.locator('[data-side-chat-empty]').count(), 0)
+    await assertComposerAlignment()
     await page.screenshot({ path: join(output, 'screenshots/side-chat.png'), fullPage: true })
   })
   await check('temporary-chat-outside-lists-and-browser-storage', async () => {
