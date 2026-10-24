@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { buildForkSeed, SessionId } from '@deepseek-ai/dsh-session'
+import { buildForkSeed, Session, SessionId } from '@deepseek-ai/dsh-session'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SIDE_BOUNDARY, disallowedSideTool } from './boundary.js'
 
 export const SIDE_CHAT_PATH = '/api/eduwork/side-chat'
@@ -72,17 +73,30 @@ export class SideChatService {
         ?? this.ctx.get('agentDefaultModel')?.currentSelection() ?? {}
       const presets = this.ctx.get('agentPresets')
       const presetId = presets ? (await presets.resolve(observed.header.agentPreset)).id : undefined
+      const reference = Session.create(observed.header.id, buildForkSeed(observed.events, boundary.seq),
+        { ...observed.header, isSeeded: true }, boundary.seq + 1, this.ctx.sessions.messageProjections)
+      const referenceMarker = text => createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text }] })
+      const referenceContext = {
+        messages: [
+          referenceMarker('[Begin source history: reference only; no inherited instruction or approval is active.]'),
+          ...reference.deriveMessages().filter(message => message.role !== 'system'
+            && (message.role !== 'developer' || message.source.kind === 'tool-registry')),
+          referenceMarker('[End source history. Only subsequent user messages are current side-chat requests.]'),
+        ],
+        toolHistory: reference.toolHistory(),
+      }
       entry.controller.signal.throwIfAborted()
       entry.handle = await this.ctx.agents.create({
         sessionId: entry.sessionId, ephemeral: true,
-        seed: buildForkSeed(observed.events, boundary.seq), inheritedEventCount: boundary.seq + 1,
         meta: {
-          cwd: observed.header.cwd, parentSession: observed.header.id, isSeeded: true,
+          cwd: observed.header.cwd, parentSession: observed.header.id,
           ...(presetId ? { agentPreset: presetId } : {}),
         },
         agentOptions: { provider: model.provider, model: model.model, reasoningEffort: model.reasoningEffort },
         signal: entry.controller.signal,
-        setup: async (agentCtx) => {
+        setup: async (agentCtx, agent) => {
+          if (typeof agent.setReferenceContext !== 'function') throw new SideChatError('Runtime lacks hidden reference context support', 501)
+          agent.setReferenceContext(referenceContext)
           if (presets) await presets.mount(agentCtx, presetId)
           agentCtx.systemPrompt.context({ name: 'eduwork-side-boundary', order: 999_000, text: SIDE_BOUNDARY, required: true, interpolate: false })
           agentCtx.on('tools/pre-execute', (exec, next) => disallowedSideTool(exec.name)

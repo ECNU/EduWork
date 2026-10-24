@@ -6,7 +6,7 @@ Status: **An isolated first-stage experiment exists; default products do not inc
 
 ## Current experiment
 
-Following [Codex `/side`](https://github.com/openai/codex/blob/7d592f6dd9988e349e3164feaa21d0fc14bbac8a/codex-rs/tui/src/app/side.rs), the first stage provides temporary side chats with **no promotion action**. User messages and completed assistant answers can start an independent snapshot. Inherited history is reference material; only new side requests are active instructions. Opening does not call a model. History uses ordinary conversation rendering; dedicated folding is deferred.
+Following [Codex `/side`](https://github.com/openai/codex/blob/7d592f6dd9988e349e3164feaa21d0fc14bbac8a/codex-rs/tui/src/app/side.rs), the first stage provides temporary side chats with **no promotion action**. User messages and completed assistant answers can start one. **Its transcript starts empty, with event sequence 0; source messages are not copied into it.** A separate in-memory reference context through the selected message is included only in model requests. Only new side requests are active instructions. Opening does not call a model.
 
 One side chat is allowed per window. Reopening the same boundary reuses it; another boundary requires closing the existing chat. The last model request before the cutoff determines model selection, falling back to the deployment default. The source Agent preset is mounted afresh, with current permissions. Subagents, schedules, long-lived background work, nested side forks and dedicated worktrees are prohibited.
 
@@ -26,7 +26,7 @@ A side chat has a new session ID, its own input, generation state and cancellati
 
 | Aspect | Side chat before saving | Ordinary conversation, including a saved side chat |
 | --- | --- | --- |
-| Starting context | Snapshot of the source through the selected message | Empty when newly created, or the complete context retained when saved |
+| Starting context | Empty transcript; a separate reference context through the selected message accompanies model requests | Empty when newly created, or retained context after saving |
 | Display | Temporary panel beside the source | Main conversation area |
 | Organization and discovery | Excluded from conversation lists, folders, search, recents and automatic history-memory indexing | Managed under existing conversation rules |
 | Lifetime | Deleted on explicit close; not restored after restart | Retained when its view closes; requires explicit deletion |
@@ -35,7 +35,7 @@ A side chat has a new session ID, its own input, generation state and cancellati
 
 ## Complete design boundaries (planned, including promotion)
 
-1. **History cutoff.** Inherit the currently visible branch from its beginning through the selected message, inclusive, with no later messages. Subsequent additions, edits and regenerations in either conversation do not affect the other. Inherited history is initially collapsed and can be expanded. Selecting a user message does not automatically replay its request; the user sends a new follow-up.
+1. **History cutoff.** Carry the currently visible branch through the selected message as reference context, excluding later messages. Subsequent additions, edits and regenerations in either conversation do not affect the other. The side transcript starts at 0 and contains only its new conversation. Any future history viewer must remain a separate read-only reference view. Selecting a user message does not replay its request; the user sends a new follow-up.
 2. **Message boundaries.** Provide the action on every user message and completed assistant message, excluding internal tool events as separate entry points. A streaming assistant message must complete or stop first to avoid copying partial output or incomplete tool calls. Historical tool calls and results must form valid context and must never be executed again. Long histories follow ordinary context-compaction rules with a visible indication when compaction is used; sending every original word on every request is not guaranteed.
 3. **Independent execution.** Start with the source conversation’s current model and Agent preset, allowing later independent changes. Main and side chats can generate concurrently and stop independently. Evaluate permissions for the new session without copying one-time approvals, active tasks, pending approval requests or subagents. Preserve usable attachment content and references, and explicitly report unavailable content; copying a display card alone does not count as carrying its content.
 4. **Closing and navigation.** Initially allow one temporary side chat per client window. Navigating away from the source or opening an artifact preview hides the panel while retaining temporary state; returning restores it. Collapsing is distinct from closing. Opening another side chat requires an explicit choice to save the existing one or close and discard it. Closing the panel, its owning window or the client ends the temporary session; refresh and abnormal restart do not restore it. Narrow windows may use an overlay with the same lifetime.

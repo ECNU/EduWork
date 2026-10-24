@@ -71,7 +71,7 @@ async function dismissOnboarding() {
   for (let attempt = 0; attempt < 8; attempt++) {
     for (const name of [/^(继续|Continue)$/, /^(稍后配置|Configure later|Maybe later)$/, /^(使用其他模型|Use another model)$/]) {
       const button = page.getByRole('button', { name }).last()
-      if (await button.isVisible()) await button.click()
+      if (await button.isVisible() && await button.isEnabled()) await button.click()
     }
     await delay(200)
   }
@@ -167,6 +167,8 @@ try {
     assert.ok(reply.sessionId?.startsWith('side-'))
     sideId = reply.sessionId
     await page.locator('[data-eduwork-side-chat]').waitFor()
+    assert.equal(await page.locator('[data-eduwork-side-chat]').getByText('SOURCE_FIRST', { exact: true }).count(), 0, 'new side chat must not display inherited records')
+    assert.equal(await page.locator('[data-eduwork-side-chat]').getByText('SOURCE_FIRST_REPLY', { exact: true }).count(), 0)
     await askSide('SIDE_QUESTION')
     await page.locator('[data-eduwork-side-chat]').getByText('SCRIPTED_SIDE_REPLY', { exact: true }).waitFor()
     const model = (await trace()).find(row => row.marker === 'SIDE_QUESTION')

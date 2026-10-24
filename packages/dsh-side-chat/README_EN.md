@@ -4,7 +4,7 @@
 
 Status: an isolated experiment exists; unpublished and excluded from default product assembly. The pinned DSH `0.2.1-rc.2` supports branching and embedded chat, but does not alone provide the required temporary lifecycle. Local experiments require an explicitly built Runtime extension.
 
-Open a temporary side chat from a user message or completed assistant answer. It inherits history through that point and uses the shared conversation components in the native right sidebar. Later source messages do not enter it. Inherited history is reference context, rather than an active task. Model settings come from the selected historical prefix.
+Open a temporary side chat from a user message or completed assistant answer using the shared conversation components in the native right sidebar. Its transcript starts empty at event sequence 0. Source history through that point remains separate in memory and accompanies model requests as reference context; it never becomes side-chat transcript records or an active inherited task. Later source messages do not enter that snapshot. Model settings come from the selected historical prefix.
 
 Side chats stay outside ordinary lists, history search and automatic memory indexing. Closing stops the session and discards messages and drafts. Switching conversations or previews, collapsing the panel and hiding the window do not discard it. A lease reclaims memory sessions left by abnormal disconnection; restart cannot restore them. Explicitly requested work-file changes and external actions are not undone on close.
 

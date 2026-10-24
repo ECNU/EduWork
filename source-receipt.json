@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-22T16:49:59.625Z",
-  "fileSetSHA256": "c15e1df34b8bba7c06ce293bbb4804e060dbc8aa770678c1212099429cc7e513",
+  "createdAt": "2026-10-24T15:46:38.848Z",
+  "fileSetSHA256": "cb0539191cead55aa71e3050670ccf4b34c5245404a51d6b9eaa5514c420881c",
   "files": [
     {
       "path": ".gitattributes",
@@ -37,7 +37,7 @@
     },
     {
       "path": ".github/workflows/packages.yml",
-      "sha256": "3c6b7dc7db3a987105ab3b1425f70b45f1d845ece2c7297de613dcbb9a7d1de4"
+      "sha256": "8074cd05a375493c725323a3e65bf62d64d7629fb3aff5ab636fe3caea8b480a"
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
@@ -426,6 +426,14 @@
     {
       "path": "docs/proposals/gateway-auth/README.md",
       "sha256": "d13ae9078d13599580d471e5a61b6233271cad9c572b7bc583a74de5ee9eae7f"
+    },
+    {
+      "path": "docs/proposals/side-chat/README_EN.md",
+      "sha256": "ba396a218bd1bf02056561d63e8de21b7a1614567f32a6a01b32bbfb7e1e8d6a"
+    },
+    {
+      "path": "docs/proposals/side-chat/README.md",
+      "sha256": "a115cc0fca0faa43769470c32cb10ba82a6626188cf922d5157a80a7ceffe8e3"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
@@ -6528,6 +6536,78 @@
       "sha256": "b3a68b06ac9a594d8ef7f3eabcdbbf3eaf4afb9f855e885505b11fb2dd91bd28"
     },
     {
+      "path": "packages/dsh-side-chat/.gitignore",
+      "sha256": "676b91f455a7988044510489387fab13294b310b164fae41301ac730692497b8"
+    },
+    {
+      "path": "packages/dsh-side-chat/cordis.patch.yml",
+      "sha256": "323b77f6ad2b190cd8c9e6d6999903977d1a14810a050170166a6b078b18ec47"
+    },
+    {
+      "path": "packages/dsh-side-chat/LICENSE",
+      "sha256": "dc719b536b8f7a51cd0ffaf928d37146894a3996119cb07d4fb7b67e551882dc"
+    },
+    {
+      "path": "packages/dsh-side-chat/package-lock.json",
+      "sha256": "ac4919e754b003e843fd9ce55e497b592f474dcb43323f12d07b147724e9d5d3"
+    },
+    {
+      "path": "packages/dsh-side-chat/package.json",
+      "sha256": "3c51e09e00cdbfef1ab444c2457f5d05139770fbaac1f67265a47b4dba0c5b74"
+    },
+    {
+      "path": "packages/dsh-side-chat/README_EN.md",
+      "sha256": "bb75c050de5dd163e3f2fc26cd7dab2303c40af828b01eb7362355f8d1781ca4"
+    },
+    {
+      "path": "packages/dsh-side-chat/README.md",
+      "sha256": "2f3d10afd664993e8bf523ffbec5641fa78dd98c12284abb2d320cf939e97359"
+    },
+    {
+      "path": "packages/dsh-side-chat/runtime-extension.mjs",
+      "sha256": "a1c242cb19380b0c490a31305d5e37d6d290f6e062308e8e8d360b21fb8eee71"
+    },
+    {
+      "path": "packages/dsh-side-chat/scripts/browser-test.mjs",
+      "sha256": "db437967929cc6a2280081342120225e8a134754baaf7bb71f2dc555be2ffbb8"
+    },
+    {
+      "path": "packages/dsh-side-chat/scripts/build.mjs",
+      "sha256": "608eb61c5ce87891dc96bf7bdef6ce526d2989ba72ec951e65560d6376ff9904"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/boundary.js",
+      "sha256": "15227b90abe8808f3a3c6567d730687d120c5d9d85e6b83d0163b06e649218bb"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/client/controller.js",
+      "sha256": "febc58ce13a7b06e863f6c5aeefb4eb1685b63d4d05e3c5abf59979ed7cc50f3"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/client/index.jsx",
+      "sha256": "880aae04111ac50a1001a0ca9c086bfd2e7f3ab131344209173cdf14bb6199d1"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/index.js",
+      "sha256": "c29c3a61d4fcd59b3f8a511ccca2ed3dcd2e297752e0009be3909fa47f2c1ef2"
+    },
+    {
+      "path": "packages/dsh-side-chat/src/service.js",
+      "sha256": "fa49d03b259f6f4149c75b8bfc792eaef3b4a99a1f6d14e9b74bebf95dd3e005"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/browser-model.mjs",
+      "sha256": "a6df283f13395b29bc85decc4bde37926d14edb21f8d6d115cb6ed770e69ca39"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/controller.test.mjs",
+      "sha256": "6600ee89ef3f4d454ebb02052eadf8223ee589ef643827636eaa18a5d246ca2e"
+    },
+    {
+      "path": "packages/dsh-side-chat/test/runtime.test.mjs",
+      "sha256": "eebcb55cabd0deac4298b82da1f431acde8370ea84580df1a01aec1add2fb4d5"
+    },
+    {
       "path": "README_EN.md",
       "sha256": "d38d9a0a9f38f6ed750aeedef1743b17c4c929f1bb0439d32e868dff15a1220e"
     },
@@ -6568,8 +6648,12 @@
       "sha256": "d7aae91f98a3cb4ed422cd71ec3f0f8fc65e35b40a36087cf6b79a9c180e012a"
     },
     {
+      "path": "scripts/assemble-side-chat-experiment.mjs",
+      "sha256": "772d2611b92ff8aa498c3c57ccd142743aa969f0dc61774d6a7139c9178ec6bd"
+    },
+    {
       "path": "scripts/audit-eduwork-distribution.mjs",
-      "sha256": "d68fc385d16104e92d6ea64de025d93daa6a23f6b80ea12103817d4acea233ff"
+      "sha256": "da1543eb1fe6f320990d933a1a7123f93d01d8fcfb2aef99d7ada1b72dc0644e"
     },
     {
       "path": "scripts/build-desktop-candidate.ps1",
@@ -6586,6 +6670,10 @@
     {
       "path": "scripts/build-pipeline-diagram.mjs",
       "sha256": "b0b5e36273cdf5a2d6d6b7ed5aeab6c6236d67e6724b149bcecb70ba95ed83b7"
+    },
+    {
+      "path": "scripts/build-side-chat-experiment.mjs",
+      "sha256": "42fe14f470668bad22518dc795fb115fcea0521483e36e85db2e02cc8e4dc19c"
     },
     {
       "path": "scripts/check-bundled-configuration.mjs",
@@ -6673,7 +6761,7 @@
     },
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c"
+      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa"
     },
     {
       "path": "scripts/distribution-config-patches.mjs",
@@ -7044,6 +7132,10 @@
       "sha256": "d216e7abc264fdfdc241aaecd733c63e0edd8b07a6025e48a13b5a144622e95f"
     },
     {
+      "path": "scripts/probe-side-chat-runtime.mjs",
+      "sha256": "424114f132f9fdeae297d6c7b7b758ff6839df14ab20fe90ca707764777de173"
+    },
+    {
       "path": "scripts/project-eduwork-runtime.mjs",
       "sha256": "dd3e028561c302a40763d30015aa0ce441fd952080757c71e7f93c7d53504955"
     },
@@ -7273,7 +7365,7 @@
     },
     {
       "path": "tests/eduwork-source-audit.test.mjs",
-      "sha256": "767cf5365c6e46578fe73ad9bc3e52119eb94a547c28788b823c8272ba2f8cd1"
+      "sha256": "6b92d13057b1bd933b2403e3b3fc464b95ababa78cb2fceb1528535dc34e2164"
     },
     {
       "path": "tests/eduwork-source-reproducibility.test.mjs",
@@ -7822,9 +7914,9 @@
   "reviewedCompatibility": [
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
+      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Legacy composition remains inactive for eduwork-web product identities. Parent, worker and Windows linker share the invocation directory when resolving local configuration paths. Bundle selection and service registration are unchanged; no institution endpoint or credential exemption."
+      "reason": "Legacy institution composition remains inactive for eduwork-web identities. Qualified native products reuse the native preset/profile writer and preserve saved bundle activation; legacy products retain their existing path. No institution endpoint, credential or activation exemption."
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",

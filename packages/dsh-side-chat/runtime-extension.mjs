@@ -8,6 +8,23 @@ export const runtimeCommit = '687f282e8625c6b8d11ff58211a90524be2e4317'
 export const runtimeVersion = '0.2.1-rc.2'
 const hash = text => createHash('sha256').update(text).digest('hex')
 
+const referenceSetter = `setReferenceContext(reference) {
+ if (this.session.header.ephemeral !== true || this.session.snapshotEvents().length !== 0 || this.referenceContext !== undefined) throw new Error("Reference context requires a fresh temporary Agent");
+ const copy = structuredClone(reference);
+ deepFreeze(copy);
+ this.referenceContext = copy;
+}`
+const referenceMessages = `const sessionMessages = session.deriveMessages();
+ const boundaryMessages = this.referenceContext === undefined ? sessionMessages : [
+  ...sessionMessages.filter(message => message.role === "system"),
+  ...this.referenceContext.messages,
+  ...sessionMessages.filter(message => message.role !== "system"),
+ ];`
+const referenceTools = `this.referenceContext === undefined ? session.toolHistory() : {
+ tools: [...new Map([...this.referenceContext.toolHistory.tools, ...session.toolHistory().tools].map(tool => [tool.name, tool])).values()],
+ updates: [...this.referenceContext.toolHistory.updates, ...session.toolHistory().updates],
+}`
+
 const bundleChanges = {
   '@deepseek-ai/dsh-session': {
     beforeSHA256: '2f5dd07cb5c744a29abbb8003a8a4cefd9e582c6e2538074ca299a0ddd02a3bf',
@@ -21,6 +38,9 @@ const bundleChanges = {
   '@deepseek-ai/dsh-agent-loop': {
     beforeSHA256: 'cf57e3ecd487ac5c2553455aaa5cef2c6fb41e6bd61be5aa455675d1d7193033',
     replacements: [
+      ['var ReactLoopAgent = class {', `var ReactLoopAgent = class {\n referenceContext;\n ${referenceSetter}`],
+      ['const boundaryMessages = session.deriveMessages();', referenceMessages],
+      ['toolHistory: session.toolHistory(),', `toolHistory: ${referenceTools},`],
       ['async createStoredSession(session, signal) {', 'async createStoredSession(session, signal) {\n if (session.header.ephemeral === true) return void 0;'],
       ['...options.meta === void 0 ? {} : { meta: options.meta },', 'meta: { ...options.meta, ...options.ephemeral === true ? { ephemeral: true } : {} },'],
     ],
@@ -69,6 +89,13 @@ const changes = [
   ['core/agent-loop', 'index.ts', [
     ['    const persistence = this.runtime.ctx.get(\'sessionPersistence\')\n    if (persistence === undefined) return undefined', '    if (session.header.ephemeral === true) return undefined\n    const persistence = this.runtime.ctx.get(\'sessionPersistence\')\n    if (persistence === undefined) return undefined'],
     ['      ...options.meta === undefined ? {} : { meta: options.meta },', '      meta: { ...options.meta, ...options.ephemeral === true ? { ephemeral: true } : {} },'],
+  ]],
+  ['core/agent-loop', 'agent.ts', [
+    ['export class ReactLoopAgent implements Agent {', `export class ReactLoopAgent implements Agent {
+  private referenceContext?: { messages: readonly Message[]; toolHistory: NonNullable<GenerateOptions['toolHistory']> }
+  ${referenceSetter.replace('reference)', "reference: { messages: readonly Message[]; toolHistory: NonNullable<GenerateOptions['toolHistory']> })")}`],
+    ['const boundaryMessages = session.deriveMessages()', referenceMessages],
+    ['toolHistory: session.toolHistory(),', `toolHistory: ${referenceTools},`],
   ]],
   ['api/session-controller', 'index.ts', [
     ["      ctx.emit('api-session/added', this.listState.summaryFor(session))", "      if (session.header.ephemeral !== true) ctx.emit('api-session/added', this.listState.summaryFor(session))"],

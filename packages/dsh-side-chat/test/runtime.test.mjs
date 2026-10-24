@@ -13,7 +13,7 @@ async function fixture() {
   const require = createRequire(join(runtime, 'package.json'))
   const load = name => import(pathToFileURL(require.resolve(name)).href)
   const { Context } = await load('@deepseek-ai/cordis')
-  const { createUserMessage, LlmAdapter } = await load('@deepseek-ai/dsh-llm')
+  const { createUserMessage, createMessage, LlmAdapter } = await load('@deepseek-ai/dsh-llm')
   const { assembleContextFor } = await load('@deepseek-ai/dsh-agent')
   const ctx = new Context()
   const home = await mkdtemp(join(tmpdir(), 'eduwork-side-chat-runtime-'))
@@ -39,7 +39,7 @@ async function fixture() {
   const { SideChatService } = await load('@eduwork/dsh-side-chat')
   const service = new SideChatService(ctx, { now: () => now, leaseMs: 100 })
   return {
-    ctx, service, source, selected, createUserMessage, LlmAdapter,
+    ctx, service, source, sourceHandle, selected, createUserMessage, createMessage, LlmAdapter,
     assemble: agent => ctx.systemPrompt.assemble(assembleContextFor(agent)),
     advance: ms => { now += ms },
     close: async () => { await service.dispose(); await ctx.fiber.dispose() },
@@ -54,6 +54,8 @@ test('real Runtime keeps a precise, usable side snapshot outside disk, lists and
   assert.equal(side.session.header.ephemeral, true)
   assert.equal(side.session.header.origin, undefined)
   assert.equal(side.session.header.parentSession, f.source.id)
+  assert.deepEqual(side.session.snapshotEvents(), [], 'a side chat starts with no inherited records')
+  assert.deepEqual(side.session.deriveMessages(), [])
   assert.equal(JSON.stringify(side.session.snapshotEvents()).includes('SOURCE_FUTURE'), false)
   side.session.append('turn/start', { turn: 3 })
   side.session.append('user/message', f.createUserMessage({ content: [{ type: 'text', text: 'SIDE_PRIVATE_NEEDLE' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
@@ -92,7 +94,10 @@ test('real AgentLoop sends the reference boundary and new side question to a scr
   f.ctx.llm.registerAdapter(['side-fixture'], new Adapter())
   const opened = await f.service.open({ owner: 'e'.repeat(32), sourceSessionId: f.source.id, atSeq: f.selected.seq })
   const side = f.ctx.agents.get(opened.sessionId)
+  assert.deepEqual(side.session.snapshotEvents(), [])
   assert.equal(requests.length, 0, 'opening must not replay the selected request')
+  await f.sourceHandle.dispose()
+  f.ctx.sessionQuery.observeSession = () => { throw new Error('Source must never be reread by an open side chat') }
   side.followup(f.createUserMessage({ content: [{ type: 'text', text: 'CURRENT_SIDE_QUESTION' }], source: { kind: 'user' } }))
   await side.whenIdle()
   assert.equal(requests.length, 1)
@@ -102,7 +107,41 @@ test('real AgentLoop sends the reference boundary and new side question to a scr
   assert.ok(serialized.includes('Only new requests submitted in this side conversation'))
   assert.ok(!serialized.includes('SOURCE_FUTURE'))
   assert.ok(JSON.stringify(side.session.snapshotEvents()).includes('SCRIPTED_SIDE_REPLY'))
+  assert.equal(side.session.snapshotEvents()[0].seq, 0)
+  assert.ok(!JSON.stringify(side.session.snapshotEvents()).includes('SOURCE_REFERENCE'), 'reference context stays outside side records')
   assert.equal(await f.ctx.sessionPersistence.stat(opened.sessionId), undefined)
+})
+
+test('hidden reference closes incomplete historical tool calls without replay or transcript import', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  const requests = []
+  let executions = 0
+  f.ctx.tools.register({ name: 'reference_fixture', description: 'Synthetic historical tool', parameters: {},
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+    execute: async () => { executions++; return 'must not execute historical work' },
+  })
+  f.source.append('turn/start', { turn: 3 })
+  f.source.append('step/start', { turn: 3, step: 1 })
+  const selected = f.source.append('assistant/message', { turn: 3, step: 1, stream: [],
+    message: f.createMessage({ role: 'assistant', source: { kind: 'model', provider: 'side-fixture', model: 'fixture' },
+      content: [{ type: 'tool-call', id: 'synthetic-historical-call', name: 'reference_fixture', arguments: '{}' }] }),
+  }, { surfaceOp: 'append' })
+  class Adapter extends f.LlmAdapter {
+    resolveModel(provider, model) { return Promise.resolve({ provider, id: model, name: model }) }
+    async *stream(request) { requests.push(request); yield* responseChunks('HISTORY_INSPECTED') }
+  }
+  f.ctx.llm.registerAdapter(['side-fixture'], new Adapter())
+  const opened = await f.service.open({ owner: 'i'.repeat(32), sourceSessionId: f.source.id, atSeq: selected.seq })
+  const side = f.ctx.agents.get(opened.sessionId)
+  assert.deepEqual(side.session.snapshotEvents(), [])
+  side.followup(f.createUserMessage({ content: [{ type: 'text', text: 'Explain the historical call without running it.' }], source: { kind: 'user' } }))
+  await side.whenIdle()
+  assert.equal(requests.length, 1)
+  const history = requests[0].messages
+  assert.ok(history.some(message => message.role === 'assistant' && message.content.some(block => block.type === 'tool-call' && block.id === 'synthetic-historical-call')))
+  assert.ok(history.some(message => message.role === 'tool' && message.toolCallId === 'synthetic-historical-call' && message.isError === true))
+  assert.equal(executions, 0)
+  assert.ok(!JSON.stringify(side.session.snapshotEvents()).includes('synthetic-historical-call'))
 })
 
 test('closing a streaming side Agent cancels its model request while a normal Agent completes', options, async t => {
