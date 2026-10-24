@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T14:19:17.303Z",
-  "fileSetSHA256": "3c249d089c303d769e22cf69cb889fc4f27f5db60091bd0706e1a9556e8a5263",
+  "createdAt": "2026-10-24T14:21:32.204Z",
+  "fileSetSHA256": "16aca65ff5d73aa3b99b5d3c8af64c99a7579784ce3a8483e55625cd54acf5b8",
   "files": [
     {
       "path": ".gitattributes",
@@ -6833,7 +6833,7 @@
     },
     {
       "path": "scripts/macos-dmg/test_layout.py",
-      "sha256": "395fffface39bb02aff832549d938e770a43af1e58b8cfa8137f8375b818a210"
+      "sha256": "f3225f9afcd6365a0e7eba3f9b130b4201eced7f5c0083c9fd8b055ecb74bfa5"
     },
     {
       "path": "scripts/macos-dmg/test_package.py",

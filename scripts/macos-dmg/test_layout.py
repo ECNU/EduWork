@@ -39,9 +39,10 @@ class NativeLayoutTest(unittest.TestCase):
         device = None
         mounted = False
         try:
-            subprocess.run(['hdiutil', 'create', '-size', '16m', '-fs', 'HFS+',
+            # Leave room for hdiutil's default partition layout as well as HFS+.
+            subprocess.run(['hdiutil', 'create', '-size', '64m', '-fs', 'HFS+',
                             '-format', 'UDRW', '-volname', 'Layout Test', str(image)],
-                           check=True, capture_output=True)
+                           check=True)
             mount.mkdir()
             mounted = True
             device = dmg.attach_image(image, mount)
