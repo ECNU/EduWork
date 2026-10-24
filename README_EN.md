@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -153,14 +153,14 @@ We want this space to support more ways to create and learn. Additional Studios 
 
 Each client runs independently on its user's computer, without a separate EduWork server. Model services come from your chosen provider or organization.
 
-Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the package and move the included `.app` application to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
+Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64) and Intel (x64, from 0.4.8)**. Extract the portable Windows package to run it; on Mac, extract the package and move the included `.app` application to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
 
 ### 1. Get the client
 
 Download the complete desktop package for your platform from [GitHub Releases](https://github.com/ecnu/EduWork/releases):
 
 - **Windows x64:** extract into a writable directory and run `EduWork-Electron.exe`. Keep the accompanying resource files; do not copy just the EXE.
-- **macOS arm64:** extract the package, move the included `.app` application to Applications, and open it. Configuration and user data live in the user directory.
+- **macOS arm64 / x64:** choose the package for your chip, extract the package, move the included `.app` application to Applications, and open it. Configuration and user data live in the user directory.
 
 GitHub's Source code archives are not desktop packages. See the [build guide](docs/BUILD.md) to run from source.
 

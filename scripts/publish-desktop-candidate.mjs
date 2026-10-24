@@ -30,23 +30,31 @@ export function assetNames(product, version, platform) {
   const extra = platform === 'windows' ? `${product}-${version}-windows-x64-setup.zip` : zip.replace(/\.zip$/, '.dmg')
   return [zip, zip + '.sha256', `${platform}-${desktopVersion(version).prerelease?'alpha':'release'}-receipt.json`, extra, extra + '.sha256', ...(platform === 'windows' ? [extra + '.json', updateManifestName] : [])]
 }
+export function publicationPlatforms(value = '', mode = 'node') {
+  const platforms = value ? JSON.parse(value) : ['windows', 'macos']
+  assert.ok(Array.isArray(platforms) && platforms.length >= 2)
+  assert.deepEqual(platforms, platforms.includes('macos-x64') ? ['windows', 'macos', 'macos-x64'] : ['windows', 'macos'], 'Invalid publication platforms')
+  if (mode === 'ps1') assert.ok(!platforms.includes('macos-x64'), 'Intel Mac requires Node')
+  return platforms
+}
 export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
   assert.match(product, /^[A-Za-z0-9-]+$/)
   desktopVersion(version)
-  assert.ok(['windows', 'macos'].includes(platform))
-  const zip = `${product}-${version}-${platform === 'windows' ? 'windows-x64' : 'macos-arm64'}-electron.zip`
+  assert.ok(['windows', 'macos', 'macos-x64'].includes(platform))
+  const arch = platform === 'macos-x64' ? 'x64' : 'arm64'
+  const zip = `${product}-${version}-${platform === 'windows' ? 'windows-x64' : `macos-${arch}`}-electron.zip`
   const names = [zip, `${zip}.sha256`, 'release-receipt.json', 'RELEASE-NOTES.md']
   if (platform === 'windows') {
     const setup = `${product}-${version}-windows-x64-setup.zip`
     names.push(updateManifestName, setup, `${setup}.sha256`, `${setup}.json`)
     for (const delta of deltaFrom.map(from => windowsDeltaName(product, version, from))) names.push(delta, `${delta}.sha256`)
   } else {
-    const dmg = `${product}-${version}-macos-arm64-electron.dmg`
-    names.push(dmg, `${dmg}.sha256`, ...deltaFrom.map(from => deltaName(product, version, from)))
+    const dmg = `${product}-${version}-macos-${arch}-electron.dmg`
+    names.push(dmg, `${dmg}.sha256`, ...deltaFrom.map(from => deltaName(product, version, from, arch)))
   }
   return names
 }
-export function validateRun(run, {repository, workflow, currentRun}, jobs = []) {
+export function validateRun(run, {repository, workflow, currentRun, platforms = ['windows', 'macos'], requireMacos15 = false}, jobs = []) {
   assert.equal(run.repository.full_name.toLowerCase(), repository.toLowerCase(), 'Wrong source repository')
   assert.equal(run.path, workflow, 'Wrong source workflow')
   assert.equal(run.event, 'workflow_dispatch', 'Only explicitly requested candidates may be published')
@@ -55,11 +63,19 @@ export function validateRun(run, {repository, workflow, currentRun}, jobs = []) 
   else {
     // The publishing job can follow the matrix in the same still-running workflow.
     assert.equal(String(run.id), String(currentRun), 'Another build is still running')
-    for (const name of ['Build (windows)', 'Build (macos)']) {
+    for (const name of platforms.map(platform => `Build (${platform})`)) {
       const found = jobs.filter(job => job.name === name)
       assert.equal(found.length, 1, 'Missing or ambiguous platform build: ' + name)
       assert.equal(found[0].status, 'completed')
       assert.equal(found[0].conclusion, 'success', 'Platform build failed: ' + name)
+    }
+  }
+  if (requireMacos15) {
+    for (const platform of platforms.filter(p => p !== 'windows')) {
+      const matches = jobs.filter(job => job.name === `macOS 15 (${platform})`)
+      assert.equal(matches.length, 1, 'Missing macOS 15 acceptance: ' + platform)
+      assert.equal(matches[0].status, 'completed')
+      assert.equal(matches[0].conclusion, 'success', 'macOS 15 acceptance failed: ' + platform)
     }
   }
 }
@@ -133,12 +149,12 @@ export async function validatedNodeNpmFiles(directory, context) {
   }
   const receipt = await json(join(directory, 'release-receipt.json'))
   const deltas = receipt.deltas ?? []
-  const names = nodeNpmAssetNames(context.product, context.version, 'macos', deltas.map(delta => delta.from))
+  const names = nodeNpmAssetNames(context.product, context.version, context.platform, deltas.map(delta => delta.from))
   const name = names[0]
   assert.deepEqual((await readdir(directory)).sort(), [...names].sort(), 'Unexpected macOS files')
   for (const [key, value] of Object.entries({
     schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version,
-    edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true,
+    edition: context.product, platform: context.platform === 'macos-x64' ? 'macos-x64' : 'macos-arm64', shell: 'electron', passed: true,
     automaticUpdates: true,
     coreCommit: context.coreCommit, editionCommit: context.editionCommit,
   })) assert.equal(receipt[key], value, 'macOS candidate identity mismatch: ' + key)
@@ -196,6 +212,7 @@ export async function publishCandidate(env = process.env) {
   const aliases = {source: 'ps1', 'source-ps1': 'ps1', staged: 'node', 'node-npm': 'node'}
   const buildMode = aliases[env.BUILD_MODE] ?? env.BUILD_MODE ?? 'node'
   assert.ok(['ps1', 'node'].includes(buildMode), 'Unknown desktop build mode')
+  const platforms = publicationPlatforms(env.RELEASE_PLATFORMS, buildMode)
   assert.match(repository, /^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/)
   const sourceWorkflow = env.CANDIDATE_WORKFLOW
   if (buildMode === 'node') nodeNpmAssetNames(product, version, 'macos')
@@ -214,8 +231,9 @@ export async function publishCandidate(env = process.env) {
     return response.status === 204 ? null : response.json()
   }
   const run = await request(`/actions/runs/${env.SOURCE_RUN_ID}`)
-  const jobs = run.status === 'completed' ? [] : (await request(`/actions/runs/${run.id}/jobs?per_page=100`)).jobs
-  validateRun(run, {repository, workflow: sourceWorkflow, currentRun: env.GITHUB_RUN_ID}, jobs)
+  const requireMacos15 = env.REQUIRE_MACOS15 === 'true'
+  const jobs = run.status === 'completed' && !requireMacos15 ? [] : (await request(`/actions/runs/${run.id}/jobs?per_page=100`)).jobs
+  validateRun(run, {repository, workflow: sourceWorkflow, currentRun: env.GITHUB_RUN_ID, platforms, requireMacos15}, jobs)
   const ancestry = await request(`/compare/${run.head_sha}...main`)
   assert.equal(ancestry.merge_base_commit.sha, run.head_sha, 'Candidate source has not been merged into main')
   let coreCommit = run.head_sha
@@ -230,7 +248,7 @@ export async function publishCandidate(env = process.env) {
   await mkdir(root, {recursive: true})
   const artifacts = (await request(`/actions/runs/${run.id}/artifacts?per_page=100`)).artifacts
   const files = [], receipts = []
-  for (const platform of ['windows', 'macos']) {
+  for (const platform of platforms) {
     const matches = artifacts.filter(artifact => artifact.name === platform + '-release' && !artifact.expired)
     assert.equal(matches.length, 1, 'Missing or ambiguous CI artifact: ' + platform)
     const artifact = matches[0], archive = join(root, platform + '.zip'), directory = join(root, platform)
@@ -268,17 +286,19 @@ export async function publishCandidate(env = process.env) {
     receipts.push(checked.receipt)
     console.log('Verified CI artifact and all release files: ' + platform)
   }
-  assert.equal(receipts[0].dshVersion, receipts[1].dshVersion, 'Platforms use different DSH versions')
-  if (buildMode === 'node') {
-    assert.match(receipts[0].dshCommit, sha, 'Windows DSH commit is missing')
-    assert.equal(receipts[0].dshCommit, receipts[1].dshCommit, 'Platforms use different DSH source commits')
-    assert.equal(receipts[0].recipe, receipts[1].recipe, 'Platforms use different build recipes')
+  for (const receipt of receipts.slice(1)) {
+    assert.equal(receipts[0].dshVersion, receipt.dshVersion, 'Platforms use different DSH versions')
+    if (buildMode === 'node') {
+      assert.match(receipts[0].dshCommit, sha, 'Windows DSH commit is missing')
+      assert.equal(receipts[0].dshCommit, receipt.dshCommit, 'Platforms use different DSH source commits')
+      assert.equal(receipts[0].recipe, receipt.recipe, 'Platforms use different build recipes')
+    }
   }
   const notesAsset = join(root, 'RELEASE-NOTES.md')
   await writeFile(notesAsset, notes)
   files.push({name: 'RELEASE-NOTES.md', path: notesAsset, bytes: Buffer.byteLength(notes), sha256: await hashFile(notesAsset)})
   // Windows delta updates carry a SHA-256 sidecar for the updater; macOS ones are signed in the appcast.
-  assert.equal(files.length, 13 + 2 * (receipts[0].deltas?.length ?? 0) + (receipts[1].deltas?.length ?? 0))
+  assert.equal(files.length, 8 + 5 * (receipts.length - 1) + 2 * (receipts[0].deltas?.length ?? 0) + receipts.slice(1).reduce((sum, receipt) => sum + (receipt.deltas?.length ?? 0), 0))
   const result = {verified: true, published: false, buildMode, repository, sourceRun: run.id, editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
   if (env.PUBLISH_RELEASE === 'true') {
     const tag = result.tag

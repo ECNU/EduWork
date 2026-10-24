@@ -36,6 +36,10 @@ on:
       - 'tests/native-compile-cache.test.mjs'
       - 'tests/preflight.test.mjs'
       - 'tests/macos-native-inputs.test.mjs'
+      - 'tests/macos-architecture.test.mjs'
+      - 'scripts/lib/macos-architecture.mjs'
+      - 'scripts/desktop-build-targets.mjs'
+      - 'scripts/accept-macos-candidate.mjs'
       - 'tests/edition-skill-replacement.test.mjs'
       - 'tests/build-pipeline-diagram.test.mjs'
       - 'scripts/lib/windows-stages.mjs'
@@ -69,7 +73,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-latest]
+        os: [windows-latest, macos-26, macos-26-intel]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -95,4 +99,4 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
-      - run: node --test tests/windows-package-preflight.test.mjs tests/desktop-build-plan.test.mjs tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs tests/generic-first-launch.test.mjs scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/windows-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs
+      - run: node --test tests/macos-architecture.test.mjs tests/windows-package-preflight.test.mjs tests/desktop-build-plan.test.mjs tests/desktop-candidate-publication.test.mjs tests/eduwork-windows-release.test.mjs tests/generic-first-launch.test.mjs scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/windows-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs

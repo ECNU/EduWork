@@ -23,6 +23,8 @@ import {
 } from './lib/build-util.mjs'
 import { cachedCompile, compileKey } from './lib/native-compile-cache.mjs'
 
+import { macosArchitecture } from './lib/macos-architecture.mjs'
+
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
 // The one multilingual model the speech component ships. Both the URL and the
@@ -51,7 +53,8 @@ async function readSpeechCatalog(node, product) {
  * the pinned runtime manifests, so its result is reusable across products.
  */
 export async function prepareMacosReleaseInputs({ output } = {}) {
-  if (!isMacOS || process.arch !== 'arm64') throw new Error('macOS inputs require an arm64 runner')
+  if (!isMacOS) throw new Error('macOS inputs require a native macOS runner')
+  const target = macosArchitecture()
   const core = fullPath(join(scriptRoot, '..'))
   output = fullPath(output)
   if (await pathExists(output)) throw new Error('Use a new native input directory')
@@ -59,7 +62,7 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
   const lock = await readJSON(join(core, 'config/macos-native.lock.json'))
   const python = await readJSON(join(core, 'dsh-desktop/internal/productruntime/builtin/python-runtime-manifest.json'))
   const nodeLock = await readJSON(join(core, 'dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json'))
-  if (lock.platform !== 'darwin-arm64') throw new Error('macOS native lock targets another platform')
+  if (!(lock.platforms ?? [lock.platform]).includes(target.platform)) throw new Error('macOS native lock targets another platform')
   const downloadAsset = async (asset, name, directory = output) => {
     if (!/^https:\/\//.test(asset.url ?? '') || !/^[a-f0-9]{64}$/.test(asset.sha256 ?? '')) {
       throw new Error('Downloads require HTTPS and a pinned SHA-256')
@@ -74,15 +77,15 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
     await run('tar', ['-xf', archive, '-C', directory, '--strip-components', '1'])
   }
 
-  await extract(await downloadAsset(nodeLock.assets['darwin-arm64'], 'node.tar.gz'), join(output, 'node'))
+  await extract(await downloadAsset(nodeLock.assets[target.runtimeKey], 'node.tar.gz'), join(output, 'node'))
   const node = join(output, 'node/bin/node')
 
   const pythonRoot = join(output, 'python')
-  await extract(await downloadAsset(python.assets['darwin-arm64'], 'python.tar.gz'), pythonRoot)
+  await extract(await downloadAsset(python.assets[target.runtimeKey], 'python.tar.gz'), pythonRoot)
   const pythonExe = join(pythonRoot, 'bin/python3')
   const wheels = []
   for (const packageEntry of python.environment.packages) {
-    const asset = packageEntry.assets['darwin-arm64'] ?? packageEntry.assets.any
+    const asset = packageEntry.assets[target.runtimeKey] ?? packageEntry.assets.any
     const name = decodeURIComponent(new URL(asset.url).pathname.split('/').at(-1))
     wheels.push(await downloadAsset(asset, name, join(output, 'wheels')))
   }
@@ -110,14 +113,14 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
   // against its manifest on restore.
   await cachedCompile({
     key: await compileKey({
-      name: 'openssl-darwin64-arm64',
-      parts: { source: lock.openssl.sha256, target: 'darwin64-arm64-cc', prefix: 'no-tests' },
+      name: `openssl-${target.platform}`,
+      parts: { source: lock.openssl.sha256, target: target.opensslTarget, deploymentTarget: '15.0', prefix: 'no-tests' },
       tools: { perl: ['-v'], make: ['--version'], cc: ['--version'] },
     }),
     outputs: { openssl },
     label: `openssl ${lock.openssl.version}`,
     build: async (name, destination) => {
-      await run('perl', ['./Configure', 'darwin64-arm64-cc', `--prefix=${destination}`, '--libdir=lib', 'no-tests'], { cwd: opensslSource, env: buildEnv })
+      await run('perl', ['./Configure', target.opensslTarget, `--prefix=${destination}`, '--libdir=lib', 'no-tests'], { cwd: opensslSource, env: buildEnv })
       await run('make', ['-j3'], { cwd: opensslSource, env: buildEnv })
       await run('make', ['install_sw'], { cwd: opensslSource, env: buildEnv })
     },
@@ -125,8 +128,8 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
 
   await cachedCompile({
     key: await compileKey({
-      name: 'whisper-cli-darwin-arm64',
-      parts: { source: lock.whisper.sha256, deploymentTarget: '15.0', shared: 'OFF', metal: 'OFF', blas: 'OFF', native: 'OFF' },
+      name: `whisper-cli-${target.platform}`,
+      parts: { source: lock.whisper.sha256, arch: target.machoArch, deploymentTarget: '15.0', shared: 'OFF', metal: 'OFF', blas: 'OFF', native: 'OFF' },
       tools: { cmake: ['--version'], cc: ['--version'] },
     }),
     outputs: { 'whisper-cli': join(output, 'speech/whisper-cli') },
@@ -134,7 +137,7 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
     build: async (name, destination) => {
       await run('cmake', [
         '-S', join(output, 'whisper-source'), '-B', join(output, 'whisper-build'),
-        '-DCMAKE_BUILD_TYPE=Release', '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0', '-DBUILD_SHARED_LIBS=OFF',
+        '-DCMAKE_BUILD_TYPE=Release', `-DCMAKE_OSX_ARCHITECTURES=${target.machoArch}`, '-DCMAKE_OSX_DEPLOYMENT_TARGET=15.0', '-DBUILD_SHARED_LIBS=OFF',
         '-DGGML_METAL=OFF', '-DGGML_BLAS=OFF', '-DGGML_NATIVE=OFF', '-DWHISPER_BUILD_TESTS=OFF', '-DWHISPER_CURL=OFF',
       ], { env: buildEnv })
       await run('cmake', ['--build', join(output, 'whisper-build'), '--config', 'Release', '--target', 'whisper-cli', '--parallel', '3'], { env: buildEnv })
@@ -151,7 +154,7 @@ export async function prepareMacosReleaseInputs({ output } = {}) {
     schemaVersion: 1,
     node,
     openssl,
-    platform: 'darwin-arm64',
+    platform: target.platform,
     whisperVersion: lock.whisper.version,
     speechModel: model,
     nativeLockSHA256: await sha256File(join(core, 'config/macos-native.lock.json')),
@@ -169,6 +172,9 @@ export async function installMacosReleaseInputs({ inputs, product } = {}) {
   product = fullPath(product)
   inputs = fullPath(inputs)
   const manifest = await readJSON(join(inputs, 'inputs.json'))
+  if (!/^darwin-(arm64|x64)$/.test(manifest.platform ?? '')) throw new Error('Native inputs must declare their macOS architecture')
+  const target = macosArchitecture(manifest.platform?.replace(/^darwin-/, ''))
+  if (isMacOS && target.arch !== process.arch) throw new Error('Native inputs differ from the assembly architecture')
   // `node` is recorded as an absolute path inside the prepared tree.
   const node = manifest.node
   if (!node) throw new Error(`Native inputs record no node runtime: ${inputs}`)
@@ -205,7 +211,7 @@ export async function installMacosReleaseInputs({ inputs, product } = {}) {
   await copyTree(join(inputs, 'licenses'), join(resources, 'licenses'))
   await writeJSON(join(product, 'desktop-resources.json'), {
     schemaVersion: 1,
-    platform: 'darwin-arm64',
+    platform: target.platform,
     environment: {
       DSH_OFFICE_PYTHON: 'r/office-python',
       DSH_MEDIA_NODE_ENV: 'd',

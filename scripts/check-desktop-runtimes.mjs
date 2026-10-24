@@ -21,6 +21,13 @@ const run = async (executable, args) => promisify(execFile)(executable, args, { 
 const node = join(resources, mac ? 'runtime/node' : 'runtime/node.exe')
 const nodeVersion = (await run(node, ['--version'])).stdout.trim()
 assertPinnedNodeVersion(nodeVersion, 'Extracted desktop Node.js')
+assert.equal((await run(node, ['-p', 'process.arch'])).stdout.trim(), process.arch, 'Bundled Node architecture')
+if (mac) {
+  // Exercise the native database on the acceptance OS as well as the builder.
+  // A Mach-O minimum-version declaration alone does not prove compatibility.
+  const probe = "const {Database,Connection}=require(process.argv[1]);const db=new Database(':memory:');db.initSync();const c=new Connection(db);if(c.querySync('RETURN 1 AS n').getAllSync()[0].n!==1)throw Error('query mismatch');c.closeSync();db.closeSync()"
+  await run(node, ['-e', probe, join(product, `d/node_modules/@ladybugdb/core-darwin-${process.arch}`)])
+}
 
 // Do not let the CI machine's installed browser or a maintainer override mask
 // a missing connection between the product resource manifest and its tools.
