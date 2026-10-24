@@ -6,7 +6,7 @@ import { join } from 'node:path'
 // Apply to copied, pinned Runtime bytes; retire when upstream offers this seat.
 export const chatUserContentPatch = Object.freeze({
   id: 'chat-user-content-decoration-v1', package: '@deepseek-ai/dsh-client-ui-chat',
-  version: '0.2.1-rc.2', file: 'lib/client.js',
+  version: '0.2.1-rc.3', file: 'lib/client.js',
   beforeSHA256: 'a00e5176d1257d51604cefbe9a15d326d4283439df31f76ba20ff690c76e10a1',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
