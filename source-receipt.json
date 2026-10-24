@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T11:57:23.729Z",
-  "fileSetSHA256": "588ebb6bd627569a3dce735957f8eae97ab890390cc9004cd25c3675f9d2cab0",
+  "createdAt": "2026-10-24T12:00:53.267Z",
+  "fileSetSHA256": "68850bf95a9c363e0bcdc589407199f68a35952fa6bdfc59086f505dfa055643",
   "files": [
     {
       "path": ".gitattributes",
@@ -7149,7 +7149,7 @@
     },
     {
       "path": "scripts/test/npm-runtime.test.mjs",
-      "sha256": "aaf92cbf5f64c448f4f122492d934a5234df99475a593562e95a5d1b48eb3359"
+      "sha256": "28b6344990cbf01aa2502172da1227b6d00280857dcc78b285468d3693439b76"
     },
     {
       "path": "scripts/test/pinned-browser.test.mjs",
