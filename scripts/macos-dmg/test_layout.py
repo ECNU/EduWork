@@ -40,8 +40,9 @@ class NativeLayoutTest(unittest.TestCase):
         mounted = False
         try:
             # Leave room for hdiutil's default partition layout as well as HFS+.
+            # Blank images are writable by default; -format requires a source.
             subprocess.run(['hdiutil', 'create', '-size', '64m', '-fs', 'HFS+',
-                            '-format', 'UDRW', '-volname', 'Layout Test', str(image)],
+                            '-volname', 'Layout Test', str(image)],
                            check=True)
             mount.mkdir()
             mounted = True
