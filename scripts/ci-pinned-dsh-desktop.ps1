@@ -44,8 +44,8 @@ try {
     Copy-Item (Join-Path $candidate 'source-probe/package*.json') $deps
     & npm ci --prefix $deps --legacy-peer-deps --ignore-scripts --no-audit --no-fund
     & node (Join-Path $CoreRoot 'scripts/build-pinned-dsh-plugin-clients.mjs') --runtime $runtime --dependencies $deps --output $sourceStage --report (Join-Path $public 'client-build.json') --version $Version
-    & node (Join-Path $CoreRoot 'scripts/assemble-pinned-dsh-source-product.mjs') --runtime $runtime --source $sourceStage --dependencies $deps --host $hostAdapter --output $product
     $editionArgs=if ($CoreRoot -ne $EditionRoot) {@('--edition',$EditionRoot)} else {@()}
+    & node (Join-Path $CoreRoot 'scripts/assemble-pinned-dsh-source-product.mjs') --runtime $runtime --source $sourceStage --dependencies $deps --host $hostAdapter --output $product @editionArgs
     if ($PublisherDescriptors) { $editionArgs+=@('--publisher-descriptors',[IO.Path]::GetFullPath($PublisherDescriptors)) }
     if ($Stable) { $editionArgs+=@('--channel','stable') }
     & node (Join-Path $CoreRoot 'scripts/prepare-pinned-dsh-product.mjs') --product $product --version $Version --runtime-lock $plan.sourceLock @editionArgs
