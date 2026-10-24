@@ -3,6 +3,7 @@
 import { mkdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { parseArgs } from 'node:util'
+import { macosArchitecture } from '../../scripts/lib/macos-architecture.mjs'
 import {
   capture, download, ensureDir, fullPath, isDirectory, isFile, isMainModule,
   isMacOS, isWindows, pathExists, readJSON, run, sha256File, writeJSON,
@@ -46,7 +47,8 @@ export async function prepareElectron({ upstream, output } = {}) {
     actualVersion = (await capture('plutil', ['-extract', 'CFBundleShortVersionString', 'raw', plist])
       .catch(() => { throw new Error('Electron.app version could not be read') })).trim()
     const architectures = (await capture('lipo', ['-archs', executable])).trim().split(/\s+/)
-    if (!architectures.includes(arch)) throw new Error(`Electron runtime architecture mismatch: expected ${arch}`)
+    const expectedArch = macosArchitecture(arch).machoArch
+    if (!architectures.includes(expectedArch)) throw new Error(`Electron runtime architecture mismatch: expected ${expectedArch}, found ${architectures.join(', ')}`)
   }
   if (actualVersion !== manifest.version) throw new Error(`Electron runtime version mismatch: expected ${manifest.version}, found ${actualVersion}`)
   await writeJSON(join(output, 'receipt.json'), {

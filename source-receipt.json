@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T12:52:43.170Z",
-  "fileSetSHA256": "489109dd4a3381fce59f4a5d6df5ed00e583b037e29685193734e3dc663fd94e",
+  "createdAt": "2026-10-24T13:29:03.421Z",
+  "fileSetSHA256": "130ceeb3cad9f57ebb3ef1bf04bc57690a5d234ecaa27b489a1db9987981435e",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
-      "sha256": "5704dcd43f05d76fc9cf99bc72e0e1161162a332b75e6ff5cf1d6d447ddbf530"
+      "sha256": "44c57bf7b7802326e9e6c22c9a50ea1c49e6a96b4d7f8aa2d356405981089a4b"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -1125,7 +1125,7 @@
     },
     {
       "path": "dsh-electron/scripts/prepare-electron.mjs",
-      "sha256": "14ba978654fd3f98d05d13faa92a92eabb13696357529d2481bc0c2b993b61d6"
+      "sha256": "dca12fd89d62a5a1ccb0ab130cdaa09d9932c70577f76384fbb60d915904e9f5"
     },
     {
       "path": "dsh-electron/scripts/prepare-electron.ps1",
@@ -1468,6 +1468,10 @@
       "sha256": "087f442785b1e5bb2676a245b498e06c7352b745e63b14db1d3dd5179cbc01ff"
     },
     {
+      "path": "dsh-electron/tests/prepare-electron-node-macos.test.mjs",
+      "sha256": "11ac33abd33c25f6f5be363ab06723da00ad34426968a34a1e1053a57b0a4b45"
+    },
+    {
       "path": "dsh-electron/tests/runtime-access.test.mjs",
       "sha256": "614927fc10da0158a820c1d540832c888ef8c765955b27cc20c5d040739a54d2"
     },
@@ -1477,7 +1481,7 @@
     },
     {
       "path": "dsh-electron/tests/sparkle-macos-smoke.mjs",
-      "sha256": "3a9efb7d936d1e5db4a4b2bf38281b3195973f7b2b0e5e930ac7b6eb4dc02cf0"
+      "sha256": "1c30da3b92eda186a377a9de36fb0f7e35144934638e064ed9904c897ddc5a97"
     },
     {
       "path": "dsh-electron/tests/sparkle-quit-retry.electron.mjs",

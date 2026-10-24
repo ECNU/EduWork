@@ -28,6 +28,8 @@ on:
       - 'tests/build-script-entry.test.mjs'
       - 'tests/runtime-file-policy.test.mjs'
       - 'dsh-electron/scripts/assemble-macos.mjs'
+      - 'dsh-electron/scripts/prepare-electron.mjs'
+      - 'dsh-electron/tests/prepare-electron-node-macos.test.mjs'
       - 'dsh-electron/scripts/assemble-windows.mjs'
       - 'tests/local-desktop-install.test.mjs'
       - 'tests/stage-runner.test.mjs'
@@ -91,7 +93,7 @@ jobs:
           tests/runtime-file-policy.test.mjs tests/node-runtime-contract.test.mjs
       - name: Verify macOS compile cache and native input installation
         if: runner.os == 'macOS'
-        run: node --test tests/native-compile-cache.test.mjs tests/macos-native-inputs.test.mjs tests/preflight.test.mjs
+        run: node --test tests/native-compile-cache.test.mjs tests/macos-native-inputs.test.mjs tests/preflight.test.mjs dsh-electron/tests/prepare-electron-node-macos.test.mjs
   publication:
     runs-on: ubuntu-latest
     steps:
