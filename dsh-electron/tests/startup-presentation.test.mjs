@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { shouldPresentMainWindow, startupWindowCompletion, startupWindowPresentation } from '../src/startup-presentation.mjs'
+import { showDesktopWindows } from '../src/window-visibility.mjs'
 
 const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false, startupWindowHidden: false }
 
@@ -48,23 +49,30 @@ function startupHarness() {
   const messageStart = source.indexOf('function showDesktopMessageBox(')
   const readyStart = source.indexOf('export async function desktopReady(')
   const readyEnd = source.indexOf('\n}\n', readyStart)
+  const activationStart = source.indexOf('const activationWindows =')
+  const activationEnd = source.indexOf('export function configureEduworkPaths()', activationStart)
   assert.ok(appearanceStart >= 0 && createStart > appearanceStart && messageStart > createStart && readyStart > messageStart && readyEnd > readyStart,
     'production startup window boundaries changed')
   class FakeWindow {
-    constructor(options = {}) { this.options = options; this.visible = false; this.destroyed = false; this.showCalls = 0; this.hideCalls = 0; this.webContents = {} }
+    static getAllWindows() { return [] }
+    constructor(options = {}) { this.options = options; this.visible = false; this.destroyed = false; this.showCalls = 0; this.hideCalls = 0; this.webContents = {}; this.minimized = false; this.focused = false }
     show() { this.visible = true; this.showCalls++ }
     hide() { this.visible = false; this.hideCalls++ }
     isVisible() { return this.visible }
     isDestroyed() { return this.destroyed }
     destroy() { this.destroyed = true; this.visible = false }
+    isMinimized() { return this.minimized }
+    restore() { this.minimized = false }
+    focus() { this.focused = true }
     loadURL() { return Promise.resolve() }
   }
   const app = { getAppPath: () => '/app', dock: { setIcon() {} }, getPath: () => '/userData' }
   const processFixture = { platform: 'darwin' }
   const build = new Function('BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility',
     'startupPage', 'removeWindowMenu', 'desktopHostLog', 'startupWindowPresentation', 'startupWindowCompletion',
-    'app', 'settings', 'paths', 'isQuitting', 'tray', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates',
+    'app', 'settings', 'paths', 'isQuitting', 'tray', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, mainWindowHiddenForStartup = false, migrationLaunch = null, updateCompleted = false
+    ${source.slice(activationStart, activationEnd).replace('export ', '')}
     ${source.slice(appearanceStart, createStart)}
     ${source.slice(createStart, messageStart)}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
@@ -74,18 +82,33 @@ function startupHarness() {
       markPresented() { mainWindowPresented = true },
       createProgressWindow,
       desktopReady,
+      showDesktop,
       state: () => ({ mainWindowPresented, mainWindowHiddenForStartup, progressWindow }),
     }`)
   const harness = build(FakeWindow, processFixture, joinPath, () => Buffer.from('icon'), () => 'ecnu-liwa',
     () => {}, () => '<html></html>', () => {}, () => {}, startupWindowPresentation, startupWindowCompletion,
     app, { productName: 'Fixture' }, { icon: '/icon.png' }, () => false, undefined,
-    { ready: async () => {} }, async () => {}, { start() {} }, { action: () => Promise.resolve() })
+    { ready: async () => {} }, async () => {}, { start() {} }, { action: () => Promise.resolve() }, showDesktopWindows)
   const main = new FakeWindow()
   harness.main = main
   harness.setMain(main)
   return { harness, main, FakeWindow }
 }
 const joinPath = (base, ...parts) => [base, ...parts].join('/').replaceAll('//', '/')
+
+test('relaunch selects the current download or recovery window before the main window', () => {
+  const { harness, main } = startupHarness()
+  const progress = harness.createProgressWindow('download')
+  for (const recovery of [false, true]) {
+    if (recovery) main.destroy()
+    progress.hide(); progress.minimized = true; progress.focused = false
+    assert.equal(harness.showDesktop(), true)
+    assert.equal(progress.visible, true); assert.equal(progress.minimized, false); assert.equal(progress.focused, true)
+    assert.equal(main.showCalls, 0)
+  }
+  progress.destroy()
+  assert.equal(harness.showDesktop(), false)
+})
 
 test('production window handoff preserves an active restore of a hidden download window', async () => {
   const { harness, main } = startupHarness()

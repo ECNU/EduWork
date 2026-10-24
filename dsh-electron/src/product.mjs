@@ -29,7 +29,7 @@ import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
-import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { attachAppActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
@@ -80,6 +80,8 @@ export function restartDesktop() {
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
 export function isQuitting() { return lifecycle.closing }
+const activationWindows = () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows().filter(window => !desktopPet?.owns(window))]
+export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
@@ -98,7 +100,7 @@ export function configureEduworkPaths() {
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
-  attachAppActivation({ app, windows: () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows().filter(window => !desktopPet?.owns(window))] })
+  attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })

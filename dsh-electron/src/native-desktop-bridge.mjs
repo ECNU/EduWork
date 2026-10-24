@@ -30,12 +30,22 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     return host
   }
   const applicationItems = () => [
+    { role: 'about', label: locale.messages.aboutMenu.replaceAll('DeepSeek Harness', app.getName()) },
+    { type: 'separator' },
     { label: locale.messages.checkUpdatesMenu, click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
-    { type: 'separator' }, { role: 'quit', label: locale.messages.quit },
+    { type: 'separator' },
+    ...(process.platform === 'darwin' ? [
+      { role: 'hide', label: locale.messages.hideApplication.replaceAll('DeepSeek Harness', app.getName()) },
+      { role: 'hideOthers', label: locale.messages.hideOtherApplications },
+      { role: 'unhide', label: locale.messages.showAllApplications },
+      { type: 'separator' },
+    ] : []),
+    { role: 'quit', label: locale.messages.quit },
   ]
   const refreshMenu = () => setDesktopApplicationMenu(Menu.buildFromTemplate([
     { label: app.getName(), submenu: applicationItems() },
     shortcuts.fileMenu(locale.messages), desktopEditMenu(locale), desktopViewMenu(locale),
+    ...(process.platform === 'darwin' ? [{ role: 'windowMenu' }] : []),
   ]))
   const shortcuts = installDesktopShortcuts(getWindow, app.getPath('userData'),
     process.platform === 'darwin' ? 'macos' : process.platform === 'win32' ? 'windows' : 'linux', refreshMenu,
@@ -93,6 +103,10 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language, color, symbolColor) => {
       let window
       try { window = owner(event) } catch { return }
+      if (typeof language === 'string' && /^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$/u.test(language)) {
+        const next = resolveDesktopStartupLocale(language, languages)
+        if (next.id !== locale.id) { locale = next; refreshMenu() }
+      }
       const validColor = value => typeof value === 'string' && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
       if (validColor(color) && validColor(symbolColor)) window.setTitleBarOverlay({ color, symbolColor })
     })
@@ -101,8 +115,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       if (!['application', 'edit'].includes(name) || !Number.isFinite(x) || !Number.isFinite(y)
         || x < 0 || y < 0 || x > 100000 || y > 100000) throw new Error('Invalid menu request')
       const items = name === 'application' ? applicationItems() : [
-        ['undo', 'Z'], ['redo', 'Y'], ['cut', 'X'], ['copy', 'C'], ['paste', 'V'], ['selectAll', 'A'],
-      ].map(([label, key]) => ({ label: locale.messages[label], click: () => shortcuts.sendEditingKey(key, ['control']) }))
+        ['undo', 'Z'], ['redo', 'Y'], null,
+        ['cut', 'X'], ['copy', 'C'], ['paste', 'V'], ['delete', 'Delete'], null, ['selectAll', 'A'],
+      ].map(item => item ? {
+        label: locale.messages[item[0]],
+        ...(item[0] === 'delete' ? {} : { accelerator: `Ctrl+${item[1]}` }),
+        click: () => shortcuts.sendEditingKey(item[1], item[0] === 'delete' ? [] : ['control']),
+      } : { type: 'separator' })
       const zoom = window.webContents.getZoomFactor()
       return new Promise(resolve => Menu.buildFromTemplate(items).popup({ window, x: Math.round(x * zoom), y: Math.round(y * zoom), callback: resolve }))
     })
