@@ -28,11 +28,20 @@ describe('literature-dblp plugin', () => {
     const ctx = { literature: { registerSource } } as unknown as Context
     apply(ctx, { baseUrl: 'https://dblp.org', timeoutMs: 1000, maxRedirects: 3, maxUrlLength: 100, maxResponseBytes: 1000, rateLimitMs: 100, userAgent: 'test' })
     const dblp = registerSource.mock.calls[0]![0] as { search: (r: { query: string }) => Promise<unknown> }
-    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ result: { hits: { hit: [] } } }), { status: 200 })))
-    await dblp.search({ query: 'a' })
-    const started = Date.now()
-    await dblp.search({ query: 'b' })
-    expect(Date.now() - started).toBeGreaterThanOrEqual(90)
-    vi.unstubAllGlobals()
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ result: { hits: { hit: [] } } }), { status: 200 }))
+    vi.useFakeTimers()
+    vi.stubGlobal('fetch', fetch)
+    try {
+      await dblp.search({ query: 'a' })
+      const second = dblp.search({ query: 'b' })
+      await vi.advanceTimersByTimeAsync(99)
+      expect(fetch).toHaveBeenCalledTimes(1)
+      await vi.advanceTimersByTimeAsync(1)
+      await second
+      expect(fetch).toHaveBeenCalledTimes(2)
+    } finally {
+      vi.useRealTimers()
+      vi.unstubAllGlobals()
+    }
   })
 })

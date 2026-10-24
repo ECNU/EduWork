@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T14:20:46.943Z",
-  "fileSetSHA256": "576d95380f9e5227ffea4ce83d15354fcd693a9f14f8ed117ffcaeb136accf8f",
+  "createdAt": "2026-10-23T15:39:57.638Z",
+  "fileSetSHA256": "08b6f2eff7cd0508b411bdf7893d0c523c6da7e6d3976900bcece6922e806cd0",
   "files": [
     {
       "path": ".gitattributes",
@@ -5061,7 +5061,7 @@
     },
     {
       "path": "packages/dsh-literature/src/core/extract.ts",
-      "sha256": "55863ac7fa03e44421cd4237274fb34582e02dedb3bb22f77ffc6f5fa09d454d"
+      "sha256": "13b4c9c8ae02f02743c9105817d740506e33b02f9d15415e38c3f600ff18bb8e"
     },
     {
       "path": "packages/dsh-literature/src/core/http.ts",
@@ -5141,7 +5141,7 @@
     },
     {
       "path": "packages/dsh-literature/tests/core/extract.spec.ts",
-      "sha256": "94903b6881ba976ac1a5c51c791da1d1a5cb946c7571f3233a82dfa56ad4b3cf"
+      "sha256": "795a7b067fa6beb7b7be88edac8aa5b3936ba9bc226ac317177d1d117af028da"
     },
     {
       "path": "packages/dsh-literature/tests/core/http.spec.ts",
@@ -5169,7 +5169,7 @@
     },
     {
       "path": "packages/dsh-literature/tests/dblp/index.spec.ts",
-      "sha256": "2cb3b1e91e9e7674dab9cc6a384360816adda6c84371ffb3b08b2193ae5cbef6"
+      "sha256": "447157c5870c3748c9215801080d947123fcf5b87063068817aea0df3fea9efe"
     },
     {
       "path": "packages/dsh-literature/tests/dblp/invariant.spec.ts",
@@ -5265,11 +5265,11 @@
     },
     {
       "path": "packages/dsh-mail/docs/architecture.en.md",
-      "sha256": "6d8ef8e58c70c7c832f6af854634d8912c3ea562ccfcd4638040af8e2229d1cf"
+      "sha256": "3f70106c483afc825965d9ab354249ebd97623b40f9fc0d2247db7ae3145528e"
     },
     {
       "path": "packages/dsh-mail/docs/architecture.md",
-      "sha256": "471f355847ddf8e2029360f27d4ed0af0224d388445591bb04acbc1386ef598c"
+      "sha256": "2d0da9e4a95335c7a84c82ddbcf2b5a920bd1b3d67eaab84f67e217f199f99af"
     },
     {
       "path": "packages/dsh-mail/docs/compatibility.en.md",
@@ -5377,7 +5377,7 @@
     },
     {
       "path": "packages/dsh-mail/scripts/check-host-bundle.mjs",
-      "sha256": "97075277b16952e17a67c507a2e6adb3f3d9d6d0211825397dc702b3c751ac74"
+      "sha256": "73f3a0d9141f2fdfae6a7fb9d0e15b46a45b90af449e6ebf485c78c8e85ab21c"
     },
     {
       "path": "packages/dsh-mail/scripts/check-licenses.mjs",
@@ -5433,7 +5433,7 @@
     },
     {
       "path": "packages/dsh-mail/src/host/mail-client.js",
-      "sha256": "29f4e8371c0e46e63186ddcc466ff513b7e61438248b1181213360fc516baee6"
+      "sha256": "12ed0ee24ebb4c0f962e8249c0652e449b976ad59999f208cc79ee08f2c441ac"
     },
     {
       "path": "packages/dsh-mail/src/host/permission.js",
@@ -5445,7 +5445,7 @@
     },
     {
       "path": "packages/dsh-mail/src/host/tools.js",
-      "sha256": "c86819125375555d6cc7798d022c002a1728aa2efffda61dd92d84bdc9b7feb8"
+      "sha256": "68d6849e6dc522822c0a8da20c16cc9b71013a7648aa6f88100aedd1f33be2f4"
     },
     {
       "path": "packages/dsh-mail/src/host/workspace-files.js",
@@ -5501,7 +5501,7 @@
     },
     {
       "path": "packages/dsh-mail/tsdown.host.config.ts",
-      "sha256": "818dea1a55b7483035c2d74400f8c0a1af4e02335e0a619d5f1dcd34f3abb1f4"
+      "sha256": "dc7536e463fcfde8024e1efde0ad74ebd05b02da8627a593201dc0331ede54ee"
     },
     {
       "path": "packages/dsh-memory/.gitignore",
