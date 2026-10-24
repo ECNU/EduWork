@@ -9,7 +9,7 @@
 <rect x="31" y="18" width="2660" height="58" rx="8" fill="#ffffff" stroke="#d0d7de"/>
 <circle cx="47" cy="41" r="5" fill="#1f883d"/>
 <text class="h" x="62" y="46">EduWork 双平台桌面构建流程</text>
-<text class="s" x="47" y="65">Windows x64 与 macOS arm64 共用主流程；蓝色步骤仅在 macOS 执行</text>
+<text class="s" x="47" y="65">Windows x64 与 macOS arm64 / x64 共用主流程；蓝色步骤仅在 macOS 执行</text>
 <path d="M258 472 C299.4 472 308.6 212 350 212" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
 <path d="M258 472 C299.4 472 308.6 342 350 342" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>
 <path d="M258 472 C299.4 472 308.6 602 350 602" fill="none" stroke="#1f883d" stroke-width="1.7" stroke-linecap="round" marker-end="url(#ah)"/>

@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { installMacosReleaseInputs } from '../scripts/prepare-macos-release-inputs.mjs'
 
+const targetPlatform = `darwin-${process.platform === 'darwin' ? process.arch : 'arm64'}`
 const MODEL = {
   id: 'whisper-tiny-q5_1',
   url: 'https://huggingface.co/ggerganov/whisper.cpp/resolve/5359861c739e955e79d9a303bcbc70fb988958b1/ggml-tiny-q5_1.bin',
@@ -44,7 +45,7 @@ async function syntheticInputs(root, catalog, { manifestModel = MODEL } = {}) {
     schemaVersion: 1,
     node,
     openssl: join(root, 'runtime/openssl'),
-    platform: 'darwin-arm64',
+    platform: targetPlatform,
     whisperVersion: '1.8.3',
     speechModel: manifestModel,
     nativeLockSHA256: 'b'.repeat(64),
@@ -82,7 +83,7 @@ test('install copies the prepared native tree and writes the resource manifest',
     assert.equal(await readFile(join(product, 'r/p/bin/python3'), 'utf8'), '#!/bin/sh\n')
     await assert.rejects(() => readFile(join(product, 'r/p/lib/libpython3.12.dylib')), /ENOENT/)
     const manifest = JSON.parse(await readFile(join(product, 'desktop-resources.json'), 'utf8'))
-    assert.equal(manifest.platform, 'darwin-arm64')
+    assert.equal(manifest.platform, targetPlatform)
     // The desktop executable is the product's Chromium.
     assert.deepEqual(Object.keys(manifest.environment).sort(), ['DSH_MEDIA_NODE_ENV', 'DSH_OFFICE_PYTHON'])
     assert.equal(manifest.browser, undefined)

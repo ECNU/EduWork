@@ -208,7 +208,7 @@
     },
     {
       "name": "native-inputs",
-      "description": "macOS arm64 native inputs",
+      "description": "macOS arm64/x64 native inputs",
       "requires": [],
       "dependsOn": [],
       "outputs": [

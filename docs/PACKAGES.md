@@ -72,9 +72,9 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-当前 DSH 0.2.1 配方从 npm 装配八个独立包：选段批注、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注从下一次客户端构建起预装；插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.3/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。远程访问包尚未装配进客户端，发布并核验后按下文顺序加入。
+当前 DSH 0.2.1 配方从 npm 装配九个独立包：选段批注、远程访问、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.3/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
 
-批注使用 DSH 原生 bundle，首次预装时默认启用一次，此后由原生插件管理器保存启停选择。`assembly.json` 的 `optionalBundles` 标明这类可选预装包，Profile 记录已处理的包名；已手动安装的包复用原有激活记录，不重复注册，已停用的包不会因重启再次启用。原有核心 bundle 的规则保持不变。
+批注和远程访问使用 DSH 原生 bundle，首次预装时注册一次，此后由原生插件管理器保存启停选择。`assembly.json` 的 `optionalBundles` 标明这类可选预装包，Profile 记录已处理的包名；已手动安装的包复用原有激活记录，不重复注册，已停用的包不会因重启再次启用。原有核心 bundle 的规则保持不变。远程访问的设置入口注册后，中继连接仍默认关闭，须由用户配置中继地址、接入方式并主动开启；不会自动连接公共服务器。服务端部署见[远控指南](../packages/dsh-remote-access/docs/DEPLOYMENT.md)。
 
 装配先验证组件锁与 npm 安装一致，再构建产品自身的桌面扩展。媒体模板、PDF runtime、插件客户端和随包 skills 均使用发布包里的文件；不再从 `packages/` 覆盖。`assembly.json` 区分 `externalPackages` 与 `sourcePackages`，并保存发布包文件摘要，在产品装配和机构扩展后检查是否被改写。锁不一致、缺包或存在 workspace 链接时立即失败，不回退到源码。
 

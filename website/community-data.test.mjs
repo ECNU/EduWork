@@ -24,6 +24,18 @@ test('incomplete, draft, prerelease and mismatched downloads stop publication', 
     assert.throws(() => selectDownloads(input));
   }
 });
+test('Intel download is separate and optional for historical ARM-only releases', () => {
+  const input = release();
+  assert.equal(selectDownloads(input).length, 2);
+  const name = 'EduWork-1.2.3-macos-x64-electron.dmg';
+  input.assets.push({ name, size: 90, state: 'uploaded', browser_download_url: `https://github.com/ECNU/EduWork/releases/download/v1.2.3/${name}` });
+  const downloads = selectDownloads(input);
+  assert.equal(downloads.length, 3);
+  assert.match(downloads[1].url, /macos-arm64/);
+  assert.match(downloads[2].url, /macos-x64/);
+  input.assets[2].browser_download_url = downloads[1].url;
+  assert.throws(() => selectDownloads(input), /invalid stable download/);
+});
 test('public Star history sorts reverse-ordered weeks, keeps empty days and omits future days', () => {
   assert.deepEqual(starHistory([
     { week: Date.parse('2026-10-18T00:00:00Z') / 1000, days: [2, 1, 0, 0, 0, 0, 0] },

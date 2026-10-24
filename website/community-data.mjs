@@ -9,6 +9,7 @@ export function selectDownloads(release) {
   return [
     `EduWork-${version}-windows-x64-setup.zip`,
     `EduWork-${version}-macos-arm64-electron.dmg`,
+    ...(release.assets.some(asset => asset.name === `EduWork-${version}-macos-x64-electron.dmg`) ? [`EduWork-${version}-macos-x64-electron.dmg`] : []),
   ].map(name => {
     const matches = release.assets.filter(asset => asset.name === name);
     const asset = matches[0];

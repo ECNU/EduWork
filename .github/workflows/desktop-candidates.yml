@@ -26,16 +26,16 @@ on:
         default: false
         type: boolean
       publish:
-        description: 'Publish directly from CI after both platforms pass'
+        description: 'Publish directly from CI after all selected targets pass'
         required: true
         default: false
         type: boolean
       platform:
-        description: 'Build both platforms, or diagnose one native platform'
+        description: 'Build all selected targets, or diagnose one native platform'
         required: true
         default: both
         type: choice
-        options: [both, windows, macos]
+        options: [both, windows, macos, macos-arm64, macos-x64]
 permissions:
   contents: read
 concurrency:
@@ -46,6 +46,8 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.validate.outputs.version }}
+      targets: ${{ steps.validate.outputs.targets }}
+      mac_targets: ${{ steps.validate.outputs.mac_targets }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -84,6 +86,9 @@ jobs:
             [[ "$RELEASE_NOTES" == "docs/releases/$RELEASE_VERSION.md" ]]
             [[ -s "core/$RELEASE_NOTES" ]]
           fi
+          targets=$(node core/scripts/desktop-build-targets.mjs "$SELECTED_PLATFORMS" "$BUILD_MODE")
+          echo "targets=$targets" >> "$GITHUB_OUTPUT"
+          echo "mac_targets=$(node -e 'console.log(JSON.stringify(JSON.parse(process.argv[1]).filter(t => t.script === "macos")))' "$targets")" >> "$GITHUB_OUTPUT"
           echo "version=$RELEASE_VERSION" >> "$GITHUB_OUTPUT"
   build:
     name: Build (${{ matrix.platform }})
@@ -91,7 +96,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"runner":"windows-latest","platform":"windows"}]' || inputs.platform == 'macos' && '[{"runner":"macos-latest","platform":"macos"}]' || '[{"runner":"windows-latest","platform":"windows"},{"runner":"macos-latest","platform":"macos"}]') }}
+        include: ${{ fromJSON(needs.policy.outputs.targets) }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -101,12 +106,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
+      - name: Select the shared macOS toolchain
+        if: matrix.script == 'macos'
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.6'
           cache: false
       - uses: actions/setup-python@v5
-        if: matrix.platform == 'macos'
+        if: matrix.script == 'macos'
         with:
           python-version: '3.11'
       - name: Build and validate the exact desktop archive
@@ -149,7 +157,7 @@ jobs:
             if [[ "$RELEASE_NOTES_APPROVED" == true ]]; then args+=(--release-notes-approved); fi
             args+=(--delta-bases "$RUNNER_TEMP/delta-bases")
           fi
-          node core/scripts/ci-eduwork-${{ matrix.platform }}-release.mjs "${args[@]}"
+          node core/scripts/ci-eduwork-${{ matrix.script }}-release.mjs "${args[@]}"
       - name: Retain validation reports
         if: always()
         uses: actions/upload-artifact@v4
@@ -166,9 +174,38 @@ jobs:
           compression-level: 0
           retention-days: 3
           if-no-files-found: error
-  publish:
+  compatibility:
+    name: macOS 15 (${{ matrix.platform }})
     needs: [policy, build]
-    if: inputs.publish
+    if: inputs.build_mode == 'node' && inputs.platform != 'windows'
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.policy.outputs.mac_targets) }}
+    runs-on: ${{ matrix.compatibilityRunner }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: actions/download-artifact@v4
+        with:
+          name: ${{ matrix.platform }}-release
+          path: ${{ runner.temp }}/candidate
+      - name: Verify the macOS 26-built archive on macOS 15
+        run: node scripts/accept-macos-candidate.mjs "$RUNNER_TEMP/candidate" "$RUNNER_TEMP/macos-15-acceptance"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: ${{ matrix.platform }}-macos15-validation
+          path: ${{ runner.temp }}/macos-15-acceptance/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
+  publish:
+    needs: [policy, build, compatibility]
+    if: always() && inputs.publish && needs.build.result == 'success' && (inputs.build_mode == 'ps1' || needs.compatibility.result == 'success')
     permissions:
       actions: read
       contents: write

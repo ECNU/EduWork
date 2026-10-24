@@ -1,3 +1,4 @@
+import { macosArchitecture } from './lib/macos-architecture.mjs'
 import { readFile, writeFile, mkdir } from 'node:fs/promises'
 import { createHash, createPrivateKey, createPublicKey, sign } from 'node:crypto'
 import { execFileSync } from 'node:child_process'
@@ -12,7 +13,13 @@ export function bundleVersion(version) {
   desktopVersion(version)
   return version.replace(/-(dev|alpha|beta|rc)\./, '$1')
 }
-export function validateMacUpdateConfig(raw) {
+export function validateMacUpdateConfig(raw, arch = 'arm64') {
+  macosArchitecture(arch)
+  if (arch === 'x64') {
+    if (!raw.feedsByArch?.x64) throw Error('Intel Mac requires explicit architecture-specific update feeds')
+    if (Object.values(raw.feedsByArch.x64).some(url => Object.values(raw.feeds ?? {}).includes(url))) throw Error('Intel and ARM update feeds must be separate')
+    raw = { ...raw, feeds: raw.feedsByArch.x64 }
+  }
   if (raw.schemaVersion !== 1 || !raw.feeds?.stable || !raw.feeds?.development) throw Error('Both macOS update channels are required')
   for (const [channel, value] of Object.entries(raw.feeds)) {
     const url = new URL(value)
@@ -39,7 +46,7 @@ async function main() {
   if (mode === 'version') { console.log(bundleVersion(args[0])); return }
   if (mode === 'prepare') {
     const [configFile,output] = args
-    const config = validateMacUpdateConfig(JSON.parse(await readFile(configFile,'utf8')))
+    const config = validateMacUpdateConfig(JSON.parse(await readFile(configFile,'utf8')), process.arch)
     const lock = JSON.parse(await readFile(new URL('../dsh-electron/sparkle.lock.json',import.meta.url),'utf8'))
     const response = await fetch(lock.url)
     if (!response.ok) throw Error(`Sparkle download: ${response.status}`)
@@ -53,15 +60,17 @@ async function main() {
   }
   if (mode === 'sign') {
     const [archive,receiptFile,configFile,keyFile,url,output] = args
-    const config = validateMacUpdateConfig(JSON.parse(await readFile(configFile,'utf8')))
     const receipt = JSON.parse(await readFile(receiptFile,'utf8')), bytes = await readFile(archive)
+    const arch = receipt.platform ? receipt.platform.replace(/^(macos|darwin)-/, '') : 'arm64'
+    macosArchitecture(arch)
+    const config = validateMacUpdateConfig(JSON.parse(await readFile(configFile,'utf8')), arch)
     if (!(receipt.sparkleEnabled ?? receipt.softwareAutoUpdate) || receipt.bundleVersion !== bundleVersion(receipt.version) || receipt.asset.sha256 !== createHash('sha256').update(bytes).digest('hex')) throw Error('Archive does not match the verified Sparkle receipt')
     const key = createPrivateKey(await readFile(keyFile))
     if (key.asymmetricKeyType !== 'ed25519' || createPublicKey(key).export({format:'der',type:'spki'}).subarray(-32).toString('base64') !== config.publicEDKey) throw Error('Signing key differs from the bundled trust anchor')
     // Delta updates listed in the receipt sit beside the archive, locally and at the download URL.
     const deltas = []
     for (const {from,sha256} of receipt.deltas ?? []) {
-      const name = deltaName(receipt.edition,receipt.version,from), patch = await readFile(join(dirname(archive),name))
+      const name = deltaName(receipt.edition,receipt.version,from,arch), patch = await readFile(join(dirname(archive),name))
       if (createHash('sha256').update(patch).digest('hex') !== sha256) throw Error('Delta update does not match the verified Sparkle receipt')
       deltas.push({from,url:new URL(name,url).href,bytes:patch.length,signature:sign(null,patch,key).toString('base64')})
     }

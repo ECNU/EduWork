@@ -24,6 +24,11 @@ def application_name(app):
 
 
 def write_layout(mount, app_name):
+    # statfs returns the canonical mount path (/private/var on macOS).
+    # Passing its /var symlink to mac_alias makes its relative path escape the
+    # image and include host APFS file IDs, which do not fit an HFS+ alias.
+    background = (mount / '.background/background.png').resolve(strict=True)
+    background_alias = Alias.for_file(str(background)).to_bytes()
     with DSStore.open(str(mount / '.DS_Store'), 'w+') as db:
         db['.']['bwsp'] = {
             'ShowStatusBar': False, 'ShowToolbar': False, 'ShowTabView': False,
@@ -37,7 +42,7 @@ def write_layout(mount, app_name):
             # even when the selected background is an image.
             'backgroundColorRed': 1.0, 'backgroundColorGreen': 1.0,
             'backgroundColorBlue': 1.0,
-            'backgroundImageAlias': Alias.for_file(str(mount / '.background/background.png')).to_bytes(),
+            'backgroundImageAlias': background_alias,
             'iconSize': 128.0, 'gridSpacing': 100.0, 'gridOffsetX': 0.0,
             'gridOffsetY': 0.0, 'arrangeBy': 'none', 'textSize': 16.0,
             'labelOnBottom': True, 'showItemInfo': False, 'showIconPreview': True,

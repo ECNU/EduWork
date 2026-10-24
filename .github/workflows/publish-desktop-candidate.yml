@@ -79,11 +79,13 @@ jobs:
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
           RELEASE_VERSION: ${{ inputs.version }}
           BUILD_MODE: ${{ inputs.build_mode }}
+          RELEASE_PLATFORMS: ${{ inputs.build_mode == 'node' && '["windows","macos","macos-x64"]' || '["windows","macos"]' }}
           RELEASE_NOTES: ${{ inputs.release_notes }}
           RELEASE_NOTES_APPROVED: ${{ inputs.notes_approved }}
           PUBLISH_RELEASE: ${{ inputs.publish }}
           EDITION_ROOT: core
           HAS_CORE_LOCK: 'false'
+          REQUIRE_MACOS15: ${{ inputs.build_mode == 'node' && 'true' || 'false' }}
           RELEASE_PRODUCT: EduWork
           RELEASE_DISTRIBUTION: eduwork
           REQUIRE_PUBLISHER_BOOTSTRAP: 'false'

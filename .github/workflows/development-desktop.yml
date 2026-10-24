@@ -9,11 +9,11 @@ on:
         required: false
         type: string
       platform:
-        description: 'Platforms to validate; main pushes always build both'
+        description: 'Platforms to validate; main pushes always build all three targets'
         required: true
         default: both
         type: choice
-        options: [both, windows, macos]
+        options: [both, windows, macos, macos-arm64, macos-x64]
 permissions:
   contents: read
 concurrency:
@@ -25,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       development_version: ${{ steps.resolve.outputs.development_version }}
+      targets: ${{ steps.resolve.outputs.targets }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -37,6 +38,7 @@ jobs:
         shell: bash
         env:
           REQUESTED_VERSION: ${{ inputs.version }}
+          SELECTED_PLATFORMS: ${{ inputs.platform || 'both' }}
         run: |
           REQUESTED_VERSION="${REQUESTED_VERSION#"${REQUESTED_VERSION%%[![:space:]]*}"}"
           REQUESTED_VERSION="${REQUESTED_VERSION%"${REQUESTED_VERSION##*[![:space:]]}"}"
@@ -48,6 +50,7 @@ jobs:
             version="$base-dev.$(date -u +%Y%m%d).$GITHUB_RUN_NUMBER"
           fi
           if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+-dev\.[0-9]{8}\.[1-9][0-9]*$ ]]; then echo '::error::Development version must use X.Y.Z-dev.YYYYMMDD.N'; exit 1; fi
+          echo "targets=$(node scripts/desktop-build-targets.mjs "$SELECTED_PLATFORMS")" >> "$GITHUB_OUTPUT"
           echo "development_version=$version" >> "$GITHUB_OUTPUT"
   build:
     name: Build (${{ matrix.platform }})
@@ -55,7 +58,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(inputs.platform == 'windows' && '[{"platform":"windows","runner":"windows-latest"}]' || inputs.platform == 'macos' && '[{"platform":"macos","runner":"macos-latest"}]' || '[{"platform":"windows","runner":"windows-latest"},{"platform":"macos","runner":"macos-latest"}]') }}
+        include: ${{ fromJSON(needs.version.outputs.targets) }}
     runs-on: ${{ matrix.runner }}
     steps:
       - uses: actions/checkout@v4
@@ -65,12 +68,15 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
+      - name: Select the shared macOS toolchain
+        if: matrix.script == 'macos'
+        run: sudo xcode-select --switch /Applications/Xcode_26.6.app/Contents/Developer
       - uses: actions/setup-go@v5
         with:
           go-version: '1.26.6'
           cache: false
       - uses: actions/setup-python@v5
-        if: matrix.platform == 'macos'
+        if: matrix.script == 'macos'
         with:
           python-version: '3.11'
       - name: Build and accept desktop app
@@ -78,7 +84,7 @@ jobs:
         env:
           DEVELOPMENT_VERSION: ${{ needs.version.outputs.development_version }}
         run: |
-          node core/scripts/ci-eduwork-${{ matrix.platform }}-release.mjs \
+          node core/scripts/ci-eduwork-${{ matrix.script }}-release.mjs \
             --core-root ./core --edition-root ./core \
             --distribution-config config/distributions/generic.json \
             --version "$DEVELOPMENT_VERSION" --development --recipe pinned-source \
