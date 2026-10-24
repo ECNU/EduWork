@@ -17,7 +17,7 @@
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=替换成随机Key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
 ```
 
 `RELAY_URL` 是用户访问中继的公开地址；`RELAY_ACCESS_KEYS` 是发给电脑主人的接入密钥，多个用逗号分隔。中继默认监听 `127.0.0.1:8787`，可用 `HOST`、`PORT` 修改；`<RELAY_URL>healthz` 返回 `ok`，可用于监控。

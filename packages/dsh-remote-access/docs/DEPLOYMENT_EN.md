@@ -6,7 +6,7 @@ The desktop plugin and relay ship in the same npm package, `@eduwork/dsh-remote-
 
 ## 1. Start the service
 
-Use Node.js **24.22.1 or a later supported version**, npm, and an HTTPS reverse proxy supporting WebSockets. These examples pin the published `0.1.0`; change the version explicitly when upgrading.
+Use Node.js **24.22.1 or a later supported version**, npm, and an HTTPS reverse proxy supporting WebSockets. These examples pin `0.1.1`; change the version explicitly when upgrading.
 
 Generate an access key, retain it and give it to the users registering computers:
 
@@ -19,7 +19,7 @@ Linux/macOS foreground run:
 ```sh
 export RELAY_URL='https://remote.example.edu/'
 export RELAY_ACCESS_KEYS='replace-with-the-generated-key'
-npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
+npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
 ```
 
 Windows PowerShell:
@@ -27,7 +27,7 @@ Windows PowerShell:
 ```powershell
 $env:RELAY_URL = 'https://remote.example.edu/'
 $env:RELAY_ACCESS_KEYS = 'replace-with-the-generated-key'
-npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
+npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
 ```
 
 The default listener is `127.0.0.1:8787`. `RELAY_URL` is the **external address users visit**, not the listening address. The proxy terminates TLS. Exiting the foreground command stops the service; see section 3 for persistent operation. Local-only debugging can use `http://localhost:8787/`; phones should use HTTPS with a valid certificate for Service Worker and cryptographic APIs.
@@ -84,7 +84,7 @@ Have a maintainer install the pinned package; run the service as an ordinary sys
 ```sh
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin eduwork-remote
 sudo install -d /opt/eduwork-remote /etc/eduwork-remote
-sudo npm install --prefix /opt/eduwork-remote --omit=dev --ignore-scripts --save-exact @eduwork/dsh-remote-access@0.1.0
+sudo npm install --prefix /opt/eduwork-remote --omit=dev --ignore-scripts --save-exact @eduwork/dsh-remote-access@0.1.1
 sudo install -m 600 /dev/null /etc/eduwork-remote/relay.env
 ```
 
