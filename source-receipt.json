@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T06:13:04.761Z",
-  "fileSetSHA256": "e3e9421b17cb5a96ba290b4afb61c31085a12f19a9c6a3864ae909b41472a7ad",
+  "createdAt": "2026-10-24T07:58:48.714Z",
+  "fileSetSHA256": "5621ff670d9a694e67d16ec43155c21ea73274c4dc01f7168b145248d86ae362",
   "files": [
     {
       "path": ".gitattributes",
@@ -1069,11 +1069,11 @@
     },
     {
       "path": "dsh-electron/README_EN.md",
-      "sha256": "7581c26de5050f47c70ea644c517d43b6b66b93ae2cc5815d76db2d29d7b5da1"
+      "sha256": "b5e10165634b98cf4f638b80baec73f5620082f7727689f5b1eba9d4c1eb3419"
     },
     {
       "path": "dsh-electron/README.md",
-      "sha256": "d587c3911706e68c155ad3fd6bfc1af94ff6d9781750d5b744df63f5884ebff0"
+      "sha256": "1f0f6e93ea39231adcf44bfc4969a796bf4baaa7d2953de8cbc8ddbcf30f924f"
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.mjs",
@@ -1165,7 +1165,7 @@
     },
     {
       "path": "dsh-electron/src/boot-brand-preload.cjs",
-      "sha256": "69edae4b26d5c3408838039473bc5bbbb4d212620ccda320894e6753df8a0fd5"
+      "sha256": "6b01ae8a9489696e85e8f2d4b1042c25acd323ededbb72df2fe1d920636ccd47"
     },
     {
       "path": "dsh-electron/src/boot-motion-preload.cjs",
@@ -1257,11 +1257,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "0c3cd40001fbc3e02df245847c1efbf39c2490bc70c68758aaa1f82514354dd9"
+      "sha256": "cc3daed99c7d18afc5aeeaf7d9db465bce49c1c5a0e6489629a7d2ccf2f5537e"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "8f8ebe6e465902c0e55bcddb2268c23e5b621f64560b41abdb7e968300a3b31f"
+      "sha256": "dad3a217f0eebd5c3492f9b50ad705b44c7e2dac133ef65eac74141618860fdd"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1281,7 +1281,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "ec5ba9494dc50a9b1b1b5c6ac0d5f86c93c4b795a6cb107ea973ca9565d400f0"
+      "sha256": "cc257a35b82783ecff20f77dae3cc71517eb15a6a3d32e6a20b410a1ead3d5c0"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1409,7 +1409,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "7833bc7942fa6411678fcee21d940d240c9b3e91015183b17c8825f0aae6b209"
+      "sha256": "c49c713c73f7236a72eb63bf11441d26a13238955cf5e092286bb1c2e1bd2df4"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1425,7 +1425,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "13d460595ba4693c7d5e3afa3f7e785cf259f1637df369fc7f5595d8c3f9045b"
+      "sha256": "a8fc775e22f7f25dc3ce34f5d66d912f79fa7913ddf296d4be69e1993416ade3"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
