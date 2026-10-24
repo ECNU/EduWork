@@ -6,11 +6,14 @@ export function showDesktopWindow(window) {
   return true
 }
 
+export function showDesktopWindows(windows) {
+  for (const window of windows) if (showDesktopWindow(window)) return true
+  return false
+}
+
 export function attachAppActivation({ app, windows, platform = process.platform }) {
   if (platform !== 'darwin') return () => {}
-  const activate = () => {
-    for (const window of windows()) if (showDesktopWindow(window)) return
-  }
+  const activate = () => showDesktopWindows(windows())
   app.on('activate', activate)
   return () => app.removeListener('activate', activate)
 }

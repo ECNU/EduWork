@@ -366,6 +366,7 @@ export async function sendMail(settings, password, message, signal) {
   const abort = () => { try { transporter.close() } catch {} }
   signal?.addEventListener('abort', abort, { once: true })
   try {
+    if (signal?.aborted) throw signal.reason ?? new Error('Mail operation cancelled')
     const info = await transporter.sendMail({
       from: settings.fromName.trim() === ''
         ? validateAddress(settings.email, 'sender address')

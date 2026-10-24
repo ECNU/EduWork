@@ -32,6 +32,7 @@ export function desktopViewMenu({ id, messages }) {
   return { role: 'viewMenu', label: zh ? '视图' : 'View', submenu: [
     { role: 'reload', label: messages.reloadPageMenu },
     { role: 'toggleDevTools', label: zh ? '开发者工具' : 'Toggle Developer Tools' },
+    { role: 'toggleDevTools', visible: false, accelerator: 'F12' },
     { type: 'separator' },
     { role: 'resetZoom', label: zh ? '实际大小' : 'Actual Size' },
     { role: 'zoomIn', label: zh ? '放大' : 'Zoom In' },

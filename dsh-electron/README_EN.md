@@ -25,6 +25,8 @@ node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime
 
 Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 
+The ordinary startup page shows the bundled logo above the product name, retaining the official loading progress and failure report. It is available before the Host and plugins are ready and needs no network connection; an unavailable icon falls back to the product name.
+
 On macOS, the running Dock icon and the next startup window’s icon and progress bar follow the red/blue color scheme. The startup preference is cached in `visual-style.json` in the application user-data directory; the app bundle and signature stay unchanged. A native Dock tile plugin reads the same cache after the app exits, retaining the selected color. Finder and Launchpad retain the default brand icon; Stage Manager synchronization is not guaranteed. After first upgrading to a version with the Dock plugin, remove and re-add an existing pinned tile if it still reverts to the default color, so the Dock loads the plugin.
 
 ## Build
