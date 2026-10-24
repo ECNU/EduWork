@@ -22,6 +22,7 @@ on:
       - 'scripts/audit-eduwork-distribution.mjs'
       - 'scripts/assemble-eduwork-web.mjs'
       - 'scripts/prepare-macos-release-inputs.mjs'
+      - 'scripts/macos-dmg/**'
       - 'scripts/build-pipeline-diagram.mjs'
       - 'docs/assets/build-pipeline*'
       - 'tests/desktop-build-source.test.mjs'
@@ -94,6 +95,12 @@ jobs:
       - name: Verify macOS compile cache and native input installation
         if: runner.os == 'macOS'
         run: node --test tests/native-compile-cache.test.mjs tests/macos-native-inputs.test.mjs tests/preflight.test.mjs dsh-electron/tests/prepare-electron-node-macos.test.mjs
+      - name: Verify DMG layout on a small native image
+        if: runner.os == 'macOS'
+        run: |
+          python3 -m venv "$RUNNER_TEMP/dmg-layout-check"
+          "$RUNNER_TEMP/dmg-layout-check/bin/python3" -m pip install --disable-pip-version-check --only-binary=:all: --require-hashes -r scripts/macos-dmg/requirements.txt
+          "$RUNNER_TEMP/dmg-layout-check/bin/python3" -B -m unittest discover -s scripts/macos-dmg -p 'test_*.py'
   publication:
     runs-on: ubuntu-latest
     steps:

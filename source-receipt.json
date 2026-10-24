@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T13:29:03.421Z",
-  "fileSetSHA256": "130ceeb3cad9f57ebb3ef1bf04bc57690a5d234ecaa27b489a1db9987981435e",
+  "createdAt": "2026-10-24T14:19:17.303Z",
+  "fileSetSHA256": "3c249d089c303d769e22cf69cb889fc4f27f5db60091bd0706e1a9556e8a5263",
   "files": [
     {
       "path": ".gitattributes",
@@ -45,7 +45,7 @@
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
-      "sha256": "44c57bf7b7802326e9e6c22c9a50ea1c49e6a96b4d7f8aa2d356405981089a4b"
+      "sha256": "7d38dcc026ae38c920eb78478a2b5a2cbf9ce8f1be86703e12c0c7b790f5c8bd"
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
@@ -6825,11 +6825,15 @@
     },
     {
       "path": "scripts/macos-dmg/package.py",
-      "sha256": "7fa2f9e3a3ac8108112a5e34172c27b9cfe77e334fb041f1cc1b25ba5ce15eb4"
+      "sha256": "edf04a3fd5d8e6a77846001975809ababc33c4bf5ab051c5e2cee8cbba07bcbb"
     },
     {
       "path": "scripts/macos-dmg/requirements.txt",
       "sha256": "1f5ed3493c8dff5598017b7c1899bca54fd00008a679f9d3ec48a5e505166ea0"
+    },
+    {
+      "path": "scripts/macos-dmg/test_layout.py",
+      "sha256": "395fffface39bb02aff832549d938e770a43af1e58b8cfa8137f8375b818a210"
     },
     {
       "path": "scripts/macos-dmg/test_package.py",
