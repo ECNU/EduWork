@@ -64,7 +64,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     reportFatal(error, 'web-boot')
   })
   ipcMain.on('eduwork:boot-brand', event => {
-    // This value only labels the upstream BootPage; never expose Host state.
+    // Product name and a packaged PNG only; never expose Host state or paths.
     let value = ''
     try {
       const window = getWindow()

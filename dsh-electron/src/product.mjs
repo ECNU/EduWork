@@ -47,6 +47,7 @@ const directoryPicker = new DesktopDirectoryPicker({ getWindow: () => mainWindow
 export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
 app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
+let bootLogoPath, bootLogo = ''
 let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
@@ -119,6 +120,20 @@ export function desktopWebRoot() {
 }
 export function desktopStartupWindowPresent() {
   return Boolean(progressWindow && !progressWindow.isDestroyed())
+}
+export function desktopBootBrand() {
+  // Available before Host/plugins. Only a packaged image crosses the bridge;
+  // cache a small PNG, and leave the ordinary wordmark if the asset is missing.
+  try {
+    const icon = startupAppearance().icon
+    if (bootLogoPath !== icon) {
+      bootLogoPath = icon
+      bootLogo = ''
+      const image = nativeImage.createFromPath(icon)
+      if (!image.isEmpty()) bootLogo = image.resize({ width: 96, height: 96 }).toDataURL()
+    }
+  } catch { /* Cosmetic branding must never prevent startup or recovery. */ }
+  return { name: app.getName(), logo: bootLogo }
 }
 function startupAppearance() {
   const blue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
@@ -232,7 +247,7 @@ async function prepareDesktop() {
     if (progressWindow && !progressWindow.isDestroyed()) progressWindow.setTitle(user.product.name)
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setTitle(user.product.name)
-      try { mainWindow.webContents.send('eduwork:boot-brand', user.product.name) } catch { /* BootPage only */ }
+      try { mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand()) } catch { /* BootPage only */ }
     }
     refreshTray()
   }

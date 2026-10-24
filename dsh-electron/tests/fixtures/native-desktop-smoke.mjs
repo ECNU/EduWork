@@ -53,10 +53,12 @@ app.whenReady().then(async () => {
   </body></html>`)
   await writeFile(join(webRoot, 'assets', 'marker.txt'), 'static-before-host')
   const picker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
+  const bootLogo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII='
+  let bootBrand = { name: 'Synthetic EduWork', logo: bootLogo }
   bridge = installNativeDesktopBridge({ getHost: () => host, waitForHost: () => hostWait(), getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },
     checkUpdates: async () => ({}), pickDirectory: signal => picker.pick(signal),
-    bootBrand: () => 'Synthetic EduWork' })
+    bootBrand: () => bootBrand })
   const visibilityRoles = () => Menu.getApplicationMenu().items[0].submenu.items
     .map(item => item.role).filter(role => ['hide', 'hideothers', 'unhide'].includes(role))
   const expectedVisibilityRoles = process.platform === 'darwin' ? ['hide', 'hideothers', 'unhide'] : []
@@ -94,10 +96,37 @@ app.whenReady().then(async () => {
   assert.equal(await evaluate(`fetch('/api/settings/describe').then(response => response.text())`), 'host:/api/settings/describe')
   results.push('shell static document and assets load before the Host; API stays behind readiness; POST is rejected')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Synthetic EduWork')
+  const brandStyle = () => evaluate(`(() => {
+    const node = document.querySelector('[data-dsh-boot] > div > div'), css = getComputedStyle(node)
+    return { image: css.backgroundImage, size: css.backgroundSize, padding: css.paddingTop, children: node.childElementCount }
+  })()`)
+  assert.deepEqual(await brandStyle(), { image: `url("${bootLogo}")`, size: '48px 48px', padding: '64px', children: 0 })
+  // BootPage reuses this node when progress becomes a failure report. Branding
+  // must survive without replacing official content or injecting extra nodes.
+  await evaluate(`{
+    const card = document.querySelector('[data-dsh-boot] > div'), wordmark = card.firstElementChild
+    const report = document.createElement('div'); report.textContent = 'Failed to load plugins'
+    card.replaceChildren(wordmark, report)
+  }`)
+  assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
+  assert.equal(await evaluate(`document.querySelector('[data-dsh-boot] > div').lastElementChild.textContent`), 'Failed to load plugins')
   mainWindow.webContents.send('eduwork:boot-brand', 'Updated Brand')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Updated Brand')
+  assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
+  mainWindow.webContents.send('eduwork:boot-brand', { name: 'Without logo', logo: '' })
+  await until(async () => (await brandStyle()).image === 'none')
+  assert.equal((await brandStyle()).padding, '0px')
+  mainWindow.webContents.send('eduwork:boot-brand', { name: 'No remote logo', logo: 'https://invalid.example/logo.png' })
+  await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'No remote logo')
+  assert.equal((await brandStyle()).image, 'none')
+  bootBrand = 'Text-only fallback'
+  await mainWindow.loadURL('dsh-app://app/index.html')
+  await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Text-only fallback')
+  assert.equal((await brandStyle()).image, 'none')
+  bootBrand = { name: 'Synthetic EduWork', logo: bootLogo }
   await mainWindow.loadURL('dsh-app://app/index.html')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Synthetic EduWork')
+  assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
   mainWindow.webContents.debugger.attach('1.3')
   try {
     await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
@@ -105,7 +134,7 @@ app.whenReady().then(async () => {
     await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('[data-dsh-boot-spinner]')).animationName`), 'fixture-spin')
   } finally { mainWindow.webContents.debugger.detach() }
-  results.push('upstream BootPage wordmark follows the desktop identity, including reloads, and honors reduced motion')
+  results.push('BootPage local logo and name survive failure/reload; missing/remote logos fall back to text, and reduced motion is preserved')
   let releaseHost
   hostWait = () => new Promise(resolve => { releaseHost = resolve })
   let bootSettled = false
