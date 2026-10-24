@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T16:21:04.469Z",
-  "fileSetSHA256": "bbb5158d9dbbb5b89d47975d0d61024b1b4b9e553d3f34bab7df62b000a4bba8",
+  "createdAt": "2026-10-24T17:23:37.021Z",
+  "fileSetSHA256": "62d549d4815c44f478fa701601509e4b693d9013c4fcdecd2293731de4dd3ccf",
   "files": [
     {
       "path": ".gitattributes",
@@ -513,7 +513,7 @@
     },
     {
       "path": "docs/releases/0.4.8.md",
-      "sha256": "52b8dd028ebb6e76b67ddbf2d207bb79d09b4efc7d575fdee8e16b974af4b18e"
+      "sha256": "0223b0bb1ea53e6ec46ac8b664889b266e89f069b6d304b75e1108c28b9d3c1c"
     },
     {
       "path": "docs/SESSION-SEARCH-BACKPORT.md",
