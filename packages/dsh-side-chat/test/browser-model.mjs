@@ -18,6 +18,8 @@ export function apply(ctx, config) {
       const trace = {
         kind: 'request', marker, inheritedReference: body.includes('SOURCE_FIRST'),
         inheritedFuture: body.includes('SOURCE_FUTURE'), sideBoundary: body.includes('Only new requests submitted in this side conversation'),
+        selectedAnnotation: body.includes('eduwork-response-annotations') && body.includes('SOURCE_FIRST_REPLY'),
+        editedSideNote: last.includes('SIDE_DRAFT_NOTE'), sourceDraftLeak: last.includes('SOURCE_DRAFT_NOTE'),
       }
       await appendFile(config.output, JSON.stringify(trace) + '\n')
       yield { type: 'block-start', index: 0, blockType: 'text' }

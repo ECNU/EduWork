@@ -65,3 +65,37 @@ test('side policy separates inherited instructions and excludes persistent deleg
   for (const name of ['subagent_spawn', 'subagent', 'schedule_create', 'jobs_start', 'create_worktree']) assert.equal(disallowedSideTool(name), true)
   for (const name of ['read', 'grep', 'web_search', 'calendar_list_events']) assert.equal(disallowedSideTool(name), false)
 })
+
+test('selected references belong to the live side chat and are cleared on close', async () => {
+  const controller = new SideChatController({ owner: () => 'e'.repeat(32), request: async () => ({ sessionId: 'side-fixture' }) })
+  assert.throws(() => controller.queueReference('side-fixture', {}), /expired/)
+  await controller.open('source', 1)
+  const reference = { source: 'eduwork-annotation', ref: 'synthetic-reference' }
+  assert.throws(() => controller.queueReference('other', reference), /expired/)
+  const first = controller.queueReference('side-fixture', reference)
+  const second = controller.queueReference('side-fixture', reference)
+  controller.consumeReference(first)
+  assert.deepEqual(controller.snapshot.references.map(item => item.id), [second])
+  assert.equal(controller.snapshot.references[0].reference, reference)
+  await controller.close()
+  assert.deepEqual(controller.snapshot.references, [])
+  assert.throws(() => controller.queueReference('side-fixture', reference), /expired/)
+})
+
+test('a heartbeat racing intentional close does not report an expired chat', async () => {
+  let rejectHeartbeat, finishClose
+  const controller = new SideChatController({ owner: () => 'f'.repeat(32), request: input => {
+    if (input.action === 'heartbeat') return new Promise((_, reject) => { rejectHeartbeat = reject })
+    if (input.action === 'close') return new Promise(resolve => { finishClose = resolve })
+    return Promise.resolve({ sessionId: 'side-fixture' })
+  } })
+  await controller.open('source', 1)
+  const heartbeat = controller.heartbeat()
+  const closing = controller.close()
+  rejectHeartbeat(Object.assign(new Error('gone'), { status: 410 }))
+  await heartbeat
+  assert.equal(controller.snapshot.error, undefined)
+  finishClose({})
+  await closing
+  assert.equal(controller.snapshot.error, undefined)
+})

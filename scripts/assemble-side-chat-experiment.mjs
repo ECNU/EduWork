@@ -16,7 +16,7 @@ const save = async (path, value) => writeFile(path, JSON.stringify(value, null, 
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 const inside = (root, value) => { const rel = relative(root, value); return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith('..' + sep)) }
 
-export async function assembleSideChatExperiment({ baseProduct, experiment, compiler, tarball, output }) {
+export async function assembleSideChatExperiment({ baseProduct, experiment, compiler, tarball, annotationTarball, output }) {
   baseProduct = resolve(baseProduct); experiment = resolve(experiment); compiler = resolve(compiler); output = resolve(output); tarball = resolve(tarball)
   for (const input of [baseProduct, experiment, compiler]) {
     if (inside(input, output) || inside(output, input)) throw new Error('Experimental product must be separate from every input')
@@ -64,26 +64,41 @@ export async function assembleSideChatExperiment({ baseProduct, experiment, comp
     tarballSHA256: sha256(await readFile(tarball)),
     files: await Promise.all(['lib/index.js', 'lib/client.js', 'package.json'].map(async path => ({ path, sha256: sha256(await readFile(join(packageRoot, path))) }))),
   }
+  const localOverrides = []
+  const publishedPackageFiles = { ...identity.publishedPackageFiles }
+  if (annotationTarball) {
+    const name = '@eduwork/dsh-annotation'
+    const root = join(modules, name)
+    await promisify(execFile)(tar, ['-xzf', resolve(annotationTarball), '-C', root, '--strip-components=1'], { windowsHide: true })
+    const annotation = await json(join(root, 'package.json'))
+    if (annotation.name !== name) throw new Error('Use the explicit local annotation package')
+    localOverrides.push({ name, version: annotation.version, source: 'local-npm-pack', published: false,
+      tarballSHA256: sha256(await readFile(resolve(annotationTarball))),
+      replaces: publishedPackageFiles[name],
+      files: await Promise.all(['lib/index.js', 'lib/client.js', 'package.json'].map(async path => ({ path, sha256: sha256(await readFile(join(root, path))) }))),
+    })
+    delete publishedPackageFiles[name]
+  }
   // Experimental candidates must not inherit the ordinary release feed.
   const configurationPath = 'resources/desktop/eduwork.jsonc'
   const defaults = parse(await readFile(join(output, configurationPath), 'utf8'))
   defaults.updates = { provider: 'disabled' }
   await save(join(output, configurationPath), defaults)
   const configuration = { path: configurationPath, sha256: sha256(await readFile(join(output, configurationPath))) }
-  const receipt = { ...extension, kind: 'eduwork-side-chat-experimental-product', branded, localPackage, configuration }
+  const receipt = { ...extension, kind: 'eduwork-side-chat-experimental-product', branded, localPackage, localOverrides, configuration }
   const runtimeIdentity = await json(join(output, 'd/.chatecnu-dsh-runtime.json'))
   await save(join(output, 'd/.chatecnu-dsh-runtime.json'), { ...runtimeIdentity, source: 'experimental-side-chat', experimentalReceipt: '.eduwork-side-chat-experiment.json' })
   await save(join(output, 'd/.eduwork-side-chat-experiment.json'), receipt)
   await save(join(output, 'assembly.json'), {
     ...identity, runtimeMode: 'experimental-side-chat', pluginMode: 'npm-with-experimental-side-chat',
-    experimental: true, sourceAlpha: true, automaticUpdates: false, published: false, sideChatExperiment: receipt,
+    experimental: true, sourceAlpha: true, automaticUpdates: false, published: false, publishedPackageFiles, sideChatExperiment: receipt,
   })
   return { product: output, receipt }
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const { values } = parseArgs({ options: Object.fromEntries(['base-product', 'experiment', 'compiler', 'tarball', 'output'].map(key => [key, { type: 'string' }])) })
+  const { values } = parseArgs({ options: Object.fromEntries(['base-product', 'experiment', 'compiler', 'tarball', 'annotation-tarball', 'output'].map(key => [key, { type: 'string' }])) })
   for (const key of ['base-product', 'experiment', 'compiler', 'tarball', 'output']) if (!values[key]) throw new Error(`Missing --${key}`)
-  const result = await assembleSideChatExperiment({ baseProduct: values['base-product'], experiment: values.experiment, compiler: values.compiler, tarball: values.tarball, output: values.output })
+  const result = await assembleSideChatExperiment({ baseProduct: values['base-product'], experiment: values.experiment, compiler: values.compiler, tarball: values.tarball, annotationTarball: values['annotation-tarball'], output: values.output })
   console.log(JSON.stringify({ product: result.product, experimental: true, package: result.receipt.localPackage }, null, 2))
 }

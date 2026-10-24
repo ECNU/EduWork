@@ -1,22 +1,34 @@
-import React, { useSyncExternalStore } from 'react'
+import React, { useEffect, useSyncExternalStore } from 'react'
 import { SideChatController, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
 
 const h = React.createElement
 const NS = 'eduworkSideChat'
 const COPY = {
-  zh: { open: '开启侧边聊天', title: '临时侧聊', hint: '关闭后丢弃', close: '关闭侧聊', source: '返回来源会话', onlyOne: '请先关闭当前临时侧聊，再从另一条消息开启。', failed: '侧聊操作未完成，正在重试清理。', expired: '临时侧聊已结束。', dismiss: '关闭提示' },
-  en: { open: 'Open side chat', title: 'Temporary side chat', hint: 'Discarded on close', close: 'Close side chat', source: 'Return to source', onlyOne: 'Close the current temporary chat before branching from another message.', failed: 'The side-chat operation failed. Cleanup will retry.', expired: 'The temporary side chat has ended.', dismiss: 'Dismiss notice' },
+  zh: { open: '开启侧边聊天', title: '侧边聊天', emptyHint: '侧边聊天是临时聊天，关闭后会消失', ask: '在侧边聊天提问', onlyOne: '请先关闭当前侧边聊天，再从另一会话开启。', failed: '侧聊操作未完成，请稍后重试。', expired: '临时侧聊已结束。', dismiss: '关闭提示' },
+  en: { open: 'Open side chat', title: 'Side chat', emptyHint: 'Side chats are temporary and disappear when closed.', ask: 'Ask in side chat', onlyOne: 'Close the current side chat before starting one from another conversation.', failed: 'The side-chat operation failed. Try again shortly.', expired: 'The temporary side chat has ended.', dismiss: 'Dismiss notice' },
 }
 
 const buttonStyle = { border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', padding: '5px 8px', borderRadius: 6, font: 'inherit' }
 
-function FixedChatView({ renderSlot }) { return renderSlot('conversation.session', { view: 'chat' }) }
-
-function SideConversation({ renderFactorySlot }) {
-  return renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: FixedChatView } })
+const SideCopy = React.createContext(key => COPY.en[key])
+function SideViews({ renderSlot, useSession }) {
+  const empty = useSession(session => session.blank)
+  const t = React.useContext(SideCopy)
+  if (!empty) return renderSlot('conversation.session', { view: 'chat' })
+  return h('div', { 'data-side-chat-empty': '', style: { flex: '1 0 180px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box' } },
+    h('div', { style: { maxWidth: 340, textAlign: 'center', color: 'var(--dsw-alias-label-secondary, #777)' } },
+      h('svg', { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+        h('path', { d: 'M20 11.5a8.5 8.5 0 1 0-4 7.2l5 1.3-1.3-5a8.5 8.5 0 0 0 .3-3.5ZM12 7v8M8 11h8' })),
+      h('h2', { style: { margin: '14px 0 8px', fontSize: 18, fontWeight: 600, color: 'var(--dsw-alias-label-primary, #222)' } }, t('title')),
+      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint'))))
 }
 
-function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, controller, t, openSource }) {
+function SideConversation({ renderFactorySlot, t }) {
+  return h(SideCopy.Provider, { value: t },
+    renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: SideViews } }))
+}
+
+function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, controller, t }) {
   const info = useTabInfo()
   const resource = useResource(info.tab.contentId)
   const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
@@ -25,15 +37,31 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
     'data-eduwork-side-chat': '', 'aria-label': t('title'),
     style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   },
-  h('div', { style: { display: 'flex', alignItems: 'center', gap: 6, padding: '8px 10px', borderBottom: '1px solid var(--dsw-alias-border-l2, #ddd)', flexShrink: 0 } },
-    h('strong', { style: { fontSize: 13 } }, t('title')),
-    h('span', { style: { opacity: 0.65, fontSize: 12, flex: 1 } }, t('hint')),
-    h('button', { type: 'button', style: buttonStyle, title: t('source'), 'aria-label': t('source'), onClick: () => chat && openSource(chat.sourceSessionId) }, '↩'),
-    h('button', { type: 'button', style: buttonStyle, title: t('close'), 'aria-label': t('close'), onClick: () => { void controller.close().then(() => info.tab.actions.close()).catch(() => {}) } }, '×')),
+  h('style', null, '[data-eduwork-side-chat] [data-conversation-content]{flex:1;min-height:0;width:100%}[data-eduwork-side-chat] [data-composer-seat]{margin-top:auto}'),
   state.phase === 'closing' || !chat
-    ? h('p', { role: 'status', style: { padding: 12 } }, t('expired'))
+    ? null
     : resource.value === undefined ? null
       : h(SessionProvider, { session: resource.value.reference }, renderSlot('eduwork.side.conversation', {})))
+}
+
+function SideDraftDelivery({ sessionId, controller, sessions, conversation, inputActions, useInput, t }) {
+  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const inputState = useInput(value => value)
+  useEffect(() => {
+    const pending = state.references.find(item => item.sessionId === sessionId)
+    if (!pending || state.phase !== 'open' || inputState.phase !== 'plain' || inputState.claim
+      || !controller.getSnapshot().references.some(item => item.id === pending.id)) return
+    const actx = sessions.scope(sessionId)
+    if (!actx) return
+    const caret = inputActions.captureInsertion()
+    const accepted = actx.bail(actx, 'slash/input-insert-reference', {
+      reference: pending.reference, span: { start: caret.end, end: caret.end, draftRev: caret.draftRev },
+    }) === true
+    const input = conversation.input.for(actx)
+    if (accepted) { controller.consumeReference(pending.id); input.focus() }
+    else input.notify('error', t('failed'))
+  }, [state, inputState.phase, inputState.claim, inputState.draftRev, sessionId, controller, sessions, conversation, inputActions, t])
+  return null
 }
 
 function SideAction({ sessionId, seq, messageId, useConversation, controller, open, t }) {
@@ -50,7 +78,7 @@ function SideAction({ sessionId, seq, messageId, useConversation, controller, op
     type: 'button', style: buttonStyle, title: t('open'), 'aria-label': t('open'),
     disabled: state.phase === 'opening' || state.phase === 'closing',
     onClick: () => { void open(sessionId, boundary) },
-  }, '↗')
+  }, h('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }, h('path', { d: 'M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M13 4v16M4 7h5M4 12h5M4 17h5' })))
 }
 
 function Notice({ controller, t }) {
@@ -79,6 +107,20 @@ export function apply(ctx) {
       if (ctx.sidebarRight.mounted.getSnapshot() === sessionId) ctx.sidebarRight.openResource(addressOf(chat.sessionId))
     } catch (error) { controller.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
   }
+  ctx.inject(['annotationSelection'], scope => {
+    scope.effect(() => scope.annotationSelection.register({
+      id: 'eduwork-side-chat', icon: 'side-chat', label: () => t('ask'),
+      available: sessionId => !sessionId.startsWith('side-'),
+      async run({ sourceSessionId, atSeq, reference }) {
+        const current = controller.snapshot
+        const chat = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
+          ? current.chat : await controller.open(sourceSessionId, atSeq)
+        if (scope.sidebarRight.mounted.getSnapshot() !== sourceSessionId) throw new Error('expired')
+        scope.sidebarRight.openResource(addressOf(chat.sessionId))
+        controller.queueReference(chat.sessionId, reference)
+      },
+    }), 'side-chat: selected-text action')
+  })
   ctx.effect(() => {
     const timer = setInterval(() => { void controller.heartbeat().catch(() => {}) }, 10_000)
     const closeOnPageExit = () => {
@@ -115,9 +157,13 @@ export function apply(ctx) {
   ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
     name: 'sidebar.right.pane.tab', key: '@eduwork/dsh-side-chat', locale: NS,
     children: { 'eduwork.side.conversation': { kind: 'single', scope: 'session' } },
-    inject: () => ({ controller, openSource: id => ctx.get('uiWorkspace').openSession(id) }),
+    inject: () => ({ controller }),
   }, SideChatTab))
-  ctx.slots.inject('eduwork.side.conversation', () => ctx.slots.register({ name: 'eduwork.side.conversation' }, SideConversation))
+  ctx.slots.inject('eduwork.side.conversation', () => ctx.slots.register({ name: 'eduwork.side.conversation', locale: NS }, SideConversation))
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay', id: 'eduwork-side-chat-reference', order: 20, locale: NS,
+    inject: sessionId => ({ sessionId, controller, sessions: ctx.sessions, conversation: ctx.get('conversation') }),
+  }, SideDraftDelivery))
   for (const name of ['conversation.chat.user.actions', 'conversation.chat.assistant-actions']) {
     ctx.slots.inject(name, () => ctx.slots.register({ name, id: 'eduwork-side-chat', order: 20, locale: NS, inject: () => ({ controller, open }) }, SideAction))
   }

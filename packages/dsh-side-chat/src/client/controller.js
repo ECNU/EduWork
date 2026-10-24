@@ -8,7 +8,8 @@ export class SideChatController {
     this.request = request
     this.owner = owner
     this.changed = changed
-    this.snapshot = { chat: undefined, phase: 'idle', error: undefined }
+    this.snapshot = { chat: undefined, phase: 'idle', error: undefined, references: [] }
+    this.referenceSequence = 0
     this.listeners = new Set()
     this.subscribe = listener => { this.listeners.add(listener); return () => this.listeners.delete(listener) }
     this.getSnapshot = () => this.snapshot
@@ -17,6 +18,15 @@ export class SideChatController {
     this.snapshot = { ...this.snapshot, ...value }
     for (const listener of this.listeners) listener()
     this.changed(this.snapshot)
+  }
+  queueReference(sessionId, reference) {
+    if (this.snapshot.phase !== 'open' || this.snapshot.chat?.sessionId !== sessionId) throw new Error('expired')
+    const id = ++this.referenceSequence
+    this.update({ references: [...this.snapshot.references, { id, sessionId, reference }] })
+    return id
+  }
+  consumeReference(id) {
+    this.update({ references: this.snapshot.references.filter(item => item.id !== id) })
   }
   async open(sourceSessionId, atSeq) {
     const existing = this.snapshot.chat
@@ -47,7 +57,7 @@ export class SideChatController {
     if (this.cleanup) return this.cleanup
     this.update({ phase: 'closing' })
     this.cleanup = this.request({ action: 'close', owner: chat.owner, sessionId: chat.sessionId })
-      .then(() => { if (this.snapshot.chat === chat) this.update({ chat: undefined, phase: 'idle' }) })
+      .then(() => { if (this.snapshot.chat === chat) this.update({ chat: undefined, phase: 'idle', references: [], error: undefined }) })
       .catch(error => { this.update({ error: 'failed' }); throw error })
       .finally(() => { this.cleanup = undefined })
     return this.cleanup
@@ -60,8 +70,8 @@ export class SideChatController {
     try {
       await this.request({ action: 'heartbeat', owner: chat.owner, sessionId: chat.sessionId })
     } catch (error) {
-      if (error.status === 410 && this.snapshot.chat === chat) {
-        this.update({ chat: undefined, phase: 'idle', error: 'expired' })
+      if (error.status === 410 && this.snapshot.chat === chat && this.snapshot.phase === 'open') {
+        this.update({ chat: undefined, phase: 'idle', error: 'expired', references: [] })
       }
     }
   }

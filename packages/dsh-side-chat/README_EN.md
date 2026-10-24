@@ -14,6 +14,8 @@ The initial version allows one side chat per window, with no promotion, nested b
 
 ## Local development
 
+An empty chat centers “Side chats are temporary and disappear when closed.” The hint disappears after sending, while the composer stays at the bottom. Close with the native sidebar tab's ×. Selecting a completed response offers “Ask in side chat” in the annotation toolbar, adding an editable unsent annotation to the side composer. Further selections from the same source reuse the existing chat, cutoff and draft; the source draft stays unchanged. This action also requires the local annotation extension.
+
 ```sh
 npm ci
 npm run build
@@ -30,7 +32,8 @@ The complete experiment from the repository root uses separate local directories
 node scripts/probe-side-chat-runtime.mjs --runtime <approved-runtime> --output <new-baseline-evidence>
 node scripts/build-side-chat-experiment.mjs --runtime <approved-runtime> --compiler <prepared-compiler> --output <new-experiment>
 npm pack ./packages/dsh-side-chat --pack-destination <local-tarballs>
-node scripts/assemble-side-chat-experiment.mjs --base-product <normal-product> --experiment <experiment> --compiler <prepared-compiler> --tarball <local-tarball> --output <new-product>
+npm pack ./packages/dsh-annotation --pack-destination <local-tarballs>
+node scripts/assemble-side-chat-experiment.mjs --base-product <normal-product> --experiment <experiment> --compiler <prepared-compiler> --tarball <local-tarball> --annotation-tarball <local-annotation-tarball> --output <new-product>
 node packages/dsh-side-chat/scripts/browser-test.mjs --product <experimental-product> --output <new-web-evidence>
 node packages/dsh-side-chat/scripts/browser-test.mjs --product <candidate>/resources/product --desktop <candidate>/EduWork-Electron.exe --output <new-desktop-evidence>
 ```

@@ -22,7 +22,7 @@ See the [experimental package](../../../packages/dsh-side-chat/README_EN.md) for
 
 Users can choose “Open side chat” on any user or assistant message in an existing conversation and ask follow-up questions in a right panel while keeping their place in the original conversation. For example, they can discuss a grading rubric beside a course-planning conversation without interrupting its subsequent planning work.
 
-A side chat has a new session ID, its own input, generation state and cancellation controls. Its header shows a temporary-chat label, a source-message link, Close and “Save as conversation.” It is an independent conversation controlled directly by the user, rather than a delegated subagent. Results are not automatically sent back to the original conversation.
+A side chat has a new session ID, its own input, generation state and cancellation controls. An empty chat centers “Side chats are temporary and disappear when closed,” with its composer at the bottom. Closing uses the native sidebar tab's ×, without extra source-return or close buttons. The selection toolbar offers “Annotate” and “Ask in side chat”; the latter inserts the quote as an unsent annotation. Later selections from the same source reuse the existing chat and its original cutoff. These UI changes are implemented in the isolated experiment; “Save as conversation” remains planned. The chat is directly controlled by the user, rather than a delegated subagent. Results are not automatically sent back to the original conversation.
 
 ## Differences from ordinary conversations
 

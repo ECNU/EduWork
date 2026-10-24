@@ -14,6 +14,8 @@
 
 ## 本地开发
 
+空会话中央显示「侧边聊天是临时聊天，关闭后会消失」，发送后隐藏；输入框始终位于底部。关闭使用原生侧栏标签的 ×。选中已完成回复的文字，可从原批注操作栏选择「在侧边聊天提问」，将摘录作为可编辑的未发送批注加入侧聊。已有同来源侧聊时继续添加，保留其上下文截断点与草稿；原会话草稿不变。该操作需要同时装配本地批注扩展。
+
 ```sh
 npm ci
 npm run build
@@ -30,7 +32,8 @@ npm test
 node scripts/probe-side-chat-runtime.mjs --runtime <approved-runtime> --output <new-baseline-evidence>
 node scripts/build-side-chat-experiment.mjs --runtime <approved-runtime> --compiler <prepared-compiler> --output <new-experiment>
 npm pack ./packages/dsh-side-chat --pack-destination <local-tarballs>
-node scripts/assemble-side-chat-experiment.mjs --base-product <normal-product> --experiment <experiment> --compiler <prepared-compiler> --tarball <local-tarball> --output <new-product>
+npm pack ./packages/dsh-annotation --pack-destination <local-tarballs>
+node scripts/assemble-side-chat-experiment.mjs --base-product <normal-product> --experiment <experiment> --compiler <prepared-compiler> --tarball <local-tarball> --annotation-tarball <local-annotation-tarball> --output <new-product>
 node packages/dsh-side-chat/scripts/browser-test.mjs --product <experimental-product> --output <new-web-evidence>
 node packages/dsh-side-chat/scripts/browser-test.mjs --product <candidate>/resources/product --desktop <candidate>/EduWork-Electron.exe --output <new-desktop-evidence>
 ```
