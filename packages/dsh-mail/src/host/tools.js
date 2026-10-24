@@ -1,6 +1,5 @@
 import { PASSWORD_REF_NAME, TOOL_NAMES } from './constants.js'
 import { assertConfigured } from './config.js'
-import { downloadAttachment, findMail, listMailFolders, readMail, replyHeaders, sendMail } from './mail-client.js'
 import { safeError, untrustedMailText, validateAddressList } from './sanitize.js'
 import { readWorkspaceAttachments, writeWorkspaceAttachment } from './workspace-files.js'
 
@@ -123,6 +122,14 @@ async function passwordFor(ctx) {
   return resolved.value
 }
 
+async function loadMailClient(exec) {
+  exec.signal?.throwIfAborted()
+  const client = await import('./mail-client.js')
+  // A cancellation during the deferred import must not continue into the protocol runtime.
+  exec.signal?.throwIfAborted()
+  return client
+}
+
 export function installTools(ctx, getSettings) {
   ctx.tools.register({
     name: TOOL_NAMES.folders,
@@ -138,7 +145,9 @@ export function installTools(ctx, getSettings) {
         ensureObject(rawArgs)
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        return await listMailFolders(settings, await passwordFor(ctx), exec.signal)
+        const password = await passwordFor(ctx)
+        const mail = await loadMailClient(exec)
+        return await mail.listMailFolders(settings, password, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not list mailbox folders'))
       }
@@ -168,7 +177,9 @@ export function installTools(ctx, getSettings) {
         const args = ensureObject(rawArgs)
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        return await findMail(settings, await passwordFor(ctx), args, exec.signal)
+        const password = await passwordFor(ctx)
+        const mail = await loadMailClient(exec)
+        return await mail.findMail(settings, password, args, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not search the mailbox'))
       }
@@ -190,7 +201,9 @@ export function installTools(ctx, getSettings) {
         const handle = boundedString(args.handle, 'handle', { required: true, max: 4096 })
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        return await readMail(settings, await passwordFor(ctx), handle, exec.signal)
+        const password = await passwordFor(ctx)
+        const mail = await loadMailClient(exec)
+        return await mail.readMail(settings, password, handle, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not read the message'))
       }
@@ -212,7 +225,9 @@ export function installTools(ctx, getSettings) {
         const handle = boundedString(args.handle, 'handle', { required: true, max: 8192 })
         const settings = getSettings()
         assertConfigured(settings, 'read')
-        const file = await downloadAttachment(settings, await passwordFor(ctx), handle, exec.signal)
+        const password = await passwordFor(ctx)
+        const mail = await loadMailClient(exec)
+        const file = await mail.downloadAttachment(settings, password, handle, exec.signal)
         const path = await writeWorkspaceAttachment(ctx, file, exec)
         return { path, filename: file.filename, contentType: file.contentType, size: file.bytes.length }
       } catch (error) {
@@ -256,8 +271,9 @@ export function installTools(ctx, getSettings) {
         assertConfigured(settings, 'send')
         const password = await passwordFor(ctx)
         const attachments = await readWorkspaceAttachments(ctx, args.attachments, exec, settings.maxAttachmentBytes)
-        const headers = args.replyTo === undefined ? {} : await replyHeaders(settings, password, args.replyTo, exec.signal)
-        return await sendMail(settings, password, { ...args, ...headers, attachments }, exec.signal)
+        const mail = await loadMailClient(exec)
+        const headers = args.replyTo === undefined ? {} : await mail.replyHeaders(settings, password, args.replyTo, exec.signal)
+        return await mail.sendMail(settings, password, { ...args, ...headers, attachments }, exec.signal)
       } catch (error) {
         throw new Error(safeError(error, 'Could not send the email'))
       }
