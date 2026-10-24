@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T08:17:39.878Z",
-  "fileSetSHA256": "ebfe5ffdf8d90742e58ec01034e7b9f1f09aeace6b99f86953b48cddbd7b5cc3",
+  "createdAt": "2026-10-24T11:03:17.043Z",
+  "fileSetSHA256": "c55ac0a2846300cba21a1f963a683e99a160e84aa80d4f50d09451d66ea0fd5e",
   "files": [
     {
       "path": ".gitattributes",
@@ -4997,7 +4997,7 @@
     },
     {
       "path": "packages/dsh-literature/CHANGELOG.md",
-      "sha256": "2ccc8081739abe456ab7a407a0750dac85172cca20427094d35a0307cf46f9c2"
+      "sha256": "8b7bf112b24069526970a7057dc36b3e7d77ca415734a7ac61f428568d5c52f8"
     },
     {
       "path": "packages/dsh-literature/cordis.patch.yml",
@@ -5013,11 +5013,11 @@
     },
     {
       "path": "packages/dsh-literature/package-lock.json",
-      "sha256": "16be3fb772dd9ffca190166e09eacddc73f74b2f39821d826e75f5b0050fe5ad"
+      "sha256": "9e9b79865e9d1cdbcfd05fca95e4096d66f19a894cff328f4288482a53aeedd3"
     },
     {
       "path": "packages/dsh-literature/package.json",
-      "sha256": "2aa537c40c7acac39745daddb44bddf093543fdbd7c88461bf7b63ce4418b113"
+      "sha256": "18e643dc7d769993a7b7f83ddf58de1c26ca707a618867013f6ce279bd35e3fc"
     },
     {
       "path": "packages/dsh-literature/README_EN.md",
@@ -5233,11 +5233,11 @@
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.en.md",
-      "sha256": "c3216a8c11a03e2d1a387d6e2581ec47abd94d0c7d33917000a151a9df060766"
+      "sha256": "f4754afe93b6c6ad7e9055a2c55ce3624fc7b5ee3ab083819356b9b5567c27d5"
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.md",
-      "sha256": "03675c9e02d5efc3c40a8585139d9cf74aa61670a40fdaeaa7d67a3ba3cd739e"
+      "sha256": "1596abb4060198c50e40051a39763a0eee06266e3ffbcb7ce079f28943f91a08"
     },
     {
       "path": "packages/dsh-mail/CODE_OF_CONDUCT.en.md",
@@ -5345,11 +5345,11 @@
     },
     {
       "path": "packages/dsh-mail/package-lock.json",
-      "sha256": "a5b554cf0a2900ee52a0156daec8c5b76ba456a8908377d0eacb95812ffd31f7"
+      "sha256": "5d18482269f0826b576b69f16571770395c554f1649e1c4d1efbee2f2496aa48"
     },
     {
       "path": "packages/dsh-mail/package.json",
-      "sha256": "c8f946230b2022fb22cbcbbe2dbb457adb1fa9a55ecdf6ec40c37cc5fd980802"
+      "sha256": "cbb34d3879f1bb0bc9f466609da7e9a0b635ddd0eb8d2acb7a0e595cc9bdaaa7"
     },
     {
       "path": "packages/dsh-mail/README_EN.md",
@@ -5685,11 +5685,11 @@
     },
     {
       "path": "packages/dsh-oidc/CHANGELOG.en.md",
-      "sha256": "8a5f534c4fed15765a5b7b2db15e29cd75d80849aae89d4dbbbab42e3a7fd99d"
+      "sha256": "f97f0f49acf237d51cce7b62230f31182d10ad48847b592489015a03c888d7ab"
     },
     {
       "path": "packages/dsh-oidc/CHANGELOG.md",
-      "sha256": "4bb2c72e3e96733c673af4fa8a8343163a75d9a16e5eb8750a0f07b87f4616b8"
+      "sha256": "40c813964a433640680d1f1fec1a51ec8da399ac5ef596d61f9ab5f47dc35747"
     },
     {
       "path": "packages/dsh-oidc/CODE_OF_CONDUCT.en.md",
@@ -5941,11 +5941,11 @@
     },
     {
       "path": "packages/dsh-oidc/package-lock.json",
-      "sha256": "86483e881e5af8d135fdb400789055226516d5b71c2ec3c121303f475539237e"
+      "sha256": "beef2d2d65427621f60b2543c1a1656e185a717cb938b74708a95553dccf953a"
     },
     {
       "path": "packages/dsh-oidc/package.json",
-      "sha256": "3cefc3a9459c42fbb45e756abf58e4ccc28dada87f853efbd781b835cc855b14"
+      "sha256": "c1713796b7b0e720a35d6c232143ec2417489065b0f4c59d58144de8141376cf"
     },
     {
       "path": "packages/dsh-oidc/protocol/openapi.yaml",
@@ -6245,7 +6245,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "48c30da5a33cb4552ed987be8b68f4a3a80430c1699a170e088a6eecf8ee3138"
+      "sha256": "385dddb9bdead4eddeb6e3332de73063b759fd2d5f7fc43a4fe7a1d0c3ef0b6a"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6253,11 +6253,11 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT_EN.md",
-      "sha256": "d963a43e955a715512ac2a4528a18a29dcfe10b9a8f37e69b42c743a3c4ea096"
+      "sha256": "b71961201f0c00dfd5523db72db354e9d5923c8b0323d0933c9b918f856b6177"
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT.md",
-      "sha256": "bf6fde623e42eb4e70134a8372d3939f809c0b75d4415b799fcf9eb16d8363da"
+      "sha256": "f225c762b2d59f73f51f5d1636d19e77bf64f9c6622a068c9e2dba681541b727"
     },
     {
       "path": "packages/dsh-remote-access/docs/PROTOCOL.md",
@@ -6269,19 +6269,19 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "27cb152aeea30279e6f0722ee3d69dbc4359fddd3d52a44e1de7e943cee85b9e"
+      "sha256": "612368aaa532f14fb8e4a08da1de00e56b3aa05453d77c0f00d9e88af471297d"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "3df981f4a8628b406531b9d6f447b0def1612d0a08c82f4591561620f831e9f6"
+      "sha256": "360ac1bff8d65bc5cce65684c434789c2740a49eb32595568f166235739e3304"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "0b5a36cdd77bc01513faf73a6054a12b0d416b55e6f9eb0cf5d2109bd296e676"
+      "sha256": "e2f69eca157dd9dc7907dc34bd080d88644231d86cabd20d79e53df78ea4e533"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "2ba4e89447093f77640a6015761abd7bd83a6275709caece8176808f04c69941"
+      "sha256": "d94afb04d46cc373c91d4ea60dcb772ec90db9969fe90fb48897f1548687e775"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",

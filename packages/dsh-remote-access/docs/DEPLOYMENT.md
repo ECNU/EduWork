@@ -6,7 +6,7 @@
 
 ## 1. 启动服务
 
-准备 Node.js **24.22.1 或更新的受支持版本**、npm，以及可以转发 WebSocket 的 HTTPS 反向代理。以下命令使用已发布的 `0.1.0`，升级时明确修改版本号。
+准备 Node.js **24.22.1 或更新的受支持版本**、npm，以及可以转发 WebSocket 的 HTTPS 反向代理。以下命令固定使用 `0.1.1`，升级时明确修改版本号。
 
 先生成接入 Key，保存好并交给需要注册电脑的用户：
 
@@ -19,7 +19,7 @@ Linux/macOS 前台试运行：
 ```sh
 export RELAY_URL='https://remote.example.edu/'
 export RELAY_ACCESS_KEYS='替换成刚才生成的Key'
-npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
+npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
 ```
 
 Windows PowerShell：
@@ -27,7 +27,7 @@ Windows PowerShell：
 ```powershell
 $env:RELAY_URL = 'https://remote.example.edu/'
 $env:RELAY_ACCESS_KEYS = '替换成刚才生成的Key'
-npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
+npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
 ```
 
 默认监听 `127.0.0.1:8787`。`RELAY_URL` 是**用户访问的外部地址**，不是监听地址；TLS 在反向代理终止。前台命令退出就会停止服务，长期运行见第 3 节。只在本机调试时可使用 `http://localhost:8787/`；手机访问应使用具有有效证书的 HTTPS 地址，以便浏览器使用 Service Worker 和加密 API。
@@ -84,7 +84,7 @@ location /eduwork-remote/ {
 ```sh
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin eduwork-remote
 sudo install -d /opt/eduwork-remote /etc/eduwork-remote
-sudo npm install --prefix /opt/eduwork-remote --omit=dev --ignore-scripts --save-exact @eduwork/dsh-remote-access@0.1.0
+sudo npm install --prefix /opt/eduwork-remote --omit=dev --ignore-scripts --save-exact @eduwork/dsh-remote-access@0.1.1
 sudo install -m 600 /dev/null /etc/eduwork-remote/relay.env
 ```
 

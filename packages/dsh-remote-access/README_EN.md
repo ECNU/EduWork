@@ -17,7 +17,7 @@ You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the 
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=replace-with-a-random-key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
 ```
 
 `RELAY_URL` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `<RELAY_URL>healthz` answers `ok` for monitoring.

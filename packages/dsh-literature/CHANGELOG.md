@@ -1,5 +1,12 @@
 # 变更记录 / Changelog
 
+## 0.1.4 — 2026-10-24
+
+- PDF 引擎改为首次提取时加载，避免文献插件启动时初始化解析引擎。
+- 保留全文提取、取消和错误处理，并覆盖首次并发调用与无效 PDF 后重试。
+
+Load the PDF engine on first extraction instead of plugin startup. Preserve full-text extraction, cancellation and error handling, with checks for concurrent first calls and retry after an invalid PDF.
+
 ## 0.1.3
 
 - 兼容 DSH 0.2.1 删除旧子代理启动接口后的出版方 PDF 链接抽取，使用调用方模型进行只读结构化抽取，不执行模型返回的工具。
