@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-23T15:39:57.638Z",
-  "fileSetSHA256": "08b6f2eff7cd0508b411bdf7893d0c523c6da7e6d3976900bcece6922e806cd0",
+  "createdAt": "2026-10-24T06:03:44.135Z",
+  "fileSetSHA256": "9febd4f86670a710107a0eee192df885d4542571aebc29db64171b48e0245c8a",
   "files": [
     {
       "path": ".gitattributes",
@@ -3045,7 +3045,7 @@
     },
     {
       "path": "dsh-plugins/tool-browser/lib/search-provider.js",
-      "sha256": "f9bddcdae97332fe835452991988e9071afac90b5af89457c6003fdc6d3bac14"
+      "sha256": "602bd8ef14b8faa05599783ec3f661e6d0d583e82ab3c6d5de1dbae04ecbdc4f"
     },
     {
       "path": "dsh-plugins/tool-browser/package.json",
@@ -3076,8 +3076,12 @@
       "sha256": "6eac6aa8bd9430000fcb79a8b9d8f88c93360a68effd49fd0e7ac90dd2250d92"
     },
     {
+      "path": "dsh-plugins/tool-browser/test/search-provider-lazy.test.mjs",
+      "sha256": "11b6ff0f843db4e2418a4b536f4570eb57bfc355fd59ba410d91bbfa946148c6"
+    },
+    {
       "path": "dsh-plugins/tool-browser/test/search-runtime.test.mjs",
-      "sha256": "bec7559ce351ca23bb26d120186e65a18a96e2c43c5bae58fe839be7f8de1d9f"
+      "sha256": "848170ede1e8f47e32be064ee8ad57b8cac1d3a5e8d0c95ee5e01d6c2916d9f9"
     },
     {
       "path": "dsh-plugins/workbench-native/build-client.mjs",
@@ -5949,7 +5953,7 @@
     },
     {
       "path": "packages/dsh-oidc/package.json",
-      "sha256": "e81058b4891b6161d6aab2fe14fda4c0e70240e059e86bf1222a0ca7a602694a"
+      "sha256": "3cefc3a9459c42fbb45e756abf58e4ccc28dada87f853efbd781b835cc855b14"
     },
     {
       "path": "packages/dsh-oidc/protocol/openapi.yaml",
@@ -5989,7 +5993,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/check-dsh-rc1.mjs",
-      "sha256": "c4d03845d6f0ecba61c44744657a6656b367c00fd521ea6330f72c0d705229b7"
+      "sha256": "72108d76cd4d83413918a547cc9c77af85f7127094e3fd45332f16161aae95d7"
     },
     {
       "path": "packages/dsh-oidc/scripts/check-licenses.mjs",
@@ -6002,6 +6006,10 @@
     {
       "path": "packages/dsh-oidc/scripts/check-secrets.mjs",
       "sha256": "9b72e55d6952336160134b5027dfe02033ab7ab43f9164d59fdafd1291b034ad"
+    },
+    {
+      "path": "packages/dsh-oidc/scripts/check-startup-imports.mjs",
+      "sha256": "7dcdd2677f3933952456a5d446adb661f4dabb34435f3869864c8df1ba14bf14"
     },
     {
       "path": "packages/dsh-oidc/scripts/serve-desktop-oidc-fixture.mjs",
@@ -6113,7 +6121,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/provider/index.js",
-      "sha256": "181bbf43f00ca987f9cb65cf22e4e2d19128a5e75cc848be6b0bd3f27c90ed07"
+      "sha256": "4ba7cc121f14f6c81d17df528b94654d30055cb06ed18ff7355de858f71a6f60"
     },
     {
       "path": "packages/dsh-oidc/src/host/provider/transform-adapter.js",
