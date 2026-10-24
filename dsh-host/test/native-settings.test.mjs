@@ -6,6 +6,25 @@ import { join } from 'node:path'
 import { writeNativeProfile, rebaseNativeConfig, legacyPresetPatches, nativeEntryIds } from '../native-profile.mjs'
 import { stageLegacySettings, importLegacySettings } from '../settings-migration.mjs'
 
+test('a non-bundled remote plugin remains user-installable and preserves activation on restart', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-install-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const file = join(profile, 'package.json'), remote = '@eduwork/dsh-remote-access'
+  const options = { profile, bundles: ['synthetic-core'], optionalBundles: [], patches: [] }
+  await writeNativeProfile(options)
+  const fresh = JSON.parse(await readFile(file, 'utf8'))
+  assert.ok(!fresh.dsh.profile.bundles.includes(remote))
+  for (const enabled of [true, false]) {
+    fresh.dependencies = { [remote]: '0.1.1' }
+    fresh.dsh.profile.bundles = enabled ? [remote] : []
+    await writeFile(file, JSON.stringify(fresh))
+    await writeNativeProfile(options);await writeNativeProfile(options)
+    const saved = JSON.parse(await readFile(file, 'utf8'))
+    assert.equal(saved.dependencies[remote], '0.1.1')
+    assert.equal(saved.dsh.profile.bundles.includes(remote), enabled)
+  }
+})
+
 for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
 for (const existing of [false, true]) test(`optional npm bundle ${bundle} is provisioned once and stays disabled after restart (existing=${existing})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-bundle-'))

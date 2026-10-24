@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T16:21:04.469Z",
-  "fileSetSHA256": "bbb5158d9dbbb5b89d47975d0d61024b1b4b9e553d3f34bab7df62b000a4bba8",
+  "createdAt": "2026-10-24T17:07:48.247Z",
+  "fileSetSHA256": "0c4e27c95a264f86e68219e08587aa399a308d20cda7d28235a6ddfe8e7b6353",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "1a545dfb91773c98387c029f78f885fc1b5289fa870bc6db8551521506425de1"
+      "sha256": "eadee913c75864ce1c8cd08e814d8503b507483485ea1c440a01ed25f46795f7"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "d7c31bb795122b97461a3bd36cb34a1cd475c469ef0684aa28eddf844b80ba05"
+      "sha256": "49cda80290a5ad5336dd6feae2b63fceb9d730333807c3e3880d765570639a99"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -1733,7 +1733,7 @@
     },
     {
       "path": "dsh-host/test/native-settings.test.mjs",
-      "sha256": "510453190a342abee9a96df52b04c4ab3f29f1296a78e01c801b00ed50267217"
+      "sha256": "13419b0b62c82519a0ca66714f41834a944688c2a033fe184cac444126079dea"
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
@@ -6585,7 +6585,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "fce53c7b2bfd5621a574096f1ecf3ed969b8dd389de3042157dbe081bdb98852"
+      "sha256": "0a973158fa295ab1fdb3fefffd4060725a20d2d0842de77f3216bc2c8a3e82bc"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -6649,7 +6649,7 @@
     },
     {
       "path": "scripts/ci-pinned-dsh-desktop.ps1",
-      "sha256": "73c73774dbb74e0561e3d993b58e8571d86c235b701e73f6c71b75acd4cd9695"
+      "sha256": "de98a54901c56bbade4743b7e46c46a69685877e3c479cc2f0137f9aaa501045"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -6773,7 +6773,7 @@
     },
     {
       "path": "scripts/lib/pinned-source-stages.mjs",
-      "sha256": "fc99abff794c4d3242cbf070839be24d2b0ebb8f63b79214db90f5401e8b10b3"
+      "sha256": "8a40618c306c19a5df063c6c342c504edf4b43313f135cbbabfeb1bca006b023"
     },
     {
       "path": "scripts/lib/preflight.mjs",
@@ -6878,6 +6878,10 @@
     {
       "path": "scripts/omit-runtime-packages.mjs",
       "sha256": "f77c8166dfc70dfcd711f10ff80a15f0fc45cf055ab249a7c15101a4ce9f2584"
+    },
+    {
+      "path": "scripts/optional-product-bundles.mjs",
+      "sha256": "060e509e3b5ce8243fa6e83f3b658156d48320c0a284ec2bd59ec6f1c3db81e6"
     },
     {
       "path": "scripts/pack-portable-extractor.ps1",
@@ -7037,7 +7041,7 @@
     },
     {
       "path": "scripts/prepare-pinned-dsh-product.mjs",
-      "sha256": "01f298ba229dfe2916450e0b96ad8a10fffcf8f0ad46d71247469695af74f890"
+      "sha256": "c3c4662dc27fbb41a5e5140dd8ba08c36d0bd10b307818a533df8a96a416f727"
     },
     {
       "path": "scripts/prepare-windows-portable-extractor.ps1",
@@ -7141,7 +7145,7 @@
     },
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
-      "sha256": "bc9539a679b477157129e4ff54a6e87609d1de80205dab167a52e9214f7b54ec"
+      "sha256": "77ffa9269a69180d25e5a706ab503e46f38e81125e7795cb881c47ac29f1a6f0"
     },
     {
       "path": "scripts/test/entry-customization-runtime.test.mjs",
@@ -7170,6 +7174,10 @@
     {
       "path": "scripts/test/npm-runtime.test.mjs",
       "sha256": "28b6344990cbf01aa2502172da1227b6d00280857dcc78b285468d3693439b76"
+    },
+    {
+      "path": "scripts/test/optional-product-bundles.test.mjs",
+      "sha256": "98f39eac8be071525630aaae39331ab9eca2911e162bb2934a2175b04e23a4b7"
     },
     {
       "path": "scripts/test/pinned-browser.test.mjs",

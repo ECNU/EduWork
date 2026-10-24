@@ -128,6 +128,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
           '--runtime', workspace.resolvePath('runtime'), '--source', workspace.resolvePath('source'),
           '--dependencies', workspace.resolvePath('dependencies'), '--host', workspace.resolvePath('host'),
           '--output', product,
+          ...(coreRoot !== editionRoot ? ['--edition', editionRoot] : []),
         ])
         const args = ['--product', product, '--version', version, '--runtime-lock', selected.sourceLock]
         if (coreRoot !== editionRoot) args.push('--edition', editionRoot)
