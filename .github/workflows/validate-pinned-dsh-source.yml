@@ -48,6 +48,9 @@ on:
       - 'scripts/test/chat-user-content-runtime.test.mjs'
       - 'scripts/patch-client-module-metadata-runtime.mjs'
       - 'scripts/test/client-module-metadata-runtime.test.mjs'
+      - 'scripts/patch-entry-customization-runtime.mjs'
+      - 'scripts/test/entry-customization-runtime.test.mjs'
+      - 'scripts/test/deepseek-catalog-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
       - 'scripts/test/runtime-omissions.test.mjs'
@@ -164,6 +167,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Session search checks failed' }
           node --test core/scripts/test/client-module-metadata-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Client module metadata rebuild checks failed' }
+          node --test core/scripts/test/entry-customization-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Optional Creator navigation checks failed' }
+          node --test core/scripts/test/deepseek-catalog-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Official API-key catalog compatibility checks failed' }
           node --test core/scripts/test/settings-navigation-runtime.test.mjs
           node --test core/scripts/test/chat-user-content-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Settings navigation adapter checks failed' }

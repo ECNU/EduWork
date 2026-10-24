@@ -89,6 +89,18 @@ test('refuses DSH family drift, missing integrity and unpinned direct dependenci
   assert.throws(() => validateNpmRuntimeLock(range), /Unpinned/)
 })
 
+test('0.2.1 rc.3 pins the new menu and preserves the independent plugin and Node security locks', async () => {
+  const directory = join(root, 'third_party/dsh/candidate-v0.2.1-rc.3')
+  const input = await contract(directory)
+  assert.equal(validateNpmRuntimeLock(input), input.lock.runtime.npm.packageLockSHA256)
+  assert.equal(input.lock.commit, '1f81c047fc48fa190a683e469daa699857e9afe8')
+  assert.equal(input.lock.node.version, '24.22.1')
+  assert.equal(input.packageLock.packages['node_modules/@deepseek-ai/dsh-client-ui-entry-customization'].version, '0.2.1-rc.3')
+  for (const file of ['annotation.json', 'artifact-services.json', 'desktop-pet.json', 'knowledge-studio.json', 'literature.json', 'mail.json', 'memory.json', 'oidc.json', 'desktop-probe/package-lock.json']) {
+    assert.deepEqual(await readJSON(join(directory, file)), await readJSON(join(root, 'third_party/dsh/candidate-v0.2.1-rc.2', file)))
+  }
+})
+
 test('npm preparation refuses to replace an existing directory', async t => {
   const output = await temporary(t)
   await writeFile(join(output, 'user-content.txt'), 'keep')

@@ -7,13 +7,13 @@ import { join } from 'node:path'
 export const sessionSearchPatch = Object.freeze({
   id: 'session-search-live-persistence-v1',
   package: '@deepseek-ai/dsh-session-query-sqlite',
-  version: '0.2.1-rc.2',
+  version: '0.2.1-rc.3',
   file: 'lib/index.js',
   beforeSHA256: 'dbecf83320e10d93d735b3d01384ab817a0b90102ccecb0a22c013c71dfe70a0',
 })
-// The rc.2 npm artifact still contains the identical live-flush implementation.
-// Keep both explicitly reviewed versions subject to the same complete hash.
-const reviewedVersions = new Set(['0.2.0-rc.2', '0.2.1-rc.2'])
+// All three reviewed npm artifacts contain the identical live-flush implementation.
+// Keep each explicitly reviewed version subject to the same complete hash.
+const reviewedVersions = new Set(['0.2.0-rc.2', '0.2.1-rc.2', '0.2.1-rc.3'])
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 
 export function patchSessionSearchSource(input) {
