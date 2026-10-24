@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { createServer } from 'node:http'
-import { cp, mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -111,7 +111,9 @@ try {
   const { chromium, _electron } = require('playwright-core')
   if (values.desktop) {
     const userConfig = join(output, 'eduwork.jsonc')
-    await writeFile(userConfig, JSON.stringify({ schemaVersion: 1 }))
+    const defaultConfiguration = await readFile(join(product, 'resources/desktop/eduwork.jsonc'), 'utf8')
+    assert.equal(JSON.parse(defaultConfiguration).updates.provider, 'disabled')
+    await writeFile(userConfig, defaultConfiguration)
     desktopApp = await _electron.launch({ executablePath: resolve(values.desktop), timeout: 120_000,
       env: { ...process.env, ELECTRON_RUN_AS_NODE: undefined, EDUWORK_DESKTOP_TEST_DATA_ROOT: join(output, 'desktop-data'),
         EDUWORK_CONFIG_FILE: userConfig, EDUWORK_DESKTOP_PRIVATE_CONFIG: configPath, HOME: isolatedOSHome, USERPROFILE: isolatedOSHome } })
@@ -243,6 +245,10 @@ try {
       }
     }).catch(() => {})
     await desktopApp.close({ timeout: 30_000 }).catch(error => { result.cleanupError = redact(error.message); result.passed = false; process.exitCode = 1 })
+    const updaterState = join(dirname(resolve(values.desktop)), 'data/state/updates/electron-edition.json')
+    const updaterStarted = await readFile(updaterState).then(() => true, error => { if (error.code === 'ENOENT') return false; throw error })
+    result.softwareUpdateBackendStarted = updaterStarted
+    if (updaterStarted) { result.passed = false; result.cleanupError = 'Experimental default unexpectedly started the software updater'; process.exitCode = 1 }
   }
   if (started) await lifecycle('stop').catch(error => { result.cleanupError = redact(error.message); result.passed = false; process.exitCode = 1 })
   result.finishedAt = new Date().toISOString()

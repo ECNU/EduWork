@@ -9,6 +9,7 @@ import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { parseArgs } from 'node:util'
 import { deriveConversationStore } from './build-side-chat-experiment.mjs'
+import { parse } from '../dsh-host/vendor/jsonc-parser/parser.js'
 
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const save = async (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n')
@@ -63,7 +64,13 @@ export async function assembleSideChatExperiment({ baseProduct, experiment, comp
     tarballSHA256: sha256(await readFile(tarball)),
     files: await Promise.all(['lib/index.js', 'lib/client.js', 'package.json'].map(async path => ({ path, sha256: sha256(await readFile(join(packageRoot, path))) }))),
   }
-  const receipt = { ...extension, kind: 'eduwork-side-chat-experimental-product', branded, localPackage }
+  // Experimental candidates must not inherit the ordinary release feed.
+  const configurationPath = 'resources/desktop/eduwork.jsonc'
+  const defaults = parse(await readFile(join(output, configurationPath), 'utf8'))
+  defaults.updates = { provider: 'disabled' }
+  await save(join(output, configurationPath), defaults)
+  const configuration = { path: configurationPath, sha256: sha256(await readFile(join(output, configurationPath))) }
+  const receipt = { ...extension, kind: 'eduwork-side-chat-experimental-product', branded, localPackage, configuration }
   const runtimeIdentity = await json(join(output, 'd/.chatecnu-dsh-runtime.json'))
   await save(join(output, 'd/.chatecnu-dsh-runtime.json'), { ...runtimeIdentity, source: 'experimental-side-chat', experimentalReceipt: '.eduwork-side-chat-experiment.json' })
   await save(join(output, 'd/.eduwork-side-chat-experiment.json'), receipt)

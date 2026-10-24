@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T15:52:36.121Z",
-  "fileSetSHA256": "d6213248544871aaea259e7d8a8baf1f74180aa853592d2d38659fbc0719c5ff",
+  "createdAt": "2026-10-24T15:58:59.315Z",
+  "fileSetSHA256": "4fd44bdc93c2c67d5d216f59ab69f118c89c79072c0e8a6c4dfb79d40fd773c3",
   "files": [
     {
       "path": ".gitattributes",
@@ -429,11 +429,11 @@
     },
     {
       "path": "docs/proposals/side-chat/README_EN.md",
-      "sha256": "ba396a218bd1bf02056561d63e8de21b7a1614567f32a6a01b32bbfb7e1e8d6a"
+      "sha256": "7ae0a89366b4a32b023c318f896ffd6bb83ccac54aea9a30380bca299285430d"
     },
     {
       "path": "docs/proposals/side-chat/README.md",
-      "sha256": "a115cc0fca0faa43769470c32cb10ba82a6626188cf922d5157a80a7ceffe8e3"
+      "sha256": "37cd7ed0416ba985bdb34a3a241af004eabe78478fa43729ba61b155c3b14ab8"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
@@ -6577,7 +6577,7 @@
     },
     {
       "path": "packages/dsh-side-chat/scripts/browser-test.mjs",
-      "sha256": "db437967929cc6a2280081342120225e8a134754baaf7bb71f2dc555be2ffbb8"
+      "sha256": "aea0ad5a818d97ad35beb274262eab0e94d082d295e1251df5dd0e501ea051bc"
     },
     {
       "path": "packages/dsh-side-chat/scripts/build.mjs",
@@ -6657,7 +6657,7 @@
     },
     {
       "path": "scripts/assemble-side-chat-experiment.mjs",
-      "sha256": "772d2611b92ff8aa498c3c57ccd142743aa969f0dc61774d6a7139c9178ec6bd"
+      "sha256": "0c71aa76e42fb3f49d92d8a964ab51e0d980a6b53b5552e7c4fa76f694d87626"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
