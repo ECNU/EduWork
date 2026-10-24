@@ -46,6 +46,11 @@ on:
       - 'scripts/test/settings-navigation-runtime.test.mjs'
       - 'scripts/patch-chat-user-content-runtime.mjs'
       - 'scripts/test/chat-user-content-runtime.test.mjs'
+      - 'scripts/patch-client-module-metadata-runtime.mjs'
+      - 'scripts/test/client-module-metadata-runtime.test.mjs'
+      - 'scripts/patch-entry-customization-runtime.mjs'
+      - 'scripts/test/entry-customization-runtime.test.mjs'
+      - 'scripts/test/deepseek-catalog-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
       - 'scripts/test/runtime-omissions.test.mjs'
@@ -135,7 +140,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-electron/tests/quit-confirmation.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/desktop-web-paths.test.mjs core/dsh-electron/tests/startup-page.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/desktop-web-paths.test.mjs core/dsh-electron/tests/startup-page.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
           node --test core/dsh-electron/tests/electron-locales.test.mjs
           if ($LASTEXITCODE) { throw 'Electron locale selection checks failed' }
@@ -160,6 +165,12 @@ jobs:
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Session search checks failed' }
+          node --test core/scripts/test/client-module-metadata-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Client module metadata rebuild checks failed' }
+          node --test core/scripts/test/entry-customization-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Optional Creator navigation checks failed' }
+          node --test core/scripts/test/deepseek-catalog-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Official API-key catalog compatibility checks failed' }
           node --test core/scripts/test/settings-navigation-runtime.test.mjs
           node --test core/scripts/test/chat-user-content-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Settings navigation adapter checks failed' }

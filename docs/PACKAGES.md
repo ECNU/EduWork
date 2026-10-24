@@ -72,7 +72,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-当前 DSH 0.2.1 配方从 npm 装配八个独立包：选段批注、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注从下一次客户端构建起预装；插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.2/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。远程访问包尚未装配进客户端，发布并核验后按下文顺序加入。
+当前 DSH 0.2.1 配方从 npm 装配八个独立包：选段批注、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。选段批注从下一次客户端构建起预装；插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.3/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。远程访问包尚未装配进客户端，发布并核验后按下文顺序加入。
 
 批注使用 DSH 原生 bundle，首次预装时默认启用一次，此后由原生插件管理器保存启停选择。`assembly.json` 的 `optionalBundles` 标明这类可选预装包，Profile 记录已处理的包名；已手动安装的包复用原有激活记录，不重复注册，已停用的包不会因重启再次启用。原有核心 bundle 的规则保持不变。
 
@@ -82,10 +82,10 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 插件变更顺序为：源码测试 → 发布 npm → 核验 registry 原包 → 更新产品组件锁和 npm 锁 → 整包验收。兼容范围与产品精确锁分别维护；正式装配不使用 `latest`。本地插件开发仍使用各包自己的开发根，不将未发布源码混入客户端。机构版复用公版的 npm 依赖，可增加自身扩展、配置与 skills，但不能覆盖已锁定的公共包。
 
-`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.1-rc.2/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
+`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.1-rc.3/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
 
 
-`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.1-rc.2/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
+`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.1-rc.3/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 
 历史 DSH 0.1.5 配方的 `config/assembly.eduwork.json` 保留 `third_party/npm-015-rc1/*/LOCK.json`，不用于当前默认桌面构建。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 

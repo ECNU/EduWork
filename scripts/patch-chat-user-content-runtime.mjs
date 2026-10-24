@@ -6,7 +6,7 @@ import { join } from 'node:path'
 // Apply to copied, pinned Runtime bytes; retire when upstream offers this seat.
 export const chatUserContentPatch = Object.freeze({
   id: 'chat-user-content-decoration-v1', package: '@deepseek-ai/dsh-client-ui-chat',
-  version: '0.2.1-rc.2', file: 'lib/client.js',
+  version: '0.2.1-rc.3', file: 'lib/client.js',
   beforeSHA256: 'a00e5176d1257d51604cefbe9a15d326d4283439df31f76ba20ff690c76e10a1',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
@@ -23,12 +23,15 @@ export function patchChatUserContentSource(input) {
   ${anchor.replace('UserContent(', 'UserContentBody(')}`)
   return source.replace(children, 'children: { "conversation.chat.user.decorate": { kind: "single", scope: "session" }, "conversation.chat.user.images": {')
 }
-export async function patchChatUserContentRuntime(modules) {
+export async function patchChatUserContentRuntime(modules, { version = chatUserContentPatch.version } = {}) {
+  // rc.2 and rc.3 ship identical reviewed client bytes. The private side-chat
+  // experiment selects rc.2 explicitly; ordinary product assembly uses rc.3.
+  if (!['0.2.1-rc.2', '0.2.1-rc.3'].includes(version)) throw new Error('Chat decoration requires a newly qualified Runtime')
   const root = join(modules, chatUserContentPatch.package)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-  if (manifest.name !== chatUserContentPatch.package || manifest.version !== chatUserContentPatch.version) throw new Error('Chat decoration requires a newly qualified Runtime')
+  if (manifest.name !== chatUserContentPatch.package || manifest.version !== version) throw new Error('Chat decoration requires a newly qualified Runtime')
   const path = join(root, chatUserContentPatch.file)
   const output = patchChatUserContentSource(await readFile(path))
   await writeFile(path, output)
-  return { ...chatUserContentPatch, afterSHA256: sha256(output) }
+  return { ...chatUserContentPatch, version, afterSHA256: sha256(output) }
 }

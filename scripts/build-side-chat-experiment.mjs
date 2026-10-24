@@ -121,7 +121,7 @@ export async function buildSideChatExperiment({ runtime, compiler, output }) {
     outputs.push({ file: `${entry.name}/lib/index.js`, sha256: sha256(await readFile(filename)) })
   }
   outputs.push(await deriveConversationStore({ runtime: targetRuntime, source, ts, esbuild }))
-  const decoration = await patchChatUserContentRuntime(join(targetRuntime, 'node_modules'))
+  const decoration = await patchChatUserContentRuntime(join(targetRuntime, 'node_modules'), { version: runtimeVersion })
   outputs.push(await deriveUserActions({ runtime: targetRuntime, ts }))
   outputs.push(await deriveTemporaryTabPersistence({ runtime: targetRuntime, compiler, ts, esbuild }))
   const receipt = {

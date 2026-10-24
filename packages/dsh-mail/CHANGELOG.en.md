@@ -2,6 +2,11 @@
 
 [简体中文](CHANGELOG.md) | **English**
 
+## 0.2.2 — 2026-10-24
+
+- Load mail protocol and parsing libraries on the first mail tool call, reducing module evaluation during plugin startup; concurrent calls share module loading.
+- Preserve read-only IMAP, reading/sending switches, send approvals and attachment permission boundaries, including existing failure and cancellation handling.
+
 ## 0.2.1 — 2026-10-22
 
 - Show email-send and attachment-save approval prompts in the active DSH UI language (Chinese or English), using the official approval panel.

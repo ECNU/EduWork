@@ -8,7 +8,7 @@
 import { gunzipSync } from 'node:zlib'
 import { Readable } from 'node:stream'
 import { Parser, type ReadEntry } from 'tar'
-import { getDocument, type PDFDocumentLoadingTask } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import type { PDFDocumentLoadingTask } from 'pdfjs-dist/legacy/build/pdf.mjs'
 import TurndownService from 'turndown'
 import { gfm } from '@joplin/turndown-plugin-gfm'
 import { parse } from 'node-html-parser'
@@ -154,9 +154,9 @@ export function pdfItemText(item: unknown): string {
 export async function extractPdfText(pdfBytes: Uint8Array): Promise<string> {
   let task: PDFDocumentLoadingTask
   try {
+    const { getDocument } = await import('pdfjs-dist/legacy/build/pdf.mjs')
     task = getDocument({ data: new Uint8Array(pdfBytes), useSystemFonts: true })
   } catch (error: unknown) {
-    /* v8 ignore next 2 -- getDocument returns a loading task; it does not throw synchronously for a Uint8Array parameter */
     throw new LiteratureError('the PDF could not be opened', 'LITERATURE_EXTRACTION_FAILED', { cause: error })
   }
   const doc = await task.promise.catch((error: unknown) => {

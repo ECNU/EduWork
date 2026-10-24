@@ -46,7 +46,7 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 当前内核、迁移规则及保留的适配见 [DSH 0.2.1 集成说明](CORE-021.md)。
 
-本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.1-rc.2` Runtime 和八个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
+本机开发包、自动开发包和手动候选的 Node 入口都按 `config/desktop-build.json` 选择同一锁定组合：从已校验的 npm 包准备 DSH `0.2.1-rc.3` Runtime 和八个独立插件包，从锁定的上游提交构建 Host、Electron 壳，并构建产品专属扩展，然后安装平台原生资源、打包并启动归档中的应用。独立插件不在产品装配时重建或覆盖；其版本、来源与内容校验见[包维护与发布](PACKAGES.md#客户端装配)。保留的 PowerShell 候选也使用该组合；Node 负责阶段依赖、缓存和回执，不调用 PowerShell 脚本。[流程图](assets/build-pipeline.svg)和[流水线提案](proposals/build-pipeline-stages/README.md)给出阶段关系。
 
 稳定版要求 Windows 更新契约及 macOS Sparkle 配置；预发布默认关闭软件自动更新。候选的 Windows ZIP 与安装包、macOS ZIP 与 DMG 都会校验哈希、归档内容和启动结果。macOS DMG 从通过 ZIP 验收的同一应用生成，挂载只读镜像后核对应用签名与内容。签名仍是 ad-hoc；系统权限、机构登录、升级体验等人工验收见 [发行指南](RELEASE.md)。
 
@@ -56,13 +56,15 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 ## 依赖与复用
 
-桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.2` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
+桌面开发包与发布候选默认使用同一 DSH `0.2.1-rc.3` 配方。两者的区别是产品版本、发布说明和交付方式：开发包只保留 artifact；手动候选可在核对后发布 GitHub Release。产品版本与 DSH 版本分别记录，不会因为输入一个新产品版本就自动升级 DSH。旧 `--recipe npm` 配方及 `ci-eduwork-windows-release.ps1` / `ci-eduwork-macos-release.ps1` 已退役，会在构建前报错；`build-desktop-candidate.ps1` 使用锁定源码路线，仍可使用。请使用本文的 Node.js 入口；不指定配方或使用 `--recipe pinned-source` 均可。当前路线仍通过 npm 装配锁定的 Runtime 和已发布插件。旧 `build-shell.mjs` 调用须改为带 `--pinned-dsh-source --runtime <目录>` 的入口。
 
 候选流水线通过 `--reuse-workspace` 复用工作区，按阶段参数、输入和产物摘要决定是否重跑。`--jobs N` 控制并发，`--cache-root <目录>` 指定原生资源缓存；缓存命中后仍校验锁定哈希。上游升级需要同步更新依赖锁、Host 源码锚点、插件适配和验收回执，不能只修改版本字符串。
 
 工作区同时绑定公版与机构版的实际源码文件哈希、receipt 哈希及 Git 提交；任一输入变化后须选择新的工作区。`dist`、`node_modules` 等生成目录使用源码审计的统一排除规则，不影响复用；旧版未记录源码身份的 checkpoint 也须更换工作区。
 
 组装产品时不带运行时用不到的包：DSH 的 Typert 生成器与测试工具、产品未启用的实验性语音输入（SenseVoice）、文献检索只抽文字时不需要的 canvas，以及 Studio 用 webpack 打包时不需要的 rspack。只被这些包依赖的包一并去掉，完整清单记在 `assembly.json` 的 `omittedPackages` 中。Remotion 读取视频工程的 tsconfig 时会用到 TypeScript，因此保留。为避免启动时加载 rspack，对 Remotion 打包器应用了一个按 SHA-256 校验的补丁，记录在 `runtimePatches` 中。两端的 Electron 只保留中文和英文资源，其他系统语言下 Chromium 自带的菜单和对话框显示英文；macOS 不带只供嵌入 Python 使用的 libpython。
+
+产品装配另对锁定的 DSH client-modules 应用 `client-module-ctime-only-rebuild-v1`：旧更新器清理硬链接备份时，文件 ctime 会变化，但 mtime 和内容不变，此时不应触发插件重载。输入版本与完整 SHA-256 均受校验，输出摘要记录在 `assembly.json.runtimePatches`。正常构建更新时间或真实内容变化仍会重载；更换上游版本后须复核或移除此适配。首次升级验收要求见[更新指南](UPDATES.md#ci-产物与发行验收)。
 
 ## Web 构建
 

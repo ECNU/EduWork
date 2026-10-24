@@ -85,6 +85,21 @@ test('adapted official window still publishes fullscreen on Windows and macOS', 
     assert.deepEqual(messages, [['fullscreen', true], ['fullscreen', true], ['fullscreen', true]])
   }
 })
+test('adapted Windows context menus follow the application locale after startup and language changes', { skip: !upstream }, async () => {
+  const text = code(adaptNativeDesktopSource('apps/desktop/src/main.ts', await source('apps/desktop/src/main.ts')))
+    .replace(/^import .*$/gm, '').replace('export function', 'function')
+  let language = 'zh', menu
+  class Window extends EventEmitter { webContents = new EventEmitter() }
+  const create = runInNewContext(text + '\ncreateWindow', { BrowserWindow: Window,
+    app: { getLocale: () => 'en' }, resolveDesktopLocale: () => ({ messages: { copy: 'System copy' } }),
+    Menu: { buildFromTemplate: items => { menu = items; return { popup() {} } } },
+    nativeTheme: { shouldUseDarkColors: false }, process: { platform: 'win32' }, WINDOWS_TITLEBAR_HEIGHT: 40,
+  })
+  const window = create('preload', false, true, () => ({ messages: { copy: language === 'zh' ? '复制' : 'Copy' } }))
+  const open = () => window.webContents.emit('context-menu', {}, { isEditable: false, selectionText: 'selected', editFlags: { canCopy: true } })
+  open(); assert.equal(menu[0].label, '复制')
+  language = 'en'; open(); assert.equal(menu[0].label, 'Copy')
+})
 test('quit inspector sees official persisted schedules without a loaded Agent', { skip: !upstream || !process.env.EDUWORK_TEST_RUNTIME }, async () => {
   const text = code(adaptNativeQuitInspection(await source('apps/desktop-host/src/quit-inspection.ts')))
     .replace(/^import .*$/gm, '').replace('export function', 'function')
