@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T17:31:56.042Z",
-  "fileSetSHA256": "30a61e40ba524819cb9932a10cfa40b336d5f584429e07bd7134ef56025e397f",
+  "createdAt": "2026-10-24T17:41:57.983Z",
+  "fileSetSHA256": "665c669fe7112343095d4769c5bd26b77c662d7f1b4dbb01658a1bf376bc605b",
   "files": [
     {
       "path": ".gitattributes",
@@ -6589,7 +6589,7 @@
     },
     {
       "path": "packages/dsh-side-chat/scripts/browser-test.mjs",
-      "sha256": "144d3d281d6a629531f2c2a3feb8841531c4d9d170d7a970b8c6cd6ef311f969"
+      "sha256": "743f77b55b8ee5e3bf0499d110500e9eac7cc346cc58a42715dd974b787e1198"
     },
     {
       "path": "packages/dsh-side-chat/scripts/build.mjs",
@@ -6609,7 +6609,7 @@
     },
     {
       "path": "packages/dsh-side-chat/src/client/index.jsx",
-      "sha256": "1aa93a9259d0b56b5baa11bb5fb99d4c65af05780d529784b29e6c462b0aa906"
+      "sha256": "cac7254688c2fe898d5a74cb37c04c7fd8598d0f8051559958645a1ff2695641"
     },
     {
       "path": "packages/dsh-side-chat/src/index.js",

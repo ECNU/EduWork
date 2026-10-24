@@ -56,15 +56,25 @@ function SideDraftDelivery({ sessionId, controller, sessions, conversation, inpu
     const pending = state.references.find(item => item.sessionId === sessionId)
     if (!pending || state.phase !== 'open' || inputState.phase !== 'plain' || inputState.claim
       || !controller.getSnapshot().references.some(item => item.id === pending.id)) return
-    const actx = sessions.scope(sessionId)
-    if (!actx) return
-    const caret = inputActions.captureInsertion()
-    const accepted = actx.bail(actx, 'slash/input-insert-reference', {
-      reference: pending.reference, span: { start: caret.end, end: caret.end, draftRev: caret.draftRev },
-    }) === true
-    const input = conversation.input.for(actx)
-    if (accepted) { controller.consumeReference(pending.id); input.focus() }
-    else input.notify('error', t('failed'))
+    // InputBar's parent mount effect restores focus after this child effect.
+    // Insert on the next frame so that restoration cannot overwrite the
+    // native insertion's trailing caret on the first open.
+    const frame = requestAnimationFrame(() => {
+      const live = controller.getSnapshot()
+      if (live.phase !== 'open' || live.chat?.sessionId !== sessionId || !live.references.some(item => item.id === pending.id)) return
+      const actx = sessions.scope(sessionId)
+      if (!actx) return
+      const input = conversation.input.for(actx)
+      const current = input.state.getSnapshot()
+      if (current.phase !== 'plain' || current.claim) return
+      const caret = inputActions.captureInsertion()
+      const accepted = actx.bail(actx, 'slash/input-insert-reference', {
+        reference: pending.reference, span: { start: caret.end, end: caret.end, draftRev: caret.draftRev },
+      }) === true
+      if (accepted) { controller.consumeReference(pending.id); input.focus() }
+      else input.notify('error', t('failed'))
+    })
+    return () => cancelAnimationFrame(frame)
   }, [state, inputState.phase, inputState.claim, inputState.draftRev, sessionId, controller, sessions, conversation, inputActions, t])
   return null
 }
