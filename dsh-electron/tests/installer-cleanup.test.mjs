@@ -234,6 +234,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
+    const bootBrand = () => ({ name: 'Synthetic EduWork', logo: '' })
     const prior = process.env.EDUWORK_LAUNCHER_TEST
     process.env.EDUWORK_LAUNCHER_TEST = 'launcher-owned'
     t.after(() => { if (prior === undefined) delete process.env.EDUWORK_LAUNCHER_TEST; else process.env.EDUWORK_LAUNCHER_TEST = prior })
@@ -260,6 +261,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
+      desktopBootBrand: bootBrand,
     })
     mock('eduwork-host-process.mjs', { staticDesktopResponse: () => undefined, DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
@@ -272,6 +274,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     } })
     mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
       assert.equal(options.pickDirectory, pickDirectory)
+      assert.equal(options.bootBrand, bootBrand)
       return { attach() {}, dispose() {} }
     } })
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
