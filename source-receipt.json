@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.7",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T08:08:50.222Z",
-  "fileSetSHA256": "5d516dcfdb1dbdbfaed632640311e12544b60bfc0d1187c7d217288a39d46f0f",
+  "createdAt": "2026-10-24T08:17:39.878Z",
+  "fileSetSHA256": "ebfe5ffdf8d90742e58ec01034e7b9f1f09aeace6b99f86953b48cddbd7b5cc3",
   "files": [
     {
       "path": ".gitattributes",
@@ -6252,6 +6252,14 @@
       "sha256": "b4307a1fb89e824a9b87376d54e27520a278b449d308cf3f8a5bf6b82f3ff754"
     },
     {
+      "path": "packages/dsh-remote-access/docs/DEPLOYMENT_EN.md",
+      "sha256": "d963a43e955a715512ac2a4528a18a29dcfe10b9a8f37e69b42c743a3c4ea096"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/DEPLOYMENT.md",
+      "sha256": "bf6fde623e42eb4e70134a8372d3939f809c0b75d4415b799fcf9eb16d8363da"
+    },
+    {
       "path": "packages/dsh-remote-access/docs/PROTOCOL.md",
       "sha256": "49af8c18044e85dd51c1ceb5502d48d444c665667a0218c4417e0103cbd1ae67"
     },
@@ -6269,11 +6277,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "7df1facf53a10da92bb23644ede4094c3af07a141f0226a423f316d70df1aa3f"
+      "sha256": "0b5a36cdd77bc01513faf73a6054a12b0d416b55e6f9eb0cf5d2109bd296e676"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "154202cdf5021b629bc758d6095de8a604bbf39fd0fd8c0db2a5ac5a8d57c143"
+      "sha256": "2ba4e89447093f77640a6015761abd7bd83a6275709caece8176808f04c69941"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",

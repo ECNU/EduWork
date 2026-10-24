@@ -16,13 +16,15 @@ The package has two parts:
 You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the relay's domain and forwards WebSockets.
 
 ```sh
-RELAY_URL=https://remote.example.edu RELAY_ACCESS_KEYS=key-1,key-2 \
-  npx -p @eduwork/dsh-remote-access eduwork-remote-relay
+RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=replace-with-a-random-key \
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.0 eduwork-remote-relay
 ```
 
 `RELAY_URL` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `<RELAY_URL>healthz` answers `ok` for monitoring.
 
-The relay can also share a domain with other sites under a path of its own, for example `RELAY_URL=https://example.edu/eduwork-remote/`. The reverse proxy must pass the path on unchanged, keeping that prefix; the relay's pages, Service Worker and connections all stay below it. Enter the same address on the computer. Sharing a domain has security risks (see [Security](#security)): do it only when no site on that domain needs signing in to, and if a Service Worker there covers the whole domain, make it leave this path alone.
+The [relay deployment guide](docs/DEPLOYMENT_EN.md) covers key generation, Windows PowerShell commands, HTTPS/Nginx, path prefixes, persistent systemd operation, organization sign-in, iframe integration, verification and troubleshooting.
+
+The relay can also share a domain under its own path, such as `RELAY_URL=https://example.edu/eduwork-remote/`. Preserve the prefix in proxy requests and enter the same complete URL on the computer. Paths do not isolate browser privileges: the operator must accept the shared trust boundary between the site's applications and paired computers (see [Security](#security)). A site-wide Service Worker must also leave this path alone.
 
 A school or company can instead let its members use the relay with their own sign-in, without handing out access keys: set `RELAY_OIDC_ISSUER` to the issuer of the organization's OpenID Connect sign-in (for example `https://sso.example.edu`) and `RELAY_OIDC_CLIENT_IDS` to the desktop application's client IDs in it, separated by commas. Computers register with the ID Token their sign-in issued; the relay checks it against the keys the issuer publishes and keeps only the user's identifier, never the token. Computers switch to a new token before theirs expires; if one expires without being renewed, the relay ends that computer's remote connections. When the organization sign-in has lapsed and needs signing in again, the computer stops connecting to the relay and the settings page asks the user to sign in again. Both ways can be enabled together.
 
@@ -56,11 +58,11 @@ Choose "Remove" under "Paired devices" on the computer to disconnect a device at
 
 ## What remote devices can do
 
-They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results; in EduWork they can also use Studio results and the calendar.
+They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results. Studio results and the calendar are also available when those plugins are installed on the host.
 
 A phone shows DSH's own interface, only fitted to the narrow screen: the session list (workspace folders, search, new session and so on) opens full screen from the top-left corner and closes once you pick a session or a panel; settings also fill the screen, with the sections as a row of tabs, and are view only on remote devices; conversations show durations, retries, approvals and questions as on the computer.
 
-They cannot open windows or programs or show notifications on the computer, register or remove workspaces, change settings or manage accounts, plugins, credentials, skills or memories, use terminals or run code, or manage remote access itself. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
+Remote devices cannot directly call APIs that open local windows or programs or show notifications, register or remove workspaces, change settings, manage accounts, plugins, credentials, skills, memories or remote access, or access terminal and code-execution APIs. **Tasks submitted through the Agent can still execute commands under the session's permission and approval rules**; blocking direct terminal APIs does not disable Agent tools. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
 
 ## Security
 
@@ -68,8 +70,8 @@ They cannot open windows or programs or show notifications on the computer, regi
 - The browser generates the device key as non-extractable; the computer stores only its public key. Every connection is signed with the device key.
 - An access key or an organization sign-in only decides who may use the relay; neither can be used to connect to someone else's computer. The access key is kept in DSH's credentials (`EDUWORK_REMOTE_ACCESS_KEY`), not in the plugin's settings; the ID Token of an organization sign-in goes only to the relay the distribution preset, which the settings page cannot change.
 - The relay serves the page you open on your phone, so whoever runs the relay can change it. Use only relays you trust.
-- The DSH interface on your phone is provided by the computer it connects to and runs on the relay's domain, and browsers separate data only by domain. So the interface one computer provides can use this browser's pairings with other computers to connect to them. Pair only with your own computers.
-- Likewise, when the relay shares a domain with other sites, their scripts can use the pairings here to connect to computers, and the interface of any paired computer can use those sites as the user and read the data they keep in the browser. Give the relay a domain of its own (a subdomain, for example), and never share one with a sign-in service or other sites that you sign in to.
+- The DSH interface on your phone comes from the paired computer and shares the relay's origin. Browsers isolate data by origin (scheme, host and port), not path, so one computer's interface can use this browser's pairings with other computers to connect to them. Pair only with your own computers.
+- Likewise, sites sharing the relay's origin can use its pairings, and the interface of any paired computer can access those sites as the user and read browser data available to scripts. A separate domain narrows this trust boundary. Same-origin path integration accepts the shared boundary; neither path prefixes nor ordinary iframes provide isolation.
 - Pages allowed to embed the relay's page can show it within their own and cover parts of it to trick users into clicking (approving a command, say). Allow only pages you trust.
 
 See the [protocol document](docs/PROTOCOL.md) (Chinese) for details.
