@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.2](https://img.shields.io/badge/DSH-0.2.1--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#安装与使用)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
@@ -44,6 +44,8 @@ EduWork 的重点是把教育工作需要的能力组合好：**开放的机构�
 | [文献检索](packages/dsh-literature/README.md) · `@eduwork/dsh-literature` | 检索 DBLP、arXiv 文献，获取 BibTeX 和可用全文。 | Fork 自 [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature)，由 EduWork 接续维护；计划逐步拓展文献来源。 |
 | [本地记忆](packages/dsh-memory/README.md) · `@eduwork/dsh-memory` | 管理本地记忆、检索历史对话，延续任务背景。 | 在本机管理。 |
 | [邮件助手](packages/dsh-mail/README.md) · `@eduwork/dsh-mail` | 读取 IMAP 邮件，经授权通过 SMTP 发送邮件。 | 连接邮箱并配置相应权限。 |
+| [选段批注](packages/dsh-annotation/README.md) · `@eduwork/dsh-annotation` | 引用回复中的片段、添加和编辑批注，多条批注一起发送，并保留来源编号。 | 从 0.4.8 起预装，沿用 DSH 原生输入框和草稿。 |
+| [远程访问](packages/dsh-remote-access/README.md) · `@eduwork/dsh-remote-access` | 从手机或其他电脑的浏览器继续本机会话、处理授权；支持本机配对与设备撤销。 | 从 0.4.8 起预装，远程连接默认关闭；先按[部署指南](packages/dsh-remote-access/docs/DEPLOYMENT.md)自建中继，再配置地址与接入 Key。 |
 | [浏览器](dsh-plugins/tool-browser/README.md)与[媒体服务接入](dsh-plugins/media-openai/README.md) | 浏览网页；连接 OpenAI 兼容的图像生成、云端 TTS 服务。 | 网页需联网；云端媒体需另配服务。 |
 | [技能管理](dsh-plugins/skill-settings-native/README.md)与[工作台设置](dsh-plugins/workbench-native/README.md) | 管理技能，提供历史导入、通知和更新设置等桌面能力。 | 随发行版提供。 |
 | [桌面宠物](packages/dsh-desktop-pet/README.md) · `@eduwork/dsh-desktop-pet` | 桌面上的小宠物，随会话状态变化，点击打开需要处理或已完成的会话；可选形象和大小。 | 独立 npm 插件，随客户端提供；需要 EduWork 桌面桥接。默认关闭，在“设置 → 桌面宠物”中开启。 |
@@ -149,14 +151,14 @@ Knowledge Studio 以独立插件提供，通过宿主的侧栏插槽（slot）�
 
 每位用户在自己的电脑上独立运行，无需部署额外的 EduWork 服务端；模型服务由你选择的服务商或机构提供。
 
-桌面包支持 **Windows x64** 和 **macOS 15+ Apple Silicon（arm64）**。Windows 使用 Electron 绿色包，解压即可运行；Mac 解压后将包内的 `.app` 应用移入“应用程序”。Mac 尚未使用 Apple Developer ID 签名或公证，首次打开可能出现系统安全提示，详见 [macOS 说明](docs/MACOS.md)。
+桌面包支持 **Windows x64** 和 **macOS 15+ Apple Silicon（arm64）及 Intel（x64，从 0.4.8 起）**。Windows 使用 Electron 绿色包，解压即可运行；Mac 解压后将包内的 `.app` 应用移入“应用程序”。Mac 尚未使用 Apple Developer ID 签名或公证，首次打开可能出现系统安全提示，详见 [macOS 说明](docs/MACOS.md)。
 
 ### 1. 获取客户端
 
 从 [GitHub Releases](https://github.com/ecnu/EduWork/releases) 选择对应平台的完整桌面包：
 
 - **Windows x64**：解压到可写目录，运行 `EduWork-Electron.exe`。请保留同目录下的资源文件，不要只复制 EXE。
-- **macOS arm64**：解压后将包内的 `.app` 应用移入“应用程序”，然后打开；配置和用户数据存放在用户目录。
+- **macOS arm64 / x64**：按芯片类型下载对应包，解压后将包内的 `.app` 应用移入“应用程序”，然后打开；配置和用户数据存放在用户目录。
 
 GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构建指南](docs/BUILD.md)。
 

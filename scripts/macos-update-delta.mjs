@@ -1,25 +1,28 @@
 // Sparkle delta updates for stable macOS releases. The publish stage patches
 // each earlier release archive (see update-delta-bases.mjs) to the accepted
 // application and proves that the patch rebuilds it.
+import { macosArchitecture } from './lib/macos-architecture.mjs'
 import { rm, stat } from 'node:fs/promises'
 import { basename, join } from 'node:path'
 import { desktopVersion } from './desktop-build-plan.mjs'
 import { capture, ensureDir, readJSON, run, sha256File } from './lib/build-util.mjs'
 
-export function deltaName(product, version, from) {
+export function deltaName(product, version, from, arch = 'arm64') {
   desktopVersion(from)
-  return `${product}-${version}-macos-arm64-electron-from-${from}.delta`
+  return `${product}-${version}-${macosArchitecture(arch).archivePlatform}-electron-from-${from}.delta`
 }
 
-export async function createMacDeltas({ binaryDelta, app, archiveBytes, bases, product, version, output, work }) {
+export async function createMacDeltas({ arch = process.arch, binaryDelta, app, archiveBytes, bases, product, version, output, work }) {
   const deltas = []
+  const target = macosArchitecture(arch)
   for (const base of bases) {
+    if (!basename(base).endsWith(`-${target.archivePlatform}-electron.zip`)) throw new Error('macOS delta base has another architecture')
     await rm(work, { recursive: true, force: true })
     await ensureDir(work)
     await run('ditto', ['-x', '-k', base, work])
     const before = join(work, basename(app)), rebuilt = join(work, 'rebuilt.app')
     const { version: from } = await readJSON(join(before, 'Contents/Resources/release.json'))
-    const patch = join(output, deltaName(product, version, from))
+    const patch = join(output, deltaName(product, version, from, arch))
     await run(binaryDelta, ['create', before, app, patch])
     const { size } = await stat(patch)
     if (size > archiveBytes / 2) {

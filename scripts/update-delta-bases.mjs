@@ -10,11 +10,12 @@ import { compareVersions } from '../dsh-host/content-update-protocol.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
 import { ensureDir, fullPath, isMainModule, sha256File } from './lib/build-util.mjs'
 
-const archivePlatforms = { windows: 'windows-x64', macos: 'macos-arm64' }
+const archivePlatforms = { windows: 'windows-x64', macos: 'macos-arm64', 'macos-arm64': 'macos-arm64', 'macos-x64': 'macos-x64' }
 
 // Patches come from the three latest earlier stable releases; older
 // installations download the full archive.
 export function previousStableArchives(releases, { product, version, platform }) {
+  if (!archivePlatforms[platform]) throw new Error('Unknown delta platform')
   if (desktopVersion(version).prerelease) return []
   return releases
     .filter(release => !release.draft && !release.prerelease && /^v\d+\.\d+\.\d+$/.test(release.tag_name))
@@ -25,22 +26,26 @@ export function previousStableArchives(releases, { product, version, platform })
     .map(({ from, assets }) => {
       const name = `${product}-${from}-${archivePlatforms[platform]}-electron.zip`
       const asset = assets.find(asset => asset.name === name)
+      // Intel starts at 0.4.8: an older release with no Intel asset is not a base.
+      // A present asset without a digest is still a hard integrity failure.
+      if (!asset && platform === 'macos-x64') return null
       if (!/^sha256:[a-f0-9]{64}$/.test(asset?.digest ?? '')) throw new Error(`Release ${from} has no ${platform} archive with a digest`)
       return { name, url: asset.browser_download_url, sha256: asset.digest.slice('sha256:'.length) }
-    })
+    }).filter(Boolean)
 }
 
 // The archives the workflow downloaded into `directory`.
-export async function deltaBaseArchives(directory, version) {
+export async function deltaBaseArchives(directory, version, archivePlatform = '') {
   if (!directory) return []
   const bases = (await readdir(directory)).filter(file => file.endsWith('.zip')).sort().map(file => join(fullPath(directory), file))
   if (bases.length && desktopVersion(version).prerelease) throw new Error('Delta updates are generated for stable releases only')
+  if (archivePlatform && bases.some(file => !file.endsWith(`-${archivePlatform}-electron.zip`))) throw new Error('Delta directory contains another architecture')
   return bases
 }
 
 if (isMainModule(import.meta.url)) {
   const [repository, product, version, platform, output] = process.argv.slice(2)
-  if (!output || !archivePlatforms[platform]) throw new Error('Use update-delta-bases.mjs <owner/repository> <product> <version> <windows|macos> <output directory>')
+  if (!output || !archivePlatforms[platform]) throw new Error('Use update-delta-bases.mjs <owner/repository> <product> <version> <windows|macos|macos-x64> <output directory>')
   const response = await fetch(`https://api.github.com/repos/${repository}/releases?per_page=100`, {
     headers: { Accept: 'application/vnd.github+json', ...(process.env.GITHUB_TOKEN && { Authorization: `Bearer ${process.env.GITHUB_TOKEN}` }) },
   })

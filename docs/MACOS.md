@@ -1,6 +1,6 @@
 # macOS 支持与贡献
 
-EduWork 提供 Windows x64 和 macOS 15+ Apple Silicon（arm64）开发包。Mac 使用 ad-hoc 签名，尚无 Apple Developer ID 签名或公证，首次打开可能需要系统安全确认。Intel Mac 不在当前构建范围内。
+EduWork 提供 Windows x64 和 macOS 15+ Apple Silicon（arm64）及 Intel（x64）包。Mac 使用 ad-hoc 签名，尚无 Apple Developer ID 签名或公证，首次打开可能需要系统安全确认。从 0.4.8 起提供独立的 Intel Mac 包；两种架构共用业务代码与插件版本。
 
 ## 共用架构
 
@@ -30,7 +30,7 @@ Apple Silicon 与 Intel 应分别构建和测试，不能复用 Windows 的运�
 
 ## 开发验证
 
-开发包优先使用[构建指南](BUILD.md#本机构建)中的 Node.js 入口，先准备锁定的核心与插件依赖，再从打包后的应用运行功能检查。当前 macOS 候选流程只支持 Apple Silicon arm64；不得复用 Windows 运行时。macOS 15.4.1 与本机 macOS 27.0 的候选装配及启动已有验证记录；具体验收范围仍以各次回执为准。
+开发包优先使用[构建指南](BUILD.md#本机构建)中的 Node.js 入口，先准备锁定的核心与插件依赖，再从打包后的应用运行功能检查。当前 Node.js macOS 候选流程支持 Apple Silicon arm64 与 Intel x64；旧 PowerShell 配方仍限于 arm64；不得复用 Windows 运行时。macOS 15.4.1 与本机 macOS 27.0 的候选装配及启动已有验证记录；具体验收范围仍以各次回执为准。
 
 需要单独定位 Electron 输入或装配步骤时，可使用 Node.js 脚本按上游锁定版本下载并校验 Electron ZIP；复用缓存前检查 `Electron.app` 的版本和二进制架构，不匹配则报错。完成产品、壳、Node 和 OpenSSL 输入准备后，可用以下命令装配候选（路径须替换为实际已验证输入，输出目录不得已存在）：
 
@@ -56,7 +56,7 @@ GitHub macOS runner 可承担构建和自动检查。GUI、系统权限、音色
 
 ## CI 开发候选
 
-开发包与双平台发布候选的构建入口、版本范围和命令见[构建指南](BUILD.md#选择入口)。开发包在 `macos-latest` arm64 runner 上构建、验收并上传 artifact；候选发布须由维护者单独授权。公版 Mac 使用 GitHub 仓库 `updates/macos/` 的签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
+开发包与双平台发布候选的构建入口、版本范围和命令见[构建指南](BUILD.md#选择入口)。开发包分别在 `macos-26` arm64 与 `macos-26-intel` x64 runner 上构建、验收并上传独立 artifact，统一选用 Xcode 26.6，最低部署目标为 macOS 15.0；候选发布须由维护者单独授权。正式候选还将同一 ZIP 放到 macOS 15 的对应架构 runner 运行验收，不重新构建。公版 ARM Mac 沿用 `updates/macos/stable.xml`、`development.xml`，Intel 使用 `updates/macos/x64/` 下的两份签名 appcast，程序从 GitHub Release 下载；公开仓库和 CI 只保存验证公钥。
 
 构建从校验锁下载 Node、独立 Python 和 Office wheels，并从固定源码构建 OpenSSL 与本地 Whisper CPU 引擎，携带离线语音模型。Python 复用已有版本，Mac 专属输入记录在 `config/macos-native.lock.json`。Python 调用关闭字节码缓存，应用启动不修改签名包。
 

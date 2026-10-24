@@ -23,3 +23,9 @@ node scripts/macos-update-feed.mjs sign app.zip release-receipt.json mac-updates
 Patches listed in the receipt must sit beside the ZIP; the command verifies and signs them too, and their appcast URLs share the ZIP's directory. This only writes the appcast. It does not upload files, publish a GitHub Release or change an update channel. Upload the complete ZIP and its patches before the appcast; update the development feed when publishing a stable release too. Back up the private key securely and never include it in source, artifacts or logs.
 
 EdDSA update verification does not replace Apple Developer ID signing or notarization. Initial launches of ad-hoc builds may still show macOS security prompts. Native CI uses disposable keys to test the real bridge, HTTPS probing, rejection of invalid signatures, patch installation with fallback to the full ZIP, and in-place application replacement. Authorization dialogs, Gatekeeper and user interaction still require native user acceptance.
+
+## Intel and Apple Silicon
+
+Starting with 0.4.8, the Node.js recipe builds separate native ZIP/DMG packages. Public ARM feed URLs remain unchanged; Intel reads explicit stable/development URLs from `feedsByArch.x64` in `config/desktop/mac-updates.json`. An institution adding Intel must also provide these URLs. Missing Intel configuration stops the build instead of falling back to an ARM feed.
+
+Sign each architecture's ZIP and deltas separately and update its own appcasts. The first Intel release has no earlier delta bases; later releases consider at most three earlier stable versions of the same architecture, with a full download when no base matches. Do not mix ARM and Intel assets in a feed. Minimum-system acceptance runs the final macOS 26-built ZIP on macOS 15 before publication.

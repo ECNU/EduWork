@@ -122,7 +122,7 @@ app.whenReady().then(async()=>{
   await run('xattr',['-cr',cliApp]);await run('codesign',['--force','--deep','--sign','-','--timestamp=none',cliApp])
   // The release pipeline's patch updates an unmodified installation; a modified
   // installation fails the patch and falls back to the full archive.
-  const base=join(root,'base.zip');await run('ditto',['-c','-k','--keepParent',oldApp,base])
+  const base=join(root,`EduWork-0.3.1-macos-${process.arch}-electron.zip`);await run('ditto',['-c','-k','--keepParent',oldApp,base])
   const [delta]=await createMacDeltas({binaryDelta:join(frameworkRoot,'bin/BinaryDelta'),app:newApp,archiveBytes:archive.length,bases:[base],product:'EduWork',version:'0.3.2',output:root,work:join(root,'delta-work')})
   patch=await readFile(join(root,delta.name));patchSignature=sign(null,patch,pair.privateKey).toString('base64')
   for(const [name,downloads,change] of [['delta',['/update.delta'],null],['delta-fallback',['/update.delta','/update.zip'],app=>writeFile(join(app,'Contents/Resources/app/local.txt'),'changed')]]){
@@ -153,7 +153,7 @@ app.whenReady().then(async()=>{
   await createMacOSAppArchive(quitRetryNewApp,quitRetryZip)
   archive=await readFile(quitRetryZip);signature=sign(null,archive,pair.privateKey).toString('base64')
   // Cancel and retry on the delta path, which a release offers to unmodified installations.
-  const quitRetryBase=join(root,'quit-retry-base.zip'),quitRetryDeltas=join(root,'quit-retry-deltas');await mkdir(quitRetryDeltas)
+  const quitRetryBase=join(root,`quit-retry-EduWork-0.3.1-macos-${process.arch}-electron.zip`),quitRetryDeltas=join(root,'quit-retry-deltas');await mkdir(quitRetryDeltas)
   await run('ditto',['-c','-k','--keepParent',quitRetryApp,quitRetryBase])
   const [quitRetryDelta]=await createMacDeltas({binaryDelta:join(frameworkRoot,'bin/BinaryDelta'),app:quitRetryNewApp,archiveBytes:archive.length,bases:[quitRetryBase],product:'EduWork',version:'0.3.2',output:quitRetryDeltas,work:join(root,'delta-work')})
   patch=await readFile(join(quitRetryDeltas,quitRetryDelta.name));patchSignature=sign(null,patch,pair.privateKey).toString('base64')

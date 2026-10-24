@@ -123,10 +123,10 @@ for (const platform of ['windows', 'macos']) test('alpha SemVer ' + platform + '
   assert.throws(() => validateCandidateReceipt({...data.receipt, automaticUpdates: false}, data.context), /automaticUpdates/)
 })
 
-async function macosNodeFixture(deltaFrom) {
+async function macosNodeFixture(deltaFrom, platform = 'macos') {
   const directory = await mkdtemp(join(tmpdir(), 'eduwork-macos-publication-'))
-  const context = {product: 'EduWork', version: '0.4.4', platform: 'macos', repository: 'ECNU/EduWork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40), releaseNotes: 'docs/releases/0.4.4.md'}
-  const names = nodeNpmAssetNames(context.product, context.version, 'macos', deltaFrom)
+  const context = {product: 'EduWork', version: '0.4.4', platform, repository: 'ECNU/EduWork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40), releaseNotes: 'docs/releases/0.4.4.md'}
+  const names = nodeNpmAssetNames(context.product, context.version, platform, deltaFrom)
   const file = async (name, body) => {
     await writeFile(join(directory, name), body)
     return {name, bytes: Buffer.byteLength(body), sha256: hash(body)}
@@ -139,6 +139,7 @@ async function macosNodeFixture(deltaFrom) {
   const deltas = []
   for (const [index, from] of deltaFrom.entries()) deltas.push({from, ...await file(names[6 + index], 'patch from ' + from)})
   const receipt = {schemaVersion: 1, kind: 'eduwork-macos-release', version: context.version, edition: context.product, platform: 'macos-arm64', shell: 'electron', passed: true, coreCommit: context.coreCommit, editionCommit: context.editionCommit, recipe: 'pinned-source', releaseNotes: {approved: true, file: context.releaseNotes, sha256: notes.sha256}, checks: Object.fromEntries(['sourceAndDependencies', 'archiveManifest', 'nativeRuntimes', 'desktopLaunch', 'mediaTemplate', 'sourceSnapshot', 'readOnlyApplication', 'macosDmg'].map(name => [name, 'passed'])), automaticUpdates: true, softwareAutoUpdate: true, bundleVersion: bundleVersion(context.version), asset, installer: {asset: dmg, checks: Object.fromEntries(['imageIntegrity', 'applicationSignature', 'matchesZipApplication', 'installationWindow'].map(name => [name, 'passed']))}, deltas}
+  if (platform === 'macos-x64') receipt.platform = 'macos-x64'
   await writeFile(join(directory, names[2]), JSON.stringify(receipt))
   return {directory, names, context}
 }
@@ -163,4 +164,14 @@ test('macOS without delta updates keeps the fixed release files', async t => {
   const data = await macosNodeFixture([])
   t.after(() => rm(data.directory, {recursive: true, force: true}))
   assert.equal((await validatedNodeNpmFiles(data.directory, data.context)).files.length, 6)
+})
+test('Intel receipt verifies its own assets and rejects an ARM identity', async t => {
+  const data = await macosNodeFixture(['0.4.3'], 'macos-x64')
+  t.after(() => rm(data.directory, {recursive: true, force: true}))
+  assert.equal((await validatedNodeNpmFiles(data.directory, data.context)).files.length, 7)
+  const path = join(data.directory, 'release-receipt.json')
+  const receipt = JSON.parse(await readFile(path, 'utf8'))
+  receipt.platform = 'macos-arm64'
+  await writeFile(path, JSON.stringify(receipt))
+  await assert.rejects(validatedNodeNpmFiles(data.directory, data.context), /platform/)
 })

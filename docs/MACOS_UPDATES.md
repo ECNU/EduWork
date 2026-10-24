@@ -44,3 +44,9 @@ node scripts/macos-update-feed.mjs sign app.zip release-receipt.json mac-updates
 回执列出的补丁需与 ZIP 放在同一目录，命令会一并核对并签名，appcast 中补丁地址与 ZIP 地址位于同一目录。命令仅生成清单，不上传、创建 GitHub Release 或切换更新入口。先上传完整 ZIP 和补丁，再发布指向它们的 appcast；公测发布时也更新开发渠道。私钥丢失会影响后续更新，必须在仓库外妥善备份。私钥不能随安装包、源码或 CI 日志公开。
 
 EdDSA 负责验证更新来源，不能代替 Apple Developer ID 和公证。ad-hoc 包首次打开仍可能出现 macOS 安全提示。原生 CI 使用临时密钥验证真实桥接、HTTPS 检查、错误签名拒绝、补丁安装与改下整包，以及应用替换；系统授权弹窗、Gatekeeper 与用户交互仍需对应系统真机验收。
+
+## Intel 与 Apple Silicon
+
+从 0.4.8 起，Node.js 配方按本机架构装配独立的 ZIP/DMG。公版 ARM 更新地址保持不变；Intel 从 `config/desktop/mac-updates.json` 的 `feedsByArch.x64` 读取独立 stable/development 地址。机构版增加 Intel 时也须显式提供这两个地址；缺少配置会停止构建，不回退到 ARM 更新源。
+
+发布时两种架构分别签名 ZIP 和差分，并同时更新各自的 appcast。Intel 首版没有旧包差分，后续只使用同架构的最多三个历史稳定版本；未找到匹配版本时下载完整包。禁止把 ARM ZIP 或差分写入 Intel 清单，反之亦然。Mac 15 兼容验收运行的是 macOS 26 构建的最终 ZIP，验收通过前不发布。

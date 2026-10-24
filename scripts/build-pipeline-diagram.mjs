@@ -409,7 +409,7 @@ export async function buildPipelineDiagrams({ output }) {
     written.push(`build-pipeline-${platform}.json`)
   }
   const title = 'EduWork 双平台桌面构建流程'
-  const subtitle = 'Windows x64 与 macOS arm64 共用主流程；蓝色步骤仅在 macOS 执行'
+  const subtitle = 'Windows x64 与 macOS arm64 / x64 共用主流程；蓝色步骤仅在 macOS 执行'
   await writeFile(join(output, 'build-pipeline.drawio'), drawioXml({ title, stages, edges }))
   await writeFile(join(output, 'build-pipeline.mmd'), mermaidDiagram({ stages, edges }))
   await writeFile(join(output, 'build-pipeline.svg'), svgDiagram({ title, subtitle, stages, edges }))

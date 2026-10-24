@@ -6,11 +6,12 @@ import { join } from 'node:path'
 import { writeNativeProfile, rebaseNativeConfig, legacyPresetPatches, nativeEntryIds } from '../native-profile.mjs'
 import { stageLegacySettings, importLegacySettings } from '../settings-migration.mjs'
 
-for (const existing of [false, true]) test(`optional npm bundle is provisioned once and stays disabled after restart (existing=${existing})`, async t => {
+for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
+for (const existing of [false, true]) test(`optional npm bundle ${bundle} is provisioned once and stays disabled after restart (existing=${existing})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-bundle-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
-  const path = join(profile, 'package.json'), bundle = '@eduwork/dsh-annotation'
-  const preferences = '[{"id":"eduwork-annotation","disabled":true}]'
+  const path = join(profile, 'package.json')
+  const preferences = JSON.stringify([{ id: bundle === '@eduwork/dsh-annotation' ? 'eduwork-annotation' : 'eduwork-remote-access', disabled: true }])
   if (existing) {
     await writeFile(path, JSON.stringify({ dependencies: { 'synthetic-addon': '1.0.0' }, dsh: { profile: { bundles: ['synthetic-addon'] } }, eduwork: { unrelated: true } }))
     await writeFile(join(profile, 'cordis.patch.yml'), preferences)
@@ -33,10 +34,11 @@ for (const existing of [false, true]) test(`optional npm bundle is provisioned o
   assert.ok(!JSON.parse(await readFile(path, 'utf8')).dsh.profile.bundles.includes(bundle))
 })
 
-for (const enabled of [false, true]) test(`a prior manual annotation install retains its activation (enabled=${enabled})`, async t => {
+for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
+for (const enabled of [false, true]) test(`a prior manual ${bundle} install retains its activation (enabled=${enabled})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-manual-bundle-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
-  const path = join(profile, 'package.json'), bundle = '@eduwork/dsh-annotation'
+  const path = join(profile, 'package.json')
   await writeFile(path, JSON.stringify({ dependencies: { [bundle]: '0.1.0' }, dsh: { profile: { bundles: enabled ? [bundle] : [] } } }))
   const options = { profile, bundles: [bundle], optionalBundles: [bundle], patches: [] }
   await writeNativeProfile(options)
