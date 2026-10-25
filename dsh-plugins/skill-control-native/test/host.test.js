@@ -53,7 +53,7 @@ async function eventually(read, expected) {
   assert.deepEqual(actual, expected)
 }
 
-test('real Host follows optional Shared attachment, provider/credential changes, disablement and unload', async () => {
+test('real Host follows filesystem writes, optional Shared attachment, authorization changes and unload', async () => {
   const marker = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
   assert.equal(marker.dshVersion, process.env.CHATECNU_EXPECT_DSH ?? '0.1.5-rc.1', 'This regression must run on the declared release candidate Host')
   const root = await mkdtemp(join(tmpdir(), 'eduwork-skill-host-'))
@@ -101,6 +101,20 @@ test('real Host follows optional Shared attachment, provider/credential changes,
     const all = ['artifact-documents', 'artifact-images', 'institution-search', 'knowledge-studio']
     await eventually(names, publicOnly) // Public products need no Shared package.
     assert.ok(!(await ctx.skills.get('artifact-documents',{cwd:root})).content.includes('Shared official workflow'))
+    let invalidations = 0
+    ctx.on('skills/change', () => { invalidations++ })
+    const document = join(skills, 'artifact-documents/SKILL.md')
+    const observed = (path, actor) => ctx.emit('fs/observed', { displayPath: path }, { kind: 'present', version: 'synthetic' }, actor)
+    for (const name of ['write', 'edit']) {
+      await writeFile(document, `---\nname: artifact-documents\ndescription: Updated by ${name}\n---\nUpdated workflow\n`)
+      const before = invalidations
+      for (const actor of [undefined, {}, { name: 'read' }]) observed(document, actor)
+      observed(join(root, 'outside.txt'), { name })
+      assert.equal(invalidations, before)
+      observed(document, { name })
+      assert.equal(invalidations, before + 1, 'Host writes invalidate immediately, without waiting for the filesystem watcher')
+      assert.equal((await ctx.skills.list({ cwd: root })).find(skill => skill.name === 'artifact-documents').description, `Updated by ${name}`)
+    }
 
     let shared = ctx.plugin(SharedFixture)
     await shared

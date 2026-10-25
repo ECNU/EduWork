@@ -1,7 +1,8 @@
-// macOS arm64 stages: locked native inputs, Electron.app assembly, packaged
+// macOS arm64/x64 stages: locked native inputs, Electron.app assembly, packaged
 // launch and installation-image acceptance. The shared spine lives in
 // pinned-source-stages.mjs; this file only adds what is macOS-specific, so the
 // release orchestrator itself has no platform branch.
+import { macosArchitecture } from './macos-architecture.mjs'
 import { createWriteStream } from 'node:fs'
 import { readFile, rm } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
@@ -36,12 +37,13 @@ export function macosStages({
   recipe = 'pinned-source', deltaBases = [],
 }) {
   desktopBuildRecipe(recipe)
+  const target = macosArchitecture()
   return [
     // Native inputs depend only on the lock file, never on the product, so a
     // product change does not rebuild OpenSSL or whisper.cpp.
     stage({
       name: 'native-inputs',
-      description: 'macOS arm64 native inputs',
+      description: 'macOS arm64/x64 native inputs',
       outputs: ['inputs'],
       inputs: async (workspace) => ({
         lock: await sha256File(join(coreRoot, 'config/macos-native.lock.json')),
@@ -143,11 +145,12 @@ export function macosStages({
         const appName = receipt.applicationName
         const installer = await prepareMacosDmg({
           app: join(workspace.resolvePath('unpacked'), appName),
-          output: join(publish, `${name}-${version}-macos-arm64-electron.dmg`),
+          output: join(publish, `${name}-${version}-${target.archivePlatform}-electron.dmg`),
           workDirectory: workspace.resolvePath('dmg-work'),
           coreRoot,
         })
         const deltas = await createMacDeltas({
+          arch: target.arch,
           binaryDelta: workspace.resolvePath('sparkle/bin/BinaryDelta'),
           app: join(workspace.resolvePath('unpacked'), appName),
           archiveBytes: receipt.asset.bytes,
@@ -189,7 +192,7 @@ export function macosStages({
   ]
 }
 
-async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap }) {
+export async function acceptMacos({ workspace, coreRoot, name, verifyPublisherBootstrap }) {
   const desktop = workspace.resolvePath('desktop')
   const pack = await readJSON(join(desktop, 'release-receipt.json'))
   const archive = join(desktop, pack.asset.name)

@@ -1,5 +1,13 @@
 # 变更记录 / Changelog
 
+## 0.1.1 — 2026-10-24
+
+- 随 npm 包提供中英文自托管中继部署指南：固定版本启动、Key、HTTPS/Nginx、路径前缀、systemd、OIDC、iframe 与排错。
+- 澄清同源集成的信任范围，以及直接终端接口与 Agent 权限的区别；运行代码与协议不变。
+
+- Include bilingual relay deployment guides covering pinned npm startup, access keys, HTTPS/Nginx, path prefixes, systemd, OIDC, iframe integration and troubleshooting.
+- Clarify same-origin trust boundaries and direct terminal APIs versus Agent permissions; runtime code and protocol are unchanged.
+
 ## 0.1.0 — 2026-10-23
 
 - 首个版本：在手机或其他电脑的浏览器中使用本机的 DSH，包含 DSH 插件与设置页、可自托管的中继和网页客户端。

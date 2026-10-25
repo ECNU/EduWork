@@ -1,13 +1,14 @@
 import { assertPinnedNodeVersion } from './lib/node-runtime-contract.mjs'
-// End-to-end macOS arm64 Electron development and stable pipeline: Web CI
+// End-to-end macOS arm64/x64 Electron development and stable pipeline: Web CI
 // (build-only), Host, desktop product, native inputs, Electron.app assembly,
 // packaged launch acceptance and the release receipt. Node.js port of
-// ci-eduwork-macos-release.ps1. Requires a macOS arm64 runner.
+// ci-eduwork-macos-release.ps1. Requires a macOS arm64/x64 runner.
 //
 // The work itself lives in stage declarations: pinned-source-stages.mjs holds
 // the spine every platform shares, macos-stages.mjs adds what is macOS-specific.
 // This file validates the arguments, enters the workspace and writes the
 // receipt; it contains no build steps and no platform branch.
+import { macosArchitecture } from './lib/macos-architecture.mjs'
 import { join } from 'node:path'
 import { readFile } from 'node:fs/promises'
 import { parseArgs } from 'node:util'
@@ -47,7 +48,8 @@ export async function ciEduworkMacosRelease({
 } = {}) {
   recipe = desktopBuildRecipe(recipe)
   assertPinnedNodeVersion()
-  if (!isMacOS || process.arch !== 'arm64') throw new Error('Use a macOS arm64 runner')
+  if (!isMacOS) throw new Error('Use a native macOS runner')
+  const target = macosArchitecture()
   const pythonVersion = (await capture('python3', ['-c', 'import sys; print(".".join(map(str, sys.version_info[:2])))'])).trim()
   if (Number(pythonVersion.split('.')[0]) < 3 || Number(pythonVersion.split('.')[1]) < 10) {
     throw new Error(`macOS DMG packaging requires Python 3.10 or newer; found ${pythonVersion}`)
@@ -83,10 +85,11 @@ export async function ciEduworkMacosRelease({
   }
 
   if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
-  const bases = await deltaBaseArchives(deltaBases, version)
+  const bases = await deltaBaseArchives(deltaBases, version, target.archivePlatform)
   const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
 
   const parameters = {
+    arch: target.arch,
     kind: 'eduwork-macos-release',
     version,
     edition: name,
@@ -115,7 +118,7 @@ export async function ciEduworkMacosRelease({
     kind: 'eduwork-macos-release',
     version,
     edition: name,
-    platform: 'macos-arm64',
+    platform: target.archivePlatform,
     shell: 'electron',
     validationProfile: 'ci-build-and-launch-v1',
     developerIDSigned: false,
@@ -140,7 +143,7 @@ export async function ciEduworkMacosRelease({
     root: output,
     parameters,
     stages,
-    platform: 'macos-arm64',
+    platform: target.archivePlatform,
     lockWaitMs,
     ...(digestBudget > 0 ? { digestBudget } : {}),
   })

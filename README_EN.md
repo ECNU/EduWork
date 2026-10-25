@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.2](https://img.shields.io/badge/DSH-0.2.1--rc.2-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.2) [![Platform: Windows x64 / macOS arm64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -46,6 +46,8 @@ Plugins provide executable capabilities, service connections, and interfaces. Th
 | [Literature search](packages/dsh-literature/README_EN.md) · `@eduwork/dsh-literature` | Search DBLP and arXiv, retrieve BibTeX and available full text. | Forked from [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature), maintained by EduWork; additional sources are planned. |
 | [Local memory](packages/dsh-memory/README_EN.md) · `@eduwork/dsh-memory` | Manage local memory and retrieve earlier conversations to carry context forward. | Managed locally. |
 | [Mail assistant](packages/dsh-mail/README_EN.md) · `@eduwork/dsh-mail` | Read IMAP mail and send through SMTP with authorization. | A connected mailbox and appropriate permissions. |
+| [Response annotations](packages/dsh-annotation/README_EN.md) · `@eduwork/dsh-annotation` | Quote reply excerpts, add and edit comments, and send multiple annotations with source numbers. | Bundled from 0.4.8, using the native DSH composer and drafts. |
+| [Remote access](packages/dsh-remote-access/README_EN.md) · `@eduwork/dsh-remote-access` | Continue local conversations and respond to approvals from a phone or another computer's browser; pair locally and revoke devices. | Bundled from 0.4.8, with remote connections off by default. [Deploy a relay](packages/dsh-remote-access/docs/DEPLOYMENT_EN.md), then configure its URL and access Key. |
 | [Browser](dsh-plugins/tool-browser/README_EN.md) and [media integration](dsh-plugins/media-openai/README_EN.md) | Browse web pages; connect OpenAI-compatible image generation and cloud TTS. | Web access; separately configured cloud media services. |
 | [Skill management](dsh-plugins/skill-settings-native/README_EN.md) and [workbench settings](dsh-plugins/workbench-native/README_EN.md) | Manage skills, import history, and configure notifications and updates. | Included with the distribution. |
 | [Desktop pet](packages/dsh-desktop-pet/README_EN.md) · `@eduwork/dsh-desktop-pet` | A small pet on the desktop that follows your conversations and opens the one that needs you or has finished; choose its character and size. | Independent npm plugin, bundled with the client; requires the EduWork desktop bridge. Off by default; enable under Settings → Desktop pet. |
@@ -151,14 +153,14 @@ We want this space to support more ways to create and learn. Additional Studios 
 
 Each client runs independently on its user's computer, without a separate EduWork server. Model services come from your chosen provider or organization.
 
-Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64)**. Extract the portable Windows package to run it; on Mac, extract the package and move the included `.app` application to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
+Desktop packages support **Windows x64** and **macOS 15+ on Apple Silicon (arm64) and Intel (x64, from 0.4.8)**. Extract the portable Windows package to run it; on Mac, extract the package and move the included `.app` application to Applications. Mac packages do not yet have Apple Developer ID signing or notarization, so the first launch may show a system security prompt. See the [macOS notes](docs/MACOS.md).
 
 ### 1. Get the client
 
 Download the complete desktop package for your platform from [GitHub Releases](https://github.com/ecnu/EduWork/releases):
 
 - **Windows x64:** extract into a writable directory and run `EduWork-Electron.exe`. Keep the accompanying resource files; do not copy just the EXE.
-- **macOS arm64:** extract the package, move the included `.app` application to Applications, and open it. Configuration and user data live in the user directory.
+- **macOS arm64 / x64:** choose the package for your chip, extract the package, move the included `.app` application to Applications, and open it. Configuration and user data live in the user directory.
 
 GitHub's Source code archives are not desktop packages. See the [build guide](docs/BUILD.md) to run from source.
 

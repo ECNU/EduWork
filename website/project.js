@@ -114,7 +114,7 @@ fetch('./assets/data/community.json').then(response=>{if(!response.ok)throw new 
   $$('[data-stat]').forEach(element=>element.textContent=values[element.dataset.stat]);
   renderDataDate();
   renderChart();
-  for(const asset of data.release.assets){const type=asset.name.endsWith('setup.zip')?'windows':asset.name.endsWith('.dmg')?'mac':null;if(type){$(`#download-${type}`).href=asset.url;$(`#${type}-size`).textContent=`${(asset.size/1024/1024).toFixed(1)} MiB · ${data.release.tag}`;}}
+  for(const asset of data.release.assets){const type=asset.name.endsWith('setup.zip')?'windows':asset.name.endsWith('-macos-arm64-electron.dmg')?'mac':asset.name.endsWith('-macos-x64-electron.dmg')?'mac-intel':null;if(type){$(`#download-${type}`).hidden=false;$(`#download-${type}`).href=asset.url;$(`#${type}-size`).textContent=`${(asset.size/1024/1024).toFixed(1)} MiB · ${data.release.tag}`;}}
 }).catch(()=>{
   dataFailed=true;
   renderDataDate();
@@ -135,6 +135,7 @@ function renderLanguage() {
     $('#download-title [data-stat]').textContent=t('稳定版');
     $('#windows-size').textContent=t('查看最新 Release');
     $('#mac-size').textContent=t('查看最新 Release');
+    $('#mac-intel-size').textContent=t('查看最新 Release');
   }
   renderDataDate();
   renderChart();

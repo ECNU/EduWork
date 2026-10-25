@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-oidc",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Standards-based OIDC identity, token-authorized model access, declarative branding, and OpenAI-compatible model integration for DeepSeek Harness",
   "keywords": [
     "deepseek-harness",
@@ -85,7 +85,8 @@
     "check:docs": "node scripts/check-doc-links.mjs",
     "check:dsh": "npm run check:lock && node scripts/check-dsh-rc1.mjs",
     "check:build": "node scripts/smoke-build.mjs",
-    "check": "npm run typecheck && npm run check:dsh && npm run build && npm run check:build && npm test && npm run check:schemas && npm run check:docs && npm run check:secrets && npm run check:licenses && npm pack --dry-run",
+    "check:startup": "node scripts/check-startup-imports.mjs",
+    "check": "npm run typecheck && npm run check:dsh && npm run build && npm run check:build && npm run check:startup && npm test && npm run check:schemas && npm run check:docs && npm run check:secrets && npm run check:licenses && npm pack --dry-run",
     "prepare": "npm run build",
     "check:browser": "node scripts/check-account-menu-browser.mjs",
     "check:lock": "node scripts/check-dependency-lock.mjs"

@@ -11,7 +11,7 @@ export async function relocateMacosCompositor({ packageRoot, receipt } = {}) {
   if (!isMacOS) throw new Error('Mach-O relocation requires macOS')
   packageRoot = fullPath(packageRoot)
   const manifest = await readJSON(join(packageRoot, 'package.json'))
-  if (manifest.name !== '@remotion/compositor-darwin-arm64') throw new Error('Expected the pinned arm64 compositor package')
+  if (!['arm64', 'x64'].includes(process.arch) || manifest.name !== `@remotion/compositor-darwin-${process.arch}`) throw new Error('Compositor package differs from the native runner architecture')
   const records = []
   const entries = (await readdir(packageRoot, { withFileTypes: true }))
     .filter(entry => entry.isFile() || entry.isSymbolicLink())

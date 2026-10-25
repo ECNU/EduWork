@@ -208,7 +208,7 @@ test('replacement requires approval and a running destination is never replaced'
   }
 })
 
-// Exercise the built rc.2 entry and its actual single-instance, quit and backend
+// Exercise the built native entry and its actual single-instance, quit and backend
 // controllers. Only Electron, product preparation and the Host are substituted.
 const source = process.env.EDUWORK_TEST_NATIVE_SHELL && pathToFileURL(resolve(process.env.EDUWORK_TEST_NATIVE_SHELL, 'src') + '/')
 const electron = 'data:text/javascript,export {}'
@@ -234,6 +234,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
+    const bootBrand = () => ({ name: 'Synthetic EduWork', logo: '' })
     const prior = process.env.EDUWORK_LAUNCHER_TEST
     process.env.EDUWORK_LAUNCHER_TEST = 'launcher-owned'
     t.after(() => { if (prior === undefined) delete process.env.EDUWORK_LAUNCHER_TEST; else process.env.EDUWORK_LAUNCHER_TEST = prior })
@@ -260,9 +261,10 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: error => {
         assert.equal(scenario, 'host-failure'); assert.equal(error.message, 'synthetic Host failure')
         calls.push('recovery'); completed()
-      },
+      }, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
+      desktopBootBrand: bootBrand,
     })
     mock('eduwork-host-process.mjs', { staticDesktopResponse: () => undefined, DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
@@ -275,7 +277,8 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         await new Promise(resolve => setImmediate(resolve))
         assert.equal(calls.includes('window-show'), false, 'the main window must remain hidden until the Host is ready')
         app.emit('second-instance')
-        assert.equal(calls.includes('window-show'), false, 'repeated launch must not reveal the unready window')
+        assert.equal(calls.at(-1), 'activate-current-window', 'repeated launch must use the shared window selection')
+        assert.equal(calls.includes('window-show'), false)
         if (scenario === 'host-failure') throw new Error('synthetic Host failure')
         if (scenario === 'quit-during-host') app.quit()
         calls.push('host-ready')
@@ -284,10 +287,12 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     } })
     mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
       assert.equal(options.pickDirectory, pickDirectory)
+      assert.equal(options.bootBrand, bootBrand)
       return { attach() {}, dispose() {} }
     } })
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: assert.fail })
-    mock('main.ts', { createWindow: () => {
+    mock('main.ts', { createWindow: (_preload, _show, _primary, locale) => {
+      assert.equal(typeof locale, 'function')
       calls.push('window')
       return mainWindow = Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {
         await new Promise(resolve => setImmediate(resolve))
@@ -303,13 +308,13 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       t.after(() => clearTimeout(timer))
     })])
     if (scenario === 'installed') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'host-ready', 'desktop-ready', 'window-show'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
       app.emit('second-instance')
-      assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
+      assert.equal(calls.at(-1), 'activate-current-window')
     } else if (scenario === 'deferred-presentation' || scenario === 'deferred-restored-completion') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'host-ready', 'desktop-ready', 'window-show'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
     } else if (scenario === 'deferred-hidden-completion') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'host-ready', 'desktop-ready'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
       attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
       app.emit('activate')
       assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])

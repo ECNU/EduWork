@@ -1,7 +1,7 @@
 import { assertPreparedNode } from '../../scripts/lib/node-runtime-contract.mjs'
-// Assembles the unsigned macOS arm64 Electron candidate: Electron.app payload,
+// Assembles the unsigned macOS arm64/x64 Electron candidate: Electron.app payload,
 // frozen product, native relocations, optional Sparkle updater, ad-hoc signed
-// ZIP. Node.js port of assemble-macos.ps1. Requires macOS arm64.
+// ZIP. Node.js port of assemble-macos.ps1. Requires macOS arm64/x64.
 import { chmod, mkdir, mkdtemp, readdir, rename, rm, unlink } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 import { tmpdir } from 'node:os'
@@ -16,6 +16,8 @@ import { pruneRuntimeFiles } from '../../scripts/lib/runtime-file-policy.mjs'
 import { relocateMacosCompositor } from './relocate-macos-compositor.mjs'
 import { createMacOSAppArchive } from './create-macos-archive.mjs'
 import { pruneElectronLocales } from './electron-locales.mjs'
+
+import { macosArchitecture } from '../../scripts/lib/macos-architecture.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -58,7 +60,7 @@ export async function assembleMacos({
   sparklePublicEDKey = '',
 } = {}) {
   if (!isMacOS) throw new Error('The macOS Electron candidate must be assembled on macOS')
-  if (process.arch !== 'arm64') throw new Error('This first macOS packaging flow supports arm64 only')
+  const target = macosArchitecture()
   product = fullPath(product)
   shellBuild = fullPath(shellBuild)
   electronRuntime = fullPath(electronRuntime)
@@ -138,12 +140,12 @@ export async function assembleMacos({
   }
   await mkdir(join(resources, 'product'))
   await rsync(product, join(resources, 'product')).catch(() => { throw new Error('Product copy failed') })
-  const runtimeFiles = await pruneRuntimeFiles(join(resources, 'product'), 'darwin-arm64')
+  const runtimeFiles = await pruneRuntimeFiles(join(resources, 'product'), target.platform)
   await relocateMacosCompositor({
-    packageRoot: join(resources, 'product/d/node_modules/@remotion/compositor-darwin-arm64'),
+    packageRoot: join(resources, `product/d/node_modules/@remotion/compositor-${target.platform}`),
     receipt: join(resources, 'compositor-relocation.json'),
   })
-  const ladybugPackage = join(resources, 'product/d/node_modules/@ladybugdb/core-darwin-arm64')
+  const ladybugPackage = join(resources, `product/d/node_modules/@ladybugdb/core-${target.platform}`)
   const ladybugNative = join(ladybugPackage, 'lbugjs.node')
   const sslSource = join(openssl, 'lib/libssl.3.dylib')
   const cryptoSource = join(openssl, 'lib/libcrypto.3.dylib')
@@ -305,7 +307,7 @@ export async function assembleMacos({
     distribution: identity.distribution,
     productName: identity.brand.product.name,
     applicationName: appName,
-    platform: 'darwin-arm64',
+    platform: target.platform,
     electronVersion,
     electronLocales,
     nodeVersion: receipt.host.nodeVersion,
@@ -330,7 +332,7 @@ export async function assembleMacos({
   await run(node, [join(scriptRoot, '../../scripts/write-bundled-skills-manifest.mjs'), '--root', app, '--product', join(resources, 'product'), '--output', join(resources, 'bundled-skills.json')])
     .catch(() => { throw new Error('Bundled Skills integrity manifest failed') })
   const archiveQualifier = externalPublisherConfig ? '-external-config' : ''
-  const archive = join(output, `${editionName}-${version}-macos-arm64-electron${archiveQualifier}.zip`)
+  const archive = join(output, `${editionName}-${version}-${target.archivePlatform}-electron${archiveQualifier}.zip`)
   const signingRoot = await mkdtemp(join(tmpdir(), 'eduwork-macos-'))
   const signingApp = join(signingRoot, appName)
   const temporaryArchive = join(signingRoot, basename(archive))
@@ -352,7 +354,7 @@ export async function assembleMacos({
   await writeText(`${archive}.sha256`, `${sha}  ${basename(archive)}`)
   release.asset = { name: basename(archive), bytes: (await statEntry(archive)).size, sha256: sha }
   await writeJSON(join(output, 'release-receipt.json'), release)
-  console.log(`Unsigned macOS arm64 candidate ready: ${app}`)
+  console.log(`Unsigned macOS arm64/x64 candidate ready: ${app}`)
   console.log(`ZIP: ${archive}`)
   return { app, archive, release }
 }

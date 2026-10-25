@@ -2,6 +2,17 @@
 
 [简体中文](CHANGELOG.md) | **English**
 
+## 0.2.3 — 2026-10-25
+
+- Update embedded Nodemailer to 10.2.1 and Mailparser to 3.12.4, fixing denial of service from crafted email addresses and address-parsing issues, including [GHSA-v53p-9fqp-m79j](https://github.com/advisories/GHSA-v53p-9fqp-m79j) and [GHSA-prgh-xp8r-p3m5](https://github.com/advisories/GHSA-prgh-xp8r-p3m5). Downstream overrides cannot replace dependencies in an old JS bundle; upgrade the plugin.
+- Ship an inventory of dependencies actually bundled into the package. Publication checks query advisories for these versions and verify every JS file's hash in the final tarball, including lazily loaded mail protocol code.
+- Add synthetic regressions for crafted addresses, ordinary MIME reading, read-only IMAP and local SMTP submission; preserve lazy loading, read/send switches and approval boundaries.
+
+## 0.2.2 — 2026-10-24
+
+- Load mail protocol and parsing libraries on the first mail tool call, reducing module evaluation during plugin startup; concurrent calls share module loading.
+- Preserve read-only IMAP, reading/sending switches, send approvals and attachment permission boundaries, including existing failure and cancellation handling.
+
 ## 0.2.1 — 2026-10-22
 
 - Show email-send and attachment-save approval prompts in the active DSH UI language (Chinese or English), using the official approval panel.

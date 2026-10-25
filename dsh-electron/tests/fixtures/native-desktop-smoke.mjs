@@ -7,6 +7,7 @@ import assert from 'node:assert/strict'
 import { installNativeDesktopBridge } from 'fixture-bridge'
 import { staticDesktopResponse } from 'fixture-static'
 import { DesktopDirectoryPicker } from '../../src/directory-picker.mjs'
+import { DesktopExit } from '../../src/desktop-exit.mjs'
 import { createWindow } from 'fixture-window'
 import { DesktopBackendController } from 'fixture-backend'
 import { DesktopQuitConfirmation } from 'fixture-quit'
@@ -52,10 +53,20 @@ app.whenReady().then(async () => {
   </body></html>`)
   await writeFile(join(webRoot, 'assets', 'marker.txt'), 'static-before-host')
   const picker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
+  const bootLogo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII='
+  let bootBrand = { name: 'Synthetic EduWork', logo: bootLogo }
   bridge = installNativeDesktopBridge({ getHost: () => host, waitForHost: () => hostWait(), getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },
     checkUpdates: async () => ({}), pickDirectory: signal => picker.pick(signal),
-    bootBrand: () => 'Synthetic EduWork' })
+    bootBrand: () => bootBrand })
+  const visibilityRoles = () => Menu.getApplicationMenu().items[0].submenu.items
+    .map(item => item.role).filter(role => ['hide', 'hideothers', 'unhide'].includes(role))
+  const expectedVisibilityRoles = process.platform === 'darwin' ? ['hide', 'hideothers', 'unhide'] : []
+  assert.deepEqual(visibilityRoles(), expectedVisibilityRoles, 'application visibility commands must be ready before Host boot')
+  assert.equal(Menu.getApplicationMenu().items.some(item => item.role === 'windowmenu'), process.platform === 'darwin')
+  assert.equal(Menu.getApplicationMenu().items[0].submenu.items[0].role, 'about')
+  assert.ok(Menu.getApplicationMenu().items.find(item => item.role === 'viewmenu').submenu.items
+    .some(item => item.role === 'toggledevtools' && item.accelerator === 'F12'))
   // Exercise real native windows before/after application-menu refresh, including
   // the separate recovery-window path. Alt must not resurrect a removed menu.
   const progress = new BrowserWindow({ show: false, width: 580, height: 280 })
@@ -69,7 +80,7 @@ app.whenReady().then(async () => {
       ? new Response('host:' + new URL(request.url).pathname, { headers: { 'content-type': 'text/plain' } })
       : new Response(null, { status: 503 })
   })
-  mainWindow = createWindow(preload, false, true)
+  mainWindow = createWindow(preload, false, true, () => bridge.locale())
   bridge.attach(mainWindow)
   await mainWindow.loadURL('dsh-app://app/index.html')
   const evaluate = code => mainWindow.webContents.executeJavaScript(code, true)
@@ -85,10 +96,37 @@ app.whenReady().then(async () => {
   assert.equal(await evaluate(`fetch('/api/settings/describe').then(response => response.text())`), 'host:/api/settings/describe')
   results.push('shell static document and assets load before the Host; API stays behind readiness; POST is rejected')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Synthetic EduWork')
+  const brandStyle = () => evaluate(`(() => {
+    const node = document.querySelector('[data-dsh-boot] > div > div'), css = getComputedStyle(node)
+    return { image: css.backgroundImage, size: css.backgroundSize, padding: css.paddingTop, children: node.childElementCount }
+  })()`)
+  assert.deepEqual(await brandStyle(), { image: `url("${bootLogo}")`, size: '48px 48px', padding: '64px', children: 0 })
+  // BootPage reuses this node when progress becomes a failure report. Branding
+  // must survive without replacing official content or injecting extra nodes.
+  await evaluate(`{
+    const card = document.querySelector('[data-dsh-boot] > div'), wordmark = card.firstElementChild
+    const report = document.createElement('div'); report.textContent = 'Failed to load plugins'
+    card.replaceChildren(wordmark, report)
+  }`)
+  assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
+  assert.equal(await evaluate(`document.querySelector('[data-dsh-boot] > div').lastElementChild.textContent`), 'Failed to load plugins')
   mainWindow.webContents.send('eduwork:boot-brand', 'Updated Brand')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Updated Brand')
+  assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
+  mainWindow.webContents.send('eduwork:boot-brand', { name: 'Without logo', logo: '' })
+  await until(async () => (await brandStyle()).image === 'none')
+  assert.equal((await brandStyle()).padding, '0px')
+  mainWindow.webContents.send('eduwork:boot-brand', { name: 'No remote logo', logo: 'https://invalid.example/logo.png' })
+  await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'No remote logo')
+  assert.equal((await brandStyle()).image, 'none')
+  bootBrand = 'Text-only fallback'
+  await mainWindow.loadURL('dsh-app://app/index.html')
+  await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Text-only fallback')
+  assert.equal((await brandStyle()).image, 'none')
+  bootBrand = { name: 'Synthetic EduWork', logo: bootLogo }
   await mainWindow.loadURL('dsh-app://app/index.html')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Synthetic EduWork')
+  assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
   mainWindow.webContents.debugger.attach('1.3')
   try {
     await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
@@ -96,7 +134,7 @@ app.whenReady().then(async () => {
     await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('[data-dsh-boot-spinner]')).animationName`), 'fixture-spin')
   } finally { mainWindow.webContents.debugger.detach() }
-  results.push('upstream BootPage wordmark follows the desktop identity, including reloads, and honors reduced motion')
+  results.push('BootPage local logo and name survive failure/reload; missing/remote logos fall back to text, and reduced motion is preserved')
   let releaseHost
   hostWait = () => new Promise(resolve => { releaseHost = resolve })
   let bootSettled = false
@@ -111,20 +149,46 @@ app.whenReady().then(async () => {
   hostWait = async () => {}
   results.push('boot IPC joins the pending startup, returns the ready Host and propagates failure')
   assert.equal((await evaluate('__DSH_LOCALE__.read()')).preference, 'zh')
+  assert.deepEqual(visibilityRoles(), expectedVisibilityRoles, 'locale refresh must preserve application visibility commands')
+  results.push('application visibility commands match the platform before Host boot and after locale refresh')
   const nativeMenu = () => Menu.getApplicationMenu()
-  assert.deepEqual(nativeMenu().items.slice(-2).map(item => item.label), ['编辑', '视图'])
-  assert.equal(nativeMenu().items[0].submenu.items[0].label, '检查更新…')
+  if (process.platform === 'darwin') {
+    assert.ok(nativeMenu().items[0].submenu.items.find(item => item.role === 'hide').label.includes(app.getName()))
+  }
+  assert.equal(nativeMenu().items.find(item => item.role === 'editmenu').label, '编辑')
+  assert.equal(nativeMenu().items.find(item => item.role === 'viewmenu').label, '视图')
+  assert.ok(nativeMenu().items[0].submenu.items.some(item => item.label === '检查更新…'))
+  assert.equal(nativeMenu().items[0].submenu.items[0].label, `关于 ${app.getName()}`)
   assert.ok(nativeMenu().items.find(item => item.role === 'editmenu').submenu.items.some(item => item.role === 'copy'))
   if (process.platform === 'win32') {
+    mainWindow.show(); mainWindow.focus()
+    await until(() => mainWindow.isFocused())
     assert.deepEqual(await evaluate(`Array.from(document.querySelector('[data-windows-menu]').shadowRoot.querySelectorAll('button'),element=>element.textContent)`), ['应用', '编辑'])
     await evaluate(`document.documentElement.lang='en'`)
     await until(async () => (await evaluate(`document.querySelector('[data-windows-menu]').shadowRoot.querySelector('button').textContent`)) === 'Application')
+    await until(() => nativeMenu().items.find(item => item.role === 'editmenu').label === 'Edit')
+    await evaluate(`document.body.insertAdjacentHTML('beforeend','<input id="edit-fixture" value="ab">'); const input=document.querySelector('#edit-fixture');input.focus();input.setSelectionRange(1,2);window.editKeys=[];input.addEventListener('keydown',event=>editKeys.push({key:event.key,ctrl:event.ctrlKey}))`)
+    const buildMenu = Menu.buildFromTemplate
+    let editItems
+    Menu.buildFromTemplate = items => ({ popup: options => { editItems = items; options.callback() } })
+    try {
+      await evaluate(`document.querySelector('[data-windows-menu]').shadowRoot.querySelectorAll('button')[1].click()`)
+      await until(() => editItems !== undefined)
+    } finally { Menu.buildFromTemplate = buildMenu }
+    const commands = editItems.filter(item => item.type !== 'separator')
+    assert.deepEqual(commands.map(item => item.label), ['Undo', 'Redo', 'Cut', 'Copy', 'Paste', 'Delete', 'Select All'])
+    assert.equal(commands.find(item => item.label === 'Copy').accelerator, 'Ctrl+C')
+    commands.find(item => item.label === 'Delete').click()
+    await until(async () => (await evaluate('editKeys.length')) === 1)
+    assert.deepEqual(await evaluate('editKeys[0]'), { key: 'Delete', ctrl: false })
+    assert.equal(await evaluate(`document.querySelector('#edit-fixture').value`), 'a')
     results.push('sandboxed Windows caption menu mounts and responds to language changes')
   }
   await evaluate(`document.documentElement.lang='en'; __DSH_LOCALE__.onChange('en')`)
-  await until(() => nativeMenu().items.at(-1).label === 'View')
-  assert.equal(nativeMenu().items[0].submenu.items[0].label, 'Check for Updates…')
-  assert.equal(nativeMenu().items.at(-2).label, 'Edit')
+  await until(() => nativeMenu().items.find(item => item.role === 'viewmenu').label === 'View')
+  assert.ok(nativeMenu().items[0].submenu.items.some(item => item.label === 'Check for Updates…'))
+  assert.equal(nativeMenu().items.find(item => item.role === 'editmenu').label, 'Edit')
+  assert.equal(nativeMenu().items[0].submenu.items[0].label, `About ${app.getName()}`)
   if (process.platform !== 'darwin') {
     for (const window of [progress, recoveryWindow]) {
       assert.equal(window.isMenuBarVisible(), false)
@@ -231,6 +295,44 @@ app.whenReady().then(async () => {
     show: async () => { prompts++; return { response: answer } }, focus: () => {} })
   assert.equal(await confirmation.confirm(), false)
   answer = 0; assert.equal(await confirmation.confirm(), true); assert.equal(prompts, 2)
+  let inspections = 0, cleaned = 0, focused = 0
+  const quitOptions = { locale: () => resolveDesktopLocale('zh'), platform: 'win32', icon: {},
+    inspect: async () => { inspections++; return { activeTasks: false, scheduledTasks: true } },
+    show: async options => {
+      assert.equal(options.type, 'none'); assert.equal(options.icon, quitOptions.icon)
+      assert.deepEqual(options.buttons, ['退出', '取消'])
+      assert.match(options.detail, /定时任务/)
+      assert.equal(options.defaultId, 0); assert.equal(options.cancelId, 1)
+      return { response: 1 }
+    }, focus: () => { focused++ } }
+  const guard = new DesktopQuitConfirmation(quitOptions)
+  const exit = new DesktopExit({ confirm: () => guard.confirm(), close: async () => { cleaned++ }, quit() {}, relaunch: assert.fail, failed: assert.fail })
+  const firstQuit = exit.request()
+  assert.equal(exit.request(), firstQuit)
+  await firstQuit; assert.equal(cleaned, 0)
+  quitOptions.show = async () => ({ response: 0 })
+  await exit.request(); assert.equal(cleaned, 1); assert.equal(inspections, 2)
+  quitOptions.inspect = () => undefined
+  quitOptions.show = assert.fail
+  assert.equal(await guard.confirm(), true)
+  quitOptions.inspect = async () => ({ activeTasks: false, scheduledTasks: false })
+  assert.equal(await guard.confirm(), true)
+  const warnings = [], warn = console.warn
+  console.warn = (...args) => warnings.push(args)
+  try {
+    quitOptions.inspect = async () => { throw Error('synthetic private value') }
+    quitOptions.show = async prompt => { assert.match(prompt.detail, /中断/); return { response: 1 } }
+    assert.equal(await guard.confirm(), false)
+  } finally { console.warn = warn }
+  assert.deepEqual(warnings, [['desktop quit: task inspection unavailable']])
+  const pendingAnswer = Promise.withResolvers(), opened = Promise.withResolvers()
+  quitOptions.inspect = async () => ({ activeTasks: true, scheduledTasks: false })
+  quitOptions.show = () => { opened.resolve(); return pendingAnswer.promise }
+  const pendingQuit = guard.confirm()
+  assert.equal(guard.confirm(), pendingQuit)
+  await opened.promise; guard.dispose(); pendingAnswer.resolve({ response: 0 })
+  assert.equal(await pendingQuit, false); assert.equal(await guard.confirm(), false); assert.equal(focused, 1)
+  results.push('production upstream quit confirmation retains cancellation, idle checks, deduplication, disposal and safe diagnostics')
   let recoveryCalls = 0, recoveryStops = 0
   const recovery = new DesktopFatalRecovery({ messages: () => resolveDesktopLocale('zh').messages,
     show: async options => { assert.equal(options.buttons.length, 2); recoveryCalls++; return { response: 0 } },

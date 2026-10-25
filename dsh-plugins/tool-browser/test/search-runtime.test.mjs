@@ -13,14 +13,20 @@ test('pinned DSH volatile settings, live updates and official HTTP search work t
   const { Context } = await load('@deepseek-ai/cordis')
   const { Config } = await load('@deepseek-ai/dsh-web-search-deepseek')
   const { WebRuntime } = await load('@deepseek-ai/dsh-web')
-  const hook = registerHooks({ resolve(name, context, next) {
-    return name.startsWith('@deepseek-ai/') || name === 'playwright-core'
-      ? next(name, { ...context, parentURL: pathToFileURL(join(runtime, 'package.json')).href })
-      : next(name, context)
-  } })
+  const loaded = []
+  const hook = registerHooks({
+    resolve(name, context, next) {
+      return name.startsWith('@deepseek-ai/') || name === 'playwright-core'
+        ? next(name, { ...context, parentURL: pathToFileURL(join(runtime, 'package.json')).href })
+        : next(name, context)
+    },
+    load(url, context, next) { loaded.push(url); return next(url, context) },
+  })
   let auto
   try { auto = await import('../lib/search-auto.js') }
   finally { hook.deregister() }
+  assert.equal(loaded.some(url => url.includes('/playwright-core/')), false,
+    'playwright-core must load with the first search, not at startup')
 
   const received = []
   let status = 200

@@ -4,7 +4,7 @@ import { app, dialog, protocol, powerMonitor } from 'electron'
 import { fileURLToPath } from 'node:url'
 import { DesktopBackendController } from './backend-controller.ts'
 import { DesktopFatalRecovery } from './fatal-recovery.ts'
-import { DesktopQuitConfirmation } from './quit-confirmation.mjs'
+import { DesktopQuitConfirmation } from './quit-confirmation.ts'
 import { claimDesktopSingleInstance } from './single-instance.ts'
 import { writeCrashReport, pruneCrashReports } from './crash-report.ts'
 import { createWindow } from './main.ts'
@@ -14,12 +14,11 @@ import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from
 import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
-import { showDesktopWindow } from './window-visibility.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -93,7 +92,7 @@ async function handleStartupFailure(error) {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
-  if (!claimDesktopSingleInstance(app, () => started && showDesktopWindow(mainWindow))) return
+  if (!claimDesktopSingleInstance(app, showDesktop)) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({
     getHost: () => backend.host,
@@ -105,7 +104,7 @@ async function main() {
     onBootFailure: error => { if (startupFailure) { void handleStartupFailure(startupFailure); return } reportFatal(error, 'web-boot') },
     checkUpdates: checkProductUpdates,
     pickDirectory: pickDesktopDirectory,
-    bootBrand: () => app.getName(),
+    bootBrand: desktopBootBrand,
   })
   const webRoot = desktopWebRoot()
   protocol.handle(SCHEME, request => {
@@ -116,7 +115,7 @@ async function main() {
   })
   powerMonitor.on('shutdown', () => { sessionEnding = true })
 
-  mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true)
+  mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true, locale)
   const window = mainWindow
   bridge.attach(window)
   configureWindowNavigation(window)

@@ -207,7 +207,7 @@
   }
   const link = source => language === 'en' ? (docs[source] ?? source) : source;
   // Dynamic regions are rendered by project.js, using the current application state.
-  const dynamic = '[data-stat],#layer-description,#showcase-image,#showcase-title,#showcase-description,#plugin-count,#copy-status,#data-date,#star-chart,#windows-size,#mac-size,#lightbox-image,#lightbox-caption,#language-toggle,.menu-toggle';
+  const dynamic = '[data-stat],#layer-description,#showcase-image,#showcase-title,#showcase-description,#plugin-count,#copy-status,#data-date,#star-chart,#windows-size,#mac-size,#mac-intel-size,#lightbox-image,#lightbox-caption,#language-toggle,.menu-toggle';
   const bindings = [];
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {

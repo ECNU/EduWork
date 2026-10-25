@@ -110,6 +110,9 @@ export function apply(ctx, rawConfig = {}) {
   ctx.on('settings/document-updated', (namespace) => {
     if (namespace === SETTINGS_NAMESPACE) invalidate()
   })
+  ctx.on('fs/observed', (target, _observation, actor) => {
+    if (actor?.name === 'write' || actor?.name === 'edit') filesystem?.observeHostMutation?.(target.displayPath)
+  })
   // Native filesystem providers own watchers from 0.1.7 onward. A preset can
   // be disabled or reloaded while the Host stays alive; close those watchers.
   ctx.effect(() => () => filesystem?.dispose?.(), 'product skill filesystem watcher')

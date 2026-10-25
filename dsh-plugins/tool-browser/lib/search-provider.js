@@ -1,4 +1,3 @@
-import { chromium } from 'playwright-core'
 import { browserExecutable, directSearchResultURL, isCiteableSearchResultURL, isSearchResultRelevant, searchURL, webSearchResult } from './core.js'
 
 export const name = 'web-search-browser'
@@ -62,11 +61,12 @@ export function createBrowserSearchProvider(ctx) {
 
   async function searchBrowser() {
     if (browserPromise === undefined) {
-      browserPromise = chromium.launch({
+      // Keep playwright-core off the Host startup path; load it with the first search.
+      browserPromise = import('playwright-core').then(({ chromium }) => chromium.launch({
         executablePath: browserExecutable(),
         headless: true,
         args: ['--disable-component-update', '--no-default-browser-check'],
-      }).catch(error => {
+      })).catch(error => {
         browserPromise = undefined
         throw error
       })

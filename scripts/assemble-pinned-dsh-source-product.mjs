@@ -14,6 +14,7 @@ import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import { patchSettingsNavigationRuntime } from './patch-settings-navigation-runtime.mjs'
 import { patchChatUserContentRuntime } from './patch-chat-user-content-runtime.mjs'
 import { patchClientModuleMetadataRuntime } from './patch-client-module-metadata-runtime.mjs'
+import { patchEntryCustomizationRuntime } from './patch-entry-customization-runtime.mjs'
 import { patchRemotionBundlerRuntime } from './patch-remotion-bundler-runtime.mjs'
 import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
@@ -42,7 +43,7 @@ console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
 await writeFile(join(paths.output, 'd/.eduwork-plugin-install-lock.json'), pluginInstallLock)
 const modules = join(paths.output, 'd/node_modules')
-const runtimePatches = [await patchSessionSearchRuntime(modules), await patchSettingsNavigationRuntime(modules), await patchChatUserContentRuntime(modules), await patchClientModuleMetadataRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
+const runtimePatches = [await patchSessionSearchRuntime(modules), await patchSettingsNavigationRuntime(modules), await patchChatUserContentRuntime(modules), await patchClientModuleMetadataRuntime(modules), await patchEntryCustomizationRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
 const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's npm lock. Published plugin bytes must remain unchanged.
@@ -75,7 +76,9 @@ const insert = [
   ...distribution.plugins.map(row => ({ id: row.id, name: row.name, config: row.source === 'dsh-plugins/brand-settings-native' ? distribution.brand : row.config ?? {} })),
 ]
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
-const optionalBundles = ['@eduwork/dsh-annotation']
+// Provision the native settings entry once. The relay connection itself remains
+// off in remote-access's published patch until the user explicitly enables it.
+const optionalBundles = ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access']
 const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)

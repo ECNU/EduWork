@@ -89,6 +89,36 @@ test('refuses DSH family drift, missing integrity and unpinned direct dependenci
   assert.throws(() => validateNpmRuntimeLock(range), /Unpinned/)
 })
 
+test('0.2.1 rc.3 pins the new menu, independently published plugins and Node security version', async () => {
+  const directory = join(root, 'third_party/dsh/candidate-v0.2.1-rc.3')
+  const input = await contract(directory)
+  assert.equal(validateNpmRuntimeLock(input), input.lock.runtime.npm.packageLockSHA256)
+  assert.equal(input.lock.commit, '1f81c047fc48fa190a683e469daa699857e9afe8')
+  assert.equal(input.lock.node.version, '24.22.1')
+  assert.equal(input.packageLock.packages['node_modules/@deepseek-ai/dsh-client-ui-entry-customization'].version, '0.2.1-rc.3')
+  // Plugins can advance independently of the kernel. Check the current
+  // assembly inputs against their publication receipts, not an older release.
+  const manifest = await readJSON(join(directory, 'source-probe/package.json'))
+  const dependencies = await readJSON(join(directory, 'source-probe/package-lock.json'))
+  for (const file of ['annotation.json', 'artifact-services.json', 'desktop-pet.json', 'knowledge-studio.json', 'literature.json', 'mail.json', 'memory.json', 'oidc.json', 'remote-access.json']) {
+    const plugin = await readJSON(join(directory, file))
+    assert.equal(plugin.publicationStatus, 'published', file)
+    assert.match(plugin.commit, /^[a-f0-9]{40}$/, file)
+    assert.match(plugin.tarballSHA256, /^[a-f0-9]{64}$/, file)
+    assert.match(plugin.npm.integrity, /^sha512-[A-Za-z0-9+/]+={0,2}$/, file)
+    const tarball = new URL(plugin.npm.tarball)
+    assert.equal(tarball.origin, 'https://registry.npmjs.org', file)
+    assert.equal(tarball.username + tarball.password, '', file)
+    assert.equal(manifest.dependencies[plugin.name], plugin.version, file)
+    assert.equal(dependencies.packages[''].dependencies[plugin.name], plugin.version, file)
+    const installed = dependencies.packages['node_modules/' + plugin.name]
+    assert.equal(installed.version, plugin.version, file)
+    assert.equal(installed.resolved, plugin.npm.tarball, file)
+    assert.equal(installed.integrity, plugin.npm.integrity, file)
+  }
+  assert.deepEqual(await readJSON(join(directory, 'desktop-probe/package-lock.json')), await readJSON(join(root, 'third_party/dsh/candidate-v0.2.1-rc.2/desktop-probe/package-lock.json')))
+})
+
 test('npm preparation refuses to replace an existing directory', async t => {
   const output = await temporary(t)
   await writeFile(join(output, 'user-content.txt'), 'keep')

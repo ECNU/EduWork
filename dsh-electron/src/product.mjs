@@ -29,7 +29,7 @@ import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
-import { attachAppActivation, attachWindowVisibility } from './window-visibility.mjs'
+import { attachAppActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
@@ -47,6 +47,7 @@ const directoryPicker = new DesktopDirectoryPicker({ getWindow: () => mainWindow
 export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
 app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
+let bootLogoPath, bootLogo = ''
 let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
@@ -80,6 +81,8 @@ export function restartDesktop() {
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
 export function isQuitting() { return lifecycle.closing }
+const activationWindows = () => [progressWindow, updateCompleted ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
+export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
@@ -98,7 +101,7 @@ export function configureEduworkPaths() {
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
-  attachAppActivation({ app, windows: () => [progressWindow, updateCompleted ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))] })
+  attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
   // user closes the progress window before the Host becomes ready.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
@@ -117,6 +120,20 @@ export function desktopWebRoot() {
 }
 export function desktopStartupWindowPresent() {
   return Boolean(progressWindow && !progressWindow.isDestroyed())
+}
+export function desktopBootBrand() {
+  // Available before Host/plugins. Only a packaged image crosses the bridge;
+  // cache a small PNG, and leave the ordinary wordmark if the asset is missing.
+  try {
+    const icon = startupAppearance().icon
+    if (bootLogoPath !== icon) {
+      bootLogoPath = icon
+      bootLogo = ''
+      const image = nativeImage.createFromPath(icon)
+      if (!image.isEmpty()) bootLogo = image.resize({ width: 96, height: 96 }).toDataURL()
+    }
+  } catch { /* Cosmetic branding must never prevent startup or recovery. */ }
+  return { name: app.getName(), logo: bootLogo }
 }
 function startupAppearance() {
   const blue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
@@ -230,7 +247,7 @@ async function prepareDesktop() {
     if (progressWindow && !progressWindow.isDestroyed()) progressWindow.setTitle(user.product.name)
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setTitle(user.product.name)
-      try { mainWindow.webContents.send('eduwork:boot-brand', user.product.name) } catch { /* BootPage only */ }
+      try { mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand()) } catch { /* BootPage only */ }
     }
     refreshTray()
   }

@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-mail",
-  "version": "0.2.1",
+  "version": "0.2.3",
   "description": "Standards-based IMAP/SMTP mail assistant for DeepSeek Harness with explicit read/send controls and approval-aware delivery",
   "keywords": [
     "deepseek-harness",
@@ -40,7 +40,8 @@
     "SUPPORT.md",
     "SUPPORT.en.md",
     "THIRD_PARTY_NOTICES.md",
-    "THIRD_PARTY_NOTICES.en.md"
+    "THIRD_PARTY_NOTICES.en.md",
+    "lib/bundled-dependencies.json"
   ],
   "dsh": {
     "bundle": {
@@ -61,7 +62,7 @@
     "clean": "node scripts/clean.mjs",
     "build:host": "tsdown --config tsdown.host.config.ts",
     "build:client": "tsdown",
-    "build": "npm run clean && npm run build:host && npm run build:client",
+    "build": "npm run clean && npm run build:host && npm run build:client && node scripts/bundled-dependencies.mjs write",
     "typecheck": "tsc --noEmit",
     "test": "node --test",
     "test:coverage": "node --test --experimental-test-coverage",
@@ -75,8 +76,9 @@
     "check:licenses": "node scripts/check-licenses.mjs",
     "check:bundle": "node scripts/check-host-bundle.mjs",
     "check:dsh": "node scripts/check-dsh-compat.mjs",
-    "check": "npm run typecheck && npm run build && npm test && npm run check:bundle && npm run check:dsh && npm run check:docs && npm run check:secrets && npm run check:licenses && npm pack --dry-run",
-    "prepare": "npm run build"
+    "check": "npm run typecheck && npm run build && npm test && npm run check:bundle && node scripts/bundled-dependencies.mjs verify && npm run check:security && npm run check:dsh && npm run check:docs && npm run check:secrets && npm run check:licenses && npm pack --ignore-scripts --dry-run",
+    "prepare": "npm run build",
+    "check:security": "node scripts/bundled-dependencies.mjs audit"
   },
   "engines": {
     "node": ">=24.18.0"
@@ -139,8 +141,8 @@
     "@types/node": "^26.0.0",
     "@types/react": "^18.3.28",
     "imapflow": "^1.7.0",
-    "mailparser": "^3.9.23",
-    "nodemailer": "^9.1.0",
+    "mailparser": "3.12.4",
+    "nodemailer": "10.2.1",
     "react": "^18.3.1",
     "tsdown": "0.22.14",
     "typescript": "^5.9.3",

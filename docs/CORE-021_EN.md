@@ -2,10 +2,12 @@
 
 [中文](CORE-021.md)
 
-The current build recipe selects DSH `0.2.1-rc.2`, upstream commit `687f282e8625c6b8d11ff58211a90524be2e4317`. `config/desktop-build.json` points to the [candidate lock](../third_party/dsh/candidate-v0.2.1-rc.2/LOCK.json); npm Runtime, Host and Electron sources are verified separately. Product and core versions are independent. Selecting this recipe does not publish installers or change update feeds.
+The current build recipe selects DSH `0.2.1-rc.3`, upstream commit `1f81c047fc48fa190a683e469daa699857e9afe8`. `config/desktop-build.json` points to the [candidate lock](../third_party/dsh/candidate-v0.2.1-rc.3/LOCK.json); npm Runtime, Host and Electron sources are verified separately. Product and core versions are independent. Selecting this recipe does not publish installers or change update feeds.
 
 ## Capabilities and migration
 
+- rc.3 adds More menus to the left sidebar, conversation views and right sidebar, using the official plugin discovery entry. Creation keeps the native Creator session and append-draft policy without sending a message. When Show coding view or Creator is disabled, the item points to the relevant setting without enabling it automatically.
+- Use the upstream unsent-draft recovery fix while retaining drafts, attachments and annotation references. DeepSeek API-key mode uses the official dynamic model catalog; custom endpoints and catalogs keep their own configuration.
 - Reuse the official plugin manager, browser and Office capabilities. [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) ship as an independent npm package, also installable from the Plugins page in other compatible clients. The new DeepSeek Search / Fetch API providers use native settings; existing EduWork search defaults, user choices and browser fallback remain available.
 - Schedule is now part of the upstream base composition. Upgrades remove dependency and activation references to the retired experimental Schedule bundle while preserving task storage, settings and other plugins. The obsolete bundle is no longer installed.
 - Official developer tools are available as an optional bundle. Request capture is not enabled by default. Enable diagnostics through the official plugin mechanism when needed and inspect exported data.
@@ -18,7 +20,9 @@ Remove the loopback-address/ephemeral-port patch and the file-reference rescan u
 
 Active-session persistence can still disrupt searches: the relevant implementation in the locked npm package is byte-identical to the previous version. Keep the [search consistency backport](SESSION-SEARCH-BACKPORT.md), its complete file-hash check, and the upstream-failure/regression tests. Remove it when upstream provides an equivalent fix.
 
-The desktop follows DSH startup presentation: load the static page, then show the main window after the Host resolves its configuration. The upstream Host and client own the theme; configuration downloads, migrations and startup failures keep their existing dedicated windows.
+Keep the settings navigation icons, user-message annotation decoration seat and client-module metadata guard. rc.3 still treats the ctime change from unlinking a differential-update backup as a code rebuild; the guard skips a reload only when both mtime and code bytes are unchanged. The new menu gate respects edition preferences; upstream still owns preset registration, workspace selection and drafts.
+
+The desktop follows DSH startup presentation: load the static page in a hidden main window, show the window once the Host is ready, then let BootPage finish loading client plugins and enter the workspace. The upstream Host and client own the theme; branding, configuration downloads, migration and failure recovery keep their existing implementations. During startup, Dock activation and repeated launches can still restore a configuration download or error window without revealing the main window early.
 
 ## Building and verification
 
