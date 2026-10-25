@@ -18,7 +18,7 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -47,7 +47,10 @@ setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) 
 const recovery = new DesktopFatalRecovery({
   messages: () => locale().messages,
   show: options => dialog.showMessageBox(options),
-  stop: closeBackend,
+  stop: async () => {
+    // Preserve Host shutdown errors while the product cancels preparation and closes its resources.
+    await Promise.all([stopDesktopServices(), closeBackend()])
+  },
   disablePlugins: async () => { throw new Error('Required distribution plugins cannot be disabled') },
   exit: () => { recoveryExit = true; app.quit() },
   restart: () => { recoveryExit = true; restartDesktop() },

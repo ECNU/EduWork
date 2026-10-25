@@ -65,8 +65,7 @@ const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: async () => {
     await directoryPicker.close()
-    void contentUpdates?.close()
-    await lifecycle.close()
+    await stopDesktopServices()
     desktopPet?.close()
     taskNotifications?.close()
     tray?.destroy(); tray = undefined
@@ -77,6 +76,10 @@ const desktopExit = new DesktopExit({
 export function setDesktopQuitGuard(guard) { confirmQuit = guard }
 export function restartDesktop() {
   desktopExit.restart()
+}
+export function stopDesktopServices() {
+  void contentUpdates?.close()
+  return lifecycle.close()
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
@@ -459,9 +462,13 @@ export function checkProductUpdates() {
 export async function showDesktopFailure(error) {
   if (isQuitting() || desktopFailureShown) return
   desktopFailureShown = true
-  try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
+  let rolledBack
+  try { rolledBack = await contentUpdates?.rollback(error) }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
+  if (isQuitting()) return
+  if (rolledBack) { restartDesktop(); return }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
+  if (isQuitting()) return
   const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
@@ -470,16 +477,19 @@ export async function showDesktopFailure(error) {
   }
   progressWindow.setSize(660, page.executable ? 700 : 470)
   const { needsConfiguration } = page
+  const canRecover = () => !isQuitting() && progressWindow && !progressWindow.isDestroyed()
   let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
+    if (!canRecover()) return
     if (page.executable && url === 'eduwork-startup://copy/') {
       clipboard.writeText(page.diagnostics)
       void progressWindow.webContents.executeJavaScript("document.getElementById('copy-status').textContent = '已复制，可粘贴给维护人员。'").catch(()=>{})
     }
     if (page.executable && url === 'eduwork-startup://component/') {
-      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=>
-        dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message}))
+      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=> {
+        if (canRecover()) return dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message})
+      })
     }
     if (url === 'eduwork-startup://restart/' && !importing) {
       if (!needsConfiguration) restartDesktop()
@@ -487,8 +497,10 @@ export async function showDesktopFailure(error) {
         importing = true
         void (async () => {
           await retryPublisherContent(contentUpdates)
-          restartDesktop()
-        })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })).finally(() => { importing = false })
+          if (canRecover()) restartDesktop()
+        })().catch(error => {
+          if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })
+        }).finally(() => { importing = false })
       }
     }
     if (url === 'eduwork-startup://exit/') app.quit()
@@ -496,15 +508,21 @@ export async function showDesktopFailure(error) {
       importing = true
       void (async () => {
         const selected = await dialog.showOpenDialog(progressWindow, { title: '导入发行方提供的离线配置包', properties: ['openFile'], filters: [{ name: '签名内容包', extensions: ['json'] }] })
-        if (selected.canceled) return
+        if (selected.canceled || !canRecover()) return
         const path = selected.filePaths[0], info = await stat(path)
+        if (!canRecover()) return
         if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
-        await contentUpdates.importOffline(await readFile(path), { retryFailed: true })
-        restartDesktop()
-      })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
+        const bytes = await readFile(path)
+        if (!canRecover()) return
+        await contentUpdates.importOffline(bytes, { retryFailed: true })
+        if (canRecover()) restartDesktop()
+      })().catch(error => {
+        if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })
+      }).finally(() => { importing = false })
     }
   })
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
+  if (!canRecover()) return
   // Destroy the stale BootPage only after the recovery window exists; destroying
   // the last window first would quit the application on Windows. The tray must
   // not keep a show action bound to that stale window either.
