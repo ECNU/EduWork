@@ -1,22 +1,60 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { SideChatController } from '../src/client/controller.js'
+import { SideChatController, SideChatRegistry, addressOf } from '../src/client/controller.js'
 import { disallowedSideTool, SIDE_BOUNDARY } from '../src/boundary.js'
 
 test('window controller preserves the current chat and closes explicitly', async () => {
   const requests = []
   const controller = new SideChatController({ owner: () => 'a'.repeat(32), request: async input => {
     requests.push(input)
-    return input.action === 'open' ? { sessionId: 'side-fixture', leaseMs: 45_000 } : {}
+    return input.action === 'open' ? { sessionId: 'side-fixture' } : {}
   } })
   const chat = await controller.open('source', 3)
   assert.equal((await controller.open('source', 3)), chat)
   await assert.rejects(controller.open('source', 5), /onlyOne/)
   assert.equal(requests.filter(item => item.action === 'open').length, 1)
-  await controller.heartbeat()
+  await controller.retryCleanup()
   await Promise.all([controller.close(), controller.close()])
   assert.equal(requests.filter(item => item.action === 'close').length, 1)
   assert.equal(controller.snapshot.chat, undefined)
+})
+
+test('different source conversations own independent chats, drafts and closing state', async () => {
+  let sequence = 0
+  const registry = new SideChatRegistry({ owner: () => String(++sequence).padStart(32, 'x'), request: async input => input.action === 'open'
+    ? { sessionId: `side-${input.sourceSessionId}` } : {} })
+  const a = registry.forSource('source-a'), b = registry.forSource('source-b')
+  await Promise.all([a.open('source-a', 1), b.open('source-b', 2)])
+  a.queueReference('side-source-a', { ref: 'a-draft' })
+  b.queueReference('side-source-b', { ref: 'b-draft' })
+  assert.notEqual(a.snapshot.chat.owner, b.snapshot.chat.owner)
+  assert.equal(registry.forSource('source-a'), a)
+  assert.equal(registry.findSession('side-source-b'), b)
+  assert.equal(registry.findAddress(addressOf('side-source-a')), a)
+  await a.close()
+  assert.equal(registry.findSession('side-source-a'), undefined)
+  assert.equal(b.snapshot.phase, 'open')
+  assert.deepEqual(b.snapshot.references.map(item => item.reference.ref), ['b-draft'])
+  assert.equal(registry.findAddress(addressOf('side-source-b')), b)
+})
+
+test('failed cleanup in one source does not block creating or closing another side chat', async () => {
+  let sequence = 0, fail = true
+  const registry = new SideChatRegistry({ owner: () => String(++sequence).padStart(32, 'y'), request: async input => {
+    if (input.action === 'close' && input.sessionId === 'side-a' && fail) throw new Error('network')
+    return input.action === 'open' ? { sessionId: `side-${input.sourceSessionId}` } : {}
+  } })
+  const a = registry.forSource('a')
+  await a.open('a', 1)
+  await assert.rejects(a.close(), /network/)
+  const b = registry.forSource('b')
+  await b.open('b', 1)
+  await b.close()
+  assert.equal(a.snapshot.phase, 'closing')
+  assert.equal(b.snapshot.phase, 'idle')
+  fail = false
+  await registry.retryCleanup()
+  assert.equal(a.snapshot.phase, 'idle')
 })
 
 test('closing while creation is in flight never publishes the late reply', async () => {
@@ -70,23 +108,23 @@ test('failed cleanup is retryable and cannot open a replacement chat', async () 
   assert.equal(controller.snapshot.phase, 'closing')
   await assert.rejects(controller.open('source', 1), /onlyOne/)
   failure = false
-  await controller.heartbeat()
+  await controller.retryCleanup()
   assert.equal(controller.snapshot.chat, undefined)
 })
 
-test('an expired lease drops the chat, while a transient error retains it', async () => {
-  let status = 503
+test('cleanup polling never renews or closes an open chat and preserves its draft', async () => {
+  const requests = []
   const controller = new SideChatController({ owner: () => 'd'.repeat(32), request: async input => {
-    if (input.action === 'heartbeat') { const error = new Error('offline'); error.status = status; throw error }
+    requests.push(input.action)
     return { sessionId: 'side-fixture' }
   } })
-  await controller.open('source', 1)
-  await controller.heartbeat()
-  assert.equal(controller.snapshot.chat.sessionId, 'side-fixture')
-  status = 410
-  await controller.heartbeat()
-  assert.equal(controller.snapshot.chat, undefined)
-  assert.equal(controller.snapshot.error, 'expired')
+  const chat = await controller.open('source', 1)
+  const id = controller.queueReference(chat.sessionId, { source: 'eduwork-annotation', ref: 'draft' })
+  for (let poll = 0; poll < 100; poll++) await controller.retryCleanup()
+  assert.equal(controller.snapshot.chat, chat)
+  assert.equal(controller.snapshot.references[0].id, id)
+  assert.equal(controller.snapshot.error, undefined)
+  assert.deepEqual(requests, ['open'])
 })
 
 test('side policy separates inherited instructions and excludes persistent delegation', () => {
@@ -111,20 +149,18 @@ test('selected references belong to the live side chat and are cleared on close'
   assert.throws(() => controller.queueReference('side-fixture', reference), /expired/)
 })
 
-test('a heartbeat racing intentional close does not report an expired chat', async () => {
-  let rejectHeartbeat, finishClose
+test('cleanup polling shares an in-flight explicit close without creating a notice', async () => {
+  let finishClose, closes = 0
   const controller = new SideChatController({ owner: () => 'f'.repeat(32), request: input => {
-    if (input.action === 'heartbeat') return new Promise((_, reject) => { rejectHeartbeat = reject })
-    if (input.action === 'close') return new Promise(resolve => { finishClose = resolve })
+    if (input.action === 'close') { closes++; return new Promise(resolve => { finishClose = resolve }) }
     return Promise.resolve({ sessionId: 'side-fixture' })
   } })
   await controller.open('source', 1)
-  const heartbeat = controller.heartbeat()
   const closing = controller.close()
-  rejectHeartbeat(Object.assign(new Error('gone'), { status: 410 }))
-  await heartbeat
+  const retry = controller.retryCleanup()
+  assert.equal(closes, 1)
   assert.equal(controller.snapshot.error, undefined)
   finishClose({})
-  await closing
+  await Promise.all([closing, retry])
   assert.equal(controller.snapshot.error, undefined)
 })

@@ -1,15 +1,30 @@
-import React, { useEffect, useRef, useSyncExternalStore } from 'react'
-import { SideChatController, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
+import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { Toast, Tooltip, IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { SideChatRegistry, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
 import { alignComposerDocks } from './composer-alignment.js'
 
 const h = React.createElement
 const NS = 'eduworkSideChat'
+// Remote reconnection may remount plugins without closing the window. Keep
+// ownership in this window's memory, never in browser persistence.
+const WINDOW_CONTROLLER = Symbol.for('@eduwork/dsh-side-chat/window-controllers')
+const EMPTY_STATE = { phase: 'idle', references: [] }
 const COPY = {
-  zh: { open: '开启侧边聊天', title: '侧边聊天', emptyHint: '侧边聊天是临时聊天，关闭后会消失', ask: '在侧边聊天提问', onlyOne: '请先关闭当前侧边聊天，再从另一会话开启。', failed: '侧聊操作未完成，请稍后重试。', expired: '临时侧聊已结束。', dismiss: '关闭提示' },
-  en: { open: 'Open side chat', title: 'Side chat', emptyHint: 'Side chats are temporary and disappear when closed.', ask: 'Ask in side chat', onlyOne: 'Close the current side chat before starting one from another conversation.', failed: 'The side-chat operation failed. Try again shortly.', expired: 'The temporary side chat has ended.', dismiss: 'Dismiss notice' },
+  zh: { open: '开启侧边聊天', title: '侧边聊天', emptyHint: '侧边聊天是临时聊天，关闭后会消失', ask: '在侧边聊天提问', onlyOne: '已有侧聊。请先关闭，再从这里开启。', failed: '操作失败，请重试。', dismiss: '关闭' },
+  en: { open: 'Open side chat', title: 'Side chat', emptyHint: 'Side chats are temporary and disappear when closed.', ask: 'Ask in side chat', onlyOne: 'A side chat is already open. Close it to start one here.', failed: 'Something went wrong. Try again.', dismiss: 'Dismiss' },
 }
 
-const buttonStyle = { border: 0, background: 'transparent', color: 'inherit', cursor: 'pointer', padding: '5px 8px', borderRadius: 6, font: 'inherit' }
+const actionFallback = {
+  display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+  width: 'calc(28px + var(--dsh-content-font-delta, 0px))', height: 'calc(28px + var(--dsh-content-font-delta, 0px))',
+  border: 0, background: 'transparent', color: 'var(--dsw-alias-label-tertiary)',
+  cursor: 'pointer', padding: 6, borderRadius: 'var(--dsw-radius-sm)',
+}
+
+function SideChatIcon({ size = 16 }) {
+  return h('svg', { width: size, height: size, viewBox: '0 0 16 16', fill: 'none', stroke: 'currentColor', strokeWidth: 1, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    h('path', { d: 'M8.5 1.5h5a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1h-5M8.5 1.5v13M1.5 3.5h4M1.5 8h4M1.5 12.5h4' }))
+}
 
 const SideCopy = React.createContext(key => COPY.en[key])
 function SideViews({ renderSlot, useSession }) {
@@ -32,54 +47,72 @@ function SideConversation({ renderFactorySlot, t }) {
 function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, controller, t }) {
   const info = useTabInfo()
   const resource = useResource(info.tab.contentId)
-  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const state = controller.findAddress(info.tab.contentId)?.snapshot ?? EMPTY_STATE
   const chat = state.chat
   const root = useRef(null)
   useEffect(() => chat && root.current ? alignComposerDocks(root.current, chat.sourceSessionId) : undefined,
     [chat?.sessionId, chat?.sourceSessionId])
   return h('section', {
     ref: root,
-    'data-eduwork-side-chat': '', 'aria-label': t('title'),
+    'data-eduwork-side-chat': '', 'data-side-source': chat?.sourceSessionId, 'data-side-session': chat?.sessionId, 'aria-label': t('title'),
     style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
   },
-  h('style', null, '[data-eduwork-side-chat] [data-conversation-content]{flex:1;min-height:0;width:100%}[data-eduwork-side-chat] [data-composer-seat]{margin-top:auto}'),
+  h('style', null, '[data-eduwork-side-chat] [data-conversation-content]{flex:1;min-height:0;width:100%}[data-eduwork-side-chat] [data-composer-seat]{margin-top:auto}[data-eduwork-side-chat] button:is([aria-label="在新对话中分支"],[aria-label="Branch into a new conversation"]){display:none}'),
   state.phase === 'closing' || !chat
     ? null
     : resource.value === undefined ? null
       : h(SessionProvider, { session: resource.value.reference }, renderSlot('eduwork.side.conversation', {})))
 }
 
-function SideDraftDelivery({ sessionId, controller, sessions, conversation, inputActions, useInput, t }) {
-  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+function SideDraftDelivery({ sessionId, controller, sessions, conversation, sidebarRight, inputActions, useInput, t }) {
+  useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const owner = controller.findSession(sessionId)
+  const state = owner?.snapshot ?? EMPTY_STATE
+  const activeSource = useSyncExternalStore(sidebarRight.mounted.subscribe, sidebarRight.mounted.getSnapshot)
   const inputState = useInput(value => value)
   useEffect(() => {
     const pending = state.references.find(item => item.sessionId === sessionId)
-    if (!pending || state.phase !== 'open' || inputState.phase !== 'plain' || inputState.claim
-      || !controller.getSnapshot().references.some(item => item.id === pending.id)) return
+    if (!pending || activeSource !== state.chat?.sourceSessionId || state.phase !== 'open' || inputState.phase !== 'plain' || inputState.claim
+      || !owner.getSnapshot().references.some(item => item.id === pending.id)) return
     // InputBar's parent mount effect restores focus after this child effect.
     // Insert on the next frame so that restoration cannot overwrite the
     // native insertion's trailing caret on the first open.
     const frame = requestAnimationFrame(() => {
-      const live = controller.getSnapshot()
-      if (live.phase !== 'open' || live.chat?.sessionId !== sessionId || !live.references.some(item => item.id === pending.id)) return
+      const live = owner.getSnapshot()
+      if (live.phase !== 'open' || live.chat?.sessionId !== sessionId || sidebarRight.mounted.getSnapshot() !== live.chat.sourceSessionId
+        || !live.references.some(item => item.id === pending.id)) return
       const actx = sessions.scope(sessionId)
       if (!actx) return
       const input = conversation.input.for(actx)
       const current = input.state.getSnapshot()
       if (current.phase !== 'plain' || current.claim) return
+      // Restore Lexical's saved selection before editing. A DOM focus after
+      // insertion can overwrite the new trailing caret when this existing
+      // composer lost focus to a selection in the source conversation.
+      input.focus()
       const caret = inputActions.captureInsertion()
       const accepted = actx.bail(actx, 'slash/input-insert-reference', {
         reference: pending.reference, span: { start: caret.end, end: caret.end, draftRev: caret.draftRev },
       }) === true
-      if (accepted) { controller.consumeReference(pending.id); input.focus() }
+      if (accepted) owner.consumeReference(pending.id)
       else input.notify('error', t('failed'))
     })
     return () => cancelAnimationFrame(frame)
-  }, [state, inputState.phase, inputState.claim, inputState.draftRev, sessionId, controller, sessions, conversation, inputActions, t])
+  }, [state, activeSource, inputState.phase, inputState.claim, inputState.draftRev, sessionId, owner, sessions, conversation, sidebarRight, inputActions, t])
   return null
 }
 
 function SideAction({ sessionId, seq, messageId, useConversation, controller, open, t }) {
+  const button = useRef(null)
+  const [actionClass, setActionClass] = useState(undefined)
+  useLayoutEffect(() => {
+    // The native slot does not export its action CSS. Reuse the adjacent
+    // button's live class instead of pinning a generated class name. This
+    // also tracks native user/assistant icon sizes and content-font scaling.
+    const native = button.current?.closest('[data-clock]')?.querySelector('button:not([data-eduwork-side-action])')
+    setActionClass(native?.className || undefined)
+  }, [sessionId])
   const boundary = useConversation(snapshot => {
     if (Number.isSafeInteger(seq)) return seq
     for (const node of snapshot?.views.get('chat')?.nodes.values() ?? []) {
@@ -87,20 +120,32 @@ function SideAction({ sessionId, seq, messageId, useConversation, controller, op
     }
     return undefined
   })
-  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const state = controller.findSource(sessionId)?.snapshot ?? EMPTY_STATE
   if (sessionId.startsWith('side-') || !Number.isSafeInteger(boundary)) return null
-  return h('button', {
-    type: 'button', style: buttonStyle, title: t('open'), 'aria-label': t('open'),
-    disabled: state.phase === 'opening' || state.phase === 'closing',
+  const disabled = state.phase === 'opening' || state.phase === 'closing'
+  return h(Tooltip, { label: t('open'), side: 'bottom' }, h('button', {
+    ref: button, type: 'button', className: actionClass, style: actionClass ? undefined : actionFallback,
+    'data-eduwork-side-action': '', 'data-unavailable': disabled || undefined, 'aria-label': t('open'),
+    disabled,
     onClick: () => { void open(sessionId, boundary) },
-  }, h('svg', { width: 15, height: 15, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.6, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true }, h('path', { d: 'M13 4h6a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-6M13 4v16M4 7h5M4 12h5M4 17h5' })))
+  }, h(SideChatIcon)))
 }
 
-function Notice({ controller, t }) {
-  const state = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+function Notice({ controller, sidebarRight, t }) {
+  useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const source = useSyncExternalStore(sidebarRight.mounted.subscribe, sidebarRight.mounted.getSnapshot)
+  const owner = controller.findSource(source)
+  const state = owner?.snapshot ?? EMPTY_STATE
   if (!state.error) return null
-  return h('div', { role: 'alert', style: { pointerEvents: 'auto', position: 'fixed', bottom: 20, left: '50%', transform: 'translateX(-50%)', padding: 12, borderRadius: 8, background: 'var(--dsw-alias-surface-l2, white)', boxShadow: '0 4px 24px #0003', maxWidth: '80vw', zIndex: 200 } },
-    t(state.error), h('button', { style: buttonStyle, type: 'button', 'aria-label': t('dismiss'), onClick: () => controller.update({ error: undefined }) }, '×'))
+  const dismiss = () => owner.update({ error: undefined })
+  return h(Toast, {
+    key: `${source}:${state.noticeSequence}`,
+    text: t(state.error), icon: h(IconWarningOutlineRegular),
+    // Two seconds to read, then the native one-second fade: three total.
+    holdMs: 2000, onDone: dismiss,
+    actions: [{ label: t('dismiss'), onClick: dismiss }],
+  })
 }
 
 export const inject = ['slots', 'sessions', 'locale', 'resources', 'sidebarRight', 'sidebarRightTabs']
@@ -108,7 +153,7 @@ export const inject = ['slots', 'sessions', 'locale', 'resources', 'sidebarRight
 export function apply(ctx) {
   ctx.effect(() => ctx.locale.register(NS, COPY), 'side-chat: dictionaries')
   const t = ctx.locale.bind(NS)
-  const controller = new SideChatController({
+  const controller = globalThis[WINDOW_CONTROLLER] ??= new SideChatRegistry({
     owner: () => crypto.randomUUID().replaceAll('-', ''),
     request: async input => {
       const response = await fetch(SIDE_CHAT_PATH.slice(1), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), cache: 'no-store' })
@@ -117,51 +162,58 @@ export function apply(ctx) {
     },
   })
   const open = async (sessionId, atSeq) => {
+    const owner = controller.forSource(sessionId)
     try {
-      const chat = await controller.open(sessionId, atSeq)
+      const chat = await owner.open(sessionId, atSeq)
       if (ctx.sidebarRight.mounted.getSnapshot() === sessionId) ctx.sidebarRight.openResource(addressOf(chat.sessionId))
-    } catch (error) { controller.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
+    } catch (error) { owner.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
   }
   ctx.inject(['annotationSelection'], scope => {
     scope.effect(() => scope.annotationSelection.register({
       id: 'eduwork-side-chat', icon: 'side-chat', label: () => t('ask'),
+      renderIcon: () => h(SideChatIcon),
       available: sessionId => !sessionId.startsWith('side-'),
       async run({ sourceSessionId, atSeq, reference }) {
-        const current = controller.snapshot
+        const owner = controller.forSource(sourceSessionId)
+        const current = owner.snapshot
         const chat = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
-          ? current.chat : await controller.open(sourceSessionId, atSeq)
+          ? current.chat : await owner.open(sourceSessionId, atSeq)
         if (scope.sidebarRight.mounted.getSnapshot() !== sourceSessionId) throw new Error('expired')
         scope.sidebarRight.openResource(addressOf(chat.sessionId))
-        controller.queueReference(chat.sessionId, reference)
+        owner.queueReference(chat.sessionId, reference)
       },
     }), 'side-chat: selected-text action')
   })
   ctx.effect(() => {
-    const timer = setInterval(() => { void controller.heartbeat().catch(() => {}) }, 10_000)
+    const timer = setInterval(() => { void controller.retryCleanup().catch(() => {}) }, 10_000)
     const closeOnPageExit = () => {
-      const chat = controller.snapshot.chat
-      if (!chat) return
-      const body = JSON.stringify({ action: 'close', owner: chat.owner, sessionId: chat.sessionId })
-      // Electron's secure dsh-app scheme supports fetch, but not sendBeacon.
-      try { if (navigator.sendBeacon(SIDE_CHAT_PATH.slice(1), new Blob([body], { type: 'text/plain' }))) return } catch {}
-      void fetch(SIDE_CHAT_PATH.slice(1), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: true }).catch(() => {})
+      for (const owner of controller.all()) {
+        const chat = owner.snapshot.chat
+        if (!chat) continue
+        const body = JSON.stringify({ action: 'close', owner: chat.owner, sessionId: chat.sessionId })
+        // Electron's secure dsh-app scheme supports fetch, but not sendBeacon.
+        try { if (navigator.sendBeacon(SIDE_CHAT_PATH.slice(1), new Blob([body], { type: 'text/plain' }))) continue } catch {}
+        void fetch(SIDE_CHAT_PATH.slice(1), { method: 'POST', headers: { 'Content-Type': 'text/plain' }, body, keepalive: true }).catch(() => {})
+      }
     }
     window.addEventListener('pagehide', closeOnPageExit)
-    return async () => { clearInterval(timer); window.removeEventListener('pagehide', closeOnPageExit); await controller.close() }
-  }, 'side-chat: window lease')
+    // Disposing a plugin scope is also part of connection recovery. Only the
+    // tab close, real page exit or Host shutdown owns session destruction.
+    return () => { clearInterval(timer); window.removeEventListener('pagehide', closeOnPageExit) }
+  }, 'side-chat: window ownership')
   ctx.effect(() => ctx.sidebarRightTabs.register({
     id: '@eduwork/dsh-side-chat', kind: SIDE_KIND, keepMounted: true,
     patterns: ['dsh-resource://sidechat/**'], title: () => t('title'),
   }), 'side-chat: native Sidebar type')
   ctx.effect(() => ctx.sidebarRight.registerCloseHandler(SIDE_KIND, (_sessionId, tab) => {
-    const chat = controller.snapshot.chat
-    if (chat && tab.contentId === addressOf(chat.sessionId)) void controller.close().catch(() => {})
+    const owner = controller.findAddress(tab.contentId)
+    if (owner) void owner.close().catch(() => {})
   }), 'side-chat: explicit tab close')
   ctx.effect(() => ctx.resources.register({
     protocol: 'sidechat',
     async *open(address, { signal }) {
-      const chat = controller.snapshot.chat
-      if (!chat?.sessionId || address !== addressOf(chat.sessionId)) throw new Error(t('expired'))
+      const chat = controller.findAddress(address)?.snapshot.chat
+      if (!chat?.sessionId || address !== addressOf(chat.sessionId)) throw new Error(t('failed'))
       const reference = ctx.sessions.retainAgentScope(chat.sessionId)
       try {
         yield { ok: true, value: { reference } }
@@ -177,10 +229,10 @@ export function apply(ctx) {
   ctx.slots.inject('eduwork.side.conversation', () => ctx.slots.register({ name: 'eduwork.side.conversation', locale: NS }, SideConversation))
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay', id: 'eduwork-side-chat-reference', order: 20, locale: NS,
-    inject: sessionId => ({ sessionId, controller, sessions: ctx.sessions, conversation: ctx.get('conversation') }),
+    inject: sessionId => ({ sessionId, controller, sessions: ctx.sessions, conversation: ctx.get('conversation'), sidebarRight: ctx.sidebarRight }),
   }, SideDraftDelivery))
   for (const name of ['conversation.chat.user.actions', 'conversation.chat.assistant-actions']) {
     ctx.slots.inject(name, () => ctx.slots.register({ name, id: 'eduwork-side-chat', order: 20, locale: NS, inject: () => ({ controller, open }) }, SideAction))
   }
-  ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'eduwork-side-chat-notice', order: 90, locale: NS, inject: () => ({ controller }) }, Notice))
+  ctx.slots.inject('shell.overlay', () => ctx.slots.register({ name: 'shell.overlay', id: 'eduwork-side-chat-notice', order: 90, locale: NS, inject: () => ({ controller, sidebarRight: ctx.sidebarRight }) }, Notice))
 }

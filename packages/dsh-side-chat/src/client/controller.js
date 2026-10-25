@@ -2,7 +2,33 @@ export const SIDE_CHAT_PATH = '/api/eduwork/side-chat'
 export const SIDE_KIND = 'eduwork-side-chat'
 export const addressOf = sessionId => `dsh-resource://sidechat/session/${encodeURIComponent(sessionId)}`
 
-/** Window-local lease. Deliberately never connected to a persistence store. */
+/** Each source in a window owns an independent controller and cleanup task. */
+export class SideChatRegistry {
+  constructor(options) {
+    this.options = options
+    this.controllers = new Map()
+    this.listeners = new Set()
+    this.revision = 0
+    this.subscribe = listener => { this.listeners.add(listener); return () => this.listeners.delete(listener) }
+    this.getSnapshot = () => this.revision
+  }
+  forSource(sourceSessionId) {
+    if (!this.controllers.has(sourceSessionId)) {
+      this.controllers.set(sourceSessionId, new SideChatController({ ...this.options, changed: () => {
+        this.revision++
+        for (const listener of this.listeners) listener()
+      } }))
+    }
+    return this.controllers.get(sourceSessionId)
+  }
+  findSource(sourceSessionId) { return this.controllers.get(sourceSessionId) }
+  findSession(sessionId) { return this.all().find(controller => controller.snapshot.chat?.sessionId === sessionId) }
+  findAddress(address) { return this.all().find(controller => controller.snapshot.chat?.sessionId && addressOf(controller.snapshot.chat.sessionId) === address) }
+  all() { return [...this.controllers.values()] }
+  async retryCleanup() { await Promise.allSettled(this.all().map(controller => controller.retryCleanup())) }
+}
+
+/** Window-local ownership. Deliberately never connected to a persistence store. */
 export class SideChatController {
   constructor({ request, owner, changed = () => {} }) {
     this.request = request
@@ -15,7 +41,9 @@ export class SideChatController {
     this.getSnapshot = () => this.snapshot
   }
   update(value) {
-    this.snapshot = { ...this.snapshot, ...value }
+    this.snapshot = { ...this.snapshot, ...value,
+      ...(value.error ? { noticeSequence: (this.snapshot.noticeSequence ?? 0) + 1 } : {}),
+    }
     for (const listener of this.listeners) listener()
     this.changed(this.snapshot)
   }
@@ -64,17 +92,7 @@ export class SideChatController {
       .finally(() => { this.cleanup = undefined })
     return this.cleanup
   }
-  async heartbeat() {
-    const { chat, phase } = this.snapshot
-    if (!chat) return
-    if (phase === 'closing') return this.close()
-    if (phase !== 'open') return
-    try {
-      await this.request({ action: 'heartbeat', owner: chat.owner, sessionId: chat.sessionId })
-    } catch (error) {
-      if (error.status === 410 && this.snapshot.chat === chat && this.snapshot.phase === 'open') {
-        this.update({ chat: undefined, phase: 'idle', error: 'expired', references: [] })
-      }
-    }
+  async retryCleanup() {
+    if (this.snapshot.phase === 'closing') return this.close()
   }
 }

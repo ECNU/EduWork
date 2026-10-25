@@ -8,13 +8,13 @@ The experiment uses the historical `candidate-v0.2.1-rc.2` baseline. Mainline de
 
 Open a temporary side chat from a user message or completed assistant answer using the shared conversation components in the native right sidebar. Its transcript starts empty at event sequence 0. Source history through that point remains separate in memory and accompanies model requests as reference context; it never becomes side-chat transcript records or an active inherited task. Later source messages do not enter that snapshot. Model settings come from the selected historical prefix.
 
-Side chats stay outside ordinary lists, history search and automatic memory indexing. Closing stops the session and discards messages and drafts. Switching conversations or previews, collapsing the panel and hiding the window do not discard it. A lease reclaims memory sessions left by abnormal disconnection; restart cannot restore them. Explicitly requested work-file changes and external actions are not undone on close.
+Side chats stay outside ordinary lists, history search and automatic memory indexing. Closing stops the session and discards messages and drafts. Switching conversations or previews, collapsing the panel, hiding the window and inactivity do not end it; no heartbeat renewal is required. Refresh and window exit request a close. If abnormal termination prevents delivery, the orphan remains only in memory until the Host exits; restart cannot restore it. Explicitly requested work-file changes and external actions are not undone on close.
 
-The initial version allows one side chat per window, with no promotion, nested branching, subagents, scheduled tasks or long-lived background work. Tools follow the new session’s permissions.
+Each main conversation retains its own side chat. Switching restores its messages, draft and annotations; closing one does not affect other side chats. Refresh or window exit closes all its temporary chats. Promotion, nested branching, subagents, scheduled tasks and long-lived background work are unsupported. Tools follow the new session’s permissions, and generation follows global concurrency rules.
 
 ## Local development
 
-An empty chat centers “Side chats are temporary and disappear when closed.” The hint disappears after sending, while the composer stays at the bottom. Close with the native sidebar tab's ×. Selecting a completed response offers “Ask in side chat” in the annotation toolbar, adding an editable unsent annotation to the side composer. Further selections from the same source reuse the existing chat, cutoff and draft; the source draft stays unchanged. This action also requires the local annotation extension.
+An empty chat centers “Side chats are temporary and disappear when closed.” The hint disappears after sending, while the composer stays at the bottom. Close with the native sidebar tab's ×. Completed, intermediate and streaming assistant text offers “Ask in side chat,” adding an editable unsent annotation without waiting for the main turn to finish. Live selections inherit history through the latest preceding user question; incomplete output enters only as the selected excerpt. Further selections from the same source reuse the existing chat, initial cutoff and draft; the source draft stays unchanged. This action also requires the local annotation extension.
 
 ```sh
 npm ci
@@ -24,12 +24,11 @@ npm test
 
 Run these commands in this package. Without `EDUWORK_SIDE_CHAT_RUNTIME`, `npm test` runs state/policy checks and explicitly skips real-Runtime integration tests. Set it to the experimental Runtime root containing `package.json` and `node_modules` to run those tests. Integration tests load the working-tree service with dependencies resolved from that Runtime, rather than a side-chat package installed there. Skipped checks are not passing evidence.
 
-From the EduWork root, use `scripts/probe-side-chat-runtime.mjs` to inspect actual Runtime lifecycle behavior, and `scripts/build-side-chat-experiment.mjs` to produce an independent experimental Runtime. The builder requires a verified npm Runtime, the prepared pinned compiler and a new output directory. It preserves the original dependency cache.
+From the EduWork root, use `scripts/build-side-chat-experiment.mjs` to produce an independent experimental Runtime. The builder requires a verified npm Runtime, the prepared pinned compiler and a new output directory. It preserves the original dependency cache.
 
 The complete experiment from the repository root uses separate local directories:
 
 ```sh
-node scripts/probe-side-chat-runtime.mjs --runtime <approved-runtime> --output <new-baseline-evidence>
 node scripts/build-side-chat-experiment.mjs --runtime <approved-runtime> --compiler <prepared-compiler> --output <new-experiment>
 npm pack ./packages/dsh-side-chat --pack-destination <local-tarballs>
 npm pack ./packages/dsh-annotation --pack-destination <local-tarballs>

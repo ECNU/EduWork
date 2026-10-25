@@ -26,6 +26,8 @@ If the composer cannot accept a reference yet, the editor keeps the quote and no
 
 ## Scope
 
+The experimental side-chat extension also accepts selections from intermediate and streaming assistant text without waiting for the turn to finish. These selections offer only the side-chat action; ordinary annotation badges still bind to completed final responses. Live excerpts never invent message IDs or change the submission protocol.
+
 The source toolbar supports optional extensions, not yet published to npm. With the experimental side-chat extension, it also offers “Ask in side chat”: the quote becomes an unsent annotation in that chat's composer, available for editing, deletion or further selections without changing the source draft. The ordinary npm version provides annotations only.
 
 - Numbers appear below the source response and scroll naturally with it. Selected words do not receive persistent highlights or floating numbers.

@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os'
 import { createRequire, registerHooks } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
+import { installConcurrency } from '../../../dsh-plugins/request-concurrency/lib/index.js'
 
 const runtime = process.env.EDUWORK_SIDE_CHAT_RUNTIME
 const options = { skip: !runtime, timeout: 20_000 }
@@ -47,13 +48,11 @@ async function fixture() {
   source.append('turn/start', { turn: 2 })
   source.append('user/message', createUserMessage({ content: [{ type: 'text', text: 'SOURCE_FUTURE' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
   source.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
-  let now = 1000
   const { SideChatService } = await import('../src/service.js')
-  const service = new SideChatService(ctx, { now: () => now, leaseMs: 100 })
+  const service = new SideChatService(ctx)
   return {
     ctx, service, source, sourceHandle, selected, createUserMessage, createMessage, LlmAdapter,
     assemble: agent => ctx.systemPrompt.assemble(assembleContextFor(agent)),
-    advance: ms => { now += ms },
     close: async () => { await service.dispose(); await ctx.fiber.dispose() },
   }
 }
@@ -229,17 +228,112 @@ test('closing during source observation cannot leave a late temporary Agent', op
   assert.deepEqual(f.ctx.sessions.list().map(session => session.id), [f.source.id])
 })
 
-test('real Runtime lease expiry disposes its owning Agent and preserves source', options, async t => {
+test('real Runtime retains inactive side chats until explicit close, regardless of elapsed time', options, async t => {
   const f = await fixture(); t.after(f.close)
   const owner = 'b'.repeat(32)
   const opened = await f.service.open({ owner, sourceSessionId: f.source.id, atSeq: f.selected.seq })
   assert.deepEqual(await f.service.open({ owner, sourceSessionId: f.source.id, atSeq: f.selected.seq }), opened)
   await assert.rejects(f.service.open({ owner, sourceSessionId: f.source.id, atSeq: 3 }), /Close the existing/)
-  f.advance(101)
-  await f.service.expire()
-  assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
+  const agent = f.ctx.agents.get(opened.sessionId)
+  const events = agent.session.snapshotEvents()
+  t.mock.timers.enable({ apis: ['Date'], now: Date.now() })
+  t.mock.timers.tick(7 * 24 * 60 * 60 * 1000)
+  await f.service.retryCleanup()
+  assert.equal(f.ctx.agents.get(opened.sessionId), agent)
+  assert.deepEqual(agent.session.snapshotEvents(), events)
+  assert.deepEqual(f.service.heartbeat({ owner, sessionId: opened.sessionId }), opened)
+  assert.equal(f.service.entries.get(owner).closing, false)
   assert.notEqual(f.ctx.agents.get(f.source.id), undefined)
+  await f.service.close({ owner, sessionId: opened.sessionId })
+  assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
   assert.throws(() => f.service.heartbeat({ owner, sessionId: opened.sessionId }), /has ended/)
+})
+
+test('an unfinished source turn provides a frozen user-message boundary', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  let sideRequest
+  class Adapter extends f.LlmAdapter {
+    resolveModel(provider, model) { return Promise.resolve({ provider, id: model, name: model }) }
+    async *stream(request) {
+      sideRequest = request
+      yield* responseChunks('LIVE_SIDE_ANSWER')
+    }
+  }
+  f.ctx.llm.registerAdapter(['side-fixture'], new Adapter())
+  f.source.append('turn/start', { turn: 3 })
+  const boundary = f.source.append('user/message', f.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'LIVE_SOURCE_REQUEST' }] }), { surfaceOp: 'append' })
+  const owner = 'j'.repeat(32)
+  const opened = await f.service.open({ owner, sourceSessionId: f.source.id, atSeq: boundary.seq })
+  const side = f.ctx.agents.get(opened.sessionId)
+  assert.deepEqual(side.session.snapshotEvents(), [])
+  f.source.append('assistant/message', f.createMessage({ role: 'assistant', content: [{ type: 'text', text: 'SOURCE_FINISHED_LATER' }] }), { surfaceOp: 'append' })
+  f.source.append('turn/end', { turn: 3, reason: { kind: 'completed' } })
+  side.followup(f.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'LIVE_SIDE_QUESTION about selected LIVE_PARTIAL' }] }))
+  await side.whenIdle()
+  assert.ok(JSON.stringify(side.session.snapshotEvents()).includes('LIVE_SIDE_ANSWER'))
+  assert.ok(JSON.stringify(sideRequest.messages).includes('LIVE_SOURCE_REQUEST'))
+  assert.equal(JSON.stringify(sideRequest.messages).includes('SOURCE_FINISHED_LATER'), false)
+  await f.service.close({ owner })
+  assert.ok(JSON.stringify(f.source.snapshotEvents()).includes('SOURCE_FINISHED_LATER'))
+})
+
+test('side chats share the Host model queue and a cancelled waiter never calls the model', options, async t => {
+  const f = await fixture()
+  let releaseRoot, rootEntered, sawA, sawB, active = 0, peak = 0
+  const rootStarted = new Promise(resolve => { rootEntered = resolve })
+  const rootGate = new Promise(resolve => { releaseRoot = resolve })
+  const queuedA = new Promise(resolve => { sawA = resolve })
+  const queuedB = new Promise(resolve => { sawB = resolve })
+  t.after(async () => { releaseRoot(); await f.close() })
+  installConcurrency(f.ctx, 1)
+  f.ctx.on('llm/stream', async function*(request, next) {
+    const body = JSON.stringify(request.messages)
+    if (body.includes('QUEUED_SIDE_A')) sawA()
+    if (body.includes('QUEUED_SIDE_B')) sawB()
+    yield* next()
+  }, true)
+  const entered = []
+  class Adapter extends f.LlmAdapter {
+    resolveModel(provider, model) { return Promise.resolve({ provider, id: model, name: model }) }
+    async *stream(request) {
+      const kind = request.testID === 'root' ? 'root' : JSON.stringify(request.messages).includes('QUEUED_SIDE_B') ? 'b' : 'a'
+      entered.push(kind); active++; peak = Math.max(peak, active)
+      try {
+        if (kind === 'root') { rootEntered(); await rootGate }
+        yield* responseChunks('QUEUE_REPLY')
+      } finally { active-- }
+    }
+  }
+  f.ctx.llm.registerAdapter(['side-fixture'], new Adapter())
+  const root = (async () => {
+    for await (const chunk of f.ctx.llm.stream({ provider: 'side-fixture', model: 'fixture', messages: [], sessionId: f.source.id, testID: 'root' })) { /* consume */ }
+  })()
+  await rootStarted
+  const a = await f.service.open({ owner: 'q'.repeat(32), sourceSessionId: f.source.id, atSeq: f.selected.seq })
+  const b = await f.service.open({ owner: 'r'.repeat(32), sourceSessionId: f.source.id, atSeq: f.selected.seq })
+  const aAgent = f.ctx.agents.get(a.sessionId)
+  aAgent.followup(f.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'QUEUED_SIDE_A' }] }))
+  await queuedA
+  f.ctx.agents.get(b.sessionId).followup(f.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'QUEUED_SIDE_B' }] }))
+  await queuedB
+  assert.deepEqual(entered, ['root'], 'side requests must wait while the root occupies the only model slot')
+  await f.service.close({ owner: 'r'.repeat(32), sessionId: b.sessionId })
+  releaseRoot()
+  await Promise.all([root, aAgent.whenIdle()])
+  assert.deepEqual(entered, ['root', 'a'])
+  assert.equal(peak, 1)
+  assert.ok(JSON.stringify(aAgent.session.snapshotEvents()).includes('QUEUE_REPLY'))
+})
+
+test('the Host can retain more than eight independently owned side chats', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  const opened = await Promise.all(Array.from({ length: 10 }, (_, index) => f.service.open({
+    owner: String(index).padStart(32, 'k'), sourceSessionId: f.source.id, atSeq: f.selected.seq,
+  })))
+  assert.equal(new Set(opened.map(chat => chat.sessionId)).size, 10)
+  await f.service.close({ owner: String(0).padStart(32, 'k'), sessionId: opened[0].sessionId })
+  for (const chat of opened.slice(1)) assert.ok(f.ctx.agents.get(chat.sessionId))
+  assert.equal(f.service.entries.size, 9)
 })
 
 test('real Runtime cleanup failure retains a retryable tombstone', options, async t => {
@@ -253,7 +347,7 @@ test('real Runtime cleanup failure retains a retryable tombstone', options, asyn
   await assert.rejects(f.service.close({ owner }), /INJECTED_CLEANUP_FAILURE/)
   assert.equal(entry.closing, true)
   assert.throws(() => f.service.heartbeat({ owner, sessionId: opened.sessionId }), /has ended/)
-  await f.service.expire()
+  await f.service.retryCleanup()
   assert.equal(f.service.entries.size, 0)
   assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
 })

@@ -43,6 +43,33 @@ export function messageOrigin(chat, key, sessionId) {
   return closingMessage(chat, node.data.turn) === messageId ? { sessionId, messageId } : undefined
 }
 
+// Side questions may quote a running/intermediate reply. Only durable message
+// boundaries enter its history; live output travels as the selected quotation.
+// Ordinary annotation badges still belong only to finalized closing replies.
+export function selectionSource(chat, key, sessionId) {
+  const node = chat?.nodes.get(key)
+  if (node?.kind !== 'assistant-step') return undefined
+  const origin = messageOrigin(chat, key, sessionId)
+  if (origin) {
+    for (const tail of chat.nodes.values()) {
+      if (tail.kind === 'turn-tail' && tail.data.closing?.finalNode.messageId === origin.messageId
+        && Number.isSafeInteger(tail.data.seq)) return { origin, atSeq: tail.data.seq, canAnnotate: true }
+    }
+  }
+  const final = node.data.finalNode
+  if (node.data.status === 'settled' && final?.messageId && Number.isSafeInteger(final.seq)) {
+    return { origin: { sessionId, messageId: final.messageId }, atSeq: final.seq, canAnnotate: false }
+  }
+  if (node.data.status !== 'running' || !Number.isFinite(node.anchorSeq)) return undefined
+  let atSeq
+  for (const candidate of chat.nodes.values()) {
+    if (!['user', 'steering'].includes(candidate.kind) || !Number.isSafeInteger(candidate.data.seq)
+      || candidate.data.seq > node.anchorSeq) continue
+    if (atSeq === undefined || candidate.data.seq > atSeq) atSeq = candidate.data.seq
+  }
+  return atSeq === undefined ? undefined : { atSeq, canAnnotate: false }
+}
+
 export function closingMessage(chat, turn) {
   for (const tailKey of chat?.locations.getTurn(turn) ?? []) {
     const tail = chat.nodes.get(tailKey)

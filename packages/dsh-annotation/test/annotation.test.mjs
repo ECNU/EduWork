@@ -4,7 +4,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { decode, encode, reference } from '../src/client/reference.js'
 import { place } from '../src/client/position.js'
-import { annotations, occurrenceSpan, messageOrigin } from '../src/client/draft.js'
+import { annotations, occurrenceSpan, messageOrigin, selectionSource } from '../src/client/draft.js'
 import { projectAnnotations } from '../src/protocol.js'
 
 const t = key => ({ notePrefix: '批注：', noted: '批注', invalid: 'invalid' })[key] ?? key
@@ -68,6 +68,25 @@ test('source identity resolves only a finalized closing response, never by match
   const chat = { nodes, locations: { getTurn: () => ['answer', 'tail'] } }
   assert.deepEqual(messageOrigin(chat, 'answer', 's2'), { sessionId: 's2', messageId: 'm2' })
   for (const key of ['user', 'stream', 'earlier', 'missing']) assert.equal(messageOrigin(chat, key, 's2'), undefined)
+})
+
+test('live side selections use durable history without inventing a streamed message identity', () => {
+  const nodes = new Map([
+    ['user', { kind: 'user', data: { seq: 2 } }],
+    ['partial', { kind: 'assistant-step', anchorSeq: 6.5, data: { status: 'running', turn: 1 } }],
+    ['intermediate', { kind: 'assistant-step', data: { status: 'settled', turn: 1, finalNode: { seq: 5, messageId: 'intermediate-message' } } }],
+    ['future-user', { kind: 'user', data: { seq: 20 } }],
+    ['tail', { kind: 'turn-tail', data: { closing: null } }],
+  ])
+  const chat = { nodes, locations: { getTurn: () => [...nodes.keys()] } }
+  assert.deepEqual(selectionSource(chat, 'partial', 'source'), { atSeq: 2, canAnnotate: false })
+  assert.deepEqual(selectionSource(chat, 'intermediate', 'source'), {
+    origin: { sessionId: 'source', messageId: 'intermediate-message' }, atSeq: 5, canAnnotate: false,
+  })
+  assert.equal(messageOrigin(chat, 'partial', 'source'), undefined, 'ordinary annotation badges must not bind to a partial reply')
+  nodes.delete('user')
+  assert.equal(selectionSource(chat, 'partial', 'source'), undefined, 'a later user request must never become the snapshot boundary')
+  assert.equal(selectionSource(chat, 'missing', 'source'), undefined)
 })
 
 test('bundle registers a codec source and inserts through the official event', async () => {

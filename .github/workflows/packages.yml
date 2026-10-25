@@ -9,21 +9,6 @@ on:
 permissions:
   contents: read
 jobs:
-  side-chat-experiment:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.22.1'
-          cache: npm
-          cache-dependency-path: packages/dsh-side-chat/package-lock.json
-      - run: npm ci --ignore-scripts --no-audit --no-fund
-        working-directory: packages/dsh-side-chat
-      - run: npm run build
-        working-directory: packages/dsh-side-chat
-      - run: node --test packages/dsh-side-chat/test/controller.test.mjs
-      - run: node --check scripts/build-side-chat-experiment.mjs && node --check scripts/assemble-side-chat-experiment.mjs && node --check packages/dsh-side-chat/scripts/browser-test.mjs
   select:
     runs-on: ubuntu-latest
     outputs:

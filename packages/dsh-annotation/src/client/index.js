@@ -2,7 +2,7 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalSto
 import { createPortal } from 'react-dom'
 import { SOURCE, MAX_NOTE, decode, reference, text } from './reference.js'
 import { place } from './position.js'
-import { annotations, occurrenceSpan, messageOrigin, closingMessage } from './draft.js'
+import { annotations, occurrenceSpan, selectionSource, closingMessage } from './draft.js'
 import { fragment } from '../protocol.js'
 import { AnnotatedContent } from './history.js'
 import { SENT_ANNOTATION, sentAnnotationRule } from './sent.js'
@@ -120,15 +120,15 @@ function readSelection(marker, resolveOrigin) {
   // comes from the public snapshot. Context is bounded to this selected row.
   const row = element.closest('[data-chat-node-key]')
   if (!row || !row.contains(range.startContainer) || !row.contains(range.endContainer)) return null
-  const origin = resolveOrigin(row.getAttribute('data-chat-node-key'))
-  if (!origin) return null
+  const source = resolveOrigin(row.getAttribute('data-chat-node-key'))
+  if (!source) return null
   const before = range.cloneRange(), after = range.cloneRange()
   before.selectNodeContents(row); before.setEnd(range.startContainer, range.startOffset)
   after.selectNodeContents(row); after.setStart(range.endContainer, range.endOffset)
   const context = { before: before.toString().slice(-320), after: after.toString().slice(0, 320) }
   const rects = range.getClientRects()
   const rect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect()
-  return { quote, origin, context, x: rect.right, y: rect.bottom, range: range.cloneRange() }
+  return { quote, ...source, context, x: rect.right, y: rect.bottom, range: range.cloneRange() }
 }
 
 function useSelectionTarget(marker, paused, resolveOrigin) {
@@ -193,10 +193,10 @@ function SelectionToolbar({ target, t, onAnnotate, actions, onAction }) {
     onMouseDown: event => event.preventDefault(),
   },
   h('style', null, '[data-eduwork-selection-toolbar] button{display:inline-flex;align-items:center;justify-content:center;gap:7px;min-height:32px;padding:6px 10px;border:0;border-radius:8px;background:transparent;color:inherit;font:inherit;white-space:nowrap;cursor:pointer}[data-eduwork-selection-toolbar] button:hover{background:var(--dsw-alias-bg-layer-2,#f5f2f1)}[data-eduwork-selection-toolbar] button:focus-visible{outline:2px solid var(--dsw-alias-state-business-primary,#9f2636);outline-offset:-2px}[data-eduwork-selection-toolbar] button:disabled{opacity:.5;cursor:default}'),
-  h('button', { type: 'button', onClick: onAnnotate }, icon('annotation'), t('quote')),
+  target.canAnnotate ? h('button', { type: 'button', onClick: onAnnotate }, icon('annotation'), t('quote')) : null,
   ...actions.map(action => h(React.Fragment, { key: action.id },
-    h('span', { 'aria-hidden': true, style: { height: 18, width: 1, margin: '0 3px', background: border } }),
-    h('button', { type: 'button', onClick: () => onAction(action) }, icon(action.icon), action.label()))))
+    target.canAnnotate ? h('span', { 'aria-hidden': true, style: { height: 18, width: 1, margin: '0 3px', background: border } }) : null,
+    h('button', { type: 'button', onClick: () => onAction(action) }, action.renderIcon?.() ?? icon(action.icon), action.label()))))
 }
 
 function Editor({ draft, t, onAdd, onCancel }) {
@@ -309,7 +309,7 @@ function AnnotationOverlay({ sessionId, previews, selectionActions, reportError,
   const chat = useConversation(state => state.views.get('chat'))
   const chatRef = useRef(chat)
   chatRef.current = chat
-  const resolver = useRef(key => messageOrigin(chatRef.current, key, sessionId))
+  const resolver = useRef(key => selectionSource(chatRef.current, key, sessionId))
   const [target, setTarget] = useSelectionTarget(marker, draft !== null, resolver.current)
   const occurrences = useInput(state => state.occurrences)
   const items = annotations(occurrences)
@@ -324,15 +324,12 @@ function AnnotationOverlay({ sessionId, previews, selectionActions, reportError,
     if (value !== undefined && insert(value, inputActions) === true) setDraft(null)
   }
   return h('span', { [MARKER]: '', ref: marker, hidden: true },
-    target && !draft ? createPortal(h(SelectionToolbar, {
+    target && !draft && (target.canAnnotate || availableActions.some(action => action.available?.(sessionId) !== false)) ? createPortal(h(SelectionToolbar, {
       target, t, actions: availableActions.filter(action => action.available?.(sessionId) !== false),
       onAction: async action => {
         if (previews.isLocked(sessionId)) { previews.open(sessionId, { kind: 'list' }); return }
         const value = reference(target.quote, '', t, target.origin, target.context)
-        let atSeq
-        for (const node of chatRef.current?.nodes.values() ?? []) {
-          if (node.kind === 'turn-tail' && node.data.closing?.finalNode.messageId === target.origin.messageId) atSeq = node.data.seq
-        }
+        const atSeq = target.atSeq
         if (!value || !Number.isSafeInteger(atSeq)) return
         const payload = { sourceSessionId: sessionId, atSeq, reference: value }
         setTarget(null); document.getSelection()?.removeAllRanges()

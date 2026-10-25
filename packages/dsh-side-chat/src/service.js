@@ -4,23 +4,19 @@ import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { SIDE_BOUNDARY, disallowedSideTool } from './boundary.js'
 
 export const SIDE_CHAT_PATH = '/api/eduwork/side-chat'
-const LEASE_MS = 45_000
-const MAX_SIDE_CHATS = 8
 
 export class SideChatError extends Error {
   constructor(message, status = 400) { super(message); this.status = status }
 }
 
 function validateOwner(owner) {
-  if (typeof owner !== 'string' || !/^[a-zA-Z0-9_-]{24,128}$/.test(owner)) throw new SideChatError('Invalid temporary-chat lease')
+  if (typeof owner !== 'string' || !/^[a-zA-Z0-9_-]{24,128}$/.test(owner)) throw new SideChatError('Invalid temporary-chat owner')
 }
 
-/** One owning handle per temporary chat. No profile, message or lease is saved. */
+/** One owning handle per temporary chat. Ownership never expires with inactivity. */
 export class SideChatService {
-  constructor(ctx, { now = Date.now, leaseMs = LEASE_MS } = {}) {
+  constructor(ctx) {
     this.ctx = ctx
-    this.now = now
-    this.leaseMs = leaseMs
     this.entries = new Map()
     this.disposed = false
     if (ctx.sessions.supportsEphemeralSessions !== true) {
@@ -39,13 +35,11 @@ export class SideChatService {
         throw new SideChatError('Close the existing side chat first', 409)
       }
       await existing.creation
-      existing.expiresAt = this.now() + this.leaseMs
       return this.describe(existing)
     }
-    if (this.entries.size >= MAX_SIDE_CHATS) throw new SideChatError('Too many temporary chats are open', 429)
     const entry = {
       owner, sourceSessionId, atSeq, sessionId: SessionId(`side-${randomUUID()}`),
-      expiresAt: this.now() + this.leaseMs, controller: new AbortController(),
+      controller: new AbortController(),
       closing: false, handle: undefined, creation: undefined, cleanup: undefined,
     }
     this.entries.set(owner, entry)
@@ -114,14 +108,14 @@ export class SideChatService {
   }
 
   describe(entry) {
-    return { sessionId: entry.sessionId, sourceSessionId: entry.sourceSessionId, atSeq: entry.atSeq, leaseMs: this.leaseMs }
+    return { sessionId: entry.sessionId, sourceSessionId: entry.sourceSessionId, atSeq: entry.atSeq }
   }
 
   heartbeat({ owner, sessionId }) {
+    // Compatibility status check for older clients; it never extends a timer.
     validateOwner(owner)
     const entry = this.entries.get(owner)
     if (!entry || entry.closing || entry.sessionId !== sessionId) throw new SideChatError('Temporary chat has ended', 410)
-    entry.expiresAt = this.now() + this.leaseMs
     return this.describe(entry)
   }
 
@@ -129,7 +123,7 @@ export class SideChatService {
     validateOwner(owner)
     const entry = this.entries.get(owner)
     if (!entry) return { closed: true }
-    if (sessionId !== undefined && entry.sessionId !== sessionId) throw new SideChatError('Temporary-chat lease does not match', 409)
+    if (sessionId !== undefined && entry.sessionId !== sessionId) throw new SideChatError('Temporary-chat owner does not match', 409)
     entry.closing = true
     entry.controller.abort(new Error('Temporary side chat closed'))
     entry.cleanup ??= (async () => {
@@ -141,9 +135,9 @@ export class SideChatService {
     return entry.cleanup
   }
 
-  async expire() {
+  async retryCleanup() {
     await Promise.allSettled([...this.entries.values()]
-      .filter(entry => entry.closing || entry.expiresAt <= this.now())
+      .filter(entry => entry.closing)
       .map(entry => this.close({ owner: entry.owner })))
   }
 

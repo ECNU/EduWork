@@ -13,18 +13,19 @@ export function apply(ctx, config) {
     async *stream(request) {
       const body = JSON.stringify(request.messages)
       const users = request.messages.filter(message => message.role === 'user')
-      const last = JSON.stringify(users.findLast(message => /SIDE_HANG|SIDE_QUESTION|SOURCE_FUTURE|SOURCE_FIRST|MAIN_PARALLEL/.test(JSON.stringify(message))) ?? '')
-      const marker = ['SIDE_HANG', 'SIDE_QUESTION', 'SOURCE_FUTURE', 'SOURCE_FIRST', 'MAIN_PARALLEL'].find(value => last.includes(value)) ?? 'auxiliary'
+      const last = JSON.stringify(users.findLast(message => /MULTI_SIDE_QUESTION|STREAM_SIDE_QUESTION|SOURCE_STREAM|SIDE_HANG|SIDE_QUESTION|SOURCE_FUTURE|SOURCE_FIRST|MAIN_PARALLEL/.test(JSON.stringify(message))) ?? '')
+      const marker = ['MULTI_SIDE_QUESTION', 'STREAM_SIDE_QUESTION', 'SOURCE_STREAM', 'SIDE_HANG', 'SIDE_QUESTION', 'SOURCE_FUTURE', 'SOURCE_FIRST', 'MAIN_PARALLEL'].find(value => last.includes(value)) ?? 'auxiliary'
       const trace = {
         kind: 'request', marker, inheritedReference: body.includes('SOURCE_FIRST'),
         inheritedFuture: body.includes('SOURCE_FUTURE'), sideBoundary: body.includes('Only new requests submitted in this side conversation'),
         selectedAnnotation: body.includes('eduwork-response-annotations') && body.includes('SOURCE_FIRST_REPLY'),
         editedSideNote: last.includes('SIDE_DRAFT_NOTE'), sourceDraftLeak: last.includes('SOURCE_DRAFT_NOTE'),
+        liveAnnotation: last.includes('SOURCE_STREAM_PARTIAL') && last.includes('eduwork-response-annotations'),
       }
       await appendFile(config.output, JSON.stringify(trace) + '\n')
       yield { type: 'block-start', index: 0, blockType: 'text' }
-      if (marker === 'SIDE_HANG') {
-        yield { type: 'text-delta', index: 0, text: 'SIDE_STREAM_PARTIAL' }
+      if (marker === 'SIDE_HANG' || marker === 'SOURCE_STREAM') {
+        yield { type: 'text-delta', index: 0, text: marker === 'SOURCE_STREAM' ? 'SOURCE_STREAM_PARTIAL' : 'SIDE_STREAM_PARTIAL' }
         try {
           await new Promise((_, reject) => {
             if (request.signal.aborted) reject(request.signal.reason)
@@ -33,7 +34,7 @@ export function apply(ctx, config) {
         } finally { await appendFile(config.output, JSON.stringify({ kind: 'aborted', marker }) + '\n') }
         return
       }
-      const text = marker === 'SIDE_QUESTION' ? 'SCRIPTED_SIDE_REPLY'
+      const text = marker === 'MULTI_SIDE_QUESTION' ? 'MULTI_SIDE_REPLY' : marker === 'STREAM_SIDE_QUESTION' ? 'STREAM_SIDE_REPLY' : marker === 'SIDE_QUESTION' ? 'SCRIPTED_SIDE_REPLY'
         : marker === 'SOURCE_FIRST' ? 'SOURCE_FIRST_REPLY'
           : marker === 'SOURCE_FUTURE' ? 'SOURCE_FUTURE_REPLY' : 'SCRIPTED_MAIN_REPLY'
       yield { type: 'text-delta', index: 0, text }
