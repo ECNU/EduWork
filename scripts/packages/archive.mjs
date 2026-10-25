@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { createHash } from 'node:crypto'
 import { gunzipSync } from 'node:zlib'
 
 export function archiveFiles(bytes) {
@@ -34,6 +35,23 @@ export function inspectArchive(bytes, selected, expectedVersion) {
   for (const entry of Object.values(manifest.exports || {})) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
+  }
+  if (selected.id === 'dsh-mail') {
+    // Downstream npm audit cannot see dependencies embedded in JavaScript.
+    // Bind the build-time security inventory to the exact bytes being published,
+    // including lazy protocol chunks; inspecting only lib/index.js misses them.
+    assert.ok(files.has('lib/bundled-dependencies.json'), 'Missing mail bundle inventory')
+    const inventory = JSON.parse(files.get('lib/bundled-dependencies.json'))
+    assert.equal(inventory.schemaVersion, 1)
+    assert.deepEqual(inventory.package, { name: manifest.name, version: manifest.version })
+    const outputs = [...files.keys()].filter(file => file.startsWith('lib/') && file.endsWith('.js')).sort()
+    assert.deepEqual(inventory.outputs.map(row => row.path).sort(), outputs, 'Mail inventory must cover every packed JS file')
+    for (const row of inventory.outputs) {
+      assert.equal(createHash('sha256').update(files.get(row.path)).digest('hex'), row.sha256, `Mail inventory hash mismatch: ${row.path}`)
+    }
+    for (const name of ['imapflow', 'mailparser', 'nodemailer']) {
+      assert.ok(inventory.dependencies.some(row => row.name === name && row.version && row.integrity), `Missing bundled mail dependency: ${name}`)
+    }
   }
   if (selected.id === 'dsh-literature') {
     for (const file of ['LICENSE', 'NOTICE.md', 'UPSTREAM.json', 'README.md', 'README_EN.md', 'cordis.patch.yml']) {

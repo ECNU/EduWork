@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-24T17:41:57.983Z",
-  "fileSetSHA256": "665c669fe7112343095d4769c5bd26b77c662d7f1b4dbb01658a1bf376bc605b",
+  "createdAt": "2026-10-25T08:23:41.555Z",
+  "fileSetSHA256": "ffb28c8159d3a552365aae31da5fd8cd7a3e92930cf65d40bf34097299f86c75",
   "files": [
     {
       "path": ".gitattributes",
@@ -521,7 +521,7 @@
     },
     {
       "path": "docs/releases/0.4.8.md",
-      "sha256": "52b8dd028ebb6e76b67ddbf2d207bb79d09b4efc7d575fdee8e16b974af4b18e"
+      "sha256": "0223b0bb1ea53e6ec46ac8b664889b266e89f069b6d304b75e1108c28b9d3c1c"
     },
     {
       "path": "docs/SESSION-SEARCH-BACKPORT.md",
@@ -5253,11 +5253,11 @@
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.en.md",
-      "sha256": "f4754afe93b6c6ad7e9055a2c55ce3624fc7b5ee3ab083819356b9b5567c27d5"
+      "sha256": "9dd00fc21d9721ccea5df0f97c7266b28fbb31bcfd3107896a3cbf530d5bbf40"
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.md",
-      "sha256": "1596abb4060198c50e40051a39763a0eee06266e3ffbcb7ce079f28943f91a08"
+      "sha256": "90ad6dfe8e7ad451fe163560737b5f1602eae8775cede6687570c1178dda9218"
     },
     {
       "path": "packages/dsh-mail/CODE_OF_CONDUCT.en.md",
@@ -5329,11 +5329,11 @@
     },
     {
       "path": "packages/dsh-mail/docs/security-model.en.md",
-      "sha256": "efdff5e072a3e31a446ed5b149427b3dfb59de66c073bbcd564b5961dc9e5b9e"
+      "sha256": "572b1afa717d3ed77c702bd2a7ca0f317ee5ad8133632985fb59e0b035b12467"
     },
     {
       "path": "packages/dsh-mail/docs/security-model.md",
-      "sha256": "1272ec7ae6f84330716ef88eedb5685057b24eb554989d420f5b0c3e71e816aa"
+      "sha256": "e196430d191dc41eb800629539f11575abc6dd9c6cf68695d3183f4bedc4afba"
     },
     {
       "path": "packages/dsh-mail/docs/tool-contract.en.md",
@@ -5365,11 +5365,11 @@
     },
     {
       "path": "packages/dsh-mail/package-lock.json",
-      "sha256": "5d18482269f0826b576b69f16571770395c554f1649e1c4d1efbee2f2496aa48"
+      "sha256": "e5a8a022a12675dc40d5dc22e07d924cccda3d2c1fa30d71fc0e58fb04666039"
     },
     {
       "path": "packages/dsh-mail/package.json",
-      "sha256": "cbb34d3879f1bb0bc9f466609da7e9a0b635ddd0eb8d2acb7a0e595cc9bdaaa7"
+      "sha256": "718d9106c28ee9b0e9e91316ba7addf8ae2a22cbb9251ce0f4318aad0ab2802c"
     },
     {
       "path": "packages/dsh-mail/README_EN.md",
@@ -5382,6 +5382,10 @@
     {
       "path": "packages/dsh-mail/scripts/accept-dsh-rc1.mjs",
       "sha256": "ecee5ee66ae69baad62e1bf32ba10204c816365424a01234efb0b414f6acafc8"
+    },
+    {
+      "path": "packages/dsh-mail/scripts/bundled-dependencies.mjs",
+      "sha256": "8bb49bc879650acf6a7c7ab42f99485557a46f75a803209e7963b4a6f99f9ef3"
     },
     {
       "path": "packages/dsh-mail/scripts/check-doc-links.mjs",
@@ -5406,6 +5410,10 @@
     {
       "path": "packages/dsh-mail/scripts/clean.mjs",
       "sha256": "6636016660cb0479ae6c3d63b884f454a7fd06648bd0db25118e398d28889642"
+    },
+    {
+      "path": "packages/dsh-mail/scripts/fixtures/mail-protocol-regression.mjs",
+      "sha256": "0e9ea6228bf8b5047f88a3b34a6316b4919e3050757d32fa5ee9682dbccfcaa8"
     },
     {
       "path": "packages/dsh-mail/scripts/prepare-release.mjs",
@@ -5480,6 +5488,14 @@
       "sha256": "dcf5bd4ef9c5baf410d9545f874e08060e436866ff54afe1b806e250d8959b15"
     },
     {
+      "path": "packages/dsh-mail/test/bundled-dependencies.test.js",
+      "sha256": "6074f6644f445acc05b405381a37b60fe7cd915cd9e0dc7e10c9fab3c1c4ae54"
+    },
+    {
+      "path": "packages/dsh-mail/test/bundled-mail-regression.test.js",
+      "sha256": "afbc4ded544fc030e05136485fb6ac943e66bd5265f58b901b0f5c823bf327fb"
+    },
+    {
       "path": "packages/dsh-mail/test/client-settings.test.js",
       "sha256": "eb7b380ad99819fa9c13f08f2c572f151b68ec1abc7abe233f8b6c232eff09ff"
     },
@@ -5501,11 +5517,11 @@
     },
     {
       "path": "packages/dsh-mail/THIRD_PARTY_NOTICES.en.md",
-      "sha256": "177342d5a53d1a1d7e85268c3525c0f89f506deff65abdd5ed43db6dcbdd1064"
+      "sha256": "bb6f0b4b21b6856f395587f9dad4db73268b4d9a7cb51a764eb1ce4f39d77fce"
     },
     {
       "path": "packages/dsh-mail/THIRD_PARTY_NOTICES.md",
-      "sha256": "4adb278068da2c512dda5e13c4faedba52681746e3d9daf2f31f141ccf240ca9"
+      "sha256": "43264e07417bc9bd3728824e2afd2d8d7ff9e6298ae99ea60f590eb4215bc0ba"
     },
     {
       "path": "packages/dsh-mail/tsconfig.json",
@@ -6997,7 +7013,7 @@
     },
     {
       "path": "scripts/packages/archive.mjs",
-      "sha256": "fd5cbfe677103979b6bf108bdc8fed03ab81b2017e4ce8bc37017cc31a8602cb"
+      "sha256": "2e6805f46311ff228b210a30f5d3d17a472b4cfc624dc6f005238c310a46d64e"
     },
     {
       "path": "scripts/packages/catalog.mjs",
@@ -7501,7 +7517,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "e12cb2c2acc2b21f7b156724e1ca0a74d576d369f908f8d27b8d91275be22fd7"
+      "sha256": "a5ee60b7d1979ad8a810e9ad8714089d444459433effc39e71f825570de587b6"
     },
     {
       "path": "tests/parallel-sets.test.mjs",
