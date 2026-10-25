@@ -22,7 +22,7 @@ npm run build
 npm test
 ```
 
-Run these commands in this package. Without `EDUWORK_SIDE_CHAT_RUNTIME`, `npm test` runs state/policy checks and explicitly skips real-Runtime integration tests. Set it to the experimental Runtime root containing `package.json` and `node_modules` to run those tests. Skipped checks are not passing evidence.
+Run these commands in this package. Without `EDUWORK_SIDE_CHAT_RUNTIME`, `npm test` runs state/policy checks and explicitly skips real-Runtime integration tests. Set it to the experimental Runtime root containing `package.json` and `node_modules` to run those tests. Integration tests load the working-tree service with dependencies resolved from that Runtime, rather than a side-chat package installed there. Skipped checks are not passing evidence.
 
 From the EduWork root, use `scripts/probe-side-chat-runtime.mjs` to inspect actual Runtime lifecycle behavior, and `scripts/build-side-chat-experiment.mjs` to produce an independent experimental Runtime. The builder requires a verified npm Runtime, the prepared pinned compiler and a new output directory. It preserves the original dependency cache.
 

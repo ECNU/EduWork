@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T08:23:41.555Z",
-  "fileSetSHA256": "ffb28c8159d3a552365aae31da5fd8cd7a3e92930cf65d40bf34097299f86c75",
+  "createdAt": "2026-10-25T08:26:39.104Z",
+  "fileSetSHA256": "9d13930d88211a5b604540be82db06c5805ad2ee3b17ef4a58919716accc5acc",
   "files": [
     {
       "path": ".gitattributes",
@@ -6593,11 +6593,11 @@
     },
     {
       "path": "packages/dsh-side-chat/README_EN.md",
-      "sha256": "08deebdf0f7949269618206f2add41b211d5aaa5c8f9732d28c55a9dcbaee6cb"
+      "sha256": "454a7706aabffe9e2cb1c5a4d091dfd93d0f13d57530d451f9bb363be420d3aa"
     },
     {
       "path": "packages/dsh-side-chat/README.md",
-      "sha256": "095caf5510e8e0d1834533e7c0740af84121495d59dd0db12b4a6c4a03796ce9"
+      "sha256": "2fafafa05f511170e8be994381fdea47b91ed7fed7c0502ddfde2b47292a9c05"
     },
     {
       "path": "packages/dsh-side-chat/runtime-extension.mjs",
@@ -6621,7 +6621,7 @@
     },
     {
       "path": "packages/dsh-side-chat/src/client/controller.js",
-      "sha256": "e52dac266359eacf228b891beb875ddfd654959e7ad2c6c9e73a049ecec98c0d"
+      "sha256": "3d69aafe82bfd94a3051b6cae1784685fa5c144d3ea59d4c7295911f2f675ffe"
     },
     {
       "path": "packages/dsh-side-chat/src/client/index.jsx",
@@ -6641,11 +6641,11 @@
     },
     {
       "path": "packages/dsh-side-chat/test/controller.test.mjs",
-      "sha256": "ac23d3a990f6407e55aa81ff92072ee14bb2de62651aed19554ec007736cb395"
+      "sha256": "4df913d84f4ab8dcfb5b89b809aa5ab5a6f4d3c21565cc12bae726d5232e30a1"
     },
     {
       "path": "packages/dsh-side-chat/test/runtime.test.mjs",
-      "sha256": "eebcb55cabd0deac4298b82da1f431acde8370ea84580df1a01aec1add2fb4d5"
+      "sha256": "5d186a140aaea6077483a2a94b4b76d3b7454718368bd2a1b44702ee4d5b4ddb"
     },
     {
       "path": "README_EN.md",

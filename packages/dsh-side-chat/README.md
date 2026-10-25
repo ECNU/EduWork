@@ -22,7 +22,7 @@ npm run build
 npm test
 ```
 
-上述命令在本包目录执行。`npm test` 默认只运行状态与策略测试；真实 Runtime 集成项在未设置 `EDUWORK_SIDE_CHAT_RUNTIME` 时明确跳过。设置该变量为实验 Runtime 根目录（包含 `package.json` 和 `node_modules`）后重新运行，不应将跳过项计为通过。
+上述命令在本包目录执行。`npm test` 默认只运行状态与策略测试；真实 Runtime 集成项在未设置 `EDUWORK_SIDE_CHAT_RUNTIME` 时明确跳过。设置该变量为实验 Runtime 根目录（包含 `package.json` 和 `node_modules`）后重新运行。集成测试加载当前工作树的服务源码，依赖从指定 Runtime 解析，不使用其中已安装的侧聊包；不应将跳过项计为通过。
 
 在 EduWork 根目录使用 `scripts/probe-side-chat-runtime.mjs` 检查真实 Runtime 的生命周期能力，使用 `scripts/build-side-chat-experiment.mjs` 生成独立实验 Runtime。构建入口要求已经验证的 npm Runtime、准备好的锁定编译器和全新的输出目录，不会修改原始依赖缓存。
 

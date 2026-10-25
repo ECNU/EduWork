@@ -30,6 +30,35 @@ test('closing while creation is in flight never publishes the late reply', async
   assert.equal(controller.snapshot.chat, undefined)
 })
 
+for (const outcome of ['reply', 'failure']) {
+  test(`a late opening ${outcome} cannot close a replacement chat or clear its draft`, async () => {
+    let finishOld, owner = 0
+    const requests = []
+    const controller = new SideChatController({ owner: () => String(++owner).padStart(32, 'x'), request: async input => {
+      requests.push(input)
+      if (input.action !== 'open') return {}
+      if (input.sourceSessionId === 'old-source') return new Promise((resolve, reject) => {
+        finishOld = () => outcome === 'reply' ? resolve({ sessionId: 'side-old' }) : reject(new Error('network'))
+      })
+      return { sessionId: 'side-new' }
+    } })
+    const opening = controller.open('old-source', 1)
+    const rejected = assert.rejects(opening, outcome === 'reply' ? /expired/ : /network/)
+    await controller.close()
+    const replacement = await controller.open('new-source', 2)
+    const reference = { source: 'eduwork-annotation', ref: 'synthetic-new-draft' }
+    const id = controller.queueReference(replacement.sessionId, reference)
+    finishOld()
+    await rejected
+    assert.equal(controller.snapshot.chat, replacement)
+    assert.equal(controller.snapshot.phase, 'open')
+    assert.equal(controller.snapshot.error, undefined)
+    assert.deepEqual(controller.snapshot.references, [{ id, sessionId: replacement.sessionId, reference }])
+    assert.equal(requests.some(input => input.action === 'close' && input.owner === replacement.owner), false)
+    if (outcome === 'reply') assert.ok(requests.some(input => input.action === 'close' && input.sessionId === 'side-old'))
+  })
+}
+
 test('failed cleanup is retryable and cannot open a replacement chat', async () => {
   let failure = true
   const controller = new SideChatController({ owner: () => 'c'.repeat(32), request: async input => {

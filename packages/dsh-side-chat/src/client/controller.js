@@ -46,8 +46,10 @@ export class SideChatController {
       this.update({ chat, phase: 'open' })
       return chat
     } catch (error) {
-      if (this.snapshot.chat === pending) this.update({ phase: 'closing', error: 'failed' })
-      await this.close().catch(() => {})
+      if (this.snapshot.chat === pending) {
+        this.update({ phase: 'closing', error: 'failed' })
+        await this.close().catch(() => {})
+      }
       throw error
     }
   }

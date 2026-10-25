@@ -1,17 +1,29 @@
 import assert from 'node:assert/strict'
-import test from 'node:test'
+import test, { after } from 'node:test'
 import { mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { createRequire } from 'node:module'
+import { createRequire, registerHooks } from 'node:module'
 import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
 const runtime = process.env.EDUWORK_SIDE_CHAT_RUNTIME
 const options = { skip: !runtime, timeout: 20_000 }
+const runtimeRequire = runtime ? createRequire(join(runtime, 'package.json')) : undefined
+const sourceRoot = new URL('../src/', import.meta.url).href
+// Test the working-tree service while sharing the real Runtime's dependency
+// identities. Never substitute the side-chat package installed in that cache.
+const runtimeHooks = runtimeRequire && registerHooks({
+  resolve(specifier, context, nextResolve) {
+    if (context.parentURL?.startsWith(sourceRoot) && specifier.startsWith('@deepseek-ai/')) {
+      return nextResolve(pathToFileURL(runtimeRequire.resolve(specifier)).href, context)
+    }
+    return nextResolve(specifier, context)
+  },
+})
+after(() => runtimeHooks?.deregister())
 
 async function fixture() {
-  const require = createRequire(join(runtime, 'package.json'))
-  const load = name => import(pathToFileURL(require.resolve(name)).href)
+  const load = name => import(pathToFileURL(runtimeRequire.resolve(name)).href)
   const { Context } = await load('@deepseek-ai/cordis')
   const { createUserMessage, createMessage, LlmAdapter } = await load('@deepseek-ai/dsh-llm')
   const { assembleContextFor } = await load('@deepseek-ai/dsh-agent')
@@ -36,7 +48,7 @@ async function fixture() {
   source.append('user/message', createUserMessage({ content: [{ type: 'text', text: 'SOURCE_FUTURE' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
   source.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
   let now = 1000
-  const { SideChatService } = await load('@eduwork/dsh-side-chat')
+  const { SideChatService } = await import('../src/service.js')
   const service = new SideChatService(ctx, { now: () => now, leaseMs: 100 })
   return {
     ctx, service, source, sourceHandle, selected, createUserMessage, createMessage, LlmAdapter,
