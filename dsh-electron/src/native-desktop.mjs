@@ -75,8 +75,13 @@ function startBackend() {
     for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
   })
 }
-// One startup attempt serves the main launch and every early boot/locale request.
-function startOnce() { return startupTask ??= startBackend() }
+// Early boot/locale requests must enter product recovery before the renderer reports failure.
+function startOnce() {
+  return startupTask ??= startBackend().catch(error => {
+    void handleStartupFailure(error)
+    throw error
+  })
+}
 async function waitForHost() {
   await startOnce()
   if (isQuitting()) throw new Error('Desktop is shutting down')
@@ -158,7 +163,7 @@ async function main() {
     if (startupFailure || isQuitting()) return
     throw error
   }
-  const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
+  const ready = await startOnce().then(() => true, () => false)
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.
   if (!backend.host || backend.state.phase !== 'ready') {

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T04:44:31.720Z",
-  "fileSetSHA256": "dc49340015d4464e8c1dcb4af0a1e4d8666a00e85e21214ffe647364d14b53ce",
+  "createdAt": "2026-10-25T05:05:32.945Z",
+  "fileSetSHA256": "eeb57c39d24bb77ad4a7489ede737466f83caabd750a1eaf7c055a4aaab8e7ec",
   "files": [
     {
       "path": ".gitattributes",
@@ -1265,7 +1265,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "442725eca634f98269d269bab355ba3859f05a50be6fefef7f1153427291c069"
+      "sha256": "8c6edad2fd9a75766da8efa5f609bf20332836ab0ba781bb8c9c0f71253bc415"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1429,7 +1429,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "8c07ea5f32adbaf4e35ebbf0a20682825178feff9097139ae330304553c68a5f"
+      "sha256": "b7fd2f480d383e668d2a9270ca3b60b52e8f4b39ef16cd57f5e25cf2b54c010d"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
