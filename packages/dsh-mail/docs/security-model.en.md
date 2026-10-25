@@ -47,6 +47,12 @@ Full Access therefore has the same meaning as for other DSH write tools: the use
 - bounded connection and socket timeouts;
 - arbitrary remote errors never returned verbatim to the model.
 
+## Bundled dependency checks
+
+Mail protocol and parsing dependencies are embedded in JavaScript; downstream `npm audit` and `overrides` cannot fully inspect or replace them. The build generates `lib/bundled-dependencies.json` from every JS sourcemap, verifies installed versions against the lockfile, and records output hashes. `npm run check:security` queries npm advisories and stops on high/critical findings or lookup failure; a version floor also protects against the known address-parser regressions. Packing and publication recheck the inventory against JS bytes in the tarball to reject files replaced after scanning.
+
+This checks published advisories, not unknown parsing vulnerabilities. Security updates require rebuilding and publishing the plugin, then updating the client assembly lock.
+
 ## Remaining risk
 
 - An app password may carry broader server permissions than the local read/send switches. Those switches are plugin policy and do not reduce the credential's authority in other clients.
