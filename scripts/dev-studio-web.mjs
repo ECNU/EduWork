@@ -1,6 +1,9 @@
 import { prepareProductPresets } from '../dsh-host/product-presets.mjs'
 import { loadUserConfig } from '../dsh-host/user-config.mjs'
 import { loadMediaProviders } from '../dsh-host/media-config.mjs'
+import { qualifiedDesktopBaseline } from '../dsh-host/dsh-compatibility.mjs'
+import { nativePresetPatches, writeNativeProfile } from '../dsh-host/native-profile.mjs'
+import { createRequire } from 'node:module'
 // Launch only a prepared mainline Web assembly. Private host configuration and
 // mutable test data stay outside the source and immutable package directory.
 import {mkdir,readFile,writeFile,open,stat} from 'node:fs/promises'
@@ -10,8 +13,15 @@ import {spawn} from 'node:child_process'
 import {registerHooks} from 'node:module'
 import {createServer} from 'node:http'
 import {randomUUID} from 'node:crypto'
+import { loadDevelopmentEnvironment } from './lib/dev-environment.mjs'
+import { developmentPaths } from './lib/dev-workspace.mjs'
 
-const command=process.argv[2] || 'status',configPath=resolve(process.argv[3] || 'dist/studio-web.private.json')
+const defaults=developmentPaths(fileURLToPath(new URL('../',import.meta.url)))
+const command=process.argv[2] || 'status',configPath=resolve(process.argv[3] || join(defaults.state,'web.private.json'))
+if(!process.argv[3] && !await stat(configPath).catch(error=>{if(error.code!=='ENOENT')throw error})) {
+  await mkdir(dirname(configPath),{recursive:true})
+  await writeFile(configPath,JSON.stringify({assembly:join(defaults.desktop,'product'),home:join(defaults.state,'web/home'),logs:join(defaults.state,'web/logs'),profileName:'eduwork-dev-web',port:8788},null,2)+'\n')
+}
 const config=JSON.parse(await readFile(configPath,'utf8'))
 // Preserve invocation-relative configuration when the worker runs inside the
 // assembly. The Windows linker must use the same base as its parent process.
@@ -23,7 +33,11 @@ if(config.node && /[/\\]/.test(config.node))config.node=resolve(configBase,confi
 const profileName=config.profileName || 'chatecnu-work-web'
 if(!/^[a-z0-9-]+$/.test(profileName))throw new Error('Invalid Web profile name')
 const profile=join(home,'profiles',profileName),port=config.port || 8788
-const identity=JSON.parse(await readFile(join(assembly,'assembly.json'),'utf8'))
+const identity=await readFile(join(assembly,'assembly.json'),'utf8').then(JSON.parse).catch(error=>{
+  if(error.code==='ENOENT')throw new Error('No prepared development product. Build it with node scripts/dev-eduwork.mjs build, or supply a private Web configuration with an explicit assembly path.')
+  throw error
+})
+const baseline=qualifiedDesktopBaseline(identity)
 const json=async p=>JSON.parse(await readFile(p,'utf8'))
 const save=async(p,value)=>{await mkdir(dirname(p),{recursive:true});await writeFile(p,JSON.stringify(value,null,2)+'\n')}
 const live=pid=>{try{process.kill(pid,0);return true}catch{return false}}
@@ -31,7 +45,7 @@ async function setup() {
   await mkdir(profile,{recursive:true})
   const productWeb=identity.kind==='eduwork-web'
   const bundles=productWeb?identity.bundles:['@deepseek-ai/dsh-base','@deepseek-ai/dsh-web-app','@chatecnu-work/dsh-bundle-studio-web',...(identity.ecnu?['@chatecnu-work/dsh-bundle-oidc-ecnu-web']:[]),...(identity.allPlugins?['@eduwork/dsh-mail','@eduwork/dsh-memory',...(!identity.ecnu?['@eduwork/dsh-oidc']:[])]:[])]
-  await save(join(profile,'package.json'),{name:productWeb?'eduwork-local-web':'chatecnu-work-web-integration',private:true,type:'module',dsh:{profile:{bundles}}})
+  if(!baseline?.native)await save(join(profile,'package.json'),{name:productWeb?'eduwork-local-web':'chatecnu-work-web-integration',private:true,type:'module',dsh:{profile:{bundles}}})
   // These are the same Host service names and Skill setting policy selected by
   // the desktop composition. Native desktop services stay out of this Web host.
   const sharedManifest=await json(join(runtime,'node_modules/@eduwork/dsh-artifact-services/package.json'))
@@ -49,7 +63,13 @@ async function setup() {
       }
       if(row.id==='session-query-sqlite')row.config.path=join(home,'session-query-memory.sqlite3')
     }
-    await save(join(profile,'cordis.patch.yml'),[...composition,...(config.patches || [])])
+    if(baseline?.native) {
+      const yaml=await import(pathToFileURL(createRequire(join(runtime,'package.json')).resolve('yaml')).href)
+      const parse=text=>yaml.parse(text,{customTags:[{tag:'tag:yaml.org,2002:js',resolve:value=>({__jsExpr:value})}]})
+      await writeNativeProfile({profile,home,bundles,optionalBundles:identity.optionalBundles,
+        patches:[...await nativePresetPatches(runtime,parse),...composition,...(config.patches || [])],
+        parse,yaml,migrateSchedule:baseline.migrateSchedule===true,builtinSchedule:baseline.builtinSchedule===true})
+    } else await save(join(profile,'cordis.patch.yml'),[...composition,...(config.patches || [])])
   } else {
   const insert=[{id:'dsh-artifact-services',name:'@eduwork/dsh-artifact-services/dsh',config:{skills:false}},
     {id:'dsh-knowledge-studio',name:'@eduwork/dsh-knowledge-studio',config:{skills:!identity.skills?.includes('knowledge-studio')}},
@@ -58,7 +78,7 @@ async function setup() {
     {id:'chatecnu-work-shared-speech-ecnu',name:'@chatecnu-work/dsh-studio-media-ecnu',config:{...config.ecnuMedia,...config.ecnuSpeech}})
   await save(join(profile,'cordis.patch.yml'),[{insert}])
   }
-  if(process.platform==='win32') {
+  if(process.platform==='win32' && !baseline?.native) {
     const {linkStudioWebProfile}=await import('./link-studio-web-profile.mjs')
     await linkStudioWebProfile({config:configPath,baseDirectory:configBase})
       .catch(error=>{throw new Error(`Profile module linking failed: ${error.message}`)})
@@ -77,11 +97,12 @@ async function stop() {
 }
 if(command==='worker') {
   for(const [key,value] of Object.entries(config.environment || {}))if(typeof value==='string')process.env[key]=value
+  await loadDevelopmentEnvironment()
   process.env.DSH_HOME=home;process.env.DSH_TELEMETRY_DISABLED='1'
   process.env.DSH_BUNDLED_SKILL_DIR=join(assembly,'skills')
   process.env.CHATECNU_WEB_PRESETS=join(runtime,'presets')
   if(identity.kind==='eduwork-web') {
-    Object.assign(process.env, await prepareProductPresets({product:assembly,home}))
+    if(!baseline?.native)Object.assign(process.env, await prepareProductPresets({product:assembly,home}))
     process.env.EDUWORK_PRODUCT_ROOT=assembly
     process.env.DSH_MEDIA_NODE_ENV ||= runtime
   }
@@ -91,7 +112,7 @@ if(command==='worker') {
   }
   const parentURL=pathToFileURL(join(runtime,'package.json')).href
   registerHooks({resolve(specifier,context,next){
-    const managed=specifier.startsWith('@deepseek-ai/') || specifier.startsWith('@chatecnu-work/') || specifier.startsWith('@eduwork/')
+    const managed=specifier!=='@eduwork/generated-profile' && (specifier.startsWith('@deepseek-ai/') || specifier.startsWith('@chatecnu-work/') || specifier.startsWith('@eduwork/'))
     return next(specifier,managed?{...context,parentURL}:context)
   }})
   const secret=randomUUID(),server=createServer((req,res)=>{

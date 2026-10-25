@@ -18,6 +18,7 @@ import { preflight } from './lib/preflight.mjs'
 import { desktopBuildPlan } from './desktop-build-plan.mjs'
 import { ciEduworkWeb } from './ci-eduwork-web.mjs'
 import { desktopApplicationName, installPreparedApplication } from './lib/local-install.mjs'
+import { developmentPaths, resetDevelopmentOutput } from './lib/dev-workspace.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
@@ -78,7 +79,7 @@ export async function localDesktopPipeline({
   }
 
   version = await developmentVersion(coreRoot, version)
-  const output = fullPath(workspace || join(coreRoot, `dist/local-desktop-${version}`))
+  const output = fullPath(workspace || developmentPaths(coreRoot).desktop)
   installRoot = fullPath(installRoot || defaultInstallRoot())
   const applicationName = desktopApplicationName({ edition: name, platform: process.platform, sourceAlpha: false })
   const installTarget = join(installRoot, applicationName)
@@ -97,6 +98,8 @@ export async function localDesktopPipeline({
   if (checks.problems.length) {
     throw new Error(`Preflight failed:\n  ${checks.problems.join('\n  ')}`)
   }
+
+  if (!workspace && !reuseWorkspace) await resetDevelopmentOutput(coreRoot, output)
 
   const shared = {
     coreRoot,

@@ -1,7 +1,7 @@
 // Assemble locked npm plugins with the product-owned desktop extensions.
 import { mkdir, readFile, writeFile, readdir, access } from 'node:fs/promises'
 import { copyProductTree as cp } from './portable-product-links.mjs'
-import { resolve, join, relative, isAbsolute } from 'node:path'
+import { resolve, join } from 'node:path'
 import { parseArgs } from 'node:util'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import { createRequire } from 'node:module'
@@ -20,15 +20,13 @@ import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs, publishedPackageFiles, verifyPublishedPackageFiles } from './published-package-inputs.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
+import { assertBuildOutput } from './lib/dev-workspace.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
 if (Object.values(values).length !== 5) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
 const repository = fileURLToPath(new URL('../', import.meta.url))
 const paths = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, resolve(value)]))
-const inside = (root, child) => { const path = relative(root, child); return !isAbsolute(path) && path !== '..' && !path.startsWith('..' + (process.platform === 'win32' ? '\\' : '/')) }
-for (const source of [repository, paths.runtime, paths.source, paths.dependencies, paths.host]) {
-  if (inside(source, paths.output) || inside(paths.output, source)) throw new Error('Source qualification output must be separate from every input')
-}
+assertBuildOutput(repository, paths.output, [paths.runtime, paths.source, paths.dependencies, paths.host])
 const json = async file => JSON.parse(await readFile(file, 'utf8'))
 const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
 verifyPinnedDshReceipt(receipt)

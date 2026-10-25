@@ -1,5 +1,7 @@
 # Development guidance
 
+- 本机开发产物统一放在当前仓库的 `dist/dev/`；只有用户明确要求 worktree 时才创建，并使用该 worktree 的 `dist/`。不得默认在仓库外新建带日期、fix 或版本后缀的构建目录。普通开发使用 `dist/dev/desktop`，未发布实验使用独立的 `dist/dev/experimental`，在各自固定目录覆盖，不备份开发产物。持久会话、配置及浏览器数据放在 `dist/dev-state/`，重建不得清理该目录。合成验收使用独立数据，不替换日常开发数据。启动开发环境使用 `scripts/dev-eduwork.mjs`；只做 Web 验证不得声称已验收桌面 APP。
+
 - 所有修改先在独立主题分支开发，通过 Pull Request 合入 main，不直接提交或推送 main。未完成的功能使用 Draft PR；合并前检查实际 diff、受影响功能的验证结果和现有 CI。PR 合并与 npm、桌面 Release、机构部署分别授权。
 - 一个 PR 围绕一个明确目标，不混入工作区中其他任务的未提交改动。功能提案须明确“计划”与“已实现”；内部研究和联调记录留在仓库外。
 

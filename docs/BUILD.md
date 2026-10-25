@@ -17,6 +17,32 @@
 
 ## 本机构建
 
+日常开发使用固定入口：
+
+```sh
+node scripts/dev-eduwork.mjs build
+node scripts/dev-eduwork.mjs desktop
+```
+
+`build` 使用当前工作树和锁定依赖构建完整桌面开发包，不安装、不发布；固定覆盖当前仓库的 `dist/dev/desktop/`，不创建带日期或 fix 后缀的目录，也不备份旧产物。重建前先退出该开发 APP，并停止使用此产物的 Web 进程。显式使用 worktree 时，使用 worktree 自己的 `dist/`。未发布源码实验使用 `dist/dev/experimental/`，保持独立配方与实际组件回执。
+
+Windows 上 `desktop` 启动 `dist/dev/desktop/desktop/electron-candidate/EduWork-Electron.exe`，会话、模型设置、浏览器数据与配置固定保存在 `dist/dev-state/desktop/`。`desktop --experimental` 启动对应实验目录，使用 `dist/dev-state/experimental-desktop/`。这些数据不随构建覆盖，不要删除 `dist/dev-state/`。macOS 目前直接打开构建完成的 APP，其数据位置遵循桌面实现；此快捷启动命令暂只支持 Windows。
+
+只验证 Web 功能时，使用同一桌面构建中的 `product/`：
+
+```sh
+node scripts/dev-eduwork.mjs start
+node scripts/dev-eduwork.mjs restart
+node scripts/dev-eduwork.mjs status
+node scripts/dev-eduwork.mjs stop
+```
+
+首次运行生成 `dist/dev-state/web.private.json`，默认端口为 8788，固定使用 `dist/dev-state/web/home/` 保存会话和设置，日志在 `dist/dev-state/web/logs/`，登录链接保存在其中的 `url.txt`。如需实验产物或自定义端口，修改私有配置，或用 `node scripts/dev-eduwork-web.mjs start <配置路径>` 指定另一份私有配置。Web 与桌面数据各自持久化，不同时打开同一个数据库，也不自动合并不同目录的历史。合成验收仍使用独立数据与测试模型。
+
+开发启动器优先继承进程中的 `DEEPSEEK_API_KEY`；若 Windows 编辑器进程尚未继承后来设置的变量，则补读 Windows 用户变量，再回退系统变量。Key 仅传入子进程环境，不写入源码、启动配置或回执。更新变量后重启开发进程即可，无需逐次在模型页面填写。
+
+Web 方式运行已组装的前端和本地 Node Host：浏览器连接回环地址，由 Host 执行会话、模型和工具逻辑。它省略 Electron 壳与桌面打包，修改过的插件仍须构建并装配后生效。Electron APP 则用自己的 Chromium 窗口加载前端，并额外提供原生桥接、凭据保险库、窗口与托盘、桌面通知、更新和安装能力。Web 功能验证不能代替桌面验收。
+
 准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
 
 Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json) 为准；构建机、随包 Node 和 Host 回执必须匹配。升级 Node 后需重新准备 Host 与桌面壳，不能复用旧版本回执。下载资源继续核对清单中的官方 SHA-256，整包验收会再次检查实际携带的 Node 版本。机构仓升级公版锁时，也要同步其构建机与 CI 的 Node 版本。
@@ -27,15 +53,15 @@ Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/bu
 node scripts/local-desktop-pipeline.mjs
 ```
 
-入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定构建工作区。Linux 当前只做 Web 验证。
+此底层入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用，默认输出同样为 `dist/dev/desktop/`，非复用模式会覆盖该目录。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定独立构建工作区。Linux 当前只做 Web 验证。
 
 macOS 开发包安装为 `EduWork Alpha.app`（机构版为 `EduWork-ECNU Alpha.app`），与归档中的应用名称一致，已有安装不会被覆盖。开发时可使用 `--no-verify-snapshot` 构建未提交工作树；该选项仅跳过冻结 receipt 的一致性校验，源码与私有配置审计仍会执行，回执记录快照校验未执行。正式候选要求已校验的源码快照。
 
 如需只生成某个平台的开发包，在对应系统上运行：
 
 ```sh
-node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-windows-dev
-node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ../eduwork-macos-dev
+node scripts/ci-eduwork-windows-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ./dist/dev/desktop
+node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distribution-config config/distributions/generic.json --version X.Y.Z-dev.YYYYMMDD.N --development --output ./dist/dev/desktop
 ```
 
 将示例版本替换为实际版本，输出目录须尚不存在。`publish/` 保存 ZIP、校验和与回执；macOS 另有 DMG，Windows 另有便携包。`evidence-public/` 保存可公开的检查报告。开发包只上传 artifact，不创建 Release。

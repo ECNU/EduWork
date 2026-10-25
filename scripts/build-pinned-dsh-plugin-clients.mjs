@@ -1,7 +1,7 @@
 // Build product-owned extensions only. Published plugins are immutable npm inputs.
 import { createRequire } from 'node:module'
 import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promises'
-import { join, resolve, relative, sep } from 'node:path'
+import { join, resolve, relative } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativeWebSearchUI } from './native-web-search-ui.mjs'
@@ -14,14 +14,14 @@ import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs } from './published-package-inputs.mjs'
 import { verifyPluginNotificationConsumers, withPluginNotifications } from './plugin-notification-contract.mjs'
+import { assertBuildOutput } from './lib/dev-workspace.mjs'
 
 const { values } = parseArgs({ options: { runtime: { type: 'string' }, dependencies: { type: 'string' }, report: { type: 'string' }, output: { type: 'string' }, version: { type: 'string' } } })
 if (!values.runtime || !values.dependencies || !values.report || !values.output) throw new Error('Use --runtime <candidate> --dependencies <isolated dependencies> --output <new directory> --report <path>')
 const sourceRepository = fileURLToPath(new URL('../', import.meta.url))
 const repository = resolve(values.output)
-const pathFromSource = relative(sourceRepository, repository)
-if (!pathFromSource.startsWith('..' + sep) && !/^[A-Za-z]:/.test(pathFromSource)) throw new Error('Qualification output must stay outside the source checkout')
 const runtime = resolve(values.runtime), dependencies = resolve(values.dependencies)
+assertBuildOutput(sourceRepository, repository, [runtime, dependencies])
 const require = createRequire(join(runtime, 'package.json'))
 const runtimeReceipt = JSON.parse(await readFile(join(runtime, '.chatecnu-dsh-runtime.json'), 'utf8'))
 verifyPinnedDshReceipt(runtimeReceipt)

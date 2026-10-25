@@ -7950,9 +7950,9 @@
   "reviewedCompatibility": [
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
+      "sha256": "4cc49b14cfaf3b40f2f1a9b676363fb3e8d6f4f118b2e9dcc5a93a7968642222",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Legacy composition remains inactive for eduwork-web product identities. Parent, worker and Windows linker share the invocation directory when resolving local configuration paths. Bundle selection and service registration are unchanged; no institution endpoint or credential exemption."
+      "reason": "旧机构组合仅保留在非 eduwork-web 分支；公版仍使用产物的 bundles 与 composition。开发配置和持久数据改用固定 dist 路径，原生 Runtime 使用桌面共有 profile 生成逻辑以保留用户设置。Windows 启动仅补读本机环境中的 DEEPSEEK_API_KEY，不写入凭据，不引入机构端点或默认配置。"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
