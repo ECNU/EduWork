@@ -1,8 +1,8 @@
 {
   "repository": "ECNU/EduWork",
   "url": "https://github.com/ECNU/EduWork",
-  "fetchedAt": "2026-10-24T18:17:42.173Z",
-  "stars": 229,
+  "fetchedAt": "2026-10-25T16:36:55.694Z",
+  "stars": 237,
   "history": [
     {
       "date": "2026-09-14",
@@ -166,29 +166,33 @@
     },
     {
       "date": "2026-10-24",
-      "stars": 229
+      "stars": 236
+    },
+    {
+      "date": "2026-10-25",
+      "stars": 237
     }
   ],
   "historyNote": "按 GitHub 提供的每日 Star 统计累计，可能与当前 Star 总数存在差异。",
   "release": {
-    "tag": "v0.4.8",
-    "url": "https://github.com/ECNU/EduWork/releases/tag/v0.4.8",
-    "publishedAt": "2026-10-24T16:22:14Z",
+    "tag": "v0.4.9",
+    "url": "https://github.com/ECNU/EduWork/releases/tag/v0.4.9",
+    "publishedAt": "2026-10-25T16:36:35Z",
     "assets": [
       {
-        "name": "EduWork-0.4.8-windows-x64-setup.zip",
-        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.8/EduWork-0.4.8-windows-x64-setup.zip",
-        "size": 471304261
+        "name": "EduWork-0.4.9-windows-x64-setup.zip",
+        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.9/EduWork-0.4.9-windows-x64-setup.zip",
+        "size": 468706221
       },
       {
-        "name": "EduWork-0.4.8-macos-arm64-electron.dmg",
-        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.8/EduWork-0.4.8-macos-arm64-electron.dmg",
-        "size": 461545989
+        "name": "EduWork-0.4.9-macos-arm64-electron.dmg",
+        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.9/EduWork-0.4.9-macos-arm64-electron.dmg",
+        "size": 458629483
       },
       {
-        "name": "EduWork-0.4.8-macos-x64-electron.dmg",
-        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.8/EduWork-0.4.8-macos-x64-electron.dmg",
-        "size": 482399968
+        "name": "EduWork-0.4.9-macos-x64-electron.dmg",
+        "url": "https://github.com/ECNU/EduWork/releases/download/v0.4.9/EduWork-0.4.9-macos-x64-electron.dmg",
+        "size": 479465646
       }
     ]
   }

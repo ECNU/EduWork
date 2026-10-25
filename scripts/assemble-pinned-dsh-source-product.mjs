@@ -20,13 +20,14 @@ import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs, publishedPackageFiles, verifyPublishedPackageFiles } from './published-package-inputs.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
+import { selectOptionalProductBundles } from './optional-product-bundles.mjs'
 
-const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output'].map(key => [key, { type: 'string' }])) })
-if (Object.values(values).length !== 5) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
+const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output', 'edition'].map(key => [key, { type: 'string' }])) })
+if (['runtime', 'source', 'dependencies', 'host', 'output'].some(key => !values[key])) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
 const repository = fileURLToPath(new URL('../', import.meta.url))
 const paths = Object.fromEntries(Object.entries(values).map(([key, value]) => [key, resolve(value)]))
 const inside = (root, child) => { const path = relative(root, child); return !isAbsolute(path) && path !== '..' && !path.startsWith('..' + (process.platform === 'win32' ? '\\' : '/')) }
-for (const source of [repository, paths.runtime, paths.source, paths.dependencies, paths.host]) {
+for (const source of [repository, paths.runtime, paths.source, paths.dependencies, paths.host, paths.edition].filter(Boolean)) {
   if (inside(source, paths.output) || inside(paths.output, source)) throw new Error('Source qualification output must be separate from every input')
 }
 const json = async file => JSON.parse(await readFile(file, 'utf8'))
@@ -34,10 +35,15 @@ const receipt = await json(join(paths.runtime, '.chatecnu-dsh-runtime.json'))
 verifyPinnedDshReceipt(receipt)
 const distribution = await json(join(paths.source, 'config/distributions/generic.json'))
 const sourceMediaTemplate = await verifyMediaTemplate(join(paths.dependencies, 'node_modules/@eduwork/dsh-artifact-services'))
-const publishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
-await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
-const publishedFiles = await publishedPackageFiles(publishedLocks, join(paths.dependencies, 'node_modules'))
+const allPublishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
+await verifyPublishedPackageInputs({ locks: allPublishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
 const pluginInstallLock = await readFile(join(paths.dependencies, 'package-lock.json'))
+const edition = paths.edition ? await json(join(paths.edition, 'edition/distribution.json')) : {}
+const { locks: publishedLocks, optionalBundles, excludedOptionalBundles } = selectOptionalProductBundles({
+  locks: allPublishedLocks, optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'],
+  excluded: edition.excludedOptionalBundles, dependencyLock: JSON.parse(pluginInstallLock),
+})
+const publishedFiles = await publishedPackageFiles(publishedLocks, join(paths.dependencies, 'node_modules'))
 await mkdir(paths.output)
 console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
@@ -48,6 +54,7 @@ const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's npm lock. Published plugin bytes must remain unchanged.
 const copyDependency = async name => {
+  if (excludedOptionalBundles.includes(name)) return
   if (!await exists(join(modules, name))) await cp(join(paths.dependencies, 'node_modules', name), join(modules, name), { recursive: true })
 }
 for (const entry of await readdir(join(paths.dependencies, 'node_modules'), { withFileTypes: true })) {
@@ -78,7 +85,6 @@ const insert = [
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
 // Provision the native settings entry once. The relay connection itself remains
 // off in remote-access's published patch until the user explicitly enables it.
-const optionalBundles = ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access']
 const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
@@ -87,7 +93,7 @@ const composition = [...mergeDistributionConfigPatches([{ insert }], distributio
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'npm', published: false,
-  bundles, optionalBundles,
+  bundles, optionalBundles, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
   sourcePackages, externalPackages: publishedLocks, publishedPackageFiles: publishedFiles,
   pluginInstallLockSHA256: createHash('sha256').update(pluginInstallLock).digest('hex'),
   omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,

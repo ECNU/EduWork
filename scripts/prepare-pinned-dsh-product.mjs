@@ -39,6 +39,8 @@ generic.packages=generic.packages.map(name=>name==='@shlv/dsh-literature'?'@eduw
 const pluginNames=[...new Set(generic.plugins.map(plugin=>plugin.name.replace(/\/search-auto$/, ''))) ]
 if(values.edition){
   const edition=resolve(values.edition), distribution=await read(join(edition,'edition/distribution.json'))
+  assert.deepEqual([...(identity.excludedOptionalBundles??[])].sort(), [...(distribution.excludedOptionalBundles??[])].sort(),
+    'Edition optional bundle selection differs from assembly; pass --edition during source product assembly')
   const require=createRequire(join(product,'d/package.json')), {build}=require('esbuild')
   const runtime=await read(join(product,'d/package.json'))
   let composition=await read(join(product,'composition.json'))
