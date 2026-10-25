@@ -6,7 +6,7 @@
 
 | 场景 | 入口 | 产物 |
 | --- | --- | --- |
-| 本机开发 | `node scripts/dev-eduwork.mjs build` | 固定目录中的开发包，不安装、不发布 |
+| 本机开发 | `node scripts/local-desktop-pipeline.mjs` | 当前平台的开发包，可选择安装 |
 | main 更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
 | feature 分支验证 | 手动运行 `development-desktop.yml`，选择分支和 `platform` | 所选平台的开发包与验收报告 artifact |
 | 手动候选 | `desktop-candidates.yml`，选择 `node` | 双平台候选 artifact；经授权可发布 GitHub Release |
@@ -17,32 +17,9 @@
 
 ## 本机构建
 
-### 日常开发闭环
-
-本仓库采用固定开发产物与持久数据分离的工作方式。项目级规则见 [AGENTS.md](../AGENTS.md#项目级本机开发范式)，不需要为每次任务创建新的构建根目录或重新配置模型凭据。
-
-| 内容 | 本机固定位置 | 生命周期 |
-| --- | --- | --- |
-| 普通桌面开发包与中间产物 | `dist/dev/desktop/` | 停止相关进程后覆盖 |
-| 未发布源码实验产物 | `dist/dev/experimental/` | 独立配方、固定目录覆盖 |
-| 日常会话、设置、配置和浏览器数据 | `dist/dev-state/` | 跨重建保留，各模式分别持久化 |
-| 合成测试、临时验收数据与报告 | `dist/dev-checks/` | 与日常数据隔离，可在确认无进程使用后清理 |
-
-仅在明确要求时创建 worktree，表中路径随之相对于该 worktree。Git 提交、依赖锁和组件回执承担溯源；开发产物不额外创建日期、fix 或修复版本副本。已安装应用与正式发行归档遵循各自安装、发布规则。
-
-一次开发迭代按以下顺序进行：
-
-1. 检查工作树、主题分支、已有产物和相关进程，确定本次目标及受影响组件。
-2. 修改源码并运行必要检查。修改插件后构建该组件并重新装配；不能把浏览器刷新当作源码已经生效。
-3. 停止使用待覆盖产物的进程，覆盖同一模式的开发目录，用原来的稳定数据目录重启。
-4. 验证实际行为。持久化改动使用隔离的合成数据检查重启前后；凭据改动检查真实 Host 的凭据状态，不打印 Key，也不靠模型 fixture 代替此检查。
-5. 正常退出本次启动的临时 APP、Host 和自动化浏览器，核对残留进程；仅保留明确要求持续运行的开发环境，不终止用户原有实例。检查实际 diff 和 CI，报告做了哪些构建、运行和验收。提交主题分支的 PR；尚未完成验收时保持 Draft。
-
-Web 联调、真实桌面启动、桌面功能验收、完整打包与发布是不同阶段。回执和交付说明须区分“复用已有包”“复制已有产物”“重建组件”“重新构建 APP”，列明未执行部分。请求桌面行为修复时，仅有 Web 结果不足以完成对应桌面验收；发布还需单独授权。
-
 ### 开发启动与构建命令
 
-日常开发使用固定入口：
+如需使用固定开发目录和独立持久数据，可选用以下快捷入口；该入口不要求其他协作者改变现有构建工作流：
 
 ```sh
 node scripts/dev-eduwork.mjs build
@@ -68,12 +45,6 @@ node scripts/dev-eduwork.mjs stop
 
 Web 方式运行已组装的前端和本地 Node Host：浏览器连接回环地址，由 Host 执行会话、模型和工具逻辑。它省略 Electron 壳与桌面打包，修改过的插件仍须构建并装配后生效。Electron APP 则用自己的 Chromium 窗口加载前端，并额外提供原生桥接、凭据保险库、窗口与托盘、桌面通知、更新和安装能力。Web 功能验证不能代替桌面验收。
 
-### 覆盖与清理
-
-覆盖开发包或清理历史构建前，先核对绝对路径、目录链接、构建锁及相关进程；优先正常退出应用和 Host，再操作其产物。检查旧目录是否包含会话、模型设置、可编辑配置或浏览器数据；需保留的数据先迁出，核对迁移结果后再删除构建副本。历史数据不自动合并为当前会话库。
-
-`dist/dev-state/` 不是构建缓存，不能通过删除整个 `dist/` 来重置产物。清理范围不包含其他仓库、worktree 或正式安装。清理和迁移回执包含本机信息时放在忽略目录中，不提交到公开源码。若执行被审批拒绝，报告实际阻止原因，保留未完成状态，不更换工具绕过限制。
-
 ### 完整桌面流水线
 
 准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
@@ -86,7 +57,7 @@ Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/bu
 node scripts/local-desktop-pipeline.mjs
 ```
 
-此底层入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用，默认输出同样为 `dist/dev/desktop/`，非复用模式会覆盖该目录。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定独立构建工作区。Linux 当前只做 Web 验证。
+此底层入口从 `source-receipt.json` 取得基础版本并生成开发版，构建、检查并安装当前平台应用，默认输出为 `dist/local-desktop-<版本>/`。固定目录覆盖仅由上面的可选快捷入口启用。`--skip-install` 只构建，`--install-root <目录>` 改变安装位置，`--workspace <目录>` 指定独立构建工作区。Linux 当前只做 Web 验证。
 
 macOS 开发包安装为 `EduWork Alpha.app`（机构版为 `EduWork-ECNU Alpha.app`），与归档中的应用名称一致，已有安装不会被覆盖。开发时可使用 `--no-verify-snapshot` 构建未提交工作树；该选项仅跳过冻结 receipt 的一致性校验，源码与私有配置审计仍会执行，回执记录快照校验未执行。正式候选要求已校验的源码快照。
 

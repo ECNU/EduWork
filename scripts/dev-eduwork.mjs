@@ -17,7 +17,7 @@ await loadDevelopmentEnvironment()
 if (command === 'build') {
   if (values.experimental) throw new Error('Experimental builds require their declared source recipe; use dist/dev/experimental for its output')
   const { localDesktopPipeline } = await import('./local-desktop-pipeline.mjs')
-  await localDesktopPipeline({ coreRoot: root, skipInstall: true, verifySnapshot: false })
+  await localDesktopPipeline({ coreRoot: root, workspace: paths.desktop, replaceDevelopmentOutput: true, skipInstall: true, verifySnapshot: false })
 } else if (['start', 'restart', 'stop', 'status'].includes(command)) {
   if (values.experimental) throw new Error('For experimental Web use dev-eduwork-web.mjs with an explicit private configuration')
   process.argv = [process.execPath, join(root, 'scripts/dev-eduwork-web.mjs'), command]
