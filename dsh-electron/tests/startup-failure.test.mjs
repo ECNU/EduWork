@@ -72,13 +72,15 @@ function pending() {
 }
 const tick = () => new Promise(setImmediate)
 
-function recoveryHarness(t, stage, rollbackResult = true) {
+function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = false } = {}) {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const start = source.indexOf('export async function showDesktopFailure('), end = source.indexOf('\n}\n', start)
   const stopStart = source.indexOf('export function stopDesktopServices('), stopEnd = source.indexOf('\n}\n', stopStart)
+  const quittingStart = source.indexOf('export function isQuitting()'), quittingEnd = source.indexOf('\n', quittingStart)
   assert.ok(start >= 0 && end > start, 'showDesktopFailure boundary changed')
   assert.ok(stopStart >= 0 && stopEnd > stopStart, 'stopDesktopServices boundary changed')
-  const events = [], waiting = pending(), operation = pending(), cleanup = pending(), lifecycle = new DesktopLifecycle()
+  assert.ok(quittingStart >= 0 && quittingEnd > quittingStart, 'isQuitting boundary changed')
+  const events = [], waiting = pending(), operation = pending(), cleanup = pending(), picker = pending(), lifecycle = new DesktopLifecycle()
   lifecycle.trackBridge({ close: () => cleanup.promise })
   const wait = async (step, value) => {
     if (stage === step) { waiting.resolve(); await operation.promise }
@@ -89,7 +91,10 @@ function recoveryHarness(t, stage, rollbackResult = true) {
     if (!exit.complete) { void exit.request(); return }
     events.push('quit')
   } }
-  exit = new DesktopExit({ confirm: async () => true, close: () => context.stopDesktopServices(),
+  exit = new DesktopExit({ confirm: async () => true, close: async () => {
+    if (waitForPicker) await picker.promise
+    await context.stopDesktopServices()
+  },
     relaunch: () => events.push('relaunch'), quit: () => app.quit(), failed: assert.fail })
   class BrowserWindow {
     constructor() { window = this; this.webContents = new EventEmitter(); events.push('window-created') }
@@ -99,8 +104,8 @@ function recoveryHarness(t, stage, rollbackResult = true) {
     show() { events.push('window-shown') }
   }
   const context = {
-    app, BrowserWindow, lifecycle, desktopFailureShown: false, progressWindow: undefined,
-    settings, paths: { config: settings.config }, isQuitting: () => lifecycle.closing,
+    app, BrowserWindow, lifecycle, desktopExit: exit, desktopFailureShown: false, progressWindow: undefined,
+    settings, paths: { config: settings.config },
     restartDesktop: () => { events.push('restart'); exit.restart() },
     contentUpdates: { close: () => events.push('content-abort'), rollback: () => wait('rollback', stage === 'rollback' && rollbackResult),
       importOffline: () => { events.push('import'); return wait('import') } },
@@ -112,8 +117,8 @@ function recoveryHarness(t, stage, rollbackResult = true) {
       showMessageBox: async () => { events.push('error-dialog') } },
     stat: async () => ({ isFile: () => true, size: 1 }), readFile: async () => Buffer.from('synthetic'),
   }
-  runInNewContext(`${source.slice(stopStart, stopEnd + 2).replace('export ', '')}\n${source.slice(start, end + 2).replace('export ', '')}\nglobalThis.recover = showDesktopFailure`, context)
-  t.after(async () => { operation.resolve(); cleanup.resolve(); await tick(); await exit.pending })
+  runInNewContext(`${source.slice(stopStart, stopEnd + 2).replace('export ', '')}\n${source.slice(quittingStart, quittingEnd).replace('export ', '')}\n${source.slice(start, end + 2).replace('export ', '')}\nglobalThis.recover = showDesktopFailure`, context)
+  t.after(async () => { operation.resolve(); picker.resolve(); cleanup.resolve(); await tick(); await exit.pending })
   return {
     events,
     async begin() {
@@ -125,15 +130,25 @@ function recoveryHarness(t, stage, rollbackResult = true) {
       }
       await waiting.promise
     },
-    async quit() { app.quit(); await tick(); assert.equal(lifecycle.closing, true) },
+    async quit() { app.quit(); await tick(); assert.equal(lifecycle.closing, !waitForPicker) },
     async finish(error) { if (error) operation.reject(error); else operation.resolve(); await tick() },
-    async cleaned() { cleanup.resolve(); await exit.pending },
+    async cleaned() { picker.resolve(); cleanup.resolve(); await exit.pending },
   }
 }
 
 for (const stage of ['rollback', 'retry', 'import']) {
   test(`quitting during ${stage} recovery does not turn the exit into a restart`, async t => {
     const f = recoveryHarness(t, stage)
+    await f.begin(); await f.quit(); await f.finish(); await f.cleaned()
+    assert.equal(f.events.includes('restart'), false)
+    assert.equal(f.events.includes('relaunch'), false)
+    assert.equal(f.events.filter(value => value === 'quit').length, 1)
+  })
+}
+
+for (const stage of ['rollback', 'import']) {
+  test(`accepted exit still blocks late ${stage} recovery while a native picker closes`, async t => {
+    const f = recoveryHarness(t, stage, { waitForPicker: true })
     await f.begin(); await f.quit(); await f.finish(); await f.cleaned()
     assert.equal(f.events.includes('restart'), false)
     assert.equal(f.events.includes('relaunch'), false)
@@ -169,7 +184,7 @@ test('a file selection completed after exit does not start an offline import', a
 
 for (const stage of ['rollback', 'show']) {
   test(`startup recovery does not show a late window after quitting during ${stage}`, async t => {
-    const f = recoveryHarness(t, stage, false)
+    const f = recoveryHarness(t, stage, { rollbackResult: false })
     await f.begin(); await f.quit(); await f.finish()
     assert.equal(f.events.includes('window-shown'), false)
     if (stage === 'rollback') assert.equal(f.events.includes('window-created'), false)

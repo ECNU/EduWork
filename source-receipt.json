@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.8",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T05:58:50.761Z",
-  "fileSetSHA256": "a268fbdde6d4e44afa5a543499217805e4aa640a08caf0599ec1d82f2bbdc1e7",
+  "createdAt": "2026-10-25T06:04:43.345Z",
+  "fileSetSHA256": "8a35e3e5aac23228aca25402aa24f2cfb4e1e8a464d59a76487ce0c6acafc88b",
   "files": [
     {
       "path": ".gitattributes",
@@ -1189,7 +1189,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-exit.mjs",
-      "sha256": "9473bbfd4d97be51fef3ce13e807dbe2ad541f8d1e5ad3c0f7249ef6277c2a03"
+      "sha256": "2c1f22fe3c6c4a3f10acfb4b832267d40e652b5306937983914143d0c0d4439f"
     },
     {
       "path": "dsh-electron/src/desktop-main.mjs",
@@ -1285,7 +1285,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "2cae94e9d9bec157753251a7377f36a4e6774062b9842198f306c2384eaca9c4"
+      "sha256": "a9414111869cb83ee36317aa6d1b28461aa80b61765029c9a2c3470f606956fc"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1353,7 +1353,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-exit.test.mjs",
-      "sha256": "d1d245f8a82bfab6ad142c65f816e0415e7f9f11642832173a5dc8a227ab0482"
+      "sha256": "c99e3c6b3f59cfe865ce471ace4bd56383e35f24841b331ca1035bfd41316d66"
     },
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
@@ -1429,7 +1429,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "95a58aca29175f18f17c9dc88c7ecfe6abe34263a95ab3a2d5f44c782bbc9626"
+      "sha256": "781c14ec1cb9debed1b674b8bb76b91839f9cc4e851d53ca068dc622fbafd790"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1489,7 +1489,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "48dfd70789f24b3f643cd65a4704ed31a8d65e4db7c15a974b3aa40726f5a7d8"
+      "sha256": "f89bad2dbdc5e864c1a7c52e3855618a60950453bf17f1bf9c1469a7778f3edc"
     },
     {
       "path": "dsh-electron/tests/startup-page.test.mjs",

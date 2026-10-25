@@ -2,13 +2,14 @@
 // An updater handoff is already committed; it must never prompt a second time.
 export class DesktopExit {
   complete = false
+  closing = false
   pending
   relaunchRequested = false
   installerOwnsQuit = false
   constructor({ confirm, close, relaunch, quit, failed }) {
     Object.assign(this, { confirm, close, relaunch, quit, failed })
   }
-  restart() { this.relaunchRequested = true; this.quit() }
+  restart() { if (this.closing || this.complete) return; this.relaunchRequested = true; this.quit() }
   handoff() { this.installerOwnsQuit = true; this.relaunchRequested = false; this.quit() }
   request() {
     if (this.complete) return Promise.resolve()
@@ -18,11 +19,12 @@ export class DesktopExit {
         this.relaunchRequested = false
         return
       }
+      this.closing = true
       await this.close()
       if (this.relaunchRequested && !this.installerOwnsQuit) this.relaunch()
       this.complete = true
       this.quit()
-    })().catch(error => { this.relaunchRequested = false; this.failed(error) }).finally(() => { this.pending = undefined })
+    })().catch(error => { this.closing = false; this.relaunchRequested = false; this.failed(error) }).finally(() => { this.pending = undefined })
     return this.pending
   }
 }

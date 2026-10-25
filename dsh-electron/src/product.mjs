@@ -83,7 +83,7 @@ export function stopDesktopServices() {
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
-export function isQuitting() { return lifecycle.closing }
+export function isQuitting() { return desktopExit.closing || lifecycle.closing }
 const activationWindows = () => [progressWindow, updateCompleted ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {

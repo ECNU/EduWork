@@ -298,7 +298,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         else setTimeout(completed, 0)
         return { startupWindowHidden: scenario === 'deferred-hidden-completion', restoreMainWindow: scenario === 'deferred-restored-completion' }
       },
-      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
+      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => exit.closing || lifecycle.closing,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: error => {
         assert.ok(scenario === 'host-failure' || earlyFailure)
         assert.equal(error, startupError)
