@@ -2,6 +2,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
+import { createHash } from 'node:crypto'
 import { packages, selectPackage, changedGroups, needsProductBuild } from '../scripts/packages/catalog.mjs'
 import { inspectArchive } from '../scripts/packages/archive.mjs'
 import { verifyPublicationSource } from '../scripts/packages/publication-source.mjs'
@@ -71,6 +72,23 @@ function tarball(files) {
   }
   return gzipSync(Buffer.concat([...records, Buffer.alloc(1024)]))
 }
+test('mail publication binds the dependency inventory to every shipped JS chunk', () => {
+  const selected = selectPackage('dsh-mail')
+  const manifest = { name: selected.name, version: '0.2.3', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
+  const output = { 'lib/index.js': 'export const name = "mail"', 'lib/mail-client-abc.js': 'export const parser = true' }
+  const inventory = {
+    schemaVersion: 1, package: { name: manifest.name, version: manifest.version },
+    outputs: Object.entries(output).map(([path, content]) => ({ path, sha256: createHash('sha256').update(content).digest('hex') })),
+    dependencies: ['imapflow', 'mailparser', 'nodemailer'].map(name => ({ name, version: '1.0.0', integrity: 'synthetic' })),
+  }
+  const files = { 'package/package.json': JSON.stringify(manifest), 'package/lib/bundled-dependencies.json': JSON.stringify(inventory), ...Object.fromEntries(Object.entries(output).map(([path, content]) => ['package/' + path, content])) }
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.2.3'))
+  assert.throws(() => inspectArchive(tarball({ ...files, 'package/lib/mail-client-abc.js': 'stale parser' }), selected, '0.2.3'), /hash mismatch/)
+  assert.throws(() => inspectArchive(tarball({ ...files, 'package/lib/forgotten.js': 'unscanned' }), selected, '0.2.3'), /every packed JS/)
+  const missing = { ...files }
+  delete missing['package/lib/bundled-dependencies.json']
+  assert.throws(() => inspectArchive(tarball(missing), selected, '0.2.3'), /Missing mail bundle inventory/)
+})
 test('publication rejects the wrong package, missing entry points and archive traversal', () => {
   const selected = selectPackage('dsh-oidc')
   const manifest = { name: selected.name, version: '1.2.3', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }

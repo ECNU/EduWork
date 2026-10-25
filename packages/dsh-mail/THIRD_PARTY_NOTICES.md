@@ -14,4 +14,6 @@
 
 直接和间接依赖的精确版本记录在 `package-lock.json`。每次公开发布前必须重新审查锁文件、许可证检查结果和最终 npm tarball。
 
+从 0.2.3 起，npm 包中的 `lib/bundled-dependencies.json` 记录实际进入 JS 产物的依赖（含嵌套版本）、npm integrity、许可证标识及产物 SHA-256。清单由构建来源生成，不包含仅开发使用且未打包的依赖。
+
 仅开发使用的官方 DSH Host 包含 LibreOffice Kit（MPL-2.0）与 sharp/libvips 原生包（Apache-2.0 / LGPL-3.0-or-later）。它们不打入邮件插件压缩包，许可证随各自的包保留。
