@@ -1,15 +1,15 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-mail",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "repository": "https://github.com/ECNU/EduWork",
-  "commit": "65dc827455a5e1deef84464339532d3d4f038f43",
+  "commit": "6a8b483ccf8e3fc6dc9b255b9ef895e061b211f9",
   "publicationStatus": "published",
-  "tarballSHA256": "55b7aec9a08b84726721c300afce25cc86174d5e5e09b49bea59fe93ecb27739",
+  "tarballSHA256": "1a2236aa1c50546009c2550b2469c3ef579f1ef251110fbc4d8b5eee4f170918",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-mail/-/dsh-mail-0.2.2.tgz",
-    "integrity": "sha512-lp2qhcsfnUC4P/llOP6h/lJNCLKV2AIB/x6bL/seFydBIrErT97p5y+ESZGelWmSNTHQ31v+7PmxLXFSZzMd7g==",
-    "shasum": "69cb63086e51cec808bcb9e66af5a636b78a4ebb"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-mail/-/dsh-mail-0.2.3.tgz",
+    "integrity": "sha512-7m/DfNZHvRYRhgjF3pcIr8E6sTz0f/6/JkOnGlcfQaa7RXnaRRfdtFamgb+YuuT+wDpVQQk0vfJwAZh8p5kHgQ==",
+    "shasum": "7b8bbecfc4a0d158807b053ba31d99658a3bf4dc"
   },
   "baseline": {
     "dshVersion": "0.2.1-rc.2",
