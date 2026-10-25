@@ -30,22 +30,24 @@ let mainWindow, bridge, product, entered = false, started = false, sessionEnding
 let startupTask, startupFailure, startupFailureShown = false, initialPresentationDone = false
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
-app.on('will-quit', () => loginShellRead.abort())
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && started && !isQuitting()) reportFatal(state.failure, 'host')
 })
-// Keep the product's resource teardown, with the official controller as its one
-// Host owner (including a failed or still-starting child).
-trackHost({ stop: () => backend.close() })
+function closeBackend() {
+  // Cancel shell preparation before the controller waits for startup to settle.
+  loginShellRead.abort()
+  return backend.close()
+}
+trackHost({ stop: closeBackend })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
   show: options => dialog.showMessageBox(options), focus: () => { if (process.platform === 'darwin') app.focus({ steal: true }) } })
 setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm())
 const recovery = new DesktopFatalRecovery({
   messages: () => locale().messages,
   show: options => dialog.showMessageBox(options),
-  stop: () => backend.close(),
+  stop: closeBackend,
   disablePlugins: async () => { throw new Error('Required distribution plugins cannot be disabled') },
   exit: () => { recoveryExit = true; app.quit() },
   restart: () => { recoveryExit = true; restartDesktop() },

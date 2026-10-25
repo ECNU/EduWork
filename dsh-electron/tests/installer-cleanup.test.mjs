@@ -215,15 +215,18 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation', 'deferred-restored-completion', 'deferred-hidden-completion', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host']) {
+for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation', 'deferred-restored-completion', 'deferred-hidden-completion', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     const earlyFailure = scenario.startsWith('early-'), startupError = new Error('synthetic Host failure')
+    const pendingShell = scenario.endsWith('-shell'), fatalRecovery = scenario.startsWith('recovery-')
     if (scenario === 'early-configuration-failure') startupError.code = 'EDUWORK_BOOTSTRAP_REQUIRED'
-    let guard = async () => true, completed, mainWindow, bridgeOptions, startupWindowPresent = scenario.startsWith('deferred-')
+    let guard = async () => true, completed, mainWindow, bridgeOptions, shellSignal, releaseShell, shellStarted, startupWindowPresent = scenario.startsWith('deferred-')
     const done = new Promise(resolve => { completed = resolve })
-    const exit = new DesktopExit({ confirm: () => guard(), close: () => lifecycle.close(),
-      relaunch: () => assert.fail('Installer restart belongs to Electron'), quit: () => app.quit(), failed: assert.fail })
+    const waitingForShell = new Promise(resolve => { shellStarted = resolve })
+    const exit = new DesktopExit({ confirm: () => scenario === 'cancelled-quit-during-shell' ? Promise.resolve(false) : guard(), close: () => lifecycle.close(),
+      relaunch: () => { assert.equal(scenario, 'recovery-restart-during-shell'); calls.push('relaunch') }, quit: () => app.quit(), failed: assert.fail })
+    t.after(async () => { releaseShell?.(); await new Promise(setImmediate); await exit.pending })
     app.getPath = () => '/unused'
     app.getLocale = () => 'en'
     app.getName = () => 'Fixture'
@@ -234,7 +237,10 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       if (!exit.complete) { void exit.request(); return }
       calls.push('quit'); app.emit('will-quit'); completed()
     }
-    t.mock.module(electron, { exports: { app, dialog: { showMessageBox: () => assert.fail('No tasks exist during installation') },
+    t.mock.module(electron, { exports: { app, dialog: { showMessageBox: async options => {
+      assert.ok(fatalRecovery); assert.equal(options.type, 'error'); calls.push('recovery-dialog')
+      return { response: scenario === 'recovery-restart-during-shell' ? 1 : 0 }
+    } },
       protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
@@ -245,8 +251,19 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     t.after(() => { if (prior === undefined) delete process.env.EDUWORK_LAUNCHER_TEST; else process.env.EDUWORK_LAUNCHER_TEST = prior })
     mock('login-shell-environment.ts', {
       resolveDesktopLoginShellConfig: () => ({ timeoutMs: 1000 }),
-      readDesktopLoginShellEnvironment: async () => ({ environment: { ...process.env,
-        PATH: 'synthetic-login-shell-path', EDUWORK_LAUNCHER_TEST: 'shell-value', CHATECNU_UNTRUSTED_TEST: 'shell-value' } }),
+      readDesktopLoginShellEnvironment: async (_environment, _config, { signal }) => {
+        if (pendingShell) {
+          shellSignal = signal
+          calls.push('shell-wait')
+          await new Promise(resolve => {
+            releaseShell = resolve
+            signal.addEventListener('abort', () => { calls.push('shell-abort'); resolve() }, { once: true })
+            shellStarted()
+          })
+        }
+        return { environment: { ...process.env,
+          PATH: 'synthetic-login-shell-path', EDUWORK_LAUNCHER_TEST: 'shell-value', CHATECNU_UNTRUSTED_TEST: 'shell-value' } }
+      },
     })
     mock('product.mjs', {
       configureEduworkPaths() {}, installEduworkFromDmg: async () => {
@@ -302,7 +319,9 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       assert.equal(options.bootBrand, bootBrand)
       return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en') }
     } })
-    mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: () => assert.fail('Startup failure must use product recovery') })
+    mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: async () => {
+      assert.ok(fatalRecovery, 'Startup failure must use product recovery'); calls.push('crash-report')
+    } })
     mock('main.ts', { createWindow: (_preload, _show, _primary, locale) => {
       assert.equal(typeof locale, 'function')
       calls.push('window')
@@ -323,10 +342,25 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         focus() { calls.push('window-focus') } })
     } })
     await import(new URL(`native-desktop.mjs?scenario=${scenario}`, source))
-    await Promise.race([done, new Promise((_, reject) => {
+    const deadline = new Promise((_, reject) => {
       const timer = setTimeout(() => reject(new Error('Startup did not settle')), 3000)
       t.after(() => clearTimeout(timer))
-    })])
+    })
+    if (pendingShell) {
+      await Promise.race([waitingForShell, deadline])
+      if (fatalRecovery) bridgeOptions.onBootFailure(new Error('synthetic renderer failure'))
+      else app.quit()
+      if (scenario === 'cancelled-quit-during-shell') {
+        await exit.pending
+        assert.equal(lifecycle.closing, false)
+        assert.equal(shellSignal.aborted, false, 'A cancelled quit must preserve the pending startup')
+        releaseShell()
+      } else {
+        await new Promise(setImmediate)
+        assert.equal(shellSignal.aborted, true, 'Teardown must abort the shell probe before waiting for startup')
+      }
+    }
+    await Promise.race([done, deadline])
     if (scenario === 'installed') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
       app.emit('second-instance')
@@ -338,6 +372,11 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
       app.emit('activate')
       assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
+    } else if (pendingShell) {
+      const started = ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'shell-wait']
+      assert.deepEqual(calls, scenario === 'cancelled-quit-during-shell'
+        ? [...started, 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show']
+        : [...started, ...fatalRecovery ? ['crash-report', 'recovery-dialog'] : [], 'shell-abort', ...scenario === 'recovery-restart-during-shell' ? ['relaunch'] : [], 'quit'])
     } else if (earlyFailure) {
       assert.deepEqual(calls, scenario === 'early-host-failure'
         ? ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'activate-current-window', 'stop', 'recovery', 'page-loaded']
