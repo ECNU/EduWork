@@ -10,7 +10,15 @@
 
 顶部 EN／中文按钮切换整页文案，并记住浏览器中的选择。默认中文，也可用 `?lang=en` 或 `?lang=zh` 分享指定语言；URL 优先于已保存的偏好。语言与配色独立，禁用本地存储时仍可切换。
 
-英文文案集中在 `language.js`，动态提示通过同一字典渲染。修改中文源文案时需同步英文条目。已有英文版本的文档入口随语言切换；其余文档及真实产品截图保留原样。
+页面英文文案在 `language.js`，动态提示通过同一字典渲染；插件介绍来自下述共享目录。修改中文源文案时同步英文。已有英文版本的文档入口随语言切换；其余文档及真实产品截图保留原样。
+
+## README 与官网共用的插件介绍
+
+[`docs/plugin-catalog.json`](../docs/plugin-catalog.json) 维护中英文名称、简介、分类与 GitHub 文档入口。它是展示目录，预装范围由公版实际 npm 装配输入校验，不按仓库里存在的插件源码判断。Studio 与配套成果服务合并介绍；`companions` 记录这种配套关系。
+
+修改目录后运行 `node scripts/sync-project-docs.mjs`，更新两份根 README 和 `index.html` 的标记区块。不要直接编辑生成区；区块之外的安装说明、官网布局各自维护。插件详情仍链接已有 GitHub 文档，Roadmap 只保留讨论入口。
+
+CI 与官网构建会检查目录是否覆盖当前装配包、是否误列未预装包、中英文文档是否存在、生成内容是否同步。变更装配范围时须同步目录；新功能须按正式发行范围决定何时对外介绍。
 
 ## 修改与预览
 
@@ -18,6 +26,8 @@
 
 ```sh
 node --test website/community-data.test.mjs
+node --test scripts/project-plugin-catalog.test.mjs
+node scripts/sync-project-docs.mjs --check
 node website/build.mjs --offline
 python -m http.server 4176 --directory dist/website --bind 127.0.0.1
 ```
