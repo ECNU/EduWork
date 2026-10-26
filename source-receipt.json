@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "db8333802b67f0105d735a407ac5508087b310b4c8c06b0dd535db850dd772ef",
   "files": [
     {
       "path": ".gitattributes",
@@ -433,11 +433,11 @@
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
-      "sha256": "b5b776032f2cfb63e76e1e1b1875fe9900306f04ebdc6ab0e6cdd27885986b9d"
+      "sha256": "37e6e9b369fed4bae8936fbf203de3310b5d66b66e55c169aacdc6c2f471668a"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP.md",
-      "sha256": "6ea5c10914a371c1f33e365b718183a649b24dcdbaac2436a5d5cb2f244593e8"
+      "sha256": "374b2a8d1d9ac5987805f3f4ab5dbf54178db0502cb295b7043a5d96ccc0d771"
     },
     {
       "path": "docs/RELEASE.md",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "fef37bc947b407aeade8395a9efecb8eb38752179d8fb45b0ccb923c2411f922"
+      "sha256": "b0956b313a9488c4b2a13222b416d705f5450b9f89fa6a0b99ce0ac5d8f282be"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1228,6 +1228,10 @@
       "sha256": "3c812ff6059414575222e94c2b4a06bf76998b94e4a2bd03e03f4bf7de5d763c"
     },
     {
+      "path": "dsh-electron/src/direct-hosts.mjs",
+      "sha256": "bf8057f4da6b1d6a16e478483730f89139fb79aff6fbbc2cb1142cbbeedab2fb"
+    },
+    {
       "path": "dsh-electron/src/directory-picker.mjs",
       "sha256": "419e07ca27ff824eb82a9ad93bd252f0607258564acf68c808708d13c0322e5f"
     },
@@ -1273,7 +1277,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "dad3a217f0eebd5c3492f9b50ad705b44c7e2dac133ef65eac74141618860fdd"
+      "sha256": "9ac03ed2ea4cf5293504960b12e4ae260e09f38be997327f5b17e2b08e057c6a"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1390,6 +1394,10 @@
     {
       "path": "dsh-electron/tests/diagnostics-download.mjs",
       "sha256": "53f06b1be27a0297b85d08e7b830b45191593f56b5839323a850031a6bf318c7"
+    },
+    {
+      "path": "dsh-electron/tests/direct-hosts.test.mjs",
+      "sha256": "dce788bfe0a989039c8180830ffacc7b6e2993d6c302c8970b56a6d23625e485"
     },
     {
       "path": "dsh-electron/tests/directory-picker.test.mjs",
