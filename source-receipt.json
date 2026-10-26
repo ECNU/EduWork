@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "917a138a747952a5bd8cdc62bcdb7163932a957c8e28583ac4d7a4ae5916db00",
+  "fileSetSHA256": "032f71cec645bf57a945f3d1bd78741681077b167da6fead341a6e313a603275",
   "files": [
     {
       "path": ".gitattributes",
@@ -7221,7 +7221,7 @@
     },
     {
       "path": "scripts/test/plugin-locale.test.mjs",
-      "sha256": "c07e92454fd1eae39cd85931afaa7ea20bb2db660d9fe38c6cffd68d4b991474"
+      "sha256": "48e8e2abf15ebe54e30b1733d882d6e0ebc0b0281b774183d07dd811231cd3a8"
     },
     {
       "path": "scripts/test/plugin-notification-contract.test.mjs",
