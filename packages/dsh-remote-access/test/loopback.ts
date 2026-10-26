@@ -12,7 +12,8 @@ export const withKey = (accessKey = ACCESS_KEY) => async () => ({ credential: { 
 
 /** A relay accepting {@link ACCESS_KEY} below a path, as when it shares a domain, closed after the test; resolves with its base URL. */
 export async function startRelay(t: TestContext, options: Partial<RelayOptions> = {}): Promise<string> {
-  const server = createServer((_request, response) => response.writeHead(404).end())
+  // Answers the health check as the relay's web client does.
+  const server = createServer((request, response) => request.url === '/remote/healthz' ? response.end('ok') : response.writeHead(404).end())
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve))
   const url = `http://127.0.0.1:${(server.address() as { port: number }).port}/remote/`
   const relay = new Relay({ url, accessKeys: [ACCESS_KEY], ...options })
