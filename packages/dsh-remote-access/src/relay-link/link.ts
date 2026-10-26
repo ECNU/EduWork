@@ -194,3 +194,29 @@ export class RelayLink {
     return url.href
   }
 }
+
+/**
+ * Register once and report how the relay answered: `online`, `refused`,
+ * `lapsed`, or `offline` when the socket failed first or nothing came in time.
+ * Never retries; `stopped` once aborted. Registering takes over a registration
+ * of the same identity, so this is only for a Host whose link is not running.
+ */
+export function probe(options: Pick<RelayLinkOptions, 'relay' | 'credential' | 'identity'>, signal: AbortSignal, timeoutMs = 10_000): Promise<LinkState> {
+  if (signal.aborted) return Promise.resolve({ state: 'stopped' })
+  return new Promise(resolve => {
+    // The link reports a state before it schedules what follows; stopping after that cancels it.
+    const settle = (state: LinkState): void => {
+      clearTimeout(timer)
+      queueMicrotask(() => link.stop())
+      resolve(state)
+    }
+    const timer = setTimeout(() => settle({ state: 'offline', reason: 'timed out', retryAt: Date.now() }), timeoutMs)
+    const link: RelayLink = new RelayLink({
+      ...options,
+      accept: socket => socket.close(),
+      onState: state => state.state !== 'connecting' && state.state !== 'stopped' && settle(state),
+    })
+    signal.addEventListener('abort', () => settle({ state: 'stopped' }), { once: true })
+    link.start()
+  })
+}

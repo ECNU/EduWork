@@ -3,12 +3,15 @@
 // real relay, and stopped with its fiber. Run `node scripts/build.ts` first.
 import assert from 'node:assert/strict'
 import { AsyncLocalStorage } from 'node:async_hooks'
-import { mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
 import { parsePairingLink } from '../src/protocol/auth.ts'
+import { Close } from '../src/protocol/close-codes.ts'
+import { Relay } from '../src/relay/relay.ts'
 import { ACCESS_KEY_REF } from '../src/typert.ts'
 import { ACCESS_KEY, startRelay, until } from './loopback.ts'
 
@@ -109,6 +112,7 @@ test('with an organization set, remote access uses its relay and follows its sig
   const account = { state: 'signed_out', tokens: 0, renewed: true }
   const oidcAccounts = {
     status: async (profileID: string) => ({ profileID, state: account.state, displayName: 'Example University' }),
+    begin: async () => ({ mode: 'external', loginID: 'login' }),
     identityToken: async () => {
       if (!account.renewed) throw Object.assign(new Error('The issuer did not renew the ID Token; please sign in again'), { code: 'oidc_identity_token_unavailable' })
       account.tokens++
@@ -122,8 +126,10 @@ test('with an organization set, remote access uses its relay and follows its sig
   // The relay set on the settings page does not count; the token goes only to the organization's.
   await ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay: 'https://elsewhere.example', organization: { relay, oidcProfileId: 'example' } })
   const service: InstanceType<Plugin['default']> = ctx.get('remoteDevices')
-  const organization = { name: 'Example University', relay }
-  assert.deepEqual(await service.status(), { state: 'sign-in', organization })
+  const organization = (signedIn: boolean) => ({ name: 'Example University', relay, signedIn })
+  assert.deepEqual(await service.status(), { state: 'sign-in', organization: organization(false) })
+  assert.deepEqual(await service.test(), { state: 'sign-in' })
+  assert.equal(await service.signIn(), undefined, 'a desktop signs in in the system browser')
 
   account.state = 'connected'
   ctx.emit('oidc/accounts-changed', { profileID: 'other' })
@@ -133,7 +139,7 @@ test('with an organization set, remote access uses its relay and follows its sig
     const status = await service.status()
     return status.state === 'on' && status.link.state === 'online'
   }, 'registration by ID Token')
-  assert.deepEqual((await service.status()).organization, organization)
+  assert.deepEqual((await service.status()).organization, organization(true))
   assert.equal(account.tokens, 1)
 
   // Once the sign-in yields no ID Token, remote access waits for the user to sign in again, then resumes.
@@ -152,5 +158,141 @@ test('with an organization set, remote access uses its relay and follows its sig
 
   account.state = 'signed_out'
   ctx.emit('oidc/accounts-changed', { profileID: 'example' })
-  assert.deepEqual(await service.status(), { state: 'sign-in', organization })
+  assert.deepEqual(await service.status(), { state: 'sign-in', organization: organization(false) })
+})
+
+test('with an organization set, the user may use their own relay and access key instead', async t => {
+  const home = await mkdtemp(join(tmpdir(), 'remote-access-plugin-'))
+  process.env.DSH_HOME = home
+  const distIndex = join(home, 'index.html')
+  await writeFile(distIndex, '<!doctype html><head></head>')
+  const relay = await startRelay(t)
+  // Even an organization sign-in that cannot be read does not hold up the user's own relay.
+  const oidcAccounts = {
+    status: async () => { throw new Error('the sign-in service is unavailable') },
+    identityToken: async () => assert.fail('the token goes only to the organization\'s relay'),
+  }
+  const ctx = new Context()
+  t.after(() => ctx.fiber.dispose())
+  for (const [name, value] of Object.entries({ ...services, credentials: credentials(new Map([[ACCESS_KEY_REF, ACCESS_KEY]])), oidcAccounts })) ctx.provide(name, value)
+  await ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay, useOrganization: false, organization: { relay: 'https://remote.example.edu/', oidcProfileId: 'example' } })
+  const service: InstanceType<Plugin['default']> = ctx.get('remoteDevices')
+  await until(async () => {
+    const status = await service.status()
+    return status.state === 'on' && status.link.state === 'online'
+  }, 'registration by access key')
+  assert.deepEqual((await service.status()).organization, { name: 'example', relay: 'https://remote.example.edu/', signedIn: false })
+})
+
+test('testing the relay tells whether it answers and admits this Host, and retrying starts again', async t => {
+  const home = await mkdtemp(join(tmpdir(), 'remote-access-plugin-'))
+  process.env.DSH_HOME = home
+  const distIndex = join(home, 'index.html')
+  await writeFile(distIndex, '<!doctype html><head></head>')
+  const relay = await startRelay(t)
+  const stored = new Map<string, string>()
+  const ctx = new Context()
+  t.after(() => ctx.fiber.dispose())
+  for (const [name, value] of Object.entries({ ...services, credentials: credentials(stored) })) ctx.provide(name, value)
+  const load = async (config: object): Promise<{ fiber: { dispose(): Promise<void> }; service: InstanceType<Plugin['default']> }> => {
+    const fiber = await ctx.plugin(RemoteDevices, { distIndex, ...config })
+    return { fiber, service: ctx.get('remoteDevices') }
+  }
+
+  // On first use, a test and a start at the same time share one new identity.
+  const first = await load({ enabled: true, relay })
+  stored.set(ACCESS_KEY_REF, ACCESS_KEY)
+  const firstTest = first.service.test()
+  ctx.emit('credentials/reference-updated', ACCESS_KEY_REF)
+  assert.equal((await firstTest).state, 'reached')
+  await until(async () => {
+    const status = await first.service.status()
+    return status.state === 'on' && status.link.state === 'online'
+  }, 'registration alongside the first test')
+  const saved = JSON.parse(await readFile(join(home, 'plugins/dsh-remote-access/state.json'), 'utf8')) as { signing: { publicKey: string } }
+  const started = await first.service.status()
+  assert.ok(started.state === 'on' && started.hostId === saved.signing.publicKey)
+  await first.fiber.dispose()
+  stored.delete(ACCESS_KEY_REF)
+
+  const unconfigured = await load({ relay })
+  assert.deepEqual(await unconfigured.service.test(), { state: 'unconfigured' })
+  await unconfigured.fiber.dispose()
+  stored.set(ACCESS_KEY_REF, 'not-issued')
+  const nowhere = await load({ relay: 'http://127.0.0.1:9/remote/' })
+  assert.deepEqual(await nowhere.service.test(), { state: 'unreachable' })
+  await nowhere.fiber.dispose()
+
+  // Switched off, the test registers once on its own.
+  const { fiber, service } = await load({ relay })
+  const refused = await service.test()
+  assert.ok(refused.state === 'reached' && refused.link.state === 'refused' && refused.link.code === Close.unauthorized)
+  stored.set(ACCESS_KEY_REF, ACCESS_KEY)
+  assert.deepEqual(await service.test(), { state: 'reached', link: { state: 'online' } })
+  assert.deepEqual(await service.status(), { state: 'off' }, 'testing starts nothing')
+  await fiber.dispose()
+
+  // A start stops a test in progress, whose registration would otherwise take over the link's.
+  stored.delete(ACCESS_KEY_REF)
+  const racing = await load({ enabled: true, relay })
+  stored.set(ACCESS_KEY_REF, ACCESS_KEY)
+  const testing = racing.service.test()
+  ctx.emit('credentials/reference-updated', ACCESS_KEY_REF)
+  assert.equal((await testing).state, 'reached')
+  await until(async () => {
+    const status = await racing.service.status()
+    return status.state === 'on' && status.link.state === 'online'
+  }, 'registration after the test')
+  await new Promise(resolve => setTimeout(resolve, 200))
+  const after = await racing.service.status()
+  assert.ok(after.state === 'on' && after.link.state === 'online')
+  await racing.fiber.dispose()
+
+  // Switched on, the running link answers for itself; retrying registers again with what is stored now.
+  stored.set(ACCESS_KEY_REF, 'not-issued')
+  const running = await load({ enabled: true, relay })
+  await until(async () => {
+    const status = await running.service.status()
+    return status.state === 'on' && status.link.state === 'refused'
+  }, 'the refusal')
+  const live = await running.service.test()
+  assert.ok(live.state === 'reached' && live.link.state === 'refused')
+  stored.set(ACCESS_KEY_REF, ACCESS_KEY)
+  await running.service.retry()
+  await until(async () => {
+    const status = await running.service.status()
+    return status.state === 'on' && status.link.state === 'online'
+  }, 'registration after retrying')
+  await running.fiber.dispose()
+
+  // A test waiting on a relay that does not answer holds back nothing else, such as stopping.
+  const silent = createServer(() => {})
+  await new Promise<void>(resolve => silent.listen(0, '127.0.0.1', resolve))
+  const waiting = await load({ enabled: true, relay: `http://127.0.0.1:${(silent.address() as { port: number }).port}/remote/` })
+  const pending = waiting.service.test()
+  const stopping = Date.now()
+  await waiting.fiber.dispose()
+  assert.ok(Date.now() - stopping < 1000, 'stopped without waiting for the test')
+  silent.closeAllConnections()
+  silent.close()
+  assert.deepEqual(await pending, { state: 'unreachable' })
+
+  // Nor does a test that outlives its plugin register once the relay answers.
+  let answer = (): void => {}
+  const answered = new Promise<void>(resolve => { answer = resolve })
+  const late = createServer((request, response) => void answered.then(() => response.end('ok')))
+  await new Promise<void>(resolve => late.listen(0, '127.0.0.1', resolve))
+  const lateRelay = new Relay({ url: `http://127.0.0.1:${(late.address() as { port: number }).port}/remote/`, accessKeys: [ACCESS_KEY] })
+  late.on('upgrade', (request, socket, head) => lateRelay.upgrade(request, socket, head) || socket.destroy())
+  t.after(() => {
+    lateRelay.close()
+    late.close()
+  })
+  await rm(join(home, 'plugins/dsh-remote-access/state.json'))
+  const outlived = await load({ relay: `http://127.0.0.1:${(late.address() as { port: number }).port}/remote/` })
+  const outliving = outlived.service.test()
+  await outlived.fiber.dispose()
+  answer()
+  assert.deepEqual(await outliving, { state: 'reached', link: { state: 'stopped' } })
+  await assert.rejects(readFile(join(home, 'plugins/dsh-remote-access/state.json')), { code: 'ENOENT' }, 'no identity created after stopping')
 })
