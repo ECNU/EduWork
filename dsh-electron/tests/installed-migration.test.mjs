@@ -83,7 +83,7 @@ const options = (fixture, extra = {}) => ({
   listProcesses: async () => [], now, ...extra,
 })
 
-async function writeSlowMigration(f, name = 'slow-migration.mjs') {
+async function writeSlowMigration(f, name = 'slow-migration.mjs', sourceRoot = f.source) {
   const wrapper = join(f.base, name)
   const moduleUrl = new URL('../scripts/migrate-portable-to-installed.mjs', import.meta.url).href
   await writeFile(wrapper, `
@@ -91,7 +91,7 @@ import { writeFile } from 'node:fs/promises'
 import { migratePortableToInstalled } from ${JSON.stringify(moduleUrl)}
 const marker = process.argv[2]
 await migratePortableToInstalled({
-  sourceRoot: ${JSON.stringify(f.source)},
+  sourceRoot: ${JSON.stringify(sourceRoot)},
   targetRoot: ${JSON.stringify(f.target)},
   writableRoot: ${JSON.stringify(f.writable)},
   statfsImpl: async () => {
@@ -286,6 +286,20 @@ test('ignores an empty legacy lock and retries', async t => {
   assert.equal(result.receipt.state, 'activated')
 })
 
+test('does not remove a journal it did not publish', async t => {
+  const f = await fixture(t)
+  const journalPath = f.source + '.handoff.json'
+  await assert.rejects(migratePortableToInstalled(options(f, {
+    statfsImpl: async () => {
+      await writeFile(journalPath, '{"foreign":true}\n')
+      return { bsize: 1, bavail: Number.MAX_SAFE_INTEGER }
+    },
+  })), /Handoff journal already exists/)
+  assert.equal(await readFile(journalPath, 'utf8'), '{"foreign":true}\n')
+  assert.equal(await missing(f.source), false)
+  assert.equal(await missing(f.writable), true)
+})
+
 test('retries after termination before journal publication', async t => {
   const f = await fixture(t)
   const marker = join(f.base, 'statfs-started')
@@ -405,6 +419,40 @@ test('serializes two migrations started together', async t => {
   assert.equal(result.receipt.state, 'activated')
   assert.equal(existsSync(journalPath), false)
   assert.equal(existsSync(journal.handoffRoot), false)
+})
+
+test('serializes normal and extended Windows source paths', { skip: process.platform !== 'win32' }, async t => {
+  const f = await fixture(t)
+  const extended = '\\\\?\\' + f.source
+  const markerA = join(f.base, 'alias-a')
+  const markerB = join(f.base, 'alias-b')
+  const wrapperA = await writeSlowMigration(f, 'slow-normal.mjs', f.source)
+  const wrapperB = await writeSlowMigration(f, 'slow-extended.mjs', extended)
+  const childA = spawn(process.execPath, [wrapperA, markerA], { stdio: 'ignore' })
+  const childB = spawn(process.execPath, [wrapperB, markerB], { stdio: 'ignore' })
+  t.after(() => {
+    for (const child of [childA, childB]) if (child.exitCode === null) child.kill('SIGKILL')
+  })
+  let winner
+  for (let i = 0; i < 200 && !winner; i++) {
+    if (existsSync(markerA)) winner = markerA
+    else if (existsSync(markerB)) winner = markerB
+    else await delay(25)
+  }
+  assert.ok(winner, 'neither alias migration reached copy')
+  await delay(300)
+  const win = winner === markerA ? childA : childB
+  const lose = winner === markerA ? childB : childA
+  win.kill('SIGKILL')
+  await waitForExit(win)
+  await waitForExit(lose)
+  assert.equal(Number(existsSync(markerA)) + Number(existsSync(markerB)), 1)
+  assert.equal(existsSync(f.source + '.handoff.json'), true)
+  assert.equal(await missing(f.source), true)
+
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
+  assert.equal(existsSync(f.source + '.handoff.json'), false)
 })
 
 test('recovers a killed migration with an originally empty writable root', async t => {

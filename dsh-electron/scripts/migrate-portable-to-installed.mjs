@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { createReadStream, existsSync, rmdirSync } from 'node:fs'
+import { createReadStream, existsSync, realpathSync, rmdirSync } from 'node:fs'
 import { copyFile, lstat, mkdir, open, readdir, readFile, rename, rm, statfs, writeFile } from 'node:fs/promises'
 import { connect, createServer } from 'node:net'
 import { tmpdir } from 'node:os'
@@ -16,13 +16,20 @@ const DATA_NAMESPACE = distribution => `${distribution}-electron`
 const browserCaches = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache',
   'Shared Dictionary', 'Session Storage', 'lockfile', 'SingletonLock', 'DevToolsActivePort', 'declarative_performance_observer.db'])
 
+const stripWindowsAlias = path => process.platform === 'win32'
+  ? path.replace(/^\\\\\?\\UNC\\/i, '\\\\').replace(/^\\\\\?\\/i, '').replace(/^\\\\\.\\/i, '')
+  : path
+const comparablePath = path => {
+  let value = stripWindowsAlias(resolve(path))
+  if (process.platform === 'win32') value = value.toLowerCase()
+  return value
+}
 const within = (root, target) => {
-  let base = resolve(root), child = resolve(target)
-  if (process.platform === 'win32') { base = base.toLowerCase(); child = child.toLowerCase() }
+  const base = comparablePath(root), child = comparablePath(target)
   const rel = relative(base, child)
   return rel === '' || (!isAbsolute(rel) && rel !== '..' && !rel.startsWith('..' + sep))
 }
-const same = (a, b) => process.platform === 'win32' ? resolve(a).toLowerCase() === resolve(b).toLowerCase() : resolve(a) === resolve(b)
+const same = (a, b) => comparablePath(a) === comparablePath(b)
 const hashFile = path => new Promise((resolveHash, reject) => {
   const hash = createHash('sha256')
   createReadStream(path).on('data', chunk => hash.update(chunk)).on('error', reject).on('end', () => resolveHash(hash.digest('hex')))
@@ -162,8 +169,22 @@ function isProcessAlive(pid) {
   catch (error) { return error.code === 'EPERM' }
 }
 
+const migrationIdentity = sourceRoot => {
+  const resolved = resolve(sourceRoot)
+  let identity = resolved
+  try {
+    identity = realpathSync.native ? realpathSync.native(resolved) : realpathSync(resolved)
+  } catch {
+    try {
+      const parent = realpathSync.native ? realpathSync.native(dirname(resolved)) : realpathSync(dirname(resolved))
+      identity = join(parent, basename(resolved))
+    } catch {}
+  }
+  return comparablePath(identity)
+}
+
 const mutexAddress = sourceRoot => {
-  const hash = createHash('sha256').update(resolve(sourceRoot).toLowerCase()).digest('hex').slice(0, 32)
+  const hash = createHash('sha256').update(migrationIdentity(sourceRoot)).digest('hex').slice(0, 32)
   return process.platform === 'win32'
     ? `\\\\.\\pipe\\eduwork-migration-${hash}`
     : join(tmpdir(), `eduwork-migration-${hash}.sock`)
@@ -503,9 +524,10 @@ async function migrateInternal({ sourceRoot, targetRoot, writableRoot,
     schemaVersion: 1, kind: 'eduwork-handoff-v1', sourceRoot, handoffRoot, staging,
     targetRoot, writableRoot, targetWasEmptyAtHandoff: Boolean(target), createdAt: now(), pid: process.pid,
   }
-  let sourceHandoffRoot, activated = false
+  let sourceHandoffRoot, activated = false, journalPublished = false
   try {
     await writeJournal(journalPath, journal)
+    journalPublished = true
     sourceHandoffRoot = handoffRoot
     try {
       await handoffImpl(sourceRoot, handoffRoot)
@@ -561,7 +583,7 @@ async function migrateInternal({ sourceRoot, targetRoot, writableRoot,
     if (target) rmdirSyncCompat(writableRoot)
     await rename(staging, writableRoot)
     activated = true
-    await rm(journalPath, { force: true }).catch(() => {})
+    if (journalPublished) await rm(journalPath, { force: true }).catch(() => {})
     return { source: sourceRoot, sourceHandoffRoot, writableRoot, targetRoot,
       files: receipt.files, skipped: source.skipped, warnings: source.warnings, space, receipt }
   } catch (error) {
@@ -574,7 +596,7 @@ async function migrateInternal({ sourceRoot, targetRoot, writableRoot,
         throw new Error(`${error.message}; failed to restore old program path: ${restoreError.message}`)
       }
     }
-    if (restored) await rm(journalPath, { force: true }).catch(() => {})
+    if (journalPublished && restored) await rm(journalPath, { force: true }).catch(() => {})
     throw error
   } finally {
     if (!activated) await rm(staging, { recursive: true, force: true }).catch(() => {})
