@@ -313,7 +313,7 @@ async function prepareDesktop() {
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
   const startRecord = join(paths.logs, 'desktop-start.json'), startTemporary = `${startRecord}.${process.pid}.tmp`
-  await writeFile(startTemporary, JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2)), { mode: 0o600 })
+  await writeFile(startTemporary, JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2), { mode: 0o600 })
   await rename(startTemporary, startRecord)
   lifecycle.check()
   return { profile: prepared.profile, node: paths.node }
