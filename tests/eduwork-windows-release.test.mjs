@@ -272,3 +272,11 @@ test('installed data layout is restricted to development artifacts', async () =>
   assert.throws(() => validateDataLayoutForBuild('installed', false), /development artifacts/)
   assert.throws(() => validateDataLayoutForBuild('other', true), /portable or installed/)
 })
+
+test('direct assembly only allows -dev.YYYYMMDD.N versions for installed layout', async () => {
+  const { assertInstalledVersion } = await import('../dsh-electron/scripts/assemble-windows.mjs')
+  assert.doesNotThrow(() => assertInstalledVersion('0.4.9-dev.20261026.1'))
+  for (const version of ['0.4.9', '0.4.9-alpha.1', '0.4.9-beta.1', '0.4.9-rc.1', '0.4.9-dev.20261026.0']) {
+    assert.throws(() => assertInstalledVersion(version), /development version/)
+  }
+})

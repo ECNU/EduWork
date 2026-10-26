@@ -18,6 +18,11 @@ import { pruneRuntimeFiles } from '../../scripts/lib/runtime-file-policy.mjs'
 import { pruneElectronLocales } from './electron-locales.mjs'
 
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
+const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
+
+export function assertInstalledVersion(version) {
+  if (!DEVELOPMENT_VERSION.test(version ?? '')) throw new Error('Installed data layout requires a development version (X.Y.Z-dev.YYYYMMDD.N)')
+}
 
 // robocopy /XF *.map *.pdb *.pyc default_app.asar /XD __pycache__ /XJ
 const payloadFilters = {
@@ -47,7 +52,7 @@ export async function assembleWindows({
   if (await pathExists(output)) throw new Error('Electron output must be a new directory')
   if (/(^|[\\/])current([\\/]|$)/i.test(output)) throw new Error('Electron cannot replace current')
   if (!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version ?? '')) throw new Error('An explicit product version is required')
-  if (dataLayout === 'installed' && !desktopVersion(version).prerelease) throw new Error('Installed data layout requires a development version')
+  if (dataLayout === 'installed') assertInstalledVersion(version)
   const identity = await readJSON(join(product, 'assembly.json'))
   await runNode(join(scriptRoot, '../../scripts/verify-product-release-identity.mjs'), [product, version])
     .catch(() => { throw new Error('Product release identity verification failed') })
