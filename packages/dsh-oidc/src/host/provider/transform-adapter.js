@@ -26,12 +26,26 @@ export function canonicalReasoningReplay(request, policy) {
   return changed ? { ...request, messages } : request
 }
 
+const IDLE_TIMEOUT = /stream idle timeout after (\d+)ms/
+
+/** A gateway that sends nothing is usually queueing; say so instead of pi-ai's
+ * English wording. The code stays TIMEOUT so the route's retry policy applies.
+ */
+export function explainIdleTimeout(error) {
+  const match = error?.code === 'TIMEOUT' ? IDLE_TIMEOUT.exec(error.message) : null
+  if (!match) return error
+  const seconds = Math.round(Number(match[1]) / 1000)
+  const wait = seconds % 60 === 0 ? `${seconds / 60} 分钟` : `${seconds} 秒`
+  return new LlmError(`模型平台 ${wait}内没有响应，可能正在排队或繁忙。请稍后重试，或换一个模型。（${error.message}）`, 'TIMEOUT', { cause: error })
+}
+
 /** Delegate one enterprise route while applying capabilities contributed by replaceable feature plugins. */
 export class TransformingEnterpriseAdapter {
-  constructor(inner, transforms, modelPolicy = () => ({})) {
+  constructor(inner, transforms, modelPolicy = () => ({}), onIdleTimeout = () => {}) {
     this.inner = inner
     this.transforms = transforms
     this.modelPolicy = modelPolicy
+    this.onIdleTimeout = onIdleTimeout
   }
 
   providerInfo(provider) { return this.inner.providerInfo(provider) }
@@ -103,7 +117,14 @@ export class TransformingEnterpriseAdapter {
       }
       request = { ...options, reasoningEffort: effort }
     }
-    yield* prepared.stream(canonicalReasoningReplay(await this.transforms.apply(request, nativeModelInfo), policy))
+    const outgoing = canonicalReasoningReplay(await this.transforms.apply(request, nativeModelInfo), policy)
+    try {
+      yield* prepared.stream(outgoing)
+    } catch (error) {
+      const explained = explainIdleTimeout(error)
+      if (explained !== error) this.onIdleTimeout(options.provider, options.model)
+      throw explained
+    }
   }
 
   async * stream(options) {

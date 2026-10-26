@@ -155,7 +155,10 @@ export function apply(ctx, rawConfig = {}) {
 
   const transforming = new TransformingEnterpriseAdapter(baseAdapter, transforms, (provider, model) => (
     profiles.get(provider)?.modelPolicies.get(model) ?? { reasoning: true, supportsReasoningEffort: true }
-  ))
+  ), (provider, model) => {
+    // Fixed marker read by distribution error reports; only the route and model ids, never the request.
+    ctx.logger.warn(`dsh-oidc-provider: [llm] stream idle timeout: ${provider}/${model}`)
+  })
   const adapter = typeof rawConfig.createAuthorizationScope === 'function'
     ? new AuthorizationScopedAdapter(transforming, callAuthorization, rawConfig.createAuthorizationScope)
     : transforming
