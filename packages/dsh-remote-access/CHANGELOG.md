@@ -1,5 +1,15 @@
 # 变更记录 / Changelog
 
+## 0.1.2 — 2026-10-26
+
+- 修复运行中安装或启用远控插件后，远端无法保存预览版说明确认状态的问题。
+- 设置页支持机构账号与自建中继切换、机构登录、连接测试和重试；添加设备入口始终显示，并说明不可用原因。
+- 机构鉴权被拒绝时显示通用排错提示，不再将所有失败都关联到固定的电脑数量上限。
+
+- Fix saving the preview notice acknowledgment remotely after installing or enabling the plugin while DSH is running.
+- Add organization/account and self-hosted relay selection, organization sign-in, connection testing and retry actions. Keep the add-device entry visible with an explanation when unavailable.
+- Show general recovery guidance for rejected organization authentication instead of associating every failure with a fixed computer limit.
+
 ## 0.1.1 — 2026-10-24
 
 - 随 npm 包提供中英文自托管中继部署指南：固定版本启动、Key、HTTPS/Nginx、路径前缀、systemd、OIDC、iframe 与排错。
