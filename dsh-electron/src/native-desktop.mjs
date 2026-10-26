@@ -1,6 +1,7 @@
 // The rc.2 desktop primitives own native behavior. Product hooks retain edition
 // configuration, portable directories, secure credentials, updates and attention.
-import { app, dialog, protocol, powerMonitor } from 'electron'
+import { app, dialog, protocol, powerMonitor, session } from 'electron'
+import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DesktopBackendController } from './backend-controller.ts'
 import { DesktopFatalRecovery } from './fatal-recovery.ts'
@@ -16,6 +17,7 @@ import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
+import { readDirectRouting, probeDirect, proxyFromDecision, routeHostEnvironment } from './direct-hosts.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
@@ -68,11 +70,21 @@ function reportFatal(error, source) {
 function startBackend() {
   return backend.start(async () => {
     product = await prepareEduworkDesktop()
+    const routing = readDirectRouting(join(process.resourcesPath, 'product/resources/desktop/configuration-policy.json'))
+    // Probe and proxy lookup run while the login shell is read; neither can fail startup.
+    const target = routing.probe?.url ?? (routing.hosts[0] ? `https://${routing.hosts[0].replace(/^\./, '')}/` : undefined)
+    const network = Promise.all([probeDirect(routing.probe),
+      target ? Promise.resolve().then(() => session.defaultSession.resolveProxy(target)).then(proxyFromDecision, () => undefined) : undefined])
     const inherited = await readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), { signal: loginShellRead.signal })
     const editionVariable = name => name.startsWith('EDUWORK_') || name.startsWith('CHATECNU_')
     hostEnvironment = Object.fromEntries(Object.entries(inherited.environment).filter(([name]) => !editionVariable(name)))
     // Edition bootstrap and resource paths remain owned by the launcher.
     for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
+    const [direct, systemProxy] = await network
+    hostEnvironment = routeHostEnvironment(hostEnvironment, { ...routing, direct, systemProxy })
+    // Whether a proxy was applied, never its address.
+    if (routing.probe || systemProxy) desktopHostLog(JSON.stringify({ component: 'host-network', direct: direct ?? null, systemProxy: Boolean(systemProxy),
+      bypass: Boolean(hostEnvironment.NO_PROXY && routing.hosts.some(host => hostEnvironment.NO_PROXY.split(',').includes(host))) }) + '\n')
   })
 }
 // One startup attempt serves the main launch and every early boot/locale request.
