@@ -27,10 +27,45 @@ function SideChatIcon({ size = 16 }) {
 }
 
 const SideCopy = React.createContext(key => COPY.en[key])
+const SideSeedLength = React.createContext(0)
+
+function hideInheritedNodes(root, seedLength) {
+  if (!seedLength || !root) return
+  // Hide chat nodes whose event sequence falls within the inherited seed.
+  // Targets [data-chat-node-key] when available; falls back to counting
+  // top-level children of the conversation content container.
+  const apply = () => {
+    const content = root.querySelector('[data-conversation-content]')
+    if (!content) return
+    const nodes = content.querySelectorAll('[data-chat-node-key]')
+    if (nodes.length > 0) {
+      for (const node of nodes) {
+        const seq = Number(node.dataset.chatNodeSeq ?? node.dataset.anchorSeq ?? NaN)
+        node.style.display = Number.isFinite(seq) && seq < seedLength ? 'none' : ''
+      }
+      return
+    }
+    // Fallback: hide the first batch of direct children that map to seed events.
+    // This is approximate but avoids depending on a specific attribute name.
+    const children = [...content.children].filter(el => el.matches('[data-chat-node-key], [role="listitem"], [data-clock]'))
+    for (let i = 0; i < children.length && i < seedLength; i++) {
+      children[i].style.display = 'none'
+    }
+  }
+  apply()
+  const observer = new MutationObserver(apply)
+  observer.observe(root, { childList: true, subtree: true })
+  return () => { observer.disconnect() }
+}
+
 function SideViews({ renderSlot, useSession }) {
-  const empty = useSession(session => session.blank)
+  const seedLength = React.useContext(SideSeedLength)
+  const hasNewContent = useSession(session => {
+    if (!seedLength) return !session.blank
+    return session.events?.length > seedLength
+  })
   const t = React.useContext(SideCopy)
-  if (!empty) return renderSlot('conversation.session', { view: 'chat' })
+  if (hasNewContent) return renderSlot('conversation.session', { view: 'chat' })
   return h('div', { 'data-side-chat-empty': '', style: { flex: '1 0 180px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box' } },
     h('div', { style: { maxWidth: 340, textAlign: 'center', color: 'var(--dsw-alias-label-secondary, #777)' } },
       h('svg', { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
@@ -39,9 +74,10 @@ function SideViews({ renderSlot, useSession }) {
       h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint'))))
 }
 
-function SideConversation({ renderFactorySlot, t }) {
+function SideConversation({ renderFactorySlot, t, seedLength }) {
   return h(SideCopy.Provider, { value: t },
-    renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: SideViews } }))
+    h(SideSeedLength.Provider, { value: seedLength ?? 0 },
+      renderFactorySlot('conversation.content', { variant: 'embedded', phase: 'active', hero: false }, { slots: { views: SideViews } })))
 }
 
 function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, controller, t }) {
@@ -50,9 +86,12 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const state = controller.findAddress(info.tab.contentId)?.snapshot ?? EMPTY_STATE
   const chat = state.chat
+  const seedLength = chat?.seedLength ?? 0
   const root = useRef(null)
   useEffect(() => chat && root.current ? alignComposerDocks(root.current, chat.sourceSessionId) : undefined,
     [chat?.sessionId, chat?.sourceSessionId])
+  useEffect(() => seedLength > 0 && root.current ? hideInheritedNodes(root.current, seedLength) : undefined,
+    [seedLength, chat?.sessionId])
   return h('section', {
     ref: root,
     'data-eduwork-side-chat': '', 'data-side-source': chat?.sourceSessionId, 'data-side-session': chat?.sessionId, 'aria-label': t('title'),
@@ -62,7 +101,7 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   state.phase === 'closing' || !chat
     ? null
     : resource.value === undefined ? null
-      : h(SessionProvider, { session: resource.value.reference }, renderSlot('eduwork.side.conversation', {})))
+      : h(SessionProvider, { session: resource.value.reference }, renderSlot('eduwork.side.conversation', { seedLength })))
 }
 
 function SideDraftDelivery({ sessionId, controller, sessions, conversation, sidebarRight, inputActions, useInput, t }) {

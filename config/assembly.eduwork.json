@@ -181,6 +181,14 @@
         "lib/index.js",
         "lib/client.js"
       ]
+    },
+    {
+      "source": "packages/dsh-side-chat",
+      "package": "dsh-side-chat",
+      "requiredFiles": [
+        "lib/index.js",
+        "lib/client.js"
+      ]
     }
   ],
   "skills": [
