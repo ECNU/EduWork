@@ -17,16 +17,19 @@ export const comparablePath = path => {
 
 export const instanceIdentity = target => {
   const resolved = resolve(target)
-  let identity = resolved
-  try {
-    identity = realpathSync.native ? realpathSync.native(resolved) : realpathSync(resolved)
-  } catch {
+  const suffix = []
+  let current = resolved
+  for (;;) {
     try {
-      const parent = realpathSync.native ? realpathSync.native(dirname(resolved)) : realpathSync(dirname(resolved))
-      identity = join(parent, basename(resolved))
-    } catch {}
+      const real = realpathSync.native ? realpathSync.native(current) : realpathSync(current)
+      return comparablePath(join(real, ...suffix.reverse()))
+    } catch {
+      const parent = dirname(current)
+      if (parent === current) return comparablePath(resolved)
+      suffix.push(basename(current))
+      current = parent
+    }
   }
-  return comparablePath(identity)
 }
 
 export const instanceMutexAddress = (scope, target) => {

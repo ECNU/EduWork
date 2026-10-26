@@ -3,11 +3,12 @@ import assert from 'node:assert/strict'
 import { spawn } from 'node:child_process'
 import { once } from 'node:events'
 import { existsSync } from 'node:fs'
-import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from 'node:fs/promises'
+import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, symlink, writeFile } from 'node:fs/promises'
 import { setTimeout as delay } from 'node:timers/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
+import { prepareWritableRoot } from '../src/writable-root.mjs'
 import { migratePortableToInstalled } from '../scripts/migrate-portable-to-installed.mjs'
 
 const dshCommit = '1'.repeat(40)
@@ -507,6 +508,38 @@ test('serializes two different sources targeting the same writable root', async 
   const result = await migratePortableToInstalled(options(winFixture))
   assert.equal(result.receipt.state, 'activated')
   assert.equal(existsSync(winFixture.source + '.handoff.json'), false)
+})
+
+test('keeps the W mutex identity stable when a junction parent is created', { skip: process.platform !== 'win32' }, async t => {
+  const f = await fixture(t)
+  const real = join(f.base, 'real-data')
+  const alias = join(f.base, 'alias-data')
+  await mkdir(real)
+  await symlink(real, alias, 'junction')
+  f.writable = join(alias, 'missing-parent', 'W')
+  const product = join(f.base, 'product')
+  await mkdir(join(product, 'resources/desktop/examples'), { recursive: true })
+  await writeFile(join(product, 'resources/desktop/eduwork.jsonc'), '{"packaged":true}\n')
+  await writeFile(join(product, 'resources/desktop/examples/readme.md'), 'example\n')
+
+  const marker = join(f.base, 'alias-copy-started')
+  const wrapper = await writeSlowMigration(f, 'slow-alias.mjs')
+  const child = spawn(process.execPath, [wrapper, marker], { stdio: 'ignore' })
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL') })
+  assert.equal(await waitForPath(marker), true, 'migration copy did not start')
+  assert.equal(await missing(f.source), true)
+  assert.equal(existsSync(f.source + '.handoff.json'), true)
+
+  await assert.rejects(prepareWritableRoot({
+    root: f.writable, distribution: 'example', product, productVersion: '0.4.9', now,
+  }), /Another process is initializing the writable root/)
+  assert.equal(existsSync(f.writable), false)
+
+  child.kill('SIGKILL')
+  await waitForExit(child)
+  await delay(100)
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
 })
 
 test('recovers a killed migration with an originally empty writable root', async t => {

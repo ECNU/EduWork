@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { parseArgs } from 'node:util'
 import { pathToFileURL } from 'node:url'
-import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
+import { acquireInstanceMutex, comparablePath, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { WRITABLE_ROOT_MARKER, writableRootMarker } from '../src/writable-root.mjs'
 
 const run = promisify(execFile)
@@ -15,14 +15,6 @@ const DATA_NAMESPACE = distribution => `${distribution}-electron`
 const browserCaches = new Set(['Cache', 'Code Cache', 'GPUCache', 'DawnGraphiteCache', 'DawnWebGPUCache',
   'Shared Dictionary', 'Session Storage', 'lockfile', 'SingletonLock', 'DevToolsActivePort', 'declarative_performance_observer.db'])
 
-const stripWindowsAlias = path => process.platform === 'win32'
-  ? path.replace(/^\\\\\?\\UNC\\/i, '\\\\').replace(/^\\\\\?\\/i, '').replace(/^\\\\\.\\/i, '')
-  : path
-const comparablePath = path => {
-  let value = stripWindowsAlias(resolve(path))
-  if (process.platform === 'win32') value = value.toLowerCase()
-  return value
-}
 const within = (root, target) => {
   const base = comparablePath(root), child = comparablePath(target)
   const rel = relative(base, child)

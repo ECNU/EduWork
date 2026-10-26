@@ -1,10 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
+import { acquireInstanceMutex, instanceIdentity, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { prepareWritableRoot } from '../src/writable-root.mjs'
 
 async function fixture(t, { template = true } = {}) {
@@ -89,4 +89,18 @@ test('refuses while another process holds the writable root mutex', async t => {
   await releaseInstanceMutex(mutex)
   const result = await prepareWritableRoot(options(product, root))
   assert.equal(result.created, true)
+})
+
+test('keeps the writable root identity stable across missing parent creation', { skip: process.platform !== 'win32' }, async t => {
+  const base = await mkdtemp(join(tmpdir(), 'eduwork-writable-identity-'))
+  t.after(() => rm(base, { recursive: true, force: true }))
+  const real = join(base, 'real')
+  const alias = join(base, 'alias')
+  await mkdir(real)
+  await symlink(real, alias, 'junction')
+  const target = join(alias, 'missing', 'W')
+  const before = instanceIdentity(target)
+  await mkdir(join(alias, 'missing'))
+  const after = instanceIdentity(target)
+  assert.equal(after, before)
 })
