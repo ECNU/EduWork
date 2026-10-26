@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Toast, Tooltip, IconWarningOutlineRegular } from '@deepseek-ai/dsh-client-ui-primitives'
+import { Toast, Tooltip, IconWarningOutlineRegular } from './primitives.jsx'
 import { SideChatRegistry, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
 import { alignComposerDocks } from './composer-alignment.js'
 
