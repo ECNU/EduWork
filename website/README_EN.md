@@ -10,7 +10,15 @@ The site introduces EduWork, its plugins, open integration and community to deve
 
 Use EN / 中文 in the header to switch the whole page and remember the choice in your browser. Chinese is the default. Share `?lang=en` or `?lang=zh` to open a specific language; the URL takes precedence over saved preferences. Language and theme are independent, and switching still works when local storage is blocked.
 
-English copy lives in `language.js`; dynamic messages use the same dictionary. Keep English entries in sync when changing Chinese source copy. Documentation links follow the selected language where an English version exists. Other documents and real product screenshots remain in their original language.
+Page copy lives in `language.js`; dynamic messages use the same dictionary. Plugin introductions come from the shared catalog below. Keep English copy in sync with Chinese. Documentation links follow the selected language where an English version exists. Other documents and real product screenshots remain in their original language.
+
+## Shared plugin introductions
+
+[`docs/plugin-catalog.json`](../docs/plugin-catalog.json) holds Chinese and English names, summaries, categories and GitHub documentation links. It is presentation metadata, checked against the npm inputs actually used by public assembly; a source directory alone does not qualify a plugin for display. Studio and its companion artifact service share one introduction, recorded with `companions`.
+
+After editing the catalog, run `node scripts/sync-project-docs.mjs` to update marked sections in both root READMEs and `index.html`. Do not edit generated sections directly. Installation guidance and site layout remain independently authored outside those sections. Detailed documentation stays on GitHub, and the roadmap links to its discussion.
+
+CI and the site build check that the catalog covers installed packages, excludes unbundled ones, has both documentation languages and matches generated content. Update the catalog when assembly inputs change; introduce features according to the intended public release scope.
 
 ## Editing and previewing
 
@@ -18,6 +26,8 @@ The site uses HTML, CSS and JavaScript with no build dependencies. With Node.js 
 
 ```sh
 node --test website/community-data.test.mjs
+node --test scripts/project-plugin-catalog.test.mjs
+node scripts/sync-project-docs.mjs --check
 node website/build.mjs --offline
 python -m http.server 4176 --directory dist/website --bind 127.0.0.1
 ```

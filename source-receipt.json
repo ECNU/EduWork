@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:00:27.646Z",
-  "fileSetSHA256": "91fbc5d8f417d6bd6e1861bfd6edf8ae94daf65397cf301bc4ac46684cbd5c8f",
+  "createdAt": "2026-10-25T17:56:32.937Z",
+  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
   "files": [
     {
       "path": ".gitattributes",
@@ -69,7 +69,7 @@
     },
     {
       "path": ".github/workflows/website.yml",
-      "sha256": "f2473d8a18c5bf7e2a6af771c08b175b703f98c965c2791b83f96fceb2f12d5c"
+      "sha256": "ebba6cd28d757bc4f88d7b2cbad216de5d9c0f599afae6ae621f995d2ed60c66"
     },
     {
       "path": ".gitignore",
@@ -378,6 +378,10 @@
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
       "sha256": "0aff000e84c6b60c40db44ac3eda59043df095ffff1d880d528d3aa28db49ca7"
+    },
+    {
+      "path": "docs/plugin-catalog.json",
+      "sha256": "177508ac8a36adfdc78ababfded003425049252215753f91386be1f1efa94654"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -6565,11 +6569,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "f720b8bfdf97b22e326988fdb158f3f7270b10bc42c2e50ffd8155aefd1aa6bd"
+      "sha256": "7e0140796e6b7fed15db3683d7899be396f9a45ca36e3fcf989f731cc984cd3e"
     },
     {
       "path": "README.md",
-      "sha256": "32d154a1bd1754f95e61e7edd489d7a0530f36ca5055cdb2d635ca11dafcecd9"
+      "sha256": "28e613489cc915b2a1aaa044455f0b76805cea3a5ab935c8e90bfa317a074b56"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
@@ -7112,6 +7116,14 @@
       "sha256": "dd3e028561c302a40763d30015aa0ce441fd952080757c71e7f93c7d53504955"
     },
     {
+      "path": "scripts/project-plugin-catalog.mjs",
+      "sha256": "d8544b4395ad1bf796b03175d2e135adb04bc5e57f048aa5053b187ff07c0990"
+    },
+    {
+      "path": "scripts/project-plugin-catalog.test.mjs",
+      "sha256": "06c9307e4fb7a85db5c3c7164c56b176b1098ae984ebd6e0702cfa51459a3c5f"
+    },
+    {
       "path": "scripts/publish-desktop-candidate.mjs",
       "sha256": "79dfefa96803bc5b9d22a02d48e2cd3c44a86796343e7ea710273681b745f44b"
     },
@@ -7142,6 +7154,10 @@
     {
       "path": "scripts/settings-navigation-icons.mjs",
       "sha256": "27f9269a88cdf07e8b6ed4f2f7fb2d7a2bb816f4e2bcf5d089ffe0fe9f3b19ed"
+    },
+    {
+      "path": "scripts/sync-project-docs.mjs",
+      "sha256": "c269db6c6a9019e3e64029beab82854309e0a2dd4735cf6d246936d90fe68379"
     },
     {
       "path": "scripts/test-eduwork-search.mjs",
@@ -7849,7 +7865,7 @@
     },
     {
       "path": "website/assets/data/community.json",
-      "sha256": "e0f74f29a56e81c361991ba5b1b6f90216c4ef51f809b7f523d8fce4df50b819"
+      "sha256": "73f207c754015e18882cdeddb0c4a9a9fc30aeae801eb8688cda4831083527b1"
     },
     {
       "path": "website/assets/eduwork-blue.svg",
@@ -7873,7 +7889,7 @@
     },
     {
       "path": "website/build.mjs",
-      "sha256": "2e93b1bf07a7ac9fb88e8d53357bb63c159e3483c8e82ad76a29b4090c951cf3"
+      "sha256": "afadbe16e45fc3f4baf1a2cbccb69878deed2833ec1585b2b5c494f8e7abeebe"
     },
     {
       "path": "website/community-data.mjs",
@@ -7885,15 +7901,15 @@
     },
     {
       "path": "website/index.html",
-      "sha256": "141c07e639f83cfe6bd8bbd54554c5b0c0e550dd67e2cbcd0b72c3311f62f520"
+      "sha256": "a9fe93a6282291d2fc373beeaab075673d833b7622047cc746ecb9501a54010e"
     },
     {
       "path": "website/language.js",
-      "sha256": "16ea52117eb50895c751eb610f1e65e0143e5fef6db3da2c6056be7e796a4d2a"
+      "sha256": "8bc8cf5d76282b2db0eb8678d085c72b28e44d858a23d6635e621cafb272ad41"
     },
     {
       "path": "website/project.css",
-      "sha256": "7f287d7780ef6bb89ebb61a1ad9ef138c66f214215a41afc2ddcd7a64f72f267"
+      "sha256": "b8d83c52078566a390fb7ae44aa0a128ba58d3c7efd5f071a02bbaba752074fd"
     },
     {
       "path": "website/project.js",
@@ -7901,11 +7917,11 @@
     },
     {
       "path": "website/README_EN.md",
-      "sha256": "d4ae81818121047af50c6c208b638b864178524043058594437422067ca4c33a"
+      "sha256": "01780d2a31788318e5c097d24c9e61bc7f8e3af0eb1fd23523c07bee25da2902"
     },
     {
       "path": "website/README.md",
-      "sha256": "22e590eda643a3fd93d0cde97324736c13c5a08fb475d7b599033aadec0679de"
+      "sha256": "fbb43627d67a3cbd4a4990f059a3017c846a9842ca2d87888bdb4210f033c9ed"
     },
     {
       "path": "website/theme-init.js",
