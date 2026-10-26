@@ -7994,9 +7994,9 @@
   "reviewedCompatibility": [
     {
       "path": "scripts/dev-studio-web.mjs",
-      "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Legacy composition remains inactive for eduwork-web product identities. Parent, worker and Windows linker share the invocation directory when resolving local configuration paths. Bundle selection and service registration are unchanged; no institution endpoint or credential exemption."
+      "reason": "Development-only Studio launcher references institution packages for local testing",
+      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
