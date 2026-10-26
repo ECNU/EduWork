@@ -107,6 +107,26 @@ await migratePortableToInstalled({
   return wrapper
 }
 
+async function writePreJournalMigration(f, name = 'pre-journal.mjs') {
+  const wrapper = join(f.base, name)
+  const moduleUrl = new URL('../scripts/migrate-portable-to-installed.mjs', import.meta.url).href
+  await writeFile(wrapper, `
+import { writeFile } from 'node:fs/promises'
+import { migratePortableToInstalled } from ${JSON.stringify(moduleUrl)}
+const marker = process.argv[2]
+await migratePortableToInstalled({
+  sourceRoot: ${JSON.stringify(f.source)},
+  targetRoot: ${JSON.stringify(f.target)},
+  writableRoot: ${JSON.stringify(f.writable)},
+  statfsImpl: async () => {
+    await writeFile(marker, 'statfs-started\\n')
+    await new Promise(resolve => setTimeout(resolve, 60000))
+  },
+})
+`)
+  return wrapper
+}
+
 async function waitForPath(path, timeout = 5000) {
   for (let i = 0; i < timeout / 25; i++) {
     if (existsSync(path)) return true
@@ -257,6 +277,84 @@ test('rechecks update transactions before activation', async t => {
   assert.equal(await missing(f.source), false)
   assert.equal(existsSync(f.source + '.handoff.json'), false)
   assert.equal(await missing(f.writable), true)
+})
+
+test('ignores an empty legacy lock and retries', async t => {
+  const f = await fixture(t)
+  await writeFile(f.source + '.handoff.json.lock', '')
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
+})
+
+test('retries after termination before journal publication', async t => {
+  const f = await fixture(t)
+  const marker = join(f.base, 'statfs-started')
+  const wrapper = await writePreJournalMigration(f)
+  const child = spawn(process.execPath, [wrapper, marker], { stdio: 'ignore' })
+  t.after(() => { if (child.exitCode === null) child.kill('SIGKILL') })
+  assert.equal(await waitForPath(marker), true, 'migration did not reach statfs')
+  assert.equal(existsSync(f.source + '.handoff.json'), false)
+  child.kill('SIGKILL')
+  await waitForExit(child)
+  await delay(100)
+
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
+})
+
+test('recognizes an activated target when journal cleanup was interrupted', async t => {
+  const f = await fixture(t)
+  const handoff = f.source + '.handoff-test'
+  await rename(f.source, handoff)
+  await mkdir(f.writable)
+  await writeFile(f.source + '.handoff.json.lock', '{}')
+  await writeFile(join(f.writable, '.eduwork-migration-receipt.json'), JSON.stringify({
+    schemaVersion: 1, kind: 'eduwork-portable-to-installed-v1', state: 'activated',
+    source: { root: f.source, handoffRoot: handoff },
+    target: { root: f.writable, programRoot: f.target },
+  }, null, 2) + '\n')
+  await assert.rejects(migratePortableToInstalled(options(f)), /already activated/)
+  assert.equal(await missing(f.source), true)
+  assert.equal(existsSync(handoff), true)
+})
+
+test('serializes two recoveries of the same interrupted state', async t => {
+  const f = await fixture(t)
+  const handoff = f.source + '.handoff-test'
+  await rename(f.source, handoff)
+  const staging = join(f.base, '.eduwork-migration-test.staging')
+  await mkdir(staging)
+  await writeFile(f.source + '.handoff.json', JSON.stringify({
+    schemaVersion: 1, kind: 'eduwork-handoff-v1', sourceRoot: f.source, handoffRoot: handoff,
+    staging, targetRoot: f.target, writableRoot: f.writable, targetWasEmptyAtHandoff: false,
+    createdAt: now(), pid: 0,
+  }, null, 2) + '\n')
+  const markerA = join(f.base, 'recover-a')
+  const markerB = join(f.base, 'recover-b')
+  const wrapper = await writeSlowMigration(f, 'slow-recovery.mjs')
+  const childA = spawn(process.execPath, [wrapper, markerA], { stdio: 'ignore' })
+  const childB = spawn(process.execPath, [wrapper, markerB], { stdio: 'ignore' })
+  t.after(() => {
+    for (const child of [childA, childB]) if (child.exitCode === null) child.kill('SIGKILL')
+  })
+  let winner
+  for (let i = 0; i < 200 && !winner; i++) {
+    if (existsSync(markerA)) winner = markerA
+    else if (existsSync(markerB)) winner = markerB
+    else await delay(25)
+  }
+  assert.ok(winner, 'neither recovery reached copy')
+  await delay(300)
+  const win = winner === markerA ? childA : childB
+  const lose = winner === markerA ? childB : childA
+  win.kill('SIGKILL')
+  await waitForExit(win)
+  await waitForExit(lose)
+  assert.equal(Number(existsSync(markerA)) + Number(existsSync(markerB)), 1)
+
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
+  assert.equal(existsSync(f.source + '.handoff.json'), false)
 })
 
 test('refuses while another migration owns the handoff journal', async t => {

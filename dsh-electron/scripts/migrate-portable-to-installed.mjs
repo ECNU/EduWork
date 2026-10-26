@@ -1,6 +1,8 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream, existsSync, rmdirSync } from 'node:fs'
 import { copyFile, lstat, mkdir, open, readdir, readFile, rename, rm, statfs, writeFile } from 'node:fs/promises'
+import { connect, createServer } from 'node:net'
+import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -148,7 +150,6 @@ async function availableSpace(root, statfsImpl) {
 }
 
 const journalPathFor = sourceRoot => sourceRoot + '.handoff.json'
-const lockPathFor = journalPath => journalPath + '.lock'
 const isOwnedStaging = (path, writableRoot) => {
   const absolute = resolve(path)
   return dirname(absolute) === resolve(dirname(writableRoot))
@@ -161,39 +162,65 @@ function isProcessAlive(pid) {
   catch (error) { return error.code === 'EPERM' }
 }
 
-async function readProcessRecord(path) {
-  try { return JSON.parse((await readFile(path, 'utf8')).replace(/^\uFEFF/, '')) }
-  catch { return undefined }
+const mutexAddress = sourceRoot => {
+  const hash = createHash('sha256').update(resolve(sourceRoot).toLowerCase()).digest('hex').slice(0, 32)
+  return process.platform === 'win32'
+    ? `\\\\.\\pipe\\eduwork-migration-${hash}`
+    : join(tmpdir(), `eduwork-migration-${hash}.sock`)
 }
 
-async function acquireJournalLock(lockPath) {
-  let handle
-  try { handle = await open(lockPath, 'wx') }
-  catch (error) {
-    if (error.code === 'EEXIST') {
-      const lock = await readProcessRecord(lockPath)
-      if (lock?.pid !== process.pid && isProcessAlive(lock?.pid)) {
-        throw new Error(`Another migration is in progress (pid ${lock.pid}): ${lockPath}`)
-      }
-      throw new Error(`Handoff journal lock exists; manual recovery required: ${lockPath}`)
+function listenMutex(server, address) {
+  return new Promise((resolveListen, reject) => {
+    const onError = error => { server.off('listening', onListening); reject(error) }
+    const onListening = () => { server.off('error', onError); resolveListen() }
+    server.once('error', onError)
+    server.once('listening', onListening)
+    server.listen(address)
+  })
+}
+
+function canConnect(address) {
+  return new Promise(resolveConnect => {
+    const socket = connect(address)
+    let settled = false
+    const finish = value => {
+      if (settled) return
+      settled = true
+      socket.destroy()
+      resolveConnect(value)
     }
-    throw error
-  }
+    socket.once('connect', () => finish(true))
+    socket.once('error', () => finish(false))
+    setTimeout(() => finish(false), 500).unref()
+  })
+}
+
+async function acquireMigrationMutex(sourceRoot) {
+  const address = mutexAddress(sourceRoot)
+  let server = createServer(socket => socket.destroy())
   try {
-    await handle.writeFile(JSON.stringify({ schemaVersion: 1, kind: 'eduwork-journal-lock-v1', pid: process.pid, createdAt: new Date().toISOString() }) + '\n')
-    await handle.sync()
-  } finally {
-    await handle.close()
+    await listenMutex(server, address)
+    return server
+  } catch (error) {
+    if (error.code !== 'EADDRINUSE') throw error
+    if (process.platform === 'win32' || await canConnect(address)) {
+      throw new Error(`Another migration is in progress: ${sourceRoot}`)
+    }
+    await rm(address, { force: true })
+    server = createServer(socket => socket.destroy())
+    try {
+      await listenMutex(server, address)
+      return server
+    } catch (retryError) {
+      if (retryError.code === 'EADDRINUSE') throw new Error(`Another migration is in progress: ${sourceRoot}`)
+      throw retryError
+    }
   }
 }
 
-async function releaseJournal(journalPath) {
-  const lockPath = lockPathFor(journalPath)
-  const lock = await readProcessRecord(lockPath)
-  if (lock?.pid !== process.pid) return false
-  await rm(journalPath, { force: true })
-  await rm(lockPath, { force: true })
-  return true
+async function releaseMigrationMutex(server) {
+  if (!server) return
+  await new Promise(resolveClose => server.close(() => resolveClose()))
 }
 
 async function writeJournal(path, value) {
@@ -216,20 +243,18 @@ async function writeJournal(path, value) {
 
 async function inspectHandoff({ sourceRoot, targetRoot, writableRoot }) {
   const journalPath = journalPathFor(sourceRoot)
-  const lockPath = lockPathFor(journalPath)
-  const lockExists = existsSync(lockPath)
-  const lock = lockExists ? await readProcessRecord(lockPath) : undefined
-  if (lockExists && lock?.pid !== process.pid && isProcessAlive(lock?.pid)) {
-    return { action: 'in-progress', journalPath, lockPath, pid: lock.pid, reason: 'lock-owner-alive' }
-  }
-  const journalExists = existsSync(journalPath)
-  if (!journalExists) {
-    if (!lockExists) return undefined
-    if (!lock || typeof lock.pid !== 'number') {
-      return { action: 'manual', journalPath, lockPath, reason: 'lock-invalid' }
+  const sourceExists = existsSync(sourceRoot)
+  if (!existsSync(journalPath)) {
+    if (sourceExists) return undefined
+    const receipt = await readJSON(join(writableRoot, RECEIPT), true).catch(() => undefined)
+    if (receipt?.kind === 'eduwork-portable-to-installed-v1'
+      && (receipt.state === 'activated' || receipt.state === 'verified')
+      && typeof receipt.source?.root === 'string' && same(receipt.source.root, sourceRoot)
+      && typeof receipt.source?.handoffRoot === 'string' && existsSync(receipt.source.handoffRoot)
+      && (typeof receipt.target?.programRoot !== 'string' || same(receipt.target.programRoot, targetRoot))) {
+      return { action: 'committed', journalPath, handoffRoot: receipt.source.handoffRoot, reason: 'receipt' }
     }
-    if (existsSync(sourceRoot)) return { action: 'cleanup-lock', journalPath, lockPath, reason: 'lock-without-journal' }
-    return { action: 'manual', journalPath, lockPath, reason: 'lock-without-journal' }
+    return { action: 'manual', journalPath, reason: 'source-missing-no-journal' }
   }
   let journal
   try { journal = await readJSON(journalPath) } catch { journal = undefined }
@@ -237,28 +262,25 @@ async function inspectHandoff({ sourceRoot, targetRoot, writableRoot }) {
     || typeof journal.sourceRoot !== 'string' || typeof journal.targetRoot !== 'string'
     || typeof journal.writableRoot !== 'string' || typeof journal.handoffRoot !== 'string'
     || typeof journal.staging !== 'string') {
-    if (existsSync(sourceRoot)) return { action: 'cleanup-invalid-journal', journalPath, lockPath, reason: 'invalid-journal' }
-    return { action: 'manual', journalPath, lockPath, reason: 'invalid-journal' }
+    return { action: 'manual', journalPath, reason: 'invalid-journal' }
   }
   if (!same(journal.sourceRoot, sourceRoot) || !same(journal.targetRoot, targetRoot) || !same(journal.writableRoot, writableRoot)) {
-    return { action: 'manual', journalPath, lockPath, journal, reason: 'journal-mismatch' }
+    return { action: 'manual', journalPath, journal, reason: 'journal-mismatch' }
   }
   if (!isAbsolute(journal.handoffRoot) || !same(dirname(resolve(journal.handoffRoot)), dirname(sourceRoot))
     || !basename(journal.handoffRoot).startsWith(basename(sourceRoot) + '.handoff-')
     || !isAbsolute(journal.staging) || !isOwnedStaging(journal.staging, writableRoot)) {
-    if (existsSync(sourceRoot)) return { action: 'cleanup-invalid-journal', journalPath, lockPath, journal, reason: 'invalid-journal-paths' }
-    return { action: 'manual', journalPath, lockPath, journal, reason: 'invalid-journal-paths' }
+    return { action: 'manual', journalPath, journal, reason: 'invalid-journal-paths' }
   }
   if (journal.pid !== process.pid && isProcessAlive(journal.pid)) {
-    return { action: 'in-progress', journalPath, lockPath, journal, pid: journal.pid, reason: 'journal-owner-alive' }
+    return { action: 'in-progress', journalPath, journal, pid: journal.pid, reason: 'journal-owner-alive' }
   }
-  const sourceExists = existsSync(sourceRoot)
   const handoffExists = existsSync(journal.handoffRoot)
   if (sourceExists && !handoffExists) {
-    return { action: 'cleanup-stale', journalPath, lockPath, journal, staging: journal.staging }
+    return { action: 'cleanup-stale', journalPath, journal, staging: journal.staging }
   }
   if (sourceExists && handoffExists) {
-    return { action: 'manual', journalPath, lockPath, journal, reason: 'source-and-handoff' }
+    return { action: 'manual', journalPath, journal, reason: 'source-and-handoff' }
   }
   if (!sourceExists && handoffExists) {
     if (existsSync(writableRoot)) {
@@ -266,18 +288,18 @@ async function inspectHandoff({ sourceRoot, targetRoot, writableRoot }) {
       if (receipt?.kind === 'eduwork-portable-to-installed-v1'
         && typeof receipt.source?.handoffRoot === 'string' && same(receipt.source.handoffRoot, journal.handoffRoot)
         && (receipt.state === 'activated' || receipt.state === 'verified')) {
-        return { action: 'committed', journalPath, lockPath, journal, handoffRoot: journal.handoffRoot }
+        return { action: 'committed', journalPath, journal, handoffRoot: journal.handoffRoot, reason: 'receipt' }
       }
       if (journal.targetWasEmptyAtHandoff === true) {
         let empty = false
         try { empty = (await readdir(writableRoot)).length === 0 } catch {}
-        if (empty) return { action: 'restore', journalPath, lockPath, journal, handoffRoot: journal.handoffRoot, staging: journal.staging }
+        if (empty) return { action: 'restore', journalPath, journal, handoffRoot: journal.handoffRoot, staging: journal.staging }
       }
-      return { action: 'manual', journalPath, lockPath, journal, reason: 'target-conflict' }
+      return { action: 'manual', journalPath, journal, reason: 'target-conflict' }
     }
-    return { action: 'restore', journalPath, lockPath, journal, handoffRoot: journal.handoffRoot, staging: journal.staging }
+    return { action: 'restore', journalPath, journal, handoffRoot: journal.handoffRoot, staging: journal.staging }
   }
-  return { action: 'manual', journalPath, lockPath, journal, reason: 'source-and-handoff-missing' }
+  return { action: 'manual', journalPath, journal, reason: 'source-and-handoff-missing' }
 }
 
 async function recoverHandoff({ sourceRoot, targetRoot, writableRoot, dryRun = false }) {
@@ -290,24 +312,15 @@ async function recoverHandoff({ sourceRoot, targetRoot, writableRoot, dryRun = f
     case 'committed':
       throw new Error(`Migration already activated; source is preserved at ${plan.handoffRoot}`)
     case 'manual':
-      throw new Error(`Handoff recovery requires manual action (${plan.reason}): ${plan.journalPath || plan.lockPath}`)
-    case 'cleanup-lock':
-      await rm(plan.lockPath, { force: true })
-      return { ...plan, recovered: false, cleaned: true }
-    case 'cleanup-invalid-journal':
-      await rm(plan.journalPath, { force: true })
-      await rm(plan.lockPath, { force: true })
-      return { ...plan, recovered: false, cleaned: true }
+      throw new Error(`Handoff recovery requires manual action (${plan.reason}): ${plan.journalPath || sourceRoot}`)
     case 'cleanup-stale':
       await rm(plan.staging, { recursive: true, force: true }).catch(() => {})
       await rm(plan.journalPath, { force: true })
-      await rm(plan.lockPath, { force: true })
       return { ...plan, recovered: false, cleaned: true }
     case 'restore':
       await rename(plan.handoffRoot, sourceRoot)
       await rm(plan.staging, { recursive: true, force: true }).catch(() => {})
       await rm(plan.journalPath, { force: true })
-      await rm(plan.lockPath, { force: true })
       return { ...plan, recovered: true }
     default:
       throw new Error(`Unknown handoff recovery action: ${plan.action}`)
@@ -427,7 +440,24 @@ async function readIdentities(sourceRoot, targetRoot) {
     targetManifestSha256: await hashFile(join(targetRoot, 'RELEASE-MANIFEST.json')), identitySha256 }
 }
 
-export async function migratePortableToInstalled({ sourceRoot, targetRoot, writableRoot,
+export async function migratePortableToInstalled(options = {}) {
+  const { sourceRoot, targetRoot, writableRoot, dryRun = false } = options
+  assertAbsolute(sourceRoot, 'Source program root')
+  assertAbsolute(targetRoot, 'Target program root')
+  assertAbsolute(writableRoot, 'Target writable root')
+  const source = resolve(sourceRoot), target = resolve(targetRoot), writable = resolve(writableRoot)
+  if (dryRun) {
+    return migrateInternal({ ...options, sourceRoot: source, targetRoot: target, writableRoot: writable, dryRun: true })
+  }
+  const mutex = await acquireMigrationMutex(source)
+  try {
+    return await migrateInternal({ ...options, sourceRoot: source, targetRoot: target, writableRoot: writable, dryRun: false })
+  } finally {
+    await releaseMigrationMutex(mutex)
+  }
+}
+
+async function migrateInternal({ sourceRoot, targetRoot, writableRoot,
   listProcesses = defaultListProcesses, copyFileImpl = copyFile, writeReceiptImpl = writeFile,
   handoffImpl = rename, statfsImpl = statfs, now = () => new Date().toISOString(), dryRun = false } = {}) {
   assertAbsolute(sourceRoot, 'Source program root')
@@ -473,10 +503,8 @@ export async function migratePortableToInstalled({ sourceRoot, targetRoot, writa
     schemaVersion: 1, kind: 'eduwork-handoff-v1', sourceRoot, handoffRoot, staging,
     targetRoot, writableRoot, targetWasEmptyAtHandoff: Boolean(target), createdAt: now(), pid: process.pid,
   }
-  let sourceHandoffRoot, activated = false, lockAcquired = false
+  let sourceHandoffRoot, activated = false
   try {
-    await acquireJournalLock(lockPathFor(journalPath))
-    lockAcquired = true
     await writeJournal(journalPath, journal)
     sourceHandoffRoot = handoffRoot
     try {
@@ -533,7 +561,7 @@ export async function migratePortableToInstalled({ sourceRoot, targetRoot, writa
     if (target) rmdirSyncCompat(writableRoot)
     await rename(staging, writableRoot)
     activated = true
-    await releaseJournal(journalPath).catch(() => {})
+    await rm(journalPath, { force: true }).catch(() => {})
     return { source: sourceRoot, sourceHandoffRoot, writableRoot, targetRoot,
       files: receipt.files, skipped: source.skipped, warnings: source.warnings, space, receipt }
   } catch (error) {
@@ -546,7 +574,7 @@ export async function migratePortableToInstalled({ sourceRoot, targetRoot, writa
         throw new Error(`${error.message}; failed to restore old program path: ${restoreError.message}`)
       }
     }
-    if (lockAcquired && restored) await releaseJournal(journalPath).catch(() => {})
+    if (restored) await rm(journalPath, { force: true }).catch(() => {})
     throw error
   } finally {
     if (!activated) await rm(staging, { recursive: true, force: true }).catch(() => {})
