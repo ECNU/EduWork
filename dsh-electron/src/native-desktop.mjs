@@ -14,6 +14,8 @@ import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from
 import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
+import { watchHungWindow } from './hung-window.mjs'
+import { watchMemory } from './memory-watch.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
@@ -133,7 +135,19 @@ async function main() {
   window.webContents.on('did-fail-load', (_event, code, description, _url, mainFrame) => {
     if (mainFrame && code !== -3 && !window.isDestroyed()) reportFatal(new Error(`Desktop page failed (${code}: ${description})`), 'renderer')
   })
+  const hang = watchHungWindow({ window, log: message => desktopHostLog(message + '\n'),
+    metrics: () => app.getAppMetrics(), systemMemory: () => process.getSystemMemoryInfo(),
+    ask: async () => (await dialog.showMessageBox(window, { type: 'warning', title: app.getName(), noLink: true,
+      message: '界面无响应，是否重新加载？', detail: '重新加载只刷新界面，正在运行的任务会继续。也可以继续等待。',
+      buttons: ['重新加载', '继续等待'], defaultId: 0, cancelId: 1 })).response === 0 })
+  const memory = watchMemory({ window, log: message => desktopHostLog(message + '\n'),
+    metrics: () => app.getAppMetrics(), systemMemory: () => process.getSystemMemoryInfo(),
+    // macOS counts file cache as used, so low free memory is normal there.
+    ...(process.platform === 'darwin' ? { freeWarnKB: 0 } : {}) })
+  window.on('unresponsive', () => memory.dump('the page became unresponsive'))
   window.webContents.on('render-process-gone', (_event, details) => {
+    if (hang.ownExit()) return
+    if (details.reason !== 'clean-exit') memory.dump(`the page exited (${details.reason})`)
     if (details.reason !== 'clean-exit' && !window.isDestroyed()) reportFatal(new Error(`Desktop renderer exited: ${details.reason}`), 'renderer')
   })
   entered = true
