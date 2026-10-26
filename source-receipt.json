@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "dd4ca6ee3bb1626ebaace928456416ec158b8388b059f6b753ae42767736d6c4",
   "files": [
     {
       "path": ".gitattributes",
@@ -6053,7 +6053,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/client/account-menu.ts",
-      "sha256": "f180093a2846b3e48d3599c87e1f2ca70fbe3b57885159bde9cdb789e86f3c18"
+      "sha256": "34672c4b7a4bd67855a0d70ae782238fe69b4b5605130db21b365ca577d21924"
     },
     {
       "path": "packages/dsh-oidc/src/client/account-state.js",
@@ -6061,7 +6061,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/client/index.ts",
-      "sha256": "216f8186a505fe5d4040be1e31907f9dd64590d753ce198ee42a31f4bb20845c"
+      "sha256": "1622bfb324ba3df2b30936af235632c61882c718714edc78eaf59e429fd87b4f"
     },
     {
       "path": "packages/dsh-oidc/src/client/locale.ts",
@@ -6101,7 +6101,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/gateway-backend.js",
-      "sha256": "c0978550a02bb6e6b0c1e9d2fe06df5052c1ae08125002079e0c20a146a4ed09"
+      "sha256": "9cfe16139c18d75f5cab8808b95c2f63f353749dd2200dfc1d40e901709bf267"
     },
     {
       "path": "packages/dsh-oidc/src/host/gateway-protocol.js",
@@ -6129,7 +6129,7 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/oidc.js",
-      "sha256": "4ce2a3824cc7937cc6093d883bd1efadd8a550e1d3b0a4a594c60cd7f49648ea"
+      "sha256": "a459d8d7e8f01d9767314c86932aef4ca82b58cabbf039ce27847cfed9ef5fa3"
     },
     {
       "path": "packages/dsh-oidc/src/host/profile.js",
@@ -6145,11 +6145,11 @@
     },
     {
       "path": "packages/dsh-oidc/src/host/provider/index.js",
-      "sha256": "4ba7cc121f14f6c81d17df528b94654d30055cb06ed18ff7355de858f71a6f60"
+      "sha256": "e5ec650a2b5a52f73cd585ce3f9407c6bca4310c6450e6341cf1e0b2d62459e3"
     },
     {
       "path": "packages/dsh-oidc/src/host/provider/transform-adapter.js",
-      "sha256": "9b8f2d5b725bdd8a63ecfb435be71e600855d82e7f6689891e13b99b8f7c428c"
+      "sha256": "de222b11fe62d77e544288e04155f62eb4c18d6b2200b31d665d062d30a1a7ba"
     },
     {
       "path": "packages/dsh-oidc/src/host/provider/transforms.js",
@@ -6209,7 +6209,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/gateway.test.js",
-      "sha256": "d93cf1573b605a3e87fbdf497257e434d459460f920c8b602ed936a23a4cc2bb"
+      "sha256": "7e2ccf1173f28146094c456945f258cecdcd0dc9323f669a0b7f6ae035ee2f87"
     },
     {
       "path": "packages/dsh-oidc/test/helpers/account-menu-browser.js",
@@ -6241,7 +6241,7 @@
     },
     {
       "path": "packages/dsh-oidc/test/provider.test.js",
-      "sha256": "0626866c8ff896072f549a5d959e8a00ae598a9f23b22ff8fbeaa06be58878fc"
+      "sha256": "015fa0927be7ade4698e84fad19ebf9285f1d9b2295c737a1e431c64f55c8f9f"
     },
     {
       "path": "packages/dsh-oidc/test/resource-host.test.js",
