@@ -318,7 +318,9 @@ app.whenReady().then(async () => {
   await guest.loadURL(protectedURL)
   assert.equal(await guest.executeJavaScript('document.title'), 'protected fixture')
   assert.deepEqual(await guest.executeJavaScript(`({bridge:typeof window.dshDesktop,require:typeof window.require})`), { bridge: 'undefined', require: 'undefined' })
-  results.push('leased native guest opens a CSP/XFO-protected page without desktop privileges')
+  // The page sets no background: the guest paints white, as in Chrome, rather than see-through.
+  assert.deepEqual([...(await guest.capturePage({ x: 0, y: 0, width: 1, height: 1 })).toBitmap().subarray(0, 4)], [255, 255, 255, 255])
+  results.push('leased native guest opens a CSP/XFO-protected page, opaque and without desktop privileges')
   await assert.rejects(guest.loadURL(`${hostOrigin}/private`))
   assert.equal(hostRequests, 0, 'guest must be rejected before contacting the live Host fixture')
   await evaluate(`dshDesktop.browser.release(${JSON.stringify(reservation.lease)})`)

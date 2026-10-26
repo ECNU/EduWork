@@ -4,12 +4,22 @@
   "private": true,
   "type": "module",
   "main": "lib/index.js",
-  "exports": { ".": "./lib/index.js" },
+  "exports": { ".": "./lib/index.js", "./client": "./lib/client.js" },
   "license": "MIT",
   "peerDependencies": {
     "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "0.2.1-rc.2",
     "@deepseek-ai/dsh-sandbox-policy": "0.2.1-rc.2",
     "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
-    "@chatecnu-work/dsh-tool-browser": "0.1.0-dev"
+    "@chatecnu-work/dsh-tool-browser": "0.1.0-dev",
+    "@deepseek-ai/dsh-browser-use": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-experimental-browser-use-runtime": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-mcp-client": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-scope": "0.2.1-rc.2"
+  },
+  "dsh": {
+    "client": {
+      "inject": ["@deepseek-ai/dsh-client-ui-sidebar-right"],
+      "platform": "web"
+    }
   }
 }

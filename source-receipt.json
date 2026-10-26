@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "9ecfa89b4067da8e660576e666aa458f34e932bd9072b4676a656b1f46935c10",
+  "createdAt": "2026-10-27T09:00:17.136Z",
+  "fileSetSHA256": "1954c57fa89550b70949f2681cd2b2bb3b55fd6be70cf68063badd4c3496bad6",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "7da2a28a5d7571be1c166a593b9b8236140b2be682ab6acb39b5843181b1a78c"
+      "sha256": "3a5b9479f5f64b11f58e8b2631761ba7c8d64331c2a098ad863ac02c93c79bef"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "6aca84281e70b1bcbb303d209bcda58500ff8a097f462a4de416f779b010d25a"
+      "sha256": "a26027a9823be0f0b80ba3d2927082e0b7ee31ab59506b0c0e7ee2b699bfdcf6"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1269,11 +1269,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "4bb0a950c3602897481b3b69cf0bfffedacd60f7ae6721d037a45d8f6c43d66c"
+      "sha256": "48b17556d934e38bae08d77e71c223a662a86ca91066638712016b2f90c05b7f"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "2caebf28d3ff37b9a1636d44265d829a00a637d033987cb17e3807151c121947"
+      "sha256": "a038d493421cba9294cfddb942a5f9e1f052e6368adceed2b86981d2fc937bb1"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1298,6 +1298,14 @@
     {
       "path": "dsh-electron/src/runtime-access.mjs",
       "sha256": "e1737b7b654c7d8a83bf56be9e7e44556b066051a4c60cbe7bf9c641ee85d08f"
+    },
+    {
+      "path": "dsh-electron/src/sidebar-browser-preload.cjs",
+      "sha256": "b82a5ac3a7cff626f623c978c6319ed0f605eb04f7f50efab4eccfaf5e438dca"
+    },
+    {
+      "path": "dsh-electron/src/sidebar-browser.mjs",
+      "sha256": "b2c64e43576d664bd367794bd6ad33a9c6bd322f0481a8b1e1628cfdbe3749fe"
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
@@ -1417,7 +1425,15 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "f3522ccfb0a4558ca6b6b0762b3d0a02f66094df927ad79a85807871d2ba1611"
+      "sha256": "79e9aec511be24e7cb7773330a65582267d20a0d70e854eef0c467286d3964e4"
+    },
+    {
+      "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
+      "sha256": "ffe944f8a8e73f43c19b68696c38f4210c0150bbbe318126dfd86618d1c14d22"
+    },
+    {
+      "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
+      "sha256": "005fc130e41822e3fb3130531d939d17bd859c8c410197c18f7a850e1d4f3eb5"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1478,6 +1494,10 @@
     {
       "path": "dsh-electron/tests/runtime-access.test.mjs",
       "sha256": "614927fc10da0158a820c1d540832c888ef8c765955b27cc20c5d040739a54d2"
+    },
+    {
+      "path": "dsh-electron/tests/sidebar-browser.test.mjs",
+      "sha256": "ebec4c696f630fde41b9f97975abd547f4baa1eed93036585635813d9036f764"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
@@ -2065,27 +2085,43 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/index.js",
-      "sha256": "37d7ce03da6eba9882b62348a52415621f6cef702d2d95f81757f434dd537f83"
+      "sha256": "5c0dd8a7cadaf9d28d61e6d03ce2050ac44a3b53d3a8d1dd1e7751d2641f523a"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
-      "sha256": "b374f7ded9cd8f488f3341b26653fa991a3e64dea50c5a3f6b9490dc717d254e"
+      "sha256": "2bab9dcdccc20db8d3a52d8e7af557a481f247b3ca447a0046c8cad00abdec05"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
+      "sha256": "eca2e2ad265195793a0cc178515941a249a2ed37c59773b403babf3f3f2c25da"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/sidebar.js",
+      "sha256": "b44872c3e8bf385f72d51ad49ff1fb6abd98b6fbb8e0e4e5ffbb74a1b8ccd025"
     },
     {
       "path": "dsh-plugins/browser-upstream/package.json",
-      "sha256": "f08f3e18c53fa09da6a7b5600865949591982f800e65da45d9ac01580c2a16b3"
+      "sha256": "4c3ac4c6c562fb52e242ab7abf7e2bb4a11d19cd3ad87f221fe9c8826a7726ba"
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "3003995b38dff3238f8d767b86873b9de7bb3877b9ebbe8c6b3763de2bd209b8"
+      "sha256": "c70e012ed87c6d2c09e7c957a88d5427cbb97a3d20444a6fae1ada241f28e1bd"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "26f1db09adefd5b22dc9ff01f46ad76c28b4ade3029ecb5bbb872d1a1f0344c2"
+      "sha256": "cd0e58c0f8b095f29746339ae130b193605c17f5356238c9f41b116eb5375452"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/src/client.ts",
+      "sha256": "6ae23c8ed7f7ee643ac58fc8b4222658ac786b546cd5253b0f3a3f5e38046f0e"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
-      "sha256": "ba3c16646d4899f22b1404dafba5290f4c80b1073d8ccaf61957081e75cd6bf9"
+      "sha256": "4def79e69bc63e3027af4385e7222964b3ad75e5333f30c52deea8b690c6f315"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
+      "sha256": "75e1dba449a8e42ccf317e38a66c1067bb597c0f956047c3e49ac1f1de4c407f"
     },
     {
       "path": "dsh-plugins/calendar/build-client.mjs",
@@ -3253,7 +3289,7 @@
     },
     {
       "path": "dsh-skills/browser-upstream/SKILL.md",
-      "sha256": "74f1403bc3e00e8251ccb63c13de577565bf6e23e23d892daa618d97ab1cd920"
+      "sha256": "cbdb7b4710be6fe658849ced3186773b8b4a0e55b31b8f7cadfd86b0562d9ea6"
     },
     {
       "path": "dsh-skills/browser/SKILL.md",
@@ -6653,7 +6689,7 @@
     },
     {
       "path": "scripts/build-pinned-dsh-plugin-clients.mjs",
-      "sha256": "573d5df6a53bd98ea43ac66c1bb4d419ee6c4d2d29b5830ea073cd0cbee0588d"
+      "sha256": "0121e6f8c9332892984c82653345c4f2092eceaef1a2c819ce52e40ba02af682"
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",

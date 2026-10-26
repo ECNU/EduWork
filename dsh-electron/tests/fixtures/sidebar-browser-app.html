@@ -1,0 +1,94 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sidebar browser fixture</title>
+<style>
+  body { margin: 0; display: grid; grid-template-columns: 1fr 576px; height: 100vh }
+  #sidebar { position: relative }
+  .session:not([hidden]) { display: contents }
+  .panel { position: absolute; inset: 0; overflow: clip }
+  .cell:not([hidden]) { position: absolute; inset: 0; display: flex }
+  .cell div, webview { display: flex; flex: 1 }
+  /* The upstream Sidebar slides a collapsed panel's docked cells past its edge. */
+  .panel [data-dockkit-host='dock'] { transform: translateX(576px); visibility: hidden }
+  .panel[data-sidebar-right-open] [data-dockkit-host='dock'] { transform: none; visibility: visible }
+</style>
+<textarea id="chat" aria-label="Message"></textarea>
+<div id="sidebar"></div>
+<script type="module">
+  import { connectSidebarBrowser } from '/sidebar-client.js'
+  // A stand-in for ctx.sidebarRight over the DOM the upstream Sidebar renders:
+  // conversation > panel > tab cell > tab > content > viewport > webview. As
+  // upstream, a tab's content first mounts when its conversation is on
+  // screen, the tab is selected and the Sidebar is expanded. Its guest starts
+  // blank, then loads the tab's address and drops the blank start from its
+  // history; any rejected load marks the page failed, since the abort's code
+  // does not cross IPC.
+  const sessions = new Map()
+  let onScreen, next = 0
+  const session = id => {
+    if (!sessions.has(id)) {
+      const element = document.createElement('div')
+      element.className = 'session'
+      element.setAttribute('data-sidebar-right-session', id)
+      element.innerHTML = `<div class="panel" data-sidebar-right-session="${id}" data-sidebar-right-panel="push"></div>`
+      document.getElementById('sidebar').append(element)
+      sessions.set(id, { element, panel: element.firstElementChild, tabs: new Map(), expanded: true })
+    }
+    return sessions.get(id)
+  }
+  const render = () => {
+    for (const [id, target] of sessions) {
+      target.element.hidden = id !== onScreen
+      target.panel.toggleAttribute('data-sidebar-right-open', target.expanded)
+      for (const [tabId, tab] of target.tabs) {
+        tab.cell.hidden = tabId !== target.active
+        if (id === onScreen && tabId === target.active && target.expanded && !tab.cell.querySelector('webview')) {
+          const frame = document.createElement('webview')
+          frame.setAttribute('data-sidebar-browser-frame', 'webview')
+          frame.setAttribute('partition', 'sidebar-workspace')
+          frame.setAttribute('allowpopups', '')
+          frame.setAttribute('src', `about:blank#${tabId}`)
+          frame.addEventListener('dom-ready', () => {
+            frame.addEventListener('did-navigate', () => frame.clearHistory(), { once: true })
+            frame.loadURL(tab.url).catch(() => tab.cell.setAttribute('data-failed', ''))
+          }, { once: true })
+          tab.cell.querySelector('[data-sidebar-right-tab] > div > div').append(frame)
+        }
+      }
+    }
+  }
+  const show = id => { session(id); onScreen = id; render() }
+  const focus = (id, tabId) => { session(id).active = tabId; render() }
+  const expand = (id, value) => { session(id).expanded = value; render() }
+  const openTabIn = (id, _kind, { params }) => {
+    const target = session(id), tabId = `tab${++next}`
+    const cell = document.createElement('div')
+    cell.className = 'cell'
+    cell.setAttribute('data-dockkit-host', 'dock')
+    cell.innerHTML = `<div data-sidebar-right-tab="${tabId}"><div><div></div></div></div>`
+    target.panel.append(cell)
+    target.tabs.set(tabId, { cell, url: params.url })
+    target.active = tabId
+    target.expanded = true
+    render()
+    return tabId
+  }
+  const sidebar = {
+    mounted: { getSnapshot: () => onScreen },
+    tabsIn: id => [...session(id).tabs.keys()].map(tabId => ({ id: tabId, kind: 'browser' })),
+    openTabIn,
+    closeIn: (id, tabId) => { session(id).tabs.get(tabId)?.cell.remove(); session(id).tabs.delete(tabId) },
+    isExpanded: () => session(onScreen).expanded,
+    toggleExpanded() { session(onScreen).expanded = !session(onScreen).expanded; render() },
+    active: () => ({ id: session(onScreen).active }),
+    focus: tabId => focus(onScreen, tabId),
+  }
+  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, sidebar, document, label: () => 'Agent' })
+  window.fixture = {
+    show, focus, expand, openTabIn,
+    popup(guestId, url) {
+      const frame = [...document.querySelectorAll('webview')].find(element => element.getWebContentsId() === guestId)
+      openTabIn(frame.closest('[data-sidebar-right-session]').getAttribute('data-sidebar-right-session'), 'browser', { params: { url } })
+    },
+  }
+</script>

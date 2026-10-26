@@ -35,7 +35,7 @@ for (const file of files) {
   const before = await source(file)
   let text = before.toString('utf8')
   text = adaptNativeDesktopSource(file, text)
-  if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8') }
+  if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/sidebar-browser-preload.cjs'), 'utf8') }
   const target = join(output, file.slice('apps/desktop/'.length))
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
@@ -64,7 +64,7 @@ for (const name of ['parser.js', 'scanner.js', 'string-intern.js', 'package.json
   await writeFile(join(output, 'src/eduwork-native-host-process.mjs'), adaptHostQuit(await readFile(join(host, 'host-process.mjs'), 'utf8')))
   for (const name of ['node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs']) await copyFile(join(host, name), join(output, 'src', name))
   await copyFile(join(repository, 'dsh-electron/src/native-web-host.mjs'), join(output, 'src/eduwork-host-process.mjs'))
-  for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
+  for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 }
 await copyFile(join(host, 'LICENSE-DeepSeek'), join(output, 'LICENSE-DeepSeek'))
 const manifest = JSON.parse(await source('apps/desktop/package.json'))
@@ -83,10 +83,10 @@ await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
 const adapters = {}
 for (const name of ['dock-theme-preload.cjs', 'boot-motion-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
-adapters['dsh-electron/src/boot-brand-preload.cjs'] = digest(await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs')))
+for (const name of ['boot-brand-preload.cjs', 'sidebar-browser-preload.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
 {
-  for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+  for (const name of ['native-web-host.mjs', 'desktop-main.mjs', 'automation-browser.mjs', 'sidebar-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
   adapters['dsh-electron/scripts/native-desktop-source.mjs'] = digest(await readFile(join(repository, 'dsh-electron/scripts/native-desktop-source.mjs')))
 }
 adapters['dsh-host/publisher-bootstrap.mjs'] = digest(await readFile(join(repository, 'dsh-host/publisher-bootstrap.mjs')))

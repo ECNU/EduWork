@@ -13,6 +13,7 @@ import { resolveDesktopLocale } from './locale.ts'
 import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
+import { createSidebarBrowser } from './sidebar-browser.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
@@ -31,6 +32,7 @@ let startupTask, startupFailure, startupFailureShown = false, initialPresentatio
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
+const sidebarBrowser = createSidebarBrowser({ getWindow: () => mainWindow })
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && started && !isQuitting()) reportFatal(state.failure, 'host')
@@ -78,6 +80,8 @@ function startBackend() {
     hostEnvironment = Object.fromEntries(Object.entries(inherited.environment).filter(([name]) => !editionVariable(name)))
     // Edition bootstrap and resource paths remain owned by the launcher.
     for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
+    // Only the Host's own browser provider reads this; its children never inherit it.
+    Object.assign(hostEnvironment, await sidebarBrowser.listen())
   })
 }
 // Early boot/locale requests must enter product recovery before the renderer reports failure.
@@ -115,6 +119,7 @@ async function main() {
     checkUpdates: checkProductUpdates,
     pickDirectory: pickDesktopDirectory,
     bootBrand: desktopBootBrand,
+    sidebarBrowser,
   })
   const webRoot = desktopWebRoot()
   protocol.handle(SCHEME, request => {
@@ -185,7 +190,7 @@ async function main() {
   }
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
-app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
+app.on('will-quit', () => { quit.dispose(); bridge?.dispose(); sidebarBrowser.close() })
 void app.whenReady().then(main).catch(async error => {
   if (isQuitting() || recovery.active) return
   if (entered) { reportFatal(error, 'main'); return }

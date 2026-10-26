@@ -163,6 +163,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Windows workspace permission repair checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
+          node --test core/dsh-plugins/browser-upstream/test/sidebar.test.mjs
+          if ($LASTEXITCODE) { throw 'Sidebar browser launch checks failed' }
           npm --prefix core/dsh-plugins/calendar test
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
@@ -238,6 +240,8 @@ jobs:
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/dsh-electron/tests/automation-browser.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop executable as the automation browser failed' }
+          node --test core/dsh-electron/tests/sidebar-browser.test.mjs
+          if ($LASTEXITCODE) { throw 'Agent Sidebar browser checks failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |
