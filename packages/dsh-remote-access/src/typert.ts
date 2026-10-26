@@ -15,14 +15,17 @@ const codec = (name: string, schema: z.ZodType) => Object.freeze({
   mode: 'strict', create() { return this.schema }, typeSymbol: `${pkg}#${name}`, schema,
 })
 const parameter = (name: string, schema: z.ZodType) => Object.freeze({ name, wire: name, source: 'json', codec: codec(name, schema) })
-const method = (name: string, parameters: readonly ReturnType<typeof parameter>[] = []) => ({
+const method = (name: string, parameters: readonly ReturnType<typeof parameter>[] = [], result = 'PanelStatus') => ({
   id: `${pkg}#remoteDevices/${name}`, service: 'remoteDevices', namespace: 'remoteDevices', method: name,
-  invocation: { kind: 'direct' }, parameters, result: codec('PanelStatus', z.unknown()),
+  invocation: { kind: 'direct' }, parameters, result: codec(result, z.unknown()),
   sourceLocation: { file: 'lib/index.js', line: 1, column: 1 },
 })
 
 export const descriptors = [
   method('status'),
+  method('retry'),
+  method('test', [], 'RelayTest'),
+  method('signIn', [], 'SignInPage'),
   method('createInvite'),
   method('cancelInvite'),
   method('decide', [parameter('key', z.string()), parameter('approved', z.boolean())]),
