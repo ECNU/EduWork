@@ -181,3 +181,19 @@ test('dry-run inventories without writing a target', async t => {
   assert.ok(result.files.some(file => file.target.endsWith('session.v4.jsonl.zstd')))
   assert.equal(await missing(f.writable), true)
 })
+
+test('activates into an existing empty target root', async t => {
+  const f = await fixture(t)
+  await mkdir(f.writable)
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
+  assert.equal(await readFile(join(f.writable, '.eduwork-writable-root.json'), 'utf8').then(JSON.parse).then(marker => marker.layout), 'installed')
+})
+
+test('refuses a non-empty update transaction directory', async t => {
+  const f = await fixture(t)
+  await mkdir(join(f.source, 'data/state/updates/transactions/0.4.9'), { recursive: true })
+  await writeFile(join(f.source, 'data/state/updates/transactions/0.4.9/backup'), 'backup\n')
+  await assert.rejects(migratePortableToInstalled(options(f)), /unfinished update transaction/)
+  assert.equal(await missing(f.writable), true)
+})
