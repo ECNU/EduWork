@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "5dd2ed2b4b87345d674a944c75b791d77328e0100eea2239bc244ae00eeedfba",
+  "fileSetSHA256": "8f1071a362d16db702271ef90dbf75f89491b5e62376b9c5f81a3f271505502f",
   "files": [
     {
       "path": ".gitattributes",
@@ -6281,7 +6281,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "385dddb9bdead4eddeb6e3332de73063b759fd2d5f7fc43a4fe7a1d0c3ef0b6a"
+      "sha256": "2efb52886832a8722057253a1147a884fb00dd0f0d08708d6ccc762a4ff88805"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6305,19 +6305,19 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "612368aaa532f14fb8e4a08da1de00e56b3aa05453d77c0f00d9e88af471297d"
+      "sha256": "bf175edc1867f2d756fc7fc193192d1157c2afdce82b13b6d97268dc82c5e4a2"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "360ac1bff8d65bc5cce65684c434789c2740a49eb32595568f166235739e3304"
+      "sha256": "63d5859fdacd034793afeb7f857e11a75f011e564d72a07e71c67ec2d4522b91"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "e2f69eca157dd9dc7907dc34bd080d88644231d86cabd20d79e53df78ea4e533"
+      "sha256": "707ee4eb0a3ac5daf2f012016ac9c5afffe7827c675301d0f15837cdd938bda8"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "d94afb04d46cc373c91d4ea60dcb772ec90db9969fe90fb48897f1548687e775"
+      "sha256": "a7ffb87552494b6659e47c19b4edf74dbbf5d3b5b73a4efa1227d49aa52cf2af"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",
@@ -6329,11 +6329,11 @@
     },
     {
       "path": "packages/dsh-remote-access/src/client/index.tsx",
-      "sha256": "a263c5626c8bce7f66fd3a18559afc865b8e7f90fecf60018e179c2291c390f7"
+      "sha256": "3819465bf0e635347c3310a14baefaa29bd8e7a06bdc34d97e805cf1e7f669dc"
     },
     {
       "path": "packages/dsh-remote-access/src/client/locale.ts",
-      "sha256": "474264096e32f819a723ccc2e70d34f99b9bf17d87af7e11fdefacaf6615a951"
+      "sha256": "7900956c323b446d227350fdad22a30ef75a742d84e35df4f6edf09c1a836d88"
     },
     {
       "path": "packages/dsh-remote-access/src/client/phone.tsx",
@@ -6361,7 +6361,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "2834130639ce60483ae442fc796c1fc5338aae29f7d57529a73dd273e429e0e7"
+      "sha256": "2c33842bbe3ba2cbd9b4382d025be63349613ea32f59db9b934ac1dd026852a3"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -6369,7 +6369,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/plugin.ts",
-      "sha256": "e4d1f93ceee598ed21539f169bc0b1a0f353fc3db1d59201073529b9e8c27a0b"
+      "sha256": "aa0540428e76afd2c18b93d6dbd05a78b2887e3c9e456374bea2a85de22fc779"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/auth.ts",
@@ -6417,7 +6417,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/relay-link/link.ts",
-      "sha256": "308ebd180545f8f220b9c780d43db27fc6250bd2670a9ed7323482e430562d46"
+      "sha256": "124e0320a81ceb07d57bf180f61116e38f6e532e1b2e976b16f6fcc022b2a60b"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/id-token.ts",
@@ -6445,7 +6445,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/typert.ts",
-      "sha256": "a98536571758c4c4183830941eab04d2ba50752d79eea719f74d77822ab47a69"
+      "sha256": "949215af8ade09d6a15b619a14970cd7a6a0cc7e63e2fd3154c5f5f50f4aa7fc"
     },
     {
       "path": "packages/dsh-remote-access/src/web/bridge.ts",
@@ -6517,11 +6517,11 @@
     },
     {
       "path": "packages/dsh-remote-access/test/loopback.ts",
-      "sha256": "b6eee0656c0f64bd565ee274c2a9d7840bcfe370465804ef1675a6d38bcbe8b1"
+      "sha256": "d43aa52ed900747cdeef60453fdbbee705ecd1ab36c9c03b66cd13795f99e0fa"
     },
     {
       "path": "packages/dsh-remote-access/test/plugin.test.ts",
-      "sha256": "311488b7668e45c559c48660ffde57732d169b17d33f549b2c47bb15036ae935"
+      "sha256": "2b3aeec11f4afe4bcfada5ac725c842603335905f516ab5fca6219ecbe47f52b"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/auth.test.ts",
@@ -6545,7 +6545,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/relay-link.test.ts",
-      "sha256": "d9c45ee15a72e22171bb7f4bb0c7c52472bd404c97c252126adbebeb47741a41"
+      "sha256": "9c2b7499791cc8dd9b562190ef2c86946e5e4c6f02d0e25bc8386b866a1eef4f"
     },
     {
       "path": "packages/dsh-remote-access/test/relay/id-token.test.ts",
@@ -8005,6 +8005,12 @@
   ],
   "reviewedCompatibility": [
     {
+      "path": "dsh-plugins/tool-browser/test/core.test.js",
+      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d",
+      "kind": "synthetic-network-classification-test",
+      "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
+    },
+    {
       "path": "scripts/dev-studio-web.mjs",
       "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
       "kind": "inactive-legacy-institution-references",
@@ -8015,12 +8021,6 @@
       "sha256": "4db760a47d296113f58ec18585e8501393f5b5954a014f7bac94aee75b4ec101",
       "kind": "inactive-legacy-institution-references",
       "reason": "Metadata-only skill projection retains one shared instruction body and follows the selected distribution credential binding. Platform-aware separators preserve the configured-root path checks; legacy institution registration is unchanged and remains inactive in EduWork. No endpoint or credential exemption."
-    },
-    {
-      "path": "dsh-plugins/tool-browser/test/core.test.js",
-      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d",
-      "kind": "synthetic-network-classification-test",
-      "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
