@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "fd39d0d68c7643531781846a0aba4e407d7cdd4579c8093431cd92506bbc11bf",
   "files": [
     {
       "path": ".gitattributes",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "fef37bc947b407aeade8395a9efecb8eb38752179d8fb45b0ccb923c2411f922"
+      "sha256": "18da66b01f22b5117d420f4f06c497aac4e811023a1916381bd9da5b708e75e5"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1244,6 +1244,10 @@
       "sha256": "d36b85ce8761d6ef21ec98ec4baefb3ec8cce5e7ef5b21005e18d9c06cb05cee"
     },
     {
+      "path": "dsh-electron/src/hung-window.mjs",
+      "sha256": "1216c4cfcfdb1b841fc09835e7a142e5059031a740f26fb909634f24256b8ba2"
+    },
+    {
       "path": "dsh-electron/src/initialize-user-config.mjs",
       "sha256": "be8bcfb65f7e1af3f0c7dbaa70fc603f3e5756aea225009ec881e6b51cf5307c"
     },
@@ -1268,12 +1272,16 @@
       "sha256": "8edd5afdcf07f247117040f8d95e26068191ffd8e54eebf7e4c2d37fc6005efe"
     },
     {
+      "path": "dsh-electron/src/memory-watch.mjs",
+      "sha256": "2c44bb09c2c9207434de6ce2ff2f7cc1a8b64f6a8c079aaf34a1dfda83ca543b"
+    },
+    {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
       "sha256": "cc3daed99c7d18afc5aeeaf7d9db465bce49c1c5a0e6489629a7d2ccf2f5537e"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "dad3a217f0eebd5c3492f9b50ad705b44c7e2dac133ef65eac74141618860fdd"
+      "sha256": "53e79c0c485ef0f9605db8956a8f1c91ba959410f26695aaf5d7afd88b4e7a7a"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1432,6 +1440,10 @@
       "sha256": "6b5024219722dac5fd6cd4a9e98f44b73ee3770058772ba47149559e3c56ec66"
     },
     {
+      "path": "dsh-electron/tests/hung-window.test.mjs",
+      "sha256": "15ab5b3352d61d0b6d1cb3d3fb367b83d66b5b261a1036cd92ec01a49b2ebc23"
+    },
+    {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",
       "sha256": "8523f087e7c598551dd12590a15f9d647148ad0bebbb795ca2fb45617bbe1a01"
     },
@@ -1454,6 +1466,10 @@
     {
       "path": "dsh-electron/tests/media-transport.test.mjs",
       "sha256": "d3a1acdab15b9f6e7daa3f985818fdde067d8eaa0715400c9bef192ad854129c"
+    },
+    {
+      "path": "dsh-electron/tests/memory-watch.test.mjs",
+      "sha256": "a7f909730406c68c8cf5abe5bf408dcf0ed09315073e04de661a3208675d52cf"
     },
     {
       "path": "dsh-electron/tests/native-vault.test.mjs",
