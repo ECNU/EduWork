@@ -84,7 +84,7 @@ export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-
 export function isQuitting() { return lifecycle.closing }
 const activationWindows = () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows().filter(window => !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
-export function configureEduworkPaths() {
+export async function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
@@ -94,8 +94,8 @@ export function configureEduworkPaths() {
   let writableRootCreated = false
   if (paths.layout === 'installed') {
     try {
-      writableRootCreated = prepareWritableRoot({ root: paths.writableRoot, distribution: settings.distribution,
-        product: paths.product, productVersion: settings.productVersion }).created
+      writableRootCreated = (await prepareWritableRoot({ root: paths.writableRoot, distribution: settings.distribution,
+        product: paths.product, productVersion: settings.productVersion })).created
     } catch (error) {
       try { dialog.showErrorBox('EduWork 无法使用数据目录', `${error.message}\n\n程序目录：${paths.root}\n目标：${paths.writableRoot}`) } catch {}
       throw error

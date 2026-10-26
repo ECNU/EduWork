@@ -1,13 +1,12 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { createReadStream, existsSync, realpathSync, rmdirSync } from 'node:fs'
+import { createReadStream, existsSync, rmdirSync } from 'node:fs'
 import { copyFile, lstat, mkdir, open, readdir, readFile, rename, rm, statfs, writeFile } from 'node:fs/promises'
-import { connect, createServer } from 'node:net'
-import { tmpdir } from 'node:os'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { parseArgs } from 'node:util'
 import { pathToFileURL } from 'node:url'
+import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { WRITABLE_ROOT_MARKER, writableRootMarker } from '../src/writable-root.mjs'
 
 const run = promisify(execFile)
@@ -167,81 +166,6 @@ function isProcessAlive(pid) {
   if (!Number.isInteger(pid) || pid <= 0) return false
   try { process.kill(pid, 0); return true }
   catch (error) { return error.code === 'EPERM' }
-}
-
-const migrationIdentity = sourceRoot => {
-  const resolved = resolve(sourceRoot)
-  let identity = resolved
-  try {
-    identity = realpathSync.native ? realpathSync.native(resolved) : realpathSync(resolved)
-  } catch {
-    try {
-      const parent = realpathSync.native ? realpathSync.native(dirname(resolved)) : realpathSync(dirname(resolved))
-      identity = join(parent, basename(resolved))
-    } catch {}
-  }
-  return comparablePath(identity)
-}
-
-const mutexAddress = sourceRoot => {
-  const hash = createHash('sha256').update(migrationIdentity(sourceRoot)).digest('hex').slice(0, 32)
-  return process.platform === 'win32'
-    ? `\\\\.\\pipe\\eduwork-migration-${hash}`
-    : join(tmpdir(), `eduwork-migration-${hash}.sock`)
-}
-
-function listenMutex(server, address) {
-  return new Promise((resolveListen, reject) => {
-    const onError = error => { server.off('listening', onListening); reject(error) }
-    const onListening = () => { server.off('error', onError); resolveListen() }
-    server.once('error', onError)
-    server.once('listening', onListening)
-    server.listen(address)
-  })
-}
-
-function canConnect(address) {
-  return new Promise(resolveConnect => {
-    const socket = connect(address)
-    let settled = false
-    const finish = value => {
-      if (settled) return
-      settled = true
-      socket.destroy()
-      resolveConnect(value)
-    }
-    socket.once('connect', () => finish(true))
-    socket.once('error', () => finish(false))
-    setTimeout(() => finish(false), 500).unref()
-  })
-}
-
-async function acquireMigrationMutex(sourceRoot) {
-  const address = mutexAddress(sourceRoot)
-  let server = createServer(socket => socket.destroy())
-  try {
-    await listenMutex(server, address)
-    return server
-  } catch (error) {
-    if (error.code !== 'EADDRINUSE') throw error
-    if (process.platform === 'win32' || await canConnect(address)) {
-      throw new Error(`Another migration is in progress: ${sourceRoot}`)
-    }
-    await rm(address, { force: true })
-    server = createServer(socket => socket.destroy())
-    try {
-      await listenMutex(server, address)
-      return server
-    } catch (retryError) {
-      if (retryError.code === 'EADDRINUSE') throw new Error(`Another migration is in progress: ${sourceRoot}`)
-      throw retryError
-    }
-  }
-}
-
-async function releaseMigrationMutex(server) {
-  if (!server) return
-  await new Promise(resolveClose => server.close(() => resolveClose()))
 }
 
 async function writeJournal(path, value) {
@@ -470,11 +394,17 @@ export async function migratePortableToInstalled(options = {}) {
   if (dryRun) {
     return migrateInternal({ ...options, sourceRoot: source, targetRoot: target, writableRoot: writable, dryRun: true })
   }
-  const mutex = await acquireMigrationMutex(source)
+  assertSeparate(source, target, 'Source and target program roots')
+  assertSeparate(source, writable, 'Source and writable root')
+  assertSeparate(target, writable, 'Program and writable root')
+  const sourceMutex = await acquireInstanceMutex('source', source, 'Another migration is in progress')
+  let writableMutex
   try {
+    writableMutex = await acquireInstanceMutex('writable', writable, 'Another migration or client is using the writable root')
     return await migrateInternal({ ...options, sourceRoot: source, targetRoot: target, writableRoot: writable, dryRun: false })
   } finally {
-    await releaseMigrationMutex(mutex)
+    await releaseInstanceMutex(writableMutex)
+    await releaseInstanceMutex(sourceMutex)
   }
 }
 

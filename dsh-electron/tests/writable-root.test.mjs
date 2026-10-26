@@ -4,6 +4,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { prepareWritableRoot } from '../src/writable-root.mjs'
 
 async function fixture(t, { template = true } = {}) {
@@ -24,7 +25,7 @@ const options = (product, root, distribution = 'example') => ({ root, distributi
 
 test('creates the writable root with config, examples and a receipt', async t => {
   const { product, root } = await fixture(t)
-  const result = prepareWritableRoot(options(product, root))
+  const result = await prepareWritableRoot(options(product, root))
   assert.equal(result.created, true)
   assert.equal(await readFile(join(root, 'config/eduwork.jsonc'), 'utf8'), '{"packaged":true}\n')
   assert.equal(await readFile(join(root, 'config/examples/readme.md'), 'utf8'), 'example\n')
@@ -37,9 +38,9 @@ test('creates the writable root with config, examples and a receipt', async t =>
 
 test('reuses an initialized root and never replaces the user config', async t => {
   const { product, root } = await fixture(t)
-  prepareWritableRoot(options(product, root))
+  await prepareWritableRoot(options(product, root))
   await writeFile(join(root, 'config/eduwork.jsonc'), 'user-edited\n')
-  const second = prepareWritableRoot(options(product, root))
+  const second = await prepareWritableRoot(options(product, root))
   assert.equal(second.created, false)
   assert.equal(await readFile(join(root, 'config/eduwork.jsonc'), 'utf8'), 'user-edited\n')
 })
@@ -47,7 +48,7 @@ test('reuses an initialized root and never replaces the user config', async t =>
 test('initializes an existing empty root in place', async t => {
   const { product, root } = await fixture(t)
   await mkdir(root, { recursive: true })
-  const result = prepareWritableRoot(options(product, root))
+  const result = await prepareWritableRoot(options(product, root))
   assert.equal(result.created, true)
   assert.equal(await readFile(join(root, 'config/eduwork.jsonc'), 'utf8'), '{"packaged":true}\n')
 })
@@ -56,23 +57,36 @@ test('refuses a non-empty root without a receipt and leaves it unchanged', async
   const { product, root } = await fixture(t)
   await mkdir(root, { recursive: true })
   await writeFile(join(root, 'keep.txt'), 'keep\n')
-  assert.throws(() => prepareWritableRoot(options(product, root)), /缺少归属回执/)
+  await assert.rejects(prepareWritableRoot(options(product, root)), /缺少归属回执/)
   assert.equal(await readFile(join(root, 'keep.txt'), 'utf8'), 'keep\n')
   assert.equal(existsSync(join(root, 'config/eduwork.jsonc')), false)
 })
 
 test('rejects a receipt from another distribution or an invalid receipt', async t => {
   const { product, root } = await fixture(t)
-  prepareWritableRoot(options(product, root))
-  assert.throws(() => prepareWritableRoot(options(product, root, 'other')), /其他发行版/)
+  await prepareWritableRoot(options(product, root))
+  await assert.rejects(prepareWritableRoot(options(product, root, 'other')), /其他发行版/)
   await writeFile(join(root, '.eduwork-writable-root.json'), '{invalid\n')
-  assert.throws(() => prepareWritableRoot(options(product, root)), /归属回执无效/)
+  await assert.rejects(prepareWritableRoot(options(product, root)), /归属回执无效/)
 })
 
 test('fails cleanly when the packaged config template is missing', async t => {
   const { base, product, root } = await fixture(t, { template: false })
-  assert.throws(() => prepareWritableRoot(options(product, root)), /缺少桌面配置模板/)
+  await assert.rejects(prepareWritableRoot(options(product, root)), /缺少桌面配置模板/)
   assert.equal(existsSync(root), false)
   const parent = join(base, 'LocalAppData/EduWork')
   assert.equal(existsSync(parent) ? readdirSync(parent).length : 0, 0)
+})
+
+test('refuses while another process holds the writable root mutex', async t => {
+  const { product, root } = await fixture(t)
+  const mutex = await acquireInstanceMutex('writable', root, 'Another process is initializing the writable root')
+  let released = false
+  t.after(async () => { if (!released) await releaseInstanceMutex(mutex) })
+  await assert.rejects(prepareWritableRoot(options(product, root)), /Another process is initializing the writable root/)
+  assert.equal(existsSync(root), false)
+  released = true
+  await releaseInstanceMutex(mutex)
+  const result = await prepareWritableRoot(options(product, root))
+  assert.equal(result.created, true)
 })

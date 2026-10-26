@@ -7,6 +7,7 @@ import { access, mkdir, mkdtemp, readFile, readdir, rename, rm, writeFile } from
 import { setTimeout as delay } from 'node:timers/promises'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
+import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { migratePortableToInstalled } from '../scripts/migrate-portable-to-installed.mjs'
 
 const dshCommit = '1'.repeat(40)
@@ -371,6 +372,20 @@ test('serializes two recoveries of the same interrupted state', async t => {
   assert.equal(existsSync(f.source + '.handoff.json'), false)
 })
 
+test('refuses migration while another process holds the writable root mutex', async t => {
+  const f = await fixture(t)
+  const mutex = await acquireInstanceMutex('writable', f.writable, 'Another migration or client is using the writable root')
+  let released = false
+  t.after(async () => { if (!released) await releaseInstanceMutex(mutex) })
+  await assert.rejects(migratePortableToInstalled(options(f)), /Another migration or client is using the writable root/)
+  assert.equal(await missing(f.source), false)
+  assert.equal(await missing(f.writable), true)
+  released = true
+  await releaseInstanceMutex(mutex)
+  const result = await migratePortableToInstalled(options(f))
+  assert.equal(result.receipt.state, 'activated')
+})
+
 test('refuses while another migration owns the handoff journal', async t => {
   const f = await fixture(t)
   const owner = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' })
@@ -453,6 +468,45 @@ test('serializes normal and extended Windows source paths', { skip: process.plat
   const result = await migratePortableToInstalled(options(f))
   assert.equal(result.receipt.state, 'activated')
   assert.equal(existsSync(f.source + '.handoff.json'), false)
+})
+
+test('serializes two different sources targeting the same writable root', async t => {
+  const first = await fixture(t)
+  const second = await fixture(t)
+  second.writable = first.writable
+  const markerA = join(first.base, 'w-a')
+  const markerB = join(second.base, 'w-b')
+  const wrapperA = await writeSlowMigration(first, 'slow-w-a.mjs')
+  const wrapperB = await writeSlowMigration(second, 'slow-w-b.mjs')
+  const childA = spawn(process.execPath, [wrapperA, markerA], { stdio: 'ignore' })
+  const childB = spawn(process.execPath, [wrapperB, markerB], { stdio: 'ignore' })
+  t.after(() => {
+    for (const child of [childA, childB]) if (child.exitCode === null) child.kill('SIGKILL')
+  })
+  let winner
+  for (let i = 0; i < 200 && !winner; i++) {
+    if (existsSync(markerA)) winner = markerA
+    else if (existsSync(markerB)) winner = markerB
+    else await delay(25)
+  }
+  assert.ok(winner, 'neither source reached copy')
+  await delay(300)
+  const win = winner === markerA ? childA : childB
+  const lose = winner === markerA ? childB : childA
+  const winFixture = winner === markerA ? first : second
+  const loseFixture = winner === markerA ? second : first
+  win.kill('SIGKILL')
+  await waitForExit(win)
+  await waitForExit(lose)
+  assert.equal(Number(existsSync(markerA)) + Number(existsSync(markerB)), 1)
+  assert.equal(existsSync(winFixture.source + '.handoff.json'), true)
+  assert.equal(existsSync(loseFixture.source + '.handoff.json'), false)
+  assert.equal(await missing(loseFixture.source), false)
+  assert.equal(await missing(first.writable), true)
+
+  const result = await migratePortableToInstalled(options(winFixture))
+  assert.equal(result.receipt.state, 'activated')
+  assert.equal(existsSync(winFixture.source + '.handoff.json'), false)
 })
 
 test('recovers a killed migration with an originally empty writable root', async t => {

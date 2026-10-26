@@ -1,6 +1,7 @@
 import { constants, copyFileSync, cpSync, existsSync, lstatSync, mkdirSync, readFileSync, readdirSync, renameSync, rmSync, rmdirSync, writeFileSync } from 'node:fs'
 import { randomUUID } from 'node:crypto'
 import { dirname, join, resolve } from 'node:path'
+import { acquireInstanceMutex, releaseInstanceMutex } from './install-mutex.mjs'
 
 const MARKER = '.eduwork-writable-root.json'
 const SCHEMA_VERSION = 1
@@ -40,7 +41,16 @@ function desktopTemplate(product) {
  * Create the installed-mode writable root (W) atomically and write a receipt.
  * An existing directory without a receipt is never adopted or overwritten.
  */
-export function prepareWritableRoot({ root, distribution, product, productVersion, now = () => new Date().toISOString() }) {
+export async function prepareWritableRoot(options) {
+  const mutex = await acquireInstanceMutex('writable', options.root, 'Another process is initializing the writable root')
+  try {
+    return prepareWritableRootUnlocked(options)
+  } finally {
+    await releaseInstanceMutex(mutex)
+  }
+}
+
+function prepareWritableRootUnlocked({ root, distribution, product, productVersion, now = () => new Date().toISOString() }) {
   if (typeof distribution !== 'string' || !/^[a-z0-9-]+$/u.test(distribution)) throw new Error('Invalid writable root distribution')
   root = resolve(root)
   product = resolve(product)

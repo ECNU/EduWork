@@ -20,7 +20,7 @@ import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, na
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
 
-configureEduworkPaths()
+await configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
 // served only in the desktop pet's own session.
 protocol.registerSchemesAsPrivileged([{ scheme: SCHEME, privileges: {

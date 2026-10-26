@@ -50,7 +50,7 @@ function startupHarness() {
   const readyStart = source.indexOf('export async function desktopReady(')
   const readyEnd = source.indexOf('\n}\n', readyStart)
   const activationStart = source.indexOf('const activationWindows =')
-  const activationEnd = source.indexOf('export function configureEduworkPaths()', activationStart)
+  const activationEnd = source.indexOf('export async function configureEduworkPaths()', activationStart)
   assert.ok(appearanceStart >= 0 && createStart > appearanceStart && messageStart > createStart && readyStart > messageStart && readyEnd > readyStart,
     'production startup window boundaries changed')
   class FakeWindow {

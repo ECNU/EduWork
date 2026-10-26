@@ -198,7 +198,7 @@ async function acceptWindows({ workspace, coreRoot }) {
   const bootstrapEnabled = await pathExists(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
   let config
   if (dataLayout === 'installed') {
-    prepareWritableRoot({ root: join(gui, 'data'), distribution: desktopIdentity.distribution,
+    await prepareWritableRoot({ root: join(gui, 'data'), distribution: desktopIdentity.distribution,
       product: frozenProduct, productVersion: desktopIdentity.productVersion })
     config = join(gui, 'data/config/eduwork.jsonc')
   } else {
