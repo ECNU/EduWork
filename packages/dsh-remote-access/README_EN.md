@@ -17,12 +17,12 @@ You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the 
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=replace-with-a-random-key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
 ```
 
 `RELAY_URL` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `<RELAY_URL>healthz` answers `ok` for monitoring.
 
-The [relay deployment guide](docs/DEPLOYMENT_EN.md) covers key generation, Windows PowerShell commands, HTTPS/Nginx, path prefixes, persistent systemd operation, organization sign-in, iframe integration, verification and troubleshooting.
+For servers, the [Docker deployment guide](docs/docker/README_EN.md) provides a Dockerfile and Compose setup that builds from a pinned npm version and starts with `docker compose up -d --build`. The [relay deployment guide](docs/DEPLOYMENT_EN.md) also covers key generation, Windows PowerShell commands, HTTPS/Nginx, path prefixes, persistent systemd operation, organization sign-in, iframe integration, verification and troubleshooting.
 
 The relay can also share a domain under its own path, such as `RELAY_URL=https://example.edu/eduwork-remote/`. Preserve the prefix in proxy requests and enter the same complete URL on the computer. Paths do not isolate browser privileges: the operator must accept the shared trust boundary between the site's applications and paired computers (see [Security](#security)). A site-wide Service Worker must also leave this path alone.
 
