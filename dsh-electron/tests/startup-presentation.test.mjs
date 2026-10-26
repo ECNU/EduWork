@@ -1,177 +1,146 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
-import { shouldPresentMainWindow, startupWindowCompletion, startupWindowPresentation } from '../src/startup-presentation.mjs'
-import { showDesktopWindows } from '../src/window-visibility.mjs'
+import { EventEmitter } from 'node:events'
+import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
+import { attachAppActivation, showDesktopWindows } from '../src/window-visibility.mjs'
 
-const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false, startupWindowHidden: false }
+const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
 
-test('the main BootPage is shown only when no other startup surface or stop condition applies', () => {
+test('initial presentation respects prior presentation, recovery and shutdown', () => {
   assert.equal(shouldPresentMainWindow(allowed), true)
-  for (const key of Object.keys(allowed)) {
-    assert.equal(shouldPresentMainWindow({ ...allowed, [key]: true }), false, key)
-  }
-})
-
-test('startup window handoff covers download-first, main-first and hidden intent', () => {
-  assert.deepEqual(startupWindowPresentation({ mainPresented: false, mainVisible: false }), { hideMain: false, showStartupWindow: true })
-  assert.deepEqual(startupWindowPresentation({ mainPresented: true, mainVisible: true }), { hideMain: true, showStartupWindow: true })
-  assert.deepEqual(startupWindowPresentation({ mainPresented: true, mainVisible: false }), { hideMain: false, showStartupWindow: false })
-  const completion = overrides => startupWindowCompletion({ hadStartupWindow: true, mainHiddenForStartup: false,
-    startupWindowHidden: false, mainPresented: false, mainVisible: false, ...overrides })
-  assert.deepEqual(completion({ hadStartupWindow: false }), { startupWindowHidden: false, restoreMainWindow: false })
-  assert.deepEqual(completion({}), { startupWindowHidden: false, restoreMainWindow: false })
-  assert.deepEqual(completion({ mainPresented: true }), { startupWindowHidden: false, restoreMainWindow: true })
-  assert.deepEqual(completion({ mainHiddenForStartup: true, mainPresented: true }), { startupWindowHidden: false, restoreMainWindow: true })
-  assert.deepEqual(completion({ mainPresented: true, mainVisible: true }), { startupWindowHidden: false, restoreMainWindow: false })
-  assert.deepEqual(completion({ startupWindowHidden: true, mainPresented: true }), { startupWindowHidden: true, restoreMainWindow: false })
-})
-
-test('startup completion records a hidden dedicated window before destroying it', () => {
-  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const start = source.indexOf('export async function desktopReady')
-  const end = source.indexOf('\n}\n', start)
-  assert.ok(start >= 0 && end > start, 'desktopReady boundary changed')
-  const ready = source.slice(start, end)
-  assert.match(ready, /!progressWindow\.isVisible\(\)/)
-  assert.ok(ready.indexOf('isVisible()') < ready.indexOf('progressWindow.destroy()'), 'hidden state must be captured before destruction')
-  assert.match(ready, /hadStartupWindow/)
-  assert.match(ready, /mainPresented: mainWindowPresented/)
-  assert.match(ready, /mainVisible/)
-  assert.match(ready, /startupWindowCompletion/)
-  assert.match(ready, /return completion/)
+  for (const key of Object.keys(allowed)) assert.equal(shouldPresentMainWindow({ ...allowed, [key]: true }), false, key)
 })
 
 function startupHarness() {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const appearanceStart = source.indexOf('function startupAppearance()')
-  const createStart = source.indexOf('function createProgressWindow(')
+  const progressStart = source.indexOf('function showStartupProgress(')
   const messageStart = source.indexOf('function showDesktopMessageBox(')
   const readyStart = source.indexOf('export async function desktopReady(')
   const readyEnd = source.indexOf('\n}\n', readyStart)
   const activationStart = source.indexOf('const activationWindows =')
   const activationEnd = source.indexOf('export function configureEduworkPaths()', activationStart)
-  assert.ok(appearanceStart >= 0 && createStart > appearanceStart && messageStart > createStart && readyStart > messageStart && readyEnd > readyStart,
-    'production startup window boundaries changed')
-  class FakeWindow {
-    static getAllWindows() { return [] }
-    constructor(options = {}) { this.options = options; this.visible = false; this.destroyed = false; this.showCalls = 0; this.hideCalls = 0; this.webContents = {}; this.minimized = false; this.focused = false }
-    show() { this.visible = true; this.showCalls++ }
-    hide() { this.visible = false; this.hideCalls++ }
+  assert.ok(progressStart >= 0 && messageStart > progressStart && readyEnd > readyStart)
+  class FakeWindow extends EventEmitter {
+    static windows = []
+    static getAllWindows() { return this.windows.filter(window => !window.destroyed) }
+    constructor({ pet = false } = {}) {
+      super()
+      this.pet = pet; this.visible = false; this.destroyed = false; this.showCalls = 0; this.minimized = false; this.focused = false
+      this.loading = false; this.messages = []
+      this.webContents = Object.assign(new EventEmitter(), {
+        isLoadingMainFrame: () => this.loading,
+        send: (...args) => this.messages.push(args),
+      })
+      FakeWindow.windows.push(this)
+    }
+    show() { this.visible = true; this.showCalls++; this.emit('show') }
+    hide() { this.visible = false }
     isVisible() { return this.visible }
     isDestroyed() { return this.destroyed }
     destroy() { this.destroyed = true; this.visible = false }
     isMinimized() { return this.minimized }
     restore() { this.minimized = false }
     focus() { this.focused = true }
-    loadURL() { return Promise.resolve() }
   }
-  const app = { getAppPath: () => '/app', dock: { setIcon() {} }, getPath: () => '/userData' }
-  const processFixture = { platform: 'darwin' }
-  const build = new Function('BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility',
-    'startupPage', 'removeWindowMenu', 'desktopHostLog', 'startupWindowPresentation', 'startupWindowCompletion',
-    'app', 'settings', 'paths', 'isQuitting', 'tray', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
-    `let progressWindow, mainWindow, mainWindowPresented = false, mainWindowHiddenForStartup = false, migrationLaunch = null, updateCompleted = false
+  const app = new EventEmitter()
+  const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
+    `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
+    let quitting = false, desktopFailureShown = false
+    const isQuitting = () => quitting
+    const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
     ${source.slice(activationStart, activationEnd).replace('export ', '')}
-    ${source.slice(appearanceStart, createStart)}
-    ${source.slice(createStart, messageStart)}
+    ${source.slice(progressStart, messageStart)}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
     return {
-      main: null,
-      setMain(window) { mainWindow = window; mainWindowPresented = false; mainWindowHiddenForStartup = false },
-      markPresented() { mainWindowPresented = true },
-      createProgressWindow,
-      desktopReady,
-      showDesktop,
-      state: () => ({ mainWindowPresented, mainWindowHiddenForStartup, progressWindow }),
+      setMain(window) { mainWindow = window; window.on('show', () => { mainWindowPresented = true }) },
+      setRecovery(window) { progressWindow = window; desktopFailureShown = true },
+      quit() { quitting = true },
+      showStartupProgress, desktopReady, showDesktop, activationWindows,
     }`)
-  const harness = build(FakeWindow, processFixture, joinPath, () => Buffer.from('icon'), () => 'ecnu-liwa',
-    () => {}, () => '<html></html>', () => {}, () => {}, startupWindowPresentation, startupWindowCompletion,
-    app, { productName: 'Fixture' }, { icon: '/icon.png' }, () => false, undefined,
-    { ready: async () => {} }, async () => {}, { start() {} }, { action: () => Promise.resolve() }, showDesktopWindows)
+  const harness = build(FakeWindow, app, { ready: async () => {} }, async () => {},
+    { start() {}, owns: window => window.pet }, { action: () => Promise.resolve() }, showDesktopWindows)
   const main = new FakeWindow()
-  harness.main = main
   harness.setMain(main)
-  return { harness, main, FakeWindow }
+  attachAppActivation({ app, windows: harness.activationWindows, platform: 'darwin' })
+  return { harness, main, FakeWindow, activate: () => app.emit('activate') }
 }
-const joinPath = (base, ...parts) => [base, ...parts].join('/').replaceAll('//', '/')
 
-test('relaunch selects the current download or recovery window before the main window', () => {
-  const { harness, main } = startupHarness()
-  const progress = harness.createProgressWindow('download')
-  for (const recovery of [false, true]) {
-    if (recovery) main.destroy()
-    progress.hide(); progress.minimized = true; progress.focused = false
-    assert.equal(harness.showDesktop(), true)
-    assert.equal(progress.visible, true); assert.equal(progress.minimized, false); assert.equal(progress.focused, true)
-    assert.equal(main.showCalls, 0)
-  }
-  progress.destroy()
-  assert.equal(harness.showDesktop(), false)
-})
-
-test('production window handoff preserves an active restore of a hidden download window', async () => {
-  const { harness, main } = startupHarness()
-  main.visible = true
-  harness.markPresented()
-  main.visible = false // The user hid the main window before the download arrived.
-  const download = harness.createProgressWindow('download')
-  assert.equal(download.visible, false, 'the late download window inherits the hidden main window')
-  assert.equal(harness.state().mainWindowHiddenForStartup, false)
-  download.show() // The user restores it from the Dock.
-  const completion = await harness.desktopReady()
-  assert.equal(completion.startupWindowHidden, false)
-  assert.equal(completion.restoreMainWindow, true, 'the active restore must keep a visible window after the download closes')
-  assert.equal(download.destroyed, true)
-  if (completion.restoreMainWindow) main.show() // The native presentation branch restores the main window.
+test('preparation uses the main BootPage and clears its status without presenting it again', async () => {
+  const { harness, main, FakeWindow } = startupHarness()
+  harness.showStartupProgress('download')
   assert.equal(main.visible, true)
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  harness.showStartupProgress('migration')
+  assert.equal(main.messages.at(-1)[1].message, 'migration')
+  assert.equal(main.showCalls, 1)
+  assert.equal(FakeWindow.windows.length, 1)
+  main.hide()
+  await harness.desktopReady()
+  assert.equal(main.messages.at(-1)[1].message, '')
+  assert.equal(main.visible, false)
+  assert.equal(main.showCalls, 1)
 })
 
-test('production window handoff restores a main window hidden for a visible download', async () => {
+test('a late preparation message preserves a main window the user already hid', () => {
   const { harness, main } = startupHarness()
-  main.visible = true
-  harness.markPresented()
-  const download = harness.createProgressWindow('download')
-  assert.equal(main.hideCalls, 1)
-  assert.equal(download.visible, true)
-  assert.equal(harness.state().mainWindowHiddenForStartup, true)
-  const completion = await harness.desktopReady()
-  assert.equal(completion.startupWindowHidden, false)
-  assert.equal(completion.restoreMainWindow, true)
-  assert.equal(download.destroyed, true)
+  main.show(); main.hide()
+  harness.showStartupProgress('download')
+  assert.equal(main.visible, false)
+  assert.equal(main.showCalls, 1)
 })
 
-test('production window handoff keeps the main window hidden when the download is hidden', async () => {
-  const { harness, main } = startupHarness()
-  main.visible = true
-  harness.markPresented()
-  const download = harness.createProgressWindow('download')
-  download.hide()
-  const completion = await harness.desktopReady()
-  assert.equal(completion.startupWindowHidden, true)
-  assert.equal(completion.restoreMainWindow, false)
-})
+for (const stop of ['none', 'quit', 'recovery', 'destroy']) {
+  test(`preparation waits for document load and respects ${stop}`, () => {
+    const { harness, main, FakeWindow } = startupHarness()
+    main.loading = true
+    harness.showStartupProgress('download')
+    assert.equal(main.visible, false)
+    if (stop === 'quit') harness.quit()
+    if (stop === 'recovery') harness.setRecovery(new FakeWindow())
+    if (stop === 'destroy') main.destroy()
+    main.webContents.emit('did-finish-load')
+    assert.equal(main.showCalls, stop === 'none' ? 1 : 0)
+  })
+}
 
-test('startup window handoff is wired into the production window and presentation logic', () => {
-  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const create = source.slice(source.indexOf('function createProgressWindow'), source.indexOf('function showDesktopMessageBox'))
-  assert.match(create, /startupWindowPresentation/)
-  assert.match(create, /mainWindow\.hide\(\)/)
-  assert.match(create, /show: false/)
-  assert.match(create, /if \(presentation\.showStartupWindow\) progressWindow\.show\(\)/)
-  const attach = source.slice(source.indexOf('export async function attachDesktopWindow'), source.indexOf('const show = attachWindowVisibility'))
-  assert.match(attach, /mainWindowPresented = false/)
-  assert.match(attach, /window\.on\('show', \(\) => \{ mainWindowPresented = true \}\)/)
-  const native = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
-  assert.match(native, /completion\?\.restoreMainWindow/)
+for (const entry of ['Dock', 'relaunch']) {
+  test(`${entry} restores preparation in the same main window and excludes the pet`, async () => {
+    const { harness, main, FakeWindow, activate } = startupHarness()
+    const pet = new FakeWindow({ pet: true })
+    const restore = entry === 'Dock' ? activate : harness.showDesktop
+    restore()
+    assert.equal(main.visible, false)
+    harness.showStartupProgress('download')
+    main.hide(); main.minimized = true
+    restore()
+    assert.equal(main.visible, true)
+    assert.equal(main.minimized, false)
+    assert.equal(main.focused, true)
+    await harness.desktopReady()
+    assert.equal(main.showCalls, 2)
+    assert.equal(pet.visible, false)
+  })
+}
+
+test('recovery activation takes precedence over the incomplete main window', () => {
+  const { harness, main, FakeWindow } = startupHarness()
+  harness.showStartupProgress('download'); main.hide()
+  const recovery = new FakeWindow()
+  harness.setRecovery(recovery)
+  recovery.minimized = true
+  assert.equal(harness.showDesktop(), true)
+  assert.equal(recovery.visible, true)
+  assert.equal(recovery.minimized, false)
+  assert.equal(main.visible, false)
 })
 
 test('startup recovery drops the tray before the stale BootPage window', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const start = source.indexOf('export async function showDesktopFailure')
   const end = source.indexOf('\n}\n', start)
-  assert.ok(start >= 0 && end > start, 'showDesktopFailure boundary changed')
+  assert.ok(start >= 0 && end > start)
   const failure = source.slice(start, end)
   assert.match(failure, /tray\.destroy\(\)/)
-  assert.ok(failure.indexOf('tray.destroy()') < failure.indexOf('mainWindow.destroy()'), 'tray must not outlive the main window')
+  assert.ok(failure.indexOf('tray.destroy()') < failure.indexOf('mainWindow.destroy()'))
 })
