@@ -67,7 +67,7 @@ test('remote access runs only while switched on and configured, starts once the 
   assert.equal((await running.status()).state, 'off')
 })
 
-test('remote access starts outside the settings change that switched it on', async t => {
+test('remote access starts outside the configuration change that loaded or restarted it, and outside the caller', async t => {
   const home = await mkdtemp(join(tmpdir(), 'remote-access-plugin-'))
   process.env.DSH_HOME = home
   const distIndex = join(home, 'index.html')
@@ -75,21 +75,28 @@ test('remote access starts outside the settings change that switched it on', asy
   const relay = await startRelay(t)
   // Stands in for DSH's configuration transaction, which refuses nested settings writes.
   const transaction = new AsyncLocalStorage<boolean>()
-  const started: (boolean | undefined)[] = []
+  // Stands in for the request or agent run that saved the access key.
+  const caller = new AsyncLocalStorage<boolean>()
+  const started: (boolean | undefined)[][] = []
   const ctx = new Context()
   t.after(() => ctx.fiber.dispose())
   const connection = { ...services.connection, createSharedFetchHandler: () => {
-    started.push(transaction.getStore())
+    started.push([transaction.getStore(), caller.getStore()])
     return services.connection.createSharedFetchHandler()
   } }
   const stored = new Map([[ACCESS_KEY_REF, ACCESS_KEY]])
-  for (const [name, value] of Object.entries({ ...services, connection, credentials: credentials(stored) })) ctx.provide(name, value)
-  await transaction.run(true, () => ctx.plugin(RemoteDevices, { distIndex, enabled: true, relay }))
+  const hmr = { executing: transaction }
+  for (const [name, value] of Object.entries({ ...services, connection, credentials: credentials(stored), hmr })) ctx.provide(name, value)
+  // Installed while DSH runs, the plugin is loaded inside the transaction.
+  const { default: Installed } = await transaction.run(true, () => import(new URL('../lib/index.js?installed', import.meta.url).href)) as Plugin
+  await transaction.run(true, () => ctx.plugin(Installed, { distIndex, enabled: true, relay }))
   const service: InstanceType<Plugin['default']> = ctx.get('remoteDevices')
   await service.status()
   transaction.run(true, () => ctx.emit('loader/volatile-update'))
   await service.status()
-  assert.deepEqual(started, [undefined, undefined])
+  caller.run(true, () => ctx.emit('credentials/reference-updated', ACCESS_KEY_REF))
+  await service.status()
+  assert.deepEqual(started, [[undefined, undefined], [undefined, undefined], [undefined, undefined]])
 })
 
 test('with an organization set, remote access uses its relay and follows its sign-in', async t => {

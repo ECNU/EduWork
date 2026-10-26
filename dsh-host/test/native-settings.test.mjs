@@ -200,6 +200,27 @@ test('copied deployment paths follow a move while personal preferences survive',
   assert.deepEqual(rebaseNativeConfig(previous, next, saved), { ...next, limit: 7, theme: 'red' })
 })
 
+test('a product row that appears or goes rebases a configuration saved without it or with its defaults', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-native-added-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const remote = config => config ? [{ id: 'eduwork-remote-access', name: '@eduwork/dsh-remote-access', config }] : []
+  const write = organization => writeNativeProfile({ profile, bundles: [], patches: remote(organization && { organization }) })
+  const preferences = async () => JSON.parse(await readFile(join(profile, 'cordis.patch.yml'), 'utf8'))
+  await write()
+  // The user saved their own relay before the organization's configuration offered one.
+  const personal = { enabled: true, relay: 'https://relay.example', hostName: 'Lab PC' }
+  await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify(remote(personal)))
+  const first = { relay: 'https://first.example.edu/', oidcProfileId: 'university' }
+  await write(first)
+  assert.deepEqual(await preferences(), remote({ organization: first, ...personal }))
+  // Withdrawn, the organization's relay leaves the saved configuration; another one replaces it.
+  await write()
+  assert.deepEqual(await preferences(), remote(personal))
+  const second = { relay: 'https://second.example.edu/', oidcProfileId: 'university' }
+  await write(second)
+  assert.deepEqual(await preferences(), remote({ organization: second, ...personal }))
+})
+
 test('interrupted default rebases finish before a second move without losing preferences', async () => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-native-interrupted-'))
   const patches = path => [{ insert: [{ id: 'synthetic', name: 'synthetic', config: { path } }] }]
