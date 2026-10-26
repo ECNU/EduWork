@@ -21,6 +21,8 @@ export class DesktopExit {
       }
       this.closing = true
       await this.close()
+      // Let the cancelled native quit event unwind before requesting quit again.
+      await new Promise(resolve => setImmediate(resolve))
       if (this.relaunchRequested && !this.installerOwnsQuit) this.relaunch()
       this.complete = true
       this.quit()

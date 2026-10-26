@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'deferred-presentation', 'deferred-restored-completion', 'deferred-hidden-completion', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
+for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     const earlyFailure = scenario.startsWith('early-'), startupError = new Error('synthetic Host failure')
@@ -224,7 +224,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     const stopFailure = scenario === 'recovery-restart-stop-failure'
     if (stopFailure) t.mock.method(console, 'error', error => { assert.equal(error, startupError); calls.push('stop-failure') })
     if (scenario === 'early-configuration-failure') startupError.code = 'EDUWORK_BOOTSTRAP_REQUIRED'
-    let guard = async () => true, completed, mainWindow, bridgeOptions, shellSignal, releaseShell, releasePrepare, startupStarted, preparationCancelled = false, startupWindowPresent = scenario.startsWith('deferred-')
+    let guard = async () => true, completed, mainWindow, bridgeOptions, shellSignal, releaseShell, releasePrepare, startupStarted, preparationCancelled = false
     const done = new Promise(resolve => { completed = resolve })
     const waitingForStartup = new Promise(resolve => { startupStarted = resolve })
     const cancelContentUpdates = () => {
@@ -282,6 +282,10 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         return false
       }, prepareEduworkDesktop: () => lifecycle.prepare(async () => {
         calls.push('prepare')
+        if (scenario.startsWith('preparation-')) {
+          mainWindow.show()
+          if (scenario === 'preparation-hidden') mainWindow.hide()
+        }
         if (scenario === 'early-configuration-failure') throw startupError
         if (pendingPrepare) {
           calls.push('prepare-wait')
@@ -290,13 +294,11 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         }
         return {}
       }), stopDesktopServices,
-      desktopWebRoot: () => '/synthetic/web', desktopStartupWindowPresent: () => startupWindowPresent,
+      desktopWebRoot: () => '/synthetic/web', desktopStartupWindowPresent: () => false,
       nativeBootstrap() {}, desktopReady: async () => {
         calls.push('desktop-ready')
-        if (scenario.startsWith('deferred-')) startupWindowPresent = false
         if (stopFailure) queueMicrotask(() => bridgeOptions.onBootFailure(Error('Synthetic renderer failure')))
         else setTimeout(completed, 0)
-        return { startupWindowHidden: scenario === 'deferred-hidden-completion', restoreMainWindow: scenario === 'deferred-restored-completion' }
       },
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => exit.closing || lifecycle.closing,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: error => {
@@ -318,10 +320,10 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       async start() {
         calls.push('host')
         await new Promise(resolve => setImmediate(resolve))
-        assert.equal(calls.includes('window-show'), false, 'the main window must remain hidden until the Host is ready')
+        assert.equal(calls.includes('window-show'), scenario.startsWith('preparation-'), 'only first-run preparation may present before the Host is ready')
         app.emit('second-instance')
         assert.equal(calls.at(-1), 'activate-current-window', 'repeated launch must use the shared window selection')
-        assert.equal(calls.includes('window-show'), false)
+        assert.equal(calls.includes('window-show'), scenario.startsWith('preparation-'))
         if (scenario === 'host-failure' || scenario === 'early-host-failure') throw startupError
         if (scenario === 'quit-during-host') app.quit()
         calls.push('host-ready')
@@ -354,6 +356,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         calls.push('page-loaded')
       }, isDestroyed: () => false, isMinimized: () => false,
         show() { calls.push('window-show'); this.emit('show') },
+        hide() { calls.push('window-hide') },
         focus() { calls.push('window-focus') } })
     } })
     await import(new URL(`native-desktop.mjs?scenario=${scenario}`, source))
@@ -380,13 +383,14 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
       app.emit('second-instance')
       assert.equal(calls.at(-1), 'activate-current-window')
-    } else if (scenario === 'deferred-presentation' || scenario === 'deferred-restored-completion') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
-    } else if (scenario === 'deferred-hidden-completion') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
-      attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
-      app.emit('activate')
-      assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
+    } else if (scenario.startsWith('preparation-')) {
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'window-show',
+        ...scenario === 'preparation-hidden' ? ['window-hide'] : [], 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
+      if (scenario === 'preparation-hidden') {
+        attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
+        app.emit('activate')
+        assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
+      }
     } else if (stopFailure) {
       for (const [event, count] of [['host', 1], ['stop', 1], ['recovery-dialog', 2], ['stop-failure', 2], ['relaunch', 0], ['quit', 1]]) {
         assert.equal(calls.filter(value => value === event).length, count, event)

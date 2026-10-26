@@ -112,7 +112,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = fals
     retryPublisherContent: () => wait('retry'),
     migrationLaunch: undefined, writeMigrationHealth: async () => {}, startupFailurePage,
     removeWindowMenu() {}, attachWindowVisibility() {}, tray: undefined, mainWindow: undefined,
-    mainWindowPresented: false, mainWindowHiddenForStartup: false,
+    mainWindowPresented: false, startupMessage: '', nativeTheme: { shouldUseDarkColors: true },
     dialog: { showOpenDialog: () => wait('selection', { canceled: false, filePaths: ['/synthetic/offline.json'] }),
       showMessageBox: async () => { events.push('error-dialog') } },
     stat: async () => ({ isFile: () => true, size: 1 }), readFile: async () => Buffer.from('synthetic'),

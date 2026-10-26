@@ -3,6 +3,19 @@ import assert from 'node:assert/strict'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
 
+test('immediate teardown defers the final quit beyond the native event microtasks', async () => {
+  let closed, quit = false
+  const cleanup = new Promise(resolve => { closed = resolve })
+  const exit = new DesktopExit({ confirm: async () => true, close: async () => closed(),
+    relaunch: assert.fail, quit: () => { quit = true }, failed: assert.fail })
+  const pending = exit.request()
+  await cleanup
+  await Promise.resolve()
+  assert.equal(quit, false)
+  await pending
+  assert.equal(quit, true)
+})
+
 test('cancelling a restart does not register a later surprise relaunch', async () => {
   const calls = []; let approve = false
   const exit = new DesktopExit({ confirm: async () => approve, close: async () => calls.push('close'),
