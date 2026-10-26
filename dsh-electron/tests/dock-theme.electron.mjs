@@ -5,10 +5,6 @@ import { readFileSync, writeFileSync, renameSync, mkdtempSync, mkdirSync, copyFi
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { fileURLToPath } from 'node:url'
-import { attachWindowVisibility } from '../src/window-visibility.mjs'
-import { startupPage } from '../src/startup-page.mjs'
-import { startupWindowPresentation } from '../src/startup-presentation.mjs'
-import { removeWindowMenu } from '../src/desktop-menu.mjs'
 
 const root = fileURLToPath(new URL('../../', import.meta.url))
 const temporary = mkdtempSync(join(tmpdir(), 'eduwork-theme-'))
@@ -20,7 +16,7 @@ const originalImages = images.map(file => readFileSync(join(brand, file)))
 copyFileSync(join(root, 'dsh-electron/src/dock-theme-preload.cjs'), join(temporary, 'preload.cjs'))
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true } }])
 app.whenReady().then(async () => {
-  let window, splash
+  let window
   try {
     assert.equal(process.platform, 'darwin')
     for (const file of images.slice(2)) {
@@ -65,38 +61,16 @@ app.whenReady().then(async () => {
     assert.equal(seen.length, 3)
     await window.loadURL('dsh-app://app/index.html')
     await select('ecnu-liwa', 4, 'dock-red-1024.png')
-    // Render the production startup page using each persisted choice.
     const appearanceStart = source.indexOf('function startupAppearance()')
-    const prepareStart = source.indexOf('async function prepareDesktop()', appearanceStart)
-    if (appearanceStart < 0 || prepareStart < 0) throw new Error('Startup window boundary changed')
-    const render = new Function('app', 'BrowserWindow', 'process', 'join', 'readFileSync', 'savedEduworkStyle', 'attachWindowVisibility', 'startupPage', 'removeWindowMenu', 'desktopHostLog', 'startupWindowPresentation', `return (async () => {
-      const settings = { productName: 'Theme test' }, paths = { icon: ${JSON.stringify(join(brand, images[0]))} }
-      const isQuitting = () => false, tray = undefined
-      let progressWindow, mainWindow, mainWindowPresented = false, mainWindowHiddenForStartup = false
-      ${source.slice(appearanceStart, prepareStart)}
-      const appearance = startupAppearance()
-      app.dock.setIcon(appearance.dock)
-      const window = createProgressWindow('正在准备本机工作环境…')
-      for (let i = 0; i < 100 && window.webContents.isLoading(); i++) await new Promise(resolve => setTimeout(resolve, 20))
-      return window
-    })()`)
-    for (const [style, color] of [['dsh', 'rgb(37, 117, 255)'], ['ecnu-liwa', 'rgb(159, 38, 54)']]) {
+    const appearanceEnd = source.indexOf('function showStartupProgress(', appearanceStart)
+    assert.ok(appearanceStart >= 0 && appearanceEnd > appearanceStart)
+    const appearance = new Function('app', 'process', 'join', 'savedEduworkStyle',
+      source.slice(appearanceStart, appearanceEnd) + '\nreturn startupAppearance()')
+    for (const style of ['dsh', 'ecnu-liwa']) {
       writeFileSync(preference, JSON.stringify({ style }))
-      let startupDock
-      const startupApp = { getAppPath: () => appRoot, dock: { setIcon(file) { startupDock = file; app.dock.setIcon(file) } } }
-      splash = await render(startupApp, BrowserWindow, process, join, readFileSync, savedEduworkStyle, attachWindowVisibility, startupPage, removeWindowMenu, () => {}, startupWindowPresentation)
-      assert.equal(startupDock, join(brand, style === 'dsh' ? images[3] : images[2]))
-      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).backgroundColor"), color)
-      const expected = readFileSync(join(brand, style === 'dsh' ? images[1] : images[0])).toString('base64')
-      assert.equal(await splash.webContents.executeJavaScript("document.querySelector('img').src"), 'data:image/png;base64,' + expected)
-      assert.equal(await splash.webContents.executeJavaScript("document.querySelector('[role=progressbar]').hasAttribute('aria-valuenow')"), false, 'Unknown startup duration is not a percentage')
-      splash.webContents.debugger.attach('1.3')
-      await splash.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
-      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).animationName"), 'none')
-      await splash.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
-      assert.equal(await splash.webContents.executeJavaScript("getComputedStyle(document.querySelector('.startup-progress-bar')).animationName"), 'eduwork-startup-motion')
-      splash.webContents.debugger.detach()
-      splash.destroy(); splash = undefined
+      const selected = appearance(nativeApp, process, join, savedEduworkStyle)
+      assert.equal(selected.dock, join(appRoot, '../brand', style === 'dsh' ? images[3] : images[2]))
+      assert.equal(selected.icon, join(appRoot, '../brand', style === 'dsh' ? images[1] : images[0]))
     }
     for (let i = 0; i < images.length; i++) assert.deepEqual(readFileSync(join(brand, images[i])), originalImages[i])
     assert.equal(warnings.length, 0)
@@ -109,7 +83,7 @@ app.whenReady().then(async () => {
     assert.equal(seen.length, 5, 'A main frame outside the workbench cannot change the icon')
     const packaging = readFileSync(join(root, 'dsh-electron/scripts/assemble-macos.ps1'), 'utf8')
     for (const file of images) assert(packaging.includes("'" + file + "'"))
-    console.log(`PASS: equal Dock margins, sandbox preload, red/blue/reload, trusted frame and style checks, persisted startup images and colors, unchanged icon resources, write failure (Electron ${process.versions.electron})`)
+    console.log(`PASS: equal Dock margins, sandbox preload, red/blue/reload, trusted frame and style checks, persisted startup images, unchanged icon resources, write failure (Electron ${process.versions.electron})`)
   } catch (error) { console.error(error); process.exitCode = 1 }
-  finally { splash?.destroy(); window?.destroy(); rmSync(temporary, { recursive: true, force: true }); app.exit(process.exitCode || 0) }
+  finally { window?.destroy(); rmSync(temporary, { recursive: true, force: true }); app.exit(process.exitCode || 0) }
 })

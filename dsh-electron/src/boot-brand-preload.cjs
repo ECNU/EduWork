@@ -5,8 +5,31 @@ if (process.isMainFrame && location.protocol === 'dsh-app:' && location.host ===
   const { ipcRenderer } = require('electron')
   const initial = ipcRenderer.sendSync('eduwork:boot-brand')
   let brand = typeof initial === 'string' ? { name: initial } : initial
+  const startTheme = () => {
+    const root = document.documentElement
+    if (root.hasAttribute('data-ds-theme-source')) return
+    const media = matchMedia('(prefers-color-scheme: dark)')
+    const paint = () => {
+      document.body.toggleAttribute('data-ds-dark-theme', media.matches)
+      root.style.colorScheme = media.matches ? 'dark' : 'light'
+    }
+    const stop = () => { observer.disconnect(); media.removeEventListener('change', paint) }
+    const observer = new MutationObserver(() => {
+      if (!root.hasAttribute('data-ds-theme-source')) return
+      // The upstream theme runtime owns the page after its first publication.
+      root.style.removeProperty('color-scheme')
+      stop()
+    })
+    observer.observe(root, { attributes: true, attributeFilter: ['data-ds-theme-source'] })
+    media.addEventListener('change', paint)
+    addEventListener('pagehide', stop, { once: true })
+    paint()
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', startTheme, { once: true })
+  else startTheme()
   if (typeof brand?.name === 'string' && brand.name.length > 0) {
     let wordmark
+    let hint, originalHint
     let observer
     const paint = () => {
       wordmark.textContent = brand.name
@@ -21,6 +44,12 @@ if (process.isMainFrame && location.protocol === 'dsh-app:' && location.host ===
       wordmark.style.paddingTop = logo ? '64px' : ''
       wordmark.style.minWidth = logo ? '48px' : ''
       wordmark.style.textAlign = logo ? 'center' : ''
+      const nextHint = document.querySelector('[data-dsh-boot-spinner]')?.nextElementSibling
+      if (nextHint && nextHint !== hint) { hint = nextHint; originalHint = hint.textContent }
+      if (hint?.isConnected) {
+        hint.textContent = typeof brand.message === 'string' && brand.message ? brand.message : originalHint
+        hint.setAttribute('role', 'status')
+      }
     }
     const apply = () => {
       if (wordmark?.isConnected) { paint(); return }
