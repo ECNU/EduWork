@@ -6,7 +6,7 @@ export function updaterStartupError(executable, cause) {
   })
 }
 
-export function startupFailurePage({ error, productName, version, config }) {
+export function startupFailurePage({ error, productName, version, config, logs }) {
   const causes = []
   for (let current = error; current && causes.length < 8; current = current.cause) causes.push(current)
   const updater = causes.find(value => value.code === 'EDUWORK_UPDATER_START_FAILED')
@@ -36,7 +36,7 @@ export function startupFailurePage({ error, productName, version, config }) {
       <details><summary>技术详情（${escape(code)}）</summary><pre>${escape(diagnostics)}</pre></details>`
   } else {
     body = `<p>${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}</p>
-      <pre class="failure">${escape(error.message || error)}</pre><p>配置文件：${escape(config)}</p>`
+      <pre class="failure">${escape(error.message || error)}</pre><p>配置文件：${escape(config)}</p>${logs ? `<p>日志目录：${escape(logs)}</p><p>反馈问题时请附上日志目录中的文件。</p>` : ''}`
   }
   const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${escape(productName)} · 启动提示</title>
@@ -52,6 +52,7 @@ export function startupFailurePage({ error, productName, version, config }) {
     <nav aria-label="恢复操作"><a class="primary" href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : updater ? '修复后重试' : '重新启动'}</a>
     ${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}
     ${updater ? '<a href="eduwork-startup://component/">打开组件目录</a><a href="eduwork-startup://copy/">复制错误信息</a>' : ''}
+    ${logs && !updater ? '<a href="eduwork-startup://logs/">打开日志目录</a>' : ''}
     <a href="eduwork-startup://exit/">退出</a></nav>${updater ? '<p id="copy-status" role="status" aria-live="polite"></p>' : ''}</html>`
   return { html, needsConfiguration, diagnostics, executable: updater?.executable }
 }

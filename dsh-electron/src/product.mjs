@@ -461,7 +461,7 @@ export async function showDesktopFailure(error) {
   try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
-  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
+  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config,logs:paths.logs})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
     removeWindowMenu(progressWindow)
@@ -489,6 +489,10 @@ export async function showDesktopFailure(error) {
           restartDesktop()
         })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })).finally(() => { importing = false })
       }
+    }
+    if (url === 'eduwork-startup://logs/') {
+      void shell.openPath(paths.logs).then(message=>{if(message)throw Error(message)}).catch(error=>
+        dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开日志目录',message:paths.logs,detail:error.message}))
     }
     if (url === 'eduwork-startup://exit/') app.quit()
     if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {
