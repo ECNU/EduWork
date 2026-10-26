@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "createdAt": "2026-10-26T07:12:09.754Z",
+  "fileSetSHA256": "55d33877a0c752ec5d3e9a96b57682f0830e29a955b20dea4bd6f29a6df52f23",
   "files": [
     {
       "path": ".gitattributes",
@@ -6365,7 +6365,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/plugin.ts",
-      "sha256": "b9b5034f6ef95b11234fce87b71907f41b0117592f237a76e1e11a1ad891eb77"
+      "sha256": "e4d1f93ceee598ed21539f169bc0b1a0f353fc3db1d59201073529b9e8c27a0b"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/auth.ts",
@@ -6517,7 +6517,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/plugin.test.ts",
-      "sha256": "fa10e2bb7300fb25630713d8723575394d9bde60da73dbd8e34d319e85bf8a2b"
+      "sha256": "311488b7668e45c559c48660ffde57732d169b17d33f549b2c47bb15036ae935"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/auth.test.ts",
