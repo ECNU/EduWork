@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "3def254f6f580873b16a17be8751924981de521a095830bb9a27e0aaf0553978",
   "files": [
     {
       "path": ".gitattributes",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "fef37bc947b407aeade8395a9efecb8eb38752179d8fb45b0ccb923c2411f922"
+      "sha256": "efac0fdf72b771d40a7c5233baf4eb2fb010588137e3eee3684942088895c1ab"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "dsh-electron/scripts/host-quit-adaptation.mjs",
-      "sha256": "cadff9e760f2301c7453d293fc5897f39f84f09cffa78146a3e7545766162384"
+      "sha256": "7b878e17033080099cf43c06ff683b079ed0ad8f2b9cf65262fe652d12a22284"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -1429,7 +1429,7 @@
     },
     {
       "path": "dsh-electron/tests/host-quit-adaptation.test.mjs",
-      "sha256": "6b5024219722dac5fd6cd4a9e98f44b73ee3770058772ba47149559e3c56ec66"
+      "sha256": "f1e185d9c86110b03835990ab6b1861a1636aa4f6672c0fbd6a341b412395fc7"
     },
     {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",
