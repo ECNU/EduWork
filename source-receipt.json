@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "504fcbac2b4cd6e277b6a2cf11c602e17b726148c2cb84d45cad4018d3039b24",
+  "fileSetSHA256": "c3de9e1f98181f663328272f3c638b6703b96b5707ea490a34aac9e6aa762c3b",
   "files": [
     {
       "path": ".gitattributes",
@@ -1625,7 +1625,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "e86a7fcd3b1b9f7bf0dbe37e1cb8bf6fecd95968c382a5203eceda8c16cbe102"
+      "sha256": "23b2e47459131bf1a11397dd533c9311efc0887fe15d7f54e89329abfe9d72a0"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -1649,7 +1649,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "426877964c5ca05f8d2e258ff095b343df801574bcffedf02d8acf98a5872ae9"
+      "sha256": "5de86428b032bd71b915b187ba6952efac009a09f203b35e06b9e04144538d92"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1741,7 +1741,7 @@
     },
     {
       "path": "dsh-host/test/native-settings.test.mjs",
-      "sha256": "13419b0b62c82519a0ca66714f41834a944688c2a033fe184cac444126079dea"
+      "sha256": "b03e40a091a4cd1662b64fb133cd7cab9b07805fcd4f3323e8fc0e187289562c"
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
@@ -1757,7 +1757,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "7d41c8d57e18a9b780de8cba9829768c5a810b28958643cb5f668e9e84755ef6"
+      "sha256": "fd4a07da3b4ad953c2f7eced2f0d518685be13d0818b6d4fcfe245b89263c5ab"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
@@ -6365,7 +6365,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/plugin.ts",
-      "sha256": "b9b5034f6ef95b11234fce87b71907f41b0117592f237a76e1e11a1ad891eb77"
+      "sha256": "e4d1f93ceee598ed21539f169bc0b1a0f353fc3db1d59201073529b9e8c27a0b"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/auth.ts",
@@ -6517,7 +6517,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/plugin.test.ts",
-      "sha256": "fa10e2bb7300fb25630713d8723575394d9bde60da73dbd8e34d319e85bf8a2b"
+      "sha256": "311488b7668e45c559c48660ffde57732d169b17d33f549b2c47bb15036ae935"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/auth.test.ts",
