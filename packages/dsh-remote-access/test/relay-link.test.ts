@@ -1,6 +1,7 @@
 // The Host's link to a real relay on loopback, for credentials that expire.
 import assert from 'node:assert/strict'
 import { mkdtemp } from 'node:fs/promises'
+import { createServer } from 'node:http'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -9,8 +10,31 @@ import { HostStore } from '../src/devices/store.ts'
 import type { SocketLike } from '../src/protocol/channel.ts'
 import { Close } from '../src/protocol/close-codes.ts'
 import { RELAY_PATHS } from '../src/protocol/relay.ts'
-import { RelayLink, type LinkState } from '../src/relay-link/link.ts'
-import { startRelay, until } from './loopback.ts'
+import { probe, RelayLink, type LinkState } from '../src/relay-link/link.ts'
+import { startRelay, until, withKey } from './loopback.ts'
+
+test('a probe registers once, reports how the relay answered, and connects no more', async t => {
+  const { identity } = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'relay-link-')), 'state.json'))
+  const relay = await startRelay(t)
+  const signal = new AbortController().signal
+  assert.deepEqual(await probe({ relay, identity, credential: withKey() }, signal), { state: 'online' })
+  const refused = await probe({ relay, identity, credential: withKey('not-issued') }, signal)
+  assert.ok(refused.state === 'refused' && refused.code === Close.unauthorized)
+
+  // A relay whose sockets fail: the link would retry after a second, the probe never does.
+  let attempts = 0
+  const failing = createServer()
+  failing.on('upgrade', (_request, socket) => {
+    attempts++
+    socket.destroy()
+  })
+  await new Promise<void>(resolve => failing.listen(0, '127.0.0.1', resolve))
+  t.after(() => failing.close())
+  const offline = await probe({ relay: `http://127.0.0.1:${(failing.address() as { port: number }).port}/`, identity, credential: withKey() }, signal)
+  assert.equal(offline.state, 'offline')
+  await new Promise(resolve => setTimeout(resolve, 1500))
+  assert.equal(attempts, 1)
+})
 
 test('a Host registered by ID Token registers again before it expires, keeping its devices connected', async t => {
   // `member:<exp>` stands in for an ID Token of one member, valid until exp.
