@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "c49179003ad82e50135d4613f8612a011ef3e6c0e5c7ec3d6831a0ad6fafdb2e",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "eadee913c75864ce1c8cd08e814d8503b507483485ea1c440a01ed25f46795f7"
+      "sha256": "63f3e6da88b43aecb9bd82b81853a04a39c2bd589a69743e2bc792d3e6a96122"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1273,7 +1273,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "dad3a217f0eebd5c3492f9b50ad705b44c7e2dac133ef65eac74141618860fdd"
+      "sha256": "a45fef8111a4bec35752b8d506cf633f30b988961b6dbe9a981db1d6ad138ea7"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1293,7 +1293,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "cc257a35b82783ecff20f77dae3cc71517eb15a6a3d32e6a20b410a1ead3d5c0"
+      "sha256": "fcd2f4f7fb219472242ee706d6952a8c10a615dc026be10938138eaa80b7086c"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1329,7 +1329,7 @@
     },
     {
       "path": "dsh-electron/src/window-visibility.mjs",
-      "sha256": "a35fef4e15ab15f7adf99356bcec69e5ae87f837de7eb66723c9df6ad9682e33"
+      "sha256": "959606683ff13fa6c5e95716b523268e41881742634e384669d5708ebbc59d61"
     },
     {
       "path": "dsh-electron/src/workspace-access.mjs",
@@ -1545,7 +1545,7 @@
     },
     {
       "path": "dsh-electron/tests/window-visibility.test.mjs",
-      "sha256": "8860d873afd547a2a84dddd1dc676eb4d6e92dec1f4b2d9b1ecb109966a70256"
+      "sha256": "b2b4dcb070e010d44d850f3a08f1ecf3ddc72e056867cadb17ccacceab64ed63"
     },
     {
       "path": "dsh-electron/tests/workbench.test.mjs",
@@ -2757,7 +2757,11 @@
     },
     {
       "path": "dsh-plugins/desktop-services/lib/index.js",
-      "sha256": "a03038171207dfa2968c8fd37540115b4d6cb9e425d97217ceced5f13efeadaf"
+      "sha256": "2f35b28eeca3a6d1643ce2b331d6705f3e6962f5ce8d585136947513b61782e1"
+    },
+    {
+      "path": "dsh-plugins/desktop-services/lib/quit-network.js",
+      "sha256": "45979610b2a6952d166fee50b54574b2681eb619a3f3792842132c9e09b13bf3"
     },
     {
       "path": "dsh-plugins/desktop-services/lib/workspace-access.js",
@@ -2770,6 +2774,10 @@
     {
       "path": "dsh-plugins/desktop-services/test/attention-host.test.mjs",
       "sha256": "67242eddd97fbcd60bbfdbe0b833785fd4f8c3ea6aef3d6de3129409376e8e34"
+    },
+    {
+      "path": "dsh-plugins/desktop-services/test/quit-network.test.mjs",
+      "sha256": "ef1bdb793a798320a19e58a11b60990f68a7224b674db09be341bc6f44917c4e"
     },
     {
       "path": "dsh-plugins/desktop-services/test/workspace-access.test.mjs",
