@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "createdAt": "2026-10-26T10:04:38.172Z",
+  "fileSetSHA256": "2c6e96e20a6e5b2597f5629a720d0156d23bb9c8c78e43c5468f63f3c33428d4",
   "files": [
     {
       "path": ".gitattributes",
@@ -6309,11 +6309,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "e2f69eca157dd9dc7907dc34bd080d88644231d86cabd20d79e53df78ea4e533"
+      "sha256": "707ee4eb0a3ac5daf2f012016ac9c5afffe7827c675301d0f15837cdd938bda8"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "d94afb04d46cc373c91d4ea60dcb772ec90db9969fe90fb48897f1548687e775"
+      "sha256": "a7ffb87552494b6659e47c19b4edf74dbbf5d3b5b73a4efa1227d49aa52cf2af"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",
@@ -6325,11 +6325,11 @@
     },
     {
       "path": "packages/dsh-remote-access/src/client/index.tsx",
-      "sha256": "a263c5626c8bce7f66fd3a18559afc865b8e7f90fecf60018e179c2291c390f7"
+      "sha256": "3819465bf0e635347c3310a14baefaa29bd8e7a06bdc34d97e805cf1e7f669dc"
     },
     {
       "path": "packages/dsh-remote-access/src/client/locale.ts",
-      "sha256": "474264096e32f819a723ccc2e70d34f99b9bf17d87af7e11fdefacaf6615a951"
+      "sha256": "290fe7f174cf0553109d6c7a104b5af1bf07eff88449acf74a64ee00a59e0d94"
     },
     {
       "path": "packages/dsh-remote-access/src/client/phone.tsx",
@@ -6357,7 +6357,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "2834130639ce60483ae442fc796c1fc5338aae29f7d57529a73dd273e429e0e7"
+      "sha256": "2c33842bbe3ba2cbd9b4382d025be63349613ea32f59db9b934ac1dd026852a3"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -6365,7 +6365,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/plugin.ts",
-      "sha256": "b9b5034f6ef95b11234fce87b71907f41b0117592f237a76e1e11a1ad891eb77"
+      "sha256": "e8ebe29545260d2fe830cb47e7ff3c70a7eeff4b958655bb661703023c4b5e5b"
     },
     {
       "path": "packages/dsh-remote-access/src/protocol/auth.ts",
@@ -6413,7 +6413,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/relay-link/link.ts",
-      "sha256": "308ebd180545f8f220b9c780d43db27fc6250bd2670a9ed7323482e430562d46"
+      "sha256": "124e0320a81ceb07d57bf180f61116e38f6e532e1b2e976b16f6fcc022b2a60b"
     },
     {
       "path": "packages/dsh-remote-access/src/relay/id-token.ts",
@@ -6441,7 +6441,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/typert.ts",
-      "sha256": "a98536571758c4c4183830941eab04d2ba50752d79eea719f74d77822ab47a69"
+      "sha256": "949215af8ade09d6a15b619a14970cd7a6a0cc7e63e2fd3154c5f5f50f4aa7fc"
     },
     {
       "path": "packages/dsh-remote-access/src/web/bridge.ts",
@@ -6513,11 +6513,11 @@
     },
     {
       "path": "packages/dsh-remote-access/test/loopback.ts",
-      "sha256": "b6eee0656c0f64bd565ee274c2a9d7840bcfe370465804ef1675a6d38bcbe8b1"
+      "sha256": "d43aa52ed900747cdeef60453fdbbee705ecd1ab36c9c03b66cd13795f99e0fa"
     },
     {
       "path": "packages/dsh-remote-access/test/plugin.test.ts",
-      "sha256": "fa10e2bb7300fb25630713d8723575394d9bde60da73dbd8e34d319e85bf8a2b"
+      "sha256": "6813801ed410dc4a4432d72093fba1b10921c2026391dea206fd8de2af8d31f6"
     },
     {
       "path": "packages/dsh-remote-access/test/protocol/auth.test.ts",
@@ -6541,7 +6541,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/relay-link.test.ts",
-      "sha256": "d9c45ee15a72e22171bb7f4bb0c7c52472bd404c97c252126adbebeb47741a41"
+      "sha256": "9c2b7499791cc8dd9b562190ef2c86946e5e4c6f02d0e25bc8386b866a1eef4f"
     },
     {
       "path": "packages/dsh-remote-access/test/relay/id-token.test.ts",
