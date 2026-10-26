@@ -77,24 +77,7 @@
     '全部插件': 'All plugins',
     '知识与内容': 'Knowledge & content',
     '桌面扩展': 'Desktop',
-    '机构登录与模型接入': 'Identity & model access',
-    '浏览器单点登录、模型发现与 Token 管理。支持 LiteLLM 原生 OAuth 与实验性 oidc-llm 草案。': 'Browser-based SSO, model discovery and token management. Supports native LiteLLM OAuth and the experimental oidc-llm draft.',
     '文档与源码': 'Docs & source',
-    '在 npm 查看机构登录插件': 'View the identity plugin on npm',
-    '围绕工作区资料创建报告、演示、测验与闪卡；通过共享成果服务与界面插槽扩展创作能力。': 'Create reports, presentations, quizzes and flashcards from workspace materials. Extend creation with shared artifact services and UI slots.',
-    '在 npm 查看 Knowledge Studio': 'View Knowledge Studio on npm',
-    '文献检索': 'Literature search',
-    '检索 DBLP、arXiv 文献，获取 BibTeX 与可用全文。接续社区实现，逐步拓展研究资料来源。': 'Search DBLP and arXiv, retrieve BibTeX and available full text. Builds on community work to expand research sources.',
-    '在 npm 查看文献检索插件': 'View the literature plugin on npm',
-    '本地记忆': 'Local memory',
-    '管理本地记忆、检索历史对话，让后续任务接得上已有背景。数据与记忆在本机管理。': 'Manage local memory and search past conversations so new tasks can pick up the context. Data and memories stay on your machine.',
-    '在 npm 查看本地记忆插件': 'View the memory plugin on npm',
-    '邮件助手': 'Mail assistant',
-    '通过 IMAP 读取邮件，经授权通过 SMTP 发送，让日常沟通接入同一套工作流程。': 'Read mail over IMAP and send through SMTP with authorization, bringing everyday communication into the same workflow.',
-    '在 npm 查看邮件助手插件': 'View the mail plugin on npm',
-    '桌面宠物': 'Desktop pet',
-    '共用 Agent 任务与通知状态，提供多形象桌面展示。独立 npm 插件，需要 EduWork 桌面桥接。': 'An on-screen companion with multiple characters, sharing agent task and notification state. A standalone npm plugin that requires the EduWork desktop bridge.',
-    '在 npm 查看桌面宠物插件': 'View the desktop pet plugin on npm',
     '展示 {count} 个插件 · 具体运行条件与兼容范围见各插件文档': 'Showing {count} plugins · See each plugin’s documentation for requirements and compatibility',
     '发现了好用的技能或 DSH 插件？': 'Found a useful skill or DSH plugin?',
     '推荐 Skills': 'Suggest a skill',
@@ -113,18 +96,6 @@
     '参考 EduWork@ECNU 的配置、插件与服务组合。': 'Explore the configuration, plugins and services in EduWork@ECNU.',
     '下一步，一起决定。': 'Shape what comes next.',
     '具体需求在 Issue 中展开，方案通过讨论和原型逐步完善。': 'Explore needs in issues and refine ideas through discussion and prototypes.',
-    '日历与多来源数据': 'Calendar & data sources',
-    '统一事件模型，允许插件填充数据，并保留个人备注。': 'A shared event model for plugin-supplied data and personal notes.',
-    '方案评审': 'Design review',
-    '开放远程接入': 'Open remote access',
-    '独立插件、Web 客户端与可自托管中继，延续本机会话。': 'Continue local sessions through a plugin, web client and self-hosted relay.',
-    '原型推进': 'Prototyping',
-    '备份恢复与迁移': 'Backup, restore & migration',
-    '梳理个人数据范围，评估 EduWork 与 DSH 双向迁移。': 'Define the scope of personal data and explore migration between EduWork and DSH.',
-    '原型准备': 'Planning a prototype',
-    'VeryMath 插件接入': 'VeryMath integration',
-    '探索数学论文阅读、工具调用与研究工作流。': 'Explore mathematics papers, tool use and research workflows.',
-    '欢迎认领': 'Help wanted',
     'GitHub 公开数据': 'Public GitHub data',
     '项目的成长，': 'Built by a community.',
     '来自每一位参与者。': 'Better with you.',
@@ -146,7 +117,7 @@
     '共建 Roadmap': 'Shape the roadmap',
     '一起讨论下一步的功能与架构方向。': 'Discuss future features and architecture together.',
     '数据来源与统计口径': 'Data sources and methodology',
-    'Star 与版本来自 GitHub 公开接口，页面显示本次更新的数据快照。Star 曲线按 GitHub 提供的每日统计累计，可能与当前 Star 总数存在差异。Roadmap 摘要来自项目 Issue，最新讨论请查看原帖。': 'Stars and releases come from the public GitHub API. This page shows a snapshot from the latest update. The chart accumulates GitHub’s daily Star counts, which may differ from the current total. Roadmap summaries come from project issues; follow the links for the latest discussion.',
+    'Star 与版本来自 GitHub 公开接口，页面显示本次更新的数据快照。Star 曲线按 GitHub 提供的每日统计累计，可能与当前 Star 总数存在差异。Roadmap 与需求进展请在 GitHub 参与讨论。': 'Stars and releases come from the public GitHub API. This page shows a snapshot from the latest update. The chart accumulates GitHub’s daily Star counts, which may differ from the current total. Join roadmap and feature discussions on GitHub.',
     '把你的使用场景，带进下一次改进。': 'Bring your needs to the next improvement.',
     '欢迎分享需求、推荐技能与插件，或直接参与代码和文档贡献。': 'Share ideas, recommend skills and plugins, or contribute code and documentation.',
     '发起讨论': 'Start a discussion',
@@ -199,7 +170,7 @@
     [`${repo}/blob/main/docs/CONFIGURATION.md`]: `${repo}/blob/main/docs/CONFIGURATION_EN.md`,
     [`${repo}/tree/main/config/desktop/examples`]: `${repo}/blob/main/config/desktop/examples/README_EN.md`
   };
-  for (const plugin of ['dsh-oidc', 'dsh-knowledge-studio', 'dsh-literature', 'dsh-memory', 'dsh-mail', 'dsh-desktop-pet']) {
+  for (const plugin of ['dsh-knowledge-studio']) {
     docs[`${repo}/tree/main/packages/${plugin}`] = `${repo}/blob/main/packages/${plugin}/README_EN.md`;
   }
   for (const guide of ['litellm-setup', 'oidc-llm-draft']) {
@@ -212,7 +183,7 @@
   const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
   while (walker.nextNode()) {
     const node = walker.currentNode;
-    if (node.parentElement.closest(`script,style,code,${dynamic}`)) continue;
+    if (node.parentElement.closest(`script,style,code,[data-en],${dynamic}`)) continue;
     const source = node.nodeValue;
     if (english[source.trim()]) bindings.push(() => { node.nodeValue = source.replace(source.trim(), text(source.trim())); });
   }
@@ -227,6 +198,16 @@
     if (element.matches(dynamic) || element.id === 'showcase-doc') return;
     const source = element.getAttribute('href');
     if (docs[source]) bindings.push(() => { element.href = link(source); });
+  });
+  // Plugin copy and its English document links are generated from the same
+  // catalog as both READMEs; keep that copy out of the page-wide dictionary.
+  document.querySelectorAll('[data-en]').forEach(element => {
+    const source = element.textContent;
+    bindings.push(() => { element.textContent = language === 'en' ? element.dataset.en : source; });
+  });
+  document.querySelectorAll('a[data-href-en]').forEach(element => {
+    const source = element.getAttribute('href');
+    bindings.push(() => { element.href = language === 'en' ? element.dataset.hrefEn : source; });
   });
   const title = document.title;
   document.querySelectorAll('meta[name="description"],meta[property="og:title"],meta[property="og:description"]').forEach(element => {

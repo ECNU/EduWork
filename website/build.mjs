@@ -2,9 +2,12 @@ import { copyFile, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchCommunity } from './community-data.mjs';
+import { syncProjectDocs } from '../scripts/sync-project-docs.mjs';
 
 const source = dirname(fileURLToPath(import.meta.url));
 const output = resolve(source, '../dist/website');
+// A stale catalog or README must be fixed before publishing either entry point.
+await syncProjectDocs({ check: true });
 // Only these public assets enter Pages; source, drafts and working files stay out.
 const files = [
   'index.html', 'project.css', 'project.js', 'language.js', 'theme-init.js',

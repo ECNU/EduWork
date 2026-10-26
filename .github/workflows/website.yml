@@ -1,10 +1,10 @@
 name: Project website
 on:
   pull_request:
-    paths: ['website/**', '.github/workflows/website.yml']
+    paths: ['website/**', 'README*.md', 'docs/plugin-catalog.json', 'scripts/*project*docs*', 'scripts/project-plugin-catalog*', 'scripts/published-package-inputs.mjs', 'scripts/desktop-build-plan.mjs', 'config/desktop-build.json', 'third_party/dsh/**', '.github/workflows/website.yml']
   push:
     branches: [main]
-    paths: ['website/**', '.github/workflows/website.yml']
+    paths: ['website/**', 'README*.md', 'docs/plugin-catalog.json', 'scripts/*project*docs*', 'scripts/project-plugin-catalog*', 'scripts/published-package-inputs.mjs', 'scripts/desktop-build-plan.mjs', 'config/desktop-build.json', 'third_party/dsh/**', '.github/workflows/website.yml']
   # Releases published with GITHUB_TOKEN do not start a release event workflow.
   workflow_run:
     workflows: ['Publish desktop candidate']
@@ -36,6 +36,8 @@ jobs:
           node --check website/project.js
           node --check website/language.js
           node --check website/theme-init.js
+          node scripts/sync-project-docs.mjs --check
+          node --test scripts/project-plugin-catalog.test.mjs
           node --test website/community-data.test.mjs
       - name: Build pull request preview from public snapshot
         if: github.event_name == 'pull_request'
