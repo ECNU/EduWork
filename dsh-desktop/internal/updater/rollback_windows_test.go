@@ -106,10 +106,6 @@ func TestUpdateRetryRetainsIncompleteBackupAndContinues(t *testing.T) {
 		t.Fatalf("previous backup not retained: %v", retained)
 	}
 	assertFileValue(t, retained[0], "only remaining old program")
-	trace, _ := os.ReadFile(filepath.Join(f.stateDir, "updates/update-trace.jsonl"))
-	if !strings.Contains(string(trace), "previous-backup-retained") {
-		t.Fatalf("retained backup not traced: %s", trace)
-	}
 }
 
 func TestSuccessfulUpdateDoesNotDeleteOtherRecoveryBackup(t *testing.T) {

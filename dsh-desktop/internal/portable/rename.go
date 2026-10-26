@@ -12,7 +12,7 @@ import (
 const renameWait = 250 * time.Millisecond
 // 安全软件（Defender、360、火绒等）会在解压后逐个扫描新文件并短暂占用目录，
 // 几百 MB 的程序目录可能要几十秒才扫完，所以等待时间要足够长。
-const renameTimeout = 90 * time.Second
+var renameTimeout = 90 * time.Second
 
 func checkDirectoryOperations(ctx context.Context, parent *os.Root) (err error) {
 	probe := ".eduwork-check-" + rand.Text()
