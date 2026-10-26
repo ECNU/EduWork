@@ -291,13 +291,13 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       t.after(() => clearTimeout(timer))
     })])
     if (scenario === 'installed') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'probe-guide', 'prepare', 'host', 'desktop-ready'])
       app.emit('second-instance')
       assert.equal(calls.at(-1), 'activate-current-window')
     } else if (scenario === 'deferred-presentation' || scenario === 'deferred-restored-completion') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready', 'window-show'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'probe-guide', 'prepare', 'host', 'desktop-ready', 'window-show'])
     } else if (scenario === 'deferred-hidden-completion') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'desktop-ready'])
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'probe-guide', 'prepare', 'host', 'desktop-ready'])
       attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
       app.emit('activate')
       assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
