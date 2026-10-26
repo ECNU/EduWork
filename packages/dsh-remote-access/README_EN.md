@@ -40,9 +40,9 @@ Install the plugin in DSH and restart it:
 dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
-Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected", you can add devices. Remote access is off by default.
+Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected", you can add devices. Remote access is off by default. "Test connection" tells separately whether the relay can be reached and whether it accepts this computer, also before remote access is on; when the connection fails, "Retry" starts it again.
 
-An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then shows no relay or access key: sign in with the organization's account and select "Allow remote access". Signing out stops remote access.
+An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then uses the organization's account by default: it shows whether you are signed in and lets you sign in, after which you select "Allow remote access". Signing out stops remote access. The distribution decides the relay; the settings page neither shows nor changes it. Users can still choose "Use your own relay server" and enter a relay and an access key.
 
 Organization sign-in also requires `@eduwork/dsh-oidc@0.3.1` or a later compatible version on the host, providing `identityToken(profileID)`; the older `0.3.0` does not include this API. Standalone deployments using an access key do not depend on the OIDC plugin.
 
