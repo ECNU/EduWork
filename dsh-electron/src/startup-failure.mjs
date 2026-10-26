@@ -41,13 +41,14 @@ export function startupFailurePage({ error, productName, version, config }) {
   const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
     <title>${escape(productName)} · 启动提示</title>
     <style>
-      *{box-sizing:border-box}body{font:15px/1.6 system-ui;margin:28px;color:#313744;background:#faf8f4;overflow-wrap:anywhere}
+      :root{color-scheme:light dark}*{box-sizing:border-box}body{font:15px/1.6 system-ui;margin:28px;color:#313744;background:#faf8f4;overflow-wrap:anywhere}
       h1{font-size:22px;line-height:1.4;margin:0 0 20px}p{margin:12px 0}.failure{background:#fff0f1;padding:14px 16px;color:#9f2636;border-radius:8px}.failure p{margin:4px 0 0}
       pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}code{font-size:13px}.component{padding:10px 12px;background:#eeeae5;border-radius:6px}
       ol{padding-left:24px}li{margin:8px 0}summary{cursor:pointer}details{margin:16px 0}details pre{background:#eeeae5;padding:12px;border-radius:6px}
       nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}a{display:inline-block;padding:8px 12px;border:1px solid #aaa;border-radius:6px;color:inherit;text-decoration:none}
       a.primary{background:#9f2636;border-color:#9f2636;color:white}a:hover{filter:brightness(.93)}a:focus-visible,summary:focus-visible{outline:3px solid #9f2636;outline-offset:3px}
       #copy-status{font-size:13px;min-height:1.6em;margin:8px 0 0}@media(max-width:480px){body{margin:20px}}
+      @media(prefers-color-scheme:dark){body{color:#eee;background:#1c1c1c}.failure{background:#382126;color:#ffb4be}.component,details pre{background:#292929}a:focus-visible,summary:focus-visible{outline-color:#ffb4be}}
     </style><h1>${escape(productName)} ${needsConfiguration ? '正在等待发行配置' : '暂时未能启动'}</h1>${body}
     <nav aria-label="恢复操作"><a class="primary" href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : updater ? '修复后重试' : '重新启动'}</a>
     ${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}

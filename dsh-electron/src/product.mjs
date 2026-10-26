@@ -1,4 +1,4 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
+import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, nativeTheme, dialog, Notification, clipboard } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { removeWindowMenu } from './desktop-menu.mjs'
@@ -33,8 +33,6 @@ import { attachAppActivation, attachWindowVisibility, showDesktopWindows } from 
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
-import { startupPage } from './startup-page.mjs'
-import { startupWindowCompletion, startupWindowPresentation } from './startup-presentation.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -52,7 +50,7 @@ let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
 let mainWindowPresented = false
-let mainWindowHiddenForStartup = false
+let startupMessage = ''
 let portableUpdates
 let contentUpdates, managedContent = {}
 let publisher
@@ -65,8 +63,7 @@ const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: async () => {
     await directoryPicker.close()
-    void contentUpdates?.close()
-    await lifecycle.close()
+    await stopDesktopServices()
     desktopPet?.close()
     taskNotifications?.close()
     tray?.destroy(); tray = undefined
@@ -78,10 +75,14 @@ export function setDesktopQuitGuard(guard) { confirmQuit = guard }
 export function restartDesktop() {
   desktopExit.restart()
 }
+export function stopDesktopServices() {
+  void contentUpdates?.close()
+  return lifecycle.close()
+}
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
-export function isQuitting() { return lifecycle.closing }
-const activationWindows = () => [progressWindow, mainWindow, ...BrowserWindow.getAllWindows().filter(window => !desktopPet?.owns(window))]
+export function isQuitting() { return desktopExit.closing || lifecycle.closing }
+const activationWindows = () => [progressWindow, updateCompleted || startupMessage ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
@@ -103,7 +104,7 @@ export function configureEduworkPaths() {
   // Startup/error recovery must take precedence over a partially loaded workbench.
   attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
-  // user closes the progress window before the Host becomes ready.
+  // user quits while configuration is still being prepared.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
   app.on('before-quit', event => {
     if (desktopExit.complete) return
@@ -133,37 +134,28 @@ export function desktopBootBrand() {
       if (!image.isEmpty()) bootLogo = image.resize({ width: 96, height: 96 }).toDataURL()
     }
   } catch { /* Cosmetic branding must never prevent startup or recovery. */ }
-  return { name: app.getName(), logo: bootLogo }
+  return { name: app.getName(), logo: bootLogo, message: startupMessage }
 }
 function startupAppearance() {
   const blue = process.platform === 'darwin' && savedEduworkStyle() === 'dsh'
   return {
-    background: blue ? '#f6f7f9' : '#faf8f4',
-    accent: blue ? '#2575ff' : '#9f2636',
     icon: process.platform === 'darwin' ? join(app.getAppPath(), '../brand', blue ? 'icon-blue-1024.png' : 'icon-1024.png') : paths.icon,
     dock: process.platform === 'darwin' ? join(app.getAppPath(), '../brand', blue ? 'dock-blue-1024.png' : 'dock-red-1024.png') : undefined,
   }
 }
-// Ordinary startup presents the main window's BootPage. This window is only
-// created for first-run configuration downloads, legacy migration or recovery.
-function createProgressWindow(message) {
-  if (progressWindow && !progressWindow.isDestroyed()) return progressWindow
-  const mainPresent = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindowPresented)
-  const mainVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
-  const presentation = startupWindowPresentation({ mainPresented: mainPresent, mainVisible })
-  if (presentation.hideMain) { mainWindowHiddenForStartup = true; mainWindow.hide() }
-  const appearance = startupAppearance()
-  progressWindow = new BrowserWindow({ width: 580, height: 280, resizable: false, show: false, title: settings.productName,
-    icon: appearance.icon,
-    backgroundColor: appearance.background, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
-  removeWindowMenu(progressWindow)
-  attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
-  const logo = 'data:image/png;base64,' + readFileSync(appearance.icon).toString('base64')
-  void progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(startupPage({
-    productName: settings.productName, logo, background: appearance.background, accent: appearance.accent, message,
-  }))).catch(error => desktopHostLog(`[desktop:startup] ${error.message}\n`))
-  if (presentation.showStartupWindow) progressWindow.show()
-  return progressWindow
+function showStartupProgress(message) {
+  startupMessage = message
+  const window = mainWindow
+  if (!window || window.isDestroyed() || isQuitting() || desktopFailureShown) return
+  window.webContents.send('eduwork:boot-brand', desktopBootBrand())
+  const present = () => {
+    if (window.isDestroyed() || isQuitting() || desktopFailureShown || mainWindowPresented) return
+    mainWindowPresented = true
+    window.show()
+  }
+  // The existing BootPage must be painted before showing a pre-Host download.
+  if (window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', present)
+  else present()
 }
 function showDesktopMessageBox(options) {
   const parent = [progressWindow, mainWindow].find(window => window && !window.isDestroyed())
@@ -174,7 +166,7 @@ async function prepareDesktop() {
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
   const appearance = startupAppearance()
   if (appearance.dock) app.dock.setIcon(appearance.dock)
-  if (migrationLaunch) createProgressWindow('正在迁移旧版历史数据…')
+  if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
@@ -217,8 +209,7 @@ async function prepareDesktop() {
     policy: updatePolicy}).init()
   lifecycle.check()
   managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
-    const window = createProgressWindow('首次启动，正在下载并校验发行配置…')
-    void window.webContents.executeJavaScript("document.querySelector('p').textContent = '首次启动，正在下载并校验发行配置…';").catch(() => {})
+    showStartupProgress('首次启动，正在下载并校验发行配置…')
   } })
   try { await contentUpdates.configurationFile.document() }
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
@@ -282,7 +273,7 @@ async function prepareDesktop() {
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage, {
     onUnreadable: ({ reason, aside }) => desktopHostLog(JSON.stringify({ component: 'credential-vault', event: 'unreadable', reason, kept: basename(aside) }) + '\n') })
-  const showNotificationWindow = () => { if (mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
+  const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
@@ -328,23 +319,10 @@ export async function desktopReady(shouldContinue = () => true) {
   if (!shouldContinue()) return
   updateCompleted = true
   migrationLaunch = null
-  // A dedicated download/migration window hidden by the user must not turn
-  // into an automatic main-window show when startup finishes. If it is still
-  // visible, return to the main window when the main was hidden for the handoff
-  // or had already been hidden by the user before the dedicated window appeared.
-  const hadStartupWindow = Boolean(progressWindow && !progressWindow.isDestroyed())
-  const startupWindowHidden = hadStartupWindow && !progressWindow.isVisible()
-  const mainVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible())
-  const completion = startupWindowCompletion({
-    hadStartupWindow, mainHiddenForStartup: mainWindowHiddenForStartup, startupWindowHidden,
-    mainPresented: mainWindowPresented, mainVisible,
-  })
-  mainWindowHiddenForStartup = false
-  if (progressWindow && !progressWindow.isDestroyed()) progressWindow.destroy()
-  progressWindow = undefined
+  startupMessage = ''
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand())
   desktopPet?.start()
   void portableUpdates?.action('check-updates-background').catch(()=>{})
-  return completion
 }
 
 function savedEduworkStyle() {
@@ -377,14 +355,14 @@ export function attachDockTheme(window) {
 export async function attachDesktopWindow(window) {
   mainWindow = window
   mainWindowPresented = false
-  mainWindowHiddenForStartup = false
   window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)
   window.setIcon(paths.icon)
   attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
-  const show = attachWindowVisibility({ app, window, isQuitting,
+  const showWindow = attachWindowVisibility({ app, window, isQuitting,
     shouldExit: () => user?.closeAction === 'exit', hasTray: () => Boolean(tray) })
+  const show = () => (updateCompleted || startupMessage) && showWindow()
   const action = value => {
     show()
     if (!['new-session', 'settings'].includes(value) || window.isDestroyed()) return
@@ -452,34 +430,43 @@ export async function attachDesktopWindow(window) {
 }
 
 export function checkProductUpdates() {
- if (!mainWindow || mainWindow.isDestroyed()) return
+ if (!updateCompleted || !mainWindow || mainWindow.isDestroyed()) return
  mainWindow.show();mainWindow.focus()
  return mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));").catch(()=>{})
 }
 export async function showDesktopFailure(error) {
   if (isQuitting() || desktopFailureShown) return
   desktopFailureShown = true
-  try { if(await contentUpdates?.rollback(error)) {restartDesktop();return} }
+  let rolledBack
+  try { rolledBack = await contentUpdates?.rollback(error) }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
+  if (isQuitting()) return
+  if (rolledBack) { restartDesktop(); return }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
+  if (isQuitting()) return
   const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (!progressWindow || progressWindow.isDestroyed()) {
-    progressWindow = new BrowserWindow({ width: 660, height: 470, title: settings.productName, webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
+    progressWindow = new BrowserWindow({ width: 660, height: 470, show: false, title: settings.productName,
+      backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1c' : '#faf8f4',
+      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
     removeWindowMenu(progressWindow)
     attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
   }
   progressWindow.setSize(660, page.executable ? 700 : 470)
   const { needsConfiguration } = page
+  const canRecover = () => !isQuitting() && progressWindow && !progressWindow.isDestroyed()
   let importing = false
   progressWindow.webContents.on('will-navigate', (event, url) => {
     event.preventDefault()
+    if (!canRecover()) return
     if (page.executable && url === 'eduwork-startup://copy/') {
       clipboard.writeText(page.diagnostics)
       void progressWindow.webContents.executeJavaScript("document.getElementById('copy-status').textContent = '已复制，可粘贴给维护人员。'").catch(()=>{})
     }
     if (page.executable && url === 'eduwork-startup://component/') {
-      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=>
-        dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message}))
+      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=> {
+        if (canRecover()) return dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message})
+      })
     }
     if (url === 'eduwork-startup://restart/' && !importing) {
       if (!needsConfiguration) restartDesktop()
@@ -487,8 +474,10 @@ export async function showDesktopFailure(error) {
         importing = true
         void (async () => {
           await retryPublisherContent(contentUpdates)
-          restartDesktop()
-        })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })).finally(() => { importing = false })
+          if (canRecover()) restartDesktop()
+        })().catch(error => {
+          if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })
+        }).finally(() => { importing = false })
       }
     }
     if (url === 'eduwork-startup://exit/') app.quit()
@@ -496,15 +485,21 @@ export async function showDesktopFailure(error) {
       importing = true
       void (async () => {
         const selected = await dialog.showOpenDialog(progressWindow, { title: '导入发行方提供的离线配置包', properties: ['openFile'], filters: [{ name: '签名内容包', extensions: ['json'] }] })
-        if (selected.canceled) return
+        if (selected.canceled || !canRecover()) return
         const path = selected.filePaths[0], info = await stat(path)
+        if (!canRecover()) return
         if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
-        await contentUpdates.importOffline(await readFile(path), { retryFailed: true })
-        restartDesktop()
-      })().catch(error => dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })).finally(() => { importing = false })
+        const bytes = await readFile(path)
+        if (!canRecover()) return
+        await contentUpdates.importOffline(bytes, { retryFailed: true })
+        if (canRecover()) restartDesktop()
+      })().catch(error => {
+        if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })
+      }).finally(() => { importing = false })
     }
   })
   await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
+  if (!canRecover()) return
   // Destroy the stale BootPage only after the recovery window exists; destroying
   // the last window first would quit the application on Windows. The tray must
   // not keep a show action bound to that stale window either.
@@ -514,6 +509,6 @@ export async function showDesktopFailure(error) {
   }
   if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.destroy(); mainWindow = undefined }
   mainWindowPresented = false
-  mainWindowHiddenForStartup = false
+  startupMessage = ''
   progressWindow.show()
 }

@@ -1,0 +1,4 @@
+# Allowlist the build inputs; never send relay.env or other local files.
+*
+!Dockerfile
+!healthcheck.mjs
