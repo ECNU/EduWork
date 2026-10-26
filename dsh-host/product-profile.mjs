@@ -76,8 +76,6 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const media = await loadMediaProviders(product, shell === 'electron' && user ? { ...user, media: user.media ?? { providers: [] } } : user)
   pluginConfig = mergeConfig(pluginConfig, { 'eduwork-media-openai': media,
     'eduwork-artifact-services': { images: { enabled: media.providers.some(provider => provider.images?.enabled) } } })
-  // The organization's relay admits its members by their sign-in; the user still switches remote access on.
-  if (user?.remoteAccess) pluginConfig = mergeConfig(pluginConfig, { 'eduwork-remote-access': { organization: user.remoteAccess } })
   const resources = await prepareNativeResources({ product })
   pluginConfig = mergeConfig(resources.pluginConfig, pluginConfig)
   const ownerFile = join(home, '.eduwork-desktop-home.json')
@@ -129,6 +127,10 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     installed.add(id)
     if (pluginConfig[id]) bundleRows.push({ id, config: pluginConfig[id] })
   }
+  // Remote access comes from its own npm bundle, with the product or installed by the user, and its
+  // entry from that bundle's patch, so the organization's relay is a row of its own. The user still
+  // switches remote access on; a bundle installed while the app runs gets the relay after a restart.
+  if (user?.remoteAccess) bundleRows.push({ id: 'eduwork-remote-access', name: '@eduwork/dsh-remote-access', config: { organization: user.remoteAccess } })
   for (const id of Object.keys(user?.pluginConfig ?? {})) {
     if (!installed.has(id)) throw new Error(`请检查配置文件 ${user.source.path}\nplugins.${id} 不属于此发行版已安装的插件`)
   }
