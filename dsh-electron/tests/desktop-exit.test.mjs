@@ -3,12 +3,26 @@ import assert from 'node:assert/strict'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
 
+test('immediate teardown defers the final quit beyond the native event microtasks', async () => {
+  let closed, quit = false
+  const cleanup = new Promise(resolve => { closed = resolve })
+  const exit = new DesktopExit({ confirm: async () => true, close: async () => closed(),
+    relaunch: assert.fail, quit: () => { quit = true }, failed: assert.fail })
+  const pending = exit.request()
+  await cleanup
+  await Promise.resolve()
+  assert.equal(quit, false)
+  await pending
+  assert.equal(quit, true)
+})
+
 test('cancelling a restart does not register a later surprise relaunch', async () => {
   const calls = []; let approve = false
   const exit = new DesktopExit({ confirm: async () => approve, close: async () => calls.push('close'),
     relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: assert.fail })
   exit.restart(); await exit.request()
   assert.deepEqual(calls, ['quit']); assert.equal(exit.complete, false)
+  assert.equal(exit.closing, false)
   approve = true; await exit.request()
   assert.deepEqual(calls, ['quit', 'close', 'quit'])
 })
@@ -36,7 +50,21 @@ test('a cancelled installation never starts the helper; concurrent quit requests
     relaunch: assert.fail, quit: () => {}, failed: assert.fail })
   const pending = exit.request(); assert.equal(exit.request(), pending)
   await new Promise(resolve => setImmediate(resolve)); assert.equal(closes, 1)
+  assert.equal(exit.closing, true)
+  exit.restart() // A late callback cannot change an accepted exit into a restart.
   release(); await pending; assert.equal(exit.complete, true)
+})
+
+test('failed shutdown permits another exit without retaining a restart request', async () => {
+  const calls = []; let fail = true
+  const exit = new DesktopExit({ confirm: async () => true,
+    close: async () => { calls.push('close'); if (fail) throw Error('Synthetic cleanup failure') },
+    relaunch: assert.fail, quit: () => calls.push('quit'), failed: () => calls.push('failed') })
+  exit.restart(); await exit.request()
+  assert.equal(exit.closing, false); assert.equal(exit.complete, false)
+  fail = false; await exit.request()
+  assert.equal(exit.complete, true)
+  assert.deepEqual(calls, ['quit', 'close', 'failed', 'close', 'quit'])
 })
 
 test('native updater termination uses the normal quit guard and cancellation permits a later retry', async () => {

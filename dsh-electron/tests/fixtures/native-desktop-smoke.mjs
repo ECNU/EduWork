@@ -24,12 +24,22 @@ function finish(error) {
   if (finished) return
   finished = true
   clearTimeout(timer)
-  writeFileSync(join(output, 'report.json'), JSON.stringify({ ok: !error, electron: process.versions.electron, platform: process.platform, results, limitations, error: error ? error.stack ?? String(error) : undefined }, null, 2))
+  const report = error => writeFileSync(join(output, 'report.json'), JSON.stringify({ ok: !error, electron: process.versions.electron, platform: process.platform, results, limitations, error: error ? error.stack ?? String(error) : undefined }, null, 2))
   bridge?.dispose()
-  for (const window of BrowserWindow.getAllWindows()) window.destroy()
   server?.close()
   hostServer?.close()
-  app.exit(error ? 1 : 0)
+  if (error) { report(error); app.exit(1); return }
+  // Empty preparation teardown must still complete Electron's native quit.
+  const exit = new DesktopExit({ confirm: async () => true, close: async () => {},
+    quit: () => app.quit(), relaunch: assert.fail, failed: error => { report(error); app.exit(1) } })
+  const deadline = setTimeout(() => { report(Error('Native quit did not reach will-quit')); app.exit(1) }, 5000)
+  app.on('before-quit', event => { if (exit.complete) return; event.preventDefault(); void exit.request() })
+  app.once('will-quit', () => {
+    clearTimeout(deadline)
+    results.push('native quit completes after immediate asynchronous preparation cleanup')
+    report()
+  })
+  app.quit()
 }
 const tick = () => new Promise(resolve => setTimeout(resolve, 100))
 async function until(predicate) { for (let n = 0; n < 100; n++) { if (await predicate()) return; await tick() }; throw new Error('Condition did not become true') }
@@ -54,7 +64,8 @@ app.whenReady().then(async () => {
   await writeFile(join(webRoot, 'assets', 'marker.txt'), 'static-before-host')
   const picker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
   const bootLogo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII='
-  let bootBrand = { name: 'Synthetic EduWork', logo: bootLogo }
+  const preparationMessage = '首次启动，正在下载并校验发行配置… <synthetic>'
+  let bootBrand = { name: 'Synthetic EduWork', logo: bootLogo, message: preparationMessage }
   bridge = installNativeDesktopBridge({ getHost: () => host, waitForHost: () => hostWait(), getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },
     checkUpdates: async () => ({}), pickDirectory: signal => picker.pick(signal),
@@ -69,8 +80,6 @@ app.whenReady().then(async () => {
     .some(item => item.role === 'toggledevtools' && item.accelerator === 'F12'))
   // Exercise real native windows before/after application-menu refresh, including
   // the separate recovery-window path. Alt must not resurrect a removed menu.
-  const progress = new BrowserWindow({ show: false, width: 580, height: 280 })
-  removeWindowMenu(progress)
   const recoveryWindow = new BrowserWindow({ show: false, width: 660, height: 470 })
   removeWindowMenu(recoveryWindow)
   protocol.handle('dsh-app', request => {
@@ -101,6 +110,15 @@ app.whenReady().then(async () => {
     return { image: css.backgroundImage, size: css.backgroundSize, padding: css.paddingTop, children: node.childElementCount }
   })()`)
   assert.deepEqual(await brandStyle(), { image: `url("${bootLogo}")`, size: '48px 48px', padding: '64px', children: 0 })
+  const bootHint = () => evaluate(`(() => {
+    const hint = document.querySelector('[data-dsh-boot-spinner]').nextElementSibling
+    return { text: hint.textContent, role: hint.getAttribute('role'), children: hint.childElementCount }
+  })()`)
+  assert.deepEqual(await bootHint(), { text: preparationMessage, role: 'status', children: 0 })
+  mainWindow.webContents.send('eduwork:boot-brand', { ...bootBrand, message: '' })
+  await until(async () => (await bootHint()).text === 'Loading plugins…')
+  mainWindow.webContents.send('eduwork:boot-brand', { ...bootBrand, message: '正在迁移旧版历史数据…' })
+  await until(async () => (await bootHint()).text === '正在迁移旧版历史数据…')
   // BootPage reuses this node when progress becomes a failure report. Branding
   // must survive without replacing official content or injecting extra nodes.
   await evaluate(`{
@@ -113,6 +131,7 @@ app.whenReady().then(async () => {
   mainWindow.webContents.send('eduwork:boot-brand', 'Updated Brand')
   await until(async () => (await evaluate(`document.querySelector('[data-dsh-boot] > div > div')?.textContent`)) === 'Updated Brand')
   assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
+  assert.equal(await evaluate(`document.querySelector('[data-dsh-boot] > div').lastElementChild.textContent`), 'Failed to load plugins')
   mainWindow.webContents.send('eduwork:boot-brand', { name: 'Without logo', logo: '' })
   await until(async () => (await brandStyle()).image === 'none')
   assert.equal((await brandStyle()).padding, '0px')
@@ -129,12 +148,25 @@ app.whenReady().then(async () => {
   assert.equal((await brandStyle()).image, `url("${bootLogo}")`)
   mainWindow.webContents.debugger.attach('1.3')
   try {
+    const themeState = () => evaluate(`({dark:document.body.hasAttribute('data-ds-dark-theme'),scheme:document.documentElement.style.colorScheme})`)
+    for (const scheme of ['light', 'dark']) {
+      await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] })
+      await until(async () => (await themeState()).scheme === scheme)
+      assert.equal((await themeState()).dark, scheme === 'dark')
+    }
+    await evaluate(`document.body.removeAttribute('data-ds-dark-theme'); document.documentElement.dataset.dsThemeSource = 'light'`)
+    await until(async () => (await themeState()).scheme === '')
+    for (const scheme of ['light', 'dark']) {
+      await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-color-scheme', value: scheme }] })
+      await tick(); await tick()
+      assert.deepEqual(await themeState(), { dark: false, scheme: '' }, 'upstream owns theme after initialization, including an explicit light preference')
+    }
     await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'reduce' }] })
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('[data-dsh-boot-spinner]')).animationName`), 'none')
     await mainWindow.webContents.debugger.sendCommand('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: 'no-preference' }] })
     assert.equal(await evaluate(`getComputedStyle(document.querySelector('[data-dsh-boot-spinner]')).animationName`), 'fixture-spin')
   } finally { mainWindow.webContents.debugger.detach() }
-  results.push('BootPage local logo and name survive failure/reload; missing/remote logos fall back to text, and reduced motion is preserved')
+  results.push('BootPage preparation status is text-only and clears without replacing failure content; system appearance yields to upstream theme; branding and reduced motion survive reload')
   let releaseHost
   hostWait = () => new Promise(resolve => { releaseHost = resolve })
   let bootSettled = false
@@ -190,15 +222,13 @@ app.whenReady().then(async () => {
   assert.equal(nativeMenu().items.find(item => item.role === 'editmenu').label, 'Edit')
   assert.equal(nativeMenu().items[0].submenu.items[0].label, `About ${app.getName()}`)
   if (process.platform !== 'darwin') {
-    for (const window of [progress, recoveryWindow]) {
-      assert.equal(window.isMenuBarVisible(), false)
-      window.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Alt' })
-      window.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Alt' })
-      assert.equal(window.isMenuBarVisible(), false)
-    }
+    assert.equal(recoveryWindow.isMenuBarVisible(), false)
+    recoveryWindow.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Alt' })
+    recoveryWindow.webContents.sendInputEvent({ type: 'keyUp', keyCode: 'Alt' })
+    assert.equal(recoveryWindow.isMenuBarVisible(), false)
   }
-  progress.destroy(); recoveryWindow.destroy()
-  results.push('startup/recovery windows stay menu-free through locale refresh; native Edit/View and update labels follow locale')
+  recoveryWindow.destroy()
+  results.push('recovery stays menu-free through locale refresh; native Edit/View and update labels follow locale')
   await evaluate(`document.documentElement.setAttribute('data-ds-theme-source','dark')`)
   await until(() => nativeTheme.themeSource === 'dark')
   results.push('built preload and theme synchronization')

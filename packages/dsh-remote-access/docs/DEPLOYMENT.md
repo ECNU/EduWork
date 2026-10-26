@@ -4,9 +4,15 @@
 
 中继和桌面插件由同一个 npm 包 `@eduwork/dsh-remote-access` 交付。服务器只需运行包里的 `eduwork-remote-relay`，无需安装 EduWork 桌面客户端、模型服务或数据库。被访问的电脑运行 DSH/EduWork 和远控插件，其他终端通过浏览器访问中继的 HTTPS 地址。
 
+## Docker 快速部署
+
+推荐服务器使用 [Docker 部署指南](docker/README.md)：提供 Dockerfile、Compose 和脱敏的 `relay.env.example`，镜像从 npm 安装固定的 `0.1.2`，配置好访问地址和认证后用 `docker compose up -d --build` 启动。支持根路径、路径前缀、Key / OIDC 认证和 iframe 集成。HTTPS 由自己的反向代理提供，容器健康检查自动使用配置中的路径前缀。
+
+下面保留直接使用 Node.js 和 systemd 的部署方式，两种方式使用相同的中继配置。
+
 ## 1. 启动服务
 
-准备 Node.js **24.22.1 或更新的受支持版本**、npm，以及可以转发 WebSocket 的 HTTPS 反向代理。以下命令固定使用 `0.1.1`，升级时明确修改版本号。
+准备 Node.js **24.22.1 或更新的受支持版本**、npm，以及可以转发 WebSocket 的 HTTPS 反向代理。以下命令固定使用 `0.1.2`，升级时明确修改版本号。
 
 先生成接入 Key，保存好并交给需要注册电脑的用户：
 
@@ -19,7 +25,7 @@ Linux/macOS 前台试运行：
 ```sh
 export RELAY_URL='https://remote.example.edu/'
 export RELAY_ACCESS_KEYS='替换成刚才生成的Key'
-npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
+npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
 ```
 
 Windows PowerShell：
@@ -27,7 +33,7 @@ Windows PowerShell：
 ```powershell
 $env:RELAY_URL = 'https://remote.example.edu/'
 $env:RELAY_ACCESS_KEYS = '替换成刚才生成的Key'
-npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
+npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
 ```
 
 默认监听 `127.0.0.1:8787`。`RELAY_URL` 是**用户访问的外部地址**，不是监听地址；TLS 在反向代理终止。前台命令退出就会停止服务，长期运行见第 3 节。只在本机调试时可使用 `http://localhost:8787/`；手机访问应使用具有有效证书的 HTTPS 地址，以便浏览器使用 Service Worker 和加密 API。
@@ -84,7 +90,7 @@ location /eduwork-remote/ {
 ```sh
 sudo useradd --system --no-create-home --shell /usr/sbin/nologin eduwork-remote
 sudo install -d /opt/eduwork-remote /etc/eduwork-remote
-sudo npm install --prefix /opt/eduwork-remote --omit=dev --ignore-scripts --save-exact @eduwork/dsh-remote-access@0.1.1
+sudo npm install --prefix /opt/eduwork-remote --omit=dev --ignore-scripts --save-exact @eduwork/dsh-remote-access@0.1.2
 sudo install -m 600 /dev/null /etc/eduwork-remote/relay.env
 ```
 
@@ -131,7 +137,9 @@ curl -fsS https://example.edu/eduwork-remote/healthz
 curl -I https://example.edu/eduwork-remote/sw.js
 ```
 
-前两项应返回 `ok`，第三项应返回 200 和 JavaScript 内容类型。健康检查只说明 HTTP 服务可达；还须在桌面“设置 → 远程访问”填写同一外部地址和 Key，启用后确认“已连接”。随后按[配对步骤](../README.md#添加和移除设备)从另一终端接入，并在本机核对配对码、确认授权。接入 Key 允许电脑使用中继，不能替代这次设备配对。
+前两项应返回 `ok`，第三项应返回 200 和 JavaScript 内容类型。健康检查只说明 HTTP 服务可达。使用插件 `0.1.2` 时，在桌面“设置 → 远程访问”选择自己的中继，填写同一外部地址和 Key，点“测试连接”，分别核对服务可达性与身份验证结果；尚未开启远控也可以测试。随后开启“允许远程访问”，确认“已连接”；失败时可点“重试”。
+
+点“添加设备”，按[配对步骤](../README.md#添加和移除设备)从另一终端接入，在本机核对配对码、确认授权。接入 Key 允许电脑使用中继，不能替代这次设备配对。
 
 ## 5. 机构登录与 iframe（可选）
 
@@ -145,7 +153,7 @@ RELAY_FRAME_ANCESTORS=self https://portal.example.edu
 
 单用机构登录时不设 `RELAY_ACCESS_KEYS`。`issuer` 必须与 Token 的 `iss` 完全一致，client ID 是桌面应用的 OIDC 客户端标识；多个 ID 用逗号分隔。中继从 discovery/JWKS 获取公钥，当前支持 **RS256 ID Token**，校验签名、issuer、audience/authorized party 和有效期；这里不是模型 API Key，也不是拿 access token 充当 ID Token。
 
-电脑需安装 `@eduwork/dsh-oidc@0.3.1` 或后续兼容版本，并由发行版配置远控插件的 `organization: { relay, oidcProfileId }`。单纯设置服务端的 issuer 不会自动配置桌面登录。中继验证已有身份，不保存 refresh token，也不替用户登录；续期由电脑的 OIDC 插件处理。
+电脑需安装 `@eduwork/dsh-oidc@0.3.1` 或后续兼容版本，并由发行版配置远控插件的 `organization: { relay, oidcProfileId }`。单纯设置服务端的 issuer 不会自动配置桌面登录。配置完成后，`0.1.2` 的设置页支持使用机构账号、登录及测试连接，也允许用户切换到自己的中继；机构模式下的中继地址由发行版指定。中继验证已有身份，不保存 refresh token，也不替用户登录；续期由电脑的 OIDC 插件处理。
 
 `RELAY_FRAME_ANCESTORS` 默认 `none`，禁止 iframe 嵌入。允许同源父页面时填 `self`，其他父页面填完整来源（协议、主机和可选端口，不含路径）。在 shell 中给多个来源加引号：`RELAY_FRAME_ANCESTORS="self https://portal.example.edu"`。父站自己的 CSP 也要允许加载中继，代理不能再给此路径附加冲突的 `X-Frame-Options: DENY` 或 `frame-ancestors 'none'`。
 
