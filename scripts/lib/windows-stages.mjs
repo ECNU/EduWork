@@ -92,6 +92,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
         development: workspace.parameters.development,
         forUpdate: workspace.parameters.forUpdate,
         edition: workspace.parameters.edition,
+        dataLayout: workspace.parameters.dataLayout ?? 'portable',
       }),
       run: async (workspace) => {
         const { version, edition } = workspace.parameters
@@ -109,6 +110,7 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
           node: inputs.node,
           output: candidate,
           version,
+          dataLayout: workspace.parameters.dataLayout ?? 'portable',
         })
         if (workspace.parameters.forUpdate) await buildTransitionLaunchers(candidate, coreRoot)
         const asset = `${edition}-${version}-windows-x64-electron.zip`
@@ -159,6 +161,7 @@ async function buildTransitionLaunchers(candidate, coreRoot) {
 async function acceptWindows({ workspace, coreRoot }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
   const { edition, development, verifyPublisherBootstrap } = workspace.parameters
+  const dataLayout = workspace.parameters.dataLayout ?? 'portable'
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const archive = packed.output
   const gui = workspace.resolvePath('gui')
@@ -185,6 +188,10 @@ async function acceptWindows({ workspace, coreRoot }) {
   await run(join(desktop, 'resources/runtime/node.exe'), [
     join(coreRoot, 'scripts/check-desktop-runtimes.mjs'), desktop, join(evidence, 'native-runtimes.json'),
   ]).catch(() => { throw new Error('Packaged native runtime smoke check failed') })
+  const desktopIdentity = await readJSON(join(desktop, 'resources/app/eduwork.desktop.json'))
+  const dataRoot = dataLayout === 'installed'
+    ? join(gui, 'data/data', `${desktopIdentity.distribution}-electron`)
+    : join(gui, 'data')
 
   const frozenProduct = join(desktop, 'resources/product')
   const config = join(gui, 'config/eduwork.jsonc')
@@ -250,7 +257,7 @@ async function acceptWindows({ workspace, coreRoot }) {
     if (!ready) throw new Error('Packaged desktop failed to start within acceptance limit')
     await runNode(join(coreRoot, 'dsh-electron/tests/desktop-smoke.mjs'), [
       '--shell', 'electron', '--product', frozenProduct, '--cdp', `http://127.0.0.1:${port}`,
-      '--data-root', join(gui, 'data'), '--evidence', gui, '--launch-only',
+      '--data-root', dataRoot, '--evidence', gui, '--launch-only',
     ])
   } finally {
     if (!exited) {
@@ -282,7 +289,7 @@ async function acceptWindows({ workspace, coreRoot }) {
   checks.mediaTemplate = 'passed'
   checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
   if (verifyPublisherBootstrap) {
-    const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
+    const started = await readJSON(join(dataRoot, 'logs/desktop-start.json'))
     const descriptor = await readJSON(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
     verifyPublisherFirstLaunch(descriptor, started)
     checks.publisherFirstLaunch = 'passed'

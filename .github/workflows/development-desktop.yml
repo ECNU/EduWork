@@ -14,6 +14,12 @@ on:
         default: both
         type: choice
         options: [both, windows, macos, macos-arm64, macos-x64]
+      data_layout:
+        description: 'Windows experimental data layout; ignored for macOS'
+        required: false
+        default: portable
+        type: choice
+        options: [portable, installed]
 permissions:
   contents: read
 concurrency:
@@ -83,12 +89,18 @@ jobs:
         shell: bash
         env:
           DEVELOPMENT_VERSION: ${{ needs.version.outputs.development_version }}
+          DATA_LAYOUT: ${{ inputs.data_layout || 'portable' }}
         run: |
+          EXTRA_ARGS=()
+          if [ "${{ matrix.script }}" = "windows" ]; then
+            EXTRA_ARGS+=("--data-layout" "$DATA_LAYOUT")
+            if [ "$DATA_LAYOUT" = "installed" ]; then EXTRA_ARGS+=("--no-verify-snapshot"); fi
+          fi
           node core/scripts/ci-eduwork-${{ matrix.script }}-release.mjs \
             --core-root ./core --edition-root ./core \
             --distribution-config config/distributions/generic.json \
             --version "$DEVELOPMENT_VERSION" --development --recipe pinned-source \
-            --output "$RUNNER_TEMP/ew-development"
+            --output "$RUNNER_TEMP/ew-development" "${EXTRA_ARGS[@]}"
       - name: Retain redacted validation reports
         if: always()
         uses: actions/upload-artifact@v4

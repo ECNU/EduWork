@@ -35,7 +35,9 @@ export async function assembleWindows({
   node = process.execPath,
   updateManifestURL = '',
   updateDefaultPolicy = '',
+  dataLayout = 'portable',
 } = {}) {
+  if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
   if (!updateDefaultPolicy) updateDefaultPolicy = desktopVersion(version).channel
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
   if (!await isFile(join(electronRuntime, 'electron.exe'))) {
@@ -90,6 +92,7 @@ export async function assembleWindows({
     productVersion: version,
     product: '../product',
     node: '../runtime/node.exe',
+    dataLayout,
     updateChannel: 'disabled-candidate',
     configurationOwnership: 'user',
   }
@@ -138,6 +141,7 @@ export async function assembleWindows({
     dshCommit: identity.dshCommit,
     distribution: identity.distribution,
     productName: name,
+    dataLayout,
     electronLocales,
     nodeVersion,
     nodeSHA256: await sha256File(node),
@@ -150,7 +154,9 @@ export async function assembleWindows({
   await writeText(join(output, 'README.txt'), [
     `${name} — Electron candidate ${version}`,
     '',
-    `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
+    dataLayout === 'installed'
+      ? `Run EduWork-Electron.exe. Personal data stays under %LOCALAPPDATA%/EduWork/${identity.distribution}.`
+      : `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
     'Close the application before moving the entire folder. When an update feed is',
     'configured, use Settings to check/download updates and choose when to restart.',
     'To merge history from another installation, select its program root under',
@@ -171,10 +177,11 @@ if (isMainModule(import.meta.url)) {
       node: { type: 'string' },
       'update-manifest-url': { type: 'string' },
       'update-default-policy': { type: 'string' },
+      'data-layout': { type: 'string' },
     },
   })
   if (!values.product || !values['shell-build'] || !values['electron-runtime'] || !values.output || !values.version) {
-    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development]')
+    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development] [--data-layout portable|installed]')
   }
   await assembleWindows({
     product: values.product,
@@ -185,5 +192,6 @@ if (isMainModule(import.meta.url)) {
     node: values.node ?? process.execPath,
     updateManifestURL: values['update-manifest-url'] ?? '',
     updateDefaultPolicy: values['update-default-policy'] ?? '',
+    dataLayout: values['data-layout'] ?? 'portable',
   })
 }

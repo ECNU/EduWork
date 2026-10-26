@@ -18,6 +18,7 @@ export async function assembleDesktopCandidate({
   electronShellBuild = '',
   electronRuntime = '',
   node = process.execPath,
+  dataLayout = 'portable',
 } = {}) {
   if (!['electron', 'wails', 'both'].includes(shell)) throw new Error('Shell must be electron, wails or both')
   const repository = fullPath(join(scriptRoot, '..'))
@@ -39,7 +40,7 @@ export async function assembleDesktopCandidate({
     if (entry === 'wails') {
       await assembleOfficialHost({ product, hostAdapter, output: destination, version, node })
     } else {
-      await assembleWindows({ product, shellBuild: electronShellBuild, electronRuntime, output: destination, version, node })
+      await assembleWindows({ product, shellBuild: electronShellBuild, electronRuntime, output: destination, version, node, dataLayout })
     }
   }
   console.log(`Desktop candidates assembled from the same product: ${outputRoot}`)
@@ -57,10 +58,11 @@ if (isMainModule(import.meta.url)) {
       'electron-shell-build': { type: 'string' },
       'electron-runtime': { type: 'string' },
       node: { type: 'string' },
+      'data-layout': { type: 'string' },
     },
   })
   if (!values.shell || !values.product || !values['host-adapter'] || !values['output-root'] || !values.version) {
-    throw new Error('Use --shell electron|wails|both --product <dir> --host-adapter <dir> --output-root <dir> --version <x.y.z> [--electron-shell-build <dir>] [--electron-runtime <dir>] [--node <node>]')
+    throw new Error('Use --shell electron|wails|both --product <dir> --host-adapter <dir> --output-root <dir> --version <x.y.z> [--electron-shell-build <dir>] [--electron-runtime <dir>] [--node <node>] [--data-layout portable|installed]')
   }
   await assembleDesktopCandidate({
     shell: values.shell,
@@ -71,5 +73,6 @@ if (isMainModule(import.meta.url)) {
     electronShellBuild: values['electron-shell-build'] ?? '',
     electronRuntime: values['electron-runtime'] ?? '',
     node: values.node ?? process.execPath,
+    dataLayout: values['data-layout'] ?? 'portable',
   })
 }

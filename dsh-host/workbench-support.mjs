@@ -6,9 +6,9 @@ import { exportDiagnostics } from './diagnostics.mjs'
 
 /** Native-owned arguments only. The renderer chooses one allowlisted action,
  * never a filesystem path, process argument or credential reference. */
-export async function workbenchAction({ action, config, version, shell, logs, root, product, home, updateStatus, configurationOverlay }) {
+export async function workbenchAction({ action, config, version, shell, logs, root, dataRoot, product, home, updateStatus, configurationOverlay }) {
   if (!['status', 'check-updates', 'diagnostics'].includes(action) || !['wails', 'electron'].includes(shell)) throw Error('Invalid desktop action')
-  if (action === 'diagnostics') return exportDiagnostics({ config, version, shell, logs, root, product, home, updateStatus, configurationOverlay })
+  if (action === 'diagnostics') return exportDiagnostics({ config, version, shell, logs, root, dataRoot, product, home, updateStatus, configurationOverlay })
   const settings = loadUserConfig(config)
   const base = { shell, version }
   if (action === 'check-updates') return { ...base, ...await checkDesktopUpdates({ updates: settings.updates, version, shell }) }
@@ -18,6 +18,6 @@ export async function workbenchAction({ action, config, version, shell, logs, ro
 
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
-  const [action, config, version, shell, logs, root, product, home, updateJSON] = process.argv.slice(2)
-  console.log(JSON.stringify(await workbenchAction({ action, config, version, shell, logs, root, product, home, updateStatus: updateJSON ? JSON.parse(updateJSON) : undefined })))
+  const [action, config, version, shell, logs, root, product, home, updateJSON, dataRoot] = process.argv.slice(2)
+  console.log(JSON.stringify(await workbenchAction({ action, config, version, shell, logs, root, dataRoot, product, home, updateStatus: updateJSON ? JSON.parse(updateJSON) : undefined })))
 }
