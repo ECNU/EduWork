@@ -6,7 +6,7 @@
  */
 import { useCallback, useEffect, useId, useMemo, useState, useSyncExternalStore, type CSSProperties, type ReactNode } from 'react'
 import { encode } from 'uqr'
-import type { PanelStatus } from '../plugin.ts'
+import type { PanelStatus, RelayTest } from '../plugin.ts'
 import { Close } from '../protocol/close-codes.ts'
 import TYPERT, { ACCESS_KEY_REF } from '../typert.ts'
 import { dictionaries, NS, type Key } from './locale.ts'
@@ -18,7 +18,7 @@ export const inject = ['slots', 'locale', 'remote', 'remote.credentials', 'confi
 const ENTRY = 'eduwork-remote-access'
 
 /** The plugin's settings; the access key is a DSH credential instead. */
-interface Settings { enabled: boolean; relay: string; hostName: string }
+interface Settings { enabled: boolean; relay: string; hostName: string; useOrganization: boolean }
 
 interface ConfigForm {
   getSnapshot(): { status: 'loading' | 'ready' | 'unavailable'; value: Settings | undefined; writable: boolean }
@@ -29,6 +29,9 @@ interface ConfigForm {
 type RemoteResult<T = PanelStatus> = Promise<{ ok: true; value: T } | { ok: false; error?: { code?: string; message?: string } }>
 interface Service {
   status(): Promise<PanelStatus>
+  retry(): Promise<PanelStatus>
+  test(): Promise<RelayTest>
+  signIn(): Promise<string | undefined>
   createInvite(): Promise<PanelStatus>
   cancelInvite(): Promise<PanelStatus>
   decide(key: string, approved: boolean): Promise<PanelStatus>
@@ -48,7 +51,7 @@ interface Surface {
   locale: { register(ns: string, dictionaries: object): () => void; bind(ns: string): (key: string) => string }
   remote: {
     $mount(remote: object): Promise<() => Promise<void>>
-    remoteDevices: Record<keyof Service, (...args: unknown[]) => RemoteResult>
+    remoteDevices: Record<keyof Service, (...args: unknown[]) => RemoteResult<never>>
     credentials: Credentials
   }
   configForms: { get(entry: string): ConfigForm }
@@ -90,6 +93,8 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
   const [status, setStatus] = useState<PanelStatus>()
   const [accessKey, setAccessKey] = useState<CredentialInfo>()
   const [error, setError] = useState('')
+  /** Counts saved access keys, so an earlier relay test result goes with the key it tested. */
+  const [keySaves, setKeySaves] = useState(0)
   const settings = snapshot.value
   const locked = snapshot.status !== 'ready' || !snapshot.writable
 
@@ -120,7 +125,11 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
   }
   const saveAccessKey = (value: string): void => {
     setError('')
-    unwrap(credentials.set(ACCESS_KEY_REF, value)).then(describeKey).catch(() => setError(t('saveFailed')))
+    unwrap(credentials.set(ACCESS_KEY_REF, value)).then(describeKey).then(() => setKeySaves(count => count + 1), () => setError(t('saveFailed')))
+  }
+  const signIn = (): void => {
+    setError('')
+    service.signIn().then(page => page && window.location.assign(page), () => setError(t('signInFailed')))
   }
 
   const header = (
@@ -132,6 +141,10 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
   if (settings === undefined || status === undefined || accessKey === undefined) {
     return <div style={{ color: primary }}>{header}<p role={error ? 'alert' : 'status'} style={note}>{error || t('loading')}</p></div>
   }
+  const { organization } = status
+  const ownRelay = !usesOrganization(settings, status)
+  // A sign-in that no longer yields an ID Token needs signing in again as much as none at all.
+  const signedIn = organization?.signedIn === true && !(status.state === 'on' && status.link.state === 'lapsed')
   return (
     <div data-eduwork-remote-access style={{ color: primary }}>
       {header}
@@ -141,27 +154,51 @@ function RemoteAccessSettings({ scope, service, credentials, t }: Props) {
             onChange={event => save('enabled', event.currentTarget.checked)} />
           {t('enabled')}
         </label>
-        <p role="status" style={note}>{summary(settings, status, t)}</p>
+        <div style={{ ...row, justifyContent: 'flex-start', gap: 12 }}>
+          <p role="status" style={note}>{summary(settings, status, t)}</p>
+          {retryable(status) && <button type="button" style={{ ...button, marginTop: 4 }} onClick={() => act(() => service.retry())}>{t('retry')}</button>}
+        </div>
       </section>
       <section style={{ ...section, display: 'grid', gap: 12 }}>
-        {status.organization === undefined
-          ? (
-            <>
-              <TextSetting label={t('relay')} hint={t('relayHint')} value={settings.relay} disabled={locked} type="url"
-                onSave={value => save('relay', value)} />
-              <TextSetting label={t('accessKey')} hint={t(accessKey.configured ? 'accessKeySet' : 'accessKeyHint')}
-                value="" disabled={!accessKey.writable} type="password" onSave={value => value !== '' && saveAccessKey(value)} />
-            </>
-          )
-          : <p style={{ ...note, margin: 0 }}>{t('organization', { organization: status.organization.name, relay: status.organization.relay })}</p>}
+        {organization !== undefined && (
+          <div role="radiogroup" aria-label={t('connection')} style={{ display: 'grid', gap: 8, fontSize: 14 }}>
+            <Choice checked={!ownRelay} disabled={locked} onChange={() => save('useOrganization', true)}
+              label={t('useOrganization', { organization: organization.name })}>
+              <p style={note}>{t('organization', { organization: organization.name })}</p>
+              {!ownRelay && (
+                <div style={{ ...row, justifyContent: 'flex-start', marginTop: 6 }}>
+                  <span style={{ fontSize: 13 }}>{t(signedIn ? 'signedIn' : organization.signedIn ? 'signInExpired' : 'signedOut')}</span>
+                  {!signedIn && <button type="button" style={strong} onClick={signIn}>{t('signInAction')}</button>}
+                </div>
+              )}
+            </Choice>
+            <Choice checked={ownRelay} disabled={locked} onChange={() => save('useOrganization', false)} label={t('useOwnRelay')}>
+              <p style={note}>{t('ownRelayHint', { organization: organization.name })}</p>
+            </Choice>
+          </div>
+        )}
+        {ownRelay && (
+          <>
+            <TextSetting label={t('relay')} hint={t('relayHint')} value={settings.relay} disabled={locked} type="url"
+              onSave={value => save('relay', value)} />
+            <TextSetting label={t('accessKey')} hint={t(accessKey.configured ? 'accessKeySet' : 'accessKeyHint')}
+              value="" disabled={!accessKey.writable} type="password" onSave={value => value !== '' && saveAccessKey(value)} />
+          </>
+        )}
         <TextSetting label={t('hostName')} hint={t('hostNameHint')} value={settings.hostName} disabled={locked}
           onSave={value => save('hostName', value)} />
+        <RelayCheck key={`${ownRelay}:${settings.relay}:${signedIn}:${keySaves}`} service={service} organization={ownRelay ? undefined : organization?.name} t={t} />
       </section>
-      {status.state === 'on' && <Pairing status={status} t={t} act={act} service={service} />}
+      <Pairing status={status} blocker={blocker(settings, status, t)} t={t} act={act} service={service} />
       {status.state === 'on' && <Devices status={status} t={t} act={act} service={service} />}
       {error && <p role="alert" style={{ ...note, color: danger }}>{error}</p>}
     </div>
   )
+}
+
+/** Whether remote access goes through the organization's relay rather than the user's own. */
+function usesOrganization(settings: Settings, status: PanelStatus): boolean {
+  return status.organization !== undefined && settings.useOrganization
 }
 
 /** What the user can act on; the Host logs the details. */
@@ -172,10 +209,80 @@ function summary(settings: Settings, status: PanelStatus, t: Translate): string 
   const { link } = status
   if (link.state === 'online') return t('linkOnline')
   if (link.state === 'offline') return t('linkOffline')
-  if (link.state === 'refused') return t(link.code === Close.upgradeRequired ? 'linkUpgrade' : status.organization === undefined ? 'linkRefused' : 'linkRefusedMember')
+  if (link.state === 'refused') return t(link.code === Close.upgradeRequired ? 'linkUpgrade' : usesOrganization(settings, status) ? 'linkRefusedMember' : 'linkRefused')
   if (link.state === 'replaced') return t('linkReplaced')
   if (link.state === 'lapsed') return t('linkLapsed', { organization: status.organization!.name })
   return t('linkConnecting')
+}
+
+/** Whether starting again may help: remote access could not start, or the relay is out of reach or turned this Host away. */
+function retryable(status: PanelStatus): boolean {
+  return status.state === 'failed' || (status.state === 'on' && ['offline', 'refused', 'replaced'].includes(status.link.state))
+}
+
+/** Why a device cannot be added yet; undefined once it can. */
+function blocker(settings: Settings, status: PanelStatus, t: Translate): string | undefined {
+  if (status.state === 'on') return status.link.state === 'online' ? undefined : t('addDeviceOffline')
+  if (!settings.enabled) return t('addDeviceDisabled')
+  if (status.state === 'sign-in') return t('addDeviceSignIn', { organization: status.organization!.name })
+  return t(status.state === 'off' ? 'addDeviceUnconfigured' : 'addDeviceFailed')
+}
+
+/** One way to connect: a radio button with its explanation and, when chosen, what it needs. */
+function Choice({ checked, disabled, label, onChange, children }: {
+  checked: boolean; disabled: boolean; label: string; onChange(): void; children: ReactNode
+}) {
+  return (
+    <div>
+      <label style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+        <input type="radio" style={{ accentColor: accent }} checked={checked} disabled={disabled} onChange={onChange} />
+        {label}
+      </label>
+      <div style={{ paddingLeft: 24 }}>{children}</div>
+    </div>
+  )
+}
+
+/**
+ * Tests the relay as configured: whether its address answers, and whether it
+ * admits this computer. While remote access runs, the second part is how its
+ * connection stands.
+ */
+function RelayCheck({ service, organization, t }: { service: Service; organization: string | undefined; t: Translate }) {
+  const [result, setResult] = useState<RelayTest | 'testing' | Error>()
+  const test = (): void => {
+    setResult('testing')
+    service.test().then(setResult, (cause: Error) => setResult(cause))
+  }
+  const lines = result === undefined || result === 'testing' ? [] : result instanceof Error ? [[t('testFailed'), false] as const] : testLines(result, organization, t)
+  return (
+    <div style={{ display: 'grid', gap: 4 }}>
+      <div>
+        <button type="button" style={button} disabled={result === 'testing'} onClick={test}>{t(result === 'testing' ? 'testing' : 'test')}</button>
+      </div>
+      {lines.length > 0 && (
+        <div role="status">
+          {lines.map(([line, fine]) => <p key={line} style={{ ...note, margin: 0, ...!fine && { color: danger } }}>{line}</p>)}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** The relay test in words, each saying whether it is fine: the address first, then the admission. */
+function testLines(result: RelayTest, organization: string | undefined, t: Translate): (readonly [string, boolean])[] {
+  if (result.state === 'unconfigured') return [[t('unconfigured'), false]]
+  if (result.state === 'sign-in') return [[t('signIn', { organization: organization! }), false]]
+  if (result.state === 'unreachable') return [[t('testUnreachable'), false]]
+  const { link } = result
+  // Settings changed while the test ran.
+  if (link.state === 'stopped') return [[t('testFailed'), false]]
+  const admission = link.state === 'online' ? t('testAdmitted')
+    : link.state === 'refused' ? t(link.code === Close.upgradeRequired ? 'linkUpgrade' : organization === undefined ? 'testRefused' : 'testRefusedMember')
+      : link.state === 'lapsed' ? t('linkLapsed', { organization: organization! })
+        : link.state === 'replaced' ? t('linkReplaced')
+          : link.state === 'offline' ? t('testNoConnection') : t('linkConnecting')
+  return [[t('testReachable'), true], [admission, link.state === 'online']]
 }
 
 /** A text field saved when it loses focus or on Enter; a password field clears once saved. */
@@ -206,17 +313,21 @@ function TextSetting({ label, hint, value, disabled, type = 'text', onSave }: {
 type Running = Extract<PanelStatus, { state: 'on' }>
 interface SectionProps { status: Running; t: Translate; act(action: () => Promise<PanelStatus>): void; service: Service }
 
-function Pairing({ status, t, act, service }: SectionProps) {
+/** Adding a device, or why it cannot be added yet, and the devices waiting for an answer. */
+function Pairing({ status, blocker, t, act, service }: Omit<SectionProps, 'status'> & { status: PanelStatus; blocker: string | undefined }) {
   const [copied, setCopied] = useState(false)
-  const { invite } = status
+  const invite = status.state === 'on' ? status.invite : undefined
   useEffect(() => setCopied(false), [invite?.link])
   return (
     <section style={section}>
       {invite === undefined
         ? (
-          <button type="button" style={strong} disabled={status.link.state !== 'online'} onClick={() => act(() => service.createInvite())}>
-            {t('addDevice')}
-          </button>
+          <div style={{ ...row, justifyContent: 'flex-start' }}>
+            <button type="button" style={blocker === undefined ? strong : button} disabled={blocker !== undefined} onClick={() => act(() => service.createInvite())}>
+              {t('addDevice')}
+            </button>
+            {blocker !== undefined && <span style={{ ...note, margin: 0 }}>{blocker}</span>}
+          </div>
         )
         : (
           <div style={{ display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
@@ -233,7 +344,7 @@ function Pairing({ status, t, act, service }: SectionProps) {
             </div>
           </div>
         )}
-      {status.pending.map(device => (
+      {status.state === 'on' && status.pending.map(device => (
         <div key={device.key} role="alert" style={{ marginTop: 12, padding: 12, border: `1px solid ${accent}`, borderRadius: 12 }}>
           <div style={{ fontSize: 14, fontWeight: 600 }}>{t('pending', { name: device.name || t('unnamed') })}</div>
           <p style={note}>{t('pendingHint')}</p>
@@ -301,6 +412,9 @@ export async function apply(ctx: Surface): Promise<(() => Promise<void>) | undef
     const remote = surface.remote.remoteDevices
     const service: Service = {
       status: () => unwrap(remote.status()),
+      retry: () => unwrap(remote.retry()),
+      test: () => unwrap(remote.test()),
+      signIn: () => unwrap(remote.signIn()),
       createInvite: () => unwrap(remote.createInvite()),
       cancelInvite: () => unwrap(remote.cancelInvite()),
       decide: (key, approved) => unwrap(remote.decide(key, approved)),
