@@ -28,6 +28,11 @@ import { deltaBaseArchives } from './update-delta-bases.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
+export function validateDataLayoutForBuild(dataLayout, development) {
+  if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
+  if (dataLayout === 'installed' && !development) throw new Error('Installed data layout is only allowed for development artifacts')
+}
+
 const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
@@ -59,7 +64,7 @@ export async function ciEduworkWindowsRelease({
 } = {}) {
   recipe = desktopBuildRecipe(recipe)
   assertPinnedNodeVersion()
-  if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
+  validateDataLayoutForBuild(dataLayout, development)
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)

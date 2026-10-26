@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream, existsSync, rmdirSync } from 'node:fs'
-import { copyFile, lstat, mkdir, readdir, readFile, rename, rm, rmdir, writeFile } from 'node:fs/promises'
+import { copyFile, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -166,35 +166,76 @@ async function targetState(targetRoot, sourceRoot, programRoot) {
   return { empty: true }
 }
 
-async function readIdentities(sourceRoot, targetRoot, writableRoot) {
+function assertManifest(manifest, desktop, release, label) {
+  if (!manifest || manifest.schemaVersion !== 1 || manifest.kind !== 'eduwork-portable-release'
+    || manifest.shell !== 'electron' || manifest.platform !== 'windows-x64') {
+    throw new Error(`${label} RELEASE-MANIFEST.json is invalid`)
+  }
+  if (manifest.version !== desktop.productVersion || manifest.version !== release.version) {
+    throw new Error(`${label} manifest version differs from desktop/release`)
+  }
+  if (manifest.distribution !== desktop.distribution) throw new Error(`${label} manifest distribution differs`)
+  if (!Array.isArray(manifest.files) || !manifest.files.length
+    || !manifest.files.some(file => file.path === 'resources/app/eduwork.desktop.json')
+    || !manifest.files.some(file => file.path === 'config/eduwork.jsonc')) {
+    throw new Error(`${label} RELEASE-MANIFEST.json is incomplete`)
+  }
+}
+
+async function readManifest(root, label) {
+  try { return await readJSON(join(root, 'RELEASE-MANIFEST.json')) }
+  catch (error) { if (error.code === 'ENOENT') throw new Error(`${label} RELEASE-MANIFEST.json is missing`); throw error }
+}
+
+async function readIdentities(sourceRoot, targetRoot) {
   const sourceDesktop = await readJSON(join(sourceRoot, 'resources/app/eduwork.desktop.json'))
   const targetDesktop = await readJSON(join(targetRoot, 'resources/app/eduwork.desktop.json'))
   const sourceRelease = await readJSON(join(sourceRoot, 'release.json'))
   const targetRelease = await readJSON(join(targetRoot, 'release.json'))
+  const sourceManifest = await readManifest(sourceRoot, 'Source')
+  const targetManifest = await readManifest(targetRoot, 'Target')
   if (sourceDesktop.schemaVersion !== 1 || sourceDesktop.shell !== 'electron') throw new Error('Source desktop identity is invalid')
   if (targetDesktop.schemaVersion !== 1 || targetDesktop.shell !== 'electron') throw new Error('Target desktop identity is invalid')
   if (sourceDesktop.dataLayout !== undefined && sourceDesktop.dataLayout !== 'portable') throw new Error('Source must use the portable data layout')
   if (targetDesktop.dataLayout !== 'installed') throw new Error('Target must use the installed data layout')
   if (sourceDesktop.distribution !== targetDesktop.distribution) throw new Error('Source and target distributions differ')
+  if (sourceDesktop.appId !== targetDesktop.appId) throw new Error('Source and target appIds differ')
+  const expectedAppId = `org.eduwork.${sourceDesktop.distribution}.electron`
+  if (sourceDesktop.appId !== expectedAppId) throw new Error('Source appId does not match its distribution')
+  if (sourceDesktop.productVersion !== sourceRelease.version) throw new Error('Source desktop and release versions differ')
+  if (targetDesktop.productVersion !== targetRelease.version) throw new Error('Target desktop and release versions differ')
+  if (typeof sourceRelease.dshVersion !== 'string' || !sourceRelease.dshVersion
+    || typeof sourceRelease.dshCommit !== 'string' || !/^[a-f0-9]{40}$/i.test(sourceRelease.dshCommit)) {
+    throw new Error('Source release DSH identity is missing')
+  }
+  if (typeof targetRelease.dshVersion !== 'string' || !targetRelease.dshVersion
+    || typeof targetRelease.dshCommit !== 'string' || !/^[a-f0-9]{40}$/i.test(targetRelease.dshCommit)) {
+    throw new Error('Target release DSH identity is missing')
+  }
   if (sourceRelease.dshVersion !== targetRelease.dshVersion || sourceRelease.dshCommit !== targetRelease.dshCommit) throw new Error('Source and target DSH versions differ')
   const base = version => String(version ?? '').split('-')[0]
   if (base(sourceDesktop.productVersion) !== base(targetDesktop.productVersion)) throw new Error('Source and target product baselines differ')
+  assertManifest(sourceManifest, sourceDesktop, sourceRelease, 'Source')
+  assertManifest(targetManifest, targetDesktop, targetRelease, 'Target')
   const sourceDataRoot = join(sourceRoot, 'data', DATA_NAMESPACE(sourceDesktop.distribution))
   const sourceConfig = join(sourceRoot, 'config/eduwork.jsonc')
   if (!existsSync(sourceConfig)) throw new Error('Source configuration is missing')
   if (!existsSync(sourceDataRoot)) throw new Error('Source portable data root is missing')
   const identitySha256 = createHash('sha256').update(JSON.stringify({ sourceDesktop, sourceRelease })).digest('hex')
-  return { sourceDesktop, targetDesktop, sourceRelease, targetRelease, sourceDataRoot, sourceConfig, identitySha256 }
+  return { sourceDesktop, targetDesktop, sourceRelease, targetRelease, sourceDataRoot, sourceConfig,
+    sourceManifestSha256: await hashFile(join(sourceRoot, 'RELEASE-MANIFEST.json')),
+    targetManifestSha256: await hashFile(join(targetRoot, 'RELEASE-MANIFEST.json')), identitySha256 }
 }
 
 export async function migratePortableToInstalled({ sourceRoot, targetRoot, writableRoot,
-  listProcesses = defaultListProcesses, copyFileImpl = copyFile, now = () => new Date().toISOString(), dryRun = false } = {}) {
+  listProcesses = defaultListProcesses, copyFileImpl = copyFile, writeReceiptImpl = writeFile,
+  now = () => new Date().toISOString(), dryRun = false } = {}) {
   assertAbsolute(sourceRoot, 'Source program root')
   assertAbsolute(targetRoot, 'Target program root')
   assertAbsolute(writableRoot, 'Target writable root')
   sourceRoot = resolve(sourceRoot); targetRoot = resolve(targetRoot); writableRoot = resolve(writableRoot)
   assertSeparate(sourceRoot, targetRoot, 'Source and target program roots')
-  const identity = await readIdentities(sourceRoot, targetRoot, writableRoot)
+  const identity = await readIdentities(sourceRoot, targetRoot)
   const target = await targetState(writableRoot, sourceRoot, targetRoot)
   await checkRunning(sourceRoot, listProcesses)
   await checkUpdateTransactions(sourceRoot)
@@ -231,18 +272,26 @@ export async function migratePortableToInstalled({ sourceRoot, targetRoot, writa
       schemaVersion: 1, kind: 'eduwork-portable-to-installed-v1', state: 'staged',
       source: { root: sourceRoot, distribution: identity.sourceDesktop.distribution,
         productVersion: identity.sourceDesktop.productVersion, dshVersion: identity.sourceRelease.dshVersion,
-        dshCommit: identity.sourceRelease.dshCommit, identitySha256: identity.identitySha256 },
+        dshCommit: identity.sourceRelease.dshCommit, manifestSha256: identity.sourceManifestSha256,
+        identitySha256: identity.identitySha256 },
       target: { root: writableRoot, programRoot: targetRoot, dataLayout: 'installed',
-        distribution: identity.targetDesktop.distribution, productVersion: identity.targetDesktop.productVersion },
+        distribution: identity.targetDesktop.distribution, productVersion: identity.targetDesktop.productVersion,
+        manifestSha256: identity.targetManifestSha256 },
       files: source.files.map(({ source, target, bytes, sha256 }) => ({ source, target, bytes, sha256 })),
       skipped: source.skipped, warnings: source.warnings, createdAt: now(),
     }
-    await writeFile(join(staging, RECEIPT), JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600, flag: 'wx' })
+    await writeReceiptAtomic(staging, receipt, writeReceiptImpl)
+    // A process may have restarted during the copy. This narrows the window;
+    // exclusive handoff/locking remains an integration precondition.
+    await checkRunning(sourceRoot, listProcesses)
+    receipt.state = 'activated'; receipt.activatedAt = now()
+    // The activated receipt is durable in staging before W becomes visible.
+    // A crash or write failure can therefore never leave an activated W with a
+    // staged or missing receipt; failure here leaves no W at all.
+    await writeReceiptAtomic(staging, receipt, writeReceiptImpl)
     if (target) rmdirSyncCompat(writableRoot)
     await rename(staging, writableRoot)
     activated = true
-    receipt.state = 'activated'; receipt.activatedAt = now()
-    await writeFile(join(writableRoot, RECEIPT), JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600 })
     return { source: sourceRoot, writableRoot, targetRoot, files: receipt.files, skipped: source.skipped, warnings: source.warnings, receipt }
   } finally {
     if (!activated) await rm(staging, { recursive: true, force: true }).catch(() => {})
@@ -253,6 +302,13 @@ function rmdirSyncCompat(path) {
   // The empty target was checked above; use the directory-only removal so a
   // concurrent non-empty root is never deleted recursively.
   try { rmdirSync(path) } catch (error) { if (error.code !== 'ENOENT') throw error }
+}
+
+async function writeReceiptAtomic(staging, receipt, writeImpl) {
+  const target = join(staging, RECEIPT)
+  const temporary = target + '.' + randomUUID() + '.tmp'
+  await writeImpl(temporary, JSON.stringify(receipt, null, 2) + '\n', { mode: 0o600, flag: 'wx' })
+  await rename(temporary, target)
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {

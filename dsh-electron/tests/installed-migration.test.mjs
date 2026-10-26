@@ -24,15 +24,20 @@ async function fixture(t) {
   const writable = join(base, 'W')
   const external = join(base, 'external-workspace')
   const namespace = 'example-electron'
-  const sourceDesktop = { schemaVersion: 1, shell: 'electron', appId: 'org.example.example.electron',
+  const sourceDesktop = { schemaVersion: 1, shell: 'electron', appId: 'org.eduwork.example.electron',
     distribution: 'example', productVersion: '0.4.9', product: '../product', node: '../runtime/node.exe', configurationOwnership: 'user' }
   const targetDesktop = { ...sourceDesktop, productVersion: '0.4.9-dev.20261026.2', dataLayout: 'installed' }
   const sourceRelease = { version: '0.4.9', dshVersion: '0.2.1-rc.3', dshCommit }
   const targetRelease = { ...sourceRelease, version: '0.4.9-dev.20261026.2' }
+  const manifest = version => ({ schemaVersion: 1, kind: 'eduwork-portable-release', version,
+    distribution: 'example', shell: 'electron', platform: 'windows-x64',
+    files: [{ path: 'resources/app/eduwork.desktop.json' }, { path: 'config/eduwork.jsonc' }] })
   await writeJSON(join(source, 'resources/app/eduwork.desktop.json'), sourceDesktop)
   await writeJSON(join(source, 'release.json'), sourceRelease)
+  await writeJSON(join(source, 'RELEASE-MANIFEST.json'), manifest('0.4.9'))
   await writeJSON(join(target, 'resources/app/eduwork.desktop.json'), targetDesktop)
   await writeJSON(join(target, 'release.json'), targetRelease)
+  await writeJSON(join(target, 'RELEASE-MANIFEST.json'), manifest('0.4.9-dev.20261026.2'))
   await mkdir(join(source, 'config/examples'), { recursive: true })
   await writeFile(join(source, 'config/eduwork.jsonc'), '{"desktop":{"closeAction":"exit","detailsPanelWidth":480}}\n')
   await writeFile(join(source, 'config/examples/README.md'), 'example\n')
@@ -196,4 +201,56 @@ test('refuses a non-empty update transaction directory', async t => {
   await writeFile(join(f.source, 'data/state/updates/transactions/0.4.9/backup'), 'backup\n')
   await assert.rejects(migratePortableToInstalled(options(f)), /unfinished update transaction/)
   assert.equal(await missing(f.writable), true)
+})
+
+test('leaves no W when the activated receipt cannot be written', async t => {
+  const f = await fixture(t)
+  let writes = 0
+  await assert.rejects(migratePortableToInstalled(options(f, {
+    writeReceiptImpl: async (path, data, opts) => {
+      writes++
+      if (writes === 2) throw new Error('receipt write failure')
+      await writeFile(path, data, opts)
+    },
+  })), /receipt write failure/)
+  assert.equal(await missing(f.writable), true)
+  assert.equal(await readFile(join(f.source, 'config/eduwork.jsonc'), 'utf8'), '{"desktop":{"closeAction":"exit","detailsPanelWidth":480}}\n')
+  assert.deepEqual((await readdir(f.base)).filter(name => name.includes('.migration-')), [])
+})
+
+test('rechecks old processes before activation', async t => {
+  const f = await fixture(t)
+  let checks = 0
+  await assert.rejects(migratePortableToInstalled(options(f, {
+    listProcesses: async () => {
+      checks++
+      return checks === 1 ? [] : [{ ProcessId: 7, ExecutablePath: join(f.source, 'EduWork-Electron.exe') }]
+    },
+  })), /still running/)
+  assert.equal(checks, 2)
+  assert.equal(await missing(f.writable), true)
+})
+
+test('refuses missing or contradictory identity fields and manifests', async t => {
+  const f1 = await fixture(t)
+  await writeJSON(join(f1.source, 'release.json'), { version: '0.4.9', dshVersion: '', dshCommit })
+  await assert.rejects(migratePortableToInstalled(options(f1)), /DSH identity is missing/)
+
+  const f2 = await fixture(t)
+  await writeJSON(join(f2.source, 'resources/app/eduwork.desktop.json'), { ...f2.sourceDesktop, appId: 'org.example.bad.electron' })
+  await assert.rejects(migratePortableToInstalled(options(f2)), /appId/)
+
+  const f3 = await fixture(t)
+  await writeJSON(join(f3.source, 'release.json'), { version: '0.4.8', dshVersion: '0.2.1-rc.3', dshCommit })
+  await assert.rejects(migratePortableToInstalled(options(f3)), /desktop and release versions differ/)
+
+  const f4 = await fixture(t)
+  await rm(join(f4.target, 'RELEASE-MANIFEST.json'))
+  await assert.rejects(migratePortableToInstalled(options(f4)), /RELEASE-MANIFEST.json is missing/)
+
+  const f5 = await fixture(t)
+  await writeJSON(join(f5.target, 'RELEASE-MANIFEST.json'), { schemaVersion: 1, kind: 'eduwork-portable-release',
+    version: '0.4.8', distribution: 'example', shell: 'electron', platform: 'windows-x64',
+    files: [{ path: 'resources/app/eduwork.desktop.json' }, { path: 'config/eduwork.jsonc' }] })
+  await assert.rejects(migratePortableToInstalled(options(f5)), /manifest version differs/)
 })

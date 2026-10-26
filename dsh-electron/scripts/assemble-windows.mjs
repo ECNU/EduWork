@@ -47,6 +47,7 @@ export async function assembleWindows({
   if (await pathExists(output)) throw new Error('Electron output must be a new directory')
   if (/(^|[\\/])current([\\/]|$)/i.test(output)) throw new Error('Electron cannot replace current')
   if (!/^\d+\.\d+\.\d+(?:-[A-Za-z0-9.-]+)?$/.test(version ?? '')) throw new Error('An explicit product version is required')
+  if (dataLayout === 'installed' && !desktopVersion(version).prerelease) throw new Error('Installed data layout requires a development version')
   const identity = await readJSON(join(product, 'assembly.json'))
   await runNode(join(scriptRoot, '../../scripts/verify-product-release-identity.mjs'), [product, version])
     .catch(() => { throw new Error('Product release identity verification failed') })
@@ -121,6 +122,7 @@ export async function assembleWindows({
     config.updates = { ...config.updates, defaultPolicy: 'development' }
     config.updateChannel = 'disabled-candidate'
   }
+  if (dataLayout === 'installed') config.updateChannel = 'disabled-candidate'
   await writeJSON(join(app, 'eduwork.desktop.json'), config)
 
   const updaterPath = join(output, 'resources/update/EduWork-Updater.exe')
@@ -157,8 +159,10 @@ export async function assembleWindows({
     dataLayout === 'installed'
       ? `Run EduWork-Electron.exe. Personal data stays under %LOCALAPPDATA%/EduWork/${identity.distribution}.`
       : `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
-    'Close the application before moving the entire folder. When an update feed is',
-    'configured, use Settings to check/download updates and choose when to restart.',
+    'Close the application before moving the entire folder.',
+    ...(dataLayout === 'installed'
+      ? ['This installed-layout experiment does not enable software updates.']
+      : ['When an update feed is configured, use Settings to check/download updates and choose when to restart.']),
     'To merge history from another installation, select its program root under',
     'Settings > Import history. Existing credentials and settings remain unchanged.',
   ].join('\n'))

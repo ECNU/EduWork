@@ -264,3 +264,11 @@ test('publication rejects missing, modified, unrecorded or mismatched extractor 
  ]
  for(const mutate of mutations){const fixture=await publicationFixture(t);await mutate(fixture);await assert.rejects(()=>validatedReleaseFiles(fixture.root,fixture.ctx))}
 })
+
+test('installed data layout is restricted to development artifacts', async () => {
+  const { validateDataLayoutForBuild } = await import('../scripts/ci-eduwork-windows-release.mjs')
+  assert.doesNotThrow(() => validateDataLayoutForBuild('portable', false))
+  assert.doesNotThrow(() => validateDataLayoutForBuild('installed', true))
+  assert.throws(() => validateDataLayoutForBuild('installed', false), /development artifacts/)
+  assert.throws(() => validateDataLayoutForBuild('other', true), /portable or installed/)
+})
