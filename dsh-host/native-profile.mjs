@@ -212,12 +212,14 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
     const saved = parse(preferencesText)
     if (!Array.isArray(saved)) throw new Error('Native profile preferences must be a patch list')
     const rebased = saved.map(row => {
-      if (row.config === undefined || !before.has(row.id) || !after.has(row.id)) return row
+      // A product row that appears or goes, such as an organization's relay,
+      // also rebases a config saved without it or with its copied defaults.
+      if (row.config === undefined || !before.has(row.id) && !after.has(row.id)) return row
       const config = rebaseNativeConfig(before.get(row.id), after.get(row.id), row.config)
       // Keep saved limits even when they equal the previous default. The
       // official form saves a whole config; intent cannot be inferred safely.
       const limit = { subagent: 'maxActiveSubagents', 'eduwork-concurrency': 'maxConcurrentRequests' }[row.id]
-      if (limit && Object.hasOwn(row.config, limit)) config[limit] = row.config[limit]
+      if (limit && config && Object.hasOwn(row.config, limit)) config[limit] = row.config[limit]
       return { ...row, config }
     })
     if (!isDeepStrictEqual(saved, rebased)) {
