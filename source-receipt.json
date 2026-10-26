@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "cbe4fae499058a77a8e19f4cdb8decd81e1af436d64f7589caf5af7eda6099b8",
+  "fileSetSHA256": "2bbb7a698e9a78c8073ecd2671af6f2f6f3cefe394ce2894972db4e847714183",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "eadee913c75864ce1c8cd08e814d8503b507483485ea1c440a01ed25f46795f7"
+      "sha256": "7da2a28a5d7571be1c166a593b9b8236140b2be682ab6acb39b5843181b1a78c"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -277,11 +277,11 @@
     },
     {
       "path": "docs/CORE-021_EN.md",
-      "sha256": "bc3b5fae8bcb6b53210e6b33561714f180e4a34fc599079072eeea4d9f02078d"
+      "sha256": "b753d872acd4e72f5f9e58d93f34c873dba94f1cad69fdc136fcc0e16e36cf0b"
     },
     {
       "path": "docs/CORE-021.md",
-      "sha256": "550eb548de85e46f548fc9854bc7e26002d3ffcabfdb551971349f173ba5fa34"
+      "sha256": "fbf28860aae3043c299882579d85fdf4741bc1c27859411e75c48d2740c759fa"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -1081,15 +1081,15 @@
     },
     {
       "path": "dsh-electron/README_EN.md",
-      "sha256": "0b7d5cb6e160c89c653d765f7a7495caa9a53f766cf586f2ca4344201e2cd067"
+      "sha256": "afb5c94e0de16fa16cacdda687be6e6d16478e97dcd9d35a9df8d6c46b0a17bc"
     },
     {
       "path": "dsh-electron/README.md",
-      "sha256": "1ff75222240f014afe8d301c9cc1b1c1353d634682c6cfaa26d6188c394964fd"
+      "sha256": "38a6103671a2961cba2c093e77445d3a7a35f180533c6185bc5556ef6ace3a8f"
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.mjs",
-      "sha256": "1f978ae9f2f6f013931173d8724330ab1bc6b69d52e160d1b97bcdc2dc5aac72"
+      "sha256": "79666a5caf53192554f8fa6897336417963330abd0881822000661d628869952"
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.ps1",
@@ -1109,7 +1109,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "efac0fdf72b771d40a7c5233baf4eb2fb010588137e3eee3684942088895c1ab"
+      "sha256": "43c9b58bd3838e6ee0ad6838bb37c30e1ebe310d6839cd7f106b96a69157bde7"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1177,7 +1177,7 @@
     },
     {
       "path": "dsh-electron/src/boot-brand-preload.cjs",
-      "sha256": "6b01ae8a9489696e85e8f2d4b1042c25acd323ededbb72df2fe1d920636ccd47"
+      "sha256": "6148c3944f54c08d5e7236e30a5a44689b62c28c2ebfb60cfc57882375358fda"
     },
     {
       "path": "dsh-electron/src/boot-motion-preload.cjs",
@@ -1197,7 +1197,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-exit.mjs",
-      "sha256": "9473bbfd4d97be51fef3ce13e807dbe2ad541f8d1e5ad3c0f7249ef6277c2a03"
+      "sha256": "bd687158915643bed281035530ab594099c3f22c3389f73ddd9135407d38368f"
     },
     {
       "path": "dsh-electron/src/desktop-main.mjs",
@@ -1273,7 +1273,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "dad3a217f0eebd5c3492f9b50ad705b44c7e2dac133ef65eac74141618860fdd"
+      "sha256": "6ad16d8d3ab5a940e906d058062e1350eb963234a7a9f27d945350a244c19227"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1293,7 +1293,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "cc257a35b82783ecff20f77dae3cc71517eb15a6a3d32e6a20b410a1ead3d5c0"
+      "sha256": "cf2f662dfb82d22e3736e1a679ac7d27c76704e9e55c9bc3ca5df9e97c71e80c"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1305,15 +1305,11 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "3f2d5b22512d0e9ac7698c18c57c2cd5031369f834915f612ee1e46a313d389b"
-    },
-    {
-      "path": "dsh-electron/src/startup-page.mjs",
-      "sha256": "4534d179aab5d1ff39bbd67959f4daa7239637db458715f707a13ad5137dc9c2"
+      "sha256": "91cf4c099d1d0a2a61ca8d7f4a44f9c6462fa591e7ebcd0756f69007cd807b83"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
-      "sha256": "bbabb560fbee41dbd8f8dce7ca4c0c07faf891351df9d55879e54ff76b12a223"
+      "sha256": "9e44c8b486db519fdc00ac8081a1f374f5648360102dc03d479ce46bb1654acf"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1361,7 +1357,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-exit.test.mjs",
-      "sha256": "d1d245f8a82bfab6ad142c65f816e0415e7f9f11642832173a5dc8a227ab0482"
+      "sha256": "47be09c1fea7536cf820ab4a506db3a55375310769fb041c46f285515ba17246"
     },
     {
       "path": "dsh-electron/tests/desktop-paths.test.mjs",
@@ -1405,7 +1401,7 @@
     },
     {
       "path": "dsh-electron/tests/dock-theme.electron.mjs",
-      "sha256": "f977f25432ff7a7ab1167fe094363a390c74601bf1460012d8f5d8f7507c6af2"
+      "sha256": "869861388481a1862c02657d593a9010e170371ea2ee3354ea7ef4ce0cf68493"
     },
     {
       "path": "dsh-electron/tests/electron-locales.test.mjs",
@@ -1421,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "c49c713c73f7236a72eb63bf11441d26a13238955cf5e092286bb1c2e1bd2df4"
+      "sha256": "7dbee033db16961e047384004366e1269422dd8ad5e1771e98453a3c2313fe36"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1437,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "a8fc775e22f7f25dc3ce34f5d66d912f79fa7913ddf296d4be69e1993416ade3"
+      "sha256": "d34971969bfd62d6905fc4921933be6c9cd6a8aa0711727f6fdd9a872dee8175"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1497,15 +1493,11 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "e1246206d939f53b1bbe8a1bef2a52c27fcdc1945bf8d6f1fe6be33f58c48569"
-    },
-    {
-      "path": "dsh-electron/tests/startup-page.test.mjs",
-      "sha256": "8d4006acb8773ce9b4a967fd16790edf87b104f82b23c46a5e1a2eedb0e600eb"
+      "sha256": "ba885b275d7570ce36eb547a743de04e18a8684a8c1f2089b7b676ccc91e2a68"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "a3b26ef6c2fb3a7695579c715d138e1779255e105633509975782fd646ac51f8"
+      "sha256": "01bdac02276e9a11a5f105b984f2162218f0e1d05ffb0dfcdc866380a245ccc8"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
@@ -6285,11 +6277,43 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT_EN.md",
-      "sha256": "b71961201f0c00dfd5523db72db354e9d5923c8b0323d0933c9b918f856b6177"
+      "sha256": "172b23e234154b21e7be2da820a5990c8c674f8ae260877dc02b2c3a9d2ad179"
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT.md",
-      "sha256": "f225c762b2d59f73f51f5d1636d19e77bf64f9c6622a068c9e2dba681541b727"
+      "sha256": "9e4f49f6bd0d8af89544a536b455c0aa2557563aa0b19a6da2cc800302aa99fa"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/.dockerignore",
+      "sha256": "abf0516acb8c6a321c0df16f706cb4426ad4bf9718fe313f25119e211f0983fd"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/.gitignore",
+      "sha256": "3b91408d20766809a4475a82bfb2d515fb8a811e2c0a041004f69b4cade3d64d"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/compose.yaml",
+      "sha256": "c3346cf0abfa3620f79529f1eeab6972acbcdb64ff25a71472f2af70b5a57069"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/Dockerfile",
+      "sha256": "92e075ca048be760911de734407fb779bed55349586c5c011d786fb29b4fdaf6"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/healthcheck.mjs",
+      "sha256": "9ab46c22629a7fe4a29a88af0209fcc55fdef8ca99618984b565f5f562d8eeed"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/README_EN.md",
+      "sha256": "0b5f4dff690d9d60a15e8809b78256ad624aa794622d84d3949d82231e33d310"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/README.md",
+      "sha256": "52ee0e4d5114dd356472b88f29c91f46a6cbf222585f03914fc0d03b7441bcd4"
+    },
+    {
+      "path": "packages/dsh-remote-access/docs/docker/relay.env.example",
+      "sha256": "750636b9a59ce9a7f844bf5669e4108b66bb6c980bceafb9fbd106ccd59577aa"
     },
     {
       "path": "packages/dsh-remote-access/docs/PROTOCOL.md",
@@ -6309,11 +6333,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "707ee4eb0a3ac5daf2f012016ac9c5afffe7827c675301d0f15837cdd938bda8"
+      "sha256": "8ef4fa1272013eb4e01a427f2f965dedf53b3c214d38379cf6e5bbab7acdf9dd"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "a7ffb87552494b6659e47c19b4edf74dbbf5d3b5b73a4efa1227d49aa52cf2af"
+      "sha256": "2b1da23e70b95b0f9bb996f8ae84451589f95ebe633ed6a5c934c58a8c967bba"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",

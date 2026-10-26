@@ -1,0 +1,26 @@
+name: eduwork-remote
+services:
+  relay:
+    # This image is built locally from the published npm package.
+    image: eduwork-remote-relay:${REMOTE_ACCESS_VERSION:-0.1.2}
+    build:
+      context: .
+      args:
+        REMOTE_ACCESS_VERSION: ${REMOTE_ACCESS_VERSION:-0.1.2}
+    restart: unless-stopped
+    init: true
+    env_file: relay.env
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8787"
+    # A reverse proxy on this machine terminates HTTPS and forwards WebSockets.
+    ports:
+      - "127.0.0.1:8787:8787"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

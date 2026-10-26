@@ -22,7 +22,7 @@ import { macosArchitecture } from '../../scripts/lib/macos-architecture.mjs'
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 
 // Contents/Resources/brand must carry exactly this set on macOS. The Dock tile
-// theme, the startup progress window and the menu bar item all read from it at
+// theme, the startup page and the menu bar item all read from it at
 // runtime, so the assembler copies the full list and fails before signing when
 // one is absent instead of letting the packaged app crash on launch.
 const BRAND_ASSETS = [
@@ -129,7 +129,7 @@ export async function assembleMacos({
   const brand = join(resources, 'brand')
   await mkdir(brand)
   // Every asset here is read at runtime from Contents/Resources/brand: the Dock
-  // tile and progress window icons, the two theme variants and the menu bar
+  // tile and startup page icons, the two theme variants and the menu bar
   // template. A missing file only surfaces as a launch crash, so copy the whole
   // set and assert it before the app is signed.
   for (const asset of ['icon-32.png', 'icon-256.png', 'icon-1024.png', 'icon-blue-1024.png', 'dock-red-1024.png', 'dock-blue-1024.png', 'icon.icns', 'tray-black.png']) {
