@@ -257,7 +257,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         setTimeout(completed, 0)
         return { startupWindowHidden: scenario === 'deferred-hidden-completion' || scenario === 'main-hidden-handoff', restoreMainWindow: scenario === 'main-first-handoff' }
       },
-      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing,
+      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => lifecycle.closing, deferReopenWhileQuitting: () => false,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: assert.fail, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
