@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "917a138a747952a5bd8cdc62bcdb7163932a957c8e28583ac4d7a4ae5916db00",
   "files": [
     {
       "path": ".gitattributes",
@@ -2069,11 +2069,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/index.js",
-      "sha256": "37d7ce03da6eba9882b62348a52415621f6cef702d2d95f81757f434dd537f83"
+      "sha256": "1248abf5950ad2c0ec578a759f60c98ce609f24d9c56c4806064183cf0d456b8"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
-      "sha256": "b374f7ded9cd8f488f3341b26653fa991a3e64dea50c5a3f6b9490dc717d254e"
+      "sha256": "a20fc4839bc81eb860574c38e1d21dba5e9d76a7bdedc4c1512956c02b105638"
     },
     {
       "path": "dsh-plugins/browser-upstream/package.json",
@@ -2081,15 +2081,15 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "3003995b38dff3238f8d767b86873b9de7bb3877b9ebbe8c6b3763de2bd209b8"
+      "sha256": "bbfb4ba20320268466a257d6545d17d8f28a6c7ca95b16c5108c4cc27c9b1417"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "26f1db09adefd5b22dc9ff01f46ad76c28b4ade3029ecb5bbb872d1a1f0344c2"
+      "sha256": "df5277207d92af964cb2f69ed0355d724f2c394554da8879f06cb67b0f785ac5"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
-      "sha256": "ba3c16646d4899f22b1404dafba5290f4c80b1073d8ccaf61957081e75cd6bf9"
+      "sha256": "5ffb572d3f291e4ad07639614d3f19b83232eb727c685f9cfc7bd26b64a33873"
     },
     {
       "path": "dsh-plugins/calendar/build-client.mjs",
@@ -3029,7 +3029,7 @@
     },
     {
       "path": "dsh-plugins/tool-browser/lib/core.js",
-      "sha256": "941757c8b994e3825f218ebb4d3b4b22e4f1d79697b8ed3160ac1f4e0420b2a0"
+      "sha256": "aed8c5676eed86978c1229ba45d9311465effb167aa4e7f919b3e8b3f6b1afbe"
     },
     {
       "path": "dsh-plugins/tool-browser/lib/index.js",
@@ -3069,7 +3069,7 @@
     },
     {
       "path": "dsh-plugins/tool-browser/test/core.test.js",
-      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d"
+      "sha256": "82165b52e3f77de676698b072b49ba29b6ee0334f326e8c1127a4017c2d96dee"
     },
     {
       "path": "dsh-plugins/tool-browser/test/managed-browser.test.mjs",
@@ -7993,6 +7993,18 @@
   ],
   "reviewedCompatibility": [
     {
+      "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
+      "sha256": "5ffb572d3f291e4ad07639614d3f19b83232eb727c685f9cfc7bd26b64a33873",
+      "kind": "synthetic-network-classification-test",
+      "reason": "The private URLs are synthetic Playwright page reports and navigation targets in browser private-target permission tests; they are not configured service endpoints. Keys and all other private content are still audited."
+    },
+    {
+      "path": "dsh-plugins/tool-browser/test/core.test.js",
+      "sha256": "82165b52e3f77de676698b072b49ba29b6ee0334f326e8c1127a4017c2d96dee",
+      "kind": "synthetic-network-classification-test",
+      "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
+    },
+    {
       "path": "scripts/dev-studio-web.mjs",
       "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
       "kind": "inactive-legacy-institution-references",
@@ -8003,12 +8015,6 @@
       "sha256": "4db760a47d296113f58ec18585e8501393f5b5954a014f7bac94aee75b4ec101",
       "kind": "inactive-legacy-institution-references",
       "reason": "Metadata-only skill projection retains one shared instruction body and follows the selected distribution credential binding. Platform-aware separators preserve the configured-root path checks; legacy institution registration is unchanged and remains inactive in EduWork. No endpoint or credential exemption."
-    },
-    {
-      "path": "dsh-plugins/tool-browser/test/core.test.js",
-      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d",
-      "kind": "synthetic-network-classification-test",
-      "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
