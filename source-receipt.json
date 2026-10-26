@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "26bd5c5f728b931d4b5b9ebec5d713c4ef054c68baa76d1977b2cf573f272778",
+  "fileSetSHA256": "bb959b81aa55d3429aef02d1010f83f59fb59825dd61d7a1d1ae2e30d789f68c",
   "files": [
     {
       "path": ".gitattributes",
@@ -1293,7 +1293,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "06e1e9996c2d1d28fc06e6454ebd044ba3b86c79c42bc29aa2c90562ffba0409"
+      "sha256": "8f32092b0bf29c6b2aba80aa92372add42a9442c96abb30fe185f815e3d5eb2c"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
