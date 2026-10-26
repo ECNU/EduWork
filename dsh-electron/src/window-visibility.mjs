@@ -11,9 +11,9 @@ export function showDesktopWindows(windows) {
   return false
 }
 
-export function attachAppActivation({ app, windows, platform = process.platform }) {
+export function attachAppActivation({ app, windows, platform = process.platform, deferred = () => false }) {
   if (platform !== 'darwin') return () => {}
-  const activate = () => showDesktopWindows(windows())
+  const activate = () => deferred() || showDesktopWindows(windows())
   app.on('activate', activate)
   return () => app.removeListener('activate', activate)
 }
