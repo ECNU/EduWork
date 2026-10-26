@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-26T15:22:15.709Z",
-  "fileSetSHA256": "3af2cab8ed4a6ce3d2309e91ae97564e44537a816e9f28dc6445fb059c958d0f",
+  "createdAt": "2026-10-25T17:56:32.937Z",
+  "fileSetSHA256": "3278e75aa1525c9e7612f5e2dd8d47e8c77bb315b72dd91eaaedecbfe14d670b",
   "files": [
     {
       "path": ".gitattributes",
@@ -1293,7 +1293,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "cc257a35b82783ecff20f77dae3cc71517eb15a6a3d32e6a20b410a1ead3d5c0"
+      "sha256": "15ceb4dbd440cf12c156b020c90e956bd706c56c8843481bbca0478e5e2039e9"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "3f2d5b22512d0e9ac7698c18c57c2cd5031369f834915f612ee1e46a313d389b"
+      "sha256": "5e47667c035cb7286b6dbcda940adf274f06393b6ce725910f99deeb8e48e72c"
     },
     {
       "path": "dsh-electron/src/startup-page.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "e1246206d939f53b1bbe8a1bef2a52c27fcdc1945bf8d6f1fe6be33f58c48569"
+      "sha256": "11c10c334d57ef1e40a1c7701d24080a90faf86dc61dd09b41f22e657f989415"
     },
     {
       "path": "dsh-electron/tests/startup-page.test.mjs",
@@ -1585,7 +1585,7 @@
     },
     {
       "path": "dsh-host/content-updates.mjs",
-      "sha256": "9828a333388e786fc96041e6260315ede9eaf534813666927a551a140d72f28c"
+      "sha256": "8e2290f1e1985c835db6705cfa095abb55cedc39b026d4a2ac6ca67af088d816"
     },
     {
       "path": "dsh-host/desktop-log.mjs",
@@ -1649,7 +1649,7 @@
     },
     {
       "path": "dsh-host/product-profile.mjs",
-      "sha256": "5de86428b032bd71b915b187ba6952efac009a09f203b35e06b9e04144538d92"
+      "sha256": "cbffc49e41d29f6db52ec6b043f6f66059c314d1fffa543de86ee64517d88e19"
     },
     {
       "path": "dsh-host/publisher-bootstrap.mjs",
@@ -1693,7 +1693,7 @@
     },
     {
       "path": "dsh-host/test/content-updates.test.mjs",
-      "sha256": "8638a1afdaeea0c55a8b6727af277910bd94df87cbc18de746af185d530625bf"
+      "sha256": "73cb464cda32029e147d8e69f2e75246beed874f17d98a87570d639afa0c479c"
     },
     {
       "path": "dsh-host/test/desktop-updates.test.mjs",
@@ -1757,7 +1757,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "fd4a07da3b4ad953c2f7eced2f0d518685be13d0818b6d4fcfe245b89263c5ab"
+      "sha256": "3e2dace57097fb05e121cec4a4d5ad02f7e3a0c2bbf27c016ed9d64f67194778"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
