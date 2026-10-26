@@ -83,8 +83,25 @@ export class SideChatService {
             : next())
         },
       })
+      // The side chat is a regular durable Session, so it must join its source
+      // Workspace explicitly. Without this the sidebar lists it under the
+      // generic Ungrouped bucket for its whole lifetime.
+      entry.workspace = await this.attachWorkspace(entry.sessionId, observed.header.cwd)
     } finally {
       observed[Symbol.dispose]()
+    }
+  }
+
+  async attachWorkspace(sessionId, cwd) {
+    const registry = this.ctx.get('workspaceRegistry')
+    if (registry === undefined || typeof cwd !== 'string' || cwd === '') return undefined
+    try {
+      const workspace = await registry.resolveByPath(cwd)
+      await workspace?.attachSession(sessionId)
+      return workspace
+    } catch {
+      // A missing or unregistered Workspace only costs presentation, never the chat.
+      return undefined
     }
   }
 
@@ -110,6 +127,7 @@ export class SideChatService {
     entry.cleanup ??= (async () => {
       await entry.creation?.catch(() => {})
       await entry.handle?.dispose()
+      if (entry.workspace !== undefined) await entry.workspace.detachSession(entry.sessionId).catch(() => {})
       if (this.entries.get(owner) === entry) this.entries.delete(owner)
       return { closed: true }
     })().catch(error => { entry.cleanup = undefined; throw error })
