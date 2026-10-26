@@ -104,7 +104,7 @@ export function configureEduworkPaths() {
   // Startup/error recovery must take precedence over a partially loaded workbench.
   attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
-  // user closes the progress window before the Host becomes ready.
+  // user quits while configuration is still being prepared.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })
   app.on('before-quit', event => {
     if (desktopExit.complete) return
