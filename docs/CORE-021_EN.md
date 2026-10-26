@@ -22,7 +22,7 @@ Active-session persistence can still disrupt searches: the relevant implementati
 
 Keep the settings navigation icons, user-message annotation decoration seat and client-module metadata guard. rc.3 still treats the ctime change from unlinking a differential-update backup as a code rebuild; the guard skips a reload only when both mtime and code bytes are unchanged. The new menu gate respects edition preferences; upstream still owns preset registration, workspace selection and drafts.
 
-The desktop follows DSH startup presentation: load the static page in a hidden main window, show the window once the Host is ready, then let BootPage finish loading client plugins and enter the workspace. The upstream Host and client own the theme; branding, configuration downloads, migration and failure recovery keep their existing implementations. During startup, Dock activation and repeated launches can still restore a configuration download or error window without revealing the main window early.
+Ordinary startup follows DSH presentation: load the static page in a hidden main window, show it once the Host is ready, then let BootPage finish loading client plugins and enter the workspace. Initial configuration downloads and legacy migration show that same main window's BootPage earlier, display preparation status, and continue into the workspace when ready. Preparation follows the system appearance until upstream loads the theme settings. Branding remains, and failures use a dedicated recovery window. Dock activation, tray actions and repeated launches can restore the current preparation or recovery window; completing preparation does not force a window the user has hidden back into view.
 
 ## Building and verification
 
