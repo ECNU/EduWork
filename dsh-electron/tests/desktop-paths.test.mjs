@@ -115,3 +115,13 @@ test('Portable layout ignores LocalAppData and keeps the program root', () => {
   assert.equal(paths.config, join(root, 'config/eduwork.jsonc'))
   assert.equal(paths.home, join(root, 'data/example-electron/dsh'))
 })
+
+test('Installed config overrides stay inside the writable root', () => {
+  const appRoot = resolve('synthetic-installed/resources/app'), root = resolve('synthetic-installed')
+  const testRoot = resolve('synthetic-installed-user-root/example')
+  const inside = join(testRoot, 'config/eduwork.jsonc')
+  const paths = desktopPaths({ appRoot, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32', testRoot, configOverride: inside })
+  assert.equal(paths.config, inside)
+  assert.throws(() => desktopPaths({ appRoot, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32', testRoot, configOverride: join(root, 'config/eduwork.jsonc') }), /inside the writable root/)
+  assert.throws(() => desktopPaths({ appRoot, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32', testRoot, configOverride: 'relative/eduwork.jsonc' }), /inside the writable root/)
+})

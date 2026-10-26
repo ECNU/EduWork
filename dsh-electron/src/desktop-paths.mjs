@@ -31,6 +31,9 @@ export function desktopPaths({ appRoot, appData, localAppData, settings, platfor
     if (inside(root, writableRoot, platform) || inside(writableRoot, root, platform)) {
       throw new Error('Installed data directory must be separate from the program directory')
     }
+    if (configOverride && (!isAbsolute(configOverride) || !inside(writableRoot, configOverride, platform))) {
+      throw new Error('Installed mode configuration override must be an absolute path inside the writable root')
+    }
   } else {
     writableRoot = mac ? join(appData, namespace) : root
   }

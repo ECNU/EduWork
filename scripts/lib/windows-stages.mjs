@@ -29,6 +29,7 @@ import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
 import { desktopVersion } from '../desktop-build-plan.mjs'
 import { createWindowsDeltas } from '../windows-update-delta.mjs'
 import { verifyPublisherFirstLaunch } from './publisher-acceptance.mjs'
+import { prepareWritableRoot } from '../../dsh-electron/src/writable-root.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -194,9 +195,16 @@ async function acceptWindows({ workspace, coreRoot }) {
     : join(gui, 'data')
 
   const frozenProduct = join(desktop, 'resources/product')
-  const config = join(gui, 'config/eduwork.jsonc')
-  await copyTree(join(desktop, 'config'), join(gui, 'config'))
   const bootstrapEnabled = await pathExists(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
+  let config
+  if (dataLayout === 'installed') {
+    prepareWritableRoot({ root: join(gui, 'data'), distribution: desktopIdentity.distribution,
+      product: frozenProduct, productVersion: desktopIdentity.productVersion })
+    config = join(gui, 'data/config/eduwork.jsonc')
+  } else {
+    config = join(gui, 'config/eduwork.jsonc')
+    await copyTree(join(desktop, 'config'), join(gui, 'config'))
+  }
   if (verifyPublisherBootstrap && !bootstrapEnabled) throw new Error('Publisher acceptance requires a packaged descriptor')
   if (bootstrapEnabled && !verifyPublisherBootstrap) {
     // Exercise the offline migration path with an isolated synthetic profile.

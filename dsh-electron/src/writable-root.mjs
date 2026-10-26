@@ -5,6 +5,13 @@ import { dirname, join, resolve } from 'node:path'
 const MARKER = '.eduwork-writable-root.json'
 const SCHEMA_VERSION = 1
 
+export const WRITABLE_ROOT_MARKER = MARKER
+
+export function writableRootMarker({ distribution, productVersion, now = () => new Date().toISOString() }) {
+  if (typeof distribution !== 'string' || !/^[a-z0-9-]+$/u.test(distribution)) throw new Error('Invalid writable root distribution')
+  return { schemaVersion: SCHEMA_VERSION, layout: 'installed', distribution, productVersion, createdAt: now() }
+}
+
 function readMarker(path) {
   const info = lstatSync(path, { throwIfNoEntry: false })
   if (!info) return null
@@ -61,7 +68,7 @@ export function prepareWritableRoot({ root, distribution, product, productVersio
     copyFileSync(template.config, join(config, 'eduwork.jsonc'), constants.COPYFILE_EXCL)
     if (existsSync(template.examples)) cpSync(template.examples, join(config, 'examples'), { recursive: true, force: false, errorOnExist: false })
     mkdirSync(join(temporary, 'data'), { recursive: true })
-    const marker = { schemaVersion: SCHEMA_VERSION, layout: 'installed', distribution, productVersion, createdAt: now() }
+    const marker = writableRootMarker({ distribution, productVersion, now })
     writeFileSync(join(temporary, MARKER), JSON.stringify(marker, null, 2) + '\n', { mode: 0o600, flag: 'wx' })
     if (existing) rmdirSync(root)
     renameSync(temporary, root)
