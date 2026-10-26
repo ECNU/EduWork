@@ -52,6 +52,8 @@ on:
       - 'scripts/test/client-module-metadata-runtime.test.mjs'
       - 'scripts/patch-entry-customization-runtime.mjs'
       - 'scripts/test/entry-customization-runtime.test.mjs'
+      - 'scripts/patch-runtime-resilience-runtime.mjs'
+      - 'scripts/test/runtime-resilience.test.mjs'
       - 'scripts/test/deepseek-catalog-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
@@ -171,6 +173,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Client module metadata rebuild checks failed' }
           node --test core/scripts/test/entry-customization-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Optional Creator navigation checks failed' }
+          node --test core/scripts/test/runtime-resilience.test.mjs
+          if ($LASTEXITCODE) { throw 'Image limit, session isolation and web boot tolerance checks failed' }
           node --test core/scripts/test/deepseek-catalog-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Official API-key catalog compatibility checks failed' }
           node --test core/scripts/test/settings-navigation-runtime.test.mjs
