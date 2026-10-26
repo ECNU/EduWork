@@ -34,10 +34,20 @@ interface OidcAccounts {
   identityToken(profileID: string): Promise<{ readonly token: string; readonly expiresAt: number }>
 }
 
+/**
+ * The part of DSH's hot reload service used here. DSH declares it private but
+ * offers no other way to leave a configuration change; checked for 0.2.1-rc.2 and rc.3.
+ */
+interface Hmr {
+  /** Set while a configuration change runs; DSH refuses a settings write made inside one. */
+  readonly executing: AsyncLocalStorage<unknown>
+}
+
 declare module '@deepseek-ai/cordis' {
   interface Context extends DshServices {
     credentials: { resolve(ref: string): Promise<{ readonly value: string } | undefined> }
     oidcAccounts: OidcAccounts
+    hmr: Hmr
   }
   interface Events {
     'loader/volatile-update'(): void
@@ -95,10 +105,12 @@ const Config = z.object({
 const STATE = (): string => dshHomePath('plugins', 'dsh-remote-access', 'state.json')
 
 /**
- * The async context the plugin was loaded in. A settings change reaches the
- * plugin inside DSH's configuration transaction; connections started there
- * would carry it into every later request, and DSH refuses a settings write
- * from inside a transaction. Remote access starts in this context instead.
+ * The async context the plugin was loaded in. Connections carry the context
+ * they start in into every later request, so remote access starts in this one,
+ * not in that of whatever restarted it, and outside DSH's configuration
+ * transaction, which refuses a settings write from inside it. A settings change
+ * reaches the plugin inside that transaction, and a plugin installed or enabled
+ * while DSH runs is even loaded inside it.
  */
 const loadContext = AsyncLocalStorage.snapshot()
 
@@ -129,7 +141,12 @@ export default class RemoteDevices extends TypertRemoteService {
     this.config = config
     this.dsh = ctx
     this.logger = ctx.logger('eduwork-remote-access')
-    const restart = this.restartLater = (): void => { this.settled = loadContext(() => this.settled.then(() => this.restart())) }
+    const restart = this.restartLater = (): void => loadContext(() => {
+      const start = (): void => { this.settled = this.settled.then(() => this.restart()) }
+      const hmr = ctx.get('hmr')
+      if (hmr === undefined) start()
+      else hmr.executing.exit(start)
+    })
     ctx.on('loader/volatile-update', restart)
     ctx.on('credentials/reference-updated', ref => ref === ACCESS_KEY_REF && restart())
     const { oidcProfileId } = config.organization
