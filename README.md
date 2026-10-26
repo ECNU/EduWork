@@ -4,7 +4,7 @@
 
 <h1 align="center">EduWork</h1>
 
-<p align="center"><strong>基于 DSH 的教育发行版。</strong><br><sub>单点登录 · 插件与技能 · Knowledge Studio</sub></p>
+<p align="center"><strong>基于 DSH 的教育发行版。</strong><br><sub>机构接入 · 资料创作 · 插件与技能</sub></p>
 
 <div align="center">
 
@@ -12,237 +12,109 @@
 
 **简体中文** | [English](README_EN.md)
 
-[项目官网](https://ecnu.github.io/EduWork/) · [发行版关系](#从-dsh-到学校发行版) · [插件](#随包插件) · [技能](#随包技能) · [单点登录](#单点登录与开放模型接入) · [Studio](#knowledge-studio) · [开始使用](#安装与使用)
+[项目官网](https://ecnu.github.io/EduWork/) · [预装插件](#随包插件) · [安装与使用](#安装与使用) · [详细文档](#详细文档) · [Roadmap 讨论](https://github.com/ECNU/EduWork/issues/95)
 
 </div>
 
-EduWork 是基于 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness) 的教育发行版，为教学、科研与办公选配插件、技能和桌面运行环境。下载后即可围绕本机资料开展工作；接入学校或企业的模型服务后，用组织账号登录即可使用获授权的模型。
+EduWork 基于 [DeepSeek Harness（DSH）](https://github.com/deepseek-ai/deepseek-harness)，为教学、科研与办公组合插件、技能和桌面运行环境。围绕本机资料开展对话、创作和学习，可以连接个人模型服务，也可以使用兼容的学校或企业账号登录。
+
+![EduWork 工作区：对话、资料与成果预览](docs/images/workspace.png)
 
 ## 从 DSH 到学校发行版
 
-借用 Linux 内核与发行版的关系来理解：**DSH 提供 Agent 运行时与插件体系，DeepSeek 官方客户端提供官方组合；EduWork 在同一基础上组织教育场景的插件、技能与配置，学校再按自己的服务扩展发行。**
-
-```mermaid
-flowchart TD
-    DSH["DeepSeek Harness · 运行时与插件体系"] --> Official["DeepSeek 官方客户端"]
-    DSH --> EduWork["EduWork · 教育发行版"]
-    EduWork --> ECNU["EduWork@ECNU · 华师发行版"]
-    EduWork --> School["其他学校的发行版"]
-```
-
-EduWork 的重点是把教育工作需要的能力组合好：**开放的机构登录与模型接入、资料驱动的 Knowledge Studio，以及配套的创作、检索和学习技能。** 通用能力持续复用 DSH 的实现；学校服务通过配置和插件接入。[EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) 是在此基础上增加华东师范大学服务的发行版，其他学校可以直接基于 EduWork 维护自己的组合。
+DSH 提供 Agent 运行时与插件体系；EduWork 复用上游的会话、工具、浏览器与文件能力，维护教育场景的公共组合。学校与机构通过配置和插件接入自己的模型、业务服务和品牌。[EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) 是其中一个实践。
 
 ## 随包插件
 
-插件提供可执行能力、服务连接和界面。教育发行版已选配以下主要插件，桌面用户无需逐个安装：
+下面的插件随公版客户端预装，无需逐个安装。点击名称查看使用方法、服务要求与兼容范围。
 
-| 插件 | 带来的能力 | 使用条件 |
-| --- | --- | --- |
-| [机构登录与模型接入](packages/dsh-oidc/README.md) · `@eduwork/dsh-oidc` | 浏览器单点登录、模型发现、Token 刷新；支持 oidc-llm 草案和 LiteLLM 原生 OAuth。 | 配置兼容的机构或网关服务。 |
-| [Knowledge Studio](packages/dsh-knowledge-studio/README.md) · `@eduwork/dsh-knowledge-studio` | 从工作区资料生成报告、思维导图、测验、闪卡、表格、演示文稿及音视频概览。 | 已连接模型；媒体成果按所需服务启用。 |
-| [成果与媒体服务](packages/dsh-knowledge-studio/packages/artifact-services/README.md) · `@eduwork/dsh-artifact-services` | Office 文件生成与预览、语音和媒体制作，供对话与 Studio 共用。 | 使用随包本地资源或已配置的服务。 |
-| [文献检索](packages/dsh-literature/README.md) · `@eduwork/dsh-literature` | 检索 DBLP、arXiv 文献，获取 BibTeX 和可用全文。 | Fork 自 [SihanLv/dsh-literature](https://github.com/SihanLv/dsh-literature)，由 EduWork 接续维护；计划逐步拓展文献来源。 |
-| [本地记忆](packages/dsh-memory/README.md) · `@eduwork/dsh-memory` | 管理本地记忆、检索历史对话，延续任务背景。 | 在本机管理。 |
-| [邮件助手](packages/dsh-mail/README.md) · `@eduwork/dsh-mail` | 读取 IMAP 邮件，经授权通过 SMTP 发送邮件。 | 连接邮箱并配置相应权限。 |
-| [选段批注](packages/dsh-annotation/README.md) · `@eduwork/dsh-annotation` | 引用回复中的片段、添加和编辑批注，多条批注一起发送，并保留来源编号。 | 从 0.4.8 起预装，沿用 DSH 原生输入框和草稿。 |
-| [远程访问](packages/dsh-remote-access/README.md) · `@eduwork/dsh-remote-access` | 从手机或其他电脑的浏览器继续本机会话、处理授权；支持本机配对与设备撤销。 | 从 0.4.8 起预装，远程连接默认关闭；先按[部署指南](packages/dsh-remote-access/docs/DEPLOYMENT.md)自建中继，再配置地址与接入 Key。 |
-| [浏览器](dsh-plugins/tool-browser/README.md)与[媒体服务接入](dsh-plugins/media-openai/README.md) | 浏览网页；连接 OpenAI 兼容的图像生成、云端 TTS 服务。 | 网页需联网；云端媒体需另配服务。 |
-| [技能管理](dsh-plugins/skill-settings-native/README.md)与[工作台设置](dsh-plugins/workbench-native/README.md) | 管理技能，提供历史导入、通知和更新设置等桌面能力。 | 随发行版提供。 |
-| [桌面宠物](packages/dsh-desktop-pet/README.md) · `@eduwork/dsh-desktop-pet` | 桌面上的小宠物，随会话状态变化，点击打开需要处理或已完成的会话；可选形象和大小。 | 独立 npm 插件，随客户端提供；需要 EduWork 桌面桥接。默认关闭，在“设置 → 桌面宠物”中开启。 |
+<a id="knowledge-studio"></a>
 
-**随包提供不等于所有外部服务都已开通。** 公版不包含学校账号、模型额度或私人凭据。完整组合见[发行清单](config/distributions/generic.json)；公共 npm 插件也可供匹配版本的其他 DSH 应用独立使用。
-
-## 随包技能
-
-技能（Skills）提供任务方法与操作指引，调用插件提供的工具。它们与插件分别管理，对话和 Studio 共用同一套创作能力。
-
-| 技能 | 用途 |
+<!-- BEGIN GENERATED PLUGINS -->
+| 插件 | 能做什么 |
 | --- | --- |
-| `artifact-documents` | 撰写、编辑 Word 文档。 |
-| `artifact-presentations` | 组织内容并制作 PPT 演示文稿。 |
-| `artifact-spreadsheets` | 整理数据、计算分析并生成电子表格。 |
-| `artifact-pdfs` | 阅读、生成和检查 PDF。 |
-| `artifact-images` | 通过已配置服务创作插图、海报等图像。 |
-| `artifact-speech` | 查询可用音色、生成语音，按已就绪提供方转写音频。 |
-| `artifact-video` | 编排并生成视频内容。 |
-| `knowledge-studio` | 从资料创建并登记 Studio 成果。 |
-| `browser` | 检索公开信息、阅读和操作网页。 |
-| `skill-creator` | 创建与维护自己的技能。 |
-| `eduwork-help` | 查找产品使用方法与排障说明。 |
+| [机构登录与模型接入](packages/dsh-oidc/README.md) | 通过浏览器登录兼容的机构网关，发现模型并自动续期。支持 LiteLLM OAuth 与实验性 oidc-llm 接入。 |
+| [Knowledge Studio](packages/dsh-knowledge-studio/README.md) | 把资料变成报告、演示、思维导图、测验与闪卡；配套成果服务提供 Office 预览和媒体制作，与对话共用。 |
+| [选段批注](packages/dsh-annotation/README.md) | 选中回复片段添加批注，保留来源编号，多条一起发送；复用 DSH 的输入框与草稿。 |
+| [文献检索](packages/dsh-literature/README.md) | 检索 DBLP、arXiv 文献，获取 BibTeX 与可用全文，把研究资料接入后续任务。 |
+| [本地记忆](packages/dsh-memory/README.md) | 管理本地记忆、检索历史对话，让后续任务接得上已有背景。记忆在本机管理。 |
+| [邮件助手](packages/dsh-mail/README.md) | 连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。 |
+| [桌面宠物](packages/dsh-desktop-pet/README.md) | 用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。 |
+| [远程访问](packages/dsh-remote-access/README.md) | 配对后从其他终端的浏览器继续本机会话、处理授权。先部署中继并配置地址与接入 Key，再开启连接。 |
+<!-- END GENERATED PLUGINS -->
 
-你可以启停内置技能、导入个人技能，或为项目编写专用技能。复制技能只会增加操作指引；它依赖的模型、插件和服务仍需可用。
+插件也以独立 npm 包维护，可按各自兼容范围供其他 DSH 应用复用。外部模型、邮箱和媒体服务需自行配置；公版不附带模型额度或私人凭据。
 
-![技能管理：浏览内置技能，导入或创建自己的技能](docs/images/skills.png)
+### 随包技能
 
-<p align="center"><sub>界面会随版本调整；插件提供能力，技能描述如何使用这些能力。</sub></p>
-
-<a id="学校与企业接入"></a>
-<a id="开放企业接入"></a>
-
-## 单点登录与开放模型接入
-
-**用组织账号登录，即可使用获授权的模型；账号与模型服务不绑定某一个客户端。** EduWork 通过浏览器完成授权，自动发现模型、管理 Token 刷新。机构模型与个人 API Key 可以同时使用，权限与配额由服务端管理。
-
-模型接入有两条路线：
-
-| 路线 | 面向谁 | 当前状态 |
-| --- | --- | --- |
-| **oidc-llm 开放协议草案** | 学校、自建模型平台，以及希望支持多种客户端的网关。 | ChatECNU 已采用这条接入路线；EduWork 内置实验适配器，需显式启用。[草案](packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md) · [已实现范围与配置](packages/dsh-oidc/docs/gateway-auth/experimental-oidc-llm.md) |
-| **LiteLLM 原生 OAuth** | 已部署 LiteLLM 的组织。 | 直接兼容网关原生 CLI OAuth，使用其授权与模型目录，无需实现另一套协议。[接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) |
-
-### 我们推动的开放接入方向
-
-**oidc-llm 是我们面向机构与多客户端互通推进的协议草案。** 它在 OAuth/OIDC 的基础上约定服务发现、模型目录与 Access Token 模型调用，使学校能够开放自己的模型服务，而无需为每个客户端另做一套登录和发 Key 流程。其他客户端可以按协议独立实现，不必采用 EduWork 的界面或 DSH。
-
-目前是 **0.1 草案与实验实现**，尚未成为正式标准，也不是 OpenID 官方标准。ChatECNU 的接入是落地示例；完整草案与客户端已实现范围分别记录，互通需按版本验证。草案中的 `oidc` / `oauth` 是同一协议下的身份模式。
-
-插件还保留**纯身份 OIDC 登录**，用于只需要身份认证的场景；它不提供模型授权，因此不列为第三条模型接入路线。配额、计费和校内业务由各机构扩展，不作为通用登录协议的前提。
-
-[开放接入倡议](packages/dsh-oidc/docs/open-integration.md) · [服务端接入契约](packages/dsh-oidc/docs/server-integration-contract.md) · [客户端插件](packages/dsh-oidc/README.md)
-
-### 已有 LiteLLM 也能直接接入
-
-配置完整的发现地址后，客户端完成浏览器授权、模型发现和 Token 刷新。服务端须启用原生 CLI OAuth 并为用户授权模型；版本要求见[接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。我们也欢迎更多开源模型网关参与适配。
-
-![LiteLLM 登录后，模型菜单在「本机 LiteLLM」分组中显示获授权的 deepseek-v4-flash](docs/images/litellm-models.png)
-
-<p align="center"><sub>组织网关与个人配置的模型服务可以同时使用。</sub></p>
-
-## Knowledge Studio
-
-**受 NotebookLM 启发，把资料变成可以阅读、使用和练习的知识成果。** Knowledge Studio 直接使用本机工作区的资料与已配置的模型，与对话共享成果和文件预览能力。
-
-### 从资料到创作
-
-在对话中整理资料、探索问题，生成的文件可以直接预览，也可以作为 Studio 的素材。下面的例子先调研校园信息并生成 HTML 简介，再用这份资料制作测验。
-
-![EduWork 工作区：调研校园资料、生成 HTML 简介，并在右侧预览网页成果](docs/images/workspace.png)
-
-<p align="center"><sub>对话和成果并排呈现：继续讨论，也能打开文件查看结果。</sub></p>
-
-打开右侧 Studio，选择一种成果形式：
-
-| 创作与整理 | 理解与学习 |
-| --- | --- |
-| 报告、数据表、演示文稿 | 思维导图、测验、闪卡 |
-| 导出 DOCX、XLSX、PPTX | 浏览引用、答题、查看解析、继续追问 |
-
-音频和视频概览提供另一种阅读资料的方式。文生图和云端 TTS 需配置兼容服务，本机语音取决于系统与本地资源，详见[媒体服务配置](docs/MEDIA.md)。
-
-![Knowledge Studio：报告、思维导图、测验、闪卡、数据表、演示文稿和音视频入口，以及最近生成的成果](docs/images/studio.png)
-
-<p align="center"><sub>同一份资料可以用于不同成果；生成后从「最近成果」打开。</sub></p>
-
-### 从阅读到学习
-
-测验和闪卡支持直接交互。答题后查看反馈、解析与资料依据，遇到不理解的内容可以继续「问问 AI」。
-
-![Studio 测验：答题后查看对错、解析与来源依据，并可继续向 AI 提问](docs/images/quiz.png)
-
-<p align="center"><sub>从答案回到资料，再带着问题继续学习。</sub></p>
-
-### Studio 本身也是插件
-
-Knowledge Studio 以独立插件提供，通过宿主的侧栏插槽（slot）接入工作台，并提供成果能力注册接口。开发者可以扩展成果类型，也可以通过插件接入其他 Studio 界面。Office、语音和媒体生成服务独立维护，供对话与 Studio 复用。
-
-我们希望这里能容纳更多创作与学习方式。新的 Studio 需要实现相应插件适配；目前提供的是 Knowledge Studio。详见 [Studio 架构与扩展接口](packages/dsh-knowledge-studio/docs/ARCHITECTURE.md)。
+技能负责引导任务方法，调用插件与工具完成工作。内置文档、演示、表格、PDF、图像、语音、视频、Studio、浏览器及技能创作等指引，可在设置中启停或导入自己的技能。对话与 Studio 共用创作能力，图像和云端语音需配置相应服务。[使用指南](docs/USER_GUIDE.md) · [媒体配置](docs/MEDIA.md)
 
 ## 安装与使用
 
-每位用户在自己的电脑上独立运行，无需部署额外的 EduWork 服务端；模型服务由你选择的服务商或机构提供。
-
-桌面包支持 **Windows x64** 和 **macOS 15+ Apple Silicon（arm64）及 Intel（x64，从 0.4.8 起）**。Windows 使用 Electron 绿色包，解压即可运行；Mac 解压后将包内的 `.app` 应用移入“应用程序”。Mac 尚未使用 Apple Developer ID 签名或公证，首次打开可能出现系统安全提示，详见 [macOS 说明](docs/MACOS.md)。
+桌面包支持 **Windows x64**、**macOS 15+ Apple Silicon（arm64）和 Intel（x64）**。每位用户在自己的电脑上运行，普通本地使用无需额外部署 EduWork 服务端。
 
 ### 1. 获取客户端
 
-从 [GitHub Releases](https://github.com/ecnu/EduWork/releases) 选择对应平台的完整桌面包：
+从 [最新稳定版](https://github.com/ECNU/EduWork/releases/latest) 下载对应平台的桌面包：
 
-- **Windows x64**：解压到可写目录，运行 `EduWork-Electron.exe`。请保留同目录下的资源文件，不要只复制 EXE。
-- **macOS arm64 / x64**：按芯片类型下载对应包，解压后将包内的 `.app` 应用移入“应用程序”，然后打开；配置和用户数据存放在用户目录。
+- **Windows**：下载 `setup.zip`，解压后运行安装程序，选择可写的新目录。也可下载完整 Electron ZIP，全部解压后运行 `EduWork-Electron.exe`，保留同目录资源文件。
+- **macOS**：按芯片选择 arm64 或 x64 的 DMG，将应用拖入“应用程序”后打开；也可使用对应 ZIP。首次打开的系统安全提示见 [macOS 说明](docs/MACOS.md)。
 
-GitHub 的 Source code 压缩包不是桌面安装包。从源码运行见[构建指南](docs/BUILD.md)。
+Release 中的 Source code 是源码，不是桌面安装包。从源码运行见[构建指南](docs/BUILD.md)。
 
 ### 2. 连接模型
 
-| 你已有的服务 | 如何连接 |
+| 你已有的服务 | 如何开始 |
 | --- | --- |
-| 个人模型 API | 打开 **设置 → 模型**，填写服务商的 API Key、接口地址和模型。 |
-| LiteLLM 网关账号 | 按下方步骤配置发现地址，通过浏览器登录，无需手动填写模型 Key。 |
-| 学校或企业提供的配置 | 按[机构配置方法](#配置方法)合并到生效配置，再选择机构登录。 |
-
-对话中只选择 LLM，包括可读图的 LLM；图像生成、语音合成、向量和重排模型按各自用途调用，不作为聊天模型。
-
-公版默认不自动下载机构配置，安装包自带带注释的 `eduwork.jsonc` 和 `examples/`。机构接入、媒体服务、插件默认值与更新源等应用配置集中在设置中打开的这一份文件，可选配置项列在文件末尾的注释参考中。个人模型、API Key 和界面偏好仍在对应设置界面中管理。
-
-#### 连接 LiteLLM
-
-1. 从 **设置 → 打开配置文件** 打开生效的 `eduwork.jsonc`，参照旁边的 `examples/litellm.jsonc`，把机构条目加入 `organizations` 数组。
-2. 填写显示名称、本机唯一 `id`、完整发现地址（例如 `https://gateway.example.org/.well-known/litellm-cli-auth`）以及发现文档里的 `issuer`。LiteLLM 自动注册 Client ID，**不需要填写 `clientId`、`client_secret` 或 API Key**。
-3. 保存后完全退出并重启，从账户入口登录 LiteLLM；按网关提示选择团队并授权，再选择模型开始对话。
-
-服务端需启用 LiteLLM 原生 CLI OAuth，并提供有模型权限的账号。HTTP 测试环境还需把机构对象中的 `allowInsecureDevelopment` 改为 `true`，HTTPS 保持默认 `false`。字段填写见[逐项配置说明](config/desktop/examples/README.md#接入-litellm改哪里填什么)，版本要求与部署检查见[LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md)。
+| 个人模型 API | 打开 **设置 → 模型**，填写 API Key、接口地址和模型。 |
+| LiteLLM 网关账号 | 在 **设置 → 打开配置文件** 中参照 `examples/litellm.jsonc` 添加机构，再通过浏览器登录。[配置指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) |
+| 学校或企业提供的配置 | 把机构条目合并到生效 `eduwork.jsonc` 的 `organizations`，保存后完全退出并重启，再选择机构登录。[配置示例](config/desktop/examples/README.md) |
 
 <a id="配置方法"></a>
 
-<details>
-<summary>使用学校或企业提供的配置</summary>
-
-1. 在设置中点击 **打开配置文件**，编辑当前生效的 `eduwork.jsonc`。Windows 位于程序目录的 `config/`；macOS 位于 `~/Library/Application Support/` 下的发行版专属目录，以设置中打开的位置为准。
-2. 按服务端指南选择旁边 `examples/` 中的示例，将机构条目加入 `organizations`，保留已有配置；需要图像或语音服务时再加入 `media`。只修改示例文件不会生效。
-3. 保存后从托盘或应用菜单完全退出并重新启动，再选择机构登录。
-
-配置文件只保存公开接入信息和凭据引用。个人 API Key 在模型设置中管理，登录 Token 保存在本机受保护存储中；不要把密码或令牌写入配置文件。界面 Logo 可配置，程序内嵌图标由发行包提供。
-
-[LiteLLM 示例](config/desktop/examples/litellm.jsonc) · [实验性 oidc-llm 示例](config/desktop/examples/organization.jsonc) · [媒体示例](config/desktop/examples/media.jsonc)
-
-</details>
+以设置中打开的配置文件为准；只修改示例文件不会生效。机构接入、媒体服务和更新源等集中在 `eduwork.jsonc`，个人 API Key 在模型设置中管理。配置文件仅放公开接入信息与凭据引用，不填写密码或登录 Token。
 
 ### 3. 开始工作
 
-选择一个本机工作区，放入任务资料，直接描述你想得到的结果。需要文档、表格等成果时，也可以打开右侧 Studio，选择对应类型开始。
+选择本机工作区，放入资料，选择模型并描述目标。例如：**“根据这些资料生成一份学习指南，再制作配套测验。”** 也可打开右侧 Studio，选择成果类型开始创作。生成后直接预览文件，或对回复选段批注、继续追问。
 
-可以先试试：**“根据这些资料生成一份学习指南，再制作配套测验。”**
+关闭窗口后默认收起到托盘；彻底退出请用托盘或应用菜单。软件更新可在设置中开关，更新保留历史数据与配置。详见 [Windows 更新说明](docs/UPDATES.md)和 [macOS 更新说明](docs/MACOS_UPDATES.md)。
 
-<details>
-<summary>窗口行为与自动更新</summary>
+<a id="学校与企业接入"></a>
+<a id="开放企业接入"></a>
+<a id="单点登录与开放模型接入"></a>
 
-窗口关闭后默认收起到系统托盘；需要完全退出时，使用托盘或应用菜单。是否启用自动更新、使用哪个更新源，由发行包与配置决定，请以所用版本的发布说明为准。启用更新时，Windows 使用绿色版更新器，macOS 使用 Sparkle；更新保留历史数据与用户配置。详见 [Windows 更新说明](docs/UPDATES.md)和 [macOS 更新说明](docs/MACOS_UPDATES.md)。
+<a id="扩展与贡献"></a>
 
-</details>
+## 机构接入与共建
 
-## 扩展与贡献
+只需连接模型时，提供配置即可；需要专属业务时，再增加插件与技能。机构可沿用 LiteLLM 原生 OAuth，也可参与实验性的 oidc-llm 开放接入草案。账号、模型授权和配额由相应服务管理。
 
-学校可以从 EduWork 的教育发行组合出发，增加自己的身份与模型配置、校内服务插件、教学科研技能、品牌和更新渠道。**通用改进回到公版，学校专属能力留在自己的发行版。** [EduWork@ECNU](https://github.com/ECNU/EduWork-ECNU) 展示了这种组合方式。
+[机构登录插件](packages/dsh-oidc/README.md) · [开放接入倡议](packages/dsh-oidc/docs/open-integration.md) · [oidc-llm 草案](packages/dsh-oidc/docs/gateway-auth/oidc-llm-draft.md) · [机构发行边界](docs/EDITIONS.md)
 
-只需连接已有模型服务时，提供配置即可；需要校内检索、配额等额外能力时，再追加插件与技能。Studio 也通过插槽接入，可以扩展成果类型或实现其他 Studio，而无需维护第二份工作台。
-
-欢迎贡献插件、技能、网关适配与 Studio 实现，也欢迎参与 oidc-llm 草案讨论。[贡献指南](CONTRIBUTING.md) · [讨论与反馈](https://github.com/ECNU/EduWork/issues) · [机构发行边界](docs/EDITIONS.md) · [插件包维护](docs/PACKAGES.md)
+欢迎贡献代码、插件、技能、文档和使用经验。[贡献指南](CONTRIBUTING.md) · [需求与反馈](https://github.com/ECNU/EduWork/issues) · [Roadmap 讨论](https://github.com/ECNU/EduWork/issues/95) · [推荐 Skills](https://github.com/ECNU/EduWork/issues/126) · [推荐插件](https://github.com/ECNU/EduWork/issues/127)
 
 ## 详细文档
 
 | 文档 | 内容 |
 | --- | --- |
 | [使用指南](docs/USER_GUIDE.md) | 模型、搜索、语音、文件操作与故障诊断。 |
-| [配置文件](docs/CONFIGURATION.md) · [配置示例](config/desktop/examples/README.md) | 企业登录、品牌、媒体服务、更新源与并发设置。 |
-| [LiteLLM 接入指南](packages/dsh-oidc/docs/gateway-auth/litellm-setup.md) | 服务端准备、客户端配置、登录及故障排查。 |
-| [Knowledge Studio](packages/dsh-knowledge-studio/README.md) | 成果类型、使用方式与扩展开发。 |
-| [媒体服务配置](docs/MEDIA.md) | 文生图、云端 TTS 的接口要求及配置方法。 |
-| [版本与升级](docs/RELEASE.md) · [更新源部署](docs/UPDATES.md) | 开发版与公测版、数据迁移和自动更新。 |
-| [配置与 Skills 更新](docs/CONTENT_UPDATES.md) | 管理员按需独立更新模型配置和官方技能，无需重新下载客户端。 |
-| [构建指南](docs/BUILD.md) · [macOS 说明](docs/MACOS.md) | 从源码运行、桌面装配与平台适配。 |
-| [贡献指南](CONTRIBUTING.md) · [发行边界](docs/EDITIONS.md) | 参与开发及公版与机构扩展的分工。 |
+| [配置文件](docs/CONFIGURATION.md) · [配置示例](config/desktop/examples/README.md) | 机构登录、品牌、媒体服务与更新源。 |
+| [插件文档](#随包插件) · [媒体配置](docs/MEDIA.md) | 各插件的功能、使用方法和服务条件。 |
+| [版本与升级](docs/RELEASE.md) · [历史数据导入](docs/数据导入.md) | 版本渠道、升级及数据迁移。 |
+| [配置与 Skills 更新](docs/CONTENT_UPDATES.md) | 独立更新机构配置与官方技能。 |
+| [构建指南](docs/BUILD.md) · [macOS 说明](docs/MACOS.md) | 源码运行、桌面装配与平台适配。 |
+| [插件包维护](docs/PACKAGES.md) · [贡献指南](CONTRIBUTING.md) | 扩展开发与参与方式。 |
 
 ## 数据与隐私
 
-会话、工作区引用和记忆在本机管理。连接远程模型、搜索或媒体服务时，执行任务所需的内容会发送给相应服务商；数据处理规则以所选服务为准。截图使用演示资料，其中的生成内容不作为事实参考。
+会话、工作区引用和记忆在本机管理。调用远程模型、搜索或媒体服务时，任务所需内容会发送给相应服务商，数据处理规则以所选服务为准。跨机迁移时，客户端目录之外的工作区文件需另行复制；排障可导出诊断 ZIP 或 Session log，见[使用指南](docs/USER_GUIDE.md)。截图采用演示资料。
 
-跨机使用可通过设置中的[历史数据导入](docs/数据导入.md)功能合并会话和客户端目录内的资料；客户端目录之外的工作区文件需要另行复制。故障排查可导出诊断 ZIP，具体会话问题可另外提供 Session log，详见[使用指南](docs/USER_GUIDE.md)。
+<a id="致谢与许可"></a>
 
-## 致谢与许可
+## 许可
 
-EduWork 基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建，感谢其提供的 Agent 运行时与插件基础。Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。
-
-EduWork 项目代码采用 [MIT 许可证](LICENSE)。第三方组件保留各自的许可证，详见[第三方声明](THIRD_PARTY_NOTICES.md)。
+EduWork 项目代码采用 [MIT 许可证](LICENSE)，基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建；Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。第三方组件保留各自许可证，见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
 ## Star 趋势
 
