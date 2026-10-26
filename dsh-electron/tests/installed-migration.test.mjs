@@ -229,6 +229,25 @@ test('refuses a running old client', async t => {
   assert.equal(await missing(f.writable), true)
 })
 
+test('refuses a host runtime process under the old program root', async t => {
+  const f = await fixture(t)
+  await assert.rejects(migratePortableToInstalled(options(f, {
+    listProcesses: async () => [{ ProcessId: 43, Name: 'node.exe', ExecutablePath: join(f.source, 'resources/runtime/node.exe') }],
+  })), /still running/)
+  assert.equal(await missing(f.writable), true)
+})
+
+test('ignores unrelated shells and the migration process itself', async t => {
+  const f = await fixture(t)
+  const result = await migratePortableToInstalled(options(f, {
+    listProcesses: async () => [
+      { ProcessId: process.pid, Name: 'node.exe', ExecutablePath: process.execPath, CommandLine: `node ${f.source}` },
+      { ProcessId: 44, Name: 'bash.exe', ExecutablePath: 'C:\\Program Files\\Git\\bin\\bash.exe', CommandLine: `bash -c "cd ${f.source}"` },
+    ],
+  }))
+  assert.equal(result.receipt.state, 'activated')
+})
+
 test('refuses when the old program directory cannot be moved aside', async t => {
   const f = await fixture(t)
   await assert.rejects(migratePortableToInstalled(options(f, {

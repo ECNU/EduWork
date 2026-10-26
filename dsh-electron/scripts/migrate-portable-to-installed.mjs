@@ -108,7 +108,12 @@ async function inventorySelected(sourceRoot, distribution) {
 async function checkRunning(sourceRoots, listProcesses) {
   const roots = (Array.isArray(sourceRoots) ? sourceRoots : [sourceRoots]).map(root => resolve(root))
   const processes = await listProcesses()
+  const knownNames = new Set(['EduWork-Electron.exe', 'EduWork-Updater.exe', 'ChatECNU-Work.exe', 'node.exe', 'python.exe'])
   const matches = processes.filter(item => {
+    if (item.ProcessId === process.pid) return false
+    const executable = typeof item.ExecutablePath === 'string' ? item.ExecutablePath : ''
+    if (executable && roots.some(root => same(executable, root) || within(root, executable))) return true
+    if (!knownNames.has(item.Name)) return false
     const values = [item.ExecutablePath, item.CommandLine].filter(value => typeof value === 'string')
     return roots.some(root => values.some(value => same(value, root) || within(root, value) || value.toLowerCase().includes(root.toLowerCase())))
   })
@@ -266,8 +271,8 @@ async function recoverHandoff({ sourceRoot, targetRoot, writableRoot, dryRun = f
 
 async function defaultListProcesses() {
   if (process.platform !== 'win32') return []
-  const command = "Get-CimInstance Win32_Process -Filter \"Name='EduWork-Electron.exe' OR Name='EduWork-Updater.exe' OR Name='ChatECNU-Work.exe'\" | Select-Object ProcessId,ExecutablePath,CommandLine | ConvertTo-Json -Compress"
-  const { stdout } = await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true, maxBuffer: 1024 * 1024 })
+  const command = "Get-CimInstance Win32_Process | Select-Object ProcessId,Name,ExecutablePath,CommandLine | ConvertTo-Json -Compress"
+  const { stdout } = await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true, maxBuffer: 8 * 1024 * 1024 })
   const text = stdout.trim()
   if (!text) return []
   const value = JSON.parse(text)
