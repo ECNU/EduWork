@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "73a33c82dd8e3aa3cad06bb3523ea299df620766219390df8ca1fbecf511aa1a",
+  "fileSetSHA256": "15504c61dab5061f303b84714cab615b8fd6edf02cb41d46c869121215ed9779",
   "files": [
     {
       "path": ".gitattributes",
@@ -793,7 +793,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/rename_windows_test.go",
-      "sha256": "b19bf427245d993c2f9b1776500d2a08fddbb7d9441e447c251f404a5e130c9d"
+      "sha256": "6817435c18456f26536628cc8b2945f8bacb4eb270cddc0da730aa5425772603"
     },
     {
       "path": "dsh-desktop/internal/portable/rename_windows.go",
@@ -801,7 +801,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/rename.go",
-      "sha256": "e4aa57cf6ef6786b50343e870dbd289b10ab0c09216b5d7acf62bb0dc1eac12b"
+      "sha256": "82b66e4232c1f1c11055d7d9f074a56a030bae0eaeaa42096d2b8413f827ca19"
     },
     {
       "path": "dsh-desktop/internal/portable/replace_plan.go",
@@ -957,7 +957,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/rollback_windows_test.go",
-      "sha256": "5c11e0de57b5c90f2b952b4d2367fc880753e00595147fc6b60b289b6d292e6f"
+      "sha256": "acbbc195b3bedda70dbb35e17c4ab1f40a6bebc7bf588235365674f4b1d81f62"
     },
     {
       "path": "dsh-desktop/internal/updater/shell_migration_test.go",
