@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "2cf7fade5c6404776a92c5ba28b9b5428d3d84e7a1565d299c8224ac227a84f3",
+  "fileSetSHA256": "32222b469096bacadd4b11b38d3982212c82c21729edab9bb2af52ef5d5dd683",
   "files": [
     {
       "path": ".gitattributes",
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "8625c8cec34c2d1a6ccefe1da0ee0caaa354a574152ca6d1fd4f090a1d4b3931"
+      "sha256": "ebe0b87a0d3293429021bbb6834945ea6fedc3a7c02112105b6b3f19cb49c1ac"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
