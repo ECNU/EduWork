@@ -1,7 +1,7 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { createReadStream, existsSync, rmdirSync } from 'node:fs'
-import { copyFile, lstat, mkdir, readdir, readFile, rename, rm, writeFile } from 'node:fs/promises'
-import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { copyFile, lstat, mkdir, open, readdir, readFile, rename, rm, statfs, writeFile } from 'node:fs/promises'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { parseArgs } from 'node:util'
@@ -105,13 +105,213 @@ async function inventorySelected(sourceRoot, distribution) {
   return { files, skipped, warnings }
 }
 
-async function checkRunning(sourceRoot, listProcesses) {
+async function checkRunning(sourceRoots, listProcesses) {
+  const roots = (Array.isArray(sourceRoots) ? sourceRoots : [sourceRoots]).map(root => resolve(root))
   const processes = await listProcesses()
   const matches = processes.filter(item => {
     const values = [item.ExecutablePath, item.CommandLine].filter(value => typeof value === 'string')
-    return values.some(value => same(value, sourceRoot) || within(sourceRoot, value) || value.toLowerCase().includes(resolve(sourceRoot).toLowerCase()))
+    return roots.some(root => values.some(value => same(value, root) || within(root, value) || value.toLowerCase().includes(root.toLowerCase())))
   })
   if (matches.length) throw new Error(`Old EduWork process is still running: ${matches.map(item => item.ProcessId).join(', ')}`)
+}
+
+const inventorySignature = files => files.map(({ source, sourcePath, target, bytes, sha256 }) => ({ source, sourcePath, target, bytes, sha256 }))
+const sameInventory = (left, right) => JSON.stringify(inventorySignature(left)) === JSON.stringify(inventorySignature(right))
+
+async function restoreSource(sourceRoot, handoffRoot) {
+  if (!existsSync(handoffRoot)) return
+  if (existsSync(sourceRoot)) throw new Error(`Original source path was recreated; handoff preserved at ${handoffRoot}`)
+  await rename(handoffRoot, sourceRoot)
+}
+
+const MIGRATION_HEADROOM_BYTES = 16 * 1024 * 1024
+const requiredSpace = files => files.reduce((total, file) => total + file.bytes, 0) + MIGRATION_HEADROOM_BYTES
+
+function nearestExisting(path) {
+  let current = resolve(path)
+  while (!existsSync(current)) {
+    const parent = dirname(current)
+    if (parent === current) break
+    current = parent
+  }
+  return current
+}
+
+async function availableSpace(root, statfsImpl) {
+  const stats = await statfsImpl(root)
+  const blockSize = Number(stats.bsize)
+  const blocks = Number(stats.bavail ?? stats.bfree)
+  if (!Number.isFinite(blockSize) || blockSize <= 0 || !Number.isFinite(blocks) || blocks < 0) {
+    throw new Error('Filesystem free-space values are invalid')
+  }
+  return blockSize * blocks
+}
+
+const journalPathFor = sourceRoot => sourceRoot + '.handoff.json'
+const lockPathFor = journalPath => journalPath + '.lock'
+const isOwnedStaging = (path, writableRoot) => {
+  const absolute = resolve(path)
+  return dirname(absolute) === resolve(dirname(writableRoot))
+    && /^\.eduwork-migration-.+\.staging$/u.test(basename(absolute))
+}
+
+function isProcessAlive(pid) {
+  if (!Number.isInteger(pid) || pid <= 0) return false
+  try { process.kill(pid, 0); return true }
+  catch (error) { return error.code === 'EPERM' }
+}
+
+async function readProcessRecord(path) {
+  try { return JSON.parse((await readFile(path, 'utf8')).replace(/^\uFEFF/, '')) }
+  catch { return undefined }
+}
+
+async function acquireJournalLock(lockPath) {
+  let handle
+  try { handle = await open(lockPath, 'wx') }
+  catch (error) {
+    if (error.code === 'EEXIST') {
+      const lock = await readProcessRecord(lockPath)
+      if (lock?.pid !== process.pid && isProcessAlive(lock?.pid)) {
+        throw new Error(`Another migration is in progress (pid ${lock.pid}): ${lockPath}`)
+      }
+      throw new Error(`Handoff journal lock exists; manual recovery required: ${lockPath}`)
+    }
+    throw error
+  }
+  try {
+    await handle.writeFile(JSON.stringify({ schemaVersion: 1, kind: 'eduwork-journal-lock-v1', pid: process.pid, createdAt: new Date().toISOString() }) + '\n')
+    await handle.sync()
+  } finally {
+    await handle.close()
+  }
+}
+
+async function releaseJournal(journalPath) {
+  const lockPath = lockPathFor(journalPath)
+  const lock = await readProcessRecord(lockPath)
+  if (lock?.pid !== process.pid) return false
+  await rm(journalPath, { force: true })
+  await rm(lockPath, { force: true })
+  return true
+}
+
+async function writeJournal(path, value) {
+  if (existsSync(path)) throw new Error(`Handoff journal already exists: ${path}`)
+  const temporary = path + '.tmp-' + randomUUID()
+  try {
+    const handle = await open(temporary, 'wx')
+    try {
+      await handle.writeFile(JSON.stringify(value, null, 2) + '\n')
+      await handle.sync()
+    } finally {
+      await handle.close()
+    }
+    await rename(temporary, path)
+  } catch (error) {
+    await rm(temporary, { force: true }).catch(() => {})
+    throw error
+  }
+}
+
+async function inspectHandoff({ sourceRoot, targetRoot, writableRoot }) {
+  const journalPath = journalPathFor(sourceRoot)
+  const lockPath = lockPathFor(journalPath)
+  const lockExists = existsSync(lockPath)
+  const lock = lockExists ? await readProcessRecord(lockPath) : undefined
+  if (lockExists && lock?.pid !== process.pid && isProcessAlive(lock?.pid)) {
+    return { action: 'in-progress', journalPath, lockPath, pid: lock.pid, reason: 'lock-owner-alive' }
+  }
+  const journalExists = existsSync(journalPath)
+  if (!journalExists) {
+    if (!lockExists) return undefined
+    if (!lock || typeof lock.pid !== 'number') {
+      return { action: 'manual', journalPath, lockPath, reason: 'lock-invalid' }
+    }
+    if (existsSync(sourceRoot)) return { action: 'cleanup-lock', journalPath, lockPath, reason: 'lock-without-journal' }
+    return { action: 'manual', journalPath, lockPath, reason: 'lock-without-journal' }
+  }
+  let journal
+  try { journal = await readJSON(journalPath) } catch { journal = undefined }
+  if (!journal || journal.schemaVersion !== 1 || journal.kind !== 'eduwork-handoff-v1'
+    || typeof journal.sourceRoot !== 'string' || typeof journal.targetRoot !== 'string'
+    || typeof journal.writableRoot !== 'string' || typeof journal.handoffRoot !== 'string'
+    || typeof journal.staging !== 'string') {
+    if (existsSync(sourceRoot)) return { action: 'cleanup-invalid-journal', journalPath, lockPath, reason: 'invalid-journal' }
+    return { action: 'manual', journalPath, lockPath, reason: 'invalid-journal' }
+  }
+  if (!same(journal.sourceRoot, sourceRoot) || !same(journal.targetRoot, targetRoot) || !same(journal.writableRoot, writableRoot)) {
+    return { action: 'manual', journalPath, lockPath, journal, reason: 'journal-mismatch' }
+  }
+  if (!isAbsolute(journal.handoffRoot) || !same(dirname(resolve(journal.handoffRoot)), dirname(sourceRoot))
+    || !basename(journal.handoffRoot).startsWith(basename(sourceRoot) + '.handoff-')
+    || !isAbsolute(journal.staging) || !isOwnedStaging(journal.staging, writableRoot)) {
+    if (existsSync(sourceRoot)) return { action: 'cleanup-invalid-journal', journalPath, lockPath, journal, reason: 'invalid-journal-paths' }
+    return { action: 'manual', journalPath, lockPath, journal, reason: 'invalid-journal-paths' }
+  }
+  if (journal.pid !== process.pid && isProcessAlive(journal.pid)) {
+    return { action: 'in-progress', journalPath, lockPath, journal, pid: journal.pid, reason: 'journal-owner-alive' }
+  }
+  const sourceExists = existsSync(sourceRoot)
+  const handoffExists = existsSync(journal.handoffRoot)
+  if (sourceExists && !handoffExists) {
+    return { action: 'cleanup-stale', journalPath, lockPath, journal, staging: journal.staging }
+  }
+  if (sourceExists && handoffExists) {
+    return { action: 'manual', journalPath, lockPath, journal, reason: 'source-and-handoff' }
+  }
+  if (!sourceExists && handoffExists) {
+    if (existsSync(writableRoot)) {
+      const receipt = await readJSON(join(writableRoot, RECEIPT), true).catch(() => undefined)
+      if (receipt?.kind === 'eduwork-portable-to-installed-v1'
+        && typeof receipt.source?.handoffRoot === 'string' && same(receipt.source.handoffRoot, journal.handoffRoot)
+        && (receipt.state === 'activated' || receipt.state === 'verified')) {
+        return { action: 'committed', journalPath, lockPath, journal, handoffRoot: journal.handoffRoot }
+      }
+      if (journal.targetWasEmptyAtHandoff === true) {
+        let empty = false
+        try { empty = (await readdir(writableRoot)).length === 0 } catch {}
+        if (empty) return { action: 'restore', journalPath, lockPath, journal, handoffRoot: journal.handoffRoot, staging: journal.staging }
+      }
+      return { action: 'manual', journalPath, lockPath, journal, reason: 'target-conflict' }
+    }
+    return { action: 'restore', journalPath, lockPath, journal, handoffRoot: journal.handoffRoot, staging: journal.staging }
+  }
+  return { action: 'manual', journalPath, lockPath, journal, reason: 'source-and-handoff-missing' }
+}
+
+async function recoverHandoff({ sourceRoot, targetRoot, writableRoot, dryRun = false }) {
+  const plan = await inspectHandoff({ sourceRoot, targetRoot, writableRoot })
+  if (!plan) return undefined
+  if (dryRun) return plan
+  switch (plan.action) {
+    case 'in-progress':
+      throw new Error(`Another migration is in progress (pid ${plan.pid}): ${plan.journalPath}`)
+    case 'committed':
+      throw new Error(`Migration already activated; source is preserved at ${plan.handoffRoot}`)
+    case 'manual':
+      throw new Error(`Handoff recovery requires manual action (${plan.reason}): ${plan.journalPath || plan.lockPath}`)
+    case 'cleanup-lock':
+      await rm(plan.lockPath, { force: true })
+      return { ...plan, recovered: false, cleaned: true }
+    case 'cleanup-invalid-journal':
+      await rm(plan.journalPath, { force: true })
+      await rm(plan.lockPath, { force: true })
+      return { ...plan, recovered: false, cleaned: true }
+    case 'cleanup-stale':
+      await rm(plan.staging, { recursive: true, force: true }).catch(() => {})
+      await rm(plan.journalPath, { force: true })
+      await rm(plan.lockPath, { force: true })
+      return { ...plan, recovered: false, cleaned: true }
+    case 'restore':
+      await rename(plan.handoffRoot, sourceRoot)
+      await rm(plan.staging, { recursive: true, force: true }).catch(() => {})
+      await rm(plan.journalPath, { force: true })
+      await rm(plan.lockPath, { force: true })
+      return { ...plan, recovered: true }
+    default:
+      throw new Error(`Unknown handoff recovery action: ${plan.action}`)
+  }
 }
 
 async function defaultListProcesses() {
@@ -229,11 +429,16 @@ async function readIdentities(sourceRoot, targetRoot) {
 
 export async function migratePortableToInstalled({ sourceRoot, targetRoot, writableRoot,
   listProcesses = defaultListProcesses, copyFileImpl = copyFile, writeReceiptImpl = writeFile,
-  now = () => new Date().toISOString(), dryRun = false } = {}) {
+  handoffImpl = rename, statfsImpl = statfs, now = () => new Date().toISOString(), dryRun = false } = {}) {
   assertAbsolute(sourceRoot, 'Source program root')
   assertAbsolute(targetRoot, 'Target program root')
   assertAbsolute(writableRoot, 'Target writable root')
   sourceRoot = resolve(sourceRoot); targetRoot = resolve(targetRoot); writableRoot = resolve(writableRoot)
+  const recovery = await recoverHandoff({ sourceRoot, targetRoot, writableRoot, dryRun })
+  if (dryRun && recovery) return {
+    dryRun: true, source: sourceRoot, writableRoot, targetRoot, recovery,
+    files: [], skipped: [], warnings: [],
+  }
   assertSeparate(sourceRoot, targetRoot, 'Source and target program roots')
   const identity = await readIdentities(sourceRoot, targetRoot)
   const target = await targetState(writableRoot, sourceRoot, targetRoot)
@@ -242,48 +447,84 @@ export async function migratePortableToInstalled({ sourceRoot, targetRoot, writa
   await checkInternalWorkspaces(sourceRoot, identity.sourceDataRoot)
   await checkCredentials(join(identity.sourceDataRoot, 'browser'))
   const source = await inventorySelected(sourceRoot, identity.sourceDesktop.distribution)
+  const spaceRequired = requiredSpace(source.files)
+  let spaceFree, spaceError
+  try { spaceFree = await availableSpace(nearestExisting(dirname(writableRoot)), statfsImpl) }
+  catch (error) { spaceError = error }
   if (dryRun) return {
     dryRun: true, source: sourceRoot, writableRoot, targetRoot,
     identity: { distribution: identity.sourceDesktop.distribution, sourceVersion: identity.sourceDesktop.productVersion,
       targetVersion: identity.targetDesktop.productVersion, dshVersion: identity.sourceRelease.dshVersion },
     files: source.files.map(({ source, target, bytes, sha256 }) => ({ source, target, bytes, sha256 })),
     skipped: source.skipped, warnings: source.warnings,
+    space: { requiredBytes: spaceRequired, freeBytes: spaceFree ?? null, error: spaceError?.message },
   }
+  if (spaceError) throw new Error(`Unable to determine free space for migration: ${spaceError.message}`)
+  if (spaceFree < spaceRequired) {
+    throw new Error(`Insufficient free space for migration: need ${spaceRequired} bytes, available ${spaceFree}`)
+  }
+  const space = { requiredBytes: spaceRequired, freeBytes: spaceFree }
+  await mkdir(dirname(writableRoot), { recursive: true })
 
+  const handoffRoot = sourceRoot + '.handoff-' + randomUUID()
   const staging = join(dirname(writableRoot), `.eduwork-migration-${randomUUID()}.staging`)
-  let activated = false
+  const journalPath = journalPathFor(sourceRoot)
+  const journal = {
+    schemaVersion: 1, kind: 'eduwork-handoff-v1', sourceRoot, handoffRoot, staging,
+    targetRoot, writableRoot, targetWasEmptyAtHandoff: Boolean(target), createdAt: now(), pid: process.pid,
+  }
+  let sourceHandoffRoot, activated = false, lockAcquired = false
   try {
+    await acquireJournalLock(lockPathFor(journalPath))
+    lockAcquired = true
+    await writeJournal(journalPath, journal)
+    sourceHandoffRoot = handoffRoot
+    try {
+      await handoffImpl(sourceRoot, handoffRoot)
+    } catch (error) {
+      if (['EPERM', 'EBUSY', 'EACCES', 'ENOTEMPTY'].includes(error.code)) {
+        throw new Error(`Old program directory is in use or cannot be moved aside: ${sourceRoot} (${error.code})`)
+      }
+      throw error
+    }
+    await checkRunning([sourceRoot, sourceHandoffRoot], listProcesses)
+    await checkUpdateTransactions(sourceHandoffRoot)
+    const afterHandoff = await inventorySelected(sourceHandoffRoot, identity.sourceDesktop.distribution)
+    if (!sameInventory(source.files, afterHandoff.files)) throw new Error('Source data changed before migration')
+
     await mkdir(staging)
-    for (const file of source.files) {
+    for (const file of afterHandoff.files) {
       const destination = join(staging, file.target)
       await mkdir(dirname(destination), { recursive: true })
-      await copyFileImpl(file.absolute, destination)
+      await copyFileImpl(join(sourceHandoffRoot, file.source), destination)
       if (await hashFile(destination) !== file.sha256) throw new Error(`Copied file hash differs: ${file.target}`)
     }
-    const after = await inventorySelected(sourceRoot, identity.sourceDesktop.distribution)
-    if (JSON.stringify(after.files.map(({ source: from, sourcePath, target, bytes, sha256 }) => ({ source: from, sourcePath, target, bytes, sha256 })))
-      !== JSON.stringify(source.files.map(({ source: from, sourcePath, target, bytes, sha256 }) => ({ source: from, sourcePath, target, bytes, sha256 })))) {
-      throw new Error('Source data changed during migration')
-    }
+    const after = await inventorySelected(sourceHandoffRoot, identity.sourceDesktop.distribution)
+    if (!sameInventory(afterHandoff.files, after.files)) throw new Error('Source data changed during migration')
+    await checkUpdateTransactions(sourceHandoffRoot)
+
     const marker = writableRootMarker({ distribution: identity.targetDesktop.distribution,
       productVersion: identity.targetDesktop.productVersion, now })
     await writeFile(join(staging, WRITABLE_ROOT_MARKER), JSON.stringify(marker, null, 2) + '\n', { mode: 0o600, flag: 'wx' })
     const receipt = {
       schemaVersion: 1, kind: 'eduwork-portable-to-installed-v1', state: 'staged',
-      source: { root: sourceRoot, distribution: identity.sourceDesktop.distribution,
+      source: { root: sourceRoot, handoffRoot: sourceHandoffRoot, handoffAt: now(),
+        distribution: identity.sourceDesktop.distribution,
         productVersion: identity.sourceDesktop.productVersion, dshVersion: identity.sourceRelease.dshVersion,
         dshCommit: identity.sourceRelease.dshCommit, manifestSha256: identity.sourceManifestSha256,
         identitySha256: identity.identitySha256 },
       target: { root: writableRoot, programRoot: targetRoot, dataLayout: 'installed',
         distribution: identity.targetDesktop.distribution, productVersion: identity.targetDesktop.productVersion,
         manifestSha256: identity.targetManifestSha256 },
-      files: source.files.map(({ source, target, bytes, sha256 }) => ({ source, target, bytes, sha256 })),
-      skipped: source.skipped, warnings: source.warnings, createdAt: now(),
+      files: afterHandoff.files.map(({ source, target, bytes, sha256 }) => ({ source, target, bytes, sha256 })),
+      space, skipped: source.skipped, warnings: source.warnings, createdAt: now(),
     }
     await writeReceiptAtomic(staging, receipt, writeReceiptImpl)
-    // A process may have restarted during the copy. This narrows the window;
-    // exclusive handoff/locking remains an integration precondition.
-    await checkRunning(sourceRoot, listProcesses)
+    // The old program is already moved aside; a process can no longer start
+    // from the original path. Recheck the handoff path and update state before
+    // activation.
+    await checkRunning([sourceRoot, sourceHandoffRoot], listProcesses)
+    await checkUpdateTransactions(sourceHandoffRoot)
     receipt.state = 'activated'; receipt.activatedAt = now()
     // The activated receipt is durable in staging before W becomes visible.
     // A crash or write failure can therefore never leave an activated W with a
@@ -292,7 +533,21 @@ export async function migratePortableToInstalled({ sourceRoot, targetRoot, writa
     if (target) rmdirSyncCompat(writableRoot)
     await rename(staging, writableRoot)
     activated = true
-    return { source: sourceRoot, writableRoot, targetRoot, files: receipt.files, skipped: source.skipped, warnings: source.warnings, receipt }
+    await releaseJournal(journalPath).catch(() => {})
+    return { source: sourceRoot, sourceHandoffRoot, writableRoot, targetRoot,
+      files: receipt.files, skipped: source.skipped, warnings: source.warnings, space, receipt }
+  } catch (error) {
+    let restored = !sourceHandoffRoot
+    if (sourceHandoffRoot && !activated) {
+      try {
+        await restoreSource(sourceRoot, sourceHandoffRoot)
+        restored = true
+      } catch (restoreError) {
+        throw new Error(`${error.message}; failed to restore old program path: ${restoreError.message}`)
+      }
+    }
+    if (lockAcquired && restored) await releaseJournal(journalPath).catch(() => {})
+    throw error
   } finally {
     if (!activated) await rm(staging, { recursive: true, force: true }).catch(() => {})
   }
@@ -316,7 +571,7 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     source: { type: 'string' }, 'target-root': { type: 'string' }, 'writable-root': { type: 'string' }, 'dry-run': { type: 'boolean' },
   } })
   if (!values.source || !values['target-root'] || !values['writable-root']) {
-    throw new Error('Use --source <old-program-root> --target-root <installed-program-root> --writable-root <W> [--dry-run]')
+    throw new Error('Use --source <old-program-root> --target-root <installed-program-root> --writable-root <W> [--dry-run]; the source is moved aside during migration and restored on failure')
   }
   const result = await migratePortableToInstalled({ sourceRoot: values.source, targetRoot: values['target-root'],
     writableRoot: values['writable-root'], dryRun: Boolean(values['dry-run']) })
