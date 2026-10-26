@@ -9,6 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"golang.org/x/sys/windows"
 )
@@ -33,7 +34,14 @@ func TestLaterBackupFailureRestoresEarlierRoots(t *testing.T) {
 	assertFileValue(t, filepath.Join(f.installDir, "resources/version.txt"), "old-version")
 }
 
+func shortRollbackRetry(t *testing.T, window time.Duration) {
+	previous := rollbackRetryWindow
+	rollbackRetryWindow = window
+	t.Cleanup(func() { rollbackRetryWindow = previous })
+}
+
 func TestRollbackFailureReportsAndRetainsOriginalBackup(t *testing.T) {
+	shortRollbackRetry(t, 300*time.Millisecond)
 	f := newApplyFixture(t, "0.3.7", "fail")
 	p, _ := LoadPending(f.stateDir)
 	var handle windows.Handle
@@ -116,4 +124,29 @@ func TestSuccessfulUpdateDoesNotDeleteOtherRecoveryBackup(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(f.stateDir, "updates/transactions", p.Version)); !os.IsNotExist(err) {
 		t.Fatalf("completed transaction not removed: %v", err)
 	}
+}
+
+// A child process that lets go of a new file shortly after the window is
+// stopped must not leave the install half-replaced.
+func TestRollbackWaitsForBrieflyLockedFile(t *testing.T) {
+	shortRollbackRetry(t, 5*time.Second)
+	f := newApplyFixture(t, "0.3.7", "fail")
+	p, _ := LoadPending(f.stateDir)
+	err := applyAndRestart(f.stateDir, p, func(progress ApplyProgress) {
+		if progress.Stage != "health" {
+			return
+		}
+		name, _ := windows.UTF16PtrFromString(filepath.Join(f.installDir, "resources/version.txt"))
+		handle, err := windows.CreateFile(name, windows.GENERIC_READ, windows.FILE_SHARE_READ, nil, windows.OPEN_EXISTING, 0, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		time.AfterFunc(500*time.Millisecond, func() { windows.CloseHandle(handle) })
+	})
+	var recovery *rollbackFailure
+	if err == nil || errors.As(err, &recovery) {
+		t.Fatalf("rollback did not recover after the lock was released: %v", err)
+	}
+	assertFileValue(t, filepath.Join(f.installDir, "resources/version.txt"), "old-version")
+	assertFileValue(t, filepath.Join(f.installDir, "data/user/keep.txt"), "user-data")
 }

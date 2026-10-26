@@ -283,13 +283,15 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		// locked file failed, the remaining original roots were never touched.
 		for index := len(installed) - 1; index >= 0; index-- {
 			name := installed[index]
-			if err := os.RemoveAll(filepath.Join(pending.InstallDir, name)); err != nil {
+			if err := retryRollbackStep(func() error { return os.RemoveAll(filepath.Join(pending.InstallDir, name)) }); err != nil {
 				failures = append(failures, fmt.Errorf("remove incomplete update %s: %w", name, err))
 			}
 		}
 		for index := len(backedUp) - 1; index >= 0; index-- {
 			name := backedUp[index]
-			if err := os.Rename(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name)); err != nil {
+			if err := retryRollbackStep(func() error {
+				return os.Rename(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name))
+			}); err != nil {
 				failures = append(failures, fmt.Errorf("restore %s: %w", name, err))
 			}
 		}
@@ -747,6 +749,27 @@ func (err *rollbackFailure) Error() string {
 	return fmt.Sprintf("%v; automatic recovery incomplete; original files retained at %s", err.Cause, err.Backup)
 }
 func (err *rollbackFailure) Unwrap() error { return err.Cause }
+
+// After the updated window is stopped, its GPU and utility children can keep
+// DLLs such as vk_swiftshader.dll mapped for a few seconds, and scanners open
+// fresh files briefly. Retry each rollback step for a while instead of leaving
+// a half-replaced install on the first sharing violation.
+var rollbackRetryWindow = 15 * time.Second
+
+func retryRollbackStep(step func() error) error {
+	deadline := time.Now().Add(rollbackRetryWindow)
+	delay := 100 * time.Millisecond
+	for {
+		err := step()
+		if err == nil || time.Now().Add(delay).After(deadline) {
+			return err
+		}
+		time.Sleep(delay)
+		if delay < time.Second {
+			delay *= 2
+		}
+	}
+}
 
 func waitForHealth(command *exec.Cmd, healthFile string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
