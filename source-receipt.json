@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "eed85bd6cdcef7b88cc270bafb26b6b6d8193c955cd1278c8afafda6d8d480dd",
+  "fileSetSHA256": "e9abebf2d1e6574ae6e6adf93eaf838f06716256f4c1b8cab6d4a292a9359be2",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "eadee913c75864ce1c8cd08e814d8503b507483485ea1c440a01ed25f46795f7"
+      "sha256": "4bb4b1f268f77e4a0ea6ddc4279fd95df35b297888363ffb3ee23130f94283b4"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -390,6 +390,10 @@
     {
       "path": "docs/PORTABLE-EXTRACTOR.md",
       "sha256": "b99d0f3487497cb2cf380a33fb77c179f5146d22c7a91e0ad53c7302e032bb28"
+    },
+    {
+      "path": "docs/PROMPT-CACHE-KEY-BACKPORT.md",
+      "sha256": "6b144f48414630f478049bbc4e74ed1a66b69e5e54b0cb3e325c87e470216ff8"
     },
     {
       "path": "docs/proposals/build-pipeline-stages/README_EN.md",
@@ -6609,7 +6613,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "0a973158fa295ab1fdb3fefffd4060725a20d2d0842de77f3216bc2c8a3e82bc"
+      "sha256": "3d8cd94cda510e4c9c727bd39e31771faea3b676d29346cbad0b7205abb9b69b"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -6968,6 +6972,10 @@
       "sha256": "711f68f138352812fe4cf5509b62ca8a9281214f4d7deacf33175c330a230f47"
     },
     {
+      "path": "scripts/patch-prompt-cache-key-runtime.mjs",
+      "sha256": "d5a874cf27d456055eb6be8dc2fbf9fd0e73d57a65608e3e36f436dd982466d8"
+    },
+    {
       "path": "scripts/patch-remotion-bundler-runtime.mjs",
       "sha256": "faf9cbb7f20640f49d84f53aae5a775ddb9c7b0132841105c1d6f3e4d49f56dd"
     },
@@ -7230,6 +7238,10 @@
     {
       "path": "scripts/test/portable-product-links.test.mjs",
       "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
+    },
+    {
+      "path": "scripts/test/prompt-cache-key-runtime.test.mjs",
+      "sha256": "7090cdda7249b77451cb4da7d338e8f16cf09804ea303766d3ec177b9f78e996"
     },
     {
       "path": "scripts/test/published-package-inputs.test.mjs",
