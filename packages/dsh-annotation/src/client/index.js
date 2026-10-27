@@ -120,6 +120,9 @@ function readSelection(marker, resolveOrigin) {
   // comes from the public snapshot. Context is bounded to this selected row.
   const row = element.closest('[data-chat-node-key]')
   if (!row || !row.contains(range.startContainer) || !row.contains(range.endContainer)) return null
+  // A row still receiving tokens has no settled event behind it: quoting it
+  // would anchor the annotation to a boundary the message has not reached.
+  if (row.querySelector('[data-streaming]') !== null) return null
   const source = resolveOrigin(row.getAttribute('data-chat-node-key'))
   if (!source) return null
   const before = range.cloneRange(), after = range.cloneRange()

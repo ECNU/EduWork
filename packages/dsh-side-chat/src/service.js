@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { buildForkSeed, SessionId } from '@deepseek-ai/dsh-session'
+import { buildForkSeed, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { SIDE_BOUNDARY, disallowedSideTool } from './boundary.js'
 import { buildTitleInput, normalizeTitle, questionAndAnswerOf, titleSystem } from './title.js'
 
@@ -69,6 +69,9 @@ export class SideChatService {
         throw new SideChatError('The selected message is no longer available')
       }
       const seed = buildForkSeed(observed.events, boundary.seq)
+      // buildForkSeed appends its own end-seed marker and closers; only the
+      // copied source events belong to the inherited prefix.
+      const inheritedEventCount = SessionLogOffset(boundary.seq + 1)
       entry.seedLength = seed.length
       const model = seed.findLast(event => event.type === 'request/header')?.data.header.config
         ?? this.ctx.get('agentDefaultModel')?.currentSelection() ?? {}
@@ -79,9 +82,10 @@ export class SideChatService {
       entry.handle = await this.ctx.agents.create({
         sessionId: entry.sessionId,
         seed,
+        inheritedEventCount,
         meta: {
           cwd: observed.header.cwd, parentSession: observed.header.id,
-          seedLength: seed.length,
+          isSeeded: true,
           ...(presetId ? { agentPreset: presetId } : {}),
         },
         agentOptions: { provider: model.provider, model: model.model, reasoningEffort: model.reasoningEffort },
@@ -155,12 +159,18 @@ export class SideChatService {
       const input = buildTitleInput(question, answer, locale)
       if (input.trim() === '') return { title: null }
       let text = ''
-      const chunks = llm.stream({
-        provider: model.provider, model: model.model,
-        messages: [pluginUserMessage(input)], system: titleSystem(locale), maxTokens: 64,
-        signal: AbortSignal.timeout(8000),
-      })
-      for await (const chunk of chunks) {
+      const signal = AbortSignal.timeout(8000)
+      // The LLM service dispatches through a prepared call: routing, defaults
+      // and validation happen in prepareCall, and stream() only accepts that
+      // exact resolved config.
+      const call = await llm.prepareCall({
+        provider: model.provider, model: model.model, maxTokens: 64,
+        ...(model.reasoningEffort === undefined ? {} : { reasoningEffort: model.reasoningEffort }),
+      }, signal)
+      for await (const chunk of call.stream({
+        ...call.config, messages: [pluginUserMessage(input)], system: titleSystem(locale),
+        sessionId, purpose: 'eduwork-side-chat-title', signal,
+      })) {
         if (chunk?.type === 'text-delta') text += chunk.text
         else if (chunk?.type === 'finish' && (chunk.reason?.kind === 'error' || chunk.reason?.kind === 'aborted')) return { title: null }
       }

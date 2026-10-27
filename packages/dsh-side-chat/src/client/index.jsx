@@ -49,35 +49,6 @@ function sideChatTitle(topic, t) {
   return topic ? `${t('title')} · ${topic}` : t('title')
 }
 
-function hideInheritedNodes(root, seedLength) {
-  if (!seedLength || !root) return
-  // Hide chat nodes whose event sequence falls within the inherited seed.
-  // Targets [data-chat-node-key] when available; falls back to counting
-  // top-level children of the conversation content container.
-  const apply = () => {
-    const content = root.querySelector('[data-conversation-content]')
-    if (!content) return
-    const nodes = content.querySelectorAll('[data-chat-node-key]')
-    if (nodes.length > 0) {
-      for (const node of nodes) {
-        const seq = Number(node.dataset.chatNodeSeq ?? node.dataset.anchorSeq ?? NaN)
-        node.style.display = Number.isFinite(seq) && seq < seedLength ? 'none' : ''
-      }
-      return
-    }
-    // Fallback: hide the first batch of direct children that map to seed events.
-    // This is approximate but avoids depending on a specific attribute name.
-    const children = [...content.children].filter(el => el.matches('[data-chat-node-key], [role="listitem"], [data-clock]'))
-    for (let i = 0; i < children.length && i < seedLength; i++) {
-      children[i].style.display = 'none'
-    }
-  }
-  apply()
-  const observer = new MutationObserver(apply)
-  observer.observe(root, { childList: true, subtree: true })
-  return () => { observer.disconnect() }
-}
-
 function SideViews(props) {
   // Without the conversation store there is no reliable way to tell an empty
   // side chat apart from an inherited one; render the native body untouched.
@@ -86,27 +57,42 @@ function SideViews(props) {
 }
 
 /**
- * Render the native session body exactly as the factory would, and float the
- * "temporary chat" hint over it while no side-chat event exists yet. The hint
- * is portalled into the tab so it never participates in the scroll layout.
+ * Render the native session body exactly as the factory would. Everything the
+ * side chat inherited from its source is hidden by node key, and the
+ * "temporary chat" hint floats over the body only while the side chat has no
+ * node of its own. The hint is portalled into the tab so it never takes part
+ * in the scroll layout.
  */
 function SideViewsWithHint({ renderSlot, useConversation }) {
   const seedLength = React.useContext(SideSeedLength)
   const t = React.useContext(SideCopy)
   const marker = useRef(null)
   const [host, setHost] = useState(null)
-  const hasContent = useConversation(snapshot => {
-    const nodes = snapshot?.views.get('chat')?.nodes
-    if (!nodes) return false
-    for (const node of nodes.values()) {
-      const seq = Number(node?.data?.seq ?? node?.anchorSeq ?? NaN)
-      if (Number.isFinite(seq) && seq >= seedLength) return true
+  // A string keeps the selector result stable across store notifications:
+  // "1" marks an empty side chat, "0" one that already owns a node.
+  const nodes = useConversation(snapshot => {
+    const view = snapshot?.views.get('chat')
+    if (view === undefined) return ''
+    let own = false
+    const keys = []
+    for (const node of view.nodes.values()) {
+      const seq = Number(node?.anchorSeq ?? NaN)
+      if (!Number.isFinite(seq)) continue
+      if (seq < seedLength) keys.push(node.key)
+      else own = true
     }
-    return false
+    return `${own ? '0' : '1'}|${keys.join('\u0000')}`
   })
+  const empty = nodes.startsWith('1|')
   useEffect(() => {
-    setHost(hasContent ? null : marker.current?.closest('[data-eduwork-side-chat]') ?? null)
-  }, [hasContent])
+    const root = marker.current?.closest('[data-eduwork-side-chat]') ?? null
+    setHost(empty ? root : null)
+    if (root === null) return
+    for (const key of nodes.slice(2).split('\u0000')) {
+      if (key === '') continue
+      for (const node of root.querySelectorAll(`[data-chat-node-key="${CSS.escape(key)}"]`)) node.style.display = 'none'
+    }
+  }, [nodes, empty])
   return h(React.Fragment, null,
     h('span', { ref: marker, hidden: true }),
     renderSlot('conversation.session', { view: 'chat' }),
@@ -140,8 +126,6 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   const root = useRef(null)
   useEffect(() => chat && root.current ? alignComposerDocks(root.current, chat.sourceSessionId) : undefined,
     [chat?.sessionId, chat?.sourceSessionId])
-  useEffect(() => seedLength > 0 && root.current ? hideInheritedNodes(root.current, seedLength) : undefined,
-    [seedLength, chat?.sessionId])
   return h('section', {
     ref: root,
     'data-eduwork-side-chat': '', 'data-side-source': chat?.sourceSessionId, 'data-side-session': chat?.sessionId, 'aria-label': t('title'),
@@ -238,33 +222,31 @@ function Notice({ controller, sidebarRight, t }) {
 }
 
 /**
- * Rename the side session once its first turn settles: the host distills the
- * side chat's own question and answer into a short title. Best effort — a
- * failure keeps the placeholder written at open time.
+ * Rename the side session once one of its own turns settles: the host distills
+ * the side chat's own question and answer into a short title. Inherited turns
+ * never count, and a failed pass retries on the next settled turn. Best effort
+ * — a failure keeps the placeholder written at open time.
  */
 function SideRetitle({ sessionId, controller, locale, t, useConversation }) {
   useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  const [attempted, setAttempted] = useState(false)
   const owner = sessionId.startsWith('side-') ? controller.findSession(sessionId) : undefined
-  const settled = useConversation(snapshot => {
-    if (!owner) return false
+  const ownTurns = useConversation(snapshot => {
+    if (!owner) return 0
+    const seedLength = owner.getSnapshot().chat?.seedLength ?? 0
+    let count = 0
     for (const node of snapshot?.views.get('chat')?.nodes.values() ?? []) {
-      if (node.kind === 'turn-tail') return true
+      if (node.kind === 'turn-tail' && Number(node.anchorSeq) >= seedLength) count++
     }
-    return false
+    return count
   })
+  const attempted = useRef(0)
   useEffect(() => {
-    if (!settled || attempted || !owner) return
-    setAttempted(true)
-    void (async () => {
-      try {
-        // The host renames the session itself once the title is accepted.
-        await owner.title(locale(), t('title'))
-      } catch {
-        // The placeholder title stays; the chat itself is unaffected.
-      }
-    })()
-  }, [settled, attempted, owner, sessionId, locale, t])
+    if (!owner || ownTurns <= attempted.current) return
+    attempted.current = ownTurns
+    void owner.title(locale(), t('title')).catch(() => {
+      // The placeholder title stays; the chat itself is unaffected.
+    })
+  }, [ownTurns, owner, locale, t])
   return null
 }
 
