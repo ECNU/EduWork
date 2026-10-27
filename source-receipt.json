@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T03:34:36.060Z",
-  "fileSetSHA256": "ab7f16088f44a3c48f4a2beaba1a7fd17117661fd4bfb071490c4374496c68dd",
+  "createdAt": "2026-10-27T03:41:33.941Z",
+  "fileSetSHA256": "40b50c63f966b625e0b77db3e00fc7526850cb2db34230c43fe007aefe085207",
   "files": [
     {
       "path": ".gitattributes",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "d34971969bfd62d6905fc4921933be6c9cd6a8aa0711727f6fdd9a872dee8175"
+      "sha256": "fec733d15ceb3912bdc76b2854ab1e3ab10f4de4aaf0e95ec7c69e618c12535a"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "4f29aaccf586b11f4e8b01a1483f97f42ad8cade8bd43ed3f04566a6b7ab2b9f"
+      "sha256": "7faa849d558276cf85a3722c0bfdc81fe718c2ce9025dc51167ad5962e02be3b"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",

@@ -12,29 +12,6 @@ test('initial presentation respects prior presentation, recovery and shutdown', 
   for (const key of Object.keys(allowed)) assert.equal(shouldPresentMainWindow({ ...allowed, [key]: true }), false, key)
 })
 
-for (const platform of ['darwin', 'win32']) {
-  test(`initial Host readiness respects application hiding on ${platform}`, () => {
-    const source = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
-    const start = source.indexOf('  const presentInitialWindow = () => {')
-    const end = source.indexOf('\n  const pageLoaded =', start)
-    assert.ok(start >= 0 && end > start)
-    let hidden = true, showCalls = 0
-    const app = { isHidden() { assert.equal(platform, 'darwin'); return hidden } }
-    const window = { isDestroyed: () => false, show() { showCalls++ } }
-    const present = new Function('app', 'process', 'window', 'shouldPresentMainWindow', `
-      let initialPresentationDone = false, startupFailure = false
-      const recovery = { active: false }, isQuitting = () => false, desktopStartupWindowPresent = () => false
-      ${source.slice(start, end)}
-      return presentInitialWindow
-    `)(app, { platform }, window, shouldPresentMainWindow)
-    present()
-    assert.equal(showCalls, platform === 'darwin' ? 0 : 1)
-    hidden = false
-    present()
-    assert.equal(showCalls, 1)
-  })
-}
-
 function startupHarness() {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const progressStart = source.indexOf('function showStartupProgress(')

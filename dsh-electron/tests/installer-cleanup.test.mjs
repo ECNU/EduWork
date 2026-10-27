@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
+for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     const earlyFailure = scenario.startsWith('early-'), startupError = new Error('synthetic Host failure')
@@ -240,6 +240,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
     app.getLocale = () => 'en'
     app.getName = () => 'Fixture'
     app.getVersion = () => '0.0.0'
+    app.isHidden = () => { assert.equal(process.platform, 'darwin'); return scenario === 'application-hidden' }
     app.requestSingleInstanceLock = () => { calls.push('lock'); return scenario !== 'second-instance' }
     app.whenReady = async () => { calls.push('ready') }
     app.quit = () => {
@@ -379,8 +380,9 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       }
     }
     await Promise.race([done, deadline])
-    if (scenario === 'installed') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
+    if (scenario === 'installed' || scenario === 'application-hidden') {
+      const hidden = process.platform === 'darwin' && scenario === 'application-hidden'
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', ...hidden ? [] : ['window-show']])
       app.emit('second-instance')
       assert.equal(calls.at(-1), 'activate-current-window')
     } else if (scenario.startsWith('preparation-')) {
