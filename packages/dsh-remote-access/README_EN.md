@@ -17,12 +17,12 @@ You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the 
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=replace-with-a-random-key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
 ```
 
 `RELAY_URL` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `<RELAY_URL>healthz` answers `ok` for monitoring.
 
-The [relay deployment guide](docs/DEPLOYMENT_EN.md) covers key generation, Windows PowerShell commands, HTTPS/Nginx, path prefixes, persistent systemd operation, organization sign-in, iframe integration, verification and troubleshooting.
+For servers, the [Docker deployment guide](docs/docker/README_EN.md) provides a Dockerfile and Compose setup that builds from a pinned npm version and starts with `docker compose up -d --build`. The [relay deployment guide](docs/DEPLOYMENT_EN.md) also covers key generation, Windows PowerShell commands, HTTPS/Nginx, path prefixes, persistent systemd operation, organization sign-in, iframe integration, verification and troubleshooting.
 
 The relay can also share a domain under its own path, such as `RELAY_URL=https://example.edu/eduwork-remote/`. Preserve the prefix in proxy requests and enter the same complete URL on the computer. Paths do not isolate browser privileges: the operator must accept the shared trust boundary between the site's applications and paired computers (see [Security](#security)). A site-wide Service Worker must also leave this path alone.
 
@@ -40,9 +40,9 @@ Install the plugin in DSH and restart it:
 dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
-Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected", you can add devices. Remote access is off by default.
+Open Settings → Remote access, enter the relay server and the access key, and select "Allow remote access". Once it shows "Connected", you can add devices. Remote access is off by default. "Test connection" tells separately whether the relay can be reached and whether it accepts this computer, also before remote access is on; when the connection fails, "Retry" starts it again.
 
-An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then shows no relay or access key: sign in with the organization's account and select "Allow remote access". Signing out stops remote access.
+An organization's distribution can preset its relay and sign-in (plugin setting `organization: { relay, oidcProfileId }`, where `oidcProfileId` names the organization's [dsh-oidc](../dsh-oidc/README_EN.md) profile). The settings page then uses the organization's account by default: it shows whether you are signed in and lets you sign in, after which you select "Allow remote access". Signing out stops remote access. The distribution decides the relay; the settings page neither shows nor changes it. Users can still choose "Use your own relay server" and enter a relay and an access key.
 
 Organization sign-in also requires `@eduwork/dsh-oidc@0.3.1` or a later compatible version on the host, providing `identityToken(profileID)`; the older `0.3.0` does not include this API. Standalone deployments using an access key do not depend on the OIDC plugin.
 

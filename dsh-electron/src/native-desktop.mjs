@@ -18,7 +18,7 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
 
 await configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -30,22 +30,27 @@ let mainWindow, bridge, product, entered = false, started = false, sessionEnding
 let startupTask, startupFailure, startupFailureShown = false, initialPresentationDone = false
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
-app.on('will-quit', () => loginShellRead.abort())
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && started && !isQuitting()) reportFatal(state.failure, 'host')
 })
-// Keep the product's resource teardown, with the official controller as its one
-// Host owner (including a failed or still-starting child).
-trackHost({ stop: () => backend.close() })
+function closeBackend() {
+  // Cancel shell preparation before the controller waits for startup to settle.
+  loginShellRead.abort()
+  return backend.close()
+}
+trackHost({ stop: closeBackend })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
   show: options => dialog.showMessageBox(options), focus: () => { if (process.platform === 'darwin') app.focus({ steal: true }) } })
 setDesktopQuitGuard(() => recoveryExit || sessionEnding ? Promise.resolve(true) : quit.confirm())
 const recovery = new DesktopFatalRecovery({
   messages: () => locale().messages,
   show: options => dialog.showMessageBox(options),
-  stop: () => backend.close(),
+  stop: async () => {
+    // Preserve Host shutdown errors while the product cancels preparation and closes its resources.
+    await Promise.all([stopDesktopServices(), closeBackend()])
+  },
   disablePlugins: async () => { throw new Error('Required distribution plugins cannot be disabled') },
   exit: () => { recoveryExit = true; app.quit() },
   restart: () => { recoveryExit = true; restartDesktop() },
@@ -75,8 +80,13 @@ function startBackend() {
     for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
   })
 }
-// One startup attempt serves the main launch and every early boot/locale request.
-function startOnce() { return startupTask ??= startBackend() }
+// Early boot/locale requests must enter product recovery before the renderer reports failure.
+function startOnce() {
+  return startupTask ??= startBackend().catch(error => {
+    void handleStartupFailure(error)
+    throw error
+  })
+}
 async function waitForHost() {
   await startOnce()
   if (isQuitting()) throw new Error('Desktop is shutting down')
@@ -138,10 +148,8 @@ async function main() {
   })
   entered = true
 
-  // The static page paints the upstream BootPage without the Host, so show
-  // the real window while configuration and the Host start in parallel. A
-  // first-run download or migration window remains the visible startup surface.
-  const presentInitialWindow = (startupWindowHidden = false) => {
+  // Match upstream: load the document, start the Host, then present the window.
+  const presentInitialWindow = () => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
       startupFailure: Boolean(startupFailure),
@@ -149,19 +157,17 @@ async function main() {
       recoveryActive: recovery.active,
       destroyed: window.isDestroyed(),
       startupWindowPresent: desktopStartupWindowPresent(),
-      startupWindowHidden,
     })) return
     initialPresentationDone = true
     window.show()
   }
   const pageLoaded = window.loadURL(`${SCHEME}://app/index.html`)
-  void pageLoaded.then(() => presentInitialWindow()).catch(() => {})
-  const ready = await startOnce().then(() => true, error => { void handleStartupFailure(error); return false })
   try { await pageLoaded } catch (error) {
     // A startup failure closes this window and aborts its navigation.
     if (startupFailure || isQuitting()) return
     throw error
   }
+  const ready = await startOnce().then(() => true, () => false)
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.
   if (!backend.host || backend.state.phase !== 'ready') {
@@ -170,15 +176,12 @@ async function main() {
     return
   }
   started = true
-  const completion = await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
-  // A deferred show waits until the first-run download or migration window is
-  // gone, and inherits a hidden dedicated window instead of overriding it. If
-  // the main window was already visible before the handoff, return to it.
+  await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
   if (backend.host && backend.state.phase === 'ready') {
-    if (completion?.restoreMainWindow && !isQuitting() && !recovery.active && !window.isDestroyed()) {
-      initialPresentationDone = true
-      window.show()
-    } else presentInitialWindow(completion?.startupWindowHidden === true)
+    presentInitialWindow()
+    // waitForHost() can start the backend. Optional menu discovery must only
+    // join the completed startup, never initiate it or delay window display.
+    void bridge.probeUserGuide().catch(() => {})
   }
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
