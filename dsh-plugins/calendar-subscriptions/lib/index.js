@@ -56,6 +56,11 @@ function delayWithJitter(delayMs) {
   return Math.round(delayMs * (0.9 + Math.random() * 0.2))
 }
 
+/** Only the keys a caller actually supplied. */
+function defined(input) {
+  return Object.fromEntries(Object.entries(input ?? {}).filter(([, value]) => value !== undefined))
+}
+
 export default class CalendarSubscriptions extends Service {
   static inject = ['calendar', 'storageDomain']
 
@@ -170,19 +175,27 @@ export default class CalendarSubscriptions extends Service {
     return { removed: id }
   }
 
-  async setEnabled(id, enabled) {
+  /** Adjust one feed's label, interval or enable state; scheduling follows. */
+  async updateFeed(id, patch = {}) {
     if (!this.table) await this.ready
     const feed = this.feedConfigs.get(id)
     if (!feed) throw new Error('unknown calendar subscription: ' + id)
-    const next = feedSchema.parse({ ...feed, enabled })
+    const next = feedSchema.parse({ ...feed, ...defined(patch) })
     this.feedConfigs.set(id, next)
     await this.table.put(id, next)
-    this.handles.get(id)?.setActive(enabled)
-    if (enabled) this.schedule(next, 1_000)
-    else {
+    if (patch.enabled !== undefined) this.handles.get(id)?.setActive(next.enabled)
+    // A relabelled feed re-registers: the label lives on the source entry.
+    if (patch.label !== undefined && patch.label !== feed.label && this.handles.has(id)) {
+      this.handles.get(id).dispose()
+      this.handles.delete(id)
+    }
+    if (!next.enabled) {
       const timer = this.timers.get(id)
       if (timer) clearTimeout(timer)
       this.timers.delete(id)
+    } else {
+      this.attach(next)
+      if (patch.enabled === true) this.schedule(next, 1_000)
     }
     return this.feedConfigs.get(id)
   }

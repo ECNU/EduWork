@@ -236,10 +236,10 @@ test('disabling hides a feed until it is enabled again', { skip: !runtime }, asy
       await withStack(root, async (subs, calendar) => {
         const added = await subs.addFeed({ label: '中国节假日', url })
         const id = added.feed.id
-        await subs.setEnabled(id, false)
+        await subs.updateFeed(id, { enabled: false })
         assert.equal(feedEvents(calendar).length, 0, 'a disabled feed is hidden')
         assert.equal(subs.feeds()[0].enabled, false)
-        await subs.setEnabled(id, true)
+        await subs.updateFeed(id, { enabled: true })
         assert.equal(feedEvents(calendar).length, 1, 'enabling restores the same events')
       })
     })

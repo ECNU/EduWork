@@ -8,12 +8,15 @@
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
+    "./tools": "./lib/tools.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib/**/*.js", "README.md", "README_EN.md"],
+  "files": ["lib/**/*.js", "skills/**/*", "README.md", "README_EN.md"],
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.2 <4.1.0",
+    "@deepseek-ai/dsh-permission-presets": ">=0.1.5-rc.1 <0.2.2",
     "@deepseek-ai/dsh-storage-domain": ">=0.1.5-rc.1 <0.2.2",
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.2",
     "@eduwork/dsh-calendar": "^0.1.0 || >=0.1.1-dev <0.2.0",
     "zod": "^4.4.3"
   }

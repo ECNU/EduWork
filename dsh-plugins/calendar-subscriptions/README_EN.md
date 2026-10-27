@@ -14,8 +14,8 @@ The service is available as `ctx.calendarSubscriptions`:
 
 - `addFeed({ label, url, intervalHours })` — add a feed and fetch it once now (default interval 24 hours, minimum 1 hour).
 - `feeds()` — list feeds with sync status (last success time and last error included).
-- `refresh(id)` / `refreshAll()` — refresh one feed or all of them now.
-- `setEnabled(id, enabled)` — disabling pauses refresh and hides events; enabling restores both.
-- `removeFeed(id)` — unsubscribe and clear that feed's events.
+- `refresh(id)` / `refreshAll()` — refresh one feed or every enabled feed now.
+- `updateFeed(id, { label?, intervalHours?, enabled? })` — rename, change the interval, or pause and resume (pausing stops refresh and hides events without deleting them).
+- `removeFeed(id)` — unsubscribe and clear that feed's events; personal content survives.
 
-Agent-facing subscription tools and skill documentation arrive in a follow-up commit.
+Agent-facing tools (`calendar_subscriptions`, `calendar_subscribe`, `calendar_update_subscription`, `calendar_unsubscribe`, `calendar_refresh_subscriptions`) are registered by `lib/tools.js`; writes follow the host permission decision (they ask first by default). The skill documentation lives in `skills/calendar-subscriptions/`.
