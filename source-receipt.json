@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-26T16:30:22.859Z",
-  "fileSetSHA256": "c0b2b2b66acc90a4658b194dce3f456a7d1ac9e9d148ef4c43f3c3949cce221c",
+  "createdAt": "2026-10-27T03:34:36.060Z",
+  "fileSetSHA256": "ab7f16088f44a3c48f4a2beaba1a7fd17117661fd4bfb071490c4374496c68dd",
   "files": [
     {
       "path": ".gitattributes",
@@ -1273,7 +1273,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "6ad16d8d3ab5a940e906d058062e1350eb963234a7a9f27d945350a244c19227"
+      "sha256": "770864f1e57824ce0b635424ab3aae05c8bdecaee2fd6a6e0f759eaf1bd70a25"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1293,7 +1293,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "cf2f662dfb82d22e3736e1a679ac7d27c76704e9e55c9bc3ca5df9e97c71e80c"
+      "sha256": "d4fd1d427be1aaaa27b0d3d679406d1e0b380015ea9d3d8522a70f859424ea0d"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
-      "sha256": "9e44c8b486db519fdc00ac8081a1f374f5648360102dc03d479ce46bb1654acf"
+      "sha256": "1100dac7bd095960910be877532830b21a52ab4e9c6413376db60873b20bcbec"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "01bdac02276e9a11a5f105b984f2162218f0e1d05ffb0dfcdc866380a245ccc8"
+      "sha256": "4f29aaccf586b11f4e8b01a1483f97f42ad8cade8bd43ed3f04566a6b7ab2b9f"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
@@ -1533,7 +1533,7 @@
     },
     {
       "path": "dsh-electron/tests/window-visibility.electron.mjs",
-      "sha256": "886aaa0b84fa11c2b837957aba5c1ff345814d49ce25b6c35b04e55fb2bb70f7"
+      "sha256": "b1d1382d4b21a445fabeec85ecd6c7f6b8cc7469ce126ce878c35a2cfbedd83f"
     },
     {
       "path": "dsh-electron/tests/window-visibility.test.mjs",

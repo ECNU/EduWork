@@ -5,12 +5,35 @@ import { EventEmitter } from 'node:events'
 import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
 import { attachAppActivation, showDesktopWindows } from '../src/window-visibility.mjs'
 
-const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
+const allowed = { presented: false, appHidden: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
 
 test('initial presentation respects prior presentation, recovery and shutdown', () => {
   assert.equal(shouldPresentMainWindow(allowed), true)
   for (const key of Object.keys(allowed)) assert.equal(shouldPresentMainWindow({ ...allowed, [key]: true }), false, key)
 })
+
+for (const platform of ['darwin', 'win32']) {
+  test(`initial Host readiness respects application hiding on ${platform}`, () => {
+    const source = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
+    const start = source.indexOf('  const presentInitialWindow = () => {')
+    const end = source.indexOf('\n  const pageLoaded =', start)
+    assert.ok(start >= 0 && end > start)
+    let hidden = true, showCalls = 0
+    const app = { isHidden() { assert.equal(platform, 'darwin'); return hidden } }
+    const window = { isDestroyed: () => false, show() { showCalls++ } }
+    const present = new Function('app', 'process', 'window', 'shouldPresentMainWindow', `
+      let initialPresentationDone = false, startupFailure = false
+      const recovery = { active: false }, isQuitting = () => false, desktopStartupWindowPresent = () => false
+      ${source.slice(start, end)}
+      return presentInitialWindow
+    `)(app, { platform }, window, shouldPresentMainWindow)
+    present()
+    assert.equal(showCalls, platform === 'darwin' ? 0 : 1)
+    hidden = false
+    present()
+    assert.equal(showCalls, 1)
+  })
+}
 
 function startupHarness() {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
@@ -43,7 +66,7 @@ function startupHarness() {
     restore() { this.minimized = false }
     focus() { this.focused = true }
   }
-  const app = new EventEmitter()
+  const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
     let quitting = false, desktopFailureShown = false
@@ -63,8 +86,20 @@ function startupHarness() {
   const main = new FakeWindow()
   harness.setMain(main)
   attachAppActivation({ app, windows: harness.activationWindows, platform: 'darwin' })
-  return { harness, main, FakeWindow, activate: () => app.emit('activate') }
+  return { harness, main, FakeWindow, app, activate: () => app.emit('activate') }
 }
+
+test('preparation progress does not present a window while the application is hidden', { skip: process.platform !== 'darwin' }, () => {
+  const { harness, main, app } = startupHarness()
+  app.hidden = true
+  harness.showStartupProgress('download')
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  assert.equal(main.showCalls, 0)
+  app.hidden = false
+  harness.showDesktop()
+  assert.equal(main.visible, true)
+  assert.equal(main.focused, true)
+})
 
 test('preparation uses the main BootPage and clears its status without presenting it again', async () => {
   const { harness, main, FakeWindow } = startupHarness()

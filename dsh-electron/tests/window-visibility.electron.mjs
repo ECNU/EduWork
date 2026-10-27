@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { once } from 'node:events'
 import { app, BrowserWindow } from 'electron'
 import { attachAppActivation, attachWindowVisibility } from '../src/window-visibility.mjs'
+import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
 
 // Match the product's macOS lifecycle while testing each window in isolation.
 app.on('window-all-closed', () => {})
@@ -14,6 +15,17 @@ try {
   assert.equal(process.platform, 'darwin')
   const fallback = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
   windows.push(fallback)
+  await fallback.loadURL('data:text/html,<p>Synthetic initial window</p>')
+  app.hide()
+  for (let attempt = 0; attempt < 100 && !app.isHidden(); attempt++) await new Promise(resolve => setTimeout(resolve, 10))
+  assert.equal(app.isHidden(), true)
+  if (shouldPresentMainWindow({ presented: false, appHidden: app.isHidden(), startupFailure: false,
+    quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false })) fallback.show()
+  assert.equal(fallback.isVisible(), false, 'Host readiness preserves hiding before the first window')
+  assert.equal(app.isHidden(), true)
+  app.emit('activate')
+  assert.equal(fallback.isVisible(), true, 'explicit activation can still present the first window')
+  fallback.hide()
   for (const kind of ['startup', 'main', 'failure']) {
     const window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
     windows.unshift(window)
@@ -36,7 +48,7 @@ try {
     assert.equal(window.isDestroyed(), true, kind + ' can close when quitting')
     quitting = false
   }
-  console.log('PASS: native macOS startup/main/failure windows hide, reopen and close during quit; Dock event dispatched explicitly')
+  console.log('PASS: hiding before first presentation survives Host readiness; native startup/main/failure windows hide, reopen and close during quit; Dock event dispatched explicitly')
 } catch (error) {
   console.error(error)
   process.exitCode = 1
