@@ -6,7 +6,7 @@ import { execFile } from 'node:child_process'
 import { promisify } from 'node:util'
 import { parseArgs } from 'node:util'
 import { pathToFileURL } from 'node:url'
-import { acquireInstanceMutex, comparablePath, releaseInstanceMutex } from '../src/install-mutex.mjs'
+import { acquireInstanceMutex, comparablePath, instanceIdentity, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { WRITABLE_ROOT_MARKER, writableRootMarker } from '../src/writable-root.mjs'
 
 const run = promisify(execFile)
@@ -107,12 +107,16 @@ async function inventorySelected(sourceRoot, distribution) {
 
 async function checkRunning(sourceRoots, listProcesses) {
   const roots = (Array.isArray(sourceRoots) ? sourceRoots : [sourceRoots]).map(root => resolve(root))
+  const physicalRoots = roots.map(root => instanceIdentity(root))
   const processes = await listProcesses()
   const knownNames = new Set(['EduWork-Electron.exe', 'EduWork-Updater.exe', 'ChatECNU-Work.exe', 'node.exe', 'python.exe'])
   const matches = processes.filter(item => {
     if (item.ProcessId === process.pid) return false
     const executable = typeof item.ExecutablePath === 'string' ? item.ExecutablePath : ''
-    if (executable && roots.some(root => same(executable, root) || within(root, executable))) return true
+    if (executable) {
+      const identity = instanceIdentity(executable)
+      if (physicalRoots.some(root => same(identity, root) || within(root, identity))) return true
+    }
     if (!knownNames.has(item.Name)) return false
     const values = [item.ExecutablePath, item.CommandLine].filter(value => typeof value === 'string')
     return roots.some(root => values.some(value => same(value, root) || within(root, value) || value.toLowerCase().includes(root.toLowerCase())))

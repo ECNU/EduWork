@@ -237,6 +237,20 @@ test('refuses a host runtime process under the old program root', async t => {
   assert.equal(await missing(f.writable), true)
 })
 
+test('refuses a host runtime path when the source is reached through a junction', { skip: process.platform !== 'win32' }, async t => {
+  const f = await fixture(t)
+  const alias = join(f.base, 'source-alias')
+  await symlink(f.source, alias, 'junction')
+  const hostPath = join(f.source, 'resources/runtime/node.exe')
+  await assert.rejects(migratePortableToInstalled(options(f, {
+    sourceRoot: alias,
+    dryRun: true,
+    listProcesses: async () => [{ ProcessId: 43, Name: 'node.exe', ExecutablePath: hostPath }],
+  })), /still running/)
+  assert.equal(existsSync(alias + '.handoff.json'), false)
+  assert.equal(await missing(f.writable), true)
+})
+
 test('ignores unrelated shells and the migration process itself', async t => {
   const f = await fixture(t)
   const result = await migratePortableToInstalled(options(f, {
