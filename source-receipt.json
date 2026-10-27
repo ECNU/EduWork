@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T11:35:05.462Z",
-  "fileSetSHA256": "b20286e20a9b65df5716c0f11356b1ad45be1cb5e0a31e8ce7e0afdf7da8b7a9",
+  "createdAt": "2026-10-27T12:38:13.888Z",
+  "fileSetSHA256": "0f81f770340bc76d6d605a687ec430161a34fe03661f972f7ef0a7beee01bed8",
   "files": [
     {
       "path": ".gitattributes",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
-      "sha256": "c583a5b68cae908d2d8ff7cd5af1566a539d5916fbc50afd2d1f9ff3d58eba89"
+      "sha256": "af3e426a29c9d02409dac52e30c303dd7becdd2083bdc2b23b26d286a17a6812"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "4d3bbde29ef4a2760f2440131eb10bb6b49c468fe2540063a4bea0e1787fd8b7"
+      "sha256": "d4db3be5ae0c98d656a68d8a9642d0e364b91cb40d75430b968cbd5783176722"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",

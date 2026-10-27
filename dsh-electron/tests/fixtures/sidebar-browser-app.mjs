@@ -1,12 +1,11 @@
 // Electron application for sidebar-browser.test.mjs: the real broker, preload
 // and renderer half around a stand-in Sidebar (sidebar-browser-app.html).
-// stdout carries one JSON line per event; stdin takes {id, code} lines whose
-// code runs as an async function of { window, broker }.
+// Over Node's IPC channel it sends {ready} once, then runs the code of each
+// {id, code} message as an async function of { window, broker } and replies.
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { createRequire, registerHooks } from 'node:module'
 import { dirname, join } from 'node:path'
-import { createInterface } from 'node:readline'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -16,7 +15,6 @@ registerHooks({ resolve(specifier, context, next) {
 } })
 const { createSidebarBrowser, SIDEBAR_BROWSER_ENV, SIDEBAR_BROWSER_IPC } = await import('../../src/sidebar-browser.mjs')
 
-const emit = value => process.stdout.write(JSON.stringify(value) + '\n')
 protocol.registerSchemesAsPrivileged([{ scheme: 'dsh-app', privileges: { standard: true, secure: true, supportFetchAPI: true } }])
 let window
 const broker = createSidebarBrowser({ getWindow: () => window, idleMs: 1500 })
@@ -50,11 +48,10 @@ void app.whenReady().then(async () => {
     guest.loadURL = (...args) => loadURL(...args).catch(error => { if (error.errno !== -3) throw error })
   })
   const environment = await broker.listen()
-  createInterface({ input: process.stdin }).on('line', async line => {
-    const { id, code } = JSON.parse(line)
-    try { emit({ id, value: await new Function('scope', `return (async ({ window, broker }) => { ${code} })(scope)`)({ window, broker }) }) }
-    catch (error) { emit({ id, error: error.message }) }
+  process.on('message', async ({ id, code }) => {
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker }) => { ${code} })(scope)`)({ window, broker }) }) }
+    catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')
-  emit({ ready: environment[SIDEBAR_BROWSER_ENV] })
+  process.send({ ready: environment[SIDEBAR_BROWSER_ENV] })
 }).catch(error => { console.error(error); app.exit(1) })

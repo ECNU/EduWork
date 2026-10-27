@@ -9,7 +9,6 @@ import { once } from 'node:events'
 import { createServer } from 'node:http'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
-import { createInterface } from 'node:readline'
 import { fileURLToPath } from 'node:url'
 
 const electron = process.env.EDUWORK_TEST_ELECTRON, runtime = process.env.EDUWORK_TEST_RUNTIME
@@ -39,7 +38,7 @@ let next = 0
 const run = code => new Promise((resolve, reject) => {
   const id = ++next
   replies.set(id, ({ value, error }) => error ? reject(new Error(error)) : resolve(value))
-  app.stdin.write(JSON.stringify({ id, code }) + '\n')
+  app.send({ id, code })
 })
 const page = code => run(`return window.webContents.executeJavaScript(${JSON.stringify(code)})`)
 const throttled = () => run('return window.webContents.getBackgroundThrottling()')
@@ -90,10 +89,11 @@ before(async () => {
   }).listen(0, '127.0.0.1')
   await once(server, 'listening')
   origin = `http://127.0.0.1:${server.address().port}`
-  app = spawn(electron, [fileURLToPath(new URL('./fixtures/sidebar-browser-app.mjs', import.meta.url))], { stdio: ['pipe', 'pipe', 'inherit'] })
+  // On Windows, stdin does not reach Electron's main process and Electron writes
+  // a blank line to stdout; Node's IPC channel works on every platform.
+  app = spawn(electron, [fileURLToPath(new URL('./fixtures/sidebar-browser-app.mjs', import.meta.url))], { stdio: ['ignore', 'ignore', 'inherit', 'ipc'] })
   endpoint = await new Promise((resolve, reject) => {
-    createInterface({ input: app.stdout }).on('line', line => {
-      const message = JSON.parse(line)
+    app.on('message', message => {
       if (message.ready) resolve(message.ready)
       else replies.get(message.id)?.(message)
     })
