@@ -139,20 +139,28 @@ export class SideChatService {
 
   /**
    * Delete one closed side chat's stored log. The runtime exposes no removal
-   * API, so this drops the session directory the JSONL store keeps listing;
-   * the search index reconciles on its next persistence observation. Returns
-   * false when storage cannot be inspected, which leaves the conversation
-   * stored as an ordinary Session instead of silently hiding it.
+   * API, so the Host removes the session directory under the persistence root
+   * and then asks the store itself whether the session is gone; the search
+   * index reconciles on its next persistence observation. Returns false when
+   * the store still reports the session or cannot be read, which leaves the
+   * conversation stored as an ordinary Session instead of silently hiding it.
    */
   async removeStoredSession(sessionId) {
-    const root = this.ctx.get('sessionPersistence')?.root
-    if (typeof root !== 'string' || root === '') return false
+    const persistence = this.ctx.get('sessionPersistence')
+    const root = persistence?.root
+    if (typeof root !== 'string' || root === '' || typeof persistence.list !== 'function') return false
     try {
       for (const entry of await readdir(root, { withFileTypes: true })) {
-        if (!entry.isDirectory()) continue
-        await rm(join(root, entry.name, sessionId), { recursive: true, force: true })
+        if (entry.isDirectory()) await rm(join(root, entry.name, sessionId), { recursive: true, force: true })
       }
-      return true
+    } catch {
+      return false
+    }
+    // Trust the store's own listing, not the layout guess: a store that moved
+    // its files still reports the session and must fall back to "keep it".
+    try {
+      const stored = await persistence.list()
+      return !stored.some(row => String(row?.header?.id ?? '') === sessionId)
     } catch {
       return false
     }
