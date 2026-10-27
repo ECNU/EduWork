@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T09:39:04.349Z",
-  "fileSetSHA256": "b0f99d0446dab4e42fa68a05b70539e29d7e1fd950a0f00f7ccdd732a38993d5",
+  "createdAt": "2026-10-27T11:12:05.309Z",
+  "fileSetSHA256": "3c772ce68d18e9da4d4aa33e5347b22eddc695b0076e480f73ed06982774e745",
   "files": [
     {
       "path": ".gitattributes",
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "6b05db6727b78aeaef9ed8dc9c87ec3d0d6ac0b59d5153a213e145c6e5db0ad3"
+      "sha256": "9efab21655c343d410cd6502c003fb83df96bcce3f752bb8ac1e32c7647614d8"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",

@@ -27,8 +27,10 @@ async function fixture(t) {
 async function holdHealthFile(t,file,milliseconds) {
  const script=file+'-lock.ps1'
  await writeFile(script,`param([string]$HealthPath,[int]$Milliseconds)
+# Resolve the sleep call before locking; cmdlet loading must not extend the hold.
+[Threading.Thread]::Sleep(0)
 $stream=[IO.FileStream]::new($HealthPath,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
-try { [Console]::Out.WriteLine('locked'); Start-Sleep -Milliseconds $Milliseconds } finally { $stream.Dispose() }
+try { [Console]::Out.WriteLine('locked'); [Threading.Thread]::Sleep($Milliseconds) } finally { $stream.Dispose() }
 `)
  const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-File',script,file,String(milliseconds)],{windowsHide:true,stdio:['ignore','pipe','pipe']})
  t.after(()=>{if(child.exitCode===null)child.kill()})
