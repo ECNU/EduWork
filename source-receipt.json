@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T09:24:21.444Z",
-  "fileSetSHA256": "cf1842bba000d5bec516df163ff9d8eba69153fe01a7bf6add0ff3ab26715ade",
+  "createdAt": "2026-10-27T03:41:33.941Z",
+  "fileSetSHA256": "40b50c63f966b625e0b77db3e00fc7526850cb2db34230c43fe007aefe085207",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "b55c79e4d986783c1a5997c21543f4e30f95773de521ad3f2b44228211c630c6"
+      "sha256": "7da2a28a5d7571be1c166a593b9b8236140b2be682ab6acb39b5843181b1a78c"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1253,7 +1253,7 @@
     },
     {
       "path": "dsh-electron/src/legacy-migration.mjs",
-      "sha256": "80e9f4242266517be13a4f445e2c0f5df7f5fe4f8824e4fec7ee3f527b70280b"
+      "sha256": "a8a5e04c5e010563d184f2cee91455461899d944834f09f55218229c2d966f44"
     },
     {
       "path": "dsh-electron/src/lifecycle.mjs",
@@ -1437,7 +1437,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "6b05db6727b78aeaef9ed8dc9c87ec3d0d6ac0b59d5153a213e145c6e5db0ad3"
+      "sha256": "c348bfa496e42b9246ef870e030b3036b0088d4809be5d04d60b3adddf4714e1"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",
