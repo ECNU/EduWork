@@ -49,9 +49,15 @@ async function fixture() {
   source.append('user/message', createUserMessage({ content: [{ type: 'text', text: 'SOURCE_FUTURE' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
   source.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
   const { SideChatService } = await import('../src/service.js')
+  const archived = []
+  ctx.provide('workspaceRegistry', {
+    archivedSessionIds: [],
+    async resolveByPath() { return undefined },
+    async archiveSession(id) { archived.push(id) },
+  })
   const service = new SideChatService(ctx)
   return {
-    ctx, service, source, sourceHandle, selected, createUserMessage, createMessage, LlmAdapter,
+    ctx, service, source, sourceHandle, selected, archived, createUserMessage, createMessage, LlmAdapter,
     assemble: agent => ctx.systemPrompt.assemble(assembleContextFor(agent)),
     close: async () => { await service.dispose(); await ctx.fiber.dispose() },
   }
@@ -74,6 +80,7 @@ test('real Runtime creates a seeded side chat with inherited history and seedLen
   await f.service.close({ owner, sessionId: opened.sessionId })
   assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
   assert.equal(f.ctx.sessions.get(opened.sessionId), undefined)
+  assert.deepEqual(f.archived, [opened.sessionId], 'a closed side chat is archived out of every session list')
   assert.equal(JSON.stringify(f.source.snapshotEvents()).includes('SIDE_PRIVATE_NEEDLE'), false)
 })
 

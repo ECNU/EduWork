@@ -126,6 +126,11 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   const root = useRef(null)
   useEffect(() => chat && root.current ? alignComposerDocks(root.current, chat.sourceSessionId) : undefined,
     [chat?.sessionId, chat?.sourceSessionId])
+  // The right sidebar persists tabs per Session, but a side chat only lives in
+  // window memory. A restored tab with no chat behind it would be an empty
+  // pane, so it closes itself instead.
+  const closeTab = info.tab.actions.close
+  useEffect(() => { if (!chat) closeTab() }, [chat, closeTab])
   return h('section', {
     ref: root,
     'data-eduwork-side-chat': '', 'data-side-source': chat?.sourceSessionId, 'data-side-session': chat?.sessionId, 'aria-label': t('title'),
