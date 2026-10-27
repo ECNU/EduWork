@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "bb12aba9a6c9ff2aae767610a8794a5a7a6504ad816ca7c964a12dec56eccaff",
+  "createdAt": "2026-10-27T09:33:33.402Z",
+  "fileSetSHA256": "e9f16326e363eb07d2fd860527aab0aa87719d6d801b944e8c2e157f02e98fee",
   "files": [
     {
       "path": ".gitattributes",
@@ -1269,11 +1269,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "cc3daed99c7d18afc5aeeaf7d9db465bce49c1c5a0e6489629a7d2ccf2f5537e"
+      "sha256": "4bb0a950c3602897481b3b69cf0bfffedacd60f7ae6721d037a45d8f6c43d66c"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "6ad16d8d3ab5a940e906d058062e1350eb963234a7a9f27d945350a244c19227"
+      "sha256": "2caebf28d3ff37b9a1636d44265d829a00a637d033987cb17e3807151c121947"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1417,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "7dbee033db16961e047384004366e1269422dd8ad5e1771e98453a3c2313fe36"
+      "sha256": "f3522ccfb0a4558ca6b6b0762b3d0a02f66094df927ad79a85807871d2ba1611"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "d34971969bfd62d6905fc4921933be6c9cd6a8aa0711727f6fdd9a872dee8175"
+      "sha256": "9b700162cf2ae0793664cad50e1b867a8998892bc02a7398ac1cde408c3db268"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1526,6 +1526,10 @@
     {
       "path": "dsh-electron/tests/user-config-electron-smoke.mjs",
       "sha256": "80408d92cf80ae2a9238442f189aafd1ed48a8346eb400387c73f0f1745e9f55"
+    },
+    {
+      "path": "dsh-electron/tests/user-guide-menu.test.mjs",
+      "sha256": "70809bab23a956d60ecb2d3a8361d9fc461276358170e05ad2bbdba1681052fd"
     },
     {
       "path": "dsh-electron/tests/window-lifecycle.mjs",
