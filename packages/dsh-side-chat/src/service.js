@@ -1,6 +1,4 @@
 import { randomUUID } from 'node:crypto'
-import { readdir, rm } from 'node:fs/promises'
-import { join } from 'node:path'
 import { buildForkSeed, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { SIDE_BOUNDARY, disallowedSideTool } from './boundary.js'
 import { buildTitleInput, normalizeTitle, questionAndAnswerOf, titleSystem } from './title.js'
@@ -33,6 +31,7 @@ export class SideChatService {
 
   async open({ owner, sourceSessionId, atSeq, title }) {
     validateOwner(owner)
+    if (typeof this.ctx.get('workspaceRegistry')?.archiveSession !== 'function') throw new SideChatError('Session archiving is unavailable', 503)
     if (this.disposed) throw new SideChatError('Side-chat service is closing', 503)
     if (typeof sourceSessionId !== 'string' || sourceSessionId.length === 0 || sourceSessionId.length > 256
       || !Number.isSafeInteger(atSeq) || atSeq < 0) throw new SideChatError('Choose an existing message boundary')
@@ -137,35 +136,6 @@ export class SideChatService {
     }
   }
 
-  /**
-   * Delete one closed side chat's stored log. The runtime exposes no removal
-   * API, so the Host removes the session directory under the persistence root
-   * and then asks the store itself whether the session is gone; the search
-   * index reconciles on its next persistence observation. Returns false when
-   * the store still reports the session or cannot be read, which leaves the
-   * conversation stored as an ordinary Session instead of silently hiding it.
-   */
-  async removeStoredSession(sessionId) {
-    const persistence = this.ctx.get('sessionPersistence')
-    const root = persistence?.root
-    if (typeof root !== 'string' || root === '' || typeof persistence.list !== 'function') return false
-    try {
-      for (const entry of await readdir(root, { withFileTypes: true })) {
-        if (entry.isDirectory()) await rm(join(root, entry.name, sessionId), { recursive: true, force: true })
-      }
-    } catch {
-      return false
-    }
-    // Trust the store's own listing, not the layout guess: a store that moved
-    // its files still reports the session and must fall back to "keep it".
-    try {
-      const stored = await persistence.list()
-      return !stored.some(row => String(row?.header?.id ?? '') === sessionId)
-    } catch {
-      return false
-    }
-  }
-
   describe(entry) {
     return { sessionId: entry.sessionId, sourceSessionId: entry.sourceSessionId, atSeq: entry.atSeq, seedLength: entry.seedLength ?? 0 }
   }
@@ -190,7 +160,8 @@ export class SideChatService {
       const input = buildTitleInput(question, answer, locale)
       if (input.trim() === '') return { title: null }
       let text = ''
-      const signal = AbortSignal.timeout(8000)
+      const signal = AbortSignal.any([entry.controller.signal, AbortSignal.timeout(8000)])
+      signal.throwIfAborted()
       // The LLM service dispatches through a prepared call: routing, defaults
       // and validation happen in prepareCall, and stream() only accepts that
       // exact resolved config.
@@ -238,12 +209,10 @@ export class SideChatService {
     entry.cleanup ??= (async () => {
       await entry.creation?.catch(() => {})
       await entry.handle?.dispose()
-      // A closed side chat is gone for good. When its log cannot be removed it
-      // stays attached to the Workspace, so the user keeps it as an ordinary
-      // conversation instead of losing it.
-      if (await this.removeStoredSession(entry.sessionId) && entry.workspace !== undefined) {
-        await entry.workspace.detachSession(entry.sessionId).catch(() => {})
-      }
+      // Archive through the public registry contract. Keep both the durable
+      // transcript and its Workspace membership so it can be restored later.
+      // Failure retains ownership and lets retryCleanup try again.
+      if (entry.handle) await this.ctx.workspaceRegistry.archiveSession(entry.sessionId, { stopActivity: true })
       if (this.entries.get(owner) === entry) this.entries.delete(owner)
       return { closed: true }
     })().catch(error => { entry.cleanup = undefined; throw error })

@@ -2,7 +2,7 @@ import { SideChatService, SIDE_CHAT_PATH } from './service.js'
 export { SideChatService, SideChatError, SIDE_CHAT_PATH } from './service.js'
 
 export const name = 'eduwork-side-chat'
-export const inject = ['sessions', 'agents', 'sessionQuery', 'connection', 'systemPrompt']
+export const inject = ['sessions', 'agents', 'sessionQuery', 'connection', 'systemPrompt', 'workspaceRegistry']
 
 export function apply(ctx) {
   const service = new SideChatService(ctx)

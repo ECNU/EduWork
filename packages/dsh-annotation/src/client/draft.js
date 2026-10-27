@@ -67,7 +67,7 @@ export function selectionSource(chat, key, sessionId) {
       || candidate.data.seq > node.anchorSeq) continue
     if (atSeq === undefined || candidate.data.seq > atSeq) atSeq = candidate.data.seq
   }
-  return atSeq === undefined ? undefined : { atSeq, canAnnotate: false }
+  return atSeq === undefined ? undefined : { atSeq, canAnnotate: false, liveKey: key }
 }
 
 export function closingMessage(chat, turn) {

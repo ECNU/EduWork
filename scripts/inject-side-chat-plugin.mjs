@@ -11,7 +11,7 @@ const json = async path => JSON.parse(await readFile(path, 'utf8'))
 const save = async (path, value) => writeFile(path, JSON.stringify(value, null, 2) + '\n')
 const sha256 = bytes => createHash('sha256').update(bytes).digest('hex')
 
-export async function injectSideChat({ product, pluginRoot }) {
+export async function injectSideChat({ product, pluginRoot, annotationRoot }) {
   product = resolve(product)
   pluginRoot = pluginRoot ? resolve(pluginRoot) : join(repository, 'packages/dsh-side-chat')
 
@@ -53,10 +53,27 @@ export async function injectSideChat({ product, pluginRoot }) {
       path, sha256: sha256(await readFile(join(target, path))),
     })))
 
+  let annotation
+  if (annotationRoot) {
+    const root = resolve(annotationRoot)
+    const annotationManifest = await json(join(root, 'package.json'))
+    if (annotationManifest.name !== '@eduwork/dsh-annotation') throw new Error('Expected @eduwork/dsh-annotation package')
+    const destination = join(modules, '@eduwork/dsh-annotation')
+    await mkdir(destination, { recursive: true })
+    for (const path of ['lib/index.js', 'lib/client.js', 'package.json', 'cordis.patch.yml']) {
+      await mkdir(dirname(join(destination, path)), { recursive: true })
+      await cp(join(root, path), join(destination, path))
+    }
+    annotation = { name: annotationManifest.name, version: annotationManifest.version,
+      files: await Promise.all(['lib/index.js', 'lib/client.js', 'package.json'].map(async path => ({
+        path, sha256: sha256(await readFile(join(destination, path))),
+      }))) }
+  }
+
   const receipt = {
     schemaVersion: 1, kind: 'eduwork-side-chat-plugin-injection',
     package: { name: manifest.name, version: manifest.version },
-    files, injectedAt: new Date().toISOString(),
+    files, ...(annotation ? { annotation } : {}), injectedAt: new Date().toISOString(),
   }
   await save(join(product, 'd/.eduwork-side-chat-injection.json'), receipt)
 
@@ -70,8 +87,9 @@ if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1]
     options: {
       product: { type: 'string' },
       'plugin-root': { type: 'string' },
+      'annotation-root': { type: 'string' },
     },
   })
   if (!values.product) throw new Error('Missing --product <path-to-assembled-product>')
-  await injectSideChat({ product: values.product, pluginRoot: values['plugin-root'] })
+  await injectSideChat({ product: values.product, pluginRoot: values['plugin-root'], annotationRoot: values['annotation-root'] })
 }

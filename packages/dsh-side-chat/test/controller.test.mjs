@@ -38,6 +38,146 @@ test('different source conversations own independent chats, drafts and closing s
   assert.equal(registry.findAddress(addressOf('side-source-b')), b)
 })
 
+test('snapshot routing prefers the focused eligible chat and otherwise preserves creation order', async () => {
+  let count = 0
+  const registry = new SideChatRegistry({ owner: () => String(++count).padStart(32, 'r'), request: async input => input.action === 'open'
+    ? { sessionId: `side-${input.owner}` } : {} })
+  const create = async seq => {
+    const owner = registry.select('source', seq)
+    const chat = await owner.open('source', seq)
+    return { owner, chat }
+  }
+  const a = await create(10), b = await create(20), c = await create(30)
+  assert.equal(registry.select('source', 25, addressOf(a.chat.sessionId)), c.owner)
+  assert.equal(registry.select('source', 15, addressOf(b.chat.sessionId)), b.owner)
+  assert.equal(registry.select('source', 15, addressOf(c.chat.sessionId)), c.owner)
+  assert.equal(registry.select('source', 15, addressOf(a.chat.sessionId)), b.owner)
+  assert.equal(registry.select('source', 5, addressOf(c.chat.sessionId)), c.owner)
+  assert.equal(registry.select('source', 15, 'unrelated-tab'), b.owner)
+  const d = registry.select('source', 40, addressOf(c.chat.sessionId))
+  assert.notEqual(d, a.owner); assert.notEqual(d, b.owner); assert.notEqual(d, c.owner)
+  assert.deepEqual(registry.all(), [a.owner, b.owner, c.owner, d])
+  await b.owner.close()
+  assert.equal(registry.select('source', 15, addressOf(a.chat.sessionId)), c.owner)
+  assert.equal(a.owner.snapshot.phase, 'open')
+  assert.equal(c.owner.snapshot.phase, 'open')
+})
+
+test('concurrent references to a covered pending snapshot share its creation', async () => {
+  let resolveOpen, opens = 0
+  const registry = new SideChatRegistry({ owner: () => 'w'.repeat(32), request: input => {
+    if (input.action !== 'open') return Promise.resolve({})
+    opens++
+    return new Promise(resolve => { resolveOpen = resolve })
+  } })
+  const first = registry.select('source', 20)
+  const opening = first.open('source', 20)
+  const selected = registry.select('source', 10)
+  assert.equal(selected, first)
+  const second = selected.open('source', selected.snapshot.chat.atSeq)
+  assert.equal(opens, 1)
+  resolveOpen({ sessionId: 'side-pending' })
+  assert.equal((await opening).sessionId, (await second).sessionId)
+})
+
+test('live selections require a captured prefix from the same response', async () => {
+  let count = 0
+  const registry = new SideChatRegistry({ owner: () => String(++count).padStart(32, 'l'), request: async input => input.action === 'open'
+    ? { sessionId: `side-${input.owner}` } : {} })
+  const durable = registry.select('source', 5)
+  await durable.open('source', 5)
+  const first = registry.select('source', 5, addressOf(durable.snapshot.chat.sessionId), { key: 'step-1', prefix: 'hello', text: 'hello world' })
+  assert.notEqual(first, durable)
+  await first.open('source', 5)
+  assert.equal(registry.select('source', 5, undefined, { key: 'step-1', prefix: 'hello wor', text: 'hello world plus' }), first)
+  const next = registry.select('source', 5, addressOf(first.snapshot.chat.sessionId), { key: 'step-1', prefix: 'hello world plus', text: 'hello world plus' })
+  assert.notEqual(next, first)
+  await next.open('source', 5)
+  assert.equal(registry.select('source', 5, addressOf(next.snapshot.chat.sessionId), { key: 'step-1', prefix: 'hello', text: 'hello world plus' }), next)
+  assert.notEqual(registry.select('source', 5, undefined, { key: 'other-step', prefix: 'hello', text: 'hello' }), first)
+  assert.notEqual(registry.select('source', 5, undefined, {}), first, 'legacy live references cannot assert coverage')
+})
+
+test('closing releases snapshot and controller without disturbing other snapshot order', async () => {
+  let count = 0
+  const registry = new SideChatRegistry({ owner: () => String(++count).padStart(32, 'm'), request: async input => input.action === 'open'
+    ? { sessionId: `side-${input.owner}` } : {} })
+  const first = registry.select('source', 1, undefined, { key: 'step', prefix: 'one', text: 'one private content' })
+  await first.open('source', 1)
+  const second = registry.select('source', 2)
+  await second.open('source', 2)
+  await first.close()
+  assert.equal(first.liveSnapshot, undefined)
+  assert.deepEqual(registry.all(), [second])
+  await second.close()
+  assert.equal(registry.controllers.has('source'), false)
+  assert.deepEqual(registry.all(), [])
+})
+
+test('an idle error stays available for notification and is released after dismissal', () => {
+  const registry = new SideChatRegistry({ owner: () => 'n'.repeat(32), request: async () => ({}) })
+  const owner = registry.forSource('source')
+  owner.update({ error: 'failed' })
+  assert.equal(registry.findSource('source').snapshot.error, 'failed')
+  owner.update({ error: undefined })
+  assert.deepEqual(registry.all(), [])
+})
+
+test('failed archive retains owner for retry and clears memory after success', async () => {
+  let failure = true
+  const registry = new SideChatRegistry({ owner: () => 't'.repeat(32), request: async input => {
+    if (input.action === 'close' && failure) throw new Error('archive failed')
+    return input.action === 'open' ? { sessionId: 'side-retry' } : {}
+  } })
+  const owner = registry.select('source', 1, undefined, { key: 'step', prefix: 'one', text: 'one private content' })
+  await owner.open('source', 1)
+  await assert.rejects(owner.close(), /archive failed/)
+  assert.equal(registry.findSession('side-retry'), owner)
+  assert.ok(owner.liveSnapshot)
+  failure = false
+  await registry.retryCleanup()
+  assert.equal(owner.liveSnapshot, undefined)
+  assert.deepEqual(registry.all(), [])
+})
+
+test('a closed pending opener is removed only after its late result is handled', async () => {
+  let resolveOpen, closeCount = 0
+  const registry = new SideChatRegistry({ owner: () => 'p'.repeat(32), request: input => {
+    if (input.action === 'open') return new Promise(resolve => { resolveOpen = resolve })
+    closeCount++
+    return Promise.resolve({})
+  } })
+  const owner = registry.select('source', 1, undefined, { key: 'step', prefix: 'one', text: 'one private content' })
+  const opening = owner.open('source', 1)
+  const rejected = assert.rejects(opening, /expired/)
+  await owner.close()
+  assert.equal(owner.liveSnapshot, undefined)
+  assert.deepEqual(registry.all(), [owner])
+  resolveOpen({ sessionId: 'side-late' })
+  await rejected
+  assert.equal(closeCount, 2)
+  assert.deepEqual(registry.all(), [])
+})
+
+test('late cleanup of a closed opener preserves a new snapshot from the same source', async () => {
+  let finishOld, sequence = 0
+  const registry = new SideChatRegistry({ owner: () => String(++sequence).padStart(32, 'u'), request: input => {
+    if (input.action !== 'open') return Promise.resolve({})
+    if (input.atSeq === 1) return new Promise(resolve => { finishOld = resolve })
+    return Promise.resolve({ sessionId: 'side-new' })
+  } })
+  const old = registry.select('source', 1)
+  const opening = old.open('source', 1)
+  const rejected = assert.rejects(opening, /expired/)
+  await old.close()
+  const fresh = registry.select('source', 2)
+  await fresh.open('source', 2)
+  finishOld({ sessionId: 'side-old' })
+  await rejected
+  assert.deepEqual(registry.all(), [fresh])
+  assert.equal(registry.findSession('side-new'), fresh)
+})
+
 test('failed cleanup in one source does not block creating or closing another side chat', async () => {
   let sequence = 0, fail = true
   const registry = new SideChatRegistry({ owner: () => String(++sequence).padStart(32, 'y'), request: async input => {

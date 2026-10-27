@@ -1,6 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
-import { SOURCE, MAX_NOTE, decode, reference, text } from './reference.js'
+import { SOURCE, MAX_NOTE, MAX_LIVE_SNAPSHOT, decode, reference, text } from './reference.js'
 import { place } from './position.js'
 import { annotations, occurrenceSpan, selectionSource, closingMessage } from './draft.js'
 import { fragment } from '../protocol.js'
@@ -120,18 +120,20 @@ function readSelection(marker, resolveOrigin) {
   // comes from the public snapshot. Context is bounded to this selected row.
   const row = element.closest('[data-chat-node-key]')
   if (!row || !row.contains(range.startContainer) || !row.contains(range.endContainer)) return null
-  // A row still receiving tokens has no settled event behind it: quoting it
-  // would anchor the annotation to a boundary the message has not reached.
-  if (row.querySelector('[data-streaming]') !== null) return null
   const source = resolveOrigin(row.getAttribute('data-chat-node-key'))
   if (!source) return null
   const before = range.cloneRange(), after = range.cloneRange()
   before.selectNodeContents(row); before.setEnd(range.startContainer, range.startOffset)
   after.selectNodeContents(row); after.setStart(range.endContainer, range.endOffset)
+  const throughSelection = range.cloneRange()
+  throughSelection.selectNodeContents(row); throughSelection.setEnd(range.endContainer, range.endOffset)
+  const liveSnapshot = source.liveKey === undefined ? undefined : {
+    key: source.liveKey, prefix: throughSelection.toString(), text: row.textContent ?? '',
+  }
   const context = { before: before.toString().slice(-320), after: after.toString().slice(0, 320) }
   const rects = range.getClientRects()
   const rect = rects.length > 0 ? rects[rects.length - 1] : range.getBoundingClientRect()
-  return { quote, ...source, context, x: rect.right, y: rect.bottom, range: range.cloneRange() }
+  return { quote, ...source, context, liveSnapshot, x: rect.right, y: rect.bottom, range: range.cloneRange() }
 }
 
 function useSelectionTarget(marker, paused, resolveOrigin) {
@@ -331,10 +333,14 @@ function AnnotationOverlay({ sessionId, previews, selectionActions, reportError,
       target, t, actions: availableActions.filter(action => action.available?.(sessionId) !== false),
       onAction: async action => {
         if (previews.isLocked(sessionId)) { previews.open(sessionId, { kind: 'list' }); return }
-        const value = reference(target.quote, '', t, target.origin, target.context)
+        const snapshotText = target.liveSnapshot?.text
+        const snapshot = typeof snapshotText === 'string' && snapshotText.length <= MAX_LIVE_SNAPSHOT ? snapshotText : undefined
+        const value = reference(target.quote, '', t, target.origin,
+          { ...target.context, ...(snapshot === undefined ? {} : { snapshot }) })
         const atSeq = target.atSeq
         if (!value || !Number.isSafeInteger(atSeq)) return
-        const payload = { sourceSessionId: sessionId, atSeq, reference: value, quote: target.quote }
+        const payload = { sourceSessionId: sessionId, atSeq, reference: value, quote: target.quote,
+          ...(target.liveSnapshot ? { liveSnapshot: snapshot === undefined ? {} : target.liveSnapshot } : {}) }
         setTarget(null); document.getSelection()?.removeAllRanges()
         try { await action.run(payload) } catch { reportError(t('insertFailed')) }
       },

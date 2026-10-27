@@ -2,7 +2,9 @@ import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalSto
 import { createPortal } from 'react-dom'
 import { Toast, Tooltip, IconWarningOutlineRegular } from './primitives.jsx'
 import { SideChatRegistry, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
+import { SideChatNavigation } from './navigation.js'
 import { alignComposerDocks } from './composer-alignment.js'
+import { inheritedHistory, hideInheritedHistory } from './inherited-history.js'
 
 const h = React.createElement
 const NS = 'eduworkSideChat'
@@ -11,8 +13,8 @@ const NS = 'eduworkSideChat'
 const WINDOW_CONTROLLER = Symbol.for('@eduwork/dsh-side-chat/window-controllers')
 const EMPTY_STATE = { phase: 'idle', references: [] }
 const COPY = {
-  zh: { open: '开启侧边聊天', title: '侧边聊天', emptyHint: '侧边聊天是临时聊天，关闭后会消失', ask: '在侧边聊天提问', onlyOne: '已有侧聊。请先关闭，再从这里开启。', failed: '操作失败，请重试。', dismiss: '关闭' },
-  en: { open: 'Open side chat', title: 'Side chat', emptyHint: 'Side chats are temporary and disappear when closed.', ask: 'Ask in side chat', onlyOne: 'A side chat is already open. Close it to start one here.', failed: 'Something went wrong. Try again.', dismiss: 'Dismiss' },
+  zh: { open: '开启侧边聊天', title: '侧边聊天', emptyHint: '关闭后归档，可在归档会话中查看', ask: '在侧边聊天提问', onlyOne: '已有侧聊。请先关闭，再从这里开启。', failed: '操作失败，请重试。', dismiss: '关闭' },
+  en: { open: 'Open side chat', title: 'Side chat', emptyHint: 'Closing archives this chat. You can find it in archived conversations.', ask: 'Ask in side chat', onlyOne: 'A side chat is already open. Close it to start one here.', failed: 'Something went wrong. Try again.', dismiss: 'Dismiss' },
 }
 
 const actionFallback = {
@@ -45,6 +47,13 @@ function topicFromQuote(text) {
   return line.length <= budget ? line : `${line.slice(0, budget)}…`
 }
 
+// Older annotation builds carry the selected text in their reference payload
+// but do not pass the separate quote property yet.
+function referenceQuote(reference, quote) {
+  if (typeof quote === 'string') return quote
+  try { return JSON.parse(reference?.ref)?.q } catch { return undefined }
+}
+
 function sideChatTitle(topic, t) {
   return topic ? `${t('title')} · ${topic}` : t('title')
 }
@@ -68,32 +77,18 @@ function SideViewsWithHint({ renderSlot, useConversation }) {
   const t = React.useContext(SideCopy)
   const marker = useRef(null)
   const [host, setHost] = useState(null)
-  // A string keeps the selector result stable across store notifications:
-  // "1" marks an empty side chat, "0" one that already owns a node.
-  const nodes = useConversation(snapshot => {
-    const view = snapshot?.views.get('chat')
-    if (view === undefined) return ''
-    let own = false
-    const keys = []
-    for (const node of view.nodes.values()) {
-      const seq = Number(node?.anchorSeq ?? NaN)
-      if (!Number.isFinite(seq)) continue
-      if (seq < seedLength) keys.push(node.key)
-      else own = true
-    }
-    return `${own ? '0' : '1'}|${keys.join('\u0000')}`
-  })
-  const empty = nodes.startsWith('1|')
-  useEffect(() => {
+  // Serialized projection metadata keeps the selector stable during streaming.
+  const serialized = useConversation(snapshot => JSON.stringify(inheritedHistory(snapshot, seedLength)))
+  const history = React.useMemo(() => JSON.parse(serialized), [serialized])
+  const empty = history.empty
+  useLayoutEffect(() => {
     const root = marker.current?.closest('[data-eduwork-side-chat]') ?? null
     setHost(empty ? root : null)
     if (root === null) return
-    for (const key of nodes.slice(2).split('\u0000')) {
-      if (key === '') continue
-      for (const node of root.querySelectorAll(`[data-chat-node-key="${CSS.escape(key)}"]`)) node.style.display = 'none'
-    }
-  }, [nodes, empty])
+    return hideInheritedHistory(root, history)
+  }, [history, empty])
   return h(React.Fragment, null,
+    h('style', null, '[data-eduwork-side-chat] [data-side-inherited-history]{display:none!important}'),
     h('span', { ref: marker, hidden: true }),
     renderSlot('conversation.session', { view: 'chat' }),
     host === null ? null : createPortal(h('div', {
@@ -148,17 +143,31 @@ function SideDraftDelivery({ sessionId, controller, sessions, conversation, side
   const owner = controller.findSession(sessionId)
   const state = owner?.snapshot ?? EMPTY_STATE
   const activeSource = useSyncExternalStore(sidebarRight.mounted.subscribe, sidebarRight.mounted.getSnapshot)
+  const openTabs = useSyncExternalStore(sidebarRight.openTabs.subscribe, sidebarRight.openTabs.getSnapshot)
+  const [focusRevision, setFocusRevision] = useState(0)
   const inputState = useInput(value => value)
   useEffect(() => {
+    if (!state.references.length) return undefined
+    const wake = () => setFocusRevision(value => value + 1)
+    document.addEventListener('focusin', wake)
+    document.addEventListener('pointerup', wake)
+    document.addEventListener('keyup', wake)
+    return () => {
+      document.removeEventListener('focusin', wake)
+      document.removeEventListener('pointerup', wake)
+      document.removeEventListener('keyup', wake)
+    }
+  }, [state.references.length])
+  useEffect(() => {
     const pending = state.references.find(item => item.sessionId === sessionId)
-    if (!pending || activeSource !== state.chat?.sourceSessionId || state.phase !== 'open' || inputState.phase !== 'plain' || inputState.claim
+    if (!pending || activeSource !== state.chat?.sourceSessionId || sidebarRight.active()?.contentId !== addressOf(sessionId) || state.phase !== 'open' || inputState.phase !== 'plain' || inputState.claim
       || !owner.getSnapshot().references.some(item => item.id === pending.id)) return
     // InputBar's parent mount effect restores focus after this child effect.
     // Insert on the next frame so that restoration cannot overwrite the
     // native insertion's trailing caret on the first open.
     const frame = requestAnimationFrame(() => {
       const live = owner.getSnapshot()
-      if (live.phase !== 'open' || live.chat?.sessionId !== sessionId || sidebarRight.mounted.getSnapshot() !== live.chat.sourceSessionId
+      if (live.phase !== 'open' || live.chat?.sessionId !== sessionId || sidebarRight.mounted.getSnapshot() !== live.chat.sourceSessionId || sidebarRight.active()?.contentId !== addressOf(sessionId)
         || !live.references.some(item => item.id === pending.id)) return
       const actx = sessions.scope(sessionId)
       if (!actx) return
@@ -177,7 +186,7 @@ function SideDraftDelivery({ sessionId, controller, sessions, conversation, side
       else input.notify('error', t('failed'))
     })
     return () => cancelAnimationFrame(frame)
-  }, [state, activeSource, inputState.phase, inputState.claim, inputState.draftRev, sessionId, owner, sessions, conversation, sidebarRight, inputActions, t])
+  }, [state, activeSource, openTabs, focusRevision, inputState.phase, inputState.claim, inputState.draftRev, sessionId, owner, sessions, conversation, sidebarRight, inputActions, t])
   return null
 }
 
@@ -199,13 +208,10 @@ function SideAction({ sessionId, seq, messageId, useConversation, controller, op
     return undefined
   })
   useSyncExternalStore(controller.subscribe, controller.getSnapshot)
-  const state = controller.findSource(sessionId)?.snapshot ?? EMPTY_STATE
   if (sessionId.startsWith('side-') || !Number.isSafeInteger(boundary)) return null
-  const disabled = state.phase === 'opening' || state.phase === 'closing'
   return h(Tooltip, { label: t('open'), side: 'bottom' }, h('button', {
     ref: button, type: 'button', className: actionClass, style: actionClass ? undefined : actionFallback,
-    'data-eduwork-side-action': '', 'data-unavailable': disabled || undefined, 'aria-label': t('open'),
-    disabled,
+    'data-eduwork-side-action': '', 'aria-label': t('open'),
     onClick: () => { void open(sessionId, boundary) },
   }, h(SideChatIcon)))
 }
@@ -265,31 +271,31 @@ export function apply(ctx) {
     request: async input => {
       const response = await fetch(SIDE_CHAT_PATH.slice(1), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(input), cache: 'no-store' })
       if (!response.ok) { const error = new Error('failed'); error.status = response.status; throw error }
-      return response.json()
+      const result = await response.json()
+      // Releasing the live Agent removes its resident list entry. Pull the
+      // public durable baseline so the archived row is available immediately.
+      if (input.action === 'close') await ctx.sessions.refresh()
+      return result
     },
   })
   const localeId = () => (ctx.locale.getSnapshot?.().active === 'en' ? 'en' : 'zh')
+  const navigation = new SideChatNavigation({ registry: controller, sidebar: ctx.sidebarRight,
+    title: topic => sideChatTitle(topic, t) })
   const open = async (sessionId, atSeq, topic) => {
-    const owner = controller.forSource(sessionId)
     try {
-      const chat = await owner.open(sessionId, atSeq, sideChatTitle(topic, t))
-      if (ctx.sidebarRight.mounted.getSnapshot() === sessionId) ctx.sidebarRight.openResource(addressOf(chat.sessionId))
-    } catch (error) { owner.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
+      await navigation.open({ sourceSessionId: sessionId, atSeq, topic })
+    } catch (error) {
+      if (error.message !== 'expired') (controller.findSource(sessionId) ?? controller.forSource(sessionId)).update({ error: 'failed' })
+    }
   }
   ctx.inject(['annotationSelection'], scope => {
     scope.effect(() => scope.annotationSelection.register({
       id: 'eduwork-side-chat', icon: 'side-chat', label: () => t('ask'),
       renderIcon: () => h(SideChatIcon),
       available: sessionId => !sessionId.startsWith('side-'),
-      async run({ sourceSessionId, atSeq, reference, quote }) {
-        const owner = controller.forSource(sourceSessionId)
-        const current = owner.snapshot
-        const existing = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
-        const chat = existing ? current.chat
-          : await owner.open(sourceSessionId, atSeq, sideChatTitle(topicFromQuote(quote), t))
-        if (scope.sidebarRight.mounted.getSnapshot() !== sourceSessionId) throw new Error('expired')
-        scope.sidebarRight.openResource(addressOf(chat.sessionId))
-        owner.queueReference(chat.sessionId, reference)
+      async run({ sourceSessionId, atSeq, reference, quote, liveSnapshot }) {
+        await navigation.open({ sourceSessionId, atSeq, reference, liveSnapshot,
+          topic: topicFromQuote(referenceQuote(reference, quote)) })
       },
     }), 'side-chat: selected-text action')
   })
@@ -312,7 +318,7 @@ export function apply(ctx) {
   }, 'side-chat: window ownership')
   ctx.effect(() => ctx.sidebarRightTabs.register({
     id: '@eduwork/dsh-side-chat', kind: SIDE_KIND, keepMounted: true,
-    patterns: ['dsh-resource://sidechat/**'], title: () => t('title'),
+    patterns: ['dsh-resource://sidechat/**'], title: address => controller.findAddress(address)?.snapshot.chat?.title || t('title'),
   }), 'side-chat: native Sidebar type')
   ctx.effect(() => ctx.sidebarRight.registerCloseHandler(SIDE_KIND, (_sessionId, tab) => {
     const owner = controller.findAddress(tab.contentId)
@@ -322,7 +328,10 @@ export function apply(ctx) {
     protocol: 'sidechat',
     async *open(address, { signal }) {
       const chat = controller.findAddress(address)?.snapshot.chat
-      if (!chat?.sessionId || address !== addressOf(chat.sessionId)) throw new Error(t('failed'))
+      // A tab restored after a window restart has no memory owner. Its tab
+      // component closes it; ending the resource quietly avoids an unhandled
+      // rejection while that cleanup is being mounted.
+      if (!chat?.sessionId || address !== addressOf(chat.sessionId)) return
       const reference = ctx.sessions.retainAgentScope(chat.sessionId)
       try {
         yield { ok: true, value: { reference } }

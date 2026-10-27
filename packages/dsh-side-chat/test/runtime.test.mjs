@@ -1,10 +1,9 @@
 import assert from 'node:assert/strict'
 import test, { after } from 'node:test'
 import { mkdir, mkdtemp } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
 import { createRequire, registerHooks } from 'node:module'
 import { join } from 'node:path'
-import { pathToFileURL } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 import { installConcurrency } from '../../../dsh-plugins/request-concurrency/lib/index.js'
 
 const runtime = process.env.EDUWORK_SIDE_CHAT_RUNTIME
@@ -29,7 +28,9 @@ async function fixture() {
   const { createUserMessage, createMessage, LlmAdapter } = await load('@deepseek-ai/dsh-llm')
   const { assembleContextFor } = await load('@deepseek-ai/dsh-agent')
   const ctx = new Context()
-  const home = await mkdtemp(join(tmpdir(), 'eduwork-side-chat-runtime-'))
+  const checkRoot = fileURLToPath(new URL('../../../dist/dev-checks/side-chat/runtime/', import.meta.url))
+  await mkdir(checkRoot, { recursive: true })
+  const home = await mkdtemp(join(checkRoot, 'review-fixes-'))
   for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent']) {
     const module = await load(name)
     await ctx.plugin(module.default ?? module)
@@ -38,8 +39,13 @@ async function fixture() {
     ['@deepseek-ai/dsh-session-persistence-jsonl', { root: join(home, 'sessions') }],
     ['@deepseek-ai/dsh-session-query-sqlite', { path: join(home, 'search.sqlite') }],
     ['@deepseek-ai/dsh-agent-loop', { agents: [] }],
+    ['@deepseek-ai/dsh-storage', {}],
+    ['@deepseek-ai/dsh-storage-json', { root: join(home, 'storage') }],
+    ['@deepseek-ai/dsh-storage-domain', { backend: 'json' }],
+    ['@deepseek-ai/dsh-workspace', {}],
   ]) { const module = await load(name); await ctx.plugin(module.default ?? module, config) }
   ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'side-fixture', model: 'fixture' }) })
+  const workspace = await ctx.workspaceRegistry.create(home, 'Synthetic workspace')
   const sourceHandle = await ctx.agents.create({ sessionId: 'fixture-source', meta: { cwd: home } })
   const source = sourceHandle.agent.session
   source.append('turn/start', { turn: 1 })
@@ -51,7 +57,7 @@ async function fixture() {
   const { SideChatService } = await import('../src/service.js')
   const service = new SideChatService(ctx)
   return {
-    ctx, service, source, sourceHandle, selected, createUserMessage, createMessage, LlmAdapter,
+    ctx, service, source, sourceHandle, workspace, selected, createUserMessage, createMessage, LlmAdapter,
     assemble: agent => ctx.systemPrompt.assemble(assembleContextFor(agent)),
     close: async () => { await service.dispose(); await ctx.fiber.dispose() },
   }
@@ -75,7 +81,8 @@ test('real Runtime creates a seeded side chat with inherited history and seedLen
   assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
   assert.equal(f.ctx.sessions.get(opened.sessionId), undefined)
   const stored = await f.ctx.get('sessionPersistence').list()
-  assert.equal(stored.some(row => row.header.id === opened.sessionId), false, 'a closed side chat leaves nothing stored')
+  assert.equal(stored.some(row => row.header.id === opened.sessionId), true, 'archive retains durable history')
+  assert.ok(f.ctx.workspaceRegistry.archivedSessionIds.includes(opened.sessionId))
   assert.equal(JSON.stringify(f.source.snapshotEvents()).includes('SIDE_PRIVATE_NEEDLE'), false)
 })
 
@@ -291,6 +298,28 @@ test('the Host can retain more than eight independently owned side chats', optio
   assert.equal(f.service.entries.size, 9)
 })
 
+test('same-source side chats retain independent ordered source snapshots', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  const ownerA = 'a'.repeat(32), ownerB = 'b'.repeat(32), ownerC = 'c'.repeat(32)
+  const future = f.source.snapshotEvents().find(event => event.type === 'user/message' && JSON.stringify(event.data).includes('SOURCE_FUTURE'))
+  const a = await f.service.open({ owner: ownerA, sourceSessionId: f.source.id, atSeq: f.selected.seq })
+  const b = await f.service.open({ owner: ownerB, sourceSessionId: f.source.id, atSeq: future.seq })
+  f.source.append('turn/start', { turn: 3 })
+  const latest = f.source.append('user/message', f.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'SOURCE_LATEST_SNAPSHOT' }] }), { surfaceOp: 'append' })
+  f.source.append('turn/end', { turn: 3, reason: { kind: 'completed' } })
+  const c = await f.service.open({ owner: ownerC, sourceSessionId: f.source.id, atSeq: latest.seq })
+  const messages = id => JSON.stringify(f.ctx.agents.get(id).session.snapshotEvents())
+  assert.ok(messages(a.sessionId).includes('SOURCE_REFERENCE'))
+  assert.ok(!messages(a.sessionId).includes('SOURCE_FUTURE'))
+  assert.ok(messages(b.sessionId).includes('SOURCE_FUTURE'))
+  assert.ok(!messages(b.sessionId).includes('SOURCE_LATEST_SNAPSHOT'))
+  assert.ok(messages(c.sessionId).includes('SOURCE_LATEST_SNAPSHOT'))
+  await f.service.close({ owner: ownerB })
+  assert.ok(f.ctx.workspaceRegistry.archivedSessionIds.includes(b.sessionId))
+  assert.ok(f.ctx.agents.get(a.sessionId))
+  assert.ok(f.ctx.agents.get(c.sessionId))
+})
+
 test('real Runtime cleanup failure retains a retryable tombstone', options, async t => {
   const f = await fixture(); t.after(f.close)
   const owner = 'c'.repeat(32)
@@ -307,15 +336,77 @@ test('real Runtime cleanup failure retains a retryable tombstone', options, asyn
   assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
 })
 
-test('a store that still lists the session turns deletion into keeping it', options, async t => {
-  const { SideChatService } = await import('../src/service.js')
-  const home = await mkdtemp(join(tmpdir(), 'eduwork-side-chat-delete-'))
-  await mkdir(join(home, 'sessions', 'project', 'side-keep'), { recursive: true })
-  const service = list => new SideChatService({
-    get: name => name === 'sessionPersistence' ? { root: join(home, 'sessions'), list } : undefined,
+
+test('archive keeps history and Workspace membership; unarchive can resume the conversation', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  const owner = 'h'.repeat(32)
+  const opened = await f.service.open({ owner, sourceSessionId: f.source.id, atSeq: f.selected.seq })
+  const session = f.ctx.agents.get(opened.sessionId).session
+  session.append('turn/start', { turn: 2 })
+  session.append('user/message', f.createUserMessage({ content: [{ type: 'text', text: 'ARCHIVED_SIDE_HISTORY' }], source: { kind: 'user' } }), { surfaceOp: 'append' })
+  session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+  await f.service.close({ owner })
+  assert.ok(f.ctx.workspaceRegistry.archivedSessionIds.includes(opened.sessionId))
+  assert.equal(f.service.entries.has(owner), false)
+  assert.ok(await f.ctx.sessionPersistence.stat(opened.sessionId))
+  const restoredWorkspace = await f.ctx.workspaceRegistry.resolveByPath(f.source.header.cwd)
+  assert.ok(restoredWorkspace.sessionIds.includes(opened.sessionId))
+  const observed = await f.ctx.sessionQuery.observeSession(opened.sessionId)
+  try {
+    const text = JSON.stringify(observed.events)
+    assert.ok(text.includes('ARCHIVED_SIDE_HISTORY'))
+    assert.ok(text.includes('SOURCE_REFERENCE'))
+  } finally { observed[Symbol.dispose]() }
+  await f.ctx.workspaceRegistry.unarchiveSession(opened.sessionId)
+  const resumed = await f.ctx.agents.resume({ resumeSessionId: opened.sessionId })
+  assert.ok(JSON.stringify(resumed.agent.session.snapshotEvents()).includes('ARCHIVED_SIDE_HISTORY'))
+  assert.equal(f.ctx.workspaceRegistry.archivedSessionIds.includes(opened.sessionId), false)
+  await resumed.dispose()
+  await f.service.close({ owner })
+})
+
+test('archive failure keeps a retryable owner instead of claiming success', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  const owner = 'j'.repeat(32)
+  const opened = await f.service.open({ owner, sourceSessionId: f.source.id, atSeq: f.selected.seq })
+  const archive = f.ctx.workspaceRegistry.archiveSession.bind(f.ctx.workspaceRegistry)
+  f.ctx.workspaceRegistry.archiveSession = async () => { throw new Error('ARCHIVE_FAILURE') }
+  await assert.rejects(f.service.close({ owner }), /ARCHIVE_FAILURE/)
+  assert.ok(f.service.entries.has(owner))
+  assert.ok(await f.ctx.sessionPersistence.stat(opened.sessionId))
+  f.ctx.workspaceRegistry.archiveSession = archive
+  await f.service.retryCleanup()
+  assert.equal(f.service.entries.has(owner), false)
+  assert.ok(f.ctx.workspaceRegistry.archivedSessionIds.includes(opened.sessionId))
+})
+
+test('closing a side chat aborts its in-flight title generation', options, async t => {
+  const f = await fixture(); t.after(f.close)
+  const owner = 'v'.repeat(32)
+  const opened = await f.service.open({ owner, sourceSessionId: f.source.id, atSeq: f.selected.seq })
+  const session = f.ctx.agents.get(opened.sessionId).session
+  session.append('turn/start', { turn: 2 })
+  session.append('user/message', f.createUserMessage({ source: { kind: 'user' }, content: [{ type: 'text', text: 'TITLE_FIXTURE' }] }), { surfaceOp: 'append' })
+  session.append('turn/end', { turn: 2, reason: { kind: 'completed' } })
+  let signal, resolveStarted
+  const started = new Promise(resolve => { resolveStarted = resolve })
+  const llm = f.ctx.llm
+  const original = llm.prepareCall
+  llm.prepareCall = async (_config, requestSignal) => ({
+    config: {},
+    async *stream() {
+      signal = requestSignal
+      resolveStarted()
+      await new Promise((resolve, reject) => {
+        if (signal.aborted) reject(signal.reason)
+        else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+      })
+    },
   })
-  // The directory is gone, but the store still reports the Session: the chat
-  // must stay an ordinary conversation rather than vanish from the list.
-  assert.equal(await service(async () => [{ header: { id: 'side-keep' } }]).removeStoredSession('side-keep'), false)
-  assert.equal(await service(async () => []).removeStoredSession('side-keep'), true)
+  t.after(() => { llm.prepareCall = original })
+  const title = f.service.title({ owner, sessionId: opened.sessionId, locale: 'en' })
+  await started
+  await f.service.close({ owner })
+  assert.equal(signal.aborted, true)
+  assert.deepEqual(await title, { title: null })
 })

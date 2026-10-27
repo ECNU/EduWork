@@ -16,6 +16,19 @@ test('long quotations survive reference serialization without truncation', () =>
   assert.ok(value.clipboardText.includes('末尾标记'))
 })
 
+test('live selection preserves its captured source context through draft and model serialization', async () => {
+  const context = { before: 'before', after: 'after', snapshot: 'partial reply plus surrounding generated text' }
+  const value = reference('partial reply', '', t, undefined, context)
+  assert.deepEqual(decode(value.ref).context, context)
+  const { fragment, prepareMessage } = await import('../src/protocol.js')
+  const encoded = fragment(decode(value.ref))
+  assert.equal(projectAnnotations(encoded).items[0].context.snapshot, context.snapshot)
+  const message = { id: 'fixture', role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: encoded }] }
+  assert.ok(JSON.stringify(prepareMessage(message)).includes('surrounding generated text'))
+  const tooLong = reference('quote', '', t, undefined, { before: '', after: '', snapshot: 'x'.repeat(100_001) })
+  assert.equal(decode(tooLong.ref).context.snapshot, undefined)
+})
+
 test('floating panels fit below, flip above, and clamp inside a small viewport', () => {
   assert.deepEqual(place(500, 100, 320, 200, 1000, 700, 80), { left: 180, top: 108 })
   assert.deepEqual(place(500, 680, 320, 200, 1000, 700, 660), { left: 180, top: 452 })
@@ -79,7 +92,7 @@ test('live side selections use durable history without inventing a streamed mess
     ['tail', { kind: 'turn-tail', data: { closing: null } }],
   ])
   const chat = { nodes, locations: { getTurn: () => [...nodes.keys()] } }
-  assert.deepEqual(selectionSource(chat, 'partial', 'source'), { atSeq: 2, canAnnotate: false })
+  assert.deepEqual(selectionSource(chat, 'partial', 'source'), { atSeq: 2, canAnnotate: false, liveKey: 'partial' })
   assert.deepEqual(selectionSource(chat, 'intermediate', 'source'), {
     origin: { sessionId: 'source', messageId: 'intermediate-message' }, atSeq: 5, canAnnotate: false,
   })
