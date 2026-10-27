@@ -56,19 +56,22 @@ export class SideChatController {
   consumeReference(id) {
     this.update({ references: this.snapshot.references.filter(item => item.id !== id) })
   }
-  async title(locale) {
+  async title(locale, prefix) {
     const chat = this.snapshot.chat
     if (!chat || this.snapshot.phase !== 'open') return undefined
-    const result = await this.request({ action: 'title', owner: chat.owner, sessionId: chat.sessionId, locale })
+    const result = await this.request({
+      action: 'title', owner: chat.owner, sessionId: chat.sessionId, locale,
+      ...(prefix ? { prefix } : {}),
+    })
     return typeof result?.title === 'string' && result.title !== '' ? result.title : undefined
   }
-  async open(sourceSessionId, atSeq) {
+  async open(sourceSessionId, atSeq, title) {
     const existing = this.snapshot.chat
     if (existing) {
       if (existing.sourceSessionId === sourceSessionId && existing.atSeq === atSeq && this.snapshot.phase === 'open') return existing
       throw new Error('onlyOne')
     }
-    const pending = { owner: this.owner(), sourceSessionId, atSeq }
+    const pending = { owner: this.owner(), sourceSessionId, atSeq, ...(title ? { title } : {}) }
     this.update({ chat: pending, phase: 'opening', error: undefined })
     try {
       const result = await this.request({ action: 'open', ...pending })

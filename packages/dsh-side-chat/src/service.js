@@ -29,11 +29,12 @@ export class SideChatService {
     this.disposed = false
   }
 
-  async open({ owner, sourceSessionId, atSeq }) {
+  async open({ owner, sourceSessionId, atSeq, title }) {
     validateOwner(owner)
     if (this.disposed) throw new SideChatError('Side-chat service is closing', 503)
     if (typeof sourceSessionId !== 'string' || sourceSessionId.length === 0 || sourceSessionId.length > 256
       || !Number.isSafeInteger(atSeq) || atSeq < 0) throw new SideChatError('Choose an existing message boundary')
+    const placeholder = typeof title === 'string' && title.trim() !== '' ? title.trim().slice(0, 200) : undefined
     const existing = this.entries.get(owner)
     if (existing) {
       if (existing.sourceSessionId !== sourceSessionId || existing.atSeq !== atSeq || existing.closing) {
@@ -43,7 +44,7 @@ export class SideChatService {
       return this.describe(existing)
     }
     const entry = {
-      owner, sourceSessionId, atSeq, sessionId: SessionId(`side-${randomUUID()}`),
+      owner, sourceSessionId, atSeq, sessionId: SessionId(`side-${randomUUID()}`), placeholder,
       controller: new AbortController(),
       closing: false, handle: undefined, creation: undefined, cleanup: undefined,
     }
@@ -97,8 +98,23 @@ export class SideChatService {
       // Workspace explicitly. Without this the sidebar lists it under the
       // generic Ungrouped bucket for its whole lifetime.
       entry.workspace = await this.attachWorkspace(entry.sessionId, observed.header.cwd)
+      if (entry.placeholder !== undefined) this.renameSession(entry, entry.placeholder)
     } finally {
       observed[Symbol.dispose]()
+    }
+  }
+
+  /** Rename the live side session through the host's own title service. */
+  renameSession(entry, title) {
+    const titles = this.ctx.get('sessionTitle')
+    const session = entry.handle?.agent?.session
+    if (titles === undefined || session === undefined) return false
+    try {
+      titles.rename(session, title)
+      return true
+    } catch {
+      // A rejected title only costs the display name.
+      return false
     }
   }
 
@@ -124,7 +140,7 @@ export class SideChatService {
    * The seeded source history is skipped: only what the user asked in the side
    * chat, and the answer produced there, may name it.
    */
-  async title({ owner, sessionId, locale }) {
+  async title({ owner, sessionId, locale, prefix }) {
     validateOwner(owner)
     const entry = this.entries.get(owner)
     if (!entry || entry.sessionId !== sessionId || entry.closing) throw new SideChatError('Temporary chat has ended', 410)
@@ -150,8 +166,11 @@ export class SideChatService {
       }
       const title = normalizeTitle(text)
       if (title === '') return { title: null }
-      entry.title = title
-      return { title }
+      const label = typeof prefix === 'string' && prefix.trim() !== '' ? prefix.trim().slice(0, 40) : ''
+      const display = label === '' ? title : `${label} · ${title}`
+      if (!this.renameSession(entry, display)) return { title: null }
+      entry.title = display
+      return { title: display }
     } catch {
       // A failed title pass only costs the display name; the chat keeps working.
       return { title: null }

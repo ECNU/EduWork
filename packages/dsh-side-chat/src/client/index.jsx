@@ -84,13 +84,20 @@ function SideViews({ renderSlot, useSession }) {
     return session.events?.length > seedLength
   })
   const t = React.useContext(SideCopy)
-  if (hasNewContent) return renderSlot('conversation.session', { view: 'chat' })
-  return h('div', { 'data-side-chat-empty': '', style: { flex: '1 0 180px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box' } },
+  // The native session view carries the composer. Keep it mounted even while
+  // the chat is empty and float the hint over it, so an empty side chat can
+  // still be typed into.
+  return h('div', { style: { position: 'relative', display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 } },
+    renderSlot('conversation.session', { view: 'chat' }),
+    hasNewContent ? null : h('div', {
+      'data-side-chat-empty': '',
+      style: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box', pointerEvents: 'none' },
+    },
     h('div', { style: { maxWidth: 340, textAlign: 'center', color: 'var(--dsw-alias-label-secondary, #777)' } },
       h('svg', { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
         h('path', { d: 'M20 11.5a8.5 8.5 0 1 0-4 7.2l5 1.3-1.3-5a8.5 8.5 0 0 0 .3-3.5ZM12 7v8M8 11h8' })),
       h('h2', { style: { margin: '14px 0 8px', fontSize: 18, fontWeight: 600, color: 'var(--dsw-alias-label-primary, #222)' } }, t('title')),
-      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint'))))
+      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint')))))
 }
 
 function SideConversation({ renderFactorySlot, t, seedLength }) {
@@ -211,7 +218,7 @@ function Notice({ controller, sidebarRight, t }) {
  * side chat's own question and answer into a short title. Best effort — a
  * failure keeps the placeholder written at open time.
  */
-function SideRetitle({ sessionId, controller, rename, locale, t, useConversation }) {
+function SideRetitle({ sessionId, controller, locale, t, useConversation }) {
   useSyncExternalStore(controller.subscribe, controller.getSnapshot)
   const [attempted, setAttempted] = useState(false)
   const owner = sessionId.startsWith('side-') ? controller.findSession(sessionId) : undefined
@@ -227,13 +234,13 @@ function SideRetitle({ sessionId, controller, rename, locale, t, useConversation
     setAttempted(true)
     void (async () => {
       try {
-        const title = await owner.title(locale())
-        if (title) await rename(sessionId, sideChatTitle(title, t))
+        // The host renames the session itself once the title is accepted.
+        await owner.title(locale(), t('title'))
       } catch {
         // The placeholder title stays; the chat itself is unaffected.
       }
     })()
-  }, [settled, attempted, owner, sessionId, rename, locale, t])
+  }, [settled, attempted, owner, sessionId, locale, t])
   return null
 }
 
@@ -250,19 +257,11 @@ export function apply(ctx) {
       return response.json()
     },
   })
-  const rename = async (sessionId, title) => {
-    const remote = ctx.remote
-    if (remote?.session?.rename === undefined) return
-    const result = await remote.session.rename({ sessionId, title })
-    if (result && result.ok === false) throw new Error(result.error?.message ?? 'rename failed')
-  }
   const localeId = () => (ctx.locale.getSnapshot?.().active === 'en' ? 'en' : 'zh')
   const open = async (sessionId, atSeq, topic) => {
     const owner = controller.forSource(sessionId)
-    const previous = owner.snapshot.chat
     try {
-      const chat = await owner.open(sessionId, atSeq)
-      if (!previous) void rename(chat.sessionId, sideChatTitle(topic, t)).catch(() => {})
+      const chat = await owner.open(sessionId, atSeq, sideChatTitle(topic, t))
       if (ctx.sidebarRight.mounted.getSnapshot() === sessionId) ctx.sidebarRight.openResource(addressOf(chat.sessionId))
     } catch (error) { owner.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
   }
@@ -275,8 +274,8 @@ export function apply(ctx) {
         const owner = controller.forSource(sourceSessionId)
         const current = owner.snapshot
         const existing = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
-        const chat = existing ? current.chat : await owner.open(sourceSessionId, atSeq)
-        if (!existing) void rename(chat.sessionId, sideChatTitle(topicFromQuote(quote), t)).catch(() => {})
+        const chat = existing ? current.chat
+          : await owner.open(sourceSessionId, atSeq, sideChatTitle(topicFromQuote(quote), t))
         if (scope.sidebarRight.mounted.getSnapshot() !== sourceSessionId) throw new Error('expired')
         scope.sidebarRight.openResource(addressOf(chat.sessionId))
         owner.queueReference(chat.sessionId, reference)
@@ -332,7 +331,7 @@ export function apply(ctx) {
   }, SideDraftDelivery))
   ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
     name: 'conversation.input.overlay', id: 'eduwork-side-chat-title', order: 21, locale: NS,
-    inject: sessionId => ({ sessionId, controller, rename, locale: localeId, t }),
+    inject: sessionId => ({ sessionId, controller, locale: localeId, t }),
   }, SideRetitle))
   for (const name of ['conversation.chat.user.actions', 'conversation.chat.assistant-actions']) {
     ctx.slots.inject(name, () => ctx.slots.register({ name, id: 'eduwork-side-chat', order: 20, locale: NS, inject: () => ({ controller, open }) }, SideAction))
