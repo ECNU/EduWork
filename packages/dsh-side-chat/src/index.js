@@ -15,7 +15,4 @@ export function apply(ctx) {
     timer.unref?.()
     return async () => { clearInterval(timer); await service.dispose() }
   }, 'side-chat: owned temporary sessions')
-  ctx.inject(['workspaceRegistry', 'sessionPersistence'], () => {
-    void service.archiveOrphans()
-  })
 }

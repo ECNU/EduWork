@@ -1,4 +1,6 @@
 import { randomUUID } from 'node:crypto'
+import { readdir, rm } from 'node:fs/promises'
+import { join } from 'node:path'
 import { buildForkSeed, SessionId, SessionLogOffset } from '@deepseek-ai/dsh-session'
 import { SIDE_BOUNDARY, disallowedSideTool } from './boundary.js'
 import { buildTitleInput, normalizeTitle, questionAndAnswerOf, titleSystem } from './title.js'
@@ -101,7 +103,7 @@ export class SideChatService {
       // The side chat is a regular durable Session, so it must join its source
       // Workspace explicitly. Without this the sidebar lists it under the
       // generic Ungrouped bucket for its whole lifetime.
-      await this.attachWorkspace(entry.sessionId, observed.header.cwd)
+      entry.workspace = await this.attachWorkspace(entry.sessionId, observed.header.cwd)
       if (entry.placeholder !== undefined) this.renameSession(entry, entry.placeholder)
     } finally {
       observed[Symbol.dispose]()
@@ -136,36 +138,23 @@ export class SideChatService {
   }
 
   /**
-   * Hide one closed side chat from every session list. The stored log outlives
-   * the agent handle, so dropping the handle alone leaves the id in the
-   * sidebar's ungrouped bucket on the next scan; the archive set is what the
-   * client filters on. Archived ids stay restorable from the archive view.
+   * Delete one closed side chat's stored log. The runtime exposes no removal
+   * API, so this drops the session directory the JSONL store keeps listing;
+   * the search index reconciles on its next persistence observation. Returns
+   * false when storage cannot be inspected, which leaves the conversation
+   * stored as an ordinary Session instead of silently hiding it.
    */
-  async archiveSession(sessionId) {
-    const registry = this.ctx.get('workspaceRegistry')
-    if (registry === undefined) return false
+  async removeStoredSession(sessionId) {
+    const root = this.ctx.get('sessionPersistence')?.root
+    if (typeof root !== 'string' || root === '') return false
     try {
-      await registry.archiveSession(sessionId, { stopActivity: true })
+      for (const entry of await readdir(root, { withFileTypes: true })) {
+        if (!entry.isDirectory()) continue
+        await rm(join(root, entry.name, sessionId), { recursive: true, force: true })
+      }
       return true
     } catch {
-      // Presentation only: a session that never reached storage stays unknown.
       return false
-    }
-  }
-
-  /** Archive side chats left behind by an earlier Host process. */
-  async archiveOrphans() {
-    const registry = this.ctx.get('workspaceRegistry')
-    const persistence = this.ctx.get('sessionPersistence')
-    if (registry === undefined || typeof persistence?.list !== 'function') return
-    let stored
-    try { stored = await persistence.list() } catch { return }
-    const open = new Set([...this.entries.values()].map(entry => entry.sessionId))
-    const archived = new Set(registry.archivedSessionIds ?? [])
-    for (const { header } of stored) {
-      const id = String(header?.id ?? '')
-      if (!id.startsWith('side-') || open.has(id) || archived.has(id)) continue
-      await this.archiveSession(id)
     }
   }
 
@@ -241,7 +230,12 @@ export class SideChatService {
     entry.cleanup ??= (async () => {
       await entry.creation?.catch(() => {})
       await entry.handle?.dispose()
-      await this.archiveSession(entry.sessionId)
+      // A closed side chat is gone for good. When its log cannot be removed it
+      // stays attached to the Workspace, so the user keeps it as an ordinary
+      // conversation instead of losing it.
+      if (await this.removeStoredSession(entry.sessionId) && entry.workspace !== undefined) {
+        await entry.workspace.detachSession(entry.sessionId).catch(() => {})
+      }
       if (this.entries.get(owner) === entry) this.entries.delete(owner)
       return { closed: true }
     })().catch(error => { entry.cleanup = undefined; throw error })
