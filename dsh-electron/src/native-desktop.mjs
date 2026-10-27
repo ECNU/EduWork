@@ -128,7 +128,6 @@ async function main() {
   mainWindow = createWindow(fileURLToPath(new URL('./preload-app.cjs', import.meta.url)), false, true, locale)
   const window = mainWindow
   bridge.attach(window)
-  void bridge.probeUserGuide().catch(() => {})
   configureWindowNavigation(window)
   await attachDesktopWindow(window)
   window.on('session-end', () => { sessionEnding = true })
@@ -178,7 +177,12 @@ async function main() {
   }
   started = true
   await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
-  if (backend.host && backend.state.phase === 'ready') presentInitialWindow()
+  if (backend.host && backend.state.phase === 'ready') {
+    presentInitialWindow()
+    // waitForHost() can start the backend. Optional menu discovery must only
+    // join the completed startup, never initiate it or delay window display.
+    void bridge.probeUserGuide().catch(() => {})
+  }
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })

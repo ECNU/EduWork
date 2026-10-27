@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "7087b1858d141bfc54d67d169c33d593db44e62ad2324cc5a3b4da1a7d0e5fbc",
+  "fileSetSHA256": "9ecfa89b4067da8e660576e666aa458f34e932bd9072b4676a656b1f46935c10",
   "files": [
     {
       "path": ".gitattributes",
@@ -1273,7 +1273,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "188cf185a88cfd5ed732704934e4b8d7d786402de30e960ee7657ebe090807ba"
+      "sha256": "2caebf28d3ff37b9a1636d44265d829a00a637d033987cb17e3807151c121947"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1417,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "7dbee033db16961e047384004366e1269422dd8ad5e1771e98453a3c2313fe36"
+      "sha256": "f3522ccfb0a4558ca6b6b0762b3d0a02f66094df927ad79a85807871d2ba1611"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "6bb8e35019de0da394577ab9605ecb6ec51f77fbe3a3b59e41ad6841f25b6255"
+      "sha256": "9b700162cf2ae0793664cad50e1b867a8998892bc02a7398ac1cde408c3db268"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",

@@ -334,7 +334,13 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       bridgeOptions = options
       assert.equal(options.pickDirectory, pickDirectory)
       assert.equal(options.bootBrand, bootBrand)
-      return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() { calls.push('probe-guide'); return false } }
+      return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
+        calls.push('probe-guide')
+        // The production probe joins waitForHost(), which also starts the Host
+        // when called early. Preserve that behavior instead of a no-op stub.
+        await options.waitForHost()
+        return false
+      } }
     } })
     mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: async () => {
       assert.ok(fatalRecovery, 'Startup failure must use product recovery'); calls.push('crash-report')
@@ -379,12 +385,21 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       }
     }
     await Promise.race([done, deadline])
+    const probes = calls.filter(value => value === 'probe-guide')
+    if (calls.includes('desktop-ready')) {
+      assert.equal(probes.length, 1, 'Discover the optional guide once after normal startup')
+      assert.ok(calls.indexOf('probe-guide') > calls.indexOf('desktop-ready'), 'Menu discovery must not initiate startup')
+    } else {
+      assert.equal(probes.length, 0, 'Failed or cancelled startup must not probe an optional guide')
+    }
+    // Keep the original lifecycle expectations separate from menu discovery.
+    const startupCalls = calls.filter(value => value !== 'probe-guide')
     if (scenario === 'installed') {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'probe-guide', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show'])
       app.emit('second-instance')
       assert.equal(calls.at(-1), 'activate-current-window')
     } else if (scenario.startsWith('preparation-')) {
-      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'window', 'probe-guide', 'page-loaded', 'prepare', 'window-show',
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'window-show',
         ...scenario === 'preparation-hidden' ? ['window-hide'] : [], 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
       if (scenario === 'preparation-hidden') {
         attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
@@ -396,14 +411,14 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         assert.equal(calls.filter(value => value === event).length, count, event)
       }
     } else if (pendingShell || pendingPrepare) {
-      const started = ['ready', 'installer', 'lock', 'window', 'probe-guide', 'page-loaded', 'prepare', pendingShell ? 'shell-wait' : 'prepare-wait']
-      assert.deepEqual(calls, cancelledQuit
+      const started = ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', pendingShell ? 'shell-wait' : 'prepare-wait']
+      assert.deepEqual(startupCalls, cancelledQuit
         ? [...started, 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show']
         : [...started, ...fatalRecovery ? ['crash-report', 'recovery-dialog'] : [], pendingShell ? 'shell-abort' : 'content-abort', ...restarting ? ['relaunch'] : [], 'quit'])
     } else if (earlyFailure) {
-      assert.deepEqual(calls, scenario === 'early-host-failure'
-        ? ['ready', 'installer', 'lock', 'window', 'probe-guide', 'prepare', 'host', 'activate-current-window', 'stop', 'recovery', 'page-loaded']
-        : ['ready', 'installer', 'lock', 'window', 'probe-guide', 'prepare', 'recovery'])
+      assert.deepEqual(startupCalls, scenario === 'early-host-failure'
+        ? ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'activate-current-window', 'stop', 'recovery', 'page-loaded']
+        : ['ready', 'installer', 'lock', 'window', 'prepare', 'recovery'])
     } else if (scenario === 'host-failure' || scenario === 'quit-during-host') {
       assert.equal(calls.includes('window-show'), false)
       assert.equal(calls.includes('desktop-ready'), false)
