@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T03:41:33.941Z",
-  "fileSetSHA256": "40b50c63f966b625e0b77db3e00fc7526850cb2db34230c43fe007aefe085207",
+  "createdAt": "2026-10-27T10:18:49.143Z",
+  "fileSetSHA256": "0d797b6ada9df8689c5bcef757e8e2e176db02a4a5586c58fdf62e79f9f4c5fe",
   "files": [
     {
       "path": ".gitattributes",
@@ -1269,11 +1269,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "cc3daed99c7d18afc5aeeaf7d9db465bce49c1c5a0e6489629a7d2ccf2f5537e"
+      "sha256": "4bb0a950c3602897481b3b69cf0bfffedacd60f7ae6721d037a45d8f6c43d66c"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "770864f1e57824ce0b635424ab3aae05c8bdecaee2fd6a6e0f759eaf1bd70a25"
+      "sha256": "4f2d41f51cd1ff4e567be3d6e55e7d89034b2325b8f8ccb77445bf19890c0db6"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1417,7 +1417,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "7dbee033db16961e047384004366e1269422dd8ad5e1771e98453a3c2313fe36"
+      "sha256": "f3522ccfb0a4558ca6b6b0762b3d0a02f66094df927ad79a85807871d2ba1611"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "fec733d15ceb3912bdc76b2854ab1e3ab10f4de4aaf0e95ec7c69e618c12535a"
+      "sha256": "105174df05c2a8002ab24139f78fdaa2cf302cd14d7e51b9a611079a242ff8ca"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1526,6 +1526,10 @@
     {
       "path": "dsh-electron/tests/user-config-electron-smoke.mjs",
       "sha256": "80408d92cf80ae2a9238442f189aafd1ed48a8346eb400387c73f0f1745e9f55"
+    },
+    {
+      "path": "dsh-electron/tests/user-guide-menu.test.mjs",
+      "sha256": "70809bab23a956d60ecb2d3a8361d9fc461276358170e05ad2bbdba1681052fd"
     },
     {
       "path": "dsh-electron/tests/window-lifecycle.mjs",
@@ -8017,6 +8021,12 @@
   ],
   "reviewedCompatibility": [
     {
+      "path": "dsh-plugins/tool-browser/test/core.test.js",
+      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d",
+      "kind": "synthetic-network-classification-test",
+      "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
+    },
+    {
       "path": "scripts/dev-studio-web.mjs",
       "sha256": "6d994038910bf8db74e25df33a7e434f85d3bd4b59ccd82cacb4e22d0d98091c",
       "kind": "inactive-legacy-institution-references",
@@ -8027,12 +8037,6 @@
       "sha256": "4db760a47d296113f58ec18585e8501393f5b5954a014f7bac94aee75b4ec101",
       "kind": "inactive-legacy-institution-references",
       "reason": "Metadata-only skill projection retains one shared instruction body and follows the selected distribution credential binding. Platform-aware separators preserve the configured-root path checks; legacy institution registration is unchanged and remains inactive in EduWork. No endpoint or credential exemption."
-    },
-    {
-      "path": "dsh-plugins/tool-browser/test/core.test.js",
-      "sha256": "7b3dab0bccf4a57a86a9afb8bfedad5dc29f072da73cf96fb792e5e96eab869d",
-      "kind": "synthetic-network-classification-test",
-      "reason": "The private URL is an explicit isPrivateTarget assertion in a synthetic browser security classification test; it is not a configured service endpoint. Keys and all other private content are still audited."
     },
     {
       "path": "scripts/lib/dsh-skills.mjs",
