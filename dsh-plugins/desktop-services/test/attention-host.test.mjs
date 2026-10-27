@@ -136,6 +136,10 @@ test('temporary side chats never become tray tasks', { skip: !runtime }, async t
   observeDesktopAttention(ctx, attention)
   const session = ctx.sessions.create('side-fixture')
   session.append('turn/start', { turn: 0 })
+  // A decision the side chat is waiting on still reaches the tray.
+  session.append('approval/asked', { id: 'permit', toolName: 'fixture' })
+  assert.deepEqual([...attention.items.values()].map(row => row.kind), ['approval'])
+  session.append('approval/decided', { id: 'permit', outcome: 'approved' })
   session.append('turn/end', { turn: 0, reason: { kind: 'completed' } })
   assert.equal(attention.items.size, 0)
 })
