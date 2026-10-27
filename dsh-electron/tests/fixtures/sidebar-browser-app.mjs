@@ -39,11 +39,16 @@ void app.whenReady().then(async () => {
   } })
   // Guests are opaque, as the desktop bridge makes them.
   window.webContents.on('will-attach-webview', (_event, preferences) => { preferences.transparent = false })
-  // Popups become tabs in the opener's conversation, as DesktopBrowserGuests arranges.
-  window.webContents.on('did-attach-webview', (_event, guest) => guest.setWindowOpenHandler(({ url }) => {
-    void window.webContents.executeJavaScript(`fixture.popup(${guest.id}, ${JSON.stringify(url)})`)
-    return { action: 'deny' }
-  }))
+  window.webContents.on('did-attach-webview', (_event, guest) => {
+    // Popups become tabs in the opener's conversation, as DesktopBrowserGuests arranges.
+    guest.setWindowOpenHandler(({ url }) => {
+      void window.webContents.executeJavaScript(`fixture.popup(${guest.id}, ${JSON.stringify(url)})`)
+      return { action: 'deny' }
+    })
+    // A load another navigation replaced does not fail, as the desktop bridge arranges.
+    const loadURL = guest.loadURL.bind(guest)
+    guest.loadURL = (...args) => loadURL(...args).catch(error => { if (error.errno !== -3) throw error })
+  })
   const environment = await broker.listen()
   createInterface({ input: process.stdin }).on('line', async line => {
     const { id, code } = JSON.parse(line)

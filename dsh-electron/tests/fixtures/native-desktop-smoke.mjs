@@ -304,9 +304,11 @@ app.whenReady().then(async () => {
   const denied = await foreign.webContents.executeJavaScript(`dshDesktop.browser.acquire('foreign').then(()=>false,()=>true)`)
   assert.equal(denied, true); foreign.destroy()
   results.push('same-origin foreign window cannot acquire browser leases')
-  server = createServer((_req, res) => {
+  server = createServer((req, res) => {
+    if (req.url === '/never') return
     res.setHeader('content-type', 'text/html'); res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Content-Security-Policy', "frame-ancestors 'self'")
-    res.end('<!doctype html><html><title>protected fixture</title><body>Native browser works</body></html>')
+    res.end(req.url === '/stalled' ? '<!doctype html><title>stalled fixture</title><img src="/never">'
+      : '<!doctype html><html><title>protected fixture</title><body>Native browser works</body></html>')
   })
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve))
   const protectedURL = `http://127.0.0.1:${server.address().port}/`
@@ -321,6 +323,12 @@ app.whenReady().then(async () => {
   // The page sets no background: the guest paints white, as in Chrome, rather than see-through.
   assert.deepEqual([...(await guest.capturePage({ x: 0, y: 0, width: 1, height: 1 })).toBitmap().subarray(0, 4)], [255, 255, 255, 255])
   results.push('leased native guest opens a CSP/XFO-protected page, opaque and without desktop privileges')
+  // The Sidebar reports any rejected load as a failed page.
+  const load = url => evaluate(`fixtureGuest.loadURL(${JSON.stringify(url)}).then(() => 'ended', () => 'failed')`)
+  const stalled = load(`${protectedURL}stalled`)
+  await until(() => guest.getTitle() === 'stalled fixture')
+  assert.deepEqual(await Promise.all([stalled, load(protectedURL)]), ['ended', 'ended'])
+  results.push('leaving a page that never finishes loading fails neither its load nor the next')
   await assert.rejects(guest.loadURL(`${hostOrigin}/private`))
   assert.equal(hostRequests, 0, 'guest must be rejected before contacting the live Host fixture')
   await evaluate(`dshDesktop.browser.release(${JSON.stringify(reservation.lease)})`)

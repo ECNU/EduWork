@@ -25,6 +25,7 @@ const pages = {
   '/second': '<title>Second</title><p>second page</p>',
   '/popup': '<title>Popup</title>',
   '/held': '<title>Held</title>',
+  '/stalled': '<title>Stalled</title><img src="/never">',
   '/slow': '<title>Slow</title><button onmousedown="for (const end = Date.now() + 300; Date.now() < end;);">Slow</button>',
   // localhost and 127.0.0.1 are different sites: the frame gets its own process.
   '/frame': '<title>Frame</title><iframe id="inner" width="400" height="120"></iframe><script>inner.src = location.href.replace("127.0.0.1", "localhost").replace("/frame", "/inner")</script>',
@@ -84,7 +85,8 @@ before(async () => {
   if (live.skip) return
   server = createServer((request, response) => {
     const path = new URL(request.url, 'http://x').pathname, body = pages[path]
-    setTimeout(() => response.writeHead(body ? 200 : 404, { 'content-type': 'text/html; charset=utf-8' }).end(body ?? ''), path === '/held' ? 1000 : 0)
+    if (path === '/never') return
+    setTimeout(() => response.writeHead(body ? 200 : 404, { 'content-type': 'text/html; charset=utf-8' }).end(body ?? ''), ['/held', '/popup'].includes(path) ? 1000 : 0)
   }).listen(0, '127.0.0.1')
   await once(server, 'listening')
   origin = `http://127.0.0.1:${server.address().port}`
@@ -122,7 +124,7 @@ test('each conversation drives only its own tabs, as it would Chrome', live, asy
   await tab.waitForURL(`${origin}/second`)
   await tab.goBack()
   assert.equal(tab.url(), `${origin}/`)
-  // target=_blank becomes another tab of the same conversation.
+  // target=_blank becomes another tab of the same conversation, handed out once it has loaded.
   const [popup] = await Promise.all([context.waitForEvent('page'), tab.getByRole('link', { name: 'Popup' }).click()])
   await popup.waitForLoadState()
   assert.equal(await popup.title(), 'Popup')
@@ -140,17 +142,21 @@ test('each conversation drives only its own tabs, as it would Chrome', live, asy
   await other.browser.close()
 })
 
-test('a new tab reaches the Agent once the Sidebar has loaded it', live, async () => {
-  // Otherwise the Agent's first navigation aborts that load and the Sidebar reports the page failed.
+test('a new tab reaches the Agent once it shows its page', live, async () => {
+  // Not the blank start the Sidebar navigates away from, while the page answers
+  // slowly or something on it never finishes loading.
   const client = await socket(`${endpoint}/session-a`)
   const send = protocol(client)
-  const { targetId } = await send('Target.createTarget', { url: `${origin}/held` })
-  const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true })
-  assert.equal((await send('Runtime.evaluate', { expression: 'document.title', returnByValue: true }, sessionId)).result.value, 'Held')
-  await send('Page.navigate', { url: `${origin}/second` }, sessionId)
-  await wait(200)
-  assert.equal(await page('document.querySelectorAll("[data-failed]").length'), 0)
-  await send('Target.closeTarget', { targetId })
+  for (const path of ['/held', '/stalled']) {
+    const { targetId } = await send('Target.createTarget', { url: `${origin}${path}` })
+    const { sessionId } = await send('Target.attachToTarget', { targetId, flatten: true })
+    assert.equal((await send('Runtime.evaluate', { expression: 'location.href', returnByValue: true }, sessionId)).result.value, `${origin}${path}`)
+    // Navigating before the Sidebar's own load ends is no failure.
+    await send('Page.navigate', { url: `${origin}/second` }, sessionId)
+    await wait(200)
+    assert.equal(await page('document.querySelectorAll("[data-failed]").length'), 0)
+    await send('Target.closeTarget', { targetId })
+  }
   client.close()
 })
 

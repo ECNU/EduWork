@@ -316,6 +316,7 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
         assert.equal(options.environment.PATH, 'synthetic-login-shell-path')
         assert.equal(options.environment.EDUWORK_LAUNCHER_TEST, 'launcher-owned')
         assert.equal(options.environment.CHATECNU_UNTRUSTED_TEST, undefined)
+        assert.equal(options.environment.EDUWORK_SIDEBAR_BROWSER_SECRET, 'synthetic-secret')
       }
       async start() {
         calls.push('host')
@@ -330,10 +331,13 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       }
       async stop() { calls.push('stop'); if (stopFailure) throw startupError }
     } })
+    const sidebarBrowser = { listen: async () => ({ EDUWORK_SIDEBAR_BROWSER_SECRET: 'synthetic-secret' }), close() {} }
+    mock('sidebar-browser.mjs', { createSidebarBrowser: () => sidebarBrowser })
     mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
       bridgeOptions = options
       assert.equal(options.pickDirectory, pickDirectory)
       assert.equal(options.bootBrand, bootBrand)
+      assert.equal(options.sidebarBrowser, sidebarBrowser)
       return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
         calls.push('probe-guide')
         // The production probe joins waitForHost(), which also starts the Host

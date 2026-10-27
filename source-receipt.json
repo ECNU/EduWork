@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T09:00:17.136Z",
-  "fileSetSHA256": "1954c57fa89550b70949f2681cd2b2bb3b55fd6be70cf68063badd4c3496bad6",
+  "createdAt": "2026-10-27T11:35:05.462Z",
+  "fileSetSHA256": "b20286e20a9b65df5716c0f11356b1ad45be1cb5e0a31e8ce7e0afdf7da8b7a9",
   "files": [
     {
       "path": ".gitattributes",
@@ -1269,7 +1269,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "48b17556d934e38bae08d77e71c223a662a86ca91066638712016b2f90c05b7f"
+      "sha256": "b021181621aabf8267b88cb092bee3388e8fc9402cc5f8a512edc39989349da1"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "dsh-electron/src/sidebar-browser.mjs",
-      "sha256": "b2c64e43576d664bd367794bd6ad33a9c6bd322f0481a8b1e1628cfdbe3749fe"
+      "sha256": "491f86f2824d2fed0852dfbaf598b3d23e5f0b67068d93f3caeae5e489d8afb8"
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
@@ -1425,7 +1425,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "79e9aec511be24e7cb7773330a65582267d20a0d70e854eef0c467286d3964e4"
+      "sha256": "33bf76f2a0f0bca281e58506400299ba92ab707442d0e2d172dc734640102f66"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
-      "sha256": "005fc130e41822e3fb3130531d939d17bd859c8c410197c18f7a850e1d4f3eb5"
+      "sha256": "c583a5b68cae908d2d8ff7cd5af1566a539d5916fbc50afd2d1f9ff3d58eba89"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1449,7 +1449,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "9b700162cf2ae0793664cad50e1b867a8998892bc02a7398ac1cde408c3db268"
+      "sha256": "070f69433a94d0d253ae2d30c3ed36938eb25ebeddeec8ce094e2e93f18b09db"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "ebec4c696f630fde41b9f97975abd547f4baa1eed93036585635813d9036f764"
+      "sha256": "4d3bbde29ef4a2760f2440131eb10bb6b49c468fe2540063a4bea0e1787fd8b7"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",

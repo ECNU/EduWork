@@ -127,15 +127,8 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
 
   // The renderer opens a Sidebar tab in that conversation; its guest arrives
   // through bind. A blank target shows a local page until the Agent navigates.
-  // The Sidebar loads that page itself as the guest gets ready, just before
-  // the renderer reports the guest, and reports the page failed when another
-  // navigation aborts the load: the tab is handed out once the load ends.
-  const awaitTab = async (sessionId, tabId) => {
-    const page = [...pages.values()].find(page => page.group.sessionId === sessionId && page.tabId === tabId)
-      ?? await new Promise(resolve => arrivals.set(`${sessionId} ${tabId}`, resolve))
-    if (page.guest.isLoading()) await once(page.guest, 'did-stop-loading')
-    return page
-  }
+  const awaitTab = async (sessionId, tabId) => [...pages.values()].find(page => page.group.sessionId === sessionId && page.tabId === tabId)
+    ?? new Promise(resolve => arrivals.set(`${sessionId} ${tabId}`, resolve))
   async function open(target, url) {
     const request = id()
     const work = new Promise((resolve, reject) => {
@@ -300,9 +293,15 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       }
       if (binding.has(guest.id) || pages.has(guest.id)) return
       binding.add(guest.id)
-      // A guest's own target id, so frame ids match what Playwright sees.
       let targetId
       try {
+        // The Sidebar loads the tab's page itself as the guest gets ready, just
+        // before the renderer reports the guest. Until that page replaces the
+        // blank start, Playwright would take the blank page for the tab's page.
+        if (guest.isLoading() && guest.getURL().startsWith('about:blank')) {
+          await Promise.race([once(guest, 'did-navigate'), once(guest, 'did-stop-loading'), once(guest, 'destroyed')])
+        }
+        // A guest's own target id, so frame ids match what Playwright sees.
         guest.debugger.attach('1.3')
         targetId = (await guest.debugger.sendCommand('Target.getTargetInfo')).targetInfo.targetId
       } finally {

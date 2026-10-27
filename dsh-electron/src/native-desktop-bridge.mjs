@@ -168,6 +168,14 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       // the browser's own background, as in Chrome, rather than letting the
       // application show through, so the Agent's screenshots show what the user sees.
       window.webContents.on('will-attach-webview', (_event, preferences) => { preferences.transparent = false })
+      // The Sidebar ignores a load another navigation replaced (net::ERR_ABORTED),
+      // but the error's code does not reach the renderer, and Electron also fails
+      // a load with that abort of the page it replaced. Either way the Sidebar
+      // would report a page failed that the user or the Agent navigated away from.
+      window.webContents.on('did-attach-webview', (_event, guest) => {
+        const loadURL = guest.loadURL.bind(guest)
+        guest.loadURL = (...args) => loadURL(...args).catch(error => { if (error.errno !== -3) throw error })
+      })
       shortcuts.attach(window)
     },
     dispose() { shortcuts.dispose() },
