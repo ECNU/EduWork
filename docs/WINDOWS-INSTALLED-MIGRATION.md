@@ -29,7 +29,7 @@ P 里的 `resources/`、`RELEASE-MANIFEST.json` 和 `config/` 只作为程序资
 2. 退出旧客户端及其 Host：Electron 主程序、`EduWork-Updater.exe` 和 `resources/runtime/node.exe` 都会阻止迁移。
 3. 先备份旧便携目录。迁移会移动旧程序目录，且不会自动把已经写入 W 的新数据回滚。
 4. 旧程序中的内部工作区（例如 `P\workspace-internal`）目前会被安全拒绝；外部工作区路径按原样保留。
-5. 目标 W 必须是新目录或空目录。已有用户数据的 W 不会被覆盖或合并。
+5. 目标 W 必须是新目录或空目录，并且必须等于客户端普通启动读取的默认 W（`%LOCALAPPDATA%\EduWork\<distribution>`）。已有用户数据的 W 不会被覆盖或合并；默认 W 冲突时停止并人工处理，不能改用一个客户端不会读取的目录继续导入。隔离实验若使用自定义 W，客户端测试必须同时设置 `EDUWORK_DESKTOP_TEST_DATA_ROOT`；这只是测试覆盖变量，不是用户配置。
 
 ## 手动导入
 
@@ -52,7 +52,7 @@ node dsh-electron/scripts/migrate-portable-to-installed.mjs `
   --writable-root "$env:LOCALAPPDATA\EduWork\eduwork"
 ```
 
-命令只使用这三个路径；不要先启动 installed 客户端让它创建空 W，否则该 W 会被当作已有目标而拒绝。迁移会：
+命令只使用这三个路径；不要先启动 installed 客户端让它创建空 W，否则该 W 会被当作已有目标而拒绝。`--writable-root` 必须等于客户端普通启动实际读取的 W，默认是 `%LOCALAPPDATA%\EduWork\<distribution>`（公版为 `eduwork`）。迁移器只使用这个目标，不会修改客户端的数据根配置；换一个目录导入不会让普通客户端改读新目录。迁移会：
 
 - 取得来源和目标 W 的互斥量；
 - 校验来源和目标身份、旧进程、更新事务、内部工作区和空间；
@@ -66,13 +66,13 @@ node dsh-electron/scripts/migrate-portable-to-installed.mjs `
 
 - 进程崩溃、复制失败或校验失败后，不要删除 `.handoff.json`、handoff 目录或 staging。
 - 用完全相同的三个路径重跑原命令；迁移器会读取 journal 并恢复或继续。`--dry-run` 只返回恢复计划，不修改文件。
-- 如果恢复因 `EBUSY` 失败，说明旧 Host 仍占用 handoff 路径。关闭所有旧客户端和 Host 后重试；此时 W 不会创建，journal/handoff 会保留为恢复依据。
+- 如果恢复因 `EBUSY` 失败，说明仍有进程占用 handoff 路径（通常是旧客户端或 Host）。关闭所有旧客户端和 Host 后重试；此时 W 不会创建，journal/handoff 会保留为恢复依据。
 - 如果 W 已经激活而来源仍在 handoff，说明迁移已提交；不要把旧路径当作当前数据，也不要覆盖 W。按回执中的 `source.handoffRoot` 保留来源。
-- 如果目标 W 已有数据，迁移会拒绝而不是覆盖。需要人工确认后再决定新的目标路径。
+- 如果目标 W 已有数据，迁移会拒绝而不是覆盖。此时应停止并人工处理：确认该 W 是否就是客户端会读取的数据根，备份后决定保留、移走或合并哪一份；不要仅改用一个客户端不会读取的新目录继续导入。
 
 ## 当前边界
 
-- 仅验证官方 0.4.9 便携源到开发 installed 包的跨构建迁移；不是同版本安装包之间的升级。
+- 仅验证官方 0.4.9 便携源到开发 installed 包的跨构建迁移；不是同版本安装包之间的升级。普通 installed 启动固定读取默认 W；自定义 W 只用于隔离测试（`EDUWORK_DESKTOP_TEST_DATA_ROOT`）。
 - 外部工作区路径保留；内部工作区迁出和引用重写未实现。
 - 真实 Host 的 OS 级退出超时/挂起、完整旧 UI 从 handoff 路径重启未验收；已用同 runtime Host 和原路径启动失败做替代场景。
 - 标准安装器、旧 ZIP 更新桥接、真实卸载器/快捷方式/注册表、Toast 未实现；当前只有命令行手动导入。

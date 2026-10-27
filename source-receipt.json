@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-27T17:00:06.071Z",
-  "fileSetSHA256": "2b51262e8fa4b073d2f64ed2f082b1d7ba55f0b4c67ae6bd91d0a5a28f83d051",
+  "createdAt": "2026-10-27T17:25:12.683Z",
+  "fileSetSHA256": "57e24cb986070ffbaee9b87ec5b7b40177558d2ab75da8f504ebe0a7d47ec8f7",
   "files": [
     {
       "path": ".gitattributes",
@@ -537,7 +537,7 @@
     },
     {
       "path": "docs/WINDOWS-INSTALLED-MIGRATION.md",
-      "sha256": "c7217f1ca4a17b3ae318bcf68025dc21790a55420507561529b1aac68802e9ad"
+      "sha256": "f502928aadc5a14d221cc72f46d179861d02af4bc00565f752c412d33e0349dd"
     },
     {
       "path": "docs/数据导入.md",
