@@ -29,6 +29,25 @@ function SideChatIcon({ size = 16 }) {
 const SideCopy = React.createContext(key => COPY.en[key])
 const SideSeedLength = React.createContext(0)
 
+// Two-stage naming: a placeholder from the selected text at open time, then a
+// model-written title once the side chat's first turn settles.
+const TOPIC_CJK_MAX = 12
+const TOPIC_LATIN_MAX = 24
+
+function topicFromQuote(text) {
+  if (typeof text !== 'string') return ''
+  const line = text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .split(/\r?\n/).map(part => part.trim()).find(part => part !== '')
+  if (line === undefined) return ''
+  const budget = /[぀-ヿ一-鿿]/.test(line) ? TOPIC_CJK_MAX : TOPIC_LATIN_MAX
+  return line.length <= budget ? line : `${line.slice(0, budget)}…`
+}
+
+function sideChatTitle(topic, t) {
+  return topic ? `${t('title')} · ${topic}` : t('title')
+}
+
 function hideInheritedNodes(root, seedLength) {
   if (!seedLength || !root) return
   // Hide chat nodes whose event sequence falls within the inherited seed.
@@ -187,6 +206,37 @@ function Notice({ controller, sidebarRight, t }) {
   })
 }
 
+/**
+ * Rename the side session once its first turn settles: the host distills the
+ * side chat's own question and answer into a short title. Best effort — a
+ * failure keeps the placeholder written at open time.
+ */
+function SideRetitle({ sessionId, controller, rename, locale, t, useConversation }) {
+  useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const [attempted, setAttempted] = useState(false)
+  const owner = sessionId.startsWith('side-') ? controller.findSession(sessionId) : undefined
+  const settled = useConversation(snapshot => {
+    if (!owner) return false
+    for (const node of snapshot?.views.get('chat')?.nodes.values() ?? []) {
+      if (node.kind === 'turn-tail') return true
+    }
+    return false
+  })
+  useEffect(() => {
+    if (!settled || attempted || !owner) return
+    setAttempted(true)
+    void (async () => {
+      try {
+        const title = await owner.title(locale())
+        if (title) await rename(sessionId, sideChatTitle(title, t))
+      } catch {
+        // The placeholder title stays; the chat itself is unaffected.
+      }
+    })()
+  }, [settled, attempted, owner, sessionId, rename, locale, t])
+  return null
+}
+
 export const inject = ['slots', 'sessions', 'locale', 'resources', 'sidebarRight', 'sidebarRightTabs']
 
 export function apply(ctx) {
@@ -200,10 +250,19 @@ export function apply(ctx) {
       return response.json()
     },
   })
-  const open = async (sessionId, atSeq) => {
+  const rename = async (sessionId, title) => {
+    const remote = ctx.remote
+    if (remote?.session?.rename === undefined) return
+    const result = await remote.session.rename({ sessionId, title })
+    if (result && result.ok === false) throw new Error(result.error?.message ?? 'rename failed')
+  }
+  const localeId = () => (ctx.locale.getSnapshot?.().active === 'en' ? 'en' : 'zh')
+  const open = async (sessionId, atSeq, topic) => {
     const owner = controller.forSource(sessionId)
+    const previous = owner.snapshot.chat
     try {
       const chat = await owner.open(sessionId, atSeq)
+      if (!previous) void rename(chat.sessionId, sideChatTitle(topic, t)).catch(() => {})
       if (ctx.sidebarRight.mounted.getSnapshot() === sessionId) ctx.sidebarRight.openResource(addressOf(chat.sessionId))
     } catch (error) { owner.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
   }
@@ -212,11 +271,12 @@ export function apply(ctx) {
       id: 'eduwork-side-chat', icon: 'side-chat', label: () => t('ask'),
       renderIcon: () => h(SideChatIcon),
       available: sessionId => !sessionId.startsWith('side-'),
-      async run({ sourceSessionId, atSeq, reference }) {
+      async run({ sourceSessionId, atSeq, reference, quote }) {
         const owner = controller.forSource(sourceSessionId)
         const current = owner.snapshot
-        const chat = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
-          ? current.chat : await owner.open(sourceSessionId, atSeq)
+        const existing = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
+        const chat = existing ? current.chat : await owner.open(sourceSessionId, atSeq)
+        if (!existing) void rename(chat.sessionId, sideChatTitle(topicFromQuote(quote), t)).catch(() => {})
         if (scope.sidebarRight.mounted.getSnapshot() !== sourceSessionId) throw new Error('expired')
         scope.sidebarRight.openResource(addressOf(chat.sessionId))
         owner.queueReference(chat.sessionId, reference)
@@ -270,6 +330,10 @@ export function apply(ctx) {
     name: 'conversation.input.overlay', id: 'eduwork-side-chat-reference', order: 20, locale: NS,
     inject: sessionId => ({ sessionId, controller, sessions: ctx.sessions, conversation: ctx.get('conversation'), sidebarRight: ctx.sidebarRight }),
   }, SideDraftDelivery))
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay', id: 'eduwork-side-chat-title', order: 21, locale: NS,
+    inject: sessionId => ({ sessionId, controller, rename, locale: localeId, t }),
+  }, SideRetitle))
   for (const name of ['conversation.chat.user.actions', 'conversation.chat.assistant-actions']) {
     ctx.slots.inject(name, () => ctx.slots.register({ name, id: 'eduwork-side-chat', order: 20, locale: NS, inject: () => ({ controller, open }) }, SideAction))
   }

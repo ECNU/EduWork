@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 import { buildForkSeed, SessionId } from '@deepseek-ai/dsh-session'
 import { SIDE_BOUNDARY, disallowedSideTool } from './boundary.js'
+import { buildTitleInput, normalizeTitle, questionAndAnswerOf, titleSystem } from './title.js'
 
 export const SIDE_CHAT_PATH = '/api/eduwork/side-chat'
 
@@ -10,6 +11,14 @@ export class SideChatError extends Error {
 
 function validateOwner(owner) {
   if (typeof owner !== 'string' || !/^[a-zA-Z0-9_-]{24,128}$/.test(owner)) throw new SideChatError('Invalid temporary-chat owner')
+}
+
+/** One plugin-authored user message for the title model. */
+function pluginUserMessage(text) {
+  return {
+    id: randomUUID(), role: 'user', content: [{ type: 'text', text }],
+    source: { kind: 'plugin', plugin: 'eduwork-side-chat' },
+  }
 }
 
 /** One owning handle per temporary chat. Ownership never expires with inactivity. */
@@ -62,6 +71,7 @@ export class SideChatService {
       entry.seedLength = seed.length
       const model = seed.findLast(event => event.type === 'request/header')?.data.header.config
         ?? this.ctx.get('agentDefaultModel')?.currentSelection() ?? {}
+      entry.model = model
       const presets = this.ctx.get('agentPresets')
       const presetId = presets ? (await presets.resolve(observed.header.agentPreset)).id : undefined
       entry.controller.signal.throwIfAborted()
@@ -107,6 +117,47 @@ export class SideChatService {
 
   describe(entry) {
     return { sessionId: entry.sessionId, sourceSessionId: entry.sourceSessionId, atSeq: entry.atSeq, seedLength: entry.seedLength ?? 0 }
+  }
+
+  /**
+   * Generate the final title for one open side chat from its own first turn.
+   * The seeded source history is skipped: only what the user asked in the side
+   * chat, and the answer produced there, may name it.
+   */
+  async title({ owner, sessionId, locale }) {
+    validateOwner(owner)
+    const entry = this.entries.get(owner)
+    if (!entry || entry.sessionId !== sessionId || entry.closing) throw new SideChatError('Temporary chat has ended', 410)
+    if (entry.title !== undefined) return { title: entry.title }
+    const llm = this.ctx.get('llm')
+    const model = entry.model ?? this.ctx.get('agentDefaultModel')?.currentSelection() ?? {}
+    if (llm === undefined || typeof model.provider !== 'string' || typeof model.model !== 'string') return { title: null }
+    const observed = await this.ctx.sessionQuery.observeSession(SessionId(sessionId))
+    try {
+      const own = observed.events.slice(entry.seedLength ?? 0)
+      const { question, answer } = questionAndAnswerOf(own)
+      const input = buildTitleInput(question, answer, locale)
+      if (input.trim() === '') return { title: null }
+      let text = ''
+      const chunks = llm.stream({
+        provider: model.provider, model: model.model,
+        messages: [pluginUserMessage(input)], system: titleSystem(locale), maxTokens: 64,
+        signal: AbortSignal.timeout(8000),
+      })
+      for await (const chunk of chunks) {
+        if (chunk?.type === 'text-delta') text += chunk.text
+        else if (chunk?.type === 'finish' && (chunk.reason?.kind === 'error' || chunk.reason?.kind === 'aborted')) return { title: null }
+      }
+      const title = normalizeTitle(text)
+      if (title === '') return { title: null }
+      entry.title = title
+      return { title }
+    } catch {
+      // A failed title pass only costs the display name; the chat keeps working.
+      return { title: null }
+    } finally {
+      observed[Symbol.dispose]()
+    }
   }
 
   heartbeat({ owner, sessionId }) {
@@ -158,6 +209,7 @@ export class SideChatService {
       switch (input.action) {
         case 'open': result = await this.open(input); break
         case 'heartbeat': result = this.heartbeat(input); break
+        case 'title': result = await this.title(input); break
         case 'close': result = await this.close(input); break
         default: throw new SideChatError('Unknown temporary-chat action')
       }

@@ -331,7 +331,7 @@ function AnnotationOverlay({ sessionId, previews, selectionActions, reportError,
         const value = reference(target.quote, '', t, target.origin, target.context)
         const atSeq = target.atSeq
         if (!value || !Number.isSafeInteger(atSeq)) return
-        const payload = { sourceSessionId: sessionId, atSeq, reference: value }
+        const payload = { sourceSessionId: sessionId, atSeq, reference: value, quote: target.quote }
         setTarget(null); document.getSelection()?.removeAllRanges()
         try { await action.run(payload) } catch { reportError(t('insertFailed')) }
       },

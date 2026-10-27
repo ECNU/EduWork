@@ -56,6 +56,12 @@ export class SideChatController {
   consumeReference(id) {
     this.update({ references: this.snapshot.references.filter(item => item.id !== id) })
   }
+  async title(locale) {
+    const chat = this.snapshot.chat
+    if (!chat || this.snapshot.phase !== 'open') return undefined
+    const result = await this.request({ action: 'title', owner: chat.owner, sessionId: chat.sessionId, locale })
+    return typeof result?.title === 'string' && result.title !== '' ? result.title : undefined
+  }
   async open(sourceSessionId, atSeq) {
     const existing = this.snapshot.chat
     if (existing) {
