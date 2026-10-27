@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
+import { spawn } from 'node:child_process'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from '../src/legacy-migration.mjs'
 
 async function fixture(t) {
@@ -22,6 +23,44 @@ async function fixture(t) {
  const launch=await readMigrationLaunch({root,settings,argv})
  return {root,settings,sourceHome,targetHome,launch,argv,file,health}
 }
+
+async function holdHealthFile(t,file,milliseconds) {
+ const script=file+'-lock.ps1'
+ await writeFile(script,`param([string]$HealthPath,[int]$Milliseconds)
+$stream=[IO.FileStream]::new($HealthPath,[IO.FileMode]::Open,[IO.FileAccess]::Read,[IO.FileShare]::ReadWrite)
+try { [Console]::Out.WriteLine('locked'); Start-Sleep -Milliseconds $Milliseconds } finally { $stream.Dispose() }
+`)
+ const child=spawn('powershell.exe',['-NoProfile','-NonInteractive','-File',script,file,String(milliseconds)],{windowsHide:true,stdio:['ignore','pipe','pipe']})
+ t.after(()=>{if(child.exitCode===null)child.kill()})
+ await new Promise((resolve,reject)=>{
+  child.once('error',reject)
+  child.stdout.once('data',()=>resolve())
+  child.once('exit',code=>reject(Error(`Health reader exited before locking: ${code}`)))
+ })
+ return child
+}
+
+test('Windows health replacement survives the updater briefly reading the existing marker',{skip:process.platform!=='win32'},async t=>{
+ const f=await fixture(t)
+ await writeMigrationHealth(f.launch,'starting')
+ await holdHealthFile(t,f.health,150)
+ await writeMigrationHealth(f.launch,'ready')
+ assert.equal(await readFile(f.health,'utf8'),'ok\n')
+})
+
+test('Windows persistent health locks still fail, retain the prior marker and remove the temporary file',{skip:process.platform!=='win32'},async t=>{
+ const f=await fixture(t)
+ await writeMigrationHealth(f.launch,'starting','original marker')
+ const original=await readFile(f.health,'utf8')
+ const reader=await holdHealthFile(t,f.health,3000)
+ const started=Date.now()
+ try {
+  await assert.rejects(writeMigrationHealth(f.launch,'ready'),error=>['EPERM','EACCES','EBUSY'].includes(error.code))
+  assert.ok(Date.now()-started<2000,'persistent locks must not wait indefinitely')
+  assert.equal(await readFile(f.health,'utf8'),original)
+  assert.deepEqual((await readdir(join(f.file,'..'))).filter(name=>name.endsWith('.tmp')),[])
+ } finally { reader.kill(); await new Promise(resolve=>reader.once('exit',resolve)) }
+})
 test('copies verified history/settings without activating old plugins or credentials; source remains',async t=>{
  const f=await fixture(t), progress=[]
  const receipt=await importLegacyData({...f,onProgress:p=>progress.push(p)})
