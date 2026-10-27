@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { Toast, Tooltip, IconWarningOutlineRegular } from './primitives.jsx'
 import { SideChatRegistry, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
 import { alignComposerDocks } from './composer-alignment.js'
@@ -77,27 +78,50 @@ function hideInheritedNodes(root, seedLength) {
   return () => { observer.disconnect() }
 }
 
-function SideViews({ renderSlot, useSession }) {
+function SideViews(props) {
+  // Without the conversation store there is no reliable way to tell an empty
+  // side chat apart from an inherited one; render the native body untouched.
+  if (props.useConversation === undefined) return props.renderSlot('conversation.session', { view: 'chat' })
+  return h(SideViewsWithHint, props)
+}
+
+/**
+ * Render the native session body exactly as the factory would, and float the
+ * "temporary chat" hint over it while no side-chat event exists yet. The hint
+ * is portalled into the tab so it never participates in the scroll layout.
+ */
+function SideViewsWithHint({ renderSlot, useConversation }) {
   const seedLength = React.useContext(SideSeedLength)
-  const hasNewContent = useSession(session => {
-    if (!seedLength) return !session.blank
-    return session.events?.length > seedLength
-  })
   const t = React.useContext(SideCopy)
-  // The native session view carries the composer. Keep it mounted even while
-  // the chat is empty and float the hint over it, so an empty side chat can
-  // still be typed into.
-  return h('div', { style: { position: 'relative', display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 } },
+  const marker = useRef(null)
+  const [host, setHost] = useState(null)
+  const hasContent = useConversation(snapshot => {
+    const nodes = snapshot?.views.get('chat')?.nodes
+    if (!nodes) return false
+    for (const node of nodes.values()) {
+      const seq = Number(node?.data?.seq ?? node?.anchorSeq ?? NaN)
+      if (Number.isFinite(seq) && seq >= seedLength) return true
+    }
+    return false
+  })
+  useEffect(() => {
+    setHost(hasContent ? null : marker.current?.closest('[data-eduwork-side-chat]') ?? null)
+  }, [hasContent])
+  return h(React.Fragment, null,
+    h('span', { ref: marker, hidden: true }),
     renderSlot('conversation.session', { view: 'chat' }),
-    hasNewContent ? null : h('div', {
+    host === null ? null : createPortal(h('div', {
       'data-side-chat-empty': '',
-      style: { position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box', pointerEvents: 'none' },
+      style: {
+        position: 'absolute', inset: '0 0 120px 0', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box', pointerEvents: 'none',
+      },
     },
     h('div', { style: { maxWidth: 340, textAlign: 'center', color: 'var(--dsw-alias-label-secondary, #777)' } },
       h('svg', { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
         h('path', { d: 'M20 11.5a8.5 8.5 0 1 0-4 7.2l5 1.3-1.3-5a8.5 8.5 0 0 0 .3-3.5ZM12 7v8M8 11h8' })),
       h('h2', { style: { margin: '14px 0 8px', fontSize: 18, fontWeight: 600, color: 'var(--dsw-alias-label-primary, #222)' } }, t('title')),
-      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint')))))
+      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint')))), host))
 }
 
 function SideConversation({ renderFactorySlot, t, seedLength }) {
@@ -121,7 +145,7 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   return h('section', {
     ref: root,
     'data-eduwork-side-chat': '', 'data-side-source': chat?.sourceSessionId, 'data-side-session': chat?.sessionId, 'aria-label': t('title'),
-    style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
   },
   h('style', null, '[data-eduwork-side-chat] [data-conversation-content]{flex:1;min-height:0;width:100%}[data-eduwork-side-chat] [data-composer-seat]{margin-top:auto}[data-eduwork-side-chat] button:is([aria-label="在新对话中分支"],[aria-label="Branch into a new conversation"]){display:none}'),
   state.phase === 'closing' || !chat

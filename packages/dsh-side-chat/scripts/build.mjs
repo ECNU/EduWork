@@ -8,9 +8,10 @@ await mkdir(new URL('../lib/', import.meta.url), { recursive: true })
 await build({ absWorkingDir: root, entryPoints: ['src/index.js'], outfile: 'lib/index.js',
   bundle: true, platform: 'node', format: 'esm', target: 'node24', packages: 'external' })
 // UI primitives ship no client module in current DSH runtimes, so the bundle
-// must carry them; only React stays a loader-provided external.
+// must carry them; only React (and the DOM renderer for portals) stays a
+// loader-provided external.
 await build({ absWorkingDir: root, entryPoints: ['src/client/index.jsx'], outfile: 'lib/client.js',
-  bundle: true, platform: 'browser', format: 'cjs', target: 'es2022', external: ['react', 'react/*'],
+  bundle: true, platform: 'browser', format: 'cjs', target: 'es2022', external: ['react', 'react/*', 'react-dom', 'react-dom/*'],
   banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
   footer: { js: 'return module.exports; } });' },
 })
