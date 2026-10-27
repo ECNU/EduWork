@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test, { after } from 'node:test'
-import { mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { createRequire, registerHooks } from 'node:module'
 import { join } from 'node:path'
@@ -74,6 +74,8 @@ test('real Runtime creates a seeded side chat with inherited history and seedLen
   await f.service.close({ owner, sessionId: opened.sessionId })
   assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
   assert.equal(f.ctx.sessions.get(opened.sessionId), undefined)
+  const stored = await f.ctx.get('sessionPersistence').list()
+  assert.equal(stored.some(row => row.header.id === opened.sessionId), false, 'a closed side chat leaves nothing stored')
   assert.equal(JSON.stringify(f.source.snapshotEvents()).includes('SIDE_PRIVATE_NEEDLE'), false)
 })
 
@@ -303,4 +305,17 @@ test('real Runtime cleanup failure retains a retryable tombstone', options, asyn
   await f.service.retryCleanup()
   assert.equal(f.service.entries.size, 0)
   assert.equal(f.ctx.agents.get(opened.sessionId), undefined)
+})
+
+test('a store that still lists the session turns deletion into keeping it', options, async t => {
+  const { SideChatService } = await import('../src/service.js')
+  const home = await mkdtemp(join(tmpdir(), 'eduwork-side-chat-delete-'))
+  await mkdir(join(home, 'sessions', 'project', 'side-keep'), { recursive: true })
+  const service = list => new SideChatService({
+    get: name => name === 'sessionPersistence' ? { root: join(home, 'sessions'), list } : undefined,
+  })
+  // The directory is gone, but the store still reports the Session: the chat
+  // must stay an ordinary conversation rather than vanish from the list.
+  assert.equal(await service(async () => [{ header: { id: 'side-keep' } }]).removeStoredSession('side-keep'), false)
+  assert.equal(await service(async () => []).removeStoredSession('side-keep'), true)
 })

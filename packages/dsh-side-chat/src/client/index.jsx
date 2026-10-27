@@ -1,4 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
+import { createPortal } from 'react-dom'
 import { Toast, Tooltip, IconWarningOutlineRegular } from './primitives.jsx'
 import { SideChatRegistry, SIDE_CHAT_PATH, SIDE_KIND, addressOf } from './controller.js'
 import { alignComposerDocks } from './composer-alignment.js'
@@ -29,49 +30,84 @@ function SideChatIcon({ size = 16 }) {
 const SideCopy = React.createContext(key => COPY.en[key])
 const SideSeedLength = React.createContext(0)
 
-function hideInheritedNodes(root, seedLength) {
-  if (!seedLength || !root) return
-  // Hide chat nodes whose event sequence falls within the inherited seed.
-  // Targets [data-chat-node-key] when available; falls back to counting
-  // top-level children of the conversation content container.
-  const apply = () => {
-    const content = root.querySelector('[data-conversation-content]')
-    if (!content) return
-    const nodes = content.querySelectorAll('[data-chat-node-key]')
-    if (nodes.length > 0) {
-      for (const node of nodes) {
-        const seq = Number(node.dataset.chatNodeSeq ?? node.dataset.anchorSeq ?? NaN)
-        node.style.display = Number.isFinite(seq) && seq < seedLength ? 'none' : ''
-      }
-      return
-    }
-    // Fallback: hide the first batch of direct children that map to seed events.
-    // This is approximate but avoids depending on a specific attribute name.
-    const children = [...content.children].filter(el => el.matches('[data-chat-node-key], [role="listitem"], [data-clock]'))
-    for (let i = 0; i < children.length && i < seedLength; i++) {
-      children[i].style.display = 'none'
-    }
-  }
-  apply()
-  const observer = new MutationObserver(apply)
-  observer.observe(root, { childList: true, subtree: true })
-  return () => { observer.disconnect() }
+// Two-stage naming: a placeholder from the selected text at open time, then a
+// model-written title once the side chat's first turn settles.
+const TOPIC_CJK_MAX = 12
+const TOPIC_LATIN_MAX = 24
+
+function topicFromQuote(text) {
+  if (typeof text !== 'string') return ''
+  const line = text
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, '')
+    .split(/\r?\n/).map(part => part.trim()).find(part => part !== '')
+  if (line === undefined) return ''
+  const budget = /[぀-ヿ一-鿿]/.test(line) ? TOPIC_CJK_MAX : TOPIC_LATIN_MAX
+  return line.length <= budget ? line : `${line.slice(0, budget)}…`
 }
 
-function SideViews({ renderSlot, useSession }) {
+function sideChatTitle(topic, t) {
+  return topic ? `${t('title')} · ${topic}` : t('title')
+}
+
+function SideViews(props) {
+  // Without the conversation store there is no reliable way to tell an empty
+  // side chat apart from an inherited one; render the native body untouched.
+  if (props.useConversation === undefined) return props.renderSlot('conversation.session', { view: 'chat' })
+  return h(SideViewsWithHint, props)
+}
+
+/**
+ * Render the native session body exactly as the factory would. Everything the
+ * side chat inherited from its source is hidden by node key, and the
+ * "temporary chat" hint floats over the body only while the side chat has no
+ * node of its own. The hint is portalled into the tab so it never takes part
+ * in the scroll layout.
+ */
+function SideViewsWithHint({ renderSlot, useConversation }) {
   const seedLength = React.useContext(SideSeedLength)
-  const hasNewContent = useSession(session => {
-    if (!seedLength) return !session.blank
-    return session.events?.length > seedLength
-  })
   const t = React.useContext(SideCopy)
-  if (hasNewContent) return renderSlot('conversation.session', { view: 'chat' })
-  return h('div', { 'data-side-chat-empty': '', style: { flex: '1 0 180px', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box' } },
+  const marker = useRef(null)
+  const [host, setHost] = useState(null)
+  // A string keeps the selector result stable across store notifications:
+  // "1" marks an empty side chat, "0" one that already owns a node.
+  const nodes = useConversation(snapshot => {
+    const view = snapshot?.views.get('chat')
+    if (view === undefined) return ''
+    let own = false
+    const keys = []
+    for (const node of view.nodes.values()) {
+      const seq = Number(node?.anchorSeq ?? NaN)
+      if (!Number.isFinite(seq)) continue
+      if (seq < seedLength) keys.push(node.key)
+      else own = true
+    }
+    return `${own ? '0' : '1'}|${keys.join('\u0000')}`
+  })
+  const empty = nodes.startsWith('1|')
+  useEffect(() => {
+    const root = marker.current?.closest('[data-eduwork-side-chat]') ?? null
+    setHost(empty ? root : null)
+    if (root === null) return
+    for (const key of nodes.slice(2).split('\u0000')) {
+      if (key === '') continue
+      for (const node of root.querySelectorAll(`[data-chat-node-key="${CSS.escape(key)}"]`)) node.style.display = 'none'
+    }
+  }, [nodes, empty])
+  return h(React.Fragment, null,
+    h('span', { ref: marker, hidden: true }),
+    renderSlot('conversation.session', { view: 'chat' }),
+    host === null ? null : createPortal(h('div', {
+      'data-side-chat-empty': '',
+      style: {
+        position: 'absolute', inset: '0 0 120px 0', display: 'flex', alignItems: 'center',
+        justifyContent: 'center', padding: '32px 24px', boxSizing: 'border-box', pointerEvents: 'none',
+      },
+    },
     h('div', { style: { maxWidth: 340, textAlign: 'center', color: 'var(--dsw-alias-label-secondary, #777)' } },
       h('svg', { width: 32, height: 32, viewBox: '0 0 24 24', fill: 'none', stroke: 'currentColor', strokeWidth: 1.5, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
         h('path', { d: 'M20 11.5a8.5 8.5 0 1 0-4 7.2l5 1.3-1.3-5a8.5 8.5 0 0 0 .3-3.5ZM12 7v8M8 11h8' })),
       h('h2', { style: { margin: '14px 0 8px', fontSize: 18, fontWeight: 600, color: 'var(--dsw-alias-label-primary, #222)' } }, t('title')),
-      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint'))))
+      h('p', { style: { margin: 0, fontSize: 13, lineHeight: 1.65 } }, t('emptyHint')))), host))
 }
 
 function SideConversation({ renderFactorySlot, t, seedLength }) {
@@ -90,12 +126,15 @@ function SideChatTab({ useResource, useTabInfo, SessionProvider, renderSlot, con
   const root = useRef(null)
   useEffect(() => chat && root.current ? alignComposerDocks(root.current, chat.sourceSessionId) : undefined,
     [chat?.sessionId, chat?.sourceSessionId])
-  useEffect(() => seedLength > 0 && root.current ? hideInheritedNodes(root.current, seedLength) : undefined,
-    [seedLength, chat?.sessionId])
+  // The right sidebar persists tabs per Session, but a side chat only lives in
+  // window memory. A restored tab with no chat behind it would be an empty
+  // pane, so it closes itself instead.
+  const closeTab = info.tab.actions.close
+  useEffect(() => { if (!chat) closeTab() }, [chat, closeTab])
   return h('section', {
     ref: root,
     'data-eduwork-side-chat': '', 'data-side-source': chat?.sourceSessionId, 'data-side-session': chat?.sessionId, 'aria-label': t('title'),
-    style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' },
+    style: { height: '100%', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', position: 'relative' },
   },
   h('style', null, '[data-eduwork-side-chat] [data-conversation-content]{flex:1;min-height:0;width:100%}[data-eduwork-side-chat] [data-composer-seat]{margin-top:auto}[data-eduwork-side-chat] button:is([aria-label="在新对话中分支"],[aria-label="Branch into a new conversation"]){display:none}'),
   state.phase === 'closing' || !chat
@@ -187,6 +226,35 @@ function Notice({ controller, sidebarRight, t }) {
   })
 }
 
+/**
+ * Rename the side session once one of its own turns settles: the host distills
+ * the side chat's own question and answer into a short title. Inherited turns
+ * never count, and a failed pass retries on the next settled turn. Best effort
+ * — a failure keeps the placeholder written at open time.
+ */
+function SideRetitle({ sessionId, controller, locale, t, useConversation }) {
+  useSyncExternalStore(controller.subscribe, controller.getSnapshot)
+  const owner = sessionId.startsWith('side-') ? controller.findSession(sessionId) : undefined
+  const ownTurns = useConversation(snapshot => {
+    if (!owner) return 0
+    const seedLength = owner.getSnapshot().chat?.seedLength ?? 0
+    let count = 0
+    for (const node of snapshot?.views.get('chat')?.nodes.values() ?? []) {
+      if (node.kind === 'turn-tail' && Number(node.anchorSeq) >= seedLength) count++
+    }
+    return count
+  })
+  const attempted = useRef(0)
+  useEffect(() => {
+    if (!owner || ownTurns <= attempted.current) return
+    attempted.current = ownTurns
+    void owner.title(locale(), t('title')).catch(() => {
+      // The placeholder title stays; the chat itself is unaffected.
+    })
+  }, [ownTurns, owner, locale, t])
+  return null
+}
+
 export const inject = ['slots', 'sessions', 'locale', 'resources', 'sidebarRight', 'sidebarRightTabs']
 
 export function apply(ctx) {
@@ -200,10 +268,11 @@ export function apply(ctx) {
       return response.json()
     },
   })
-  const open = async (sessionId, atSeq) => {
+  const localeId = () => (ctx.locale.getSnapshot?.().active === 'en' ? 'en' : 'zh')
+  const open = async (sessionId, atSeq, topic) => {
     const owner = controller.forSource(sessionId)
     try {
-      const chat = await owner.open(sessionId, atSeq)
+      const chat = await owner.open(sessionId, atSeq, sideChatTitle(topic, t))
       if (ctx.sidebarRight.mounted.getSnapshot() === sessionId) ctx.sidebarRight.openResource(addressOf(chat.sessionId))
     } catch (error) { owner.update({ error: error.message === 'onlyOne' ? 'onlyOne' : 'failed' }) }
   }
@@ -212,11 +281,12 @@ export function apply(ctx) {
       id: 'eduwork-side-chat', icon: 'side-chat', label: () => t('ask'),
       renderIcon: () => h(SideChatIcon),
       available: sessionId => !sessionId.startsWith('side-'),
-      async run({ sourceSessionId, atSeq, reference }) {
+      async run({ sourceSessionId, atSeq, reference, quote }) {
         const owner = controller.forSource(sourceSessionId)
         const current = owner.snapshot
-        const chat = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
-          ? current.chat : await owner.open(sourceSessionId, atSeq)
+        const existing = current.phase === 'open' && current.chat?.sourceSessionId === sourceSessionId
+        const chat = existing ? current.chat
+          : await owner.open(sourceSessionId, atSeq, sideChatTitle(topicFromQuote(quote), t))
         if (scope.sidebarRight.mounted.getSnapshot() !== sourceSessionId) throw new Error('expired')
         scope.sidebarRight.openResource(addressOf(chat.sessionId))
         owner.queueReference(chat.sessionId, reference)
@@ -270,6 +340,10 @@ export function apply(ctx) {
     name: 'conversation.input.overlay', id: 'eduwork-side-chat-reference', order: 20, locale: NS,
     inject: sessionId => ({ sessionId, controller, sessions: ctx.sessions, conversation: ctx.get('conversation'), sidebarRight: ctx.sidebarRight }),
   }, SideDraftDelivery))
+  ctx.slots.inject('conversation.input.overlay', () => ctx.slots.register({
+    name: 'conversation.input.overlay', id: 'eduwork-side-chat-title', order: 21, locale: NS,
+    inject: sessionId => ({ sessionId, controller, locale: localeId, t }),
+  }, SideRetitle))
   for (const name of ['conversation.chat.user.actions', 'conversation.chat.assistant-actions']) {
     ctx.slots.inject(name, () => ctx.slots.register({ name, id: 'eduwork-side-chat', order: 20, locale: NS, inject: () => ({ controller, open }) }, SideAction))
   }
