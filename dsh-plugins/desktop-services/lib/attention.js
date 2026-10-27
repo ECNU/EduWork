@@ -146,6 +146,10 @@ export function observeDesktopAttention(ctx, attention) {
     }
   }
   ctx.on('session/event', (session, event) => {
+    // Temporary side chats end with the pane that owns them: their turns are
+    // never background tasks the tray keeps asking to review. The side-chat
+    // plugin owns this id space.
+    if (String(session.id).startsWith('side-')) return
     const isRoot = root(session)
     attention.event(session, event, isRoot)
     if (!isRoot && (event.type === 'turn/start' || event.type === 'turn/end')) attention.subagent(String(session.id), event.type, owner(session))
