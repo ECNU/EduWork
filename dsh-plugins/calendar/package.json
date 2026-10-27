@@ -8,6 +8,7 @@
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
+    "./ics": "./lib/ics.js",
     "./tools": "./lib/tools.js",
     "./client": "./lib/client.js",
     "./typert": "./lib/typert.host.js",
