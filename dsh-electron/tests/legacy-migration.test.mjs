@@ -1,9 +1,12 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, symlink } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
+import { mkdtemp, mkdir, writeFile, readFile, readdir, rename, rm, symlink } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { spawn } from 'node:child_process'
+import { runInNewContext } from 'node:vm'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from '../src/legacy-migration.mjs'
 
 async function fixture(t) {
@@ -40,6 +43,40 @@ try { [Console]::Out.WriteLine('locked'); [Threading.Thread]::Sleep($Millisecond
   child.once('exit',code=>reject(Error(`Health reader exited before locking: ${code}`)))
  })
  return child
+}
+
+for (const stop of ['none','host-failure','recovery','quit']) {
+ test(`health replacement retry respects startup state: ${stop}`,async t=>{
+  const f=await fixture(t)
+  await writeMigrationHealth(f.launch,'starting')
+  const original=await readFile(f.health,'utf8')
+  const source=readFileSync(new URL('../src/product.mjs',import.meta.url),'utf8')
+  const start=source.indexOf('export async function desktopReady('),end=source.indexOf('\n}\n',start)
+  assert.ok(start>=0&&end>start)
+  const state={hostReady:true,recovery:false,quitting:false}
+  let attempts=0
+  const context={
+   process:{platform:'win32'},randomUUID,writeFile,rm,
+   migrationLaunch:f.launch,contentUpdates:undefined,updateCompleted:false,
+   mainWindow:undefined,desktopPet:undefined,portableUpdates:undefined,startupMessage:'starting',
+   shouldContinue:()=>state.hostReady&&!state.recovery&&!state.quitting,
+   rename:async(...args)=>{
+    if(++attempts===1)throw Object.assign(new Error('synthetic updater read lock'),{code:'EPERM'})
+    return rename(...args)
+   },
+   setTimeout:resolve=>{
+    if(stop==='host-failure')state.hostReady=false
+    if(stop==='recovery')state.recovery=true
+    if(stop==='quit')state.quitting=true
+    resolve()
+   },
+  }
+  await runInNewContext(`${writeMigrationHealth.toString()}\n${source.slice(start,end+2).replace('export ','')}\ndesktopReady(shouldContinue)`,context)
+  assert.equal(attempts,stop==='none'?2:1)
+  assert.equal(context.updateCompleted,stop==='none')
+  assert.equal(await readFile(f.health,'utf8'),stop==='none'?'ok\n':original)
+  assert.deepEqual((await readdir(join(f.file,'..'))).filter(name=>name.endsWith('.tmp')),[])
+ })
 }
 
 test('Windows health replacement survives the updater briefly reading the existing marker',{skip:process.platform!=='win32'},async t=>{
