@@ -1,0 +1,265 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EduWork 使用教程</title>
+<style>
+body { margin: 0; }
+
+/* Layout: a reading column (≈40em) beside a sticky contents rail; the rail folds above the text on narrow screens. */
+:root {
+  --ink: #16202e;
+  --ink-soft: #4a5566;
+  --ink-faint: #7a8494;
+  --paper: #fbfcfe;
+  --panel: #f1f4f9;
+  --rule: #dfe4ec;
+  --blue: #2f5fb3;
+  --blue-wash: #e6eef8;
+  --warn: #9a5b00;
+  --warn-wash: #fbf1e1;
+  --serif: "Noto Serif SC", "Songti SC", "STSong", serif;
+  --sans: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", system-ui, sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --measure: 40em;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --ink: #e7ebf2; --ink-soft: #b3bccb; --ink-faint: #8792a3; --paper: #12161d; --panel: #1a202a;
+    --rule: #2b3340; --blue: #7fb0f0; --blue-wash: #1b2a40; --warn: #e3b26a; --warn-wash: #2c2417; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --ink: #e7ebf2; --ink-soft: #b3bccb; --ink-faint: #8792a3; --paper: #12161d; --panel: #1a202a;
+  --rule: #2b3340; --blue: #7fb0f0; --blue-wash: #1b2a40; --warn: #e3b26a; --warn-wash: #2c2417; color-scheme: dark;
+}
+
+html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body { background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 16px; line-height: 1.85; padding-inline: 20px; }
+a { color: var(--blue); text-underline-offset: 3px; }
+a:focus-visible, summary:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; border-radius: 3px; }
+
+.shell { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 13.5rem minmax(0, 1fr); gap: 56px; padding-block: 56px 96px; }
+
+/* Contents rail */
+.toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 32px); align-self: start; font-size: 14px; line-height: 1.6; }
+.toc .label { font-size: 12px; letter-spacing: .12em; color: var(--ink-faint); margin-bottom: 12px; }
+.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; counter-reset: t; }
+.toc li { counter-increment: t; }
+.toc a { display: grid; grid-template-columns: 1.8em 1fr; color: var(--ink-soft); text-decoration: none; padding: 4px 8px; border-radius: 6px; }
+.toc a::before { content: counter(t); color: var(--ink-faint); font-family: var(--mono); font-size: 12px; padding-top: 1px; }
+.toc a:hover { background: var(--panel); color: var(--ink); }
+
+/* Masthead */
+.mast { border-bottom: 1px solid var(--rule); padding-bottom: 36px; margin-bottom: 8px; display: grid; gap: 14px; }
+.kicker { font-size: 13px; letter-spacing: .14em; color: var(--blue); }
+h1 { font-family: var(--serif); font-weight: 700; font-size: clamp(2.2rem, 4.6vw, 3.1rem); line-height: 1.2; margin: 0; text-wrap: balance; }
+.lede { font-size: 18px; color: var(--ink-soft); max-width: var(--measure); margin: 0; }
+.facts { display: flex; flex-wrap: wrap; gap: 8px 22px; font-size: 13.5px; color: var(--ink-faint); }
+.facts b { color: var(--ink-soft); font-weight: 500; }
+
+main section { max-width: var(--measure); padding-top: 48px; }
+h2 { font-family: var(--serif); font-weight: 700; font-size: 1.75rem; line-height: 1.35; margin: 0 0 18px; text-wrap: balance; display: flex; gap: 14px; align-items: baseline; }
+h2 .no { font-family: var(--mono); font-size: 14px; font-weight: 500; color: var(--blue); }
+h3 { font-size: 1.08rem; font-weight: 700; margin: 30px 0 8px; }
+p { margin: 0 0 14px; }
+ul, ol { margin: 0 0 16px; padding-left: 1.4em; }
+li { margin-bottom: 6px; }
+li::marker { color: var(--ink-faint); }
+
+kbd, code { font-family: var(--mono); font-size: .86em; }
+code { background: var(--panel); border: 1px solid var(--rule); border-radius: 5px; padding: 1px 6px; word-break: break-all; }
+kbd { border: 1px solid var(--rule); border-bottom-width: 2px; border-radius: 5px; padding: 0 6px; background: var(--paper); }
+.ui { font-weight: 500; color: var(--ink); white-space: nowrap; }
+.ui::before { content: "「"; color: var(--ink-faint); }
+.ui::after { content: "」"; color: var(--ink-faint); }
+
+/* Numbered steps: a real sequence */
+.steps { list-style: none; padding: 0; margin: 4px 0 20px; counter-reset: s; display: grid; gap: 14px; }
+.steps > li { counter-increment: s; display: grid; grid-template-columns: 2.1rem minmax(0, 1fr); gap: 12px; margin: 0; }
+.steps > li::before { content: counter(s); font-family: var(--mono); font-size: 13px; color: var(--blue); border: 1px solid var(--blue); border-radius: 50%; width: 1.75rem; height: 1.75rem; display: grid; place-items: center; margin-top: 2px; }
+
+.note { border-left: 3px solid var(--blue); background: var(--blue-wash); padding: 12px 16px; border-radius: 0 8px 8px 0; margin: 18px 0; font-size: 15px; }
+.note.warn { border-color: var(--warn); background: var(--warn-wash); }
+.note strong { display: block; margin-bottom: 2px; }
+.note p:last-child { margin: 0; }
+
+.prompt { font-family: var(--serif); font-size: 15.5px; background: var(--panel); border-radius: 8px; padding: 10px 16px; margin: 8px 0 14px; color: var(--ink); }
+.prompt::before { content: "试着说："; font-family: var(--sans); font-size: 12px; letter-spacing: .08em; color: var(--ink-faint); display: block; }
+
+.table-wrap { overflow-x: auto; margin: 10px 0 20px; border: 1px solid var(--rule); border-radius: 8px; }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; line-height: 1.6; }
+th, td { text-align: left; padding: 9px 14px; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 500; color: var(--ink-faint); font-size: 12.5px; letter-spacing: .06em; background: var(--panel); }
+tr:last-child td { border-bottom: 0; }
+td:first-child { white-space: nowrap; }
+
+/* Window diagram drawn with layout, matching the real Windows frame */
+.win { border: 1px solid var(--rule); border-radius: 10px; overflow: hidden; background: var(--panel); font-size: 12.5px; line-height: 1.45; margin: 16px 0 6px; }
+.win .bar { display: flex; gap: 16px; padding: 6px 12px; color: var(--ink-faint); }
+.win .bar span:last-child { margin-left: auto; letter-spacing: .4em; }
+.win .body { display: grid; grid-template-columns: 30% minmax(0, 1fr) 24%; min-height: 230px; }
+.win .side { padding: 8px 12px 12px; display: flex; flex-direction: column; gap: 6px; }
+.win .main { background: var(--paper); border-radius: 12px 0 0 0; padding: 14px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; text-align: center; }
+.win .right { background: var(--paper); border-left: 1px solid var(--rule); padding: 12px; display: flex; flex-direction: column; gap: 6px; }
+.win .tag { display: inline-flex; align-items: center; gap: 6px; }
+.win .tag i { font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--paper); background: var(--blue); border-radius: 50%; width: 17px; height: 17px; display: inline-grid; place-items: center; flex-shrink: 0; }
+.win .box { border: 1px solid var(--rule); border-radius: 8px; padding: 8px 10px; width: 100%; box-sizing: border-box; text-align: left; color: var(--ink-faint); background: var(--paper); }
+.win .muted { color: var(--ink-faint); }
+.legend { list-style: none; padding: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 22px; font-size: 14.5px; margin: 12px 0 18px; }
+.legend li { display: grid; grid-template-columns: 1.6rem minmax(0, 1fr); margin: 0; }
+.legend b { font-family: var(--mono); color: var(--blue); font-weight: 500; }
+
+.faq h3 { margin-top: 26px; }
+footer { max-width: var(--measure); margin-top: 64px; padding-top: 22px; border-top: 1px solid var(--rule); font-size: 13.5px; color: var(--ink-faint); }
+
+@media (max-width: 860px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 8px; padding-block: 32px 72px; }
+  .toc { position: static; border: 1px solid var(--rule); border-radius: 10px; padding: 14px 12px; }
+  .toc ol { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .win .body { grid-template-columns: 38% minmax(0, 1fr); }
+  .win .right { display: none; }
+  .legend { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+<nav class="toc" aria-label="目录">
+  <div class="label">目录</div>
+  <ol>
+    <li><a href="#intro">认识 EduWork</a></li>
+    <li><a href="#start">开始使用</a></li>
+    <li><a href="#tour">界面一览</a></li>
+    <li><a href="#first">第一次对话</a></li>
+    <li><a href="#sessions">会话与工作区</a></li>
+    <li><a href="#skills">技能与插件</a></li>
+    <li><a href="#settings">设置与更新</a></li>
+    <li><a href="#faq">常见问题</a></li>
+    <li><a href="#privacy">数据与隐私</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="mast">
+  <div class="kicker">使用教程</div>
+  <h1>EduWork 使用教程</h1>
+  <p class="lede">EduWork 是运行在你电脑上的工作助手：读写工作区里的文件、处理文档与表格、检索资料，并把每一步过程展示出来。</p>
+</header>
+
+<section id="intro">
+  <h2><span class="no">01</span>认识 EduWork</h2>
+  <p>你用自然语言描述任务，它会规划步骤、调用工具、修改文件，直到完成。会话、文件和设置都保存在本机；只有发给模型的内容会发送到你选择的模型服务。</p>
+</section>
+
+<section id="start">
+  <h2><span class="no">02</span>开始使用</h2>
+  <ol class="steps">
+    <li><div><b>配置模型。</b>打开<span class="ui">设置 → 模型</span>，选择服务商，填写 API Key、接口地址和模型。发行方预置了模型或企业登录的版本，可以跳过这一步。</div></li>
+    <li><div><b>选择工作区。</b>选一个文件夹作为工作区，它只在其中读写文件。</div></li>
+    <li><div><b>开始对话。</b>在输入框里说明任务，按回车发送。</div></li>
+  </ol>
+</section>
+
+<section id="tour">
+  <h2><span class="no">03</span>界面一览</h2>
+  <figure style="margin:0">
+    <div class="win" role="img" aria-label="窗口：左侧栏有新会话、技能和工作区列表，中间是对话区与输入框，右侧是可展开的文件栏">
+      <div class="bar"><span>☰</span><span>应用</span><span>编辑</span><span>—  ☐  ✕</span></div>
+      <div class="body">
+        <div class="side">
+          <span class="box" style="text-align:center"><span class="tag"><i>1</i>新会话</span></span>
+          <span class="tag"><i>2</i>技能 · 插件</span>
+          <span class="tag"><i>3</i>工作区</span>
+          <span class="muted" style="padding-left:12px">报告整理</span>
+          <span class="muted" style="padding-left:12px">新会话</span>
+        </div>
+        <div class="main">
+          <span class="tag"><i>4</i>对话区</span>
+          <span class="box">描述任务，/ 调用指令，@ 文件或对话<br><span class="tag" style="margin-top:6px"><i>5</i>＋　工作区内修改 ⌄　·　模型 ⌄　↑</span></span>
+        </div>
+        <div class="right">
+          <span class="tag"><i>6</i>文件</span>
+          <span class="muted">▾ 工作区</span>
+          <span class="muted" style="padding-left:12px">report.md</span>
+        </div>
+      </div>
+    </div>
+  </figure>
+  <ol class="legend">
+    <li><b>1</b><span>新会话：开始一个新任务</span></li>
+    <li><b>2</b><span>技能与插件：查看、启用和管理</span></li>
+    <li><b>3</b><span>工作区：按文件夹分组的会话</span></li>
+    <li><b>4</b><span>对话区：任务过程与结果</span></li>
+    <li><b>5</b><span>附件、权限、模型与推理等级、发送</span></li>
+    <li><b>6</b><span>右侧文件栏：右上角按钮展开</span></li>
+  </ol>
+</section>
+
+<section id="first">
+  <h2><span class="no">04</span>第一次对话</h2>
+  <p>写明要做什么、相关文件在哪、怎样算完成。可以用<span class="ui">＋</span>添加附件，输入 <kbd>@</kbd> 引用工作区里的文件或其他对话，输入 <kbd>/</kbd> 调用指令和技能。</p>
+  <div class="prompt">把 data 文件夹里的三份问卷 CSV 合并，按班级统计平均分，画一张柱状图，结果存成 summary.xlsx。</div>
+  <h3>三种权限</h3>
+  <div class="table-wrap"><table>
+    <thead><tr><th>权限</th><th>能做什么</th><th>适合</th></tr></thead>
+    <tbody>
+      <tr><td>仅可查看</td><td>读取文件、回答问题，不修改任何东西</td><td>先了解一个陌生项目</td></tr>
+      <tr><td>工作区内修改</td><td>在工作区里新建、修改文件和运行命令</td><td>日常使用</td></tr>
+      <tr><td>完全权限</td><td>可以访问工作区以外的位置</td><td>你清楚任务会碰到哪些文件时</td></tr>
+    </tbody>
+  </table></div>
+  <div class="note warn"><strong>慎用完全权限</strong><p>完全权限下它能改工作区以外的文件，甚至系统设置。拿不准时请用<span class="ui">工作区内修改</span>。</p></div>
+  <h3>一个会话做一件事</h3>
+  <p>每次继续对话都要把这个会话的历史发给模型，会话越长越慢、越费用量。一个阶段做完就新开会话；也可以输入 <code>/compact</code> 把前面的历史压缩成摘要。想先看方案再动手，输入 <code>/plan</code>。</p>
+</section>
+
+<section id="sessions">
+  <h2><span class="no">05</span>会话与工作区</h2>
+  <ul>
+    <li><b>归属：</b>会话属于它创建时所在的工作区。</li>
+    <li><b>整理：</b>侧栏会话可以置顶、分叉和归档，归档后历史仍然保留。</li>
+    <li><b>移除工作区：</b>只移除登记，不删除文件夹、文件或会话。</li>
+    <li><b>附件：</b>适合文本、表格、文档、PDF 和图片；程序专用格式请先导出为通用格式。</li>
+  </ul>
+</section>
+
+<section id="skills">
+  <h2><span class="no">06</span>技能与插件</h2>
+  <p>侧栏的<span class="ui">技能</span>页列出可用技能，例如 Word、演示文稿、表格和 PDF。技能会在需要时自动使用，也可以输入 <kbd>/</kbd> 手动调用。<span class="ui">插件</span>页可以安装社区插件，请只安装你信任的插件。</p>
+</section>
+
+<section id="settings">
+  <h2><span class="no">07</span>设置与更新</h2>
+  <ul>
+    <li><b>通用：</b>外观、字体大小、新会话的默认权限、模型请求总并发、故障诊断。</li>
+    <li><b>模型：</b>服务商、API Key 与模型。</li>
+  </ul>
+  <p>在菜单或托盘里检查更新，下载后重启即可安装，会话和设置都会保留。</p>
+</section>
+
+<section id="faq" class="faq">
+  <h2><span class="no">08</span>常见问题</h2>
+  <h3>发消息后很久没反应，或提示 Connection error</h3>
+  <p>先新开一个会话试试。只有老会话出错，多半是会话太长，输入 <code>/compact</code> 压缩或新开会话。新会话也出错，检查网络、代理和模型配置。</p>
+  <h3>反馈问题时要附什么</h3>
+  <p>写清楚系统版本、操作步骤和看到的错误，并在<span class="ui">设置 → 通用 → 故障诊断</span>导出诊断包一并提供。</p>
+</section>
+
+<section id="privacy">
+  <h2><span class="no">09</span>数据与隐私</h2>
+  <ul>
+    <li>会话、文件和记忆都保存在你的电脑上。</li>
+    <li>你发给模型的内容，以及任务需要时读取的文件，会发送到所选的模型服务。请不要处理未经授权的敏感数据。</li>
+  </ul>
+</section>
+
+<footer>本教程随应用发布，界面以实际应用为准。</footer>
+</main>
+</div>
+
+</body>
+</html>
