@@ -26,9 +26,9 @@ If the composer cannot accept a reference yet, the editor keeps the quote and no
 
 ## Scope
 
-The experimental side-chat extension also accepts selections from intermediate and streaming assistant text without waiting for the turn to finish. These selections offer only the side-chat action; ordinary annotation badges still bind to completed final responses. Live excerpts never invent message IDs or change the submission protocol.
+The optional side-chat plugin also accepts selections from intermediate and streaming assistant text without waiting for the turn to finish. These selections offer only the side-chat action; ordinary annotation badges still bind to completed final responses. Live excerpts never invent message IDs or change the submission protocol.
 
-The source toolbar supports optional extensions, not yet published to npm. With the experimental side-chat extension, it also offers “Ask in side chat”: the quote becomes an unsent annotation in that chat's composer, available for editing, deletion or further selections without changing the source draft. The ordinary npm version provides annotations only.
+Since `0.1.1`, the selection toolbar supports optional extensions. Separately install and enable `@eduwork/dsh-side-chat@0.1.0` to add “Ask in side chat”: the quote becomes an unsent annotation in that chat's composer, available for editing, deletion or further selections without changing the source draft. Side chat requires compatible APIs starting in DSH `0.2.1-rc.3`. Both packages can be enabled or disabled independently; annotation retains its existing functionality when installed alone.
 
 - Numbers appear below the source response and scroll naturally with it. Selected words do not receive persistent highlights or floating numbers.
 - Pending numbers appear below the source response. Sent annotations are reconstructed from a structured prefix in the user message and displayed above that message's bubble, without a separate annotation database.

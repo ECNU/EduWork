@@ -10,6 +10,18 @@ Each main conversation can retain multiple side chats, each with a fixed snapsho
 
 In EduWork, conversations created as side chats do not send completion or failure notifications, including after archival and restoration as ordinary conversations. Approval requests and questions that need user input still notify.
 
+## Installation and usage
+
+Add `@eduwork/dsh-side-chat` on the Plugins page of a compatible DSH client, then enable it. The plugin requires the session, Workspace archiving and right-sidebar APIs in DSH `>=0.2.1-rc.3 <0.3.0-0`; this version is verified against the official `0.2.1-rc.3` Runtime.
+
+1. Below a user message or a completed assistant response in the main conversation, click **Open side chat**.
+2. Enter a question in the right pane. The side chat inherits a history snapshot through that message and continues independently.
+3. Closing the side chat stops generation and archives it. Collapsing the sidebar does not close it.
+
+With `@eduwork/dsh-annotation >=0.1.1 <0.2.0`, the same selection toolbar also offers **Ask in side chat**. The excerpt enters the side composer's draft as an annotation that can be edited, removed or combined with more excerpts before sending. Intermediate and streaming assistant text can also seed side-chat questions; ordinary annotations still target completed final responses.
+
+Annotation is an optional companion package; install and enable it separately. Without it, the message action still opens side chats. Disabling side chat leaves annotation working independently. Both plugins can be enabled or disabled separately in the plugin manager.
+
 ## Architecture
 
 This cordis plugin does not modify Runtime or UI bundles. Closing calls `workspaceRegistry.archiveSession` without inspecting or deleting backend files. Hiding inherited history still depends on native DOM markers. The host must provide the Workspace archive service.
