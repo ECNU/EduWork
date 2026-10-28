@@ -18,7 +18,7 @@
   },
   "dsh": {
     "client": {
-      "inject": ["@deepseek-ai/dsh-client-ui-sidebar-right"],
+      "inject": ["@deepseek-ai/dsh-api-session-controller", "@deepseek-ai/dsh-api-workspace-controller", "@deepseek-ai/dsh-client-ui-sidebar-right"],
       "platform": "web"
     }
   }

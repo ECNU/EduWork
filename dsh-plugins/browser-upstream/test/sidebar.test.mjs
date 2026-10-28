@@ -13,6 +13,7 @@ registerHooks({ resolve(specifier, context, next) {
   return stubs[specifier] ? { url: `data:text/javascript,${stubs[specifier]}`, shortCircuit: true } : next(specifier, context)
 } })
 const { SIDEBAR_BROWSER_ENV, serverLaunch, takeSidebarEndpoint } = await import('../lib/sidebar.js')
+const { workspaceStorage } = await import('../lib/sidebar-client.js')
 
 const endpoint = 'ws://127.0.0.1:4100/0123456789abcdef0123456789abcdef0123456789abcdef'
 const agent = (origin) => ({ session: { id: 'session-0001', header: origin === undefined ? {} : { origin } } })
@@ -37,4 +38,23 @@ test('subagents keep the isolated launched browser', () => {
   assert.deepEqual(env, { playwright_mcp_cdp_endpoint: '' })
   assert.deepEqual(serverLaunch({ ...browser, headless: false, executablePath: undefined }, agent('subagent'), endpoint, 'cli.js', {}).args,
     ['cli.js', '--browser', 'chromium', '--isolated'])
+})
+
+test('a background page uses its conversation\'s Sidebar storage once the workspace list arrives', { timeout: 5000 }, async () => {
+  const listeners = new Set()
+  let snapshot = { phase: 'pending', items: [] }
+  const list = { getSnapshot: () => snapshot, subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) } }
+  const arrive = () => { snapshot = { phase: 'ready', items: [{ path: '/synthetic/project', sessionIds: ['session-0001'] }] }; for (const listener of [...listeners]) listener() }
+  const pending = workspaceStorage(list, 'session-0001', new AbortController().signal)
+  arrive()
+  assert.equal(await pending, 'cwd:/synthetic/project')
+  assert.equal(await workspaceStorage(list, 'session-0002', new AbortController().signal), 'session:session-0002')
+  assert.equal(listeners.size, 0)
+  // An Agent that leaves stops the wait.
+  snapshot = { phase: 'pending', items: [] }
+  const lifetime = new AbortController()
+  const abandoned = workspaceStorage(list, 'session-0001', lifetime.signal)
+  lifetime.abort()
+  await assert.rejects(abandoned)
+  assert.equal(listeners.size, 0)
 })

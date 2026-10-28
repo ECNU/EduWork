@@ -57,7 +57,8 @@
       }
     }
   }
-  const show = id => { session(id); onScreen = id; render() }
+  const screens = new Set()
+  const show = id => { session(id); onScreen = id; render(); for (const listener of screens) listener() }
   const focus = (id, tabId) => { session(id).active = tabId; render() }
   const expand = (id, value) => { session(id).expanded = value; render() }
   const openTabIn = (id, _kind, { params }) => {
@@ -73,8 +74,36 @@
     render()
     return tabId
   }
+  // Stand-ins for the desktop's guest leases, which give a background page
+  // the Sidebar's storage and rules, and for each conversation's DSH session,
+  // whose turn runs until a test ends or the user stops it.
+  const leases = new Map(), held = new Set(), turns = new Map(), storages = [], stopped = []
+  const desktop = {
+    async acquire(workspace) {
+      storages.push(workspace)
+      await new Promise(resolve => setTimeout(resolve, fixture.acquireDelay))
+      const lease = crypto.randomUUID()
+      held.add(lease)
+      return { lease, partition: 'sidebar-workspace' }
+    },
+    async release(lease) { held.delete(lease); leases.delete(lease) },
+    onOpenRequested(lease, listener) { leases.set(lease, listener); return () => {} },
+  }
+  const conversation = id => {
+    if (!turns.has(id)) {
+      const listeners = new Set()
+      let running = true
+      turns.set(id, {
+        getSnapshot: () => ({ running }),
+        subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
+        set(value) { running = value; for (const listener of listeners) listener() },
+        async cancel() { stopped.push(id); this.set(false) },
+      })
+    }
+    return turns.get(id)
+  }
   const sidebar = {
-    mounted: { getSnapshot: () => onScreen },
+    mounted: { getSnapshot: () => onScreen, subscribe: listener => { screens.add(listener); return () => screens.delete(listener) } },
     tabsIn: id => [...session(id).tabs.keys()].map(tabId => ({ id: tabId, kind: 'browser' })),
     openTabIn,
     closeIn: (id, tabId) => { session(id).tabs.get(tabId)?.cell.remove(); session(id).tabs.delete(tabId) },
@@ -83,12 +112,17 @@
     active: () => ({ id: session(onScreen).active }),
     focus: tabId => focus(onScreen, tabId),
   }
-  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, sidebar, document, label: () => 'Agent' })
-  window.fixture = {
-    show, focus, expand, openTabIn,
-    popup(guestId, url) {
-      const frame = [...document.querySelectorAll('webview')].find(element => element.getWebContentsId() === guestId)
-      openTabIn(frame.closest('[data-sidebar-right-session]').getAttribute('data-sidebar-right-session'), 'browser', { params: { url } })
+  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key })
+  const fixture = window.fixture = {
+    show, focus, expand, openTabIn, storages, stopped, acquireDelay: 0,
+    held: () => [...held],
+    running: (id, value) => conversation(id).set(value),
+    // A link opening a window goes to whoever holds its guest's lease: a
+    // background page's opener, or the stand-in, whose guests' leases are their tab ids.
+    popup(lease, url) {
+      if (leases.has(lease)) return leases.get(lease)(url)
+      const [id] = [...sessions].find(([, target]) => target.tabs.has(lease))
+      openTabIn(id, 'browser', { params: { url } })
     },
   }
 </script>

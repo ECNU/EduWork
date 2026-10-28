@@ -176,12 +176,6 @@ test('keyboard input reaches the page or its frame, never the application window
   assert.equal(await inner.locator('#seen').textContent(), 'cross-site trusted=true')
   await wait(200)
   assert.deepEqual(await page('[chat.value, document.activeElement.id]'), ['draft', 'chat'])
-  // Focus the user put in a page stays there.
-  await page('document.querySelector("[data-sidebar-right-session=session-a] webview").focus()')
-  await inner.getByLabel('Field').click()
-  await wait(200)
-  assert.equal(await page('document.activeElement.tagName'), 'WEBVIEW')
-  await page('chat.focus()')
   await browser.close()
 })
 
@@ -208,15 +202,97 @@ test('hidden tabs, a collapsed Sidebar and a conversation in the background keep
   await wait(1900)
   assert.ok(await page('document.querySelectorAll("[data-eduwork-agent-render]").length') > 0)
   assert.equal(await painted, 'painted')
-  // The Sidebar first loads a tab when the user sees it: say so at once.
-  const started = Date.now()
-  await assert.rejects(context.newPage(), /viewing another conversation/u)
-  assert.ok(Date.now() - started < 5000)
+  // The Sidebar first loads a tab when the user sees it; until then a new page opens in the background.
+  const background = await context.newPage()
+  await greet(background, 'out of sight')
+  assert.equal(await page('document.querySelectorAll("[data-sidebar-right-session=session-a] webview").length'), 2)
+  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-background] webview").length'), 1)
   await browser.close()
   await wait(2000)
   assert.equal(await throttled(), true)
-  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-render], [data-eduwork-agent-acting]").length'), 0)
+  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-render], [data-eduwork-agent-acting], [data-eduwork-agent-background]").length'), 0)
   await page('fixture.show("session-a"); fixture.expand("session-a", true)')
+})
+
+test('a conversation the desktop does not show, as one used from a phone, browses in background pages', live, async () => {
+  await page('chat.value = "draft"; chat.focus()')
+  const { browser, context } = await connect('session-c')
+  assert.deepEqual(context.pages(), [])
+  const tab = await context.newPage()
+  await greet(tab, 'remote')
+  await tab.getByLabel('Name').press('End')
+  await tab.keyboard.type('!')
+  assert.equal(await tab.inputValue('#name'), 'remote!')
+  assert.deepEqual(await corner(tab), [255, 255, 255, 255])
+  // In the storage of the conversation's Sidebar tabs, so with their logins.
+  assert.equal(await page('fixture.storages.at(-1)'), 'storage-session-c')
+  const [popup] = await Promise.all([context.waitForEvent('page'), tab.getByRole('link', { name: 'Popup' }).click()])
+  await popup.waitForLoadState()
+  assert.equal(await popup.title(), 'Popup')
+  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-background] webview").length'), 2)
+  assert.equal(await page('document.querySelectorAll("[data-sidebar-right-session=session-c]").length'), 0)
+  assert.deepEqual(await page('[chat.value, document.activeElement.id]'), ['draft', 'chat'])
+  await popup.close()
+  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-background]").length'), 1)
+  // Its pages go once its Agent has.
+  await browser.close()
+  await wait(200)
+  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-background]").length'), 0)
+})
+
+test('a background page still opening when its Agent leaves is let go', live, async () => {
+  await page('fixture.acquireDelay = 2000')
+  const { browser, context } = await connect('session-d')
+  const opening = context.newPage().catch(error => error)
+  await wait(100)
+  await browser.close()
+  await opening
+  await wait(2500)
+  await page('fixture.acquireDelay = 0')
+  assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-background]").length'), 0)
+  assert.deepEqual(await page('fixture.held()'), [])
+})
+
+test('the user only watches the tab the Agent acts on until its turn ends or they stop it', live, async () => {
+  const frame = 'document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview")'
+  // What a click in the middle of the page would reach.
+  const reached = () => page(`(() => { const box = ${frame}.getBoundingClientRect(); return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2).tagName })()`)
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  await greet(tab, 'watched')
+  assert.equal(await reached(), 'DIV')
+  // The turn ends, as when the Agent asks the user to log in, and the user works in the page.
+  await page('fixture.running("session-a", false)')
+  assert.equal(await reached(), 'WEBVIEW')
+  await page(`${frame}.focus()`)
+  // The next turn takes the page back, with the focus in it.
+  await page('fixture.running("session-a", true)')
+  assert.equal(await reached(), 'DIV')
+  assert.notEqual(await page('document.activeElement.tagName'), 'WEBVIEW')
+  await greet(tab, 'again')
+  await page('document.querySelector("[data-sidebar-right-session=session-a] [data-eduwork-agent-acting] button").click()')
+  assert.deepEqual(await page('fixture.stopped'), ['session-a'])
+  assert.equal(await reached(), 'WEBVIEW')
+  await page('fixture.running("session-a", true)')
+  await browser.close()
+})
+
+test('the Sidebar opens once the user sees the Agent at work, then stays as the user leaves it', live, async () => {
+  const expanded = () => page('document.querySelector(".panel[data-sidebar-right-session=session-a]").hasAttribute("data-sidebar-right-open")')
+  await page('fixture.expand("session-a", false); fixture.show("session-b")')
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  await greet(tab, 'unseen')
+  assert.equal(await expanded(), false)
+  // The user comes back while the Agent works on the same page.
+  await page('fixture.show("session-a")')
+  assert.equal(await expanded(), true)
+  await page('fixture.expand("session-a", false)')
+  await greet(tab, 'collapsed')
+  await page('fixture.show("session-b"); fixture.show("session-a")')
+  assert.equal(await expanded(), false)
+  await browser.close()
+  await page('fixture.expand("session-a", true)')
 })
 
 test('conversations working at once keep their own marker and the user\'s focus', live, async () => {

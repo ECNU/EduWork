@@ -21,7 +21,7 @@ const sidebarGuidance = [
   'In this conversation the browser tools (mcp__playwright-mcp__*) control the browser tabs in the right sidebar of the user\'s desktop app. The user watches every step there and shares the same pages and logins.',
   'Tabs already open belong to the user: read them freely, but open a new tab for unrelated browsing instead of navigating away from or closing a page the user is on.',
   'When a login, CAPTCHA, payment or other step needs the user, ask them to complete it in the sidebar and wait for their reply before continuing.',
-  'While the user views another conversation, the open tabs keep working, but a new tab, including a page a link opens in a new window, only loads once the user returns to this conversation.',
+  'While the user is not viewing this conversation in the desktop app, for example when they use it from their phone, the open tabs keep working and a new tab opens in the background: it works the same and shares the logins, but the user cannot see it, so ask them to open this conversation in the desktop app before a step that needs them. A page that a link in a sidebar tab opens in a new window loads only once the user returns to this conversation.',
 ].join('\n')
 
 /** The desktop launcher's endpoint, removed from the environment so no other code or child inherits it. */

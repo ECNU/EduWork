@@ -38,9 +38,12 @@ void app.whenReady().then(async () => {
   // Guests are opaque, as the desktop bridge makes them.
   window.webContents.on('will-attach-webview', (_event, preferences) => { preferences.transparent = false })
   window.webContents.on('did-attach-webview', (_event, guest) => {
-    // Popups become tabs in the opener's conversation, as DesktopBrowserGuests arranges.
+    // As DesktopBrowserGuests, a guest's first page names its lease, and
+    // popups go to the page that holds it.
+    let lease
+    guest.once('dom-ready', () => { lease = new URL(guest.getURL()).hash.slice(1) })
     guest.setWindowOpenHandler(({ url }) => {
-      void window.webContents.executeJavaScript(`fixture.popup(${guest.id}, ${JSON.stringify(url)})`)
+      void window.webContents.executeJavaScript(`fixture.popup(${JSON.stringify(lease)}, ${JSON.stringify(url)})`)
       return { action: 'deny' }
     })
     // A load another navigation replaced does not fail, as the desktop bridge arranges.

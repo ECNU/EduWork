@@ -2,7 +2,8 @@
 // right Sidebar, where the user watches and can take over. The Host gets one
 // loopback endpoint behind a secret; each conversation is a CDP "browser" at
 // <endpoint>/<session id> whose pages are the Sidebar guests the application
-// renderer reports for it, relayed through webContents.debugger as in
+// renderer reports for it, and the background guests it opens while the
+// conversation is not on screen, relayed through webContents.debugger as in
 // automation-browser.mjs. Page sessions cannot reach other targets, and
 // keyboard input goes to the focused frame's own widget: Chromium otherwise
 // routes a guest's CDP keys to whatever the application window has focused.
@@ -106,9 +107,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
     }
     if (!visible || page === target.current) return
     target.current = page
-    // The Sidebar opens once per connection; afterwards the user decides.
-    tell({ type: 'show', sessionId: target.sessionId, tabId: page.tabId, expand: !target.expanded })
-    target.expanded = true
+    tell({ type: 'show', sessionId: target.sessionId, tabId: page.tabId })
   }
   const rest = target => {
     clearTimeout(target.idle)
@@ -121,12 +120,14 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   const disconnect = target => {
     for (const page of target.pages.values()) detachPage(page)
     target.client = undefined
-    target.autoAttach = target.discover = target.expanded = false
+    target.autoAttach = target.discover = false
     rest(target)
+    tell({ type: 'ended', sessionId: target.sessionId })
   }
 
-  // The renderer opens a Sidebar tab in that conversation; its guest arrives
-  // through bind. A blank target shows a local page until the Agent navigates.
+  // The renderer opens a Sidebar tab in that conversation, or a background
+  // guest when it is not on screen; the guest arrives through bind. A blank
+  // target shows a local page until the Agent navigates.
   const awaitTab = async (sessionId, tabId) => [...pages.values()].find(page => page.group.sessionId === sessionId && page.tabId === tabId)
     ?? new Promise(resolve => arrivals.set(`${sessionId} ${tabId}`, resolve))
   async function open(target, url) {
