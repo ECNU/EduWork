@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "9ecfa89b4067da8e660576e666aa458f34e932bd9072b4676a656b1f46935c10",
+  "fileSetSHA256": "78c3938b154d175132454f6952ab1a5053ed65a5b925eb91794844e67059d24d",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "7d25d5cebdc96448c2a29c7f838cf96fb1d25fdd4b7315d051ecb7861ec9f8e4"
+      "sha256": "f2340a9e5e938bb01b2c03330f41dbec896f46d1860fcb8d41f6cf883baca5d2"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -177,7 +177,7 @@
     },
     {
       "path": "config/assembly.eduwork.json",
-      "sha256": "bc3d38d5c8f3300eb35acd58c8e18f39c3bdb3c7d55fc58f40088a70b50e73e0"
+      "sha256": "b83a626e379774d5de880ef9f8517aae5eee0a600698138ad887bfe0302799c6"
     },
     {
       "path": "config/desktop-build.json",
@@ -217,7 +217,7 @@
     },
     {
       "path": "config/distributions/generic.json",
-      "sha256": "d9b0e435dabe7908f0c9a45b7bd12a8ddbd9d1dd52dec40bb2f12704a773846b"
+      "sha256": "edcb651a109e67ffba3fdc1514e1c95861964ac0e2f982a526fd621e7171035d"
     },
     {
       "path": "config/macos-native.lock.json",
@@ -3086,6 +3086,54 @@
     {
       "path": "dsh-plugins/tool-browser/test/search-runtime.test.mjs",
       "sha256": "848170ede1e8f47e32be064ee8ad57b8cac1d3a5e8d0c95ee5e01d6c2916d9f9"
+    },
+    {
+      "path": "dsh-plugins/user-guide/guide/index.html",
+      "sha256": "810b211d97feedab7e623ae117a09c2befdc60acda351fd2df95e67eb8d269b8"
+    },
+    {
+      "path": "dsh-plugins/user-guide/lib/client.js",
+      "sha256": "fa498d24f5ae9ca6b1d166454777a209fb7a33c4e2dc32875c5f673655107820"
+    },
+    {
+      "path": "dsh-plugins/user-guide/lib/index.js",
+      "sha256": "97a3329c3730394258b181f6d4230a871444f23fc882bb60e0d02ff91ab98763"
+    },
+    {
+      "path": "dsh-plugins/user-guide/lib/serve.js",
+      "sha256": "f8d5e88746a1863a8d5ee8b8095d272379c239c95aeb770252bb2534474f9939"
+    },
+    {
+      "path": "dsh-plugins/user-guide/package.json",
+      "sha256": "2c4712806a7872ee51bb5641ed3be7befd25acfada105d4be2398c87cb56696e"
+    },
+    {
+      "path": "dsh-plugins/user-guide/README_EN.md",
+      "sha256": "3b42839bc46763fd36532d071e0f9c0f977e769417c47c7bb70e6ca6c4359322"
+    },
+    {
+      "path": "dsh-plugins/user-guide/README.md",
+      "sha256": "d776967d05ac0ad76bf79dfad1d47fb5878abdd2ed4f90e19ea9ca04667cb727"
+    },
+    {
+      "path": "dsh-plugins/user-guide/src/client.ts",
+      "sha256": "324a7de127f646627f05fc13c4f4622755b3adc6c8aca2e7cb377c5b4fd366bc"
+    },
+    {
+      "path": "dsh-plugins/user-guide/src/tour.ts",
+      "sha256": "bfe45beef7a219f341c8e66f1a251b2abac5c6287bbd4564600dab68e1c62f71"
+    },
+    {
+      "path": "dsh-plugins/user-guide/test/client.test.mjs",
+      "sha256": "bbc9ec65307638b02da4692d5bbefaf3a16973684516dfd216fad0bab2422533"
+    },
+    {
+      "path": "dsh-plugins/user-guide/test/serve.test.mjs",
+      "sha256": "d80738490e4e48409b6687dbd4eb810fbf666ff3cab10dd291026e8083ebb5a0"
+    },
+    {
+      "path": "dsh-plugins/user-guide/test/tour.test.mjs",
+      "sha256": "5c385c7eaf0e4b3b5702aad78c5a9dedf92a993cc919c2165ff9bb76a934f80b"
     },
     {
       "path": "dsh-plugins/workbench-native/build-client.mjs",
