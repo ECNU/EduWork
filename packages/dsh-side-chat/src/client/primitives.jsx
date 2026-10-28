@@ -38,7 +38,7 @@ export function Toast({ text, icon, holdMs = 2000, onDone, actions = [] }) {
       opacity: leaving ? 0 : 1, transition: 'opacity 1s ease',
     },
   },
-  icon ? h('span', { style: { display: 'inline-flex', flex: 'none' } }, h(icon, { size: 16 })) : null,
+  icon ? h('span', { style: { display: 'inline-flex', flex: 'none' } }, icon) : null,
   h('span', { style: { flex: '1 1 auto' } }, text),
   ...actions.map(action => h('button', {
     key: action.label, type: 'button', onClick: action.onClick,

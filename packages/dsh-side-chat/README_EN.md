@@ -8,6 +8,8 @@ Closing stops generation and archives through DSH's public Workspace API. Durabl
 
 Each main conversation can retain multiple side chats, each with a fixed snapshot of its source history. A reference goes to the focused side chat if its snapshot covers the selection; otherwise the first eligible chat in creation order is used, or a new snapshot is created. Live selections use a captured visible-text snapshot as quoted context; above 100,000 characters only the selection and nearby context are retained and a fresh side chat is created. Switching restores each chat, its messages, draft and annotations. Promotion, nested branching, subagents, scheduled tasks and long-lived background work are unsupported. Tools follow the new session's permissions, and generation follows global concurrency rules.
 
+In EduWork, conversations created as side chats do not send completion or failure notifications, including after archival and restoration as ordinary conversations. Approval requests and questions that need user input still notify.
+
 ## Architecture
 
 This cordis plugin does not modify Runtime or UI bundles. Closing calls `workspaceRegistry.archiveSession` without inspecting or deleting backend files. Hiding inherited history still depends on native DOM markers. The host must provide the Workspace archive service.

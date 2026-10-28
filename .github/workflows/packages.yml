@@ -52,7 +52,7 @@ jobs:
         with:
           node-version: '24.22.1'
       - name: Install locked DSH Runtime for synthetic tests
-        working-directory: third_party/dsh/candidate-v0.2.1-rc.2/npm-runtime
+        working-directory: third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
         run: npm ci --ignore-scripts --no-audit --no-fund
       - name: Build side-chat plugin
         working-directory: packages/dsh-side-chat
@@ -62,7 +62,7 @@ jobs:
       - name: Test side-chat against the locked Runtime
         working-directory: packages/dsh-side-chat
         env:
-          EDUWORK_SIDE_CHAT_RUNTIME: ${{ github.workspace }}/third_party/dsh/candidate-v0.2.1-rc.2/npm-runtime
+          EDUWORK_SIDE_CHAT_RUNTIME: ${{ github.workspace }}/third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
         run: npm test
   check:
     needs: select

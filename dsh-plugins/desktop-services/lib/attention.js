@@ -150,9 +150,9 @@ export function observeDesktopAttention(ctx, attention) {
   }
   ctx.on('session/event', (session, event) => {
     const isRoot = root(session)
-    // Temporary side chats end with the pane that owns them: settling a turn
-    // must never queue a task the tray keeps asking to review. Approvals and
-    // questions still notify because those wait on the user.
+    // Sessions created as side chats stay quiet for completion/failure notices,
+    // including after archival and restoration as ordinary conversations.
+    // Approvals and questions still notify because those wait on the user.
     attention.event(session, event, isRoot, String(session.id).startsWith('side-'))
     if (!isRoot && (event.type === 'turn/start' || event.type === 'turn/end')) attention.subagent(String(session.id), event.type, owner(session))
   })
