@@ -12,7 +12,7 @@ Requires a DSH client providing the official Chat view and composer extensions (
 
 ## Usage
 
-1. Select text in the final response of a completed turn and click the “＋ Annotate” button.
+1. Select text in the final response of a completed turn and choose “Annotate” in the floating toolbar.
 2. Write a note (optional), then click “Add to message” or press Enter; Shift+Enter inserts a newline. During IME composition, Enter confirms the candidate only; press Enter again after composition to add the note.
 3. Numbered annotations appear below the source response. The composer retains its native references and shows “N annotations”. Click a number, reference, or summary entry to view the full quote, edit, or delete a note.
 4. Add more annotations and send them together with your question, or send annotations alone. The current draft's numbers and count clear after submission.
@@ -25,6 +25,10 @@ Editing a note preserves other composer content. Cancel keeps the original note,
 If the composer cannot accept a reference yet, the editor keeps the quote and note for retry. Floating controls follow the selected text as you scroll and as the layout changes, for example when an image loads.
 
 ## Scope
+
+The experimental side-chat extension also accepts selections from intermediate and streaming assistant text without waiting for the turn to finish. These selections offer only the side-chat action; ordinary annotation badges still bind to completed final responses. Live excerpts never invent message IDs or change the submission protocol.
+
+The source toolbar supports optional extensions, not yet published to npm. With the experimental side-chat extension, it also offers “Ask in side chat”: the quote becomes an unsent annotation in that chat's composer, available for editing, deletion or further selections without changing the source draft. The ordinary npm version provides annotations only.
 
 - Numbers appear below the source response and scroll naturally with it. Selected words do not receive persistent highlights or floating numbers.
 - Pending numbers appear below the source response. Sent annotations are reconstructed from a structured prefix in the user message and displayed above that message's bubble, without a separate annotation database.
