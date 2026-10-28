@@ -7,6 +7,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
 | `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
+| `@eduwork/dsh-side-chat` | [Side conversations and selection questions](../packages/dsh-side-chat/README_EN.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [Literature search, citations and full text](../packages/dsh-literature/README_EN.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [Identity, credentials and models](../packages/dsh-oidc/README_EN.md) | `packages/dsh-oidc` |
@@ -16,7 +17,9 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | `@eduwork/dsh-artifact-services` | [Office, speech, images and media](../packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Studio's existing workspace |
 | `@eduwork/dsh-remote-access` | [Remote access and self-hosted relay](../packages/dsh-remote-access/README_EN.md) | `packages/dsh-remote-access` |
 
-Eight development roots retain their own dependency locks without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
+Each development root retains its own dependency lock without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
+
+Side chat independently opens from message actions. With annotation `>=0.1.1 <0.2.0` also enabled, it joins the shared selection toolbar through the optional `annotationSelection` service. Install and enable each plugin separately. Side-chat checks and publication use the pinned DSH `0.2.1-rc.3` Runtime to test real sessions, archiving and failure notices with synthetic model inputs.
 
 ## Develop and check
 

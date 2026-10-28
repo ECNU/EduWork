@@ -9,6 +9,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | npm 包 | 源码与说明 | 开发安装根目录 |
 | --- | --- | --- |
 | `@eduwork/dsh-annotation` | [选段引用与批注](../packages/dsh-annotation/README.md) | `packages/dsh-annotation` |
+| `@eduwork/dsh-side-chat` | [侧边聊天与选区提问](../packages/dsh-side-chat/README.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [桌面宠物与宿主要求](../packages/dsh-desktop-pet/README.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [文献检索、引用与全文](../packages/dsh-literature/README.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [身份、凭据与模型接入](../packages/dsh-oidc/README.md) | `packages/dsh-oidc` |
@@ -18,7 +19,9 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | `@eduwork/dsh-artifact-services` | [Office、语音、图像与媒体服务](../packages/dsh-knowledge-studio/packages/artifact-services/README.md) | 与 Studio 共用已有 workspace |
 | `@eduwork/dsh-remote-access` | [远程访问与自托管中继](../packages/dsh-remote-access/README.md) | `packages/dsh-remote-access` |
 
-八个开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
+各开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
+
+侧聊可单独从消息按钮开启；同时启用批注 `>=0.1.1 <0.2.0` 时，通过可选的 `annotationSelection` 服务接入同一个选区操作栏。两个插件分别安装和启停。侧聊检查与发布工作流使用锁定的 DSH `0.2.1-rc.3` Runtime 运行真实会话、归档和报错提示测试；模型输入使用合成数据。
 
 ## 兼容声明与构建锁
 
@@ -51,7 +54,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 这里只翻译插件提供的固定提示。工具名、路径、收件人及用户或模型提供的内容保持原样；权限模式、拒绝条件、审批触发时机及“允许一次”的含义不随语言变化。新增审批点应验证中英文、语言切换及原有权限分支，可参考 `scripts/test/plugin-locale.test.mjs` 的官方面板回归测试。
 
-## 九个独立的 npm 包
+## 独立 npm 包发布
 
 各包使用自己的 SemVer，保持现有包名、公开导出、配置标识和数据路径。每次发布使用新版本，不覆盖已经发布的版本。若共享服务版本变化，同步 Studio 的精确依赖与开发锁；先发布并核验共享服务，再发布 Studio。
 

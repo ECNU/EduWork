@@ -13,7 +13,6 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       groups: ${{ steps.changed.outputs.groups }}
-      side_chat: ${{ steps.side_chat.outputs.changed }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -27,43 +26,6 @@ jobs:
         env:
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: node scripts/packages/manage.mjs changed "$BASE"
-      - id: side_chat
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        shell: bash
-        run: |
-          if [[ -z "$BASE" || "$BASE" =~ ^0+$ ]]; then
-            echo 'changed=true' >> "$GITHUB_OUTPUT"
-          else
-            changes=$(git diff --name-only "$BASE...HEAD")
-            if grep -qE '^packages/(dsh-side-chat|dsh-annotation)/|^\.github/workflows/packages\.yml$' <<< "$changes"; then
-              echo 'changed=true' >> "$GITHUB_OUTPUT"
-            else
-              echo 'changed=false' >> "$GITHUB_OUTPUT"
-            fi
-          fi
-  side-chat:
-    needs: select
-    if: needs.select.outputs.side_chat == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '24.22.1'
-      - name: Install locked DSH Runtime for synthetic tests
-        working-directory: third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
-        run: npm ci --ignore-scripts --no-audit --no-fund
-      - name: Build side-chat plugin
-        working-directory: packages/dsh-side-chat
-        run: |
-          npm ci --no-audit --no-fund
-          npm run build
-      - name: Test side-chat against the locked Runtime
-        working-directory: packages/dsh-side-chat
-        env:
-          EDUWORK_SIDE_CHAT_RUNTIME: ${{ github.workspace }}/third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
-        run: npm test
   check:
     needs: select
     if: needs.select.outputs.groups != '[]'
@@ -87,10 +49,15 @@ jobs:
       - if: matrix.package == 'dsh-knowledge-studio'
         run: python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt
       - run: node scripts/packages/manage.mjs install ${{ matrix.package }}
+      - name: Install locked DSH Runtime for side-chat checks
+        if: matrix.package == 'dsh-side-chat'
+        working-directory: third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/packages/manage.mjs check ${{ matrix.package }}
         env:
           DSH_OFFICE_PYTHON: ${{ steps.python.outputs.python-path }}
           PYTHONUTF8: '1'
+          EDUWORK_SIDE_CHAT_RUNTIME: ${{ matrix.package == 'dsh-side-chat' && format('{0}/third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime', github.workspace) || '' }}
       - run: node scripts/packages/manage.mjs pack ${{ matrix.package }}
       - if: matrix.package == 'dsh-knowledge-studio'
         run: node scripts/packages/manage.mjs pack dsh-artifact-services
