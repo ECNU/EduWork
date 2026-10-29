@@ -106,7 +106,7 @@ Electron 客户端可以在桌面上显示一只小宠物。它随会话状态�
 | 小页（红、蓝） | `eduwork-page`、`eduwork-page-blue` | EduWork contributors，`scripts/build-page-skins.mjs` 生成 | CC BY 4.0 |
 | 大肥鱼 | `dafeiyu` | 角色由 ZipZipPipe 创作；使用 [whale-girl](https://github.com/vlln/whale-girl) 的 PNG 动作立绘，每段动画一张精灵图 | MIT |
 | 小花狮 | `ecnu-huashi` | 早期原型及素材整理由 xhan51 贡献（[ECNU/EduWork-ECNU#18](https://github.com/ECNU/EduWork-ECNU/pull/18)）；本次由 JunieXD 重绘 SVG 并接入公共桌宠底座，`scripts/build-huashi-skin.mjs` 生成 | 形象及校徽版权归华东师范大学 |
-| 花狮娘 | `ecnu-huashi-girl` | JunieXD 用 ChatGPT 生图按动作生成，整理为每段动画一张 WebP 精灵图 | 形象及校徽版权归华东师范大学 |
+| 花狮娘 | `ecnu-huashi-girl` | JunieXD 用 ChatGPT 生图按动作生成，整理为每段动画一张 WebP 精灵图 | 形象版权归华东师范大学 |
 
 形象由贡献者通过 Pull Request 添加和维护，应用内不提供导入。添加一款形象：在 `skins/<id>/` 放入 `skin.json` 和图片，提供上面列出的全部动画；在 `skins/LICENSE` 写明来源、署名和许可；更新插件测试里的形象列表。内置形象按严格模式校验，缺动画或图片不合规时该形象不会出现。
 
