@@ -73,7 +73,7 @@ export function inspectArchive(bytes, selected, expectedVersion) {
       'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']) {
       assert.ok(files.has(file), `Missing desktop pet runtime or license file ${file}`)
     }
-    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi']) {
+    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl']) {
       assert.ok(files.has(`skins/${id}/skin.json`), `Missing built-in character ${id}`)
       const references = value => {
         if (typeof value === 'string' && /\.(svg|png|webp)$/i.test(value)) {

@@ -12,17 +12,17 @@ const skins = fileURLToPath(new URL('../skins/', import.meta.url))
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
 const minimal = (extra = {}) => ({ schemaVersion: 1, id: 'mini', name: 'Mini', frame: { width: 192, height: 208 }, animations: { idle: { image: 'idle.svg' } }, ...extra })
 
-const LICENSES = { 'eduwork-page': 'CC-BY-4.0', 'eduwork-page-blue': 'CC-BY-4.0', 'ecnu-huashi': 'LicenseRef-ECNU-Mascot', dafeiyu: 'MIT' }
-// Skins drawn by a script in this package; dafeiyu uses the whale-girl PNG sprites.
+const LICENSES = { 'eduwork-page': 'CC-BY-4.0', 'eduwork-page-blue': 'CC-BY-4.0', 'ecnu-huashi': 'LicenseRef-ECNU-Mascot', 'ecnu-huashi-girl': 'LicenseRef-ECNU-Mascot', dafeiyu: 'MIT' }
+// Skins drawn by a script in this package; dafeiyu and ecnu-huashi-girl ship ready-made sprite sheets.
 const GENERATED = { 'build-page-skins.mjs': ['eduwork-page', 'eduwork-page-blue'], 'build-huashi-skin.mjs': ['ecnu-huashi'] }
 
 test('built-in skins have every state, safe images and a recorded license', async () => {
   const found = await readBuiltinSkins(skins, message => assert.fail(message))
-  assert.deepEqual([...found.keys()], ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi'])
+  assert.deepEqual([...found.keys()], ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl'])
   for (const { skin, preview } of found.values()) {
     for (const name of BUILTIN_ANIMATIONS) assert.ok(skin.animations[name], `${skin.id} ${name}`)
     assert.equal(skin.license, LICENSES[skin.id])
-    assert.match(preview.src, /^data:image\/(?:svg\+xml|png);base64,/)
+    assert.match(preview.src, /^data:image\/(?:svg\+xml|png|webp);base64,/)
   }
 })
 
