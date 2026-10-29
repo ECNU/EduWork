@@ -116,7 +116,7 @@ export const configurationFields = {
   'desktop.pet': ['桌面宠物默认值，仅 Electron 客户端；设置 → 桌面宠物中保存的个人选择优先，托盘和右键菜单里的“隐藏 / 显示桌宠”也保存在这里。', {}],
   ...fields('desktop.pet.', {
     enabled: ['显示桌面宠物；公版默认关闭。', true],
-    skin: ['形象 ID；内置 eduwork-page（小页·红）、eduwork-page-blue（小页·蓝）、dafeiyu（大肥鱼）和 ecnu-huashi（小花狮），找不到时使用 eduwork-page。', 'eduwork-page'],
+    skin: ['形象 ID；内置 eduwork-page（小页·红）、eduwork-page-blue（小页·蓝）、dafeiyu（大肥鱼）、ecnu-huashi（小花狮）和 ecnu-huashi-girl（花狮娘），找不到时使用 eduwork-page。', 'eduwork-page'],
     size: ['大小百分比，50–200，10 的倍数；100 约为 128 像素高。', 100],
     bubbles: ['状态变化时显示简短气泡；是否显示会话标题跟随 desktop.notifications.preview。', true],
     sleep: ['用户离开或长时间没有活动时打盹，动画暂停。', true],

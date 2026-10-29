@@ -1,6 +1,11 @@
 # 变更记录 / Changelog
 
-## 0.1.1 — 未发布 / Unreleased
+## 0.1.2 — 未发布 / Unreleased
+
+- 新增内置形象花狮娘（`ecnu-huashi-girl`），华东师范大学吉祥物小花狮的拟人形象。
+- Add the built-in character Huashi Girl (`ecnu-huashi-girl`), a girl version of the East China Normal University mascot.
+
+## 0.1.1
 
 - 按插件通知协议 1 的通用属性展示来源事件，移除 Studio／日历专用判断。
 - 保留 Agent 授权优先级；普通通知不触发成功庆祝，静默更新不重复气泡。

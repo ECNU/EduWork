@@ -127,7 +127,7 @@ test('desktop pet publication rejects a package missing a referenced character i
     'lib/index.js', 'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']
     .map(file => ['package/' + file, 'fixture']))
   files['package/package.json'] = JSON.stringify(manifest)
-  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi']) {
+  for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl']) {
     files[`package/skins/${id}/skin.json`] = JSON.stringify({ animations: { idle: { image: 'idle.svg' } } })
     files[`package/skins/${id}/idle.svg`] = '<svg/>'
   }

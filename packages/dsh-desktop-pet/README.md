@@ -2,7 +2,7 @@
 
 [English](README_EN.md)
 
-`@eduwork/dsh-desktop-pet` 是独立维护、独立版本的 DSH 桌宠插件。内置小页（红、蓝）、大肥鱼和小花狮，提供形象选择、大小、状态气泡和空闲打盹。它与托盘、系统通知共用宿主的事项数据；点击桌宠可打开需要处理或已完成的会话。
+`@eduwork/dsh-desktop-pet` 是独立维护、独立版本的 DSH 桌宠插件。内置小页（红、蓝）、大肥鱼、小花狮和花狮娘，提供形象选择、大小、状态气泡和空闲打盹。它与托盘、系统通知共用宿主的事项数据；点击桌宠可打开需要处理或已完成的会话。
 
 ![小页](skins/eduwork-page/idle.svg)
 
@@ -49,6 +49,6 @@ npm pack --ignore-scripts
 
 构建仅生成设置页 `lib/client.js`，Host 模块与形象随包提供。测试默认使用本包锁定的真实 DSH 依赖；设置 `EDUWORK_TEST_RUNTIME` 为产品的 `d` 目录可检查装配后的 Runtime。
 
-小页和小花狮由 `scripts/build-page-skins.mjs` 与 `scripts/build-huashi-skin.mjs` 生成；修改脚本后执行 `npm run build:skins`。大肥鱼使用 whale-girl 的 PNG 立绘。新形象通过 PR 内置，不提供形象包导入功能。
+小页和小花狮由 `scripts/build-page-skins.mjs` 与 `scripts/build-huashi-skin.mjs` 生成；修改脚本后执行 `npm run build:skins`。大肥鱼使用 whale-girl 的 PNG 立绘，花狮娘使用 ChatGPT 生图生成的 WebP 精灵图。新形象通过 PR 内置，不提供形象包导入功能。
 
 [包维护与发布](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES.md) · [变更记录](CHANGELOG.md) · [代码许可](LICENSE)
