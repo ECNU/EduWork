@@ -1,0 +1,128 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Sidebar browser fixture</title>
+<style>
+  body { margin: 0; display: grid; grid-template-columns: 1fr 576px; height: 100vh }
+  #sidebar { position: relative }
+  .session:not([hidden]) { display: contents }
+  .panel { position: absolute; inset: 0; overflow: clip }
+  .cell:not([hidden]) { position: absolute; inset: 0; display: flex }
+  .cell div, webview { display: flex; flex: 1 }
+  /* The upstream Sidebar slides a collapsed panel's docked cells past its edge. */
+  .panel [data-dockkit-host='dock'] { transform: translateX(576px); visibility: hidden }
+  .panel[data-sidebar-right-open] [data-dockkit-host='dock'] { transform: none; visibility: visible }
+</style>
+<textarea id="chat" aria-label="Message"></textarea>
+<div id="sidebar"></div>
+<script type="module">
+  import { connectSidebarBrowser } from '/sidebar-client.js'
+  // A stand-in for ctx.sidebarRight over the DOM the upstream Sidebar renders:
+  // conversation > panel > tab cell > tab > content > viewport > webview. As
+  // upstream, a tab's content first mounts when its conversation is on
+  // screen, the tab is selected and the Sidebar is expanded. Its guest starts
+  // blank, then loads the tab's address and drops the blank start from its
+  // history; any rejected load marks the page failed, since the abort's code
+  // does not cross IPC.
+  const sessions = new Map()
+  let onScreen, next = 0
+  const session = id => {
+    if (!sessions.has(id)) {
+      const element = document.createElement('div')
+      element.className = 'session'
+      element.setAttribute('data-sidebar-right-session', id)
+      element.innerHTML = `<div class="panel" data-sidebar-right-session="${id}" data-sidebar-right-panel="push"></div>`
+      document.getElementById('sidebar').append(element)
+      sessions.set(id, { element, panel: element.firstElementChild, tabs: new Map(), expanded: true })
+    }
+    return sessions.get(id)
+  }
+  const render = () => {
+    for (const [id, target] of sessions) {
+      target.element.hidden = id !== onScreen
+      target.panel.toggleAttribute('data-sidebar-right-open', target.expanded)
+      for (const [tabId, tab] of target.tabs) {
+        tab.cell.hidden = tabId !== target.active
+        if (id === onScreen && tabId === target.active && target.expanded && !tab.cell.querySelector('webview')) {
+          const frame = document.createElement('webview')
+          frame.setAttribute('data-sidebar-browser-frame', 'webview')
+          frame.setAttribute('partition', 'sidebar-workspace')
+          frame.setAttribute('allowpopups', '')
+          frame.setAttribute('src', `about:blank#${tabId}`)
+          frame.addEventListener('dom-ready', () => {
+            frame.addEventListener('did-navigate', () => frame.clearHistory(), { once: true })
+            frame.loadURL(tab.url).catch(() => tab.cell.setAttribute('data-failed', ''))
+          }, { once: true })
+          tab.cell.querySelector('[data-sidebar-right-tab] > div > div').append(frame)
+        }
+      }
+    }
+  }
+  const screens = new Set()
+  const show = id => { session(id); onScreen = id; render(); for (const listener of screens) listener() }
+  const focus = (id, tabId) => { session(id).active = tabId; render() }
+  const expand = (id, value) => { session(id).expanded = value; render() }
+  const openTabIn = (id, _kind, { params }) => {
+    const target = session(id), tabId = `tab${++next}`
+    const cell = document.createElement('div')
+    cell.className = 'cell'
+    cell.setAttribute('data-dockkit-host', 'dock')
+    cell.innerHTML = `<div data-sidebar-right-tab="${tabId}"><div><div></div></div></div>`
+    target.panel.append(cell)
+    target.tabs.set(tabId, { cell, url: params.url })
+    target.active = tabId
+    target.expanded = true
+    render()
+    return tabId
+  }
+  // Stand-ins for the desktop's guest leases, which give a background page
+  // the Sidebar's storage and rules, and for each conversation's DSH session,
+  // whose turn runs until a test ends or the user stops it.
+  const leases = new Map(), held = new Set(), turns = new Map(), storages = [], stopped = []
+  const desktop = {
+    async acquire(workspace) {
+      storages.push(workspace)
+      await new Promise(resolve => setTimeout(resolve, fixture.acquireDelay))
+      const lease = crypto.randomUUID()
+      held.add(lease)
+      return { lease, partition: 'sidebar-workspace' }
+    },
+    async release(lease) { held.delete(lease); leases.delete(lease) },
+    onOpenRequested(lease, listener) { leases.set(lease, listener); return () => {} },
+  }
+  const conversation = id => {
+    if (!turns.has(id)) {
+      const listeners = new Set()
+      let running = true
+      turns.set(id, {
+        getSnapshot: () => ({ running }),
+        subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
+        set(value) { running = value; for (const listener of listeners) listener() },
+        async cancel() { stopped.push(id); this.set(false) },
+      })
+    }
+    return turns.get(id)
+  }
+  const sidebar = {
+    mounted: { getSnapshot: () => onScreen, subscribe: listener => { screens.add(listener); return () => screens.delete(listener) } },
+    tabsIn: id => [...session(id).tabs.keys()].map(tabId => ({ id: tabId, kind: 'browser' })),
+    openTabIn,
+    closeIn: (id, tabId) => { session(id).tabs.get(tabId)?.cell.remove(); session(id).tabs.delete(tabId) },
+    isExpanded: () => session(onScreen).expanded,
+    toggleExpanded() { session(onScreen).expanded = !session(onScreen).expanded; render() },
+    active: () => ({ id: session(onScreen).active }),
+    focus: tabId => focus(onScreen, tabId),
+  }
+  connectSidebarBrowser({ bridge: window.eduworkSidebarBrowser, desktop, sidebar, document, storage: async id => `storage-${id}`, conversation, text: key => key })
+  const fixture = window.fixture = {
+    show, focus, expand, openTabIn, storages, stopped, acquireDelay: 0,
+    held: () => [...held],
+    running: (id, value) => conversation(id).set(value),
+    // A link opening a window goes to whoever holds its guest's lease: a
+    // background page's opener, or the stand-in, whose guests' leases are their tab ids.
+    popup(lease, url) {
+      if (leases.has(lease)) return leases.get(lease)(url)
+      const [id] = [...sessions].find(([, target]) => target.tabs.has(lease))
+      openTabIn(id, 'browser', { params: { url } })
+    },
+  }
+</script>

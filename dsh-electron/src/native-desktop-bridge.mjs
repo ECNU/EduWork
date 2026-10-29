@@ -5,13 +5,14 @@ import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
+import { SIDEBAR_BROWSER_IPC } from './sidebar-browser.mjs'
 
 export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
 export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
-export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand }) {
+export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand, sidebarBrowser }) {
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -90,6 +91,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   ipcMain.handle(DESKTOP_IPC.browserAcquire, (event, workspace) => { owner(event); return guests.acquire(event.sender, workspace) })
   ipcMain.handle(DESKTOP_IPC.browserRelease, (event, lease) => { owner(event); return guests.release(event.sender, lease) })
+  ipcMain.on(SIDEBAR_BROWSER_IPC.bind, (event, guestId, sessionId, tabId) => {
+    try { void sidebarBrowser.bind(owner(event), guestId, sessionId, tabId).catch(() => {}) } catch { /* Not the application page. */ }
+  })
+  ipcMain.on(SIDEBAR_BROWSER_IPC.opened, (event, request, result) => {
+    try { owner(event) } catch { return }
+    sidebarBrowser.opened(request, result)
+  })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['ws://127.0.0.1/*'] }, (details, callback) => {
     callback(getHost()?.socketHeaders(details, getWindow()?.webContents.id) ?? {})
   })
@@ -154,7 +162,22 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       if (available !== userGuide) { userGuide = available; refreshMenu() }
       return available
     },
-    attach(window) { guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease)); shortcuts.attach(window) },
+    attach(window) {
+      guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease))
+      // After bind, which replaces a guest's preferences: Sidebar pages paint
+      // the browser's own background, as in Chrome, rather than letting the
+      // application show through, so the Agent's screenshots show what the user sees.
+      window.webContents.on('will-attach-webview', (_event, preferences) => { preferences.transparent = false })
+      // The Sidebar ignores a load another navigation replaced (net::ERR_ABORTED),
+      // but the error's code does not reach the renderer, and Electron also fails
+      // a load with that abort of the page it replaced. Either way the Sidebar
+      // would report a page failed that the user or the Agent navigated away from.
+      window.webContents.on('did-attach-webview', (_event, guest) => {
+        const loadURL = guest.loadURL.bind(guest)
+        guest.loadURL = (...args) => loadURL(...args).catch(error => { if (error.errno !== -3) throw error })
+      })
+      shortcuts.attach(window)
+    },
     dispose() { shortcuts.dispose() },
   }
 }

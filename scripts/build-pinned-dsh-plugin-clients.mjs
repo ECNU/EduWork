@@ -79,8 +79,8 @@ async function prepareCandidateManifests(directory) {
 }
 await prepareCandidateManifests(join(repository, 'dsh-plugins'))
 const clients = []
-for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications']) {
-  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
+for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications', 'browser-upstream']) {
+  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications', 'browser-upstream'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {
