@@ -2,7 +2,7 @@
 
 **简体中文** | [English](THIRD_PARTY_NOTICES.en.md)
 
-`dsh-mail-assistant` 自身使用 MIT 许可证。构建产物包含或使用以下直接依赖：
+`dsh-mail-assistant` 的原创贡献使用木兰 PSL v2，历史 MIT 授权保留，详见[许可范围](LICENSING.md)。构建产物包含或使用以下直接依赖：
 
 - [ImapFlow](https://github.com/postalsys/imapflow) — MIT License — IMAP 客户端；
 - [Nodemailer](https://github.com/nodemailer/nodemailer) — MIT-0 License — SMTP 邮件提交；

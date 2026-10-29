@@ -50,7 +50,9 @@
     "THIRD_PARTY_NOTICES.md",
     "THIRD_PARTY_NOTICES.en.md",
     "CHANGELOG.md",
-    "CHANGELOG.en.md"
+    "CHANGELOG.en.md",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "dsh": {
     "bundle": {
@@ -106,7 +108,7 @@
     "url": "https://github.com/ECNU/EduWork/issues"
   },
   "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-oidc#readme",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "dependencies": {
     "zod": "4.4.3"
   },

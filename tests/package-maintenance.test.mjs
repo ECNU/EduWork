@@ -73,6 +73,20 @@ function tarball(files) {
   }
   return gzipSync(Buffer.concat([...records, Buffer.alloc(1024)]))
 }
+
+test('migrated archives retain both the new license and historical MIT grant', async () => {
+  const selected = selectPackage('dsh-oidc')
+  const manifest = { name: selected.name, version: '1.2.3', license: 'MulanPSL-2.0 AND MIT', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory } }
+  const files = { 'package/package.json': JSON.stringify(manifest) }
+  for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) files['package/' + name] = await readFile(new URL(`../packages/dsh-oidc/${name}`, import.meta.url), 'utf8')
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '1.2.3'))
+  for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) {
+    const incomplete = { ...files }
+    delete incomplete['package/' + name]
+    assert.throws(() => inspectArchive(tarball(incomplete), selected, '1.2.3'), /Missing licensing document/)
+  }
+  assert.throws(() => inspectArchive(tarball({ ...files, 'package/LICENSE-MIT': 'License notice removed' }), selected, '1.2.3'))
+})
 test('mail publication binds the dependency inventory to every shipped JS chunk', () => {
   const selected = selectPackage('dsh-mail')
   const manifest = { name: selected.name, version: '0.2.3', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
