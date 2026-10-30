@@ -32,7 +32,7 @@ test('host service reads share OIDC renewal, exact destinations and credential-f
     [endpoint, { method: 'POST' }, endpoint],
     [endpoint, { method: 'GET', body: 'not-a-read' }, endpoint],
     [endpoint + '#fragment', {}, endpoint + '#fragment'],
-    ['https://user:password@school-service.example.test/timetable.ics', {}, 'https://user:password@school-service.example.test/timetable.ics'],
+    ['https://user:password@example.org/timetable.ics', {}, 'https://user:password@example.org/timetable.ics'],
     ['http://127.0.0.1:1234/timetable.ics', {}, 'http://127.0.0.1:1234/timetable.ics'],
   ]) await assert.rejects(state.backend.authorizedFetch(profile.id, target, init, { serviceURL: grant }), /configured organization origin/)
   const response = await state.backend.authorizedFetch(profile.id, endpoint, {}, { serviceURL: endpoint })
