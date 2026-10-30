@@ -89,3 +89,9 @@ The sequence is: test source → publish npm → verify registry bytes → updat
 The historical DSH 0.1.5 recipe keeps `config/assembly.eduwork.json` and its exact version/SRI/SHA-256 locks under `third_party/npm-015-rc1/`; it is not the current default desktop recipe. Editing package source cannot silently change a desktop build. Follow [the build guide](BUILD.md): publish, verify the registry, update locks, then build the product. A development workspace link is not release evidence.
 
 Component locks record each npm version, source commit and content hashes. Verify the actual registry archive before updating a lock. Development workspace links are not distribution inputs.
+
+## Source licenses and published archives
+
+Mulan PSL v2 is the project's primary license. Migrated source manifests use `MulanPSL-2.0 AND MIT` for new contributions and historical MIT portions; the literature plugin retains MIT. Ship `LICENSE`, `LICENSE-MIT`, and `LICENSING.md` together, preserving separate dependency and artwork notices.
+
+This migration does not overwrite old npm versions or alter licenses/hashes in published dependency locks. The source version number does not authorize republishing an existing version. Use a new version for the next npm publication, verify license files in the archive, then update product locks.

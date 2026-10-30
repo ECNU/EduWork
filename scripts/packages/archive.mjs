@@ -32,6 +32,15 @@ export function inspectArchive(bytes, selected, expectedVersion) {
   assert.equal(manifest.version, expectedVersion)
   assert.equal(manifest.repository.url, 'git+https://github.com/ECNU/EduWork.git')
   assert.equal(manifest.repository.directory, selected.directory)
+  if (manifest.license === 'MulanPSL-2.0 AND MIT') {
+    // The migration is prospective: retain the historical grant and scope in
+    // every standalone archive, not only in the repository's documentation.
+    for (const file of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) {
+      assert.ok(files.has(file), `Missing licensing document ${file}`)
+    }
+    assert.match(files.get('LICENSE').toString('utf8'), /木兰宽松许可证/)
+    assert.match(files.get('LICENSE-MIT').toString('utf8'), /MIT License/)
+  }
   for (const entry of Object.values(manifest.exports || {})) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)

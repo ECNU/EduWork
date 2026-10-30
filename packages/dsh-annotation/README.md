@@ -52,4 +52,4 @@ node scripts/packages/manage.mjs check dsh-annotation
 
 通用气泡装饰入口由 `scripts/patch-chat-user-content-runtime.mjs` 对锁定的 Runtime 副本适配，并写入构建回执。补丁不含批注业务逻辑，插件未启用时回到原生渲染；正文、附件与消息操作仍由原生组件负责。补丁严格核对包版本和文件 SHA-256，上游文件变化时停止装配，必须重新评估或移除适配，不能跳过检查。未加补丁的官方客户端使用上述卡片回退；上游提供等价扩展入口后应移除此补丁。
 
-许可证：MIT。
+主许可证：木兰宽松许可证第 2 版；历史 MIT 代码与适用范围见 [LICENSING.md](LICENSING.md)。

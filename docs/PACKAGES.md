@@ -93,3 +93,9 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 历史 DSH 0.1.5 配方的 `config/assembly.eduwork.json` 保留 `third_party/npm-015-rc1/*/LOCK.json`，不用于当前默认桌面构建。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 
 组件锁保存对应 npm 包的版本、来源提交和内容校验值。更新包时，核验 registry 中的实际产物，再同步锁文件；不要将开发目录的 workspace 链接作为发行输入。
+
+## 源码许可与已发布包
+
+项目主许可证为木兰 PSL v2。迁移模块的源码 manifest 使用 `MulanPSL-2.0 AND MIT` 表示新贡献与历史 MIT 代码的分别适用范围；文献插件继续使用 MIT。发布时一并携带 `LICENSE`、`LICENSE-MIT`、`LICENSING.md`，第三方声明与素材许可保持独立。
+
+许可证迁移不覆盖旧 npm 版本，不修改产品锁中已发布依赖的许可或哈希；当前源码版本号不是重发旧包的授权。下一次 npm 发布必须使用新版本、校验实际 tarball 的许可文件后再更新产品锁。

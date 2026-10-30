@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Side conversations using native DSH session forks",
   "type": "module",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -15,7 +15,9 @@
     "cordis.patch.yml",
     "README.md",
     "README_EN.md",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "scripts": {
     "build": "node scripts/build.mjs",
