@@ -8030,7 +8030,7 @@
       "path": "scripts/dev-studio-web.mjs",
       "kind": "inactive-legacy-institution-references",
       "reason": "Development-only Studio launcher references institution packages for local testing",
-      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa"
+      "sha256": "39dd820f0d78ee6568e0677e52b76ff0165cf6ffa13e76056093e850694005c1"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
