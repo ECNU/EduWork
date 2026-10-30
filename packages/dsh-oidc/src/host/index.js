@@ -113,6 +113,7 @@ export class OidcAccountService extends TypertRemoteService {
   authorizedFetch(profileID, endpoint, init, authorization) {
     return this.callBackend('authorizedFetch', profileID, endpoint, init, authorization)
   }
+  accountIdentity(profileID) { return this.callBackend('accountIdentity', profileID) }
   modelResourceFetch(profileID, relativePath, options) {
     return this.callBackend('modelResourceFetch', profileID, relativePath, options)
   }
