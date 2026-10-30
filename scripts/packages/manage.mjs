@@ -30,6 +30,7 @@ if (action === 'list') {
       'dsh-literature': ['check'],
       'dsh-oidc': ['check'],
       'dsh-mail': ['check'],
+      'dsh-mail-pet': ['check'],
       'dsh-memory': ['build', 'test'],
       'dsh-knowledge-studio': ['typecheck', 'build', 'test', 'audit'],
       'dsh-remote-access': ['check'],
