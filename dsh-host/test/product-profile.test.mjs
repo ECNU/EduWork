@@ -139,6 +139,15 @@ test('another shell, distribution, or product-contained home is rejected without
   assert.equal(JSON.parse(await readFile(join(home, '.eduwork-desktop-home.json'), 'utf8')).distribution, 'eduwork')
 })
 
+test('a zero-filled ownership marker from a power loss is rewritten instead of blocking startup', async t => {
+  const { product, home } = await fixture(t)
+  await prepareProductProfile({ product, home, shell: 'electron' })
+  const marker = join(home, '.eduwork-desktop-home.json')
+  await writeFile(marker, Buffer.alloc(64))
+  await prepareProductProfile({ product, home, shell: 'electron' })
+  assert.equal(JSON.parse(await readFile(marker, 'utf8')).distribution, 'eduwork')
+})
+
 test('unmanaged directories and links survive a refused repair', async t => {
   const { root, product, home } = await fixture(t)
   const modules = join(home, 'profiles/desktop/node_modules')

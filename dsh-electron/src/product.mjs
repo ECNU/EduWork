@@ -443,7 +443,7 @@ export async function showDesktopFailure(error) {
   if (rolledBack) { restartDesktop(); return }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
   if (isQuitting()) return
-  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
+  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config,logs:paths.logs})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, show: false, title: settings.productName,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1c' : '#faf8f4',
@@ -478,6 +478,11 @@ export async function showDesktopFailure(error) {
           if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })
         }).finally(() => { importing = false })
       }
+    }
+    if (url === 'eduwork-startup://logs/') {
+      void shell.openPath(paths.logs).then(message=>{if(message)throw Error(message)}).catch(error=>{
+        if (canRecover()) return dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开日志目录',message:paths.logs,detail:error.message})
+      })
     }
     if (url === 'eduwork-startup://exit/') app.quit()
     if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {

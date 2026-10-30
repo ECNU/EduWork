@@ -25,6 +25,17 @@ function contentFileError(error) {
   return Object.assign(new Error(`无法读写配置或更新文件。请检查目录写入权限、文件占用和磁盘空间，恢复后重试。\n${error.message}`,{cause:error}),{code:'EDUWORK_CONTENT_IO'})
 }
 
+/** Name the network failure: "fetch failed" alone tells a user nothing. */
+export function networkErrorMessage(error) {
+  const code=error?.name==='TimeoutError'?'TIMEOUT':String(error?.cause?.code??'')
+  if(error?.message!=='fetch failed'&&error?.name!=='TimeoutError')return error?.message??String(error)
+  const reason=/CERT|SELF_SIGNED|UNABLE_TO_VERIFY|TLS|SSL/i.test(code)?'配置服务的 HTTPS 证书校验失败，可能是网络代理或安全软件替换了证书'
+    :['ENOTFOUND','EAI_AGAIN'].includes(code)?'无法解析配置服务地址（DNS），请检查网络或 DNS 设置'
+    :['TIMEOUT','ETIMEDOUT','UND_ERR_CONNECT_TIMEOUT','UND_ERR_HEADERS_TIMEOUT'].includes(code)?'连接配置服务超时，请检查网络或代理设置'
+    :['ECONNREFUSED','ECONNRESET','ENETUNREACH','EHOSTUNREACH','UND_ERR_SOCKET'].includes(code)?'与配置服务的连接被拒绝或中断，可能被防火墙、安全软件或代理拦截'
+    :'暂时无法连接配置服务，请检查网络后重试'
+  return reason+(code?`（${code}）`:'')
+}
 export function contentCapabilities(identity) {
   const plugins=Object.keys(identity.localPlugins??{}),packages=Object.keys(identity.managedPackages??{})
   return [...plugins.map(name=>'plugin:'+name),...packages.map(name=>'package:'+name)]
@@ -211,13 +222,21 @@ export class ContentUpdates {
     try { await this.configurationFile.cleanupLegacy() }
     catch { this.view.message='配置已生效；部分旧配置暂未清理，下次启动重试' }
   }
-  async rejectPending(reason) {
+  async rejectPending(reason,cause=reason) {
     await this.configurationFile.rollback()
-    if(this.state.pending)this.state.rejected=[...new Set([...this.state.rejected,this.state.pending])].slice(-100)
+    if(this.state.pending) {
+      this.state.rejected=[...new Set([...this.state.rejected,this.state.pending])].slice(-100)
+      // Later launches only see the rejection; keep the first failure for the user.
+      this.state.rejection={key:this.state.pending,reason:String(cause??'').slice(0,2000)}
+    }
     this.state.pending=null;this.state.trial=null;this.state.trialPhase=null;this.state.retryable=null;await this.save()
     this.view={...this.view,state:'error',message:reason}
   }
-  async rejectTrial(reason) {await this.rejectPending(reason)}
+  async rejectTrial(reason,cause) {await this.rejectPending(reason,cause)}
+  rejectedError(key) {
+    const reason=this.state.rejection?.key===key&&this.state.rejection.reason
+    return Error('此内容版本未通过启动检查，可在修正本机问题后手动重试，或等待发行方提供修正版本'+(reason?`。首次失败原因：${reason}`:''))
+  }
   async postponePending() {
     // Persist the classification before rollback: even if rollback cannot write,
     // a later launch must not reclassify the same I/O failure as bad content.
@@ -229,7 +248,10 @@ export class ContentUpdates {
   async rollback(error) {
     if(!this.state.trial)return false
     if(isContentFileError(error)) {await this.postponePending();return false}
-    await this.rejectTrial('新版内容未通过启动检查，已回退');return true
+    // A first install has no configuration to fall back to: rejecting it only
+    // locks the user out. Keep it retryable; the failure page shows the cause.
+    if(!this.state.active.configuration&&!(this.source.bundled?.configuration>0)) {await this.postponePending();return false}
+    await this.rejectTrial('新版内容未通过启动检查，已回退',error?.message);return true
   }
   canRepair(key, retryFailed=false) {
     // The caller also enforces the highest revision. Explicit user recovery may
@@ -246,13 +268,13 @@ export class ContentUpdates {
       const envelope=JSON.parse(bytes.toString('utf8')),manifest=verifiedManifest(envelope,this.source,this.policy)
       const key=`${manifest.revision}-${manifest.bundle.sha256}`
       const restore=(repair||retryFailed||this.state.retryable===key)&&manifest.revision===this.state.highest&&this.canRepair(key,retryFailed)
-      if(this.state.rejected.includes(key)&&!restore)throw Error('此内容版本未通过启动检查，可在修正本机问题后手动重试，或等待发行方提供修正版本')
+      if(this.state.rejected.includes(key)&&!restore)throw this.rejectedError(key)
       const current=!restore&&(manifest.revision<=this.state.highest||Object.entries(manifest.components).every(([name,revision])=>revision<=this.view[name+'Revision']))
       const reason=incompatible(manifest.requires,this.environment)
       this.offer=current?null:{key,envelope,manifest,retryFailed}
       const conflicts=this.view.configurationConflicts??[]
       this.view={...this.view,state:current?'current':reason?'requires_software':'available',latestRevision:manifest.revision,totalBytes:manifest.bundle.bytes,downloadedBytes:0,message:reason??(conflicts.length?`已保留 ${conflicts.length} 项本地配置修改：${conflicts.join('、')}`:'')}
-    } catch(error) {this.view={...this.view,state:'error',message:error.message}}
+    } catch(error) {this.view={...this.view,state:'error',message:networkErrorMessage(error)}}
     finally {this.busy=false}
     return this.snapshot()
   }
@@ -263,7 +285,7 @@ export class ContentUpdates {
     try {
       const bytes=await fetchContent(manifest.bundle.url,manifest.bundle.bytes,{fetchImpl:this.fetchImpl,signal:AbortSignal.any([this.abort.signal,AbortSignal.timeout(60000)]),onProgress:n=>{this.view.downloadedBytes=n}})
       await this.installContent(envelope,bytes,{retryFailed})
-    } catch(error) {this.view={...this.view,state:'error',message:error.message}}
+    } catch(error) {this.view={...this.view,state:'error',message:networkErrorMessage(error)}}
     finally {this.busy=false}
     return this.snapshot()
   }
@@ -281,7 +303,7 @@ export class ContentUpdates {
   async installContent(envelope,bytes,{retryFailed=false}={}) {
     const manifest=verifiedManifest(envelope,this.source,this.policy),key=`${manifest.revision}-${manifest.bundle.sha256}`
     const repair=manifest.revision===this.state.highest&&this.canRepair(key,retryFailed)
-    if(this.state.rejected.includes(key)&&!repair)throw Error('此内容版本未通过启动检查，可在修正本机问题后手动重试，或等待发行方提供修正版本')
+    if(this.state.rejected.includes(key)&&!repair)throw this.rejectedError(key)
     if(manifest.revision<=this.state.highest&&!repair)throw Error('内容修订号必须高于已接收的版本')
     const reason=incompatible(manifest.requires,this.environment);if(reason)throw Error(reason)
     const temporary=join(this.store,'.stage-'+randomUUID())
