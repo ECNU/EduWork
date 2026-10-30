@@ -13,6 +13,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | `@eduwork/dsh-oidc` | [Identity, credentials and models](../packages/dsh-oidc/README_EN.md) | `packages/dsh-oidc` |
 | `@eduwork/dsh-memory` | [Local memory and retrieval](../packages/dsh-memory/README_EN.md) | `packages/dsh-memory` |
 | `@eduwork/dsh-mail` | [Mail assistant](../packages/dsh-mail/README_EN.md) | `packages/dsh-mail` |
+| `@eduwork/dsh-mail-pet` | [New mail reminders](../packages/dsh-mail-pet/README_EN.md) | `packages/dsh-mail-pet` |
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README_EN.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office, speech, images and media](../packages/dsh-knowledge-studio/packages/artifact-services/README_EN.md) | Studio's existing workspace |
 | `@eduwork/dsh-remote-access` | [Remote access and self-hosted relay](../packages/dsh-remote-access/README_EN.md) | `packages/dsh-remote-access` |

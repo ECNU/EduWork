@@ -10,6 +10,7 @@ export const packages = [
   { id: 'dsh-oidc', name: '@eduwork/dsh-oidc', directory: 'packages/dsh-oidc', group: 'dsh-oidc' },
   { id: 'dsh-memory', name: '@eduwork/dsh-memory', directory: 'packages/dsh-memory', group: 'dsh-memory' },
   { id: 'dsh-mail', name: '@eduwork/dsh-mail', directory: 'packages/dsh-mail', group: 'dsh-mail' },
+  { id: 'dsh-mail-pet', name: '@eduwork/dsh-mail-pet', directory: 'packages/dsh-mail-pet', group: 'dsh-mail-pet' },
   { id: 'dsh-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', directory: 'packages/dsh-knowledge-studio', group: 'dsh-knowledge-studio' },
   { id: 'dsh-artifact-services', name: '@eduwork/dsh-artifact-services', directory: 'packages/dsh-knowledge-studio/packages/artifact-services', group: 'dsh-knowledge-studio' },
   { id: 'dsh-remote-access', name: '@eduwork/dsh-remote-access', directory: 'packages/dsh-remote-access', group: 'dsh-remote-access' },

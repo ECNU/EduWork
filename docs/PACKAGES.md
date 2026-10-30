@@ -15,6 +15,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | `@eduwork/dsh-oidc` | [身份、凭据与模型接入](../packages/dsh-oidc/README.md) | `packages/dsh-oidc` |
 | `@eduwork/dsh-memory` | [本地记忆与历史检索](../packages/dsh-memory/README.md) | `packages/dsh-memory` |
 | `@eduwork/dsh-mail` | [邮件助手](../packages/dsh-mail/README.md) | `packages/dsh-mail` |
+| `@eduwork/dsh-mail-pet` | [新邮件提醒与只读预览](../packages/dsh-mail-pet/README.md) | `packages/dsh-mail-pet` |
 | `@eduwork/dsh-knowledge-studio` | [Studio](../packages/dsh-knowledge-studio/README.md) | `packages/dsh-knowledge-studio` |
 | `@eduwork/dsh-artifact-services` | [Office、语音、图像与媒体服务](../packages/dsh-knowledge-studio/packages/artifact-services/README.md) | 与 Studio 共用已有 workspace |
 | `@eduwork/dsh-remote-access` | [远程访问与自托管中继](../packages/dsh-remote-access/README.md) | `packages/dsh-remote-access` |
