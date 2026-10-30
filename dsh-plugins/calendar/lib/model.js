@@ -142,7 +142,7 @@ export const OverrideSchema = z
   .strict()
   .refine(value => Object.keys(value).length > 1, 'an override must change at least one field')
 
-const OverridesSchema = z
+export const OverridesSchema = z
   .array(OverrideSchema)
   .refine(list => new Set(list.map(entry => entry.date)).size === list.length, 'each date may be overridden once')
 

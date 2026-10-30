@@ -1,4 +1,5 @@
 import { serviceProtocolAllowed } from './transport.js'
+import { serviceReadAllowed } from './service-authorization.js'
 import { createHash, createPublicKey, randomBytes, timingSafeEqual, verify as verifySignature } from 'node:crypto'
 import { emptyResources } from './resources.js'
 import { accessTokenNeedsRefresh, accessTokenTiming } from './token-lifetime.js'
@@ -524,7 +525,7 @@ export class WebOidcBackend {
   async authorized(profile, session, endpoint, init = {}) {
     const request = current => this.fetch(endpoint, {
       ...init,
-      headers: { ...Object.fromEntries(new Headers(init.headers).entries()), authorization: `Bearer ${current.accessToken}`, accept: 'application/json' },
+      headers: { ...Object.fromEntries(new Headers(init.headers).entries()), authorization: `Bearer ${current.accessToken}`, accept: new Headers(init.headers).get('accept') ?? 'application/json' },
       redirect: 'error',
       signal: init.signal ?? AbortSignal.timeout(20_000),
     })
@@ -537,19 +538,31 @@ export class WebOidcBackend {
     return { response, session: current }
   }
 
-  async authorizedFetch(profileID, endpoint, init = {}) {
+  async authorizedFetch(profileID, endpoint, init = {}, authorization = {}) {
     const profile = this.profile(profileID)
     const target = new URL(endpoint)
     const allowed = new Set([
       new URL(profile.oidc.issuer).origin,
       ...this.authorizedOrigins,
     ])
-    if (!allowed.has(target.origin) || target.username || target.password || target.hash) {
+    const service = serviceReadAllowed(profile, target, init, authorization)
+    if ((!allowed.has(target.origin) && !service) || target.username || target.password || target.hash) {
       throw publicError('oidc_authorized_origin_denied', 'authorized request must use a configured organization origin')
     }
     const session = await this.activeSession(profile)
     if (!session) throw publicError('oidc_login_required', 'organization sign-in is required')
     return (await this.authorized(profile, session, target.toString(), init)).response
+  }
+
+  /** Host-only stable identity for account-scoped data; never returns credentials. */
+  async accountIdentity(profileID) {
+    const profile = this.profile(profileID)
+    const epoch = this.accountEpoch(profile)
+    const session = await this.activeSession(profile)
+    if (epoch !== this.accountEpoch(profile) || !session?.identity?.sub) return null
+    const issuer = session.issuer ?? profile.oidc?.issuer ?? profile.auth?.expectedIssuer ?? profile.auth?.discoveryUrl
+    const accountID = createHash('sha256').update(JSON.stringify([profileID, issuer, session.identity.sub])).digest('base64url')
+    return { profileID, accountID }
   }
 
   async modelResourceFetch(profileID) {

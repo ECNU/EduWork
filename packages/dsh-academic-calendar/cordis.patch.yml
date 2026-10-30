@@ -1,0 +1,14 @@
+# Source or npm installation must make all four package identities resolvable.
+- insert:
+    - id: calendar
+      name: '@eduwork/dsh-calendar'
+    - id: calendar-tools
+      name: '@eduwork/dsh-calendar/tools'
+    - id: calendar-subscriptions
+      name: '@eduwork/dsh-calendar-subscriptions'
+    - id: calendar-subscriptions-tools
+      name: '@eduwork/dsh-calendar-subscriptions/tools'
+    - id: academic-calendar
+      name: '@eduwork/dsh-academic-calendar'
+    - id: academic-calendar-tools
+      name: '@eduwork/dsh-academic-calendar/tools'

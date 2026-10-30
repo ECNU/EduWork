@@ -10,6 +10,38 @@ import { publicProfile, enterpriseProviderConfig } from '../src/host/profile.js'
 const raw = JSON.parse(await readFile(new URL('../examples/identity-only.example.json', import.meta.url), 'utf8'))
 const profile = normalizeEnterpriseProfile(raw)
 
+test('host service reads share OIDC renewal, exact destinations and credential-free identity', async () => {
+  const endpoint = 'https://school-service.example.test/timetable.ics'
+  const seen = []
+  const state = harness(async (url, init) => {
+    if (String(url).endsWith('/token')) return Response.json({ access_token: 'renewed-for-test', refresh_token: 'rotated-for-test', token_type: 'Bearer', expires_in: 3600 })
+    assert.equal(String(url), endpoint)
+    assert.equal(init.redirect, 'error')
+    seen.push(new Headers(init.headers).get('authorization'))
+    return seen.length === 1 ? new Response('', { status: 401 }) : new Response('calendar')
+  })
+  state.backend.discovery.set(profile.id, { tokenEndpoint: `${profile.oidc.issuer}/token` })
+  await state.backend.saveSession(profile, { issuer: profile.oidc.issuer, clientId: profile.oidc.clientId, accessToken: 'initial-for-test', refreshToken: 'refresh-for-test', expiresAt: Math.floor(Date.now() / 1000) + 3600, identity: { sub: 'student-1' } })
+  const identity = await state.backend.accountIdentity(profile.id)
+  assert.equal(identity.profileID, profile.id)
+  assert.deepEqual(Object.keys(identity).sort(), ['accountID', 'profileID'])
+  assert.match(identity.accountID, /^[A-Za-z0-9_-]{43}$/)
+  await assert.rejects(state.backend.authorizedFetch(profile.id, endpoint), /configured organization origin/)
+  await assert.rejects(state.backend.authorizedFetch(profile.id, endpoint + '/other', {}, { serviceURL: endpoint }), /configured organization origin/)
+  for (const [target, init, grant] of [
+    [endpoint, { method: 'POST' }, endpoint],
+    [endpoint, { method: 'GET', body: 'not-a-read' }, endpoint],
+    [endpoint + '#fragment', {}, endpoint + '#fragment'],
+    ['https://user:password@example.org/timetable.ics', {}, 'https://user:password@example.org/timetable.ics'],
+    ['http://127.0.0.1:1234/timetable.ics', {}, 'http://127.0.0.1:1234/timetable.ics'],
+  ]) await assert.rejects(state.backend.authorizedFetch(profile.id, target, init, { serviceURL: grant }), /configured organization origin/)
+  const response = await state.backend.authorizedFetch(profile.id, endpoint, {}, { serviceURL: endpoint })
+  assert.equal(await response.text(), 'calendar')
+  assert.deepEqual(seen, ['Bearer initial-for-test', 'Bearer renewed-for-test'])
+  await state.backend.logout(profile.id)
+  assert.equal(await state.backend.accountIdentity(profile.id), null)
+})
+
 test('configuration RPC uses the same closed target schema on Host and Client', async () => {
   const { TYPERT } = await import('../src/host/typert.host.js')
   const { TYPERT_REMOTE } = await import('../src/host/typert.remote-client.js')

@@ -57,7 +57,7 @@ test('host and client faces describe the same calendar methods', { skip: !runtim
   assert.deepEqual(host.invocations.map(descriptor => descriptor.method), [
     'snapshot', 'occurrences', 'importIcs', 'exportIcs', 'putEvent', 'updateEvent',
     'deleteEvent', 'deleteCalendar', 'applyOverride', 'removeOverride', 'cancelOccurrence', 'restoreOccurrence',
-    'applySource', 'putNote', 'removeNote', 'notes', 'changes', 'personalFor', 'sourceStatuses', 'setPersonal', 'unlinkedNotes', 'reminders', 'ackReminder',
+    'applySource', 'putNote', 'removeNote', 'notes', 'changes', 'personalFor', 'sourceStatuses', 'annotationsFor', 'annotationChoices', 'selectAnnotations', 'setPersonal', 'unlinkedNotes', 'reminders', 'ackReminder',
   ])
 })
 
@@ -194,4 +194,20 @@ test('the package publishes both faces and depends on the remote protocol', { sk
   assert.equal(pkg.exports['./remote'], './lib/typert.remote-client.js')
   assert.ok(pkg.peerDependencies['@deepseek-ai/dsh-typert-protocol'])
   assert.ok(pkg.dsh.client.inject.includes('@deepseek-ai/dsh-api-remotes'))
+})
+
+test('calendar selection can also be resolved by the Runtime SRC gateway', { skip: !runtime }, async t => {
+  bindRuntime()
+  const [{ CalendarService }, { TypertGatewayService }] = await Promise.all([
+    import('../lib/index.js'), load('@deepseek-ai/dsh-api-gateway'),
+  ])
+  if (typeof TypertGatewayService?.prototype.srcDescriptor !== 'function') return t.skip('This Runtime predates SRC fallback')
+  const service = Object.create(CalendarService.prototype)
+  const descriptor = TypertGatewayService.prototype.srcDescriptor.call(
+    { ctx: { typert: { lookups: { definitions: () => [] } } } },
+    { service, serviceKey: 'calendar', namespace: 'calendar' },
+    { method: 'selectAnnotations', invocation: { kind: 'direct' } },
+    'selectAnnotations', 'calendar/selectAnnotations',
+  )
+  assert.deepEqual(descriptor.parameters.map(parameter => parameter.wire), ['input'])
 })

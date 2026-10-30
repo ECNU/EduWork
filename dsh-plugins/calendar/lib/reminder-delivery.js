@@ -29,7 +29,9 @@ export class ReminderDelivery {
         events: [{ id: 'reminder', label: '日历提醒', level: 'info', requiresAction: false, actions: ['open'] }],
         onAction: ({ target }) => {
           const receipt = this.receipts.get(target.reminderId)
-          return this.active && receipt && !receipt.read && this.calendar.isSourceVisible(receipt.ref.source) ? target : false
+          if (!this.active || !receipt || receipt.read || !this.calendar.isSourceVisible(receipt.ref.source)) return false
+          if (!this.calendar.snapshot().events.some(event => event.uid === receipt.ref.uid && event.source === receipt.ref.source)) return false
+          return { reminderId: receipt.id, ref: { source: receipt.ref.source, uid: receipt.ref.uid } }
         },
       })
       this.notifications = handle

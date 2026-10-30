@@ -7,6 +7,7 @@ import { detectGatewayProtocol } from './gateway-protocol.js'
 import { oidcLlmIdentity, oidcLlmToken } from './oidc-llm-protocol.js'
 import { bufferResourceResponse, validateResourceRead } from './model-resource-transport.js'
 import { accessTokenNeedsRefresh } from './token-lifetime.js'
+import { serviceReadAllowed } from './service-authorization.js'
 
 const seconds = backend => Math.floor(backend.now() / 1000)
 const ID_TOKEN_MARGIN_SECONDS = 10 * 60
@@ -337,7 +338,7 @@ function withGatewayAuth(Base) {
       const retryUnauthorized = authorization.retryUnauthorized === true
       if (retryUnauthorized && init.body != null && typeof init.body !== 'string') throw new TypeError('Authorization retry requires a buffered text request body')
       const profile = this.profile(profileID)
-      if (!profile.auth) return super.authorizedFetch(profileID, endpoint, init)
+      if (!profile.auth) return super.authorizedFetch(profileID, endpoint, init, authorization)
       const epoch = this.accountEpoch(profile), descriptor = await this.discover(profile)
       const target = new URL(endpoint)
       // Host-only model and own-account routes, never key administration or arbitrary origins.
@@ -352,7 +353,8 @@ function withGatewayAuth(Base) {
         && target.href === new URL(descriptor.issuer).origin + servicePath
       const modelResource = target.origin === modelBase.origin
         && (target.href === descriptor.userInfoEndpoint || target.pathname.startsWith(modelBase.pathname))
-      if (target.username || target.password || target.hash || !(modelResource || issuerService)) throw protocolError('oidc_authorized_origin_denied', 'Gateway token destination is not an authorized resource')
+      const serviceRead = serviceReadAllowed(profile, target, init, authorization)
+      if (target.username || target.password || target.hash || !(modelResource || issuerService || serviceRead)) throw protocolError('oidc_authorized_origin_denied', 'Gateway token destination is not an authorized resource')
       const scope = await this.createGatewayScope(profileID)
       const lease = scope.open(init.signal ?? AbortSignal.timeout(20_000))
       let response

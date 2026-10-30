@@ -11,7 +11,7 @@ import { defineDomain, domainTable } from '@deepseek-ai/dsh-storage-domain'
 import { createHash } from 'node:crypto'
 import { z } from 'zod'
 import { assertEventKeyBudget, eventKey, isEncodedKey } from './keys.js'
-import { LocalDatesSchema, StoredEventSchema, assertOrderedRecord, assertOrderedSpan, buildSnapshot, dropRetiredFields, inheritedEndOf, normalizeEvent, occurrencesOf, occurrencesIn, overlaps } from './model.js'
+import { LocalDatesSchema, LocalTimeSchema, StoredEventSchema, assertOrderedRecord, assertOrderedSpan, buildSnapshot, dropRetiredFields, inheritedEndOf, normalizeEvent, occurrencesOf, occurrencesIn, overlaps } from './model.js'
 
 /**
  * Domain layout: events keyed by source and identifier.
@@ -36,6 +36,7 @@ export const calendarDomain = defineDomain({
   tables: {
     events: domainTable(StoredEventSchema),
     local_dates: domainTable(LocalDatesSchema),
+    instance_anchors: domainTable(z.object({ originalStart: LocalTimeSchema }).strict()),
     source_versions: domainTable(z.object({ revision: z.number().int().positive(), digest: z.string() }).strict()),
   },
 })
@@ -103,7 +104,7 @@ export class CalendarStore {
   async open() {
     const domain = await this.ctx.storageDomain.open(calendarDomain)
     this.domain = domain
-    this.tables = { events: domain.table('events'), localDates: domain.table('local_dates'), sourceVersions: domain.table('source_versions') }
+    this.tables = { events: domain.table('events'), localDates: domain.table('local_dates'), instanceAnchors: domain.table('instance_anchors'), sourceVersions: domain.table('source_versions') }
     this.needsReview = []
     await this.foldRetiredFields()
     await this.rekeyBySource()
@@ -346,8 +347,9 @@ export class CalendarStore {
 
   /** Remove one imported calendar in the shared write queue. Personal data and
    * revision receipts survive: removing a calendar must not reset stale-update protection. */
-  async deleteCalendar(source) {
+  async deleteCalendar(source, { isCurrent = () => true } = {}) {
     return this.enqueueWrite(async () => {
+      if (!isCurrent()) throw new Error('superseded_snapshot')
       const { events, localDates } = this.requireTables()
       let removedEvents = 0
       for (const [key, event] of events.entries()) {
@@ -547,7 +549,7 @@ export class CalendarStore {
       const ordered = [...input.events].sort((a, b) => a.uid < b.uid ? -1 : a.uid > b.uid ? 1 : 0)
       const digest = createHash('sha256').update(JSON.stringify(canonical({ events: ordered, complete: input.complete === true }))).digest('hex')
       if (previous && previous.revision === revision && previous.digest !== digest) throw new Error('revision_conflict')
-      const report = await this.applySourceEntries(source, input.events, input.complete === true)
+      const report = await this.applySourceEntries(source, input.events, input.complete === true, input.replaceInstances === true)
       if (revision !== undefined && !report.unattributable.length) await versions.put(versionKey, { revision, digest })
       return report
     })
@@ -563,8 +565,8 @@ export class CalendarStore {
    * @param incomingEvents - The snapshot's entries.
    * @returns the report described by {@link CalendarStore.applySource}.
    */
-  async applySourceEntries(source, incomingEvents, complete = false) {
-    const { events: eventTable } = this.requireTables()
+  async applySourceEntries(source, incomingEvents, complete = false, replaceInstances = false) {
+    const { events: eventTable, instanceAnchors } = this.requireTables()
     const report = { applied: 0, moved: 0, cancelled: 0, unattributable: [] }
     const plans = new Map()
 
@@ -579,6 +581,23 @@ export class CalendarStore {
       const prior = plans.get(key)
       const stored = prior?.record ?? eventTable.get(key)
       const wanted = normalizeEvent({ ...fields, source })
+      if (replaceInstances) {
+        if (!complete || wanted.recurrence || wanted.overrides?.length || movedFrom || cancelledDates?.length) throw new Error('instance snapshot requires complete concrete events')
+        // A source-provided stable instance ID is sufficient attribution for a
+        // plain event. Otherwise the adapter must mint a new ID, leaving old
+        // personal content unlinked rather than guessing a reschedule.
+        const local = prior?.local ?? this.localDatesOf(key, stored)
+        // Keep the first occurrence anchor independently of the current snapshot.
+        // A cancelled or unsubscribed instance may return at a different time;
+        // its stable source/UID must still address the same personal content.
+        const anchor = instanceAnchors.get(key) ?? prior?.anchor ?? { originalStart: stored?.originalStart ?? stored?.start ?? wanted.start }
+        const record = mergePersonalDates(local, { ...wanted, originalStart: anchor.originalStart })
+        assertOrderedRecord(record)
+        assertEventKeyBudget(record)
+        plans.set(key, { record, local, anchor })
+        report.applied += 1
+        continue
+      }
       // On the first sight of an event every field is the baseline; afterwards the
       // baseline is what is already stored.
       const previous = { ...(stored ?? wanted) }
@@ -636,10 +655,16 @@ export class CalendarStore {
         record.exceptions = withoutDate(previous.exceptions, date)
         report.moved += 1
       } else {
-        for (const field of ['title', 'end', 'location', 'description']) {
+        for (const field of ['title', 'end', 'location', 'description', 'extensions']) {
           if (fields[field] !== undefined) record[field] = wanted[field]
         }
       }
+      // The bulk form of a reschedule: a feed that lists its one-off changes
+      // (`RECURRENCE-ID`) beside the frozen series sends them as `overrides`,
+      // already in the stored record's shape. A complete snapshot dropped the
+      // previous overrides above, so this replaces rather than merges — the
+      // snapshot is the school's whole truth for this series.
+      if (fields.overrides !== undefined) record.overrides = wanted.overrides
       if (Array.isArray(cancelledDates) && cancelledDates.length > 0) {
         const cancelled = cancelledDates.map(dateOf)
         record.exceptions = [...new Set([...(previous.exceptions ?? []), ...cancelled])].sort()
@@ -670,6 +695,9 @@ export class CalendarStore {
     // Plan every entry before writing. A bad later entry must not leave a valid
     // prefix committed. Multiple changes to one series read the preceding plan.
     for (const [key, plan] of plans) {
+      // Validation above must finish before even identity receipts are written.
+      // These receipts intentionally survive source clear, like personal data.
+      if (plan.anchor && !instanceAnchors.get(key)) await instanceAnchors.put(key, plan.anchor)
       await this.commit(plan.record)
       if (!this.requireTables().localDates.get(key)) await this.requireTables().localDates.put(key, plan.local)
     }
