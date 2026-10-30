@@ -130,7 +130,8 @@ export const REFUSED: Readonly<Record<string, readonly string[]>> = {
   ],
   'belongs to remote access itself': [
     'remoteAccess/follow',
-    'remoteDevices/cancelInvite', 'remoteDevices/createInvite', 'remoteDevices/decide', 'remoteDevices/revoke', 'remoteDevices/status',
+    'remoteDevices/cancelInvite', 'remoteDevices/createInvite', 'remoteDevices/decide', 'remoteDevices/retry', 'remoteDevices/revoke',
+    'remoteDevices/signIn', 'remoteDevices/status', 'remoteDevices/test',
   ],
 }
 

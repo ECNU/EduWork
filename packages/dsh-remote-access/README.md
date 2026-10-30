@@ -17,12 +17,12 @@
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=替换成随机Key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.1 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
 ```
 
 `RELAY_URL` 是用户访问中继的公开地址；`RELAY_ACCESS_KEYS` 是发给电脑主人的接入密钥，多个用逗号分隔。中继默认监听 `127.0.0.1:8787`，可用 `HOST`、`PORT` 修改；`<RELAY_URL>healthz` 返回 `ok`，可用于监控。
 
-完整的 [中继部署指南](docs/DEPLOYMENT.md) 包含 Key 生成、Windows PowerShell 命令、HTTPS/Nginx、路径前缀、systemd 常驻运行、机构登录和 iframe 集成，以及启动后的验证与排错步骤。
+服务器推荐按 [Docker 部署指南](docs/docker/README.md) 使用 Dockerfile 和 Compose，从 npm 固定版本构建后用 `docker compose up -d --build` 启动。完整的 [中继部署指南](docs/DEPLOYMENT.md) 还包含 Key 生成、Windows PowerShell 命令、HTTPS/Nginx、路径前缀、systemd 常驻运行、机构登录和 iframe 集成，以及验证与排错步骤。
 
 中继也可以部署在同域的单独路径，例如 `RELAY_URL=https://example.edu/eduwork-remote/`。反向代理须保留此前缀，电脑上填写同一个完整地址。同域路径不隔离浏览器权限，部署者须确认站点与被配对电脑处于可接受的共同信任范围（见[安全](#安全)）；作用于整个站点的 Service Worker 还须放过这段路径。
 
@@ -40,9 +40,9 @@ RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=替换成随机Key \
 dsh plugin --profile web add @eduwork/dsh-remote-access
 ```
 
-打开“设置 → 远程访问”，填写中继服务器和接入密钥，勾选“允许远程访问”。显示“已连接”后即可添加设备。远程访问默认关闭。
+打开“设置 → 远程访问”，填写中继服务器和接入密钥，勾选“允许远程访问”。显示“已连接”后即可添加设备。远程访问默认关闭。“测试连接”分别说明中继能否访问、身份能否通过，未开启时也可以测试；连接失败时可点“重试”。
 
-机构的发行版可以预置自己的中继和登录（插件设置 `organization: { relay, oidcProfileId }`，`oidcProfileId` 是 [dsh-oidc](../dsh-oidc/README.md) 中的机构配置）。这时设置页不显示中继和接入密钥：登录机构账号并勾选“允许远程访问”即可，退出登录后远程访问随之停止。
+机构的发行版可以预置自己的中继和登录（插件设置 `organization: { relay, oidcProfileId }`，`oidcProfileId` 是 [dsh-oidc](../dsh-oidc/README.md) 中的机构配置）。这时设置页默认使用机构账号：显示登录状态，未登录时可直接登录，登录后勾选“允许远程访问”即可，退出登录后远程访问随之停止。中继由发行版决定，设置页不显示也不能修改。用户也可以改选“使用自己的中继服务器”，填写中继和接入密钥。
 
 机构登录模式还要求宿主安装提供 `identityToken(profileID)` 接口的 `@eduwork/dsh-oidc@0.3.1` 或后续兼容版本；旧版 `0.3.0` 不包含该接口。使用接入密钥的独立部署不依赖 OIDC 插件。
 
