@@ -6,7 +6,9 @@
 // Anything the contract cannot carry is reported, never dropped silently: a
 // feed that could only partly be read is applied as a partial snapshot (no
 // removals), and structures without a source-event equivalent are listed in
-// `degraded` so a person can see what the calendar is not showing.
+// `degraded` so a person can see what the calendar is not showing. One-off
+// moves (`RECURRENCE-ID`) are carried these days, so a reschedule is no longer
+// degradation — the list stays for whatever a future format cannot express.
 import { parseIcs } from '@eduwork/dsh-calendar/ics'
 
 const CARRIED_FIELDS = ['end', 'location', 'description', 'recurrence']
@@ -30,10 +32,13 @@ export const icsAdapter = {
       const event = { uid: record.uid, title: record.title, start: record.start }
       for (const field of CARRIED_FIELDS) if (record[field] !== undefined) event[field] = record[field]
       if (record.exceptions?.length) event.cancelledDates = [...record.exceptions]
+      // A moved occurrence travels with its series as an override, the same
+      // statement the stored record keeps — so a rescheduled class shows at its
+      // new time instead of the series' regular one. An override that changed
+      // nothing (the reader kept only the date) says nothing and is left out.
+      const overrides = (record.overrides ?? []).filter(entry => Object.keys(entry).length > 1)
+      if (overrides.length) event.overrides = overrides
       events.push(event)
-      // A moved occurrence stays with its series until the contract learns to
-      // carry it; the series keeps its regular time and the reader is told.
-      if (record.overrides?.length) degraded.push({ uid: record.uid, reason: `该日程有 ${record.overrides.length} 处单次时间调整暂不支持，按常规时间显示` })
     }
     return { events, skipped, degraded }
   },

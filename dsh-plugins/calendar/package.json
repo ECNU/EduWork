@@ -15,7 +15,12 @@
     "./remote": "./lib/typert.remote-client.js",
     "./package.json": "./package.json"
   },
-  "files": ["lib/**/*.js", "skills/**/*", "README.md", "README_EN.md"],
+  "files": [
+    "lib/**/*.js",
+    "skills/**/*",
+    "README.md",
+    "README_EN.md"
+  ],
   "scripts": {
     "build:client": "node ./build-client.mjs",
     "test": "node --check lib/client.js && node test/support/bundle-panel.mjs && node --test test/*.test.mjs",
@@ -38,21 +43,24 @@
   "chatecnuWork": {
     "schemaVersion": 1,
     "kind": "ui-extension",
-    "uses": ["sidebar.panellist", "main"],
+    "uses": [
+      "sidebar.panellist",
+      "main"
+    ],
     "replaces": [],
     "removable": true
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": ">=4.0.2 <4.1.0",
-    "@deepseek-ai/dsh-api-remotes": ">=0.1.5-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-client-ui-primitives": ">=0.1.5-rc.2 <0.2.2",
-    "@deepseek-ai/dsh-client-ui-renderer": ">=0.1.2-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-client-ui-layout": ">=0.1.2-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-client-ui-sidebar": ">=0.1.2-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-storage-domain": ">=0.1.5-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-permission-presets": ">=0.1.5-rc.1 <0.2.2",
-    "@deepseek-ai/dsh-typert-protocol": ">=0.1.5-rc.1 <0.2.2",
+    "@deepseek-ai/dsh-api-remotes": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.1.5-rc.2 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.1.2-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-client-ui-layout": ">=0.1.2-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-client-ui-sidebar": ">=0.1.2-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-storage-domain": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-tools": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-permission-presets": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.1.5-rc.1 <0.2.2 || >=0.1.5-rc.1 <0.1.6 || >=0.2.0-rc.1 <0.2.1 || >=0.2.1-alpha.2 <0.2.2",
     "react": "^18.2.0",
     "zod": "^4.4.3"
   }

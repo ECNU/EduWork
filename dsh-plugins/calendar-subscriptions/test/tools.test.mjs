@@ -99,7 +99,7 @@ test('list reports the feeds as the service sees them', { skip: !runtime }, asyn
   const { byName } = await harness(service())
   const output = await byName('calendar_subscriptions').execute({})
   assert.deepEqual(output.feeds, [{
-    id: 'abc123', label: '中国节假日', url: 'https://example.test/holidays.ics', intervalHours: 24, enabled: true,
+    id: 'abc123', label: '中国节假日', url: 'https://example.test/holidays.ics', format: 'ics', intervalHours: 24, enabled: true,
     lastSuccessAt: '2026-10-27T08:00:00.000Z',
   }])
 })

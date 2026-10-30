@@ -36,14 +36,17 @@ const feedView = feed => ({
   id: feed.id,
   label: feed.label,
   url: feed.url,
+  format: feed.format ?? 'ics',
   intervalHours: feed.intervalHours,
   enabled: feed.enabled,
+  ...(feed.warnings ? { warnings: feed.warnings } : {}),
+  ...(feed.state ? { state: feed.state } : {}),
   ...(feed.lastSuccessAt ? { lastSuccessAt: feed.lastSuccessAt } : {}),
   ...(feed.lastError ? { lastError: feed.lastError } : {}),
 })
 
 const feedLine = feed =>
-  `${feed.id} 「${feed.label}」${feed.enabled ? '' : '（已停用）'} · 每 ${feed.intervalHours} 小时刷新 · 上次成功 ${feed.lastSuccessAt ?? '从未成功'}${feed.lastError ? ` · 最近错误：${feed.lastError}` : ''}`
+  `${feed.id} 「${feed.label}」${feed.enabled ? '' : '（已停用）'} · 每 ${feed.intervalHours} 小时刷新 · 上次成功 ${feed.lastSuccessAt ?? '从未成功'}${feed.lastError ? ` · 最近错误：${feed.lastError}` : ''}${feed.warnings?.length ? ` · 格式提示：${feed.warnings.join('；')}` : ''}`
 
 const feedSchemaTool = {
   type: 'object',
@@ -52,8 +55,11 @@ const feedSchemaTool = {
     id: { type: 'string', required: true },
     label: { type: 'string', required: true },
     url: { type: 'string', required: true },
+    format: { type: 'string', required: true },
     intervalHours: { type: 'number', required: true },
     enabled: { type: 'boolean', required: true },
+    warnings: { type: 'array', items: { type: 'string' } },
+    state: { type: 'string' },
     lastSuccessAt: { type: 'string' },
     lastError: { type: 'string' },
   },
@@ -81,11 +87,13 @@ export function apply(ctx) {
 
   ctx.tools.register(defineTool({
     name: 'calendar_subscribe',
-    description: 'Subscribe the local calendar to a remote ICS feed (for example a public holiday calendar) and fetch it once now. An existing subscription to the same URL is updated instead of duplicated. Reports how many entries landed and anything the feed could not fully express.',
+    description: 'Subscribe to a remote calendar and fetch it once. ICS is built in; academic-calendar and academic-timetable are available when the education plugin is enabled. Existing feeds are updated without duplicates.',
     parameters: {
       url: { type: 'string', required: true, description: 'The feed address, `http(s)`.' },
       label: { type: 'string', description: 'Name shown in the calendar. Defaults to the feed host.' },
       intervalHours: { type: 'number', description: 'Refresh interval in hours, minimum 1. Defaults to 24.' },
+      profileID: { type: 'string', description: 'Optional OIDC profile for a host-approved service URL. Credentials are never stored in subscriptions.' },
+      format: { type: 'string', description: 'Registered format: ics (default), academic-calendar, or academic-timetable.' },
     },
     output: {
       schema: {
