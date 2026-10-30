@@ -1,0 +1,30 @@
+{
+  "name": "@eduwork/dsh-user-guide",
+  "version": "0.1.0-dev.1",
+  "private": true,
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "guide",
+    "README.md",
+    "README_EN.md"
+  ],
+  "license": "MIT",
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
+    "react": "^18.2.0"
+  },
+  "dsh": {
+    "client": {
+      "inject": [],
+      "platform": "web",
+      "immediately": true
+    }
+  }
+}
