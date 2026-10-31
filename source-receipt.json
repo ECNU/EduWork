@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "d6cbf2638f0b0867d9f71d3085f0958187e46e799b0df8371a8123257ae64923",
+  "createdAt": "2026-10-28T07:12:32.328Z",
+  "fileSetSHA256": "493e962f3b31f9cd72555ab932a6aa5e21b1e4cdf5516ab7e271694913c9dc7f",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "68c211de093aea636006f47efd8ae7c0b315aac99caef54bfc9b4e570ac14a78"
+      "sha256": "0f1fa51a6c97190d5c09d3c1bec024f5e02562bd8bea4aec9e2250a16875d405"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1261,7 +1261,7 @@
     },
     {
       "path": "dsh-electron/src/legacy-migration.mjs",
-      "sha256": "a8a5e04c5e010563d184f2cee91455461899d944834f09f55218229c2d966f44"
+      "sha256": "221cd5c3ecd07d8340663c75108fec4027f87621fedbeff101761aae970ebdec"
     },
     {
       "path": "dsh-electron/src/lifecycle.mjs",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "cf2f662dfb82d22e3736e1a679ac7d27c76704e9e55c9bc3ca5df9e97c71e80c"
+      "sha256": "616d6b802500846b6a23146a4c75a9ef407f960e69ebdbedb22b8731604d4d57"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1445,7 +1445,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "c348bfa496e42b9246ef870e030b3036b0088d4809be5d04d60b3adddf4714e1"
+      "sha256": "e684a36405861deecc09e840fd7a12945ca1176a7dba6e8c9061cd87771c4e43"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",
