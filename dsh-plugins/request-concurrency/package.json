@@ -4,7 +4,7 @@
   "type": "module",
   "main": "lib/index.js",
   "files": ["lib", "README.md", "LICENSE"],
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.2",
     "@deepseek-ai/dsh-llm": "0.1.5-rc.2",

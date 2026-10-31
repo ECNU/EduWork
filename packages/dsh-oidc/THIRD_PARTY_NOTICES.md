@@ -2,7 +2,7 @@
 
 **简体中文** | [English](THIRD_PARTY_NOTICES.en.md)
 
-`dsh-oidc` 使用 MIT 许可证，并与以下直接声明的软件包互操作。精确版本记录在 `package-lock.json` 中；间接依赖的许可证文件保留在各自发布包内。
+`dsh-oidc` 的原创贡献使用木兰 PSL v2，历史 MIT 授权保留，详见 [许可范围](LICENSING.md)，并与以下直接声明的软件包互操作。精确版本记录在 `package-lock.json` 中；间接依赖的许可证文件保留在各自发布包内。
 
 ## 运行时 Peer（源码未复制进本仓库）
 

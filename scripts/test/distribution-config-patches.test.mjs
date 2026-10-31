@@ -268,6 +268,9 @@ test('real source assembly retains installed bundle defaults and disabled instru
     '--host', process.env.EDUWORK_TEST_HOST, '--output', product, '--edition', edition], { stdio: 'pipe', windowsHide: true })
   const boot = await import(pathToFileURL(createRequire(join(product, 'd/package.json')).resolve('@deepseek-ai/dsh-app-boot')).href)
   const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+  for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md']) {
+    assert.deepEqual(await readFile(join(product, 'resources/licenses/EduWork', name)), await readFile(join(source, name)))
+  }
   assert.ok(identity.bundles.includes('@eduwork/dsh-annotation'))
   assert.ok(!identity.bundles.includes('@eduwork/dsh-remote-access'))
   assert.ok(!identity.optionalBundles.includes('@eduwork/dsh-remote-access'))

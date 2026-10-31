@@ -4,5 +4,5 @@
   "type": "module",
   "main": "lib/index.js",
   "files": ["lib", "README.md", "LICENSE"],
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }

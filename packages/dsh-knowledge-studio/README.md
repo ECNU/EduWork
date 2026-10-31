@@ -72,7 +72,7 @@ Office 需要另行准备 Python 3.12+ 和共享包的 `python/requirements.txt`
 
 Office 处理支持文档中列出的结构化功能，不承诺完整 Office 排版、宏或演示动画编辑；公式重算复用官方 LibreOffice Kit。字幕按实际语音片段同步，不承诺逐字时间戳。可编辑视频工程会执行工作区 React 代码，只应渲染可信工程。
 
-项目代码按 [MIT](LICENSE) 提供。Remotion、Chromium、PDF.js 和其他依赖保留自己的许可；MIT 不覆盖它们的全部使用条件。见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [配乐来源](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/packages/artifact-services/media/BGM-USAGE.md)。
+项目原创贡献按[木兰 PSL v2](LICENSE)提供，历史 MIT 代码的适用范围见 [LICENSING.md](LICENSING.md)。Remotion、Chromium、PDF.js 和其他依赖保留自己的许可；项目代码许可不覆盖它们的全部使用条件。见 [第三方说明](THIRD_PARTY_NOTICES.md) 和 [配乐来源](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/packages/artifact-services/media/BGM-USAGE.md)。
 
 平台支持取决于已准备的 Office、语音与媒体运行环境，要求见[平台说明](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/packages/artifact-services/docs/PLATFORMS.md)。
 
