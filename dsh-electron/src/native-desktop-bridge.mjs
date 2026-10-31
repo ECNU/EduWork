@@ -11,7 +11,7 @@ export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
-export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand }) {
+export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand, bootHint }) {
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -86,6 +86,16 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       if (window && !window.isDestroyed() && event.sender === window.webContents
         && event.senderFrame === event.sender.mainFrame && typeof bootBrand === 'function') value = bootBrand()
     } catch { /* A label failure must never block the page. */ }
+    event.returnValue = value
+  })
+  ipcMain.on('eduwork:boot-hint', event => {
+    // Fixed advice and the local log folder only; never Host state.
+    let value = ''
+    try {
+      const window = getWindow()
+      if (window && !window.isDestroyed() && event.sender === window.webContents
+        && event.senderFrame === event.sender.mainFrame && typeof bootHint === 'function') value = bootHint()
+    } catch { /* A hint failure must never block the page. */ }
     event.returnValue = value
   })
   ipcMain.handle(DESKTOP_IPC.browserAcquire, (event, workspace) => { owner(event); return guests.acquire(event.sender, workspace) })
