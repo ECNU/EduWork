@@ -62,14 +62,31 @@ let confirmQuit = async () => true
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: async () => {
+    // Hide first: stopping the Host makes a visible workbench flash
+    // 「重新连接中」 during Cmd+Q until the windows are finally destroyed.
+    // A hidden macOS fullscreen window leaves its empty Space until the process exits.
+    for (const window of BrowserWindow.getAllWindows()) if (!window.isDestroyed()) {
+      if (process.platform === 'darwin' && window.isFullScreen()) window.destroy()
+      else window.hide()
+    }
+    // Everything visible goes now: the Host may take seconds to stop, and the
+    // pet, the tray icon and the Dock icon lingering that long reads as a slow quit.
+    desktopPet?.close()
+    tray?.destroy(); tray = undefined
+    if (process.platform === 'darwin') app.dock?.hide()
     await directoryPicker.close()
     await stopDesktopServices()
-    desktopPet?.close()
+    // A restart or updater handoff already relaunches; a second relaunch opens two copies.
+    if (reopenAfterQuit && !desktopExit.relaunchRequested && !desktopExit.installerOwnsQuit) app.relaunch()
     taskNotifications?.close()
-    tray?.destroy(); tray = undefined
   },
   relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
-  quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
+  quit: () => app.quit(), failed: error => {
+    desktopHostLog(`[desktop:quit] ${error.message}\n`)
+    // Never leave a hidden, still-running app after a failed teardown.
+    if (process.platform === 'darwin') void app.dock?.show()
+    if (mainWindow && !mainWindow.isDestroyed()) mainWindow.show()
+  },
 })
 export function setDesktopQuitGuard(guard) { confirmQuit = guard }
 export function restartDesktop() {
@@ -82,6 +99,14 @@ export function stopDesktopServices() {
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
 export function isQuitting() { return desktopExit.closing || lifecycle.closing }
+// Opening the app again while it quits must not show the hidden workbench of
+// the stopping Host (it only says 「重新连接中」). Start afresh once it has exited.
+let reopenAfterQuit = false
+export function deferReopenWhileQuitting() {
+  if (!isQuitting()) return false
+  reopenAfterQuit = true
+  return true
+}
 const activationWindows = () => [progressWindow, updateCompleted || startupMessage ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
@@ -102,7 +127,7 @@ export function configureEduworkPaths() {
   process.env.DSH_HOME = paths.home
   process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
-  attachAppActivation({ app, windows: activationWindows })
+  attachAppActivation({ app, deferred: deferReopenWhileQuitting, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
   // user quits while configuration is still being prepared.
   app.on('window-all-closed', () => { if (process.platform !== 'darwin') app.quit() })

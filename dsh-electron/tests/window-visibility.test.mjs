@@ -34,6 +34,13 @@ test('clicking the macOS Dock icon restores the first available startup or main 
   assert.deepEqual(available.calls, ['restore', 'show', 'focus'])
 })
 
+test('a Dock click while quitting leaves the hidden window alone', () => {
+  const f = fixture()
+  attachAppActivation({ app: f.app, platform: 'darwin', windows: () => [f.window], deferred: () => true })
+  f.app.emit('activate')
+  assert.deepEqual(f.calls, [])
+})
+
 test('macOS close hides the window even when the tray is unavailable', () => {
   const f = fixture()
   assert.equal(f.close(), true)
