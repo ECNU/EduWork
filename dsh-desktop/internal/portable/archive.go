@@ -337,7 +337,7 @@ func (a *Archive) Extract(ctx context.Context, target string, progress Reporter)
 		return "", e
 	}
 	if err := renameDirectory(ctx, p, stage, base, progress); err != nil {
-		return "", fmt.Errorf("安装文件已解压，但无法完成目录重命名；请检查占用程序、目录权限或安全软件记录（%s → %s）：%w", filepath.Join(parent, stage), target, err)
+		return "", fmt.Errorf("安装文件已解压，但无法完成目录重命名。常见原因是安全软件仍在扫描或拦截：请在安全软件中信任本安装程序后重试，或暂时关闭实时防护；也可换一个安装目录，并确认该目录没有被资源管理器或同步盘占用（%s → %s）：%w", filepath.Join(parent, stage), target, err)
 	}
 	stage = ""
 	report(progress, 100, "安装完成，可以启动应用了。")

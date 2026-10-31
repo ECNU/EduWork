@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import { runInNewContext } from 'node:vm'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { DesktopLifecycle } from '../src/lifecycle.mjs'
-import { startupFailurePage, updaterStartupError } from '../src/startup-failure.mjs'
+import { startupFailurePage, updaterStartupError, offlineConfiguration } from '../src/startup-failure.mjs'
 
 const settings = { productName: 'Synthetic EduWork', version: '0.0.0-test', config: 'C:\\Synthetic\\config\\eduwork.jsonc' }
 const executable = 'C:\\Synthetic with spaces\\resources\\update\\EduWork-Updater.exe'
@@ -110,7 +110,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = fals
     contentUpdates: { close: () => events.push('content-abort'), rollback: () => wait('rollback', stage === 'rollback' && rollbackResult),
       importOffline: () => { events.push('import'); return wait('import') } },
     retryPublisherContent: () => wait('retry'),
-    migrationLaunch: undefined, writeMigrationHealth: async () => {}, startupFailurePage,
+    migrationLaunch: undefined, writeMigrationHealth: async () => {}, startupFailurePage, offlineConfiguration,
     removeWindowMenu() {}, attachWindowVisibility() {}, tray: undefined, mainWindow: undefined,
     mainWindowPresented: false, startupMessage: '', nativeTheme: { shouldUseDarkColors: true },
     dialog: { showOpenDialog: () => wait('selection', { canceled: false, filePaths: ['/synthetic/offline.json'] }),
@@ -190,3 +190,12 @@ for (const stage of ['rollback', 'show']) {
     if (stage === 'rollback') assert.equal(f.events.includes('window-created'), false)
   })
 }
+
+test('only network failures fetching publisher configuration count as offline', () => {
+  const required = message => Object.assign(new Error(message), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  assert.equal(offlineConfiguration(required('暂时无法连接配置服务，请检查网络后重试。')), true)
+  assert.equal(offlineConfiguration(required('连接配置服务超时，请检查网络或代理设置（UND_ERR_CONNECT_TIMEOUT）')), true)
+  for (const message of ['配置服务的 HTTPS 证书校验失败（CERT_HAS_EXPIRED）', '当前渠道尚无可用的发行配置，请重试或联系发行方。'])
+    assert.equal(offlineConfiguration(required(message)), false)
+  assert.equal(offlineConfiguration(new Error('暂时无法连接配置服务')), false)
+})

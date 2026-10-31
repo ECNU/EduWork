@@ -32,7 +32,7 @@ import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
-import { startupFailurePage } from './startup-failure.mjs'
+import { startupFailurePage, offlineConfiguration } from './startup-failure.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -441,7 +441,10 @@ export async function showDesktopFailure(error) {
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   if (isQuitting()) return
   if (rolledBack) { restartDesktop(); return }
-  await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
+  // The new version started; only the configuration service was unreachable.
+  // Rolling back cannot fix the network, and racing the open window can leave a
+  // half-replaced install. Confirm health and let the failure page offer a retry.
+  await writeMigrationHealth(migrationLaunch,offlineConfiguration(error)?'ready':'failed',offlineConfiguration(error)?'':'新版未完成启动，旧版数据仍保留').catch(()=>{})
   if (isQuitting()) return
   const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (!progressWindow || progressWindow.isDestroyed()) {

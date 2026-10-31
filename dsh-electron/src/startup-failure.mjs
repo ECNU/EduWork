@@ -6,6 +6,13 @@ export function updaterStartupError(executable, cause) {
   })
 }
 
+// Publisher configuration could not be fetched because the network failed.
+// Certificate and content errors are excluded: those may come from the new version.
+const OFFLINE = /连接配置服务超时|无法解析配置服务地址|与配置服务的连接被拒绝或中断|暂时无法连接配置服务/u
+export function offlineConfiguration(error) {
+  return error?.code === 'EDUWORK_BOOTSTRAP_REQUIRED' && OFFLINE.test(String(error.message ?? ''))
+}
+
 export function startupFailurePage({ error, productName, version, config }) {
   const causes = []
   for (let current = error; current && causes.length < 8; current = current.cause) causes.push(current)

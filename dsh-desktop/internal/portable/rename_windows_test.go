@@ -95,6 +95,8 @@ func TestRenameRefusesDestinationCreatedDuringRetry(t *testing.T) {
 func TestPermanentLockHasBoundedWait(t *testing.T) {
 	root, h := lockedDirectory(t)
 	defer windows.CloseHandle(h)
+	defer func(previous time.Duration) { renameTimeout = previous }(renameTimeout)
+	renameTimeout = 5 * time.Second
 	start := time.Now()
 	err := renameDirectory(context.Background(), root, "stage", "installed", nil)
 	if err == nil || !transientRenameError(err) {
