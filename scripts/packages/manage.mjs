@@ -25,6 +25,7 @@ if (action === 'list') {
   if (action === 'check') {
     const scripts = {
       'dsh-annotation': ['check'],
+      'dsh-side-chat': ['check'],
       'dsh-desktop-pet': ['check'],
       'dsh-literature': ['check'],
       'dsh-oidc': ['check'],

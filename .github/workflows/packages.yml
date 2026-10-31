@@ -49,10 +49,15 @@ jobs:
       - if: matrix.package == 'dsh-knowledge-studio'
         run: python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt
       - run: node scripts/packages/manage.mjs install ${{ matrix.package }}
+      - name: Install locked DSH Runtime for side-chat checks
+        if: matrix.package == 'dsh-side-chat'
+        working-directory: third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
+        run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/packages/manage.mjs check ${{ matrix.package }}
         env:
           DSH_OFFICE_PYTHON: ${{ steps.python.outputs.python-path }}
           PYTHONUTF8: '1'
+          EDUWORK_SIDE_CHAT_RUNTIME: ${{ matrix.package == 'dsh-side-chat' && format('{0}/third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime', github.workspace) || '' }}
       - run: node scripts/packages/manage.mjs pack ${{ matrix.package }}
       - if: matrix.package == 'dsh-knowledge-studio'
         run: node scripts/packages/manage.mjs pack dsh-artifact-services
