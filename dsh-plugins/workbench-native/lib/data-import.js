@@ -1,11 +1,18 @@
 import { constants, createReadStream } from 'node:fs'
 import { readdir, lstat, realpath, mkdir, copyFile, readFile, writeFile, rename, rm } from 'node:fs/promises'
-import { join, resolve, relative, isAbsolute, dirname, basename } from 'node:path'
+import { join, resolve, relative, isAbsolute, dirname, basename, parse } from 'node:path'
 import { createHash, randomUUID } from 'node:crypto'
 import { findSessionCandidates, inspectSession, loadImportFormats, prepareImportCatalogs, sourceVersion } from './import-inspection.js'
 
 const digest = value => createHash('sha256').update(value).digest('hex')
 const inside = (root, path) => { const r = relative(root, path); return r === '' || (!r.startsWith('..') && !isAbsolute(r)) }
+// A workspace outside the program root is the user's own project and stays in
+// place, but old session data must not make a filesystem root or a DSH data
+// directory the agent's workspace.
+export const keepsExternalWorkspace = (cwd, dataHomes) => {
+  const path = resolve(cwd)
+  return path !== parse(path).root && !dataHomes.some(home => inside(resolve(home), path))
+}
 async function exists(path) { try { return await lstat(path) } catch (e) { if (e.code === 'ENOENT') return null; throw e } }
 async function hashFile(path) { const h = createHash('sha256'); for await (const chunk of createReadStream(path)) h.update(chunk); return h.digest('hex') }
 const ignored = new Set(['node_modules', '.git', '.venv', '__pycache__'])
@@ -233,6 +240,9 @@ export class DataImporter {
           } else if (!isAbsolute(cwd) || !(await exists(cwd))?.isDirectory()) {
             cwd = join(home, 'imported-workspaces', digest(header.cwd).slice(0, 16))
             mappings.push([header.cwd, cwd]); job.warnings.push(`原工作区不在此机器上：${header.cwd}。会话已导入，项目文件需另外复制。`)
+          } else if (!keepsExternalWorkspace(cwd, [home, ...homes])) {
+            cwd = join(home, 'imported-workspaces', digest(header.cwd).slice(0, 16))
+            mappings.push([header.cwd, cwd]); job.warnings.push(`原工作区 ${header.cwd} 是磁盘根目录或数据目录，不能作为工作区。会话已导入到新的空工作区。`)
           }
           await noLinks(cwd); await mkdir(cwd, { recursive: true })
           if (typeof header.cwd === 'string' && header.cwd && header.cwd !== cwd) mappings.push([header.cwd, cwd])
