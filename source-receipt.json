@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-27T10:18:49.143Z",
-  "fileSetSHA256": "66f30ee2eb99457d7247c6ddd8885479280adb31b4799f885587bb89e5a79e30",
+  "fileSetSHA256": "08b01e4a8a7ee16c6567f4f37c64b430129f2d64d87bc6707e7a4a4d48adedbd",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "7da2a28a5d7571be1c166a593b9b8236140b2be682ab6acb39b5843181b1a78c"
+      "sha256": "68c211de093aea636006f47efd8ae7c0b315aac99caef54bfc9b4e570ac14a78"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
