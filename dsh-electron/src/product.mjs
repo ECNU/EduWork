@@ -17,6 +17,7 @@ import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
+import { prepareWritableRoot } from './writable-root.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
@@ -84,15 +85,27 @@ export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-
 export function isQuitting() { return desktopExit.closing || lifecycle.closing }
 const activationWindows = () => [progressWindow, updateCompleted || startupMessage ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
-export function configureEduworkPaths() {
+export async function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
   paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
+    localAppData: process.platform === 'win32' ? process.env.LOCALAPPDATA : undefined,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
+  let writableRootCreated = false
+  if (paths.layout === 'installed') {
+    try {
+      writableRootCreated = (await prepareWritableRoot({ root: paths.writableRoot, distribution: settings.distribution,
+        product: paths.product, productVersion: settings.productVersion })).created
+    } catch (error) {
+      try { dialog.showErrorBox('EduWork 无法使用数据目录', `${error.message}\n\n程序目录：${paths.root}\n目标：${paths.writableRoot}`) } catch {}
+      throw error
+    }
+  }
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  desktopHostLog(`[desktop] data layout=${paths.layout}; writable root=${paths.writableRoot}${writableRootCreated ? ' (initialized)' : ''}\n`)
   // Successful sandboxed startup is the capability check. Lack of WRITE_DAC
   // or one expected ACE does not prove Electron cannot run. Installation and
   // update still provision runtime access; ordinary startup never changes ACLs.
@@ -169,7 +182,7 @@ async function prepareDesktop() {
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
-  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+  if ((process.platform === 'darwin' || paths.layout === 'installed') && settings.configurationOwnership === 'user')
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
@@ -182,7 +195,7 @@ async function prepareDesktop() {
   const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-')?'development':'stable')})
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
-  const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
+  const priorUpdates = await readFile(join(dirname(paths.config),'update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })
   // A publisher seed may contain only a release preference. Keep its trusted
   // source as a fallback; explicit package and user choices still take priority.
@@ -221,14 +234,19 @@ async function prepareDesktop() {
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }
+  const installedLayout = paths.layout === 'installed'
+  const softwareUpdateSupported = process.platform === 'darwin'
+    ? settings.macSparkle?.enabled === true
+    : process.platform === 'win32' && !installedLayout
+  const startSoftwareUpdates = process.platform === 'darwin'
+    ? ({policy}) => startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
+        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
+    : installedLayout ? undefined : ({policy,applyScheduled}) => startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
+        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
-    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
-    start:({policy,applyScheduled})=>process.platform==='darwin'
-      ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
-        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
-      : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
-        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
+    supported:softwareUpdateSupported,onPolicy:saveUpdatePolicy,
+    start:startSoftwareUpdates})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
     beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
@@ -296,14 +314,14 @@ async function prepareDesktop() {
     workspaceAccess: process.platform === 'win32' ? (path, signal) => repairWorkspaceAccess(path, { productName: settings.productName, root: paths.root,
       protectedRoots: [paths.home, paths.userData], out: join(paths.logs, 'workspace-access'), log: desktopHostLog, signal,
       showMessageBox: options => mainWindow && !mainWindow.isDestroyed() ? dialog.showMessageBox(mainWindow, options) : dialog.showMessageBox(options) }) : undefined,
-    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
+    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, dataRoot: paths.updateDataRoot, product: paths.product, home: paths.home,
       updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
     openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
       process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
-  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
+  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dataLayout: paths.layout, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
   lifecycle.check()
   return { profile: prepared.profile, node: paths.node }
 }

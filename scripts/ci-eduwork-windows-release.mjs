@@ -28,11 +28,16 @@ import { deltaBaseArchives } from './update-delta-bases.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
+export function validateDataLayoutForBuild(dataLayout, development) {
+  if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
+  if (dataLayout === 'installed' && !development) throw new Error('Installed data layout is only allowed for development artifacts')
+}
+
 const USAGE =
   'Use --core-root --edition-root --distribution-config --version --output [--release-notes-file <docs/releases/*.md>] ' +
   '[--release-notes-approved] [--development] [--no-verify-snapshot] [--runtime-source <dir>] [--upstream-source <dir>] ' +
   '[--jobs N] [--reuse-workspace] [--cache-root <dir>] [--digest-budget <bytes>] [--lock-wait <seconds>] ' +
-  '[--recipe pinned-source] [--delta-bases <dir>] ' +
+  '[--recipe pinned-source] [--delta-bases <dir>] [--data-layout portable|installed] ' +
   '(--jobs 0 = as many as the graph allows)'
 
 export async function ciEduworkWindowsRelease({
@@ -55,9 +60,11 @@ export async function ciEduworkWindowsRelease({
   lockWaitMs = 0,
   recipe = '',
   deltaBases = '',
+  dataLayout = 'portable',
 } = {}) {
   recipe = desktopBuildRecipe(recipe)
   assertPinnedNodeVersion()
+  validateDataLayoutForBuild(dataLayout, development)
   if (!isWindows) throw new Error('The Windows release pipeline requires a Windows runner')
   coreRoot = fullPath(coreRoot)
   editionRoot = fullPath(editionRoot)
@@ -120,6 +127,7 @@ export async function ciEduworkWindowsRelease({
     automaticUpdates: desktopVersion(version).automaticUpdates,
     verifyPublisherBootstrap: sourcePlan.verifyPublisherBootstrap,
     deltaBases: bases,
+    dataLayout,
   }
 
   // The publish stage writes the final receipt, so it needs everything that
@@ -212,6 +220,7 @@ if (isMainModule(import.meta.url)) {
       'lock-wait': { type: 'string' },
       recipe: { type: 'string' },
       'delta-bases': { type: 'string' },
+      'data-layout': { type: 'string' },
     },
   })
   if (!values['core-root'] || !values['edition-root'] || !values['distribution-config'] || !values.version || !values.output) {
@@ -236,5 +245,6 @@ if (isMainModule(import.meta.url)) {
     lockWaitMs: Number(values['lock-wait'] ?? 0) * 1000,
     recipe: values.recipe ?? '',
     deltaBases: values['delta-bases'] ?? '',
+    dataLayout: values['data-layout'] ?? 'portable',
   })
 }

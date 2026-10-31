@@ -90,8 +90,8 @@ function configurationSummary(settings) {
   }
 }
 
-export async function exportDiagnostics({ config, version, shell, logs, root, product, home, updateStatus, configurationOverlay }) {
-  const paths = { PROGRAM: root, PRODUCT: product, DSH_HOME: home, LOGS: logs }
+export async function exportDiagnostics({ config, version, shell, logs, root, dataRoot = root ? join(root, 'data') : undefined, product, home, updateStatus, configurationOverlay }) {
+  const paths = { PROGRAM: root, PRODUCT: product, DSH_HOME: home, LOGS: logs, ...(dataRoot ? { DATA: dataRoot } : {}) }
   const entries = [], files = [], generatedAt = new Date().toISOString(); let remaining = MAX_TOTAL
   const add = (name, text) => { const body = redactDiagnostic(text, paths); entries.push([name, body]); return body }
   const collect = async (directory, file, target, metadata = false, project) => {
@@ -118,13 +118,15 @@ export async function exportDiagnostics({ config, version, shell, logs, root, pr
     if (remaining <= 0) { files.push({ name: 'logs/' + name, status: 'budget-exhausted' }); continue }
     await collect(logs, name, 'logs/' + name)
   }
-  const marker = value => select(value, ['schemaVersion', 'shell', 'distribution', 'productVersion', 'dshVersion', 'startedAt', 'state', 'phase', 'code', 'error', 'message', 'completedAt', 'imported', 'skipped', 'copied', 'total', 'status'])
+  const marker = value => select(value, ['schemaVersion', 'shell', 'distribution', 'productVersion', 'dataLayout', 'dshVersion', 'startedAt', 'state', 'phase', 'code', 'error', 'message', 'completedAt', 'imported', 'skipped', 'copied', 'total', 'status'])
   await collect(logs, 'desktop-start.json', 'metadata/desktop-start.json', true, marker)
   await collect(home, '.eduwork-migration.json', 'metadata/migration.json', true, marker)
   await collect(home, '.eduwork-desktop-home.json', 'metadata/data-owner.json', true, marker)
-  await collect(root, 'release.json', 'metadata/release.json', true, value => select(value, ['schemaVersion', 'version', 'channel', 'shell', 'product', 'distribution', 'builtAt', 'dshVersion']))
-  await collect(root, 'data/state/update-preferences.json', 'metadata/update-preferences.json', true, value => select(value, ['schemaVersion', 'policy', 'channel']))
-  await collect(root, 'data/state/updates/update-preferences.json', 'metadata/electron-update-preferences.json', true, value => select(value, ['schemaVersion', 'policy', 'channel']))
+  await collect(root, 'release.json', 'metadata/release.json', true, value => select(value, ['schemaVersion', 'version', 'channel', 'shell', 'product', 'distribution', 'dataLayout', 'builtAt', 'dshVersion']))
+  if (dataRoot) {
+    await collect(dataRoot, 'state/update-preferences.json', 'metadata/update-preferences.json', true, value => select(value, ['schemaVersion', 'policy', 'channel']))
+    await collect(dataRoot, 'state/updates/update-preferences.json', 'metadata/electron-update-preferences.json', true, value => select(value, ['schemaVersion', 'policy', 'channel']))
+  }
   await collect(product, 'assembly.json', 'metadata/assembly.json', true, value => select(value, ['schemaVersion', 'version', 'distribution', 'dshVersion', 'dshCommit', 'runtimeSource', 'runtimeMode', 'pluginMode', 'managedPackages', 'localPlugins']))
   await collect(product, 'desktop-resources.json', 'metadata/resources.json', true, value => ({ schemaVersion: value.schemaVersion, platform: value.platform,
     python: select(value.python, ['version', 'environmentLockSHA256']), resources: Object.keys(value.environment ?? {}) }))

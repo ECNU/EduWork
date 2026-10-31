@@ -19,7 +19,7 @@ function startupHarness() {
   const readyStart = source.indexOf('export async function desktopReady(')
   const readyEnd = source.indexOf('\n}\n', readyStart)
   const activationStart = source.indexOf('const activationWindows =')
-  const activationEnd = source.indexOf('export function configureEduworkPaths()', activationStart)
+  const activationEnd = source.indexOf('export async function configureEduworkPaths()', activationStart)
   assert.ok(progressStart >= 0 && messageStart > progressStart && readyEnd > readyStart)
   class FakeWindow extends EventEmitter {
     static windows = []
