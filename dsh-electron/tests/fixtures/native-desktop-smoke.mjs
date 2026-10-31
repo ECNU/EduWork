@@ -221,6 +221,36 @@ app.whenReady().then(async () => {
   assert.ok(nativeMenu().items[0].submenu.items.some(item => item.label === 'Check for Updates…'))
   assert.equal(nativeMenu().items.find(item => item.role === 'editmenu').label, 'Edit')
   assert.equal(nativeMenu().items[0].submenu.items[0].label, `About ${app.getName()}`)
+  // Exercise the real bridge and renderer event with a synthetic guide route.
+  // An absent or failed route must leave the existing application menu intact.
+  const applicationLabels = () => nativeMenu().items[0].submenu.items.map(item => item.label)
+  const withoutGuide = applicationLabels()
+  let guideStatus = 404, guideFetchError = false, guideRequests = 0
+  host.fetch = async request => {
+    guideRequests++
+    assert.equal(request.method, 'HEAD')
+    assert.equal(request.url, 'app://app/eduwork-user-guide/')
+    if (guideFetchError) throw new Error('synthetic guide route failure')
+    return new Response(null, { status: guideStatus })
+  }
+  assert.equal(await bridge.probeUserGuide(), false)
+  assert.deepEqual(applicationLabels(), withoutGuide)
+  guideStatus = 200
+  assert.equal(await bridge.probeUserGuide(), true)
+  const guideItem = nativeMenu().items[0].submenu.items.find(item => item.label === 'User Guide')
+  assert.ok(guideItem)
+  assert.equal(applicationLabels().indexOf('User Guide') + 1, applicationLabels().indexOf('Check for Updates…'))
+  await evaluate(`window.guideOpened = 0; window.addEventListener('eduwork:open-user-guide', () => window.guideOpened++)`)
+  mainWindow.hide()
+  guideItem.click()
+  await until(async () => (await evaluate('window.guideOpened')) === 1)
+  assert.equal(mainWindow.isVisible(), true)
+  guideFetchError = true
+  assert.equal(await bridge.probeUserGuide(), false)
+  assert.deepEqual(applicationLabels(), withoutGuide)
+  assert.equal(guideRequests, 3)
+  delete host.fetch
+  results.push('optional guide route controls the native menu; click shows the window and dispatches its fixed renderer event; route failures preserve the existing menu')
   if (process.platform !== 'darwin') {
     assert.equal(recoveryWindow.isMenuBarVisible(), false)
     recoveryWindow.webContents.sendInputEvent({ type: 'keyDown', keyCode: 'Alt' })

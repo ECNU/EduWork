@@ -1,5 +1,6 @@
 export const SOURCE = 'eduwork-annotation'
 export const MAX_NOTE = 2000
+export const MAX_LIVE_SNAPSHOT = 100_000
 
 const LABEL_CHARS = 16
 
@@ -21,7 +22,8 @@ export function encode(quote, note, origin, context) {
 
 function validContext(value) {
   return typeof value?.before === 'string' && typeof value.after === 'string'
-    ? { before: clean(value.before).slice(-320), after: clean(value.after).slice(0, 320) } : undefined
+    ? { before: clean(value.before).slice(-320), after: clean(value.after).slice(0, 320),
+      ...(typeof value.snapshot === 'string' && value.snapshot.length <= MAX_LIVE_SNAPSHOT ? { snapshot: value.snapshot } : {}) } : undefined
 }
 
 function validOrigin(value) {
