@@ -23,14 +23,15 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])
   assert.deepEqual(changedGroups(['packages/dsh-oidc/src/host/model-provider.ts']), ['dsh-oidc'])
   assert.deepEqual(changedGroups(['packages/dsh-mail/README.md', 'README.md']), [])
-  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 8)
+  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 9)
+  assert.deepEqual(changedGroups(['packages/dsh-annotation/src/client/selection-actions.js']), ['dsh-annotation', 'dsh-side-chat'])
   assert.equal(needsProductBuild(['packages/dsh-oidc/src/host/model-provider.ts', 'docs/PACKAGES.md']), false)
   assert.equal(needsProductBuild(['third_party/npm-015-rc1/dsh-oidc/LOCK.json']), true)
   assert.equal(needsProductBuild(['dsh-host/entry.mjs']), true)
   assert.throws(() => selectPackage('../../private'), /Unknown package/)
 })
-test('nine separate package identities retain registry dependency contracts and product npm locks', async () => {
-  assert.equal(new Set(packages.map(p => p.name)).size, 9)
+test('ten separate package identities retain registry dependency contracts and product npm locks', async () => {
+  assert.equal(new Set(packages.map(p => p.name)).size, 10)
   for (const selected of packages) {
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
@@ -42,7 +43,7 @@ test('nine separate package identities retain registry dependency contracts and 
   const assembly = JSON.parse(await readFile(new URL('../config/assembly.eduwork.json', import.meta.url)))
   for (const selected of packages) {
     const declaration = assembly.externalPackages.find(p => p.name === selected.name)
-    if (selected.id === 'dsh-desktop-pet' || selected.id === 'dsh-annotation' || selected.id === 'dsh-remote-access') {
+    if (selected.id === 'dsh-desktop-pet' || selected.id === 'dsh-annotation' || selected.id === 'dsh-side-chat' || selected.id === 'dsh-remote-access') {
       // DSH 0.2 packages; never add them to the legacy 0.1.x product.
       assert.equal(declaration, undefined)
       continue
@@ -72,6 +73,20 @@ function tarball(files) {
   }
   return gzipSync(Buffer.concat([...records, Buffer.alloc(1024)]))
 }
+
+test('migrated archives retain both the new license and historical MIT grant', async () => {
+  const selected = selectPackage('dsh-oidc')
+  const manifest = { name: selected.name, version: '1.2.3', license: 'MulanPSL-2.0 AND MIT', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory } }
+  const files = { 'package/package.json': JSON.stringify(manifest) }
+  for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) files['package/' + name] = await readFile(new URL(`../packages/dsh-oidc/${name}`, import.meta.url), 'utf8')
+  assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '1.2.3'))
+  for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) {
+    const incomplete = { ...files }
+    delete incomplete['package/' + name]
+    assert.throws(() => inspectArchive(tarball(incomplete), selected, '1.2.3'), /Missing licensing document/)
+  }
+  assert.throws(() => inspectArchive(tarball({ ...files, 'package/LICENSE-MIT': 'License notice removed' }), selected, '1.2.3'))
+})
 test('mail publication binds the dependency inventory to every shipped JS chunk', () => {
   const selected = selectPackage('dsh-mail')
   const manifest = { name: selected.name, version: '0.2.3', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, exports: { '.': './lib/index.js' } }
@@ -101,6 +116,22 @@ test('publication rejects the wrong package, missing entry points and archive tr
   assert.throws(() => inspectArchive(tarball({ 'package/package.json': files['package/package.json'] }), selected, '1.2.3'), /Missing packed export/)
   assert.throws(() => inspectArchive(tarball({ ...files, 'package/../escape.js': 'bad' }), selected, '1.2.3'), /Unsafe archive path/)
   assert.throws(() => inspectArchive(tarball({ ...files, 'package/node_modules/dependency.js': 'bad' }), selected, '1.2.3'), /Unexpected packed file/)
+})
+
+test('conversation packages need their native bundle entry and client in the archive', () => {
+  for (const id of ['dsh-side-chat', 'dsh-annotation']) {
+    const selected = selectPackage(id)
+    const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, dsh: { bundle: { patch: './cordis.patch.yml' } } }
+    const files = Object.fromEntries(['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE'].map(file => ['package/' + file, 'fixture']))
+    files['package/package.json'] = JSON.stringify(manifest)
+    assert.doesNotThrow(() => inspectArchive(tarball(files), selected, '0.1.0'))
+    for (const name of ['cordis.patch.yml', 'lib/client.js']) {
+      const missing = { ...files }; delete missing['package/' + name]
+      assert.throws(() => inspectArchive(tarball(missing), selected, '0.1.0'), /Missing conversation plugin file/)
+    }
+    const noBundle = { ...files, 'package/package.json': JSON.stringify({ ...manifest, dsh: {} }) }
+    assert.throws(() => inspectArchive(tarball(noBundle), selected, '0.1.0'), /Missing native plugin bundle/)
+  }
 })
 
 test('desktop pet publication rejects a package missing a referenced character image', () => {
