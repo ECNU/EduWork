@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "ce2e650226ee21557cc0888206e690a061e129806ddf51061bdf41b0accb7559",
+  "fileSetSHA256": "43d27f125b5fbf3fce121619719bc587ae2fd97098d62101a11c0bb3a3f36fec",
   "files": [
     {
       "path": ".gitattributes",
@@ -3889,7 +3889,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/CHANGELOG.md",
-      "sha256": "661e1c099b16a180ee15134958e0654af6ca68c186cde72e8333c74a2f019239"
+      "sha256": "b6c24e076ceee49990b1a0a8787fdad3d0553c48097575d352c0a03948933be2"
     },
     {
       "path": "packages/dsh-knowledge-studio/cordis.patch.yml",
@@ -4525,7 +4525,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/common.md",
-      "sha256": "4b3b1cd91253e6462c47ac2116bf6a046250d1b8946b213896b5c7bcf6c91690"
+      "sha256": "48a583957599e57c703bd1b23b8b0c93e83d2015a44215d42c4398ee606d160d"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/documents.md",
