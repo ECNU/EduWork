@@ -461,12 +461,14 @@ function withGatewayAuth(Base) {
       for (const [state, flow] of this.flows) if (flow.profileID === profileID) this.flows.delete(state)
       await this.clearGatewayModels(profile)
       this.accountChanged(account(profile, undefined, false))
-      if (session) {
+      // Local access is already gone. Remote revocation is best effort and may
+      // wait on discovery (20 s) and revocation (5 s); do not hold the UI on it.
+      if (session) this.trackRevocation((async () => {
         try {
           const descriptor = await this.discover(profile)
           if (session.binding === fingerprint(profile, descriptor)) await this.revokeGateway(profile, descriptor, session)
         } catch { this.ctx.logger.warn('Gateway logout completed locally; remote revocation could not be confirmed') }
-      }
+      })())
       return account(profile, undefined, false)
     }
   }

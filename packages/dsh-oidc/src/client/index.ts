@@ -112,7 +112,7 @@ function EnterpriseAccountCard({ t, service, configuration }: any) {
       account.status?.state !== 'signed_out' && h('button', {
         type: 'button', disabled: Boolean(account.busy), style: button,
         onClick: () => account.run('logout', () => service.logout(profile.id)),
-      }, t('account.logout')),
+      }, account.busy === 'logout' ? t('menu.processing') : t('account.logout')),
       profile.brand?.supportURL && h('a', { href: profile.brand.supportURL, target: '_blank', rel: 'noopener noreferrer', style: { ...button, textDecoration: 'none' } }, t('account.help'))),
     login.pending && h('p', { role: 'status' }, t('account.waiting'), ' ', h('button', { type: 'button', style: button, onClick: login.cancel }, t('account.cancelLogin'))),
     account.error && h('p', { role: 'alert', style: { margin: '10px 0 0', color: 'var(--dsw-alias-state-error-primary, #a82332)', fontSize: 12 } }, account.error),
