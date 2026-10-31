@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "5eee980e87826baf875ecad332b4f7e592f61b0c36f861341324640b4f880b25",
+  "fileSetSHA256": "d6cbf2638f0b0867d9f71d3085f0958187e46e799b0df8371a8123257ae64923",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "7da2a28a5d7571be1c166a593b9b8236140b2be682ab6acb39b5843181b1a78c"
+      "sha256": "68c211de093aea636006f47efd8ae7c0b315aac99caef54bfc9b4e570ac14a78"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -3893,7 +3893,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/CHANGELOG.md",
-      "sha256": "661e1c099b16a180ee15134958e0654af6ca68c186cde72e8333c74a2f019239"
+      "sha256": "b6c24e076ceee49990b1a0a8787fdad3d0553c48097575d352c0a03948933be2"
     },
     {
       "path": "packages/dsh-knowledge-studio/cordis.patch.yml",
@@ -4529,7 +4529,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/common.md",
-      "sha256": "4b3b1cd91253e6462c47ac2116bf6a046250d1b8946b213896b5c7bcf6c91690"
+      "sha256": "48a583957599e57c703bd1b23b8b0c93e83d2015a44215d42c4398ee606d160d"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/documents.md",
