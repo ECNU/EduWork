@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-27T17:25:12.683Z",
-  "fileSetSHA256": "2511aa591d5faef656df9bcb73aefc89750ec531aec894df4e8c62e7704ed333",
+  "fileSetSHA256": "5f977be31b23ee287dfb3ca811dd8decb6577c0a54d48969770344286b96018e",
   "files": [
     {
       "path": ".gitattributes",
@@ -1137,7 +1137,7 @@
     },
     {
       "path": "dsh-electron/scripts/migrate-portable-to-installed.mjs",
-      "sha256": "1a748cdbf9956898a4b538650d1ecb08e0dcad7fbd9ae6ce16800796e0d16873"
+      "sha256": "ee626332e875641ebcfcad2703d33d959ad8c8db7b12bf895f9c922c519ea0fe"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -1457,7 +1457,7 @@
     },
     {
       "path": "dsh-electron/tests/installed-migration.test.mjs",
-      "sha256": "124e0298acf1001b3019915a6e24fd73b36d11980ec6f04638819632567c7615"
+      "sha256": "75ed0c0c73e73f7661b1d3206cf7e613ba03a7fb874780f46dade42ac2875003"
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
