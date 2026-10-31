@@ -126,16 +126,5 @@ export async function writeMigrationHealth(launch,state,message='') {
   const value=state==='ready'?'ok\n':JSON.stringify({schemaVersion:1,state,message})+'\n'
   const temporary=launch.healthFile+'.'+randomUUID()+'.tmp'
   await writeFile(temporary,value,{mode:0o600})
-  try { await replaceHealthFile(temporary,launch.healthFile) }
-  catch(error) { await rm(temporary,{force:true}).catch(()=>{}); throw error }
-}
-
-// The Windows updater polls health.ok with an open handle that does not allow
-// deletion, so replacing it can briefly fail with EPERM/EACCES/EBUSY. Retry
-// until the poll releases the file instead of failing the update handshake.
-export async function replaceHealthFile(temporary,target,{move=rename,sleep=ms=>new Promise(r=>setTimeout(r,ms)),attempts=50}={}) {
-  for(let attempt=1;;attempt++) {
-    try { return await move(temporary,target) }
-    catch(error) { if(attempt>=attempts||!['EPERM','EACCES','EBUSY'].includes(error?.code))throw error; await sleep(Math.min(20*attempt,200)) }
-  }
+  await rename(temporary,launch.healthFile)
 }

@@ -75,6 +75,13 @@ for (const folder of new Set(sourceFolders)) {
 const mediaTemplate = await verifyMediaTemplate(join(modules, '@eduwork/dsh-artifact-services'))
 if (mediaTemplate.sha256 !== sourceMediaTemplate.sha256) throw new Error('Assembled media template differs from the published package')
 await cp(join(repository, 'config/desktop'), join(paths.output, 'resources/desktop'), { recursive: true })
+// This assembler does not consume generic.resources. Carry the source license
+// scope alongside the product without changing any locked npm package bytes.
+const productLicenses = join(paths.output, 'resources/licenses/EduWork')
+await mkdir(productLicenses, { recursive: true })
+for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md']) {
+  await cp(join(paths.source, name), join(productLicenses, name))
+}
 await copySourceSkills({ repository, packages: modules, skills: distribution.skills, output: join(paths.output, 'skills') })
 const insert = [
   { id: 'eduwork-artifact-services', name: '@eduwork/dsh-artifact-services/dsh', config: { skills: false, images: { enabled: false } } },

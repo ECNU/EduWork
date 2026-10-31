@@ -6,7 +6,7 @@
   "files": [
     "lib"
   ],
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.2",
     "@deepseek-ai/schemastery": ">=3.18.0 <3.19.0",
