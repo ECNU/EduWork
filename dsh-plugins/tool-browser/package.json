@@ -28,5 +28,5 @@
     "@deepseek-ai/dsh-web-search-deepseek": "0.1.5-rc.1",
     "playwright-core": "1.61.1"
   },
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }

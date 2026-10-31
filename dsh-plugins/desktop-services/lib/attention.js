@@ -31,7 +31,7 @@ export class DesktopAttention {
   removeSession(sessionId, onlyHuman = false) {
     for (const row of this.items.values()) if (row.sessionId === sessionId && (!onlyHuman || human(row))) this.remove(row.key)
   }
-  event(session, event, isRoot) {
+  event(session, event, isRoot, quiet = false) {
     const sessionId = String(session.id), data = event.data
     if (event.type === 'session/title') this.titles.set(sessionId, safeTitle(data.title))
     if (!isRoot) return
@@ -49,6 +49,9 @@ export class DesktopAttention {
     if (this.turns.get(sessionId) !== data.turn) return
     this.turns.delete(sessionId)
     this.changed()
+    // A quiet session still raises approvals above; only settling a turn
+    // would queue work the user never has to come back to.
+    if (quiet) return
     const kind = data.reason?.kind, goal = this.goal(sessionId)
     // A background subagent wakes this conversation for another turn when it settles.
     if (kind === 'completed' && [...this.delegated.values()].includes(sessionId)) return
@@ -147,7 +150,10 @@ export function observeDesktopAttention(ctx, attention) {
   }
   ctx.on('session/event', (session, event) => {
     const isRoot = root(session)
-    attention.event(session, event, isRoot)
+    // Sessions created as side chats stay quiet for completion/failure notices,
+    // including after archival and restoration as ordinary conversations.
+    // Approvals and questions still notify because those wait on the user.
+    attention.event(session, event, isRoot, String(session.id).startsWith('side-'))
     if (!isRoot && (event.type === 'turn/start' || event.type === 'turn/end')) attention.subagent(String(session.id), event.type, owner(session))
   })
   ctx.on('session/disposed', session => {

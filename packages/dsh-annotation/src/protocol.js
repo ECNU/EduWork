@@ -20,11 +20,13 @@ function item(value) {
   if (source !== undefined && (!record(source, ['sessionId', 'messageId']) || typeof source.sessionId !== 'string' || !source.sessionId
     || typeof source.messageId !== 'string' || !source.messageId)) return undefined
   const context = value.context
-  if (context !== undefined && (!record(context, ['before', 'after']) || typeof context.before !== 'string' || typeof context.after !== 'string'
-    || context.before.length > 320 || context.after.length > 320)) return undefined
+  if (context !== undefined && (!record(context, ['before', 'after', 'snapshot']) || typeof context.before !== 'string' || typeof context.after !== 'string'
+    || context.before.length > 320 || context.after.length > 320
+    || (context.snapshot !== undefined && (typeof context.snapshot !== 'string' || context.snapshot.length > 100_000)))) return undefined
   return { text: value.text, ...(value.comment ? { comment: value.comment } : {}),
     ...(source ? { source: { sessionId: source.sessionId, messageId: source.messageId } } : {}),
-    ...(context ? { context: { before: context.before, after: context.after } } : {}) }
+    ...(context ? { context: { before: context.before, after: context.after,
+      ...(context.snapshot !== undefined ? { snapshot: context.snapshot } : {}) } } : {}) }
 }
 
 export function fragment(annotation) {

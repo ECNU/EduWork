@@ -48,7 +48,7 @@ DSH Session V3 与 Memory 域和导出版本相互独立。旧会话读取和受
 
 模块构建与 npm 发布通过 EduWork 的统一工作流管理，详见[包维护说明](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES.md)。
 
-MIT；见 LICENSE、NOTICE 与 SECURITY.md。
+木兰 PSL v2；历史 MIT 代码及边界见 [LICENSING.md](LICENSING.md)，第三方归属见 [NOTICE](NOTICE)。
 
 源码、Issue 与 PR 统一在 [EduWork](https://github.com/ecnu/EduWork/tree/main/packages/dsh-memory)。开发命令在 `EduWork/packages/dsh-memory` 中执行，npm 安装保持独立；发布流程见[包维护说明](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES.md)。
 
