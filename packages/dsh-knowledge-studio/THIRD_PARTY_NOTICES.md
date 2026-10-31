@@ -1,6 +1,6 @@
 # Third-party notices
 
-The project contains MIT-licensed original code and Office/video implementations extracted from ChatECNU Work (copyright ECNU contributors). Existing copyright notices and compatibility markers are preserved. No institution logos, credentials, model weights or third-party recordings are included.
+The project uses Mulan PSL v2 for new original contributions (see LICENSING.md), and retains historical MIT-licensed code and Office/video implementations extracted from ChatECNU Work (copyright ECNU contributors). Existing copyright notices and compatibility markers are preserved. No institution logos, credentials, model weights or third-party recordings are included.
 
 The client bundles Markdown/rendering utilities and Zod; PDF extraction bundles unpdf (MIT, copyright Johann Schopplich) and PDF.js (Apache-2.0, copyright Mozilla Foundation). Full license texts for these bundled JavaScript dependencies are collected in `THIRD_PARTY_LICENSES.txt`. PDF.js is redistributed under Apache-2.0, not relicensed as MIT. The generated bundles adapt loading and environment setup for this plugin.
 
