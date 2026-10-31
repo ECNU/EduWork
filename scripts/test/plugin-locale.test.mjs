@@ -145,7 +145,7 @@ test('plugin approval reasons render through the official panel and follow local
   const ctx = { sandboxPolicy: { resolve: () => ({ mode: 'read-only' }) }, permissionPresets: { current: () => 'read-only' } }
   const next = () => { throw new Error('these writes must still ask for approval') }
   const decisions = [
-    browser.browserPermission(ctx, { name: 'mcp__playwright-mcp__browser_click', agent }, next),
+    await browser.browserPermission(ctx, { name: 'mcp__playwright-mcp__browser_click', agent }, next),
     await mail.decideMailPermission(ctx, { name: 'mail_send', agent }, next),
     await mail.decideMailPermission(ctx, { name: 'mail_get_attachment', agent }, next),
     await calendar.decideCalendarPermission(ctx, { name: 'calendar_create_event', agent }, next),
