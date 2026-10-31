@@ -96,6 +96,8 @@ await migratePortableToInstalled({
   sourceRoot: ${JSON.stringify(sourceRoot)},
   targetRoot: ${JSON.stringify(f.target)},
   writableRoot: ${JSON.stringify(f.writable)},
+  // The real Windows process enumeration can outlast the marker timeout.
+  listProcesses: async () => [],
   statfsImpl: async () => {
     await new Promise(resolve => setTimeout(resolve, 400))
     return { bsize: 1, bavail: Number.MAX_SAFE_INTEGER }
