@@ -250,10 +250,15 @@ for (const scenario of ['installed', 'installer-exit', 'second-instance', 'quit-
       assert.ok(fatalRecovery); assert.equal(options.type, 'error'); calls.push('recovery-dialog')
       return { response: restarting && (!stopFailure || calls.filter(value => value === 'recovery-dialog').length === 1) ? 1 : 0 }
     } },
-      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
+      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter(),
+      session: { defaultSession: { resolveProxy: async () => 'DIRECT' } } } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
     const bootBrand = () => ({ name: 'Synthetic EduWork', logo: '' })
+    // Electron sets resourcesPath; the publisher policy is read from it.
+    const resources = Object.getOwnPropertyDescriptor(process, 'resourcesPath')
+    process.resourcesPath = join(tmpdir(), 'eduwork-installer-cleanup-resources')
+    t.after(() => { if (resources) Object.defineProperty(process, 'resourcesPath', resources); else delete process.resourcesPath })
     const { resolveDesktopLocale } = await import(new URL('locale.ts', source))
     const prior = process.env.EDUWORK_LAUNCHER_TEST
     process.env.EDUWORK_LAUNCHER_TEST = 'launcher-owned'
