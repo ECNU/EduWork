@@ -53,6 +53,8 @@ on:
       - 'scripts/patch-entry-customization-runtime.mjs'
       - 'scripts/test/entry-customization-runtime.test.mjs'
       - 'scripts/test/deepseek-catalog-runtime.test.mjs'
+      - 'scripts/patch-prompt-cache-key-runtime.mjs'
+      - 'scripts/test/prompt-cache-key-runtime.test.mjs'
       - 'scripts/patch-remotion-bundler-runtime.mjs'
       - 'scripts/omit-runtime-packages.mjs'
       - 'scripts/test/runtime-omissions.test.mjs'
@@ -176,6 +178,8 @@ jobs:
           node --test core/scripts/test/settings-navigation-runtime.test.mjs
           node --test core/scripts/test/chat-user-content-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Settings navigation adapter checks failed' }
+          node --test core/scripts/test/prompt-cache-key-runtime.test.mjs
+          if ($LASTEXITCODE) { throw 'Prompt cache key backport checks failed' }
           node --test core/dsh-host/test/native-020.test.mjs core/dsh-electron/tests/update-channel-migration.test.mjs core/dsh-electron/tests/alpha-update-migration.test.mjs core/dsh-electron/tests/software-update-control.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution policy, desktop and channel migration checks failed' }
           node --test core/scripts/test/media-template.test.mjs
