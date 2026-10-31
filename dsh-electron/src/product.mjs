@@ -150,6 +150,7 @@ function showStartupProgress(message) {
   window.webContents.send('eduwork:boot-brand', desktopBootBrand())
   const present = () => {
     if (window.isDestroyed() || isQuitting() || desktopFailureShown || mainWindowPresented) return
+    if (process.platform === 'darwin' && app.isHidden()) return
     mainWindowPresented = true
     window.show()
   }

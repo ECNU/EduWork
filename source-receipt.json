@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "a0865161b00473604847ad5a3c5470f73efb2993412c54b9460eb6bd7a2f1d57",
+  "createdAt": "2026-10-27T10:18:49.143Z",
+  "fileSetSHA256": "386718c6c39ab85b04061edce00bb8af5acedfe7619c40386018d8b848931831",
   "files": [
     {
       "path": ".gitattributes",
@@ -1281,7 +1281,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "2caebf28d3ff37b9a1636d44265d829a00a637d033987cb17e3807151c121947"
+      "sha256": "4f2d41f51cd1ff4e567be3d6e55e7d89034b2325b8f8ccb77445bf19890c0db6"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "616d6b802500846b6a23146a4c75a9ef407f960e69ebdbedb22b8731604d4d57"
+      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1317,7 +1317,7 @@
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
-      "sha256": "9e44c8b486db519fdc00ac8081a1f374f5648360102dc03d479ce46bb1654acf"
+      "sha256": "1100dac7bd095960910be877532830b21a52ab4e9c6413376db60873b20bcbec"
     },
     {
       "path": "dsh-electron/src/task-notifications.mjs",
@@ -1441,7 +1441,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "9b700162cf2ae0793664cad50e1b867a8998892bc02a7398ac1cde408c3db268"
+      "sha256": "105174df05c2a8002ab24139f78fdaa2cf302cd14d7e51b9a611079a242ff8ca"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1505,7 +1505,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "01bdac02276e9a11a5f105b984f2162218f0e1d05ffb0dfcdc866380a245ccc8"
+      "sha256": "7faa849d558276cf85a3722c0bfdc81fe718c2ce9025dc51167ad5962e02be3b"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
@@ -1545,7 +1545,7 @@
     },
     {
       "path": "dsh-electron/tests/window-visibility.electron.mjs",
-      "sha256": "886aaa0b84fa11c2b837957aba5c1ff345814d49ce25b6c35b04e55fb2bb70f7"
+      "sha256": "b1d1382d4b21a445fabeec85ecd6c7f6b8cc7469ce126ce878c35a2cfbedd83f"
     },
     {
       "path": "dsh-electron/tests/window-visibility.test.mjs",
