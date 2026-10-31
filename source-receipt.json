@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "5402c5ff8b59fc62d99d7c5feae2df49c65c90c744a3328185645595ee566d2f",
+  "fileSetSHA256": "5eee980e87826baf875ecad332b4f7e592f61b0c36f861341324640b4f880b25",
   "files": [
     {
       "path": ".gitattributes",
@@ -3425,7 +3425,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/CHANGELOG.md",
-      "sha256": "95f752bcaeb0852c0a9b3d2e4277d2e6de3bc5dbf6beb3da5a762c9e97942cf3"
+      "sha256": "3cffd134c61c2881b6b3fc257722407bdbd0047b369207b3fe53aa7ee3d6b76e"
     },
     {
       "path": "packages/dsh-desktop-pet/cordis.patch.yml",
@@ -3865,11 +3865,11 @@
     },
     {
       "path": "packages/dsh-desktop-pet/test/page-clock.test.mjs",
-      "sha256": "3f3c3826b6ffc066d7200ca0154fba8e601cc7b0cf9acb70b670765ac13dc4a4"
+      "sha256": "41fe678f28a8cd41c5a3623b85e0bc6b049b0b197e2b45589906984c06cbd535"
     },
     {
       "path": "packages/dsh-desktop-pet/test/page-facing.test.mjs",
-      "sha256": "0cb6f83aee495640840942e31b4684a95c1c79b1c41f3940cd707e81a0cbbc42"
+      "sha256": "d44c40a6d0c70744d41a24768d437bc831bd2179a8eb8a94789ae6c4f4097965"
     },
     {
       "path": "packages/dsh-desktop-pet/test/pet-state.test.mjs",
