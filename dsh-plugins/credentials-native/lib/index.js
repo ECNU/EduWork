@@ -23,14 +23,25 @@ export class NativeCredentialProvider extends CredentialProvider {
   async resolve(ref) {
     const { nativeBridge } = await this.boundary
     const result = await callNativeBridge(nativeBridge, 'resolve', { ref })
-    if (!result.configured) return undefined
+    if (!result.configured) return this.ambient(ref)
     return { value: result.value, source: result.source }
   }
 
   async describe(ref) {
     const { nativeBridge } = await this.boundary
     const result = await callNativeBridge(nativeBridge, 'describe', { ref })
-    return { configured: result.configured, source: result.source, writable: result.writable }
+    if (result.configured) return { configured: true, source: result.source, writable: result.writable }
+    const fallback = this.ambient(ref)
+    return { configured: fallback !== undefined, ...(fallback && { source: fallback.source }), writable: result.writable }
+  }
+
+  ambient(ref) {
+    // The Host snapshot preserves process > project .env > home .env. Older
+    // Hosts without that service can still use their inherited environment.
+    const environment = this.ctx.get('launchEnvironment')
+    const entry = environment ? environment.get(ref) : { value: process.env[ref], source: 'process' }
+    if (typeof entry?.value !== 'string' || entry.value.length === 0) return undefined
+    return { value: entry.value, source: entry.source === 'process' ? 'env' : entry.source }
   }
 
   async set(ref, value) {

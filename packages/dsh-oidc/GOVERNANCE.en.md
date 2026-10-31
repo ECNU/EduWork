@@ -38,4 +38,4 @@ The current roster is in [`MAINTAINERS.en.md`](MAINTAINERS.en.md). One maintaine
 
 ## Branding and neutrality
 
-The project may document ECNU as a reference implementation while keeping the protocol institution-neutral. Merging another organization's example does not imply endorsement. Trademarks and logos require their owners' permission and are not granted by the MIT code license.
+The project may document ECNU as a reference implementation while keeping the protocol institution-neutral. Merging another organization's example does not imply endorsement. Trademarks and logos require their owners' permission and are not granted by the code license.
