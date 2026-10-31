@@ -87,7 +87,7 @@ export async function assembleWindows({
     type: 'module',
     main: 'lib/main.js',
     description: 'EduWork official DSH Electron integration',
-    license: 'MIT',
+    license: 'MulanPSL-2.0 AND MIT',
   })
   const config = {
     schemaVersion: 1,

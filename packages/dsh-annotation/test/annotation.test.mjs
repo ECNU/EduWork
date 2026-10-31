@@ -4,7 +4,7 @@ import test from 'node:test'
 import vm from 'node:vm'
 import { decode, encode, reference } from '../src/client/reference.js'
 import { place } from '../src/client/position.js'
-import { annotations, occurrenceSpan, messageOrigin } from '../src/client/draft.js'
+import { annotations, occurrenceSpan, messageOrigin, selectionSource } from '../src/client/draft.js'
 import { projectAnnotations } from '../src/protocol.js'
 
 const t = key => ({ notePrefix: '批注：', noted: '批注', invalid: 'invalid' })[key] ?? key
@@ -14,6 +14,19 @@ test('long quotations survive reference serialization without truncation', () =>
   const value = reference(quote, '备注', t)
   assert.equal(decode(value.ref).quote, quote)
   assert.ok(value.clipboardText.includes('末尾标记'))
+})
+
+test('live selection preserves its captured source context through draft and model serialization', async () => {
+  const context = { before: 'before', after: 'after', snapshot: 'partial reply plus surrounding generated text' }
+  const value = reference('partial reply', '', t, undefined, context)
+  assert.deepEqual(decode(value.ref).context, context)
+  const { fragment, prepareMessage } = await import('../src/protocol.js')
+  const encoded = fragment(decode(value.ref))
+  assert.equal(projectAnnotations(encoded).items[0].context.snapshot, context.snapshot)
+  const message = { id: 'fixture', role: 'user', source: { kind: 'user' }, content: [{ type: 'text', text: encoded }] }
+  assert.ok(JSON.stringify(prepareMessage(message)).includes('surrounding generated text'))
+  const tooLong = reference('quote', '', t, undefined, { before: '', after: '', snapshot: 'x'.repeat(100_001) })
+  assert.equal(decode(tooLong.ref).context.snapshot, undefined)
 })
 
 test('floating panels fit below, flip above, and clamp inside a small viewport', () => {
@@ -70,6 +83,25 @@ test('source identity resolves only a finalized closing response, never by match
   for (const key of ['user', 'stream', 'earlier', 'missing']) assert.equal(messageOrigin(chat, key, 's2'), undefined)
 })
 
+test('live side selections use durable history without inventing a streamed message identity', () => {
+  const nodes = new Map([
+    ['user', { kind: 'user', data: { seq: 2 } }],
+    ['partial', { kind: 'assistant-step', anchorSeq: 6.5, data: { status: 'running', turn: 1 } }],
+    ['intermediate', { kind: 'assistant-step', data: { status: 'settled', turn: 1, finalNode: { seq: 5, messageId: 'intermediate-message' } } }],
+    ['future-user', { kind: 'user', data: { seq: 20 } }],
+    ['tail', { kind: 'turn-tail', data: { closing: null } }],
+  ])
+  const chat = { nodes, locations: { getTurn: () => [...nodes.keys()] } }
+  assert.deepEqual(selectionSource(chat, 'partial', 'source'), { atSeq: 2, canAnnotate: false, liveKey: 'partial' })
+  assert.deepEqual(selectionSource(chat, 'intermediate', 'source'), {
+    origin: { sessionId: 'source', messageId: 'intermediate-message' }, atSeq: 5, canAnnotate: false,
+  })
+  assert.equal(messageOrigin(chat, 'partial', 'source'), undefined, 'ordinary annotation badges must not bind to a partial reply')
+  nodes.delete('user')
+  assert.equal(selectionSource(chat, 'partial', 'source'), undefined, 'a later user request must never become the snapshot boundary')
+  assert.equal(selectionSource(chat, 'missing', 'source'), undefined)
+})
+
 test('bundle registers a codec source and inserts through the official event', async () => {
   let factory
   const window = { __ModuleLoader__: { load: entry => { factory = entry.factory } } }
@@ -87,7 +119,7 @@ test('bundle registers a codec source and inserts through the official event', a
     sessions: { scope: id => id === 's1' ? actx : undefined },
     get: () => ({ input: { for: () => ({ focus() { focused++ }, notify() { notified++ } }) } }),
   }
-  const ctx = { effect: fn => effects.push(fn()), locale: { register: () => () => {}, bind: () => t }, inject: (_deps, fn) => fn(scope) }
+  const ctx = { provide() {}, effect: fn => effects.push(fn()), locale: { register: () => () => {}, bind: () => t }, inject: (_deps, fn) => fn(scope) }
   plugin.apply(ctx)
   const [source] = sources
   assert.equal(source.trigger, '@')
@@ -128,7 +160,7 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
     useEffect: fn => effects.push(fn), useLayoutEffect() {},
     useRef: () => ({ current: null }),
     useState: initial => stateIndex++ === 0 ? [target, value => draftChanges.push(value)] : [initial, () => {}],
-    useSyncExternalStore: () => ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }),
+    useSyncExternalStore: (_subscribe, getSnapshot) => getSnapshot?.() ?? ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }),
   }
   const events = {
     addEventListener: (name, fn) => listeners.set(name, fn),
@@ -142,9 +174,9 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
     effect: fn => fn(), inputTriggers: { registerSource() {} },
     slots: { inject: (_, fn) => fn(), register: (spec, component) => { if (spec.name === 'conversation.input.overlay') overlay = component } },
   }
-  plugin.apply({ effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
+  plugin.apply({ provide() {}, effect: fn => fn(), locale: { register() {}, bind: () => t }, inject: (_, fn) => fn(scope) })
   let accepted = false
-  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get() {} }, t, insert: () => accepted,
+  const tree = overlay({ sessionId: 's', previews: { subscribe() {}, get: () => ({ kind: 'entry', annotation: { quote: '原文', note: '批注' } }) }, selectionActions: { subscribe() {}, getSnapshot: () => [] }, t, insert: () => accepted,
     useInput: fn => fn({ occurrences: [] }), useConversation: fn => fn({ views: { get() {} } }) })
   const editorNode = tree.children[1]
   editorNode.props.onAdd('保留这条批注')

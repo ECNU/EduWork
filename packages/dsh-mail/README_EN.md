@@ -119,6 +119,6 @@ The integration approach was informed by the MIT-licensed community project [`ST
 
 ## License
 
-[MIT](LICENSE)
+[Mulan PSL v2](LICENSE); historical MIT code and scope are described in [LICENSING.md](LICENSING.md).
 
 Source, issues and PRs are maintained in [EduWork](https://github.com/ecnu/EduWork/tree/main/packages/dsh-mail). Run development commands from `EduWork/packages/dsh-mail`. npm installation remains independent. See [package publication](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES_EN.md).
