@@ -51,6 +51,9 @@ test('three animation notations become one frame list', () => {
   assert.deepEqual(skin.animations.work.frames.map(frame => frame.crop), [[0, 208], [192, 208], [384, 208], [0, 416], [192, 416]].map(([x, y]) => ({ x, y, width: 192, height: 208 })))
   assert.equal(skin.animations.work.frames[4].ms, 300)
   assert.deepEqual(skin.animations.think, { frames: [{ file: 'think.svg', ms: 125 }], playback: 'loop', motion: 'float' })
+  // Artwork faces left unless the skin says otherwise; only a right-facing animation records it.
+  assert.equal(normalizeSkin(minimal({ animations: { idle: { image: 'a.svg' }, drag: { image: 'b.svg', facing: 'right' } } })).animations.drag.facing, 'right')
+  assert.throws(() => normalizeSkin(minimal({ animations: { idle: { image: 'a.svg', facing: 'up' } } })), /facing/)
   assert.deepEqual(skin.files.sort(), ['a.svg', 'b.svg', 'think.svg', 'work.png'])
   assert.deepEqual(skin.states, { idle: ['idle'], working: ['think'] })
 })

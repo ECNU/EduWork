@@ -30,7 +30,7 @@ test('a nap longer than ten minutes leaves no expired deadline waking the clock'
   let wakeups = 0
   globalThis.setTimeout = (...args) => { wakeups++; return timeout(...args) }
   await import('../lib/page/pet.js')
-  handlers.init({ layout: { window: { width: 192, height: 312 }, pet: { x: 0, y: 64, width: 192, height: 208 } }, settings: { sleep: true, bubbles: true }, locale: 'en' })
+  await handlers.init({ layout: { window: { width: 192, height: 312 }, pet: { x: 0, y: 64, width: 192, height: 208 } }, settings: { sleep: true, bubbles: true }, locale: 'en' })
   for (let i = 0; i < 10; i++) await settle()
   handlers.status({ items: [], running: 0, acknowledged: 0 })
   const minute = async () => { const before = wakeups; for (let s = 0; s < 60; s++) { mock.timers.tick(1000); await settle() } return wakeups - before }

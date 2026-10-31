@@ -9,6 +9,7 @@ export const LIMITS = Object.freeze({ animations: 32, frames: 64, fps: 30, frame
 export const BUILTIN_ANIMATIONS = Object.freeze(['idle', 'think', 'attention', 'done', 'failed', 'sleep', 'drag', 'react', 'peek', 'greet'])
 export const MOTIONS = Object.freeze(['float', 'hop', 'dangle', 'breathe', 'sway', 'shake'])
 const PLAYBACK = ['loop', 'once', 'pingpong', 'blink']
+const FACING = ['left', 'right']
 const FALLBACK = { work: 'think', think: 'idle', attention: 'idle', done: 'react', react: 'idle', greet: 'react', failed: 'idle', sleep: 'idle', drag: 'idle', peek: 'idle' }
 const LINES = ['done', 'attention', 'failed', 'working', 'react', 'greet']
 const FILE = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}\.(?:svg|png|webp)$/u
@@ -36,7 +37,7 @@ const file = (value, label) => typeof value === 'string' && FILE.test(value) ? v
 
 function animation(value, name, frame) {
   const label = `animations.${name}`
-  only(value, ['frames', 'image', 'sheet', 'columns', 'row', 'fps', 'frameMs', 'playback', 'repeat', 'motion'], label)
+  only(value, ['frames', 'image', 'sheet', 'columns', 'row', 'fps', 'frameMs', 'playback', 'repeat', 'motion', 'facing'], label)
   const sources = ['image', 'sheet'].filter(key => value[key] !== undefined).length + (Array.isArray(value.frames) ? 1 : 0)
   if (sources !== 1) fail(`${label} 需要 frames、image 或 sheet 中的一种`)
   let frames
@@ -60,8 +61,10 @@ function animation(value, name, frame) {
   const playback = value.playback ?? 'loop'
   if (!PLAYBACK.includes(playback)) fail(`${label}.playback 必须是 ${PLAYBACK.join('、')} 之一`)
   if (value.motion !== undefined && !MOTIONS.includes(value.motion)) fail(`${label}.motion 必须是 ${MOTIONS.join('、')} 之一`)
+  // The side the artwork faces; drag and peek mirror it to face where the pet moves or looks.
+  if (value.facing !== undefined && !FACING.includes(value.facing)) fail(`${label}.facing 必须是 ${FACING.join('、')} 之一`)
   return { frames, playback, ...(value.repeat === undefined ? {} : { repeat: integer(value.repeat, 1, LIMITS.repeat, `${label}.repeat`) }),
-    ...(value.motion ? { motion: value.motion } : {}) }
+    ...(value.motion ? { motion: value.motion } : {}), ...(value.facing === 'right' ? { facing: 'right' } : {}) }
 }
 
 /**
