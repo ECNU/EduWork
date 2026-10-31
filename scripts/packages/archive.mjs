@@ -32,9 +32,25 @@ export function inspectArchive(bytes, selected, expectedVersion) {
   assert.equal(manifest.version, expectedVersion)
   assert.equal(manifest.repository.url, 'git+https://github.com/ECNU/EduWork.git')
   assert.equal(manifest.repository.directory, selected.directory)
+  if (manifest.license === 'MulanPSL-2.0 AND MIT') {
+    // The migration is prospective: retain the historical grant and scope in
+    // every standalone archive, not only in the repository's documentation.
+    for (const file of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) {
+      assert.ok(files.has(file), `Missing licensing document ${file}`)
+    }
+    assert.match(files.get('LICENSE').toString('utf8'), /木兰宽松许可证/)
+    assert.match(files.get('LICENSE-MIT').toString('utf8'), /MIT License/)
+  }
   for (const entry of Object.values(manifest.exports || {})) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
+  }
+  if (selected.id === 'dsh-side-chat' || selected.id === 'dsh-annotation') {
+    assert.ok(!manifest.private, 'Conversation plugin archive must be publishable')
+    assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing native plugin bundle registration')
+    for (const file of ['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {
+      assert.ok(files.has(file), `Missing conversation plugin file ${file}`)
+    }
   }
   if (selected.id === 'dsh-mail') {
     // Downstream npm audit cannot see dependencies embedded in JavaScript.

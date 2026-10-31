@@ -4,7 +4,7 @@
   "private": true,
   "description": "Local skill management, updates and diagnostics for EduWork",
   "type": "module",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
