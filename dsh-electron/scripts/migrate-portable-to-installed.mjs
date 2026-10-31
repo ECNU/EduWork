@@ -297,10 +297,12 @@ async function checkInternalWorkspaces(sourceRoot, dataRoot) {
   if (!existsSync(registry)) return []
   const value = await readJSON(registry)
   const workspaces = value?.tables?.workspaces ?? {}
+  // A recorded external path may be a link that resolves into the program directory.
+  const physicalSource = instanceIdentity(sourceRoot)
   const internal = []
   for (const record of Object.values(workspaces)) {
     if (typeof record?.path !== 'string') continue
-    if (within(sourceRoot, record.path)) internal.push(record.path)
+    if (within(physicalSource, instanceIdentity(record.path))) internal.push(record.path)
   }
   if (internal.length) throw new Error(`Program-directory workspaces require manual migration: ${internal.join(', ')}`)
   return []

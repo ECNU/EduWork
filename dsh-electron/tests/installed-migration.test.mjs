@@ -653,6 +653,22 @@ test('refuses a workspace inside the old program directory', async t => {
   assert.equal(await missing(f.writable), true)
 })
 
+test('refuses an external workspace link that resolves into the old program directory', async t => {
+  const f = await fixture(t)
+  const internal = join(f.source, 'workspace-internal')
+  const alias = join(f.base, 'external-workspace-alias')
+  await mkdir(internal, { recursive: true })
+  await writeFile(join(internal, 'README.txt'), 'internal\n')
+  await symlink(internal, alias, process.platform === 'win32' ? 'junction' : 'dir')
+  await writeJSON(join(f.source, `data/${f.namespace}/dsh/storages/workspace.json`), {
+    unit: { name: 'workspace', version: 2 },
+    global: { initialized: true, workspaceIds: ['linked'], archivedSessionIds: [], pinnedSessionIds: [], defaultWorkspaceId: 'linked' },
+    tables: { workspaces: { linked: { path: alias, title: 'linked', sessionIds: [], createdAt: now(), updatedAt: now() } } },
+  })
+  await assert.rejects(migratePortableToInstalled(options(f)), /Program-directory workspaces/)
+  assert.equal(await missing(f.writable), true)
+})
+
 test('cleans its staging on a copy failure and can retry', async t => {
   const f = await fixture(t)
   let count = 0
