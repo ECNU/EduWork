@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-27T17:25:12.683Z",
-  "fileSetSHA256": "1b33f744671d9ea5f509d1d7647ec282e90211c2f7ad93d2e04277121585a99e",
+  "fileSetSHA256": "d5ab285358367158118ac115d91bbff4687d2968e412316073f4d5a66a58723e",
   "files": [
     {
       "path": ".gitattributes",
@@ -1457,7 +1457,7 @@
     },
     {
       "path": "dsh-electron/tests/installed-migration.test.mjs",
-      "sha256": "75ed0c0c73e73f7661b1d3206cf7e613ba03a7fb874780f46dade42ac2875003"
+      "sha256": "35edda27f8a90b56b94ebae60ceeea8ea39177e9857fb42f1e3277534fa40bd4"
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
