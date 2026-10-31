@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-27T17:25:12.683Z",
-  "fileSetSHA256": "fec0b7b5692b4287f9a07280e3ec69b5af76da26bb9821e319fa8f65a4622eb2",
+  "fileSetSHA256": "2475a988c389764804e65d81db5467163f3b6700117daa30e1f7c2b0718293f1",
   "files": [
     {
       "path": ".gitattributes",
@@ -293,11 +293,11 @@
     },
     {
       "path": "docs/DESKTOP_PET_EN.md",
-      "sha256": "482a98e00015cfba677d8530765e298503bb33489237d90ba9aff7f73ffa8b73"
+      "sha256": "4a0e62fb3faf057aa76ac6e83e7e883dfb708273524c6fd1e72936743e2a045d"
     },
     {
       "path": "docs/DESKTOP_PET.md",
-      "sha256": "8ce9b00a56bb67a1eec662bb3db13ba1d25b8b88cfe686162681aa5cd2686fef"
+      "sha256": "29ac8f0bd973c2ee57509ed4ade6e279bec442bdfbc662b7c643cdf36b8972c0"
     },
     {
       "path": "docs/dev/desktop-source-and-install.md",
@@ -3449,7 +3449,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/CHANGELOG.md",
-      "sha256": "ca62fca02d26d5558d89b9045c8d813ff6849ee96384d20cafc95c5a1ed743eb"
+      "sha256": "3cffd134c61c2881b6b3fc257722407bdbd0047b369207b3fe53aa7ee3d6b76e"
     },
     {
       "path": "packages/dsh-desktop-pet/cordis.patch.yml",
@@ -3473,7 +3473,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/lib/page/pet.js",
-      "sha256": "8fdbb37080564f6c6016a39c626f25c6032b11ccdb44c48b4530a4199f63441d"
+      "sha256": "c8d26abd94ecd78c4d3781e37f702bb4d61d4f163fa47efdbd52e2157bb00679"
     },
     {
       "path": "packages/dsh-desktop-pet/lib/pet-state.js",
@@ -3485,7 +3485,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/lib/skin.js",
-      "sha256": "80f1186eab8064dda408b35036782a01f0f8420cbd35e2686fd8a949d1c2051c"
+      "sha256": "928c7435cb20cf447ef5bea791c6bfab9199fe2ef15dcf098e7374bc153e1d8b"
     },
     {
       "path": "packages/dsh-desktop-pet/lib/typert-schemas.js",
@@ -3889,7 +3889,11 @@
     },
     {
       "path": "packages/dsh-desktop-pet/test/page-clock.test.mjs",
-      "sha256": "3f3c3826b6ffc066d7200ca0154fba8e601cc7b0cf9acb70b670765ac13dc4a4"
+      "sha256": "41fe678f28a8cd41c5a3623b85e0bc6b049b0b197e2b45589906984c06cbd535"
+    },
+    {
+      "path": "packages/dsh-desktop-pet/test/page-facing.test.mjs",
+      "sha256": "d44c40a6d0c70744d41a24768d437bc831bd2179a8eb8a94789ae6c4f4097965"
     },
     {
       "path": "packages/dsh-desktop-pet/test/pet-state.test.mjs",
@@ -3897,7 +3901,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/test/skin.test.mjs",
-      "sha256": "78a3bc7fcfc41144a3bb255dbcbb5c8e2e0e538a5593280d94bcf8183404c166"
+      "sha256": "c577847d9af8202a5fb3538bb6e5def97f68fdc82d4ba99f87c61962f46d6e2b"
     },
     {
       "path": "packages/dsh-knowledge-studio/.gitattributes",
@@ -3913,7 +3917,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/CHANGELOG.md",
-      "sha256": "661e1c099b16a180ee15134958e0654af6ca68c186cde72e8333c74a2f019239"
+      "sha256": "b6c24e076ceee49990b1a0a8787fdad3d0553c48097575d352c0a03948933be2"
     },
     {
       "path": "packages/dsh-knowledge-studio/cordis.patch.yml",
@@ -4549,7 +4553,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/common.md",
-      "sha256": "4b3b1cd91253e6462c47ac2116bf6a046250d1b8946b213896b5c7bcf6c91690"
+      "sha256": "48a583957599e57c703bd1b23b8b0c93e83d2015a44215d42c4398ee606d160d"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/skills/shared/references/documents.md",
