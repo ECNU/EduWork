@@ -121,10 +121,20 @@ export async function importLegacyData({root,targetHome,launch,onProgress=()=>{}
     throw error
   }
 }
-export async function writeMigrationHealth(launch,state,message='') {
+export async function writeMigrationHealth(launch,state,message='',shouldContinue=()=>true) {
   if(!launch)return
   const value=state==='ready'?'ok\n':JSON.stringify({schemaVersion:1,state,message})+'\n'
   const temporary=launch.healthFile+'.'+randomUUID()+'.tmp'
   await writeFile(temporary,value,{mode:0o600})
-  await rename(temporary,launch.healthFile)
+  try {
+    for(let attempt=0;;attempt++) {
+      if(!shouldContinue())return
+      try { await rename(temporary,launch.healthFile); return }
+      catch(error) {
+        // Windows updater reads can briefly hold the marker without delete sharing.
+        if(process.platform!=='win32'||!['EPERM','EACCES','EBUSY'].includes(error.code)||attempt===10)throw error
+        await new Promise(resolve=>setTimeout(resolve,50))
+      }
+    }
+  } finally { await rm(temporary,{force:true}).catch(()=>{}) }
 }

@@ -77,10 +77,10 @@ function activity(now) {
 }
 
 function pose(now) {
-  if (dragging) return { name: 'drag', mirror: direction > 0 }
+  if (dragging) return { name: 'drag', face: direction > 0 ? 'right' : 'left' }
   if (shot && now < shot.until) return shot
   shot = null
-  if (tucked) return { name: 'peek', mirror: tucked === 'left' }
+  if (tucked) return { name: 'peek', face: tucked === 'left' ? 'right' : 'left' }
   const state = base(now)
   if (state === 'attention') return { name: 'attention' }
   if (asleep(now, state)) return { name: 'sleep' }
@@ -162,13 +162,14 @@ function announce() {
 
 function tick() {
   timer = undefined
-  const now = Date.now(), next = choose(now)
-  if (!view || view.name !== next.name || view.mirror !== Boolean(next.mirror) || next.start !== undefined && next.start !== view.start) {
-    view = { name: next.name, mirror: Boolean(next.mirror), start: next.start ?? now }
+  const now = Date.now(), next = choose(now), animation = resolveAnimation(skin, next.name)
+  // Directional poses name the side to face; artwork faces left unless its skin says otherwise.
+  const mirror = next.face !== undefined && next.face !== (animation.facing ?? 'left')
+  if (!view || view.name !== next.name || view.mirror !== mirror || next.start !== undefined && next.start !== view.start) {
+    view = { name: next.name, mirror, start: next.start ?? now }
     blink = null
     blinkAt = 0
   }
-  const animation = resolveAnimation(skin, view.name)
   const frame = view.name === 'sleep' && !skin.animations.sleep ? { index: 0, next: Infinity }
     : animation.playback === 'blink' && animation.frames.length > 1 ? blinking(animation, now) : frameAt(animation, now - view.start)
   const motion = animation.motion && !reduced.matches && !away ? motionAt(animation.motion, now - view.start) : STILL
