@@ -122,6 +122,28 @@ test('real session headers attribute subagent turns to the conversation that del
   assert.equal([...attention.items.values()][0].kind, 'completed')
 })
 
+test('temporary side chats never become tray tasks', { skip: !runtime }, async t => {
+  const req = createRequire(join(runtime, 'package.json')), load = name => import(pathToFileURL(req.resolve(name)))
+  const [{ Context, Service }, { default: Sessions }] = await Promise.all([load('@deepseek-ai/cordis'), load('@deepseek-ai/dsh-session')])
+  const { DesktopAttention, notificationDefaults, observeDesktopAttention } = await import('../lib/attention.js')
+  const ctx = new Context()
+  t.after(() => ctx.fiber.dispose())
+  new Sessions(ctx)
+  const agents = new Service(ctx, 'agents')
+  // The side chat is a top-level agent, so only the id prefix keeps it out.
+  agents.roots = () => [{ id: 'side-fixture' }]; agents.get = () => undefined
+  const attention = new DesktopAttention({ bridge: async () => ({ seen: [] }), preferences: () => notificationDefaults })
+  observeDesktopAttention(ctx, attention)
+  const session = ctx.sessions.create('side-fixture')
+  session.append('turn/start', { turn: 0 })
+  // A decision the side chat is waiting on still reaches the tray.
+  session.append('approval/asked', { id: 'permit', toolName: 'fixture' })
+  assert.deepEqual([...attention.items.values()].map(row => row.kind), ['approval'])
+  session.append('approval/decided', { id: 'permit', outcome: 'approved' })
+  session.append('turn/end', { turn: 0, reason: { kind: 'completed' } })
+  assert.equal(attention.items.size, 0)
+})
+
 test('real goal driver: a round-limit or queue-failure block after the held turn is reported once as needing attention', { skip: !runtime }, async t => {
   const req = createRequire(join(runtime, 'package.json')), load = name => import(pathToFileURL(req.resolve(name)))
   const [{ Context, Service }, { default: Sessions }, { default: Projections }, { default: Goals }, driver] = await Promise.all([load('@deepseek-ai/cordis'),

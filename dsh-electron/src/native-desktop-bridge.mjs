@@ -6,6 +6,9 @@ import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
 
+export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
+export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
+
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
 export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand }) {
@@ -29,9 +32,21 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     if (!host) throw new Error('Desktop Host is unavailable')
     return host
   }
+  // An edition plugin may serve a user guide at USER_GUIDE_ROUTE; the page opens
+  // it on the USER_GUIDE_EVENT window event. The item appears only once the Host
+  // has confirmed the route, so editions without a guide show no dead entry.
+  let userGuide = false
+  const chinese = () => /[\u4e00-\u9fff]/u.test(locale.messages.quit ?? '')
+  const openUserGuide = () => {
+    const window = getWindow()
+    if (!window || window.isDestroyed()) return
+    window.show(); window.focus()
+    void window.webContents.executeJavaScript(`window.dispatchEvent(new Event(${JSON.stringify(USER_GUIDE_EVENT)}))`).catch(() => {})
+  }
   const applicationItems = () => [
     { role: 'about', label: locale.messages.aboutMenu.replaceAll('DeepSeek Harness', app.getName()) },
     { type: 'separator' },
+    ...(userGuide ? [{ label: locale.messages.userGuide ?? (chinese() ? '使用教程' : 'User Guide'), click: openUserGuide }] : []),
     { label: locale.messages.checkUpdatesMenu, click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
     { type: 'separator' },
     ...(process.platform === 'darwin' ? [
@@ -132,6 +147,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     // main-process boundary, never import electron.app into shared locale code.
     locale: () => ({ ...locale, messages: Object.fromEntries(Object.entries(locale.messages)
       .map(([key, value]) => [key, value.replaceAll('DeepSeek Harness', app.getName())])) }),
+    async probeUserGuide() {
+      if (waitForHost) await waitForHost()
+      const response = await getHost()?.fetch(new Request(`app://app${USER_GUIDE_ROUTE}/`, { method: 'HEAD' })).catch(() => null)
+      const available = response?.ok === true
+      if (available !== userGuide) { userGuide = available; refreshMenu() }
+      return available
+    },
     attach(window) { guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease)); shortcuts.attach(window) },
     dispose() { shortcuts.dispose() },
   }

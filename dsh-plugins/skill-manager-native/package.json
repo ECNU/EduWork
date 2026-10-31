@@ -19,5 +19,5 @@
     "yaml": "2.9.0",
     "zod": "^4.4.3"
   },
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }

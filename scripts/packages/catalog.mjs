@@ -1,9 +1,10 @@
 export const repository = 'ECNU/EduWork'
 
-// Eight independently installed development roots, nine independently published packages.
+// Each development root is installed independently.
 // Studio retains its existing shared-services workspace and exact dependency contract.
 export const packages = [
   { id: 'dsh-annotation', name: '@eduwork/dsh-annotation', directory: 'packages/dsh-annotation', group: 'dsh-annotation' },
+  { id: 'dsh-side-chat', name: '@eduwork/dsh-side-chat', directory: 'packages/dsh-side-chat', group: 'dsh-side-chat' },
   { id: 'dsh-desktop-pet', name: '@eduwork/dsh-desktop-pet', directory: 'packages/dsh-desktop-pet', group: 'dsh-desktop-pet' },
   { id: 'dsh-literature', name: '@eduwork/dsh-literature', directory: 'packages/dsh-literature', group: 'dsh-literature' },
   { id: 'dsh-oidc', name: '@eduwork/dsh-oidc', directory: 'packages/dsh-oidc', group: 'dsh-oidc' },
@@ -28,6 +29,8 @@ export function changedGroups(files) {
       groups.forEach(group => result.add(group))
     }
     for (const group of groups) if (file.startsWith(`packages/${group}/`)) result.add(group)
+    // Side chat consumes the annotation selection service when both are enabled.
+    if (file.startsWith('packages/dsh-annotation/')) result.add('dsh-side-chat')
   }
   return groups.filter(group => result.has(group))
 }

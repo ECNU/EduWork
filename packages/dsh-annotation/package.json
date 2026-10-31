@@ -1,9 +1,9 @@
 {
   "name": "@eduwork/dsh-annotation",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Numbered response annotations using native DSH composer references",
   "type": "module",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -15,7 +15,9 @@
     "cordis.patch.yml",
     "README.md",
     "README_EN.md",
-    "LICENSE"
+    "LICENSE",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",

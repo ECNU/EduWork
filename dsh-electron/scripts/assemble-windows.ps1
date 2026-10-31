@@ -52,7 +52,7 @@ Copy-Item -LiteralPath $Node -Destination (Join-Path $Output 'resources/runtime/
 Copy-Item -LiteralPath $nodeLicense -Destination (Join-Path $Output 'resources/runtime/LICENSE-Node')
 Copy-Item -LiteralPath (Join-Path $ShellBuild 'source-receipt.json') -Destination (Join-Path $app 'source-receipt.json')
 $name = $identity.brand.product.name
-@{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'package.json') -Encoding utf8NoBOM
+@{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MulanPSL-2.0 AND MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $app 'package.json') -Encoding utf8NoBOM
 $config = @{schemaVersion=1;shell='electron';appId="org.eduwork.$($identity.distribution).electron";distribution=$identity.distribution;productName=$name;productVersion=$Version;product='../product';node='../runtime/node.exe';updateChannel='disabled-candidate'}
 $policyPath = Join-Path $Product 'resources/desktop/configuration-policy.json'
 $config.configurationOwnership = 'user'
