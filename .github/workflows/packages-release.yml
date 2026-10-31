@@ -6,7 +6,7 @@ on:
         description: Independent npm package
         type: choice
         required: true
-        options: [dsh-annotation, dsh-side-chat, dsh-desktop-pet, dsh-literature, dsh-oidc, dsh-memory, dsh-mail, dsh-artifact-services, dsh-knowledge-studio, dsh-remote-access]
+        options: [dsh-decision, dsh-annotation, dsh-side-chat, dsh-desktop-pet, dsh-literature, dsh-oidc, dsh-memory, dsh-mail, dsh-artifact-services, dsh-knowledge-studio, dsh-remote-access]
       publish:
         description: Publish inspected tarball (requires reviewed source commit and npm trusted publisher)
         type: boolean
@@ -49,8 +49,8 @@ jobs:
       - if: inputs.package == 'dsh-knowledge-studio' || inputs.package == 'dsh-artifact-services'
         run: python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt
       - run: node scripts/packages/manage.mjs install ${{ inputs.package }}
-      - name: Install locked DSH Runtime for side-chat checks
-        if: inputs.package == 'dsh-side-chat'
+      - name: Install locked DSH Runtime for native plugin checks
+        if: inputs.package == 'dsh-side-chat' || inputs.package == 'dsh-decision'
         working-directory: third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime
         run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/packages/manage.mjs check ${{ inputs.package }}
@@ -58,6 +58,7 @@ jobs:
           DSH_OFFICE_PYTHON: ${{ steps.python.outputs.python-path }}
           PYTHONUTF8: '1'
           EDUWORK_SIDE_CHAT_RUNTIME: ${{ inputs.package == 'dsh-side-chat' && format('{0}/third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime', github.workspace) || '' }}
+          EDUWORK_DECISION_RUNTIME: ${{ inputs.package == 'dsh-decision' && format('{0}/third_party/dsh/candidate-v0.2.1-rc.3/npm-runtime', github.workspace) || '' }}
       - run: node scripts/packages/manage.mjs pack ${{ inputs.package }} dist/npm-release
       - uses: actions/upload-artifact@v4
         with:
