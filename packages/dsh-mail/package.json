@@ -41,7 +41,10 @@
     "SUPPORT.en.md",
     "THIRD_PARTY_NOTICES.md",
     "THIRD_PARTY_NOTICES.en.md",
-    "lib/bundled-dependencies.json"
+    "lib/bundled-dependencies.json",
+    "LICENSE-MIT",
+    "LICENSING.md",
+    "LICENSING.en.md"
   ],
   "dsh": {
     "bundle": {
@@ -83,7 +86,7 @@
   "engines": {
     "node": ">=24.18.0"
   },
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "publishConfig": {
     "access": "public"
   },
