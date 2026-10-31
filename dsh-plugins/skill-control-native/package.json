@@ -23,5 +23,5 @@
     "@deepseek-ai/dsh-skill": "0.1.2-rc.1",
     "@deepseek-ai/dsh-skill-filesystem": "0.1.2-rc.1"
   },
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }
