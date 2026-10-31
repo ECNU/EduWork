@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-27T10:18:49.143Z",
-  "fileSetSHA256": "c5d4500c883b466774be68e68af67cb0eb037c75c9208f71e51f6bfe255b2889",
+  "fileSetSHA256": "386718c6c39ab85b04061edce00bb8af5acedfe7619c40386018d8b848931831",
   "files": [
     {
       "path": ".gitattributes",
@@ -33,11 +33,11 @@
     },
     {
       "path": ".github/workflows/packages-release.yml",
-      "sha256": "af1c41bfba391e45a807bbfd2dc3b8a7f4e7d6ebbd0db5442921dd92ce452f8a"
+      "sha256": "7d3c50505f24c106fc8c61620d68727c1e9f1f0d64ed49db70b04fa98984db89"
     },
     {
       "path": ".github/workflows/packages.yml",
-      "sha256": "d353ec5ebdf22cc9e215071feb10768941822ed929ccf7b66daef81281919e45"
+      "sha256": "6f32efcd1dfb14368e144afbffc094431799d4b48de6dda5021c47bdbbf97ca6"
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "68c211de093aea636006f47efd8ae7c0b315aac99caef54bfc9b4e570ac14a78"
+      "sha256": "0f1fa51a6c97190d5c09d3c1bec024f5e02562bd8bea4aec9e2250a16875d405"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -369,11 +369,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "69d905e744d170e3fba62dfe908fce49777ad4e4859bc8268227586be4069e0c"
+      "sha256": "b0438eef67ccc9cf14ba32ed2d242230790641aecc4ad5e23f6ca14325aca4fa"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "28844dc5fb5c3858a254c09bdd9e2ee4fdc71f4f1fea9bd8599125a6e1942e9b"
+      "sha256": "e2a8d0578723bd024f0a98665f14de1797cd91707e4996b10f013a66095135f3"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -1117,7 +1117,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "6aca84281e70b1bcbb303d209bcda58500ff8a097f462a4de416f779b010d25a"
+      "sha256": "43c9b58bd3838e6ee0ad6838bb37c30e1ebe310d6839cd7f106b96a69157bde7"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1129,7 +1129,7 @@
     },
     {
       "path": "dsh-electron/scripts/host-quit-adaptation.mjs",
-      "sha256": "cadff9e760f2301c7453d293fc5897f39f84f09cffa78146a3e7545766162384"
+      "sha256": "7b878e17033080099cf43c06ff683b079ed0ad8f2b9cf65262fe652d12a22284"
     },
     {
       "path": "dsh-electron/scripts/native-desktop-source.mjs",
@@ -1261,7 +1261,7 @@
     },
     {
       "path": "dsh-electron/src/legacy-migration.mjs",
-      "sha256": "a8a5e04c5e010563d184f2cee91455461899d944834f09f55218229c2d966f44"
+      "sha256": "221cd5c3ecd07d8340663c75108fec4027f87621fedbeff101761aae970ebdec"
     },
     {
       "path": "dsh-electron/src/lifecycle.mjs",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d4fd1d427be1aaaa27b0d3d679406d1e0b380015ea9d3d8522a70f859424ea0d"
+      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1433,7 +1433,7 @@
     },
     {
       "path": "dsh-electron/tests/host-quit-adaptation.test.mjs",
-      "sha256": "6b5024219722dac5fd6cd4a9e98f44b73ee3770058772ba47149559e3c56ec66"
+      "sha256": "f1e185d9c86110b03835990ab6b1861a1636aa4f6672c0fbd6a341b412395fc7"
     },
     {
       "path": "dsh-electron/tests/initialize-user-config.test.mjs",
@@ -1445,7 +1445,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "c348bfa496e42b9246ef870e030b3036b0088d4809be5d04d60b3adddf4714e1"
+      "sha256": "e684a36405861deecc09e840fd7a12945ca1176a7dba6e8c9061cd87771c4e43"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",
@@ -3422,6 +3422,62 @@
     {
       "path": "packages/dsh-annotation/test/sent.test.mjs",
       "sha256": "69c6a85664ad261281557b919c16f2e1c898926047ab93c12c140fa805b878c9"
+    },
+    {
+      "path": "packages/dsh-decision/.gitignore",
+      "sha256": "676b91f455a7988044510489387fab13294b310b164fae41301ac730692497b8"
+    },
+    {
+      "path": "packages/dsh-decision/cordis.patch.yml",
+      "sha256": "5d3953788ada651071084b8334deb06357a5f41c8e7815905a0b5c932720361b"
+    },
+    {
+      "path": "packages/dsh-decision/LICENSE",
+      "sha256": "eb7a1d713eb919b146787629e22e4c975cb701f529a65d4d7e0fcd417558bf1c"
+    },
+    {
+      "path": "packages/dsh-decision/package-lock.json",
+      "sha256": "a5cf06854ae4ecf36f6527859233976ebd4929621a0c73de9a6023d785a2e2f7"
+    },
+    {
+      "path": "packages/dsh-decision/package.json",
+      "sha256": "457e3cb271c78886c9fcb3f1649fb5605b36311752a131ec9470d44f832e0b9d"
+    },
+    {
+      "path": "packages/dsh-decision/README_EN.md",
+      "sha256": "692414d4ec32d12fbf339a83e20a00a70e9034b23280491d9ec25dfc7354c0e8"
+    },
+    {
+      "path": "packages/dsh-decision/README.md",
+      "sha256": "dc62d249797a5aba910c06932c540dd1fe41f3b9b880be7cfe000dfacedfa94b"
+    },
+    {
+      "path": "packages/dsh-decision/scripts/build.mjs",
+      "sha256": "ba4f22cafb2b0ec5e3ace4c685d88bf028e99e7c16d810f89a83d339f4a4d0e2"
+    },
+    {
+      "path": "packages/dsh-decision/skills/decision/SKILL.md",
+      "sha256": "bcbf112a38beacd0fbee1353b5daf44b52d1f7761f8bb1e35636cb6da27906fa"
+    },
+    {
+      "path": "packages/dsh-decision/src/core.js",
+      "sha256": "25309f4082c0cac76b25fbff7f28378f9e1393eb005ad1a6c9a2e4f0f6a533fb"
+    },
+    {
+      "path": "packages/dsh-decision/src/index.js",
+      "sha256": "dc2278adb4864c8b0669414457fc3d7f586f820bda924124ee742081a166c8b5"
+    },
+    {
+      "path": "packages/dsh-decision/test/core.test.mjs",
+      "sha256": "0d3aaf65e08c50b59404e77ba90251452a826287f16167a5c5aa3d702194ab32"
+    },
+    {
+      "path": "packages/dsh-decision/test/mounted.test.mjs",
+      "sha256": "94323cd29433597b3a57389fdc2595864e1e4e381b5d4b33aa372ba8dd6a604a"
+    },
+    {
+      "path": "packages/dsh-decision/test/runtime-resolver.mjs",
+      "sha256": "5b8b47f1958c24dc5030f06d9562e911c044779c670069c3c99571767636d74e"
     },
     {
       "path": "packages/dsh-desktop-pet/CHANGELOG.md",
@@ -7205,15 +7261,15 @@
     },
     {
       "path": "scripts/packages/archive.mjs",
-      "sha256": "138d51ca0273ab57eac2cc9b44749562707d548359c467252295b17cd9bc5255"
+      "sha256": "6b0bdd4b3e094dc366baad0c8df3b8b03c80442e959b3296b620edd78c3b8a1e"
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "ea197fa9f90607a8cde4f4a3783be76ea94b08217779f0b4119213c45929c5d2"
+      "sha256": "cbf0accc9f98fb5cac68fe1a921f3a0e474925b95047d2c7ace07b775fde4be1"
     },
     {
       "path": "scripts/packages/manage.mjs",
-      "sha256": "4ebee9894ef9ff4241e270a533e827b329cf6ef5fa26642e4328ec6c13dcff35"
+      "sha256": "5b5c608a9480648c37e9dc5e609dfd24429298e8ada2e4af663776071596412c"
     },
     {
       "path": "scripts/packages/npm.mjs",
@@ -7721,7 +7777,7 @@
     },
     {
       "path": "tests/package-maintenance.test.mjs",
-      "sha256": "8fa99daa32063421703a54a6ef832ca8e3ea53f99034ce4c97f7dca67b5d0b7f"
+      "sha256": "98feb2219819f09eefa8129bc88541e753ef9db20a31199d2e15af09372b8404"
     },
     {
       "path": "tests/parallel-sets.test.mjs",

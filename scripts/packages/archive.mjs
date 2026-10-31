@@ -45,6 +45,13 @@ export function inspectArchive(bytes, selected, expectedVersion) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
   }
+  if (selected.id === 'dsh-decision') {
+    assert.ok(!manifest.private, 'Decision plugin archive must be publishable')
+    assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing decision plugin bundle')
+    for (const file of ['lib/index.js', 'lib/core.js', 'skills/decision/SKILL.md', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {
+      assert.ok(files.has(file), `Missing decision plugin file ${file}`)
+    }
+  }
   if (selected.id === 'dsh-side-chat' || selected.id === 'dsh-annotation') {
     assert.ok(!manifest.private, 'Conversation plugin archive must be publishable')
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing native plugin bundle registration')

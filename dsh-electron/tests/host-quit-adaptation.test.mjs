@@ -62,3 +62,34 @@ test('a Host that exits by itself is never signalled', async () => {
 test('a changed official anchor fails the build instead of silently skipping', () => {
   assert.throws(() => adaptHostQuit('export class Host {}'), /anchor changed/)
 })
+
+// Mirrors the official close handler that builds the exit message.
+const officialExit = `export function message(code, stderr) {
+  const self = { stderr };
+  return (function () {
+    const suffix = this.stderr.trim() === '' ? '' : \`: \${this.stderr.trim()}\`;
+    return code !== 0 && code !== null ? \`dsh desktop host exited with \${String(code)}\${suffix}\` : \`dsh desktop host stopped\${suffix}\`;
+  }).call(self);
+}
+`
+
+test('an externally ended Host is not blamed on its last stderr line', async () => {
+  const { adaptHostExit } = await import('../scripts/host-quit-adaptation.mjs')
+  const source = adaptHostExit(officialExit)
+  const { message } = await import('data:text/javascript;base64,' + Buffer.from(source).toString('base64'))
+  const tail = '[dsh-wechat] login failed: Error: Login timeout (5 minutes)'
+  assert.equal(message(1073807364, tail), `dsh desktop host exited with 1073807364 (ended from outside the app; last output: ${tail})`)
+  assert.equal(message(1, 'boom'), 'dsh desktop host exited with 1: boom')
+  assert.equal(message(3221225477, tail), `dsh desktop host exited with 3221225477 (native crash 0xC0000005; last output, possibly unrelated: ${tail})`)
+  assert.equal(message(3221225477, ''), 'dsh desktop host exited with 3221225477 (native crash 0xC0000005)')
+  assert.equal(message(0xC000013A, tail), `dsh desktop host exited with 3221225786 (ended from outside the app; last output: ${tail})`)
+  assert.equal(message(0, ''), 'dsh desktop host stopped')
+  assert.throws(() => adaptHostExit('export {}'), /exit anchor changed/)
+})
+
+test('the exit adaptation accepts both the shipped source and the bundled quote style', async () => {
+  const { adaptHostExit } = await import('../scripts/host-quit-adaptation.mjs')
+  const bundled = officialExit.replace("=== '' ? '' :", '=== "" ? "" :')
+  assert.notEqual(bundled, officialExit)
+  assert.match(adaptHostExit(bundled), /ended from outside the app/)
+})

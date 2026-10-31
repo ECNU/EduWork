@@ -5,7 +5,7 @@ import { resolve, join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
 import { adaptNativeDesktopSource } from './native-desktop-source.mjs'
-import { adaptHostQuit } from './host-quit-adaptation.mjs'
+import { adaptHostQuit, adaptHostExit } from './host-quit-adaptation.mjs'
 import { pinnedDshContract } from '../../scripts/pinned-dsh-contract.mjs'
 
 const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, runtime: { type: 'string' }, 'pinned-dsh-source': { type: 'boolean' } } })
@@ -61,7 +61,7 @@ const vendor = 'vendor/jsonc-parser'
 await mkdir(join(output, 'src', vendor), { recursive: true })
 for (const name of ['parser.js', 'scanner.js', 'string-intern.js', 'package.json', 'LICENSE.md', 'README.md']) await copyFile(join(repository, 'dsh-host', vendor, name), join(output, 'src', vendor, name))
 {
-  await writeFile(join(output, 'src/eduwork-native-host-process.mjs'), adaptHostQuit(await readFile(join(host, 'host-process.mjs'), 'utf8')))
+  await writeFile(join(output, 'src/eduwork-native-host-process.mjs'), adaptHostExit(adaptHostQuit(await readFile(join(host, 'host-process.mjs'), 'utf8'))))
   for (const name of ['node-environment.mjs', 'web-document.mjs', 'redacted-log.mjs']) await copyFile(join(host, name), join(output, 'src', name))
   await copyFile(join(repository, 'dsh-electron/src/native-web-host.mjs'), join(output, 'src/eduwork-host-process.mjs'))
   for (const name of ['desktop-main.mjs', 'automation-browser.mjs', 'native-desktop.mjs', 'native-desktop-bridge.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
