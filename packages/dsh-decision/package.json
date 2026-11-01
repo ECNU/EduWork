@@ -1,0 +1,31 @@
+{
+  "name": "@eduwork/dsh-decision",
+  "version": "0.1.0",
+  "description": "SystemOne-compatible decision tools and skill for DeepSeek Harness",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": { ".": "./lib/index.js", "./core": "./lib/core.js", "./package.json": "./package.json" },
+  "files": ["lib", "skills", "cordis.patch.yml", "README.md", "README_EN.md", "LICENSE"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --import ./test/runtime-resolver.mjs --test test/*.test.mjs",
+    "check": "npm run build && npm test"
+  },
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "engines": { "node": ">=24.22.1" },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.3 <0.3.0-0",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.3 <0.3.0-0",
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": { "optional": true },
+    "@deepseek-ai/dsh-skill": { "optional": true },
+    "@deepseek-ai/schemastery": { "optional": true }
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/ECNU/EduWork.git", "directory": "packages/dsh-decision" },
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-decision#readme",
+  "bugs": { "url": "https://github.com/ECNU/EduWork/issues" },
+  "publishConfig": { "access": "public" },
+  "license": "MulanPSL-2.0"
+}
