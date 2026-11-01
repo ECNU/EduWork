@@ -3,6 +3,7 @@ export const repository = 'ECNU/EduWork'
 // Each development root is installed independently.
 // Studio retains its existing shared-services workspace and exact dependency contract.
 export const packages = [
+  { id: 'dsh-decision', name: '@eduwork/dsh-decision', directory: 'packages/dsh-decision', group: 'dsh-decision' },
   { id: 'dsh-annotation', name: '@eduwork/dsh-annotation', directory: 'packages/dsh-annotation', group: 'dsh-annotation' },
   { id: 'dsh-side-chat', name: '@eduwork/dsh-side-chat', directory: 'packages/dsh-side-chat', group: 'dsh-side-chat' },
   { id: 'dsh-desktop-pet', name: '@eduwork/dsh-desktop-pet', directory: 'packages/dsh-desktop-pet', group: 'dsh-desktop-pet' },
