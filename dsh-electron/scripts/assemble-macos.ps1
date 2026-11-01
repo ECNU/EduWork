@@ -166,7 +166,7 @@ if ($ExternalPublisherConfig) {
     $desktop.publisherConfig=$ExternalPublisherConfig
 }
 $desktop | ConvertTo-Json -Depth 8 | Set-Content -LiteralPath (Join-Path $appPayload 'eduwork.desktop.json') -Encoding utf8NoBOM
-@{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $appPayload 'package.json') -Encoding utf8NoBOM
+@{name='eduwork-desktop-electron';version=$identity.dshVersion;private=$true;type='module';main='lib/main.js';description='EduWork official DSH Electron integration';license='MulanPSL-2.0 AND MIT'} | ConvertTo-Json | Set-Content -LiteralPath (Join-Path $appPayload 'package.json') -Encoding utf8NoBOM
 
 $plist = Join-Path $app 'Contents/Info.plist'
 $marketingVersion = ($Version -split '-')[0]

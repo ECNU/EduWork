@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
+[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
@@ -114,7 +114,7 @@ Release 中的 Source code 是源码，不是桌面安装包。从源码运行�
 
 ## 许可
 
-EduWork 项目代码采用 [MIT 许可证](LICENSE)，基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建；Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。第三方组件保留各自许可证，见[第三方声明](THIRD_PARTY_NOTICES.md)。
+EduWork 项目原创贡献采用[木兰宽松许可证第 2 版](LICENSE)；历史 MIT 代码及许可边界见[许可范围](LICENSING.md)，基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建；Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。第三方组件保留各自许可证，见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
 ## Star 趋势
 

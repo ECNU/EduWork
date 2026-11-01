@@ -16,12 +16,16 @@ function item(value) {
   const source = value.source;
   if (source !== void 0 && (!record(source, ["sessionId", "messageId"]) || typeof source.sessionId !== "string" || !source.sessionId || typeof source.messageId !== "string" || !source.messageId)) return void 0;
   const context = value.context;
-  if (context !== void 0 && (!record(context, ["before", "after"]) || typeof context.before !== "string" || typeof context.after !== "string" || context.before.length > 320 || context.after.length > 320)) return void 0;
+  if (context !== void 0 && (!record(context, ["before", "after", "snapshot"]) || typeof context.before !== "string" || typeof context.after !== "string" || context.before.length > 320 || context.after.length > 320 || context.snapshot !== void 0 && (typeof context.snapshot !== "string" || context.snapshot.length > 1e5))) return void 0;
   return {
     text: value.text,
     ...value.comment ? { comment: value.comment } : {},
     ...source ? { source: { sessionId: source.sessionId, messageId: source.messageId } } : {},
-    ...context ? { context: { before: context.before, after: context.after } } : {}
+    ...context ? { context: {
+      before: context.before,
+      after: context.after,
+      ...context.snapshot !== void 0 ? { snapshot: context.snapshot } : {}
+    } } : {}
   };
 }
 function envelope(items, body) {

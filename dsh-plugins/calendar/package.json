@@ -2,7 +2,7 @@
   "name": "@eduwork/dsh-calendar",
   "version": "0.1.0-dev",
   "private": true,
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "description": "Local calendar and schedule panel for the EduWork workbench",
   "type": "module",
   "main": "lib/index.js",

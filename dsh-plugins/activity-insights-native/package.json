@@ -1,7 +1,7 @@
 {
   "name": "@chatecnu-work/dsh-activity-insights-native",
   "version": "0.1.0-alpha.7",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "description": "Local-only activity and usage insights for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",

@@ -3,7 +3,7 @@
   "version": "0.1.2",
   "description": "End-to-end encrypted remote access to a DSH host through a self-hosted relay",
   "type": "module",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -22,7 +22,9 @@
     "README_EN.md",
     "LICENSE",
     "CHANGELOG.md",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

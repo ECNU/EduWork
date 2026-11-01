@@ -1,0 +1,3 @@
+- insert:
+    - id: eduwork-side-chat
+      name: '@eduwork/dsh-side-chat'

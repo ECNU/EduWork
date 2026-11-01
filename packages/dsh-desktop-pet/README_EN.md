@@ -18,7 +18,7 @@ npm install @eduwork/dsh-desktop-pet
 
 **Host requirements: compatible DSH 0.2 APIs and the EduWork Electron desktop bridge.** The plugin contains settings, animation and artwork. The desktop shell provides the transparent floating window, click-through, dragging and position storage. Installing the package in a plain web app or a DSH client without this bridge does not supply a desktop window.
 
-See the [desktop pet guide](https://github.com/ecnu/EduWork/blob/main/docs/DESKTOP_PET_EN.md) for usage and characters. Code is MIT licensed; see [skins/LICENSE](skins/LICENSE) for artwork sources and licenses.
+See the [desktop pet guide](https://github.com/ecnu/EduWork/blob/main/docs/DESKTOP_PET_EN.md) for usage and characters. Code uses Mulan PSL v2 with historical MIT grants ([scope](LICENSING.md)); see [skins/LICENSE](skins/LICENSE) for artwork sources and licenses.
 
 ## Host integration
 
