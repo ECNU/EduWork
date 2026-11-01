@@ -9,3 +9,7 @@ Run `npm ci` and `npm run check`. Compatibility changes must also run against a 
 Add mailbox-independent automated tests for new behavior; cover cancellation, timeout, bounds, and error normalization for protocol changes; give every mutation an explicit capability, target boundary, and approval policy; update Chinese and English documentation together; and never commit real addresses, messages, app passwords, logs, or personal data.
 
 The plugin follows its own SemVer: use patch for compatibility fixes and dependency maintenance, minor for backward-compatible capability additions, and major only for breaking tool or configuration contracts. Do not mirror the host product's version mechanically. Use a dedicated test mailbox and isolated Profile for interoperability. Do not mix new product boundaries such as delete, move, auto-reply, or polling into corrective pull requests. Report vulnerabilities privately through [SECURITY.en.md](SECURITY.en.md).
+
+## Contribution license
+
+Submit new original contributions under Mulan PSL v2 only when entitled to grant the relevant copyright and patent rights. Preserve historical MIT grants and third-party licenses, copyright and provenance; declare imported code in the PR. See [LICENSING.md](LICENSING.md).

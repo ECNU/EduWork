@@ -242,7 +242,7 @@ export async function assembleMacos({
     type: 'module',
     main: 'lib/main.js',
     description: 'EduWork official DSH Electron integration',
-    license: 'MIT',
+    license: 'MulanPSL-2.0 AND MIT',
   })
 
   const plist = join(app, 'Contents/Info.plist')

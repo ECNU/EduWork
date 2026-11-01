@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -114,7 +114,7 @@ Conversations, workspace references and memories are managed locally. Remote mod
 
 ## License
 
-EduWork code is [MIT licensed](LICENSE) and built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Knowledge Studio’s source-based creation and learning interactions are inspired by NotebookLM. Third-party components retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+EduWork original contributions use [Mulan PSL v2](LICENSE); historical MIT code and exceptions are described in the [licensing scope](LICENSING.md). EduWork is built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Knowledge Studio’s source-based creation and learning interactions are inspired by NotebookLM. Third-party components retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Star History
 

@@ -76,7 +76,7 @@ test('source audit still reports a real violation inside a kept directory', asyn
   } finally { await rm(root, { recursive: true, force: true }) }
 })
 
-test('calendar render fixtures do not change the frozen source receipt across runtimes', async () => {
+test('calendar fixtures and private side-chat bundles do not change the frozen source receipt', async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-audit-render-'))
   try {
     await writeFile(join(root, 'entry.mjs'), 'export const kept = true\n')
@@ -87,12 +87,16 @@ test('calendar render fixtures do not change the frozen source receipt across ru
     }))
     const renderRoot = join(root, 'dsh-plugins', 'calendar', 'test', '.render')
     await mkdir(renderRoot, { recursive: true })
+    const sideChatBundle = join(root, 'packages', 'dsh-side-chat', 'lib')
+    await mkdir(sideChatBundle, { recursive: true })
     for (const runtime of ['runtime-one', 'runtime-two']) {
       await writeFile(join(renderRoot, 'calendar-panel.cjs'), `module.exports = '${runtime}'\n`)
+      await writeFile(join(sideChatBundle, 'client.js'), `globalThis.fixture = '${runtime}'\n`)
       assert.deepEqual(sourceFileSet(root), files)
       const report = auditDistribution({ root, verifyReceipt: true })
       assert.deepEqual(report.errors, [])
       assert.ok(report.skipped.includes('dsh-plugins/calendar/test/.render'))
+      assert.ok(report.skipped.includes('packages/dsh-side-chat/lib'))
     }
   } finally { await rm(root, { recursive: true, force: true }) }
 })

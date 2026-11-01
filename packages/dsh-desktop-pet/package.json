@@ -4,7 +4,7 @@
   "eduworkNotificationProtocol": 1,
   "description": "Desktop pet for DSH applications with the EduWork Electron desktop bridge",
   "type": "module",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -21,7 +21,9 @@
     "README.md",
     "README_EN.md",
     "LICENSE",
-    "CHANGELOG.md"
+    "CHANGELOG.md",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "scripts": {
     "test": "node --test test/*.test.mjs",

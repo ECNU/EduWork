@@ -15,5 +15,5 @@
   "peerDependencies": {
     "@deepseek-ai/cordis": "4.0.2"
   },
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }

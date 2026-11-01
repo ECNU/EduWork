@@ -53,4 +53,4 @@ npm run check
 - `lib/` 由 `npm run build` 生成；审查源码和 tarball，而不只是压缩产物。
 - 优先通过受保护 tag 和批准的 Trusted Publishing 工作流发布。该流程尚未配置时，初始维护者可以用 npm CLI 和浏览器 2FA 发布已冻结并核验的 tarball，但不得声称 provenance；只有 npm 实际生成 attestation 后才能记录 provenance。
 
-参与贡献即表示同意遵守[行为准则](CODE_OF_CONDUCT.md)，并确认你有权按 MIT 许可证提交相关贡献。
+参与贡献即表示同意遵守[行为准则](CODE_OF_CONDUCT.md)，并确认你有权按木兰宽松许可证第 2 版提交新增原创贡献；历史及第三方代码保留原授权，见 [LICENSING.md](LICENSING.md)。

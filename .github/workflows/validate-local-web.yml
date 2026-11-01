@@ -59,7 +59,9 @@ jobs:
         if: steps.changes.outputs.build == 'true'
         shell: pwsh
         run: |
-          node core/scripts/ci-eduwork-web.mjs --core-root ./core --edition-root ./core --distribution-config config/distributions/generic.json --verify-snapshot --build-only
+          # This job validates the current Git checkout, which is not a frozen
+          # release snapshot. The build still audits its actual source inputs.
+          node core/scripts/ci-eduwork-web.mjs --core-root ./core --edition-root ./core --distribution-config config/distributions/generic.json --build-only
           if ($LASTEXITCODE) { throw 'Node Web assembly failed' }
       - name: Retain local Web validation evidence
         if: always() && steps.changes.outputs.build == 'true'
