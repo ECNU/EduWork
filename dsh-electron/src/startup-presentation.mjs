@@ -1,4 +1,4 @@
-// A window hidden after its first presentation must stay hidden at Host readiness.
-export function shouldPresentMainWindow({ presented, startupFailure, quitting, recoveryActive, destroyed, startupWindowPresent }) {
-  return !presented && !startupFailure && !quitting && !recoveryActive && !destroyed && !startupWindowPresent
+// Hiding the application before its first window must also survive Host readiness.
+export function shouldPresentMainWindow({ presented, appHidden, startupFailure, quitting, recoveryActive, destroyed, startupWindowPresent }) {
+  return !presented && !appHidden && !startupFailure && !quitting && !recoveryActive && !destroyed && !startupWindowPresent
 }
