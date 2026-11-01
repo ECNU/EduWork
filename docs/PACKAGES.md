@@ -8,6 +8,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 | npm 包 | 源码与说明 | 开发安装根目录 |
 | --- | --- | --- |
+| `@eduwork/dsh-decision` | [SystemOne 决策工具与技能](../packages/dsh-decision/README.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-annotation` | [选段引用与批注](../packages/dsh-annotation/README.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [侧边聊天与选区提问](../packages/dsh-side-chat/README.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [桌面宠物与宿主要求](../packages/dsh-desktop-pet/README.md) | `packages/dsh-desktop-pet` |
@@ -24,6 +25,8 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 侧聊可单独从消息按钮开启；同时启用批注 `>=0.1.1 <0.2.0` 时，通过可选的 `annotationSelection` 服务接入同一个选区操作栏。两个插件分别安装和启停。侧聊检查与发布工作流使用锁定的 DSH `0.2.1-rc.3` Runtime 运行真实会话、归档和报错提示测试；模型输入使用合成数据。
 
 ## 兼容声明与构建锁
+
+决策插件是待首次发布的独立包，使用 DSH 原生 bundle、工具和技能，默认关闭；支持显式 API Key、可选 OIDC 和免鉴权服务配置。包检查使用锁定的 rc.3 Runtime（`EDUWORK_DECISION_RUNTIME`），无真实模型请求。npm 原包发布校验后再加入产品精确锁；此时不宣称已预装，也不从源码替换现有桌面产物。
 
 `peerDependencies` 表示插件支持的宿主 API 范围；开发依赖、`package-lock.json` 和产品组件锁记录一次构建的确切输入，两者分别维护。对已验证兼容的同一 API 系列，peer 应使用有上下界的版本范围，避免逐个追加 rc 版本。范围需要检查预发布版本的匹配语义，并在支持范围内验证实际插件加载与工具调用；不能仅因版本号相邻就假定兼容，也不使用 `*` 跳过边界。
 

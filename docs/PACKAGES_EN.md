@@ -6,6 +6,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-decision` | [SystemOne decision tool and skill](../packages/dsh-decision/README_EN.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [Side conversations and selection questions](../packages/dsh-side-chat/README_EN.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
@@ -22,6 +23,8 @@ Each development root retains its own dependency lock without repository-wide ho
 Side chat independently opens from message actions. With annotation `>=0.1.1 <0.2.0` also enabled, it joins the shared selection toolbar through the optional `annotationSelection` service. Install and enable each plugin separately. Side-chat checks and publication use the pinned DSH `0.2.1-rc.3` Runtime to test real sessions, archiving and failure notices with synthetic model inputs.
 
 ## Develop and check
+
+The decision plugin is prepared for its first npm publication. It uses native DSH bundles, tools and skills, is disabled by default, and supports explicit API-key, optional OIDC and unauthenticated service configuration. Checks use the locked rc.3 Runtime (`EDUWORK_DECISION_RUNTIME`) without live model requests. Add verified npm bytes to exact product locks after publication; it is not yet preinstalled and does not replace desktop packages with source.
 
 Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.22.1. From the repository root:
 
