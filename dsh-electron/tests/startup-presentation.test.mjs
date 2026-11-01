@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
 import { attachAppActivation, showDesktopWindows } from '../src/window-visibility.mjs'
 
-const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
+const allowed = { presented: false, appHidden: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
 
 test('initial presentation respects prior presentation, recovery and shutdown', () => {
   assert.equal(shouldPresentMainWindow(allowed), true)
@@ -43,7 +43,7 @@ function startupHarness() {
     restore() { this.minimized = false }
     focus() { this.focused = true }
   }
-  const app = new EventEmitter()
+  const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
     let quitting = false, desktopFailureShown = false
@@ -63,8 +63,20 @@ function startupHarness() {
   const main = new FakeWindow()
   harness.setMain(main)
   attachAppActivation({ app, windows: harness.activationWindows, platform: 'darwin' })
-  return { harness, main, FakeWindow, activate: () => app.emit('activate') }
+  return { harness, main, FakeWindow, app, activate: () => app.emit('activate') }
 }
+
+test('preparation progress does not present a window while the application is hidden', { skip: process.platform !== 'darwin' }, () => {
+  const { harness, main, app } = startupHarness()
+  app.hidden = true
+  harness.showStartupProgress('download')
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  assert.equal(main.showCalls, 0)
+  app.hidden = false
+  harness.showDesktop()
+  assert.equal(main.visible, true)
+  assert.equal(main.focused, true)
+})
 
 test('preparation uses the main BootPage and clears its status without presenting it again', async () => {
   const { harness, main, FakeWindow } = startupHarness()
