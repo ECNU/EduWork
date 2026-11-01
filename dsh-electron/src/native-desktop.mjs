@@ -152,6 +152,7 @@ async function main() {
   const presentInitialWindow = () => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
+      appHidden: process.platform === 'darwin' && app.isHidden(),
       startupFailure: Boolean(startupFailure),
       quitting: isQuitting(),
       recoveryActive: recovery.active,

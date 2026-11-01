@@ -175,6 +175,7 @@ function showStartupProgress(message) {
   window.webContents.send('eduwork:boot-brand', desktopBootBrand())
   const present = () => {
     if (window.isDestroyed() || isQuitting() || desktopFailureShown || mainWindowPresented) return
+    if (process.platform === 'darwin' && app.isHidden()) return
     mainWindowPresented = true
     window.show()
   }
@@ -339,7 +340,7 @@ export async function desktopReady(shouldContinue = () => true) {
   // Never commit a successful migration receipt after a failed, cancelled or
   // quitting Host launch.
   if (!shouldContinue()) return
-  await writeMigrationHealth(migrationLaunch,'ready')
+  await writeMigrationHealth(migrationLaunch,'ready','',shouldContinue)
   if (!shouldContinue()) return
   updateCompleted = true
   migrationLaunch = null
