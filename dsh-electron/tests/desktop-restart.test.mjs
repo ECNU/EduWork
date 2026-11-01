@@ -54,3 +54,10 @@ test('ordinary restarts retain configuration and shell arguments', () => {
   const args = ['app path', '--lang=zh-CN', '--user-data-dir=user profile']
   assert.deepEqual(desktopRelaunchOptions(args, true).args, args)
 })
+
+test('reopening during quit relaunches with the same filtered arguments as a restart', async () => {
+  const source = await readFile(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const calls = source.match(/app\.relaunch\([^\n]*\)/g)
+  assert.ok(calls.length >= 2)
+  for (const call of calls) assert.equal(call, 'app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))')
+})

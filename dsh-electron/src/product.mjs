@@ -77,7 +77,8 @@ const desktopExit = new DesktopExit({
     await directoryPicker.close()
     await stopDesktopServices()
     // A restart or updater handoff already relaunches; a second relaunch opens two copies.
-    if (reopenAfterQuit && !desktopExit.relaunchRequested && !desktopExit.installerOwnsQuit) app.relaunch()
+    // Same arguments as a restart: a finished update's health handshake is not carried over.
+    if (reopenAfterQuit && !desktopExit.relaunchRequested && !desktopExit.installerOwnsQuit) app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
     taskNotifications?.close()
   },
   relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),

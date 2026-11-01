@@ -5,7 +5,7 @@
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-10-25T17:56:32.937Z",
-  "fileSetSHA256": "598d3ebabc13fc2e6000e0378a7e47f332bab933c4f11df639d0634a5e7134fd",
+  "fileSetSHA256": "acb30b7fe2332014a5461c4e9cdf0c9125d9e0c4207f74cdbde1bdb2f3895e49",
   "files": [
     {
       "path": ".gitattributes",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "b9b7041717d8979ee854ee2cfef99efec1383dc27ab6db60f72d211f892851d3"
+      "sha256": "dd1975688472fc5e911d643c4b246218e8df1a3d1d1289efdd31a925255d7a79"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1381,7 +1381,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-restart.test.mjs",
-      "sha256": "68bbd8d6391efb81c2293cc6abf87dceaf23080de202abae08470725c6486263"
+      "sha256": "aea1beb61251ca2266bbed263fd1d834746f60213f5766b09bece1a841846c30"
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
