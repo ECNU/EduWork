@@ -6,8 +6,18 @@ import { createHash } from 'node:crypto'
 const json = async path => JSON.parse(await readFile(path, 'utf8'))
 
 export async function readPublishedPackageLocks(candidate) {
-  const names = ['annotation', 'desktop-pet', 'literature', 'mail', 'memory', 'oidc', 'knowledge-studio', 'artifact-services', 'remote-access']
-  return Promise.all(names.map(name => json(join(candidate, name + '.json'))))
+  const manifest = await json(join(candidate, 'source-probe/package.json'))
+  // The chosen recipe owns its npm inputs, including optional bundles. Each
+  // declared public plugin must have a matching publication receipt; older
+  // recipes need only the packages they actually declared.
+  const names = Object.keys(manifest.dependencies ?? {}).filter(name => name.startsWith('@eduwork/')).sort()
+  assert.ok(names.length, 'Candidate has no published EduWork plugins')
+  return Promise.all(names.map(async name => {
+    assert.match(name, /^@eduwork\/dsh-[a-z0-9-]+$/, 'Invalid published plugin identity')
+    const lock = await json(join(candidate, name.slice('@eduwork/dsh-'.length) + '.json'))
+    assert.equal(lock.name, name, 'Published plugin receipt identity mismatch')
+    return lock
+  }))
 }
 
 // Record package-owned bytes, excluding npm's separately resolved dependency tree.
