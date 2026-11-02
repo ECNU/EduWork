@@ -85,6 +85,64 @@ export function attachmentNames(structure) {
   return names
 }
 
+// Reply and forward chains repeat the whole conversation, so the raw body of a
+// three-mail thread is mostly the previous two messages. A preview should show
+// what this message adds, so the body is cut at the first recognised quote
+// header. A body that would become empty is returned unchanged.
+const QUOTE_HEADER = [
+  // `---- 回复的原邮件 ----`, `-----原始邮件-----`, `---- 转发邮件 ----`
+  /^-{2,}\s*(?:回复的原邮件|回复邮件|原始邮件|原始郵件|原邮件|转发邮件|轉寄郵件)\s*-*$/iu,
+  // `-----Original Message-----`, `---------- Forwarded message ----------`
+  /^-{2,}\s*(?:original message|forwarded message|reply message)\s*-*$/iu,
+  // `2026年11月2日 13:19，朱骏宁 <a@b.c> 写道：`
+  /\d{1,4}\s*(?:年|[-/.])\s*\d{1,2}\s*(?:月|[-/.])\s*\d{1,2}\s*日?.{0,160}?(?:写道|wrote)\s*[:：]?$/iu,
+  // `On Mon, Nov 2, 2026 at 1:19 PM Zhu <a@b.c> wrote:`
+  /^(?:在|On)\s.{0,160}?(?:写道|wrote)\s*[:：]?$/iu,
+  /^_{10,}$/u,
+  // A rule wide enough to be a quote separator rather than an underline.
+  /^-{6,}$/u,
+  // RFC 3676 signature delimiter, always the end of the author's own text.
+  /^--\s*$/u,
+]
+
+/** True when every remaining line is quoted or blank: a trailing quote block. */
+function quotedToEnd(lines, start) {
+  for (let index = start; index < lines.length; index += 1) {
+    const line = lines[index].trim()
+    if (line !== '' && !line.startsWith('>')) return false
+  }
+  return true
+}
+
+/**
+ * Drop a reply/forward chain from a message body, keeping only the new text.
+ * The first non-empty line is always kept, so a body that is itself a quote is
+ * still readable.
+ */
+export function stripQuoted(value) {
+  const text = String(value ?? '').replace(/\r\n?/gu, '\n')
+  const lines = text.split('\n')
+  const first = lines.findIndex(line => line.trim() !== '')
+  if (first < 0) return text
+  let cut = lines.length
+  for (let index = first + 1; index < lines.length; index += 1) {
+    const line = lines[index].trim()
+    if (line === '') continue
+    if (QUOTE_HEADER.some(pattern => pattern.test(line))) {
+      cut = index
+      break
+    }
+    // Only cut a quoted tail when the message contributed text before it: a body
+    // that is itself a quote keeps every line, or the preview would be empty.
+    if (line.startsWith('>') && quotedToEnd(lines, index) && lines.slice(first, index).some(row => row.trim() !== '' && !row.trim().startsWith('>'))) {
+      cut = index
+      break
+    }
+  }
+  const kept = lines.slice(0, cut).join('\n').replace(/[ \t\u00a0]+$/gmu, '').trim()
+  return kept === '' ? text : kept
+}
+
 /** Normalise a body for display and cap it so one preview cannot grow unbounded. */
 export function normalizeBody(value, { max = BODY_LIMIT } = {}) {
   const text = String(value ?? '')
@@ -134,7 +192,7 @@ export async function readMessage(client, folder, uid, { max = BODY_LIMIT } = {}
       const decoded = decodeBuffer(Buffer.concat(chunks), part.charset)
       body = part.type === 'text/html' ? htmlToText(decoded) : decoded
     }
-    const { text, truncated } = normalizeBody(body, { max })
+    const { text, truncated } = normalizeBody(stripQuoted(body), { max })
     return {
       folder,
       uid: Number(uid),

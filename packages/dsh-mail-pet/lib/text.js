@@ -28,6 +28,25 @@ export function clip(value, max) {
 }
 
 /**
+ * The preview shows a timestamp to a person, so an ISO string is the wrong
+ * shape: format the envelope date in the reader's own zone. Anything unparsable
+ * is returned as-is, because a wrong date is worse than a raw one.
+ */
+export function localStamp(value, { timeZone, locale = 'sv-SE' } = {}) {
+  const raw = value instanceof Date ? value : String(value ?? '').trim()
+  if (raw === '') return ''
+  const at = raw instanceof Date ? raw : new Date(raw)
+  if (Number.isNaN(at.getTime())) return typeof raw === 'string' ? raw : ''
+  // sv-SE orders the parts as year-month-day, which is the format asked for.
+  const parts = new Intl.DateTimeFormat(locale, {
+    timeZone, year: 'numeric', month: '2-digit', day: '2-digit',
+    hour: '2-digit', minute: '2-digit', hour12: false, hourCycle: 'h23',
+  }).formatToParts(at)
+  const pick = type => parts.find(part => part.type === type)?.value ?? ''
+  return `${pick('year')}-${pick('month')}-${pick('day')} ${pick('hour')}:${pick('minute')}`
+}
+
+/**
  * One arrival becomes one notification. A merged batch keeps the count visible
  * so the newest subject is never mistaken for the only message.
  */
@@ -40,7 +59,9 @@ export function describeArrival({ subject, from, count = 1 } = {}) {
       preview: clip(newest === '' ? `${count} 封新邮件` : `${count} 封新邮件，最新：${newest}`, PREVIEW_LIMIT),
     }
   }
-  const title = clip(subject === '' || subject === undefined ? '（无主题）' : subject, TITLE_LIMIT)
+  // The bubble sits on the desktop with no other context, so it names the source
+  // itself; the tray and the notification list read the same title.
+  const title = clip(`新邮件：${subject === '' || subject === undefined ? '（无主题）' : subject}`, TITLE_LIMIT)
   return { title, preview: sender === '' ? '' : clip(sender, PREVIEW_LIMIT) }
 }
 
@@ -56,7 +77,7 @@ export function readingPayload(message, { folder, uid, limit = TARGET_LIMIT } = 
     uid: Number(uid),
     subject: clip(message?.subject, TITLE_LIMIT),
     from: clip(message?.from, TITLE_LIMIT),
-    date: clip(message?.date, 40),
+    date: clip(localStamp(message?.date), 40),
     text: clip(message?.body, TEXT_LIMIT),
     truncated: message?.truncated === true,
     attachments: Array.isArray(message?.attachments)

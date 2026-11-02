@@ -29,6 +29,10 @@ const MAIL_PET_DOMAIN = defineDomain({
   },
 })
 
+// The first probe of a session runs almost immediately; later probes keep the
+// configured interval.
+const FIRST_PROBE_DELAY = 3_000
+
 const readField = field => typeof field?.get === 'function' ? field.get() : field
 
 export function apply(ctx, config = {}) {
@@ -99,6 +103,38 @@ export function apply(ctx, config = {}) {
     }
   }
 
+  // A short interval only makes sense when it costs one STATUS round-trip rather
+  // than a fresh login: the watcher keeps one read-only session and reuses it.
+  // The session is dropped when the mailbox settings change or the socket dies,
+  // and the next tick reconnects with the usual backoff.
+  const session = { client: undefined, signature: '', dead: false }
+
+  const closeSession = async () => {
+    const client = session.client
+    session.client = undefined
+    session.signature = ''
+    session.dead = false
+    if (client !== undefined) await closeClient(client)
+  }
+
+  const sessionClient = async (mail, password) => {
+    const signature = JSON.stringify([mail.imapHost, mail.imapPort, mail.imapTls, mail.username || mail.email])
+    if (session.client !== undefined && (session.signature !== signature || session.dead)) await closeSession()
+    session.signature = signature
+    if (session.client === undefined) {
+      // A reused session must outlive the interval between two probes, otherwise
+      // the socket times out before the next STATUS and every poll reconnects.
+      const client = createClient(mail, password, { socketTimeout: Math.max(120_000, read().intervalSeconds * 3_000) })
+      await client.connect()
+      // A dropped socket must never be reused: mark it and let the next tick
+      // reconnect, so a poll never waits on a dead connection twice.
+      const fail = () => { session.dead = true }
+      client.on('error', fail)
+      client.on('close', fail)
+      session.client = client
+    }
+    return session.client
+  }
   ctx.inject(['notifications'], inner => {
     if (inner.notifications.version !== 1) throw Error('dsh-mail-pet requires notification protocol 1')
 
@@ -174,37 +210,44 @@ export function apply(ctx, config = {}) {
       if (state.polling) return
       const options = read()
       if (!options.enabled) return
-      if (mailSettings() === null) {
+      const mail = mailSettings()
+      if (mail === null) {
         warnOnce('configuration', 'mail-pet: the mail assistant is not enabled or not configured, so polling is skipped')
+        return
+      }
+      const resolved = await ctx.credentials.resolve(PASSWORD_REF).catch(() => undefined)
+      if (resolved?.value === undefined || resolved.value === '') {
+        warnOnce('credential', 'mail-pet: the mail password is not stored yet, so polling is skipped')
         return
       }
 
       await ready
       state.polling = true
       try {
-        const current = await withMailbox(options.folder, async (client, folder) => {
-          const status = await probeFolder(client, folder)
-          const saved = table.get(folder)
-          const stamp = new Date().toISOString()
-          if (saved === undefined || saved.uidValidity !== status.uidValidity) {
-            // First probe, or the server rebuilt UIDs: record the waterline and
-            // stay quiet, because the old UIDs no longer mean anything.
-            await table.put(folder, { uidValidity: status.uidValidity, uidNext: status.uidNext, updatedAt: stamp })
-            return null
-          }
-          if (status.uidNext <= saved.uidNext) return null
-          const arrivals = await fetchArrivals(client, folder, saved.uidNext, status.uidNext - 1, { detail: read().maxPerFlush })
+        const client = await sessionClient(mail, resolved.value)
+        const status = await probeFolder(client, options.folder)
+        const saved = table.get(options.folder)
+        const stamp = new Date().toISOString()
+        let current = null
+        if (saved === undefined || saved.uidValidity !== status.uidValidity) {
+          // First probe, or the server rebuilt UIDs: record the waterline and
+          // stay quiet, because the old UIDs no longer mean anything.
+          await table.put(options.folder, { uidValidity: status.uidValidity, uidNext: status.uidNext, updatedAt: stamp })
+        }
+        else if (status.uidNext > saved.uidNext) {
+          current = await fetchArrivals(client, options.folder, saved.uidNext, status.uidNext - 1, { detail: options.maxPerFlush })
           // Advance before publishing: a failed notification must never replay.
-          await table.put(folder, { uidValidity: status.uidValidity, uidNext: status.uidNext, updatedAt: stamp })
-          return arrivals
-        })
-        if (current === undefined || current === null || current.count === 0) return
+          await table.put(options.folder, { uidValidity: status.uidValidity, uidNext: status.uidNext, updatedAt: stamp })
+        }
+        if (current === null || current.count === 0) return
         state.failures = 0
         warned.delete('configuration')
         warned.delete('credential')
         await publish(current)
       }
       catch (error) {
+        // The session may be half-dead; reconnect on the next tick.
+        session.dead = true
         state.failures = Math.min(4, state.failures + 1)
         throw error
       }
@@ -232,9 +275,9 @@ export function apply(ctx, config = {}) {
       clearTimeout(state.timer)
       state.timer = undefined
       if (read().enabled !== true) return
-      // The first probe waits one interval so a desktop start does not race the
-      // mailbox while the rest of the application is still loading.
-      schedule()
+      // Probe soon after start so mail that arrived while the application was
+      // closed is reported within seconds instead of after a whole interval.
+      schedule(FIRST_PROBE_DELAY)
     }
 
     inner.on('loader/volatile-update', restart)
@@ -242,6 +285,7 @@ export function apply(ctx, config = {}) {
       state.stopped = true
       clearTimeout(state.timer)
       state.timer = undefined
+      void closeSession()
       handle.dispose()
     })
     restart()

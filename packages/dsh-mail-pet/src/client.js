@@ -82,8 +82,7 @@ function Reader() {
   h('header', { style: { padding: '16px 20px 12px', borderBottom: `1px solid ${border}` } },
     h('h2', { style: { margin: 0, fontSize: 16, fontWeight: 600, lineHeight: 1.4, wordBreak: 'break-word' } }, value.subject || (zh ? '（无主题）' : '(no subject)')),
     h(Row, { label: text.to, value: value.from }),
-    h(Row, { label: text.at, value: value.date }),
-    h(Row, { label: '#', value: `${value.folder || 'INBOX'} · UID ${value.uid ?? '?'}` })),
+    h(Row, { label: text.at, value: value.date })),
   h('div', { style: { flex: 1, overflow: 'auto', padding: '14px 20px' } },
     h('pre', {
       style: { margin: 0, fontFamily: mono, fontSize: 13, lineHeight: 1.7, whiteSpace: 'pre-wrap', wordBreak: 'break-word' },

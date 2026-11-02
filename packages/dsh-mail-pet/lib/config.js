@@ -10,7 +10,9 @@ export const PASSWORD_REF = 'DSH_MAIL_ASSISTANT_PASSWORD'
 
 export const DEFAULTS = Object.freeze({
   enabled: false,
-  intervalSeconds: 180,
+  // One STATUS round-trip per probe now that the session is reused, so a minute
+  // is cheap; anything longer delays a reminder that is meant to be timely.
+  intervalSeconds: 60,
   folder: 'INBOX',
   maxPerFlush: 5,
 })

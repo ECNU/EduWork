@@ -13,8 +13,10 @@ const SOCKET_TIMEOUT = 60_000
  * user configures one mailbox instead of two.
  * @param {{ imapHost: string, imapPort: number, imapTls: 'implicit'|'starttls', username: string, email: string }} settings
  * @param {string} password resolved credential value
+ * @param {{ socketTimeout?: number }} [options] idle deadline; a reused session must
+ *   outlive the polling interval, so the watcher passes a longer one.
  */
-export function createClient(settings, password) {
+export function createClient(settings, password, { socketTimeout = SOCKET_TIMEOUT } = {}) {
   return new ImapFlow({
     host: settings.imapHost.trim(),
     port: settings.imapPort,
@@ -24,7 +26,7 @@ export function createClient(settings, password) {
     logger: false,
     connectionTimeout: CONNECT_TIMEOUT,
     greetingTimeout: CONNECT_TIMEOUT,
-    socketTimeout: SOCKET_TIMEOUT,
+    socketTimeout,
   })
 }
 

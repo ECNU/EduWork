@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { attachmentNames, decodeBuffer, formatAddress, htmlToText, normalizeBody, pickBodyPart } from '../lib/message.js'
+import { attachmentNames, decodeBuffer, formatAddress, htmlToText, normalizeBody, pickBodyPart, stripQuoted } from '../lib/message.js'
 
 test('a GBK body decodes instead of turning into replacement characters', () => {
   // "中文测试" in GB18030; Chinese enterprise mail still sends this charset.
@@ -45,4 +45,49 @@ test('an address list stays one bounded line', () => {
   assert.equal(formatAddress([{ name: '张示例', address: 'zhang.shili@example.com' }]), '张示例 <zhang.shili@example.com>')
   assert.equal(formatAddress([{ address: 'a@b.c' }, { name: '只有名字' }]), 'a@b.c，只有名字')
   assert.equal(formatAddress(undefined), '')
+})
+
+test('a reply chain is cut at the quote header, keeping only the new text', () => {
+  // The reported case: a 网易企业邮 reply that quotes the previous two mails.
+  const body = [
+    '收到来自#187功能的有邮件提醒消息',
+    '',
+    '---- 回复的原邮件 ----',
+    '发件人 朱骏宁<jnzhu@admin.ecnu.edu.cn>',
+    '发送日期 2026年11月2日 13:33',
+    '收件人 jnzhu<jnzhu@admin.ecnu.edu.cn>',
+    '主题 第二次测试',
+    '',
+    '收到来自#187功能的有邮件提醒消息',
+    '',
+    '---- 回复的原邮件 ----',
+    '发件人 朱骏宁<jnzhu@admin.ecnu.edu.cn>',
+    '主题 PR#187邮件提醒测试',
+    '收到来自#187功能的有邮件提醒消息',
+  ].join('\r\n')
+  assert.equal(stripQuoted(body), '收到来自#187功能的有邮件提醒消息')
+})
+
+test('the usual quote headers are recognised', () => {
+  const cases = [
+    ['本行是正文\n-----原始邮件-----\n旧内容', '本行是正文'],
+    ['见上\n---------- Forwarded message ----------\nFrom: a@b.c', '见上'],
+    ['好的，收到\n在 2026年11月2日 13:19，朱骏宁 <jnzhu@admin.ecnu.edu.cn> 写道：\n> 旧内容', '好的，收到'],
+    ['Thanks\nOn Mon, Nov 2, 2026 at 1:19 PM Zhu <jnzhu@admin.ecnu.edu.cn> wrote:\n> old', 'Thanks'],
+    ['正文开始\n2026年11月2日 13:19，jnzhu <jnzhu@admin.ecnu.edu.cn> 写道：\n> 旧内容', '正文开始'],
+    ['正文\n\n> 整段引用\n> 还是引用', '正文'],
+    ['正文\n-- \n签名', '正文'],
+  ]
+  for (const [input, expected] of cases) assert.equal(stripQuoted(input), expected, input)
+})
+
+test('a body without a quote chain is left untouched', () => {
+  const body = '第一段\n\n第二段，带一个 - 连字符和 > 比较符号\n\n结束'
+  assert.equal(stripQuoted(body), body)
+  assert.equal(stripQuoted(''), '')
+})
+
+test('a body that is entirely a quote is not emptied', () => {
+  const body = '> 只有引用\n> 第二行'
+  assert.equal(stripQuoted(body), body)
 })
