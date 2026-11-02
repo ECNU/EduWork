@@ -2,9 +2,12 @@
 
 [中文](CORE-021.md)
 
-The current build recipe selects DSH `0.2.1-rc.3`, upstream commit `1f81c047fc48fa190a683e469daa699857e9afe8`. `config/desktop-build.json` points to the [candidate lock](../third_party/dsh/candidate-v0.2.1-rc.3/LOCK.json); npm Runtime, Host and Electron sources are verified separately. Product and core versions are independent. Selecting this recipe does not publish installers or change update feeds.
+The current build recipe selects DSH `0.2.1-rc.5`, upstream commit `b830ec950faba0a46dda564be3e2d854afed94f1`. `config/desktop-build.json` points to the [candidate lock](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json); npm Runtime, Host and Electron sources are verified separately. Product and core versions are independent. Selecting this recipe does not publish installers or change update feeds.
 
 ## Capabilities and migration
+
+- rc.5 uses the official reasoning display, hiding a leading signature section while preserving the original text. The reasoning Body slot exposes display-ready `text` and original `rawText`; EduWork plugins do not replace this slot.
+- This also includes the rc.4 ACP stdout and conversation tab tooltip fixes, without changing model or account integration policy.
 
 - rc.3 adds More menus to the left sidebar, conversation views and right sidebar, using the official plugin discovery entry. Creation keeps the native Creator session and append-draft policy without sending a message. When Show coding view or Creator is disabled, the item points to the relevant setting without enabling it automatically.
 - Use the upstream unsent-draft recovery fix while retaining drafts, attachments and annotation references. DeepSeek API-key mode uses the official dynamic model catalog; custom endpoints and catalogs keep their own configuration.
@@ -20,7 +23,7 @@ Remove the loopback-address/ephemeral-port patch and the file-reference rescan u
 
 Active-session persistence can still disrupt searches: the relevant implementation in the locked npm package is byte-identical to the previous version. Keep the [search consistency backport](SESSION-SEARCH-BACKPORT.md), its complete file-hash check, and the upstream-failure/regression tests. Remove it when upstream provides an equivalent fix.
 
-Keep the settings navigation icons, user-message annotation decoration seat and client-module metadata guard. rc.3 still treats the ctime change from unlinking a differential-update backup as a code rebuild; the guard skips a reload only when both mtime and code bytes are unchanged. The new menu gate respects edition preferences; upstream still owns preset registration, workspace selection and drafts.
+Keep the settings navigation icons, user-message annotation decoration seat and client-module metadata guard. rc.5 still treats the ctime change from unlinking a differential-update backup as a code rebuild; the guard skips a reload only when both mtime and code bytes are unchanged. The new menu gate respects edition preferences; upstream still owns preset registration, workspace selection and drafts.
 
 Ordinary startup follows DSH presentation: load the static page in a hidden main window, show it once the Host is ready, then let BootPage finish loading client plugins and enter the workspace. Initial configuration downloads and legacy migration show that same main window's BootPage earlier, display preparation status, and continue into the workspace when ready. Preparation follows the system appearance until upstream loads the theme settings. Branding remains, and failures use a dedicated recovery window. Dock activation, tray actions and repeated launches can restore the current preparation or recovery window; completing preparation does not force a window the user has hidden back into view.
 
