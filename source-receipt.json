@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-02T18:09:29.430Z",
+  "fileSetSHA256": "4640a60884599baa7757d39eda308da55ba32097ab3ac68e100d6ed013b28531",
   "files": [
     {
       "path": ".gitattributes",
@@ -913,11 +913,11 @@
     },
     {
       "path": "dsh-desktop/internal/updatecontrol/manager_test.go",
-      "sha256": "e256eb89ee4ffa4e258056ca803740ca6e3438ab2fff73bd294fc6a5eb66013e"
+      "sha256": "449d51eeda20971c0e9e3c6bae4c469549b2b3b347a5169910f16f25487f2ced"
     },
     {
       "path": "dsh-desktop/internal/updatecontrol/manager.go",
-      "sha256": "4c528f32c36eab8d7476fd8b27e115a654fe5aacbd08603310f6f31da56c0c9d"
+      "sha256": "4edc1a856d2d6f92c7141749f10eb70366fb0602ddf8aa1a304d37a8704d4f29"
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "43c9b58bd3838e6ee0ad6838bb37c30e1ebe310d6839cd7f106b96a69157bde7"
+      "sha256": "fe2cbf7c1d1e8fab8745fdc891a1884d90ea372ff2f400f23a61a9f417f79b72"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1153,7 +1153,7 @@
     },
     {
       "path": "dsh-electron/scripts/probe-native-desktop.mjs",
-      "sha256": "6df456b17daab22324cc54c7f8869d00161482b75da5aeebbe9c30b6a60e32a5"
+      "sha256": "e2117cd5dbd72b205fc1b02a8450228e6ed6f5ae2568c5ea86a151e3ab0419e6"
     },
     {
       "path": "dsh-electron/scripts/relocate-macos-compositor.mjs",
@@ -1281,11 +1281,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "4bb0a950c3602897481b3b69cf0bfffedacd60f7ae6721d037a45d8f6c43d66c"
+      "sha256": "2fdd1480dde4e20b056514a72696719b92cfc84e843e9d91850993fcc933a1a2"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "4f2d41f51cd1ff4e567be3d6e55e7d89034b2325b8f8ccb77445bf19890c0db6"
+      "sha256": "3765037e000ba62c9132d2c0ee3d46ed09940945b563b36762737839644dd714"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
+      "sha256": "32f9a35cf99f20b7066593b7f68fa340025cbb422be56987a8109a7d033b7738"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1334,6 +1334,18 @@
     {
       "path": "dsh-electron/src/update-coordinator.mjs",
       "sha256": "a7800aed537e0826653bfc3c63470e550a88479ef73fed0546747aaa07ca479d"
+    },
+    {
+      "path": "dsh-electron/src/update-observer.mjs",
+      "sha256": "e9cb95e078981b302176e50609c4f7387990e6d0d399b731b705117796e65133"
+    },
+    {
+      "path": "dsh-electron/src/update-presentation.mjs",
+      "sha256": "410b7484d3a866af038aa9d30ab8c92868cf09792b365625c5ec0e6eabff3336"
+    },
+    {
+      "path": "dsh-electron/src/update-workbench.mjs",
+      "sha256": "aab20e2b5353dd58513f4a55591211b78ce94a2ef8b13d0ac06d143b1e3903f3"
     },
     {
       "path": "dsh-electron/src/window-visibility.mjs",
@@ -1429,7 +1441,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "f3522ccfb0a4558ca6b6b0762b3d0a02f66094df927ad79a85807871d2ba1611"
+      "sha256": "246690a3a47395c6dd2194152076776368de594d3663d8afdf1fe924e1d950fb"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1445,7 +1457,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "105174df05c2a8002ab24139f78fdaa2cf302cd14d7e51b9a611079a242ff8ca"
+      "sha256": "35bc598dfcdb68ba816f5948397f835f63eae9d75ae440d22d28f1105ff1fe6f"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1505,7 +1517,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "ba885b275d7570ce36eb547a743de04e18a8684a8c1f2089b7b676ccc91e2a68"
+      "sha256": "af7f188ec6b429a74bfc56f2b1566bb53cfb1e4cda60d46fb12deb6fffe36072"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
@@ -1528,8 +1540,20 @@
       "sha256": "56e250c86e9e377a6b25fcad30a40fd751675333acc0b9089998948d51ab6b42"
     },
     {
+      "path": "dsh-electron/tests/update-observer.test.mjs",
+      "sha256": "f103db29e2b15ba081c7755d7dcf0fe56ad99fa4d6ae94bd3fe9255d305ec65c"
+    },
+    {
       "path": "dsh-electron/tests/update-policy.test.mjs",
       "sha256": "2216fdd397ece65d2287e1f1eacb99f2c2ad2ce348f916624065a635f82afc0e"
+    },
+    {
+      "path": "dsh-electron/tests/update-presentation.test.mjs",
+      "sha256": "d84d3dd200099c6b5f0a0406e3908787a78b645e64d54ae7ced3d66731bd00ff"
+    },
+    {
+      "path": "dsh-electron/tests/update-workbench.test.mjs",
+      "sha256": "f0b0710f4e2c09594902aa32b4abe09dc1cfc7894c7a261b30e2c4061ef0f220"
     },
     {
       "path": "dsh-electron/tests/updater-manifest.test.mjs",
@@ -3233,7 +3257,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/src/updates.ts",
-      "sha256": "73e17b90559422abbc6076c78e9d9087c27fbba7a734cdaeed3965e834898efd"
+      "sha256": "fd0673d03e7a916893efadb605d8dd2e8ab886490d7ef0cc5e17b345722a6a14"
     },
     {
       "path": "dsh-plugins/workbench-native/test/build-client.test.mjs",
@@ -3285,7 +3309,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/test/updates-browser.mjs",
-      "sha256": "287fe3e4413a229c79d69228e55d3e514bb63aab2632de722475e7e3b3ee3076"
+      "sha256": "f9a9eaaffb3ebfeed76870ee6706401912089fa89574b2b2ff52b9b8bfdf045e"
     },
     {
       "path": "dsh-plugins/workbench-native/tsconfig.json",
