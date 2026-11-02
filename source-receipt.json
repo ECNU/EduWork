@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T06:32:32.876Z",
-  "fileSetSHA256": "bec95d08ea04712759bba709da871368692bb4c0a3beb0c246a4b07107ed2253",
+  "createdAt": "2026-11-02T09:19:21.220Z",
+  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
   "files": [
     {
       "path": ".gitattributes",
@@ -8261,19 +8261,19 @@
     },
     {
       "path": "updates/macos/development.xml",
-      "sha256": "0e4a75c317ab791ad4939031c9b8004e2eb9e90b9e8c5a6c9e9c425e067fb0a8"
+      "sha256": "c8ba7fa05d208b01ff31f98e9b629d55a10ca2982914324dade32719c0575cde"
     },
     {
       "path": "updates/macos/stable.xml",
-      "sha256": "371430e901e14888d45b312f630c5de8ba2c52682c4294048638a8e2e3725137"
+      "sha256": "f63e845f81a666d6562b76ed05b516a685526611b4e98dc54f6ceb44208f96bf"
     },
     {
       "path": "updates/macos/x64/development.xml",
-      "sha256": "6d906252c9a1bf1cbb6a80b24898829b0be2beeb0b7548bd372eecb645efcd46"
+      "sha256": "1788f9626325779f9fb1e4eadb420a4630cdd7eb1df697def5dbe4837d8959f6"
     },
     {
       "path": "updates/macos/x64/stable.xml",
-      "sha256": "d67d0e802e301bdde34d0465c559176d0b13c54bcd83984771a9e2e2963d308f"
+      "sha256": "93fa2f91150c06142253a0d155514723b828fc73bf914df71464ed23625b1b32"
     },
     {
       "path": "website/assets/data/community.json",
