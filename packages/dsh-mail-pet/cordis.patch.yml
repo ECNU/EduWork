@@ -1,0 +1,5 @@
+- insert:
+    - id: eduwork-mail-pet
+      name: '@eduwork/dsh-mail-pet'
+      config:
+        enabled: false
