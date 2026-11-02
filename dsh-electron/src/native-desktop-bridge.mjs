@@ -5,13 +5,14 @@ import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
+import { watchUpdateDocument } from './update-observer.mjs'
 
 export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
 export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
-export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand }) {
+export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, updates, pickDirectory, bootBrand }) {
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -36,6 +37,30 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   // it on the USER_GUIDE_EVENT window event. The item appears only once the Host
   // has confirmed the route, so editions without a guide show no dead entry.
   let userGuide = false
+  // Both official sidebar locations share one presentation source. The bridge
+  // only observes status; installation still goes through checkUpdates().
+  let updateBinding
+  const releaseUpdates = () => {
+    updateBinding?.release()
+    updateBinding = undefined
+  }
+  const ensureUpdateBinding = window => {
+    if (!updates) return undefined
+    if (updateBinding?.window !== window) {
+      updateBinding?.dispose()
+      updateBinding = watchUpdateDocument({ window, updates, getWindow,
+        send: presentation => window.webContents.send(DESKTOP_IPC.updatesPresentation, presentation) })
+    }
+    return updateBinding
+  }
+  const bindUpdates = window => {
+    const binding = ensureUpdateBinding(window)
+    if (!binding) return
+    // The official source asks once per document. Rebind so a missed
+    // navigation event cannot inherit the previous document's delivery state.
+    binding.release()
+    binding.bind()
+  }
   const chinese = () => /[\u4e00-\u9fff]/u.test(locale.messages.quit ?? '')
   const openUserGuide = () => {
     const window = getWindow()
@@ -112,7 +137,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   // The product's update settings remain authoritative. This upstream header
   // action opens that existing updater; it does not start a second installer.
-  ipcMain.handle(DESKTOP_IPC.updatesStatus, event => { owner(event); return { phase: 'idle' } })
+  ipcMain.handle(DESKTOP_IPC.updatesStatus, event => {
+    const window = owner(event)
+    if (!updates) return { phase: 'idle' }
+    bindUpdates(window)
+    // A reloaded renderer asks once; do not hand it a stale pre-reload snapshot.
+    return updates.presentation(true)
+  })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, event => { owner(event); return checkUpdates() })
   if (process.platform === 'win32') {
     ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language, color, symbolColor) => {
@@ -154,7 +185,14 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       if (available !== userGuide) { userGuide = available; refreshMenu() }
       return available
     },
-    attach(window) { guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease)); shortcuts.attach(window) },
-    dispose() { shortcuts.dispose() },
+    attach(window) {
+      guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease))
+      shortcuts.attach(window)
+      // Watch this document now; the first status request binds a fresh
+      // presentation subscription. A reload releases it for the next document.
+      ensureUpdateBinding(window)
+      window.once('closed', releaseUpdates)
+    },
+    dispose() { updateBinding?.dispose(); updateBinding = undefined; shortcuts.dispose(); updates?.dispose() },
   }
 }
