@@ -8,7 +8,7 @@ Uses native DSH tools, skills and configuration, without runtime patches or desk
 
 ## Installation and use
 
-Source version 0.1.0 is prepared for its first npm publication. After publication, install `@eduwork/dsh-decision` with DSH plugin management. Its native bundle ID is `decision`, initially `enabled: false`. Configure and enable the plugin; its tool and skill share its lifecycle. Then ask, for example: “Use the decision model to classify this request as billing, technical or insufficient information.”
+Install `@eduwork/dsh-decision` with DSH plugin management. Its native bundle ID is `decision`, initially `enabled: false`. Configure and enable the plugin; its tool and skill share its lifecycle. Then ask, for example: “Use the decision model to classify this request as billing, technical or insufficient information.”
 
 API-key example (store the actual key in the credential service):
 
@@ -44,6 +44,6 @@ Supports the basic [TypeSafe System One](https://docs.typesafe.ai/api/system-one
 
 ## Development and assembly
 
-Source lives in `src/`; building copies ESM modules, with no bundled third-party dependencies. Node >=24.22.1; tested baseline DSH 0.2.1-rc.3. Set `EDUWORK_DECISION_RUNTIME` to the locked Runtime directory containing package.json/node_modules, then run `npm ci` and `npm run check`. Tests use synthetic material and local HTTP.
+Source lives in `src/`; building copies ESM modules, with no bundled third-party dependencies. Node >=24.22.1; tested with DSH 0.2.1-rc.3 and rc.5. Set `EDUWORK_DECISION_RUNTIME` to the locked Runtime directory containing package.json/node_modules, then run `npm ci` and `npm run check`. Tests use synthetic material and local HTTP.
 
 Repository commands: `node scripts/packages/manage.mjs check dsh-decision` and `pack dsh-decision`; see [package maintenance](../../docs/PACKAGES_EN.md). Publish and verify npm bytes before changing exact product locks. This change does not insert unpublished source into existing desktop assemblies.

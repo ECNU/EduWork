@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.9",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T05:43:04.853Z",
-  "fileSetSHA256": "510e3ab3f7ec59d024aea4c27c73c717e7ab3b73c28fb95179b34360ee9f766d",
+  "createdAt": "2026-11-02T05:45:57.810Z",
+  "fileSetSHA256": "c55f58b9564015e01469546521839cf1a45c9a13b3c7ddda0cc840e602f0e7a8",
   "files": [
     {
       "path": ".gitattributes",
@@ -3457,11 +3457,11 @@
     },
     {
       "path": "packages/dsh-decision/README_EN.md",
-      "sha256": "692414d4ec32d12fbf339a83e20a00a70e9034b23280491d9ec25dfc7354c0e8"
+      "sha256": "e61f1ead7622590ac5653cc6664e1f581b130e0575c795c24519e94ccaa432da"
     },
     {
       "path": "packages/dsh-decision/README.md",
-      "sha256": "dc62d249797a5aba910c06932c540dd1fe41f3b9b880be7cfe000dfacedfa94b"
+      "sha256": "19e6265e880da21b16b6cca872ca83acf89f7b823773b289ea68af2c87c5724c"
     },
     {
       "path": "packages/dsh-decision/scripts/build.mjs",
