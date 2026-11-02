@@ -29,10 +29,11 @@ import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
-import { attachAppActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
+import { attachAppActivation, attachTrayActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
+import { createSettingsOpenRequest } from './settings-open-request.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -52,6 +53,7 @@ let desktopFailureShown = false
 let mainWindowPresented = false
 let startupMessage = ''
 let portableUpdates
+let flushPendingSettings = () => {}
 let contentUpdates, managedContent = {}
 let publisher
 let taskNotifications, notificationAdapter
@@ -320,6 +322,7 @@ export async function desktopReady(shouldContinue = () => true) {
   updateCompleted = true
   migrationLaunch = null
   startupMessage = ''
+  flushPendingSettings()
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand())
   desktopPet?.start()
   void portableUpdates?.action('check-updates-background').catch(()=>{})
@@ -365,11 +368,31 @@ export async function attachDesktopWindow(window) {
   const show = () => (updateCompleted || startupMessage) && showWindow()
   const action = value => {
     show()
-    if (!['new-session', 'settings'].includes(value) || window.isDestroyed()) return
-    // Only the trusted application renderer receives these two fixed actions.
+    if (value !== 'new-session' || window.isDestroyed()) return
+    // Only the trusted application renderer receives this fixed action.
     if (!window.webContents.getURL().startsWith('dsh-app://app/')) return
     void window.webContents.executeJavaScript(`(window.__eduworkTrayActions ??= []).push(${JSON.stringify(value)}); window.dispatchEvent(new Event('eduwork:tray-action'));`).catch(() => {})
   }
+  const sendSettingsAction = async () => {
+    if (window.isDestroyed() || !window.webContents.getURL().startsWith('dsh-app://app/')) return false
+    try {
+      await window.webContents.executeJavaScript(
+        `(window.__eduworkTrayActions ??= []).includes('open-settings') || window.__eduworkTrayActions.push('open-settings'); window.dispatchEvent(new Event('eduwork:tray-action'));`)
+      return true
+    } catch {
+      return false
+    }
+  }
+  const settingsRequest = createSettingsOpenRequest({
+    send: sendSettingsAction,
+    ready: () => updateCompleted && !window.isDestroyed() && window.webContents.getURL().startsWith('dsh-app://app/'),
+  })
+  const requestSettings = () => {
+    show()
+    void settingsRequest.request()
+  }
+  flushPendingSettings = () => { void settingsRequest.flush() }
+  window.webContents.on('did-finish-load', () => { void settingsRequest.flush() })
   // Fixed pet actions for the pet plugin's client in the application page: it
   // opens its settings page or saves the enabled setting, which the Host owns.
   const petAction = value => {
@@ -411,15 +434,15 @@ export async function attachDesktopWindow(window) {
       { type: 'separator' },
       ...petItem(),
       { label: '检查更新', click: () => { show(); void checkProductUpdates() } },
-      { label: '设置', click: () => action('settings') },
+      { label: '设置', click: requestSettings },
       { type: 'separator' },
       { label: '退出 ' + settings.productName, click: () => app.quit() },
       ]))
     }
     refreshTray()
+    attachTrayActivation(tray, show)
     tray.on('balloon-click', () => notificationAdapter?.balloonClick())
     tray.on('balloon-closed', () => notificationAdapter?.balloonClosed())
-    tray.on('double-click', show)
   } catch (error) {
     tray?.destroy(); tray = undefined
     if (isQuitting()) throw error

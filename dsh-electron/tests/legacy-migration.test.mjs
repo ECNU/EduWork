@@ -54,11 +54,12 @@ for (const stop of ['none','host-failure','recovery','quit']) {
   const start=source.indexOf('export async function desktopReady('),end=source.indexOf('\n}\n',start)
   assert.ok(start>=0&&end>start)
   const state={hostReady:true,recovery:false,quitting:false}
-  let attempts=0
+  let attempts=0,flushes=0
   const context={
    process:{platform:'win32'},randomUUID,writeFile,rm,
    migrationLaunch:f.launch,contentUpdates:undefined,updateCompleted:false,
    mainWindow:undefined,desktopPet:undefined,portableUpdates:undefined,startupMessage:'starting',
+   flushPendingSettings:()=>{flushes+=1},
    shouldContinue:()=>state.hostReady&&!state.recovery&&!state.quitting,
    rename:async(...args)=>{
     if(++attempts===1)throw Object.assign(new Error('synthetic updater read lock'),{code:'EPERM'})
@@ -73,6 +74,7 @@ for (const stop of ['none','host-failure','recovery','quit']) {
   }
   await runInNewContext(`${writeMigrationHealth.toString()}\n${source.slice(start,end+2).replace('export ','')}\ndesktopReady(shouldContinue)`,context)
   assert.equal(attempts,stop==='none'?2:1)
+  assert.equal(flushes,stop==='none'?1:0)
   assert.equal(context.updateCompleted,stop==='none')
   assert.equal(await readFile(f.health,'utf8'),stop==='none'?'ok\n':original)
   assert.deepEqual((await readdir(join(f.file,'..'))).filter(name=>name.endsWith('.tmp')),[])
