@@ -181,6 +181,15 @@
         "lib/index.js",
         "lib/client.js"
       ]
+    },
+    {
+      "source": "dsh-plugins/user-guide",
+      "package": "dsh-user-guide",
+      "requiredFiles": [
+        "lib/index.js",
+        "lib/client.js",
+        "guide/index.html"
+      ]
     }
   ],
   "skills": [
