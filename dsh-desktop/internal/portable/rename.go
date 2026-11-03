@@ -10,7 +10,9 @@ import (
 )
 
 const renameWait = 250 * time.Millisecond
-const renameTimeout = 5 * time.Second
+// 安全软件（Defender、360、火绒等）会在解压后逐个扫描新文件并短暂占用目录，
+// 几百 MB 的程序目录可能要几十秒才扫完，所以等待时间要足够长。
+var renameTimeout = 90 * time.Second
 
 func checkDirectoryOperations(ctx context.Context, parent *os.Root) (err error) {
 	probe := ".eduwork-check-" + rand.Text()
@@ -48,7 +50,7 @@ func renameDirectory(ctx context.Context, parent *os.Root, from, to string, prog
 			return err
 		}
 		if attempt == 0 {
-			report(progress, 98, "正在等待安装目录解除占用…")
+			report(progress, 98, "正在等待安全软件扫描完成或安装目录解除占用（最长 90 秒）…")
 		}
 		timer := time.NewTimer(min(renameWait, remaining))
 		select {

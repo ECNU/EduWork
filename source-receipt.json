@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-03T06:27:46.224Z",
+  "fileSetSHA256": "a855df4bda1281ef11119310369f742e954788bf5bf77d8af181c2ae85045a81",
   "files": [
     {
       "path": ".gitattributes",
@@ -797,7 +797,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/archive.go",
-      "sha256": "ff7811f56ddd64c6be8134eb863181211c82e190e6448af138c0b6a84ee7082a"
+      "sha256": "cf67cb64aad2a0f3b294d5b5313dae3dd7194ec7f51b77e4a5aa3cb95cd4ab87"
     },
     {
       "path": "dsh-desktop/internal/portable/rename_other.go",
@@ -805,7 +805,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/rename_windows_test.go",
-      "sha256": "b19bf427245d993c2f9b1776500d2a08fddbb7d9441e447c251f404a5e130c9d"
+      "sha256": "6817435c18456f26536628cc8b2945f8bacb4eb270cddc0da730aa5425772603"
     },
     {
       "path": "dsh-desktop/internal/portable/rename_windows.go",
@@ -813,7 +813,7 @@
     },
     {
       "path": "dsh-desktop/internal/portable/rename.go",
-      "sha256": "46cec388013446e43cc24a09fd27b63e5f546505f5972a1a0e03c40aa232868a"
+      "sha256": "82b66e4232c1f1c11055d7d9f074a56a030bae0eaeaa42096d2b8413f827ca19"
     },
     {
       "path": "dsh-desktop/internal/portable/replace_plan.go",
@@ -921,7 +921,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/apply.go",
-      "sha256": "51dbc5fb80ea51cc48200de2761529fee787085944206e53228a3e5ae1297fc6"
+      "sha256": "6ef8172b2463300f451cd2f7822a388cbc63c3f6dd88b3ab60c9cdda01d75cf3"
     },
     {
       "path": "dsh-desktop/internal/updater/delta_test.go",
@@ -969,7 +969,7 @@
     },
     {
       "path": "dsh-desktop/internal/updater/rollback_windows_test.go",
-      "sha256": "abf0695803c4a641f3dc240e95b1ea993107837334605724cc06d2a9ba49a193"
+      "sha256": "acbbc195b3bedda70dbb35e17c4ab1f40a6bebc7bf588235365674f4b1d81f62"
     },
     {
       "path": "dsh-desktop/internal/updater/shell_migration_test.go",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
+      "sha256": "391e688e1bc4ff199034eb3381428516c5cd147f4bfa82f73ea6b5da9adebd0b"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1317,7 +1317,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "91cf4c099d1d0a2a61ca8d7f4a44f9c6462fa591e7ebcd0756f69007cd807b83"
+      "sha256": "18eaa396e306ac081eef0c661e047d42d72c73b5a42184ef425af6c7233881f5"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1505,7 +1505,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "ba885b275d7570ce36eb547a743de04e18a8684a8c1f2089b7b676ccc91e2a68"
+      "sha256": "1edbf5e0503cbf075abba11ccd5d4ccdcaf442b11db9c5cd8d4837bcd8e9499c"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",

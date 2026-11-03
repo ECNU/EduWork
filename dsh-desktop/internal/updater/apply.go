@@ -231,9 +231,16 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 	extractDir := filepath.Join(transactionDir, "extracted")
 	backupDir := filepath.Join(transactionDir, "backup")
 	// A previous interrupted/failed rollback may contain the only intact old
-	// program. Never erase it when retrying this version.
+	// program. Never erase it when retrying this version. A retry is started by
+	// the program now installed, so that installation runs; keep the old backup
+	// beside the transaction and continue, rather than refusing every retry
+	// (with background updates the user would stay on this version for good).
+	// If the new version then fails, rollback restores the current files.
 	if entries, err := os.ReadDir(backupDir); err == nil && len(entries) > 0 {
-		return &rollbackFailure{Cause: errors.New("previous update backup requires recovery before retry"), Backup: backupDir}
+		retained := transactionDir + ".interrupted-" + time.Now().UTC().Format("20060102T150405Z")
+		if err := os.Rename(transactionDir, retained); err != nil {
+			return &rollbackFailure{Cause: fmt.Errorf("previous update backup requires recovery before retry: %w", err), Backup: backupDir}
+		}
 	} else if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return &rollbackFailure{Cause: err, Backup: backupDir}
 	}
@@ -276,13 +283,15 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		// locked file failed, the remaining original roots were never touched.
 		for index := len(installed) - 1; index >= 0; index-- {
 			name := installed[index]
-			if err := os.RemoveAll(filepath.Join(pending.InstallDir, name)); err != nil {
+			if err := retryRollbackStep(func() error { return os.RemoveAll(filepath.Join(pending.InstallDir, name)) }); err != nil {
 				failures = append(failures, fmt.Errorf("remove incomplete update %s: %w", name, err))
 			}
 		}
 		for index := len(backedUp) - 1; index >= 0; index-- {
 			name := backedUp[index]
-			if err := os.Rename(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name)); err != nil {
+			if err := retryRollbackStep(func() error {
+				return os.Rename(filepath.Join(backupDir, name), filepath.Join(pending.InstallDir, name))
+			}); err != nil {
 				failures = append(failures, fmt.Errorf("restore %s: %w", name, err))
 			}
 		}
@@ -328,8 +337,15 @@ func applyAndRestart(stateDir string, pending PendingUpdate, progress ApplyProgr
 		return rollback(fmt.Errorf("preserve user configuration: %w", err))
 	}
 	if launchName == "EduWork-Electron.exe" {
+		// Same rule as startup: a denied WRITE_DAC (e.g. an install folder on
+		// another drive owned by someone else) does not prove the sandbox cannot
+		// run; the previous version already ran from this folder. The health
+		// handshake below decides, and rolls back if the new version cannot start.
 		if err := electronaccess.Ensure(pending.InstallDir); err != nil {
-			return rollback(fmt.Errorf("prepare Electron sandbox read access: %w", err))
+			if !errors.Is(err, os.ErrPermission) {
+				return rollback(fmt.Errorf("prepare Electron sandbox read access: %w", err))
+			}
+			// Fall through to the health handshake.
 		}
 	}
 	healthFile := filepath.Join(transactionDir, "health.ok")
@@ -733,6 +749,27 @@ func (err *rollbackFailure) Error() string {
 	return fmt.Sprintf("%v; automatic recovery incomplete; original files retained at %s", err.Cause, err.Backup)
 }
 func (err *rollbackFailure) Unwrap() error { return err.Cause }
+
+// After the updated window is stopped, its GPU and utility children can keep
+// DLLs such as vk_swiftshader.dll mapped for a few seconds, and scanners open
+// fresh files briefly. Retry each rollback step for a while instead of leaving
+// a half-replaced install on the first sharing violation.
+var rollbackRetryWindow = 15 * time.Second
+
+func retryRollbackStep(step func() error) error {
+	deadline := time.Now().Add(rollbackRetryWindow)
+	delay := 100 * time.Millisecond
+	for {
+		err := step()
+		if err == nil || time.Now().Add(delay).After(deadline) {
+			return err
+		}
+		time.Sleep(delay)
+		if delay < time.Second {
+			delay *= 2
+		}
+	}
+}
 
 func waitForHealth(command *exec.Cmd, healthFile string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
