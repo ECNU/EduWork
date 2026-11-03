@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-knowledge-studio",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "eduworkNotificationProtocol": 1,
   "dshKnowledgeStudio": {
     "capabilities": [
@@ -207,7 +207,7 @@
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
     "unified": "11.0.5",
-    "@eduwork/dsh-artifact-services": "0.3.1"
+    "@eduwork/dsh-artifact-services": "0.3.2"
   },
   "workspaces": [
     "packages/artifact-services"
