@@ -113,6 +113,10 @@ ctx.inject(['notificationActions'], scope => {
 
 前端完成导航后才回执已查看。前端注册销毁时也会取消 `signal`，所有 await 后执行导航前应检查它。账号型插件在 Host 和 UI 两端都检查 scope，不能将旧账号引用用于当前账号。
 
+来源可以自带界面：`dsh-mail-pet` 点击后在自己的客户端里打开只读预览，看完关闭即回到原处，容器不读取邮件存储。
+
+![点击邮件提醒后，插件通过 notificationActions 打开的只读预览面板](images/mail-pet-preview.png)
+
 普通通知已查看后退出待处理队列；`requiresAction` 通知仍保留，直至来源 `resolve/withdraw`。关闭气泡、隐藏桌宠、切换窗口不是业务完成。
 
 来源可选提供 Host `onView(target, visibleTarget)`，前端注册的第三个参数返回 `{ scope, target }`，用于声明当前真正可见的业务对象。只有桌面前台且来源和账号一致时才调用；例如 Studio 只在对应成果实际可见时标为已查看。回调错误不阻断其他来源和 Agent。
