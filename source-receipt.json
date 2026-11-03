@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-03T06:27:43.252Z",
+  "fileSetSHA256": "fadfc54d091d1834350c1f2fdb7607d9833e06a5500ab6314abcc02ac3f45866",
   "files": [
     {
       "path": ".gitattributes",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
+      "sha256": "ba253d008d32d6b136d39ee6aeae5d41989d110431e6efdc3a533f9d219a77db"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1733,7 +1733,7 @@
     },
     {
       "path": "dsh-host/test/native-021.test.mjs",
-      "sha256": "3afd373b4b425083b6305a687695afd71cc9344f4c3a4b435f4d12e504b5efeb"
+      "sha256": "6ce62c6b64e5180b5d52e988b1e193d1c2e5117c29a6ee795b9a0d89a677bb0f"
     },
     {
       "path": "dsh-host/test/native-resources.integration.test.mjs",
@@ -3141,7 +3141,7 @@
     },
     {
       "path": "dsh-plugins/workbench-native/lib/data-import.js",
-      "sha256": "564e97836ddceb7843bae45ac78fb935ff7c1fe77f9ca380d4fa7b25656d32db"
+      "sha256": "7e9bc2b184e01d90b5bf701b3cca36bb2110f6e6d6259bd9851712a5bfa50ade"
     },
     {
       "path": "dsh-plugins/workbench-native/lib/diagnostic-download.js",
@@ -3250,6 +3250,10 @@
     {
       "path": "dsh-plugins/workbench-native/test/directory-picker.test.mjs",
       "sha256": "0ebed2de567cdd2146d92eafde4ff0bd37571447d6e84ebcec61e7927d8284c4"
+    },
+    {
+      "path": "dsh-plugins/workbench-native/test/external-workspace.test.mjs",
+      "sha256": "0e7e3b49b99863220bb838d7659a5d091ac27ad3cd81031ede801179442b2fb4"
     },
     {
       "path": "dsh-plugins/workbench-native/test/import-browser.mjs",
