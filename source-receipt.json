@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-03T06:27:37.300Z",
+  "fileSetSHA256": "ce5c9c2a73adcdcbb45a0e390575e95647c95e48eb02d490c0bb2ecbeb9d2708",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "0f1fa51a6c97190d5c09d3c1bec024f5e02562bd8bea4aec9e2250a16875d405"
+      "sha256": "59217f7b13847dfdc8fdba285122884db9c9cf71b8306c0c65922d332e20419a"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1285,7 +1285,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "4f2d41f51cd1ff4e567be3d6e55e7d89034b2325b8f8ccb77445bf19890c0db6"
+      "sha256": "702ba0b7bc40e8e2b75924ba70380228352111b95523b5824c35a15a5f261bc1"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1305,7 +1305,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
+      "sha256": "dd1975688472fc5e911d643c4b246218e8df1a3d1d1289efdd31a925255d7a79"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1337,7 +1337,7 @@
     },
     {
       "path": "dsh-electron/src/window-visibility.mjs",
-      "sha256": "a35fef4e15ab15f7adf99356bcec69e5ae87f837de7eb66723c9df6ad9682e33"
+      "sha256": "959606683ff13fa6c5e95716b523268e41881742634e384669d5708ebbc59d61"
     },
     {
       "path": "dsh-electron/src/workspace-access.mjs",
@@ -1385,7 +1385,7 @@
     },
     {
       "path": "dsh-electron/tests/desktop-restart.test.mjs",
-      "sha256": "68bbd8d6391efb81c2293cc6abf87dceaf23080de202abae08470725c6486263"
+      "sha256": "aea1beb61251ca2266bbed263fd1d834746f60213f5766b09bece1a841846c30"
     },
     {
       "path": "dsh-electron/tests/desktop-smoke.mjs",
@@ -1445,7 +1445,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "105174df05c2a8002ab24139f78fdaa2cf302cd14d7e51b9a611079a242ff8ca"
+      "sha256": "690b5d138015130d78d432e139edec30fb8a374fd7e55e9690787d6c66f82063"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1553,7 +1553,7 @@
     },
     {
       "path": "dsh-electron/tests/window-visibility.test.mjs",
-      "sha256": "8860d873afd547a2a84dddd1dc676eb4d6e92dec1f4b2d9b1ecb109966a70256"
+      "sha256": "b2b4dcb070e010d44d850f3a08f1ecf3ddc72e056867cadb17ccacceab64ed63"
     },
     {
       "path": "dsh-electron/tests/workbench.test.mjs",
@@ -2777,7 +2777,11 @@
     },
     {
       "path": "dsh-plugins/desktop-services/lib/index.js",
-      "sha256": "a03038171207dfa2968c8fd37540115b4d6cb9e425d97217ceced5f13efeadaf"
+      "sha256": "2f35b28eeca3a6d1643ce2b331d6705f3e6962f5ce8d585136947513b61782e1"
+    },
+    {
+      "path": "dsh-plugins/desktop-services/lib/quit-network.js",
+      "sha256": "45979610b2a6952d166fee50b54574b2681eb619a3f3792842132c9e09b13bf3"
     },
     {
       "path": "dsh-plugins/desktop-services/lib/workspace-access.js",
@@ -2790,6 +2794,10 @@
     {
       "path": "dsh-plugins/desktop-services/test/attention-host.test.mjs",
       "sha256": "d1ea2a32e23f78e467ccfebc4d7ef941c3bed43613f4226d8f68b65c378bd90c"
+    },
+    {
+      "path": "dsh-plugins/desktop-services/test/quit-network.test.mjs",
+      "sha256": "ef1bdb793a798320a19e58a11b60990f68a7224b674db09be341bc6f44917c4e"
     },
     {
       "path": "dsh-plugins/desktop-services/test/workspace-access.test.mjs",

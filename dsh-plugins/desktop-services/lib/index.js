@@ -1,6 +1,9 @@
 import { Service } from '@deepseek-ai/cordis'
 import z from '@deepseek-ai/schemastery'
 import { DesktopAttention, notificationDefaults, observeDesktopAttention } from './attention.js'
+import { boundDispatcherClose } from './quit-network.js'
+
+let quitBounded = false
 
 // Host-only seam. No Remote decorator: the renderer cannot choose an arbitrary
 // external URL or obtain the native bridge credential through this service.
@@ -11,6 +14,16 @@ export default class DesktopServices extends Service {
   static inject = ['desktopBoundary', 'settings', 'sessions']
   constructor(ctx, config = {}) {
     super(ctx, 'desktopServices')
+    // Only the forked desktop Host receives the parent's shutdown message.
+    if (!quitBounded && typeof process.send === 'function') {
+      quitBounded = true
+      let bounded = false
+      process.on('message', message => {
+        if (bounded || message?.type !== 'shutdown') return
+        bounded = true
+        boundDispatcherClose({ log: () => console.error(JSON.stringify({ component: 'host-quit', event: 'dispatcher-destroyed' })) })
+      })
+    }
     const scope = typeof ctx.settings.register === 'function'
       ? ctx.settings.register('eduwork-notifications', z.object(Object.fromEntries(Object.entries(notificationDefaults).map(([key, value]) => [key, z.boolean().default(value)]))),
         { base: { ...notificationDefaults, ...config.notifications }, applies: 'live' })

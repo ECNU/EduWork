@@ -301,7 +301,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         if (stopFailure) queueMicrotask(() => bridgeOptions.onBootFailure(Error('Synthetic renderer failure')))
         else setTimeout(completed, 0)
       },
-      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => exit.closing || lifecycle.closing,
+      trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => exit.closing || lifecycle.closing, deferReopenWhileQuitting: () => false,
       attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: error => {
         assert.ok(scenario === 'host-failure' || earlyFailure)
         assert.equal(error, startupError)
