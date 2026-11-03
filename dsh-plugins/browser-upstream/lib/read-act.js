@@ -172,7 +172,7 @@ export function registerPageTools(ctx) {
     name: 'browser_read',
     description: 'Read the current browser page as text: what it says, and every link, button and field the user can use now, written in brackets with a number, for example [#12 button "搜索"] or [#9 textbox "检索词" empty]. A * after the number marks what appeared since you last read this page. Pass url to open an address first, with newTab to open it in a new tab. Long pages show the part around the scroll position; scroll with browser_act or pass find to list just the lines with any of its words. Act on the page with browser_act, by those numbers.',
     parameters: {
-      url: { type: 'string', description: 'Address to open before reading. Omit to read the current page.' },
+      url: { type: 'string', description: 'Address to open before reading: one the user gave or one you are sure of. To open a link on the page you read, click it with browser_act, which opens its exact address. Omit to read the current page.' },
       newTab: { type: 'boolean', description: 'Open url in a new tab instead of the current one.' },
       find: { type: 'string', description: 'Words to look for; only the lines containing one of them are listed.' },
     },
@@ -186,7 +186,7 @@ export function registerPageTools(ctx) {
   }))
   ctx.tools.register(defineTool({
     name: 'browser_act',
-    description: 'Act on the page you last read with browser_read, by the numbers it showed. Put every action you can already decide from that page in one call, in order: for example type a search term and click Search, or fill in a whole form, choose its options and submit it. Clicking checks or unchecks a box or switch. They run one after another and stop early when the page moves on (another address or tab, a dialog, or suggestions opening under a field you typed in); the result says what ran and shows the page as it is then. Use the other browser tools for tabs, screenshots, uploads and page dialogs.',
+    description: 'Act on the page you last read with browser_read, by the numbers it showed. Put every action you can already decide from that page in one call, in order: for example type a search term and click Search, or fill in a whole form, choose its options and submit it. Clicking checks or unchecks a box or switch. They run one after another and stop early when the page moves on (another address or tab, a dialog, or suggestions opening under a field you typed in); the result says what ran and shows the page as it is then. When it shows what the user asked for, such as a success message or the answer, stop there and answer. Use the other browser tools for tabs, screenshots, uploads and page dialogs.',
     parameters: {
       actions: {
         type: 'array', required: true, description: 'The actions, in order.',
