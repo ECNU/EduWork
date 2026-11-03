@@ -172,9 +172,13 @@ export function apply(ctx, config = {}) {
 
     const publish = async arrivals => {
       const options = read()
-      // Newest first: a large burst must not delay today's message behind last
-      // week's backlog, and the registry drops what it cannot show.
-      const items = [...(arrivals.items ?? [])].reverse().slice(0, options.maxPerFlush)
+      // Oldest first, so the notice for the newest message is published last: the
+      // registry stamps createdAt when a notice is published, and the desktop pet
+      // highlights the newest one. Publishing newest first would give today's mail
+      // the oldest timestamp and pin the bubble to the batch's oldest message.
+      // arrivals.items already holds only the newest maxPerFlush envelopes, so a
+      // backlog cannot push today's message out of the batch.
+      const items = [...(arrivals.items ?? [])].slice(0, options.maxPerFlush)
       for (const item of items) {
         // One message, one notice: both the id and the target point at that UID,
         // so a click cannot land on a neighbouring message.
