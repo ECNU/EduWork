@@ -190,3 +190,12 @@ for (const stage of ['rollback', 'show']) {
     if (stage === 'rollback') assert.equal(f.events.includes('window-created'), false)
   })
 }
+
+test('configuration failures show the log folder and an open-logs action', () => {
+  const logs = 'C:\\Users\\同学\\AppData\\Local\\eduwork-electron\\logs'
+  const error = Object.assign(new Error('暂时无法连接配置服务'), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  const page = startupFailurePage({ ...settings, error, logs })
+  assert.ok(page.html.includes(`日志目录：${logs}`))
+  assert.ok(page.html.includes('eduwork-startup://logs/'))
+  assert.ok(!startupFailurePage({ ...settings, error: failure('EACCES'), logs }).html.includes('eduwork-startup://logs/'))
+})
