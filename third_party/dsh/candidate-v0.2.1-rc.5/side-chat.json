@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-side-chat",
+  "version": "0.1.0",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "a43a4d424c9d25668589dfe94a3871318ce299ff",
+  "publicationStatus": "published",
+  "tarballSHA256": "de6b63c3aa84bde125000c2b8575d8faca0c0879b050467a92bce34e340040cc",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-side-chat/-/dsh-side-chat-0.1.0.tgz",
+    "integrity": "sha512-ZYoZu58Cag9EzV5tMmI5m4Cm6HabjgHCRmxkbRCVKa/yP1/M5NFU8qgIClJ8f1/M+hmMJ2ALftdVjSqHJQ04Kg==",
+    "shasum": "2b1c0206dbbf3f068122eb096c315cf63e8806b2"
+  }
+}

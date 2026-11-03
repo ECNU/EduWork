@@ -40,7 +40,7 @@ await verifyPublishedPackageInputs({ locks: allPublishedLocks, dependencies: pat
 const pluginInstallLock = await readFile(join(paths.dependencies, 'package-lock.json'))
 const edition = paths.edition ? await json(join(paths.edition, 'edition/distribution.json')) : {}
 const { locks: publishedLocks, optionalBundles, excludedOptionalBundles } = selectOptionalProductBundles({
-  locks: allPublishedLocks, optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'],
+  locks: allPublishedLocks, optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision'].filter(name => allPublishedLocks.some(lock => lock.name === name)),
   excluded: edition.excludedOptionalBundles, dependencyLock: JSON.parse(pluginInstallLock),
 })
 const publishedFiles = await publishedPackageFiles(publishedLocks, join(paths.dependencies, 'node_modules'))
