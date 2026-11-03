@@ -21,6 +21,7 @@ import { SCHEMA_VERSION, seriesInstants, normalizeEvent, assertOrderedRecord, Ev
 import { PersonalStore } from './personal.js'
 import { CalendarStore } from './store.js'
 import { SourceRegistry } from './sources.js'
+import { AnnotationRegistry } from './annotations.js'
 import { reminderPlan, bindReminderScheduler } from './reminders.js'
 import { ReminderDelivery } from './reminder-delivery.js'
 import { applySourceInput } from './typert-schemas.js'
@@ -59,7 +60,8 @@ export class CalendarService extends TypertRemoteService {
       const report = await this.store.applySource(applySourceInput.parse(batch), guard)
       if (guard.isCurrent()) await this.rememberSources()
       return report
-    }, () => this.invalidate())
+    }, () => this.invalidate(), (source, guard) => this.store.deleteCalendar(source, guard))
+    this.annotations = new AnnotationRegistry(() => this.invalidate())
     ctx.effect(() => async () => {
       this.lifetime.abort()
       this.reminderBinding?.dispose()
@@ -82,6 +84,21 @@ export class CalendarService extends TypertRemoteService {
 
   sourceStatuses() { return this.sources.statuses() }
 
+  /** Host-only: a data plugin supplies week labels and range bands for views. */
+  registerAnnotations(provider) { return this.annotations.register(provider) }
+
+  /** Week labels and range bands covering one range, merged from all providers. */
+  async annotationsFor(range) { return await this.annotations.annotationsFor(range) }
+
+  annotationChoices() { return this.annotations.choices() }
+
+  async selectAnnotations(input) {
+    const { group, id } = input
+    this.annotations.select(group, id)
+    await this.personal.domain.table('view_preferences').put(group, { group, provider: id })
+    return this.annotationChoices()
+  }
+
   /** Relative rules use the current occurrence time; fixed rules retain their own time. */
   reminderPlan(range) { return reminderPlan(this, range) }
 
@@ -99,6 +116,9 @@ export class CalendarService extends TypertRemoteService {
   async [Service.init]() {
     await this.store.open()
     await this.personal.open()
+    for (const [, preference] of this.personal.domain.table('view_preferences').entries()) {
+      this.annotations.selections.set(preference.group, preference.provider)
+    }
     for (const event of this.store.snapshot().events) await this.personal.rememberSource(event, true)
     this.reminderDelivery = new ReminderDelivery(this, this.ctx)
     await this.reminderDelivery.open()
@@ -578,7 +598,12 @@ Remote('sourceStatuses')(CalendarService.prototype.sourceStatuses, {
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })
 
-for (const name of ['reminders', 'ackReminder']) Remote(name)(CalendarService.prototype[name], {
+Remote('annotationsFor')(CalendarService.prototype.annotationsFor, {
+  kind: 'method', name: 'annotationsFor', static: false, private: false,
+  addInitializer(initializer) { remoteInitializers.push(initializer) },
+})
+
+for (const name of ['reminders', 'ackReminder', 'annotationChoices', 'selectAnnotations']) Remote(name)(CalendarService.prototype[name], {
   kind: 'method', name, static: false, private: false,
   addInitializer(initializer) { remoteInitializers.push(initializer) },
 })

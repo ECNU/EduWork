@@ -98,7 +98,7 @@ ctx.effect(() => () => binding.dispose(), 'calendar: detach reminders')
 
 The adapter must replace only calendar-owned jobs, durably deduplicate by `task.id`, update unchanged IDs and cancel absent jobs. Retrying a plan must not produce additional delivery. The default plan contains future tasks within the next year, recomputed after data/settings changes and every minute as the window advances. `binding.refresh()` waits for reconciliation; `binding.status()` reports failures. Failed plans are retried rather than acknowledged.
 
-The default Host-side `ReminderDelivery` reuses `reminderPlan` and invalidations and stores receipts in the independent `calendar_reminders` domain. Relative reminders follow moves and stop on cancellation; fixed reminders remain independent. Browsers do not own timers: due reminders enter a durable in-app inbox, with optional `desktopServices.calendarReminder` forwarding to the existing desktop notification channel. No model or Session is started. `calendar.reminders()` returns channel status, unread count and the latest 100 receipts; `ackReminder({id})` persists read state and clears the tray item.
+The default Host-side `ReminderDelivery` reuses `reminderPlan` and invalidations and stores receipts in the independent `calendar_reminders` domain. Relative reminders follow moves and stop on cancellation; fixed reminders remain independent. Browsers do not own timers: due reminders enter a durable in-app inbox, with optional `notifications.register()` / `notificationActions.register()` forwarding to the existing desktop notification channel. No model or Session is started. `calendar.reminders()` returns channel status, unread count and the latest 100 receipts; `ackReminder({id})` persists read state and clears the tray item.
 
 Keep the Host running. Restart catches up at most 24 hours and receipts remain for 30 days. Stable identity plus scheduled time deduplicates inbox receipts. Bridge failures retry without removing the in-app receipt. OS visibility depends on notification preferences, foreground policy and quiet settings. Bridge acceptance does not prove a user saw the popup. Bridge dispatch and receipt acknowledgment are not a cross-process transaction; a crash can repeat an OS popup, so exactly-once delivery is not promised. Old shells report calendar delivery unavailable rather than bypassing policy or starting a model.
 
@@ -109,3 +109,17 @@ Keep the Host running. Restart catches up at most 24 hours and receipts remain f
 `calendar.changes(signal)` uses the existing Runtime Remote logical stream for `{revision}` invalidations, coalescing rapid changes. It is not a consistent snapshot or durable event log. The panel rereads current data, resubscribes after disconnection and cancels on unmount. Both source and personal writes trigger refresh.
 
 Week/month views share data. Separate institution academic-calendar/timetable entries, default views and preset source filters remain future work.
+
+
+## Complete instances and education calendars
+
+`registerSource({ ..., replaceInstances: true })` accepts only complete snapshots of concrete ordinary events, without recurrence, exceptions or movedFrom. Stable instance IDs preserve originalStart and personal associations across date changes. Without such IDs, adapters create new IDs rather than guessing moves. Source metadata may travel in extensions; course grouping belongs to the academic plugin.
+
+Annotation providers may supply `label` and `selectionGroup`. `annotationChoices()` reads choices; `selectAnnotations({ group, id })` persists selection, with null hiding that group. An unconfigured group defaults to its first provider. Ungrouped providers continue merging. The academic plugin uses the academic-calendar group and switches its concrete activity source together with the background. Timetables and personal events are unaffected.
+
+See the [academic-calendar package](../../../packages/dsh-academic-calendar/README_EN.md) for semantics, formats and tools. Ordinary ICS exports include visible events only, excluding teaching-week backgrounds, course grouping and personal content.
+
+
+Source `setVisible(boolean)` changes display without stopping refresh. `setActive(boolean)` also invalidates in-flight writes for disable/logout. `clear()` removes only owned events, retaining personal content and revision receipts. Calendar selection uses public onChanged(); annotation handles offer invalidate() after provider data changes. No consumer relies on internal table names.
+
+Notifications reuse the generic #190 protocol. Host validates the receipt and returns a source-scoped event identity; the plugin client opens its details through the generic panel interface, without validating against the paginated inbox or adding Electron calendar branches. Without notification services, the in-app inbox remains available.

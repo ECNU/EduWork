@@ -102,7 +102,10 @@ async function withCalendar(root, body) {
         putNote: call('putNote'),
         removeNote: call('removeNote'),
         notes: call('notes'),
+        personalFor: call('personalFor'),
+        setPersonal: call('setPersonal'),
         unlinkedNotes: () => host.unlinkedNotes(),
+        annotationsFor: call('annotationsFor'),
       },
     })
   } finally {
@@ -381,6 +384,22 @@ test('a Host-validated notification outside the inbox page still opens the calen
   await unmount()
 })
 
+test('a notification focus opens an event outside the current week and clears filters', { skip: !runtime }, async () => {
+  await withRoot('eduwork-panel-focus-', root => withCalendar(root, async ({ host, service }) => {
+    const event = await host.putEvent({ uid: 'future-focus', title: '通知定位的未来日程', start: '2028-03-13T09:00', end: '2028-03-13T10:00' })
+    let focus
+    service.onNavigate = listener => { focus = listener; return () => { focus = undefined } }
+    const { container, root: panel, act } = await mountPanel(service)
+    try {
+      await act(async () => focus({ source: event.source, uid: event.uid }))
+      await act(async () => { await Promise.resolve() })
+      assert.match(rendered(container), /通知定位的未来日程/)
+      assert.equal(container.descendants().find(element => element.localName === 'input' && element.getAttribute('type') === 'date').value, '2028-03-13')
+      assert.ok(findButton(container, /^返回$/))
+    } finally { await act(async () => panel.unmount()) }
+  }))
+})
+
 test('clearing a note removes it instead of leaving a blank one behind', { skip: !runtime }, async () => {
   await withRoot('eduwork-panel-clear-', async (root) => {
     await withCalendar(root, async ({ host }) => {
@@ -400,12 +419,11 @@ test('clearing a note removes it instead of leaving a blank one behind', { skip:
   })
 })
 
-// A whole-day record that covers several days is drawn in the header of each of
-// them. Every one of those chips opens the same record, so with nothing but the
-// title to tell them apart a screen reader announces the same thing twice and the
-// reader cannot say which day they are on. The first day can speak for the whole
-// record; every later day has to say which day it is.
-test('each day of a multi-day whole-day entry is labelled with the day it is on', { skip: !runtime }, async () => {
+// A whole-day record that covers several days is one bar across the days it
+// covers — one thing that spans days, not a thing that happens to repeat under
+// each of them. The bar's label states its whole range; the day headers above
+// it say which day is which, so nothing needs saying twice.
+test('a multi-day whole-day entry is one bar labelled with its whole range', { skip: !runtime }, async () => {
   await withRoot('eduwork-panel-allday-labels-', async (root) => {
     await withCalendar(root, async ({ host, service }) => {
       const tuesday = tuesdayOfThisWeek()
@@ -420,28 +438,173 @@ test('each day of a multi-day whole-day entry is labelled with the day it is on'
 
       const { container, root: mounted } = await mountPanel(service)
       try {
-        // The label spells the day the way the panel does everywhere else: `10月13日`.
+        // The label spells the days the way the panel does everywhere else: `10月13日`.
         const spoken = (date) => {
           const [year, month, day] = date.split('-').map(Number)
           return `${month}月${day}日`
         }
-        const chips = container.descendants().filter(element =>
+        const bars = container.descendants().filter(element =>
           element.localName === 'button' && element.textContent === '校庆')
-        assert.equal(chips.length, 2, 'the record is drawn once under each day it covers')
-        const labels = chips.map(chip => chip.getAttribute('aria-label'))
-        assert.deepEqual(
-          labels,
-          [
-            `全天 · ${spoken(tuesday)}–${spoken(nextDay)} 校庆`,
-            `全天 · ${spoken(nextDay)} 校庆`,
-          ],
-          'each chip knows which of the days it is on',
-        )
-        assert.equal(new Set(labels).size, labels.length, 'and no two of them say the same thing')
+        assert.equal(bars.length, 1, 'the record is one bar, not a chip under each day')
+        assert.equal(bars[0].getAttribute('aria-label'), `全天 · ${spoken(tuesday)}–${spoken(nextDay)} 校庆`,
+          'the bar speaks for the whole range it covers')
+        // Where the bar sits: the track is the week, Tuesday is its second
+        // column of seven, and the record covers two of them.
+        assert.equal(bars[0].style.left, 'calc(14.285714285714285% + 2px)')
+        assert.equal(bars[0].style.width, 'calc(28.57142857142857% - 4px)')
       } finally {
         // The panel keeps a timer running to move "now", so a mounted panel is an open
         // handle: the test has to take it down or the run never finishes.
         await mounted.unmount()
+      }
+    })
+  })
+})
+
+test('a data plugin\'s week label and phase band reach both views', { skip: !runtime }, async () => {
+  await withRoot('eduwork-panel-annotations-', async (root) => {
+    await withCalendar(root, async ({ host, service }) => {
+      host.registerAnnotations({
+        id: 'test-academic-calendar',
+        annotationsFor: ({ from, to }) => ({
+          weeks: [{ firstDay: from, text: '第 6 周 · 双周' }],
+          spans: [{ firstDay: from, lastDay: to, text: '教学周', tone: 'quiet' }],
+        }),
+      })
+      const mounted = await mountPanel(service)
+      const { container, act } = mounted
+      try {
+        const html = rendered(container)
+        assert.match(html, /第 6 周 · 双周/, 'the subtitle names the week the view is on')
+        assert.match(html, /title="教学周"/, 'a day header carries the phase band as its tooltip')
+        // The month view reads the same answer for its own range and names its weeks.
+        const month = findButton(container, /^月$/)
+        assert.ok(month, 'the month toggle is reachable')
+        await act(async () => { month.click() })
+        await act(async () => { await Promise.resolve() })
+        const monthHtml = rendered(container)
+        assert.match(monthHtml, /第 6 周 · 双周/, 'the month grid names the week beside its row')
+        assert.match(monthHtml, /周标注/, 'the week column is announced to assistive readers')
+      } finally {
+        await mounted.root.unmount()
+      }
+    })
+  })
+})
+
+
+test('a week with no label and only a neutral band shows neither, and a vacation week says its band', { skip: !runtime }, async () => {
+  await withRoot('eduwork-panel-annotations-plain-', async (root) => {
+    await withCalendar(root, async ({ host, service }) => {
+      // No week labels at all: the month view keeps its plain seven columns.
+      host.registerAnnotations({
+        id: 'bands-only',
+        annotationsFor: ({ from, to }) => ({ weeks: [], spans: [{ firstDay: from, lastDay: to, text: '秋季学期 · 教学', tone: 'neutral' }] }),
+      })
+      const mounted = await mountPanel(service)
+      const { container, act } = mounted
+      try {
+        const html = rendered(container)
+        assert.doesNotMatch(html, /周标注/, 'no week column without week labels')
+        assert.doesNotMatch(html, /title="秋季学期 · 教学"/, 'a neutral band draws no bar in the week view')
+        // A week the provider does not number falls back to the band that covers it.
+        assert.match(html, /秋季学期 · 教学/, 'the subtitle names the covering band when there is no week label')
+      } finally {
+        await mounted.root.unmount()
+      }
+    })
+  })
+})
+
+test('a neutral band prefixes the week label with the term it names', { skip: !runtime }, async () => {
+  await withRoot('eduwork-panel-annotations-term-', async (root) => {
+    await withCalendar(root, async ({ host, service }) => {
+      host.registerAnnotations({
+        id: 'term-and-week',
+        annotationsFor: ({ from, to }) => ({
+          weeks: [{ firstDay: from, text: '第 6 周 · 双周' }],
+          spans: [{ firstDay: from, lastDay: to, text: '秋季学期', tone: 'neutral' }],
+        }),
+      })
+      const mounted = await mountPanel(service)
+      const { container } = mounted
+      try {
+        const html = rendered(container)
+        assert.match(html, /秋季学期 · 第 6 周 · 双周/, 'the subtitle reads term then week')
+        assert.doesNotMatch(html, /阶段图例/, 'a week whose subtitle already speaks its band lists no legend')
+      } finally {
+        await mounted.root.unmount()
+      }
+    })
+  })
+})
+
+// The filter row narrows what the views draw, and the subtitle's count is
+// part of what the reader learns from it: after picking one calendar, the
+// count must be that calendar's entries, not the whole week's.
+test('the subtitle counts what the calendar filter leaves on screen', { skip: !runtime }, async () => {
+  await withRoot('eduwork-panel-filter-count-', async (root) => {
+    await withCalendar(root, async ({ host, service }) => {
+      const tuesday = tuesdayOfThisWeek()
+      await host.putEvent({ uid: 'OWN-1', title: '自己加的复习', start: `${tuesday}T19:00` })
+      await host.putEvent({ uid: 'OWN-2', title: '还书提醒', start: `${tuesday}T08:30` })
+      await host.applySource({ source: 'school:filter', events: [
+        { uid: 'FLTR-1', title: '筛选课', start: `${tuesday}T10:00`, end: `${tuesday}T11:00` },
+      ] })
+      const mounted = await mountPanel(service)
+      const { container, act } = mounted
+      try {
+        const html = rendered(container)
+        assert.match(html, /3 条/, 'before filtering the count is the whole week')
+        const pick = findButton(container, /^school:filter$/)
+        assert.ok(pick, 'the filter row offers the school calendar')
+        await act(async () => { pick.click() })
+        await act(async () => { await Promise.resolve() })
+        assert.match(rendered(container), /1 条/, 'after filtering the count is what is left on screen')
+      } finally {
+        await mounted.root.unmount()
+      }
+    })
+  })
+})
+
+// The legend says what the colours on screen are called — but only for the
+// bands the rest of the header does not already speak. A week's subtitle names
+// its own band, so the week view lists only highlighted ones; the month's
+// subtitle names nothing, so every band on screen is listed, which is where a
+// term keeps its name even in a month the subtitle never mentions it.
+test('the legend names the bands the header does not already speak', { skip: !runtime }, async () => {
+  await withRoot('eduwork-panel-legend-', async (root) => {
+    await withCalendar(root, async ({ host, service }) => {
+      host.registerAnnotations({
+        id: 'legend-bands',
+        annotationsFor: ({ from, to }) => ({
+          weeks: [{ firstDay: from, text: '第 17 周 · 考试周', tone: 'highlight' }],
+          spans: [
+            { firstDay: from, lastDay: to, text: '秋季学期 · 期末考试', tone: 'highlight' },
+            { firstDay: from, lastDay: to, text: '秋季学期', tone: 'neutral' },
+          ],
+        }),
+      })
+      const mounted = await mountPanel(service)
+      const { container, act } = mounted
+      // The legend's own item for the term reads exactly that — the exam band
+      // reads `秋季学期 · 期末考试`, so an exact match tells the two apart.
+      const namesTerm = () => container.descendants().some(element => element.textContent === '秋季学期')
+      try {
+        const weekHtml = rendered(container)
+        assert.match(weekHtml, /阶段图例/, 'the week view lists a legend when a highlighted band is on screen')
+        assert.match(weekHtml, /秋季学期 · 期末考试/, 'the highlighted band is named in it')
+        assert.ok(!namesTerm(), 'the neutral band is not listed again beside a week that outranks it')
+        const month = findButton(container, /^月$/)
+        await act(async () => { month.click() })
+        await act(async () => { await Promise.resolve() })
+        const monthHtml = rendered(container)
+        assert.match(monthHtml, /阶段图例/, 'the month view lists a legend')
+        assert.ok(namesTerm(), 'the month names the neutral band, which its subtitle never does')
+        assert.match(monthHtml, /秋季学期 · 期末考试/, 'and the highlighted one')
+      } finally {
+        await mounted.root.unmount()
       }
     })
   })

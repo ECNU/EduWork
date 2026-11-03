@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 1,
+  "term": "2026-autumn",
+  "timeZone": "Asia/Shanghai",
+  "courses": [{
+    "teachingClassCode": "EXAMPLE.01",
+    "title": "示例课程",
+    "meetings": [
+      {"id": "school-meeting-001", "start": "2026-10-26T09:00", "end": "2026-10-26T10:30", "teacher": "示例教师", "campus": "示例校区", "room": "101"},
+      {"start": "2026-10-28T13:00", "end": "2026-10-28T14:30", "teacher": "示例教师", "campus": "示例校区", "room": "202"}
+    ]
+  }]
+}

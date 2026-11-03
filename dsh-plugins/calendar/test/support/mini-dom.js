@@ -39,6 +39,7 @@ class Element {
   }
 
   get children() { return this.childNodes.filter(node => node.nodeType === 1) }
+  get options() { return this.descendants().filter(node => node.localName === 'option') }
   get firstChild() { return this.childNodes[0] ?? null }
   get nextSibling() {
     if (!this.parentNode) return null
