@@ -46,14 +46,15 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>报名</title>
 <label>密码 <input type="password" value="Synthetic-Pass-1"></label>
 <label class="custom"><input type="checkbox">同意活动须知</label>
 <select aria-label="场次"><option>上午</option><option selected>下午</option></select>
-<button disabled>提交</button>`
+<button disabled>提交</button> <a href="#top">回到顶部</a>`
 
 test('the page script reads what the user sees, numbers what can be used, points out drawings, and never shows a password', { skip: !(runtime && chromium) }, async () => {
   const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
   const browser = await launcher.launch({ executablePath: chromium, headless: true })
   try {
     const page = await (await browser.newContext({ viewport: { width: 576, height: 744 } })).newPage()
-    await page.setContent(PAGE)
+    await page.route('https://campus.example/signup', route => route.fulfill({ contentType: 'text/html', body: PAGE }))
+    await page.goto('https://campus.example/signup')
     const read = async () => page.evaluate(`(${READ})()`)
     const first = await read()
     const text = render(first)
@@ -67,8 +68,11 @@ test('the page script reads what the user sees, numbers what can be used, points
       '[drawing "报名人数", not read: to see it, take a screenshot without a filename]',
       '[#6 textbox "姓名" empty, required]',
       '学号 [#7 textbox "学号" = "20261234"]',
-      '[#8 textbox "密码" filled] [#9 checkbox "同意活动须知" not checked] [#10 select "场次" = "下午", options "上午" "下午"] [button "提交" disabled]',
+      '[#8 textbox "密码" filled] [#9 checkbox "同意活动须知" not checked] [#10 select "场次" = "下午", options "上午" "下午"] [button "提交" disabled] [#11 link "回到顶部"]',
     ])
+    // A link that loads another page carries the address that opens it; one within the page is clicked.
+    assert.equal(first.refs[3].href, 'https://campus.example/n/1')
+    assert.equal(first.refs[11].href, undefined)
     assert.match(text, /In closed menus \(a click opens the address\): \[#1 link "学校概况"\] \[#2 link "新闻"\]$/u)
     // The number marks what takes the click: the label in front of a hidden box, and in a link with no box of its own, as one around a float, what is in it.
     assert.equal(await page.locator(`[${REF}="9"]`).evaluate(el => el.tagName), 'LABEL')

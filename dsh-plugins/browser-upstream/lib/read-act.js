@@ -30,8 +30,12 @@ const SCROLL = direction => `() => {
 export function callFor(action, element = {}) {
   const at = { element: element.name, target: `[${REF}="${action.ref}"]` }
   switch (action.do) {
-    // A link in a closed menu is opened by its address.
-    case 'click': return element.hidden ? { name: 'browser_navigate', arguments: { url: element.href } } : { name: 'browser_click', arguments: at }
+    // A link that loads another page is opened by its address, as browser_read
+    // opens one: none of the page's own click handlers run, and a link in a
+    // closed menu opens too.
+    case 'click':
+      if (element.href === undefined) return { name: 'browser_click', arguments: at }
+      return element.newTab ? { name: 'browser_tabs', arguments: { action: 'new', url: element.href } } : { name: 'browser_navigate', arguments: { url: element.href } }
     case 'type': return { name: 'browser_type', arguments: { ...at, text: action.text, ...action.submit && { submit: true } } }
     case 'select': return { name: 'browser_select_option', arguments: { ...at, values: [action.option] } }
     case 'press': return { name: 'browser_press_key', arguments: { key: action.key } }
@@ -83,7 +87,6 @@ const STILL = (url, next, typed) => `async () => {
 // How many tabs a tools response lists, when it lists them.
 const tabCount = text => /### (?:Open tabs|Result)\n((?:- \d+: .*(?:\n|$))+)/u.exec(text)?.[1].trim().split('\n').length
 const firstLine = message => message.split('\n').find(line => line.trim() && !line.startsWith('###')) ?? message
-const pause = ms => new Promise(resolve => setTimeout(resolve, ms))
 const untrusted = text => `<untrusted_web_content>\n${text}\n</untrusted_web_content>`
 
 function runner(ctx, exec) {
@@ -114,18 +117,6 @@ function view(agent, seen, find) {
   return untrusted(render(seen, { find, fresh }))
 }
 
-// A new tab can show up a moment after the click that opened it.
-async function follow(run, before) {
-  for (let waited = 0; waited <= 2000; waited += 250) {
-    const count = tabCount(await run('browser_tabs', { action: 'list' }))
-    if (count > before) {
-      await run('browser_tabs', { action: 'select', index: count - 1 })
-      return count
-    }
-    await pause(250)
-  }
-}
-
 async function act(run, agent, actions) {
   const seen = seenBy.get(agent)
   if (!seen) throw new Error('Read the page with browser_read first; browser_act uses the numbers it shows.')
@@ -142,9 +133,13 @@ async function act(run, agent, actions) {
     }
     // Whatever comes next was decided on a page that is no longer there.
     let moved
-    if (action.do === 'click' && (element.newTab || (tabCount(text) ?? 0) > tabs)) {
-      const count = await follow(run, tabs)
-      if (count) { tabs = count; moved = 'opened a new tab, now the current one' }
+    // The Agent goes on in a new tab, whether a link opened it, which makes
+    // it the current one, or the page did.
+    const count = tabCount(text) ?? tabs
+    if (count > tabs) {
+      if (call.name !== 'browser_tabs') await run('browser_tabs', { action: 'select', index: count - 1 })
+      tabs = count
+      moved = 'opened a new tab, now the current one'
     }
     if (!moved && text.includes('### Modal state')) moved = 'a dialog or file chooser opened'
     if (!moved && i < actions.length - 1) {

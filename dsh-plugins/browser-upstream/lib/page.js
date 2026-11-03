@@ -122,6 +122,8 @@ export const READ = String.raw`async () => {
   // A picture link with no words beside a worded link to the same address, as
   // news lists put a thumbnail before each headline, is left to the worded one.
   const worded = new Set([...document.querySelectorAll('a[href]')].filter(a => clean(a.innerText || a.getAttribute('aria-label') || a.title)).map(a => a.href));
+  // A link that loads another page, which opening its address does as well.
+  const loads = a => /^https?:/.test(a.href) && !a.hasAttribute('download') && a.href.split('#')[0] !== location.href.split('#')[0];
   const lines = [], closed = [], refs = {};
   let line = '', top = 0, size = 0, k = 0, inside = 0, room = 0, prefix = '', gap = false;
   const put = (text, at) => {
@@ -140,8 +142,8 @@ export const READ = String.raw`async () => {
     if (modal) return;
     for (const a of el.matches('a[href]') ? [el] : el.querySelectorAll('a[href]')) {
       const text = cut(clean(a.textContent), 80);
-      if (closed.length >= 30 || !text || !/^https?:/.test(a.href) || closed.some(c => c.href === a.href)) continue;
-      closed.push({ ref: mark(a, { kind: 'link', name: text, href: a.href, hidden: true }), name: text });
+      if (closed.length >= 30 || !text || !loads(a) || closed.some(c => c.href === a.href)) continue;
+      closed.push({ ref: mark(a, { kind: 'link', name: text, href: a.href }), name: text });
     }
   };
   const item = (el, target = el) => {
@@ -151,7 +153,7 @@ export const READ = String.raw`async () => {
     const label = named || (el.tagName === 'A' ? cut(el.getAttribute('href'), 60) : '');
     if (target.disabled || target.getAttribute('aria-disabled') === 'true') return put('[' + kind + ' ' + quote(label) + ' disabled]', el);
     if (!at || covered(at, at.getBoundingClientRect())) return hidden(el);
-    const ref = mark(at, { kind, name: label, ...el.tagName === 'A' && { href: el.href, newTab: el.target === '_blank' } });
+    const ref = mark(at, { kind, name: label, ...el.tagName === 'A' && loads(el) && { href: el.href, newTab: !/^(_self|_top|_parent)?$/.test(el.target) } });
     // A link or button wrapping a whole card keeps the card's words, on one line.
     const words = clean(el.innerText).length;
     if (['link', 'button', 'option', 'menu item', 'tab'].includes(kind) && (words > 80 || (words > 30 && [...el.children].some(block)))) {
