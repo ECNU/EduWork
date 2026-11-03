@@ -59,7 +59,8 @@ export function createDesktopPet({ packageRoot, preload, stateFile, locale, plat
   const restore = () => move(restorePetPosition(saved, geometry, displays(), screen.getPrimaryDisplay()))
 
   // Forwarded mouse moves can miss a quick first click; the cursor is also read
-  // here, every 50 ms near the pet and every 500 ms otherwise.
+  // here, every 20 ms near the pet and every 100 ms otherwise. The page needs the
+  // position fresh enough to hold a bubble while the pointer sits on it.
   let wasInside = false
   function poll() {
     const cursor = screen.getCursorScreenPoint(), bounds = window.getBounds()
@@ -67,7 +68,7 @@ export function createDesktopPet({ packageRoot, preload, stateFile, locale, plat
     const now = cursor.x >= bounds.x && cursor.x < bounds.x + bounds.width && cursor.y >= bounds.y && cursor.y < bounds.y + bounds.height
     if (!dragTimer && (now || wasInside)) send('pointer', { inside: now, x: cursor.x - bounds.x, y: cursor.y - bounds.y })
     wasInside = now
-    pointerTimer = setTimeout(poll, near ? 50 : 500)
+    pointerTimer = setTimeout(poll, near ? 20 : 100)
   }
   function presence() {
     clearTimeout(presenceTimer)

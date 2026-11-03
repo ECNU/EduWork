@@ -21,7 +21,10 @@ test('placement keeps the pet in the work area, rounds fractional pointers and t
   const top = placePet({ x: 100, y: -50 }, geometry, [primary])
   assert.equal(top.y + geometry.pet.y, 33)
   assert.equal(top.bubble, 'below')
-  assert.equal(placePet({ x: 100, y: 33 + 34 - 64 }, geometry, [primary]).bubble, 'above')
+  // The bubble wraps to two lines, so it needs 50 DIP above the pet to stay on screen;
+  // one DIP less and it hangs below instead.
+  assert.equal(placePet({ x: 100, y: 33 + 50 - 64 }, geometry, [primary]).bubble, 'above')
+  assert.equal(placePet({ x: 100, y: 33 + 49 - 64 }, geometry, [primary]).bubble, 'below')
   assert.equal(placePet({ x: 100, y: 2000 }, geometry, [primary]).y + geometry.pet.y + geometry.pet.height, 33 + 870)
   // A small overshoot clamps; a larger one tucks and leaves 42% of the pet visible.
   assert.equal(placePet({ x: -70, y: 300 }, geometry, [primary]).x, -51)

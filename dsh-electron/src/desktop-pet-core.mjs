@@ -19,7 +19,8 @@ export function validatePetRequest(body) {
 
 // 100% is 128 DIP tall. The window adds room above and below the pet for the
 // bubble and at the sides for the badge, and never covers more than that.
-const BASE_HEIGHT = 128, MARGIN = { side: 40, top: 64, bottom: 40 }, MIN_WIDTH = 220, BUBBLE = 34
+// A bubble wraps to two lines, so the room kept above the pet fits both of them.
+const BASE_HEIGHT = 128, MARGIN = { side: 40, top: 64, bottom: 40 }, MIN_WIDTH = 220, BUBBLE = 50
 export function petGeometry(frame, size) {
   const height = Math.round(BASE_HEIGHT * size / 100), width = Math.round(frame.width * height / frame.height)
   const window = { width: Math.max(width + MARGIN.side * 2, MIN_WIDTH), height: height + MARGIN.top + MARGIN.bottom }
@@ -79,11 +80,20 @@ export function untuckPetPosition(placed, geometry, displays) {
   return placePet({ x, y: placed.y }, geometry, displays, { allowTuck: false })
 }
 
-/** What the pet page may know: no session ids, titles only with previews on. */
+/**
+ * What the pet page may know: no session ids, no addresses. A plugin notice carries the
+ * title it wants shown (a mail subject, for instance) whether or not previews are on -
+ * that is the text the bubble reads out - plus the source id, so the page can tell a mail
+ * reminder (worth clicking) from a message the pet is only reporting.
+ */
 export function petStatus(notifications) {
   const preview = notifications.preferences?.preview === true
   return {
-    items: [...notifications.items.values()].map(item => ({ key: item.key, kind: item.kind, createdAt: item.createdAt, title: preview ? item.title : '', ...(item.kind === 'plugin' ? { level: item.level, requiresAction: item.requiresAction, label: item.label, alert: item.alert } : {}) })),
+    items: [...notifications.items.values()].map(item => ({
+      key: item.key, kind: item.kind, createdAt: item.createdAt,
+      title: preview || item.kind === 'plugin' ? item.title : '',
+      ...(item.kind === 'plugin' ? { level: item.level, requiresAction: item.requiresAction, label: item.label, alert: item.alert, source: item.source ?? '' } : {}),
+    })),
     running: notifications.running.length, acknowledged: notifications.acknowledged,
   }
 }
