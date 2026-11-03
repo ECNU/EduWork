@@ -42,11 +42,12 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>报名</title>
 <table><tr><td>上午场</td><td>9:00</td></tr></table>
 <div><canvas width="300" height="150" aria-label="报名人数"></canvas><svg width="16" height="16"><circle r="8"/></svg></div>
 <label for="name">姓名</label><input id="name" required>
-<div><span>学号</span><input id="sid" value="20261234"></div>
+<div><span>学号</span><input id="sid" value="20261234" maxlength="11"></div>
 <label>密码 <input type="password" value="Synthetic-Pass-1"></label>
 <label class="custom"><input type="checkbox">同意活动须知</label>
 <select aria-label="场次"><option>上午</option><option selected>下午</option></select>
-<button disabled>提交</button> <a href="#top">回到顶部</a>`
+<button disabled>提交</button> <a href="#top">回到顶部</a>
+<p><label>人数 <input type="number" min="2" max="8"></label> <label>日期 <input type="date"></label></p>`
 
 test('the page script reads what the user sees, numbers what can be used, points out drawings, and never shows a password', { skip: !(runtime && chromium) }, async () => {
   const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
@@ -67,8 +68,9 @@ test('the page script reads what the user sees, numbers what can be used, points
       '上午场 | 9:00',
       '[drawing "报名人数", not read: to see it, take a screenshot without a filename]',
       '[#6 textbox "姓名" empty, required]',
-      '学号 [#7 textbox "学号" = "20261234"]',
+      '学号 [#7 textbox "学号" = "20261234", at most 11 characters]',
       '[#8 textbox "密码" filled] [#9 checkbox "同意活动须知" not checked] [#10 select "场次" = "下午", options "上午" "下午"] [button "提交" disabled] [#11 link "回到顶部"]',
+      '[#12 textbox "人数" empty, number 2–8] [#13 textbox "日期" empty, date]',
     ])
     // A link that loads another page carries the address that opens it; one within the page is clicked.
     assert.equal(first.refs[3].href, 'https://campus.example/n/1')

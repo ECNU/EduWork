@@ -86,6 +86,9 @@ export const READ = String.raw`async () => {
       const value = clean(el.isContentEditable ? el.innerText : el.value);
       s.push(el.type === 'password' ? (value ? 'filled' : 'empty') : value ? '= ' + quote(cut(value, 80)) : 'empty');
       if (el.placeholder && clean(el.placeholder) !== name(el)) s.push('hint ' + quote(cut(clean(el.placeholder), 40)));
+      // What the field takes, as far as the page says: a kind other than text, its range, its length.
+      if (el.tagName === 'INPUT' && !['text', 'search', 'password'].includes(el.type)) s.push(el.type + (el.min || el.max ? ' ' + (el.min || '…') + '–' + (el.max || '…') : ''));
+      if (el.maxLength > 0) s.push('at most ' + el.maxLength + ' characters');
       if (el === document.activeElement) s.push(on('aria-expanded') ? 'focused, suggestions open' : 'focused');
     } else if (kind === 'select') {
       const options = [...el.options].map(o => clean(o.text));
