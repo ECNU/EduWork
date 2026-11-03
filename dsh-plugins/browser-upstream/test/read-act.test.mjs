@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { READ } from '../lib/page.js'
 import { browserPermission } from '../lib/permission.js'
-import { covered, registerPageTools } from '../lib/read-act.js'
+import { covered, noteSavedScreenshots, registerPageTools } from '../lib/read-act.js'
 
 const line = (text, top = 0) => ({ text, top })
 const page = (url, title, lines, refs, extra = {}) => ({ url, title, alerts: [], lines, closed: [], refs, scrollY: 0, truncated: false, ...extra })
@@ -179,4 +179,18 @@ test('browser_act asks only for what the Agent marks for confirmation, and the a
   covered.add(token)
   try { assert.equal(script(token), 'allow') } finally { covered.delete(token) }
   assert.equal(script(token), 'ask')
+})
+
+test('a screenshot saved under a name says where the image went', async () => {
+  let middleware
+  const session = {}
+  const workingDirectory = { get: of => { assert.equal(of, session); return '/work/space' } }
+  noteSavedScreenshots({ get: name => name === 'workingDirectory' ? workingDirectory : undefined, on: (event, handler) => { assert.equal(event, 'tools/execute'); middleware = handler } })
+  const saved = { isError: false, value: { content: [{ type: 'text', text: '### Result\n- [Screenshot of viewport](./shots/chart.png)' }] } }
+  const result = await middleware({ name: 'mcp__playwright-mcp__browser_take_screenshot', arguments: { filename: 'shots/chart.png' }, agent: { session } }, async () => saved)
+  assert.deepEqual(result.value.content.map(block => block.text), [saved.value.content[0].text, 'The image is not in this result: it was saved as /work/space/shots/chart.png. To see it, open that path with read_image.'])
+  // Without a name the image is in the result, and other tools are left alone.
+  for (const exec of [{ name: 'mcp__playwright-mcp__browser_take_screenshot', arguments: {} }, { name: 'mcp__playwright-mcp__browser_snapshot', arguments: { filename: 'page.md' } }]) {
+    assert.equal(await middleware(exec, async () => saved), saved)
+  }
 })

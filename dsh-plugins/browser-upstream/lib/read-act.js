@@ -6,6 +6,7 @@
 // the Sidebar and the same browser rules apply. The list stops early when the
 // page moves on, and the result shows the page as it is then: a page takes one
 // model turn instead of one per action, and no snapshot file to read.
+import { resolve } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
 import { READ, REF, fingerprint, render } from './page.js'
 
@@ -213,4 +214,19 @@ export function registerPageTools(ctx) {
     presentCall: args => ({ card: 'generic', title: `浏览器 · 操作页面（${args.actions?.length ?? 0} 步）`, kind: 'execute' }),
     execute: (args, exec) => within(exec, run => act(run, exec.agent, args.actions)),
   }))
+}
+
+// Playwright MCP leaves a screenshot saved under a name out of its result,
+// which then only links the file relative to the folder it runs in, the
+// Agent's: give the full path, so the Agent opens the file instead of
+// searching for it.
+export function noteSavedScreenshots(ctx) {
+  ctx.on('tools/execute', async (exec, next) => {
+    const result = await next()
+    const filename = exec.name === mcp('browser_take_screenshot') && !result.isError ? exec.arguments?.filename : undefined
+    if (filename === undefined) return result
+    const path = resolve(ctx.get('workingDirectory').get(exec.agent.session), filename)
+    const note = { type: 'text', text: `The image is not in this result: it was saved as ${path}. To see it, open that path with read_image.` }
+    return { ...result, value: { ...result.value, content: [...result.value.content, note] } }
+  })
 }
