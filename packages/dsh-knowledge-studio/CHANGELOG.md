@@ -1,9 +1,12 @@
 # Changelog
 
-## Artifact Services — Unreleased
+## Studio 0.6.3 / Artifact Services 0.3.2 — 2026-11-02
 
 - Office 共享规范说明不要用命令或脚本启动 Word、Excel、PowerPoint、WPS 等桌面应用验证文件；Windows 受限命令环境里它们会弹出报错并让命令一直等待，改用校验脚本和 LibreOffice Kit 检查。
 - Tell Office skills not to launch desktop Word, Excel, PowerPoint or WPS to test generated files; in the confined Windows command environment they show a modal error and the command waits. Use the validators and LibreOffice Kit instead.
+
+- Studio 精确依赖 Artifact Services 0.3.2，共用更新后的 Office 技能。
+- Pin Artifact Services 0.3.2 in Studio so both use the updated Office guidance.
 
 ## Studio 0.6.2 / Artifact Services 0.3.1 — 2026-10-22
 

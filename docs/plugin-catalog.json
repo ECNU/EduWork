@@ -5,8 +5,8 @@
     "icon": "key",
     "eyebrow": "IDENTITY & MODELS",
     "docs": "packages/dsh-oidc",
-    "zh": { "name": "机构登录与模型接入", "summary": "通过浏览器登录兼容的机构网关，发现模型并自动续期。支持 LiteLLM OAuth 与实验性 oidc-llm 接入。" },
-    "en": { "name": "Identity & model access", "summary": "Sign in to a compatible gateway through your browser, discover models and renew tokens. Supports LiteLLM OAuth and experimental oidc-llm integration." }
+    "zh": {"name":"机构登录与模型接入","summary":"通过浏览器登录兼容的机构网关，发现模型并自动续期。支持 LiteLLM OAuth 与实验性 oidc-llm 接入。"},
+    "en": {"name":"Identity & model access","summary":"Sign in to a compatible gateway through your browser, discover models and renew tokens. Supports LiteLLM OAuth and experimental oidc-llm integration."}
   },
   {
     "package": "@eduwork/dsh-knowledge-studio",
@@ -15,8 +15,8 @@
     "icon": "layers",
     "eyebrow": "MATERIALS TO ARTIFACTS",
     "docs": "packages/dsh-knowledge-studio",
-    "zh": { "name": "Knowledge Studio", "summary": "把资料变成报告、演示、思维导图、测验与闪卡；配套成果服务提供 Office 预览和媒体制作，与对话共用。" },
-    "en": { "name": "Knowledge Studio", "summary": "Turn materials into reports, presentations, mind maps, quizzes and flashcards, with companion artifact services for Office previews and media creation shared with conversations." }
+    "zh": {"name":"Knowledge Studio","summary":"把资料变成报告、演示、思维导图、测验与闪卡；配套成果服务提供 Office 预览和媒体制作，与对话共用。"},
+    "en": {"name":"Knowledge Studio","summary":"Turn materials into reports, presentations, mind maps, quizzes and flashcards, with companion artifact services for Office previews and media creation shared with conversations."}
   },
   {
     "package": "@eduwork/dsh-annotation",
@@ -24,8 +24,26 @@
     "icon": "annotation",
     "eyebrow": "SELECT & DISCUSS",
     "docs": "packages/dsh-annotation",
-    "zh": { "name": "选段批注", "summary": "选中回复片段添加批注，保留来源编号，多条一起发送；复用 DSH 的输入框与草稿。" },
-    "en": { "name": "Response annotations", "summary": "Comment on selected passages, keep numbered references and send multiple annotations together using DSH’s composer and drafts." }
+    "zh": {"name":"选段批注","summary":"选中回复片段添加批注，保留来源编号，多条一起发送；复用 DSH 的输入框与草稿。"},
+    "en": {"name":"Response annotations","summary":"Comment on selected passages, keep numbered references and send multiple annotations together using DSH’s composer and drafts."}
+  },
+  {
+    "package": "@eduwork/dsh-side-chat",
+    "category": "knowledge",
+    "icon": "copy",
+    "eyebrow": "ASK IN A SIDE CHAT",
+    "docs": "packages/dsh-side-chat",
+    "zh": {"name":"侧边聊天","summary":"从消息或选区开启侧聊，带着历史快照继续提问；与主会话分别进行，关闭后归档。可与批注插件联动。"},
+    "en": {"name":"Side chat","summary":"Ask follow-up questions from a message or selection with a snapshot of the source history. Side chats run separately, archive on close and optionally integrate with annotations."}
+  },
+  {
+    "package": "@eduwork/dsh-decision",
+    "category": "knowledge",
+    "icon": "box",
+    "eyebrow": "CLASSIFY & SCORE",
+    "docs": "packages/dsh-decision",
+    "zh": {"name":"决策工具","summary":"通过 SystemOne 服务按标签分类、判断条件概率或按量表评分，配套决策技能；配置服务地址、模型和认证后启用。"},
+    "en": {"name":"Decision tools","summary":"Classify, estimate condition probabilities and score against rubrics through a SystemOne service, with a companion skill. Configure the endpoint, model and authentication before enabling it."}
   },
   {
     "package": "@eduwork/dsh-literature",
@@ -33,8 +51,8 @@
     "icon": "book",
     "eyebrow": "RESEARCH WORKFLOW",
     "docs": "packages/dsh-literature",
-    "zh": { "name": "文献检索", "summary": "检索 DBLP、arXiv 文献，获取 BibTeX 与可用全文，把研究资料接入后续任务。" },
-    "en": { "name": "Literature search", "summary": "Search DBLP and arXiv, retrieve BibTeX and available full text, and bring research sources into your next task." }
+    "zh": {"name":"文献检索","summary":"检索 DBLP、arXiv 文献，获取 BibTeX 与可用全文，把研究资料接入后续任务。"},
+    "en": {"name":"Literature search","summary":"Search DBLP and arXiv, retrieve BibTeX and available full text, and bring research sources into your next task."}
   },
   {
     "package": "@eduwork/dsh-memory",
@@ -42,8 +60,8 @@
     "icon": "memory",
     "eyebrow": "CONTEXT & MEMORY",
     "docs": "packages/dsh-memory",
-    "zh": { "name": "本地记忆", "summary": "管理本地记忆、检索历史对话，让后续任务接得上已有背景。记忆在本机管理。" },
-    "en": { "name": "Local memory", "summary": "Manage local memory and search past conversations so new tasks can pick up existing context. Memories are managed on your machine." }
+    "zh": {"name":"本地记忆","summary":"管理本地记忆、检索历史对话，让后续任务接得上已有背景。记忆在本机管理。"},
+    "en": {"name":"Local memory","summary":"Manage local memory and search past conversations so new tasks can pick up existing context. Memories are managed on your machine."}
   },
   {
     "package": "@eduwork/dsh-mail",
@@ -51,8 +69,8 @@
     "icon": "mail",
     "eyebrow": "CONNECTED TOOLS",
     "docs": "packages/dsh-mail",
-    "zh": { "name": "邮件助手", "summary": "连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。" },
-    "en": { "name": "Mail assistant", "summary": "Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow." }
+    "zh": {"name":"邮件助手","summary":"连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。"},
+    "en": {"name":"Mail assistant","summary":"Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow."}
   },
   {
     "package": "@eduwork/dsh-desktop-pet",
@@ -60,8 +78,8 @@
     "icon": "pet",
     "eyebrow": "DESKTOP COMPANION",
     "docs": "packages/dsh-desktop-pet",
-    "zh": { "name": "桌面宠物", "summary": "用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。" },
-    "en": { "name": "Desktop pet", "summary": "Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge." }
+    "zh": {"name":"桌面宠物","summary":"用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。"},
+    "en": {"name":"Desktop pet","summary":"Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge."}
   },
   {
     "package": "@eduwork/dsh-remote-access",
@@ -69,7 +87,7 @@
     "icon": "remote",
     "eyebrow": "CONTINUE FROM ANYWHERE",
     "docs": "packages/dsh-remote-access",
-    "zh": { "name": "远程访问", "summary": "配对后从其他终端的浏览器继续本机会话、处理授权。先部署中继并配置地址与接入 Key，再开启连接。" },
-    "en": { "name": "Remote access", "summary": "Pair another device to continue local sessions and handle approvals in its browser. Deploy a relay and configure its address and access key before enabling connections." }
+    "zh": {"name":"远程访问","summary":"配对后从其他终端的浏览器继续本机会话、处理授权。在设置中配置自己的中继或发行版提供的机构接入，测试连接后开启。"},
+    "en": {"name":"Remote access","summary":"Pair another device to continue local sessions and handle approvals in its browser. Configure your own relay or a distribution-provided organization connection in settings, test it and enable access."}
   }
 ]
