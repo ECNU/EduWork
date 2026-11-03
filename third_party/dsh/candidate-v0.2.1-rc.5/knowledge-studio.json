@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-knowledge-studio",
+  "version": "0.6.3",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "fd3d29e959d9d52b6854ec591e121cf2ae55c28d",
+  "publicationStatus": "published",
+  "tarballSHA256": "aa6d1af640ae6925d5c3ca60845fa30f18d0bb56487d0a45ff3f310920564608",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-knowledge-studio/-/dsh-knowledge-studio-0.6.3.tgz",
+    "integrity": "sha512-tfWDzsoPTeOMS9Hbbn1K0+8DQJYdq3K9Yft/BQuczRana1TmSeETzhmQ3bjwHuWH+75Q9K6DDdoTWuddypVVNA==",
+    "shasum": "490db508c39f62eab88a8c6e6f8d61e617e2e360"
+  }
+}

@@ -15,7 +15,7 @@ const hostEntry = 'apps/desktop-host/src/index.ts'
 const reviewedHostEntry = '1f61890c63da8898cef678479450d7647163530c416751d161dde6b397c654d3'
 
 test('selected Runtime remains bound to both its version and source commit', () => {
-  const receipt = { dshVersion: '0.2.1-rc.3', dshCommit: '1f81c047fc48fa190a683e469daa699857e9afe8' }
+  const receipt = { dshVersion: '0.2.1-rc.5', dshCommit: 'b830ec950faba0a46dda564be3e2d854afed94f1' }
   verifyPinnedDshReceipt(receipt)
   assert.equal(pinnedDshContract.packageVersion, receipt.dshVersion)
   assert.equal(qualifiedDesktopBaseline(receipt).builtinSchedule, true)
