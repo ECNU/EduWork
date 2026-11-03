@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-03T06:27:42.265Z",
-  "fileSetSHA256": "87d98f8d06d492c095c5ba9a262d8564467fda879039f747f6aef5a9126cbc2f",
+  "createdAt": "2026-11-03T06:30:47.892Z",
+  "fileSetSHA256": "85d857d0d919a25764146296b91c3f9967a8b5c8440473097aa02afe1cce0b6a",
   "files": [
     {
       "path": ".gitattributes",
@@ -537,7 +537,7 @@
     },
     {
       "path": "docs/RUNTIME-RESILIENCE-BACKPORT.md",
-      "sha256": "5a82849c5fdaed25c1e19537d872cb0bc0102e2049979aa86b7800aeadfc5fd4"
+      "sha256": "0506d2f7f01eacf1a7031d8349f002108b4a9510f2574ef75202067a8f779340"
     },
     {
       "path": "docs/SESSION-SEARCH-BACKPORT.md",
@@ -7321,7 +7321,7 @@
     },
     {
       "path": "scripts/patch-runtime-resilience-runtime.mjs",
-      "sha256": "af6d0c054a715d6664652125e39213ede0d053fe21603fe23ea40d8b49fbf408"
+      "sha256": "020ed4210812e8d7fafb98734c9c113268b3f41baa6690ec24cac0f9ad607cbe"
     },
     {
       "path": "scripts/patch-session-search-runtime.mjs",
