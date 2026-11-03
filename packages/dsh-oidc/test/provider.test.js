@@ -2,12 +2,12 @@ import assert from 'node:assert/strict'
 import { createServer } from 'node:http'
 import test from 'node:test'
 import { Context } from '@deepseek-ai/cordis'
-import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
+import LlmRuntime, { LlmAdapter, LlmError } from '@deepseek-ai/dsh-llm'
 import { PiAiAdapter } from '@deepseek-ai/dsh-llm-pi-ai'
 import { ENTERPRISE_DEFAULT_RETRY_POLICY, resolveEnterpriseProfiles } from '../src/host/provider/core.js'
 import { assertServiceableEnterpriseProviders, profilesFrom, resolveEnterpriseImageAccess } from '../src/host/provider/index.js'
 import { AuthorizationScopedAdapter } from '../src/host/provider/authorization-scope.js'
-import { TransformingEnterpriseAdapter, canonicalReasoningReplay } from '../src/host/provider/transform-adapter.js'
+import { TransformingEnterpriseAdapter, canonicalReasoningReplay, explainIdleTimeout } from '../src/host/provider/transform-adapter.js'
 
 test('provider route uses bounded defaults and classic OpenAI-compatible roles', () => {
   const [profile] = resolveEnterpriseProfiles({ providers: { campus: {
@@ -323,4 +323,30 @@ test('both enterprise wrappers preserve image request targets and old adapter id
     // Older supported hosts do not expose this method; the forwarding contract above still applies.
     if (ctx.llm.imageRequestTarget) assert.equal(ctx.llm.imageRequestTarget('campus', 'vision', image), target)
   } finally { await ctx.fiber.dispose() }
+})
+
+test('idle timeout is explained in Chinese, keeps TIMEOUT for retries, and reports the model', async () => {
+  const timeout = new LlmError('pi-ai stream idle timeout after 180000ms', 'TIMEOUT')
+  const inner = {
+    resolveModel: async () => ({ inputModalities: ['text'] }),
+    async * stream() { yield { type: 'block-start', index: 0, blockType: 'text' }; throw timeout },
+  }
+  const transforms = { capabilities: (_provider, _model, modalities) => modalities, apply: async options => options }
+  const seen = []
+  const adapter = new TransformingEnterpriseAdapter(inner, transforms, () => ({}), (provider, model) => seen.push(`${provider}/${model}`))
+  const chunks = []
+  await assert.rejects(async () => { for await (const chunk of adapter.stream({ provider: 'campus', model: 'campus-max', messages: [] })) chunks.push(chunk) }, error => {
+    assert.equal(error.code, 'TIMEOUT')
+    assert.match(error.message, /^模型平台 3 分钟内没有响应/)
+    assert.equal(error.cause, timeout)
+    return true
+  })
+  assert.equal(chunks.length, 1)
+  assert.deepEqual(seen, ['campus/campus-max'])
+
+  assert.match(explainIdleTimeout(new LlmError('pi-ai stream idle timeout after 90000ms', 'TIMEOUT')).message, /90 秒内/)
+  const other = new LlmError('pi-ai request aborted by caller', 'ABORTED')
+  assert.equal(explainIdleTimeout(other), other)
+  const connect = new LlmError('connect timeout', 'TIMEOUT')
+  assert.equal(explainIdleTimeout(connect), connect)
 })

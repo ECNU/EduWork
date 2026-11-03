@@ -140,6 +140,7 @@ test('logout during refresh cannot resurrect tokens or provider routes', async t
   assert.equal(f.records.size, 0)
   assert.equal((await f.backend.status(f.profile.id)).state, 'signed_out')
   assert.deepEqual(f.routes.at(-1).providers, {})
+  await f.backend.revocationsSettled()
   assert.equal(f.calls.filter(call => call.url.endsWith('/revoke')).length, 2)
 })
 
@@ -230,6 +231,22 @@ test('remote revocation outage does not prevent local logout', async t => {
   assert.equal((await f.backend.logout(f.profile.id)).state, 'signed_out')
   assert.equal(f.records.size, 0)
   assert.deepEqual(f.routes.at(-1).providers, {})
+  await f.backend.revocationsSettled()
+})
+
+test('logout returns before a slow remote revocation finishes', async t => {
+  const f = await fixture(t)
+  await f.login()
+  let release
+  const gate = new Promise(resolve => { release = resolve })
+  const fetch = f.backend.fetch
+  f.backend.fetch = async (url, init) => { if (String(url).endsWith('/revoke')) await gate; return fetch(url, init) }
+  assert.equal((await f.backend.logout(f.profile.id)).state, 'signed_out')
+  assert.equal(f.records.size, 0)
+  assert.equal(f.calls.filter(call => call.url.endsWith('/revoke')).length, 0)
+  release()
+  await f.backend.revocationsSettled()
+  assert.equal(f.calls.filter(call => call.url.endsWith('/revoke')).length, 1)
 })
 
 test('catalog 401 refreshes once; invalid_grant clears the authorization', async t => {

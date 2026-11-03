@@ -589,6 +589,17 @@ export class WebOidcBackend {
   configureModels() { return unsupportedManagement() }
   restart() { return unsupportedManagement() }
 
+  trackRevocation(promise) {
+    this.revocations ??= new Set()
+    this.revocations.add(promise)
+    promise.finally(() => this.revocations.delete(promise))
+  }
+
+  /** Wait for background revocations started by logout (tests and orderly shutdown). */
+  async revocationsSettled() {
+    await Promise.allSettled([...(this.revocations ?? [])])
+  }
+
   async logout(profileID) {
     const profile = this.profile(profileID)
     const epoch = this.accountEpoch(profile) + 1
@@ -599,7 +610,8 @@ export class WebOidcBackend {
     await this.clearCredentials(profile, epoch)
     this.resourceStates.delete(profileID)
     for (const [state, flow] of this.flows) if (flow.profileID === profileID) this.flows.delete(state)
-    if (session) {
+    // Best-effort remote revocation runs after local logout has returned.
+    if (session) this.trackRevocation((async () => {
       try {
         const discovery = await this.discover(profile)
         if (discovery.revocationEndpoint) {
@@ -610,7 +622,7 @@ export class WebOidcBackend {
           })
         }
       } catch (cause) { this.ctx.logger.warn(cause instanceof Error ? cause : new Error(String(cause))) }
-    }
+    })())
     return account(profile, undefined, false)
   }
 }

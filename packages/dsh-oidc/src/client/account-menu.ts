@@ -67,7 +67,7 @@ export function AccountMenu({ t, service, profile, children, renderSlot, wide = 
     typeof renderSlot === 'function' ? renderSlot('oidc.account.menu.details', { profile, status, busy, run, refreshAccount, defaultContent }, { fallback: defaultContent }) : defaultContent,
     h('div', { style: { display: 'grid', gap: 6 } },
       !signedIn && button(busy ? t('menu.processing') : profile.brand?.loginButtonLabel || t('menu.login'), () => void run(() => login.begin(profile.id))),
-      signedIn && button(t('menu.logout'), () => void run(() => service.logout(profile.id), true))),
+      signedIn && button(busy ? t('menu.processing') : t('menu.logout'), () => void run(() => service.logout(profile.id), true))),
     login.pending && h('p', { role: 'status' }, t('menu.waiting'), ' ', h('button', { type: 'button', role: 'menuitem', style: action, onClick: login.cancel }, t('menu.cancel'))),
     error && h('p', { role: 'alert', style: { color: 'var(--dsw-alias-state-error-primary, #a14d3b)', marginBottom: 0 } }, error))
   return h(React.Fragment, null,
