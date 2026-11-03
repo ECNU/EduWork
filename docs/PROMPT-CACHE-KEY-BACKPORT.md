@@ -1,6 +1,6 @@
 # 非 OpenAI 端点不发送 prompt_cache_key
 
-DSH 0.2.1-rc.2 和 rc.3 通过 pi-ai 调用 OpenAI 兼容接口。pi-ai 的 Responses 协议（`openai-responses`）只要缓存保留不是 `none` 就会发送 `prompt_cache_key`；Chat Completions 协议在缓存保留为 `long` 且端点被判定为支持长缓存时也会发送。litellm 等网关把请求转发给 GLM、DeepSeek 等后端时不会过滤这个 OpenAI 私有参数，于是每个模型都返回 400：`Unsupported parameter(s): prompt_cache_key`。用户换模型也无效（2026-10-19 用户反馈，`glm-5.3-flash` 等）。
+DSH 0.2.1-rc.2、rc.3 和 rc.5 通过 pi-ai 调用 OpenAI 兼容接口。pi-ai 的 Responses 协议（`openai-responses`）只要缓存保留不是 `none` 就会发送 `prompt_cache_key`；Chat Completions 协议在缓存保留为 `long` 且端点被判定为支持长缓存时也会发送。litellm 等网关把请求转发给 GLM、DeepSeek 等后端时不会过滤这个 OpenAI 私有参数，于是每个模型都返回 400：`Unsupported parameter(s): prompt_cache_key`。用户换模型也无效（2026-10-19 用户反馈，`glm-5.3-flash` 等）。
 
 桌面装配在复制 npm Runtime 后，通过 `scripts/patch-prompt-cache-key-runtime.mjs` 修改 `@deepseek-ai/dsh-llm-pi-ai` 的 `lib/index.js`：在 `profileOptions` 里注入 pi-ai 的 `onPayload` 钩子，当 baseUrl 不是 `api.openai.com` 时，从请求体中删除 `prompt_cache_key` 和 `prompt_cache_retention`。如果提供方配置里明确写了 `cacheRetention`，就不注入钩子，完全保留上游行为。其他参数和请求头都不改。
 

@@ -8,12 +8,12 @@ import { join } from 'node:path'
 export const promptCacheKeyPatch = Object.freeze({
   id: 'prompt-cache-key-non-openai-v1',
   package: '@deepseek-ai/dsh-llm-pi-ai',
-  version: '0.2.1-rc.3',
+  version: '0.2.1-rc.5',
   file: 'lib/index.js',
   beforeSHA256: '99b5c20830a52f69641df8a18a39206079b0c725201958cce2c4a934f1d4f7cd',
 })
-// rc.3 ships a byte-identical file; both reviewed versions share the hash.
-const reviewedVersions = new Set(['0.2.1-rc.2', '0.2.1-rc.3'])
+// rc.3 and rc.5 ship a byte-identical file; all reviewed versions share the hash.
+const reviewedVersions = new Set(['0.2.1-rc.2', '0.2.1-rc.3', '0.2.1-rc.5'])
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 
 const site = '\t\tmaxRetries: 0\n\t};\n}\n'
