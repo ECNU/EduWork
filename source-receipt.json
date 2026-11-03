@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-03T06:27:40.220Z",
+  "fileSetSHA256": "da4d8590894ba840fa8a056e30d004627cf81d63f15b70ba9e086ebec6314f23",
   "files": [
     {
       "path": ".gitattributes",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "43c9b58bd3838e6ee0ad6838bb37c30e1ebe310d6839cd7f106b96a69157bde7"
+      "sha256": "1050b880de479cc1ddb1fc8bd9ec850cf93af58f0b224184839b134c69144e30"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1190,6 +1190,10 @@
     {
       "path": "dsh-electron/src/boot-brand-preload.cjs",
       "sha256": "6148c3944f54c08d5e7236e30a5a44689b62c28c2ebfb60cfc57882375358fda"
+    },
+    {
+      "path": "dsh-electron/src/boot-hint-preload.cjs",
+      "sha256": "f8b779a89ced30963ea67eb56a7e8ed9a4f3e733c52618e2c6ff79a1ceb1b7fa"
     },
     {
       "path": "dsh-electron/src/boot-motion-preload.cjs",
@@ -1281,11 +1285,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "4bb0a950c3602897481b3b69cf0bfffedacd60f7ae6721d037a45d8f6c43d66c"
+      "sha256": "2e4728373555c5077eb774b7ad7019a70a777c412dbffaabfb37a2f36027d129"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "4f2d41f51cd1ff4e567be3d6e55e7d89034b2325b8f8ccb77445bf19890c0db6"
+      "sha256": "0307ca83d9062c8f254dd6a8d29e0e9d81fd38419b7eba85fbe958a8c1fc1e6b"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1305,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "d0b0c557821eb4403fbce48b190736e424e83c3f7174bdba515da28b82047ae4"
+      "sha256": "50fe9f25d4952831a91527d603c27191104043f811e569b1a98925c62c89d8fb"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1318,6 +1322,10 @@
     {
       "path": "dsh-electron/src/startup-failure.mjs",
       "sha256": "91cf4c099d1d0a2a61ca8d7f4a44f9c6462fa591e7ebcd0756f69007cd807b83"
+    },
+    {
+      "path": "dsh-electron/src/startup-hint.mjs",
+      "sha256": "9eb4944fc70a909886385238136bb28f08cbfafe3043b4304ff6290da5f9109a"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1445,7 +1453,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "105174df05c2a8002ab24139f78fdaa2cf302cd14d7e51b9a611079a242ff8ca"
+      "sha256": "be31129353ea7c8f39f6131cae61450805fa6735356d9eec65f366507750b247"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1506,6 +1514,10 @@
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
       "sha256": "ba885b275d7570ce36eb547a743de04e18a8684a8c1f2089b7b676ccc91e2a68"
+    },
+    {
+      "path": "dsh-electron/tests/startup-hint.test.mjs",
+      "sha256": "5a78d50128d868b2027f19f211e4d7782308492df924f1bca0864846d394e99b"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",

@@ -310,7 +310,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       }, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
-      desktopBootBrand: bootBrand,
+      desktopBootBrand: bootBrand, desktopStartupHint: () => '',
     })
     mock('eduwork-host-process.mjs', { staticDesktopResponse: () => undefined, DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
