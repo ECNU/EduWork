@@ -40,6 +40,7 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>报名</title>
   <li><a href="https://campus.example/n/2"><div class="box">工作坊报名开始</div><div class="box">报名截止到 11 月 8 日，名额有限，先到先得，请尽快报名参加本次工作坊活动。</div><div class="box">2026-11-02</div></a></li>
   <li><a href="https://campus.example/n/3"><span class="float">校园风光</span></a></li></ul>
 <table><tr><td>上午场</td><td>9:00</td></tr></table>
+<div><canvas width="300" height="150" aria-label="报名人数"></canvas><svg width="16" height="16"><circle r="8"/></svg></div>
 <label for="name">姓名</label><input id="name" required>
 <div><span>学号</span><input id="sid" value="20261234"></div>
 <label>密码 <input type="password" value="Synthetic-Pass-1"></label>
@@ -47,7 +48,7 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>报名</title>
 <select aria-label="场次"><option>上午</option><option selected>下午</option></select>
 <button disabled>提交</button>`
 
-test('the page script reads what the user sees, numbers what can be used, and never shows a password', { skip: !(runtime && chromium) }, async () => {
+test('the page script reads what the user sees, numbers what can be used, points out drawings, and never shows a password', { skip: !(runtime && chromium) }, async () => {
   const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
   const browser = await launcher.launch({ executablePath: chromium, headless: true })
   try {
@@ -63,6 +64,7 @@ test('the page script reads what the user sees, numbers what can be used, and ne
       '- [#4 link: 工作坊报名开始 报名截止到 11 月 8 日，名额有限，先到先得，请尽快报名参加本次工作坊活动。 2026-11-02]',
       '- [#5 link "校园风光"]',
       '上午场 | 9:00',
+      '[drawing "报名人数", not read: to see it, take a screenshot without a filename]',
       '[#6 textbox "姓名" empty, required]',
       '学号 [#7 textbox "学号" = "20261234"]',
       '[#8 textbox "密码" filled] [#9 checkbox "同意活动须知" not checked] [#10 select "场次" = "下午", options "上午" "下午"] [button "提交" disabled]',

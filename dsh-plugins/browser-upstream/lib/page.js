@@ -50,6 +50,8 @@ export const READ = String.raw`async () => {
   // content, which has no box of its own, the first child that has one.
   const sized = el => { const r = el.getBoundingClientRect(); return r.width >= 2 && r.height >= 2; };
   const clickable = el => sized(el) ? el : [...el.children].find(sized);
+  // Large enough to be a chart rather than an icon.
+  const drawing = el => { const r = el.getBoundingClientRect(); return r.width >= 160 && r.height >= 100; };
   const own = node => { const c = node.cloneNode(true); c.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(c.textContent); };
   // A field is called by its label, or else by the short caption shown with it
   // in a box of its own, as many pages lay out fields without labels. What a
@@ -165,6 +167,12 @@ export const READ = String.raw`async () => {
     for (const child of kids(node)) {
       if (size > MAX) return;
       if (child.nodeType === Node.TEXT_NODE) { put(clean(child.textContent), child.parentElement); continue; }
+      // A chart drawn on a canvas or in an SVG has no text to read.
+      if ((child.tagName === 'CANVAS' || child instanceof SVGSVGElement) && shown(child) && drawing(child)) {
+        const named = clean(child.getAttribute('aria-label') || child.querySelector(':scope > title')?.textContent);
+        put('[drawing' + (named ? ' ' + quote(named) : '') + ', not read: to see it, take a screenshot without a filename]', child);
+        continue;
+      }
       if (child.nodeType !== Node.ELEMENT_NODE || SKIP.has(child.tagName) || child instanceof SVGElement) continue;
       const el = child;
       if (!shown(el)) { hidden(el); continue; }
