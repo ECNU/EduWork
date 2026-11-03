@@ -1,6 +1,6 @@
 import { basename } from 'node:path'
 import { isPrivateTarget, normalizeURL } from '@chatecnu-work/dsh-tool-browser/core'
-import { QUIET, callFor, covered, elementOf } from './read-act.js'
+import { QUIET, callFor, covered, elementOf, pageOf } from './read-act.js'
 
 const prefix = 'mcp__playwright-mcp__'
 // A screenshot reads the page as well: without a file name it comes back to
@@ -23,91 +23,98 @@ export function browserGuard(ctx, exec) {
   }
 }
 
-// Approval copy names the action: elements by the Agent's own description from
-// the page snapshot, and the values it enters, shortened.
-const shorten = value => {
+// Approval copy names the action: elements as the page shows them, and the
+// values the Agent enters, shortened.
+const shorten = (value, max = 60) => {
   const text = String(value).replace(/\s+/gu, ' ').trim()
-  return text.length > 60 ? `${text.slice(0, 59)}…` : text
+  return text.length > max ? `${text.slice(0, max - 1)}…` : text
 }
 const en = value => value === undefined ? 'a page element' : `"${shorten(value)}"`
 const zh = value => value === undefined ? '页面元素' : `“${shorten(value)}”`
-const actions = {
-  browser_click: a => {
-    const [verbEn, verbZh] = a.doubleClick ? ['double-click', '双击'] : a.button === 'right' ? ['right-click', '右键点击'] : ['click', '点击']
-    return [`${verbEn} ${en(a.element)}`, `${verbZh}${zh(a.element)}`]
-  },
-  browser_type: a => [`type ${en(a.text)} into ${en(a.element)}${a.submit ? ' and submit it' : ''}`, `在${zh(a.element)}中输入${zh(a.text)}${a.submit ? '并提交' : ''}`],
-  browser_fill_form: a => {
-    const choice = field => field.type === 'checkbox' || field.type === 'radio'
-    return [
-      `fill in the form: ${a.fields.map(f => choice(f) ? `${f.value === 'true' ? 'check' : 'uncheck'} ${en(f.name)}` : `${en(f.name)} as ${en(f.value)}`).join(', ')}`,
-      `填写表单：${a.fields.map(f => choice(f) ? `${f.value === 'true' ? '选中' : '取消选中'}${zh(f.name)}` : `${zh(f.name)}填${zh(f.value)}`).join('，')}`,
-    ]
-  },
-  browser_select_option: a => [`select ${a.values.map(en).join(', ')} in ${en(a.element)}`, `在${zh(a.element)}中选择${a.values.map(zh).join('、')}`],
-  browser_hover: a => [`hover over ${en(a.element)}`, `把鼠标移到${zh(a.element)}上`],
-  browser_drag: a => [`drag ${en(a.startElement)} to ${en(a.endElement)}`, `把${zh(a.startElement)}拖到${zh(a.endElement)}`],
-  browser_drop: a => a.paths?.length
-    ? [`drop ${a.paths.map(path => en(basename(path))).join(', ')} onto ${en(a.element)}`, `把${a.paths.map(path => zh(basename(path))).join('、')}拖放到${zh(a.element)}`]
-    : [`drop data onto ${en(a.element)}`, `把数据拖放到${zh(a.element)}`],
-  browser_press_key: a => [`press ${shorten(a.key)}`, `按下 ${shorten(a.key)} 键`],
-  browser_navigate: a => [`open the private address ${shorten(a.url)}`, `打开本机或内网地址 ${shorten(a.url)}`],
-  browser_navigate_back: () => ['go back to the previous page', '返回上一页'],
-  browser_tabs: a => a.action === 'new'
-    ? [`open the private address ${shorten(a.url)} in a new tab`, `在新标签页打开本机或内网地址 ${shorten(a.url)}`]
-    : ['close a tab', '关闭标签页'],
+const files = paths => [paths.map(path => en(basename(path))).join(', '), paths.map(path => zh(basename(path))).join('、')]
+
+// Browser steps run without asking, as in Codex's and Magentic-UI's browsers:
+// the user's request covers opening pages, following links, filling in
+// fields and the like. The application asks by itself only for what is risky
+// whatever the task, and for going into a local or private network from
+// another site. The steps the browser skill lists for the user's confirmation
+// the Agent asks about itself, with browser_act's confirm.
+const risky = {
   browser_evaluate: a => a.element === undefined ? ['run a script in the page', '在网页中运行脚本'] : [`run a script on ${en(a.element)}`, `对${zh(a.element)}运行脚本`],
-  browser_file_upload: a => a.paths === undefined ? ['cancel the file chooser', '取消选择文件']
-    : !a.paths.length ? ['clear the chosen files', '清空已选择的文件']
-      : [`upload ${a.paths.map(path => en(basename(path))).join(', ')}`, `上传${a.paths.map(path => zh(basename(path))).join('、')}`],
-  browser_handle_dialog: a => !a.accept ? ['dismiss the page\'s dialog', '取消网页弹出的对话框']
+  browser_file_upload: a => {
+    if (!a.paths?.length) return
+    const [nameEn, nameZh] = files(a.paths)
+    return [`upload ${nameEn}`, `上传${nameZh}`]
+  },
+  browser_drop: a => {
+    if (!a.paths?.length) return
+    const [nameEn, nameZh] = files(a.paths)
+    return [`drop ${nameEn} onto ${en(a.element)}`, `把${nameZh}拖放到${zh(a.element)}`]
+  },
+  browser_handle_dialog: a => !a.accept ? undefined
     : a.promptText === undefined ? ['accept the page\'s dialog', '确认网页弹出的对话框']
       : [`enter ${en(a.promptText)} in the page's dialog and accept it`, `在网页弹出的对话框中输入${zh(a.promptText)}并确认`],
-  browser_resize: a => [`resize the browser to ${a.width}×${a.height}`, `把浏览器窗口调整为 ${a.width}×${a.height}`],
   browser_close: () => ['close the browser', '关闭浏览器'],
 }
-const describe = (name, args) => {
-  // Reads ask only to save their result to a file.
-  if (name === 'browser_take_screenshot') return [`save a screenshot of the page as ${en(args.filename)}`, `把网页截图保存为${zh(args.filename)}`]
-  if (readTools.has(name)) return [`save page data to ${en(args.filename)}`, `把网页数据保存到${zh(args.filename)}`]
-  // Malformed arguments still ask and then reach the server's own validation.
-  try { return actions[name]?.(args) } catch {}
-}
+const plain = new Set(['browser_click', 'browser_type', 'browser_fill_form', 'browser_select_option', 'browser_hover', 'browser_drag', 'browser_press_key', 'browser_navigate_back', 'browser_tabs', 'browser_resize'])
+const origin = url => { try { return new URL(url).origin } catch {} }
 
-// What a browser tool call would do that needs the user's leave, if anything.
-// Reading pages, looking at them, switching tabs and opening public pages do
-// not ask; saving what was read into a file asks only where the session may
-// not write files.
-function question(name, args, writable) {
-  if (readTools.has(name) ? args.filename === undefined || writable : name === 'browser_tabs' && args.action !== 'close' && !opens(name, args)) return
-  if (opens(name, args) && !isPrivateTarget(args.url)) return
-  return describe(name, args) ?? [`use the browser tool ${name}`, `使用浏览器工具 ${name}`]
+// What a browser tool call would do that needs the user's leave, if anything,
+// from the page `here` the Agent is on.
+function question(name, args, writable, here) {
+  if (readTools.has(name)) {
+    if (args.filename === undefined || writable) return
+    return name === 'browser_take_screenshot' ? [`save a screenshot of the page as ${en(args.filename)}`, `把网页截图保存为${zh(args.filename)}`] : [`save page data to ${en(args.filename)}`, `把网页数据保存到${zh(args.filename)}`]
+  }
+  if (opens(name, args)) {
+    if (!isPrivateTarget(args.url) || origin(args.url) === origin(here)) return
+    return name === 'browser_navigate' ? [`open the private address ${shorten(args.url)}`, `打开本机或内网地址 ${shorten(args.url)}`]
+      : [`open the private address ${shorten(args.url)} in a new tab`, `在新标签页打开本机或内网地址 ${shorten(args.url)}`]
+  }
+  if (plain.has(name)) return
+  // Malformed arguments still ask and then reach the server's own validation.
+  if (name in risky) try { return risky[name](args) } catch {}
+  return [`use the browser tool ${name}`, `使用浏览器工具 ${name}`]
 }
 const ask = questions => {
   const reason = `Allow the Agent to ${questions.map(q => q[0]).join('; ')}`
   return { kind: 'ask', reason, displayReason: { en: reason, zh: `允许智能体${questions.map(q => q[1]).join('；')}` } }
 }
 
-// Preserve public interaction confirmations. Final denials use tools.guard so
-// a later pre-execute listener cannot override the unsafe-code boundary.
-// browser_read and browser_act ask once, before they start, for what their
-// MCP calls will do; those calls then run under that answer.
+// browser_act's steps, as the Agent's request for confirmation lists them.
+const listed = {
+  click: (_a, element) => [`click ${en(element?.name)}`, `点击${zh(element?.name)}`],
+  type: (a, element) => [`type ${en(a.text)} into ${en(element?.name)}${a.submit ? ' and submit it' : ''}`, `在${zh(element?.name)}中输入${zh(a.text)}${a.submit ? '并提交' : ''}`],
+  select: (a, element) => [`select ${en(a.option)} in ${en(element?.name)}`, `在${zh(element?.name)}中选择${zh(a.option)}`],
+  press: a => [`press ${shorten(a.key)}`, `按下 ${shorten(a.key)} 键`],
+  back: () => ['go back to the previous page', '返回上一页'],
+}
+const confirmation = (why, steps) => {
+  const reason = `Confirm: ${shorten(why, 300)}. The Agent will ${steps.map(q => q[0]).join('; ')}`
+  return { kind: 'ask', reason, displayReason: { en: reason, zh: `请确认：${shorten(why, 300)}。智能体将${steps.map(q => q[1]).join('；')}` } }
+}
+
+// Final denials use tools.guard so a later pre-execute listener cannot
+// override the unsafe-code boundary. browser_read and browser_act ask once,
+// before they start, for what their MCP calls will do; those calls then run
+// under that answer.
 export function browserPermission(ctx, exec, next) {
-  const mode = access(ctx, exec), writable = mode === 'workspace-write'
+  const mode = access(ctx, exec), writable = mode === 'workspace-write', here = pageOf(exec.agent)
   if (exec.name === 'browser_read' || exec.name === 'browser_act') {
-    if (mode === 'danger-full-access') return next()
     const args = exec.arguments ?? {}
+    const acts = exec.name === 'browser_act' ? (args.actions ?? []).filter(action => !QUIET.has(action.do)).map(action => [action, elementOf(exec.agent, action.ref)]) : []
+    if (exec.name === 'browser_act' && args.confirm !== undefined) return confirmation(args.confirm, acts.map(([action, element]) => listed[action.do]?.(action, element)).filter(Boolean))
+    if (mode === 'danger-full-access') return next()
     const calls = exec.name === 'browser_read'
       ? args.url === undefined ? [] : [{ name: 'browser_navigate', arguments: { url: args.url } }]
-      : (args.actions ?? []).filter(action => !QUIET.has(action.do)).map(action => callFor(action, elementOf(exec.agent, action.ref)))
-    const questions = calls.filter(Boolean).map(call => question(call.name, call.arguments, writable)).filter(Boolean)
+      : acts.map(([action, element]) => callFor(action, element)).filter(Boolean)
+    const questions = calls.map(call => question(call.name, call.arguments, writable, here)).filter(Boolean)
     return questions.length ? ask(questions) : next()
   }
   if (!exec.name.startsWith(prefix)) return next()
   const denial = browserGuard(ctx, exec)
   if (denial) return { kind: 'deny', reason: denial }
   if (mode === 'danger-full-access' || covered.has(exec.parent)) return next()
-  const name = exec.name.slice(prefix.length)
-  const why = question(name, exec.arguments ?? {}, writable)
+  const why = question(exec.name.slice(prefix.length), exec.arguments ?? {}, writable, here)
   return why ? ask([why]) : next()
 }

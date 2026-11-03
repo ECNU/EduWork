@@ -47,6 +47,8 @@ export function callFor(action, element = {}) {
 
 /** The element an Agent's action names, as the page it last read showed it. */
 export const elementOf = (agent, ref) => seenBy.get(agent)?.refs[ref]
+/** The address of the page an Agent last read. */
+export const pageOf = agent => seenBy.get(agent)?.url
 
 const needs = { click: ['ref'], type: ['ref', 'text'], select: ['ref', 'option'], press: ['key'] }
 function check(actions, seen) {
@@ -204,6 +206,7 @@ export function registerPageTools(ctx) {
           },
         },
       },
+      confirm: { type: 'string', description: 'Required when the actions include a step the user must confirm, even one the user asked for: submitting an application, registration or booking, sending a message, paying, deleting, or entering personal data such as a student or phone number. Ask once for the whole outcome, such as the application with all its data, at its first such step: say what will happen, on which site, with which data; the user is asked before any of the actions runs. Once the user has confirmed, carry that outcome through, including further pages of the form, the page asking whether you are sure, and the final submit, without asking again in any way unless something new comes up. Leave it out for anything else.' },
     },
     output: page,
     timeoutMs: 120_000,

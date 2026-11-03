@@ -15,6 +15,7 @@ const site = () => ({
     { 1: { kind: 'link', name: '深度学习入门', href: 'https://library.example/book/1', newTab: true }, 2: { kind: 'button', name: '在线试读' } }),
   book: page('https://library.example/book/1', '深度学习入门', [line('深度学习入门 馆藏：闵行')], {}),
   rules: page('https://library.example/rules', '借阅规则', [line('每人可借 20 册')], {}),
+  notice: page('http://10.0.0.8/notice', '内网通知', [line('[#1 link "下一条"]')], { 1: { kind: 'link', name: '下一条', href: 'http://10.0.0.8/notice/2' } }),
 })
 
 // Tabs behind the Agent's Playwright MCP tools, answering browser_read's and
@@ -151,29 +152,31 @@ test('what appeared since the Agent last read the page is marked', async () => {
   assert.doesNotMatch(await browser.run('browser_read', { url: 'https://library.example/' }), /\*/u)
 })
 
-test('browser_act asks once for everything it will do; moving around and nested calls do not ask', async () => {
-  const context = { sandboxPolicy: { resolve: () => ({ mode: 'workspace-write' }) } }
+test('browser_act asks only for what the Agent marks for confirmation, and the application only for what it tells is risky', async () => {
+  const context = mode => ({ sandboxPolicy: { resolve: () => ({ mode }) } })
   const allow = () => ({ kind: 'allow' })
   const browser = harness()
   await browser.run('browser_read', {})
-  const ask = actions => browserPermission(context, { name: 'browser_act', agent: browser.agent, arguments: { actions } }, allow)
-  const decision = ask([{ do: 'type', ref: 1, text: '深度学习', submit: true }, { do: 'scroll' }, { do: 'select', ref: 3, option: '闵行' }, { do: 'click', ref: 2 }, { do: 'press', key: 'Escape' }])
-  assert.equal(decision.kind, 'ask')
-  assert.equal(decision.displayReason.zh, '允许智能体在“检索词”中输入“深度学习”并提交；在“校区”中选择“闵行”；点击“检索”；按下 Escape 键')
-  assert.equal(decision.reason, 'Allow the Agent to type "深度学习" into "检索词" and submit it; select "闵行" in "校区"; click "检索"; press Escape')
-  assert.equal(ask([{ do: 'scroll', direction: 'down' }, { do: 'wait', seconds: 2 }]).kind, 'allow')
-  // A link asks as opening its address does: a public one not at all.
-  assert.equal(ask([{ do: 'click', ref: 4 }]).kind, 'allow')
-  assert.equal(ask([{ do: 'click', ref: 5 }]).displayReason.zh, '允许智能体打开本机或内网地址 http://10.0.0.8/notice')
-  assert.equal(browserPermission({ sandboxPolicy: { resolve: () => ({ mode: 'danger-full-access' }) } }, { name: 'browser_act', agent: browser.agent, arguments: { actions: [{ do: 'click', ref: 2 }] } }, allow).kind, 'allow')
-  const read = url => browserPermission(context, { name: 'browser_read', agent: browser.agent, arguments: { url } }, allow)
+  const act = (actions, extra = {}, mode = 'workspace-write') => browserPermission(context(mode), { name: 'browser_act', agent: browser.agent, arguments: { actions, ...extra } }, allow)
+  const form = [{ do: 'type', ref: 1, text: '深度学习', submit: true }, { do: 'scroll' }, { do: 'select', ref: 3, option: '闵行' }, { do: 'click', ref: 2 }, { do: 'press', key: 'Escape' }, { do: 'click', ref: 4 }]
+  assert.equal(act(form).kind, 'allow')
+  // The Agent's confirmation lists every step, a link as its click, and asks even under full access.
+  const confirmed = act(form, { confirm: '在图书馆提交预约' }, 'danger-full-access')
+  assert.equal(confirmed.kind, 'ask')
+  assert.equal(confirmed.displayReason.zh, '请确认：在图书馆提交预约。智能体将在“检索词”中输入“深度学习”并提交；在“校区”中选择“闵行”；点击“检索”；按下 Escape 键；点击“借阅规则”')
+  assert.equal(confirmed.reason, 'Confirm: 在图书馆提交预约. The Agent will type "深度学习" into "检索词" and submit it; select "闵行" in "校区"; click "检索"; press Escape; click "借阅规则"')
+  // A link into a private network from another site asks as opening it does; its links among themselves do not.
+  assert.equal(act([{ do: 'click', ref: 5 }]).displayReason.zh, '允许智能体打开本机或内网地址 http://10.0.0.8/notice')
+  const read = url => browserPermission(context('workspace-write'), { name: 'browser_read', agent: browser.agent, arguments: { url } }, allow)
   assert.equal(read('https://library.example/').kind, 'allow')
   assert.equal(read(undefined).kind, 'allow')
-  assert.equal(read('http://127.0.0.1:8080/').displayReason.zh, '允许智能体打开本机或内网地址 http://127.0.0.1:8080/')
+  assert.equal(read('http://10.0.0.8/notice').kind, 'ask')
+  await browser.run('browser_read', { url: 'http://10.0.0.8/notice' })
+  assert.equal(act([{ do: 'click', ref: 1 }]).kind, 'allow')
+  // The MCP calls of a run go under its permission; a page script asked for directly asks.
+  const script = parent => browserPermission(context('workspace-write'), { name: 'mcp__playwright-mcp__browser_evaluate', agent: browser.agent, parent, arguments: { function: '() => 1' } }, allow).kind
   const token = Symbol('browser_act')
   covered.add(token)
-  try {
-    assert.equal(browserPermission(context, { name: 'mcp__playwright-mcp__browser_click', agent: browser.agent, parent: token, arguments: {} }, allow).kind, 'allow')
-  } finally { covered.delete(token) }
-  assert.equal(browserPermission(context, { name: 'mcp__playwright-mcp__browser_click', agent: browser.agent, parent: token, arguments: {} }, allow).kind, 'ask')
+  try { assert.equal(script(token), 'allow') } finally { covered.delete(token) }
+  assert.equal(script(token), 'ask')
 })
