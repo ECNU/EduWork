@@ -3,8 +3,11 @@ import { isPrivateTarget, normalizeURL } from '@chatecnu-work/dsh-tool-browser/c
 import { QUIET, callFor, covered, elementOf } from './read-act.js'
 
 const prefix = 'mcp__playwright-mcp__'
-const readTools = new Set(['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for'])
-const fullAccess = (ctx, exec) => exec.agent && ctx.sandboxPolicy.resolve({ session: exec.agent.session }).mode === 'danger-full-access'
+// A screenshot reads the page as well: without a file name it comes back to
+// the Agent and is kept in MCP's own output folder, as its other output is.
+const readTools = new Set(['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for', 'browser_take_screenshot'])
+const access = (ctx, exec) => exec.agent && ctx.sandboxPolicy.resolve({ session: exec.agent.session }).mode
+const fullAccess = (ctx, exec) => access(ctx, exec) === 'danger-full-access'
 // The address a navigation or a new tab opens.
 const opens = (name, args) => name === 'browser_navigate' || name === 'browser_tabs' && args?.action === 'new' && args.url !== undefined
 
@@ -60,21 +63,23 @@ const actions = {
   browser_handle_dialog: a => !a.accept ? ['dismiss the page\'s dialog', '取消网页弹出的对话框']
     : a.promptText === undefined ? ['accept the page\'s dialog', '确认网页弹出的对话框']
       : [`enter ${en(a.promptText)} in the page's dialog and accept it`, `在网页弹出的对话框中输入${zh(a.promptText)}并确认`],
-  browser_take_screenshot: () => ['take a screenshot of the page and save it in the workspace', '截取网页截图并保存到工作区'],
   browser_resize: a => [`resize the browser to ${a.width}×${a.height}`, `把浏览器窗口调整为 ${a.width}×${a.height}`],
   browser_close: () => ['close the browser', '关闭浏览器'],
 }
 const describe = (name, args) => {
   // Reads ask only to save their result to a file.
+  if (name === 'browser_take_screenshot') return [`save a screenshot of the page as ${en(args.filename)}`, `把网页截图保存为${zh(args.filename)}`]
   if (readTools.has(name)) return [`save page data to ${en(args.filename)}`, `把网页数据保存到${zh(args.filename)}`]
   // Malformed arguments still ask and then reach the server's own validation.
   try { return actions[name]?.(args) } catch {}
 }
 
 // What a browser tool call would do that needs the user's leave, if anything.
-// Reading pages, switching tabs and opening public pages do not ask.
-function question(name, args) {
-  if (readTools.has(name) ? args.filename === undefined : name === 'browser_tabs' && args.action !== 'close' && !opens(name, args)) return
+// Reading pages, looking at them, switching tabs and opening public pages do
+// not ask; saving what was read into a file asks only where the session may
+// not write files.
+function question(name, args, writable) {
+  if (readTools.has(name) ? args.filename === undefined || writable : name === 'browser_tabs' && args.action !== 'close' && !opens(name, args)) return
   if (opens(name, args) && !isPrivateTarget(args.url)) return
   return describe(name, args) ?? [`use the browser tool ${name}`, `使用浏览器工具 ${name}`]
 }
@@ -88,20 +93,21 @@ const ask = questions => {
 // browser_read and browser_act ask once, before they start, for what their
 // MCP calls will do; those calls then run under that answer.
 export function browserPermission(ctx, exec, next) {
+  const mode = access(ctx, exec), writable = mode === 'workspace-write'
   if (exec.name === 'browser_read' || exec.name === 'browser_act') {
-    if (fullAccess(ctx, exec)) return next()
+    if (mode === 'danger-full-access') return next()
     const args = exec.arguments ?? {}
     const calls = exec.name === 'browser_read'
       ? args.url === undefined ? [] : [{ name: 'browser_navigate', arguments: { url: args.url } }]
       : (args.actions ?? []).filter(action => !QUIET.has(action.do)).map(action => callFor(action, elementOf(exec.agent, action.ref)))
-    const questions = calls.filter(Boolean).map(call => question(call.name, call.arguments)).filter(Boolean)
+    const questions = calls.filter(Boolean).map(call => question(call.name, call.arguments, writable)).filter(Boolean)
     return questions.length ? ask(questions) : next()
   }
   if (!exec.name.startsWith(prefix)) return next()
   const denial = browserGuard(ctx, exec)
   if (denial) return { kind: 'deny', reason: denial }
-  if (fullAccess(ctx, exec) || covered.has(exec.parent)) return next()
+  if (mode === 'danger-full-access' || covered.has(exec.parent)) return next()
   const name = exec.name.slice(prefix.length)
-  const why = question(name, exec.arguments ?? {})
+  const why = question(name, exec.arguments ?? {}, writable)
   return why ? ask([why]) : next()
 }

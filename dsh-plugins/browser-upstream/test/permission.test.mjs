@@ -9,12 +9,12 @@ const allow = () => ({ kind: 'allow' })
 
 test('preserves read access and public interaction confirmations', () => {
   const context = ctx('workspace-write')
-  for (const name of ['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for']) {
+  for (const name of ['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for', 'browser_take_screenshot']) {
     assert.equal(browserPermission(context, call(name), allow).kind, 'allow')
   }
   assert.equal(browserPermission(context, call('browser_navigate', { url: 'https://example.org/' }), allow).kind, 'allow')
   assert.equal(browserPermission(context, call('browser_navigate', { url: 'http://localhost/' }), allow).kind, 'ask')
-  for (const name of ['browser_click', 'browser_type', 'browser_evaluate', 'browser_file_upload', 'browser_take_screenshot', 'browser_close', 'browser_future_interaction']) {
+  for (const name of ['browser_click', 'browser_type', 'browser_evaluate', 'browser_file_upload', 'browser_close', 'browser_future_interaction']) {
     const decision = browserPermission(context, call(name), allow)
     assert.equal(decision.kind, 'ask')
     assert.equal(decision.displayReason.en, decision.reason)
@@ -26,8 +26,10 @@ test('preserves read access and public interaction confirmations', () => {
   }
   assert.equal(browserPermission(context, call('browser_tabs', { action: 'new', url: 'http://localhost:3000/' }), allow).kind, 'ask')
   assert.equal(browserPermission(context, call('browser_tabs', { action: 'close' }), allow).kind, 'ask')
-  for (const name of ['browser_snapshot', 'browser_console_messages', 'browser_network_requests', 'browser_network_request']) {
+  // Saving what was read into the workspace follows the session's file access.
+  for (const name of ['browser_snapshot', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_take_screenshot']) {
     assert.equal(browserPermission(ctx('read-only'), call(name, { filename: 'capture.txt' }), allow).kind, 'ask')
+    assert.equal(browserPermission(context, call(name, { filename: 'capture.txt' }), allow).kind, 'allow')
   }
 })
 
@@ -46,7 +48,9 @@ test('approvals name the action the Agent asks for', () => {
   assert.equal(ask('browser_file_upload', {}).zh, '允许智能体取消选择文件')
   assert.equal(ask('browser_navigate', { url: 'http://127.0.0.1:8080/' }).zh, '允许智能体打开本机或内网地址 http://127.0.0.1:8080/')
   assert.equal(ask('browser_tabs', { action: 'close', index: 2 }).zh, '允许智能体关闭标签页')
-  assert.equal(ask('browser_snapshot', { filename: 'page.md' }).zh, '允许智能体把网页数据保存到“page.md”')
+  const save = (name, args) => browserPermission(ctx('read-only'), call(name, args), allow).displayReason.zh
+  assert.equal(save('browser_snapshot', { filename: 'page.md' }), '允许智能体把网页数据保存到“page.md”')
+  assert.equal(save('browser_take_screenshot', { filename: 'page.png' }), '允许智能体把网页截图保存为“page.png”')
   assert.equal(ask('browser_type', { element: 'Notes', target: 'e7', text: `${'line '.repeat(20)}\nend` }).zh,
     `允许智能体在“Notes”中输入“${'line '.repeat(11)}line…”`)
   // An unfamiliar or malformed call still asks, then meets the server's validation.
