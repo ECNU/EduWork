@@ -25,12 +25,12 @@ test('a non-bundled remote plugin remains user-installable and preserves activat
   }
 })
 
-for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
+for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision'])
 for (const existing of [false, true]) test(`optional npm bundle ${bundle} is provisioned once and stays disabled after restart (existing=${existing})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-bundle-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
   const path = join(profile, 'package.json')
-  const preferences = JSON.stringify([{ id: bundle === '@eduwork/dsh-annotation' ? 'eduwork-annotation' : 'eduwork-remote-access', disabled: true }])
+  const preferences = JSON.stringify([{ id: bundle.replace('@eduwork/dsh-', 'eduwork-'), disabled: true }])
   if (existing) {
     await writeFile(path, JSON.stringify({ dependencies: { 'synthetic-addon': '1.0.0' }, dsh: { profile: { bundles: ['synthetic-addon'] } }, eduwork: { unrelated: true } }))
     await writeFile(join(profile, 'cordis.patch.yml'), preferences)
@@ -53,7 +53,7 @@ for (const existing of [false, true]) test(`optional npm bundle ${bundle} is pro
   assert.ok(!JSON.parse(await readFile(path, 'utf8')).dsh.profile.bundles.includes(bundle))
 })
 
-for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
+for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision'])
 for (const enabled of [false, true]) test(`a prior manual ${bundle} install retains its activation (enabled=${enabled})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-manual-bundle-'))
   t.after(() => rm(profile, { recursive: true, force: true }))

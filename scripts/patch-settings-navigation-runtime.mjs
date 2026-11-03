@@ -8,9 +8,9 @@ import { settingsNavigationIcon } from './settings-navigation-icons.mjs'
 export const settingsNavigationPatch = Object.freeze({
   id: 'settings-navigation-icons-v1',
   package: '@deepseek-ai/dsh-client-ui-settings-general',
-  version: '0.2.1-rc.3',
+  version: '0.2.1-rc.5',
   file: 'lib/client.js',
-  beforeSHA256: '83e9e6da1eb83c80b58f642ba96de8860302bc753940caf40bf2f8f092d30c3d',
+  beforeSHA256: '7aae476010da9b7b7d3995e90b3330f343b209a17b28ec77bf1c378d078d3022',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 export function patchSettingsNavigationSource(input) {
