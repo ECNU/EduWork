@@ -83,18 +83,18 @@ export function adaptNativeBootTolerance(source) {
 
 export const runtimeResiliencePatches = Object.freeze({
   imageLimit: Object.freeze({
-    id: 'gateway-image-count-offload-v1', package: '@deepseek-ai/dsh-llm-pi-ai', version: '0.2.1-rc.3', file: 'lib/index.js',
+    id: 'gateway-image-count-offload-v1', package: '@deepseek-ai/dsh-llm-pi-ai', version: '0.2.1-rc.5', file: 'lib/index.js',
     // Untouched npm bytes, and the same file after the prompt cache key backport.
     beforeSHA256: ['99b5c20830a52f69641df8a18a39206079b0c725201958cce2c4a934f1d4f7cd', '1cdb36b16b7a72e29a9609b52eb07fa6d1325c471f19422cfa40c9431f8b8406'],
     adapt: adaptNativeImageLimit,
   }),
   sessionIsolation: Object.freeze({
-    id: 'corrupt-session-catalog-isolation-v1', package: '@deepseek-ai/dsh-session-persistence-jsonl', version: '0.2.1-rc.3', file: 'lib/index.js',
+    id: 'corrupt-session-catalog-isolation-v1', package: '@deepseek-ai/dsh-session-persistence-jsonl', version: '0.2.1-rc.5', file: 'lib/index.js',
     beforeSHA256: ['973dd78679b2661d6f492343bc22b124ae958aa597d3b36c698a2c650f909984'],
     adapt: adaptNativeSessionIsolation,
   }),
   bootTolerance: Object.freeze({
-    id: 'web-boot-optional-entries-v1', package: '@deepseek-ai/dsh-web-frontend', version: '0.2.1-rc.3', file: /^dist\/assets\/index-[\w-]+\.js$/,
+    id: 'web-boot-optional-entries-v1', package: '@deepseek-ai/dsh-web-frontend', version: '0.2.1-rc.5', file: /^dist\/assets\/index-[\w-]+\.js$/,
     beforeSHA256: ['0f3fc6b857e4f8bd4d69619ce1010240cdaaa443abf0826532a24ef8f6e32ef0'],
     adapt: adaptNativeBootTolerance,
   }),
