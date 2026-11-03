@@ -3,6 +3,7 @@
 // Omitted/dynamic paths stay commented; never persist installation-specific paths.
 const group = (id, entries) => Object.fromEntries(Object.entries(entries).map(([key, value]) => [`plugins.${id}.${key}`, value]))
 export const bundledConfigurationPlugins = {
+  decision: '@eduwork/dsh-decision',
   'dsh-mail-assistant': '@eduwork/dsh-mail',
   'local-memory': '@eduwork/dsh-memory',
   literature: '@shlv/dsh-literature',
