@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-03T06:30:47.892Z",
+  "fileSetSHA256": "85d857d0d919a25764146296b91c3f9967a8b5c8440473097aa02afe1cce0b6a",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "0f1fa51a6c97190d5c09d3c1bec024f5e02562bd8bea4aec9e2250a16875d405"
+      "sha256": "df5402b2cfa1767510fb4d1988b4459df5e705796688273aeca5b0dcfb24610a"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -534,6 +534,10 @@
     {
       "path": "docs/releases/0.4.9.md",
       "sha256": "79d2c25b764e233fd06a474301080633cd7678783b3d5b87dc9d227050533e75"
+    },
+    {
+      "path": "docs/RUNTIME-RESILIENCE-BACKPORT.md",
+      "sha256": "0506d2f7f01eacf1a7031d8349f002108b4a9510f2574ef75202067a8f779340"
     },
     {
       "path": "docs/SESSION-SEARCH-BACKPORT.md",
@@ -6945,7 +6949,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "b250b403605cd428867ad2b7ef7f1b207025518d330a8e204b786cf808a9912c"
+      "sha256": "b4cdcaf1f6654e2c1d07212da7125cb3ea9eb700e6be8af5f10fda68e9c48742"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -7316,6 +7320,10 @@
       "sha256": "08c6c647ef43842d46851c311a8ffd6f2cbfc14238002a78db375c67155c2d9b"
     },
     {
+      "path": "scripts/patch-runtime-resilience-runtime.mjs",
+      "sha256": "020ed4210812e8d7fafb98734c9c113268b3f41baa6690ec24cac0f9ad607cbe"
+    },
+    {
       "path": "scripts/patch-session-search-runtime.mjs",
       "sha256": "f3d90ee21f61fc11f53b50aa1d7323397a59cdea6cc9397677368e3455befcd6"
     },
@@ -7582,6 +7590,10 @@
     {
       "path": "scripts/test/runtime-omissions.test.mjs",
       "sha256": "693757c2693ddf4d11c4a7d27d15e8e45e8228fb5319104afbd7194ad6074c18"
+    },
+    {
+      "path": "scripts/test/runtime-resilience.test.mjs",
+      "sha256": "72c79f037c8e389c87eb0f592f5170ca266f2213f49baf7a229c61000598ea5a"
     },
     {
       "path": "scripts/test/session-search-runtime.test.mjs",
