@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T09:19:21.220Z",
-  "fileSetSHA256": "ba35b7ef09ac677ef20c8ed43f3aaba174c8a628b95c29530e169b868a5201d9",
+  "createdAt": "2026-11-03T06:27:41.254Z",
+  "fileSetSHA256": "0fd45bc561fcdffbf142ad27307424caf0de477f3e1e624e639008cd9550dcb8",
   "files": [
     {
       "path": ".gitattributes",
@@ -441,11 +441,11 @@
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP_EN.md",
-      "sha256": "b5b776032f2cfb63e76e1e1b1875fe9900306f04ebdc6ab0e6cdd27885986b9d"
+      "sha256": "37e6e9b369fed4bae8936fbf203de3310b5d66b66e55c169aacdc6c2f471668a"
     },
     {
       "path": "docs/PUBLISHER_BOOTSTRAP.md",
-      "sha256": "6ea5c10914a371c1f33e365b718183a649b24dcdbaac2436a5d5cb2f244593e8"
+      "sha256": "374b2a8d1d9ac5987805f3f4ab5dbf54178db0502cb295b7043a5d96ccc0d771"
     },
     {
       "path": "docs/RELEASE.md",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "43c9b58bd3838e6ee0ad6838bb37c30e1ebe310d6839cd7f106b96a69157bde7"
+      "sha256": "6b6846e478a2501c42b353ecf603ddb442cfb7ebea2c8b3a3f990667b2a02b94"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1240,6 +1240,10 @@
       "sha256": "3c812ff6059414575222e94c2b4a06bf76998b94e4a2bd03e03f4bf7de5d763c"
     },
     {
+      "path": "dsh-electron/src/direct-hosts.mjs",
+      "sha256": "bf8057f4da6b1d6a16e478483730f89139fb79aff6fbbc2cb1142cbbeedab2fb"
+    },
+    {
       "path": "dsh-electron/src/directory-picker.mjs",
       "sha256": "419e07ca27ff824eb82a9ad93bd252f0607258564acf68c808708d13c0322e5f"
     },
@@ -1285,7 +1289,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "4f2d41f51cd1ff4e567be3d6e55e7d89034b2325b8f8ccb77445bf19890c0db6"
+      "sha256": "3a3abea244fad28379f32a6f0d79e4c117278bd302fb79ebecbe3157b367b3e7"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1400,6 +1404,10 @@
       "sha256": "53f06b1be27a0297b85d08e7b830b45191593f56b5839323a850031a6bf318c7"
     },
     {
+      "path": "dsh-electron/tests/direct-hosts.test.mjs",
+      "sha256": "dce788bfe0a989039c8180830ffacc7b6e2993d6c302c8970b56a6d23625e485"
+    },
+    {
       "path": "dsh-electron/tests/directory-picker.test.mjs",
       "sha256": "5181284ed3c124b7f6467a526a54011b337ae1a859856db5d7a55736fb2decae"
     },
@@ -1445,7 +1453,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "105174df05c2a8002ab24139f78fdaa2cf302cd14d7e51b9a611079a242ff8ca"
+      "sha256": "4fb05803f5636aa23ffc286410a56080b8351b30f39fc22392f070ffa48d2722"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",

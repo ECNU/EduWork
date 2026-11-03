@@ -34,6 +34,24 @@
 
 随包 `desktop/eduwork.jsonc` 只保留公开产品名称、空机构目录与安全默认值。Client ID、模型目录和媒体服务参数放入签名内容包；密码、Client Secret、个人 Key、登录令牌、签名私钥不能放入任何客户端配置包。下载只是分发方式，不会让客户端最终获得的参数变成保密信息。
 
+## 网络路由
+
+桌面版启动 Host 时会读取系统代理：如果 Host 从终端或登录 Shell 没有继承到任何代理变量，就使用系统代理，让模型请求和界面走同一条路。
+
+只能直连访问的机构地址（例如仅限校园网的网关），可以在 `configuration-policy.json` 中列出：
+
+```json
+{
+  "directHosts": [".example.edu", "api.example.edu"],
+  "directProbe": { "url": "https://id.example.edu/netcheck", "field": "onCampus" }
+}
+```
+
+- `directHosts`：需要直连的主机名或以 `.` 开头的域名后缀，有代理时加入 `NO_PROXY`。
+- `directProbe`（可选）：启动时不经代理请求这个 HTTPS 地址，只有返回 200 且 JSON 中该字段为 `1` 或 `true` 时才绕过代理；否则保留代理，以便在校外通过代理隧道访问。不设探测地址时，有代理就始终绕过。
+- 探测和系统代理查询不会让启动失败；日志只记录是否使用了代理和是否绕过，不记录代理地址。
+
+
 ## 启动与回退
 
 发行方可以另提供完整的 `desktop/publisher-bootstrap.win32.json`、`desktop/publisher-bootstrap.darwin.json` 或 `desktop/publisher-bootstrap.linux.json`。客户端优先使用当前平台的文件；只有该文件不存在时才回退到通用文件，格式错误不会改用其他平台的来源。各平台可以分别管理配置、Skills、修订号和兼容性要求，通用文件仍兼容已有发行。初始化后，实际来源保存在唯一的 `config/eduwork.jsonc` 中；更换包内默认值不会覆盖用户保存的来源。

@@ -34,6 +34,24 @@ Configuration management must be enabled and its bundled revision must be zero. 
 
 The bundled `desktop/eduwork.jsonc` contains only public branding, an empty organization list and safe defaults. Client IDs, model catalogs and media endpoints belong in signed content. Never distribute passwords, client secrets, personal API keys, login tokens or signing private keys. Downloaded client configuration is not confidential merely because it is absent from the source repository.
 
+## Network routing
+
+When the desktop starts the Host and the Host inherited no proxy variables from the terminal or login shell, it uses the system proxy, so model requests take the same path as the interface.
+
+Institution hosts that only work over a direct connection (for example a campus-only gateway) can be listed in `configuration-policy.json`:
+
+```json
+{
+  "directHosts": [".example.edu", "api.example.edu"],
+  "directProbe": { "url": "https://id.example.edu/netcheck", "field": "onCampus" }
+}
+```
+
+- `directHosts`: host names, or domain suffixes starting with `.`, that are added to `NO_PROXY` when a proxy is in use.
+- `directProbe` (optional): requested over HTTPS without any proxy at startup. The proxy is bypassed only when it answers 200 with that JSON field set to `1` or `true`; otherwise the proxy stays, so an off-campus proxy tunnel keeps working. Without a probe, these hosts always bypass the proxy.
+- Neither the probe nor the system proxy lookup can fail startup. The log records whether a proxy was used and bypassed, never its address.
+
+
 ## Startup and recovery
 
 1. **Clean installation:** seed `config/eduwork.jsonc` with packaged update sources, verify and download defaults, and write them to that same file. Commit the revision only after desktop readiness.
