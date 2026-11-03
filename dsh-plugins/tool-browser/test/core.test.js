@@ -3,7 +3,7 @@ import test from 'node:test'
 import { mkdtempSync, mkdirSync, writeFileSync, renameSync, rmSync } from 'node:fs'
 import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
-import { browserExecutable, browserPresentationMeta, compactText, directSearchResultURL, isCiteableSearchResultURL, isPrivateTarget, isSearchResultRelevant, normalizeURL, searchQueryTokens, searchURL, untrustedPage, webSearchResult } from '../lib/core.js'
+import { browserExecutable, browserPresentationMeta, compactText, directSearchResultURL, isCiteableSearchResultURL, isPrivateTarget, isSearchResultRelevant, normalizeURL, resolvesToPrivateTarget, searchQueryTokens, searchURL, untrustedPage, webSearchResult } from '../lib/core.js'
 
 test('portable browser works without a system browser and follows relocated resources', t => {
   const root = mkdtempSync(join(tmpdir(), 'eduwork-browser-'))
@@ -46,6 +46,25 @@ test('classifies private browser targets for approval', () => {
   assert.equal(isPrivateTarget('http://127.0.0.1:3000'), true)
   assert.equal(isPrivateTarget('http://192.168.1.2'), true)
   assert.equal(isPrivateTarget('https://www.ecnu.edu.cn'), false)
+  for (const url of ['http://0.0.0.0/', 'http://[::ffff:7f00:1]/', 'http://[::ffff:127.0.0.1]/', 'http://2130706433/', 'http://localhost./',
+    'http://localhost.localdomain/', 'http://app.localhost/', 'http://nas.lan/', 'http://100.64.0.1/', 'http://router/',
+    'http://[fe80::1]/', 'http://[fd00::1]/', 'http://[64:ff9b::a00:1]/', 'http://[2002:c0a8:101::]/']) {
+    assert.equal(isPrivateTarget(url), true, url)
+  }
+  for (const url of ['http://8.8.8.8/', 'http://[2001:4860:4860::8888]/', 'http://[64:ff9b::808:808]/', 'http://[::ffff:808:808]/']) {
+    assert.equal(isPrivateTarget(url), false, url)
+  }
+})
+
+test('resolves hostnames before calling a target public', async () => {
+  const answers = { 'public.example': ['93.184.215.14'], 'rebind.example': ['93.184.215.14', '127.0.0.1'], 'v6.example': ['::ffff:10.0.0.1'] }
+  const lookup = async host => { if (!answers[host]) throw new Error('ENOTFOUND'); return answers[host].map(address => ({ address, family: address.includes(':') ? 6 : 4 })) }
+  assert.equal(await resolvesToPrivateTarget('https://public.example/', { lookup }), false)
+  assert.equal(await resolvesToPrivateTarget('https://rebind.example/', { lookup }), true)
+  assert.equal(await resolvesToPrivateTarget('https://v6.example/', { lookup }), true)
+  assert.equal(await resolvesToPrivateTarget('https://missing.example/', { lookup }), true)
+  assert.equal(await resolvesToPrivateTarget('https://slow.example/', { lookup: () => new Promise(() => {}), timeoutMs: 10 }), true)
+  assert.equal(await resolvesToPrivateTarget('http://8.8.8.8/', { lookup: () => { throw new Error('literal addresses are not looked up') } }), false)
 })
 
 test('creates encoded search URLs', () => {
