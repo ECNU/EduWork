@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-03T06:27:45.281Z",
-  "fileSetSHA256": "5e176208b6934b71a50ee32e9f0b3083e64802aa8d37b387b9049dd9515811a7",
+  "createdAt": "2026-11-03T06:30:47.298Z",
+  "fileSetSHA256": "0d67e1d95ce2ba9eb45c4c9c6a7ec57a73ebd8bfbfdd4f2f795ec87ffeeed3e6",
   "files": [
     {
       "path": ".gitattributes",
@@ -393,7 +393,7 @@
     },
     {
       "path": "docs/PROMPT-CACHE-KEY-BACKPORT.md",
-      "sha256": "6b144f48414630f478049bbc4e74ed1a66b69e5e54b0cb3e325c87e470216ff8"
+      "sha256": "4b80f04c442f4b09f3afdd97f116643f434524945e5ccdfe582b84dc3cff6323"
     },
     {
       "path": "docs/proposals/build-pipeline-stages/README_EN.md",
@@ -7313,7 +7313,7 @@
     },
     {
       "path": "scripts/patch-prompt-cache-key-runtime.mjs",
-      "sha256": "d5a874cf27d456055eb6be8dc2fbf9fd0e73d57a65608e3e36f436dd982466d8"
+      "sha256": "185a16490b3738149c0da6f6797bce823aa2a703c1667a1a5990f694482ab2e3"
     },
     {
       "path": "scripts/patch-remotion-bundler-runtime.mjs",
