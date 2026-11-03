@@ -28,16 +28,16 @@ test('the desktop endpoint is taken once and leaves the environment', () => {
 
 test('a conversation\'s own Agent attaches to its Sidebar without exposing the endpoint in arguments', () => {
   const { args, env } = serverLaunch(browser, agent(), endpoint, 'cli.js', { PLAYWRIGHT_MCP_HEADLESS: '1', PATH: '/bin' })
-  assert.deepEqual(args, ['cli.js', '--browser', 'chromium'])
+  assert.deepEqual(args, ['cli.js', '--browser', 'chromium', '--snapshot-mode', 'none', '--timeout-settle', '0'])
   assert.deepEqual(env, { PLAYWRIGHT_MCP_HEADLESS: '', PLAYWRIGHT_MCP_CDP_ENDPOINT: `${endpoint}/session-0001` })
 })
 
 test('subagents keep the isolated launched browser', () => {
   const { args, env } = serverLaunch(browser, agent('subagent'), endpoint, 'cli.js', { playwright_mcp_cdp_endpoint: 'ws://elsewhere' })
-  assert.deepEqual(args, ['cli.js', '--browser', 'chromium', '--isolated', '--headless', '--executable-path', '/synthetic/Electron'])
+  assert.deepEqual(args, ['cli.js', '--browser', 'chromium', '--snapshot-mode', 'none', '--timeout-settle', '0', '--isolated', '--headless', '--executable-path', '/synthetic/Electron'])
   assert.deepEqual(env, { playwright_mcp_cdp_endpoint: '' })
   assert.deepEqual(serverLaunch({ ...browser, headless: false, executablePath: undefined }, agent('subagent'), endpoint, 'cli.js', {}).args,
-    ['cli.js', '--browser', 'chromium', '--isolated'])
+    ['cli.js', '--browser', 'chromium', '--snapshot-mode', 'none', '--timeout-settle', '0', '--isolated'])
 })
 
 test('a background page uses its conversation\'s Sidebar storage once the workspace list arrives', { timeout: 5000 }, async () => {

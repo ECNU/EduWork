@@ -18,7 +18,7 @@ const prefix = `mcp__${server}__`
 const resourceTools = new Set(['list_mcp_resources', 'list_mcp_resource_templates', 'read_mcp_resource'])
 
 const sidebarGuidance = [
-  'In this conversation the browser tools (mcp__playwright-mcp__*) control the browser tabs in the right sidebar of the user\'s desktop app. The user watches every step there and shares the same pages and logins.',
+  'In this conversation the browser tools (browser_read, browser_act and mcp__playwright-mcp__*) control the browser tabs in the right sidebar of the user\'s desktop app. The user watches every step there and shares the same pages and logins.',
   'Tabs already open belong to the user: read them freely, but open a new tab for unrelated browsing instead of navigating away from or closing a page the user is on.',
   'When a login, CAPTCHA, payment or other step needs the user, ask them to complete it in the sidebar and wait for their reply before continuing.',
   'While the user is not viewing this conversation in the desktop app, for example when they use it from their phone, the open tabs keep working and a new tab opens in the background: it works the same and shares the logins, but the user cannot see it, so ask them to open this conversation in the desktop app before a step that needs them. A page that a link in a sidebar tab opens in a new window loads only once the user returns to this conversation.',
@@ -40,7 +40,11 @@ export function serverLaunch(browser, agent, sidebar, cli, environment = process
   const env = Object.fromEntries(Object.keys(environment)
     .filter(key => key.toUpperCase().startsWith('PLAYWRIGHT_MCP_'))
     .map(key => [key, '']))
-  const args = [cli, '--browser', 'chromium']
+  // No page snapshot after every action, which MCP writes into the workspace
+  // for the Agent to open, and no fixed 500 ms wait after it: the Agent reads
+  // a page with browser_read, which waits until the page stops changing.
+  // Navigations are still awaited.
+  const args = [cli, '--browser', 'chromium', '--snapshot-mode', 'none', '--timeout-settle', '0']
   // The endpoint stays out of the process list.
   if (usesSidebar(agent)) return { args, env: { ...env, PLAYWRIGHT_MCP_CDP_ENDPOINT: `${sidebar}/${agent.session.id}` } }
   args.push('--isolated')

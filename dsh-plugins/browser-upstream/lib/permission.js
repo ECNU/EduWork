@@ -1,5 +1,6 @@
 import { basename } from 'node:path'
 import { isPrivateTarget, normalizeURL } from '@chatecnu-work/dsh-tool-browser/core'
+import { QUIET, callFor, covered, elementOf } from './read-act.js'
 
 const prefix = 'mcp__playwright-mcp__'
 const readTools = new Set(['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for'])
@@ -70,19 +71,37 @@ const describe = (name, args) => {
   try { return actions[name]?.(args) } catch {}
 }
 
+// What a browser tool call would do that needs the user's leave, if anything.
+// Reading pages, switching tabs and opening public pages do not ask.
+function question(name, args) {
+  if (readTools.has(name) ? args.filename === undefined : name === 'browser_tabs' && args.action !== 'close' && !opens(name, args)) return
+  if (opens(name, args) && !isPrivateTarget(args.url)) return
+  return describe(name, args) ?? [`use the browser tool ${name}`, `使用浏览器工具 ${name}`]
+}
+const ask = questions => {
+  const reason = `Allow the Agent to ${questions.map(q => q[0]).join('; ')}`
+  return { kind: 'ask', reason, displayReason: { en: reason, zh: `允许智能体${questions.map(q => q[1]).join('；')}` } }
+}
+
 // Preserve public interaction confirmations. Final denials use tools.guard so
 // a later pre-execute listener cannot override the unsafe-code boundary.
+// browser_read and browser_act ask once, before they start, for what their
+// MCP calls will do; those calls then run under that answer.
 export function browserPermission(ctx, exec, next) {
+  if (exec.name === 'browser_read' || exec.name === 'browser_act') {
+    if (fullAccess(ctx, exec)) return next()
+    const args = exec.arguments ?? {}
+    const calls = exec.name === 'browser_read'
+      ? args.url === undefined ? [] : [{ name: 'browser_navigate', arguments: { url: args.url } }]
+      : (args.actions ?? []).filter(action => !QUIET.has(action.do)).map(action => callFor(action, elementOf(exec.agent, action.ref)))
+    const questions = calls.filter(Boolean).map(call => question(call.name, call.arguments)).filter(Boolean)
+    return questions.length ? ask(questions) : next()
+  }
   if (!exec.name.startsWith(prefix)) return next()
   const denial = browserGuard(ctx, exec)
   if (denial) return { kind: 'deny', reason: denial }
-  if (fullAccess(ctx, exec)) return next()
+  if (fullAccess(ctx, exec) || covered.has(exec.parent)) return next()
   const name = exec.name.slice(prefix.length)
-  const args = exec.arguments ?? {}
-  // Reading pages, switching tabs and opening public pages do not ask.
-  if (readTools.has(name) ? args.filename === undefined : name === 'browser_tabs' && args.action !== 'close' && !opens(name, args)) return next()
-  if (opens(name, args) && !isPrivateTarget(args.url)) return next()
-  const [english, chinese] = describe(name, args) ?? [`use the browser tool ${name}`, `使用浏览器工具 ${name}`]
-  const reason = `Allow the Agent to ${english}`
-  return { kind: 'ask', reason, displayReason: { en: reason, zh: `允许智能体${chinese}` } }
+  const why = question(name, exec.arguments ?? {})
+  return why ? ask([why]) : next()
 }
