@@ -8,7 +8,7 @@
 
 ## 安装和使用
 
-当前源码准备的版本为 0.1.0，尚待首次 npm 发布。发布后可在 DSH 插件管理中安装 `@eduwork/dsh-decision`；原生 bundle 使用固定 ID `decision`，默认 `enabled: false`。在插件配置中填写服务参数后启用，工具和技能随插件一起注册/卸载。首次配置好后，可提问：“用决策模型按计费、技术、信息不足这几个标签判断下面这条请求”。
+在 DSH 插件管理中安装 `@eduwork/dsh-decision`；原生 bundle 使用固定 ID `decision`，默认 `enabled: false`。在插件配置中填写服务参数后启用，工具和技能随插件一起注册/卸载。首次配置好后，可提问：“用决策模型按计费、技术、信息不足这几个标签判断下面这条请求”。
 
 API Key 配置示例（在凭据服务中保存真实 Key，不把 Key 填进此配置）：
 
@@ -44,6 +44,6 @@ API Key 配置示例（在凭据服务中保存真实 Key，不把 Key 填进此
 
 ## 开发与装配
 
-源码在 `src/`，构建仅复制 ESM 模块，无第三方内嵌依赖。Node >=24.22.1，实际验证基线为 DSH 0.2.1-rc.3。将 `EDUWORK_DECISION_RUNTIME` 指向锁定 Runtime（含 package.json/node_modules 的目录），运行 `npm ci`、`npm run check`；测试使用合成材料与本地 HTTP。
+源码在 `src/`，构建仅复制 ESM 模块，无第三方内嵌依赖。Node >=24.22.1，已在 DSH 0.2.1-rc.3 和 rc.5 上验证。将 `EDUWORK_DECISION_RUNTIME` 指向锁定 Runtime（含 package.json/node_modules 的目录），运行 `npm ci`、`npm run check`；测试使用合成材料与本地 HTTP。
 
 仓库统一入口为 `node scripts/packages/manage.mjs check dsh-decision` 和 `pack dsh-decision`，详见[包维护指南](../../docs/PACKAGES.md)。正式产品需先发布并核验 npm 原包，再更新精确锁；本次未把未发布源码混入现有桌面装配。
