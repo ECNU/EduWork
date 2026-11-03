@@ -8,7 +8,7 @@ import { Script } from 'node:vm'
 // Only the Creator item is adapted; navigation, prompts and draft policy stay native.
 export const entryCustomizationPatch = Object.freeze({
   id: 'entry-customization-optional-creator-v1',
-  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.1-rc.3',
+  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.1-rc.5',
   file: 'lib/client.js', beforeSHA256: '287f36fe74f6be3eb5ab51ec0c1f09ae8cacea8a01fe56b3966553106c69f7e4',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')

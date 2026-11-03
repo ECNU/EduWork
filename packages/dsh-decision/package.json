@@ -5,7 +5,7 @@
   "type": "module",
   "main": "lib/index.js",
   "exports": { ".": "./lib/index.js", "./core": "./lib/core.js", "./package.json": "./package.json" },
-  "files": ["lib", "skills", "cordis.patch.yml", "README.md", "README_EN.md", "LICENSE"],
+  "files": ["lib", "skills", "cordis.patch.yml", "README.md", "README_EN.md", "LICENSE", "CHANGELOG.md"],
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --import ./test/runtime-resolver.mjs --test test/*.test.mjs",
