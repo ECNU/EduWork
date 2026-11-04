@@ -19,13 +19,23 @@ export class ExtensionsController {
     const sequence = ++this.sequence
     this.patch({ loading: true })
     try {
-      const result = await this.manager.listBundles()
-      if (!result.ok) throw Error('list failed')
+      const [result, plugins] = await Promise.all([
+        this.manager.listBundles(),
+        this.manager.listPlugins ? this.manager.listPlugins() : { ok: true, value: [] },
+      ])
+      if (!result.ok || !plugins.ok) throw Error('list failed')
       if (sequence !== this.sequence || this.disposed) return
       const rows = this.catalog.flatMap(entry => {
         const bundle = result.value.find(row => row.name === entry.name)
         // Do not offer an unpublished, absent or edition-excluded package.
-        return bundle && bundle.availability !== 'missing' ? [{ ...bundle, ...entry }] : []
+        if (!bundle || bundle.availability === 'missing') return []
+        if (entry.entryId) {
+          // Keep product-owned IDs: replacing Studio/OIDC/pet with their stock
+          // bundle would duplicate services and abandon existing settings.
+          const row = plugins.value.find(row => row.patchId === entry.entryId && row.moduleName === entry.name)
+          return row ? [{ ...bundle, ...entry, enabled: row.enabled, targetId: row.entryId, readOnlyReason: row.readOnlyReason, error: row.error ?? bundle.error }] : []
+        }
+        return [{ ...bundle, ...entry }]
       })
       this.patch({ rows, loading: false, error: '' })
     } catch {
@@ -38,7 +48,9 @@ export class ExtensionsController {
     this.patch({ busy: true, error: '', notice: '' })
     let error = '', notice = ''
     try {
-      const result = await this.manager.setBundleEnabled(name, enabled)
+      const result = row.entryId
+        ? await this.manager.setPluginEnabled(row.targetId, enabled)
+        : await this.manager.setBundleEnabled(name, enabled)
       if (!result.ok || result.value.application === 'failed' || result.value.application === 'cancelled') error = 'changeFailed'
       else if (result.value.application === 'restart-required') notice = 'restartRequired'
       else if (result.value.application !== 'applied') notice = 'notApplied'

@@ -1,11 +1,19 @@
 import assert from 'node:assert/strict'
 import { extensions } from '../dsh-plugins/client-ui-extensions/lib/catalog.js'
 
-export function productOptionalBundlePolicy(locks) {
+export function productOptionalBundlePolicy(locks, extensionDefaults = {}) {
   const offered = new Set(locks.map(lock => lock.name))
+  assert.ok(extensionDefaults && typeof extensionDefaults === 'object' && !Array.isArray(extensionDefaults), 'extensionDefaults must be a package-to-boolean map')
+  for (const [name, enabled] of Object.entries(extensionDefaults)) {
+    assert.ok(extensions.some(row => row.name === name) && offered.has(name), `Unknown or unpublished extension default: ${name}`)
+    assert.equal(typeof enabled, 'boolean', `Extension default must be boolean: ${name}`)
+  }
+  const available = extensions.filter(row => offered.has(row.name))
+  const enabled = row => extensionDefaults[row.name] ?? row.defaultEnabled
   return {
-    optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision', ...extensions.map(row => row.name)].filter(name => offered.has(name)),
-    disabledByDefaultBundles: extensions.filter(row => !row.defaultEnabled && offered.has(row.name)).map(row => row.name),
+    optionalBundles: available.filter(row => !row.entryId).map(row => row.name),
+    disabledByDefaultBundles: available.filter(row => !row.entryId && !enabled(row)).map(row => row.name),
+    optionalEntryDefaults: Object.fromEntries(available.filter(row => row.entryId).map(row => [row.entryId, enabled(row)])),
   }
 }
 

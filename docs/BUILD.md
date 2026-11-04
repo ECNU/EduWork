@@ -19,6 +19,20 @@
 
 机构发行可在 `edition/distribution.json` 中用 `excludedOptionalBundles` 声明本次不预装的可选插件，例如 `["@eduwork/dsh-remote-access"]`。装配时不复制对应 npm 包、不注册其默认入口，并在回执记录排除项；不会写入运行时禁用策略，用户仍可通过 DSH 的插件管理自行安装。仅允许排除公版明确列为可选的独立 bundle，核心组件和其他保留包依赖的 bundle 不能排除。npm 输入锁及其哈希仍完整校验，共享依赖保留。
 
+预装插件的首次默认开关使用 `extensionDefaults`：公版在 `config/distributions/generic.json` 中定义，机构可在 `edition/distribution.json` 中覆盖。例如：
+
+```json
+{
+  "extensionDefaults": {
+    "@eduwork/dsh-side-chat": true,
+    "@eduwork/dsh-mail": false,
+    "@eduwork/dsh-desktop-pet": false
+  }
+}
+```
+
+仅接受[扩展目录](../dsh-plugins/client-ui-extensions/lib/catalog.js)中且已取得 npm 精确锁的包名及布尔值。未指定时沿用目录默认值；排除的包不会显示。用户可在“插件 → EduWork 扩展”中随时启停。默认值只初始化尚无选择的功能，不覆盖已有用户的启停状态；设置页中的邮箱收取、远控连接、桌宠显示等开关保持独立。装配回执记录 `optionalBundles`、`disabledByDefaultBundles` 和 `optionalEntryDefaults`，不修改已发布 npm 包的内容。
+
 准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
 
 Node 安全版本以 [运行时清单](../dsh-desktop/internal/productruntime/builtin/node-runtime-manifest.json) 为准；构建机、随包 Node 和 Host 回执必须匹配。升级 Node 后需重新准备 Host 与桌面壳，不能复用旧版本回执。下载资源继续核对清单中的官方 SHA-256，整包验收会再次检查实际携带的 Node 版本。机构仓升级公版锁时，也要同步其构建机与 CI 的 Node 版本。

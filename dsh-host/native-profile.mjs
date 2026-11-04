@@ -186,7 +186,7 @@ export function nativeEntryIds(patches) {
 // Generated deployment defaults are an ordinary bundle BELOW the native user
 // patch. Never regenerate the latter: Settings writes it through configEditor.
 // This profile lives beside the 0.1.5 profile for rollback, in the same DSH home.
-export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], disabledByDefaultBundles = [], patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
+export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], disabledByDefaultBundles = [], optionalEntryDefaults = {}, patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
   if (!Array.isArray(optionalBundles) || optionalBundles.some(value => typeof value !== 'string' || !bundles.includes(value))) throw new Error('Optional bundles must belong to the product bundle list')
   if (!Array.isArray(disabledByDefaultBundles) || disabledByDefaultBundles.some(value => !optionalBundles.includes(value))) throw new Error('Default-disabled bundles must be optional product bundles')
   const name = '@eduwork/generated-profile'
@@ -195,7 +195,6 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
     await refuseLink(path); await mkdir(path, { recursive: true })
   }
   const json = value => JSON.stringify(value, null, 2) + '\n'
-  const next = nativeEntryIds(patches)
   const bundlePath = join(bundle, 'cordis.patch.yml'), preferencesPath = join(profile, 'cordis.patch.yml')
   const journalPath = join(profile, '.eduwork-profile-update.json')
   await refuseLink(bundlePath); await refuseLink(preferencesPath)
@@ -208,6 +207,27 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
   }
   const previousText = await readFile(bundlePath, 'utf8').catch(missing)
   const preferencesText = await readFile(preferencesPath, 'utf8').catch(missing)
+  const manifestPath = join(profile, 'package.json')
+  await refuseLink(manifestPath)
+  const savedManifest = JSON.parse(await readFile(manifestPath, 'utf8').catch(error => { missing(error); return '{}' }))
+  const next = nativeEntryIds(patches)
+  // These existing product entries retain their IDs and configuration. The
+  // official manager persists disabled in the higher-priority profile patch.
+  // Freeze only the initial deployment default, never the user's live choice.
+  const entryDefaults = { ...savedManifest.eduwork?.optionalEntryDefaults }
+  if (!optionalEntryDefaults || typeof optionalEntryDefaults !== 'object' || Array.isArray(optionalEntryDefaults)
+    || Object.values(optionalEntryDefaults).some(value => typeof value !== 'boolean')
+    || Object.values(entryDefaults).some(value => typeof value !== 'boolean')) throw new Error('Invalid optional entry defaults')
+  const previousRows = previousText ? JSON.parse(previousText).flatMap(row => row.insert ?? []) : []
+  for (const row of next.flatMap(row => row.insert ?? [])) {
+    if (!Object.hasOwn(optionalEntryDefaults, row.id)) continue
+    if (!Object.hasOwn(entryDefaults, row.id)) {
+      const previous = previousRows.find(item => item.id === row.id && item.name === row.name)
+      entryDefaults[row.id] = previous ? previous.disabled !== true : optionalEntryDefaults[row.id]
+    }
+    row.disabled = !entryDefaults[row.id]
+  }
+  if (Object.keys(entryDefaults).length) savedManifest.eduwork = { ...savedManifest.eduwork, optionalEntryDefaults: entryDefaults }
   if (previousText && preferencesText && previousText !== json(next)) {
     const before = configurations(JSON.parse(previousText)), after = configurations(next)
     const saved = parse(preferencesText)
@@ -231,15 +251,13 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
   await writeChanged(join(bundle, 'package.json'), json({ name, version: '0.0.0', private: true, type: 'module',
     dsh: { bundle: { patch: './cordis.patch.yml' } } }))
   await writeChanged(bundlePath, json(next))
-  const manifestPath = join(profile, 'package.json')
-  await refuseLink(manifestPath)
-  const savedManifest = JSON.parse(await readFile(manifestPath, 'utf8').catch(error => { missing(error); return '{}' }))
   const savedBundles = savedManifest.dsh?.profile?.bundles ?? []
   if (!Array.isArray(savedBundles) || savedBundles.some(value => typeof value !== 'string')) throw new Error('Invalid native profile bundle list')
   // An existing native bundle list is also the user's activation state. An
   // absent legacy/fork bundle means disabled, not an invitation to re-enable it.
+  const legacySelectable = ['@eduwork/dsh-literature', '@eduwork/dsh-mail']
   const inheritedBundles = savedManifest.dsh?.profile?.bundles === undefined ? bundles
-    : bundles.filter(value => value !== '@eduwork/dsh-literature')
+    : bundles.filter(value => !legacySelectable.includes(value))
   // Seed newly bundled optional plugins once, then let the native plugin
   // manager own activation. A prior manual install with no active bundle is
   // already disabled. Preserve that choice and avoid a second product entry.
@@ -252,7 +270,7 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
       const manuallyDisabled = Object.hasOwn(savedManifest.dependencies ?? {}, value) && !savedBundles.includes(value)
       // Installation and activation are separate. Opt-in defaults never erase
       // an existing native selection, which is retained in savedBundles below.
-      if (!provisioned.includes(value) && !manuallyDisabled && !disabledByDefaultBundles.includes(value)) defaults.push(value)
+      if (!provisioned.includes(value) && !manuallyDisabled && !disabledByDefaultBundles.includes(value) && inheritedBundles.includes(value)) defaults.push(value)
     }
     savedManifest.eduwork = { ...savedManifest.eduwork, optionalBundles: [...new Set([...provisioned, ...optionalBundles])] }
   }

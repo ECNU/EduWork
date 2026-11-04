@@ -8,11 +8,37 @@ const ok = value => ({ ok: true, value })
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 
 test('only a locked, retained optional package gets an opt-in policy', () => {
-  assert.deepEqual(productOptionalBundlePolicy([{ name: '@eduwork/dsh-annotation' }]), { optionalBundles: ['@eduwork/dsh-annotation'], disabledByDefaultBundles: [] })
+  assert.deepEqual(productOptionalBundlePolicy([{ name: '@eduwork/dsh-annotation' }]), { optionalBundles: ['@eduwork/dsh-annotation'], disabledByDefaultBundles: [], optionalEntryDefaults: {} })
   const locks = [{ name }], policy = productOptionalBundlePolicy(locks)
-  assert.deepEqual(policy, { optionalBundles: [name], disabledByDefaultBundles: [name] })
+  assert.deepEqual(policy, { optionalBundles: [name], disabledByDefaultBundles: [name], optionalEntryDefaults: {} })
   const selected = selectOptionalProductBundles({ locks, ...policy, excluded: [name], dependencyLock: { packages: {} } })
   assert.deepEqual(selected.disabledByDefaultBundles, [])
+})
+test('edition policy changes initial enablement without admitting unknown, unpublished or invalid defaults', () => {
+  const annotation = '@eduwork/dsh-annotation', studio = '@eduwork/dsh-knowledge-studio'
+  const locks = [{ name }, { name: annotation }, { name: studio }, { name: '@eduwork/dsh-artifact-services' }]
+  assert.deepEqual(productOptionalBundlePolicy(locks, { [annotation]: false, [studio]: false, [name]: true }), {
+    optionalBundles: [annotation, name], disabledByDefaultBundles: [annotation], optionalEntryDefaults: { 'dsh-knowledge-studio': false },
+  })
+  for (const defaults of [[], { unknown: true }, { '@eduwork/dsh-mail': false }, { [name]: 'false' }, { '@eduwork/dsh-artifact-services': false }]) {
+    assert.throws(() => productOptionalBundlePolicy(locks, defaults))
+  }
+})
+test('product entries use native entry identity, preserve configuration and do not activate duplicate bundles', async () => {
+  const pet = '@eduwork/dsh-desktop-pet', catalog = [{ name: pet, entryId: 'eduwork-desktop-pet', defaultEnabled: true }]
+  let enabled = true, calls = 0
+  const controller = new ExtensionsController({
+    listBundles: async () => ok([{ name: pet, availability: 'installation', enabled: false }]),
+    listPlugins: async () => ok([{ patchId: 'eduwork-desktop-pet', entryId: 'include:pet', moduleName: pet, enabled }]),
+    setPluginEnabled: async (id, value) => { assert.equal(id, 'include:pet'); calls++; enabled = value; return ok({ application: 'applied' }) },
+    setBundleEnabled: assert.fail,
+  }, catalog)
+  await controller.refresh(); assert.equal(controller.state.rows[0].enabled, true)
+  await controller.setEnabled(pet, false); assert.equal(controller.state.rows[0].enabled, false)
+  await controller.setEnabled(pet, true); assert.equal(controller.state.rows[0].enabled, true)
+  assert.equal(calls, 2)
+  controller.manager.listPlugins = async () => ok([])
+  await controller.refresh(); assert.equal(controller.state.rows.length, 0, 'no desktop entry in a Web-only profile')
 })
 test('lists available custom installation bundles; absent packages and unrelated packages stay out', async () => {
   const controller = new ExtensionsController({ listBundles: async () => ok([bundle(), { name: 'unrelated', availability: 'profile' }]) })

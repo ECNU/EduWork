@@ -24,6 +24,7 @@ on:
       - 'dsh-host/native-resources.mjs'
       - 'dsh-host/test/native-resources*.mjs'
       - 'dsh-host/test/native-settings.test.mjs'
+      - 'dsh-host/test/optional-extensions.test.mjs'
       - 'dsh-host/test/redacted-log.test.mjs'
       - 'scripts/probe-pinned-dsh-host.mjs'
       - 'scripts/probe-pinned-dsh-settings.mjs'
@@ -135,7 +136,7 @@ jobs:
       - name: Verify migration recovery and prepare the pinned Runtime
         shell: pwsh
         run: |
-          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
+          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/optional-extensions.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
           node --test core/dsh-host/test/native-021.test.mjs core/dsh-host/test/dsh-compatibility.test.mjs core/scripts/test/npm-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Pinned Runtime and Schedule migration checks failed' }
