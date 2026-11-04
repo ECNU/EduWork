@@ -10,7 +10,7 @@ test('API family matching accepts subsequent candidates without accepting anothe
 test('only owned rebuilt plugins receive the native API range; other peers and source metadata remain intact', () => {
   const source = { name: '@eduwork/example', peerDependencies: { '@deepseek-ai/dsh': '0.1.5-rc.1', '@deepseek-ai/dsh-tools': '0.1.5-rc.1', '@deepseek-ai/cordis': '^4.0.2', '@deepseek-ai/dsh-other-toolkit': '0.1.5-rc.1', 'other': '^2.0.0' } }
   const before = structuredClone(source)
-  for (const version of ['0.2.0-rc.2', '0.2.0-rc.3', '0.2.0', '0.2.1']) {
+  for (const version of ['0.2.0-rc.2', '0.2.0-rc.3', '0.2.0', '0.2.1', '0.2.2-rc.1']) {
     const peers = rebuiltDshPeers(source, version)
     assert.equal(peers['@deepseek-ai/dsh'], rebuiltDshPeerRange)
     assert.equal(peers['@deepseek-ai/dsh-tools'], rebuiltDshPeerRange)

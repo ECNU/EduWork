@@ -23,7 +23,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 各开发安装根分别保留自己的 `package-lock.json`，不把所有依赖提升到仓库根。Studio 保留已有 `packages/artifact-services` 子 workspace，两个包仍分别生成 tarball。其他包之间使用 npm 公开导出，不跨目录导入彼此的实现文件。
 
-侧聊可单独从消息按钮开启；同时启用批注 `>=0.1.1 <0.2.0` 时，通过可选的 `annotationSelection` 服务接入同一个选区操作栏。两个插件分别安装和启停。侧聊检查与发布工作流使用锁定的 DSH `0.2.1-rc.5` Runtime 运行真实会话、归档和报错提示测试；模型输入使用合成数据。
+侧聊可单独从消息按钮开启；同时启用批注 `>=0.1.1 <0.2.0` 时，通过可选的 `annotationSelection` 服务接入同一个选区操作栏。两个插件分别安装和启停。侧聊检查与发布工作流使用锁定的 DSH `0.2.2-rc.1` Runtime 运行真实会话、归档和报错提示测试；模型输入使用合成数据。
 
 ## 兼容声明与构建锁
 
@@ -79,7 +79,7 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 ## 客户端装配
 
-当前 DSH 0.2.1 配方从 npm 装配十一个独立包：选段批注、侧聊、远程访问、决策、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.1-rc.5/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
+当前 DSH 0.2.2 配方从 npm 装配十一个独立包：选段批注、侧聊、远程访问、决策、桌宠、文献、邮件、记忆、OIDC、Studio 和共享服务。插件源码仍独立维护，其他兼容 DSH 客户端也可从 npm 单独安装。`third_party/dsh/candidate-v0.2.2-rc.1/` 下各包的组件 JSON 记录版本、来源提交、tarball SHA-256 和 npm integrity，`source-probe/package.json` 与 `package-lock.json` 固定实际安装。这里保留的 `source-probe` 目录名是构建入口名称，不表示从插件源码安装。
 
 批注、侧聊、远程访问和决策使用 DSH 原生 bundle，首次预装时注册一次，此后由原生插件管理器保存启停选择。`assembly.json` 的 `optionalBundles` 标明这类可选预装包，Profile 记录已处理的包名；已手动安装的包复用原有激活记录，不重复注册，已停用的包不会因重启再次启用。原有核心 bundle 的规则保持不变。远程访问的设置入口注册后，中继连接仍默认关闭，须由用户配置中继地址、接入方式并主动开启；不会自动连接公共服务器。服务端部署见[远控指南](../packages/dsh-remote-access/docs/DEPLOYMENT.md)。
 
@@ -89,10 +89,10 @@ Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 P
 
 插件变更顺序为：源码测试 → 发布 npm → 核验 registry 原包 → 更新产品组件锁和 npm 锁 → 整包验收。兼容范围与产品精确锁分别维护；正式装配不使用 `latest`。本地插件开发仍使用各包自己的开发根，不将未发布源码混入客户端。机构版复用公版的 npm 依赖，可增加自身扩展、配置与 skills，但不能覆盖已锁定的公共包。
 
-`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.1-rc.5/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
+`@eduwork/dsh-desktop-pet` 从 npm 安装已发布版本。其版本、来源提交、integrity 和 tarball SHA-256 位于 `third_party/dsh/candidate-v0.2.2-rc.1/desktop-pet.json`，并由同目录下的 `source-probe/package-lock.json` 固定安装。产品保留桌面壳的悬浮窗口能力，不再从桌宠源码目录覆盖包或重建它的设置页；插件更新须先发布 npm、验证产物，再更新产品锁。
 
 
-`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.1-rc.5/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
+`@eduwork/dsh-literature` 是面向 DSH `0.2` API 系列的独立包，fork 自 `SihanLv/dsh-literature`，由 EduWork 接续维护。0.2 候选装配从 npm 安装组件锁指定的已发布版本，版本、integrity、tarball SHA-256 和来源提交记录在 `third_party/dsh/candidate-v0.2.2-rc.1/literature.json`，不从源码覆盖该包。历史构建保留原 `@shlv/dsh-literature` 锁。
 
 历史 DSH 0.1.5 配方的 `config/assembly.eduwork.json` 保留 `third_party/npm-015-rc1/*/LOCK.json`，不用于当前默认桌面构建。编辑 `packages/` 不会自动混入 GitHub 桌面包；遵循[构建指南](BUILD.md)中的“发布插件 → 核验 registry → 更新锁 → 构建产品”顺序。开发根里的 workspace 链接不能作为正式客户端的发布凭据。
 

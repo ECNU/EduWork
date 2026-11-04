@@ -4,6 +4,8 @@ import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
+import { installFileActions } from './file-actions.ts'
+import { installDesktopFileDrag } from './file-drag.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
 import { SIDEBAR_BROWSER_IPC } from './sidebar-browser.mjs'
 import { watchUpdateDocument } from './update-observer.mjs'
@@ -24,6 +26,12 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     return window
   }
   const guests = new DesktopBrowserGuests(() => getHost()?.origin)
+  installFileActions(owner, () => getHost()?.origin)
+  const disposeFileDrags = installDesktopFileDrag(owner, (address, signal) => {
+    const host = getHost()
+    if (!host) return Promise.reject(new Error('File drag Host unavailable'))
+    return host.resolveDragResource(address, signal)
+  })
   // Boot and locale requests start before the Host exists now. They join the
   // one startup attempt, then revalidate that the waiting frame still owns it.
   const currentHost = async event => {
@@ -213,6 +221,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       ensureUpdateBinding(window)
       window.once('closed', releaseUpdates)
     },
+    disposeFileDrags,
     dispose() { updateBinding?.dispose(); updateBinding = undefined; shortcuts.dispose(); updates?.dispose() },
   }
 }
