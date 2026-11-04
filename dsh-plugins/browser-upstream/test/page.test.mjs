@@ -178,20 +178,73 @@ test('browser_act\'s check knows a control by the name the page read showed', { 
 <input type="button" value="删除草稿 A"> <span id="what">删除草稿 A</span><button aria-labelledby="what">×</button>
 <nav id="menu" style="display: none"><a href="https://campus.example/about" style="text-transform: uppercase">About us</a></nav>
 <div>姓名<input><span id="error"></span></div>
-<div><input placeholder="学号"></div>` }))
+<div><input placeholder="学号"></div>
+<div>邮编<span id="hint"></span><input></div>
+<table><tr><td id="share">公开住址</td><td><input type="checkbox"></td></tr></table>
+<div><span id="mail">邮箱</span><input placeholder="邮箱"></div>
+<div><span id="phone">电话</span><input></div>
+<div><span id="account">账号</span><input></div>
+<table><tr><td id="pay">接收通知</td><td><input type="checkbox" id="notify"></td><td>可不选，之后可以在设置里修改</td></tr></table>
+<div>简介<input><span id="count">0/200</span></div>
+<div><span>*</span><span>宿舍</span><input></div>
+<div><input type="checkbox"><span id="public">公开电话</span></div>
+<div><span id="card">卡号</span><input></div>
+<div><span id="college" style="display: contents">学院</span><input></div>
+<div><input placeholder="验证码"><span id="wait">60 秒后重发</span></div>
+<div><b>紧急</b><span id="split">联系人</span><input></div>
+<div id="home">家庭<!---->住址<input></div>
+<div><span>+86</span><span id="mobile">手机</span><input></div>
+<div><span id="before"></span><span>民族</span><input></div>
+<fieldset><div><span>A</span><input type="radio" name="choice"><span id="choice">公开成绩</span></div><div><span>B</span><input type="radio" name="choice"><span>不公开</span></div></fieldset>
+<div><input type="checkbox"><span id="sms">接收短信</span></div>
+<div><span id="guardian">家长电话</span><input></div>
+<div><span id="long">请填写学校发放给你的十一位编号，不是身份证号码</span><input placeholder="编号"></div>` }))
     await page.goto('https://campus.example/drafts')
     const seen = await page.evaluate(`(${READ})()`)
     const ref = (kind, name) => Number(Object.entries(seen.refs).find(([, r]) => r.kind === kind && r.name === name)[0])
     const still = next => page.evaluate(`(${STILL(seen, { next, settle: false })})()`)
-    const [input, labelled, about, field, hinted] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us'), ref('textbox', '姓名'), ref('textbox', '学号')]
+    const [input, labelled, about, field, hinted, postcode, share, mail, phone, account] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us'),
+      ref('textbox', '姓名'), ref('textbox', '学号'), ref('textbox', '邮编'), ref('checkbox', '公开住址'), ref('textbox', '邮箱'), ref('textbox', '电话'), ref('textbox', '账号')]
+    const [bio, room, open, card, college, code, contact, home, mobile, nation, choice] = [ref('textbox', '简介'), ref('textbox', '宿舍'), ref('checkbox', '公开电话'),
+      ref('textbox', '卡号'), ref('textbox', '学院'), ref('textbox', '验证码'), ref('textbox', '紧急联系人'), ref('textbox', '家庭住址'), ref('textbox', '+86手机'),
+      ref('textbox', '民族'), ref('radio', 'A公开成绩')]
+    const [sms, guardian, long] = [ref('checkbox', '接收短信'), ref('textbox', '家长电话'), ref('textbox', '编号')]
+    const notify = Number(await page.locator('#notify').getAttribute(REF))
     assert.deepEqual([await still(input), await still(labelled), await still(about)], ['', '', ''])
-    // A message shown beside a field leaves it the same field.
-    await page.evaluate(() => { document.getElementById('error').textContent = '必填' })
-    assert.equal(await still(field), '')
-    // A field whose caption or hint now asks for something else is not the one read.
-    await page.evaluate(() => { document.getElementById('error').parentElement.firstChild.textContent = '身份证号' })
-    await page.evaluate(() => { document.querySelector('[placeholder]').placeholder = '手机号' })
-    assert.deepEqual([await still(field), await still(hinted)], ['the page changed', 'the page changed'])
+    // A message, a count or a countdown shown after a field, or its caption written again as it was, in one piece or in two,
+    // leaves it the same field.
+    await page.evaluate(() => {
+      document.getElementById('error').textContent = '必填'; document.getElementById('count').textContent = '1/200'
+      document.getElementById('wait').textContent = '59 秒后重发'; document.getElementById('phone').textContent = '电话'
+      document.getElementById('guardian').innerHTML = '<span>家长</span><span>电话</span>'
+    })
+    assert.deepEqual(await Promise.all([field, phone, bio, room, code, guardian].map(still)), Array(6).fill(''))
+    // A field whose caption or hint now asks for something else is not the one read: a switch captioned in its row, with a
+    // note after it too, or after it with a word put before, in its text or beside it; a caption replaced while the hint says
+    // what it said, or longer than the name shown, without a box of its own, or in part, after a prefix, or beside an
+    // option's letter; an old caption made invisible or see-through beside a new one. So is one with a message put before it
+    // or after its caption: a word added there may be a message or may turn the field to another use.
+    await page.evaluate(() => {
+      document.getElementById('hint').textContent = ' 必填'; document.getElementById('before').textContent = '必填'
+      document.getElementById('sms').insertAdjacentHTML('beforebegin', '<span>禁止</span>')
+      document.getElementById('long').textContent = '请填写你的银行卡号，不是学校发放给你的十一位编号'
+      document.getElementById('error').parentElement.firstChild.textContent = '身份证号'
+      document.querySelector('[placeholder="学号"]').placeholder = '手机号'
+      document.getElementById('share').textContent = '授权付款'
+      document.getElementById('pay').textContent = '授权付款'
+      document.getElementById('mail').textContent = '银行卡号'
+      document.getElementById('public').textContent = '禁止公开电话'
+      document.getElementById('college').textContent = '银行'
+      document.getElementById('split').textContent = '付款人'
+      document.getElementById('home').childNodes[2].data = '账户'
+      document.getElementById('mobile').textContent = '银行卡号'; document.getElementById('choice').textContent = '授权付款'
+      for (const [id, hide] of [['account', 'visibility: hidden'], ['card', 'opacity: 0']]) {
+        document.getElementById(id).style.cssText = hide
+        document.getElementById(id).insertAdjacentHTML('afterend', '<span>银行卡号</span>')
+      }
+    })
+    assert.deepEqual(await Promise.all([field, hinted, share, notify, mail, open, college, contact, home, mobile, choice, account, card, postcode, nation, sms, long].map(still)),
+      Array(17).fill('the page changed'))
     // A menu shown with its text in capitals is the same link; a button named for another draft is not the one read.
     await page.evaluate(() => { document.getElementById('menu').style.display = 'block' })
     assert.equal(await still(about), '')

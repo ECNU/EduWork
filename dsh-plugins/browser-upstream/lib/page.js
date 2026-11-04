@@ -28,33 +28,70 @@ const NAMES = String.raw`
   const FIELD = 'input:not([type=hidden], [type=submit], [type=button], [type=reset], [type=image]), select, textarea';
   const clean = s => (s || '').replace(/\s+/g, ' ').trim();
   const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
-  const words = fragment => { fragment.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(fragment.textContent); };
-  const own = node => words(node.cloneNode(true));
+  const own = node => { const c = node.cloneNode(true); c.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(c.textContent); };
   // An element is called by the name the page gives it (aria-labelledby,
   // aria-label, a label), a field without one by the short caption shown with
-  // it in a box of its own, as many pages lay out fields without labels: the
-  // text before it, as a message the page adds, such as "required", goes after
-  // it; a checkbox's after it. What a field holds is never its name: that
-  // could be a password.
+  // it in a box of its own, as many pages lay out fields without labels. What
+  // a field holds is never its name: that could be a password.
   const given = el => clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '))
     || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
+  const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD', 'CANVAS', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED']);
+  // Children as drawn: an open shadow root's instead of the light ones, and a slot's assigned nodes.
+  const kids = node => node.shadowRoot ? node.shadowRoot.childNodes
+    : node.tagName === 'SLOT' && node.assignedNodes({ flatten: true }).length ? node.assignedNodes({ flatten: true }) : node.childNodes;
+  // Shown to the user: rendered, not clipped to nothing as a closed menu is,
+  // and not a fixed or absolute box placed beside the viewport or above the
+  // page, as narrow layouts keep their menus. Content that only overflows to
+  // the side, as a wide table does, still counts.
+  const shown = el => {
+    const st = getComputedStyle(el);
+    if (st.display === 'contents') return true;
+    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
+    const r = el.getBoundingClientRect();
+    if (st.overflow !== 'visible' && st.display !== 'inline' && (r.width < 1 || r.height < 1)) return false;
+    return !((st.position === 'fixed' || st.position === 'absolute') && (r.right <= 0 || r.left >= innerWidth || r.bottom + scrollY <= 0));
+  };
+  // What the page read shows of an element's text: not what a field holds.
+  const drawn = el => !SKIP.has(el.tagName) && !(el instanceof SVGElement) && !el.matches('select, textarea, [role=listbox]') && shown(el);
+  // The caption of a field without a name of its own: the text the read shows
+  // with it in the nearest box holding no other field that has a letter or
+  // digit in it, before it, or for a checkbox or radio, whose caption often
+  // follows it, anywhere in the box. What comes after a field, such as a count
+  // or a message, is no part of it.
   const caption = el => {
-    const after = el.type === 'checkbox' || el.type === 'radio';
+    const anywhere = el.type === 'checkbox' || el.type === 'radio';
     for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
-      const range = document.createRange();
-      range.selectNodeContents(up);
-      if (after) range.setStartAfter(el); else range.setEndBefore(el);
-      const found = words(range.cloneContents());
-      if (found.length > 20) break;
-      if (found) return found;
+      let text = '';
+      // false once it reaches the field, where the text before it ends.
+      const walk = node => {
+        for (const c of kids(node)) {
+          if (c === el && !anywhere) return false;
+          if (c.nodeType === Node.TEXT_NODE) text += c.data;
+          else if (c.nodeType === Node.ELEMENT_NODE && drawn(c) && walk(c) === false) return false;
+        }
+      };
+      walk(up);
+      if (/[\p{L}\p{N}]/u.test(text)) return clean(text);
     }
     return '';
   };
-  const name = el => cut(given(el) || (el.matches(FIELD) ? caption(el) || clean(el.placeholder) : clean(el.innerText || el.value))
-    || clean(el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
-  // What an element is and is called, in any case, as showing a hidden menu can
-  // change the case of its text.
-  const says = el => el.tagName + ' ' + (el.matches(FIELD) ? el.type + ' ' : '') + name(el).toLowerCase();
+  // A caption longer than a few words, such as an instruction, gives way to
+  // the field's hint; a required field's star is left out.
+  const name = el => {
+    if (!el.matches(FIELD)) return cut(given(el) || clean(el.innerText || el.value) || clean(el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
+    const named = given(el), words = named ? '' : caption(el).replace(/^\*\s*/u, '');
+    return cut(named || (words.length <= 20 && words) || clean(el.placeholder) || words || clean(el.title || el.name), 80);
+  };
+  // What browser_act's check compares: what an element is and is called, in
+  // any case, as showing a hidden menu can change the case of its text; for a
+  // field, every name it has of its own and its caption, however long. Any
+  // change to the caption counts, as a word the page adds may be a message
+  // such as "required" or one that turns it to another use.
+  const says = el => {
+    if (!el.matches(FIELD)) return el.tagName + ' ' + name(el).toLowerCase();
+    const named = given(el);
+    return [el.tagName, el.type, named, el.placeholder, el.title, el.name, named ? '' : caption(el)].map(clean).join('\n').toLowerCase();
+  };
 `
 
 export const READ = String.raw`async () => {
@@ -76,29 +113,13 @@ export const READ = String.raw`async () => {
   }
   const input = document[${JSON.stringify(INPUT)}] || 0;
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [contenteditable=true], [role=button], [role=link], [role=textbox], [role=searchbox], [role=tab], [role=switch], [role=option], [role=checkbox], [role=radio], [role=combobox], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=treeitem]';
-  const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD', 'CANVAS', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED']);
   const CJK = /[　-ヿ㐀-鿿＀-￯]/;
   const MAX = 60000, CHUNK = 2000;
   ${NAMES}
   const quote = s => JSON.stringify(s);
-  // Children as drawn: an open shadow root's instead of the light ones, and a slot's assigned nodes.
-  const kids = node => node.shadowRoot ? node.shadowRoot.childNodes
-    : node.tagName === 'SLOT' && node.assignedNodes({ flatten: true }).length ? node.assignedNodes({ flatten: true }) : node.childNodes;
   const unmark = root => { for (const el of root.querySelectorAll('*')) { el.removeAttribute(REF); if (el.shadowRoot) unmark(el.shadowRoot); } };
   unmark(document);
 
-  // Shown to the user: rendered, not clipped to nothing as a closed menu is,
-  // and not a fixed or absolute box placed beside the viewport or above the
-  // page, as narrow layouts keep their menus. Content that only overflows to
-  // the side, as a wide table does, still counts.
-  const shown = el => {
-    const st = getComputedStyle(el);
-    if (st.display === 'contents') return true;
-    if (!el.checkVisibility({ opacityProperty: true, visibilityProperty: true })) return false;
-    const r = el.getBoundingClientRect();
-    if (st.overflow !== 'visible' && st.display !== 'inline' && (r.width < 1 || r.height < 1)) return false;
-    return !((st.position === 'fixed' || st.position === 'absolute') && (r.right <= 0 || r.left >= innerWidth || r.bottom + scrollY <= 0));
-  };
   const block = el => !/^(inline|contents|table-cell|none)/.test(getComputedStyle(el).display);
   // What takes the clicks: the element, or for an inline link around block
   // content, which has no box of its own, the first child that has one.
