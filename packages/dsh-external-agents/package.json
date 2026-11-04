@@ -45,9 +45,9 @@
   "peerDependencies": {
     "zod": "^4.0.0",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-tool-subagent": ">=0.2.1-rc.5 <0.3.0-0",
-    "@deepseek-ai/dsh-storage-domain": ">=0.2.1-rc.5 <0.3.0-0",
-    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0-0"
+    "@deepseek-ai/dsh-tool-subagent": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1"
   },
   "devDependencies": {
     "esbuild": "0.28.1",
@@ -58,7 +58,12 @@
     "@deepseek-ai/dsh-subagent": "0.2.1-rc.5",
     "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.5",
     "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-session-projection": "0.2.1-rc.5"
+    "@deepseek-ai/dsh-session-projection": "0.2.1-rc.5",
+    "zod": "4.6.7",
+    "react": "18.3.1",
+    "@deepseek-ai/dsh-tool-subagent": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.5"
   },
   "repository": {
     "type": "git",

@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-decision",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "SystemOne-compatible decision tools and skill for DeepSeek Harness",
   "type": "module",
   "main": "lib/index.js",
@@ -14,8 +14,8 @@
   "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
   "engines": { "node": ">=24.22.1" },
   "peerDependencies": {
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.3 <0.3.0-0",
-    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.3 <0.3.0-0",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.3 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.3 <0.3.0-0 || 0.2.2-rc.1",
     "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0"
   },
   "peerDependenciesMeta": {

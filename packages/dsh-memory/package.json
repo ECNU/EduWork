@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-memory",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MulanPSL-2.0 AND MIT",
   "description": "Local memory and conversation recall for DeepSeek Harness",
   "type": "module",
@@ -53,22 +53,22 @@
     }
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
-    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-commands": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-session-query": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-storage-domain": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0 || 4.1.0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-commands": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-session-query": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
     "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0",
     "react": "^18.2.0",
     "zod": "^4.4.3",
-    "@deepseek-ai/dsh-storage-sqlite": ">=0.2.1-rc.2 <0.3.0-0"
+    "@deepseek-ai/dsh-storage-sqlite": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1"
   },
   "repository": {
     "type": "git",
@@ -94,6 +94,17 @@
     "@deepseek-ai/dsh-storage-sqlite": "0.2.1-rc.2",
     "@deepseek-ai/cordis": "4.0.5",
     "@deepseek-ai/schemastery": "3.18.5",
-    "semver": "7.7.4"
+    "semver": "7.7.4",
+    "@deepseek-ai/dsh-api-remotes": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-renderer": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-client-ui-settings": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-commands": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-settings": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-session-query": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2"
   }
 }
