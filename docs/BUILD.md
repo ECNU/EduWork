@@ -26,7 +26,7 @@
   "extensionDefaults": {
     "@eduwork/dsh-side-chat": true,
     "@eduwork/dsh-mail": false,
-    "@eduwork/dsh-desktop-pet": false
+    "@eduwork/dsh-annotation": false
   }
 }
 ```

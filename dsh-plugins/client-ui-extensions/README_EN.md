@@ -2,18 +2,20 @@
 
 [中文](README.md)
 
-Adds an **EduWork extensions** tab to the native DSH Plugins page for annotations, side chat, Studio, literature, mail, desktop pet, remote access, decision tools, organization sign-in and external agents. Only packages available in the current installation and entries provided on the current platform are shown.
+Adds an **EduWork extensions** tab to the native DSH Plugins page for annotations, side chat, Knowledge Studio, literature, mail, remote access, decision tools and external agents. Only packages available in the current installation and entries provided on the current platform are shown.
 
-Disabling unloads the plugin's services and UI while retaining configuration and data. Enabling restores access. Mail retrieval, remote connections and pet visibility still have their own settings; loading a plugin does not automatically enable these services. Disabling organization sign-in makes organization models and identity-dependent features unavailable without signing out.
+Disabling unloads the plugin's services and UI while retaining configuration and data. Enabling restores access. Mail retrieval and remote connections still have their own settings; loading a plugin does not automatically enable these services.
 
 ## Boundaries
 
 - The product provides this entry independently of the managed bundles, so disabling an extension does not remove its enable switch.
-- Native `listBundles` / `setBundleEnabled` manage whole bundles. Studio, organization sign-in and desktop pet keep their existing product entry IDs and use native `listPlugins` / `setPluginEnabled`, avoiding duplicate default bundle entries. DSH owns compatibility checks, authorization, persistence and hot reload. The UI reports failures and required restarts rather than assuming the plugin is running.
+- Native `listBundles` / `setBundleEnabled` manage whole bundles. Knowledge Studio keeps its existing product entry ID and uses native `listPlugins` / `setPluginEnabled`, avoiding duplicate default bundle entries. DSH owns compatibility checks, authorization, persistence and hot reload. The UI reports failures and required restarts rather than assuming the plugin is running.
 - `lib/catalog.js` contains only identity, localized copy, guide links and first-install defaults. Product assembly requires an exact published npm lock; an unpublished source package is not assembled into a release.
 - Existing features load by default; external agents are opt-in. Editions can set initial boolean defaults by npm name through `extensionDefaults`; see the [build guide](../../docs/BUILD.md). Defaults initialize new features only. Existing selections survive restarts, upgrades and changes to edition defaults.
-- Mail and literature become optional bundles, preserving existing native bundle selections. Initial defaults for Studio, organization sign-in and desktop pet are recorded in the profile manifest. User choices still go to the native DSH profile patch, not a separate preference store.
-- Shared artifact services, notifications, permissions and credential storage do not receive independent switches. Disabling Studio preserves artifact services used by Office preview. The memory bundle also configures shared storage and history search. It keeps its existing assembly and is not offered as a whole-bundle disable switch. Annotations and side chat can be toggled independently.
+- Mail and literature become optional bundles, preserving existing native bundle selections. Knowledge Studio's initial default is recorded in the profile manifest. User choices still go to the native DSH profile patch, not a separate preference store.
+- Organization sign-in and Memory stay built in: the former provides organization identity and models, while the latter also configures shared storage and history search. They are outside this optional catalog and cannot be overridden through `extensionDefaults`.
+- Desktop pet stays built in with its existing Settings and tray visibility controls. Shell windows, tray actions and settings links do not yet follow plugin unloading, so no disable switch is offered here.
+- Shared artifact services, notifications, permissions and credential storage do not receive independent switches. Disabling Knowledge Studio stops its workbench and dedicated features while retaining the artifact services used for generation, Office preview and downloads. Annotations and side chat can be toggled independently.
 - This page does not install external CLIs, start agents, manage credentials or change task permissions.
 
 ## Plugin settings
