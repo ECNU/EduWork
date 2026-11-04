@@ -12,6 +12,6 @@ export function apply(ctx) {
   ctx.effect(() => connectSidebarBrowser({
     bridge, desktop: globalThis.dshDesktop.browser, sidebar: ctx.sidebarRight, document,
     storage: (sessionId, signal) => workspaceStorage(ctx.workspaces.list, sessionId, signal),
-    conversation: sessionId => ctx.sessions.binding(sessionId)?.session, text: t,
+    conversation: sessionId => ctx.sessions.binding(sessionId), text: t,
   }))
 }

@@ -3,7 +3,8 @@
 // tab each browser guest shows, opens and closes tabs for the Agent, keeps a
 // working conversation's tabs painting behind what the user sees, and marks
 // the tab the Agent acts on, which the user only watches until the Agent's
-// turn ends or they stop it. The Web client has no bridge and skips all of it.
+// turn ends, asks them something or they stop it. The Web client has no
+// bridge and skips all of it.
 const FRAME = 'webview[data-sidebar-browser-frame="webview"]'
 const SESSION = 'data-sidebar-right-session'
 const TAB = 'data-sidebar-right-tab'
@@ -40,6 +41,23 @@ const css = `
 `
 
 /**
+ * Whether the Agent waits on the user's answer: a question it asked in its
+ * current turn has no result yet. A question that timed out has one, and the
+ * Agent goes on, as it does whether or not the question's card is shown.
+ * @param entries - the conversation's events, as its eventSource holds them.
+ */
+export function asksUser(entries) {
+  const answered = new Set()
+  for (let i = entries.length - 1; i >= 0; i--) {
+    const { event } = entries[i]
+    if (event.type === 'turn/start') return false
+    if (event.type === 'tool/result') answered.add(event.data.message.toolCallId)
+    if (event.type === 'tool/call' && event.data.name === 'ask_user_question' && !answered.has(event.data.callId)) return true
+  }
+  return false
+}
+
+/**
  * The Sidebar browser storage of a conversation's workspace, named as
  * ui-sidebar-browser's browserWorkspace names it once the workspace list has arrived.
  * @param list - ctx.workspaces.list.
@@ -63,7 +81,7 @@ export async function workspaceStorage(list, sessionId, signal) {
  * @param desktop - the desktop's Sidebar browser guests (dshDesktop.browser).
  * @param sidebar - ctx.sidebarRight.
  * @param storage - (session id, signal) => the Sidebar browser storage of the conversation's workspace.
- * @param conversation - a conversation's DSH session: whether its turn runs, and cancel.
+ * @param conversation - a conversation's DSH session binding: its session, whether its turn runs, and cancel, and its events.
  * @param text - the marker's 'acting' and 'stop' labels.
  * @returns disconnects from the main process and clears every mark.
  */
@@ -197,13 +215,18 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     marked.unsubscribe()
     acting.delete(sessionId)
   }
-  // While the Agent's turn runs, its tab takes no input from the user, who
-  // stops the turn to take over; the Agent's own input reaches the guest directly.
+  // While the Agent's turn runs, the tab it acts on takes no input from the
+  // user, who stops the turn to take over; the Agent's own input reaches the
+  // guest directly. The tab is the user's again once the Agent rests from the
+  // browser (idle), and while it waits on the user's answer to a question, to
+  // sign in for one. An approval leaves it the Agent's: what is approved is to
+  // happen to the page as it is.
   const mark = (sessionId, tabId) => {
     unmark(sessionId)
     const frame = frameOf(sessionId, tabId)
-    const turn = conversation(sessionId)
-    if (!frame || !turn) return
+    const binding = conversation(sessionId)
+    if (!frame || !binding) return
+    const { session, eventSource } = binding
     const lock = document.createElement('div')
     lock.setAttribute(ACTING, '')
     const badge = document.createElement('span')
@@ -214,19 +237,20 @@ export function connectSidebarBrowser({ bridge, desktop, sidebar, document, stor
     lock.append(badge)
     let stopping = false
     const update = () => {
-      const { running } = turn.getSnapshot()
+      const { running } = session.getSnapshot()
       if (!running) stopping = false
-      lock.hidden = stopping || !running
+      lock.hidden = stopping || !running || asksUser(eventSource.getSnapshot().entries)
       if (!lock.hidden && document.activeElement === frame) frame.blur()
     }
     stop.addEventListener('click', () => {
       stopping = true
       update()
-      void turn.cancel()
+      void session.cancel()
     })
     update()
     frame.parentElement.append(lock)
-    acting.set(sessionId, { tabId, lock, unsubscribe: turn.subscribe(update) })
+    const stops = [session.subscribe(update), eventSource.subscribe(update)]
+    acting.set(sessionId, { tabId, lock, unsubscribe: () => { for (const stop of stops) stop() } })
   }
 
   const handlers = {

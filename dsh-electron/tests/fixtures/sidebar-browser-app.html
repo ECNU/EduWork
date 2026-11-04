@@ -75,8 +75,8 @@
     return tabId
   }
   // Stand-ins for the desktop's guest leases, which give a background page
-  // the Sidebar's storage and rules, and for each conversation's DSH session,
-  // whose turn runs until a test ends or the user stops it.
+  // the Sidebar's storage and rules, and for each conversation's DSH session
+  // binding, whose turn runs until a test ends or the user stops it, and its events.
   const leases = new Map(), held = new Set(), turns = new Map(), storages = [], stopped = []
   const desktop = {
     async acquire(workspace) {
@@ -92,12 +92,14 @@
   const conversation = id => {
     if (!turns.has(id)) {
       const listeners = new Set()
-      let running = true
+      let running = true, window = { entries: [] }
+      const changed = () => { for (const listener of listeners) listener() }
+      const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener) }
       turns.set(id, {
-        getSnapshot: () => ({ running }),
-        subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
-        set(value) { running = value; for (const listener of listeners) listener() },
-        async cancel() { stopped.push(id); this.set(false) },
+        session: { getSnapshot: () => ({ running }), subscribe, async cancel() { stopped.push(id); running = false; changed() } },
+        eventSource: { getSnapshot: () => window, subscribe },
+        set(value) { running = value; changed() },
+        append(event) { window = { entries: [...window.entries, { type: 'event', event }] }; changed() },
       })
     }
     return turns.get(id)
@@ -117,6 +119,7 @@
     show, focus, expand, openTabIn, storages, stopped, acquireDelay: 0,
     held: () => [...held],
     running: (id, value) => conversation(id).set(value),
+    event: (id, event) => conversation(id).append(event),
     // A link opening a window goes to whoever holds its guest's lease: a
     // background page's opener, or the stand-in, whose guests' leases are their tab ids.
     popup(lease, url) {

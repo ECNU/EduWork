@@ -253,13 +253,27 @@ test('a background page still opening when its Agent leaves is let go', live, as
   assert.deepEqual(await page('fixture.held()'), [])
 })
 
-test('the user only watches the tab the Agent acts on until its turn ends or they stop it', live, async () => {
+test('the user only watches the tab the Agent acts on until its turn ends, asks them something or they stop it', live, async () => {
   const frame = 'document.querySelector("[data-sidebar-right-session=session-a] .cell:not([hidden]) webview")'
   // What a click in the middle of the page would reach.
   const reached = () => page(`(() => { const box = ${frame}.getBoundingClientRect(); return document.elementFromPoint(box.x + box.width / 2, box.y + box.height / 2).tagName })()`)
   const { browser, context } = await connect('session-a')
   const [tab] = context.pages()
   await greet(tab, 'watched')
+  assert.equal(await reached(), 'DIV')
+  // The Agent asks the user, as to log in in the page, and waits on the answer;
+  // while it waits on an approval, a call of another tool, the page stays its own.
+  const event = (type, data) => page(`fixture.event("session-a", ${JSON.stringify({ type, data })})`)
+  await event('tool/call', { callId: 'act', name: 'browser_act' })
+  assert.equal(await reached(), 'DIV')
+  await event('tool/result', { message: { toolCallId: 'act' } })
+  await event('tool/call', { callId: 'ask', name: 'ask_user_question' })
+  assert.equal(await reached(), 'WEBVIEW')
+  await event('tool/result', { message: { toolCallId: 'ask' } })
+  assert.equal(await reached(), 'DIV')
+  // A question of an earlier turn is not waited on.
+  await event('tool/call', { callId: 'earlier', name: 'ask_user_question' })
+  await event('turn/start', {})
   assert.equal(await reached(), 'DIV')
   // The turn ends, as when the Agent asks the user to log in, and the user works in the page.
   await page('fixture.running("session-a", false)')

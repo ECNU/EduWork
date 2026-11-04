@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-04T09:39:45.188Z",
-  "fileSetSHA256": "759e8e5ca55fb0703eecfa4bf6c3a11c70251dca2b80cdaa2c7f6530f7bdacb0",
+  "createdAt": "2026-11-05T03:36:37.621Z",
+  "fileSetSHA256": "b50864158b93a643274b0c69739a6d4aa5786653a91bee35f129d99f3455adab",
   "files": [
     {
       "path": ".gitattributes",
@@ -1457,7 +1457,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
-      "sha256": "c09d5c6e7be6281b78525bbcf366c378e4f052f0a9975a3a3b95a6136bad5331"
+      "sha256": "f156c654b85d04157b9b68d55ba0dfef9bdca72895c69397261a3f8ba66c5b06"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
@@ -1529,7 +1529,7 @@
     },
     {
       "path": "dsh-electron/tests/sidebar-browser.test.mjs",
-      "sha256": "e7f810e313b3f1a16fe7a9a97dc1e3521bb49998289314bb5546062514af0421"
+      "sha256": "58021d44b68eb9c3c23635e1105d7aaa1aa183b9fd1a56500ef65523df351faf"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
@@ -2153,7 +2153,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
-      "sha256": "869d3df3e021db48532541f8a486a3cf53382a313dd05e3268c291b56042da64"
+      "sha256": "619566ccf0c7764b228a3bd61fbdf0fd1c2a048b4ed08f690189205dfff5af38"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar.js",
@@ -2165,15 +2165,15 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "4bfc9feb19fa354af2e3f994e6de59e38088036cd984ff88bd14cbe56ef45b5b"
+      "sha256": "607056b8b9cd004ddd4c241cc6a33f4b2c55c3b267a0f1f237cf230ce5cb0979"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "ac38fafc7745641d299d0340583858a0519eefedd2224b7d3e343121328dfaeb"
+      "sha256": "14c2709a081a075eff82a16b38d864dd9daf9743aa4cf0526e7c66bdeb640ed0"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
-      "sha256": "345ee3850a756b55fad8efb61deaabf7d2b91e6538a043706083da3dcb718a80"
+      "sha256": "ee8e6952badfb150b05d92de452c4c525c8cdc8dfaa26492f4e232c609f51642"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
