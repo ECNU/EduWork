@@ -1,8 +1,18 @@
 import assert from 'node:assert/strict'
+import { extensions } from '../dsh-plugins/client-ui-extensions/lib/catalog.js'
+
+export function productOptionalBundlePolicy(locks) {
+  const offered = new Set(locks.map(lock => lock.name))
+  return {
+    optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision', ...extensions.map(row => row.name)].filter(name => offered.has(name)),
+    disabledByDefaultBundles: extensions.filter(row => !row.defaultEnabled && offered.has(row.name)).map(row => row.name),
+  }
+}
 
 // Distribution packaging policy only. Never write a runtime deny-list: the
 // native plugin manager remains free to install these bundles in a user profile.
-export function selectOptionalProductBundles({ locks, optionalBundles, excluded = [], dependencyLock }) {
+export function selectOptionalProductBundles({ locks, optionalBundles, disabledByDefaultBundles = [], excluded = [], dependencyLock }) {
+  assert.ok(Array.isArray(disabledByDefaultBundles) && disabledByDefaultBundles.every(name => optionalBundles.includes(name)), 'Default-disabled bundles must be optional')
   assert.ok(Array.isArray(excluded) && excluded.every(name => typeof name === 'string'), 'excludedOptionalBundles must be an array of package names')
   assert.equal(new Set(excluded).size, excluded.length, 'Duplicate excluded optional bundle')
   for (const name of excluded) {
@@ -20,6 +30,7 @@ export function selectOptionalProductBundles({ locks, optionalBundles, excluded 
   return {
     locks: locks.filter(lock => !omitted.has(lock.name)),
     optionalBundles: optionalBundles.filter(name => !omitted.has(name)),
+    disabledByDefaultBundles: disabledByDefaultBundles.filter(name => !omitted.has(name)),
     excludedOptionalBundles: [...excluded],
   }
 }

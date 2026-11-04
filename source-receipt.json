@@ -8413,8 +8413,8 @@
     {
       "path": "scripts/dev-studio-web.mjs",
       "kind": "inactive-legacy-institution-references",
-      "reason": "Development-only Studio launcher references institution packages for local testing",
-      "sha256": "e19b5627fac1637e59696e260f9a1f9b9bd0b7d53cac84dc00f296b6ea0e51aa"
+      "reason": "Development-only Studio launcher retains unchanged legacy institution references for local testing. The native product branch now forwards the optional-bundle disabled defaults to writeNativeProfile; this does not add institution registrations, endpoints or credential exemptions.",
+      "sha256": "b030f5857e4ef015df9ac8ac34089ce27c2225b2c705861b6d36f98ccbcb1125"
     },
     {
       "path": "scripts/install-bundled-dsh-skills.ps1",
