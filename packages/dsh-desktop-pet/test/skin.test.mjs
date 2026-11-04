@@ -12,7 +12,7 @@ const skins = fileURLToPath(new URL('../skins/', import.meta.url))
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
 const minimal = (extra = {}) => ({ schemaVersion: 1, id: 'mini', name: 'Mini', frame: { width: 192, height: 208 }, animations: { idle: { image: 'idle.svg' } }, ...extra })
 
-const LICENSES = { 'eduwork-page': 'CC-BY-4.0', 'eduwork-page-blue': 'CC-BY-4.0', 'ecnu-huashi': 'LicenseRef-ECNU-Mascot', 'ecnu-huashi-girl': 'LicenseRef-ECNU-Mascot', dafeiyu: 'MIT' }
+const LICENSES = { 'eduwork-page': 'CC-BY-4.0', 'eduwork-page-blue': 'CC-BY-4.0', 'ecnu-huashi': 'LicenseRef-ECNU-Mascot', 'ecnu-huashi-girl': 'CC-BY-SA-4.0', dafeiyu: 'MIT' }
 // Skins drawn by a script in this package; dafeiyu and ecnu-huashi-girl ship ready-made sprite sheets.
 const GENERATED = { 'build-page-skins.mjs': ['eduwork-page', 'eduwork-page-blue'], 'build-huashi-skin.mjs': ['ecnu-huashi'] }
 

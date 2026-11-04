@@ -49,6 +49,6 @@ npm pack --ignore-scripts
 
 构建仅生成设置页 `lib/client.js`，Host 模块与形象随包提供。测试默认使用本包锁定的真实 DSH 依赖；设置 `EDUWORK_TEST_RUNTIME` 为产品的 `d` 目录可检查装配后的 Runtime。
 
-小页和小花狮由 `scripts/build-page-skins.mjs` 与 `scripts/build-huashi-skin.mjs` 生成；修改脚本后执行 `npm run build:skins`。大肥鱼使用 whale-girl 的 PNG 立绘，花狮娘使用 ChatGPT 生图生成的 WebP 精灵图。新形象通过 PR 内置，不提供形象包导入功能。
+小页和小花狮由 `scripts/build-page-skins.mjs` 与 `scripts/build-huashi-skin.mjs` 生成；修改脚本后执行 `npm run build:skins`。大肥鱼使用 whale-girl 的 PNG 立绘。花狮娘由 **Emily** 创作，采用 [CC BY-SA 4.0](https://creativecommons.org/licenses/by-sa/4.0/)；JunieXD 使用 ChatGPT 生图适配的 WebP 精灵图沿用该许可，完整署名与改编说明见 [素材许可](skins/LICENSE)。新形象通过 PR 内置，不提供形象包导入功能。
 
 [包维护与发布](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES.md) · [变更记录](CHANGELOG.md) · [代码许可](LICENSE)

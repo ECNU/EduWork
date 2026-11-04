@@ -6,11 +6,11 @@
     "en": "Huashi Girl"
   },
   "description": {
-    "zh-CN": "华东师范大学吉祥物小花狮的拟人形象。",
-    "en": "A girl version of the East China Normal University mascot."
+    "zh-CN": "Emily 创作的花狮娘形象。",
+    "en": "Huashi Girl, created by Emily."
   },
-  "author": "JunieXD (ChatGPT image generation); character © East China Normal University",
-  "license": "LicenseRef-ECNU-Mascot",
+  "author": "Emily",
+  "license": "CC-BY-SA-4.0",
   "frame": {
     "width": 416,
     "height": 512
