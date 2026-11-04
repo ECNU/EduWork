@@ -42,6 +42,9 @@ const run = code => new Promise((resolve, reject) => {
 })
 const page = code => run(`return window.webContents.executeJavaScript(${JSON.stringify(code)})`)
 const throttled = () => run('return window.webContents.getBackgroundThrottling()')
+// Each Sidebar guest's address and whether it is throttled, in address order.
+const guestsThrottled = () => run(`return webContents.getAllWebContents().filter(guest => guest.getType() === 'webview')
+  .map(guest => [new URL(guest.getURL()).pathname, guest.getBackgroundThrottling()]).sort(([a], [b]) => a.localeCompare(b))`)
 const connect = async session => {
   const browser = await load('playwright-core').chromium.connectOverCDP(`${endpoint}/${session}`)
   return { browser, context: browser.contexts()[0] }
@@ -190,7 +193,9 @@ test('hidden tabs, a collapsed Sidebar and a conversation in the background keep
   assert.equal(await page('document.querySelector(".panel[data-sidebar-right-session=session-a]").hasAttribute("data-sidebar-right-open")'), false)
   await page('fixture.show("session-b")')
   for (const tab of context.pages()) await greet(tab, 'background')
+  // The window and this conversation's tabs, which a covered window would stop otherwise; another conversation's tab rests.
   assert.equal(await throttled(), false)
+  assert.deepEqual(await guestsThrottled(), [['/', false], ['/', false], ['/second', true]])
   // Layout changes on screen, such as the user collapsing and reopening the Sidebar, keep it painting.
   for (const expanded of [false, true]) {
     await page(`fixture.expand("session-b", ${expanded})`)
@@ -210,6 +215,7 @@ test('hidden tabs, a collapsed Sidebar and a conversation in the background keep
   await browser.close()
   await wait(2000)
   assert.equal(await throttled(), true)
+  assert.ok((await guestsThrottled()).every(([, value]) => value))
   assert.equal(await page('document.querySelectorAll("[data-eduwork-agent-render], [data-eduwork-agent-acting], [data-eduwork-agent-background]").length'), 0)
   await page('fixture.show("session-a"); fixture.expand("session-a", true)')
 })

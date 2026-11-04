@@ -91,18 +91,21 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   }
 
   // While an Agent works in a conversation, its tabs keep rendering even in
-  // the background and the window keeps painting when covered or hidden:
-  // Playwright waits for animation frames before it clicks. The tab it acts
-  // on visibly comes forward for the user. The Agent rests once nothing is in
-  // flight for idleMs, since a command itself may wait for the page to paint.
-  const throttle = () => {
+  // the background, and the window and those tabs, each throttled on its own,
+  // keep painting when covered or hidden: Playwright waits for animation
+  // frames before it clicks. The tab it acts on visibly comes forward for the
+  // user. The Agent rests once nothing is in flight for idleMs, since a
+  // command itself may wait for the page to paint.
+  const throttle = target => {
     const window = getWindow()
     if (window && !window.isDestroyed()) window.webContents.setBackgroundThrottling(active === 0)
+    for (const page of target.pages.values()) page.guest.setBackgroundThrottling(!target.active)
   }
   const touch = (target, page, visible) => {
     if (!target.active) {
       target.active = true
-      if (active++ === 0) throttle()
+      active++
+      throttle(target)
       tell({ type: 'show', sessionId: target.sessionId })
     }
     if (!visible || page === target.current) return
@@ -114,7 +117,8 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
     if (!target.active) return
     target.active = false
     target.current = undefined
-    if (--active === 0) throttle()
+    active--
+    throttle(target)
     tell({ type: 'idle', sessionId: target.sessionId })
   }
   const disconnect = target => {
@@ -341,6 +345,7 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
         if (target.current === page) target.current = undefined
       })
       target.pages.set(page.targetId, page)
+      if (target.active) guest.setBackgroundThrottling(false)
       if (target.client) {
         if (target.discover) send(target, { method: 'Target.targetCreated', params: { targetInfo: info(page) } })
         if (target.autoAttach) attachSession(page)

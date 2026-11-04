@@ -2,7 +2,7 @@
 // and renderer half around a stand-in Sidebar (sidebar-browser-app.html).
 // Over Node's IPC channel it sends {ready} once, then runs the code of each
 // {id, code} message as an async function of { window, broker } and replies.
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, webContents } from 'electron'
 import { readFile } from 'node:fs/promises'
 import { createRequire, registerHooks } from 'node:module'
 import { dirname, join } from 'node:path'
@@ -52,7 +52,7 @@ void app.whenReady().then(async () => {
   })
   const environment = await broker.listen()
   process.on('message', async ({ id, code }) => {
-    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker }) => { ${code} })(scope)`)({ window, broker }) }) }
+    try { process.send({ id, value: await new Function('scope', `return (async ({ window, broker, webContents }) => { ${code} })(scope)`)({ window, broker, webContents }) }) }
     catch (error) { process.send({ id, error: error.message }) }
   })
   await window.loadURL('dsh-app://app/index.html')
