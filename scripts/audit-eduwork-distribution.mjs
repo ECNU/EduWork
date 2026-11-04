@@ -87,7 +87,9 @@ function collect(root, errors = [], skipped = new Set()) {
       const item = lstatSync(file)
       if (item.isSymbolicLink()) { errors.push(`${path}: filesystem link is not a portable source input`); continue }
       if (item.isDirectory()) {
-        if (generatedSegments.has(name)) { skipped.add(path); continue }
+        // The private side-chat experiment builds locally before npm pack;
+        // its ignored bundle is not part of the portable source snapshot.
+        if (generatedSegments.has(name) || path === 'packages/dsh-side-chat/lib') { skipped.add(path); continue }
         pending.push(file)
       } else if (item.isFile()) result.push(path)
       else errors.push(`${path}: unsupported filesystem input`)

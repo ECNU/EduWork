@@ -23,5 +23,5 @@
     "scope": "generic-desktop",
     "capabilities": ["community-plugin-management"]
   },
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }

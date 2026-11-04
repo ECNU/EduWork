@@ -30,6 +30,11 @@ await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies, runtim
 await verifyPluginNotificationConsumers(join(dependencies, 'node_modules'), publishedLocks.map(lock => lock.name))
 const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.pinned.dsh', runtimeReceipt.dshVersion)
 await mkdir(repository)
+// The staged extensions inherit the repository license and historical notices.
+// Preserve them here so assembly never substitutes a different source revision.
+for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md']) {
+  await copyFile(join(sourceRepository, name), join(repository, name))
+}
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
 for (const folder of ['dsh-plugins', 'config/distributions']) {

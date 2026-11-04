@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-knowledge-studio",
-  "version": "0.6.2",
+  "version": "0.6.3",
   "eduworkNotificationProtocol": 1,
   "dshKnowledgeStudio": {
     "capabilities": [
@@ -39,7 +39,9 @@
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "CHANGELOG.md",
-    "THIRD_PARTY_LICENSES.txt"
+    "THIRD_PARTY_LICENSES.txt",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "dsh": {
     "bundle": {
@@ -198,14 +200,14 @@
     "access": "public",
     "provenance": true
   },
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "dependencies": {
     "playwright-core": "^1.63.0",
     "react-dom": "18.3.1",
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
     "unified": "11.0.5",
-    "@eduwork/dsh-artifact-services": "0.3.1"
+    "@eduwork/dsh-artifact-services": "0.3.2"
   },
   "workspaces": [
     "packages/artifact-services"

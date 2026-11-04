@@ -212,6 +212,26 @@
       "root": "core",
       "source": "config/desktop/mac-updates.json",
       "target": "desktop/mac-updates.json"
+    },
+    {
+      "root": "core",
+      "source": "LICENSE",
+      "target": "licenses/EduWork/LICENSE"
+    },
+    {
+      "root": "core",
+      "source": "LICENSE-MIT",
+      "target": "licenses/EduWork/LICENSE-MIT"
+    },
+    {
+      "root": "core",
+      "source": "LICENSING.md",
+      "target": "licenses/EduWork/LICENSING.md"
+    },
+    {
+      "root": "core",
+      "source": "THIRD_PARTY_NOTICES.md",
+      "target": "licenses/EduWork/THIRD_PARTY_NOTICES.md"
     }
   ],
   "patches": [
