@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 import { attachmentNames, decodeBuffer, formatAddress, htmlToText, normalizeBody, pickBodyPart, readMessage, stripQuoted } from '../lib/message.js'
+import { readingPayload } from '../lib/text.js'
 
 /**
  * A stand-in for a connected ImapFlow client. `bodyStructure` is the only part
@@ -140,3 +141,17 @@ test('a message with no recognisable part falls back to the raw source', async (
   const message = await readMessage(fakeClient({ bodyStructure: { type: 'message/rfc822', parameters: {} }, source }), 'INBOX', 7)
   assert.equal(message.body, '回退正文第一行\n第二行')
 })
+
+test('a long single-part body still reaches the panel within the target budget', async () => {
+  // The preview travels back as the click target, which the registry caps at
+  // 4096 characters of JSON. A long mail must be clipped, not dropped.
+  const long = Array.from({ length: 700 }, (_, index) => `第${index + 1}段：这是一封比较长的邮件正文，用来确认截断之后预览里仍然有内容可看。`).join('\n\n')
+  assert.ok(long.length > 20_000, 'fixture must exceed the body cap')
+  const message = await readMessage(fakeClient({ bodyStructure: { type: 'text/plain', parameters: { charset: 'utf-8' } }, parts: { 1: long } }), 'INBOX', 7)
+  assert.equal(message.truncated, true)
+  const payload = readingPayload(message, { folder: 'INBOX', uid: 7 })
+  assert.ok(payload.text.length > 0, 'a long body must not become an empty preview')
+  assert.ok(JSON.stringify(payload).length <= 4096, 'the payload must fit the protocol target')
+  assert.ok(payload.text.startsWith('第1段'))
+})
+
