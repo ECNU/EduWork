@@ -6,8 +6,8 @@ An optional EduWork plugin for discovering local Codex and Cursor Agent CLIs, ch
 
 ## Install and use
 
-1. Prepare the plugin using the [build guide](DEVELOPMENT.md), install its local directory through EduWork's plugin page, and restart. It does not change the edition's default composition.
-2. Open Settings → External agents. Discovery only checks common directories and PATH; it executes nothing. Paths are candidates: confirm they belong to trusted installations.
+1. In editions bundling this plugin, open Plugins → EduWork extensions, enable External agents and choose Configure. First-time preinstallation starts disabled, disabling preserves connection settings, and upgrades retain existing selections. For source trials, follow the [build guide](DEVELOPMENT.md) and install the local directory from the Plugins page.
+2. The same form is available in Settings → External agents and in the plugin details in standalone DSH. Discovery only checks common directories and PATH; it executes nothing. Paths are candidates: confirm they belong to trusted installations.
 3. Log in through the agent itself, check the connection, then explicitly enable it. Main model login is separate; this plugin neither stores nor forwards login credentials.
 4. Ask the main chat to delegate, for example “Use subagent_codex to analyze this text.” Tasks, the subagent list and result notifications remain DSH-owned; no separate scheduler or task panel is added.
 

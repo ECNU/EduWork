@@ -16,6 +16,13 @@ export async function apply(ctx) {
     inner.slots.inject('settings.section', () => inner.slots.register({
       name: 'settings.section', id: NS, order: 12, locale: NS, label: () => t('connections'), inject: () => ({manage, t}),
     }, Settings))
+    // Standalone DSH installs use the official bundle page. EduWork's catalog
+    // owns a separate root slot so a disabled bundle never owns its own switch.
+    for (const name of ['plugins.bundle.config', 'eduwork.extensions.config']) {
+      inner.slots.inject(name, () => inner.slots.register({
+        name, key: '@eduwork/dsh-external-agents', locale: NS, inject: () => ({manage, t}),
+      }, Settings))
+    }
   })
   ctx.effect(() => {
     const style = document.createElement('style')

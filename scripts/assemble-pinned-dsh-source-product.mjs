@@ -20,7 +20,7 @@ import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs, publishedPackageFiles, verifyPublishedPackageFiles } from './published-package-inputs.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
-import { selectOptionalProductBundles } from './optional-product-bundles.mjs'
+import { selectOptionalProductBundles, productOptionalBundlePolicy } from './optional-product-bundles.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output', 'edition'].map(key => [key, { type: 'string' }])) })
 if (['runtime', 'source', 'dependencies', 'host', 'output'].some(key => !values[key])) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
@@ -39,8 +39,8 @@ const allPublishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
 await verifyPublishedPackageInputs({ locks: allPublishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
 const pluginInstallLock = await readFile(join(paths.dependencies, 'package-lock.json'))
 const edition = paths.edition ? await json(join(paths.edition, 'edition/distribution.json')) : {}
-const { locks: publishedLocks, optionalBundles, excludedOptionalBundles } = selectOptionalProductBundles({
-  locks: allPublishedLocks, optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision'].filter(name => allPublishedLocks.some(lock => lock.name === name)),
+const { locks: publishedLocks, optionalBundles, disabledByDefaultBundles, excludedOptionalBundles } = selectOptionalProductBundles({
+  locks: allPublishedLocks, ...productOptionalBundlePolicy(allPublishedLocks),
   excluded: edition.excludedOptionalBundles, dependencyLock: JSON.parse(pluginInstallLock),
 })
 const publishedFiles = await publishedPackageFiles(publishedLocks, join(paths.dependencies, 'node_modules'))
@@ -100,7 +100,7 @@ const composition = [...mergeDistributionConfigPatches([{ insert }], distributio
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'npm', published: false,
-  bundles, optionalBundles, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
+  bundles, optionalBundles, disabledByDefaultBundles, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
   sourcePackages, externalPackages: publishedLocks, publishedPackageFiles: publishedFiles,
   pluginInstallLockSHA256: createHash('sha256').update(pluginInstallLock).digest('hex'),
   omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
