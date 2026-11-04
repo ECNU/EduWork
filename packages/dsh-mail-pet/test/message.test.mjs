@@ -1,6 +1,29 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { attachmentNames, decodeBuffer, formatAddress, htmlToText, normalizeBody, pickBodyPart, stripQuoted } from '../lib/message.js'
+import { attachmentNames, decodeBuffer, formatAddress, htmlToText, normalizeBody, pickBodyPart, readMessage, stripQuoted } from '../lib/message.js'
+
+/**
+ * A stand-in for a connected ImapFlow client. `bodyStructure` is the only part
+ * of the message that matters here, plus what `download` returns for a part id.
+ */
+function fakeClient({ bodyStructure, parts = {}, source, seen = [] }) {
+  return {
+    getMailboxLock: async (folder, options) => {
+      seen.push(['lock', folder, options.readOnly])
+      return { release: () => seen.push(['release']) }
+    },
+    fetchOne: async (_range, query) => {
+      if (query.source) return source === undefined ? false : { source: Buffer.from(source, 'utf8') }
+      return { uid: 7, envelope: { subject: '主题', from: [{ name: '张示例', address: 'z@example.com' }], date: new Date('2026-11-02T05:33:00Z') }, bodyStructure }
+    },
+    download: async (_range, part) => {
+      seen.push(['download', part])
+      const value = parts[part]
+      if (value === undefined) throw new Error(`unexpected part ${part}`)
+      return { content: (async function* () { yield Buffer.from(value, value.startsWith('=') ? 'utf8' : 'utf8') })() }
+    },
+  }
+}
 
 test('a GBK body decodes instead of turning into replacement characters', () => {
   // "中文测试" in GB18030; Chinese enterprise mail still sends this charset.
@@ -90,4 +113,30 @@ test('a body without a quote chain is left untouched', () => {
 test('a body that is entirely a quote is not emptied', () => {
   const body = '> 只有引用\n> 第二行'
   assert.equal(stripQuoted(body), body)
+})
+
+test('a single-part message reads its body instead of coming up empty', async () => {
+  // ImapFlow only numbers the nodes below the root, so these structures carry no
+  // `part`. Before the fix the preview showed "（没有可预览的正文）" for every
+  // plain-text or single-part HTML mail.
+  const plain = { type: 'text/plain', parameters: { charset: 'utf-8' } }
+  const html = { type: 'text/html', parameters: { charset: 'utf-8' } }
+  assert.deepEqual(pickBodyPart(plain), { part: '1', type: 'text/plain', charset: 'utf-8' })
+  assert.deepEqual(pickBodyPart(html), { part: '1', type: 'text/html', charset: 'utf-8' })
+
+  const seen = []
+  const message = await readMessage(fakeClient({ bodyStructure: plain, parts: { 1: '第一段\n第二段' }, seen }), 'INBOX', 7)
+  assert.equal(message.body, '第一段\n第二段')
+  assert.equal(message.subject, '主题')
+  assert.equal(message.from, '张示例 <z@example.com>')
+  assert.deepEqual(seen, [['lock', 'INBOX', true], ['download', '1'], ['release']])
+
+  const rendered = await readMessage(fakeClient({ bodyStructure: html, parts: { 1: '<p>正文</p>' } }), 'INBOX', 7)
+  assert.equal(rendered.body, '正文')
+})
+
+test('a message with no recognisable part falls back to the raw source', async () => {
+  const source = ['Subject: 原始', 'Content-Type: message/rfc822', '', '回退正文第一行', '第二行'].join('\r\n')
+  const message = await readMessage(fakeClient({ bodyStructure: { type: 'message/rfc822', parameters: {} }, source }), 'INBOX', 7)
+  assert.equal(message.body, '回退正文第一行\n第二行')
 })

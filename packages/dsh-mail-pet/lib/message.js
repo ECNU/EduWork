@@ -62,10 +62,16 @@ export function pickBodyPart(structure) {
       }
       return null
     }
-    if (disposition === 'attachment' || typeof node.part !== 'string') return null
+    if (disposition === 'attachment') return null
+    // ImapFlow numbers only the nodes below the root, so a message that is one
+    // single part has no `part` at all. Its body is BODY[1] (`download` maps "1"
+    // to TEXT for these), and without this fallback the preview came up empty
+    // for every plain-text or single-part HTML mail.
+    const id = typeof node.part === 'string' && node.part !== '' ? node.part : depth === 0 ? '1' : null
+    if (id === null) return null
     const charset = String(node.parameters?.charset ?? 'utf-8')
-    if (type === 'text/plain') return { part: node.part, type, charset }
-    if (type === 'text/html' && html === null) html = { part: node.part, type, charset }
+    if (type === 'text/plain') return { part: id, type, charset }
+    if (type === 'text/html' && html === null) html = { part: id, type, charset }
     return null
   }
   return walk(structure, 0) ?? html
@@ -170,6 +176,22 @@ export function formatAddress(list) {
 }
 
 /**
+ * Last resort when the structure has no usable part: read the message source
+ * and keep what follows the header block. Bounded, so an unrecognised message
+ * cannot pull an attachment through this path.
+ */
+async function readRawSource(client, uid, max) {
+  const message = await client.fetchOne(String(uid), { source: true }, { uid: true, maxBytes: Math.max(max * 4, 65_536) })
+  const source = message?.source
+  if (source === undefined || source === null) return ''
+  const raw = decodeBuffer(Buffer.isBuffer(source) ? source : Buffer.from(String(source)), 'utf-8')
+  const split = raw.search(/\r?\n\r?\n/u)
+  if (split < 0) return ''
+  const body = raw.slice(split).replace(/^\r?\n\r?\n/u, '')
+  return /<html|<body|<div\b|<p[ >]/iu.test(body) ? htmlToText(body) : body
+}
+
+/**
  * Fetch one message for the preview. The caller owns the mailbox lock, so this
  * function only reads: envelope, body structure, one body part.
  * @param {import('imapflow').ImapFlow} client connected client, mailbox locked
@@ -191,6 +213,9 @@ export async function readMessage(client, folder, uid, { max = BODY_LIMIT } = {}
       for await (const chunk of download.content) chunks.push(chunk)
       const decoded = decodeBuffer(Buffer.concat(chunks), part.charset)
       body = part.type === 'text/html' ? htmlToText(decoded) : decoded
+    }
+    else {
+      body = await readRawSource(client, uid, max)
     }
     const { text, truncated } = normalizeBody(stripQuoted(body), { max })
     return {
