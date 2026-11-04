@@ -118,8 +118,8 @@ async function act(run, agent, actions) {
   let tabs = tabCount(await run('browser_tabs', { action: 'list' })) ?? 1
   // The page may have moved on since it was read, as when the user took over.
   const first = actions[0]
-  const gone = await run('browser_evaluate', { function: STILL(seen, { next: needs[first.do]?.includes('ref') ? first.ref : undefined, settle: false }) }).then(answer, () => 'went to another page')
-  if (gone) return finish(run, agent, [`Nothing was done: since you read it, the page ${gone === 'went to another page' ? 'was left for another one' : 'changed'}. Decide again from the page below.`])
+  const gone = await run('browser_evaluate', { function: STILL(seen, { next: needs[first.do]?.includes('ref') ? first.ref : undefined, settle: false, first: true }) }).then(answer, () => 'went to another page')
+  if (gone) return finish(run, agent, [`Nothing was done: since you read it, ${gone === 'went to another page' ? 'the page was left for another one' : gone}. Decide again from the page below.`])
   const report = []
   for (const [i, action] of actions.entries()) {
     const element = seen.refs[action.ref]

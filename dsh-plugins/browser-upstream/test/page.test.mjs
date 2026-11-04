@@ -140,6 +140,33 @@ test('a long page is read around where it is scrolled to', { skip: !(runtime && 
   } finally { await browser.close() }
 })
 
+test('browser_act\'s first check knows the user used the page since it was read', { skip: !(runtime && chromium) }, async () => {
+  const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
+  const browser = await launcher.launch({ executablePath: chromium, headless: true })
+  try {
+    const page = await (await browser.newContext({ viewport: { width: 576, height: 744 } })).newPage()
+    await page.route('https://campus.example/drafts', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><title>草稿</title>
+<label>草稿 <select><option>A</option><option>B</option></select></label> <button>删除</button>` }))
+    await page.goto('https://campus.example/drafts')
+    const read = () => page.evaluate(`(${READ})()`)
+    const still = (seen, first) => page.evaluate(`(${STILL(seen, { next: 2, settle: false, first })})()`)
+    let seen = await read()
+    // Events the page sends itself are not the user's.
+    await page.evaluate(() => document.querySelector('select').dispatchEvent(new Event('input', { bubbles: true })))
+    assert.equal(await still(seen, true), '')
+    // The user chooses another draft, with the keyboard or the mouse.
+    await page.focus('select')
+    await page.keyboard.press('ArrowDown')
+    assert.equal(await still(seen, true), 'the user used the page')
+    // Between its own steps the Agent's input is its own; a new read starts over.
+    assert.equal(await still(seen, false), '')
+    seen = await read()
+    assert.equal(await still(seen, true), '')
+    await page.mouse.click(5, 5)
+    assert.equal(await still(seen, true), 'the user used the page')
+  } finally { await browser.close() }
+})
+
 test('browser_act\'s check knows a control by the name the page read showed', { skip: !(runtime && chromium) }, async () => {
   const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
   const browser = await launcher.launch({ executablePath: chromium, headless: true })
@@ -148,16 +175,21 @@ test('browser_act\'s check knows a control by the name the page read showed', { 
     await page.route('https://campus.example/drafts', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><title>草稿</title>
 <input type="button" value="删除草稿 A"> <span id="what">删除草稿 A</span><button aria-labelledby="what">×</button>
 <nav id="menu" style="display: none"><a href="https://campus.example/about" style="text-transform: uppercase">About us</a></nav>
-<div>姓名<input><span id="error"></span></div>` }))
+<div>姓名<input><span id="error"></span></div>
+<div><input placeholder="学号"></div>` }))
     await page.goto('https://campus.example/drafts')
     const seen = await page.evaluate(`(${READ})()`)
     const ref = (kind, name) => Number(Object.entries(seen.refs).find(([, r]) => r.kind === kind && r.name === name)[0])
     const still = next => page.evaluate(`(${STILL(seen, { next, settle: false })})()`)
-    const [input, labelled, about, field] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us'), ref('textbox', '姓名')]
+    const [input, labelled, about, field, hinted] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us'), ref('textbox', '姓名'), ref('textbox', '学号')]
     assert.deepEqual([await still(input), await still(labelled), await still(about)], ['', '', ''])
     // A message shown beside a field leaves it the same field.
     await page.evaluate(() => { document.getElementById('error').textContent = '必填' })
     assert.equal(await still(field), '')
+    // A field whose caption or hint now asks for something else is not the one read.
+    await page.evaluate(() => { document.getElementById('error').parentElement.firstChild.textContent = '身份证号' })
+    await page.evaluate(() => { document.querySelector('[placeholder]').placeholder = '手机号' })
+    assert.deepEqual([await still(field), await still(hinted)], ['the page changed', 'the page changed'])
     // A menu shown with its text in capitals is the same link; a button named for another draft is not the one read.
     await page.evaluate(() => { document.getElementById('menu').style.display = 'block' })
     assert.equal(await still(about), '')

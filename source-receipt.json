@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-05T03:36:37.621Z",
-  "fileSetSHA256": "b50864158b93a643274b0c69739a6d4aa5786653a91bee35f129d99f3455adab",
+  "createdAt": "2026-11-05T03:36:38.195Z",
+  "fileSetSHA256": "5cbe62c4e28c208a1f5f04c4a03045dfb61be9ba4e2ea55027d4a38604e12181",
   "files": [
     {
       "path": ".gitattributes",
@@ -2141,7 +2141,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/page.js",
-      "sha256": "4c4522cbdc9ea9ad2e90cb164ce8e20b9db416980d60ac52d811b8c36e5b7051"
+      "sha256": "6dd8a2fb01106474b1b51381c6c8ba8fe33e29af632719d589ee39096637a108"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
@@ -2149,7 +2149,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/read-act.js",
-      "sha256": "9dc6fc0b073fc95b3b3b3d9df6a02690a2b46d323376e2c298d1a3f1fcade53a"
+      "sha256": "d04cdeb6a45872430511aba74ec2928940e1a0e0bced47476188b9e1b62643dc"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
@@ -2165,11 +2165,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "607056b8b9cd004ddd4c241cc6a33f4b2c55c3b267a0f1f237cf230ce5cb0979"
+      "sha256": "2e5a08736e8c13d5a3e3ec342c0678c5ac70ec9de0ec01d4a2240b65e147ae94"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "14c2709a081a075eff82a16b38d864dd9daf9743aa4cf0526e7c66bdeb640ed0"
+      "sha256": "ccce6d9cf4f26d8a3f21cce97b551d7102aa9461955b7e06370ae852ba21c827"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
@@ -2177,7 +2177,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
-      "sha256": "16bd2520039c487072989cf4843049035276c23768f11ecb83e3b65597445d05"
+      "sha256": "8ac58e40660a905e695a68e2aa6abb30dff389c67d4b1d6a1a66b834fc841330"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
@@ -2185,7 +2185,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "6f2d5445ca4644dc4b512454eec01d08b9b06c33c0ddcc7e4620da744b2c257e"
+      "sha256": "a267dad4c60ab7d41b4a29ecb65ea0e0bd061b8fe110df79f959edd4196d0818"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
@@ -8700,7 +8700,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "6f2d5445ca4644dc4b512454eec01d08b9b06c33c0ddcc7e4620da744b2c257e",
+      "sha256": "a267dad4c60ab7d41b4a29ecb65ea0e0bd061b8fe110df79f959edd4196d0818",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     }

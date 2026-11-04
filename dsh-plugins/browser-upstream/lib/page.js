@@ -8,39 +8,47 @@
 // opened by their address), and the page behind a modal dialog. Each read also
 // tags the document and what each numbered element says, so browser_act can
 // tell the page it read from a new document at the same address or a control
-// the page has since put to another use. These scripts run in the page's own
-// world: the tags tell ordinary changes apart, not a page that forges them, as
-// a page decides what its own controls do anyway.
+// the page has since put to another use, and notes the user's own input from
+// then on, which may have changed what the Agent read, such as the option
+// chosen. These scripts run in the page's own world: the tags tell ordinary
+// changes apart, not a page that forges them, as a page decides what its own
+// controls do anyway.
 export const REF = 'data-eduwork-ref'
 const READ_ID = '__eduworkRead'
 const SAYS = '__eduworkSays'
+const USED = '__eduworkUsed'
 // How the page script names an element, which browser_act's check repeats.
 const NAMES = String.raw`
   const FIELD = 'input:not([type=hidden], [type=submit], [type=button], [type=reset], [type=image]), select, textarea';
   const clean = s => (s || '').replace(/\s+/g, ' ').trim();
   const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
-  const own = node => { const c = node.cloneNode(true); c.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(c.textContent); };
+  const words = fragment => { fragment.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(fragment.textContent); };
+  const own = node => words(node.cloneNode(true));
   // An element is called by the name the page gives it (aria-labelledby,
   // aria-label, a label), a field without one by the short caption shown with
-  // it in a box of its own, as many pages lay out fields without labels. What a
-  // field holds is never its name: that could be a password.
+  // it in a box of its own, as many pages lay out fields without labels: the
+  // text before it, as a message the page adds, such as "required", goes after
+  // it; a checkbox's after it. What a field holds is never its name: that
+  // could be a password.
   const given = el => clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '))
     || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
-  const name = el => {
-    if (given(el)) return cut(given(el), 80);
-    if (el.matches(FIELD)) {
-      for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
-        const caption = own(up);
-        if (caption.length > 20) break;
-        if (caption) return caption;
-      }
+  const caption = el => {
+    const after = el.type === 'checkbox' || el.type === 'radio';
+    for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
+      const range = document.createRange();
+      range.selectNodeContents(up);
+      if (after) range.setStartAfter(el); else range.setEndBefore(el);
+      const found = words(range.cloneContents());
+      if (found.length > 20) break;
+      if (found) return found;
     }
-    return cut(clean((el.matches(FIELD) ? el.placeholder : el.innerText || el.value) || el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
+    return '';
   };
+  const name = el => cut(given(el) || (el.matches(FIELD) ? caption(el) || clean(el.placeholder) : clean(el.innerText || el.value))
+    || clean(el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
   // What an element is and is called, in any case, as showing a hidden menu can
-  // change the case of its text; a field only by the name the page gives it,
-  // as a message shown beside it, such as "required", changes its caption.
-  const says = el => el.tagName + ' ' + (el.matches(FIELD) ? el.type + ' ' + given(el) : name(el)).toLowerCase();
+  // change the case of its text.
+  const says = el => el.tagName + ' ' + (el.matches(FIELD) ? el.type + ' ' : '') + name(el).toLowerCase();
 `
 
 export const READ = String.raw`async () => {
@@ -56,6 +64,9 @@ export const READ = String.raw`async () => {
   const REF = 'data-eduwork-ref';
   const read = Math.random().toString(36).slice(2);
   document[${JSON.stringify(READ_ID)}] = read;
+  // The Agent's input comes as the user's would, but only while it acts, after which it reads again.
+  if (!(${JSON.stringify(USED)} in document)) for (const type of ['pointerdown', 'keydown', 'input']) addEventListener(type, event => { if (event.isTrusted) document[${JSON.stringify(USED)}] = true; }, true);
+  document[${JSON.stringify(USED)}] = false;
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [contenteditable=true], [role=button], [role=link], [role=textbox], [role=searchbox], [role=tab], [role=switch], [role=option], [role=checkbox], [role=radio], [role=combobox], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=treeitem]';
   const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD', 'CANVAS', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED']);
   const CJK = /[　-ヿ㐀-鿿＀-￯]/;
@@ -255,10 +266,11 @@ export const READ = String.raw`async () => {
  * Before browser_act's next action, in the page: whether it is still the page
  * read, the same document at the same address, after a moment (settle) for a
  * navigation the last action set off to begin, as a form that submits itself
- * when an option is chosen does; whether the element of the next action is
- * still there; and whether typing opened suggestions under a field.
+ * when an option is chosen does; before its first (first), whether the user
+ * has used the page since; whether the element of the next action is still
+ * there; and whether typing opened suggestions under a field.
  */
-export const STILL = (seen, { next, typed, settle = true } = {}) => `async () => {
+export const STILL = (seen, { next, typed, settle = true, first = false } = {}) => `async () => {
   ${settle ? 'await new Promise(resolve => setTimeout(resolve, 120));' : ''}
   // The numbered element, in the document or an open shadow root, as the page read finds it.
   const at = ref => {
@@ -268,6 +280,7 @@ export const STILL = (seen, { next, typed, settle = true } = {}) => `async () =>
   if (location.href !== ${JSON.stringify(seen.url)} || document[${JSON.stringify(READ_ID)}] !== ${JSON.stringify(seen.read)} || document.readyState === 'loading') return 'went to another page';
   ${NAMES}
   const same = el => el && el[${JSON.stringify(SAYS)}] === says(el);
+  if (${first} && document[${JSON.stringify(USED)}]) return 'the user used the page';
   if (${next === undefined ? 'false' : `!same(at(${next}))`}) return 'the page changed';
   if (${typed === undefined ? 'false' : `at(${typed})?.getAttribute('aria-expanded') === 'true'`}) return 'suggestions opened under the field';
   return '';

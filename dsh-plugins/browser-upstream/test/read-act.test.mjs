@@ -25,7 +25,7 @@ const site = () => ({
 function harness({ start = 'search', routes = {}, suggests = false } = {}) {
   const pages = site()
   const tabs = [start]
-  let current = 0
+  let current = 0, used = false
   const calls = []
   const tools = {}
   const text = value => ({ isError: false, value: { content: [{ type: 'text', text: value }] } })
@@ -42,11 +42,12 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
         const name = exec.name.replace('mcp__playwright-mcp__', ''), args = exec.arguments
         calls.push({ name, args })
         const here = pages[tabs[current]]
-        if (name === 'browser_evaluate' && args.function === READ) return text(`### Result\n${JSON.stringify(here)}`)
+        if (name === 'browser_evaluate' && args.function === READ) { used = false; return text(`### Result\n${JSON.stringify(here)}`) }
         if (name === 'browser_evaluate' && args.function.includes('went to another page')) {
           const url = JSON.parse(/location\.href !== ("[^"]*")/u.exec(args.function)[1])
           const next = /!same\(at\((\d+)\)\)/u.exec(args.function)?.[1]
-          const answer = url !== here.url ? 'went to another page' : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
+          const answer = url !== here.url ? 'went to another page' : used && /true && document\["__eduworkUsed"\]/u.test(args.function) ? 'the user used the page'
+            : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
           return text(`### Result\n${JSON.stringify(answer)}`)
         }
         if (name === 'browser_evaluate') return text('### Result\nundefined')
@@ -56,6 +57,8 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
           if (args.action === 'new') { tabs.push(Object.keys(pages).find(key => pages[key].url === args.url)); current = tabs.length - 1 }
           return text(`### Result\n${list()}`)
         }
+        // The Agent's own input counts in the page as the user's would.
+        used = true
         const route = routes[tabs[current]]?.[ref(args.target)]
         if (route === 'error') return { isError: true, error: { message: '### Error\nTimeoutError: locator.click: Timeout 5000ms exceeded.' } }
         if (route?.newTab) { tabs.push(route.newTab); return text(`### Ran Playwright code\n### Open tabs\n${list()}`) }
@@ -72,7 +75,9 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
   const direct = (name, args = {}, parent) => middleware[0]({ name: `mcp__playwright-mcp__${name}`, arguments: args, agent, parent }, async () => text(''))
   // The current tab shows another page, as when the user takes over.
   const visit = key => { tabs[current] = key }
-  return { run, direct, visit, calls, agent, pages, tabs: () => tabs.map(key => pages[key].url), current: () => current }
+  // The user's own input in the page, which its next read no longer counts.
+  const use = () => { used = true }
+  return { run, direct, visit, use, calls, agent, pages, tabs: () => tabs.map(key => pages[key].url), current: () => current }
 }
 
 const actions = calls => calls.filter(c => !['browser_evaluate', 'browser_tabs'].includes(c.name))
@@ -158,6 +163,11 @@ test('browser_act does nothing on a page that is not the one read any more', asy
   await browser.run('browser_read', {})
   delete browser.pages.results.refs[2]
   assert.match(await browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] }), /^Nothing was done: since you read it, the page changed\./u)
+  // The same page, which the user used meanwhile, as to choose another option while the Agent asked them something.
+  browser.pages.results.refs[2] = { kind: 'button', name: '在线试读' }
+  await browser.run('browser_read', {})
+  browser.use()
+  assert.match(await browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] }), /^Nothing was done: since you read it, the user used the page\./u)
   assert.deepEqual(actions(browser.calls), [])
 })
 
