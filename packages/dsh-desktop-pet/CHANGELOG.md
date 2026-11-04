@@ -2,8 +2,8 @@
 
 ## 0.1.3 — 未发布 / Unreleased
 
-- 新增内置形象花狮娘（`ecnu-huashi-girl`），华东师范大学吉祥物小花狮的拟人形象。
-- Add the built-in character Huashi Girl (`ecnu-huashi-girl`), a girl version of the East China Normal University mascot.
+- 新增内置形象花狮娘（`ecnu-huashi-girl`），作者 Emily，素材许可 CC BY-SA 4.0。
+- Add the built-in character Huashi Girl (`ecnu-huashi-girl`) by Emily, with artwork licensed under CC BY-SA 4.0.
 
 ## 0.1.2 — 2026-11-02
 
