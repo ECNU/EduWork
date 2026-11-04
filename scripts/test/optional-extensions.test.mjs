@@ -8,38 +8,22 @@ const ok = value => ({ ok: true, value })
 const deferred = () => { let resolve; const promise = new Promise(r => { resolve = r }); return { promise, resolve } }
 
 test('only a locked, retained optional package gets an opt-in policy', () => {
-  assert.deepEqual(productOptionalBundlePolicy([{ name: '@eduwork/dsh-annotation' }]), { optionalBundles: ['@eduwork/dsh-annotation'], disabledByDefaultBundles: [], optionalEntryDefaults: {} })
+  assert.deepEqual(productOptionalBundlePolicy([{ name: '@eduwork/dsh-annotation' }]), { optionalBundles: ['@eduwork/dsh-annotation'], disabledByDefaultBundles: [] })
   const locks = [{ name }], policy = productOptionalBundlePolicy(locks)
-  assert.deepEqual(policy, { optionalBundles: [name], disabledByDefaultBundles: [name], optionalEntryDefaults: {} })
+  assert.deepEqual(policy, { optionalBundles: [name], disabledByDefaultBundles: [name] })
   const selected = selectOptionalProductBundles({ locks, ...policy, excluded: [name], dependencyLock: { packages: {} } })
   assert.deepEqual(selected.disabledByDefaultBundles, [])
 })
 test('edition policy changes initial enablement without admitting unknown, unpublished or invalid defaults', () => {
-  const annotation = '@eduwork/dsh-annotation', studio = '@eduwork/dsh-knowledge-studio'
-  const builtin = ['@eduwork/dsh-artifact-services', '@eduwork/dsh-oidc', '@eduwork/dsh-memory', '@eduwork/dsh-desktop-pet']
-  const locks = [{ name }, { name: annotation }, { name: studio }, ...builtin.map(name => ({ name }))]
-  assert.deepEqual(productOptionalBundlePolicy(locks, { [annotation]: false, [studio]: false, [name]: true }), {
-    optionalBundles: [annotation, name], disabledByDefaultBundles: [annotation], optionalEntryDefaults: { 'dsh-knowledge-studio': false },
+  const annotation = '@eduwork/dsh-annotation'
+  const builtin = ['@eduwork/dsh-artifact-services', '@eduwork/dsh-oidc', '@eduwork/dsh-memory', '@eduwork/dsh-desktop-pet', '@eduwork/dsh-knowledge-studio', '@eduwork/dsh-decision']
+  const locks = [{ name }, { name: annotation }, ...builtin.map(name => ({ name }))]
+  assert.deepEqual(productOptionalBundlePolicy(locks, { [annotation]: false, [name]: true }), {
+    optionalBundles: ['@eduwork/dsh-decision', annotation, name], disabledByDefaultBundles: [annotation],
   })
   for (const defaults of [[], { unknown: true }, { '@eduwork/dsh-mail': false }, { [name]: 'false' }, ...builtin.map(name => ({ [name]: false }))]) {
     assert.throws(() => productOptionalBundlePolicy(locks, defaults))
   }
-})
-test('product entries use native entry identity, preserve configuration and do not activate duplicate bundles', async () => {
-  const studio = '@eduwork/dsh-knowledge-studio', catalog = [{ name: studio, entryId: 'dsh-knowledge-studio', defaultEnabled: true }]
-  let enabled = true, calls = 0
-  const controller = new ExtensionsController({
-    listBundles: async () => ok([{ name: studio, availability: 'installation', enabled: false }]),
-    listPlugins: async () => ok([{ patchId: 'dsh-knowledge-studio', entryId: 'include:studio', moduleName: studio, enabled }]),
-    setPluginEnabled: async (id, value) => { assert.equal(id, 'include:studio'); calls++; enabled = value; return ok({ application: 'applied' }) },
-    setBundleEnabled: assert.fail,
-  }, catalog)
-  await controller.refresh(); assert.equal(controller.state.rows[0].enabled, true)
-  await controller.setEnabled(studio, false); assert.equal(controller.state.rows[0].enabled, false)
-  await controller.setEnabled(studio, true); assert.equal(controller.state.rows[0].enabled, true)
-  assert.equal(calls, 2)
-  controller.manager.listPlugins = async () => ok([])
-  await controller.refresh(); assert.equal(controller.state.rows.length, 0, 'no product entry in this profile')
 })
 test('lists available custom installation bundles; absent packages and unrelated packages stay out', async () => {
   const controller = new ExtensionsController({ listBundles: async () => ok([bundle(), { name: 'unrelated', availability: 'profile' }]) })

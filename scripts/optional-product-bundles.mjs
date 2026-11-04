@@ -11,9 +11,10 @@ export function productOptionalBundlePolicy(locks, extensionDefaults = {}) {
   const available = extensions.filter(row => offered.has(row.name))
   const enabled = row => extensionDefaults[row.name] ?? row.defaultEnabled
   return {
-    optionalBundles: available.filter(row => !row.entryId).map(row => row.name),
-    disabledByDefaultBundles: available.filter(row => !row.entryId && !enabled(row)).map(row => row.name),
-    optionalEntryDefaults: Object.fromEntries(available.filter(row => row.entryId).map(row => [row.entryId, enabled(row)])),
+    // Decision stays bundled with its own Skill; retain its pre-existing
+    // native activation preferences without exposing a new product switch.
+    optionalBundles: ['@eduwork/dsh-decision', ...available.map(row => row.name)].filter(name => offered.has(name)),
+    disabledByDefaultBundles: available.filter(row => !enabled(row)).map(row => row.name),
   }
 }
 

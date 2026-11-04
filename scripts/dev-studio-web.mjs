@@ -56,7 +56,7 @@ async function setup() {
     if(baseline?.native) {
       const yaml=await import(pathToFileURL(createRequire(join(runtime,'package.json')).resolve('yaml')).href)
       const parse=text=>yaml.parse(text,{customTags:[{tag:'tag:yaml.org,2002:js',resolve:value=>({__jsExpr:value})}]})
-      await writeNativeProfile({profile,home,bundles,optionalBundles:identity.optionalBundles,disabledByDefaultBundles:identity.disabledByDefaultBundles,optionalEntryDefaults:identity.optionalEntryDefaults,
+      await writeNativeProfile({profile,home,bundles,optionalBundles:identity.optionalBundles,disabledByDefaultBundles:identity.disabledByDefaultBundles,
         patches:[...await nativePresetPatches(runtime,parse),...composition,...(config.patches || [])],
         parse,yaml,migrateSchedule:baseline.migrateSchedule===true,builtinSchedule:baseline.builtinSchedule===true})
     } else await save(join(profile,'cordis.patch.yml'),[...composition,...(config.patches || [])])

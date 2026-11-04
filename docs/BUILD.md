@@ -31,7 +31,7 @@
 }
 ```
 
-仅接受[扩展目录](../dsh-plugins/client-ui-extensions/lib/catalog.js)中且已取得 npm 精确锁的包名及布尔值。未指定时沿用目录默认值；排除的包不会显示。用户可在“插件 → EduWork 扩展”中随时启停。默认值只初始化尚无选择的功能，不覆盖已有用户的启停状态；设置页中的邮箱收取、远控连接、桌宠显示等开关保持独立。装配回执记录 `optionalBundles`、`disabledByDefaultBundles` 和 `optionalEntryDefaults`，不修改已发布 npm 包的内容。
+仅接受[扩展目录](../dsh-plugins/client-ui-extensions/lib/catalog.js)中且已取得 npm 精确锁的包名及布尔值。未指定时沿用目录默认值；排除的包不会显示。用户可在“插件 → EduWork 扩展”中随时启停。默认值只初始化尚无选择的功能，不覆盖已有用户的启停状态；设置页中的邮箱收取、远控连接、桌宠显示等开关保持独立。装配回执记录 `optionalBundles`、`disabledByDefaultBundles`，不修改已发布 npm 包的内容。
 
 准备 Git、Node.js 24.22.1 和 Go 1.26.6。Windows 还需 Visual Studio 2022 Build Tools、x64 C++ 工具链、Windows SDK SignTool 和 VC++ Redist 输入；macOS 需 Xcode Command Line Tools 和 Python 3.10 或更新版本来制作 DMG。构建机要能访问锁定的 npm、GitHub 和原生资源。当前 Mac 为 macOS 27.0；macOS 15.4.1 与 27.0 的 Apple Silicon 候选装配和启动已有验证记录，实际覆盖范围以各次回执为准。
 

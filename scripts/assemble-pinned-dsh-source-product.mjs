@@ -39,7 +39,6 @@ await verifyPublishedPackageInputs({ locks: allPublishedLocks, dependencies: pat
 const pluginInstallLock = await readFile(join(paths.dependencies, 'package-lock.json'))
 const edition = paths.edition ? await json(join(paths.edition, 'edition/distribution.json')) : {}
 const policy = productOptionalBundlePolicy(allPublishedLocks, { ...distribution.extensionDefaults, ...edition.extensionDefaults })
-const { optionalEntryDefaults } = policy
 const { locks: publishedLocks, optionalBundles, disabledByDefaultBundles, excludedOptionalBundles } = selectOptionalProductBundles({
   locks: allPublishedLocks, ...policy,
   excluded: edition.excludedOptionalBundles, dependencyLock: JSON.parse(pluginInstallLock),
@@ -102,7 +101,7 @@ const composition = [...mergeDistributionConfigPatches([{ insert }], distributio
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'npm', published: false,
-  bundles, optionalBundles, disabledByDefaultBundles, optionalEntryDefaults, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
+  bundles, optionalBundles, disabledByDefaultBundles, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
   sourcePackages, externalPackages: publishedLocks, publishedPackageFiles: publishedFiles,
   pluginInstallLockSHA256: createHash('sha256').update(pluginInstallLock).digest('hex'),
   omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,
