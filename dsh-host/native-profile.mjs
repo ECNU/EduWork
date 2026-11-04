@@ -186,8 +186,9 @@ export function nativeEntryIds(patches) {
 // Generated deployment defaults are an ordinary bundle BELOW the native user
 // patch. Never regenerate the latter: Settings writes it through configEditor.
 // This profile lives beside the 0.1.5 profile for rollback, in the same DSH home.
-export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
+export async function writeNativeProfile({ profile, home, bundles, optionalBundles = [], disabledByDefaultBundles = [], patches, parse = JSON.parse, yaml, migrateSchedule = false, builtinSchedule = false }) {
   if (!Array.isArray(optionalBundles) || optionalBundles.some(value => typeof value !== 'string' || !bundles.includes(value))) throw new Error('Optional bundles must belong to the product bundle list')
+  if (!Array.isArray(disabledByDefaultBundles) || disabledByDefaultBundles.some(value => !optionalBundles.includes(value))) throw new Error('Default-disabled bundles must be optional product bundles')
   const name = '@eduwork/generated-profile'
   const bundle = join(profile, 'node_modules', name)
   for (const path of [profile, join(profile, 'node_modules'), join(profile, 'node_modules/@eduwork'), bundle]) {
@@ -249,7 +250,9 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
     defaults = inheritedBundles.filter(value => !optionalBundles.includes(value))
     for (const value of optionalBundles) {
       const manuallyDisabled = Object.hasOwn(savedManifest.dependencies ?? {}, value) && !savedBundles.includes(value)
-      if (!provisioned.includes(value) && !manuallyDisabled) defaults.push(value)
+      // Installation and activation are separate. Opt-in defaults never erase
+      // an existing native selection, which is retained in savedBundles below.
+      if (!provisioned.includes(value) && !manuallyDisabled && !disabledByDefaultBundles.includes(value)) defaults.push(value)
     }
     savedManifest.eduwork = { ...savedManifest.eduwork, optionalBundles: [...new Set([...provisioned, ...optionalBundles])] }
   }
