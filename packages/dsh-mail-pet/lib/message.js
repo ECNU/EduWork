@@ -1,0 +1,236 @@
+// Read one message for the preview window: envelope for the header block, the
+// first text part for the body. Every fetch happens under the caller's
+// read-only mailbox lock, so opening a preview never marks mail as seen.
+//
+// The text helpers are exported separately because they are pure: charset
+// decoding and HTML-to-text are the two places where a preview silently goes
+// wrong on real Chinese enterprise mail, so both are unit-tested without IMAP.
+
+export const BODY_LIMIT = 20_000
+export const ATTACHMENT_LIMIT = 20
+
+/** Decode a body part, falling back to UTF-8 when the label is unknown. */
+export function decodeBuffer(buffer, charset) {
+  const label = String(charset ?? '').trim().toLowerCase().replace(/^["']|["']$/gu, '')
+  const candidates = label === '' ? ['utf-8'] : [label, 'utf-8']
+  for (const candidate of candidates) {
+    try {
+      return new TextDecoder(candidate).decode(buffer)
+    }
+    catch {
+      // Unknown charset label: try the next candidate.
+    }
+  }
+  return new TextDecoder('utf-8').decode(buffer)
+}
+
+/** Flatten HTML mail into readable text. Tags are dropped, never executed. */
+export function htmlToText(html) {
+  return String(html ?? '')
+    .replace(/<(?:style|script)[\s\S]*?<\/(?:style|script)>/giu, ' ')
+    .replace(/<(?:br|\/p|\/div|\/tr|\/li|\/h[1-6]|\/blockquote)\s*\/?>/giu, '\n')
+    .replace(/<[^>]*>/gu, ' ')
+    .replace(/&nbsp;/giu, ' ')
+    .replace(/&lt;/giu, '<')
+    .replace(/&gt;/giu, '>')
+    .replace(/&quot;/giu, '"')
+    .replace(/&#(\d+);/gu, (_match, code) => String.fromCodePoint(Number(code)))
+    .replace(/&amp;/giu, '&')
+    .replace(/[ \t\f\v]+/gu, ' ')
+    .replace(/\n{3,}/gu, '\n\n')
+    .replace(/^[ \t]+|[ \t]+$/gmu, '')
+    .trim()
+}
+
+/**
+ * Pick the part a preview should show: the first plain-text leaf, or else the
+ * first HTML leaf. Attachment leaves are skipped so a PDF never becomes the body.
+ * @param {object} structure ImapFlow bodyStructure tree
+ * @returns {{ part: string, type: string, charset: string } | null}
+ */
+export function pickBodyPart(structure) {
+  let html = null
+  const walk = (node, depth) => {
+    if (node === null || typeof node !== 'object' || depth > 12) return null
+    const type = String(node.type ?? '').toLowerCase()
+    const disposition = String(node.disposition ?? '').toLowerCase()
+    const attachments = Array.isArray(node.childNodes) ? node.childNodes : []
+    if (attachments.length > 0) {
+      for (const child of attachments) {
+        const found = walk(child, depth + 1)
+        if (found !== null) return found
+      }
+      return null
+    }
+    if (disposition === 'attachment') return null
+    // ImapFlow numbers only the nodes below the root, so a message that is one
+    // single part has no `part` at all. Its body is BODY[1] (`download` maps "1"
+    // to TEXT for these), and without this fallback the preview came up empty
+    // for every plain-text or single-part HTML mail.
+    const id = typeof node.part === 'string' && node.part !== '' ? node.part : depth === 0 ? '1' : null
+    if (id === null) return null
+    const charset = String(node.parameters?.charset ?? 'utf-8')
+    if (type === 'text/plain') return { part: id, type, charset }
+    if (type === 'text/html' && html === null) html = { part: id, type, charset }
+    return null
+  }
+  return walk(structure, 0) ?? html
+}
+
+/** Attachment file names, in body order, bounded for a preview list. */
+export function attachmentNames(structure) {
+  const names = []
+  const walk = (node, depth) => {
+    if (node === null || typeof node !== 'object' || depth > 12 || names.length >= ATTACHMENT_LIMIT) return
+    const disposition = String(node.disposition ?? '').toLowerCase()
+    const name = node.dispositionParameters?.filename ?? node.parameters?.name
+    if (disposition === 'attachment' && typeof name === 'string' && name.trim() !== '') names.push(name.trim().slice(0, 120))
+    for (const child of Array.isArray(node.childNodes) ? node.childNodes : []) walk(child, depth + 1)
+  }
+  walk(structure, 0)
+  return names
+}
+
+// Reply and forward chains repeat the whole conversation, so the raw body of a
+// three-mail thread is mostly the previous two messages. A preview should show
+// what this message adds, so the body is cut at the first recognised quote
+// header. A body that would become empty is returned unchanged.
+const QUOTE_HEADER = [
+  // `---- 回复的原邮件 ----`, `-----原始邮件-----`, `---- 转发邮件 ----`
+  /^-{2,}\s*(?:回复的原邮件|回复邮件|原始邮件|原始郵件|原邮件|转发邮件|轉寄郵件)\s*-*$/iu,
+  // `-----Original Message-----`, `---------- Forwarded message ----------`
+  /^-{2,}\s*(?:original message|forwarded message|reply message)\s*-*$/iu,
+  // `2026年11月2日 13:19，朱骏宁 <a@b.c> 写道：`
+  /\d{1,4}\s*(?:年|[-/.])\s*\d{1,2}\s*(?:月|[-/.])\s*\d{1,2}\s*日?.{0,160}?(?:写道|wrote)\s*[:：]?$/iu,
+  // `On Mon, Nov 2, 2026 at 1:19 PM Zhu <a@b.c> wrote:`
+  /^(?:在|On)\s.{0,160}?(?:写道|wrote)\s*[:：]?$/iu,
+  /^_{10,}$/u,
+  // A rule wide enough to be a quote separator rather than an underline.
+  /^-{6,}$/u,
+  // RFC 3676 signature delimiter, always the end of the author's own text.
+  /^--\s*$/u,
+]
+
+/** True when every remaining line is quoted or blank: a trailing quote block. */
+function quotedToEnd(lines, start) {
+  for (let index = start; index < lines.length; index += 1) {
+    const line = lines[index].trim()
+    if (line !== '' && !line.startsWith('>')) return false
+  }
+  return true
+}
+
+/**
+ * Drop a reply/forward chain from a message body, keeping only the new text.
+ * The first non-empty line is always kept, so a body that is itself a quote is
+ * still readable.
+ */
+export function stripQuoted(value) {
+  const text = String(value ?? '').replace(/\r\n?/gu, '\n')
+  const lines = text.split('\n')
+  const first = lines.findIndex(line => line.trim() !== '')
+  if (first < 0) return text
+  let cut = lines.length
+  for (let index = first + 1; index < lines.length; index += 1) {
+    const line = lines[index].trim()
+    if (line === '') continue
+    if (QUOTE_HEADER.some(pattern => pattern.test(line))) {
+      cut = index
+      break
+    }
+    // Only cut a quoted tail when the message contributed text before it: a body
+    // that is itself a quote keeps every line, or the preview would be empty.
+    if (line.startsWith('>') && quotedToEnd(lines, index) && lines.slice(first, index).some(row => row.trim() !== '' && !row.trim().startsWith('>'))) {
+      cut = index
+      break
+    }
+  }
+  const kept = lines.slice(0, cut).join('\n').replace(/[ \t\u00a0]+$/gmu, '').trim()
+  return kept === '' ? text : kept
+}
+
+/** Normalise a body for display and cap it so one preview cannot grow unbounded. */
+export function normalizeBody(value, { max = BODY_LIMIT } = {}) {
+  const text = String(value ?? '')
+    .replace(/\r\n?/gu, '\n')
+    .replace(/[ \t]+$/gmu, '')
+    .trim()
+  const points = [...text]
+  if (points.length <= max) return { text, truncated: false }
+  return { text: `${points.slice(0, max).join('')}\n…`, truncated: true }
+}
+
+/** `名字 <地址>` for one address list, joined and bounded. */
+export function formatAddress(list) {
+  if (!Array.isArray(list)) return ''
+  return list
+    .filter(item => item !== null && typeof item === 'object')
+    .slice(0, 8)
+    .map(item => {
+      const name = typeof item.name === 'string' ? item.name.trim() : ''
+      const address = typeof item.address === 'string' ? item.address.trim() : ''
+      return name === '' ? address : address === '' ? name : `${name} <${address}>`
+    })
+    .filter(line => line !== '')
+    .join('，')
+}
+
+/**
+ * Last resort when the structure has no usable part: read the message source
+ * and keep what follows the header block. Bounded, so an unrecognised message
+ * cannot pull an attachment through this path.
+ */
+async function readRawSource(client, uid, max) {
+  const message = await client.fetchOne(String(uid), { source: true }, { uid: true, maxBytes: Math.max(max * 4, 65_536) })
+  const source = message?.source
+  if (source === undefined || source === null) return ''
+  const raw = decodeBuffer(Buffer.isBuffer(source) ? source : Buffer.from(String(source)), 'utf-8')
+  const split = raw.search(/\r?\n\r?\n/u)
+  if (split < 0) return ''
+  const body = raw.slice(split).replace(/^\r?\n\r?\n/u, '')
+  return /<html|<body|<div\b|<p[ >]/iu.test(body) ? htmlToText(body) : body
+}
+
+/**
+ * Fetch one message for the preview. The caller owns the mailbox lock, so this
+ * function only reads: envelope, body structure, one body part.
+ * @param {import('imapflow').ImapFlow} client connected client, mailbox locked
+ * @param {string} folder exact IMAP path
+ * @param {number} uid message UID
+ * @param {{ max?: number }} options body character cap
+ */
+export async function readMessage(client, folder, uid, { max = BODY_LIMIT } = {}) {
+  const lock = await client.getMailboxLock(folder, { readOnly: true })
+  try {
+    const message = await client.fetchOne(String(uid), { uid: true, envelope: true, bodyStructure: true }, { uid: true })
+    if (message === false || message === undefined) return null
+    const envelope = message.envelope ?? {}
+    const part = pickBodyPart(message.bodyStructure)
+    let body = ''
+    if (part !== null) {
+      const download = await client.download(String(uid), part.part, { uid: true })
+      const chunks = []
+      for await (const chunk of download.content) chunks.push(chunk)
+      const decoded = decodeBuffer(Buffer.concat(chunks), part.charset)
+      body = part.type === 'text/html' ? htmlToText(decoded) : decoded
+    }
+    else {
+      body = await readRawSource(client, uid, max)
+    }
+    const { text, truncated } = normalizeBody(stripQuoted(body), { max })
+    return {
+      folder,
+      uid: Number(uid),
+      subject: String(envelope.subject ?? ''),
+      from: formatAddress(envelope.from),
+      to: formatAddress(envelope.to),
+      date: envelope.date instanceof Date ? envelope.date.toISOString() : String(envelope.date ?? ''),
+      body: text,
+      truncated,
+      attachments: attachmentNames(message.bodyStructure),
+    }
+  }
+  finally {
+    lock.release()
+  }
+}
