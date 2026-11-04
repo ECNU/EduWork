@@ -14,6 +14,8 @@ import { webContents } from 'electron'
 import { WebSocketServer } from 'ws'
 
 export const SIDEBAR_BROWSER_ENV = 'EDUWORK_SIDEBAR_BROWSER_SECRET'
+// The user's presses and keys a Sidebar page has had, in its top document (lib/page.js of browser-upstream reads it).
+export const SIDEBAR_INPUT_COUNT = '__eduworkInput'
 export const SIDEBAR_BROWSER_IPC = { bind: 'eduwork:sidebar-browser:bind', opened: 'eduwork:sidebar-browser:opened', request: 'eduwork:sidebar-browser:request' }
 
 const OPEN_TIMEOUT_MS = 20_000
@@ -239,10 +241,16 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       const carrier = page ?? target.children.get(sessionId)
       if (!carrier) throw failure('Session with given id not found.')
       touch(target, carrier, visibleOnPage.has(method))
-      const result = page && await pageCommand(page, method, params)
-      if (result !== undefined) return reply({ result })
-      if (!allowedOnPage(method)) throw failure(`'${method}' is not available in the Sidebar browser`, -32601)
-      reply({ result: await carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId) })
+      const input = method.startsWith('Input.')
+      if (input) carrier.inputs++
+      try {
+        const result = page && await pageCommand(page, method, params)
+        if (result !== undefined) return reply({ result })
+        if (!allowedOnPage(method)) throw failure(`'${method}' is not available in the Sidebar browser`, -32601)
+        reply({ result: await carrier.guest.debugger.sendCommand(method, params, page ? undefined : sessionId) })
+      } finally {
+        if (input) carrier.inputs--
+      }
     } catch (error) {
       reply({ error: { code: error.code ?? -32000, message: error.message } })
     }
@@ -315,8 +323,19 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
       }
       if (guest.isDestroyed()) return
       const target = group(sessionId)
-      const page = { guest, group: target, tabId, targetId, sessions: new Set(), frames: new Map(), attached: false }
+      const page = { guest, group: target, tabId, targetId, sessions: new Set(), frames: new Map(), attached: false, inputs: 0 }
       pages.set(guest.id, page)
+      // A press or key the user gives the page, in any of its frames, as against
+      // the Agent's input, which comes through here, counts in its top document:
+      // what the Agent read of the page may no longer hold. Written through the
+      // session the Agent's own commands use, the count is there before any
+      // command the Agent sends after the input; a page that is leaving refuses
+      // it, and is not the page read anyway.
+      const used = () => {
+        if (page.inputs === 0 && page.attached) void guest.debugger.sendCommand('Runtime.evaluate', { expression: `document.${SIDEBAR_INPUT_COUNT} = (document.${SIDEBAR_INPUT_COUNT} || 0) + 1` }).catch(() => {})
+      }
+      guest.on('before-mouse-event', (_event, mouse) => { if (mouse.type === 'mouseDown') used() })
+      guest.on('before-input-event', (_event, input) => { if (input.type === 'keyDown') used() })
       guest.debugger.on('message', (_event, method, params, child) => {
         if (!target.client || !page.attached) return
         if (method === 'Target.attachedToTarget') { target.children.set(params.sessionId, page); page.frames.set(params.targetInfo.targetId, params.sessionId) }

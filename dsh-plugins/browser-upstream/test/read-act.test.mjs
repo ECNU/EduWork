@@ -46,7 +46,7 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
         if (name === 'browser_evaluate' && args.function.includes('went to another page')) {
           const url = JSON.parse(/location\.href !== ("[^"]*")/u.exec(args.function)[1])
           const next = /!same\(at\((\d+)\)\)/u.exec(args.function)?.[1]
-          const answer = url !== here.url ? 'went to another page' : used && /true && document\["__eduworkUsed"\]/u.test(args.function) ? 'the user used the page'
+          const answer = url !== here.url ? 'went to another page' : used && /true && \(document\["__eduworkInput"\]/u.test(args.function) ? 'the user used the page'
             : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
           return text(`### Result\n${JSON.stringify(answer)}`)
         }

@@ -150,6 +150,8 @@ test('browser_act\'s first check knows the user used the page since it was read'
     await page.goto('https://campus.example/drafts')
     const read = () => page.evaluate(`(${READ})()`)
     const still = (seen, first) => page.evaluate(`(${STILL(seen, { next: 2, settle: false, first })})()`)
+    // The desktop's main process may have counted the user's input before the first read.
+    await page.evaluate(() => { document.__eduworkInput = 3 })
     let seen = await read()
     // Events the page sends itself are not the user's.
     await page.evaluate(() => document.querySelector('select').dispatchEvent(new Event('input', { bubbles: true })))

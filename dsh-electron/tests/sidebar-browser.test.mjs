@@ -297,6 +297,33 @@ test('the user only watches the tab the Agent acts on until its turn ends, asks 
   await browser.close()
 })
 
+test('a press or key the user gives a page, in any of its frames, counts in the page before the Agent\'s next command, and the Agent\'s own do not', live, async () => {
+  const { browser, context } = await connect('session-a')
+  const [tab] = context.pages()
+  // What browser_act's check before its first step compares with the count at its read.
+  const count = () => tab.evaluate(() => document.__eduworkInput ?? 0)
+  // The user's input reaches the guest without passing the Agent's endpoint.
+  const guest = `webContents.getAllWebContents().find(w => w.getType() === 'webview' && w.getURL().endsWith('/frame?used'))`
+  await tab.goto(`${origin}/?used`)
+  await tab.getByLabel('Name').pressSequentially('ab')
+  await tab.getByRole('button', { name: 'Greet' }).click()
+  assert.equal(await count(), 0)
+  await tab.goto(`${origin}/frame?used`)
+  const field = tab.frameLocator('#inner').locator('#field')
+  await field.click()
+  await field.pressSequentially('ab')
+  assert.equal(await count(), 0)
+  // A press in the cross-site frame, while the application page is too busy to pass anything on.
+  const box = await tab.locator('#inner').boundingBox()
+  const busy = page('for (const end = Date.now() + 1500; Date.now() < end;);')
+  await run(`for (const type of ['mousePressed', 'mouseReleased']) await ${guest}.debugger.sendCommand('Input.dispatchMouseEvent', { type, x: ${box.x + 20}, y: ${box.y + 20}, button: 'left', clickCount: 1 })`)
+  assert.equal(await count(), 1)
+  await busy
+  await run(`${guest}.sendInputEvent({ type: 'keyDown', keyCode: 'a' })`)
+  assert.equal(await count(), 2)
+  await browser.close()
+})
+
 test('the Sidebar opens once the user sees the Agent at work, then stays as the user leaves it', live, async () => {
   const expanded = () => page('document.querySelector(".panel[data-sidebar-right-session=session-a]").hasAttribute("data-sidebar-right-open")')
   await page('fixture.expand("session-a", false); fixture.show("session-b")')

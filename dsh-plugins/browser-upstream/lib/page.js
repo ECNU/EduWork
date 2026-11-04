@@ -8,15 +8,21 @@
 // opened by their address), and the page behind a modal dialog. Each read also
 // tags the document and what each numbered element says, so browser_act can
 // tell the page it read from a new document at the same address or a control
-// the page has since put to another use, and notes the user's own input from
-// then on, which may have changed what the Agent read, such as the option
+// the page has since put to another use, and how much input the page has had,
+// as the user's may have changed what the Agent read, such as the option
 // chosen. These scripts run in the page's own world: the tags tell ordinary
 // changes apart, not a page that forges them, as a page decides what its own
 // controls do anyway.
 export const REF = 'data-eduwork-ref'
 const READ_ID = '__eduworkRead'
 const SAYS = '__eduworkSays'
-const USED = '__eduworkUsed'
+// The input a page has had: trusted input in its own document, which the page
+// script counts, and in the desktop Sidebar the user's presses and keys in any
+// of its frames, which the main process counts (SIDEBAR_INPUT_COUNT in
+// dsh-electron/src/sidebar-browser.mjs). The Agent's own input only comes
+// while it acts, and every browser_act ends with a read.
+const INPUT = '__eduworkInput'
+const HEARD = '__eduworkHeard'
 // How the page script names an element, which browser_act's check repeats.
 const NAMES = String.raw`
   const FIELD = 'input:not([type=hidden], [type=submit], [type=button], [type=reset], [type=image]), select, textarea';
@@ -64,9 +70,11 @@ export const READ = String.raw`async () => {
   const REF = 'data-eduwork-ref';
   const read = Math.random().toString(36).slice(2);
   document[${JSON.stringify(READ_ID)}] = read;
-  // The Agent's input comes as the user's would, but only while it acts, after which it reads again.
-  if (!(${JSON.stringify(USED)} in document)) for (const type of ['pointerdown', 'keydown', 'input']) addEventListener(type, event => { if (event.isTrusted) document[${JSON.stringify(USED)}] = true; }, true);
-  document[${JSON.stringify(USED)}] = false;
+  if (!document[${JSON.stringify(HEARD)}]) {
+    document[${JSON.stringify(HEARD)}] = true;
+    for (const type of ['pointerdown', 'keydown', 'input']) addEventListener(type, event => { if (event.isTrusted) document[${JSON.stringify(INPUT)}] = (document[${JSON.stringify(INPUT)}] || 0) + 1; }, true);
+  }
+  const input = document[${JSON.stringify(INPUT)}] || 0;
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [contenteditable=true], [role=button], [role=link], [role=textbox], [role=searchbox], [role=tab], [role=switch], [role=option], [role=checkbox], [role=radio], [role=combobox], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=treeitem]';
   const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD', 'CANVAS', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED']);
   const CJK = /[　-ヿ㐀-鿿＀-￯]/;
@@ -259,7 +267,7 @@ export const READ = String.raw`async () => {
   flush();
   const alerts = [...document.querySelectorAll('[role=alert], [role=status], [aria-live=assertive]')].filter(shown).map(e => cut(clean(e.innerText), 200)).filter(Boolean);
   return { url: location.href, title: document.title, dialog: modal ? cut(clean(modal.getAttribute('aria-label') || modal.querySelector('h1, h2, h3')?.innerText), 80) : undefined,
-    alerts: [...new Set(alerts)].slice(0, 5), lines, closed, refs, scrollY: Math.round(scrollY), skipped, truncated: size > MAX, read };
+    alerts: [...new Set(alerts)].slice(0, 5), lines, closed, refs, scrollY: Math.round(scrollY), skipped, truncated: size > MAX, read, input };
 }`
 
 /**
@@ -280,7 +288,7 @@ export const STILL = (seen, { next, typed, settle = true, first = false } = {}) 
   if (location.href !== ${JSON.stringify(seen.url)} || document[${JSON.stringify(READ_ID)}] !== ${JSON.stringify(seen.read)} || document.readyState === 'loading') return 'went to another page';
   ${NAMES}
   const same = el => el && el[${JSON.stringify(SAYS)}] === says(el);
-  if (${first} && document[${JSON.stringify(USED)}]) return 'the user used the page';
+  if (${first} && (document[${JSON.stringify(INPUT)}] || 0) !== ${seen.input ?? 0}) return 'the user used the page';
   if (${next === undefined ? 'false' : `!same(at(${next}))`}) return 'the page changed';
   if (${typed === undefined ? 'false' : `at(${typed})?.getAttribute('aria-expanded') === 'true'`}) return 'suggestions opened under the field';
   return '';
