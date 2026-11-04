@@ -123,7 +123,7 @@
     '发起讨论': 'Start a discussion',
     '开放的教育 Agent 工作台。': 'An open agent workspace for education.',
     '基于': 'Built on',
-    '构建 · MIT License': '· MIT License',
+    '构建 · Mulan PSL v2': '· Mulan PSL v2',
     '版本记录': 'Releases',
     '开始使用': 'Get started',
     '使用指南': 'User guide',

@@ -69,7 +69,7 @@ For a separately prepared runtime, use `npm run verify:runtime -- <runtime-root>
 
 Module checks and npm publication use the shared EduWork workflow. See [package development and publication](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES_EN.md).
 
-MIT. See [NOTICE](NOTICE), [UPSTREAM.md](UPSTREAM.md) and [SECURITY.md](SECURITY.md).
+Mulan PSL v2, with historical MIT grants preserved in [LICENSING.md](LICENSING.md). See [NOTICE](NOTICE), [UPSTREAM.md](UPSTREAM.md) and [SECURITY.md](SECURITY.md).
 
 Source, issues and PRs are maintained in [EduWork](https://github.com/ecnu/EduWork/tree/main/packages/dsh-memory). Run development commands from `EduWork/packages/dsh-memory`. npm installation remains independent. See [package publication](https://github.com/ecnu/EduWork/blob/main/docs/PACKAGES_EN.md).
 

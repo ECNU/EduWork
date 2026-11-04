@@ -52,4 +52,4 @@ The official Agent persists the content returned by `agent/pre-step` in conversa
 
 `scripts/patch-chat-user-content-runtime.mjs` adds a generic decoration seat to a copy of the pinned Runtime and records the patch in the build receipt. It contains no annotation logic and falls back to native rendering when the plugin is disabled; native components retain ownership of body text, attachments, and message actions. The patch verifies the package version and file SHA-256. Upstream changes stop assembly and require re-evaluation or removal rather than bypassing verification. Unpatched official clients use the card fallback above. Retire this patch when upstream provides an equivalent extension seat.
 
-License: MIT.
+Primary license: Mulan PSL v2; historical MIT code and scope are described in [LICENSING.md](LICENSING.md).

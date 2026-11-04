@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
+[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#安装与使用)
 
 **简体中文** | [English](README_EN.md)
 
@@ -36,11 +36,13 @@ DSH 提供 Agent 运行时与插件体系；EduWork 复用上游的会话、工�
 | [机构登录与模型接入](packages/dsh-oidc/README.md) | 通过浏览器登录兼容的机构网关，发现模型并自动续期。支持 LiteLLM OAuth 与实验性 oidc-llm 接入。 |
 | [Knowledge Studio](packages/dsh-knowledge-studio/README.md) | 把资料变成报告、演示、思维导图、测验与闪卡；配套成果服务提供 Office 预览和媒体制作，与对话共用。 |
 | [选段批注](packages/dsh-annotation/README.md) | 选中回复片段添加批注，保留来源编号，多条一起发送；复用 DSH 的输入框与草稿。 |
+| [侧边聊天](packages/dsh-side-chat/README.md) | 从消息或选区开启侧聊，带着历史快照继续提问；与主会话分别进行，关闭后归档。可与批注插件联动。 |
+| [决策工具](packages/dsh-decision/README.md) | 通过 SystemOne 服务按标签分类、判断条件概率或按量表评分，配套决策技能；配置服务地址、模型和认证后启用。 |
 | [文献检索](packages/dsh-literature/README.md) | 检索 DBLP、arXiv 文献，获取 BibTeX 与可用全文，把研究资料接入后续任务。 |
 | [本地记忆](packages/dsh-memory/README.md) | 管理本地记忆、检索历史对话，让后续任务接得上已有背景。记忆在本机管理。 |
 | [邮件助手](packages/dsh-mail/README.md) | 连接自己的邮箱，通过 IMAP 读取邮件，经授权通过 SMTP 发送，结合任务处理日常沟通。 |
 | [桌面宠物](packages/dsh-desktop-pet/README.md) | 用可选形象展示任务与通知状态，在设置中开启。独立 npm 插件，需要 EduWork 桌面桥接。 |
-| [远程访问](packages/dsh-remote-access/README.md) | 配对后从其他终端的浏览器继续本机会话、处理授权。先部署中继并配置地址与接入 Key，再开启连接。 |
+| [远程访问](packages/dsh-remote-access/README.md) | 配对后从其他终端的浏览器继续本机会话、处理授权。在设置中配置自己的中继或发行版提供的机构接入，测试连接后开启。 |
 <!-- END GENERATED PLUGINS -->
 
 插件也以独立 npm 包维护，可按各自兼容范围供其他 DSH 应用复用。外部模型、邮箱和媒体服务需自行配置；公版不附带模型额度或私人凭据。
@@ -114,7 +116,7 @@ Release 中的 Source code 是源码，不是桌面安装包。从源码运行�
 
 ## 许可
 
-EduWork 项目代码采用 [MIT 许可证](LICENSE)，基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建；Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。第三方组件保留各自许可证，见[第三方声明](THIRD_PARTY_NOTICES.md)。
+EduWork 项目原创贡献采用[木兰宽松许可证第 2 版](LICENSE)；历史 MIT 代码及许可边界见[许可范围](LICENSING.md)，基于 [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) 构建；Knowledge Studio 的资料创作与学习交互受 NotebookLM 启发。第三方组件保留各自许可证，见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
 ## Star 趋势
 

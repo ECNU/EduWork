@@ -18,7 +18,7 @@ npm install @eduwork/dsh-desktop-pet
 
 **宿主要求：兼容的 DSH 0.2 API 与 EduWork Electron 桌面桥接。** 插件包含设置、动画和形象；透明悬浮窗口、点击穿透、拖拽和位置记忆由桌面壳提供。普通 Web 页面或尚未接入该桥接的 DSH 客户端，安装包本身不会获得桌面悬浮窗口能力。
 
-使用方法和形象说明见[桌面宠物指南](https://github.com/ecnu/EduWork/blob/main/docs/DESKTOP_PET.md)。代码为 MIT；各款美术素材的来源与许可见 [skins/LICENSE](skins/LICENSE)。
+使用方法和形象说明见[桌面宠物指南](https://github.com/ecnu/EduWork/blob/main/docs/DESKTOP_PET.md)。代码许可见 [LICENSING.md](LICENSING.md)（木兰 PSL v2 与历史 MIT）；各款美术素材的来源与许可见 [skins/LICENSE](skins/LICENSE)。
 
 ## 宿主集成
 

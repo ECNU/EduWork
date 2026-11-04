@@ -29,7 +29,7 @@
       "platform": "web"
     }
   },
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "chatecnuWork": {
     "schemaVersion": 1,
     "kind": "compat-plugin",

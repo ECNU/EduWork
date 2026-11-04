@@ -1,9 +1,14 @@
 # 变更记录 / Changelog
 
-## 0.1.2 — 未发布 / Unreleased
+## 0.1.3 — 未发布 / Unreleased
 
 - 新增内置形象花狮娘（`ecnu-huashi-girl`），华东师范大学吉祥物小花狮的拟人形象。
 - Add the built-in character Huashi Girl (`ecnu-huashi-girl`), a girl version of the East China Normal University mascot.
+
+## 0.1.2 — 2026-11-02
+
+- 动画可声明 `facing`（`left` 默认、`right`）：朝右画的拖动、探头动画不再方向相反。
+- Animations may declare `facing` (`left` by default, or `right`), so drag and peek artwork drawn facing right no longer runs backwards.
 
 ## 0.1.1
 

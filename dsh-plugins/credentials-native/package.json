@@ -16,5 +16,5 @@
     "@deepseek-ai/cordis": "4.0.2",
     "@deepseek-ai/dsh-credentials": "0.1.2-rc.1"
   },
-  "license": "MIT"
+  "license": "MulanPSL-2.0 AND MIT"
 }

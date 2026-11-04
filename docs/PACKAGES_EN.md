@@ -6,6 +6,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-decision` | [SystemOne decision tool and skill](../packages/dsh-decision/README_EN.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [Side conversations and selection questions](../packages/dsh-side-chat/README_EN.md) | `packages/dsh-side-chat` |
 | `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
@@ -19,9 +20,11 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 Each development root retains its own dependency lock without repository-wide hoisting. Studio keeps its existing `packages/artifact-services` workspace; each package still produces its own tarball. Other packages communicate through public npm exports, not relative imports into another package's implementation.
 
-Side chat independently opens from message actions. With annotation `>=0.1.1 <0.2.0` also enabled, it joins the shared selection toolbar through the optional `annotationSelection` service. Install and enable each plugin separately. Side-chat checks and publication use the pinned DSH `0.2.1-rc.3` Runtime to test real sessions, archiving and failure notices with synthetic model inputs.
+Side chat independently opens from message actions. With annotation `>=0.1.1 <0.2.0` also enabled, it joins the shared selection toolbar through the optional `annotationSelection` service. Install and enable each plugin separately. Side-chat checks and publication use the pinned DSH `0.2.1-rc.5` Runtime to test real sessions, archiving and failure notices with synthetic model inputs.
 
 ## Develop and check
+
+The decision plugin uses native DSH bundles, tools and skills and is preinstalled from its published npm archive. The decision service remains disabled until configured and enabled. It supports explicit API-key, optional OIDC and unauthenticated service configuration. Checks use the locked rc.5 Runtime (`EDUWORK_DECISION_RUNTIME`) without live model requests.
 
 Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.22.1. From the repository root:
 
@@ -46,7 +49,7 @@ Translate only fixed plugin copy. Keep tool names, paths, recipients and user/mo
 
 ## Publish independently
 
-`@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.1-rc.3/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
+`@eduwork/dsh-literature` targets the DSH `0.2` API series, forked from `SihanLv/dsh-literature` and maintained by EduWork. The 0.2 candidate installs the published npm version selected by the component lock, with its version, integrity, tarball SHA-256 and source commit recorded in `third_party/dsh/candidate-v0.2.1-rc.5/literature.json`. Source assembly does not overwrite this package. Historical builds retain the original `@shlv/dsh-literature` lock.
 
 Each package keeps its own SemVer, public exports, configuration IDs and persisted paths. Use a new version for every publication; never overwrite an existing npm version. If shared services change version, update Studio's exact dependency and lock; publish and verify shared services before Studio.
 
@@ -73,12 +76,12 @@ Desktop-specific extensions are still built during assembly; their adaptation on
 
 ## Product assembly
 
-`@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.1-rc.3/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
+`@eduwork/dsh-desktop-pet` is installed from its published npm version. `third_party/dsh/candidate-v0.2.1-rc.5/desktop-pet.json` records its version, source commit, integrity and tarball SHA-256; the adjacent `source-probe/package-lock.json` pins installation. The product keeps the shell's floating-window support but never overwrites this package from workspace source or rebuilds its settings client. Publish and verify the plugin before updating the product lock.
 
 
-The current DSH 0.2.1 recipe installs eight independent packages from npm: selection annotations, desktop pet, literature, mail, memory, OIDC, Studio and shared services. Selection annotations are included from the next client build, remain independently maintained, and can also be installed from npm in other compatible DSH clients. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.3/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source. The remote access package is not assembled into the client yet; it joins in the order below once published and verified.
+The current DSH 0.2.1 recipe installs eleven independent packages from npm: annotations, side chat, remote access, decision, desktop pet, literature, mail, memory, OIDC, Studio and shared services. Plugins remain independently maintained and can also be installed in compatible DSH clients. Per-package JSON locks under `third_party/dsh/candidate-v0.2.1-rc.5/` record versions, source commits, tarball SHA-256 and npm integrity; `source-probe/package.json` and `package-lock.json` pin installation. The retained `source-probe` directory name does not imply installing plugin source.
 
-Annotations use a native DSH bundle, enabled once when first provided by the product. The native plugin manager then owns activation. `optionalBundles` in `assembly.json` identifies these optional bundled packages, and the profile records which names have been provisioned. Prior manual installs retain their activation without duplicate registration; disabled bundles remain disabled after restart. Existing core bundle rules stay unchanged.
+Annotations, side chat, remote access and decision use native DSH bundles, registered once when first provided by the product. The native plugin manager then owns activation. `optionalBundles` in `assembly.json` identifies these optional bundled packages, and the profile records which names have been provisioned. Prior manual installs retain their activation without duplicate registration; disabled bundles remain disabled after restart. Existing core bundle rules stay unchanged. The remote relay connection remains off until the user configures an endpoint and access method and enables it; the product does not connect to a public relay automatically. See the [relay deployment guide](../packages/dsh-remote-access/docs/DEPLOYMENT_EN.md).
 
 Assembly validates the npm inputs before building product-owned extensions. Media templates, the PDF runtime, plugin clients and bundled skills come from published packages. Nothing under `packages/` overwrites them. `assembly.json` distinguishes `externalPackages` from `sourcePackages` and records package file hashes, checked after assembly and edition preparation. Missing packages, inconsistent locks or workspace links fail without a source fallback.
 
@@ -89,3 +92,9 @@ The sequence is: test source → publish npm → verify registry bytes → updat
 The historical DSH 0.1.5 recipe keeps `config/assembly.eduwork.json` and its exact version/SRI/SHA-256 locks under `third_party/npm-015-rc1/`; it is not the current default desktop recipe. Editing package source cannot silently change a desktop build. Follow [the build guide](BUILD.md): publish, verify the registry, update locks, then build the product. A development workspace link is not release evidence.
 
 Component locks record each npm version, source commit and content hashes. Verify the actual registry archive before updating a lock. Development workspace links are not distribution inputs.
+
+## Source licenses and published archives
+
+Mulan PSL v2 is the project's primary license. Migrated source manifests use `MulanPSL-2.0 AND MIT` for new contributions and historical MIT portions; the literature plugin retains MIT. Ship `LICENSE`, `LICENSE-MIT`, and `LICENSING.md` together, preserving separate dependency and artwork notices.
+
+This migration does not overwrite old npm versions or alter licenses/hashes in published dependency locks. The source version number does not authorize republishing an existing version. Use a new version for the next npm publication, verify license files in the archive, then update product locks.

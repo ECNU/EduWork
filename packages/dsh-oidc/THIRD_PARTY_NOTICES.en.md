@@ -2,7 +2,7 @@
 
 [简体中文](THIRD_PARTY_NOTICES.md) | **English**
 
-`dsh-oidc` is MIT-licensed and interoperates with the following directly declared packages. Exact versions are recorded in `package-lock.json`; transitive dependency license files remain in their distributed packages.
+`dsh-oidc` uses Mulan PSL v2 for original contributions and preserves historical MIT grants ([scope](LICENSING.md)) and interoperates with the following directly declared packages. Exact versions are recorded in `package-lock.json`; transitive dependency license files remain in their distributed packages.
 
 ## Runtime peers (not copied into this repository)
 
