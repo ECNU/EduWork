@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-02T18:09:29.430Z",
-  "fileSetSHA256": "4640a60884599baa7757d39eda308da55ba32097ab3ac68e100d6ed013b28531",
+  "createdAt": "2026-11-04T09:39:45.188Z",
+  "fileSetSHA256": "b813000e0a7cb4e141156128ac068395088c16b35ca53598da4e4707555f3199",
   "files": [
     {
       "path": ".gitattributes",
@@ -1605,7 +1605,7 @@
     },
     {
       "path": "dsh-host/configuration-plugin-options.mjs",
-      "sha256": "4372e16a0ba2f6baad13f32f2257ce8f4f5ae1c2d64ef444c0e2a0b57a6d2e5b"
+      "sha256": "d8be415740287308c19226da4bcdb4b10aac1babd7b0101f6a594d565eb5f331"
     },
     {
       "path": "dsh-host/configuration-reference.mjs",
@@ -1717,7 +1717,7 @@
     },
     {
       "path": "dsh-host/test/configuration-documentation.test.mjs",
-      "sha256": "ddfd1229b088394929a981e33af09df1a519ab176c68dfa5af98862e090a65b0"
+      "sha256": "d86db750366aee2ab32d324bb2d0b84a75c58b96504ca94e8740e93a145bb9e3"
     },
     {
       "path": "dsh-host/test/configuration-file.test.mjs",
@@ -1789,7 +1789,7 @@
     },
     {
       "path": "dsh-host/test/product-profile.test.mjs",
-      "sha256": "fd4a07da3b4ad953c2f7eced2f0d518685be13d0818b6d4fcfe245b89263c5ab"
+      "sha256": "c77fc7ede436d29ae77b9ac0d50f44818c5d48fc83e131bcec2957a58e1f4a10"
     },
     {
       "path": "dsh-host/test/publisher-bootstrap.test.mjs",
