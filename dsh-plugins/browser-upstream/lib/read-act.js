@@ -8,11 +8,13 @@
 // model turn instead of one per action, and no snapshot file to read.
 import { resolve } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
-import { READ, REF, fingerprint, render } from './page.js'
+import { READ, REF, STILL, fingerprint, render } from './page.js'
 
 const mcp = name => `mcp__playwright-mcp__${name}`
 // Moving around the page asks for no permission of its own.
 export const QUIET = new Set(['scroll', 'wait'])
+// The Playwright MCP tools that only look at the page, as a screenshot does.
+export const LOOKS = new Set(['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for', 'browser_take_screenshot'])
 // The browser_read and browser_act runs whose MCP calls their own permission covers.
 export const covered = new Set()
 // The page each Agent last read, against which its numbers resolve.
@@ -74,19 +76,6 @@ const said = (action, element) => {
   }
 }
 
-// Before the next action: whether the page is still the one read, after a
-// moment for a navigation the last action set off to begin, as a form that
-// submits itself when an option is chosen does; whether the next action's
-// element is still there; and whether typing opened suggestions.
-const STILL = (url, next, typed) => `async () => {
-  await new Promise(resolve => setTimeout(resolve, 120));
-  const at = ref => document.querySelector('[${REF}="' + ref + '"]');
-  if (location.href !== ${JSON.stringify(url)} || document.readyState === 'loading') return 'went to another page';
-  if (${next === undefined ? 'false' : `!at(${next})`}) return 'the page changed';
-  if (${typed === undefined ? 'false' : `at(${typed})?.getAttribute('aria-expanded') === 'true'`}) return 'suggestions opened under the field';
-  return '';
-}`
-
 // How many tabs a tools response lists, when it lists them.
 const tabCount = text => /### (?:Open tabs|Result)\n((?:- \d+: .*(?:\n|$))+)/u.exec(text)?.[1].trim().split('\n').length
 const firstLine = message => message.split('\n').find(line => line.trim() && !line.startsWith('###')) ?? message
@@ -120,11 +109,17 @@ function view(agent, seen, find) {
   return untrusted(render(seen, { find, fresh }))
 }
 
+const answer = text => JSON.parse(/### Result\n(.*)/u.exec(text)[1])
+
 async function act(run, agent, actions) {
   const seen = seenBy.get(agent)
   if (!seen) throw new Error('Read the page with browser_read first; browser_act uses the numbers it shows.')
   check(actions, seen)
   let tabs = tabCount(await run('browser_tabs', { action: 'list' })) ?? 1
+  // The page may have moved on since it was read, as when the user took over.
+  const first = actions[0]
+  const gone = await run('browser_evaluate', { function: STILL(seen, { next: needs[first.do]?.includes('ref') ? first.ref : undefined, settle: false }) }).then(answer, () => 'went to another page')
+  if (gone) return finish(run, agent, [`Nothing was done: since you read it, the page ${gone === 'went to another page' ? 'was left for another one' : 'changed'}. Decide again from the page below.`])
   const report = []
   for (const [i, action] of actions.entries()) {
     const element = seen.refs[action.ref]
@@ -147,19 +142,28 @@ async function act(run, agent, actions) {
     if (!moved && text.includes('### Modal state')) moved = 'a dialog or file chooser opened'
     if (!moved && i < actions.length - 1) {
       const next = actions[i + 1]
-      const still = STILL(seen.url, needs[next.do]?.includes('ref') ? next.ref : undefined, action.do === 'type' ? action.ref : undefined)
+      const still = STILL(seen, { next: needs[next.do]?.includes('ref') ? next.ref : undefined, typed: action.do === 'type' ? action.ref : undefined })
       // A page that navigates away while asked has moved on too.
-      moved = await run('browser_evaluate', { function: still }).then(answer => JSON.parse(/### Result\n(.*)/u.exec(answer)[1]), () => 'went to another page')
+      moved = await run('browser_evaluate', { function: still }).then(answer, () => 'went to another page')
     }
     report.push(`${i + 1}. ${said(action, element)}: done${moved ? `, ${moved}` : ''}`)
     if (moved) break
   }
   const left = actions.length - report.length
   if (left) report.push(`(${left} more not run. Decide again from the page below.)`)
-  // What ran is reported even when the page cannot be read afterwards.
+  return finish(run, agent, report, seen)
+}
+
+// The report and the page as it is now, and whether it changed from the page
+// the actions were decided on. What ran is reported even when the page cannot
+// be read afterwards; its numbers then stand for nothing.
+async function finish(run, agent, report, seen) {
   const after = await look(run).catch(error => error)
-  if (after instanceof Error) return `${report.join('\n')}\n\nThe page could not be read: ${firstLine(after.message)}`
-  if (fingerprint(after) === fingerprint(seen)) report.push('The page did not change.')
+  if (after instanceof Error) {
+    seenBy.delete(agent)
+    return `${report.join('\n')}\n\nThe page could not be read: ${firstLine(after.message)}`
+  }
+  if (seen && fingerprint(after) === fingerprint(seen)) report.push('The page did not change.')
   return `${report.join('\n')}\n\n${view(agent, after)}`
 }
 
@@ -171,6 +175,14 @@ export function registerPageTools(ctx) {
     covered.add(exec.token)
     try { return await work(runner(ctx, exec)) } finally { covered.delete(exec.token) }
   }
+  // A browser tool the Agent calls itself, other than one that only looks, may
+  // take it to another page or tab. Until it reads again, it has no page whose
+  // numbers it can act on, nor one whose address counts as where it is.
+  ctx.on('tools/execute', (exec, next) => {
+    const tool = exec.name.slice(mcp('').length)
+    if (exec.name.startsWith(mcp('')) && !covered.has(exec.parent) && !LOOKS.has(tool) && !(tool === 'browser_tabs' && exec.arguments?.action === 'list')) seenBy.delete(exec.agent)
+    return next()
+  })
   ctx.tools.register(defineTool({
     name: 'browser_read',
     description: 'Read the current browser page as text: what it says, and every link, button and field the user can use now, written in brackets with a number, for example [#12 button "搜索"] or [#9 textbox "检索词" empty]. A * after the number marks what appeared since you last read this page. Pass url to open an address first, with newTab to open it in a new tab. Long pages show the part around the scroll position; scroll with browser_act or pass find to list just the lines with any of its words. Act on the page with browser_act, by those numbers.',
@@ -183,8 +195,14 @@ export function registerPageTools(ctx) {
     timeoutMs: 60_000,
     presentCall: args => ({ card: 'generic', title: args.url ? `浏览器 · 打开 ${args.url}` : '浏览器 · 读取页面', kind: 'read' }),
     execute: (args, exec) => within(exec, async run => {
-      if (args.url !== undefined) await (args.newTab ? run('browser_tabs', { action: 'new', url: args.url }) : run('browser_navigate', { url: args.url }))
-      return view(exec.agent, await look(run), args.find)
+      try {
+        if (args.url !== undefined) await (args.newTab ? run('browser_tabs', { action: 'new', url: args.url }) : run('browser_navigate', { url: args.url }))
+        return view(exec.agent, await look(run), args.find)
+      } catch (error) {
+        // Wherever the browser is now, it is not known to be the page last read.
+        seenBy.delete(exec.agent)
+        throw error
+      }
     }),
   }))
   ctx.tools.register(defineTool({

@@ -5,8 +5,11 @@
 // [#12 button "搜索"], and sets that number on the element as data-eduwork-ref
 // for browser_act to target. What the user cannot see is left out: hidden
 // boxes, menus closed or slid off the screen (their links are listed apart and
-// opened by their address), and the page behind a modal dialog.
+// opened by their address), and the page behind a modal dialog. Each read also
+// tags the document, so browser_act can tell the document it read from a new
+// one at the same address.
 export const REF = 'data-eduwork-ref'
+const READ_ID = '__eduworkRead'
 
 export const READ = String.raw`async () => {
   // A page still loading (as after a redirect) is read once its document is all there.
@@ -19,6 +22,8 @@ export const READ = String.raw`async () => {
     observer.observe(document, { subtree: true, childList: true, attributes: true, characterData: true });
   });
   const REF = 'data-eduwork-ref';
+  const read = Math.random().toString(36).slice(2);
+  document[${JSON.stringify(READ_ID)}] = read;
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [contenteditable=true], [role=button], [role=link], [role=textbox], [role=searchbox], [role=tab], [role=switch], [role=option], [role=checkbox], [role=radio], [role=combobox], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=treeitem]';
   const FIELD = 'input:not([type=hidden], [type=submit], [type=button], [type=reset], [type=image]), select, textarea';
   const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD', 'CANVAS', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED']);
@@ -53,20 +58,22 @@ export const READ = String.raw`async () => {
   // Large enough to be a chart rather than an icon.
   const drawing = el => { const r = el.getBoundingClientRect(); return r.width >= 160 && r.height >= 100; };
   const own = node => { const c = node.cloneNode(true); c.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(c.textContent); };
-  // A field is called by its label, or else by the short caption shown with it
-  // in a box of its own, as many pages lay out fields without labels. What a
+  // An element is called by the name the page gives it (aria-labelledby,
+  // aria-label, a label), a field without one by the short caption shown with
+  // it in a box of its own, as many pages lay out fields without labels. What a
   // field holds is never its name: that could be a password.
   const name = el => {
+    const by = clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '));
+    const given = by || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
+    if (given) return cut(given, 80);
     if (el.matches(FIELD)) {
-      if (el.labels?.[0]) return cut(own(el.labels[0]), 80);
       for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
         const caption = own(up);
-        if (caption) return caption.length <= 20 ? caption : '';
+        if (caption.length > 20) break;
+        if (caption) return caption;
       }
     }
-    const by = (el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' ');
-    return cut(clean(by || el.getAttribute('aria-label') || (el.matches(FIELD) ? el.placeholder : el.innerText || el.value)
-      || el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
+    return cut(clean((el.matches(FIELD) ? el.placeholder : el.innerText || el.value) || el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
   };
   const kindOf = el => {
     const role = el.getAttribute('role'), type = (el.getAttribute('type') || '').toLowerCase();
@@ -128,9 +135,15 @@ export const READ = String.raw`async () => {
   // A link that loads another page, which opening its address does as well.
   const loads = a => /^https?:/.test(a.href) && !a.hasAttribute('download') && a.href.split('#')[0] !== location.href.split('#')[0];
   const lines = [], closed = [], refs = {};
-  let line = '', top = 0, size = 0, k = 0, inside = 0, room = 0, prefix = '', gap = false;
+  let line = '', top = 0, size = 0, skipped = 0, k = 0, inside = 0, room = 0, prefix = '', gap = false;
+  // Past the budget, lines above the viewport make room for the ones below, so
+  // a long page is read around where it is scrolled to.
+  const full = () => {
+    while (size > MAX && lines.length && lines[0].top < scrollY - 40) { const first = lines.shift(); size -= first.text.length + 1; skipped += first.text.length + 1; }
+    return size > MAX;
+  };
   const put = (text, at) => {
-    if (!text || size > MAX) return;
+    if (!text || full()) return;
     // Inside a card, each piece of text is kept short, so its date or price at the end still shows.
     if (inside) { if (room <= 0) return; text = cut(text, Math.min(room, 60)); room -= text.length; }
     if (!line) { top = Math.round(at.getBoundingClientRect().top + scrollY); text = prefix + text; prefix = ''; }
@@ -170,7 +183,7 @@ export const READ = String.raw`async () => {
   };
   const walk = node => {
     for (const child of kids(node)) {
-      if (size > MAX) return;
+      if (full()) return;
       if (child.nodeType === Node.TEXT_NODE) { put(clean(child.textContent), child.parentElement); continue; }
       // A chart drawn on a canvas or in an SVG has no text to read.
       if ((child.tagName === 'CANVAS' || child instanceof SVGSVGElement) && shown(child) && drawing(child)) {
@@ -203,7 +216,27 @@ export const READ = String.raw`async () => {
   flush();
   const alerts = [...document.querySelectorAll('[role=alert], [role=status], [aria-live=assertive]')].filter(shown).map(e => cut(clean(e.innerText), 200)).filter(Boolean);
   return { url: location.href, title: document.title, dialog: modal ? cut(clean(modal.getAttribute('aria-label') || modal.querySelector('h1, h2, h3')?.innerText), 80) : undefined,
-    alerts: [...new Set(alerts)].slice(0, 5), lines, closed, refs, scrollY: Math.round(scrollY), truncated: size > MAX };
+    alerts: [...new Set(alerts)].slice(0, 5), lines, closed, refs, scrollY: Math.round(scrollY), skipped, truncated: size > MAX, read };
+}`
+
+/**
+ * Before browser_act's next action, in the page: whether it is still the page
+ * read, the same document at the same address, after a moment (settle) for a
+ * navigation the last action set off to begin, as a form that submits itself
+ * when an option is chosen does; whether the element of the next action is
+ * still there; and whether typing opened suggestions under a field.
+ */
+export const STILL = (seen, { next, typed, settle = true } = {}) => `async () => {
+  ${settle ? 'await new Promise(resolve => setTimeout(resolve, 120));' : ''}
+  // The numbered element, in the document or an open shadow root, as the page read finds it.
+  const at = ref => {
+    const find = root => root.querySelector('[${REF}="' + ref + '"]') || [...root.querySelectorAll('*')].reduce((hit, el) => hit || (el.shadowRoot && find(el.shadowRoot)), null);
+    return find(document);
+  };
+  if (location.href !== ${JSON.stringify(seen.url)} || document[${JSON.stringify(READ_ID)}] !== ${JSON.stringify(seen.read)} || document.readyState === 'loading') return 'went to another page';
+  if (${next === undefined ? 'false' : `!at(${next})`}) return 'the page changed';
+  if (${typed === undefined ? 'false' : `at(${typed})?.getAttribute('aria-expanded') === 'true'`}) return 'suggestions opened under the field';
+  return '';
 }`
 
 const BUDGET = 6000
@@ -231,19 +264,22 @@ export function render(seen, { find, fresh = new Set(), budget = BUDGET } = {}) 
   if (seen.dialog !== undefined) out.push(`A dialog is open${seen.dialog ? ` ("${seen.dialog}")` : ''}; only the dialog is shown.`)
   if (seen.alerts.length) out.push(`Messages: ${seen.alerts.join(' / ')}`)
   out.push('')
+  // A long page is read only around where it is scrolled to.
+  const unread = [seen.skipped && 'above', seen.truncated && 'below'].filter(Boolean)
   if (find) {
     const wanted = find.toLowerCase().split(/\s+/u).filter(Boolean)
     const hits = new Set()
     seen.lines.forEach((l, i) => { if (wanted.some(w => l.text.toLowerCase().includes(w))) hits.add(i).add(i + 1) })
     const { shown, below } = within([...hits].filter(i => i < seen.lines.length).sort((a, b) => a - b).map(i => seen.lines[i]), 0, budget)
-    out.push(...shown.length ? shown.map(l => mark(l.text)) : [`No line on the page contains ${find}.`])
+    out.push(...shown.length ? shown.map(l => mark(l.text)) : [`No line ${unread.length ? 'read' : 'on the page'} contains ${find}.`])
     if (below) out.push('(More lines match: narrow find.)')
   } else {
     const { shown, above, below } = within(seen.lines, seen.scrollY, budget)
     if (above) out.push(`(${above} characters above, not shown: scroll up, or read with find.)`)
     out.push(...shown.length ? shown.map(l => mark(l.text)) : ['(The page shows no text.)'])
-    if (below || seen.truncated) out.push(`(${below || 'Many'} characters below, not shown: scroll down, or read with find.)`)
+    if (below) out.push(`(${below} characters below, not shown: scroll down, or read with find.)`)
   }
+  if (unread.length) out.push(`(The page goes on ${unread.join(' and ')} what was read: scroll there to read it.)`)
   if (seen.closed.length) out.push('', `In closed menus (a click opens the address): ${seen.closed.map(c => `[#${c.ref} link "${c.name}"]`).join(' ')}`)
   return out.join('\n')
 }

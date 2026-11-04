@@ -5,7 +5,7 @@ import assert from 'node:assert/strict'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 import test from 'node:test'
-import { READ, REF, render } from '../lib/page.js'
+import { READ, REF, STILL, render } from '../lib/page.js'
 
 const lines = (...texts) => texts.map((text, i) => ({ text, top: i * 100 }))
 const seen = extra => ({ url: 'https://campus.example/', title: '校园', alerts: [], lines: lines('第一行', '第二行 [#1 link "通知"]', '第三行'), closed: [], refs: {}, scrollY: 0, truncated: false, ...extra })
@@ -47,7 +47,10 @@ const PAGE = `<!doctype html><meta charset="utf-8"><title>报名</title>
 <label class="custom"><input type="checkbox">同意活动须知</label>
 <select aria-label="场次"><option>上午</option><option selected>下午</option></select>
 <button disabled>提交</button> <a href="#top">回到顶部</a>
-<p><label>人数 <input type="number" min="2" max="8"></label> <label>日期 <input type="date"></label></p>`
+<p><label>人数 <input type="number" min="2" max="8"></label> <label>日期 <input type="date"></label></p>
+<div><span>可选</span><input aria-label="邮箱地址"></div>
+<div><p>请填写学校发放的十一位学号，不要填写身份证号码或手机号。</p><input placeholder="学号"></div>
+<div id="host"></div><script>document.getElementById('host').attachShadow({ mode: 'open' }).innerHTML = '<button>影子按钮</button>'</script>`
 
 test('the page script reads what the user sees, numbers what can be used, points out drawings, and never shows a password', { skip: !(runtime && chromium) }, async () => {
   const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
@@ -71,7 +74,16 @@ test('the page script reads what the user sees, numbers what can be used, points
       '学号 [#7 textbox "学号" = "20261234", at most 11 characters]',
       '[#8 textbox "密码" filled] [#9 checkbox "同意活动须知" not checked] [#10 select "场次" = "下午", options "上午" "下午"] [button "提交" disabled] [#11 link "回到顶部"]',
       '[#12 textbox "人数" empty, number 2–8] [#13 textbox "日期" empty, date]',
+      // The name the page gives a field comes first; a caption too long to be one is passed over.
+      '可选 [#14 textbox "邮箱地址" empty]',
+      '请填写学校发放的十一位学号，不要填写身份证号码或手机号。',
+      '[#15 textbox "学号" empty]',
+      '[#16 button "影子按钮"]',
     ])
+    // browser_act's check finds numbered elements in shadow roots too.
+    const still = async options => page.evaluate(`(${STILL(first, options)})()`)
+    assert.equal(await still({ next: 16, settle: false }), '')
+    assert.equal(await still({ next: 99, settle: false }), 'the page changed')
     // A link that loads another page carries the address that opens it; one within the page is clicked.
     assert.equal(first.refs[3].href, 'https://campus.example/n/1')
     assert.equal(first.refs[11].href, undefined)
@@ -89,5 +101,28 @@ test('the page script reads what the user sees, numbers what can be used, points
     assert.equal(dialog.dialog, '确认提交')
     assert.deepEqual(dialog.lines.map(l => l.text), ['## 确认提交', '[#1 button "确定"]'])
     assert.equal(await page.locator(`[${REF}]`).count(), 1)
+    // A new document at the same address is not the page read.
+    const now = await read()
+    await page.reload()
+    assert.equal(await page.evaluate(`(${STILL(now, { settle: false })})()`), 'went to another page')
+  } finally { await browser.close() }
+})
+
+test('a long page is read around where it is scrolled to', { skip: !(runtime && chromium) }, async () => {
+  const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
+  const browser = await launcher.launch({ executablePath: chromium, headless: true })
+  try {
+    const page = await (await browser.newContext({ viewport: { width: 576, height: 744 } })).newPage()
+    const body = Array.from({ length: 80 }, (_, i) => `<p>第 ${i + 1} 段 ${'长'.repeat(1000)}</p>`).join('') + '<button>到底了</button>'
+    await page.route('https://campus.example/long', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><title>长页面</title>${body}` }))
+    await page.goto('https://campus.example/long')
+    const read = async () => page.evaluate(`(${READ})()`)
+    const top = await read()
+    assert.ok(top.truncated && !Object.values(top.refs).some(ref => ref.name === '到底了'))
+    assert.match(render(top), /\(The page goes on below what was read: scroll there to read it\.\)$/u)
+    await page.evaluate(() => scrollTo(0, document.body.scrollHeight))
+    const bottom = await read()
+    assert.ok(!bottom.truncated && bottom.skipped > 0)
+    assert.match(render(bottom), /\[#\d+ button "到底了"\]\n\(The page goes on above what was read: scroll there to read it\.\)$/u)
   } finally { await browser.close() }
 })

@@ -1,11 +1,8 @@
 import { basename } from 'node:path'
 import { isPrivateTarget, normalizeURL } from '@chatecnu-work/dsh-tool-browser/core'
-import { QUIET, callFor, covered, elementOf, pageOf } from './read-act.js'
+import { LOOKS, QUIET, callFor, covered, elementOf, pageOf } from './read-act.js'
 
 const prefix = 'mcp__playwright-mcp__'
-// A screenshot reads the page as well: without a file name it comes back to
-// the Agent and is kept in MCP's own output folder, as its other output is.
-const readTools = new Set(['browser_snapshot', 'browser_find', 'browser_console_messages', 'browser_network_requests', 'browser_network_request', 'browser_wait_for', 'browser_take_screenshot'])
 const access = (ctx, exec) => exec.agent && ctx.sandboxPolicy.resolve({ session: exec.agent.session }).mode
 const fullAccess = (ctx, exec) => access(ctx, exec) === 'danger-full-access'
 // The address a navigation or a new tab opens.
@@ -62,7 +59,9 @@ const origin = url => { try { return new URL(url).origin } catch {} }
 // What a browser tool call would do that needs the user's leave, if anything,
 // from the page `here` the Agent is on.
 function question(name, args, writable, here) {
-  if (readTools.has(name)) {
+  // A screenshot reads the page as well: without a file name it comes back to
+  // the Agent and is kept in MCP's own output folder, as its other output is.
+  if (LOOKS.has(name)) {
     if (args.filename === undefined || writable) return
     return name === 'browser_take_screenshot' ? [`save a screenshot of the page as ${en(args.filename)}`, `把网页截图保存为${zh(args.filename)}`] : [`save page data to ${en(args.filename)}`, `把网页数据保存到${zh(args.filename)}`]
   }
@@ -89,9 +88,11 @@ const listed = {
   press: a => [`press ${shorten(a.key)}`, `按下 ${shorten(a.key)} 键`],
   back: () => ['go back to the previous page', '返回上一页'],
 }
-const confirmation = (why, steps) => {
-  const reason = `Confirm: ${shorten(why, 300)}. The Agent will ${steps.map(q => q[0]).join('; ')}`
-  return { kind: 'ask', reason, displayReason: { en: reason, zh: `请确认：${shorten(why, 300)}。智能体将${steps.map(q => q[1]).join('；')}` } }
+// One question for the outcome the Agent asks about, which also names what the
+// application itself would ask about, such as a link into a private network.
+const confirmation = (why, steps, risks) => {
+  const reason = `Confirm: ${shorten(why, 300)}. The Agent will ${steps.map(q => q[0]).join('; ')}${risks.length ? `. This includes: ${risks.map(q => q[0]).join('; ')}` : ''}`
+  return { kind: 'ask', reason, displayReason: { en: reason, zh: `请确认：${shorten(why, 300)}。智能体将${steps.map(q => q[1]).join('；')}${risks.length ? `。其中包括：${risks.map(q => q[1]).join('；')}` : ''}` } }
 }
 
 // Final denials use tools.guard so a later pre-execute listener cannot
@@ -103,12 +104,12 @@ export function browserPermission(ctx, exec, next) {
   if (exec.name === 'browser_read' || exec.name === 'browser_act') {
     const args = exec.arguments ?? {}
     const acts = exec.name === 'browser_act' ? (args.actions ?? []).filter(action => !QUIET.has(action.do)).map(action => [action, elementOf(exec.agent, action.ref)]) : []
-    if (exec.name === 'browser_act' && args.confirm !== undefined) return confirmation(args.confirm, acts.map(([action, element]) => listed[action.do]?.(action, element)).filter(Boolean))
-    if (mode === 'danger-full-access') return next()
     const calls = exec.name === 'browser_read'
       ? args.url === undefined ? [] : [{ name: 'browser_navigate', arguments: { url: args.url } }]
       : acts.map(([action, element]) => callFor(action, element)).filter(Boolean)
     const questions = calls.map(call => question(call.name, call.arguments, writable, here)).filter(Boolean)
+    if (exec.name === 'browser_act' && args.confirm !== undefined) return confirmation(args.confirm, acts.map(([action, element]) => listed[action.do]?.(action, element)).filter(Boolean), questions)
+    if (mode === 'danger-full-access') return next()
     return questions.length ? ask(questions) : next()
   }
   if (!exec.name.startsWith(prefix)) return next()

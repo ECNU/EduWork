@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import { READ } from '../lib/page.js'
 import { browserPermission } from '../lib/permission.js'
-import { covered, noteSavedScreenshots, registerPageTools } from '../lib/read-act.js'
+import { covered, noteSavedScreenshots, pageOf, registerPageTools } from '../lib/read-act.js'
 
 const line = (text, top = 0) => ({ text, top })
 const page = (url, title, lines, refs, extra = {}) => ({ url, title, alerts: [], lines, closed: [], refs, scrollY: 0, truncated: false, ...extra })
@@ -31,7 +31,9 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
   const go = key => { tabs[current] = key; return text(`### Ran Playwright code\n### Page\n- Page URL: ${pages[key].url}`) }
   const list = () => tabs.map((key, i) => `- ${i}: ${i === current ? '(current) ' : ''}[${pages[key].title}](${pages[key].url})`).join('\n')
   const ref = target => Number(/"(\d+)"/u.exec(target)?.[1])
+  const middleware = []
   const ctx = {
+    on: (event, handler) => { assert.equal(event, 'tools/execute'); middleware.push(handler) },
     tools: {
       register: definition => { tools[definition.name] = definition },
       async execute(exec) {
@@ -65,7 +67,11 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
   const agent = { session: {} }
   let n = 0
   const run = (tool, args) => tools[tool].execute(args, { callId: `call${++n}`, rootCallId: `call${n}`, token: Symbol(`call${n}`), agent, signal: new AbortController().signal })
-  return { run, calls, agent, pages, tabs: () => tabs.map(key => pages[key].url), current: () => current }
+  // An MCP tool the Agent calls itself, or one a run calls under its token, as the tool middleware sees it.
+  const direct = (name, args = {}, parent) => middleware[0]({ name: `mcp__playwright-mcp__${name}`, arguments: args, agent, parent }, async () => text(''))
+  // The current tab shows another page, as when the user takes over.
+  const visit = key => { tabs[current] = key }
+  return { run, direct, visit, calls, agent, pages, tabs: () => tabs.map(key => pages[key].url), current: () => current }
 }
 
 const actions = calls => calls.filter(c => !['browser_evaluate', 'browser_tabs'].includes(c.name))
@@ -141,6 +147,37 @@ test('browser_act checks the whole list before any of it runs, and reports a fai
   assert.match(text, /The page did not change\./u)
 })
 
+test('browser_act does nothing on a page that is not the one read any more', async () => {
+  const browser = harness()
+  await browser.run('browser_read', {})
+  browser.visit('results')
+  const left = await browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] })
+  assert.match(left, /^Nothing was done: since you read it, the page was left for another one\. Decide again from the page below\.\n\n<untrusted_web_content>\nPage: 检索结果/u)
+  // The same page, without the element the action names.
+  await browser.run('browser_read', {})
+  delete browser.pages.results.refs[2]
+  assert.match(await browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] }), /^Nothing was done: since you read it, the page changed\./u)
+  assert.deepEqual(actions(browser.calls), [])
+})
+
+test('a browser tool the Agent calls itself that may move it, or a read that fails, leaves no page read', async () => {
+  const browser = harness()
+  await browser.run('browser_read', {})
+  // Looking keeps the page, and so do the calls of a run.
+  await browser.direct('browser_take_screenshot')
+  await browser.direct('browser_tabs', { action: 'list' })
+  const token = Symbol('browser_act')
+  covered.add(token)
+  try { await browser.direct('browser_click', { target: '[data-eduwork-ref="2"]' }, token) } finally { covered.delete(token) }
+  assert.equal(pageOf(browser.agent), 'https://library.example/')
+  await browser.direct('browser_tabs', { action: 'select', index: 0 })
+  assert.equal(pageOf(browser.agent), undefined)
+  await assert.rejects(browser.run('browser_act', { actions: [{ do: 'click', ref: 2 }] }), /Read the page with browser_read first/u)
+  await browser.run('browser_read', {})
+  await assert.rejects(browser.run('browser_read', { url: 'https://library.example/missing' }))
+  assert.equal(pageOf(browser.agent), undefined)
+})
+
 test('what appeared since the Agent last read the page is marked', async () => {
   const browser = harness({ start: 'results' })
   await browser.run('browser_read', {})
@@ -165,14 +202,18 @@ test('browser_act asks only for what the Agent marks for confirmation, and the a
   assert.equal(confirmed.kind, 'ask')
   assert.equal(confirmed.displayReason.zh, '请确认：在图书馆提交预约。智能体将在“检索词”中输入“深度学习”并提交；在“校区”中选择“闵行”；点击“检索”；按下 Escape 键；点击“借阅规则”')
   assert.equal(confirmed.reason, 'Confirm: 在图书馆提交预约. The Agent will type "深度学习" into "检索词" and submit it; select "闵行" in "校区"; click "检索"; press Escape; click "借阅规则"')
-  // A link into a private network from another site asks as opening it does; its links among themselves do not.
+  // A link into a private network from another site asks as opening it does, in the Agent's confirmation too; its links among themselves do not.
   assert.equal(act([{ do: 'click', ref: 5 }]).displayReason.zh, '允许智能体打开本机或内网地址 http://10.0.0.8/notice')
+  assert.equal(act([{ do: 'click', ref: 5 }], { confirm: '查看内网通知' }).displayReason.zh, '请确认：查看内网通知。智能体将点击“内网通知”。其中包括：打开本机或内网地址 http://10.0.0.8/notice')
   const read = url => browserPermission(context('workspace-write'), { name: 'browser_read', agent: browser.agent, arguments: { url } }, allow)
   assert.equal(read('https://library.example/').kind, 'allow')
   assert.equal(read(undefined).kind, 'allow')
   assert.equal(read('http://10.0.0.8/notice').kind, 'ask')
   await browser.run('browser_read', { url: 'http://10.0.0.8/notice' })
   assert.equal(act([{ do: 'click', ref: 1 }]).kind, 'allow')
+  // Once the Agent leaves with a tool of its own, the network is entered from elsewhere again.
+  await browser.direct('browser_navigate', { url: 'https://library.example/' })
+  assert.equal(read('http://10.0.0.8/notice').kind, 'ask')
   // The MCP calls of a run go under its permission; a page script asked for directly asks.
   const script = parent => browserPermission(context('workspace-write'), { name: 'mcp__playwright-mcp__browser_evaluate', agent: browser.agent, parent, arguments: { function: '() => 1' } }, allow).kind
   const token = Symbol('browser_act')
