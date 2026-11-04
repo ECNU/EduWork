@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-04T02:35:43.890Z",
-  "fileSetSHA256": "f6129255e275eec0521a1c923b9af3a20207074166835d3696890a1a0fc7981e",
+  "createdAt": "2026-11-04T02:40:13.054Z",
+  "fileSetSHA256": "1d6e23e53d9748521a853ddd3cc30b63e5d118646a2fa40c76c7123756dc5a89",
   "files": [
     {
       "path": ".gitattributes",
@@ -2133,11 +2133,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "09845d8d1289ee2c11d368f5f262ba31c8d1b664538dec31c168c13bf9bb5c9b"
+      "sha256": "14120ffbcf587172afe2ef6cdfdf5ea86aac09714c0d2e8583cd43f0e3eba6bd"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "007faec5f489480cf37c1525f4b405407250815ed7eecb218132719695e171a9"
+      "sha256": "abf812c2be34f874dd0d67d1e0a874ab9d52ff64f9a43c26f31582674cda15d4"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
