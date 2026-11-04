@@ -52,7 +52,7 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
-    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0",
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0",
     "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
     "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
     "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
