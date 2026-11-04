@@ -57,7 +57,7 @@ const plain = new Set(['browser_click', 'browser_type', 'browser_fill_form', 'br
 const origin = url => { try { return new URL(url).origin } catch {} }
 
 // What a browser tool call would do that needs the user's leave, if anything,
-// from the page `here` the Agent is on.
+// from the page `here` the Agent acts on, when that is known.
 function question(name, args, writable, here) {
   // A screenshot reads the page as well: without a file name it comes back to
   // the Agent and is kept in MCP's own output folder, as its other output is.
@@ -100,7 +100,10 @@ const confirmation = (why, steps, risks) => {
 // before they start, for what their MCP calls will do; those calls then run
 // under that answer.
 export function browserPermission(ctx, exec, next) {
-  const mode = access(ctx, exec), writable = mode === 'workspace-write', here = pageOf(exec.agent)
+  const mode = access(ctx, exec), writable = mode === 'workspace-write'
+  // Only browser_act acts on the page the Agent read: it checks before its
+  // first action that the browser is still there, which the user may have left.
+  const here = exec.name === 'browser_act' ? pageOf(exec.agent) : undefined
   if (exec.name === 'browser_read' || exec.name === 'browser_act') {
     const args = exec.arguments ?? {}
     const acts = exec.name === 'browser_act' ? (args.actions ?? []).filter(action => !QUIET.has(action.do)).map(action => [action, elementOf(exec.agent, action.ref)]) : []
@@ -116,6 +119,6 @@ export function browserPermission(ctx, exec, next) {
   const denial = browserGuard(ctx, exec)
   if (denial) return { kind: 'deny', reason: denial }
   if (mode === 'danger-full-access' || covered.has(exec.parent)) return next()
-  const why = question(exec.name.slice(prefix.length), exec.arguments ?? {}, writable, here)
+  const why = question(exec.name.slice(prefix.length), exec.arguments ?? {}, writable)
   return why ? ask([why]) : next()
 }

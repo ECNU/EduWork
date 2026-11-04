@@ -44,7 +44,7 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
         if (name === 'browser_evaluate' && args.function === READ) return text(`### Result\n${JSON.stringify(here)}`)
         if (name === 'browser_evaluate' && args.function.includes('went to another page')) {
           const url = JSON.parse(/location\.href !== ("[^"]*")/u.exec(args.function)[1])
-          const next = /!at\((\d+)\)/u.exec(args.function)?.[1]
+          const next = /!same\(at\((\d+)\)\)/u.exec(args.function)?.[1]
           const answer = url !== here.url ? 'went to another page' : next && !here.refs[next] ? 'the page changed' : suggests && /at\(\d+\)\?\.getAttribute/u.test(args.function) ? 'suggestions opened under the field' : ''
           return text(`### Result\n${JSON.stringify(answer)}`)
         }
@@ -211,6 +211,8 @@ test('browser_act asks only for what the Agent marks for confirmation, and the a
   assert.equal(read('http://10.0.0.8/notice').kind, 'ask')
   await browser.run('browser_read', { url: 'http://10.0.0.8/notice' })
   assert.equal(act([{ do: 'click', ref: 1 }]).kind, 'allow')
+  // Only browser_act counts the page read as where it is, as it checks that before acting; an address typed in asks.
+  assert.equal(read('http://10.0.0.8/notice/2').kind, 'ask')
   // Once the Agent leaves with a tool of its own, the network is entered from elsewhere again.
   await browser.direct('browser_navigate', { url: 'https://library.example/' })
   assert.equal(read('http://10.0.0.8/notice').kind, 'ask')

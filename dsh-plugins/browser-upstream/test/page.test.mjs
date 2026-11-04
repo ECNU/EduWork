@@ -84,6 +84,12 @@ test('the page script reads what the user sees, numbers what can be used, points
     const still = async options => page.evaluate(`(${STILL(first, options)})()`)
     assert.equal(await still({ next: 16, settle: false }), '')
     assert.equal(await still({ next: 99, settle: false }), 'the page changed')
+    // What a field holds may change; a control the page puts to another use is not the one read.
+    await page.locator(`[${REF}="6"]`).fill('李华')
+    assert.equal(await still({ next: 6, settle: false }), '')
+    await page.evaluate(() => { document.querySelector('a[href="#top"]').textContent = '删除草稿' })
+    assert.equal(await still({ next: 11, settle: false }), 'the page changed')
+    await page.evaluate(() => { document.querySelector('a[href="#top"]').textContent = '回到顶部' })
     // A link that loads another page carries the address that opens it; one within the page is clicked.
     assert.equal(first.refs[3].href, 'https://campus.example/n/1')
     assert.equal(first.refs[11].href, undefined)
@@ -124,5 +130,9 @@ test('a long page is read around where it is scrolled to', { skip: !(runtime && 
     const bottom = await read()
     assert.ok(!bottom.truncated && bottom.skipped > 0)
     assert.match(render(bottom), /\[#\d+ button "到底了"\]\n\(The page goes on above what was read: scroll there to read it\.\)$/u)
+    // A block that reaches into the viewport stays, though the page is over the budget, cut short so it cannot take all of it.
+    await page.evaluate(() => { document.body.innerHTML = `<p>${'长'.repeat(91000)}</p>` + `<p>${'短'.repeat(1000)}</p>`.repeat(70); scrollTo(0, 400) })
+    const block = await read()
+    assert.ok(block.truncated && !block.skipped && block.lines[0].text.length === 4000 && block.lines[0].text.endsWith('…'))
   } finally { await browser.close() }
 })

@@ -6,10 +6,16 @@
 // for browser_act to target. What the user cannot see is left out: hidden
 // boxes, menus closed or slid off the screen (their links are listed apart and
 // opened by their address), and the page behind a modal dialog. Each read also
-// tags the document, so browser_act can tell the document it read from a new
-// one at the same address.
+// tags the document and what each numbered element says, so browser_act can
+// tell the page it read from a new document at the same address or a control
+// the page has since put to another use. These scripts run in the page's own
+// world: the tags tell ordinary changes apart, not a page that forges them, as
+// a page decides what its own controls do anyway.
 export const REF = 'data-eduwork-ref'
 const READ_ID = '__eduworkRead'
+const SAYS = '__eduworkSays'
+// What an element is and says, apart from what a field holds, which typing changes.
+const says = String.raw`el => el.tagName + ' ' + (el.getAttribute('aria-label') || '') + ' ' + (el.matches('input, select, textarea') || el.isContentEditable ? '' : (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 200))`
 
 export const READ = String.raw`async () => {
   // A page still loading (as after a redirect) is read once its document is all there.
@@ -135,25 +141,28 @@ export const READ = String.raw`async () => {
   // A link that loads another page, which opening its address does as well.
   const loads = a => /^https?:/.test(a.href) && !a.hasAttribute('download') && a.href.split('#')[0] !== location.href.split('#')[0];
   const lines = [], closed = [], refs = {};
-  let line = '', top = 0, size = 0, skipped = 0, k = 0, inside = 0, room = 0, prefix = '', gap = false;
-  // Past the budget, lines above the viewport make room for the ones below, so
-  // a long page is read around where it is scrolled to.
+  let line = '', top = 0, bottom = 0, size = 0, skipped = 0, k = 0, inside = 0, room = 0, prefix = '', gap = false;
+  // Past the budget, lines wholly above the viewport make room for the ones
+  // below, so a long page is read around where it is scrolled to.
   const full = () => {
-    while (size > MAX && lines.length && lines[0].top < scrollY - 40) { const first = lines.shift(); size -= first.text.length + 1; skipped += first.text.length + 1; }
+    while (size > MAX && lines.length && lines[0].bottom < scrollY) { const first = lines.shift(); size -= first.text.length + 1; skipped += first.text.length + 1; }
     return size > MAX;
   };
   const put = (text, at) => {
     if (!text || full()) return;
     // Inside a card, each piece of text is kept short, so its date or price at the end still shows.
     if (inside) { if (room <= 0) return; text = cut(text, Math.min(room, 60)); room -= text.length; }
-    if (!line) { top = Math.round(at.getBoundingClientRect().top + scrollY); text = prefix + text; prefix = ''; }
+    const r = at.getBoundingClientRect();
+    if (!line) { top = Math.round(r.top + scrollY); bottom = top; text = prefix + text; prefix = ''; }
+    bottom = Math.max(bottom, Math.round(r.bottom + scrollY));
     line += line && (gap || !(CJK.test(line.at(-1)) && CJK.test(text[0]))) ? ' ' + text : text;
     gap = false;
   };
-  const flush = () => { const t = line.trim(); if (t) { lines.push({ text: t, top }); size += t.length + 1; } line = ''; };
+  // A block of text longer than a screenful or two is cut, so it cannot take the whole budget.
+  const flush = () => { const t = cut(line.trim(), 4000); if (t) { lines.push({ text: t, top, bottom }); size += t.length + 1; } line = ''; };
   // A block starts a line of its own, or inside a card at least a word of its own.
   const apart = () => { if (inside) gap = true; else flush(); };
-  const mark = (el, meta) => { el.setAttribute(REF, ++k); refs[k] = meta; return k; };
+  const mark = (el, meta) => { el.setAttribute(REF, ++k); el[${JSON.stringify(SAYS)}] = (${says})(el); refs[k] = meta; return k; };
   const hidden = el => {
     if (modal) return;
     for (const a of el.matches('a[href]') ? [el] : el.querySelectorAll('a[href]')) {
@@ -234,7 +243,9 @@ export const STILL = (seen, { next, typed, settle = true } = {}) => `async () =>
     return find(document);
   };
   if (location.href !== ${JSON.stringify(seen.url)} || document[${JSON.stringify(READ_ID)}] !== ${JSON.stringify(seen.read)} || document.readyState === 'loading') return 'went to another page';
-  if (${next === undefined ? 'false' : `!at(${next})`}) return 'the page changed';
+  const says = ${says};
+  const same = el => el && el[${JSON.stringify(SAYS)}] === says(el);
+  if (${next === undefined ? 'false' : `!same(at(${next}))`}) return 'the page changed';
   if (${typed === undefined ? 'false' : `at(${typed})?.getAttribute('aria-expanded') === 'true'`}) return 'suggestions opened under the field';
   return '';
 }`
@@ -242,10 +253,10 @@ export const STILL = (seen, { next, typed, settle = true } = {}) => `async () =>
 const BUDGET = 6000
 const length = lines => lines.reduce((n, l) => n + l.text.length + 1, 0)
 
-// The lines that fit the budget, from the first one at the top of the viewport
-// down, then filled up with the ones before it.
+// The lines that fit the budget, from the first one that reaches into the
+// viewport down, then filled up with the ones before it.
 function within(lines, scrollY, budget) {
-  let from = lines.findIndex(l => l.top >= scrollY - 40)
+  let from = lines.findIndex(l => (l.bottom ?? l.top) >= scrollY - 40)
   if (from < 0) from = lines.length
   let to = from, size = 0
   while (to < lines.length && (to === from || size + lines[to].text.length < budget)) size += lines[to++].text.length + 1

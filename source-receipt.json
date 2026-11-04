@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-04T03:21:11.376Z",
-  "fileSetSHA256": "81d922f574fb207d1ef0ef9cf812d56321c9a6993c2d0340b1a31f4af509fa92",
+  "createdAt": "2026-11-04T03:35:10.224Z",
+  "fileSetSHA256": "b585ca469b18f43c2c5a7aebe51d1a13c23e9861a0d4ac30b1616ae5f4da8410",
   "files": [
     {
       "path": ".gitattributes",
@@ -2109,11 +2109,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/page.js",
-      "sha256": "0990a08d880567e59c4b27bd11a7d8fe069ec9f8f7f688a98b7e8b098e59a4b7"
+      "sha256": "17ba360a4d1adedcdd6c7d0fe6be0855d49cd8a0af55b10fd24561d1558da4f0"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
-      "sha256": "fcf423da6c6281dbcddc8c07470865051da27ca86a628f22c5b95ee1d1fa9da5"
+      "sha256": "38e07f3bf565969d56475b880005c12e67e42e3494d1a193200816de9d850e31"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/read-act.js",
@@ -2133,11 +2133,11 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "6121a9bcc06f5d1abad0cd34af25fe0ce44718c5435f905c16b49b913c28c41a"
+      "sha256": "4bfc9feb19fa354af2e3f994e6de59e38088036cd984ff88bd14cbe56ef45b5b"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "6bf03c87895bb4cba28c40b0b12bb49be79f73c6190c2a24976b58e455c10278"
+      "sha256": "ac38fafc7745641d299d0340583858a0519eefedd2224b7d3e343121328dfaeb"
     },
     {
       "path": "dsh-plugins/browser-upstream/src/client.ts",
@@ -2145,7 +2145,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
-      "sha256": "0903148dcde072f51cb8f45d6100583e16122330a7bd3fa2cebda19312c472fb"
+      "sha256": "0814e55646e6ba049195b97859028bcfbe0c61f65f7527f6c51dc49509ac5aa5"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
@@ -2153,7 +2153,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "88782847f3fbf06ba558c169c12628d895e7d1c749591e16165159421f009a8b"
+      "sha256": "619f94d843f90feeb9195a5d4304a1902ae9f5009878d83c93b293b920f40673"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
@@ -8464,7 +8464,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "88782847f3fbf06ba558c169c12628d895e7d1c749591e16165159421f009a8b",
+      "sha256": "619f94d843f90feeb9195a5d4304a1902ae9f5009878d83c93b293b920f40673",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     },
