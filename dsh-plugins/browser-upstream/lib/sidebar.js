@@ -8,10 +8,11 @@ import { createScope } from '@deepseek-ai/dsh-scope'
 
 // In the desktop app a conversation's own Agent drives the browser tabs in that
 // conversation's right Sidebar (dsh-electron/src/sidebar-browser.mjs); its
-// subagents keep the isolated browser. The official provider's mountSessionMcp
-// gives every Agent the same server arguments, so this mounts the same
-// Playwright MCP server per Agent with its own. Remove it once the official
-// provider accepts per-Agent arguments.
+// subagents keep the isolated browser, as every Agent does in Web and CLI. The
+// official provider's mountSessionMcp gives every Agent the same server
+// arguments and has none for leaving out action snapshots, so this mounts the
+// same Playwright MCP server per Agent with its own. Remove it once the
+// official provider accepts per-Agent arguments.
 export const SIDEBAR_BROWSER_ENV = 'EDUWORK_SIDEBAR_BROWSER_SECRET'
 const server = 'playwright-mcp'
 const prefix = `mcp__${server}__`
@@ -46,15 +47,15 @@ export function serverLaunch(browser, agent, sidebar, cli, environment = process
   // Navigations are still awaited.
   const args = [cli, '--browser', 'chromium', '--snapshot-mode', 'none', '--timeout-settle', '0']
   // The endpoint stays out of the process list.
-  if (usesSidebar(agent)) return { args, env: { ...env, PLAYWRIGHT_MCP_CDP_ENDPOINT: `${sidebar}/${agent.session.id}` } }
+  if (sidebar !== undefined && usesSidebar(agent)) return { args, env: { ...env, PLAYWRIGHT_MCP_CDP_ENDPOINT: `${sidebar}/${agent.session.id}` } }
   args.push('--isolated')
   if (browser.headless) args.push('--headless')
   if (browser.executablePath !== undefined) args.push('--executable-path', browser.executablePath)
   return { args, env }
 }
 
-/** Mount Playwright MCP per Agent, as mountSessionMcp does for the official provider. */
-export function mountSidebarBrowser(ctx, browser, sidebar) {
+/** Mount Playwright MCP per Agent, as mountSessionMcp does for the official provider; sidebar is the desktop endpoint, if any. */
+export function mountBrowser(ctx, browser, sidebar) {
   const workingDirectory = ctx.get('workingDirectory')
   if (workingDirectory === undefined) throw new Error(`${server}: browser MCP requires a working-directory provider`)
   // The Playwright MCP release the official provider pins.
@@ -110,7 +111,7 @@ export function mountSidebarBrowser(ctx, browser, sidebar) {
       try { return await next() } finally { exec.signal = original }
     })
   })
-  ctx.systemPrompt.section({
+  if (sidebar !== undefined) ctx.systemPrompt.section({
     name: 'eduwork-browser:sidebar',
     order: ctx.systemPrompt.getSectionOrder('MCP_SERVERS') + 1,
     text: ({ agent }) => agent !== undefined && usesSidebar(agent) ? sidebarGuidance : '',

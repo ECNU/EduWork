@@ -2,7 +2,7 @@ import * as PlaywrightBrowser from '@deepseek-ai/dsh-experimental-browser-use-pl
 import { browserConfig } from './config.js'
 import { browserGuard, browserPermission } from './permission.js'
 import { noteSavedScreenshots, registerPageTools } from './read-act.js'
-import { mountSidebarBrowser, takeSidebarEndpoint } from './sidebar.js'
+import { mountBrowser, takeSidebarEndpoint } from './sidebar.js'
 
 export const name = 'eduwork-browser-upstream'
 export const inject = [...PlaywrightBrowser.inject, 'sandboxPolicy']
@@ -17,6 +17,5 @@ export function apply(ctx, config = {}) {
   ctx.on('tools/pre-execute', (exec, next) => browserPermission(ctx, exec, next))
   registerPageTools(ctx)
   noteSavedScreenshots(ctx)
-  if (sidebar === undefined) return ctx.plugin(PlaywrightBrowser, browser)
-  mountSidebarBrowser(ctx, browser, sidebar)
+  mountBrowser(ctx, browser, sidebar)
 }
