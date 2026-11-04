@@ -24,10 +24,10 @@ const NAMES = String.raw`
   // aria-label, a label), a field without one by the short caption shown with
   // it in a box of its own, as many pages lay out fields without labels. What a
   // field holds is never its name: that could be a password.
+  const given = el => clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '))
+    || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
   const name = el => {
-    const by = clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '));
-    const given = by || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
-    if (given) return cut(given, 80);
+    if (given(el)) return cut(given(el), 80);
     if (el.matches(FIELD)) {
       for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
         const caption = own(up);
@@ -37,8 +37,10 @@ const NAMES = String.raw`
     }
     return cut(clean((el.matches(FIELD) ? el.placeholder : el.innerText || el.value) || el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
   };
-  // What an element is and is called, in any case, as showing a hidden menu can change the case of its text.
-  const says = el => el.tagName + ' ' + name(el).toLowerCase();
+  // What an element is and is called, in any case, as showing a hidden menu can
+  // change the case of its text; a field only by the name the page gives it,
+  // as a message shown beside it, such as "required", changes its caption.
+  const says = el => el.tagName + ' ' + (el.matches(FIELD) ? el.type + ' ' + given(el) : name(el)).toLowerCase();
 `
 
 export const READ = String.raw`async () => {

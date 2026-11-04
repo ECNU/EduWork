@@ -147,13 +147,17 @@ test('browser_act\'s check knows a control by the name the page read showed', { 
     const page = await (await browser.newContext({ viewport: { width: 576, height: 744 } })).newPage()
     await page.route('https://campus.example/drafts', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><title>草稿</title>
 <input type="button" value="删除草稿 A"> <span id="what">删除草稿 A</span><button aria-labelledby="what">×</button>
-<nav id="menu" style="display: none"><a href="https://campus.example/about" style="text-transform: uppercase">About us</a></nav>` }))
+<nav id="menu" style="display: none"><a href="https://campus.example/about" style="text-transform: uppercase">About us</a></nav>
+<div>姓名<input><span id="error"></span></div>` }))
     await page.goto('https://campus.example/drafts')
     const seen = await page.evaluate(`(${READ})()`)
     const ref = (kind, name) => Number(Object.entries(seen.refs).find(([, r]) => r.kind === kind && r.name === name)[0])
     const still = next => page.evaluate(`(${STILL(seen, { next, settle: false })})()`)
-    const [input, labelled, about] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us')]
+    const [input, labelled, about, field] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us'), ref('textbox', '姓名')]
     assert.deepEqual([await still(input), await still(labelled), await still(about)], ['', '', ''])
+    // A message shown beside a field leaves it the same field.
+    await page.evaluate(() => { document.getElementById('error').textContent = '必填' })
+    assert.equal(await still(field), '')
     // A menu shown with its text in capitals is the same link; a button named for another draft is not the one read.
     await page.evaluate(() => { document.getElementById('menu').style.display = 'block' })
     assert.equal(await still(about), '')
