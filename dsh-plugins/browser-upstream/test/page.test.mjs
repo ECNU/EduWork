@@ -130,9 +130,34 @@ test('a long page is read around where it is scrolled to', { skip: !(runtime && 
     const bottom = await read()
     assert.ok(!bottom.truncated && bottom.skipped > 0)
     assert.match(render(bottom), /\[#\d+ button "到底了"\]\n\(The page goes on above what was read: scroll there to read it\.\)$/u)
-    // A block that reaches into the viewport stays, though the page is over the budget, cut short so it cannot take all of it.
-    await page.evaluate(() => { document.body.innerHTML = `<p>${'长'.repeat(91000)}</p>` + `<p>${'短'.repeat(1000)}</p>`.repeat(70); scrollTo(0, 400) })
-    const block = await read()
-    assert.ok(block.truncated && !block.skipped && block.lines[0].text.length === 4000 && block.lines[0].text.endsWith('…'))
+    // A long block, or a row of cards, is read in lines placed where they are drawn: the end of it, scrolled to, is read.
+    await page.evaluate(() => { document.body.innerHTML = `<p>${'长'.repeat(91000)}<b>尾巴</b></p>`; document.querySelector('b').scrollIntoView() })
+    const tail = await read()
+    assert.ok(tail.skipped > 0 && tail.lines.at(-1).text.endsWith('尾巴'))
+    await page.evaluate(() => { document.body.innerHTML = Array.from({ length: 400 }, (_, i) => `<a href="/c/${i}" style="display: inline-block; width: 500px">卡片${i} ${'说明'.repeat(60)}</a>`).join(''); document.querySelector('a:last-child').scrollIntoView() })
+    const cards = await read()
+    assert.ok(cards.lines.length > 1 && cards.lines.at(-1).text.includes('卡片399'))
+  } finally { await browser.close() }
+})
+
+test('browser_act\'s check knows a control by the name the page read showed', { skip: !(runtime && chromium) }, async () => {
+  const { chromium: launcher } = createRequire(join(runtime, 'package.json'))('playwright-core')
+  const browser = await launcher.launch({ executablePath: chromium, headless: true })
+  try {
+    const page = await (await browser.newContext({ viewport: { width: 576, height: 744 } })).newPage()
+    await page.route('https://campus.example/drafts', route => route.fulfill({ contentType: 'text/html', body: `<!doctype html><meta charset="utf-8"><title>草稿</title>
+<input type="button" value="删除草稿 A"> <span id="what">删除草稿 A</span><button aria-labelledby="what">×</button>
+<nav id="menu" style="display: none"><a href="https://campus.example/about" style="text-transform: uppercase">About us</a></nav>` }))
+    await page.goto('https://campus.example/drafts')
+    const seen = await page.evaluate(`(${READ})()`)
+    const ref = (kind, name) => Number(Object.entries(seen.refs).find(([, r]) => r.kind === kind && r.name === name)[0])
+    const still = next => page.evaluate(`(${STILL(seen, { next, settle: false })})()`)
+    const [input, labelled, about] = [ref('button', '删除草稿 A'), ref('button', '删除草稿 A') + 1, ref('link', 'About us')]
+    assert.deepEqual([await still(input), await still(labelled), await still(about)], ['', '', ''])
+    // A menu shown with its text in capitals is the same link; a button named for another draft is not the one read.
+    await page.evaluate(() => { document.getElementById('menu').style.display = 'block' })
+    assert.equal(await still(about), '')
+    await page.evaluate(() => { document.querySelector('input').value = '删除草稿 B'; document.getElementById('what').textContent = '删除草稿 B' })
+    assert.deepEqual([await still(input), await still(labelled)], ['the page changed', 'the page changed'])
   } finally { await browser.close() }
 })

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-04T03:35:10.224Z",
-  "fileSetSHA256": "b585ca469b18f43c2c5a7aebe51d1a13c23e9861a0d4ac30b1616ae5f4da8410",
+  "createdAt": "2026-11-04T03:45:39.914Z",
+  "fileSetSHA256": "de5f5104a724b62852351ab0f4bcb18029090824ae264addf0352f6099292ead",
   "files": [
     {
       "path": ".gitattributes",
@@ -2109,7 +2109,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/page.js",
-      "sha256": "17ba360a4d1adedcdd6c7d0fe6be0855d49cd8a0af55b10fd24561d1558da4f0"
+      "sha256": "c1e32ebf117f1498c99b497a3c18a2f93b5b9d395a1bb045ab9b0df51562d152"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
@@ -2145,7 +2145,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
-      "sha256": "0814e55646e6ba049195b97859028bcfbe0c61f65f7527f6c51dc49509ac5aa5"
+      "sha256": "22e2024f7b2ba2c90fb6b7e544340e67cbcdb706e29715582a484430e6ccc6e4"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",

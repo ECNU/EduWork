@@ -14,8 +14,32 @@
 export const REF = 'data-eduwork-ref'
 const READ_ID = '__eduworkRead'
 const SAYS = '__eduworkSays'
-// What an element is and says, apart from what a field holds, which typing changes.
-const says = String.raw`el => el.tagName + ' ' + (el.getAttribute('aria-label') || '') + ' ' + (el.matches('input, select, textarea') || el.isContentEditable ? '' : (el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 200))`
+// How the page script names an element, which browser_act's check repeats.
+const NAMES = String.raw`
+  const FIELD = 'input:not([type=hidden], [type=submit], [type=button], [type=reset], [type=image]), select, textarea';
+  const clean = s => (s || '').replace(/\s+/g, ' ').trim();
+  const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+  const own = node => { const c = node.cloneNode(true); c.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(c.textContent); };
+  // An element is called by the name the page gives it (aria-labelledby,
+  // aria-label, a label), a field without one by the short caption shown with
+  // it in a box of its own, as many pages lay out fields without labels. What a
+  // field holds is never its name: that could be a password.
+  const name = el => {
+    const by = clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '));
+    const given = by || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
+    if (given) return cut(given, 80);
+    if (el.matches(FIELD)) {
+      for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
+        const caption = own(up);
+        if (caption.length > 20) break;
+        if (caption) return caption;
+      }
+    }
+    return cut(clean((el.matches(FIELD) ? el.placeholder : el.innerText || el.value) || el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
+  };
+  // What an element is and is called, in any case, as showing a hidden menu can change the case of its text.
+  const says = el => el.tagName + ' ' + name(el).toLowerCase();
+`
 
 export const READ = String.raw`async () => {
   // A page still loading (as after a redirect) is read once its document is all there.
@@ -31,12 +55,10 @@ export const READ = String.raw`async () => {
   const read = Math.random().toString(36).slice(2);
   document[${JSON.stringify(READ_ID)}] = read;
   const INTERACTIVE = 'a[href], button, input:not([type=hidden]), select, textarea, summary, [contenteditable=true], [role=button], [role=link], [role=textbox], [role=searchbox], [role=tab], [role=switch], [role=option], [role=checkbox], [role=radio], [role=combobox], [role=menuitem], [role=menuitemradio], [role=menuitemcheckbox], [role=treeitem]';
-  const FIELD = 'input:not([type=hidden], [type=submit], [type=button], [type=reset], [type=image]), select, textarea';
   const SKIP = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'TEMPLATE', 'HEAD', 'CANVAS', 'VIDEO', 'AUDIO', 'OBJECT', 'EMBED']);
   const CJK = /[　-ヿ㐀-鿿＀-￯]/;
-  const MAX = 60000;
-  const clean = s => (s || '').replace(/\s+/g, ' ').trim();
-  const cut = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
+  const MAX = 60000, CHUNK = 2000;
+  ${NAMES}
   const quote = s => JSON.stringify(s);
   // Children as drawn: an open shadow root's instead of the light ones, and a slot's assigned nodes.
   const kids = node => node.shadowRoot ? node.shadowRoot.childNodes
@@ -63,24 +85,6 @@ export const READ = String.raw`async () => {
   const clickable = el => sized(el) ? el : [...el.children].find(sized);
   // Large enough to be a chart rather than an icon.
   const drawing = el => { const r = el.getBoundingClientRect(); return r.width >= 160 && r.height >= 100; };
-  const own = node => { const c = node.cloneNode(true); c.querySelectorAll('select, input, textarea, [role=listbox]').forEach(x => x.remove()); return clean(c.textContent); };
-  // An element is called by the name the page gives it (aria-labelledby,
-  // aria-label, a label), a field without one by the short caption shown with
-  // it in a box of its own, as many pages lay out fields without labels. What a
-  // field holds is never its name: that could be a password.
-  const name = el => {
-    const by = clean((el.getAttribute('aria-labelledby') || '').split(/\s+/).map(id => document.getElementById(id)?.textContent || '').join(' '));
-    const given = by || clean(el.getAttribute('aria-label')) || (el.labels?.[0] ? own(el.labels[0]) : '');
-    if (given) return cut(given, 80);
-    if (el.matches(FIELD)) {
-      for (let up = el.parentElement, i = 0; up && i < 3 && up.querySelectorAll(FIELD).length === 1; up = up.parentElement, i++) {
-        const caption = own(up);
-        if (caption.length > 20) break;
-        if (caption) return caption;
-      }
-    }
-    return cut(clean((el.matches(FIELD) ? el.placeholder : el.innerText || el.value) || el.title || el.querySelector('img[alt]')?.alt || el.name), 80);
-  };
   const kindOf = el => {
     const role = el.getAttribute('role'), type = (el.getAttribute('type') || '').toLowerCase();
     const roles = { link: 'link', button: 'button', tab: 'tab', switch: 'switch', option: 'option', checkbox: 'checkbox', radio: 'radio', textbox: 'textbox', searchbox: 'textbox', treeitem: 'tree item', menuitem: 'menu item', menuitemradio: 'menu item', menuitemcheckbox: 'menu item' };
@@ -148,8 +152,11 @@ export const READ = String.raw`async () => {
     while (size > MAX && lines.length && lines[0].bottom < scrollY) { const first = lines.shift(); size -= first.text.length + 1; skipped += first.text.length + 1; }
     return size > MAX;
   };
+  // A line grown past a screenful or so goes on in a new one, so each line has
+  // its own place on the page. at is the element or range the text is drawn in.
   const put = (text, at) => {
     if (!text || full()) return;
+    if (!inside && line.length > CHUNK) flush();
     // Inside a card, each piece of text is kept short, so its date or price at the end still shows.
     if (inside) { if (room <= 0) return; text = cut(text, Math.min(room, 60)); room -= text.length; }
     const r = at.getBoundingClientRect();
@@ -158,11 +165,25 @@ export const READ = String.raw`async () => {
     line += line && (gap || !(CJK.test(line.at(-1)) && CJK.test(text[0]))) ? ' ' + text : text;
     gap = false;
   };
-  // A block of text longer than a screenful or two is cut, so it cannot take the whole budget.
-  const flush = () => { const t = cut(line.trim(), 4000); if (t) { lines.push({ text: t, top, bottom }); size += t.length + 1; } line = ''; };
+  const flush = () => { const t = line.trim(); if (t) { lines.push({ text: t, top, bottom }); size += t.length + 1; } line = ''; };
+  // A long run of text goes in pieces, each placed where it is drawn, broken at a space where there is one.
+  const text = node => {
+    const raw = node.textContent;
+    if (raw.length <= CHUNK) return put(clean(raw), node.parentElement);
+    for (let from = 0; from < raw.length && !full();) {
+      let to = Math.min(from + CHUNK, raw.length);
+      const space = to < raw.length ? raw.lastIndexOf(' ', to) : -1;
+      if (space > from + CHUNK / 2) to = space;
+      const range = document.createRange();
+      range.setStart(node, from);
+      range.setEnd(node, to);
+      put(clean(raw.slice(from, to)), range);
+      from = to;
+    }
+  };
   // A block starts a line of its own, or inside a card at least a word of its own.
   const apart = () => { if (inside) gap = true; else flush(); };
-  const mark = (el, meta) => { el.setAttribute(REF, ++k); el[${JSON.stringify(SAYS)}] = (${says})(el); refs[k] = meta; return k; };
+  const mark = (el, meta) => { el.setAttribute(REF, ++k); el[${JSON.stringify(SAYS)}] = says(el); refs[k] = meta; return k; };
   const hidden = el => {
     if (modal) return;
     for (const a of el.matches('a[href]') ? [el] : el.querySelectorAll('a[href]')) {
@@ -193,7 +214,7 @@ export const READ = String.raw`async () => {
   const walk = node => {
     for (const child of kids(node)) {
       if (full()) return;
-      if (child.nodeType === Node.TEXT_NODE) { put(clean(child.textContent), child.parentElement); continue; }
+      if (child.nodeType === Node.TEXT_NODE) { text(child); continue; }
       // A chart drawn on a canvas or in an SVG has no text to read.
       if ((child.tagName === 'CANVAS' || child instanceof SVGSVGElement) && shown(child) && drawing(child)) {
         const named = clean(child.getAttribute('aria-label') || child.querySelector(':scope > title')?.textContent);
@@ -243,7 +264,7 @@ export const STILL = (seen, { next, typed, settle = true } = {}) => `async () =>
     return find(document);
   };
   if (location.href !== ${JSON.stringify(seen.url)} || document[${JSON.stringify(READ_ID)}] !== ${JSON.stringify(seen.read)} || document.readyState === 'loading') return 'went to another page';
-  const says = ${says};
+  ${NAMES}
   const same = el => el && el[${JSON.stringify(SAYS)}] === says(el);
   if (${next === undefined ? 'false' : `!same(at(${next}))`}) return 'the page changed';
   if (${typed === undefined ? 'false' : `at(${typed})?.getAttribute('aria-expanded') === 'true'`}) return 'suggestions opened under the field';
