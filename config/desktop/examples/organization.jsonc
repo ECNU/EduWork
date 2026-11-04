@@ -276,7 +276,7 @@
 //   "pet": {}
 // desktop.pet.enabled：显示桌面宠物；公版默认关闭。
 //   "enabled": true
-// desktop.pet.skin：形象 ID；内置 eduwork-page（小页·红）、eduwork-page-blue（小页·蓝）、dafeiyu（大肥鱼）和 ecnu-huashi（小花狮），找不到时使用 eduwork-page。
+// desktop.pet.skin：形象 ID；内置 eduwork-page（小页·红）、eduwork-page-blue（小页·蓝）、dafeiyu（大肥鱼）、ecnu-huashi（小花狮）和 ecnu-huashi-girl（花狮娘），找不到时使用 eduwork-page。
 //   "skin": "eduwork-page"
 // desktop.pet.size：大小百分比，50–200，10 的倍数；100 约为 128 像素高。
 //   "size": 100

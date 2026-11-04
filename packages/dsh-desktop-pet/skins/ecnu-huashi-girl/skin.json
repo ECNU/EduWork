@@ -1,0 +1,161 @@
+{
+  "schemaVersion": 1,
+  "id": "ecnu-huashi-girl",
+  "name": {
+    "zh-CN": "花狮娘",
+    "en": "Huashi Girl"
+  },
+  "description": {
+    "zh-CN": "华东师范大学吉祥物小花狮的拟人形象。",
+    "en": "A girl version of the East China Normal University mascot."
+  },
+  "author": "JunieXD (ChatGPT image generation); character © East China Normal University",
+  "license": "LicenseRef-ECNU-Mascot",
+  "frame": {
+    "width": 416,
+    "height": 512
+  },
+  "anchors": {
+    "badge": [
+      337,
+      47
+    ]
+  },
+  "animations": {
+    "idle": {
+      "sheet": "idle.webp",
+      "frames": 2,
+      "frameMs": [
+        1000,
+        180
+      ],
+      "playback": "blink"
+    },
+    "smile": {
+      "sheet": "smile.webp",
+      "frames": 1,
+      "frameMs": [
+        1800
+      ],
+      "repeat": 1
+    },
+    "done": {
+      "sheet": "done.webp",
+      "frames": 3,
+      "frameMs": [
+        320,
+        520,
+        900
+      ]
+    },
+    "think": {
+      "sheet": "think.webp",
+      "frames": 2,
+      "frameMs": [
+        3200,
+        1600
+      ]
+    },
+    "work": {
+      "sheet": "work.webp",
+      "frames": 3,
+      "frameMs": [
+        450,
+        450,
+        900
+      ],
+      "repeat": 3
+    },
+    "attention": {
+      "sheet": "attention.webp",
+      "frames": 2,
+      "frameMs": [
+        520,
+        520
+      ]
+    },
+    "greet": {
+      "sheet": "greet.webp",
+      "frames": 2,
+      "frameMs": [
+        400,
+        400
+      ],
+      "repeat": 3
+    },
+    "failed": {
+      "sheet": "failed.webp",
+      "frames": 3,
+      "frameMs": [
+        450,
+        900,
+        1650
+      ],
+      "playback": "once"
+    },
+    "sleep": {
+      "sheet": "sleep.webp",
+      "frames": 2,
+      "frameMs": [
+        1800,
+        1800
+      ]
+    },
+    "react": {
+      "sheet": "react.webp",
+      "frames": 3,
+      "frameMs": [
+        260,
+        900,
+        700
+      ],
+      "playback": "once"
+    },
+    "drag": {
+      "sheet": "drag.webp",
+      "frames": 1,
+      "motion": "dangle"
+    },
+    "peek": {
+      "sheet": "peek.webp",
+      "frames": 1
+    }
+  },
+  "states": {
+    "idle": [
+      "idle",
+      "smile",
+      "greet"
+    ],
+    "working": [
+      "think",
+      "work"
+    ]
+  },
+  "lines": {
+    "done": {
+      "zh-CN": [
+        "做完啦，点我看看！"
+      ],
+      "en": [
+        "Done! Click me."
+      ]
+    },
+    "attention": {
+      "zh-CN": [
+        "需要你来看一下～"
+      ],
+      "en": [
+        "I need your input."
+      ]
+    },
+    "failed": {
+      "zh-CN": [
+        "呜…遇到一点问题"
+      ],
+      "en": [
+        "Something went wrong."
+      ]
+    }
+  }
+}
