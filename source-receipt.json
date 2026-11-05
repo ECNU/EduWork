@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-05T06:27:29.436Z",
-  "fileSetSHA256": "f870f4d3a09b7b3a62ac4c6efc18c77ddff4f303bd2d61b376207bdf055c1dea",
+  "createdAt": "2026-11-05T06:50:33.087Z",
+  "fileSetSHA256": "d221a6980fc2eff72c24f864183e0b0879ed16d89428edfc51b10422e90c20d8",
   "files": [
     {
       "path": ".gitattributes",
@@ -7909,7 +7909,7 @@
     },
     {
       "path": "scripts/verify-product-release-identity.mjs",
-      "sha256": "d3446e9bd8a22ffb00ac01bef480e7276b5f187a9c97605a3b116fb036e15d20"
+      "sha256": "87ed77465286aec1bf3eb025632d3e9949fe42e57302feac71f6a602d959d457"
     },
     {
       "path": "scripts/verify-windows-release.mjs",
@@ -8086,6 +8086,10 @@
     {
       "path": "tests/preflight.test.mjs",
       "sha256": "fa13d1bf47f33f05d3335a405f9c715aaedd69989af3c9ad5580efbbb91f221a"
+    },
+    {
+      "path": "tests/product-release-identity.test.mjs",
+      "sha256": "e5d802542faaafd5951eb51cc5f8e0e8f96339c561e66413d43439a4263aad1d"
     },
     {
       "path": "tests/publisher-acceptance.test.mjs",
