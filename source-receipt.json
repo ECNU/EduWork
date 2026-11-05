@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-04T09:39:45.188Z",
-  "fileSetSHA256": "4ad5db2af63254cc4f2ab8248630056e2dd36f4a47646481536426cf55fcd69d",
+  "createdAt": "2026-11-05T03:36:39.955Z",
+  "fileSetSHA256": "306f7e04d00b5049e23bb1c3af314bc1fdc730c151052de2855ec9db3bfa7550",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "55377e6e21953e71408d9ce837b2e48c3aae60b0ac26026b9f3a1146f2635b51"
+      "sha256": "17141b26aa06a825d6cbab7b5a0f09a2b97afc37b8a6ec028971872e57244e50"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1121,7 +1121,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "dce3cb085c102b523fa650bf0c9dd2a099a6119eb58b5d703fa48dcff5b6096f"
+      "sha256": "3da16a677e2fa738129a9ee34e3790eae1ac9b7acd9df1b92dfe9bc80e8ecd5a"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1281,11 +1281,11 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "2fdd1480dde4e20b056514a72696719b92cfc84e843e9d91850993fcc933a1a2"
+      "sha256": "deeff784b09c95423ae413d66fcf9339542ec2fee57061aa7fb4cdf3b331f7f1"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "3765037e000ba62c9132d2c0ee3d46ed09940945b563b36762737839644dd714"
+      "sha256": "d770be9c5554480b7a1e642d5ce40cf0bdfc36721ddef269a71ccde593c2f7cf"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1314,6 +1314,14 @@
     {
       "path": "dsh-electron/src/settings-open-request.mjs",
       "sha256": "31dad8de173950b751b9a3c80b9b3aa355d6ff3614917a148fb553b31e132381"
+    },
+    {
+      "path": "dsh-electron/src/sidebar-browser-preload.cjs",
+      "sha256": "b82a5ac3a7cff626f623c978c6319ed0f605eb04f7f50efab4eccfaf5e438dca"
+    },
+    {
+      "path": "dsh-electron/src/sidebar-browser.mjs",
+      "sha256": "dd144946d2a0244cd51c2731031a0d94db738d9fd805b65e08333436c3977d28"
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
@@ -1445,7 +1453,15 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "246690a3a47395c6dd2194152076776368de594d3663d8afdf1fe924e1d950fb"
+      "sha256": "83dc0be62d5261dc1c467a66ad7e030689d704454e68120031d006f5ea3c40cc"
+    },
+    {
+      "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
+      "sha256": "f156c654b85d04157b9b68d55ba0dfef9bdca72895c69397261a3f8ba66c5b06"
+    },
+    {
+      "path": "dsh-electron/tests/fixtures/sidebar-browser-app.mjs",
+      "sha256": "486ed4c26ea9279b3ff54d80c87e7bbf5f3222b95d4434bb1b6cf832e41b451f"
     },
     {
       "path": "dsh-electron/tests/host-git-identity.test.mjs",
@@ -1461,7 +1477,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "35bc598dfcdb68ba816f5948397f835f63eae9d75ae440d22d28f1105ff1fe6f"
+      "sha256": "ea1d400c2c7019b4f52bb94f8e348e1ae0a2af94cb2483b547be52646939e7e3"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1510,6 +1526,10 @@
     {
       "path": "dsh-electron/tests/settings-open-request.test.mjs",
       "sha256": "ecb285ab59860a39a39b3e50fcfea397d4a7a07bab437db65ae3ed6760c399ab"
+    },
+    {
+      "path": "dsh-electron/tests/sidebar-browser.test.mjs",
+      "sha256": "d466bafbffc45e49b3f0b6eeddbc673310d37c1a4fc07a2ffb235ba14471fcb7"
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
@@ -2117,27 +2137,59 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/index.js",
-      "sha256": "37d7ce03da6eba9882b62348a52415621f6cef702d2d95f81757f434dd537f83"
+      "sha256": "05832d38a37b3a812790bf3fc936db327456c2f49682bd35854b5ef59fada5fb"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/page.js",
+      "sha256": "ef312e5fafbc3d6d15d6f9b08bed4054dd72772c122c466d950cab88f771a498"
     },
     {
       "path": "dsh-plugins/browser-upstream/lib/permission.js",
-      "sha256": "b374f7ded9cd8f488f3341b26653fa991a3e64dea50c5a3f6b9490dc717d254e"
+      "sha256": "38e07f3bf565969d56475b880005c12e67e42e3494d1a193200816de9d850e31"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/read-act.js",
+      "sha256": "d04cdeb6a45872430511aba74ec2928940e1a0e0bced47476188b9e1b62643dc"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/sidebar-client.js",
+      "sha256": "619566ccf0c7764b228a3bd61fbdf0fd1c2a048b4ed08f690189205dfff5af38"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/lib/sidebar.js",
+      "sha256": "2cd54b9304d6b59d0c90588e9b5b2c1a95c0864a690ca4914d667b385440aff1"
     },
     {
       "path": "dsh-plugins/browser-upstream/package.json",
-      "sha256": "3e5e1d7d6969978a00977b775a1eb97cbcd2ee453ec3ed5f2d5524c9393a4011"
+      "sha256": "da253c78121ebe76d74ac0ee68e3f325324888cbfb3557195b6a1fe02bb316e1"
     },
     {
       "path": "dsh-plugins/browser-upstream/README_EN.md",
-      "sha256": "3003995b38dff3238f8d767b86873b9de7bb3877b9ebbe8c6b3763de2bd209b8"
+      "sha256": "2e5a08736e8c13d5a3e3ec342c0678c5ac70ec9de0ec01d4a2240b65e147ae94"
     },
     {
       "path": "dsh-plugins/browser-upstream/README.md",
-      "sha256": "26f1db09adefd5b22dc9ff01f46ad76c28b4ade3029ecb5bbb872d1a1f0344c2"
+      "sha256": "ccce6d9cf4f26d8a3f21cce97b551d7102aa9461955b7e06370ae852ba21c827"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/src/client.ts",
+      "sha256": "ee8e6952badfb150b05d92de452c4c525c8cdc8dfaa26492f4e232c609f51642"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/test/page.test.mjs",
+      "sha256": "ce4900994f12b4e1e7179e48b858d43d65eff3bbc1a89e0f4b74db56cbbed3d4"
     },
     {
       "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
-      "sha256": "ba3c16646d4899f22b1404dafba5290f4c80b1073d8ccaf61957081e75cd6bf9"
+      "sha256": "7f072585b3f23fcacfbdba7fab37839b41927495302c5d970a0ba50b3ae0c6bf"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
+      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb"
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/test/sidebar.test.mjs",
+      "sha256": "5428596fe0b54a5df499493a726b48ea2ba2a343f5c3679191eb132a6e95dcaf"
     },
     {
       "path": "dsh-plugins/calendar/build-client.mjs",
@@ -3373,7 +3425,7 @@
     },
     {
       "path": "dsh-skills/browser-upstream/SKILL.md",
-      "sha256": "74f1403bc3e00e8251ccb63c13de577565bf6e23e23d892daa618d97ab1cd920"
+      "sha256": "7c8aa91ace48e745a79192fcf0e223da0bd2758128495c7e3363e0ba2fa80897"
     },
     {
       "path": "dsh-skills/browser/SKILL.md",
@@ -7169,7 +7221,7 @@
     },
     {
       "path": "scripts/build-pinned-dsh-plugin-clients.mjs",
-      "sha256": "1ac6168109571b31c8f58707c2f6a96112f844d68d30aca972af48fb315ad69c"
+      "sha256": "5184e00d971b0db5942b33db1c644c9e099a0df50560e3f81ccf4d3ac9502976"
     },
     {
       "path": "scripts/build-pipeline-diagram.mjs",
@@ -7773,7 +7825,7 @@
     },
     {
       "path": "scripts/test/plugin-locale.test.mjs",
-      "sha256": "c07e92454fd1eae39cd85931afaa7ea20bb2db660d9fe38c6cffd68d4b991474"
+      "sha256": "c712a62b1b1711bfb7b2a33a2072493b8d8910b3fa7b628981d3d29b3a0f0ef3"
     },
     {
       "path": "scripts/test/plugin-notification-contract.test.mjs",
@@ -8639,6 +8691,18 @@
       "sha256": "50ab1ff293126b8c143a1dd40871baaeed784879b01e691912ebd45a9142c6d5",
       "kind": "inactive-legacy-institution-references",
       "reason": "Preserves the inactive legacy institution binding; generic calendar references are optional, confined to the assembled product and appended to the shared Skill body. No institution endpoint, credential or activation exemption."
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/test/permission.test.mjs",
+      "sha256": "7f072585b3f23fcacfbdba7fab37839b41927495302c5d970a0ba50b3ae0c6bf",
+      "kind": "synthetic-network-classification-test",
+      "reason": "The private URLs are synthetic addresses in a browser approval classification test: opening a local or private network address asks. They are not configured service endpoints. Keys and all other private content are still audited."
+    },
+    {
+      "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
+      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb",
+      "kind": "synthetic-network-classification-test",
+      "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     }
   ]
 }

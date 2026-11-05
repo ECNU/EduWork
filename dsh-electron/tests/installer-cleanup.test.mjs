@@ -251,7 +251,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.ok(fatalRecovery); assert.equal(options.type, 'error'); calls.push('recovery-dialog')
       return { response: restarting && (!stopFailure || calls.filter(value => value === 'recovery-dialog').length === 1) ? 1 : 0 }
     } },
-      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
+      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter(), shell: { openPath: async () => '' } } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
     const bootBrand = () => ({ name: 'Synthetic EduWork', logo: '' })
@@ -319,6 +319,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         assert.equal(options.environment.PATH, 'synthetic-login-shell-path')
         assert.equal(options.environment.EDUWORK_LAUNCHER_TEST, 'launcher-owned')
         assert.equal(options.environment.CHATECNU_UNTRUSTED_TEST, undefined)
+        assert.equal(options.environment.EDUWORK_SIDEBAR_BROWSER_SECRET, 'synthetic-secret')
       }
       async start() {
         calls.push('host')
@@ -333,12 +334,15 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       }
       async stop() { calls.push('stop'); if (stopFailure) throw startupError }
     } })
+    const sidebarBrowser = { listen: async () => ({ EDUWORK_SIDEBAR_BROWSER_SECRET: 'synthetic-secret' }), close() {} }
+    mock('sidebar-browser.mjs', { createSidebarBrowser: () => sidebarBrowser })
     mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
       bridgeOptions = options
       assert.equal(options.pickDirectory, pickDirectory)
       assert.equal(options.bootBrand, bootBrand)
+      assert.equal(options.sidebarBrowser, sidebarBrowser)
       assert.equal(typeof options.updates?.dispose, 'function')
-      return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
+      return { attach() {}, dispose() {}, async disposeFileDrags() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
         calls.push('probe-guide')
         // The production probe joins waitForHost(), which also starts the Host
         // when called early. Preserve that behavior instead of a no-op stub.
