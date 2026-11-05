@@ -66,7 +66,10 @@
     "watchpack": "2.5.2",
     "ws": "8.22.0",
     "@eduwork/dsh-decision": "0.1.1",
-    "@eduwork/dsh-side-chat": "0.1.1"
+    "@eduwork/dsh-side-chat": "0.1.1",
+    "@eduwork/dsh-external-agents": "0.1.0",
+    "@deepseek-ai/dsh-subagent-codex": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-subagent-acp": "0.2.2-rc.1"
   },
   "private": true,
   "optionalDependencies": {
