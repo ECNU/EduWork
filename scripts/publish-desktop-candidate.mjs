@@ -13,6 +13,9 @@ import {bundleVersion} from './macos-update-feed.mjs'
 import {deltaName} from './macos-update-delta.mjs'
 import {windowsDeltaName} from './windows-update-delta.mjs'
 import {desktopVersion} from './desktop-build-plan.mjs'
+import {signingGitHub,localSigningPolicy,policyPath} from './lib/windows-signing-io.mjs'
+import {validatePolicy} from './lib/windows-signing-protocol.mjs'
+import {verifySigningChain} from './lib/windows-signing-receipt.mjs'
 
 const sha = /^[a-f0-9]{40}$/
 const digest = /^[a-f0-9]{64}$/
@@ -137,6 +140,7 @@ export async function validatedNodeNpmFiles(directory, context) {
       repository: context.repository,
       version: context.version,
       commit: context.editionCommit,
+      signingPolicy: context.signingPolicy,
     })
     assert.equal(checked.receipt.coreCommit, context.coreCommit)
     assert.equal(checked.receipt.releaseNotes.file, context.releaseNotes)
@@ -246,10 +250,24 @@ export async function publishCandidate(env = process.env) {
   }
   const root = resolve(env.RUNNER_TEMP, 'desktop-publication-' + env.GITHUB_RUN_ID)
   await mkdir(root, {recursive: true})
+  const signingGit = signingGitHub(repository,env.GITHUB_TOKEN)
+  const signingPolicy = await signingGit.sourceJSON(policyPath,run.head_sha,true)
+  const currentPolicy = await localSigningPolicy(resolve(env.EDITION_ROOT))
+  // The reviewed publishing checkout cannot silently downgrade an institution
+  // by selecting a pre-policy build or the legacy PowerShell publisher.
+  if(currentPolicy) assert.deepEqual(signingPolicy,currentPolicy,'Candidate signing policy differs from reviewed main')
+  let signingArtifacts
+  if(signingPolicy || env.WINDOWS_SIGNING_RUN_ID){
+    assert(signingPolicy,'Signing run requires a source-pinned policy');validatePolicy(signingPolicy)
+    assert.equal(buildMode,'node','Detached signing requires the Node candidate contract')
+    assert.match(env.WINDOWS_SIGNING_RUN_ID??'',/^[1-9][0-9]*$/,'Completed Windows signing run required')
+    await signingGit.signingRun(env.WINDOWS_SIGNING_RUN_ID,run.head_sha)
+    signingArtifacts=(await request(`/actions/runs/${env.WINDOWS_SIGNING_RUN_ID}/artifacts?per_page=100`)).artifacts
+  }
   const artifacts = (await request(`/actions/runs/${run.id}/artifacts?per_page=100`)).artifacts
   const files = [], receipts = []
   for (const platform of platforms) {
-    const matches = artifacts.filter(artifact => artifact.name === platform + '-release' && !artifact.expired)
+    const matches = (platform==='windows' && signingArtifacts ? signingArtifacts : artifacts).filter(artifact => artifact.name === platform + '-release' && !artifact.expired)
     assert.equal(matches.length, 1, 'Missing or ambiguous CI artifact: ' + platform)
     const artifact = matches[0], archive = join(root, platform + '.zip'), directory = join(root, platform)
     assert.match(artifact.digest, /^sha256:[a-f0-9]{64}$/)
@@ -274,7 +292,8 @@ export async function publishCandidate(env = process.env) {
     execFileSync('unzip', ['-q', archive, '-d', directory])
     const checked = buildMode === 'ps1'
       ? await validatedCandidateFiles(directory, {product, version, platform, distribution: env.RELEASE_DISTRIBUTION, coreCommit, editionCommit: run.head_sha, requirePublisherBootstrap: env.REQUIRE_PUBLISHER_BOOTSTRAP === 'true'})
-      : await validatedNodeNpmFiles(directory, {product, version, platform, repository, coreCommit, editionCommit: run.head_sha, releaseNotes: env.RELEASE_NOTES, requirePublisherBootstrap: env.REQUIRE_PUBLISHER_BOOTSTRAP === 'true'})
+      : await validatedNodeNpmFiles(directory, {product, version, platform, repository, coreCommit, editionCommit: run.head_sha, releaseNotes: env.RELEASE_NOTES, requirePublisherBootstrap: env.REQUIRE_PUBLISHER_BOOTSTRAP === 'true',signingPolicy})
+    if(platform==='windows' && signingPolicy) await verifySigningChain({github:signingGit,receipt:checked.receipt,policy:signingPolicy,sourceRun:env.SOURCE_RUN_ID,finalRun:env.WINDOWS_SIGNING_RUN_ID,repository,root:join(root,'signing-provenance')})
     if (buildMode === 'ps1') files.push(...checked.files)
     else {
       const receiptPath = join(root, `${platform}-release-receipt.json`)
@@ -299,7 +318,7 @@ export async function publishCandidate(env = process.env) {
   files.push({name: 'RELEASE-NOTES.md', path: notesAsset, bytes: Buffer.byteLength(notes), sha256: await hashFile(notesAsset)})
   // Windows delta updates carry a SHA-256 sidecar for the updater; macOS ones are signed in the appcast.
   assert.equal(files.length, 8 + 5 * (receipts.length - 1) + 2 * (receipts[0].deltas?.length ?? 0) + receipts.slice(1).reduce((sum, receipt) => sum + (receipt.deltas?.length ?? 0), 0))
-  const result = {verified: true, published: false, buildMode, repository, sourceRun: run.id, editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
+  const result = {verified: true, published: false, buildMode, repository, sourceRun: run.id, ...(signingPolicy?{windowsSigningRun:env.WINDOWS_SIGNING_RUN_ID}:{}),editionCommit: run.head_sha, coreCommit, tag: 'v' + version, files: files.map(({path, ...file}) => file)}
   if (env.PUBLISH_RELEASE === 'true') {
     const tag = result.tag
     let ref = await request('/git/ref/tags/' + tag, {}, true)

@@ -5,17 +5,22 @@ import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import {githubUpdateManifestBytes,updateManifestName,releaseChannel} from './github-update-manifest.mjs'
 import {windowsDeltaName} from './windows-update-delta.mjs'
+import {validateSigningReceipt} from './lib/windows-signing-receipt.mjs'
+import {localSigningPolicy} from './lib/windows-signing-io.mjs'
 
 export function releasePublication(edition,version) {
   const prerelease=releaseChannel(version)==='development'
   return {name:`${edition} ${version}`,prerelease,make_latest:prerelease?'false':'true'}
 }
 
-export function validateReceipt(receipt, {repository, version, commit}) {
+export function validateReceipt(receipt, {repository, version, commit, signingPolicy, allowSigningPending = false}) {
   const edition = {'ecnu/eduwork':'EduWork','ecnu/eduwork-ecnu':'EduWork-ECNU'}[repository?.toLowerCase()]
   releaseChannel(version)
   if (!edition || !/^[a-f0-9]{40}$/.test(commit)) throw Error('Invalid release repository/version/commit')
-  if (receipt.schemaVersion !== 1 || receipt.kind !== 'eduwork-windows-release' || receipt.passed !== true || receipt.version !== version || receipt.edition !== edition || receipt.shell !== 'electron' || receipt.platform !== 'windows-x64' || receipt.editionCommit !== commit) throw Error('Release identity or validation does not match this workflow')
+  const pending = allowSigningPending && receipt.publication === 'awaiting-windows-signing' && receipt.passed === false
+  if (receipt.schemaVersion !== 1 || receipt.kind !== 'eduwork-windows-release' || (!pending && receipt.passed !== true) || receipt.version !== version || receipt.edition !== edition || receipt.shell !== 'electron' || receipt.platform !== 'windows-x64' || receipt.editionCommit !== commit) throw Error('Release identity or validation does not match this workflow')
+  if (!allowSigningPending && receipt.publication === 'awaiting-windows-signing') throw Error('Windows signing is incomplete')
+  if (!allowSigningPending && (signingPolicy || receipt.signing)) validateSigningReceipt(receipt, signingPolicy)
   if (receipt.validationProfile !== 'ci-build-launch-and-extract-v2') throw Error('Unknown release validation scope')
   if (receipt.automaticUpdates !== true) throw Error('Release must support user-controlled software updates')
   if (receipt.releaseNotes?.approved !== true || !/^[a-f0-9]{64}$/.test(receipt.releaseNotes?.sha256 ?? '')) throw Error('Discussed and approved release notes are required')
@@ -49,10 +54,10 @@ async function hashFile(path) {
   return hash.digest('hex')
 }
 // Validate every artifact before contacting GitHub; extra files are never uploaded.
-export async function validatedReleaseFiles(directory,{repository,version,commit}) {
+export async function validatedReleaseFiles(directory,{repository,version,commit,signingPolicy,allowSigningPending=false}) {
   const root=resolve(directory)
   const receipt=JSON.parse(await readFile(join(root,'release-receipt.json'),'utf8'))
-  const edition=validateReceipt(receipt,{repository,version,commit})
+  const edition=validateReceipt(receipt,{repository,version,commit,signingPolicy,allowSigningPending})
   const unpack=receipt.portableExtractor
   const deltas = receipt.deltas ?? []
   const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
@@ -84,6 +89,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
 export async function publish(directory) {
   if (process.env.RELEASE_NOTES_APPROVED !== 'true') throw Error('Release notes require explicit maintainer approval')
   const root=resolve(directory), repository=process.env.GITHUB_REPOSITORY, version=process.env.RELEASE_VERSION, commit=process.env.GITHUB_SHA
+  const signingPolicy=await localSigningPolicy(resolve(process.env.EDITION_ROOT || '.'))
+  if(signingPolicy) throw Error('Detached signing requires publish-desktop-candidate.mjs and its run-chain verification')
   const {edition,files}=await validatedReleaseFiles(root,{repository,version,commit})
   if (!process.env.GITHUB_TOKEN) throw Error('Release job token is required')
   const headers={Authorization:`Bearer ${process.env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','User-Agent':'EduWork-Release-CI','X-GitHub-Api-Version':'2022-11-28'}

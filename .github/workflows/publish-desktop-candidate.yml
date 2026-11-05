@@ -6,6 +6,10 @@ on:
         description: 'Existing successful candidate run ID; no local transfer or rebuild'
         required: true
         type: string
+      windows_signing_run_id:
+        description: 'Successful final signing run when source policy requires Authenticode'
+        required: false
+        type: string
       version:
         description: 'Approved Product SemVer'
         required: true
@@ -34,6 +38,9 @@ on:
     inputs:
       source_run_id:
         required: true
+        type: string
+      windows_signing_run_id:
+        required: false
         type: string
       version:
         required: true
@@ -77,6 +84,7 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ github.token }}
           SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          WINDOWS_SIGNING_RUN_ID: ${{ inputs.windows_signing_run_id }}
           RELEASE_VERSION: ${{ inputs.version }}
           BUILD_MODE: ${{ inputs.build_mode }}
           RELEASE_PLATFORMS: ${{ inputs.build_mode == 'node' && '["windows","macos","macos-x64"]' || '["windows","macos"]' }}

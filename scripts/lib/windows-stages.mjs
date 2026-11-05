@@ -156,7 +156,7 @@ async function buildTransitionLaunchers(candidate, coreRoot) {
  * than the directory it came from, also exercises relocation of the private
  * Python environment and every native path.
  */
-async function acceptWindows({ workspace, coreRoot }) {
+export async function acceptWindows({ workspace, coreRoot, signedExtractor }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
   const { edition, development, verifyPublisherBootstrap } = workspace.parameters
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
@@ -173,12 +173,13 @@ async function acceptWindows({ workspace, coreRoot }) {
   if (development) {
     await run('tar.exe', ['-xf', archive, '-C', unpacked])
   } else {
-    const extractorBuild = join(gui, 'portable-extractor')
+    const extractorBuild = signedExtractor?.directory ?? join(gui, 'portable-extractor')
     const extractorPublish = join(gui, 'extractor-publish')
     await ensureDir(extractorPublish)
     portableExtractor = await prepareWindowsPortableExtractor({
       archive, expectedSHA256: packed.sha256, outputDirectory: extractorBuild,
       target: desktop, publishDirectory: extractorPublish,
+      prepared: signedExtractor?.prepared,
     })
   }
   await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, ...(workspace.parameters.forUpdate ? ['--for-update'] : [])])
@@ -331,7 +332,11 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
     asset: checks.asset,
     deltas,
     ...(!development ? { portableExtractor: checks.portableExtractorAssets } : {}),
-    passed: true,
+    ...(workspace.parameters.signingPolicySHA256 ? {
+      publication: 'awaiting-windows-signing',
+      signingPolicySHA256: workspace.parameters.signingPolicySHA256,
+    } : {}),
+    passed: !workspace.parameters.signingPolicySHA256,
   }
   delete receipt.checks.asset
   delete receipt.checks.portableExtractorAssets

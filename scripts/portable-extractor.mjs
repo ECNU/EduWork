@@ -61,7 +61,7 @@ async function embedExtractorResources(executable, icon) {
   assertInvokerManifest(manifests[0].bin)
 }
 
-export async function packPortableExtractor({ archive, expectedSHA256, outputDirectory } = {}) {
+export async function packPortableExtractor({ archive, expectedSHA256, outputDirectory, deferPackaging = false } = {}) {
   if (!isWindows) throw new Error('Build the Windows extractor on Windows')
   archive = fullPath(archive)
   outputDirectory = fullPath(outputDirectory)
@@ -101,18 +101,37 @@ export async function packPortableExtractor({ archive, expectedSHA256, outputDir
   const verification = join(outputDirectory, 'verification.json')
   await run(exe, ['--verify', '--report', verification])
   if (!(JSON.parse(await readFile(verification, 'utf8'))).success) throw new Error('Embedded payload verification failed')
+  const prepared = {
+    product: identity.product, version, distribution, root, payloadOffset,
+    payload: { name: filename, sha256: archiveSHA256, bytes: archiveBytes },
+    sourceCommit: (await run('git', ['-C', repoRoot, 'rev-parse', 'HEAD'], { capture: true })).stdout.trim(),
+    sourceDirty: Boolean((await run('git', ['-C', repoRoot, 'status', '--porcelain'], { capture: true })).stdout.trim()), compiler,
+  }
+  if (deferPackaging) return prepared
+  return finalizePortableExtractor({ prepared, outputDirectory })
+}
+
+// Package the very same EXE after detached signature ingestion. No PE edits or
+// payload rebuilding are permitted between signing and this acceptance step.
+export async function finalizePortableExtractor({ prepared, outputDirectory }) {
+  const { root, version, distribution } = prepared
+  const exe = join(outputDirectory, `${root}-Setup.exe`)
+  const verification = join(outputDirectory, 'final-verification.json')
+  await run(exe, ['--verify', '--report', verification])
+  const checked = JSON.parse(await readFile(verification, 'utf8'))
+  if (!checked.success || checked.identity.sha256 !== prepared.payload.sha256) throw new Error('Final extractor payload changed')
   const assetName = `${root}-${version}-windows-x64-setup.zip`
   const asset = join(outputDirectory, assetName)
+  if (await pathExists(asset)) throw new Error('Extractor ZIP already exists')
   await run('tar.exe', ['-a', '-cf', asset, '-C', outputDirectory, basename(exe)])
   const assetSHA256 = await hashFile(asset)
   await writeFile(`${asset}.sha256`, `${assetSHA256}  ${assetName}\n`)
   const receipt = {
     schemaVersion: 1, kind: 'eduwork-portable-extractor', format: 'zip-containing-self-extracting-exe',
-    product: identity.product, version, distribution,
-    payload: { name: filename, sha256: archiveSHA256, bytes: archiveBytes },
+    product: prepared.product, version, distribution,
+    payload: prepared.payload,
     extractor: { name: basename(exe), sha256: await hashFile(exe), bytes: (await stat(exe)).size,
-      sourceCommit: (await run('git', ['-C', repoRoot, 'rev-parse', 'HEAD'], { capture: true })).stdout.trim(),
-      sourceDirty: Boolean((await run('git', ['-C', repoRoot, 'status', '--porcelain'], { capture: true })).stdout.trim()), compiler },
+      sourceCommit: prepared.sourceCommit, sourceDirty: prepared.sourceDirty, compiler: prepared.compiler },
     asset: { name: assetName, sha256: assetSHA256, bytes: (await stat(asset)).size },
     checks: { embeddedArchive: 'passed', manifestIdentity: 'passed', executionLevel: 'asInvoker' },
   }
@@ -120,11 +139,13 @@ export async function packPortableExtractor({ archive, expectedSHA256, outputDir
   return receipt
 }
 
-export async function prepareWindowsPortableExtractor({ archive, expectedSHA256, outputDirectory, target, publishDirectory } = {}) {
+export async function prepareWindowsPortableExtractor({ archive, expectedSHA256, outputDirectory, target, publishDirectory, prepared } = {}) {
   target = fullPath(target)
   publishDirectory = fullPath(publishDirectory)
   if (await pathExists(target)) throw new Error('Extractor acceptance requires a new destination')
-  const receipt = await packPortableExtractor({ archive, expectedSHA256, outputDirectory })
+  const receipt = prepared
+    ? await finalizePortableExtractor({ prepared, outputDirectory })
+    : await packPortableExtractor({ archive, expectedSHA256, outputDirectory })
   if (receipt.extractor.sourceDirty) throw new Error('CI extractor must be built from a clean source checkout')
   const asset = join(fullPath(outputDirectory), receipt.asset.name)
   const listing = (await run('tar.exe', ['-tf', asset], { capture: true })).stdout.trim().split(/\r?\n/)

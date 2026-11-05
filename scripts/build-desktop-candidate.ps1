@@ -10,6 +10,7 @@ $ErrorActionPreference='Stop'
 $PSNativeCommandUseErrorActionPreference=$true
 $CoreRoot=(Resolve-Path -LiteralPath $CoreRoot).Path
 $EditionRoot=(Resolve-Path -LiteralPath $EditionRoot).Path
+if (Test-Path -LiteralPath (Join-Path $EditionRoot 'edition/windows-signing.json')) { throw 'This edition requires the Node detached-signing pipeline; PowerShell candidates cannot satisfy its publication policy.' }
 $plan = (& node (Join-Path $CoreRoot 'scripts/desktop-build-plan.mjs') --core $CoreRoot --edition $EditionRoot --version $Version) | ConvertFrom-Json
 & node (Join-Path $CoreRoot 'scripts/check-source-docs.mjs') $CoreRoot
 if ($CoreRoot -ne $EditionRoot) { & node (Join-Path $CoreRoot 'scripts/check-source-docs.mjs') $EditionRoot }

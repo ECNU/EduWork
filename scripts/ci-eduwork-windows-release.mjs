@@ -25,6 +25,8 @@ import { desktopBuildPlan, desktopVersion, desktopBuildRecipe } from './desktop-
 import { pinnedSourceStages } from './lib/pinned-source-stages.mjs'
 import { desktopSourceIdentity } from './lib/build-source.mjs'
 import { deltaBaseArchives } from './update-delta-bases.mjs'
+import { localSigningPolicy } from './lib/windows-signing-io.mjs'
+import { sha256 } from './lib/windows-signing-protocol.mjs'
 
 const DEVELOPMENT_VERSION = /^\d+\.\d+\.\d+-dev\.\d{8}\.[1-9]\d*$/
 
@@ -99,6 +101,7 @@ export async function ciEduworkWindowsRelease({
 
   if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
   const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
+  const signingPolicy = development ? null : await localSigningPolicy(editionRoot)
   const bases = await deltaBaseArchives(deltaBases, version)
 
   const parameters = {
@@ -120,6 +123,7 @@ export async function ciEduworkWindowsRelease({
     automaticUpdates: desktopVersion(version).automaticUpdates,
     verifyPublisherBootstrap: sourcePlan.verifyPublisherBootstrap,
     deltaBases: bases,
+    signingPolicySHA256: signingPolicy ? sha256(JSON.stringify(signingPolicy)) : null,
   }
 
   // The publish stage writes the final receipt, so it needs everything that

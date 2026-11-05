@@ -1,0 +1,103 @@
+name: Complete Windows detached signing
+on:
+  workflow_dispatch:
+    inputs:
+      stage:
+        description: 'Request inner signatures, apply inner signatures, or finalize Setup'
+        required: true
+        type: choice
+        options: [inner-request, outer-request, finalize]
+      source_run_id:
+        description: 'Successful original desktop-candidates run at this exact commit'
+        required: true
+        type: string
+      parent_run_id:
+        description: 'Previous signing run (empty for inner-request)'
+        type: string
+      response_json:
+        description: 'Local response.json; public signature values only (empty for inner-request)'
+        type: string
+  workflow_call:
+    inputs:
+      stage:
+        required: true
+        type: string
+      source_run_id:
+        required: true
+        type: string
+      parent_run_id:
+        type: string
+      response_json:
+        type: string
+      core_commit:
+        description: 'Institution core.lock commit; empty for the public repository'
+        type: string
+permissions:
+  contents: read
+  actions: read
+concurrency:
+  group: windows-signing-${{ github.repository }}-${{ inputs.source_run_id }}-${{ inputs.stage }}-${{ inputs.parent_run_id }}
+  cancel-in-progress: false
+jobs:
+  signing:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: edition
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        if: inputs.core_commit != ''
+        with:
+          repository: ECNU/EduWork
+          ref: ${{ inputs.core_commit }}
+          path: core
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Verify source and complete the requested public-key stage
+        shell: pwsh
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SIGNING_STAGE: ${{ inputs.stage }}
+          SOURCE_RUN_ID: ${{ inputs.source_run_id }}
+          PARENT_RUN_ID: ${{ inputs.parent_run_id }}
+          SIGNING_RESPONSE: ${{ inputs.response_json }}
+          EDITION_ROOT: ${{ github.workspace }}/edition
+          CORE_DIRECTORY: ${{ inputs.core_commit != '' && 'core' || 'edition' }}
+        run: node "$env:CORE_DIRECTORY/scripts/complete-windows-signing.mjs"
+      - uses: actions/upload-artifact@v4
+        if: inputs.stage != 'finalize'
+        with:
+          name: windows-signing-state
+          path: ${{ runner.temp }}/windows-signing-${{ github.run_id }}/state
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: inputs.stage != 'finalize'
+        with:
+          name: windows-signing-request
+          path: ${{ runner.temp }}/windows-signing-${{ github.run_id }}/request
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: inputs.stage == 'finalize'
+        with:
+          name: windows-release
+          path: ${{ runner.temp }}/windows-signing-${{ github.run_id }}/publish
+          compression-level: 0
+          retention-days: 7
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-signing-validation
+          path: ${{ runner.temp }}/windows-signing-${{ github.run_id }}/evidence-public
+          retention-days: 7
+          if-no-files-found: warn
