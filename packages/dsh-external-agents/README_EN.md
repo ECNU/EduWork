@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-An optional EduWork plugin for discovering local Codex and Cursor Agent CLIs, checking and toggling connections in Settings, and adding stdio ACP agents manually. Targets DSH 0.2.1-rc.5 pinned by EduWork 0.4.10.
+An optional EduWork plugin for discovering local Codex and Cursor Agent CLIs, checking and toggling connections in Settings, and adding stdio ACP agents manually. Supports DSH 0.2.1-rc.5 and 0.2.2-rc.1; the companion official Codex/ACP providers must match the Host version.
 
 ## Install and use
 

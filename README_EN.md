@@ -42,6 +42,7 @@ These plugins come with the public desktop edition. Follow each link for usage, 
 | [Local memory](packages/dsh-memory/README_EN.md) | Manage local memory and search past conversations so new tasks can pick up existing context. Memories are managed on your machine. |
 | [Mail assistant](packages/dsh-mail/README_EN.md) | Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow. |
 | [Desktop pet](packages/dsh-desktop-pet/README_EN.md) | Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge. |
+| [External agents](packages/dsh-external-agents/README_EN.md) | Connect local Codex, Cursor or other ACP agents and delegate tasks from a conversation. Disabled by default; enable it and configure connections from the Plugins page. |
 | [Remote access](packages/dsh-remote-access/README_EN.md) | Pair another device to continue local sessions and handle approvals in its browser. Configure your own relay or a distribution-provided organization connection in settings, test it and enable access. |
 <!-- END GENERATED PLUGINS -->
 

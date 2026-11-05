@@ -2,7 +2,7 @@
 
 [English](README_EN.md)
 
-EduWork 的可选插件：发现本机 Codex、Cursor Agent CLI，在设置中检测、启用和停用连接，也可手动添加支持 stdio 的 ACP 智能体。适用于 EduWork 0.4.10 固定的 DSH 0.2.1-rc.5。
+EduWork 的可选插件：发现本机 Codex、Cursor Agent CLI，在设置中检测、启用和停用连接，也可手动添加支持 stdio 的 ACP 智能体。兼容 DSH 0.2.1-rc.5 与 0.2.2-rc.1；配套官方 Codex/ACP provider 必须与宿主版本一致。
 
 ## 安装与使用
 
