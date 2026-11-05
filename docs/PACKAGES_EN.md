@@ -6,6 +6,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 
 | npm package | Source and documentation | Installation root |
 | --- | --- | --- |
+| `@eduwork/dsh-external-agents` | [外部智能体连接 / External agent connections](../packages/dsh-external-agents/README_EN.md) | `packages/dsh-external-agents` |
 | `@eduwork/dsh-decision` | [SystemOne decision tool and skill](../packages/dsh-decision/README_EN.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [Side conversations and selection questions](../packages/dsh-side-chat/README_EN.md) | `packages/dsh-side-chat` |

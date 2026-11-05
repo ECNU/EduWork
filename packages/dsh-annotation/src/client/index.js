@@ -16,7 +16,7 @@ const MARKER = 'data-eduwork-annotation-marker'
 
 const copy = {
   zh: {
-    selectedText: '所选文本：', expandQuote: '展开原文', collapseQuote: '收起原文',
+    selectedText: '所选文本：', expandQuote: '展开原文', collapseQuote: '收起原文', nativeQuote: '引用文本',
     quote: '批注', notePlaceholder: '添加批注（可选）', add: '加入输入框', cancel: '取消', close: '关闭',
     notePrefix: '批注：', noted: '批注', preview: '引用内容', invalid: '引用内容已损坏。', insertFailed: '当前无法插入引用，请稍后再试。',
     count: '条批注', number: '批注', edit: '编辑', remove: '删除', save: '保存', empty: '暂无待发送批注',
@@ -25,7 +25,7 @@ const copy = {
     finishEdit: '请先保存或取消正在编辑的批注。', selectionActions: '选区操作',
   },
   en: {
-    selectedText: 'Selected text:', expandQuote: 'Expand quote', collapseQuote: 'Collapse quote',
+    selectedText: 'Selected text:', expandQuote: 'Expand quote', collapseQuote: 'Collapse quote', nativeQuote: 'Quote text',
     quote: 'Annotate', notePlaceholder: 'Add a note (optional)', add: 'Add to message', cancel: 'Cancel', close: 'Close',
     notePrefix: 'Note: ', noted: 'note', preview: 'Quoted text', invalid: 'This quote is damaged.', insertFailed: 'The quote cannot be inserted right now. Try again later.',
     count: 'annotations', number: 'Annotation', edit: 'Edit', remove: 'Delete', save: 'Save', empty: 'No pending annotations',
@@ -106,7 +106,7 @@ function ownsSelection(marker, element) {
   return scope != null && scope.querySelectorAll(`[${MARKER}]`).length === 1
 }
 
-function readSelection(marker, resolveOrigin) {
+function readSelection(marker, resolveOrigin, native = false) {
   const selection = document.getSelection()
   if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null
   const quote = selection.toString().trim()
@@ -115,7 +115,9 @@ function readSelection(marker, resolveOrigin) {
   const node = range.commonAncestorContainer
   const element = node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement
   if (!element || element.closest(`[contenteditable="true"], input, textarea, [${UI}]`)) return null
-  if (!ownsSelection(marker, element)) return null
+  // Native text interactions already validate the selected area's session.
+  // The legacy path still needs its marker-based ownership check.
+  if (!native && !ownsSelection(marker, element)) return null
   // The one DOM adapter: read the official Chat row identity. All message data
   // comes from the public snapshot. Context is bounded to this selected row.
   const row = element.closest('[data-chat-node-key]')
@@ -202,6 +204,51 @@ function SelectionToolbar({ target, t, onAnnotate, actions, onAction }) {
   ...actions.map(action => h(React.Fragment, { key: action.id },
     target.canAnnotate ? h('span', { 'aria-hidden': true, style: { height: 18, width: 1, margin: '0 3px', background: border } }) : null,
     h('button', { type: 'button', onClick: () => onAction(action) }, action.renderIcon?.() ?? icon(action.icon), action.label()))))
+}
+
+async function runSelectionAction(target, action, sessionId, t, reportError) {
+  const snapshotText = target.liveSnapshot?.text
+  const snapshot = typeof snapshotText === 'string' && snapshotText.length <= MAX_LIVE_SNAPSHOT ? snapshotText : undefined
+  const value = reference(target.quote, '', t, target.origin,
+    { ...target.context, ...(snapshot === undefined ? {} : { snapshot }) })
+  if (!value || !Number.isSafeInteger(target.atSeq)) return
+  const payload = { sourceSessionId: sessionId, atSeq: target.atSeq, reference: value, quote: target.quote,
+    ...(target.liveSnapshot ? { liveSnapshot: snapshot === undefined ? {} : target.liveSnapshot } : {}) }
+  try { await action.run(payload) } catch { reportError(t('insertFailed')) }
+}
+
+// rc.1 owns selection admission, anchoring, scrolling and dismissal. Extend its
+// keyed surface instead of opening a second floating toolbar or patching Chat.
+function NativeSelectionToolbar({ sessionId, previews, selectionActions, editors, reportError,
+  dismiss, readText, clearSelection, inputActions, useSession, useConversation, t }) {
+  const enabled = useSession(s => !s.removed && (s.subagent === null
+    || (s.subagent.address.mode === 'continuable' && s.subagent.parentAvailable === true)))
+  const chat = useConversation(state => state.views.get('chat'))
+  const actions = useSyncExternalStore(selectionActions.subscribe, selectionActions.getSnapshot)
+  useEffect(() => { if (!enabled) dismiss() }, [enabled, dismiss])
+  if (!enabled) return null
+  const target = readText() === null ? null : readSelection(null, key => selectionSource(chat, key, sessionId), true)
+  const finish = () => { clearSelection(); dismiss() }
+  const unlocked = () => {
+    if (!previews.isLocked(sessionId)) return true
+    reportError(t('finishEdit')); return false
+  }
+  return h('div', { [UI]: '', 'data-eduwork-selection-toolbar': '', role: 'toolbar', 'aria-label': t('selectionActions'),
+    style: { ...card, position: 'relative', display: 'flex', flexWrap: 'wrap', gap: 4, padding: 4, borderRadius: 12 }, onPointerDown: event => event.preventDefault(),
+  },
+  h('button', { type: 'button', style: button(false), onClick: () => {
+    const value = readText()
+    if (value === null) { dismiss(); return }
+    if (inputActions.insertQuote(value)) finish()
+  } }, t('nativeQuote')),
+  target?.canAnnotate ? h('button', { type: 'button', style: button(false), onClick: () => {
+    if (unlocked() && editors.get(sessionId)?.(target)) finish()
+  } }, t('quote')) : null,
+  ...(target ? actions.filter(action => action.available?.(sessionId) !== false).map(action =>
+    h('button', { key: action.id, type: 'button', style: button(false), onClick: () => {
+      if (!unlocked()) return
+      finish(); void runSelectionAction(target, action, sessionId, t, reportError)
+    } }, action.label())) : []))
 }
 
 function Editor({ draft, t, onAdd, onCancel }) {
@@ -308,20 +355,28 @@ function MessageAnnotations({ sessionId, turn, previews, useInput, useConversati
     }, String(item.number))))
 }
 
-function AnnotationOverlay({ sessionId, previews, selectionActions, reportError, insert, mutate, t, inputActions, useInput, useConversation }) {
+function AnnotationOverlay({ sessionId, previews, selectionActions, editors, nativeSelection, reportError, insert, mutate, t, inputActions, useInput, useConversation }) {
   const marker = useRef(null)
   const [draft, setDraft] = useState(null)
   const chat = useConversation(state => state.views.get('chat'))
   const chatRef = useRef(chat)
   chatRef.current = chat
   const resolver = useRef(key => selectionSource(chatRef.current, key, sessionId))
-  const [target, setTarget] = useSelectionTarget(marker, draft !== null, resolver.current)
+  const [target, setTarget] = useSelectionTarget(marker, nativeSelection || draft !== null, resolver.current)
   const occurrences = useInput(state => state.occurrences)
   const items = annotations(occurrences)
   const preview = useSyncExternalStore(previews.subscribe, () => previews.get(sessionId))
   const availableActions = useSyncExternalStore(selectionActions.subscribe, selectionActions.getSnapshot)
   useLayoutEffect(() => draft ? previews.lock(sessionId) : undefined, [draft, previews, sessionId])
   useEffect(() => () => previews.close(sessionId), [previews, sessionId])
+  useEffect(() => {
+    const open = target => {
+      if (previews.isLocked(sessionId)) return false
+      previews.close(sessionId); setDraft(target); return true
+    }
+    editors.set(sessionId, open)
+    return () => { if (editors.get(sessionId) === open) editors.delete(sessionId) }
+  }, [editors, previews, sessionId])
   const add = (note) => {
     const value = reference(draft.quote, note, t, draft.origin, draft.context)
     // The official composer may reject an insertion while submitting or
@@ -333,16 +388,8 @@ function AnnotationOverlay({ sessionId, previews, selectionActions, reportError,
       target, t, actions: availableActions.filter(action => action.available?.(sessionId) !== false),
       onAction: async action => {
         if (previews.isLocked(sessionId)) { previews.open(sessionId, { kind: 'list' }); return }
-        const snapshotText = target.liveSnapshot?.text
-        const snapshot = typeof snapshotText === 'string' && snapshotText.length <= MAX_LIVE_SNAPSHOT ? snapshotText : undefined
-        const value = reference(target.quote, '', t, target.origin,
-          { ...target.context, ...(snapshot === undefined ? {} : { snapshot }) })
-        const atSeq = target.atSeq
-        if (!value || !Number.isSafeInteger(atSeq)) return
-        const payload = { sourceSessionId: sessionId, atSeq, reference: value, quote: target.quote,
-          ...(target.liveSnapshot ? { liveSnapshot: snapshot === undefined ? {} : target.liveSnapshot } : {}) }
         setTarget(null); document.getSelection()?.removeAllRanges()
-        try { await action.run(payload) } catch { reportError(t('insertFailed')) }
+        await runSelectionAction(target, action, sessionId, t, reportError)
       },
       onAnnotate: () => {
         if (previews.isLocked(sessionId)) { previews.open(sessionId, { kind: 'list' }); return }
@@ -371,6 +418,8 @@ export function apply(ctx) {
   const t = ctx.locale.bind(NS)
   const previews = createPreviews()
   const selectionActions = createSelectionActions()
+  // Only editor callbacks live here; all draft content remains in DSH's composer.
+  const editors = new Map()
   ctx.provide('annotationSelection', selectionActions)
   ctx.inject(['uiConversation', 'slots'], scope => {
     scope.effect(() => scope.uiConversation.userText.register(sentAnnotationRule), 'annotation: sent text projection')
@@ -378,7 +427,30 @@ export function apply(ctx) {
       name: 'conversation.user.text.node', key: SENT_ANNOTATION, priority: 100, locale: NS,
     }, SentAnnotations))
   })
-  ctx.inject(['inputTriggers', 'slots', 'sessions'], (scope) => {
+  ctx.inject(['inputTriggers', 'slots', 'sessions', 'uiConversation'], (scope) => {
+    const nativeSelection = typeof scope.uiConversation.interactions?.register === 'function'
+    const reportError = (sessionId, message) => {
+      const actx = scope.sessions.scope(sessionId)
+      if (actx) scope.get('conversation')?.input?.for(actx).notify('error', message)
+    }
+    if (nativeSelection) {
+      scope.effect(() => scope.uiConversation.interactions.register({
+        id: 'eduwork-annotation', onInteraction(request) {
+          if (request.trigger !== 'selection' || request.readText() === null) return
+          const session = scope.sessions.binding(request.sessionId)?.session.getSnapshot()
+          if (!session || session.removed || (session.subagent !== null
+            && (session.subagent.address.mode !== 'continuable' || session.subagent.parentAvailable !== true))) return
+          request.open()
+        },
+      }), 'annotation: native selection')
+      // Preserve the official Quote entry. Disposing this plugin restores its
+      // original renderer. The second key also works without message-quotes.
+      for (const key of ['quote', 'eduwork-annotation']) scope.slots.inject('conversation.chat.text-interaction', () => scope.slots.register({
+        name: 'conversation.chat.text-interaction', key, priority: 100, locale: NS,
+        inject: sessionId => ({ sessionId, previews, selectionActions, editors,
+          reportError: message => reportError(sessionId, message) }),
+      }, NativeSelectionToolbar))
+    }
     // Codec-only source: the official submit path serializes our chips, and
     // the empty candidate group never shows in the @ menu.
     scope.effect(() => scope.inputTriggers.registerSource({
@@ -412,7 +484,7 @@ export function apply(ctx) {
     scope.slots.inject('conversation.input.overlay', () => scope.slots.register({
       name: 'conversation.input.overlay', id: 'eduwork-annotation', order: 10, locale: NS,
       inject: sessionId => ({
-        sessionId, previews, selectionActions,
+        sessionId, previews, selectionActions, editors, nativeSelection,
         reportError(message) {
           const actx = scope.sessions.scope(sessionId)
           if (actx) scope.get('conversation')?.input?.for(actx).notify('error', message)
@@ -432,7 +504,12 @@ export function apply(ctx) {
           const actx = scope.sessions.scope(sessionId)
           const input = actx && scope.get('conversation')?.input?.for(actx)
           if (!input) return false
-          const span = occurrenceSpan(input.state.getSnapshot(), expected)
+          // rc.1's InputState omits native quotes; its semantic snapshot retains
+          // them. This read-only facade adapter never reaches into Lexical or
+          // browser storage. Fail closed if the new facade lacks the snapshot.
+          const document = nativeSelection ? input.draftSnapshot : undefined
+          if (nativeSelection && document === undefined) return false
+          const span = occurrenceSpan(input.state.getSnapshot(), expected, document)
           if (!span) return false
           const accepted = value === null ? inputActions.insertText('', span)
             : actx.bail(actx, 'slash/input-insert-reference', { reference: value, span }) === true

@@ -35,6 +35,12 @@ async function fixture() {
     const module = await load(name)
     await ctx.plugin(module.default ?? module)
   }
+  // rc.1 separates executor installation from the tools registry. Match the
+  // official base composition instead of silently testing an executor-less Host.
+  if (typeof ctx.tools.setExecutor === 'function') {
+    const executor = await load('@deepseek-ai/dsh-tool-executor-native')
+    await ctx.plugin(executor.default ?? executor)
+  }
   for (const [name, config] of [
     ['@deepseek-ai/dsh-session-persistence-jsonl', { root: join(home, 'sessions') }],
     ['@deepseek-ai/dsh-session-query-sqlite', { path: join(home, 'search.sqlite') }],
@@ -166,7 +172,13 @@ test('side policy denies background tools without changing normal Agent policy',
     execute: async () => { executions++; return 'scheduled' },
   })
   const opened = await f.service.open({ owner: 'g'.repeat(32), sourceSessionId: f.source.id, atSeq: f.selected.seq })
-  const invoke = agent => f.ctx.tools.execute({ name: 'schedule_fixture', callId: 'synthetic-call', arguments: {}, agent, signal: new AbortController().signal })
+  const invoke = async agent => {
+    const input = { name: 'schedule_fixture', callId: 'synthetic-call', arguments: {}, agent, signal: new AbortController().signal }
+    if (typeof f.ctx.tools.setExecutor !== 'function') return f.ctx.tools.execute(input)
+    const { ToolExecutionPipeline } = await import(pathToFileURL(runtimeRequire.resolve('@deepseek-ai/dsh-tools/pipeline')).href)
+    const pipeline = new ToolExecutionPipeline(f.ctx), prepared = await pipeline.prepare(input)
+    return pipeline.complete(prepared.exec, prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared)
+  }
   const denied = await invoke(f.ctx.agents.get(opened.sessionId))
   assert.equal(denied.isError, true)
   assert.equal(executions, 0)

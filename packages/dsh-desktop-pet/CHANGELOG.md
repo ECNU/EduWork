@@ -1,5 +1,15 @@
 # 变更记录 / Changelog
 
+## 0.1.4 — Unreleased
+
+- 兼容声明接纳已验证的 DSH 0.2.2-rc.1 与 Cordis 4.1；保留原有功能、配置及受支持的旧宿主范围。
+- Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+
+## 0.1.3 — 未发布 / Unreleased
+
+- 新增内置形象花狮娘（`ecnu-huashi-girl`），作者 Emily，素材许可 CC BY-SA 4.0。
+- Add the built-in character Huashi Girl (`ecnu-huashi-girl`) by Emily, with artwork licensed under CC BY-SA 4.0.
+
 ## 0.1.2 — 2026-11-02
 
 - 动画可声明 `facing`（`left` 默认、`right`）：朝右画的拖动、探头动画不再方向相反。

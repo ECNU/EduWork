@@ -10,6 +10,8 @@
 
 需要提供官方 Chat 视图与输入框扩展的 DSH 客户端（`>=0.2.1-rc.2 <0.3.0-0`）。已发送批注在气泡上方显示编号，需要 EduWork 的 `conversation.chat.user.decorate` 扩展入口；未提供该入口的客户端通过官方文本插槽显示引用卡片，仍可独立使用。排队等原生文本界面也使用卡片显示。
 
+从 0.1.2 起兼容 DSH `0.2.2-rc.1`，选区菜单复用官方文字交互入口，将「引用文本」「批注」和可选侧聊合在同一操作栏；原生引用与批注可以在同一草稿中编辑、撤销和恢复。旧宿主继续使用原有选区适配。
+
 ## 使用
 
 1. 在已结束回合的最终回复中选中文字，在悬浮操作栏中点「批注」。
@@ -43,6 +45,8 @@ node scripts/packages/manage.mjs check dsh-annotation
 ```
 
 插件通过官方 `conversation.chat.turnTail`、`conversation.input.left` 和 `conversation.input.overlay` 插槽添加界面。待发送批注和顺序来自公开的 `InputState.occurrences`；编辑、删除通过带版本校验的原生输入区间操作完成，不直接修改 Lexical 或整段草稿。`src/client/draft.js` 集中处理引用坐标换算及公开 Chat 快照中的来源消息解析。
+
+rc.1 的公开 `InputState` 未包含原生 Quote 区间，因此编辑/删除批注还通过输入框 facade 的只读 `draftSnapshot` getter 取得完整语义草稿，并核对文本和引用列表与当前状态一致后换算坐标。该 getter 尚未写入上游公开的 `SessionInput` 类型契约，是需要随上游升级复核的窄适配点；缺失或不一致时保留草稿并拒绝修改。插件不读取编辑器内部节点或浏览器存储。
 
 选区只通过官方 Chat 行的 `data-chat-node-key` 查找消息身份，并以 DOM Range 截取同一行的有限前后文；不修改正文 DOM、不全局扫描文字。宿主更换 Chat 行结构时需重新核对此适配点，不能回退为猜测来源。
 

@@ -8,6 +8,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 | npm 包 | 源码与说明 | 开发安装根目录 |
 | --- | --- | --- |
+| `@eduwork/dsh-external-agents` | [外部智能体连接 / External agent connections](../packages/dsh-external-agents/README.md) | `packages/dsh-external-agents` |
 | `@eduwork/dsh-decision` | [SystemOne 决策工具与技能](../packages/dsh-decision/README.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-annotation` | [选段引用与批注](../packages/dsh-annotation/README.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [侧边聊天与选区提问](../packages/dsh-side-chat/README.md) | `packages/dsh-side-chat` |

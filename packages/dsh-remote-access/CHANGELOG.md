@@ -1,5 +1,10 @@
 # 变更记录 / Changelog
 
+## 0.1.3 — Unreleased
+
+- 兼容声明接纳已验证的 DSH 0.2.2-rc.1 与 Cordis 4.1；保留原有功能、配置及受支持的旧宿主范围。
+- Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+
 ## 0.1.2 — 2026-10-26
 
 - 修复运行中安装或启用远控插件后，远端无法保存预览版说明确认状态的问题。
