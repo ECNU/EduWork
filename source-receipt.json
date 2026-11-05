@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-05T06:50:33.087Z",
-  "fileSetSHA256": "d221a6980fc2eff72c24f864183e0b0879ed16d89428edfc51b10422e90c20d8",
+  "createdAt": "2026-11-05T11:11:48.832Z",
+  "fileSetSHA256": "db3a0943fec7756533539f3c108d7e2e6cc925a9f41c017914f933a418d7f245",
   "files": [
     {
       "path": ".gitattributes",
@@ -809,7 +809,11 @@
     },
     {
       "path": "dsh-desktop/internal/portable/archive.go",
-      "sha256": "ff7811f56ddd64c6be8134eb863181211c82e190e6448af138c0b6a84ee7082a"
+      "sha256": "9e5aaf6c5f70acf1cc4109a90cddf7e8776140fce2c07bb568c37a12ff8c8aff"
+    },
+    {
+      "path": "dsh-desktop/internal/portable/authenticode_test.go",
+      "sha256": "01c2d48fae1f1977501744b0a3efd82c97c3fa3794dcf917925a935b9a64fac7"
     },
     {
       "path": "dsh-desktop/internal/portable/rename_other.go",
