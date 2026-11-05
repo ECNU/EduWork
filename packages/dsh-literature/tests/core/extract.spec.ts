@@ -80,6 +80,41 @@ describe('isSafeArchivePath', () => {
 })
 
 describe('extractSource', () => {
+  it.each([
+    '%&amstex\n\\input amstex\n\\document\nA standalone paper.\n\\enddocument',
+    '% arXiv source\n\\documentclass{article}\n\\begin{document}A standalone paper.\\end{document}',
+    '\\documentstyle{article}\n\\begin{document}A standalone paper.\\end{document}',
+  ])('extracts gzipped standalone TeX without treating it as tar: %s', async tex => {
+    const result = await extractSource(gzipSync(tex), { maxFileChars: 1000, maxSummaryChars: 1000 })
+    expect(result.files).toEqual([{ path: 'main.tex', kind: 'tex', content: tex }])
+    expect(result.summary).toContain('A standalone paper.')
+  })
+
+  it('applies existing output limits to standalone TeX', async () => {
+    const tex = '\\documentclass{article}\n\\begin{document}\n' + 'Long text. '.repeat(100)
+    const result = await extractSource(gzipSync(tex), { maxFileChars: 100, maxSummaryChars: 20 })
+    expect(result.files[0]!.content).toBe(tex.slice(0, 100))
+    expect(result.summary.length).toBe(20)
+  })
+
+  it.each([
+    ['empty archive', tarballOf([])],
+    ['no text files', tarballOf([['paper.pdf', '%PDF-1.4']])],
+    ['whitespace-only file', tarballOf([['main.tex', ' \n\t']])],
+    ['unsupported gzip payload', gzipSync('not a tarball or TeX document'.repeat(100))],
+    ['TeX mentioned in HTML', gzipSync('<html><pre>\\documentclass{article}</pre></html>')],
+    ['binary payload with a TeX header', gzipSync('\\documentclass{article}\n\u0000binary')],
+  ])('rejects %s so callers can try another artifact', async (_name, input) => {
+    await expect(extractSource(input, { maxFileChars: 1000, maxSummaryChars: 1000 }))
+      .rejects.toMatchObject({ code: 'LITERATURE_EXTRACTION_FAILED' })
+  })
+
+  it('rejects a truncated archive instead of returning partial text', async () => {
+    const truncated = tarEntry('main.tex', 'A'.repeat(1000)).subarray(0, 540)
+    await expect(extractSource(gzipSync(truncated), { maxFileChars: 1000, maxSummaryChars: 1000 }))
+      .rejects.toMatchObject({ code: 'LITERATURE_EXTRACTION_FAILED' })
+  })
+
   it('extracts text files plus a readable summary from the main tex', async () => {
     const { files, summary } = await extractSource(bytes(TARBALL_B64), { maxFileChars: 1000, maxSummaryChars: 1000 })
     expect(files.length).toBe(2)
