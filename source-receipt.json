@@ -5,7 +5,7 @@
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-03T09:39:29.958Z",
-  "fileSetSHA256": "7282c7a864d912a7cd6e7974de7d73bc080d19350b0dc41fdda747dfbc344abd",
+  "fileSetSHA256": "cb3baaeedb7a1c06f2a60347b7c5aad4b5ae42a5b183cbb09f49ed7ad02dfad9",
   "files": [
     {
       "path": ".gitattributes",
@@ -3493,11 +3493,11 @@
     },
     {
       "path": "packages/dsh-annotation/package-lock.json",
-      "sha256": "7d809c11750dfcb0991529d4f01c86e3f071523cf76c407e6fac403dd4400b19"
+      "sha256": "80becb73f0bccf4a3caacbe9c6c84f6f21a0856e8df91f13322cffc3ed120539"
     },
     {
       "path": "packages/dsh-annotation/package.json",
-      "sha256": "081383edb82eacd13ab1c584ff202ebe7fb1cc3af193497c48c7dd1d58abe763"
+      "sha256": "37c67ef22a2a380394b5b1ec426c2b76bab8a6287f94a6c1673624c2b64f94c5"
     },
     {
       "path": "packages/dsh-annotation/README_EN.md",
@@ -5441,7 +5441,7 @@
     },
     {
       "path": "packages/dsh-literature/CHANGELOG.md",
-      "sha256": "8213ed753eefca9abcc530de79bafef621dfa00aca4610a4836712d3706adad4"
+      "sha256": "7b9ec1f8e1f36c9d79cd1b59c3dd70e49431988184d5ed21bc6f8880f7f95996"
     },
     {
       "path": "packages/dsh-literature/cordis.patch.yml",
@@ -5457,11 +5457,11 @@
     },
     {
       "path": "packages/dsh-literature/package-lock.json",
-      "sha256": "cca7aaae1a29e1ed02efe8a439d596e47595bdba852e1549e1d21f41d7e041ea"
+      "sha256": "8a3e4fce81f8c9e328729c1a1bc0042b1902e4499dba61a2f57813864108f24a"
     },
     {
       "path": "packages/dsh-literature/package.json",
-      "sha256": "5585c11ae8ccd9c665920becf77765c3acc9d4609023bd365bb7ae5ee571293a"
+      "sha256": "7e64af7f63030700b0a7b3b0f06c1213eb3b9c29329dbc6df155a37297941b8e"
     },
     {
       "path": "packages/dsh-literature/README_EN.md",
@@ -7841,7 +7841,7 @@
     },
     {
       "path": "scripts/test/plugin-locale.test.mjs",
-      "sha256": "c712a62b1b1711bfb7b2a33a2072493b8d8910b3fa7b628981d3d29b3a0f0ef3"
+      "sha256": "093739662543fa9c1c3d9fa67e305b7a45a9061c8c04a7b1cedcf993ae4c176d"
     },
     {
       "path": "scripts/test/plugin-notification-contract.test.mjs",
