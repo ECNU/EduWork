@@ -46,9 +46,10 @@ function startupHarness() {
   const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
-    let quitting = false, desktopFailureShown = false
+    let quitting = false, desktopFailureShown = false, flushCalls = 0
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
+    let flushPendingSettings = () => { flushCalls += 1 }
     ${source.slice(activationStart, activationEnd).replace('export ', '')}
     ${source.slice(progressStart, messageStart)}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
@@ -57,6 +58,7 @@ function startupHarness() {
       setRecovery(window) { progressWindow = window; desktopFailureShown = true },
       quit() { quitting = true },
       showStartupProgress, desktopReady, showDesktop, activationWindows,
+      flushCalls: () => flushCalls,
     }`)
   const harness = build(FakeWindow, app, { ready: async () => {} }, async () => {},
     { start() {}, owns: window => window.pet }, { action: () => Promise.resolve() }, showDesktopWindows)
@@ -92,6 +94,7 @@ test('preparation uses the main BootPage and clears its status without presentin
   assert.equal(main.messages.at(-1)[1].message, '')
   assert.equal(main.visible, false)
   assert.equal(main.showCalls, 1)
+  assert.equal(harness.flushCalls(), 1)
 })
 
 test('a late preparation message preserves a main window the user already hid', () => {

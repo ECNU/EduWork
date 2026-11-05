@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-knowledge-studio",
-  "version": "0.6.3",
+  "version": "0.6.4",
   "eduworkNotificationProtocol": 1,
   "dshKnowledgeStudio": {
     "capabilities": [
@@ -90,24 +90,24 @@
     "@ladybugdb/core-win32-x64": "0.20.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
-    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-api-session-controller": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-workspace": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-fs": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-workspace": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0",
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0 || 4.1.0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-api-session-controller": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-conversation": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-workspace": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-fs": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-settings": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-workspace": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0",
     "react": "^18.2.0",
     "zod": "^4.4.3",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0"
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {
@@ -207,7 +207,7 @@
     "remark-gfm": "4.0.1",
     "remark-parse": "11.0.0",
     "unified": "11.0.5",
-    "@eduwork/dsh-artifact-services": "0.3.2"
+    "@eduwork/dsh-artifact-services": "0.3.3"
   },
   "workspaces": [
     "packages/artifact-services"

@@ -311,6 +311,8 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
+      productUpdateObserver: { dispose() {}, subscribe: () => () => {}, status: async () => undefined,
+        presentation: async () => ({ phase: 'idle' }), record() {} },
     })
     mock('eduwork-host-process.mjs', { staticDesktopResponse: () => undefined, DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
@@ -339,6 +341,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.equal(options.pickDirectory, pickDirectory)
       assert.equal(options.bootBrand, bootBrand)
       assert.equal(options.sidebarBrowser, sidebarBrowser)
+      assert.equal(typeof options.updates?.dispose, 'function')
       return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
         calls.push('probe-guide')
         // The production probe joins waitForHost(), which also starts the Host

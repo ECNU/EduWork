@@ -1,5 +1,10 @@
 # 变更记录 / Changelog
 
+## 0.1.5 — Unreleased
+
+- 兼容声明接纳已验证的 DSH 0.2.2-rc.1；运行时探针适配新版官方工具流水线，检索与全文实现保持不变。
+- Accept qualified DSH 0.2.2-rc.1 peers and adapt the runtime probe to the official tool pipeline, preserving retrieval and full-text behavior.
+
 ## 0.1.4 — 2026-10-24
 
 - PDF 引擎改为首次提取时加载，避免文献插件启动时初始化解析引擎。

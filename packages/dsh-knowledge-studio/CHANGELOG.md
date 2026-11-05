@@ -1,5 +1,10 @@
 # Changelog
 
+## Studio 0.6.4 / Artifact Services 0.3.3 — Unreleased
+
+- 兼容 DSH 0.2.2-rc.1 的工具执行接口；Studio Office 子调用通过官方执行流水线保留审批、取消和父调用身份。共享服务新增 `./tool-execution` 公开导出；旧宿主沿用原接口。
+- Support DSH 0.2.2-rc.1 through the official tool pipeline, preserving admission, cancellation and parent-call identity for Studio Office subcalls. Export `./tool-execution` from Artifact Services; older hosts retain single-call dispatch.
+
 ## Studio 0.6.3 / Artifact Services 0.3.2 — 2026-11-02
 
 - Office 共享规范说明不要用命令或脚本启动 Word、Excel、PowerPoint、WPS 等桌面应用验证文件；Windows 受限命令环境里它们会弹出报错并让命令一直等待，改用校验脚本和 LibreOffice Kit 检查。

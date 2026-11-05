@@ -1,10 +1,11 @@
 import { app, BrowserWindow, Menu, clipboard, dialog, nativeTheme, protocol, session, webContents } from 'electron'
 import { createServer } from 'node:http'
 import { writeFileSync } from 'node:fs'
-import { mkdir, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { installNativeDesktopBridge } from 'fixture-bridge'
+import { createUpdateObserver } from 'fixture-updates'
 import { staticDesktopResponse } from 'fixture-static'
 import { DesktopDirectoryPicker } from '../../src/directory-picker.mjs'
 import { DesktopExit } from '../../src/desktop-exit.mjs'
@@ -66,9 +67,22 @@ app.whenReady().then(async () => {
   const bootLogo = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/a9sAAAAASUVORK5CYII='
   const preparationMessage = '首次启动，正在下载并校验发行配置… <synthetic>'
   let bootBrand = { name: 'Synthetic EduWork', logo: bootLogo, message: preparationMessage }
+  let updateState = 'up_to_date'
+  const updateObserver = createUpdateObserver({
+    readStatus: async () => ({ shell: 'electron', version: '0.4.10', phase: updateState,
+      update: { enabled: true, state: updateState,
+        ...(updateState === 'available' || updateState === 'ready' ? { latestVersion: '0.4.11' } : {}),
+        ...(updateState === 'error' ? { failedOperation: 'download', error: 'synthetic download failure' } : {}) },
+      contentUpdate: { enabled: false, state: 'current' } }),
+    idleInterval: 50, busyInterval: 50,
+  })
   bridge = installNativeDesktopBridge({ getHost: () => host, waitForHost: () => hostWait(), getWindow: () => mainWindow,
     reportFatal: error => { failure = error.message }, onBootFailure: error => { bootFailure = error.message },
-    checkUpdates: async () => ({}), pickDirectory: signal => picker.pick(signal),
+    checkUpdates: async () => {
+      mainWindow.show(); mainWindow.focus()
+      await mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));")
+    },
+    updates: updateObserver, pickDirectory: signal => picker.pick(signal),
     bootBrand: () => bootBrand })
   const visibilityRoles = () => Menu.getApplicationMenu().items[0].submenu.items
     .map(item => item.role).filter(role => ['hide', 'hideothers', 'unhide'].includes(role))
@@ -95,6 +109,18 @@ app.whenReady().then(async () => {
   const evaluate = code => mainWindow.webContents.executeJavaScript(code, true)
   const contract = await evaluate(`({platform:document.documentElement.dataset.platform,browser:typeof dshDesktop.browser.acquire,keyboard:typeof dshDesktop.keyboard.subscribe,shortcuts:typeof dshDesktop.shortcuts.get,locale:typeof __DSH_LOCALE__.read,paths:typeof __DSH_HOST_PATHS__.pathFor,account:typeof window.dshPlatform})`)
   assert.deepEqual(contract, { platform: process.platform, browser: 'function', keyboard: 'function', shortcuts: 'function', locale: 'function', paths: 'function', account: 'undefined' })
+  const updateContract = await evaluate(`(async () => {
+    window.updateEvents = []
+    const off = dshDesktop.updates.subscribe(state => updateEvents.push(state))
+    return { initial: await dshDesktop.updates.status(), unsubscribe: typeof off }
+  })()`)
+  assert.deepEqual(updateContract, { initial: { phase: 'idle' }, unsubscribe: 'function' })
+  updateState = 'available'
+  await evaluate('updateEvents.length = 0')
+  await until(async () => (await evaluate('updateEvents.at(-1)?.phase')) === 'available')
+  assert.deepEqual(await evaluate('updateEvents.at(-1)'), { phase: 'available', version: '0.4.11' })
+  assert.deepEqual(await evaluate('dshDesktop.updates.status()'), { phase: 'available', version: '0.4.11' })
+  results.push('built preload reads and subscribes to production update presentations')
   const staticChecks = await evaluate(`Promise.all([
     fetch('/assets/marker.txt').then(response => response.text()),
     fetch('/api/settings/describe').then(response => response.status),
@@ -302,8 +328,102 @@ app.whenReady().then(async () => {
   const foreign = new BrowserWindow({ show: false, webPreferences: { preload, sandbox: true, contextIsolation: true } })
   await foreign.loadURL('dsh-app://app/index.html')
   const denied = await foreign.webContents.executeJavaScript(`dshDesktop.browser.acquire('foreign').then(()=>false,()=>true)`)
-  assert.equal(denied, true); foreign.destroy()
-  results.push('same-origin foreign window cannot acquire browser leases')
+  assert.equal(denied, true)
+  const deniedUpdates = await foreign.webContents.executeJavaScript(`Promise.all([
+    dshDesktop.updates.status().then(()=>false,()=>true),
+    dshDesktop.updates.open().then(()=>false,()=>true),
+  ])`)
+  assert.deepEqual(deniedUpdates, [true, true]); foreign.destroy()
+  const nonApp = new BrowserWindow({ show: false, webPreferences: { preload, sandbox: true, contextIsolation: true } })
+  await nonApp.loadURL('about:blank')
+  assert.equal(await nonApp.webContents.executeJavaScript(`typeof dshDesktop.updates`), 'undefined'); nonApp.destroy()
+  results.push('same-origin foreign window cannot read/open updates; non-app main frame has no update API')
+  // A same-window reload starts a new document; the main process must rebind
+  // instead of keeping the old document's delivery state.
+  updateState = 'checking'
+  await mainWindow.loadURL('dsh-app://app/index.html')
+  await until(async () => (await evaluate(`typeof dshDesktop?.updates?.status`)) === 'function')
+  const reloadedUpdates = await evaluate(`(async () => {
+    window.updateEvents = []
+    dshDesktop.updates.subscribe(state => updateEvents.push(state))
+    return dshDesktop.updates.status()
+  })()`)
+  assert.deepEqual(reloadedUpdates, { phase: 'checking' })
+  updateState = 'available'
+  await evaluate('updateEvents.length = 0')
+  await until(async () => (await evaluate('updateEvents.at(-1)?.phase')) === 'available')
+  assert.deepEqual(await evaluate('updateEvents.at(-1)'), { phase: 'available', version: '0.4.11' })
+  results.push('reload rebinds update status and subscription for the new document')
+  if (process.env.EDUWORK_PROBE_OFFICIAL_UI && process.env.EDUWORK_PROBE_WORKBENCH_UPDATES) {
+    const officialScript = await readFile(process.env.EDUWORK_PROBE_OFFICIAL_UI, 'utf8')
+    const workbenchScript = await readFile(process.env.EDUWORK_PROBE_WORKBENCH_UPDATES, 'utf8')
+    const rawAvailable = { shell: 'electron', update: { enabled: true, state: 'available', latestVersion: '0.4.11' },
+      contentUpdate: { enabled: false, state: 'current' } }
+    await evaluate(officialScript)
+    await evaluate(workbenchScript)
+    await evaluate(`(() => {
+      const U = window.OfficialUpdateUI, W = window.WorkbenchUpdates
+      const translate = dict => (key, params) => Object.entries(params || {}).reduce((message, [name, value]) => message.replaceAll('{' + name + '}', String(value)), dict[key] || key)
+      window.__integrationRawStatus = ${JSON.stringify(rawAvailable)}
+      const source = new U.DesktopUpdateSource(dshDesktop.updates)
+      const t = translate(U.zh)
+      const officialHost = document.createElement('div'); officialHost.id = 'official-update-host'; document.body.prepend(officialHost)
+      const officialRoot = U.createRoot(officialHost)
+      function App() {
+        const view = U.useSyncExternalStore(source.store.subscribe, source.store.getSnapshot)
+        return U.React.createElement(U.DesktopUpdateIndicator, { wide: true, hidden: false, t, view, onOpen: () => source.open() })
+      }
+      officialRoot.render(U.React.createElement(App))
+      const controller = W.createUpdateController(async action => window.__integrationRawStatus)
+      const workbenchHost = document.createElement('div'); workbenchHost.id = 'workbench-update-host'; document.body.append(workbenchHost)
+      const workbenchRoot = W.createRoot(workbenchHost)
+      workbenchRoot.render(W.React.createElement(W.UpdateFooter, { controller, wide: true }))
+      window.integration = { source, controller, officialRoot, workbenchRoot,
+        setRaw: async raw => { window.__integrationRawStatus = raw; await controller.run('check-updates') } }
+    })()`)
+    const officialLabel = () => evaluate(`document.querySelector('#official-update-host button')?.getAttribute('aria-label')`)
+    const dialogCount = () => evaluate(`document.querySelectorAll('[role="dialog"][aria-label="更新"]').length`)
+    const dialogText = () => evaluate(`document.querySelector('[role="dialog"][aria-label="更新"]')?.textContent || ''`)
+    const setRaw = raw => evaluate(`window.integration.setRaw(${JSON.stringify(raw)})`)
+    const clickOfficial = async label => {
+      await until(async () => (await officialLabel()) === label)
+      await evaluate(`(() => { const button = document.querySelector('#official-update-host button'); button.focus(); button.click() })()`)
+      await until(async () => (await dialogCount()) === 1)
+    }
+    const closeByEscape = async () => {
+      await evaluate(`window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))`)
+      await until(async () => (await dialogCount()) === 0)
+    }
+    const waitForController = async () => {
+      await until(async () => (await evaluate(`window.integration.controller.getSnapshot().working`)) === '')
+    }
+    await until(async () => (await evaluate(`Boolean(window.integration.controller.getSnapshot().status)`)))
+    await clickOfficial('新版本')
+    await waitForController()
+    assert.match(await dialogText(), /下载更新/)
+    assert.equal(await evaluate(`document.activeElement?.getAttribute('aria-label')`), '新版本')
+    await closeByEscape()
+    assert.equal(await evaluate(`document.activeElement?.getAttribute('aria-label')`), '新版本')
+    await clickOfficial('新版本')
+    assert.equal(await dialogCount(), 1)
+    await closeByEscape()
+    updateState = 'error'
+    await setRaw({ shell: 'electron', update: { enabled: true, state: 'error', error: 'synthetic download failure' },
+      contentUpdate: { enabled: false, state: 'current' } })
+    await clickOfficial('重试更新')
+    await waitForController()
+    assert.match(await dialogText(), /synthetic download failure/)
+    await closeByEscape()
+    updateState = 'ready'
+    await setRaw({ shell: 'electron', update: { enabled: true, state: 'ready', latestVersion: '0.4.11' },
+      contentUpdate: { enabled: false, state: 'current' } })
+    await clickOfficial('安装并重启')
+    await waitForController()
+    assert.match(await dialogText(), /立即重启更新/)
+    await closeByEscape()
+    await evaluate(`window.integration.controller.dispose(); window.integration.source.dispose(); window.integration.officialRoot.unmount(); window.integration.workbenchRoot.unmount()`)
+    results.push('official indicator click opens the compiled workbench panel through real preload/IPC')
+  }
   server = createServer((req, res) => {
     if (req.url === '/never') return
     res.setHeader('content-type', 'text/html'); res.setHeader('X-Frame-Options', 'SAMEORIGIN'); res.setHeader('Content-Security-Policy', "frame-ancestors 'self'")
@@ -411,5 +531,8 @@ app.whenReady().then(async () => {
   await Promise.all([recovery.report(new Error('synthetic'), 'host'), recovery.report(new Error('duplicate'), 'renderer')])
   assert.equal(recoveryCalls, 1); assert.equal(recoveryStops, 1)
   results.push('official Host failure cleanup, cancellable active/scheduled-task quit and deduplicated recovery')
+  updateObserver.dispose()
+  assert.equal(await evaluate(`dshDesktop.updates.status().then(()=>false,()=>true)`), true)
+  results.push('disposed update observation stops serving status')
   finish()
 }).catch(finish)

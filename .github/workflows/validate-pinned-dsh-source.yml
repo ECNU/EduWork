@@ -36,6 +36,7 @@ on:
       - 'scripts/assemble-pinned-dsh-source-product.mjs'
       - 'scripts/optional-product-bundles.mjs'
       - 'scripts/test/optional-product-bundles.test.mjs'
+      - 'scripts/test/optional-extensions.test.mjs'
       - 'scripts/published-package-inputs.mjs'
       - 'scripts/test/published-package-inputs.test.mjs'
       - 'scripts/prepare-pinned-dsh-product.mjs'
@@ -159,7 +160,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Agent and plugin notification integration checks failed' }
           node --test core/tests/node-runtime-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Node security pin and official web-fetch checks failed' }
-          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs core/scripts/test/optional-product-bundles.test.mjs
+          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs core/scripts/test/optional-product-bundles.test.mjs core/scripts/test/optional-extensions.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
           if ($LASTEXITCODE) { throw 'Windows workspace permission repair checks failed' }
