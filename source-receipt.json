@@ -5,7 +5,7 @@
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-03T09:39:29.958Z",
-  "fileSetSHA256": "cb3baaeedb7a1c06f2a60347b7c5aad4b5ae42a5b183cbb09f49ed7ad02dfad9",
+  "fileSetSHA256": "5b69328cfe5a564fb9e01dcadf658e6c114dd886aab4542b7400fc1ddd58d0a9",
   "files": [
     {
       "path": ".gitattributes",
@@ -8461,7 +8461,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/annotation.json",
-      "sha256": "f5c47abd3f8b86be162bc089c0649375712001504ce8edbbbfc4a8203e46970d"
+      "sha256": "fb96e3b0e55bbb247358e095148e0a862bc723cf0d0ee1077920aacb3a18516c"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/artifact-services.json",
@@ -8489,7 +8489,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/literature.json",
-      "sha256": "cdd232079cdfc8cabd05de24a537fb208215a4da02ecab08e40944d5e6b7d8a9"
+      "sha256": "e61b6750a14750d7cbf44593ff173dda04a928a1d432c17128484f916efd553b"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/LOCK.json",
@@ -8525,11 +8525,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package-lock.json",
-      "sha256": "8cf3d1926e5cc823c128551a3a406c732c18f849e0a7a524dfcc9078a69ea6ae"
+      "sha256": "993738f2f12a25ae1d864c8a111fc6fde9910bb567c258a6e51e20f8946513e8"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package.json",
-      "sha256": "79853b4a684a71d0563739fb87be52e42d1cb31bee756b3442d69053d2bb7c75"
+      "sha256": "4896a6d4939785fd7ea47827c411c8e8a908cb4e0063d2f8f9bf3c176ffc2cd8"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
