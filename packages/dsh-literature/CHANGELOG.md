@@ -1,5 +1,10 @@
 # 变更记录 / Changelog
 
+## Unreleased
+
+- 支持 arXiv 返回的 gzip 单文件 TeX；空文本、不可识别和损坏的源码归档会继续尝试 HTML/PDF，避免返回空的成功结果（#266）。
+- Handle gzipped standalone arXiv TeX; empty, unrecognized and damaged source archives fall back to HTML/PDF instead of returning an empty success (#266).
+
 ## 0.1.5 — Unreleased
 
 - 兼容声明接纳已验证的 DSH 0.2.2-rc.1；运行时探针适配新版官方工具流水线，检索与全文实现保持不变。
