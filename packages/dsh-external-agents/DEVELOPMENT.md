@@ -1,7 +1,7 @@
 # 构建与验证 / Build and validation
 
-需要 Node.js 24.22.1+。DSH peer 包必须与目标 Host 的 `0.2.1-rc.5` 一致。
-Use Node.js 24.22.1+ and the same DSH `0.2.1-rc.5` peer packages as the target Host.
+需要 Node.js 24.22.1+。DSH peer 包与 Codex/ACP provider 必须和目标 Host 的版本一致；支持 `0.2.1-rc.5` 和 `0.2.2-rc.1`。开发锁保留 rc.5，装配到 rc.1 时使用 rc.1 的官方 provider，避免引入第二份旧内核。
+Use Node.js 24.22.1+ and DSH peers plus Codex/ACP providers matching the target Host. Both `0.2.1-rc.5` and `0.2.2-rc.1` are supported. The development lock retains rc.5; rc.1 assemblies must use the rc.1 official providers to avoid installing a second, older core.
 
 ```sh
 npm ci

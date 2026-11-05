@@ -166,3 +166,7 @@ DSH 服务默认关闭生图。部署方须在 ArtifactServices 插件配置中�
 内置系统 TTS 支持 Windows。其他平台需要注册语音 Provider 并提供兼容的原生资源，见[平台要求](docs/PLATFORMS.md)。
 
 图像 Provider 可选实现 `edit(request)`，沿用 `generate` 的工作区、取消信号与结果契约；输入为 `images` 路径数组及可选 `mask`，通过 `images.edit(request)` / `image_edit` 调用。目录仅对实现编辑的 Provider 声明 `capabilities.edit:true`；不自动回退到生成。输入与输出均限制在工作区，结果须另存，复用工作区写入权限。
+
+### DSH 内部工具调用
+
+`@eduwork/dsh-artifact-services/tool-execution` 导出 `executeGovernedTool(ctx, input)`，供服务发起单个内部工具调用。0.2.2-rc.1 使用官方 `ToolExecutionPipeline`，旧宿主使用单调用接口；调用者应原样传递 `agent`、`signal`、`toolSet`、`rootCallId` 和 `parent`（如有）。模型产生的整批工具调用仍交给 DSH 执行器管理，不能用这个入口替换批次调度。
