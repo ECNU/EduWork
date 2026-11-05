@@ -51,7 +51,7 @@ export function adaptNativeHostEntry(input) {
   // The product manifest owns its bundled extensions as well as DSH. Using
   // the CLI manifest here makes profile resolution omit all product packages.
   text = replace(text, "const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')", "const installAnchor = join(runtimeDir, 'package.json')")
-  for (const module of ['update-tasks', 'office-engine', 'quit-inspection']) {
+  for (const module of ['update-tasks', 'office-engine', 'quit-inspection', 'fatal-diagnostic', 'operation-diagnostics', 'file-drag']) {
     text = text.replaceAll(`'./${module}.ts'`, `'./${module}.js'`)
   }
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
@@ -122,6 +122,9 @@ export async function prepareNative({ upstream, output }) {
   await emit('desktop-host/lib/update-tasks.js', transform(admission))
   await emit('desktop-host/lib/quit-inspection.js', transform(adaptNativeQuitInspection(input['apps/desktop-host/src/quit-inspection.ts'])))
   await emit('desktop-host/lib/office-engine.js', transform(input['apps/desktop-host/src/office-engine.ts']))
+  for (const name of ['fatal-diagnostic', 'operation-diagnostics', 'file-drag']) {
+    await emit(`desktop-host/lib/${name}.js`, transform(input[`apps/desktop-host/src/${name}.ts`]))
+  }
   await emit('desktop-host/lib/settings-migration.mjs', await readFile(new URL('./settings-migration.mjs', import.meta.url), 'utf8'))
   const manifest = JSON.parse(input['apps/desktop-host/package.json'])
   manifest.files = ['lib/']; manifest.private = true

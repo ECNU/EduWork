@@ -1,7 +1,8 @@
 import { app, BrowserWindow, Menu, clipboard, dialog, nativeTheme, protocol, session, webContents } from 'electron'
 import { createServer } from 'node:http'
 import { writeFileSync } from 'node:fs'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, writeFile, readFile } from 'node:fs/promises'
+import { createHash } from 'node:crypto'
 import { join } from 'node:path'
 import assert from 'node:assert/strict'
 import { installNativeDesktopBridge } from 'fixture-bridge'
@@ -54,6 +55,12 @@ app.whenReady().then(async () => {
   const hostOrigin = `http://127.0.0.1:${hostServer.address().port}`
   const host = { origin: hostOrigin, boot: () => ({ injections: [], streamBaseUrl: hostOrigin }),
     socketHeaders: () => ({}), readLocalePreference: async () => 'zh' }
+  const downloads = join(output, 'downloads')
+  await mkdir(downloads, { recursive: true }); app.setPath('downloads', downloads)
+  const borrowedPath = join(output, 'borrowed.txt'), borrowedBytes = Buffer.from('Synthetic drag resource')
+  await writeFile(borrowedPath, borrowedBytes)
+  host.resolveDragResource = async address => address === 'fixture:borrowed'
+    ? { path: borrowedPath, size: borrowedBytes.length, sha256: createHash('sha256').update(borrowedBytes).digest('hex') } : null
   const webRoot = join(output, 'web')
   await mkdir(join(webRoot, 'assets'), { recursive: true })
   await writeFile(join(webRoot, 'index.html'), `<!doctype html><html lang="zh"><head>
@@ -338,6 +345,24 @@ app.whenReady().then(async () => {
   await nonApp.loadURL('about:blank')
   assert.equal(await nonApp.webContents.executeJavaScript(`typeof dshDesktop.updates`), 'undefined'); nonApp.destroy()
   results.push('same-origin foreign window cannot read/open updates; non-app main frame has no update API')
+  if (await evaluate(`typeof dshDesktop.fileDrag === 'object'`)) {
+    // Exercise the actual preload and native handlers without starting an OS
+    // drag gesture or writing to the user's Downloads directory.
+    const saved = await evaluate(`dshDesktop.fileActions.save({url:'data:text/plain,synthetic%20download',name:'fixture.txt',mediaType:'text/plain',mode:'download'})`)
+    assert.equal(saved.status, 'saved')
+    assert.equal(await readFile(saved.path, 'utf8'), 'synthetic download')
+    assert.equal(await evaluate(`dshDesktop.fileActions.readClipboardImage(${JSON.stringify(hostOrigin+'/private')}).then(()=>false,()=>true)`), true)
+    assert.equal(hostRequests, 0)
+    const prepared = await evaluate(`dshDesktop.fileDrag.prepare({kind:'resource',address:'fixture:borrowed',name:'borrowed.txt',mediaType:'text/plain'},'resource-1')`)
+    assert.equal(typeof prepared, 'string')
+    const deniedResource = await evaluate(`dshDesktop.fileDrag.prepare({kind:'resource',address:'fixture:denied',name:'borrowed.txt',mediaType:'text/plain'},'resource-2')`)
+    assert.equal(deniedResource, undefined)
+    await evaluate(`dshDesktop.fileDrag.release(${JSON.stringify(prepared)})`)
+    await bridge.disposeFileDrags()
+    assert.deepEqual(await readFile(borrowedPath), borrowedBytes, 'borrowed user files survive drag cleanup')
+    results.push('native file save, Host image-read rejection, authorized resource preparation and borrowed-file cleanup')
+    limitations.push('OS drag-and-drop gestures into external applications require separate manual platform acceptance')
+  }
   // A same-window reload starts a new document; the main process must rebind
   // instead of keeping the old document's delivery state.
   updateState = 'checking'
@@ -530,6 +555,16 @@ app.whenReady().then(async () => {
     exit: () => {}, restart: () => {}, writeReport: async () => undefined })
   await Promise.all([recovery.report(new Error('synthetic'), 'host'), recovery.report(new Error('duplicate'), 'renderer')])
   assert.equal(recoveryCalls, 1); assert.equal(recoveryStops, 1)
+  if (await evaluate(`typeof dshDesktop.fileActions === 'object'`)) {
+    let openedReport, reportDialogs = 0
+    const diagnostics = new DesktopFatalRecovery({ messages: () => resolveDesktopLocale('zh').messages,
+      show: async options => { assert.equal(options.buttons.length, 3); return { response: reportDialogs++ === 0 ? 2 : 0 } },
+      stop: async () => {}, disablePlugins: assert.fail, exit() {}, restart: assert.fail,
+      writeReport: async () => borrowedPath, revealReport: async path => { openedReport = path } })
+    await diagnostics.report(new Error('synthetic report'), 'host')
+    assert.equal(openedReport, borrowedPath); assert.equal(reportDialogs, 2)
+    results.push('official diagnostic-report action retains exit/restart without disabling distribution plugins')
+  }
   results.push('official Host failure cleanup, cancellable active/scheduled-task quit and deduplicated recovery')
   updateObserver.dispose()
   assert.equal(await evaluate(`dshDesktop.updates.status().then(()=>false,()=>true)`), true)

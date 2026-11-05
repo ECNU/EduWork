@@ -1,7 +1,8 @@
-// The rc.2 desktop primitives own native behavior. Product hooks retain edition
+// The pinned upstream desktop primitives own native behavior. Product hooks retain edition
 // configuration, portable directories, secure credentials, updates and attention.
-import { app, dialog, protocol, powerMonitor } from 'electron'
+import { app, dialog, protocol, powerMonitor, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
+import { access } from 'node:fs/promises'
 import { DesktopBackendController } from './backend-controller.ts'
 import { DesktopFatalRecovery } from './fatal-recovery.ts'
 import { DesktopQuitConfirmation } from './quit-confirmation.ts'
@@ -37,10 +38,11 @@ const backend = new DesktopBackendController(onFailure => new DesktopHostProcess
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && started && !isQuitting()) reportFatal(state.failure, 'host')
 })
-function closeBackend() {
+async function closeBackend() {
   // Cancel shell preparation before the controller waits for startup to settle.
   loginShellRead.abort()
-  return backend.close()
+  // A drag cleanup failure must not leave the Host running during quit/restart.
+  await Promise.all([bridge?.disposeFileDrags(), backend.close()])
 }
 trackHost({ stop: closeBackend })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
@@ -56,6 +58,7 @@ const recovery = new DesktopFatalRecovery({
   disablePlugins: async () => { throw new Error('Required distribution plugins cannot be disabled') },
   exit: () => { recoveryExit = true; app.quit() },
   restart: () => { recoveryExit = true; restartDesktop() },
+  revealReport: async path => { await access(path); shell.showItemInFolder(path) },
   writeReport: (error, source) => writeCrashReport(app.getPath('logs'), {
     source, phase: started ? 'running' : 'startup', error, rendererConsole: [], time: new Date(),
     app: { name: app.getName(), version: app.getVersion(), platform: process.platform, arch: process.arch,

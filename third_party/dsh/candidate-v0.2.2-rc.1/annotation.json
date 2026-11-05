@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-annotation",
+  "version": "0.1.3",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "c269df154e95ad36cf0ee0f3eecea12dd74dbee5",
+  "publicationStatus": "published",
+  "tarballSHA256": "8808da32ad55336d03f3579a026ba423da848f04866b8f793d26dc0cc12bd07d",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-annotation/-/dsh-annotation-0.1.3.tgz",
+    "integrity": "sha512-MvI7X6O84s5kQZbyo0JLrUQunFMGj/h0bv/p/fO/f08I0UTDTXfdS5ntQh0CMQzM5htZv+NBZc6LuVcuYR8xDA==",
+    "shasum": "2bb312ddf666c14de247f61f0b5807b13045844a"
+  }
+}
