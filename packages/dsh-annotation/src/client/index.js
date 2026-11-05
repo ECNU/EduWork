@@ -1,5 +1,6 @@
 import React, { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { createPortal } from 'react-dom'
+import { useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { SOURCE, MAX_NOTE, MAX_LIVE_SNAPSHOT, decode, reference, text } from './reference.js'
 import { place } from './position.js'
 import { annotations, occurrenceSpan, selectionSource, closingMessage } from './draft.js'
@@ -106,10 +107,12 @@ function ownsSelection(marker, element) {
   return scope != null && scope.querySelectorAll(`[${MARKER}]`).length === 1
 }
 
-function readSelection(marker, resolveOrigin, native = false) {
+function readSelection(marker, resolveOrigin, nativeText) {
   const selection = document.getSelection()
   if (!selection || selection.isCollapsed || selection.rangeCount === 0) return null
-  const quote = selection.toString().trim()
+  // New hosts project visible text themselves (including code/math/hidden
+  // elements). Read DOM only for provenance; older hosts keep their fallback.
+  const quote = nativeText ?? selection.toString().trim()
   if (quote === '') return null
   const range = selection.getRangeAt(0)
   const node = range.commonAncestorContainer
@@ -117,7 +120,7 @@ function readSelection(marker, resolveOrigin, native = false) {
   if (!element || element.closest(`[contenteditable="true"], input, textarea, [${UI}]`)) return null
   // Native text interactions already validate the selected area's session.
   // The legacy path still needs its marker-based ownership check.
-  if (!native && !ownsSelection(marker, element)) return null
+  if (nativeText === undefined && !ownsSelection(marker, element)) return null
   // The one DOM adapter: read the official Chat row identity. All message data
   // comes from the public snapshot. Context is bounded to this selected row.
   const row = element.closest('[data-chat-node-key]')
@@ -227,7 +230,8 @@ function NativeSelectionToolbar({ sessionId, previews, selectionActions, editors
   const actions = useSyncExternalStore(selectionActions.subscribe, selectionActions.getSnapshot)
   useEffect(() => { if (!enabled) dismiss() }, [enabled, dismiss])
   if (!enabled) return null
-  const target = readText() === null ? null : readSelection(null, key => selectionSource(chat, key, sessionId), true)
+  const selectedText = readText()
+  const target = selectedText === null ? null : readSelection(null, key => selectionSource(chat, key, sessionId), selectedText)
   const finish = () => { clearSelection(); dismiss() }
   const unlocked = () => {
     if (!previews.isLocked(sessionId)) return true
@@ -283,6 +287,7 @@ function Preview({ panel, items, sessionId, previews, t, onClose, onOpen, onSave
   const annotation = panel.annotation
   const save = () => { if (!onSave(panel, note)) setFailed(true) }
   const remove = () => { if (!onRemove(panel)) setFailed(true) }
+  useDismissOnOutsidePointer(ref, !editing, onClose)
   useEffect(() => {
     const onKey = (event) => { if (event.key === 'Escape') onClose() }
     const onOutside = (event) => { if (!ref.current?.contains(event.target)) onClose() }
@@ -290,12 +295,10 @@ function Preview({ panel, items, sessionId, previews, t, onClose, onOpen, onSave
     // Closing while editing is an explicit Cancel action below.
     if (editing) return undefined
     document.addEventListener('keydown', onKey)
-    document.addEventListener('pointerdown', onOutside, true)
     document.addEventListener('focusin', onOutside)
     window.addEventListener('blur', onClose)
     return () => {
       document.removeEventListener('keydown', onKey)
-      document.removeEventListener('pointerdown', onOutside, true)
       document.removeEventListener('focusin', onOutside)
       window.removeEventListener('blur', onClose)
     }

@@ -12,6 +12,8 @@ Requires a DSH client providing the official Chat view and composer extensions (
 
 Version 0.1.2 supports DSH `0.2.2-rc.1` and extends its native text-interaction surface with Quote, Annotate and optional side chat in one toolbar. Native quotes and annotations can coexist across editing, Undo and draft restoration. Older hosts retain the existing selection adapter.
 
+The host owns selection and basic quotes; annotations use its native draft and submission APIs. This plugin adds per-excerpt comments, numbering and editing. On newer hosts, selected visible text comes from the official projection. Sent-annotation detail placement and outside-pointer dismissal reuse official UI primitives. Existing messages, comment payloads and source numbers remain compatible; the plugin does not maintain a separate conversation or draft store.
+
 ## Usage
 
 1. Select text in the final response of a completed turn and choose “Annotate” in the floating toolbar.

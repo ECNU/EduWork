@@ -163,8 +163,8 @@ test('bundle registers a codec source and inserts through the official event', a
   assert.equal(overlay.spec.inject('missing-session').insert(value, actions), false)
 })
 
-test('annotation UI confirms Enter after composition and dismisses only outside the preview', async () => {
-  let factory, overlay, stateIndex = 0
+test('annotation UI keeps IME handling and delegates outside-pointer dismissal', async () => {
+  let factory, overlay, outsideDismiss, stateIndex = 0
   const effects = [], listeners = new Map(), removed = [], draftChanges = []
   const target = { quote: '原文', x: 10, y: 10 }
   const React = {
@@ -180,7 +180,11 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
   }
   const window = { ...events, __ModuleLoader__: { load: entry => { factory = entry.factory } } }
   vm.runInNewContext(await readFile(new URL('../lib/client.js', import.meta.url), 'utf8'), { window, document: { ...events, body: {} } })
-  const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal: node => node } })[name])
+  const plugin = factory(name => ({ react: { default: React, ...React }, 'react-dom': { createPortal: node => node },
+    '@deepseek-ai/dsh-client-ui-primitives': {
+      useDismissOnOutsidePointer: (root, open, onClose) => { outsideDismiss = { root, open, onClose } },
+    },
+  })[name])
   const scope = {
     uiConversation: { userText: { register: () => () => {} } },
     effect: fn => fn(), inputTriggers: { registerSource() {} },
@@ -217,14 +221,15 @@ test('annotation UI confirms Enter after composition and dismisses only outside 
   const inside = {}
   preview.props.ref.current = { contains: node => node === inside }
   const cleanup = effects[0]()
-  listeners.get('pointerdown')({ target: inside })
+  assert.equal(outsideDismiss.root, preview.props.ref)
+  assert.equal(outsideDismiss.open, true)
   listeners.get('focusin')({ target: inside })
   assert.equal(closed, 0)
-  listeners.get('pointerdown')({ target: {} })
+  outsideDismiss.onClose(false)
   listeners.get('focusin')({ target: {} })
   listeners.get('blur')()
   listeners.get('keydown')({ key: 'Escape' })
   assert.equal(closed, 4)
   cleanup()
-  assert.deepEqual(removed.sort(), ['blur', 'focusin', 'keydown', 'pointerdown'])
+  assert.deepEqual(removed.sort(), ['blur', 'focusin', 'keydown'])
 })
