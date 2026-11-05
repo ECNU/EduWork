@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-05T14:17:45.005Z",
-  "fileSetSHA256": "d670346ecfb6701d21e8d7ec85a1f8feda43b478485fdf96406c282384501a90",
+  "createdAt": "2026-11-05T14:20:07.495Z",
+  "fileSetSHA256": "dcb90797ec5ebcc0c33163a065f66c722189cc4d587d893d17c8699fc685c04f",
   "files": [
     {
       "path": ".gitattributes",
@@ -7473,7 +7473,7 @@
     },
     {
       "path": "scripts/lib/windows-signing-protocol.mjs",
-      "sha256": "554684373488107f5bdecf4f3e6f8b2c64c27bd73f446a8136a8218b09d3089c"
+      "sha256": "c84fa9251f0d3df593a19c69fc4b074a284a195f65d2618cad9e9880fc2a7a99"
     },
     {
       "path": "scripts/lib/windows-signing-receipt.mjs",
@@ -8153,7 +8153,7 @@
     },
     {
       "path": "tests/windows-signing.test.mjs",
-      "sha256": "434cacdd339722d571e4b6383870e1464839a6eb72ca005d33a8cc96055891f7"
+      "sha256": "2b5f844cfa3bc0be36621c7f134490d0872a0ad1929a8c655506f9bac84ce3cc"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",

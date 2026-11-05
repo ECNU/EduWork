@@ -111,6 +111,7 @@ test('pending original receipt is rejected by ordinary publication',()=>{
   delete signed.signing;assert.throws(()=>validateReceipt(signed,context))
 })
 test('artifact extraction refuses traversal, Windows aliases and case collisions',async t=>{
+  assert.equal(safePath('resources/'+('long-component/'.repeat(30))+'asset.js'),'resources/'+('long-component/'.repeat(30))+'asset.js')
   for(const path of ['../a','a/../../b','C:/x','/x','a\\b','NUL.txt','a/COM1','a./b','a /b','a:b','a?b']) assert.throws(()=>safePath(path))
   const root=await mkdtemp(join(tmpdir(),'eduwork-signing-zip-'));t.after(()=>rm(root,{recursive:true,force:true}))
   for(const [i,names] of [['a',['../escape']],['b',['a','A']],['c',['safe/file.txt']]]){

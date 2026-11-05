@@ -9,7 +9,7 @@ const hash = /^[a-f0-9]{64}$/, commit = /^[a-f0-9]{40}$/, run = /^[1-9][0-9]*$/
 function keys(value, expected) { assert(value && typeof value === 'object' && !Array.isArray(value)); assert.deepEqual(Object.keys(value).sort(), [...expected].sort(), 'Unexpected protocol fields') }
 export function safePath(value) {
   assert.equal(typeof value, 'string')
-  assert(value.length > 0 && value.length < 240 && !/[\\:*?"<>|\x00-\x1f]/.test(value) && !value.startsWith('/'))
+  assert(value.length > 0 && value.length < 4096 && !/[\\:*?"<>|\x00-\x1f]/.test(value) && !value.startsWith('/'))
   assert(value.split('/').every(part => part && part !== '.' && part !== '..' && !/[. ]$/.test(part)), 'Unsafe signing path')
   assert(value.split('/').every(part => !/^(con|prn|aux|nul|com[1-9]|lpt[1-9])(?:\.|$)/i.test(part)), 'Windows device path forbidden')
   return value
