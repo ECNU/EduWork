@@ -5,7 +5,7 @@
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-03T09:39:29.958Z",
-  "fileSetSHA256": "16557c106b0a07ba2b02ea72f7b102909d28585007e4cc96ade369d4875421dc",
+  "fileSetSHA256": "7d2a70b5a7729c6630387c5640bb3126fece407c9c8c74c87f458bdb3b766c97",
   "files": [
     {
       "path": ".gitattributes",
@@ -389,7 +389,7 @@
     },
     {
       "path": "docs/plugin-catalog.json",
-      "sha256": "d35ae6983c1a88606fbb289d77e8771b115033e1ea9b06dca4d28fea2916b1ac"
+      "sha256": "6293db1339bb18df5832264a01c0e510c9759bfcb28812f4ad98053a5c6835c6"
     },
     {
       "path": "docs/PORTABLE-EXTRACTOR.en.md",
@@ -4165,11 +4165,11 @@
     },
     {
       "path": "packages/dsh-external-agents/README_EN.md",
-      "sha256": "13d639db4df4fbae6baa74c7b3e55b464f4b494fd72d8878e84ab0f70ddd9ddc"
+      "sha256": "2491445485517d63732f872a8a6bb6d1da0c9747559e7160059d6e89c45e1543"
     },
     {
       "path": "packages/dsh-external-agents/README.md",
-      "sha256": "7efac65c1748e17f239acb0216a8c51f742aedd0a218e6ec113ad0570605ceec"
+      "sha256": "832163e25e63c05c48e3a97833f175d52fdc78274f69b1ab6bc206e6f907ec27"
     },
     {
       "path": "packages/dsh-external-agents/scripts/build.mjs",
@@ -7185,11 +7185,11 @@
     },
     {
       "path": "README_EN.md",
-      "sha256": "69dc5aa81e3403e9f17c672266ed9d23eb27179b7ed4f7516e02310c88c95ec4"
+      "sha256": "5c2ad4f9de2794d516d521fe8587deaef6629d015fda998d4ce69dc9c6dd35e3"
     },
     {
       "path": "README.md",
-      "sha256": "9132b0403faf3886aec311e1773358f3c832beab89dc64c5dcb70dbd2667727d"
+      "sha256": "8f0e50155b2fbe13c91b8f0765be07b0252f83bb70d56034cd7dae646b240d20"
     },
     {
       "path": "RELEASE-CHECKLIST_EN.md",
@@ -8677,7 +8677,7 @@
     },
     {
       "path": "website/index.html",
-      "sha256": "81779b4803242556985017fe989c706fc6066b47dff2a4f594be30ab00732df8"
+      "sha256": "a6890c044119eb7b9bf0aadc311bc16bef811779a30915ff1efa725d5899beda"
     },
     {
       "path": "website/language.js",
