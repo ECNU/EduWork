@@ -38,7 +38,7 @@
       "sidebar.brand.name",
       "conversation.hero.brand.mark",
       "settings.general.item",
-      "settingsScope"
+      "configForms"
     ],
     "replaces": [],
     "removable": true
