@@ -251,7 +251,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.ok(fatalRecovery); assert.equal(options.type, 'error'); calls.push('recovery-dialog')
       return { response: restarting && (!stopFailure || calls.filter(value => value === 'recovery-dialog').length === 1) ? 1 : 0 }
     } },
-      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
+      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter(), shell: { openPath: async () => '' } } })
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
     const bootBrand = () => ({ name: 'Synthetic EduWork', logo: '' })
@@ -342,7 +342,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.equal(options.bootBrand, bootBrand)
       assert.equal(options.sidebarBrowser, sidebarBrowser)
       assert.equal(typeof options.updates?.dispose, 'function')
-      return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
+      return { attach() {}, dispose() {}, async disposeFileDrags() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
         calls.push('probe-guide')
         // The production probe joins waitForHost(), which also starts the Host
         // when called early. Preserve that behavior instead of a no-op stub.
