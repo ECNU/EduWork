@@ -38,8 +38,9 @@ const allPublishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
 await verifyPublishedPackageInputs({ locks: allPublishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
 const pluginInstallLock = await readFile(join(paths.dependencies, 'package-lock.json'))
 const edition = paths.edition ? await json(join(paths.edition, 'edition/distribution.json')) : {}
+const policy = productOptionalBundlePolicy(allPublishedLocks, { ...distribution.extensionDefaults, ...edition.extensionDefaults })
 const { locks: publishedLocks, optionalBundles, disabledByDefaultBundles, excludedOptionalBundles } = selectOptionalProductBundles({
-  locks: allPublishedLocks, ...productOptionalBundlePolicy(allPublishedLocks),
+  locks: allPublishedLocks, ...policy,
   excluded: edition.excludedOptionalBundles, dependencyLock: JSON.parse(pluginInstallLock),
 })
 const publishedFiles = await publishedPackageFiles(publishedLocks, join(paths.dependencies, 'node_modules'))
@@ -92,7 +93,7 @@ const insert = [
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
 // Provision the native settings entry once. The relay connection itself remains
 // off in remote-access's published patch until the user explicitly enables it.
-const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature', ...optionalBundles]
+const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-memory', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
 const lowerLayers = await loadDistributionBundleLayers(join(paths.output, 'd'), bundles, boot)

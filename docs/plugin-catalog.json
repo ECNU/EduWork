@@ -82,6 +82,15 @@
     "en": {"name":"Desktop pet","summary":"Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge."}
   },
   {
+    "package": "@eduwork/dsh-external-agents",
+    "category": "desktop",
+    "icon": "people",
+    "eyebrow": "DELEGATE TO LOCAL AGENTS",
+    "docs": "packages/dsh-external-agents",
+    "zh": {"name":"外部智能体","summary":"连接本机 Codex、Cursor 或其他 ACP 智能体，在对话中委派任务。默认关闭，可在插件页启用并配置连接。"},
+    "en": {"name":"External agents","summary":"Connect local Codex, Cursor or other ACP agents and delegate tasks from a conversation. Disabled by default; enable it and configure connections from the Plugins page."}
+  },
+  {
     "package": "@eduwork/dsh-remote-access",
     "category": "desktop",
     "icon": "remote",

@@ -5,9 +5,28 @@ import {createRequire} from 'node:module'
 import {join} from 'node:path'
 import {fileURLToPath} from 'node:url'
 import {packages} from '../scripts/packages/catalog.mjs'
+import {pinnedDshDirectory} from '../scripts/pinned-dsh-contract.mjs'
 
 const root=fileURLToPath(new URL('../',import.meta.url))
 const runtime=process.env.EDUWORK_TEST_RUNTIME
+
+test('published product plugins retain required DSH peers even when disabled by default', {skip:!runtime}, async()=>{
+  const require=createRequire(join(runtime,'package.json'))
+  const {satisfies}=require('semver')
+  const read=async path=>JSON.parse(await readFile(path,'utf8'))
+  const dependencies=await read(join(pinnedDshDirectory,'source-probe/package-lock.json'))
+  const host=await read(join(runtime,'.chatecnu-dsh-npm-install-lock.json'))
+  for(const name of Object.keys(dependencies.packages[''].dependencies).filter(name=>name.startsWith('@eduwork/'))){
+    const manifest=dependencies.packages['node_modules/'+name]
+    for(const [peer,range] of Object.entries(manifest.peerDependencies??{})){
+      if(!peer.startsWith('@deepseek-ai/')||manifest.peerDependenciesMeta?.[peer]?.optional)continue
+      const supplied=dependencies.packages[`node_modules/${name}/node_modules/${peer}`]
+        ??host.packages['node_modules/'+peer]??dependencies.packages['node_modules/'+peer]
+      assert.ok(supplied,`${name} is missing required DSH provider ${peer}`)
+      assert.ok(satisfies(supplied.version,range),`${name} rejects locked ${peer}@${supplied.version}`)
+    }
+  }
+})
 test('independent plugins accept every declared peer supplied by the selected Host', {skip:!runtime}, async()=>{
   const require=createRequire(join(runtime,'package.json'))
   const {satisfies}=require('semver')

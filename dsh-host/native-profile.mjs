@@ -238,8 +238,9 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
   if (!Array.isArray(savedBundles) || savedBundles.some(value => typeof value !== 'string')) throw new Error('Invalid native profile bundle list')
   // An existing native bundle list is also the user's activation state. An
   // absent legacy/fork bundle means disabled, not an invitation to re-enable it.
+  const legacySelectable = ['@eduwork/dsh-literature', '@eduwork/dsh-mail']
   const inheritedBundles = savedManifest.dsh?.profile?.bundles === undefined ? bundles
-    : bundles.filter(value => value !== '@eduwork/dsh-literature')
+    : bundles.filter(value => !legacySelectable.includes(value))
   // Seed newly bundled optional plugins once, then let the native plugin
   // manager own activation. A prior manual install with no active bundle is
   // already disabled. Preserve that choice and avoid a second product entry.
@@ -252,7 +253,7 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
       const manuallyDisabled = Object.hasOwn(savedManifest.dependencies ?? {}, value) && !savedBundles.includes(value)
       // Installation and activation are separate. Opt-in defaults never erase
       // an existing native selection, which is retained in savedBundles below.
-      if (!provisioned.includes(value) && !manuallyDisabled && !disabledByDefaultBundles.includes(value)) defaults.push(value)
+      if (!provisioned.includes(value) && !manuallyDisabled && !disabledByDefaultBundles.includes(value) && inheritedBundles.includes(value)) defaults.push(value)
     }
     savedManifest.eduwork = { ...savedManifest.eduwork, optionalBundles: [...new Set([...provisioned, ...optionalBundles])] }
   }
