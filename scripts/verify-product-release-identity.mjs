@@ -9,7 +9,9 @@ export async function verifyProductReleaseIdentity(product, version) {
   const release=releaseIdentity(version,identity.dshVersion)
   const client=await readFile(join(product,'d/node_modules/@chatecnu-work/dsh-client-ui-conversation-brand/lib/client.js'),'utf8')
   const badges=[...client.matchAll(/"hero\.preview":\s*"([^"]*)"/g)].map(match=>match[1])
-  if(badges.length!==2||!badges.includes(release.badge.zh)||!badges.includes(release.badge.en)) {
+  // Upstream may include more dictionaries (rc.1 ships eight). Verify each
+  // product-owned badge exactly once without assuming only two locales exist.
+  if(badges.filter(value=>value===release.badge.zh).length!==1||badges.filter(value=>value===release.badge.en).length!==1) {
     throw Error('Product badge differs from version; rebuild conversation branding for this product version')
   }
   return release
