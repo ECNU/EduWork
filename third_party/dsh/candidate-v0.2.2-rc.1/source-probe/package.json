@@ -4,11 +4,11 @@
   "dependencies": {
     "@deepseek-ai/dsh-browser-use": "0.2.2-rc.1",
     "@deepseek-ai/dsh-experimental-browser-use-playwright-mcp": "0.2.2-rc.1",
-    "@eduwork/dsh-annotation": "0.1.2",
+    "@eduwork/dsh-annotation": "0.1.3",
     "@eduwork/dsh-artifact-services": "0.3.3",
     "@eduwork/dsh-desktop-pet": "0.1.4",
     "@eduwork/dsh-knowledge-studio": "0.6.4",
-    "@eduwork/dsh-literature": "0.1.5",
+    "@eduwork/dsh-literature": "0.1.6",
     "@eduwork/dsh-mail": "0.2.4",
     "@eduwork/dsh-memory": "0.2.1",
     "@eduwork/dsh-oidc": "0.3.3",
