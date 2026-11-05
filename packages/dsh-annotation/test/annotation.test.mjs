@@ -83,6 +83,18 @@ test('source identity resolves only a finalized closing response, never by match
   for (const key of ['user', 'stream', 'earlier', 'missing']) assert.equal(messageOrigin(chat, key, 's2'), undefined)
 })
 
+test('native quote chips and file references preserve the annotation edit span', () => {
+  const value = reference('回答', '批注', t), quote = '> native quote', file = '@file.txt'
+  const selected = { ...value, occurrenceId: 3, offset: quote.length + file.length + 2, length: value.clipboardText.length }
+  const state = { phase: 'plain', draftRev: 7, draft: quote + ' ' + file + ' ' + value.clipboardText,
+    quotes: [{ offset: 0, length: quote.length, text: 'native quote' }],
+    occurrences: [{ source: 'file', occurrenceId: 2, ref: 'file', offset: quote.length + 1, length: file.length, clipboardText: file }, selected] }
+  const document = { text: state.draft, references: state.occurrences, quotes: state.quotes }
+  assert.deepEqual(occurrenceSpan(state, selected, document), { start: 4, end: 5, draftRev: 7 })
+  assert.equal(occurrenceSpan(state, selected, { ...document, quotes: [{ offset: 1, length: quote.length + 2, text: 'stale' }] }), undefined)
+  assert.equal(occurrenceSpan(state, selected, { ...document, text: 'stale draft' }), undefined)
+})
+
 test('live side selections use durable history without inventing a streamed message identity', () => {
   const nodes = new Map([
     ['user', { kind: 'user', data: { seq: 2 } }],

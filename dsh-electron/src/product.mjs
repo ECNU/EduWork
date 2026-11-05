@@ -27,6 +27,8 @@ import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
+import { createProductUpdateObserver } from './update-observer.mjs'
+import { createWorkbenchUpdateHandler } from './update-workbench.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
 import { attachAppActivation, attachTrayActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
@@ -55,6 +57,10 @@ let startupMessage = ''
 let portableUpdates
 let flushPendingSettings = () => {}
 let contentUpdates, managedContent = {}
+export const productUpdateObserver = createProductUpdateObserver({
+  getCoordinator: () => portableUpdates,
+  diagnose: message => desktopHostLog(`[desktop:updates] ${message}\n`),
+})
 let publisher
 let taskNotifications, notificationAdapter
 let desktopPet, petMenu = () => []
@@ -79,6 +85,7 @@ export function restartDesktop() {
 }
 export function stopDesktopServices() {
   void contentUpdates?.close()
+  productUpdateObserver.dispose()
   return lifecycle.close()
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
@@ -294,13 +301,19 @@ async function prepareDesktop() {
     } : undefined,
     open: key => taskNotifications.activate(key), contextMenu: () => petMenu(), changed: () => refreshTray(),
     log: message => desktopHostLog(`[desktop-pet] ${message}\n`) })
+  const runWorkbench = (action, updateStatus) => workbenchAction({ action, config: paths.config, version: settings.productVersion,
+    shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, updateStatus })
+  const workbench = createWorkbenchUpdateHandler({
+    getCoordinator: () => portableUpdates,
+    observer: productUpdateObserver,
+    runWorkbench,
+  })
   const bridge = await startNativeBridge({ vault, pickDirectory: pickDesktopDirectory, openExternal: url => shell.openExternal(url),
     attention: body => taskNotifications.handle(body), pet: body => desktopPet.handle(body),
     workspaceAccess: process.platform === 'win32' ? (path, signal) => repairWorkspaceAccess(path, { productName: settings.productName, root: paths.root,
       protectedRoots: [paths.home, paths.userData], out: join(paths.logs, 'workspace-access'), log: desktopHostLog, signal,
       showMessageBox: options => mainWindow && !mainWindow.isDestroyed() ? dialog.showMessageBox(mainWindow, options) : dialog.showMessageBox(options) }) : undefined,
-    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
-      updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
+    workbench,
     openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
       process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
   lifecycle.trackBridge(bridge)
@@ -325,7 +338,8 @@ export async function desktopReady(shouldContinue = () => true) {
   flushPendingSettings()
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand())
   desktopPet?.start()
-  void portableUpdates?.action('check-updates-background').catch(()=>{})
+  if (portableUpdates) void portableUpdates.action('check-updates-background')
+    .then(status => productUpdateObserver.record(status)).catch(()=>{})
 }
 
 function savedEduworkStyle() {

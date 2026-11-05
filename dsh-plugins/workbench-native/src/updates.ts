@@ -109,12 +109,18 @@ export function UpdateFooter({controller,wide=true}) {
  const {status,open,working}=useUpdates(controller),s=status?.update,c=status?.contentUpdate,state=working||s?.state
  useEffect(()=>{if(!open)return;const key=e=>{if(e.key==='Escape')controller.close()};window.addEventListener('keydown',key);return()=>window.removeEventListener('keydown',key)},[open])
  if(!status||status.shell==='web')return null
- // Keep one small blue entry; both download transactions remain in the panel.
- const softwareVisible=s?.enabled&&['available','downloading','ready','applying'].includes(state)
- const label=softwareVisible?(state==='available'?'更新':state==='downloading'?(s?.downloadStage==='verifying'?`校验 ${percent(s)}%`:s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'):(c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'更新')
- const visible=wide&&(softwareVisible||c?.enabled&&['available','downloading','ready','requires_software'].includes(c.state))
+ // The native Electron shell delegates software reminders to the official
+ // sidebar indicator/badge. Wails and plain Web keep the legacy combined entry.
+ const officialSoftwareIndicator=typeof window!=='undefined'&&(window as any).dshDesktop?.protocolVersion===1
+ const contentVisible=Boolean(c?.enabled&&['available','downloading','ready','requires_software'].includes(c.state))
+ const softwareVisible=!officialSoftwareIndicator&&s?.enabled&&['available','downloading','ready','applying'].includes(state)
+ const softwareLabel=state==='available'?'更新':state==='downloading'?(s?.downloadStage==='verifying'?`校验 ${percent(s)}%`:s?.totalBytes>0?`下载 ${percent(s)}%`:'正在下载…'):state==='ready'?(s.installOnQuit?'退出时更新':'重启更新'):'正在更新…'
+ const contentLabel=c?.state==='downloading'?`内容 ${percent(c)}%`:c?.state==='ready'?'内容待生效':'内容更新'
+ const label=softwareVisible?softwareLabel:contentLabel
+ const contentPrompt=contentVisible&&!softwareVisible
+ const visible=wide&&(softwareVisible||contentVisible)
  return h(React.Fragment,null,
-  visible&&h('button',{type:'button','aria-label':'查看更新',title:'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':softwareVisible?state:c.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
+  visible&&h('button',{type:'button','aria-label':contentPrompt?'查看内容更新':'查看更新',title:contentPrompt?'查看配置与 Skills 更新':'查看软件及内容更新',onClick:controller.open,'data-eduwork-update-entry':true,'data-chatecnu-update-prompt':softwareVisible?state:c.state,style:{flex:'0 0 auto',alignSelf:'center',minWidth:42,height:28,margin:'4px 2px 4px 6px',border:0,borderRadius:999,padding:'0 11px',background:'var(--dsw-alias-state-info-primary, #4f78dd)',color:'white',cursor:'pointer',fontSize:11,fontWeight:700,whiteSpace:'nowrap',fontFamily:'system-ui, sans-serif'}},label),
   open&&createPortal(h('div',{style:{position:'fixed',inset:0,zIndex:11000,display:'grid',placeItems:'center',background:'rgba(0,0,0,.28)',backdropFilter:'blur(3px)'},onMouseDown:e=>{if(e.target===e.currentTarget)controller.close()}},
    h('section',{role:'dialog','aria-modal':true,'aria-label':'更新',style:{boxSizing:'border-box',width:'min(480px, calc(100vw - 32px))',maxHeight:'calc(100vh - 48px)',overflowY:'auto',padding:24,border:`1px solid ${border}`,borderRadius:16,background:'var(--dsw-alias-bg-layer-1, #fff)',color:'var(--dsw-alias-label-primary, #222)',boxShadow:'0 20px 70px #0003'}},
     h('div',{style:{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:18}},h('h2',{style:{fontSize:20,margin:0}},'更新'),h('button',{type:'button','aria-label':'关闭更新面板',onClick:controller.close,style:button},'×')),
