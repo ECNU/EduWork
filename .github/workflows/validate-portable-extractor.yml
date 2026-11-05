@@ -24,9 +24,66 @@ on:
       - 'scripts/portable-extractor.manifest'
       - '.github/workflows/validate-portable-extractor.yml'
   workflow_dispatch:
+    inputs:
+      public_certificate:
+        description: 'Optional detached-signing probe: base64 DER PUBLIC certificate only'
+        type: string
+        default: ''
+      digest_run:
+        description: 'Probe generation run ID to ingest; empty generates a request'
+        type: string
+        default: ''
+      signed_digest:
+        description: 'Public base64 RSA signature returned by SignTool /ds'
+        type: string
+        default: ''
 permissions:
   contents: read
 jobs:
+  detached-signing-probe:
+    if: github.event_name == 'workflow_dispatch' && (inputs.public_certificate != '' || inputs.digest_run != '')
+    runs-on: windows-latest
+    permissions:
+      contents: read
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26.6'
+          cache: false
+      - name: Validate parent run
+        if: inputs.digest_run != ''
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARENT_RUN: ${{ inputs.digest_run }}
+        run: |
+          if ($env:PARENT_RUN -notmatch '^[0-9]+$') { throw 'Invalid parent run ID' }
+          $run = gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:PARENT_RUN" | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0 -or $run.head_sha -ne $env:GITHUB_SHA -or $run.event -ne 'workflow_dispatch' -or $run.path -ne '.github/workflows/validate-portable-extractor.yml' -or $run.conclusion -ne 'success') { throw 'Untrusted or incomplete parent run' }
+      - uses: actions/download-artifact@v4
+        if: inputs.digest_run != ''
+        with:
+          name: windows-detached-signing-request
+          path: ${{ runner.temp }}/detached-signing
+          run-id: ${{ inputs.digest_run }}
+          github-token: ${{ github.token }}
+      - name: Generate or ingest probe on a runner without the private key
+        shell: pwsh
+        env:
+          PUBLIC_CERTIFICATE: ${{ inputs.public_certificate }}
+          SIGNED_DIGEST: ${{ inputs.signed_digest }}
+          PARENT_RUN: ${{ inputs.digest_run }}
+        run: ./scripts/test/windows-detached-signing.ps1 -Output "$env:RUNNER_TEMP/detached-signing"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ inputs.digest_run == '' && 'windows-detached-signing-request' || 'windows-detached-signing-result' }}
+          path: ${{ runner.temp }}/detached-signing
+          retention-days: 7
+          if-no-files-found: error
   windows-extractor:
     runs-on: windows-latest
     steps:
