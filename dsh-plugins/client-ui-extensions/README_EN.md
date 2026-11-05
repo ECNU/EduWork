@@ -23,4 +23,4 @@ Disabling unloads the plugin's services and UI while retaining configuration and
 
 An enabled plugin can register a keyed component in `eduwork.extensions.config` through the official Slot API, using its npm package name as the key. Normal `renderSlot` ownership and disposal apply. The same form can register in native `plugins.bundle.config` for standalone DSH installations and remain available in Settings. Plugins without this Slot keep their existing settings entry; no empty Configure button is shown.
 
-New catalog entries require publication and a verified package lock, plus checks of disabled defaults, toggling, restart, existing user preferences and form disposal. This product UI is added only by the current 0.2.1 build pipeline, not the legacy runtime lane.
+New catalog entries require publication and a verified package lock, plus checks of disabled defaults, toggling, restart, existing user preferences and form disposal. This product UI is added by the current 0.2.2 build pipeline, not the legacy runtime lane.
