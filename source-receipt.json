@@ -5,7 +5,7 @@
   "version": "0.4.10",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-03T09:39:29.958Z",
-  "fileSetSHA256": "5b69328cfe5a564fb9e01dcadf658e6c114dd886aab4542b7400fc1ddd58d0a9",
+  "fileSetSHA256": "16557c106b0a07ba2b02ea72f7b102909d28585007e4cc96ade369d4875421dc",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "6eba197eeaeb92631b1041250856e7932aa28c930e13641096c3332d686f1870"
+      "sha256": "8d9b9f4d6cc69ad20f300992387b0d111e4c3c23bd7a7fde5712f48b826f4115"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "ffab85d49ed59a4d48bbec28623862dc711480d417cb86e2c96894ed85bf46dc"
+      "sha256": "4f3b7ac1f949d6c1a5fff3766690945ba3f042830326d2700c90e313ea4285bc"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -377,11 +377,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "4a6f3b39d6f5e6249542332700c1817e604c4a1fa12abdd53d8aa2d9b5e735c3"
+      "sha256": "ea236923a3994b07cce2ddb26855d6f676649bdce9bd91b36b710167cb5fc6b7"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "836d94c1e121ada9a1f756c3c82da3d6216b0f71e53600f6980d2669ae6812c1"
+      "sha256": "11791db73dfd70e2b3e32aa037260959a6ebde60b0002674ec99af983217ddff"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -1693,7 +1693,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "340fa8e04030810bd585543ba590aedc8d4082ae548683b5f15a06578522c803"
+      "sha256": "645719c421675c4ddb891959eae1ebb05251074cb442744f89a64c319f9681cb"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -1810,6 +1810,10 @@
     {
       "path": "dsh-host/test/native-settings.test.mjs",
       "sha256": "dbad5cf5cace3e22fde824325f18b354f377f33a1092b0a6835049bdee9084e3"
+    },
+    {
+      "path": "dsh-host/test/optional-extensions.test.mjs",
+      "sha256": "0bb63e1370d2f0d254723376fbd0a92e9e771b80e156af42c9355322f4553ca7"
     },
     {
       "path": "dsh-host/test/prepare.test.mjs",
@@ -2621,7 +2625,7 @@
     },
     {
       "path": "dsh-plugins/client-ui-extensions/lib/catalog.js",
-      "sha256": "a7e71b32305eb79aea239bb42d8ea58ab56d932e3243b409a35c0a5a78e62b25"
+      "sha256": "16bdd5058807dfcbf94e46907979e7205d1ff8086fbca8681ae88f51ca48de0e"
     },
     {
       "path": "dsh-plugins/client-ui-extensions/lib/index.js",
@@ -2633,15 +2637,15 @@
     },
     {
       "path": "dsh-plugins/client-ui-extensions/README_EN.md",
-      "sha256": "b003718d4001ca3234a02c6601f03d6605c96e2e242dea0fc142ca6f7d42aa14"
+      "sha256": "ba62fd83a929b029c6996ef5527f21ad9398e3f279e9079d45c11d502e093aad"
     },
     {
       "path": "dsh-plugins/client-ui-extensions/README.md",
-      "sha256": "cf662d587a8d5ea88dde5b61f8c7f8b983a1920dc231e18413d89a29aadeeba7"
+      "sha256": "c302bff90f80bbc946774642aeeaccec58322faf91368a179b788ec409a8b1ca"
     },
     {
       "path": "dsh-plugins/client-ui-extensions/src/client.js",
-      "sha256": "0d7f834b6e0ef4cc43578ec8582cbba9b917c4ff778b7a2b13ec016c213504c4"
+      "sha256": "c22f6e93f59f53296883467a98b79c8480d2614f2f2764ba59646c6084b2b79f"
     },
     {
       "path": "dsh-plugins/client-ui-extensions/src/controller.js",
@@ -7221,7 +7225,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "e6978f07e72239302e97c5783258006b46b4148b78deae0f464ec5ff8b61fcaa"
+      "sha256": "3d6de0810c1cef9c4dd247a0729dbdfb89aebb84c623da4e7be5b633d9fce444"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -7521,7 +7525,7 @@
     },
     {
       "path": "scripts/optional-product-bundles.mjs",
-      "sha256": "785e44ee19abcfd8ea3d3991068fcf77b76c023385948374740b6266f7696837"
+      "sha256": "a9348dbd5cd904fed92f3ad38b9d5407cf5bd30c55c886d26c3bf3fd584ee149"
     },
     {
       "path": "scripts/pack-portable-extractor.ps1",
@@ -7797,7 +7801,7 @@
     },
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
-      "sha256": "d4e2d3b1a2ed66e2e2e62c14b3e3b0b5852a34551e0e6d4ac6119e0a42ee7c3e"
+      "sha256": "5f880b1d9dd48ca4870b3e189c29d62209b43623543f2fd49cf06fc50f4304b4"
     },
     {
       "path": "scripts/test/entry-customization-runtime.test.mjs",
@@ -7829,7 +7833,7 @@
     },
     {
       "path": "scripts/test/optional-extensions.test.mjs",
-      "sha256": "894202b92f9e2fe39e246ccb6c8819672e55bfbc51357d69ac03ebdd69db6de8"
+      "sha256": "fc13daf8249f8bf8cf3e8a61d7b56df32ccc92e62453f2cfab7e726936eb49d3"
     },
     {
       "path": "scripts/test/optional-product-bundles.test.mjs",
@@ -8073,7 +8077,7 @@
     },
     {
       "path": "tests/plugin-peer-compatibility.test.mjs",
-      "sha256": "f377d08d5b422353d6f7500a37b2278d557f6c6ded08b551d6cc216071f462f0"
+      "sha256": "962f365d235a66ee5ded6cd7da7e21ae8cae75fae731d91aeefb63e2573440c5"
     },
     {
       "path": "tests/preflight.test.mjs",
@@ -8484,6 +8488,10 @@
       "sha256": "e43ce4b11070e035712b5db694a2ebf90462d8b8236427c022d400b1c235ddd7"
     },
     {
+      "path": "third_party/dsh/candidate-v0.2.2-rc.1/external-agents.json",
+      "sha256": "0a9cd82bd35caa14f73a177de5ea3274cd416097c7cb1b09b3189a4fb6135413"
+    },
+    {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/knowledge-studio.json",
       "sha256": "8a28aa1caa01b01f91936fce3ac2696668e051a786ec9e63dd44794bdd79f2a3"
     },
@@ -8525,11 +8533,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package-lock.json",
-      "sha256": "993738f2f12a25ae1d864c8a111fc6fde9910bb567c258a6e51e20f8946513e8"
+      "sha256": "ebf47f38bf0d00b38575210f390fae30f64946f450e15525588e8875a99618ee"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package.json",
-      "sha256": "4896a6d4939785fd7ea47827c411c8e8a908cb4e0063d2f8f9bf3c176ffc2cd8"
+      "sha256": "fa2c7a38ce99865f15bff89c1e2f6568ac58997cde6e18b27eb3bd645bebbcc8"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
