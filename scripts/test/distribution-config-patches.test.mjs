@@ -196,6 +196,11 @@ test('real edition preparation preserves user organizations through product prof
   const product = join(root, 'product'), edition = join(root, 'edition'), config = join(root, 'eduwork.jsonc')
   await cp(process.env.EDUWORK_TEST_PRODUCT, product, { recursive: true })
   const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+  // This private copy represents the input to edition preparation. Accept an
+  // already-qualified product fixture without re-preparing the real product.
+  delete identity.sourceAlpha
+  delete identity.sourceRelease
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
   await mkdir(join(edition, 'edition'), { recursive: true })
   await writeFile(join(edition, 'edition/distribution.json'), JSON.stringify({
     id: identity.distribution, brand: identity.brand, capabilities: identity.capabilities,
