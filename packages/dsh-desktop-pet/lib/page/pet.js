@@ -24,6 +24,8 @@ let shot = null, interlude = null, interludeAt = 0, pool = ''
 let view = null, blink = null, blinkAt = 0
 let workingUntil = 0, lastActivity = Date.now()
 let badgeAt = 0, bubbleUntil = 0, bubbleFor = null, drawn = '', timer
+// A hovered bubble freezes its countdown instead of running it down while it is read.
+let bubbleHeld = 0, bubbleOver = false, bubbleUp = false, hostInside = false, hostAt = 0
 
 function load(file) {
   return new Promise((resolve, reject) => {
@@ -140,7 +142,10 @@ function say(text, ms = 4000, about = null) {
   bubbleFor = about
   bubble.textContent = text
   bubble.hidden = false
-  bubbleUntil = Date.now() + ms
+  showBubble()
+  // A bubble that appears under the cursor starts out held, not half expired.
+  if (bubbleOver) { bubbleHeld = ms; bubbleUntil = 0 }
+  else bubbleUntil = Date.now() + ms
   placeBubble()
 }
 // Above the pet, or below it when the pet sits at the top of the screen.
@@ -149,12 +154,80 @@ function placeBubble() {
   bubble.style.left = tucked === 'right' ? '4px' : tucked === 'left' ? 'auto' : `${center}px`
   bubble.style.right = tucked === 'left' ? '4px' : 'auto'
   bubble.style.transform = tucked ? 'none' : ''
-  bubble.style.top = `${bubbleSide === 'below' ? layout.pet.y + layout.pet.height + 6 : Math.max(2, layout.pet.y - 34)}px`
+  // A wrapped bubble grows upwards, so above the pet it is anchored by its bottom edge and
+  // always clears the pet's head; below the pet it still hangs from its top edge.
+  if (bubbleSide === 'below') {
+    bubble.style.top = `${layout.pet.y + layout.pet.height + 6}px`
+    bubble.style.bottom = 'auto'
+  }
+  else {
+    bubble.style.top = 'auto'
+    bubble.style.bottom = `${layout.window.height - layout.pet.y + 6}px`
+  }
+}
+
+// Only a mail reminder is worth pointing at. An agent message (a question, a failure, a
+// finished task) is the pet reporting something, not offering it as something to click, so
+// it keeps the original click-through bubble and never lights up.
+const BUBBLE_FLOOR = 400
+function bubbleIsMail() {
+  return Boolean(bubbleFor) && status.target?.key === bubbleFor && status.target?.source === 'mail'
+}
+function overBubble(x, y) {
+  if (bubble.hidden) return false
+  const r = bubble.getBoundingClientRect()
+  return x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2
+}
+// A frozen bubble keeps at least BUBBLE_FLOOR ms, so hovering can never strand it; the
+// deadline in tick() closes it if the pointer leaves without another event arriving.
+function holdBubble() {
+  bubbleHeld = Math.max(BUBBLE_FLOOR, bubbleUntil ? bubbleUntil - Date.now() : bubbleHeld)
+  bubbleUntil = 0
+}
+function releaseBubble() {
+  if (bubble.hidden) { bubbleHeld = 0; bubbleUntil = 0; return }
+  bubbleUntil = Date.now() + Math.max(BUBBLE_FLOOR, bubbleHeld)
+  bubbleHeld = 0
+  schedule()
+}
+function setHover(over) {
+  if (!bubbleUp) over = false
+  if (over === bubbleOver) return
+  bubbleOver = over
+  bubble.classList.toggle('held', over)
+  if (over) holdBubble()
+  else releaseBubble()
+}
+function noteCursor(x, y) { setHover(overBubble(x, y)) }
+// The host polls the real cursor and pushes it here, because forwarded mouse events may
+// arrive with no position at all. Either source can hold the bubble.
+function hostPointer(value) {
+  hostInside = value.inside === true
+  hostAt = Date.now()
+  if (hostInside) noteCursor(value.x, value.y)
+  else setHover(false)
+}
+// While a mail bubble is up the window takes the pointer: the bubble then gets real hover
+// events and a click can no longer fall through it. Once it is gone, click-through comes
+// back. Recomputed on every show, so a bubble that replaces a mail reminder hands the
+// pointer straight back instead of inheriting the mail bubble's state.
+function showBubble() {
+  bubbleUp = bubbleIsMail()
+  if (!bubbleUp) setHover(false)
+  setInteractive(bubbleUp)
+}
+function hideBubble() {
+  bubble.hidden = true
+  bubbleUntil = 0
+  bubbleHeld = 0
+  bubbleUp = false
+  setHover(false)
+  setInteractive(false)
 }
 function announce() {
   const { state, target, count } = status
   if (!['attention', 'failed', 'done'].includes(state)) return
-  if (target.kind === 'plugin') return say(target.label + (target.title ? ' · ' + target.title : ''), 4000, target.key)
+  if (target.kind === 'plugin') return say(target.title || target.label, 4000, target.key)
   if (target.title) return say(copy.titles[state] + target.title, 4000, target.key)
   const lines = localize(skin.lines[state], locale)
   say(state === 'done' && count > 1 ? copy.doneMany(count) : lines ? pick(lines, Math.random) : copy[state], 4000, target.key)
@@ -174,7 +247,9 @@ function tick() {
     : animation.playback === 'blink' && animation.frames.length > 1 ? blinking(animation, now) : frameAt(animation, now - view.start)
   const motion = animation.motion && !reduced.matches && !away ? motionAt(animation.motion, now - view.start) : STILL
   draw(animation, frame.index, view.mirror, motion)
-  if (bubbleUntil && now >= bubbleUntil) { bubble.hidden = true; bubbleUntil = 0 }
+  // A visible bubble always has a deadline, even if nothing set one.
+  if (!bubble.hidden && !bubbleUntil && !bubbleHeld) bubbleUntil = now + BUBBLE_FLOOR
+  if (bubbleUntil && now >= bubbleUntil) hideBubble()
   if (away) { placeBadge(now); return }
   const waits = [frame.next, motion === STILL ? Infinity : PACE.motionFrame, placeBadge(now), bubbleUntil ? bubbleUntil - now : Infinity]
   if (shot) waits.push(shot.until - now)
@@ -209,6 +284,8 @@ function rescale() { resize(); schedule() }
 // Click-through: only opaque pet pixels, the badge and the bubble take the pointer.
 let interactive = false, pointer = null
 function setInteractive(value) {
+  // A mail bubble is on screen only while the pointer may reach it, so keep taking events.
+  if (bubbleUp) value = true
   if (interactive === value) return
   interactive = value
   api.interactive(value)
@@ -225,7 +302,11 @@ function hit(x, y) {
 function click() {
   const now = Date.now(), wasAsleep = asleep(now, base(now))
   activity(now)
-  if (status.target) api.open(status.target.key)
+  // The desktop consumes a notification once it has been viewed, so this click is the only
+  // chance to open it: the bubble leaves with the click instead of staying behind as a
+  // button that no longer does anything.
+  const pending = status.target?.key ?? (bubble.hidden ? '' : bubbleFor)
+  if (pending) { api.open(pending); hideBubble() }
   else if (tucked) api.untuck()
   else if (!wasAsleep) {
     startShot('react', now)
@@ -234,6 +315,12 @@ function click() {
   schedule()
 }
 document.addEventListener('mousemove', event => { if (!pointer && skin) setInteractive(hit(event.clientX, event.clientY)) })
+// A second listener: forwarded events may carry no position, so those are ignored here and
+// the host's pointer message does the hit test instead.
+document.addEventListener('mousemove', event => {
+  if (event.clientX === 0 && event.clientY === 0) return
+  noteCursor(event.clientX, event.clientY)
+})
 document.addEventListener('mouseleave', () => { if (!pointer) setInteractive(false) })
 document.addEventListener('pointerdown', event => {
   if (event.button !== 0 || !skin || !hit(event.clientX, event.clientY)) return
@@ -287,8 +374,10 @@ api.on('status', value => {
     if (status.state === 'failed' && previous.target?.key !== status.target.key) startShot('failed', now, PACE.failed)
     if (previous.state !== status.state || previous.target?.key !== status.target?.key || previous.target?.alert !== status.target?.alert) announce()
   }
-  // An item viewed in the app takes its announcement with it.
-  if (bubbleFor && !value.items.some(item => item.key === bubbleFor)) { bubble.hidden = true; bubbleUntil = 0; bubbleFor = null }
+  // The bubble belongs to one notification: once that notification is no longer the current
+  // target (opened, dismissed, replaced) the bubble goes with it instead of hanging on with
+  // nothing left to open.
+  if (bubbleFor && status.target?.key !== bubbleFor) { hideBubble(); bubbleFor = null }
   // Work finished in the conversation on screen: celebrate briefly, no badge.
   if (acknowledged !== undefined && value.acknowledged > acknowledged) { activity(now); startShot('done', now, PACE.celebrate) }
   acknowledged = value.acknowledged
@@ -296,7 +385,7 @@ api.on('status', value => {
 })
 api.on('settings', value => {
   settings = value
-  if (!settings.bubbles) { bubble.hidden = true; bubbleUntil = 0 }
+  if (!settings.bubbles) hideBubble()
   schedule()
 })
 api.on('presence', value => {
@@ -309,5 +398,5 @@ api.on('presence', value => {
   schedule()
 })
 api.on('placement', value => { ({ tucked, bubble: bubbleSide } = value); placeBubble(); schedule() })
-api.on('pointer', value => { if (!pointer && skin) setInteractive(value.inside && hit(value.x, value.y)) })
+api.on('pointer', value => { hostPointer(value); if (!pointer && skin) setInteractive(value.inside && hit(value.x, value.y)) })
 api.on('drag-direction', value => { if (value !== direction) { direction = value; schedule() } })

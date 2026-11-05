@@ -6,5 +6,25 @@ body { font: 12px/1.4 -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei
   color: #fff; font-weight: 700; font-size: 13px; line-height: 18px; text-align: center; box-shadow: 0 1px 3px rgba(0, 0, 0, .35); }
 #badge.done { background: #f29b16; } #badge.failed { background: #e0464e; } #badge.attention { background: #3478f6; }
 #bubble { position: absolute; max-width: calc(100% - 8px); box-sizing: border-box; padding: 4px 10px; border-radius: 10px; background: rgba(255, 255, 255, .97); color: #222;
-  box-shadow: 0 1px 4px rgba(0, 0, 0, .3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transform: translateX(-50%); }
+  box-shadow: 0 1px 4px rgba(0, 0, 0, .3); white-space: normal; word-break: break-word; text-align: center; overflow: hidden;
+  /* Two lines, then an ellipsis: a mail subject is long and the window is narrow. */
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; padding-bottom: 0; border-bottom: 4px solid transparent;
+  transform: translateX(-50%); transition: background-color .15s ease, color .15s ease, box-shadow .15s ease, text-shadow .15s ease; }
 @media (prefers-color-scheme: dark) { #bubble { background: rgba(44, 44, 48, .97); color: #eee; } }
+/* The rule above gives #bubble a display of its own, and an author display wins over the
+   user agent's [hidden] { display: none } - the page hides the bubble by setting the hidden
+   attribute, so without this the bubble would be marked hidden and still be painted. */
+#bubble[hidden] { display: none; }
+/* Hovering a mail reminder brightens it: solid white, black text, a soft halo, one light
+   sweep. There is deliberately no plain :hover rule - the page sets `held` only while a
+   mail bubble is under the cursor, so an agent message never lights up. */
+#bubble.held { background: #fff; color: #000; box-shadow: 0 3px 12px rgba(0, 0, 0, .45);
+  text-shadow: 0 0 7px rgba(0, 0, 0, .4), 0 1px 0 rgba(255, 255, 255, .9); }
+#bubble.held::after { content: ''; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  background: linear-gradient(105deg, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, .92) 50%, rgba(255, 255, 255, 0) 68%);
+  animation: mail-pet-sheen .62s ease-out; }
+@keyframes mail-pet-sheen { from { transform: translateX(-130%); } to { transform: translateX(130%); } }
+@media (prefers-color-scheme: dark) {
+  #bubble.held { background: #3a3a40; color: #fff; box-shadow: 0 3px 12px rgba(0, 0, 0, .6); text-shadow: 0 0 7px rgba(255, 255, 255, .35); }
+  #bubble.held::after { background: linear-gradient(105deg, rgba(255, 255, 255, 0) 32%, rgba(255, 255, 255, .5) 50%, rgba(255, 255, 255, 0) 68%); }
+}

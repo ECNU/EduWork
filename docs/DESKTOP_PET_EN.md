@@ -6,6 +6,10 @@ The Electron client can show a small pet on your desktop. It follows your conver
 
 The public edition ships with the pet turned off; turn it on under Settings → Desktop pet. Five characters are built in: Page (小页), a paper sprite in a red and a blue palette; Dafeiyu (大肥鱼), a whale girl from the DeepSeek fan community; Huashi (小花狮), the East China Normal University mascot; and Huashi Girl (花狮娘), a girl version of the mascot. All characters share the same window, states, animation player and click behavior, so switching characters does not change how the pet behaves.
 
+![The bubble above the pet shows a mail subject in up to two lines, next to the red "!" for unviewed items](images/mail-pet-bubble.png)
+
+A mail reminder carries its subject, in up to two lines; one click opens the read-only preview and the bubble leaves at once.
+
 ## States
 
 The pet is one more way to show the same state: Needs you, Failed and Done come straight from the pending items of [desktop notifications](DESKTOP_NOTIFICATIONS_EN.md), with exactly the rules the tray and system notifications use, so turning the pet on or off does not change notifications. When several conversations have items, the first matching row wins:
@@ -21,7 +25,7 @@ The pet is one more way to show the same state: Needs you, Failed and Done come 
 
 - When the conversation on screen finishes, the pet only celebrates briefly and shows no "!". The "!" clears just like the tray entry: open the conversation in the foreground, or open it from the pet, the tray or a notification.
 - When the next turn starts within 3 seconds of the previous one (for example, goal mode rounds), the pet keeps working instead of flashing back to idle. A single tool finishing does not change the pet.
-- Bubbles show generic text. Conversation titles appear only when "Show conversation and result titles" is on under General → Desktop notifications.
+- Bubbles show generic text by default; conversation titles appear once "Show conversation and result titles" is on under General → Desktop notifications. A plugin notice brings its own title (a mail subject, for instance), which is shown regardless of that switch; the body itself only appears in the preview panel.
 
 ## Using it
 
