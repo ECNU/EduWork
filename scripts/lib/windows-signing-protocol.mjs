@@ -58,9 +58,10 @@ export function validateRequest(request, expected = {}) {
   assert(Array.isArray(request.entries)); assert.equal(request.entries.length,paths.length)
   const seen=new Set()
   for(const entry of request.entries) {
-    keys(entry,['id','path','bytes','sha256','digest','pkcs7','pkcs7SHA256'])
+    keys(entry,['id','path','inputBytes','inputSHA256','bytes','sha256','digest','pkcs7','pkcs7SHA256'])
     safePath(entry.path); assert(paths.includes(entry.path)); assert(!seen.has(entry.path),'Duplicate signing target');seen.add(entry.path)
     assert.equal(entry.id,sha256(entry.path).slice(0,32)); assert.match(entry.sha256,hash)
+    assert.match(entry.inputSHA256,hash);assert(Number.isSafeInteger(entry.inputBytes)&&entry.inputBytes>0)
     assert(Number.isSafeInteger(entry.bytes) && entry.bytes>0)
     assert.equal(base64(entry.digest).length,32); assert.equal(sha256(base64(entry.pkcs7)),entry.pkcs7SHA256)
     validateDigestBinding(entry,request.policy)

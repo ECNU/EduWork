@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-05T14:13:28.784Z",
-  "fileSetSHA256": "b40ac89259ad897be4f3f1f4f1b9acab9c76296d8fdf3e18fc053a0496c76f3e",
+  "createdAt": "2026-11-05T14:17:45.005Z",
+  "fileSetSHA256": "d670346ecfb6701d21e8d7ec85a1f8feda43b478485fdf96406c282384501a90",
   "files": [
     {
       "path": ".gitattributes",
@@ -565,7 +565,7 @@
     },
     {
       "path": "docs/WINDOWS-SIGNING.md",
-      "sha256": "7431f429b301f7600f3b841cda7c8b7b3dd76de8c7754b7ec68ed9dbcf8e5a11"
+      "sha256": "e6a529663af1e5725012dad04f953763e7d04447731b450a30df43b8b89b4e6e"
     },
     {
       "path": "docs/数据导入.md",
@@ -7469,15 +7469,15 @@
     },
     {
       "path": "scripts/lib/windows-signing-operations.mjs",
-      "sha256": "11b5886c964bb6452a76acfed308cbcdf1b47f73bc0b64fdfcc99367cc545b82"
+      "sha256": "a7d8868cdc35a185acf2862416bd5e1878303071747df476d1b337522968e6e0"
     },
     {
       "path": "scripts/lib/windows-signing-protocol.mjs",
-      "sha256": "c46b901f8a93e47e7ebfbe4c528e7013945a1121073385023bab580a22b5ea8a"
+      "sha256": "554684373488107f5bdecf4f3e6f8b2c64c27bd73f446a8136a8218b09d3089c"
     },
     {
       "path": "scripts/lib/windows-signing-receipt.mjs",
-      "sha256": "d71218291e47b671cef72532c836f6f7158d2f3e6325b6f5a7c57ee650399213"
+      "sha256": "13531f3d136f6337e34a4e093bc6bc88b181f52b893986bf1840ca376cf4c9c5"
     },
     {
       "path": "scripts/lib/windows-stages.mjs",
@@ -8153,7 +8153,7 @@
     },
     {
       "path": "tests/windows-signing.test.mjs",
-      "sha256": "a862397f838734b2978e57dba53a4112a4ec04c1f506b7fef17e26c7c9bb270a"
+      "sha256": "434cacdd339722d571e4b6383870e1464839a6eb72ca005d33a8cc96055891f7"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",

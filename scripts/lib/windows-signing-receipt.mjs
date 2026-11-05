@@ -28,6 +28,7 @@ export function validateSigningReceipt(receipt, policy) {
     assert(Number.isSafeInteger(file.bytes)&&file.bytes>0)
     const request=file.path.endsWith('-Setup.exe')?signing.outer.request:signing.inner.request
     assert.equal(file.beforeSHA256,request.entries.find(e=>e.path===file.path).sha256)
+    assert.equal(file.originalSHA256,request.entries.find(e=>e.path===file.path).inputSHA256)
   }
   assert.match(signing.originalManifestSHA256,/^[a-f0-9]{64}$/)
   assert.equal(signing.preservedFiles,'passed');assert(Array.isArray(signing.thirdPartyPE))

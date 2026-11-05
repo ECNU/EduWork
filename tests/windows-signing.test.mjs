@@ -4,6 +4,8 @@ import { generateKeyPairSync, sign, X509Certificate, randomBytes } from 'node:cr
 import { mkdtemp, rm, readFile, mkdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { execFile } from 'node:child_process'
+import { promisify } from 'node:util'
 import { sha256, safePath, requestHash, validatePolicy, validateRequest, validateResponse, validateDigestBinding, validateSigningRun, ownedWindowsFiles } from '../scripts/lib/windows-signing-protocol.mjs'
 import { candidateWorkflow, unpackSafe } from '../scripts/lib/windows-signing-io.mjs'
 import { validateSigningReceipt, verifySigningChain } from '../scripts/lib/windows-signing-receipt.mjs'
@@ -34,7 +36,7 @@ function entry(path,nonce=''){
   const digest=Buffer.from(sha256(attributes),'hex'),tagged=Buffer.from(attributes);tagged[0]=0xa0
   const signer=seq(der(2,[1]),seq(name,serial),shaAlg,tagged,rsaAlg,oct(digest))
   const pkcs7=seq(oid('2a864886f70d010702'),der(0xa0,seq(der(2,[1]),set(shaAlg),seq(oid('2b060104018237020104'),der(0xa0,indirect)),der(0xa0,certificate),set(signer))))
-  return {id:sha256(path).slice(0,32),path,bytes:100,sha256:sha256('unsigned'+path+nonce),digest:digest.toString('base64'),pkcs7:pkcs7.toString('base64'),pkcs7SHA256:sha256(pkcs7)}
+  return {id:sha256(path).slice(0,32),path,inputBytes:100,inputSHA256:sha256('original'+path+nonce),bytes:100,sha256:sha256('unsigned'+path+nonce),digest:digest.toString('base64'),pkcs7:pkcs7.toString('base64'),pkcs7SHA256:sha256(pkcs7)}
 }
 function request(stage='inner'){
   return {schemaVersion:1,kind:'eduwork-windows-signing-request',stage,policy:structuredClone(policy),context:{repository:'ECNU/EduWork',editionCommit:'a'.repeat(40),coreCommit:'a'.repeat(40),version:'0.4.11',product:'EduWork',distribution:'eduwork',sourceRun:'1',requestRun:stage==='inner'?'2':'3',parentRun:stage==='inner'?null:'2',sourceArtifact:artifact('windows-release'),policySHA256:sha256(JSON.stringify(policy))},entries:(stage==='inner'?ownedWindowsFiles:['EduWork-Setup.exe']).map(p=>entry(p))}
@@ -42,7 +44,7 @@ function request(stage='inner'){
 function response(req){return {schemaVersion:1,kind:'eduwork-windows-signing-response',requestSHA256:requestHash(req),stage:req.stage,sourceRun:req.context.sourceRun,requestRun:req.context.requestRun,entries:req.entries.map(e=>({id:e.id,signature:sign('sha256',validateDigestBinding(e,policy).attributes,privateKey).toString('base64')}))}}
 function signedReceipt(){
   const inner=request(),outer=request('outer'),record=req=>({request:req,response:response(req),stateArtifact:artifact('windows-signing-state'),requestArtifact:artifact('windows-signing-request')})
-  const files=[...inner.entries,...outer.entries].map(e=>({path:e.path,beforeSHA256:e.sha256,sha256:sha256('signed'+e.path),bytes:500,status:'Valid',thumbprint:policy.thumbprint,subject:policy.subject,timestampThumbprint:'F'.repeat(40)}))
+  const files=[...inner.entries,...outer.entries].map(e=>({path:e.path,originalSHA256:e.inputSHA256,beforeSHA256:e.sha256,sha256:sha256('signed'+e.path),bytes:500,status:'Valid',thumbprint:policy.thumbprint,subject:policy.subject,timestampThumbprint:'F'.repeat(40)}))
   const asset=name=>({name,bytes:100,sha256:'b'.repeat(64)})
   return {schemaVersion:1,kind:'eduwork-windows-release',validationProfile:'ci-build-launch-and-extract-v2',shell:'electron',platform:'windows-x64',passed:true,automaticUpdates:true,releaseNotes:{approved:true,sha256:'c'.repeat(64)},asset:asset('EduWork-0.4.11-windows-x64-electron.zip'),portableExtractor:{asset:asset('EduWork-0.4.11-windows-x64-setup.zip'),receipt:asset('EduWork-0.4.11-windows-x64-setup.zip.json')},edition:'EduWork',version:'0.4.11',editionCommit:'a'.repeat(40),coreCommit:'a'.repeat(40),publication:'signed-and-verified',checks:{...Object.fromEntries(['sourceAndDependencies','desktopLaunch','archiveManifest','nativeRuntimes','portableExtractor','updateContract'].map(key=>[key,'passed'])),authenticode:'passed'},signing:{schemaVersion:1,kind:'eduwork-windows-detached-signing',policySHA256:sha256(JSON.stringify(policy)),sourceRun:'1',sourceArtifact:artifact('windows-release'),inner:record(inner),outer:record(outer),finalRun:'4',files,originalManifestSHA256:'a'.repeat(64),preservedFiles:'passed',thirdPartyPE:[]}}
 }
@@ -117,5 +119,38 @@ test('artifact extraction refuses traversal, Windows aliases and case collisions
     await zip.close()
     if(i==='c'){await unpackSafe(archive,join(root,i));assert.equal(await readFile(join(root,i,'safe/file.txt'),'utf8'),'synthetic')}
     else await assert.rejects(unpackSafe(archive,join(root,i)))
+  }
+})
+
+test('digest preparation binds SignTool-emitted bytes while local regeneration preserves the approved payload',async t=>{
+  const root=await mkdtemp(join(tmpdir(),'eduwork-signing-padding-'));t.after(()=>rm(root,{recursive:true,force:true}))
+  const req=request(),input=join(root,'input')
+  for(const path of ownedWindowsFiles){await mkdir(join(input,path,'..'),{recursive:true});await writeFile(join(input,path),'original PE fixture')}
+  const buildURL=new URL('../scripts/lib/build-util.mjs',import.meta.url).href
+  const operationsURL=new URL('../scripts/lib/windows-signing-operations.mjs',import.meta.url).href
+  const envelopes=Object.fromEntries(req.entries.map(e=>[e.path.split('/').at(-1),e]))
+  const stub=`export * from ${JSON.stringify(buildURL+'?native-test')};
+    import fs from 'node:fs';import path from 'node:path';
+    const envelopes=${JSON.stringify(envelopes)};
+    export async function run(command,args){
+      if(command!=='pwsh')throw Error('Unexpected command');
+      const job=JSON.parse(fs.readFileSync(args.at(-1),'utf8')),base=path.basename(job.file),entry=envelopes[base];
+      fs.appendFileSync(job.file,'alignment');
+      fs.writeFileSync(path.join(job.directory,base+'.dig'),entry.digest);
+      fs.writeFileSync(path.join(job.directory,base+'.p7u'),Buffer.from(entry.pkcs7,'base64'));
+      return {stdout:''};
+    }`
+  const script=`import {registerHooks} from 'node:module';import fs from 'node:fs';
+    registerHooks({resolve(s,c,next){const r=next(s,c);return r.url===${JSON.stringify(buildURL)}?{url:${JSON.stringify('data:text/javascript,'+encodeURIComponent(stub))},shortCircuit:true}:r}});
+    const {createSigningRequest,checkSigningPayload}=await import(${JSON.stringify(operationsURL)});
+    const request=await createSigningRequest({stage:'inner',context:${JSON.stringify(req.context)},policy:${JSON.stringify(policy)},root:${JSON.stringify(input)},work:${JSON.stringify(join(root,'generate'))}});
+    await checkSigningPayload(request,${JSON.stringify(input)},${JSON.stringify(join(root,'regenerate'))});
+    fs.writeFileSync(${JSON.stringify(join(root,'result.json'))},JSON.stringify(request));`
+  await promisify(execFile)(process.execPath,['--input-type=module','-e',script],{windowsHide:true})
+  const generated=JSON.parse(await readFile(join(root,'result.json'),'utf8'))
+  for(const entry of generated.entries){
+    assert.equal(entry.inputSHA256,sha256('original PE fixture'))
+    assert.equal(entry.sha256,sha256('original PE fixturealignment'))
+    assert.equal(await readFile(join(input,entry.path),'utf8'),'original PE fixturealignment')
   }
 })

@@ -37,6 +37,8 @@ Windows 可选使用硬件证书提供的 RSA Authenticode 签名。私钥保留
 
 第一轮本机待检查文件在下载的状态工件 `payload/<产品名>/`，第二轮在 `extractor/`。`windows-signing-request` 仅包含公开的 `request.json`，可单独下载和核对。状态工件包含签名所需的实际文件；本机工具必须由这些文件重新生成摘要，不接受只有摘要的盲签请求。
 
+SignTool 生成摘要时可能调整 PE 对齐或证书区。请求分别记录原文件的 `inputSHA256/inputBytes` 和生成摘要后实际待回填文件的 `sha256/bytes`。本机从批准的待回填文件副本重算，原文件保持不变；托管回填只接受请求绑定的准确字节。
+
 本机使用已审查的相同核心版本运行以下脚本；所有审批字段都必须明确填写。`GITHUB_TOKEN` 只需读取该仓库 Actions/Contents，不能将其放进命令文本、回复文件或仓库。
 
 ```powershell
