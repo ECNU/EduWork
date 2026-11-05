@@ -22,7 +22,7 @@ export function assertInvokerManifest(bytes) {
 export async function setUpdaterManifest({ executable, verifyOnly = false } = {}) {
   if (!isWindows) throw new Error('Updater manifest resources require Windows')
   executable = fullPath(executable)
-  const { executable: pe, resources } = await readPEResources(executable)
+  const { executable: pe, resources } = await readPEResources(executable, { ignoreCert: verifyOnly })
   if (!verifyOnly) {
     const bytes = await readFile(sourceManifest)
     assertInvokerManifest(bytes)
@@ -32,7 +32,7 @@ export async function setUpdaterManifest({ executable, verifyOnly = false } = {}
       bin: bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) })
     await writePEResources(executable, pe, resources)
   }
-  const loaded = (await readPEResources(executable)).resources
+  const loaded = (await readPEResources(executable, { ignoreCert: verifyOnly })).resources
   const manifests = getResource(loaded.entries, 24, 1)
   if (manifests.length !== 1) throw new Error('Updater has no unique embedded application manifest')
   for (const manifest of manifests) assertInvokerManifest(manifest.bin)

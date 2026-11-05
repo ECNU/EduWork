@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
 import {githubUpdateManifestBytes,updateManifestName,releaseChannel} from './github-update-manifest.mjs'
 import {windowsDeltaName} from './windows-update-delta.mjs'
 import {validateSigningReceipt} from './lib/windows-signing-receipt.mjs'
-import {localSigningPolicy} from './lib/windows-signing-io.mjs'
+import {localSigningPolicy,signingGitHub,policyPath} from './lib/windows-signing-io.mjs'
 
 export function releasePublication(edition,version) {
   const prerelease=releaseChannel(version)==='development'
@@ -58,9 +58,10 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   const root=resolve(directory)
   const receipt=JSON.parse(await readFile(join(root,'release-receipt.json'),'utf8'))
   const edition=validateReceipt(receipt,{repository,version,commit,signingPolicy,allowSigningPending})
+  const pending=allowSigningPending && receipt.publication==='awaiting-windows-signing'
   const unpack=receipt.portableExtractor
   const deltas = receipt.deltas ?? []
-  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
+  const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',...(!pending?[updateManifestName]:[]),unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -73,8 +74,8 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   if(files[3].sha256!==receipt.releaseNotes.sha256) throw Error('Release notes differ from the approved source file')
   if(zip.bytes!==receipt.asset.bytes || zip.sha256!==receipt.asset.sha256) throw Error('Downloaded CI artifact differs from the validated ZIP')
   if((await readFile(files[1].path,'utf8')).trim()!==`${zip.sha256}  ${zip.name}`) throw Error('SHA256 sidecar differs')
-  if((await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
-  const setup = 5
+  if(!pending && (await readFile(files[4].path,'utf8'))!==githubUpdateManifestBytes(receipt,repository))throw Error('GitHub update manifest differs from the validated release or legacy-compatible encoding')
+  const setup = pending ? 4 : 5
   if(files[setup].sha256!==unpack.asset.sha256 || files[setup].bytes!==unpack.asset.bytes)throw Error('Portable extractor ZIP differs from the validated asset')
   if((await readFile(files[setup+1].path,'utf8')).trim()!==`${unpack.asset.sha256}  ${unpack.asset.name}`)throw Error('Portable extractor SHA256 sidecar differs')
   if(files[setup+2].sha256!==unpack.receipt.sha256 || files[setup+2].bytes!==unpack.receipt.bytes)throw Error('Portable extractor receipt differs from the validated build')
@@ -93,6 +94,9 @@ export async function publish(directory) {
   if(signingPolicy) throw Error('Detached signing requires publish-desktop-candidate.mjs and its run-chain verification')
   const {edition,files}=await validatedReleaseFiles(root,{repository,version,commit})
   if (!process.env.GITHUB_TOKEN) throw Error('Release job token is required')
+  const signingGit=signingGitHub(repository,process.env.GITHUB_TOKEN)
+  const currentMain=await signingGit.request('/commits/main')
+  if(await signingGit.sourceJSON(policyPath,commit,true) || await signingGit.sourceJSON(policyPath,currentMain.sha,true)) throw Error('The source/main signing policy requires the desktop publisher run-chain gate')
   const headers={Authorization:`Bearer ${process.env.GITHUB_TOKEN}`,Accept:'application/vnd.github+json','User-Agent':'EduWork-Release-CI','X-GitHub-Api-Version':'2022-11-28'}
   const api=`https://api.github.com/repos/${repository}`
   async function request(path, options={}, missing=false) {

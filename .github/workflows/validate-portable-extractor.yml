@@ -13,6 +13,12 @@ on:
       - 'dsh-desktop/cmd/eduwork-extract/**'
       - 'scripts/portable-extractor.mjs'
       - 'scripts/lib/windows-pe.mjs'
+      - 'scripts/lib/windows-signing-*.mjs'
+      - 'scripts/*windows-signing*'
+      - 'scripts/sign-windows-request.mjs'
+      - 'dsh-electron/scripts/set-updater-manifest.mjs'
+      - 'tests/windows-signing.test.mjs'
+      - '.github/workflows/windows-signing.yml'
       - 'scripts/pe-resources/**'
       - 'scripts/ci-eduwork-windows-release.mjs'
       - 'scripts/publish-windows-release.mjs'
@@ -48,4 +54,4 @@ jobs:
       - name: Build both branded packages and verify release publication inputs
         shell: bash
         run: |
-          node --test tests/github-update-package.test.mjs tests/eduwork-windows-release.test.mjs scripts/test/windows-update-delta.test.mjs
+          node --test tests/github-update-package.test.mjs tests/eduwork-windows-release.test.mjs scripts/test/windows-update-delta.test.mjs tests/windows-signing.test.mjs tests/desktop-candidate-publication.test.mjs

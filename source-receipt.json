@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-05T13:48:48.406Z",
-  "fileSetSHA256": "576e48e519b4fc3b8581a769e3aa0f648dde3e407fb125cba7bba2d69b6e81f9",
+  "createdAt": "2026-11-05T14:13:28.784Z",
+  "fileSetSHA256": "b40ac89259ad897be4f3f1f4f1b9acab9c76296d8fdf3e18fc053a0496c76f3e",
   "files": [
     {
       "path": ".gitattributes",
@@ -41,7 +41,7 @@
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
-      "sha256": "1705325bcee0eb19580d02e9c3b6a8b985d2740ef2fb8e1ff8de8a690b296d67"
+      "sha256": "82b3b5d0a66c41b17615855fe0eeac15c45fbb465a296390f1b811a353b84da9"
     },
     {
       "path": ".github/workflows/validate-desktop-publisher.yml",
@@ -65,11 +65,15 @@
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
-      "sha256": "1bc51eee5fcca1110701572d4bfc9cbc1dcab10bc6662c854f59c638e631cd10"
+      "sha256": "a14bec2a77334c72c58f5728a0983a6a9e57a02ef531c60d67c5d58af9dc4a7a"
     },
     {
       "path": ".github/workflows/website.yml",
       "sha256": "ebba6cd28d757bc4f88d7b2cbad216de5d9c0f599afae6ae621f995d2ed60c66"
+    },
+    {
+      "path": ".github/workflows/windows-signing.yml",
+      "sha256": "450ca5bd4712285d70678a3a216563f0851e4665c1cc91e88c89b5d415ea23e7"
     },
     {
       "path": ".gitignore",
@@ -249,7 +253,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "4f3b7ac1f949d6c1a5fff3766690945ba3f042830326d2700c90e313ea4285bc"
+      "sha256": "d6da7f024cbb84f73c9e03c96cf15d9fc42dc8162854354202fd23696ef2a59d"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -558,6 +562,10 @@
     {
       "path": "docs/USER_GUIDE.md",
       "sha256": "de94d8c3777114baca240eb7437c5fd173a6afc8b369dd2d71973eb0930f9ac8"
+    },
+    {
+      "path": "docs/WINDOWS-SIGNING.md",
+      "sha256": "7431f429b301f7600f3b841cda7c8b7b3dd76de8c7754b7ec68ed9dbcf8e5a11"
     },
     {
       "path": "docs/数据导入.md",
@@ -1181,7 +1189,7 @@
     },
     {
       "path": "dsh-electron/scripts/set-updater-manifest.mjs",
-      "sha256": "d9dbaa9df50292b0855d72954b61587ca7738a3d186c8f739a992822e916a7c0"
+      "sha256": "efc01bb42d102b1d5042a5f7479ab37d6bb05735398e8e81fc17f7357c76f76d"
     },
     {
       "path": "dsh-electron/scripts/set-updater-manifest.ps1",
@@ -7241,7 +7249,7 @@
     },
     {
       "path": "scripts/build-desktop-candidate.ps1",
-      "sha256": "cbe53b881afcbaf1b4338b5fd95842264705f4e99ec7df0a9d9db7c083231bf4"
+      "sha256": "873de95488cf0ed48b1662c3142ff7d3f99b8c82b53f3d60b99e2b771089e93f"
     },
     {
       "path": "scripts/build-eduwork-icons.mjs",
@@ -7289,7 +7297,7 @@
     },
     {
       "path": "scripts/ci-eduwork-windows-release.mjs",
-      "sha256": "8e9903d699b95fbf86f93d30dd6fb3ec7de589ce0854185fff04e52d163e58e7"
+      "sha256": "f4499b76d2d591292831ad7df5c46b72e5a2d34913af196f579c1a1a4ed5611f"
     },
     {
       "path": "scripts/ci-eduwork-windows-release.ps1",
@@ -7302,6 +7310,10 @@
     {
       "path": "scripts/close-release-test-desktop.mjs",
       "sha256": "a3afe21a3292c76e7746a60f2121ff1efdfcae9b17502a17f41bea0e63c7c813"
+    },
+    {
+      "path": "scripts/complete-windows-signing.mjs",
+      "sha256": "ed6d256d22aef1265e660a8f9773b67005ce8f95d27b1dc059c839367c30fbf0"
     },
     {
       "path": "scripts/configure-desktop-archive.mjs",
@@ -7452,8 +7464,24 @@
       "sha256": "d202b98820d119d63d9083c18f422c3d0552ed6aeb17722739c83bd6a9c5118e"
     },
     {
+      "path": "scripts/lib/windows-signing-io.mjs",
+      "sha256": "f77db5b400318cad1f26dee3f69444dc64b91b52a7edf9a9046d91249bf53488"
+    },
+    {
+      "path": "scripts/lib/windows-signing-operations.mjs",
+      "sha256": "11b5886c964bb6452a76acfed308cbcdf1b47f73bc0b64fdfcc99367cc545b82"
+    },
+    {
+      "path": "scripts/lib/windows-signing-protocol.mjs",
+      "sha256": "c46b901f8a93e47e7ebfbe4c528e7013945a1121073385023bab580a22b5ea8a"
+    },
+    {
+      "path": "scripts/lib/windows-signing-receipt.mjs",
+      "sha256": "d71218291e47b671cef72532c836f6f7158d2f3e6325b6f5a7c57ee650399213"
+    },
+    {
       "path": "scripts/lib/windows-stages.mjs",
-      "sha256": "56229a1e5f8e326545f0a39d567c9feaadaed68328dec4216120e4990e1a2adc"
+      "sha256": "c52ad7f7e23f0d54ebb81575bf24e5d8df55db213f54f443e97dc15c6626ccc5"
     },
     {
       "path": "scripts/lib/zip.mjs",
@@ -7637,7 +7665,7 @@
     },
     {
       "path": "scripts/portable-extractor.mjs",
-      "sha256": "836e0bc3f2e56ecdddf4e822f259b466d70297f57f1561935f33ea6b62d17a17"
+      "sha256": "3b544c8b7c35e3fca8e023f5b8e7384dfad0eea5901e5231763715593b3c340e"
     },
     {
       "path": "scripts/portable-product-links.mjs",
@@ -7753,11 +7781,11 @@
     },
     {
       "path": "scripts/publish-desktop-candidate.mjs",
-      "sha256": "79dfefa96803bc5b9d22a02d48e2cd3c44a86796343e7ea710273681b745f44b"
+      "sha256": "5090661199063bc535bc3929f77469fd2bc2d5317861d5aa921c360074c8dc20"
     },
     {
       "path": "scripts/publish-windows-release.mjs",
-      "sha256": "b30c1d11fb6432c971ba20e6d45d5773152bc1e9851c8564a5b090b76cdacc09"
+      "sha256": "3e0ffe9ca0f0893c714467e0e32bf6b14fe87dd477e126180c595b5264fdd26d"
     },
     {
       "path": "scripts/published-package-inputs.mjs",
@@ -7782,6 +7810,10 @@
     {
       "path": "scripts/settings-navigation-icons.mjs",
       "sha256": "98a05385445cd16950c95c745d5a673fc6c006d90ed790b507be1e425a51883e"
+    },
+    {
+      "path": "scripts/sign-windows-request.mjs",
+      "sha256": "f05c280161aacb0c4310d316bcad53292428ca39fa2b4f6c589585f2e77edbbe"
     },
     {
       "path": "scripts/sync-project-docs.mjs",
@@ -7920,6 +7952,10 @@
       "sha256": "7e1a6dc0956e044728f57e1de54971ea007c6265eb71419613b7ee0a8e058a3c"
     },
     {
+      "path": "scripts/windows-signing-tool.ps1",
+      "sha256": "6bff5f6490d3230fc59cf7e6a06bb7cc1f027366c2ce55fc2b390bea51ddd418"
+    },
+    {
       "path": "scripts/windows-update-delta.mjs",
       "sha256": "028bd57c9b9e90993a68cf858398b1426cf76c60953d26384639e2eaffe8c323"
     },
@@ -8021,7 +8057,7 @@
     },
     {
       "path": "tests/eduwork-windows-release.test.mjs",
-      "sha256": "71f19f62ccbd03f5e9c276eafaa3f2951d73c1b9187f85e50e2c945ae0aad7bb"
+      "sha256": "22f5456c8292ef00c8368801dbb9a384365e298691faad7d60a0699cec6a6be7"
     },
     {
       "path": "tests/fixtures/audit-stack-probe.mjs",
@@ -8114,6 +8150,10 @@
     {
       "path": "tests/windows-package-preflight.test.mjs",
       "sha256": "3157f76d1a0a931ba9844221613d33cf41a7e010c42f012f00fdc7b2f0255226"
+    },
+    {
+      "path": "tests/windows-signing.test.mjs",
+      "sha256": "a862397f838734b2978e57dba53a4112a4ec04c1f506b7fef17e26c7c9bb270a"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",

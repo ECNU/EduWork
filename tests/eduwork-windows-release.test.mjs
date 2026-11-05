@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { validateReceipt,releasePublication,validateExtractorReceipt,validatedReleaseFiles } from '../scripts/publish-windows-release.mjs'
-import {mkdtemp,mkdir,writeFile,readFile,readdir,rm} from 'node:fs/promises'
+import {mkdtemp,mkdir,writeFile,readFile,readdir,rm,copyFile} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {basename,join,resolve,sep} from 'node:path'
 import {createHash,randomBytes} from 'node:crypto'
@@ -240,6 +240,28 @@ test('publication validates eight files for both editions while the updater keep
   assert.equal(githubUpdateManifest(row,ctx.repository).artifacts.length,1)
   assert.equal(githubUpdateManifest(row,ctx.repository).artifacts[0].fileName,row.asset.name)
  }
+})
+
+test('real pending publish stage writes a valid signing input without a usable update feed',async t=>{
+ const {root,ctx,row}=await publicationFixture(t,'EduWork-ECNU')
+ const json=async(path,value)=>{await mkdir(join(root,path,'..'),{recursive:true});await writeFile(join(root,path),JSON.stringify(value))}
+ await json('desktop/package.json',{output:join(root,row.asset.name)})
+ await json('product/assembly.json',{distribution:row.distribution,dshVersion:'0.2.2-rc.1',dshCommit:'b'.repeat(40)})
+ await json('inputs/inputs.json',{})
+ await json('gui/acceptance-checks.json',{...row.checks,asset:row.asset,portableExtractorAssets:row.portableExtractor})
+ await mkdir(join(root,'gui/extractor-publish'),{recursive:true})
+ for(const name of [row.portableExtractor.asset.name,row.portableExtractor.asset.name+'.sha256',row.portableExtractor.receipt.name]) await copyFile(join(root,name),join(root,'gui/extractor-publish',name))
+ const workspace={resolvePath:path=>join(root,path),parameters:{name:row.edition,version:row.version,development:false,recipe:'pinned-source',releaseNotesFile:'RELEASE-NOTES.md',editionRoot:root,deltaBases:[],signingPolicySHA256:'a'.repeat(64)}}
+ await windowsStages({coreRoot:fileURLToPath(new URL('..',import.meta.url)),receiptBase:row}).find(stage=>stage.name==='publish').run(workspace)
+ const directory=join(root,'publish'),pending=JSON.parse(await readFile(join(directory,'release-receipt.json'),'utf8'))
+ assert.equal(pending.passed,false);assert.equal(pending.publication,'awaiting-windows-signing')
+ assert.equal((await readdir(directory)).includes('update-windows-amd64.json'),false)
+ assert.equal((await validatedReleaseFiles(directory,{...ctx,allowSigningPending:true})).files.length,7)
+ await assert.rejects(validatedReleaseFiles(directory,ctx),/Release identity/)
+ assert.throws(()=>githubUpdateManifest(pending,ctx.repository))
+ await assert.rejects(validatedReleaseFiles(directory,{...ctx,allowSigningPending:true,commit:'9'.repeat(40)}))
+ await writeFile(join(directory,'update-windows-amd64.json'),'{}')
+ await assert.rejects(validatedReleaseFiles(directory,{...ctx,allowSigningPending:true}),/Unexpected files/)
 })
 test('publication verifies every delta update and its sidecar before upload',async t=>{
  const deltas=[{from:'0.2.8',bytes:Buffer.from('Synthetic delta from 0.2.8')},{from:'0.2.9',bytes:Buffer.from('Synthetic delta from 0.2.9')}]

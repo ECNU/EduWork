@@ -17,6 +17,8 @@
 
 ## 本机构建
 
+Windows 硬件代码签名采用两轮摘要签名与托管回填。机构可提交公开证书策略；流程、审批字段及发布来源链见 [Windows 代码签名](WINDOWS-SIGNING.md)。启用后原始候选只作为待签工件，最终签名及重新验收成功后才能发布。
+
 机构发行可在 `edition/distribution.json` 中用 `excludedOptionalBundles` 声明本次不预装的可选插件，例如 `["@eduwork/dsh-remote-access"]`。装配时不复制对应 npm 包、不注册其默认入口，并在回执记录排除项；不会写入运行时禁用策略，用户仍可通过 DSH 的插件管理自行安装。仅允许排除公版明确列为可选的独立 bundle，核心组件和其他保留包依赖的 bundle 不能排除。npm 输入锁及其哈希仍完整校验，共享依赖保留。
 
 预装插件的首次默认开关使用 `extensionDefaults`：公版在 `config/distributions/generic.json` 中定义，机构可在 `edition/distribution.json` 中覆盖。例如：

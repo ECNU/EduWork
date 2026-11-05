@@ -102,6 +102,7 @@ export async function ciEduworkWindowsRelease({
   if (!development && !verifySnapshot) throw new Error('Release candidates require a verified source snapshot')
   const sourceIdentity = await desktopSourceIdentity({ coreRoot, editionRoot })
   const signingPolicy = development ? null : await localSigningPolicy(editionRoot)
+  if (signingPolicy && process.env.PUBLISH_RELEASE === 'true') throw new Error('Build the pending candidate first, then complete detached signing before publication')
   const bases = await deltaBaseArchives(deltaBases, version)
 
   const parameters = {
@@ -178,7 +179,7 @@ export async function ciEduworkWindowsRelease({
     Object.assign(result, published)
     result.jobs = workers
     result.workspaceReused = entered.reused
-    result.passed = true
+    result.passed = published.passed
   } catch (error) {
     result.error = error.message
     throw error
