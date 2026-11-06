@@ -107,7 +107,7 @@ func TestLauncherRelaunchHelper(t *testing.T) {
 			// relauncher, as a real Host predates a restart.
 			time.Sleep(250 * time.Millisecond)
 			relauncher := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$", "--", "--type=relauncher")
-			relauncher.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=relauncher")
+			relauncher.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=relauncher", "EDUWORK_DESKTOP_PID="+strconv.Itoa(os.Getpid()))
 			if err := relauncher.Start(); err != nil {
 				os.Exit(3)
 			}
@@ -136,14 +136,45 @@ func TestLauncherRelaunchHelper(t *testing.T) {
 			time.Sleep(time.Second)
 		}
 	}
-	// The relauncher stays inside the launcher job, as Electron's does.
-	writePID("relauncher.pid")
-	if currentProcessInJob() {
-		write("relauncher.injob", "true")
+	if role == "relauncher" {
+		// The relauncher stays inside the launcher job, waits for the old
+		// desktop to exit, then creates the successor without the marker, as
+		// Electron's relauncher does.
+		writePID("relauncher.pid")
+		if currentProcessInJob() {
+			write("relauncher.injob", "true")
+		}
+		if pid, err := strconv.Atoi(os.Getenv("EDUWORK_DESKTOP_PID")); err == nil {
+			if handle, err := windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(pid)); err == nil {
+				_, _ = windows.WaitForSingleObject(handle, windows.INFINITE)
+				windows.CloseHandle(handle)
+			}
+		}
+		successor := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
+		successor.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=successor")
+		if err := successor.Start(); err != nil {
+			os.Exit(6)
+		}
+		for n := 0; n < 200; n++ {
+			if _, err := os.Stat(filepath.Join(dir, "successor.pid")); err == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		os.Exit(0)
 	}
-	time.Sleep(700 * time.Millisecond)
-	write("relauncher.done", "done")
-	sequence("relauncher-done")
+	// The successor is the new application, created after the old desktop exit.
+	writePID("successor.pid")
+	if currentProcessInJob() {
+		write("successor.injob", "true")
+	}
+	delay := 700
+	if value, err := strconv.Atoi(os.Getenv("EDUWORK_SUCCESSOR_MS")); err == nil && value > 0 {
+		delay = value
+	}
+	time.Sleep(time.Duration(delay) * time.Millisecond)
+	write("successor.done", "done")
+	sequence("successor-done")
 	os.Exit(0)
 }
 
@@ -174,7 +205,7 @@ func readPID(t *testing.T, dir, role string, timeout time.Duration) int {
 	return pid
 }
 
-func startRelaunchLauncher(t *testing.T, skipRelaunch bool) (string, *exec.Cmd, map[string]int) {
+func startRelaunchLauncherWithEnv(t *testing.T, skipRelaunch bool, extra ...string) (string, *exec.Cmd, map[string]int) {
 	t.Helper()
 	dir := t.TempDir()
 	cmd := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
@@ -182,6 +213,7 @@ func startRelaunchLauncher(t *testing.T, skipRelaunch bool) (string, *exec.Cmd, 
 	if skipRelaunch {
 		env = append(env, "EDUWORK_RELAUNCH_SKIP=1")
 	}
+	env = append(env, extra...)
 	cmd.Env = append(os.Environ(), env...)
 	if err := cmd.Start(); err != nil {
 		t.Fatal(err)
@@ -199,15 +231,26 @@ func startRelaunchLauncher(t *testing.T, skipRelaunch bool) (string, *exec.Cmd, 
 	return dir, cmd, pids
 }
 
-func TestRelaunchSurvivesWhileBackgroundIsCleaned(t *testing.T) {
-	dir, _, pids := startRelaunchLauncher(t, false)
+func startRelaunchLauncher(t *testing.T, skipRelaunch bool) (string, *exec.Cmd, map[string]int) {
+	return startRelaunchLauncherWithEnv(t, skipRelaunch)
+}
+
+func assertRelaunchLifecycle(t *testing.T, dir string, pids map[string]int) {
+	t.Helper()
 	if !waitForFile(t, filepath.Join(dir, "relauncher.injob"), 8*time.Second) {
 		t.Fatal("relauncher was not created inside the launcher job")
+	}
+	if !waitForFile(t, filepath.Join(dir, "successor.injob"), 8*time.Second) {
+		t.Fatal("successor was not created inside the launcher job")
 	}
 	pids["desktop"] = readPID(t, dir, "desktop", time.Second)
 	pids["background"] = readPID(t, dir, "background", time.Second)
 	pids["relauncher"] = readPID(t, dir, "relauncher", time.Second)
-	if !waitForFile(t, filepath.Join(dir, "launcher.done"), 15*time.Second) {
+	pids["successor"] = readPID(t, dir, "successor", time.Second)
+	if !waitForFile(t, filepath.Join(dir, "successor.done"), 20*time.Second) {
+		t.Fatal("successor did not finish")
+	}
+	if !waitForFile(t, filepath.Join(dir, "launcher.done"), 20*time.Second) {
 		t.Fatal("launcher did not finish supervising the relaunched tree")
 	}
 	if alive(pids["background"]) {
@@ -215,6 +258,9 @@ func TestRelaunchSurvivesWhileBackgroundIsCleaned(t *testing.T) {
 	}
 	if alive(pids["relauncher"]) {
 		t.Fatal("relauncher survived its own completion")
+	}
+	if alive(pids["successor"]) {
+		t.Fatal("successor survived its own completion")
 	}
 	sequence, err := os.ReadFile(filepath.Join(dir, "sequence.txt"))
 	if err != nil {
@@ -229,9 +275,32 @@ func TestRelaunchSurvivesWhileBackgroundIsCleaned(t *testing.T) {
 		}
 		return -1
 	}
-	if index("desktop-exit") < 0 || index("relauncher-done") < 0 || index("launcher-done") < 0 ||
-		index("desktop-exit") > index("relauncher-done") || index("relauncher-done") > index("launcher-done") {
+	if index("desktop-exit") < 0 || index("successor-done") < 0 || index("launcher-done") < 0 ||
+		index("desktop-exit") > index("successor-done") || index("successor-done") > index("launcher-done") {
 		t.Fatalf("unexpected lifecycle order: %v", order)
+	}
+}
+
+func TestRelaunchSurvivesWhileBackgroundIsCleaned(t *testing.T) {
+	dir, _, pids := startRelaunchLauncher(t, false)
+	assertRelaunchLifecycle(t, dir, pids)
+}
+
+func TestDelayedJobNotificationsStillFindRelaunch(t *testing.T) {
+	dir, _, pids := startRelaunchLauncherWithEnv(t, false, "EDUWORK_JOB_WATCH_DELAY_MS=1000", "EDUWORK_SUCCESSOR_MS=2500")
+	assertRelaunchLifecycle(t, dir, pids)
+}
+
+func TestWatcherInitializationFailureStillFindsRelaunchAndReports(t *testing.T) {
+	logPath := filepath.Join(t.TempDir(), "launcher.log")
+	dir, _, pids := startRelaunchLauncherWithEnv(t, false, "EDUWORK_JOB_WATCH_FAIL=1", "EDUWORK_LAUNCHER_LOG="+logPath)
+	assertRelaunchLifecycle(t, dir, pids)
+	log, err := os.ReadFile(logPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(log), "synthetic watcher initialization failure") || !strings.Contains(string(log), "checking descendants directly") {
+		t.Fatalf("watcher failure was not reported: %s", log)
 	}
 }
 
@@ -254,17 +323,29 @@ func TestKilledLauncherStopsRelaunchTree(t *testing.T) {
 	}
 	pids["background"] = readPID(t, dir, "background", time.Second)
 	pids["relauncher"] = readPID(t, dir, "relauncher", time.Second)
+	if _, err := os.Stat(filepath.Join(dir, "successor.pid")); err == nil {
+		pids["successor"] = readPID(t, dir, "successor", time.Second)
+	}
 	_ = cmd.Process.Kill()
 	_, _ = cmd.Process.Wait()
 	deadline := time.Now().Add(5 * time.Second)
-	for (alive(pids["background"]) || alive(pids["relauncher"])) && time.Now().Before(deadline) {
+	for {
+		anyAlive := false
+		for _, pid := range pids {
+			anyAlive = anyAlive || alive(pid)
+		}
+		if !anyAlive || time.Now().After(deadline) {
+			break
+		}
 		time.Sleep(20 * time.Millisecond)
 	}
-	if alive(pids["background"]) || alive(pids["relauncher"]) {
-		t.Fatal("killing the launcher left its job descendants running")
+	for role, pid := range pids {
+		if alive(pid) {
+			t.Fatalf("killing the launcher left its %s descendant running", role)
+		}
 	}
-	if _, err := os.Stat(filepath.Join(dir, "relauncher.done")); err == nil {
-		t.Fatal("relauncher completed after the launcher was killed")
+	if _, err := os.Stat(filepath.Join(dir, "successor.done")); err == nil {
+		t.Fatal("successor completed after the launcher was killed")
 	}
 }
 

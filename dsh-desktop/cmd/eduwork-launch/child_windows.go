@@ -2,7 +2,11 @@ package main
 
 import (
 	"errors"
+	"fmt"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 	"unsafe"
@@ -13,8 +17,39 @@ import (
 const (
 	jobObjectAssociateCompletionPortInformation = 7
 	jobObjectMsgNewProcess                      = 6
+	jobObjectMsgExitProcess                     = 7
 	processCommandLineInformation               = 60
 )
+
+var (
+	jobWatcherProcessingDelay = func() time.Duration {
+		milliseconds, _ := strconv.Atoi(os.Getenv("EDUWORK_JOB_WATCH_DELAY_MS"))
+		return time.Duration(milliseconds) * time.Millisecond
+	}()
+	// Tests and field diagnostics may redirect this file; normal runs use a
+	// per-user temporary log so a degraded launcher is never silent.
+	launcherLogPath = func() string {
+		if path := os.Getenv("EDUWORK_LAUNCHER_LOG"); path != "" {
+			return path
+		}
+		return filepath.Join(os.TempDir(), "EduWork-launcher.log")
+	}
+	createJobWatcher = func(job windows.Handle) (*jobWatcher, error) {
+		if os.Getenv("EDUWORK_JOB_WATCH_FAIL") == "1" {
+			return nil, errors.New("synthetic watcher initialization failure")
+		}
+		return watchJob(job)
+	}
+)
+
+func reportLauncherIssue(message string) {
+	file, err := os.OpenFile(launcherLogPath(), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	_, _ = fmt.Fprintf(file, "%s %s\n", time.Now().Format(time.RFC3339), message)
+}
 
 type unicodeString struct {
 	Length        uint16
@@ -45,9 +80,9 @@ type jobBasicAccountingInformation struct {
 }
 
 type jobWatcher struct {
-	port     windows.Handle
-	stop     chan struct{}
-	relaunch chan time.Time
+	port   windows.Handle
+	stop   chan struct{}
+	exited chan struct{}
 }
 
 // An old updater kills only its directly launched process when health fails.
@@ -65,7 +100,10 @@ func runChild(child *exec.Cmd) error {
 	if _, err = windows.SetInformationJobObject(job, windows.JobObjectExtendedLimitInformation, uintptr(unsafe.Pointer(&info)), uint32(unsafe.Sizeof(info))); err != nil {
 		return err
 	}
-	watcher, _ := watchJob(job)
+	watcher, watchErr := createJobWatcher(job)
+	if watchErr != nil {
+		reportLauncherIssue("job watcher unavailable: " + watchErr.Error() + "; checking descendants directly")
+	}
 	if watcher != nil {
 		defer watcher.stopWatching()
 	}
@@ -82,21 +120,40 @@ func runChild(child *exec.Cmd) error {
 		_ = child.Wait()
 		return err
 	}
+	mainProcess, _ := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, uint32(child.Process.Pid))
 	waitErr := child.Wait()
+	mainExit := time.Time{}
+	if mainProcess != 0 {
+		var creation, exit, kernel, user windows.Filetime
+		if windows.GetProcessTimes(mainProcess, &creation, &exit, &kernel, &user) == nil {
+			mainExit = time.Unix(0, exit.Nanoseconds())
+		}
+		windows.CloseHandle(mainProcess)
+	}
 	// Abnormal exits keep the kill-on-close limit so a crash or updater
 	// termination cannot leave a stale process tree.
-	if waitErr != nil || watcher == nil {
+	if waitErr != nil {
 		return waitErr
 	}
 	// Electron creates a --type=relauncher successor inside this job before the
-	// old process exits. A clean exit must not kill that successor, but it must
-	// still stop the Host and helpers that were running before the restart.
-	var relaunchAt time.Time
-	select {
-	case relaunchAt = <-watcher.relaunch:
-	case <-time.After(300 * time.Millisecond):
+	// old process exits. Wait for the job's own EXIT_PROCESS notification for
+	// the desktop before deciding; this is an ordered barrier, not a timing
+	// window, so a late completion-port delivery cannot kill the successor.
+	if watcher != nil {
+		select {
+		case <-watcher.exited:
+		case <-time.After(30 * time.Second):
+			// The notification port itself failed. Check the live job directly
+			// and report the degraded state rather than silently killing a
+			// possible successor.
+			reportLauncherIssue("job exit notification timed out; checking descendants directly")
+		}
 	}
-	if relaunchAt.IsZero() {
+	// Inspect the settled job instead of relying on when its NEW_PROCESS
+	// notification was processed: a live relauncher or a process created after
+	// the desktop exit proves that a successor is taking over.
+	relaunchAt, found := findRelaunch(job, mainExit)
+	if !found {
 		// No relaunch: keep the job limit active and let the deferred close
 		// clean every descendant, as before.
 		return waitErr
@@ -120,17 +177,20 @@ func watchJob(job windows.Handle) (*jobWatcher, error) {
 		windows.CloseHandle(port)
 		return nil, err
 	}
-	watcher := &jobWatcher{port: port, stop: make(chan struct{}), relaunch: make(chan time.Time, 1)}
+	watcher := &jobWatcher{port: port, stop: make(chan struct{}), exited: make(chan struct{})}
 	go watcher.run()
 	return watcher, nil
 }
 
 func (watcher *jobWatcher) stopWatching() {
 	close(watcher.stop)
-	windows.CloseHandle(watcher.port)
+	if watcher.port != 0 {
+		windows.CloseHandle(watcher.port)
+	}
 }
 
 func (watcher *jobWatcher) run() {
+	var mainPID uint32
 	for {
 		select {
 		case <-watcher.stop:
@@ -140,14 +200,26 @@ func (watcher *jobWatcher) run() {
 		var message uint32
 		var key uintptr
 		var overlapped *windows.Overlapped
-		if err := windows.GetQueuedCompletionStatus(watcher.port, &message, &key, &overlapped, 250); err != nil || message != jobObjectMsgNewProcess {
+		if err := windows.GetQueuedCompletionStatus(watcher.port, &message, &key, &overlapped, 250); err != nil {
 			continue
 		}
+		if jobWatcherProcessingDelay > 0 {
+			time.Sleep(jobWatcherProcessingDelay)
+		}
 		pid := uint32(uintptr(unsafe.Pointer(overlapped)))
-		if at, ok := relauncherCreatedAt(pid); ok {
-			select {
-			case watcher.relaunch <- at:
-			default:
+		switch message {
+		case jobObjectMsgNewProcess:
+			// The job starts empty, so the first new process is the desktop.
+			if mainPID == 0 {
+				mainPID = pid
+			}
+		case jobObjectMsgExitProcess:
+			if mainPID != 0 && pid == mainPID {
+				select {
+				case <-watcher.exited:
+				default:
+					close(watcher.exited)
+				}
 			}
 		}
 	}
@@ -188,6 +260,31 @@ func processCommandLine(handle windows.Handle) (string, error) {
 		return "", errors.New("command line buffer is invalid")
 	}
 	return windows.UTF16ToString(unsafe.Slice(command.Buffer, int(command.Length)/2)), nil
+}
+
+func findRelaunch(job windows.Handle, mainExit time.Time) (time.Time, bool) {
+	var successor time.Time
+	for _, pid := range jobProcessIDs(job) {
+		if at, ok := relauncherCreatedAt(pid); ok {
+			return at, true
+		}
+		handle, err := windows.OpenProcess(windows.PROCESS_QUERY_LIMITED_INFORMATION, false, pid)
+		if err != nil {
+			continue
+		}
+		var creation, exit, kernel, user windows.Filetime
+		if windows.GetProcessTimes(handle, &creation, &exit, &kernel, &user) == nil && !mainExit.IsZero() {
+			created := time.Unix(0, creation.Nanoseconds())
+			if created.After(mainExit) && (successor.IsZero() || created.Before(successor)) {
+				successor = created
+			}
+		}
+		windows.CloseHandle(handle)
+	}
+	if !successor.IsZero() {
+		return mainExit, true
+	}
+	return time.Time{}, false
 }
 
 func terminateOlderDescendants(job windows.Handle, relaunchAt time.Time) {
