@@ -25,5 +25,10 @@
   "apps/desktop/src/duration-env.ts": "f230ed09a0094871e30d3eac559b9674fc122b01539348b661df4b3dd1b534aa",
   "apps/desktop/src/file-actions.ts": "ab0e0de2a6fc302cf14df9ff4da8ee9dad3f17f1974cde940eadd8c64f0b466f",
   "apps/desktop/src/file-drag.ts": "29dbfe679cfe3893fd19112929419cc71f44b7ae1edd58ea82cc926f208404e0",
-  "apps/desktop/src/file-drag-files.ts": "b7d7ec1b06bbca5dc1d96fc23d0c051be53ec941e33de4d1b09651146ea8560a"
+  "apps/desktop/src/file-drag-files.ts": "b7d7ec1b06bbca5dc1d96fc23d0c051be53ec941e33de4d1b09651146ea8560a",
+  "apps/desktop/src/update-coordinator.ts": "5cf1f239f82b8695afa607f36176cb95792d2b61be12aa3e28f0ee5341a95aa7",
+  "apps/desktop/src/update-http-executor.ts": "7230d88ece24770bb45ddac28ff6b9a0ed60f1b20a4361da44fc5265a1cc4eb8",
+  "apps/desktop/src/update-error.ts": "1cc7ef0e3bffb99f1e5ffaac15449fd9259b9f0cda101a9db070054233110472",
+  "apps/desktop/scripts/windows-directory-installer.mjs": "b12d1b4d84a324b2eca2d18232eaf5299ac9ae5724b91c534c1344be9054dd1d",
+  "apps/desktop/scripts/installer-directories.nsh": "1c77168ed7abe7465f05c0e5d65f53f09a30decd0e4bb4147555577e06809cef"
 }

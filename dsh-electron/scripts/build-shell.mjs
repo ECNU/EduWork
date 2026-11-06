@@ -8,10 +8,11 @@ import { adaptNativeDesktopSource } from './native-desktop-source.mjs'
 import { adaptHostExit } from './host-quit-adaptation.mjs'
 import { pinnedDshContract } from '../../scripts/pinned-dsh-contract.mjs'
 
-const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, runtime: { type: 'string' }, 'pinned-dsh-source': { type: 'boolean' } } })
+const { values } = parseArgs({ options: { upstream: { type: 'string' }, host: { type: 'string' }, output: { type: 'string' }, runtime: { type: 'string' }, 'desktop-tools': { type: 'string' }, 'pinned-dsh-source': { type: 'boolean' } } })
 if (!values['pinned-dsh-source']) throw new Error('The legacy Electron shell build is retired. Use --pinned-dsh-source with --runtime, or scripts/local-desktop-pipeline.mjs. See docs/BUILD.md.')
 if (!values.upstream || !values.host || !values.output) throw new Error('Use --upstream <pinned source> --host <prepared host> --output <new directory> --pinned-dsh-source --runtime <pinned npm Runtime>')
 const upstream = resolve(values.upstream), output = resolve(values.output), host = resolve(values.host)
+const desktopTools = values['desktop-tools'] ? resolve(values['desktop-tools']) : join(upstream, 'apps/desktop')
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '../..')
 if (!values.runtime) throw new Error('The native shell requires --runtime <pinned npm Runtime>')
 const lock = pinnedDshContract
@@ -40,7 +41,7 @@ for (const file of files) {
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
   rows.push({ path: file, originalSHA256: digest(before), derivedSHA256: digest(text), changed: !before.equals(Buffer.from(text)) })
 }
-const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'update-presentation.mjs', 'update-observer.mjs', 'update-workbench.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'settings-open-request.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
+const electronAdapters = ['portable-migration.mjs', 'installed-migration.mjs', 'installed-first-run.mjs', 'installed-updates.mjs', 'installed-files.mjs', 'installed-files-worker.mjs', 'runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'update-presentation.mjs', 'update-observer.mjs', 'update-workbench.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'install-mutex.mjs', 'product.mjs', 'writable-root.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'settings-open-request.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
@@ -77,9 +78,10 @@ await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name
   if (runtimeReceipt.dshCommit !== lock.commit || runtimeReceipt.dshVersion !== lock.packageVersion) throw new Error('Native shell compiler Runtime differs from the core lock')
   const runtimeRequire = createRequire(join(runtime, 'package.json'))
   const { build } = runtimeRequire('esbuild')
-  const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(runtime, 'node_modules')], external: ['electron'], logLevel: 'warning' }
+  const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(runtime, 'node_modules'), join(desktopTools, 'node_modules')], external: ['electron'], logLevel: 'warning' }
   await build({ ...common, entryPoints: [join(output, 'src/desktop-main.mjs')], outfile: join(output, 'lib/main.js'), format: 'esm', banner: { js: "import { createRequire as __eduworkRequire } from 'node:module'; const require = __eduworkRequire(import.meta.url);" } })
   await build({ ...common, entryPoints: [join(output, 'src/preload-app.ts')], outfile: join(output, 'lib/preload-app.cjs'), format: 'cjs' })
+  await build({ ...common, entryPoints: [join(output, 'src/installed-files-worker.mjs')], outfile: join(output, 'lib/installed-files.cjs'), format: 'cjs' })
 }
 // The pet preload requires only electron; the sandbox loads it as written.
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
@@ -129,6 +131,7 @@ async function collectNotice(name, from) {
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
 for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+await collectNotice('electron-updater', join(desktopTools, 'package.json'))
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })

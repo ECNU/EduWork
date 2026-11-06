@@ -75,7 +75,7 @@ const tick = () => new Promise(setImmediate)
 function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = false } = {}) {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const start = source.indexOf('export async function showDesktopFailure('), end = source.indexOf('\n}\n', start)
-  const stopStart = source.indexOf('export function stopDesktopServices('), stopEnd = source.indexOf('\n}\n', stopStart)
+  const stopStart = source.indexOf('export async function stopDesktopServices('), stopEnd = source.indexOf('\n}\n', stopStart)
   const quittingStart = source.indexOf('export function isQuitting()'), quittingEnd = source.indexOf('\n', quittingStart)
   assert.ok(start >= 0 && end > start, 'showDesktopFailure boundary changed')
   assert.ok(stopStart >= 0 && stopEnd > stopStart, 'stopDesktopServices boundary changed')
@@ -104,7 +104,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = fals
     show() { events.push('window-shown') }
   }
   const context = {
-    app, BrowserWindow, lifecycle, desktopExit: exit, desktopFailureShown: false, progressWindow: undefined,
+    app, BrowserWindow, lifecycle, installedUpdateHandoff: false, currentVault: undefined, dataLease: undefined, releaseInstanceMutex: async () => {}, desktopExit: exit, desktopFailureShown: false, progressWindow: undefined,
     settings, paths: { config: settings.config },
     restartDesktop: () => { events.push('restart'); exit.restart() },
     contentUpdates: { close: () => events.push('content-abort'), rollback: () => wait('rollback', stage === 'rollback' && rollbackResult),

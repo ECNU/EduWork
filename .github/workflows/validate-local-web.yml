@@ -51,6 +51,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Desktop pet checks failed' }
           node --test core/dsh-electron/tests/host-git-identity.test.mjs
           if ($LASTEXITCODE) { throw 'Host Git identity checks failed' }
+          node --test core/dsh-electron/tests/installed-first-run.test.mjs core/dsh-electron/tests/installed-data-lease.test.mjs core/dsh-electron/tests/installed-files.test.mjs core/dsh-electron/tests/installed-updates.test.mjs
+          if ($LASTEXITCODE) { throw 'Installed setup and updater checks failed' }
       - name: Verify Windows updater manifests and archives
         if: steps.changes.outputs.build == 'true'
         shell: pwsh

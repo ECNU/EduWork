@@ -241,7 +241,8 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
     app.getName = () => 'Fixture'
     app.getVersion = () => '0.0.0'
     app.isHidden = () => { assert.equal(process.platform, 'darwin'); return scenario === 'application-hidden' }
-    app.requestSingleInstanceLock = () => { calls.push('lock'); return scenario !== 'second-instance' }
+    let pathsPrepared = false
+    app.requestSingleInstanceLock = () => { assert.equal(pathsPrepared, true); calls.push('lock'); return scenario !== 'second-instance' }
     app.whenReady = async () => { calls.push('ready') }
     app.quit = () => {
       if (!exit.complete) { void exit.request(); return }
@@ -276,7 +277,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       },
     })
     mock('product.mjs', {
-      configureEduworkPaths() {}, installEduworkFromDmg: async () => {
+      async configureEduworkPaths() { await new Promise(setImmediate); pathsPrepared = true }, installEduworkFromDmg: async () => {
         calls.push('installer')
         if (scenario === 'quit-during-cleanup') { app.quit(); await exit.pending }
         if (scenario === 'installer-exit') { app.quit(); return true }
@@ -309,6 +310,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         if (!earlyFailure) completed()
       }, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
+      setInstalledUpdatePreparation() {},
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
       productUpdateObserver: { dispose() {}, subscribe: () => () => {}, status: async () => undefined,

@@ -58,6 +58,14 @@ node scripts/ci-eduwork-macos-release.mjs --core-root . --edition-root . --distr
 
 当前 macOS 包与原 PowerShell 流程一样，仅使用本地 ad-hoc 签名，不需要 Developer ID 证书或公证。首次打开时可能需要在系统“隐私与安全性”中手动允许。后续若要取消这一步，需在受保护的发行环境中完成 Developer ID 签名、公证，并在目标系统验收 Gatekeeper；仅重新打包 DMG 不会解决信任提示。见 [macOS 支持](MACOS.md)。
 
+## Windows 标准安装器
+
+Windows 构建命令增加 `--data-layout installed` 会同时生成标准 NSIS 安装器、官方更新元数据和兼容 ZIP；`portable` 只生成兼容 ZIP。桌面开发和发布候选工作流使用 installed 模式，本机开发流水线仍保留独立便携副本。
+
+installed 验收会在输出目录安装和卸载程序，并检查当前用户的注册表、开始菜单、桌面快捷方式及默认数据保留。请使用独立 Windows 测试账户；发现同发行版既有登记、快捷方式或个人数据时会停止。真实数据迁移、凭据与冷启动、升级失败恢复仍须按[安装迁移指南](WINDOWS-INSTALLED-MIGRATION.md)完成原生验收。
+
+工具依赖从配方的 `desktop-probe` 和 `windows-installer` 锁分别准备，不替换产品 Runtime 或插件锁。标准安装版更新源使用 NSIS 元数据；自托管发行版须在发行配置中提供 `updates.windowsFeeds`，不能用旧 ZIP 的 JSON 清单代替。
+
 ## 候选构建做什么
 
 当前内核、迁移规则及保留的适配见 [DSH 0.2.2 集成说明](CORE-022.md)。

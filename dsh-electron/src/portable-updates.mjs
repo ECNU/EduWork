@@ -29,13 +29,14 @@ export function portableUpdateEdition({configuration={},version,prior=null,distr
 }
 
 export function resolveUpdateConfiguration(defaults={},updates={},prior=null) {
- const explicit=updates.provider || updates.manifestURL || updates.repository
+ const explicit=updates.provider || updates.manifestURL || updates.repository || updates.windowsFeeds
  const inherited=prior?.schemaVersion===1 && prior.enabled!==false && (prior.manifestBaseURL || prior.provider==='github')
  // Old Go bridge feeds are user installation state. A new package's GitHub
  // default must not silently change their institution or release route.
  const result={...(inherited&&!explicit?{defaultPolicy:defaults.defaultPolicy}:defaults),...updates}
- if(updates.provider==='github'){delete result.manifestURL}
+ if(updates.provider==='github'){delete result.manifestURL;if(!updates.windowsFeeds)delete result.windowsFeeds}
  if(updates.manifestURL && updates.provider!=='disabled'){result.provider='static';delete result.repository}
+ if(updates.windowsFeeds && updates.provider!=='disabled'){result.provider='static';delete result.repository;if(!updates.manifestURL)delete result.manifestURL}
  return result
 }
 
