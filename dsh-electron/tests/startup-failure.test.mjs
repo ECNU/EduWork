@@ -179,6 +179,18 @@ test('a wrapper message that already contains its cause is shown once', () => {
     'aggregate summary\nSynthetic cause')
 })
 
+test('nested aggregate causes keep their own root cause', () => {
+  const aggregate = new AggregateError([
+    Error('Synthetic child failure'),
+  ], 'Synthetic aggregate failure', { cause: Error('Synthetic root cause') })
+  const wrapped = new Error('Synthetic wrapper', { cause: aggregate })
+  const message = startupDiagnostic(wrapped, redactDiagnostic).message
+  for (const text of ['Synthetic wrapper', 'Synthetic aggregate failure', 'Synthetic child failure', 'Synthetic root cause']) {
+    assert.match(message, new RegExp(text))
+  }
+  assert.equal(message.match(/Synthetic root cause/g)?.length, 1)
+})
+
 test('different component failures keep their own repeated reason lines', () => {
   const host = Error('Synthetic Host start failure\nEPERM: operation not permitted')
   const updater = Error('Synthetic updater start failure\nEPERM: operation not permitted')

@@ -43,6 +43,7 @@ export function startupDiagnostic(error, redact = value => value) {
         merge(child, item, depth + 1, seen)
         for (const block of child) if (!wrapper.some(part => part.includes(block))) parts.push(block)
       }
+      if (value.cause !== undefined) merge(parts, value.cause, depth + 1, seen)
       return
     }
     if (value instanceof Error) {
