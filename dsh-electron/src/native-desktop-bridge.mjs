@@ -162,13 +162,11 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, event => { owner(event); return checkUpdates() })
   if (process.platform === 'win32') {
-    ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language, color, symbolColor) => {
+    ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, _language, color, symbolColor) => {
       let window
       try { window = owner(event) } catch { return }
-      if (typeof language === 'string' && /^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$/u.test(language)) {
-        const next = resolveDesktopStartupLocale(language, languages)
-        if (next.id !== locale.id) { locale = next; refreshMenu() }
-      }
+      // Document lang is English before the Host locale bootstrap. Only
+      // localeBootstrap/localeChanged own the shell language, matching upstream.
       const validColor = value => typeof value === 'string' && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
       if (validColor(color) && validColor(symbolColor)) window.setTitleBarOverlay({ color, symbolColor })
     })

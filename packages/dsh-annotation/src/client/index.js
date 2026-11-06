@@ -446,10 +446,11 @@ export function apply(ctx) {
           request.open()
         },
       }), 'annotation: native selection')
-      // Preserve the official Quote entry. Disposing this plugin restores its
-      // original renderer. The second key also works without message-quotes.
+      // Slot shadowing is ascending: rank before the official Quote entry at
+      // priority 0. Disposing this plugin restores its original renderer.
+      // The second key also works without message-quotes.
       for (const key of ['quote', 'eduwork-annotation']) scope.slots.inject('conversation.chat.text-interaction', () => scope.slots.register({
-        name: 'conversation.chat.text-interaction', key, priority: 100, locale: NS,
+        name: 'conversation.chat.text-interaction', key, priority: -100, locale: NS,
         inject: sessionId => ({ sessionId, previews, selectionActions, editors,
           reportError: message => reportError(sessionId, message) }),
       }, NativeSelectionToolbar))

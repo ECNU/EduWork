@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T06:33:59.503Z",
-  "fileSetSHA256": "4299305d1a43778b8571e8e4150a192c851ec4bf813b6bafee50c95f381173f9",
+  "createdAt": "2026-11-06T09:51:18.957Z",
+  "fileSetSHA256": "44de8302f1e665ef6b9ed0639fa89bc74156ed23e95150a637193e58ed5cd1ac",
   "files": [
     {
       "path": ".gitattributes",
@@ -514,6 +514,10 @@
     {
       "path": "docs/releases/0.4.11.md",
       "sha256": "c40169c473d924b6e1bef3e4e1d7d762aa98c6763d6611f85f84a90f80674a27"
+    },
+    {
+      "path": "docs/releases/0.4.12.md",
+      "sha256": "18240402b0b1dfe022b575b27b00f721b18ba46cfd582912165c3d074a253f14"
     },
     {
       "path": "docs/releases/0.4.2.md",
@@ -1297,7 +1301,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "b542f7ac8d6c7be7ce3d2322a87f9e9ebab1c87affccdf727be675447a3765be"
+      "sha256": "b803fcbf46875cd32f67611bff902a5080287bc8e7099db59cc2a299a59e9cd4"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1345,7 +1349,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "d83066f8908dc416c7a3d10a2b4359c07b462b0555f175732049955d1a8221e9"
+      "sha256": "480ad442caf14615f0033838d9b72f9e02a6cf33a7fefca2c00aae65d7bfa5c4"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1493,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "dfaa8481e86591675f492d664ffd6b54d9660f377b9432094b8ef1669680f32f"
+      "sha256": "2c995ae12b055801fffcb158e76bdd5d47b2229aca800e5d7c753782bb52d988"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1561,7 +1565,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "23c8dedcd0e6ed63fca7739420bc9dce785a2fe493c552b81811b6f05fc88b97"
+      "sha256": "a74d4ab8abd4a5d0a18630f37215123b13f5d2a827eb413ec15ad2b7cfd8a939"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
@@ -3485,7 +3489,7 @@
     },
     {
       "path": "packages/dsh-annotation/lib/client.js",
-      "sha256": "4cbda7c1426f8fb0203e04aca4c8b93b202789ef9d7d1afe0e2555c61c93f9f1"
+      "sha256": "73f86fda5cf23b214317f3f638780e761e55bbc00464001969fd77e3ab61416b"
     },
     {
       "path": "packages/dsh-annotation/lib/index.js",
@@ -3505,11 +3509,11 @@
     },
     {
       "path": "packages/dsh-annotation/package-lock.json",
-      "sha256": "80becb73f0bccf4a3caacbe9c6c84f6f21a0856e8df91f13322cffc3ed120539"
+      "sha256": "89d36f1033a6adf693f200973543e5e704ca976983d2144f735e88a72edbcde3"
     },
     {
       "path": "packages/dsh-annotation/package.json",
-      "sha256": "37c67ef22a2a380394b5b1ec426c2b76bab8a6287f94a6c1673624c2b64f94c5"
+      "sha256": "e6e07ad2cba1d47a0b90ab6cc03997aed7aacab0e2b1aeddbcfc174c10e56b6f"
     },
     {
       "path": "packages/dsh-annotation/README_EN.md",
@@ -3533,7 +3537,7 @@
     },
     {
       "path": "packages/dsh-annotation/src/client/index.js",
-      "sha256": "c43827601d6dda454730374bfdf4ca4c7bed1f1bb5883a3c70a07a5664c25744"
+      "sha256": "862ec7add1d1e637181f11adee01020c4c493a3ce5c52dba787546e4e7973cb0"
     },
     {
       "path": "packages/dsh-annotation/src/client/position.js",
@@ -3566,6 +3570,10 @@
     {
       "path": "packages/dsh-annotation/test/annotation.test.mjs",
       "sha256": "52f2d8aba5b0d50b9eecd072e237c4dcc1a3ae6d77e7c0eb12c3d28952655939"
+    },
+    {
+      "path": "packages/dsh-annotation/test/native-selection.test.mjs",
+      "sha256": "3e4e57870f2f8fc5ebeaa196204478ebd09cfd09d715682490856da3f1884143"
     },
     {
       "path": "packages/dsh-annotation/test/protocol.test.mjs",
@@ -6813,11 +6821,11 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "31edff6bc9abf139627ac7013a15eb2b2a899e7de658d9b024f35758c0f31c9a"
+      "sha256": "b35fa2ded2712ced88943ed374bd48e66b85c334f9e9cf909c04bf5b504e2346"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "0302d8a70b0dcd01f6716940a7b0ee0499fb0f06b28cc0e4fba1ce6a0c3a4e76"
+      "sha256": "991c8e1c5449aab43ba9c969a2b909a2fbbd85511b73dd75e7f82acc91d16f0b"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
@@ -6833,7 +6841,7 @@
     },
     {
       "path": "packages/dsh-remote-access/scripts/check-web.ts",
-      "sha256": "204986ac51e0b65f7b1bfb899ecc5d43d04669aab4d060a80bf7b3898610a61a"
+      "sha256": "e65eecb3d46ac7e5e56b34c6c3a7c43951eed557c026145e6945b5b4df3a0ec2"
     },
     {
       "path": "packages/dsh-remote-access/src/client/index.tsx",
@@ -6849,7 +6857,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/connections/compression.ts",
-      "sha256": "d81eefdfa06418f891936f56c7ad3b7fd33a8ae2b527a7a34ce970c92ec67e79"
+      "sha256": "48015ac1d8fbbb29acdfaa3b5a716bcc71d7d2531a3598cfa00baf06af544f34"
     },
     {
       "path": "packages/dsh-remote-access/src/connections/connections.ts",
@@ -6857,7 +6865,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/connections/handler.ts",
-      "sha256": "18efec572cf6287ffba19d87cb88500c2931d535919fc0a2cb6b97406fee8529"
+      "sha256": "4e4af92137d7eb0cb07d6a82ef6798f057fe4a8c4c0de189fe9947552b9284ce"
     },
     {
       "path": "packages/dsh-remote-access/src/devices/pairing.ts",
@@ -6873,7 +6881,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
-      "sha256": "b696e92ea6d8af5617c4d6694b97d44327e531c1b48ce6f7fc12ba2afb73a120"
+      "sha256": "876f53e26b1c11892f97026d7dcd43c717e65ec1a57a002c4605ad38c93365d2"
     },
     {
       "path": "packages/dsh-remote-access/src/plugin.ts",
@@ -7005,7 +7013,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/connections/compression.test.ts",
-      "sha256": "acab0b33fd050153bf595324d597124f417e6e662b004c07fdb7d9e9bdf1a452"
+      "sha256": "db7678f8a177e4bf779846dcebe1b31ff1e024a41c84deeb31fd0d08f9982499"
     },
     {
       "path": "packages/dsh-remote-access/test/gate/dsh-0.2.1-rc.2-web.json",
@@ -7022,6 +7030,10 @@
     {
       "path": "packages/dsh-remote-access/test/harness.ts",
       "sha256": "8577a0b913fac659ae8f02ed381584ee69c2a312383c8f92e63fe34a7fedd5c4"
+    },
+    {
+      "path": "packages/dsh-remote-access/test/host/adapter.test.ts",
+      "sha256": "8b33ce53bf0b61cf62f51ca7b0cff25ddee6aa2ba77a2fc1b904b992babb36e5"
     },
     {
       "path": "packages/dsh-remote-access/test/loopback.ts",
@@ -8477,7 +8489,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/annotation.json",
-      "sha256": "fb96e3b0e55bbb247358e095148e0a862bc723cf0d0ee1077920aacb3a18516c"
+      "sha256": "b4f157bf774def53bc6e710030eb3d8e11cb72ba50dc68b6827f885317f56370"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/artifact-services.json",
@@ -8537,7 +8549,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/remote-access.json",
-      "sha256": "a5477a399fd9f2a60d4a82bd89a147858cf3b6908a942cb08a47846484f5029e"
+      "sha256": "690bb8d0b2928d42cdc82e067c0376b1db14c1de8ed8619d5b0277fa611a6ab3"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/side-chat.json",
@@ -8545,11 +8557,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package-lock.json",
-      "sha256": "ebf47f38bf0d00b38575210f390fae30f64946f450e15525588e8875a99618ee"
+      "sha256": "f95c8413d5fa53726f346b72a579ec812add04a56e86efadb846b625f83cd397"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package.json",
-      "sha256": "fa2c7a38ce99865f15bff89c1e2f6568ac58997cde6e18b27eb3bd645bebbcc8"
+      "sha256": "51256285cf28149dcf97f8b050f2ac8b31e0ea0beb9168232ce65c37fb48bc63"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
@@ -8637,19 +8649,19 @@
     },
     {
       "path": "updates/macos/development.xml",
-      "sha256": "85cc4c37593b24a6ea4c16761824ba38f87d1c4653ad27378c548b48de134a9e"
+      "sha256": "be8d852283b8e6cb22bca4aebaaa01a791780f69821a83ff704ff948eb785472"
     },
     {
       "path": "updates/macos/stable.xml",
-      "sha256": "6d8769fdc11a2d6b1fdd462f603a4cba3aae175430344fa8a0ece71c78632701"
+      "sha256": "95ae7fbb7ae0d23495797bcf55ec07f9d4f5ab2045f8270e72cb6da6883d7fcf"
     },
     {
       "path": "updates/macos/x64/development.xml",
-      "sha256": "ec4580c6a37d0d37f5edd789cc170c3eb8562f80c4c0de760d3e75a355fee464"
+      "sha256": "76876507741b45eba4da47d9149cb8feacac3a26615b66783fdb55cf0196b08d"
     },
     {
       "path": "updates/macos/x64/stable.xml",
-      "sha256": "8f1ee9eaa2410e01dd63eff6c6ea2d90711665d7bb5028cd76fc6461815c857d"
+      "sha256": "eaa7ff81b87c1b914c29f4ebca102ec02b52f45a517e7fbce70ec4d11e95a9d1"
     },
     {
       "path": "website/assets/data/community.json",

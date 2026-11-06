@@ -21,18 +21,30 @@ export function startupDiagnostic(error, redact = value => value) {
   }
   // A cause may itself be an AggregateError; expand its concrete errors because
   // only the top-level aggregate is represented as a structured AggregateError.
+  const append = (parts, text) => {
+    // Scrub the whole reason before splitting: JSON input excerpts can span lines.
+    for (const line of message(text).split('\n')) {
+      if (line && !parts.some(part => part.includes(line))) parts.push(line)
+    }
+    return parts
+  }
   const reason = (value, depth = 0, seen = new Set()) => {
     if (depth > 6) return '[诊断信息层级过深，已省略]'
     if (value instanceof AggregateError) {
       if (seen.has(value)) return '[重复的诊断信息，已省略]'
       seen.add(value)
-      return [value.message, ...value.errors.slice(0, 8).map(item => reason(item, depth + 1, seen))].filter(Boolean).join('\n')
+      const parts = []
+      append(parts, value.message)
+      for (const item of value.errors.slice(0, 8)) append(parts, reason(item, depth + 1, seen))
+      return parts.join('\n')
     }
     if (value instanceof Error) {
       if (seen.has(value)) return '[重复的诊断信息，已省略]'
       seen.add(value)
-      return [value.message, value.cause === undefined ? '' : reason(value.cause, depth + 1, seen)]
-        .filter(Boolean).join('\n')
+      const parts = []
+      append(parts, value.message)
+      if (value.cause !== undefined) append(parts, reason(value.cause, depth + 1, seen))
+      return parts.join('\n')
     }
     return String(value ?? '')
   }
@@ -43,9 +55,7 @@ export function startupDiagnostic(error, redact = value => value) {
       seen.add(current)
       // The top-level aggregate keeps its children in the structured errors;
       // an aggregate appearing as a cause has no such representation, so expand it.
-      const text = message(first && value instanceof AggregateError ? value.message : reason(current))
-      // A wrapper message often already contains its cause; keep each reason once.
-      if (text && !parts.some(part => part.includes(text))) parts.push(text)
+      append(parts, first && value instanceof AggregateError ? value.message : reason(current))
       if (!(current instanceof Error) || current.cause === undefined) break
       current = current.cause
       depth++

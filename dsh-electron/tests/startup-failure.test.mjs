@@ -168,6 +168,17 @@ test('JSON input scrubbing keeps neighboring quoted context and nested causes', 
   assert.doesNotMatch(safe.message, /secret99|127\.0\.0\.1|51234/)
 })
 
+test('a wrapper message that already contains its cause is shown once', () => {
+  const cause = Error('Synthetic cause')
+  const wrapped = new Error(`wrapper: ${cause.message}`, { cause })
+  assert.equal(startupDiagnostic(wrapped, redactDiagnostic).message, 'wrapper: Synthetic cause')
+  const multiline = new Error(`first line\n${cause.message}`, { cause })
+  assert.equal(startupDiagnostic(multiline, redactDiagnostic).message, 'first line\nSynthetic cause')
+  const aggregate = new AggregateError([cause], 'aggregate summary')
+  assert.equal(startupDiagnostic(new Error(`aggregate summary\n${cause.message}`, { cause: aggregate }), redactDiagnostic).message,
+    'aggregate summary\nSynthetic cause')
+})
+
 test('wrapped aggregate startup diagnostics expand the concrete causes', () => {
   const aggregate = new AggregateError([
     Error('Synthetic Host start failure'),

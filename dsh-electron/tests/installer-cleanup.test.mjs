@@ -829,6 +829,52 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
   })
 }
 
+test('native desktop bridge ignores document language before Host locale bootstrap', { skip: !source || process.platform !== 'win32' }, async t => {
+  const ipcMain = new EventEmitter(), handlers = new Map()
+  ipcMain.handle = (name, fn) => handlers.set(name, fn)
+  const app = { getName: () => 'EduWork', getPreferredSystemLanguages: () => ['zh-CN'], getPath: () => '/unused' }
+  const window = {
+    isDestroyed: () => false,
+    webContents: { send() {}, executeJavaScript: () => Promise.resolve(), mainFrame: {} },
+    setTitleBarOverlay() {}, show() {}, focus() {}, getZoomFactor: () => 1,
+  }
+  t.mock.module(electron, { exports: {
+    app, dialog: { showErrorBox() {} }, ipcMain,
+    Menu: { buildFromTemplate: template => ({ template, popup() {} }) },
+    nativeTheme: { themeSource: 'system' },
+    session: { defaultSession: { webRequest: { onBeforeSendHeaders() {} } } },
+  } })
+  const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
+  const keys = ['boot', 'bootFailed', 'browserAcquire', 'browserRelease', 'directoryPick', 'localeBootstrap', 'localeChanged',
+    'nativeThemeSet', 'updatesStatus', 'updatesOpen', 'updatesPresentation', 'windowsAppearance', 'windowsMenu']
+  mock('ipc.ts', { DESKTOP_IPC: Object.fromEntries(keys.map(key => [key, key])), assertDesktopSender() {} })
+  mock('browser-guests.ts', { DesktopBrowserGuests: class { acquire() {} release() {} } })
+  mock('microphone-permissions.ts', { installMicrophonePermissions() {} })
+  mock('keyboard.ts', { installDesktopShortcuts: () => ({ fileMenu: () => ({ label: 'File', submenu: [] }), sendEditingKey() {} }) })
+  mock('file-actions.ts', { installFileActions() {} })
+  mock('file-drag.ts', { installDesktopFileDrag: () => ({ dispose() {} }) })
+  mock('desktop-menu.mjs', { desktopEditMenu: () => ({ label: 'Edit', submenu: [] }), desktopViewMenu: () => ({ label: 'View', submenu: [] }), setDesktopApplicationMenu() {} })
+  mock('sidebar-browser.mjs', { SIDEBAR_BROWSER_IPC: { bind: 'bind', opened: 'opened' } })
+  mock('update-observer.mjs', { watchUpdateDocument: () => ({ bind() {}, release() {}, dispose() {} }) })
+  let preference = null
+  const { installNativeDesktopBridge } = await import(new URL('native-desktop-bridge.mjs?locale', source))
+  const bridge = installNativeDesktopBridge({
+    getHost: () => ({ readLocalePreference: async () => preference, boot() {}, fetch: async () => new Response('', { status: 404 }),
+      socketHeaders: () => ({}), resolveDragResource() {} }),
+    waitForHost: async () => {}, getWindow: () => window, reportFatal() {}, onBootFailure() {}, checkUpdates() {},
+    updates: undefined, pickDirectory() {}, bootBrand: () => '', sidebarBrowser: { bind() {}, opened() {}, close() {} },
+  })
+  const event = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+  assert.equal(bridge.locale().id, 'zh-CN')
+  ipcMain.emit('windowsAppearance', event, 'en', '#ffffff', '#000000')
+  assert.equal(bridge.locale().id, 'zh-CN', 'document language must not override the shell locale before bootstrap')
+  preference = 'en'
+  await handlers.get('localeBootstrap')(event)
+  assert.equal(bridge.locale().id, 'en')
+  ipcMain.emit('localeChanged', event, 'zh')
+  assert.equal(bridge.locale().id, 'zh-CN')
+})
+
 test('native startup diagnostics keep wrapped reasons and drop private input and Host addresses', { skip: !source }, async () => {
   const { startupDiagnostic } = await import(new URL('startup-failure.mjs?diagnostic', source))
   const { redactDiagnostic } = await import(new URL('diagnostics.mjs', source))
