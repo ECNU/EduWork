@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.4.11",
+  "version": "0.4.12",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T10:06:25.286Z",
-  "fileSetSHA256": "1255660ab39d6d64f084dc05c83b5cb5a863018f2a506094646a828163a1e3dc",
+  "createdAt": "2026-11-06T10:51:10.484Z",
+  "fileSetSHA256": "960fa04686d6f8f1d660b8e93ab73176ce471464fc6b5cd1fa044aeeb19ef36d",
   "files": [
     {
       "path": ".gitattributes",
@@ -1301,7 +1301,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop-bridge.mjs",
-      "sha256": "b803fcbf46875cd32f67611bff902a5080287bc8e7099db59cc2a299a59e9cd4"
+      "sha256": "06f8ffda0b17da326cc0704a24d8d12e3e1c87ea467cc0fc82c5e72087fc2e6d"
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
@@ -1349,7 +1349,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "480ad442caf14615f0033838d9b72f9e02a6cf33a7fefca2c00aae65d7bfa5c4"
+      "sha256": "98e70fc3027e7a156867333650ded324d30e32541a269f535bc24f0961f4c52f"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1497,7 +1497,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "2c995ae12b055801fffcb158e76bdd5d47b2229aca800e5d7c753782bb52d988"
+      "sha256": "bd1b1cc48df11368035b0a4f2bab191e628b5fb7dcfb3e29ecfd5eeeb851a6ae"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1565,7 +1565,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "a74d4ab8abd4a5d0a18630f37215123b13f5d2a827eb413ec15ad2b7cfd8a939"
+      "sha256": "0047b98a96bb268e81ae79f810ee34a148af5675ef4151c33175ddc3b9ba3c20"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
@@ -1637,7 +1637,7 @@
     },
     {
       "path": "dsh-electron/upstream-inputs-pinned-source.json",
-      "sha256": "6642171182760633dd42b03fd766c3c7fcd8969c8eb1393178bb33c542f9ab71"
+      "sha256": "b7b7b8f226e4aa1e913475f7a2b345c46514a1b59bddd4d84bc9227f2a9a8792"
     },
     {
       "path": "dsh-host/bridge.mjs",
