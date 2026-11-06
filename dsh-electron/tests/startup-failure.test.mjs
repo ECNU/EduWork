@@ -179,6 +179,17 @@ test('a wrapper message that already contains its cause is shown once', () => {
     'aggregate summary\nSynthetic cause')
 })
 
+test('different component failures keep their own repeated reason lines', () => {
+  const host = Error('Synthetic Host start failure\nEPERM: operation not permitted')
+  const updater = Error('Synthetic updater start failure\nEPERM: operation not permitted')
+  const aggregate = new AggregateError([host, updater], 'desktop backend startup and cleanup failed')
+  const wrapped = new Error(`synthetic startup wrapper\n${aggregate.message}`, { cause: aggregate })
+  const message = startupDiagnostic(wrapped, redactDiagnostic).message
+  assert.match(message, /Synthetic Host start failure/)
+  assert.match(message, /Synthetic updater start failure/)
+  assert.equal(message.match(/EPERM: operation not permitted/g)?.length, 2)
+})
+
 test('wrapped aggregate startup diagnostics expand the concrete causes', () => {
   const aggregate = new AggregateError([
     Error('Synthetic Host start failure'),

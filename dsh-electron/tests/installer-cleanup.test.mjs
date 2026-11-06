@@ -829,10 +829,17 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
   })
 }
 
-test('native desktop bridge ignores document language before Host locale bootstrap', { skip: !source || process.platform !== 'win32' }, async t => {
+test('native desktop bridge restores the confirmed language without the Host', { skip: !source || process.platform !== 'win32' }, async t => {
+  const userData = await mkdtemp(join(tmpdir(), 'desktop-locale-cache-'))
+  t.after(() => rm(userData, { recursive: true, force: true }))
+  const cachePath = join(userData, 'desktop', 'locale-cache')
+  const writeCache = async value => {
+    await mkdir(join(userData, 'desktop'), { recursive: true })
+    await writeFile(cachePath, value)
+  }
   const ipcMain = new EventEmitter(), handlers = new Map()
   ipcMain.handle = (name, fn) => handlers.set(name, fn)
-  const app = { getName: () => 'EduWork', getPreferredSystemLanguages: () => ['zh-CN'], getPath: () => '/unused' }
+  const app = { getName: () => 'EduWork', getPreferredSystemLanguages: () => ['zh-CN'], getPath: () => userData }
   const window = {
     isDestroyed: () => false,
     webContents: { send() {}, executeJavaScript: () => Promise.resolve(), mainFrame: {} },
@@ -856,23 +863,44 @@ test('native desktop bridge ignores document language before Host locale bootstr
   mock('desktop-menu.mjs', { desktopEditMenu: () => ({ label: 'Edit', submenu: [] }), desktopViewMenu: () => ({ label: 'View', submenu: [] }), setDesktopApplicationMenu() {} })
   mock('sidebar-browser.mjs', { SIDEBAR_BROWSER_IPC: { bind: 'bind', opened: 'opened' } })
   mock('update-observer.mjs', { watchUpdateDocument: () => ({ bind() {}, release() {}, dispose() {} }) })
-  let preference = null
+  let preference = null, hostUnavailable = false
   const { installNativeDesktopBridge } = await import(new URL('native-desktop-bridge.mjs?locale', source))
-  const bridge = installNativeDesktopBridge({
+  const install = () => installNativeDesktopBridge({
     getHost: () => ({ readLocalePreference: async () => preference, boot() {}, fetch: async () => new Response('', { status: 404 }),
       socketHeaders: () => ({}), resolveDragResource() {} }),
-    waitForHost: async () => {}, getWindow: () => window, reportFatal() {}, onBootFailure() {}, checkUpdates() {},
+    waitForHost: async () => { if (hostUnavailable) throw new Error('synthetic Host unavailable') },
+    getWindow: () => window, reportFatal() {}, onBootFailure() {}, checkUpdates() {},
     updates: undefined, pickDirectory() {}, bootBrand: () => '', sidebarBrowser: { bind() {}, opened() {}, close() {} },
   })
   const event = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
-  assert.equal(bridge.locale().id, 'zh-CN')
+  let bridge = install()
+  assert.equal(bridge.locale().id, 'zh-CN', 'a missing cache uses the system language')
   ipcMain.emit('windowsAppearance', event, 'en', '#ffffff', '#000000')
   assert.equal(bridge.locale().id, 'zh-CN', 'document language must not override the shell locale before bootstrap')
+  await writeCache('en\n')
+  bridge = install()
+  assert.equal(bridge.locale().id, 'en', 'a cached language wins over the system language')
+  await writeCache('zh\n')
+  bridge = install()
+  assert.equal(bridge.locale().id, 'zh-CN', 'a non-canonical cache entry is ignored')
+  await writeCache('en\n')
+  hostUnavailable = true
+  bridge = install()
+  assert.equal(bridge.locale().id, 'en')
+  await assert.rejects(handlers.get('localeBootstrap')(event), /synthetic Host unavailable/)
+  assert.equal(bridge.locale().id, 'en', 'a Host failure keeps the cached language')
+  assert.equal(await readFile(cachePath, 'utf8'), 'en\n')
+  hostUnavailable = false
   preference = 'en'
+  await rm(cachePath)
+  bridge = install()
+  assert.equal(bridge.locale().id, 'zh-CN')
   await handlers.get('localeBootstrap')(event)
   assert.equal(bridge.locale().id, 'en')
+  assert.equal(await readFile(cachePath, 'utf8'), 'en\n', 'the Host-confirmed language becomes the next startup cache')
   ipcMain.emit('localeChanged', event, 'zh')
   assert.equal(bridge.locale().id, 'zh-CN')
+  assert.equal(await readFile(cachePath, 'utf8'), 'zh-CN\n')
 })
 
 test('native startup diagnostics keep wrapped reasons and drop private input and Host addresses', { skip: !source }, async () => {

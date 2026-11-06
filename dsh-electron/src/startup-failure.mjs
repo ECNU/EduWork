@@ -19,48 +19,50 @@ export function startupDiagnostic(error, redact = value => value) {
     const text = typeof value === 'string' ? value : value instanceof Error ? value.message : String(value ?? '')
     return redact(scrubDiagnosticText(text)).slice(0, MAX_DIAGNOSTIC_MESSAGE)
   }
-  // A cause may itself be an AggregateError; expand its concrete errors because
-  // only the top-level aggregate is represented as a structured AggregateError.
-  const append = (parts, text) => {
-    // Scrub the whole reason before splitting: JSON input excerpts can span lines.
-    for (const line of message(text).split('\n')) {
-      if (line && !parts.some(part => part.includes(line))) parts.push(line)
-    }
+  // Keep each error's message as one block. A wrapper often repeats its cause
+  // verbatim; only drop a block already covered by the wrapper text, so two
+  // components that both report EPERM keep their own context and line order.
+  const appendBlock = (parts, text) => {
+    const block = message(text)
+    if (block && !parts.some(part => part.includes(block))) parts.push(block)
     return parts
   }
-  const reason = (value, depth = 0, seen = new Set()) => {
-    if (depth > 6) return '[诊断信息层级过深，已省略]'
+  const merge = (parts, value, depth, seen) => {
+    if (depth > 6) { appendBlock(parts, '[诊断信息层级过深，已省略]'); return }
+    if (value === undefined || value === null) return
     if (value instanceof AggregateError) {
-      if (seen.has(value)) return '[重复的诊断信息，已省略]'
+      if (seen.has(value)) { appendBlock(parts, '[重复的诊断信息，已省略]'); return }
       seen.add(value)
-      const parts = []
-      append(parts, value.message)
-      for (const item of value.errors.slice(0, 8)) append(parts, reason(item, depth + 1, seen))
-      return parts.join('\n')
+      appendBlock(parts, value.message)
+      // Children are distinct failures. Skip one only when the wrapper or the
+      // aggregate message already contains its whole block, not when an earlier
+      // sibling happens to share a line such as the same error code.
+      const wrapper = parts.slice()
+      for (const item of value.errors.slice(0, 8)) {
+        const child = []
+        merge(child, item, depth + 1, seen)
+        for (const block of child) if (!wrapper.some(part => part.includes(block))) parts.push(block)
+      }
+      return
     }
     if (value instanceof Error) {
-      if (seen.has(value)) return '[重复的诊断信息，已省略]'
+      if (seen.has(value)) { appendBlock(parts, '[重复的诊断信息，已省略]'); return }
       seen.add(value)
-      const parts = []
-      append(parts, value.message)
-      if (value.cause !== undefined) append(parts, reason(value.cause, depth + 1, seen))
-      return parts.join('\n')
+      appendBlock(parts, value.message)
+      if (value.cause !== undefined) merge(parts, value.cause, depth + 1, seen)
+      return
     }
-    return String(value ?? '')
+    appendBlock(parts, String(value ?? ''))
   }
   const chain = value => {
     const parts = [], seen = new Set()
-    let current = value, depth = 0, first = true
-    while (current !== undefined && current !== null && depth < 6 && !seen.has(current)) {
-      seen.add(current)
+    if (value instanceof AggregateError) {
       // The top-level aggregate keeps its children in the structured errors;
-      // an aggregate appearing as a cause has no such representation, so expand it.
-      append(parts, first && value instanceof AggregateError ? value.message : reason(current))
-      if (!(current instanceof Error) || current.cause === undefined) break
-      current = current.cause
-      depth++
-      first = false
-    }
+      // its message carries only the aggregate reason and its cause chain.
+      seen.add(value)
+      appendBlock(parts, value.message)
+      if (value.cause !== undefined) merge(parts, value.cause, 1, seen)
+    } else merge(parts, value, 0, seen)
     return parts.join('\n')
   }
   const copy = (safe, source) => {
