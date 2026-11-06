@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T17:47:44.664Z",
-  "fileSetSHA256": "ac8aba414ba3cc48ebd407ad62d5f9c708642f2df0a24a22f6b3ef038baebd13",
+  "createdAt": "2026-11-06T18:03:24.013Z",
+  "fileSetSHA256": "b60a8401961a2223da0d6acdd3c0bccb7d9d6066a3a7c76c060dfd1b1779f06a",
   "files": [
     {
       "path": ".gitattributes",
@@ -185,7 +185,7 @@
     },
     {
       "path": "config/desktop/eduwork.jsonc",
-      "sha256": "817b2b24f0085c8f044265b603b710211371006a484f9b8e9ca32e0f908d9c51"
+      "sha256": "7c1dbf13165c470e5b449dea3c1c8e7c6e359fa18edc989983bd2074706953b4"
     },
     {
       "path": "config/desktop/examples/litellm.jsonc",
