@@ -58,6 +58,9 @@ type Snapshot struct {
 	InstallOnNextStart bool   `json:"installOnNextStart"`
 	RelaunchedVersion  string `json:"relaunchedVersion,omitempty"`
 	Error              string `json:"error,omitempty"`
+	// FailedOperation is set only when the snapshot is an error with a provable
+	// origin: check, download, or install/apply. Display code never guesses it.
+	FailedOperation string `json:"failedOperation,omitempty"`
 }
 
 type preferences struct {
@@ -75,6 +78,7 @@ type Manager struct {
 	download           updater.DownloadStatus
 	state              string
 	lastErr            string
+	failedOperation    string
 	installOnNextStart bool
 	relaunchedVersion  string
 }
@@ -137,10 +141,12 @@ func New(config Config) (*Manager, error) {
 		}
 		if pending.State == "error" {
 			manager.lastErr = pending.Error
+			manager.failedOperation = "install"
 		}
 	}
 	if manager.relaunchedVersion != "" && edition.enabled() {
 		manager.state = "installed"
+		manager.failedOperation = ""
 	}
 	return manager, nil
 }
@@ -174,6 +180,7 @@ func (manager *Manager) SetPolicy(policy string) (Snapshot, error) {
 		manager.state = "idle"
 	}
 	manager.lastErr = ""
+	manager.failedOperation = ""
 	return manager.snapshotLocked(), nil
 }
 
@@ -193,6 +200,7 @@ func (manager *Manager) Check(ctx context.Context) (Snapshot, error) {
 	policy := manager.policy
 	manager.state = "checking"
 	manager.lastErr = ""
+	manager.failedOperation = ""
 	manager.mu.Unlock()
 	channels := []string{"stable"}
 	if policy == "development" {
@@ -217,10 +225,12 @@ func (manager *Manager) Check(ctx context.Context) (Snapshot, error) {
 	if err != nil {
 		manager.state = "error"
 		manager.lastErr = err.Error()
+		manager.failedOperation = "check"
 		return manager.snapshotLocked(), err
 	}
 	manager.status = status
 	manager.state = status.State
+	manager.failedOperation = ""
 	return manager.snapshotLocked(), nil
 }
 
@@ -233,6 +243,7 @@ func (manager *Manager) Download(ctx context.Context) (Snapshot, error) {
 	}
 	manager.state = "downloading"
 	manager.lastErr = ""
+	manager.failedOperation = ""
 	manager.download = updater.DownloadStatus{State: "downloading", Version: status.LatestVersion, TotalBytes: status.Artifact.Bytes, FileName: status.Artifact.FileName}
 	manager.mu.Unlock()
 	result, err := updater.Download(ctx, updater.DownloadConfig{
@@ -259,11 +270,13 @@ func (manager *Manager) Download(ctx context.Context) (Snapshot, error) {
 	if err != nil {
 		manager.state = "error"
 		manager.lastErr = err.Error()
+		manager.failedOperation = "download"
 		return manager.snapshotLocked(), err
 	}
 	manager.download = result
 	manager.state = "ready"
 	manager.installOnNextStart = false
+	manager.failedOperation = ""
 	return manager.snapshotLocked(), nil
 }
 
@@ -351,6 +364,7 @@ func (manager *Manager) snapshotLocked() Snapshot {
 		FileName: manager.download.FileName, DownloadedBytes: manager.download.DownloadedBytes,
 		TotalBytes: manager.download.TotalBytes, DownloadStage: stage, CheckedFiles: manager.download.CheckedFiles, TotalFiles: manager.download.TotalFiles,
 		InstallOnNextStart: manager.installOnNextStart, RelaunchedVersion: manager.relaunchedVersion, Error: manager.lastErr,
+		FailedOperation: manager.failedOperation,
 	}
 }
 

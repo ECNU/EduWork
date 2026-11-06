@@ -1,5 +1,10 @@
 # 变更日志
 
+## 0.2.4 — Unreleased
+
+- 兼容声明接纳已验证的 DSH 0.2.2-rc.1 与 Cordis 4.1；保留原有功能、配置及受支持的旧宿主范围。
+- Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+
 **简体中文** | [English](CHANGELOG.en.md)
 
 ## 0.2.3 — 2026-10-25

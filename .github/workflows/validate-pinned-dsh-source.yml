@@ -24,6 +24,7 @@ on:
       - 'dsh-host/native-resources.mjs'
       - 'dsh-host/test/native-resources*.mjs'
       - 'dsh-host/test/native-settings.test.mjs'
+      - 'dsh-host/test/optional-extensions.test.mjs'
       - 'dsh-host/test/redacted-log.test.mjs'
       - 'scripts/probe-pinned-dsh-host.mjs'
       - 'scripts/probe-pinned-dsh-settings.mjs'
@@ -36,6 +37,7 @@ on:
       - 'scripts/assemble-pinned-dsh-source-product.mjs'
       - 'scripts/optional-product-bundles.mjs'
       - 'scripts/test/optional-product-bundles.test.mjs'
+      - 'scripts/test/optional-extensions.test.mjs'
       - 'scripts/published-package-inputs.mjs'
       - 'scripts/test/published-package-inputs.test.mjs'
       - 'scripts/prepare-pinned-dsh-product.mjs'
@@ -73,6 +75,7 @@ on:
       - 'dsh-electron/upstream-inputs-pinned-source.json'
       - 'dsh-plugins/**'
       - 'packages/**'
+      - 'tests/plugin-peer-compatibility.test.mjs'
   workflow_dispatch:
   workflow_call:
 permissions:
@@ -139,7 +142,7 @@ jobs:
       - name: Verify migration recovery and prepare the pinned Runtime
         shell: pwsh
         run: |
-          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
+          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/optional-extensions.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
           node --test core/dsh-host/test/native-021.test.mjs core/dsh-host/test/dsh-compatibility.test.mjs core/scripts/test/npm-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Pinned Runtime and Schedule migration checks failed' }
@@ -161,16 +164,20 @@ jobs:
           node core/scripts/probe-dsh-017.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/session-migration-evidence"
           if ($LASTEXITCODE) { throw 'Historical session migration checks failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/tests/plugin-peer-compatibility.test.mjs
+          if ($LASTEXITCODE) { throw 'Plugin Host peer ranges reject the selected Runtime' }
           node --test core/dsh-plugins/desktop-services/test/attention-host.test.mjs core/dsh-plugins/workbench-native/test/notifications-navigation.test.mjs
           if ($LASTEXITCODE) { throw 'Agent and plugin notification integration checks failed' }
           node --test core/tests/node-runtime-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Node security pin and official web-fetch checks failed' }
-          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs core/scripts/test/optional-product-bundles.test.mjs
+          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs core/scripts/test/optional-product-bundles.test.mjs core/scripts/test/optional-extensions.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
           if ($LASTEXITCODE) { throw 'Windows workspace permission repair checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
+          node --test core/dsh-plugins/browser-upstream/test/sidebar.test.mjs
+          if ($LASTEXITCODE) { throw 'Sidebar browser launch checks failed' }
           npm --prefix core/dsh-plugins/calendar test
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
@@ -246,6 +253,8 @@ jobs:
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/dsh-electron/tests/automation-browser.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop executable as the automation browser failed' }
+          node --test core/dsh-electron/tests/sidebar-browser.test.mjs
+          if ($LASTEXITCODE) { throw 'Agent Sidebar browser checks failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |

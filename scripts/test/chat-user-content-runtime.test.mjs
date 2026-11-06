@@ -21,6 +21,7 @@ test('Chat adapter preserves npm input, records exact output and refuses changed
   await writeFile(manifest, await readFile(join(originalRoot, 'package.json')))
   await writeFile(target, original)
   const receipt = await patchChatUserContentRuntime(modules), patched = await readFile(target)
+  assert.equal(receipt.beforeSHA256, createHash('sha256').update(original).digest('hex'))
   assert.equal(receipt.afterSHA256, createHash('sha256').update(patched).digest('hex'))
   assert.deepEqual(await readFile(join(originalRoot, chatUserContentPatch.file)), original)
   await assert.rejects(patchChatUserContentRuntime(modules), /Chat user content changed/)

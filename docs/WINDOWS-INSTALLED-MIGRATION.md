@@ -1,6 +1,6 @@
 # Windows installed 数据布局：手动导入与恢复
 
-本文适用于开发实验构建，不是正式安装器或发布说明。installed 布局仍使用 `sourceSnapshotVerified=false` 的实验包，不能作为发布候选。当前没有标准安装器、旧 ZIP 更新桥接、开始菜单/注册表登记或真实卸载器；这些能力在后续 D/E 阶段单独交付。
+本文适用于 Windows 开发实验构建。installed 布局仅允许开发版本，软件更新后端停用。开发工作流中的 installed 包跳过冻结源码快照校验，仅用于隔离测试，不能作为发行候选。当前没有标准安装器、旧 ZIP 更新桥接、开始菜单/注册表登记或真实卸载器；这些能力后续单独交付。
 
 ## 目录
 
@@ -30,6 +30,7 @@ P 里的 `resources/`、`RELEASE-MANIFEST.json` 和 `config/` 只作为程序资
 3. 先备份旧便携目录。迁移会移动旧程序目录，且不会自动把已经写入 W 的新数据回滚。
 4. 旧程序中的内部工作区（例如 `P\workspace-internal`）目前会被安全拒绝；外部工作区路径按原样保留。
 5. 目标 W 必须是新目录或空目录，并且必须等于客户端普通启动读取的默认 W（`%LOCALAPPDATA%\EduWork\<distribution>`）。已有用户数据的 W 不会被覆盖或合并；默认 W 冲突时停止并人工处理，不能改用一个客户端不会读取的目录继续导入。隔离实验若使用自定义 W，客户端测试必须同时设置 `EDUWORK_DESKTOP_TEST_DATA_ROOT`；这只是测试覆盖变量，不是用户配置。
+6. 来源与目标必须属于同一产品和发行身份，EduWork 基础版本（去掉 `-` 及其后的版本后缀）相同，DSH 版本及提交完全相同。基础版本或内核不同会在移动来源前拒绝；不要修改身份文件绕过检查。
 
 ## 手动导入
 
@@ -72,7 +73,7 @@ node dsh-electron/scripts/migrate-portable-to-installed.mjs `
 
 ## 当前边界
 
-- 仅验证官方 0.4.9 便携源到开发 installed 包的跨构建迁移；不是同版本安装包之间的升级。普通 installed 启动固定读取默认 W；自定义 W 只用于隔离测试（`EDUWORK_DESKTOP_TEST_DATA_ROOT`）。
+- 仅支持相同产品基础版本和 DSH 基线的便携源到开发 installed 包导入，不提供跨版本升级。普通 installed 启动固定读取默认 W；自定义 W 只用于隔离测试（`EDUWORK_DESKTOP_TEST_DATA_ROOT`）。
 - 外部工作区路径保留；内部工作区迁出和引用重写未实现。
 - 真实 Host 的 OS 级退出超时/挂起、完整旧 UI 从 handoff 路径重启未验收；已用同 runtime Host 和原路径启动失败做替代场景。
 - 标准安装器、旧 ZIP 更新桥接、真实卸载器/快捷方式/注册表、Toast 未实现；当前只有命令行手动导入。

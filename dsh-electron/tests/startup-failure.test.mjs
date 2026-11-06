@@ -111,6 +111,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = fals
       importOffline: () => { events.push('import'); return wait('import') } },
     retryPublisherContent: () => wait('retry'),
     migrationLaunch: undefined, writeMigrationHealth: async () => {}, startupFailurePage,
+    productUpdateObserver: { dispose() { events.push('observer-dispose') } },
     removeWindowMenu() {}, attachWindowVisibility() {}, tray: undefined, mainWindow: undefined,
     mainWindowPresented: false, startupMessage: '', nativeTheme: { shouldUseDarkColors: true },
     dialog: { showOpenDialog: () => wait('selection', { canceled: false, filePaths: ['/synthetic/offline.json'] }),

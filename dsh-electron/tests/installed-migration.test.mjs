@@ -31,19 +31,19 @@ async function fixture(t) {
   const external = join(base, 'external-workspace')
   const namespace = 'example-electron'
   const sourceDesktop = { schemaVersion: 1, shell: 'electron', appId: 'org.eduwork.example.electron',
-    distribution: 'example', productVersion: '0.4.9', product: '../product', node: '../runtime/node.exe', configurationOwnership: 'user' }
-  const targetDesktop = { ...sourceDesktop, productVersion: '0.4.9-dev.20261026.2', dataLayout: 'installed' }
-  const sourceRelease = { version: '0.4.9', dshVersion: '0.2.1-rc.3', dshCommit }
-  const targetRelease = { ...sourceRelease, version: '0.4.9-dev.20261026.2' }
+    distribution: 'example', productVersion: '0.4.12', product: '../product', node: '../runtime/node.exe', configurationOwnership: 'user' }
+  const targetDesktop = { ...sourceDesktop, productVersion: '0.4.12-dev.20261106.1', dataLayout: 'installed' }
+  const sourceRelease = { version: '0.4.12', dshVersion: '0.2.2-rc.1', dshCommit }
+  const targetRelease = { ...sourceRelease, version: '0.4.12-dev.20261106.1' }
   const manifest = version => ({ schemaVersion: 1, kind: 'eduwork-portable-release', version,
     distribution: 'example', shell: 'electron', platform: 'windows-x64',
     files: [{ path: 'resources/app/eduwork.desktop.json' }, { path: 'config/eduwork.jsonc' }] })
   await writeJSON(join(source, 'resources/app/eduwork.desktop.json'), sourceDesktop)
   await writeJSON(join(source, 'release.json'), sourceRelease)
-  await writeJSON(join(source, 'RELEASE-MANIFEST.json'), manifest('0.4.9'))
+  await writeJSON(join(source, 'RELEASE-MANIFEST.json'), manifest('0.4.12'))
   await writeJSON(join(target, 'resources/app/eduwork.desktop.json'), targetDesktop)
   await writeJSON(join(target, 'release.json'), targetRelease)
-  await writeJSON(join(target, 'RELEASE-MANIFEST.json'), manifest('0.4.9-dev.20261026.2'))
+  await writeJSON(join(target, 'RELEASE-MANIFEST.json'), manifest('0.4.12-dev.20261106.1'))
   await mkdir(join(source, 'config/examples'), { recursive: true })
   await writeFile(join(source, 'config/eduwork.jsonc'), '{"desktop":{"closeAction":"exit","detailsPanelWidth":480}}\n')
   await writeFile(join(source, 'config/examples/README.md'), 'example\n')
@@ -159,7 +159,7 @@ test('migrates the selected portable data into an activated installed writable r
   assert.equal(await missing(f.source), true)
   const marker = JSON.parse(await readFile(join(f.writable, '.eduwork-writable-root.json'), 'utf8'))
   assert.deepEqual(marker, { schemaVersion: 1, layout: 'installed', distribution: 'example',
-    productVersion: '0.4.9-dev.20261026.2', createdAt: now() })
+    productVersion: '0.4.12-dev.20261106.1', createdAt: now() })
   const receipt = JSON.parse(await readFile(join(f.writable, '.eduwork-migration-receipt.json'), 'utf8'))
   assert.equal(receipt.state, 'activated')
   assert.equal(receipt.source.root, f.source)
@@ -568,7 +568,7 @@ test('keeps the W mutex identity stable when a junction parent is created', { sk
   assert.equal(existsSync(f.source + '.handoff.json'), true)
 
   await assert.rejects(prepareWritableRoot({
-    root: f.writable, distribution: 'example', product, productVersion: '0.4.9', now,
+    root: f.writable, distribution: 'example', product, productVersion: '0.4.12', now,
   }), /Another process is initializing the writable root/)
   assert.equal(existsSync(f.writable), false)
 
@@ -729,6 +729,24 @@ test('refuses identity mismatches and a source vault without Local State', async
   assert.equal(await missing(f2.writable), true)
 })
 
+test('refuses a different product baseline or DSH commit before moving source data', async t => {
+  for (const change of [{ version: '0.4.9' }, { dshCommit: '2'.repeat(40) }]) {
+    const f = await fixture(t)
+    for (const path of ['resources/app/eduwork.desktop.json', 'release.json', 'RELEASE-MANIFEST.json']) {
+      const file = join(f.source, path)
+      const value = JSON.parse(await readFile(file, 'utf8'))
+      if (change.version) value[path.endsWith('eduwork.desktop.json') ? 'productVersion' : 'version'] = change.version
+      if (change.dshCommit && path === 'release.json') value.dshCommit = change.dshCommit
+      await writeJSON(file, value)
+    }
+    await assert.rejects(migratePortableToInstalled(options(f)), change.version ? /product baselines differ/ : /DSH versions differ/)
+    assert.equal(await missing(f.source), false)
+    assert.equal(await missing(f.writable), true)
+    assert.equal(existsSync(f.source + '.handoff.json'), false)
+    assert.equal(await readFile(join(f.source, 'config/eduwork.jsonc'), 'utf8'), '{"desktop":{"closeAction":"exit","detailsPanelWidth":480}}\n')
+  }
+})
+
 test('refuses when the target volume lacks free space', async t => {
   const f = await fixture(t)
   const dry = await migratePortableToInstalled(options(f, {
@@ -789,8 +807,8 @@ test('creates a missing writable root parent and checks the nearest existing vol
 
 test('refuses a non-empty update transaction directory', async t => {
   const f = await fixture(t)
-  await mkdir(join(f.source, 'data/state/updates/transactions/0.4.9'), { recursive: true })
-  await writeFile(join(f.source, 'data/state/updates/transactions/0.4.9/backup'), 'backup\n')
+  await mkdir(join(f.source, 'data/state/updates/transactions/0.4.12'), { recursive: true })
+  await writeFile(join(f.source, 'data/state/updates/transactions/0.4.12/backup'), 'backup\n')
   await assert.rejects(migratePortableToInstalled(options(f)), /unfinished update transaction/)
   assert.equal(await missing(f.writable), true)
 })
@@ -830,7 +848,7 @@ test('rechecks old processes before activation', async t => {
 
 test('refuses missing or contradictory identity fields and manifests', async t => {
   const f1 = await fixture(t)
-  await writeJSON(join(f1.source, 'release.json'), { version: '0.4.9', dshVersion: '', dshCommit })
+  await writeJSON(join(f1.source, 'release.json'), { version: '0.4.12', dshVersion: '', dshCommit })
   await assert.rejects(migratePortableToInstalled(options(f1)), /DSH identity is missing/)
 
   const f2 = await fixture(t)
@@ -838,7 +856,7 @@ test('refuses missing or contradictory identity fields and manifests', async t =
   await assert.rejects(migratePortableToInstalled(options(f2)), /appId/)
 
   const f3 = await fixture(t)
-  await writeJSON(join(f3.source, 'release.json'), { version: '0.4.8', dshVersion: '0.2.1-rc.3', dshCommit })
+  await writeJSON(join(f3.source, 'release.json'), { version: '0.4.8', dshVersion: '0.2.2-rc.1', dshCommit })
   await assert.rejects(migratePortableToInstalled(options(f3)), /desktop and release versions differ/)
 
   const f4 = await fixture(t)

@@ -25,12 +25,12 @@ test('a non-bundled remote plugin remains user-installable and preserves activat
   }
 })
 
-for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
+for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision'])
 for (const existing of [false, true]) test(`optional npm bundle ${bundle} is provisioned once and stays disabled after restart (existing=${existing})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-bundle-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
   const path = join(profile, 'package.json')
-  const preferences = JSON.stringify([{ id: bundle === '@eduwork/dsh-annotation' ? 'eduwork-annotation' : 'eduwork-remote-access', disabled: true }])
+  const preferences = JSON.stringify([{ id: bundle.replace('@eduwork/dsh-', 'eduwork-'), disabled: true }])
   if (existing) {
     await writeFile(path, JSON.stringify({ dependencies: { 'synthetic-addon': '1.0.0' }, dsh: { profile: { bundles: ['synthetic-addon'] } }, eduwork: { unrelated: true } }))
     await writeFile(join(profile, 'cordis.patch.yml'), preferences)
@@ -53,7 +53,7 @@ for (const existing of [false, true]) test(`optional npm bundle ${bundle} is pro
   assert.ok(!JSON.parse(await readFile(path, 'utf8')).dsh.profile.bundles.includes(bundle))
 })
 
-for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'])
+for (const bundle of ['@eduwork/dsh-annotation', '@eduwork/dsh-side-chat', '@eduwork/dsh-remote-access', '@eduwork/dsh-decision'])
 for (const enabled of [false, true]) test(`a prior manual ${bundle} install retains its activation (enabled=${enabled})`, async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-manual-bundle-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
@@ -65,6 +65,35 @@ for (const enabled of [false, true]) test(`a prior manual ${bundle} install reta
   const saved = JSON.parse(await readFile(path, 'utf8'))
   assert.equal(saved.dsh.profile.bundles.filter(value => value === bundle).length, enabled ? 1 : 0)
   assert.equal(saved.dependencies[bundle], '0.1.0')
+})
+
+for (const previous of ['fresh', 'existing-profile', 'enabled', 'disabled']) test(`opt-in bundle respects its native selection (${previous})`, async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-opt-in-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const file = join(profile, 'package.json'), bundle = '@example/opt-in'
+  if (previous !== 'fresh') await writeFile(file, JSON.stringify({
+    dependencies: previous === 'existing-profile' ? {} : { [bundle]: '0.1.0' },
+    dsh: { profile: { bundles: previous === 'enabled' ? [bundle] : [] } },
+  }))
+  const options = { profile, bundles: ['synthetic-core', bundle], optionalBundles: [bundle], disabledByDefaultBundles: [bundle], patches: [] }
+  await writeNativeProfile(options); await writeNativeProfile(options)
+  let saved = JSON.parse(await readFile(file, 'utf8'))
+  assert.equal(saved.dsh.profile.bundles.includes(bundle), previous === 'enabled')
+  assert.ok(saved.eduwork.optionalBundles.includes(bundle))
+  for (const enabled of [true, false]) {
+    saved.dsh.profile.bundles = saved.dsh.profile.bundles.filter(name => name !== bundle)
+    if (enabled) saved.dsh.profile.bundles.push(bundle)
+    await writeFile(file, JSON.stringify(saved))
+    await writeNativeProfile(options); await writeNativeProfile(options)
+    saved = JSON.parse(await readFile(file, 'utf8'))
+    assert.equal(saved.dsh.profile.bundles.includes(bundle), enabled)
+  }
+})
+
+test('a default-disabled policy cannot silently disable a core or missing bundle', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-opt-in-invalid-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  await assert.rejects(writeNativeProfile({ profile, bundles: ['core'], optionalBundles: [], disabledByDefaultBundles: ['core'], patches: [] }), /must be optional/)
 })
 
 test('literature fork migrates the bundle without losing source preferences or disabled tools', async t => {

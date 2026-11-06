@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-artifact-services",
-  "version": "0.3.1",
+  "version": "0.3.3",
   "type": "module",
   "description": "Shared Office, speech and media services for applications and DSH tools",
   "license": "MulanPSL-2.0 AND MIT",
@@ -10,6 +10,7 @@
     "./office": "./lib/office.js",
     "./official-office": "./lib/official-office.js",
     "./office-tools": "./lib/office-tools.js",
+    "./tool-execution": "./lib/tool-execution.js",
     "./speech": "./lib/speech.js",
     "./images": "./lib/images.js",
     "./image-tools": "./lib/image-tools.js",
@@ -66,9 +67,9 @@
     "react-dom": "18.3.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
-    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0"
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0 || 4.1.0",
+    "@deepseek-ai/dsh-skill": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/dsh-skill": {

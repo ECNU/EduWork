@@ -1,4 +1,4 @@
-// Presentation-only adaptation of the pinned rc.2 conversation derivative.
+// Presentation-only adaptation of the pinned 0.2.2 conversation derivative.
 // Keep Lexical identity, clipboard text, references, permissions and send paths.
 // Each anchor must be unique; a changed upstream bundle must be reviewed.
 import { Script } from 'node:vm'
@@ -19,7 +19,9 @@ export function adaptNativeFileReferenceUI(source) {
   replace('this.__clipboardText = insert.clipboardText;', 'this.__clipboardText = insert.clipboardText;\nthis.__fileBytes = Number.isSafeInteger(insert.fileBytes) && insert.fileBytes >= 0 ? insert.fileBytes : void 0;')
   replace('clipboardText: this.__clipboardText,', 'fileBytes: this.__fileBytes,\nclipboardText: this.__clipboardText,')
   replace('clipboardText: chip.getTextContent(),', 'fileBytes: chip.getLatest().__fileBytes,\nclipboardText: chip.getTextContent(),')
-  replace('clipboardText: occurrence.clipboardText', 'fileBytes: occurrence.fileBytes,\nclipboardText: occurrence.clipboardText')
+  // rc.1 restores references and native quotes through separate span branches.
+  // Add size only when recreating a reference chip, never to quote payloads.
+  replace('clipboardText: reference.clipboardText\n', 'fileBytes: reference.fileBytes,\nclipboardText: reference.clipboardText\n')
   // Upstream 0.2.1 merges reference-decoration rescans into Lexical history.
   // Keep that implementation instead of carrying our previous backport.
   replace('decorate() {\n\t\t\t\treturn (0, react_jsx_runtime.jsx)(ReferenceChip, {', `decorate(editor) {

@@ -1,0 +1,87 @@
+{
+  "name": "@eduwork/dsh-external-agents",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Optional external-agent connection settings using official DSH providers",
+  "license": "MulanPSL-2.0",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./typert": "./lib/typert.js",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README_EN.md",
+    "DEVELOPMENT.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --test test/*.test.mjs",
+    "check": "npm run build && npm test"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-api-remotes"
+      ]
+    }
+  },
+  "dependencies": {
+    "@agentclientprotocol/sdk": "1.4.0"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-subagent-codex": ">=0.2.1-rc.5 <0.2.2-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-subagent-acp": ">=0.2.1-rc.5 <0.2.2-0 || 0.2.2-rc.1",
+    "zod": "^4.0.0",
+    "react": "^18.2.0",
+    "@deepseek-ai/dsh-tool-subagent": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1"
+  },
+  "devDependencies": {
+    "@deepseek-ai/dsh-subagent-codex": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-subagent-acp": "0.2.1-rc.5",
+    "esbuild": "0.28.1",
+    "@deepseek-ai/dsh-subprocess-local": "0.2.1-rc.5",
+    "@deepseek-ai/cordis": "4.0.5",
+    "@deepseek-ai/dsh-storage": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-storage-json": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-subagent": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-session-projection": "0.2.1-rc.5",
+    "zod": "4.6.7",
+    "react": "18.3.1",
+    "@deepseek-ai/dsh-tool-subagent": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-storage-domain": "0.2.1-rc.5",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.5"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ECNU/EduWork.git",
+    "directory": "packages/dsh-external-agents"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "engines": {
+    "node": ">=24.22.1"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "@deepseek-ai/dsh-subprocess-local@0.2.1-rc.5": true,
+    "koffi@3.1.1": true,
+    "node-pty@1.2.0-beta.15": true
+  }
+}

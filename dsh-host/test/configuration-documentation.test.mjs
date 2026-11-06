@@ -11,6 +11,21 @@ import { DEFAULTS as mailDefaults } from '../../packages/dsh-mail/src/host/const
 import { DEFAULT_SETTINGS as memoryDefaults } from '../../packages/dsh-memory/src/host/core.js'
 import { pluginConfigurationFields, managedPluginConfiguration } from '../configuration-plugin-options.mjs'
 
+test('edition decision defaults require the installed bundle and preserve local choices', () => {
+  const fields = {
+    'plugins.decision.enabled': ['Enable a configured decision service', true, true],
+    'plugins.decision.baseURL': ['Institution model endpoint', 'https://models.example.test/v1', true],
+    'plugins.decision.model': ['Decision model', 'decision-test', true],
+  }
+  assert.deepEqual(pluginConfigurationDefaults([], fields, []), {})
+  const plugins = pluginConfigurationDefaults([], fields, ['@eduwork/dsh-decision'])
+  assert.deepEqual(plugins.decision, { enabled: true, baseURL: 'https://models.example.test/v1', model: 'decision-test' })
+  const value = explicitConfigurationDefaults({ plugins: { decision: { enabled: false, model: 'personal-model' } } }, { plugins })
+  assert.equal(value.plugins.decision.enabled, false)
+  assert.equal(value.plugins.decision.model, 'personal-model')
+  assert.equal(value.plugins.decision.baseURL, 'https://models.example.test/v1')
+})
+
 test('mail and memory defaults are covered and equal to the packages, not invented examples', () => {
   for (const [id, expected] of [['dsh-mail-assistant', mailDefaults], ['local-memory', memoryDefaults]]) {
     for (const [key, value] of Object.entries(expected)) {

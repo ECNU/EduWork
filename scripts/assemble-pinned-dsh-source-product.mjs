@@ -11,7 +11,6 @@ import { verifyMediaTemplate } from './verify-media-template.mjs'
 import { copySourceSkills } from './copy-source-skills.mjs'
 import { loadDistributionBundleLayers, mergeDistributionConfigPatches } from './distribution-config-patches.mjs'
 import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
-import { patchSettingsNavigationRuntime } from './patch-settings-navigation-runtime.mjs'
 import { patchChatUserContentRuntime } from './patch-chat-user-content-runtime.mjs'
 import { patchClientModuleMetadataRuntime } from './patch-client-module-metadata-runtime.mjs'
 import { patchEntryCustomizationRuntime } from './patch-entry-customization-runtime.mjs'
@@ -20,7 +19,7 @@ import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
 import { readPublishedPackageLocks, verifyPublishedPackageInputs, publishedPackageFiles, verifyPublishedPackageFiles } from './published-package-inputs.mjs'
 import { pinnedDshDirectory, verifyPinnedDshReceipt } from './pinned-dsh-contract.mjs'
-import { selectOptionalProductBundles } from './optional-product-bundles.mjs'
+import { selectOptionalProductBundles, productOptionalBundlePolicy } from './optional-product-bundles.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['runtime', 'source', 'dependencies', 'host', 'output', 'edition'].map(key => [key, { type: 'string' }])) })
 if (['runtime', 'source', 'dependencies', 'host', 'output'].some(key => !values[key])) throw new Error('Use --runtime --source --dependencies --host --output with separate qualification directories')
@@ -39,8 +38,9 @@ const allPublishedLocks = await readPublishedPackageLocks(pinnedDshDirectory)
 await verifyPublishedPackageInputs({ locks: allPublishedLocks, dependencies: paths.dependencies, runtime: paths.runtime })
 const pluginInstallLock = await readFile(join(paths.dependencies, 'package-lock.json'))
 const edition = paths.edition ? await json(join(paths.edition, 'edition/distribution.json')) : {}
-const { locks: publishedLocks, optionalBundles, excludedOptionalBundles } = selectOptionalProductBundles({
-  locks: allPublishedLocks, optionalBundles: ['@eduwork/dsh-annotation', '@eduwork/dsh-remote-access'],
+const policy = productOptionalBundlePolicy(allPublishedLocks, { ...distribution.extensionDefaults, ...edition.extensionDefaults })
+const { locks: publishedLocks, optionalBundles, disabledByDefaultBundles, excludedOptionalBundles } = selectOptionalProductBundles({
+  locks: allPublishedLocks, ...policy,
   excluded: edition.excludedOptionalBundles, dependencyLock: JSON.parse(pluginInstallLock),
 })
 const publishedFiles = await publishedPackageFiles(publishedLocks, join(paths.dependencies, 'node_modules'))
@@ -49,7 +49,8 @@ console.log('Copying candidate Runtime into the isolated source product')
 await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
 await writeFile(join(paths.output, 'd/.eduwork-plugin-install-lock.json'), pluginInstallLock)
 const modules = join(paths.output, 'd/node_modules')
-const runtimePatches = [await patchSessionSearchRuntime(modules), await patchSettingsNavigationRuntime(modules), await patchChatUserContentRuntime(modules), await patchClientModuleMetadataRuntime(modules), await patchEntryCustomizationRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
+// Settings navigation icons use the official settings.section.icon Slot since rc.1.
+const runtimePatches = [await patchSessionSearchRuntime(modules), await patchChatUserContentRuntime(modules), await patchClientModuleMetadataRuntime(modules), await patchEntryCustomizationRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
 const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's npm lock. Published plugin bytes must remain unchanged.
@@ -92,7 +93,7 @@ const insert = [
 const exclusions = ['session-log-deepseek', 'deepseek-account', 'account-controller', 'ui-settings-account', 'plugin-package-inventory-deepseek'].map(id => ({ id, disabled: true }))
 // Provision the native settings entry once. The relay connection itself remains
 // off in remote-access's published patch until the user explicitly enables it.
-const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-mail', '@eduwork/dsh-memory', '@eduwork/dsh-literature', ...optionalBundles]
+const bundles = ['@deepseek-ai/dsh-base', '@deepseek-ai/dsh-web-app', '@eduwork/dsh-memory', ...optionalBundles]
 const require = createRequire(join(paths.output, 'd/package.json'))
 const boot = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
 const lowerLayers = await loadDistributionBundleLayers(join(paths.output, 'd'), bundles, boot)
@@ -100,7 +101,7 @@ const composition = [...mergeDistributionConfigPatches([{ insert }], distributio
 const identity = { schemaVersion: 1, kind: 'eduwork-web', version: '0.0.0-dev.pinned.dsh', distribution: distribution.id,
   brand: distribution.brand, capabilities: distribution.capabilities, dshVersion: receipt.dshVersion, dshCommit: receipt.dshCommit,
   runtimeMode: 'npm', runtimePatches, pluginMode: 'npm', published: false,
-  bundles, optionalBundles, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
+  bundles, optionalBundles, disabledByDefaultBundles, ...(excludedOptionalBundles.length ? { excludedOptionalBundles } : {}),
   sourcePackages, externalPackages: publishedLocks, publishedPackageFiles: publishedFiles,
   pluginInstallLockSHA256: createHash('sha256').update(pluginInstallLock).digest('hex'),
   omittedPackages: [], nativeResources: 'not-bundled', mediaTemplate,

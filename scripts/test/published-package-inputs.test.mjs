@@ -3,7 +3,20 @@ import { mkdtemp, mkdir, writeFile, rm, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
-import { verifyPublishedPackageInputs, publishedPackageFiles, verifyPublishedPackageFiles, verifyDependencyOverlay } from '../published-package-inputs.mjs'
+import { readPublishedPackageLocks, verifyPublishedPackageInputs, publishedPackageFiles, verifyPublishedPackageFiles, verifyDependencyOverlay } from '../published-package-inputs.mjs'
+
+test('recipe-declared plugins require matching receipts, including newly added optional bundles', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-package-recipe-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await mkdir(join(root, 'source-probe'))
+  const name = '@eduwork/dsh-side-chat'
+  await writeFile(join(root, 'source-probe/package.json'), JSON.stringify({ dependencies: { [name]: '0.1.0', react: '18.3.1' } }))
+  await assert.rejects(readPublishedPackageLocks(root), { code: 'ENOENT' })
+  await writeFile(join(root, 'side-chat.json'), JSON.stringify({ name: '@eduwork/dsh-annotation' }))
+  await assert.rejects(readPublishedPackageLocks(root), /identity mismatch/)
+  await writeFile(join(root, 'side-chat.json'), JSON.stringify({ name, version: '0.1.0' }))
+  assert.deepEqual(await readPublishedPackageLocks(root), [{ name, version: '0.1.0' }])
+})
 
 async function fixture(t) {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-published-inputs-'))

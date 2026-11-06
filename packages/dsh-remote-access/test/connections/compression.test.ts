@@ -6,6 +6,7 @@ import type { HostAdapter } from '../../src/host/adapter.ts'
 
 const SCRIPT = 'console.log("frontend")\n'.repeat(500)
 const IMMUTABLE = 'public, max-age=31536000, immutable'
+const peer = { dispose: async () => {} }
 
 /** A Host whose pages are this script, a PNG and a missing file; it records how often a script body is read. */
 function host() {
@@ -35,7 +36,7 @@ const get = (path: string, encoding?: string, method = 'GET'): Request =>
 
 test('public text files are gzipped for a client that accepts it; anything else passes unchanged', async () => {
   const { adapter } = host()
-  const zipped = await adapter.page(get('/plugins/live.js', 'gzip'))
+  const zipped = await adapter.page(get('/plugins/live.js', 'gzip'), peer)
   assert.equal(zipped.headers.get('content-encoding'), 'gzip')
   assert.equal(zipped.headers.get('content-type'), 'text/javascript; charset=utf-8')
   const bytes = new Uint8Array(await zipped.arrayBuffer())
@@ -48,18 +49,18 @@ test('public text files are gzipped for a client that accepts it; anything else 
     [get('/plugins/live.js', 'gzip', 'HEAD'), 'not a GET'],
     [get('/icon.png', 'gzip'), 'not text'],
     [get('/missing.js', 'gzip'), 'not a 200'],
-  ] as const) assert.equal((await adapter.page(request)).headers.get('content-encoding'), null, why)
+  ] as const) assert.equal((await adapter.page(request, peer)).headers.get('content-encoding'), null, why)
   const rpc = await adapter.api(new Request('http://host/api/session/list', { method: 'POST', headers: { 'accept-encoding': 'gzip' } }), { dispose: async () => {} })
   assert.equal(rpc.headers.get('content-encoding'), null, 'RPC results are never compressed')
 })
 
 test('a file that never changes at its URL is compressed once', async () => {
   const { adapter, reads } = host()
-  const first = await adapter.page(get('/assets/app-1a2b.js', 'gzip'))
-  const again = await adapter.page(get('/assets/app-1a2b.js', 'gzip'))
+  const first = await adapter.page(get('/assets/app-1a2b.js', 'gzip'), peer)
+  const again = await adapter.page(get('/assets/app-1a2b.js', 'gzip'), peer)
   assert.deepEqual(new Uint8Array(await again.arrayBuffer()), new Uint8Array(await first.arrayBuffer()))
   assert.equal(reads.script, 1, 'the second response came from the kept copy')
-  await adapter.page(get('/plugins/live.js', 'gzip'))
-  await adapter.page(get('/plugins/live.js', 'gzip'))
+  await adapter.page(get('/plugins/live.js', 'gzip'), peer)
+  await adapter.page(get('/plugins/live.js', 'gzip'), peer)
   assert.equal(reads.script, 3, 'a file that may change is compressed each time')
 })

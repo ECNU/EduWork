@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-remote-access",
+  "version": "0.1.4",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "e84f11e2b968311f00a26a071d389351d16c3484",
+  "publicationStatus": "published",
+  "tarballSHA256": "ec152fb66c2c0a9a729e90dba4b59994d051370143a0c12ccb349089a0749bbd",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-remote-access/-/dsh-remote-access-0.1.4.tgz",
+    "integrity": "sha512-Fy5Umt10VeMkLBZs4IfC7OtSvLWrrPf7/ZjXr0BgBYFdzjvQYf1JaR7gUOjMJQL3PUI171x2jbNsOm722lQFQw==",
+    "shasum": "aba421e579b24a5663969820d5395a4410b50fae"
+  }
+}

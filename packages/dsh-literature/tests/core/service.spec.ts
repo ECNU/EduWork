@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { Context } from '@deepseek-ai/cordis'
+import { gzipSync } from 'node:zlib'
 import {
   LiteratureError,
   LiteratureRuntime,
@@ -240,6 +241,47 @@ describe('LiteratureRuntime.bibtex', () => {
 })
 
 describe('LiteratureRuntime.fulltext', () => {
+  it('returns standalone TeX directly without downloading fallback artifacts', async () => {
+    const runtime = mount()
+    const kinds: string[] = []
+    const tex = '%&amstex\n\\input amstex\n\\document\nStandalone paper body.\n\\enddocument'
+    runtime.registerSource(source('arxiv', {
+      lookup: async () => arxivHit('math/9201234', 'Paper.'),
+      downloadFulltext: async (_id, kind) => { kinds.push(kind); return gzipSync(tex) },
+    }))
+    const result = await runtime.fulltext('math/9201234')
+    expect(result.source).toBe('arxiv-source')
+    expect(result.files[0]!.content).toBe(tex)
+    expect(result.summary).toContain('Standalone paper body.')
+    expect(kinds).toEqual(['source'])
+  })
+
+  it.each(['html', 'pdf'] as const)('falls back to %s after a valid but empty tar archive', async target => {
+    const runtime = mount()
+    const kinds: string[] = []
+    runtime.registerSource(source('arxiv', {
+      lookup: async () => arxivHit('2510.10008', 'Paper.'),
+      downloadFulltext: async (_id, kind) => {
+        kinds.push(kind)
+        if (kind === 'source') return gzipSync(Buffer.alloc(1024))
+        return kind === target ? target === 'html' ? new TextEncoder().encode('<p>Readable paper.</p>') : pdfBytes() : null
+      },
+    }))
+    const result = await runtime.fulltext('2510.10008')
+    expect(result.source).toBe(`arxiv-${target}`)
+    expect(result.files[0]!.content.trim()).not.toBe('')
+    expect(kinds).toEqual(target === 'html' ? ['source', 'html'] : ['source', 'html', 'pdf'])
+  })
+
+  it('falls back after unrecognized gzipped source and fails clearly if nothing is usable', async () => {
+    const runtime = mount()
+    runtime.registerSource(source('arxiv', {
+      lookup: async () => arxivHit('2510.10008', 'Paper.'),
+      downloadFulltext: async (_id, kind) => kind === 'source' ? gzipSync('not a tar archive'.repeat(100)) : null,
+    }))
+    await expect(runtime.fulltext('2510.10008')).rejects.toMatchObject({ code: 'LITERATURE_FULLTEXT_UNAVAILABLE' })
+  })
+
   it('extracts the arXiv source tarball', async () => {
     const runtime = mount()
     runtime.registerSource(source('dblp'))
