@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T10:51:10.484Z",
-  "fileSetSHA256": "960fa04686d6f8f1d660b8e93ab73176ce471464fc6b5cd1fa044aeeb19ef36d",
+  "createdAt": "2026-11-06T14:27:32.150Z",
+  "fileSetSHA256": "168ceb16e02863d173e278438488e2774f8dfc8401d711f9d8ed01d5055ef159",
   "files": [
     {
       "path": ".gitattributes",
@@ -585,11 +585,11 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows_test.go",
-      "sha256": "8d6850ca9fa4e1e7c4d8b5e88bcdd17fb239e5b75dc312cf19f3d0db323f4b75"
+      "sha256": "8adc7cb35031dc5b18a3bbb511090af7120cddd6a64317a7f6bcc0f4e63c8735"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows.go",
-      "sha256": "81b566715214bbeb8246844cc30b7eb2186950af1aa5add027276dab8eda0f45"
+      "sha256": "b6616f7cac2498afa33633012d3820178198829077541d663553d44ebdebb0ac"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/main_windows.go",
@@ -1349,7 +1349,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "98e70fc3027e7a156867333650ded324d30e32541a269f535bc24f0961f4c52f"
+      "sha256": "c233449bbf30fb7d8a8f8738595804a88370ccad7d4735a45f829861be7505e6"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1565,7 +1565,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "0047b98a96bb268e81ae79f810ee34a148af5675ef4151c33175ddc3b9ba3c20"
+      "sha256": "0c66721920b6b30674b55e3bc0068b1466bd27f45809117f9dad9bba12b10fbd"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
