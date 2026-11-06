@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T14:27:32.150Z",
-  "fileSetSHA256": "168ceb16e02863d173e278438488e2774f8dfc8401d711f9d8ed01d5055ef159",
+  "createdAt": "2026-11-06T15:45:59.918Z",
+  "fileSetSHA256": "fed289c28fe0518dd134f4b874d4c62f30c41b076276bfa9b48dc557f5e19b33",
   "files": [
     {
       "path": ".gitattributes",
@@ -585,11 +585,11 @@
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows_test.go",
-      "sha256": "8adc7cb35031dc5b18a3bbb511090af7120cddd6a64317a7f6bcc0f4e63c8735"
+      "sha256": "10bc93a7ddb02abe970c6bb6dbf1dc5a0153fb8721f0320f1064175543d06afe"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/child_windows.go",
-      "sha256": "b6616f7cac2498afa33633012d3820178198829077541d663553d44ebdebb0ac"
+      "sha256": "23c1691b4fd6ee1142ef1fe0732871c65b4c7a87af6663e750630a55f3d1309d"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-launch/main_windows.go",
