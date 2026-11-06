@@ -19,7 +19,7 @@ import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { chromium, webkit, type Frame } from 'playwright-core'
 import { HostStore } from '../src/devices/store.ts'
-import type { HostAdapter } from '../src/host/adapter.ts'
+import type { HostAdapter, Peer } from '../src/host/adapter.ts'
 import { Relay } from '../src/relay/relay.ts'
 import { webClient } from '../src/relay/web.ts'
 import { RemoteAccess } from '../src/remote-access.ts'
@@ -61,9 +61,15 @@ document.getElementById('state').textContent = 'loaded'
 const scriptEncodings: (string | null)[] = []
 
 function fakeDsh(): HostAdapter {
+  const peers = new WeakSet<Peer>()
   return {
-    createPeer: () => ({ dispose: async () => {} }),
-    async page(request) {
+    createPeer: () => {
+      const peer = { dispose: async () => { peers.delete(peer) } }
+      peers.add(peer)
+      return peer
+    },
+    async page(request, peer) {
+      assert.ok(peers.has(peer), 'the page must receive its admitted connection Peer')
       const { pathname } = new URL(request.url)
       if (pathname === '/') return new Response('<!doctype html><html><head><title>DSH</title><script type="module" src="./assets/app.js"></script></head><body><p id="state">loading</p></body></html>', { headers: { 'content-type': 'text/html; charset=utf-8' } })
       if (pathname === '/assets/app.js') {
@@ -89,7 +95,8 @@ function fakeDsh(): HostAdapter {
 
 /** The portal of the relay's domain, outside its path: it embeds the relay page named after `#`. */
 const PORTAL = '/portal/'
-const PORTAL_PAGE = '<!doctype html><iframe style="width:390px;height:844px" onload="document.body.dataset.framed = 1"></iframe><script>document.querySelector("iframe").src = decodeURIComponent(location.hash.slice(1))</script>'
+// Keep the portal's own favicon request out of the relay path assertion.
+const PORTAL_PAGE = '<!doctype html><head><link rel="icon" href="data:,"></head><body><iframe style="width:390px;height:844px" onload="document.body.dataset.framed = 1"></iframe><script>document.querySelector("iframe").src = decodeURIComponent(location.hash.slice(1))</script></body>'
 
 /** A relay below `path` on its own server, which lets pages of its domain embed it only when `embedded`; `strays` collects every other request that reached the domain outside it. */
 async function serve(path: string, embedded: boolean) {
