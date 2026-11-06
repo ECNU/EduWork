@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.11",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T09:51:18.957Z",
-  "fileSetSHA256": "44de8302f1e665ef6b9ed0639fa89bc74156ed23e95150a637193e58ed5cd1ac",
+  "createdAt": "2026-11-06T10:06:25.286Z",
+  "fileSetSHA256": "1255660ab39d6d64f084dc05c83b5cb5a863018f2a506094646a828163a1e3dc",
   "files": [
     {
       "path": ".gitattributes",
@@ -1473,7 +1473,7 @@
     },
     {
       "path": "dsh-electron/tests/fixtures/native-desktop-smoke.mjs",
-      "sha256": "014870a644a0ca0afa8088553b45cb4571874746c80af195bacdb14f4b7e574a"
+      "sha256": "75562f52b79f9dd0c164f1222a58e72f27e0655fdf4f4e796048aa711a6ee81c"
     },
     {
       "path": "dsh-electron/tests/fixtures/sidebar-browser-app.html",
