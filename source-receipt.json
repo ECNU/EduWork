@@ -5,7 +5,7 @@
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "864a660b09a93e20d35352204ddd8622f47f0515ffe524f3c79d290b5ca8f328",
+  "fileSetSHA256": "281c2f1db25d8eff48a3ca22c71f45a3589552471ab506f872dd2f652935fa1a",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "56b3e64ccbc0b1fe59d025391771049f4d9292363bdbd7e1e861f8b369a0de1e"
+      "sha256": "ffa93f4ca0c9ef6ec41f42c25daa910178f10e7096ea9e28d16dc91d3cef2659"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -293,7 +293,7 @@
     },
     {
       "path": "docs/DATA-MIGRATION.md",
-      "sha256": "004c000bb30c651fcd25d52d50d30cccb53610acba9275693bd8c5faaae228db"
+      "sha256": "1f9869593f3cc363f83ee5d899a4b2841c43a7712d77f10001cea1fcf90ca86a"
     },
     {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
@@ -569,7 +569,7 @@
     },
     {
       "path": "docs/数据导入.md",
-      "sha256": "e2cbe2ce4631dc1224284f19880df9b658a6816c56d030ceaa2cb5d6222aa643"
+      "sha256": "e96cb0ac312e0329dab2757dc73fd56b5bf75a2e0121be7645de0d92b5f99df3"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/main_windows.go",
@@ -7256,6 +7256,10 @@
       "sha256": "da1543eb1fe6f320990d933a1a7123f93d01d8fcfb2aef99d7ada1b72dc0644e"
     },
     {
+      "path": "scripts/backup-desktop.mjs",
+      "sha256": "2ab92ba97425f045da7db06f6d6c9d2ed9f8f416827df5b25dea4b4a3a863a7d"
+    },
+    {
       "path": "scripts/build-desktop-candidate.ps1",
       "sha256": "cbe53b881afcbaf1b4338b5fd95842264705f4e99ec7df0a9d9db7c083231bf4"
     },
@@ -7954,6 +7958,10 @@
     {
       "path": "tests/build-script-entry.test.mjs",
       "sha256": "2ed32c0a4803f91db6a32076f1e8bf51e2f4ca5ecf1b396974e62d12ad6b4d84"
+    },
+    {
+      "path": "tests/desktop-backup.test.mjs",
+      "sha256": "f9f68d92a383dafe97197dc8ff2ff1ff9571a3c6d49164ebb965a314d3ad205c"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",

@@ -51,6 +51,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Desktop pet checks failed' }
           node --test core/dsh-electron/tests/host-git-identity.test.mjs
           if ($LASTEXITCODE) { throw 'Host Git identity checks failed' }
+          node --test core/tests/desktop-backup.test.mjs
+          if ($LASTEXITCODE) { throw 'Offline backup and restore checks failed' }
       - name: Verify Windows updater manifests and archives
         if: steps.changes.outputs.build == 'true'
         shell: pwsh
