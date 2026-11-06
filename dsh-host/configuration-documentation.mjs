@@ -75,7 +75,7 @@ export async function editionConfigurationFields(product) {
 export function explicitConfigurationDefaults(value, defaults = {}) {
   // A selected source replaces the source defaults; never add a GitHub
   // repository next to a user's static URL (or reactivate disabled updates).
-  if (value.updates?.provider || value.updates?.manifestURL || value.updates?.repository)
+  if (value.updates?.provider || value.updates?.manifestURL || value.updates?.repository || value.updates?.windowsFeeds)
     defaults = { ...defaults, updates: { ...(defaults.updates?.defaultPolicy ? { defaultPolicy: defaults.updates.defaultPolicy } : {}), ...(defaults.updates?.macFeeds ? { macFeeds: defaults.updates.macFeeds } : {}) } }
   // Keep the old subagent-to-total conversion before filling the modern default.
   if (value.features?.maxConcurrentRequests === undefined && value.features?.maxParallelSubagents !== undefined)

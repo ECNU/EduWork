@@ -6,9 +6,9 @@ See [desktop notifications](../docs/DESKTOP_NOTIFICATIONS_EN.md) for task alerts
 
 An assembly entry separate from `dsh-desktop/` (Go + Wails). Both hosts share the same EduWork product composition, plugins, skills and preview implementation.
 
-The desktop baseline is DSH `0.1.5-rc.2` (`fb2c4b9e698e30edb738bca4cf0618587db7d203`). Electron's main process, window, `dsh-app://` handling and streaming Host transport are derived with reviewable patches from that commit, without modifying the shared upstream source cache. The reusable Host adapter lives in `../dsh-host/`.
+The desktop uses DSH `0.2.2-rc.1` at `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`, selected by the [current build configuration](../config/desktop-build.json). The core, Web client, Desktop Host, window factory, preload bridge, browser isolation, shortcuts, quit confirmation and recovery reuse the pinned implementation. Build receipts record input hashes and product adaptations. Host adapters live in `../dsh-host/`; the legacy shell build entry is retired.
 
-An explicit `--pinned-dsh-source` build uses the [DSH 0.2.1-rc.5 candidate lock](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json): the core, Web client, Desktop Host and desktop modules all come from `b830ec950faba0a46dda564be3e2d854afed94f1`. It reuses the official window factory, complete preload bridge, isolated browser guests, shortcuts, directory picker, theme and locale synchronization, Host lifecycle, quit confirmation and fatal recovery. Build receipts record input hashes and product adaptations.
+The Windows standard installer reuses official NSIS directory replacement and the update coordinator. Personal data stays separate, and first launch offers portable-data migration. See [Windows installation and migration](../docs/WINDOWS-INSTALLED-MIGRATION.md) for the installation, migration, update and uninstall flow.
 
 Product adapters retain organization login, encrypted credentials, portable updates, signed configuration and skill updates, task notifications and Studio. Microphone access retains upstream owner-window, main-frame and OS checks; other permissions default to denial except clipboard writes from the application main frame. External pages use isolated native guests without bypassing CSP or X-Frame-Options. Recovery offers exit/restart, without disabling essential distribution plugins. This is not a repackaged official installer and does not inherit its signature. Default release locks and update feeds remain unchanged.
 
@@ -17,11 +17,11 @@ Search, the interactive browser, Studio exports and video rendering all launch t
 The candidate shell requires source, Host and npm Runtime prepared from the same lock, without the old desktop source or a shared compiler cache:
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --desktop-tools $DesktopTools --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 
-`$ElectronExecutable` must be the pristine Electron runtime executable, not a packaged application's EXE. Output directories must not exist. The [source candidate qualification](../.github/workflows/validate-pinned-dsh-source.yml) builds and launches real Electron on Windows/macOS against synthetic pages to check native bridges, frame-protected pages, permission boundaries, and lifecycle behavior. The [dual-platform desktop CI](../.github/workflows/development-desktop.yml) separately checks packaged archives, native runtimes, and basic startup. Real organization login, OS microphone consent, update installation and manual macOS interactions still need separate acceptance.
+`$DesktopTools` is an independent tooling directory prepared with `npm ci --ignore-scripts` from the current recipe’s `desktop-probe/package*.json`. `$ElectronExecutable` must be the pristine Electron runtime executable, not a packaged application's EXE. Output directories must not exist. The [source candidate qualification](../.github/workflows/validate-pinned-dsh-source.yml) builds and launches real Electron on Windows/macOS against synthetic pages to check native bridges, frame-protected pages, permission boundaries, and lifecycle behavior. The [dual-platform desktop CI](../.github/workflows/development-desktop.yml) separately checks packaged archives, native runtimes, and basic startup. Real organization login, OS microphone consent, update installation and manual macOS interactions still need separate acceptance.
 
 Each distribution has its own application identity, browser cache, DSH data and credentials. Desktop builds use the locked npm plugin combination. Update sources come from distribution configuration; the public edition defaults to GitHub, and users can override the source or disable updates. Development checks use isolated data directories.
 

@@ -10,7 +10,8 @@ export class DesktopExit {
     Object.assign(this, { confirm, close, relaunch, quit, failed })
   }
   restart() { if (this.closing || this.complete) return; this.relaunchRequested = true; this.quit() }
-  handoff() { this.installerOwnsQuit = true; this.relaunchRequested = false; this.quit() }
+  claimInstallerQuit() { this.installerOwnsQuit = true; this.relaunchRequested = false }
+  handoff() { this.claimInstallerQuit(); this.quit() }
   request() {
     if (this.complete) return Promise.resolve()
     if (this.pending) return this.pending

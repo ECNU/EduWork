@@ -1,8 +1,6 @@
 # 数据清单与迁移兼容边界
 
-本文说明 [#124：完整备份恢复与 DSH 双向迁移](https://github.com/ECNU/EduWork/issues/124) 的数据范围，以及 Windows 便携版离线备份恢复原型的用法。原型先支持同组合、空目标恢复；已有的历史会话导入入口见[历史数据导入](数据导入.md)，会话合并与整目录恢复分别适用。
-
-下文“Windows 目录迁移”指 [#251 的实验实现](https://github.com/JJasonSun/EduWork/blob/e22d7202c6fcf2692014cf0703a4067eedf9da78/dsh-electron/scripts/migrate-portable-to-installed.mjs)：将便携版个人数据复制到独立可写目录。它不提供完整备份包、跨版本转换或已有目标数据合并，也不代表已发布标准安装版。安装、升级与卸载的后续设计见 [#176](https://github.com/ECNU/EduWork/issues/176)。
+本文说明 [#124](https://github.com/ECNU/EduWork/issues/124) 的数据范围与兼容边界。当前用户入口是[旧便携版迁入标准安装版](WINDOWS-INSTALLED-MIGRATION.md)，同时为 [#176](https://github.com/ECNU/EduWork/issues/176) 的安装、更新和卸载提供独立个人数据目录。完整备份包、已有数据合并和官方 DSH 双向转换仍需分别实现。
 
 ## 适用版本
 
@@ -25,8 +23,8 @@
 | 符号 | 含义 |
 | --- | --- |
 | `S` | 旧便携程序根目录，包含可执行程序、`config` 和 `data` |
-| `P` | 新程序根目录，由匹配组合的开发包提供 |
-| `W` | 独立可写根目录；#251 默认使用 `%LOCALAPPDATA%/EduWork/<distribution>` |
+| `P` | 新程序根目录，由标准安装器提供 |
+| `W` | 独立可写根目录；默认使用 `%LOCALAPPDATA%/EduWork/<distribution>` |
 | `N` | 发行版数据命名空间 `<distribution>-electron` |
 | `H` | DSH 数据目录，即 `S/data/N/dsh` |
 | `B` | Electron 浏览器与凭据目录，即 `S/data/N/browser` |
@@ -35,52 +33,9 @@
 
 macOS 的 DSH 与浏览器数据位于用户 Application Support 下的发行版目录，Alpha 身份还可能使用独立命名空间，实际选择见[桌面路径实现](../dsh-electron/src/desktop-paths.mjs)。不能套用 Windows 的 S → W 流程；macOS 备份恢复、跨设备迁移需要分别确定支持范围。
 
-## 离线备份恢复原型
-
-[备份脚本](../scripts/backup-desktop.mjs)从已退出的 Windows x64 Electron 便携版读取数据，生成包含 `BACKUP-MANIFEST.json` 和 `payload/` 的备份目录。恢复时另行提供匹配的便携程序目录，脚本将程序和备份数据复制到一个空目标，得到独立的便携版副本。它不修改来源程序、备份或外部工作区，也不向当前客户端合并数据。
-
-### 范围与准入
-
-- **同组合**：发行版、appId、完整 EduWork 版本、DSH 版本与提交一致；程序文件还须逐个符合 `RELEASE-MANIFEST.json`，整个程序文件集的 SHA-256 必须与备份一致。插件、Runtime、桌面壳或程序字节不同都会拒绝，即使版本号相同。开发后缀也必须相同。
-- **备份数据**：整个 `config/`、`data/N/dsh/`、`data/N/browser/`、`data/N/logs/`，以及 `data/state/`、`data/configuration/`、`data/content-updates/` 和 `data/publisher-bootstrap/`。保留空目录；排除软件更新目录 `data/state/updates/`，以及下文列出的 Skill 临时目录、附件临时对象与浏览器缓存。原型保留全部配置文件、初始化状态、更新偏好与迁移回执、已启用的在线 Skills 和版本状态，范围比 #251 当前的目录映射更宽。
-- **外部资料**：只保存工作区注册与引用，不复制外部文件，不改写绝对路径。注册表中的工作区与来源程序、备份、配套程序或恢复目标有目录包含关系时拒绝；通过目录别名引用同一位置也会检查。会话 cwd 和插件自存路径保持原文，恢复后需核对。自定义配置环境变量指向的外部文件和其他数据命名空间不在备份范围内。程序目录中存在未列入发行清单的额外文件时会拒绝，需先另行保管。
-- **停写要求**：开始前退出应用及其后台进程，命令结束前不要重启。脚本检查相关 Windows 进程、待安装更新和软件更新事务；配置或内容更新存在待应用、试运行或待重试状态时也会拒绝。复制后重新核对源文件和进程，无法查询进程或磁盘空间时停止。它不是在线数据库快照工具。
-- **空目标**：输出目录必须不存在或为空，父目录须已存在；输入与输出不能相同或相互包含。所复制目录中的符号链接、Windows 路径别名冲突、不安全文件名，以及不完整的凭据上下文会被拒绝。需要文件总大小之外至少 16 MiB 的可用空间。
-
-备份保留完整记忆数据库及其边车文件，不通过记忆语义导出生成快照。遗忘标记和会话策略随原文件保留；恢复旧备份仍会回到备份时的状态，不会自动融合备份后发生的遗忘。
-
-### 使用方法
-
-使用仓库锁定的 Node.js 24 工具链，在 Windows 上从仓库根目录执行。所有参数使用绝对路径；示例中的备份目录和恢复目标均应为空或尚未创建。
-
-```powershell
-# 检查数据范围、程序身份、文件哈希、进程与空间，不写入备份。
-node scripts/backup-desktop.mjs backup --source "D:\Apps\EduWork" --output "E:\Backups\EduWork-snapshot" --dry-run
-
-# 生成离线备份目录。
-node scripts/backup-desktop.mjs backup --source "D:\Apps\EduWork" --output "E:\Backups\EduWork-snapshot"
-
-# 配套程序可来自同一发行包，也可使用仍完好的来源程序目录。
-# 只复制其已校验的程序文件，使用备份中的个人配置和数据。
-node scripts/backup-desktop.mjs restore --backup "E:\Backups\EduWork-snapshot" --program "D:\Packages\EduWork" --target "D:\Restored\EduWork" --dry-run
-node scripts/backup-desktop.mjs restore --backup "E:\Backups\EduWork-snapshot" --program "D:\Packages\EduWork" --target "D:\Restored\EduWork"
-```
-
-`--dry-run` 会执行与写入前相同的校验，输出组合身份和数据文件清单，不创建目标或临时目录。正式恢复先检查备份清单、文件数量、大小和 SHA-256，再从配套程序和备份复制；配套程序中的个人配置与 `data/` 不参与恢复。
-
-备份目录包含个人配置、会话、浏览器状态和加密凭据，脚本不额外加密或脱敏。妥善保存完整目录，并另行保留匹配的程序包；它不是诊断附件。哈希用于发现文件损坏，不能证明未知来源备份或程序的可信性。
-
-### 失败与恢复后的检查
-
-复制在目标旁的 `.eduwork-backup-*` 临时目录中完成；校验通过后才切换为目标目录。复制、哈希或来源复查失败时清理本次临时目录，保留输入和已有目标。进程被强制终止或机器断电可能留下临时目录；确认命令已经退出、目标与原始输入仍完好后，再单独清理对应临时目录并重试。脚本不自动删除旧临时目录或继续半份备份。
-
-命令成功仅表示文件恢复完成。首次使用恢复副本时，分别核对会话与附件、工作区路径、记忆与遗忘记录、设置与用户插件；凭据是否可解密、账号是否仍有效，以及退出后的冷启动，都需在 Windows 原生应用中确认。验证完成前保留原数据和备份。
-
-原型不提供客户端按钮、压缩包、自动备份、已有数据合并、跨版本转换、官方 DSH 双向迁移或 macOS 恢复。跨 Windows 用户或设备的凭据可用性也不在当前保证范围内。文件层回归可运行 `node --test tests/desktop-backup.test.mjs`；合成数据检查不能代替真实桌面验收。
-
 ## 数据清单
 
-“目录迁移行为”描述 #251 的复制范围；“保留与恢复要求”用于约束完整备份设计，不表示这些恢复能力已经实现。H 中未单列的文件仍在整树复制范围内，本表不是清理或删除列表。
+“目录迁移行为”描述当前便携数据迁入安装版的复制范围；“保留与恢复要求”区分文件迁移与完整备份恢复。H 中未单列的文件仍在整树复制范围内，本表不是清理或删除列表。
 
 | 数据 | 位置或格式 | 目录迁移行为 | 保留与恢复要求 |
 | --- | --- | --- | --- |
@@ -92,14 +47,14 @@ node scripts/backup-desktop.mjs restore --backup "E:\Backups\EduWork-snapshot" -
 | 桌面配置 | `S/config/eduwork.jsonc`；可选 `config/examples/`、`config/update.bridge.json` | 复制到 W 下同名位置 | 保留用户设置与凭据引用；配置可能包含敏感值，备份与共享应分别处理 |
 | DSH 设置与插件启用状态 | `H/profiles/desktop-017/package.json`、`cordis.patch.yml`、依赖锁与模块，以及 H 根目录 patch | 随 H 复制 | 同时保留 profile 配置、依赖和 bundle 启用列表；只备份旧 `settings.yaml` 会遗漏当前设置 |
 | 历史设置与迁移状态 | `H/settings.yaml*`、`.eduwork-settings-migration.json`、profile 更新 journal | 随 H 复制 | 原文和回执须一致；保留尚无对应插件的设置节，不能提前删除迁移中的文件 |
-| 用户插件与 Skills | profile 中的用户依赖、H 内插件资料及 `H/skills/` | 随 H 复制，排除 Skill 暂存与回收目录 | 保留来源、版本、启用状态和用户内容；扫描到符号链接会拒绝。插件自行写到 H 外的数据不在此复制范围内 |
+| 用户插件与 Skills | profile 中的用户依赖、H 内插件资料及 `H/skills/` | 随 H 复制，排除 Skill 暂存与回收目录 | 保留来源、版本、启用状态和用户内容；自建链接会拒绝；旧 profile 指向程序依赖的受管链接验证归属后不迁入，依赖由新程序提供。插件自行写到 H 外的数据不在此复制范围内 |
 | 工作区注册与会话归属 | `H/storages/workspace.json`；workspace 数据域 v2 | 复制注册表，拒绝程序目录内部工作区 | 保留工作区 ID、路径、会话列表、排序、置顶和归档状态；不自动改写绝对路径 |
 | 外部工作区资料与成果 | 注册表指向的外部目录，含 Office、媒体和可编辑工程 | 不复制、不移动、不删除，只保留引用 | 完整备份需明确仅保存引用还是包含文件；跨设备、缺盘或路径变化必须提示并处理路径重映射 |
 | Studio 索引与任务 | `H/plugins/dsh-knowledge-studio/workspaces/<id>/index.lbug`、`task.json` | 随 H 复制 | 索引不能代替源资料和成果；关闭数据库后复制，恢复需核对工作区关联。中断的索引任务不能误记为已完成 |
 | 凭据与加密上下文 | `B/credentials.encrypted`、`B/Local State`；Electron `safeStorage` | 一起复制；有凭据库但缺 Local State 时拒绝 | 文件相同不代表能解密；同用户环境需要验证，跨用户、跨设备或跨系统应按需重新认证 |
 | 账号、邮件与浏览器状态 | profile 配置和 credential ref；B 下 Cookies、Local Storage、Preferences 等 | 浏览器状态按排除规则复制 | 配置、凭据引用和浏览器状态分别保留；不能由复制成功推断登录有效或令牌未过期 |
 | 更新偏好与配置备份 | `S/data/state/update-preferences.json`、`software-update-preferences.json`、`data/configuration/eduwork.previous.jsonc` | 存在时复制到 W 下同名位置 | 保留用户更新选择；不迁入下载包、helper 或未完成的更新事务 |
-| 配置初始化与发行内容状态 | `S/data/configuration/state.json`、`data/state/` 下迁移回执、`data/content-updates/<scope>/`、`data/publisher-bootstrap/` | 除上一行列出的文件外，未纳入 #251 当前映射 | 备份恢复原型复制这些目录，保留初始化标记、默认配置指纹、签名内容、已启用 Skills 和版本下限；未完成的配置或内容更新须先恢复或完成 |
+| 配置初始化与发行内容状态 | `S/data/configuration/state.json`、`data/state/` 下迁移回执、`data/content-updates/<scope>/`、`data/publisher-bootstrap/` | 复制到 W 下同名位置，软件更新事务除外 | 保留初始化标记、默认配置指纹、签名内容、已启用 Skills 和版本下限；未完成的配置或内容更新须先恢复或完成 |
 | 日志与活动缓存 | `S/data/N/logs/`、`H/derived/activity-insights/v3/` | 日志存在时复制，活动缓存随 H 复制 | 日志可能含路径与诊断信息；派生缓存不能替代原始历史数据 |
 | 程序与发行资源 | S 下程序、Runtime、resources 和产品模块 | 不复制到 W | 新程序由 P 提供；旧程序和数据保留在 handoff 副本，不能在新版验证成功前删除 |
 | 其他顶层用户文件 | S 中不属于上述映射的文件或自建目录 | 不进入 W，仍保留在 handoff | 复制清单不等于全部个人文件清单；完整备份需识别额外文件并明确纳入方式 |
@@ -116,28 +71,27 @@ node scripts/backup-desktop.mjs restore --backup "E:\Backups\EduWork-snapshot" -
 
 ## Windows 目录迁移的版本兼容矩阵
 
-以下准入规则仅用于 #251 的 Windows 目录迁移。“允许”表示可以进入文件迁移流程，不代表当前组合已经通过原生应用验收。
+允许进入迁移不等于已经完成 Windows 原生应用验收。详细流程见[安装与迁移](WINDOWS-INSTALLED-MIGRATION.md)。
 
 | 来源与目标 | 当前规则 | 边界 |
 | --- | --- | --- |
-| Windows x64 Electron portable → installed；同发行版、同 appId、同 DSH 版本及完整提交、同 EduWork 基础版本 | 允许 | 还须满足目标目录、进程与数据检查 |
-| `0.4.12` → `0.4.12-dev.<…>`，其他身份一致 | 允许 | 基础版本按首个 `-` 之前的部分比较；开发后缀差异不等于支持跨版本转换 |
-| EduWork 基础版本不同 | 拒绝 | 不转换数据，不通过更改版本文件绕过 |
-| DSH `0.2.1-rc.3` → `0.2.2-rc.1`，或任何 DSH 版本/提交不一致 | 拒绝 | 单个会话格式的升级能力不能替代整包兼容判断 |
+| Windows x64 Electron 便携版 `0.4.12` → 标准安装版 | 同发行版、appId、完整 DSH、Node、Electron 与 npm 插件包身份一致时允许 | 来源版本由迁移配置明确限定；可迁入更高产品版本，不转换数据格式 |
+| 迁移格式 v1 的兼容便携包 → 标准安装版 | 同上 | 核对来源与目标实际装配回执，不能只看版本号 |
+| DSH 版本或提交、Node/Electron 版本、npm 插件版本或包哈希不一致 | 拒绝 | 需先定义并验证数据转换，不通过修改身份文件绕过 |
 | 通用版 ↔ 机构版，或 appId 不同 | 拒绝 | 配置、能力与身份映射需另行定义 |
-| EduWork ↔ 官方 DSH | 未支持 | #124 尚需确定双向映射、插件缺失和不兼容设置的处理 |
-| macOS、跨 Windows 用户或跨设备恢复 | 不在当前支持范围 | 路径、凭据绑定和平台数据库分别评估；不能用同机文件复制结果推导兼容 |
+| EduWork ↔ 官方 DSH | 未支持 | 仍需确定双向映射、插件缺失和不兼容设置的处理 |
+| macOS、跨 Windows 用户或跨设备 | 不在这条迁移流程的支持范围 | 路径与凭据绑定分别评估；不能用同机文件复制推导兼容 |
 
-应用版本、DSH 版本、每个数据域的格式版本和插件版本须分别记录。RELEASE-MANIFEST 的基本身份检查不等于已经验证所有程序文件，也不覆盖插件数据格式的兼容性。
+准入配置见[Windows 便携迁移配置](../config/windows-portable-migration.json)，实现见[共享迁移器](../dsh-electron/src/portable-migration.mjs)。
 
 ## Windows 目录迁移的目标冲突与失败恢复
 
 | 条件 | 当前行为 | 数据保护边界 |
 | --- | --- | --- |
 | W 不存在或为空目录 | 允许进入迁移 | S、P、W 互不包含；成功后写入 W 归属标记和迁移回执 |
-| W 非空或已有归属标记 | 拒绝 | 不覆盖、不静默合并；先启动 installed 会初始化 W，随后导入同样被拒绝 |
-| 同一来源已成功迁移，再次执行 | 拒绝重复迁移 | 保留 handoff 和已激活目标 |
-| 参数路径重叠、W 自身或数据映射中的扫描项为符号链接 | 拒绝 | 根目录别名不等于一律拒绝；进程与工作区检查还会解析物理路径 |
+| W 非空或已有归属标记 | 拒绝 | 不覆盖、不静默合并；首次启动先询问迁移或全新使用；已有数据不覆盖 |
+| 同一来源已成功迁移，再次启动 | 读取一致的回执并使用已迁入数据，不重复复制 | 保留 handoff 和已激活目标 |
+| 参数路径重叠、W 自身或数据映射中的扫描项为符号链接 | 拒绝 | 来源根目录链接也会拒绝；父目录别名、进程和工作区按物理路径检查 |
 | 工作区的记录路径或物理路径位于 S 内 | 拒绝 | 需要单独迁出工作区并验证引用；目录迁移器不自动处理 |
 | 外部工作区仍在原路径 | 保留引用 | 外部文件不变；路径不存在时，复制注册表不能恢复缺失文件 |
 | 旧应用、相关后台进程仍运行，或存在 pending update / 未完成事务 | 拒绝 | 不强行终止进程，不删除事务文件绕过保护 |
@@ -149,17 +103,17 @@ node scripts/backup-desktop.mjs restore --backup "E:\Backups\EduWork-snapshot" -
 
 `activated` 表示文件已复制、校验并切换到目标目录。应用能否读取会话和附件、保留记忆遗忘标记、加载设置与插件、解密凭据，以及退出后的冷启动，仍是不同的验证要求。
 
-## 后续能力边界
+## 完整备份与双向迁移的边界
 
-- **完整备份集合**：原型保存上述本地数据和程序组合清单；可选外部工作区文件、外部配置、压缩与加密，以及各数据域的语义兼容检查仍需分别实现。诊断 ZIP、记忆语义导出都不能代替完整备份。
-- **已有数据处理**：原型只允许空目标；已有数据合并与替换尚未实现，不能静默覆盖。客户端内的恢复预演与操作入口也需单独设计。
-- **遗忘与旧备份**：恢复或合并旧备份时必须处理较新的遗忘标记，避免旧记录重新启用已遗忘内容；当前目录迁移器不提供这类合并策略。
-- **跨版本与双向迁移**：为限定版本建立转换规则，明确插件缺失、设置不兼容、外部路径变化和重新认证；不得通过放宽目录迁移的版本检查宣称支持。
-- **恢复完成条件**：除文件完整性，还应核对会话—附件、会话—工作区、记忆—遗忘标记的关联，以及应用实际读取能力。原数据保留到目标验证完成；Windows 与 macOS 分别确定支持范围。
+当前流程完成一次便携数据迁入安装版，并保留原程序和原数据。它不提供定时备份、独立压缩备份包、跨设备凭据恢复或已有数据合并。诊断 ZIP、记忆语义导出不能代替完整备份。
+
+后续完整备份需要明确外部工作区与配置的收集方式、加密和恢复预演，并处理旧备份与较新遗忘标记的冲突。EduWork 与官方 DSH 之间仍需为限定版本制定双向转换、插件缺失、路径映射和重新认证规则。
+
+`activated` 表示文件复制、校验并启用；`started` 表示 Host 就绪且凭据库读取通过；`verified` 是用户检查数据后的明确确认。程序始终保留原数据，应用验收还应检查会话—附件、会话—工作区、记忆—遗忘标记的关联，以及退出后的冷启动。
 
 ## 实现依据
 
-- #251 的[迁移器](https://github.com/JJasonSun/EduWork/blob/e22d7202c6fcf2692014cf0703a4067eedf9da78/dsh-electron/scripts/migrate-portable-to-installed.mjs)、[目录选择](https://github.com/JJasonSun/EduWork/blob/e22d7202c6fcf2692014cf0703a4067eedf9da78/dsh-electron/src/desktop-paths.mjs)与[可写根初始化](https://github.com/JJasonSun/EduWork/blob/e22d7202c6fcf2692014cf0703a4067eedf9da78/dsh-electron/src/writable-root.mjs)。
+- 当前客户端的[首次迁移](../dsh-electron/src/installed-first-run.mjs)、[目录选择](../dsh-electron/src/desktop-paths.mjs)与[可写根初始化](../dsh-electron/src/writable-root.mjs)。
 - EduWork 的 [profile](../dsh-host/native-profile.mjs)、[历史设置迁移](../dsh-host/settings-migration.mjs)与[凭据存储](../dsh-electron/src/native-vault.mjs)。
 - 锁定 DSH 的[会话格式](https://github.com/deepseek-ai/deepseek-harness/tree/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/session/session-format-catalog)、[会话持久化](https://github.com/deepseek-ai/deepseek-harness/tree/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/session/session-persistence-jsonl)、[附件存储](https://github.com/deepseek-ai/deepseek-harness/tree/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/attachment/attachment-local)与[工作区格式](https://github.com/deepseek-ai/deepseek-harness/blob/66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db/packages/workspace/workspace/src/spec.ts)。
 - Memory 和 Studio 的实际输入由上表组件锁确定；用户功能与包维护入口分别见[本地记忆](../packages/dsh-memory/README.md)和 [Studio](../packages/dsh-knowledge-studio/README.md)。

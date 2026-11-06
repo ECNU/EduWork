@@ -23,7 +23,7 @@ test('explicit native repair failure retains the Windows error', () => {
 })
 test('normal product startup does not inspect or mutate runtime ACLs', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('export function installEduworkFromDmg()'))
+  const configure = source.slice(source.indexOf('export async function configureEduworkPaths()'), source.indexOf('export function installEduworkFromDmg()'))
   assert.doesNotMatch(configure, /ensureRuntimeAccess\(|ensure-runtime-access|WRITE_DAC.*execFile/)
   assert.ok(configure.includes('attachAppActivation('))
 })

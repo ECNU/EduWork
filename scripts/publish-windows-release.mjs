@@ -43,10 +43,23 @@ export function validateExtractorReceipt(extractor,receipt) {
   for(const check of ['embeddedArchive','manifestIdentity','outerZIP','extraction'])if(extractor.checks?.[check]!=='passed')throw Error('Portable extractor check did not pass: '+check)
   if(extractor.checks.executionLevel!=='asInvoker')throw Error('Portable extractor must not require elevation')
 }
-async function hashFile(path) {
-  const hash = createHash('sha256')
+export function windowsInstallerAssetNames(installer, edition, version) {
+  const distribution = { EduWork: 'eduwork', 'EduWork-ECNU': 'eduwork-chatecnu' }[edition]
+  if (installer.schemaVersion !== 1 || installer.kind !== 'eduwork-windows-nsis' || installer.version !== version
+    || installer.distribution !== distribution || installer.appId !== `org.eduwork.${distribution}.electron` || installer.backend !== 'nsis') throw Error('Standard installer identity differs')
+  const setup = `${edition}-${version}-windows-x64-setup.exe`
+  const channels = version.includes('-') ? ['nightly.yml', version.split('-')[1].split('.')[0] + '.yml'] : ['latest.yml']
+  if (!Array.isArray(installer.files) || installer.files.length !== 3) throw Error('Incomplete standard installer files')
+  const names = installer.files.map(file => file.name)
+  if (new Set(names).size !== 3 || !names.includes(setup) || !names.includes(setup + '.blockmap') || !channels.some(name => names.includes(name))) throw Error('Unexpected standard installer files')
+  for (const file of installer.files) validateFileIdentity(file, file.name)
+  return [...names, 'windows-installer-receipt.json']
+}
+
+async function hashFile(path, algorithm = 'sha256', encoding = 'hex') {
+  const hash = createHash(algorithm)
   for await (const chunk of createReadStream(path)) hash.update(chunk)
-  return hash.digest('hex')
+  return hash.digest(encoding)
 }
 // Validate every artifact before contacting GitHub; extra files are never uploaded.
 export async function validatedReleaseFiles(directory,{repository,version,commit}) {
@@ -56,6 +69,11 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
   const unpack=receipt.portableExtractor
   const deltas = receipt.deltas ?? []
   const expected = [receipt.asset.name,receipt.asset.name+'.sha256','release-receipt.json','RELEASE-NOTES.md',updateManifestName,unpack.asset.name,unpack.asset.name+'.sha256',unpack.receipt.name,...deltas.flatMap(delta=>[delta.name,delta.name+'.sha256'])]
+  const installer = receipt.installer
+  if (installer) {
+    for (const check of ['standardInstaller', 'installerLaunch', 'silentUninstall']) if (receipt.checks?.[check] !== 'passed') throw Error('Standard installer check did not pass: ' + check)
+    expected.push(...windowsInstallerAssetNames(installer, edition, version))
+  }
   const actual=await readdir(root)
   if (actual.length!==expected.length || expected.some(name=>!actual.includes(name))) throw Error('Unexpected files in release artifact')
   const files=[]
@@ -78,6 +96,21 @@ export async function validatedReleaseFiles(directory,{repository,version,commit
     const file=files[setup+3+2*index]
     if(delta.name!==windowsDeltaName(edition,version,delta.from) || file.bytes!==delta.bytes || file.sha256!==delta.sha256)throw Error('Delta update differs from the validated build: '+delta.name)
     if((await readFile(files[setup+4+2*index].path,'utf8')).trim()!==`${delta.sha256}  ${delta.name}`)throw Error('Delta update SHA256 sidecar differs: '+delta.name)
+  }
+  if (installer) {
+    for (const expected of installer.files) {
+      const actual = files.find(file => file.name === expected.name)
+      if (actual.sha256 !== expected.sha256 || actual.bytes !== expected.bytes) throw Error('Standard installer asset differs: ' + expected.name)
+    }
+    if (JSON.stringify(JSON.parse(await readFile(join(root, 'windows-installer-receipt.json'), 'utf8'))) !== JSON.stringify(installer)) throw Error('Standard installer receipt differs')
+    const setup = installer.files.find(file => file.name.endsWith('.exe'))
+    const info = await readFile(join(root, installer.files.find(file => file.name.endsWith('.yml')).name), 'utf8')
+    const urls = [...info.matchAll(/^\s*- url: (.+)$/gm)].map(match => match[1])
+    const hashes = [...info.matchAll(/^\s*sha512: (.+)$/gm)].map(match => match[1])
+    const sha512 = await hashFile(join(root, setup.name), 'sha512', 'base64')
+    if (info.match(/^version: (.+)$/m)?.[1] !== version || info.match(/^path: (.+)$/m)?.[1] !== setup.name
+      || urls.length !== 1 || urls[0] !== setup.name || hashes.length !== 2 || hashes.some(value => value !== sha512)
+      || Number(info.match(/^\s*size: (\d+)$/m)?.[1]) !== setup.bytes) throw Error('NSIS update metadata differs from the verified installer')
   }
   return {receipt,edition,files}
 }

@@ -12,6 +12,19 @@ function fixture(t) {
   return { root, file: join(root, 'eduwork.jsonc') }
 }
 
+test('Windows NSIS feeds have platform metadata and reject ambiguous or unsafe sources', t => {
+  const { file } = fixture(t)
+  const windowsFeeds = { stable: 'https://updates.example.test/windows/stable/latest.yml', development: 'https://updates.example.test/windows/development/nightly.yml' }
+  writeFileSync(file, JSON.stringify({ schemaVersion: 1, updates: { provider: 'static', windowsFeeds } }))
+  assert.deepEqual(loadUserConfig(file).updates, { provider: 'static', windowsFeeds })
+  for (const updates of [{ provider: 'github', repository: 'ECNU/EduWork', windowsFeeds },
+    ...['http://example.test/latest.yml', 'https://user@example.test/latest.yml', 'https://example.test/latest.yml?secret=x', 'https://example.test/old.json']
+      .map(stable => ({ windowsFeeds: { stable } }))]) {
+    writeFileSync(file, JSON.stringify({ schemaVersion: 1, updates }))
+    assert.throws(() => loadUserConfig(file))
+  }
+})
+
 test('Mac appcasts can be configured in the same file and reject unsafe addresses', t => {
   const { file } = fixture(t)
   const updates = { macFeeds: { stable: 'https://updates.example.test/stable.xml', development: 'https://updates.example.test/dev.xml' } }

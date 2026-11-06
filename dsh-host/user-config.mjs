@@ -76,8 +76,19 @@ export function parseUserConfig(path, body, { overlay } = {}) {
     if (value.product?.name !== undefined) product.name = text(value.product.name, 'product.name', 80)
     if (value.product?.logoFile !== undefined) product.logoUrl = value.product.logoFile === '' ? '' : logo(path, value.product.logoFile)
     if (!Array.isArray(value.organizations ?? []) || (value.organizations?.length ?? 0) > 32) throw new Error('organizations 必须是最多含 32 个企业的数组')
-    allowed(value.updates ?? {}, ['provider', 'repository', 'manifestURL', 'releasesURL', 'defaultPolicy', 'macFeeds'], 'updates')
+    allowed(value.updates ?? {}, ['provider', 'repository', 'manifestURL', 'releasesURL', 'defaultPolicy', 'macFeeds', 'windowsFeeds'], 'updates')
     const updates = {}
+    if (value.updates?.windowsFeeds !== undefined) {
+      allowed(value.updates.windowsFeeds, ['stable', 'development'], 'updates.windowsFeeds')
+      updates.windowsFeeds = {}
+      for (const [channel, target] of Object.entries(value.updates.windowsFeeds)) {
+        const url = new URL(target), file = channel === 'stable' ? 'latest.yml' : 'nightly.yml'
+        if (url.protocol !== 'https:' || url.username || url.password || url.search || url.hash || !url.pathname.endsWith('/' + file)) {
+          throw new Error(`updates.windowsFeeds.${channel} 必须是无凭据和参数的 HTTPS ${file} 地址`)
+        }
+        updates.windowsFeeds[channel] = url.href
+      }
+    }
     if (value.updates?.macFeeds !== undefined) {
       allowed(value.updates.macFeeds, ['stable', 'development'], 'updates.macFeeds')
       updates.macFeeds = {}
@@ -95,8 +106,11 @@ export function parseUserConfig(path, body, { overlay } = {}) {
       if (typeof value.updates.repository !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9-]{0,38}\/[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/.test(value.updates.repository)) throw new Error('updates.repository 必须为 owner/repo')
       updates.repository = value.updates.repository
     }
-    if (updates.provider === 'github' && value.updates.manifestURL) throw new Error('GitHub 更新源不能同时设置 manifestURL')
-    if (updates.provider === 'static' && !value.updates.manifestURL) throw new Error('静态更新源需要 manifestURL')
+    if (updates.provider === 'github' && (value.updates.manifestURL || value.updates.windowsFeeds)) throw new Error('GitHub 更新源不能同时设置 manifestURL 或 windowsFeeds')
+    if (updates.provider === 'static' && !value.updates.manifestURL
+      && !Object.keys(value.updates.windowsFeeds ?? {}).length && !Object.keys(value.updates.macFeeds ?? {}).length) {
+      throw new Error('静态更新源需要 manifestURL 或平台更新地址')
+    }
     if (value.updates?.defaultPolicy !== undefined) {
       if (!['stable', 'development'].includes(value.updates.defaultPolicy)) throw new Error('updates.defaultPolicy 必须为 stable 或 development')
       updates.defaultPolicy = value.updates.defaultPolicy
