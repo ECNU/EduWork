@@ -45,8 +45,11 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     if (sourceDocumentation.test(file) || /^(?:docs|website|updates)\//.test(file)) continue
     if (file === 'source-receipt.json' && receiptOnly) continue
     if (packages.some(entry => file.startsWith(`${entry.directory}/`))) {
+      // Windows native assets are prepared from this source catalog before npm assembly.
+      if (file === 'packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-components.js') buildInputs.push(file)
       // These integration checks read the checkout, rather than the installed npm package.
-      if (/^packages\/(?:dsh-desktop-pet|dsh-memory|dsh-knowledge-studio)\//.test(file)
+      if (/^packages\/(?:dsh-desktop-pet|dsh-memory|dsh-knowledge-studio|dsh-oidc|dsh-mail)\//.test(file)
+        || file === 'packages/dsh-literature/scripts/probe-runtime.mjs'
         || packages.some(entry => file === `${entry.directory}/package.json`)) integrationInputs.push(file)
       continue
     }

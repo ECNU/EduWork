@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T14:07:47.132Z",
-  "fileSetSHA256": "2d918188bc60eade84f18380dfca627a4a5deee22e454f60e11e28125b953a59",
+  "createdAt": "2026-11-06T14:19:22.913Z",
+  "fileSetSHA256": "6972a811629d86bd349cb0ec25e10015c8ac69aa4d23dc8567207a3f0a7d91d9",
   "files": [
     {
       "path": ".gitattributes",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "d4397472b02b812d822280d871b071afb384334d80fe1639e37972a3667ae23c"
+      "sha256": "e21ef63ffd4e630e37ad0efde68eb1ea59f2966b60185d5923bd03d34a563b69"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -7285,7 +7285,7 @@
     },
     {
       "path": "scripts/ci-changes.mjs",
-      "sha256": "f2f362d1424f438d0dd9c4f6ea15534fcf3f45119eccea22a61b27a84384f92a"
+      "sha256": "f9a4524e62bf01917cd7810b2f3e7a2f11c3d2f4dccf2cff411c3d441ed58dd7"
     },
     {
       "path": "scripts/ci-eduwork-macos-release.mjs",
@@ -7581,7 +7581,7 @@
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "e0422a032627450eda1904675dddf6fe95570afd634eccef03f5d1e35871d484"
+      "sha256": "85b76fc3e78cd281b8986afb21a5db8561ff4ff221dd25e1624bce3da2614f40"
     },
     {
       "path": "scripts/packages/manage.mjs",
@@ -7961,7 +7961,7 @@
     },
     {
       "path": "tests/ci-changes.test.mjs",
-      "sha256": "780833a62cfa0789e200283d5e0747a1127135a9a340273e6faeb3a644ca026c"
+      "sha256": "eabdfa9871151c748162ad8c85f54e23a9dcb1f3bdf21344f2991dd90752dc05"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",

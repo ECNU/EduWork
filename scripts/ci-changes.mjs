@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { appendFileSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -14,7 +15,8 @@ export function receiptInputs(receipt) {
     || !Number.isFinite(Date.parse(receipt.createdAt)) || !/^[a-f0-9]{64}$/.test(receipt.fileSetSHA256 ?? '')
     || !Array.isArray(receipt.files) || !receipt.files.length
     || receipt.files.some(file => typeof file.path !== 'string' || !file.path || !/^[a-f0-9]{64}$/.test(file.sha256 ?? ''))
-    || new Set(receipt.files.map(file => file.path)).size !== receipt.files.length) {
+    || new Set(receipt.files.map(file => file.path)).size !== receipt.files.length
+    || createHash('sha256').update(JSON.stringify(receipt.files)).digest('hex') !== receipt.fileSetSHA256) {
     throw new Error('Invalid source receipt identity, version or file hashes')
   }
   const { createdAt, fileSetSHA256, files, ...inputs } = receipt

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { execFileSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
@@ -9,9 +10,13 @@ import { groups, selectProductChecks } from '../scripts/packages/catalog.mjs'
 import { readChanges, receiptInputs, selectChanges } from '../scripts/ci-changes.mjs'
 import { verifyCiResult } from '../scripts/ci-result.mjs'
 
-const receipt = () => ({ schemaVersion: 1, kind: 'eduwork-public-source-snapshot', edition: 'generic', version: '1.2.3',
-  createdAt: '2026-01-01T00:00:00Z', fileSetSHA256: 'a'.repeat(64), files: [{ path: 'README.md', sha256: 'b'.repeat(64) }],
-  artifacts: [{ name: 'synthetic', version: '1.0.0' }] })
+const fileSetHash = files => createHash('sha256').update(JSON.stringify(files)).digest('hex')
+const receipt = () => {
+  const files = [{ path: 'README.md', sha256: 'b'.repeat(64) }]
+  return { schemaVersion: 1, kind: 'eduwork-public-source-snapshot', edition: 'generic', version: '1.2.3',
+    createdAt: '2026-01-01T00:00:00Z', fileSetSHA256: fileSetHash(files), files,
+    artifacts: [{ name: 'synthetic', version: '1.0.0' }] }
+}
 
 function repository(t) {
   const root = mkdtempSync(join(tmpdir(), 'eduwork-ci-test-'))
@@ -56,12 +61,18 @@ test('documentation and published package sources skip assembly, but not package
 test('direct source integration dependencies and mixed changes retain their checks', () => {
   for (const file of ['packages/dsh-desktop-pet/skins/default/idle.svg', 'packages/dsh-memory/scripts/check-query-contract.mjs',
     'packages/dsh-knowledge-studio/scripts/build-video-template.mjs', 'packages/dsh-oidc/package.json',
+    'packages/dsh-oidc/src/client/locale.ts', 'packages/dsh-mail/src/host/permission.js',
+    'packages/dsh-literature/scripts/probe-runtime.mjs',
     'packages/dsh-knowledge-studio/packages/artifact-services/package.json']) {
     const selected = selectProductChecks([file])
     assert.equal(selected.build, false, file)
     assert.equal(selected.integration, true, file)
     assert.ok(selected.groups.length, file)
   }
+  const nativeCatalog = selectProductChecks(['packages/dsh-knowledge-studio/packages/artifact-services/lib/transcription-components.js'])
+  assert.equal(nativeCatalog.build, true)
+  assert.equal(nativeCatalog.integration, true)
+  assert.deepEqual(nativeCatalog.groups, ['dsh-knowledge-studio'])
   const mixed = selectProductChecks(['README.md', 'packages/dsh-annotation/src/index.js', 'third_party/npm-015-rc1/dsh-oidc/LOCK.json'])
   assert.equal(mixed.build, true)
   assert.equal(mixed.integration, true)
@@ -75,14 +86,16 @@ test('direct source integration dependencies and mixed changes retain their chec
 })
 
 test('receipt refresh ignores only timestamps and source hashes; identity and unknown metadata still build', () => {
-  const before = receipt(), after = { ...receipt(), createdAt: '2026-02-01T00:00:00Z', fileSetSHA256: 'c'.repeat(64),
+  const before = receipt(), after = { ...receipt(), createdAt: '2026-02-01T00:00:00Z',
     files: [{ path: 'docs/new.md', sha256: 'd'.repeat(64) }] }
+  after.fileSetSHA256 = fileSetHash(after.files)
   assert.deepEqual(receiptInputs(before), receiptInputs(after))
   for (const field of ['version', 'artifacts', 'newMetadata']) {
     const changed = { ...after, [field]: field === 'version' ? '1.2.4' : 'changed' }
     assert.notDeepEqual(receiptInputs(before), receiptInputs(changed), field)
   }
   for (const invalid of [{ ...after, version: 'not-a-version' }, { ...after, files: [] }, { ...after, files: [{ path: 'a', sha256: 'bad' }] },
+    { ...after, fileSetSHA256: '0'.repeat(64) },
     { ...after, schemaVersion: 2 }, { ...after, files: [after.files[0], after.files[0]] }]) assert.throws(() => receiptInputs(invalid), /Invalid source receipt/)
 })
 
@@ -115,7 +128,8 @@ test('Git comparisons cover whole pushes, PR merge bases, deletions and renames'
 
 test('Git receipt changes and missing comparisons fail open to full work, never skip silently', t => {
   const f = repository(t)
-  const refreshed = { ...receipt(), createdAt: '2026-02-01T00:00:00Z', fileSetSHA256: 'c'.repeat(64) }
+  const refreshed = { ...receipt(), createdAt: '2026-02-01T00:00:00Z', files: [{ path: 'README.md', sha256: 'c'.repeat(64) }] }
+  refreshed.fileSetSHA256 = fileSetHash(refreshed.files)
   f.write('source-receipt.json', JSON.stringify(refreshed))
   let head = f.commit()
   const refreshedChanges = readChanges(f.root, { eventName: 'push', base: f.base, head })
@@ -137,6 +151,8 @@ test('Git receipt changes and missing comparisons fail open to full work, never 
   }
   f.write('source-receipt.json', '{invalid')
   assert.throws(() => selectChanges(f.root, { GITHUB_EVENT_NAME: 'workflow_dispatch' }))
+  f.write('source-receipt.json', JSON.stringify({ ...receipt(), fileSetSHA256: '0'.repeat(64) }))
+  assert.throws(() => selectChanges(f.root, { GITHUB_EVENT_NAME: 'workflow_dispatch' }), /Invalid source receipt/)
 })
 
 test('selection consumes push payloads and invalid event data cannot report success', t => {
