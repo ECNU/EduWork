@@ -132,6 +132,20 @@ func TestLauncherRelaunchHelper(t *testing.T) {
 	}
 	if role == "background" {
 		writePID("background.pid")
+		if os.Getenv("EDUWORK_LATE_HELPER") == "1" {
+			time.Sleep(300 * time.Millisecond)
+			helper := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
+			helper.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=late-helper")
+			if err := helper.Start(); err != nil {
+				os.Exit(7)
+			}
+			for n := 0; n < 200; n++ {
+				if _, err := os.Stat(filepath.Join(dir, "late-helper.pid")); err == nil {
+					break
+				}
+				time.Sleep(10 * time.Millisecond)
+			}
+		}
 		for {
 			time.Sleep(time.Second)
 		}
@@ -150,6 +164,9 @@ func TestLauncherRelaunchHelper(t *testing.T) {
 				windows.CloseHandle(handle)
 			}
 		}
+		if value, err := strconv.Atoi(os.Getenv("EDUWORK_RELAUNCH_DELAY_MS")); err == nil && value > 0 {
+			time.Sleep(time.Duration(value) * time.Millisecond)
+		}
 		successor := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
 		successor.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=successor")
 		if err := successor.Start(); err != nil {
@@ -162,6 +179,12 @@ func TestLauncherRelaunchHelper(t *testing.T) {
 			time.Sleep(10 * time.Millisecond)
 		}
 		os.Exit(0)
+	}
+	if role == "late-helper" {
+		writePID("late-helper.pid")
+		for {
+			time.Sleep(time.Second)
+		}
 	}
 	// The successor is the new application, created after the old desktop exit.
 	writePID("successor.pid")
@@ -235,7 +258,7 @@ func startRelaunchLauncher(t *testing.T, skipRelaunch bool) (string, *exec.Cmd, 
 	return startRelaunchLauncherWithEnv(t, skipRelaunch)
 }
 
-func assertRelaunchLifecycle(t *testing.T, dir string, pids map[string]int) {
+func assertRelaunchLifecycle(t *testing.T, dir string, launcher *exec.Cmd, pids map[string]int) {
 	t.Helper()
 	if !waitForFile(t, filepath.Join(dir, "relauncher.injob"), 8*time.Second) {
 		t.Fatal("relauncher was not created inside the launcher job")
@@ -247,6 +270,9 @@ func assertRelaunchLifecycle(t *testing.T, dir string, pids map[string]int) {
 	pids["background"] = readPID(t, dir, "background", time.Second)
 	pids["relauncher"] = readPID(t, dir, "relauncher", time.Second)
 	pids["successor"] = readPID(t, dir, "successor", time.Second)
+	if !alive(launcher.Process.Pid) {
+		t.Fatal("launcher exited before the verified successor completed")
+	}
 	if !waitForFile(t, filepath.Join(dir, "successor.done"), 20*time.Second) {
 		t.Fatal("successor did not finish")
 	}
@@ -282,25 +308,41 @@ func assertRelaunchLifecycle(t *testing.T, dir string, pids map[string]int) {
 }
 
 func TestRelaunchSurvivesWhileBackgroundIsCleaned(t *testing.T) {
-	dir, _, pids := startRelaunchLauncher(t, false)
-	assertRelaunchLifecycle(t, dir, pids)
+	dir, launcher, pids := startRelaunchLauncher(t, false)
+	assertRelaunchLifecycle(t, dir, launcher, pids)
 }
 
-func TestDelayedJobNotificationsStillFindRelaunch(t *testing.T) {
-	dir, _, pids := startRelaunchLauncherWithEnv(t, false, "EDUWORK_JOB_WATCH_DELAY_MS=1000", "EDUWORK_SUCCESSOR_MS=2500")
-	assertRelaunchLifecycle(t, dir, pids)
+func TestDelayedSuccessorStillKeepsLauncher(t *testing.T) {
+	dir, launcher, pids := startRelaunchLauncherWithEnv(t, false, "EDUWORK_RELAUNCH_DELAY_MS=300")
+	assertRelaunchLifecycle(t, dir, launcher, pids)
 }
 
-func TestWatcherInitializationFailureStillFindsRelaunchAndReports(t *testing.T) {
+func TestWatcherInitializationFailureWithDelayedSuccessor(t *testing.T) {
 	logPath := filepath.Join(t.TempDir(), "launcher.log")
-	dir, _, pids := startRelaunchLauncherWithEnv(t, false, "EDUWORK_JOB_WATCH_FAIL=1", "EDUWORK_LAUNCHER_LOG="+logPath)
-	assertRelaunchLifecycle(t, dir, pids)
+	dir, launcher, pids := startRelaunchLauncherWithEnv(t, false, "EDUWORK_JOB_WATCH_FAIL=1", "EDUWORK_RELAUNCH_DELAY_MS=300", "EDUWORK_LAUNCHER_LOG="+logPath)
+	assertRelaunchLifecycle(t, dir, launcher, pids)
 	log, err := os.ReadFile(logPath)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(log), "synthetic watcher initialization failure") || !strings.Contains(string(log), "checking descendants directly") {
+	if !strings.Contains(string(log), "synthetic watcher initialization failure") || !strings.Contains(string(log), "polling descendants") {
 		t.Fatalf("watcher failure was not reported: %s", log)
+	}
+}
+
+func TestLateHelperIsNotTreatedAsRelaunch(t *testing.T) {
+	dir, _, pids := startRelaunchLauncherWithEnv(t, true, "EDUWORK_LATE_HELPER=1")
+	pids["desktop"] = readPID(t, dir, "desktop", 8*time.Second)
+	pids["background"] = readPID(t, dir, "background", 8*time.Second)
+	pids["late-helper"] = readPID(t, dir, "late-helper", 8*time.Second)
+	if !waitForFile(t, filepath.Join(dir, "launcher.done"), 10*time.Second) {
+		t.Fatal("launcher did not exit after a normal exit with a late helper")
+	}
+	if alive(pids["background"]) || alive(pids["late-helper"]) {
+		t.Fatal("a late helper was treated as a relaunch successor")
+	}
+	if _, err := os.Stat(filepath.Join(dir, "successor.done")); err == nil {
+		t.Fatal("unexpected successor completion")
 	}
 }
 
