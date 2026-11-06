@@ -5,7 +5,7 @@
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "ac82ce59020f8da20b70fda33132797cda784bb4e7dd91f1ccb20268ffb13af6",
+  "fileSetSHA256": "864a660b09a93e20d35352204ddd8622f47f0515ffe524f3c79d290b5ca8f328",
   "files": [
     {
       "path": ".gitattributes",
@@ -292,6 +292,10 @@
       "sha256": "fe8de23c8377a4a7714f3aa8b89b8506dc924527268b7ba2ab0bc6cb6d32bcca"
     },
     {
+      "path": "docs/DATA-MIGRATION.md",
+      "sha256": "004c000bb30c651fcd25d52d50d30cccb53610acba9275693bd8c5faaae228db"
+    },
+    {
       "path": "docs/DESKTOP_NOTIFICATIONS_EN.md",
       "sha256": "e50ccec60277787fcf0571f42d1b6bf2dd3ed2143e2f6298a50637ce5a5daa8b"
     },
@@ -565,7 +569,7 @@
     },
     {
       "path": "docs/数据导入.md",
-      "sha256": "129e61d8ff360b4ce30a49cd4592993420c545b66193dfbe9049cf1a7682ea20"
+      "sha256": "e2cbe2ce4631dc1224284f19880df9b658a6816c56d030ceaa2cb5d6222aa643"
     },
     {
       "path": "dsh-desktop/cmd/eduwork-extract/main_windows.go",
