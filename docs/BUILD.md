@@ -7,13 +7,19 @@
 | 场景 | 入口 | 产物 |
 | --- | --- | --- |
 | 本机开发 | `node scripts/local-desktop-pipeline.mjs` | 当前平台的开发包，可选择安装 |
-| main 更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
+| main 产品输入更新后的 CI | `development-desktop.yml` | 双平台开发包 artifact |
 | feature 分支验证 | 手动运行 `development-desktop.yml`，选择分支和 `platform` | 所选平台的开发包与验收报告 artifact |
 | 手动候选 | `desktop-candidates.yml`，选择 `node` | 双平台候选 artifact；经授权可发布 GitHub Release |
 
 手动候选使用 Product SemVer：`X.Y.Z` 为 stable，`X.Y.Z-alpha.N`、`-beta.N`、`-rc.N` 和 `-dev.YYYYMMDD.N` 为预发布。本 PR 不修改产品版本。发布说明须先经项目负责人确认并保存为 `docs/releases/<版本>.md`；CI 只读取该文件。发布须从 main 构建，两个平台都完成验收。[发行指南](RELEASE.md)说明后续人工验收和发布授权。
 
 手动开发包验证不需要发行说明，也不会创建 Release。新 workflow 文件尚未进入仓库默认分支时，可运行已注册的 `desktop-candidates.yml`：选择 feature 分支、`build_mode=node`、`development=true`、开发版本及目标平台，并保持发布关闭、发行说明为空、审批未勾选。
+
+## CI 检查范围
+
+PR 和 main push 共用 `scripts/ci-changes.mjs` 判断变更范围。普通文档、网站、更新清单、独立 npm 包源码，以及只刷新时间和源码哈希的 `source-receipt.json`，不会触发产品装配。产品锁、Host、桌面外壳、Skill、资源、构建脚本和 CI 配置变化仍执行构建；未知路径或无法取得比较基准时执行完整检查。
+
+源码、收据格式和版本、文档检查始终保留。独立包执行对应的检查与打包；DSH 集成还覆盖直接读取源码的桌宠、memory、Studio 和各包 manifest。判断、必要任务失败或异常取消都会使结果检查失败。手动验证和正式候选继续执行完整检查，平台矩阵与发布流程保持一致。
 
 ## 本机构建
 

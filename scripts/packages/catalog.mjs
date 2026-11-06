@@ -26,7 +26,7 @@ export function changedGroups(files) {
   const result = new Set()
   for (const raw of files) {
     const file = raw.replaceAll('\\', '/')
-    if (/\.(md|png|svg|jpe?g|gif)$/i.test(file)) continue
+    if (/^packages\/[^/]+\/(?:README(?:_EN)?|AGENTS)\.md$/.test(file)) continue
     if (file.startsWith('scripts/packages/') || file === 'tests/package-maintenance.test.mjs' || /^\.github\/workflows\/packages(?:-release)?\.yml$/.test(file)) {
       groups.forEach(group => result.add(group))
     }
@@ -36,6 +36,40 @@ export function changedGroups(files) {
   }
   return groups.filter(group => result.has(group))
 }
-export function needsProductBuild(files) {
-  return files.some(file => !file.startsWith('packages/') && !file.startsWith('scripts/packages/') && !file.startsWith('docs/') && !file.endsWith('.md') && file !== 'tests/package-maintenance.test.mjs' && !/^\.github\/workflows\/packages(?:-release)?\.yml$/.test(file))
+const sourceDocumentation = /^(?:AGENTS|CONTRIBUTING|README(?:_EN)?|RELEASE-CHECKLIST(?:_EN)?)\.md$/
+const productRoots = /^(?:assets|config|dsh-desktop|dsh-electron|dsh-host|dsh-plugins|dsh-presets|dsh-skills|scripts|tests|third_party)\//
+
+export function selectProductChecks(files, { receiptOnly = false, full = false, reason = '' } = {}) {
+  const buildInputs = [], integrationInputs = [], unknown = []
+  for (const file of files) {
+    if (sourceDocumentation.test(file) || /^(?:docs|website|updates)\//.test(file)) continue
+    if (file === 'source-receipt.json' && receiptOnly) continue
+    if (packages.some(entry => file.startsWith(`${entry.directory}/`))) {
+      // These integration checks read the checkout, rather than the installed npm package.
+      if (/^packages\/(?:dsh-desktop-pet|dsh-memory|dsh-knowledge-studio)\//.test(file)
+        || packages.some(entry => file === `${entry.directory}/package.json`)) integrationInputs.push(file)
+      continue
+    }
+    buildInputs.push(file)
+    integrationInputs.push(file)
+    if (!productRoots.test(file) && file !== 'source-receipt.json'
+      && !['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md'].includes(file)) unknown.push(file)
+  }
+  const allPackages = full || unknown.length > 0 || files.some(file => ['scripts/ci-changes.mjs', 'scripts/ci-result.mjs', 'tests/ci-changes.test.mjs'].includes(file))
+  const selectedGroups = allPackages ? groups : changedGroups(files)
+  return {
+    build: full || buildInputs.length > 0,
+    integration: full || integrationInputs.length > 0,
+    groups: selectedGroups,
+    packages: selectedGroups.length > 0,
+    reasons: {
+      build: full ? [reason] : buildInputs.length ? buildInputs : ['No product assembly inputs changed'],
+      integration: full ? [reason] : integrationInputs.length ? integrationInputs : ['No integration inputs changed'],
+      packages: allPackages ? [reason || 'Shared CI configuration or unknown paths changed'] : selectedGroups,
+    },
+  }
+}
+
+export function needsProductBuild(files, options) {
+  return selectProductChecks(files, options).build
 }

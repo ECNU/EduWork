@@ -50,7 +50,7 @@ node scripts/packages/manage.mjs pack dsh-oidc
 
 Studio/共享服务的 Node 测试也会生成真实 Office 文件。先准备 Python 3.12+ 的独立环境，执行 `python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt`，并将 `DSH_OFFICE_PYTHON` 环境变量设为该 Python 解释器的绝对路径。CI 会自动完成这一步；无需安装浏览器或登录任何企业服务。
 
-自动检查只运行受影响的开发根。共享服务变更会连带检查 Studio；仅修改 Markdown 或文档图片时，只检查入口与链接。UI、真实服务登录、邮件、Office 与音视频全流程，按实际行为改动在本地做专项验收。普通 CI 不下载浏览器、不调用真实模型、不发布 npm 或桌面 Release。
+自动检查只运行受影响的开发根。共享服务变更会连带检查 Studio；仅修改包根目录的 README 或 AGENTS.md 时，只检查入口与链接；包内 Skill、协议文档和图片仍执行该包的检查与打包。UI、真实服务登录、邮件、Office 与音视频全流程，按实际行为改动在本地做专项验收。普通 CI 不下载浏览器、不调用真实模型、不发布 npm 或桌面 Release。
 
 ## 审批提示的多语言
 

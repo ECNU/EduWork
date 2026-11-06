@@ -1,87 +1,27 @@
 name: Validate pinned DSH source integration
 on:
   pull_request:
-    paths:
-      - '.github/workflows/validate-pinned-dsh-source.yml'
-      - 'third_party/dsh/**'
-      - 'config/desktop-build.json'
-      - 'scripts/desktop-build-plan.mjs'
-      - 'scripts/pinned-dsh-contract.mjs'
-      - 'dsh-host/prepare-native.mjs'
-      - 'dsh-host/prepare.mjs'
-      - 'dsh-host/test/prepare.test.mjs'
-      - 'dsh-host/quit-inspection.mjs'
-      - 'dsh-host/test/quit-inspection.test.mjs'
-      - 'dsh-host/distribution-policy.mjs'
-      - 'third_party/dsh-literature/**'
-      - 'dsh-host/test/native-020.test.mjs'
-      - 'dsh-host/test/native-021.test.mjs'
-      - 'dsh-host/dsh-compatibility.mjs'
-      - 'dsh-host/upstream-inputs-pinned-source.json'
-      - 'dsh-host/native-profile.mjs'
-      - 'dsh-host/settings-migration.mjs'
-      - 'dsh-host/redacted-log.mjs'
-      - 'dsh-host/native-resources.mjs'
-      - 'dsh-host/test/native-resources*.mjs'
-      - 'dsh-host/test/native-settings.test.mjs'
-      - 'dsh-host/test/optional-extensions.test.mjs'
-      - 'dsh-host/test/redacted-log.test.mjs'
-      - 'scripts/probe-pinned-dsh-host.mjs'
-      - 'scripts/probe-pinned-dsh-settings.mjs'
-      - 'scripts/probe-dsh-017.mjs'
-      - 'scripts/build-pinned-dsh-plugin-clients.mjs'
-      - 'scripts/native-preset-ui.mjs'
-      - 'scripts/native-file-reference-ui.mjs'
-      - 'scripts/native-web-search-ui.mjs'
-      - 'scripts/test/native-web-search-ui.test.mjs'
-      - 'scripts/assemble-pinned-dsh-source-product.mjs'
-      - 'scripts/optional-product-bundles.mjs'
-      - 'scripts/test/optional-product-bundles.test.mjs'
-      - 'scripts/test/optional-extensions.test.mjs'
-      - 'scripts/published-package-inputs.mjs'
-      - 'scripts/test/published-package-inputs.test.mjs'
-      - 'scripts/prepare-pinned-dsh-product.mjs'
-      - 'scripts/distribution-config-patches.mjs'
-      - 'scripts/test/distribution-config-patches.test.mjs'
-      - 'scripts/patch-session-search-runtime.mjs'
-      - 'scripts/test/session-search-runtime.test.mjs'
-      - 'scripts/settings-navigation-icons.mjs'
-      - 'scripts/patch-settings-navigation-runtime.mjs'
-      - 'scripts/test/settings-navigation-runtime.test.mjs'
-      - 'scripts/patch-chat-user-content-runtime.mjs'
-      - 'scripts/test/chat-user-content-runtime.test.mjs'
-      - 'scripts/patch-client-module-metadata-runtime.mjs'
-      - 'scripts/test/client-module-metadata-runtime.test.mjs'
-      - 'scripts/patch-entry-customization-runtime.mjs'
-      - 'scripts/test/entry-customization-runtime.test.mjs'
-      - 'scripts/test/deepseek-catalog-runtime.test.mjs'
-      - 'scripts/patch-remotion-bundler-runtime.mjs'
-      - 'scripts/omit-runtime-packages.mjs'
-      - 'scripts/test/runtime-omissions.test.mjs'
-      - 'scripts/patch-remotion-renderer-runtime.mjs'
-      - 'scripts/test/remotion-renderer-runtime.test.mjs'
-      - 'scripts/test/plugin-locale.test.mjs'
-      - 'scripts/verify-media-template.mjs'
-      - 'scripts/test/media-template.test.mjs'
-      - 'scripts/portable-product-links.mjs'
-      - 'scripts/test/portable-product-links.test.mjs'
-      - 'scripts/probe-pinned-dsh-source-product.mjs'
-      - 'scripts/probe-pinned-dsh-deliverables.mjs'
-      - 'scripts/probe-pinned-dsh-literature.mjs'
-      - 'dsh-host/product-profile.mjs'
-      - 'dsh-electron/src/**'
-      - 'dsh-electron/scripts/**'
-      - 'dsh-electron/tests/**'
-      - 'dsh-electron/upstream-inputs-pinned-source.json'
-      - 'dsh-plugins/**'
-      - 'packages/**'
-      - 'tests/plugin-peer-compatibility.test.mjs'
   workflow_dispatch:
   workflow_call:
 permissions:
   contents: read
 jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      integration: ${{ steps.changes.outputs.integration }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - id: changes
+        run: node scripts/ci-changes.mjs
   legacy-directory-picker:
+    needs: select
+    if: needs.select.outputs.integration == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -105,6 +45,8 @@ jobs:
           node core/dsh-host/prepare.mjs --upstream "$DSH_HOST_SOURCE" --output "$RUNNER_TEMP/legacy-host"
           node --test core/dsh-host/test/prepare.test.mjs
   native-host:
+    needs: select
+    if: needs.select.outputs.integration == 'true'
     strategy:
       fail-fast: false
       matrix:
@@ -288,3 +230,18 @@ jobs:
             ${{ runner.temp }}/native-desktop-evidence/electron.log
             ${{ runner.temp }}/desktop-pet-evidence/desktop-pet.json
           if-no-files-found: ignore
+  result:
+    name: DSH integration result
+    if: always()
+    needs: [select, legacy-directory-picker, native-host]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - run: node scripts/ci-result.mjs
+        env:
+          SELECTION_RESULT: ${{ needs.select.result }}
+          REQUIRED: ${{ needs.select.outputs.integration }}
+          RESULTS: ${{ format('["{0}","{1}"]', needs.legacy-directory-picker.result, needs.native-host.result) }}

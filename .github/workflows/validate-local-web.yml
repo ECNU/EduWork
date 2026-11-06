@@ -20,9 +20,7 @@ jobs:
       - name: Select product assembly changes
         id: changes
         shell: pwsh
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: node core/scripts/packages/manage.mjs product-changed "$env:BASE"
+        run: node core/scripts/ci-changes.mjs
       - uses: actions/setup-go@v5
         if: steps.changes.outputs.build == 'true'
         with:
@@ -31,6 +29,10 @@ jobs:
       - name: Verify source build and local profile coordination
         shell: pwsh
         run: |
+          node --test core/tests/ci-changes.test.mjs core/tests/package-maintenance.test.mjs
+          if ($LASTEXITCODE) { throw 'CI selection checks failed' }
+          node core/scripts/audit-eduwork-distribution.mjs --root core
+          if ($LASTEXITCODE) { throw 'Source audit failed' }
           node core/scripts/check-source-docs.mjs core
           if ($LASTEXITCODE) { throw 'Documentation links failed' }
           node --test core/tests/eduwork-assembly-policy.test.mjs core/scripts/test/npm-runtime.test.mjs core/tests/eduwork-source-reproducibility.test.mjs core/tests/eduwork-upstream-lock.test.mjs core/tests/eduwork-profile-links.test.mjs core/tests/eduwork-web-acceptance-contract.test.mjs
