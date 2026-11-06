@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "ac82ce59020f8da20b70fda33132797cda784bb4e7dd91f1ccb20268ffb13af6",
+  "createdAt": "2026-11-06T14:07:47.132Z",
+  "fileSetSHA256": "2d918188bc60eade84f18380dfca627a4a5deee22e454f60e11e28125b953a59",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "19f6e326aeeffa93dd4eb1e40ef486f67fe1ccb5354899df062e3231ecd2b636"
+      "sha256": "cc34947b27142132d7f352acd802eca49c9a21e7d21035d9abb68198494ef990"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -37,7 +37,7 @@
     },
     {
       "path": ".github/workflows/packages.yml",
-      "sha256": "c925b3a0bb986aa5846dde1ba5dcabcd1f71af8089a5046aee142f2fc18af0be"
+      "sha256": "da6cbd2bfcb603032d2b28a48ebc248eea5099cacc5128aba9a37f7486e761bf"
     },
     {
       "path": ".github/workflows/publish-desktop-candidate.yml",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "56b3e64ccbc0b1fe59d025391771049f4d9292363bdbd7e1e861f8b369a0de1e"
+      "sha256": "3b7e1d92985cb08157fe626a9ecced8491e678300add123e2ea4c1fadedceac4"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "8d9b9f4d6cc69ad20f300992387b0d111e4c3c23bd7a7fde5712f48b826f4115"
+      "sha256": "6d929256eb952a77edb3b48482edddc762747c188a7da56dca9f946bc64b5d95"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -249,7 +249,7 @@
     },
     {
       "path": "docs/BUILD.md",
-      "sha256": "4f3b7ac1f949d6c1a5fff3766690945ba3f042830326d2700c90e313ea4285bc"
+      "sha256": "d4397472b02b812d822280d871b071afb384334d80fe1639e37972a3667ae23c"
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
@@ -381,7 +381,7 @@
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "11791db73dfd70e2b3e32aa037260959a6ebde60b0002674ec99af983217ddff"
+      "sha256": "dd152d4d1672bfbcd673f0eabae922d082e34ec147a2bece6454613c595776c0"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -7284,6 +7284,10 @@
       "sha256": "7f85e2d0f36b216c45588d72e9c6b9ca65aaf2df8787e92483483b547b950426"
     },
     {
+      "path": "scripts/ci-changes.mjs",
+      "sha256": "f2f362d1424f438d0dd9c4f6ea15534fcf3f45119eccea22a61b27a84384f92a"
+    },
+    {
       "path": "scripts/ci-eduwork-macos-release.mjs",
       "sha256": "a5731388e216e81c1cc33d79cb6f14506f82897dc22ebfb8cc4df156fb83d00b"
     },
@@ -7310,6 +7314,10 @@
     {
       "path": "scripts/ci-pinned-dsh-desktop.ps1",
       "sha256": "de98a54901c56bbade4743b7e46c46a69685877e3c479cc2f0137f9aaa501045"
+    },
+    {
+      "path": "scripts/ci-result.mjs",
+      "sha256": "8ca837e776a98d9908101cfb687af33920195e070464469095c4bf4d9eb8ec8e"
     },
     {
       "path": "scripts/close-release-test-desktop.mjs",
@@ -7573,11 +7581,11 @@
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "9888a9dff6b804cc97b6718f32089b32f48df2a3338af4c0fc3b3e235a5e3b4b"
+      "sha256": "e0422a032627450eda1904675dddf6fe95570afd634eccef03f5d1e35871d484"
     },
     {
       "path": "scripts/packages/manage.mjs",
-      "sha256": "9649b79a31c77677d173527a4e3be1a0e445970fad59bb789591acb3c0cdc0e1"
+      "sha256": "04b216488aaea4f54d5b57d64840c44ce3a0705642d2e81ce4b8a1027aac55f8"
     },
     {
       "path": "scripts/packages/npm.mjs",
@@ -7950,6 +7958,10 @@
     {
       "path": "tests/build-script-entry.test.mjs",
       "sha256": "2ed32c0a4803f91db6a32076f1e8bf51e2f4ca5ecf1b396974e62d12ad6b4d84"
+    },
+    {
+      "path": "tests/ci-changes.test.mjs",
+      "sha256": "780833a62cfa0789e200283d5e0747a1127135a9a340273e6faeb3a644ca026c"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",
