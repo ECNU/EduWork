@@ -35,5 +35,21 @@ func runChild(child *exec.Cmd) error {
 		_ = child.Wait()
 		return err
 	}
-	return child.Wait()
+	waitErr := child.Wait()
+	// Abnormal exits keep the kill-on-close limit so a crash or updater
+	// termination cannot leave a stale process tree.
+	if waitErr != nil {
+		return waitErr
+	}
+	// Electron relaunches by creating its successor inside this job before the
+	// old process exits. A clean exit must not kill that successor. The
+	// kill-on-close limit stays active when this launcher itself is terminated:
+	// the updater rollback path never reaches this clear, so the OS still closes
+	// the job and stops the old process tree.
+	normal := info
+	normal.BasicLimitInformation.LimitFlags = windows.JOB_OBJECT_LIMIT_BREAKAWAY_OK
+	if _, err = windows.SetInformationJobObject(job, windows.JobObjectExtendedLimitInformation, uintptr(unsafe.Pointer(&normal)), uint32(unsafe.Sizeof(normal))); err != nil {
+		return err
+	}
+	return waitErr
 }

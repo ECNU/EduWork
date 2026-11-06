@@ -57,6 +57,88 @@ func alive(pid int) bool {
 	return code == 259
 }
 
+func TestLauncherRelaunchHelper(t *testing.T) {
+	role := os.Getenv("EDUWORK_RELAUNCH_TEST")
+	if role == "" {
+		return
+	}
+	dir := os.Getenv("EDUWORK_JOB_DIR")
+	writePID := func(name string) {
+		if err := os.WriteFile(filepath.Join(dir, name), []byte(strconv.Itoa(os.Getpid())), 0600); err != nil {
+			os.Exit(4)
+		}
+	}
+	if role == "launcher" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
+		cmd.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=desktop")
+		if err := runChild(cmd); err != nil {
+			os.Exit(2)
+		}
+		os.Exit(0)
+	}
+	if role == "desktop" {
+		cmd := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
+		cmd.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=relauncher")
+		if err := cmd.Start(); err != nil {
+			os.Exit(3)
+		}
+		writePID("desktop.pid")
+		// Electron creates its relauncher before the old process exits.
+		for n := 0; n < 100; n++ {
+			if _, err := os.Stat(filepath.Join(dir, "relauncher.pid")); err == nil {
+				break
+			}
+			time.Sleep(10 * time.Millisecond)
+		}
+		os.Exit(0)
+	}
+	// The relauncher stays inside the launcher job, as Electron's does.
+	writePID("relauncher.pid")
+	time.Sleep(700 * time.Millisecond)
+	writePID("relauncher.done")
+	os.Exit(0)
+}
+
+func TestNormalDesktopExitKeepsRelauncherAlive(t *testing.T) {
+	dir := t.TempDir()
+	cmd := exec.Command(os.Args[0], "-test.run=^TestLauncherRelaunchHelper$")
+	cmd.Env = append(os.Environ(), "EDUWORK_RELAUNCH_TEST=launcher", "EDUWORK_JOB_DIR="+dir)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	pids := map[string]int{}
+	t.Cleanup(func() {
+		_ = cmd.Process.Kill()
+		_, _ = cmd.Process.Wait()
+		for _, pid := range pids {
+			if p, err := os.FindProcess(pid); err == nil {
+				_ = p.Kill()
+			}
+		}
+	})
+	for _, role := range []string{"desktop", "relauncher"} {
+		deadline := time.Now().Add(8 * time.Second)
+		for time.Now().Before(deadline) {
+			if b, err := os.ReadFile(filepath.Join(dir, role+".pid")); err == nil {
+				pids[role], _ = strconv.Atoi(strings.TrimSpace(string(b)))
+				break
+			}
+			time.Sleep(20 * time.Millisecond)
+		}
+		if pids[role] == 0 {
+			t.Fatal("test child did not start: " + role)
+		}
+	}
+	deadline := time.Now().Add(5 * time.Second)
+	for time.Now().Before(deadline) {
+		if _, err := os.Stat(filepath.Join(dir, "relauncher.done")); err == nil {
+			return
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+	t.Fatal("relauncher was killed when the desktop exited normally")
+}
+
 func TestKilledShortcutStopsDesktopButDetachedUpdaterSurvives(t *testing.T) {
 	dir := t.TempDir()
 	cmd := exec.Command(os.Args[0], "-test.run=^TestLauncherJobHelper$")
