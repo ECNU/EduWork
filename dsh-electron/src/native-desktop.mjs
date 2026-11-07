@@ -158,7 +158,8 @@ async function main() {
   })
   entered = true
 
-  // Match upstream: load the document, start the Host, then present the window.
+  // The final workspace presentation still happens after Host ready, as upstream.
+  // The BootPage shown before startOnce() is EduWork's temporary local adapter.
   const presentInitialWindow = () => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,

@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-07T16:13:38.636Z",
-  "fileSetSHA256": "d70991917f1b05671e08493dec6000e1877188c0b63e1ad8d99dbc4059fb41e0",
+  "createdAt": "2026-11-07T16:24:31.940Z",
+  "fileSetSHA256": "5bcc4f993e6ab9593f4ea63b44f2b40019cb51d9d98484701df10abe993522a2",
   "files": [
     {
       "path": ".gitattributes",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "701f662ff1494eff953a6b92a216ccba6251e0b45a559af709f4831cd8f8d2d4"
+      "sha256": "d8e3695d9c35466861f797f6df8252aef9c458464d327c042238907fe2d78b7d"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
