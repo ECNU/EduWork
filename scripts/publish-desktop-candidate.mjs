@@ -8,7 +8,7 @@ import {execFileSync} from 'node:child_process'
 import {Readable} from 'node:stream'
 import {pipeline} from 'node:stream/promises'
 import {githubUpdateManifestBytes, updateManifestName} from './github-update-manifest.mjs'
-import {validateExtractorReceipt, validatedReleaseFiles} from './publish-windows-release.mjs'
+import {validateExtractorReceipt, validatedReleaseFiles, windowsInstallerAssetNames} from './publish-windows-release.mjs'
 import {bundleVersion} from './macos-update-feed.mjs'
 import {deltaName} from './macos-update-delta.mjs'
 import {windowsDeltaName} from './windows-update-delta.mjs'
@@ -37,7 +37,7 @@ export function publicationPlatforms(value = '', mode = 'node') {
   if (mode === 'ps1') assert.ok(!platforms.includes('macos-x64'), 'Intel Mac requires Node')
   return platforms
 }
-export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
+export function nodeNpmAssetNames(product, version, platform, deltaFrom = [], installer) {
   assert.match(product, /^[A-Za-z0-9-]+$/)
   desktopVersion(version)
   assert.ok(['windows', 'macos', 'macos-x64'].includes(platform))
@@ -48,6 +48,7 @@ export function nodeNpmAssetNames(product, version, platform, deltaFrom = []) {
     const setup = `${product}-${version}-windows-x64-setup.zip`
     names.push(updateManifestName, setup, `${setup}.sha256`, `${setup}.json`)
     for (const delta of deltaFrom.map(from => windowsDeltaName(product, version, from))) names.push(delta, `${delta}.sha256`)
+    if (installer) names.push(...windowsInstallerAssetNames(installer, product, version))
   } else {
     const dmg = `${product}-${version}-macos-${arch}-electron.dmg`
     names.push(dmg, `${dmg}.sha256`, ...deltaFrom.map(from => deltaName(product, version, from, arch)))
@@ -265,10 +266,11 @@ export async function publishCandidate(env = process.env) {
     assert.equal('sha256:' + await hashFile(archive), artifact.digest, 'Actions artifact digest mismatch')
     const names = execFileSync('unzip', ['-Z1', archive], {encoding: 'utf8'}).trim().split(/\r?\n/)
     // The receipt lists the delta updates; every other file name is fixed.
-    const deltas = buildMode === 'node'
-      ? JSON.parse(execFileSync('unzip', ['-p', archive, 'release-receipt.json'], {encoding: 'utf8'})).deltas ?? [] : []
+    const buildReceipt = buildMode === 'node'
+      ? JSON.parse(execFileSync('unzip', ['-p', archive, 'release-receipt.json'], {encoding: 'utf8'})) : null
+    const deltas = buildReceipt?.deltas ?? []
     const expected = buildMode === 'ps1' ? assetNames(product, version, platform)
-      : nodeNpmAssetNames(product, version, platform, deltas.map(delta => delta.from))
+      : nodeNpmAssetNames(product, version, platform, deltas.map(delta => delta.from), platform === 'windows' ? buildReceipt.installer : undefined)
     assert.deepEqual(names.sort(), expected.sort(), 'Unexpected paths in artifact archive')
     await mkdir(directory, {recursive: true})
     execFileSync('unzip', ['-q', archive, '-d', directory])

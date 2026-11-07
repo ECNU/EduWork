@@ -4,9 +4,9 @@
 
 这是独立于 `dsh-desktop/`（Go + Wails）的第二个桌面装配入口。两种宿主共用同一份 EduWork 产品装配、插件、技能及预览实现。
 
-桌面基底锁定 DSH `0.1.5-rc.2`（`fb2c4b9e698e30edb738bca4cf0618587db7d203`）。Electron 主进程、窗口、`dsh-app://` 和流式 Host 传输从该提交派生，产品适配以可核对的补丁生成，不修改共享的官方源码缓存。Host 适配放在 `../dsh-host/`，供两种桌面宿主复用。
+桌面使用[当前构建配置](../config/desktop-build.json)选定的 DSH `0.2.2-rc.1`，提交 `66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db`。内核、Web 客户端、Desktop Host、窗口工厂、预加载桥接、浏览器隔离、快捷键和退出恢复复用锁定实现；输入哈希及产品适配记录在构建回执中。Host 适配位于 `../dsh-host/`。旧桌面壳构建入口已停用。
 
-显式 `--pinned-dsh-source` 构建使用 [DSH 0.2.1-rc.5 候选锁](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json)：内核、Web 客户端、Desktop Host 和桌面模块均来自 `b830ec950faba0a46dda564be3e2d854afed94f1`。窗口工厂、完整预加载桥接、浏览器 guest 隔离、快捷键、目录选择、主题与语言同步、Host 生命周期、退出确认和故障恢复复用官方实现；输入哈希及产品适配记录在构建回执中。
+Windows 标准安装器复用官方 NSIS 目录切换和更新协调器，个人数据独立保存，首次启动提供旧便携版迁移。安装、迁移、更新和卸载的用户流程见[Windows 安装与迁移](../docs/WINDOWS-INSTALLED-MIGRATION.md)。
 
 机构登录与系统加密凭据、便携更新、签名配置与技能更新、任务通知和 Studio 由产品适配保留。麦克风权限沿用官方主窗口、主框架和系统授权检查，其他权限默认拒绝，仅允许应用主框架写剪贴板。外部网页使用隔离的原生浏览器，不绕过站点 CSP 或 X-Frame-Options。故障恢复提供退出与重启，不提供会关闭发行版必要插件的“禁用全部插件”。这不是官方安装包的重打包，也不继承其签名。此模式不改变默认发行锁或更新源。
 
@@ -15,11 +15,11 @@
 候选壳构建需要同一锁准备的源码、Host 和 npm Runtime；不再使用旧版桌面源码或共享编译缓存：
 
 ```powershell
-node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --output $ShellBuild
+node dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream $Upstream --host $HostBuild --runtime $Runtime --desktop-tools $DesktopTools --output $ShellBuild
 node dsh-electron/scripts/probe-native-desktop.mjs --shell $ShellBuild --runtime $Runtime --electron $ElectronExecutable --output $Evidence
 ```
 
-`$ElectronExecutable` 必须是原始 Electron runtime 的可执行文件，不能使用已打包应用的 EXE。输出目录必须尚不存在。[源码候选资格检查](../.github/workflows/validate-pinned-dsh-source.yml) 在 Windows/macOS 构建并启动真实 Electron，以合成网页检查桥接、受防嵌入策略保护的页面、权限边界与生命周期；[双平台桌面包 CI](../.github/workflows/development-desktop.yml)另行检查已打包应用的归档、原生运行时和基本启动。真实机构登录、系统录音授权、更新安装及 macOS 人工交互仍须另行验收。
+`$DesktopTools` 是从当前配方的 `desktop-probe/package*.json` 通过 `npm ci --ignore-scripts` 准备的独立工具目录。`$ElectronExecutable` 必须是原始 Electron runtime 的可执行文件，不能使用已打包应用的 EXE。输出目录必须尚不存在。[源码候选资格检查](../.github/workflows/validate-pinned-dsh-source.yml) 在 Windows/macOS 构建并启动真实 Electron，以合成网页检查桥接、受防嵌入策略保护的页面、权限边界与生命周期；[双平台桌面包 CI](../.github/workflows/development-desktop.yml)另行检查已打包应用的归档、原生运行时和基本启动。真实机构登录、系统录音授权、更新安装及 macOS 人工交互仍须另行验收。
 
 每个发行版独立使用应用标识、浏览器缓存、DSH 数据和凭据。桌面构建沿用锁定的 npm 插件组合。更新入口由发行配置决定；公版默认使用 GitHub，用户可通过配置覆盖来源或关闭更新。开发验证使用独立数据目录。
 

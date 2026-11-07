@@ -49,6 +49,21 @@ test('both shells export a readable ZIP with versions, redacted real log text an
     assert.ok(files.has('README.txt'))
   }
 })
+test('installed diagnostics reads update preferences from the separate writable data root',async t=>{
+  const args=await fixture(t), dataRoot=await mkdtemp(join(tmpdir(),'eduwork-installed-data-'))
+  t.after(()=>rm(dataRoot,{recursive:true,force:true}))
+  for(const root of [join(args.root,'data'),dataRoot])await mkdir(join(root,'state/updates'),{recursive:true})
+  await writeFile(join(args.root,'data/state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy:'development'}))
+  await writeFile(join(dataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy:'stable'}))
+  await writeFile(join(dataRoot,'state/updates/update-preferences.json'),JSON.stringify({schemaVersion:1,policy:'stable',channel:'stable'}))
+  await writeFile(join(args.logs,'desktop-host.log'),`Data root: ${dataRoot}\n`)
+  const files=unzip((await exportDiagnostics({...args,dataRoot})).archive)
+  assert.equal(JSON.parse(files.get('metadata/update-preferences.json')).policy,'stable')
+  assert.equal(JSON.parse(files.get('metadata/electron-update-preferences.json')).policy,'stable')
+  assert.match(files.get('logs/desktop-host.log'),/<DATA>/)
+  assert.equal([...files.values()].join('\n').includes(dataRoot),false)
+})
+
 test('diagnostics survives broken configuration, oversized logs and redirected directories',async t=>{
   const args=await fixture(t)
   await writeFile(args.config,'{"schemaVersion":1, BROKEN')

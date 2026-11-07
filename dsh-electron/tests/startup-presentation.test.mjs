@@ -19,7 +19,7 @@ function startupHarness() {
   const readyStart = source.indexOf('export async function desktopReady(')
   const readyEnd = source.indexOf('\n}\n', readyStart)
   const activationStart = source.indexOf('const activationWindows =')
-  const activationEnd = source.indexOf('export function configureEduworkPaths()', activationStart)
+  const activationEnd = source.indexOf('export async function configureEduworkPaths()', activationStart)
   assert.ok(progressStart >= 0 && messageStart > progressStart && readyEnd > readyStart)
   class FakeWindow extends EventEmitter {
     static windows = []
@@ -47,6 +47,7 @@ function startupHarness() {
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
     let quitting = false, desktopFailureShown = false, flushCalls = 0
+    const paths = { layout: 'portable' }
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
     let flushPendingSettings = () => { flushCalls += 1 }

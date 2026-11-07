@@ -293,6 +293,12 @@
 //   "releasesURL": "https://updates.example.org/releases"
 // updates.defaultPolicy：stable 仅公测，development 也接收开发版；不填沿用打包默认值，设置中手动选择优先。
 //   "defaultPolicy": "development"
+// updates.windowsFeeds：Windows 标准安装版的 NSIS 更新清单；旧便携版 JSON 清单不能用于安装版。
+//   "windowsFeeds": {}
+// updates.windowsFeeds.stable：Windows 安装版正式渠道的 HTTPS latest.yml 地址。
+//   "stable": "https://updates.example.org/windows/stable/latest.yml"
+// updates.windowsFeeds.development：Windows 安装版开发渠道的 HTTPS nightly.yml 地址。
+//   "development": "https://updates.example.org/windows/development/nightly.yml"
 // updates.macFeeds：macOS Sparkle 更新清单；仅支持 Sparkle 的安装包使用，仍验证包内公钥。Windows 忽略此项。
 //   "macFeeds": {}
 // updates.macFeeds.stable：macOS 公测渠道的 HTTPS appcast 地址。
