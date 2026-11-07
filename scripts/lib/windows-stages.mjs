@@ -31,6 +31,7 @@ import { createWindowsDeltas } from '../windows-update-delta.mjs'
 import { verifyPublisherFirstLaunch } from './publisher-acceptance.mjs'
 import { prepareWritableRoot } from '../../dsh-electron/src/writable-root.mjs'
 import { removeInstalledData } from '../../dsh-electron/src/installed-files.mjs'
+import { windowsToastCLSID } from '../../dsh-electron/src/windows-toast.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -214,8 +215,9 @@ async function acceptWindows({ workspace, coreRoot }) {
     if (!packed.installer) throw new Error('Missing standard Windows installer')
     installedProgram = join(unpacked, `${edition}-installed`)
     installedCheckRequest = join(gui, 'installation-check.json')
+    const settings = await readJSON(join(desktop, 'resources/app/eduwork.desktop.json'))
     await writeJSON(installedCheckRequest, { registry: packed.installer.registry, programRoot: installedProgram,
-      shortcutName: (await readJSON(join(desktop, 'resources/app/eduwork.desktop.json'))).productName })
+      shortcutName: settings.productName, toastCLSID: windowsToastCLSID(settings.appId) })
     await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(coreRoot, 'dsh-electron/scripts/check-windows-installation.ps1'), '-Request', installedCheckRequest, '-RequireEmpty'])
     installedDataFixture = join(process.env.LOCALAPPDATA, 'EduWork', packed.installer.distribution)
     if (await pathExists(installedDataFixture)) throw new Error('NSIS acceptance requires a disposable Windows user without existing edition data')
@@ -345,6 +347,7 @@ async function acceptWindows({ workspace, coreRoot }) {
     checks.publisherFirstLaunch = 'passed'
   }
   if (installedProgram) {
+    await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(coreRoot, 'dsh-electron/scripts/check-windows-installation.ps1'), '-Request', installedCheckRequest, '-RequireToast'])
     await run(join(installedProgram, 'Uninstall EduWork-Electron.exe'), ['/S', `_?=${installedProgram}`])
     await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(coreRoot, 'dsh-electron/scripts/check-windows-installation.ps1'), '-Request', installedCheckRequest, '-Removed'])
     if (!await isFile(config) || !(await readJSON(join(installedDataFixture, 'uninstall-retention.json'))).synthetic) throw new Error('Silent uninstall must retain personal data')

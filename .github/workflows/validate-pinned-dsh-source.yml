@@ -67,7 +67,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: |
-          node --test core/dsh-electron/tests/installed-migration.test.mjs core/dsh-electron/tests/installed-first-run.test.mjs core/dsh-electron/tests/installed-files.test.mjs core/dsh-electron/tests/installed-updates.test.mjs core/dsh-electron/tests/installed-update-preparation.test.mjs core/dsh-electron/tests/writable-root.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs
+          node --test core/dsh-electron/tests/installed-migration.test.mjs core/dsh-electron/tests/installed-first-run.test.mjs core/dsh-electron/tests/installed-files.test.mjs core/dsh-electron/tests/installed-updates.test.mjs core/dsh-electron/tests/installed-update-preparation.test.mjs core/dsh-electron/tests/installed-startup-check.test.mjs core/dsh-electron/tests/windows-toast.test.mjs core/dsh-electron/tests/writable-root.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs
           if ($LASTEXITCODE) { throw 'Installed migration and data path checks failed' }
       - name: Resolve the pinned build recipe
         id: upstream

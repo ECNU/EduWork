@@ -145,7 +145,8 @@ export async function assembleWindows({
     await setUpdaterManifest({ executable: updaterPath })
   }
   await rename(join(output, 'electron.exe'), join(output, 'EduWork-Electron.exe'))
-  await setDesktopIcon({ executable: join(output, 'EduWork-Electron.exe'), shell: 'electron' })
+  await setDesktopIcon({ executable: join(output, 'EduWork-Electron.exe'), shell: 'electron',
+    productName: dataLayout === 'installed' ? name : undefined })
   let defaultConfig = join(product, 'resources/desktop/eduwork.jsonc')
   if (!await isFile(defaultConfig)) defaultConfig = ''
   await installDesktopConfig({ output, defaultConfig })

@@ -16,6 +16,7 @@ import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-proces
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
 import { createSidebarBrowser } from './sidebar-browser.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
+import { connectInstalledStartup, installedStartupId } from './installed-startup-check.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
@@ -24,6 +25,7 @@ import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, na
 await configureEduworkPaths()
 let mainWindow, bridge, product, entered = false, started = false, sessionEnding = false, recoveryExit = false
 let startupTask, startupFailure, startupFailureShown = false, initialPresentationDone = false
+let installedStartup
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
@@ -75,11 +77,34 @@ const recovery = new DesktopFatalRecovery({
       electron: process.versions.electron, node: process.versions.node, locale: locale().id },
   }),
 })
+function stopUnverifiedUpdate() {
+  if (!installedStartup?.pending) return false
+  if (!recoveryExit) { recoveryExit = true; app.quit() }
+  return true
+}
+async function waitForUpdatedWorkbench(window) {
+  // The pinned DSH renderer replaces the boot page after its workbench mounts.
+  const mounted = await window.webContents.executeJavaScript(`new Promise(resolve => {
+    const root = document.getElementById('root');
+    if (!root) { resolve(false); return; }
+    const check = () => {
+      if (root.firstElementChild && !root.querySelector(':scope > [data-dsh-boot]')) {
+        observer.disconnect();
+        resolve(true);
+      }
+    };
+    const observer = new MutationObserver(check);
+    observer.observe(root, { childList: true });
+    check();
+  })`)
+  if (!mounted) throw Error('新版工作台未能启动')
+}
 function reportFatal(error, source) {
   if (isQuitting()) return
   // Do not persist arbitrary Host error properties, renderer content or cookies.
   const safe = new Error(redactDiagnostic(error instanceof Error ? error.message : String(error)))
   desktopHostLog(`[desktop:${source}] ${safe.message}\n`)
+  if (stopUnverifiedUpdate()) return
   void recovery.report(safe, source).catch(failure => {
     desktopHostLog(`[desktop:recovery] ${redactDiagnostic(failure.message)}\n`)
     recoveryExit = true; app.quit()
@@ -114,10 +139,13 @@ async function handleStartupFailure(error) {
   startupFailure = error
   startupFailureShown = true
   desktopHostLog(`[desktop:startup] ${redactDiagnostic(error instanceof Error ? error.message : String(error))}\n`)
+  if (stopUnverifiedUpdate()) return
   try { await showDesktopFailure(error) }
   catch (failure) { reportFatal(failure, 'main') }
 }
 async function main() {
+  const probeId = process.platform === 'win32' ? installedStartupId(process.argv.slice(1)) : undefined
+  if (probeId) installedStartup = connectInstalledStartup(probeId, () => stopUnverifiedUpdate())
   if (await installEduworkFromDmg() || isQuitting()) return
   if (!claimDesktopSingleInstance(app, showDesktop)) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
@@ -196,9 +224,17 @@ async function main() {
     return
   }
   started = true
-  await desktopReady(() => !isQuitting() && !recovery.active && Boolean(backend.host) && backend.state.phase === 'ready')
+  const startupHealthy = () => !isQuitting() && !startupFailure && !recovery.active
+    && !window.isDestroyed() && Boolean(backend.host) && backend.state.phase === 'ready'
+  if (installedStartup && startupHealthy()) await waitForUpdatedWorkbench(window)
+  await desktopReady(startupHealthy)
   if (backend.host && backend.state.phase === 'ready') {
+    if (installedStartup && !startupHealthy()) return
     presentInitialWindow()
+    if (installedStartup) {
+      if (!window.isVisible()) throw Error('新版工作台未能显示')
+      if (!await installedStartup.ready() || !startupHealthy()) return
+    }
     // waitForHost() can start the backend. Optional menu discovery must only
     // join the completed startup, never initiate it or delay window display.
     void bridge.probeUserGuide().catch(() => {})
@@ -207,7 +243,7 @@ async function main() {
 }
 app.on('will-quit', () => { quit.dispose(); bridge?.dispose(); sidebarBrowser.close() })
 void app.whenReady().then(main).catch(async error => {
-  if (isQuitting() || recovery.active) return
+  if (isQuitting() || recovery.active || stopUnverifiedUpdate()) return
   if (entered) { reportFatal(error, 'main'); return }
   await showDesktopFailure(error)
 }).catch(error => reportFatal(error, 'main'))

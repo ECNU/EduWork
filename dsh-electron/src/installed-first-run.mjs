@@ -7,17 +7,21 @@ import { WRITABLE_ROOT_MARKER } from './writable-root.mjs'
 import { migrationRelaunchArgs, migrationSourceArgument, pendingMigrationFile, prepareInstalledData } from './installed-migration.mjs'
 
 /** Setup uses a temporary Electron profile; W is opened only by the relaunched application. */
-export async function runInstalledFirstLaunch() {
+export async function runInstalledFirstLaunch({ verifyingUpdate = false } = {}) {
   if (process.platform !== 'win32') return false
   const appRoot = app.getAppPath()
   const settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
-  if (settings.dataLayout !== 'installed') return false
+  if (settings.dataLayout !== 'installed') {
+    if (verifyingUpdate) throw Error('更新要求已安装的 EduWork')
+    return false
+  }
   const sourceRoot = migrationSourceArgument(process.argv.slice(1))
   const paths = desktopPaths({ appRoot, settings, localAppData: process.env.LOCALAPPDATA,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT })
   const marker = lstatSync(join(paths.writableRoot, WRITABLE_ROOT_MARKER), { throwIfNoEntry: false })
   const pending = lstatSync(pendingMigrationFile(paths.writableRoot, settings.distribution), { throwIfNoEntry: false })
   if (marker && !sourceRoot && !pending) return false
+  if (verifyingUpdate) throw Error('请先完成安装版个人数据的初始化或迁移')
   const profile = mkdtempSync(join(tmpdir(), 'eduwork-install-'))
   app.setPath('userData', profile)
   app.on('window-all-closed', () => {}) // Closing progress must not quit before relaunch is registered.

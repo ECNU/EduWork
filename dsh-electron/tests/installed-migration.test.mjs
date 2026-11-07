@@ -9,7 +9,7 @@ import { join, dirname } from 'node:path'
 import { tmpdir } from 'node:os'
 import { acquireInstanceMutex, releaseInstanceMutex } from '../src/install-mutex.mjs'
 import { prepareWritableRoot } from '../src/writable-root.mjs'
-import { migratePortableToInstalled } from '../scripts/migrate-portable-to-installed.mjs'
+import { migratePortableToInstalled } from '../src/portable-migration.mjs'
 
 const dshCommit = '1'.repeat(40)
 const now = () => '2026-10-26T00:00:00.000Z'
@@ -134,7 +134,7 @@ test('a committed legacy update backup does not block migration and is retained 
 
 async function writeSlowMigration(f, name = 'slow-migration.mjs', sourceRoot = f.source) {
   const wrapper = join(f.base, name)
-  const moduleUrl = new URL('../scripts/migrate-portable-to-installed.mjs', import.meta.url).href
+  const moduleUrl = new URL('../src/portable-migration.mjs', import.meta.url).href
   await writeFile(wrapper, `
 import { writeFile } from 'node:fs/promises'
 import { migratePortableToInstalled } from ${JSON.stringify(moduleUrl)}
@@ -160,7 +160,7 @@ await migratePortableToInstalled({
 
 async function writePreJournalMigration(f, name = 'pre-journal.mjs') {
   const wrapper = join(f.base, name)
-  const moduleUrl = new URL('../scripts/migrate-portable-to-installed.mjs', import.meta.url).href
+  const moduleUrl = new URL('../src/portable-migration.mjs', import.meta.url).href
   await writeFile(wrapper, `
 import { writeFile } from 'node:fs/promises'
 import { migratePortableToInstalled } from ${JSON.stringify(moduleUrl)}

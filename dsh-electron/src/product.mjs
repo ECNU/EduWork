@@ -3,6 +3,7 @@ import { editableInstalledUpdateConfiguration, installedUpdateSource, launchPort
 import { confirmInstalledMigration, readInstalledMigration, recordInstalledMigrationStartup } from './installed-migration.mjs'
 import { releaseInstanceMutex } from './install-mutex.mjs'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
+import { createWindowsToasts, windowsToastCLSID } from './windows-toast.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { removeWindowMenu } from './desktop-menu.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
@@ -69,7 +70,7 @@ export const productUpdateObserver = createProductUpdateObserver({
   diagnose: message => desktopHostLog(`[desktop:updates] ${message}\n`),
 })
 let publisher
-let taskNotifications, notificationAdapter
+let taskNotifications, notificationAdapter, windowsToasts, pendingToast
 let desktopPet, petMenu = () => []
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
@@ -80,7 +81,7 @@ const desktopExit = new DesktopExit({
     await directoryPicker.close()
     await stopDesktopServices()
     desktopPet?.close()
-    taskNotifications?.close()
+    taskNotifications?.close(!windowsToasts)
     tray?.destroy(); tray = undefined
   },
   relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
@@ -138,6 +139,7 @@ export async function configureEduworkPaths() {
   // or one expected ACE does not prove Electron cannot run. Installation and
   // update still provision runtime access; ordinary startup never changes ACLs.
   applyDesktopBrand(app, process.platform, settings)
+  if (process.platform === 'win32' && paths.layout === 'installed') app.setToastActivatorCLSID(windowsToastCLSID(settings.appId))
   app.setPath('userData', paths.userData)
   app.setAppLogsPath(paths.logs)
   process.env.DSH_HOME = paths.home
@@ -366,12 +368,13 @@ async function prepareDesktop() {
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
   currentVault = vault
   const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
-  notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
+  notificationAdapter = windowsToasts ?? nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: showNotificationWindow,
-    publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(),
+    publish: value => notificationAdapter.publish(value), dismiss: key => notificationAdapter.dismiss(key),
     changed: () => { refreshTray(); desktopPet.update(taskNotifications) } })
+  if (pendingToast) { taskNotifications.activateToast(pendingToast); pendingToast = undefined }
   // The pet page comes from the product's pet plugin; it never loads from a user plugin directory.
   let activation
   desktopPet = createDesktopPet({ packageRoot: join(paths.product, 'd/node_modules/@eduwork/dsh-desktop-pet'),
@@ -460,6 +463,15 @@ export function attachDockTheme(window) {
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  if (process.platform === 'win32' && paths.layout === 'installed') {
+    windowsToasts = createWindowsToasts({ Notification, file: join(paths.userData, 'toast-activations.json'),
+      productName: settings.productName, failed: () => { if (taskNotifications) taskNotifications.delivery = 'unavailable' },
+      activate: target => {
+        if (isQuitting()) return
+        if (taskNotifications) taskNotifications.activateToast(target)
+        else pendingToast = target
+      } })
+  }
   mainWindowPresented = false
   window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)
@@ -545,8 +557,8 @@ export async function attachDesktopWindow(window) {
     }
     refreshTray()
     attachTrayActivation(tray, show)
-    tray.on('balloon-click', () => notificationAdapter?.balloonClick())
-    tray.on('balloon-closed', () => notificationAdapter?.balloonClosed())
+    tray.on('balloon-click', () => notificationAdapter?.balloonClick?.())
+    tray.on('balloon-closed', () => notificationAdapter?.balloonClosed?.())
   } catch (error) {
     tray?.destroy(); tray = undefined
     if (isQuitting()) throw error

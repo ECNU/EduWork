@@ -37,6 +37,13 @@ test('installer accepts a fresh target or this installed edition, and rejects po
   await assert.rejects(checkInstalledProgramTarget(f), /其他发行版/)
 })
 
+test('installer rejects a parent executable that would intercept the installed Start menu link', async t => {
+  const f = await fixture(t)
+  await writeFile(join(f.root, 'EduWork-Electron.exe'), 'portable fixture')
+  await assert.rejects(checkInstalledProgramTarget(f), /独立安装目录/u)
+  await checkInstalledProgramTarget({ ...f, uninstall: true })
+})
+
 test('explicit data removal requires the exact edition marker and excludes external workspace links', async t => {
   const f = await fixture(t), external = join(f.root, 'external')
   await f.json(join(external, 'sentinel.json'), { preserved: true })

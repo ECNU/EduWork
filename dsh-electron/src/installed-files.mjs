@@ -1,5 +1,5 @@
 import { lstat, readFile, readdir, rm } from 'node:fs/promises'
-import { isAbsolute, join } from 'node:path'
+import { dirname, isAbsolute, join } from 'node:path'
 import { acquireInstanceMutex, instanceIdentity, releaseInstanceMutex } from './install-mutex.mjs'
 import { WRITABLE_ROOT_MARKER } from './writable-root.mjs'
 import { rememberPortableSource } from './installed-migration.mjs'
@@ -48,11 +48,15 @@ export async function rememberInstallerSource({ programRoot, sourceRoot, distrib
   await rememberPortableSource({ programRoot, writableRoot: dataRoot(distribution, localAppData), settings, sourceRoot })
 }
 
-export async function checkInstalledProgramTarget({ programRoot, distribution, localAppData = process.env.LOCALAPPDATA }) {
+export async function checkInstalledProgramTarget({ programRoot, distribution, localAppData = process.env.LOCALAPPDATA, uninstall = false }) {
   if (typeof programRoot !== 'string' || !isAbsolute(programRoot)) throw new Error('安装目录必须是绝对路径')
   const writable = instanceIdentity(dataRoot(distribution, localAppData)), program = instanceIdentity(programRoot)
   const inside = (root, path) => path === root || path.startsWith(root + (process.platform === 'win32' ? '\\' : '/'))
   if (inside(writable, program) || inside(program, writable)) throw new Error('程序目录与个人数据目录不能相互包含')
+  // Electron's Toast shortcut would prefer the parent executable as a launcher.
+  if (!uninstall && await info(join(dirname(programRoot), 'EduWork-Electron.exe'))) {
+    throw new Error('上一级目录已有 EduWork 程序，请选择独立安装目录')
+  }
   const root = await info(programRoot)
   if (!root) return
   if (!root.isDirectory() || root.isSymbolicLink()) throw new Error('安装目标不能是文件或目录链接')

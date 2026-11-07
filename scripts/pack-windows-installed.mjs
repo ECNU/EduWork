@@ -8,6 +8,7 @@ import { parseArgs } from 'node:util'
 import { isMainModule, pathExists, readJSON, sha256File, statEntry, writeJSON } from './lib/build-util.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
 import { windowsReleaseManifest } from './pack-windows-release.mjs'
+import { windowsToastCLSID } from '../dsh-electron/src/windows-toast.mjs'
 import { installedUpdateSource } from '../dsh-electron/src/installed-updates.mjs'
 
 const repository = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -78,6 +79,7 @@ export async function packWindowsInstalled({ candidate, upstream, tools, output 
       defines.EDUWORK_INSTALLER_NODE = join(candidate, 'resources/runtime/node.exe')
       defines.EDUWORK_INSTALLER_WORKER = join(candidate, 'resources/app/lib/installed-files.cjs')
       defines.EDUWORK_DISTRIBUTION = settings.distribution
+      defines.EDUWORK_TOAST_CLSID = windowsToastCLSID(settings.appId)
       defines.EDUWORK_DIRECTORY_INCLUDE = join(build, 'installer-directories.nsh')
       return false
     },

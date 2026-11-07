@@ -54,3 +54,8 @@ test('ordinary restarts retain configuration and shell arguments', () => {
   const args = ['app path', '--lang=zh-CN', '--user-data-dir=user profile']
   assert.deepEqual(desktopRelaunchOptions(args, true).args, args)
 })
+
+test('relaunch never reuses the installer startup token', () => {
+  const args = ['--updated', '--eduwork-verify-update=11111111-1111-1111-1111-111111111111']
+  assert.deepEqual(desktopRelaunchOptions(args).args, ['--updated'])
+})

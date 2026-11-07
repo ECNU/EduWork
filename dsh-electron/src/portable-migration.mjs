@@ -296,10 +296,10 @@ async function recoverHandoff({ sourceRoot, targetRoot, writableRoot, dryRun = f
 
 export async function listWindowsProcesses() {
   if (process.platform !== 'win32') return []
-  const command = "Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CommandLine | ConvertTo-Json -Compress"
-  const { stdout } = await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true, maxBuffer: 8 * 1024 * 1024 })
+  const command = "[Console]::OutputEncoding = [System.Text.UTF8Encoding]::new($false); $ErrorActionPreference = 'Stop'; Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId,Name,ExecutablePath,CommandLine | ConvertTo-Json -Compress"
+  const { stdout } = await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command], { windowsHide: true, maxBuffer: 8 * 1024 * 1024, timeout: 8000 })
   const text = stdout.trim()
-  if (!text) return []
+  if (!text) throw Error('无法读取 Windows 进程清单')
   const value = JSON.parse(text)
   return Array.isArray(value) ? value : [value]
 }

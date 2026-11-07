@@ -6,8 +6,8 @@ const safeTitle = value => typeof value === 'string' ? value.replace(/[\x00-\x1f
 
 /** Observe live work only. Never answer, cancel, or change an agent's policy. */
 export class DesktopAttention {
-  constructor({ bridge, preferences, validateTarget = async () => true, goal = () => undefined, notifications, now = Date.now, schedule = setTimeout, cancel = clearTimeout }) {
-    Object.assign(this, { bridge, preferences, validateTarget, goal, notifications, now, schedule, cancel })
+  constructor({ bridge, preferences, validateTarget = async () => true, lookupSession = async () => false, goal = () => undefined, notifications, now = Date.now, schedule = setTimeout, cancel = clearTimeout }) {
+    Object.assign(this, { bridge, preferences, validateTarget, lookupSession, goal, notifications, now, schedule, cancel })
     this.items = new Map()
     this.titles = new Map()
     this.turns = new Map()
@@ -129,6 +129,10 @@ export class DesktopAttention {
     let target = this.items.get(response.openKey)
     if (target && !await this.validateTarget(target)) { this.remove(target.key); target = null }
     if (target && !this.items.has(target.key)) target = null
+    if (!plugin && !target && response.openKey && typeof response.toastSessionId === 'string'
+      && await this.lookupSession(response.toastSessionId)) {
+      target = { key: response.openKey, sessionId: response.toastSessionId }
+    }
     return { desktop: true, target: plugin ? { key: plugin.key, plugin } : target ? { key: target.key, sessionId: target.sessionId } : null,
       delivery: response.delivery, sources: this.notifications?.catalog() ?? [], pluginProtocol: this.pluginSupported ? 1 : 0 }
   }
