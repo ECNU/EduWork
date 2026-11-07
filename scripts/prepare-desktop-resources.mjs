@@ -6,6 +6,7 @@ import { readdir, rm, unlink, writeFile } from 'node:fs/promises'
 import { basename, dirname, join, isAbsolute, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
+import { PRIVATE_WINDOWS_PATHS } from '../dsh-host/native-resources.mjs'
 import {
   copyFileTo, ensureDir, fullPath, isDirectory, isFile, isMainModule,
   pathExists, readJSON, run, sha256File, writeJSON,
@@ -130,6 +131,8 @@ export async function prepareDesktopResources({
   // Leave a neutral shipped template. prepareNativeResources repairs this owned
   // file before the first invocation and after each directory move.
   await writeFile(join(venv, 'pyvenv.cfg'), `home = ../p\ninclude-system-site-packages = false\nversion = ${manifest.pythonVersion}\nexecutable = ../p/python.exe\n`)
+  // Ship this managed file so a first launch adds no untracked Python source to P.
+  await writeFile(join(venv, 'Lib/site-packages/sitecustomize.py'), PRIVATE_WINDOWS_PATHS, { flag: 'wx' })
   // Bytecode created by ensurepip can retain the build machine's absolute path.
   // All entries below belong to this newly-created venv, never a user's Python.
   for (const cache of await findCaches(venv)) {

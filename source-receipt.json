@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-07T19:15:48.971Z",
-  "fileSetSHA256": "95e15fe9ee0bb3ba26ec03762c2eb622af25441ca2a0769b3b3d9eb4bc1c5852",
+  "createdAt": "2026-11-07T19:38:44.887Z",
+  "fileSetSHA256": "5e82a8a1fa6c3d92cc02b4bd84f3b9a5899c929ab385344ce7b1254788768bfd",
   "files": [
     {
       "path": ".gitattributes",
@@ -1809,7 +1809,7 @@
     },
     {
       "path": "dsh-host/native-resources.mjs",
-      "sha256": "92aded081c86a6fb8ad5c6f8df60c60decdef04968993170e7229613fc0252f4"
+      "sha256": "e3c695f56c278f616f16293e6048e73068923020bfe5396cf3769fb7aa59bd2b"
     },
     {
       "path": "dsh-host/prepare-native.mjs",
@@ -7777,7 +7777,7 @@
     },
     {
       "path": "scripts/prepare-desktop-resources.mjs",
-      "sha256": "4852f0237b50164e3be2534138f31f03b9c396d06e98ee1bc90e6eb0a1067d89"
+      "sha256": "e2a070b1748e460802e9304b040c5f5f2d02db08a344b51f7540dc18c1dc325e"
     },
     {
       "path": "scripts/prepare-desktop-resources.ps1",
