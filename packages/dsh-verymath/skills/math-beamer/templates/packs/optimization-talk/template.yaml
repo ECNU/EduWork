@@ -1,0 +1,9 @@
+name: optimization-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - optimization model
+  - algorithm and convergence
+  - numerical comparison
+requires: [beamer, amsmath, amssymb, booktabs]

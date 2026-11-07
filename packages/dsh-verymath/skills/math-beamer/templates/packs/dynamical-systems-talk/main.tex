@@ -1,0 +1,42 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Ilmenau}
+\usepackage{amsmath,amssymb,tikz}
+
+\title{Dynamical Systems Talk}
+\author{Speaker}
+\date{\today}
+
+\begin{document}
+\begin{frame}\titlepage\end{frame}
+
+\begin{frame}{System}
+  \[
+    \dot{x}=F(x,\lambda), \qquad x\in M .
+  \]
+  \begin{itemize}
+    \item Phase space and parameter.
+    \item Equilibria, periodic orbits, or invariant sets.
+    \item Stability notion.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Phase Portrait Sketch}
+  \centering
+  \begin{tikzpicture}
+    \draw[->] (-2,0)--(2,0);
+    \draw[->] (0,-1.5)--(0,1.5);
+    \draw[thick,blue,->] (-1.5,-.7) .. controls (-.5,.8) .. (1.5,.6);
+    \fill (0,0) circle (2pt);
+  \end{tikzpicture}
+\end{frame}
+
+\begin{frame}{Stability Result}
+  \begin{theorem}
+    State the stability, bifurcation, or invariant-measure result.
+  \end{theorem}
+\end{frame}
+
+\begin{frame}{Mechanism}
+  Explain the Lyapunov function, normal form, conjugacy, or spectral argument.
+\end{frame}
+\end{document}

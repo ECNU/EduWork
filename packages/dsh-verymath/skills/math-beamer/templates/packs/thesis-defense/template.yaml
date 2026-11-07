@@ -1,0 +1,9 @@
+name: thesis-defense
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - thesis defense
+  - dissertation proposal
+  - committee presentation
+requires: [beamer, amsmath, amssymb, booktabs]

@@ -1,0 +1,14 @@
+{
+  "name": "unbounded-linear-objective",
+  "P": [
+    [0.0]
+  ],
+  "q": [-1.0],
+  "A": [],
+  "l": [],
+  "u": [],
+  "settings": {
+    "eps_dual_inf": 1e-07,
+    "verbose": false
+  }
+}
