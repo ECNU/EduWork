@@ -5,6 +5,10 @@ on:
   workflow_call:
 permissions:
   contents: read
+concurrency:
+  # Use a fixed prefix because github.workflow names the caller when reused.
+  group: validate-pinned-dsh-source-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   select:
     runs-on: ubuntu-latest
