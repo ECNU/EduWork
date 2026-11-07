@@ -5,7 +5,7 @@
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "f455e6b8eac54e8e7a32a60084e6019537dece703ad8e00802794f3b80b21de9",
+  "fileSetSHA256": "7f3a96b6cac742599a4d17e7d17d8fabfb2afd0c289f7f4a37d4d239359d4053",
   "files": [
     {
       "path": ".gitattributes",
@@ -6757,7 +6757,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "440d084470ec83f33868bf77011060969ec82ca2deafa97da8193ca9830616bb"
+      "sha256": "6cdfec2c76be369a46883a808211e5c6583123a4e495898e82e28606a71e9508"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6821,11 +6821,11 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "ae7170772b3224832ca0f0a5b763e337d863a1a6fc757ef73238e6719ea95767"
+      "sha256": "2b79f462ac8c6023b65ec2eec4a1c3c4b7089c63bb103df6acacb23c7bb8c8c8"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "fc544f44eb1547081e079b5f103d1a20de018919c16e94b84a1d9ade32e03582"
+      "sha256": "1969d5eaa402b043a3c715d5a0927a67abbc934dea5e63e70fa84cab0ec9453c"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
