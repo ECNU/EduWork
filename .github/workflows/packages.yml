@@ -1,10 +1,8 @@
 name: Check npm packages
 on:
   pull_request:
-    paths: ['packages/**', 'scripts/packages/**', 'tests/package-maintenance.test.mjs', '.github/workflows/packages*.yml']
   push:
     branches: [main]
-    paths: ['packages/**', 'scripts/packages/**', 'tests/package-maintenance.test.mjs', '.github/workflows/packages*.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -16,6 +14,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       groups: ${{ steps.changed.outputs.groups }}
+      packages: ${{ steps.changed.outputs.packages }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -23,12 +22,10 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
-      - run: node --test tests/package-maintenance.test.mjs
+      - run: node --test tests/package-maintenance.test.mjs tests/ci-changes.test.mjs
       - run: node scripts/check-source-docs.mjs
       - id: changed
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: node scripts/packages/manage.mjs changed "$BASE"
+        run: node scripts/ci-changes.mjs
   check:
     needs: select
     if: needs.select.outputs.groups != '[]'
@@ -71,3 +68,18 @@ jobs:
           path: dist/npm-packages/
           retention-days: 7
           if-no-files-found: error
+  result:
+    name: npm package result
+    if: always()
+    needs: [select, check]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - run: node scripts/ci-result.mjs
+        env:
+          SELECTION_RESULT: ${{ needs.select.result }}
+          REQUIRED: ${{ needs.select.outputs.packages }}
+          RESULTS: ${{ format('["{0}"]', needs.check.result) }}
