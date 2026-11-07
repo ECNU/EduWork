@@ -167,6 +167,10 @@ function showStartupProgress(message) {
   if (window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', present)
   else present()
 }
+export function showHostStartupProgress() {
+  // Download and migration hints must outrank the generic Host-start hint.
+  showStartupProgress(startupMessage || '正在启动本地服务…')
+}
 function showDesktopMessageBox(options) {
   const parent = [progressWindow, mainWindow].find(window => window && !window.isDestroyed())
   return parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)

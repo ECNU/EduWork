@@ -51,13 +51,13 @@ function startupHarness() {
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
     let flushPendingSettings = () => { flushCalls += 1 }
     ${source.slice(activationStart, activationEnd).replace('export ', '')}
-    ${source.slice(progressStart, messageStart)}
+    ${source.slice(progressStart, messageStart).replace('export ', '')}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
     return {
       setMain(window) { mainWindow = window; window.on('show', () => { mainWindowPresented = true }) },
       setRecovery(window) { progressWindow = window; desktopFailureShown = true },
       quit() { quitting = true },
-      showStartupProgress, desktopReady, showDesktop, activationWindows,
+      showStartupProgress, showHostStartupProgress, desktopReady, showDesktop, activationWindows,
       flushCalls: () => flushCalls,
     }`)
   const harness = build(FakeWindow, app, { ready: async () => {} }, async () => {},
@@ -95,6 +95,53 @@ test('preparation uses the main BootPage and clears its status without presentin
   assert.equal(main.visible, false)
   assert.equal(main.showCalls, 1)
   assert.equal(harness.flushCalls(), 1)
+})
+
+test('Host startup presents the existing BootPage with a generic hint', () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  assert.equal(main.visible, true)
+  assert.equal(main.showCalls, 1)
+  assert.equal(main.messages.at(-1)[1].message, '正在启动本地服务…')
+})
+
+test('a repeated launch restores the BootPage while the Host starts', () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  assert.ok(harness.activationWindows().includes(main))
+})
+
+test('the generic Host hint never overwrites or resurfaces stage-specific progress', async () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  harness.showStartupProgress('download')
+  harness.showHostStartupProgress()
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  harness.showStartupProgress('migration')
+  harness.showHostStartupProgress()
+  assert.equal(main.messages.at(-1)[1].message, 'migration')
+  assert.equal(main.showCalls, 1)
+  await harness.desktopReady()
+  assert.equal(main.messages.at(-1)[1].message, '')
+})
+
+test('Host readiness does not resurface a window hidden after the BootPage appeared', async () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  main.hide()
+  await harness.desktopReady()
+  assert.equal(main.visible, false)
+  assert.equal(main.showCalls, 1)
+})
+
+test('the generic Host hint waits for the static BootPage document', () => {
+  const { harness, main } = startupHarness()
+  main.loading = true
+  harness.showHostStartupProgress()
+  assert.equal(main.visible, false)
+  main.webContents.emit('did-finish-load')
+  assert.equal(main.visible, true)
+  assert.equal(main.messages.at(-1)[1].message, '正在启动本地服务…')
 })
 
 test('a late preparation message preserves a main window the user already hid', () => {

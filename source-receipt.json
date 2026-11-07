@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-07T11:06:18.249Z",
-  "fileSetSHA256": "057d699e07f15976447b53fef5da21e6ca1a34b84dea541ffd650a0f7e053d40",
+  "createdAt": "2026-11-07T16:08:07.006Z",
+  "fileSetSHA256": "29955822b7179498af6cb0d802ce6b4237ed0f2d6867858cea354b06a3d02f3f",
   "files": [
     {
       "path": ".gitattributes",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "549c7378ab7806e3bedc90a55e51998c1457b3d889e580942a3abf8f5f6ad1c1"
+      "sha256": "701f662ff1494eff953a6b92a216ccba6251e0b45a559af709f4831cd8f8d2d4"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1329,7 +1329,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "882e14e3c5cd0b3c3c1b5197f26f4e8c7da4a0b65c60cd7d86a5f8d86906a724"
+      "sha256": "34adf46d59118c8ffe82f4db2f055189fc9934b8bc5851b2eb0a51002a8d43ae"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1501,7 +1501,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "ea1d400c2c7019b4f52bb94f8e348e1ae0a2af94cb2483b547be52646939e7e3"
+      "sha256": "dbec72cd44309f640d001fadb13047509242f00447e74f294ceb0745b7a8279c"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1573,7 +1573,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "3ade7f08fc655caf537faddd415058c3b82c94ae4817f770645144f7a7f669c5"
+      "sha256": "0fd23ec41aff1125947423f214cb70f4cc122d826cd6b39a05b34607997a6fef"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
