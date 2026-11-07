@@ -1,98 +1,39 @@
-# VeryMath Capability Plugin Proposal (dsh-verymath)
-
-> This is a proposal, not a description of a shipped feature or an officially supported configuration. It corresponds to [ECNU/EduWork#152](https://github.com/ECNU/EduWork/issues/152) and describes an implemented community plugin prototype and its integration boundary, for maintainers to decide whether and how to adopt it.
+# VeryMath capability plugin proposal
 
 **English** | [简体中文](README.md)
 
+Status: the plugin is implemented and its code is submitted in this repository's `packages/` form in [#301](https://github.com/ECNU/EduWork/pull/301), a Draft awaiting review. It was previously published as the standalone package `@louisultra/dsh-verymath` on npm; on adoption it moves to the official scope following this repository's release conventions and the old package is deprecated. This proposal covers integration boundaries and verification evidence; adoption form is for the maintainers to decide.
+
 ## Goal
 
-Bring VeryMath's mathematical learning and research capabilities into EduWork as an optional DSH plugin: mathematical paper reading, bilingual glossary, writing and optimization, computation and formalization, and research workflows.
+Bring [VeryMath](https://github.com/orgs/VeryMath/repositories)'s mathematical learning and research capabilities into EduWork as an optional DSH plugin: paper reading with theorem dependencies, a bilingual glossary, mathematical writing and slides, optimization and computation, formalization, and research workflows. Tracked by [#152](https://github.com/ECNU/EduWork/issues/152).
 
-- The plugin is implemented and published independently: [`@louisultra/dsh-verymath`](https://github.com/LouisUltra/dsh-verymath) (npm, MIT)
-- This proposal states compatibility boundaries, acceptance criteria, and verification evidence; the adoption path (documentation listing / dependency recommendation / deeper integration) is the maintainer's call
+## Integration shape and boundaries
 
-## Integration shape
+`packages/dsh-verymath` is a standalone package; `lib/` and `node_modules/` are not committed. It mounts optionally through `cordis.patch.yml` and does not change the distribution's default composition. The plugin integrates only through the DSH plugin API, and workspace writes use the existing sandbox authorization.
 
-| Item | Content |
-| --- | --- |
-| Plugin name | `@louisultra/dsh-verymath` (currently published under the author's personal scope; on adoption it moves to the official scope following EduWork's release conventions, with the author performing the migration and deprecating the old package) |
-| Version | 0.3.2 |
-| License | MIT (package). `UPSTREAM.json` records 8 VeryMath upstream repositories: content from 7 MIT repositories is adapted/bundled, and 1 GPLv3 repository (Sagemath-skill) contributes **no code** — only an interface contract, re-implemented clean-room; the SageMath documentation corpus (CC BY-SA 3.0) is distributed separately |
-| DSH compat | peer range `>=0.2.0-rc.1 <0.3.0-0`; **verified only on DSH 0.2.0-rc.2 + EduWork 0.4.3** — rc.1 and later 0.2.x releases are not individually tested |
-| Node | `>=24.18.0` (`engines` in `package.json`) |
-| Platform | macOS (Apple Silicon) verified only; **Windows is untested** — path and binary-discovery behaviour is unverified, especially for scenarios needing TeX, MATLAB, osqp or similar external environments |
+General capabilities stay inside the package; external environments are checked on demand. Python, SageMath, TeX Live, Lean/elan and MATLAB are installed by the user, return install hints when missing, and are never bundled. Sage support is documentation lookup only and runs no code. MATLAB goes through the official MathWorks MCP server and needs the user's own licence; that part sits outside the plugin API.
 
-## Capability list
+Structural validation covers dependency integrity, cycles and dangling links only. It does not judge whether a proof is correct, consistent with the upstream `skill_base` capability boundary.
 
-**14 model tools**: glossary query/upsert/build (`verymath_glossary_query/upsert/build`), environment probes for Python/Sage/Beamer/OSQP (`verymath_python_check`, `verymath_sage_check`, `verymath_beamer_check`, `verymath_osqp_check`), QP solving with independent KKT verification (`verymath_osqp_solve`), paper structure validation (`verymath_paper_validate`), paper dependency-graph engine (`verymath_paper_graph`), OCR error-candidate locator (`verymath_ocr_scan`), Lean forbidden-token scan (`verymath_lean_detect_sorry`, no Lean toolchain required but needs Python 3), anti-hallucination Sage corpus search (`verymath_sage_search`), research workspace gate validation (`verymath_research_gate`).
+## Licensing and provenance
 
-**16 bundled skills** (registered into the DSH skill catalog through the plugin's skill provider): `math-glossary`, `math-paper-reading`, `graph-theory-paper-reading`, `after-ocr`, `paper-writing`, `math-beamer`, `discover-math-problems`, `proof-blueprint-review`, `open-problem-research-pipeline`, `least-squares`, `invariant-computation`, `mixed-integer-programming`, `osqp-solver`, `lean-formalization`, `lean-setup`, `matlab-runner`.
+The package declares `MulanPSL-2.0 AND MIT`, meaning different components carry different licenses. Original glue code is MulanPSL-2.0; skill content adapted from VeryMath stays MIT. Seven of the eight upstream repositories are MIT; the eighth, Sagemath-skill, is GPLv3 and contributes no code — only a lookup contract re-implemented in TypeScript from its public documentation.
 
-Every capability's scenario example (who/when, copy-paste prompt, sample input, expected output, run conditions and verification) is in [`capability-examples.md`](capability-examples.md). The examples are currently written in Chinese (the target students' language); an English translation can be added if maintainers want one.
+`UPSTREAM.json` records full commits per repository, `NOTICE.md` records the scope of adaptation and per-item changes, and `LICENSING.md` maps paths to licenses. Beamer templates only reference themes from the user's own TeX Live; no third-party style files or fonts are redistributed.
 
-## Compatibility boundaries
+## Verification and evidence
 
-- **No EduWork public-interface changes**: the plugin integrates only through the DSH plugin API (tool registration, skill registration, fs service); workspace writes go through the existing sandbox authorization — no new permission surface.
-- **External environments checked on demand**: Python/Sage/TeX/Lean/MATLAB are user-installed; the plugin probes and surfaces missing-dependency hints, never auto-installs and never bundles heavy dependencies. Sage support is **documentation lookup only** (no Sage code execution); the corpus comes from the official SageMath Sphinx reference manual (10.9.beta9, CC BY-SA 3.0, 3196 docs) and defaults to `~/.verymath/sagemath-corpus`. MATLAB needs a user-installed MATLAB + licence plus the official MathWorks MCP server, which sits outside the plugin API.
-- **License isolation**: the Sagemath-skill package (GPLv3) is not bundled; the lookup/scoring contract was re-implemented clean-room in TypeScript from its public documentation (no GPL code in the MIT package). This boundary is currently self-attested: the implementation follows the documented lookup/scoring behaviour and copies no source. If maintainers want a stricter process description, the author can provide one.
-- **Validation scope**: structural validation only (dependency integrity, cycle detection) — mathematical proof correctness is out of scope, consistent with the upstream skill_base capability statement.
+1. The plugin installs, enables and removes through the official plugin mechanism, verified locally by loading the tarball into a clean DSH environment.
+2. Task chains complete and artifacts land in the session workspace for follow-up work: paper structure extraction, QP solving, OCR proofreading, Beamer compilation and MATLAB execution all have real run records.
+3. Scripts and templates ship with the skills and are actually callable: upstream Python scripts are included verbatim, and the 9 offline test suites across the 8 upstream repositories (201 tests) pass.
+4. Missing dependencies return structured hints instead of crashing: four probe tools for Python, Sage, Beamer and OSQP, plus a Lean forbidden-token scan that needs no toolchain.
+5. The package's own 102 vitest tests and the runtime probe (real DSH plugin API, no model calls) pass.
 
-## Acceptance criteria and verification evidence
+Scenario examples for every capability are in [capability-examples.md](capability-examples.md), following the five-field structure the reviewers asked for: who and when, a copy-paste prompt, public sample input, expected output with completion criteria, and run conditions with verification status. All 14 capabilities are covered; scenarios needing MATLAB or Sage execution are marked as requiring the user's own environment and as not reproducible in CI.
 
-| Criterion | Evidence |
-| --- | --- |
-| Install/enable/remove via the official plugin mechanism | `dsh plugin add/remove` + `--dump-config` verified (npm tarball into a clean DSH_HOME) |
-| "Task → Agent call → artifacts in workspace → continue processing" | All 14 capabilities have real run records (real model, macOS): paper structure extraction (arXiv 1311.4600), QP solving (solution matches analytic KKT), MATLAB computation, OCR proofreading, Beamer compiled to PDF, and more. The runs surfaced one tool defect, fixed in 0.3.2 |
-| Scripts/templates bundled with skills and actually callable | Upstream **Python scripts** included verbatim (diff-verified; SKILL.md, frontmatter and some tests are adapted for DSH — see `UPSTREAM.json` per entry); the **9 offline test suites across 8 upstream repositories** (201 tests) all pass, with several suites bundled for regression gating; **102** synthetic vitest tests + a runtime probe (real DSH API, no remote model) green |
-| Missing-dependency hints | Four environment probe tools (python/sage/beamer/osqp) plus a Lean forbidden-token scan that needs no Lean toolchain (but does need Python 3); structured install hints when something is missing |
-| Upstream provenance | In-package `UPSTREAM.json` (8 upstream repositories, all with full 40-character commit hashes) + `NOTICE.md` + an integration-matrix document |
+## Adoption and open items
 
-## Upstream adaptation and differences
+Three paths are open to the maintainers: list the community plugin in the documentation, recommend it in the distribution configuration, or vendor it into this repository as in #301 and move the scope. For the third, these need to be settled first: plugin directory and package name, who runs the `@eduwork` publish, whether examples live in the package or the repository docs, when the old package is deprecated, how the commit history is merged, and which documentation copy becomes authoritative afterwards.
 
-Skill content and Python scripts are adapted from 7 MIT repositories under the VeryMath org (commit-level provenance recorded); a further GPLv3 repository is used only as an interface reference and contributes no code. Main differences from upstream: several critical upstream steps rely on the model writing JSON by hand at run time (paper-graph merge/topology, glossary upsert invariants); the plugin fills these with deterministic TypeScript engines; glossary queries return examples and subfield disambiguation.
-
-## Adoption path (maintainer's choice)
-
-1. **Documentation listing**: add a community-plugin entry to README/docs linking npm and the repository (smallest change).
-2. **Dependency recommendation**: recommend it as an optional plugin in the distribution config (installed via the DSH plugin mechanism from npm).
-3. **Deeper integration**: vendor the source into the official repository and move the package to the official scope. The author will carry out both, preserving the full commit history and attribution.
-
-## Maintenance
-
-## Adoption readiness
-
-**Already aligned with the repository's conventions**
-
-- TypeScript strict mode fully on: `strict`, `noUncheckedIndexedAccess`, `exactOptionalPropertyTypes`, `noImplicitOverride`
-- Build output matches the existing `dsh-plugins/` shape: ESM, `lib/index.js` + `lib/*.d.ts`, explicit `exports`
-- Source comments are English-only; module headers state the upstream origin and note that no upstream code was copied; no `TODO`/`FIXME` left
-- Licensing and provenance complete: MIT + `NOTICE.md` + `UPSTREAM.json` (8 upstream repos, full 40-character commits)
-- Reproducible tests: 102 vitest unit tests + a runtime probe against the real DSH plugin API (no model calls), wired into GitHub Actions (typecheck / build / test / runtime probe)
-- Documentation in Chinese with an English mirror, matching the repository's README convention
-
-**Will be adjusted to the host repository at migration time**
-
-- npm scope and release flow (`@eduwork`), and who owns the publish credential
-- Plugin directory location, and whether the source is vendored; if vendored, the checks are extended to whatever lint/CI conventions the repository has at that time (the public repo currently has no ESLint/Prettier rules, and this package matches that)
-- peer-dependency ranges follow the DSH version EduWork ships
-
-**Known gaps**
-
-- Windows untested (path and external-binary discovery unverified)
-- MATLAB and Sage execution need the user's own environment; corpus and licence are not bundled
-- Capability examples are currently Chinese-only
-
-## Open migration questions
-
-If the maintainers choose adoption (path 1), the following need to be settled first:
-
-1. Where the plugin lives in the EduWork repository (`dsh-plugins/` or another convention)
-2. Who runs the `@eduwork` npm publish and what access the author needs
-3. Whether examples live in the plugin's `docs/` or in EduWork's documentation tree
-4. What happens to the existing `LouisUltra/dsh-verymath` repository and `@louisultra/dsh-verymath` package (archiving + npm deprecate is one option)
-5. How the commit history is merged (`git subtree` or the maintainers' preferred method) so authorship is preserved
-6. Which copy of the docs becomes authoritative after migration, to avoid drift
-
-## Maintenance
-
-The author is willing to become the primary maintainer of the plugin inside the EduWork repository (see the PR discussion). Until the migration is settled, issues and PRs stay at https://github.com/LouisUltra/dsh-verymath; upstream VeryMath evolution is adapted against the versions recorded in `UPSTREAM.json`.
+Windows is untested, including path and binary discovery for external environments on that platform.
