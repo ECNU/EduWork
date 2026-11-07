@@ -1,0 +1,9 @@
+name: pde-analysis-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - PDE
+  - estimates and regularity
+  - boundary value problems
+requires: [beamer, amsmath, amssymb]

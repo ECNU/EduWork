@@ -1,0 +1,51 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Darmstadt}
+\usepackage{amsmath,amssymb,booktabs}
+
+\title{Control Systems Talk}
+\author{Speaker}
+\date{\today}
+
+\begin{document}
+\begin{frame}\titlepage\end{frame}
+
+\begin{frame}{System Model}
+  \[
+    \dot{x}=f(x,u,w), \qquad y=h(x,u), \qquad u=K(x,t).
+  \]
+  \begin{itemize}
+    \item State, input, output, disturbance, and admissible controller class.
+    \item Linear, nonlinear, stochastic, hybrid, or distributed model.
+    \item Ledger: source equations, units, parameter ranges, and assumptions.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Control Objective}
+  \begin{block}{Target property}
+    State stability, stabilization, tracking, safety, reachability, or robustness.
+  \end{block}
+  \begin{itemize}
+    \item Observability or controllability assumptions.
+    \item Constraint set, performance index, or uncertainty model.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Main Guarantee}
+  \begin{theorem}
+    State the controller guarantee with the exact stability and robustness notion.
+  \end{theorem}
+  \begin{itemize}
+    \item Source: theorem number, design method, or simulation section.
+    \item Status: theorem, certified design, numerical evidence, or heuristic.
+    \item Ledger: record controller class, margins, and excluded cases.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Verification Route}
+  \begin{enumerate}
+    \item Lyapunov, Riccati, passivity, small-gain, or barrier certificate step.
+    \item Feasibility or observer design condition.
+    \item Simulation, benchmark, or robustness stress test.
+  \end{enumerate}
+\end{frame}
+\end{document}

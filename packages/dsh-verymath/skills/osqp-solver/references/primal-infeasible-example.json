@@ -1,0 +1,17 @@
+{
+  "name": "incompatible-lower-and-upper-constraints",
+  "P": [
+    [1.0]
+  ],
+  "q": [0.0],
+  "A": [
+    [1.0],
+    [1.0]
+  ],
+  "l": [1.0, "-inf"],
+  "u": ["inf", 0.0],
+  "settings": {
+    "eps_prim_inf": 1e-07,
+    "verbose": false
+  }
+}

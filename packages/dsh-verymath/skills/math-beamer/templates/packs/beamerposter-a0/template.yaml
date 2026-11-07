@@ -1,0 +1,12 @@
+name: beamerposter-a0
+language: en
+engine: pdflatex
+aspect_ratio: poster
+best_for:
+  - conference poster
+  - visual research summary
+requires:
+  - beamer
+  - beamerposter
+  - amsmath
+  - booktabs

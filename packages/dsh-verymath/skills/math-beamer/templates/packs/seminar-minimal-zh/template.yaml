@@ -1,0 +1,13 @@
+name: seminar-minimal-zh
+language: zh
+engine: xelatex
+aspect_ratio: "16:9"
+best_for:
+  - Chinese mathematical seminar
+  - bilingual mathematics talk
+  - general research presentation
+requires:
+  - ctexbeamer
+  - amsmath
+  - amssymb
+  - booktabs

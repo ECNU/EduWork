@@ -1,0 +1,9 @@
+name: numerical-analysis-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - numerical analysis
+  - scientific computing
+  - discretization and error estimates
+requires: [beamer, amsmath, amssymb, booktabs]

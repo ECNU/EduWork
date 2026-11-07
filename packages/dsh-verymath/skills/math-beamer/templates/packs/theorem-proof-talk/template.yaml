@@ -1,0 +1,9 @@
+name: theorem-proof-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - theorem exposition
+  - proof roadmap
+  - pure mathematics seminar
+requires: [beamer, amsmath, amssymb, amsthm]

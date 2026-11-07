@@ -1,0 +1,9 @@
+name: data-experiment-results
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - experiment report
+  - ablation study
+  - computational evidence
+requires: [beamer, amsmath, booktabs, pgfplots]

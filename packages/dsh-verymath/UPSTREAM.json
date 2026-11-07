@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "sources": [
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-MathTool",
+      "commit": "a51dd41e69b17c6fac60303bfc02e5191acbb1b2",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/math-glossary/SKILL.md",
+        "skills/math-glossary/scripts/",
+        "skills/math-glossary/references/",
+        "skills/math-glossary/tests/",
+        "skills/matlab-runner/ (SKILL.md + references + examples, with DSH MCP setup notes)"
+      ],
+      "adaptationNotes": "SKILL.md routing and script-invocation text adapted for DSH tool names (verymath_glossary_*); Python scripts included verbatim; tests adapted to run from the skill directory. matlab-runner bundled after user installed MATLAB R2025b; MathWorks official MCP server v0.14.0 wired via dsh-mcp-client (5 tools match the skill capability list)."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Paper-Reading",
+      "commit": "991f7053220bbebfd8826a3fa439c656b2e0905f",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/math-paper-reading/SKILL.md",
+        "skills/math-paper-reading/agent_router.md",
+        "skills/math-paper-reading/skill_base.md",
+        "skills/math-paper-reading/skill_pathway_proof.md",
+        "skills/math-paper-reading/skill_paper_deep_read.md",
+        "skills/math-paper-reading/skill_reference_manager.md",
+        "skills/math-paper-reading/skill_literature_search.md",
+        "skills/math-paper-reading/references/proof_pattern_taxonomy.md (verbatim from paper-to-skill-extractor/references/)",
+        "skills/math-paper-reading/references/quality_rubric.md (verbatim from paper-to-skill-extractor/references/)",
+        "skills/graph-theory-paper-reading/SKILL.md",
+        "skills/after-ocr/SKILL.md",
+        "skills/after-ocr/scripts/",
+        "skills/after-ocr/references/",
+        "skills/after-ocr/tests/"
+      ],
+      "adaptationNotes": "Skill routing adapted for DSH invocation and workspace artifact conventions; analysis methodology and the v4.2 structure JSON contract unchanged; optional verymath_paper_validate tool references added. graph-theory-paper-reading bundled verbatim with a DSH Integration Notes section added; after-ocr bundled with scripts/tests/references verbatim plus DSH notes. Both registered as independent bundled skills alongside math-paper-reading. The paper-to-skill appendix (0.3.1): only proof_pattern_taxonomy.md + quality_rubric.md copied verbatim as deep-read references (per council P3 verdict); the full paper-to-skill chain stays unbundled (MinerU cloud-API privacy); skill_paper_deep_read.md carries the appendix routing in its DSH Integration Notes."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Writing",
+      "commit": "418eb2e0c9cad7f259d114d7acfe6043971f4b94",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/paper-writing/SKILL.md",
+        "skills/paper-writing/skills/*/SKILL.md (flattened to skill_*.md modules)",
+        "skills/paper-writing/templates/",
+        "skills/math-beamer/ (SKILL.md + templates/ catalog+23 packs+previews + references/, verbatim with DSH notes)"
+      ],
+      "adaptationNotes": "paper-writing bundled with sub-skills flattened to module files (plugin skill-discovery layout) and DSH Integration Notes added; templates verbatim. math-beamer bundled after verifying local TeX Live 2025 compiles the seminar-minimal-zh template end-to-end; ECNU third-party template index NOT vendored (upstream policy)."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Auto-Research",
+      "commit": "4d93ba665a448caef9b0b963108a77803b1483da",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/discover-math-problems/ (SKILL.md + references)",
+        "skills/proof-blueprint-review/ (SKILL.md + references)",
+        "skills/open-problem-research-pipeline/ (SKILL.md + 4 nested skills flattened to skill_*.md + references)"
+      ],
+      "adaptationNotes": "Three pure-methodology research-workflow skills bundled with DSH integration notes; agent-laboratory-workflow/danus/graph-theory-researcher NOT bundled (version gaps, overlap with math-paper-reading, external API deployment)."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Computational-Mathematics",
+      "commit": "e9a3a7c0738106c4d923dd6fb6253072365b0023",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/least-squares/ (SKILL.md + examples.md + README.md)",
+        "skills/invariant-computation/ (SKILL.md + references + schema + examples + manifest.yaml)"
+      ],
+      "adaptationNotes": "least-squares frontmatter flattened to single-line description (author attribution moved to comment); both skills carry DSH integration notes. scientific-computing-reproduction NOT bundled (Codex ecosystem coupling)."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Optimization",
+      "commit": "a054d39a6be36a539eb511336af5a6b8c6c466b7",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/osqp-solver/ (SKILL.md + scripts/, scripts verbatim)",
+        "skills/mixed-integer-programming/ (SKILL.md + examples: lp-examples.md restored from upstream history, mip-examples-verified.md original with PuLP verification)"
+      ],
+      "adaptationNotes": "osqp-solver bundled with scripts verbatim (frontmatter description flattened to a single line for the plugin parser); mixed-integer-programming bundles the upstream LP examples restored from 191a4e3^ (the upstream examples.md was a SOCP copy-paste error since creation) plus newly written, PuLP-verified MILP examples (knapsack + assignment, cross-checked by enumeration / Hungarian algorithm); the upstream unverifiable benchmark claims (100-problem 100% pass rate, no reproduction script) are deliberately NOT quoted."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Lean-Agents",
+      "commit": "7aed4db687e7c5b1cd50b843454107d1042c5a10",
+      "license": "MIT",
+      "adaptedPaths": [
+        "skills/lean-formalization/ (SKILL.md + lean-runtime/ support layer embedded)",
+        "skills/lean-setup/SKILL.md"
+      ],
+      "adaptationNotes": "Both public entry skills bundled; lean-runtime embedded inside lean-formalization (DSH discovery layout) with ../lean-runtime/ refs rewritten; DSH notes carry the elan-shim no---version rule and two-level readiness contract. Numina/Archon backends not configured (optional upstream path)."
+    },
+    {
+      "repository": "https://github.com/VeryMath/AI4Math-Sagemath-skill",
+      "commit": "405293656b11aa22e70de5fe5b6e55f91b984901",
+      "license": "GPLv3 (scripts/SKILL.md); corpus is SageMath official docs under CC BY-SA 3.0",
+      "adaptedPaths": [
+        "NONE bundled (GPLv3 isolation per the review decision, user-approved route)",
+        "scoring/lookup behavior re-implemented from scratch in TypeScript (src/core/sage.ts)"
+      ],
+      "adaptationNotes": "Clean-room TS implementation of the documented lookup scoring contract; no GPLv3 code copied. Corpus (CC BY-SA) distributed separately at ~/.verymath/sagemath-corpus; no GPL files in this MIT package."
+    }
+  ],
+  "packageLicense": "MIT",
+  "packageLicenseFile": "LICENSE",
+  "attributionFile": "NOTICE.md"
+}

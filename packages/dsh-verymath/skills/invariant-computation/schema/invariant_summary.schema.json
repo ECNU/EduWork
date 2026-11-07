@@ -1,0 +1,260 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Invariant Computation Summary",
+  "description": "Backend-neutral evidence summary for one invariant-computation run.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "object",
+    "invariant",
+    "coefficient_ring_or_field",
+    "conventions",
+    "backend",
+    "command_or_code_path",
+    "validation_checks",
+    "remaining_uncertainty",
+    "next_repair_route"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "object": {
+      "type": "object",
+      "required": [
+        "source",
+        "representation"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "representation": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "invariant": {
+      "type": "object",
+      "required": [
+        "requested",
+        "computed",
+        "value",
+        "result_quality"
+      ],
+      "properties": {
+        "requested": {
+          "type": "string",
+          "minLength": 1
+        },
+        "computed": {
+          "type": "string",
+          "minLength": 1
+        },
+        "value": {},
+        "result_quality": {
+          "enum": [
+            "exact",
+            "certified_numerical",
+            "heuristic",
+            "partial",
+            "failed"
+          ]
+        }
+      },
+      "additionalProperties": true
+    },
+    "coefficient_ring_or_field": {
+      "type": "string",
+      "minLength": 1
+    },
+    "conventions": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "backend": {
+      "type": "object",
+      "required": [
+        "route",
+        "name",
+        "version_evidence"
+      ],
+      "properties": {
+        "route": {
+          "type": "string",
+          "minLength": 1
+        },
+        "name": {
+          "type": "string",
+          "minLength": 1
+        },
+        "version_evidence": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "additionalProperties": true
+    },
+    "command_or_code_path": {
+      "type": "string",
+      "minLength": 1
+    },
+    "validation_checks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "status",
+          "evidence"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "structural",
+              "invariant_cross_check",
+              "other"
+            ]
+          },
+          "status": {
+            "enum": [
+              "passed",
+              "failed",
+              "not_checked",
+              "inconclusive"
+            ]
+          },
+          "evidence": {
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true
+      }
+    },
+    "remaining_uncertainty": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 1
+      },
+      "uniqueItems": true
+    },
+    "next_repair_route": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "minLength": 1
+    },
+    "classification_caveat": {
+      "type": "string",
+      "minLength": 1
+    },
+    "classification_theorem_evidence": {
+      "type": "string",
+      "minLength": 1
+    }
+  },
+  "allOf": [
+    {
+      "anyOf": [
+        {
+          "required": [
+            "classification_caveat"
+          ]
+        },
+        {
+          "required": [
+            "classification_theorem_evidence"
+          ]
+        }
+      ]
+    },
+    {
+      "if": {
+        "properties": {
+          "invariant": {
+            "properties": {
+              "result_quality": {
+                "enum": [
+                  "exact",
+                  "certified_numerical",
+                  "heuristic",
+                  "partial"
+                ]
+              }
+            },
+            "required": [
+              "result_quality"
+            ]
+          }
+        },
+        "required": [
+          "invariant"
+        ]
+      },
+      "then": {
+        "properties": {
+          "invariant": {
+            "properties": {
+              "value": {
+                "not": {
+                  "type": "null"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "invariant": {
+            "properties": {
+              "result_quality": {
+                "enum": [
+                  "heuristic",
+                  "partial",
+                  "failed"
+                ]
+              }
+            },
+            "required": [
+              "result_quality"
+            ]
+          }
+        },
+        "required": [
+          "invariant"
+        ]
+      },
+      "then": {
+        "properties": {
+          "remaining_uncertainty": {
+            "minItems": 1
+          },
+          "next_repair_route": {
+            "type": "string",
+            "minLength": 1
+          }
+        }
+      }
+    }
+  ],
+  "additionalProperties": true
+}

@@ -1,0 +1,8 @@
+# Optional bundle; installing this package does not change the edition's
+# default composition. Mounts the VeryMath service and its tool surface.
+- insert:
+    - id: verymath
+      name: '@eduwork/dsh-verymath/core'
+
+    - id: tool-verymath
+      name: '@eduwork/dsh-verymath/tool'

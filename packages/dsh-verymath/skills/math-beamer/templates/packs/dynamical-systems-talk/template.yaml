@@ -1,0 +1,9 @@
+name: dynamical-systems-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - dynamical systems
+  - stability
+  - bifurcation
+requires: [beamer, amsmath, amssymb, tikz]
