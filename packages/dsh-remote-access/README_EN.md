@@ -6,7 +6,7 @@
 
 The package has two parts:
 
-- **DSH plugin**: runs on the computer being accessed. Its settings page switches remote access on and off and adds and removes devices, and it fits DSH's interface to phone screens.
+- **DSH plugin**: runs on the computer being accessed. Its settings page switches remote access on and off and adds and removes devices.
 - **Relay service**: runs on a server with a public address. It forwards ciphertext and serves the page you open on your phone.
 
 ## Use
@@ -60,7 +60,7 @@ Choose "Remove" under "Paired devices" on the computer to disconnect a device at
 
 They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results. Studio results and the calendar are also available when those plugins are installed on the host.
 
-A phone shows DSH's own interface, only fitted to the narrow screen: the session list (workspace folders, search, new session and so on) opens full screen from the top-left corner and closes once you pick a session or a panel; settings also fill the screen, with the sections as a row of tabs, and are view only on remote devices; conversations show durations, retries, approvals and questions as on the computer.
+A phone shows DSH's own interface. From DSH 0.2.2, DSH fits it to phone screens itself: the session list opens as a drawer from the top-left corner and closes once you pick a session or a panel, and settings fill the screen with the sections as a row of tabs. Settings are view only on remote devices. Conversations show durations, retries, approvals and questions as on the computer.
 
 Remote devices cannot directly call APIs that open local windows or programs or show notifications, register or remove workspaces, change settings, manage accounts, plugins, credentials, skills, memories or remote access, or access terminal and code-execution APIs. **Tasks submitted through the Agent can still execute commands under the session's permission and approval rules**; blocking direct terminal APIs does not disable Agent tools. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
 

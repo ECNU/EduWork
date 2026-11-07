@@ -5,7 +5,7 @@
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "ac82ce59020f8da20b70fda33132797cda784bb4e7dd91f1ccb20268ffb13af6",
+  "fileSetSHA256": "f455e6b8eac54e8e7a32a60084e6019537dece703ad8e00802794f3b80b21de9",
   "files": [
     {
       "path": ".gitattributes",
@@ -6757,7 +6757,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "9f11f652d596f34f601751775c29ffa37398ac405735a0187d7766daf8a2d3d8"
+      "sha256": "440d084470ec83f33868bf77011060969ec82ca2deafa97da8193ca9830616bb"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6821,39 +6821,39 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "b35fa2ded2712ced88943ed374bd48e66b85c334f9e9cf909c04bf5b504e2346"
+      "sha256": "ae7170772b3224832ca0f0a5b763e337d863a1a6fc757ef73238e6719ea95767"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "991c8e1c5449aab43ba9c969a2b909a2fbbd85511b73dd75e7f82acc91d16f0b"
+      "sha256": "fc544f44eb1547081e079b5f103d1a20de018919c16e94b84a1d9ade32e03582"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "8ef4fa1272013eb4e01a427f2f965dedf53b3c214d38379cf6e5bbab7acdf9dd"
+      "sha256": "dfff20b6b4f7d9849306a9fc933393e48247f79163ee04ad0af59f14b738abea"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "2b1da23e70b95b0f9bb996f8ae84451589f95ebe633ed6a5c934c58a8c967bba"
+      "sha256": "faaa9f24249a1c7b57f20c8e33b0440813d1a7776583afd0a7369ba3737f8286"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",
-      "sha256": "13293e327f5dd77aa7ac8b29fa361d4700e9d169c78c3034680f6c92d74dd0d7"
+      "sha256": "b30b70c7f523685602953d297449c271be914e9c6d13c2a15c1a5921ce9803c5"
     },
     {
       "path": "packages/dsh-remote-access/scripts/check-web.ts",
       "sha256": "e65eecb3d46ac7e5e56b34c6c3a7c43951eed557c026145e6945b5b4df3a0ec2"
     },
     {
+      "path": "packages/dsh-remote-access/src/client/device.tsx",
+      "sha256": "71c43de7bef43fef3d72df1c914621c27eec10ac6d28b8a3766ef9a2e385c8cf"
+    },
+    {
       "path": "packages/dsh-remote-access/src/client/index.tsx",
-      "sha256": "3819465bf0e635347c3310a14baefaa29bd8e7a06bdc34d97e805cf1e7f669dc"
+      "sha256": "15762d7be9479b712cabc38f8e52da93ce133cc1a69436a8c4b50302db79c5c2"
     },
     {
       "path": "packages/dsh-remote-access/src/client/locale.ts",
-      "sha256": "7900956c323b446d227350fdad22a30ef75a742d84e35df4f6edf09c1a836d88"
-    },
-    {
-      "path": "packages/dsh-remote-access/src/client/phone.tsx",
-      "sha256": "47b0c76e4b774b8a2e9f317a2f8b30038f535231929535952abe052b0fcfe3ee"
+      "sha256": "ee1e21a534233b7b656a92c18c648ad1f218c0025e097be7de6b2c966e351713"
     },
     {
       "path": "packages/dsh-remote-access/src/connections/compression.ts",
@@ -6981,7 +6981,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/web/preamble.ts",
-      "sha256": "1c2ef44465e912f33bb75de5f7efd95a956c64d0fddaf5c5c3d92ff178cd5d8f"
+      "sha256": "a8a0b4e9dcc0a01bebd542e0739767f9a0cbc4d822663cf99c171e330df8d767"
     },
     {
       "path": "packages/dsh-remote-access/src/web/static/icon.png",
