@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-07T16:08:07.006Z",
-  "fileSetSHA256": "29955822b7179498af6cb0d802ce6b4237ed0f2d6867858cea354b06a3d02f3f",
+  "createdAt": "2026-11-07T16:09:34.338Z",
+  "fileSetSHA256": "708198450de7ce34fa45090f46b902c12e367318e81c959966e53f572c6f5a14",
   "files": [
     {
       "path": ".gitattributes",
@@ -1573,7 +1573,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "0fd23ec41aff1125947423f214cb70f4cc122d826cd6b39a05b34607997a6fef"
+      "sha256": "19ed789ab6243b21fa4d3a146445bdb0241af5d97d586d9ab34ee0862ca0002b"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",

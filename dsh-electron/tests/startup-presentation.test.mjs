@@ -111,6 +111,16 @@ test('a repeated launch restores the BootPage while the Host starts', () => {
   assert.ok(harness.activationWindows().includes(main))
 })
 
+test('a stage hint set while the BootPage loads outranks the later Host hint', () => {
+  const { harness, main } = startupHarness()
+  main.loading = true
+  harness.showStartupProgress('download')
+  harness.showHostStartupProgress()
+  main.webContents.emit('did-finish-load')
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  assert.equal(main.showCalls, 1)
+})
+
 test('the generic Host hint never overwrites or resurfaces stage-specific progress', async () => {
   const { harness, main } = startupHarness()
   harness.showHostStartupProgress()
