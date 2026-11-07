@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
+for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'backup-maintenance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     const earlyFailure = scenario.startsWith('early-'), startupError = new Error('synthetic Host failure')
@@ -309,6 +309,12 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         if (!earlyFailure) completed()
       }, showDesktop: () => calls.push('activate-current-window'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
+      handleDesktopBackupBeforeHost: async () => {
+        if (scenario !== 'backup-maintenance') return false
+        calls.push('backup')
+        setImmediate(completed)
+        return true
+      },
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
       productUpdateObserver: { dispose() {}, subscribe: () => () => {}, status: async () => undefined,
@@ -432,6 +438,8 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.equal(calls.includes('window-show'), false)
       assert.equal(calls.includes('desktop-ready'), false)
       assert.ok(calls.includes(scenario === 'host-failure' ? 'recovery' : 'quit'))
+    } else if (scenario === 'backup-maintenance') {
+      assert.deepEqual(calls, ['ready', 'installer', 'lock', 'backup'])
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {

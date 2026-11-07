@@ -21,8 +21,9 @@ export class DesktopLifecycle {
     this.closing = true
     this.shutdown = (async () => {
       while (this.preparations.size) await Promise.allSettled([...this.preparations])
-      await Promise.allSettled([...this.hosts].map(host => host.stop()))
-      await Promise.allSettled([...this.bridges].map(bridge => bridge.close()))
+      const hosts = await Promise.allSettled([...this.hosts].map(host => host.stop()))
+      const bridges = await Promise.allSettled([...this.bridges].map(bridge => bridge.close()))
+      return [...hosts, ...bridges].filter(result => result.status === 'rejected')
     })()
     return this.shutdown
   }

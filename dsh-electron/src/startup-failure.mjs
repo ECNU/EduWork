@@ -6,7 +6,7 @@ export function updaterStartupError(executable, cause) {
   })
 }
 
-export function startupFailurePage({ error, productName, version, config }) {
+export function startupFailurePage({ error, productName, version, config, backup }) {
   const causes = []
   for (let current = error; current && causes.length < 8; current = current.cause) causes.push(current)
   const updater = causes.find(value => value.code === 'EDUWORK_UPDATER_START_FAILED')
@@ -53,6 +53,7 @@ export function startupFailurePage({ error, productName, version, config }) {
     <nav aria-label="恢复操作"><a class="primary" href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : updater ? '修复后重试' : '重新启动'}</a>
     ${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}
     ${updater ? '<a href="eduwork-startup://component/">打开组件目录</a><a href="eduwork-startup://copy/">复制错误信息</a>' : ''}
+    ${backup ? '<a href="eduwork-startup://backup/">备份与恢复…</a>' : ''}
     <a href="eduwork-startup://exit/">退出</a></nav>${updater ? '<p id="copy-status" role="status" aria-live="polite"></p>' : ''}</html>`
   return { html, needsConfiguration, diagnostics, executable: updater?.executable }
 }

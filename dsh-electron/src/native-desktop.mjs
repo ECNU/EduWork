@@ -20,7 +20,8 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, productUpdateObserver } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, productUpdateObserver,
+  handleDesktopBackupBeforeHost } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -110,6 +111,7 @@ async function handleStartupFailure(error) {
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  if (await handleDesktopBackupBeforeHost() || isQuitting()) return
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({
     getHost: () => backend.host,

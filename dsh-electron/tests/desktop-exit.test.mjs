@@ -20,7 +20,7 @@ test('cancelling a restart does not register a later surprise relaunch', async (
   const calls = []; let approve = false
   const exit = new DesktopExit({ confirm: async () => approve, close: async () => calls.push('close'),
     relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: assert.fail })
-  exit.restart(); await exit.request()
+  exit.restart(['--eduwork-data-operation=restore:/synthetic backup']); await exit.request()
   assert.deepEqual(calls, ['quit']); assert.equal(exit.complete, false)
   assert.equal(exit.closing, false)
   approve = true; await exit.request()
@@ -77,4 +77,18 @@ test('native updater termination uses the normal quit guard and cancellation per
   assert.deepEqual(calls,['confirm']);assert.equal(exit.complete,false)
   approve=true;await coordinator.action('install-update')
   assert.deepEqual(calls,['confirm','confirm','close','quit']);assert.equal(exit.complete,true)
+})
+
+
+test('maintenance restart passes its request through admission and cleanup before relaunch', async () => {
+  const args = ['--eduwork-data-operation=backup:/synthetic backup'], calls = []
+  const exit = new DesktopExit({
+    confirm: async request => { assert.deepEqual(request, args); calls.push('admission'); return true },
+    close: async request => { assert.deepEqual(request, args); calls.push('closed') },
+    relaunch: request => { assert.deepEqual(request, args); calls.push('relaunch') },
+    quit: () => calls.push('quit'), failed: assert.fail,
+  })
+  exit.restart(args)
+  await exit.request()
+  assert.deepEqual(calls, ['quit', 'admission', 'closed', 'relaunch', 'quit'])
 })

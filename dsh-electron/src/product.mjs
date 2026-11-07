@@ -37,6 +37,7 @@ import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
 import { createSettingsOpenRequest } from './settings-open-request.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
+import { chooseDesktopBackup, dataOperationDuringUpdate, handleDesktopBackup } from './desktop-backup-ui.mjs'
 
 export function configureWindowNavigation(window) {
   attachExternalNavigation(window.webContents, url => shell.openExternal(url), () => {
@@ -54,7 +55,7 @@ let updateCompleted = false
 let desktopFailureShown = false
 let mainWindowPresented = false
 let startupMessage = ''
-let portableUpdates
+let portableUpdates, macUpdates
 let flushPendingSettings = () => {}
 let contentUpdates, managedContent = {}
 export const productUpdateObserver = createProductUpdateObserver({
@@ -65,19 +66,36 @@ let publisher
 let taskNotifications, notificationAdapter
 let desktopPet, petMenu = () => []
 let refreshTray = () => {}
+let backupMaintenance = false, backupDialog = false
 const lifecycle = new DesktopLifecycle()
 let confirmQuit = async () => true
 const desktopExit = new DesktopExit({
-  confirm: () => confirmQuit(),
-  close: async () => {
+  confirm: async args => {
+    if (backupMaintenance || !await confirmQuit()) return false
+    if (args?.length) await requireBackupIdle()
+    return true
+  },
+  close: async args => {
     await directoryPicker.close()
-    await stopDesktopServices()
+    const failures = await stopDesktopServices()
+    if (args?.length && !desktopExit.installerOwnsQuit && failures.length) throw failures[0].reason
     desktopPet?.close()
     taskNotifications?.close()
     tray?.destroy(); tray = undefined
   },
-  relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
-  quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
+  relaunch: async args => {
+    if (args.length && macUpdates && backupUpdateBusy((await macUpdates.action('status')).update)) {
+      await showDesktopMessageBox({ type: 'info', title: '备份与恢复', message: '软件更新已开始，客户端将退出。请完成更新后重试。' })
+      return
+    }
+    app.relaunch({ args: [...desktopRelaunchOptions(process.argv.slice(1), updateCompleted).args, ...args] })
+  },
+  quit: () => app.quit(),
+  failed: (error, args) => {
+    desktopHostLog(`[desktop:quit] ${error.message}\n`)
+    if (args?.length) void showDesktopMessageBox({ type: 'error', title: '备份与恢复',
+      message: '备份或恢复尚未开始', detail: error.message }).catch(() => {})
+  },
 })
 export function setDesktopQuitGuard(guard) { confirmQuit = guard }
 export function restartDesktop() {
@@ -123,6 +141,33 @@ export function configureEduworkPaths() {
 }
 export function installEduworkFromDmg() {
   return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
+}
+export async function handleDesktopBackupBeforeHost() {
+  try {
+    return await handleDesktopBackup(paths, settings, process.argv.slice(1), () => { backupMaintenance = true })
+  } finally { backupMaintenance = false }
+}
+const backupAvailable = () => settings.configurationOwnership !== 'publisher' && !settings.sourceAlpha
+  && !process.env.EDUWORK_CONFIG_FILE && ['darwin', 'win32'].includes(process.platform)
+const backupUpdateBusy = update => update?.busy || update?.installOnQuit || update?.installOnNextStart
+  || ['checking', 'downloading', 'ready', 'applying', 'installing'].includes(update?.state)
+async function requireBackupIdle() {
+  const { update } = await portableUpdates?.action('status') ?? {}
+  const mac = macUpdates && (await macUpdates.action('status')).update
+  if (dataOperationDuringUpdate(desktopRelaunchOptions(process.argv.slice(1), updateCompleted).args)
+    || backupUpdateBusy(update) || backupUpdateBusy(mac)) throw Error('请先完成客户端的安装或更新')
+}
+async function openDesktopBackup(window) {
+  if (backupDialog || desktopExit.pending || isQuitting()) return
+  backupDialog = true
+  try {
+    await requireBackupIdle()
+    await chooseDesktopBackup(window, args => {
+      if (!desktopExit.pending && !isQuitting()) desktopExit.restart(args)
+    })
+  } catch (error) {
+    if (!isQuitting()) await showDesktopMessageBox({ type: 'error', title: '备份与恢复', message: error.message })
+  } finally { backupDialog = false }
 }
 export function prepareEduworkDesktop() { return lifecycle.prepare(prepareDesktop) }
 export function desktopWebRoot() {
@@ -235,8 +280,8 @@ async function prepareDesktop() {
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
     supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
     start:({policy,applyScheduled})=>process.platform==='darwin'
-      ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
-        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
+      ? (macUpdates = startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
+        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy}))
       : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
         version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
@@ -449,6 +494,7 @@ export async function attachDesktopWindow(window) {
       ...petItem(),
       { label: '检查更新', click: () => { show(); void checkProductUpdates() } },
       { label: '设置', click: requestSettings },
+      ...(backupAvailable() ? [{ label: '备份与恢复…', click: () => openDesktopBackup(window) }] : []),
       { type: 'separator' },
       { label: '退出 ' + settings.productName, click: () => app.quit() },
       ]))
@@ -481,7 +527,7 @@ export async function showDesktopFailure(error) {
   if (rolledBack) { restartDesktop(); return }
   await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
   if (isQuitting()) return
-  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
+  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config,backup:backupAvailable()})
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, show: false, title: settings.productName,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1c' : '#faf8f4',
@@ -517,6 +563,7 @@ export async function showDesktopFailure(error) {
         }).finally(() => { importing = false })
       }
     }
+    if (backupAvailable() && url === 'eduwork-startup://backup/') void openDesktopBackup(progressWindow)
     if (url === 'eduwork-startup://exit/') app.quit()
     if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {
       importing = true
