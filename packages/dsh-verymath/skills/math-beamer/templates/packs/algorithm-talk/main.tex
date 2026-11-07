@@ -1,0 +1,43 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Darmstadt}
+\usepackage{amsmath,amssymb}
+
+\title{Algorithmic Idea And Guarantee}
+\author{Speaker}
+\date{\today}
+
+\begin{document}
+\begin{frame}\titlepage\end{frame}
+
+\begin{frame}{Computational Task}
+  \begin{block}{Input}
+    Define input size, object type, and assumptions.
+  \end{block}
+  \begin{block}{Output}
+    Define exact or approximate output and correctness criterion.
+  \end{block}
+\end{frame}
+
+\begin{frame}{Pseudocode}
+  \begin{enumerate}
+    \item Preprocess the input.
+    \item Repeat until stopping condition:
+      \begin{enumerate}
+        \item choose candidate;
+        \item update certificate;
+        \item check failure case.
+      \end{enumerate}
+    \item Return output and certificate.
+  \end{enumerate}
+\end{frame}
+
+\begin{frame}{Correctness Invariant}
+  \begin{lemma}
+    The maintained certificate implies the desired output property.
+  \end{lemma}
+\end{frame}
+
+\begin{frame}{Complexity}
+  State time, memory, oracle calls, numerical precision, and hidden constants.
+\end{frame}
+\end{document}

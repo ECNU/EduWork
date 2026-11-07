@@ -1,0 +1,9 @@
+name: probability-statistics-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - probability theorem
+  - statistics model
+  - stochastic process
+requires: [beamer, amsmath, amssymb, booktabs]

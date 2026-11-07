@@ -1,0 +1,51 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+\usetheme{Singapore}
+\usepackage{amsmath,amssymb,booktabs}
+
+\title{Numerical Method And Error Story}
+\author{Speaker}
+\date{\today}
+
+\begin{document}
+\begin{frame}\titlepage\end{frame}
+\begin{frame}{Continuous Problem}
+  State the PDE, integral equation, variational problem, or computational model.
+  Include domain, boundary conditions, and regularity.
+\end{frame}
+
+\begin{frame}{Discretization}
+  \[
+    \mathcal{L}u=f
+    \quad\leadsto\quad
+    A_h u_h = f_h .
+  \]
+  \begin{itemize}
+    \item Mesh or basis.
+    \item Discrete operator.
+    \item Stability condition.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Error Estimate}
+  \begin{theorem}
+    Under the stated assumptions, \(\|u-u_h\| \le C h^p\).
+  \end{theorem}
+  \begin{itemize}
+    \item Norm and constant dependencies.
+    \item Proof ingredients.
+  \end{itemize}
+\end{frame}
+
+\begin{frame}{Reproducibility}
+  \begin{tabular}{ll}
+    \toprule
+    Item & Value \\
+    \midrule
+    Code version & commit or archive \\
+    Mesh/data & source path \\
+    Solver tolerance & value \\
+    Metric & definition \\
+    \bottomrule
+  \end{tabular}
+\end{frame}
+\end{document}
