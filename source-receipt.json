@@ -2,10 +2,10 @@
   "schemaVersion": 1,
   "kind": "eduwork-public-source-snapshot",
   "edition": "generic",
-  "version": "0.4.12",
+  "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "79eae80e02473a4b30074d757ff4db9171e6a8fc133355b3101ee1d5c6736ab7",
+  "createdAt": "2026-11-07T05:55:08.358Z",
+  "fileSetSHA256": "57bbc69f7651969e520c4eb731a2e086ef84fb75b74d5f522dc51ba7ad6e2cd0",
   "files": [
     {
       "path": ".gitattributes",
@@ -518,6 +518,10 @@
     {
       "path": "docs/releases/0.4.12.md",
       "sha256": "18240402b0b1dfe022b575b27b00f721b18ba46cfd582912165c3d074a253f14"
+    },
+    {
+      "path": "docs/releases/0.4.13.md",
+      "sha256": "267cf9259dfaa934491f4f7785a689e92764d2491b35ca508af055b244135d40"
     },
     {
       "path": "docs/releases/0.4.2.md",
@@ -8549,7 +8553,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/remote-access.json",
-      "sha256": "690bb8d0b2928d42cdc82e067c0376b1db14c1de8ed8619d5b0277fa611a6ab3"
+      "sha256": "74f11a01da2c4f1c8234f3a6bed3b99ad490ef4382f4a8aa322f979b316cf49a"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/side-chat.json",
@@ -8557,11 +8561,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package-lock.json",
-      "sha256": "f95c8413d5fa53726f346b72a579ec812add04a56e86efadb846b625f83cd397"
+      "sha256": "2dc7d6a14bef0c3ca55ce3e3f47dd6e6609a796bbbcf6d457a71e3b7ead5d570"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.1/source-probe/package.json",
-      "sha256": "51256285cf28149dcf97f8b050f2ac8b31e0ea0beb9168232ce65c37fb48bc63"
+      "sha256": "1155db9791add7b7e9e366cd6b758cb54fdf35c7c800819acad62385a8c92458"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
