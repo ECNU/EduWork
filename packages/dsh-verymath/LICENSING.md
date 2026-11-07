@@ -4,7 +4,7 @@
 
 本包采用 `MulanPSL-2.0 AND MIT`，表示不同来源的代码各自适用不同许可，不是任选其一。
 
-`src`、`scripts`、`test`、`cordis.patch.yml` 与包内其他原创文件按木兰宽松许可证第 2 版授权，全文见 [LICENSE](LICENSE)。`skills` 下改编自 VeryMath 各仓库的技能内容与 Python 脚本保持 MIT，全文见 [LICENSE-MIT](LICENSE-MIT)；逐仓库 commit 见 [UPSTREAM.json](UPSTREAM.json)，改编范围与逐项改动见 [NOTICE.md](NOTICE.md)。八个上游仓库中七个为 MIT，另一个 Sagemath-skill 为 GPLv3，本包未收录其任何代码，仅按公开文档以 TypeScript 重新实现查询契约。
+`src`、`scripts`、`test`（不含 `skills` 下上游自带的 `tests`）、`cordis.patch.yml` 与包内其他原创文件按木兰宽松许可证第 2 版授权，全文见 [LICENSE](LICENSE)。`skills` 下改编自 VeryMath 各仓库的技能内容与 Python 脚本保持 MIT，全文见 [LICENSE-MIT](LICENSE-MIT)；逐仓库 commit 见 [UPSTREAM.json](UPSTREAM.json)，改编范围与逐项改动见 [NOTICE.md](NOTICE.md)。八个上游仓库中七个为 MIT，另一个 Sagemath-skill 为 GPLv3，本包未收录其任何代码，仅按公开文档以 TypeScript 重新实现查询契约。
 
 同时分发原创部分与上游改编部分时，须一并保留两份许可全文及来源署名。上游 MIT 授权及其权利人不因本包的许可选择而改变。机构版权声明不表示其他贡献者转让版权。
 

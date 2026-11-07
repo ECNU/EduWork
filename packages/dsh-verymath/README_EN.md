@@ -13,7 +13,7 @@ An optional EduWork plugin that brings VeryMath's math research skills and tools
 
 ## Capability boundaries
 
-- Python, SageMath, TeX Live, Lean/elan and MATLAB are installed by the user. The plugin only probes for them, returns install hints when something is missing, and bundles none of them. Sage support is documentation lookup only; MATLAB needs the user's own licence through the official MathWorks MCP server.
+- Python, SageMath, TeX Live, Lean/elan and MATLAB are installed by the user. The plugin only probes for them, returns install hints when something is missing, and is distributed without them. Sage support is documentation lookup only; MATLAB needs the user's own license through the official MathWorks MCP server.
 - Paper structure validation checks dependency integrity, cycles and dangling links. It does not judge whether a proof is correct.
 - Dependency graphs and glossary writes are computed deterministically in TypeScript rather than assembled by the model.
 - Beamer templates only reference the local TeX Live themes; no third-party `.sty`, `.cls` or font files are redistributed.
