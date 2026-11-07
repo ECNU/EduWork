@@ -2,7 +2,7 @@
 
 [中文](README.md)
 
-An optional EduWork plugin that brings VeryMath's math research skills and tools into the conversation: structured paper reading with theorem dependency graphs, a bilingual glossary, paper writing and Beamer slides, mixed-integer and quadratic programming, least squares and invariant computation, Lean patch acceptance, research-workflow gates, plus Sage documentation lookup and MATLAB execution. 16 skills and 14 tools. Compatible with DSH 0.2.1-rc.5 and 0.2.2-rc.1.
+An optional EduWork plugin that brings VeryMath's math research skills and tools into the conversation: structured paper reading with theorem dependency graphs, a bilingual glossary, paper writing and Beamer slides, mixed-integer and quadratic programming, least squares and invariant computation, Lean patch acceptance, research-workflow gates, plus Sage documentation lookup and MATLAB execution. 16 skills and 14 tools. Tested on DSH 0.2.2-rc.1 (the version bundled with EduWork 0.4.13) and 0.2.1-rc.5; the peer range covers both and later 0.2.x releases.
 
 ## Install and use
 

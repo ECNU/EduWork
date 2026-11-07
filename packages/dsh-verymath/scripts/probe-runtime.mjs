@@ -21,6 +21,17 @@ try {
   await ctx.plugin(systemPrompt.default)
   const dshTools = await import('@deepseek-ai/dsh-tools')
   await ctx.plugin(dshTools.default)
+  // DSH 0.2.2 decouples tool execution from the registry: a tool executor has to
+  // be mounted before `ctx.tools.execute` can dispatch. The package only exists
+  // from 0.2.2 on, so keep the mount optional to stay runnable on 0.2.1.x.
+  let hasExecutor = false
+  try {
+    const toolExecutor = await import('@deepseek-ai/dsh-tool-executor-native')
+    await ctx.plugin({ apply: toolExecutor.apply, inject: toolExecutor.inject, name: toolExecutor.name })
+    hasExecutor = true
+  } catch {
+    hasExecutor = false
+  }
   const fsLocal = await import('@deepseek-ai/dsh-fs-local')
   await ctx.plugin(fsLocal.default, { cwd: output })
   new SkillRegistry(ctx)
@@ -46,9 +57,27 @@ try {
   // Glossary: build a source CSV, run the real upstream build script, query.
   const csvPath = join(output, 'source.csv')
   await writeFile(csvPath, 'en,cn\nmanifold,流形\ngroup,群\ncohomology,上同调\n')
-  const execute = (name, args) => ctx.tools.execute({
-    callId: name, name, arguments: args, signal: new AbortController().signal,
-  })
+  // DSH 0.2.2 takes a batch of raw calls: `id`, `name` and a JSON-string
+  // `arguments`, returning `{ results: [{ result }] }`. 0.2.1.x takes a single
+  // call with `callId` and an object `arguments`. Normalise to the single-call
+  // shape the assertions below use, so the probe runs on both.
+  const execute = async (name, args, exec) => {
+    const signal = new AbortController().signal
+    if (hasExecutor) {
+      const batch = await ctx.tools.execute({
+        calls: [{ id: name, name, arguments: JSON.stringify(args ?? {}) }],
+        signal,
+        ...(exec?.agent !== undefined ? { agent: exec.agent } : {}),
+      })
+      const settled = batch.results?.[0]?.result
+      if (settled === undefined) throw new Error(`no result for ${name}`)
+      return settled
+    }
+    return ctx.tools.execute({
+      callId: name, name, arguments: args ?? {}, signal,
+      ...(exec?.agent !== undefined ? { agent: exec.agent } : {}),
+    })
+  }
 
   const check = await execute('verymath_python_check', {})
   assert.equal(check.isError, false, JSON.stringify(check))
@@ -97,10 +126,7 @@ try {
     completeness_check: { self_containment: 'high' },
   }))
   const parent = { id: 'probe-session', ctx: new Context(), status: 'running', session: { header: { cwd: output } } }
-  const validate = await ctx.tools.execute({
-    callId: 'verymath_paper_validate', name: 'verymath_paper_validate',
-    arguments: { path: 'demo_structure.json' }, agent: parent, signal: new AbortController().signal,
-  })
+  const validate = await execute('verymath_paper_validate', { path: 'demo_structure.json' }, { agent: parent })
   assert.equal(validate.isError, false, JSON.stringify(validate))
   assert.equal(validate.value.valid, true)
   assert.equal(validate.value.entityCount, 2)
@@ -110,10 +136,7 @@ try {
   // Error contract: an invalid artifact surfaces the structured error code.
   const badPath = join(output, 'bad_structure.json')
   await writeFile(badPath, JSON.stringify({ paper: { title: 'Bad' }, entities: [{ type: 'CONJECTURE', label: 'C1', statement: 'x' }] }))
-  const bad = await ctx.tools.execute({
-    callId: 'verymath_paper_validate', name: 'verymath_paper_validate',
-    arguments: { path: 'bad_structure.json' }, agent: parent, signal: new AbortController().signal,
-  })
+  const bad = await execute('verymath_paper_validate', { path: 'bad_structure.json' }, { agent: parent })
   assert.equal(bad.isError, true)
   assert.match(String(bad.content[0]?.text ?? bad.error ?? ''), /unknown type/)
   report.checks.push('invalid artifacts surface the structured VeryMathError taxonomy')

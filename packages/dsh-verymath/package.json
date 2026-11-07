@@ -38,7 +38,7 @@
     "node": ">=24.22.1"
   },
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0 || 4.1.0",
+    "@deepseek-ai/cordis": ">=4.0.5 <4.2.0 || 4.1.0",
     "@deepseek-ai/dsh-fs": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
     "@deepseek-ai/dsh-llm": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
     "@deepseek-ai/dsh-skill": ">=0.2.1-rc.5 <0.3.0-0 || 0.2.2-rc.1",
@@ -46,18 +46,19 @@
     "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0"
   },
   "devDependencies": {
-    "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-fs": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-fs-local": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-llm": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-skill": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-system-prompt": "0.2.1-rc.5",
-    "@deepseek-ai/dsh-tools": "0.2.1-rc.5",
-    "@deepseek-ai/schemastery": "3.18.5",
+    "@deepseek-ai/cordis": "4.1.0",
+    "@deepseek-ai/dsh-fs": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-fs-local": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-skill": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-system-prompt": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "@deepseek-ai/schemastery": "3.19.0",
     "@types/js-yaml": "4.0.9",
     "@types/node": "24.19.2",
     "typescript": "6.0.3",
-    "vitest": "4.1.8"
+    "vitest": "4.1.8",
+    "@deepseek-ai/dsh-tool-executor-native": "0.2.2-rc.1"
   },
   "dependencies": {
     "js-yaml": "4.3.2"
