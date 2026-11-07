@@ -144,13 +144,14 @@ test('Host readiness does not resurface a window hidden after the BootPage appea
   assert.equal(main.showCalls, 1)
 })
 
-test('the generic Host hint waits for the static BootPage document', () => {
+test('the generic Host hint presents after the native entry loaded the BootPage', () => {
   const { harness, main } = startupHarness()
+  // A following main-frame navigation can keep isLoadingMainFrame() true after
+  // loadURL resolves; the Host hint must not wait for another finish event.
   main.loading = true
   harness.showHostStartupProgress()
-  assert.equal(main.visible, false)
-  main.webContents.emit('did-finish-load')
   assert.equal(main.visible, true)
+  assert.equal(main.showCalls, 1)
   assert.equal(main.messages.at(-1)[1].message, '正在启动本地服务…')
 })
 

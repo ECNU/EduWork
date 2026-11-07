@@ -152,7 +152,7 @@ function startupAppearance() {
     dock: process.platform === 'darwin' ? join(app.getAppPath(), '../brand', blue ? 'dock-blue-1024.png' : 'dock-red-1024.png') : undefined,
   }
 }
-function showStartupProgress(message) {
+function showStartupProgress(message, documentLoaded = false) {
   startupMessage = message
   const window = mainWindow
   if (!window || window.isDestroyed() || isQuitting() || desktopFailureShown) return
@@ -163,13 +163,15 @@ function showStartupProgress(message) {
     mainWindowPresented = true
     window.show()
   }
-  // The existing BootPage must be painted before showing a pre-Host download.
-  if (window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', present)
+  // A caller that already awaited loadURL must not wait for another finish
+  // event: a following main-frame navigation can keep isLoadingMainFrame() true.
+  if (!documentLoaded && window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', present)
   else present()
 }
 export function showHostStartupProgress() {
+  // native-desktop calls this only after the BootPage document has loaded.
   // Download and migration hints must outrank the generic Host-start hint.
-  showStartupProgress(startupMessage || '正在启动本地服务…')
+  showStartupProgress(startupMessage || '正在启动本地服务…', true)
 }
 function showDesktopMessageBox(options) {
   const parent = [progressWindow, mainWindow].find(window => window && !window.isDestroyed())
