@@ -30,6 +30,11 @@ export function changedGroups(files) {
     if (file.startsWith('scripts/packages/') || file === 'tests/package-maintenance.test.mjs' || /^\.github\/workflows\/packages(?:-release)?\.yml$/.test(file)) {
       groups.forEach(group => result.add(group))
     }
+    // Both package checks install this Runtime to exercise their mounted plugins.
+    if (/^third_party\/dsh\/[^/]+\/npm-runtime\//.test(file)) {
+      result.add('dsh-side-chat')
+      result.add('dsh-decision')
+    }
     for (const group of groups) if (file.startsWith(`packages/${group}/`)) result.add(group)
     // Side chat consumes the annotation selection service when both are enabled.
     if (file.startsWith('packages/dsh-annotation/')) result.add('dsh-side-chat')
