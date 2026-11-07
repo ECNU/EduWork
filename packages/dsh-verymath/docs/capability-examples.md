@@ -28,7 +28,7 @@
 
 ## 1. 论文阅读与依赖图
 
-**技能与工具**：`math-paper-reading`（`skill_base` 结构提取 + `skill_pathway_proof` 依赖路径）、`verymath_paper_validate`、`verymath_paper_graph`
+技能与工具：`math-paper-reading`（`skill_base` 结构提取 + `skill_pathway_proof` 依赖路径）、`verymath_paper_validate`、`verymath_paper_graph`
 
 ### 谁在什么情况下使用
 
@@ -52,21 +52,21 @@
 - 校验结论：`verymath_paper_validate` 报告的实体数、主定理数、依赖完整性
 - 接着追问一句「画出 Theorem 1.2 的依赖关系，标明每个节点对应的原文位置」，得到 Mermaid 或 ASCII 形式的定理依赖图
 
-**怎么判断完成**：JSON 能通过校验（无未知实体类型、无悬空依赖）；依赖图里的每一条边都能在 `entities[].dependencies` 里找到对应记录；图上的节点位置能回查到原文。
+判断完成的标准：JSON 能通过校验（无未知实体类型、无悬空依赖）；依赖图里的每一条边都能在 `entities[].dependencies` 里找到对应记录；图上的节点位置能回查到原文。
 
 ### 运行条件和验证情况
 
 - 不需要 Python、不需要联网（论文文本已在工作区）
-- 实测：macOS（Apple Silicon），DSH 0.2.0-rc.2 + EduWork 0.4.3，真实模型（未在本机复测 Windows）
+- 实测：macOS（Apple Silicon），DSH 0.2.1-rc.5，真实模型（Windows 未测试）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：产出 `maynard_s1_structure.json`，标题 `Small gaps between primes`，6 个实体（2 个 `DEFINITION`、4 个 `THEOREM`），`verymath_paper_validate` 校验通过（依赖根为「Admissible sets」定义）；把论文里非契约类型的猜想写进 `scope_note` 而不是硬塞成实体。
+实测（用上面的提示词原样跑）：产出 `maynard_s1_structure.json`，标题 `Small gaps between primes`，6 个实体（2 个 `DEFINITION`、4 个 `THEOREM`），`verymath_paper_validate` 校验通过（依赖根为「Admissible sets」定义）；把论文里非契约类型的猜想写进 `scope_note` 而不是硬塞成实体。
 
 ---
 
 ## 2. 双语术语库
 
-**技能与工具**：`math-glossary`、`verymath_glossary_build` / `verymath_glossary_query` / `verymath_glossary_upsert`、`verymath_python_check`
+技能与工具：`math-glossary`、`verymath_glossary_build` / `verymath_glossary_query` / `verymath_glossary_upsert`、`verymath_python_check`
 
 ### 谁在什么情况下使用
 
@@ -92,7 +92,7 @@
 - 查询结果：`同调` → `homology`
 - 追加后的条目数
 
-**怎么判断完成**：`glossary.json` 里 `homology / 同调` 和 `fibration / 纤维化` 都在；条目数等于初始行数加新增条数；查询能按中文、英文、前缀、子领域命中。
+判断完成的标准：`glossary.json` 里 `homology / 同调` 和 `fibration / 纤维化` 都在；条目数等于初始行数加新增条数；查询能按中文、英文、前缀、子领域命中。
 
 ### 运行条件和验证情况
 
@@ -100,13 +100,13 @@
 - 实测：macOS（Apple Silicon）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：`glossary.json` 产出 4 条（`homology/同调`、`homotopy group/同伦群`、`fiber bundle/纤维丛`、`fibration/纤维化`），`idx` 连续 1–4、`term_id` 唯一；查询「同调」命中 `homology`；`fibration` 由 upsert 工具写入且自动维持排序。
+实测（用上面的提示词原样跑）：`glossary.json` 产出 4 条（`homology/同调`、`homotopy group/同伦群`、`fiber bundle/纤维丛`、`fibration/纤维化`），`idx` 连续 1–4、`term_id` 唯一；查询「同调」命中 `homology`；`fibration` 由 upsert 工具写入且自动维持排序。
 
 ---
 
 ## 3. OCR 后校对
 
-**技能与工具**：`after-ocr`、`verymath_ocr_scan`
+技能与工具：`after-ocr`、`verymath_ocr_scan`
 
 ### 谁在什么情况下使用
 
@@ -129,7 +129,7 @@
 - 候选问题清单：行号 + 规则类型（如 `distribution-space-font`、`epsilon-index-as-digits`、`odd-dollar-line`、`global-dollar-imbalance`、`environment-mismatch`）
 - 逐行修订建议（按 after-ocr 的审校纪律，候选不等同于确认错误）
 
-**怎么判断完成**：每条候选都能在对应行号找到原文；修订稿的公式环境配对、美元符号平衡；没有把候选当结论直接改写原文。
+判断完成的标准：每条候选都能在对应行号找到原文；修订稿的公式环境配对、美元符号平衡；没有把候选当结论直接改写原文。
 
 ### 运行条件和验证情况
 
@@ -137,13 +137,13 @@
 - 实测：macOS（Apple Silicon）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：10 行样本，扫描器给出 5 条候选，逐行通读再补出 3 处（行 3 的行内数学粘连、行 5 的裸公式、行 9 的 `align` 缺 `$$` 包裹），共 8 处，并列出 4 个待人工确认点（`\mathbb{D}` vs `\mathcal{D}`、下标、单复数、环境名）；审查只出记录，源文件哈希未变。
+实测（用上面的提示词原样跑）：10 行样本，扫描器给出 5 条候选，逐行通读再补出 3 处（行 3 的行内数学粘连、行 5 的裸公式、行 9 的 `align` 缺 `$$` 包裹），共 8 处，并列出 4 个待人工确认点（`\mathbb{D}` vs `\mathcal{D}`、下标、单复数、环境名）；审查只出记录，源文件哈希未变。
 
 ---
 
 ## 4. 数值优化（二次规划）
 
-**技能与工具**：`osqp-solver`、`verymath_osqp_check` / `verymath_osqp_solve`
+技能与工具：`osqp-solver`、`verymath_osqp_check` / `verymath_osqp_solve`
 
 ### 谁在什么情况下使用
 
@@ -167,7 +167,7 @@ osqp/qp.json 是一个小型二次规划问题。
 - 求解结果：最优解 `x`、目标值、状态分类（`solved` / `solved_inaccurate` / `primal_infeasible` 等）
 - 独立验证：脚本内置的 KKT 条件与不可行证书检查结论
 
-**怎么判断完成**：状态分类为 `solved`；独立验证块检查通过（原始/对偶残差、互补性、对偶可行性在阈值内）；解向量与该问题的解析解一致。
+判断完成的标准：状态分类为 `solved`；独立验证块检查通过（原始/对偶残差、互补性、对偶可行性在阈值内）；解向量与该问题的解析解一致。
 
 ### 运行条件和验证情况
 
@@ -175,7 +175,7 @@ osqp/qp.json 是一个小型二次规划问题。
 - 实测：macOS（Apple Silicon），OSQP 1.1.3
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：状态 `solved`（`accepted=true`），`x = [0.249941, 0.749823]`，对偶变量 `y = -2.750536`，重算目标值 `1.874351`；独立验证 `passed=true`（互补性残差 0、平稳性 9.5e-4、原始界违反 2.4e-4，均在阈值内），与解析解 `x* = (0.25, 0.75)`、`f* = 1.875` 一致。
+实测（用上面的提示词原样跑）：状态 `solved`（`accepted=true`），`x = [0.249941, 0.749823]`，对偶变量 `y = -2.750536`，重算目标值 `1.874351`；独立验证 `passed=true`（互补性残差 0、平稳性 9.5e-4、原始界违反 2.4e-4，均在阈值内），与解析解 `x* = (0.25, 0.75)`、`f* = 1.875` 一致。
 
 ---
 
@@ -183,7 +183,7 @@ osqp/qp.json 是一个小型二次规划问题。
 
 ## 5. 混合整数规划（0-1 背包）
 
-**技能与工具**：`mixed-integer-programming`（PuLP + CBC）
+技能与工具：`mixed-integer-programming`（PuLP + CBC）
 
 ### 谁在什么情况下使用
 
@@ -207,7 +207,7 @@ knapsack.json 是一个 0-1 背包问题。用 MILP 建模求解，报告选了�
 - 结论表：选中物品、总重量、总价值、最优性状态
 - 验证方法说明（CBC 的 MIP gap、容量松弛检查）
 
-**怎么判断完成**：状态为 `Optimal` 且 MIP gap = 0；总重量不超过容量；任选一个未选物品加入都会超重（局部最优性检查）；目标值可由选中物品价值手工复算。
+判断完成的标准：状态为 `Optimal` 且 MIP gap = 0；总重量不超过容量；任选一个未选物品加入都会超重（局部最优性检查）；目标值可由选中物品价值手工复算。
 
 ### 运行条件和验证情况
 
@@ -215,13 +215,13 @@ knapsack.json 是一个 0-1 背包问题。用 MILP 建模求解，报告选了�
 - 实测：macOS（Apple Silicon），PuLP 2.8.0 + CBC
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：状态 `Optimal`（gap = 0），选中 A/B/C/D、E 未选，总重量 14/15，总价值 **20**；模型同时给出「剩余 1、任何未选物品都装不下」的容量检查。
+实测（用上面的提示词原样跑）：状态 `Optimal`（gap = 0），选中 A/B/C/D、E 未选，总重量 14/15，总价值 20；模型同时给出「剩余 1、任何未选物品都装不下」的容量检查。
 
 ---
 
 ## 6. 最小二乘与回归
 
-**技能与工具**：`least-squares`（numpy / scipy，12 级工具降级链）
+技能与工具：`least-squares`（numpy / scipy，12 级工具降级链）
 
 ### 谁在什么情况下使用
 
@@ -245,7 +245,7 @@ points.csv 是 20 组 (x, y) 观测。用最小二乘拟合线性模型 y = a·x
 - 参数估计：a、b 及其标准误、t 值、p 值、95% 置信区间
 - 拟合质量与残差诊断：R²、调整 R²、RMSE、F 检验、条件数、Durbin-Watson
 
-**怎么判断完成**：三种实现（`numpy.linalg.lstsq`、`scipy.stats.linregress`、`scipy.optimize.curve_fit`）结果一致；残差无系统性趋势；条件数在安全范围。
+判断完成的标准：三种实现（`numpy.linalg.lstsq`、`scipy.stats.linregress`、`scipy.optimize.curve_fit`）结果一致；残差无系统性趋势；条件数在安全范围。
 
 ### 运行条件和验证情况
 
@@ -253,13 +253,13 @@ points.csv 是 20 组 (x, y) 观测。用最小二乘拟合线性模型 y = a·x
 - 实测：macOS（Apple Silicon），numpy 2.5.4 / scipy 1.18.1
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：a = 2.455857（SE 0.029332）、b = 1.347086（SE 0.351370），R² = 0.997439，RMSE = 0.7564，cond(X) = 25.02，Durbin-Watson = 1.791（无自相关迹象）；`lstsq` / `linregress` / `curve_fit` 三条路径结果一致到 6 位小数。
+实测（用上面的提示词原样跑）：a = 2.455857（SE 0.029332）、b = 1.347086（SE 0.351370），R² = 0.997439，RMSE = 0.7564，cond(X) = 25.02，Durbin-Watson = 1.791（无自相关迹象）；`lstsq` / `linregress` / `curve_fit` 三条路径结果一致到 6 位小数。
 
 ---
 
 ## 7. 不变量计算
 
-**技能与工具**：`invariant-computation`（按能力路由到计算环境，结果附证据报告）
+技能与工具：`invariant-computation`（按能力路由到计算环境，结果附证据报告）
 
 ### 谁在什么情况下使用
 
@@ -283,7 +283,7 @@ matrix.json 里是一个 3×3 实对称矩阵。计算它的秩、行列式、�
 - 验算：特征多项式展开、Σλ = trace、Πλ = det 的交叉核对
 - 每个量的含义说明
 
-**怎么判断完成**：`Πλ = det`、`Σλ = trace` 成立；数值秩与理论秩一致；结果与符号展开（若可用）相符。
+判断完成的标准：`Πλ = det`、`Σλ = trace` 成立；数值秩与理论秩一致；结果与符号展开（若可用）相符。
 
 ### 运行条件和验证情况
 
@@ -291,13 +291,13 @@ matrix.json 里是一个 3×3 实对称矩阵。计算它的秩、行列式、�
 - 实测：macOS（Apple Silicon），numpy 2.5.4（本机无 sympy，验算走纯 Python）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：秩 3、det = 8、特征值 {1, 2, 4}、cond = 4；用特征多项式 `(2−λ)(λ²−5λ+4)` 手算复核一致（det = 1·2·4 = 8）。
+实测（用上面的提示词原样跑）：秩 3、det = 8、特征值 {1, 2, 4}、cond = 4；用特征多项式 `(2−λ)(λ²−5λ+4)` 手算复核一致（det = 1·2·4 = 8）。
 
 ---
 
 ## 8. 图论论文深读
 
-**技能与工具**：`graph-theory-paper-reading`（六维深读 + 证明树 LaTeX 报告）、`verymath_paper_graph`
+技能与工具：`graph-theory-paper-reading`（六维深读 + 证明树 LaTeX 报告）、`verymath_paper_graph`
 
 ### 谁在什么情况下使用
 
@@ -322,7 +322,7 @@ Recoloring graphs of treewidth 2）。梳理主定理和关键引理的依赖关
 - 各主定理/关键引理的证明树 PDF（`*_tree_thm1.pdf`、`*_tree_lem4.pdf`）
 - 依赖关系与原文定位
 
-**怎么判断完成**：报告能编译出 PDF 且无缺字/缺引用；每条依赖边能回查到原文的引理编号；证明树与正文里的引用方向一致。
+判断完成的标准：报告能编译出 PDF 且无缺字/缺引用；每条依赖边能回查到原文的引理编号；证明树与正文里的引用方向一致。
 
 ### 运行条件和验证情况
 
@@ -330,13 +330,13 @@ Recoloring graphs of treewidth 2）。梳理主定理和关键引理的依赖关
 - 实测：macOS（Apple Silicon），TeX Live 2025；产出 12 页报告 + 2 份证明树，编译无错误
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：生成 `paper-treewidth_reading.pdf`（420 KB，12 页）与 `paper-treewidth_tree_thm1.pdf`、`paper-treewidth_tree_lem4.pdf`；编译日志无缺字、无 undefined reference。
+实测（用上面的提示词原样跑）：生成 `paper-treewidth_reading.pdf`（420 KB，12 页）与 `paper-treewidth_tree_thm1.pdf`、`paper-treewidth_tree_lem4.pdf`；编译日志无缺字、无 undefined reference。
 
 ---
 
 ## 9. 数学论文写作（断言-证据台账）
 
-**技能与工具**：`paper-writing`（骨架 + 断言-证据台账 + 义务审计）
+技能与工具：`paper-writing`（骨架 + 断言-证据台账 + 义务审计）
 
 ### 谁在什么情况下使用
 
@@ -359,7 +359,7 @@ claims.md 是我准备写的一篇短文的三条断言。帮我搭一个可溯�
 - `ledger.md`：断言-证据台账（每条断言拆成陈述/来源/实验行，标注 supported / citation-needed / needs-proof / needs-experiment / overclaimed / unsupported）
 - `references.bib` 与 `refcheck/`：参考文献与核验记录
 
-**怎么判断完成**：每条断言都有状态与处置建议；标为 `unsupported`/`overclaimed` 的条目给出具体改法；没有来源的"实验观察"被要求补实验或删除。
+判断完成的标准：每条断言都有状态与处置建议；标为 `unsupported`/`overclaimed` 的条目给出具体改法；没有来源的"实验观察"被要求补实验或删除。
 
 ### 运行条件和验证情况
 
@@ -367,13 +367,13 @@ claims.md 是我准备写的一篇短文的三条断言。帮我搭一个可溯�
 - 实测：macOS（Apple Silicon）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：三条断言拆成 8 行台账。真抓到问题：C1 的"Jerrum 1976"实际应为 Jerrum 1995（RSA 7:157–165），且更合适的引用是 Dyer–Flaxman–Frieze–Vigoda 2006 / Cereceda–van den Heuvel–Johnson 2009；C2 的"O(n²)"在 t=5 时已被线性上界取代（DM 344:112553, 2021），被标为 overclaimed；"本地实验观察"因工作区无实验文件被标为 needs-experiment。
+实测（用上面的提示词原样跑）：三条断言拆成 8 行台账。真抓到问题：C1 的"Jerrum 1976"实际应为 Jerrum 1995（RSA 7:157–165），且更合适的引用是 Dyer–Flaxman–Frieze–Vigoda 2006 / Cereceda–van den Heuvel–Johnson 2009；C2 的"O(n²)"在 t=5 时已被线性上界取代（DM 344:112553, 2021），被标为 overclaimed；"本地实验观察"因工作区无实验文件被标为 needs-experiment。
 
 ---
 
 ## 10. Beamer 幻灯片
 
-**技能与工具**：`math-beamer`（23 模板包 + 4 闸门流程）、`verymath_beamer_check`
+技能与工具：`math-beamer`（23 模板包 + 4 闸门流程）、`verymath_beamer_check`
 
 ### 谁在什么情况下使用
 
@@ -395,7 +395,7 @@ claims.md 是我准备写的一篇短文的三条断言。帮我搭一个可溯�
 - `main.tex` + 编译产物 `main.pdf`
 - `build-report.md`：环境探测（latexmk / xelatex）与编译记录
 
-**怎么判断完成**：`verymath_beamer_check` 报可用；PDF 页数符合要求；编译日志无缺字、无未定义引用；版式未溢出。
+判断完成的标准：`verymath_beamer_check` 报可用；PDF 页数符合要求；编译日志无缺字、无未定义引用；版式未溢出。
 
 ### 运行条件和验证情况
 
@@ -403,13 +403,13 @@ claims.md 是我准备写的一篇短文的三条断言。帮我搭一个可溯�
 - 实测：macOS（Apple Silicon），TeX Live 2025；产出 6 页 PDF
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：`verymath_beamer_check` 报 latexmk / xelatex / forest / ctex 全部可用；`main.pdf` 6 页，编译无错误。
+实测（用上面的提示词原样跑）：`verymath_beamer_check` 报 latexmk / xelatex / forest / ctex 全部可用；`main.pdf` 6 页，编译无错误。
 
 ---
 
 ## 11. Lean 形式化（补丁验收）
 
-**技能与工具**：`lean-formalization`、`lean-setup`、`verymath_lean_detect_sorry`
+技能与工具：`lean-formalization`、`lean-setup`、`verymath_lean_detect_sorry`
 
 ### 谁在什么情况下使用
 
@@ -433,7 +433,7 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 是否可接受的判定与最小修复补丁
 - 编译验证的诚实说明（未跑就写未跑）
 
-**怎么判断完成**：三个禁用词全部定位到行；新增 `axiom` 被判定为致命（引入 `False` 会让整个文件不一致）；给出的修复补丁是标准证明（`rfl` / `simp`）。
+判断完成的标准：三个禁用词全部定位到行；新增 `axiom` 被判定为致命（引入 `False` 会让整个文件不一致）；给出的修复补丁是标准证明（`rfl` / `simp`）。
 
 ### 运行条件和验证情况
 
@@ -441,13 +441,13 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 实测：macOS（Apple Silicon），仅扫描路径
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：检出 3 处禁用词——第 4 行 `sorry`、第 7 行 `admit`、第 9 行 `axiom shortcut : False`；明确判定"新增 `False` 公理使文件不一致，不可接受"，并给出 `rfl` / `simp` 的最小修复；编译验证如实报为未执行（工作区无 Lake 项目、无 `lean-toolchain`）。
+实测（用上面的提示词原样跑）：检出 3 处禁用词——第 4 行 `sorry`、第 7 行 `admit`、第 9 行 `axiom shortcut : False`；明确判定"新增 `False` 公理使文件不一致，不可接受"，并给出 `rfl` / `simp` 的最小修复；编译验证如实报为未执行（工作区无 Lake 项目、无 `lean-toolchain`）。
 
 ---
 
 ## 12. 研究工作流闸门
 
-**技能与工具**：`discover-math-problems`、`proof-blueprint-review`、`open-problem-research-pipeline`、`verymath_research_gate`
+技能与工具：`discover-math-problems`、`proof-blueprint-review`、`open-problem-research-pipeline`、`verymath_research_gate`
 
 ### 谁在什么情况下使用
 
@@ -469,7 +469,7 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 三道闸门的逐项结论与问题清单
 - 哪些工作流 render-ready
 
-**怎么判断完成**：三道闸门各自给出 PASSED / NOT PASSED 与原因；报告缺章节、缺独立评审、存在未解决阻断评审等都会列为问题。
+判断完成的标准：三道闸门各自给出 PASSED / NOT PASSED 与原因；报告缺章节、缺独立评审、存在未解决阻断评审等都会列为问题。
 
 ### 运行条件和验证情况
 
@@ -477,13 +477,13 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 实测：macOS（Apple Silicon）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：`workstream_completion` PASSED（report.md 三节齐全）、`final_render` PASSED（`ws-lsa` render-ready）；`goal_approval` 在**不带 goalId** 的聚合调用下曾报工具侧错误 `value is not lossless JSON`——这是本插件 0.3.2 修复的一个真实缺陷（`details` 里残留 undefined），带 `goalId=g1` 时可正常返回 PASSED。
+实测（用上面的提示词原样跑）：`workstream_completion` PASSED（report.md 三节齐全）、`final_render` PASSED（`ws-lsa` render-ready）；`goal_approval` 在不带 goalId 的聚合调用下曾报工具侧错误 `value is not lossless JSON`——这是本插件 0.3.2 修复的一个真实缺陷（`details` 里残留 undefined），带 `goalId=g1` 时可正常返回 PASSED。
 
 ---
 
 ## 13. SageMath 文档查询（反幻觉）
 
-**技能与工具**：`verymath_sage_check`、`verymath_sage_search`（SageMath 技能本体为 GPLv3，未收录；此处是干净房间重实现的查询能力）
+技能与工具：`verymath_sage_check`、`verymath_sage_search`（SageMath 技能本体为 GPLv3，未收录；此处是干净房间重实现的查询能力）
 
 ### 谁在什么情况下使用
 
@@ -509,7 +509,7 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 环境探测结果（语料是否可用、语料篇数、二进制是否找到）
 - 与查询相关的文档路径、符号/方法列表与摘录
 
-**怎么判断完成**：返回的 API 名称能在语料里找到原文出处；不出现"凭记忆"的签名；二进制缺失时如实降级为仅查询。
+判断完成的标准：返回的 API 名称能在语料里找到原文出处；不出现"凭记忆"的签名；二进制缺失时如实降级为仅查询。
 
 ### 运行条件和验证情况
 
@@ -517,13 +517,13 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 实测：macOS（Apple Silicon），语料可用；未设 `SAGE_PYTHON` 时工具如实报告"binary not found"，设置后可检出
 - Windows：Sage 需 WSL，未实测
 
-**实测记录**（用上面的提示词原样跑）：语料可用（3196 篇，79 个顶层领域），检索命中椭圆曲线 `rank` 相关文档并给出 `ell_rational_field` / `ell_number_field` 路径；未设 `SAGE_PYTHON` 时工具如实报二进制缺失，设置后检出。本插件**只做事文档查询**，不提供 Sage 代码执行能力；执行需用户自己的 Sage 环境。
+实测（用上面的提示词原样跑）：语料可用（3196 篇，79 个顶层领域），检索命中椭圆曲线 `rank` 相关文档并给出 `ell_rational_field` / `ell_number_field` 路径；未设 `SAGE_PYTHON` 时工具如实报二进制缺失，设置后检出。本插件**只做文档查询**，不提供 Sage 代码执行能力；执行需用户自己的 Sage 环境。
 
 ---
 
 ## 14. MATLAB 执行
 
-**技能与工具**：`matlab-runner`（经 MathWorks 官方 MCP server，5 个 `mcp__matlab__*` 工具）
+技能与工具：`matlab-runner`（经 MathWorks 官方 MCP server，5 个 `mcp__matlab__*` 工具）
 
 ### 谁在什么情况下使用
 
@@ -547,7 +547,7 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - `detect_matlab_toolboxes` 的工具箱清单
 - 结论与交叉验算说明
 
-**怎么判断完成**：输出确由 MATLAB 打印（而非模型记忆）；数值与理论值一致；工具箱清单来自 `detect_matlab_toolboxes`。
+判断完成的标准：输出确由 MATLAB 打印（而非模型记忆）；数值与理论值一致；工具箱清单来自 `detect_matlab_toolboxes`。
 
 ### 运行条件和验证情况
 
@@ -555,7 +555,7 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 - 实测：macOS（Apple Silicon），R2025b Update 7（Optimization + Symbolic）
 - Windows：未实测
 
-**实测记录**（用上面的提示词原样跑）：MATLAB 返回 rank 3、det 8、cond 4，与对称正定矩阵特征值 {1, 2, 4} 交叉一致（det = 1·2·4，cond = 4/1）；工具箱清单由 `detect_matlab_toolboxes` 给出。这一项需要本机 MATLAB + license + MathWorks MCP server，**无法在无 MATLAB 的环境或 CI 中复现**。
+实测（用上面的提示词原样跑）：MATLAB 返回 rank 3、det 8、cond 4，与对称正定矩阵特征值 {1, 2, 4} 交叉一致（det = 1·2·4，cond = 4/1）；工具箱清单由 `detect_matlab_toolboxes` 给出。这一项需要本机 MATLAB + license + MathWorks MCP server，无法在无 MATLAB 的环境或 CI 中复现。
 
 ---
 
@@ -578,4 +578,4 @@ broken-proof.lean 是我准备提交的 Lean 补丁。按验收纪律检查它�
 | Sage 文档查询 | —（干净房间 TS 实现） | `verymath_sage_check/search` | 语料；执行需 sage | ✅ 已实测 |
 | MATLAB 执行 | `matlab-runner` | 经 MathWorks 官方 MCP server | MATLAB + license | ✅ 已实测 |
 
-全部 14 项能力在 macOS（Apple Silicon）+ DSH 0.2.0-rc.2 上实跑过；Windows 全部未实测。
+全部 14 项能力在 macOS（Apple Silicon）上实跑过；Windows 未测试。
