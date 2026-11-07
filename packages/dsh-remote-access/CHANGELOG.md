@@ -2,6 +2,9 @@
 
 ## 0.1.5 — 2026-11-07
 
+- 连接在生成配对码时关闭后，及时清理待确认请求。
+- Drop a pending approval when the connection closes while its pairing code is being computed.
+
 - 修复 DSH 0.2.2 上手机布局错位：远程设备上侧栏打开后是空白遮罩、左上角出现两套按钮。DSH 0.2.2 已自带手机布局，插件不再覆盖它的布局，只保留远程设备上设置仅可查看的提示。兼容范围改为 DSH 0.2.2-rc.1 及以上，DSH 0.2.1 宿主请继续使用 0.1.4。
 
 - Fix the phone layout on DSH 0.2.2, where a remote device's sidebar opened as an empty mask and the top-left corner showed two sets of buttons. DSH 0.2.2 fits itself to phones, so the plugin no longer overrides its layout and only keeps settings view only on remote devices. The plugin now requires DSH 0.2.2-rc.1 or later; DSH 0.2.1 hosts should keep 0.1.4.

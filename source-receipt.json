@@ -5,7 +5,7 @@
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "7f3a96b6cac742599a4d17e7d17d8fabfb2afd0c289f7f4a37d4d239359d4053",
+  "fileSetSHA256": "79eae80e02473a4b30074d757ff4db9171e6a8fc133355b3101ee1d5c6736ab7",
   "files": [
     {
       "path": ".gitattributes",
@@ -6757,7 +6757,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "6cdfec2c76be369a46883a808211e5c6583123a4e495898e82e28606a71e9508"
+      "sha256": "005a62ca3972d17ad63da8abc70368e63a8d994c7cecb57a2600b451ba504eda"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6869,7 +6869,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/devices/pairing.ts",
-      "sha256": "b9c1fff374ebe63aa8bb09d81ad438661f981a1271f8bf75d04becf3a3c5f825"
+      "sha256": "c91537204ff4f0713bfb38a5d896cf73672f7f804aef63b57db0d59397ae20fe"
     },
     {
       "path": "packages/dsh-remote-access/src/devices/store.ts",
@@ -7081,7 +7081,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/remote-access.test.ts",
-      "sha256": "dae9d5426abeb7758910eb61a8527aef410a8ae88622d43c1ef3b9369691d8ff"
+      "sha256": "60b0c80b92ba25141360eff50ee178fc062674bc0fa8d878806522f3437c88bd"
     },
     {
       "path": "packages/dsh-remote-access/THIRD_PARTY_NOTICES.md",
