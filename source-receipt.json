@@ -5,7 +5,7 @@
   "version": "0.4.12",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-06T09:14:04.514Z",
-  "fileSetSHA256": "f455e6b8eac54e8e7a32a60084e6019537dece703ad8e00802794f3b80b21de9",
+  "fileSetSHA256": "79eae80e02473a4b30074d757ff4db9171e6a8fc133355b3101ee1d5c6736ab7",
   "files": [
     {
       "path": ".gitattributes",
@@ -6757,7 +6757,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "440d084470ec83f33868bf77011060969ec82ca2deafa97da8193ca9830616bb"
+      "sha256": "005a62ca3972d17ad63da8abc70368e63a8d994c7cecb57a2600b451ba504eda"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6821,11 +6821,11 @@
     },
     {
       "path": "packages/dsh-remote-access/package-lock.json",
-      "sha256": "ae7170772b3224832ca0f0a5b763e337d863a1a6fc757ef73238e6719ea95767"
+      "sha256": "2b79f462ac8c6023b65ec2eec4a1c3c4b7089c63bb103df6acacb23c7bb8c8c8"
     },
     {
       "path": "packages/dsh-remote-access/package.json",
-      "sha256": "fc544f44eb1547081e079b5f103d1a20de018919c16e94b84a1d9ade32e03582"
+      "sha256": "1969d5eaa402b043a3c715d5a0927a67abbc934dea5e63e70fa84cab0ec9453c"
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
@@ -6869,7 +6869,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/devices/pairing.ts",
-      "sha256": "b9c1fff374ebe63aa8bb09d81ad438661f981a1271f8bf75d04becf3a3c5f825"
+      "sha256": "c91537204ff4f0713bfb38a5d896cf73672f7f804aef63b57db0d59397ae20fe"
     },
     {
       "path": "packages/dsh-remote-access/src/devices/store.ts",
@@ -7081,7 +7081,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/remote-access.test.ts",
-      "sha256": "dae9d5426abeb7758910eb61a8527aef410a8ae88622d43c1ef3b9369691d8ff"
+      "sha256": "60b0c80b92ba25141360eff50ee178fc062674bc0fa8d878806522f3437c88bd"
     },
     {
       "path": "packages/dsh-remote-access/THIRD_PARTY_NOTICES.md",

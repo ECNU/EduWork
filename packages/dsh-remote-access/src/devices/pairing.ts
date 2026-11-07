@@ -105,6 +105,8 @@ export class Pairing {
   }
 
   #ask(channel: Channel, key: string, name: string, code: string): Promise<'approved' | 'declined' | 'timeout' | 'closed'> {
+    // The channel may have closed while the pairing code was being computed.
+    if (channel.signal.aborted) return Promise.resolve('closed')
     return new Promise(resolve => {
       const finish = (answer: 'approved' | 'declined' | 'timeout' | 'closed'): void => {
         clearTimeout(timer)
