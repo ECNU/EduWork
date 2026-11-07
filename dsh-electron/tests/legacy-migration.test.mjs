@@ -57,7 +57,7 @@ for (const stop of ['none','host-failure','recovery','quit']) {
   let attempts=0,flushes=0
   const context={
    process:{platform:'win32'},randomUUID,writeFile,rm,
-   migrationLaunch:f.launch,contentUpdates:undefined,updateCompleted:false,
+   migrationLaunch:f.launch,contentUpdates:undefined,updateCompleted:false,paths:{layout:'portable'},
    mainWindow:undefined,desktopPet:undefined,portableUpdates:undefined,startupMessage:'starting',
    flushPendingSettings:()=>{flushes+=1},
    shouldContinue:()=>state.hostReady&&!state.recovery&&!state.quitting,

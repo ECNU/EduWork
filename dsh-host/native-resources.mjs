@@ -5,7 +5,7 @@ import { isAbsolute, join, relative, resolve, sep } from 'node:path'
 // Some redistributable CPython builds still use MAX_PATH in FileFinder. This
 // hook belongs only to the product venv; it neither changes global Python nor
 // adds any external import directory. ZIP import hooks keep their usual fallback.
-const PRIVATE_WINDOWS_PATHS = String.raw`# EduWork managed private-runtime Windows import paths.
+export const PRIVATE_WINDOWS_PATHS = String.raw`# EduWork managed private-runtime Windows import paths.
 import os
 import sys
 if os.name == "nt":

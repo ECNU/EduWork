@@ -48,9 +48,9 @@ Calendar reminders follow the desktop notification master switch, sound, title-p
 
 ## Windows and macOS
 
-Both platforms share event state and preferences. Windows uses the existing tray's `displayBalloon`, without adding Start menu shortcuts or registry entries. macOS uses Electron `Notification`; its menu bar also shows the pending count.
+Both platforms share event state and preferences. The installed Windows app sends native Toasts through Electron, using its registered app identity and Start menu shortcut. Each Toast has its own target. Clicking one in Notification Center can launch the app and open an existing conversation. If the target is gone, the app opens without navigating. Portable Windows builds keep tray balloons. macOS uses Electron `Notification` and also shows the pending count in the menu bar.
 
-The Windows notification sender uses the same `product.name` as application branding, falling back to the packaged product name. Windows application IDs omit whitespace and are limited to 128 characters; the full brand remains visible inside the app. Distribution identity, user data paths and the macOS bundle ID are unchanged.
+The installed Windows app uses the registered package name as the system sender. Portable tray balloons use `product.name` or the packaged product name, with whitespace removed and a limit of 128 characters. The full brand remains visible inside the app.
 
 On macOS, both bundle display names use the distribution brand at build time; notification titles use the current product name. Editing `product.name` in user configuration does not rewrite the system display name inside the signed application bundle.
 

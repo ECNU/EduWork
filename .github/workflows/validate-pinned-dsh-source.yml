@@ -63,6 +63,12 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24.22.1'
+      - name: Verify installed migration and data paths on Windows
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          node --test core/dsh-electron/tests/installed-migration.test.mjs core/dsh-electron/tests/installed-first-run.test.mjs core/dsh-electron/tests/installed-files.test.mjs core/dsh-electron/tests/installed-updates.test.mjs core/dsh-electron/tests/installed-update-preparation.test.mjs core/dsh-electron/tests/installed-startup-check.test.mjs core/dsh-electron/tests/windows-toast.test.mjs core/dsh-electron/tests/writable-root.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs
+          if ($LASTEXITCODE) { throw 'Installed migration and data path checks failed' }
       - name: Resolve the pinned build recipe
         id: upstream
         shell: pwsh
@@ -178,7 +184,7 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned Electron metadata installation failed' }
           node core/dsh-electron/scripts/prepare-electron.mjs --upstream "$env:RUNNER_TEMP/desktop-tools" --output "$env:RUNNER_TEMP/electron"
           if ($LASTEXITCODE) { throw 'Pinned Electron preparation failed' }
-          node core/dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
+          node core/dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --desktop-tools $desktopTools --output "$env:RUNNER_TEMP/native-shell"
           if ($LASTEXITCODE) { throw 'Native desktop build failed' }
           $env:EDUWORK_TEST_NATIVE_SHELL = "$env:RUNNER_TEMP/native-shell"
           node --experimental-test-module-mocks --experimental-transform-types --test core/dsh-electron/tests/installer-cleanup.test.mjs

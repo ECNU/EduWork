@@ -78,3 +78,13 @@ test('native updater termination uses the normal quit guard and cancellation per
   approve=true;await coordinator.action('install-update')
   assert.deepEqual(calls,['confirm','confirm','close','quit']);assert.equal(exit.complete,true)
 })
+
+test('a prepared official installer owns the next quit without prematurely quitting or prompting twice', async () => {
+  const calls = []
+  const exit = new DesktopExit({ confirm: assert.fail, close: async () => calls.push('close'),
+    quit: () => calls.push('quit'), relaunch: assert.fail, failed: assert.fail })
+  exit.claimInstallerQuit()
+  assert.deepEqual(calls, [])
+  await exit.request()
+  assert.deepEqual(calls, ['close', 'quit'])
+})

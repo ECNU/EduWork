@@ -6,6 +6,9 @@ const root = resolve(process.argv[2])
 const manifest = JSON.parse(await readFile(join(root, 'RELEASE-MANIFEST.json'), 'utf8'))
 if (manifest.schemaVersion !== 1 || manifest.kind !== 'eduwork-portable-release' || manifest.shell !== 'electron') throw Error('Unexpected package manifest')
 const seen = new Set(['RELEASE-MANIFEST.json'])
+if (process.argv.includes('--installed')) {
+  for (const path of ['Uninstall EduWork-Electron.exe', '7zip-installer-LICENSE.txt', '7zip-installer-COPYING.txt', 'uninstallerIcon.ico']) seen.add(path)
+}
 for (const file of manifest.files) {
   const path = resolve(root, file.path), rel = relative(root, path)
   if (isAbsolute(rel) || rel.startsWith('..') || seen.has(file.path) || file.path.includes('\\')) throw Error('Invalid manifest path')

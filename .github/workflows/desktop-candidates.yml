@@ -150,6 +150,7 @@ jobs:
             --recipe pinned-source
             --version "$RELEASE_VERSION"
             --output "$RUNNER_TEMP/ew-candidate")
+          if [[ "${{ matrix.script }}" == windows ]]; then args+=(--data-layout installed); fi
           if [[ "$DEVELOPMENT_BUILD" == true ]]; then
             args+=(--development)
           else

@@ -1,9 +1,13 @@
 import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, nativeTheme, dialog, Notification, clipboard } from 'electron'
+import { editableInstalledUpdateConfiguration, installedUpdateSource, launchPortableInstaller, startInstalledUpdates } from './installed-updates.mjs'
+import { confirmInstalledMigration, readInstalledMigration, recordInstalledMigrationStartup } from './installed-migration.mjs'
+import { releaseInstanceMutex } from './install-mutex.mjs'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
+import { createWindowsToasts, windowsToastCLSID } from './windows-toast.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { removeWindowMenu } from './desktop-menu.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
-import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
+import { existsSync, readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
 import { join, isAbsolute, dirname } from 'node:path'
 import { execFile } from 'node:child_process'
@@ -17,6 +21,7 @@ import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
+import { claimWritableRoot } from './writable-root.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
@@ -55,6 +60,9 @@ let desktopFailureShown = false
 let mainWindowPresented = false
 let startupMessage = ''
 let portableUpdates
+let portableMigration, currentVault, dataLease, installedUpdateHandoff = false
+let prepareInstalledUpdate = async () => { throw new Error('客户端尚未准备好，不能开始安装更新') }
+export function setInstalledUpdatePreparation(prepare) { prepareInstalledUpdate = prepare }
 let flushPendingSettings = () => {}
 let contentUpdates, managedContent = {}
 export const productUpdateObserver = createProductUpdateObserver({
@@ -62,7 +70,7 @@ export const productUpdateObserver = createProductUpdateObserver({
   diagnose: message => desktopHostLog(`[desktop:updates] ${message}\n`),
 })
 let publisher
-let taskNotifications, notificationAdapter
+let taskNotifications, notificationAdapter, windowsToasts, pendingToast
 let desktopPet, petMenu = () => []
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
@@ -73,7 +81,7 @@ const desktopExit = new DesktopExit({
     await directoryPicker.close()
     await stopDesktopServices()
     desktopPet?.close()
-    taskNotifications?.close()
+    taskNotifications?.close(!windowsToasts)
     tray?.destroy(); tray = undefined
   },
   relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
@@ -83,29 +91,55 @@ export function setDesktopQuitGuard(guard) { confirmQuit = guard }
 export function restartDesktop() {
   desktopExit.restart()
 }
-export function stopDesktopServices() {
+export async function stopDesktopServices() {
   void contentUpdates?.close()
   productUpdateObserver.dispose()
-  return lifecycle.close()
+  await lifecycle.close()
+  await currentVault?.flush()
+  const lease = dataLease; dataLease = undefined
+  await releaseInstanceMutex(lease)
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
+async function claimInstalledData() {
+  if (paths.layout !== 'installed') return
+  await lifecycle.prepare(async () => {
+    const { lease } = await claimWritableRoot({ root: paths.writableRoot, distribution: settings.distribution })
+    dataLease = lease
+    lifecycle.check()
+  })
+}
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
-export function isQuitting() { return desktopExit.closing || lifecycle.closing }
+export function isQuitting() { return installedUpdateHandoff || desktopExit.closing || lifecycle.closing }
 const activationWindows = () => [progressWindow, updateCompleted || startupMessage ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
-export function configureEduworkPaths() {
+export async function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
   paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
+    localAppData: process.platform === 'win32' ? process.env.LOCALAPPDATA : undefined,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
+  if (paths.layout === 'installed') {
+    try { await claimInstalledData() }
+    catch (error) {
+      // A second launch may focus the owner; migration/uninstall still blocks all W writers.
+      if (existsSync(paths.userData)) {
+        app.setPath('userData', paths.userData)
+        if (!app.requestSingleInstanceLock()) { app.exit(0); return }
+        app.releaseSingleInstanceLock()
+      }
+      throw error
+    }
+  }
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
   desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  desktopHostLog(`[desktop] data layout=${paths.layout}; writable root=${paths.writableRoot}\n`)
   // Successful sandboxed startup is the capability check. Lack of WRITE_DAC
   // or one expected ACE does not prove Electron cannot run. Installation and
   // update still provision runtime access; ordinary startup never changes ACLs.
   applyDesktopBrand(app, process.platform, settings)
+  if (process.platform === 'win32' && paths.layout === 'installed') app.setToastActivatorCLSID(windowsToastCLSID(settings.appId))
   app.setPath('userData', paths.userData)
   app.setAppLogsPath(paths.logs)
   process.env.DSH_HOME = paths.home
@@ -172,6 +206,7 @@ function showDesktopMessageBox(options) {
   return parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
 }
 async function prepareDesktop() {
+  if (paths.layout === 'installed') portableMigration = await readInstalledMigration(paths.writableRoot, settings.distribution)
   lifecycle.check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
   const appearance = startupAppearance()
@@ -179,7 +214,7 @@ async function prepareDesktop() {
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
-  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+  if ((process.platform === 'darwin' || paths.layout === 'installed') && settings.configurationOwnership === 'user')
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
@@ -192,7 +227,7 @@ async function prepareDesktop() {
   const updatePolicy = await migrateUpdateChannel({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     fallback:user.updates.defaultPolicy ?? settings.updates?.defaultPolicy ?? (settings.productVersion.includes('-')?'development':'stable')})
   const { migrateAlphaUpdates } = await import('./alpha-update-migration.mjs')
-  const priorUpdates = await readFile(join(paths.root,'config/update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
+  const priorUpdates = await readFile(join(dirname(paths.config),'update.bridge.json'),'utf8').then(JSON.parse).catch(()=>null)
   const trustedUpdates = await readPublisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product })
   // A publisher seed may contain only a release preference. Keep its trusted
   // source as a fallback; explicit package and user choices still take priority.
@@ -211,8 +246,13 @@ async function prepareDesktop() {
       return result.response===0?'enable':'disabled'
     }})
   user=loadUserConfig(paths.config)
+  const nsisUpdates = process.platform === 'win32' && (paths.layout === 'installed' || settings.updateBackend === 'nsis')
+  const windowsUpdateDefaults = () => nsisUpdates
+    ? { ...editableInstalledUpdateConfiguration({ defaults: updateSourceDefaults, updates: user.updates, prior: priorUpdates,
+        version: settings.productVersion, distribution: settings.distribution }), defaultPolicy: updatePolicy }
+    : editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
   const updateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? windowsUpdateDefaults()
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     configurationDefaults:{updates:updateDefaults},
@@ -225,22 +265,66 @@ async function prepareDesktop() {
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
   const effectiveUpdateDefaults = process.platform === 'win32'
-    ? editablePortableUpdateConfiguration({defaults:updateSourceDefaults,updates:user.updates,prior:priorUpdates,version:settings.productVersion,distribution:settings.distribution})
+    ? windowsUpdateDefaults()
     : editableMacUpdateConfiguration({defaults:settings.updates,updates:user.updates,feeds:settings.macSparkle?.feeds,version:settings.productVersion})
   const saveUpdatePolicy = async policy=>{
     await mkdir(join(paths.updateDataRoot,'state'),{recursive:true})
     await writeFile(join(paths.updateDataRoot,'state/update-preferences.json'),JSON.stringify({schemaVersion:1,policy,source:'user'}))
   }
+  const installedLayout = paths.layout === 'installed'
+  const nsisDefaults = updatesWhenEnabled(effectiveUpdateDefaults)
+  const softwareUpdateSupported = process.platform === 'darwin'
+    ? settings.macSparkle?.enabled === true
+    : process.platform === 'win32' && (!nsisUpdates || Boolean(installedUpdateSource({
+      updates: updatesWhenEnabled(user.updates), defaults: nsisDefaults, policy: contentUpdates.policy })))
+  const startSoftwareUpdates = process.platform === 'darwin'
+    ? ({policy}) => startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
+        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
+    : nsisUpdates ? async ({ policy }) => {
+      const [{ default: electronUpdater }, { CancellationToken }, { DesktopUpdateCoordinator }] = await Promise.all([
+        import('electron-updater'), import('builder-util-runtime'), import('./update-coordinator.ts'),
+      ])
+      return startInstalledUpdates({ updater: electronUpdater.autoUpdater,
+        Coordinator: DesktopUpdateCoordinator, createCancellationToken: () => new CancellationToken(),
+        version: settings.productVersion, updates: updatesWhenEnabled(user.updates), defaults: nsisDefaults,
+        policy, onPolicy: saveUpdatePolicy,
+        ...(!installedLayout ? { installFromPortable: async installer => {
+          await launchPortableInstaller({ installer, sourceRoot: paths.root })
+          app.quit()
+        } } : {}), beforeRestart: async () => {
+          if (!installedLayout) {
+            const choice = await showDesktopMessageBox({ type: 'question', title: '迁入标准安装版',
+              message: '将打开标准安装程序，随后迁入旧便携版数据',
+              detail: '请为安装版选择新的程序目录。安装后会检查旧数据并再次确认迁移；原目录保留到新版数据验收完成。',
+              buttons: ['继续安装', '取消'], defaultId: 0, cancelId: 1, noLink: true })
+            if (choice.response !== 0) return false
+          }
+          installedUpdateHandoff = true
+          if (!await prepareInstalledUpdate()) { installedUpdateHandoff = false; return false }
+          await directoryPicker.close()
+          await contentUpdates?.close()
+          await nativeBridge?.close()
+          await currentVault?.flush()
+          desktopExit.claimInstallerQuit()
+          return true
+        }, onInstallFailure: message => {
+          if (!installedUpdateHandoff) return
+          installedUpdateHandoff = false
+          setImmediate(() => { void dialog.showMessageBox({ type: 'error', title: '更新安装未完成',
+            message: '安装程序未能接管，需重新打开当前客户端', detail: message,
+            buttons: ['重新打开'], noLink: true }).then(() => {
+              app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted))
+              desktopExit.handoff()
+            }).catch(error => desktopHostLog(`[desktop:updates] ${error.message}\n`)) })
+        } })
+    } : ({policy,applyScheduled}) => startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
+        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
-    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
-    start:({policy,applyScheduled})=>process.platform==='darwin'
-      ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
-        feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
-      : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
-        version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
+    supported:softwareUpdateSupported,onPolicy:saveUpdatePolicy,
+    start:startSoftwareUpdates})
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
-    beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
+    beforeInstall:()=>process.platform==='darwin'||nsisUpdates||confirmQuit(),onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
   if (user.product.name) {
     settings.productName = user.product.name
@@ -282,13 +366,15 @@ async function prepareDesktop() {
   process.env.EDUWORK_CHROMIUM_VERSION = process.versions.chrome
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
   const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
+  currentVault = vault
   const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
-  notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
+  notificationAdapter = windowsToasts ?? nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
   taskNotifications = new TaskNotifications({ foreground: () => Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible() && mainWindow.isFocused()),
     show: showNotificationWindow,
-    publish: value => notificationAdapter.publish(value), dismiss: () => notificationAdapter.dismiss(),
+    publish: value => notificationAdapter.publish(value), dismiss: key => notificationAdapter.dismiss(key),
     changed: () => { refreshTray(); desktopPet.update(taskNotifications) } })
+  if (pendingToast) { taskNotifications.activateToast(pendingToast); pendingToast = undefined }
   // The pet page comes from the product's pet plugin; it never loads from a user plugin directory.
   let activation
   desktopPet = createDesktopPet({ packageRoot: join(paths.product, 'd/node_modules/@eduwork/dsh-desktop-pet'),
@@ -302,7 +388,7 @@ async function prepareDesktop() {
     open: key => taskNotifications.activate(key), contextMenu: () => petMenu(), changed: () => refreshTray(),
     log: message => desktopHostLog(`[desktop-pet] ${message}\n`) })
   const runWorkbench = (action, updateStatus) => workbenchAction({ action, config: paths.config, version: settings.productVersion,
-    shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, updateStatus })
+    shell: 'electron', logs: paths.logs, root: paths.root, dataRoot: paths.updateDataRoot, product: paths.product, home: paths.home, updateStatus })
   const workbench = createWorkbenchUpdateHandler({
     getCoordinator: () => portableUpdates,
     observer: productUpdateObserver,
@@ -319,7 +405,7 @@ async function prepareDesktop() {
   lifecycle.trackBridge(bridge)
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
-  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
+  await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dataLayout: paths.layout, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
   lifecycle.check()
   return { profile: prepared.profile, node: paths.node }
 }
@@ -329,6 +415,12 @@ export async function desktopReady(shouldContinue = () => true) {
   await contentUpdates?.ready()
   // Never commit a successful migration receipt after a failed, cancelled or
   // quitting Host launch.
+  if (!shouldContinue()) return
+  if (paths.layout === 'installed') {
+    portableMigration = await recordInstalledMigrationStartup({ writableRoot: paths.writableRoot, distribution: settings.distribution,
+      verifyCredentials: () => currentVault.read(), shouldContinue })
+    refreshTray()
+  }
   if (!shouldContinue()) return
   await writeMigrationHealth(migrationLaunch,'ready','',shouldContinue)
   if (!shouldContinue()) return
@@ -371,6 +463,15 @@ export function attachDockTheme(window) {
 
 export async function attachDesktopWindow(window) {
   mainWindow = window
+  if (process.platform === 'win32' && paths.layout === 'installed') {
+    windowsToasts = createWindowsToasts({ Notification, file: join(paths.userData, 'toast-activations.json'),
+      productName: settings.productName, failed: () => { if (taskNotifications) taskNotifications.delivery = 'unavailable' },
+      activate: target => {
+        if (isQuitting()) return
+        if (taskNotifications) taskNotifications.activateToast(target)
+        else pendingToast = target
+      } })
+  }
   mainWindowPresented = false
   window.on('show', () => { mainWindowPresented = true })
   window.setTitle(settings.productName)
@@ -449,20 +550,43 @@ export async function attachDesktopWindow(window) {
       ...petItem(),
       { label: '检查更新', click: () => { show(); void checkProductUpdates() } },
       { label: '设置', click: requestSettings },
+      ...(portableMigration ? [{ label: '旧版数据迁移', click: () => { show(); void showInstalledMigrationStatus() } }] : []),
       { type: 'separator' },
       { label: '退出 ' + settings.productName, click: () => app.quit() },
       ]))
     }
     refreshTray()
     attachTrayActivation(tray, show)
-    tray.on('balloon-click', () => notificationAdapter?.balloonClick())
-    tray.on('balloon-closed', () => notificationAdapter?.balloonClosed())
+    tray.on('balloon-click', () => notificationAdapter?.balloonClick?.())
+    tray.on('balloon-closed', () => notificationAdapter?.balloonClosed?.())
   } catch (error) {
     tray?.destroy(); tray = undefined
     if (isQuitting()) throw error
     console.warn(process.platform === 'darwin'
       ? 'System tray unavailable; use the Dock to reopen the window.'
       : 'System tray unavailable; closing the window will exit.')
+  }
+}
+
+async function showInstalledMigrationStatus() {
+  try {
+    const receipt = await readInstalledMigration(paths.writableRoot, settings.distribution)
+    if (!receipt) return
+    const canConfirm = receipt.state === 'started'
+    const result = await dialog.showMessageBox(mainWindow, { type: 'info', title: '旧版数据迁移',
+      message: receipt.state === 'verified' ? '已确认迁入数据可用' : canConfirm ? '新版已启动，请检查迁入数据' : '文件已迁入，新版启动验证尚未完成',
+      detail: `请核对会话与附件、记忆、设置、插件和登录状态。确认前不要删除保留的旧版；检查失败时可以从保留目录启动旧版。\n\n旧版保留目录：\n${receipt.source.handoffRoot}\n\n当前数据目录：\n${paths.writableRoot}`,
+      buttons: ['打开旧版保留目录', ...(canConfirm ? ['已检查数据，确认迁移'] : []), '关闭'],
+      defaultId: canConfirm ? 2 : 1, cancelId: canConfirm ? 2 : 1, noLink: true })
+    if (result.response === 0) {
+      const error = await shell.openPath(receipt.source.handoffRoot)
+      if (error) throw new Error(error)
+    } else if (canConfirm && result.response === 1) {
+      portableMigration = await confirmInstalledMigration(paths.writableRoot, settings.distribution)
+      refreshTray()
+    }
+  } catch (error) {
+    await dialog.showMessageBox({ type: 'error', title: '无法确认迁移状态', message: error.message, detail: '请继续保留原数据和迁移回执。' })
   }
 }
 

@@ -9,7 +9,7 @@ import { readPEResources, writePEResources } from './lib/windows-pe.mjs'
 const scriptRoot = dirname(fileURLToPath(import.meta.url))
 const sourceIcon = join(scriptRoot, '../assets/eduwork/icon.ico')
 
-export async function verifyDesktopIcon(executable, groupId) {
+export async function verifyDesktopIcon(executable, groupId, productName) {
   const source = await readFile(sourceIcon)
   const { library, resources } = await readPEResources(executable)
   const expected = library.Data.IconFile.from(source).icons.map(icon => icon.data)
@@ -21,9 +21,14 @@ export async function verifyDesktopIcon(executable, groupId) {
     !Buffer.from(icon.bin).equals(Buffer.from(expected[index].bin)))) {
     throw new Error('Embedded executable icon differs from EduWork source')
   }
+  if (productName) {
+    const names = library.Resource.VersionInfo.fromEntries(resources.entries).flatMap(version =>
+      version.getAllLanguagesForStringValues().map(language => version.getStringValues(language).ProductName))
+    if (!names.length || names.some(name => name !== productName)) throw new Error('Executable ProductName differs from the installed shortcut')
+  }
 }
 
-export async function setDesktopIcon({ executable, shell = '' } = {}) {
+export async function setDesktopIcon({ executable, shell = '', productName } = {}) {
   if (!isWindows) throw new Error('Executable icon resources exist on Windows only')
   if (shell && !['wails', 'electron'].includes(shell)) throw new Error('Shell must be wails or electron')
   executable = fullPath(executable)
@@ -40,8 +45,13 @@ export async function setDesktopIcon({ executable, shell = '' } = {}) {
   resources.entries.splice(0, resources.entries.length,
     ...resources.entries.filter(entry => entry.type !== 3 && entry.type !== 14))
   library.Resource.IconGroupEntry.replaceIconsForResource(resources.entries, groupId, 1033, icons)
+  // Electron finds the installed Start menu shortcut by the PE ProductName.
+  if (productName) for (const version of library.Resource.VersionInfo.fromEntries(resources.entries)) {
+    for (const language of version.getAllLanguagesForStringValues()) version.setStringValue(language, 'ProductName', productName)
+    version.outputToResourceEntries(resources.entries)
+  }
   await writePEResources(executable, pe, resources)
-  await verifyDesktopIcon(executable, groupId)
+  await verifyDesktopIcon(executable, groupId, productName)
   console.log(`Verified EduWork executable icon: ${executable}`)
 }
 

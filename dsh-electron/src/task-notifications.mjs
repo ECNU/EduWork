@@ -57,10 +57,13 @@ export class TaskNotifications {
     const body = validateAttentionRequest(value)
     if (body.action === 'view') {
       this.sessionId = body.sessionId
-      const openKey = this.openKey ?? ''; this.openKey = null
-      return { openKey, delivery: this.delivery, foreground: this.foreground() }
+      const toast = this.toastTarget
+      const openKey = toast?.key ?? this.openKey ?? ''
+      this.openKey = null; this.toastTarget = null
+      return { openKey, ...(toast?.sessionId ? { toastSessionId: toast.sessionId } : {}),
+        delivery: this.delivery, foreground: this.foreground() }
     }
-    if (this.instance !== body.instance) { this.notified.clear(); this.openKey = null; this.dismiss(); this.instance = body.instance }
+    if (this.instance !== body.instance) { this.notified.clear(); this.openKey = null; if (this.instance) this.dismiss(); this.instance = body.instance }
     const priorPreferences = this.preferences, prior = this.items
     this.items = new Map(body.items.map(item => [item.key, item])); this.preferences = body.preferences; this.running = body.running
     const seen = []
@@ -69,7 +72,11 @@ export class TaskNotifications {
       // Work finished in the conversation on screen: a brief cue, no pending mark.
       if (item.kind !== 'failed' && !prior.has(item.key)) this.acknowledged++
     }
-    if (this.popupKey && !this.items.has(this.popupKey) || !body.preferences.enabled || priorPreferences?.preview && !body.preferences.preview) { this.dismiss(); this.popupKey = null }
+    const resetPopups = !body.preferences.enabled || priorPreferences?.preview && !body.preferences.preview
+    if (resetPopups || this.popupKey && !this.items.has(this.popupKey)) {
+      this.dismiss(resetPopups ? undefined : this.popupKey)
+      this.popupKey = null
+    }
     for (const key of this.notified.keys()) if (!this.items.has(key)) this.notified.delete(key)
     const pending = [...this.items.values()].filter(item => this.notified.get(item.key) !== (item.alert ?? 1))
     // Foreground use stays quiet even while viewing a different conversation.
@@ -97,7 +104,7 @@ export class TaskNotifications {
         const content = body.preferences.preview && item.title ? (item.preview || item.title) : '点击返回应用查看。'
         this.nextPopup = this.now() + 5000
         try {
-          const accepted = this.publish({ title, content, sound: body.preferences.sound, key: item.key })
+          const accepted = this.publish({ title, content, sound: body.preferences.sound, key: item.key, sessionId: item.sessionId })
           if (accepted !== false) {
             this.popupKey = item.key; this.delivery = 'available'
             if (item.kind === 'plugin') { this.lastPluginSource = item.source; this.notified.set(item.key, item.alert) }
@@ -111,17 +118,17 @@ export class TaskNotifications {
     if (revision !== this.revision) { this.revision = revision; this.changed() }
     return { seen, delivery: this.delivery, pluginNotifications: 1 }
   }
-  activate(key) { if (!this.items.has(key)) return; this.openKey = key; this.show() }
+  activate(key) { if (!this.items.has(key)) return; this.toastTarget = null; this.openKey = key; this.show() }
+  activateToast(target) { this.toastTarget = target; this.openKey = null; this.show() }
   menu() {
     const rows = [...this.items.values()].sort((a, b) => priority(b) - priority(a) || b.createdAt - a.createdAt)
     return rows.map(item => ({ label: `${label(item)}${this.preferences?.preview && item.title ? ' · ' + item.title : ''}`, click: () => this.activate(item.key) }))
   }
-  close() { this.dismiss(); this.items.clear(); this.notified.clear() }
+  close(dismiss = true) { if (dismiss) this.dismiss(); this.items.clear(); this.notified.clear() }
 }
 
 /** Presentation only: never interpret plugin targets or complete business work.
  * Windows deliberately keeps tray balloons for the portable distribution.
- * Toast identity/activation registration is deferred to installation issue #176.
  * Windows has one live balloon target. Electron does not forward every native
  * hide event (including quiet-time suppression), so waiting is bounded. After
  * an unacknowledged expiry, balloon clicks only reopen the app: the native event

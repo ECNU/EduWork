@@ -232,6 +232,51 @@ async function publicationFixture(t,edition='EduWork',deltas=[]) {
  for(const [name,value] of Object.entries(files))await writeFile(join(root,name),value)
  return {root,ctx,row}
 }
+
+async function addStandardInstaller(f) {
+  const { root, row } = f, name = `${row.edition}-${row.version}-windows-x64-setup.exe`
+  const executable = Buffer.from('Synthetic NSIS artifact, not an executable')
+  const sha512 = createHash('sha512').update(executable).digest('base64')
+  const info = `version: ${row.version}\nfiles:\n  - url: ${name}\n    sha512: ${sha512}\n    size: ${executable.length}\npath: ${name}\nsha512: ${sha512}\n`
+  const inputs = { [name]: executable, [name + '.blockmap']: Buffer.from('synthetic block map'), 'latest.yml': Buffer.from(info) }
+  row.installer = { schemaVersion: 1, kind: 'eduwork-windows-nsis', version: row.version, distribution: row.distribution,
+    appId: `org.eduwork.${row.distribution}.electron`, backend: 'nsis', files: [] }
+  Object.assign(row.checks, { standardInstaller: 'passed', installerLaunch: 'passed', silentUninstall: 'passed' })
+  for (const [name, bytes] of Object.entries(inputs)) {
+    await writeFile(join(root, name), bytes)
+    row.installer.files.push({ name, bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') })
+  }
+  await writeFile(join(root, 'windows-installer-receipt.json'), JSON.stringify(row.installer))
+  await writeFile(join(root, 'release-receipt.json'), JSON.stringify(row))
+}
+
+test('publication verifies NSIS artifacts and metadata without changing the old ZIP upgrade route', async t => {
+  for (const edition of ['EduWork', 'EduWork-ECNU']) {
+    const f = await publicationFixture(t, edition)
+    await addStandardInstaller(f)
+    assert.equal((await validatedReleaseFiles(f.root, f.ctx)).files.length, 12)
+    assert.equal(githubUpdateManifest(f.row, f.ctx.repository).artifacts[0].fileName, f.row.asset.name)
+  }
+  for (const change of ['executable', 'metadata', 'receipt', 'debug-file', 'missing-check']) {
+    const f = await publicationFixture(t)
+    await addStandardInstaller(f)
+    if (change === 'executable') await writeFile(join(f.root, f.row.installer.files[0].name), 'changed')
+    if (change === 'receipt') await writeFile(join(f.root, 'windows-installer-receipt.json'), '{}')
+    if (change === 'debug-file') await writeFile(join(f.root, 'builder-debug.yml'), 'private build paths')
+    if (change === 'missing-check') {
+      f.row.checks.silentUninstall = 'not-run'
+      await writeFile(join(f.root, 'release-receipt.json'), JSON.stringify(f.row))
+    }
+    if (change === 'metadata') {
+      const path = join(f.root, 'latest.yml'), bytes = Buffer.from((await readFile(path, 'utf8')).replace(/^path: .+$/m, 'path: another.exe'))
+      await writeFile(path, bytes)
+      Object.assign(f.row.installer.files[2], { bytes: bytes.length, sha256: createHash('sha256').update(bytes).digest('hex') })
+      await writeFile(join(f.root, 'release-receipt.json'), JSON.stringify(f.row))
+      await writeFile(join(f.root, 'windows-installer-receipt.json'), JSON.stringify(f.row.installer))
+    }
+    await assert.rejects(validatedReleaseFiles(f.root, f.ctx))
+  }
+})
 test('publication validates eight files for both editions while the updater keeps the original ZIP',async t=>{
  for(const edition of ['EduWork','EduWork-ECNU']){
   const {root,ctx,row}=await publicationFixture(t,edition)
@@ -263,4 +308,12 @@ test('publication rejects missing, modified, unrecorded or mismatched extractor 
   async({root})=>writeFile(join(root,'unexpected.txt'),'not approved')
  ]
  for(const mutate of mutations){const fixture=await publicationFixture(t);await mutate(fixture);await assert.rejects(()=>validatedReleaseFiles(fixture.root,fixture.ctx))}
+})
+
+test('Windows layout validates both standard installers and compatibility packages', async () => {
+  const { validateDataLayoutForBuild } = await import('../scripts/ci-eduwork-windows-release.mjs')
+  assert.doesNotThrow(() => validateDataLayoutForBuild('portable', false))
+  assert.doesNotThrow(() => validateDataLayoutForBuild('installed', true))
+  assert.doesNotThrow(() => validateDataLayoutForBuild('installed', false))
+  assert.throws(() => validateDataLayoutForBuild('other', true), /portable or installed/)
 })

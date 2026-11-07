@@ -9,6 +9,16 @@ import {bundleVersion} from '../scripts/macos-update-feed.mjs'
 import {desktopVersion} from '../scripts/desktop-build-plan.mjs'
 import {assetNames, nodeNpmAssetNames, validateRun, validateCandidateReceipt, validatedCandidateFiles, validatedNodeNpmFiles, verifyRemoteAssets, publishCandidate} from '../scripts/publish-desktop-candidate.mjs'
 
+test('candidate archive allowlist includes only the matching NSIS files and receipt', () => {
+  const version = '0.4.13', setup = `EduWork-${version}-windows-x64-setup.exe`
+  const installer = { schemaVersion: 1, kind: 'eduwork-windows-nsis', version, distribution: 'eduwork', appId: 'org.eduwork.eduwork.electron', backend: 'nsis',
+    files: [setup, setup + '.blockmap', 'latest.yml'].map(name => ({ name, bytes: 1, sha256: 'a'.repeat(64) })) }
+  const names = nodeNpmAssetNames('EduWork', version, 'windows', [], installer)
+  assert.deepEqual(names.slice(-4), [setup, setup + '.blockmap', 'latest.yml', 'windows-installer-receipt.json'])
+  assert.throws(() => nodeNpmAssetNames('EduWork', version, 'windows', [], { ...installer, files: [...installer.files, { name: 'builder-debug.yml' }] }))
+  assert.throws(() => nodeNpmAssetNames('EduWork', version, 'windows', [], { ...installer, version: '0.4.12' }))
+})
+
 const globalContext = {product: 'EduWork', version: '0.3.6-dev.20260928.2', distribution: 'eduwork', coreCommit: 'a'.repeat(40), editionCommit: 'b'.repeat(40)}
 const context = globalContext
 const hash = data => createHash('sha256').update(data).digest('hex')

@@ -5,7 +5,19 @@ import { join } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { startNativeBridge } from '../../../dsh-electron/src/native-vault.mjs'
 import { TaskNotifications } from '../../../dsh-electron/src/task-notifications.mjs'
-import { notificationDefaults } from '../lib/attention.js'
+import { DesktopAttention, notificationDefaults } from '../lib/attention.js'
+
+test('a cold Toast opens only the stored session that still exists', async () => {
+  const shell = new TaskNotifications({ foreground: () => false, show() {}, publish() {}, dismiss() {}, changed() {} })
+  const host = new DesktopAttention({ bridge: body => shell.handle(body), preferences: () => notificationDefaults,
+    lookupSession: async id => id === 'existing' })
+  shell.activateToast({ key: 'old', sessionId: 'existing' })
+  shell.handle({ action: 'sync', instance: 'new-host', items: [], running: [], preferences: notificationDefaults })
+  assert.deepEqual((await host.view({ sessionId: '' })).target, { key: 'old', sessionId: 'existing' })
+  assert.equal((await host.view({ sessionId: '' })).target, null)
+  shell.activateToast({ key: 'removed', sessionId: 'deleted' })
+  assert.equal((await host.view({ sessionId: '' })).target, null)
+})
 
 const runtime = process.env.EDUWORK_TEST_RUNTIME
 test('real Cordis session events and authenticated desktop bridge preserve pending decisions under both configuration APIs', { skip: !runtime }, async t => {

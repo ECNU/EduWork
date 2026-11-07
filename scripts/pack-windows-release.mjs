@@ -8,6 +8,42 @@ import { ZipWriter } from './lib/zip.mjs'
 import { setUpdaterManifest } from '../dsh-electron/scripts/set-updater-manifest.mjs'
 import { desktopVersion } from './desktop-build-plan.mjs'
 
+export async function windowsReleaseManifest(candidate, { forUpdate = false } = {}) {
+  const identity = await readJSON(join(candidate, 'resources/app/eduwork.desktop.json'))
+  const files = []
+  const inventory = async (directory, prefix) => {
+    for (const entry of await readdir(directory, { withFileTypes: true })) {
+      if (!prefix && entry.name === 'RELEASE-MANIFEST.json') continue
+      const relative = prefix ? `${prefix}/${entry.name}` : entry.name
+      const path = join(directory, entry.name)
+      if ((await lstat(path)).isSymbolicLink()) throw new Error(`Unresolved package link: ${relative}`)
+      if (/(^|\/)(\.git|\.env|\.env\.local|credentials\.encrypted)(\/|$)/.test(relative) || /^(data|evidence)(\/|$)/.test(relative)) {
+        throw new Error(`Private/build data in the release: ${relative}`)
+      }
+      if (entry.isDirectory()) {
+        await inventory(path, relative)
+      } else {
+        if (/^(config\/|resources\/product\/resources\/desktop\/)/.test(relative) && ['.json', '.jsonc'].includes(extname(entry.name))) {
+          const text = await readFile(path, 'utf8')
+          for (const match of text.matchAll(/"client(?:Id|ID|_id)"\s*:\s*"([^"]+)"/g)) {
+            if (!/^replace-with-[a-z0-9-]+$/.test(match[1])) throw new Error(`Deployment client identifier in public package configuration: ${relative}`)
+          }
+        }
+        files.push({ path: relative, bytes: (await statEntry(path)).size, sha256: await sha256File(path) })
+      }
+    }
+  }
+  await inventory(candidate, '')
+  const manifest = { schemaVersion: 1, kind: 'eduwork-portable-release', version: identity.productVersion,
+    distribution: identity.distribution, shell: 'electron', platform: 'windows-x64', files }
+  if (forUpdate) {
+    manifest.launcherVersion = identity.productVersion
+    manifest.flavor = 'offline'
+    manifest.launch = { protocol: 'eduwork-desktop/v1', shell: 'electron', executable: 'EduWork-Electron.exe', migration: 'wails-host-v1', distribution: identity.distribution }
+  }
+  return manifest
+}
+
 export async function packWindowsRelease({ candidate, output, development = false, forUpdate = false } = {}) {
   candidate = await realpath(fullPath(candidate))
   output = fullPath(output)
@@ -30,48 +66,13 @@ export async function packWindowsRelease({ candidate, output, development = fals
   if (basename(output) !== `${name}-${identity.productVersion}-windows-x64-electron.zip`) {
     throw new Error('Release asset name differs from the package identity')
   }
-  const files = []
-  const inventory = async (directory, prefix) => {
-    for (const entry of await readdir(directory, { withFileTypes: true })) {
-      const relative = prefix ? `${prefix}/${entry.name}` : entry.name
-      const path = join(directory, entry.name)
-      if ((await lstat(path)).isSymbolicLink()) throw new Error(`Unresolved package link: ${relative}`)
-      if (/(^|\/)(\.git|\.env|\.env\.local|credentials\.encrypted)(\/|$)/.test(relative) || /^(data|evidence)(\/|$)/.test(relative)) {
-        throw new Error(`Private/build data in the release: ${relative}`)
-      }
-      if (entry.isDirectory()) {
-        await inventory(path, relative)
-      } else {
-        if (/^(config\/|resources\/product\/resources\/desktop\/)/.test(relative) && ['.json', '.jsonc'].includes(extname(entry.name))) {
-          const text = await readFile(path, 'utf8')
-          for (const match of text.matchAll(/"client(?:Id|ID|_id)"\s*:\s*"([^"]+)"/g)) {
-            if (!/^replace-with-[a-z0-9-]+$/.test(match[1])) throw new Error(`Deployment client identifier in public package configuration: ${relative}`)
-          }
-        }
-        files.push({ path: relative, bytes: (await statEntry(path)).size, sha256: await sha256File(path) })
-      }
-    }
-  }
-  await inventory(candidate, '')
+  const manifest = await windowsReleaseManifest(candidate, { forUpdate })
+  const files = manifest.files
   await mkdir(dirname(output), { recursive: true })
   const zip = await ZipWriter.create(output)
   try {
     for (const file of files) {
       await zip.addEntry(`${name}/${file.path}`, await readFile(join(candidate, file.path)))
-    }
-    const manifest = {
-      schemaVersion: 1,
-      kind: 'eduwork-portable-release',
-      version: identity.productVersion,
-      distribution: identity.distribution,
-      shell: 'electron',
-      platform: 'windows-x64',
-      files,
-    }
-    if (forUpdate) {
-      manifest.launcherVersion = identity.productVersion
-      manifest.flavor = 'offline'
-      manifest.launch = { protocol: 'eduwork-desktop/v1', shell: 'electron', executable: 'EduWork-Electron.exe', migration: 'wails-host-v1', distribution: identity.distribution }
     }
     await zip.addEntry(`${name}/RELEASE-MANIFEST.json`, Buffer.from(JSON.stringify(manifest, null, 2)))
     await zip.close()

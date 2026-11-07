@@ -57,7 +57,7 @@ try {
     Copy-Item (Join-Path $candidate 'desktop-probe/package*.json') $desktopTools
     & npm ci --prefix $desktopTools --ignore-scripts --no-audit --no-fund
     & (Join-Path $CoreRoot 'dsh-electron/scripts/prepare-electron.ps1') -Upstream $tools -Output (Join-Path $Output 'electron')
-    & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --pinned-dsh-source --upstream $upstream --runtime $runtime --host $hostAdapter --output $shell
+    & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --pinned-dsh-source --upstream $upstream --runtime $runtime --host $hostAdapter --desktop-tools $desktopTools --output $shell
     & (Join-Path $CoreRoot "scripts/prepare-$platform-release-inputs.ps1") -Product $product -Output (Join-Path $Output 'inputs')
     $inputs=Get-Content (Join-Path $Output 'inputs/inputs.json') -Raw | ConvertFrom-Json
     & node (Join-Path $CoreRoot 'scripts/portable-product-links.mjs') $product

@@ -17,7 +17,16 @@ export default class DesktopServices extends Service {
       : null
     if (!scope) ctx.effect(() => ctx.settings.configure({ auto: false }))
     const preferences = () => scope ? scope.get() : Object.fromEntries(Object.keys(notificationDefaults).map(key => [key, config[key].get()]))
-    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences, goal: sessionId => {
+    const lookupSession = async id => {
+      if (ctx.sessions.get(id)) return true
+      let observation
+      try {
+        observation = await ctx.get('sessionQuery')?.observeSession(id, { projectionMode: 'none' })
+        return observation?.header.id === id
+      } catch { return false }
+      finally { observation?.[Symbol.dispose]() }
+    }
+    this.attention = new DesktopAttention({ bridge: body => this.notificationBridge(body), preferences, lookupSession, goal: sessionId => {
       const agent = ctx.get('agents')?.get(sessionId)
       return agent && ctx.get('goals')?.get(agent)
     } })
