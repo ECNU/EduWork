@@ -1,0 +1,9 @@
+{
+  "name": "eduwork-windows-installer-tools",
+  "version": "0.0.0",
+  "private": true,
+  "dependencies": {
+    "app-builder-lib": "26.17.0",
+    "electron-builder": "26.17.0"
+  }
+}

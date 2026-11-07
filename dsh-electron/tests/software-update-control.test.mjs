@@ -110,3 +110,20 @@ test('invalid preferences are preserved and never silently interpreted as enable
     assert.equal(await readFile(f.prefs,'utf8'),body)
   }
 })
+
+test('shutdown cancels the backend before waiting for an active download', async t => {
+  let cancel, started
+  const downloading = new Promise(resolve => { started = resolve })
+  const f = await fixture(t, { start: async () => ({
+    action: async action => {
+      if (action === 'download-update') { started(); await new Promise(resolve => { cancel = resolve }) }
+      return { update: { state: 'up_to_date' } }
+    },
+    close: async () => cancel(),
+  }) })
+  const control = await softwareUpdateControl(f.options)
+  const operation = control.action('download-update')
+  await downloading
+  await control.close()
+  await operation
+})

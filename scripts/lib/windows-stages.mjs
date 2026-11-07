@@ -14,9 +14,9 @@ import { createWriteStream } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 import { spawn } from 'node:child_process'
 import { createServer } from 'node:net'
-import { basename, join } from 'node:path'
+import { basename, dirname, join } from 'node:path'
 import {
-  copyFileTo, copyTree, ensureDir, isFile, isWindows, pathExists, readJSON, run,
+  copyFileTo, copyTree, ensureDir, isFile, isWindows, pathExists, readJSON, run, runBundledCli,
   runNode, sha256File, sleep, statEntry, writeJSON,
 } from './build-util.mjs'
 import { stage } from './stage-runner.mjs'
@@ -29,6 +29,8 @@ import { prepareWindowsPortableExtractor } from '../portable-extractor.mjs'
 import { desktopVersion } from '../desktop-build-plan.mjs'
 import { createWindowsDeltas } from '../windows-update-delta.mjs'
 import { verifyPublisherFirstLaunch } from './publisher-acceptance.mjs'
+import { prepareWritableRoot } from '../../dsh-electron/src/writable-root.mjs'
+import { removeInstalledData } from '../../dsh-electron/src/installed-files.mjs'
 
 function freeLoopbackPort() {
   return new Promise((resolve, reject) => {
@@ -46,9 +48,25 @@ function freeLoopbackPort() {
  * which the orchestrator fixed for the whole workspace, so a re-entry cannot
  * disagree with the run that recorded the checkpoint.
  */
-export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' }) {
+export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source', dataLayout = 'portable' }) {
   desktopBuildRecipe(recipe)
   return [
+    ...(dataLayout === 'installed' ? [stage({
+      name: 'installer-tools',
+      description: 'Install the locked official NSIS tooling',
+      requires: ['source-audit'], outputs: ['installer-tools'],
+      inputs: async () => {
+        const recipe = await readJSON(join(coreRoot, 'config/desktop-build.json'))
+        return { lock: await sha256File(join(coreRoot, dirname(recipe.sourceLock), 'windows-installer/package-lock.json')) }
+      },
+      run: async workspace => {
+        const recipe = await readJSON(join(coreRoot, 'config/desktop-build.json'))
+        const output = workspace.resolvePath('installer-tools')
+        await ensureDir(output)
+        for (const name of ['package.json', 'package-lock.json']) await copyFileTo(join(coreRoot, dirname(recipe.sourceLock), 'windows-installer', name), join(output, name))
+        await runBundledCli('npm', ['ci', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: output })
+      },
+    })] : []),
     stage({
       name: 'native-inputs',
       description: 'Windows x64 native inputs',
@@ -84,14 +102,15 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
     }),
     stage({
       name: 'desktop',
-      description: 'Desktop candidate assembly and portable ZIP',
-      requires: ['shell', 'electron', 'product', 'native-install'],
+      description: dataLayout === 'installed' ? 'Desktop assembly, compatibility ZIP and standard installer' : 'Desktop candidate assembly and portable ZIP',
+      requires: ['shell', 'electron', 'product', 'native-install', ...(dataLayout === 'installed' ? ['installer-tools'] : [])],
       outputs: ['desktop'],
       inputs: (workspace) => ({
         version: workspace.parameters.version,
         development: workspace.parameters.development,
         forUpdate: workspace.parameters.forUpdate,
         edition: workspace.parameters.edition,
+        dataLayout: workspace.parameters.dataLayout ?? 'portable',
       }),
       run: async (workspace) => {
         const { version, edition } = workspace.parameters
@@ -109,15 +128,22 @@ export function windowsStages({ coreRoot, receiptBase, recipe = 'pinned-source' 
           node: inputs.node,
           output: candidate,
           version,
+          dataLayout: 'portable',
         })
         if (workspace.parameters.forUpdate) await buildTransitionLaunchers(candidate, coreRoot)
         const asset = `${edition}-${version}-windows-x64-electron.zip`
-        await writeJSON(join(candidateRoot, 'package.json'), await packWindowsRelease({
-          candidate,
-          output: join(candidateRoot, asset),
-          development: developmentVersion,
-          forUpdate: workspace.parameters.forUpdate,
-        }))
+        const packed = await packWindowsRelease({ candidate, output: join(candidateRoot, asset),
+          development: developmentVersion, forUpdate: workspace.parameters.forUpdate })
+        if (dataLayout === 'installed') {
+          const { packWindowsInstalled } = await import('../pack-windows-installed.mjs')
+          const installed = join(candidateRoot, 'installed/electron-candidate')
+          await assembleWindows({ product: workspace.resolvePath('product'), shellBuild: workspace.resolvePath('shell'),
+            electronRuntime: workspace.resolvePath('electron/runtime'), node: inputs.node,
+            output: installed, version, dataLayout: 'installed' })
+          packed.installer = await packWindowsInstalled({ candidate: installed, upstream: workspace.resolvePath('upstream'),
+            tools: workspace.resolvePath('installer-tools'), output: join(candidateRoot, 'installer') })
+        }
+        await writeJSON(join(candidateRoot, 'package.json'), packed)
       },
     }),
     stage({
@@ -159,6 +185,7 @@ async function buildTransitionLaunchers(candidate, coreRoot) {
 async function acceptWindows({ workspace, coreRoot }) {
   if (!isWindows) throw new Error('Windows acceptance requires a Windows runner')
   const { edition, development, verifyPublisherBootstrap } = workspace.parameters
+  const dataLayout = workspace.parameters.dataLayout ?? 'portable'
   const packed = await readJSON(workspace.resolvePath('desktop/package.json'))
   const archive = packed.output
   const gui = workspace.resolvePath('gui')
@@ -168,7 +195,7 @@ async function acceptWindows({ workspace, coreRoot }) {
   await ensureDir(evidence)
   await ensureDir(unpacked)
 
-  const desktop = join(unpacked, edition)
+  let desktop = join(unpacked, edition)
   let portableExtractor
   if (development) {
     await run('tar.exe', ['-xf', archive, '-C', unpacked])
@@ -182,14 +209,44 @@ async function acceptWindows({ workspace, coreRoot }) {
     })
   }
   await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, ...(workspace.parameters.forUpdate ? ['--for-update'] : [])])
+  let installedProgram, installedDataFixture, installedCheckRequest
+  if (dataLayout === 'installed') {
+    if (!packed.installer) throw new Error('Missing standard Windows installer')
+    installedProgram = join(unpacked, `${edition}-installed`)
+    installedCheckRequest = join(gui, 'installation-check.json')
+    await writeJSON(installedCheckRequest, { registry: packed.installer.registry, programRoot: installedProgram,
+      shortcutName: (await readJSON(join(desktop, 'resources/app/eduwork.desktop.json'))).productName })
+    await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(coreRoot, 'dsh-electron/scripts/check-windows-installation.ps1'), '-Request', installedCheckRequest, '-RequireEmpty'])
+    installedDataFixture = join(process.env.LOCALAPPDATA, 'EduWork', packed.installer.distribution)
+    if (await pathExists(installedDataFixture)) throw new Error('NSIS acceptance requires a disposable Windows user without existing edition data')
+    await run(packed.installer.output, ['/S', `/D=${installedProgram}`])
+    desktop = installedProgram
+    await runNode(join(coreRoot, 'scripts/verify-windows-release.mjs'), [desktop, '--installed'])
+    if (!await isFile(join(desktop, 'Uninstall EduWork-Electron.exe'))) throw new Error('NSIS uninstaller is missing')
+    await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(coreRoot, 'dsh-electron/scripts/check-windows-installation.ps1'), '-Request', installedCheckRequest])
+    await prepareWritableRoot({ root: installedDataFixture, distribution: packed.installer.distribution,
+      product: join(desktop, 'resources/product'), productVersion: packed.installer.version })
+    await writeJSON(join(installedDataFixture, 'uninstall-retention.json'), { synthetic: true })
+  }
   await run(join(desktop, 'resources/runtime/node.exe'), [
     join(coreRoot, 'scripts/check-desktop-runtimes.mjs'), desktop, join(evidence, 'native-runtimes.json'),
   ]).catch(() => { throw new Error('Packaged native runtime smoke check failed') })
+  const desktopIdentity = await readJSON(join(desktop, 'resources/app/eduwork.desktop.json'))
+  const dataRoot = dataLayout === 'installed'
+    ? join(gui, 'data/data', `${desktopIdentity.distribution}-electron`)
+    : join(gui, 'data')
 
   const frozenProduct = join(desktop, 'resources/product')
-  const config = join(gui, 'config/eduwork.jsonc')
-  await copyTree(join(desktop, 'config'), join(gui, 'config'))
   const bootstrapEnabled = await pathExists(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
+  let config
+  if (dataLayout === 'installed') {
+    await prepareWritableRoot({ root: join(gui, 'data'), distribution: desktopIdentity.distribution,
+      product: frozenProduct, productVersion: desktopIdentity.productVersion })
+    config = join(gui, 'data/config/eduwork.jsonc')
+  } else {
+    config = join(gui, 'config/eduwork.jsonc')
+    await copyTree(join(desktop, 'config'), join(gui, 'config'))
+  }
   if (verifyPublisherBootstrap && !bootstrapEnabled) throw new Error('Publisher acceptance requires a packaged descriptor')
   if (bootstrapEnabled && !verifyPublisherBootstrap) {
     // Exercise the offline migration path with an isolated synthetic profile.
@@ -250,7 +307,7 @@ async function acceptWindows({ workspace, coreRoot }) {
     if (!ready) throw new Error('Packaged desktop failed to start within acceptance limit')
     await runNode(join(coreRoot, 'dsh-electron/tests/desktop-smoke.mjs'), [
       '--shell', 'electron', '--product', frozenProduct, '--cdp', `http://127.0.0.1:${port}`,
-      '--data-root', join(gui, 'data'), '--evidence', gui, '--launch-only',
+      '--data-root', dataRoot, '--evidence', gui, '--launch-only',
     ])
   } finally {
     if (!exited) {
@@ -282,10 +339,19 @@ async function acceptWindows({ workspace, coreRoot }) {
   checks.mediaTemplate = 'passed'
   checks.sourceSnapshot = workspace.parameters.verifySnapshot ? 'passed' : 'not-run-working-tree'
   if (verifyPublisherBootstrap) {
-    const started = await readJSON(join(gui, 'data/logs/desktop-start.json'))
+    const started = await readJSON(join(dataRoot, 'logs/desktop-start.json'))
     const descriptor = await readJSON(join(frozenProduct, 'resources/desktop/publisher-bootstrap.json'))
     verifyPublisherFirstLaunch(descriptor, started)
     checks.publisherFirstLaunch = 'passed'
+  }
+  if (installedProgram) {
+    await run(join(installedProgram, 'Uninstall EduWork-Electron.exe'), ['/S', `_?=${installedProgram}`])
+    await run('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', join(coreRoot, 'dsh-electron/scripts/check-windows-installation.ps1'), '-Request', installedCheckRequest, '-Removed'])
+    if (!await isFile(config) || !(await readJSON(join(installedDataFixture, 'uninstall-retention.json'))).synthetic) throw new Error('Silent uninstall must retain personal data')
+    await removeInstalledData({ distribution: packed.installer.distribution })
+    checks.standardInstaller = 'passed'
+    checks.installerLaunch = 'passed'
+    checks.silentUninstall = 'passed'
   }
   await writeJSON(join(gui, 'acceptance-checks.json'), checks)
   return checks
@@ -306,6 +372,10 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
   await copyFileTo(packed.output, join(publish, basename(packed.output)))
   if (await isFile(`${packed.output}.sha256`)) {
     await copyFileTo(`${packed.output}.sha256`, join(publish, `${basename(packed.output)}.sha256`))
+  }
+  if (packed.installer) {
+    for (const file of packed.installer.files) await copyFileTo(join(dirname(packed.installer.output), file.name), join(publish, file.name))
+    await copyFileTo(join(dirname(packed.installer.output), 'installer-receipt.json'), join(publish, 'windows-installer-receipt.json'))
   }
   const deltas = await createWindowsDeltas({ archive: packed.output, bases: deltaBases, product: name, version, output: publish })
   if (!development) {
@@ -329,10 +399,12 @@ async function publishWindows({ workspace, coreRoot, receiptBase }) {
     },
     checks: { sourceAndDependencies: 'passed', ...checks, asset: undefined, portableExtractorAssets: undefined },
     asset: checks.asset,
+    ...(packed.installer ? { installer: packed.installer } : {}),
     deltas,
     ...(!development ? { portableExtractor: checks.portableExtractorAssets } : {}),
     passed: true,
   }
+  if (receipt.installer) { receipt.installer = { ...receipt.installer }; delete receipt.installer.output }
   delete receipt.checks.asset
   delete receipt.checks.portableExtractorAssets
   await writeJSON(join(publish, 'release-receipt.json'), receipt)

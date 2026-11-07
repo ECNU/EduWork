@@ -24,6 +24,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     try {
       if (!backend) backend = await start({ policy, applyScheduled: startup })
       if (!backend) throw Error('当前安装包未配置软件更新')
+      if (closed) { await backend.close(); backend = undefined; throw Error('软件更新服务已关闭') }
       startFailure = undefined
     } catch (error) { startFailure = error.message; throw error }
     return backend
@@ -84,7 +85,12 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
       const result = queue.then(() => act(action)); queue = result.catch(() => {})
       return result
     },
-    async close() { closed = true; await queue; await backend?.close() },
+    async close() {
+      closed = true
+      // The backend cancels an active download before the queue can finish it.
+      await backend?.close()
+      await queue
+    },
   }
 }
 
