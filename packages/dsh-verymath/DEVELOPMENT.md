@@ -5,7 +5,6 @@ Requires Node.js 24.22.1+. Development dependencies pin DSH `0.2.1-rc.5`; the pe
 
 ```sh
 npm ci
-npm run build
 npm run check
 ```
 

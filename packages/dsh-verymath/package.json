@@ -60,7 +60,7 @@
     "vitest": "4.1.8"
   },
   "dependencies": {
-    "js-yaml": "^4.3.2"
+    "js-yaml": "4.3.2"
   },
   "license": "MulanPSL-2.0 AND MIT",
   "dsh": {
