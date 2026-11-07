@@ -20,7 +20,8 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, productUpdateObserver } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
+  showHostStartupProgress, productUpdateObserver } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -157,7 +158,8 @@ async function main() {
   })
   entered = true
 
-  // Match upstream: load the document, start the Host, then present the window.
+  // The final workspace presentation still happens after Host ready, as upstream.
+  // The BootPage shown before startOnce() is EduWork's temporary local adapter.
   const presentInitialWindow = () => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
@@ -177,6 +179,9 @@ async function main() {
     if (startupFailure || isQuitting()) return
     throw error
   }
+  // EduWork temporarily presents the BootPage while the Host starts. Remove
+  // this adapter once DSH provides an official early-presentation hook.
+  if (!startupFailure) showHostStartupProgress()
   const ready = await startOnce().then(() => true, () => false)
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.
