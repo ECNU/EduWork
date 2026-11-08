@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-07T11:06:18.249Z",
-  "fileSetSHA256": "057d699e07f15976447b53fef5da21e6ca1a34b84dea541ffd650a0f7e053d40",
+  "createdAt": "2026-11-08T06:07:40.741Z",
+  "fileSetSHA256": "cec82eb203347e3f93b07fa6b8f34844b273f023946cc73d5bd371bf2654945c",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "70430f8759deac58008d11340989ba273840feb7da01b764bd0f3e608624eafe"
+      "sha256": "a4e83eecded629f6541c04d030c6919023deea3a94d481ff32b7e84ac9eba6a8"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "c587166ce00402eb518734d37a3ae32c248d1adf3ddbdf47d143ef965c71650d"
+      "sha256": "8ddcd9fd8f128a15359c25da3811e55a51ca09d48a315c0c9a3031a372d7fc74"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "549c7378ab7806e3bedc90a55e51998c1457b3d889e580942a3abf8f5f6ad1c1"
+      "sha256": "0649d92a62eef1f497f6a379a9b7b838b674b1b1e3014403d3511a7a5deace41"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1329,7 +1329,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "882e14e3c5cd0b3c3c1b5197f26f4e8c7da4a0b65c60cd7d86a5f8d86906a724"
+      "sha256": "0fe356adb7b980707a67cf411b7ac04da59c503c3f727dce9b3cfe99bf622115"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1461,7 +1461,7 @@
     },
     {
       "path": "dsh-electron/tests/dock-theme.electron.mjs",
-      "sha256": "869861388481a1862c02657d593a9010e170371ea2ee3354ea7ef4ce0cf68493"
+      "sha256": "a6cc559111bf25db1819c7cc27acc2547b6474b67970eb36510f9e20af2b5308"
     },
     {
       "path": "dsh-electron/tests/electron-locales.test.mjs",
@@ -1501,7 +1501,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "ea1d400c2c7019b4f52bb94f8e348e1ae0a2af94cb2483b547be52646939e7e3"
+      "sha256": "a74198d9ca9086959c46e11fa620ca691902c05ff4a7804afcab4022ce7797b9"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1568,12 +1568,16 @@
       "sha256": "11fbb8d19501c8423fd63ce4532092354a8047b911bf3d7f18c5924ad1663dd8"
     },
     {
+      "path": "dsh-electron/tests/startup-close-policy.test.mjs",
+      "sha256": "fc503efefe6bc6e5fcda24cd09c8f4e84aa62683e10b0bee24dca7dc9db7f8cd"
+    },
+    {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
       "sha256": "af7f188ec6b429a74bfc56f2b1566bb53cfb1e4cda60d46fb12deb6fffe36072"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "3ade7f08fc655caf537faddd415058c3b82c94ae4817f770645144f7a7f669c5"
+      "sha256": "b344cb08de60764408bad56b1e315cec6e1c7d265a6c3b715e747b152da60eed"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
