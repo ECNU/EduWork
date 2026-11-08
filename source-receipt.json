@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-07T16:24:31.940Z",
-  "fileSetSHA256": "5bcc4f993e6ab9593f4ea63b44f2b40019cb51d9d98484701df10abe993522a2",
+  "createdAt": "2026-11-08T05:55:40.596Z",
+  "fileSetSHA256": "d8daea68e353d03904aba7157afaf5e1bfe16c90a9384fa015b29ededc639422",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "70430f8759deac58008d11340989ba273840feb7da01b764bd0f3e608624eafe"
+      "sha256": "a4e83eecded629f6541c04d030c6919023deea3a94d481ff32b7e84ac9eba6a8"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "c587166ce00402eb518734d37a3ae32c248d1adf3ddbdf47d143ef965c71650d"
+      "sha256": "8ddcd9fd8f128a15359c25da3811e55a51ca09d48a315c0c9a3031a372d7fc74"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1309,7 +1309,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "d8e3695d9c35466861f797f6df8252aef9c458464d327c042238907fe2d78b7d"
+      "sha256": "0649d92a62eef1f497f6a379a9b7b838b674b1b1e3014403d3511a7a5deace41"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1329,7 +1329,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "f3fbcd36690be1894c13411fdb93c8ba94e39c23e698cc230443c47929bbb9ab"
+      "sha256": "0fe356adb7b980707a67cf411b7ac04da59c503c3f727dce9b3cfe99bf622115"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1501,7 +1501,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "dbec72cd44309f640d001fadb13047509242f00447e74f294ceb0745b7a8279c"
+      "sha256": "a74198d9ca9086959c46e11fa620ca691902c05ff4a7804afcab4022ce7797b9"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1566,6 +1566,10 @@
     {
       "path": "dsh-electron/tests/sparkle-quit-retry.electron.mjs",
       "sha256": "11fbb8d19501c8423fd63ce4532092354a8047b911bf3d7f18c5924ad1663dd8"
+    },
+    {
+      "path": "dsh-electron/tests/startup-close-policy.test.mjs",
+      "sha256": "fc503efefe6bc6e5fcda24cd09c8f4e84aa62683e10b0bee24dca7dc9db7f8cd"
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",

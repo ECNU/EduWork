@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
+for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure', 'recovery-preload-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     const earlyFailure = scenario.startsWith('early-'), startupError = new Error('synthetic Host failure')
@@ -247,8 +247,13 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       if (!exit.complete) { void exit.request(); return }
       calls.push('quit'); app.emit('will-quit'); completed()
     }
+    let releaseRecoveryDialog
+    const recoveryDialog = scenario === 'recovery-preload-failure'
+      ? new Promise(resolve => { releaseRecoveryDialog = resolve })
+      : null
     t.mock.module(electron, { exports: { app, dialog: { showMessageBox: async options => {
       assert.ok(fatalRecovery); assert.equal(options.type, 'error'); calls.push('recovery-dialog')
+      if (recoveryDialog) return recoveryDialog
       return { response: restarting && (!stopFailure || calls.filter(value => value === 'recovery-dialog').length === 1) ? 1 : 0 }
     } },
       protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter(), shell: { openPath: async () => '' } } })
@@ -318,6 +323,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
+      readInitialCloseAction: () => calls.push('read-close-action'),
       showHostStartupProgress: () => { calls.push('host-startup-progress'); presentBootPage() },
       productUpdateObserver: { dispose() {}, subscribe: () => () => {}, status: async () => undefined,
         presentation: async () => ({ phase: 'idle' }), record() {} },
@@ -368,6 +374,11 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.equal(typeof locale, 'function')
       calls.push('window')
       return mainWindow = Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {
+        if (scenario === 'recovery-preload-failure') {
+          calls.push('preload-error')
+          mainWindow.webContents.emit('preload-error', {}, '/synthetic/preload.cjs', new Error('Synthetic preload failure'))
+          await new Promise(resolve => setImmediate(resolve))
+        }
         if (earlyFailure) {
           const boot = bridgeOptions.waitForHost(), locale = bridgeOptions.waitForHost()
           for (const request of [boot, locale]) await assert.rejects(request, error => error === startupError)
@@ -379,6 +390,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
           assert.equal(calls.includes('host'), false, 'navigation must settle before the main entry starts the Host')
         }
         calls.push('page-loaded')
+        if (scenario === 'recovery-preload-failure') setTimeout(() => releaseRecoveryDialog({ response: 0 }), 20)
       }, isDestroyed: () => false, isMinimized: () => false,
         show() { calls.push('window-show'); this.emit('show') },
         hide() { calls.push('window-hide') },
@@ -415,12 +427,12 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
     const startupCalls = calls.filter(value => value !== 'probe-guide')
     if (scenario === 'installed' || scenario === 'application-hidden') {
       const hidden = process.platform === 'darwin' && scenario === 'application-hidden'
-      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'host-startup-progress',
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress',
         ...hidden ? [] : ['window-show'], 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
       app.emit('second-instance')
       assert.equal(calls.at(-1), 'activate-current-window')
     } else if (scenario.startsWith('preparation-')) {
-      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare',
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare',
         ...scenario === 'preparation-hidden' ? ['window-hide'] : [], 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
       if (scenario === 'preparation-hidden') {
         attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
@@ -432,14 +444,22 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         assert.equal(calls.filter(value => value === event).length, count, event)
       }
     } else if (pendingShell || pendingPrepare) {
-      const started = ['ready', 'installer', 'lock', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare', pendingShell ? 'shell-wait' : 'prepare-wait']
+      const started = ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare', pendingShell ? 'shell-wait' : 'prepare-wait']
       assert.deepEqual(startupCalls, cancelledQuit
         ? [...started, 'host', 'activate-current-window', 'host-ready', 'desktop-ready']
         : [...started, ...fatalRecovery ? ['crash-report', 'recovery-dialog'] : [], pendingShell ? 'shell-abort' : 'content-abort', ...restarting ? ['relaunch'] : [], 'quit'])
     } else if (earlyFailure) {
       assert.deepEqual(startupCalls, scenario === 'early-host-failure'
-        ? ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'activate-current-window', 'stop', 'recovery', 'page-loaded']
-        : ['ready', 'installer', 'lock', 'window', 'prepare', 'recovery'])
+        ? ['ready', 'installer', 'lock', 'read-close-action', 'window', 'prepare', 'host', 'activate-current-window', 'stop', 'recovery', 'page-loaded']
+        : ['ready', 'installer', 'lock', 'read-close-action', 'window', 'prepare', 'recovery'])
+    } else if (scenario === 'recovery-preload-failure') {
+      assert.ok(calls.includes('preload-error'))
+      assert.ok(calls.includes('crash-report'))
+      assert.ok(calls.includes('recovery-dialog'))
+      assert.ok(calls.includes('quit'))
+      assert.equal(calls.includes('host-startup-progress'), false)
+      assert.equal(calls.includes('window-show'), false)
+      assert.equal(calls.includes('host'), false)
     } else if (scenario === 'host-failure' || scenario === 'quit-during-host') {
       assert.equal(calls.filter(value => value === 'window-show').length, 1, 'Startup must not create a second window')
       assert.ok(calls.indexOf('window-show') < calls.indexOf('host'), 'the BootPage must be visible before Host failure')

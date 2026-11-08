@@ -21,7 +21,7 @@ import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
-  showHostStartupProgress, productUpdateObserver } from './product.mjs'
+  showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -111,6 +111,8 @@ async function handleStartupFailure(error) {
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  // The early BootPage must obey the local close policy before preparation reads it.
+  readInitialCloseAction()
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({
     getHost: () => backend.host,
@@ -179,9 +181,12 @@ async function main() {
     if (startupFailure || isQuitting()) return
     throw error
   }
+  // A renderer failure can enter recovery before loadURL resolves while
+  // startupFailure is still unset. Do not show or start a Host then.
+  if (startupFailure || recovery.active || isQuitting() || window.isDestroyed()) return
   // EduWork temporarily presents the BootPage while the Host starts. Remove
   // this adapter once DSH provides an official early-presentation hook.
-  if (!startupFailure) showHostStartupProgress()
+  showHostStartupProgress()
   const ready = await startOnce().then(() => true, () => false)
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.

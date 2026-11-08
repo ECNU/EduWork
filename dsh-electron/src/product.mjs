@@ -49,6 +49,7 @@ export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
 app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
 let bootLogoPath, bootLogo = ''
+let initialCloseAction = 'tray'
 let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
@@ -375,6 +376,13 @@ export function attachDockTheme(window) {
   })
 }
 
+// Read before the window can be closed; the prepared configuration replaces it.
+export function readInitialCloseAction() {
+  try { initialCloseAction = loadUserConfig(paths.config).closeAction }
+  catch { initialCloseAction = 'tray' }
+}
+function shouldExitOnClose() { return (user?.closeAction ?? initialCloseAction) === 'exit' }
+
 export async function attachDesktopWindow(window) {
   mainWindow = window
   mainWindowPresented = false
@@ -384,7 +392,7 @@ export async function attachDesktopWindow(window) {
   attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
   const showWindow = attachWindowVisibility({ app, window, isQuitting,
-    shouldExit: () => user?.closeAction === 'exit', hasTray: () => Boolean(tray) })
+    shouldExit: shouldExitOnClose, hasTray: () => Boolean(tray) })
   const show = () => (updateCompleted || startupMessage) && showWindow()
   const action = value => {
     show()
