@@ -11,7 +11,8 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type {} from '@deepseek-ai/dsh-fs'
 import { spawn } from 'node:child_process'
-import { isAbsolute, resolve } from 'node:path'
+import { accessSync, constants } from 'node:fs'
+import { delimiter, isAbsolute, join, resolve } from 'node:path'
 import { VeryMathError, isVeryMathError } from '../core/index.ts'
 import { bundledSkillsDir, checkGate, computeTopology, dependencySummary, findExcerpt, focusClosure, loadManifest, mergeBatches, parsePaperStructure, readCorpusDocWindow, renderMermaid, resolveCorpusRoot, searchSageRefs, termsFor, upsertTerms, type GateResult, type TermUpsert } from '../core/index.ts'
 
@@ -197,25 +198,70 @@ function probeCommand(executable: string, args: readonly string[], timeoutMs = 5
 }
 
 /**
- * Probe the math-beamer TeX toolchain: latexmk and xelatex binaries (PATH +
- * `--version` smoke) and the forest/ctex LaTeX packages (`kpsewhich <name>.sty`).
- * Nothing is installed, compiled, or downloaded; each probe is independent so a
- * partial toolchain reports per-piece detail (mirrors the osqp/sage probe pattern).
+ * Directories a TeX distribution installs into without adding them to the
+ * inherited PATH. Desktop applications launched from Finder or the Start menu
+ * do not read the login shell profile, so MacTeX's `/Library/TeX/texbin` is
+ * commonly invisible to a bare `spawn(name)` even when the toolchain is
+ * installed. Nothing here is required: an empty result just means PATH decides.
+ */
+function texBinFallbackDirs(): string[] {
+  return process.platform === 'darwin' ? ['/Library/TeX/texbin'] : []
+}
+
+/** Executable search path: the inherited PATH first, then platform fallbacks. */
+function executableSearchDirs(): string[] {
+  const fromEnv = (process.env.PATH ?? '').split(delimiter).filter((dir) => dir.length > 0)
+  return [...new Set([...fromEnv, ...texBinFallbackDirs()])]
+}
+
+/** Whether `candidate` exists and the current user may execute it. */
+function isExecutableFile(candidate: string): boolean {
+  try {
+    accessSync(candidate, constants.X_OK)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/**
+ * Resolve an executable name to an absolute path. Resolving in-process avoids
+ * `which`/`where`, which are not both available and which cannot see the TeX
+ * fallback directories above. On Windows the `PATHEXT` suffixes are tried.
+ * @param name - bare executable name, or a path containing a separator.
+ * @param searchDirs - directories probed for a bare name (defaults to PATH plus fallbacks).
+ * @returns the resolved absolute path, or undefined when nothing is executable.
+ */
+export function resolveExecutable(name: string, searchDirs: readonly string[] = executableSearchDirs()): string | undefined {
+  if (isAbsolute(name) || name.includes('/') || name.includes('\\')) {
+    return isExecutableFile(name) ? name : undefined
+  }
+  const extensions = process.platform === 'win32'
+    ? ['', ...(process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter((ext) => ext.length > 0)]
+    : ['']
+  for (const dir of searchDirs) {
+    for (const extension of extensions) {
+      const candidate = join(dir, name + extension)
+      if (isExecutableFile(candidate)) return candidate
+    }
+  }
+  return undefined
+}
+
+/**
+ * Probe the math-beamer TeX toolchain: latexmk and xelatex binaries (resolved on
+ * PATH, then in the distribution's own bin directory, followed by a `--version`
+ * smoke) and the forest/ctex LaTeX packages (`kpsewhich <name>.sty`, via the
+ * `kpsewhich` found the same way). Nothing is installed, compiled, or
+ * downloaded; each probe is independent so a partial toolchain reports per-piece
+ * detail (mirrors the osqp/sage probe pattern).
  */
 async function probeBeamerToolchain(): Promise<BeamerToolProbe[]> {
-  const binaries: Array<{ name: string }> = [
-    { name: 'latexmk' },
-    { name: 'xelatex' },
-  ]
-  const styles: Array<{ name: string, note?: string }> = [
-    { name: 'forest' },
-    { name: 'ctex', note: 'required by Chinese/bilingual templates only' },
-  ]
+  const binaries = ['latexmk', 'xelatex']
+  const styles = ['forest', 'ctex']
 
-  const binaryProbes = await Promise.all(binaries.map(async ({ name }) => {
-    const which = await probeCommand('/usr/bin/which', [name]).catch(() => undefined)
-    const resolved = which !== undefined && which.exitCode === 0 ? which.stdout.trim().split('\n')[0] : undefined
-    const executable = resolved !== undefined && resolved.length > 0 ? resolved : undefined
+  const binaryProbes = await Promise.all(binaries.map(async (name) => {
+    const executable = resolveExecutable(name)
     if (executable === undefined) return { name, kind: 'binary' as const, available: false }
     const smoke = await probeCommand(executable, ['--version']).catch(() => undefined)
     return smoke !== undefined && smoke.exitCode === 0
@@ -223,8 +269,12 @@ async function probeBeamerToolchain(): Promise<BeamerToolProbe[]> {
       : { name, kind: 'binary' as const, available: false, executable }
   }))
 
-  const styleProbes = await Promise.all(styles.map(async ({ name }) => {
-    const probe = await probeCommand('/Library/TeX/texbin/kpsewhich', [`${name}.sty`]).catch(() => undefined)
+  // kpsewhich ships with the distribution, so it lives in the same bin directory
+  // as the binaries and needs the same fallback lookup rather than a fixed path.
+  const kpsewhich = resolveExecutable('kpsewhich')
+  const styleProbes = await Promise.all(styles.map(async (name) => {
+    if (kpsewhich === undefined) return { name, kind: 'style' as const, available: false }
+    const probe = await probeCommand(kpsewhich, [`${name}.sty`]).catch(() => undefined)
     const resolved = probe !== undefined && probe.exitCode === 0 ? probe.stdout.trim().split('\n')[0] : undefined
     return resolved !== undefined && resolved.length > 0
       ? { name, kind: 'style' as const, available: true, executable: resolved }

@@ -17,7 +17,7 @@ An optional EduWork plugin that brings VeryMath's math research skills and tools
 - Paper structure validation checks dependency integrity, cycles and dangling links. It does not judge whether a proof is correct.
 - Dependency graphs and glossary writes are computed deterministically in TypeScript rather than assembled by the model.
 - Beamer templates only reference the local TeX Live themes; no third-party `.sty`, `.cls` or font files are redistributed.
-- Verified on macOS; Windows is untested, including path and binary discovery for external environments.
+- Verified on macOS; Windows is untested. External binaries are discovered through PATH and PATHEXT rather than a fixed platform path, but that discovery has not been exercised on Windows.
 - Skill content is adapted from the VeryMath MIT repositories; see [licensing](LICENSING.md) and [provenance](UPSTREAM.json).
 
 Development and testing are described in the [build guide](DEVELOPMENT.md).

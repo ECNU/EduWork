@@ -16,7 +16,7 @@ EduWork 的可选插件：把 VeryMath 的数学科研能力接入对话，覆�
 - 论文结构校验只检查依赖完整性、环与断链，不判断数学证明是否正确。
 - 依赖图与术语库读写由 TypeScript 确定性计算完成。
 - Beamer 模板只调用本机 TeX Live 的 Beamer 主题，不随包分发第三方 `.sty`、`.cls` 或字体。
-- 当前在 macOS 上验收，Windows 尚未测试；外部环境的路径与二进制发现逻辑也未在 Windows 上验证。
+- 当前在 macOS 上验收，Windows 尚未测试。外部二进制的发现按 PATH 与 PATHEXT 解析，不再指向平台固定路径，但未在 Windows 上实测。
 - 技能内容改编自 VeryMath 的 MIT 仓库，许可范围见[许可说明](LICENSING.md)与[溯源记录](UPSTREAM.json)。
 
 开发与测试见[构建指南](DEVELOPMENT.md)。
