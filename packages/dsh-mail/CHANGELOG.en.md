@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.4 — Unreleased
+
+- Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+
 [简体中文](CHANGELOG.md) | **English**
 
 ## 0.2.3 — 2026-10-25

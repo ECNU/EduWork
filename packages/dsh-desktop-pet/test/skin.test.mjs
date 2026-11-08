@@ -12,17 +12,17 @@ const skins = fileURLToPath(new URL('../skins/', import.meta.url))
 const svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 10 10"><rect width="10" height="10"/></svg>'
 const minimal = (extra = {}) => ({ schemaVersion: 1, id: 'mini', name: 'Mini', frame: { width: 192, height: 208 }, animations: { idle: { image: 'idle.svg' } }, ...extra })
 
-const LICENSES = { 'eduwork-page': 'CC-BY-4.0', 'eduwork-page-blue': 'CC-BY-4.0', 'ecnu-huashi': 'LicenseRef-ECNU-Mascot', dafeiyu: 'MIT' }
-// Skins drawn by a script in this package; dafeiyu uses the whale-girl PNG sprites.
+const LICENSES = { 'eduwork-page': 'CC-BY-4.0', 'eduwork-page-blue': 'CC-BY-4.0', 'ecnu-huashi': 'LicenseRef-ECNU-Mascot', 'ecnu-huashi-girl': 'CC-BY-SA-4.0', dafeiyu: 'MIT' }
+// Skins drawn by a script in this package; dafeiyu and ecnu-huashi-girl ship ready-made sprite sheets.
 const GENERATED = { 'build-page-skins.mjs': ['eduwork-page', 'eduwork-page-blue'], 'build-huashi-skin.mjs': ['ecnu-huashi'] }
 
 test('built-in skins have every state, safe images and a recorded license', async () => {
   const found = await readBuiltinSkins(skins, message => assert.fail(message))
-  assert.deepEqual([...found.keys()], ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi'])
+  assert.deepEqual([...found.keys()], ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl'])
   for (const { skin, preview } of found.values()) {
     for (const name of BUILTIN_ANIMATIONS) assert.ok(skin.animations[name], `${skin.id} ${name}`)
     assert.equal(skin.license, LICENSES[skin.id])
-    assert.match(preview.src, /^data:image\/(?:svg\+xml|png);base64,/)
+    assert.match(preview.src, /^data:image\/(?:svg\+xml|png|webp);base64,/)
   }
 })
 
@@ -51,6 +51,9 @@ test('three animation notations become one frame list', () => {
   assert.deepEqual(skin.animations.work.frames.map(frame => frame.crop), [[0, 208], [192, 208], [384, 208], [0, 416], [192, 416]].map(([x, y]) => ({ x, y, width: 192, height: 208 })))
   assert.equal(skin.animations.work.frames[4].ms, 300)
   assert.deepEqual(skin.animations.think, { frames: [{ file: 'think.svg', ms: 125 }], playback: 'loop', motion: 'float' })
+  // Artwork faces left unless the skin says otherwise; only a right-facing animation records it.
+  assert.equal(normalizeSkin(minimal({ animations: { idle: { image: 'a.svg' }, drag: { image: 'b.svg', facing: 'right' } } })).animations.drag.facing, 'right')
+  assert.throws(() => normalizeSkin(minimal({ animations: { idle: { image: 'a.svg', facing: 'up' } } })), /facing/)
   assert.deepEqual(skin.files.sort(), ['a.svg', 'b.svg', 'think.svg', 'work.png'])
   assert.deepEqual(skin.states, { idle: ['idle'], working: ['think'] })
 })

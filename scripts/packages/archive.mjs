@@ -32,9 +32,25 @@ export function inspectArchive(bytes, selected, expectedVersion) {
   assert.equal(manifest.version, expectedVersion)
   assert.equal(manifest.repository.url, 'git+https://github.com/ECNU/EduWork.git')
   assert.equal(manifest.repository.directory, selected.directory)
+  if (manifest.license === 'MulanPSL-2.0 AND MIT') {
+    // The migration is prospective: retain the historical grant and scope in
+    // every standalone archive, not only in the repository's documentation.
+    for (const file of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md']) {
+      assert.ok(files.has(file), `Missing licensing document ${file}`)
+    }
+    assert.match(files.get('LICENSE').toString('utf8'), /木兰宽松许可证/)
+    assert.match(files.get('LICENSE-MIT').toString('utf8'), /MIT License/)
+  }
   for (const entry of Object.values(manifest.exports || {})) {
     assert.equal(typeof entry, 'string', 'Review new conditional exports before publishing')
     assert.ok(files.has(entry.replace(/^\.\//, '')), `Missing packed export ${entry}`)
+  }
+  if (selected.id === 'dsh-decision') {
+    assert.ok(!manifest.private, 'Decision plugin archive must be publishable')
+    assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing decision plugin bundle')
+    for (const file of ['lib/index.js', 'lib/core.js', 'skills/decision/SKILL.md', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {
+      assert.ok(files.has(file), `Missing decision plugin file ${file}`)
+    }
   }
   if (selected.id === 'dsh-side-chat' || selected.id === 'dsh-annotation') {
     assert.ok(!manifest.private, 'Conversation plugin archive must be publishable')
@@ -73,7 +89,7 @@ export function inspectArchive(bytes, selected, expectedVersion) {
       'lib/client.js', 'lib/page/pet.html', 'lib/page/pet.js', 'lib/page/pet.css', 'lib/pet-state.js', 'lib/skin-files.js']) {
       assert.ok(files.has(file), `Missing desktop pet runtime or license file ${file}`)
     }
-    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi']) {
+    for (const id of ['eduwork-page', 'eduwork-page-blue', 'dafeiyu', 'ecnu-huashi', 'ecnu-huashi-girl']) {
       assert.ok(files.has(`skins/${id}/skin.json`), `Missing built-in character ${id}`)
       const references = value => {
         if (typeof value === 'string' && /\.(svg|png|webp)$/i.test(value)) {

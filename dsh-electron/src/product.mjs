@@ -27,12 +27,15 @@ import { desktopLogger } from './desktop-log.mjs'
 import { attachExternalNavigation } from './external-navigation.mjs'
 import { ContentUpdates } from './content-updates.mjs'
 import { updateCoordinator } from './update-coordinator.mjs'
+import { createProductUpdateObserver } from './update-observer.mjs'
+import { createWorkbenchUpdateHandler } from './update-workbench.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
 import { desktopRelaunchOptions } from './desktop-restart.mjs'
-import { attachAppActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
+import { attachAppActivation, attachTrayActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
 import { startupFailurePage } from './startup-failure.mjs'
+import { createSettingsOpenRequest } from './settings-open-request.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
 export function configureWindowNavigation(window) {
@@ -46,13 +49,19 @@ export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
 app.on('will-quit', () => directoryPicker.dispose())
 let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
 let bootLogoPath, bootLogo = ''
+let initialCloseAction = 'tray'
 let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
 let mainWindowPresented = false
 let startupMessage = ''
 let portableUpdates
+let flushPendingSettings = () => {}
 let contentUpdates, managedContent = {}
+export const productUpdateObserver = createProductUpdateObserver({
+  getCoordinator: () => portableUpdates,
+  diagnose: message => desktopHostLog(`[desktop:updates] ${message}\n`),
+})
 let publisher
 let taskNotifications, notificationAdapter
 let desktopPet, petMenu = () => []
@@ -77,6 +86,7 @@ export function restartDesktop() {
 }
 export function stopDesktopServices() {
   void contentUpdates?.close()
+  productUpdateObserver.dispose()
   return lifecycle.close()
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
@@ -143,19 +153,26 @@ function startupAppearance() {
     dock: process.platform === 'darwin' ? join(app.getAppPath(), '../brand', blue ? 'dock-blue-1024.png' : 'dock-red-1024.png') : undefined,
   }
 }
-function showStartupProgress(message) {
+function showStartupProgress(message, documentLoaded = false) {
   startupMessage = message
   const window = mainWindow
   if (!window || window.isDestroyed() || isQuitting() || desktopFailureShown) return
   window.webContents.send('eduwork:boot-brand', desktopBootBrand())
   const present = () => {
     if (window.isDestroyed() || isQuitting() || desktopFailureShown || mainWindowPresented) return
+    if (process.platform === 'darwin' && app.isHidden()) return
     mainWindowPresented = true
     window.show()
   }
-  // The existing BootPage must be painted before showing a pre-Host download.
-  if (window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', present)
+  // A caller that already awaited loadURL must not wait for another finish
+  // event: a following main-frame navigation can keep isLoadingMainFrame() true.
+  if (!documentLoaded && window.webContents.isLoadingMainFrame()) window.webContents.once('did-finish-load', present)
   else present()
+}
+export function showHostStartupProgress() {
+  // native-desktop calls this only after the BootPage document has loaded.
+  // Download and migration hints must outrank the generic Host-start hint.
+  showStartupProgress(startupMessage || '正在启动本地服务…', true)
 }
 function showDesktopMessageBox(options) {
   const parent = [progressWindow, mainWindow].find(window => window && !window.isDestroyed())
@@ -291,13 +308,19 @@ async function prepareDesktop() {
     } : undefined,
     open: key => taskNotifications.activate(key), contextMenu: () => petMenu(), changed: () => refreshTray(),
     log: message => desktopHostLog(`[desktop-pet] ${message}\n`) })
+  const runWorkbench = (action, updateStatus) => workbenchAction({ action, config: paths.config, version: settings.productVersion,
+    shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, updateStatus })
+  const workbench = createWorkbenchUpdateHandler({
+    getCoordinator: () => portableUpdates,
+    observer: productUpdateObserver,
+    runWorkbench,
+  })
   const bridge = await startNativeBridge({ vault, pickDirectory: pickDesktopDirectory, openExternal: url => shell.openExternal(url),
     attention: body => taskNotifications.handle(body), pet: body => desktopPet.handle(body),
     workspaceAccess: process.platform === 'win32' ? (path, signal) => repairWorkspaceAccess(path, { productName: settings.productName, root: paths.root,
       protectedRoots: [paths.home, paths.userData], out: join(paths.logs, 'workspace-access'), log: desktopHostLog, signal,
       showMessageBox: options => mainWindow && !mainWindow.isDestroyed() ? dialog.showMessageBox(mainWindow, options) : dialog.showMessageBox(options) }) : undefined,
-    workbench: async action => portableUpdates && action !== 'diagnostics' ? portableUpdates.action(action) : workbenchAction({ action, config: paths.config, version: settings.productVersion, shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home,
-      updateStatus: action === 'diagnostics' && portableUpdates ? await portableUpdates.action('status').catch(error=>({error:error.message})) : undefined }),
+    workbench,
     openConfiguration: target => openConfigurationFile(paths.config, target, path => shell.openPath(path),
       process.platform === 'darwin' ? path => new Promise((resolve, reject) => execFile('/usr/bin/open', ['-t', path], error => error ? reject(error) : resolve())) : undefined) })
   lifecycle.trackBridge(bridge)
@@ -314,14 +337,16 @@ export async function desktopReady(shouldContinue = () => true) {
   // Never commit a successful migration receipt after a failed, cancelled or
   // quitting Host launch.
   if (!shouldContinue()) return
-  await writeMigrationHealth(migrationLaunch,'ready')
+  await writeMigrationHealth(migrationLaunch,'ready','',shouldContinue)
   if (!shouldContinue()) return
   updateCompleted = true
   migrationLaunch = null
   startupMessage = ''
+  flushPendingSettings()
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand())
   desktopPet?.start()
-  void portableUpdates?.action('check-updates-background').catch(()=>{})
+  if (portableUpdates) void portableUpdates.action('check-updates-background')
+    .then(status => productUpdateObserver.record(status)).catch(()=>{})
 }
 
 function savedEduworkStyle() {
@@ -351,6 +376,13 @@ export function attachDockTheme(window) {
   })
 }
 
+// Read before the window can be closed; the prepared configuration replaces it.
+export function readInitialCloseAction() {
+  try { initialCloseAction = loadUserConfig(paths.config).closeAction }
+  catch { initialCloseAction = 'tray' }
+}
+function shouldExitOnClose() { return (user?.closeAction ?? initialCloseAction) === 'exit' }
+
 export async function attachDesktopWindow(window) {
   mainWindow = window
   mainWindowPresented = false
@@ -360,15 +392,35 @@ export async function attachDesktopWindow(window) {
   attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
   const showWindow = attachWindowVisibility({ app, window, isQuitting,
-    shouldExit: () => user?.closeAction === 'exit', hasTray: () => Boolean(tray) })
+    shouldExit: shouldExitOnClose, hasTray: () => Boolean(tray) })
   const show = () => (updateCompleted || startupMessage) && showWindow()
   const action = value => {
     show()
-    if (!['new-session', 'settings'].includes(value) || window.isDestroyed()) return
-    // Only the trusted application renderer receives these two fixed actions.
+    if (value !== 'new-session' || window.isDestroyed()) return
+    // Only the trusted application renderer receives this fixed action.
     if (!window.webContents.getURL().startsWith('dsh-app://app/')) return
     void window.webContents.executeJavaScript(`(window.__eduworkTrayActions ??= []).push(${JSON.stringify(value)}); window.dispatchEvent(new Event('eduwork:tray-action'));`).catch(() => {})
   }
+  const sendSettingsAction = async () => {
+    if (window.isDestroyed() || !window.webContents.getURL().startsWith('dsh-app://app/')) return false
+    try {
+      await window.webContents.executeJavaScript(
+        `(window.__eduworkTrayActions ??= []).includes('open-settings') || window.__eduworkTrayActions.push('open-settings'); window.dispatchEvent(new Event('eduwork:tray-action'));`)
+      return true
+    } catch {
+      return false
+    }
+  }
+  const settingsRequest = createSettingsOpenRequest({
+    send: sendSettingsAction,
+    ready: () => updateCompleted && !window.isDestroyed() && window.webContents.getURL().startsWith('dsh-app://app/'),
+  })
+  const requestSettings = () => {
+    show()
+    void settingsRequest.request()
+  }
+  flushPendingSettings = () => { void settingsRequest.flush() }
+  window.webContents.on('did-finish-load', () => { void settingsRequest.flush() })
   // Fixed pet actions for the pet plugin's client in the application page: it
   // opens its settings page or saves the enabled setting, which the Host owns.
   const petAction = value => {
@@ -410,15 +462,15 @@ export async function attachDesktopWindow(window) {
       { type: 'separator' },
       ...petItem(),
       { label: '检查更新', click: () => { show(); void checkProductUpdates() } },
-      { label: '设置', click: () => action('settings') },
+      { label: '设置', click: requestSettings },
       { type: 'separator' },
       { label: '退出 ' + settings.productName, click: () => app.quit() },
       ]))
     }
     refreshTray()
+    attachTrayActivation(tray, show)
     tray.on('balloon-click', () => notificationAdapter?.balloonClick())
     tray.on('balloon-closed', () => notificationAdapter?.balloonClosed())
-    tray.on('double-click', show)
   } catch (error) {
     tray?.destroy(); tray = undefined
     if (isQuitting()) throw error

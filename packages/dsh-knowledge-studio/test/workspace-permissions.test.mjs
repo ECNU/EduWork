@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -12,6 +12,8 @@ import { installImageTools } from '../packages/artifact-services/lib/image-tools
 import { SpeechService } from '../packages/artifact-services/lib/speech.js'
 import { TranscriptionService } from '../packages/artifact-services/lib/transcription.js'
 import { ImageService } from '../packages/artifact-services/lib/images.js'
+import { executeGovernedTool } from '../packages/artifact-services/lib/tool-execution.js'
+import { exportWithOfficeTools } from '../lib/office-tools.js'
 
 // Default to the package lock; the same tests also run against a pinned product
 // Runtime via EDUWORK_TEST_RUNTIME, without replacing the package's dependencies.
@@ -48,7 +50,7 @@ async function harness(t, { mode = 'workspace-write', outcome = 'rejected', poli
   })
   const agent = { session }
   let call = 0
-  const execute = (name, args, extra = {}) => ctx.tools.execute({
+  const execute = (name, args, extra = {}) => executeGovernedTool(ctx, {
     agent, signal: new AbortController().signal, callId: 'permissions-' + (++call),
     name, arguments: args, ...extra,
   })
@@ -57,6 +59,23 @@ async function harness(t, { mode = 'workspace-write', outcome = 'rejected', poli
 
 const create = output_path => ({
   action: 'create', output_path, spec: { blocks: [{ type: 'paragraph', text: 'Permission regression' }] },
+})
+
+test('Studio exports actual Office files through the governed nested-call path', async t => {
+  const h = await harness(t)
+  const execution = { agent: h.agent, callId: 'studio-root', token: Symbol('studio-call') }
+  for (const [kind, format, content] of [
+    ['report', 'docx', { sections: [{ heading: 'Synthetic', body: 'Office export regression' }] }],
+    ['table', 'xlsx', { columns: ['Value'], rows: [{ cells: ['literal =1+1'] }] }],
+    ['slides', 'pptx', { slides: [{ heading: 'Synthetic', bullets: ['Office export regression'] }] }],
+  ]) {
+    const artifact = { id: kind, kind, title: 'Compatibility fixture', content, citations: [] }
+    const result = await exportWithOfficeTools(h.ctx, artifact, join(h.directory, 'exports'), format,
+      { execution, signal: new AbortController().signal })
+    assert.equal(result.provider, 'office-tools')
+    assert.ok((await readFile(result.path)).length > 100)
+  }
+  assert.equal(h.approvals(), 0)
 })
 
 test('Office creates, edits and reads actual workspace files without repeated approval', async t => {

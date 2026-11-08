@@ -21,8 +21,8 @@ import OidcAccountService from '../src/host/index.js'
 const require = createRequire(import.meta.url)
 const root = new URL('../', import.meta.url)
 const manifest = JSON.parse(await readFile(new URL('package.json', root), 'utf8'))
-const supportedDshVersions = new Set(['0.2.1-rc.2'])
-const expectedDshPeerRange = '>=0.2.1-rc.2 <0.3.0-0'
+const supportedDshVersions = new Set(['0.2.1-rc.2', '0.2.2-rc.1'])
+const expectedDshPeerRange = '>=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1'
 
 for (const [name, version] of Object.entries(manifest.peerDependencies)) {
   if (name.startsWith('@deepseek-ai/dsh-')) {
@@ -51,7 +51,7 @@ assert.equal(installedDshVersion, process.env.DSH_OIDC_EXPECT_DSH ?? manifest.de
   'the active Runtime differs from the selected development/CI baseline')
 
 assert.equal(typeof SettingsForms.prototype.configure, 'function', 'settings.configure is unavailable')
-for (const version of ['0.2.1-rc.2','0.2.1','0.2.2']) assert.ok(satisfies(version, expectedDshPeerRange))
+for (const version of ['0.2.1-rc.2','0.2.1','0.2.2-rc.1','0.2.2']) assert.ok(satisfies(version, expectedDshPeerRange))
 for (const version of ['0.1.5-rc.1','0.2.0','0.3.0-rc.1','0.3.0']) assert.ok(!satisfies(version, expectedDshPeerRange))
 assert.equal(typeof LlmRuntime.prototype.registerAdapter, 'function', 'llm.registerAdapter is unavailable')
 assert.equal(typeof LlmRuntime.prototype.registerConfigurableProviders, 'function', 'llm.registerConfigurableProviders is unavailable')

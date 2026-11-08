@@ -1,6 +1,7 @@
 package updatecontrol
 
 import (
+	"bytes"
 	"encoding/json"
 	"os"
 	"path/filepath"
@@ -252,5 +253,89 @@ func TestSnapshotShowsDeltaVerificationAsADownloadStage(t *testing.T) {
 	manager.download = updater.DownloadStatus{State: "downloading", TotalBytes: 10}
 	if snapshot := manager.snapshotLocked(); snapshot.DownloadStage != "" || snapshot.TotalFiles != 0 {
 		t.Fatalf("fallback still shows verification: %#v", snapshot)
+	}
+}
+
+func TestCheckFailureRecordsCheckOperationAndPolicyClearsIt(t *testing.T) {
+	root := t.TempDir()
+	path := filepath.Join(root, "update.json")
+	payload := `{"schemaVersion":1,"manifestBaseURL":"http://updates.example.test/releases","defaultPolicy":"stable","target":"windows-amd64","flavor":"offline"}`
+	if err := os.WriteFile(path, []byte(payload), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := New(Config{Version: "0.4.0", EditionPath: path, StateDir: root})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := manager.Check(t.Context()); err == nil {
+		t.Fatal("expected the non-HTTPS manifest base to fail")
+	}
+	snapshot := manager.Status()
+	if snapshot.State != "error" || snapshot.FailedOperation != "check" || snapshot.Error == "" {
+		t.Fatalf("check failure = %#v", snapshot)
+	}
+	encoded, err := json.Marshal(snapshot)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var fields map[string]any
+	if err := json.Unmarshal(encoded, &fields); err != nil || fields["failedOperation"] != "check" {
+		t.Fatalf("snapshot JSON = %s, %v", encoded, err)
+	}
+	if _, err := manager.SetPolicy("development"); err != nil {
+		t.Fatal(err)
+	}
+	cleared := manager.Status()
+	if cleared.State != "idle" || cleared.FailedOperation != "" {
+		t.Fatalf("policy change did not clear the failure: %#v", cleared)
+	}
+	clearedJSON, err := json.Marshal(cleared)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if bytes.Contains(clearedJSON, []byte("failedOperation")) {
+		t.Fatalf("cleared snapshot retains failedOperation: %s", clearedJSON)
+	}
+}
+
+func TestDownloadFailureRecordsDownloadOperation(t *testing.T) {
+	root := t.TempDir()
+	manager, err := New(Config{Version: "0.4.0", EditionPath: writeEdition(t, root, "stable"),
+		StateDir: filepath.Join(root, "state"), InstallDir: root, ExecutableName: "EduWork.exe"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	manager.mu.Lock()
+	manager.state = "available"
+	manager.status = updater.Status{LatestVersion: "0.4.1", Artifact: updater.Artifact{
+		FileName: "update.zip", Bytes: 1,
+		SHA256: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+	}}
+	manager.mu.Unlock()
+	if _, err := manager.Download(t.Context()); err == nil {
+		t.Fatal("expected the missing sidecar URL to fail")
+	}
+	snapshot := manager.Status()
+	if snapshot.State != "error" || snapshot.FailedOperation != "download" || snapshot.Error == "" {
+		t.Fatalf("download failure = %#v", snapshot)
+	}
+}
+
+func TestPendingApplyFailureRecordsInstallOperation(t *testing.T) {
+	root := t.TempDir()
+	pending := updater.PendingUpdate{SchemaVersion: 1, Version: "0.4.1", Channel: "stable", State: "error",
+		Error: "apply failed", ZIPPath: filepath.Join(root, "updates", "downloads", "release.zip"),
+		InstallDir: root, ExecutableName: "EduWork.exe"}
+	if err := updater.SavePending(root, pending); err != nil {
+		t.Fatal(err)
+	}
+	manager, err := New(Config{Version: "0.4.0", EditionPath: writeEdition(t, root, "stable"),
+		StateDir: root, InstallDir: root, ExecutableName: "EduWork.exe"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	snapshot := manager.Status()
+	if snapshot.State != "error" || snapshot.FailedOperation != "install" || snapshot.Error != "apply failed" {
+		t.Fatalf("pending install failure = %#v", snapshot)
 	}
 }

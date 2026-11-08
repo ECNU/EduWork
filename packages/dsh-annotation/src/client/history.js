@@ -1,7 +1,7 @@
-import React, { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { useAnchoredPosition, useDismissOnOutsidePointer } from '@deepseek-ai/dsh-client-ui-primitives'
 import { createPortal } from 'react-dom'
 import { projectAnnotations } from '../protocol.js'
-import { place } from './position.js'
 
 const h = React.createElement
 const secondary = 'var(--dsw-alias-label-secondary, #8b776d)'
@@ -10,44 +10,33 @@ const primary = 'var(--dsw-alias-label-primary, #382d28)'
 
 function Detail({ item, number, anchor, t, onClose, onEnter, onLeave }) {
   const ref = useRef(null)
-  const [position, setPosition] = useState({ left: 8, top: 8 })
-  useLayoutEffect(() => {
-    const update = () => {
-      const rect = anchor.getBoundingClientRect(), panel = ref.current.getBoundingClientRect()
-      const next = place(rect.right, rect.bottom, panel.width, panel.height, window.innerWidth, window.innerHeight, rect.top)
-      if (rect.top - panel.height - 8 >= 8) next.top = rect.top - panel.height - 8
-      setPosition(next)
-    }
-    update()
-    const observer = new ResizeObserver(update)
-    observer.observe(ref.current)
+  const anchorRef = useMemo(() => ({ current: anchor }), [anchor])
+  // Let the host own scroll/resize tracking, viewport constraints and outside
+  // pointer dismissal. Only annotation-specific content and lifetime remain.
+  const position = useAnchoredPosition({ open: true, anchorRef, panelRef: ref,
+    side: 'top', align: 'end', gap: 8, margin: 8 })
+  useDismissOnOutsidePointer(anchorRef, true, onClose, ref)
+  useEffect(() => {
     const visibility = new IntersectionObserver(entries => { if (!entries[0]?.isIntersecting) onClose() })
     visibility.observe(anchor)
     const outside = event => { if (!ref.current?.contains(event.target) && !anchor.contains(event.target)) onClose() }
     const key = event => { if (event.key === 'Escape') { event.preventDefault(); onClose() } }
-    const scroll = event => { if (!ref.current?.contains(event.target)) update() }
-    document.addEventListener('pointerdown', outside, true)
     document.addEventListener('focusin', outside, true)
     document.addEventListener('keydown', key)
-    document.addEventListener('scroll', scroll, true)
-    window.addEventListener('resize', update)
     window.addEventListener('blur', onClose)
     return () => {
-      observer.disconnect()
       visibility.disconnect()
-      document.removeEventListener('pointerdown', outside, true)
       document.removeEventListener('focusin', outside, true)
       document.removeEventListener('keydown', key)
-      document.removeEventListener('scroll', scroll, true)
-      window.removeEventListener('resize', update)
       window.removeEventListener('blur', onClose)
     }
   }, [anchor, onClose])
   return createPortal(h('div', {
     ref, role: 'dialog', 'aria-label': `${t('number')} ${number}`, 'data-eduwork-annotation-ui': '',
     onMouseEnter: onEnter, onMouseLeave: onLeave,
-    style: { position: 'fixed', zIndex: 1000, ...position, width: 520, maxWidth: 'calc(100vw - 24px)',
-      maxHeight: 'min(420px, calc(100vh - 24px))', overflowY: 'auto', boxSizing: 'border-box',
+    style: { position: 'fixed', zIndex: 1000, ...position, visibility: position === null ? 'hidden' : undefined,
+      width: 520, maxWidth: 'min(calc(100vw - 24px), var(--dsh-anchored-max-width, 100vw))',
+      maxHeight: 'min(420px, calc(100vh - 24px), var(--dsh-anchored-max-height, 100vh))', overflowY: 'auto', boxSizing: 'border-box',
       background: 'var(--dsw-alias-bg-layer-3, #fffdfb)', color: primary,
       border: `1px solid ${border}`, borderRadius: 16, padding: '16px 20px', boxShadow: '0 5px 20px rgba(50,30,20,.10)', fontSize: 14 },
   }, h('div', { style: { display: 'flex', gap: 16 } },

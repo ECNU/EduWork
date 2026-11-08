@@ -20,6 +20,13 @@ test('settings adapter checks the pinned version and bytes, records output and l
   await writeFile(join(copy, 'package.json'), await readFile(join(originalRoot, 'package.json')))
   const target = join(copy, settingsNavigationPatch.file)
   await writeFile(target, original)
+  const version = JSON.parse(await readFile(join(copy, 'package.json'), 'utf8')).version
+  if (version === '0.2.2-rc.1') {
+    // rc.1 uses settings.section.icon; the retired adapter must not touch it.
+    await assert.rejects(patchSettingsNavigationRuntime(modules), /newly qualified/)
+    assert.deepEqual(await readFile(target), original)
+    return
+  }
   const receipt = await patchSettingsNavigationRuntime(modules)
   const patched = await readFile(target)
   assert.equal(receipt.afterSHA256, createHash('sha256').update(patched).digest('hex'))

@@ -1,7 +1,8 @@
-// The rc.2 desktop primitives own native behavior. Product hooks retain edition
+// The pinned upstream desktop primitives own native behavior. Product hooks retain edition
 // configuration, portable directories, secure credentials, updates and attention.
-import { app, dialog, protocol, powerMonitor } from 'electron'
+import { app, dialog, protocol, powerMonitor, shell } from 'electron'
 import { fileURLToPath } from 'node:url'
+import { access } from 'node:fs/promises'
 import { DesktopBackendController } from './backend-controller.ts'
 import { DesktopFatalRecovery } from './fatal-recovery.ts'
 import { DesktopQuitConfirmation } from './quit-confirmation.ts'
@@ -13,12 +14,14 @@ import { resolveDesktopLocale } from './locale.ts'
 import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
+import { createSidebarBrowser } from './sidebar-browser.mjs'
 import { redactDiagnostic } from './diagnostics.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
+  showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -31,14 +34,16 @@ let startupTask, startupFailure, startupFailureShown = false, initialPresentatio
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
 const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
+const sidebarBrowser = createSidebarBrowser({ getWindow: () => mainWindow })
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
   if (state.phase === 'error' && started && !isQuitting()) reportFatal(state.failure, 'host')
 })
-function closeBackend() {
+async function closeBackend() {
   // Cancel shell preparation before the controller waits for startup to settle.
   loginShellRead.abort()
-  return backend.close()
+  // A drag cleanup failure must not leave the Host running during quit/restart.
+  await Promise.all([bridge?.disposeFileDrags(), backend.close()])
 }
 trackHost({ stop: closeBackend })
 const quit = new DesktopQuitConfirmation({ locale, inspect: () => backend.host?.inspectQuit(),
@@ -54,6 +59,7 @@ const recovery = new DesktopFatalRecovery({
   disablePlugins: async () => { throw new Error('Required distribution plugins cannot be disabled') },
   exit: () => { recoveryExit = true; app.quit() },
   restart: () => { recoveryExit = true; restartDesktop() },
+  revealReport: async path => { await access(path); shell.showItemInFolder(path) },
   writeReport: (error, source) => writeCrashReport(app.getPath('logs'), {
     source, phase: started ? 'running' : 'startup', error, rendererConsole: [], time: new Date(),
     app: { name: app.getName(), version: app.getVersion(), platform: process.platform, arch: process.arch,
@@ -78,6 +84,8 @@ function startBackend() {
     hostEnvironment = Object.fromEntries(Object.entries(inherited.environment).filter(([name]) => !editionVariable(name)))
     // Edition bootstrap and resource paths remain owned by the launcher.
     for (const [name, value] of Object.entries(process.env)) if (editionVariable(name)) hostEnvironment[name] = value
+    // Only the Host's own browser provider reads this; its children never inherit it.
+    Object.assign(hostEnvironment, await sidebarBrowser.listen())
   })
 }
 // Early boot/locale requests must enter product recovery before the renderer reports failure.
@@ -103,6 +111,8 @@ async function handleStartupFailure(error) {
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  // The early BootPage must obey the local close policy before preparation reads it.
+  readInitialCloseAction()
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({
     getHost: () => backend.host,
@@ -113,8 +123,10 @@ async function main() {
     // the dedicated startup recovery already presents it once.
     onBootFailure: error => { if (startupFailure) { void handleStartupFailure(startupFailure); return } reportFatal(error, 'web-boot') },
     checkUpdates: checkProductUpdates,
+    updates: productUpdateObserver,
     pickDirectory: pickDesktopDirectory,
     bootBrand: desktopBootBrand,
+    sidebarBrowser,
   })
   const webRoot = desktopWebRoot()
   protocol.handle(SCHEME, request => {
@@ -148,10 +160,12 @@ async function main() {
   })
   entered = true
 
-  // Match upstream: load the document, start the Host, then present the window.
+  // The final workspace presentation still happens after Host ready, as upstream.
+  // The BootPage shown before startOnce() is EduWork's temporary local adapter.
   const presentInitialWindow = () => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
+      appHidden: process.platform === 'darwin' && app.isHidden(),
       startupFailure: Boolean(startupFailure),
       quitting: isQuitting(),
       recoveryActive: recovery.active,
@@ -167,6 +181,12 @@ async function main() {
     if (startupFailure || isQuitting()) return
     throw error
   }
+  // A renderer failure can enter recovery before loadURL resolves while
+  // startupFailure is still unset. Do not show or start a Host then.
+  if (startupFailure || recovery.active || isQuitting() || window.isDestroyed()) return
+  // EduWork temporarily presents the BootPage while the Host starts. Remove
+  // this adapter once DSH provides an official early-presentation hook.
+  showHostStartupProgress()
   const ready = await startOnce().then(() => true, () => false)
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.
@@ -185,7 +205,7 @@ async function main() {
   }
   if (process.env.DSH_DESKTOP_OPEN_DEVTOOLS === '1' && !window.isDestroyed()) window.webContents.openDevTools({ mode: 'detach' })
 }
-app.on('will-quit', () => { quit.dispose(); bridge?.dispose() })
+app.on('will-quit', () => { quit.dispose(); bridge?.dispose(); sidebarBrowser.close() })
 void app.whenReady().then(main).catch(async error => {
   if (isQuitting() || recovery.active) return
   if (entered) { reportFatal(error, 'main'); return }

@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-decision",
+  "version": "0.1.1",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "9156365b9b87e71ba75bf18d653ba156455dddce",
+  "publicationStatus": "published",
+  "tarballSHA256": "ad8fb47f6e71ddb1a78b25115dc32f7723e150923eaf53905ff64665f2e8bf40",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-decision/-/dsh-decision-0.1.1.tgz",
+    "integrity": "sha512-5yJYrRdanLJg8CH6OXMPAZwy3AWP7xy3jK3sFjQEeT5mlg7J7+zoVLhnq+FgOJxrBXVT6S0HHS0Fq08EzPZEaA==",
+    "shasum": "520cd34fe4db0f73d530e8b56d616d2bedfaba12"
+  }
+}

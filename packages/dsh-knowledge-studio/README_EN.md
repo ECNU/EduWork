@@ -55,7 +55,7 @@ Local search does not need embeddings or reranking services. Generation sends re
 
 [Architecture and extension APIs](docs/ARCHITECTURE.md) · [Development](docs/DEVELOPMENT.md) · [Migration](docs/MIGRATION.md) · [Changelog](CHANGELOG.md) · [Releasing](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/docs/RELEASING.md)
 
-Our code uses [MIT](LICENSE). Remotion, Chromium, PDF.js and other dependencies retain their own terms. See [third-party notices](THIRD_PARTY_NOTICES.md) and [BGM provenance](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/packages/artifact-services/media/BGM-USAGE.md).
+New original contributions use [Mulan PSL v2](LICENSE), with historical MIT grants preserved; see [LICENSING.md](LICENSING.md). Remotion, Chromium, PDF.js and other dependencies retain their own terms. See [third-party notices](THIRD_PARTY_NOTICES.md) and [BGM provenance](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/packages/artifact-services/media/BGM-USAGE.md).
 
 Platform support depends on provisioned speech, Office and media runtimes. See [platform requirements](https://github.com/ecnu/EduWork/blob/main/packages/dsh-knowledge-studio/packages/artifact-services/docs/PLATFORMS.md) for speech and native media dependencies.
 

@@ -8,7 +8,7 @@
 
 <div align="center">
 
-[![License: MIT](https://img.shields.io/badge/license-MIT-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
+[![License: MulanPSL-2.0](https://img.shields.io/badge/license-MulanPSL--2.0-3DA66B?style=flat-square)](LICENSE) [![DSH: 0.2.1-rc.3](https://img.shields.io/badge/DSH-0.2.1--rc.3-4169e1?style=flat-square)](https://github.com/deepseek-ai/deepseek-harness/releases/tag/dsh-v0.2.1-rc.3) [![Platform: Windows x64 / macOS arm64 / x64](https://img.shields.io/badge/platform-Windows%20x64%20%7C%20macOS%20arm64%20%2F%20x64-9f2636?style=flat-square)](#installation-and-use)
 
 [简体中文](README.md) | **English**
 
@@ -36,11 +36,14 @@ These plugins come with the public desktop edition. Follow each link for usage, 
 | [Identity & model access](packages/dsh-oidc/README_EN.md) | Sign in to a compatible gateway through your browser, discover models and renew tokens. Supports LiteLLM OAuth and experimental oidc-llm integration. |
 | [Knowledge Studio](packages/dsh-knowledge-studio/README_EN.md) | Turn materials into reports, presentations, mind maps, quizzes and flashcards, with companion artifact services for Office previews and media creation shared with conversations. |
 | [Response annotations](packages/dsh-annotation/README_EN.md) | Comment on selected passages, keep numbered references and send multiple annotations together using DSH’s composer and drafts. |
+| [Side chat](packages/dsh-side-chat/README_EN.md) | Ask follow-up questions from a message or selection with a snapshot of the source history. Side chats run separately, archive on close and optionally integrate with annotations. |
+| [Decision tools](packages/dsh-decision/README_EN.md) | Classify, estimate condition probabilities and score against rubrics through a SystemOne service, with a companion skill. Configure the endpoint, model and authentication before enabling it. |
 | [Literature search](packages/dsh-literature/README_EN.md) | Search DBLP and arXiv, retrieve BibTeX and available full text, and bring research sources into your next task. |
 | [Local memory](packages/dsh-memory/README_EN.md) | Manage local memory and search past conversations so new tasks can pick up existing context. Memories are managed on your machine. |
 | [Mail assistant](packages/dsh-mail/README_EN.md) | Connect your mailbox, read mail over IMAP and send through SMTP with authorization, bringing communication into your workflow. |
 | [Desktop pet](packages/dsh-desktop-pet/README_EN.md) | Show task and notification status through a choice of companions. Enable it in settings; this npm plugin requires the EduWork desktop bridge. |
-| [Remote access](packages/dsh-remote-access/README_EN.md) | Pair another device to continue local sessions and handle approvals in its browser. Deploy a relay and configure its address and access key before enabling connections. |
+| [External agents](packages/dsh-external-agents/README_EN.md) | Connect local Codex, Cursor or other ACP agents and delegate tasks from a conversation. Disabled by default; enable it and configure connections from the Plugins page. |
+| [Remote access](packages/dsh-remote-access/README_EN.md) | Pair another device to continue local sessions and handle approvals in its browser. Configure your own relay or a distribution-provided organization connection in settings, test it and enable access. |
 <!-- END GENERATED PLUGINS -->
 
 Plugins are also maintained as independent npm packages for compatible DSH applications. Configure external models, mailboxes and media services as needed; the public edition does not include model credits or private credentials.
@@ -114,7 +117,7 @@ Conversations, workspace references and memories are managed locally. Remote mod
 
 ## License
 
-EduWork code is [MIT licensed](LICENSE) and built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Knowledge Studio’s source-based creation and learning interactions are inspired by NotebookLM. Third-party components retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
+EduWork original contributions use [Mulan PSL v2](LICENSE); historical MIT code and exceptions are described in the [licensing scope](LICENSING.md). EduWork is built on [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness). Knowledge Studio’s source-based creation and learning interactions are inspired by NotebookLM. Third-party components retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).
 
 ## Star History
 

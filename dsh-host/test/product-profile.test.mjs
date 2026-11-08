@@ -37,6 +37,23 @@ for (const literature of ['@shlv/dsh-literature', '@eduwork/dsh-literature']) te
   await assert.rejects(prepareProductProfile({ product, home, shell: 'electron', userConfig }), /不属于此发行版/)
 })
 
+test('installed decision bundle accepts configuration, preserves its switch, and rejects absent bundles', async t => {
+  const { root, product, home } = await fixture(t)
+  const identity = JSON.parse(await readFile(join(product, 'assembly.json')))
+  identity.bundles.push('@eduwork/dsh-decision')
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
+  const userConfig = join(root, 'eduwork.jsonc')
+  const decision = { enabled: false, baseURL: 'https://models.example.test/v1', model: 'decision-test', authMode: 'oidc', oidcProfileId: 'example' }
+  await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, plugins: { decision } }))
+  const prepared = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
+  const rows = JSON.parse(await readFile(join(prepared.profile, 'cordis.patch.yml')))
+  assert.deepEqual(rows.filter(row => row.id === 'decision'), [{ id: 'decision', config: decision }])
+  assert.equal(JSON.parse(await readFile(userConfig)).plugins.decision.enabled, false)
+  identity.bundles = identity.bundles.filter(name => name !== '@eduwork/dsh-decision')
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
+  await assert.rejects(prepareProductProfile({ product, home, shell: 'electron', userConfig }), /plugins\.decision 不属于此发行版/)
+})
+
 test('rc.1 reads independent request and subagent defaults below saved UI choices', async t => {
   const { root, product, home } = await fixture(t)
   await writeFile(join(product, 'assembly.json'), JSON.stringify({ distribution: 'eduwork', dshVersion: '0.1.7-rc.2', dshCommit: '477b4f420553e8a52c2fbccc464d7561b239c443', bundles: ['@deepseek-ai/dsh-base'] }))

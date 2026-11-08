@@ -1,7 +1,7 @@
 {
   "name": "@chatecnu-work/dsh-client-ui-branding",
   "version": "0.1.0-dev",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "description": "Configurable EduWork identity, brand slots and visual-style preferences for DSH",
   "type": "module",
   "main": "lib/index.js",
@@ -18,6 +18,7 @@
   "dsh": {
     "client": {
       "inject": [
+        "@deepseek-ai/dsh-client-ui-primitives",
         "@deepseek-ai/dsh-client-ui-renderer",
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-ui-conversation",
@@ -38,7 +39,7 @@
       "sidebar.brand.name",
       "conversation.hero.brand.mark",
       "settings.general.item",
-      "settingsScope"
+      "configForms"
     ],
     "replaces": [],
     "removable": true

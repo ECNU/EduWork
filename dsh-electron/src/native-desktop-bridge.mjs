@@ -4,14 +4,18 @@ import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopStartupLocale } from './locale.ts'
+import { installFileActions } from './file-actions.ts'
+import { installDesktopFileDrag } from './file-drag.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
+import { SIDEBAR_BROWSER_IPC } from './sidebar-browser.mjs'
+import { watchUpdateDocument } from './update-observer.mjs'
 
 export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
 export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
 
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
-export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, pickDirectory, bootBrand }) {
+export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, updates, pickDirectory, bootBrand, sidebarBrowser }) {
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -22,6 +26,12 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     return window
   }
   const guests = new DesktopBrowserGuests(() => getHost()?.origin)
+  installFileActions(owner, () => getHost()?.origin)
+  const disposeFileDrags = installDesktopFileDrag(owner, (address, signal) => {
+    const host = getHost()
+    if (!host) return Promise.reject(new Error('File drag Host unavailable'))
+    return host.resolveDragResource(address, signal)
+  })
   // Boot and locale requests start before the Host exists now. They join the
   // one startup attempt, then revalidate that the waiting frame still owns it.
   const currentHost = async event => {
@@ -36,6 +46,30 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   // it on the USER_GUIDE_EVENT window event. The item appears only once the Host
   // has confirmed the route, so editions without a guide show no dead entry.
   let userGuide = false
+  // Both official sidebar locations share one presentation source. The bridge
+  // only observes status; installation still goes through checkUpdates().
+  let updateBinding
+  const releaseUpdates = () => {
+    updateBinding?.release()
+    updateBinding = undefined
+  }
+  const ensureUpdateBinding = window => {
+    if (!updates) return undefined
+    if (updateBinding?.window !== window) {
+      updateBinding?.dispose()
+      updateBinding = watchUpdateDocument({ window, updates, getWindow,
+        send: presentation => window.webContents.send(DESKTOP_IPC.updatesPresentation, presentation) })
+    }
+    return updateBinding
+  }
+  const bindUpdates = window => {
+    const binding = ensureUpdateBinding(window)
+    if (!binding) return
+    // The official source asks once per document. Rebind so a missed
+    // navigation event cannot inherit the previous document's delivery state.
+    binding.release()
+    binding.bind()
+  }
   const chinese = () => /[\u4e00-\u9fff]/u.test(locale.messages.quit ?? '')
   const openUserGuide = () => {
     const window = getWindow()
@@ -90,6 +124,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   ipcMain.handle(DESKTOP_IPC.browserAcquire, (event, workspace) => { owner(event); return guests.acquire(event.sender, workspace) })
   ipcMain.handle(DESKTOP_IPC.browserRelease, (event, lease) => { owner(event); return guests.release(event.sender, lease) })
+  ipcMain.on(SIDEBAR_BROWSER_IPC.bind, (event, guestId, sessionId, tabId) => {
+    try { void sidebarBrowser.bind(owner(event), guestId, sessionId, tabId).catch(() => {}) } catch { /* Not the application page. */ }
+  })
+  ipcMain.on(SIDEBAR_BROWSER_IPC.opened, (event, request, result) => {
+    try { owner(event) } catch { return }
+    sidebarBrowser.opened(request, result)
+  })
   session.defaultSession.webRequest.onBeforeSendHeaders({ urls: ['ws://127.0.0.1/*'] }, (details, callback) => {
     callback(getHost()?.socketHeaders(details, getWindow()?.webContents.id) ?? {})
   })
@@ -112,7 +153,13 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   // The product's update settings remain authoritative. This upstream header
   // action opens that existing updater; it does not start a second installer.
-  ipcMain.handle(DESKTOP_IPC.updatesStatus, event => { owner(event); return { phase: 'idle' } })
+  ipcMain.handle(DESKTOP_IPC.updatesStatus, event => {
+    const window = owner(event)
+    if (!updates) return { phase: 'idle' }
+    bindUpdates(window)
+    // A reloaded renderer asks once; do not hand it a stale pre-reload snapshot.
+    return updates.presentation(true)
+  })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, event => { owner(event); return checkUpdates() })
   if (process.platform === 'win32') {
     ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language, color, symbolColor) => {
@@ -154,7 +201,27 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       if (available !== userGuide) { userGuide = available; refreshMenu() }
       return available
     },
-    attach(window) { guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease)); shortcuts.attach(window) },
-    dispose() { shortcuts.dispose() },
+    attach(window) {
+      guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease))
+      // After bind, which replaces a guest's preferences: Sidebar pages paint
+      // the browser's own background, as in Chrome, rather than letting the
+      // application show through, so the Agent's screenshots show what the user sees.
+      window.webContents.on('will-attach-webview', (_event, preferences) => { preferences.transparent = false })
+      // The Sidebar ignores a load another navigation replaced (net::ERR_ABORTED),
+      // but the error's code does not reach the renderer, and Electron also fails
+      // a load with that abort of the page it replaced. Either way the Sidebar
+      // would report a page failed that the user or the Agent navigated away from.
+      window.webContents.on('did-attach-webview', (_event, guest) => {
+        const loadURL = guest.loadURL.bind(guest)
+        guest.loadURL = (...args) => loadURL(...args).catch(error => { if (error.errno !== -3) throw error })
+      })
+      shortcuts.attach(window)
+      // Watch this document now; the first status request binds a fresh
+      // presentation subscription. A reload releases it for the next document.
+      ensureUpdateBinding(window)
+      window.once('closed', releaseUpdates)
+    },
+    disposeFileDrags,
+    dispose() { updateBinding?.dispose(); updateBinding = undefined; shortcuts.dispose(); updates?.dispose() },
   }
 }

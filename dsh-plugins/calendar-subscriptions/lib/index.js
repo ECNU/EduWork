@@ -337,7 +337,7 @@ export default class CalendarSubscriptions extends Service {
             handle.setActive(false)
             return { skipped: true, reason: '账号已退出或切换，本次结果未写入' }
           }
-          requester = (url, init) => this.ctx.oidcAccounts.authorizedFetch(feed.authorization.profileID, url, init, { serviceURL: feed.url })
+          requester = (url, init) => this.ctx.get('oidcAccounts').authorizedFetch(feed.authorization.profileID, url, init, { serviceURL: feed.url })
         }
         const response = await requester(feed.url, {
           signal: controller.signal,

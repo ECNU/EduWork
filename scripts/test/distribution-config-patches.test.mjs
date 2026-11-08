@@ -196,6 +196,11 @@ test('real edition preparation preserves user organizations through product prof
   const product = join(root, 'product'), edition = join(root, 'edition'), config = join(root, 'eduwork.jsonc')
   await cp(process.env.EDUWORK_TEST_PRODUCT, product, { recursive: true })
   const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+  // This private copy represents the input to edition preparation. Accept an
+  // already-qualified product fixture without re-preparing the real product.
+  delete identity.sourceAlpha
+  delete identity.sourceRelease
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
   await mkdir(join(edition, 'edition'), { recursive: true })
   await writeFile(join(edition, 'edition/distribution.json'), JSON.stringify({
     id: identity.distribution, brand: identity.brand, capabilities: identity.capabilities,
@@ -268,6 +273,9 @@ test('real source assembly retains installed bundle defaults and disabled instru
     '--host', process.env.EDUWORK_TEST_HOST, '--output', product, '--edition', edition], { stdio: 'pipe', windowsHide: true })
   const boot = await import(pathToFileURL(createRequire(join(product, 'd/package.json')).resolve('@deepseek-ai/dsh-app-boot')).href)
   const identity = JSON.parse(await readFile(join(product, 'assembly.json'), 'utf8'))
+  for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md']) {
+    assert.deepEqual(await readFile(join(product, 'resources/licenses/EduWork', name)), await readFile(join(source, name)))
+  }
   assert.ok(identity.bundles.includes('@eduwork/dsh-annotation'))
   assert.ok(!identity.bundles.includes('@eduwork/dsh-remote-access'))
   assert.ok(!identity.optionalBundles.includes('@eduwork/dsh-remote-access'))

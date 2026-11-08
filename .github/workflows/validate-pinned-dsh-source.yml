@@ -1,84 +1,31 @@
 name: Validate pinned DSH source integration
 on:
   pull_request:
-    paths:
-      - '.github/workflows/validate-pinned-dsh-source.yml'
-      - 'third_party/dsh/**'
-      - 'config/desktop-build.json'
-      - 'scripts/desktop-build-plan.mjs'
-      - 'scripts/pinned-dsh-contract.mjs'
-      - 'dsh-host/prepare-native.mjs'
-      - 'dsh-host/prepare.mjs'
-      - 'dsh-host/test/prepare.test.mjs'
-      - 'dsh-host/quit-inspection.mjs'
-      - 'dsh-host/test/quit-inspection.test.mjs'
-      - 'dsh-host/distribution-policy.mjs'
-      - 'third_party/dsh-literature/**'
-      - 'dsh-host/test/native-020.test.mjs'
-      - 'dsh-host/test/native-021.test.mjs'
-      - 'dsh-host/dsh-compatibility.mjs'
-      - 'dsh-host/upstream-inputs-pinned-source.json'
-      - 'dsh-host/native-profile.mjs'
-      - 'dsh-host/settings-migration.mjs'
-      - 'dsh-host/redacted-log.mjs'
-      - 'dsh-host/native-resources.mjs'
-      - 'dsh-host/test/native-resources*.mjs'
-      - 'dsh-host/test/native-settings.test.mjs'
-      - 'dsh-host/test/redacted-log.test.mjs'
-      - 'scripts/probe-pinned-dsh-host.mjs'
-      - 'scripts/probe-pinned-dsh-settings.mjs'
-      - 'scripts/probe-dsh-017.mjs'
-      - 'scripts/build-pinned-dsh-plugin-clients.mjs'
-      - 'scripts/native-preset-ui.mjs'
-      - 'scripts/native-file-reference-ui.mjs'
-      - 'scripts/native-web-search-ui.mjs'
-      - 'scripts/test/native-web-search-ui.test.mjs'
-      - 'scripts/assemble-pinned-dsh-source-product.mjs'
-      - 'scripts/optional-product-bundles.mjs'
-      - 'scripts/test/optional-product-bundles.test.mjs'
-      - 'scripts/published-package-inputs.mjs'
-      - 'scripts/test/published-package-inputs.test.mjs'
-      - 'scripts/prepare-pinned-dsh-product.mjs'
-      - 'scripts/distribution-config-patches.mjs'
-      - 'scripts/test/distribution-config-patches.test.mjs'
-      - 'scripts/patch-session-search-runtime.mjs'
-      - 'scripts/test/session-search-runtime.test.mjs'
-      - 'scripts/settings-navigation-icons.mjs'
-      - 'scripts/patch-settings-navigation-runtime.mjs'
-      - 'scripts/test/settings-navigation-runtime.test.mjs'
-      - 'scripts/patch-chat-user-content-runtime.mjs'
-      - 'scripts/test/chat-user-content-runtime.test.mjs'
-      - 'scripts/patch-client-module-metadata-runtime.mjs'
-      - 'scripts/test/client-module-metadata-runtime.test.mjs'
-      - 'scripts/patch-entry-customization-runtime.mjs'
-      - 'scripts/test/entry-customization-runtime.test.mjs'
-      - 'scripts/test/deepseek-catalog-runtime.test.mjs'
-      - 'scripts/patch-remotion-bundler-runtime.mjs'
-      - 'scripts/omit-runtime-packages.mjs'
-      - 'scripts/test/runtime-omissions.test.mjs'
-      - 'scripts/patch-remotion-renderer-runtime.mjs'
-      - 'scripts/test/remotion-renderer-runtime.test.mjs'
-      - 'scripts/test/plugin-locale.test.mjs'
-      - 'scripts/verify-media-template.mjs'
-      - 'scripts/test/media-template.test.mjs'
-      - 'scripts/portable-product-links.mjs'
-      - 'scripts/test/portable-product-links.test.mjs'
-      - 'scripts/probe-pinned-dsh-source-product.mjs'
-      - 'scripts/probe-pinned-dsh-deliverables.mjs'
-      - 'scripts/probe-pinned-dsh-literature.mjs'
-      - 'dsh-host/product-profile.mjs'
-      - 'dsh-electron/src/**'
-      - 'dsh-electron/scripts/**'
-      - 'dsh-electron/tests/**'
-      - 'dsh-electron/upstream-inputs-pinned-source.json'
-      - 'dsh-plugins/**'
-      - 'packages/**'
   workflow_dispatch:
   workflow_call:
 permissions:
   contents: read
+concurrency:
+  # Use a fixed prefix because github.workflow names the caller when reused.
+  group: validate-pinned-dsh-source-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  select:
+    runs-on: ubuntu-latest
+    outputs:
+      integration: ${{ steps.changes.outputs.integration }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - id: changes
+        run: node scripts/ci-changes.mjs
   legacy-directory-picker:
+    needs: select
+    if: needs.select.outputs.integration == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -102,10 +49,12 @@ jobs:
           node core/dsh-host/prepare.mjs --upstream "$DSH_HOST_SOURCE" --output "$RUNNER_TEMP/legacy-host"
           node --test core/dsh-host/test/prepare.test.mjs
   native-host:
+    needs: select
+    if: needs.select.outputs.integration == 'true'
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, macos-14]
+        os: [windows-latest, macos-26]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
@@ -133,7 +82,7 @@ jobs:
       - name: Verify migration recovery and prepare the pinned Runtime
         shell: pwsh
         run: |
-          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
+          node --test core/dsh-host/test/native-settings.test.mjs core/dsh-host/test/optional-extensions.test.mjs core/dsh-host/test/redacted-log.test.mjs core/dsh-host/test/native-resources.test.mjs
           if ($LASTEXITCODE) { throw 'Native settings migration checks failed' }
           node --test core/dsh-host/test/native-021.test.mjs core/dsh-host/test/dsh-compatibility.test.mjs core/scripts/test/npm-runtime.test.mjs
           if ($LASTEXITCODE) { throw 'Pinned Runtime and Schedule migration checks failed' }
@@ -142,8 +91,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product document identity checks failed' }
           node --test core/scripts/test/portable-product-links.test.mjs
           if ($LASTEXITCODE) { throw 'Portable source product links failed' }
-          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/desktop-web-paths.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
+          node --test core/dsh-electron/tests/directory-picker.test.mjs core/dsh-host/test/product-profile.test.mjs core/dsh-electron/tests/desktop-exit.test.mjs core/dsh-host/test/quit-inspection.test.mjs core/dsh-electron/tests/window-visibility.test.mjs core/dsh-electron/tests/desktop-web-paths.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/startup-close-policy.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/lifecycle.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop quit and update handoff checks failed' }
+          node --test core/dsh-electron/tests/legacy-migration.test.mjs
+          if ($LASTEXITCODE) { throw 'Desktop migration and update health checks failed' }
           node --test core/dsh-electron/tests/electron-locales.test.mjs
           if ($LASTEXITCODE) { throw 'Electron locale selection checks failed' }
           node core/dsh-desktop/scripts/prepare-dsh-runtime.mjs --source npm --lock "$env:DSH_SOURCE_LOCK" --output "$env:RUNNER_TEMP/native-runtime"
@@ -153,16 +104,20 @@ jobs:
           node core/scripts/probe-dsh-017.mjs --runtime "$env:RUNNER_TEMP/native-runtime" --output "$env:RUNNER_TEMP/session-migration-evidence"
           if ($LASTEXITCODE) { throw 'Historical session migration checks failed' }
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
+          node --test core/tests/plugin-peer-compatibility.test.mjs
+          if ($LASTEXITCODE) { throw 'Plugin Host peer ranges reject the selected Runtime' }
           node --test core/dsh-plugins/desktop-services/test/attention-host.test.mjs core/dsh-plugins/workbench-native/test/notifications-navigation.test.mjs
           if ($LASTEXITCODE) { throw 'Agent and plugin notification integration checks failed' }
           node --test core/tests/node-runtime-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Node security pin and official web-fetch checks failed' }
-          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs core/scripts/test/optional-product-bundles.test.mjs
+          node --test core/scripts/test/distribution-config-patches.test.mjs core/scripts/test/published-package-inputs.test.mjs core/scripts/test/optional-product-bundles.test.mjs core/scripts/test/optional-extensions.test.mjs
           if ($LASTEXITCODE) { throw 'Distribution config patch checks failed' }
           node --test core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
           if ($LASTEXITCODE) { throw 'Windows workspace permission repair checks failed' }
           node --test core/dsh-plugins/tool-browser/test/*.test.mjs
           if ($LASTEXITCODE) { throw 'Managed browser lifecycle and search configuration checks failed' }
+          node --test core/dsh-plugins/browser-upstream/test/sidebar.test.mjs
+          if ($LASTEXITCODE) { throw 'Sidebar browser launch checks failed' }
           npm --prefix core/dsh-plugins/calendar test
           if ($LASTEXITCODE) { throw 'Calendar model, storage and panel checks failed' }
           node --test core/scripts/test/session-search-runtime.test.mjs
@@ -238,6 +193,8 @@ jobs:
           $env:EDUWORK_TEST_RUNTIME = "$env:RUNNER_TEMP/native-runtime"
           node --test core/dsh-electron/tests/automation-browser.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop executable as the automation browser failed' }
+          node --test core/dsh-electron/tests/sidebar-browser.test.mjs
+          if ($LASTEXITCODE) { throw 'Agent Sidebar browser checks failed' }
       - name: Qualify the assembled desktop product without source resolution hooks
         shell: pwsh
         run: |
@@ -277,3 +234,18 @@ jobs:
             ${{ runner.temp }}/native-desktop-evidence/electron.log
             ${{ runner.temp }}/desktop-pet-evidence/desktop-pet.json
           if-no-files-found: ignore
+  result:
+    name: DSH integration result
+    if: always()
+    needs: [select, legacy-directory-picker, native-host]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.22.1'
+      - run: node scripts/ci-result.mjs
+        env:
+          SELECTION_RESULT: ${{ needs.select.result }}
+          REQUIRED: ${{ needs.select.outputs.integration }}
+          RESULTS: ${{ format('["{0}","{1}"]', needs.legacy-directory-picker.result, needs.native-host.result) }}

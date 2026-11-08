@@ -369,7 +369,7 @@ test('actual OIDC backend and loopback services renew, fail closed and isolate a
       await withStack(root, async (subs, calendar, ctx) => {
         await assert.rejects(backend.authorizedFetch(profile.id, server.url), /configured organization origin/)
         const first = await subs.addFeed({ url: server.url, profileID: profile.id })
-        assert.equal(first.refresh.state, 'ready')
+        assert.equal(first.refresh.state, 'ready', first.refresh.error)
         const original = calendar.snapshot().events[0]
         await calendar.putNote({ source: original.source, uid: original.uid, text: '账号A笔记' })
         // Force a real HTTP 401 at the resource service, then recover through

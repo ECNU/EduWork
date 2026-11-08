@@ -14,6 +14,8 @@ const receipt = JSON.parse(await readFile(join(hostRoot, 'receipt.json'), 'utf8'
 assert.equal(receipt.upstreamCommit, pinnedDshContract.commit)
 assert.equal(receipt.protocolVersion, 4)
 await mkdir(output)
+// The upstream controller now imports its protocol schemas from zod too.
+await symlink(join(runtime, 'node_modules'), join(hostRoot, 'node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
 await symlink(join(runtime, 'node_modules'), join(hostRoot, 'desktop-host/node_modules'), process.platform === 'win32' ? 'junction' : 'dir')
 const { DesktopHostProcess } = await import(pathToFileURL(join(hostRoot, 'host-process.mjs')).href)
 const { authenticateWebHost, forwardWebRequest } = await import(pathToFileURL(join(hostRoot, 'web-document.mjs')).href)

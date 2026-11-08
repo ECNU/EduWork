@@ -17,7 +17,7 @@ permissions:
   contents: read
 concurrency:
   group: website-${{ github.event.pull_request.number || 'production' }}
-  cancel-in-progress: false
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'

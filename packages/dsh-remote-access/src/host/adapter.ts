@@ -15,7 +15,7 @@ export interface Peer { dispose(): Promise<void> }
 
 /** The DSH Host services the adapter uses. */
 export interface DshServices {
-  readonly webServer: { renderIndex(html: string): string; getOrigin(): string }
+  readonly webServer: { renderIndex(html: string, peer: Peer): string; getOrigin(): string }
   readonly connection: {
     createPeer(options: { principal: { kind: 'owner' }; interactions: 'answer' }): Peer
     createSharedFetchHandler(channel: '/api'): { fetch(request: Request, peer: Peer): Promise<Response> }
@@ -31,8 +31,8 @@ export interface DshServices {
 export interface HostAdapter {
   /** An owner Peer that answers approvals and questions, for one remote connection. */
   createPeer(): Peer
-  /** The remote document and the frontend's public files: `/`, dist files, `/plugins/` bundles. */
-  page(request: Request): Promise<Response>
+  /** The document for `peer` and the frontend's public files: `/`, dist files, `/plugins/` bundles. */
+  page(request: Request, peer: Peer): Promise<Response>
   /** One `/api` request on behalf of `peer`. */
   api(request: Request, peer: Peer): Promise<Response>
   openStream(endpoint: string, payload: unknown, uplink: AsyncIterable<unknown>, peer: Peer, signal: AbortSignal): AsyncIterable<unknown>
@@ -62,9 +62,9 @@ export function createHostAdapter(dsh: DshServices, distIndex: string): HostAdap
   const api = dsh.connection.createSharedFetchHandler('/api')
   const distRoot = dirname(distIndex)
 
-  /** The document as the Host renders it for its own browser; the web client adds its transport hook. */
-  async function document(): Promise<Response> {
-    const html = dsh.webServer.renderIndex(await readFile(distIndex, 'utf8'))
+  /** Index injections include the access snapshot of this connection's Peer. */
+  async function document(peer: Peer): Promise<Response> {
+    const html = dsh.webServer.renderIndex(await readFile(distIndex, 'utf8'), peer)
     return new Response(html, { headers: { 'content-type': TYPES['.html']!, 'cache-control': 'no-store' } })
   }
 
@@ -97,11 +97,11 @@ export function createHostAdapter(dsh: DshServices, distIndex: string): HostAdap
 
   return {
     createPeer: () => dsh.connection.createPeer({ principal: { kind: 'owner' }, interactions: 'answer' }),
-    async page(request) {
+    async page(request, peer) {
       if (request.method !== 'GET' && request.method !== 'HEAD') return new Response(null, { status: 405 })
       const url = new URL(request.url)
       const pathname = decodeURIComponent(url.pathname)
-      if (pathname === '/' || pathname === '/index.html') return document()
+      if (pathname === '/' || pathname === '/index.html') return document(peer)
       if (pathname.startsWith('/plugins/')) return bundle(url, request.signal)
       return distFile(pathname)
     },

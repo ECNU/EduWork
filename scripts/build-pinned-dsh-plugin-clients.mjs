@@ -30,6 +30,11 @@ await verifyPublishedPackageInputs({ locks: publishedLocks, dependencies, runtim
 await verifyPluginNotificationConsumers(join(dependencies, 'node_modules'), publishedLocks.map(lock => lock.name))
 const productRelease = releaseIdentity(values.version ?? '0.0.0-dev.pinned.dsh', runtimeReceipt.dshVersion)
 await mkdir(repository)
+// The staged extensions inherit the repository license and historical notices.
+// Preserve them here so assembly never substitutes a different source revision.
+for (const name of ['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md']) {
+  await copyFile(join(sourceRepository, name), join(repository, name))
+}
 // Copy the maintained plugin source into a disposable qualification tree.
 // Candidate bundles never overwrite the default-version checked-in clients.
 for (const folder of ['dsh-plugins', 'config/distributions']) {
@@ -41,6 +46,9 @@ const { build } = require('esbuild')
 // Every independently published plugin goes through its own npm release workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
 const distribution = withPluginNotifications(usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8'))))
+// This page uses 0.2.1 native plugin management; do not add it to the legacy
+// distribution that is still used by the old-runtime validation lane.
+distribution.plugins.push({ root: 'core', source: 'dsh-plugins/client-ui-extensions', id: 'eduwork-ui-extensions', name: '@eduwork/dsh-client-ui-extensions' })
 distribution.packages = distribution.packages.map(name => name === '@shlv/dsh-literature' ? '@eduwork/dsh-literature' : name)
 await writeFile(distributionPath, JSON.stringify(distribution, null, 2) + '\n')
 // The legacy npm 0.1.5 assembly retains its adapter; this pinned native Runtime
@@ -79,8 +87,9 @@ async function prepareCandidateManifests(directory) {
 }
 await prepareCandidateManifests(join(repository, 'dsh-plugins'))
 const clients = []
-for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications']) {
-  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
+clients.push(['dsh-plugins/client-ui-extensions', 'src/client.js'])
+for (const folder of ['client-ui-branding', 'client-ui-component-inventory', 'activity-insights-native', 'workbench-native', 'client-ui-media-artifacts', 'calendar', 'notifications', 'browser-upstream']) {
+  clients.push([`dsh-plugins/${folder}`, ['workbench-native', 'calendar', 'notifications', 'browser-upstream'].includes(folder) ? 'src/client.ts' : folder === 'client-ui-media-artifacts' ? 'src/client/native.js' : 'src/client/index.ts'])
 }
 const localAliases = { ...sharedAliases }
 for (const folder of ['skill-manager-native', 'skill-settings-native', 'component-inventory-native', 'plugin-manager-native', 'artifact-preview-native']) {

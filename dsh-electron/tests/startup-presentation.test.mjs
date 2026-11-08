@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import { shouldPresentMainWindow } from '../src/startup-presentation.mjs'
 import { attachAppActivation, showDesktopWindows } from '../src/window-visibility.mjs'
 
-const allowed = { presented: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
+const allowed = { presented: false, appHidden: false, startupFailure: false, quitting: false, recoveryActive: false, destroyed: false, startupWindowPresent: false }
 
 test('initial presentation respects prior presentation, recovery and shutdown', () => {
   assert.equal(shouldPresentMainWindow(allowed), true)
@@ -43,28 +43,42 @@ function startupHarness() {
     restore() { this.minimized = false }
     focus() { this.focused = true }
   }
-  const app = new EventEmitter()
+  const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
-    let quitting = false, desktopFailureShown = false
+    let quitting = false, desktopFailureShown = false, flushCalls = 0
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
+    let flushPendingSettings = () => { flushCalls += 1 }
     ${source.slice(activationStart, activationEnd).replace('export ', '')}
-    ${source.slice(progressStart, messageStart)}
+    ${source.slice(progressStart, messageStart).replace('export ', '')}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
     return {
       setMain(window) { mainWindow = window; window.on('show', () => { mainWindowPresented = true }) },
       setRecovery(window) { progressWindow = window; desktopFailureShown = true },
       quit() { quitting = true },
-      showStartupProgress, desktopReady, showDesktop, activationWindows,
+      showStartupProgress, showHostStartupProgress, desktopReady, showDesktop, activationWindows,
+      flushCalls: () => flushCalls,
     }`)
   const harness = build(FakeWindow, app, { ready: async () => {} }, async () => {},
     { start() {}, owns: window => window.pet }, { action: () => Promise.resolve() }, showDesktopWindows)
   const main = new FakeWindow()
   harness.setMain(main)
   attachAppActivation({ app, windows: harness.activationWindows, platform: 'darwin' })
-  return { harness, main, FakeWindow, activate: () => app.emit('activate') }
+  return { harness, main, FakeWindow, app, activate: () => app.emit('activate') }
 }
+
+test('preparation progress does not present a window while the application is hidden', { skip: process.platform !== 'darwin' }, () => {
+  const { harness, main, app } = startupHarness()
+  app.hidden = true
+  harness.showStartupProgress('download')
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  assert.equal(main.showCalls, 0)
+  app.hidden = false
+  harness.showDesktop()
+  assert.equal(main.visible, true)
+  assert.equal(main.focused, true)
+})
 
 test('preparation uses the main BootPage and clears its status without presenting it again', async () => {
   const { harness, main, FakeWindow } = startupHarness()
@@ -80,6 +94,65 @@ test('preparation uses the main BootPage and clears its status without presentin
   assert.equal(main.messages.at(-1)[1].message, '')
   assert.equal(main.visible, false)
   assert.equal(main.showCalls, 1)
+  assert.equal(harness.flushCalls(), 1)
+})
+
+test('Host startup presents the existing BootPage with a generic hint', () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  assert.equal(main.visible, true)
+  assert.equal(main.showCalls, 1)
+  assert.equal(main.messages.at(-1)[1].message, '正在启动本地服务…')
+})
+
+test('a repeated launch restores the BootPage while the Host starts', () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  assert.ok(harness.activationWindows().includes(main))
+})
+
+test('a stage hint set while the BootPage loads outranks the later Host hint', () => {
+  const { harness, main } = startupHarness()
+  main.loading = true
+  harness.showStartupProgress('download')
+  harness.showHostStartupProgress()
+  main.webContents.emit('did-finish-load')
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  assert.equal(main.showCalls, 1)
+})
+
+test('the generic Host hint never overwrites or resurfaces stage-specific progress', async () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  harness.showStartupProgress('download')
+  harness.showHostStartupProgress()
+  assert.equal(main.messages.at(-1)[1].message, 'download')
+  harness.showStartupProgress('migration')
+  harness.showHostStartupProgress()
+  assert.equal(main.messages.at(-1)[1].message, 'migration')
+  assert.equal(main.showCalls, 1)
+  await harness.desktopReady()
+  assert.equal(main.messages.at(-1)[1].message, '')
+})
+
+test('Host readiness does not resurface a window hidden after the BootPage appeared', async () => {
+  const { harness, main } = startupHarness()
+  harness.showHostStartupProgress()
+  main.hide()
+  await harness.desktopReady()
+  assert.equal(main.visible, false)
+  assert.equal(main.showCalls, 1)
+})
+
+test('the generic Host hint presents after the native entry loaded the BootPage', () => {
+  const { harness, main } = startupHarness()
+  // A following main-frame navigation can keep isLoadingMainFrame() true after
+  // loadURL resolves; the Host hint must not wait for another finish event.
+  main.loading = true
+  harness.showHostStartupProgress()
+  assert.equal(main.visible, true)
+  assert.equal(main.showCalls, 1)
+  assert.equal(main.messages.at(-1)[1].message, '正在启动本地服务…')
 })
 
 test('a late preparation message preserves a main window the user already hid', () => {

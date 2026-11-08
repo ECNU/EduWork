@@ -2,7 +2,7 @@
 
 [简体中文](THIRD_PARTY_NOTICES.md) | **English**
 
-`dsh-mail-assistant` is distributed under the MIT License. Its build uses or embeds:
+`dsh-mail-assistant` uses Mulan PSL v2 for new original contributions and preserves historical MIT grants; see [LICENSING.md](LICENSING.md). Its build uses or embeds:
 
 - [ImapFlow](https://github.com/postalsys/imapflow) — MIT License — IMAP client;
 - [Nodemailer](https://github.com/nodemailer/nodemailer) — MIT-0 License — SMTP message submission;

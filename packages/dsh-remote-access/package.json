@@ -1,9 +1,9 @@
 {
   "name": "@eduwork/dsh-remote-access",
-  "version": "0.1.2",
+  "version": "0.1.5",
   "description": "End-to-end encrypted remote access to a DSH host through a self-hosted relay",
   "type": "module",
-  "license": "MIT",
+  "license": "MulanPSL-2.0 AND MIT",
   "main": "lib/index.js",
   "exports": {
     ".": "./lib/index.js",
@@ -22,7 +22,9 @@
     "README_EN.md",
     "LICENSE",
     "CHANGELOG.md",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "LICENSE-MIT",
+    "LICENSING.md"
   ],
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
@@ -36,11 +38,8 @@
       "inject": [
         "@deepseek-ai/dsh-api-remotes",
         "@deepseek-ai/dsh-client-locale",
-        "@deepseek-ai/dsh-client-ui-layout",
         "@deepseek-ai/dsh-client-ui-renderer",
-        "@deepseek-ai/dsh-client-ui-session",
-        "@deepseek-ai/dsh-client-ui-settings",
-        "@deepseek-ai/dsh-client-ui-workspace"
+        "@deepseek-ai/dsh-client-ui-settings"
       ],
       "platform": "web"
     },
@@ -50,17 +49,13 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
-    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0",
-    "@deepseek-ai/dsh-home-paths": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-typert-protocol": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-layout": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-session": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-workspace": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0",
+    "@deepseek-ai/dsh-home-paths": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-locale": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.2-rc.1 <0.3.0-0",
     "react": "^18.2.0",
     "zod": "^4.4.3"
   },
@@ -83,22 +78,10 @@
     "@deepseek-ai/dsh-client-locale": {
       "optional": true
     },
-    "@deepseek-ai/dsh-client-ui-layout": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-client-ui-primitives": {
-      "optional": true
-    },
     "@deepseek-ai/dsh-client-ui-renderer": {
       "optional": true
     },
-    "@deepseek-ai/dsh-client-ui-session": {
-      "optional": true
-    },
     "@deepseek-ai/dsh-client-ui-settings": {
-      "optional": true
-    },
-    "@deepseek-ai/dsh-client-ui-workspace": {
       "optional": true
     },
     "react": {
@@ -110,7 +93,6 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.0.5",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.1-rc.2",
     "@deepseek-ai/dsh-home-paths": "0.2.1-rc.2",
     "@deepseek-ai/dsh-typert-protocol": "0.2.1-rc.2",
     "@deepseek-ai/schemastery": "3.18.5",
