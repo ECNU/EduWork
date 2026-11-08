@@ -20,7 +20,8 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand, productUpdateObserver } from './product.mjs'
+  showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
+  showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -110,6 +111,8 @@ async function handleStartupFailure(error) {
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  // The early BootPage must obey the local close policy before preparation reads it.
+  readInitialCloseAction()
   void pruneCrashReports(app.getPath('logs')).catch(() => {})
   bridge = installNativeDesktopBridge({
     getHost: () => backend.host,
@@ -157,7 +160,8 @@ async function main() {
   })
   entered = true
 
-  // Match upstream: load the document, start the Host, then present the window.
+  // The final workspace presentation still happens after Host ready, as upstream.
+  // The BootPage shown before startOnce() is EduWork's temporary local adapter.
   const presentInitialWindow = () => {
     if (!shouldPresentMainWindow({
       presented: initialPresentationDone,
@@ -177,6 +181,12 @@ async function main() {
     if (startupFailure || isQuitting()) return
     throw error
   }
+  // A renderer failure can enter recovery before loadURL resolves while
+  // startupFailure is still unset. Do not show or start a Host then.
+  if (startupFailure || recovery.active || isQuitting() || window.isDestroyed()) return
+  // EduWork temporarily presents the BootPage while the Host starts. Remove
+  // this adapter once DSH provides an official early-presentation hook.
+  showHostStartupProgress()
   const ready = await startOnce().then(() => true, () => false)
   if (!ready || isQuitting() || recovery.active || window.isDestroyed()) return
   // A Host can fail between reporting ready and the success receipt.
