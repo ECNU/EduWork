@@ -105,7 +105,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, waitForPicker = fals
   }
   const context = {
     app, BrowserWindow, lifecycle, desktopExit: exit, desktopFailureShown: false, progressWindow: undefined,
-    settings, paths: { config: settings.config },
+    settings, paths: { config: settings.config }, backupAvailable: () => false,
     restartDesktop: () => { events.push('restart'); exit.restart() },
     contentUpdates: { close: () => events.push('content-abort'), rollback: () => wait('rollback', stage === 'rollback' && rollbackResult),
       importOffline: () => { events.push('import'); return wait('import') } },
