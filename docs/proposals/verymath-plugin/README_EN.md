@@ -28,7 +28,7 @@ The package declares `MulanPSL-2.0 AND MIT`, meaning different components carry 
 2. Task chains complete and artifacts land in the session workspace for follow-up work: paper structure extraction, QP solving, OCR proofreading, Beamer compilation and MATLAB execution all have real run records.
 3. Scripts and templates ship with the skills and are callable: upstream Python scripts are included verbatim, and the 9 offline test suites across the 8 upstream repositories (201 tests) pass.
 4. Missing dependencies return structured hints instead of crashing: four probe tools for Python, Sage, Beamer and OSQP, plus a Lean forbidden-token scan that needs no toolchain.
-5. The package's own 102 vitest tests and the runtime probe (real DSH plugin API, no model calls) pass.
+5. The package's own 107 vitest tests and the runtime probe (real DSH plugin API, no model calls) pass.
 
 Scenario examples for every capability are in [capability-examples.md](capability-examples.md), in a five-field form: who and when, a copy-paste prompt, public sample input, expected output with completion criteria, and run conditions with verification status. All 14 capabilities are covered. Scenarios that need external environments are split two ways: MATLAB execution and Sage code execution run in the user's own environment and are marked as not reproducible in CI, while Sage documentation lookup is a plugin capability that needs no binary once the corpus is present.
 
@@ -36,4 +36,4 @@ Scenario examples for every capability are in [capability-examples.md](capabilit
 
 Three paths are open to the maintainers: list the community plugin in the documentation, recommend it in the distribution configuration, or add it to this repository as in #301 and migrate the package namespace. For the third, these need to be settled first: plugin directory and package name, who runs the `@eduwork` publish, whether examples live in the package or the repository docs, when the old package is deprecated, how the commit history is merged, and which documentation copy becomes authoritative afterwards.
 
-Windows is untested, including path and binary discovery for external environments on that platform.
+Windows is untested. External binaries are resolved through PATH and PATHEXT rather than a fixed platform path, but that has not been exercised on Windows.
