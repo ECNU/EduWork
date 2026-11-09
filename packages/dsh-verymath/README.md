@@ -8,7 +8,7 @@ EduWork 的可选插件：把 VeryMath 的数学科研能力接入对话，覆�
 
 启用后，下面两段可以直接复制到对话里跑。产物都写进当前会话工作区。
 
-**① 双语术语库**（需要本机 `python3` + `PyYAML`；`verymath_python_check` 会先探测并给安装提示）
+**① 双语术语库**（需要本机 `python3` + `PyYAML`。`verymath_python_check` 只确认 `python3` 可用；缺 `PyYAML` 时脚本会报 `No module named 'yaml'`，用 `pip install PyYAML` 补上）
 
 ```text
 从 source.csv 构建一份中英数学术语表，输出 glossary/glossary.json；

@@ -8,7 +8,7 @@ An optional EduWork plugin that brings VeryMath's math research skills and tools
 
 Once enabled, either block below can be pasted straight into the conversation. Artifacts land in the current session workspace.
 
-**1. Bilingual glossary** (needs local `python3` + `PyYAML`; `verymath_python_check` probes first and prints install hints)
+**1. Bilingual glossary** (needs local `python3` + `PyYAML`. `verymath_python_check` only confirms that `python3` is available; without `PyYAML` the script fails with `No module named 'yaml'`, which `pip install PyYAML` fixes)
 
 ```text
 从 source.csv 构建一份中英数学术语表，输出 glossary/glossary.json；

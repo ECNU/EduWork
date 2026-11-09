@@ -24,11 +24,11 @@ allow third-party repositories to redistribute the full text, so this repository
 recipe, not the text. Download them locally when reproducing:
 
 ```sh
-mkdir -p papers && cd papers
-curl -sL -o maynard.pdf https://arxiv.org/pdf/1311.4600
-curl -sL -o treewidth.pdf https://arxiv.org/pdf/2012.11459
-pdftotext -layout maynard.pdf fulltext.txt
-pdftotext -layout treewidth.pdf paper-treewidth.txt
+mkdir -p papers/maynard paper
+curl -sL -o papers/maynard/maynard.pdf https://arxiv.org/pdf/1311.4600
+pdftotext -layout papers/maynard/maynard.pdf papers/maynard/fulltext.txt
+curl -sL -o paper/treewidth.pdf https://arxiv.org/pdf/2012.11459
+pdftotext -layout paper/treewidth.pdf paper/paper-treewidth.txt
 ```
 
 `pdftotext` comes from poppler (macOS: `brew install poppler`; Debian/Ubuntu: `apt install poppler-utils`).

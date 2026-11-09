@@ -23,11 +23,11 @@
 因此本仓库只保存从 arXiv 下载的**方法**，不保存正文。复现时自行下载：
 
 ```sh
-mkdir -p papers && cd papers
-curl -sL -o maynard.pdf https://arxiv.org/pdf/1311.4600
-curl -sL -o treewidth.pdf https://arxiv.org/pdf/2012.11459
-pdftotext -layout maynard.pdf fulltext.txt
-pdftotext -layout treewidth.pdf paper-treewidth.txt
+mkdir -p papers/maynard paper
+curl -sL -o papers/maynard/maynard.pdf https://arxiv.org/pdf/1311.4600
+pdftotext -layout papers/maynard/maynard.pdf papers/maynard/fulltext.txt
+curl -sL -o paper/treewidth.pdf https://arxiv.org/pdf/2012.11459
+pdftotext -layout paper/treewidth.pdf paper/paper-treewidth.txt
 ```
 
 `pdftotext` 来自 poppler（macOS: `brew install poppler`；Debian/Ubuntu: `apt install poppler-utils`）。
