@@ -24,6 +24,9 @@ let shot = null, interlude = null, interludeAt = 0, pool = ''
 let view = null, blink = null, blinkAt = 0
 let workingUntil = 0, lastActivity = Date.now()
 let badgeAt = 0, bubbleUntil = 0, bubbleFor = null, drawn = '', timer
+// A hovered actionable bubble freezes its countdown instead of running it down while read.
+let bubbleHeld = 0, bubbleOver = false,
+  bubbleUp = false
 
 function load(file) {
   return new Promise((resolve, reject) => {
@@ -140,7 +143,10 @@ function say(text, ms = 4000, about = null) {
   bubbleFor = about
   bubble.textContent = text
   bubble.hidden = false
-  bubbleUntil = Date.now() + ms
+  showBubble()
+  // A bubble that appears under the cursor starts out held, not half expired.
+  if (bubbleOver) { bubbleHeld = ms; bubbleUntil = 0 }
+  else bubbleUntil = Date.now() + ms
   placeBubble()
 }
 // Above the pet, or below it when the pet sits at the top of the screen.
@@ -149,7 +155,69 @@ function placeBubble() {
   bubble.style.left = tucked === 'right' ? '4px' : tucked === 'left' ? 'auto' : `${center}px`
   bubble.style.right = tucked === 'left' ? '4px' : 'auto'
   bubble.style.transform = tucked ? 'none' : ''
-  bubble.style.top = `${bubbleSide === 'below' ? layout.pet.y + layout.pet.height + 6 : Math.max(2, layout.pet.y - 34)}px`
+  // A wrapped bubble grows upwards, so it is always anchored by its bottom edge: above the
+  // pet that edge clears its head, below the pet it rests on the window's lower margin.
+  // Anchoring the near edge means a two-line bubble can never be clipped by the window.
+  bubble.style.top = 'auto'
+  bubble.style.bottom = bubbleSide === 'below' ? '4px' : `${layout.window.height - layout.pet.y + 6}px`
+  refreshInteractive()
+}
+
+// A plugin notification always carries a click action - the notification protocol registers
+// one with its source - so its bubble is something the user can point at. Core Agent items (a
+// question, a failure, a finished task) are the pet reporting something rather than offering
+// it, so they keep the plain click-through bubble and never light up. No source name involved.
+const BUBBLE_FLOOR = 400
+function bubbleActionable() {
+  return Boolean(bubbleFor) && status.target?.key === bubbleFor && status.target?.kind === 'plugin'
+}
+function overBubble(x, y) {
+  if (bubble.hidden) return false
+  const r = bubble.getBoundingClientRect()
+  return x >= r.left - 2 && x <= r.right + 2 && y >= r.top - 2 && y <= r.bottom + 2
+}
+// A frozen bubble keeps at least BUBBLE_FLOOR ms, so hovering can never strand it; the
+// deadline in tick() closes it if the pointer leaves without another event arriving.
+function holdBubble() {
+  bubbleHeld = Math.max(BUBBLE_FLOOR, bubbleUntil ? bubbleUntil - Date.now() : bubbleHeld)
+  bubbleUntil = 0
+}
+function releaseBubble() {
+  if (bubble.hidden) { bubbleHeld = 0; bubbleUntil = 0; return }
+  bubbleUntil = Date.now() + Math.max(BUBBLE_FLOOR, bubbleHeld)
+  bubbleHeld = 0
+  schedule()
+}
+function setHover(over) {
+  if (!bubbleUp) over = false
+  if (over === bubbleOver) return
+  bubbleOver = over
+  bubble.classList.toggle('held', over)
+  if (over) holdBubble()
+  else releaseBubble()
+}
+function noteCursor(x, y) { setHover(overBubble(x, y)) }
+// The host polls the real cursor and pushes it here, because forwarded mouse events may
+// arrive with no position at all. Either source can hold the bubble.
+function hostPointer(value) {
+  if (value.inside === true) noteCursor(value.x, value.y)
+  else setHover(false)
+}
+// The window only takes the pointer where the pet, the badge or the bubble actually is, so
+// its transparent margins never block the desktop underneath. Showing, hiding or moving a
+// bubble re-runs the page's own hit test instead of pinning the whole window interactive.
+function showBubble() {
+  bubbleUp = bubbleActionable()
+  if (!bubbleUp) setHover(false)
+  refreshInteractive()
+}
+function hideBubble() {
+  bubble.hidden = true
+  bubbleUntil = 0
+  bubbleHeld = 0
+  bubbleUp = false
+  setHover(false)
+  refreshInteractive()
 }
 function announce() {
   const { state, target, count } = status
@@ -174,7 +242,9 @@ function tick() {
     : animation.playback === 'blink' && animation.frames.length > 1 ? blinking(animation, now) : frameAt(animation, now - view.start)
   const motion = animation.motion && !reduced.matches && !away ? motionAt(animation.motion, now - view.start) : STILL
   draw(animation, frame.index, view.mirror, motion)
-  if (bubbleUntil && now >= bubbleUntil) { bubble.hidden = true; bubbleUntil = 0 }
+  // A visible bubble always has a deadline, even if nothing set one.
+  if (!bubble.hidden && !bubbleUntil && !bubbleHeld) bubbleUntil = now + BUBBLE_FLOOR
+  if (bubbleUntil && now >= bubbleUntil) hideBubble()
   if (away) { placeBadge(now); return }
   const waits = [frame.next, motion === STILL ? Infinity : PACE.motionFrame, placeBadge(now), bubbleUntil ? bubbleUntil - now : Infinity]
   if (shot) waits.push(shot.until - now)
@@ -207,11 +277,16 @@ function resize() {
 function rescale() { resize(); schedule() }
 
 // Click-through: only opaque pet pixels, the badge and the bubble take the pointer.
-let interactive = false, pointer = null
+let interactive = false, pointer = null, lastPointer = null
 function setInteractive(value) {
   if (interactive === value) return
   interactive = value
   api.interactive(value)
+}
+// The page is the only place that knows where the pet and the bubble ended up, so it re-runs
+// its own hit test whenever either moves. A cursor outside both stays click-through.
+function refreshInteractive() {
+  setInteractive(lastPointer !== null && hit(lastPointer.x, lastPointer.y))
 }
 function hit(x, y) {
   for (const element of [badge, bubble]) {
@@ -225,7 +300,11 @@ function hit(x, y) {
 function click() {
   const now = Date.now(), wasAsleep = asleep(now, base(now))
   activity(now)
-  if (status.target) api.open(status.target.key)
+  // The desktop consumes a notification once it has been viewed, so this click is the only
+  // chance to open it: the bubble leaves with the click instead of staying behind as a
+  // button that no longer does anything.
+  const pending = status.target?.key ?? (bubble.hidden ? '' : bubbleFor)
+  if (pending) { api.open(pending); hideBubble() }
   else if (tucked) api.untuck()
   else if (!wasAsleep) {
     startShot('react', now)
@@ -233,8 +312,14 @@ function click() {
   }
   schedule()
 }
-document.addEventListener('mousemove', event => { if (!pointer && skin) setInteractive(hit(event.clientX, event.clientY)) })
-document.addEventListener('mouseleave', () => { if (!pointer) setInteractive(false) })
+document.addEventListener('mousemove', event => {
+  if (event.clientX === 0 && event.clientY === 0) return
+  lastPointer = { x: event.clientX, y: event.clientY }
+  if (!pointer && skin) refreshInteractive()
+})
+// Forwarded events may carry no position; the host's pointer message then does the hit test.
+document.addEventListener('mousemove', event => { if (event.clientX || event.clientY) noteCursor(event.clientX, event.clientY) })
+document.addEventListener('mouseleave', () => { if (!pointer) { lastPointer = null; refreshInteractive() } })
 document.addEventListener('pointerdown', event => {
   if (event.button !== 0 || !skin || !hit(event.clientX, event.clientY)) return
   pointer = { id: event.pointerId, x: event.screenX, y: event.screenY, clientX: event.clientX, clientY: event.clientY }
@@ -287,8 +372,10 @@ api.on('status', value => {
     if (status.state === 'failed' && previous.target?.key !== status.target.key) startShot('failed', now, PACE.failed)
     if (previous.state !== status.state || previous.target?.key !== status.target?.key || previous.target?.alert !== status.target?.alert) announce()
   }
-  // An item viewed in the app takes its announcement with it.
-  if (bubbleFor && !value.items.some(item => item.key === bubbleFor)) { bubble.hidden = true; bubbleUntil = 0; bubbleFor = null }
+  // The bubble belongs to one notification: once that notification is no longer the current
+  // target (opened, dismissed, replaced) the bubble goes with it instead of hanging on with
+  // nothing left to open.
+  if (bubbleFor && status.target?.key !== bubbleFor) { hideBubble(); bubbleFor = null }
   // Work finished in the conversation on screen: celebrate briefly, no badge.
   if (acknowledged !== undefined && value.acknowledged > acknowledged) { activity(now); startShot('done', now, PACE.celebrate) }
   acknowledged = value.acknowledged
@@ -296,7 +383,7 @@ api.on('status', value => {
 })
 api.on('settings', value => {
   settings = value
-  if (!settings.bubbles) { bubble.hidden = true; bubbleUntil = 0 }
+  if (!settings.bubbles) hideBubble()
   schedule()
 })
 api.on('presence', value => {
@@ -309,5 +396,11 @@ api.on('presence', value => {
   schedule()
 })
 api.on('placement', value => { ({ tucked, bubble: bubbleSide } = value); placeBubble(); schedule() })
-api.on('pointer', value => { if (!pointer && skin) setInteractive(value.inside && hit(value.x, value.y)) })
+api.on('pointer', value => {
+  hostPointer(value)
+  if (!pointer && skin) {
+    lastPointer = value.inside ? { x: value.x, y: value.y } : null
+    refreshInteractive()
+  }
+})
 api.on('drag-direction', value => { if (value !== direction) { direction = value; schedule() } })

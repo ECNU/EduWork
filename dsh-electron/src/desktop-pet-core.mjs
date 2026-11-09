@@ -17,9 +17,11 @@ export function validatePetRequest(body) {
   return body
 }
 
-// 100% is 128 DIP tall. The window adds room above and below the pet for the
-// bubble and at the sides for the badge, and never covers more than that.
-const BASE_HEIGHT = 128, MARGIN = { side: 40, top: 64, bottom: 40 }, MIN_WIDTH = 220, BUBBLE = 34
+// 100% is 128 DIP tall. The window adds room above and below the pet for the bubble, and at
+// the sides for the badge, and never covers more than that. MARGIN.bottom holds the tallest
+// bubble the page allows - two clamped lines plus the gap - so a bubble placed below a pet at
+// the top of the screen still fits inside the window instead of being clipped.
+const BASE_HEIGHT = 128, MARGIN = { side: 40, top: 64, bottom: 56 }, MIN_WIDTH = 220, BUBBLE = 56
 export function petGeometry(frame, size) {
   const height = Math.round(BASE_HEIGHT * size / 100), width = Math.round(frame.width * height / frame.height)
   const window = { width: Math.max(width + MARGIN.side * 2, MIN_WIDTH), height: height + MARGIN.top + MARGIN.bottom }
