@@ -17,6 +17,9 @@ export const MailSettingsSchema = z.object({
   maxBodyChars: z.number().step(1).min(1_000).max(200_000).default(DEFAULTS.maxBodyChars),
   maxMessageBytes: z.number().step(1).min(1_048_576).max(104_857_600).default(DEFAULTS.maxMessageBytes),
   maxAttachmentBytes: z.number().step(1).min(1_024).max(104_857_600).default(DEFAULTS.maxAttachmentBytes),
+  notifyEnabled: z.boolean().default(DEFAULTS.notifyEnabled),
+  notifyIntervalSeconds: z.number().step(1).min(30).max(3_600).default(DEFAULTS.notifyIntervalSeconds),
+  notifyExcerptChars: z.number().step(1).min(0).max(400).default(DEFAULTS.notifyExcerptChars),
 })
 
 export const Config = typeof z.string().volatile === 'function'
@@ -47,6 +50,13 @@ export function validateSettings(value) {
   }
   if (!Number.isInteger(value.maxAttachmentBytes) || value.maxAttachmentBytes < 1_024 || value.maxAttachmentBytes > 104_857_600) {
     throw new Error('maxAttachmentBytes must be between 1 KiB and 100 MiB')
+  }
+  if (typeof value.notifyEnabled !== 'boolean') throw new Error('notifyEnabled must be a boolean')
+  if (!Number.isInteger(value.notifyIntervalSeconds) || value.notifyIntervalSeconds < 30 || value.notifyIntervalSeconds > 3_600) {
+    throw new Error('notifyIntervalSeconds must be an integer between 30 and 3600')
+  }
+  if (!Number.isInteger(value.notifyExcerptChars) || value.notifyExcerptChars < 0 || value.notifyExcerptChars > 400) {
+    throw new Error('notifyExcerptChars must be an integer between 0 and 400')
   }
   for (const key of ['email', 'username', 'fromName', 'inboxFolder', 'imapHost', 'smtpHost']) {
     if (typeof value[key] !== 'string') throw new Error(`${key} must be a string`)

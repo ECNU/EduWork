@@ -1,6 +1,7 @@
 import { DEFAULTS, PASSWORD_REF_NAME, TOOL_NAMES } from './constants.js'
 import { Config, currentSettings, MailSettingsSchema, settingsBase, SETTINGS_NAMESPACE, validateSettings } from './config.js'
 export { Config }
+import { createMailReminders } from './notify.js'
 import { decideMailPermission } from './permission.js'
 import { installTools } from './tools.js'
 
@@ -32,6 +33,37 @@ export function apply(ctx, config = {}) {
       return 'Mail sending is disabled. The user can enable it separately in Settings -> Mail assistant.'
     }
     return undefined
+  })
+
+  ctx.inject(['notifications'], (reminderCtx) => {
+    const mail = {
+      openSession: async (...args) => (await import('./mail-client.js')).openSession(...args),
+      closeSession: async (...args) => (await import('./mail-client.js')).closeSession(...args),
+      probeFolder: async (...args) => (await import('./mail-client.js')).probeFolder(...args),
+      fetchArrivals: async (...args) => (await import('./mail-client.js')).fetchArrivals(...args),
+      readExcerpt: async (...args) => (await import('./mail-client.js')).readExcerpt(...args),
+    }
+    const reminders = createMailReminders({
+      getSettings,
+      getPassword: async () => {
+        const resolved = await ctx.credentials.resolve(PASSWORD_REF_NAME)
+        if (resolved === undefined || resolved.value === '') {
+          throw new Error(`Mail password is not configured. Store it through DSH credential ${PASSWORD_REF_NAME} in Settings -> Mail assistant.`)
+        }
+        return resolved.value
+      },
+      mail,
+      register: definition => reminderCtx.notifications.register(reminderCtx, definition),
+      log: {
+        info: message => ctx.logger?.info?.(`Mail assistant: ${message}`),
+        warn: message => ctx.logger?.warn?.(`Mail assistant: ${message}`),
+      },
+    })
+    // Reminders are opt-in, so nothing is scheduled until the switch is on; a poll
+    // that finds it off releases the connection and checks again later.
+    reminders.start()
+    ctx.on('loader/volatile-update', () => { void reminders.refresh() })
+    reminderCtx.effect(() => () => { void reminders.stop() })
   })
 
   ctx.inject(['systemPrompt'], (promptCtx) => {
