@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, realpath, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire, registerHooks } from 'node:module'
@@ -21,7 +21,7 @@ test('hot activation applies deployment defaults immediately, below personal pre
   await patchProfileBundleOrder(modules)
   await assert.rejects(patchProfileBundleOrder(modules), /input changed/)
   // Resolve the copied module's imports against the same locked dependencies.
-  const source = pathToFileURL(original).href, patched = pathToFileURL(target).href
+  const source = pathToFileURL(original).href, patched = pathToFileURL(await realpath(target)).href
   const hook = registerHooks({ resolve(specifier, context, next) {
     return next(specifier, context.parentURL === patched ? { ...context, parentURL: source } : context)
   } })

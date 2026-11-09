@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-09T03:26:22.011Z",
-  "fileSetSHA256": "4d53c870888761920d79d577fdcae91284cdf91d3939cb7bbfd0686ccb6a61a0",
+  "createdAt": "2026-11-09T03:30:26.010Z",
+  "fileSetSHA256": "bfb862eab63ca4f14f009f6d03d9fc0e8e33c4a6505346e8a51937ad4f3159e4",
   "files": [
     {
       "path": ".gitattributes",
@@ -7897,7 +7897,7 @@
     },
     {
       "path": "scripts/test/profile-bundle-order.test.mjs",
-      "sha256": "a95fad885f22162aa5091612c756b114e529911cabc2125e678c8f0d09d982a4"
+      "sha256": "784c048c3927b2a947fb75c5ad031275d793580861263dc99b0e2f3993a088ee"
     },
     {
       "path": "scripts/test/published-package-inputs.test.mjs",
