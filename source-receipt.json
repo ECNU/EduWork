@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-08T06:07:40.741Z",
-  "fileSetSHA256": "cec82eb203347e3f93b07fa6b8f34844b273f023946cc73d5bd371bf2654945c",
+  "createdAt": "2026-11-09T03:26:22.011Z",
+  "fileSetSHA256": "4d53c870888761920d79d577fdcae91284cdf91d3939cb7bbfd0686ccb6a61a0",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "8ddcd9fd8f128a15359c25da3811e55a51ca09d48a315c0c9a3031a372d7fc74"
+      "sha256": "3f288bb9fd61250ec88d69e6329f16b9493ad4d1a0d50214d4b35cb869ce6dc7"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -253,11 +253,11 @@
     },
     {
       "path": "docs/CONFIGURATION_EN.md",
-      "sha256": "bef51ab2e6998df2d634ede45626f122d9f3aabec6979e396c3e90208aa904e4"
+      "sha256": "7df8934d24091799a7e79a7ccb92f4a7d65d2c0aadbbe0792ffbc244761f7e20"
     },
     {
       "path": "docs/CONFIGURATION.md",
-      "sha256": "f02d04579e597495539ca41ed54d3fa40d4c592561c6ad1837f9ecaf4bb9d640"
+      "sha256": "b1a0f4fe5cb46bc73a360dd3e5372330f622e8effee2c6a1c798d7249df4e480"
     },
     {
       "path": "docs/CONTENT_UPDATES_EN.md",
@@ -1713,7 +1713,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "645719c421675c4ddb891959eae1ebb05251074cb442744f89a64c319f9681cb"
+      "sha256": "c4d2acce45c5ed28e357eafbcfb90f04a94e3c3a625837c974eb4d84ea21fed8"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -7253,7 +7253,7 @@
     },
     {
       "path": "scripts/assemble-pinned-dsh-source-product.mjs",
-      "sha256": "3d6de0810c1cef9c4dd247a0729dbdfb89aebb84c623da4e7be5b633d9fce444"
+      "sha256": "5c050ee0f53fe25127f0b7e0afd535933f4b1efd3864ff5029d230aa15308938"
     },
     {
       "path": "scripts/audit-eduwork-distribution.mjs",
@@ -7624,6 +7624,10 @@
       "sha256": "412f3776b444e0001e408773c5db1e944ba8353b1ac929151c16903f2ee4677b"
     },
     {
+      "path": "scripts/patch-profile-bundle-order.mjs",
+      "sha256": "5e832a7e968596999ec5ac4b9481a53e1b5ed9318730109cf35fb38defb0af5c"
+    },
+    {
       "path": "scripts/patch-remotion-bundler-runtime.mjs",
       "sha256": "faf9cbb7f20640f49d84f53aae5a775ddb9c7b0132841105c1d6f3e4d49f56dd"
     },
@@ -7890,6 +7894,10 @@
     {
       "path": "scripts/test/portable-product-links.test.mjs",
       "sha256": "054d8f6db01fd48e69e107d2dd0afd368c496fd63212dcc6a1247197294b0017"
+    },
+    {
+      "path": "scripts/test/profile-bundle-order.test.mjs",
+      "sha256": "a95fad885f22162aa5091612c756b114e529911cabc2125e678c8f0d09d982a4"
     },
     {
       "path": "scripts/test/published-package-inputs.test.mjs",

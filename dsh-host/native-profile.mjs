@@ -208,6 +208,28 @@ export async function writeNativeProfile({ profile, home, bundles, optionalBundl
   }
   const previousText = await readFile(bundlePath, 'utf8').catch(missing)
   const preferencesText = await readFile(preferencesPath, 'utf8').catch(missing)
+  // Older builds could save the full remote settings while the organization
+  // layer was masked. Even with unchanged defaults, restore that missing field.
+  // Edit only its YAML mapping so comments, expressions and personal settings survive.
+  if (yaml && previousText === json(next) && preferencesText?.includes('eduwork-remote-access')) {
+    const organization = configurations(next).get('eduwork-remote-access')?.organization
+    if (organization) {
+      const document = yaml.parseDocument(preferencesText, { customTags: [{ tag: 'tag:yaml.org,2002:js', resolve: value => value }] })
+      if (document.errors.length) throw document.errors[0]
+      if (!yaml.isSeq(document.contents)) throw new Error('Native profile preferences must be a patch list')
+      let changed = false
+      for (const row of document.contents.items) {
+        if (!yaml.isMap(row) || row.has('insert') || row.get('id') !== 'eduwork-remote-access'
+          || row.has('name') && row.get('name') !== '@eduwork/dsh-remote-access') continue
+        const config = row.get('config', true)
+        if (yaml.isMap(config) && !config.has('organization')) {
+          config.set('organization', document.createNode(organization))
+          changed = true
+        }
+      }
+      if (changed) await writeChanged(preferencesPath, String(document))
+    }
+  }
   if (previousText && preferencesText && previousText !== json(next)) {
     const before = configurations(JSON.parse(previousText)), after = configurations(next)
     const saved = parse(preferencesText)

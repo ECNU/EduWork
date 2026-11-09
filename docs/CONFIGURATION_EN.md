@@ -2,7 +2,7 @@
 
 [中文](CONFIGURATION.md) · [Examples](../config/desktop/examples/README_EN.md) · [Configuration and Skills updates](CONTENT_UPDATES_EN.md)
 
-Generic and institution Electron editions read one effective file: `config/eduwork.jsonc`. Open it from Settings, edit and save, then fully quit the tray application and restart. Organizations, models, feature switches and media services come from this file, with no hidden institution overlay.
+Generic and institution Electron editions read one effective file: `config/eduwork.jsonc`. Open it from the organization configuration controls in model settings or use the path below. A YAML file containing `id: agent-default-model` in the settings window is the DSH user preferences file. After editing the JSONC, save it, quit the tray application and restart. Organizations, models, feature switches and media services come from this file, with no hidden institution overlay.
 
 | Platform | Active file | Only rollback backup |
 | --- | --- | --- |

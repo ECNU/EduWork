@@ -2,7 +2,7 @@
 
 [English](CONFIGURATION_EN.md) · [配置示例](../config/desktop/examples/README.md) · [配置与 Skills 更新](CONTENT_UPDATES.md)
 
-公版和机构版 Electron 都只读取一份生效配置：`config/eduwork.jsonc`。可以从设置中的“打开配置文件”打开它；编辑保存后，从托盘退出程序再启动。文件里的机构、模型、功能开关、媒体服务和远程访问就是客户端使用的配置，不再叠加另一份隐藏的学校配置。
+公版和机构版 Electron 都只读取一份生效配置：`config/eduwork.jsonc`。可以从模型设置的机构配置入口打开它，也可以直接打开下表中的文件。设置窗口右上角如果打开了含有 `id: agent-default-model` 的 YAML，那是 DSH 的个人偏好。编辑 JSONC 后，请保存并从托盘退出程序再启动。文件里的机构、模型、功能开关、媒体服务和远程访问就是客户端使用的配置，不再叠加另一份隐藏的学校配置。
 
 | 平台 | 生效配置 | 唯一回退备份 |
 | --- | --- | --- |

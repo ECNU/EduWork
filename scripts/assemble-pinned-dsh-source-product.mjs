@@ -14,6 +14,7 @@ import { patchSessionSearchRuntime } from './patch-session-search-runtime.mjs'
 import { patchChatUserContentRuntime } from './patch-chat-user-content-runtime.mjs'
 import { patchClientModuleMetadataRuntime } from './patch-client-module-metadata-runtime.mjs'
 import { patchEntryCustomizationRuntime } from './patch-entry-customization-runtime.mjs'
+import { patchProfileBundleOrder } from './patch-profile-bundle-order.mjs'
 import { patchRemotionBundlerRuntime } from './patch-remotion-bundler-runtime.mjs'
 import { omitRuntimePackages } from './omit-runtime-packages.mjs'
 import { patchRemotionRendererRuntime } from './patch-remotion-renderer-runtime.mjs'
@@ -50,7 +51,7 @@ await cp(paths.runtime, join(paths.output, 'd'), { recursive: true })
 await writeFile(join(paths.output, 'd/.eduwork-plugin-install-lock.json'), pluginInstallLock)
 const modules = join(paths.output, 'd/node_modules')
 // Settings navigation icons use the official settings.section.icon Slot since rc.1.
-const runtimePatches = [await patchSessionSearchRuntime(modules), await patchChatUserContentRuntime(modules), await patchClientModuleMetadataRuntime(modules), await patchEntryCustomizationRuntime(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
+const runtimePatches = [await patchSessionSearchRuntime(modules), await patchChatUserContentRuntime(modules), await patchClientModuleMetadataRuntime(modules), await patchEntryCustomizationRuntime(modules), await patchProfileBundleOrder(modules), ...await patchRemotionBundlerRuntime(modules), ...await patchRemotionRendererRuntime(modules)]
 const exists = async path => access(path).then(() => true, () => false)
 // Supplement only packages absent from the verified Runtime. These dependencies
 // come from source-probe's npm lock. Published plugin bytes must remain unchanged.
