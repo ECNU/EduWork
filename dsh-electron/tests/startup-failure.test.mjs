@@ -4,11 +4,10 @@ import { readFileSync } from 'node:fs'
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join, dirname } from 'node:path'
-import { EventEmitter } from 'node:events'
 import { runInNewContext } from 'node:vm'
 import { DesktopExit } from '../src/desktop-exit.mjs'
 import { DesktopLifecycle } from '../src/lifecycle.mjs'
-import { startupDiagnostic, startupFailurePage, updaterStartupError } from '../src/startup-failure.mjs'
+import { startupDiagnostic, startupFailureDialog, updaterStartupError } from '../src/startup-failure.mjs'
 import { redactDiagnostic } from '../../dsh-host/diagnostics.mjs'
 import { ConfigurationFile } from '../../dsh-host/configuration-file.mjs'
 import { ContentUpdates } from '../../dsh-host/content-updates.mjs'
@@ -19,56 +18,59 @@ const executable = 'C:\\Synthetic with spaces\\resources\\update\\EduWork-Update
 const failure = code => updaterStartupError(executable, Object.assign(Error(`spawn ${executable} ${code}`), { code }))
 
 test('permission denial identifies the component, gives recovery steps and copyable diagnostics', () => {
-  const page = startupFailurePage({ ...settings, error: failure('EACCES') })
-  assert.match(page.html, /Windows 拒绝运行更新组件/)
-  for (const text of ['拦截记录', '执行权限', '修复后重试', '复制错误信息', '打开组件目录']) assert.ok(page.html.includes(text))
-  assert.ok(!page.html.includes('配置文件：'))
-  assert.ok(!page.html.includes(settings.config))
-  assert.ok(!page.html.includes('继续启动'))
-  assert.match(page.html, /<details><summary>技术详情（EACCES）/)
+  const page = startupFailureDialog({ ...settings, error: failure('EACCES') })
+  assert.match(page.options.detail, /Windows 拒绝运行更新组件/)
+  for (const text of ['拦截记录', '执行权限']) assert.ok(page.options.detail.includes(text))
+  assert.deepEqual(page.options.buttons, ['退出', '修复后重试', '打开组件目录', '复制错误信息'])
+  assert.equal(page.options.type, 'error')
+  assert.equal(page.options.defaultId, 1)
+  assert.equal(page.options.cancelId, 0)
+  assert.equal(page.options.noLink, true)
+  assert.ok(!page.options.detail.includes(settings.config))
+  assert.equal(page.html, undefined, 'recovery uses native dialog options, not a custom HTML page')
   for (const text of [settings.productName, settings.version, executable, 'EACCES', `spawn ${executable} EACCES`]) assert.ok(page.diagnostics.includes(text))
 })
 
 test('missing and unknown executable failures do not claim an OS denial or proven corruption', () => {
-  const missing = startupFailurePage({ ...settings, error: failure('ENOENT') })
-  assert.match(missing.html, /系统未找到更新组件/)
-  assert.doesNotMatch(missing.html, /Windows 拒绝运行/)
-  const unknown = startupFailurePage({ ...settings, error: failure('UNKNOWN') })
-  assert.match(unknown.html, /系统未能运行更新组件/)
-  assert.doesNotMatch(unknown.html, /文件已损坏|Windows 拒绝运行|系统未找到更新组件/)
+  const missing = startupFailureDialog({ ...settings, error: failure('ENOENT') })
+  assert.match(missing.options.detail, /系统未找到更新组件/)
+  assert.doesNotMatch(missing.options.detail, /Windows 拒绝运行/)
+  const unknown = startupFailureDialog({ ...settings, error: failure('UNKNOWN') })
+  assert.match(unknown.options.detail, /系统未能运行更新组件/)
+  assert.doesNotMatch(unknown.options.detail, /文件已损坏|Windows 拒绝运行|系统未找到更新组件/)
 })
 
 test('additional rollback errors preserve component-specific guidance and diagnostic context', () => {
   const error = new Error('Synthetic rollback write failed', { cause: failure('EPERM') })
-  const page = startupFailurePage({ ...settings, error })
+  const page = startupFailureDialog({ ...settings, error })
   assert.equal(page.executable, executable)
-  assert.match(page.html, /Windows 拒绝运行更新组件/)
+  assert.match(page.options.detail, /Windows 拒绝运行更新组件/)
   assert.match(page.diagnostics, /Synthetic rollback write failed/)
   assert.match(page.diagnostics, /EPERM/)
 })
 
-test('paths, product names and errors are escaped, while copied diagnostics preserve literal text', () => {
+test('native dialog text and copied diagnostics preserve literal paths, names and errors', () => {
   const payload = '<script>alert("synthetic")</script>&'
-  const page = startupFailurePage({ ...settings, productName: payload, error: updaterStartupError(executable + payload, Error(payload)) })
-  assert.ok(!page.html.includes('<script>'))
-  assert.ok(page.html.includes('&lt;script&gt;'))
+  const page = startupFailureDialog({ ...settings, productName: payload, error: updaterStartupError(executable + payload, Error(payload)) })
+  assert.ok(page.options.title.includes(payload))
+  assert.ok(page.options.detail.includes(payload))
+  assert.equal(page.html, undefined)
   assert.ok(page.diagnostics.includes(payload))
 })
 
 test('publisher bootstrap retains retry/import actions; generic configuration errors retain their original details', () => {
   const error = Object.assign(Error('Synthetic offline bootstrap'), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
-  const bootstrap = startupFailurePage({ ...settings, error })
+  const bootstrap = startupFailureDialog({ ...settings, error })
   assert.equal(bootstrap.needsConfiguration, true)
-  assert.match(bootstrap.html, /正在等待发行配置/)
-  assert.match(bootstrap.html, /eduwork-startup:\/\/import\//)
-  assert.match(bootstrap.html, /重试下载/)
-  const generic = startupFailurePage({ ...settings, error: Error('Synthetic invalid configuration') })
-  assert.match(generic.html, /Synthetic invalid configuration/)
-  assert.ok(generic.html.includes(settings.config))
+  assert.match(bootstrap.options.message, /正在等待发行配置/)
+  assert.deepEqual(bootstrap.options.buttons, ['退出', '重试下载', '导入离线配置包'])
+  const generic = startupFailureDialog({ ...settings, error: Error('Synthetic invalid configuration') })
+  assert.match(generic.options.detail, /Synthetic invalid configuration/)
+  assert.ok(generic.options.detail.includes(settings.config))
   for (const page of [bootstrap, generic]) {
     assert.equal(page.executable, undefined)
     assert.equal(page.diagnostics, undefined)
-    assert.doesNotMatch(page.html, /eduwork-startup:\/\/(copy|component)\//)
+    assert.equal(page.html, undefined)
   }
 })
 
@@ -76,21 +78,18 @@ test('publisher bootstrap remains specialized when the error is wrapped', () => 
   const error = new Error('Synthetic startup wrapper', {
     cause: Object.assign(Error('Synthetic offline bootstrap'), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' }),
   })
-  const page = startupFailurePage({ ...settings, error })
+  const page = startupFailureDialog({ ...settings, error })
   assert.equal(page.needsConfiguration, true)
-  assert.match(page.html, /重试下载/)
-  assert.match(page.html, /导入离线配置包/)
+  assert.deepEqual(page.options.buttons, ['退出', '重试下载', '导入离线配置包'])
 })
 
 test('updater startup remains specialized when the error is wrapped', () => {
   const error = new Error('Synthetic startup wrapper', {
     cause: updaterStartupError(executable, Error('Synthetic updater failure')),
   })
-  const page = startupFailurePage({ ...settings, error })
+  const page = startupFailureDialog({ ...settings, error })
   assert.equal(page.executable, executable)
-  assert.match(page.html, /修复后重试/)
-  assert.match(page.html, /打开组件目录/)
-  assert.doesNotMatch(page.html, /重新启动/)
+  assert.deepEqual(page.options.buttons, ['退出', '修复后重试', '打开组件目录', '复制错误信息'])
 })
 
 test('aggregate startup diagnostics keep nested reasons and codes but drop private input and Host addresses', () => {
@@ -215,13 +214,13 @@ test('wrapped aggregate startup diagnostics expand the concrete causes', () => {
   assert.match(safe.message, /Synthetic rollback failure/)
 })
 
-test('the generic configuration page scrubs input excerpts and loopback addresses', () => {
+test('the generic configuration dialog scrubs input excerpts and loopback addresses', () => {
   let jsonError
   try { JSON.parse('{"A":["secret99",]}') } catch (error) { jsonError = error }
-  const page = startupFailurePage({ ...settings, error: Error(`${jsonError.message}\nconnect ECONNREFUSED 127.0.0.1:51234`) })
-  assert.match(page.html, /is not valid JSON/)
-  assert.match(page.html, /connect ECONNREFUSED/)
-  assert.doesNotMatch(page.html, /secret99|127\.0\.0\.1|51234/)
+  const page = startupFailureDialog({ ...settings, error: Error(`${jsonError.message}\nconnect ECONNREFUSED 127.0.0.1:51234`) })
+  assert.match(page.options.detail, /is not valid JSON/)
+  assert.match(page.options.detail, /connect ECONNREFUSED/)
+  assert.doesNotMatch(page.options.detail, /secret99|127\.0\.0\.1|51234/)
 })
 
 test('startup diagnostics copy only safe diagnostic fields', () => {
@@ -292,7 +291,7 @@ async function contentTrial(t) {
   return { root, configPath, statePath, key, manager }
 }
 
-function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOtherStages = false, waitForPicker = false, approveRestart = true, errorCode = 'EDUWORK_BOOTSTRAP_REQUIRED', rollbackError, healthError, migrationLaunch, onMigrationHealth, nativeRecovery, contentUpdates, cleanupResolved = false, resourceCloseError, hostStopError, onExitFailure } = {}) {
+function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOtherStages = false, waitForPicker = false, approveRestart = true, errorCode = 'EDUWORK_BOOTSTRAP_REQUIRED', rollbackError, healthError, migrationLaunch, onMigrationHealth, nativeRecovery, contentUpdates, cleanupResolved = false, resourceCloseError, hostStopError, onExitFailure, responses, pickerCanceled = false, componentError = '' } = {}) {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const start = source.indexOf('export async function showDesktopFailure('), end = source.indexOf('\n}\n', start)
   const stopStart = source.indexOf('export async function stopDesktopServices('), stopEnd = source.indexOf('\n}\n', stopStart)
@@ -300,7 +299,8 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
   assert.ok(start >= 0 && end > start, 'showDesktopFailure boundary changed')
   assert.ok(stopStart >= 0 && stopEnd > stopStart, 'stopDesktopServices boundary changed')
   assert.ok(quittingStart >= 0 && quittingEnd > quittingStart, 'isQuitting boundary changed')
-  const events = [], waiting = pending(), operation = pending(), cleanup = pending(), picker = pending(), lifecycle = new DesktopLifecycle()
+  const events = [], dialogs = [], waiting = pending(), operation = pending(), cleanup = pending(), picker = pending(), dialogClosed = pending(), lifecycle = new DesktopLifecycle()
+  const replies = responses ?? (stage === 'retry' ? [1] : ['import', 'selection'].includes(stage) ? [2] : [])
   if (cleanupResolved) cleanup.resolve()
   lifecycle.trackBridge({ close: () => cleanup.promise })
   if (hostStopError) lifecycle.trackHost({ async stop() { throw hostStopError } })
@@ -308,7 +308,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     if (stage === step) { waiting.resolve(); await operation.promise }
     return value
   }
-  let window, exit
+  let shown, exit
   const nativeCalls = []
   const app = { quit() {
     if (!exit.complete) { void exit.request(); return }
@@ -320,15 +320,8 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
   },
     relaunch: () => events.push('relaunch'), quit: () => app.quit(),
     failed: error => { if (onExitFailure) onExitFailure(error); else assert.fail(error) } })
-  class BrowserWindow {
-    constructor() { window = this; this.webContents = new EventEmitter(); events.push('window-created') }
-    isDestroyed() { return false }
-    setSize() {}
-    loadURL() { return wait('show') }
-    show() { events.push('window-shown') }
-  }
   const context = {
-    app, BrowserWindow, lifecycle, desktopExit: exit, desktopFailureShown: false, progressWindow: undefined,
+    app, lifecycle, desktopExit: exit, desktopFailureShown: false,
     settings, paths: { config: settings.config },
     restartDesktop: options => { events.push('restart'); return exit.restart(options) },
     contentUpdates: contentUpdates ?? { close: () => events.push('content-abort'), rollback: async () => {
@@ -339,33 +332,41 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
       importOffline: () => { events.push('import'); return wait('import') } },
     retryPublisherContent: () => wait('retry'),
     migrationLaunch,
-    writeMigrationHealth: async (...args) => { onMigrationHealth?.(...args); if (healthError) throw healthError }, startupFailurePage,
+    writeMigrationHealth: async (...args) => { onMigrationHealth?.(...args); if (healthError) throw healthError }, startupFailureDialog, startupDiagnostic,
     productUpdateObserver: { dispose() { events.push('observer-dispose') } },
     desktopPet: { close() { if (resourceCloseError) throw resourceCloseError } },
     taskNotifications: { close() {} },
-    removeWindowMenu() {}, attachWindowVisibility() {}, tray: undefined, mainWindow: undefined,
-    mainWindowPresented: false, startupMessage: '', nativeTheme: { shouldUseDarkColors: true },
-    dialog: { showOpenDialog: () => wait('selection', { canceled: false, filePaths: ['/synthetic/offline.json'] }),
-      showMessageBox: async () => { events.push('error-dialog') } },
+    tray: undefined, mainWindow: undefined, startupMessage: '',
+    dialog: { showOpenDialog: () => wait('selection', { canceled: pickerCanceled, filePaths: ['/synthetic/offline.json'] }),
+      showMessageBox: async options => {
+        dialogs.push(options)
+        if (!options.buttons) { events.push('error-dialog'); return { response: 0 } }
+        events.push('native-dialog')
+        await wait('show')
+        if (replies.length) return { response: replies.shift() }
+        if (stage === 'special') waiting.resolve()
+        await dialogClosed.promise
+        return { response: 0 }
+      } },
+    clipboard: { writeText: text => events.push(['copy', text]) },
+    shell: { openPath: async path => { events.push(['component', path]); return componentError } }, dirname,
     stat: async () => ({ isFile: () => true, size: 1 }), readFile: async () => Buffer.from('synthetic'),
   }
   runInNewContext(`${source.slice(stopStart, stopEnd + 2).replace('export ', '')}\n${source.slice(quittingStart, quittingEnd).replace('export ', '')}\n${source.slice(start, end + 2).replace('export ', '')}\nglobalThis.recover = showDesktopFailure`, context)
-  t.after(async () => { operation.resolve(); picker.resolve(); cleanup.resolve(); await tick(); await exit.pending })
+  t.after(async () => { operation.resolve(); picker.resolve(); cleanup.resolve(); dialogClosed.resolve(); await shown; await tick(); await exit.pending })
   return {
-    events, nativeCalls,
+    events, dialogs, nativeCalls,
     async begin(error = Error('Synthetic startup failure')) {
       if (errorCode) error.code = errorCode
-      const shown = context.recover(error, nativeRecovery ? failure => {
+      shown = context.recover(error, nativeRecovery ? failure => {
         nativeCalls.push(failure)
         return nativeRecovery(failure)
       } : undefined)
-      if (!['rollback', 'show'].includes(stage)) {
+      if (stage === 'native') {
         await shown
-        if (stage === 'native' || stage === 'special') return
-        window.webContents.emit('will-navigate', { preventDefault() {} },
-          stage === 'retry' ? 'eduwork-startup://restart/' : 'eduwork-startup://import/')
+        return
       }
-      await waiting.promise
+      await Promise.race([shown, waiting.promise])
     },
     async quit() { app.quit(); await tick(); assert.equal(lifecycle.closing, !waitForPicker) },
     async restart(options) { await exit.restart(options); await tick() },
@@ -400,12 +401,12 @@ for (const [name, error] of [
     cause: updaterStartupError(executable, Error('Synthetic updater failure')),
   })],
 ]) {
-  test(`${name} keeps its product recovery page instead of native recovery`, async t => {
+  test(`${name} uses a native dialog with its product recovery actions`, async t => {
     const f = recoveryHarness(t, 'special', { errorCode: null, nativeRecovery: () => assert.fail('specialized failures must not call native recovery') })
     await f.begin(error)
     assert.equal(f.nativeCalls.length, 0)
-    assert.ok(f.events.includes('window-created'))
-    assert.ok(f.events.includes('window-shown'))
+    assert.ok(f.events.includes('native-dialog'))
+    assert.equal(f.dialogs[0].noLink, true)
   })
 }
 
@@ -496,7 +497,7 @@ test('a cleanup failure after lifecycle shutdown keeps a native recovery entry',
   assert.equal(f.events.includes('restart'), true)
   assert.equal(f.events.includes('relaunch'), false)
   assert.equal(f.events.includes('quit'), false)
-  assert.equal(f.events.includes('window-created'), false, 'Recovery must not open the product page after a failed restart')
+  assert.equal(f.events.includes('native-dialog'), false, 'A failed strict restart stays with upstream recovery')
 })
 
 test('a persistent resource cleanup failure still permits an approved quit', async t => {
@@ -583,7 +584,7 @@ test('rollback failure and migration health failure stay in the native diagnosti
   assert.match(f.nativeCalls[0].message, /Synthetic startup failure/)
   assert.match(f.nativeCalls[0].message, /Synthetic rollback marker failure/)
   assert.match(f.nativeCalls[0].message, /Synthetic migration marker failure/)
-  assert.equal(f.events.includes('window-created'), false)
+  assert.equal(f.events.includes('native-dialog'), false)
 })
 
 for (const stage of ['rollback', 'retry', 'import']) {
@@ -636,7 +637,41 @@ for (const stage of ['rollback', 'show']) {
   test(`startup recovery does not show a late window after quitting during ${stage}`, async t => {
     const f = recoveryHarness(t, stage, { rollbackResult: false })
     await f.begin(); await f.quit(); await f.finish()
-    assert.equal(f.events.includes('window-shown'), false)
-    if (stage === 'rollback') assert.equal(f.events.includes('window-created'), false)
+    assert.equal(f.events.filter(event => event === 'native-dialog').length, stage === 'show' ? 1 : 0)
   })
 }
+
+test('updater native recovery copies diagnostics and opens the component directory without restarting', async t => {
+  const f = recoveryHarness(t, 'special', { errorCode: null, responses: [3, 2] })
+  await f.begin(failure('EACCES'))
+  const copied = f.events.find(event => Array.isArray(event) && event[0] === 'copy')
+  assert.match(copied[1], /EACCES/)
+  assert.ok(copied[1].includes(executable))
+  assert.deepEqual(f.events.find(event => Array.isArray(event) && event[0] === 'component'), ['component', dirname(executable)])
+  assert.match(f.dialogs[1].message, /已复制/)
+  assert.equal(f.events.includes('restart'), false)
+})
+
+test('component directory errors stay actionable in native recovery', async t => {
+  const f = recoveryHarness(t, 'special', { errorCode: null, responses: [2], componentError: 'Synthetic folder error' })
+  await f.begin(failure('ENOENT'))
+  assert.ok(f.events.includes('error-dialog'))
+  assert.match(f.dialogs[1].message, /Synthetic folder error/)
+  assert.equal(f.dialogs.filter(dialog => dialog.buttons).length, 2, 'recovery reopens after the operation fails')
+})
+
+test('cancelling the offline picker returns to native recovery without importing or restarting', async t => {
+  const f = recoveryHarness(t, 'special', { responses: [2], pickerCanceled: true })
+  await f.begin()
+  assert.equal(f.events.includes('import'), false)
+  assert.equal(f.events.includes('restart'), false)
+  assert.equal(f.dialogs.length, 2)
+})
+
+test('native recovery Exit follows ordinary shutdown without restarting', async t => {
+  const f = recoveryHarness(t, 'special', { responses: [0], cleanupResolved: true })
+  await f.begin()
+  await f.cleaned()
+  assert.equal(f.events.filter(event => event === 'quit').length, 1)
+  assert.equal(f.events.includes('restart'), false)
+})

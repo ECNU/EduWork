@@ -159,7 +159,7 @@ async function handleStartupFailure(error, source = 'main') {
   desktopHostLog(`[desktop:startup] ${startupDiagnostic(error, redactDiagnostic).message}\n`)
   // The first failure owns recovery. Cancelling preparation prevents a later
   // configuration/updater error from stacking a second dialog; a restart reruns
-  // preparation, where that specialized page remains available.
+  // preparation, where those product recovery actions remain available.
   const stopFailure = await cancelStartup()
   if (isQuitting() || recovery.active) return
   if (stopFailure) {

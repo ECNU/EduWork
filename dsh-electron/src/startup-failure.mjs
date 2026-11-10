@@ -1,4 +1,3 @@
-const escape = value => String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;')
 const MAX_DIAGNOSTIC_MESSAGE = 8192
 // V8 includes the offending input in some JSON.parse messages. The excerpt can
 // contain unescaped inner quotes or a truncated tail, so match the whole quoted
@@ -100,12 +99,12 @@ export function updaterStartupError(executable, cause) {
   })
 }
 
-export function startupFailurePage({ error, productName, version, config }) {
+export function startupFailureDialog({ error, productName, version, config }) {
   const causes = []
   for (let current = error; current && causes.length < 8; current = current.cause) causes.push(current)
   const updater = causes.find(value => value.code === 'EDUWORK_UPDATER_START_FAILED')
   const needsConfiguration = causes.some(value => value.code === 'EDUWORK_BOOTSTRAP_REQUIRED')
-  let body, diagnostics
+  let detail, diagnostics
   if (updater) {
     const code = updater.cause?.code ?? 'UNKNOWN'
     const denied = ['EACCES', 'EPERM'].includes(code)
@@ -122,31 +121,15 @@ export function startupFailurePage({ error, productName, version, config }) {
       '从发行方重新下载完整安装包，解压到新的可写目录。保留原目录中的 config 和 data。',
     ]
     diagnostics = scrubDiagnosticText(`产品：${productName}\n版本：${version ?? '未知'}\n故障组件：自动更新服务\n组件文件：${updater.executable}\n错误代码：${code}\n原始错误：${causes.filter(value => value !== updater).map(value => value.message || String(value)).join('\n原因：')}`)
-    body = `<div class="failure"><strong>更新组件无法运行</strong><p>${escape(reason)}</p></div>
-      <p>这是启动所需的组件。修复后才能启动，原有配置和历史数据不会被重置。</p>
-      <p class="component">组件文件：<code>${escape(updater.executable)}</code></p>
-      <ol>${steps.map(step => `<li>${escape(step)}</li>`).join('')}</ol>
-      <p>若仍无法启动，请复制错误信息交给维护人员。</p>
-      <details><summary>技术详情（${escape(code)}）</summary><pre>${escape(diagnostics)}</pre></details>`
+    detail = `${reason}\n\n这是启动所需的组件。修复后才能启动，原有配置和历史数据不会被重置。\n\n${steps.join('\n')}\n\n组件文件：${updater.executable}\n错误代码：${code}\n\n若仍无法启动，请复制错误信息交给维护人员。`
   } else {
-    body = `<p>${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}</p>
-      <pre class="failure">${escape(scrubDiagnosticText(String(error.message || error)))}</pre><p>配置文件：${escape(config)}</p>`
+    detail = `${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}\n\n${scrubDiagnosticText(String(error.message || error))}\n\n配置文件：${config}`
   }
-  const html = `<!doctype html><html lang="zh-CN"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>${escape(productName)} · 启动提示</title>
-    <style>
-      :root{color-scheme:light dark}*{box-sizing:border-box}body{font:15px/1.6 system-ui;margin:28px;color:#313744;background:#faf8f4;overflow-wrap:anywhere}
-      h1{font-size:22px;line-height:1.4;margin:0 0 20px}p{margin:12px 0}.failure{background:#fff0f1;padding:14px 16px;color:#9f2636;border-radius:8px}.failure p{margin:4px 0 0}
-      pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:13px}code{font-size:13px}.component{padding:10px 12px;background:#eeeae5;border-radius:6px}
-      ol{padding-left:24px}li{margin:8px 0}summary{cursor:pointer}details{margin:16px 0}details pre{background:#eeeae5;padding:12px;border-radius:6px}
-      nav{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px}a{display:inline-block;padding:8px 12px;border:1px solid #aaa;border-radius:6px;color:inherit;text-decoration:none}
-      a.primary{background:#9f2636;border-color:#9f2636;color:white}a:hover{filter:brightness(.93)}a:focus-visible,summary:focus-visible{outline:3px solid #9f2636;outline-offset:3px}
-      #copy-status{font-size:13px;min-height:1.6em;margin:8px 0 0}@media(max-width:480px){body{margin:20px}}
-      @media(prefers-color-scheme:dark){body{color:#eee;background:#1c1c1c}.failure{background:#382126;color:#ffb4be}.component,details pre{background:#292929}a:focus-visible,summary:focus-visible{outline-color:#ffb4be}}
-    </style><h1>${escape(productName)} ${needsConfiguration ? '正在等待发行配置' : '暂时未能启动'}</h1>${body}
-    <nav aria-label="恢复操作"><a class="primary" href="eduwork-startup://restart/">${needsConfiguration ? '重试下载' : updater ? '修复后重试' : '重新启动'}</a>
-    ${needsConfiguration ? '<a href="eduwork-startup://import/">导入离线配置包</a>' : ''}
-    ${updater ? '<a href="eduwork-startup://component/">打开组件目录</a><a href="eduwork-startup://copy/">复制错误信息</a>' : ''}
-    <a href="eduwork-startup://exit/">退出</a></nav>${updater ? '<p id="copy-status" role="status" aria-live="polite"></p>' : ''}</html>`
-  return { html, needsConfiguration, diagnostics, executable: updater?.executable }
+  // Match DSH fatal recovery's native presentation; only edition actions differ.
+  const options = { type: 'error', title: `${productName} · 启动提示`,
+    message: needsConfiguration ? '正在等待发行配置' : updater ? '更新组件无法运行' : '暂时未能启动', detail,
+    buttons: needsConfiguration ? ['退出', '重试下载', '导入离线配置包']
+      : updater ? ['退出', '修复后重试', '打开组件目录', '复制错误信息'] : ['退出', '重新启动'],
+    defaultId: 1, cancelId: 0, noLink: true }
+  return { options, needsConfiguration, diagnostics, executable: updater?.executable }
 }

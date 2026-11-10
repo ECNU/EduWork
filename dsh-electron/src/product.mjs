@@ -1,7 +1,6 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, nativeTheme, dialog, Notification, clipboard } from 'electron'
+import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
-import { removeWindowMenu } from './desktop-menu.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
@@ -34,7 +33,7 @@ import { configureDesktopRelaunch } from './desktop-restart.mjs'
 import { attachAppActivation, attachTrayActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
-import { startupFailurePage } from './startup-failure.mjs'
+import { startupDiagnostic, startupFailureDialog } from './startup-failure.mjs'
 import { createSettingsOpenRequest } from './settings-open-request.mjs'
 import { repairWorkspaceAccess } from './workspace-access.mjs'
 
@@ -47,7 +46,7 @@ export function configureWindowNavigation(window) {
 const directoryPicker = new DesktopDirectoryPicker({ getWindow: () => mainWindow, showOpenDialog: (...args) => dialog.showOpenDialog(...args) })
 export const pickDesktopDirectory = signal => directoryPicker.pick(signal)
 app.on('will-quit', () => directoryPicker.dispose())
-let settings, paths, bootstrap, progressWindow, nativeBridge, tray, mainWindow, user
+let settings, paths, bootstrap, nativeBridge, tray, mainWindow, user
 let bootLogoPath, bootLogo = ''
 let initialCloseAction = 'tray'
 let migrationLaunch
@@ -124,7 +123,7 @@ export function isShutdownFailed() {
   return Boolean(desktopExit.failure) && desktopExit.pending === undefined
     && !desktopExit.closing && !desktopExit.complete
 }
-const activationWindows = () => [progressWindow, updateCompleted || startupMessage ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
+const activationWindows = () => [!desktopFailureShown && (updateCompleted || startupMessage) ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
@@ -162,7 +161,7 @@ export function desktopWebRoot() {
   return join(paths.product, 'd/node_modules/@deepseek-ai/dsh-web-frontend/dist')
 }
 export function desktopStartupWindowPresent() {
-  return Boolean(progressWindow && !progressWindow.isDestroyed())
+  return desktopFailureShown
 }
 export function desktopBootBrand() {
   // Available before Host/plugins. Only a packaged image crosses the bridge;
@@ -208,7 +207,7 @@ export function showHostStartupProgress() {
   showStartupProgress(startupMessage || '正在启动本地服务…', true)
 }
 function showDesktopMessageBox(options) {
-  const parent = [progressWindow, mainWindow].find(window => window && !window.isDestroyed())
+  const parent = mainWindow && !mainWindow.isDestroyed() ? mainWindow : undefined
   return parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
 }
 async function prepareDesktop() {
@@ -291,7 +290,6 @@ async function prepareDesktop() {
   if (user.product.name) {
     settings.productName = user.product.name
     applyDesktopBrand(app, process.platform, settings)
-    if (progressWindow && !progressWindow.isDestroyed()) progressWindow.setTitle(user.product.name)
     if (mainWindow && !mainWindow.isDestroyed()) {
       mainWindow.setTitle(user.product.name)
       try { mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand()) } catch { /* BootPage only */ }
@@ -544,75 +542,48 @@ export async function showDesktopFailure(error, nativeRecovery) {
   try { await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留') }
   catch (healthError) { error = new Error(`${error.message}\n迁移状态未能保存：${healthError.message}`, { cause: error }) }
   if (isQuitting()) return
-  const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
-  if (nativeRecovery && !page.needsConfiguration && !page.executable) {
+  const failure = startupFailureDialog({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
+  if (nativeRecovery && !failure.needsConfiguration && !failure.executable) {
     await nativeRecovery(error)
     return
   }
-  if (!progressWindow || progressWindow.isDestroyed()) {
-    progressWindow = new BrowserWindow({ width: 660, height: 470, show: false, title: settings.productName,
-      backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1c' : '#faf8f4',
-      webPreferences: { nodeIntegration: false, contextIsolation: true, sandbox: true } })
-    removeWindowMenu(progressWindow)
-    attachWindowVisibility({ app, window: progressWindow, isQuitting, shouldExit: () => false, hasTray: () => Boolean(tray) })
-  }
-  progressWindow.setSize(660, page.executable ? 700 : 470)
-  const { needsConfiguration } = page
-  const canRecover = () => !isQuitting() && progressWindow && !progressWindow.isDestroyed()
-  let importing = false
-  progressWindow.webContents.on('will-navigate', (event, url) => {
-    event.preventDefault()
-    if (!canRecover()) return
-    if (page.executable && url === 'eduwork-startup://copy/') {
-      clipboard.writeText(page.diagnostics)
-      void progressWindow.webContents.executeJavaScript("document.getElementById('copy-status').textContent = '已复制，可粘贴给维护人员。'").catch(()=>{})
-    }
-    if (page.executable && url === 'eduwork-startup://component/') {
-      void shell.openPath(dirname(page.executable)).then(message=>{if(message)throw Error(message)}).catch(error=> {
-        if (canRecover()) return dialog.showMessageBox(progressWindow,{type:'error',title:'未能打开组件目录',message:'请手动检查页面所列的组件路径。',detail:error.message})
-      })
-    }
-    if (url === 'eduwork-startup://restart/' && !importing) {
-      if (!needsConfiguration) restartDesktop()
-      else {
-        importing = true
-        void (async () => {
-          await retryPublisherContent(contentUpdates)
-          if (canRecover()) restartDesktop()
-        })().catch(error => {
-          if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能重试配置', message: error.message })
-        }).finally(() => { importing = false })
-      }
-    }
-    if (url === 'eduwork-startup://exit/') app.quit()
-    if (needsConfiguration && url === 'eduwork-startup://import/' && !importing) {
-      importing = true
-      void (async () => {
-        const selected = await dialog.showOpenDialog(progressWindow, { title: '导入发行方提供的离线配置包', properties: ['openFile'], filters: [{ name: '签名内容包', extensions: ['json'] }] })
-        if (selected.canceled || !canRecover()) return
-        const path = selected.filePaths[0], info = await stat(path)
-        if (!canRecover()) return
-        if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
-        const bytes = await readFile(path)
-        if (!canRecover()) return
-        await contentUpdates.importOffline(bytes, { retryFailed: true })
-        if (canRecover()) restartDesktop()
-      })().catch(error => {
-        if (canRecover()) return dialog.showMessageBox(progressWindow, { type: 'error', title: '未能导入配置', message: error.message })
-      }).finally(() => { importing = false })
-    }
-  })
-  await progressWindow.loadURL('data:text/html;charset=utf-8,' + encodeURIComponent(page.html))
-  if (!canRecover()) return
-  // Destroy the stale BootPage only after the recovery window exists; destroying
-  // the last window first would quit the application on Windows. The tray must
-  // not keep a show action bound to that stale window either.
   if (tray) {
     try { if (!tray.isDestroyed?.()) tray.destroy() } catch (error) { desktopHostLog(`[desktop:tray] ${error.message}\n`) }
     tray = undefined
   }
-  if (mainWindow && !mainWindow.isDestroyed()) { mainWindow.destroy(); mainWindow = undefined }
-  mainWindowPresented = false
+  // Keep the hidden BootPage alive: destroying the last BrowserWindow would
+  // trigger window-all-closed and quit while the native recovery dialog is open.
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
   startupMessage = ''
-  progressWindow.show()
+  let message = failure.options.message
+  while (!isQuitting()) {
+    const { response } = await dialog.showMessageBox({ ...failure.options, message })
+    if (isQuitting()) return
+    if (response === 0) { app.quit(); return }
+    try {
+      if (response === 1) {
+        if (failure.needsConfiguration) await retryPublisherContent(contentUpdates)
+        if (!isQuitting()) await restartDesktop()
+      } else if (failure.needsConfiguration && response === 2) {
+        const selected = await dialog.showOpenDialog({ title: '导入发行方提供的离线配置包', properties: ['openFile'], filters: [{ name: '签名内容包', extensions: ['json'] }] })
+        if (isQuitting()) return
+        if (selected.canceled) continue
+        const path = selected.filePaths[0], info = await stat(path)
+        if (isQuitting()) return
+        if (!info.isFile() || info.size > 24 * 1024 * 1024) throw Error('离线内容包无效或过大')
+        const bytes = await readFile(path)
+        if (isQuitting()) return
+        await contentUpdates.importOffline(bytes, { retryFailed: true })
+        if (!isQuitting()) await restartDesktop()
+      } else if (failure.executable && response === 2) {
+        const error = await shell.openPath(dirname(failure.executable))
+        if (error) throw Error(error)
+      } else if (failure.executable && response === 3) {
+        clipboard.writeText(failure.diagnostics)
+        message = '错误信息已复制，可粘贴给维护人员。'
+      }
+    } catch (error) {
+      if (!isQuitting()) await dialog.showMessageBox({ type: 'error', title: '恢复操作未能完成', message: startupDiagnostic(error).message })
+    }
+  }
 }

@@ -45,7 +45,7 @@ function startupHarness() {
   }
   const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
-    `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
+    `let mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
     let quitting = false, desktopFailureShown = false, startupCancelled = false, flushCalls = 0
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
@@ -55,7 +55,7 @@ function startupHarness() {
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
     return {
       setMain(window) { mainWindow = window; window.on('show', () => { mainWindowPresented = true }) },
-      setRecovery(window) { progressWindow = window; desktopFailureShown = true },
+      setRecovery() { desktopFailureShown = true },
       quit() { quitting = true },
       cancel() { startupCancelled = true },
       showStartupProgress, showHostStartupProgress, desktopReady, showDesktop, activationWindows,
@@ -218,24 +218,21 @@ for (const entry of ['Dock', 'relaunch']) {
   })
 }
 
-test('recovery activation takes precedence over the incomplete main window', () => {
-  const { harness, main, FakeWindow } = startupHarness()
+test('native recovery activation does not reveal the incomplete main window', () => {
+  const { harness, main } = startupHarness()
   harness.showStartupProgress('download'); main.hide()
-  const recovery = new FakeWindow()
-  harness.setRecovery(recovery)
-  recovery.minimized = true
-  assert.equal(harness.showDesktop(), true)
-  assert.equal(recovery.visible, true)
-  assert.equal(recovery.minimized, false)
+  harness.setRecovery()
+  assert.equal(harness.showDesktop(), false)
   assert.equal(main.visible, false)
 })
 
-test('startup recovery drops the tray before the stale BootPage window', () => {
+test('startup recovery hides the stale BootPage without destroying the last app window', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const start = source.indexOf('export async function showDesktopFailure')
   const end = source.indexOf('\n}\n', start)
   assert.ok(start >= 0 && end > start)
   const failure = source.slice(start, end)
   assert.match(failure, /tray\.destroy\(\)/)
-  assert.ok(failure.indexOf('tray.destroy()') < failure.indexOf('mainWindow.destroy()'))
+  assert.match(failure, /mainWindow\.hide\(\)/)
+  assert.doesNotMatch(failure, /mainWindow\.destroy\(\)|new BrowserWindow|loadURL/)
 })

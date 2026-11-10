@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-09T17:26:53.790Z",
-  "fileSetSHA256": "5c138a37f74793589ee3ed4e4982110065bf69dc5a191bb8f5c5e68bb7ae97e3",
+  "createdAt": "2026-11-09T18:40:40.542Z",
+  "fileSetSHA256": "d347e0677dbfa3aa4390f3a5639254d7561536a465592d2ea9d3b2ef3128efb1",
   "files": [
     {
       "path": ".gitattributes",
@@ -1313,7 +1313,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "f420a6e1955cc877a517ee72a0168c423c210973d304fd552bf880cc4cd6e16f"
+      "sha256": "19357dc4305c05e6f4556745e7fcb4386a95d713f1d8cf76c8d78c69b7a98fe1"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1333,7 +1333,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "99ee5344811be08541a5d926c73e27eacf4a733c07c68e63a8a900008828ca65"
+      "sha256": "0598aab04f8592268e11dc1ef75d641e1d848662f15980e20d7f4743e4339002"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1357,7 +1357,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "c233449bbf30fb7d8a8f8738595804a88370ccad7d4735a45f829861be7505e6"
+      "sha256": "ca9cc4ee6d1a644166e55dd69c126ec998e9f786783a7d8bb717cdb86fc1b6ff"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1577,11 +1577,11 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "0c66721920b6b30674b55e3bc0068b1466bd27f45809117f9dad9bba12b10fbd"
+      "sha256": "cc20a9c165a9df29ef0932df80a4a1161835b49677e9c3bf8227279260d354aa"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "ff25c6015822e732fb298d3bd7f0b158d92316500b031c5a8b6cd9e2c90f1592"
+      "sha256": "bac9d70381b8de00a5056e413f155ef2e8c8cc3d8ccb6296f1291881d645798f"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
