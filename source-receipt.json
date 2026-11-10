@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-10T05:15:08.326Z",
-  "fileSetSHA256": "2f3765e7f702b018f5a70fa4813487bbab37bbdce2de6ae456b19fed65ca3a75",
+  "createdAt": "2026-11-10T07:05:37.316Z",
+  "fileSetSHA256": "ebe267a7cdeb0e3d9f123e47d478074af499cf7bf1f604c0d09b06e1dd11be24",
   "files": [
     {
       "path": ".gitattributes",
@@ -1237,7 +1237,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-exit.mjs",
-      "sha256": "2e832218900f5f00cbe5578e5119b7797342c4e3d73f86d0e76f9fa2716158ba"
+      "sha256": "76b744601eea9651268b5f8d297545fc515a76b64ef061300b0e1da37d6b6b3d"
     },
     {
       "path": "dsh-electron/src/desktop-locale.mjs",
@@ -1317,7 +1317,7 @@
     },
     {
       "path": "dsh-electron/src/native-desktop.mjs",
-      "sha256": "eaf20d80fdfa6f1c2671cdebb307811ae56faa6d25f439295119ad03790538ba"
+      "sha256": "45b320d8c63bc40bfe1a23fa6c36bd45970a5922d581c445e57f9e820ee20e11"
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
@@ -1337,7 +1337,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "079eca3bec90d02d23f42093c4b4a435c1733dcf0696a49321d4b0a76a25f07a"
+      "sha256": "3460295134c29b7f41cbe199544eb6b5d86d7b27e7e9b26616669363d46646b6"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1361,7 +1361,7 @@
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
-      "sha256": "ca9cc4ee6d1a644166e55dd69c126ec998e9f786783a7d8bb717cdb86fc1b6ff"
+      "sha256": "68a4dabb9f16dca291714a459a1c38fcd21fcc9dcb88ef629cc6005607ae807d"
     },
     {
       "path": "dsh-electron/src/startup-presentation.mjs",
@@ -1513,7 +1513,7 @@
     },
     {
       "path": "dsh-electron/tests/installer-cleanup.test.mjs",
-      "sha256": "7655255a9b4185eb74856d87f1350bf7bdfbf4858890f3dc8cccf405ffbd98ea"
+      "sha256": "2e489833aae06f4819406831c997f76becb8d233d9e3b520e7aa757fe7c984ab"
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
@@ -1585,11 +1585,11 @@
     },
     {
       "path": "dsh-electron/tests/startup-failure.test.mjs",
-      "sha256": "aee974766ffb6b37cdc3ec252ebf251fc862f0da54e592aba83cca5b487a370f"
+      "sha256": "e7a6dad3855a5a1701a9164dbe995c553ff5ffa716647a15f713e7325ef84935"
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "89e574a5a8b7c55a46980c0dc39086b731ac7600c033f094d97e2dd61105b7dc"
+      "sha256": "658ac27bb3d56672a931531392af294a6b3b2346e01cdf7f52eb3621d6573886"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",

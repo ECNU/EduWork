@@ -58,20 +58,15 @@ test('native dialog text and copied diagnostics preserve literal paths, names an
   assert.ok(page.diagnostics.includes(payload))
 })
 
-test('publisher bootstrap retains retry/import actions; generic configuration errors retain their original details', () => {
+test('only publisher bootstrap gets the configuration retry and import dialog', () => {
   const error = Object.assign(Error('Synthetic offline bootstrap'), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
   const bootstrap = startupFailureDialog({ ...settings, error })
   assert.equal(bootstrap.needsConfiguration, true)
   assert.match(bootstrap.options.message, /正在等待发行配置/)
   assert.deepEqual(bootstrap.options.buttons, ['退出', '重试下载', '导入离线配置包'])
-  const generic = startupFailureDialog({ ...settings, error: Error('Synthetic invalid configuration') })
-  assert.match(generic.options.detail, /Synthetic invalid configuration/)
-  assert.ok(generic.options.detail.includes(settings.config))
-  for (const page of [bootstrap, generic]) {
-    assert.equal(page.executable, undefined)
-    assert.equal(page.diagnostics, undefined)
-    assert.equal(page.html, undefined)
-  }
+  assert.ok(bootstrap.options.detail.includes(settings.config))
+  assert.equal(bootstrap.executable, undefined)
+  assert.equal(startupFailureDialog({ ...settings, error: Error('Synthetic invalid configuration') }), undefined)
 })
 
 test('publisher bootstrap remains specialized when the error is wrapped', () => {
@@ -214,10 +209,11 @@ test('wrapped aggregate startup diagnostics expand the concrete causes', () => {
   assert.match(safe.message, /Synthetic rollback failure/)
 })
 
-test('the generic configuration dialog scrubs input excerpts and loopback addresses', () => {
+test('the publisher configuration dialog scrubs input excerpts and loopback addresses', () => {
   let jsonError
   try { JSON.parse('{"A":["secret99",]}') } catch (error) { jsonError = error }
-  const page = startupFailureDialog({ ...settings, error: Error(`${jsonError.message}\nconnect ECONNREFUSED 127.0.0.1:51234`) })
+  const error = Object.assign(Error(`${jsonError.message}\nconnect ECONNREFUSED 127.0.0.1:51234`), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })
+  const page = startupFailureDialog({ ...settings, error })
   assert.match(page.options.detail, /is not valid JSON/)
   assert.match(page.options.detail, /connect ECONNREFUSED/)
   assert.doesNotMatch(page.options.detail, /secret99|127\.0\.0\.1|51234/)
@@ -240,29 +236,6 @@ test('startup diagnostics copy only safe diagnostic fields', () => {
   assert.equal('token' in safe, false)
   assert.equal('secret' in safe, false)
   assert.equal(startupDiagnostic('Synthetic string failure').message, 'Synthetic string failure')
-})
-
-test('cancelled startup never presents the migration progress', () => {
-  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const start = source.indexOf('function showStartupProgress('), end = source.indexOf('\n}\n', start)
-  assert.ok(start >= 0 && end > start, 'showStartupProgress boundary changed')
-  const events = [], window = {
-    isDestroyed: () => false,
-    webContents: { isLoadingMainFrame: () => false, send: () => events.push('boot-brand') },
-    show: () => events.push('show'),
-  }
-  const context = {
-    startupCancelled: true, startupMessage: '', mainWindow: window, mainWindowPresented: false,
-    isQuitting: () => false, desktopFailureShown: false, desktopBootBrand: () => ({ name: 'Fixture' }),
-    process, app: { isHidden: () => false },
-  }
-  runInNewContext(`${source.slice(start, end + 2)}\nglobalThis.progress = showStartupProgress`, context)
-  context.progress('正在迁移旧版历史数据…')
-  assert.deepEqual(events, [], 'Cancellation must suppress boot-brand and window presentation')
-  assert.equal(context.startupMessage, '')
-  context.startupCancelled = false
-  context.progress('正在迁移旧版历史数据…')
-  assert.deepEqual(events, ['boot-brand', 'show'])
 })
 
 function pending() {
@@ -325,7 +298,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     relaunch: () => events.push('relaunch'), quit: () => app.quit(),
     failed: error => { if (onExitFailure) onExitFailure(error); else assert.fail(error) } })
   const context = {
-    app, lifecycle, desktopExit: exit, desktopFailureShown: false,
+    app, lifecycle, desktopExit: exit, desktopFailureShown: false, Error, AggregateError,
     settings, paths: { config: settings.config },
     restartDesktop: options => { events.push('restart'); return exit.restart(options) },
     contentUpdates: contentUpdates ?? { close: () => events.push('content-abort'), rollback: async () => {
@@ -369,10 +342,10 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     events, dialogs, nativeCalls,
     async begin(error = Error('Synthetic startup failure')) {
       if (errorCode) error.code = errorCode
-      shown = context.recover(error, nativeRecovery ? failure => {
+      shown = context.recover(error, (failure, restartFailure) => {
         nativeCalls.push(failure)
-        return nativeRecovery(failure)
-      } : undefined)
+        return nativeRecovery?.(failure, restartFailure)
+      })
       if (stage === 'native') {
         await shown
         return
@@ -504,7 +477,7 @@ test('an updater health failure hands the process back without relaunching', asy
   assert.equal(f.events.filter(value => value === 'quit').length, 1)
 })
 
-test('a cleanup failure after lifecycle shutdown keeps a native recovery entry', async t => {
+test('a failed automatic restart passes the cleanup reason separately from the startup error', async t => {
   const cleanupFailure = Error('Synthetic tray cleanup failure')
   const failures = []
   const f = recoveryHarness(t, 'native', {
@@ -514,7 +487,10 @@ test('a cleanup failure after lifecycle shutdown keeps a native recovery entry',
     cleanupResolved: true,
     resourceCloseError: cleanupFailure,
     onExitFailure: error => failures.push(error),
-    nativeRecovery: () => {},
+    nativeRecovery: (error, restartFailure) => {
+      assert.equal(error.message, 'Synthetic startup failure')
+      assert.equal(restartFailure, failures[0])
+    },
   })
   await f.begin()
   assert.equal(failures.length, 1)

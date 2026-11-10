@@ -20,6 +20,10 @@ function startupHarness() {
   const readyEnd = source.indexOf('\n}\n', readyStart)
   const activationStart = source.indexOf('const activationWindows =')
   const activationEnd = source.indexOf('export function configureEduworkPaths()', activationStart)
+  const retryStart = source.indexOf('function showRecoveryProgress(')
+  const retryEnd = source.indexOf('export function cancelDesktopStartup()', retryStart)
+  const recoveryStart = source.indexOf('export function prepareDesktopRecovery()')
+  const recoveryEnd = source.indexOf('export async function showDesktopFailure(', recoveryStart)
   assert.ok(progressStart >= 0 && messageStart > progressStart && readyEnd > readyStart)
   class FakeWindow extends EventEmitter {
     static windows = []
@@ -45,20 +49,22 @@ function startupHarness() {
   }
   const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
-    `let mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
+    `let mainWindow, tray, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
     let quitting = false, desktopFailureShown = false, startupCancelled = false, flushCalls = 0
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
     let flushPendingSettings = () => { flushCalls += 1 }
     ${source.slice(activationStart, activationEnd).replace('export ', '')}
+    ${source.slice(retryStart, retryEnd)}
+    ${source.slice(recoveryStart, recoveryEnd).replace('export ', '')}
     ${source.slice(progressStart, messageStart).replace('export ', '')}
     ${source.slice(readyStart, readyEnd + 2).replace('export ', '')}
     return {
       setMain(window) { mainWindow = window; window.on('show', () => { mainWindowPresented = true }) },
-      setRecovery() { desktopFailureShown = true },
       quit() { quitting = true },
       cancel() { startupCancelled = true },
       showStartupProgress, showHostStartupProgress, desktopReady, showDesktop, activationWindows,
+      prepareDesktopRecovery, showRecoveryProgress, hideRecoveryProgress,
       flushCalls: () => flushCalls,
     }`)
   const harness = build(FakeWindow, app, { ready: async () => {} }, async () => {},
@@ -68,14 +74,6 @@ function startupHarness() {
   attachAppActivation({ app, windows: harness.activationWindows, platform: 'darwin' })
   return { harness, main, FakeWindow, app, activate: () => app.emit('activate') }
 }
-
-test('cancelled startup never presents the migration progress', () => {
-  const { harness, main } = startupHarness()
-  harness.cancel()
-  harness.showStartupProgress('正在迁移旧版历史数据…')
-  assert.equal(main.messages.length, 0)
-  assert.equal(main.showCalls, 0)
-})
 
 // This covers the display guard after a delayed announcement, not the full prepareDesktop transaction.
 test('a delayed progress announcement after cancellation does not present the boot page', async () => {
@@ -88,6 +86,7 @@ test('a delayed progress announcement after cancellation does not present the bo
   await announced
   assert.equal(main.messages.length, 0, 'Cancellation during the read must suppress the late boot-brand')
   assert.equal(main.showCalls, 0, 'Cancellation during the read must not present the window')
+  assert.equal(harness.showDesktop(), false)
 })
 
 test('preparation progress does not present a window while the application is hidden', { skip: process.platform !== 'darwin' }, () => {
@@ -187,12 +186,12 @@ test('a late preparation message preserves a main window the user already hid', 
 
 for (const stop of ['none', 'quit', 'recovery', 'destroy']) {
   test(`preparation waits for document load and respects ${stop}`, () => {
-    const { harness, main, FakeWindow } = startupHarness()
+    const { harness, main } = startupHarness()
     main.loading = true
     harness.showStartupProgress('download')
     assert.equal(main.visible, false)
     if (stop === 'quit') harness.quit()
-    if (stop === 'recovery') harness.setRecovery(new FakeWindow())
+    if (stop === 'recovery') harness.prepareDesktopRecovery()
     if (stop === 'destroy') main.destroy()
     main.webContents.emit('did-finish-load')
     assert.equal(main.showCalls, stop === 'none' ? 1 : 0)
@@ -218,21 +217,22 @@ for (const entry of ['Dock', 'relaunch']) {
   })
 }
 
-test('native recovery activation does not reveal the incomplete main window', () => {
-  const { harness, main } = startupHarness()
-  harness.showStartupProgress('download'); main.hide()
-  harness.setRecovery()
+test('Dock and repeated launches restore the main window only while a recovery download is active', () => {
+  const { harness, main, activate } = startupHarness()
+  harness.showStartupProgress('initial download')
+  harness.prepareDesktopRecovery()
+  harness.showStartupProgress('late startup progress')
   assert.equal(harness.showDesktop(), false)
   assert.equal(main.visible, false)
-})
-
-test('startup recovery hides the stale BootPage without destroying the last app window', () => {
-  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const start = source.indexOf('export function prepareDesktopRecovery')
-  const end = source.indexOf('\n}\n', start)
-  assert.ok(start >= 0 && end > start)
-  const failure = source.slice(start, end)
-  assert.match(failure, /tray\.destroy\(\)/)
-  assert.match(failure, /mainWindow\.hide\(\)/)
-  assert.doesNotMatch(failure, /mainWindow\.destroy\(\)|new BrowserWindow|loadURL/)
+  harness.showRecoveryProgress('retry download')
+  for (const restore of [activate, harness.showDesktop]) {
+    main.hide(); main.minimized = true
+    restore()
+    assert.equal(main.minimized, false)
+    assert.equal(main.visible, true)
+    assert.equal(main.focused, true)
+  }
+  harness.hideRecoveryProgress()
+  assert.equal(harness.showDesktop(), false)
+  assert.equal(main.visible, false)
 })

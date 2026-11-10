@@ -104,6 +104,7 @@ export function startupFailureDialog({ error, productName, version, config }) {
   for (let current = error; current && causes.length < 8; current = current.cause) causes.push(current)
   const updater = causes.find(value => value.code === 'EDUWORK_UPDATER_START_FAILED')
   const needsConfiguration = causes.some(value => value.code === 'EDUWORK_BOOTSTRAP_REQUIRED')
+  if (!updater && !needsConfiguration) return
   let detail, diagnostics
   if (updater) {
     const code = updater.cause?.code ?? 'UNKNOWN'
@@ -123,13 +124,13 @@ export function startupFailureDialog({ error, productName, version, config }) {
     diagnostics = scrubDiagnosticText(`产品：${productName}\n版本：${version ?? '未知'}\n故障组件：自动更新服务\n组件文件：${updater.executable}\n错误代码：${code}\n原始错误：${causes.filter(value => value !== updater).map(value => value.message || String(value)).join('\n原因：')}`)
     detail = `${reason}\n\n这是启动所需的组件。修复后才能启动，原有配置和历史数据不会被重置。\n\n${steps.join('\n')}\n\n组件文件：${updater.executable}\n错误代码：${code}\n\n若仍无法启动，请复制错误信息交给维护人员。`
   } else {
-    detail = `${needsConfiguration ? '首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。' : '修正以下问题后可重新启动。原有配置和历史数据不会被重置。'}\n\n${scrubDiagnosticText(String(error.message || error))}\n\n配置文件：${config}`
+    detail = `首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。\n\n${scrubDiagnosticText(String(error.message || error))}\n\n配置文件：${config}`
   }
   // Match DSH fatal recovery's native presentation; only edition actions differ.
   const options = { type: 'error', title: `${productName} · 启动提示`,
-    message: needsConfiguration ? '正在等待发行配置' : updater ? '更新组件无法运行' : '暂时未能启动', detail,
+    message: needsConfiguration ? '正在等待发行配置' : '更新组件无法运行', detail,
     buttons: needsConfiguration ? ['退出', '重试下载', '导入离线配置包']
-      : updater ? ['退出', '修复后重试', '打开组件目录', '复制错误信息'] : ['退出', '重新启动'],
+      : ['退出', '修复后重试', '打开组件目录', '复制错误信息'],
     defaultId: 1, cancelId: 0, noLink: true }
   return { options, needsConfiguration, diagnostics, executable: updater?.executable }
 }

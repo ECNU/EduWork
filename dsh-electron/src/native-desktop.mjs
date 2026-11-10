@@ -87,11 +87,19 @@ const recovery = new DesktopFatalRecovery({
       electron: process.versions.electron, node: process.versions.node, locale: locale().id },
   }),
 })
-function reportFatal(error, source) {
+function reportFatal(error, source, rollbackRestartFailure) {
   if (isQuitting() && !isShutdownFailed()) return
-  if (!started) prepareDesktopRecovery()
+  // The frontend can still be booting after the Host is ready.
+  if (!started || source === 'web-boot') prepareDesktopRecovery()
   // Do not persist arbitrary Host error properties, renderer content or cookies.
   const safe = startupDiagnostic(error, redactDiagnostic)
+  // DSH displays the message and aggregate errors. The saved report also inspects these fields.
+  if (rollbackRestartFailure) {
+    safe.recovery = {
+      contentRollback: 'succeeded',
+      automaticRestartFailure: startupDiagnostic(rollbackRestartFailure, redactDiagnostic),
+    }
+  }
   desktopHostLog(`[desktop:${source}] ${safe.message}\n`)
   void recovery.report(safe, source).catch(failure => {
     desktopHostLog(`[desktop:recovery] ${startupDiagnostic(failure, redactDiagnostic).message}\n`)
@@ -179,7 +187,7 @@ async function handleStartupFailure(error, source = 'main') {
     return
   }
   try {
-    await showDesktopFailure(error, failure => reportFatal(failure, source))
+    await showDesktopFailure(error, (failure, restartFailure) => reportFatal(failure, source, restartFailure))
   }
   catch (failure) { reportFatal(failure, 'main') }
 }
@@ -286,5 +294,5 @@ void app.whenReady().then(main).catch(async error => {
   if (isQuitting() || recovery.active) return
   if (started) { reportFatal(error, 'main'); return }
   if (entered) { await handleStartupFailure(error); return }
-  await showDesktopFailure(error, failure => reportFatal(failure, 'main'))
+  await showDesktopFailure(error, (failure, restartFailure) => reportFatal(failure, 'main', restartFailure))
 }).catch(error => reportFatal(error, 'main'))

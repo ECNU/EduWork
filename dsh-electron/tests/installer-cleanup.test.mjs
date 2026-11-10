@@ -411,8 +411,8 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
           calls.push('failure-cleanup-start'); failureCleanupStarted()
           await new Promise(resolve => { releaseFailureCleanup = resolve })
           calls.push('failure-cleanup-finished')
-          await restartDesktop({ strict: true })
-          if (!exit.complete && !exit.closing) { calls.push('native-recovery'); await nativeRecovery(error) }
+          const restartFailure = await restartDesktop({ strict: true })
+          if (!exit.complete && !exit.closing) { calls.push('native-recovery'); await nativeRecovery(error, restartFailure) }
           return
         }
         if (error?.code === 'EDUWORK_BOOTSTRAP_REQUIRED' || error?.code === 'EDUWORK_UPDATER_START_FAILED') {
@@ -650,6 +650,12 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
       assert.equal(exit.complete, true)
       if (cleanupRestartFailure) {
         assert.deepEqual(exitFailures, [resourceError])
+        assert.match(dialogOptions[0].detail, /Synthetic renderer failure/)
+        assert.doesNotMatch(dialogOptions[0].detail, /Synthetic resource cleanup failure/)
+        const report = crashReports[0].error
+        assert.equal(report.message, rendererError.message)
+        assert.equal(report.recovery.contentRollback, 'succeeded')
+        assert.equal(report.recovery.automaticRestartFailure.message, resourceError.message)
         for (const [event, count] of [['host', 1], ['stop', 1], ['relaunch', 0], ['quit', 1]]) {
           assert.equal(calls.filter(value => value === event).length, count, event)
         }
@@ -707,6 +713,9 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'in
         assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
       }
     } else if (stopFailure) {
+      const recoveryPreparation = calls.indexOf('prepare-recovery')
+      assert.ok(recoveryPreparation >= 0 && recoveryPreparation < calls.indexOf('recovery-dialog'),
+        'A web boot failure must hide the BootPage before native recovery even after Host readiness')
       for (const [event, count] of [['host', 1], ['stop', 1], ['recovery-dialog', 2], ['stop-failure', 2], ['relaunch', 0], ['quit', 1]]) {
         assert.equal(calls.filter(value => value === event).length, count, event)
       }
