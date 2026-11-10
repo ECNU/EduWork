@@ -137,9 +137,13 @@ export async function retryPublisherContent(manager) {
   return result
 }
 
-export async function preparePublisherContent(manager, bootstrap, { onDownload = () => {} } = {}) {
+export function startupCancelledError() {
+  return Object.assign(new Error('Desktop preparation was cancelled'), { code: 'EDUWORK_STARTUP_CANCELLED' })
+}
+
+export async function preparePublisherContent(manager, bootstrap, { onDownload = () => {}, cancelled = () => false } = {}) {
   try {
-    return await preparePublisherContentTrial(manager, bootstrap, onDownload)
+    return await preparePublisherContentTrial(manager, bootstrap, onDownload, cancelled)
   } catch(error) {
     if(isContentFileError(error)&&bootstrap&&(!bootstrap.hasBaseline||bootstrap.requiresConfiguration))
       throw Object.assign(new Error(error.message,{cause:error}),{code:'EDUWORK_BOOTSTRAP_REQUIRED'})
@@ -147,13 +151,20 @@ export async function preparePublisherContent(manager, bootstrap, { onDownload =
   }
 }
 
-async function preparePublisherContentTrial(manager, bootstrap, onDownload) {
+async function preparePublisherContentTrial(manager, bootstrap, onDownload, cancelled) {
   let managed = await manager.prepare()
+  // A cancellation during prepare() has no active AbortController. Stop before
+  // onDownload or check() can create a new, un-aborted request.
+  if (cancelled()) throw startupCancelledError()
   if (!bootstrap || bootstrap.hasBaseline && !bootstrap.requiresConfiguration || managed.configurationRevision > 0 || !manager.source?.configuration) return managed
   onDownload()
+  if (cancelled()) throw startupCancelledError()
   const offer = await manager.check({ repair: true })
+  if (cancelled()) throw startupCancelledError()
   if (offer.state === 'available') await manager.download()
+  if (cancelled()) throw startupCancelledError()
   if (manager.snapshot().state === 'ready') managed = await manager.prepare()
+  if (cancelled()) throw startupCancelledError()
   if (!managed.configurationRevision) {
     const status = manager.snapshot()
     const message = status.message === 'fetch failed' ? '暂时无法连接配置服务，请检查网络后重试。' : status.message

@@ -30,7 +30,7 @@ import { updateCoordinator } from './update-coordinator.mjs'
 import { createProductUpdateObserver } from './update-observer.mjs'
 import { createWorkbenchUpdateHandler } from './update-workbench.mjs'
 import { publisherBootstrap, readPublisherBootstrap, preparePublisherContent, retryPublisherContent } from './publisher-bootstrap.mjs'
-import { desktopRelaunchOptions } from './desktop-restart.mjs'
+import { configureDesktopRelaunch } from './desktop-restart.mjs'
 import { attachAppActivation, attachTrayActivation, attachWindowVisibility, showDesktopWindows } from './window-visibility.mjs'
 import { applyHostGitIdentity } from './host-git-identity.mjs'
 import { installFromDmg } from './installer-cleanup.mjs'
@@ -53,6 +53,7 @@ let initialCloseAction = 'tray'
 let migrationLaunch
 let updateCompleted = false
 let desktopFailureShown = false
+let startupCancelled = false
 let mainWindowPresented = false
 let startupMessage = ''
 let portableUpdates
@@ -67,31 +68,62 @@ let taskNotifications, notificationAdapter
 let desktopPet, petMenu = () => []
 let refreshTray = () => {}
 const lifecycle = new DesktopLifecycle()
+const relaunchDesktop = configureDesktopRelaunch(app, process.platform === 'win32' && process.env.EDUWORK_LAUNCHER_RESTART === '1')
+// Ownership applies only to this shell, not a detached updater's next launch.
+delete process.env.EDUWORK_LAUNCHER_RESTART
 let confirmQuit = async () => true
 const desktopExit = new DesktopExit({
   confirm: () => confirmQuit(),
   close: async () => {
     await directoryPicker.close()
     await stopDesktopServices()
-    desktopPet?.close()
-    taskNotifications?.close()
-    tray?.destroy(); tray = undefined
   },
-  relaunch: () => app.relaunch(desktopRelaunchOptions(process.argv.slice(1), updateCompleted)),
+  relaunch: () => relaunchDesktop(process.argv.slice(1), updateCompleted),
   quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
 })
 export function setDesktopQuitGuard(guard) { confirmQuit = guard }
-export function restartDesktop() {
-  desktopExit.restart()
+export function restartDesktop(options) {
+  return desktopExit.restart(options)
 }
-export function stopDesktopServices() {
+export function cancelDesktopStartup() {
+  startupCancelled = true
+  contentUpdates?.close()
+}
+export async function stopDesktopServices() {
   void contentUpdates?.close()
-  productUpdateObserver.dispose()
-  return lifecycle.close()
+  let serviceFailure
+  try { productUpdateObserver.dispose() } catch (error) { serviceFailure = error }
+  try { await lifecycle.close() } catch (error) { serviceFailure ??= error }
+  // The lifecycle already reflects Host/bridge failures; pet/notification/tray
+  // cleanup is cosmetic for process exit but must still be attempted and logged.
+  const causes = [...lifecycle.failures, ...(serviceFailure === undefined ? [] : [serviceFailure])]
+  for (const close of [() => desktopPet?.close(), () => taskNotifications?.close(),
+    () => { tray?.destroy(); tray = undefined }]) {
+    try { close() } catch (error) { causes.push(error) }
+  }
+  if (!causes.length) return
+  const critical = lifecycle.failures.length > 0 || serviceFailure !== undefined
+  const error = new Error(critical
+    ? 'Desktop services could not be stopped'
+    : 'Desktop resources could not be cleaned up',
+  { cause: causes.length === 1 ? causes[0] : new AggregateError(causes, 'Desktop shutdown failed') })
+  error.critical = critical
+  error.resourceOnly = !critical
+  throw error
+}
+export function hasPendingContentTrial() { return Boolean(contentUpdates?.state?.trial) }
+export async function recordStartupStopFailureHealth() {
+  if (!migrationLaunch || hasPendingContentTrial()) return false
+  await writeMigrationHealth(migrationLaunch, 'failed', '新版未完成启动，旧版数据仍保留')
+  return true
 }
 export function trackHost(host) { lifecycle.trackHost(host) }
 export function desktopHostLog(chunk) { desktopLogger(join(paths.logs, 'desktop-host.log'))(chunk) }
 export function isQuitting() { return desktopExit.closing || lifecycle.closing }
+export function isShutdownFailed() {
+  return Boolean(desktopExit.failure) && desktopExit.pending === undefined
+    && !desktopExit.closing && !desktopExit.complete
+}
 const activationWindows = () => [progressWindow, updateCompleted || startupMessage ? mainWindow : undefined, ...BrowserWindow.getAllWindows().filter(window => window !== mainWindow && !desktopPet?.owns(window))]
 export const showDesktop = () => showDesktopWindows(activationWindows())
 export function configureEduworkPaths() {
@@ -154,12 +186,13 @@ function startupAppearance() {
   }
 }
 function showStartupProgress(message, documentLoaded = false) {
+  if (startupCancelled) return
   startupMessage = message
   const window = mainWindow
   if (!window || window.isDestroyed() || isQuitting() || desktopFailureShown) return
   window.webContents.send('eduwork:boot-brand', desktopBootBrand())
   const present = () => {
-    if (window.isDestroyed() || isQuitting() || desktopFailureShown || mainWindowPresented) return
+    if (startupCancelled || window.isDestroyed() || isQuitting() || desktopFailureShown || mainWindowPresented) return
     if (process.platform === 'darwin' && app.isHidden()) return
     mainWindowPresented = true
     window.show()
@@ -179,12 +212,16 @@ function showDesktopMessageBox(options) {
   return parent ? dialog.showMessageBox(parent, options) : dialog.showMessageBox(options)
 }
 async function prepareDesktop() {
-  lifecycle.check()
+  const check = () => {
+    lifecycle.check()
+    if (startupCancelled) throw new Error('Desktop preparation was cancelled')
+  }
+  check()
   migrationLaunch = await readMigrationLaunch({root:paths.root,settings,argv:process.argv})
+  check()
   const appearance = startupAppearance()
   if (appearance.dock) app.dock.setIcon(appearance.dock)
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
-  lifecycle.check()
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
   if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
     await initializeUserConfig({ product: paths.product, config: paths.config })
@@ -224,10 +261,12 @@ async function prepareDesktop() {
   contentUpdates = await new ContentUpdates({root:paths.root,dataRoot:paths.updateDataRoot,skillsManifestPath:paths.skillsManifestPath,product:paths.product,configPath:paths.config,version:settings.productVersion,distribution:settings.distribution,identity,
     configurationDefaults:{updates:updateDefaults},
     policy: updatePolicy}).init()
-  lifecycle.check()
-  managedContent = await preparePublisherContent(contentUpdates, publisher, { onDownload: () => {
-    showStartupProgress('首次启动，正在下载并校验发行配置…')
-  } })
+  check()
+  managedContent = await preparePublisherContent(contentUpdates, publisher, {
+    onDownload: () => { if (!startupCancelled) showStartupProgress('首次启动，正在下载并校验发行配置…') },
+    cancelled: () => startupCancelled,
+  })
+  check()
   try { await contentUpdates.configurationFile.document() }
   catch (error) { desktopHostLog(`[configuration] Could not refresh optional JSONC help: ${error.message}\n`) }
   user=loadUserConfig(paths.config)
@@ -273,7 +312,7 @@ async function prepareDesktop() {
   }
   const prepared = await prepareProductProfile({ product: paths.product, home: paths.home, shell: 'electron',
     pluginConfig: launch.pluginConfig, patches: launch.patches, enterpriseProfile: launch.enterpriseProfile, userConfig: paths.config, configurationOwnership:settings.configurationOwnership, managedContent })
-  lifecycle.check()
+  check()
   if (prepared.identity.distribution !== settings.distribution) throw new Error('Desktop and product editions do not match')
   for (const [key, value] of Object.entries({ ...prepared.environment, ...launch.environment })) if (typeof value === 'string') process.env[key] = value
   // Reassert the edition's immutable ownership after optional test settings.
@@ -327,7 +366,7 @@ async function prepareDesktop() {
   nativeBridge = bridge
   bootstrap = bridge.bootstrap
   await writeFile(join(paths.logs, 'desktop-start.json'), JSON.stringify({ shell: 'electron', productVersion: settings.productVersion, dshVersion: prepared.identity.dshVersion, configurationRevision:managedContent.configurationRevision??0, skillsRevision:managedContent.skillsRevision??0, pid: process.pid, startedAt: new Date().toISOString() }, null, 2))
-  lifecycle.check()
+  check()
   return { profile: prepared.profile, node: paths.node }
 }
 export function nativeBootstrap() { if (!bootstrap) throw new Error('Native desktop bridge is not ready'); return bootstrap }
@@ -485,17 +524,31 @@ export function checkProductUpdates() {
  mainWindow.show();mainWindow.focus()
  return mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));").catch(()=>{})
 }
-export async function showDesktopFailure(error) {
+export async function showDesktopFailure(error, nativeRecovery) {
   if (isQuitting() || desktopFailureShown) return
   desktopFailureShown = true
   let rolledBack
   try { rolledBack = await contentUpdates?.rollback(error) }
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   if (isQuitting()) return
-  if (rolledBack) { restartDesktop(); return }
-  await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留').catch(()=>{})
+  if (rolledBack) {
+    // The automatic recovery restart must surface a cleanup failure instead of
+    // silently relaunching, so it does not tolerate resource-only failures.
+    await restartDesktop({ strict: true })
+    // A completed quit or one still in progress owns the outcome. A declined or
+    // failed attempt leaves the process alive, even when the lifecycle already
+    // closed, so it must still expose a recovery entry.
+    if (desktopExit.complete || desktopExit.closing) return
+    if (nativeRecovery) { await nativeRecovery(error); return }
+  }
+  try { await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留') }
+  catch (healthError) { error = new Error(`${error.message}\n迁移状态未能保存：${healthError.message}`, { cause: error }) }
   if (isQuitting()) return
   const page = startupFailurePage({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
+  if (nativeRecovery && !page.needsConfiguration && !page.executable) {
+    await nativeRecovery(error)
+    return
+  }
   if (!progressWindow || progressWindow.isDestroyed()) {
     progressWindow = new BrowserWindow({ width: 660, height: 470, show: false, title: settings.productName,
       backgroundColor: nativeTheme.shouldUseDarkColors ? '#1c1c1c' : '#faf8f4',

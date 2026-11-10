@@ -14,3 +14,17 @@ export function desktopRelaunchOptions(args, updateCompleted = false) {
   }
   return { args: retained }
 }
+
+// The legacy Windows launcher owns the shell's Job, so it must start the next
+// shell after closing the old Job. Direct Electron launches use native relaunch.
+export function configureDesktopRelaunch(app, launcherOwned) {
+  if (!launcherOwned) return (args, updated) => app.relaunch(desktopRelaunchOptions(args, updated))
+  let restartCode
+  app.on('will-quit', event => {
+    if (restartCode === undefined) return
+    event.preventDefault()
+    // app.exit skips quit events: let all will-quit cleanup listeners run first.
+    setImmediate(() => app.exit(restartCode))
+  })
+  return (_args, updated = false) => { restartCode = updated ? 24 : 23 }
+}

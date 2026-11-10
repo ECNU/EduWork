@@ -46,7 +46,7 @@ function startupHarness() {
   const app = Object.assign(new EventEmitter(), { hidden: false, isHidden() { return this.hidden } })
   const build = new Function('BrowserWindow', 'app', 'contentUpdates', 'writeMigrationHealth', 'desktopPet', 'portableUpdates', 'showDesktopWindows',
     `let progressWindow, mainWindow, mainWindowPresented = false, startupMessage = '', migrationLaunch = null, updateCompleted = false
-    let quitting = false, desktopFailureShown = false, flushCalls = 0
+    let quitting = false, desktopFailureShown = false, startupCancelled = false, flushCalls = 0
     const isQuitting = () => quitting
     const desktopBootBrand = () => ({ name: 'Fixture', message: startupMessage })
     let flushPendingSettings = () => { flushCalls += 1 }
@@ -57,6 +57,7 @@ function startupHarness() {
       setMain(window) { mainWindow = window; window.on('show', () => { mainWindowPresented = true }) },
       setRecovery(window) { progressWindow = window; desktopFailureShown = true },
       quit() { quitting = true },
+      cancel() { startupCancelled = true },
       showStartupProgress, showHostStartupProgress, desktopReady, showDesktop, activationWindows,
       flushCalls: () => flushCalls,
     }`)
@@ -67,6 +68,27 @@ function startupHarness() {
   attachAppActivation({ app, windows: harness.activationWindows, platform: 'darwin' })
   return { harness, main, FakeWindow, app, activate: () => app.emit('activate') }
 }
+
+test('cancelled startup never presents the migration progress', () => {
+  const { harness, main } = startupHarness()
+  harness.cancel()
+  harness.showStartupProgress('正在迁移旧版历史数据…')
+  assert.equal(main.messages.length, 0)
+  assert.equal(main.showCalls, 0)
+})
+
+// This covers the display guard after a delayed announcement, not the full prepareDesktop transaction.
+test('a delayed progress announcement after cancellation does not present the boot page', async () => {
+  const { harness, main } = startupHarness()
+  let release
+  const read = new Promise(resolve => { release = resolve })
+  const announced = read.then(() => harness.showStartupProgress('正在迁移旧版历史数据…'))
+  harness.cancel()
+  release()
+  await announced
+  assert.equal(main.messages.length, 0, 'Cancellation during the read must suppress the late boot-brand')
+  assert.equal(main.showCalls, 0, 'Cancellation during the read must not present the window')
+})
 
 test('preparation progress does not present a window while the application is hidden', { skip: process.platform !== 'darwin' }, () => {
   const { harness, main, app } = startupHarness()

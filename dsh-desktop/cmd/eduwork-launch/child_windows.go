@@ -1,17 +1,56 @@
 package main
 
 import (
+	"errors"
 	"os/exec"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
 
-// An old updater kills only its directly launched process when health fails.
-// Keep the real desktop in this launcher's job so rollback cannot leave a
-// window running against removed program files. Explicit update helpers may
-// break away because they must survive the desktop's normal shutdown.
+// The owned Electron shell requests a restart after its normal will-quit cleanup.
+// Code 24 additionally retires the completed updater's one-time arguments.
+const (
+	restartExitCode        = 23
+	updatedRestartExitCode = 24
+)
+
 func runChild(child *exec.Cmd) error {
+	child.Env = append(child.Environ(), "EDUWORK_LAUNCHER_RESTART=1")
+	for {
+		err := runChildJob(child)
+		var exited *exec.ExitError
+		if !errors.As(err, &exited) || (exited.ExitCode() != restartExitCode && exited.ExitCode() != updatedRestartExitCode) {
+			return err
+		}
+		args := child.Args[1:]
+		if exited.ExitCode() == updatedRestartExitCode {
+			args = withoutUpdateHandshake(args)
+		}
+		next := exec.Command(child.Path, args...)
+		next.Dir, next.Env = child.Dir, child.Env
+		next.Stdin, next.Stdout, next.Stderr = child.Stdin, child.Stdout, child.Stderr
+		next.SysProcAttr = child.SysProcAttr
+		child = next
+	}
+}
+
+func withoutUpdateHandshake(args []string) []string {
+	retained := make([]string, 0, len(args))
+	for index := 0; index < len(args); index++ {
+		if args[index] == "--update-health-file" || args[index] == "--eduwork-migration" {
+			index++
+		} else {
+			retained = append(retained, args[index])
+		}
+	}
+	return retained
+}
+
+// Each desktop gets its own Job. Closing it cleans the old Host/helpers before
+// a requested restart. Killing the launcher still kills the desktop, while an
+// explicitly breakaway updater can finish its installation.
+func runChildJob(child *exec.Cmd) error {
 	job, err := windows.CreateJobObject(nil, nil)
 	if err != nil {
 		return err
