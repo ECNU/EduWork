@@ -84,6 +84,17 @@ export function setDesktopQuitGuard(guard) { confirmQuit = guard }
 export function restartDesktop(options) {
   return desktopExit.restart(options)
 }
+function showRecoveryProgress(message) {
+  if (isQuitting() || !mainWindow || mainWindow.isDestroyed()) return
+  startupMessage = message
+  mainWindow.webContents.send('eduwork:boot-brand', { ...desktopBootBrand(), message })
+  mainWindow.show()
+  mainWindow.focus?.()
+}
+function hideRecoveryProgress() {
+  startupMessage = ''
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
+}
 export function cancelDesktopStartup() {
   startupCancelled = true
   contentUpdates?.close()
@@ -429,7 +440,7 @@ export async function attachDesktopWindow(window) {
   attachDockTheme(window)
   window.on('page-title-updated', event => { event.preventDefault(); window.setTitle(settings.productName) })
   const showWindow = attachWindowVisibility({ app, window, isQuitting,
-    shouldExit: shouldExitOnClose, hasTray: () => Boolean(tray) })
+    shouldExit: () => desktopFailureShown || shouldExitOnClose(), hasTray: () => Boolean(tray) })
   const show = () => (updateCompleted || startupMessage) && showWindow()
   const action = value => {
     show()
@@ -522,6 +533,16 @@ export function checkProductUpdates() {
  mainWindow.show();mainWindow.focus()
  return mainWindow.webContents.executeJavaScript("window.dispatchEvent(new Event('eduwork:open-updates'));").catch(()=>{})
 }
+export function prepareDesktopRecovery() {
+  desktopFailureShown = true
+  if (tray) {
+    try { if (!tray.isDestroyed?.()) tray.destroy() } catch (error) { desktopHostLog(`[desktop:tray] ${error.message}\n`) }
+    tray = undefined
+  }
+  // Keep the hidden BootPage alive while the native recovery dialog is open.
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
+  startupMessage = ''
+}
 export async function showDesktopFailure(error, nativeRecovery) {
   if (isQuitting() || desktopFailureShown) return
   desktopFailureShown = true
@@ -530,6 +551,15 @@ export async function showDesktopFailure(error, nativeRecovery) {
   catch(rollbackError) { error=new Error(`${error.message}\n内容回退状态未能保存：${rollbackError.message}`,{cause:error}) }
   if (isQuitting()) return
   if (rolledBack) {
+    // The updater owns this health handshake. Let it roll back the failed
+    // candidate instead of starting another candidate before it observes the
+    // original process exit.
+    if (migrationLaunch?.healthFile) {
+      try { await writeMigrationHealth(migrationLaunch, 'failed', '新版未完成启动，旧版数据仍保留') }
+      catch (healthError) { error = new Error(`${error.message}\n迁移状态未能保存：${healthError.message}`, { cause: error }) }
+      if (!isQuitting()) desktopExit.handoff()
+      return
+    }
     // The automatic recovery restart must surface a cleanup failure instead of
     // silently relaunching, so it does not tolerate resource-only failures.
     await restartDesktop({ strict: true })
@@ -542,19 +572,12 @@ export async function showDesktopFailure(error, nativeRecovery) {
   try { await writeMigrationHealth(migrationLaunch,'failed','新版未完成启动，旧版数据仍保留') }
   catch (healthError) { error = new Error(`${error.message}\n迁移状态未能保存：${healthError.message}`, { cause: error }) }
   if (isQuitting()) return
+  prepareDesktopRecovery()
   const failure = startupFailureDialog({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
   if (nativeRecovery && !failure.needsConfiguration && !failure.executable) {
     await nativeRecovery(error)
     return
   }
-  if (tray) {
-    try { if (!tray.isDestroyed?.()) tray.destroy() } catch (error) { desktopHostLog(`[desktop:tray] ${error.message}\n`) }
-    tray = undefined
-  }
-  // Keep the hidden BootPage alive: destroying the last BrowserWindow would
-  // trigger window-all-closed and quit while the native recovery dialog is open.
-  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.hide()
-  startupMessage = ''
   let message = failure.options.message
   while (!isQuitting()) {
     const { response } = await dialog.showMessageBox({ ...failure.options, message })
@@ -562,7 +585,10 @@ export async function showDesktopFailure(error, nativeRecovery) {
     if (response === 0) { app.quit(); return }
     try {
       if (response === 1) {
-        if (failure.needsConfiguration) await retryPublisherContent(contentUpdates)
+        if (failure.needsConfiguration) {
+          showRecoveryProgress('首次启动，正在下载并校验发行配置…')
+          try { await retryPublisherContent(contentUpdates) } finally { hideRecoveryProgress() }
+        }
         if (!isQuitting()) await restartDesktop()
       } else if (failure.needsConfiguration && response === 2) {
         const selected = await dialog.showOpenDialog({ title: '导入发行方提供的离线配置包', properties: ['openFile'], filters: [{ name: '签名内容包', extensions: ['json'] }] })

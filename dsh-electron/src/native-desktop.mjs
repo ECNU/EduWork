@@ -11,6 +11,7 @@ import { writeCrashReport, pruneCrashReports } from './crash-report.ts'
 import { createWindow } from './main.ts'
 import { SCHEME } from './ipc.ts'
 import { resolveDesktopLocale } from './locale.ts'
+import { brandDesktopLocale } from './desktop-locale.mjs'
 import { readDesktopLoginShellEnvironment, resolveDesktopLoginShellConfig } from './login-shell-environment.ts'
 import { DesktopHostProcess, staticDesktopResponse } from './eduwork-host-process.mjs'
 import { installNativeDesktopBridge } from './native-desktop-bridge.mjs'
@@ -21,7 +22,7 @@ import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
-  showDesktopFailure, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
+  showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
   showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
 
 configureEduworkPaths()
@@ -35,7 +36,7 @@ let startupTask, startupFailure, startupFailureShown = false, initialPresentatio
 let hostStarting = false
 let hostEnvironment = process.env
 const loginShellRead = new AbortController()
-const locale = () => bridge?.locale() ?? resolveDesktopLocale(app.getLocale())
+const locale = () => bridge?.locale() ?? brandDesktopLocale(resolveDesktopLocale(app.getLocale()), app.getName())
 const sidebarBrowser = createSidebarBrowser({ getWindow: () => mainWindow })
 const backend = new DesktopBackendController(onFailure => new DesktopHostProcess(product.node, product.profile, undefined,
   { bootstrap: nativeBootstrap(), onLog: desktopHostLog, onFailure, environment: hostEnvironment }), state => {
@@ -88,6 +89,7 @@ const recovery = new DesktopFatalRecovery({
 })
 function reportFatal(error, source) {
   if (isQuitting() && !isShutdownFailed()) return
+  if (!started) prepareDesktopRecovery()
   // Do not persist arbitrary Host error properties, renderer content or cookies.
   const safe = startupDiagnostic(error, redactDiagnostic)
   desktopHostLog(`[desktop:${source}] ${safe.message}\n`)

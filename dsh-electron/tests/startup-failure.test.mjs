@@ -291,8 +291,12 @@ async function contentTrial(t) {
   return { root, configPath, statePath, key, manager }
 }
 
-function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOtherStages = false, waitForPicker = false, approveRestart = true, errorCode = 'EDUWORK_BOOTSTRAP_REQUIRED', rollbackError, healthError, migrationLaunch, onMigrationHealth, nativeRecovery, contentUpdates, cleanupResolved = false, resourceCloseError, hostStopError, onExitFailure, responses, pickerCanceled = false, componentError = '' } = {}) {
+function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOtherStages = false, waitForPicker = false, approveRestart = true, errorCode = 'EDUWORK_BOOTSTRAP_REQUIRED', rollbackError, healthError, migrationLaunch, onMigrationHealth, nativeRecovery, contentUpdates, cleanupResolved = false, resourceCloseError, hostStopError, onExitFailure, responses, pickerCanceled = false, componentError = '', staleBootPage = false } = {}) {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const helperStart = source.indexOf('function showRecoveryProgress(')
+  const helperEnd = source.indexOf('export function cancelDesktopStartup', helperStart)
+  const prepareStart = source.indexOf('export function prepareDesktopRecovery(')
+  const prepareEnd = source.indexOf('\n}\n', prepareStart)
   const start = source.indexOf('export async function showDesktopFailure('), end = source.indexOf('\n}\n', start)
   const stopStart = source.indexOf('export async function stopDesktopServices('), stopEnd = source.indexOf('\n}\n', stopStart)
   const quittingStart = source.indexOf('export function isQuitting()'), quittingEnd = source.indexOf('\n', quittingStart)
@@ -336,7 +340,14 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     productUpdateObserver: { dispose() { events.push('observer-dispose') } },
     desktopPet: { close() { if (resourceCloseError) throw resourceCloseError } },
     taskNotifications: { close() {} },
-    tray: undefined, mainWindow: undefined, startupMessage: '',
+    tray: staleBootPage ? { isDestroyed: () => false, destroy: () => events.push('tray-destroy') } : undefined,
+    mainWindow: staleBootPage ? {
+      isDestroyed: () => false,
+      hide: () => events.push('window-hide'),
+      show: () => events.push('window-show'),
+      focus: () => events.push('window-focus'),
+      webContents: { send: (...args) => events.push(['boot-brand', ...args]) },
+    } : undefined, desktopBootBrand: () => ({ name: 'Synthetic EduWork', message: 'synthetic' }), startupMessage: '',
     dialog: { showOpenDialog: () => wait('selection', { canceled: pickerCanceled, filePaths: ['/synthetic/offline.json'] }),
       showMessageBox: async options => {
         dialogs.push(options)
@@ -352,7 +363,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     shell: { openPath: async path => { events.push(['component', path]); return componentError } }, dirname,
     stat: async () => ({ isFile: () => true, size: 1 }), readFile: async () => Buffer.from('synthetic'),
   }
-  runInNewContext(`${source.slice(stopStart, stopEnd + 2).replace('export ', '')}\n${source.slice(quittingStart, quittingEnd).replace('export ', '')}\n${source.slice(start, end + 2).replace('export ', '')}\nglobalThis.recover = showDesktopFailure`, context)
+  runInNewContext(`${source.slice(helperStart, helperEnd).replace('export ', '')}\n${source.slice(prepareStart, prepareEnd + 2).replace('export ', '')}\n${source.slice(stopStart, stopEnd + 2).replace('export ', '')}\n${source.slice(quittingStart, quittingEnd).replace('export ', '')}\n${source.slice(start, end + 2).replace('export ', '')}\nglobalThis.recover = showDesktopFailure`, context)
   t.after(async () => { operation.resolve(); picker.resolve(); cleanup.resolve(); dialogClosed.resolve(); await shown; await tick(); await exit.pending })
   return {
     events, dialogs, nativeCalls,
@@ -390,6 +401,21 @@ test('ordinary startup failure runs migration cleanup before native recovery wit
   assert.deepEqual(order, ['migration-cleanup', 'native-recovery'])
   assert.deepEqual(f.events, [])
   assert.equal(f.nativeCalls.length, 1)
+})
+
+test('ordinary startup recovery hides the stale BootPage before DSH recovery', async t => {
+  const f = recoveryHarness(t, 'native', {
+    rollbackResult: false,
+    errorCode: null,
+    staleBootPage: true,
+    nativeRecovery: () => {
+      f.events.push('native-recovery')
+    },
+  })
+  await f.begin()
+  assert.ok(f.events.includes('tray-destroy'))
+  assert.ok(f.events.includes('window-hide'))
+  assert.ok(f.events.indexOf('window-hide') < f.events.indexOf('native-recovery'))
 })
 
 for (const [name, error] of [
@@ -459,21 +485,23 @@ test('a declined rollback restart keeps a native recovery entry', async t => {
   assert.equal(f.events.includes('quit'), false)
 })
 
-test('a rollback-success fallback does not write a health marker (baseline)', async t => {
+test('an updater health failure hands the process back without relaunching', async t => {
   const markers = []
   const f = recoveryHarness(t, 'rollback', {
     rollbackResult: true,
     errorCode: null,
-    approveRestart: false,
+    cleanupResolved: true,
     migrationLaunch: { healthFile: 'synthetic-health' },
     onMigrationHealth: (...args) => markers.push(args),
-    nativeRecovery: () => {},
   })
   await f.begin()
   await f.finish()
-  await tick()
-  assert.deepEqual(markers, [])
-  assert.equal(f.nativeCalls.length, 1)
+  await f.cleaned()
+  assert.equal(markers.length, 1)
+  assert.equal(markers[0][1], 'failed')
+  assert.equal(f.nativeCalls.length, 0)
+  assert.equal(f.events.includes('relaunch'), false)
+  assert.equal(f.events.filter(value => value === 'quit').length, 1)
 })
 
 test('a cleanup failure after lifecycle shutdown keeps a native recovery entry', async t => {
@@ -625,6 +653,16 @@ for (const stage of ['retry', 'import']) {
     })
   }
 }
+
+test('configuration retry keeps the DSH BootPage visible while downloading', async t => {
+  const f = recoveryHarness(t, 'retry', { staleBootPage: true })
+  await f.begin()
+  assert.ok(f.events.includes('window-show'))
+  assert.ok(f.events.some(event => Array.isArray(event) && event[0] === 'boot-brand' && event[2].message.includes('下载')))
+  await f.finish()
+  await f.cleaned()
+  assert.ok(f.events.includes('window-hide'))
+})
 
 test('a file selection completed after exit does not start an offline import', async t => {
   const f = recoveryHarness(t, 'selection')

@@ -59,10 +59,10 @@ export class DesktopExit {
       // A confirmation failure means the user never approved this exit. Keep the
       // process running and skip close exactly as the baseline did.
       if (phase === 'confirm') return
-      if (!strict) {
+      if (!strict || this.installerOwnsQuit) {
         // Baseline normal quit and installer handoff complete even when a service
         // stop failed; the failure is logged, not reported as a confirmed stop.
-        if (relaunch) this.relaunch()
+        if (relaunch && !this.installerOwnsQuit) this.relaunch()
         this.complete = true
         this.quit()
       }

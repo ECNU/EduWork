@@ -76,6 +76,24 @@ test('an installer handoff completes even when service cleanup fails', async () 
   assert.equal(calls.filter(value => value === 'quit').length, 2)
 })
 
+test('an installer handoff during a failed strict restart still completes the quit', async () => {
+  const calls = [], error = Error('Synthetic Host stop failure')
+  let rejectClose, startedClose
+  const started = new Promise(resolve => { startedClose = resolve })
+  const exit = new DesktopExit({ confirm: async () => true,
+    close: () => { startedClose(); return new Promise((_, reject) => { rejectClose = reject }) },
+    relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: failure => calls.push(failure) })
+  const restart = exit.restart({ strict: true })
+  await started
+  exit.handoff()
+  rejectClose(error)
+  await restart
+  assert.equal(exit.complete, true)
+  assert.equal(exit.failure, error)
+  assert.equal(calls.includes('relaunch'), false)
+  assert.equal(calls.filter(value => value === 'quit').length, 3)
+})
+
 test('a strict restart requires a confirmed stop and does not poison a later normal exit', async () => {
   const calls = [], error = Error('Synthetic cleanup failure')
   let fail = true

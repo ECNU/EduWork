@@ -228,7 +228,7 @@ test('native recovery activation does not reveal the incomplete main window', ()
 
 test('startup recovery hides the stale BootPage without destroying the last app window', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
-  const start = source.indexOf('export async function showDesktopFailure')
+  const start = source.indexOf('export function prepareDesktopRecovery')
   const end = source.indexOf('\n}\n', start)
   assert.ok(start >= 0 && end > start)
   const failure = source.slice(start, end)

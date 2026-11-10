@@ -4,6 +4,7 @@ import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
 import { resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
+import { brandDesktopLocale } from './desktop-locale.mjs'
 import { readDesktopLocaleCache, writeDesktopLocaleCache } from './locale-cache.ts'
 import { installFileActions } from './file-actions.ts'
 import { installDesktopFileDrag } from './file-drag.ts'
@@ -197,8 +198,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   return {
     // locale.ts also runs in the sandboxed preload: brand only at this
     // main-process boundary, never import electron.app into shared locale code.
-    locale: () => ({ ...locale, messages: Object.fromEntries(Object.entries(locale.messages)
-      .map(([key, value]) => [key, value.replaceAll('DeepSeek Harness', app.getName())])) }),
+    locale: () => brandDesktopLocale(locale, app.getName()),
     async probeUserGuide() {
       if (waitForHost) await waitForHost()
       const response = await getHost()?.fetch(new Request(`app://app${USER_GUIDE_ROUTE}/`, { method: 'HEAD' })).catch(() => null)

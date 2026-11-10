@@ -215,7 +215,7 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'preparation-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'early-configuration-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-then-bootstrap', 'renderer-then-updater', 'renderer-before-ready-guard', 'renderer-during-desktop-ready', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'quit-during-host', 'quit-host-stop-failure', 'quit-confirmation-dialog-failure', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure', 'recovery-preload-failure']) {
+for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'installer-failure', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'preparation-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'early-configuration-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-then-bootstrap', 'renderer-then-updater', 'renderer-before-ready-guard', 'renderer-during-desktop-ready', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'quit-during-host', 'quit-host-stop-failure', 'quit-confirmation-dialog-failure', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure', 'recovery-preload-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
     const calls = [], crashSources = [], crashReports = [], failureCalls = [], dialogOptions = [], exitFailures = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
     let rollbackAttempts = 0
@@ -241,7 +241,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
     const rollbackRestart = scenario === 'renderer-rollback-cancelled-quit' || cleanupRestartFailure || persistentCleanupFailure
     const delayedHostFailure = rollbackRestart || hostStopFailure
     const hostStartCleanupFailure = scenario === 'host-start-cleanup-failure'
-    const nativeFailure = ['host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'preparation-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'renderer-before-ready-guard', 'renderer-during-desktop-ready'].includes(scenario) || specialAfterRenderer
+    const nativeFailure = ['installer-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'preparation-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'renderer-before-ready-guard', 'renderer-during-desktop-ready'].includes(scenario) || specialAfterRenderer
     const fatalRecovery = scenario.startsWith('recovery-') || nativeFailure
     const cancelledQuit = scenario.startsWith('cancelled-quit-'), cancelFirstQuit = scenario === 'renderer-rollback-cancelled-quit'
     const restarting = scenario.startsWith('recovery-restart-') || scenario === 'renderer-rollback-cancelled-quit' || scenario === 'renderer-rollback-persistent-cleanup-restart'
@@ -352,6 +352,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
     mock('product.mjs', {
       configureEduworkPaths() {}, installEduworkFromDmg: async () => {
         calls.push('installer')
+        if (scenario === 'installer-failure') throw startupError
         if (scenario === 'quit-during-cleanup') { app.quit(); await exit.pending }
         if (scenario === 'installer-exit') { app.quit(); return true }
         return false
@@ -422,6 +423,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         calls.push('native-recovery')
         await nativeRecovery(error)
       }, showDesktop: () => calls.push('activate-current-window'),
+      prepareDesktopRecovery: () => calls.push('prepare-recovery'),
       checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop,
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
@@ -689,7 +691,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       assert.equal(probes.length, 0, 'Failed or cancelled startup must not probe an optional guide')
     }
     // Keep the original lifecycle expectations separate from menu discovery.
-    const startupCalls = calls.filter(value => value !== 'probe-guide')
+    const startupCalls = calls.filter(value => value !== 'probe-guide' && value !== 'prepare-recovery')
     if (scenario === 'installed' || scenario === 'application-hidden') {
       const hidden = process.platform === 'darwin' && scenario === 'application-hidden'
       assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress',
@@ -821,6 +823,9 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
         assert.ok(calls.indexOf('host') < calls.indexOf('native-recovery'), 'Host failure must enter the existing recovery page')
       }
+    } else if (scenario === 'installer-failure') {
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'native-recovery', 'crash-report', 'recovery-dialog', 'quit'])
+      assert.equal(dialogOptions.find(value => value.type === 'error').title, 'Fixture is unavailable')
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {
@@ -849,14 +854,18 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         assert.ok(failureCalls[0] instanceof AggregateError)
         assert.match(failureCalls[0].message, /desktop backend startup and cleanup failed/)
       } else {
-        const expectedFailure = ['host-failure', 'early-host-failure', 'preparation-failure', 'native-recovery-rejected', 'early-configuration-failure'].includes(scenario) ? startupError : rendererError
+        const expectedFailure = ['installer-failure', 'host-failure', 'early-host-failure', 'preparation-failure', 'native-recovery-rejected', 'early-configuration-failure'].includes(scenario) ? startupError : rendererError
         assert.equal(failureCalls[0], expectedFailure)
       }
     }
     const dialogErrors = dialogOptions.filter(value => value.type === 'error')
     if (dialogErrors.length) {
+      if (!calls.includes('desktop-ready')) {
+        assert.ok(calls.indexOf('prepare-recovery') >= 0, 'Startup failure prepares the native recovery window')
+        assert.ok(calls.indexOf('prepare-recovery') < calls.indexOf('recovery-dialog'))
+      }
       const expectedSource = {
-        'preparation-failure': 'main', 'native-recovery-rejected': 'main',
+        'installer-failure': 'main', 'preparation-failure': 'main', 'native-recovery-rejected': 'main',
         'host-failure': 'host', 'early-host-failure': 'host', 'host-start-cleanup-failure': 'host',
         'web-boot-before-page-load': 'web-boot', 'renderer-during-shell': 'web-boot',
         'recovery-exit-during-shell': 'web-boot', 'recovery-restart-during-shell': 'web-boot',

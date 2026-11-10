@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strconv"
+	"strings"
 	"syscall"
 	"time"
 
@@ -40,6 +41,15 @@ func configureDetachedHelperCommand(command *exec.Cmd) {
 func configureDetachedAppCommand(command *exec.Cmd) {
 	// The restarted Wails desktop must not inherit STARTF_USESHOWWINDOW/SW_HIDE.
 	command.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP}
+	// Only an Electron process supervised by the launcher may request a launcher restart.
+	environment := command.Environ()
+	command.Env = make([]string, 0, len(environment))
+	for _, entry := range environment {
+		name, _, _ := strings.Cut(entry, "=")
+		if !strings.EqualFold(name, "EDUWORK_LAUNCHER_RESTART") {
+			command.Env = append(command.Env, entry)
+		}
+	}
 }
 
 func waitForProcessExit(pid int, timeout time.Duration) error {
