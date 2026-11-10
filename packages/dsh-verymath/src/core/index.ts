@@ -10,17 +10,17 @@ import z from '@deepseek-ai/schemastery'
 import { spawn } from 'node:child_process'
 import { readFile } from 'node:fs/promises'
 import { normalize } from 'node:path'
-import { VeryMathError } from './error.ts'
+import { isErrnoCode, VeryMathError } from './error.ts'
 import { parseGlossary, queryGlossary, validateGlossaryInvariants, type GlossaryHit, type GlossaryQueryOptions, type GlossaryTerm } from './glossary.ts'
 import { bundledSkillsDir } from './paths.ts'
 import { VeryMathSkillProvider } from './skills.ts'
 
-export { VeryMathError, isVeryMathError } from './error.ts'
+export { VeryMathError, isVeryMathError, isErrnoCode } from './error.ts'
 export { bundledSkillsDir } from './paths.ts'
 export { VeryMathSkillProvider } from './skills.ts'
 export { parseGlossary, queryGlossary, sortGlossary, upsertTerms, validateGlossaryInvariants } from './glossary.ts'
 export type { GlossaryHit, GlossaryQueryOptions, GlossaryTerm, TermUpsert, UpsertResult } from './glossary.ts'
-export { parsePaperStructure, dependencySummary } from './paper.ts'
+export { parsePaperStructure, parsePaperBatch, dependencySummary } from './paper.ts'
 export {
   checkGate, checkGoalApproval, checkWorkstreamCompletion, checkFinalRender,
   loadGoals, listWorkstreams, hasSection,
@@ -32,7 +32,7 @@ export {
 } from './sage.ts'
 export type { SageRefRow, SageRefHit } from './sage.ts'
 export {
-  mergeBatches, collectEntities, computeTopology, renderMermaid, focusClosure,
+  mergeBatches, mergeStructures, collectEntities, collectMainTheorems, computeTopology, renderMermaid, focusClosure,
   mermaidDisplayText, stripUncertain, isSingleStructure, requireStructure,
 } from './graph.ts'
 export type {
@@ -91,6 +91,7 @@ export class VeryMathRuntime extends Service {
   readonly config: Required<VeryMathRuntimeConfig>
 
   private readonly glossaryCache = new Map<string, GlossaryTerm[]>()
+  private readonly glossaryWrites = new Map<string, Promise<unknown>>()
   private pythonProbe: Promise<string | undefined> | undefined
 
   constructor(ctx: Context, config: VeryMathRuntimeConfig = {}) {
@@ -132,9 +133,20 @@ export class VeryMathRuntime extends Service {
     try {
       raw = await readFile(key, { encoding: 'utf8', ...(signal !== undefined ? { signal } : {}) })
     } catch (error) {
+      // Only a genuinely absent file means "there is no glossary yet". Treating
+      // every read failure that way let an EACCES/EIO/abort turn into "start from
+      // an empty glossary", and the next write then replaced the real document.
+      if (isErrnoCode(error, 'ENOENT')) {
+        throw new VeryMathError(
+          `cannot read glossary at ${key}: ${error instanceof Error ? error.message : String(error)}`,
+          'VERYMATH_GLOSSARY_UNAVAILABLE',
+          { cause: error },
+        )
+      }
+      if (error instanceof Error && error.name === 'AbortError') throw error
       throw new VeryMathError(
         `cannot read glossary at ${key}: ${error instanceof Error ? error.message : String(error)}`,
-        'VERYMATH_GLOSSARY_UNAVAILABLE',
+        'VERYMATH_IO',
         { cause: error },
       )
     }
@@ -153,6 +165,41 @@ export class VeryMathRuntime extends Service {
   /** Forget any cached glossary for `path` so a later load re-reads from disk. */
   invalidateGlossary(path: string): void {
     this.glossaryCache.delete(normalize(path))
+  }
+
+  /**
+   * Re-read a glossary from disk, discarding any cached snapshot. Callers that
+   * are about to rewrite the document must use this rather than
+   * {@link loadGlossary}: the query cache is only invalidated by this package's
+   * own writes, so a document edited by the user (or by the bundled
+   * `glossary_web.py`) would otherwise be overwritten from a stale snapshot.
+   * @param path - absolute or workspace-relative path of `glossary.json`.
+   * @param signal - cancels the read.
+   */
+  reloadGlossary(path: string, signal?: AbortSignal): Promise<GlossaryLibrary> {
+    this.invalidateGlossary(path)
+    return this.loadGlossary(path, signal)
+  }
+
+  /**
+   * Serialize read-modify-write cycles on one glossary document. Two concurrent
+   * upserts on the same file would otherwise both read one snapshot and the
+   * later write would silently drop the earlier update.
+   * @param path - glossary document path; the lock key is the normalized path.
+   * @param task - the whole read-modify-write, run after any in-flight task.
+   */
+  async withGlossaryWrite<T>(path: string, task: () => Promise<T>): Promise<T> {
+    const key = normalize(path)
+    const previous = this.glossaryWrites.get(key) ?? Promise.resolve()
+    // `then(task, task)` so one failed writer does not wedge the queue.
+    const run = previous.then(task, task)
+    const chained = run.then(() => undefined, () => undefined)
+    this.glossaryWrites.set(key, chained)
+    try {
+      return await run
+    } finally {
+      if (this.glossaryWrites.get(key) === chained) this.glossaryWrites.delete(key)
+    }
   }
 
   /** Forget every cached glossary (used when a build script's output path is unknown). */

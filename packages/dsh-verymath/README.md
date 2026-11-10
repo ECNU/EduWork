@@ -38,7 +38,7 @@ EduWork 的可选插件：把 VeryMath 的数学科研能力接入对话，覆�
 
 - Python、SageMath、TeX Live、Lean/elan、MATLAB 由用户自行安装，插件只做探测，缺失时返回安装提示，不随包分发。Sage 侧只做文档查询，不执行代码；MATLAB 需用户自备 license，并经 MathWorks 官方 MCP server 配置。
 - 论文结构校验只检查依赖完整性、环与断链，不判断数学证明是否正确。
-- 依赖图与术语库读写由 TypeScript 确定性计算完成。
+- 依赖图与术语库读写由 TypeScript 确定性计算完成。术语库写入区分「新增译名」（同一英文的另一种译法存为 `en__N` 别名行，保留原有译名）与「纠正译名」（带 `term_id` 指定要改的那一行，`en` 必须一致）。
 - Beamer 模板只调用本机 TeX Live 的 Beamer 主题，不随包分发第三方 `.sty`、`.cls` 或字体。
 - 当前在 macOS 上验收，Windows 尚未测试。外部二进制的发现按 PATH 与 PATHEXT 解析，不再指向平台固定路径，但未在 Windows 上实测。
 - 技能内容改编自 VeryMath 的 MIT 仓库，许可范围见[许可说明](LICENSING.md)与[溯源记录](UPSTREAM.json)。

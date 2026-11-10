@@ -100,6 +100,42 @@ export function collectEntities(input: StructureInput): { entities: PaperEntity[
 }
 
 /**
+ * Main theorems across one or more batch artifacts, deduped by label (first
+ * occurrence wins). Batch merging unions `entities` only, so the metadata the
+ * reading directions are rooted at has to be collected explicitly — without
+ * this, a batched artifact reported an empty top-down order and no entity
+ * supported any main theorem.
+ * @param input - one artifact or a list of batch artifacts.
+ */
+export function collectMainTheorems(input: StructureInput): MainTheorem[] {
+  const unique = new Map<string, MainTheorem>()
+  for (const document of documentsOf(input)) {
+    for (const theorem of document.main_theorems ?? []) {
+      if (!unique.has(theorem.label)) unique.set(theorem.label, theorem)
+    }
+  }
+  return [...unique.values()]
+}
+
+/**
+ * Fold one or more batch artifacts into a single structure holding every merged
+ * entity and every main theorem. `renderMermaid` takes one structure, so without
+ * this the rendered graph only ever contained the first batch while the counts
+ * came from the merge.
+ * @param input - one artifact or a list of batch artifacts.
+ */
+export function mergeStructures(input: StructureInput): PaperStructure {
+  const documents = documentsOf(input)
+  const primary = documents[0]
+  const { entities } = mergeBatches(input)
+  return {
+    ...(primary ?? { paper: { title: 'Merged structure', authors: [] } }),
+    entities,
+    main_theorems: collectMainTheorems(input),
+  }
+}
+
+/**
  * Merge batch artifacts per the upstream Skill-2 protocol: dedupe by label,
  * rebuild the reverse index (`cited_by`) from forward `dependencies` and
  * cleaned `uncertain_dependencies`, and compute `shared_node` (in-degree ≥ 2
@@ -192,8 +228,7 @@ export function computeTopology(
   mainTheoremLabels?: readonly string[],
 ): GraphTopology {
   const { entities } = mergeBatches(input)
-  const artifact = isSingleStructure(input) ? input : undefined
-  const theorems: readonly MainTheorem[] = artifact?.main_theorems ?? []
+  const theorems: readonly MainTheorem[] = collectMainTheorems(input)
   const theoremLabels = mainTheoremLabels ?? theorems.map(theorem => theorem.label)
   const byLabel = new Map(entities.map(entity => [entity.label, entity]))
   const dependenciesOf = (entity: PaperEntity): string[] => [
@@ -251,10 +286,14 @@ export function computeTopology(
     if (stuck.length > 0) bottomUpLevels.push([...stuck].sort())
   }
 
-  // Top-down BFS from main theorems along dependency edges.
+  // Top-down BFS from main theorems along dependency edges. Seeds are taken as
+  // given, not filtered by `byLabel`: the compact v4.2 form may record a main
+  // theorem only in `main_theorems` with no matching entity, and filtering it out
+  // made the top-down direction contradict `focusClosure` (which resolves such a
+  // theorem fine). A seed with no entity simply has no forward edges.
   const topDown: string[] = []
   const seen = new Set<string>()
-  const bfsQueue: string[] = [...theoremLabels.filter((label: string) => byLabel.has(label))]
+  const bfsQueue: string[] = [...theoremLabels]
   while (bfsQueue.length > 0) {
     const label = bfsQueue.shift()
     if (label === undefined || seen.has(label)) continue
@@ -476,8 +515,7 @@ export interface FocusResult {
  */
 export function focusClosure(input: StructureInput, label: string): FocusResult {
   const { entities } = mergeBatches(input)
-  const artifact = isSingleStructure(input) ? input : undefined
-  const theorems: readonly MainTheorem[] = artifact?.main_theorems ?? []
+  const theorems: readonly MainTheorem[] = collectMainTheorems(input)
   // Labels resolve against the merged namespace: entities plus main_theorems
   // (upstream top-down reading paths start at main_theorems, which the
   // compact v4.2 form may omit from entities[]). Main theorems absent from

@@ -39,7 +39,7 @@ Prompts, sample inputs and verification notes for the remaining 12 capabilities 
 
 - Python, SageMath, TeX Live, Lean/elan and MATLAB are installed by the user. The plugin only probes for them, returns install hints when something is missing, and is distributed without them. Sage support is documentation lookup only; MATLAB needs the user's own license through the official MathWorks MCP server.
 - Paper structure validation checks dependency integrity, cycles and dangling links. It does not judge whether a proof is correct.
-- Dependency graphs and glossary writes are computed deterministically in TypeScript rather than assembled by the model.
+- Dependency graphs and glossary writes are computed deterministically in TypeScript rather than assembled by the model. A glossary write distinguishes adding another translation (stored as an `en__N` alias row, the existing translation is kept) from correcting one (the `term_id` names the row to change, and its English term must match).
 - Beamer templates only reference the local TeX Live themes; no third-party `.sty`, `.cls` or font files are redistributed.
 - Verified on macOS; Windows is untested. External binaries are discovered through PATH and PATHEXT rather than a fixed platform path, but that discovery has not been exercised on Windows.
 - Skill content is adapted from the VeryMath MIT repositories; see [licensing](LICENSING.md) and [provenance](UPSTREAM.json).

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { dependencySummary, parsePaperStructure } from '../src/core/index.ts'
+import { dependencySummary, mergeStructures, parsePaperBatch, parsePaperStructure } from '../src/core/index.ts'
 import { VeryMathError } from '../src/core/index.ts'
 
 function structure(overrides: Record<string, unknown> = {}) {
@@ -115,5 +115,78 @@ describe('dependencySummary', () => {
     const summary = dependencySummary(parsePaperStructure({ paper: { title: 'Empty' } }))
     expect(summary.roots).toEqual([])
     expect(Object.keys(summary.dependentCounts)).toEqual([])
+  })
+})
+
+describe('parsePaperBatch', () => {
+  const batchA = {
+    paper: { title: 'Batched' },
+    entities: [{ type: 'DEFINITION', label: 'Definition 1', statement: 'A point.' }],
+  }
+  const batchB = {
+    paper: { title: 'Batched' },
+    entities: [{ type: 'LEMMA', label: 'Lemma 2.1', statement: 'A lemma.', dependencies: ['Definition 1'] }],
+  }
+
+  it('accepts a dependency that an earlier batch defines', () => {
+    // The upstream batch protocol has later artifacts cite earlier labels; the
+    // per-file check rejected exactly this before the merge could run.
+    expect(() => parsePaperBatch([batchA, batchB])).not.toThrow()
+    expect(parsePaperBatch([batchA, batchB])).toHaveLength(2)
+  })
+
+  it('rejects a per-file check of the same batch on its own', () => {
+    expect(() => parsePaperStructure(batchB)).toThrow(/unknown label Definition 1/)
+  })
+
+  it('still rejects a dependency missing from every artifact', () => {
+    const orphan = {
+      paper: { title: 'Batched' },
+      entities: [{ type: 'CLAIM', label: 'Claim 9', statement: 'x', dependencies: ['Nope 42'] }],
+    }
+    expect(() => parsePaperBatch([batchA, orphan])).toThrow(/unknown label Nope 42/)
+  })
+
+  it('counts main theorems from any artifact as known labels', () => {
+    const citing = {
+      paper: { title: 'Batched' },
+      entities: [{ type: 'LEMMA', label: 'Lemma 3', statement: 'x', dependencies: ['Theorem 7'] }],
+    }
+    const theoremOnly = { paper: { title: 'Batched' }, main_theorems: [{ label: 'Theorem 7', statement: 'y' }] }
+    expect(() => parsePaperBatch([theoremOnly, citing])).not.toThrow()
+  })
+
+  it('validates entity kinds before merging', () => {
+    const bad = { paper: { title: 'Batched' }, entities: [{ type: 'CONJECTURE', label: 'C1', statement: 'x' }] }
+    expect(() => parsePaperBatch([batchA, bad])).toThrow(/unknown type/)
+  })
+})
+
+describe('mergeStructures', () => {
+  it('folds every batch entity and main theorem into one structure', () => {
+    const a = {
+      paper: { title: 'Merged' },
+      entities: [
+        { type: 'DEFINITION', label: 'Definition 1', statement: 'A point.' },
+        { type: 'THEOREM', label: 'Theorem 1', statement: 'Main.', dependencies: ['Definition 1'] },
+      ],
+    }
+    const b = {
+      paper: { title: 'Merged' },
+      main_theorems: [{ label: 'Theorem 2', statement: 'Second main.' }],
+      entities: [{ type: 'LEMMA', label: 'Lemma 3', statement: 'x', dependencies: ['Theorem 1'] }],
+    }
+    const merged = mergeStructures([a, b])
+    expect(merged.paper.title).toBe('Merged')
+    expect(merged.entities?.map(entry => entry.label).sort()).toEqual(['Definition 1', 'Lemma 3', 'Theorem 1'])
+    expect(merged.main_theorems?.map(entry => entry.label)).toEqual(['Theorem 2'])
+    // cited_by is rebuilt by the merge, which is what makes the render faithful.
+    expect(merged.entities?.find(entry => entry.label === 'Theorem 1')?.cited_by).toEqual(['Lemma 3'])
+  })
+
+  it('keeps a single artifact intact', () => {
+    const single = { paper: { title: 'One' }, entities: [{ type: 'THEOREM', label: 'T', statement: 'x' }] }
+    expect(mergeStructures(single).paper.title).toBe('One')
+    expect(mergeStructures(single).entities).toHaveLength(1)
   })
 })

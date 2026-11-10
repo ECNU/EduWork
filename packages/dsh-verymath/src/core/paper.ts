@@ -151,12 +151,15 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 /**
  * Parse and structurally validate one paper-structure artifact: paper
- * metadata must be present, entities must use recognized kinds, and
- * dependency labels must reference known entities or main theorems.
+ * metadata must be present, entities must use recognized kinds, and (unless
+ * asked to defer it) dependency labels must reference known entities or main
+ * theorems.
  * @param value - the parsed JSON value of a `<slug>_structure.json`.
+ * @param options - `deferDependencyCheck` validates shape only, for one batch
+ *   artifact whose dependencies may legitimately point into another artifact.
  * @returns the validated structure.
  */
-export function parsePaperStructure(value: unknown): PaperStructure {
+export function parsePaperStructure(value: unknown, options: { readonly deferDependencyCheck?: boolean } = {}): PaperStructure {
   if (!isRecord(value)) {
     throw new VeryMathError('paper structure must be a JSON object', 'VERYMATH_PAPER_INVALID')
   }
@@ -171,22 +174,51 @@ export function parsePaperStructure(value: unknown): PaperStructure {
   // upstream v4.2 compact form and are handled with `?? []` everywhere.
   const structure = value as unknown as PaperStructure
   const entities = structure.entities ?? []
-  const labels = new Set<string>()
   for (const entity of entities) {
     if (!ENTITY_KINDS.includes(entity.type)) {
       throw new VeryMathError(`entity ${entity.label}: unknown type ${String(entity.type)}`, 'VERYMATH_PAPER_INVALID')
     }
-    labels.add(entity.label)
   }
-  for (const theorem of structure.main_theorems ?? []) labels.add(theorem.label)
-  for (const entity of entities) {
-    for (const dependency of entity.dependencies ?? []) {
-      if (!labels.has(dependency)) {
-        throw new VeryMathError(`entity ${entity.label} depends on unknown label ${dependency}`, 'VERYMATH_PAPER_INVALID')
+  if (options.deferDependencyCheck !== true) {
+    requireKnownDependencyLabels([structure], 'entity')
+  }
+  return structure
+}
+
+/**
+ * Parse several batch artifacts of one paper and validate dependency labels
+ * against the **merged** label set. Validating each file on its own rejects the
+ * upstream batch protocol itself: a later batch legitimately cites entities that
+ * an earlier batch defined.
+ * @param values - the parsed JSON values of the batch artifacts.
+ * @returns the validated structures, in input order.
+ */
+export function parsePaperBatch(values: readonly unknown[]): PaperStructure[] {
+  const structures = values.map(value => parsePaperStructure(value, { deferDependencyCheck: true }))
+  requireKnownDependencyLabels(structures, 'entity')
+  return structures
+}
+
+/**
+ * Throw when an entity depends on a label no artifact defines. Runs once over
+ * the merged namespace, which is what makes cross-batch edges legal while still
+ * rejecting genuinely dangling references.
+ */
+function requireKnownDependencyLabels(structures: readonly PaperStructure[], subject: string): void {
+  const labels = new Set<string>()
+  for (const structure of structures) {
+    for (const entity of structure.entities ?? []) labels.add(entity.label)
+    for (const theorem of structure.main_theorems ?? []) labels.add(theorem.label)
+  }
+  for (const structure of structures) {
+    for (const entity of structure.entities ?? []) {
+      for (const dependency of entity.dependencies ?? []) {
+        if (!labels.has(dependency)) {
+          throw new VeryMathError(`${subject} ${entity.label} depends on unknown label ${dependency}`, 'VERYMATH_PAPER_INVALID')
+        }
       }
     }
   }
-  return structure
 }
 
 /**

@@ -11,10 +11,11 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type {} from '@deepseek-ai/dsh-fs'
 import { spawn } from 'node:child_process'
-import { accessSync, constants } from 'node:fs'
+import { accessSync, constants, readdirSync } from 'node:fs'
+import { homedir } from 'node:os'
 import { delimiter, isAbsolute, join, resolve } from 'node:path'
 import { VeryMathError, isVeryMathError } from '../core/index.ts'
-import { bundledSkillsDir, checkGate, computeTopology, dependencySummary, findExcerpt, focusClosure, loadManifest, mergeBatches, parsePaperStructure, readCorpusDocWindow, renderMermaid, resolveCorpusRoot, searchSageRefs, termsFor, upsertTerms, type GateResult, type TermUpsert } from '../core/index.ts'
+import { bundledSkillsDir, checkGate, computeTopology, dependencySummary, findExcerpt, focusClosure, loadManifest, mergeBatches, mergeStructures, parsePaperBatch, parsePaperStructure, readCorpusDocWindow, renderMermaid, resolveCorpusRoot, searchSageRefs, termsFor, upsertTerms, type GateResult, type TermUpsert } from '../core/index.ts'
 
 export const name = 'tool-verymath'
 export const inject = ['tools', 'verymath', 'fs']
@@ -181,16 +182,21 @@ function probeCommand(executable: string, args: readonly string[], timeoutMs = 5
     }
     const stdout: Buffer[] = []
     let settled = false
+    // Cleared on settle: an uncleared timer kept the event loop alive for the
+    // full timeout after the probe had already answered (up to 5s of dead wait
+    // per probe call in short-lived runs).
+    let timer: ReturnType<typeof setTimeout> | undefined
     const settle = (value: { exitCode: number, stdout: string } | undefined) => {
       if (!settled) {
         settled = true
+        if (timer !== undefined) clearTimeout(timer)
         resolvePromise(value)
       }
     }
     child.stdout?.on('data', (chunk: Buffer) => stdout.push(chunk))
     child.on('error', () => settle(undefined))
     child.on('close', (code) => settle({ exitCode: code ?? -1, stdout: Buffer.concat(stdout).toString() }))
-    setTimeout(() => {
+    timer = setTimeout(() => {
       child.kill()
       settle(undefined)
     }, timeoutMs)
@@ -208,10 +214,71 @@ function texBinFallbackDirs(): string[] {
   return process.platform === 'darwin' ? ['/Library/TeX/texbin'] : []
 }
 
+/**
+ * Directories conda-style installs put `python3`/`sage` in but rarely add to the
+ * PATH a desktop app inherits: a macOS app launched from Finder reads no login
+ * shell profile, so a `sage` installed under `~/miniforge3` is invisible even
+ * though the user "has SageMath installed". Derived from the home directory, so
+ * nothing here is machine-specific.
+ */
+function condaBinFallbackDirs(): string[] {
+  const home = homedir()
+  return ['miniforge3', 'mambaforge', 'miniconda3', 'anaconda3', 'micromamba']
+    .map(name => join(home, name, 'bin'))
+}
+
+/** Conda distribution roots this package knows about, including its own docs' layout. */
+function condaRoots(): string[] {
+  const home = homedir()
+  return [
+    join(home, '.verymath', 'miniforge'),
+    join(home, 'miniforge3'),
+    join(home, 'mambaforge'),
+    join(home, 'miniconda3'),
+    join(home, 'anaconda3'),
+  ]
+}
+
 /** Executable search path: the inherited PATH first, then platform fallbacks. */
 function executableSearchDirs(): string[] {
   const fromEnv = (process.env.PATH ?? '').split(delimiter).filter((dir) => dir.length > 0)
-  return [...new Set([...fromEnv, ...texBinFallbackDirs()])]
+  return [...new Set([...fromEnv, ...texBinFallbackDirs(), ...condaBinFallbackDirs()])]
+}
+
+/**
+ * Search path for the SageMath probe only. `sage` is normally installed as a
+ * *named* conda environment (`conda create -n sage sage=10.9`), so the base-env
+ * directories above are not where it lives; this adds `<root>/envs/<name>/bin`
+ * for each known distribution root. Kept separate from the generic search path
+ * so TeX and other lookups do not start probing unrelated environment trees.
+ */
+export function sageSearchDirs(): string[] {
+  const dirs = [...executableSearchDirs()]
+  for (const root of condaRoots()) {
+    const envsDir = join(root, 'envs')
+    let names: string[]
+    try {
+      names = readdirSync(envsDir).sort((left, right) => left.localeCompare(right))
+    } catch {
+      continue
+    }
+    for (const name of names) dirs.push(join(envsDir, name, 'bin'))
+  }
+  return [...new Set(dirs)]
+}
+
+/**
+ * Resolve the `sage` executable: an explicit `VERYMATH_SAGE` path wins, then the
+ * SageMath search path (PATH, TeX/conda base dirs, named conda environments).
+ * An override that is not executable is ignored rather than reported as found.
+ */
+export function resolveSageExecutable(): string | undefined {
+  const override = process.env.VERYMATH_SAGE
+  if (override !== undefined && override.trim().length > 0) {
+    const resolved = resolveExecutable(override.trim(), [])
+    if (resolved !== undefined) return resolved
+  }
+  return resolveExecutable('sage', sageSearchDirs())
 }
 
 /** Whether `candidate` exists and the current user may execute it. */
@@ -387,7 +454,8 @@ export const apply = (ctx: Context, config: Config = {}): void => {
       render: renderGlossaryBuild,
     },
     async execute(args) {
-      const result = await ctx.verymath.runGlossaryScript(args.script, args.args ?? [])
+      const scriptArgs = args.args ?? []
+      const result = await ctx.verymath.runGlossaryScript(args.script, scriptArgs)
       const output = [result.stderr.trim(), result.stdout.trim()].filter(part => part.length > 0).join('\n')
       // Upstream contract: exit 3 = partial success (JSON written, Excel pending because
       // openpyxl is missing — report honestly, never claim full completion); exit 2 = the
@@ -398,13 +466,12 @@ export const apply = (ctx: Context, config: Config = {}): void => {
           'VERYMATH_IO',
         )
       }
-      // A successful build may have rewritten the glossary on disk; drop stale
-      // cached entries so follow-up queries observe the new document.
-      const scriptArgs = args.args ?? []
-      const outputFlagIndex = scriptArgs.indexOf('--output')
-      const outputPath = outputFlagIndex >= 0 ? scriptArgs[outputFlagIndex + 1] : undefined
-      if (outputPath !== undefined) ctx.verymath.invalidateGlossary(outputPath)
-      else ctx.verymath.invalidateAllGlossaries()
+      // A build/export/backup script may rewrite any glossary file, and it writes
+      // wherever its own arguments and cwd say. A targeted invalidation keyed on
+      // the raw `--output` argument does not match the resolved absolute cache key
+      // and misses duplicated/relative/`--output=x` spellings, so drop the whole
+      // cache instead of trying to be clever about which file changed.
+      ctx.verymath.invalidateAllGlossaries()
       return {
         script: args.script,
         args: scriptArgs,
@@ -418,7 +485,7 @@ export const apply = (ctx: Context, config: Config = {}): void => {
 
   ctx.tools.register(defineTool({
     name: 'verymath_glossary_upsert',
-    description: 'Add or update terms in a VeryMath bilingual glossary JSON document, preserving the contract invariants automatically: term_id derives from the lowercased English term, the document is re-sorted by (en, cn) with contiguous idx, and updated terms get today\'s date stamps. Use this when reading papers or translating and you encounter a term worth saving — do not hand-edit glossary.json. Existing entries are updated when the term_id matches; unspecified optional fields are preserved.',
+    description: 'Add terms to or correct terms in a VeryMath bilingual glossary JSON document, preserving the contract invariants automatically: term_id follows the upstream alias convention (lowercased English term, or `<en>__N` for an additional translation of the same term), the document is re-sorted by (en, cn) with contiguous idx, and changed terms get today\'s date stamps. Use this when reading papers or translating and you encounter a term worth saving — do not hand-edit glossary.json. Two different intents are distinguished: (a) omit term_id to ADD — re-adding the same (en, cn) pair is idempotent, and a DIFFERENT Chinese translation for an existing English term becomes a separate alias row (`<en>__N`) instead of overwriting the existing translation; (b) pass term_id (from a previous query) to CORRECT that specific row\'s Chinese translation and optional fields. The English term must match the row\'s English term (case-insensitively): renaming or moving a term to another English term is not supported — add it as a new term instead. Unspecified optional fields are preserved on update.',
     parameters: {
       terms: {
         type: 'array',
@@ -429,6 +496,7 @@ export const apply = (ctx: Context, config: Config = {}): void => {
           properties: {
             en: { type: 'string', required: true },
             cn: { type: 'string', required: true },
+            term_id: { type: 'string', description: 'Existing term_id to correct in place: sets that row\'s Chinese translation and any optional fields given. The English term must match the row (case-insensitive); renaming is not supported. Omit to add; a different translation for an existing English term is then stored as an alias row instead of overwriting.' },
             pos: { type: 'string' },
             field: { type: 'array', items: { type: 'string' } },
             source: { type: 'string' },
@@ -475,13 +543,13 @@ export const apply = (ctx: Context, config: Config = {}): void => {
         throw new VeryMathError('verymath_glossary_upsert requires the fs service', 'VERYMATH_IO')
       }
       const target = await fs.resolve(path, { signal: exec.signal })
-      // Read the current document if it exists; an absent file starts a new glossary.
-      let current: Awaited<ReturnType<typeof ctx.verymath.loadGlossary>> | undefined
-      try {
-        current = await ctx.verymath.loadGlossary(path, exec.signal)
-      } catch (error) {
-        if (!(isVeryMathError(error) && error.code === 'VERYMATH_GLOSSARY_UNAVAILABLE')) throw error
-      }
+      // The lock key and the read path must both be the document's canonical
+      // identity, not the model-supplied spelling: a relative path, a symlink and
+      // `..` segments all name the same file, and locking on the raw string let two
+      // concurrent upserts of one document run in parallel. `fs.processPath`
+      // returns the host path derived from the resolved target (realpath-based),
+      // which is exactly the identity the write below uses.
+      const canonicalPath = fs.processPath(target)
       const requests: TermUpsert[] = (args.terms ?? []).map((request) => {
         const example = request.example
         const validExample = example !== undefined && typeof example.en === 'string' && typeof example.cn === 'string'
@@ -490,23 +558,47 @@ export const apply = (ctx: Context, config: Config = {}): void => {
         return {
           en: request.en ?? '',
           cn: request.cn ?? '',
+          ...(request.term_id !== undefined ? { term_id: request.term_id } : {}),
           ...(request.pos !== undefined ? { pos: request.pos } : {}),
           ...(request.field !== undefined ? { field: request.field } : {}),
           ...(request.source !== undefined ? { source: request.source } : {}),
           ...(validExample !== undefined ? { example: validExample } : {}),
         }
       })
-      const result = upsertTerms(current?.terms ?? [], requests)
-      // Write through ctx.fs so the session sandbox policy governs the write.
-      const sandboxPolicy = ctx.get('sandboxPolicy')?.resolve(exec.agent !== undefined ? { session: exec.agent.session } : {})
-      await fs.writeText(target, JSON.stringify(result.document, null, 2) + '\n', undefined, exec.signal, sandboxPolicy)
-      ctx.verymath.invalidateGlossary(path)
-      return {
-        glossary: path,
-        added: [...result.added],
-        updated: [...result.updated],
-        totalTerms: result.document.length,
-      }
+      // Whole read-modify-write inside one per-document lock: concurrent upserts on
+      // the same file would otherwise both start from the same snapshot and the
+      // later write would drop the earlier one. Scope: this runtime only — an
+      // external editor, a Python script or another DSH process does not take it.
+      return ctx.verymath.withGlossaryWrite(canonicalPath, async () => {
+        // Read the document from disk, not from the query cache: the cache is
+        // only invalidated by this package's own writes, so a document edited by
+        // the user (or by the bundled glossary_web.py) would be overwritten from
+        // a stale snapshot. Only a genuinely absent file starts a new glossary —
+        // a permission, I/O or cancellation failure must surface instead of
+        // turning this write into "replace the file with just these terms".
+        let current: Awaited<ReturnType<typeof ctx.verymath.reloadGlossary>> | undefined
+        try {
+          current = await ctx.verymath.reloadGlossary(canonicalPath, exec.signal)
+        } catch (error) {
+          if (!(isVeryMathError(error) && error.code === 'VERYMATH_GLOSSARY_UNAVAILABLE')) throw error
+        }
+        const result = upsertTerms(current?.terms ?? [], requests)
+        // Write through ctx.fs so the session sandbox policy governs the write.
+        const sandboxPolicy = ctx.get('sandboxPolicy')?.resolve(exec.agent !== undefined ? { session: exec.agent.session } : {})
+        await fs.writeText(target, JSON.stringify(result.document, null, 2) + '\n', undefined, exec.signal, sandboxPolicy)
+        // Queries cache by the path string they were given, and one document can be
+        // reached through several strings (relative, absolute, symlink alias).
+        // Dropping only the keys this call happens to know about leaves an earlier
+        // alias entry serving the old document indefinitely, so clear the lot — the
+        // cache holds a handful of documents and an upsert is a deliberate write.
+        ctx.verymath.invalidateAllGlossaries()
+        return {
+          glossary: path,
+          added: [...result.added],
+          updated: [...result.updated],
+          totalTerms: result.document.length,
+        }
+      })
     },
   }))
 
@@ -770,7 +862,7 @@ export const apply = (ctx: Context, config: Config = {}): void => {
 
   ctx.tools.register(defineTool({
     name: 'verymath_sage_check',
-    description: 'Check SageMath availability (the sage binary / SAGE_PYTHON / conda env chain) AND the local SageMath documentation corpus (default ~/.verymath/sagemath-corpus, set VERYMATH_SAGE_CORPUS to override). SageMath itself must be installed by the user (conda-forge sage=10.9 recommended; Windows requires WSL). The corpus is SageMath official documentation (CC BY-SA 3.0), distributed separately from this MIT package.',
+    description: 'Check SageMath availability (the `sage` binary, resolved from `VERYMATH_SAGE` when set, then PATH, then the supported conda roots including named environments such as the `~/.verymath/miniforge/envs/<name>/bin` layout this package documents) AND the local SageMath documentation corpus (default ~/.verymath/sagemath-corpus, set VERYMATH_SAGE_CORPUS to override). SageMath itself must be installed by the user (conda-forge sage=10.9 recommended; Windows requires WSL). The corpus is SageMath official documentation (CC BY-SA 3.0), distributed separately from this MIT package.',
     parameters: {},
     output: {
       schema: {
@@ -796,12 +888,15 @@ export const apply = (ctx: Context, config: Config = {}): void => {
       },
     },
     async execute() {
-      const sageBinaryAvailable = await new Promise<boolean>((resolvePromise) => {
-        const probe = spawn('sage', ['--version'], { stdio: 'ignore' })
-        probe.on('error', () => resolvePromise(false))
-        probe.on('close', (code) => resolvePromise(code === 0))
-        setTimeout(() => { probe.kill(); resolvePromise(false) }, 5_000)
-      })
+      // Resolved through the same in-process PATH scan as the TeX probe: a bare
+      // `spawn('sage')` missed conda installs whenever the host app did not
+      // inherit the login shell PATH, and reported SageMath missing on a machine
+      // that has it.
+      const sageExecutable = resolveSageExecutable()
+      const smoke = sageExecutable === undefined
+        ? undefined
+        : await probeCommand(sageExecutable, ['--version'], 10_000).catch(() => undefined)
+      const sageBinaryAvailable = smoke !== undefined && smoke.exitCode === 0
       try {
         const root = await resolveCorpusRoot()
         const rows = await loadManifest(root)
@@ -1187,12 +1282,11 @@ export const apply = (ctx: Context, config: Config = {}): void => {
         throw new VeryMathError('verymath_paper_graph requires the fs service', 'VERYMATH_IO')
       }
       const cwd = exec.agent?.session.header.cwd
-      const documents = await Promise.all(paths.map(async (path) => {
+      const parsedDocuments: unknown[] = await Promise.all(paths.map(async (path) => {
         const absolute = toWorkspacePath(path, cwd)
         const raw = await fs.readText(await fs.resolve(absolute, { signal: exec.signal }), exec.signal)
-        let parsed: unknown
         try {
-          parsed = JSON.parse(raw)
+          return JSON.parse(raw) as unknown
         } catch (error) {
           throw new VeryMathError(
             `paper structure at ${absolute} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
@@ -1200,8 +1294,11 @@ export const apply = (ctx: Context, config: Config = {}): void => {
             { cause: error },
           )
         }
-        return parsePaperStructure(parsed)
       }))
+      // Batch artifacts are validated as a group: a later batch may legitimately
+      // depend on a label an earlier batch defined, so per-file dependency checks
+      // rejected the upstream batch protocol before the merge could run.
+      const documents = parsePaperBatch(parsedDocuments)
       const primary = documents[0]
       if (primary === undefined) {
         throw new VeryMathError('no structure artifact paths resolved', 'VERYMATH_PAPER_INVALID')
@@ -1211,8 +1308,10 @@ export const apply = (ctx: Context, config: Config = {}): void => {
       const topology = computeTopology(input)
       const focus = args.focus !== undefined ? focusClosure(input, args.focus) : undefined
       const shouldRender = args.render ?? true
-      const mermaid = shouldRender && primary !== undefined
-        ? renderMermaid(primary, { ...(args.forceFull === true ? { forceFull: true } : {}) })
+      // Render the merged structure, not the first artifact: with batches, the
+      // graph silently showed only batch one while the counts described all of them.
+      const mermaid = shouldRender
+        ? renderMermaid(mergeStructures(input), { ...(args.forceFull === true ? { forceFull: true } : {}) })
         : undefined
       return {
         title: primary.paper.title,

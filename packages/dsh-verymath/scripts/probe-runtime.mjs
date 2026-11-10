@@ -2,7 +2,7 @@
 // verymath service, tools, and skill registry, then executes every
 // model-facing tool with synthetic data. No remote model is called.
 import assert from 'node:assert/strict'
-import { mkdtemp, writeFile, readFile } from 'node:fs/promises'
+import { mkdtemp, writeFile, readFile, symlink } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
@@ -113,6 +113,48 @@ try {
   assert.equal(query.value.terms[0]?.cn, '流形')
   report.checks.push('verymath_glossary_query answers through the validated glossary seam')
 
+  // Upsert through the real tool contract. The model-facing parameter schema and
+  // its mapping into TermUpsert are only exercised here: a missing `term_id` in
+  // the tool schema would leave every core test green while making correction
+  // impossible through the tool the skill mandates.
+  const glossaryPath = join(output, 'glossary.json')
+  const addAlias = await execute('verymath_glossary_upsert', {
+    glossaryPath,
+    terms: [{ en: 'manifold', cn: '流形体', field: ['拓扑学'] }],
+  })
+  assert.equal(addAlias.isError, false, JSON.stringify(addAlias))
+  assert.deepEqual(addAlias.value.added, ['manifold__1'], 'a second translation becomes an alias row')
+  assert.deepEqual(addAlias.value.updated, [])
+
+  const corrected = await execute('verymath_glossary_upsert', {
+    glossaryPath,
+    terms: [{ term_id: 'manifold__1', en: 'manifold', cn: '流形（别名）' }],
+  })
+  assert.equal(corrected.isError, false, JSON.stringify(corrected))
+  assert.deepEqual(corrected.value.updated, ['manifold__1'], 'term_id addresses one row for correction')
+
+  // The write reached disk, the primary translation survived, and a fresh query
+  // of the same file agrees with it (no stale cache between write and read).
+  const onDisk = JSON.parse(await readFile(glossaryPath, 'utf8'))
+  const byTermId = new Map(onDisk.map(entry => [entry.term_id, entry.cn]))
+  assert.equal(byTermId.get('manifold'), '流形')
+  assert.equal(byTermId.get('manifold__1'), '流形（别名）')
+  const requery = await execute('verymath_glossary_query', { query: '流形', glossaryPath })
+  assert.equal(requery.isError, false, JSON.stringify(requery))
+  assert.ok(requery.value.terms.some(hit => hit.term_id === 'manifold__1' && hit.cn === '流形（别名）'))
+  report.checks.push('verymath_glossary_upsert adds an alias row and corrects one by term_id')
+
+  // Error contract: an unknown term_id is rejected and leaves the file untouched.
+  const beforeReject = await readFile(glossaryPath, 'utf8')
+  const rejected = await execute('verymath_glossary_upsert', {
+    glossaryPath,
+    terms: [{ term_id: 'no-such-term', en: 'manifold', cn: '不应写入' }],
+  })
+  assert.equal(rejected.isError, true, 'unknown term_id must fail')
+  assert.match(String(rejected.content[0]?.text ?? rejected.error ?? ''), /no term with term_id/)
+  assert.equal(await readFile(glossaryPath, 'utf8'), beforeReject, 'a rejected batch must not write')
+  report.checks.push('verymath_glossary_upsert rejects an unknown term_id without writing')
+
   // Paper structure: validate a synthetic v4.2 artifact through ctx.fs.
   const paperPath = join(output, 'demo_structure.json')
   await writeFile(paperPath, JSON.stringify({
@@ -132,6 +174,122 @@ try {
   assert.equal(validate.value.entityCount, 2)
   assert.equal(validate.value.mainTheoremCount, 1)
   report.checks.push('verymath_paper_validate validates a v4.2 artifact from the workspace')
+
+  // Batch artifacts through the real tool: a later batch may cite a label an
+  // earlier batch defined (the upstream batch protocol), and every merged entity
+  // — not just the first file's — has to reach the graph and the Mermaid render.
+  await writeFile(join(output, 'batch_a.json'), JSON.stringify({
+    paper: { title: 'Batch Paper', authors: ['B. Atch'] },
+    entities: [{ type: 'DEFINITION', label: 'Definition 1', statement: 'A batch point.' }],
+  }))
+  await writeFile(join(output, 'batch_b.json'), JSON.stringify({
+    paper: { title: 'Batch Paper', authors: ['B. Atch'] },
+    // The theorem exists only in main_theorems, so `focus` must resolve it from
+    // the merged namespace rather than from entities[].
+    main_theorems: [{ label: 'Theorem 2', statement: 'Batched compactness.' }],
+    entities: [
+      { type: 'LEMMA', label: 'Lemma 2.1', statement: 'A batch lemma.', dependencies: ['Definition 1'] },
+      { type: 'THEOREM', label: 'Theorem 2', statement: 'Batched compactness.', dependencies: ['Lemma 2.1'] },
+    ],
+  }))
+  const graph = await execute('verymath_paper_graph', {
+    path: 'batch_a.json',
+    extraPaths: ['batch_b.json'],
+    focus: 'Theorem 2',
+  }, { agent: parent })
+  assert.equal(graph.isError, false, JSON.stringify(graph))
+  assert.equal(graph.value.totalEntities, 3, 'both batches contribute entities')
+  assert.ok(graph.value.danglingEdges.length === 0, 'cross-batch dependency is not dangling')
+  assert.deepEqual([...graph.value.topDownOrder].sort(), ['Definition 1', 'Lemma 2.1', 'Theorem 2'], 'top-down walks the batched theorem and its transitive dependencies')
+  assert.ok(graph.value.metrics.every(metric => metric.supportsMainTheorem), 'every merged entity supports the merged main theorem')
+  assert.equal(graph.value.focus?.found, true, 'focus resolves a theorem that exists only in main_theorems')
+  for (const label of ['Definition 1', 'Lemma 2.1', 'Theorem 2']) {
+    assert.ok(graph.value.mermaid.includes(label.replace(/[^A-Za-z0-9-]/g, '')), `mermaid contains ${label}`)
+  }
+  report.checks.push('verymath_paper_graph merges batches: cross-batch deps, batched theorem, full mermaid')
+
+  // A main theorem that exists ONLY in main_theorems (no matching entity) must
+  // still resolve for `focus`; the earlier fixture also listed it under entities,
+  // so that assertion could not tell the difference.
+  await writeFile(join(output, 'batch_meta.json'), JSON.stringify({
+    paper: { title: 'Batch Paper', authors: ['B. Atch'] },
+    main_theorems: [{ label: 'Theorem Only', statement: 'Metadata-only main theorem.' }],
+    entities: [{ type: 'LEMMA', label: 'Lemma 0', statement: 'Unrelated.' }],
+  }))
+  const metadataFocus = await execute('verymath_paper_graph', {
+    path: 'batch_meta.json',
+    focus: 'Theorem Only',
+  }, { agent: parent })
+  assert.equal(metadataFocus.isError, false, JSON.stringify(metadataFocus))
+  assert.equal(metadataFocus.value.focus?.found, true, 'a theorem present only in main_theorems resolves')
+  assert.deepEqual(metadataFocus.value.focus?.closure, ['Theorem Only'])
+  assert.deepEqual(metadataFocus.value.topDownOrder, ['Theorem Only'])
+  report.checks.push('verymath_paper_graph focuses a main theorem that has no entity')
+
+  // A genuinely dangling dependency is still rejected after the merge.
+  await writeFile(join(output, 'batch_bad.json'), JSON.stringify({
+    paper: { title: 'Batch Paper', authors: ['B. Atch'] },
+    entities: [{ type: 'CLAIM', label: 'Claim 9', statement: 'Orphan.', dependencies: ['Nope 42'] }],
+  }))
+  const dangling = await execute('verymath_paper_graph', {
+    path: 'batch_a.json',
+    extraPaths: ['batch_bad.json'],
+  }, { agent: parent })
+  assert.equal(dangling.isError, true, 'dangling dependency must fail')
+  assert.match(String(dangling.content[0]?.text ?? dangling.error ?? ''), /unknown label Nope 42/)
+  report.checks.push('verymath_paper_graph still rejects a dependency missing from every batch')
+
+  // A batch whose later request is invalid must not write the earlier one.
+  const beforeMixed = await readFile(glossaryPath, 'utf8')
+  const mixed = await execute('verymath_glossary_upsert', {
+    glossaryPath,
+    terms: [
+      { en: 'cohomology ring', cn: '上同调环' },
+      { term_id: 'no-such-term', en: 'cohomology ring', cn: '不应写入' },
+    ],
+  })
+  assert.equal(mixed.isError, true, 'the invalid request must fail the whole batch')
+  assert.equal(await readFile(glossaryPath, 'utf8'), beforeMixed, 'a partially valid batch must not write')
+  report.checks.push('verymath_glossary_upsert writes nothing when a later request in the batch fails')
+
+  // Cache invalidation across path aliases: a symlink names the same document, so
+  // a write through the real path must not leave the earlier alias-cached text in
+  // place. Dropping only the keys the writing call knows about does exactly that.
+  const realPath = join(output, 'alias-target.json')
+  const aliasPath = join(output, 'alias-link.json')
+  await writeFile(realPath, JSON.stringify([{
+    term_id: 'group', en: 'group', cn: '群', created_at: '2026-01-01', updated_at: '2026-01-01',
+  }]))
+  await symlink(realPath, aliasPath)
+  const beforeAlias = await execute('verymath_glossary_query', { query: '群', glossaryPath: aliasPath })
+  assert.equal(beforeAlias.isError, false, JSON.stringify(beforeAlias))
+  assert.equal(beforeAlias.value.terms[0]?.cn, '群')
+  const viaReal = await execute('verymath_glossary_upsert', {
+    glossaryPath: realPath,
+    terms: [{ term_id: 'group', en: 'group', cn: '群（修正）' }],
+  })
+  assert.equal(viaReal.isError, false, JSON.stringify(viaReal))
+  const afterAlias = await execute('verymath_glossary_query', { query: '群', glossaryPath: aliasPath })
+  assert.equal(afterAlias.isError, false, JSON.stringify(afterAlias))
+  assert.equal(afterAlias.value.terms[0]?.cn, '群（修正）', 'a write through the real path is visible through a symlink alias')
+  report.checks.push('verymath_glossary_upsert invalidates cache entries reached by another path')
+
+  // Concurrent upserts on one document through two spellings of the same file must
+  // both survive: the lock is keyed on canonical identity, not on the string the
+  // model happened to send.
+  const concurrentPath = join(output, 'concurrent.json')
+  const concurrentAlias = join(output, 'concurrent-link.json')
+  await writeFile(concurrentPath, '[]')
+  await symlink(concurrentPath, concurrentAlias)
+  const [viaPlain, viaAlias] = await Promise.all([
+    execute('verymath_glossary_upsert', { glossaryPath: concurrentPath, terms: [{ en: 'first term', cn: '第一项' }] }),
+    execute('verymath_glossary_upsert', { glossaryPath: concurrentAlias, terms: [{ en: 'second term', cn: '第二项' }] }),
+  ])
+  assert.equal(viaPlain.isError, false, JSON.stringify(viaPlain))
+  assert.equal(viaAlias.isError, false, JSON.stringify(viaAlias))
+  const concurrent = JSON.parse(await readFile(concurrentPath, 'utf8'))
+  assert.deepEqual(concurrent.map(entry => entry.en).sort(), ['first term', 'second term'], 'both concurrent writes survive')
+  report.checks.push('verymath_glossary_upsert serializes concurrent writes through a path alias')
 
   // Error contract: an invalid artifact surfaces the structured error code.
   const badPath = join(output, 'bad_structure.json')

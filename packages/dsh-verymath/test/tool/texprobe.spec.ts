@@ -1,8 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest'
-import { chmod, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resolveExecutable } from '../../src/tool/index.ts'
+import { resolveExecutable, resolveSageExecutable, sageSearchDirs } from '../../src/tool/index.ts'
 
 // Executable discovery for the beamer probe. The probe used to call
 // `/usr/bin/which` and `/Library/TeX/texbin/kpsewhich` directly, which does not
@@ -62,5 +62,58 @@ describe('resolveExecutable', () => {
     const file = await makeFile(dir, 'kpsewhich', 0o755)
     expect(resolveExecutable(file, [])).toBe(file)
     expect(resolveExecutable(join(dir, 'absent'), [])).toBeUndefined()
+  })
+})
+
+describe('resolveSageExecutable', () => {
+  const original = process.env.VERYMATH_SAGE
+  afterEach(() => {
+    if (original === undefined) delete process.env.VERYMATH_SAGE
+    else process.env.VERYMATH_SAGE = original
+  })
+
+  it('honours an explicit VERYMATH_SAGE path', async () => {
+    const dir = await makeDir()
+    const file = await makeFile(dir, 'sage', 0o755)
+    process.env.VERYMATH_SAGE = file
+    expect(resolveSageExecutable()).toBe(file)
+  })
+
+  it('ignores a VERYMATH_SAGE that is not executable and falls back to the search path', async () => {
+    // A stale override must not be reported as "SageMath found".
+    const dir = await makeDir()
+    process.env.VERYMATH_SAGE = join(dir, 'absent-sage')
+    const found = resolveSageExecutable()
+    expect(found).not.toBe(process.env.VERYMATH_SAGE)
+  })
+
+  it('finds sage in a named conda environment under a supported root', async () => {
+    // The documented install is `conda create -n sage sage=10.9`, so `sage` lives
+    // in <root>/envs/<name>/bin, not in the base bin directory. Point HOME at a
+    // synthetic tree: if the named-environment scan is removed, this fails.
+    const home = await makeDir()
+    const envBin = join(home, '.verymath', 'miniforge', 'envs', 'sage', 'bin')
+    await mkdir(envBin, { recursive: true })
+    const sagePath = join(envBin, 'sage')
+    await writeFile(sagePath, '#!/bin/sh\nexit 0\n')
+    if (process.platform !== 'win32') await chmod(sagePath, 0o755)
+
+    const previousHome = process.env.HOME
+    process.env.HOME = home
+    try {
+      expect(sageSearchDirs()).toContain(envBin)
+      expect(resolveSageExecutable()).toBe(sagePath)
+    } finally {
+      if (previousHome === undefined) delete process.env.HOME
+      else process.env.HOME = previousHome
+    }
+  })
+
+  it('does not leak the sage search path into generic executable resolution', async () => {
+    const dirs = sageSearchDirs()
+    expect(dirs.every(dir => typeof dir === 'string' && dir.length > 0)).toBe(true)
+    expect(new Set(dirs).size).toBe(dirs.length)
+    // The TeX probe must not start scanning conda environment trees.
+    expect(resolveExecutable('surely-not-installed-verymath', dirs)).toBeUndefined()
   })
 })

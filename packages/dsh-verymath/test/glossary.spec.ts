@@ -116,9 +116,11 @@ describe('queryGlossary', () => {
     expect(hits[0]?.term.cn).toBe('流形')
   })
 
-  it('matches exact Chinese terms', () => {
+  it('matches exact Chinese terms as Chinese matches', () => {
     const { hits } = queryGlossary(glossary, '群')
     expect(hits[0]?.term.term_id).toBe('group')
+    // A Chinese query must not report an English-field match (it used to say 'en').
+    expect(hits[0]?.matchedBy).toBe('cn')
   })
 
   it('falls back to English prefix', () => {
@@ -199,15 +201,217 @@ describe('upsertTerms', () => {
     expect(added?.created_at).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
-  it('updates an existing term in place, preserving created_at and bumping updated_at', () => {
+  it('updates a term in place when the exact (en, cn) pair already exists', () => {
     const existing = sortGlossary([term({ term_id: 'manifold', en: 'manifold', cn: '流形', created_at: '2020-01-01' })])
-    const result = upsertTerms(existing, [{ en: 'manifold', cn: '流形（几何）', source: 'upsert test' }])
+    const result = upsertTerms(existing, [{ en: 'manifold', cn: '流形', source: 'upsert test' }])
+    expect(result.added).toEqual([])
+    expect(result.updated).toEqual(['manifold'])
+    const updated = result.document.find(entry => entry.term_id === 'manifold')
+    expect(updated?.cn).toBe('流形')
+    expect(updated?.created_at).toBe('2020-01-01')
+    expect(updated?.source).toBe('upsert test')
+  })
+
+  it('corrects a translation when term_id selects the row', () => {
+    const existing = sortGlossary([term({ term_id: 'manifold', en: 'manifold', cn: '流形', created_at: '2020-01-01' })])
+    const result = upsertTerms(existing, [{ term_id: 'manifold', en: 'manifold', cn: '流形（几何）', source: 'upsert test' }])
     expect(result.added).toEqual([])
     expect(result.updated).toEqual(['manifold'])
     const updated = result.document.find(entry => entry.term_id === 'manifold')
     expect(updated?.cn).toBe('流形（几何）')
     expect(updated?.created_at).toBe('2020-01-01')
     expect(updated?.source).toBe('upsert test')
+    expect(result.document).toHaveLength(1)
+  })
+
+  it('stores a second translation of the same English term as an alias row', () => {
+    const existing = sortGlossary([term({ term_id: 'group', en: 'group', cn: '群' })])
+    const result = upsertTerms(existing, [{ en: 'group', cn: '分组', field: ['计算数学'] }])
+    expect(result.added).toEqual(['group__1'])
+    expect(result.updated).toEqual([])
+    // Order-independent: the document is sorted by (en, cn), and 分 < 群 by code point.
+    expect(Object.fromEntries(result.document.map(entry => [entry.term_id, entry.cn]))).toEqual({
+      group: '群',
+      group__1: '分组',
+    })
+  })
+
+  it('updates an existing alias row instead of overwriting the primary (regression)', () => {
+    // The shape the bundled Python build script produces for two translations,
+    // and the exact case where the previous implementation replaced the primary
+    // translation 群 with 分组 and left two rows saying the same thing.
+    const existing = sortGlossary([
+      term({ term_id: 'group', en: 'group', cn: '群' }),
+      term({ term_id: 'group__1', en: 'group', cn: '分组' }),
+    ])
+    const result = upsertTerms(existing, [{ en: 'group', cn: '分组' }])
+    expect(result.updated).toEqual(['group__1'])
+    expect(result.added).toEqual([])
+    expect(Object.fromEntries(result.document.map(entry => [entry.term_id, entry.cn]))).toEqual({
+      group: '群',
+      group__1: '分组',
+    })
+  })
+
+  it('is idempotent when the same (en, cn) pair is added twice in one batch', () => {
+    const result = upsertTerms([], [{ en: 'norm', cn: '范数' }, { en: 'norm', cn: '范数' }])
+    expect(result.added).toEqual(['norm'])
+    // Created by this batch, so it is reported as added only, never both.
+    expect(result.updated).toEqual([])
+    expect(result.document).toHaveLength(1)
+  })
+
+  it('allocates alias ids per batch for three translations of one term', () => {
+    const result = upsertTerms([], [
+      { en: 'group', cn: '群' },
+      { en: 'group', cn: '分组' },
+      { en: 'group', cn: '团' },
+    ])
+    expect(result.added).toEqual(['group', 'group__1', 'group__2'])
+    expect(Object.fromEntries(result.document.map(entry => [entry.term_id, entry.cn]))).toEqual({
+      group: '群',
+      group__1: '分组',
+      group__2: '团',
+    })
+  })
+
+  it('continues from the highest known suffix instead of filling gaps', () => {
+    // Primary row deleted, alias __1 kept: the next translation must not claim
+    // the bare id, which carries the upstream "first occurrence" identity.
+    const onlyAlias = sortGlossary([term({ term_id: 'group__1', en: 'group', cn: '分组' })])
+    expect(upsertTerms(onlyAlias, [{ en: 'group', cn: '团' }]).added).toEqual(['group__2'])
+
+    // base + __4 present: continue at __5, do not reuse __1/__2/__3.
+    const gapped = sortGlossary([
+      term({ term_id: 'group', en: 'group', cn: '群' }),
+      term({ term_id: 'group__4', en: 'group', cn: '分组' }),
+    ])
+    expect(upsertTerms(gapped, [{ en: 'group', cn: '团' }]).added).toEqual(['group__5'])
+  })
+
+  it('skips a candidate id another English term already uses', () => {
+    const existing = sortGlossary([
+      term({ term_id: 'group', en: 'group', cn: '群' }),
+      term({ term_id: 'group__2', en: 'group', cn: '分组' }),
+      term({ term_id: 'group__3', en: 'group notation', cn: '群的记号' }),
+    ])
+    // __3 is taken by another English term, so the next free id is __4.
+    expect(upsertTerms(existing, [{ en: 'group', cn: '团' }]).added).toEqual(['group__4'])
+  })
+
+  it('matches an English term case-insensitively', () => {
+    const existing = sortGlossary([term({ term_id: 'manifold', en: 'Manifold', cn: '流形' })])
+    const result = upsertTerms(existing, [{ en: 'manifold', cn: '流形', source: 'case test' }])
+    expect(result.added).toEqual([])
+    expect(result.updated).toEqual(['manifold'])
+    // The stored source spelling is not rewritten by a pair match.
+    expect(result.document[0]?.en).toBe('Manifold')
+    expect(result.document[0]?.source).toBe('case test')
+  })
+
+  it('rejects a term_id that does not exist', () => {
+    expect(() => upsertTerms([term()], [{ term_id: 'nope', en: 'manifold', cn: '流形' }]))
+      .toThrow(/no term with term_id/)
+  })
+
+  it('matches term_id exactly, without case folding it', () => {
+    // A term_id is an opaque identity: 'Manifold' is a different row from
+    // 'manifold', and a near-miss must be reported rather than resolved.
+    const existing = sortGlossary([term({ term_id: 'manifold', en: 'manifold', cn: '流形' })])
+    expect(() => upsertTerms(existing, [{ term_id: 'Manifold', en: 'manifold', cn: '流形物' }]))
+      .toThrow(/no term with term_id "Manifold"/)
+  })
+
+  it('rejects a blank term_id instead of treating it as absent', () => {
+    expect(() => upsertTerms([term()], [{ term_id: '   ', en: 'manifold', cn: '流形' }]))
+      .toThrow(/must not be blank/)
+  })
+
+  it('rejects a term_id that belongs to a different English term', () => {
+    expect(() => upsertTerms([term()], [{ term_id: 'manifold', en: 'morphism', cn: '态射' }]))
+      .toThrow(/is the English term "manifold", not "morphism"/)
+  })
+
+  it('rejects a correction that would duplicate another row (en, cn) pair', () => {
+    const existing = sortGlossary([
+      term({ term_id: 'group', en: 'group', cn: '群' }),
+      term({ term_id: 'group__1', en: 'group', cn: '分组' }),
+    ])
+    expect(() => upsertTerms(existing, [{ term_id: 'group', en: 'group', cn: '分组' }]))
+      .toThrow(/already held by group__1/)
+  })
+
+  it('rejects an ambiguous (en, cn) match and names the candidate ids', () => {
+    const existing = sortGlossary([
+      term({ term_id: 'group', en: 'group', cn: '群' }),
+      term({ term_id: 'group__1', en: 'group', cn: '群' }),
+    ])
+    expect(() => upsertTerms(existing, [{ en: 'group', cn: '群' }]))
+      .toThrow(/2 rows with the translation/)
+  })
+
+  it('terminates when an id carries a suffix beyond the safe integer range', () => {
+    // `Number` cannot represent 2^53 + 1, so a counter derived from these ids
+    // used to stop advancing and spin forever (synchronously — hanging the host
+    // event loop). The counter is a BigInt now.
+    const existing = sortGlossary([
+      term({ term_id: 'group', en: 'group', cn: '群' }),
+      term({ term_id: 'group__9007199254740991', en: 'group', cn: '分组' }),
+      term({ term_id: 'group__9007199254740992', en: 'group', cn: '团' }),
+    ])
+    const result = upsertTerms(existing, [{ en: 'group', cn: '群组' }])
+    expect(result.added).toEqual(['group__9007199254740993'])
+    expect(result.document).toHaveLength(4)
+  })
+
+  it('keeps the sequence self-consistent across the 32-to-33 digit boundary', () => {
+    // The allocator must never emit an id its own reader refuses to parse: with a
+    // 32-digit cap, a 33-digit suffix was ignored and the next translation got the
+    // bare id back (breaking "continue from the highest known suffix").
+    const nines32 = '9'.repeat(32)
+    const boundary = sortGlossary([term({ term_id: `group__${nines32}`, en: 'group', cn: '分组' })])
+    const generated = upsertTerms(boundary, [{ en: 'group', cn: '团' }]).added[0]
+    expect(generated).toBe(`group__1${'0'.repeat(32)}`)
+    // And that generated id is read back as the new high-water mark.
+    const chained = sortGlossary(upsertTerms(boundary, [{ en: 'group', cn: '团' }]).document)
+    expect(upsertTerms(chained, [{ en: 'group', cn: '群' }]).added[0]).toBe(`group__1${'0'.repeat(32).slice(1)}1`)
+  })
+
+  it('continues from a 33-digit suffix instead of restarting at the bare id', () => {
+    const suffix33 = '1' + '0'.repeat(32) // 10^32
+    const existing = sortGlossary([term({ term_id: `group__${suffix33}`, en: 'group', cn: '分组' })])
+    // 10^32 + 1 is 33 digits: '1', 31 zeros, '1'.
+    expect(upsertTerms(existing, [{ en: 'group', cn: '团' }]).added[0]).toBe(`group__1${'0'.repeat(31)}1`)
+  })
+
+  it('treats a zero-padded suffix by its numeric value', () => {
+    const existing = sortGlossary([term({ term_id: `group__${'0'.repeat(32)}4`, en: 'group', cn: '分组' })])
+    // Suffix 4 is the high-water mark, so the next alias is 5 — carried in plain
+    // decimal, not in the padded spelling.
+    expect(upsertTerms(existing, [{ en: 'group', cn: '团' }]).added).toEqual(['group__5'])
+  })
+
+  it('refuses an absurd numeric suffix instead of silently restarting at the bare id', () => {
+    const absurd = '9'.repeat(70)
+    const existing = sortGlossary([term({ term_id: `group__${absurd}`, en: 'group', cn: '分组' })])
+    expect(() => upsertTerms(existing, [{ en: 'group', cn: '团' }]))
+      .toThrow(/70-digit numeric suffix/)
+  })
+
+  it('does not confuse two (en, cn) pairs that differ only at a NUL boundary', () => {
+    // A NUL-joined key made these two pairs identical, so the second request
+    // overwrote a row belonging to a different English term.
+    const existing = sortGlossary([term({ term_id: 'x', en: 'a', cn: 'b\u0000c' })])
+    const result = upsertTerms(existing, [{ en: 'a\u0000b', cn: 'c' }])
+    expect(result.updated).toEqual([])
+    expect(result.added).toEqual(['a\u0000b'])
+    const preserved = result.document.find(entry => entry.term_id === 'x')
+    expect(preserved?.cn).toBe('b\u0000c')
+  })
+
+  it('rejects an input document with duplicate term_ids before indexing it', () => {
+    const duplicated = [term(), term()]
+    expect(() => upsertTerms(duplicated, [{ en: 'group', cn: '群' }])).toThrow(/duplicate term_id/)
   })
 
   it('keeps existing optional fields when the request omits them', () => {

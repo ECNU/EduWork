@@ -37,3 +37,13 @@ export function isVeryMathError(error: unknown): error is VeryMathError {
     typeof (error as { code?: unknown }).code === 'string'
   )
 }
+
+/**
+ * Whether an error carries a specific Node filesystem `code` such as `ENOENT`.
+ * Callers use this to tell "the document does not exist yet" apart from every
+ * other I/O failure (permissions, I/O, too many open files), which must not be
+ * mistaken for an empty starting document.
+ */
+export function isErrnoCode(error: unknown, code: string): boolean {
+  return typeof error === 'object' && error !== null && (error as { code?: unknown }).code === code
+}

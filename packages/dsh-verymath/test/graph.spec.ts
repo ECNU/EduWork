@@ -7,6 +7,7 @@ import {
   renderMermaid,
   stripUncertain,
   collectEntities,
+  collectMainTheorems,
   type PaperStructure,
 } from '../src/core/index.ts'
 import { VeryMathError } from '../src/core/index.ts'
@@ -161,6 +162,48 @@ describe('computeTopology', () => {
   it('accepts explicit theorem labels overriding main_theorems', () => {
     const topology = computeTopology(doc, ['Lemma 1'])
     expect(topology.topDownOrder[0]).toBe('Lemma 1')
+  })
+
+  it('keeps the reading directions when artifacts arrive as batches', () => {
+    // Regression: batch merging unions `entities` only, so the main theorems from
+    // the first artifact used to be dropped and every reading direction came back
+    // empty on the exact path `verymath_paper_graph` uses for `extraPaths`.
+    const second = structure([entity('Claim 1', 'CLAIM', ['Theorem 1'])])
+    const batched = computeTopology([doc, second])
+    expect(batched.topDownOrder[0]).toBe('Theorem 1')
+    expect(batched.topDownOrder).toContain('Lemma 1')
+    expect(batched.metrics.find(entry => entry.label === 'Def 1')?.supportsMainTheorem).toBe(true)
+    expect(batched.metrics.find(entry => entry.label === 'Remark 1')?.supportsMainTheorem).toBe(false)
+  })
+
+  it('collects main theorems across batches, first occurrence winning on a duplicate', () => {
+    // The second batch contributes a NEW theorem and repeats one from the first,
+    // so both the union and the first-wins rule are actually exercised.
+    const second: PaperStructure = {
+      paper: { title: 'batch two', authors: [] },
+      main_theorems: [
+        { label: 'Theorem 1', statement: 'DUPLICATE — must not replace the first.' },
+        { label: 'Theorem 9', statement: 'Only in batch two.' },
+      ],
+      entities: [],
+    }
+    const collected = collectMainTheorems([doc, second])
+    expect(collected.map(theorem => theorem.label)).toEqual(['Theorem 1', 'Theorem 9'])
+    expect(collected[0]?.statement).not.toContain('DUPLICATE')
+    expect(collectMainTheorems(doc)).toHaveLength(1)
+  })
+
+  it('walks a main theorem that has no entity', () => {
+    // The compact v4.2 form may carry a theorem only in main_theorems; the top-down
+    // direction must still start there instead of coming back empty.
+    const metadataOnly: PaperStructure = {
+      paper: { title: 'meta', authors: [] },
+      main_theorems: [{ label: 'Theorem Only', statement: 'No entity.' }],
+      entities: [entity('Lemma 0', 'LEMMA')],
+    }
+    const topology = computeTopology(metadataOnly)
+    expect(topology.topDownOrder).toEqual(['Theorem Only'])
+    expect(focusClosure(metadataOnly, 'Theorem Only')).toMatchObject({ found: true, closure: ['Theorem Only'] })
   })
 
   it('flags degradation above 40 entities', () => {

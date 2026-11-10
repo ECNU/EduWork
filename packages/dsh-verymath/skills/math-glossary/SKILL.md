@@ -28,6 +28,7 @@ description: "术语库构建与管理 skill。当用户需要从专业词汇文
 3. **`glossary_web.py`（Flask Web 管理界面）是长驻服务**，不通过 `verymath_glossary_build` 运行；仅在用户明确要求时用 shell 启动，并遵守下文 loopback 安全边界。
 4. 本 skill 目录即脚本根目录（`scripts/`、`references/` 相对于本 SKILL.md 解析）；把产物写到用户工作区（如 `glossary/glossary.json`），不要写回 skill 目录。
 5. 翻译 agent 查词约定、冲突裁决、备份与日志规范见下文原流程，行为不变。
+6. **新增别名的与纠正译名的区分**：同一英文术语已有译名、现在要再加一种译法（多义/不同子领域）时，**不要带 `term_id`**——工具会新增 `en__N` 别名行，原有译名保留。要改掉已有译名时，**先 `verymath_glossary_query` 查到该行的 `term_id`，再带 `term_id` 提交**；未知 `term_id`、英文不匹配、或会把两行变成同一 `(en, cn)` 的请求会被拒绝，不会写盘。
 
 ## 数据模型
 

@@ -13,8 +13,8 @@ npm run check
 
 ## check 覆盖范围 / What check covers
 
-`npm run check` 依次执行类型检查、构建、107 项 vitest 测试与 runtime probe。probe 挂载真实的 `ctx.verymath` 服务、工具与技能注册表，并按 DSH 0.2.2 的要求装载原生工具执行器，用合成工作区执行全部工具，不调用模型、不访问网络。
-`npm run check` runs type checking, build, 107 vitest tests and the runtime probe. The probe mounts the real `ctx.verymath` service, tool and skill registries, then executes every tool against a synthetic workspace without model calls or network access.
+`npm run check` 依次执行类型检查、构建、146 项 vitest 测试与 16 项 runtime probe 检查。probe 挂载真实的 `ctx.verymath` 服务、工具与技能注册表，并按 DSH 0.2.2 的要求装载原生工具执行器，用合成工作区执行全部工具（含 upsert 的别名新增／按 `term_id` 纠正／整批回滚，以及 `verymath_paper_graph` 的跨批合并），不调用模型、不访问网络。
+`npm run check` runs type checking, build, 146 vitest tests and 16 runtime probe checks. The probe mounts the real `ctx.verymath` service, tool and skill registries, then executes every tool against a synthetic workspace — including upsert alias creation, correction by `term_id`, whole-batch rollback, and `verymath_paper_graph` batch merging — without model calls or network access.
 
 ## 不在 CI 覆盖内 / Not covered by CI
 

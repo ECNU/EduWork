@@ -183,8 +183,12 @@ export function queryGlossary(terms: readonly GlossaryTerm[], query: string, opt
     if (hits.length < limit) hits.push({ term, matchedBy })
   }
   for (const term of candidates) {
-    if (term.en.toLowerCase() === lower || term.cn === needle) push(term, 'en')
+    // An exact Chinese hit is a Chinese match, not an English one: labelling it
+    // `en` made the hit contradict the query the caller sent (querying 流形
+    // returned matchedBy 'en').
+    if (term.en.toLowerCase() === lower) push(term, 'en')
     else if (term.term_id.toLowerCase() === lower) push(term, 'term_id')
+    else if (term.cn === needle) push(term, 'cn')
   }
   for (const term of candidates) {
     if (term.en.toLowerCase().startsWith(lower)) push(term, 'en-prefix')
@@ -204,6 +208,15 @@ export interface TermUpsert {
   readonly en: string
   /** Chinese translation (or alias). */
   readonly cn: string
+  /**
+   * Target row for a correction: when present, the row with this `term_id` is
+   * updated in place. Its Chinese translation and the optional fields given are
+   * rewritten; its `en` must already match the request's `en`
+   * (case-insensitively) and is never rewritten, because renaming a term is not
+   * supported here. When absent, the request matches an existing row by the
+   * exact `(en, cn)` pair and otherwise adds an alias row.
+   */
+  readonly term_id?: string
   /** Optional part of speech in Chinese. */
   readonly pos?: string
   /** Optional subfields. */
@@ -216,9 +229,9 @@ export interface TermUpsert {
 
 /** Result of one upsert batch. */
 export interface UpsertResult {
-  /** New terms that did not exist before (by term_id). */
+  /** term_ids created by this batch (primary rows and `en__N` alias rows). */
   readonly added: readonly string[]
-  /** Existing terms whose cn/pos/field/source/examples were overwritten. */
+  /** term_ids whose cn/pos/field/source/examples were overwritten, in request order. */
   readonly updated: readonly string[]
   /** The complete re-sorted document ready to write (idx reassigned, today's dates on changed rows). */
   readonly document: GlossaryTerm[]
@@ -240,53 +253,122 @@ function keepOr<T>(request: T | undefined, existing: T | undefined): T | undefin
 }
 
 /**
- * Merge upsert requests into an existing glossary per the upstream contract:
- * term_id is the lowercased en for the primary translation and `en__N` for
- * additional alias rows of the same en; an existing term with the same
- * (term_id) is updated in place; the merged document is re-sorted by
- * (en, cn) with contiguous idx. The input document is never mutated.
+ * Merge upsert requests into an existing glossary per the upstream contract.
+ *
+ * Identity is resolved in this order, which is also what the tool description
+ * tells the model:
+ *
+ * 1. An explicit `term_id` selects that row (the correction path). It must
+ *    exist, and its `en` must match the request's `en` case-insensitively:
+ *    this function never renames a term or moves a row to another English term.
+ * 2. Otherwise the exact `(en case-insensitive, cn exact)` pair selects the row
+ *    that already holds that translation, so re-adding a term is idempotent. If
+ *    several rows hold that pair the request is rejected as ambiguous rather
+ *    than silently picking one.
+ * 3. Otherwise a new row is created. Its id continues the upstream alias
+ *    sequence for that English term (the lowercased `en`, then `en__1`, …) and
+ *    skips ids any other row already uses. This is what keeps two translations
+ *    of the same English term as two rows, as `glossary-schema.md` requires,
+ *    instead of overwriting the existing translation.
+ *
+ * The merged document is re-sorted by `(en, cn)` with contiguous `idx`, and the
+ * input document is never mutated. Every request is validated by the same
+ * rules, so a batch either applies completely or throws.
+ *
+ * `en` comparison uses `toLowerCase()`, matching how ids are derived; upstream
+ * Python uses `casefold()`, so exotic multi-character foldings (e.g. `ß` → `ss`)
+ * are not treated as equal here. Glossaries are built from one or the other
+ * path, and within a single path the comparison is self-consistent.
+ *
  * @param terms - current glossary terms (any order).
- * @param upserts - terms to add or update.
- * @throws VeryMathError when the merged document breaks an invariant.
+ * @param upserts - terms to add or correct.
+ * @throws VeryMathError when the input document already breaks an invariant,
+ *   when a request names an unknown or blank `term_id`, when the `term_id`
+ *   belongs to a different English term, when an address is ambiguous, or when
+ *   a correction would duplicate another row's `(en, cn)` pair.
  */
 export function upsertTerms(terms: readonly GlossaryTerm[], upserts: readonly TermUpsert[]): UpsertResult {
   const today = todayIso()
-  for (const date of [today]) {
-    if (!UPSERT_DATE.test(date)) {
-      throw new VeryMathError('system date is not ISO; refusing to stamp terms', 'VERYMATH_GLOSSARY_INVALID')
-    }
+  if (!UPSERT_DATE.test(today)) {
+    throw new VeryMathError('system date is not ISO; refusing to stamp terms', 'VERYMATH_GLOSSARY_INVALID')
   }
-  const byId = new Map(terms.map(term => [term.term_id, { ...term }]))
+  // Validate before indexing: building the Map first silently drops a row when
+  // the input carries a duplicate term_id, which then makes the closing
+  // invariant check unable to see the loss it was supposed to report.
+  validateGlossaryInvariants(terms)
+  const byId = new Map<string, GlossaryTerm>(terms.map(term => [term.term_id, { ...term }]))
+  // Exact (en case-insensitive, cn exact) -> term_ids carrying that translation.
+  // A list, not a single id: a document can legally hold the same pair twice, and
+  // that has to be reported as ambiguous instead of resolved by luck.
+  const pairIndex = new Map<string, string[]>()
+  const indexPair = (term: GlossaryTerm): void => {
+    const key = pairKey(term.en, term.cn)
+    const ids = pairIndex.get(key)
+    if (ids === undefined) pairIndex.set(key, [term.term_id])
+    else ids.push(term.term_id)
+  }
+  for (const term of byId.values()) indexPair(term)
   const added: string[] = []
   const updated: string[] = []
+  // A row created by this batch and then touched again by a later request in the
+  // same batch is reported as added only: it did not exist before, so counting it
+  // as updated too would make one row look like two changes.
+  const recordUpdate = (termId: string): void => {
+    if (added.includes(termId)) return
+    if (!updated.includes(termId)) updated.push(termId)
+  }
+
   for (const request of upserts) {
     const en = request.en.trim()
     const cn = request.cn.trim()
     if (en.length === 0 || cn.length === 0) {
       throw new VeryMathError('upsert requires non-empty en and cn', 'VERYMATH_GLOSSARY_INVALID')
     }
-    const termId = en.toLowerCase()
-    const existing = byId.get(termId)
+    const enKey = en.toLowerCase()
     const field = request.field !== undefined && request.field.length > 0 ? [...request.field] : undefined
     const examples = request.example !== undefined ? [{ ...request.example }] : undefined
-    if (existing !== undefined) {
-      const pos = keepOr(request.pos, existing.pos)
-      const mergedField = keepOr(field, existing.field)
-      const source = keepOr(request.source, existing.source)
-      const mergedExamples = keepOr(examples, existing.examples)
-      byId.set(termId, {
-        ...existing,
-        cn,
-        ...(pos !== undefined ? { pos } : {}),
-        ...(mergedField !== undefined ? { field: mergedField } : {}),
-        ...(source !== undefined ? { source } : {}),
-        ...(mergedExamples !== undefined ? { examples: mergedExamples } : {}),
-        updated_at: today,
-      })
-      updated.push(termId)
+    const key = pairKey(en, cn)
+
+    let termId: string | undefined
+    if (request.term_id !== undefined) {
+      // A blank id is a malformed request, not "no id": silently adding would
+      // hide the caller's mistake and produce the very overwrite this exists to
+      // prevent.
+      if (request.term_id.trim().length === 0) {
+        throw new VeryMathError(
+          'upsert term_id must not be blank; omit term_id to add a translation',
+          'VERYMATH_GLOSSARY_INVALID',
+        )
+      }
+      const target = byId.get(request.term_id)
+      if (target === undefined) {
+        throw new VeryMathError(
+          `upsert: no term with term_id ${JSON.stringify(request.term_id)}; query the glossary for the id, or omit term_id to add the translation`,
+          'VERYMATH_GLOSSARY_INVALID',
+        )
+      }
+      if (target.en.toLowerCase() !== enKey) {
+        throw new VeryMathError(
+          `upsert: term_id ${JSON.stringify(request.term_id)} is the English term ${JSON.stringify(target.en)}, not ${JSON.stringify(en)}; renaming or moving a term is not supported — add the new term instead`,
+          'VERYMATH_GLOSSARY_INVALID',
+        )
+      }
+      termId = target.term_id
     } else {
-      byId.set(termId, {
-        term_id: termId,
+      const candidates = pairIndex.get(key) ?? []
+      if (candidates.length > 1) {
+        throw new VeryMathError(
+          `upsert: ${JSON.stringify(en)} already has ${candidates.length} rows with the translation ${JSON.stringify(cn)} (${candidates.join(', ')}); pass term_id to choose one`,
+          'VERYMATH_GLOSSARY_INVALID',
+        )
+      }
+      termId = candidates[0]
+    }
+
+    if (termId === undefined) {
+      const newId = nextTermId(byId, en)
+      const created: GlossaryTerm = {
+        term_id: newId,
         en,
         cn,
         ...(request.pos !== undefined ? { pos: request.pos } : {}),
@@ -295,11 +377,136 @@ export function upsertTerms(terms: readonly GlossaryTerm[], upserts: readonly Te
         ...(examples !== undefined ? { examples } : {}),
         created_at: today,
         updated_at: today,
-      })
-      added.push(termId)
+      }
+      byId.set(newId, created)
+      indexPair(created)
+      added.push(newId)
+      continue
     }
+
+    const existing = byId.get(termId)
+    if (existing === undefined) continue
+    const previousKey = pairKey(existing.en, existing.cn)
+    if (previousKey !== key) {
+      // Re-point the pair index, but never let two rows end up with one pair.
+      const owner = (pairIndex.get(key) ?? []).find(id => id !== termId)
+      if (owner !== undefined) {
+        throw new VeryMathError(
+          `upsert: ${JSON.stringify(en)} / ${JSON.stringify(cn)} is already held by ${owner}; pass that term_id instead of rewriting ${termId}`,
+          'VERYMATH_GLOSSARY_INVALID',
+        )
+      }
+      const previous = pairIndex.get(previousKey)
+      if (previous !== undefined) {
+        const remaining = previous.filter(id => id !== termId)
+        if (remaining.length === 0) pairIndex.delete(previousKey)
+        else pairIndex.set(previousKey, remaining)
+      }
+      indexPair({ ...existing, cn })
+    }
+    const pos = keepOr(request.pos, existing.pos)
+    const mergedField = keepOr(field, existing.field)
+    const source = keepOr(request.source, existing.source)
+    const mergedExamples = keepOr(examples, existing.examples)
+    byId.set(termId, {
+      ...existing,
+      // `en` is deliberately not rewritten: a correction fixes the translation,
+      // and the stored spelling of the source term is not this function's to
+      // change.
+      cn,
+      ...(pos !== undefined ? { pos } : {}),
+      ...(mergedField !== undefined ? { field: mergedField } : {}),
+      ...(source !== undefined ? { source } : {}),
+      ...(mergedExamples !== undefined ? { examples: mergedExamples } : {}),
+      updated_at: today,
+    })
+    recordUpdate(termId)
   }
+
   const document = sortGlossary([...byId.values()])
   validateGlossaryInvariants(document)
   return { added, updated, document }
+}
+
+/**
+ * Exact `(en, cn)` identity key. `en` is compared case-insensitively and `cn`
+ * exactly; the pair is JSON-encoded rather than joined with a separator because
+ * a separator can appear inside either string (JSON permits `\u0000`), which
+ * would let two different pairs share one key and overwrite each other.
+ */
+function pairKey(en: string, cn: string): string {
+  return JSON.stringify([en.toLowerCase(), cn])
+}
+
+/**
+ * Longest numeric suffix this allocator will parse or emit. Real alias ids are
+ * tiny; the bound exists only so a corrupt or hostile document cannot turn a
+ * decimal parse into an expensive BigInt conversion. Parsing and emitting share
+ * the bound on purpose — a generated id the parser later refuses to read back
+ * would be invisible to the next allocation.
+ */
+const MAX_SUFFIX_DIGITS = 64
+
+/**
+ * Allocate the alias-aware `term_id` for a new row, mirroring upstream
+ * `glossary_build.py`: continue from the highest suffix already observed for
+ * this English term rather than filling historical gaps.
+ *
+ * Upstream does not restart the search at the bare id: it reads an existing
+ * explicit `group__1` as "this group is at index 1" and continues from 2. So a
+ * document that kept `group__1` but lost the primary row gets `group__2` next —
+ * re-using `group` there would silently hand the "first occurrence" identity to
+ * a later translation. Candidates already used by any other row (including a
+ * custom id for a different English term) are skipped.
+ *
+ * The counter is a `BigInt` on purpose. With a `number`, an id such as
+ * `group__9007199254740992` makes `occurrence + 1 === occurrence`, so the loop
+ * stops advancing and spins forever — and this function is synchronous, so it
+ * would hang the host event loop rather than throw.
+ * @param byId - current rows, keyed by term_id.
+ * @param en - English term of the row being created.
+ */
+function nextTermId(byId: ReadonlyMap<string, GlossaryTerm>, en: string): string {
+  const base = en.toLowerCase()
+  const used = new Set<string>()
+  let occurrence = 0n
+  for (const id of byId.keys()) {
+    const lowered = id.toLowerCase()
+    used.add(lowered)
+    if (lowered === base) {
+      if (occurrence < 1n) occurrence = 1n
+      continue
+    }
+    if (!lowered.startsWith(`${base}__`)) continue
+    const suffix = lowered.slice(base.length + 2)
+    // A non-numeric suffix is a custom id (the upstream schema allows those), not
+    // part of this English term's alias sequence.
+    if (!/^\d+$/.test(suffix)) continue
+    // A numeric suffix this long cannot be a real counter, and **ignoring** it
+    // would hand the next translation the bare id — silently reviving the
+    // "first occurrence" identity this rule exists to preserve. Refuse instead of
+    // pretending the document has no suffix to continue from.
+    if (suffix.length > MAX_SUFFIX_DIGITS) {
+      throw new VeryMathError(
+        `term_id ${JSON.stringify(id)} carries a ${suffix.length}-digit numeric suffix; refusing to allocate a further alias id for ${JSON.stringify(en)}`,
+        'VERYMATH_GLOSSARY_INVALID',
+      )
+    }
+    const next = BigInt(suffix) + 1n
+    if (next > occurrence) occurrence = next
+  }
+  // Terminates: `occurrence` strictly increases and `used` is finite, so at most
+  // |used| candidates can collide.
+  for (;;) {
+    // Never emit an id the loop above would itself refuse to read back.
+    if (occurrence !== 0n && String(occurrence).length > MAX_SUFFIX_DIGITS) {
+      throw new VeryMathError(
+        `cannot allocate a further alias id for ${JSON.stringify(en)}: the suffix would exceed ${MAX_SUFFIX_DIGITS} digits`,
+        'VERYMATH_GLOSSARY_INVALID',
+      )
+    }
+    const candidate = occurrence === 0n ? base : `${base}__${occurrence}`
+    if (!used.has(candidate)) return candidate
+    occurrence += 1n
+  }
 }
