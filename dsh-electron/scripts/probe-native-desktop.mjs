@@ -24,7 +24,7 @@ export { createUpdateController, UpdateFooter } from './dsh-plugins/workbench-na
 if (values['official-ui']) await writeFile(join(output, 'official-ui.js'), await readFile(resolve(values['official-ui'])))
 await build({ entryPoints: [fileURLToPath(new URL('../tests/fixtures/native-desktop-smoke.mjs', import.meta.url))],
   outfile: join(output, 'main.cjs'), bundle: true, platform: 'node', format: 'cjs', target: 'es2024', external: ['electron'],
-  nodePaths: [join(resolve(values.runtime), 'node_modules')], alias: {
+  nodePaths: [join(resolve(values.runtime), 'node_modules'), join(repository, 'dsh-electron/vendor/orca/node_modules')], alias: {
     'fixture-bridge': join(shell, 'src/native-desktop-bridge.mjs'), 'fixture-updates': join(shell, 'src/update-observer.mjs'), 'fixture-window': join(shell, 'src/main.ts'),
     'fixture-backend': join(shell, 'src/backend-controller.ts'), 'fixture-quit': join(shell, 'src/quit-confirmation.ts'),
     'fixture-recovery': join(shell, 'src/fatal-recovery.ts'), 'fixture-locale': join(shell, 'src/locale.ts'),
