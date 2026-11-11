@@ -54,13 +54,13 @@ test('the rules also see the content of the script a command runs', () => {
   assert.equal(reviewRequest({ cwd: '/w', facts, command: 'bash tools/sync.sh', script: { 'tools/sync.sh': 'rsync -a out/ host.example:/srv/' } }).flagged, true)
 })
 
-test('scriptOf reads the script a single command runs, following links as the shell does, and truncates long ones', async () => {
+test('scriptOf reads the script a single command runs and truncates long ones', async () => {
   const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
   await mkdir(root, { recursive: true })
   const dir = await mkdtemp(join(root, 'script-'))
   for (const path of ['work/tools', 'outside/nested']) await mkdir(join(dir, path), { recursive: true })
   await symlink('../outside/nested', join(dir, 'work/link'))
-  const files = { 'work/task.sh': 'echo here', 'work/tools/sync.sh': 'rsync -a out/ host.example:/srv/\n', 'outside/task.sh': 'echo outside',
+  const files = { 'work/task.sh': 'echo here', 'work/tools/sync.sh': 'rsync -a out/ host.example:/srv/\n', 'outside/nested/task.sh': 'echo nested',
     'work/big.py': 'x'.repeat(20000), 'work/run.mjs': 'console.log(1)', 'work/plain.sh': 'echo plain', 'work/group.sh': 'echo group',
     'work/~/task.sh': 'echo literal tilde' }
   await mkdir(join(dir, 'work/~'))
@@ -71,13 +71,12 @@ test('scriptOf reads the script a single command runs, following links as the sh
   assert.deepEqual(await scriptOf('bash tools/sync.sh', work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf(`${work}/tools/sync.sh --dry-run`, '/'), { [`${work}/tools/sync.sh`]: files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf("bash -ex 'tools/sync.sh' prod", work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
-  assert.deepEqual(await scriptOf('./task.sh --all > out.log 2>&1', work), { './task.sh': 'echo here' })
+  assert.deepEqual(await scriptOf("./task.sh --all 'a > b'", work), { './task.sh': 'echo here' })
+  assert.deepEqual(await scriptOf('bash link/task.sh', work), { 'link/task.sh': 'echo nested' })
   assert.deepEqual(await scriptOf('node run.mjs --port 3000', work), { 'run.mjs': 'console.log(1)' })
   // Quotes keep `~` literal: the file is the one under the current directory.
   assert.deepEqual(await scriptOf('bash "~/task.sh"', work), { '~/task.sh': 'echo literal tilde' })
   assert.deepEqual(await scriptOf("'~/task.sh'", work), { '~/task.sh': 'echo literal tilde' })
-  // A file path's `..` is taken after the link, as the shell does.
-  assert.deepEqual(await scriptOf('bash link/../task.sh', work), { 'link/../task.sh': 'echo outside' })
   const big = await scriptOf('python3 -I big.py', work)
   assert.equal(big['big.py'].length, 16000 + '\n…（后面还有内容，未附上）'.length)
   // Run directly, a file needs its execute bit; through an interpreter it only needs to be readable.
@@ -98,7 +97,7 @@ test('scriptOf attaches nothing when the text alone does not say which file runs
     'task.sh --all', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'pwsh -File run.ps1',
     // Sequences, cd, variables, globs, quoting and comments.
     'cd tools && bash task.sh', 'cd tools | cat; bash task.sh', 'DIR=tools; bash $DIR/task.sh', 'BASH_ENV=./startup.sh bash task.sh', 'NODE_ENV=production node task.sh', 'bash $DIR/task.sh', 'bash t*.sh', 'bash "quoted.sh extra.sh"',
-    'exit 0; bash task.sh', 'false && bash task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
+    'exit 0; bash task.sh', 'false && bash task.sh', 'bash task.sh > task.sh', './tools/../task.sh', 'node tools/../task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
   ]) assert.equal(await scriptOf(command, dir), undefined, command)
 })
 

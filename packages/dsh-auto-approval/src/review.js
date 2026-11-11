@@ -44,10 +44,11 @@ export function sessionFacts(events, callId) {
 
 // Which file a command runs is known from its text alone only in one form: a single bash command running a literal
 // path, directly or through an interpreter whose options take no code (`node -e`, `python3 -c`, `bash -c`) and are
-// no syntax check (`bash -n`), with plain arguments and redirections. Sequences, `cd`, variables (including
-// assignments before the command, such as BASH_ENV), globs and every other form attach no script; the command itself
-// is still reviewed. Groups: interpreter, quote, file.
-const ARG = String.raw`(?:[\w./:,@%+=-]+|'[^']*'|"[^"$\x60\\!]*"|\d*(?:>>?|<)(?:&\d+)?)`
+// no syntax check (`bash -n`), with plain arguments. Sequences, `cd`, variables (including assignments before the
+// command, such as BASH_ENV), globs, redirections (which can empty the script first), `..` in the path (interpreters
+// resolve it differently) and every other form attach no script; the command itself is still reviewed. Groups:
+// interpreter, quote, file.
+const ARG = String.raw`(?:[\w./:,@%+=-]+|'[^']*'|"[^"$\x60\\!]*")`
 const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[eluvx]+)*)[ \t]+)?(["']?)((?:~/)?(?!-)[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
 
 /**
@@ -58,8 +59,8 @@ const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:b
 export async function scriptOf(command, cwd) {
   const [, interpreter, quote, path] = command.trim().match(RUNS) ?? []
   // A bare name run without an interpreter is looked up on PATH, not in the current directory.
-  if (!cwd || !path || (!interpreter && !path.includes('/'))) return undefined
-  // The file system resolves the path as the shell will, following links before any `..`; quotes keep `~` literal.
+  if (!cwd || !path || (!interpreter && !path.includes('/')) || path.split('/').includes('..')) return undefined
+  // Quotes keep `~` literal.
   const expanded = quote ? path : path.replace(/^~(?=\/)/, homedir())
   const file = isAbsolute(expanded) ? expanded : `${cwd}${sep}${expanded}`
   if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
