@@ -82,21 +82,27 @@ test('scriptOf reads the script a command runs, following cd, and truncates long
   }
 })
 
-test('scriptOf follows links as the shell does and leaves out cd forms that are not plain paths', async () => {
+test('scriptOf follows a plain sequence as the shell does and leaves out what it cannot follow', async () => {
   const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
   await mkdir(root, { recursive: true })
   const dir = await mkdtemp(join(root, 'links-'))
-  for (const path of ['work', 'outside/nested', 'previous/-']) await mkdir(join(dir, path), { recursive: true })
+  for (const path of ['work/tools', 'outside/nested', 'previous/-']) await mkdir(join(dir, path), { recursive: true })
   await symlink('../outside/nested', join(dir, 'work/link'))
-  await writeFile(join(dir, 'work/task.sh'), 'echo here')
-  await writeFile(join(dir, 'outside/task.sh'), 'echo outside')
-  await writeFile(join(dir, 'previous/-/task.sh'), 'echo previous')
+  const files = { 'work/task.sh': 'echo here', 'work/tools/task.sh': 'echo tools', 'outside/task.sh': 'echo outside',
+    'previous/-/task.sh': 'echo previous', 'work/quoted.sh': 'echo prefix', 'work/quoted.sh extra.sh': 'echo quoted' }
+  for (const [path, text] of Object.entries(files)) await writeFile(join(dir, path), text)
   const work = join(dir, 'work')
   // A file path's `..` is taken after the link; `cd` moves logically, back to the directory holding the link.
   assert.deepEqual(await scriptOf('bash link/../task.sh', work), { 'link/../task.sh': 'echo outside' })
   assert.deepEqual(await scriptOf('cd link/.. && bash task.sh', work), { 'task.sh': 'echo here' })
-  assert.equal(await scriptOf('cd ../previous && cd - && bash task.sh', work), undefined)
-  assert.equal(await scriptOf('cd -P link && bash ../task.sh', work), undefined)
+  assert.deepEqual(await scriptOf('cd "tools"; bash "task.sh"', work), { 'task.sh': 'echo tools' })
+  // Other programs cannot move the shell.
+  assert.deepEqual(await scriptOf('npm run build && cd tools && bash task.sh', work), { 'task.sh': 'echo tools' })
+  for (const command of [
+    'cd ../previous && cd - && bash task.sh', 'cd -P link && bash ../task.sh', 'cd -- "tools" && bash task.sh', 'cd -P "link" && bash task.sh',
+    'bash "quoted.sh extra.sh"', 'cd tools | cat; bash task.sh', 'cd tools || bash task.sh', 'pushd tools && bash task.sh',
+    '{ cd tools; }; bash task.sh', 'go() { cd tools; }; go; bash task.sh', 'source env.sh && bash task.sh', 'if cd tools; then :; fi; bash task.sh',
+  ]) assert.equal(await scriptOf(command, work), undefined, command)
 })
 
 test('verdict: thresholds per kind, malformed answers are failures', () => {

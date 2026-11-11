@@ -79,7 +79,7 @@ The rules and questions were evaluated on 6 sets with 419 real escalation reques
 - "Files created in this session" records only files the file tools created successfully (a new file from `write`, an Add File from `apply_patch`), not files created by commands, and starts empty after a Host restart.
 - The confirmation card is unchanged and does not show the review result.
 - Commands over 16000 characters are not reviewed and go straight to the user; the longest command in the evaluation data was about 13000 characters.
-- Rules match the command text; script content is read only from the first local script file the command runs, not from files that script calls. A script run by bare name without an interpreter or a path (such as `task.sh`) is looked up on PATH by the shell and is not read.
+- Rules match the command text; script content is read only from the first local script file the command runs, not from files that script calls. A script run by bare name without an interpreter or a path (such as `task.sh`) is looked up on PATH by the shell and is not read. The plugin follows only a plain sequence (`cd` to one path, other programs, then the script); with pipes, `||`, `pushd`, `source`, functions or `if`/`for` constructs it cannot tell which file actually runs, so no script is attached and the command itself is still reviewed.
 
 ## Development and assembly
 

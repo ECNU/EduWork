@@ -43,30 +43,32 @@ export function sessionFacts(events, callId) {
 }
 
 // A segment that runs a script file, directly or through an interpreter with options that neither take inline code
-// (`node -e`, `python3 -c`, `bash -c`) nor only check syntax (`bash -n`); `cd` segments before it move the base. The
-// first group is the interpreter, the second the file.
-const RUNS = /^(?:\w+=\S*\s+)*(?:(python3?(?:\s+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:\s+-[eluvx]+)*|pwsh(?:\s+-(?:NoProfile|NonInteractive|NoLogo|ExecutionPolicy\s+\w+))*(?:\s+-File)?)\s+)?["']?([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))["']?(?:\s|$)/
+// (`node -e`, `python3 -c`, `bash -c`) nor only check syntax (`bash -n`). Groups: the interpreter, the quote, the file.
+const RUNS = /^(?:\w+=\S*\s+)*(?:(python3?(?:\s+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:\s+-[eluvx]+)*|pwsh(?:\s+-(?:NoProfile|NonInteractive|NoLogo|ExecutionPolicy\s+\w+))*(?:\s+-File)?)\s+)?(["']?)([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))\2(?:\s|$)/
+// `cd` to one plain path, quoted or not.
+const CD = /^cd\s+(["']?)([^"';&|]+?)\1$/
+// Words that change the shell's own directory or run code in it (compound commands, functions, sourcing), so the
+// segments after them may start somewhere the walk below cannot follow.
+const SHELL_STATE = /^(?:[({!]|(?:\w+=\S*\s+)*cd(?:\s|$)|(?:if|then|elif|else|fi|for|while|until|do|done|case|esac|select|function|pushd|popd|source|\.|eval|exec|builtin|command)(?:\s|$)|[\w.-]+\s*\(\s*\))/
 const home = path => path.replace(/^(?:~|\$HOME|\$\{HOME\})(?=\/|$)/, homedir())
 
 /**
  * The content of the first local script the command runs, read from disk, so the rules and the model see what it
- * does. Missing, unreadable or non-regular files are left out.
+ * does. Only a plain sequence is followed: `cd` to one path, other programs, then the script. Anything the walk cannot
+ * follow leaves the script out rather than guessing; missing, unreadable or non-regular files are left out too.
  * @returns {Promise<Record<string, string> | undefined>} the script path as written, mapped to its text.
  */
 export async function scriptOf(command, cwd) {
-  if (!cwd) return undefined
+  const executable = executedPart(command)
+  // A pipe or `||` runs its sides in other processes or not at all.
+  if (!cwd || executable.includes('|')) return undefined
   let dir = cwd
-  for (const segment of split(executedPart(command))) {
-    // `cd` moves logically, as the shell's does by default: `link/..` is the directory holding the link. `cd -` and
-    // options are not plain paths, so the script is left out rather than guessed.
-    const cd = segment.match(/^cd(?:\s+["']?([^"';&|]+?)["']?)?$/)
-    if (cd) {
-      const target = cd[1] ?? '~'
-      if (target.startsWith('-')) return undefined
-      dir = resolve(dir, home(target))
-      continue
-    }
-    const [, interpreter, path] = segment.match(RUNS) ?? []
+  for (const segment of split(executable)) {
+    // `cd` moves logically, as the shell's does by default: `link/..` is the directory holding the link.
+    const target = segment === 'cd' ? '~' : segment.match(CD)?.[2]
+    if (target !== undefined && !target.startsWith('-')) { dir = resolve(dir, home(target)); continue }
+    if (SHELL_STATE.test(segment)) return undefined
+    const [, interpreter, , path] = segment.match(RUNS) ?? []
     // A bare name run without an interpreter is looked up on PATH, not in the current directory.
     if (!path || (!interpreter && !/[\\/]/.test(path))) continue
     // The file system resolves the path as the shell will, following links before any `..`.
