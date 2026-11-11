@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-08T06:07:40.741Z",
-  "fileSetSHA256": "cec82eb203347e3f93b07fa6b8f34844b273f023946cc73d5bd371bf2654945c",
+  "createdAt": "2026-11-08T08:45:12.622Z",
+  "fileSetSHA256": "f1e01e084e85d154f04fdc0a6ed4d8ec254ab53d58db5870f6cc5b74b642a240",
   "files": [
     {
       "path": ".gitattributes",
@@ -7589,7 +7589,7 @@
     },
     {
       "path": "scripts/packages/catalog.mjs",
-      "sha256": "5d98a67c2330b600c7efa27b88e989c26400c67f4698f3322c9aec610e5695c4"
+      "sha256": "ff5c3e3712233971a1791e8a85443252a2dc076aa1b2480754070a11b7fa3745"
     },
     {
       "path": "scripts/packages/manage.mjs",
@@ -7969,7 +7969,7 @@
     },
     {
       "path": "tests/ci-changes.test.mjs",
-      "sha256": "def92d5b2936260991372398a2ed08670dfc2d30d485a98f152eba2c7e29764b"
+      "sha256": "7c01208509341852ca15f5c970d3a74bd4b86bc4872a1d2ca4b9b20f6370ad96"
     },
     {
       "path": "tests/desktop-build-plan.test.mjs",
