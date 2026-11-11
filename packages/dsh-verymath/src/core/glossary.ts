@@ -510,3 +510,31 @@ function nextTermId(byId: ReadonlyMap<string, GlossaryTerm>, en: string): string
     occurrence += 1n
   }
 }
+
+/** Result of removing one row. */
+export interface DeleteResult {
+  /** Whether a row with that id existed. */
+  readonly removed: boolean
+  /** The document after removal, re-sorted with contiguous idx. */
+  readonly document: GlossaryTerm[]
+}
+
+/**
+ * Remove one row by `term_id`, preserving the document invariants.
+ *
+ * Deletion is how a duplicate or a wrong alias gets resolved: there is no
+ * "merge" operation in the upstream contract, and the panel's job is to let a
+ * human drop the row they decided against rather than hand-edit JSON.
+ * @param terms - current glossary terms (any order).
+ * @param termId - exact id of the row to remove.
+ * @throws VeryMathError when the input document already breaks an invariant.
+ */
+export function deleteTerm(terms: readonly GlossaryTerm[], termId: string): DeleteResult {
+  validateGlossaryInvariants(terms)
+  const remaining = terms.filter(term => term.term_id !== termId)
+  if (remaining.length === terms.length) return { removed: false, document: sortGlossary([...terms]) }
+  // Re-sorting reassigns idx, so a deletion cannot leave a numbering hole.
+  const document = sortGlossary(remaining)
+  validateGlossaryInvariants(document)
+  return { removed: true, document }
+}

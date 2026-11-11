@@ -18,8 +18,8 @@ import { VeryMathSkillProvider } from './skills.ts'
 export { VeryMathError, isVeryMathError, isErrnoCode } from './error.ts'
 export { bundledSkillsDir } from './paths.ts'
 export { VeryMathSkillProvider } from './skills.ts'
-export { parseGlossary, queryGlossary, sortGlossary, upsertTerms, validateGlossaryInvariants } from './glossary.ts'
-export type { GlossaryHit, GlossaryQueryOptions, GlossaryTerm, TermUpsert, UpsertResult } from './glossary.ts'
+export { parseGlossary, queryGlossary, sortGlossary, upsertTerms, deleteTerm, validateGlossaryInvariants } from './glossary.ts'
+export type { GlossaryHit, GlossaryQueryOptions, GlossaryTerm, TermUpsert, UpsertResult, DeleteResult } from './glossary.ts'
 export { parsePaperStructure, parsePaperBatch, dependencySummary } from './paper.ts'
 export {
   checkGate, checkGoalApproval, checkWorkstreamCompletion, checkFinalRender,
