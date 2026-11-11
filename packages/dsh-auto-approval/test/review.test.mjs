@@ -94,7 +94,7 @@ test('scriptOf attaches nothing when the text alone does not say which file runs
   for (const path of ['task.sh', 'tools/task.sh', 'tools extra/task.sh', '$DIR/task.sh', 'quoted.sh', 'quoted.sh extra.sh', 'run.ps1']) await writeFile(join(dir, path), 'echo x')
   for (const command of [
     // A bare name runs from PATH; inline code and syntax checks do not run the file they name.
-    'task.sh --all', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'pwsh -File run.ps1',
+    'task.sh --all', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'bash -l tools/task.sh', 'pwsh -File run.ps1',
     // Sequences, cd, variables, globs, quoting and comments.
     'cd tools && bash task.sh', 'cd tools | cat; bash task.sh', 'DIR=tools; bash $DIR/task.sh', 'BASH_ENV=./startup.sh bash task.sh', 'NODE_ENV=production node task.sh', 'bash $DIR/task.sh', 'bash t*.sh', 'bash "quoted.sh extra.sh"',
     'exit 0; bash task.sh', 'false && bash task.sh', 'bash task.sh > task.sh', './tools/../task.sh', 'node tools/../task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
