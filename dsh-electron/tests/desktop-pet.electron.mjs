@@ -74,7 +74,7 @@ async function run() {
   assert.ok(report.bubbleRect.height > 30, 'the bubble is a real two-line bubble')
   for (const type of ['mouseMove', 'mouseDown', 'mouseUp']) window.webContents.sendInputEvent({ type, ...center, button: 'left', clickCount: 1 })
   await until(() => opened.length === 1, 'click opened the item')
-  assert.deepEqual(opened, ['done-1'])
+  assert.deepEqual(opened, ['notice-1'])
   // Viewing the item in the app clears its badge and, at once, its announcement.
   pet.update({ items: new Map([['done-2', { key: 'done-2', kind: 'completed', sessionId: 'session-2', title: '', createdAt: Date.now() }]]),
     running: [], acknowledged: 0, preferences: { preview: false } })
@@ -88,7 +88,7 @@ async function run() {
   await stranger.webContents.executeJavaScript(`window.eduworkPet.open('done-1'); window.eduworkPet.ready(); window.eduworkPet.menu()`)
   await wait(500)
   stranger.destroy()
-  assert.deepEqual(opened, ['done-1'])
+  assert.deepEqual(opened, ['notice-1'])
 
   assert.deepEqual(await pet.handle({ action: 'reset-position' }), { supported: true })
   // Hiding from a menu turns the setting off; showing again turns it back on.
