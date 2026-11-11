@@ -93,6 +93,55 @@ for (const platform of ['win32', 'darwin']) test(`${platform}: clean install dow
   if (platform === 'darwin') assert.equal(configPath.startsWith(f.paths.root), false)
 })
 
+test('cancelling preparation before the first download starts no request or progress', async t => {
+  const f = await fixture(t)
+  f.release()
+  const { bootstrap, manager } = await f.open()
+  let releasePrepare, prepareStarted, progress = 0, cancelled = false
+  const started = new Promise(resolve => { prepareStarted = resolve })
+  const original = manager.prepare.bind(manager)
+  manager.prepare = async () => {
+    prepareStarted()
+    await new Promise(resolve => { releasePrepare = resolve })
+    return original()
+  }
+  const pending = preparePublisherContent(manager, bootstrap, {
+    onDownload: () => { progress++ },
+    cancelled: () => cancelled,
+  })
+  await started
+  cancelled = true
+  manager.close()
+  releasePrepare()
+  await assert.rejects(pending, /cancelled/)
+  assert.equal(progress, 0, 'Cancellation must not show late download progress')
+  assert.equal(f.requests.length, 0, 'Cancellation must not create a new configuration request')
+})
+
+test('cancelling after the manifest check does not start the bundle download', async t => {
+  const f = await fixture(t)
+  f.release()
+  const { bootstrap, manager } = await f.open()
+  let releaseCheck, checkReturned, cancelled = false
+  const checked = new Promise(resolve => { checkReturned = resolve })
+  const originalCheck = manager.check.bind(manager)
+  manager.check = async (...args) => {
+    const result = await originalCheck(...args)
+    checkReturned()
+    await new Promise(resolve => { releaseCheck = resolve })
+    return result
+  }
+  const pending = preparePublisherContent(manager, bootstrap, { cancelled: () => cancelled })
+  await checked
+  const requestsAfterCheck = f.requests.length
+  cancelled = true
+  manager.close()
+  releaseCheck()
+  await assert.rejects(pending, /cancelled/)
+  assert.equal(f.requests.length, requestsAfterCheck, 'A cancelled preparation must not start the bundle request')
+  assert.equal(f.requests.some(url => url.includes('/bundles/')), false)
+})
+
 test('network failure leaves a retryable first-run state; signed offline import uses the same journal', async t => {
   const f = await fixture(t), { bootstrap, manager } = await f.open()
   await assert.rejects(preparePublisherContent(manager, bootstrap), { code: 'EDUWORK_BOOTSTRAP_REQUIRED' })

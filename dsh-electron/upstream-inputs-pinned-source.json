@@ -2,6 +2,7 @@
   "apps/desktop/src/main.ts": "51f22c1596d03af995962de58ee3d134799cc2f48aa90904e3d618785a78e893",
   "apps/desktop/src/ipc.ts": "3db50752d9824ed4c9bfab2cfd8bf55da342b33ef8218c509cd0f2928a84875a",
   "apps/desktop/src/locale.ts": "7f1681964498d06fb8d58474721f69efba4932fffad9fd61c08dc52337de854a",
+  "apps/desktop/src/locale-cache.ts": "bfb2fb132b1c69b416d2536a8ebecaa1646ef0ca53eb959f43f7ff9e5354d9fa",
   "apps/desktop/src/single-instance.ts": "dc6a6e263a6fdedc3f1cfacb97eb6f60dd5b04ad5d3b02daae4640f2e30a5150",
   "apps/desktop/src/backend-controller.ts": "eec9641e9abf40586464d7b3d4ffa8d968e040696f3fc7923507faae3d82ed27",
   "apps/desktop/src/startup-error.ts": "ba75b42f56dd8352eecd7ad94841cb32142cebcdab864c8e4c04452788a47378",
