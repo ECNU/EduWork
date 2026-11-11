@@ -47,9 +47,9 @@ export function sessionFacts(events, callId) {
 // no syntax check (`bash -n`) and read no profile first (`bash -l`), with plain arguments. Sequences, `cd`, variables (including assignments before the
 // command, such as BASH_ENV), globs, redirections (which can empty the script first), `..` in the path (interpreters
 // resolve it differently) and every other form attach no script; the command itself is still reviewed. Groups:
-// interpreter, quote, file.
+// interpreter, quote, file; a file starting with - or + would be read as an option.
 const ARG = String.raw`(?:[\w./:,@%+=-]+|'[^']*'|"[^"$\x60\\!]*")`
-const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[euvx]+)*)[ \t]+)?(["']?)((?:~/)?(?!-)[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
+const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[euvx]+)*)[ \t]+)?(["']?)((?:~/)?(?![-+])[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
 
 /**
  * The content of the script a bash command runs, read from disk, so the rules and the model see what it does. Missing,

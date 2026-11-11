@@ -92,10 +92,11 @@ test('scriptOf attaches nothing when the text alone does not say which file runs
   await mkdir(root, { recursive: true })
   const dir = await mkdtemp(join(root, 'noscript-'))
   for (const path of ['tools', 'tools extra', '$DIR']) await mkdir(join(dir, path))
-  for (const path of ['task.sh', 'tools/task.sh', 'tools extra/task.sh', '$DIR/task.sh', 'quoted.sh', 'quoted.sh extra.sh', 'run.ps1']) await writeFile(join(dir, path), 'echo x')
+  for (const path of ['task.sh', 'tools/task.sh', 'tools extra/task.sh', '$DIR/task.sh', 'quoted.sh', 'quoted.sh extra.sh', 'run.ps1', '+task.sh']) await writeFile(join(dir, path), 'echo x')
+  assert.deepEqual(await scriptOf('bash ./+task.sh', dir), { './+task.sh': 'echo x' })
   for (const command of [
     // A bare name runs from PATH; inline code and syntax checks do not run the file they name.
-    'task.sh --all', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'bash -l tools/task.sh', 'pwsh -File run.ps1',
+    'task.sh --all', 'bash +task.sh', "bash '+task.sh'", 'sh +task.sh', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'bash -l tools/task.sh', 'pwsh -File run.ps1',
     // Sequences, cd, variables, globs, quoting and comments.
     'cd tools && bash task.sh', 'cd tools | cat; bash task.sh', 'DIR=tools; bash $DIR/task.sh', 'BASH_ENV=./startup.sh bash task.sh', 'NODE_ENV=production node task.sh', 'bash $DIR/task.sh', 'bash t*.sh', 'bash "quoted.sh extra.sh"',
     'exit 0; bash task.sh', 'false && bash task.sh', 'bash task.sh > task.sh', 'bash task.sh\r', 'bash task.sh\u00a0', 'bash task.sh\u2028', './tools/../task.sh', 'node tools/../task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
