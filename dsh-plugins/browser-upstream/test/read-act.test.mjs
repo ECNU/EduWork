@@ -34,10 +34,23 @@ function harness({ start = 'search', routes = {}, suggests = false } = {}) {
   const ref = target => Number(/"(\d+)"/u.exec(target)?.[1])
   const middleware = []
   const ctx = {
+    waterfall: async (_scope, _event, ...args) => args.at(-1)(),
+    events: { dispatch: () => [] },
+    logger: { warn() {} },
     on: (event, handler) => { assert.equal(event, 'tools/execute'); middleware.push(handler) },
     tools: {
+      checkGuards: () => undefined,
+      executable(name) {
+        return { name, output: { schema: { type: 'object' }, render: (_args, value) => value.content },
+          async execute(_args, exec) {
+            const result = await ctx.tools.runMcp(exec)
+            if (result.isError) throw Error(result.error.message)
+            return result.value
+          } }
+      },
       register: definition => { tools[definition.name] = definition },
-      async execute(exec) {
+      execute() { throw Error('tools.execute requires a batch; nested calls must use the guarded pipeline') },
+      async runMcp(exec) {
         assert.ok(covered.has(exec.parent), 'every MCP call runs under its tool\'s permission')
         const name = exec.name.replace('mcp__playwright-mcp__', ''), args = exec.arguments
         calls.push({ name, args })

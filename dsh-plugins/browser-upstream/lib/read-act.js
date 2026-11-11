@@ -8,6 +8,7 @@
 // model turn instead of one per action, and no snapshot file to read.
 import { resolve } from 'node:path'
 import { defineTool } from '@deepseek-ai/dsh-tools'
+import { ToolExecutionPipeline } from '@deepseek-ai/dsh-tools/pipeline'
 import { READ, REF, STILL, fingerprint, render } from './page.js'
 
 const mcp = name => `mcp__playwright-mcp__${name}`
@@ -83,11 +84,16 @@ const untrusted = text => `<untrusted_web_content>\n${text}\n</untrusted_web_con
 
 function runner(ctx, exec) {
   let calls = 0
+  const pipeline = new ToolExecutionPipeline(ctx)
   return async (name, input) => {
-    const result = await ctx.tools.execute({
+    const prepared = await pipeline.prepare({
       callId: `${exec.callId}:${++calls}`, rootCallId: exec.rootCallId, name: mcp(name), arguments: input,
       agent: exec.agent, parent: exec.token, signal: exec.signal,
     })
+    const outcome = prepared.kind === 'dispatch' ? await pipeline.dispatch(prepared.exec) : prepared
+    const result = await pipeline.complete(prepared.exec, outcome)
+    for (const context of result.additionalContexts ?? []) exec.deferContext?.(context)
+    if (result.concludesTurn) exec.concludeTurn?.()
     if (result.isError) throw new Error(result.error.message)
     return result.value.content.map(block => block.text ?? '').join('\n')
   }
