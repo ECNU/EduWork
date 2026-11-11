@@ -57,7 +57,8 @@ const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:b
  * @returns {Promise<Record<string, string> | undefined>} the script path as written, mapped to its text.
  */
 export async function scriptOf(command, cwd) {
-  const [, interpreter, quote, path] = command.trim().match(RUNS) ?? []
+  // Only the separators bash itself skips are trimmed: a carriage return or a Unicode space is part of the name.
+  const [, interpreter, quote, path] = command.replace(/^[ \t\n]+|[ \t\n]+$/g, '').match(RUNS) ?? []
   // A bare name run without an interpreter is looked up on PATH, not in the current directory.
   if (!cwd || !path || (!interpreter && !path.includes('/')) || path.split('/').includes('..')) return undefined
   // Quotes keep `~` literal.

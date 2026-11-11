@@ -72,6 +72,7 @@ test('scriptOf reads the script a single command runs and truncates long ones', 
   assert.deepEqual(await scriptOf(`${work}/tools/sync.sh --dry-run`, '/'), { [`${work}/tools/sync.sh`]: files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf("bash -ex 'tools/sync.sh' prod", work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf("./task.sh --all 'a > b'", work), { './task.sh': 'echo here' })
+  assert.deepEqual(await scriptOf('  ./task.sh\n', work), { './task.sh': 'echo here' })
   assert.deepEqual(await scriptOf('bash link/task.sh', work), { 'link/task.sh': 'echo nested' })
   assert.deepEqual(await scriptOf('node run.mjs --port 3000', work), { 'run.mjs': 'console.log(1)' })
   // Quotes keep `~` literal: the file is the one under the current directory.
@@ -97,7 +98,7 @@ test('scriptOf attaches nothing when the text alone does not say which file runs
     'task.sh --all', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'bash -l tools/task.sh', 'pwsh -File run.ps1',
     // Sequences, cd, variables, globs, quoting and comments.
     'cd tools && bash task.sh', 'cd tools | cat; bash task.sh', 'DIR=tools; bash $DIR/task.sh', 'BASH_ENV=./startup.sh bash task.sh', 'NODE_ENV=production node task.sh', 'bash $DIR/task.sh', 'bash t*.sh', 'bash "quoted.sh extra.sh"',
-    'exit 0; bash task.sh', 'false && bash task.sh', 'bash task.sh > task.sh', './tools/../task.sh', 'node tools/../task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
+    'exit 0; bash task.sh', 'false && bash task.sh', 'bash task.sh > task.sh', 'bash task.sh\r', 'bash task.sh\u00a0', 'bash task.sh\u2028', './tools/../task.sh', 'node tools/../task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
   ]) assert.equal(await scriptOf(command, dir), undefined, command)
 })
 
