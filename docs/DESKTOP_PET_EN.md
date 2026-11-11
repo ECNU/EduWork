@@ -21,11 +21,16 @@ The pet is one more way to show the same state: Needs you, Failed and Done come 
 
 - When the conversation on screen finishes, the pet only celebrates briefly and shows no "!". The "!" clears just like the tray entry: open the conversation in the foreground, or open it from the pet, the tray or a notification.
 - When the next turn starts within 3 seconds of the previous one (for example, goal mode rounds), the pet keeps working instead of flashing back to idle. A single tool finishing does not change the pet.
-- Bubbles show generic text. Conversation titles appear only when "Show conversation and result titles" is on under General → Desktop notifications.
+- Bubbles show generic text. Conversation titles appear only when "Show conversation and result titles" is on under General → Desktop notifications. With it off a plugin reminder shows just its source name (for example "Mail") instead of putting a subject on the desktop.
+- A plugin notification that carries an action (for example a mail reminder) can be hovered: the pointer resting on the bubble pauses its countdown and highlights it, and a click opens it and takes the bubble away at once. The core Agent bubbles — needs you, error, done — keep their plain behaviour and never react to the pointer.
+- Only the pet, the status badge and the bubble itself take the pointer; the window's transparent margins always click through, so they never block the window underneath. This is re-evaluated whenever a bubble appears, is replaced, closes, or the count drops.
+
+![A plugin reminder below the pet: two lines, fully inside the window](images/pet-bubble.png)
+![The same bubble held under the pointer: highlighted, countdown paused](images/pet-bubble-hover.png)
 
 ## Using it
 
-- **Drag** the pet to any display. On release it moves back inside that display's usable area; it never stays off screen or covers the menu bar or taskbar, but it can sit right against them. At the top of the screen the bubble shows below the pet.
+- **Drag** the pet to any display. On release it moves back inside that display's usable area; it never stays off screen or covers the menu bar or taskbar, but it can sit right against them. At the top of the screen the bubble shows below the pet, anchored by its lower edge: the window reserves 56 DIP under the pet, so a two-line bubble is never clipped.
 - **Tuck** it by dragging past the outer left or right edge of the screens: it slides in and leaves part of itself visible. Clicking a tucked pet opens the conversation when it shows "!" or "?", and otherwise pulls it back onto the screen.
 - **Right-click** for: open the app, new conversation, pending items, hide pet, pet settings. "Pet settings" opens Settings → Desktop pet directly.
 - **Hide pet** (隐藏桌宠) in the tray or context menu turns off the switch in Settings, which shows the same state; choose **Show pet** (显示桌宠) in the tray to turn it back on.
@@ -130,4 +135,4 @@ node --test packages/dsh-desktop-pet/test/*.test.mjs dsh-electron/tests/desktop-
 
 - `packages/dsh-desktop-pet/test/host.test.mjs` uses the package's locked development dependencies; set `EDUWORK_TEST_RUNTIME` to a verified Runtime's `d` directory to test that product instead.
 - Real Electron checks (window properties, file access, IPC origin, processes after hiding and closing): `EDUWORK_TEST_EVIDENCE=<new directory> <Electron executable> dsh-electron/tests/desktop-pet.electron.mjs`.
-- Click-through, focus, full-screen spaces, real-pointer dragging and tucking, multiple displays and long idle power use need native acceptance on both platforms' release packages.
+- Click-through, bubble hover and lower-edge fit, focus, full-screen spaces, real-pointer dragging and tucking, multiple displays and long idle power use need native acceptance on both platforms' release packages.

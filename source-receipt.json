@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-11T14:54:18.518Z",
-  "fileSetSHA256": "2116affa2576fccffd66dbf41bd017326349d0bd5042adba211a3e2465f28434",
+  "createdAt": "2026-11-11T15:05:14.689Z",
+  "fileSetSHA256": "c6074dcbee9ac436fe7a284c01a4c727733138bf7f0dc8f3f0e2a34180b76fbc",
   "files": [
     {
       "path": ".gitattributes",
@@ -301,11 +301,11 @@
     },
     {
       "path": "docs/DESKTOP_PET_EN.md",
-      "sha256": "a2508125ceae1440c492a653fa317f210e062a858132e515f4b4847bbfb6490c"
+      "sha256": "2f382b66e179ac9732647f376d820f3b645ca3fa16e7e880e57ca8628c4ed059"
     },
     {
       "path": "docs/DESKTOP_PET.md",
-      "sha256": "3c2bb4e95ff959efd0369fb57904c97c2905e78d6bd0c62a4574918a2ec614a0"
+      "sha256": "6930ceffc6af28f44478371bc5fe2096fd4de72e1088bc62e73d41197d0633ee"
     },
     {
       "path": "docs/dev/desktop-source-and-install.md",
@@ -326,6 +326,14 @@
     {
       "path": "docs/images/litellm-models.png",
       "sha256": "9949f64b8d1ef6207433f59d81a78ae4e35cb5453f1b7d486b06816ee8f8f0bd"
+    },
+    {
+      "path": "docs/images/pet-bubble-hover.png",
+      "sha256": "a2791f80a12d714f4d369dbd46aef090b97dcde18e7d336f1ce49de35eced593"
+    },
+    {
+      "path": "docs/images/pet-bubble.png",
+      "sha256": "b61f10e58c41f6e02f712775cff9399e0601b8614622956aa5065be9c01a60c3"
     },
     {
       "path": "docs/images/quiz.png",
@@ -1257,7 +1265,7 @@
     },
     {
       "path": "dsh-electron/src/desktop-pet-core.mjs",
-      "sha256": "dff24a4a330005deab88df2b3d7d82fb645b5c5565cb25cd469f959cb4ee1083"
+      "sha256": "2f37b4c36f5a7ca2c44ba267d00009b319c7ede5d8ce1f5afc733373d93f86c7"
     },
     {
       "path": "dsh-electron/src/desktop-pet.mjs",
@@ -1437,11 +1445,11 @@
     },
     {
       "path": "dsh-electron/tests/desktop-pet-core.test.mjs",
-      "sha256": "987c94fae1a2d962915dad5b64a8c762a25529eae6f5a83c2fc77877958686e1"
+      "sha256": "2137f415e12cc31d81eeb7b4728d50d6e31da661661da4a8655b36d1081e5793"
     },
     {
       "path": "dsh-electron/tests/desktop-pet.electron.mjs",
-      "sha256": "c31340a15e246ae1747d55d15648564678546961ed4ddbd97c8b36f465c243ce"
+      "sha256": "8ea23aafdb693e83fcf2a2837d38263c0e6baca33e50d70a3c43adc323321b8a"
     },
     {
       "path": "dsh-electron/tests/desktop-restart.test.mjs",
@@ -3685,7 +3693,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/lib/page/pet.css",
-      "sha256": "32c45b428420a7fd0c4582ba95f3f04557a30bf8c19d3c2a79c22bf4477e7f35"
+      "sha256": "d300f8c38f4cb3657f98c52e6622a69b5a0154a7d8cb0f2d6c5cc54df1ce70d4"
     },
     {
       "path": "packages/dsh-desktop-pet/lib/page/pet.html",
@@ -3693,7 +3701,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/lib/page/pet.js",
-      "sha256": "c8d26abd94ecd78c4d3781e37f702bb4d61d4f163fa47efdbd52e2157bb00679"
+      "sha256": "8b7211f41d23a4cbd51f1d4ce632b58e756faefabc79da4e445f907184696354"
     },
     {
       "path": "packages/dsh-desktop-pet/lib/pet-state.js",
