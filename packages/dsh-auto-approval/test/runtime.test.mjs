@@ -2,7 +2,7 @@
 // and approval service run it, and the plugin answers before the client's answerer.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp } from 'node:fs/promises'
+import { mkdir, mkdtemp, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { join } from 'node:path'
@@ -32,8 +32,9 @@ const chunks = block => [
   { type: 'finish', reason: { kind: block.type === 'text' ? 'stop' : 'tool-calls' } },
 ]
 
-// `before` are tool calls the model makes in earlier steps; `hook` adds a pre-execute policy after the plugin's.
-async function run(t, { auto, preset = 'auto-approval', command, before = [], hook }) {
+// `before` are tool calls the model makes in earlier steps; `hook` adds a pre-execute policy after the plugin's; `cd`
+// moves the session's current directory before the request, as `/cd` does.
+async function run(t, { auto, preset = 'auto-approval', command, workdir, before = [], hook, cd }) {
   const { Context } = await import('@deepseek-ai/cordis')
   const { createUserMessage, LlmAdapter } = await import('@deepseek-ai/dsh-llm')
   const { defineTool } = await import('@deepseek-ai/dsh-tools')
@@ -51,6 +52,7 @@ async function run(t, { auto, preset = 'auto-approval', command, before = [], ho
     ['@deepseek-ai/dsh-agent-loop', { agents: [] }],
     ['@deepseek-ai/dsh-user-approval', {}],
     ['@deepseek-ai/dsh-working-directory', { defaultDirectory: home }],
+    ['@deepseek-ai/dsh-sandbox-policy', { mode: 'workspace-write', workspaceRoot: home }],
     ['@deepseek-ai/dsh-tool-fs', { read: false, readImage: false, edit: false, write: true, applyPatch: true }],
   ]) await load(name, config)
   ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'fixture', model: 'fixture' }) })
@@ -58,7 +60,7 @@ async function run(t, { auto, preset = 'auto-approval', command, before = [], ho
   ctx.provide('permissionPresets', { current: () => preset })
   const steps = [
     ...before,
-    { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) },
+    { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, ...(workdir && { workdir }), sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) },
     { type: 'text', text: 'Done.' },
   ]
   let step = 0
@@ -69,7 +71,7 @@ async function run(t, { auto, preset = 'auto-approval', command, before = [], ho
   const outcomes = []
   ctx.tools.register(defineTool({
     name: 'bash', description: 'Run a shell command.',
-    parameters: { description: { type: 'string', required: true }, command: { type: 'string', required: true }, sandbox_permissions: { type: 'string' }, justification: { type: 'string' } },
+    parameters: { description: { type: 'string', required: true }, command: { type: 'string', required: true }, workdir: { type: 'string' }, sandbox_permissions: { type: 'string' }, justification: { type: 'string' } },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     async execute(args, exec) {
       if (!args.sandbox_permissions) return 'ran'
@@ -86,9 +88,10 @@ async function run(t, { auto, preset = 'auto-approval', command, before = [], ho
   if (hook) ctx.on('tools/pre-execute', hook)
   await load(new URL('../lib/index.js', import.meta.url).href, { enabled: true, authMode: 'none', baseURL, model: 'fixture-model' })
   const handle = await ctx.agents.create({ sessionId: 'auto-approval-fixture', meta: { cwd: home }, agentOptions: { provider: 'fixture', model: 'fixture' } })
+  if (cd) await ctx.workingDirectory.set(handle.agent, await cd(home))
   handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Copy the report to my Downloads folder.' }], source: { kind: 'user' } }))
   await handle.agent.whenIdle()
-  return { bodies, outcomes, userAnswers, events: handle.agent.session.snapshotEvents() }
+  return { home, bodies, outcomes, userAnswers, events: handle.agent.session.snapshotEvents() }
 }
 
 const runtime = { skip: !process.env.EDUWORK_AUTO_APPROVAL_RUNTIME, timeout: 20_000 }
@@ -114,6 +117,14 @@ test('real Runtime: an approved escalation runs without reaching the user, with 
   const decided = result.events.filter(event => event.type === 'approval/decided')
   assert.equal(decided.length, 1)
   assert.equal(decided[0].data.outcome, 'allowed-once')
+})
+
+test('real Runtime: after the session changes directory, the workspace is still the sandbox boundary', runtime, async t => {
+  const outside = async home => { await mkdir(`${home}-outside`); return `${home}-outside` }
+  const result = await run(t, { auto: 0.9, command: 'cp report.csv ~/Downloads/', workdir: 'sub', cd: outside })
+  const { state } = result.bodies[0]
+  assert.equal(state.工作区, await realpath(result.home))
+  assert.equal(state.当前目录, join(await realpath(`${result.home}-outside`), 'sub'))
 })
 
 test('real Runtime: a call another policy asks about goes to the user without a review', runtime, async t => {

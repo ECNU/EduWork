@@ -25,14 +25,15 @@ const answer = (body, auto, harm) => ({ json: {
   answers: Object.fromEntries(Object.keys(body.questions).map(id => [id, id === 'harm' ? { type: 'noul', noul: harm } : { type: 'choice', choice: auto >= 0.5 ? 'auto' : 'ask', probabilities: { auto, ask: 1 - auto } }])),
 } })
 
-function mount(config, { preset = 'auto-approval', services = {}, events = [], origin } = {}) {
+function mount(config, { preset = 'auto-approval', services = {}, events = [], origin, cwd = '/work' } = {}) {
   const listeners = {}, logs = []
   const ctx = {
     on(name, listener, options) { (listeners[name] ??= [])[options?.prepend ? 'unshift' : 'push'](listener) },
     logger: () => ({ info: (...args) => logs.push(['info', ...args]), warn: (...args) => logs.push(['warn', ...args]) }),
     get: name => services[name],
     permissionPresets: { current: () => preset },
-    workingDirectory: { get: () => '/work' },
+    sandboxPolicy: { resolve: () => ({ mode: 'workspace-write', workspaceRoot: '/work' }) },
+    workingDirectory: { get: () => cwd },
   }
   apply(ctx, config)
   const agent = { session: { id: 'session-1', header: { origin }, snapshotEvents: () => events } }
@@ -78,6 +79,13 @@ test('a plain request asks two questions and is approved on their mean; a rule h
   assert.deepEqual(Object.keys(bodies[2].body.questions), ['decision'])
   assert.match(bodies[2].body.state.风险标记, /^推送和发布/)
   assert.match(logs.at(-1)[1], /approved/)
+})
+
+test('the workspace is the sandbox boundary; the current directory follows the session and workdir', async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  assert.equal(await mount({ ...base, baseURL }, { cwd: '/elsewhere' }).escalate('cp a.csv ~/Downloads/', { workdir: 'site' }), 'allowed-once')
+  assert.equal(bodies[0].body.state.工作区, '/work')
+  assert.equal(bodies[0].body.state.当前目录, '/elsewhere/site')
 })
 
 test('low scores, other presets, other tools and overlong commands go to the user unchanged', async t => {

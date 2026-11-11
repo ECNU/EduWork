@@ -43,8 +43,9 @@ export function sessionFacts(events, callId) {
 }
 
 // A segment that runs a script file, directly or through an interpreter with options that neither take inline code
-// (`node -e`, `python3 -c`, `bash -c`) nor only check syntax (`bash -n`); `cd` segments before it move the base.
-const RUNS = /^(?:\w+=\S*\s+)*(?:(?:python3?(?:\s+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:\s+-[eluvx]+)*|pwsh(?:\s+-(?:NoProfile|NonInteractive|NoLogo|ExecutionPolicy\s+\w+))*(?:\s+-File)?)\s+)?["']?([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))["']?(?:\s|$)/
+// (`node -e`, `python3 -c`, `bash -c`) nor only check syntax (`bash -n`); `cd` segments before it move the base. The
+// first group is the interpreter, the second the file.
+const RUNS = /^(?:\w+=\S*\s+)*(?:(python3?(?:\s+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:\s+-[eluvx]+)*|pwsh(?:\s+-(?:NoProfile|NonInteractive|NoLogo|ExecutionPolicy\s+\w+))*(?:\s+-File)?)\s+)?["']?([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))["']?(?:\s|$)/
 const home = path => path.replace(/^(?:~|\$HOME|\$\{HOME\})(?=\/|$)/, homedir())
 
 /**
@@ -58,8 +59,9 @@ export async function scriptOf(command, cwd) {
   for (const segment of split(executedPart(command))) {
     const cd = segment.match(/^cd\s+["']?([^"';&|]+?)["']?$/)
     if (cd) { dir = resolve(dir, home(cd[1])); continue }
-    const path = segment.match(RUNS)?.[1]
-    if (!path) continue
+    const [, interpreter, path] = segment.match(RUNS) ?? []
+    // A bare name run without an interpreter is looked up on PATH, not in the current directory.
+    if (!path || (!interpreter && !/[\\/]/.test(path))) continue
     const file = resolve(dir, home(path))
     if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
     const handle = await open(file, 'r')

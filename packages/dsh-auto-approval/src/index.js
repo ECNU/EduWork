@@ -4,7 +4,7 @@ import { resolve } from 'node:path'
 import { reviewRequest, scriptOf, sessionFacts, SHELLS, verdict } from './review.js'
 
 export const name = 'auto-approval'
-export const inject = ['approval', 'permissionPresets', 'workingDirectory']
+export const inject = ['approval', 'permissionPresets', 'sandboxPolicy', 'workingDirectory']
 export const Config = z.object({
   enabled: z.boolean().default(false).description('启用自动审批 / Enable automatic approval'),
   preset: z.string().default('auto-approval').description('在哪个权限预设下自动审批；预设须在 permission 插件里配置为 workspace-write + ask / Permission preset that turns review on; configure it as workspace-write + ask'),
@@ -96,8 +96,11 @@ export function apply(ctx, raw = {}) {
 
   async function review(req, call, signal) {
     const { session } = req.agent
-    const workspace = ctx.workingDirectory.get(session)
-    const cwd = call.arguments.workdir ? resolve(workspace, call.arguments.workdir) : workspace
+    // The sandbox's boundary stays where the session started; the shell runs in the current directory, which `/cd`
+    // can move anywhere.
+    const workspace = ctx.sandboxPolicy.resolve({ session }).workspaceRoot
+    const base = ctx.workingDirectory.get(session)
+    const cwd = call.arguments.workdir ? resolve(base, call.arguments.workdir) : base
     const command = call.arguments.command
     const { state, questions, flagged } = reviewRequest({
       system: `${SYSTEMS[process.platform] ?? process.platform}，shell 为 ${call.name === 'pwsh' ? 'PowerShell' : 'bash'}`,
