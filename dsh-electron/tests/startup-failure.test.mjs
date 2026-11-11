@@ -299,7 +299,7 @@ function recoveryHarness(t, stage, { rollbackResult = true, rollbackResultOnOthe
     failed: error => { if (onExitFailure) onExitFailure(error); else assert.fail(error) } })
   const context = {
     app, lifecycle, desktopExit: exit, desktopFailureShown: false, Error, AggregateError,
-    settings, paths: { config: settings.config },
+    settings, paths: { config: settings.config, logs: 'C:\\Synthetic\\logs' },
     restartDesktop: options => { events.push('restart'); return exit.restart(options) },
     contentUpdates: contentUpdates ?? { close: () => events.push('content-abort'), rollback: async () => {
       const result = await wait('rollback', stage === 'rollback' ? rollbackResult : rollbackResultOnOtherStages)
@@ -664,6 +664,24 @@ test('updater native recovery copies diagnostics and opens the component directo
   assert.deepEqual(f.events.find(event => Array.isArray(event) && event[0] === 'component'), ['component', dirname(executable)])
   assert.match(f.dialogs[1].message, /已复制/)
   assert.equal(f.events.includes('restart'), false)
+})
+
+test('bootstrap native recovery opens logs without restarting or importing', async t => {
+  const f = recoveryHarness(t, 'special', { responses: [3] })
+  await f.begin()
+  assert.deepEqual(f.events.find(event => Array.isArray(event) && event[0] === 'component'), ['component', 'C:\\Synthetic\\logs'])
+  assert.deepEqual(f.dialogs[0].buttons, ['退出', '重试下载', '导入离线配置包', '打开日志目录'])
+  assert.ok(f.dialogs[0].detail.includes('C:\\Synthetic\\logs'))
+  assert.equal(f.events.includes('restart'), false)
+  assert.equal(f.events.includes('import'), false)
+})
+
+test('log directory errors return to the bootstrap recovery dialog', async t => {
+  const f = recoveryHarness(t, 'special', { responses: [3], componentError: 'Synthetic log folder error' })
+  await f.begin()
+  assert.ok(f.events.includes('error-dialog'))
+  assert.match(f.dialogs[1].message, /Synthetic log folder error/)
+  assert.equal(f.dialogs.filter(dialog => dialog.buttons).length, 2)
 })
 
 test('component directory errors stay actionable in native recovery', async t => {

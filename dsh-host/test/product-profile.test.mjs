@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, readlink, realpath, rename, symlink, lstat, rm, unlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readlink, realpath, rename, symlink, lstat, rm, unlink, utimes } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
@@ -155,6 +155,33 @@ test('another shell, distribution, or product-contained home is rejected without
   await assert.rejects(prepareProductProfile({ product, home, shell: 'electron' }), /another desktop edition/)
   assert.equal(JSON.parse(await readFile(join(home, '.eduwork-desktop-home.json'), 'utf8')).distribution, 'eduwork')
 })
+
+test('an existing ownership marker is not rewritten during startup', async t => {
+  const { product, home } = await fixture(t)
+  const options = { product, home, shell: 'electron' }
+  await prepareProductProfile(options)
+  const marker = join(home, '.eduwork-desktop-home.json'), original = await readFile(marker)
+  const old = new Date('2020-01-01T00:00:00Z')
+  await utimes(marker, old, old)
+  const before = await lstat(marker)
+  await prepareProductProfile(options)
+  assert.deepEqual(await readFile(marker), original)
+  assert.equal((await lstat(marker)).mtimeMs, before.mtimeMs)
+})
+
+for (const damaged of [Buffer.alloc(64), Buffer.from('{"distribution":"another-edition"'), Buffer.from('null')]) {
+  test(`damaged ownership is preserved without adopting the directory (${damaged.toString('hex').slice(0, 16)})`, async t => {
+    const { product, home } = await fixture(t)
+    const options = { product, home, shell: 'electron' }
+    await prepareProductProfile(options)
+    const marker = join(home, '.eduwork-desktop-home.json')
+    await writeFile(marker, damaged)
+    await writeFile(join(home, 'synthetic-history.json'), '{"retained":true}')
+    await assert.rejects(prepareProductProfile(options), /归属标记已损坏|another desktop edition/)
+    assert.deepEqual(await readFile(marker), damaged)
+    assert.equal(await readFile(join(home, 'synthetic-history.json'), 'utf8'), '{"retained":true}')
+  })
+}
 
 test('unmanaged directories and links survive a refused repair', async t => {
   const { root, product, home } = await fixture(t)

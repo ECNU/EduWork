@@ -99,7 +99,7 @@ export function updaterStartupError(executable, cause) {
   })
 }
 
-export function startupFailureDialog({ error, productName, version, config }) {
+export function startupFailureDialog({ error, productName, version, config, logs }) {
   const causes = []
   for (let current = error; current && causes.length < 8; current = current.cause) causes.push(current)
   const updater = causes.find(value => value.code === 'EDUWORK_UPDATER_START_FAILED')
@@ -127,9 +127,10 @@ export function startupFailureDialog({ error, productName, version, config }) {
     detail = `首次使用需要下载发行配置。请连接网络后重试，也可导入发行方提供的签名离线包。\n\n${scrubDiagnosticText(String(error.message || error))}\n\n配置文件：${config}`
   }
   // Match DSH fatal recovery's native presentation; only edition actions differ.
+  if (needsConfiguration && logs) detail += `\n\n日志目录：${logs}`
   const options = { type: 'error', title: `${productName} · 启动提示`,
     message: needsConfiguration ? '正在等待发行配置' : '更新组件无法运行', detail,
-    buttons: needsConfiguration ? ['退出', '重试下载', '导入离线配置包']
+    buttons: needsConfiguration ? ['退出', '重试下载', '导入离线配置包', ...(logs ? ['打开日志目录'] : [])]
       : ['退出', '修复后重试', '打开组件目录', '复制错误信息'],
     defaultId: 1, cancelId: 0, noLink: true }
   return { options, needsConfiguration, diagnostics, executable: updater?.executable }

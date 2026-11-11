@@ -577,7 +577,7 @@ export async function showDesktopFailure(error, nativeRecovery) {
   catch (healthError) { error = new Error(`${error.message}\n迁移状态未能保存：${healthError.message}`, { cause: error }) }
   if (isQuitting()) return
   prepareDesktopRecovery()
-  const failure = startupFailureDialog({error,productName:settings.productName,version:settings.productVersion,config:paths.config})
+  const failure = startupFailureDialog({error,productName:settings.productName,version:settings.productVersion,config:paths.config,logs:paths.logs})
   if (!failure) return nativeRecovery(error)
   let message = failure.options.message
   while (!isQuitting()) {
@@ -602,6 +602,9 @@ export async function showDesktopFailure(error, nativeRecovery) {
         if (isQuitting()) return
         await contentUpdates.importOffline(bytes, { retryFailed: true })
         if (!isQuitting()) await restartDesktop()
+      } else if (failure.needsConfiguration && response === 3 && paths.logs) {
+        const error = await shell.openPath(paths.logs)
+        if (error) throw Error(error)
       } else if (failure.executable && response === 2) {
         const error = await shell.openPath(dirname(failure.executable))
         if (error) throw Error(error)
