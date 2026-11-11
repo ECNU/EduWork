@@ -34,6 +34,8 @@ const ALLOWED_ENDPOINTS = new Set([
   'workspaceFiles/changes', 'workspaceFiles/list', 'workspaceFiles/read', 'workspaceFiles/readAll', 'workspaceFiles/readBytes',
   'workspaceFiles/readRelated', 'workspaceFiles/stat',
   'officeToPdf/generation', 'officeToPdf/render', 'artifactPreview/read', 'artifactPreview/importFiles',
+  // DSH 0.2.2-rc.2 renamed the same authorized document-preview service.
+  'officeKit/generation', 'officeKit/render',
   // EduWork's Studio results.
   'knowledgeStudio/artifactAskPrompt', 'knowledgeStudio/exportArtifact', 'knowledgeStudio/invokeStudio', 'knowledgeStudio/listArtifacts',
   'knowledgeStudio/listCapabilities', 'knowledgeStudio/manageArtifact', 'knowledgeStudio/readArtifact', 'knowledgeStudio/readEvidence',

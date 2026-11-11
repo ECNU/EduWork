@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-11T15:36:53.367Z",
-  "fileSetSHA256": "446cb08c844cd853c98ccdfb1b6d474a0994aa4e24b99983668828939dda938e",
+  "createdAt": "2026-11-11T16:32:06.493Z",
+  "fileSetSHA256": "262f0e6313fb30c514338460781701335f146d1e2bd59bf6ae23281aab02ce63",
   "files": [
     {
       "path": ".gitattributes",
@@ -1709,7 +1709,7 @@
     },
     {
       "path": "dsh-host/distribution-policy.mjs",
-      "sha256": "28aa32e08277924e26e1e3c0b0f1c7b7e03783bb0c855dbb0075ca59837abfae"
+      "sha256": "1ef2649b9453c2af28c9d7cd9e413ba7f0c55f7536d0a6ff62de44ba91dc7865"
     },
     {
       "path": "dsh-host/dsh-compatibility.mjs",
@@ -1733,7 +1733,7 @@
     },
     {
       "path": "dsh-host/native-profile.mjs",
-      "sha256": "645719c421675c4ddb891959eae1ebb05251074cb442744f89a64c319f9681cb"
+      "sha256": "01ca9c154ee3d7af41761203e0fb7a38962ffb44a3a301a07718399acc254607"
     },
     {
       "path": "dsh-host/native-resources.mjs",
@@ -1741,7 +1741,7 @@
     },
     {
       "path": "dsh-host/prepare-native.mjs",
-      "sha256": "682f6f489a9c60d80c61616fd7a78893f2f66f6e7b01df655c523a67b7c64150"
+      "sha256": "193e71119c4f77433003828aa37ad047255344f517ad02a748ec1479b8c2838b"
     },
     {
       "path": "dsh-host/prepare.mjs",
@@ -1829,7 +1829,7 @@
     },
     {
       "path": "dsh-host/test/native-020.test.mjs",
-      "sha256": "5084dbd25d3bbcf022cdab8440f86044515bd2df2a79808c76b0d0001ef3172d"
+      "sha256": "9d3e99d0ad3455db6053c9221a274b818fab11971fa6617272c19fc0d1be2df0"
     },
     {
       "path": "dsh-host/test/native-021.test.mjs",
@@ -1849,7 +1849,7 @@
     },
     {
       "path": "dsh-host/test/native-settings.test.mjs",
-      "sha256": "dbad5cf5cace3e22fde824325f18b354f377f33a1092b0a6835049bdee9084e3"
+      "sha256": "755b453bcc617889bcc1357cbb416642a1e389868fec97d94c223c26a31ccd87"
     },
     {
       "path": "dsh-host/test/optional-extensions.test.mjs",
@@ -1901,7 +1901,7 @@
     },
     {
       "path": "dsh-host/upstream-inputs-pinned-source.json",
-      "sha256": "7d5934fa370d2232099620a570c12ba0eb12a5b522335fe8d5efe8a45f3b3a3d"
+      "sha256": "6827f5e6a30dbb4b2d835464b8d1d5415c91c1a3b830d42b37ae8ae8b59b344a"
     },
     {
       "path": "dsh-host/user-config.mjs",
@@ -3517,7 +3517,7 @@
     },
     {
       "path": "packages/dsh-annotation/lib/client.js",
-      "sha256": "73f86fda5cf23b214317f3f638780e761e55bbc00464001969fd77e3ab61416b"
+      "sha256": "02dcc186cf70d711605343b56e65e22fe9c51234f9cb0d301c2ed824f08d71ca"
     },
     {
       "path": "packages/dsh-annotation/lib/index.js",
@@ -3556,16 +3556,20 @@
       "sha256": "75c90b378afa72080ece3e4ed9adc441993c9daeaed572908b110897cb294172"
     },
     {
+      "path": "packages/dsh-annotation/scripts/probe-history.mjs",
+      "sha256": "0c73c9f89df7e2ff75137925305308235c9955cc5f4dd4365b56735833e95b2c"
+    },
+    {
       "path": "packages/dsh-annotation/src/client/draft.js",
       "sha256": "055a8fe17eb6f0cbfbb1bae15d2f398f996dbc993c39cee3774d3d478e80650f"
     },
     {
       "path": "packages/dsh-annotation/src/client/history.js",
-      "sha256": "3a16cf22bde2a5d6a904b54e80a5862d5a8e5acab9e0033cbb65ae09efca36dc"
+      "sha256": "cbb97e0123ea054ec7bc2ec4bed8401acae0886f2d151bdfd2f81410d59a7f82"
     },
     {
       "path": "packages/dsh-annotation/src/client/index.js",
-      "sha256": "862ec7add1d1e637181f11adee01020c4c493a3ce5c52dba787546e4e7973cb0"
+      "sha256": "56c1695d6b9ab1df3172001832c6275dda79895506a786528ec2f9137cdb994c"
     },
     {
       "path": "packages/dsh-annotation/src/client/position.js",
@@ -4589,7 +4593,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/official-office.js",
-      "sha256": "aadf845f0bccee5c2249aa640acce71b402948fb9155be9fa45ae6f71a5b144d"
+      "sha256": "068093d19e7a983053d6fa28db5444de63dbc8b7186da140e0afc5a67cb78391"
     },
     {
       "path": "packages/dsh-knowledge-studio/packages/artifact-services/lib/presentation-contract.d.ts",
@@ -6957,7 +6961,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "2c33842bbe3ba2cbd9b4382d025be63349613ea32f59db9b934ac1dd026852a3"
+      "sha256": "f2248a347d6de1a231d7fbd7b82c1dd72dbe72dd498924e53f70d3cb7f3f5b25"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -7105,7 +7109,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/gate/gate.test.ts",
-      "sha256": "15bedc03a1164ab758a71a24e321bdfd9c89fa587923b53262f718418f0800a9"
+      "sha256": "9150112c83da6aff5c76c2c341c3f14c6f7cb0a82667d8d828fd4472207f9046"
     },
     {
       "path": "packages/dsh-remote-access/test/harness.ts",
