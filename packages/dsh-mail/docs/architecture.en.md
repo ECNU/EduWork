@@ -55,7 +55,7 @@ This trades a small amount of latency for simpler credential rotation, cleanup, 
 
 ## New-mail reminders (optional)
 
-Reminders are a switchable feature of this plugin and are off by default: while off there is no connection and no timer. When on:
+Reminders are a switchable feature of this plugin and are off by default: while off the timer only checks local settings, without connecting to or querying the mailbox. When on:
 
 - the inbox is probed with `STATUS` at `notifyIntervalSeconds` (30–3600, 120 by default); probing is read-only and does not change the selected mailbox;
 - the watermark (`UIDVALIDITY` plus the next `UID`) is kept in memory per account and folder, so switching either never mixes them; a `UIDVALIDITY` change re-baselines instead of reporting renumbered mail as new;

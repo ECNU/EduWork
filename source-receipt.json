@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-11T14:23:19.203Z",
-  "fileSetSHA256": "96c1ef06e7dd94d788c815b1ca0c97301c71ad39d3b06b8bd9368e82d509b2c5",
+  "createdAt": "2026-11-11T14:25:41.351Z",
+  "fileSetSHA256": "5303bd5167b1108db59769fb6f4bc7fb59a47f8c78468971ce6f37a20b3c9151",
   "files": [
     {
       "path": ".gitattributes",
@@ -5745,11 +5745,11 @@
     },
     {
       "path": "packages/dsh-mail/docs/architecture.en.md",
-      "sha256": "6ca12b3e42ef55ee80ca8f44596e7b8be58027bd6bb013390795af30f0c702be"
+      "sha256": "a93cfcb667faea96722b919215d60dcec7ca09350d463acc944e86fd09d2bce7"
     },
     {
       "path": "packages/dsh-mail/docs/architecture.md",
-      "sha256": "e53371591ed834c15d615a205d45301ff02ce34b0b044adfb71d56ddeeaea5ef"
+      "sha256": "21c17e4451fb90f349ac87ca1215ce35e611e613cf4cf5b992b67002b0fc1fc8"
     },
     {
       "path": "packages/dsh-mail/docs/compatibility.en.md",
