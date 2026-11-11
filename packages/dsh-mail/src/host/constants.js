@@ -24,4 +24,7 @@ export const DEFAULTS = Object.freeze({
   maxBodyChars: 20_000,
   maxMessageBytes: 25 * 1024 * 1024,
   maxAttachmentBytes: 20 * 1024 * 1024,
+  notifyEnabled: false,
+  notifyIntervalSeconds: 120,
+  notifyExcerptChars: 160,
 })

@@ -3,6 +3,7 @@
 ## 0.2.4 — Unreleased
 
 - Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+- Add opt-in new-mail reminders: probe the inbox read-only, bucket per account and folder, cut the body excerpt at 64 KiB during download, and hand it to system notifications through plugin notification protocol v1. No new dependencies and no change to tool behavior.
 
 [简体中文](CHANGELOG.md) | **English**
 

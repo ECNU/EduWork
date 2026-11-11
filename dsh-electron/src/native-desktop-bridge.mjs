@@ -3,7 +3,9 @@ import { DESKTOP_IPC, assertDesktopSender } from './ipc.ts'
 import { DesktopBrowserGuests } from './browser-guests.ts'
 import { installMicrophonePermissions } from './microphone-permissions.ts'
 import { installDesktopShortcuts } from './keyboard.ts'
-import { resolveDesktopStartupLocale } from './locale.ts'
+import { resolveDesktopLocale, resolveDesktopStartupLocale } from './locale.ts'
+import { brandDesktopLocale } from './desktop-locale.mjs'
+import { readDesktopLocaleCache, writeDesktopLocaleCache } from './locale-cache.ts'
 import { installFileActions } from './file-actions.ts'
 import { installDesktopFileDrag } from './file-drag.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
@@ -16,8 +18,12 @@ export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
 export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, updates, pickDirectory, bootBrand, sidebarBrowser }) {
+  const userData = app.getPath('userData')
   const languages = app.getPreferredSystemLanguages()
-  let locale = resolveDesktopStartupLocale(null, languages)
+  // The Host may be unavailable at startup; reuse the last language confirmed
+  // by settings or the owned renderer, as locked upstream does.
+  const cachedLocale = readDesktopLocaleCache(userData)
+  let locale = cachedLocale === undefined ? resolveDesktopStartupLocale(null, languages) : resolveDesktopLocale(cachedLocale)
   const owner = event => {
     const window = getWindow()
     assertDesktopSender(event, ['app'])
@@ -138,6 +144,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     const host = await currentHost(event)
     const preference = await host.readLocalePreference()
     locale = resolveDesktopStartupLocale(preference, languages)
+    writeDesktopLocaleCache(userData, locale.id)
     refreshMenu()
     return { languages, preference }
   })
@@ -145,6 +152,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
     try { owner(event) } catch { return }
     if (typeof next !== 'string') return
     locale = resolveDesktopStartupLocale(next, languages)
+    writeDesktopLocaleCache(userData, locale.id)
     refreshMenu()
   })
   ipcMain.on(DESKTOP_IPC.nativeThemeSet, (event, source) => {
@@ -162,13 +170,11 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   })
   ipcMain.handle(DESKTOP_IPC.updatesOpen, event => { owner(event); return checkUpdates() })
   if (process.platform === 'win32') {
-    ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, language, color, symbolColor) => {
+    ipcMain.on(DESKTOP_IPC.windowsAppearance, (event, _language, color, symbolColor) => {
       let window
       try { window = owner(event) } catch { return }
-      if (typeof language === 'string' && /^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$/u.test(language)) {
-        const next = resolveDesktopStartupLocale(language, languages)
-        if (next.id !== locale.id) { locale = next; refreshMenu() }
-      }
+      // Document lang is English before the Host locale bootstrap. Only
+      // localeBootstrap/localeChanged own the shell language, matching upstream.
       const validColor = value => typeof value === 'string' && /^(?:#[\da-f]{3,8}|rgba?\([\d.,%\s]+\))$/iu.test(value)
       if (validColor(color) && validColor(symbolColor)) window.setTitleBarOverlay({ color, symbolColor })
     })
@@ -192,8 +198,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   return {
     // locale.ts also runs in the sandboxed preload: brand only at this
     // main-process boundary, never import electron.app into shared locale code.
-    locale: () => ({ ...locale, messages: Object.fromEntries(Object.entries(locale.messages)
-      .map(([key, value]) => [key, value.replaceAll('DeepSeek Harness', app.getName())])) }),
+    locale: () => brandDesktopLocale(locale, app.getName()),
     async probeUserGuide() {
       if (waitForHost) await waitForHost()
       const response = await getHost()?.fetch(new Request(`app://app${USER_GUIDE_ROUTE}/`, { method: 'HEAD' })).catch(() => null)

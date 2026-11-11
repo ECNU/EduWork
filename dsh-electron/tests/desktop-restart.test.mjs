@@ -3,7 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
-import { desktopRelaunchOptions } from '../src/desktop-restart.mjs'
+import { desktopRelaunchOptions, configureDesktopRelaunch } from '../src/desktop-restart.mjs'
+import { EventEmitter } from 'node:events'
 import { readMigrationLaunch, writeMigrationHealth, importLegacyData } from '../src/legacy-migration.mjs'
 
 test('startup retries retain an unfinished updater handshake and unrelated arguments', () => {
@@ -53,4 +54,37 @@ for (const migration of [false, true]) {
 test('ordinary restarts retain configuration and shell arguments', () => {
   const args = ['app path', '--lang=zh-CN', '--user-data-dir=user profile']
   assert.deepEqual(desktopRelaunchOptions(args, true).args, args)
+})
+
+test('direct Electron uses the existing relaunch API and cleaned arguments', () => {
+  const app = new EventEmitter(), calls = []
+  app.relaunch = options => calls.push(options)
+  const restart = configureDesktopRelaunch(app, false)
+  restart(['--lang=en', '--update-health-file', 'completed health'], true)
+  assert.deepEqual(calls, [{ args: ['--lang=en'] }])
+  assert.equal(app.listenerCount('will-quit'), 0)
+})
+
+for (const updated of [false, true]) {
+  test(`launcher restart signals ${updated ? 'completed update' : 'ordinary retry'} only after normal quit cleanup`, async () => {
+    const app = new EventEmitter(), calls = []
+    app.exit = code => calls.push(['exit', code])
+    app.relaunch = assert.fail
+    const restart = configureDesktopRelaunch(app, true)
+    app.on('will-quit', () => calls.push('cleanup'))
+    restart(['--lang=en'], updated)
+    assert.deepEqual(calls, [])
+    app.emit('will-quit', { preventDefault: () => calls.push('defer') })
+    assert.deepEqual(calls, ['defer', 'cleanup'])
+    await new Promise(resolve => setImmediate(resolve))
+    assert.deepEqual(calls, ['defer', 'cleanup', ['exit', updated ? 24 : 23]])
+  })
+}
+
+test('ordinary launcher quits retain the native quit path', async () => {
+  const app = new EventEmitter()
+  app.exit = app.relaunch = assert.fail
+  configureDesktopRelaunch(app, true)
+  app.emit('will-quit', { preventDefault: assert.fail })
+  await new Promise(resolve => setImmediate(resolve))
 })
