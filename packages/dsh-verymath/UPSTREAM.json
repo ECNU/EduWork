@@ -12,7 +12,7 @@
         "skills/math-glossary/tests/",
         "skills/matlab-runner/ (SKILL.md + references + examples, with DSH MCP setup notes)"
       ],
-      "adaptationNotes": "SKILL.md routing and script-invocation text adapted for DSH tool names (verymath_glossary_*); Python scripts included verbatim, so alias-row ids (`en__N`) are produced by the same algorithm upstream uses; tests adapted to run from the skill directory. matlab-runner bundled after user installed MATLAB R2025b; MathWorks official MCP server v0.14.0 wired via dsh-mcp-client (5 tools match the skill capability list). One sentence added to SKILL.md rule 6 (added 0.3.4) explains the DSH tool contract that the bundled scripts do not cover: adding another translation omits term_id and creates an alias row, correcting a translation passes the term_id returned by a query."
+      "adaptationNotes": "SKILL.md routing and script-invocation text adapted for DSH tool names (verymath_glossary_*); Python scripts included verbatim, so alias-row ids (`en__N`) are produced by the same algorithm upstream uses; tests adapted to run from the skill directory. matlab-runner bundled after user installed MATLAB R2025b; MathWorks official MCP server v0.14.0 wired via dsh-mcp-client (5 tools match the skill capability list). One sentence added to SKILL.md rule 6 (added 0.4.0) explains the DSH tool contract that the bundled scripts do not cover: adding another translation omits term_id and creates an alias row, correcting a translation passes the term_id returned by a query."
     },
     {
       "repository": "https://github.com/VeryMath/AI4Math-Paper-Reading",
