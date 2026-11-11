@@ -150,6 +150,17 @@ test('a call the other policies ask about, a subagent call and calls in flight u
   assert.match(other.logs.at(-1)[1], /asked the user/)
 })
 
+test('a request withdrawn as the review returns is not approved', async t => {
+  const { baseURL } = await service(t, body => answer(body, 0.9, 0.1))
+  const mounted = mount({ ...base, baseURL })
+  const controller = new AbortController()
+  const { current } = mounted.presets
+  // The last check before approving reads the preset; withdraw the request right there.
+  let reads = 0
+  mounted.presets.current = session => { if (++reads === 2) controller.abort(); return current(session) }
+  assert.equal(await mounted.escalate('cp a.csv ~/Downloads/', { signal: controller.signal, fallback: 'cancelled' }), 'cancelled')
+})
+
 test('a session that leaves the preset during the review is asked as usual', async t => {
   let mounted
   const { baseURL } = await service(t, body => { mounted.presets.set('workspace-write'); return answer(body, 0.9, 0.1) })
