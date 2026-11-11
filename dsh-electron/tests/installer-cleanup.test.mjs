@@ -320,7 +320,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         calls.push('recovery')
         if (!earlyFailure) completed()
       }, showDesktop: () => calls.push('activate-current-window'),
-      checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
+      checkProductUpdates() {}, setDesktopPasswordManagerFactory() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
       readInitialCloseAction: () => calls.push('read-close-action'),

@@ -8844,7 +8844,7 @@
     },
     {
       "path": "dsh-plugins/browser-upstream/test/read-act.test.mjs",
-      "sha256": "60ed7f9a995e5d699840354fcc68e9a80cef22a4526d723ae6dea3c21a71c5eb",
+      "sha256": "6d4e0cfbdcb5e6b01f4e2066a9cf6d2213653f769b92dd30e949dd46f83786b6",
       "kind": "synthetic-network-classification-test",
       "reason": "The private URLs are synthetic addresses in a browser approval classification test: entering a private network from another site asks, links within it do not. They are not configured service endpoints. Keys and all other private content are still audited."
     }
