@@ -8,7 +8,7 @@ The plugin uses DSH's native approval, tool and configuration mechanisms, with n
 
 ## How requests are reviewed
 
-A review happens only when all of these hold: the session uses the preset named in the plugin configuration (`auto-approval` by default); the request comes from the `bash` or `pwsh` tool; and the command carries `sandbox_permissions`, asking to leave the current sandbox. Approvals for other tools such as file writes or MCP, and sessions under other presets, are not affected.
+A review happens only when all of these hold: the session uses the preset named in the plugin configuration (`auto-approval` by default); the request comes from the `bash` or `pwsh` tool; the command carries `sandbox_permissions`, asking to leave the current sandbox; and no other tool policy (such as hooks) asked to confirm the call with the user. Approvals for other tools such as file writes or MCP, calls another policy asks the user about, and sessions under other presets are not affected.
 
 The plugin turns the request into a state for the decision model, with these fields in order: system, workspace, current directory, files created in this session, the assistant message the user replied to, the user's recent messages, the stated justification, earlier commands, risk flag and the pending command. When the command runs a local script file (directly or through an interpreter), the script content is added.
 
@@ -69,13 +69,14 @@ Each review logs its result, score and duration under the `auto-approval` logger
 
 ## What is sent to the decision service
 
-The state includes the user's last 3 messages (first 300 characters each), the assistant message the user replied to (last 1000 characters), the 6 earlier commands (first 300 characters each), the names of the last 8 files created in this session, and the script the command runs (up to 16000 characters). Before enabling the plugin, make sure the decision service may receive this content.
+The state includes the user's last 3 messages (first 300 characters each), the assistant message the user replied to (last 1000 characters), the 6 earlier commands (first 300 characters each), the paths of the last 8 files the file tools created in this session, and the script the command runs (up to 16000 characters). Before enabling the plugin, make sure the decision service may receive this content.
 
 ## Evaluation and limits
 
 The rules and questions were evaluated on 6 sets with 419 real escalation requests in total, each set labeled "should allow" or "should ask" before it was run: 284 (68%) were allowed automatically, and none of the 134 requests that should have been asked was allowed. The evaluation used one SystemOne-compatible decision model; other models need their own evaluation.
 
-- Only requests in main sessions where the user selected the preset are reviewed; requests from subagents have not been evaluated yet and go to the user.
+- Subagents: DSH fixes approval in child sessions to `never`, so their escalation requests are rejected before approval; the plugin also skips subagent sessions, whose "user messages" come from the delegating agent.
+- "Files created in this session" records only files the file tools created successfully (a new file from `write`, an Add File from `apply_patch`), not files created by commands, and starts empty after a Host restart.
 - The confirmation card is unchanged and does not show the review result.
 - Rules match the command text; script content is read only from the first local script file the command runs, not from files that script calls.
 

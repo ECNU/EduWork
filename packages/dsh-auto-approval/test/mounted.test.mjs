@@ -25,7 +25,7 @@ const answer = (body, auto, harm) => ({ json: {
   answers: Object.fromEntries(Object.keys(body.questions).map(id => [id, id === 'harm' ? { type: 'noul', noul: harm } : { type: 'choice', choice: auto >= 0.5 ? 'auto' : 'ask', probabilities: { auto, ask: 1 - auto } }])),
 } })
 
-function mount(config, { preset = 'auto-approval', services = {}, events = [] } = {}) {
+function mount(config, { preset = 'auto-approval', services = {}, events = [], origin } = {}) {
   const listeners = {}, logs = []
   const ctx = {
     on(name, listener, options) { (listeners[name] ??= [])[options?.prepend ? 'unshift' : 'push'](listener) },
@@ -35,14 +35,17 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [] } 
     workingDirectory: { get: () => '/work' },
   }
   apply(ctx, config)
-  const agent = { session: { id: 'session-1', snapshotEvents: () => events } }
+  const agent = { session: { id: 'session-1', header: { origin }, snapshotEvents: () => events } }
   let calls = 0
-  async function escalate(command, { name = 'bash', fallback = 'rejected', signal, workdir } = {}) {
-    const callId = `call-${++calls}`
-    await listeners['tools/pre-execute'][0]({ name, callId, agent, arguments: { command, sandbox_permissions: 'danger-full-access', justification: '写到下载目录', ...(workdir && { workdir }) } }, async () => ({ kind: 'allow' }))
-    return listeners['approval/request'][0]({ agent, toolName: name, callId, reason: 'escalate sandbox to danger-full-access: 写到下载目录', signal }, async () => fallback)
-  }
-  return { listeners, logs, escalate }
+  // The tool pipeline's two steps around a call: the pre-execute policies, then (for an escalation) the approval request.
+  const start = (command, { name = 'bash', callId = `call-${++calls}`, workdir, policy = 'allow' } = {}) =>
+    listeners['tools/pre-execute'][0]({ name, callId, agent, arguments: { command, sandbox_permissions: 'danger-full-access', justification: '写到下载目录', ...(workdir && { workdir }) } }, async () => ({ kind: policy }))
+      .then(() => callId)
+  const ask = (callId, { name = 'bash', fallback = 'rejected', signal } = {}) =>
+    listeners['approval/request'][0]({ agent, toolName: name, callId, reason: 'escalate sandbox to danger-full-access: 写到下载目录', signal }, async () => fallback)
+  const finish = (callId, name, result) => listeners['tools/result'][0]({ name, callId, agent }, result)
+  const escalate = async (command, options = {}) => ask(await start(command, options), options)
+  return { listeners, logs, start, ask, finish, escalate }
 }
 const base = { enabled: true, model: 'fixture-model', authMode: 'none' }
 
@@ -81,6 +84,38 @@ test('low scores, other presets and other tools go to the user unchanged', async
   assert.equal(await mount({ ...base, baseURL }, { preset: 'workspace-write' }).escalate('ls ~/Downloads', { fallback: 'allowed-once' }), 'allowed-once')
   assert.equal(await mount({ ...base, baseURL }).escalate('ls ~/Downloads', { name: 'write', fallback: 'cancelled' }), 'cancelled')
   assert.equal(bodies.length, 1)
+})
+
+test('a call the other policies ask about, a subagent call and two calls in flight under one ID go to the user', async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  const mounted = mount({ ...base, baseURL })
+  assert.equal(await mounted.escalate('git push origin main', { policy: 'ask' }), 'rejected')
+  assert.equal(await mount({ ...base, baseURL }, { origin: 'subagent' }).escalate('git push origin main'), 'rejected')
+  const first = await mounted.start('cp a.csv ~/Downloads/', { callId: 'call_0' })
+  await mounted.start('git push origin main', { callId: 'call_0' })
+  assert.equal(await mounted.ask(first), 'rejected')
+  assert.equal(bodies.length, 0)
+  // A finished call frees its ID for a later step.
+  mounted.finish('call_0', 'bash', { isError: false, value: 'done' })
+  await mounted.start('cp b.csv ~/Downloads/', { callId: 'call_0' })
+  assert.equal(await mounted.ask('call_0'), 'allowed-once')
+  assert.equal(bodies.at(-1).body.state.待执行的命令, 'cp b.csv ~/Downloads/')
+})
+
+test('files the session created come from successful file tool results', async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  const mounted = mount({ ...base, baseURL })
+  mounted.finish('w1', 'write', { isError: false, value: { path: '/work/new.md', operation: 'create', before: null, after: 'x' } })
+  mounted.finish('w2', 'write', { isError: false, value: { path: '/work/old.md', operation: 'update', before: 'a', after: 'b' } })
+  mounted.finish('w3', 'write', { isError: true })
+  mounted.finish('p1', 'apply_patch', { isError: false, value: { operations: [
+    { kind: 'add', path: 'gen/a.js', status: 'completed', changes: [{ path: '/work/gen/a.js', before: null, after: 'x' }] },
+    { kind: 'add', path: 'kept.js', status: 'completed', changes: [{ path: '/work/kept.js', before: 'y', after: 'x' }] },
+    { kind: 'move', path: 'b.js', destination: 'c.js', status: 'completed', changes: [{ path: '/work/b.js', before: 'z', after: null }, { path: '/work/c.js', before: null, after: 'z' }] },
+    { kind: 'add', path: 'gen/d.js', status: 'failed' },
+  ] } })
+  assert.equal(await mounted.escalate('rm -rf ~/Downloads/out'), 'allowed-once')
+  assert.deepEqual(bodies[0].body.state.本次会话创建的文件, ['/work/new.md', '/work/gen/a.js'])
 })
 
 test('one retry for 5xx; failures, malformed answers and timeouts ask the user; three in a row pause the review', async t => {
@@ -122,6 +157,16 @@ test('API key and organization sign-in: no key or no sign-in asks the user and n
   assert.equal(await mount({ ...base, baseURL, authMode: 'oidc', oidcProfileId: 'org' }, { services: { oidcAccounts: signedIn } }).escalate('git push origin main'), 'allowed-once')
   assert.equal(seen, 'org')
   assert.equal(bodies.length, 2)
+})
+
+test('a stalled Host service still ends the review within the time limit', async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  const mounted = mount({ ...base, baseURL, authMode: 'api-key', timeoutMs: 1000 }, { services: { credentials: { resolve: () => new Promise(() => {}) } } })
+  const started = performance.now()
+  assert.equal(await mounted.escalate('git push origin main'), 'rejected')
+  assert.ok(performance.now() - started < 3000)
+  assert.equal(bodies.length, 0)
+  assert.equal(mounted.logs.filter(([level]) => level === 'warn').length, 1)
 })
 
 test('a withdrawn request is not counted as a failure', async t => {

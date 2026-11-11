@@ -30,21 +30,38 @@ export function apply(ctx, raw = {}) {
   })
   const preset = raw.preset ?? 'auto-approval'
   const log = ctx.logger('auto-approval')
-  // Escalation requests carry only the call id; the command comes from the call itself.
-  const calls = new Map()
+  // Shell calls in flight by session and call ID: escalation requests carry only the call ID, the command comes from
+  // the call. Two calls in flight under one ID are ambiguous and left to the user.
+  const shellCalls = new WeakMap()
+  // Files the session's file tools created, from their results: a write that made a new file, a patch that added one.
+  const created = new WeakMap()
   const failures = new Map()
-  const keyOf = (session, callId) => `${session?.id}\0${callId}`
 
-  ctx.on('tools/pre-execute', (exec, next) => {
-    if (SHELLS.has(exec.name) && exec.agent && exec.arguments?.sandbox_permissions) {
-      calls.set(keyOf(exec.agent.session, exec.callId), { name: exec.name, arguments: exec.arguments })
-      // A call that never reaches approval (same mode, denied by policy) leaves its entry behind; keep the newest.
-      if (calls.size > 32) calls.delete(calls.keys().next().value)
+  ctx.on('tools/pre-execute', async (exec, next) => {
+    const decision = await next()
+    // Only calls the other policies let through: a call they ask the user about is the user's to answer. A subagent's
+    // messages come from the delegating agent, not the user, so its calls are never reviewed.
+    if (decision.kind === 'allow' && SHELLS.has(exec.name) && exec.arguments.sandbox_permissions && exec.agent
+      && exec.agent.session.header.origin !== 'subagent') {
+      const calls = shellCalls.get(exec.agent.session) ?? new Map()
+      shellCalls.set(exec.agent.session, calls.set(exec.callId, calls.has(exec.callId) ? null : { name: exec.name, arguments: exec.arguments }))
     }
-    return next()
+    return decision
+  }, { prepend: true })
+
+  ctx.on('tools/result', (exec, result) => {
+    const session = exec.agent?.session
+    if (!session) return
+    shellCalls.get(session)?.delete(exec.callId)
+    if (result.isError) return
+    const paths = exec.name === 'write' ? (result.value.operation === 'create' ? [result.value.path] : [])
+      : exec.name === 'apply_patch' ? result.value.operations.filter(op => op.status === 'completed' && op.kind === 'add')
+        .flatMap(op => op.changes.filter(change => change.before === null).map(change => change.path))
+      : []
+    if (paths.length) created.set(session, [...created.get(session) ?? [], ...paths].slice(-8))
   })
 
-  async function fetchWith(signal) {
+  async function fetchWith() {
     let fetchImpl
     if (service.authMode === 'oidc') {
       const account = ctx.get('oidcAccounts')
@@ -55,7 +72,6 @@ export function apply(ctx, raw = {}) {
       if (!credential?.value?.trim()) throw new Error('No decision service API key')
       fetchImpl = (url, init) => fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${credential.value}` }, redirect: 'error' })
     } else fetchImpl = (url, init) => fetch(url, { ...init, redirect: 'error' })
-    signal.throwIfAborted()
     // Asking the model has no side effects, so a network error, 429 or 5xx is tried once more within the time limit.
     return async (url, init) => {
       try {
@@ -76,26 +92,26 @@ export function apply(ctx, raw = {}) {
     const command = call.arguments.command
     const { state, questions, flagged } = reviewRequest({
       system: `${SYSTEMS[process.platform] ?? process.platform}，shell 为 ${call.name === 'pwsh' ? 'PowerShell' : 'bash'}`,
-      workspace, cwd, facts: sessionFacts(session.snapshotEvents(), req.callId), justification: call.arguments.justification,
+      workspace, cwd, facts: { ...sessionFacts(session.snapshotEvents(), req.callId), created: created.get(session) ?? [] },
+      justification: call.arguments.justification,
       command, script: await scriptOf(command, cwd),
     })
-    const fetchImpl = await fetchWith(signal)
+    const fetchImpl = await fetchWith()
     const results = await Promise.all(questions.map(question => requestDecision({ config: service, args: { state, questions: question }, fetchImpl, signal })))
     return { flagged, ...verdict(flagged, results) }
   }
 
   // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged.
   ctx.on('approval/request', async (req, next) => {
-    const key = keyOf(req.agent?.session, req.callId)
-    const call = calls.get(key)
-    calls.delete(key)
-    if (!call || !SHELLS.has(req.toolName) || ctx.permissionPresets.current(req.agent.session) !== preset) return next()
+    const call = shellCalls.get(req.agent?.session)?.get(req.callId)
+    if (!call || call.name !== req.toolName || ctx.permissionPresets.current(req.agent.session) !== preset) return next()
     const id = req.agent.session.id
     if (failures.get(id)?.until > Date.now()) return next()
     const started = performance.now()
     const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(req.signal ? [req.signal] : [])])
     try {
-      const result = await review(req, call, signal)
+      // The race also ends a review that waits on a stalled Host service (credentials, sign-in, files).
+      const result = await Promise.race([review(req, call, signal), aborted(signal)])
       failures.delete(id)
       log.info(`${call.name} ${result.approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
       if (result.approved) return 'allowed-once'
@@ -108,3 +124,8 @@ export function apply(ctx, raw = {}) {
     return next()
   }, { prepend: true })
 }
+
+const aborted = signal => new Promise((_, reject) => {
+  if (signal.aborted) reject(signal.reason)
+  else signal.addEventListener('abort', () => reject(signal.reason), { once: true })
+})

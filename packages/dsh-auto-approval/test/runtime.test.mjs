@@ -32,7 +32,8 @@ const chunks = block => [
   { type: 'finish', reason: { kind: block.type === 'text' ? 'stop' : 'tool-calls' } },
 ]
 
-async function run(t, { auto, preset = 'auto-approval', command }) {
+// `before` are tool calls the model makes in earlier steps; `hook` adds a pre-execute policy after the plugin's.
+async function run(t, { auto, preset = 'auto-approval', command, before = [], hook }) {
   const { Context } = await import('@deepseek-ai/cordis')
   const { createUserMessage, LlmAdapter } = await import('@deepseek-ai/dsh-llm')
   const { defineTool } = await import('@deepseek-ai/dsh-tools')
@@ -44,25 +45,26 @@ async function run(t, { auto, preset = 'auto-approval', command }) {
   await mkdir(root, { recursive: true })
   const home = await mkdtemp(join(root, 'run-'))
   const load = async (name, config) => { const module = await import(name); await ctx.plugin(module.default ?? module, config) }
-  for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent', '@deepseek-ai/dsh-tool-executor-native']) await load(name)
+  for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent', '@deepseek-ai/dsh-tool-executor-native', '@deepseek-ai/dsh-fs-local']) await load(name)
   for (const [name, config] of [
     ['@deepseek-ai/dsh-session-persistence-jsonl', { root: join(home, 'sessions') }],
     ['@deepseek-ai/dsh-agent-loop', { agents: [] }],
     ['@deepseek-ai/dsh-user-approval', {}],
+    ['@deepseek-ai/dsh-working-directory', { defaultDirectory: home }],
+    ['@deepseek-ai/dsh-tool-fs', { read: false, readImage: false, edit: false, write: true, applyPatch: true }],
   ]) await load(name, config)
   ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'fixture', model: 'fixture' }) })
-  // The preset table and the working directory belong to other Host services; only their reads are used here.
+  // The preset table belongs to the permission plugin; only its read is used here.
   ctx.provide('permissionPresets', { current: () => preset })
-  ctx.provide('workingDirectory', { get: () => home })
-  const requests = []
+  const steps = [
+    ...before,
+    { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) },
+    { type: 'text', text: 'Done.' },
+  ]
+  let step = 0
   ctx.llm.registerAdapter(['fixture'], new class extends LlmAdapter {
     resolveModel(provider, model) { return Promise.resolve({ provider, id: model, name: model }) }
-    async *stream(request) {
-      requests.push(request)
-      yield* chunks(requests.length === 1
-        ? { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) }
-        : { type: 'text', text: 'Done.' })
-    }
+    async *stream() { yield* chunks(steps[step++]) }
   }())
   const outcomes = []
   ctx.tools.register(defineTool({
@@ -70,6 +72,7 @@ async function run(t, { auto, preset = 'auto-approval', command }) {
     parameters: { description: { type: 'string', required: true }, command: { type: 'string', required: true }, sandbox_permissions: { type: 'string' }, justification: { type: 'string' } },
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
     async execute(args, exec) {
+      if (!args.sandbox_permissions) return 'ran'
       // The same approval path the official bash tool uses for a sandbox escalation.
       const mode = await approveEscalation({ requestedMode: args.sandbox_permissions, justification: args.justification, effectiveMode: 'workspace-write', subject: 'command' },
         { approver: ctx.get('approval'), agent: exec.agent, callId: exec.callId, toolName: 'bash', signal: exec.signal }).catch(error => error.message)
@@ -80,6 +83,7 @@ async function run(t, { auto, preset = 'auto-approval', command }) {
   // The client's answerer composes after the plugins and declines whatever reaches it.
   const userAnswers = []
   ctx.on('approval/request', req => { userAnswers.push(req.callId); return 'rejected' })
+  if (hook) ctx.on('tools/pre-execute', hook)
   await load(new URL('../lib/index.js', import.meta.url).href, { enabled: true, authMode: 'none', baseURL, model: 'fixture-model' })
   const handle = await ctx.agents.create({ sessionId: 'auto-approval-fixture', meta: { cwd: home }, agentOptions: { provider: 'fixture', model: 'fixture' } })
   handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Copy the report to my Downloads folder.' }], source: { kind: 'user' } }))
@@ -89,17 +93,34 @@ async function run(t, { auto, preset = 'auto-approval', command }) {
 
 const runtime = { skip: !process.env.EDUWORK_AUTO_APPROVAL_RUNTIME, timeout: 20_000 }
 
+const call = (id, name, args) => ({ type: 'tool-call', id, name, arguments: JSON.stringify(args) })
+
 test('real Runtime: an approved escalation runs without reaching the user, with the session read correctly', runtime, async t => {
-  const result = await run(t, { auto: 0.9, command: 'cp report.csv ~/Downloads/' })
+  const result = await run(t, { auto: 0.9, command: 'cp report.csv ~/Downloads/', before: [
+    call('call-w', 'write', { file_path: 'notes/new.md', content: 'x' }),
+    // An earlier step reused the escalation's ID: its finished call must not make the later one ambiguous.
+    call('call-1', 'bash', { description: 'List', command: 'ls' }),
+  ] })
   assert.deepEqual(result.outcomes, ['danger-full-access'])
   assert.deepEqual(result.userAnswers, [])
   assert.equal(result.bodies.length, 2)
-  assert.deepEqual(result.bodies[0].state.用户最近的消息, ['Copy the report to my Downloads folder.'])
-  assert.equal(result.bodies[0].state.待执行的命令, 'cp report.csv ~/Downloads/')
-  assert.equal(result.bodies[0].state.申请理由, 'Write the report to Downloads')
+  const { state } = result.bodies[0]
+  assert.deepEqual(state.用户最近的消息, ['Copy the report to my Downloads folder.'])
+  assert.equal(state.待执行的命令, 'cp report.csv ~/Downloads/')
+  assert.equal(state.申请理由, 'Write the report to Downloads')
+  assert.deepEqual(state.之前执行的命令, ['ls'])
+  assert.equal(state.本次会话创建的文件.length, 1)
+  assert.match(state.本次会话创建的文件[0], /notes\/new\.md$/)
   const decided = result.events.filter(event => event.type === 'approval/decided')
   assert.equal(decided.length, 1)
   assert.equal(decided[0].data.outcome, 'allowed-once')
+})
+
+test('real Runtime: a call another policy asks about goes to the user without a review', runtime, async t => {
+  const result = await run(t, { auto: 0.9, command: 'cp report.csv ~/Downloads/', hook: (exec, next) => exec.name === 'bash' ? { kind: 'ask', reason: 'hook asks' } : next() })
+  assert.equal(result.bodies.length, 0)
+  assert.deepEqual(result.userAnswers, ['call-1'])
+  assert.deepEqual(result.outcomes, [])
 })
 
 test('real Runtime: a low score and another preset leave the decision to the user', runtime, async t => {

@@ -9,24 +9,23 @@ const user = text => ({ type: 'user/message', data: { source: { kind: 'user' }, 
 const assistant = text => ({ type: 'assistant/message', data: { message: { content: text ? [{ type: 'text', text }] : [] } } })
 const call = (callId, name, args) => ({ type: 'tool/call', data: { callId, name, arguments: JSON.stringify(args) } })
 
-test('session facts: recent requests, the message the latest one replied to, earlier commands and written files', () => {
+test('session facts: recent requests, the message the latest one replied to and earlier commands, up to the pending call', () => {
   const events = [
     user('first request'), assistant('first answer'),
-    call('c1', 'bash', { command: 'npm test' }),
+    call('pending', 'bash', { command: 'npm test' }), // an earlier step reused the ID
     call('c2', 'write', { file_path: 'notes/plan.md', content: 'x' }),
-    call('c3', 'apply_patch', { input: '*** Begin Patch\n*** Add File: src/new.js\n+x\n*** End Patch' }),
     { type: 'user/message', data: { source: { kind: 'tool' }, content: [{ type: 'text', text: 'tool output is not the user' }] } },
     user('second request'), user('third request'), assistant('Shall I deploy to the test server?'), assistant(''),
     user('x'.repeat(400)),
-    call('c4', 'bash', { command: 'ls' }),
+    call('c4', 'pwsh', { command: 'Get-ChildItem' }),
     call('pending', 'bash', { command: 'ssh test-host deploy', sandbox_permissions: 'danger-full-access' }),
     call('later', 'bash', { command: 'not seen' }),
   ]
   const facts = sessionFacts(events, 'pending')
   assert.deepEqual(facts.requests, ['second request', 'third request', 'x'.repeat(300)])
   assert.equal(facts.assistant, 'Shall I deploy to the test server?')
-  assert.deepEqual(facts.history, ['npm test', 'ls'])
-  assert.deepEqual(facts.created, ['notes/plan.md', 'src/new.js'])
+  assert.deepEqual(facts.history, ['npm test', 'Get-ChildItem'])
+  assert.deepEqual(sessionFacts(events.slice(0, 3), 'missing').history, ['npm test'])
 })
 
 test('the review state keeps the evaluated field order; a rule hit quotes its part and asks one question', () => {

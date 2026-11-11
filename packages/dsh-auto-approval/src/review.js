@@ -18,29 +18,28 @@ const parsed = raw => {
 }
 
 /**
- * Read the session up to the pending call: the user's messages, the assistant message the latest one replied to, the
- * shell commands run before and the files the agent wrote with its file tools.
+ * Read the session up to the pending call: the user's messages, the assistant message the latest one replied to and
+ * the shell commands run before.
  * @param {readonly object[]} events - the session log in order.
- * @param {string} callId - the pending call; reading stops there.
+ * @param {string} callId - the pending call; reading stops at its log entry, the last one with this ID since IDs are
+ *   only unique within a step.
  */
 export function sessionFacts(events, callId) {
-  const requests = [], history = [], created = []
+  const end = events.findLastIndex(({ type, data }) => type === 'tool/call' && data.callId === callId)
+  const requests = [], history = []
   let assistant = '', lastAssistant = ''
-  for (const { type, data } of events) {
+  for (const { type, data } of end < 0 ? events : events.slice(0, end)) {
     if (type === 'user/message' && data.source?.kind === 'user') {
       const text = textOf(data.content)
       if (text) { requests.push(text.slice(0, 300)); assistant = lastAssistant }
     } else if (type === 'assistant/message') {
       lastAssistant = textOf(data.message?.content) || lastAssistant
-    } else if (type === 'tool/call') {
-      if (data.callId === callId) break
-      const args = parsed(data.arguments)
-      if (SHELLS.has(data.name) && typeof args?.command === 'string') history.push(args.command.slice(0, 300))
-      else if (data.name === 'write' && typeof args?.file_path === 'string') created.push(args.file_path)
-      else if (data.name === 'apply_patch' && typeof args?.input === 'string') created.push(...[...args.input.matchAll(/^\*\*\* Add File: (.+)$/gm)].map(m => m[1].trim()))
+    } else if (type === 'tool/call' && SHELLS.has(data.name)) {
+      const command = parsed(data.arguments)?.command
+      if (typeof command === 'string') history.push(command.slice(0, 300))
     }
   }
-  return { requests: requests.slice(-3), assistant: assistant.slice(-1000), history: history.slice(-6), created: created.slice(-8) }
+  return { requests: requests.slice(-3), assistant: assistant.slice(-1000), history: history.slice(-6) }
 }
 
 // A segment that runs a script file directly or through an interpreter; `cd` segments before it move the base.
