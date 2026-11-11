@@ -6,6 +6,7 @@
  * else for the Service Worker. The relay names its base URL in the page's
  * `<base>`, so relative URLs here resolve below it.
  */
+import './fallbacks.ts'
 import { parsePairingLink, type PairingLink } from '../protocol/auth.ts'
 import { ChannelClosed } from '../protocol/channel.ts'
 import { Close } from '../protocol/close-codes.ts'

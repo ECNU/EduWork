@@ -9,6 +9,7 @@
 // Each engine runs against a relay at the root of its domain and one below a
 // path of its own, which must not see a single request outside that path; the
 // latter also inside a frame of another page of its domain, as a portal embeds it.
+// One more run takes away the built-ins Safari lacks before iOS 17.4, as on an iPad with iOS 16.
 //
 //   node scripts/build.ts && node scripts/check-web.ts [chromium|webkit ...]
 import assert from 'node:assert/strict'
@@ -35,6 +36,10 @@ const transport = globalThis.__DSH_TRANSPORT__
 const plain = value => Object.getPrototypeOf(value) === Object.prototype
 window.exercise = async () => {
   const result = { marked: document.documentElement.hasAttribute('data-eduwork-remote') }
+  // Built-ins DSH's client calls without checking for them.
+  const { promise, resolve } = Promise.withResolvers()
+  resolve(AbortSignal.any([new AbortController().signal]).aborted)
+  result.builtins = [await promise, URL.canParse('notes.txt', document.baseURI)]
   const rpc = await transport.fetch(new URL('api/session/list', document.baseURI), {
     method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ rpcId: 'r1' }) })
   result.rpc = await rpc.json()
@@ -93,6 +98,9 @@ function fakeDsh(): HostAdapter {
   }
 }
 
+/** Takes away, in every frame, the built-ins Safari added after iOS 16. */
+const IOS16 = 'delete Promise.withResolvers; delete AbortSignal.any; delete URL.canParse'
+
 /** The portal of the relay's domain, outside its path: it embeds the relay page named after `#`. */
 const PORTAL = '/portal/'
 // Keep the portal's own favicon request out of the relay path assertion.
@@ -132,7 +140,7 @@ const startHost = (store: HostStore, relay: string): RemoteAccess => {
   return access
 }
 
-async function check(name: keyof typeof engines, path: string, embedded: boolean): Promise<Record<string, unknown>> {
+async function check(name: keyof typeof engines, path: string, embedded: boolean, ios16: boolean): Promise<Record<string, unknown>> {
   const { url, strays, close } = await serve(path, embedded)
   const store = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'check-web-')), 'state.json'))
   let access = startHost(store, url)
@@ -140,6 +148,7 @@ async function check(name: keyof typeof engines, path: string, embedded: boolean
   const browser = await engines[name].launch()
   try {
     const page = await browser.newPage({ acceptDownloads: true })
+    if (ios16) await page.addInitScript(IOS16)
     let loader: Frame = page.mainFrame()
     if (embedded) {
       await page.goto(`${new URL(url).origin}${PORTAL}#${encodeURIComponent(access.createInvite())}`)
@@ -161,6 +170,7 @@ async function check(name: keyof typeof engines, path: string, embedded: boolean
     const frame = page.frames().find(candidate => candidate.url().endsWith('/app/'))!
     const result = await frame.evaluate(() => (window as unknown as { exercise(): Promise<Record<string, unknown>> }).exercise())
     assert.equal(result.marked, true, 'the preamble marks the document of a remote device')
+    assert.deepEqual(result.builtins, [false, true])
     assert.deepEqual(result.rpc, { type: 'server-response', rpcId: 'r1', result: { ok: true, value: ['s1'] } })
     assert.deepEqual(result.items, [{ endpoint: '$events', n: 1 }, { nested: { n: 2 } }])
     assert.equal(result.rpcPlain, true, 'RPC results are objects of the iframe realm')
@@ -200,7 +210,7 @@ async function check(name: keyof typeof engines, path: string, embedded: boolean
 }
 
 for (const name of selected) {
-  for (const [path, embedded] of [['/', false], ['/eduwork-remote/', false], ['/eduwork-remote/', true]] as const) {
-    console.log(name, path, embedded ? 'embedded' : '', await check(name, path, embedded))
+  for (const [path, embedded, ios16] of [['/', false, false], ['/', false, true], ['/eduwork-remote/', false, false], ['/eduwork-remote/', true, false]] as const) {
+    console.log(name, path, embedded ? 'embedded' : '', ios16 ? 'iOS 16 built-ins' : '', await check(name, path, embedded, ios16))
   }
 }
