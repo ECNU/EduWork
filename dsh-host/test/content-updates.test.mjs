@@ -80,6 +80,39 @@ test('signed configuration delivers child defaults independently and preserves l
   assert.equal(loadUserConfig(f.configPath).features.maxActiveSubagents,5)
   assert.ok(manager.snapshot().configurationConflicts.includes('features.maxActiveSubagents'))
 })
+
+test('a failed startup rolls a prepared content trial back to the previous configuration', async t => {
+  const f=await fixture(t)
+  f.release(1,{configuration:1})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open()
+  const prepared=await manager.prepare()
+  assert.equal(prepared.configurationRevision,1)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true,'the prepared trial is visible before Host startup')
+  const trial=manager.state.trial
+  assert.ok(trial,'the content journal records the trial')
+  assert.equal(await manager.rollback(Error('Synthetic startup failure')),true)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,false,'rollback restores the previous configuration')
+  const journal=JSON.parse(await readFile(manager.statePath,'utf8'))
+  assert.equal(journal.trial,null)
+  assert.equal(journal.pending,null)
+  assert.deepEqual(journal.rejected,[trial])
+  assert.equal(journal.active.configuration,undefined)
+})
+
+test('a ready content trial is already committed when a later startup failure is reported', async t => {
+  const f=await fixture(t)
+  f.release(1,{configuration:1})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open()
+  await manager.prepare()
+  await manager.ready()
+  assert.equal(manager.state.trial,null,'ready commits the trial before advertising success')
+  assert.equal(await manager.rollback(Error('Synthetic renderer failure during desktop ready')),false)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  const journal=JSON.parse(await readFile(manager.statePath,'utf8'))
+  assert.equal(journal.active.configuration,manager.selected.configuration)
+})
 async function moveFixture(f) {
   const destination=join(f.directory,'Moved app with spaces')
   // Both paths are children of this test's own temporary directory.
@@ -475,17 +508,22 @@ test('signed configuration sets and moves the organization relay for remote acce
   assert.equal(loadUserConfig(f.configPath).remoteAccess.relay,'https://relay.example.test/')
 })
 
-test('a first-run Host failure stays retryable instead of locking the user out',async t=>{
+test('a first-run Host failure retains explicit retry and records the first cause',async t=>{
   const f=await fixture(t)
   f.release(1)
   let manager=await f.open();await manager.check();await manager.download()
   manager=await f.open();await manager.prepare()
-  assert.equal(await manager.rollback(new Error('Host exited: blocked by security software')),false)
-  assert.deepEqual(manager.state.rejected,[])
+  assert.equal(await manager.rollback(new Error('Host exited: plugin failed')),true)
+  assert.equal(manager.state.rejected.length,1)
   const later=await f.open();await later.prepare()
-  assert.equal((await later.check({repair:true})).state,'available')
+  assert.equal((await later.check({repair:true})).state,'error')
+  assert.match(later.snapshot().message,/首次失败原因：Host exited: plugin failed/)
+  assert.equal((await later.check({repair:true,retryFailed:true})).state,'available')
   await later.download()
-  assert.equal((await (await f.open()).prepare()).configurationRevision,1)
+  const retried=await f.open()
+  assert.equal((await retried.prepare()).configurationRevision,1)
+  await retried.rollback(new Error('Synthetic second failure'))
+  assert.match((await retried.check()).message,/首次失败原因：Host exited: plugin failed/)
 })
 
 test('a rejected update reports the original Host failure on later checks',async t=>{
@@ -512,4 +550,16 @@ test('network failures name their cause instead of "fetch failed"',async()=>{
   assert.match(networkErrorMessage(Object.assign(new Error('timeout'),{name:'TimeoutError'})),/超时.*（TIMEOUT）/)
   assert.match(networkErrorMessage(new TypeError('fetch failed')),/^暂时无法连接配置服务/)
   assert.equal(networkErrorMessage(new Error('内容签名无效')),'内容签名无效')
+})
+
+test('persisted rejection reasons redact credentials and remain bounded',async t=>{
+  const f=await fixture(t)
+  f.release(1)
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open();await manager.prepare()
+  await manager.rollback(new Error('Authorization: Bearer test-token '+ 'x'.repeat(4000)))
+  const later=await f.open();await later.prepare()
+  assert.doesNotMatch(later.state.rejection.reason,/test-token/)
+  assert.ok(later.state.rejection.reason.length<=2000)
+  assert.match(later.state.rejection.reason,/REDACTED/)
 })

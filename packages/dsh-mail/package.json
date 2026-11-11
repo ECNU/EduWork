@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-mail",
-  "version": "0.2.3",
+  "version": "0.2.4",
   "description": "Standards-based IMAP/SMTP mail assistant for DeepSeek Harness with explicit read/send controls and approval-aware delivery",
   "keywords": [
     "deepseek-harness",
@@ -100,15 +100,15 @@
   },
   "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-mail#readme",
   "peerDependencies": {
-    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0",
-    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-credentials": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-permission-presets": ">=0.2.1-rc.2 <0.3.0-0",
-    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0",
+    "@deepseek-ai/cordis": ">=4.0.5 <4.1.0 || 4.1.0",
+    "@deepseek-ai/dsh-api-remotes": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-renderer": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-client-ui-settings": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-credentials": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-permission-presets": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
+    "@deepseek-ai/dsh-tools": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1",
     "react": "^18.2.0",
-    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0"
+    "@deepseek-ai/dsh-client-locale": ">=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/cordis": {

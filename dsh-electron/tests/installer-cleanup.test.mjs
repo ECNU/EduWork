@@ -215,27 +215,84 @@ const electron = 'data:text/javascript,export {}'
 registerHooks({ resolve(specifier, context, next) {
   return specifier === 'electron' ? { url: electron, shortCircuit: true } : next(specifier, context)
 } })
-for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'host-failure', 'early-host-failure', 'early-configuration-failure', 'quit-during-host', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure']) {
+for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'installer-failure', 'second-instance', 'quit-during-cleanup', 'preparation-visible', 'preparation-hidden', 'preparation-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'early-configuration-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-then-bootstrap', 'renderer-then-updater', 'renderer-before-ready-guard', 'renderer-during-desktop-ready', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'quit-during-host', 'quit-host-stop-failure', 'quit-confirmation-dialog-failure', 'quit-during-shell', 'cancelled-quit-during-shell', 'recovery-exit-during-shell', 'recovery-restart-during-shell', 'quit-during-prepare', 'cancelled-quit-during-prepare', 'recovery-exit-during-prepare', 'recovery-restart-during-prepare', 'recovery-restart-stop-failure', 'recovery-preload-failure']) {
   test(`native installer startup: ${scenario}`, { skip: !source }, async t => {
-    const calls = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
+    const calls = [], crashSources = [], crashReports = [], failureCalls = [], dialogOptions = [], exitFailures = [], app = new EventEmitter(), lifecycle = new DesktopLifecycle()
+    let rollbackAttempts = 0
     const earlyFailure = scenario.startsWith('early-'), startupError = new Error('synthetic Host failure')
-    const pendingShell = scenario.endsWith('-shell'), pendingPrepare = scenario.endsWith('-prepare'), fatalRecovery = scenario.startsWith('recovery-')
-    const cancelledQuit = scenario.startsWith('cancelled-quit-'), restarting = scenario.startsWith('recovery-restart-')
+    const rendererError = new Error('Synthetic renderer failure'), cleanupError = new Error('Synthetic Host cleanup failure')
+    const resourceError = Object.assign(Error('Synthetic resource cleanup failure'), { critical: false, resourceOnly: true })
+    const stopFailureError = Object.assign(Error('Synthetic cleanup failure sk-private-token connect ECONNREFUSED 127.0.0.1:51234'), {
+      code: 'ECONNREFUSED', errno: -4078, syscall: 'connect', address: '127.0.0.1', port: 51234,
+    })
+    const stopFailureLogs = []
+    const pendingShell = scenario.endsWith('-shell'), pendingPrepare = scenario.endsWith('-prepare') && scenario !== 'renderer-during-prepare'
+    const pendingSidebar = scenario === 'renderer-during-sidebar-listen'
+    const specialAfterRenderer = ['renderer-then-bootstrap', 'renderer-then-updater'].includes(scenario)
+    const deferredCleanup = ['renderer-before-page-load', 'renderer-before-ready-guard'].includes(scenario)
+    const hostStopRestart = scenario === 'renderer-host-stop-failure-restart'
+    const hostStopFailure = scenario === 'renderer-host-stop-failure' || hostStopRestart || scenario === 'renderer-host-stop-failure-trial'
+    const normalQuitHostStopFailure = scenario === 'quit-host-stop-failure'
+    const quitConfirmationDialogFailure = scenario === 'quit-confirmation-dialog-failure'
+    const backgroundStopFailure = hostStopFailure || scenario === 'host-start-cleanup-failure'
+    const pendingTrial = scenario === 'renderer-host-stop-failure-trial'
+    const cleanupRestartFailure = scenario === 'renderer-rollback-cleanup-failure'
+    const persistentCleanupFailure = scenario === 'renderer-rollback-persistent-cleanup-exit' || scenario === 'renderer-rollback-persistent-cleanup-restart'
+    const rollbackRestart = scenario === 'renderer-rollback-cancelled-quit' || cleanupRestartFailure || persistentCleanupFailure
+    const delayedHostFailure = rollbackRestart || hostStopFailure
+    const hostStartCleanupFailure = scenario === 'host-start-cleanup-failure'
+    const nativeFailure = ['installer-failure', 'host-failure', 'early-host-failure', 'host-start-cleanup-failure', 'preparation-failure', 'native-duplicate-renderer', 'native-recovery-rejected', 'renderer-before-page-load', 'web-boot-before-page-load', 'renderer-during-prepare', 'renderer-during-shell', 'renderer-during-sidebar-listen', 'renderer-rollback-cancelled-quit', 'renderer-rollback-cleanup-failure', 'renderer-rollback-persistent-cleanup-exit', 'renderer-rollback-persistent-cleanup-restart', 'renderer-host-stop-failure', 'renderer-host-stop-failure-trial', 'renderer-host-stop-failure-restart', 'renderer-before-ready-guard', 'renderer-during-desktop-ready'].includes(scenario) || specialAfterRenderer
+    const fatalRecovery = scenario.startsWith('recovery-') || nativeFailure
+    const cancelledQuit = scenario.startsWith('cancelled-quit-'), cancelFirstQuit = scenario === 'renderer-rollback-cancelled-quit'
+    const restarting = scenario.startsWith('recovery-restart-') || scenario === 'renderer-rollback-cancelled-quit' || scenario === 'renderer-rollback-persistent-cleanup-restart'
     const stopFailure = scenario === 'recovery-restart-stop-failure'
-    if (stopFailure) t.mock.method(console, 'error', error => { assert.equal(error, startupError); calls.push('stop-failure') })
+    let closeFailureOnce = cleanupRestartFailure, specialFailureThrown = false
+    if (stopFailure) t.mock.method(console, 'error', error => { stopFailureLogs.push(error); calls.push('stop-failure') })
+    if (hostStopFailure || hostStartCleanupFailure) t.mock.method(console, 'error', () => {})
     if (scenario === 'early-configuration-failure') startupError.code = 'EDUWORK_BOOTSTRAP_REQUIRED'
-    let guard = async () => true, completed, mainWindow, bridgeOptions, shellSignal, releaseShell, releasePrepare, startupStarted, preparationCancelled = false
+    if (scenario === 'renderer-then-bootstrap') startupError.code = 'EDUWORK_BOOTSTRAP_REQUIRED'
+    if (scenario === 'renderer-then-updater') startupError.code = 'EDUWORK_UPDATER_START_FAILED'
+    const preparationFailure = new Error('Synthetic preparation wrapper', { cause: startupError })
+    let guard = async () => true, completed, mainWindow, bridgeOptions, shellSignal, releaseShell, releasePrepare, releaseHostStart, releaseSidebarListen,
+      releaseReady, releaseFailureCleanup, releaseRecoveryDialog, startupStarted, hostStartWaiting, hostStopStarted, sidebarListenStarted,
+      failureCleanupStarted, readyReturned, crashReported, recoveryDialogShown, preparationCancelled = false
+    let quitConfirmCalls = 0
     const done = new Promise(resolve => { completed = resolve })
     const waitingForStartup = new Promise(resolve => { startupStarted = resolve })
+    const waitingForHostStart = new Promise(resolve => { hostStartWaiting = resolve })
+    const waitingForHostStop = new Promise(resolve => { hostStopStarted = resolve })
+    const waitingForSidebarListen = new Promise(resolve => { sidebarListenStarted = resolve })
+    const waitingForFailureCleanup = new Promise(resolve => { failureCleanupStarted = resolve })
+    const waitingForReadyReturn = new Promise(resolve => { readyReturned = resolve })
+    const waitingForCrashReport = new Promise(resolve => { crashReported = resolve })
+    const waitingForRecoveryDialog = new Promise(resolve => { recoveryDialogShown = resolve })
+    let exitFailureShown
+    const waitingForExitFailure = new Promise(resolve => { exitFailureShown = resolve })
     const cancelContentUpdates = () => {
-      if (!pendingPrepare || preparationCancelled) return
+      if (!(pendingPrepare || scenario === 'renderer-during-prepare' || specialAfterRenderer) || preparationCancelled) return
       preparationCancelled = true; calls.push('content-abort'); releasePrepare?.()
     }
-    const stopDesktopServices = () => { cancelContentUpdates(); return lifecycle.close() }
-    const exit = new DesktopExit({ confirm: () => cancelledQuit ? Promise.resolve(false) : guard(),
+    const stopDesktopServices = async () => {
+      cancelContentUpdates()
+      await lifecycle.close()
+      // A tracked Host stop failure is critical; pet/tray cleanup alone is not.
+      if (lifecycle.failures.length) {
+        throw Object.assign(new Error('Synthetic Host stop failure'), { critical: true, resourceOnly: false })
+      }
+      // Simulate a tray/pet cleanup failure after the lifecycle has already closed.
+      if (closeFailureOnce) { closeFailureOnce = false; throw resourceError }
+      if (persistentCleanupFailure) throw resourceError
+    }
+    const exit = new DesktopExit({ confirm: () => {
+      quitConfirmCalls++
+      return cancelledQuit || (cancelFirstQuit && quitConfirmCalls === 1) ? Promise.resolve(false) : guard()
+    },
       close: stopDesktopServices,
-      relaunch: () => { assert.ok(restarting); calls.push('relaunch') }, quit: () => app.quit(), failed: assert.fail })
-    t.after(async () => { releaseShell?.(); releasePrepare?.(); await new Promise(setImmediate); await exit.pending })
+      relaunch: () => { assert.ok(restarting); calls.push('relaunch') }, quit: () => app.quit(),
+      failed: error => { exitFailures.push(error); exitFailureShown() } })
+    const restartDesktop = options => exit.restart(options)
+
+    t.after(async () => { releaseShell?.(); releasePrepare?.(); releaseHostStart?.(); releaseSidebarListen?.(); releaseReady?.(); releaseFailureCleanup?.(); await new Promise(setImmediate); await exit.pending })
     app.getPath = () => '/unused'
     app.getLocale = () => 'en'
     app.getName = () => 'Fixture'
@@ -247,11 +304,28 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       if (!exit.complete) { void exit.request(); return }
       calls.push('quit'); app.emit('will-quit'); completed()
     }
+    const recoveryDialog = scenario === 'recovery-preload-failure'
+      ? new Promise(resolve => { releaseRecoveryDialog = resolve })
+      : null
     t.mock.module(electron, { exports: { app, dialog: { showMessageBox: async options => {
-      assert.ok(fatalRecovery); assert.equal(options.type, 'error'); calls.push('recovery-dialog')
-      return { response: restarting && (!stopFailure || calls.filter(value => value === 'recovery-dialog').length === 1) ? 1 : 0 }
+      dialogOptions.push(options)
+      if (quitConfirmationDialogFailure && options.type !== 'error') throw new Error('Synthetic quit dialog failure')
+      if (options.type === 'error') { calls.push('recovery-dialog'); recoveryDialogShown() }
+      else calls.push('quit-dialog')
+      if (scenario === 'native-recovery-rejected') throw new Error('Synthetic native dialog failure')
+      if (specialAfterRenderer) await new Promise(resolve => { releaseRecoveryDialog = resolve })
+      if (recoveryDialog) return recoveryDialog
+      const wantsRestart = restarting || stopFailure || hostStopRestart
+      return { response: wantsRestart && calls.filter(value => value === 'recovery-dialog').length === 1 ? 1 : 0 }
     } },
-      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter() } })
+      protocol: { registerSchemesAsPrivileged() {}, handle() {} }, powerMonitor: new EventEmitter(), shell: { openPath: async () => '' } } })
+    let bootPagePresented = false
+    const bootPageHidden = () => process.platform === 'darwin' && app.isHidden()
+    const presentBootPage = () => {
+      if (bootPagePresented || bootPageHidden()) return
+      bootPagePresented = true
+      mainWindow.show()
+    }
     const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
     const pickDirectory = () => assert.fail('Installation startup must not open a directory picker')
     const bootBrand = () => ({ name: 'Synthetic EduWork', logo: '' })
@@ -278,64 +352,145 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
     mock('product.mjs', {
       configureEduworkPaths() {}, installEduworkFromDmg: async () => {
         calls.push('installer')
+        if (scenario === 'installer-failure') throw startupError
         if (scenario === 'quit-during-cleanup') { app.quit(); await exit.pending }
         if (scenario === 'installer-exit') { app.quit(); return true }
         return false
       }, prepareEduworkDesktop: () => lifecycle.prepare(async () => {
         calls.push('prepare')
         if (scenario.startsWith('preparation-')) {
-          mainWindow.show()
+          presentBootPage()
           if (scenario === 'preparation-hidden') mainWindow.hide()
         }
         if (scenario === 'early-configuration-failure') throw startupError
+        if (scenario === 'preparation-failure' || scenario === 'native-recovery-rejected') throw startupError
+        if (scenario === 'renderer-during-prepare' || specialAfterRenderer) {
+          calls.push('prepare-wait')
+          const waiting = new Promise(resolve => { releasePrepare = resolve; startupStarted() })
+          mainWindow.webContents.emit('preload-error', {}, 'preload-app.cjs', rendererError)
+          await waiting
+          if (specialAfterRenderer) { specialFailureThrown = true; throw preparationFailure }
+          if (preparationCancelled) throw new Error('Desktop preparation was cancelled')
+          lifecycle.check()
+          calls.push('prepare-complete')
+        }
         if (pendingPrepare) {
           calls.push('prepare-wait')
           await new Promise(resolve => { releasePrepare = resolve; startupStarted() })
+          if (preparationCancelled) throw new Error('Desktop preparation was cancelled')
           lifecycle.check()
         }
         return {}
-      }), stopDesktopServices,
+      }), stopDesktopServices, cancelDesktopStartup: () => { cancelContentUpdates() },
       desktopWebRoot: () => '/synthetic/web', desktopStartupWindowPresent: () => false,
-      nativeBootstrap() {}, desktopReady: async () => {
+      nativeBootstrap() {}, desktopReady: async shouldContinue => {
         calls.push('desktop-ready')
+        if (normalQuitHostStopFailure || quitConfirmationDialogFailure) { app.quit(); return }
         if (stopFailure) queueMicrotask(() => bridgeOptions.onBootFailure(Error('Synthetic renderer failure')))
+        else if (scenario === 'renderer-during-desktop-ready') {
+          queueMicrotask(() => mainWindow.webContents.emit('preload-error', {}, 'preload-app.cjs', rendererError))
+          await new Promise(resolve => { releaseReady = resolve })
+          calls.push(shouldContinue() ? 'desktop-ready-committed' : 'desktop-ready-blocked')
+          readyReturned()
+        }
         else setTimeout(completed, 0)
       },
       trackHost: host => lifecycle.trackHost(host), desktopHostLog() {}, isQuitting: () => exit.closing || lifecycle.closing,
-      attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: error => {
-        assert.ok(scenario === 'host-failure' || earlyFailure)
-        assert.equal(error, startupError)
-        calls.push('recovery')
-        if (!earlyFailure) completed()
+      isShutdownFailed: () => Boolean(exit.failure) && exit.pending === undefined && !exit.closing && !exit.complete,
+      recordStartupStopFailureHealth: async () => { if (pendingTrial) return false; calls.push('health-failed'); return true },
+      attachDesktopWindow() {}, configureWindowNavigation() {}, showDesktopFailure: async (error, nativeRecovery) => {
+        rollbackAttempts++
+        failureCalls.push(error)
+        if (deferredCleanup) {
+          calls.push('failure-cleanup-start')
+          failureCleanupStarted()
+          await new Promise(resolve => { releaseFailureCleanup = resolve })
+          calls.push('failure-cleanup-finished')
+        }
+        if (rollbackRestart) {
+          calls.push('failure-cleanup-start'); failureCleanupStarted()
+          await new Promise(resolve => { releaseFailureCleanup = resolve })
+          calls.push('failure-cleanup-finished')
+          const restartFailure = await restartDesktop({ strict: true })
+          if (!exit.complete && !exit.closing) { calls.push('native-recovery'); await nativeRecovery(error, restartFailure) }
+          return
+        }
+        if (error?.code === 'EDUWORK_BOOTSTRAP_REQUIRED' || error?.code === 'EDUWORK_UPDATER_START_FAILED') {
+          calls.push('recovery-page')
+          if (!earlyFailure) completed()
+          return
+        }
+        calls.push('native-recovery')
+        await nativeRecovery(error)
       }, showDesktop: () => calls.push('activate-current-window'),
-      checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop: () => exit.restart(),
+      prepareDesktopRecovery: () => calls.push('prepare-recovery'),
+      checkProductUpdates() {}, setDesktopQuitGuard: value => { guard = value }, restartDesktop,
       pickDesktopDirectory: pickDirectory,
       desktopBootBrand: bootBrand,
+      readInitialCloseAction: () => calls.push('read-close-action'),
+      showHostStartupProgress: () => { calls.push('host-startup-progress'); presentBootPage() },
+      productUpdateObserver: { dispose() {}, subscribe: () => () => {}, status: async () => undefined,
+        presentation: async () => ({ phase: 'idle' }), record() {} },
     })
     mock('eduwork-host-process.mjs', { staticDesktopResponse: () => undefined, DesktopHostProcess: class {
       constructor(node, profile, inspect, options) {
         assert.equal(options.environment.PATH, 'synthetic-login-shell-path')
         assert.equal(options.environment.EDUWORK_LAUNCHER_TEST, 'launcher-owned')
         assert.equal(options.environment.CHATECNU_UNTRUSTED_TEST, undefined)
+        assert.equal(options.environment.EDUWORK_SIDEBAR_BROWSER_SECRET, 'synthetic-secret')
       }
       async start() {
         calls.push('host')
+        if (delayedHostFailure) {
+          mainWindow.webContents.emit('preload-error', {}, 'preload-app.cjs', rendererError)
+          mainWindow.webContents.emit('render-process-gone', {}, { reason: 'crashed' })
+          await new Promise(resolve => { releaseHostStart = resolve; hostStartWaiting() })
+          calls.push('host-ready')
+          return
+        }
         await new Promise(resolve => setImmediate(resolve))
-        assert.equal(calls.includes('window-show'), scenario.startsWith('preparation-'), 'only first-run preparation may present before the Host is ready')
+        if (!earlyFailure) {
+          assert.ok(calls.indexOf('page-loaded') < calls.indexOf('host-startup-progress'), 'the BootPage request must follow document load')
+          if (!bootPageHidden()) assert.ok(calls.indexOf('host-startup-progress') < calls.indexOf('window-show'), 'the BootPage must be presented before the Host starts')
+        }
+        assert.equal(calls.includes('window-show'), !earlyFailure && !bootPageHidden(), 'Startup must present only the existing BootPage before ready')
         app.emit('second-instance')
         assert.equal(calls.at(-1), 'activate-current-window', 'repeated launch must use the shared window selection')
-        assert.equal(calls.includes('window-show'), scenario.startsWith('preparation-'))
-        if (scenario === 'host-failure' || scenario === 'early-host-failure') throw startupError
+        if (scenario === 'host-failure' || scenario === 'early-host-failure' || hostStartCleanupFailure) throw startupError
         if (scenario === 'quit-during-host') app.quit()
+        if (scenario === 'renderer-before-ready-guard' || scenario === 'native-duplicate-renderer') {
+          mainWindow.webContents.emit('preload-error', {}, 'preload-app.cjs', rendererError)
+          if (scenario === 'native-duplicate-renderer') mainWindow.webContents.emit('render-process-gone', {}, { reason: 'crashed' })
+        }
         calls.push('host-ready')
       }
-      async stop() { calls.push('stop'); if (stopFailure) throw startupError }
+      async inspectQuit() {
+        return quitConfirmationDialogFailure
+          ? { activeTasks: true, scheduledTasks: false }
+          : { activeTasks: false, scheduledTasks: false }
+      }
+      async stop() {
+        calls.push('stop')
+        if (delayedHostFailure) hostStopStarted()
+        if (hostStopFailure || hostStartCleanupFailure || normalQuitHostStopFailure) throw cleanupError
+        if (stopFailure) throw stopFailureError
+      }
     } })
+    const sidebarBrowser = { listen: async () => {
+      if (pendingSidebar) {
+        calls.push('sidebar-wait')
+        await new Promise(resolve => { releaseSidebarListen = resolve; sidebarListenStarted() })
+      }
+      return { EDUWORK_SIDEBAR_BROWSER_SECRET: 'synthetic-secret' }
+    }, close() {} }
+    mock('sidebar-browser.mjs', { createSidebarBrowser: () => sidebarBrowser })
     mock('native-desktop-bridge.mjs', { installNativeDesktopBridge: options => {
       bridgeOptions = options
       assert.equal(options.pickDirectory, pickDirectory)
       assert.equal(options.bootBrand, bootBrand)
-      return { attach() {}, dispose() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
+      assert.equal(options.sidebarBrowser, sidebarBrowser)
+      assert.equal(typeof options.updates?.dispose, 'function')
+      return { attach() {}, dispose() {}, async disposeFileDrags() {}, locale: () => resolveDesktopLocale('en'), async probeUserGuide() {
         calls.push('probe-guide')
         // The production probe joins waitForHost(), which also starts the Host
         // when called early. Preserve that behavior instead of a no-op stub.
@@ -343,13 +498,23 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         return false
       } }
     } })
-    mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: async () => {
-      assert.ok(fatalRecovery, 'Startup failure must use product recovery'); calls.push('crash-report')
+    mock('crash-report.ts', { pruneCrashReports: async () => {}, writeCrashReport: async (_path, report) => {
+      crashSources.push(report.source); crashReports.push(report); calls.push('crash-report'); crashReported()
     } })
     mock('main.ts', { createWindow: (_preload, _show, _primary, locale) => {
       assert.equal(typeof locale, 'function')
       calls.push('window')
       return mainWindow = Object.assign(new EventEmitter(), { webContents: new EventEmitter(), loadURL: async () => {
+        if (scenario === 'recovery-preload-failure') {
+          calls.push('preload-error')
+          mainWindow.webContents.emit('preload-error', {}, '/synthetic/preload.cjs', new Error('Synthetic preload failure'))
+          await new Promise(resolve => setImmediate(resolve))
+        }
+        if (scenario === 'renderer-before-page-load' || scenario === 'web-boot-before-page-load') {
+          if (scenario === 'renderer-before-page-load') mainWindow.webContents.emit('preload-error', {}, 'preload-app.cjs', rendererError)
+          else bridgeOptions.onBootFailure(rendererError)
+          await assert.rejects(bridgeOptions.waitForHost(), error => error === rendererError)
+        }
         if (earlyFailure) {
           const boot = bridgeOptions.waitForHost(), locale = bridgeOptions.waitForHost()
           for (const request of [boot, locale]) await assert.rejects(request, error => error === startupError)
@@ -361,6 +526,7 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
           assert.equal(calls.includes('host'), false, 'navigation must settle before the main entry starts the Host')
         }
         calls.push('page-loaded')
+        if (scenario === 'recovery-preload-failure') setTimeout(() => releaseRecoveryDialog({ response: 0 }), 20)
       }, isDestroyed: () => false, isMinimized: () => false,
         show() { calls.push('window-show'); this.emit('show') },
         hide() { calls.push('window-hide') },
@@ -371,9 +537,145 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
       const timer = setTimeout(() => reject(new Error('Startup did not settle')), 3000)
       t.after(() => clearTimeout(timer))
     })
+    if (pendingSidebar) {
+      await Promise.race([waitingForSidebarListen, deadline])
+      mainWindow.webContents.emit('preload-error', {}, 'preload-app.cjs', rendererError)
+      await new Promise(setImmediate)
+      assert.equal(calls.includes('host'), false, 'A failed startup must not create a Host while sidebar setup is pending')
+      assert.equal(calls.includes('recovery-dialog'), false, 'Recovery waits for preparation to settle')
+      releaseSidebarListen()
+      await Promise.race([waitingForRecoveryDialog, deadline])
+      assert.equal(calls.includes('host'), false)
+      await Promise.race([done, deadline])
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.equal(calls.filter(value => value === 'window-show').length, 1)
+    } else if (scenario === 'renderer-during-prepare') {
+      await Promise.race([waitingForCrashReport, deadline])
+      await Promise.race([waitingForRecoveryDialog, deadline])
+      assert.equal(calls.includes('prepare-complete'), false)
+      assert.equal(calls.includes('host'), false)
+      assert.equal(calls.includes('failure-cleanup-start'), false)
+      assert.ok(calls.indexOf('content-abort') < calls.indexOf('native-recovery'), 'Preparation is cancelled before recovery')
+      await Promise.race([done, deadline])
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('host'), false)
+      assert.equal(calls.includes('desktop-ready'), false)
+    } else if (specialAfterRenderer) {
+      await Promise.race([waitingForStartup, deadline])
+      await Promise.race([waitingForCrashReport, deadline])
+      await Promise.race([waitingForRecoveryDialog, deadline])
+      await new Promise(setImmediate)
+      assert.equal(calls.includes('recovery-page'), false)
+      assert.equal(calls.includes('host'), false)
+      assert.equal(preparationCancelled, true, 'The first failure must cancel the pending preparation')
+      assert.equal(specialFailureThrown, true, 'The later configuration/updater error must actually occur')
+      releaseRecoveryDialog()
+      await Promise.race([done, deadline])
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('recovery-page'), false)
+      assert.equal(calls.filter(value => value === 'native-recovery').length, 1)
+      assert.equal(calls.includes('host'), false)
+    } else if (deferredCleanup) {
+      await Promise.race([waitingForFailureCleanup, deadline])
+      await new Promise(setImmediate)
+      mainWindow.webContents.emit('render-process-gone', {}, { reason: 'crashed' })
+      await new Promise(setImmediate)
+      assert.equal(calls.includes('crash-report'), false, 'Recovery must remain pending during product cleanup')
+      assert.equal(calls.includes('probe-guide'), false, 'Failed startup must not complete')
+      assert.equal(calls.includes('window-show'), scenario === 'renderer-before-ready-guard', 'Only a loaded document may show the BootPage')
+      assert.equal(calls.includes('desktop-ready'), false)
+      if (scenario === 'renderer-before-page-load') assert.equal(calls.includes('prepare'), false)
+      else assert.ok(calls.indexOf('stop') < calls.indexOf('failure-cleanup-start'), 'The starting Host stops before product cleanup')
+      releaseFailureCleanup()
+    } else if (scenario === 'renderer-during-desktop-ready') {
+      await Promise.race([waitingForCrashReport, deadline])
+      mainWindow.webContents.emit('render-process-gone', {}, { reason: 'crashed' })
+      releaseReady()
+      await Promise.race([waitingForReadyReturn, deadline])
+      assert.ok(calls.includes('desktop-ready-blocked'))
+      assert.equal(calls.includes('failure-cleanup-start'), false, 'Running failures must not race product rollback')
+      assert.equal(calls.filter(value => value === 'window-show').length, 1, 'The BootPage is shown before desktop readiness fails')
+    } else if (quitConfirmationDialogFailure) {
+      await Promise.race([waitingForExitFailure, deadline])
+      await new Promise(setImmediate)
+      assert.equal(exit.complete, false)
+      assert.equal(exit.closing, false)
+      assert.equal(lifecycle.closing, false)
+      assert.equal(calls.includes('stop'), false)
+      assert.equal(calls.includes('quit'), false)
+      assert.equal(exitFailures.length, 1)
+      assert.match(exitFailures[0].message, /quit dialog failure/)
+    } else if (normalQuitHostStopFailure) {
+      await Promise.race([done, deadline])
+      assert.equal(calls.filter(value => value === 'quit').length, 1)
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 0)
+      assert.equal(exit.complete, true)
+      assert.equal(exitFailures.length, 1)
+      assert.equal(exitFailures[0].critical, true)
+    } else if (hostStopFailure) {
+      await Promise.race([waitingForHostStop, deadline])
+      assert.equal(calls.includes('failure-cleanup-start'), false, 'A Host stop failure must not start product rollback')
+      releaseHostStart()
+      await Promise.race([waitingForRecoveryDialog, deadline])
+      assert.equal(failureCalls.length, 0, 'A Host stop failure must not call showDesktopFailure')
+      assert.equal(rollbackAttempts, 0, 'A Host stop failure must not start content rollback even with a pending trial')
+      await Promise.race([done, deadline])
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, hostStopRestart ? 2 : 1)
+      assert.equal(calls.filter(value => value === 'crash-report').length, 1, 'Native recovery still reports the combined failure')
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.equal(calls.filter(value => value === 'window-show').length, 1, 'The BootPage is shown before the failing Host')
+      assert.equal(calls.includes('relaunch'), false, 'A rejected restart must not relaunch while the Host state is unknown')
+      assert.equal(exit.complete, true)
+      assert.equal(calls.filter(value => value === 'health-failed').length, pendingTrial ? 0 : 1, 'A pending content trial stays for the next launch')
+      if (!pendingTrial) assert.ok(calls.indexOf('health-failed') < calls.indexOf('crash-report'))
+      const report = crashReports[0]?.error
+      assert.ok(report instanceof AggregateError)
+      assert.equal(report.errors[0].message, 'Synthetic renderer failure')
+      assert.equal(report.errors[1].message, 'Synthetic Host cleanup failure')
+    } else if (rollbackRestart) {
+      await Promise.race([waitingForHostStop, deadline])
+      assert.equal(calls.includes('failure-cleanup-start'), false, 'The Host must stop before rollback starts')
+      assert.equal(calls.includes('host-ready'), false, 'A failed startup must not publish Host readiness')
+      releaseHostStart()
+      await Promise.race([waitingForFailureCleanup, deadline])
+      assert.ok(calls.indexOf('host-ready') < calls.indexOf('failure-cleanup-start'), 'Host readiness during rollback cannot resume startup')
+      assert.ok(calls.indexOf('stop') < calls.indexOf('failure-cleanup-start'), 'Stop precedes product cleanup')
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.equal(calls.filter(value => value === 'window-show').length, 1, 'The BootPage is shown before rollback')
+      releaseFailureCleanup()
+      await Promise.race([waitingForRecoveryDialog, deadline])
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1, 'A failed restart falls back to native recovery')
+      await Promise.race([done, deadline])
+      assert.equal(exit.complete, true)
+      if (cleanupRestartFailure) {
+        assert.deepEqual(exitFailures, [resourceError])
+        assert.match(dialogOptions[0].detail, /Synthetic renderer failure/)
+        assert.doesNotMatch(dialogOptions[0].detail, /Synthetic resource cleanup failure/)
+        const report = crashReports[0].error
+        assert.equal(report.message, rendererError.message)
+        assert.equal(report.recovery.contentRollback, 'succeeded')
+        assert.equal(report.recovery.automaticRestartFailure.message, resourceError.message)
+        for (const [event, count] of [['host', 1], ['stop', 1], ['relaunch', 0], ['quit', 1]]) {
+          assert.equal(calls.filter(value => value === event).length, count, event)
+        }
+      } else if (persistentCleanupFailure) {
+        assert.equal(exitFailures.length, 2)
+        assert.equal(exitFailures[0], resourceError)
+        assert.equal(exitFailures[1], resourceError)
+        const relaunch = scenario === 'renderer-rollback-persistent-cleanup-restart' ? 1 : 0
+        for (const [event, count] of [['host', 1], ['stop', 1], ['relaunch', relaunch], ['quit', 1]]) {
+          assert.equal(calls.filter(value => value === event).length, count, event)
+        }
+      } else {
+        for (const [event, count] of [['host', 1], ['stop', 1], ['relaunch', 1], ['quit', 1], ['quit-dialog', 0]]) {
+          assert.equal(calls.filter(value => value === event).length, count, event)
+        }
+      }
+    }
     if (pendingShell || pendingPrepare) {
       await Promise.race([waitingForStartup, deadline])
-      if (fatalRecovery) bridgeOptions.onBootFailure(new Error('synthetic renderer failure'))
+      if (fatalRecovery) bridgeOptions.onBootFailure(rendererError)
       else app.quit()
       if (cancelledQuit) {
         await exit.pending
@@ -385,23 +687,25 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         assert.equal(pendingShell ? shellSignal.aborted : preparationCancelled, true, 'Teardown must cancel preparation before waiting for startup')
       }
     }
-    await Promise.race([done, deadline])
+    if (!quitConfirmationDialogFailure) await Promise.race([done, deadline])
     const probes = calls.filter(value => value === 'probe-guide')
-    if (calls.includes('desktop-ready')) {
+    if (calls.includes('desktop-ready') && !scenario.startsWith('renderer-') && scenario !== 'native-duplicate-renderer'
+      && !stopFailure && !normalQuitHostStopFailure && !quitConfirmationDialogFailure) {
       assert.equal(probes.length, 1, 'Discover the optional guide once after normal startup')
       assert.ok(calls.indexOf('probe-guide') > calls.indexOf('desktop-ready'), 'Menu discovery must not initiate startup')
-    } else {
+    } else if (!normalQuitHostStopFailure && !quitConfirmationDialogFailure) {
       assert.equal(probes.length, 0, 'Failed or cancelled startup must not probe an optional guide')
     }
     // Keep the original lifecycle expectations separate from menu discovery.
-    const startupCalls = calls.filter(value => value !== 'probe-guide')
+    const startupCalls = calls.filter(value => value !== 'probe-guide' && value !== 'prepare-recovery')
     if (scenario === 'installed' || scenario === 'application-hidden') {
       const hidden = process.platform === 'darwin' && scenario === 'application-hidden'
-      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready', ...hidden ? [] : ['window-show']])
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress',
+        ...hidden ? [] : ['window-show'], 'prepare', 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
       app.emit('second-instance')
       assert.equal(calls.at(-1), 'activate-current-window')
-    } else if (scenario.startsWith('preparation-')) {
-      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', 'window-show',
+    } else if (scenario === 'preparation-visible' || scenario === 'preparation-hidden') {
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare',
         ...scenario === 'preparation-hidden' ? ['window-hide'] : [], 'host', 'activate-current-window', 'host-ready', 'desktop-ready'])
       if (scenario === 'preparation-hidden') {
         attachAppActivation({ app, platform: 'darwin', windows: () => [mainWindow] })
@@ -409,27 +713,296 @@ for (const scenario of ['installed', 'application-hidden', 'installer-exit', 'se
         assert.deepEqual(calls.slice(-2), ['window-show', 'window-focus'])
       }
     } else if (stopFailure) {
+      const recoveryPreparation = calls.indexOf('prepare-recovery')
+      assert.ok(recoveryPreparation >= 0 && recoveryPreparation < calls.indexOf('recovery-dialog'),
+        'A web boot failure must hide the BootPage before native recovery even after Host readiness')
       for (const [event, count] of [['host', 1], ['stop', 1], ['recovery-dialog', 2], ['stop-failure', 2], ['relaunch', 0], ['quit', 1]]) {
         assert.equal(calls.filter(value => value === event).length, count, event)
       }
+      for (const error of stopFailureLogs) assert.doesNotMatch(error.message, /sk-private-token|127\.0\.0\.1|51234/)
+      const details = dialogOptions.filter(value => value.type === 'error').map(value => value.detail ?? value.message).join('\n')
+      assert.match(details, /ECONNREFUSED/)
+      assert.doesNotMatch(details, /sk-private-token|127\.0\.0\.1|51234/)
     } else if (pendingShell || pendingPrepare) {
-      const started = ['ready', 'installer', 'lock', 'window', 'page-loaded', 'prepare', pendingShell ? 'shell-wait' : 'prepare-wait']
+      const started = ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare', pendingShell ? 'shell-wait' : 'prepare-wait']
       assert.deepEqual(startupCalls, cancelledQuit
-        ? [...started, 'host', 'activate-current-window', 'host-ready', 'desktop-ready', 'window-show']
-        : [...started, ...fatalRecovery ? ['crash-report', 'recovery-dialog'] : [], pendingShell ? 'shell-abort' : 'content-abort', ...restarting ? ['relaunch'] : [], 'quit'])
+        ? [...started, 'host', 'activate-current-window', 'host-ready', 'desktop-ready']
+        : [...started, pendingShell ? 'shell-abort' : 'content-abort', ...fatalRecovery ? ['native-recovery', 'crash-report', 'recovery-dialog'] : [], ...restarting ? ['relaunch'] : [], 'quit'])
     } else if (earlyFailure) {
-      assert.deepEqual(startupCalls, scenario === 'early-host-failure'
-        ? ['ready', 'installer', 'lock', 'window', 'prepare', 'host', 'activate-current-window', 'stop', 'recovery', 'page-loaded']
-        : ['ready', 'installer', 'lock', 'window', 'prepare', 'recovery'])
-    } else if (scenario === 'host-failure' || scenario === 'quit-during-host') {
-      assert.equal(calls.includes('window-show'), false)
+      const expected = scenario === 'early-host-failure'
+        ? ['ready', 'installer', 'lock', 'read-close-action', 'window', 'prepare', 'host', 'activate-current-window', 'stop', 'native-recovery', 'crash-report', 'page-loaded', 'recovery-dialog']
+        : ['ready', 'installer', 'lock', 'read-close-action', 'window', 'prepare', 'recovery-page']
+      assert.deepEqual(startupCalls.slice(0, expected.length), expected)
+      assert.deepEqual(startupCalls.slice(expected.length).filter(value => value !== 'quit'), [], 'Early failure must not emit extra recovery or startup events')
+    } else if (scenario === 'preparation-failure') {
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare',
+        'native-recovery', 'crash-report', 'recovery-dialog', 'quit'])
+    } else if (hostStartCleanupFailure) {
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare', 'host',
+        'activate-current-window', 'stop', 'health-failed', 'crash-report', 'recovery-dialog', 'quit'])
+      assert.equal(failureCalls.length, 0, 'A Host stop failure must skip product rollback')
+      const report = crashReports[0]?.error
+      assert.ok(report instanceof AggregateError)
+      assert.match(report.message, /desktop backend startup and cleanup failed/)
+      assert.equal(report.errors[0].message, 'synthetic Host failure')
+      assert.equal(report.errors[1].message, 'Synthetic Host cleanup failure')
+      const errorDialog = dialogOptions.find(value => value.type === 'error')
+      assert.match(errorDialog.detail, /synthetic Host failure/)
+      assert.match(errorDialog.detail, /Synthetic Host cleanup failure/)
+    } else if (scenario === 'native-duplicate-renderer') {
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.filter(value => value === 'native-recovery').length, 1)
+      assert.equal(calls.filter(value => value === 'crash-report').length, 1)
+      assert.equal(calls.filter(value => value === 'stop').length, 1, 'A failed startup stops the starting Host once')
+      assert.equal(calls.includes('recovery-page'), false)
       assert.equal(calls.includes('desktop-ready'), false)
-      assert.ok(calls.includes(scenario === 'host-failure' ? 'recovery' : 'quit'))
+    } else if (scenario === 'native-recovery-rejected') {
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'lock', 'read-close-action', 'window', 'page-loaded', 'host-startup-progress', 'window-show', 'prepare', 'native-recovery',
+        'crash-report', 'recovery-dialog', 'quit'])
+      assert.equal(exit.complete, true)
+      assert.equal(lifecycle.closing, true)
+      assert.equal(calls.filter(value => value === 'quit').length, 1)
+    } else if (scenario === 'web-boot-before-page-load') {
+      assert.equal(calls.filter(value => value === 'native-recovery').length, 1)
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('prepare'), false)
+      assert.equal(calls.includes('window-show'), false)
+    } else if (scenario === 'recovery-preload-failure') {
+      assert.ok(calls.includes('preload-error'))
+      assert.ok(calls.includes('crash-report'))
+      assert.ok(calls.includes('recovery-dialog'))
+      assert.ok(calls.includes('quit'))
+      assert.equal(calls.includes('host-startup-progress'), false)
+      assert.equal(calls.includes('window-show'), false)
+      assert.equal(calls.includes('host'), false)
+      assert.equal(failureCalls.length, 1)
+      assert.equal(failureCalls[0]?.message, 'Synthetic preload failure')
+    } else if (specialAfterRenderer) {
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.equal(calls.includes('recovery-page'), false)
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.filter(value => value === 'native-recovery').length, 1)
+      assert.equal(crashReports.length, 1)
+      assert.equal(crashReports[0].error.message, 'Synthetic renderer failure', 'The first failure owns the final report')
+    } else if (scenario === 'renderer-during-prepare') {
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('host'), false)
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.ok(calls.indexOf('content-abort') < calls.indexOf('native-recovery'), 'Preparation is cancelled before recovery')
+    } else if (scenario === 'renderer-during-sidebar-listen') {
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('host'), false)
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.ok(calls.indexOf('sidebar-wait') < calls.indexOf('recovery-dialog'))
+    } else if (scenario === 'renderer-during-desktop-ready') {
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.filter(value => value === 'crash-report').length, 1)
+      assert.equal(calls.includes('native-recovery'), false)
+      assert.equal(calls.includes('desktop-ready-committed'), false)
+    } else if (quitConfirmationDialogFailure) {
+      assert.equal(calls.includes('quit'), false)
+      assert.equal(calls.includes('stop'), false)
+    } else if (normalQuitHostStopFailure) {
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 0)
+      assert.equal(calls.filter(value => value === 'quit').length, 1)
+    } else if (hostStopFailure) {
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, hostStopRestart ? 2 : 1)
+      assert.equal(calls.filter(value => value === 'quit').length, 1)
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.equal(calls.filter(value => value === 'window-show').length, 1, 'The BootPage is shown before the failing Host')
+      assert.ok(calls.indexOf('window-show') < calls.indexOf('host'))
+      assert.equal(calls.includes('relaunch'), false)
+    } else if (rollbackRestart) {
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.equal(calls.filter(value => value === 'window-show').length, 1, 'The BootPage is shown before rollback')
+      if (calls.includes('host')) assert.ok(calls.indexOf('window-show') < calls.indexOf('host'))
+      assert.equal(calls.includes('recovery-page'), false)
+    } else if (deferredCleanup) {
+      assert.equal(calls.filter(value => value === 'failure-cleanup-start').length, 1)
+      assert.equal(calls.filter(value => value === 'native-recovery').length, 1)
+      assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+      assert.equal(calls.includes('desktop-ready-committed'), false)
+      assert.equal(calls.includes('window-show'), scenario === 'renderer-before-ready-guard', 'Early show follows the loaded document only')
+    } else if (scenario === 'host-failure' || scenario === 'quit-during-host') {
+      assert.equal(calls.filter(value => value === 'window-show').length, 1, 'Startup must not create a second window')
+      assert.ok(calls.indexOf('window-show') < calls.indexOf('host'), 'the BootPage must be visible before Host failure')
+      assert.equal(calls.includes('desktop-ready'), false)
+      assert.ok(calls.includes(scenario === 'host-failure' ? 'native-recovery' : 'quit'))
+      if (scenario === 'host-failure') {
+        assert.equal(calls.filter(value => value === 'recovery-dialog').length, 1)
+        assert.ok(calls.indexOf('host') < calls.indexOf('native-recovery'), 'Host failure must enter the existing recovery page')
+      }
+    } else if (scenario === 'installer-failure') {
+      assert.deepEqual(startupCalls, ['ready', 'installer', 'native-recovery', 'crash-report', 'recovery-dialog', 'quit'])
+      assert.equal(dialogOptions.find(value => value.type === 'error').title, 'Fixture is unavailable')
     } else if (scenario === 'second-instance') {
       assert.deepEqual(calls, ['ready', 'installer', 'lock', 'quit'])
     } else {
       assert.deepEqual(calls, ['ready', 'installer', 'quit'])
       assert.equal(exit.complete, true)
     }
+    const expectsShowDesktopFailure = (nativeFailure || scenario === 'early-configuration-failure')
+      && scenario !== 'renderer-during-desktop-ready' && !hostStopFailure && !hostStartCleanupFailure
+    if (quitConfirmationDialogFailure) {
+      assert.equal(exitFailures.length, 1)
+      assert.match(exitFailures[0].message, /quit dialog failure/)
+    } else if (normalQuitHostStopFailure) {
+      assert.equal(exitFailures.length, 1)
+      assert.equal(exitFailures[0].critical, true)
+    } else if (hostStopFailure || hostStartCleanupFailure || stopFailure) {
+      assert.equal(exitFailures.length, 1)
+      assert.equal(exitFailures[0].critical, true)
+    } else {
+      const expectedExitFailures = cleanupRestartFailure ? [resourceError]
+        : persistentCleanupFailure ? [resourceError, resourceError] : []
+      assert.deepEqual(exitFailures, expectedExitFailures, 'Only simulated resource failures may fail an exit attempt')
+    }
+    if (expectsShowDesktopFailure) {
+      assert.equal(failureCalls.length, 1, 'Each startup failure is handled once')
+      if (hostStartCleanupFailure) {
+        assert.ok(failureCalls[0] instanceof AggregateError)
+        assert.match(failureCalls[0].message, /desktop backend startup and cleanup failed/)
+      } else {
+        const expectedFailure = ['installer-failure', 'host-failure', 'early-host-failure', 'preparation-failure', 'native-recovery-rejected', 'early-configuration-failure'].includes(scenario) ? startupError : rendererError
+        assert.equal(failureCalls[0], expectedFailure)
+      }
+    }
+    const dialogErrors = dialogOptions.filter(value => value.type === 'error')
+    if (dialogErrors.length) {
+      if (!calls.includes('desktop-ready')) {
+        assert.ok(calls.indexOf('prepare-recovery') >= 0, 'Startup failure prepares the native recovery window')
+        assert.ok(calls.indexOf('prepare-recovery') < calls.indexOf('recovery-dialog'))
+      }
+      const expectedSource = {
+        'installer-failure': 'main', 'preparation-failure': 'main', 'native-recovery-rejected': 'main',
+        'host-failure': 'host', 'early-host-failure': 'host', 'host-start-cleanup-failure': 'host',
+        'web-boot-before-page-load': 'web-boot', 'renderer-during-shell': 'web-boot',
+        'recovery-exit-during-shell': 'web-boot', 'recovery-restart-during-shell': 'web-boot',
+        'recovery-exit-during-prepare': 'web-boot', 'recovery-restart-during-prepare': 'web-boot',
+        'recovery-restart-stop-failure': 'web-boot',
+      }[scenario] ?? 'renderer'
+      assert.deepEqual(crashSources, [expectedSource])
+    } else {
+      assert.deepEqual(crashSources, [])
+    }
   })
 }
+
+test('native desktop bridge restores the confirmed language without the Host', { skip: !source || process.platform !== 'win32' }, async t => {
+  const userData = await mkdtemp(join(tmpdir(), 'desktop-locale-cache-'))
+  t.after(() => rm(userData, { recursive: true, force: true }))
+  const cachePath = join(userData, 'desktop', 'locale-cache')
+  const writeCache = async value => {
+    await mkdir(join(userData, 'desktop'), { recursive: true })
+    await writeFile(cachePath, value)
+  }
+  const ipcMain = new EventEmitter(), handlers = new Map()
+  ipcMain.handle = (name, fn) => handlers.set(name, fn)
+  const app = { getName: () => 'EduWork', getPreferredSystemLanguages: () => ['zh-CN'], getPath: () => userData }
+  const window = {
+    isDestroyed: () => false,
+    webContents: { send() {}, executeJavaScript: () => Promise.resolve(), mainFrame: {} },
+    setTitleBarOverlay() {}, show() {}, focus() {}, getZoomFactor: () => 1,
+  }
+  t.mock.module(electron, { exports: {
+    app, dialog: { showErrorBox() {} }, ipcMain,
+    Menu: { buildFromTemplate: template => ({ template, popup() {} }) },
+    nativeTheme: { themeSource: 'system' },
+    session: { defaultSession: { webRequest: { onBeforeSendHeaders() {} } } },
+  } })
+  const mock = (file, exports) => t.mock.module(new URL(file, source).href, { exports })
+  const keys = ['boot', 'bootFailed', 'browserAcquire', 'browserRelease', 'directoryPick', 'localeBootstrap', 'localeChanged',
+    'nativeThemeSet', 'updatesStatus', 'updatesOpen', 'updatesPresentation', 'windowsAppearance', 'windowsMenu']
+  mock('ipc.ts', { DESKTOP_IPC: Object.fromEntries(keys.map(key => [key, key])), assertDesktopSender() {} })
+  mock('browser-guests.ts', { DesktopBrowserGuests: class { acquire() {} release() {} } })
+  mock('microphone-permissions.ts', { installMicrophonePermissions() {} })
+  mock('keyboard.ts', { installDesktopShortcuts: () => ({ fileMenu: () => ({ label: 'File', submenu: [] }), sendEditingKey() {} }) })
+  mock('file-actions.ts', { installFileActions() {} })
+  mock('file-drag.ts', { installDesktopFileDrag: () => ({ dispose() {} }) })
+  mock('desktop-menu.mjs', { desktopEditMenu: () => ({ label: 'Edit', submenu: [] }), desktopViewMenu: () => ({ label: 'View', submenu: [] }), setDesktopApplicationMenu() {} })
+  mock('sidebar-browser.mjs', { SIDEBAR_BROWSER_IPC: { bind: 'bind', opened: 'opened' } })
+  mock('update-observer.mjs', { watchUpdateDocument: () => ({ bind() {}, release() {}, dispose() {} }) })
+  let preference = null, hostUnavailable = false
+  const { installNativeDesktopBridge } = await import(new URL('native-desktop-bridge.mjs?locale', source))
+  const install = () => installNativeDesktopBridge({
+    getHost: () => ({ readLocalePreference: async () => preference, boot() {}, fetch: async () => new Response('', { status: 404 }),
+      socketHeaders: () => ({}), resolveDragResource() {} }),
+    waitForHost: async () => { if (hostUnavailable) throw new Error('synthetic Host unavailable') },
+    getWindow: () => window, reportFatal() {}, onBootFailure() {}, checkUpdates() {},
+    updates: undefined, pickDirectory() {}, bootBrand: () => '', sidebarBrowser: { bind() {}, opened() {}, close() {} },
+  })
+  const event = { sender: window.webContents, senderFrame: window.webContents.mainFrame }
+  let bridge = install()
+  assert.equal(bridge.locale().id, 'zh-CN', 'a missing cache uses the system language')
+  ipcMain.emit('windowsAppearance', event, 'en', '#ffffff', '#000000')
+  assert.equal(bridge.locale().id, 'zh-CN', 'document language must not override the shell locale before bootstrap')
+  await writeCache('en\n')
+  bridge = install()
+  assert.equal(bridge.locale().id, 'en', 'a cached language wins over the system language')
+  await writeCache('zh\n')
+  bridge = install()
+  assert.equal(bridge.locale().id, 'zh-CN', 'a non-canonical cache entry is ignored')
+  await writeCache('en\n')
+  hostUnavailable = true
+  bridge = install()
+  assert.equal(bridge.locale().id, 'en')
+  await assert.rejects(handlers.get('localeBootstrap')(event), /synthetic Host unavailable/)
+  assert.equal(bridge.locale().id, 'en', 'a Host failure keeps the cached language')
+  assert.equal(await readFile(cachePath, 'utf8'), 'en\n')
+  hostUnavailable = false
+  preference = 'en'
+  await rm(cachePath)
+  bridge = install()
+  assert.equal(bridge.locale().id, 'zh-CN')
+  await handlers.get('localeBootstrap')(event)
+  assert.equal(bridge.locale().id, 'en')
+  assert.equal(await readFile(cachePath, 'utf8'), 'en\n', 'the Host-confirmed language becomes the next startup cache')
+  ipcMain.emit('localeChanged', event, 'zh')
+  assert.equal(bridge.locale().id, 'zh-CN')
+  assert.equal(await readFile(cachePath, 'utf8'), 'zh-CN\n')
+})
+
+test('native startup diagnostics keep wrapped reasons and drop private input and Host addresses', { skip: !source }, async () => {
+  const { startupDiagnostic } = await import(new URL('startup-failure.mjs?diagnostic', source))
+  const { redactDiagnostic } = await import(new URL('diagnostics.mjs', source))
+  const { desktopErrorState } = await import(new URL('startup-error.ts', source))
+  const { renderCrashReport } = await import(new URL('crash-report.ts', source))
+  let jsonError, singleQuoteError, backslashError
+  try { JSON.parse('{"A":["secret99",]}') } catch (error) { jsonError = error }
+  try { JSON.parse("'single-secret-99'") } catch (error) { singleQuoteError = error }
+  try { JSON.parse(String.fromCharCode(92) + 'backslash-secret-99') } catch (error) { backslashError = error }
+  const connection = Object.assign(Error('connect ECONNREFUSED 127.0.0.1:51234'), {
+    code: 'ECONNREFUSED', errno: -4078, syscall: 'connect', address: '127.0.0.1', port: 51234,
+  })
+  const child = new Error('Synthetic nested child failure', { cause: connection })
+  const context = 'Host context with a "quoted value", and another line'
+  const aggregate = new AggregateError([
+    Object.assign(Error('Synthetic Host start failure'), { code: 'EHOSTSTART' }),
+    Object.assign(Error('Synthetic Host cleanup failure'), { code: 'EHOSTSTOP' }),
+    child,
+    singleQuoteError,
+    backslashError,
+  ], 'desktop backend startup and cleanup failed', { cause: jsonError })
+  const error = new Error(`${context}\n${aggregate.message}\n内容回退状态未能保存：Synthetic rollback failure`, { cause: aggregate })
+  const safe = startupDiagnostic(error, text => redactDiagnostic(text))
+  const dialog = desktopErrorState(safe).message
+  assert.match(dialog, /Host context with a "quoted value", and another line/)
+  assert.match(dialog, /desktop backend startup and cleanup failed/)
+  assert.match(dialog, /Synthetic Host start failure/)
+  assert.match(dialog, /Synthetic Host cleanup failure/)
+  assert.match(dialog, /Synthetic nested child failure/)
+  assert.match(dialog, /Synthetic rollback failure/)
+  assert.match(dialog, /connect ECONNREFUSED/)
+  assert.doesNotMatch(dialog, /secret99|single-secret-99|backslash-secret-99|127\.0\.0\.1|51234/)
+  const report = renderCrashReport({
+    source: 'host', phase: 'startup', error: safe, rendererConsole: [], time: new Date('2026-01-01T00:00:00Z'),
+    app: { name: 'Fixture', version: '0.0.0', platform: 'win32', arch: 'x64', electron: '44.0.0', node: '24.22.1', locale: 'en' },
+  })
+  assert.match(report, /Host context with a "quoted value", and another line/)
+  assert.match(report, /Synthetic Host start failure/)
+  assert.match(report, /Synthetic Host cleanup failure/)
+  assert.match(report, /Synthetic nested child failure/)
+  assert.match(report, /Synthetic rollback failure/)
+  assert.match(report, /connect ECONNREFUSED/)
+  assert.doesNotMatch(report, /secret99|single-secret-99|backslash-secret-99|127\.0\.0\.1|51234/)
+})

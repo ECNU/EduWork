@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, mkdir, writeFile, readFile, readlink, realpath, rename, symlink, lstat, rm, unlink } from 'node:fs/promises'
+import { mkdtemp, mkdir, writeFile, readFile, readlink, realpath, rename, symlink, lstat, rm, unlink, utimes } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import { createRequire } from 'node:module'
@@ -35,6 +35,23 @@ for (const literature of ['@shlv/dsh-literature', '@eduwork/dsh-literature']) te
   identity.bundles = []
   await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
   await assert.rejects(prepareProductProfile({ product, home, shell: 'electron', userConfig }), /不属于此发行版/)
+})
+
+test('installed decision bundle accepts configuration, preserves its switch, and rejects absent bundles', async t => {
+  const { root, product, home } = await fixture(t)
+  const identity = JSON.parse(await readFile(join(product, 'assembly.json')))
+  identity.bundles.push('@eduwork/dsh-decision')
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
+  const userConfig = join(root, 'eduwork.jsonc')
+  const decision = { enabled: false, baseURL: 'https://models.example.test/v1', model: 'decision-test', authMode: 'oidc', oidcProfileId: 'example' }
+  await writeFile(userConfig, JSON.stringify({ schemaVersion: 1, plugins: { decision } }))
+  const prepared = await prepareProductProfile({ product, home, shell: 'electron', userConfig })
+  const rows = JSON.parse(await readFile(join(prepared.profile, 'cordis.patch.yml')))
+  assert.deepEqual(rows.filter(row => row.id === 'decision'), [{ id: 'decision', config: decision }])
+  assert.equal(JSON.parse(await readFile(userConfig)).plugins.decision.enabled, false)
+  identity.bundles = identity.bundles.filter(name => name !== '@eduwork/dsh-decision')
+  await writeFile(join(product, 'assembly.json'), JSON.stringify(identity))
+  await assert.rejects(prepareProductProfile({ product, home, shell: 'electron', userConfig }), /plugins\.decision 不属于此发行版/)
 })
 
 test('rc.1 reads independent request and subagent defaults below saved UI choices', async t => {
@@ -139,14 +156,32 @@ test('another shell, distribution, or product-contained home is rejected without
   assert.equal(JSON.parse(await readFile(join(home, '.eduwork-desktop-home.json'), 'utf8')).distribution, 'eduwork')
 })
 
-test('a zero-filled ownership marker from a power loss is rewritten instead of blocking startup', async t => {
+test('an existing ownership marker is not rewritten during startup', async t => {
   const { product, home } = await fixture(t)
-  await prepareProductProfile({ product, home, shell: 'electron' })
-  const marker = join(home, '.eduwork-desktop-home.json')
-  await writeFile(marker, Buffer.alloc(64))
-  await prepareProductProfile({ product, home, shell: 'electron' })
-  assert.equal(JSON.parse(await readFile(marker, 'utf8')).distribution, 'eduwork')
+  const options = { product, home, shell: 'electron' }
+  await prepareProductProfile(options)
+  const marker = join(home, '.eduwork-desktop-home.json'), original = await readFile(marker)
+  const old = new Date('2020-01-01T00:00:00Z')
+  await utimes(marker, old, old)
+  const before = await lstat(marker)
+  await prepareProductProfile(options)
+  assert.deepEqual(await readFile(marker), original)
+  assert.equal((await lstat(marker)).mtimeMs, before.mtimeMs)
 })
+
+for (const damaged of [Buffer.alloc(64), Buffer.from('{"distribution":"another-edition"'), Buffer.from('null')]) {
+  test(`damaged ownership is preserved without adopting the directory (${damaged.toString('hex').slice(0, 16)})`, async t => {
+    const { product, home } = await fixture(t)
+    const options = { product, home, shell: 'electron' }
+    await prepareProductProfile(options)
+    const marker = join(home, '.eduwork-desktop-home.json')
+    await writeFile(marker, damaged)
+    await writeFile(join(home, 'synthetic-history.json'), '{"retained":true}')
+    await assert.rejects(prepareProductProfile(options), /归属标记已损坏|another desktop edition/)
+    assert.deepEqual(await readFile(marker), damaged)
+    assert.equal(await readFile(join(home, 'synthetic-history.json'), 'utf8'), '{"retained":true}')
+  })
+}
 
 test('unmanaged directories and links survive a refused repair', async t => {
   const { root, product, home } = await fixture(t)

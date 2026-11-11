@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.3 — Unreleased
+
+- Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+
 [简体中文](CHANGELOG.md) | **English**
 
 All notable changes are documented here. The format follows Keep a Changelog principles and the project uses Semantic Versioning with pre-1.0 qualifications described in `docs/compatibility.en.md`.

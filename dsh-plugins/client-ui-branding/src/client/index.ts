@@ -2,11 +2,10 @@ import React, { useSyncExternalStore } from 'react'
 import { normalizeVisualStyle, tokensForVisualStyle } from '../theme.js'
 import { genericMarkSVG, productIdentity } from '../identity.js'
 import { installProductIdentity } from './product-identity.js'
-import { bindDesktopAction, DesktopSettingsTrigger } from './desktop-actions.js'
+import { bindDesktopAction, bindSettingsOpenAction } from './desktop-actions.js'
+import { registerSettingsIcons } from './settings-icons.js'
 
-declare const __EDUWORK_PINNED_DSH__: boolean
-const nativeSettings = typeof __EDUWORK_PINNED_DSH__ !== 'undefined' && __EDUWORK_PINNED_DSH__
-export const inject = ['slots', 'theme', 'connection', 'remote', nativeSettings ? 'configForms' : 'settingsScope']
+export const inject = ['slots', 'theme', 'sessions', 'configForms']
 
 const h = React.createElement
 const SETTINGS_NAMESPACE = 'chatecnu-brand'
@@ -83,10 +82,21 @@ function ProductBrandName({ service }) {
 
 
 export function apply(ctx) {
+  registerSettingsIcons(ctx)
   ctx.inject(['uiWorkspace'], context => context.effect(() =>
     bindDesktopAction('new-session', () => context.uiWorkspace.startSession()), 'eduwork: tray new session'))
-  ctx.slots.inject('settings.trigger', () => ctx.slots.register({ name: 'settings.trigger', priority: -100 }, DesktopSettingsTrigger))
-  const scope = (nativeSettings ? ctx.configForms.get(SETTINGS_NAMESPACE) : ctx.settingsScope.bind({ namespace: SETTINGS_NAMESPACE }))
+  // The settings entry declares this child slot together with its shell store,
+  // so an early queued action is drained only after the idempotent owner action exists.
+  ctx.slots.inject('settings.trigger', () =>
+    bindSettingsOpenAction({
+      slots: ctx.slots,
+      sessions: ctx.sessions.list,
+      isOnboardingVisible: () => Boolean(document.querySelector('#root[inert]'))
+        || [...document.querySelectorAll('[role="dialog"]')]
+          .some(element => element.getAttribute('data-shortcut-modal') !== 'settings'),
+      onFallback: () => { console.warn('[eduwork] session list not ready after 5 seconds; waiting for onboarding/modal to settle before opening settings') },
+    }))
+  const scope = ctx.configForms.get(SETTINGS_NAMESPACE)
   let clearTokens = () => {}
   const adopt = () => {
     clearTokens()

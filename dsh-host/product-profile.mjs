@@ -28,12 +28,13 @@ async function canonical(path) {
 const sameTarget = async (a, b) => typeof a === 'string' && typeof b === 'string' && same(await canonical(a), await canonical(b))
 async function atomicJSON(path, value) {
   const temporary = path + '.' + randomUUID() + '.pending'
-  // Flush before rename: after a power loss NTFS may otherwise keep the new
-  // name with zero-filled content, which then blocks every later launch.
-  const handle = await open(temporary, 'w')
-  try { await handle.writeFile(JSON.stringify(value, null, 2) + '\n'); await handle.sync() }
-  finally { await handle.close() }
-  await rename(temporary, path)
+  // Flush the complete replacement before publishing its name.
+  const handle = await open(temporary, 'wx')
+  try {
+    try { await handle.writeFile(JSON.stringify(value, null, 2) + '\n'); await handle.sync() }
+    finally { await handle.close() }
+    await rename(temporary, path)
+  } finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error }) }
 }
 function mergeConfig(base = {}, extra = {}) {
   const result = { ...base }
@@ -83,13 +84,14 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const resources = await prepareNativeResources({ product })
   pluginConfig = mergeConfig(resources.pluginConfig, pluginConfig)
   const ownerFile = join(home, '.eduwork-desktop-home.json')
-  const owner = await readFile(ownerFile, 'utf8').then(text => {
-    // A zero-filled or truncated marker is crash damage, not another edition.
-    try { return JSON.parse(text) } catch { console.warn(`[desktop] Rewriting damaged ${ownerFile}`); return null }
-  }, error => { if (error.code === 'ENOENT') return null; throw error })
-  if (owner && (owner.schemaVersion !== 1 || owner.shell !== shell || owner.distribution !== identity.distribution)) throw new Error('This data directory belongs to another desktop edition')
+  const owner = await json(ownerFile).catch(error => {
+    if (error.code === 'ENOENT') return undefined
+    if (error instanceof SyntaxError) throw Object.assign(new Error(`数据目录归属标记已损坏，无法确认所属发行版。请保留原目录并联系维护人员修复。\n标记文件：${ownerFile}`), { code: 'EDUWORK_HOME_MARKER_INVALID' })
+    throw error
+  })
+  if (owner !== undefined && (owner?.schemaVersion !== 1 || owner?.shell !== shell || owner?.distribution !== identity.distribution)) throw new Error('This data directory belongs to another desktop edition')
   await mkdir(home, { recursive: true })
-  if (!owner) await atomicJSON(ownerFile, { schemaVersion: 1, shell, distribution: identity.distribution })
+  if (owner === undefined) await atomicJSON(ownerFile, { schemaVersion: 1, shell, distribution: identity.distribution })
   const profile = await canonical(join(home, 'profiles', native ? 'desktop-017' : 'desktop'))
   const target = await canonical(join(product, 'd', 'node_modules'))
   if (!inside(home, profile) || !inside(product, target)) throw new Error('Desktop profile or modules link escapes its owned directory')
@@ -182,7 +184,7 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
     // These deployment defaults remain below preferences saved by the UI.
     const limits = [{ id: 'eduwork-concurrency', config: { maxConcurrentRequests: user?.features?.maxConcurrentRequests ?? 3 } }]
     if (baseline.configurableSubagents) limits.push({ id: 'subagent', config: { maxActiveSubagents: user?.features?.maxActiveSubagents ?? 2 } })
-    await writeNativeProfile({ profile, home, bundles: identity.bundles, optionalBundles: identity.optionalBundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse, yaml, migrateSchedule: baseline.migrateSchedule === true, builtinSchedule: baseline.builtinSchedule === true })
+    await writeNativeProfile({ profile, home, bundles: identity.bundles, optionalBundles: identity.optionalBundles, disabledByDefaultBundles: identity.disabledByDefaultBundles, patches: [...nativePresets, ...composition, ...bundleRows, ...desktop, ...limits, ...legacyPresets, ...patches], parse, yaml, migrateSchedule: baseline.migrateSchedule === true, builtinSchedule: baseline.builtinSchedule === true })
   } else {
     await writeFile(join(profile, 'package.json'), JSON.stringify({ name: 'eduwork-desktop-profile', private: true, type: 'module', dsh: { profile: { bundles: identity.bundles } } }, null, 2) + '\n')
     await writeFile(join(profile, 'cordis.patch.yml'), JSON.stringify([...composition, ...bundleRows, ...desktop, ...patches], null, 2) + '\n')

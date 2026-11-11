@@ -67,6 +67,35 @@ for (const enabled of [false, true]) test(`a prior manual ${bundle} install reta
   assert.equal(saved.dependencies[bundle], '0.1.0')
 })
 
+for (const previous of ['fresh', 'existing-profile', 'enabled', 'disabled']) test(`opt-in bundle respects its native selection (${previous})`, async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-opt-in-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const file = join(profile, 'package.json'), bundle = '@example/opt-in'
+  if (previous !== 'fresh') await writeFile(file, JSON.stringify({
+    dependencies: previous === 'existing-profile' ? {} : { [bundle]: '0.1.0' },
+    dsh: { profile: { bundles: previous === 'enabled' ? [bundle] : [] } },
+  }))
+  const options = { profile, bundles: ['synthetic-core', bundle], optionalBundles: [bundle], disabledByDefaultBundles: [bundle], patches: [] }
+  await writeNativeProfile(options); await writeNativeProfile(options)
+  let saved = JSON.parse(await readFile(file, 'utf8'))
+  assert.equal(saved.dsh.profile.bundles.includes(bundle), previous === 'enabled')
+  assert.ok(saved.eduwork.optionalBundles.includes(bundle))
+  for (const enabled of [true, false]) {
+    saved.dsh.profile.bundles = saved.dsh.profile.bundles.filter(name => name !== bundle)
+    if (enabled) saved.dsh.profile.bundles.push(bundle)
+    await writeFile(file, JSON.stringify(saved))
+    await writeNativeProfile(options); await writeNativeProfile(options)
+    saved = JSON.parse(await readFile(file, 'utf8'))
+    assert.equal(saved.dsh.profile.bundles.includes(bundle), enabled)
+  }
+})
+
+test('a default-disabled policy cannot silently disable a core or missing bundle', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'eduwork-opt-in-invalid-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  await assert.rejects(writeNativeProfile({ profile, bundles: ['core'], optionalBundles: [], disabledByDefaultBundles: ['core'], patches: [] }), /must be optional/)
+})
+
 test('literature fork migrates the bundle without losing source preferences or disabled tools', async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-literature-migrate-'))
   t.after(() => rm(profile, { recursive: true, force: true }))

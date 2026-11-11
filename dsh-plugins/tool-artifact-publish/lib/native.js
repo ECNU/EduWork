@@ -3,7 +3,7 @@
 import { normalizeArtifactRelativePath } from './core.js'
 
 export const name = 'product-native-deliverables'
-export const inject = ['tools', 'fs', 'sessionProjections']
+export const inject = ['tools', 'fs', 'agents']
 const producers = new Set(['artifact_publish', 'image_generate', 'ecnu_image_generate', 'ecnu_tts_generate',
   'speech_synthesize', 'media_render', 'video_project', 'office_document', 'office_spreadsheet', 'office_presentation', 'office_pdf'])
 
@@ -21,7 +21,7 @@ export function apply(ctx) {
     const decision = await next()
     const path = outputPath(exec, result), session = exec.agent?.session
     if (!path || !session?.header.cwd || exec.signal.aborted) return decision
-    const boundary = ctx.sessionProjections.stateOf(session, 'turnBoundary')
+    const boundary = ctx.agents.turnBoundaryOf(session)
     if (!boundary || boundary.openTurnStartSeq === null) return decision
     try {
       const fs = exec.agent.ctx.get('fs')
@@ -46,7 +46,7 @@ export function apply(ctx) {
     const session = exec.agent?.session
     if (!session) return
     const records = [...nested, ...own && own.path === outputPath(exec, result) ? [own] : []]
-    const boundary = ctx.sessionProjections.stateOf(session, 'turnBoundary')
+    const boundary = ctx.agents.turnBoundaryOf(session)
     if (!boundary || boundary.openTurnStartSeq === null) return
     const valid = records.filter(row => row.session === session && row.turn === boundary.lastTurn)
     if (!valid.length) return

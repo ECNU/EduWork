@@ -2,7 +2,7 @@
 
 [English](CORE-021_EN.md)
 
-当前构建配方选用 DSH `0.2.1-rc.5`，上游提交为 `b830ec950faba0a46dda564be3e2d854afed94f1`。`config/desktop-build.json` 指向 [候选锁](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json)，npm Runtime、Host 和 Electron 源码分别校验。产品版本与内核版本独立；切换构建配方不会发布安装包或更新软件更新源。
+本页保留 0.2.1 组合的记录；当前配方见 [DSH 0.2.2 集成说明](CORE-022.md)。此组合选用 DSH `0.2.1-rc.5`，上游提交为 `b830ec950faba0a46dda564be3e2d854afed94f1`。`config/desktop-build.json` 指向 [候选锁](../third_party/dsh/candidate-v0.2.1-rc.5/LOCK.json)，npm Runtime、Host 和 Electron 源码分别校验。产品版本与内核版本独立；切换构建配方不会发布安装包或更新软件更新源。
 
 ## 能力与迁移
 

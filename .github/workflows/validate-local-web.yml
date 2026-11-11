@@ -6,6 +6,9 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+concurrency:
+  group: validate-local-web-${{ github.event_name }}-${{ github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   local-web:
     runs-on: windows-latest
@@ -20,9 +23,7 @@ jobs:
       - name: Select product assembly changes
         id: changes
         shell: pwsh
-        env:
-          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-        run: node core/scripts/packages/manage.mjs product-changed "$env:BASE"
+        run: node core/scripts/ci-changes.mjs
       - uses: actions/setup-go@v5
         if: steps.changes.outputs.build == 'true'
         with:
@@ -31,6 +32,10 @@ jobs:
       - name: Verify source build and local profile coordination
         shell: pwsh
         run: |
+          node --test core/tests/ci-changes.test.mjs core/tests/package-maintenance.test.mjs
+          if ($LASTEXITCODE) { throw 'CI selection checks failed' }
+          node core/scripts/audit-eduwork-distribution.mjs --root core
+          if ($LASTEXITCODE) { throw 'Source audit failed' }
           node core/scripts/check-source-docs.mjs core
           if ($LASTEXITCODE) { throw 'Documentation links failed' }
           node --test core/tests/eduwork-assembly-policy.test.mjs core/scripts/test/npm-runtime.test.mjs core/tests/eduwork-source-reproducibility.test.mjs core/tests/eduwork-upstream-lock.test.mjs core/tests/eduwork-profile-links.test.mjs core/tests/eduwork-web-acceptance-contract.test.mjs
@@ -41,8 +46,10 @@ jobs:
           if ($LASTEXITCODE) { throw 'Product identity checks failed' }
           node --test core/dsh-host/test/configuration-documentation.test.mjs core/dsh-host/test/configuration-file.test.mjs core/dsh-host/test/publisher-bootstrap.test.mjs core/dsh-host/test/content-updates.test.mjs core/dsh-electron/tests/content-coordinator.test.mjs core/dsh-electron/tests/configuration-policy.test.mjs core/dsh-electron/tests/desktop-paths.test.mjs core/dsh-electron/tests/desktop-restart.test.mjs core/dsh-electron/tests/mac-sparkle-updates.test.mjs
           if ($LASTEXITCODE) { throw 'Content lifecycle checks failed' }
-          node --test core/dsh-electron/tests/software-update-control.test.mjs core/dsh-electron/tests/portable-updates-startup.test.mjs core/dsh-electron/tests/startup-failure.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/runtime-access.test.mjs core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
+          node --test core/dsh-electron/tests/software-update-control.test.mjs core/dsh-electron/tests/portable-updates-startup.test.mjs core/dsh-electron/tests/startup-failure.test.mjs core/dsh-electron/tests/startup-presentation.test.mjs core/dsh-electron/tests/startup-close-policy.test.mjs core/dsh-electron/tests/runtime-access.test.mjs core/dsh-electron/tests/workspace-access.test.mjs core/dsh-plugins/desktop-services/test/workspace-access.test.mjs
           if ($LASTEXITCODE) { throw 'Updater startup and recovery guidance checks failed' }
+          node --test core/dsh-electron/tests/settings-open-request.test.mjs
+          if ($LASTEXITCODE) { throw 'Tray settings request checks failed' }
           node --test core/dsh-electron/tests/task-notifications.test.mjs core/dsh-electron/tests/native-vault.test.mjs core/dsh-plugins/notifications/test/*.test.mjs core/scripts/test/plugin-notification-contract.test.mjs
           if ($LASTEXITCODE) { throw 'Desktop notification checks failed' }
           node --test core/packages/dsh-desktop-pet/test/page-clock.test.mjs core/packages/dsh-desktop-pet/test/pet-state.test.mjs core/packages/dsh-desktop-pet/test/skin.test.mjs core/dsh-electron/tests/desktop-pet-core.test.mjs

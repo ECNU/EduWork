@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
-import { attachAppActivation, attachWindowVisibility } from '../src/window-visibility.mjs'
+import { attachAppActivation, attachTrayActivation, attachWindowVisibility } from '../src/window-visibility.mjs'
 
 function fixture({ platform = 'darwin', quitting = false, exit = false, tray = false, minimized = false, destroyed = false } = {}) {
   const app = new EventEmitter()
@@ -32,6 +32,22 @@ test('clicking the macOS Dock icon restores the first available startup or main 
   available.app.emit('activate')
   assert.deepEqual(destroyed.calls, [])
   assert.deepEqual(available.calls, ['restore', 'show', 'focus'])
+})
+
+test('a Windows tray click restores the window', () => {
+  const tray = new EventEmitter()
+  const f = fixture({ platform: 'win32', minimized: true })
+  attachTrayActivation(tray, f.show, 'win32')
+  tray.emit('click')
+  assert.deepEqual(f.calls, ['restore', 'show', 'focus'])
+})
+
+test('a macOS tray click keeps its existing menu behavior', () => {
+  const tray = new EventEmitter()
+  let opened = 0
+  attachTrayActivation(tray, () => { opened += 1 }, 'darwin')
+  tray.emit('click')
+  assert.equal(opened, 0)
 })
 
 test('macOS close hides the window even when the tray is unavailable', () => {

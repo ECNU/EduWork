@@ -5,6 +5,7 @@ import { loadUserConfig } from './user-config.mjs'
 import { verifiedManifest, validateBundle, incompatible, fetchContent, digest, CONTENT_LIMIT } from './content-update-protocol.mjs'
 import { ConfigurationFile } from './configuration-file.mjs'
 import { configurationDocumentationOptions } from './configuration-documentation.mjs'
+import { redactDiagnostic } from './diagnostics.mjs'
 
 async function readJSON(path, fallback) { try { return JSON.parse(await readFile(path,'utf8')) } catch(error) { if(error.code==='ENOENT')return fallback;throw error } }
 async function atomic(path,value) {
@@ -227,7 +228,7 @@ export class ContentUpdates {
     if(this.state.pending) {
       this.state.rejected=[...new Set([...this.state.rejected,this.state.pending])].slice(-100)
       // Later launches only see the rejection; keep the first failure for the user.
-      this.state.rejection={key:this.state.pending,reason:String(cause??'').slice(0,2000)}
+      if(this.state.rejection?.key!==this.state.pending)this.state.rejection={key:this.state.pending,reason:redactDiagnostic(String(cause??'')).slice(0,2000)}
     }
     this.state.pending=null;this.state.trial=null;this.state.trialPhase=null;this.state.retryable=null;await this.save()
     this.view={...this.view,state:'error',message:reason}
@@ -248,9 +249,6 @@ export class ContentUpdates {
   async rollback(error) {
     if(!this.state.trial)return false
     if(isContentFileError(error)) {await this.postponePending();return false}
-    // A first install has no configuration to fall back to: rejecting it only
-    // locks the user out. Keep it retryable; the failure page shows the cause.
-    if(!this.state.active.configuration&&!(this.source.bundled?.configuration>0)) {await this.postponePending();return false}
     await this.rejectTrial('新版内容未通过启动检查，已回退',error?.message);return true
   }
   canRepair(key, retryFailed=false) {

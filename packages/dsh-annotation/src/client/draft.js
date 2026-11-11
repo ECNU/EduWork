@@ -14,14 +14,27 @@ export function annotations(occurrences) {
 // adapter isolated. Never reach into Lexical or replace the whole draft.
 // Command chips have a separate coordinate contribution; edits are intentionally
 // limited to plain input, rather than guessing it from command display text.
-export function occurrenceSpan(state, expected) {
+export function occurrenceSpan(state, expected, document) {
   if (state.phase !== 'plain' || state.claim || !Number.isInteger(state.draftRev)) return undefined
+  if (document !== undefined && (document.text !== state.draft || !Array.isArray(document.references)
+    || document.references.length !== state.occurrences.length
+    || document.references.some((item, i) => {
+      const current = state.occurrences[i]
+      return item.offset !== current.offset || item.length !== current.length || item.source !== current.source || item.ref !== current.ref
+    }))) return undefined
   let reduction = 0, previousEnd = 0
-  for (const item of state.occurrences) {
+  // rc.1 adds native Quote chips. They also occupy one detection character,
+  // but only appear in the facade's semantic draftSnapshot in rc.1. Read it
+  // without mutation, and require it to match the live state before translating.
+  const spans = [
+    ...state.occurrences.map(item => ({ ...item, reference: true })),
+    ...(document?.quotes ?? []).map(item => ({ ...item, reference: false })),
+  ].sort((a, b) => a.offset - b.offset)
+  for (const item of spans) {
     if (!Number.isInteger(item.offset) || !Number.isInteger(item.length) || item.length < 1
       || item.offset < previousEnd || item.offset + item.length > state.draft.length
-      || state.draft.slice(item.offset, item.offset + item.length) !== item.clipboardText) return undefined
-    if (item.occurrenceId === expected.occurrenceId) {
+      || (item.reference && state.draft.slice(item.offset, item.offset + item.length) !== item.clipboardText)) return undefined
+    if (item.reference && item.occurrenceId === expected.occurrenceId) {
       if (item.source !== SOURCE || item.ref !== expected.ref) return undefined
       const start = item.offset - reduction
       return { start, end: start + 1, draftRev: state.draftRev }

@@ -117,8 +117,11 @@ test('plugin approval reasons render through the official panel and follow local
   const { React: R, renderToStaticMarkup: render, load, LocaleRuntime } = await setup()
   const require = createRequire(join(runtime, 'package.json'))
   const locale = new LocaleRuntime({ emit() {} }, undefined, { languages: ['en'], preference: 'zh' })
-  locale.addLanguage({ id: 'fr', label: 'Français', fallback: 'en' })
+  // A private-use language keeps the fallback probe independent of newly
+  // translated upstream panels (rc.1 now provides French approval labels).
+  locale.addLanguage({ id: 'qaa', label: 'Synthetic fallback', fallback: 'en' })
   let approval, Panel, onRequest, pending
+  const factories = new Map()
   // Exercise the pinned upstream request consumer and panel. Only visual
   // primitives and the outer slot/transport plumbing are test fixtures.
   runInNewContext(await readFile(join(runtime, 'node_modules/@deepseek-ai/dsh-client-ui-approval/lib/client.js'), 'utf8'), {
@@ -135,7 +138,10 @@ test('plugin approval reasons render through the official panel and follow local
     locale, effect: fn => dispose.push(fn()), inject() {},
     sessions: { scopeOf: () => 'synthetic-session' },
     uiSession: { registerPendingInteraction: () => value => { pending = value; return () => { pending = undefined } } },
-    slots: { inject: (_, fn) => fn(), register: (_, component) => { Panel = component } },
+    slots: {
+      inject: (_, fn) => fn(), register: (_, component) => { Panel = component },
+      registerFactory: (options, component) => factories.set(options.name, component),
+    },
     remote: { $on: (_, handler) => { onRequest = handler } },
   })
   const browser = await load('dsh-plugins/browser-upstream/lib/permission.js')
@@ -145,7 +151,7 @@ test('plugin approval reasons render through the official panel and follow local
   const ctx = { sandboxPolicy: { resolve: () => ({ mode: 'read-only' }) }, permissionPresets: { current: () => 'read-only' } }
   const next = () => { throw new Error('these writes must still ask for approval') }
   const decisions = [
-    browser.browserPermission(ctx, { name: 'mcp__playwright-mcp__browser_click', agent }, next),
+    browser.browserPermission(ctx, { name: 'mcp__playwright-mcp__browser_evaluate', agent }, next),
     await mail.decideMailPermission(ctx, { name: 'mail_send', agent }, next),
     await mail.decideMailPermission(ctx, { name: 'mail_get_attachment', agent }, next),
     await calendar.decideCalendarPermission(ctx, { name: 'calendar_create_event', agent }, next),
@@ -158,10 +164,14 @@ test('plugin approval reasons render through the official panel and follow local
       const result = onRequest.call({}, wire, next)
       try {
         const original = pending.reason
-        for (const language of ['zh', 'en', 'fr', 'zh']) {
+        for (const language of ['zh', 'en', 'qaa', 'zh']) {
           locale.setLocale(language)
           const html = render(R.createElement(Panel, {
             matched: pending, renderSlot: () => null,
+            renderFactorySlot: (name, props) => {
+              assert.ok(factories.has(name), `official approval factory registered: ${name}`)
+              return R.createElement(factories.get(name), { ...props, t: locale.bind('approval'), renderSlot: () => null })
+            },
             resolveReason: value => locale.resolveText(value), t: locale.bind('approval'),
           }))
           const expected = decision.displayReason?.[language === 'zh' ? 'zh' : 'en'] ?? decision.reason

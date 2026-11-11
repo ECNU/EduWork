@@ -56,7 +56,7 @@ ctx.inject(['notifications'], scope => {
       return { uid: message.uid }
     },
   })
-  // 在业务收到新邮件时调用。示例不代表邮件收取已随本协议实现。
+  // 在业务收到新邮件时调用。
   async function notify(message) {
     return notices.publish({
       id: `inbox:${message.uid}`, event: 'received',
@@ -68,6 +68,8 @@ ctx.inject(['notifications'], scope => {
   // 切换账号必须销毁旧 scope/handle，再注册新账号。
 })
 ```
+
+现有的生产实现是 `@eduwork/dsh-mail` 的“新邮件提醒”（默认关闭）：它以 `source: 'mail'` 注册，只读探测收件箱，按 `source + scope` 隔离账号，正文摘录在下载阶段截断，`onAction` 直接返回 `false`（点一下就是把这条提醒办完，界面仍由各自的展示适配器负责）。上面的例子保留了独立来源名，不要照抄成某个真实来源。
 
 `register(context, definition)` 返回绑定来源、账号和本次注册生命周期的句柄。Cordis scope 销毁时自动 `dispose()`；插件也可主动注销。同一 `source + scope` 不能重复注册。不同账号使用不同 scope，同一账号重注册也有新的生命周期标识，旧点击不能指向新账号。
 

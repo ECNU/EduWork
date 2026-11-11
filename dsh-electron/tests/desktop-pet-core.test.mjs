@@ -9,9 +9,20 @@ const geometry = petGeometry({ width: 192, height: 208 }, 100)
 const configure = (extra = {}) => ({ action: 'configure', enabled: true, skin: 'eduwork-page', frame: { width: 192, height: 208 }, size: 100, bubbles: true, sleep: true, ...extra })
 
 test('geometry: 100% is 128 DIP tall, the window leaves room for bubble and badge', () => {
-  assert.deepEqual(geometry, { window: { width: 220, height: 232 }, pet: { x: 51, y: 64, width: 118, height: 128 } })
+  assert.deepEqual(geometry, { window: { width: 220, height: 248 }, pet: { x: 51, y: 64, width: 118, height: 128 } })
   assert.deepEqual(petGeometry({ width: 192, height: 208 }, 200).pet, { x: 40, y: 64, width: 236, height: 256 })
   assert.equal(petGeometry({ width: 400, height: 100 }, 50).window.width, 336)
+})
+
+test('a two-line bubble fits below the pet at every size and on both screen edges', () => {
+  // The page clamps a bubble to 42 px and leaves 4 px under it, so the lower margin must be
+  // at least 46 px; above the pet the same 42 px bubble needs its head room to stay inside.
+  for (const size of [50, 60, 80, 100, 120, 150, 200]) {
+    const { window, pet } = petGeometry({ width: 192, height: 208 }, size)
+    assert.ok(window.height - (pet.y + pet.height) >= 46, `size ${size}: only ${window.height - (pet.y + pet.height)}px below the pet`)
+    assert.ok(pet.y >= 46, `size ${size}: only ${pet.y}px above the pet`)
+    assert.equal(pet.y, 64)
+  }
 })
 
 test('placement keeps the pet in the work area, rounds fractional pointers and tucks at outer edges', () => {
@@ -21,7 +32,7 @@ test('placement keeps the pet in the work area, rounds fractional pointers and t
   const top = placePet({ x: 100, y: -50 }, geometry, [primary])
   assert.equal(top.y + geometry.pet.y, 33)
   assert.equal(top.bubble, 'below')
-  assert.equal(placePet({ x: 100, y: 33 + 34 - 64 }, geometry, [primary]).bubble, 'above')
+  assert.equal(placePet({ x: 100, y: 33 + 56 - 64 }, geometry, [primary]).bubble, 'above')
   assert.equal(placePet({ x: 100, y: 2000 }, geometry, [primary]).y + geometry.pet.y + geometry.pet.height, 33 + 870)
   // A small overshoot clamps; a larger one tucks and leaves 42% of the pet visible.
   assert.equal(placePet({ x: -70, y: 300 }, geometry, [primary]).x, -51)

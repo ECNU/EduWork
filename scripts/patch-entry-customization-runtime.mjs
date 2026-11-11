@@ -8,8 +8,8 @@ import { Script } from 'node:vm'
 // Only the Creator item is adapted; navigation, prompts and draft policy stay native.
 export const entryCustomizationPatch = Object.freeze({
   id: 'entry-customization-optional-creator-v1',
-  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.1-rc.5',
-  file: 'lib/client.js', beforeSHA256: '287f36fe74f6be3eb5ab51ec0c1f09ae8cacea8a01fe56b3966553106c69f7e4',
+  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.2-rc.1',
+  file: 'lib/client.js', beforeSHA256: '607476157d5ba93a0c2b74048591509116764348a275b7d27add6460b467d9a8',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 
@@ -24,7 +24,7 @@ export async function creatorAvailability(ctx) {
 }
 
 export function creatorEntryComponent(React, MenuItemButton, PlusIcon) {
-  return function CreatorEntry({ checkCreator, createPlugin, onDismiss, t }) {
+  return function CreatorEntry({ checkCreator, createPlugin, onDismiss, separatorBefore, t }) {
     const [status, setStatus] = React.useState('checking')
     const live = React.useRef(false)
     const pending = React.useRef(false)
@@ -34,7 +34,7 @@ export function creatorEntryComponent(React, MenuItemButton, PlusIcon) {
       return () => { live.current = false }
     }, [checkCreator])
     return React.createElement(MenuItemButton, {
-      icon: React.createElement(PlusIcon, { size: 16 }), disabled: status !== 'ready',
+      icon: React.createElement(PlusIcon, { size: 16 }), separatorBefore, disabled: status !== 'ready',
       onSelect: async () => {
         if (pending.current || status !== 'ready') return
         pending.current = true
@@ -60,12 +60,12 @@ export function patchEntryCustomizationSource(input) {
     if (source.split(before).length !== 2) throw new Error('Entry customization anchor changed: ' + before)
     source = source.replace(before, after)
   }
-  replace('function EntryMenuContent({ entries, onOpen, region, onDismiss, browsePlugins, createPlugin, t }) {',
-    `${creatorEntryComponent.toString()}\n${creatorAvailability.toString()}\nconst EduWorkCreatorEntry = creatorEntryComponent(require("react"), _deepseek_ai_dsh_client_ui_primitives.MenuItemButton, _deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular);\nfunction EntryMenuContent({ entries, onOpen, region, onDismiss, browsePlugins, createPlugin, checkCreator, t }) {`)
+  replace('function EntryMenuContent({ entries, onOpen, region, onDismiss, usePluginNavigation, browsePlugins, createPlugin, t }) {',
+    `${creatorEntryComponent.toString()}\n${creatorAvailability.toString()}\nconst EduWorkCreatorEntry = creatorEntryComponent(require("react"), _deepseek_ai_dsh_client_ui_primitives.MenuItemButton, _deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular);\nfunction EntryMenuContent({ entries, onOpen, region, onDismiss, usePluginNavigation, browsePlugins, createPlugin, checkCreator, t }) {`)
   const start = source.indexOf('(0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.MenuItemButton, {\n\t\t\t\t\ticon: (0, react_jsx_runtime.jsx)(_deepseek_ai_dsh_client_ui_primitives.IconPlusOutlineRegular')
   const end = source.indexOf('\n\t\t\t] });', start)
   if (start < 0 || end < 0) throw new Error('Creator item boundary changed')
-  source = source.slice(0, start) + '(0, react_jsx_runtime.jsx)(EduWorkCreatorEntry, { checkCreator, createPlugin, onDismiss, t })' + source.slice(end)
+  source = source.slice(0, start) + '(0, react_jsx_runtime.jsx)(EduWorkCreatorEntry, { checkCreator, createPlugin, onDismiss, separatorBefore: !browsable && moreEntries.length > 0, t })' + source.slice(end)
   replace('const en = {', 'const en = { "creator.checking": "Checking Creator…", "creator.unavailable": "Could not check Creator. Reopen this menu to retry.", "creator.disabled": "Enable Creator in Settings → Agent presets", "creator.toolsDisabled": "Enable Show coding view in Settings → General",')
   replace('const zh = {', 'const zh = { "creator.checking": "正在检查 Creator…", "creator.unavailable": "无法检查 Creator，请重新打开菜单重试", "creator.disabled": "请在设置 → Agent 预设中开启 Creator", "creator.toolsDisabled": "请在设置 → 通用设置中开启“显示代码工作视图”",')
   replace('"uiWorkspace"\n', '"uiWorkspace", "remote", "remote.agentPresets", "configForms"\n')
