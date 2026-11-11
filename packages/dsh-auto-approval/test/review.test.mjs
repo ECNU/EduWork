@@ -54,55 +54,41 @@ test('the rules also see the content of the script a command runs', () => {
   assert.equal(reviewRequest({ cwd: '/w', facts, command: 'bash tools/sync.sh', script: { 'tools/sync.sh': 'rsync -a out/ host.example:/srv/' } }).flagged, true)
 })
 
-test('scriptOf reads the script a command runs, following cd, and truncates long ones', async () => {
+test('scriptOf reads the script a single command runs, following links as the shell does, and truncates long ones', async () => {
   const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
   await mkdir(root, { recursive: true })
   const dir = await mkdtemp(join(root, 'script-'))
-  await mkdir(join(dir, 'tools'))
-  await writeFile(join(dir, 'tools/sync.sh'), 'rsync -a out/ host.example:/srv/\n')
-  await writeFile(join(dir, 'big.py'), 'x'.repeat(20000))
-  await writeFile(join(dir, 'run.ps1'), 'Write-Output hi')
-  await writeFile(join(dir, 'task.sh'), 'echo task')
-  assert.deepEqual(await scriptOf('cd tools && bash sync.sh', dir), { 'sync.sh': 'rsync -a out/ host.example:/srv/\n' })
-  assert.deepEqual(await scriptOf(`${dir}/tools/sync.sh --dry-run`, '/'), { [`${dir}/tools/sync.sh`]: 'rsync -a out/ host.example:/srv/\n' })
-  const big = await scriptOf('python3 -I big.py', dir)
-  assert.equal(big['big.py'].length, 16000 + '\n…（后面还有内容，未附上）'.length)
-  assert.equal(await scriptOf('bash missing.sh', dir), undefined)
-  assert.equal(await scriptOf('ls tools', dir), undefined)
-  assert.equal(await scriptOf('bash tools', dir), undefined)
-  assert.deepEqual(await scriptOf('bash -ex tools/sync.sh', dir), { 'tools/sync.sh': 'rsync -a out/ host.example:/srv/\n' })
-  assert.deepEqual(await scriptOf('pwsh -NoProfile -ExecutionPolicy Bypass -File run.ps1', dir), { 'run.ps1': 'Write-Output hi' })
-  // A bare name without an interpreter runs from PATH, not from the current directory.
-  assert.equal(await scriptOf('task.sh --all', dir), undefined)
-  assert.deepEqual(await scriptOf('./task.sh --all', dir), { './task.sh': 'echo task' })
-  assert.deepEqual(await scriptOf('bash task.sh', dir), { 'task.sh': 'echo task' })
-  // Inline code and syntax checks do not run the file they name.
-  for (const command of ['node -e "run.ps1"', 'node -p big.py', 'python3 -c big.py', 'bash -c tools/sync.sh', 'bash -n tools/sync.sh', 'pwsh -Command run.ps1']) {
-    assert.equal(await scriptOf(command, dir), undefined, command)
-  }
-})
-
-test('scriptOf follows a plain sequence as the shell does and leaves out what it cannot follow', async () => {
-  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
-  await mkdir(root, { recursive: true })
-  const dir = await mkdtemp(join(root, 'links-'))
-  for (const path of ['work/tools', 'outside/nested', 'previous/-']) await mkdir(join(dir, path), { recursive: true })
+  for (const path of ['work/tools', 'outside/nested']) await mkdir(join(dir, path), { recursive: true })
   await symlink('../outside/nested', join(dir, 'work/link'))
-  const files = { 'work/task.sh': 'echo here', 'work/tools/task.sh': 'echo tools', 'outside/task.sh': 'echo outside',
-    'previous/-/task.sh': 'echo previous', 'work/quoted.sh': 'echo prefix', 'work/quoted.sh extra.sh': 'echo quoted' }
+  const files = { 'work/task.sh': 'echo here', 'work/tools/sync.sh': 'rsync -a out/ host.example:/srv/\n', 'outside/task.sh': 'echo outside',
+    'work/big.py': 'x'.repeat(20000), 'work/run.mjs': 'console.log(1)' }
   for (const [path, text] of Object.entries(files)) await writeFile(join(dir, path), text)
   const work = join(dir, 'work')
-  // A file path's `..` is taken after the link; `cd` moves logically, back to the directory holding the link.
+  assert.deepEqual(await scriptOf('bash tools/sync.sh', work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
+  assert.deepEqual(await scriptOf(`${work}/tools/sync.sh --dry-run`, '/'), { [`${work}/tools/sync.sh`]: files['work/tools/sync.sh'] })
+  assert.deepEqual(await scriptOf("bash -ex 'tools/sync.sh' prod", work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
+  assert.deepEqual(await scriptOf('./task.sh --all > out.log 2>&1', work), { './task.sh': 'echo here' })
+  assert.deepEqual(await scriptOf('NODE_ENV=production node run.mjs --port 3000', work), { 'run.mjs': 'console.log(1)' })
+  // A file path's `..` is taken after the link, as the shell does.
   assert.deepEqual(await scriptOf('bash link/../task.sh', work), { 'link/../task.sh': 'echo outside' })
-  assert.deepEqual(await scriptOf('cd link/.. && bash task.sh', work), { 'task.sh': 'echo here' })
-  assert.deepEqual(await scriptOf('cd "tools"; bash "task.sh"', work), { 'task.sh': 'echo tools' })
-  // Other programs cannot move the shell.
-  assert.deepEqual(await scriptOf('npm run build && cd tools && bash task.sh', work), { 'task.sh': 'echo tools' })
+  const big = await scriptOf('python3 -I big.py', work)
+  assert.equal(big['big.py'].length, 16000 + '\n…（后面还有内容，未附上）'.length)
+  for (const command of ['bash missing.sh', 'ls tools', 'bash tools']) assert.equal(await scriptOf(command, work), undefined, command)
+})
+
+test('scriptOf attaches nothing when the text alone does not say which file runs', async () => {
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const dir = await mkdtemp(join(root, 'noscript-'))
+  for (const path of ['tools', 'tools extra', '$DIR']) await mkdir(join(dir, path))
+  for (const path of ['task.sh', 'tools/task.sh', 'tools extra/task.sh', '$DIR/task.sh', 'quoted.sh', 'quoted.sh extra.sh', 'run.ps1']) await writeFile(join(dir, path), 'echo x')
   for (const command of [
-    'cd ../previous && cd - && bash task.sh', 'cd -P link && bash ../task.sh', 'cd -- "tools" && bash task.sh', 'cd -P "link" && bash task.sh',
-    'bash "quoted.sh extra.sh"', 'cd tools | cat; bash task.sh', 'cd tools || bash task.sh', 'pushd tools && bash task.sh',
-    '{ cd tools; }; bash task.sh', 'go() { cd tools; }; go; bash task.sh', 'source env.sh && bash task.sh', 'if cd tools; then :; fi; bash task.sh',
-  ]) assert.equal(await scriptOf(command, work), undefined, command)
+    // A bare name runs from PATH; inline code and syntax checks do not run the file they name.
+    'task.sh --all', 'node -e "task.sh"', 'node -p task.sh', 'python3 -c task.sh', 'bash -c tools/task.sh', 'bash -n tools/task.sh', 'pwsh -File run.ps1',
+    // Sequences, cd, variables, globs, quoting and comments.
+    'cd tools && bash task.sh', 'cd tools | cat; bash task.sh', 'DIR=tools; bash $DIR/task.sh', 'bash $DIR/task.sh', 'bash t*.sh', 'bash "quoted.sh extra.sh"',
+    'exit 0; bash task.sh', 'false && bash task.sh', 'printf done # ; cd tools\nbash task.sh', "node <<'JS'\n// ; bash task.sh\nJS", 'bash task.sh | tee log',
+  ]) assert.equal(await scriptOf(command, dir), undefined, command)
 })
 
 test('verdict: thresholds per kind, malformed answers are failures', () => {

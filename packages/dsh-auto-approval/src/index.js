@@ -111,7 +111,8 @@ export function apply(ctx, raw = {}) {
       system: `${SYSTEMS[process.platform] ?? process.platform}，shell 为 ${call.name === 'pwsh' ? 'PowerShell' : 'bash'}`,
       workspace, cwd, facts: { ...sessionFacts(session.snapshotEvents(), req.callId), created: created.get(session) ?? [] },
       justification: call.arguments.justification,
-      command, script: await scriptOf(command, cwd),
+      // The script inference follows bash syntax; PowerShell commands are reviewed without it.
+      command, script: call.name === 'bash' ? await scriptOf(command, cwd) : undefined,
     })
     const fetchImpl = await fetchWith()
     const results = await Promise.all(questions.map(question => requestDecision({ config: service, args: { state, questions: question }, fetchImpl, signal })))

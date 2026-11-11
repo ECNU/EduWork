@@ -2,8 +2,8 @@
 // functions over session events and file contents, so they can be tested without a Host.
 import { lstat, open } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { isAbsolute, resolve, sep } from 'node:path'
-import { executedPart, ruleMatch, split } from './rules.js'
+import { isAbsolute, sep } from 'node:path'
+import { executedPart, ruleMatch } from './rules.js'
 import { questionsFor } from './questions.js'
 
 export const SHELLS = new Set(['bash', 'pwsh'])
@@ -42,48 +42,33 @@ export function sessionFacts(events, callId) {
   return { requests: requests.slice(-3), assistant: assistant.slice(-1000), history: history.slice(-6) }
 }
 
-// A segment that runs a script file, directly or through an interpreter with options that neither take inline code
-// (`node -e`, `python3 -c`, `bash -c`) nor only check syntax (`bash -n`). Groups: the interpreter, the quote, the file.
-const RUNS = /^(?:\w+=\S*\s+)*(?:(python3?(?:\s+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:\s+-[eluvx]+)*|pwsh(?:\s+-(?:NoProfile|NonInteractive|NoLogo|ExecutionPolicy\s+\w+))*(?:\s+-File)?)\s+)?(["']?)([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))\2(?:\s|$)/
-// `cd` to one plain path, quoted or not.
-const CD = /^cd\s+(["']?)([^"';&|]+?)\1$/
-// Words that change the shell's own directory or run code in it (compound commands, functions, sourcing), so the
-// segments after them may start somewhere the walk below cannot follow.
-const SHELL_STATE = /^(?:[({!]|(?:\w+=\S*\s+)*cd(?:\s|$)|(?:if|then|elif|else|fi|for|while|until|do|done|case|esac|select|function|pushd|popd|source|\.|eval|exec|builtin|command)(?:\s|$)|[\w.-]+\s*\(\s*\))/
-const home = path => path.replace(/^(?:~|\$HOME|\$\{HOME\})(?=\/|$)/, homedir())
+// Which file a command runs is known from its text alone only in one form: a single bash command running a literal
+// path, directly or through an interpreter whose options take no code (`node -e`, `python3 -c`, `bash -c`) and are
+// no syntax check (`bash -n`), with plain arguments and redirections. Sequences, `cd`, variables, globs and every
+// other form attach no script; the command itself is still reviewed. Groups: interpreter, quote, file.
+const ARG = String.raw`(?:[\w./:,@%+=-]+|'[^']*'|"[^"$\x60\\!]*"|\d*(?:>>?|<)(?:&\d+)?)`
+const RUNS = new RegExp(String.raw`^(?:[A-Za-z_]\w*=[\w./:,@%+-]*[ \t]+)*(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[eluvx]+)*)[ \t]+)?(["']?)((?:~/)?(?!-)[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
 
 /**
- * The content of the first local script the command runs, read from disk, so the rules and the model see what it
- * does. Only a plain sequence is followed: `cd` to one path, other programs, then the script. Anything the walk cannot
- * follow leaves the script out rather than guessing; missing, unreadable or non-regular files are left out too.
+ * The content of the script a bash command runs, read from disk, so the rules and the model see what it does. Missing,
+ * unreadable or non-regular files are left out.
  * @returns {Promise<Record<string, string> | undefined>} the script path as written, mapped to its text.
  */
 export async function scriptOf(command, cwd) {
-  const executable = executedPart(command)
-  // A pipe or `||` runs its sides in other processes or not at all.
-  if (!cwd || executable.includes('|')) return undefined
-  let dir = cwd
-  for (const segment of split(executable)) {
-    // `cd` moves logically, as the shell's does by default: `link/..` is the directory holding the link.
-    const target = segment === 'cd' ? '~' : segment.match(CD)?.[2]
-    if (target !== undefined && !target.startsWith('-')) { dir = resolve(dir, home(target)); continue }
-    if (SHELL_STATE.test(segment)) return undefined
-    const [, interpreter, , path] = segment.match(RUNS) ?? []
-    // A bare name run without an interpreter is looked up on PATH, not in the current directory.
-    if (!path || (!interpreter && !/[\\/]/.test(path))) continue
-    // The file system resolves the path as the shell will, following links before any `..`.
-    const expanded = home(path)
-    const file = isAbsolute(expanded) ? expanded : `${dir}${sep}${expanded}`
-    if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
-    const handle = await open(file, 'r')
-    try {
-      const { buffer, bytesRead } = await handle.read({ buffer: Buffer.alloc(SCRIPT_CHARS * 4), position: 0 })
-      const text = buffer.subarray(0, bytesRead).toString('utf8')
-      const size = (await handle.stat()).size
-      return { [path]: text.length > SCRIPT_CHARS || bytesRead < size ? text.slice(0, SCRIPT_CHARS) + '\n…（后面还有内容，未附上）' : text }
-    } finally { await handle.close() }
-  }
-  return undefined
+  const [, interpreter, , path] = command.trim().match(RUNS) ?? []
+  // A bare name run without an interpreter is looked up on PATH, not in the current directory.
+  if (!cwd || !path || (!interpreter && !path.includes('/'))) return undefined
+  // The file system resolves the path as the shell will, following links before any `..`.
+  const expanded = path.replace(/^~(?=\/)/, homedir())
+  const file = isAbsolute(expanded) ? expanded : `${cwd}${sep}${expanded}`
+  if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
+  const handle = await open(file, 'r')
+  try {
+    const { buffer, bytesRead } = await handle.read({ buffer: Buffer.alloc(SCRIPT_CHARS * 4), position: 0 })
+    const text = buffer.subarray(0, bytesRead).toString('utf8')
+    const size = (await handle.stat()).size
+    return { [path]: text.length > SCRIPT_CHARS || bytesRead < size ? text.slice(0, SCRIPT_CHARS) + '\n…（后面还有内容，未附上）' : text }
+  } finally { await handle.close() }
 }
 
 /**

@@ -100,6 +100,10 @@ test('the workspace is the sandbox boundary; the current directory follows the s
   assert.equal(await mount({ ...base, baseURL }, { cwd: join(dir, 'work') }).escalate('bash task.sh', { workdir: 'link/..' }), 'allowed-once')
   assert.equal(bodies.at(-1).body.state.当前目录, await realpath(join(dir, 'outside')))
   assert.deepEqual(bodies.at(-1).body.state.命令要运行的脚本内容, { 'task.sh': 'echo outside' })
+  // PowerShell commands are reviewed without a script.
+  assert.equal(await mount({ ...base, baseURL }, { cwd: join(dir, 'work') }).escalate('bash task.sh', { name: 'pwsh' }), 'allowed-once')
+  assert.equal(bodies.at(-1).body.state.命令要运行的脚本内容, undefined)
+  assert.match(bodies.at(-1).body.state.系统, /PowerShell$/)
 })
 
 test('low scores, other presets, other tools and overlong commands go to the user unchanged', async t => {
