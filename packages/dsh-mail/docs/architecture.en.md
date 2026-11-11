@@ -20,7 +20,8 @@ DSH Host
   │    ├─ ordinary preset     one approval for mail_send
   │    └─ Full Access         no per-call prompt
   ├─ ctx.fs                   workspace resolution and bounded binary reads
-  ├─ ImapFlow                 read-only IMAP
+  ├─ ctx.notifications        new-mail reminders (optional, notification protocol v1, off by default)
+  ├─ ImapFlow                 read-only IMAP (tools connect per operation; reminders may reuse one read-only session)
   └─ Nodemailer               controlled SMTP submission
 ```
 
@@ -44,13 +45,26 @@ A `mail_find` continuation cursor binds the complete filter, direction, UIDVALID
 
 Each tool call creates one short-lived connection and closes it after the operation:
 
-- no background IDLE or polling;
+- no background IDLE or polling (when reminders are on it is a timed `STATUS` plus envelopes, never IDLE);
 - no startup or save-time probe;
 - no connection pool across calls;
 - cancellation closes the protocol connection;
 - protocol logging is disabled.
 
 This trades a small amount of latency for simpler credential rotation, cleanup, and failure isolation. Any future pool must still re-resolve credentials per operation and invalidate immediately on settings or credential changes.
+
+## New-mail reminders (optional)
+
+Reminders are a switchable feature of this plugin and are off by default: while off the timer only checks local settings, without connecting to or querying the mailbox. When on:
+
+- the inbox is probed with `STATUS` at `notifyIntervalSeconds` (30–3600, 120 by default); probing is read-only and does not change the selected mailbox;
+- the watermark (`UIDVALIDITY` plus the next `UID`) is kept in memory per account and folder, so switching either never mixes them; a `UIDVALIDITY` change re-baselines instead of reporting renumbered mail as new;
+- new mail is fetched as envelopes only. The body excerpt comes from `download()` on the text part and is **cut at the download stage** to 64 KiB, and `notifyExcerptChars` (0–400, 160 by default) decides how much is shown, so a huge message or a message with large attachments is never buffered whole;
+- only a `readOnly` mailbox lock is taken: no `\Seen`, no move, no delete, and cancellation or failure releases the stream, the lock, and the connection;
+- content is published through the notification protocol (`source: mail`, event `new-mail`): the subject is the title, `preview` is "sender · excerpt", `target` holds only folder and uid. No model summarisation, and no mail HTML reaches the renderer;
+- a failed publish is logged once and the watermark still advances, so one UID cannot become a retry storm. Turning the switch off, changing the account, or disposing the plugin closes the session and unregisters the notification source.
+
+Reminders only exist while the app runs: the first probe after startup records the current position, so mail from the closed period is not replayed. Multiple accounts remain future work; the current implementation buckets by the configured account and the UI shows one account at a time.
 
 ## Binary boundary
 
@@ -64,5 +78,6 @@ DSH `0.2.1-rc.2` does not expose `writeBytes`. Attachment download therefore req
 
 - OAuth2 requires a separate authentication adapter; tokens never belong in settings.
 - Multiple accounts require independent Credential Keys/Refs and an explicit account parameter; YAML must not carry passwords.
-- Polling, auto-reply, move, delete, and flag mutation are separate high-risk product boundaries.
+- Background polling is only allowed in this plugin in the shape of new-mail reminders: opt-in, read-only, envelopes plus a bounded excerpt, no model call. Any new background job must keep the same boundary and regressions.
+- Auto-reply, move, delete, and flag mutation remain separate high-risk product boundaries.
 - Background or scheduled sending requires an explicit deployment mode and recipient allowlist. Interactive Full Access cannot silently become background authorization.

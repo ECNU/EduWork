@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-11T13:38:01.736Z",
-  "fileSetSHA256": "8c609b5bcfad5cf7684246bdc128081f758a5f66ab71ba9448292c382e925d2c",
+  "createdAt": "2026-11-11T14:54:18.518Z",
+  "fileSetSHA256": "2116affa2576fccffd66dbf41bd017326349d0bd5042adba211a3e2465f28434",
   "files": [
     {
       "path": ".gitattributes",
@@ -185,19 +185,19 @@
     },
     {
       "path": "config/desktop/eduwork.jsonc",
-      "sha256": "5ed5aca1206429347b54157ff0352903307de89c1f4fdd2bfd1532b69e02cc05"
+      "sha256": "1fc4c57186fd9d13110f0696e7f68071195553b3c5aade45ae964c61a769c410"
     },
     {
       "path": "config/desktop/examples/litellm.jsonc",
-      "sha256": "35c07ce94309fdde3ee51e567b91e3d03af0ee16acd92b9c427271386ad8be8b"
+      "sha256": "8d595a617c0c19da49c7decc7b7f6bc385a4ffca3ea8cf4761710f73690277ed"
     },
     {
       "path": "config/desktop/examples/media.jsonc",
-      "sha256": "475f6a43cc6e8d7684922bf504a0def57b005e7916219f30164fa625303895fa"
+      "sha256": "f2a5297e6668c6ffd62e43541a0c33de781ddff5f10391afd3801257b44232cd"
     },
     {
       "path": "config/desktop/examples/organization.jsonc",
-      "sha256": "a13f93f0c820cab95c7ef2909cc4d0e87ea947cb0643edf2f8fc71a1bc3c9dd0"
+      "sha256": "deb04e56a725c54f38c12696af15ecf6eeb89331bcda50a501409116864c6728"
     },
     {
       "path": "config/desktop/examples/README_EN.md",
@@ -209,7 +209,7 @@
     },
     {
       "path": "config/desktop/examples/updates.jsonc",
-      "sha256": "22e9d56b36f8410fbf74aa60d239eecada3355638f9c6edcc8411244394d3a90"
+      "sha256": "193660c01cf48aaefe83f52e79021af1982b64a28b870ff14972f8d92ff95c46"
     },
     {
       "path": "config/desktop/mac-updates.json",
@@ -385,7 +385,7 @@
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
-      "sha256": "0aff000e84c6b60c40db44ac3eda59043df095ffff1d880d528d3aa28db49ca7"
+      "sha256": "4cdeaefb7b061c8c300202afd55245870df8a5f907493f00676e0b8d0ebe9de5"
     },
     {
       "path": "docs/plugin-catalog.json",
@@ -1673,7 +1673,7 @@
     },
     {
       "path": "dsh-host/configuration-plugin-options.mjs",
-      "sha256": "d8be415740287308c19226da4bcdb4b10aac1babd7b0101f6a594d565eb5f331"
+      "sha256": "1ae5520df6912b453d00f2e27db4deecbd5cb4ab381192f9e2b0c584d68d7845"
     },
     {
       "path": "dsh-host/configuration-reference.mjs",
@@ -5717,11 +5717,11 @@
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.en.md",
-      "sha256": "74a6001050f91e28a4aff9a60d881c1f91be77b3c380d1472c614e0eba9b650a"
+      "sha256": "318d5a3d8c2ea1fc7c299076b81d05a750f1405adf3f4dd40ef4674cb4ebe3ec"
     },
     {
       "path": "packages/dsh-mail/CHANGELOG.md",
-      "sha256": "c2c612fe7495c494909ae567101e4ad9f64885592a74a9c9cc55574f9ec01a42"
+      "sha256": "1118d28e590b29f9bf1522f6e35998c2923d383f07c08965313bdc995ff37399"
     },
     {
       "path": "packages/dsh-mail/CODE_OF_CONDUCT.en.md",
@@ -5745,11 +5745,11 @@
     },
     {
       "path": "packages/dsh-mail/docs/architecture.en.md",
-      "sha256": "3f70106c483afc825965d9ab354249ebd97623b40f9fc0d2247db7ae3145528e"
+      "sha256": "a93cfcb667faea96722b919215d60dcec7ca09350d463acc944e86fd09d2bce7"
     },
     {
       "path": "packages/dsh-mail/docs/architecture.md",
-      "sha256": "2d0da9e4a95335c7a84c82ddbcf2b5a920bd1b3d67eaab84f67e217f199f99af"
+      "sha256": "21c17e4451fb90f349ac87ca1215ce35e611e613cf4cf5b992b67002b0fc1fc8"
     },
     {
       "path": "packages/dsh-mail/docs/compatibility.en.md",
@@ -5814,6 +5814,42 @@
     {
       "path": "packages/dsh-mail/GOVERNANCE.md",
       "sha256": "71c350f20329a83c1a7f2b4b35f31715da9d791c03ab04b5e411fcf46469f289"
+    },
+    {
+      "path": "packages/dsh-mail/lib/bundled-dependencies.json",
+      "sha256": "872a112cdb8c3f2a303f0628c2487bdf698e3b179aac37e773da30728b090124"
+    },
+    {
+      "path": "packages/dsh-mail/lib/client.js",
+      "sha256": "950a27bb7af7af9cfdd9455680eafe9e6c5d6bafc2cac72bdf1715abacf06abe"
+    },
+    {
+      "path": "packages/dsh-mail/lib/client.js.map",
+      "sha256": "afb4b5cf7470c9e2668db96857f376245192dc256e089c02916687eb66dc14bf"
+    },
+    {
+      "path": "packages/dsh-mail/lib/index.js",
+      "sha256": "7b22e62d65a9a4fce987849e68dfdce2c246efa8e85252370e00a20667ef70b9"
+    },
+    {
+      "path": "packages/dsh-mail/lib/index.js.map",
+      "sha256": "50846988c2ed6d4ae3c9ca1b1ca44aa93b408d20f593aa067911d083deee8cf8"
+    },
+    {
+      "path": "packages/dsh-mail/lib/mail-client-C3ULPmDj.js",
+      "sha256": "03613d426ec45768cc351df5a88fa32c6eb6d22ebb8168837ac254f4d463ea05"
+    },
+    {
+      "path": "packages/dsh-mail/lib/mail-client-C3ULPmDj.js.map",
+      "sha256": "56b6142d41f23de990835e2477b563baf652914f3941833b99ad54b495b218ff"
+    },
+    {
+      "path": "packages/dsh-mail/lib/sanitize-Dq2erS2u.js",
+      "sha256": "32f852bc9f9fc27ef4c098bdb7b612f637bc87799f40984a1f121f4510c8491a"
+    },
+    {
+      "path": "packages/dsh-mail/lib/sanitize-Dq2erS2u.js.map",
+      "sha256": "76c97bef9e2618ff306c12d700dcf1b8ba475e2b082aef95d9484b1b6601fa28"
     },
     {
       "path": "packages/dsh-mail/LICENSE",
@@ -5889,7 +5925,7 @@
     },
     {
       "path": "packages/dsh-mail/scripts/fixtures/mail-protocol-regression.mjs",
-      "sha256": "0e9ea6228bf8b5047f88a3b34a6316b4919e3050757d32fa5ee9682dbccfcaa8"
+      "sha256": "cb8b627deaef65cdd321ced415d01af5ccea9e86da6ad105cb6ab0060e189a4a"
     },
     {
       "path": "packages/dsh-mail/scripts/prepare-release.mjs",
@@ -5909,19 +5945,19 @@
     },
     {
       "path": "packages/dsh-mail/src/client/index.tsx",
-      "sha256": "45819b3b22f69d3dbdeba9b28daf8b26559897edd3102c6e09ed55261a0bfcd4"
+      "sha256": "a3eaab8cf7c2dc84ee98092c75c9dd2028d4af70b24345fed0578084a20bf602"
     },
     {
       "path": "packages/dsh-mail/src/client/locale.ts",
-      "sha256": "a113d4a70d514761b3f1cf95c44e77ae22a2afce1d7269b407c96ef78fd8e669"
+      "sha256": "404f5e9afc23fd7c0ea6722d40477f6609c6def2998ee8f0b629dfdf03732bc8"
     },
     {
       "path": "packages/dsh-mail/src/host/config.js",
-      "sha256": "f275a4cf4a19b0dba7533bf7513fb0abcf3d24f67b6e820ca7a6775d888d084e"
+      "sha256": "7917dcb4b15c9343a808c6df5a930e3bfe7314ac50565b5e3763f429e0231154"
     },
     {
       "path": "packages/dsh-mail/src/host/constants.js",
-      "sha256": "70219b04dc1b5bf328b5381cadbb367bc6a29f7f4ab32ed9ccf4caa3fbd2b9f6"
+      "sha256": "91493ed70c7f34b6f28b083a2b5bf782e8cf4d19436e0158d14abfd85574121d"
     },
     {
       "path": "packages/dsh-mail/src/host/handles.js",
@@ -5929,15 +5965,23 @@
     },
     {
       "path": "packages/dsh-mail/src/host/index.js",
-      "sha256": "1dbf472ce9d86c2179716ea60c248861c6b0f8268a423b1f731c0311a5f6e79e"
+      "sha256": "075ed7a1ca04d3be3d6a6f0a387a08f359ff60ecfe09ce01c223693f897e0c1f"
     },
     {
       "path": "packages/dsh-mail/src/host/mail-client.js",
-      "sha256": "12ed0ee24ebb4c0f962e8249c0652e449b976ad59999f208cc79ee08f2c441ac"
+      "sha256": "d93cb082df5f7174144b9cfaa7192fc2b9c99472b51c9fd930f3b9dd8fa40aea"
+    },
+    {
+      "path": "packages/dsh-mail/src/host/notify.js",
+      "sha256": "ee3b0bab6121433c95c968f2f11d6fdd18782248d70c3b4a0a203c60def43b0f"
     },
     {
       "path": "packages/dsh-mail/src/host/permission.js",
       "sha256": "5d50ae2456c78ca020ae0ca880cf417cbb4c13e1e4f08adf1b01aefc712603c2"
+    },
+    {
+      "path": "packages/dsh-mail/src/host/preview.js",
+      "sha256": "fff12954056b3f1f762a0fd2f2567d76c3a279fef76270f86ff3b55a58a9ae84"
     },
     {
       "path": "packages/dsh-mail/src/host/sanitize.js",
@@ -5969,7 +6013,7 @@
     },
     {
       "path": "packages/dsh-mail/test/bundled-mail-regression.test.js",
-      "sha256": "afbc4ded544fc030e05136485fb6ac943e66bd5265f58b901b0f5c823bf327fb"
+      "sha256": "2289791edbba217f46875a52d4123b33556d135f92d93b4845ce19b19801a5df"
     },
     {
       "path": "packages/dsh-mail/test/client-settings.test.js",
@@ -5977,11 +6021,19 @@
     },
     {
       "path": "packages/dsh-mail/test/config.test.js",
-      "sha256": "0919954e0cea00bd523300f452de67563051be7e1df29c8703b9ae8116d690ff"
+      "sha256": "d678d6ea368b624d88c757d3461e9049640e0848b44819f1a6db9426ff4f50e1"
     },
     {
       "path": "packages/dsh-mail/test/handles.test.js",
       "sha256": "4936e6b6b07ee086502133fc875df11b7a3e4a35d2613732963c36a4204f1711"
+    },
+    {
+      "path": "packages/dsh-mail/test/notify.test.js",
+      "sha256": "44ffa170c1783c1b930cb2e690a5bf58573f86dea446742386d6be541b89f4a4"
+    },
+    {
+      "path": "packages/dsh-mail/test/preview.test.js",
+      "sha256": "639ef81ed1fb585991fb87da90d95911e739c47903d03e169c91f31effd14ec1"
     },
     {
       "path": "packages/dsh-mail/test/search-pagination.test.js",
