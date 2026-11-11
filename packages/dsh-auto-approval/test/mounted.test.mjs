@@ -1,6 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { apply, Config } from '../lib/index.js'
@@ -86,6 +88,18 @@ test('the workspace is the sandbox boundary; the current directory follows the s
   assert.equal(await mount({ ...base, baseURL }, { cwd: '/elsewhere' }).escalate('cp a.csv ~/Downloads/', { workdir: 'site' }), 'allowed-once')
   assert.equal(bodies[0].body.state.工作区, '/work')
   assert.equal(bodies[0].body.state.当前目录, '/elsewhere/site')
+  // A workdir through a link is where the shell actually starts, and the script read is the one it runs.
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const dir = await mkdtemp(join(root, 'workdir-'))
+  await mkdir(join(dir, 'work'))
+  await mkdir(join(dir, 'outside/nested'), { recursive: true })
+  await symlink('../outside/nested', join(dir, 'work/link'))
+  await writeFile(join(dir, 'work/task.sh'), 'echo here')
+  await writeFile(join(dir, 'outside/task.sh'), 'echo outside')
+  assert.equal(await mount({ ...base, baseURL }, { cwd: join(dir, 'work') }).escalate('bash task.sh', { workdir: 'link/..' }), 'allowed-once')
+  assert.equal(bodies.at(-1).body.state.当前目录, await realpath(join(dir, 'outside')))
+  assert.deepEqual(bodies.at(-1).body.state.命令要运行的脚本内容, { 'task.sh': 'echo outside' })
 })
 
 test('low scores, other presets, other tools and overlong commands go to the user unchanged', async t => {

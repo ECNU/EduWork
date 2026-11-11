@@ -2,7 +2,7 @@
 // functions over session events and file contents, so they can be tested without a Host.
 import { lstat, open } from 'node:fs/promises'
 import { homedir } from 'node:os'
-import { resolve } from 'node:path'
+import { isAbsolute, resolve, sep } from 'node:path'
 import { executedPart, ruleMatch, split } from './rules.js'
 import { questionsFor } from './questions.js'
 
@@ -57,12 +57,21 @@ export async function scriptOf(command, cwd) {
   if (!cwd) return undefined
   let dir = cwd
   for (const segment of split(executedPart(command))) {
-    const cd = segment.match(/^cd\s+["']?([^"';&|]+?)["']?$/)
-    if (cd) { dir = resolve(dir, home(cd[1])); continue }
+    // `cd` moves logically, as the shell's does by default: `link/..` is the directory holding the link. `cd -` and
+    // options are not plain paths, so the script is left out rather than guessed.
+    const cd = segment.match(/^cd(?:\s+["']?([^"';&|]+?)["']?)?$/)
+    if (cd) {
+      const target = cd[1] ?? '~'
+      if (target.startsWith('-')) return undefined
+      dir = resolve(dir, home(target))
+      continue
+    }
     const [, interpreter, path] = segment.match(RUNS) ?? []
     // A bare name run without an interpreter is looked up on PATH, not in the current directory.
     if (!path || (!interpreter && !/[\\/]/.test(path))) continue
-    const file = resolve(dir, home(path))
+    // The file system resolves the path as the shell will, following links before any `..`.
+    const expanded = home(path)
+    const file = isAbsolute(expanded) ? expanded : `${dir}${sep}${expanded}`
     if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
     const handle = await open(file, 'r')
     try {

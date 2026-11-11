@@ -1,6 +1,7 @@
 import z from '@deepseek-ai/schemastery'
 import { requestDecision, resolveDecisionConfig } from '@eduwork/dsh-decision/core'
-import { resolve } from 'node:path'
+import { realpath } from 'node:fs/promises'
+import { isAbsolute, resolve, sep } from 'node:path'
 import { reviewRequest, scriptOf, sessionFacts, SHELLS, verdict } from './review.js'
 
 export const name = 'auto-approval'
@@ -100,7 +101,11 @@ export function apply(ctx, raw = {}) {
     // can move anywhere.
     const workspace = ctx.sandboxPolicy.resolve({ session }).workspaceRoot
     const base = ctx.workingDirectory.get(session)
-    const cwd = call.arguments.workdir ? resolve(base, call.arguments.workdir) : base
+    // The directory the shell tool starts in: bash appends workdir and leaves `..` to the file system, which follows
+    // links; pwsh resolves it first. Shown as the real directory, or as written when it does not exist.
+    const { workdir } = call.arguments
+    const start = !workdir ? base : isAbsolute(workdir) ? workdir : call.name === 'pwsh' ? resolve(base, workdir) : `${base}${sep}${workdir}`
+    const cwd = await realpath(start).catch(() => start)
     const command = call.arguments.command
     const { state, questions, flagged } = reviewRequest({
       system: `${SYSTEMS[process.platform] ?? process.platform}，shell 为 ${call.name === 'pwsh' ? 'PowerShell' : 'bash'}`,

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { reviewRequest, scriptOf, sessionFacts, THRESHOLDS, verdict } from '../lib/review.js'
@@ -80,6 +80,23 @@ test('scriptOf reads the script a command runs, following cd, and truncates long
   for (const command of ['node -e "run.ps1"', 'node -p big.py', 'python3 -c big.py', 'bash -c tools/sync.sh', 'bash -n tools/sync.sh', 'pwsh -Command run.ps1']) {
     assert.equal(await scriptOf(command, dir), undefined, command)
   }
+})
+
+test('scriptOf follows links as the shell does and leaves out cd forms that are not plain paths', async () => {
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const dir = await mkdtemp(join(root, 'links-'))
+  for (const path of ['work', 'outside/nested', 'previous/-']) await mkdir(join(dir, path), { recursive: true })
+  await symlink('../outside/nested', join(dir, 'work/link'))
+  await writeFile(join(dir, 'work/task.sh'), 'echo here')
+  await writeFile(join(dir, 'outside/task.sh'), 'echo outside')
+  await writeFile(join(dir, 'previous/-/task.sh'), 'echo previous')
+  const work = join(dir, 'work')
+  // A file path's `..` is taken after the link; `cd` moves logically, back to the directory holding the link.
+  assert.deepEqual(await scriptOf('bash link/../task.sh', work), { 'link/../task.sh': 'echo outside' })
+  assert.deepEqual(await scriptOf('cd link/.. && bash task.sh', work), { 'task.sh': 'echo here' })
+  assert.equal(await scriptOf('cd ../previous && cd - && bash task.sh', work), undefined)
+  assert.equal(await scriptOf('cd -P link && bash ../task.sh', work), undefined)
 })
 
 test('verdict: thresholds per kind, malformed answers are failures', () => {
