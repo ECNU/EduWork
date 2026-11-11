@@ -37,15 +37,18 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [], o
   apply(ctx, config)
   const agent = { session: { id: 'session-1', header: { origin }, snapshotEvents: () => events } }
   let calls = 0
-  // The tool pipeline's two steps around a call: the pre-execute policies, then (for an escalation) the approval request.
-  const start = (command, { name = 'bash', callId = `call-${++calls}`, workdir, policy = 'allow' } = {}) =>
-    listeners['tools/pre-execute'][0]({ name, callId, agent, arguments: { command, sandbox_permissions: 'danger-full-access', justification: '写到下载目录', ...(workdir && { workdir }) } }, async () => ({ kind: policy }))
-      .then(() => callId)
-  const ask = (callId, { name = 'bash', fallback = 'rejected', signal } = {}) =>
+  // The tool pipeline around one call: the pre-execute policies, then (for an escalation) the approval request, then
+  // the result.
+  const start = async (command, { name = 'bash', callId = `call-${++calls}`, workdir, policy = 'allow' } = {}) => {
+    const exec = { name, callId, token: Symbol(callId), agent, arguments: { command, sandbox_permissions: 'danger-full-access', justification: '写到下载目录', ...(workdir && { workdir }) } }
+    await listeners['tools/pre-execute'][0](exec, async () => ({ kind: policy }))
+    return exec
+  }
+  const ask = ({ name, callId }, { fallback = 'rejected', signal } = {}) =>
     listeners['approval/request'][0]({ agent, toolName: name, callId, reason: 'escalate sandbox to danger-full-access: 写到下载目录', signal }, async () => fallback)
-  const finish = (callId, name, result) => listeners['tools/result'][0]({ name, callId, agent }, result)
+  const finish = (exec, result = { isError: false, value: 'done' }) => listeners['tools/result'][0](exec, result)
   const escalate = async (command, options = {}) => ask(await start(command, options), options)
-  return { listeners, logs, start, ask, finish, escalate }
+  return { listeners, logs, agent, start, ask, finish, escalate }
 }
 const base = { enabled: true, model: 'fixture-model', authMode: 'none' }
 
@@ -77,38 +80,57 @@ test('a plain request asks two questions and is approved on their mean; a rule h
   assert.match(logs.at(-1)[1], /approved/)
 })
 
-test('low scores, other presets and other tools go to the user unchanged', async t => {
+test('low scores, other presets, other tools and overlong commands go to the user unchanged', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.65, 0.2))
   assert.equal(await mount({ ...base, baseURL }).escalate('git push origin main', { fallback: 'rejected' }), 'rejected')
   assert.equal(bodies.length, 1)
   assert.equal(await mount({ ...base, baseURL }, { preset: 'workspace-write' }).escalate('ls ~/Downloads', { fallback: 'allowed-once' }), 'allowed-once')
   assert.equal(await mount({ ...base, baseURL }).escalate('ls ~/Downloads', { name: 'write', fallback: 'cancelled' }), 'cancelled')
+  assert.equal(await mount({ ...base, baseURL }).escalate(`printf '%s' '${'x'.repeat(16000)}' > ~/Downloads/x.txt`), 'rejected')
   assert.equal(bodies.length, 1)
 })
 
-test('a call the other policies ask about, a subagent call and two calls in flight under one ID go to the user', async t => {
+test('a call the other policies ask about, a subagent call and calls in flight under one ID go to the user', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   const mounted = mount({ ...base, baseURL })
   assert.equal(await mounted.escalate('git push origin main', { policy: 'ask' }), 'rejected')
   assert.equal(await mount({ ...base, baseURL }, { origin: 'subagent' }).escalate('git push origin main'), 'rejected')
-  const first = await mounted.start('cp a.csv ~/Downloads/', { callId: 'call_0' })
-  await mounted.start('git push origin main', { callId: 'call_0' })
-  assert.equal(await mounted.ask(first), 'rejected')
+  // A call another policy asks about is not answered with the command of an earlier call under its ID.
+  const a = await mounted.start('cp a.csv ~/Downloads/', { callId: 'call_0' })
+  const b = await mounted.start('git push origin main', { callId: 'call_0', policy: 'ask' })
+  assert.equal(await mounted.ask(b), 'rejected')
+  // Neither is reviewed until all calls under the ID have finished, including one that starts in between.
+  mounted.finish(b)
+  assert.equal(await mounted.ask(a), 'rejected')
+  const c = await mounted.start('cp c.csv ~/Downloads/', { callId: 'call_0' })
+  assert.equal(await mounted.ask(c), 'rejected')
   assert.equal(bodies.length, 0)
-  // A finished call frees its ID for a later step.
-  mounted.finish('call_0', 'bash', { isError: false, value: 'done' })
-  await mounted.start('cp b.csv ~/Downloads/', { callId: 'call_0' })
-  assert.equal(await mounted.ask('call_0'), 'allowed-once')
-  assert.equal(bodies.at(-1).body.state.待执行的命令, 'cp b.csv ~/Downloads/')
+  mounted.finish(a)
+  mounted.finish(c)
+  const d = await mounted.start('cp d.csv ~/Downloads/', { callId: 'call_0' })
+  assert.equal(await mounted.ask(d), 'allowed-once')
+  assert.equal(bodies.at(-1).body.state.待执行的命令, 'cp d.csv ~/Downloads/')
+  // A call under the ID that starts during the review leaves the decision to the user as well.
+  let other
+  const during = await service(t, async body => {
+    other.started ??= other.start('ls', { callId: 'call_1' })
+    await other.started
+    return answer(body, 0.9, 0.1)
+  })
+  other = mount({ ...base, baseURL: during.baseURL })
+  assert.equal(await other.ask(await other.start('cp e.csv ~/Downloads/', { callId: 'call_1' })), 'rejected')
+  assert.equal(during.bodies.length, 2)
+  assert.match(other.logs.at(-1)[1], /asked the user/)
 })
 
 test('files the session created come from successful file tool results', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   const mounted = mount({ ...base, baseURL })
-  mounted.finish('w1', 'write', { isError: false, value: { path: '/work/new.md', operation: 'create', before: null, after: 'x' } })
-  mounted.finish('w2', 'write', { isError: false, value: { path: '/work/old.md', operation: 'update', before: 'a', after: 'b' } })
-  mounted.finish('w3', 'write', { isError: true })
-  mounted.finish('p1', 'apply_patch', { isError: false, value: { operations: [
+  const tool = (name, result) => mounted.finish({ name, callId: name, token: Symbol(name), agent: mounted.agent }, result)
+  tool('write', { isError: false, value: { path: '/work/new.md', operation: 'create', before: null, after: 'x' } })
+  tool('write', { isError: false, value: { path: '/work/old.md', operation: 'update', before: 'a', after: 'b' } })
+  tool('write', { isError: true })
+  tool('apply_patch', { isError: false, value: { operations: [
     { kind: 'add', path: 'gen/a.js', status: 'completed', changes: [{ path: '/work/gen/a.js', before: null, after: 'x' }] },
     { kind: 'add', path: 'kept.js', status: 'completed', changes: [{ path: '/work/kept.js', before: 'y', after: 'x' }] },
     { kind: 'move', path: 'b.js', destination: 'c.js', status: 'completed', changes: [{ path: '/work/b.js', before: 'z', after: null }, { path: '/work/c.js', before: null, after: 'z' }] },

@@ -94,8 +94,9 @@ function upload(text) {
 }
 
 // Running a script named for deploying, releasing or publishing. When the script's content is attached, the other
-// rules see what it does; the name still counts for scripts that cannot be read.
-const RELEASE_SCRIPT = /^(?:\w+=\S*\s+)*(?:(?:ba|z|da)?sh\s+|source\s+|\.\s+|pwsh\s+(?:-File\s+)?|node\s+|python3?\s+(?:-I\s+)?)?["']?[^\s;&|"']*?[\w.-]*(?:deploy|release|publish)[\w.-]*\.(?:sh|ps1|py|mjs|js|ts)\b/i
+// rules see what it does; the name still counts for scripts that cannot be read. The name after the keyword stops at
+// the next keyword, where the match can start instead, so the time stays linear in the length of the segment.
+const RELEASE_SCRIPT = /^(?:\w+=\S*\s+)*(?:(?:ba|z|da)?sh\s+|source\s+|\.\s+|pwsh\s+(?:-File\s+)?|node\s+|python3?\s+(?:-I\s+)?)?["']?[^\s;&|"']*?(?:deploy|release|publish)(?:(?!deploy|release|publish)[\w.-])*\.(?:sh|ps1|py|mjs|js|ts)\b/i
 function releaseScript(text) {
   return split(text).find(seg => RELEASE_SCRIPT.test(seg) && !/^(?:ba|z|da)?sh\s+-n\b/.test(seg))
 }
@@ -119,12 +120,12 @@ const NOT_RUN = /^(?:chmod|shellcheck|cat|head|tail|wc|ls|stat|file|diff|grep|rg
 // inline Python, so PR bodies and docs that mention push or ssh are not commands. A heredoc piped on to another program,
 // or written to a non-text file that the rest of the command then runs, still counts.
 export function executedPart(cmd) {
-  const lines = cmd.split('\n'), out = []
+  const lines = cmd.split('\n'), trimmed = lines.map(line => line.trim()), out = []
   for (let i = 0; i < lines.length; i++) {
     out.push(lines[i])
     const m = lines[i].match(/<<-?\s*(['"]?)(\w+)\1/)
     if (!m) continue
-    const end = lines.findIndex((l, j) => j > i && l.trim() === m[2])
+    const end = trimmed.indexOf(m[2], i + 1)
     if (end < 0) continue
     const before = lines[i].slice(0, m.index), after = lines[i].slice(m.index + m[0].length)
     const body = lines.slice(i + 1, end).join('\n')

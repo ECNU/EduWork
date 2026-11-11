@@ -42,8 +42,9 @@ export function sessionFacts(events, callId) {
   return { requests: requests.slice(-3), assistant: assistant.slice(-1000), history: history.slice(-6) }
 }
 
-// A segment that runs a script file directly or through an interpreter; `cd` segments before it move the base.
-const RUNS = /^(?:\w+=\S*\s+)*(?:(?:python3?|node|bash|sh|zsh|pwsh)(?:\s+-[A-Za-z]+)*\s+)?["']?([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))["']?(?:\s|$)/
+// A segment that runs a script file, directly or through an interpreter with options that neither take inline code
+// (`node -e`, `python3 -c`, `bash -c`) nor only check syntax (`bash -n`); `cd` segments before it move the base.
+const RUNS = /^(?:\w+=\S*\s+)*(?:(?:python3?(?:\s+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:\s+-[eluvx]+)*|pwsh(?:\s+-(?:NoProfile|NonInteractive|NoLogo|ExecutionPolicy\s+\w+))*(?:\s+-File)?)\s+)?["']?([^\s;&|<>"']+\.(?:py|mjs|js|sh|ps1))["']?(?:\s|$)/
 const home = path => path.replace(/^(?:~|\$HOME|\$\{HOME\})(?=\/|$)/, homedir())
 
 /**

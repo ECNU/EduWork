@@ -17,6 +17,9 @@ export const Config = z.object({
 })
 
 const PAUSE_AFTER = 3, PAUSE_MS = 5 * 60_000
+// Longer than any command the review was evaluated on (the longest was 13010 characters); such a command is the user's
+// to read, which also bounds the time the rules take.
+const COMMAND_CHARS = 16000
 const SYSTEMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }
 
 export function apply(ctx, raw = {}) {
@@ -30,29 +33,35 @@ export function apply(ctx, raw = {}) {
   })
   const preset = raw.preset ?? 'auto-approval'
   const log = ctx.logger('auto-approval')
-  // Shell calls in flight by session and call ID: escalation requests carry only the call ID, the command comes from
-  // the call. Two calls in flight under one ID are ambiguous and left to the user.
-  const shellCalls = new WeakMap()
+  // Shell calls in flight, by session and call ID. Escalation requests carry only the call ID, so the command comes
+  // from the call, and a request is reviewed only while one call with that ID is in flight.
+  const inFlight = new WeakMap()
   // Files the session's file tools created, from their results: a write that made a new file, a patch that added one.
   const created = new WeakMap()
   const failures = new Map()
 
   ctx.on('tools/pre-execute', async (exec, next) => {
+    const session = exec.agent?.session
+    // A subagent's messages come from the delegating agent, not the user, so its calls are never reviewed.
+    if (!SHELLS.has(exec.name) || !session || session.header.origin === 'subagent') return next()
+    const calls = inFlight.get(session) ?? new Map()
+    inFlight.set(session, calls)
+    // Two calls in flight under one ID cannot be told apart: neither is reviewed until both have finished.
+    const entry = calls.get(exec.callId) ?? { tokens: new Set(), ambiguous: false }
+    entry.ambiguous ||= entry.tokens.size > 0
+    entry.tokens.add(exec.token)
+    calls.set(exec.callId, entry)
     const decision = await next()
-    // Only calls the other policies let through: a call they ask the user about is the user's to answer. A subagent's
-    // messages come from the delegating agent, not the user, so its calls are never reviewed.
-    if (decision.kind === 'allow' && SHELLS.has(exec.name) && exec.arguments.sandbox_permissions && exec.agent
-      && exec.agent.session.header.origin !== 'subagent') {
-      const calls = shellCalls.get(exec.agent.session) ?? new Map()
-      shellCalls.set(exec.agent.session, calls.set(exec.callId, calls.has(exec.callId) ? null : { name: exec.name, arguments: exec.arguments }))
-    }
+    // A call the other policies ask the user about is the user's to answer.
+    if (decision.kind === 'allow' && exec.arguments.sandbox_permissions) entry.call = { name: exec.name, arguments: exec.arguments }
     return decision
   }, { prepend: true })
 
   ctx.on('tools/result', (exec, result) => {
     const session = exec.agent?.session
     if (!session) return
-    shellCalls.get(session)?.delete(exec.callId)
+    const entry = inFlight.get(session)?.get(exec.callId)
+    if (entry?.tokens.delete(exec.token) && !entry.tokens.size) inFlight.get(session).delete(exec.callId)
     if (result.isError) return
     const paths = exec.name === 'write' ? (result.value.operation === 'create' ? [result.value.path] : [])
       : exec.name === 'apply_patch' ? result.value.operations.filter(op => op.status === 'completed' && op.kind === 'add')
@@ -103,8 +112,10 @@ export function apply(ctx, raw = {}) {
 
   // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged.
   ctx.on('approval/request', async (req, next) => {
-    const call = shellCalls.get(req.agent?.session)?.get(req.callId)
+    const entry = inFlight.get(req.agent?.session)?.get(req.callId)
+    const call = entry?.ambiguous ? undefined : entry?.call
     if (!call || call.name !== req.toolName || ctx.permissionPresets.current(req.agent.session) !== preset) return next()
+    if (call.arguments.command.length > COMMAND_CHARS) return next()
     const id = req.agent.session.id
     if (failures.get(id)?.until > Date.now()) return next()
     const started = performance.now()
@@ -113,8 +124,10 @@ export function apply(ctx, raw = {}) {
       // The race also ends a review that waits on a stalled Host service (credentials, sign-in, files).
       const result = await Promise.race([review(req, call, signal), aborted(signal)])
       failures.delete(id)
-      log.info(`${call.name} ${result.approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
-      if (result.approved) return 'allowed-once'
+      // Another call with this ID may have started during the review.
+      const approved = result.approved && !entry.ambiguous
+      log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
+      if (approved) return 'allowed-once'
     } catch (error) {
       if (req.signal?.aborted) return next()
       const count = (failures.get(id)?.count ?? 0) + 1

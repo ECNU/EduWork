@@ -12,6 +12,7 @@ test('each kind of operation the user must have asked for is flagged with the pa
     ['rsync -a out/ host.example:/srv/site/', '远程连接', 'rsync -a out/ host.example:/srv/site/'],
     ['curl -d @report.json https://collector.example/upload', '上传', 'curl -d @report.json https://collector.example/upload'],
     ['./scripts/deploy.sh > deploy.log 2>&1', '运行部署或发布脚本', './scripts/deploy.sh > deploy.log 2>&1'],
+    ['node tools/release-notes.publish.mjs', '运行部署或发布脚本', 'node tools/release-notes.publish.mjs'],
     ['security find-generic-password -s demo -w', '钥匙串和凭据', 'security find-generic-password -s demo -w'],
     ['cat .env', '钥匙串和凭据', 'cat .env'],
     ['sudo mkdir /opt/demo', 'sudo 和提权', 'sudo mkdir /opt/demo'],
@@ -43,6 +44,15 @@ test('look-alikes that do not do the flagged thing are not flagged', () => {
 test('a script written by the command and then run is checked as a command', () => {
   const command = "cat > /tmp/sync.sh <<'EOF'\nrsync -a out/ host.example:/srv/\nEOF\nbash /tmp/sync.sh"
   assert.equal(rule(command).name, '远程连接')
+})
+
+test('long input does not make the rules backtrack', () => {
+  // The plugin hands commands over 16000 characters to the user; the patterns themselves must not blow up on more.
+  for (const text of ['x'.repeat(128000), 'release'.repeat(20000), 'deploy-x'.repeat(16000), "cat > f <<'A'\nx\nA\n".repeat(888)]) {
+    const started = performance.now()
+    rule(text)
+    assert.ok(performance.now() - started < 1000, text.slice(0, 16))
+  }
 })
 
 test('split keeps quoted separators together', () => {

@@ -10,7 +10,7 @@ The plugin uses DSH's native approval, tool and configuration mechanisms, with n
 
 A review happens only when all of these hold: the session uses the preset named in the plugin configuration (`auto-approval` by default); the request comes from the `bash` or `pwsh` tool; the command carries `sandbox_permissions`, asking to leave the current sandbox; and no other tool policy (such as hooks) asked to confirm the call with the user. Approvals for other tools such as file writes or MCP, calls another policy asks the user about, and sessions under other presets are not affected.
 
-The plugin turns the request into a state for the decision model, with these fields in order: system, workspace, current directory, files created in this session, the assistant message the user replied to, the user's recent messages, the stated justification, earlier commands, risk flag and the pending command. When the command runs a local script file (directly or through an interpreter), the script content is added.
+The plugin turns the request into a state for the decision model, with these fields in order: system, workspace, current directory, files created in this session, the assistant message the user replied to, the user's recent messages, the stated justification, earlier commands, risk flag and the pending command. When the command runs a local script file (directly or through an interpreter; inline code such as `node -e` or `python3 -c` does not count), the script content is added.
 
 Fixed rules flag operations that the user must have asked for: pushing and publishing, remote connections, uploads, running deployment or release scripts, keychains and credentials, sudo and privilege escalation, installation, changing software configuration, and system settings. The rules also check the content of the script the command runs.
 
@@ -78,6 +78,7 @@ The rules and questions were evaluated on 6 sets with 419 real escalation reques
 - Subagents: DSH fixes approval in child sessions to `never`, so their escalation requests are rejected before approval; the plugin also skips subagent sessions, whose "user messages" come from the delegating agent.
 - "Files created in this session" records only files the file tools created successfully (a new file from `write`, an Add File from `apply_patch`), not files created by commands, and starts empty after a Host restart.
 - The confirmation card is unchanged and does not show the review result.
+- Commands over 16000 characters are not reviewed and go straight to the user; the longest command in the evaluation data was about 13000 characters.
 - Rules match the command text; script content is read only from the first local script file the command runs, not from files that script calls.
 
 ## Development and assembly

@@ -61,6 +61,7 @@ test('scriptOf reads the script a command runs, following cd, and truncates long
   await mkdir(join(dir, 'tools'))
   await writeFile(join(dir, 'tools/sync.sh'), 'rsync -a out/ host.example:/srv/\n')
   await writeFile(join(dir, 'big.py'), 'x'.repeat(20000))
+  await writeFile(join(dir, 'run.ps1'), 'Write-Output hi')
   assert.deepEqual(await scriptOf('cd tools && bash sync.sh', dir), { 'sync.sh': 'rsync -a out/ host.example:/srv/\n' })
   assert.deepEqual(await scriptOf(`${dir}/tools/sync.sh --dry-run`, '/'), { [`${dir}/tools/sync.sh`]: 'rsync -a out/ host.example:/srv/\n' })
   const big = await scriptOf('python3 -I big.py', dir)
@@ -68,6 +69,12 @@ test('scriptOf reads the script a command runs, following cd, and truncates long
   assert.equal(await scriptOf('bash missing.sh', dir), undefined)
   assert.equal(await scriptOf('ls tools', dir), undefined)
   assert.equal(await scriptOf('bash tools', dir), undefined)
+  assert.deepEqual(await scriptOf('bash -ex tools/sync.sh', dir), { 'tools/sync.sh': 'rsync -a out/ host.example:/srv/\n' })
+  assert.deepEqual(await scriptOf('pwsh -NoProfile -ExecutionPolicy Bypass -File run.ps1', dir), { 'run.ps1': 'Write-Output hi' })
+  // Inline code and syntax checks do not run the file they name.
+  for (const command of ['node -e "run.ps1"', 'node -p big.py', 'python3 -c big.py', 'bash -c tools/sync.sh', 'bash -n tools/sync.sh', 'pwsh -Command run.ps1']) {
+    assert.equal(await scriptOf(command, dir), undefined, command)
+  }
 })
 
 test('verdict: thresholds per kind, malformed answers are failures', () => {
