@@ -80,6 +80,39 @@ test('signed configuration delivers child defaults independently and preserves l
   assert.equal(loadUserConfig(f.configPath).features.maxActiveSubagents,5)
   assert.ok(manager.snapshot().configurationConflicts.includes('features.maxActiveSubagents'))
 })
+
+test('a failed startup rolls a prepared content trial back to the previous configuration', async t => {
+  const f=await fixture(t)
+  f.release(1,{configuration:1})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open()
+  const prepared=await manager.prepare()
+  assert.equal(prepared.configurationRevision,1)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true,'the prepared trial is visible before Host startup')
+  const trial=manager.state.trial
+  assert.ok(trial,'the content journal records the trial')
+  assert.equal(await manager.rollback(Error('Synthetic startup failure')),true)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,false,'rollback restores the previous configuration')
+  const journal=JSON.parse(await readFile(manager.statePath,'utf8'))
+  assert.equal(journal.trial,null)
+  assert.equal(journal.pending,null)
+  assert.deepEqual(journal.rejected,[trial])
+  assert.equal(journal.active.configuration,undefined)
+})
+
+test('a ready content trial is already committed when a later startup failure is reported', async t => {
+  const f=await fixture(t)
+  f.release(1,{configuration:1})
+  let manager=await f.open();await manager.check();await manager.download()
+  manager=await f.open()
+  await manager.prepare()
+  await manager.ready()
+  assert.equal(manager.state.trial,null,'ready commits the trial before advertising success')
+  assert.equal(await manager.rollback(Error('Synthetic renderer failure during desktop ready')),false)
+  assert.equal(loadUserConfig(f.configPath).features.visionFallback,true)
+  const journal=JSON.parse(await readFile(manager.statePath,'utf8'))
+  assert.equal(journal.active.configuration,manager.selected.configuration)
+})
 async function moveFixture(f) {
   const destination=join(f.directory,'Moved app with spaces')
   // Both paths are children of this test's own temporary directory.

@@ -61,8 +61,13 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
   let session = null
   let timer = null
   let stopped = true
-  let polling = false
+  let connecting = null
+  let activePoll = null
+  let lifetime = new AbortController()
   let reported = ''
+
+  const current = signal => !stopped && signal === lifetime.signal && !signal.aborted
+  const enabled = settings => settings.notifyEnabled === true && settings.readEnabled === true
 
   const report = (level, message) => {
     if (reported === message) return
@@ -100,16 +105,40 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
     if (current) await mail.closeSession(current)
   }
 
-  async function sessionFor(settings) {
-    if (session) return session
-    const password = await getPassword()
-    session = await mail.openSession(settings, password)
-    return session
+  async function resetConnection() {
+    const pending = connecting
+    const connected = session
+    lifetime.abort()
+    lifetime = new AbortController()
+    connecting = null
+    session = null
+    // Detach before waiting: a late connection belongs to the cancelled lifetime
+    // and must close itself, without touching a replacement account's session.
+    await Promise.all([pending?.catch(() => {}), connected && mail.closeSession(connected)])
   }
 
-  async function pollOnce() {
+  async function sessionFor(settings, signal) {
+    if (session) return session
+    if (connecting) return connecting
+    const pending = (async () => {
+      const password = await getPassword()
+      if (!current(signal)) return null
+      const connected = await mail.openSession(settings, password, signal)
+      if (!current(signal)) {
+        await mail.closeSession(connected)
+        return null
+      }
+      session = connected
+      return connected
+    })()
+    connecting = pending
+    try { return await pending }
+    finally { if (connecting === pending) connecting = null }
+  }
+
+  async function runPoll(signal) {
     const settings = getSettings()
-    if (settings.notifyEnabled !== true || settings.readEnabled !== true) {
+    if (!enabled(settings)) {
       // Off means off: release the connection and the registration here rather than
       // leaving a mailbox open until the timer happens to stop.
       await finish('')
@@ -121,11 +150,19 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
     }
     const scope = accountScope(settings)
     const folder = String(settings.inboxFolder ?? '').trim() || 'INBOX'
+    if (source && source.scope !== scope) {
+      await closeSession()
+      if (!current(signal)) return 'cancelled'
+    }
     const handle = ensureSource(scope)
-    let probe
+    let probe, client
     try {
-      probe = await mail.probeFolder(await sessionFor(settings), folder)
+      client = await sessionFor(settings, signal)
+      if (!current(signal)) return 'cancelled'
+      probe = await mail.probeFolder(client, folder)
+      if (!current(signal)) return 'cancelled'
     } catch (error) {
+      if (!current(signal)) return 'cancelled'
       await closeSession()
       report('warn', `Mail reminder probe failed: ${error instanceof Error ? error.message : String(error)}`)
       return 'unreachable'
@@ -142,8 +179,10 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
     if (probe.uidNext <= mark.uidNext) return 'idle'
     let arrivals
     try {
-      arrivals = await mail.fetchArrivals(session, folder, { afterUid: mark.uidNext - 1, limit: MAX_PER_POLL })
+      arrivals = await mail.fetchArrivals(client, folder, { afterUid: mark.uidNext - 1, limit: MAX_PER_POLL })
+      if (!current(signal)) return 'cancelled'
     } catch (error) {
+      if (!current(signal)) return 'cancelled'
       await closeSession()
       report('warn', `Mail reminder fetch failed: ${error instanceof Error ? error.message : String(error)}`)
       return 'unreachable'
@@ -152,10 +191,12 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
     for (const message of arrivals.messages) {
       if (message.uid < mark.uidNext) continue
       try {
-        const excerpt = await mail.readExcerpt(session, folder, message.uid, {
+        const excerpt = await mail.readExcerpt(client, folder, message.uid, {
           maxBytes: PREVIEW_BYTES,
           maxChars: settings.notifyExcerptChars ?? PREVIEW_CHARS,
+          signal,
         })
+        if (!current(signal)) return 'cancelled'
         const content = reminderContent(message, excerpt.text)
         await handle.publish({
           id: `${probe.uidValidity}:${message.uid}`,
@@ -166,6 +207,7 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
           target: { folder, uid: message.uid },
         })
       } catch (error) {
+        if (!current(signal)) return 'cancelled'
         // A body that cannot be read must not hide the mail: fall back to the header
         // fields, and never replay the message on the next poll.
         try {
@@ -179,13 +221,27 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
             target: { folder, uid: message.uid },
           })
         } catch (publishError) {
+          if (!current(signal)) return 'cancelled'
           report('warn', `Mail reminder could not be published: ${publishError instanceof Error ? publishError.message : String(publishError)}`)
         }
       }
+      if (!current(signal)) return 'cancelled'
       highest = Math.max(highest, message.uid)
     }
     marks.set(key, { uidValidity: probe.uidValidity, uidNext: highest + 1 })
     return 'published'
+  }
+
+  function pollOnce() {
+    if (stopped) return Promise.resolve('stopped')
+    const signal = lifetime.signal
+    if (activePoll?.signal === signal) return activePoll.promise
+    const operation = { signal, promise: null }
+    operation.promise = runPoll(signal).finally(() => {
+      if (activePoll === operation) activePoll = null
+    })
+    activePoll = operation
+    return operation.promise
   }
 
   function intervalMs(settings) {
@@ -196,31 +252,26 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
   async function tick() {
     timer = null
     if (stopped) return
+    const signal = lifetime.signal
     let settings
     try { settings = getSettings() } catch (error) {
       report('warn', `Mail reminder settings are invalid: ${error instanceof Error ? error.message : String(error)}`)
       schedule(DISABLED_RECHECK_MS)
       return
     }
-    if (settings.notifyEnabled !== true || settings.readEnabled !== true) {
-      await finish('')
-      schedule(DISABLED_RECHECK_MS)
+    if (!enabled(settings)) {
+      const finishing = finish('')
+      const resetSignal = lifetime.signal
+      await finishing
+      if (current(resetSignal)) schedule(DISABLED_RECHECK_MS)
       return
     }
-    if (polling) return schedule(intervalMs(settings))
-    polling = true
     try {
-      const state = await pollOnce()
-      if (state === 'unreachable') {
-        schedule(intervalMs(settings))
-        return
-      }
+      await pollOnce()
     } catch (error) {
-      report('warn', `Mail reminder poll failed: ${error instanceof Error ? error.message : String(error)}`)
-    } finally {
-      polling = false
+      if (current(signal)) report('warn', `Mail reminder poll failed: ${error instanceof Error ? error.message : String(error)}`)
     }
-    schedule(intervalMs(settings))
+    if (current(signal)) schedule(intervalMs(settings))
   }
 
   function schedule(delay) {
@@ -231,10 +282,10 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
 
   /** Disabling polling releases the connection and the source registration. */
   async function finish(reason) {
-    await closeSession()
     source?.handle.dispose()
     source = null
     marks.clear()
+    await resetConnection()
     if (reason !== '') report('info', reason)
   }
 
@@ -252,17 +303,13 @@ export function createMailReminders({ getSettings, getPassword, mail, register, 
     },
     /** Settings changed: drop the session when the account or the interval changed. */
     async refresh() {
-      let settings
-      try { settings = getSettings() } catch { return }
-      if (settings.notifyEnabled !== true || settings.readEnabled !== true) {
-        await finish('')
-        return
-      }
-      if (source !== null && source.scope !== accountScope(settings)) await finish('')
-      if (session !== null) await closeSession()
-      if (stopped) return
       if (timer !== null) { timers.clearTimeout(timer); timer = null }
-      schedule(3_000)
+      let settings
+      try { settings = getSettings() } catch { await finish(''); return }
+      const resetting = !enabled(settings) || (source !== null && source.scope !== accountScope(settings)) ? finish('') : resetConnection()
+      const signal = lifetime.signal
+      await resetting
+      if (current(signal)) schedule(enabled(settings) ? 3_000 : DISABLED_RECHECK_MS)
     },
     pollOnce,
     get state() {

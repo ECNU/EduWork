@@ -411,14 +411,24 @@ const MAX_ARRIVALS = 5
  * connection per call, but polling every couple of minutes should not log in again
  * and again. Nothing here stores flags, so mail keeps its unread state.
  */
-export async function openSession(settings, password) {
+export async function openSession(settings, password, signal) {
   const client = createImap(settings, password)
+  const abort = () => { try { client.close() } catch {} }
+  // A persistent session can fail between polls or emit a late login error after
+  // cancellation. Close it without an unhandled EventEmitter error; pending IMAP
+  // commands still reject and the poller reconnects after the failed probe.
+  client.on('error', abort)
+  signal?.addEventListener('abort', abort, { once: true })
   try {
+    signal?.throwIfAborted()
     await client.connect()
+    signal?.throwIfAborted()
     return client
   } catch (error) {
     try { client.close() } catch { /* already torn down */ }
     throw error
+  } finally {
+    signal?.removeEventListener('abort', abort)
   }
 }
 

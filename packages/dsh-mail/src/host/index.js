@@ -59,11 +59,10 @@ export function apply(ctx, config = {}) {
         warn: message => ctx.logger?.warn?.(`Mail assistant: ${message}`),
       },
     })
-    // Reminders are opt-in, so nothing is scheduled until the switch is on; a poll
-    // that finds it off releases the connection and checks again later.
+    // Disabled reminders only recheck local settings; they never open a mailbox.
     reminders.start()
-    ctx.on('loader/volatile-update', () => { void reminders.refresh() })
-    reminderCtx.effect(() => () => { void reminders.stop() })
+    reminderCtx.on('loader/volatile-update', () => { void reminders.refresh() })
+    reminderCtx.effect(() => () => reminders.stop())
   })
 
   ctx.inject(['systemPrompt'], (promptCtx) => {

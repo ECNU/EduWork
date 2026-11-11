@@ -51,8 +51,9 @@ function harness({ mail: mailOverrides = {}, publish, ...overrides } = {}) {
       }
     },
     log: { info: message => logs.push(message), warn: message => logs.push(message) },
-    timers: { setTimeout: () => ({ unref() {} }), clearTimeout: () => {} },
+    timers: overrides.timers ?? { setTimeout: () => ({ unref() {} }), clearTimeout: () => {} },
   })
+  reminders.start()
   return {
     reminders, published, disposed, sessions, logs, scopes, arrivals,
     setProbe: (validity, next) => { uidValidity = validity; uidNext = next },
@@ -63,7 +64,7 @@ test('the first probe only records the position, so a restart does not replay th
   const test1 = harness()
   assert.equal(await test1.reminders.pollOnce(), 'baseline')
   assert.equal(test1.published[0].length, 0)
-  test1.arrivals.push({ uid: 11, subject: '新邮件', from: [{ address: 'jnzhu@admin.ecnu.edu.cn' }] })
+  test1.arrivals.push({ uid: 11, subject: '新邮件', from: [{ address: 'sender@example.edu' }] })
   test1.setProbe('7', 12)
   assert.equal(await test1.reminders.pollOnce(), 'published')
   assert.equal(test1.published[0].length, 1)
@@ -72,7 +73,7 @@ test('the first probe only records the position, so a restart does not replay th
 test('a new message becomes a reminder with sender, subject and a bounded excerpt', async () => {
   const test1 = harness()
   await test1.reminders.pollOnce()
-  test1.arrivals.push({ uid: 10, subject: '关于 2026 年秋季学期课程安排调整的重要通知', from: [{ name: '教务', address: 'jnzhu@admin.ecnu.edu.cn' }] })
+  test1.arrivals.push({ uid: 10, subject: '关于 2026 年秋季学期课程安排调整的重要通知', from: [{ name: '教务', address: 'sender@example.edu' }] })
   test1.setProbe('7', 11)
   assert.equal(await test1.reminders.pollOnce(), 'published')
   const [notice] = test1.published[0]
@@ -92,11 +93,11 @@ test('the notification source is registered once per account and disposed on cha
   const test1 = harness({ getSettings: () => current })
   await test1.reminders.pollOnce()
   assert.deepEqual(test1.scopes, [accountScope(current)])
-  current = settings({ imapHost: 'mail.other.edu', username: 'other@other.edu' })
+  current = settings({ imapHost: 'mail.other.edu', username: 'other@example.org' })
   await test1.reminders.pollOnce()
   assert.deepEqual(test1.disposed, [accountScope(settings())])
   assert.deepEqual(test1.scopes, [accountScope(settings()), accountScope(current)])
-  assert.deepEqual(test1.scopes[1], 'mail.other.edu:other@other.edu')
+  assert.deepEqual(test1.scopes[1], 'mail.other.edu:other@example.org')
 })
 
 test('an account switch keeps its own watermark instead of inheriting the old one', async () => {
@@ -108,7 +109,7 @@ test('an account switch keeps its own watermark instead of inheriting the old on
   await test1.reminders.pollOnce()
   assert.equal(test1.published[0].length, 1)
   // The new account starts at its own position: no backlog, no reuse of account A's marks.
-  current = settings({ imapHost: 'mail.other.edu', username: 'other@other.edu' })
+  current = settings({ imapHost: 'mail.other.edu', username: 'other@example.org' })
   assert.equal(await test1.reminders.pollOnce(), 'baseline')
   assert.equal(test1.published[1].length, 0)
 })
@@ -192,4 +193,139 @@ test('reminder text stays inside the protocol limits', () => {
   assert.ok([...content.title].length <= 120)
   assert.ok([...content.preview].length <= 400)
   assert.equal(reminderContent({ subject: '', from: [] }, '').title, '（无主题）')
+})
+
+function deferred() {
+  let resolve, reject
+  const promise = new Promise((yes, no) => { resolve = yes; reject = no })
+  return { promise, resolve, reject }
+}
+const settle = () => new Promise(resolve => setImmediate(resolve))
+
+test('disabled reminders only check local settings until the user enables them', async () => {
+  let current = settings({ notifyEnabled: false }), scheduled = []
+  const fixture = harness({ getSettings: () => current, timers: {
+    setTimeout: callback => { scheduled.push(callback); return { unref() {} } }, clearTimeout() {},
+  } })
+  await scheduled.shift()()
+  await settle()
+  assert.equal(fixture.sessions.length, 0)
+  current = settings()
+  await scheduled.shift()()
+  await settle()
+  assert.equal(fixture.sessions.length, 1)
+  await fixture.reminders.stop()
+})
+
+for (const action of ['stop', 'disable', 'disable-reading']) {
+  test(`${action} closes a late connection without probing or reviving the watermark`, async () => {
+    const connected = deferred(), entered = deferred(), client = { closed: false }
+    let current = settings(), probes = 0, signal
+    const fixture = harness({ getSettings: () => current, mail: {
+      openSession: async (_settings, _password, cancellation) => { signal = cancellation; entered.resolve(); return connected.promise },
+      probeFolder: async () => { probes++; return { uidValidity: '7', uidNext: 10 } },
+    } })
+    const polling = fixture.reminders.pollOnce()
+    await entered.promise
+    if (action === 'disable') current = settings({ notifyEnabled: false })
+    if (action === 'disable-reading') current = settings({ readEnabled: false })
+    const closing = action === 'stop' ? fixture.reminders.stop() : fixture.reminders.refresh()
+    connected.resolve(client)
+    await Promise.all([polling, closing])
+    assert.equal(signal?.aborted, true)
+    assert.equal(client.closed, true)
+    assert.equal(probes, 0)
+    assert.equal(fixture.reminders.state.session, false)
+    assert.equal(fixture.reminders.state.source, null)
+    assert.equal(fixture.reminders.state.marks.size, 0)
+    assert.equal(fixture.published.flat().length, 0)
+  })
+}
+
+test('stopping during credential resolution never starts a connection afterwards', async () => {
+  const credential = deferred(), entered = deferred()
+  const fixture = harness({ getPassword: () => { entered.resolve(); return credential.promise } })
+  const polling = fixture.reminders.pollOnce()
+  await entered.promise
+  const closing = fixture.reminders.stop()
+  credential.resolve('synthetic-password')
+  await Promise.all([polling, closing])
+  assert.equal(fixture.sessions.length, 0)
+  assert.equal(fixture.reminders.state.source, null)
+})
+
+test('a probe completed after stop cannot recreate the mailbox watermark', async () => {
+  const probe = deferred(), entered = deferred()
+  const fixture = harness({ mail: { probeFolder: () => { entered.resolve(); return probe.promise } } })
+  const polling = fixture.reminders.pollOnce()
+  await entered.promise
+  await fixture.reminders.stop()
+  probe.resolve({ uidValidity: '7', uidNext: 10 })
+  await polling
+  assert.equal(fixture.reminders.state.marks.size, 0)
+  assert.equal(fixture.sessions[0].closed, true)
+})
+
+test('disabling reminders during an excerpt read prevents fallback or late notification', async () => {
+  const excerpt = deferred(), entered = deferred()
+  let current = settings()
+  const fixture = harness({ getSettings: () => current, mail: {
+    readExcerpt: (_client, _folder, _uid, { signal }) => { entered.resolve(signal); return excerpt.promise },
+  } })
+  await fixture.reminders.pollOnce()
+  fixture.arrivals.push({ uid: 10, subject: 'Synthetic mail', from: [] })
+  fixture.setProbe('7', 11)
+  const polling = fixture.reminders.pollOnce()
+  const signal = await entered.promise
+  current = settings({ notifyEnabled: false })
+  await fixture.reminders.refresh()
+  excerpt.reject(new Error('stream closed'))
+  await polling
+  assert.equal(signal?.aborted, true)
+  assert.equal(fixture.published.flat().length, 0)
+  assert.equal(fixture.reminders.state.marks.size, 0)
+})
+
+test('a late old-account connection cannot replace or close the new account session', async () => {
+  const oldConnection = deferred(), entered = deferred()
+  const oldClient = { closed: false }, newClient = { closed: false }
+  let current = settings()
+  const probed = []
+  const fixture = harness({ getSettings: () => current, mail: {
+    openSession: async (value) => {
+      if (value.imapHost === 'mail.example.edu') { entered.resolve(); return oldConnection.promise }
+      return newClient
+    },
+    probeFolder: async client => { probed.push(client); return { uidValidity: '7', uidNext: 10 } },
+  } })
+  const oldPoll = fixture.reminders.pollOnce()
+  await entered.promise
+  current = settings({ imapHost: 'mail.other.edu', username: 'other@example.edu' })
+  const refreshing = fixture.reminders.refresh()
+  await fixture.reminders.pollOnce()
+  oldConnection.resolve(oldClient)
+  await Promise.all([oldPoll, refreshing])
+  assert.equal(oldClient.closed, true)
+  assert.equal(newClient.closed, false)
+  assert.deepEqual(probed, [newClient])
+  assert.equal(fixture.reminders.state.source, accountScope(current))
+  await fixture.reminders.stop()
+})
+
+test('overlapping polls share one connection and one mailbox query', async () => {
+  const connected = deferred(), entered = deferred(), client = { closed: false }
+  let opens = 0, probes = 0
+  const fixture = harness({ mail: {
+    openSession: async () => { opens++; entered.resolve(); return connected.promise },
+    probeFolder: async () => { probes++; return { uidValidity: '7', uidNext: 10 } },
+  } })
+  const first = fixture.reminders.pollOnce()
+  await entered.promise
+  const second = fixture.reminders.pollOnce()
+  await settle()
+  connected.resolve(client)
+  await Promise.all([first, second])
+  assert.equal(opens, 1)
+  assert.equal(probes, 1)
+  await fixture.reminders.stop()
 })
