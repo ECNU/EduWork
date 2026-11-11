@@ -1,8 +1,21 @@
-# Optional bundle; installing this package does not change the edition's
-# default composition. Mounts the VeryMath service and its tool surface.
+# yaml-language-server: $schema=./cordis-patch.schema.json
+---
+# @louisultra/dsh-verymath: stable entry IDs.
+# Cordis patch-list manifest (see cordis-patch.schema.json); NOT JSON-Patch
+# (RFC 6902). JSONPatch diagnostics on this file are a known yaml-language-
+# server false positive for Cordis bundle patch manifests.
 - insert:
     - id: verymath
-      name: '@eduwork/dsh-verymath/core'
+      name: '@louisultra/dsh-verymath/core'
 
     - id: tool-verymath
-      name: '@eduwork/dsh-verymath/tool'
+      name: '@louisultra/dsh-verymath/tool'
+
+    # 浏览器半侧（左栏入口 + 面板）需要一个**裸包名**条目。
+    # 实测依据（问渠踩过同一个坑）：宿主组合客户端插件时用
+    # `exactPackageSpecifier(entryName)` 去找包清单，带 `/core`、`/tool` 子路径的
+    # entryName 会被判为 undefined → 读不到 package.json → `dsh.client` 声明
+    # 永远不被读取 → 浏览器 bundle 不会被提供。包根导出只有 apply 空壳，
+    # 它的作用就是让这个解析成功。
+    - id: verymath-client
+      name: '@louisultra/dsh-verymath'
