@@ -79,7 +79,7 @@ The rules and questions were evaluated on 6 sets with 419 real escalation reques
 - "Files created in this session" records only files the file tools created successfully (a new file from `write`, an Add File from `apply_patch`), not files created by commands, and starts empty after a Host restart.
 - The confirmation card is unchanged and does not show the review result.
 - Commands over 16000 characters are not reviewed and go straight to the user; the longest command in the evaluation data was about 13000 characters.
-- Rules match the command text. Script content is attached only when the whole bash command runs one script by a written path, and files that script calls are not read. Sequences, `cd`, variables, globs, pipes, inline code such as `node -e`, bare names (which the shell looks up on PATH) and PowerShell commands do not say for sure which file runs, so no script is attached and the command itself is still reviewed.
+- Rules match the command text. Script content is attached only when the whole bash command runs one script by a written path, and files that script calls are not read. Sequences, `cd`, variables (including `NAME=value` before the command), globs, pipes, inline code such as `node -e`, bare names (which the shell looks up on PATH) and PowerShell commands do not say for sure which file runs, so no script is attached and the command itself is still reviewed.
 
 ## Development and assembly
 

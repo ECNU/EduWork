@@ -133,8 +133,8 @@ export function apply(ctx, raw = {}) {
       // The race also ends a review that waits on a stalled Host service (credentials, sign-in, files).
       const result = await Promise.race([review(req, call, signal), aborted(signal)])
       failures.delete(id)
-      // Another call with this ID may have started during the review.
-      const approved = result.approved && !entry.ambiguous
+      // During the review another call with this ID may have started, or the session may have left the preset.
+      const approved = result.approved && !entry.ambiguous && ctx.permissionPresets.current(req.agent.session) === preset
       log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
       if (approved) return 'allowed-once'
     } catch (error) {

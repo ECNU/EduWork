@@ -29,11 +29,12 @@ const answer = (body, auto, harm) => ({ json: {
 
 function mount(config, { preset = 'auto-approval', services = {}, events = [], origin, cwd = '/work' } = {}) {
   const listeners = {}, logs = []
+  const presets = { current: () => preset, set: name => { preset = name } }
   const ctx = {
     on(name, listener, options) { (listeners[name] ??= [])[options?.prepend ? 'unshift' : 'push'](listener) },
     logger: () => ({ info: (...args) => logs.push(['info', ...args]), warn: (...args) => logs.push(['warn', ...args]) }),
     get: name => services[name],
-    permissionPresets: { current: () => preset },
+    permissionPresets: presets,
     sandboxPolicy: { resolve: () => ({ mode: 'workspace-write', workspaceRoot: '/work' }) },
     workingDirectory: { get: () => cwd },
   }
@@ -51,7 +52,7 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [], o
     listeners['approval/request'][0]({ agent, toolName: name, callId, reason: 'escalate sandbox to danger-full-access: 写到下载目录', signal }, async () => fallback)
   const finish = (exec, result = { isError: false, value: 'done' }) => listeners['tools/result'][0](exec, result)
   const escalate = async (command, options = {}) => ask(await start(command, options), options)
-  return { listeners, logs, agent, start, ask, finish, escalate }
+  return { listeners, logs, agent, presets, start, ask, finish, escalate }
 }
 const base = { enabled: true, model: 'fixture-model', authMode: 'none' }
 
@@ -147,6 +148,14 @@ test('a call the other policies ask about, a subagent call and calls in flight u
   assert.equal(await other.ask(await other.start('cp e.csv ~/Downloads/', { callId: 'call_1' })), 'rejected')
   assert.equal(during.bodies.length, 2)
   assert.match(other.logs.at(-1)[1], /asked the user/)
+})
+
+test('a session that leaves the preset during the review is asked as usual', async t => {
+  let mounted
+  const { baseURL } = await service(t, body => { mounted.presets.set('workspace-write'); return answer(body, 0.9, 0.1) })
+  mounted = mount({ ...base, baseURL })
+  assert.equal(await mounted.escalate('cp a.csv ~/Downloads/'), 'rejected')
+  assert.match(mounted.logs.at(-1)[1], /asked the user/)
 })
 
 test('files the session created come from successful file tool results', async t => {

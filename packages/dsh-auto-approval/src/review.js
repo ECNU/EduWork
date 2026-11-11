@@ -1,6 +1,6 @@
 // What the decision model is shown about one escalation request, and how its answers become a verdict. Pure
 // functions over session events and file contents, so they can be tested without a Host.
-import { lstat, open } from 'node:fs/promises'
+import { access, constants, lstat, open } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { isAbsolute, sep } from 'node:path'
 import { executedPart, ruleMatch } from './rules.js'
@@ -44,10 +44,11 @@ export function sessionFacts(events, callId) {
 
 // Which file a command runs is known from its text alone only in one form: a single bash command running a literal
 // path, directly or through an interpreter whose options take no code (`node -e`, `python3 -c`, `bash -c`) and are
-// no syntax check (`bash -n`), with plain arguments and redirections. Sequences, `cd`, variables, globs and every
-// other form attach no script; the command itself is still reviewed. Groups: interpreter, quote, file.
+// no syntax check (`bash -n`), with plain arguments and redirections. Sequences, `cd`, variables (including
+// assignments before the command, such as BASH_ENV), globs and every other form attach no script; the command itself
+// is still reviewed. Groups: interpreter, quote, file.
 const ARG = String.raw`(?:[\w./:,@%+=-]+|'[^']*'|"[^"$\x60\\!]*"|\d*(?:>>?|<)(?:&\d+)?)`
-const RUNS = new RegExp(String.raw`^(?:[A-Za-z_]\w*=[\w./:,@%+-]*[ \t]+)*(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[eluvx]+)*)[ \t]+)?(["']?)((?:~/)?(?!-)[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
+const RUNS = new RegExp(String.raw`^(?:(python3?(?:[ \t]+-[BEIOSsu]+)*|node|(?:bash|sh|zsh)(?:[ \t]+-[eluvx]+)*)[ \t]+)?(["']?)((?:~/)?(?!-)[\w./@+-]+\.(?:py|mjs|js|sh))\2(?:[ \t]+${ARG})*[ \t]*$`)
 
 /**
  * The content of the script a bash command runs, read from disk, so the rules and the model see what it does. Missing,
@@ -55,15 +56,15 @@ const RUNS = new RegExp(String.raw`^(?:[A-Za-z_]\w*=[\w./:,@%+-]*[ \t]+)*(?:(pyt
  * @returns {Promise<Record<string, string> | undefined>} the script path as written, mapped to its text.
  */
 export async function scriptOf(command, cwd) {
-  const [, interpreter, , path] = command.trim().match(RUNS) ?? []
+  const [, interpreter, quote, path] = command.trim().match(RUNS) ?? []
   // A bare name run without an interpreter is looked up on PATH, not in the current directory.
   if (!cwd || !path || (!interpreter && !path.includes('/'))) return undefined
-  // The file system resolves the path as the shell will, following links before any `..`.
-  const expanded = path.replace(/^~(?=\/)/, homedir())
+  // The file system resolves the path as the shell will, following links before any `..`; quotes keep `~` literal.
+  const expanded = quote ? path : path.replace(/^~(?=\/)/, homedir())
   const file = isAbsolute(expanded) ? expanded : `${cwd}${sep}${expanded}`
-  const info = await lstat(file).catch(() => undefined)
-  // Run directly, a file without an execute bit is refused by the shell and never runs.
-  if (!info?.isFile() || (!interpreter && !(info.mode & 0o111))) return undefined
+  if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
+  // Run directly, a file this process may not execute is refused by the shell and never runs.
+  if (!interpreter && await access(file, constants.X_OK).then(() => false, () => true)) return undefined
   const handle = await open(file, 'r')
   try {
     const { buffer, bytesRead } = await handle.read({ buffer: Buffer.alloc(SCRIPT_CHARS * 4), position: 0 })
