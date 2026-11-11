@@ -618,6 +618,12 @@
 //   "readEnabled": false
 // plugins.dsh-mail-assistant.sendEnabled：允许发送邮件；仍遵守会话权限规则。
 //   "sendEnabled": false
+// plugins.dsh-mail-assistant.notifyEnabled：启用新邮件提醒；需同时允许读取邮件，检查不会改变邮件已读状态。
+//   "notifyEnabled": false
+// plugins.dsh-mail-assistant.notifyIntervalSeconds：新邮件检查间隔，单位为秒，范围 30–3600。
+//   "notifyIntervalSeconds": 120
+// plugins.dsh-mail-assistant.notifyExcerptChars：通知正文摘录的最大字符数，范围 0–400；0 表示仅显示发件人与主题。
+//   "notifyExcerptChars": 160
 // plugins.dsh-mail-assistant.email：邮箱地址；密码在设置中保存，不写入本文件。
 //   "email": ""
 // plugins.dsh-mail-assistant.username：登录用户名；空字符串使用邮箱地址。

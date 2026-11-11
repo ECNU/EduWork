@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-11T14:25:41.351Z",
-  "fileSetSHA256": "5303bd5167b1108db59769fb6f4bc7fb59a47f8c78468971ce6f37a20b3c9151",
+  "createdAt": "2026-11-11T14:54:18.518Z",
+  "fileSetSHA256": "2116affa2576fccffd66dbf41bd017326349d0bd5042adba211a3e2465f28434",
   "files": [
     {
       "path": ".gitattributes",
@@ -185,19 +185,19 @@
     },
     {
       "path": "config/desktop/eduwork.jsonc",
-      "sha256": "5ed5aca1206429347b54157ff0352903307de89c1f4fdd2bfd1532b69e02cc05"
+      "sha256": "1fc4c57186fd9d13110f0696e7f68071195553b3c5aade45ae964c61a769c410"
     },
     {
       "path": "config/desktop/examples/litellm.jsonc",
-      "sha256": "35c07ce94309fdde3ee51e567b91e3d03af0ee16acd92b9c427271386ad8be8b"
+      "sha256": "8d595a617c0c19da49c7decc7b7f6bc385a4ffca3ea8cf4761710f73690277ed"
     },
     {
       "path": "config/desktop/examples/media.jsonc",
-      "sha256": "475f6a43cc6e8d7684922bf504a0def57b005e7916219f30164fa625303895fa"
+      "sha256": "f2a5297e6668c6ffd62e43541a0c33de781ddff5f10391afd3801257b44232cd"
     },
     {
       "path": "config/desktop/examples/organization.jsonc",
-      "sha256": "a13f93f0c820cab95c7ef2909cc4d0e87ea947cb0643edf2f8fc71a1bc3c9dd0"
+      "sha256": "deb04e56a725c54f38c12696af15ecf6eeb89331bcda50a501409116864c6728"
     },
     {
       "path": "config/desktop/examples/README_EN.md",
@@ -209,7 +209,7 @@
     },
     {
       "path": "config/desktop/examples/updates.jsonc",
-      "sha256": "22e9d56b36f8410fbf74aa60d239eecada3355638f9c6edcc8411244394d3a90"
+      "sha256": "193660c01cf48aaefe83f52e79021af1982b64a28b870ff14972f8d92ff95c46"
     },
     {
       "path": "config/desktop/mac-updates.json",
@@ -1673,7 +1673,7 @@
     },
     {
       "path": "dsh-host/configuration-plugin-options.mjs",
-      "sha256": "d8be415740287308c19226da4bcdb4b10aac1babd7b0101f6a594d565eb5f331"
+      "sha256": "1ae5520df6912b453d00f2e27db4deecbd5cb4ab381192f9e2b0c584d68d7845"
     },
     {
       "path": "dsh-host/configuration-reference.mjs",
