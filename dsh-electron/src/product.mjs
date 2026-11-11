@@ -81,6 +81,9 @@ const desktopExit = new DesktopExit({
   quit: () => app.quit(), failed: error => desktopHostLog(`[desktop:quit] ${error.message}\n`),
 })
 export function setDesktopQuitGuard(guard) { confirmQuit = guard }
+let passwordManager
+let passwordManagerFactory
+export function setDesktopPasswordManagerFactory(factory) { passwordManagerFactory = factory }
 export function restartDesktop() {
   desktopExit.restart()
 }
@@ -315,7 +318,9 @@ async function prepareDesktop() {
     observer: productUpdateObserver,
     runWorkbench,
   })
+  passwordManager = passwordManagerFactory?.(vault)
   const bridge = await startNativeBridge({ vault, pickDirectory: pickDesktopDirectory, openExternal: url => shell.openExternal(url),
+    passwordManager,
     attention: body => taskNotifications.handle(body), pet: body => desktopPet.handle(body),
     workspaceAccess: process.platform === 'win32' ? (path, signal) => repairWorkspaceAccess(path, { productName: settings.productName, root: paths.root,
       protectedRoots: [paths.home, paths.userData], out: join(paths.logs, 'workspace-access'), log: desktopHostLog, signal,

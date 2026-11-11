@@ -45,6 +45,36 @@ test('external URL normalization accepts only web schemes without embedded crede
   assert.throws(() => externalBrowserURL('mailto:user@example.org'))
 })
 
+test('optional password manager route is authenticated and aborts on disconnect', async () => {
+  let notify, aborted
+  const entered = new Promise(resolve => { notify = resolve })
+  const stopped = new Promise(resolve => { aborted = resolve })
+  const bridge = await startNativeBridge({ vault: { flush: async () => {} }, passwordManager: async (_body, signal) => {
+    notify()
+    await new Promise(resolve => signal.addEventListener('abort', resolve, { once: true }))
+    aborted()
+    return { status: 'cancelled' }
+  } })
+  try {
+    const { baseURL, token } = bridge.bootstrap.nativeBridge
+    const endpoint = baseURL + '/v1/extensions/password-manager'
+    assert.equal((await fetch(endpoint, { method: 'POST', body: '{}' })).status, 403)
+    const controller = new AbortController()
+    const pending = fetch(endpoint, { method: 'POST', body: '{"action":"pair"}',
+      headers: { authorization: 'Bearer ' + token }, signal: controller.signal })
+    await entered
+    controller.abort()
+    await assert.rejects(pending)
+    await stopped
+  } finally { await bridge.close() }
+  const unavailable = await startNativeBridge({ vault: { flush: async () => {} } })
+  try {
+    const { baseURL, token } = unavailable.bootstrap.nativeBridge
+    assert.equal((await fetch(baseURL + '/v1/extensions/password-manager', { method: 'POST', body: '{}',
+      headers: { authorization: 'Bearer ' + token } })).status, 501)
+  } finally { await unavailable.close() }
+})
+
 test('closing the bridge drains an accepted encrypted write before resolving', async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-bridge-drain-'))
   const vault = new EncryptedVault(join(root, 'vault'), encryption())

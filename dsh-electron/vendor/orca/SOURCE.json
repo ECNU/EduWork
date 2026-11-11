@@ -1,0 +1,21 @@
+{
+  "repository": "https://github.com/stablyai/orca",
+  "commit": "42f55bfa372e0189cbc7d3e888525c3ac8ccca52",
+  "license": "MIT",
+  "originPullRequest": "https://github.com/stablyai/orca/pull/33994",
+  "sourceDirectories": [
+    "src/preload",
+    "src/main/browser-passwords",
+    "src/shared"
+  ],
+  "hostReplacements": [
+    "src/shared/secure-storage/secure-file.ts"
+  ],
+  "note": "Selected modules and their original tests; secure-file.ts is the documented EduWork adapter. Host composition and UI live outside this vendor directory.",
+  "hostPatches": [
+    "src/preload/browser-password-detector.ts",
+    "src/preload/browser-password-detector.test.ts",
+    "src/preload/browser-password-guest-channels.ts",
+    "src/shared/browser-passwords-types.ts"
+  ]
+}

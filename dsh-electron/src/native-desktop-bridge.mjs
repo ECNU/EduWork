@@ -9,6 +9,8 @@ import { installDesktopFileDrag } from './file-drag.ts'
 import { desktopEditMenu, desktopViewMenu, setDesktopApplicationMenu } from './desktop-menu.mjs'
 import { SIDEBAR_BROWSER_IPC } from './sidebar-browser.mjs'
 import { watchUpdateDocument } from './update-observer.mjs'
+import { createBrowserPasswords } from './browser-passwords.mjs'
+import { fileURLToPath } from 'node:url'
 
 export const USER_GUIDE_ROUTE = '/eduwork-user-guide'
 export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
@@ -16,6 +18,8 @@ export const USER_GUIDE_EVENT = 'eduwork:open-user-guide'
 // Only main-process collaborators cross this composition boundary. Host launch
 // credentials never become a renderer API or a browser guest's session cookie.
 export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, reportFatal, onBootFailure, checkUpdates, updates, pickDirectory, bootBrand, sidebarBrowser }) {
+  const browserPasswords = process.env.EDUWORK_BUILTIN_PASSWORDS === '1' ? createBrowserPasswords({ getWindow,
+    getDestination: (sessionId, url) => sidebarBrowser.prepareCredentialDestination(sessionId, url) }) : null
   const languages = app.getPreferredSystemLanguages()
   let locale = resolveDesktopStartupLocale(null, languages)
   const owner = event => {
@@ -25,6 +29,11 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       || event.senderFrame !== window.webContents.mainFrame) throw new Error('Rejected desktop command')
     return window
   }
+  ipcMain.handle('eduwork:password-settings', async (event, request) => {
+    owner(event)
+    if (typeof request?.op === 'string' && request.op.startsWith('builtin-')) return browserPasswords?.settings(request) ?? { status: 'not-supported' }
+    return { status: 'not-supported' }
+  })
   const guests = new DesktopBrowserGuests(() => getHost()?.origin)
   installFileActions(owner, () => getHost()?.origin)
   const disposeFileDrags = installDesktopFileDrag(owner, (address, signal) => {
@@ -79,6 +88,7 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
   }
   const applicationItems = () => [
     { role: 'about', label: locale.messages.aboutMenu.replaceAll('DeepSeek Harness', app.getName()) },
+    ...(browserPasswords ? [{ label: '浏览器密码', click: () => browserPasswords.manage() }] : []),
     { type: 'separator' },
     ...(userGuide ? [{ label: locale.messages.userGuide ?? (chinese() ? '使用教程' : 'User Guide'), click: openUserGuide }] : []),
     { label: locale.messages.checkUpdatesMenu, click: () => void Promise.resolve().then(checkUpdates).catch(error => dialog.showErrorBox(app.getName(), error.message)) },
@@ -202,11 +212,19 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       return available
     },
     attach(window) {
-      guests.bind(window, (guest, lease) => shortcuts.attachGuest(window, guest, lease))
+      guests.bind(window, (guest, lease) => {
+        const releaseKeys = shortcuts.attachGuest(window, guest, lease)
+        const releasePasswords = browserPasswords?.attach(guest)
+        return () => { releasePasswords?.(); releaseKeys?.() }
+      })
       // After bind, which replaces a guest's preferences: Sidebar pages paint
       // the browser's own background, as in Chrome, rather than letting the
       // application show through, so the Agent's screenshots show what the user sees.
-      window.webContents.on('will-attach-webview', (_event, preferences) => { preferences.transparent = false })
+      window.webContents.on('will-attach-webview', (event, preferences) => {
+        preferences.transparent = false
+        // Upstream has already validated the lease and reset all page-supplied preferences.
+        if (!event.defaultPrevented && browserPasswords) preferences.preload = fileURLToPath(new URL('./browser-passwords-preload.cjs', import.meta.url))
+      })
       // The Sidebar ignores a load another navigation replaced (net::ERR_ABORTED),
       // but the error's code does not reach the renderer, and Electron also fails
       // a load with that abort of the page it replaced. Either way the Sidebar
@@ -221,7 +239,8 @@ export function installNativeDesktopBridge({ getHost, waitForHost, getWindow, re
       ensureUpdateBinding(window)
       window.once('closed', releaseUpdates)
     },
+    passwordAgent: (request, signal) => browserPasswords?.agent(request, signal) ?? { status: 'not-supported' },
     disposeFileDrags,
-    dispose() { updateBinding?.dispose(); updateBinding = undefined; shortcuts.dispose(); updates?.dispose() },
+    dispose() { browserPasswords?.dispose(); updateBinding?.dispose(); updateBinding = undefined; shortcuts.dispose(); updates?.dispose() },
   }
 }

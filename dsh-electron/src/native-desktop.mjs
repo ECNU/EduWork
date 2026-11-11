@@ -21,7 +21,7 @@ import { shouldPresentMainWindow } from './startup-presentation.mjs'
 import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
-  showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
+  showHostStartupProgress, readInitialCloseAction, productUpdateObserver, setDesktopPasswordManagerFactory } from './product.mjs'
 
 configureEduworkPaths()
 // Electron accepts one privileged-scheme registration; the pet page scheme is
@@ -78,6 +78,7 @@ function reportFatal(error, source) {
 }
 function startBackend() {
   return backend.start(async () => {
+    setDesktopPasswordManagerFactory(() => (request, signal) => bridge.passwordAgent(request, signal))
     product = await prepareEduworkDesktop()
     const inherited = await readDesktopLoginShellEnvironment(process.env, resolveDesktopLoginShellConfig(process.env), { signal: loginShellRead.signal })
     const editionVariable = name => name.startsWith('EDUWORK_') || name.startsWith('CHATECNU_')

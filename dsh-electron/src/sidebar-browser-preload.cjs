@@ -13,3 +13,16 @@ if (process.isMainFrame && location.protocol === 'dsh-app:' && location.host ===
     },
   })
 }
+
+// Settings metadata stays on the trusted application frame, outside Host RPC.
+if (process.isMainFrame && location.protocol === 'dsh-app:' && location.host === 'app') {
+  const { contextBridge, ipcRenderer } = require('electron')
+  contextBridge.exposeInMainWorld('eduworkPasswordSettings', Object.freeze({
+    request: request => {
+      if (request?.op !== 'builtin-snapshot' && !navigator.userActivation.isActive) {
+        return Promise.resolve({ status: 'user-action-required' })
+      }
+      return ipcRenderer.invoke('eduwork:password-settings', request)
+    },
+  }))
+}

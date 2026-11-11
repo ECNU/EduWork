@@ -84,6 +84,17 @@ export default class DesktopServices extends Service {
     if (!response.ok) throw new Error('桌面服务暂时不可用，请重试。')
     return response.json()
   }
+  async passwordManager(body, signal) {
+    const { nativeBridge } = await this.ctx.desktopBoundary.ready
+    const timeout = AbortSignal.timeout(420000)
+    const response = await fetch(nativeBridge.baseURL + '/v1/extensions/password-manager', {
+      method: 'POST', headers: { authorization: 'Bearer ' + nativeBridge.token, 'content-type': 'application/json' },
+      body: JSON.stringify(body), signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+    })
+    if (response.status === 501) return { status: 'not-supported' }
+    if (!response.ok) return { status: 'operation-failed' }
+    return response.json()
+  }
   async openConfiguration(target) {
     if (!['config', 'examples'].includes(target)) throw new Error('Unsupported configuration target')
     const { nativeBridge } = await this.ctx.desktopBoundary.ready

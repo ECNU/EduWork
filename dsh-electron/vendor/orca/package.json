@@ -1,0 +1,14 @@
+{
+  "name": "@eduwork/browser-passwords-upstream",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "dependencies": {
+    "tldts": "7.4.21",
+    "write-file-atomic": "8.0.0"
+  },
+  "devDependencies": {
+    "happy-dom": "21.0.4",
+    "vitest": "4.1.11"
+  }
+}

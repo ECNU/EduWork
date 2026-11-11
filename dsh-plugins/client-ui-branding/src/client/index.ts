@@ -4,8 +4,9 @@ import { genericMarkSVG, productIdentity } from '../identity.js'
 import { installProductIdentity } from './product-identity.js'
 import { bindDesktopAction, bindSettingsOpenAction } from './desktop-actions.js'
 import { registerSettingsIcons } from './settings-icons.js'
+import { registerSettingsSearch } from './settings-search.js'
 
-export const inject = ['slots', 'theme', 'sessions', 'configForms']
+export const inject = ['slots', 'theme', 'sessions', 'configForms', 'locale']
 
 const h = React.createElement
 const SETTINGS_NAMESPACE = 'chatecnu-brand'
@@ -83,6 +84,7 @@ function ProductBrandName({ service }) {
 
 export function apply(ctx) {
   registerSettingsIcons(ctx)
+  registerSettingsSearch(ctx)
   ctx.inject(['uiWorkspace'], context => context.effect(() =>
     bindDesktopAction('new-session', () => context.uiWorkspace.startSession()), 'eduwork: tray new session'))
   // The settings entry declares this child slot together with its shell store,

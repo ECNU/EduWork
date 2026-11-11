@@ -57,6 +57,8 @@ try {
     Copy-Item (Join-Path $candidate 'desktop-probe/package*.json') $desktopTools
     & npm ci --prefix $desktopTools --ignore-scripts --no-audit --no-fund
     & (Join-Path $CoreRoot 'dsh-electron/scripts/prepare-electron.ps1') -Upstream $tools -Output (Join-Path $Output 'electron')
+    & npm ci --prefix (Join-Path $CoreRoot 'dsh-electron/vendor/orca') --omit=dev --ignore-scripts --no-audit --no-fund
+    if ($LASTEXITCODE -ne 0) { throw 'Browser password dependencies failed to install' }
     & node (Join-Path $CoreRoot 'dsh-electron/scripts/build-shell.mjs') --pinned-dsh-source --upstream $upstream --runtime $runtime --host $hostAdapter --output $shell
     & (Join-Path $CoreRoot "scripts/prepare-$platform-release-inputs.ps1") -Product $product -Output (Join-Path $Output 'inputs')
     $inputs=Get-Content (Join-Path $Output 'inputs/inputs.json') -Raw | ConvertFrom-Json

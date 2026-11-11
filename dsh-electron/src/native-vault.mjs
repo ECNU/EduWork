@@ -52,7 +52,7 @@ export function externalBrowserURL(value) {
   return url.href
 }
 
-export async function startNativeBridge({ vault, openExternal, openConfiguration, workbench, attention, pet, pickDirectory, workspaceAccess }) {
+export async function startNativeBridge({ vault, openExternal, openConfiguration, workbench, attention, pet, pickDirectory, workspaceAccess, passwordManager }) {
   const token = randomBytes(32).toString('base64url')
   const authorization = Buffer.from('Bearer ' + token)
   const sockets = new Set()
@@ -78,6 +78,18 @@ export async function startNativeBridge({ vault, openExternal, openConfiguration
       }
       const body = JSON.parse(Buffer.concat(parts).toString('utf8'))
       if (closing) { response.writeHead(503).end(); return }
+      if (request.url === '/v1/extensions/password-manager') {
+        if (!passwordManager) { response.writeHead(501).end(); return }
+        const controller = new AbortController()
+        const disconnected = () => { if (!response.writableEnded) controller.abort() }
+        response.once('close', disconnected)
+        try {
+          if (response.destroyed) controller.abort()
+          const result = await passwordManager(body, controller.signal)
+          if (!response.destroyed) response.writeHead(200, { 'Content-Type': 'application/json' }).end(JSON.stringify(result))
+        } finally { response.removeListener('close', disconnected) }
+        return
+      }
       if (request.url === '/v1/desktop/pick-directory') {
         if (!body || typeof body !== 'object' || Array.isArray(body) || Object.keys(body).length) throw new Error('Invalid directory request')
         if (!pickDirectory) { response.writeHead(501).end(); return }

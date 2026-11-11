@@ -113,6 +113,31 @@ after(() => {
   server?.close()
 })
 
+test('credential login opens and reuses a conversation target without exposing its ID', { ...live, skip: live.skip || !process.env.EDUWORK_CREDENTIAL_TEST_URL }, async () => {
+  const url = process.env.EDUWORK_CREDENTIAL_TEST_URL
+  await run(`await broker.prepareCredentialDestination('credential-session', ${JSON.stringify(url)}); return true`)
+  const { browser, context } = await connect('credential-session')
+  try {
+    await context.pages()[0].waitForURL(url)
+    await run(`await broker.prepareCredentialDestination('credential-session', ${JSON.stringify(url)}); return true`)
+    assert.equal(context.pages().length, 1)
+    assert.equal(context.pages()[0].url(), url)
+    await assert.rejects(run(`return broker.prepareCredentialDestination('credential-session', 'http://example.test/')`), /Invalid login URL/)
+    await assert.rejects(run(`return broker.prepareCredentialDestination('../other', ${JSON.stringify(url)})`), /Invalid conversation/)
+  } finally { await browser.close() }
+})
+
+test('credential sink cannot select another conversation or transfer to a different origin', live, async () => {
+  const client = await socket(`${endpoint}/session-a`)
+  try {
+    const { targetInfos } = await protocol(client)('Target.getTargets')
+    const targetInfo = targetInfos.find(info => info.type === 'page')
+    await assert.rejects(run(`return broker.credentialDestination('session-b', ${JSON.stringify(targetInfo.targetId)})`), /Unknown conversation/)
+    await assert.rejects(run(`return broker.credentialDestination('session-a', ${JSON.stringify(targetInfo.targetId)}).acceptCookies('https://wrong.invalid', [])`), /another origin/)
+    await assert.rejects(run(`return broker.credentialDestination('session-a', 'missing')`), /Unknown conversation/)
+  } finally { client.close() }
+})
+
 test('each conversation drives only its own tabs, as it would Chrome', live, async () => {
   const { browser, context } = await connect('session-a')
   const [tab] = context.pages()

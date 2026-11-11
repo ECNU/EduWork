@@ -178,6 +178,8 @@ jobs:
           if ($LASTEXITCODE) { throw 'Pinned Electron metadata installation failed' }
           node core/dsh-electron/scripts/prepare-electron.mjs --upstream "$env:RUNNER_TEMP/desktop-tools" --output "$env:RUNNER_TEMP/electron"
           if ($LASTEXITCODE) { throw 'Pinned Electron preparation failed' }
+          npm ci --prefix core/dsh-electron/vendor/orca --omit=dev --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { throw 'Browser password dependencies failed to install' }
           node core/dsh-electron/scripts/build-shell.mjs --pinned-dsh-source --upstream upstream --runtime "$env:RUNNER_TEMP/native-runtime" --host "$env:RUNNER_TEMP/native-host" --output "$env:RUNNER_TEMP/native-shell"
           if ($LASTEXITCODE) { throw 'Native desktop build failed' }
           $env:EDUWORK_TEST_NATIVE_SHELL = "$env:RUNNER_TEMP/native-shell"

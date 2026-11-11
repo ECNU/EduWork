@@ -262,6 +262,43 @@ export function createSidebarBrowser({ getWindow, idleMs = 15_000 }) {
   }
 
   return {
+    async prepareCredentialDestination(sessionId, loginURL) {
+      if (!validId(sessionId)) throw failure('Invalid conversation')
+      const url = new URL(loginURL)
+      if (url.protocol !== 'https:' || url.username || url.password || url.hash) throw failure('Invalid login URL')
+      const target = group(sessionId)
+      const page = [...target.pages.values()].find(page => !page.guest.isDestroyed() && page.guest.getURL() === url.href)
+        ?? await open(target, url.href)
+      touch(target, page, true)
+      target.idle = setTimeout(() => rest(target), idleMs)
+      return this.credentialDestination(sessionId, page.targetId)
+    },
+    // Only native code receives this sink. Credential windows never become CDP targets.
+    credentialDestination(sessionId, targetId) {
+      const page = groups.get(sessionId)?.pages.get(targetId)
+      if (!page || page.guest.isDestroyed()) throw failure('Unknown conversation browser target')
+      return {
+        async acceptCookies(origin, cookies) {
+          const current = () => {
+            if (page.guest.isDestroyed() || groups.get(sessionId)?.pages.get(targetId) !== page) throw failure('Browser target closed')
+            if (new URL(page.guest.getURL()).origin !== origin) throw failure('Browser target moved to another origin')
+          }
+          current()
+          for (const cookie of cookies) {
+            current()
+            if (cookie.domain.replace(/^\./, '') !== new URL(origin).hostname || cookie.partitionKey) throw failure('Cookie origin mismatch')
+            const { name, value, path, secure, httpOnly, expirationDate, sameSite } = cookie
+            await page.guest.session.cookies.set({ url: origin + (path || '/'), name, value,
+              path, secure, httpOnly, expirationDate, sameSite })
+          }
+          current()
+          // Complete the fresh GET before returning session-ready to browser tools.
+          // Reloading without awaiting it races the next snapshot/action.
+          await page.guest.loadURL(page.guest.getURL())
+          current()
+        },
+      }
+    },
     /** @returns the Host environment naming this window's endpoint. */
     async listen() {
       server ??= await new Promise((resolve, reject) => {

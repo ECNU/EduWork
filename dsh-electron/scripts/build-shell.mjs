@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, copyFile, readdir } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, copyFile, readdir, cp } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { createHash } from 'node:crypto'
 import { resolve, join, dirname } from 'node:path'
@@ -31,10 +31,14 @@ const source = async path => {
 const files = Object.keys(inputs).filter(path => path !== 'apps/desktop/package.json')
 await mkdir(output, { recursive: false })
 const rows = []
+await cp(join(repository, 'dsh-electron/vendor/orca'), join(output, 'vendor/orca'), {
+  recursive: true, filter: path => !path.split(/[\\/]/).includes('node_modules'),
+})
 for (const file of files) {
   const before = await source(file)
   let text = before.toString('utf8')
   text = adaptNativeDesktopSource(file, text)
+  if (file === 'apps/desktop/src/preload-app.ts') text += '\n' + await readFile(join(repository, 'dsh-electron/src/browser-passwords-ui.cjs'), 'utf8')
   if (file === 'apps/desktop/src/preload-app.ts') { text += '\n' + await readFile(join(repository, 'dsh-electron/src/dock-theme-preload.cjs'), 'utf8') + '\n' + await readFile(join(repository, 'dsh-electron/src/boot-motion-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/boot-brand-preload.cjs'), 'utf8'); text += '\n' + await readFile(join(repository, 'dsh-electron/src/sidebar-browser-preload.cjs'), 'utf8') }
   const target = join(output, file.slice('apps/desktop/'.length))
   await mkdir(dirname(target), { recursive: true }); await writeFile(target, text)
@@ -42,6 +46,10 @@ for (const file of files) {
 }
 const electronAdapters = ['runtime-access.mjs', 'workspace-access.mjs', 'update-channel-migration.mjs', 'alpha-update-migration.mjs', 'desktop-brand.mjs', 'desktop-exit.mjs', 'task-notifications.mjs', 'update-coordinator.mjs', 'update-presentation.mjs', 'update-observer.mjs', 'update-workbench.mjs', 'mac-sparkle-updates.mjs', 'portable-updates.mjs', 'software-update-control.mjs', 'startup-failure.mjs', 'desktop-web-paths.mjs', 'startup-presentation.mjs', 'native-vault.mjs', 'product.mjs', 'window-visibility.mjs', 'desktop-menu.mjs', 'installer-cleanup.mjs', 'desktop-restart.mjs', 'settings-open-request.mjs', 'lifecycle.mjs', 'media-transport.mjs', 'configuration-files.mjs', 'configuration-policy.mjs', 'desktop-paths.mjs', 'initialize-user-config.mjs', 'legacy-migration.mjs', 'external-navigation.mjs', 'directory-picker.mjs', 'host-git-identity.mjs', 'desktop-pet.mjs', 'desktop-pet-core.mjs']
 for (const name of electronAdapters) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
+for (const name of ['browser-passwords.mjs', 'browser-passwords-preload.ts', 'builtin-password-agent.mjs']) await copyFile(join(repository, 'dsh-electron/src', name), join(output, 'src', name))
+await mkdir(join(output, 'packages/dsh-password-manager/src'), { recursive: true })
+for (const name of ['electron-login.mjs', 'login-errors.mjs']) await copyFile(join(repository, 'packages/dsh-password-manager/src', name), join(output, 'packages/dsh-password-manager/src', name))
+await writeFile(join(output, 'src/browser-passwords.mjs'), (await readFile(join(output, 'src/browser-passwords.mjs'), 'utf8')).replace('../../packages/', '../packages/'))
 await copyFile(join(repository, 'dsh-host/product-profile.mjs'), join(output, 'src/product-profile.mjs'))
 await writeFile(join(output,'src/alpha-update-migration.mjs'), (await readFile(join(output,'src/alpha-update-migration.mjs'),'utf8'))
   .replace('../../dsh-host/configuration-file.mjs','./configuration-file.mjs')
@@ -77,13 +85,22 @@ await writeFile(join(output, 'package.json'), JSON.stringify({ ...manifest, name
   if (runtimeReceipt.dshCommit !== lock.commit || runtimeReceipt.dshVersion !== lock.packageVersion) throw new Error('Native shell compiler Runtime differs from the core lock')
   const runtimeRequire = createRequire(join(runtime, 'package.json'))
   const { build } = runtimeRequire('esbuild')
-  const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(runtime, 'node_modules')], external: ['electron'], logLevel: 'warning' }
-  await build({ ...common, entryPoints: [join(output, 'src/desktop-main.mjs')], outfile: join(output, 'lib/main.js'), format: 'esm', banner: { js: "import { createRequire as __eduworkRequire } from 'node:module'; const require = __eduworkRequire(import.meta.url);" } })
+  const common = { bundle: true, platform: 'node', target: 'es2024', nodePaths: [join(runtime, 'node_modules'), join(repository, 'dsh-electron/vendor/orca/node_modules')], external: ['electron'], logLevel: 'warning' }
+  await build({ ...common, entryPoints: [join(output, 'src/desktop-main.mjs')], outfile: join(output, 'lib/main.js'), format: 'esm', banner: { js: "import { createRequire as __eduworkRequire } from 'node:module'; import { fileURLToPath as __eduworkPath } from 'node:url'; const require = __eduworkRequire(import.meta.url); const __filename = __eduworkPath(import.meta.url);" } })
   await build({ ...common, entryPoints: [join(output, 'src/preload-app.ts')], outfile: join(output, 'lib/preload-app.cjs'), format: 'cjs' })
+  await build({ ...common, entryPoints: [join(output, 'src/browser-passwords-preload.ts')], outfile: join(output, 'lib/browser-passwords-preload.cjs'), format: 'cjs' })
 }
 // The pet preload requires only electron; the sandbox loads it as written.
 await copyFile(join(repository, 'dsh-electron/src/preload-pet.cjs'), join(output, 'lib/preload-pet.cjs'))
 const adapters = {}
+for (const name of ['browser-passwords.mjs', 'browser-passwords-preload.ts', 'browser-passwords-ui.cjs', 'builtin-password-agent.mjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
+for (const name of ['electron-login.mjs', 'login-errors.mjs']) adapters['packages/dsh-password-manager/src/' + name] = digest(await readFile(join(repository, 'packages/dsh-password-manager/src', name)))
+for (const entry of await readdir(join(output, 'vendor/orca'), { recursive: true, withFileTypes: true })) {
+  if (entry.isFile()) {
+    const path = join(entry.parentPath ?? entry.path, entry.name)
+    adapters['dsh-electron/vendor/orca/' + path.slice(join(output, 'vendor/orca').length + 1).replaceAll('\\', '/')] = digest(await readFile(path))
+  }
+}
 for (const name of ['dock-theme-preload.cjs', 'boot-motion-preload.cjs', 'preload-pet.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['boot-brand-preload.cjs', 'sidebar-browser-preload.cjs']) adapters['dsh-electron/src/' + name] = digest(await readFile(join(repository, 'dsh-electron/src', name)))
 for (const name of ['native-profile.mjs', 'settings-migration.mjs']) adapters['dsh-host/' + name] = digest(await readFile(join(repository, 'dsh-host', name)))
@@ -129,6 +146,10 @@ async function collectNotice(name, from) {
   for (const dependency of Object.keys(manifest.dependencies ?? {})) await collectNotice(dependency, manifestPath)
 }
 for (const name of ['@deepseek-ai/dsh-client-shortcuts', '@deepseek-ai/dsh-atomic-write', 'ws']) await collectNotice(name, join(resolve(values.runtime), 'package.json'))
+for (const name of ['tldts', 'write-file-atomic']) await collectNotice(name, join(repository, 'dsh-electron/vendor/orca/package.json'))
+await mkdir(join(output, 'third-party/orca'), { recursive: true })
+await copyFile(join(repository, 'dsh-electron/vendor/orca/LICENSE'), join(output, 'third-party/orca/LICENSE'))
+notices.push({ name: 'orca-browser-passwords', version: '42f55bfa372e0189cbc7d3e888525c3ac8ccca52', license: 'MIT', source: 'https://github.com/stablyai/orca' })
 await mkdir(join(output, 'third-party/jsonc-parser@3.3.1'), { recursive: true })
 await copyFile(join(repository, 'dsh-host', vendor, 'LICENSE.md'), join(output, 'third-party/jsonc-parser@3.3.1/LICENSE.md'))
 notices.push({ name: 'jsonc-parser', version: '3.3.1', license: 'MIT', source: 'dsh-host/vendor/jsonc-parser' })

@@ -1,0 +1,60 @@
+{
+  "name": "@eduwork/dsh-password-manager",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MulanPSL-2.0",
+  "type": "module",
+  "description": "Built-in browser password vault settings and Agent login",
+  "main": "./src/index.mjs",
+  "files": [
+    "src",
+    "lib",
+    "cordis.patch.yml",
+    "README.md",
+    "README_EN.md",
+    "DEVELOPMENT.md",
+    "LICENSE"
+  ],
+  "exports": {
+    ".": "./src/index.mjs",
+    "./client": "./lib/client.js"
+  },
+  "dsh": {
+    "client": {
+      "platform": "web",
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-slots",
+        "@deepseek-ai/dsh-client-locale"
+      ]
+    },
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "react": "^18.2.0",
+    "zod": "^4.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-tools": {
+      "optional": true
+    }
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "npm run build && npm test",
+    "test": "node --test test/*.test.mjs"
+  },
+  "engines": {
+    "node": ">=24"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
+    "esbuild": "0.28.1",
+    "react": "18.3.1",
+    "zod": "4.6.7"
+  }
+}

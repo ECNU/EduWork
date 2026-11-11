@@ -1,0 +1,4 @@
+# Optional source candidate; not included in the product assembly.
+- insert:
+    - id: eduwork-password-manager
+      name: '@eduwork/dsh-password-manager'

@@ -169,6 +169,7 @@ export function pinnedSourceStages({ coreRoot, editionRoot, version, upstreamSou
       requires: ['upstream', 'runtime', 'host-adapter', 'electron-tools'],
       outputs: ['shell'],
       run: async workspace => {
+        await runBundledCli('npm', ['ci', '--omit=dev', '--ignore-scripts', '--no-audit', '--no-fund'], { cwd: join(coreRoot, 'dsh-electron/vendor/orca') })
         await runNode(join(coreRoot, 'dsh-electron/scripts/build-shell.mjs'), [
           '--pinned-dsh-source', '--upstream', workspace.resolvePath('upstream'),
           '--runtime', workspace.resolvePath('runtime'), '--host', workspace.resolvePath('host'),
