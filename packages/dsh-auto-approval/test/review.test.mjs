@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
+import { chmod, mkdir, mkdtemp, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { reviewRequest, scriptOf, sessionFacts, THRESHOLDS, verdict } from '../lib/review.js'
@@ -61,8 +61,9 @@ test('scriptOf reads the script a single command runs, following links as the sh
   for (const path of ['work/tools', 'outside/nested']) await mkdir(join(dir, path), { recursive: true })
   await symlink('../outside/nested', join(dir, 'work/link'))
   const files = { 'work/task.sh': 'echo here', 'work/tools/sync.sh': 'rsync -a out/ host.example:/srv/\n', 'outside/task.sh': 'echo outside',
-    'work/big.py': 'x'.repeat(20000), 'work/run.mjs': 'console.log(1)' }
+    'work/big.py': 'x'.repeat(20000), 'work/run.mjs': 'console.log(1)', 'work/plain.sh': 'echo plain' }
   for (const [path, text] of Object.entries(files)) await writeFile(join(dir, path), text)
+  for (const path of ['work/task.sh', 'work/tools/sync.sh']) await chmod(join(dir, path), 0o755)
   const work = join(dir, 'work')
   assert.deepEqual(await scriptOf('bash tools/sync.sh', work), { 'tools/sync.sh': files['work/tools/sync.sh'] })
   assert.deepEqual(await scriptOf(`${work}/tools/sync.sh --dry-run`, '/'), { [`${work}/tools/sync.sh`]: files['work/tools/sync.sh'] })
@@ -73,6 +74,9 @@ test('scriptOf reads the script a single command runs, following links as the sh
   assert.deepEqual(await scriptOf('bash link/../task.sh', work), { 'link/../task.sh': 'echo outside' })
   const big = await scriptOf('python3 -I big.py', work)
   assert.equal(big['big.py'].length, 16000 + '\n…（后面还有内容，未附上）'.length)
+  // Run directly, a file needs its execute bit; through an interpreter it only needs to be readable.
+  assert.equal(await scriptOf('./plain.sh', work), undefined)
+  assert.deepEqual(await scriptOf('bash plain.sh', work), { 'plain.sh': 'echo plain' })
   for (const command of ['bash missing.sh', 'ls tools', 'bash tools']) assert.equal(await scriptOf(command, work), undefined, command)
 })
 
@@ -99,6 +103,8 @@ test('verdict: thresholds per kind, malformed answers are failures', () => {
   const mean = verdict(false, [choice(0.6), harm(0.4)])
   assert.ok(Math.abs(mean.score - 0.6) < 1e-9 && mean.approved)
   assert.equal(verdict(false, [choice(0.6), harm(0.8)]).approved, false)
-  assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: null } } }]), /auto/)
+  assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: null } } }]), /abstained/)
+  assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: null, probabilities: { auto: 1, ask: 0 } } } }]), /abstained/)
+  assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: 'auto' } } }]), /auto/)
   assert.throws(() => verdict(false, [choice(0.9), { answers: { harm: { type: 'noul' } } }]), /harm/)
 })

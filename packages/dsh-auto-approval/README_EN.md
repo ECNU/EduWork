@@ -62,7 +62,7 @@ Plugin configuration example (store the real key in the credential service; do n
 - One review has a total time limit of `timeoutMs` (5 seconds by default); on expiry the user decides.
 - Network errors, 429 and 5xx are retried once within the limit; the questions have no side effects.
 - After 3 failures in a row in one session, review pauses for 5 minutes there and requests go straight to the user.
-- Not being signed in, a missing key or an incomplete answer counts as a failure, with no fallback to another model or authentication method.
+- Not being signed in, a missing key, an incomplete answer or an abstention (`choice: null`) counts as a failure, with no fallback to another model or authentication method.
 - A request withdrawn by the user during review is not counted as a failure.
 
 Each review logs its result, score and duration under the `auto-approval` logger; failures are logged as warnings.

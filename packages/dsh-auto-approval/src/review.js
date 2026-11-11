@@ -61,7 +61,9 @@ export async function scriptOf(command, cwd) {
   // The file system resolves the path as the shell will, following links before any `..`.
   const expanded = path.replace(/^~(?=\/)/, homedir())
   const file = isAbsolute(expanded) ? expanded : `${cwd}${sep}${expanded}`
-  if (!(await lstat(file).catch(() => undefined))?.isFile()) return undefined
+  const info = await lstat(file).catch(() => undefined)
+  // Run directly, a file without an execute bit is refused by the shell and never runs.
+  if (!info?.isFile() || (!interpreter && !(info.mode & 0o111))) return undefined
   const handle = await open(file, 'r')
   try {
     const { buffer, bytesRead } = await handle.read({ buffer: Buffer.alloc(SCRIPT_CHARS * 4), position: 0 })
@@ -101,7 +103,10 @@ const probability = value => typeof value === 'number' && Number.isFinite(value)
  * @param {object[]} results - one result per question set, in the order of `questions`.
  */
 export function verdict(flagged, results) {
-  const approve = results[0]?.answers?.decision?.probabilities?.auto
+  const decision = results[0]?.answers?.decision
+  // An abstention is no answer, whatever probabilities come with it.
+  if (decision?.choice === null) throw new Error('Decision service abstained')
+  const approve = decision?.probabilities?.auto
   if (!probability(approve)) throw new Error('Decision response has no probability for auto')
   if (flagged) return { score: approve, approved: approve >= THRESHOLDS.flagged }
   const harm = results[1]?.answers?.harm?.noul
