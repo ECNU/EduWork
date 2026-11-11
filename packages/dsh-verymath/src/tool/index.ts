@@ -11,11 +11,16 @@ import type { ContentBlock } from '@deepseek-ai/dsh-llm'
 import type { JsonValue } from '@deepseek-ai/dsh-util-values'
 import type {} from '@deepseek-ai/dsh-fs'
 import { spawn } from 'node:child_process'
-import { accessSync, constants, readdirSync } from 'node:fs'
-import { homedir } from 'node:os'
-import { delimiter, isAbsolute, join, resolve } from 'node:path'
+import { isAbsolute, resolve } from 'node:path'
 import { VeryMathError, isVeryMathError } from '../core/index.ts'
-import { bundledSkillsDir, checkGate, computeTopology, dependencySummary, findExcerpt, focusClosure, loadManifest, mergeBatches, mergeStructures, parsePaperBatch, parsePaperStructure, readCorpusDocWindow, renderMermaid, resolveCorpusRoot, searchSageRefs, termsFor, upsertTerms, type GateResult, type TermUpsert } from '../core/index.ts'
+import { bundledSkillsDir, checkGate, computeTopology, dependencySummary, executableSearchDirs, findExcerpt, focusClosure, loadManifest, mergeBatches, mergeStructures, parsePaperBatch, parsePaperStructure, readCorpusDocWindow, renderMermaid, resolveCorpusRoot, resolveExecutable, resolveSageExecutable, sageSearchDirs, searchSageRefs, termsFor, upsertTerms, type GateResult, type TermUpsert } from '../core/index.ts'
+
+
+// Re-exported for the tool-level tests and for callers that imported these from
+// the tool module before they moved into `core`. There is exactly one
+// implementation now — two copies used to drift, which is how the panel ended up
+// reporting SageMath missing while `verymath_sage_check` found it.
+export { executableSearchDirs, resolveExecutable, resolveSageExecutable, sageSearchDirs }
 
 export const name = 'tool-verymath'
 export const inject = ['tools', 'verymath', 'fs']
@@ -204,117 +209,6 @@ function probeCommand(executable: string, args: readonly string[], timeoutMs = 5
 }
 
 /**
- * Directories a TeX distribution installs into without adding them to the
- * inherited PATH. Desktop applications launched from Finder or the Start menu
- * do not read the login shell profile, so MacTeX's `/Library/TeX/texbin` is
- * commonly invisible to a bare `spawn(name)` even when the toolchain is
- * installed. Nothing here is required: an empty result just means PATH decides.
- */
-function texBinFallbackDirs(): string[] {
-  return process.platform === 'darwin' ? ['/Library/TeX/texbin'] : []
-}
-
-/**
- * Directories conda-style installs put `python3`/`sage` in but rarely add to the
- * PATH a desktop app inherits: a macOS app launched from Finder reads no login
- * shell profile, so a `sage` installed under `~/miniforge3` is invisible even
- * though the user "has SageMath installed". Derived from the home directory, so
- * nothing here is machine-specific.
- */
-function condaBinFallbackDirs(): string[] {
-  const home = homedir()
-  return ['miniforge3', 'mambaforge', 'miniconda3', 'anaconda3', 'micromamba']
-    .map(name => join(home, name, 'bin'))
-}
-
-/** Conda distribution roots this package knows about, including its own docs' layout. */
-function condaRoots(): string[] {
-  const home = homedir()
-  return [
-    join(home, '.verymath', 'miniforge'),
-    join(home, 'miniforge3'),
-    join(home, 'mambaforge'),
-    join(home, 'miniconda3'),
-    join(home, 'anaconda3'),
-  ]
-}
-
-/** Executable search path: the inherited PATH first, then platform fallbacks. */
-function executableSearchDirs(): string[] {
-  const fromEnv = (process.env.PATH ?? '').split(delimiter).filter((dir) => dir.length > 0)
-  return [...new Set([...fromEnv, ...texBinFallbackDirs(), ...condaBinFallbackDirs()])]
-}
-
-/**
- * Search path for the SageMath probe only. `sage` is normally installed as a
- * *named* conda environment (`conda create -n sage sage=10.9`), so the base-env
- * directories above are not where it lives; this adds `<root>/envs/<name>/bin`
- * for each known distribution root. Kept separate from the generic search path
- * so TeX and other lookups do not start probing unrelated environment trees.
- */
-export function sageSearchDirs(): string[] {
-  const dirs = [...executableSearchDirs()]
-  for (const root of condaRoots()) {
-    const envsDir = join(root, 'envs')
-    let names: string[]
-    try {
-      names = readdirSync(envsDir).sort((left, right) => left.localeCompare(right))
-    } catch {
-      continue
-    }
-    for (const name of names) dirs.push(join(envsDir, name, 'bin'))
-  }
-  return [...new Set(dirs)]
-}
-
-/**
- * Resolve the `sage` executable: an explicit `VERYMATH_SAGE` path wins, then the
- * SageMath search path (PATH, TeX/conda base dirs, named conda environments).
- * An override that is not executable is ignored rather than reported as found.
- */
-export function resolveSageExecutable(): string | undefined {
-  const override = process.env.VERYMATH_SAGE
-  if (override !== undefined && override.trim().length > 0) {
-    const resolved = resolveExecutable(override.trim(), [])
-    if (resolved !== undefined) return resolved
-  }
-  return resolveExecutable('sage', sageSearchDirs())
-}
-
-/** Whether `candidate` exists and the current user may execute it. */
-function isExecutableFile(candidate: string): boolean {
-  try {
-    accessSync(candidate, constants.X_OK)
-    return true
-  } catch {
-    return false
-  }
-}
-
-/**
- * Resolve an executable name to an absolute path. Resolving in-process avoids
- * `which`/`where`, which are not both available and which cannot see the TeX
- * fallback directories above. On Windows the `PATHEXT` suffixes are tried.
- * @param name - bare executable name, or a path containing a separator.
- * @param searchDirs - directories probed for a bare name (defaults to PATH plus fallbacks).
- * @returns the resolved absolute path, or undefined when nothing is executable.
- */
-export function resolveExecutable(name: string, searchDirs: readonly string[] = executableSearchDirs()): string | undefined {
-  if (isAbsolute(name) || name.includes('/') || name.includes('\\')) {
-    return isExecutableFile(name) ? name : undefined
-  }
-  const extensions = process.platform === 'win32'
-    ? ['', ...(process.env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter((ext) => ext.length > 0)]
-    : ['']
-  for (const dir of searchDirs) {
-    for (const extension of extensions) {
-      const candidate = join(dir, name + extension)
-      if (isExecutableFile(candidate)) return candidate
-    }
-  }
-  return undefined
-}
-
 /**
  * Probe the math-beamer TeX toolchain: latexmk and xelatex binaries (resolved on
  * PATH, then in the distribution's own bin directory, followed by a `--version`

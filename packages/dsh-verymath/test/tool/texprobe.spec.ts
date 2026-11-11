@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import { chmod, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { resolveExecutable, resolveSageExecutable, sageSearchDirs } from '../../src/tool/index.ts'
+import { resolveExecutable, resolveSageExecutable, sageSearchDirs } from '@eduwork/dsh-verymath/tool'
 
 // Executable discovery for the beamer probe. The probe used to call
 // `/usr/bin/which` and `/Library/TeX/texbin/kpsewhich` directly, which does not

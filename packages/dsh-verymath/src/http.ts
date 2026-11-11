@@ -20,8 +20,8 @@
  *
  * @module @eduwork/dsh-verymath/http
  */
-import { readdir, readFile, stat, writeFile } from 'node:fs/promises'
-import { basename, join, resolve } from 'node:path'
+import { readdir, readFile, realpath, rename, stat, unlink, writeFile } from 'node:fs/promises'
+import { basename, dirname, join, resolve, sep } from 'node:path'
 import { spawn } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import {
@@ -32,6 +32,9 @@ import {
   parsePaperStructure,
   queryGlossary,
   deleteTerm,
+  resolveExecutable,
+  resolvePythonExecutable,
+  resolveSageExecutable,
   upsertTerms,
   validateGlossaryInvariants,
   VeryMathError,
@@ -57,9 +60,41 @@ export interface HttpContext {
   readonly workspace: () => string
   /** Host logger; absent in some hosts. */
   readonly log?: (message: string) => void
+  /**
+   * The `ctx.verymath` write lock. Sharing it with the tool layer is the point:
+   * two independent chains (panel and tool) let a concurrent read-modify-write
+   * from each side drop the other's update on the same document.
+   */
+  readonly withWrite?: <T>(path: string, task: () => Promise<T>) => Promise<T>
+  /**
+   * Drop the service's glossary query cache. Without this the panel writes a
+   * document and the chat tool keeps answering from the pre-write snapshot.
+   */
+  readonly invalidateGlossaryCache?: () => void
 }
 
 const JSON_HEADERS = { 'content-type': 'application/json; charset=utf-8' } as const
+
+/**
+ * Write a JSON document atomically.
+ *
+ * `writeFile` truncates before writing, so a concurrent reader (the panel polling,
+ * or a chat tool call landing mid-write) can observe a half-written file and report
+ * "not a valid glossary". Writing a sibling temp file and renaming it makes the
+ * swap atomic on the same filesystem.
+ */
+async function writeJsonAtomic(path: string, value: unknown): Promise<void> {
+  const temp = `${path}.verymath-tmp-${process.pid}-${Date.now()}`
+  try {
+    await writeFile(temp, JSON.stringify(value, null, 2) + '\n', 'utf8')
+    await rename(temp, path)
+  } catch (error) {
+    // A failed rename (permissions, cross-device) must not leave the temp file
+    // behind: it would show up in the workspace and in the panel's own scans.
+    await unlink(temp).catch(() => undefined)
+    throw error
+  }
+}
 
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), { status, headers: JSON_HEADERS })
@@ -74,12 +109,41 @@ function safeUrl(request: Request): URL | undefined {
   }
 }
 
-/** Resolve a caller-supplied relative path and refuse anything outside the workspace. */
-function withinWorkspace(workspace: string, candidate: string): string | undefined {
-  const absolute = resolve(workspace, candidate)
-  const root = resolve(workspace)
-  if (absolute !== root && !absolute.startsWith(`${root}/`)) return undefined
-  return absolute
+/**
+ * Resolve a caller-supplied relative path and refuse anything outside the workspace.
+ *
+ * Two details matter here:
+ *   * the separator is `sep`, not `/` — on Windows the string form is
+ *     `C:\ws\glossary.json`, so a `/`-suffixed prefix matched nothing and every
+ *     panel write was refused;
+ *   * the result is compared after `realpath`, so a symlink inside the workspace
+ *     that points outside it cannot be used to read or overwrite an outside file.
+ *     A path that does not exist yet (a new glossary) is compared lexically, since
+ *     there is nothing to resolve.
+ */
+async function withinWorkspace(workspace: string, candidate: string): Promise<string | undefined> {
+  const root = await realpath(resolve(workspace)).catch(() => resolve(workspace))
+  const absolute = resolve(root, candidate)
+  if (absolute !== root && !absolute.startsWith(`${root}${sep}`)) return undefined
+
+  // Resolve the deepest **existing** ancestor and re-append the missing segments.
+  // Checking only the full path let `ws/linkdir/new.json` through when `linkdir` is
+  // a symlink to somewhere outside: the file does not exist yet, so `realpath`
+  // failed and the lexical check was all that ran.
+  const missing: string[] = []
+  let probe = absolute
+  for (;;) {
+    const resolved = await realpath(probe).catch(() => undefined)
+    if (resolved !== undefined) {
+      const full = missing.length === 0 ? resolved : join(resolved, ...missing.reverse())
+      if (full !== root && !full.startsWith(`${root}${sep}`)) return undefined
+      return full
+    }
+    const parent = dirname(probe)
+    if (parent === probe) return undefined
+    missing.push(basename(probe))
+    probe = parent
+  }
 }
 
 /** Run one short command; never throws. */
@@ -138,22 +202,52 @@ function firstLine(text: string, max = 80): string {
  * the OSQP/Sage probes reuse the same command shape as the corresponding tools.
  */
 async function probeEnvironment(): Promise<ProbeRow[]> {
-  const rows: ProbeRow[] = []
+  // All probes run concurrently: seven sequential spawns made the panel sit on
+  // "probing…" for up to twenty seconds, which reads as a hang.
+  const check = (executable: string, args: readonly string[], timeoutMs = 8_000) =>
+    run(executable, args, timeoutMs).catch(() => ({ ok: false, stdout: '', stderr: 'probe failed' }))
 
-  const python = await run('python3', ['--version'], 5_000)
+  const checkResolved = async (name: string, args: readonly string[], timeoutMs = 8_000) => {
+    const executable = resolveExecutable(name)
+    if (executable === undefined) return { ok: false, stdout: '', stderr: 'not found' }
+    return await check(executable, args, timeoutMs)
+  }
+
+  const pythonExecutable = resolvePythonExecutable()
+  const pythonProbe = pythonExecutable === undefined
+    ? Promise.resolve({ ok: false, stdout: '', stderr: 'not found' })
+    : check(pythonExecutable, ['--version'], 5_000)
+  const binaryProbes = ['latexmk', 'xelatex'].map(async (name) => ({ name, result: await checkResolved(name, ['--version']) }))
+  const [python, ...binaries] = await Promise.all([pythonProbe, ...binaryProbes])
+
+  // The deeper checks need Python, so they start once it is known to exist.
+  const [yaml, osqp, sage, lean] = await Promise.all([
+    python.ok && pythonExecutable !== undefined
+      ? check(pythonExecutable, ['-c', 'import yaml, sys; sys.stdout.write(yaml.__version__)'])
+      : Promise.resolve(undefined),
+    python.ok && pythonExecutable !== undefined
+      ? check(pythonExecutable, ['-c', 'import osqp, numpy; print(osqp.__version__)'], 10_000)
+      : Promise.resolve(undefined),
+    // Resolve through the same helper the tool uses; a bare `sage` missed conda
+    // environments and made the panel disagree with `verymath_sage_check`.
+    (async () => {
+      const executable = resolveSageExecutable()
+      if (executable === undefined) return undefined
+      return await check(executable, ['--version'], 10_000)
+    })(),
+    checkResolved('lean', ['--version']),
+  ])
+
+  const rows: ProbeRow[] = []
   rows.push({
     id: 'python',
     label: 'Python 3',
     enables: '术语库构建 / OCR 扫描 / OSQP / Lean 禁用词检测',
     state: python.ok ? 'ready' : 'missing',
-    ...(python.ok ? { detail: (python.stdout || python.stderr).trim().split('\n')[0] } : {}),
+    ...(python.ok ? { detail: firstLine(python.stdout || python.stderr) } : {}),
     ...(python.ok ? {} : { hint: 'macOS: xcode-select --install 或 brew install python3；Windows: python.org 安装包' }),
   })
-
-  // PyYAML is what the bundled glossary_build.py actually needs; version alone
-  // does not prove the scripts will run.
-  if (python.ok) {
-    const yaml = await run('python3', ['-c', 'import yaml, sys; sys.stdout.write(yaml.__version__)'], 8_000)
+  if (yaml !== undefined) {
     rows.push({
       id: 'pyyaml',
       label: 'PyYAML',
@@ -163,26 +257,18 @@ async function probeEnvironment(): Promise<ProbeRow[]> {
       ...(yaml.ok ? {} : { hint: 'python3 -m pip install PyYAML' }),
     })
   }
-
-  const binaries = [
-    { id: 'latexmk', label: 'latexmk', enables: '数学 Beamer 幻灯片编译', args: ['--version'] },
-    { id: 'xelatex', label: 'xelatex', enables: '中文 / 双语 Beamer 模板', args: ['--version'] },
-  ] as const
-  for (const binary of binaries) {
-    const result = await run(binary.id, binary.args, 8_000)
+  for (const [index, binary] of binaries.entries()) {
+    const enables = index === 0 ? '数学 Beamer 幻灯片编译' : '中文 / 双语 Beamer 模板'
     rows.push({
-      id: binary.id,
-      label: binary.label,
-      enables: binary.enables,
-      state: result.ok ? 'ready' : 'missing',
-      ...(result.ok ? { detail: firstLine(result.stdout || result.stderr) } : {}),
-      ...(result.ok ? {} : { hint: 'macOS: brew install --cask mactex-no-gui；Linux: texlive-full' }),
+      id: binary.name,
+      label: binary.name,
+      enables,
+      state: binary.result.ok ? 'ready' : 'missing',
+      ...(binary.result.ok ? { detail: firstLine(binary.result.stdout || binary.result.stderr) } : {}),
+      ...(binary.result.ok ? {} : { hint: 'macOS: brew install --cask mactex-no-gui；Linux: texlive-full' }),
     })
   }
-
-  // The osqp solver stack: probe the import, not the CLI (there is none).
-  if (python.ok) {
-    const osqp = await run('python3', ['-c', 'import osqp, numpy; print(osqp.__version__)'], 10_000)
+  if (osqp !== undefined) {
     rows.push({
       id: 'osqp',
       label: 'OSQP 求解栈',
@@ -192,18 +278,14 @@ async function probeEnvironment(): Promise<ProbeRow[]> {
       ...(osqp.ok ? {} : { hint: "python3 -m pip install 'osqp>=1,<2' numpy scipy" }),
     })
   }
-
-  const sage = await run('sage', ['--version'], 10_000)
   rows.push({
     id: 'sage',
     label: 'SageMath',
     enables: '本机 Sage 执行（文档查询不需要它）',
-    state: sage.ok ? 'ready' : 'missing',
-    ...(sage.ok ? { detail: firstLine(sage.stdout, 60) } : {}),
-    ...(sage.ok ? {} : { hint: 'conda create -n sage sage=10.9，或设置 VERYMATH_SAGE 指向 sage 可执行文件' }),
+    state: sage !== undefined && sage.ok ? 'ready' : 'missing',
+    ...(sage !== undefined && sage.ok ? { detail: firstLine(sage.stdout, 60) } : {}),
+    ...(sage !== undefined && sage.ok ? {} : { hint: 'conda create -n sage sage=10.9，或设置 VERYMATH_SAGE 指向 sage 可执行文件' }),
   })
-
-  const lean = await run('lean', ['--version'], 8_000)
   rows.push({
     id: 'lean',
     label: 'Lean 4',
@@ -212,8 +294,37 @@ async function probeEnvironment(): Promise<ProbeRow[]> {
     ...(lean.ok ? { detail: firstLine(lean.stdout, 60) } : {}),
     ...(lean.ok ? {} : { hint: 'lean-setup 技能会给出 elan / lake / mathlib 的安装步骤' }),
   })
-
   return rows
+}
+
+/**
+ * The stats shape both the read route and the write routes return.
+ *
+ * Gaps are what makes the numbers actionable: "3 without examples" is trivia, the
+ * ids are a to-do list the panel can show.
+ */
+function glossaryStats(terms: readonly GlossaryTerm[]): {
+  total: number
+  withExamples: number
+  aliases: number
+  fields: string[]
+  missingExamples: string[]
+  missingField: string[]
+  missingExampleCount: number
+  missingFieldCount: number
+} {
+  const missingExamples = terms.filter(term => (term.examples?.length ?? 0) === 0).map(term => term.term_id)
+  const missingField = terms.filter(term => (term.field?.length ?? 0) === 0).map(term => term.term_id)
+  return {
+    total: terms.length,
+    withExamples: terms.filter(term => (term.examples?.length ?? 0) > 0).length,
+    aliases: terms.filter(term => term.term_id.includes('__')).length,
+    fields: [...new Set(terms.flatMap(term => term.field ?? []))].sort((left, right) => left.localeCompare(right)),
+    missingExamples: missingExamples.slice(0, 40),
+    missingField: missingField.slice(0, 40),
+    missingExampleCount: missingExamples.length,
+    missingFieldCount: missingField.length,
+  }
 }
 
 /** Find glossary documents under the workspace (bounded depth, bounded count). */
@@ -383,6 +494,10 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
    * second write drops the first.
    */
   const writeChains = new Map<string, Promise<unknown>>()
+  /** Prefer the service's chain so panel and tool writes cannot interleave. */
+  const writeLock = <T>(key: string, task: () => Promise<T>): Promise<T> =>
+    ctx.withWrite !== undefined ? ctx.withWrite(key, task) : withWrite(key, task)
+
   const withWrite = async <T>(key: string, task: () => Promise<T>): Promise<T> => {
     const previous = writeChains.get(key) ?? Promise.resolve()
     const run = previous.then(task, task)
@@ -438,7 +553,7 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
       if (url === undefined) return json({ error: 'invalid request url' }, 400)
       const relative = url.searchParams.get('path') ?? ''
       const query = (url.searchParams.get('q') ?? '').trim()
-      const absolute = withinWorkspace(ctx.workspace(), relative)
+      const absolute = await withinWorkspace(ctx.workspace(), relative)
       if (absolute === undefined) return json({ error: 'path escapes the workspace' }, 400)
 
       let terms: GlossaryTerm[]
@@ -449,23 +564,7 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
         return json({ error: `not a valid glossary: ${error instanceof Error ? error.message : String(error)}` }, 400)
       }
 
-      const withExamples = terms.filter(term => (term.examples?.length ?? 0) > 0).length
-      const fields = [...new Set(terms.flatMap(term => term.field ?? []))].sort((left, right) => left.localeCompare(right))
-      const aliases = terms.filter(term => term.term_id.includes('__')).length
-      // Gaps are what makes the stats actionable: a count of "3 without
-      // examples" is trivia, the actual terms are a to-do list.
-      const missingExamples = terms.filter(term => (term.examples?.length ?? 0) === 0).map(term => term.term_id)
-      const missingField = terms.filter(term => (term.field?.length ?? 0) === 0).map(term => term.term_id)
-      const stats = {
-        total: terms.length,
-        withExamples,
-        aliases,
-        fields,
-        missingExamples: missingExamples.slice(0, 40),
-        missingField: missingField.slice(0, 40),
-        missingExampleCount: missingExamples.length,
-        missingFieldCount: missingField.length,
-      }
+      const stats = glossaryStats(terms)
 
       if (query.length === 0) return json({ stats, terms: [], matched: 0, truncated: false })
       const { hits, total } = queryGlossary(terms, query, { limit: 60 })
@@ -501,7 +600,7 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
       if (url === undefined) return json({ error: 'invalid request url' }, 400)
       const relative = url.searchParams.get('path') ?? ''
       const focus = (url.searchParams.get('focus') ?? '').trim()
-      const absolute = withinWorkspace(ctx.workspace(), relative)
+      const absolute = await withinWorkspace(ctx.workspace(), relative)
       if (absolute === undefined) return json({ error: 'path escapes the workspace' }, 400)
 
       let structure
@@ -597,18 +696,6 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
     }
   }
 
-  const statsFor = (terms: GlossaryTerm[]) => {
-    const missingExamples = terms.filter(term => (term.examples?.length ?? 0) === 0).length
-    const missingField = terms.filter(term => (term.field?.length ?? 0) === 0).length
-    return {
-      total: terms.length,
-      withExamples: terms.filter(term => (term.examples?.length ?? 0) > 0).length,
-      aliases: terms.filter(term => term.term_id.includes('__')).length,
-      fields: [...new Set(terms.flatMap(term => term.field ?? []))].sort((left, right) => left.localeCompare(right)),
-      missingExampleCount: missingExamples,
-      missingFieldCount: missingField,
-    }
-  }
 
   // Add a term, or correct/remove one. The same core functions the chat tool uses
   // run here, so the panel and the agent cannot drift apart in behaviour.
@@ -620,12 +707,12 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
       const body = await readBody(request)
       if ('error' in body) return json({ error: body.error }, 400)
       const relative = typeof body.body.path === 'string' ? body.body.path : ''
-      const absolute = withinWorkspace(ctx.workspace(), relative)
+      const absolute = await withinWorkspace(ctx.workspace(), relative)
       if (absolute === undefined) return json({ error: 'path escapes the workspace' }, 400)
       const requests = Array.isArray(body.body.terms) ? body.body.terms : []
       if (requests.length === 0) return json({ error: 'terms must be a non-empty array' }, 400)
 
-      return await withWrite(absolute, async () => {
+      return await writeLock(absolute, async () => {
         const loaded = await loadForWrite(absolute)
         if ('error' in loaded) return json({ error: loaded.error }, 400)
         let result
@@ -636,11 +723,14 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
           // caller's input, so they are 400 with the core's own message.
           return json({ error: error instanceof Error ? error.message : String(error) }, 400)
         }
-        await writeFile(absolute, JSON.stringify(result.document, null, 2) + '\n', 'utf8')
+        await writeJsonAtomic(absolute, result.document)
+        // The chat tool reads through this cache; leaving it means the panel edit is
+        // invisible to the agent until something else touches the file.
+        ctx.invalidateGlossaryCache?.()
         return json({
           added: [...result.added],
           updated: [...result.updated],
-          stats: statsFor(result.document),
+          stats: glossaryStats(result.document),
           document: result.document,
         })
       })
@@ -656,17 +746,20 @@ export function registerHttp(ctx: HttpContext, connection: ConnectionLike | unde
       if ('error' in body) return json({ error: body.error }, 400)
       const relative = typeof body.body.path === 'string' ? body.body.path : ''
       const termId = typeof body.body.term_id === 'string' ? body.body.term_id : ''
-      const absolute = withinWorkspace(ctx.workspace(), relative)
+      const absolute = await withinWorkspace(ctx.workspace(), relative)
       if (absolute === undefined) return json({ error: 'path escapes the workspace' }, 400)
       if (termId.length === 0) return json({ error: 'term_id is required' }, 400)
 
-      return await withWrite(absolute, async () => {
+      return await writeLock(absolute, async () => {
         const loaded = await loadForWrite(absolute)
         if ('error' in loaded) return json({ error: loaded.error }, 400)
         const result = deleteTerm(loaded.terms, termId)
         if (!result.removed) return json({ error: `no term with term_id ${JSON.stringify(termId)}` }, 404)
-        await writeFile(absolute, JSON.stringify(result.document, null, 2) + '\n', 'utf8')
-        return json({ removed: termId, stats: statsFor(result.document), document: result.document })
+        await writeJsonAtomic(absolute, result.document)
+        // The chat tool reads through this cache; leaving it means the panel edit is
+        // invisible to the agent until something else touches the file.
+        ctx.invalidateGlossaryCache?.()
+        return json({ removed: termId, stats: glossaryStats(result.document), document: result.document })
       })
     }),
   })

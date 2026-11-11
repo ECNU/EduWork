@@ -79,12 +79,29 @@ function resolveWorkspace(ctx: Context): string {
  * service may not exist yet, and a `ctx.get` that quietly returns undefined
  * leaves every route unregistered — the panel then shows 404 for all of them.
  */
+/** The slice of `ctx.verymath` the panel's routes share with the tools. */
+interface VeryMathServiceLike {
+  readonly withGlossaryWrite?: <T>(path: string, task: () => Promise<T>) => Promise<T>
+  readonly invalidateAllGlossaries?: () => void
+}
+
 export const apply = (ctx: Context): void => {
   ctx.inject(['connection'], (inner) => {
     const connection = optionalService<ConnectionLike>(inner, 'connection')
+    // The routes must share the service's write lock and cache instead of keeping
+    // their own: two independent lock chains let a panel write and a tool write drop
+    // each other's update, and an un-invalidated cache leaves the agent answering
+    // from the pre-write snapshot.
+    const service = optionalService<VeryMathServiceLike>(inner, 'verymath')
     registerHttp({
       workspace: () => resolveWorkspace(inner),
       log: (message: string) => inner.logger?.warn?.(message),
+      ...(service?.withGlossaryWrite !== undefined
+        ? { withWrite: service.withGlossaryWrite.bind(service) }
+        : {}),
+      ...(service?.invalidateAllGlossaries !== undefined
+        ? { invalidateGlossaryCache: service.invalidateAllGlossaries.bind(service) }
+        : {}),
     }, connection)
   })
 }

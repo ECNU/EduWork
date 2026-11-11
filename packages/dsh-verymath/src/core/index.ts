@@ -17,6 +17,9 @@ import { VeryMathSkillProvider } from './skills.ts'
 
 export { VeryMathError, isVeryMathError, isErrnoCode } from './error.ts'
 export { bundledSkillsDir } from './paths.ts'
+export {
+  executableSearchDirs, sageSearchDirs, resolveExecutable, resolveSageExecutable, resolvePythonExecutable,
+} from './exec.ts'
 export { VeryMathSkillProvider } from './skills.ts'
 export { parseGlossary, queryGlossary, sortGlossary, upsertTerms, deleteTerm, validateGlossaryInvariants } from './glossary.ts'
 export type { GlossaryHit, GlossaryQueryOptions, GlossaryTerm, TermUpsert, UpsertResult, DeleteResult } from './glossary.ts'
