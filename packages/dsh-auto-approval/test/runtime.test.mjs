@@ -1,0 +1,114 @@
+// The locked DSH Runtime end to end: a scripted model asks for a shell escalation, the real agent loop, tool pipeline
+// and approval service run it, and the plugin answers before the client's answerer.
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import { mkdir, mkdtemp } from 'node:fs/promises'
+import { createServer } from 'node:http'
+import { once } from 'node:events'
+import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+async function decisionService(t, auto) {
+  const bodies = []
+  const server = createServer(async (req, res) => {
+    let raw = ''
+    for await (const chunk of req) raw += chunk
+    const body = JSON.parse(raw)
+    bodies.push(body)
+    const answers = Object.fromEntries(Object.keys(body.questions).map(id => [id, id === 'harm'
+      ? { type: 'noul', noul: 0.1 } : { type: 'choice', choice: 'auto', probabilities: { auto, ask: 1 - auto } }]))
+    res.writeHead(200, { 'Content-Type': 'application/json' }); res.end(JSON.stringify({ answers }))
+  })
+  server.listen(0, '127.0.0.1'); await once(server, 'listening')
+  t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)) })
+  return { baseURL: `http://127.0.0.1:${server.address().port}/v1`, bodies }
+}
+
+const chunks = block => [
+  { type: 'block-start', index: 0, blockType: block.type },
+  ...block.type === 'text' ? [{ type: 'text-delta', index: 0, text: block.text }] : [{ type: 'tool-call-delta', index: 0, id: block.id, name: block.name, argumentsDelta: block.arguments }],
+  { type: 'block-end', index: 0, block },
+  { type: 'usage', usage: { inputTokens: 10, outputTokens: 5 } },
+  { type: 'finish', reason: { kind: block.type === 'text' ? 'stop' : 'tool-calls' } },
+]
+
+async function run(t, { auto, preset = 'auto-approval', command }) {
+  const { Context } = await import('@deepseek-ai/cordis')
+  const { createUserMessage, LlmAdapter } = await import('@deepseek-ai/dsh-llm')
+  const { defineTool } = await import('@deepseek-ai/dsh-tools')
+  const { approveEscalation } = await import('@deepseek-ai/dsh-sandbox')
+  const { baseURL, bodies } = await decisionService(t, auto)
+  const ctx = new Context()
+  t.after(() => ctx.fiber.dispose())
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/runtime/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const home = await mkdtemp(join(root, 'run-'))
+  const load = async (name, config) => { const module = await import(name); await ctx.plugin(module.default ?? module, config) }
+  for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent', '@deepseek-ai/dsh-tool-executor-native']) await load(name)
+  for (const [name, config] of [
+    ['@deepseek-ai/dsh-session-persistence-jsonl', { root: join(home, 'sessions') }],
+    ['@deepseek-ai/dsh-agent-loop', { agents: [] }],
+    ['@deepseek-ai/dsh-user-approval', {}],
+  ]) await load(name, config)
+  ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'fixture', model: 'fixture' }) })
+  // The preset table and the working directory belong to other Host services; only their reads are used here.
+  ctx.provide('permissionPresets', { current: () => preset })
+  ctx.provide('workingDirectory', { get: () => home })
+  const requests = []
+  ctx.llm.registerAdapter(['fixture'], new class extends LlmAdapter {
+    resolveModel(provider, model) { return Promise.resolve({ provider, id: model, name: model }) }
+    async *stream(request) {
+      requests.push(request)
+      yield* chunks(requests.length === 1
+        ? { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) }
+        : { type: 'text', text: 'Done.' })
+    }
+  }())
+  const outcomes = []
+  ctx.tools.register(defineTool({
+    name: 'bash', description: 'Run a shell command.',
+    parameters: { description: { type: 'string', required: true }, command: { type: 'string', required: true }, sandbox_permissions: { type: 'string' }, justification: { type: 'string' } },
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+    async execute(args, exec) {
+      // The same approval path the official bash tool uses for a sandbox escalation.
+      const mode = await approveEscalation({ requestedMode: args.sandbox_permissions, justification: args.justification, effectiveMode: 'workspace-write', subject: 'command' },
+        { approver: ctx.get('approval'), agent: exec.agent, callId: exec.callId, toolName: 'bash', signal: exec.signal }).catch(error => error.message)
+      outcomes.push(mode)
+      return String(mode)
+    },
+  }))
+  // The client's answerer composes after the plugins and declines whatever reaches it.
+  const userAnswers = []
+  ctx.on('approval/request', req => { userAnswers.push(req.callId); return 'rejected' })
+  await load(new URL('../lib/index.js', import.meta.url).href, { enabled: true, authMode: 'none', baseURL, model: 'fixture-model' })
+  const handle = await ctx.agents.create({ sessionId: 'auto-approval-fixture', meta: { cwd: home }, agentOptions: { provider: 'fixture', model: 'fixture' } })
+  handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Copy the report to my Downloads folder.' }], source: { kind: 'user' } }))
+  await handle.agent.whenIdle()
+  return { bodies, outcomes, userAnswers, events: handle.agent.session.snapshotEvents() }
+}
+
+const runtime = { skip: !process.env.EDUWORK_AUTO_APPROVAL_RUNTIME, timeout: 20_000 }
+
+test('real Runtime: an approved escalation runs without reaching the user, with the session read correctly', runtime, async t => {
+  const result = await run(t, { auto: 0.9, command: 'cp report.csv ~/Downloads/' })
+  assert.deepEqual(result.outcomes, ['danger-full-access'])
+  assert.deepEqual(result.userAnswers, [])
+  assert.equal(result.bodies.length, 2)
+  assert.deepEqual(result.bodies[0].state.用户最近的消息, ['Copy the report to my Downloads folder.'])
+  assert.equal(result.bodies[0].state.待执行的命令, 'cp report.csv ~/Downloads/')
+  assert.equal(result.bodies[0].state.申请理由, 'Write the report to Downloads')
+  const decided = result.events.filter(event => event.type === 'approval/decided')
+  assert.equal(decided.length, 1)
+  assert.equal(decided[0].data.outcome, 'allowed-once')
+})
+
+test('real Runtime: a low score and another preset leave the decision to the user', runtime, async t => {
+  const low = await run(t, { auto: 0.6, command: 'git push origin main' })
+  assert.equal(low.bodies.length, 1)
+  assert.match(low.bodies[0].state.风险标记, /^推送和发布（命令里的这一段：git push origin main）$/)
+  assert.deepEqual(low.userAnswers, ['call-1'])
+  assert.match(low.outcomes[0], /rejected/)
+  const other = await run(t, { auto: 0.9, preset: 'workspace-write', command: 'cp report.csv ~/Downloads/' })
+  assert.equal(other.bodies.length, 0)
+  assert.deepEqual(other.userAnswers, ['call-1'])
+})

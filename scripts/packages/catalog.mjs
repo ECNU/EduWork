@@ -5,6 +5,7 @@ export const repository = 'ECNU/EduWork'
 export const packages = [
   { id: 'dsh-external-agents', name: '@eduwork/dsh-external-agents', directory: 'packages/dsh-external-agents', group: 'dsh-external-agents' },
   { id: 'dsh-decision', name: '@eduwork/dsh-decision', directory: 'packages/dsh-decision', group: 'dsh-decision' },
+  { id: 'dsh-auto-approval', name: '@eduwork/dsh-auto-approval', directory: 'packages/dsh-auto-approval', group: 'dsh-auto-approval' },
   { id: 'dsh-annotation', name: '@eduwork/dsh-annotation', directory: 'packages/dsh-annotation', group: 'dsh-annotation' },
   { id: 'dsh-side-chat', name: '@eduwork/dsh-side-chat', directory: 'packages/dsh-side-chat', group: 'dsh-side-chat' },
   { id: 'dsh-desktop-pet', name: '@eduwork/dsh-desktop-pet', directory: 'packages/dsh-desktop-pet', group: 'dsh-desktop-pet' },
@@ -30,10 +31,11 @@ export function changedGroups(files) {
     if (file.startsWith('scripts/packages/') || file === 'tests/package-maintenance.test.mjs' || /^\.github\/workflows\/packages(?:-release)?\.yml$/.test(file)) {
       groups.forEach(group => result.add(group))
     }
-    // Both package checks install this Runtime to exercise their mounted plugins.
+    // These package checks install this Runtime to exercise their mounted plugins.
     if (/^third_party\/dsh\/[^/]+\/npm-runtime\//.test(file)) {
       result.add('dsh-side-chat')
       result.add('dsh-decision')
+      result.add('dsh-auto-approval')
     }
     for (const group of groups) if (file.startsWith(`packages/${group}/`)) result.add(group)
     // Side chat consumes the annotation selection service when both are enabled.
