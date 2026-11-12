@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-12T02:36:04.359Z",
-  "fileSetSHA256": "6e6ff05f6c88982e4ef30b3dc624a080dca04cf582c8be4f19ee0ace4aeaaf3b",
+  "createdAt": "2026-11-12T02:44:06.133Z",
+  "fileSetSHA256": "f16283a9f4b4cf69b92d2b53696e08e6b2e5ca98592d5ff0065b35abd58a3084",
   "files": [
     {
       "path": ".gitattributes",
@@ -1529,7 +1529,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "199ea4b62fb127b880d32b266aa70a8f149d59398d8fb1ad7d4e41f4f7e3fa38"
+      "sha256": "687da8cc00258b9dbc1f4e1bee8ed926287064d61e10773441a850486830d315"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",
@@ -1605,7 +1605,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "658ac27bb3d56672a931531392af294a6b3b2346e01cdf7f52eb3621d6573886"
+      "sha256": "6ea9f378345cc1e0a05f457b91eba27d34c54d42f6ca251345d8b0afaa4bbec2"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
