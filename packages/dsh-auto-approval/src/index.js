@@ -184,7 +184,7 @@ export function apply(ctx, raw = {}) {
       const count = (failures.get(id)?.count ?? 0) + 1
       failures.set(id, count >= PAUSE_AFTER ? { count: 0, until: Date.now() + PAUSE_MS } : { count })
       log.warn(`review failed, asking the user (${Math.round(performance.now() - started)} ms): ${error?.message ?? error}`)
-      return ask('审查失败')
+      return ask(error?.name === 'TimeoutError' ? '审查超时' : '审查失败')
     }
   }, { prepend: true })
 }

@@ -273,8 +273,10 @@ test('one retry for 5xx; failures, malformed answers and timeouts ask the user; 
   assert.equal(bodies.length, 5) // the 500 was retried once
   mode = 'hang'
   const started = performance.now()
-  assert.equal(await mounted.escalate('git push origin main', user), 'unavailable')
+  const hung = await mounted.start('git push origin main')
+  assert.equal(await mounted.ask(hung, user), 'unavailable')
   assert.ok(performance.now() - started < 3000)
+  assert.equal((await mounted.post(hung)).additionalContexts[0].source.summary, '交给用户确认（审查超时）')
   const asked = bodies.length
   const paused = await mounted.start('git push origin main')
   assert.equal(await mounted.ask(paused, user), 'unavailable')
