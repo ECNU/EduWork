@@ -53,7 +53,7 @@ export function adaptNativeHostEntry(input) {
   // The product manifest owns its bundled extensions as well as DSH. Using
   // the CLI manifest here makes profile resolution omit all product packages.
   text = replace(text, "const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')", "const installAnchor = join(runtimeDir, 'package.json')")
-  for (const module of ['update-tasks', 'quit-inspection', 'fatal-diagnostic', 'operation-diagnostics', 'file-drag']) {
+  for (const module of ['update-tasks', 'quit-inspection', 'fatal-diagnostic', 'operation-diagnostics', 'file-drag', 'office-engine']) {
     text = text.replaceAll(`'./${module}.ts'`, `'./${module}.js'`)
   }
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
@@ -64,8 +64,8 @@ export function adaptNativeHostEntry(input) {
     source: process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime'),
     root: join(resolveDshHome(), 'dsh-runtimes', 'dsh-primary-runtime'),
   })\n`, '')
-  // rc.2 registers Office tools through the Runtime composition. There is no
-  // desktop Office bridge to copy; retain only product settings/account hooks.
+  // rc.2 registers Office tools through the Runtime composition. rc.1 still
+  // imports its engine resolver, independently of the removed desktopOffice plugin.
   text = replace(text, `  installPlatformSessionPublisher(ctx, (session) => {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })`, `  // EduWork's selected composition owns Office authoring dependencies and
@@ -118,6 +118,11 @@ export async function prepareNative({ upstream, output }) {
   await emit('node-environment.mjs', transform(input['apps/desktop/src/node-environment.ts']))
   await emit('web-document.mjs', transform(adaptNativeWebDocument(input['apps/desktop/src/web-document.ts'])))
   await emit('desktop-host/lib/index.js', transform(adaptNativeHostEntry(input['apps/desktop-host/src/index.ts'])))
+  // Keep the resolver while the pinned entry imports it. rc.2 removes this
+  // module; its input must leave the source receipt when that lock is selected.
+  if (input['apps/desktop-host/src/office-engine.ts'] !== undefined) {
+    await emit('desktop-host/lib/office-engine.js', transform(input['apps/desktop-host/src/office-engine.ts']))
+  }
   await emit('desktop-host/lib/distribution-policy.patch.json', JSON.stringify(distributionPolicy(), null, 2) + '\n')
   // This hook is installed after profile plugins. Prepend it so a plugin's
   // handled media/API response cannot bypass update admission.

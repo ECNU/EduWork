@@ -5,7 +5,7 @@
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
   "createdAt": "2026-11-11T16:32:06.493Z",
-  "fileSetSHA256": "262f0e6313fb30c514338460781701335f146d1e2bd59bf6ae23281aab02ce63",
+  "fileSetSHA256": "aa6c6be7aa45ba1591402e3fd092a18b99cc8d585491c0d87119cc76cd949dbb",
   "files": [
     {
       "path": ".gitattributes",
@@ -61,7 +61,7 @@
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
-      "sha256": "8ddcd9fd8f128a15359c25da3811e55a51ca09d48a315c0c9a3031a372d7fc74"
+      "sha256": "aa35184c7c835dc859a1c4eafc0bb5b765f17fcd8385f6337bc3315c1f11b3fe"
     },
     {
       "path": ".github/workflows/validate-portable-extractor.yml",
@@ -1741,7 +1741,7 @@
     },
     {
       "path": "dsh-host/prepare-native.mjs",
-      "sha256": "193e71119c4f77433003828aa37ad047255344f517ad02a748ec1479b8c2838b"
+      "sha256": "bc5b7a6179ec563360c21bb38b6b5b6f822cbb3033d0885c72235ac7ff15e209"
     },
     {
       "path": "dsh-host/prepare.mjs",
@@ -1836,6 +1836,10 @@
       "sha256": "dbe80b6b8e0675c9952aed59a5d16807fced735f9c2adf6539cfd6807b42c996"
     },
     {
+      "path": "dsh-host/test/native-host-output.test.mjs",
+      "sha256": "c913d9a4701dae93efb0710ed304d2c97a6397c67d851b5f6c9875957f18f8f9"
+    },
+    {
       "path": "dsh-host/test/native-resources.integration.test.mjs",
       "sha256": "d92c708c1333d6817664d64c14619f6416c74ea3f857372ee812f42bc44c3531"
     },
@@ -1901,7 +1905,7 @@
     },
     {
       "path": "dsh-host/upstream-inputs-pinned-source.json",
-      "sha256": "6827f5e6a30dbb4b2d835464b8d1d5415c91c1a3b830d42b37ae8ae8b59b344a"
+      "sha256": "7d5934fa370d2232099620a570c12ba0eb12a5b522335fe8d5efe8a45f3b3a3d"
     },
     {
       "path": "dsh-host/user-config.mjs",

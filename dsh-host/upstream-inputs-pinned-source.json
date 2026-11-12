@@ -6,6 +6,7 @@
   "apps/desktop-host/package.json": "c908cf202f24cf7f1f1b2754654883a6ce3fa023df52ad1d0a59a2a514c8dd59",
   "apps/desktop-host/src/index.ts": "514f5ead12dbe398ddd5de4f4e59721b332ae4e845c590d63a676a99fbe2e4b1",
   "apps/desktop-host/src/update-tasks.ts": "ace98160f307323fd04055dc990ab1d52faeb848a0a03ec9cf43c475fad9972b",
+  "apps/desktop-host/src/office-engine.ts": "9e399122d163f92aca01c57c0f5fd207946ebd7b7a3f6967b7e2e262e7f46432",
   "apps/desktop-host/src/quit-inspection.ts": "d732d8706a6fe5eb993c4dfd90fdec7203889507b0b13b957cfebebd80cd16e2",
   "apps/desktop-host/src/fatal-diagnostic.ts": "25cdf936a7e4485afe210a94fa15bf5ea30f78e02606f6f2d79a0636eb9d798d",
   "apps/desktop-host/src/operation-diagnostics.ts": "1b007baa81243d68b27ef314289a087827bcc1a175ae29576fb7044fb115fc75",
