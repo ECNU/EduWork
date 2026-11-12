@@ -17,13 +17,14 @@ test('session facts: recent requests, the message the latest one replied to and 
     call('c2', 'write', { file_path: 'notes/plan.md', content: 'x' }),
     { type: 'user/message', data: { source: { kind: 'tool' }, content: [{ type: 'text', text: 'tool output is not the user' }] } },
     user('second request'), user('third request'), assistant('Shall I deploy to the test server?'), assistant(''),
-    user('x'.repeat(400)),
+    user(`${'a'.repeat(100)}${'b'.repeat(150)}${'c'.repeat(200)}`),
     call('c4', 'pwsh', { command: 'Get-ChildItem' }),
     call('pending', 'bash', { command: 'ssh test-host deploy', sandbox_permissions: 'danger-full-access' }),
     call('later', 'bash', { command: 'not seen' }),
   ]
   const facts = sessionFacts(events, 'pending')
-  assert.deepEqual(facts.requests, ['second request', 'third request', 'x'.repeat(300)])
+  // A long message keeps its opening and its end.
+  assert.deepEqual(facts.requests, ['second request', 'third request', `${'a'.repeat(100)}…（中间省略 150 字）…${'c'.repeat(200)}`])
   assert.equal(facts.assistant, 'Shall I deploy to the test server?')
   assert.deepEqual(facts.history, ['npm test', 'Get-ChildItem'])
   assert.deepEqual(sessionFacts(events.slice(0, 3), 'missing').history, ['npm test'])

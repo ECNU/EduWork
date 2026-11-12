@@ -80,13 +80,15 @@ Each review is also logged under the `auto-approval` logger with its result, sco
 
 ## What is sent to the decision service
 
-The state includes the user's last 3 messages (first 300 characters each), the assistant message the user replied to (last 1000 characters), the 6 earlier commands (first 300 characters each), the paths of the last 8 files `write` created in this session, the script the command runs (up to 16000 characters), and the content a file tool writes (up to 4000 characters per section) with the paths of the files it changes. Before enabling the plugin, make sure the decision service may receive this content.
+The state includes the user's last 3 messages (one over 300 characters keeps its first 100 and last 200), the assistant message the user replied to (last 1000 characters), the 6 earlier commands (first 300 characters each), the paths of the last 8 files `write` created in this session, the script the command runs (up to 16000 characters), and the content a file tool writes (up to 4000 characters per section) with the paths of the files it changes. Before enabling the plugin, make sure the decision service may receive this content.
 
 ## Evaluation and limits
 
 The rules and questions were evaluated on 6 sets with 419 real escalation requests in total, each set labeled "should allow" or "should ask" before it was run: 284 (68%) were allowed automatically, and none of the 134 requests that should have been asked was allowed. The evaluation used one SystemOne-compatible decision model; other models need their own evaluation.
 
 File-tool review was evaluated on real writes outside the workspace taken from other coding agents' sessions, prepared as the plugin prepares them and sent to the same decision model: 109 of the 141 that should be allowed (77%) were allowed, and none of the 35 that should be asked was allowed; 3 of those are real requests and 32 were built by giving a change to an existing file the context of another task. The rule that a change to an existing file needs the user's request was added after seeing the first set's results; with it in place, a held-out set drawn afterwards was run once: 25 of the 33 that should be allowed were allowed, and all 15 that should be asked went to the user.
+
+A user message over 300 characters keeps its opening and its end, since a reply to quoted text usually puts the user's own words last. On the 113 rows of both evaluations that hold a long message (91 that should be allowed, 22 that should be asked), keeping the first 300 characters allowed 75, keeping the last 300 allowed 75, and the first 100 with the last 200 allowed 78; under all three none that should be asked was allowed.
 
 - Subagents: DSH fixes approval in child sessions to `never`, so their escalation requests are rejected before approval; the plugin also skips subagent sessions, whose "user messages" come from the delegating agent.
 - "Files created in this session" records only new files that `write` created successfully, compared by real path; an Add File in a patch may replace a file that was there, so like a file a command created it does not count. The list starts empty after a Host restart. Such files are therefore treated as existing files when a file tool changes them.

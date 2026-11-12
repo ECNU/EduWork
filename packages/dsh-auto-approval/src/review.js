@@ -19,6 +19,9 @@ const parsed = raw => {
   try { return JSON.parse(raw) } catch { return undefined }
 }
 
+// A long user message keeps its opening and its end, where a reply to the text it quotes usually is.
+const clip = text => text.length > 300 ? `${text.slice(0, 100)}…（中间省略 ${text.length - 300} 字）…${text.slice(-200)}` : text
+
 // A question card the agent showed, as the message the user's answer replied to, and the answer in the user's terms.
 const card = questions => questions.map(({ question, options = [] }) =>
   [question, ...options.map(({ label, description }) => `- ${label}${description ? `：${description}` : ''}`)].join('\n')).join('\n')
@@ -42,7 +45,7 @@ export function sessionFacts(events, callId) {
   const end = events.findLastIndex(({ type, data }) => type === 'tool/call' && data.callId === callId)
   const requests = [], history = [], cards = new Map()
   let assistant = '', lastAssistant = ''
-  const reply = (text, to) => { if (text) { requests.push(text.slice(0, 300)); assistant = to } }
+  const reply = (text, to) => { if (text) { requests.push(clip(text)); assistant = to } }
   // An answer given while the card's call waited is that call's result; one given after the call timed out arrives as
   // a user message naming the call and carrying its questions.
   const answered = (questions, answers) => {
