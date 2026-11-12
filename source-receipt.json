@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-12T07:02:25.260Z",
-  "fileSetSHA256": "304b409ae806558893f75134b2c4e3c80becbf0b72c2a58d0eb08b452d59db88",
+  "createdAt": "2026-11-12T07:07:39.791Z",
+  "fileSetSHA256": "d4fabb906781e78dcd8e8a29338465f47e8c396a7930caf8b3b8654190033935",
   "files": [
     {
       "path": ".gitattributes",
@@ -5897,7 +5897,7 @@
     },
     {
       "path": "packages/dsh-mail/scripts/check-licenses.mjs",
-      "sha256": "537b607398c0e477ba3b5185e904248010381239b31b355d5294add63ce2bb78"
+      "sha256": "8931f42b3384502198981ee5be80bb39e60c54504f1587fa0bc265bba198b8c5"
     },
     {
       "path": "packages/dsh-mail/scripts/check-secrets.mjs",
@@ -6029,11 +6029,11 @@
     },
     {
       "path": "packages/dsh-mail/THIRD_PARTY_NOTICES.en.md",
-      "sha256": "bd5d9fcf3034b20d32bc875e7b1abdf8bed5aebc17e60fda0214d694250638cd"
+      "sha256": "66ece556feda0125d565b80c8e54fd84e2e47ef1d8a117242f01f8bc524f8f56"
     },
     {
       "path": "packages/dsh-mail/THIRD_PARTY_NOTICES.md",
-      "sha256": "5cdce661a15d0164870d1b61bb0774a4d3bcd101795ab8155e9ac5cb9bee55b5"
+      "sha256": "545cfba573874bd10190352a2e28565b0098d02b62d89727fcddd1def42aaf1b"
     },
     {
       "path": "packages/dsh-mail/tsconfig.json",
@@ -6557,7 +6557,7 @@
     },
     {
       "path": "packages/dsh-oidc/scripts/check-licenses.mjs",
-      "sha256": "47da1ebf5202c7f68db419aadc225c61ada87f670626292e0790a8a3a3729825"
+      "sha256": "04f54e15156bd5bd0b47866422bef61ef36fd3fa35c8166cc38716188d9aa1b4"
     },
     {
       "path": "packages/dsh-oidc/scripts/check-schemas.mjs",
@@ -6793,11 +6793,11 @@
     },
     {
       "path": "packages/dsh-oidc/THIRD_PARTY_NOTICES.en.md",
-      "sha256": "17af5fa4babac339f4eb12fd5cf9e38f6dfc0fb40b485d241ad9dff79669c9a3"
+      "sha256": "ff6cdaaefa570ce3af439f337b74350e943df76a34f38f32fe78e161d1538828"
     },
     {
       "path": "packages/dsh-oidc/THIRD_PARTY_NOTICES.md",
-      "sha256": "37bcb3fef1d78bf6549cdaaec3d038da64167e62fb05de5ab2e9d7c3e8621dba"
+      "sha256": "c079eb6c9580383bfff69d68e4ec68025e4631918634fd53185b1c05384c865e"
     },
     {
       "path": "packages/dsh-oidc/tsconfig.json",
