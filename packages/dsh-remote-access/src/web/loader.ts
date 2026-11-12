@@ -218,4 +218,7 @@ function banner(message: string, action: string, onAction: () => void): void {
 }
 
 const target = parseHostPath(location.pathname.slice(base.pathname.length))
-void (target !== undefined && target.rest === '' ? openHost(target.hostId) : home()).catch(error => show(note(failure(error))))
+// The Service Worker unpacks the computer's interface with DecompressionStream (Safari from iOS 16.4);
+// without it the interface would stay blank, so say so before the device is paired or opened.
+if (typeof DecompressionStream === 'undefined') show(note(text.tooOld))
+else void (target !== undefined && target.rest === '' ? openHost(target.hostId) : home()).catch(error => show(note(failure(error))))

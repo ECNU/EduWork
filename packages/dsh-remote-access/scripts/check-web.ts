@@ -9,7 +9,8 @@
 // Each engine runs against a relay at the root of its domain and one below a
 // path of its own, which must not see a single request outside that path; the
 // latter also inside a frame of another page of its domain, as a portal embeds it.
-// One more run takes away the built-ins Safari lacks before iOS 17.4, as on an iPad with iOS 16.
+// One more run takes away the built-ins Safari lacks before iOS 17.4, as on an iPad with iOS 16;
+// a browser older than iOS 16.4 must be told so instead of pairing a device that cannot show the interface.
 //
 //   node scripts/build.ts && node scripts/check-web.ts [chromium|webkit ...]
 import assert from 'node:assert/strict'
@@ -209,8 +210,26 @@ async function check(name: keyof typeof engines, path: string, embedded: boolean
   }
 }
 
+/** Without DecompressionStream, as before iOS 16.4, the page says the browser is too old and offers no pairing. */
+async function checkTooOld(name: keyof typeof engines): Promise<void> {
+  const { url, close } = await serve('/', false)
+  const browser = await engines[name].launch()
+  try {
+    const page = await browser.newPage()
+    await page.addInitScript('delete window.DecompressionStream')
+    await page.goto(`${url}#pair`)
+    await page.locator('.note', { hasText: /版本过低|too old/ }).waitFor()
+    assert.equal(await page.locator('main button, main input').count(), 0, 'nothing to pair with')
+  } finally {
+    await browser.close()
+    close()
+  }
+}
+
 for (const name of selected) {
   for (const [path, embedded, ios16] of [['/', false, false], ['/', false, true], ['/eduwork-remote/', false, false], ['/eduwork-remote/', true, false]] as const) {
     console.log(name, path, embedded ? 'embedded' : '', ios16 ? 'iOS 16 built-ins' : '', await check(name, path, embedded, ios16))
   }
+  await checkTooOld(name)
+  console.log(name, 'before iOS 16.4: told the browser is too old')
 }

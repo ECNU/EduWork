@@ -171,6 +171,7 @@ The current design needs scripts, Service Worker and same-origin identity; an op
 | healthz works but the computer cannot connect | HTTPS certificate, WebSocket Upgrade, matching external URL/prefix and key; for OIDC, issuer/JWKS reachability and ID Token. |
 | Path page or sw.js returns 404 | Check for prefix removal by `proxy_pass` or routing to another site's SPA. |
 | Phone stays on the loading page | Valid HTTPS, no parent Service Worker interference, computer online and awake, browser site data retained. |
+| iPhone or iPad says the browser is too old | Remote access needs iOS / iPadOS 16.4 or later; update the system. |
 | Top-level page works but iframe does not | Relay frame ancestors, parent CSP, proxy response headers and WebKit cross-site restrictions. |
 
 Access-key deployments do not need an organization login plugin. See the [protocol](PROTOCOL.md) for APIs, frames and encryption.

@@ -52,7 +52,7 @@ Organization sign-in also requires `@eduwork/dsh-oidc@0.3.1` or a later compatib
 2. On the phone, scan the code or open the link, enter a device name and choose "Pair".
 3. Check that the phone and the computer show the same 6-digit pairing code, then choose "Allow" on the computer.
 
-From then on, opening the relay address on that device connects to the computer, and it reconnects by itself after a drop. On iPhone and iPad, add the page to the Home Screen first, open it from there and paste the pairing link: a pairing made only in Safari is lost after 7 days without use.
+From then on, opening the relay address on that device connects to the computer, and it reconnects by itself after a drop. iPhone and iPad need iOS / iPadOS 16.4 or later; add the page to the Home Screen first, open it from there and paste the pairing link: a pairing made only in Safari is lost after 7 days without use.
 
 Choose "Remove" under "Paired devices" on the computer to disconnect a device at once and keep it from connecting again.
 

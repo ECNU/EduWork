@@ -171,6 +171,7 @@ RELAY_FRAME_ANCESTORS=self https://portal.example.edu
 | healthz 正常，电脑仍无法连接 | HTTPS 证书、WebSocket Upgrade、外部 URL/前缀一致性、接入 Key；OIDC 模式还要检查 issuer/JWKS 可达性和 ID Token。 |
 | 子路径页面或 sw.js 返回 404 | `proxy_pass` 是否去掉了前缀，站点是否把此路径误转到另一个 SPA。 |
 | 手机卡在加载页面 | 有效 HTTPS、Service Worker 未被父站拦截、电脑在线且未休眠、浏览器站点数据未被清理。 |
+| iPhone 或 iPad 提示浏览器版本过低 | 远程访问需要 iOS / iPadOS 16.4 或更高版本，请升级系统。 |
 | 顶层能打开，iframe 打不开 | 中继 `RELAY_FRAME_ANCESTORS`、父页面 CSP、代理额外响应头，以及 WebKit 跨站限制。 |
 
 使用接入 Key 时不需要机构登录插件。API、帧格式和加密机制见[协议文档](PROTOCOL.md)。
