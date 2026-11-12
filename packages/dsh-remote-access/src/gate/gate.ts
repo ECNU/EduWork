@@ -27,13 +27,15 @@ const ALLOWED_ENDPOINTS = new Set([
   'sessionFeedback/record', 'sessionReferenceResolver/candidates', 'messageFeedback/delete', 'messageFeedback/list', 'messageFeedback/put',
   'userQuestions/answer', 'userQuestions/attachWait',
   'goals/clear', 'goals/complete', 'goals/create', 'goals/edit', 'goals/get', 'goals/pause', 'goals/resume',
-  'subagents/interruptByParent', 'subagents/list', 'subagents/prompt',
+  'subagents/interruptByParent', 'subagents/interruptByUser', 'subagents/list', 'subagents/prompt',
   'job/follow', 'job/kill', 'job/list',
   'commands/execute', 'commands/list',
   'fileReferences/list', 'fileUploads/upload',
   'workspaceFiles/changes', 'workspaceFiles/list', 'workspaceFiles/read', 'workspaceFiles/readAll', 'workspaceFiles/readBytes',
   'workspaceFiles/readRelated', 'workspaceFiles/stat',
   'officeToPdf/generation', 'officeToPdf/render', 'artifactPreview/read', 'artifactPreview/importFiles',
+  // DSH 0.2.2-rc.2 renamed the same authorized document-preview service.
+  'officeKit/generation', 'officeKit/render',
   // EduWork's Studio results.
   'knowledgeStudio/artifactAskPrompt', 'knowledgeStudio/exportArtifact', 'knowledgeStudio/invokeStudio', 'knowledgeStudio/listArtifacts',
   'knowledgeStudio/listCapabilities', 'knowledgeStudio/manageArtifact', 'knowledgeStudio/readArtifact', 'knowledgeStudio/readEvidence',
@@ -50,11 +52,13 @@ const ALLOWED_ENDPOINTS = new Set([
   'workspace/rename', 'workspace/unarchiveSession', 'workspace/unpinSession',
   'schedule/catalog', 'schedule/delete', 'schedule/history', 'schedule/list', 'schedule/update',
   // Read-only descriptions the interface paints from.
-  'settings/describe', 'credentials/describe', 'llm/listConfigurableProviders', 'llm/listProviders', 'skills/list',
+  'settings/describe', 'credentials/describe', 'llm/listConfigurableProviders', 'llm/listProviders', 'skills/list', 'web/listProviders',
   'agentPresets/list', 'agentPresets/read', 'agentPresets/select', 'permissionPresets/catalog',
   'pluginInventory/list', 'productComponents/list',
   'account/ackBonusNotified', 'account/getBalance', 'account/getProfile', 'account/getState', 'account/getUnnotifiedBonuses',
   'account/hasRunningAccountTasks', 'account/watch', 'account/watchExpiry',
+  // rc.2 replaces bonus notices with notifications; no login or credential writes.
+  'account/getNotifications', 'account/getNotificationContent', 'account/reportNotificationEvent',
   'activityInsights/progress', 'activityInsights/snapshot', 'desktopPet/status', 'localMemories/listRecords', 'localMemories/stats',
   'skillManager/list', 'workbench/catalog',
   // EduWork's institution accounts: what is signed in, and refreshing a sign-in that already exists.

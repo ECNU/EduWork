@@ -1,5 +1,10 @@
 # 变更日志
 
+## 0.2.5 — Unreleased
+
+- 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。
+- Support DSH 0.2.2-rc.2 and the qualified 0.2.2 prerelease API family while retaining previously supported hosts.
+
 ## 0.2.4 — Unreleased
 
 - 兼容声明接纳已验证的 DSH 0.2.2-rc.1 与 Cordis 4.1；保留原有功能、配置及受支持的旧宿主范围。
