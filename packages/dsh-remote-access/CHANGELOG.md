@@ -1,5 +1,10 @@
 # 变更记录 / Changelog
 
+## Unreleased
+
+- 修复电脑启用“思考过程机器翻译”后远控页面无法启动的问题；远端翻译沿用电脑已配置的服务与限制，配置仍仅能在电脑上修改。
+- Fix remote workbench startup with reasoning machine translation enabled. Remote translation uses the Host's configured service and limits; preferences remain editable only on the computer.
+
 ## 0.1.5 — 2026-11-07
 
 - 连接在生成配对码时关闭后，及时清理待确认请求。

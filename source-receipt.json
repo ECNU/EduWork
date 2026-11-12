@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-11T15:36:53.367Z",
-  "fileSetSHA256": "446cb08c844cd853c98ccdfb1b6d474a0994aa4e24b99983668828939dda938e",
+  "createdAt": "2026-11-12T02:40:45.829Z",
+  "fileSetSHA256": "2aefb66bde4ff15cc715f84aad2b893a251dfe9480561ae96365c3a38d25f24d",
   "files": [
     {
       "path": ".gitattributes",
@@ -5824,42 +5824,6 @@
       "sha256": "71c350f20329a83c1a7f2b4b35f31715da9d791c03ab04b5e411fcf46469f289"
     },
     {
-      "path": "packages/dsh-mail/lib/bundled-dependencies.json",
-      "sha256": "872a112cdb8c3f2a303f0628c2487bdf698e3b179aac37e773da30728b090124"
-    },
-    {
-      "path": "packages/dsh-mail/lib/client.js",
-      "sha256": "950a27bb7af7af9cfdd9455680eafe9e6c5d6bafc2cac72bdf1715abacf06abe"
-    },
-    {
-      "path": "packages/dsh-mail/lib/client.js.map",
-      "sha256": "afb4b5cf7470c9e2668db96857f376245192dc256e089c02916687eb66dc14bf"
-    },
-    {
-      "path": "packages/dsh-mail/lib/index.js",
-      "sha256": "7b22e62d65a9a4fce987849e68dfdce2c246efa8e85252370e00a20667ef70b9"
-    },
-    {
-      "path": "packages/dsh-mail/lib/index.js.map",
-      "sha256": "50846988c2ed6d4ae3c9ca1b1ca44aa93b408d20f593aa067911d083deee8cf8"
-    },
-    {
-      "path": "packages/dsh-mail/lib/mail-client-C3ULPmDj.js",
-      "sha256": "03613d426ec45768cc351df5a88fa32c6eb6d22ebb8168837ac254f4d463ea05"
-    },
-    {
-      "path": "packages/dsh-mail/lib/mail-client-C3ULPmDj.js.map",
-      "sha256": "56b6142d41f23de990835e2477b563baf652914f3941833b99ad54b495b218ff"
-    },
-    {
-      "path": "packages/dsh-mail/lib/sanitize-Dq2erS2u.js",
-      "sha256": "32f852bc9f9fc27ef4c098bdb7b612f637bc87799f40984a1f121f4510c8491a"
-    },
-    {
-      "path": "packages/dsh-mail/lib/sanitize-Dq2erS2u.js.map",
-      "sha256": "76c97bef9e2618ff306c12d700dcf1b8ba475e2b082aef95d9484b1b6601fa28"
-    },
-    {
       "path": "packages/dsh-mail/LICENSE",
       "sha256": "eb7a1d713eb919b146787629e22e4c975cb701f529a65d4d7e0fcd417558bf1c"
     },
@@ -6837,7 +6801,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "005a62ca3972d17ad63da8abc70368e63a8d994c7cecb57a2600b451ba504eda"
+      "sha256": "6a8a2e47da644f48b4fef239209b06a0901da6b24d40597a3977768560b6d5eb"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6957,7 +6921,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "2c33842bbe3ba2cbd9b4382d025be63349613ea32f59db9b934ac1dd026852a3"
+      "sha256": "c4fdd720ca5b9ae35a4ab110455fded7113b63b4ba6b1e386f51adc4f8b62c22"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -7096,6 +7060,10 @@
       "sha256": "db7678f8a177e4bf779846dcebe1b31ff1e024a41c84deeb31fd0d08f9982499"
     },
     {
+      "path": "packages/dsh-remote-access/test/connections/translation.test.ts",
+      "sha256": "d6bc9555837b5061e56321bfbbaf166b65701c5ce57511184e052326cb738f0d"
+    },
+    {
       "path": "packages/dsh-remote-access/test/gate/dsh-0.2.1-rc.2-web.json",
       "sha256": "05d3abd6dfaeeb3510e5068bd68282696a164aa895a7d817bfe4ed3f2be7fd14"
     },
@@ -7105,7 +7073,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/gate/gate.test.ts",
-      "sha256": "15bedc03a1164ab758a71a24e321bdfd9c89fa587923b53262f718418f0800a9"
+      "sha256": "e6c73f3a41c9a599b45c2d31358df01f6e7c540f6e57b91379d8a504dc3b4188"
     },
     {
       "path": "packages/dsh-remote-access/test/harness.ts",

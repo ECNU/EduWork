@@ -26,6 +26,9 @@ const ALLOWED_ENDPOINTS = new Set([
   'session/prompt', 'session/rename', 'session/search', 'session/selectModel', 'session/updateQueue',
   'sessionFeedback/record', 'sessionReferenceResolver/candidates', 'messageFeedback/delete', 'messageFeedback/list', 'messageFeedback/put',
   'userQuestions/answer', 'userQuestions/attachWait',
+  // Displayed reasoning: read the Host's selected translation limits/provider,
+  // then translate through that service. Its settings remain local-only.
+  'cotTranslation/limits', 'cotTranslation/translate',
   'goals/clear', 'goals/complete', 'goals/create', 'goals/edit', 'goals/get', 'goals/pause', 'goals/resume',
   'subagents/interruptByParent', 'subagents/list', 'subagents/prompt',
   'job/follow', 'job/kill', 'job/list',
