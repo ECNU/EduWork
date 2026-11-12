@@ -122,7 +122,7 @@ test('real Runtime: an approved escalation runs without reaching the user, with 
   assert.equal(decided[0].data.outcome, 'allowed-once')
   // The notice follows the call's result into the next step.
   assert.deepEqual(result.notices.map(({ data }) => data.source), [{ kind: 'auto-approval', form: 'notice', summary: '已自动放行（分数 0.900）' }])
-  assert.match(JSON.stringify(result.requests.at(-1).messages), /<system-reminder>\\n自动审批放行了这次越界申请，没有询问用户（bash 调用 call-1）。这条是运行环境的记录，不是用户发的消息。/)
+  assert.match(JSON.stringify(result.requests.at(-1).messages), /<system-reminder>\\n自动审批放行了这次越界申请，没有询问用户（bash）。这条是运行环境的记录，不是用户发的消息。/)
 })
 
 test('real Runtime: after the session changes directory, the workspace is still the sandbox boundary', runtime, async t => {
