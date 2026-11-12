@@ -5,6 +5,7 @@ import { callbackLanguage, callbackPage } from './callback-page.js'
 
 const MAX_FLOWS = 32
 const MAX_HISTORY = 128
+const SILENT_RENEW_TIMEOUT_MS = 20_000
 const error = (code, message) => Object.assign(new Error(message), { code })
 const safeCodes = new Set(['oidc_id_token_time_invalid', 'oidc_callback_invalid', 'oidc_authorization_rejected', 'oidc_token_invalid', 'oidc_id_token_invalid', 'oidc_userinfo_invalid', 'gateway_token_invalid', 'gateway_scope_changed', 'gateway_identity_changed', 'gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'])
 
@@ -31,6 +32,31 @@ export class DesktopOidcBackend extends WebOidcBackend {
   }
 
   async begin(profileID) {
+    return this.startAttempt(profileID, {})
+  }
+
+  /**
+   * Renew the organization sign-in through the issuer's own session, without asking the user to sign in.
+   * False when the issuer requests interaction, so the settings page can offer a sign-in instead.
+   */
+  async renewIdentity(profileID, expectedSub) {
+    if (this.disposed) return false
+    let started
+    try { started = await this.startAttempt(profileID, { silent: true, expectedSub }) }
+    catch { return false }
+    const attempt = this.attempts.get(started.loginID)
+    if (attempt.state === 'pending') {
+      await new Promise(resolve => {
+        attempt.settle = resolve
+        attempt.settleTimer = setTimeout(resolve, SILENT_RENEW_TIMEOUT_MS + 1000)
+      })
+      clearTimeout(attempt.settleTimer)
+    }
+    if (attempt.state === 'pending') await this.cancelLogin(started.loginID, 'expired').catch(() => {})
+    return attempt.state === 'completed'
+  }
+
+  async startAttempt(profileID, { silent = false, expectedSub } = {}) {
     const profile = this.profile(profileID)
     if (this.disposed) throw error('oidc_host_unavailable', 'OIDC host has stopped')
     if (typeof this.openExternal !== 'function') throw error('oidc_browser_unavailable', 'The desktop browser service is unavailable')
@@ -38,12 +64,18 @@ export class DesktopOidcBackend extends WebOidcBackend {
     this.starting.add(profileID)
     let attempt
     try {
-      for (const previous of this.attempts.values()) if (previous.profileID === profileID && previous.state === 'pending') await this.cancelLogin(previous.loginID)
+      for (const previous of this.attempts.values()) {
+        if (previous.profileID !== profileID || previous.state !== 'pending') continue
+        // A silent renewal must not cancel a sign-in the user started.
+        if (silent) throw error('oidc_login_pending', 'Organization sign-in is already in progress')
+        await this.cancelLogin(previous.loginID)
+      }
       const discovery = await this.discover(profile)
       if (this.disposed) throw error('oidc_host_unavailable', 'OIDC host has stopped')
       if ([...this.attempts.values()].filter(value => value.state === 'pending').length >= MAX_FLOWS) throw error('oidc_flow_limit', 'Too many pending organization sign-ins')
       const loginID = randomBytes(24).toString('base64url')
-      attempt = { loginID, profileID, state: 'pending', expiresAt: new Date(this.now() + this.ttl).toISOString(), consumed: false }
+      const ttl = silent ? SILENT_RENEW_TIMEOUT_MS : this.ttl
+      attempt = { loginID, profileID, state: 'pending', expiresAt: new Date(this.now() + ttl).toISOString(), consumed: false, silent, expectedSub }
       const server = createServer((request, response) => { void this.callbackFor(attempt, request, response) })
       server.requestTimeout = 10_000
       server.headersTimeout = 10_000
@@ -60,10 +92,10 @@ export class DesktopOidcBackend extends WebOidcBackend {
         throw error('oidc_host_unavailable', 'OIDC host has stopped')
       }
       attempt.origin = `http://127.0.0.1:${server.address().port}`
-      const authorization = await this.createAuthorization(profile, discovery, `${attempt.origin}${OIDC_CALLBACK_PATH}`)
+      const authorization = await this.createAuthorization(profile, discovery, `${attempt.origin}${OIDC_CALLBACK_PATH}`, silent ? { prompt: 'none' } : undefined)
       if (this.disposed || attempt.state !== 'pending') throw error('oidc_login_cancelled', 'Sign-in was cancelled')
       Object.assign(attempt, { oauthState: authorization.state, flow: authorization.flow })
-      attempt.timer = setTimeout(() => { void this.cancelLogin(loginID, 'expired').catch(() => {}) }, this.ttl)
+      attempt.timer = setTimeout(() => { void this.cancelLogin(loginID, 'expired').catch(() => {}) }, ttl)
       attempt.timer.unref()
       // This Host-only method receives a URL derived from reviewed discovery, never an RPC URL.
       try { await this.openExternal(authorization.authorizationURL) }
@@ -111,6 +143,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
       await this.closeCallback(attempt, true)
     }
     await attempt.processing
+    attempt.settle?.()
     return this.loginStatus(loginID)
   }
 
@@ -139,9 +172,16 @@ export class DesktopOidcBackend extends WebOidcBackend {
     })
     await attempt.processing
     const failedOutcome = ['gateway_callback_issuer_missing', 'gateway_callback_issuer_invalid'].includes(attempt.errorCode) ? 'issuer-invalid' : attempt.errorCode === 'oidc_id_token_time_invalid' ? 'time-invalid' : 'failed'
-    if (!response.destroyed) reply(response, attempt.state === 'completed' ? 200 : 400, profile,
-      attempt.state === 'completed' ? 'completed' : failedOutcome, language)
+    if (!response.destroyed) {
+      // A silent renewal must not leave a sign-in page in the user's browser.
+      if (attempt.silent) {
+        response.writeHead(attempt.state === 'completed' ? 204 : 400, { 'cache-control': 'no-store' })
+        response.end()
+      } else reply(response, attempt.state === 'completed' ? 200 : 400, profile,
+        attempt.state === 'completed' ? 'completed' : failedOutcome, language)
+    }
     await this.closeCallback(attempt)
+    attempt.settle?.()
   }
 
   async finishAuthorization(attempt, requested) {
@@ -149,7 +189,7 @@ export class DesktopOidcBackend extends WebOidcBackend {
     const previous = new Map()
     let wrote = false
     try {
-      const session = await this.exchangeAuthorization(requested, attempt.flow)
+      const session = await this.exchangeAuthorization(requested, attempt.flow, { expectedSub: attempt.expectedSub })
       if (attempt.state !== 'pending') return
       const refs = [sessionRef(profile)]
       for (const ref of refs) previous.set(ref, await this.ctx.credentials.resolve(ref))

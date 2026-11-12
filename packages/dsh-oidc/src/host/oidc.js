@@ -562,6 +562,11 @@ export class WebOidcBackend {
     throw publicError('oidc_identity_token_unavailable', 'Identity tokens are offered for gateway sign-in only')
   }
 
+  /** Transport capability: renew an expired ID Token without user interaction. */
+  async renewIdentity() {
+    return false
+  }
+
   async reconcile(profileID) {
     const profile = this.profile(profileID)
     const session = await this.activeSession(profile)
