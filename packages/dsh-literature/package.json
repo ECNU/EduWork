@@ -48,7 +48,6 @@
     "@deepseek-ai/cordis": "^4.0.4",
     "@deepseek-ai/dsh-agent": ">=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-rc.1 <0.2.3-0",
     "@deepseek-ai/dsh-fs": ">=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-rc.1 <0.2.3-0",
-    "@deepseek-ai/dsh-invariants": ">=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-rc.1 <0.2.3-0",
     "@deepseek-ai/dsh-jobs": ">=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-rc.1 <0.2.3-0",
     "@deepseek-ai/dsh-llm": ">=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-rc.1 <0.2.3-0",
     "@deepseek-ai/dsh-sandbox": ">=0.2.0-rc.1 <0.3.0-0 || >=0.2.1-0 <0.2.2-0 || >=0.2.2-rc.1 <0.2.3-0",
@@ -68,13 +67,12 @@
   },
   "devDependencies": {
     "@deepseek-ai/cordis": "4.1.0",
-    "@deepseek-ai/cordis-plugin-include": "1.0.9",
-    "@deepseek-ai/cordis-plugin-loader": "1.0.5",
+    "@deepseek-ai/cordis-plugin-include": "1.1.0",
+    "@deepseek-ai/cordis-plugin-loader": "1.1.0",
     "@deepseek-ai/dsh-agent": "0.2.2-rc.2",
     "@deepseek-ai/dsh-fs": "0.2.2-rc.2",
     "@deepseek-ai/dsh-fs-local": "0.2.2-rc.2",
     "@deepseek-ai/dsh-fs-sandbox": "0.2.2-rc.2",
-    "@deepseek-ai/dsh-invariants": "0.2.0-rc.2",
     "@deepseek-ai/dsh-jobs": "0.2.2-rc.2",
     "@deepseek-ai/dsh-jobs-local": "0.2.2-rc.2",
     "@deepseek-ai/dsh-llm": "0.2.2-rc.2",
@@ -115,10 +113,5 @@
     "access": "public",
     "provenance": true
   },
-  "license": "MIT",
-  "peerDependenciesMeta": {
-    "@deepseek-ai/dsh-invariants": {
-      "optional": true
-    }
-  }
+  "license": "MIT"
 }

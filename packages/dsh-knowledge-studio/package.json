@@ -166,7 +166,7 @@
     }
   },
   "devDependencies": {
-    "@deepseek-ai/dsh": "0.2.1-rc.2",
+    "@deepseek-ai/dsh": "0.2.2-rc.2",
     "@playwright/test": "^1.63.0",
     "@types/node": "^26.0.0",
     "@types/react": "^18.3.28",
@@ -182,7 +182,21 @@
     "@deepseek-ai/dsh-util-workspace-path": "0.2.2-rc.2",
     "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/schemastery": "3.19.0",
-    "semver": "7.7.4"
+    "semver": "7.7.4",
+    "@deepseek-ai/dsh-api-remotes": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-api-session-controller": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-conversation": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-layout": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-ui-workspace": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-fs": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-home-paths": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-llm": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-settings": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-skill": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-tools": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-typert-protocol": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-workspace": "0.2.2-rc.2",
+    "@deepseek-ai/dsh-client-locale": "0.2.2-rc.2"
   },
   "engines": {
     "node": ">=24.18.0"

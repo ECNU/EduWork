@@ -4,6 +4,8 @@
 
 - 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。 适配 Office Kit、搜索 provider、子代理停止及账号通知接口；继续拒绝本机终端和配置管理接口。
 - Support DSH 0.2.2-rc.2 and the qualified 0.2.2 prerelease API family while retaining previously supported hosts. Adapt Office Kit, search providers, subagent interruption and account notification RPCs; retain terminal and configuration-management restrictions.
+- 补齐新版会话状态与事件、工具结果订阅、文件搜索、会话团队开关、定时任务和 Markdown 导出接口，并以真实 rc.2 网页宿主的接口清单检查允许与拒绝边界。
+- Cover new session state/events, tool-result subscriptions, file search, per-session team mode, scheduled tasks and Markdown export. Verify the allow/deny boundary against an actual rc.2 web-host inventory.
 
 ## 0.1.5 — 2026-11-07
 

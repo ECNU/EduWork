@@ -23,16 +23,18 @@ const ALLOWED_ENDPOINTS = new Set([
   // Sessions and the agent's own work.
   'session/attachment', 'session/cancel', 'session/control', 'session/create', 'session/follow', 'session/fork',
   'session/initializeDefaultModel', 'session/list', 'session/modelCatalog', 'session/page', 'session/projections',
+  'session/events', 'session/observeEvent', 'session/observeProjections', 'session/observeState',
+  'session/state', 'session/wait', 'toolResults/watch',
   'session/prompt', 'session/rename', 'session/search', 'session/selectModel', 'session/updateQueue',
   'sessionFeedback/record', 'sessionReferenceResolver/candidates', 'messageFeedback/delete', 'messageFeedback/list', 'messageFeedback/put',
   'userQuestions/answer', 'userQuestions/attachWait',
   'goals/clear', 'goals/complete', 'goals/create', 'goals/edit', 'goals/get', 'goals/pause', 'goals/resume',
-  'subagents/interruptByParent', 'subagents/interruptByUser', 'subagents/list', 'subagents/prompt',
+  'agentTeams/setEnabled', 'subagents/interruptByParent', 'subagents/interruptByUser', 'subagents/list', 'subagents/prompt',
   'job/follow', 'job/kill', 'job/list',
   'commands/execute', 'commands/list',
   'fileReferences/list', 'fileUploads/upload',
   'workspaceFiles/changes', 'workspaceFiles/list', 'workspaceFiles/read', 'workspaceFiles/readAll', 'workspaceFiles/readBytes',
-  'workspaceFiles/readRelated', 'workspaceFiles/stat',
+  'workspaceFiles/readRelated', 'workspaceFiles/stat', 'workspaceFiles/search',
   'officeToPdf/generation', 'officeToPdf/render', 'artifactPreview/read', 'artifactPreview/importFiles',
   // DSH 0.2.2-rc.2 renamed the same authorized document-preview service.
   'officeKit/generation', 'officeKit/render',
@@ -51,6 +53,8 @@ const ALLOWED_ENDPOINTS = new Set([
   'workspace/archiveSession', 'workspace/follow', 'workspace/insertBefore', 'workspace/insertSessionBefore', 'workspace/pinSession',
   'workspace/rename', 'workspace/unarchiveSession', 'workspace/unpinSession',
   'schedule/catalog', 'schedule/delete', 'schedule/history', 'schedule/list', 'schedule/update',
+  // rc.2 task UI uses the same owner's scheduled agent work, not Host administration.
+  'schedule/create', 'schedule/deleteInactive', 'schedule/deliveryLimits', 'schedule/edit', 'schedule/run', 'schedule/view',
   // Read-only descriptions the interface paints from.
   'settings/describe', 'credentials/describe', 'llm/listConfigurableProviders', 'llm/listProviders', 'skills/list', 'web/listProviders',
   'agentPresets/list', 'agentPresets/read', 'agentPresets/select', 'permissionPresets/catalog',
@@ -77,6 +81,7 @@ const ALLOWED_ROUTES = new Map([
   ['/api/changes.summary', ['GET']],
   ['/api/changes.diff', ['GET']],
   ['/api/session.export', ['GET', 'HEAD']],
+  ['/api/session.markdown', ['GET', 'HEAD']],
   ['/api/artifactPreview/file', ['GET', 'HEAD']],
 ])
 
@@ -116,7 +121,9 @@ export const REFUSED: Readonly<Record<string, readonly string[]>> = {
     'pluginManager/cancelInstall', 'pluginManager/inspect', 'pluginManager/installBundle', 'pluginManager/listBundles',
     'pluginManager/listPlugins', 'pluginManager/listVersionExemptions', 'pluginManager/registries', 'pluginManager/removeBundle',
     'pluginManager/setBundleEnabled', 'pluginManager/setPluginEnabled', 'pluginManager/setVersionExemption', 'pluginManager/waitForInstall',
-    'pluginRegistryProbe/fastest',
+    'pluginRegistryProbe/fastest', 'pluginManager/listVersions', 'pluginManager/readBundleDetail',
+    'pluginManager/updateBundle', '/api/plugin-manager/detail-file',
+    'mcpManager/probe', 'mcpManager/restart', 'mcpManager/watch',
     'oidcAccounts/activate', 'oidcAccounts/addCustom', 'oidcAccounts/configure', 'oidcAccounts/configureModels', 'oidcAccounts/logout',
     'oidcAccounts/removeProfile', 'oidcAccounts/restart', 'oidcAccounts/selectEnterpriseModel', 'oidcAccounts/updateCustom',
     'localMemories/deleteAll', 'localMemories/deleteRecord', 'localMemories/exportData', 'localMemories/importData',
@@ -130,7 +137,7 @@ export const REFUSED: Readonly<Record<string, readonly string[]>> = {
     'dynamicCordisRunner/resolveRequestRun', 'dynamicCordisRunner/runHostHalf', 'dynamicCordisRunner/settleUserRun',
     'dynamicCordisRunner/stopFromPanel', 'dynamicCordisRunner/syncInspectManifest', 'dynamicCordisRunner/undefineFromPanel',
     'terminal/attach', 'terminal/close', 'terminal/create', 'terminal/environment', 'terminal/list', 'terminal/rename',
-    'terminal/retain', 'terminal/shells',
+    'terminal/retain', 'terminal/shells', 'terminal/watch',
   ],
   'belongs to remote access itself': [
     'remoteAccess/follow',
