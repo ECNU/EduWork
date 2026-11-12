@@ -231,6 +231,44 @@ test('after the user rejects an escalation, retries go to the user until they wr
   assert.equal(bodies.length, 2)
 })
 
+test('the directory read that ends a review is within its time limit and its failure count', async t => {
+  const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
+  // The first read starts the review, the second ends it.
+  let second
+  const reads = []
+  const mounted = mount({ ...base, baseURL, timeoutMs: 1000 }, { restored: () => (reads.push(1), reads.length % 2 ? '/work' : second()) })
+  const user = { fallback: 'unavailable' }
+  // Stalled: the time limit still holds.
+  second = () => new Promise(() => {})
+  const started = performance.now()
+  const stalled = await mounted.start('cp a.csv ~/Downloads/')
+  assert.equal(await mounted.ask(stalled, user), 'unavailable')
+  assert.ok(performance.now() - started < 3000)
+  assert.equal((await mounted.post(stalled)).additionalContexts[0].source.summary, '交给用户确认（审查超时）')
+  // Failing: counted with the others, so three in a row pause the review.
+  second = async () => { throw new Error('original directory unavailable') }
+  for (let i = 0; i < 2; i++) assert.equal(await mounted.escalate('cp a.csv ~/Downloads/', user), 'unavailable')
+  const asked = bodies.length
+  const paused = await mounted.start('cp a.csv ~/Downloads/')
+  assert.equal(await mounted.ask(paused, user), 'unavailable')
+  assert.equal(bodies.length, asked)
+  assert.equal((await mounted.post(paused)).additionalContexts[0].source.summary, '交给用户确认（连续失败，暂停审查）')
+})
+
+test('a session that leaves the preset, or a call reusing the ID, while the directory is read last is asked as usual', async t => {
+  const { baseURL } = await service(t, body => answer(body, 0.9, 0.1))
+  // `last` runs while the review's last directory read waits.
+  let reads = 0, last
+  const mounted = mount({ ...base, baseURL }, { restored: async () => { if (reads++ % 2) await last(); return '/work' } })
+  const user = { fallback: 'unavailable' }
+  last = () => mounted.presets.set('workspace-write')
+  assert.equal(await mounted.escalate('cp a.csv ~/Downloads/', user), 'unavailable')
+  mounted.presets.set('auto-approval')
+  const exec = await mounted.start('cp a.csv ~/Downloads/', { callId: 'same' })
+  last = () => mounted.start('ls ~', { callId: 'same' })
+  assert.equal(await mounted.ask(exec, user), 'unavailable')
+})
+
 test('a session that leaves the preset during the review is asked as usual', async t => {
   let mounted
   const { baseURL } = await service(t, body => { mounted.presets.set('workspace-write'); return answer(body, 0.9, 0.1) })
