@@ -144,8 +144,10 @@ export function apply(ctx, raw = {}) {
     // summary with the outcome and score; the model reads only who decided, not the score, which it could otherwise
     // write its justifications to.
     const [token] = entry.tokens
+    // Context reaches the model as a user message; the reminder tags, as DSH uses for its own runtime context, and the
+    // last sentence keep the model from taking the notice for the user's words.
     const notice = (approved, summary) => {
-      const text = `${approved ? '自动审批放行了这次越界申请，没有询问用户' : '自动审批没有放行这次越界申请，已交给用户确认'}（${req.toolName} 调用 ${req.callId}）。`
+      const text = `<system-reminder>\n${approved ? '自动审批放行了这次越界申请，没有询问用户' : '自动审批没有放行这次越界申请，已交给用户确认'}（${req.toolName} 调用 ${req.callId}）。这条是运行环境的记录，不是用户发的消息。\n</system-reminder>`
       entry.notice = { token, message: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'auto-approval', form: 'notice', summary } }) }
     }
     const ask = async reason => {
