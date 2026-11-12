@@ -1,9 +1,9 @@
 import z from '@deepseek-ai/schemastery'
 import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { requestDecision, resolveDecisionConfig } from '@eduwork/dsh-decision/core'
-import { realpath } from 'node:fs/promises'
+import { lstat, realpath } from 'node:fs/promises'
 import { isAbsolute, resolve, sep } from 'node:path'
-import { reviewRequest, scriptOf, sessionFacts, SHELLS, verdict } from './review.js'
+import { FILE_TOOLS, fileChanges, fileCommand, reviewRequest, scriptOf, sessionFacts, SHELLS, verdict } from './review.js'
 
 export const name = 'auto-approval'
 export const inject = ['approval', 'permissionPresets', 'sandboxPolicy', 'workingDirectory']
@@ -20,7 +20,7 @@ export const Config = z.object({
 
 const PAUSE_AFTER = 3, PAUSE_MS = 5 * 60_000
 // Longer than any command the review was evaluated on (the longest was 13010 characters); such a command is the user's
-// to read, which also bounds the time the rules take.
+// to read, which also bounds the time the rules take. A file tool's call is measured as shown, with long contents cut.
 const COMMAND_CHARS = 16000
 const SYSTEMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }
 
@@ -35,8 +35,8 @@ export function apply(ctx, raw = {}) {
   })
   const preset = raw.preset ?? 'auto-approval'
   const log = ctx.logger('auto-approval')
-  // Shell calls in flight, by session and call ID. Escalation requests carry only the call ID, so the command comes
-  // from the call, and a request is reviewed only while one call with that ID is in flight.
+  // Shell and file-tool calls in flight, by session and call ID. Escalation requests carry only the call ID, so the
+  // command comes from the call, and a request is reviewed only while one call with that ID is in flight.
   const inFlight = new WeakMap()
   // Files the session's file tools created, from their results: a write that made a new file, a patch that added one.
   const created = new WeakMap()
@@ -49,7 +49,7 @@ export function apply(ctx, raw = {}) {
   ctx.on('tools/pre-execute', async (exec, next) => {
     const session = exec.agent?.session
     // A subagent's messages come from the delegating agent, not the user, so its calls are never reviewed.
-    if (!SHELLS.has(exec.name) || !session || session.header.origin === 'subagent') return next()
+    if (!(SHELLS.has(exec.name) || FILE_TOOLS.has(exec.name)) || !session || session.header.origin === 'subagent') return next()
     const calls = inFlight.get(session) ?? new Map()
     inFlight.set(session, calls)
     // Two calls in flight under one ID cannot be told apart: neither is reviewed until both have finished.
@@ -110,28 +110,38 @@ export function apply(ctx, raw = {}) {
     }
   }
 
-  async function review(req, call, signal) {
+  // Where a file tool's path leads, as the file system it writes through resolves it: against the session's directory
+  // and through links, with the real path even for a file that does not exist yet.
+  async function target(path, cwd, signal) {
+    const { displayPath, targetKey } = await ctx.get('fs').resolve(path, { cwd, signal })
+    return { display: displayPath, real: targetKey, exists: await lstat(targetKey).then(() => true, () => false) }
+  }
+
+  async function review(req, call, command, signal) {
     const { session } = req.agent
     // The sandbox's boundary stays where the session started; the shell runs in the current directory, which `/cd`
     // can move anywhere.
     const workspace = ctx.sandboxPolicy.resolve({ session }).workspaceRoot
     const base = ctx.workingDirectory.get(session)
+    const shell = SHELLS.has(call.name)
     // The directory the shell tool starts in: bash appends workdir and leaves `..` to the file system, which follows
-    // links; pwsh resolves it first. Shown as the real directory, or as written when it does not exist.
+    // links; pwsh resolves it first. File tools resolve their paths against the session's directory. Shown as the real
+    // directory, or as written when it does not exist.
     const { workdir } = call.arguments
-    const start = !workdir ? base : isAbsolute(workdir) ? workdir : call.name === 'pwsh' ? resolve(base, workdir) : `${base}${sep}${workdir}`
+    const start = !shell || !workdir ? base : isAbsolute(workdir) ? workdir : call.name === 'pwsh' ? resolve(base, workdir) : `${base}${sep}${workdir}`
     const cwd = await realpath(start).catch(() => start)
-    const command = call.arguments.command
-    const { state, questions, flagged } = reviewRequest({
-      system: `${SYSTEMS[process.platform] ?? process.platform}，shell 为 ${call.name === 'pwsh' ? 'PowerShell' : 'bash'}`,
+    const files = shell ? undefined : await Promise.all(fileChanges(call.name, call.arguments).map(async ({ path, change, to }) =>
+      ({ ...await target(path, base, signal), change, ...(to !== undefined && { to: await target(to, base, signal) }) })))
+    const { state, questions, flagged, existing } = reviewRequest({
+      system: `${SYSTEMS[process.platform] ?? process.platform}，${shell ? `shell 为 ${call.name === 'pwsh' ? 'PowerShell' : 'bash'}` : `文件工具 ${call.name}`}`,
       workspace, cwd, facts: { ...sessionFacts(session.snapshotEvents(), req.callId), created: created.get(session) ?? [] },
       justification: call.arguments.justification,
       // The script inference follows bash syntax; PowerShell commands are reviewed without it.
-      command, script: call.name === 'bash' ? await scriptOf(command, cwd) : undefined,
+      command, script: call.name === 'bash' ? await scriptOf(command, cwd) : undefined, files,
     })
     const fetchImpl = await fetchWith()
     const results = await Promise.all(questions.map(question => requestDecision({ config: service, args: { state, questions: question }, fetchImpl, signal })))
-    return { flagged, ...verdict(flagged, results) }
+    return { flagged, ...verdict(flagged, results, existing) }
   }
 
   // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged.
@@ -157,7 +167,8 @@ export function apply(ctx, raw = {}) {
       if (outcome === 'rejected') declined.set(session, lastRequest(session))
       return outcome
     }
-    if (call.arguments.command.length > COMMAND_CHARS) return ask('命令过长，未审查')
+    const command = SHELLS.has(call.name) ? call.arguments.command : fileCommand(call.name, call.arguments)
+    if (command.length > COMMAND_CHARS) return ask('命令过长，未审查')
     if (declined.has(session) && declined.get(session) === lastRequest(session)) return ask('用户拒绝过，未审查')
     const id = session.id
     if (failures.get(id)?.until > Date.now()) return ask('连续失败，暂停审查')
@@ -165,7 +176,7 @@ export function apply(ctx, raw = {}) {
     const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(req.signal ? [req.signal] : [])])
     try {
       // The race also ends a review that waits on a stalled Host service (credentials, sign-in, files).
-      const result = await Promise.race([review(req, call, signal), aborted(signal)])
+      const result = await Promise.race([review(req, call, command, signal), aborted(signal)])
       failures.delete(id)
       // During the review another call with this ID may have started, the session may have left the preset, or the
       // request may have been withdrawn.

@@ -10,9 +10,9 @@ const re = parts => new RegExp(parts.join('|'), 'i')
 // execSync(`pkill …`), subprocess.run(["kill", …]).
 const START = P`(?:^|[\s;&|(\`'"\[])`
 
-// Shell start-up files, package-manager and git settings, ~/.config, app preferences and the agents' own permission
-// settings.
-const CONFIG = P`(?:~|\$HOME|\$\{HOME\}|/Users\/[^/\s"']+)/(?:\.(?:zshrc|zprofile|zshenv|zlogin|bashrc|bash_profile|profile|npmrc|yarnrc|gitconfig|condarc|curlrc|wgetrc)\b|\.config/|\.homebrew/|Library/Preferences/|\.claude/settings|\.codex/config\.toml)`
+// Shell start-up files, package-manager and git settings, ~/.config, app preferences, login items and the agents' own
+// permission settings.
+const CONFIG = P`(?:~|\$HOME|\$\{HOME\}|/Users\/[^/\s"']+)/(?:\.(?:zshrc|zprofile|zshenv|zlogin|bashrc|bash_profile|profile|npmrc|yarnrc|gitconfig|condarc|curlrc|wgetrc)\b|\.config/|\.homebrew/|Library/(?:Preferences|LaunchAgents)/|\.claude/settings|\.codex/config\.toml)`
 
 // Ending a process has no rule of its own: agents mostly stop the servers and emulators they started. The decision
 // model's harm question asks whether a command stops a program the agent did not start.

@@ -28,6 +28,36 @@ test('session facts: recent requests, the message the latest one replied to and 
   assert.deepEqual(sessionFacts(events.slice(0, 3), 'missing').history, ['npm test'])
 })
 
+test('session facts: an answer on a question card is the user\'s reply to that card, in time or after the call timed out', () => {
+  const folder = { id: 'old', header: '旧文件夹', question: '~/synthetic-old 要怎么处理？', options: [{ label: '删除', description: '直接删掉' }, { label: '保留' }] }
+  const target = { id: 'where', question: '放在哪里？' }
+  const result = (callId, value, isError = false) => ({ type: 'tool/result', data: { message: { toolCallId: callId, isError, content: [{ type: 'text', text: JSON.stringify(value) }] } } })
+  const late = (callId, questions, answers) => ({ type: 'user/message', data: { source: { kind: 'user-question-reply', callId, outcome: 'answered' }, content: [{ type: 'text', text: JSON.stringify({ kind: 'answer_to_pending_question', tool: 'ask_user_question', callId, questions, answers }) }] } })
+  const events = [
+    user('清理一下主目录'), assistant('先看看有哪些旧文件夹'),
+    call('q1', 'ask_user_question', { questions: [folder] }),
+    result('q1', { answers: [{ id: 'old', selected: ['删除'] }] }),
+    call('pending', 'bash', { command: 'rm -rf ~/synthetic-old', sandbox_permissions: 'danger-full-access' }),
+  ]
+  const facts = sessionFacts(events, 'pending')
+  assert.deepEqual(facts.requests, ['清理一下主目录', '选择“删除”'])
+  assert.equal(facts.assistant, '~/synthetic-old 要怎么处理？\n- 删除：直接删掉\n- 保留')
+  // A timed-out call's result is no answer; the late reply carries the questions. Several questions are named,
+  // a free-form answer is quoted and a skipped one says so.
+  const timed = [
+    user('整理文件'),
+    call('q2', 'ask_user_question', { questions: [folder, target] }),
+    result('q2', { pending: true, callId: 'q2', message: 'no answer yet' }),
+    result('q3', { answers: [{ id: 'x', selected: ['not a card'] }] }),
+    late('q2', [folder, target], [{ id: 'old', selected: [] }, { id: 'where', selected: [], custom: ' ~/Archive ' }]),
+    call('pending', 'bash', { command: 'mv x ~/Archive/', sandbox_permissions: 'danger-full-access' }),
+  ]
+  assert.deepEqual(sessionFacts(timed, 'pending').requests, ['整理文件', '旧文件夹：跳过；放在哪里？：填写：~/Archive'])
+  // A failed card call adds nothing.
+  const failed = [user('整理文件'), call('q4', 'ask_user_question', { questions: [folder] }), result('q4', { answers: [{ id: 'old', selected: ['删除'] }] }, true)]
+  assert.deepEqual(sessionFacts(failed, 'none').requests, ['整理文件'])
+})
+
 test('the review state keeps the evaluated field order; a rule hit quotes its part and asks one question', () => {
   const facts = { requests: ['部署到测试服务器'], assistant: '要部署吗？', history: [], created: [] }
   const flagged = reviewRequest({ system: 'macOS，shell 为 bash', workspace: '/work', cwd: '/work/site', facts, justification: '部署', command: "npm run build && ssh test-host 'deploy'" })
@@ -47,6 +77,21 @@ test('the review state keeps the evaluated field order; a rule hit quotes its pa
   assert.deepEqual(plain.questions.map(Object.keys), [['decision'], ['harm']])
   assert.doesNotMatch(plain.questions[0].decision.instructions, /括号里/)
   assert.match(plain.questions[1].harm.instructions, /按脚本实际会做的事判断/)
+})
+
+test('a file tool changing a file that was there before the session is told apart from one it made or creates', () => {
+  const facts = { requests: [], assistant: '', history: [], created: ['/w/mine.md'] }
+  const existing = (...files) => reviewRequest({ facts, command: 'x', files: files.map(file => ({ display: file.real, change: 'edit', ...file })) }).existing
+  assert.equal(existing({ real: '/w/new.md', exists: false, change: 'write' }), false)
+  assert.equal(existing({ real: '/w/mine.md', exists: true }), false)
+  assert.equal(existing({ real: '/w/mine.md', exists: true }, { real: '/w/old.md', exists: true }), true)
+  // Moved onto a file that is there, which it replaces.
+  const moved = { real: '/w/mine.md', exists: true, to: { display: '/w/old.md', real: '/w/old.md', exists: true } }
+  assert.equal(existing(moved), true)
+  assert.deepEqual(reviewRequest({ facts, command: 'x', files: [{ display: '/w/mine.md', change: 'edit', ...moved }] }).state.目标文件,
+    ['/w/mine.md：已存在，会被修改（本次会话创建的），并移到 /w/old.md（已存在，会被替换）'])
+  assert.equal(existing({ ...moved, to: { display: 'a', real: '/w/a.md', exists: false } }), false)
+  assert.equal(reviewRequest({ facts, command: 'npm test' }).existing, false)
 })
 
 test('the rules also see the content of the script a command runs', () => {
@@ -111,6 +156,10 @@ test('verdict: thresholds per kind, malformed answers are failures', () => {
   const mean = verdict(false, [choice(0.6), harm(0.4)])
   assert.ok(Math.abs(mean.score - 0.6) < 1e-9 && mean.approved)
   assert.equal(verdict(false, [choice(0.6), harm(0.8)]).approved, false)
+  // A file that was there before: approved only if the model also judges the change requested.
+  assert.ok(verdict(false, [choice(0.4), harm(0.1)]).approved)
+  assert.deepEqual(verdict(false, [choice(0.4), harm(0.1)], true), { score: 0.4, approved: false })
+  assert.ok(Math.abs(verdict(false, [choice(0.9), harm(0.6)], true).score - 0.65) < 1e-9)
   assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: null } } }]), /abstained/)
   assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: null, probabilities: { auto: 1, ask: 0 } } } }]), /abstained/)
   assert.throws(() => verdict(true, [{ answers: { decision: { type: 'choice', choice: 'auto' } } }]), /auto/)

@@ -2,7 +2,7 @@
 // and approval service run it, and the plugin answers before the client's answerer.
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, realpath } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, realpath } from 'node:fs/promises'
 import { createServer } from 'node:http'
 import { once } from 'node:events'
 import { join } from 'node:path'
@@ -33,8 +33,9 @@ const chunks = block => [
 ]
 
 // `before` are tool calls the model makes in earlier steps; `hook` adds a pre-execute policy after the plugin's; `cd`
-// moves the session's current directory before the request, as `/cd` does.
-async function run(t, { auto, preset = 'auto-approval', command, workdir, before = [], hook, cd }) {
+// moves the session's current directory before the request, as `/cd` does; `escalation` replaces the escalating bash
+// call with another tool's, given the session's home; `answer` mounts the question card tool and answers its cards.
+async function run(t, { auto, preset = 'auto-approval', command, workdir, before = [], hook, cd, escalation, answer }) {
   const { Context } = await import('@deepseek-ai/cordis')
   const { createUserMessage, LlmAdapter } = await import('@deepseek-ai/dsh-llm')
   const { defineTool } = await import('@deepseek-ai/dsh-tools')
@@ -46,21 +47,27 @@ async function run(t, { auto, preset = 'auto-approval', command, workdir, before
   await mkdir(root, { recursive: true })
   const home = await mkdtemp(join(root, 'run-'))
   const load = async (name, config) => { const module = await import(name); await ctx.plugin(module.default ?? module, config) }
-  for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent', '@deepseek-ai/dsh-tool-executor-native', '@deepseek-ai/dsh-fs-local']) await load(name)
+  for (const name of ['@deepseek-ai/dsh-llm', '@deepseek-ai/dsh-session', '@deepseek-ai/dsh-session-projection', '@deepseek-ai/dsh-system-prompt', '@deepseek-ai/dsh-tools', '@deepseek-ai/dsh-agent', '@deepseek-ai/dsh-tool-executor-native']) await load(name)
   for (const [name, config] of [
     ['@deepseek-ai/dsh-session-persistence-jsonl', { root: join(home, 'sessions') }],
     ['@deepseek-ai/dsh-agent-loop', { agents: [] }],
     ['@deepseek-ai/dsh-user-approval', {}],
     ['@deepseek-ai/dsh-working-directory', { defaultDirectory: home }],
     ['@deepseek-ai/dsh-sandbox-policy', { mode: 'workspace-write', workspaceRoot: home }],
+    // The file system that confines writes to the workspace, as the desktop composes it, so file tools can escalate.
+    ['@deepseek-ai/dsh-fs-sandbox', {}],
     ['@deepseek-ai/dsh-tool-fs', { read: false, readImage: false, edit: false, write: true, applyPatch: true }],
   ]) await load(name, config)
+  if (answer) {
+    for (const name of ['@deepseek-ai/dsh-user-questions', '@deepseek-ai/dsh-tool-ask-user']) await load(name)
+    ctx.on('user-questions/request', answer)
+  }
   ctx.provide('agentDefaultModel', { currentSelection: () => ({ provider: 'fixture', model: 'fixture' }) })
   // The preset table belongs to the permission plugin; only its read is used here.
   ctx.provide('permissionPresets', { current: () => preset })
   const steps = [
     ...before,
-    { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, ...(workdir && { workdir }), sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) },
+    escalation?.(home) ?? { type: 'tool-call', id: 'call-1', name: 'bash', arguments: JSON.stringify({ description: 'Copy the report', command, ...(workdir && { workdir }), sandbox_permissions: 'danger-full-access', justification: 'Write the report to Downloads' }) },
     { type: 'text', text: 'Done.' },
   ]
   let step = 0
@@ -152,4 +159,30 @@ test('real Runtime: a low score and another preset leave the decision to the use
   assert.equal(other.bodies.length, 0)
   assert.deepEqual(other.userAnswers, ['call-1'])
   assert.deepEqual(other.notices, [])
+})
+
+test('real Runtime: a file tool escalation is reviewed with the file it writes, then the write runs', runtime, async t => {
+  let outside
+  const result = await run(t, { auto: 0.9, escalation: home => {
+    outside = `${home}-outside`
+    return call('call-1', 'write', { file_path: '../' + outside.split('/').pop() + '/report.md', content: '# Report\n', sandbox_permissions: 'danger-full-access', justification: 'Write the report next to the workspace' })
+  } })
+  assert.deepEqual(result.userAnswers, [])
+  assert.equal(result.bodies.length, 2)
+  const { state } = result.bodies[0]
+  assert.match(state.系统, /，文件工具 write$/)
+  assert.equal(state.待执行的命令, `cat > ../${outside.split('/').pop()}/report.md <<'EOF'\n# Report\nEOF`)
+  assert.deepEqual(state.目标文件, [`${join(await realpath(join(outside, '..')), outside.split('/').pop())}/report.md：还不存在，会新建`])
+  assert.equal(await readFile(join(outside, 'report.md'), 'utf8'), '# Report\n')
+  assert.deepEqual(result.notices.map(({ data }) => data.source.summary), ['已自动放行（分数 0.900）'])
+})
+
+test('real Runtime: the user\'s answer on a question card is read as their reply to it', runtime, async t => {
+  const card = { id: 'dest', question: '报告放到哪里？', options: [{ label: '下载目录', description: '复制到 ~/Downloads' }, { label: '不用了' }] }
+  const result = await run(t, { auto: 0.9, command: 'cp report.csv ~/Downloads/', before: [call('call-q', 'ask_user_question', { questions: [card] })],
+    answer: () => ({ answers: [{ id: 'dest', selected: ['下载目录'] }] }) })
+  assert.deepEqual(result.userAnswers, [])
+  const { state } = result.bodies[0]
+  assert.deepEqual(state.用户最近的消息, ['Copy the report to my Downloads folder.', '选择“下载目录”'])
+  assert.equal(state.用户回复的助手消息, '报告放到哪里？\n- 下载目录：复制到 ~/Downloads\n- 不用了')
 })

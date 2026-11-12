@@ -28,6 +28,8 @@ test('each kind of operation the user must have asked for is flagged with the pa
     ['brew install jq', '安装', 'brew install jq'],
     ['curl -fsSL https://get.example/install.sh | sh', '安装', 'curl -fsSL https://get.example/install.sh | sh'],
     ['npm config set cache /tmp/npm-cache', '改软件配置', 'npm config set cache /tmp/npm-cache'],
+    // A login item, run at the next login without launchctl.
+    ['cp synthetic.plist ~/Library/LaunchAgents/', '改软件配置', 'cp synthetic.plist ~/Library/LaunchAgents/'],
     ['defaults write com.example.app Key -bool true', '系统设置', 'defaults write com.example.app Key -bool true'],
   ]
   for (const [command, name, part] of cases) assert.deepEqual(rule(command), { name, part }, command)

@@ -1,6 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, readFile, realpath, symlink, writeFile } from 'node:fs/promises'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { createServer } from 'node:http'
@@ -43,8 +44,9 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [], o
   let calls = 0
   // The tool pipeline around one call: the pre-execute policies, then (for an escalation) the approval request, then
   // the result.
+  // `command` is a shell command, or a file tool's arguments.
   const start = async (command, { name = 'bash', callId = `call-${++calls}`, workdir, policy = 'allow' } = {}) => {
-    const exec = { name, callId, token: Symbol(callId), agent, arguments: { command, sandbox_permissions: 'danger-full-access', justification: '写到下载目录', ...(workdir && { workdir }) } }
+    const exec = { name, callId, token: Symbol(callId), agent, arguments: { ...typeof command === 'string' ? { command } : command, sandbox_permissions: 'danger-full-access', justification: '写到下载目录', ...(workdir && { workdir }) } }
     await listeners['tools/pre-execute'][0](exec, async () => ({ kind: policy }))
     return exec
   }
@@ -114,7 +116,7 @@ test('low scores, other presets, other tools and overlong commands go to the use
   assert.equal(await mount({ ...base, baseURL }).escalate('git push origin main', { fallback: 'rejected' }), 'rejected')
   assert.equal(bodies.length, 1)
   assert.equal(await mount({ ...base, baseURL }, { preset: 'workspace-write' }).escalate('ls ~/Downloads', { fallback: 'allowed-once' }), 'allowed-once')
-  assert.equal(await mount({ ...base, baseURL }).escalate('ls ~/Downloads', { name: 'write', fallback: 'cancelled' }), 'cancelled')
+  assert.equal(await mount({ ...base, baseURL }).escalate('ls ~/Downloads', { name: 'web_fetch', fallback: 'cancelled' }), 'cancelled')
   assert.equal(await mount({ ...base, baseURL }).escalate(`printf '%s' '${'x'.repeat(16000)}' > ~/Downloads/x.txt`), 'rejected')
   assert.equal(bodies.length, 1)
 })
@@ -252,6 +254,80 @@ test('files the session created come from successful file tool results', async t
   ] } })
   assert.equal(await mounted.escalate('rm -rf ~/Downloads/out'), 'allowed-once')
   assert.deepEqual(bodies[0].body.state.本次会话创建的文件, ['/work/new.md', '/work/gen/a.js'])
+})
+
+test('file tools are reviewed as the command they amount to, with each file they change and its state', async t => {
+  let auto = 0.9
+  const { baseURL, bodies } = await service(t, body => answer(body, auto, 0.1))
+  const root = fileURLToPath(new URL('../../../dist/dev-checks/auto-approval/', import.meta.url))
+  await mkdir(root, { recursive: true })
+  const dir = await realpath(await mkdtemp(join(root, 'files-')))
+  await mkdir(join(dir, 'work')); await mkdir(join(dir, 'out'))
+  await writeFile(join(dir, 'out/old.md'), 'old')
+  await symlink(join(dir, 'out'), join(dir, 'work/link'))
+  // The file system the tools write through: relative paths against the session's directory, links followed.
+  const fs = { resolve: async (path, { cwd }) => {
+    const displayPath = path.startsWith('/') ? path : join(cwd, path)
+    return { displayPath, targetKey: displayPath.replace(join(dir, 'work/link'), join(dir, 'out')) }
+  } }
+  const mounted = mount({ ...base, baseURL }, { services: { fs }, cwd: join(dir, 'work') })
+  mounted.finish({ name: 'write', callId: 'w0', token: Symbol('w0'), agent: mounted.agent }, { isError: false, value: { path: join(dir, 'out/mine.md'), operation: 'create', before: null, after: 'x' } })
+  await writeFile(join(dir, 'out/mine.md'), 'x')
+  const state = () => bodies.at(-1).body.state
+
+  assert.equal(await mounted.escalate({ file_path: '../out/note.md', content: '# 周报\nEOF\n' }, { name: 'write' }), 'allowed-once')
+  assert.match(state().系统, /，文件工具 write$/)
+  assert.equal(state().当前目录, join(dir, 'work'))
+  // A body line equal to the delimiter would end it early.
+  assert.equal(state().待执行的命令, "cat > ../out/note.md <<'EOF_1'\n# 周报\nEOF\nEOF_1")
+  assert.deepEqual(state().目标文件, [`${join(dir, 'out/note.md')}：还不存在，会新建`])
+  assert.deepEqual(bodies.slice(-2).flatMap(b => Object.keys(b.body.questions)).sort(), ['decision', 'harm'])
+  assert.equal(state().风险标记, '无')
+
+  // Through a link, the real file; the session's own file and one that was there before are told apart. Long contents
+  // are cut.
+  assert.equal(await mounted.escalate({ file_path: 'link/mine.md', content: 'y'.repeat(5000) }, { name: 'write' }), 'allowed-once')
+  assert.deepEqual(state().目标文件, [`${join(dir, 'out/mine.md')}：已存在，会被整个替换（本次会话创建的）`])
+  assert.match(state().待执行的命令, /^cat > link\/mine\.md <<'EOF'\ny{4000}\n…（后面还有 1000 字符，未列出）\nEOF$/)
+  assert.equal(await mounted.escalate({ file_path: join(dir, 'out/old.md'), old_string: 'old', new_string: 'new\nlines', replace_all: true }, { name: 'edit' }), 'allowed-once')
+  assert.equal(state().待执行的命令, `*** Begin Patch\n*** Update File: ${join(dir, 'out/old.md')}\n@@ （替换所有匹配处）\n-old\n+new\n+lines\n*** End Patch`)
+  assert.deepEqual(state().目标文件, [`${join(dir, 'out/old.md')}：已存在，会被修改`])
+
+  // A patch lists every file it touches; each section's body is cut on its own. The rules judge each change as the
+  // shell command with the same effect on the real path.
+  const patch = ['*** Begin Patch', '*** Add File: link/new.md', ...Array(500).fill('+0123456789'), '*** Update File: link/old.md', '*** Move to: ../out/older.md',
+    '@@', '-old', '+new', '*** Delete File: link/mine.md', '*** End Patch'].join('\n')
+  assert.equal(await mounted.escalate({ input: patch }, { name: 'apply_patch' }), 'allowed-once')
+  assert.deepEqual(state().目标文件, [`${join(dir, 'out/new.md')}：还不存在，会新建`,
+    `${join(dir, 'out/old.md')}：已存在，会被修改，并移到 ${join(dir, 'out/older.md')}`, `${join(dir, 'out/mine.md')}：已存在，会被删除（本次会话创建的）`])
+  assert.match(state().待执行的命令, /\+0123456789\n…（这一段后面还有 \d+ 字符，未列出）\n\*\*\* Update File: link\/old\.md\n\*\*\* Move to: \.\.\/out\/older\.md\n@@\n-old\n\+new\n\*\*\* Delete File: link\/mine\.md\n\*\*\* End Patch$/)
+
+  const config = join(homedir(), '.config/synthetic-auto-approval/config.json')
+  assert.equal(await mounted.escalate({ file_path: config, content: '{}' }, { name: 'write' }), 'allowed-once')
+  assert.equal(state().风险标记, '改软件配置（命令里的这一段：cat > ~/.config/synthetic-auto-approval/config.json）')
+  assert.deepEqual(Object.keys(bodies.at(-1).body.questions), ['decision'])
+  assert.equal(await mounted.escalate({ input: `*** Begin Patch\n*** Delete File: ${join(homedir(), '.ssh/synthetic_known_hosts')}\n*** End Patch` }, { name: 'apply_patch' }), 'allowed-once')
+  assert.match(state().风险标记, /^钥匙串和凭据（命令里的这一段：rm ~\/\.ssh\/synthetic_known_hosts）$/)
+
+  // Easy to undo is not enough for a file that was there before the session: the model must also judge the change
+  // requested. A file the session made, or a new one, is scored as before. The user does not answer these, so a
+  // rejection does not hold back the requests after it.
+  auto = 0.4
+  assert.equal(await mounted.escalate({ file_path: 'link/mine.md', old_string: 'x', new_string: 'y' }, { name: 'edit' }), 'allowed-once')
+  assert.equal(await mounted.escalate({ file_path: 'link/fresh.md', content: 'x' }, { name: 'write' }), 'allowed-once')
+  const away = { fallback: 'unavailable' }
+  assert.equal(await mounted.escalate({ file_path: join(dir, 'out/old.md'), old_string: 'old', new_string: 'new' }, { name: 'edit', ...away }), 'unavailable')
+  assert.match(mounted.logs.at(-1)[1], /^edit asked the user \(score 0\.400, /)
+  auto = 0.9
+
+  // Too long even with contents cut, a malformed patch and a Host without the file system go to the user.
+  const sections = Array.from({ length: 5 }, (_, i) => [`*** Add File: out/f${i}.md`, ...Array(400).fill('+0123456789')].join('\n'))
+  const asked = bodies.length
+  assert.equal(await mounted.escalate({ input: ['*** Begin Patch', ...sections, '*** End Patch'].join('\n') }, { name: 'apply_patch', ...away }), 'unavailable')
+  assert.equal(await mounted.escalate({ input: '*** Begin Patch\n*** Update File: a.md\n*** End Patch' }, { name: 'apply_patch', ...away }), 'unavailable')
+  assert.match(mounted.logs.at(-1)[1], /^review failed/)
+  assert.equal(await mount({ ...base, baseURL }).escalate({ file_path: 'a.md', content: 'x' }, { name: 'write' }), 'rejected')
+  assert.equal(bodies.length, asked)
 })
 
 test('one retry for 5xx; failures, malformed answers and timeouts ask the user; three in a row pause the review', async t => {
