@@ -121,7 +121,8 @@ export function ruleMatch(text) {
 const NOT_RUN = /^(?:chmod|shellcheck|cat|head|tail|wc|ls|stat|file|diff|grep|rg|git\s+(?:add|diff|status)|(?:ba|z|da)?sh\s+-n)\b/
 // Text a command only writes into files is not run: the body of a heredoc fed to cat/tee, and triple-quoted strings in
 // inline Python, so PR bodies and docs that mention push or ssh are not commands. A heredoc piped on to another program,
-// or written to a non-text file that the rest of the command then runs, still counts.
+// or written to a non-text file that the rest of the command then runs, still counts, and so does a heredoc whose
+// delimiter is unquoted and whose body holds a command substitution, which the shell runs.
 export function executedPart(cmd) {
   const lines = cmd.split('\n'), trimmed = lines.map(line => line.trim()), out = []
   for (let i = 0; i < lines.length; i++) {
@@ -136,7 +137,8 @@ export function executedPart(cmd) {
     const name = file && (file[1] ?? file[2] ?? file[3]).split(/[/\\]/).pop()
     const reused = name && !/\.(?:md|txt|json|ya?ml|toml|html|css|csv|log|patch|diff)$/i.test(name)
       && split([after, ...lines.slice(end + 1)].join('\n')).some(seg => seg.includes(name) && !NOT_RUN.test(seg))
-    if (/(?:^|[;&|(\s])(?:cat|tee)\b[^;&|]*$/.test(before) && !after.includes('|') && !reused) out.push('')
+    const substitutes = !m[1] && /\$\(|`/.test(body)
+    if (/(?:^|[;&|(\s])(?:cat|tee)\b[^;&|]*$/.test(before) && !after.includes('|') && !reused && !substitutes) out.push('')
     else if (/\bpython3?\b[^;&|]*$/.test(before)) out.push(body.replace(/'''[\s\S]*?'''|"""[\s\S]*?"""/g, "''"))
     else out.push(body)
     out.push(lines[end])
