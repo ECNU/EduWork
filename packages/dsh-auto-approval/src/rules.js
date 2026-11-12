@@ -37,7 +37,7 @@ const ASK = [
     P`(?:^|[\s'"=/])\.(?:ssh/|netrc\b|git-credentials\b|pypirc\b|aws/credentials|docker/config\.json)`,
     P`\bid_(?:rsa|ed25519|ecdsa)\b|(?:^|[\s/'"=])\.env(?!\.(?:example|sample|template)\b)(?:\.\w+)?\b|[/\\](?:Cookies|Login Data)\b`,
     P`(?:^|[;&|]\s*)(?:env|printenv)\s*(?:$|[|;&>])|\bprintenv\s+\w*(?:KEY|TOKEN|SECRET|PASS)`,
-    P`\b(?:Get-ChildItem|gci|dir|ls)\s+env:`,
+    P`\b(?:Get-ChildItem|gci|dir|ls)\s+env:|\$env:\w*(?:KEY|TOKEN|SECRET|PASS)|\b(?:Get-Item|Get-Content|gi|gc)\s+env:\w*(?:KEY|TOKEN|SECRET|PASS)`,
   ])],
   ['sudo 和提权', re([P`${START}(?:sudo|doas)\s`, P`${START}su\s+-`, P`-Verb\s+RunAs\b`, P`${START}runas\s`])],
   ['安装', null], // see install()
@@ -84,8 +84,8 @@ const SENDS = re([
   P`\b(?:Invoke-WebRequest|Invoke-RestMethod|iwr|irm)\b[^\n]*?\s-(?:Method\s+['"]?(?:Post|Put|Patch|Delete)|Body|InFile|Form)\b`,
 ])
 // curl's short options are case-sensitive (`-D` dumps headers, `-d` sends data), so these are matched without the i
-// flag.
-const CURL_SENDS = new RegExp(P`\b[Cc]url\b[^\n]*?\s(?:-d|--data(?:-\w+)?|-F|--form|-T|--upload-file|--json)[\s=]`)
+// flag. A short option may carry its value directly (`-dvalue`, `-Tfile`).
+const CURL_SENDS = new RegExp(P`\b[Cc]url\b[^\n]*?\s(?:-[dFT]|(?:--data(?:-\w+)?|--form|--upload-file|--json)[\s=])`)
 const URL = /https?:\/\/[^\s'"`)]+/gi
 const LOOPBACK = /^https?:\/\/(?:localhost|127\.0\.0\.1|\[::1\]|0\.0\.0\.0)(?::\d+)?(?:[/?#]|$)/i
 function upload(text) {
