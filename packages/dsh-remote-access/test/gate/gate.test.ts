@@ -7,7 +7,7 @@ import { descriptors } from '../../src/typert.ts'
 const refused = new Set(Object.values(REFUSED).flat())
 
 test('every endpoint and route of an assembled product is classified on purpose', async () => {
-  for (const file of ['dsh-0.2.1-rc.2-web.json', 'eduwork-0.4.6-desktop.json']) {
+  for (const file of ['dsh-0.2.1-rc.2-web.json', 'dsh-0.2.2-rc.2-web.json', 'eduwork-0.4.6-desktop.json']) {
     const product = JSON.parse(await readFile(new URL(file, import.meta.url), 'utf8')) as { endpoints: string[]; routes: string[] }
     const unclassified = [...product.endpoints, ...product.routes]
       .filter(name => !allowed.endpoints.includes(name) && !allowed.routes.includes(name) && !refused.has(name))
@@ -40,6 +40,26 @@ test('API requests are judged by method and exact path', () => {
   for (const path of ['/api/session/prompt/', '/api//session/prompt', '/api/session/../credentials/set', '/api/', '/apisession/prompt']) {
     assert.ok(!allowsApiRequest('POST', path), path)
   }
+})
+
+test('rc.2 session and task UI remains accessible without administering the Host', () => {
+  for (const endpoint of ['web/listProviders', 'subagents/interruptByUser',
+    'session/events', 'session/observeEvent', 'session/observeProjections', 'session/observeState', 'session/state', 'session/wait',
+    'toolResults/watch', 'workspaceFiles/search', 'agentTeams/setEnabled',
+    'schedule/create', 'schedule/deleteInactive', 'schedule/deliveryLimits', 'schedule/edit', 'schedule/run', 'schedule/view',
+    'account/getNotifications', 'account/getNotificationContent', 'account/reportNotificationEvent']) {
+    assert.ok(allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+    assert.ok(!allowsApiRequest('GET', `/api/${endpoint}`), endpoint)
+  }
+  for (const endpoint of ['mcpManager/restart', 'mcpManager/probe', 'mcpManager/watch',
+    'account/login', 'account/logout', 'credentials/set', 'terminal/create', 'terminal/watch',
+    'pluginManager/listVersions', 'pluginManager/readBundleDetail', 'pluginManager/updateBundle']) {
+    assert.ok(!allowsApiRequest('POST', `/api/${endpoint}`), endpoint)
+  }
+  assert.ok(allowsApiRequest('GET', '/api/session.markdown'))
+  assert.ok(allowsApiRequest('HEAD', '/api/session.markdown'))
+  assert.ok(!allowsApiRequest('POST', '/api/session.markdown'))
+  assert.ok(!allowsApiRequest('GET', '/api/plugin-manager/detail-file'))
 })
 
 test('Office preview accepts the rc.2 service name without granting other Kit operations', () => {

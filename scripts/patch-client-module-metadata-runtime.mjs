@@ -9,9 +9,9 @@ import { join } from 'node:path'
 export const clientModuleMetadataPatch = Object.freeze({
   id: 'client-module-ctime-only-rebuild-v1',
   package: '@deepseek-ai/dsh-client-modules',
-  version: '0.2.2-rc.1',
+  version: '0.2.2-rc.2',
   file: 'lib/index.js',
-  beforeSHA256: '255da235e1bf5783d8e7addc74b04370e75c472e7045039914ad3e289dc0e116',
+  beforeSHA256: '14a3b96d88bbb153b06cc78b770bfc87c17b1fa21aa732df9873db3039f0371b',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
 

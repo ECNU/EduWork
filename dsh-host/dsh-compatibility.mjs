@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 
 // API compatibility is independent of the exact artifacts selected by a build.
-export const rebuiltDshPeerRange = '>=0.2.0-rc.2 <0.3.0-0 || 0.2.2-rc.1'
+export const rebuiltDshPeerRange = '>=0.2.0-rc.2 <0.3.0-0 || >=0.2.2-rc.1 <0.2.3-0'
 export function isDsh020(version, minimum = '0.2.0-rc.1') {
   try {
     versionParts(version)
@@ -31,6 +31,7 @@ export function rebuiltDshPeers(manifest, version, { editionOwned = false } = {}
 // Code-loading qualification remains exact. Keep feature decisions in the same
 // row so an upgrade cannot silently lose defaults or restore a retired adapter.
 const baselines = {
+  '0.2.2-rc.2': { commit: 'ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.1.5-rc.2': { commit: 'fb2c4b9e698e30edb738bca4cf0618587db7d203', native: false },
   '0.1.7-alpha.2': { commit: '00102833dfaee1da9f48a3a8eae9d34005a75218', native: true },
   '0.1.7-rc.2': { commit: '477b4f420553e8a52c2fbccc464d7561b239c443', native: true, configurableSubagents: true },

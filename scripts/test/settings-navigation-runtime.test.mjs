@@ -21,7 +21,7 @@ test('settings adapter checks the pinned version and bytes, records output and l
   const target = join(copy, settingsNavigationPatch.file)
   await writeFile(target, original)
   const version = JSON.parse(await readFile(join(copy, 'package.json'), 'utf8')).version
-  if (version === '0.2.2-rc.1') {
+  if (version === '0.2.2-rc.1' || version === '0.2.2-rc.2') {
     // rc.1 uses settings.section.icon; the retired adapter must not touch it.
     await assert.rejects(patchSettingsNavigationRuntime(modules), /newly qualified/)
     assert.deepEqual(await readFile(target), original)

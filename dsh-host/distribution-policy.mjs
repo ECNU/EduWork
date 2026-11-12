@@ -4,7 +4,7 @@ export const disabledDistributionEntries = Object.freeze([
   'session-telemetry-otel', 'session-log-deepseek',
   'plugin-package-inventory-deepseek', 'desktop-product-telemetry', 'product-analytics',
   'ui-message-feedback', 'message-feedback', 'command-feedback', 'ui-settings-session-log',
-  'deepseek-account', 'account-controller', 'ui-settings-account',
+  'deepseek-account', 'account-controller', 'ui-settings-account', 'ui-account-notifications',
   'eduwork-native-reveal',
   // rc.2's Web bundle now contributes Office skills and a primary-runtime
   // dependency loader globally. The product already supplies the Office

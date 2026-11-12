@@ -49,6 +49,9 @@ export function adaptNativeHostEntry(input) {
   const legacyOffice = text.includes("import * as desktopOffice from './office.ts'")
   const migrationImports = "import { parse } from 'yaml'\nimport { stageLegacySettings, importLegacySettings } from './settings-migration.mjs'"
   text = legacyOffice ? replace(text, "import * as desktopOffice from './office.ts'", migrationImports) : migrationImports + '\n' + text
+  // rc.2 no longer needs this import for desktop Office. Our settings migration
+  // still needs the same official user-home resolver.
+  if (!legacyOffice) text = "import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'\n" + text
   text = replace(text, "import { installPlatformSessionPublisher } from './platform-session.ts'\n", '')
   // The product manifest owns its bundled extensions as well as DSH. Using
   // the CLI manifest here makes profile resolution omit all product packages.
