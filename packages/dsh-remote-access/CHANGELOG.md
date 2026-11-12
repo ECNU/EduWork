@@ -1,5 +1,11 @@
 # 变更记录 / Changelog
 
+## 0.1.6 — Unreleased
+
+- 修复 iOS / iPadOS 16.4–17.3 上远程界面白屏：配对成功、电脑上也显示已连接，但设备上什么都不显示。远程网页现在会补上这些系统缺少的浏览器功能，DSH 界面也能正常加载。低于 16.4 的系统会提示版本过低，不再白屏。只需更新中继，电脑端不用更新。
+
+- Fix a blank remote interface on iOS / iPadOS 16.4–17.3, where pairing succeeded and the computer showed the device as connected but nothing appeared on it. The remote web page now fills in the browser features these versions lack, so the DSH interface loads as well. Older versions are told the system is too old instead of showing a blank page. Only the relay needs updating; computers do not.
+
 ## 0.1.5 — 2026-11-07
 
 - 连接在生成配对码时关闭后，及时清理待确认请求。
