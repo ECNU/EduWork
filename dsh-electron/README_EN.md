@@ -43,6 +43,8 @@ For Host or shell development, inspect [the shared recipe](../scripts/ci-eduwork
 
 ## Local data and updates
 
+When software updates are enabled, the client checks at startup and every four hours while running, including in the tray. On wake it checks whether another query is due. The main process reads network status once a minute and catches up on overdue or failed checks after connectivity returns. Failures use bounded backoff and concurrent triggers are coalesced. Automatic checks pause during downloads, pending installation or shutdown, and stop when software updates are disabled. The manual check entry retains its existing behavior. Configuration and Skills updates keep their own controls and check paths.
+
 Electron defaults to `<installation>/data/<distribution>-electron/{dsh,browser,logs}`, with system-encrypted credentials stored separately in the browser directory. Wails uses `<installation>/data/<distribution>-wails/dsh` and its own Windows Credential Manager namespace. Move the complete folder only after exit; registered external workspace paths must still resolve.
 
 Ordinary startup does not scan other installations. A verified update handshake from the Go transition version imports its current data directory, without both shells writing to one session store.

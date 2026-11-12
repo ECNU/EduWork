@@ -1,4 +1,4 @@
-import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard } from 'electron'
+import { app, BrowserWindow, safeStorage, shell, Tray, Menu, nativeImage, dialog, Notification, clipboard, net, powerMonitor } from 'electron'
 import { TaskNotifications, nativeNotificationAdapter } from './task-notifications.mjs'
 import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
@@ -56,6 +56,7 @@ let startupCancelled = false
 let mainWindowPresented = false
 let startupMessage = ''
 let portableUpdates
+let softwareUpdates
 let flushPendingSettings = () => {}
 let contentUpdates, managedContent = {}
 export const productUpdateObserver = createProductUpdateObserver({
@@ -298,6 +299,7 @@ async function prepareDesktop() {
         feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
       : startPortableUpdates({root:paths.root,updates:updatesWhenEnabled(user.updates),defaults:updateSourceDefaults,
         version:settings.productVersion,distribution:settings.distribution,applyScheduled,onQuit:()=>desktopExit.handoff()})})
+  softwareUpdates = software
   portableUpdates = updateCoordinator({software,content:contentUpdates,version:settings.productVersion,onRestart:restartDesktop,
     beforeInstall:()=>process.platform==='darwin'||confirmQuit(),onPolicy:saveUpdatePolicy})
   if(portableUpdates)lifecycle.trackBridge(portableUpdates)
@@ -396,6 +398,8 @@ export async function desktopReady(shouldContinue = () => true) {
   flushPendingSettings()
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.webContents.send('eduwork:boot-brand', desktopBootBrand())
   desktopPet?.start()
+  softwareUpdates?.startBackground({ online: () => net.isOnline(), quitting: isQuitting, powerMonitor,
+    diagnose: message => desktopHostLog(`[desktop:updates] ${message}\n`) })
   if (portableUpdates) void portableUpdates.action('check-updates-background')
     .then(status => productUpdateObserver.record(status)).catch(()=>{})
 }

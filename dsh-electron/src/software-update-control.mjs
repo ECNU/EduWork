@@ -1,6 +1,7 @@
 import { readFile, writeFile, mkdir, rename, unlink } from 'node:fs/promises'
 import { join, dirname } from 'node:path'
 import { randomUUID } from 'node:crypto'
+import { createSoftwareUpdateScheduler, mayCheckSoftware } from './software-update-scheduler.mjs'
 
 // Separate from channel preferences, which the Windows helper also writes.
 export async function softwareUpdateControl({ dataRoot, version, policy = 'stable', defaultEnabled = true,
@@ -11,7 +12,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     return undefined
   })
   if (saved !== undefined && (!saved || typeof saved !== 'object' || saved.schemaVersion !== 1 || typeof saved.enabled !== 'boolean')) throw Error('软件更新偏好文件无效，原文件已保留')
-  let enabled = saved?.enabled ?? defaultEnabled, backend, startFailure, queue = Promise.resolve(), closed = false
+  let enabled = saved?.enabled ?? defaultEnabled, backend, startFailure, queue = Promise.resolve(), closed = false, scheduler
   const persist = async next => {
     await mkdir(dirname(path), { recursive: true })
     const temporary = `${path}.${randomUUID()}.tmp`
@@ -78,13 +79,36 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     const result = await (await open(false)).action(action)
     return { ...result, update: { ...result.update, userEnabled: enabled, canToggle: supported } }
   }
+  const enqueue = task => {
+    const result = queue.then(task); queue = result.catch(() => {})
+    return result
+  }
   return {
     action(action) {
       if (action === 'status') return snapshot()
-      const result = queue.then(() => act(action)); queue = result.catch(() => {})
-      return result
+      return enqueue(async () => {
+        try {
+          const result = await act(action)
+          scheduler?.record(action, result)
+          return result
+        } catch (error) {
+          if (action === 'check-updates' || action === 'check-updates-background') scheduler?.checkFailed()
+          throw error
+        }
+      })
     },
-    async close() { closed = true; await queue; await backend?.close() },
+    startBackground(options = {}) {
+      if (closed || scheduler) return
+      scheduler = createSoftwareUpdateScheduler({ ...options, readStatus: snapshot,
+        check: stillDue => enqueue(async () => {
+          const current = await snapshot()
+          if (closed || !stillDue() || !enabled || !supported || !mayCheckSoftware(current.update)) return { started: false, status: current }
+          return { started: true, status: await act(current.update.nativeUI ? 'check-updates-background' : 'check-updates') }
+        }),
+      })
+      scheduler.start()
+    },
+    async close() { closed = true; await scheduler?.close(); await queue; await backend?.close() },
   }
 }
 
