@@ -17,7 +17,7 @@ Fixed rules flag operations that the user must have asked for: pushing and publi
 - With a rule hit, the model answers one question, whether the user explicitly asked for this; the request is allowed when that probability is at least 0.7.
 - Without a rule hit, two questions are asked in parallel, whether the user would agree and how serious a mistake would be; the request is allowed when their mean (the probability of agreement averaged with 1 − severity) is at least 0.5.
 
-An approval covers this one request only and is not remembered.
+An approval covers this one request only and is not remembered. After the user rejects an escalation on the confirmation card, the session's escalations are not reviewed and go straight to the user until the user writes again.
 
 ## Installation and configuration
 
@@ -67,9 +67,9 @@ Plugin configuration example (store the real key in the credential service; do n
 
 ## Seeing review results
 
-Each request reviewed under the preset leaves a notice in the session along with the command's result. The trajectory shows it as a row from `auto-approval` whose collapsed summary gives the outcome and score, such as “已自动放行（分数 0.952）” (allowed automatically, score 0.952) or “交给用户确认（命中规则，分数 0.600）” (asked the user, rule hit, score 0.600); a request without a review result gives the reason: the review failed, was paused after failures in a row, the command was too long to review, or the situation changed during the review. Summaries are written in Chinese, like the review questions.
+Each request reviewed under the preset leaves a notice in the session along with the command's result, saying whether automatic approval allowed the escalation or handed it to the user. The trajectory shows it as a context row; opening it shows the outcome and score under its source, such as “已自动放行（分数 0.952）” (allowed automatically, score 0.952) or “交给用户确认（命中规则，分数 0.600）” (asked the user, rule hit, score 0.600). A request without a review result gives the reason: the review failed, was paused after failures in a row, the command was too long to review, the user had rejected an escalation, or the situation changed during the review. The notice is written in Chinese, like the review questions.
 
-The notice also reaches the conversation model in its next step, saying only whether the escalation was allowed automatically or the user was asked, without the score, so the agent cannot tune its justifications to the score; the agent then does not describe an automatic approval as the user's. DSH's conversation view does not show injected context like this, so the notice is visible only in the trajectory.
+The notice also reaches the conversation model in its next step, so the agent does not describe an automatic approval as the user's; the score is not sent, so the agent cannot tune its justifications to it. DSH's conversation view does not show injected context like this, so the notice is visible only in the trajectory.
 
 Each review is also logged under the `auto-approval` logger with its result, score and duration; failures are logged as warnings with their cause.
 

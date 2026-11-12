@@ -172,17 +172,17 @@ test('each review leaves one notice with its call: the summary has the outcome a
   const [message] = (await mounted.post(approved)).additionalContexts
   assert.equal(message.role, 'user')
   assert.deepEqual(message.source, { kind: 'auto-approval', form: 'notice', summary: '已自动放行（分数 0.750）' })
-  assert.deepEqual(message.content, [{ type: 'text', text: 'Automatic approval allowed the sandbox escalation of bash call call-1; the user was not asked.' }])
+  assert.deepEqual(message.content, [{ type: 'text', text: '自动审批放行了这次越界申请，没有询问用户（bash 调用 call-1）。' }])
   assert.equal((await mounted.post(approved)).additionalContexts, undefined, 'one notice per review')
   // A rule hit below its threshold; what the later policies decide is kept.
   auto = 0.6
   const pushed = await mounted.start('git push origin main')
-  assert.equal(await mounted.ask(pushed), 'rejected')
+  assert.equal(await mounted.ask(pushed, { fallback: 'unavailable' }), 'unavailable')
   const theirs = { role: 'user', content: [] }
   const blocked = await mounted.post(pushed, { kind: 'block', feedback: 'blocked', additionalContexts: [theirs] })
   assert.equal(blocked.kind, 'block'); assert.equal(blocked.feedback, 'blocked')
   assert.equal(blocked.additionalContexts[0].source.summary, '交给用户确认（命中规则，分数 0.600）')
-  assert.equal(blocked.additionalContexts[0].content[0].text, 'Automatic approval did not allow the sandbox escalation of bash call call-2; the user was asked.')
+  assert.equal(blocked.additionalContexts[0].content[0].text, '自动审批没有放行这次越界申请，已交给用户确认（bash 调用 call-2）。')
   assert.equal(blocked.additionalContexts[1], theirs)
   status = 500
   const failed = await mounted.start('cp a.csv ~/Downloads/')
@@ -198,6 +198,27 @@ test('each review leaves one notice with its call: the summary has the outcome a
   const outside = await other.start('cp a.csv ~/Downloads/')
   assert.equal(await other.ask(outside), 'rejected')
   assert.equal((await other.post(outside)).additionalContexts, undefined)
+})
+
+test('after the user rejects an escalation, retries go to the user until they write again', async t => {
+  let auto = 0.6
+  const { baseURL, bodies } = await service(t, body => answer(body, auto, 0.1))
+  const request = (seq, text) => ({ type: 'user/message', seq, data: { source: { kind: 'user' }, content: [{ type: 'text', text }] } })
+  const events = [request(1, '把改动推到 main')]
+  const mounted = mount({ ...base, baseURL }, { events })
+  assert.equal(await mounted.escalate('git push origin main'), 'rejected')
+  auto = 0.9
+  const retry = await mounted.start('git push --force origin main')
+  assert.equal(await mounted.ask(retry, { fallback: 'unavailable' }), 'unavailable')
+  assert.equal(bodies.length, 1, 'not reviewed')
+  assert.equal((await mounted.post(retry)).additionalContexts[0].source.summary, '交给用户确认（用户拒绝过，未审查）')
+  // A notice from the plugin is not the user writing again.
+  events.push({ type: 'user/message', seq: 5, data: { source: { kind: 'auto-approval' }, content: [] } })
+  assert.equal(await mounted.escalate('git push origin main', { fallback: 'unavailable' }), 'unavailable')
+  assert.equal(bodies.length, 1)
+  events.push(request(9, '可以推'))
+  assert.equal(await mounted.escalate('git push origin main'), 'allowed-once')
+  assert.equal(bodies.length, 2)
 })
 
 test('a session that leaves the preset during the review is asked as usual', async t => {
@@ -236,20 +257,21 @@ test('one retry for 5xx; failures, malformed answers and timeouts ask the user; 
     return { status: 500 }
   })
   const mounted = mount({ ...base, baseURL, timeoutMs: 1000 })
+  const user = { fallback: 'unavailable' }
   assert.equal(await mounted.escalate('git push origin main'), 'allowed-once')
   assert.equal(bodies.length, 2)
   mode = 'malformed'
-  assert.equal(await mounted.escalate('git push origin main'), 'rejected')
+  assert.equal(await mounted.escalate('git push origin main', user), 'unavailable')
   mode = 'down'
-  assert.equal(await mounted.escalate('git push origin main'), 'rejected')
+  assert.equal(await mounted.escalate('git push origin main', user), 'unavailable')
   assert.equal(bodies.length, 5) // the 500 was retried once
   mode = 'hang'
   const started = performance.now()
-  assert.equal(await mounted.escalate('git push origin main'), 'rejected')
+  assert.equal(await mounted.escalate('git push origin main', user), 'unavailable')
   assert.ok(performance.now() - started < 3000)
   const asked = bodies.length
   const paused = await mounted.start('git push origin main')
-  assert.equal(await mounted.ask(paused), 'rejected')
+  assert.equal(await mounted.ask(paused, user), 'unavailable')
   assert.equal(bodies.length, asked, 'paused after three failures in a row')
   assert.equal((await mounted.post(paused)).additionalContexts[0].source.summary, '交给用户确认（连续失败，暂停审查）')
   assert.equal(mounted.logs.filter(([level]) => level === 'warn').length, 3)

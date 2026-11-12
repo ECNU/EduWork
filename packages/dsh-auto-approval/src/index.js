@@ -41,6 +41,10 @@ export function apply(ctx, raw = {}) {
   // Files the session's file tools created, from their results: a write that made a new file, a patch that added one.
   const created = new WeakMap()
   const failures = new Map()
+  // Sessions where the user rejected an escalation, with their last message then: until they write again, a retry is
+  // theirs to answer.
+  const declined = new WeakMap()
+  const lastRequest = session => session.snapshotEvents().findLast(({ type, data }) => type === 'user/message' && data.source?.kind === 'user')?.seq
 
   ctx.on('tools/pre-execute', async (exec, next) => {
     const session = exec.agent?.session
@@ -135,16 +139,24 @@ export function apply(ctx, raw = {}) {
     const entry = inFlight.get(req.agent?.session)?.get(req.callId)
     const call = entry?.ambiguous ? undefined : entry?.call
     if (!call || call.name !== req.toolName || ctx.permissionPresets.current(req.agent.session) !== preset) return next()
-    // Each request reviewed under the preset leaves a notice: the trajectory shows its summary, with the outcome and
-    // score; the model reads only who decided, not the score, which it could otherwise write its justifications to.
+    const { session } = req.agent
+    // Each request reviewed under the preset leaves a notice: the trajectory shows its text and, under its source, a
+    // summary with the outcome and score; the model reads only who decided, not the score, which it could otherwise
+    // write its justifications to.
     const [token] = entry.tokens
     const notice = (approved, summary) => {
-      const text = `Automatic approval ${approved ? 'allowed' : 'did not allow'} the sandbox escalation of ${req.toolName} call ${req.callId}; the user was ${approved ? 'not ' : ''}asked.`
+      const text = `${approved ? '自动审批放行了这次越界申请，没有询问用户' : '自动审批没有放行这次越界申请，已交给用户确认'}（${req.toolName} 调用 ${req.callId}）。`
       entry.notice = { token, message: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'auto-approval', form: 'notice', summary } }) }
     }
-    const ask = reason => { notice(false, `交给用户确认（${reason}）`); return next() }
+    const ask = async reason => {
+      notice(false, `交给用户确认（${reason}）`)
+      const outcome = await next()
+      if (outcome === 'rejected') declined.set(session, lastRequest(session))
+      return outcome
+    }
     if (call.arguments.command.length > COMMAND_CHARS) return ask('命令过长，未审查')
-    const id = req.agent.session.id
+    if (declined.has(session) && declined.get(session) === lastRequest(session)) return ask('用户拒绝过，未审查')
+    const id = session.id
     if (failures.get(id)?.until > Date.now()) return ask('连续失败，暂停审查')
     const started = performance.now()
     const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(req.signal ? [req.signal] : [])])
@@ -154,7 +166,7 @@ export function apply(ctx, raw = {}) {
       failures.delete(id)
       // During the review another call with this ID may have started, the session may have left the preset, or the
       // request may have been withdrawn.
-      const approved = result.approved && !entry.ambiguous && ctx.permissionPresets.current(req.agent.session) === preset
+      const approved = result.approved && !entry.ambiguous && ctx.permissionPresets.current(session) === preset
         && !signal.aborted
       log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
       const score = `${result.flagged ? '命中规则，' : ''}分数 ${result.score.toFixed(3)}`
