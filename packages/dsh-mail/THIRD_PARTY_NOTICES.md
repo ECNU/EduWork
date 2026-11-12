@@ -16,4 +16,4 @@
 
 从 0.2.3 起，npm 包中的 `lib/bundled-dependencies.json` 记录实际进入 JS 产物的依赖（含嵌套版本）、npm integrity、许可证标识及产物 SHA-256。清单由构建来源生成，不包含仅开发使用且未打包的依赖。
 
-仅开发使用的官方 DSH Host 包含 LibreOffice Kit（MPL-2.0）与 sharp/libvips 原生包（Apache-2.0 / LGPL-3.0-or-later）。它们不打入邮件插件压缩包，许可证随各自的包保留。
+仅开发使用的官方 DSH Host 包含 LibreOffice Kit 0.2.3（MPL-2.0）与 sharp/libvips 原生包（Apache-2.0 / LGPL-3.0-or-later），以及 lru-cache 11.5.3（[Blue Oak Model License 1.0.0](https://blueoakcouncil.org/license/1.0.0)）。它们不打入邮件插件压缩包，许可证随各自的包保留。检查仅接纳已核对的开发依赖版本。

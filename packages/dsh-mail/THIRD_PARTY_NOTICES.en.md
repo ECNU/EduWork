@@ -16,4 +16,4 @@ Exact direct and transitive versions are recorded in `package-lock.json`. Review
 
 Starting with 0.2.3, `lib/bundled-dependencies.json` in the npm package records dependencies actually included in the JS outputs (including nested versions), npm integrity, license identifiers and output SHA-256 hashes. It is generated from build sources and excludes development dependencies absent from the bundle.
 
-The development-only official DSH Host includes LibreOffice Kit (MPL-2.0) and sharp/libvips native packages (Apache-2.0 / LGPL-3.0-or-later). They are not bundled in the mail plugin archive; their license files remain with their own packages.
+The development-only official DSH Host includes LibreOffice Kit 0.2.3 (MPL-2.0), sharp/libvips native packages (Apache-2.0 / LGPL-3.0-or-later), and lru-cache 11.5.3 ([Blue Oak Model License 1.0.0](https://blueoakcouncil.org/license/1.0.0)). They are not bundled in the mail plugin archive; their license files remain with their own packages. Checks accept only the reviewed development-dependency versions.

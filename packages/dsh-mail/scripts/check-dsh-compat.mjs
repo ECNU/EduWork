@@ -2,7 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8'))
 const lock = JSON.parse(await readFile(new URL('../package-lock.json', import.meta.url), 'utf8'))
-const expectedDsh = '>=0.2.1-rc.2 <0.3.0-0 || 0.2.2-rc.1'
+const expectedDsh = '>=0.2.1-rc.2 <0.3.0-0 || >=0.2.2-rc.1 <0.2.3-0'
 const dshPeers = [
   '@deepseek-ai/dsh-api-remotes',
   '@deepseek-ai/dsh-client-ui-renderer',

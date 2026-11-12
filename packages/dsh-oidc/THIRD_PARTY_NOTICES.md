@@ -6,7 +6,7 @@
 
 ## 运行时 Peer（源码未复制进本仓库）
 
-- DeepSeek Harness `0.2.1-rc.2` 软件包和 `@deepseek-ai/cordis` `4.0.5`——MIT，Copyright (c) 2026 DeepSeek，<https://github.com/deepseek-ai/deepseek-harness>
+- DeepSeek Harness 软件包和 `@deepseek-ai/cordis`——MIT；开发基线为 `0.2.2-rc.2` / `4.1.0`，支持的宿主范围见 `package.json`。Copyright (c) 2026 DeepSeek，<https://github.com/deepseek-ai/deepseek-harness>
 - `@earendil-works/pi-ai` `1.1.0`——MIT，<https://github.com/earendil-works/pi>
 - React `18.x`——MIT，Copyright (c) Facebook, Inc. and its affiliates，<https://github.com/facebook/react>
 
@@ -46,10 +46,10 @@ SOFTWARE.
 
 ## 仅开发使用的工具
 
-锁文件固定 DSH 0.2.1-rc.2 测试闭包及 tsdown（MIT）、TypeScript/Playwright Core（Apache-2.0）、Ajv（MIT）、YAML（ISC）、React 类型（MIT）。开发工具不复制到发布的运行文件。Playwright Core 安装时不下载浏览器二进制。
+锁文件固定 DSH 0.2.2-rc.2 测试闭包及 tsdown（MIT）、TypeScript/Playwright Core（Apache-2.0）、Ajv（MIT）、YAML（ISC）、React 类型（MIT）。开发工具不复制到发布的运行文件。Playwright Core 安装时不下载浏览器二进制。
 
 
 `fast-sha256@1.3.0` 经 pi-ai → Anthropic SDK → standardwebhooks 引入，声明 Unlicense。已核对其分发 LICENSE 中复制、修改、分发授权与免责条款；许可证检查只为该包的该版本记录例外，不放开其他未知许可证。其源码不复制进本仓库。
 
 
-仅开发使用的官方 DSH Host 包括 LibreOffice Kit（MPL-2.0）与 sharp/libvips 原生包（Apache-2.0 / LGPL-3.0-or-later）。这些包单独安装用于宿主测试，不打入本插件压缩包，许可证随各自的包保留。
+仅开发使用的官方 DSH Host 包括 LibreOffice Kit 0.2.3（MPL-2.0）与 sharp/libvips 原生包（Apache-2.0 / LGPL-3.0-or-later），以及 lru-cache 11.5.3（[Blue Oak Model License 1.0.0](https://blueoakcouncil.org/license/1.0.0)）。这些包单独安装用于宿主测试，不打入本插件压缩包，许可证随各自的包保留。检查仅接纳已核对的开发依赖版本。

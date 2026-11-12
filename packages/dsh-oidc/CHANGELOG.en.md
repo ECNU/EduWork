@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.3.4 — Unreleased
+
+- Support DSH 0.2.2-rc.2 and the qualified 0.2.2 prerelease API family while retaining previously supported hosts.
+
 ## 0.3.3 — Unreleased
 
 - Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.

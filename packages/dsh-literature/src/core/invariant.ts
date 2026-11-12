@@ -5,7 +5,7 @@
 
 /* jscpd:ignore-start */
 import type { Context } from '@deepseek-ai/cordis'
-import type { InvariantInstaller } from '@deepseek-ai/dsh-invariants'
+import { registerLegacyInvariant } from '../legacy-invariant.ts'
 
 const PACKAGE_NAME = '@eduwork/dsh-literature/core'
 
@@ -18,7 +18,6 @@ export const inject = ['invariants']
  * No runtime invariant: the source registry is private and every merge/fallback rule is enforced
  * on each call; the seam publishes no independent event or mutable-data relation.
  */
-const install: InvariantInstaller = () => {}
 
 /**
  * Register this package's invariant companion.
@@ -26,5 +25,5 @@ const install: InvariantInstaller = () => {}
  * @returns the installed registration's disposer after setup succeeds.
  */
 export const apply = (ctx: Context): Promise<() => void> =>
-  Promise.resolve(ctx.invariants.register(PACKAGE_NAME, install))
+  registerLegacyInvariant(ctx, PACKAGE_NAME)
 /* jscpd:ignore-end */
