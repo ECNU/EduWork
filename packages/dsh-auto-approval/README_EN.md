@@ -80,7 +80,7 @@ Each review is also logged under the `auto-approval` logger with its result, sco
 
 ## What is sent to the decision service
 
-The state includes the user's last 3 messages (first 300 characters each), the assistant message the user replied to (last 1000 characters), the 6 earlier commands (first 300 characters each), the paths of the last 8 files the file tools created in this session, the script the command runs (up to 16000 characters), and the content a file tool writes (up to 4000 characters per section) with the paths of the files it changes. Before enabling the plugin, make sure the decision service may receive this content.
+The state includes the user's last 3 messages (first 300 characters each), the assistant message the user replied to (last 1000 characters), the 6 earlier commands (first 300 characters each), the paths of the last 8 files `write` created in this session, the script the command runs (up to 16000 characters), and the content a file tool writes (up to 4000 characters per section) with the paths of the files it changes. Before enabling the plugin, make sure the decision service may receive this content.
 
 ## Evaluation and limits
 
@@ -89,7 +89,7 @@ The rules and questions were evaluated on 6 sets with 419 real escalation reques
 File-tool review was evaluated on real writes outside the workspace taken from other coding agents' sessions, prepared as the plugin prepares them and sent to the same decision model: 109 of the 141 that should be allowed (77%) were allowed, and none of the 35 that should be asked was allowed; 3 of those are real requests and 32 were built by giving a change to an existing file the context of another task. The rule that a change to an existing file needs the user's request was added after seeing the first set's results; with it in place, a held-out set drawn afterwards was run once: 25 of the 33 that should be allowed were allowed, and all 15 that should be asked went to the user.
 
 - Subagents: DSH fixes approval in child sessions to `never`, so their escalation requests are rejected before approval; the plugin also skips subagent sessions, whose "user messages" come from the delegating agent.
-- "Files created in this session" records only files the file tools created successfully (a new file from `write`, an Add File from `apply_patch`), not files created by commands, and starts empty after a Host restart. A file a command created is therefore treated as an existing file when a file tool changes it.
+- "Files created in this session" records only new files that `write` created successfully, compared by real path; an Add File in a patch may replace a file that was there, so like a file a command created it does not count. The list starts empty after a Host restart. Such files are therefore treated as existing files when a file tool changes them.
 - The confirmation card is unchanged and does not show the review result.
 - DSH 0.2.2 draws icons only for its four built-in permission presets, so the added preset has no icon in the menu.
 - Commands over 16000 characters are not reviewed and go straight to the user; the longest command in the evaluation data was about 13000 characters. A file tool's call is measured with its content cut.

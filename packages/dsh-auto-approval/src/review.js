@@ -56,13 +56,18 @@ export function sessionFacts(events, callId) {
       answered(questions, answers)
     } else if (type === 'assistant/message') {
       lastAssistant = textOf(data.message?.content) || lastAssistant
-    } else if (type === 'tool/call' && data.name === 'ask_user_question') {
-      cards.set(data.callId, parsed(data.arguments)?.questions)
-    } else if (type === 'tool/result' && cards.has(data.message?.toolCallId) && !data.message.isError) {
-      answered(cards.get(data.message.toolCallId), parsed(textOf(data.message.content))?.answers)
-    } else if (type === 'tool/call' && SHELLS.has(data.name)) {
-      const command = parsed(data.arguments)?.command
-      if (typeof command === 'string') history.push(command.slice(0, 300))
+    } else if (type === 'tool/call') {
+      // A later step may reuse a card's ID: the ID stands for the card only until the card's own first result.
+      cards.delete(data.callId)
+      if (data.name === 'ask_user_question') cards.set(data.callId, parsed(data.arguments)?.questions)
+      else if (SHELLS.has(data.name)) {
+        const command = parsed(data.arguments)?.command
+        if (typeof command === 'string') history.push(command.slice(0, 300))
+      }
+    } else if (type === 'tool/result' && cards.has(data.message?.toolCallId)) {
+      const questions = cards.get(data.message.toolCallId)
+      cards.delete(data.message.toolCallId)
+      if (!data.message.isError) answered(questions, parsed(textOf(data.message.content))?.answers)
     }
   }
   return { requests: requests.slice(-3), assistant: assistant.slice(-1000), history: history.slice(-6) }
@@ -152,11 +157,12 @@ const home = path => {
   const rest = relative(homedir(), path)
   return rest && !rest.startsWith('..') && !isAbsolute(rest) ? `~/${rest.split(sep).join('/')}` : path
 }
-// The rules judge a file change by the shell command with the same effect on the real path: a file written to a
-// shell start-up file or ~/.config counts as changing software settings, one under ~/.ssh as touching credentials.
+// The rules judge a file change by the shell command with the same effect on the real path, a move as writing its
+// destination too: a file written to a shell start-up file or ~/.config counts as changing software settings, one
+// under ~/.ssh as touching credentials.
 function fileRule(files) {
   for (const { real, change, to } of files) {
-    const hit = ruleMatch([change === 'delete' ? `rm ${home(real)}` : `cat > ${home(real)}`, ...(to ? [`mv ${home(real)} ${home(to.real)}`] : [])].join('\n'))
+    const hit = ruleMatch([change === 'delete' ? `rm ${home(real)}` : `cat > ${home(real)}`, ...(to ? [`cat > ${home(to.real)}`] : [])].join('\n'))
     if (hit) return hit
   }
   return null
@@ -170,7 +176,8 @@ function fileRule(files) {
  */
 export function reviewRequest({ system, workspace, cwd, facts, justification, command, script, files }) {
   const rule = files ? fileRule(files) : ruleMatch([executedPart(command), ...Object.values(script ?? {})].join('\n'))
-  const own = file => [file.display, file.real].some(path => facts.created.includes(path))
+  // By the real path only, as the created files are recorded: the path as written may now lead elsewhere.
+  const own = file => facts.created.includes(file.real)
   const before = file => file?.exists && !own(file)
   const state = {
     系统: system,

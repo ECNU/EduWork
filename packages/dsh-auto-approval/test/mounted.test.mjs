@@ -28,7 +28,8 @@ const answer = (body, auto, harm) => ({ json: {
   answers: Object.fromEntries(Object.keys(body.questions).map(id => [id, id === 'harm' ? { type: 'noul', noul: harm } : { type: 'choice', choice: auto >= 0.5 ? 'auto' : 'ask', probabilities: { auto, ask: 1 - auto } }])),
 } })
 
-function mount(config, { preset = 'auto-approval', services = {}, events = [], origin, cwd = '/work' } = {}) {
+// `cwd`: the session's directory; `restored`: where the tools find it, when it no longer exists.
+function mount(config, { preset = 'auto-approval', services = {}, events = [], origin, cwd = '/work', restored = cwd } = {}) {
   const listeners = {}, logs = []
   const presets = { current: () => preset, set: name => { preset = name } }
   const ctx = {
@@ -37,7 +38,7 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [], o
     get: name => services[name],
     permissionPresets: presets,
     sandboxPolicy: { resolve: () => ({ mode: 'workspace-write', workspaceRoot: '/work' }) },
-    workingDirectory: { get: () => cwd },
+    workingDirectory: { get: () => cwd, ensure: async () => restored },
   }
   apply(ctx, config)
   const agent = { session: { id: 'session-1', header: { origin }, snapshotEvents: () => events } }
@@ -239,13 +240,14 @@ test('a session that leaves the preset during the review is asked as usual', asy
   assert.equal((await mounted.post(exec)).additionalContexts[0].source.summary, '交给用户确认（审查期间情况有变）')
 })
 
-test('files the session created come from successful file tool results', async t => {
+test('files the session created come from successful writes that made a new file', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   const mounted = mount({ ...base, baseURL })
   const tool = (name, result) => mounted.finish({ name, callId: name, token: Symbol(name), agent: mounted.agent }, result)
   tool('write', { isError: false, value: { path: '/work/new.md', operation: 'create', before: null, after: 'x' } })
   tool('write', { isError: false, value: { path: '/work/old.md', operation: 'update', before: 'a', after: 'b' } })
   tool('write', { isError: true })
+  // An Add File may replace a file that was there, with no diff basis to tell; it does not count.
   tool('apply_patch', { isError: false, value: { operations: [
     { kind: 'add', path: 'gen/a.js', status: 'completed', changes: [{ path: '/work/gen/a.js', before: null, after: 'x' }] },
     { kind: 'add', path: 'kept.js', status: 'completed', changes: [{ path: '/work/kept.js', before: 'y', after: 'x' }] },
@@ -253,7 +255,7 @@ test('files the session created come from successful file tool results', async t
     { kind: 'add', path: 'gen/d.js', status: 'failed' },
   ] } })
   assert.equal(await mounted.escalate('rm -rf ~/Downloads/out'), 'allowed-once')
-  assert.deepEqual(bodies[0].body.state.本次会话创建的文件, ['/work/new.md', '/work/gen/a.js'])
+  assert.deepEqual(bodies[0].body.state.本次会话创建的文件, ['/work/new.md'])
 })
 
 test('file tools are reviewed as the command they amount to, with each file they change and its state', async t => {
@@ -319,6 +321,13 @@ test('file tools are reviewed as the command they amount to, with each file they
   assert.equal(await mounted.escalate({ file_path: join(dir, 'out/old.md'), old_string: 'old', new_string: 'new' }, { name: 'edit', ...away }), 'unavailable')
   assert.match(mounted.logs.at(-1)[1], /^edit asked the user \(score 0\.400, /)
   auto = 0.9
+
+  // A session directory that no longer exists: the tools move back to where the session started, and so does the
+  // review.
+  const moved = mount({ ...base, baseURL }, { services: { fs }, cwd: join(dir, 'gone'), restored: join(dir, 'work') })
+  assert.equal(await moved.escalate({ file_path: '../out/old.md', content: 'x' }, { name: 'write' }), 'allowed-once')
+  assert.equal(state().当前目录, join(dir, 'work'))
+  assert.deepEqual(state().目标文件, [`${join(dir, 'out/old.md')}：已存在，会被整个替换`])
 
   // Too long even with contents cut, a malformed patch and a Host without the file system go to the user.
   const sections = Array.from({ length: 5 }, (_, i) => [`*** Add File: out/f${i}.md`, ...Array(400).fill('+0123456789')].join('\n'))

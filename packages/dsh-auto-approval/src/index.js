@@ -38,7 +38,8 @@ export function apply(ctx, raw = {}) {
   // Shell and file-tool calls in flight, by session and call ID. Escalation requests carry only the call ID, so the
   // command comes from the call, and a request is reviewed only while one call with that ID is in flight.
   const inFlight = new WeakMap()
-  // Files the session's file tools created, from their results: a write that made a new file, a patch that added one.
+  // Files the session's writes created, by real path, from their results. A patch's Add File may replace a file that
+  // was there, so it does not count.
   const created = new WeakMap()
   const failures = new Map()
   // Sessions where the user rejected an escalation, with their last message then: until they write again, a retry is
@@ -68,12 +69,9 @@ export function apply(ctx, raw = {}) {
     if (!session) return
     const entry = inFlight.get(session)?.get(exec.callId)
     if (entry?.tokens.delete(exec.token) && !entry.tokens.size) inFlight.get(session).delete(exec.callId)
-    if (result.isError) return
-    const paths = exec.name === 'write' ? (result.value.operation === 'create' ? [result.value.path] : [])
-      : exec.name === 'apply_patch' ? result.value.operations.filter(op => op.status === 'completed' && op.kind === 'add')
-        .flatMap(op => op.changes.filter(change => change.before === null).map(change => change.path))
-      : []
-    if (paths.length) created.set(session, [...created.get(session) ?? [], ...paths].slice(-8))
+    if (exec.name === 'write' && !result.isError && result.value.operation === 'create') {
+      created.set(session, [...created.get(session) ?? [], result.value.path].slice(-8))
+    }
   })
 
   // The review's notice joins its call's result, so it is shown in the trajectory and read by the model next step.
@@ -122,7 +120,9 @@ export function apply(ctx, raw = {}) {
     // The sandbox's boundary stays where the session started; the shell runs in the current directory, which `/cd`
     // can move anywhere.
     const workspace = ctx.sandboxPolicy.resolve({ session }).workspaceRoot
-    const base = ctx.workingDirectory.get(session)
+    // The session's directory as the tools read it once approved: one that no longer exists is first moved back to
+    // where the session started.
+    const base = await ctx.workingDirectory.ensure(req.agent, signal)
     const shell = SHELLS.has(call.name)
     // The directory the shell tool starts in: bash appends workdir and leaves `..` to the file system, which follows
     // links; pwsh resolves it first. File tools resolve their paths against the session's directory. Shown as the real
