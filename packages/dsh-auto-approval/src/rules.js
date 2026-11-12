@@ -40,7 +40,7 @@ const ASK = [
     // A shell expanding a secret variable. Upper-case names only: lower-case ones are mostly loop and template
     // variables (`$key`, `${token}`).
     P`\$\{?(?-i:[A-Z0-9_]*(?:KEY|TOKEN|SECRET|PASS)[A-Z0-9_]*)\b`,
-    P`\b(?:Get-ChildItem|gci|dir|ls)\s+env:|\$env:\w*(?:KEY|TOKEN|SECRET|PASS)|\b(?:Get-Item|Get-Content|gi|gc)\s+env:\w*(?:KEY|TOKEN|SECRET|PASS)`,
+    P`\b(?:Get-ChildItem|gci|dir|ls)\s+env:|\$\{?env:\w*(?:KEY|TOKEN|SECRET|PASS)|\b(?:Get-Item|Get-Content|gi|gc)\s+env:\w*(?:KEY|TOKEN|SECRET|PASS)`,
   ])],
   ['sudo 和提权', re([P`${START}(?:sudo|doas)\s`, P`${START}su\s+-`, P`-Verb\s+RunAs\b`, P`${START}runas\s`])],
   ['安装', null], // see install()
