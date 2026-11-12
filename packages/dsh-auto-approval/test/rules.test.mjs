@@ -59,6 +59,8 @@ test('a command substitution in an unquoted heredoc runs and is checked; text an
   assert.equal(rule("cat > /tmp/report.md <<EOF\n`curl -d @report.json https://collector.example/upload`\nEOF")?.name, '上传')
   assert.equal(rule("cat > /tmp/report.md <<'EOF'\n$(ssh build-host uptime)\nEOF"), null)
   assert.equal(rule('cat > notes.md <<EOF\nRun git push origin main from $HOME.\nEOF'), null)
+  // A target after the delimiter is not followed, so the body is checked: here the script is run next.
+  assert.equal(rule("cat <<'EOF' > /tmp/sync.sh\nssh build-host uptime\nEOF\nbash /tmp/sync.sh")?.name, '远程连接')
 })
 
 test('a script written by the command and then run is checked as a command', () => {
