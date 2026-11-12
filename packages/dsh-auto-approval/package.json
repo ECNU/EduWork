@@ -18,12 +18,14 @@
   },
   "peerDependencies": {
     "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0",
+    "@deepseek-ai/dsh-llm": ">=0.2.2-rc.1 <0.3.0-0",
     "@deepseek-ai/dsh-user-approval": ">=0.2.2-rc.1 <0.3.0-0",
     "@deepseek-ai/dsh-permission-presets": ">=0.2.2-rc.1 <0.3.0-0",
     "@deepseek-ai/dsh-tool-bash": ">=0.2.2-rc.1 <0.3.0-0"
   },
   "peerDependenciesMeta": {
     "@deepseek-ai/schemastery": { "optional": true },
+    "@deepseek-ai/dsh-llm": { "optional": true },
     "@deepseek-ai/dsh-user-approval": { "optional": true },
     "@deepseek-ai/dsh-permission-presets": { "optional": true },
     "@deepseek-ai/dsh-tool-bash": { "optional": true }

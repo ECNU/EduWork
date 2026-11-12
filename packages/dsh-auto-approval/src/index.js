@@ -1,4 +1,5 @@
 import z from '@deepseek-ai/schemastery'
+import { createUserMessage } from '@deepseek-ai/dsh-llm'
 import { requestDecision, resolveDecisionConfig } from '@eduwork/dsh-decision/core'
 import { realpath } from 'node:fs/promises'
 import { isAbsolute, resolve, sep } from 'node:path'
@@ -71,6 +72,16 @@ export function apply(ctx, raw = {}) {
     if (paths.length) created.set(session, [...created.get(session) ?? [], ...paths].slice(-8))
   })
 
+  // The review's notice joins its call's result, so it is shown in the trajectory and read by the model next step.
+  ctx.on('tools/post-execute', async (exec, _result, next) => {
+    const decision = await next()
+    const entry = inFlight.get(exec.agent?.session)?.get(exec.callId)
+    const notice = entry?.notice
+    if (!notice || notice.token !== exec.token) return decision
+    delete entry.notice
+    return { ...decision, additionalContexts: [notice.message, ...decision.additionalContexts ?? []] }
+  })
+
   async function fetchWith() {
     let fetchImpl
     if (service.authMode === 'oidc') {
@@ -124,9 +135,17 @@ export function apply(ctx, raw = {}) {
     const entry = inFlight.get(req.agent?.session)?.get(req.callId)
     const call = entry?.ambiguous ? undefined : entry?.call
     if (!call || call.name !== req.toolName || ctx.permissionPresets.current(req.agent.session) !== preset) return next()
-    if (call.arguments.command.length > COMMAND_CHARS) return next()
+    // Each request reviewed under the preset leaves a notice: the trajectory shows its summary, with the outcome and
+    // score; the model reads only who decided, not the score, which it could otherwise write its justifications to.
+    const [token] = entry.tokens
+    const notice = (approved, summary) => {
+      const text = `Automatic approval ${approved ? 'allowed' : 'did not allow'} the sandbox escalation of ${req.toolName} call ${req.callId}; the user was ${approved ? 'not ' : ''}asked.`
+      entry.notice = { token, message: createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'auto-approval', form: 'notice', summary } }) }
+    }
+    const ask = reason => { notice(false, `交给用户确认（${reason}）`); return next() }
+    if (call.arguments.command.length > COMMAND_CHARS) return ask('命令过长，未审查')
     const id = req.agent.session.id
-    if (failures.get(id)?.until > Date.now()) return next()
+    if (failures.get(id)?.until > Date.now()) return ask('连续失败，暂停审查')
     const started = performance.now()
     const signal = AbortSignal.any([AbortSignal.timeout(timeoutMs), ...(req.signal ? [req.signal] : [])])
     try {
@@ -138,14 +157,20 @@ export function apply(ctx, raw = {}) {
       const approved = result.approved && !entry.ambiguous && ctx.permissionPresets.current(req.agent.session) === preset
         && !signal.aborted
       log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
-      if (approved) return 'allowed-once'
+      const score = `${result.flagged ? '命中规则，' : ''}分数 ${result.score.toFixed(3)}`
+      if (approved) {
+        notice(true, `已自动放行（${score}）`)
+        return 'allowed-once'
+      }
+      if (req.signal?.aborted) return next()
+      return ask(result.approved ? '审查期间情况有变' : score)
     } catch (error) {
       if (req.signal?.aborted) return next()
       const count = (failures.get(id)?.count ?? 0) + 1
       failures.set(id, count >= PAUSE_AFTER ? { count: 0, until: Date.now() + PAUSE_MS } : { count })
       log.warn(`review failed, asking the user (${Math.round(performance.now() - started)} ms): ${error?.message ?? error}`)
+      return ask('审查失败')
     }
-    return next()
   }, { prepend: true })
 }
 

@@ -51,8 +51,10 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [], o
   const ask = ({ name, callId }, { fallback = 'rejected', signal } = {}) =>
     listeners['approval/request'][0]({ agent, toolName: name, callId, reason: 'escalate sandbox to danger-full-access: 写到下载目录', signal }, async () => fallback)
   const finish = (exec, result = { isError: false, value: 'done' }) => listeners['tools/result'][0](exec, result)
+  // The post-execute policies after the call: `downstream` is what the later ones decide.
+  const post = (exec, downstream = { kind: 'accept' }) => listeners['tools/post-execute'][0](exec, { isError: false, value: 'done' }, async () => downstream)
   const escalate = async (command, options = {}) => ask(await start(command, options), options)
-  return { listeners, logs, agent, presets, start, ask, finish, escalate }
+  return { listeners, logs, agent, presets, start, ask, finish, post, escalate }
 }
 const base = { enabled: true, model: 'fixture-model', authMode: 'none' }
 
@@ -161,12 +163,51 @@ test('a request withdrawn as the review returns is not approved', async t => {
   assert.equal(await mounted.escalate('cp a.csv ~/Downloads/', { signal: controller.signal, fallback: 'cancelled' }), 'cancelled')
 })
 
+test('each review leaves one notice with its call: the summary has the outcome and score, the model reads who decided', async t => {
+  let auto = 0.8, status = 200
+  const { baseURL } = await service(t, body => status === 200 ? answer(body, auto, 0.3) : { status })
+  const mounted = mount({ ...base, baseURL })
+  const approved = await mounted.start('cp out.csv ~/Downloads/')
+  assert.equal(await mounted.ask(approved), 'allowed-once')
+  const [message] = (await mounted.post(approved)).additionalContexts
+  assert.equal(message.role, 'user')
+  assert.deepEqual(message.source, { kind: 'auto-approval', form: 'notice', summary: '已自动放行（分数 0.750）' })
+  assert.deepEqual(message.content, [{ type: 'text', text: 'Automatic approval allowed the sandbox escalation of bash call call-1; the user was not asked.' }])
+  assert.equal((await mounted.post(approved)).additionalContexts, undefined, 'one notice per review')
+  // A rule hit below its threshold; what the later policies decide is kept.
+  auto = 0.6
+  const pushed = await mounted.start('git push origin main')
+  assert.equal(await mounted.ask(pushed), 'rejected')
+  const theirs = { role: 'user', content: [] }
+  const blocked = await mounted.post(pushed, { kind: 'block', feedback: 'blocked', additionalContexts: [theirs] })
+  assert.equal(blocked.kind, 'block'); assert.equal(blocked.feedback, 'blocked')
+  assert.equal(blocked.additionalContexts[0].source.summary, '交给用户确认（命中规则，分数 0.600）')
+  assert.equal(blocked.additionalContexts[0].content[0].text, 'Automatic approval did not allow the sandbox escalation of bash call call-2; the user was asked.')
+  assert.equal(blocked.additionalContexts[1], theirs)
+  status = 500
+  const failed = await mounted.start('cp a.csv ~/Downloads/')
+  assert.equal(await mounted.ask(failed), 'rejected')
+  assert.equal((await mounted.post(failed)).additionalContexts[0].source.summary, '交给用户确认（审查失败）')
+  const long = await mounted.start(`printf '%s' '${'x'.repeat(16000)}' > ~/Downloads/x.txt`)
+  assert.equal(await mounted.ask(long), 'rejected')
+  assert.equal((await mounted.post(long)).additionalContexts[0].source.summary, '交给用户确认（命令过长，未审查）')
+  // Another call under the ID gets no notice; nor does a session under another preset.
+  const notReviewed = await mounted.start('ls')
+  assert.equal((await mounted.post(notReviewed)).additionalContexts, undefined)
+  const other = mount({ ...base, baseURL }, { preset: 'workspace-write' })
+  const outside = await other.start('cp a.csv ~/Downloads/')
+  assert.equal(await other.ask(outside), 'rejected')
+  assert.equal((await other.post(outside)).additionalContexts, undefined)
+})
+
 test('a session that leaves the preset during the review is asked as usual', async t => {
   let mounted
   const { baseURL } = await service(t, body => { mounted.presets.set('workspace-write'); return answer(body, 0.9, 0.1) })
   mounted = mount({ ...base, baseURL })
-  assert.equal(await mounted.escalate('cp a.csv ~/Downloads/'), 'rejected')
+  const exec = await mounted.start('cp a.csv ~/Downloads/')
+  assert.equal(await mounted.ask(exec), 'rejected')
   assert.match(mounted.logs.at(-1)[1], /asked the user/)
+  assert.equal((await mounted.post(exec)).additionalContexts[0].source.summary, '交给用户确认（审查期间情况有变）')
 })
 
 test('files the session created come from successful file tool results', async t => {
@@ -207,8 +248,10 @@ test('one retry for 5xx; failures, malformed answers and timeouts ask the user; 
   assert.equal(await mounted.escalate('git push origin main'), 'rejected')
   assert.ok(performance.now() - started < 3000)
   const asked = bodies.length
-  assert.equal(await mounted.escalate('git push origin main'), 'rejected')
+  const paused = await mounted.start('git push origin main')
+  assert.equal(await mounted.ask(paused), 'rejected')
   assert.equal(bodies.length, asked, 'paused after three failures in a row')
+  assert.equal((await mounted.post(paused)).additionalContexts[0].source.summary, '交给用户确认（连续失败，暂停审查）')
   assert.equal(mounted.logs.filter(([level]) => level === 'warn').length, 3)
 })
 
@@ -241,10 +284,12 @@ test('a withdrawn request is not counted as a failure', async t => {
   const { baseURL } = await service(t, () => undefined)
   const mounted = mount({ ...base, baseURL })
   const controller = new AbortController()
-  const pending = mounted.escalate('git push origin main', { signal: controller.signal, fallback: 'cancelled' })
+  const exec = await mounted.start('git push origin main')
+  const pending = mounted.ask(exec, { signal: controller.signal, fallback: 'cancelled' })
   setTimeout(() => controller.abort(), 50)
   assert.equal(await pending, 'cancelled')
   assert.equal(mounted.logs.length, 0)
+  assert.equal((await mounted.post(exec)).additionalContexts, undefined, 'no notice for a withdrawn request')
 })
 
 test('the bundle ships disabled under one plugin ID with no institution defaults', async () => {

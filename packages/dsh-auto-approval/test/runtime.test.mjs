@@ -64,9 +64,10 @@ async function run(t, { auto, preset = 'auto-approval', command, workdir, before
     { type: 'text', text: 'Done.' },
   ]
   let step = 0
+  const requests = []
   ctx.llm.registerAdapter(['fixture'], new class extends LlmAdapter {
     resolveModel(provider, model) { return Promise.resolve({ provider, id: model, name: model }) }
-    async *stream() { yield* chunks(steps[step++]) }
+    async *stream(options) { requests.push(options); yield* chunks(steps[step++]) }
   }())
   const outcomes = []
   ctx.tools.register(defineTool({
@@ -91,7 +92,9 @@ async function run(t, { auto, preset = 'auto-approval', command, workdir, before
   if (cd) await ctx.workingDirectory.set(handle.agent, await cd(home))
   handle.agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Copy the report to my Downloads folder.' }], source: { kind: 'user' } }))
   await handle.agent.whenIdle()
-  return { home, bodies, outcomes, userAnswers, events: handle.agent.session.snapshotEvents() }
+  const events = handle.agent.session.snapshotEvents()
+  const notices = events.filter(({ type, data }) => type === 'user/message' && data.source.kind === 'auto-approval')
+  return { home, bodies, outcomes, userAnswers, events, notices, requests }
 }
 
 const runtime = { skip: !process.env.EDUWORK_AUTO_APPROVAL_RUNTIME, timeout: 20_000 }
@@ -117,6 +120,9 @@ test('real Runtime: an approved escalation runs without reaching the user, with 
   const decided = result.events.filter(event => event.type === 'approval/decided')
   assert.equal(decided.length, 1)
   assert.equal(decided[0].data.outcome, 'allowed-once')
+  // The notice follows the call's result into the next step.
+  assert.deepEqual(result.notices.map(({ data }) => data.source), [{ kind: 'auto-approval', form: 'notice', summary: '已自动放行（分数 0.900）' }])
+  assert.match(JSON.stringify(result.requests.at(-1).messages), /Automatic approval allowed the sandbox escalation of bash call call-1; the user was not asked\./)
 })
 
 test('real Runtime: after the session changes directory, the workspace is still the sandbox boundary', runtime, async t => {
@@ -132,6 +138,7 @@ test('real Runtime: a call another policy asks about goes to the user without a 
   assert.equal(result.bodies.length, 0)
   assert.deepEqual(result.userAnswers, ['call-1'])
   assert.deepEqual(result.outcomes, [])
+  assert.deepEqual(result.notices, [])
 })
 
 test('real Runtime: a low score and another preset leave the decision to the user', runtime, async t => {
@@ -140,7 +147,9 @@ test('real Runtime: a low score and another preset leave the decision to the use
   assert.match(low.bodies[0].state.风险标记, /^推送和发布（命令里的这一段：git push origin main）$/)
   assert.deepEqual(low.userAnswers, ['call-1'])
   assert.match(low.outcomes[0], /rejected/)
+  assert.deepEqual(low.notices.map(({ data }) => data.source.summary), ['交给用户确认（命中规则，分数 0.600）'])
   const other = await run(t, { auto: 0.9, preset: 'workspace-write', command: 'cp report.csv ~/Downloads/' })
   assert.equal(other.bodies.length, 0)
   assert.deepEqual(other.userAnswers, ['call-1'])
+  assert.deepEqual(other.notices, [])
 })

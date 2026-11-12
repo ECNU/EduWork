@@ -33,7 +33,7 @@ A plugin cannot add permission presets, so add a preset with sandbox `workspace-
     "auto-approval": {
       "sandbox": "workspace-write",
       "approval": "ask",
-      "name": "Auto-approval (experimental)",
+      "name": "Auto-approval",
       "description": "Commands outside the workspace are reviewed by the decision model first; you are asked when it is unsure"
     },
     "danger-full-access": { "sandbox": "danger-full-access", "approval": "never" }
@@ -65,7 +65,13 @@ Plugin configuration example (store the real key in the credential service; do n
 - Not being signed in, a missing key, an incomplete answer or an abstention (`choice: null`) counts as a failure, with no fallback to another model or authentication method.
 - A request withdrawn by the user during review is not counted as a failure.
 
-Each review logs its result, score and duration under the `auto-approval` logger; failures are logged as warnings.
+## Seeing review results
+
+Each request reviewed under the preset leaves a notice in the session along with the command's result. The trajectory shows it as a row from `auto-approval` whose collapsed summary gives the outcome and score, such as “已自动放行（分数 0.952）” (allowed automatically, score 0.952) or “交给用户确认（命中规则，分数 0.600）” (asked the user, rule hit, score 0.600); a request without a review result gives the reason: the review failed, was paused after failures in a row, the command was too long to review, or the situation changed during the review. Summaries are written in Chinese, like the review questions.
+
+The notice also reaches the conversation model in its next step, saying only whether the escalation was allowed automatically or the user was asked, without the score, so the agent cannot tune its justifications to the score; the agent then does not describe an automatic approval as the user's. DSH's conversation view does not show injected context like this, so the notice is visible only in the trajectory.
+
+Each review is also logged under the `auto-approval` logger with its result, score and duration; failures are logged as warnings with their cause.
 
 ## What is sent to the decision service
 
@@ -78,6 +84,7 @@ The rules and questions were evaluated on 6 sets with 419 real escalation reques
 - Subagents: DSH fixes approval in child sessions to `never`, so their escalation requests are rejected before approval; the plugin also skips subagent sessions, whose "user messages" come from the delegating agent.
 - "Files created in this session" records only files the file tools created successfully (a new file from `write`, an Add File from `apply_patch`), not files created by commands, and starts empty after a Host restart.
 - The confirmation card is unchanged and does not show the review result.
+- DSH 0.2.2 draws icons only for its four built-in permission presets, so the added preset has no icon in the menu.
 - Commands over 16000 characters are not reviewed and go straight to the user; the longest command in the evaluation data was about 13000 characters.
 - Rules match the command text. Script content is attached only when the whole bash command runs one script by a written path, and files that script calls are not read. Sequences, `cd`, variables (including `NAME=value` before the command), globs, pipes, redirections, `..` in the path, inline code such as `node -e`, bare names (which the shell looks up on PATH) and PowerShell commands do not say for sure which file runs, so no script is attached and the command itself is still reviewed.
 
