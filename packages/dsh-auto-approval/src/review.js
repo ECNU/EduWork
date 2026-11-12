@@ -19,8 +19,12 @@ const parsed = raw => {
   try { return JSON.parse(raw) } catch { return undefined }
 }
 
-// A long user message keeps its opening and its end, where a reply to the text it quotes usually is.
-const clip = text => text.length > 300 ? `${text.slice(0, 100)}…（中间省略 ${text.length - 300} 字）…${text.slice(-200)}` : text
+// A long user message keeps its opening and its end, where a reply to the text it quotes usually is. Counted in
+// characters, so none is cut in half.
+const clip = text => {
+  const chars = [...text]
+  return chars.length > 300 ? `${chars.slice(0, 100).join('')}…（中间省略 ${chars.length - 300} 字）…${chars.slice(-200).join('')}` : text
+}
 
 // A question card the agent showed, as the message the user's answer replied to, and the answer in the user's terms.
 const card = questions => questions.map(({ question, options = [] }) =>

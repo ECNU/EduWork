@@ -25,6 +25,9 @@ test('session facts: recent requests, the message the latest one replied to and 
   const facts = sessionFacts(events, 'pending')
   // A long message keeps its opening and its end.
   assert.deepEqual(facts.requests, ['second request', 'third request', `${'a'.repeat(100)}…（中间省略 150 字）…${'c'.repeat(200)}`])
+  // Counted in characters: an emoji is neither cut in half nor counted twice.
+  assert.deepEqual(sessionFacts([user(`${'a'.repeat(99)}😀${'b'.repeat(250)}`), user(`${'a'.repeat(299)}😀`)], 'none').requests,
+    [`${'a'.repeat(99)}😀…（中间省略 50 字）…${'b'.repeat(200)}`, `${'a'.repeat(299)}😀`])
   assert.equal(facts.assistant, 'Shall I deploy to the test server?')
   assert.deepEqual(facts.history, ['npm test', 'Get-ChildItem'])
   assert.deepEqual(sessionFacts(events.slice(0, 3), 'missing').history, ['npm test'])

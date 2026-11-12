@@ -28,7 +28,8 @@ const answer = (body, auto, harm) => ({ json: {
   answers: Object.fromEntries(Object.keys(body.questions).map(id => [id, id === 'harm' ? { type: 'noul', noul: harm } : { type: 'choice', choice: auto >= 0.5 ? 'auto' : 'ask', probabilities: { auto, ask: 1 - auto } }])),
 } })
 
-// `cwd`: the session's directory; `restored`: where the tools find it, when it no longer exists.
+// `cwd`: the session's directory; `restored`: where the tools find it, when it no longer exists, or a function
+// giving it at each look.
 function mount(config, { preset = 'auto-approval', services = {}, events = [], origin, cwd = '/work', restored = cwd } = {}) {
   const listeners = {}, logs = []
   const presets = { current: () => preset, set: name => { preset = name } }
@@ -38,7 +39,7 @@ function mount(config, { preset = 'auto-approval', services = {}, events = [], o
     get: name => services[name],
     permissionPresets: presets,
     sandboxPolicy: { resolve: () => ({ mode: 'workspace-write', workspaceRoot: '/work' }) },
-    workingDirectory: { get: () => cwd, ensure: async () => restored },
+    workingDirectory: { get: () => cwd, ensure: async () => typeof restored === 'function' ? restored() : restored },
   }
   apply(ctx, config)
   const agent = { session: { id: 'session-1', header: { origin }, snapshotEvents: () => events } }
@@ -321,6 +322,14 @@ test('file tools are reviewed as the command they amount to, with each file they
   assert.equal(await mounted.escalate({ file_path: join(dir, 'out/old.md'), old_string: 'old', new_string: 'new' }, { name: 'edit', ...away }), 'unavailable')
   assert.match(mounted.logs.at(-1)[1], /^edit asked the user \(score 0\.400, /)
   auto = 0.9
+
+  // The directory gone during the review: the tool would resolve the path from where the session started, which is
+  // not what was reviewed.
+  const looks = [join(dir, 'work')]
+  const raced = mount({ ...base, baseURL }, { services: { fs }, cwd: join(dir, 'work'), restored: () => looks.shift() ?? dir })
+  const exec = await raced.start({ file_path: '../out/new.md', content: 'x' }, { name: 'write' })
+  assert.equal(await raced.ask(exec, away), 'unavailable')
+  assert.equal((await raced.post(exec)).additionalContexts[0].source.summary, '交给用户确认（审查期间情况有变）')
 
   // A session directory that no longer exists: the tools move back to where the session started, and so does the
   // review.

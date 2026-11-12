@@ -141,7 +141,7 @@ export function apply(ctx, raw = {}) {
     })
     const fetchImpl = await fetchWith()
     const results = await Promise.all(questions.map(question => requestDecision({ config: service, args: { state, questions: question }, fetchImpl, signal })))
-    return { flagged, ...verdict(flagged, results, existing) }
+    return { flagged, base, ...verdict(flagged, results, existing) }
   }
 
   // Ahead of the client's answerer: approve what the review allows, hand everything else to the user unchanged.
@@ -178,10 +178,11 @@ export function apply(ctx, raw = {}) {
       // The race also ends a review that waits on a stalled Host service (credentials, sign-in, files).
       const result = await Promise.race([review(req, call, command, signal), aborted(signal)])
       failures.delete(id)
-      // During the review another call with this ID may have started, the session may have left the preset, or the
-      // request may have been withdrawn.
+      // During the review another call with this ID may have started, the session may have left the preset, the
+      // request may have been withdrawn, or the session's directory may have gone, so that the tool would resolve its
+      // paths from where the session started rather than where they were reviewed.
       const approved = result.approved && !entry.ambiguous && ctx.permissionPresets.current(session) === preset
-        && !signal.aborted
+        && !signal.aborted && await ctx.workingDirectory.ensure(req.agent, signal) === result.base
       log.info(`${call.name} ${approved ? 'approved' : 'asked the user'} (${result.flagged ? 'rule hit' : 'score'} ${result.score.toFixed(3)}, ${Math.round(performance.now() - started)} ms)`)
       const score = `${result.flagged ? '命中规则，' : ''}分数 ${result.score.toFixed(3)}`
       if (approved) {
