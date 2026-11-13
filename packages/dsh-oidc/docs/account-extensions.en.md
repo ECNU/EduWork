@@ -26,6 +26,18 @@ A service of the organization's own that needs to know the user is a member, suc
 
 Completed sign-in and sign-out emit `oidc/accounts-changed` with `authorizationChanged: true`, even when both sessions have state `connected`. Extensions must invalidate previous authorization failures and in-flight results instead of deduplicating by state name. Ordinary status polling still notifies only when the state changes.
 
+Host-only `accountIdentity(profileID)` returns `{ profileID, accountID }`, or null when signed out. The ID hashes the profile, issuer and verified subject, remains stable across renewal and changes for a different account. It returns no raw subject or token and is not server-side proof of login. It has no Remote marker.
+
+For read-only institution data outside the model prefix, trusted Host code first checks its exact profile/URL allowlist, then calls:
+
+```js
+const identity = await ctx.oidcAccounts.accountIdentity(profileID)
+const response = await ctx.oidcAccounts.authorizedFetch(profileID, approvedURL,
+  { method: 'GET', signal }, { serviceURL: approvedURL })
+```
+
+Only trusted Host configuration may supply serviceURL; never directly forward renderer, model or feed authorization targets. It permits one exact HTTPS URL, GET without a body, no URL credentials, fragment or redirect, and adds neither persistent permissions nor RPCs. Recheck account identity and generation before/after requests and body reads. Literal loopback HTTP test services require explicit allowInsecureDevelopment in both the Profile and business Host; production defaults remain secure. See [ADR 0002](decisions/0002-host-service-reads.en.md). Consumers bound responses and protect logs; subscriptions cap bodies at 5 MiB.
+
 ## Client account menu
 
 The public sidebar account declares the official `oidc.account.menu.details` child slot, `kind: single`, `scope: root`. Use `slots.inject()` before registering the occupant. Public UI continues to own identity, login, model connection and sign-out.

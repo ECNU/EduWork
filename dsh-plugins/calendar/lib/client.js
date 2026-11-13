@@ -4231,6 +4231,30 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			return /* @__PURE__ */ _superRefine(fn, params);
 		}
 		//#endregion
+		//#region lib/annotations.js
+		const localDate$1 = string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+		const tone = _enum([
+			"neutral",
+			"highlight",
+			"quiet"
+		]);
+		const weekAnnotationSchema = object({
+			/** First day (a Monday for a Monday-first grid) of the week the text names. */
+			firstDay: localDate$1,
+			text: string().min(1).max(32),
+			tone: tone.optional()
+		}).strict();
+		const spanDecorationSchema = object({
+			firstDay: localDate$1,
+			lastDay: localDate$1,
+			text: string().min(1).max(32),
+			tone: tone.optional()
+		}).strict();
+		object({
+			weeks: array(weekAnnotationSchema).max(64),
+			spans: array(spanDecorationSchema).max(64)
+		}).strict();
+		//#endregion
 		//#region lib/model.js
 		/** Local time string: `YYYY-MM-DD`, or `YYYY-MM-DDTHH:mm` where a clock applies. */
 		const LocalTimeSchema = string().regex(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2})?$/, "expected YYYY-MM-DD or YYYY-MM-DDTHH:mm").refine(isRealLocalTime, "expected a date and time that exist");
@@ -4502,6 +4526,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* `movedFrom` is what makes a reschedule attributable: it names the instant the
 		* changed class was originally scheduled for. Without it a changed anchor cannot
 		* be matched to one occurrence, and the service reports that instead of guessing.
+		* `overrides` is the same statement in bulk: the one-off changes (`RECURRENCE-ID`)
+		* a feed lists beside its frozen series, in the stored record's own shape.
 		*/
 		const sourceEvent = object({
 			uid: string().min(1),
@@ -4512,12 +4538,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			description: string().optional(),
 			recurrence: RecurrenceSchema.optional(),
 			movedFrom: LocalTimeSchema.optional(),
-			cancelledDates: array(LocalTimeSchema).optional()
+			extensions: record(string(), unknown()).optional(),
+			cancelledDates: array(LocalTimeSchema).optional(),
+			overrides: OverridesSchema.optional()
 		}).strict();
 		const applySourceInput = object({
 			source: string().min(1),
 			events: array(sourceEvent),
 			complete: boolean().optional(),
+			replaceInstances: boolean().optional(),
 			revision: number().int().positive().optional()
 		}).strict();
 		const applySourceOutcome = object({
@@ -4584,6 +4613,25 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			})
 		});
 		const rangeParameter = jsonParameter("occurrences", "range", rangeSchema);
+		const annotationDay = string().regex(/^\d{4}-\d{2}-\d{2}$/, "expected YYYY-MM-DD");
+		const annotationsRangeParameter = jsonParameter("annotationsFor", "range", object({
+			from: annotationDay.optional(),
+			to: annotationDay.optional()
+		}).strict());
+		const annotationSelectionParameter = jsonParameter("selectAnnotations", "input", object({
+			group: string().min(1),
+			id: string().nullable()
+		}).strict());
+		const annotationChoicesResult = result("@eduwork/dsh-calendar#AnnotationChoices", array(object({
+			id: string(),
+			label: string(),
+			group: string(),
+			selected: boolean()
+		}).strict()));
+		const annotationsResult = result("@eduwork/dsh-calendar#CalendarAnnotations", object({
+			weeks: array(weekAnnotationSchema),
+			spans: array(spanDecorationSchema)
+		}).strict());
 		const remindersResult = result("@eduwork/dsh-calendar#ReminderInbox", object({
 			channel: _enum([
 				"in-app",
@@ -4679,33 +4727,36 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		var typert_remote_client_default = {
 			package: "@eduwork/dsh-calendar",
 			descriptors: Object.freeze([
-				descriptor("snapshot", 116, [], snapshotResult),
-				descriptor("occurrences", 138, [rangeParameter], occurrencesResult),
-				descriptor("importIcs", 163, [importParameter], importResult),
-				descriptor("exportIcs", 182, [exportParameter], exportResult),
-				descriptor("putEvent", 205, [eventParameter], eventResult),
-				descriptor("updateEvent", 222, [updateEventParameter], eventResult),
-				descriptor("deleteEvent", 242, [deleteEventParameter], removalResult),
-				descriptor("deleteCalendar", 247, [deleteCalendarParameter], deleteCalendarResult),
-				descriptor("applyOverride", 260, [overrideParameter], eventResult),
-				descriptor("removeOverride", 269, [removeOverrideParameter], eventResult),
-				descriptor("cancelOccurrence", 278, [cancelParameter], eventResult),
-				descriptor("restoreOccurrence", 287, [restoreParameter], eventResult),
-				descriptor("applySource", 349, [applySourceParameter], applySourceResult),
-				descriptor("putNote", 405, [putNoteParameter], noteResult),
-				descriptor("removeNote", 419, [removeNoteParameter], removalResult),
-				descriptor("notes", 428, [notesParameter], notesResult),
+				descriptor("snapshot", 136, [], snapshotResult),
+				descriptor("occurrences", 158, [rangeParameter], occurrencesResult),
+				descriptor("importIcs", 183, [importParameter], importResult),
+				descriptor("exportIcs", 202, [exportParameter], exportResult),
+				descriptor("putEvent", 225, [eventParameter], eventResult),
+				descriptor("updateEvent", 242, [updateEventParameter], eventResult),
+				descriptor("deleteEvent", 262, [deleteEventParameter], removalResult),
+				descriptor("deleteCalendar", 267, [deleteCalendarParameter], deleteCalendarResult),
+				descriptor("applyOverride", 280, [overrideParameter], eventResult),
+				descriptor("removeOverride", 289, [removeOverrideParameter], eventResult),
+				descriptor("cancelOccurrence", 298, [cancelParameter], eventResult),
+				descriptor("restoreOccurrence", 307, [restoreParameter], eventResult),
+				descriptor("applySource", 369, [applySourceParameter], applySourceResult),
+				descriptor("putNote", 425, [putNoteParameter], noteResult),
+				descriptor("removeNote", 439, [removeNoteParameter], removalResult),
+				descriptor("notes", 448, [notesParameter], notesResult),
 				Object.freeze({
-					...descriptor("changes", 315, [], changeResult),
+					...descriptor("changes", 335, [], changeResult),
 					mode: "stream",
 					cancellation: { parameter: "signal" }
 				}),
-				descriptor("personalFor", 381, [personalReadParameter], personalReadResult),
-				descriptor("sourceStatuses", 83, [], sourceStatusesResult),
-				descriptor("setPersonal", 375, [personalParameter], personalResult),
-				descriptor("unlinkedNotes", 448, [unlinkedNotesParameter], unlinkedNotesResult),
-				descriptor("reminders", 111, [], remindersResult),
-				descriptor("ackReminder", 113, [ackReminderParameter], ackReminderResult)
+				descriptor("personalFor", 401, [personalReadParameter], personalReadResult),
+				descriptor("sourceStatuses", 85, [], sourceStatusesResult),
+				descriptor("annotationsFor", 91, [annotationsRangeParameter], annotationsResult),
+				descriptor("annotationChoices", 93, [], annotationChoicesResult),
+				descriptor("selectAnnotations", 95, [annotationSelectionParameter], annotationChoicesResult),
+				descriptor("setPersonal", 395, [personalParameter], personalResult),
+				descriptor("unlinkedNotes", 468, [unlinkedNotesParameter], unlinkedNotesResult),
+				descriptor("reminders", 131, [], remindersResult),
+				descriptor("ackReminder", 133, [ackReminderParameter], ackReminderResult)
 			])
 		};
 		//#endregion
@@ -5108,9 +5159,13 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			};
 		}
 		const BORDER = "1px solid var(--dsw-alias-border-l1, #00000014)";
-		const COLUMNS = {
+		const COLUMNS_PLAIN = {
 			display: "grid",
 			gridTemplateColumns: "repeat(7, minmax(0, 1fr))"
+		};
+		const COLUMNS_WITH_WEEK = {
+			display: "grid",
+			gridTemplateColumns: "56px repeat(7, minmax(0, 1fr))"
 		};
 		const WEEKDAYS$1 = [
 			"周一",
@@ -5155,19 +5210,59 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}
 			}, `${time} ${occurrence.title}${note ? " · 笔记" : ""}`);
 		}
+		/** A week label's tone as text colour; the grid's own weeks stay tertiary. */
+		const TONE_TEXT = {
+			highlight: "var(--dsw-alias-state-business-primary, #4d6bfe)",
+			quiet: "rgba(63,133,98,0.9)"
+		};
+		/** What a span's tone looks like washed over a whole day cell. */
+		const TONE_WASH = {
+			highlight: "rgba(77,107,254,0.06)",
+			quiet: "rgba(63,133,98,0.07)"
+		};
 		/** Calendar cells share occurrence identities with the week, including multi-day entries. */
-		function MonthGrid({ anchor, occurrences, noteIndex, onSelect, onCreate, tintOf, occurrenceKeyOf }) {
+		function MonthGrid({ anchor, occurrences, noteIndex, annotations, onSelect, onCreate, tintOf, occurrenceKeyOf }) {
 			const [expanded, setExpanded] = (0, react.useState)({});
 			const range = monthRange(anchor);
 			const today = local(/* @__PURE__ */ new Date());
 			const days = Array.from({ length: 42 }, (_, index) => shift(range.from, index));
+			const weekLabel = (date) => (annotations?.weeks ?? []).find((week) => week.firstDay === date);
+			const spanOfDay = (date) => (annotations?.spans ?? []).find((span) => span.firstDay <= date && date <= span.lastDay);
+			const hasWeekColumn = days.some((date, index) => index % 7 === 0 && weekLabel(date));
+			const columns = hasWeekColumn ? COLUMNS_WITH_WEEK : COLUMNS_PLAIN;
+			/** One row's leading cell: the data plugin's name for that week, if it has one. */
+			const weekTag = (date) => {
+				const week = weekLabel(date);
+				const parts = (week?.text ?? "").split(" · ").filter(Boolean);
+				return react.default.createElement("div", {
+					role: "rowheader",
+					title: week?.text,
+					style: {
+						minWidth: 0,
+						padding: "8px 2px 0 4px",
+						boxSizing: "border-box",
+						borderRight: BORDER,
+						borderBottom: BORDER,
+						fontSize: 10,
+						lineHeight: "14px",
+						textAlign: "center",
+						color: TONE_TEXT[week?.tone ?? ""],
+						overflowWrap: "anywhere"
+					}
+				}, ...parts.map((part, index) => react.default.createElement("div", {
+					key: index,
+					style: { whiteSpace: "nowrap" }
+				}, part)));
+			};
 			const cell = (date) => {
 				const entries = occurrences.filter((item) => coversDate(item, date));
 				const outside = date.slice(0, 7) !== anchor.slice(0, 7);
+				const span = spanOfDay(date);
 				return react.default.createElement("div", {
 					key: date,
 					role: "gridcell",
 					"aria-label": date,
+					title: span?.text,
 					style: {
 						minWidth: 0,
 						minHeight: 112,
@@ -5175,7 +5270,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 						boxSizing: "border-box",
 						borderRight: BORDER,
 						borderBottom: BORDER,
-						background: outside ? "var(--dsw-alias-bg-layer-2, #f7f8fa)" : "var(--dsw-alias-bg-base, #fff)"
+						background: outside ? "var(--dsw-alias-bg-layer-2, #f7f8fa)" : TONE_WASH[span?.tone ?? ""] ?? "var(--dsw-alias-bg-base, #fff)"
 					}
 				}, react.default.createElement("div", { style: {
 					display: "flex",
@@ -5229,10 +5324,14 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, react.default.createElement("div", {
 				role: "row",
 				style: {
-					...COLUMNS,
+					...columns,
 					borderBottom: BORDER
 				}
-			}, ...WEEKDAYS$1.map((day) => react.default.createElement("div", {
+			}, ...hasWeekColumn ? [react.default.createElement("div", {
+				key: "week",
+				role: "columnheader",
+				"aria-label": "周标注"
+			})] : [], ...WEEKDAYS$1.map((day) => react.default.createElement("div", {
 				key: day,
 				role: "columnheader",
 				style: {
@@ -5244,8 +5343,8 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			}, day))), ...Array.from({ length: 6 }, (_, row) => react.default.createElement("div", {
 				key: row,
 				role: "row",
-				style: COLUMNS
-			}, ...days.slice(row * 7, row * 7 + 7).map(cell)))));
+				style: columns
+			}, ...hasWeekColumn ? [weekTag(days[row * 7])] : [], ...days.slice(row * 7, row * 7 + 7).map(cell)))));
 		}
 		//#endregion
 		//#region src/client.ts
@@ -5316,6 +5415,18 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		const PRIMARY = "var(--dsw-alias-label-primary, #222)";
 		const SECONDARY = "var(--dsw-alias-label-secondary, #666)";
 		const TERTIARY = "var(--dsw-alias-label-tertiary, #888)";
+		/** The three tones an annotation may carry: what each looks like as a small band. */
+		const TONE_BAR = {
+			neutral: "rgba(136,136,136,0.45)",
+			highlight: "rgba(77,107,254,0.55)",
+			quiet: "rgba(63,133,98,0.55)"
+		};
+		/** The same tones as solid dots, for the legend that names what is on screen. */
+		const TONE_DOT = {
+			neutral: "#888",
+			highlight: "var(--dsw-alias-state-business-primary, #4d6bfe)",
+			quiet: "#3f8562"
+		};
 		const HAIRLINE = ".5px solid var(--dsw-alias-border-l1, #00000014)";
 		const CARD_BORDER = "1px solid var(--dsw-alias-border-l2, #0000001f)";
 		const LAYER = "var(--dsw-alias-bg-layer-2, #f6f6f6)";
@@ -5588,6 +5699,60 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, `笔记：${note}`) : void 0);
 		}
 		/**
+		* The bands a data plugin laid over the range on screen, named once beside the
+		* title. A wash or a thin bar shows that a stretch is special; the legend says
+		* what it is called, so the reader does not have to hover to learn a colour.
+		* `tones` narrows it to the bands the rest of the header does not already
+		* speak: the week's subtitle names its own band, so only highlighted ones —
+		* which the week's own label outranks — need the legend, while the month's
+		* subtitle names nothing and every band is listed.
+		*/
+		function SpanLegend({ spans, from, to, tones }) {
+			if (!spans) return void 0;
+			const seen = /* @__PURE__ */ new Set();
+			const items = [];
+			for (const span of [...spans].sort((left, right) => left.firstDay < right.firstDay ? -1 : 1)) {
+				if (span.firstDay > to || span.lastDay < from) continue;
+				if (tones && !tones.includes(span.tone ?? "neutral")) continue;
+				if (seen.has(span.text)) continue;
+				seen.add(span.text);
+				items.push(span);
+				if (items.length === 4) break;
+			}
+			if (items.length === 0) return void 0;
+			return react.default.createElement("div", {
+				role: "list",
+				"aria-label": "阶段图例",
+				style: {
+					display: "flex",
+					alignItems: "center",
+					gap: 12,
+					flexWrap: "wrap",
+					minWidth: 0
+				}
+			}, ...items.map((span) => react.default.createElement("div", {
+				key: span.text,
+				title: `${span.firstDay} – ${span.lastDay}`,
+				style: {
+					display: "flex",
+					alignItems: "center",
+					gap: 4,
+					fontSize: 11,
+					color: SECONDARY,
+					whiteSpace: "nowrap"
+				}
+			}, react.default.createElement("span", {
+				"aria-hidden": true,
+				style: {
+					width: 8,
+					height: 8,
+					borderRadius: 999,
+					background: TONE_DOT[span.tone ?? "neutral"] ?? TONE_DOT.neutral,
+					flex: "0 0 auto"
+				}
+			}), span.text)));
+		}
+		/**
 		* The week: a day header row and the hour axis below it. The axis is one scroll
 		* container so the day columns can never drift apart vertically. A record that
 		* arrives without a clock is drawn as a block at midnight, not in a row of its
@@ -5597,7 +5762,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		* double click starts a one-hour one there: between them the view is writable
 		* rather than only readable.
 		*/
-		function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }) {
+		function WeekGrid({ anchor, occurrences, noteIndex, annotations, onSelect, onCreate }) {
 			const [now, setNow] = (0, react.useState)(() => /* @__PURE__ */ new Date());
 			(0, react.useEffect)(() => {
 				const timer = setInterval(() => setNow(/* @__PURE__ */ new Date()), 6e4);
@@ -5643,88 +5808,64 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			const timed = (0, react.useMemo)(() => (occurrences ?? []).filter((occurrence) => clockOf(occurrence.start) !== ""), [occurrences]);
 			const byDay = (0, react.useMemo)(() => layoutWeek(timed), [timed]);
 			/**
-			* Whole-day occurrences, listed under every day of this week they cover.
+			* Whole-day occurrences laid out as bars on one seven-column track under the
+			* day headers.
 			*
 			* A value that arrived without a clock (`DTSTART;VALUE=DATE`, which is what a
 			* holiday or an academic calendar is made of) has no slot on the axis, so it is
-			* shown in the day header: visible whatever the axis is scrolled to, and not
-			* claiming a time it does not have. A record that covers several days is shown
-			* on each of them, the way a calendar draws a multi-day bar.
+			* drawn above it: visible whatever the axis is scrolled to, and not claiming a
+			* time it does not have. One record is one bar across every day it covers —
+			* the way a calendar draws a vacation — rather than a chip per day, so a
+			* reader sees one thing that spans days, not a thing that happens to repeat.
 			*
-			* What a block says about its date is worked out here, per day, and not where it
-			* is drawn: the day it sits under is the one fact the drawing does not add, and
-			* two blocks of one multi-day record with the same label would be one thing said
-			* twice — indistinguishable to a screen reader and to anyone reading the page.
+			* A bar says its whole range in its label; the day headers above the track
+			* say which day is which, so nothing needs to be said twice. Overlapping
+			* bars stack in lanes, two of them; the rest are counted, not drawn, the same
+			* deal the per-day chips gave.
 			*/
-			const allDayByDay = (0, react.useMemo)(() => {
+			const allDayLaid = (0, react.useMemo)(() => {
 				const first = anchor;
 				const last = addDays(anchor, 6);
-				const map = /* @__PURE__ */ new Map();
+				const records = [];
 				for (const occurrence of occurrences ?? []) {
 					if (clockOf(occurrence.start) !== "") continue;
 					const start = dateOf(occurrence.start);
 					const spanned = occurrence.end && clockOf(occurrence.end) === "" && dateOf(occurrence.end) > start ? dateOf(occurrence.end) : start;
-					const from = start < first ? first : start;
-					const to = spanned > last ? last : spanned;
-					const covers = spanned > start;
-					const spokenOn = (date) => covers ? date > start ? shortDate(date) : `${shortDate(start)}–${shortDate(spanned)}` : shortDate(start);
-					for (let date = from; date <= to; date = addDays(date, 1)) {
-						const chip = {
-							occurrence,
-							label: `全天 · ${spokenOn(date)} ${occurrence.title}`
-						};
-						const list = map.get(date);
-						if (list) list.push(chip);
-						else map.set(date, [chip]);
-					}
+					if (spanned < first || start > last) continue;
+					const label = `全天 · ${spanned > start ? `${shortDate(start)}–${shortDate(spanned)}` : shortDate(start)} ${occurrence.title}`;
+					records.push({
+						occurrence,
+						from: start < first ? first : start,
+						to: spanned > last ? last : spanned,
+						label
+					});
 				}
-				return map;
+				records.sort((left, right) => left.from < right.from ? -1 : left.from > right.from ? 1 : left.to < right.to ? 1 : left.to > right.to ? -1 : 0);
+				const laneEnds = [];
+				const bars = [];
+				let hidden = 0;
+				for (const record of records) {
+					const lane = laneEnds.findIndex((end) => end < record.from);
+					if (lane === -1 && laneEnds.length >= 2) {
+						hidden++;
+						continue;
+					}
+					if (lane === -1) laneEnds.push(record.to);
+					else laneEnds[lane] = record.to;
+					bars.push({
+						...record,
+						lane: lane === -1 ? laneEnds.length - 1 : lane
+					});
+				}
+				return {
+					bars,
+					hidden
+				};
 			}, [occurrences, anchor]);
 			const nowMinutes = now.getHours() * 60 + now.getMinutes();
 			const nowVisible = days.some((day) => day.today);
-			/** The whole-day entries of one day, as the chips its header shows. */
-			const allDayChips = (date) => {
-				const list = allDayByDay.get(date) ?? [];
-				if (list.length === 0) return void 0;
-				return react.default.createElement("div", { style: {
-					display: "flex",
-					flexDirection: "column",
-					gap: 2,
-					marginTop: 4
-				} }, ...list.slice(0, 2).map(({ occurrence, label }) => {
-					const tint = tintOf(occurrence.source ?? occurrence.uid);
-					return react.default.createElement("button", {
-						key: reactKeyOf(occurrence),
-						type: "button",
-						title: label,
-						"aria-label": label,
-						onClick: () => onSelect(occurrence),
-						style: {
-							display: "block",
-							width: "100%",
-							padding: "1px 4px",
-							border: "none",
-							borderRadius: 4,
-							cursor: "pointer",
-							textAlign: "left",
-							fontSize: 10,
-							lineHeight: "15px",
-							fontFamily: "inherit",
-							color: PRIMARY,
-							background: tint.background,
-							borderLeft: `3px solid ${tint.accent}`,
-							whiteSpace: "nowrap",
-							overflow: "hidden",
-							textOverflow: "ellipsis"
-						}
-					}, occurrence.title);
-				}), list.length > 2 ? react.default.createElement("div", { style: {
-					fontSize: 10,
-					lineHeight: "14px",
-					color: SECONDARY,
-					textAlign: "left"
-				} }, `还有 ${list.length - 2} 条全天`) : void 0);
-			};
+			/** The band a data plugin laid over this day, if any: its tone names the colour. */
+			const spanOfDay = (date) => (annotations?.spans ?? []).find((span) => span.firstDay <= date && date <= span.lastDay);
 			const headerRow = react.default.createElement("div", { style: {
 				display: "flex",
 				borderBottom: CARD_BORDER,
@@ -5733,35 +5874,115 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 			} }, react.default.createElement("div", { style: {
 				width: GUTTER,
 				flex: "0 0 auto"
-			} }), ...days.map((day) => react.default.createElement("div", {
-				key: day.key,
+			} }), ...days.map((day) => {
+				const span = spanOfDay(day.key);
+				return react.default.createElement("div", {
+					key: day.key,
+					style: {
+						flex: "1 1 0",
+						minWidth: 0,
+						padding: "8px 4px",
+						textAlign: "center",
+						borderLeft: HAIRLINE
+					}
+				}, react.default.createElement("div", { style: {
+					fontSize: 11,
+					color: day.today ? PRIMARY : SECONDARY
+				} }, day.label), react.default.createElement("div", { style: day.today ? {
+					width: 26,
+					height: 26,
+					margin: "2px auto 0",
+					borderRadius: 999,
+					lineHeight: "26px",
+					fontSize: 13,
+					fontWeight: 650,
+					background: "var(--dsw-alias-state-business-primary, #4d6bfe)",
+					color: "#fff"
+				} : {
+					marginTop: 2,
+					fontSize: 13,
+					fontWeight: 600,
+					lineHeight: "26px",
+					color: PRIMARY
+				} }, day.day), span && (span.tone ?? "neutral") !== "neutral" ? react.default.createElement("div", {
+					title: span.text,
+					"aria-label": `${day.key} ${span.text}`,
+					style: {
+						width: 22,
+						height: 3,
+						borderRadius: 2,
+						margin: "3px auto 0",
+						background: TONE_BAR[span.tone ?? "neutral"]
+					}
+				}) : void 0);
+			}));
+			/**
+			* The whole-day track: one row under the day headers, its bars positioned by
+			* the fraction of the week they cover. The day columns are equal widths, so a
+			* percentage of the track lands on a column edge — a bar crosses the day
+			* borders instead of repeating inside each column.
+			*/
+			const LANE_HEIGHT = 19;
+			const allDayTrack = allDayLaid.bars.length + allDayLaid.hidden === 0 ? void 0 : react.default.createElement("div", { style: {
+				display: "flex",
+				borderBottom: CARD_BORDER,
+				background: PAGE_BACKGROUND,
+				paddingRight: 8
+			} }, react.default.createElement("div", { style: {
+				width: GUTTER,
+				flex: "0 0 auto"
+			} }), react.default.createElement("div", {
+				role: "list",
+				"aria-label": "全天条目",
 				style: {
+					position: "relative",
 					flex: "1 1 0",
 					minWidth: 0,
-					padding: "8px 4px",
-					textAlign: "center",
-					borderLeft: HAIRLINE
+					height: Math.max(...allDayLaid.bars.map((bar) => bar.lane)) * LANE_HEIGHT + 21 + (allDayLaid.hidden > 0 ? LANE_HEIGHT : 0)
 				}
-			}, react.default.createElement("div", { style: {
-				fontSize: 11,
-				color: day.today ? PRIMARY : SECONDARY
-			} }, day.label), react.default.createElement("div", { style: day.today ? {
-				width: 26,
-				height: 26,
-				margin: "2px auto 0",
-				borderRadius: 999,
-				lineHeight: "26px",
-				fontSize: 13,
-				fontWeight: 650,
-				background: "var(--dsw-alias-state-business-primary, #4d6bfe)",
-				color: "#fff"
-			} : {
-				marginTop: 2,
-				fontSize: 13,
-				fontWeight: 600,
-				lineHeight: "26px",
-				color: PRIMARY
-			} }, day.day), allDayChips(day.key))));
+			}, ...allDayLaid.bars.map(({ occurrence, from, to, label, lane }) => {
+				const tint = tintOf(occurrence.source ?? occurrence.uid);
+				const first = days.findIndex((day) => day.key === from);
+				const width = days.findIndex((day) => day.key === to) - first + 1;
+				return react.default.createElement("button", {
+					key: reactKeyOf(occurrence),
+					type: "button",
+					title: label,
+					"aria-label": label,
+					"data-occurrence": occurrenceKeyOf(occurrence),
+					onClick: () => onSelect(occurrence),
+					style: {
+						position: "absolute",
+						top: lane * LANE_HEIGHT + 2,
+						left: `calc(${first / 7 * 100}% + 2px)`,
+						width: `calc(${width / 7 * 100}% - 4px)`,
+						height: 17,
+						display: "block",
+						padding: "1px 5px",
+						border: "none",
+						borderRadius: 4,
+						cursor: "pointer",
+						textAlign: "left",
+						fontSize: 11,
+						lineHeight: "16px",
+						fontWeight: 500,
+						fontFamily: "inherit",
+						color: PRIMARY,
+						background: tint.background,
+						borderLeft: `3px solid ${tint.accent}`,
+						whiteSpace: "nowrap",
+						overflow: "hidden",
+						textOverflow: "ellipsis"
+					}
+				}, occurrence.title);
+			}), allDayLaid.hidden > 0 ? react.default.createElement("div", { style: {
+				position: "absolute",
+				right: 8,
+				bottom: 2,
+				fontSize: 10,
+				lineHeight: "14px",
+				color: SECONDARY
+			} }, `还有 ${allDayLaid.hidden} 条全天`) : void 0));
 			const hourLabels = hours.map((minutes, index) => react.default.createElement("div", {
 				key: minutes,
 				style: {
@@ -5904,7 +6125,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				flexDirection: "column",
 				flex: "1 1 auto",
 				minHeight: 0
-			} }, headerRow, react.default.createElement("div", {
+			} }, headerRow, allDayTrack, react.default.createElement("div", {
 				ref: scroller,
 				style: {
 					flex: "1 1 auto",
@@ -7174,6 +7395,11 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				});
 				const [week, setWeek] = (0, react.useState)(null);
 				const [agenda, setAgenda] = (0, react.useState)(null);
+				const [annotations, setAnnotations] = (0, react.useState)({
+					weeks: [],
+					spans: []
+				});
+				const [annotationChoices, setAnnotationChoices] = (0, react.useState)([]);
 				const [noteIndex, setNoteIndex] = (0, react.useState)(() => /* @__PURE__ */ new Map());
 				const [loading, setLoading] = (0, react.useState)(true);
 				const [problem, setProblem] = (0, react.useState)(null);
@@ -7182,6 +7408,15 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const [dialog, setDialog] = (0, react.useState)(null);
 				const [dropping, setDropping] = (0, react.useState)(false);
 				const [busy, setBusy] = (0, react.useState)(false);
+				(0, react.useEffect)(() => service.onNavigate?.((target) => {
+					setCalendarSource("*");
+					setView({
+						kind: "event",
+						id: target.uid,
+						source: target.source
+					});
+					setDialog(null);
+				}), [service]);
 				const events = snapshot?.events ?? [];
 				const sourceName = (source) => calendarLabel(source, sourceStatuses);
 				(0, react.useEffect)(() => {
@@ -7207,6 +7442,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				const currentRange = (0, react.useRef)(weekRange);
 				currentRange.current = weekRange;
 				const latestWeekRead = (0, react.useRef)(0);
+				const latestAnnotationRead = (0, react.useRef)(0);
 				const agendaRange = (0, react.useMemo)(() => ({
 					from: addDays(localDate(), -180),
 					to: addDays(localDate(), 366),
@@ -7219,6 +7455,21 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					const read = ++latestWeekRead.current;
 					const result = await service.occurrences(weekRange);
 					if (read === latestWeekRead.current && currentRange.current === weekRange) setWeek(result);
+				}, [service, weekRange]);
+				/**
+				* Week labels and range bands a data plugin supplied for the range on
+				* screen. Older builds of the service half do not offer the read; the panel
+				* then simply has no annotations to show. And because annotations are
+				* decoration, a failed read keeps the previous ones instead of putting the
+				* whole calendar in front of an error.
+				*/
+				const loadAnnotations = (0, react.useCallback)(async () => {
+					if (!service.annotationsFor) return;
+					const read = ++latestAnnotationRead.current;
+					try {
+						const result = await service.annotationsFor(weekRange);
+						if (read === latestAnnotationRead.current && currentRange.current === weekRange) setAnnotations(result);
+					} catch {}
 				}, [service, weekRange]);
 				const loadAgenda = (0, react.useCallback)(async () => {
 					setAgenda((await service.occurrences(agendaRange)).occurrences);
@@ -7243,8 +7494,10 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					try {
 						await loadSnapshot();
 						if (service.sourceStatuses) setSourceStatuses(await service.sourceStatuses());
+						if (service.annotationChoices) setAnnotationChoices(await service.annotationChoices());
 						if (service.reminders) setReminderInbox(await service.reminders());
 						await loadNotes();
+						await loadAnnotations();
 						if (view.kind === "week") await loadWeek();
 						if (view.kind === "event") await loadAgenda();
 						setProblem(null);
@@ -7256,6 +7509,7 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}, [
 					loadSnapshot,
 					loadNotes,
+					loadAnnotations,
 					loadWeek,
 					loadAgenda,
 					view.kind
@@ -7318,11 +7572,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				}, []);
 				const current = view.kind === "event" ? events.find((event) => event.uid === view.id && event.source === view.source) : void 0;
 				const selectedOccurrence = dialog?.kind === "event" ? [...week?.occurrences ?? [], ...agenda ?? []].find((item) => occurrenceKeyOf(item) === occurrenceKeyOf(dialog.occurrence)) ?? dialog.occurrence : void 0;
-				const weekCount = week?.occurrences?.length ?? 0;
+				const visibleOccurrences = (week?.occurrences ?? []).filter((item) => calendarSource === "*" || item.source === calendarSource);
+				const weekCount = visibleOccurrences.length;
 				/** The week on screen is today's, so an entry started from here means today. */
 				const createDate = displayMode === "month" ? monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor : anchor === startOfWeek() ? localDate() : anchor;
 				const title = view.kind === "week" ? "我的日历" : current?.title ?? "日程";
-				const subtitle = view.kind === "week" ? displayMode === "month" ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条` : [
+				/**
+				* A data plugin's name for the week on screen: its week label — prefixed by
+				* the neutral band covering the week, which names the background the label
+				* sits in (a term) — or, when it gave no label (a vacation, an unnumbered
+				* short term), the covering band alone. Toned bands keep their own words
+				* out of the prefix: a highlighted week already says what it is.
+				*/
+				const coveringBand = displayMode === "week" ? (annotations?.spans ?? []).find((span) => span.firstDay <= anchor && anchor <= span.lastDay) : void 0;
+				const weekNoteParts = [...coveringBand && (coveringBand.tone ?? "neutral") === "neutral" ? [coveringBand.text] : [], annotations?.weeks?.find((week) => week.firstDay === anchor)?.text ?? coveringBand?.text].filter(Boolean);
+				const weekNote = displayMode === "week" && weekNoteParts.length > 0 ? weekNoteParts.join(" · ") : void 0;
+				const subtitle = view.kind === "week" ? displayMode === "month" ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条${weekNote ? ` · ${weekNote}` : ""}` : [
 					current?.location,
 					sourceName(current?.source),
 					current && noteOf(current) !== "" ? "有备注" : ""
@@ -7397,7 +7662,12 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 				} }, title), react.default.createElement("div", { style: {
 					fontSize: 12,
 					color: SECONDARY
-				} }, loading ? "正在读取…" : subtitle)), react.default.createElement("span", { style: { flex: "1 1 auto" } }), view.kind === "week" ? react.default.createElement(react.default.Fragment, null, react.default.createElement("div", {
+				} }, loading ? "正在读取…" : subtitle)), view.kind === "week" ? SpanLegend({
+					spans: annotations?.spans,
+					from: weekRange.from,
+					to: weekRange.to,
+					tones: displayMode === "month" ? void 0 : ["highlight"]
+				}) : void 0, react.default.createElement("span", { style: { flex: "1 1 auto" } }), view.kind === "week" ? react.default.createElement(react.default.Fragment, null, react.default.createElement("div", {
 					role: "group",
 					"aria-label": "日历视图",
 					style: {
@@ -7488,7 +7758,22 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					disabled: loading,
 					icon: react.default.createElement(IconRefresh),
 					onClick: () => void refresh()
-				}))), view.kind === "week" && events.length > 0 ? react.default.createElement("div", {
+				}))), annotationChoices.length > 0 ? react.default.createElement("div", { style: {
+					padding: "6px 16px",
+					display: "flex",
+					gap: 12
+				} }, ...[...new Set(annotationChoices.map((choice) => choice.group))].map((group) => react.default.createElement("label", { key: group }, group === "academic-calendar" ? "校历 " : "背景 ", react.default.createElement("select", {
+					"aria-label": group === "academic-calendar" ? "选择校历" : `选择${group}`,
+					value: annotationChoices.find((choice) => choice.group === group && choice.selected)?.id ?? "",
+					disabled: busy,
+					onChange: (event) => void run(() => service.selectAnnotations({
+						group,
+						id: event.target.value || null
+					}))
+				}, react.default.createElement("option", { value: "" }, "不显示"), ...annotationChoices.filter((choice) => choice.group === group).map((choice) => react.default.createElement("option", {
+					key: choice.id,
+					value: choice.id
+				}, choice.label)))))) : void 0, view.kind === "week" && events.length > 0 ? react.default.createElement("div", {
 					role: "group",
 					"aria-label": "筛选日历",
 					style: {
@@ -7554,8 +7839,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					anchor: displayMode === "month" ? monthAnchor : anchor,
 					tintOf,
 					occurrenceKeyOf,
-					occurrences: (week?.occurrences ?? []).filter((item) => calendarSource === "*" || item.source === calendarSource),
+					occurrences: visibleOccurrences,
 					noteIndex,
+					annotations,
 					onSelect: (occurrence) => setDialog({
 						kind: "event",
 						occurrence
@@ -7746,14 +8032,35 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 		async function apply(ctx) {
 			const disposeRemote = await ctx.remote.$mount(typert_remote_client_default);
 			ctx.inject(["remote.calendar"], (surface) => {
+				let pendingNavigation;
+				const navigationListeners = /* @__PURE__ */ new Set();
 				surface.inject(["notificationActions", "layout"], (inner) => {
 					inner.effect(() => inner.notificationActions.register("calendar", async ({ target, signal }) => {
 						if (signal.aborted || typeof target?.reminderId !== "string") return false;
+						if (typeof target.ref?.source === "string" && typeof target.ref?.uid === "string") {
+							const focus = {
+								source: target.ref.source,
+								uid: target.ref.uid
+							};
+							if (navigationListeners.size) for (const listener of navigationListeners) listener(focus);
+							else pendingNavigation = focus;
+						}
 						inner.layout.selectPanel(PANEL_ID);
 					}));
 				});
 				const call = (method) => (input) => unwrap(surface.remote.calendar[method](input));
 				const service = {
+					onNavigate(listener) {
+						navigationListeners.add(listener);
+						if (pendingNavigation) {
+							const target = pendingNavigation;
+							pendingNavigation = void 0;
+							listener(target);
+						}
+						return () => {
+							navigationListeners.delete(listener);
+						};
+					},
 					snapshot: () => unwrap(surface.remote.calendar.snapshot()),
 					sourceStatuses: () => unwrap(surface.remote.calendar.sourceStatuses()),
 					reminders: () => unwrap(surface.remote.calendar.reminders()),
@@ -7798,6 +8105,9 @@ Set the \`cycles\` parameter to \`"ref"\` to resolve cyclical schemas with defs.
 					notes: call("notes"),
 					setPersonal: call("setPersonal"),
 					personalFor: call("personalFor"),
+					annotationsFor: call("annotationsFor"),
+					annotationChoices: () => unwrap(surface.remote.calendar.annotationChoices()),
+					selectAnnotations: call("selectAnnotations"),
 					unlinkedNotes: () => unwrap(surface.remote.calendar.unlinkedNotes({}))
 				};
 				surface.slots.inject("main", () => surface.slots.register({

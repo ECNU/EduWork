@@ -88,6 +88,18 @@ const PAGE_BACKGROUND = 'var(--dsw-alias-bg-base, #fff)'
 const PRIMARY = 'var(--dsw-alias-label-primary, #222)'
 const SECONDARY = 'var(--dsw-alias-label-secondary, #666)'
 const TERTIARY = 'var(--dsw-alias-label-tertiary, #888)'
+/** The three tones an annotation may carry: what each looks like as a small band. */
+const TONE_BAR: Record<string, string> = {
+  neutral: 'rgba(136,136,136,0.45)',
+  highlight: 'rgba(77,107,254,0.55)',
+  quiet: 'rgba(63,133,98,0.55)',
+}
+/** The same tones as solid dots, for the legend that names what is on screen. */
+const TONE_DOT: Record<string, string> = {
+  neutral: '#888',
+  highlight: 'var(--dsw-alias-state-business-primary, #4d6bfe)',
+  quiet: '#3f8562',
+}
 const HAIRLINE = '.5px solid var(--dsw-alias-border-l1, #00000014)'
 const CARD_BORDER = '1px solid var(--dsw-alias-border-l2, #0000001f)'
 const LAYER = 'var(--dsw-alias-bg-layer-2, #f6f6f6)'
@@ -334,6 +346,45 @@ function Block({ entry, axisStart, tint, note, onSelect }: any) {
 }
 
 /**
+ * The bands a data plugin laid over the range on screen, named once beside the
+ * title. A wash or a thin bar shows that a stretch is special; the legend says
+ * what it is called, so the reader does not have to hover to learn a colour.
+ * `tones` narrows it to the bands the rest of the header does not already
+ * speak: the week's subtitle names its own band, so only highlighted ones —
+ * which the week's own label outranks — need the legend, while the month's
+ * subtitle names nothing and every band is listed.
+ */
+function SpanLegend({ spans, from, to, tones }: any) {
+  if (!spans) return undefined
+  const seen = new Set<string>()
+  const items: any[] = []
+  for (const span of [...spans].sort((left: any, right: any) => (left.firstDay < right.firstDay ? -1 : 1))) {
+    if (span.firstDay > to || span.lastDay < from) continue
+    if (tones && !tones.includes(span.tone ?? 'neutral')) continue
+    if (seen.has(span.text)) continue
+    seen.add(span.text)
+    items.push(span)
+    if (items.length === 4) break
+  }
+  if (items.length === 0) return undefined
+  return React.createElement('div', {
+    role: 'list',
+    'aria-label': '阶段图例',
+    style: { display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', minWidth: 0 },
+  },
+  ...items.map((span: any) => React.createElement('div', {
+    key: span.text,
+    title: `${span.firstDay} – ${span.lastDay}`,
+    style: { display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, color: SECONDARY, whiteSpace: 'nowrap' },
+  },
+  React.createElement('span', {
+    'aria-hidden': true,
+    style: { width: 8, height: 8, borderRadius: 999, background: TONE_DOT[span.tone ?? 'neutral'] ?? TONE_DOT.neutral, flex: '0 0 auto' },
+  }),
+  span.text)))
+}
+
+/**
  * The week: a day header row and the hour axis below it. The axis is one scroll
  * container so the day columns can never drift apart vertically. A record that
  * arrives without a clock is drawn as a block at midnight, not in a row of its
@@ -343,7 +394,7 @@ function Block({ entry, axisStart, tint, note, onSelect }: any) {
  * double click starts a one-hour one there: between them the view is writable
  * rather than only readable.
  */
-function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
+function WeekGrid({ anchor, occurrences, noteIndex, annotations, onSelect, onCreate }: any) {
   const [now, setNow] = useState(() => new Date())
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 60_000)
@@ -386,45 +437,52 @@ function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
   const timed = useMemo(() => (occurrences ?? []).filter((occurrence: any) => clockOf(occurrence.start) !== ''), [occurrences])
   const byDay = useMemo(() => layoutWeek(timed), [timed])
   /**
-   * Whole-day occurrences, listed under every day of this week they cover.
+   * Whole-day occurrences laid out as bars on one seven-column track under the
+   * day headers.
    *
    * A value that arrived without a clock (`DTSTART;VALUE=DATE`, which is what a
    * holiday or an academic calendar is made of) has no slot on the axis, so it is
-   * shown in the day header: visible whatever the axis is scrolled to, and not
-   * claiming a time it does not have. A record that covers several days is shown
-   * on each of them, the way a calendar draws a multi-day bar.
+   * drawn above it: visible whatever the axis is scrolled to, and not claiming a
+   * time it does not have. One record is one bar across every day it covers —
+   * the way a calendar draws a vacation — rather than a chip per day, so a
+   * reader sees one thing that spans days, not a thing that happens to repeat.
    *
-   * What a block says about its date is worked out here, per day, and not where it
-   * is drawn: the day it sits under is the one fact the drawing does not add, and
-   * two blocks of one multi-day record with the same label would be one thing said
-   * twice — indistinguishable to a screen reader and to anyone reading the page.
+   * A bar says its whole range in its label; the day headers above the track
+   * say which day is which, so nothing needs to be said twice. Overlapping
+   * bars stack in lanes, two of them; the rest are counted, not drawn, the same
+   * deal the per-day chips gave.
    */
-  const allDayByDay = useMemo(() => {
+  const allDayLaid = useMemo(() => {
     const first = anchor
     const last = addDays(anchor, 6)
-    const map = new Map<string, any[]>()
+    const records: any[] = []
     for (const occurrence of occurrences ?? []) {
       if (clockOf(occurrence.start) !== '') continue
       const start = dateOf(occurrence.start)
       const spanned = occurrence.end && clockOf(occurrence.end) === '' && dateOf(occurrence.end) > start
         ? dateOf(occurrence.end)
         : start
-      const from = start < first ? first : start
-      const to = spanned > last ? last : spanned
-      const covers = spanned > start
-      // What one of those blocks says: on the first day it covers it speaks for the
-      // whole record, and on each later day it names the day it is actually on.
-      const spokenOn = (date: string) => (covers
-        ? (date > start ? shortDate(date) : `${shortDate(start)}–${shortDate(spanned)}`)
-        : shortDate(start))
-      for (let date = from; date <= to; date = addDays(date, 1)) {
-        const chip = { occurrence, label: `全天 · ${spokenOn(date)} ${occurrence.title}` }
-        const list = map.get(date)
-        if (list) list.push(chip)
-        else map.set(date, [chip])
-      }
+      if (spanned < first || start > last) continue
+      const label = `全天 · ${spanned > start ? `${shortDate(start)}–${shortDate(spanned)}` : shortDate(start)} ${occurrence.title}`
+      records.push({ occurrence, from: start < first ? first : start, to: spanned > last ? last : spanned, label })
     }
-    return map
+    records.sort((left, right) => left.from < right.from ? -1 : left.from > right.from ? 1 : left.to < right.to ? 1 : left.to > right.to ? -1 : 0)
+    const laneEnds: string[] = []
+    const bars: any[] = []
+    let hidden = 0
+    for (const record of records) {
+      // The first lane whose record ended before this one starts, or a new lane
+      // when none did. Longer records at the same start claim their lane first,
+      // so a spanning bar is never pushed below a one-day chip it contains. A
+      // record that fits no lane within the two drawn is counted, not drawn —
+      // the same deal the per-day chips gave.
+      const lane = laneEnds.findIndex(end => end < record.from)
+      if (lane === -1 && laneEnds.length >= 2) { hidden++; continue }
+      if (lane === -1) laneEnds.push(record.to)
+      else laneEnds[lane] = record.to
+      bars.push({ ...record, lane: lane === -1 ? laneEnds.length - 1 : lane })
+    }
+    return { bars, hidden }
   }, [occurrences, anchor])
 
   const nowMinutes = now.getHours() * 60 + now.getMinutes()
@@ -433,50 +491,87 @@ function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
   // The pieces are built apart and assembled at the end: the nesting of one
   // expression per row was unreadable, and a misread parenthesis there is a
   // silent layout bug rather than a syntax error.
-  /** The whole-day entries of one day, as the chips its header shows. */
-  const allDayChips = (date: string) => {
-    const list = allDayByDay.get(date) ?? []
-    if (list.length === 0) return undefined
-    return React.createElement('div', { style: { display: 'flex', flexDirection: 'column', gap: 2, marginTop: 4 } },
-      ...list.slice(0, 2).map(({ occurrence, label }: any) => {
-        const tint = tintOf(occurrence.source ?? occurrence.uid)
-        return React.createElement('button', {
-          key: reactKeyOf(occurrence),
-          type: 'button',
-          title: label,
-          'aria-label': label,
-          onClick: () => onSelect(occurrence),
-          style: {
-            display: 'block', width: '100%', padding: '1px 4px', border: 'none', borderRadius: 4, cursor: 'pointer',
-            textAlign: 'left', fontSize: 10, lineHeight: '15px', fontFamily: 'inherit', color: PRIMARY,
-            background: tint.background, borderLeft: `3px solid ${tint.accent}`,
-            whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
-          },
-        }, occurrence.title)
-      }),
-      list.length > 2
-        ? React.createElement('div', { style: { fontSize: 10, lineHeight: '14px', color: SECONDARY, textAlign: 'left' } }, `还有 ${list.length - 2} 条全天`)
-        : undefined)
-  }
+  /** The band a data plugin laid over this day, if any: its tone names the colour. */
+  const spanOfDay = (date: string) => (annotations?.spans ?? []).find((span: any) => span.firstDay <= date && date <= span.lastDay)
 
   const headerRow = React.createElement('div', {
     style: { display: 'flex', borderBottom: CARD_BORDER, background: PAGE_BACKGROUND, paddingRight: 8 },
   },
   React.createElement('div', { style: { width: GUTTER, flex: '0 0 auto' } }),
-  ...days.map(day => React.createElement('div', {
-    key: day.key,
-    style: { flex: '1 1 0', minWidth: 0, padding: '8px 4px', textAlign: 'center', borderLeft: HAIRLINE },
+  ...days.map(day => {
+    const span = spanOfDay(day.key)
+    return React.createElement('div', {
+      key: day.key,
+      style: { flex: '1 1 0', minWidth: 0, padding: '8px 4px', textAlign: 'center', borderLeft: HAIRLINE },
+    },
+    React.createElement('div', { style: { fontSize: 11, color: day.today ? PRIMARY : SECONDARY } }, day.label),
+    React.createElement('div', {
+      style: day.today
+        ? {
+          width: 26, height: 26, margin: '2px auto 0', borderRadius: 999, lineHeight: '26px',
+          fontSize: 13, fontWeight: 650, background: 'var(--dsw-alias-state-business-primary, #4d6bfe)', color: '#fff',
+        }
+        : { marginTop: 2, fontSize: 13, fontWeight: 600, lineHeight: '26px', color: PRIMARY },
+    }, day.day),
+    // A thin bar under the date says a day sits in a band worth noticing. The
+    // neutral tone — the default when a span names none — is the background of
+    // ordinary weeks, so it draws nothing here, exactly as it washes nothing in
+    // the month view.
+    span && (span.tone ?? 'neutral') !== 'neutral' ? React.createElement('div', {
+      title: span.text,
+      'aria-label': `${day.key} ${span.text}`,
+      style: { width: 22, height: 3, borderRadius: 2, margin: '3px auto 0', background: TONE_BAR[span.tone ?? 'neutral'] },
+    }) : undefined)
+  }))
+
+  /**
+   * The whole-day track: one row under the day headers, its bars positioned by
+   * the fraction of the week they cover. The day columns are equal widths, so a
+   * percentage of the track lands on a column edge — a bar crosses the day
+   * borders instead of repeating inside each column.
+   */
+  const LANE_HEIGHT = 19
+  const allDayTrack = allDayLaid.bars.length + allDayLaid.hidden === 0 ? undefined : React.createElement('div', {
+    style: { display: 'flex', borderBottom: CARD_BORDER, background: PAGE_BACKGROUND, paddingRight: 8 },
   },
-  React.createElement('div', { style: { fontSize: 11, color: day.today ? PRIMARY : SECONDARY } }, day.label),
+  React.createElement('div', { style: { width: GUTTER, flex: '0 0 auto' } }),
   React.createElement('div', {
-    style: day.today
-      ? {
-        width: 26, height: 26, margin: '2px auto 0', borderRadius: 999, lineHeight: '26px',
-        fontSize: 13, fontWeight: 650, background: 'var(--dsw-alias-state-business-primary, #4d6bfe)', color: '#fff',
-      }
-      : { marginTop: 2, fontSize: 13, fontWeight: 600, lineHeight: '26px', color: PRIMARY },
-  }, day.day),
-  allDayChips(day.key))))
+    role: 'list',
+    'aria-label': '全天条目',
+    style: {
+      position: 'relative', flex: '1 1 0', minWidth: 0,
+      height: Math.max(...allDayLaid.bars.map((bar: any) => bar.lane)) * LANE_HEIGHT + 21
+        + (allDayLaid.hidden > 0 ? LANE_HEIGHT : 0),
+    },
+  },
+  ...allDayLaid.bars.map(({ occurrence, from, to, label, lane }: any) => {
+    const tint = tintOf(occurrence.source ?? occurrence.uid)
+    const first = days.findIndex(day => day.key === from)
+    const width = days.findIndex(day => day.key === to) - first + 1
+    return React.createElement('button', {
+      key: reactKeyOf(occurrence),
+      type: 'button',
+      title: label,
+      'aria-label': label,
+      // Names the occurrence the bar stands for, so a test acts on the same
+      // identity the note is stored under rather than on a button's position.
+      'data-occurrence': occurrenceKeyOf(occurrence),
+      onClick: () => onSelect(occurrence),
+      style: {
+        position: 'absolute', top: lane * LANE_HEIGHT + 2,
+        left: `calc(${(first / 7) * 100}% + 2px)`, width: `calc(${(width / 7) * 100}% - 4px)`,
+        height: 17, display: 'block', padding: '1px 5px', border: 'none', borderRadius: 4, cursor: 'pointer',
+        textAlign: 'left', fontSize: 11, lineHeight: '16px', fontWeight: 500, fontFamily: 'inherit', color: PRIMARY,
+        background: tint.background, borderLeft: `3px solid ${tint.accent}`,
+        whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
+      },
+    }, occurrence.title)
+  }),
+  allDayLaid.hidden > 0
+    ? React.createElement('div', {
+      style: { position: 'absolute', right: 8, bottom: 2, fontSize: 10, lineHeight: '14px', color: SECONDARY },
+    }, `还有 ${allDayLaid.hidden} 条全天`)
+    : undefined))
 
   const hourLabels = hours.map((minutes, index) => React.createElement('div', {
     key: minutes,
@@ -596,6 +691,7 @@ function WeekGrid({ anchor, occurrences, noteIndex, onSelect, onCreate }: any) {
     style: { display: 'flex', flexDirection: 'column', flex: '1 1 auto', minHeight: 0 },
   },
   headerRow,
+  allDayTrack,
   React.createElement('div', {
     ref: scroller,
     style: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto', overflowX: 'hidden' },
@@ -1506,6 +1602,8 @@ export function createCalendarPage(service: any) {
     const [reminderInbox, setReminderInbox] = useState<any>({ channel: 'in-app', unread: 0, items: [] })
     const [week, setWeek] = useState<any>(null)
     const [agenda, setAgenda] = useState<any>(null)
+    const [annotations, setAnnotations] = useState<any>({ weeks: [], spans: [] })
+    const [annotationChoices, setAnnotationChoices] = useState<any[]>([])
     // The reader's own content, read from the host and kept apart from the
     // entries: it belongs to the person, not to any data source.
     const [noteIndex, setNoteIndex] = useState<Map<string, string>>(() => new Map())
@@ -1516,6 +1614,12 @@ export function createCalendarPage(service: any) {
     const [dialog, setDialog] = useState<any>(null)
     const [dropping, setDropping] = useState(false)
     const [busy, setBusy] = useState(false)
+
+    useEffect(() => service.onNavigate?.((target: any) => {
+      setCalendarSource('*')
+      setView({ kind: 'event', id: target.uid, source: target.source })
+      setDialog(null)
+    }), [service])
 
     const events = snapshot?.events ?? []
     const sourceName = (source: string) => calendarLabel(source, sourceStatuses)
@@ -1535,6 +1639,7 @@ export function createCalendarPage(service: any) {
     const currentRange = useRef(weekRange)
     currentRange.current = weekRange
     const latestWeekRead = useRef(0)
+    const latestAnnotationRead = useRef(0)
     const agendaRange = useMemo(
       () => ({ from: addDays(localDate(), -180), to: addDays(localDate(), 366), includeHidden: true }),
       [],
@@ -1545,6 +1650,23 @@ export function createCalendarPage(service: any) {
       const read = ++latestWeekRead.current
       const result = await service.occurrences(weekRange)
       if (read === latestWeekRead.current && currentRange.current === weekRange) setWeek(result)
+    }, [service, weekRange])
+    /**
+     * Week labels and range bands a data plugin supplied for the range on
+     * screen. Older builds of the service half do not offer the read; the panel
+     * then simply has no annotations to show. And because annotations are
+     * decoration, a failed read keeps the previous ones instead of putting the
+     * whole calendar in front of an error.
+     */
+    const loadAnnotations = useCallback(async () => {
+      if (!service.annotationsFor) return
+      const read = ++latestAnnotationRead.current
+      try {
+        const result = await service.annotationsFor(weekRange)
+        if (read === latestAnnotationRead.current && currentRange.current === weekRange) setAnnotations(result)
+      } catch {
+        /* Decorations never gate the events. */
+      }
     }, [service, weekRange])
     const loadAgenda = useCallback(async () => { setAgenda((await service.occurrences(agendaRange)).occurrences) }, [service, view.id])
     /**
@@ -1568,8 +1690,10 @@ export function createCalendarPage(service: any) {
       try {
         await loadSnapshot()
         if (service.sourceStatuses) setSourceStatuses(await service.sourceStatuses())
+        if (service.annotationChoices) setAnnotationChoices(await service.annotationChoices())
         if (service.reminders) setReminderInbox(await service.reminders())
         await loadNotes()
+        await loadAnnotations()
         if (view.kind === 'week') await loadWeek()
         if (view.kind === 'event') await loadAgenda()
         setProblem(null)
@@ -1578,7 +1702,7 @@ export function createCalendarPage(service: any) {
       } finally {
         setLoading(false)
       }
-    }, [loadSnapshot, loadNotes, loadWeek, loadAgenda, view.kind])
+    }, [loadSnapshot, loadNotes, loadAnnotations, loadWeek, loadAgenda, view.kind])
 
     useEffect(() => { void refresh() }, [refresh])
     const latestRefresh = useRef(refresh)
@@ -1630,12 +1754,31 @@ export function createCalendarPage(service: any) {
     const selectedOccurrence = dialog?.kind === 'event'
       ? [...(week?.occurrences ?? []), ...(agenda ?? [])].find(item => occurrenceKeyOf(item) === occurrenceKeyOf(dialog.occurrence)) ?? dialog.occurrence
       : undefined
-    const weekCount = week?.occurrences?.length ?? 0
+    // What the views draw: the whole week, or the one calendar the reader
+    // picked in the filter row. The subtitle's count comes from this same
+    // list, so "2 条" is what is on screen, not what is on file.
+    const visibleOccurrences = (week?.occurrences ?? []).filter((item: any) => calendarSource === '*' || item.source === calendarSource)
+    const weekCount = visibleOccurrences.length
     /** The week on screen is today's, so an entry started from here means today. */
     const createDate = displayMode === 'month' ? (monthAnchor === monthStart(localDate()) ? localDate() : monthAnchor) : anchor === startOfWeek() ? localDate() : anchor
     const title = view.kind === 'week' ? '我的日历' : (current?.title ?? '日程')
+    /**
+     * A data plugin's name for the week on screen: its week label — prefixed by
+     * the neutral band covering the week, which names the background the label
+     * sits in (a term) — or, when it gave no label (a vacation, an unnumbered
+     * short term), the covering band alone. Toned bands keep their own words
+     * out of the prefix: a highlighted week already says what it is.
+     */
+    const coveringBand = displayMode === 'week'
+      ? (annotations?.spans ?? []).find((span: any) => span.firstDay <= anchor && anchor <= span.lastDay)
+      : undefined
+    const weekNoteParts = [
+      ...(coveringBand && (coveringBand.tone ?? 'neutral') === 'neutral' ? [coveringBand.text] : []),
+      annotations?.weeks?.find((week: any) => week.firstDay === anchor)?.text ?? coveringBand?.text,
+    ].filter(Boolean)
+    const weekNote = displayMode === 'week' && weekNoteParts.length > 0 ? weekNoteParts.join(' · ') : undefined
     const subtitle = view.kind === 'week'
-      ? displayMode === 'month' ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条`
+      ? displayMode === 'month' ? `${monthOf(monthAnchor)} · 月视图` : `${monthOf(anchor)}${dayNumber(anchor)}日 – ${shortDate(addDays(anchor, 6))} · ${weekCount} 条${weekNote ? ` · ${weekNote}` : ''}`
       : [current?.location, sourceName(current?.source), current && noteOf(current) !== '' ? '有备注' : ''].filter(Boolean).join(' · ')
 
     const menuItems = events.length === 0
@@ -1684,6 +1827,14 @@ export function createCalendarPage(service: any) {
     React.createElement('div', { style: { minWidth: 0 } },
       React.createElement('div', { style: { fontSize: 16, fontWeight: 650, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, title),
       React.createElement('div', { style: { fontSize: 12, color: SECONDARY } }, loading ? '正在读取…' : subtitle)),
+    view.kind === 'week'
+      ? SpanLegend({
+        spans: annotations?.spans,
+        from: weekRange.from,
+        to: weekRange.to,
+        tones: displayMode === 'month' ? undefined : ['highlight'],
+      })
+      : undefined,
     React.createElement('span', { style: { flex: '1 1 auto' } }),
     view.kind === 'week'
       ? React.createElement(React.Fragment, null,
@@ -1747,6 +1898,15 @@ export function createCalendarPage(service: any) {
         icon: React.createElement(IconRefresh),
         onClick: () => void refresh(),
       }))),
+    annotationChoices.length > 0 ? React.createElement('div', { style: { padding: '6px 16px', display: 'flex', gap: 12 } },
+      ...[...new Set(annotationChoices.map((choice: any) => choice.group))].map((group: string) => React.createElement('label', { key: group },
+        group === 'academic-calendar' ? '校历 ' : '背景 ',
+        React.createElement('select', { 'aria-label': group === 'academic-calendar' ? '选择校历' : `选择${group}`,
+          value: annotationChoices.find((choice: any) => choice.group === group && choice.selected)?.id ?? '',
+          disabled: busy,
+          onChange: (event: any) => void run(() => service.selectAnnotations({ group, id: event.target.value || null })),
+        }, React.createElement('option', { value: '' }, '不显示'),
+        ...annotationChoices.filter((choice: any) => choice.group === group).map((choice: any) => React.createElement('option', { key: choice.id, value: choice.id }, choice.label)))))) : undefined,
     view.kind === 'week' && events.length > 0
       ? React.createElement('div', { role: 'group', 'aria-label': '筛选日历', style: { display: 'flex', gap: 6, padding: '9px 16px', overflowX: 'auto', flex: '0 0 auto', borderBottom: HAIRLINE } },
         ...['*', ...new Set(events.map((event: any) => event.source))].map((source: any) => React.createElement(Button, {
@@ -1773,8 +1933,9 @@ export function createCalendarPage(service: any) {
       ? React.createElement(displayMode === 'month' ? MonthGrid : WeekGrid, {
           anchor: displayMode === 'month' ? monthAnchor : anchor,
           tintOf, occurrenceKeyOf,
-          occurrences: (week?.occurrences ?? []).filter((item: any) => calendarSource === '*' || item.source === calendarSource),
+          occurrences: visibleOccurrences,
           noteIndex,
+          annotations,
           onSelect: (occurrence: any) => setDialog({ kind: 'event', occurrence }),
           onCreate: createAt,
         })
@@ -1903,11 +2064,18 @@ export async function apply(ctx: any) {
   // host `calendar` service callable from this half.
   const disposeRemote = await ctx.remote.$mount(calendarRemote)
   ctx.inject(['remote.calendar'], (surface: any) => {
+    let pendingNavigation: any
+    const navigationListeners = new Set<(target: any) => void>()
     surface.inject(['notificationActions', 'layout'], (inner: any) => {
       inner.effect(() => inner.notificationActions.register('calendar', async ({ target, signal }: any) => {
         // Host onAction already validated this ID against the complete receipt
         // table. The inbox is paginated and cannot validate an older target.
         if (signal.aborted || typeof target?.reminderId !== 'string') return false
+        if (typeof target.ref?.source === 'string' && typeof target.ref?.uid === 'string') {
+          const focus = { source: target.ref.source, uid: target.ref.uid }
+          if (navigationListeners.size) for (const listener of navigationListeners) listener(focus)
+          else pendingNavigation = focus
+        }
         inner.layout.selectPanel(PANEL_ID)
       }))
     })
@@ -1915,6 +2083,11 @@ export async function apply(ctx: any) {
     // that takes none is called with none.
     const call = (method: string) => (input?: any) => unwrap(surface.remote.calendar[method](input))
     const service = {
+      onNavigate(listener: (target: any) => void) {
+        navigationListeners.add(listener)
+        if (pendingNavigation) { const target = pendingNavigation; pendingNavigation = undefined; listener(target) }
+        return () => { navigationListeners.delete(listener) }
+      },
       snapshot: () => unwrap(surface.remote.calendar.snapshot()),
       sourceStatuses: () => unwrap(surface.remote.calendar.sourceStatuses()),
       reminders: () => unwrap(surface.remote.calendar.reminders()),
@@ -1951,6 +2124,9 @@ export async function apply(ctx: any) {
       notes: call('notes'),
       setPersonal: call('setPersonal'),
       personalFor: call('personalFor'),
+      annotationsFor: call('annotationsFor'),
+      annotationChoices: () => unwrap(surface.remote.calendar.annotationChoices()),
+      selectAnnotations: call('selectAnnotations'),
       unlinkedNotes: () => unwrap(surface.remote.calendar.unlinkedNotes({})),
     }
     surface.slots.inject('main', () => surface.slots.register(

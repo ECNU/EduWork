@@ -36,7 +36,7 @@ try {
 
 输入为 `{events, complete?, revision?}`。省略 `complete` 是增量，缺席不删除；显式 `false` 拒绝，不能把不完整数据当成功结果。`true` 是完整替换，成功后只清理本来源缺席记录；完整空数组清空本来源。
 
-`events` 使用 `uid/title/start/end?/location?/description?/recurrence?/movedFrom?/cancelledDates?`。同一事项保留稳定 uid。来源的 description 不属于私人备注。调课需用 movedFrom 指向原实例，整系列规则变更或无法关联时报告 `unattributable`；完整结果有此问题时整批不提交。
+`events` 使用 `uid/title/start/end?/location?/description?/recurrence?/movedFrom?/cancelledDates?/overrides?`。同一事项保留稳定 uid。来源的 description 不属于私人备注。调课可用 `movedFrom` 指向原实例（单条），也可随系列一次给出 `overrides`（ICS `RECURRENCE-ID` 的批量形态，字段同存储记录的单次调整）；完整快照按来源真相整体替换 `overrides`。整系列规则变更或无法关联时报告 `unattributable`；完整结果有此问题时整批不提交。
 
 版本化数据可带递增正整数 `revision`。版本随成功写入持久保存，重启后拒绝低版本、缺失版本和同版本不同内容；同版本相同批次可重放。版本不放进 uid。修改日期仍须保留原实例关联，不能仅依赖版本号。
 
@@ -107,7 +107,7 @@ ctx.effect(() => () => binding.dispose(), 'calendar: detach reminders')
 
 适配器必须按 owner 仅替换日历任务、按 `task.id` 持久化去重、更新同编号时间并取消缺席任务；重试同一计划不能产生额外投递。默认提交未来一年内的未来任务，数据/设置变化后重算，并每分钟推进窗口。`binding.refresh()` 可等待重算，`binding.status()` 报告错误；失败计划不标为已完成，下次刷新重试。
 
-默认投递由 `ReminderDelivery` 在 Host 内执行，使用独立的 `calendar_reminders` 域保存回执，复用 `reminderPlan` 和变化通知。提前提醒随改期重排、停课取消；固定提醒保持独立。浏览器不承担计时，到点生成应用内记录；可选 `desktopServices.calendarReminder` 转交现有桌面通知通道，不启动模型或伪造 Session。`calendar.reminders()` 返回通知通道、未读数和最近100条记录；`ackReminder({id})` 持久化已读并撤下托盘项。
+默认投递由 `ReminderDelivery` 在 Host 内执行，使用独立的 `calendar_reminders` 域保存回执，复用 `reminderPlan` 和变化通知。提前提醒随改期重排、停课取消；固定提醒保持独立。浏览器不承担计时，到点生成应用内记录；可选 `notifications.register()` / `notificationActions.register()` 转交现有桌面通知通道，不启动模型或伪造 Session。`calendar.reminders()` 返回通知通道、未读数和最近100条记录；`ackReminder({id})` 持久化已读并撤下托盘项。
 
 应用必须运行。重启仅补发最近24小时的到点任务，回执保留30天；同一身份和计划时刻的回执持久化去重。桌面桥失败后重试，不撤销应用内记录。系统弹窗是否可见仍取决于通知开关、前后台和勿扰策略；桥接成功不代表用户已经看见。桥接和回执确认不是跨进程事务，崩溃边界仍可能重复系统弹窗，不能承诺严格仅一次。旧桌面壳不识别日历通知时显示不可用，不绕过权限或改成模型任务。
 
@@ -118,3 +118,17 @@ ctx.effect(() => () => binding.dispose(), 'calendar: detach reminders')
 `calendar.changes(signal)` 通过 Runtime 已有的 Remote 逻辑流传递 `{revision}` 失效通知，合并密集变化。它不是一致快照或持久化日志。面板重读当前数据；断线重订阅、卸载取消，来源与个人域写入都能触发刷新。
 
 公版周/月视图共用数据。机构“校历/课表”两个入口、默认视图和来源筛选预设仍待单独实现，不以本接口宣称已完成。
+
+
+## 完整实例与教育校历
+
+`registerSource({ ..., replaceInstances: true })` 仅接受 `complete: true` 的普通事件完整快照，不接受重复规则、例外或 movedFrom。稳定的单次课 uid 足以关联跨日期更新，保留其 originalStart 和个人内容；没有稳定编号时适配器应生成新 uid，不猜测迁移。`extensions` 可携带公开的来源元数据，教学班关联由教育插件维护。
+
+`registerAnnotations({ id, label, selectionGroup, annotationsFor })` 可声明互斥的背景组。`annotationChoices()` 读取选择项，`selectAnnotations({ group, id })` 持久化选择，id=null 表示不显示该组；未曾选择时默认第一份。没有 selectionGroup 的提供方继续共同展示。公共教育插件使用 academic-calendar 组，并同步控制所选校历的具体事项来源。选择背景不改变课表或个人日程。
+
+教育语义、完整课表格式、日期查询及工具见 [教育校历包](../../../packages/dsh-academic-calendar/README.md)。普通 ICS 导出只包含实际可见日程，不包含教学周、阶段背景、课程分组或个人内容。
+
+
+来源句柄的 `setVisible(boolean)` 只控制展示，不影响后台刷新；`setActive(boolean)` 同时失效在途写入，用于停用或账号退出。`clear()` 只清除该句柄所属来源的事件，保留个人内容和版本回执。校历选择通过公开 `onChanged()` 观察；数据提供方更新背景后可调用 annotation 句柄的 `invalidate()`，不依赖内部表名。
+
+通知复用 #190 的通用协议：插件注册来源和提醒事件，Host 校验回执后返回来源与日程身份，客户端通过通用面板接口打开该日程详情；不依赖最近100条收件箱重新验证，也不在 Electron 添加日历分支。缺少通用通知服务时保留应用内提醒。

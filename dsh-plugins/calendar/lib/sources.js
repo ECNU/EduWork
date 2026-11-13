@@ -10,9 +10,10 @@ export function sourceIdentity({ provider, account, feed }) {
 
 /** Registration and pushed writes only. Data plugins own fetching, timers and retries. */
 export class SourceRegistry {
-  constructor(apply, changed = () => {}) {
+  constructor(apply, changed = () => {}, clear = async () => { throw new Error('source clearing unavailable') }) {
     this.apply = apply
     this.changed = changed
+    this.clear = clear
     this.entries = new Map()
     this.closed = false
   }
@@ -24,17 +25,31 @@ export class SourceRegistry {
     if (this.entries.has(source)) throw new Error('source is already registered')
     if (config.label !== undefined && typeof config.label !== 'string') throw new Error('source label must be text')
     if (config.allowAgentUpdates !== undefined && typeof config.allowAgentUpdates !== 'boolean') throw new Error('invalid agent source permission')
-    const entry = { source, label: config.label ?? config.feed, active: true, registered: true,
-      allowAgentUpdates: config.allowAgentUpdates === true, generation: 0, state: 'idle' }
+    if (config.active !== undefined && typeof config.active !== 'boolean') throw new Error('invalid source activation')
+    const entry = { source, label: config.label ?? config.feed, active: config.active !== false, visible: true, registered: true,
+      allowAgentUpdates: config.allowAgentUpdates === true, replaceInstances: config.replaceInstances === true, generation: 0, state: 'idle' }
     this.entries.set(source, entry)
     const handle = Object.freeze({ source,
       apply: async batch => this.begin(entry, batch?.complete === true).apply(batch),
       beginUpdate: () => this.begin(entry),
+      clear: async () => {
+        if (!entry.registered) throw new Error('source_inactive')
+        const generation = ++entry.generation
+        const result = await this.clear(source, { isCurrent: () => entry.registered && generation === entry.generation })
+        this.changed()
+        return result
+      },
+      setVisible: visible => {
+        if (typeof visible !== 'boolean' || !entry.registered) throw new Error('invalid source visibility')
+        if (entry.visible === visible) return
+        entry.visible = visible
+        this.changed()
+      },
       setActive: active => {
         if (typeof active !== 'boolean' || !entry.registered) throw new Error('invalid source activation')
         entry.active = active
         ++entry.generation
-        entry.state = 'idle'
+        entry.state = active && entry.updatedAt ? 'ready' : 'idle'
         this.changed()
       },
       dispose: () => this.remove(entry),
@@ -47,8 +62,8 @@ export class SourceRegistry {
   status({ source, label, state, updatedAt, error }) {
     return { source, label, state, ...(updatedAt ? { updatedAt } : {}), ...(error ? { error } : {}) }
   }
-  statuses() { return [...this.entries.values()].filter(entry => entry.active).map(entry => this.status(entry)) }
-  isRegistered(source) { return this.entries.get(source)?.active === true }
+  statuses() { return [...this.entries.values()].filter(entry => entry.active && entry.visible).map(entry => this.status(entry)) }
+  isRegistered(source) { const entry = this.entries.get(source); return entry?.active === true && entry.visible }
 
   /** Call before external work starts; a later request invalidates this receipt. */
   begin(entry, supersede = true) {
@@ -76,7 +91,7 @@ export class SourceRegistry {
         try {
           if (batch?.source !== undefined && batch.source !== entry.source) throw new Error('source_mismatch')
           if (batch?.complete === false || !Array.isArray(batch?.events)) throw new Error('incomplete_snapshot')
-          const report = await this.apply({ ...batch, source: entry.source }, { isCurrent })
+          const report = await this.apply({ ...batch, source: entry.source, replaceInstances: entry.replaceInstances }, { isCurrent })
           if (!isCurrent()) return { state: 'superseded', source: entry.source }
           if (report.unattributable.length) { fail('unattributable'); return { ...this.status(entry), report } }
           settled = true
