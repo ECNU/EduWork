@@ -56,7 +56,7 @@ Plugin configuration example (store the real key in the credential service; do n
   "model": "your-decision-model",
   "authMode": "api-key",
   "credentialRef": "SYSTEMONE_API_KEY",
-  "timeoutMs": 5000
+  "timeoutMs": 10000
 }
 ```
 
@@ -64,7 +64,7 @@ Plugin configuration example (store the real key in the credential service; do n
 
 ## Failures and timeouts
 
-- One review has a total time limit of `timeoutMs` (5 seconds by default); on expiry the user decides.
+- One review has a total time limit of `timeoutMs` (10 seconds by default; a review takes 3-6 seconds when the decision service is busy); on expiry the user decides.
 - Network errors, 429 and 5xx are retried once within the limit; the questions have no side effects.
 - After 3 failures in a row in one session, review pauses for 5 minutes there and requests go straight to the user.
 - Not being signed in, a missing key, an incomplete answer or an abstention (`choice: null`) counts as a failure, with no fallback to another model or authentication method.

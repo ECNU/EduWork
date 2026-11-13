@@ -56,7 +56,7 @@
   "model": "your-decision-model",
   "authMode": "api-key",
   "credentialRef": "SYSTEMONE_API_KEY",
-  "timeoutMs": 5000
+  "timeoutMs": 10000
 }
 ```
 
@@ -64,7 +64,7 @@
 
 ## 失败与超时
 
-- 一次审查的总时限为 `timeoutMs`（默认 5 秒），超时交给用户确认。
+- 一次审查的总时限为 `timeoutMs`（默认 10 秒，决策服务繁忙时一次审查要 3～6 秒），超时交给用户确认。
 - 网络错误、429 和 5xx 在时限内重试一次；问题本身不产生副作用。
 - 同一会话连续失败 3 次后暂停审查 5 分钟，期间申请直接交给用户。
 - 未登录、没有 Key、回答缺字段、服务拒选（`choice: null`）都按失败处理，不回退到其他模型或认证方式。

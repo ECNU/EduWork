@@ -15,7 +15,7 @@ export const Config = z.object({
   authMode: z.union(['api-key', 'oidc', 'none']).default('api-key').description('API Key、机构登录或明确免鉴权 / API key, organization sign-in or explicit unauthenticated mode'),
   credentialRef: z.string().default('SYSTEMONE_API_KEY').description('凭据引用名，不是 Key 本身 / Credential reference, not the key itself'),
   oidcProfileId: z.string().default('').description('OIDC 模式的机构账号 ID / Organization profile ID in OIDC mode'),
-  timeoutMs: z.number().step(1).min(1000).max(30000).default(5000).description('一次审查的总时限，超时交给用户确认 / Time limit for one review; on expiry the user decides'),
+  timeoutMs: z.number().step(1).min(1000).max(30000).default(10000).description('一次审查的总时限，超时交给用户确认 / Time limit for one review; on expiry the user decides'),
 })
 
 const PAUSE_AFTER = 3, PAUSE_MS = 5 * 60_000
@@ -26,7 +26,7 @@ const SYSTEMS = { darwin: 'macOS', win32: 'Windows', linux: 'Linux' }
 
 export function apply(ctx, raw = {}) {
   if (!(raw.enabled ?? false)) return
-  const timeoutMs = raw.timeoutMs ?? 5000
+  const timeoutMs = raw.timeoutMs ?? 10000
   // The review state carries recent messages and up to 16000 characters of script, so the request limit is higher
   // than the decision tool's default.
   const service = resolveDecisionConfig({
