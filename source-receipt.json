@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-12T07:07:39.791Z",
-  "fileSetSHA256": "d4fabb906781e78dcd8e8a29338465f47e8c396a7930caf8b3b8654190033935",
+  "createdAt": "2026-11-14T16:22:15.083Z",
+  "fileSetSHA256": "d011be5735741be702cb55e3695d250e08396f4d5fa2b7c7a7047a44206cb6af",
   "files": [
     {
       "path": ".gitattributes",
@@ -3689,7 +3689,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/lib/client.js",
-      "sha256": "7357e474bce22758152a95768aad4e3bee5580b16c47632ebadd664138fd1587"
+      "sha256": "8a8df44dcaa327c8548e74fee7a8c8fa07ed8d21a3074e59431a8346481102b4"
     },
     {
       "path": "packages/dsh-desktop-pet/lib/index.js",
@@ -5469,7 +5469,7 @@
     },
     {
       "path": "packages/dsh-knowledge-studio/THIRD_PARTY_LICENSES.txt",
-      "sha256": "53482b4f3ca8d14db1823d4fde39f6d1ff5374c64d017c3e54e6edbc58f02c68"
+      "sha256": "153207e97a5260063e70216e0ca62e82b4b0b4061b27b8266db2200e4c607519"
     },
     {
       "path": "packages/dsh-knowledge-studio/THIRD_PARTY_NOTICES.md",
