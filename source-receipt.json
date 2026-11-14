@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T16:29:45.108Z",
-  "fileSetSHA256": "8ac95fa9cdf8b18c6da58b149c86fade86813105ee6528b3c348cbbcacdc176d",
+  "createdAt": "2026-11-14T17:05:20.132Z",
+  "fileSetSHA256": "2e8ecfde8c7b994fc3b34d0751f738090c98a6a2e5e43572b40b29ffa6fc940e",
   "files": [
     {
       "path": ".gitattributes",
@@ -3608,6 +3608,14 @@
       "sha256": "5d3953788ada651071084b8334deb06357a5f41c8e7815905a0b5c932720361b"
     },
     {
+      "path": "packages/dsh-decision/lib/core.js",
+      "sha256": "25309f4082c0cac76b25fbff7f28378f9e1393eb005ad1a6c9a2e4f0f6a533fb"
+    },
+    {
+      "path": "packages/dsh-decision/lib/index.js",
+      "sha256": "dc2278adb4864c8b0669414457fc3d7f586f820bda924124ee742081a166c8b5"
+    },
+    {
       "path": "packages/dsh-decision/LICENSE",
       "sha256": "eb7a1d713eb919b146787629e22e4c975cb701f529a65d4d7e0fcd417558bf1c"
     },
@@ -3665,7 +3673,7 @@
     },
     {
       "path": "packages/dsh-desktop-pet/lib/client.js",
-      "sha256": "7357e474bce22758152a95768aad4e3bee5580b16c47632ebadd664138fd1587"
+      "sha256": "8a8df44dcaa327c8548e74fee7a8c8fa07ed8d21a3074e59431a8346481102b4"
     },
     {
       "path": "packages/dsh-desktop-pet/lib/index.js",
