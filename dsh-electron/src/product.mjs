@@ -143,7 +143,7 @@ export function configureEduworkPaths() {
   const appRoot = app.getAppPath()
   settings = JSON.parse(readFileSync(join(appRoot, 'eduwork.desktop.json'), 'utf8'))
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
-  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : undefined,
+  paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : process.env.LOCALAPPDATA,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
   mkdirSync(paths.userData, { recursive: true })
   mkdirSync(paths.logs, { recursive: true })
@@ -236,7 +236,9 @@ async function prepareDesktop() {
   if (appearance.dock) app.dock.setIcon(appearance.dock)
   if (migrationLaunch) showStartupProgress('正在迁移旧版历史数据…')
   if (!isAbsolute(paths.config)) throw new Error('EDUWORK_CONFIG_FILE must be an absolute path')
-  if (process.platform === 'darwin' && settings.configurationOwnership === 'user')
+  // Portable Windows keeps its editable config inside the program directory;
+  // macOS and the installed layout need the user copy seeded before first use.
+  if (settings.configurationOwnership === 'user' && (process.platform === 'darwin' || settings.dataLayout === 'installed'))
     await initializeUserConfig({ product: paths.product, config: paths.config })
   const identity = JSON.parse(await readFile(join(paths.product,'assembly.json'),'utf8'))
   publisher = await publisherBootstrap({ ownership: settings.configurationOwnership, product: paths.product,
@@ -292,7 +294,7 @@ async function prepareDesktop() {
   }
   const software = await softwareUpdateControl({dataRoot:paths.updateDataRoot,version:settings.productVersion,
     policy:contentUpdates.policy,defaultEnabled:user.updates.provider!=='disabled',
-    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32',onPolicy:saveUpdatePolicy,
+    supported:process.platform==='darwin'?settings.macSparkle?.enabled===true:process.platform==='win32'&&settings.dataLayout!=='installed',onPolicy:saveUpdatePolicy,
     start:({policy,applyScheduled})=>process.platform==='darwin'
       ? startMacSparkleUpdates({appPath:app.getAppPath(),version:settings.productVersion,enabled:true,
         feeds:effectiveUpdateDefaults.macFeeds,policy,onPolicy:saveUpdatePolicy})
@@ -360,7 +362,7 @@ async function prepareDesktop() {
     open: key => taskNotifications.activate(key), contextMenu: () => petMenu(), changed: () => refreshTray(),
     log: message => desktopHostLog(`[desktop-pet] ${message}\n`) })
   const runWorkbench = (action, updateStatus) => workbenchAction({ action, config: paths.config, version: settings.productVersion,
-    shell: 'electron', logs: paths.logs, root: paths.root, product: paths.product, home: paths.home, updateStatus })
+    shell: 'electron', logs: paths.logs, root: paths.root, updateDataRoot: paths.updateDataRoot, product: paths.product, home: paths.home, updateStatus })
   const workbench = createWorkbenchUpdateHandler({
     getCoordinator: () => portableUpdates,
     observer: productUpdateObserver,

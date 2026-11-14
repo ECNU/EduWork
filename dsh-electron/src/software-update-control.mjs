@@ -73,7 +73,7 @@ export async function softwareUpdateControl({ dataRoot, version, policy = 'stabl
     }
     if (!enabled || !supported) {
       if (action === 'check-updates' || action === 'check-updates-background') return snapshot()
-      throw Error('软件更新已关闭，请先在设置中开启')
+      throw Error(supported ? '软件更新已关闭，请先在设置中开启' : '当前安装包未配置软件更新')
     }
     const result = await (await open(false)).action(action)
     return { ...result, update: { ...result.update, userEnabled: enabled, canToggle: supported } }

@@ -35,9 +35,11 @@ export async function assembleWindows({
   node = process.execPath,
   updateManifestURL = '',
   updateDefaultPolicy = '',
+  dataLayout = 'portable',
 } = {}) {
   if (!updateDefaultPolicy) updateDefaultPolicy = desktopVersion(version).channel
   if (!['stable', 'development'].includes(updateDefaultPolicy)) throw new Error('Update policy must be stable or development')
+  if (!['portable', 'installed'].includes(dataLayout)) throw new Error('Data layout must be portable or installed')
   if (!await isFile(join(electronRuntime, 'electron.exe'))) {
     throw new Error('ElectronRuntime must point to the extracted runtime containing electron.exe, not its cache parent')
   }
@@ -118,6 +120,13 @@ export async function assembleWindows({
     config.updates = { ...config.updates, defaultPolicy: 'development' }
     config.updateChannel = 'disabled-candidate'
   }
+  if (dataLayout === 'installed') {
+    // First-round import candidates ship without software updates; the updater
+    // is wired in the installer step against the same user data directory.
+    config.dataLayout = 'installed'
+    config.updates = { provider: 'disabled', defaultPolicy: updateDefaultPolicy }
+    config.updateChannel = 'disabled-candidate'
+  }
   await writeJSON(join(app, 'eduwork.desktop.json'), config)
 
   const updaterPath = join(output, 'resources/update/EduWork-Updater.exe')
@@ -150,9 +159,14 @@ export async function assembleWindows({
   await writeText(join(output, 'README.txt'), [
     `${name} — Electron candidate ${version}`,
     '',
-    `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
-    'Close the application before moving the entire folder. When an update feed is',
-    'configured, use Settings to check/download updates and choose when to restart.',
+    dataLayout === 'installed'
+      ? `Run EduWork-Electron.exe. Personal data stays under %LOCALAPPDATA%\\EduWork\\${identity.distribution}.`
+      : `Run EduWork-Electron.exe. Local data stays under data/${identity.distribution}-electron.`,
+    ...(dataLayout === 'installed'
+      ? ['Personal data does not move with the program folder. This candidate ships',
+        'without software updates; the installer step wires them in later.']
+      : ['Close the application before moving the entire folder. When an update feed is',
+        'configured, use Settings to check/download updates and choose when to restart.']),
     'To merge history from another installation, select its program root under',
     'Settings > Import history. Existing credentials and settings remain unchanged.',
   ].join('\n'))
@@ -171,10 +185,11 @@ if (isMainModule(import.meta.url)) {
       node: { type: 'string' },
       'update-manifest-url': { type: 'string' },
       'update-default-policy': { type: 'string' },
+      'data-layout': { type: 'string' },
     },
   })
   if (!values.product || !values['shell-build'] || !values['electron-runtime'] || !values.output || !values.version) {
-    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development]')
+    throw new Error('Use --product <dir> --shell-build <dir> --electron-runtime <dir> --output <dir> --version <x.y.z> [--node <node.exe>] [--update-manifest-url <url>] [--update-default-policy stable|development] [--data-layout portable|installed]')
   }
   await assembleWindows({
     product: values.product,
@@ -185,5 +200,6 @@ if (isMainModule(import.meta.url)) {
     node: values.node ?? process.execPath,
     updateManifestURL: values['update-manifest-url'] ?? '',
     updateDefaultPolicy: values['update-default-policy'] ?? '',
+    dataLayout: values['data-layout'] ?? 'portable',
   })
 }
