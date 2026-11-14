@@ -1,0 +1,3 @@
+- insert:
+    - id: eduwork-message-edit
+      name: '@eduwork/dsh-message-edit'

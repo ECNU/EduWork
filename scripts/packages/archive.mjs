@@ -52,7 +52,7 @@ export function inspectArchive(bytes, selected, expectedVersion) {
       assert.ok(files.has(file), `Missing decision plugin file ${file}`)
     }
   }
-  if (selected.id === 'dsh-side-chat' || selected.id === 'dsh-annotation') {
+  if (['dsh-side-chat', 'dsh-message-edit', 'dsh-annotation'].includes(selected.id)) {
     assert.ok(!manifest.private, 'Conversation plugin archive must be publishable')
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing native plugin bundle registration')
     for (const file of ['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {

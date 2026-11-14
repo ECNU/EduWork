@@ -1,0 +1,63 @@
+{
+  "name": "@eduwork/dsh-message-edit",
+  "version": "0.1.0",
+  "description": "Edit a sent user message and resend it, replacing the conversation with a native DSH fork",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": {
+    ".": "./lib/index.js",
+    "./client": "./lib/client.js",
+    "./typert": "./lib/typert.host.js",
+    "./package.json": "./package.json"
+  },
+  "files": ["lib", "cordis.patch.yml", "README.md", "README_EN.md", "LICENSE", "CHANGELOG.md"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --import ./test/runtime-resolver.mjs --test test/*.test.mjs",
+    "check": "npm run build && npm test"
+  },
+  "engines": { "node": ">=24.22.1" },
+  "devDependencies": {
+    "esbuild": "0.28.1"
+  },
+  "dsh": {
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-api-workspace-controller",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-client-file-upload",
+        "@deepseek-ai/dsh-client-ui-primitives",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-api-session-controller",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-chat",
+        "@deepseek-ai/dsh-client-ui-layout",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-workspace"
+      ],
+      "platform": "web"
+    },
+    "bundle": { "patch": "./cordis.patch.yml" }
+  },
+  "peerDependencies": {
+    "@deepseek-ai/dsh-typert-protocol": ">=0.2.2-rc.1 <0.2.3-0",
+    "@deepseek-ai/dsh-client-ui-primitives": ">=0.2.2-rc.1 <0.2.3-0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "zod": "^4.4.3"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/dsh-typert-protocol": { "optional": true },
+    "@deepseek-ai/dsh-client-ui-primitives": { "optional": true },
+    "react": { "optional": true },
+    "react-dom": { "optional": true },
+    "zod": { "optional": true }
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/ECNU/EduWork.git", "directory": "packages/dsh-message-edit" },
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-message-edit#readme",
+  "bugs": { "url": "https://github.com/ECNU/EduWork/issues" },
+  "keywords": ["dsh", "deepseek-harness", "message-edit", "eduwork"],
+  "publishConfig": { "access": "public" },
+  "allowScripts": { "esbuild@0.28.1": true },
+  "license": "MulanPSL-2.0"
+}
