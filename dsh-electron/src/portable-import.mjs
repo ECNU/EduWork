@@ -150,11 +150,12 @@ export async function buildCopyPlan(source, target) {
   for (const name of (await readdir(source.home)).sort()) {
     if (dshRetained.has(name)) await addTree(source.home, join('data', namespace, 'dsh'), name)
     else if (name === 'profiles') {
-      // The user delta and the plugin install manifest cross; the merged
-      // runtime (cordis.yml, node_modules) is rebuilt and reconciles the
-      // manifest's user dependencies on first boot.
+      // User delta and plugin manifest cross; the merged runtime is rebuilt on
+      // first boot. The lockfile stays behind: pnpm records link: dependencies
+      // relative to the profile directory, so a copied lockfile builds broken
+      // links after the move; a repair install regenerates it from package.json.
       for (const profile of (await readdir(join(source.home, 'profiles'))).sort()) {
-        for (const file of ['cordis.patch.yml', 'package.json', 'pnpm-workspace.yaml', 'pnpm-lock.yaml']) {
+        for (const file of ['cordis.patch.yml', 'package.json', 'pnpm-workspace.yaml']) {
           const path = join(source.home, 'profiles', profile, file)
           if (await exists(path)) files.push({ sourcePath: path, target: join('data', namespace, 'dsh/profiles', profile, file), bytes: (await lstat(path)).size, sha256: await fileDigest(path) })
         }

@@ -37,8 +37,9 @@ async function fixture() {
   await put('data/eduwork-electron/dsh/attachments/v1/ab/cd/abcd', 'attachment-bytes')
   await put('data/eduwork-electron/dsh/profiles/desktop-017/cordis.patch.yml', 'ui-theme:\n  fontSize: 15\n')
   await put('data/eduwork-electron/dsh/profiles/desktop-017/cordis.yml', 'generated-runtime: true\n')
-  await put('data/eduwork-electron/dsh/profiles/desktop-017/package.json', '{"name":"eduwork-desktop-profile","dependencies":{"user-plugin":"1.0.0"}}')
+  await put('data/eduwork-electron/dsh/profiles/desktop-017/package.json', '{"name":"eduwork-desktop-profile","dependencies":{"user-plugin":"link:D:/old/location/user-plugin"}}')
   await put('data/eduwork-electron/dsh/profiles/desktop-017/pnpm-workspace.yaml', 'packages: []\n')
+  await put('data/eduwork-electron/dsh/profiles/desktop-017/pnpm-lock.yaml', "lockfileVersion: '9.0'\nimporters:\n  .:\n    dependencies:\n      user-plugin:\n        specifier: link:D:/old/location/user-plugin\n        version: link:../../../old/location/user-plugin\n")
   await put('data/eduwork-electron/dsh/logs/desktop.log', 'log-line')
   await put('data/eduwork-electron/browser/credentials.encrypted', 'v10-encrypted-bytes')
   await put('data/eduwork-electron/browser/Local Storage/leveldb/000001.log', 'local-storage')
@@ -90,14 +91,14 @@ test('normal import copies the allowlist, remaps the internal workspace and neve
     const read = rel => readFile(join(target, rel), 'utf8')
     assert.equal(await read('data/eduwork-electron/dsh/memory.sqlite3'), 'memory-db')
     assert.equal(await read('data/eduwork-electron/dsh/profiles/desktop-017/cordis.patch.yml'), 'ui-theme:\n  fontSize: 15\n')
-    assert.equal(await read('data/eduwork-electron/dsh/profiles/desktop-017/package.json'), '{"name":"eduwork-desktop-profile","dependencies":{"user-plugin":"1.0.0"}}')
+    assert.equal(await read('data/eduwork-electron/dsh/profiles/desktop-017/package.json'), '{"name":"eduwork-desktop-profile","dependencies":{"user-plugin":"link:D:/old/location/user-plugin"}}')
     assert.equal(await read('data/eduwork-electron/dsh/profiles/desktop-017/pnpm-workspace.yaml'), 'packages: []\n')
     assert.equal(await read('data/eduwork-electron/browser/credentials.encrypted'), 'v10-encrypted-bytes')
     assert.equal(await read('config/eduwork.jsonc'), '{\n  "schemaVersion": 1\n}\n')
     assert.equal(await read('data/state/update-preferences.json'), '{"automaticUpdates":false}')
     assert.equal(await read('data/configuration/state.json'), '{"initialized":true}')
     assert.equal(await read('workspaces/sample-workspace-internal/README.md'), '# internal workspace\n')
-    for (const absent of ['data/eduwork-electron/dsh/logs', 'data/eduwork-electron/dsh/profiles/desktop-017/cordis.yml', 'data/eduwork-electron/browser/Cache', 'data/eduwork-electron/browser/GPUCache']) {
+    for (const absent of ['data/eduwork-electron/dsh/logs', 'data/eduwork-electron/dsh/profiles/desktop-017/cordis.yml', 'data/eduwork-electron/dsh/profiles/desktop-017/pnpm-lock.yaml', 'data/eduwork-electron/browser/Cache', 'data/eduwork-electron/browser/GPUCache']) {
       await assert.rejects(lstat(join(target, absent)), { code: 'ENOENT' })
     }
     const registry = JSON.parse(await read('data/eduwork-electron/dsh/storages/workspace.json'))
