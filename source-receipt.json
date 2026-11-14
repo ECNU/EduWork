@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T17:47:49.747Z",
-  "fileSetSHA256": "a3ec8bc29a5118dc1e173dc5d41326e73415431307a8c811857621f8c0477eeb",
+  "createdAt": "2026-11-14T17:53:24.043Z",
+  "fileSetSHA256": "52ced977244762d89bd0c117cdca99ddac3b98a008cc63e5209da40a407c8ed4",
   "files": [
     {
       "path": ".gitattributes",
@@ -49,7 +49,7 @@
     },
     {
       "path": ".github/workflows/validate-local-web.yml",
-      "sha256": "a4e83eecded629f6541c04d030c6919023deea3a94d481ff32b7e84ac9eba6a8"
+      "sha256": "049281f03bee68a1c5046bbe2c2bf7d843b7a1a04313f68859b2a4895bb9ba00"
     },
     {
       "path": ".github/workflows/validate-macos-speech.yml",
@@ -57,7 +57,7 @@
     },
     {
       "path": ".github/workflows/validate-macos-updates.yml",
-      "sha256": "b16dc2644ae76e492829ace99fc37f13102e7137a622e9e81985719307aa490b"
+      "sha256": "adbc89984033d4c1b863d01e06a8e5abf891831590c869d5ff01a023e8381e81"
     },
     {
       "path": ".github/workflows/validate-pinned-dsh-source.yml",
@@ -1129,11 +1129,11 @@
     },
     {
       "path": "dsh-electron/README_EN.md",
-      "sha256": "1c420258160f18a7e322cb6f01924b22cb6c5fa027f6308d56e20ede00ba34d6"
+      "sha256": "ee40ef0686acbecffc09618326b22ee78c1b777f3f48dee861b2e0cf433a7a27"
     },
     {
       "path": "dsh-electron/README.md",
-      "sha256": "60f753d4c503c41da66e232f06aebfa9250ce54997c0cc9695dad1603784e6e8"
+      "sha256": "e4e12c283414b2f427babd558cad82dfa9be33c006f5fb184f0f549886cb827e"
     },
     {
       "path": "dsh-electron/scripts/assemble-macos.mjs",
@@ -1157,7 +1157,7 @@
     },
     {
       "path": "dsh-electron/scripts/build-shell.mjs",
-      "sha256": "8bb764925525280ad34bf06cbd7dca5ba7706563b1b61b2277ebd2a3e32db9c0"
+      "sha256": "de951959be085bcd081d0c449d1a693be9afa2ef7018369fcf925824f5f9c015"
     },
     {
       "path": "dsh-electron/scripts/create-macos-archive.mjs",
@@ -1345,7 +1345,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "af7b212313cbd0249a69bf50a3e7460925dac8d60af175d73b2f30e3a8425c55"
+      "sha256": "c12e1eeb9a900d43caa1480997608736e6f910c4a25c0aa48d6a8865c4b89474"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1365,7 +1365,11 @@
     },
     {
       "path": "dsh-electron/src/software-update-control.mjs",
-      "sha256": "23df2db92b54df7a145854b4dbc281f05225712740a9c314d391dbd345b2f1dd"
+      "sha256": "0e7c4d2359e444fc7cbc5b0de90c44cc5ce1b8e047bd204315e45829703cc1d7"
+    },
+    {
+      "path": "dsh-electron/src/software-update-scheduler.mjs",
+      "sha256": "5c601030c8bd56fe8188b5c60eabdd1c9aedc086a51437943462aed6ce42faed"
     },
     {
       "path": "dsh-electron/src/startup-failure.mjs",
@@ -1525,7 +1529,7 @@
     },
     {
       "path": "dsh-electron/tests/legacy-migration.test.mjs",
-      "sha256": "199ea4b62fb127b880d32b266aa70a8f149d59398d8fb1ad7d4e41f4f7e3fa38"
+      "sha256": "687da8cc00258b9dbc1f4e1bee8ed926287064d61e10773441a850486830d315"
     },
     {
       "path": "dsh-electron/tests/lifecycle.test.mjs",
@@ -1577,7 +1581,11 @@
     },
     {
       "path": "dsh-electron/tests/software-update-control.test.mjs",
-      "sha256": "77d000b5336709780f613d9b0f2437ed610f39339664c012d08d2fa35e4617dc"
+      "sha256": "f9992f4a3e0a04888f0585844bb6ca15cb16f3e779508f9c1ad326213dc38327"
+    },
+    {
+      "path": "dsh-electron/tests/software-update-scheduler.test.mjs",
+      "sha256": "a858675f90faa84531cd22ef2d289d2393ab26c70a2f8b06892c954033e84376"
     },
     {
       "path": "dsh-electron/tests/sparkle-macos-smoke.mjs",
@@ -1597,7 +1605,7 @@
     },
     {
       "path": "dsh-electron/tests/startup-presentation.test.mjs",
-      "sha256": "658ac27bb3d56672a931531392af294a6b3b2346e01cdf7f52eb3621d6573886"
+      "sha256": "6ea9f378345cc1e0a05f457b91eba27d34c54d42f6ca251345d8b0afaa4bbec2"
     },
     {
       "path": "dsh-electron/tests/task-notifications.electron.mjs",
