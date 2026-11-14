@@ -1,5 +1,14 @@
 # 变更记录 / Changelog
 
+## Unreleased
+
+- 修复 iOS / iPadOS 16.4–17.3 上远程界面白屏：配对成功、电脑上也显示已连接，但设备上什么都不显示。远程网页现在会补上这些系统缺少的浏览器功能，DSH 界面也能正常加载。低于 16.4 的系统会提示版本过低，不再白屏。只需更新中继，电脑端不用更新。
+
+- Fix a blank remote interface on iOS / iPadOS 16.4–17.3, where pairing succeeded and the computer showed the device as connected but nothing appeared on it. The remote web page now fills in the browser features these versions lack, so the DSH interface loads as well. Older versions are told the system is too old instead of showing a blank page. Only the relay needs updating; computers do not.
+
+- 修复电脑启用“思考过程机器翻译”后远控页面无法启动的问题；远端翻译沿用电脑已配置的服务与限制，配置仍仅能在电脑上修改。
+- Fix remote workbench startup with reasoning machine translation enabled. Remote translation uses the Host's configured service and limits; preferences remain editable only on the computer.
+
 ## 0.1.6 — Unreleased
 
 - 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。 适配 Office Kit、搜索 provider、子代理停止及账号通知接口；继续拒绝本机终端和配置管理接口。

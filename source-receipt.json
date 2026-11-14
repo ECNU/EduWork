@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T17:39:31.863Z",
-  "fileSetSHA256": "2fa451a4a3d79718c04a08d1529c0bd061c3456695107273c757f44ea002a7f1",
+  "createdAt": "2026-11-14T17:53:24.043Z",
+  "fileSetSHA256": "52ced977244762d89bd0c117cdca99ddac3b98a008cc63e5209da40a407c8ed4",
   "files": [
     {
       "path": ".gitattributes",
@@ -6797,7 +6797,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "5a3442e236155b899c06e9206bf029893c7fea0e608ad0f5acb0d673674a6302"
+      "sha256": "0207ca41bbaf7c8e42153ee1de7eaaa76723f2ee5cec4f53379ebb4bd07af432"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6805,11 +6805,11 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT_EN.md",
-      "sha256": "172b23e234154b21e7be2da820a5990c8c674f8ae260877dc02b2c3a9d2ad179"
+      "sha256": "96e2e85693d7be87d19db498f12db56d16cc5f155d890b2b05a18fe9c4050e4f"
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT.md",
-      "sha256": "9e4f49f6bd0d8af89544a536b455c0aa2557563aa0b19a6da2cc800302aa99fa"
+      "sha256": "b42a3c6f440f47432dac092154093cab92a77c5c3bae74769a4e76ac3ae0eb91"
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/.dockerignore",
@@ -6869,11 +6869,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "dfff20b6b4f7d9849306a9fc933393e48247f79163ee04ad0af59f14b738abea"
+      "sha256": "4d8b7e921b0c960b92ba70a8f6c6fb49ae32a2ea16b50079e55982bf1aa777fa"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "faaa9f24249a1c7b57f20c8e33b0440813d1a7776583afd0a7369ba3737f8286"
+      "sha256": "b3828d72b6dd1dd7cb663846dab2b30a63648a32b2032c07abb6bd585c7be08d"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",
@@ -6881,7 +6881,7 @@
     },
     {
       "path": "packages/dsh-remote-access/scripts/check-web.ts",
-      "sha256": "e65eecb3d46ac7e5e56b34c6c3a7c43951eed557c026145e6945b5b4df3a0ec2"
+      "sha256": "e4881463215c6a3cb82638017f4e5950d3c0e454bad4913cf132ac902724bc5e"
     },
     {
       "path": "packages/dsh-remote-access/src/client/device.tsx",
@@ -6917,7 +6917,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "e0bffa2b449a2be83f552f7af1b31d9e2175e953d9bab1f110f4e4c0cdce63b8"
+      "sha256": "460bce4a89f0cc59dc36c2519c83827eb18a717522e15c989617cf1dd7e608a9"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -7012,16 +7012,20 @@
       "sha256": "fa252564059d9c18a108db1da45b76b253913c2b70a1f6a5edc4fcce93f78774"
     },
     {
+      "path": "packages/dsh-remote-access/src/web/fallbacks.ts",
+      "sha256": "1c882b9d1333e6dbd06bce746c55e06b358c6ef7c4bd061e68ad44768c0eef32"
+    },
+    {
       "path": "packages/dsh-remote-access/src/web/hosts.ts",
       "sha256": "602492bf1af31b185dcfc638d1745709a5a5303922cc8878daa74dc985786afd"
     },
     {
       "path": "packages/dsh-remote-access/src/web/loader.ts",
-      "sha256": "036accb0430442dfecbc7bdd4efc9964dfcd9f563db641a50e4e758f58a5f516"
+      "sha256": "55972c9e79e424f696492cc8bbc5e96bbaf046fa4268857e924bb9f7f503843c"
     },
     {
       "path": "packages/dsh-remote-access/src/web/preamble.ts",
-      "sha256": "a8a0b4e9dcc0a01bebd542e0739767f9a0cbc4d822663cf99c171e330df8d767"
+      "sha256": "4cffd4208ba032567a38715ab55b855c8808e365ed5b4a458cc1c07a501f8e60"
     },
     {
       "path": "packages/dsh-remote-access/src/web/static/icon.png",
@@ -7049,11 +7053,15 @@
     },
     {
       "path": "packages/dsh-remote-access/src/web/text.ts",
-      "sha256": "a040a3f0cb46602c5689634892a81d3eb0781c42cc6304b1757bdd6cf9d8a8ed"
+      "sha256": "72b10561b178e4a5b92c0b90a9040657c9d531bb2c6c7ff848dcd6893c28d13d"
     },
     {
       "path": "packages/dsh-remote-access/test/connections/compression.test.ts",
       "sha256": "db7678f8a177e4bf779846dcebe1b31ff1e024a41c84deeb31fd0d08f9982499"
+    },
+    {
+      "path": "packages/dsh-remote-access/test/connections/translation.test.ts",
+      "sha256": "d6bc9555837b5061e56321bfbbaf166b65701c5ce57511184e052326cb738f0d"
     },
     {
       "path": "packages/dsh-remote-access/test/gate/dsh-0.2.1-rc.2-web.json",
@@ -7069,7 +7077,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/gate/gate.test.ts",
-      "sha256": "c962c2d409e3e1220db2e576dc36b6c52b7fc1cb32f2a0957709861c0f219d93"
+      "sha256": "1ed041108c56734e8e86d7e6fee0df177a84883e6953ed8b517df14d81f1f36b"
     },
     {
       "path": "packages/dsh-remote-access/test/harness.ts",
@@ -7126,6 +7134,10 @@
     {
       "path": "packages/dsh-remote-access/test/remote-access.test.ts",
       "sha256": "60b0c80b92ba25141360eff50ee178fc062674bc0fa8d878806522f3437c88bd"
+    },
+    {
+      "path": "packages/dsh-remote-access/test/web/fallbacks.test.ts",
+      "sha256": "21a4d8747948f76cc84e2a02ee3001087f4dd63b1d5d1dd065bc2b010b36a111"
     },
     {
       "path": "packages/dsh-remote-access/THIRD_PARTY_NOTICES.md",
