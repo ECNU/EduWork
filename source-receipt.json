@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T18:15:27.493Z",
-  "fileSetSHA256": "1c7a398e250ebccbe504582fcc14a6a850737585e5cdb37d149153dbc8fb6134",
+  "createdAt": "2026-11-14T18:29:46.931Z",
+  "fileSetSHA256": "191218c23acb98fe6f35aaf63dce91f6a74d065d4ba95a541c4248c071407c7d",
   "files": [
     {
       "path": ".gitattributes",
@@ -8689,7 +8689,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/remote-access.json",
-      "sha256": "8682e002b1f6c58f608767e88a02c53d9a593dc124b004ae8e572024495ad62a"
+      "sha256": "8fce093876a96d1d6d6e162227613baeb3b9c657d45220ca59481133e0b8b6fb"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/side-chat.json",
@@ -8697,11 +8697,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/source-probe/package-lock.json",
-      "sha256": "dec0d3c63864f080ea8bf3da2b799445937f1052c3378f196b6abea91b661603"
+      "sha256": "c5a1d4c5484f006511f4cf1e9fe96b6ef466e4f7adb9e3afe29442901cfdf8ec"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/source-probe/package.json",
-      "sha256": "9886a2fb7d978d08150c659c977f9d173490298db9df0ffa8ede8e69a10bc9b6"
+      "sha256": "7501a308e15c99e8821319f13021eaafb91d75bbac0318d405356a93b88edc12"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",
