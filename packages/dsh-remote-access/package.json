@@ -1,6 +1,6 @@
 {
   "name": "@eduwork/dsh-remote-access",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "description": "End-to-end encrypted remote access to a DSH host through a self-hosted relay",
   "type": "module",
   "license": "MulanPSL-2.0 AND MIT",
