@@ -46,23 +46,30 @@ export function adaptNativeHostProcess(input) {
 
 export function adaptNativeHostEntry(input) {
   let text = input.replaceAll('\r\n', '\n')
-  text = replace(text, "import * as desktopOffice from './office.ts'", "import { parse } from 'yaml'\nimport { stageLegacySettings, importLegacySettings } from './settings-migration.mjs'")
+  const legacyOffice = text.includes("import * as desktopOffice from './office.ts'")
+  const migrationImports = "import { parse } from 'yaml'\nimport { stageLegacySettings, importLegacySettings } from './settings-migration.mjs'"
+  text = legacyOffice ? replace(text, "import * as desktopOffice from './office.ts'", migrationImports) : migrationImports + '\n' + text
+  // rc.2 no longer needs this import for desktop Office. Our settings migration
+  // still needs the same official user-home resolver.
+  if (!legacyOffice) text = "import { resolveDshHome } from '@deepseek-ai/dsh-home-paths'\n" + text
   text = replace(text, "import { installPlatformSessionPublisher } from './platform-session.ts'\n", '')
   // The product manifest owns its bundled extensions as well as DSH. Using
   // the CLI manifest here makes profile resolution omit all product packages.
   text = replace(text, "const installAnchor = join(runtimeDir, 'node_modules', '@deepseek-ai', 'dsh', 'package.json')", "const installAnchor = join(runtimeDir, 'package.json')")
-  for (const module of ['update-tasks', 'office-engine', 'quit-inspection', 'fatal-diagnostic', 'operation-diagnostics', 'file-drag']) {
+  for (const module of ['update-tasks', 'quit-inspection', 'fatal-diagnostic', 'operation-diagnostics', 'file-drag', 'office-engine']) {
     text = text.replaceAll(`'./${module}.ts'`, `'./${module}.js'`)
   }
   text = replace(text, '  const application = runProfile({', '  const migration = await stageLegacySettings(resolveDshHome())\n  const application = runProfile({')
   text = replace(text, 'patchFiles: [],', "patchFiles: [join(import.meta.dirname, 'distribution-policy.patch.json')],")
   // Upstream now owns loopback binding and ephemeral port selection.
-  text = replace(text, `  await ctx.plugin(desktopOffice, {
+  if (legacyOffice) text = replace(text, `  await ctx.plugin(desktopOffice, {
     runtimeDir,
     source: process.argv[4] ?? join(runtimeDir, '..', 'runtime', 'primary-runtime'),
     root: join(resolveDshHome(), 'dsh-runtimes', 'dsh-primary-runtime'),
-  })
-  installPlatformSessionPublisher(ctx, (session) => {
+  })\n`, '')
+  // rc.2 registers Office tools through the Runtime composition. rc.1 still
+  // imports its engine resolver, independently of the removed desktopOffice plugin.
+  text = replace(text, `  installPlatformSessionPublisher(ctx, (session) => {
     if (process.connected) process.send?.({ type: 'platform-session', session })
   })`, `  // EduWork's selected composition owns Office authoring dependencies and
   // organization login. Do not install a second set of skills/account hooks.
@@ -114,6 +121,11 @@ export async function prepareNative({ upstream, output }) {
   await emit('node-environment.mjs', transform(input['apps/desktop/src/node-environment.ts']))
   await emit('web-document.mjs', transform(adaptNativeWebDocument(input['apps/desktop/src/web-document.ts'])))
   await emit('desktop-host/lib/index.js', transform(adaptNativeHostEntry(input['apps/desktop-host/src/index.ts'])))
+  // Keep the resolver while the pinned entry imports it. rc.2 removes this
+  // module; its input must leave the source receipt when that lock is selected.
+  if (input['apps/desktop-host/src/office-engine.ts'] !== undefined) {
+    await emit('desktop-host/lib/office-engine.js', transform(input['apps/desktop-host/src/office-engine.ts']))
+  }
   await emit('desktop-host/lib/distribution-policy.patch.json', JSON.stringify(distributionPolicy(), null, 2) + '\n')
   // This hook is installed after profile plugins. Prepend it so a plugin's
   // handled media/API response cannot bypass update admission.
@@ -121,7 +133,6 @@ export async function prepareNative({ upstream, output }) {
     '  })\n  return async (action) => {', '  }, true)\n  return async (action) => {')
   await emit('desktop-host/lib/update-tasks.js', transform(admission))
   await emit('desktop-host/lib/quit-inspection.js', transform(adaptNativeQuitInspection(input['apps/desktop-host/src/quit-inspection.ts'])))
-  await emit('desktop-host/lib/office-engine.js', transform(input['apps/desktop-host/src/office-engine.ts']))
   for (const name of ['fatal-diagnostic', 'operation-diagnostics', 'file-drag']) {
     await emit(`desktop-host/lib/${name}.js`, transform(input[`apps/desktop-host/src/${name}.ts`]))
   }

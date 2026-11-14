@@ -19,12 +19,14 @@ const compose = (composition, patches, warnings = []) => composeEntries([
   mergeDistributionConfigPatches(composition, patches, composeEntries),
 ], message => warnings.push(message))
 
-test('real edition preparation replaces the public calendar Skill and retains edition references', {
-  skip: !process.env.EDUWORK_TEST_PREPARED_PRODUCT,
+const editionProduct = process.env.EDUWORK_TEST_PREPARED_PRODUCT || process.env.EDUWORK_TEST_PRODUCT
+
+test('real edition preparation replaces the bundled Studio skill and retains edition references', {
+  skip: !editionProduct,
 }, async t => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-edition-skills-'))
   t.after(() => rm(root, { recursive: true, force: true }))
-  const input = process.env.EDUWORK_TEST_PREPARED_PRODUCT
+  const input = editionProduct
   const product = join(root, 'product'), edition = join(root, 'edition')
   await mkdir(join(product, 'd'), { recursive: true })
   // Runtime packages are read-only in this fixture; output metadata stays isolated.
@@ -40,9 +42,9 @@ test('real edition preparation replaces the public calendar Skill and retains ed
   await mkdir(join(edition, 'edition'), { recursive: true })
   await writeFile(join(edition, 'edition/distribution.json'), JSON.stringify({
     id: identity.distribution, brand: identity.brand, capabilities: identity.capabilities,
-    plugins: [], resources: [], skills: [{ name: 'calendar-management', replace: true,
-      sourcePackage: '@eduwork/dsh-calendar', sourcePath: 'skills/calendar-management',
-      references: [{ title: 'Synthetic academic calendar', path: '../../resources/calendar/guide.md' }],
+    plugins: [], resources: [], skills: [{ name: 'knowledge-studio', replace: true,
+      sourcePackage: '@eduwork/dsh-knowledge-studio', sourcePath: 'skills/knowledge-studio',
+      references: [{ title: 'Synthetic Studio guide', path: '../../resources/studio/guide.md' }],
     }],
   }))
   const git = args => execFileSync('git', ['-C', edition, ...args], { stdio: 'pipe', windowsHide: true })
@@ -51,11 +53,11 @@ test('real edition preparation replaces the public calendar Skill and retains ed
   git(['-c', 'user.name=Synthetic Fixture', '-c', 'user.email=synthetic@example.invalid', 'commit', '-m', 'Synthetic edition'])
   execFileSync(process.execPath, [fileURLToPath(new URL('../prepare-pinned-dsh-product.mjs', import.meta.url)),
     '--product', product, '--edition', edition, '--version', '0.0.0-alpha.1'], { stdio: 'pipe', windowsHide: true })
-  const body = await readFile(join(product, 'skills/calendar-management/SKILL.md'), 'utf8')
-  const publicBody = await readFile(join(input, 'd/node_modules/@eduwork/dsh-calendar/skills/calendar-management/SKILL.md'), 'utf8')
+  const body = await readFile(join(product, 'skills/knowledge-studio/SKILL.md'), 'utf8')
+  const publicBody = await readFile(join(input, 'd/node_modules/@eduwork/dsh-knowledge-studio/skills/knowledge-studio/SKILL.md'), 'utf8')
   assert.ok(body.startsWith(publicBody.trimEnd()))
   assert.equal(body.split('## 发行版参考资料').length, 2)
-  assert.ok(body.includes('[Synthetic academic calendar](<../../resources/calendar/guide.md>)'))
+  assert.ok(body.includes('[Synthetic Studio guide](<../../resources/studio/guide.md>)'))
 })
 
 test('edition config updates retain other product fields and preserve disabled', { skip: !runtime }, () => {
