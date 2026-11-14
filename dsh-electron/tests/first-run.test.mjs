@@ -56,10 +56,31 @@ test('the synchronous check reads the real target directory', async t => {
   assert.equal(firstRunPendingSync(installed), false)
 })
 
+test('a target path occupied by a file fails explicitly in both gate checks', async t => {
+  const base = await mkdtemp(join(tmpdir(), 'eduwork-first-run-enotdir-'))
+  t.after(() => rm(base, { recursive: true, force: true }))
+  const userRoot = join(base, 'occupied')
+  await writeFile(userRoot, 'not a directory')
+  const installed = { userRoot, dataLayout: 'installed', platform: 'win32' }
+  // A pre-gate inspection failure must surface, never read as pending (empty
+  // start) or reuse; the installed candidate then fails startup explicitly.
+  assert.throws(() => firstRunPendingSync(installed), { code: 'ENOTDIR' })
+  await assert.rejects(firstRunPending(installed), { code: 'ENOTDIR' })
+})
+
 test('activation defers only for an unsettled installed first-run, then binds the browser profile to the target', () => {
   const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
   const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('let pathsActivated'))
   assert.match(configure, /if \(!firstRunPendingSync\(\{ userRoot: paths\.userRoot, dataLayout: settings\.dataLayout \}\)\) activateEduworkPaths\(\)/)
+})
+
+test('the gate reuses existing data without dialogs, and activation is idempotent and owns the fresh target', () => {
+  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const resolve = source.slice(source.indexOf('export async function resolveInstalledFirstRun()'), source.indexOf('export function installEduworkFromDmg()'))
+  assert.match(resolve, /if \(!await firstRunPending\(\{ userRoot: paths\.userRoot, dataLayout: settings\.dataLayout \}\)\) return 'reuse'/)
+  assert.match(resolve, /createTarget: \(\) => activateEduworkPaths\(\)/)
+  const activate = source.slice(source.indexOf('export function activateEduworkPaths()'), source.indexOf('export async function resolveInstalledFirstRun()'))
+  assert.match(activate, /if \(pathsActivated\) return/)
 })
 
 test('a settled first-run relaunches to rebind os_crypt; cancel quits without a target', () => {
