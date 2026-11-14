@@ -44,6 +44,7 @@ export function desktopPaths({ appRoot, appData, settings, platform = process.pl
   }
   return {
     root,
+    userRoot: writableRoot,
     updateDataRoot: testRoot && !installed ? join(dataRoot, 'updates') : join(writableRoot, 'data'),
     skillsManifestPath: mac ? join(appRoot, '../bundled-skills.json') : join(root, 'RELEASE-MANIFEST.json'),
     product: resolve(appRoot, settings.product),

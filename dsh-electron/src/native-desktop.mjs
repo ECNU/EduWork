@@ -20,7 +20,7 @@ import { redactDiagnostic } from './diagnostics.mjs'
 import { startupDiagnostic } from './startup-failure.mjs'
 import { PET_SCHEME } from './desktop-pet-core.mjs'
 import { shouldPresentMainWindow } from './startup-presentation.mjs'
-import { configureEduworkPaths, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
+import { configureEduworkPaths, activateEduworkPaths, resolveInstalledFirstRun, installEduworkFromDmg, prepareEduworkDesktop, nativeBootstrap, desktopReady, desktopWebRoot,
   desktopStartupWindowPresent, trackHost, desktopHostLog, isQuitting, attachDesktopWindow, configureWindowNavigation,
   showDesktopFailure, prepareDesktopRecovery, cancelDesktopStartup, isShutdownFailed, recordStartupStopFailureHealth, showDesktop, checkProductUpdates, setDesktopQuitGuard, restartDesktop, stopDesktopServices, pickDesktopDirectory, desktopBootBrand,
   showHostStartupProgress, readInitialCloseAction, productUpdateObserver } from './product.mjs'
@@ -193,7 +193,12 @@ async function handleStartupFailure(error, source = 'main') {
 }
 async function main() {
   if (await installEduworkFromDmg() || isQuitting()) return
+  // Lock stays in default userData: an early redirect would let Chromium bootstrap write the target before the choice.
   if (!claimDesktopSingleInstance(app, showDesktop)) return
+  // The installed first-run data choice precedes any target write, the browser
+  // profile and the Host; cancelling quits without creating the target.
+  if (await resolveInstalledFirstRun() === 'cancel') { app.quit(); return }
+  activateEduworkPaths()
   // The early BootPage must obey the local close policy before preparation reads it.
   readInitialCloseAction()
   void pruneCrashReports(app.getPath('logs')).catch(() => {})

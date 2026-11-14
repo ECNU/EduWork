@@ -24,6 +24,7 @@ test('macOS mutable paths and both editions use the user config directory, inclu
   const options = { appRoot, appData, settings, platform: 'darwin' }
   const paths = desktopPaths(options), userRoot = join(appData, 'example-electron')
   assert.equal(paths.root, root)
+  assert.equal(paths.userRoot, userRoot)
   assert.equal(paths.product, join(root, 'Contents/Resources/product'))
   for (const path of [paths.config, paths.home, paths.userData, paths.logs, paths.updateDataRoot]) {
     assert.equal(relative(userRoot, path).startsWith('..'), false)
@@ -41,6 +42,7 @@ test('Windows portable config, update state and manifest locations stay compatib
   const root = resolve('synthetic-portable'), appRoot = join(root, 'resources/app')
   const paths = desktopPaths({ appRoot, settings, platform: 'win32' })
   assert.equal(paths.root, root)
+  assert.equal(paths.userRoot, root)
   assert.equal(paths.config, join(root, 'config/eduwork.jsonc'))
   assert.equal(paths.home, join(root, 'data/example-electron/dsh'))
   assert.equal(paths.updateDataRoot, join(root, 'data'))
@@ -62,6 +64,7 @@ test('Windows installed layout keeps personal state in the per-user directory', 
   const options = { appRoot, appData, settings: { ...settings, dataLayout: 'installed' }, platform: 'win32' }
   const paths = desktopPaths(options), userRoot = join(appData, 'EduWork/example')
   assert.equal(paths.root, root)
+  assert.equal(paths.userRoot, userRoot)
   assert.equal(paths.config, join(userRoot, 'config/eduwork.jsonc'))
   assert.equal(paths.home, join(userRoot, 'data/example-electron/dsh'))
   assert.equal(paths.userData, join(userRoot, 'data/example-electron/browser'))
@@ -95,6 +98,7 @@ test('Windows installed test root isolates config and data together', () => {
   const options = { appRoot, appData: resolve('synthetic-user/Local'), settings: { ...settings, dataLayout: 'installed' }, platform: 'win32' }
   const testRoot = resolve('synthetic-isolated-installed')
   const paths = desktopPaths({ ...options, testRoot })
+  assert.equal(paths.userRoot, testRoot)
   assert.equal(paths.config, join(testRoot, 'config/eduwork.jsonc'))
   assert.equal(paths.home, join(testRoot, 'data/example-electron/dsh'))
   assert.equal(paths.updateDataRoot, join(testRoot, 'data'))

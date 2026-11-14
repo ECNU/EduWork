@@ -16,6 +16,8 @@ import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
+import { firstRunPending, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
+import { importPortableData } from './portable-import.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
 import { startPortableUpdates, editablePortableUpdateConfiguration, resolveUpdateConfiguration } from './portable-updates.mjs'
@@ -145,17 +147,10 @@ export function configureEduworkPaths() {
   if (settings.schemaVersion !== 1 || settings.shell !== 'electron' || !/^[a-z0-9.-]+$/u.test(settings.appId)) throw new Error('Invalid EduWork desktop identity')
   paths = desktopPaths({ appRoot, settings, appData: process.platform === 'darwin' ? app.getPath('appData') : process.env.LOCALAPPDATA,
     testRoot: process.env.EDUWORK_DESKTOP_TEST_DATA_ROOT, configOverride: process.env.EDUWORK_CONFIG_FILE })
-  mkdirSync(paths.userData, { recursive: true })
-  mkdirSync(paths.logs, { recursive: true })
-  desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
   // Successful sandboxed startup is the capability check. Lack of WRITE_DAC
   // or one expected ACE does not prove Electron cannot run. Installation and
   // update still provision runtime access; ordinary startup never changes ACLs.
   applyDesktopBrand(app, process.platform, settings)
-  app.setPath('userData', paths.userData)
-  app.setAppLogsPath(paths.logs)
-  process.env.DSH_HOME = paths.home
-  process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
   // Startup/error recovery must take precedence over a partially loaded workbench.
   attachAppActivation({ app, windows: activationWindows })
   // Own the process tree from the beginning of startup, including when the
@@ -166,6 +161,32 @@ export function configureEduworkPaths() {
     event.preventDefault()
     void desktopExit.request()
   })
+  // The installed layout may still owe its first-run data choice; deferring
+  // activation keeps the target untouched until the user decides. Every other
+  // layout keeps the original immediate activation.
+  if (process.platform !== 'win32' || settings.dataLayout !== 'installed') activateEduworkPaths()
+}
+let pathsActivated = false
+export function activateEduworkPaths() {
+  if (pathsActivated) return
+  pathsActivated = true
+  mkdirSync(paths.userData, { recursive: true })
+  mkdirSync(paths.logs, { recursive: true })
+  desktopHostLog(`\n[desktop] Starting ${settings.productVersion} (electron) ${new Date().toISOString()}\n`)
+  app.setPath('userData', paths.userData)
+  app.setAppLogsPath(paths.logs)
+  process.env.DSH_HOME = paths.home
+  process.env.DSH_DESKTOP_DIAGNOSTIC_FILE = join(paths.logs, 'startup-error.log')
+}
+export async function resolveInstalledFirstRun() {
+  if (!await firstRunPending({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) return 'reuse'
+  const { action } = await resolveFirstRunData({
+    ...firstRunDialogs({ productName: settings.productName,
+      showMessageBox: options => dialog.showMessageBox(options),
+      showOpenDialog: options => dialog.showOpenDialog(options) }),
+    importSource: sourceRoot => importPortableData({ sourceRoot, targetRoot: paths.userRoot, distribution: settings.distribution }),
+  })
+  return action
 }
 export function installEduworkFromDmg() {
   return installFromDmg({ app, shell, dialog, appPath: paths.root, warn: message => desktopHostLog(`[installer] ${message}\n`) })
