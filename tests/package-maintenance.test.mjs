@@ -23,7 +23,7 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.deepEqual(changedGroups(['packages/dsh-knowledge-studio/packages/artifact-services/lib/speech.js']), ['dsh-knowledge-studio'])
   assert.deepEqual(changedGroups(['packages/dsh-oidc/src/host/model-provider.ts']), ['dsh-oidc'])
   assert.deepEqual(changedGroups(['packages/dsh-mail/README.md', 'README.md']), [])
-  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 11)
+  assert.equal(changedGroups(['scripts/packages/release.mjs']).length, 12)
   assert.deepEqual(changedGroups(['packages/dsh-decision/src/core.js']), ['dsh-decision'])
   assert.deepEqual(changedGroups(['packages/dsh-annotation/src/client/selection-actions.js']), ['dsh-annotation', 'dsh-side-chat'])
   assert.equal(needsProductBuild(['packages/dsh-oidc/src/host/model-provider.ts', 'docs/PACKAGES.md']), false)
@@ -31,8 +31,8 @@ test('shared-service changes select Studio integration; unrelated packages and d
   assert.equal(needsProductBuild(['dsh-host/entry.mjs']), true)
   assert.throws(() => selectPackage('../../private'), /Unknown package/)
 })
-test('twelve separate package identities retain registry dependency contracts and product npm locks', async () => {
-  assert.equal(new Set(packages.map(p => p.name)).size, 12)
+test('thirteen separate package identities retain registry dependency contracts and product npm locks', async () => {
+  assert.equal(new Set(packages.map(p => p.name)).size, 13)
   for (const selected of packages) {
     const pkg = JSON.parse(await readFile(new URL(`../${selected.directory}/package.json`, import.meta.url)))
     assert.equal(pkg.name, selected.name)
@@ -44,7 +44,7 @@ test('twelve separate package identities retain registry dependency contracts an
   const assembly = JSON.parse(await readFile(new URL('../config/assembly.eduwork.json', import.meta.url)))
   for (const selected of packages) {
     const declaration = assembly.externalPackages.find(p => p.name === selected.name)
-    if (['dsh-external-agents', 'dsh-decision', 'dsh-desktop-pet', 'dsh-annotation', 'dsh-side-chat', 'dsh-remote-access'].includes(selected.id)) {
+    if (['dsh-external-agents', 'dsh-decision', 'dsh-desktop-pet', 'dsh-annotation', 'dsh-side-chat', 'dsh-message-edit', 'dsh-remote-access'].includes(selected.id)) {
       // DSH 0.2 packages; never add them to the legacy 0.1.x product.
       assert.equal(declaration, undefined)
       continue
@@ -120,7 +120,7 @@ test('publication rejects the wrong package, missing entry points and archive tr
 })
 
 test('conversation packages need their native bundle entry and client in the archive', () => {
-  for (const id of ['dsh-side-chat', 'dsh-annotation']) {
+  for (const id of ['dsh-side-chat', 'dsh-message-edit', 'dsh-annotation']) {
     const selected = selectPackage(id)
     const manifest = { name: selected.name, version: '0.1.0', repository: { url: 'git+https://github.com/ECNU/EduWork.git', directory: selected.directory }, dsh: { bundle: { patch: './cordis.patch.yml' } } }
     const files = Object.fromEntries(['lib/index.js', 'lib/client.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE'].map(file => ['package/' + file, 'fixture']))

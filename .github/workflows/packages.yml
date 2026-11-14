@@ -50,7 +50,7 @@ jobs:
         run: python -m pip install -r packages/dsh-knowledge-studio/packages/artifact-services/python/requirements.txt
       - run: node scripts/packages/manage.mjs install ${{ matrix.package }}
       - name: Install locked DSH Runtime for native plugin checks
-        if: matrix.package == 'dsh-side-chat' || matrix.package == 'dsh-decision'
+        if: matrix.package == 'dsh-side-chat' || matrix.package == 'dsh-message-edit' || matrix.package == 'dsh-decision'
         working-directory: third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime
         run: npm ci --ignore-scripts --no-audit --no-fund
       - run: node scripts/packages/manage.mjs check ${{ matrix.package }}
@@ -59,6 +59,7 @@ jobs:
           PYTHONUTF8: '1'
           EDUWORK_SIDE_CHAT_RUNTIME: ${{ matrix.package == 'dsh-side-chat' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime', github.workspace) || '' }}
           EDUWORK_DECISION_RUNTIME: ${{ matrix.package == 'dsh-decision' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime', github.workspace) || '' }}
+          EDUWORK_MESSAGE_EDIT_RUNTIME: ${{ matrix.package == 'dsh-message-edit' && format('{0}/third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime', github.workspace) || '' }}
       - run: node scripts/packages/manage.mjs pack ${{ matrix.package }}
       - if: matrix.package == 'dsh-knowledge-studio'
         run: node scripts/packages/manage.mjs pack dsh-artifact-services

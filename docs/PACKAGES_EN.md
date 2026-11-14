@@ -10,6 +10,7 @@ EduWork maintains its public plugins in one source repository. Each npm package 
 | `@eduwork/dsh-decision` | [SystemOne decision tool and skill](../packages/dsh-decision/README_EN.md) | `packages/dsh-decision` |
 | `@eduwork/dsh-annotation` | [Selection quotes and notes](../packages/dsh-annotation/README_EN.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [Side conversations and selection questions](../packages/dsh-side-chat/README_EN.md) | `packages/dsh-side-chat` |
+| `@eduwork/dsh-message-edit` | [Message editing](../packages/dsh-message-edit/README_EN.md) | `packages/dsh-message-edit` |
 | `@eduwork/dsh-desktop-pet` | [Desktop pet and host requirements](../packages/dsh-desktop-pet/README_EN.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [Literature search, citations and full text](../packages/dsh-literature/README_EN.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [Identity, credentials and models](../packages/dsh-oidc/README_EN.md) | `packages/dsh-oidc` |
@@ -26,6 +27,8 @@ Side chat independently opens from message actions. With annotation `>=0.1.1 <0.
 ## Develop and check
 
 The decision plugin uses native DSH bundles, tools and skills and is preinstalled from its published npm archive. The decision service remains disabled until configured and enabled. It supports explicit API-key, optional OIDC and unauthenticated service configuration. Checks use the locked rc.5 Runtime (`EDUWORK_DECISION_RUNTIME`) without live model requests.
+
+The message-editing plugin resends an edited message through a native DSH fork and is not yet part of desktop assembly. Its build and checks use the locked DSH `0.2.2-rc.1` Runtime (`EDUWORK_MESSAGE_EDIT_RUNTIME`) without live model requests; its browser acceptance script runs locally, outside regular CI.
 
 Use each manifest and lock for Node/DSH requirements; common CI uses Node 24.22.1. From the repository root:
 

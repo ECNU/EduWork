@@ -29,6 +29,7 @@ if (action === 'list') {
       'dsh-decision': ['check'],
       'dsh-annotation': ['check'],
       'dsh-side-chat': ['check'],
+      'dsh-message-edit': ['check'],
       'dsh-desktop-pet': ['check'],
       'dsh-literature': ['check'],
       'dsh-oidc': ['check'],
