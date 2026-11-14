@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T18:11:43.319Z",
-  "fileSetSHA256": "d1ba09cc319c6c2c2000d786464d0eea48a6baa086e995442dc1839c1a0ecc90",
+  "createdAt": "2026-11-14T18:15:27.493Z",
+  "fileSetSHA256": "1c7a398e250ebccbe504582fcc14a6a850737585e5cdb37d149153dbc8fb6134",
   "files": [
     {
       "path": ".gitattributes",
@@ -6805,11 +6805,11 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT_EN.md",
-      "sha256": "96e2e85693d7be87d19db498f12db56d16cc5f155d890b2b05a18fe9c4050e4f"
+      "sha256": "aae303490e4cfdb5d5e1b402725dff8ad73bc6532ec68758ca372165eb8ce873"
     },
     {
       "path": "packages/dsh-remote-access/docs/DEPLOYMENT.md",
-      "sha256": "b42a3c6f440f47432dac092154093cab92a77c5c3bae74769a4e76ac3ae0eb91"
+      "sha256": "64ff980c71a2001415f4e405863509382b4c2acaa3033145c0ee7239f31991a7"
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/.dockerignore",
@@ -6821,11 +6821,11 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/compose.yaml",
-      "sha256": "c3346cf0abfa3620f79529f1eeab6972acbcdb64ff25a71472f2af70b5a57069"
+      "sha256": "491c99c3018820528bda1d85e37ab0ec6e014587a2d17a7d1e2552370071ee88"
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/Dockerfile",
-      "sha256": "92e075ca048be760911de734407fb779bed55349586c5c011d786fb29b4fdaf6"
+      "sha256": "9694f180bfed5289b345ef8203b10dea9ce55b44a8990843ae426cd3f119d68a"
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/healthcheck.mjs",
@@ -6833,11 +6833,11 @@
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/README_EN.md",
-      "sha256": "0b5f4dff690d9d60a15e8809b78256ad624aa794622d84d3949d82231e33d310"
+      "sha256": "78dc2a616ce39117ec7b4270d543cb40c5bf77e2dafaa49157c214e2516a993f"
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/README.md",
-      "sha256": "52ee0e4d5114dd356472b88f29c91f46a6cbf222585f03914fc0d03b7441bcd4"
+      "sha256": "4c6cfe8a12684942f654211430b7cfb71c56821b1d6ef7eee9a4b45ffed16175"
     },
     {
       "path": "packages/dsh-remote-access/docs/docker/relay.env.example",
@@ -6869,11 +6869,11 @@
     },
     {
       "path": "packages/dsh-remote-access/README_EN.md",
-      "sha256": "4d8b7e921b0c960b92ba70a8f6c6fb49ae32a2ea16b50079e55982bf1aa777fa"
+      "sha256": "3afa848865fdd225fd25867a5524ee3f0a7d3b9d2a37b138b91c663ee71d3fa6"
     },
     {
       "path": "packages/dsh-remote-access/README.md",
-      "sha256": "b3828d72b6dd1dd7cb663846dab2b30a63648a32b2032c07abb6bd585c7be08d"
+      "sha256": "85ca1a1f2416acc32ad52a6b2bf62577071ded8af73f5c2a4ea1646f279eb72d"
     },
     {
       "path": "packages/dsh-remote-access/scripts/build.ts",

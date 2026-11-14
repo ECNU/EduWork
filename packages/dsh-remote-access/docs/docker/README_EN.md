@@ -2,7 +2,7 @@
 
 [简体中文](README.md) · [Full deployment guide](../DEPLOYMENT_EN.md)
 
-Use Docker Engine and Compose v2 to build a local image from the published `@eduwork/dsh-remote-access@0.1.2` npm package. The server needs neither a Node.js installation nor desktop files or plugin source. Prepare a domain and an HTTPS reverse proxy supporting WebSockets, then follow these steps.
+Use Docker Engine and Compose v2 to build a local image from the published `@eduwork/dsh-remote-access@0.1.7` npm package. The server needs neither a Node.js installation nor desktop files or plugin source. Prepare a domain and an HTTPS reverse proxy supporting WebSockets, then follow these steps.
 
 ## 1. Prepare files and configuration
 
@@ -58,7 +58,7 @@ curl -fsS https://example.edu/eduwork-remote/healthz
 
 The health check should succeed and both HTTP requests should return `ok`; omit `/eduwork-remote` for root deployments. Container health checks only the internal HTTP service. Verify external HTTPS, WebSockets and authentication from the desktop client as well.
 
-With remote access plugin `0.1.2` installed, open Settings → Remote access, select your own relay, enter the same external URL and key, and choose "Test connection". It checks reachability and identity acceptance separately, even before remote access is enabled. Enable "Allow remote access", select "Add a device", scan or open the link, then compare codes and approve on the computer. See [pairing](../../README_EN.md#add-and-remove-devices).
+With remote access plugin `0.1.7` installed, open Settings → Remote access, select your own relay, enter the same external URL and key, and choose "Test connection". It checks reachability and identity acceptance separately, even before remote access is enabled. Enable "Allow remote access", select "Add a device", scan or open the link, then compare codes and approve on the computer. See [pairing](../../README_EN.md#add-and-remove-devices).
 
 ## 4. Organization sign-in and embedding
 
@@ -86,7 +86,7 @@ docker compose up -d --force-recreate
 For upgrades, set `REMOTE_ACCESS_VERSION` to the exact published version you intend to deploy; this example uses the current version. Run subsequent Compose commands in the same shell, or save the variable in a local `.env`, keeping the image tag and build argument consistent.
 
 ```sh
-export REMOTE_ACCESS_VERSION=0.1.2
+export REMOTE_ACCESS_VERSION=0.1.7
 docker compose up -d --build
 docker compose exec -T relay node -p "require('@eduwork/dsh-remote-access/package.json').version"
 ```

@@ -2,11 +2,11 @@ name: eduwork-remote
 services:
   relay:
     # This image is built locally from the published npm package.
-    image: eduwork-remote-relay:${REMOTE_ACCESS_VERSION:-0.1.2}
+    image: eduwork-remote-relay:${REMOTE_ACCESS_VERSION:-0.1.7}
     build:
       context: .
       args:
-        REMOTE_ACCESS_VERSION: ${REMOTE_ACCESS_VERSION:-0.1.2}
+        REMOTE_ACCESS_VERSION: ${REMOTE_ACCESS_VERSION:-0.1.7}
     restart: unless-stopped
     init: true
     env_file: relay.env
