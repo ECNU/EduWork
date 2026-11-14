@@ -46,6 +46,8 @@ A plugin cannot add permission presets, so add a preset with sandbox `workspace-
 }
 ```
 
+DSH draws icons only for its four built-in presets; the plugin's client part adds one for the preset with ID `auto-approval`: in the permission menu next to the composer, where the other presets have theirs, and on the permission control while the preset is selected. The client part cannot read the plugin configuration, so with `preset` set to another preset no icon is added; nor is one when another preset has the same name, as the two cannot be told apart. The default permission in Settings and the `/permission` list show no icons for any preset, and none is added there. If a later DSH changes the menu so that the place is not found, no icon is added and the menu works as usual; if DSH draws an icon of its own for this preset, DSH's is used.
+
 Plugin configuration example (store the real key in the credential service; do not put the key in this configuration):
 
 ```json
@@ -93,12 +95,11 @@ A user message over 300 characters keeps its opening and its end, since a reply 
 - Subagents: DSH fixes approval in child sessions to `never`, so their escalation requests are rejected before approval; the plugin also skips subagent sessions, whose "user messages" come from the delegating agent.
 - "Files created in this session" records only new files that `write` created successfully, compared by real path; an Add File in a patch may replace a file that was there, so like a file a command created it does not count. The list starts empty after a Host restart. Such files are therefore treated as existing files when a file tool changes them.
 - The confirmation card is unchanged and does not show the review result.
-- DSH 0.2.2 draws icons only for its four built-in permission presets, so the added preset has no icon in the menu.
 - Commands over 16000 characters are not reviewed and go straight to the user; the longest command in the evaluation data was about 13000 characters. A file tool's call is measured with its content cut.
 - Rules match the command text. Script content is attached only when the whole bash command runs one script by a written path, and files that script calls are not read. Sequences, `cd`, variables (including `NAME=value` before the command), globs, pipes, redirections, `..` in the path, inline code such as `node -e`, bare names (which the shell looks up on PATH) and PowerShell commands do not say for sure which file runs, so no script is attached and the command itself is still reviewed.
 
 ## Development and assembly
 
-Sources live in `src/`; the build only copies ESM modules. Node >=24.22.1, verified on DSH 0.2.2-rc.1. Point `EDUWORK_AUTO_APPROVAL_RUNTIME` at the locked Runtime (a directory with package.json/node_modules) and run `npm ci` and `npm run check`. Tests use synthetic material and local HTTP, and run the flow from a model's request to a completed approval on the real Runtime.
+Sources live in `src/`; the build copies the ESM modules and wraps the client part `src/client.cjs`, which imports nothing, as a DSH client module. Node >=24.22.1, verified on DSH 0.2.2-rc.1. Point `EDUWORK_AUTO_APPROVAL_RUNTIME` at the locked Runtime (a directory with package.json/node_modules) and run `npm ci` and `npm run check`. Tests use synthetic material and local HTTP, and run the flow from a model's request to a completed approval on the real Runtime.
 
 Repository entry points are `node scripts/packages/manage.mjs check dsh-auto-approval` and `pack dsh-auto-approval`; see the [package maintenance guide](../../docs/PACKAGES_EN.md). A production product must first publish and verify the npm package, then update its exact lock.

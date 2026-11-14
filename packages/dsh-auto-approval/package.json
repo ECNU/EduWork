@@ -4,14 +4,14 @@
   "description": "Approve sandbox escalation requests of shell commands with fixed rules and a SystemOne-compatible decision model",
   "type": "module",
   "main": "lib/index.js",
-  "exports": { ".": "./lib/index.js", "./package.json": "./package.json" },
+  "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./package.json": "./package.json" },
   "files": ["lib", "cordis.patch.yml", "README.md", "README_EN.md", "LICENSE", "CHANGELOG.md"],
   "scripts": {
     "build": "node scripts/build.mjs",
     "test": "node --import ./test/runtime-resolver.mjs --test test/*.test.mjs",
     "check": "npm run build && npm test"
   },
-  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } },
+  "dsh": { "client": { "platform": "web" }, "bundle": { "patch": "./cordis.patch.yml" } },
   "engines": { "node": ">=24.22.1" },
   "dependencies": {
     "@eduwork/dsh-decision": "^0.1.1"
