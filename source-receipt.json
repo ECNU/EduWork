@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T17:10:10.769Z",
-  "fileSetSHA256": "9ad1edee67177c175b9d5a6508a8725bdb622e2bd44479068aa4f4ed4caf9b70",
+  "createdAt": "2026-11-14T17:14:18.152Z",
+  "fileSetSHA256": "602f4599a3f5a9ba8bd35cceac82180d1701063a175ce0d4d4297c2da510e4d2",
   "files": [
     {
       "path": ".gitattributes",
@@ -7869,7 +7869,7 @@
     },
     {
       "path": "scripts/test/distribution-config-patches.test.mjs",
-      "sha256": "5f880b1d9dd48ca4870b3e189c29d62209b43623543f2fd49cf06fc50f4304b4"
+      "sha256": "3be0063cc49ecb85d5cac9933c555011962b2e027376df8acba160d563366bd5"
     },
     {
       "path": "scripts/test/entry-customization-runtime.test.mjs",
