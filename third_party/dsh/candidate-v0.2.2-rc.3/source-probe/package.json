@@ -12,7 +12,7 @@
     "@eduwork/dsh-mail": "0.2.5",
     "@eduwork/dsh-memory": "0.2.2",
     "@eduwork/dsh-oidc": "0.3.4",
-    "@eduwork/dsh-remote-access": "0.1.6",
+    "@eduwork/dsh-remote-access": "0.1.7",
     "@joplin/turndown-plugin-gfm": "1.0.71",
     "@types/node": "26.6.3",
     "acorn": "8.18.0",
