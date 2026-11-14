@@ -14,7 +14,7 @@
 
 模型目录和调用接受相同获准 Access Token。API 地址和资源边界来自已验证的发现，服务端执行用户权限、模型访问与配额规则。模型目录采用 data[].id，调用复用 OpenAI-compatible JSON/SSE。
 
-Token 响应提供有效期和刷新凭据；刷新不得改变已授权主体和上下文。客户端不要求退出后 Access Token 立即失效，退出时清理本地并尽力撤销 Refresh Token。
+Token 响应提供有效期和刷新凭据；刷新不得改变已授权主体和上下文。刷新响应宜签发新的 ID Token；未签发时，桌面端在 ID Token 到期前会用 `prompt=none` 静默重认证一次，失败后仍要求用户重新登录。客户端不要求退出后 Access Token 立即失效，退出时清理本地并尽力撤销 Refresh Token。
 
 ## 配额及兼容
 

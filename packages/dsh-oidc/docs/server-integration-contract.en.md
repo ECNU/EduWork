@@ -14,7 +14,7 @@ Provide matching issuer, authorization, token, JWKS and UserInfo endpoints with 
 
 Catalogs and inference accept the same authorized Access Token. Validated discovery determines API/resource boundaries; the server enforces user permissions, model access and quota. Catalogs use data[].id and inference reuses OpenAI-compatible JSON/SSE.
 
-Token responses provide expiry and refresh credentials. Refresh cannot change the authorized subject or context. Immediate server-side Access Token invalidation on logout is not required; the client clears local access and attempts Refresh Token revocation.
+Token responses provide expiry and refresh credentials. Refresh cannot change the authorized subject or context. A refresh response should issue a new ID Token; when it does not, the desktop client tries one silent `prompt=none` re-authentication before the ID Token lapses, and still asks the user to sign in if that fails. Immediate server-side Access Token invalidation on logout is not required; the client clears local access and attempts Refresh Token revocation.
 
 ## Quota and compatibility
 

@@ -10,6 +10,8 @@ import { accessTokenNeedsRefresh } from './token-lifetime.js'
 
 const seconds = backend => Math.floor(backend.now() / 1000)
 const ID_TOKEN_MARGIN_SECONDS = 10 * 60
+const IDENTITY_RENEWAL_MARGIN_SECONDS = 60
+const IDENTITY_RENEWAL_COOLDOWN_MS = 15 * 60_000
 const fingerprint = (profile, descriptor) => createHash('sha256').update(JSON.stringify({ auth: profile.auth, descriptor })).digest('hex')
 const query = (url, key, required = false) => {
   const values = url.searchParams.getAll(key)
@@ -46,6 +48,8 @@ function withGatewayAuth(Base) {
       super(...args)
       this.gatewayRevisions = new Map()
       this.gatewayCalls = new Map()
+      this.identityRenewalFlights = new Map()
+      this.identityRenewalCooldowns = new Map()
       this.ctx.effect(() => () => {
         for (const profile of this.profiles.values()) if (profile.auth) this.invalidateGatewayCalls(profile)
       }, 'dsh-oidc: gateway model requests')
@@ -103,7 +107,7 @@ function withGatewayAuth(Base) {
       return descriptor
     }
 
-    async createAuthorization(profile, descriptor, redirectURI) {
+    async createAuthorization(profile, descriptor, redirectURI, options = {}) {
       if (!profile.auth) return super.createAuthorization(profile, descriptor, redirectURI)
       const epoch = this.accountEpoch(profile)
       const clientId = descriptor.clientId ?? await registerLiteLLM(this.fetch, descriptor, redirectURI)
@@ -118,13 +122,13 @@ function withGatewayAuth(Base) {
       if (descriptor.identityMode === 'oidc') {
         flow.nonce = randomBytes(32).toString('base64url')
         target.searchParams.set('nonce', flow.nonce)
-        target.searchParams.set('prompt', 'consent')
+        target.searchParams.set('prompt', options.prompt ?? 'consent')
       }
       this.flows.set(state, flow)
       return { state, flow, authorizationURL: target.toString() }
     }
 
-    async exchangeAuthorization(requested, flow) {
+    async exchangeAuthorization(requested, flow, options = {}) {
       const profile = this.profile(flow.profileID)
       if (!profile.auth) return super.exchangeAuthorization(requested, flow)
       const descriptor = await this.discover(profile)
@@ -145,8 +149,13 @@ function withGatewayAuth(Base) {
       if (draft) {
         session.identityMode = descriptor.identityMode
         session.oidcNonce = flow.nonce
-        try { await this.gatewayIdentity(profile, descriptor, raw, session) }
-        catch (cause) { await this.revokeGateway(profile, descriptor, session); throw cause }
+        try {
+          await this.gatewayIdentity(profile, descriptor, raw, session)
+          // A silent renewal may only carry the existing sign-in forward, never switch its subject.
+          if (options.expectedSub !== undefined && session.identity.sub !== options.expectedSub) {
+            throw protocolError('gateway_identity_changed', 'OIDC identity changed during silent renewal')
+          }
+        } catch (cause) { await this.revokeGateway(profile, descriptor, session); throw cause }
       } else {
         // Only project a display name; budgets, keys and team records never enter RPC.
         try {
@@ -234,7 +243,16 @@ function withGatewayAuth(Base) {
       if (saved.accessToken !== session.accessToken) return saved
       let next, received
       try {
-        const raw = await tokenRequest(this.fetch, descriptor, { grant_type: 'refresh_token', client_id: saved.clientId, refresh_token: saved.refreshToken })
+        // Ask for the granted scopes again: an issuer may only renew an ID Token when `openid` is requested.
+        const body = { grant_type: 'refresh_token', client_id: saved.clientId, refresh_token: saved.refreshToken }
+        const scoped = descriptor.protocol === 'oidc-llm-draft-0.1'
+        let raw
+        try { raw = await tokenRequest(this.fetch, descriptor, scoped ? { ...body, scope: saved.scopes.join(' ') } : body) }
+        catch (cause) {
+          // A strict issuer may reject the optional scope on refresh; the original grant still applies without it.
+          if (!scoped || cause.status !== 400) throw cause
+          raw = await tokenRequest(this.fetch, descriptor, body)
+        }
         received = raw
         if (descriptor.protocol === 'oidc-llm-draft-0.1') {
           next = { ...saved, ...oidcLlmToken(raw, descriptor, this.now, saved) }
@@ -289,9 +307,51 @@ function withGatewayAuth(Base) {
       if (session.identityMode !== 'oidc') throw protocolError('oidc_identity_token_unavailable', 'This sign-in does not issue ID Tokens')
       // One refresh renews both: an ID Token close to expiry would not outlast the use it is for.
       if (accessTokenNeedsRefresh(session, this.now) || !(session.idTokenExpiresAt - seconds(this) > ID_TOKEN_MARGIN_SECONDS)) session = await this.refresh(profile, session)
-      await this.gatewayCurrent(profile, session, epoch)
+      try { await this.gatewayCurrent(profile, session, epoch) }
+      catch (cause) {
+        // A concurrent silent renewal may have replaced the session this call started from.
+        const latest = cause.code === 'oidc_login_cancelled' ? await this.loadSession(profile) : undefined
+        if (!latest || latest.identity?.sub !== session.identity.sub || !(latest.idTokenExpiresAt > seconds(this))) throw cause
+        session = latest
+      }
+      // OIDC permits a refresh response without an ID Token. Just before it lapses, try one silent
+      // authorization while the issuer's own session may still admit the user.
+      if (!(session.idTokenExpiresAt - seconds(this) > IDENTITY_RENEWAL_MARGIN_SECONDS)) {
+        session = await this.renewIdentitySession(profile, session, epoch) ?? session
+      }
+      if (!(session.idTokenExpiresAt > seconds(this))) {
+        // Another caller may have finished the renewal between this call's snapshot and now.
+        const latest = await this.loadSession(profile)
+        if (latest && latest.identity?.sub === session.identity.sub) session = latest
+      }
       if (!(session.idTokenExpiresAt > seconds(this))) throw protocolError('oidc_identity_token_unavailable', 'The issuer did not renew the ID Token; please sign in again')
       return { token: session.idToken, expiresAt: session.idTokenExpiresAt }
+    }
+
+    /** One silent renewal per session at a time; a denial cools down so retries cannot open the browser repeatedly. */
+    async renewIdentitySession(profile, session, epoch) {
+      const key = `${profile.id}:${session.contextID}`
+      if (!this.identityRenewalFlights.has(key)) {
+        if ((this.identityRenewalCooldowns.get(key) ?? 0) > this.now()) return undefined
+        // Replacing the session would abort model requests already in flight; let them finish first.
+        if ((this.gatewayCalls.get(profile.id)?.size ?? 0) > 0) return undefined
+        const flight = this.performIdentityRenewal(profile, session, key, epoch).finally(() => {
+          if (this.identityRenewalFlights.get(key) === flight) this.identityRenewalFlights.delete(key)
+        })
+        this.identityRenewalFlights.set(key, flight)
+      }
+      return this.identityRenewalFlights.get(key)
+    }
+
+    async performIdentityRenewal(profile, session, key, epoch) {
+      this.identityRenewalCooldowns.set(key, this.now() + IDENTITY_RENEWAL_COOLDOWN_MS)
+      let renewed = false
+      try { renewed = await this.renewIdentity(profile.id, session.identity.sub) } catch { renewed = false }
+      if (!renewed || epoch !== this.accountEpoch(profile)) return undefined
+      const current = await this.loadSession(profile)
+      if (!current || current.identity?.sub !== session.identity.sub) return undefined
+      this.identityRenewalCooldowns.delete(key)
+      return current
     }
 
     async modelAuthorization(profileID, expectedBaseURL) {
@@ -457,6 +517,8 @@ function withGatewayAuth(Base) {
       try { session = JSON.parse(record?.value) } catch { /* No valid revocation candidate. */ }
       await this.clearCredentials(profile, epoch)
       for (const key of this.refreshFlights.keys()) if (key.startsWith(`${profileID}:`)) this.refreshFlights.delete(key)
+      for (const key of this.identityRenewalFlights.keys()) if (key.startsWith(`${profileID}:`)) this.identityRenewalFlights.delete(key)
+      for (const key of this.identityRenewalCooldowns.keys()) if (key.startsWith(`${profileID}:`)) this.identityRenewalCooldowns.delete(key)
       this.resourceFlights.delete(profileID)
       for (const [state, flow] of this.flows) if (flow.profileID === profileID) this.flows.delete(state)
       await this.clearGatewayModels(profile)
