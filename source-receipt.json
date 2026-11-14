@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T17:14:18.152Z",
-  "fileSetSHA256": "602f4599a3f5a9ba8bd35cceac82180d1701063a175ce0d4d4297c2da510e4d2",
+  "createdAt": "2026-11-14T17:39:01.803Z",
+  "fileSetSHA256": "738d4347ad3353a2ed2cf49eeb96d34e6839bf37ec4ef7a3f5b90bfc21f70d7b",
   "files": [
     {
       "path": ".gitattributes",
@@ -3608,14 +3608,6 @@
       "sha256": "5d3953788ada651071084b8334deb06357a5f41c8e7815905a0b5c932720361b"
     },
     {
-      "path": "packages/dsh-decision/lib/core.js",
-      "sha256": "25309f4082c0cac76b25fbff7f28378f9e1393eb005ad1a6c9a2e4f0f6a533fb"
-    },
-    {
-      "path": "packages/dsh-decision/lib/index.js",
-      "sha256": "dc2278adb4864c8b0669414457fc3d7f586f820bda924124ee742081a166c8b5"
-    },
-    {
       "path": "packages/dsh-decision/LICENSE",
       "sha256": "eb7a1d713eb919b146787629e22e4c975cb701f529a65d4d7e0fcd417558bf1c"
     },
@@ -6797,7 +6789,7 @@
     },
     {
       "path": "packages/dsh-remote-access/CHANGELOG.md",
-      "sha256": "5a3442e236155b899c06e9206bf029893c7fea0e608ad0f5acb0d673674a6302"
+      "sha256": "d31a65c25fe1ec1b8a0c53e5d09b484d0c6f7b08c3d0bed103b8fb9f8fac9e81"
     },
     {
       "path": "packages/dsh-remote-access/cordis.patch.yml",
@@ -6917,7 +6909,7 @@
     },
     {
       "path": "packages/dsh-remote-access/src/gate/gate.ts",
-      "sha256": "e0bffa2b449a2be83f552f7af1b31d9e2175e953d9bab1f110f4e4c0cdce63b8"
+      "sha256": "460bce4a89f0cc59dc36c2519c83827eb18a717522e15c989617cf1dd7e608a9"
     },
     {
       "path": "packages/dsh-remote-access/src/host/adapter.ts",
@@ -7056,6 +7048,10 @@
       "sha256": "db7678f8a177e4bf779846dcebe1b31ff1e024a41c84deeb31fd0d08f9982499"
     },
     {
+      "path": "packages/dsh-remote-access/test/connections/translation.test.ts",
+      "sha256": "d6bc9555837b5061e56321bfbbaf166b65701c5ce57511184e052326cb738f0d"
+    },
+    {
       "path": "packages/dsh-remote-access/test/gate/dsh-0.2.1-rc.2-web.json",
       "sha256": "05d3abd6dfaeeb3510e5068bd68282696a164aa895a7d817bfe4ed3f2be7fd14"
     },
@@ -7069,7 +7065,7 @@
     },
     {
       "path": "packages/dsh-remote-access/test/gate/gate.test.ts",
-      "sha256": "c962c2d409e3e1220db2e576dc36b6c52b7fc1cb32f2a0957709861c0f219d93"
+      "sha256": "1ed041108c56734e8e86d7e6fee0df177a84883e6953ed8b517df14d81f1f36b"
     },
     {
       "path": "packages/dsh-remote-access/test/harness.ts",

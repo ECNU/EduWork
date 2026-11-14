@@ -1,5 +1,10 @@
 # 变更记录 / Changelog
 
+## Unreleased
+
+- 修复电脑启用“思考过程机器翻译”后远控页面无法启动的问题；远端翻译沿用电脑已配置的服务与限制，配置仍仅能在电脑上修改。
+- Fix remote workbench startup with reasoning machine translation enabled. Remote translation uses the Host's configured service and limits; preferences remain editable only on the computer.
+
 ## 0.1.6 — Unreleased
 
 - 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。 适配 Office Kit、搜索 provider、子代理停止及账号通知接口；继续拒绝本机终端和配置管理接口。
