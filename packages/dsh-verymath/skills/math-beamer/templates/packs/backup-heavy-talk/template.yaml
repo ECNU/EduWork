@@ -1,0 +1,9 @@
+name: backup-heavy-talk
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - short conference talk
+  - main story with backup proofs
+  - Q&A-heavy presentation
+requires: [beamer, amsmath, amssymb]

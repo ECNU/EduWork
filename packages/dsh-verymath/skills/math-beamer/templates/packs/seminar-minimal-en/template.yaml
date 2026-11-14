@@ -1,0 +1,13 @@
+name: seminar-minimal-en
+language: en
+engine: pdflatex
+aspect_ratio: "16:9"
+best_for:
+  - general mathematics seminar
+  - short research talk
+  - low-decoration presentation
+requires:
+  - beamer
+  - amsmath
+  - amssymb
+  - booktabs

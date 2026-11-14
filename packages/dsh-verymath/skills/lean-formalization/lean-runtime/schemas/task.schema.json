@@ -1,0 +1,30 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "AI4Math Lean Agent Task",
+  "type": "object",
+  "properties": {
+    "task_id": {"type": "string"},
+    "task_type": {
+      "type": "string",
+      "enum": ["check", "configure", "prove_theorem", "formalize_statement", "repair_file", "complete_sorries", "batch", "review", "minimize_failure"]
+    },
+    "agent_mode": {"type": "string", "enum": ["coding-agent", "numina-subagent", "hybrid"], "default": "coding-agent"},
+    "backend": {"type": "string", "enum": ["none", "official-numina"], "default": "none"},
+    "cwd": {"type": "string"},
+    "file": {"type": "string"},
+    "folder": {"type": "string"},
+    "target": {"type": "string"},
+    "source_statement": {"type": "string"},
+    "source_statement_file": {"type": "string"},
+    "source_format": {"type": "string", "enum": ["natural_language", "latex", "lean", "mixed"]},
+    "statement_confirmed": {"type": "boolean", "default": false},
+    "interaction_mode": {"type": "string", "enum": ["interactive", "noninteractive"], "default": "interactive"},
+    "configuration": {"type": "object", "additionalProperties": true},
+    "subtasks": {"type": "array", "items": {"type": "object", "additionalProperties": true}},
+    "max_rounds": {"type": "integer", "minimum": 1, "default": 5},
+    "dry_run": {"type": "boolean", "default": false},
+    "constraints": {"type": "object", "additionalProperties": true}
+  },
+  "required": ["task_type"],
+  "additionalProperties": false
+}

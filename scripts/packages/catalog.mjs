@@ -15,6 +15,7 @@ export const packages = [
   { id: 'dsh-knowledge-studio', name: '@eduwork/dsh-knowledge-studio', directory: 'packages/dsh-knowledge-studio', group: 'dsh-knowledge-studio' },
   { id: 'dsh-artifact-services', name: '@eduwork/dsh-artifact-services', directory: 'packages/dsh-knowledge-studio/packages/artifact-services', group: 'dsh-knowledge-studio' },
   { id: 'dsh-remote-access', name: '@eduwork/dsh-remote-access', directory: 'packages/dsh-remote-access', group: 'dsh-remote-access' },
+  { id: 'dsh-verymath', name: '@eduwork/dsh-verymath', directory: 'packages/dsh-verymath', group: 'dsh-verymath' },
 ]
 export const groups = [...new Set(packages.map(p => p.group))]
 export function selectPackage(id) {
