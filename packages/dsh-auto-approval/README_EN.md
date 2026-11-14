@@ -69,12 +69,14 @@ Plugin configuration example (store the real key in the credential service; do n
 - One review has a total time limit of `timeoutMs` (10 seconds by default; a review takes 3-6 seconds when the decision service is busy); on expiry the user decides.
 - Network errors, 429 and 5xx are retried once within the limit; the questions have no side effects.
 - After 3 failures in a row in one session, review pauses for 5 minutes there and requests go straight to the user.
-- Not being signed in, a missing key, an incomplete answer or an abstention (`choice: null`) counts as a failure, with no fallback to another model or authentication method.
+- An incomplete answer or an abstention (`choice: null`) counts as a failure.
+- When the organization account is not signed in (also when `baseURL` differs from the address of the account's service) or there is no key, nothing is sent and the request goes straight to the user, with the reason in the notice. This is not a failure and does not pause review: the next request after signing in or saving the key is reviewed.
+- None of these falls back to another model or authentication method.
 - A request withdrawn by the user during review is not counted as a failure.
 
 ## Seeing review results
 
-Each request reviewed under the preset leaves a notice in the session along with the call's result, saying whether automatic approval allowed the escalation or handed it to the user. The trajectory shows it as a context row; opening it shows the outcome and score under its source, such as “已自动放行（分数 0.952）” (allowed automatically, score 0.952) or “交给用户确认（命中规则，分数 0.600）” (asked the user, rule hit, score 0.600). A request without a review result gives the reason: the review timed out, failed, was paused after failures in a row, the command was too long to review, the user had rejected an escalation, or the situation changed during the review. The notice is written in Chinese, like the review questions.
+Each request reviewed under the preset leaves a notice in the session along with the call's result, saying whether automatic approval allowed the escalation or handed it to the user. The trajectory shows it as a context row; opening it shows the outcome and score under its source, such as “已自动放行（分数 0.952）” (allowed automatically, score 0.952) or “交给用户确认（命中规则，分数 0.600）” (asked the user, rule hit, score 0.600). A request without a review result gives the reason: the organization account is not signed in, there is no decision service key, the review timed out, failed, was paused after failures in a row, the command was too long to review, the user had rejected an escalation, or the situation changed during the review. The notice is written in Chinese, like the review questions.
 
 The notice also reaches the conversation model in its next step. Like DSH's own runtime context it is wrapped in `<system-reminder>` and says it is not from the user, so the agent neither describes an automatic approval as the user's nor takes the notice for something the user said; the score is not sent, so the agent cannot tune its justifications to it. DSH's conversation view does not show injected context like this, so the notice is visible only in the trajectory.
 

@@ -10,6 +10,7 @@
 - 用户在提问卡上的回答算作用户的消息。
 - 写入 `~/Library/LaunchAgents` 的登录启动项算改软件配置。
 - 输入框旁的权限菜单和权限按钮上，自动审批预设显示图标。
+- 未登录机构账号或没有 Key 时，记录里写明原因，不算失败，不暂停审查。
 - Initial release: under a dedicated permission preset, review bash/pwsh sandbox escalation requests with fixed rules and a SystemOne-compatible decision model, allowing once what the user would agree to and asking the user otherwise.
 - Time-limited review (10 seconds by default), one retry for network errors, 429 and 5xx, and a 5-minute pause after 3 failures in a row in a session; supports API keys, optional OIDC and unauthenticated services; disabled by default.
 - Each reviewed request leaves a notice in the trajectory with the outcome and score; the conversation model learns only whether it was allowed automatically or the user was asked.
@@ -18,3 +19,4 @@
 - Answers on question cards count as user messages.
 - Writing login items to `~/Library/LaunchAgents` counts as changing software configuration.
 - The auto-approval preset shows an icon in the composer's permission menu and on its permission control.
+- Without organization sign-in or a key, the notice gives the reason, and it is not counted as a failure towards a pause.

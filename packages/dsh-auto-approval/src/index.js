@@ -88,11 +88,11 @@ export function apply(ctx, raw = {}) {
     let fetchImpl
     if (service.authMode === 'oidc') {
       const account = ctx.get('oidcAccounts')
-      if (!await account?.modelAuthorization?.(service.oidcProfileId, service.baseURL)) throw new Error('Not signed in to the decision service organization')
+      if (!await account?.modelAuthorization?.(service.oidcProfileId, service.baseURL)) throw new Unready('Not signed in to the decision service organization', '未登录机构账号')
       fetchImpl = (url, init) => account.authorizedFetch(service.oidcProfileId, url, init)
     } else if (service.authMode === 'api-key') {
       const credential = await ctx.get('credentials')?.resolve(service.credentialRef)
-      if (!credential?.value?.trim()) throw new Error('No decision service API key')
+      if (!credential?.value?.trim()) throw new Unready('No decision service API key', '没有决策服务 Key')
       fetchImpl = (url, init) => fetch(url, { ...init, headers: { ...init.headers, Authorization: `Bearer ${credential.value}` }, redirect: 'error' })
     } else fetchImpl = (url, init) => fetch(url, { ...init, redirect: 'error' })
     // Asking the model has no side effects, so a network error, 429 or 5xx is tried once more within the time limit.
@@ -196,12 +196,25 @@ export function apply(ctx, raw = {}) {
       return ask(result.approved ? '审查期间情况有变' : score)
     } catch (error) {
       if (req.signal?.aborted) return next()
+      if (error instanceof Unready) {
+        log.warn(`review not started, asking the user: ${error.message}`)
+        return ask(error.reason)
+      }
       const count = (failures.get(id)?.count ?? 0) + 1
       failures.set(id, count >= PAUSE_AFTER ? { count: 0, until: Date.now() + PAUSE_MS } : { count })
       log.warn(`review failed, asking the user (${Math.round(performance.now() - started)} ms): ${error?.message ?? error}`)
       return ask(error?.name === 'TimeoutError' ? '审查超时' : '审查失败')
     }
   }, { prepend: true })
+}
+
+// Not signed in, or no key: nothing was asked of the service, and the user has something to do, so the notice says what.
+// It is not counted towards a pause, which would show its own reason instead and outlast the sign-in.
+class Unready extends Error {
+  constructor(message, reason) {
+    super(message)
+    this.reason = reason
+  }
 }
 
 const aborted = signal => new Promise((_, reject) => {

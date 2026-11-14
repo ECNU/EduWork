@@ -417,17 +417,30 @@ test('one retry for 5xx; failures, malformed answers and timeouts ask the user; 
   assert.equal(mounted.logs.filter(([level]) => level === 'warn').length, 3)
 })
 
-test('API key and organization sign-in: no key or no sign-in asks the user and never falls back', async t => {
+test('API key and organization sign-in: no key or no sign-in asks the user, says so, and never falls back or pauses', async t => {
   const { baseURL, bodies } = await service(t, body => answer(body, 0.9, 0.1))
   const keyed = mount({ ...base, baseURL, authMode: 'api-key' }, { services: { credentials: { resolve: async ref => (assert.equal(ref, 'SYSTEMONE_API_KEY'), { value: 'SYNTHETIC_KEY' }) } } })
   assert.equal(await keyed.escalate('git push origin main'), 'allowed-once')
   assert.equal(bodies[0].auth, 'Bearer SYNTHETIC_KEY')
-  assert.equal(await mount({ ...base, baseURL, authMode: 'api-key' }).escalate('git push origin main'), 'rejected')
-  const signedOut = { modelAuthorization: async () => false, authorizedFetch: () => assert.fail('not signed in') }
-  assert.equal(await mount({ ...base, baseURL, authMode: 'oidc', oidcProfileId: 'org' }, { services: { oidcAccounts: signedOut } }).escalate('git push origin main'), 'rejected')
-  let seen
-  const signedIn = { modelAuthorization: async (id, url) => id === 'org' && url === baseURL, authorizedFetch: (id, url, init) => { seen = id; return fetch(url, init) } }
-  assert.equal(await mount({ ...base, baseURL, authMode: 'oidc', oidcProfileId: 'org' }, { services: { oidcAccounts: signedIn } }).escalate('git push origin main'), 'allowed-once')
+  // More requests than a pause takes: each one says why.
+  const reasons = async mounted => {
+    const summaries = []
+    for (let i = 0; i < 4; i++) {
+      const exec = await mounted.start('git push origin main')
+      assert.equal(await mounted.ask(exec, { fallback: 'unavailable' }), 'unavailable')
+      summaries.push((await mounted.post(exec)).additionalContexts[0].source.summary)
+    }
+    return [...new Set(summaries)]
+  }
+  assert.deepEqual(await reasons(mount({ ...base, baseURL, authMode: 'api-key' })), ['交给用户确认（没有决策服务 Key）'])
+  let signedIn = false, seen
+  const accounts = { modelAuthorization: async (id, url) => signedIn && id === 'org' && url === baseURL, authorizedFetch: (id, url, init) => { seen = id; return fetch(url, init) } }
+  const org = mount({ ...base, baseURL, authMode: 'oidc', oidcProfileId: 'org' }, { services: { oidcAccounts: accounts } })
+  assert.deepEqual(await reasons(org), ['交给用户确认（未登录机构账号）'])
+  assert.equal(bodies.length, 1)
+  // Once signed in, the next request is reviewed.
+  signedIn = true
+  assert.equal(await org.escalate('git push origin main'), 'allowed-once')
   assert.equal(seen, 'org')
   assert.equal(bodies.length, 2)
 })
