@@ -76,7 +76,7 @@ test('adapted official window still publishes fullscreen on Windows and macOS', 
       isFullScreen = () => true
     }
     const create = runInNewContext(text + '\ncreateWindow', { BrowserWindow: Window,
-      app: { getLocale: () => 'zh-CN' }, resolveDesktopLocale: () => ({}), nativeTheme: { shouldUseDarkColors: false },
+      app: { getLocale: () => 'zh-CN' }, resolveDesktopLocale: () => ({}), nativeTheme: Object.assign(new EventEmitter(), { shouldUseDarkColors: false }),
       process: { platform }, WINDOWS_TITLEBAR_HEIGHT: 40, DESKTOP_IPC: { windowFullscreen: 'fullscreen' },
     })
     const window = create('preload', true, true)
@@ -92,7 +92,7 @@ test('adapted Windows context menus follow the application locale after startup 
   const create = runInNewContext(text + '\ncreateWindow', { BrowserWindow: Window,
     app: { getLocale: () => 'en' }, resolveDesktopLocale: () => ({ messages: { copy: 'System copy' } }),
     Menu: { buildFromTemplate: items => { menu = items; return { popup() {} } } },
-    nativeTheme: { shouldUseDarkColors: false }, process: { platform: 'win32' }, WINDOWS_TITLEBAR_HEIGHT: 40,
+    nativeTheme: Object.assign(new EventEmitter(), { shouldUseDarkColors: false }), process: { platform: 'win32' }, WINDOWS_TITLEBAR_HEIGHT: 40,
   })
   const window = create('preload', false, true, () => ({ messages: { copy: language === 'zh' ? '复制' : 'Copy' } }))
   const open = () => window.webContents.emit('context-menu', {}, { isEditable: false, selectionText: 'selected', editFlags: { canCopy: true } })
