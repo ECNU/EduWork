@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "name": "@eduwork/dsh-desktop-pet",
+  "version": "0.1.5",
+  "repository": "https://github.com/ECNU/EduWork",
+  "commit": "d2d9f22c22ca9bc05ada64142cf1bf18b5e05289",
+  "publicationStatus": "published",
+  "tarballSHA256": "b49ffd9f250cb242d9a61b5175013440b347e757fd56bb698eb2e9e9774f73e7",
+  "npm": {
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-desktop-pet/-/dsh-desktop-pet-0.1.5.tgz",
+    "integrity": "sha512-3sioxaaS4yNinoUaY1sXXha/oXxMaC19OtomffKL/3JkXexf0whMT2iH0cmwEVWIXtJWeqpnMLyPUy0BgD/i2A==",
+    "shasum": "011fd021662afab37ab355bc5bc67bedecdd6776"
+  }
+}

@@ -9,6 +9,9 @@ import {Context} from '@deepseek-ai/cordis'
 import {SkillRegistry} from '@deepseek-ai/dsh-skill'
 import {installArtifactSkills} from '../packages/artifact-services/lib/skills.js'
 
+const runtime = process.env.EDUWORK_TEST_RUNTIME
+const nativeOfficeTools = runtime && Boolean(JSON.parse(await readFile(join(runtime,'package.json'),'utf8')).dependencies?.['@deepseek-ai/dsh-office-kit'])
+
 test('legacy reading and conversions have distinct input/output and permission contracts',()=>{
   for(const [format,legacy,modern] of [['document','doc','docx'],['spreadsheet','xls','xlsx'],['presentation','ppt','pptx']]) {
     assert.equal(normalizeOfficeRequest(format,{action:'inspect',input_path:'original.'+legacy}).write,false)
@@ -32,13 +35,17 @@ test('real official provider keeps aliases, progressive tools, switches and proj
   const delegate={name:'filesystem',list:async()=>definitions,get:async candidate=>candidate}
   const provider=withOfficialOfficeProvider(delegate,{environment,enabled:name=>!disabled.has(name)})
   const candidates=await provider.list({})
-  assert.equal(candidates.length,7)
+  assert.deepEqual(candidates.map(c=>c.name), [...definitions.map(c=>c.name),
+    ...(nativeOfficeTools ? ['office'] : ['office','office-render','office-export-pdf','office-recalculate'])])
   assert.deepEqual(candidates.filter(c=>c.invocation.userInvocable).map(c=>c.name),definitions.map(c=>c.name))
   for(const candidate of candidates) {
     const skill=await provider.get(candidate,{})
     assert.equal(skill.provider,provider.name)
     assert.ok(skill.content.length>100)
-    if(candidate.name==='office')assert.match(skill.content,/`artifact-documents`/)
+    if(candidate.name==='office') {
+      assert.match(skill.content,/`artifact-documents`/)
+      if(nativeOfficeTools) for(const tool of ['office_render','office_convert','office_recalculate']) assert.ok(skill.content.includes(tool))
+    }
     if(['office-render','office-export-pdf','office-recalculate'].includes(candidate.name)) {
       assert.match(skill.content,/Installed LibreOffice Kit/)
       assert.ok(skill.content.includes(process.execPath.replaceAll('\\','\\\\')))
@@ -48,7 +55,9 @@ test('real official provider keeps aliases, progressive tools, switches and proj
   assert.equal(await provider.get(custom,{}),custom)
   disabled=new Set(['artifact-spreadsheets'])
   assert.equal((await provider.list({})).some(c=>c.name==='office-recalculate'),false)
-  assert.equal(await provider.get(candidates.find(c=>c.name==='office-recalculate'),{}),undefined)
+  const recalculate=candidates.find(c=>c.name==='office-recalculate')
+  if(recalculate)assert.equal(await provider.get(recalculate,{}),undefined)
+  assert.equal(await provider.get(candidates.find(c=>c.name==='artifact-spreadsheets'),{}),undefined)
   disabled=new Set(definitions.map(c=>c.name))
   assert.equal((await provider.list({})).some(c=>c.name.startsWith('office')),false)
   const ctx=new Context()
@@ -58,7 +67,8 @@ test('real official provider keeps aliases, progressive tools, switches and proj
     assert.equal(await ctx.skills.get('artifact-documents'),undefined)
     disabled.clear();unregister()
     ctx.skills.registerProvider(()=>provider)
-    assert.match((await ctx.skills.get('office-render')).content,/Installed LibreOffice Kit/)
+    assert.match((await ctx.skills.get(nativeOfficeTools?'office':'office-render')).content,
+      nativeOfficeTools?/office_render/:/Installed LibreOffice Kit/)
   } finally {await ctx.fiber.dispose()}
 })
 
@@ -68,9 +78,10 @@ test('standalone Office skills use registry-owned lazy reads and dispose cleanly
   try {
     await ctx.plugin(SkillRegistry)
     const dispose=installArtifactSkills(ctx)
-    assert.equal((await ctx.skills.list()).length,10)
-    assert.match((await ctx.skills.get('artifact-spreadsheets')).content,/office-recalculate/)
-    assert.match((await ctx.skills.get('office-render')).content,/Installed LibreOffice Kit/)
+    assert.equal((await ctx.skills.list()).length,nativeOfficeTools?7:10)
+    assert.match((await ctx.skills.get('artifact-spreadsheets')).content,/office[_-]recalculate/)
+    assert.match((await ctx.skills.get(nativeOfficeTools?'office':'office-render')).content,
+      nativeOfficeTools?/office_render/:/Installed LibreOffice Kit/)
     dispose();assert.deepEqual(await ctx.skills.list(),[])
   } finally {
     if(previous===undefined)delete process.env.DSH_MEDIA_NODE_ENV;else process.env.DSH_MEDIA_NODE_ENV=previous
