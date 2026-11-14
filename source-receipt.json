@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-14T17:05:20.132Z",
-  "fileSetSHA256": "2e8ecfde8c7b994fc3b34d0751f738090c98a6a2e5e43572b40b29ffa6fc940e",
+  "createdAt": "2026-11-14T17:10:10.769Z",
+  "fileSetSHA256": "9ad1edee67177c175b9d5a6508a8725bdb622e2bd44479068aa4f4ed4caf9b70",
   "files": [
     {
       "path": ".gitattributes",
@@ -385,11 +385,11 @@
     },
     {
       "path": "docs/PACKAGES_EN.md",
-      "sha256": "31f3c68f4c47512e26b67d57ba5ddd3063932c51b4a581cf64137c131c549bd8"
+      "sha256": "7ed47c18f692b4f3177c78bd55a01af49ddde1c73eed12e9eeec16c4d8e85aed"
     },
     {
       "path": "docs/PACKAGES.md",
-      "sha256": "271037176534187711f07acf5bbfd4106cbec1215c2f022af0edd847604c5f70"
+      "sha256": "232ce4a569d308855c5f3464d9fde5ed5e3ed83fb1bcb6f6e61a56fcaa9dae67"
     },
     {
       "path": "docs/PLUGIN_NOTIFICATIONS.md",
@@ -8629,7 +8629,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/desktop-pet.json",
-      "sha256": "45bbfb327203465e7253bb757f284b68f0f031fd69902872408ed8d9ef17401c"
+      "sha256": "870427c2295a9d15f2aa0bc0c9dd942f51f027552719d35598946014c99e2eed"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/desktop-probe/package-lock.json",
@@ -8641,7 +8641,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/external-agents.json",
-      "sha256": "0a9cd82bd35caa14f73a177de5ea3274cd416097c7cb1b09b3189a4fb6135413"
+      "sha256": "e9bf53002235358e69a2502bca0466990333c0af265f073440a56a74ea609d07"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/knowledge-studio.json",
@@ -8649,7 +8649,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/literature.json",
-      "sha256": "e61b6750a14750d7cbf44593ff173dda04a928a1d432c17128484f916efd553b"
+      "sha256": "c59bfdc7f19f119ac3497ab41d04b8e7a66a7d0883f9470ec9a21091bcc6ec4e"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/LOCK.json",
@@ -8657,11 +8657,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/mail.json",
-      "sha256": "ac8a52207e5f7649c2a117b187cdd23c87733c8b0e07beb55dcde3b91c4ffcb8"
+      "sha256": "1287416c6dd2ac457059788ba154b189230d65f310101b15c9b43c733583f19e"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/memory.json",
-      "sha256": "bcbf02a84199aff0fc3ff790b1f7a3d62b4f132e6d7d669f5e1f0c37aa73740f"
+      "sha256": "6ba68f48fb2e55254a2d9d8d8fb97af4f8f2b1fc650d7a2e497d7428fb8846fb"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/npm-runtime/package-lock.json",
@@ -8673,7 +8673,7 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/oidc.json",
-      "sha256": "afe97e73bfa58f4cc5bb0bc11ff86b99bde07eae91a951a09d51b390fa833108"
+      "sha256": "05090adf67e686b6b8b270b952e124dbc49ef11918a55f6da15a0b5a2ffb8c63"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/remote-access.json",
@@ -8685,11 +8685,11 @@
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/source-probe/package-lock.json",
-      "sha256": "244e7ce8929b6dca0794841c0e527dcbfedb66eb81511937839ddbb1d1696d96"
+      "sha256": "dec0d3c63864f080ea8bf3da2b799445937f1052c3378f196b6abea91b661603"
     },
     {
       "path": "third_party/dsh/candidate-v0.2.2-rc.3/source-probe/package.json",
-      "sha256": "3f5f85f27f7faf1d1c9e583d67e7397f9b6b0c8a624a1a5fd8a2fa909445c0e7"
+      "sha256": "9886a2fb7d978d08150c659c977f9d173490298db9df0ffa8ede8e69a10bc9b6"
     },
     {
       "path": "third_party/dsh/development-v0.1.5-rc.1/DSH-CONTRACT-SNAPSHOT.json",

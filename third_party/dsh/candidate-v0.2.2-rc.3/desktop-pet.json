@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-desktop-pet",
-  "version": "0.1.4",
+  "version": "0.1.5",
   "repository": "https://github.com/ECNU/EduWork",
-  "commit": "9156365b9b87e71ba75bf18d653ba156455dddce",
+  "commit": "d2d9f22c22ca9bc05ada64142cf1bf18b5e05289",
   "publicationStatus": "published",
-  "tarballSHA256": "6896cdbe84d178ede98012aec2949739243fc6c07e6a08e6ea6deae6491b46d0",
+  "tarballSHA256": "b49ffd9f250cb242d9a61b5175013440b347e757fd56bb698eb2e9e9774f73e7",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-desktop-pet/-/dsh-desktop-pet-0.1.4.tgz",
-    "integrity": "sha512-hEJRghNZJNAx8EErID2SrlnlNr8u6PnOEMEFrb6s6x4/1P5DSmMybV0cIyEPBFTOTLVV2H/+IN/xoMSKfA92Yg==",
-    "shasum": "45d79683f8837e229b56a650929ba8bd04849718"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-desktop-pet/-/dsh-desktop-pet-0.1.5.tgz",
+    "integrity": "sha512-3sioxaaS4yNinoUaY1sXXha/oXxMaC19OtomffKL/3JkXexf0whMT2iH0cmwEVWIXtJWeqpnMLyPUy0BgD/i2A==",
+    "shasum": "011fd021662afab37ab355bc5bc67bedecdd6776"
   }
 }

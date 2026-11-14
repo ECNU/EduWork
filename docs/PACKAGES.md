@@ -27,7 +27,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 
 ## 兼容声明与构建锁
 
-决策插件使用 DSH 原生 bundle、工具和技能，从已发布的 npm 原包预装。决策服务默认关闭；支持显式 API Key、可选 OIDC 和免鉴权服务配置，配置完成后启用。包检查使用锁定的 rc.2 Runtime（`EDUWORK_DECISION_RUNTIME`），测试不请求真实模型。
+决策插件使用 DSH 原生 bundle、工具和技能，从已发布的 npm 原包预装。决策服务默认关闭；支持显式 API Key、可选 OIDC 和免鉴权服务配置，配置完成后启用。包检查使用锁定的 rc.3 Runtime（`EDUWORK_DECISION_RUNTIME`），测试不请求真实模型。
 
 `peerDependencies` 表示插件支持的宿主 API 范围；开发依赖、`package-lock.json` 和产品组件锁记录一次构建的确切输入，两者分别维护。对已验证兼容的同一 API 系列，peer 应使用有上下界的版本范围，避免逐个追加 rc 版本。范围需要检查预发布版本的匹配语义，并在支持范围内验证实际插件加载与工具调用；不能仅因版本号相邻就假定兼容，也不使用 `*` 跳过边界。
 

@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-external-agents",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "repository": "https://github.com/ECNU/EduWork",
-  "commit": "9156365b9b87e71ba75bf18d653ba156455dddce",
+  "commit": "480eefef8571e78b17cb1925a943a6ad0001b323",
   "publicationStatus": "published",
-  "tarballSHA256": "98f60fec3b634dd4f0d8aa2a856ca1144b943d5385d04412af1bbc7b9f448f1c",
+  "tarballSHA256": "4f42998676b645aa43f5274bd6ea574c61d479841a8678e4fdfb09823eecd523",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-external-agents/-/dsh-external-agents-0.1.0.tgz",
-    "integrity": "sha512-q+XjlCfeq+gZOO0mmlm2Y9zUt50zqXezB3AqE2sr/toVIJmyGSWcACl65a7Sgd0KgLIsN91YBzat6OCMO5+vlw==",
-    "shasum": "dd719f4eb6ce2600437e449e7a5a7ef123b96156"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-external-agents/-/dsh-external-agents-0.1.1.tgz",
+    "integrity": "sha512-JSG+sD5ov+LnroG8YUGs92R0+AndkPsLBKfid4jAfpeUUBJ+rf5adAIG7ETLKzI808Gf+X/Z+jazPCiEumcukg==",
+    "shasum": "024271c4830ee2ae053c0a0fb94ba4369224e2fe"
   }
 }

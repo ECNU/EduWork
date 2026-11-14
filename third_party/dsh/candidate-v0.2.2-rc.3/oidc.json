@@ -1,14 +1,14 @@
 {
   "schemaVersion": 1,
   "name": "@eduwork/dsh-oidc",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "repository": "https://github.com/ECNU/EduWork",
-  "commit": "9156365b9b87e71ba75bf18d653ba156455dddce",
+  "commit": "480eefef8571e78b17cb1925a943a6ad0001b323",
   "publicationStatus": "published",
-  "tarballSHA256": "b335895138c503b8aba8c7674799ec53c6001a6e5a3a29d28daf893791aba853",
+  "tarballSHA256": "5eb389cc60c9357990cddd9520af82fd71a7e88820cdcdcb511629e5bfe3ba4b",
   "npm": {
-    "tarball": "https://registry.npmjs.org/@eduwork/dsh-oidc/-/dsh-oidc-0.3.3.tgz",
-    "integrity": "sha512-h9HoQ0fZ9WBGifas2Sis65cMdAgCRwGt+FLgmclSbZskvLnyXBHHbRD7ZpYkoYcuV1cDPyc2WOUiTOPMM4Uw2Q==",
-    "shasum": "d5c8dcaba04969af8fb47aa4c634fdc867f5fd2a"
+    "tarball": "https://registry.npmjs.org/@eduwork/dsh-oidc/-/dsh-oidc-0.3.4.tgz",
+    "integrity": "sha512-U/n7beENvJV22LziBC6uhN3Z5r/0Qj4yk6+GemhrMIx/f7Tk82UBADcgme8OHOBDoue3iJZggoCP4vFbNlNNzg==",
+    "shasum": "bfd0f5dd6a6636fc956218de6ece64c6f79cbee1"
   }
 }
