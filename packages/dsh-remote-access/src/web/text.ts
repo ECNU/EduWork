@@ -21,6 +21,7 @@ const zh = {
   connecting: '正在连接“{name}”…', waitingOffline: '“{name}”不在线，{seconds} 秒后重试', waitingLost: '连接已断开，{seconds} 秒后重连',
   retry: '立即重试', back: '返回', update: '有新版本可用。', reload: '重新加载',
   noServiceWorker: '此浏览器不支持远程访问，请换用其他浏览器或退出无痕模式。',
+  tooOld: '此浏览器版本过低，无法使用远程访问。iPhone 和 iPad 请将 iOS / iPadOS 升级到 16.4 或更高版本，其他设备请更新浏览器。',
 }
 
 const en: typeof zh = {
@@ -46,6 +47,7 @@ const en: typeof zh = {
   connecting: 'Connecting to "{name}"…', waitingOffline: '"{name}" is offline. Retrying in {seconds} s', waitingLost: 'Disconnected. Reconnecting in {seconds} s',
   retry: 'Retry now', back: 'Back', update: 'A new version is available.', reload: 'Reload',
   noServiceWorker: 'This browser does not support remote access. Use another browser or leave private browsing.',
+  tooOld: 'This browser is too old for remote access. On iPhone and iPad, update iOS / iPadOS to 16.4 or later; on other devices, update the browser.',
 }
 
 export const text = navigator.language.toLowerCase().startsWith('zh') ? zh : en

@@ -6,6 +6,7 @@
  * else for the Service Worker. The relay names its base URL in the page's
  * `<base>`, so relative URLs here resolve below it.
  */
+import './fallbacks.ts'
 import { parsePairingLink, type PairingLink } from '../protocol/auth.ts'
 import { ChannelClosed } from '../protocol/channel.ts'
 import { Close } from '../protocol/close-codes.ts'
@@ -217,4 +218,7 @@ function banner(message: string, action: string, onAction: () => void): void {
 }
 
 const target = parseHostPath(location.pathname.slice(base.pathname.length))
-void (target !== undefined && target.rest === '' ? openHost(target.hostId) : home()).catch(error => show(note(failure(error))))
+// The Service Worker unpacks the computer's interface with DecompressionStream (Safari from iOS 16.4);
+// without it the interface would stay blank, so say so before the device is paired or opened.
+if (typeof DecompressionStream === 'undefined') show(note(text.tooOld))
+else void (target !== undefined && target.rest === '' ? openHost(target.hostId) : home()).catch(error => show(note(failure(error))))
