@@ -3,8 +3,31 @@ import assert from 'node:assert/strict'
 import { mkdtemp, readFile, writeFile, access, symlink, mkdir, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { writeNativeProfile, rebaseNativeConfig, legacyPresetPatches, nativeEntryIds } from '../native-profile.mjs'
+import { writeNativeProfile, rebaseNativeConfig, legacyPresetPatches, nativeEntryIds, nativePresetPatches } from '../native-profile.mjs'
 import { stageLegacySettings, importLegacySettings } from '../settings-migration.mjs'
+
+test('native Office tools follow product skill aliases while other preset configuration is retained', async t => {
+  const runtime = await mkdtemp(join(tmpdir(), 'eduwork-office-presets-'))
+  t.after(() => rm(runtime, { recursive: true, force: true }))
+  const directory = join(runtime, 'node_modules/@deepseek-ai/dsh-web-app/presets')
+  await mkdir(directory, { recursive: true })
+  for (const name of ['standard', 'ptc', 'minimal', 'cordis']) {
+    const plugins = [{ name: '@deepseek-ai/dsh-skill-filesystem' }, { group: true, config: [
+      { id: 'tool-office', name: '@deepseek-ai/dsh-tool-office', config: { activationSkills: ['custom-office', 'office'], maxImages: 5 } },
+      { id: 'other', name: '@example/untouched', config: { enabled: false } },
+    ] }]
+    await writeFile(join(directory, name + '.patch.yml'), JSON.stringify([{ insert: [{ id: 'preset-' + name, config: { plugins, title: name } }] }]))
+  }
+  const rows = await nativePresetPatches(runtime, JSON.parse)
+  for (const row of rows) {
+    assert.equal(row.config.plugins[0].name, '@chatecnu-work/dsh-skill-control-native')
+    const [office, other] = row.config.plugins[1].config
+    assert.deepEqual(office.config, { maxImages: 5, activationSkills: ['custom-office', 'office',
+      'artifact-documents', 'artifact-spreadsheets', 'artifact-presentations'] })
+    assert.deepEqual(other, { id: 'other', name: '@example/untouched', config: { enabled: false } })
+    assert.equal(row.config.title, row.id.slice('preset-'.length))
+  }
+})
 
 test('a non-bundled remote plugin remains user-installable and preserves activation on restart', async t => {
   const profile = await mkdtemp(join(tmpdir(), 'eduwork-optional-install-'))

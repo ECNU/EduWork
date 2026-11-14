@@ -34,11 +34,11 @@ export function officialOfficeProvider(environment=process.env) {
   const node=environment.DSH_OFFICE_NODE??process.execPath
   if(!environment.DSH_OFFICE_NODE&&(process.versions.electron||isSea()))throw new Error('Office workflows require a standalone DSH_OFFICE_NODE')
   let provider
-  runtime.skills.apply({skills:{registerProvider(factory){
+  runtime.skills.apply({logger:console,skills:{registerProvider(factory){
     if(provider)throw new Error('Unexpected extra official Office provider')
     provider=factory({invalidate(){}})
     return ()=>{}
-  }}},{node,cli:runtime.cli})
+  }}},{node,cli:runtime.cli,pythonEnvironment:'workspace-dependencies'})
   if(!provider)throw new Error('The installed Office plugin did not register a skill provider')
   return provider
 }
@@ -76,6 +76,7 @@ export function withOfficialOfficeProvider(delegate,{environment=process.env,ena
         const original=candidate.locator.officialOffice
         if(!enabled(original.name)||!auxiliaryAllowed(original.name,enabled))return undefined
         const skill=await official.get(original,options)
+        if(!skill)return undefined
         return {...skill,provider:delegate.name,invocation:{modelInvocable:true,userInvocable:false},content:rewriteNames(skill.content)+python}
       }
       const skill=await delegate.get(candidate,options)
@@ -84,6 +85,7 @@ export function withOfficialOfficeProvider(delegate,{environment=process.env,ena
       const original=(await originals(options)).find(item=>item.name===workflows[skill.name])
       if(!original)throw new Error('The installed Office plugin is missing '+workflows[skill.name])
       const loaded=await official.get(original,options)
+      if(!loaded)return undefined
       const integration=skill.content.replace(/\]\((\.\.?\/[^)]+)\)/g,(_,path)=>'](<'+resolve(skill.resourceBase.path,path).replaceAll('\\','/')+'>)')
       return {...skill,resourceBase:loaded.resourceBase,content:rewriteNames(loaded.content)+python+'\n\n## EduWork integration\n\n'+integration}
     },
