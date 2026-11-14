@@ -27,6 +27,7 @@ if (action === 'list') {
     const scripts = {
       'dsh-external-agents': ['check'],
       'dsh-decision': ['check'],
+      'dsh-auto-approval': ['check'],
       'dsh-annotation': ['check'],
       'dsh-side-chat': ['check'],
       'dsh-desktop-pet': ['check'],

@@ -52,6 +52,13 @@ export function inspectArchive(bytes, selected, expectedVersion) {
       assert.ok(files.has(file), `Missing decision plugin file ${file}`)
     }
   }
+  if (selected.id === 'dsh-auto-approval') {
+    assert.ok(!manifest.private, 'Auto-approval plugin archive must be publishable')
+    assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing auto-approval plugin bundle')
+    for (const file of ['lib/index.js', 'lib/review.js', 'lib/rules.js', 'lib/questions.js', 'cordis.patch.yml', 'README.md', 'README_EN.md', 'LICENSE']) {
+      assert.ok(files.has(file), `Missing auto-approval plugin file ${file}`)
+    }
+  }
   if (selected.id === 'dsh-side-chat' || selected.id === 'dsh-annotation') {
     assert.ok(!manifest.private, 'Conversation plugin archive must be publishable')
     assert.equal(manifest.dsh?.bundle?.patch, './cordis.patch.yml', 'Missing native plugin bundle registration')

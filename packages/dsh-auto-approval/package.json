@@ -1,0 +1,40 @@
+{
+  "name": "@eduwork/dsh-auto-approval",
+  "version": "0.1.0",
+  "description": "Approve sandbox escalation requests of shell commands with fixed rules and a SystemOne-compatible decision model",
+  "type": "module",
+  "main": "lib/index.js",
+  "exports": { ".": "./lib/index.js", "./client": "./lib/client.js", "./package.json": "./package.json" },
+  "files": ["lib", "cordis.patch.yml", "README.md", "README_EN.md", "LICENSE", "CHANGELOG.md"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "test": "node --import ./test/runtime-resolver.mjs --test test/*.test.mjs",
+    "check": "npm run build && npm test"
+  },
+  "dsh": { "client": { "platform": "web" }, "bundle": { "patch": "./cordis.patch.yml" } },
+  "engines": { "node": ">=24.22.1" },
+  "dependencies": {
+    "@eduwork/dsh-decision": "^0.1.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/schemastery": ">=3.18.5 <3.19.0 || 3.19.0",
+    "@deepseek-ai/dsh-llm": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-fs-patch": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-user-approval": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-permission-presets": ">=0.2.2-rc.1 <0.3.0-0",
+    "@deepseek-ai/dsh-tool-bash": ">=0.2.2-rc.1 <0.3.0-0"
+  },
+  "peerDependenciesMeta": {
+    "@deepseek-ai/schemastery": { "optional": true },
+    "@deepseek-ai/dsh-llm": { "optional": true },
+    "@deepseek-ai/dsh-fs-patch": { "optional": true },
+    "@deepseek-ai/dsh-user-approval": { "optional": true },
+    "@deepseek-ai/dsh-permission-presets": { "optional": true },
+    "@deepseek-ai/dsh-tool-bash": { "optional": true }
+  },
+  "repository": { "type": "git", "url": "git+https://github.com/ECNU/EduWork.git", "directory": "packages/dsh-auto-approval" },
+  "homepage": "https://github.com/ECNU/EduWork/tree/main/packages/dsh-auto-approval#readme",
+  "bugs": { "url": "https://github.com/ECNU/EduWork/issues" },
+  "publishConfig": { "access": "public" },
+  "license": "MulanPSL-2.0"
+}
