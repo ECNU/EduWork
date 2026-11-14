@@ -16,7 +16,7 @@ import { DesktopExit } from './desktop-exit.mjs'
 import { loadUserConfig } from './user-config.mjs'
 import { openConfigurationFile } from './configuration-files.mjs'
 import { desktopPaths } from './desktop-paths.mjs'
-import { firstRunPending, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
+import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from './first-run.mjs'
 import { importPortableData } from './portable-import.mjs'
 import { initializeUserConfig } from './initialize-user-config.mjs'
 import { readMigrationLaunch, importLegacyData, writeMigrationHealth } from './legacy-migration.mjs'
@@ -161,10 +161,12 @@ export function configureEduworkPaths() {
     event.preventDefault()
     void desktopExit.request()
   })
-  // The installed layout may still owe its first-run data choice; deferring
-  // activation keeps the target untouched until the user decides. Every other
-  // layout keeps the original immediate activation.
-  if (process.platform !== 'win32' || settings.dataLayout !== 'installed') activateEduworkPaths()
+  // Only an unsettled installed first-run defers activation, keeping the target
+  // untouched until the user decides. Once the choice is settled the browser
+  // profile must bind to the target before Chromium initializes os_crypt, so the
+  // imported credentials decrypt with the source key; every other layout always
+  // activates immediately.
+  if (!firstRunPendingSync({ userRoot: paths.userRoot, dataLayout: settings.dataLayout })) activateEduworkPaths()
 }
 let pathsActivated = false
 export function activateEduworkPaths() {
@@ -185,6 +187,7 @@ export async function resolveInstalledFirstRun() {
       showMessageBox: options => dialog.showMessageBox(options),
       showOpenDialog: options => dialog.showOpenDialog(options) }),
     importSource: sourceRoot => importPortableData({ sourceRoot, targetRoot: paths.userRoot, distribution: settings.distribution }),
+    createTarget: () => activateEduworkPaths(),
   })
   return action
 }

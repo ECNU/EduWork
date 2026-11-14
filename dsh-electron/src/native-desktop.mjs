@@ -197,7 +197,16 @@ async function main() {
   if (!claimDesktopSingleInstance(app, showDesktop)) return
   // The installed first-run data choice precedes any target write, the browser
   // profile and the Host; cancelling quits without creating the target.
-  if (await resolveInstalledFirstRun() === 'cancel') { app.quit(); return }
+  const firstRunAction = await resolveInstalledFirstRun()
+  if (firstRunAction === 'cancel') { app.quit(); return }
+  if (firstRunAction === 'imported' || firstRunAction === 'fresh') {
+    // The choice settled while activation was deferred, so Chromium bound os_crypt
+    // to the default profile. Relaunch so the next process activates immediately
+    // and the browser profile (credential key included) binds to the chosen target.
+    app.relaunch()
+    app.quit()
+    return
+  }
   activateEduworkPaths()
   // The early BootPage must obey the local close policy before preparation reads it.
   readInitialCloseAction()

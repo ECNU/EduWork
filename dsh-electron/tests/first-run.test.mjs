@@ -1,9 +1,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises'
+import { readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { firstRunPending, firstRunDialogs, resolveFirstRunData } from '../src/first-run.mjs'
+import { firstRunPending, firstRunPendingSync, firstRunDialogs, resolveFirstRunData } from '../src/first-run.mjs'
 
 test('first-run detection applies only to the Windows installed layout', async () => {
   const list = () => assert.fail('other layouts must not inspect the target')
@@ -30,6 +31,45 @@ test('first-run detection reads the real target directory', async t => {
   assert.equal(await firstRunPending(installed), true)
   await writeFile(join(userRoot, 'marker'), 'x')
   assert.equal(await firstRunPending(installed), false)
+})
+
+test('the synchronous first-run check mirrors the async detection for module-load activation', () => {
+  const list = () => assert.fail('other layouts must not inspect the target')
+  for (const [platform, dataLayout] of [['darwin', 'installed'], ['linux', 'installed'], ['win32', undefined], ['win32', 'portable']])
+    assert.equal(firstRunPendingSync({ userRoot: 'unused', dataLayout, platform, list }), false)
+  const installed = { userRoot: 'C:\\Users\\测试 用户\\AppData\\Local\\EduWork\\eduwork', dataLayout: 'installed', platform: 'win32' }
+  assert.equal(firstRunPendingSync({ ...installed, list: () => { throw Object.assign(new Error('missing'), { code: 'ENOENT' }) } }), true)
+  assert.equal(firstRunPendingSync({ ...installed, list: () => [] }), true)
+  assert.equal(firstRunPendingSync({ ...installed, list: () => ['data'] }), false)
+  assert.throws(() => firstRunPendingSync({ ...installed, list: () => { throw Object.assign(new Error('denied'), { code: 'EACCES' }) } }), /denied/)
+})
+
+test('the synchronous check reads the real target directory', async t => {
+  const base = await mkdtemp(join(tmpdir(), 'eduwork-first-run-sync-'))
+  t.after(() => rm(base, { recursive: true, force: true }))
+  const userRoot = join(base, 'EduWork', 'eduwork')
+  const installed = { userRoot, dataLayout: 'installed', platform: 'win32' }
+  assert.equal(firstRunPendingSync(installed), true)
+  await mkdir(userRoot, { recursive: true })
+  assert.equal(firstRunPendingSync(installed), true)
+  await writeFile(join(userRoot, 'marker'), 'x')
+  assert.equal(firstRunPendingSync(installed), false)
+})
+
+test('activation defers only for an unsettled installed first-run, then binds the browser profile to the target', () => {
+  const source = readFileSync(new URL('../src/product.mjs', import.meta.url), 'utf8')
+  const configure = source.slice(source.indexOf('export function configureEduworkPaths()'), source.indexOf('let pathsActivated'))
+  assert.match(configure, /if \(!firstRunPendingSync\(\{ userRoot: paths\.userRoot, dataLayout: settings\.dataLayout \}\)\) activateEduworkPaths\(\)/)
+})
+
+test('a settled first-run relaunches to rebind os_crypt; cancel quits without a target', () => {
+  const source = readFileSync(new URL('../src/native-desktop.mjs', import.meta.url), 'utf8')
+  const main = source.slice(source.indexOf('async function main()'), source.indexOf('app.on(\'will-quit\''))
+  assert.match(main, /const firstRunAction = await resolveInstalledFirstRun\(\)/)
+  assert.match(main, /if \(firstRunAction === 'cancel'\) \{ app\.quit\(\); return \}/)
+  assert.match(main, /if \(firstRunAction === 'imported' \|\| firstRunAction === 'fresh'\) \{[\s\S]*?app\.relaunch\(\)[\s\S]*?app\.quit\(\)[\s\S]*?return[\s\S]*?\}/)
+  // The relaunch must precede activation/Host startup so the next process binds the target.
+  assert.ok(main.indexOf('app.relaunch()') < main.indexOf('activateEduworkPaths()'))
 })
 
 function dialogFixture(responses) {
@@ -89,9 +129,30 @@ test('fresh start and cancel never open the picker or import', async () => {
       pickSource: () => assert.fail('picker must stay closed'),
       importSource: () => assert.fail('import must not run'),
       importFailed: () => assert.fail('no failure to report'),
+      createTarget: async () => {},
     })
     assert.deepEqual(result, { action: choice })
   }
+})
+
+test('fresh start materializes a non-empty target before relaunch so the successor activates instead of re-prompting', async t => {
+  const base = await mkdtemp(join(tmpdir(), 'eduwork-fresh-target-'))
+  t.after(() => rm(base, { recursive: true, force: true }))
+  const userRoot = join(base, 'EduWork', 'eduwork')
+  const installed = { userRoot, dataLayout: 'installed', platform: 'win32' }
+  assert.equal(firstRunPendingSync(installed), true)
+  let created = 0
+  const result = await resolveFirstRunData({
+    choose: async () => 'fresh',
+    pickSource: () => assert.fail('picker must stay closed'),
+    importSource: () => assert.fail('import must not run'),
+    importFailed: () => assert.fail('no failure to report'),
+    createTarget: async () => { created++; await mkdir(join(userRoot, 'data'), { recursive: true }) },
+  })
+  assert.deepEqual(result, { action: 'fresh' })
+  assert.equal(created, 1)
+  // An empty userRoot still reads as pending; the successor must see existing data.
+  assert.equal(firstRunPendingSync(installed), false)
 })
 
 test('a successful import returns the receipt and passes the selected directory to the shared validator', async () => {
@@ -113,6 +174,7 @@ test('a closed directory picker returns to the choice without importing', async 
     pickSource: async () => undefined,
     importSource: () => assert.fail('no directory was selected'),
     importFailed: () => assert.fail('no failure to report'),
+    createTarget: async () => {},
   })
   assert.deepEqual(result, { action: 'fresh' })
   assert.equal(choices, 2)

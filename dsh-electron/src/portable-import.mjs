@@ -3,6 +3,7 @@ import { createReadStream } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, lstat, realpath, rename, rm, rmdir, statfs, writeFile } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { assertSeparateRoots } from './desktop-paths.mjs'
+import { remapSessionLogCwd } from './session-header-remap.mjs'
 
 // First import of an old portable Electron installation into the installed
 // user directory. The Wails-era updater handshake stays in legacy-migration.mjs.
@@ -181,8 +182,9 @@ export async function buildCopyPlan(source, target) {
   return { files, moves }
 }
 
-// Applied to the staged copy only: registry paths, session directory names and
-// the cached working-directory fields. Session event content stays untouched.
+// Applied to the staged copy only: registry paths, session directory names, the
+// session header cwd and the cached working-directory fields. Session event
+// content stays untouched.
 async function applyWorkspaceRemap({ stage, namespace, moves }) {
   const applied = []
   const registryPath = join(stage, 'data', namespace, 'dsh/storages/workspace.json')
@@ -192,7 +194,12 @@ async function applyWorkspaceRemap({ stage, namespace, moves }) {
     if (registry?.tables?.workspaces?.[move.id]) registry.tables.workspaces[move.id].path = move.newPath
     const sessionsRoot = join(stage, 'data', namespace, 'dsh/sessions')
     const oldDir = join(sessionsRoot, sessionProjectKey(move.oldPath)), newDir = join(sessionsRoot, sessionProjectKey(move.newPath))
-    if (await exists(oldDir)) await rename(oldDir, newDir)
+    if (await exists(oldDir)) {
+      await rename(oldDir, newDir)
+      // The runtime identifies a session by its header cwd; renaming the project
+      // directory alone leaves the header pointing at the old workspace.
+      await remapSessionLogCwd(newDir, move.oldPath, move.newPath)
+    }
     const projcache = join(stage, 'data', namespace, 'dsh/storages/session_projcache/sessions')
     // Match by cached cwd rather than the registry's sessionIds so sessions
     // missing from the registry list are remapped too.

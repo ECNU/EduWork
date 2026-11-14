@@ -1,4 +1,5 @@
 import { readdir } from 'node:fs/promises'
+import { readdirSync } from 'node:fs'
 
 // First launch of the installed layout chooses its data before the target
 // directory exists. Native dialogs need no window, browser profile or Host,
@@ -7,6 +8,15 @@ import { readdir } from 'node:fs/promises'
 export async function firstRunPending({ userRoot, dataLayout, platform = process.platform, list = readdir }) {
   if (platform !== 'win32' || dataLayout !== 'installed') return false
   try { return (await list(userRoot)).length === 0 }
+  catch (error) { if (error.code === 'ENOENT') return true; throw error }
+}
+
+// Synchronous form for module-load path activation: the browser profile must
+// bind to the target before Chromium initializes os_crypt whenever the first-run
+// choice is already settled.
+export function firstRunPendingSync({ userRoot, dataLayout, platform = process.platform, list = readdirSync }) {
+  if (platform !== 'win32' || dataLayout !== 'installed') return false
+  try { return list(userRoot).length === 0 }
   catch (error) { if (error.code === 'ENOENT') return true; throw error }
 }
 
@@ -33,11 +43,13 @@ export function firstRunDialogs({ productName = 'EduWork', showMessageBox, showO
   }
 }
 
-export async function resolveFirstRunData({ choose, pickSource, importSource, importFailed }) {
+export async function resolveFirstRunData({ choose, pickSource, importSource, importFailed, createTarget }) {
   for (;;) {
     const choice = await choose()
     if (choice === 'cancel') return { action: 'cancel' }
-    if (choice === 'fresh') return { action: 'fresh' }
+    // A fresh start must materialize the target before the relaunch that rebinds
+    // os_crypt; otherwise the successor still sees an empty root and re-prompts.
+    if (choice === 'fresh') { await createTarget(); return { action: 'fresh' } }
     const sourceRoot = await pickSource()
     if (!sourceRoot) continue
     try { return { action: 'imported', receipt: await importSource(sourceRoot) } }

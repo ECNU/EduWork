@@ -4,6 +4,7 @@ import { mkdtemp, mkdir, writeFile, readFile, readdir, rm, rename, symlink, lsta
 import { tmpdir } from 'node:os'
 import { join, sep } from 'node:path'
 import { createHash } from 'node:crypto'
+import { constants, zstdCompressSync, zstdDecompressSync } from 'node:zlib'
 import { importPortableData, inspectPortableSource, buildCopyPlan, sessionProjectKey, windowsSourceProcessLister } from '../src/portable-import.mjs'
 
 const distribution = 'eduwork'
@@ -362,5 +363,24 @@ test('a workspace registered through a junction spelling inside the source is st
     const movedCache = JSON.parse(await readFile(join(target, 'data/eduwork-electron/dsh/storages/session_projcache/sessions/session-internal.json'), 'utf8'))
     assert.equal(movedCache.record.identity.cwd, newPath)
     assert.equal(await readFile(join(target, 'workspaces/sample-workspace-internal/README.md'), 'utf8'), '# internal workspace\n')
+  } finally { await rm(base, { recursive: true, force: true }) }
+})
+
+test('the imported session header cwd is remapped so the runtime identity check passes', async () => {
+  const { base, source, target, internalPath } = await fixture()
+  try {
+    const checksum = { params: { [constants.ZSTD_c_checksumFlag]: 1 } }
+    const frame = text => zstdCompressSync(Buffer.from(text, 'utf8'), checksum)
+    const headerLine = cwd => JSON.stringify({ type: 'session', version: 4, id: 'session-internal', createdAt: 1794645447166, cwd, isSeeded: false, delegationDepth: 0, agentPreset: 'standard' }) + '\n'
+    const eventFrame = frame('{"type":"event","seq":1,"kind":"message"}\n')
+    const sessionRel = `data/eduwork-electron/dsh/sessions/${sessionProjectKey(internalPath)}/session-internal/session.v4.jsonl.zstd`
+    await writeFile(join(source, sessionRel), Buffer.concat([frame(headerLine(internalPath)), eventFrame]))
+    const receipt = await run({ sourceRoot: source, targetRoot: target })
+    const newPath = receipt.workspacesMoved[0].to
+    const imported = await readFile(join(target, `data/eduwork-electron/dsh/sessions/${sessionProjectKey(newPath)}/session-internal/session.v4.jsonl.zstd`))
+    const headerFrame = frame(headerLine(newPath))
+    // Header frame now names the new workspace; the event frame is untouched.
+    assert.equal(zstdDecompressSync(imported.subarray(0, headerFrame.length)).toString('utf8'), headerLine(newPath))
+    assert.deepEqual(imported.subarray(headerFrame.length), eventFrame)
   } finally { await rm(base, { recursive: true, force: true }) }
 })
