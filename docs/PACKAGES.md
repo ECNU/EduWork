@@ -16,6 +16,7 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 | `@eduwork/dsh-auto-approval` | [命令自动审批](../packages/dsh-auto-approval/README.md) | `packages/dsh-auto-approval` |
 | `@eduwork/dsh-annotation` | [选段引用与批注](../packages/dsh-annotation/README.md) | `packages/dsh-annotation` |
 | `@eduwork/dsh-side-chat` | [侧边聊天与选区提问](../packages/dsh-side-chat/README.md) | `packages/dsh-side-chat` |
+| `@eduwork/dsh-message-edit` | [编辑消息](../packages/dsh-message-edit/README.md) | `packages/dsh-message-edit` |
 | `@eduwork/dsh-desktop-pet` | [桌面宠物与宿主要求](../packages/dsh-desktop-pet/README.md) | `packages/dsh-desktop-pet` |
 | `@eduwork/dsh-literature` | [文献检索、引用与全文](../packages/dsh-literature/README.md) | `packages/dsh-literature` |
 | `@eduwork/dsh-oidc` | [身份、凭据与模型接入](../packages/dsh-oidc/README.md) | `packages/dsh-oidc` |
@@ -34,6 +35,8 @@ EduWork 在一个仓库维护公共插件，npm 包仍分别安装、版本管�
 决策插件使用 DSH 原生 bundle、工具和技能，从已发布的 npm 原包预装。决策服务默认关闭；支持显式 API Key、可选 OIDC 和免鉴权服务配置，配置完成后启用。包检查使用锁定的 rc.3 Runtime（`EDUWORK_DECISION_RUNTIME`），测试不请求真实模型。
 
 命令自动审批插件通过决策插件的公开 `./core` 导出请求决策服务，默认关闭，尚未加入桌面装配；启用还需要在权限插件配置中加入对应预设。包检查使用锁定的 DSH `0.2.2-rc.3` Runtime（`EDUWORK_AUTO_APPROVAL_RUNTIME`）跑真实审批流程，测试不请求真实模型。
+
+编辑消息插件用 DSH 原生分叉重发改过的消息，尚未加入桌面装配。构建和包检查使用锁定的 DSH `0.2.2-rc.3` Runtime（`EDUWORK_MESSAGE_EDIT_RUNTIME`），测试不请求真实模型；浏览器验收脚本在本地运行，不进普通 CI。
 
 `peerDependencies` 表示插件支持的宿主 API 范围；开发依赖、`package-lock.json` 和产品组件锁记录一次构建的确切输入，两者分别维护。对已验证兼容的同一 API 系列，peer 应使用有上下界的版本范围，避免逐个追加 rc 版本。范围需要检查预发布版本的匹配语义，并在支持范围内验证实际插件加载与工具调用；不能仅因版本号相邻就假定兼容，也不使用 `*` 跳过边界。
 
