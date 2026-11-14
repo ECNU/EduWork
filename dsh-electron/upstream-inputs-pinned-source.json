@@ -21,7 +21,7 @@
   "apps/desktop/src/preload-windows.ts": "776cf6acd3ab4286844913a9f94bf7d3979186d846cda9f53e25a072d2f7e218",
   "apps/desktop/src/preload-menu.ts": "456b5004c2c0c7f511e7b2d732ad1bfc394712cb26c9f38d8852aba75c0d1c60",
   "apps/desktop/src/windows-layout.ts": "c032247c34d9794171aa3bd67534d511aca9f8963058d9976fb57f8c06a24628",
-  "apps/desktop/package.json": "f27a39672ecc89876cd34db0f52aeee1459432c4bbc0557837716db8c7832acc",
+  "apps/desktop/package.json": "c4452f725e19d45757a7e553eed11a0171e3faba321a7b92828fb998d8dd5cad",
   "apps/desktop/src/login-shell-environment.ts": "d8a6730a92c057ad70fb7fa163df72aca13eff9cfe54edb7a823594e8680e348",
   "apps/desktop/src/duration-env.ts": "f230ed09a0094871e30d3eac559b9674fc122b01539348b661df4b3dd1b534aa",
   "apps/desktop/src/file-actions.ts": "ab0e0de2a6fc302cf14df9ff4da8ee9dad3f17f1974cde940eadd8c64f0b466f",

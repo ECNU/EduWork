@@ -31,6 +31,7 @@ export function rebuiltDshPeers(manifest, version, { editionOwned = false } = {}
 // Code-loading qualification remains exact. Keep feature decisions in the same
 // row so an upgrade cannot silently lose defaults or restore a retired adapter.
 const baselines = {
+  '0.2.2-rc.3': { commit: '38a6a5c965aa99ab525161efb7cc5cf1fe62fced', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.2.2-rc.2': { commit: 'ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.1.5-rc.2': { commit: 'fb2c4b9e698e30edb738bca4cf0618587db7d203', native: false },
   '0.1.7-alpha.2': { commit: '00102833dfaee1da9f48a3a8eae9d34005a75218', native: true },

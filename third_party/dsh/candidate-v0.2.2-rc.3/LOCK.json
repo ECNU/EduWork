@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "repository": "https://github.com/deepseek-ai/deepseek-harness.git",
-  "commit": "ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c",
-  "packageVersion": "0.2.2-rc.2",
+  "commit": "38a6a5c965aa99ab525161efb7cc5cf1fe62fced",
+  "packageVersion": "0.2.2-rc.3",
   "pnpmVersion": "11.28.5",
-  "pnpmLockSHA256": "be2834e3ef72341b8874a4b8c5359957449973585f0a49bc4fb4526298bca6a7",
+  "pnpmLockSHA256": "c24a38565023f08480f3832a554a676ad7479d36c0868063c85ad66ba6d3e68a",
   "node": {
     "version": "24.22.1",
     "windowsX64Archive": "node-v24.22.1-win-x64.zip",
@@ -18,8 +18,8 @@
       "manifest": "npm-runtime/package.json",
       "packageLock": "npm-runtime/package-lock.json",
       "registry": "https://registry.npmjs.org",
-      "packageLockSHA256": "9b74856c8d6416e2f4582acdd235ea901f4f4ce4151623c2cad03f39190d92fe",
-      "dshIntegrity": "sha512-J727r2C471x2cYXGjqZ0D9T1ZyaYQDFH/Ynx8iq+85oslM4nky5YTBnbAuTtxMhW7nhY8wuAEfjjFCQ+K6Swgw=="
+      "packageLockSHA256": "6b0293a9077d353a9f0f4fbbf09c128b76fa8a288c8dc6569788434afcf703f2",
+      "dshIntegrity": "sha512-S+4oUYVKWuc1SCMMp1mpUa2llxVy0o9gIgp7TDg/Ea7PuvXVkAfnykqSH1/oDXVB+y5VzEm0QIJulo1LIB3qRg=="
     },
     "source": {
       "available": false,
@@ -28,13 +28,13 @@
   },
   "runtimeAssembly": "node dsh-desktop/scripts/prepare-dsh-runtime.mjs --source <npm|source>",
   "license": "MIT",
-  "reviewedAt": "2026-11-12",
+  "reviewedAt": "2026-11-15",
   "qualification": {
     "status": "migration-candidate",
     "desktop": false
   },
   "sourceCheckout": {
     "type": "git",
-    "tag": "dsh-v0.2.2-rc.2"
+    "tag": "dsh-v0.2.2-rc.3"
   }
 }

@@ -8,7 +8,7 @@ import { Script } from 'node:vm'
 // Only the Creator item is adapted; navigation, prompts and draft policy stay native.
 export const entryCustomizationPatch = Object.freeze({
   id: 'entry-customization-optional-creator-v1',
-  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.2-rc.2',
+  package: '@deepseek-ai/dsh-client-ui-entry-customization', version: '0.2.2-rc.3',
   file: 'lib/client.js', beforeSHA256: 'd7f65b5f629c3e3e2c16a1ee609fbb328a7d2613a6e1f03714e38eda41b53260',
 })
 const sha256 = value => createHash('sha256').update(value).digest('hex')
@@ -78,8 +78,8 @@ export function patchEntryCustomizationSource(input) {
 export async function patchEntryCustomizationRuntime(modules) {
   const root = join(modules, entryCustomizationPatch.package)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
-  if (manifest.name !== entryCustomizationPatch.package || manifest.version !== entryCustomizationPatch.version) throw new Error('Entry customization requires a newly qualified Runtime')
+  if (manifest.name !== entryCustomizationPatch.package || !['0.2.2-rc.2', entryCustomizationPatch.version].includes(manifest.version)) throw new Error('Entry customization requires a newly qualified Runtime')
   const path = join(root, entryCustomizationPatch.file), output = patchEntryCustomizationSource(await readFile(path))
   await writeFile(path, output)
-  return { ...entryCustomizationPatch, afterSHA256: sha256(output) }
+  return { ...entryCustomizationPatch, version: manifest.version, afterSHA256: sha256(output) }
 }
