@@ -2,3 +2,4 @@
 * -text
 # Generated Zod code includes significant template-string whitespace.
 packages/dsh-desktop-pet/lib/client.js -whitespace
+dsh-plugins/calendar/lib/client.js -whitespace

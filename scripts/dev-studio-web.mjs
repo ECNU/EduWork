@@ -124,10 +124,23 @@ if(command==='worker') {
   },250)
   readyTimer.unref()
   process.argv=[process.execPath,join(runtime,'node_modules/@deepseek-ai/dsh/lib/bin.js'),'--profile',profileName,'--host','127.0.0.1','--port',String(port),'--no-open']
-  const cli=await import(pathToFileURL(process.argv[1]))
-  // Alpha.2 guards its executable with import.meta.main. Older releases start
-  // on import; call only the new explicit entry point to support both.
-  if(typeof cli.runCli==='function')await cli.runCli()
+  if(baseline?.native) {
+    // Match the packaged Host: resolve plugins from the product manifest.
+    // The CLI's own manifest omits product extensions, which otherwise load
+    // through import hooks but lose their package metadata and Typert faces.
+    const require=createRequire(join(runtime,'package.json'))
+    const {loadLayeredEnv,loadProfileDirectory,reportSkippedBundles}=await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-app-boot')).href)
+    const {runProfile}=await import(pathToFileURL(require.resolve('@deepseek-ai/dsh/profile-boot')).href)
+    const installAnchor=join(runtime,'package.json')
+    const resolved=loadProfileDirectory('dsh',profile,installAnchor)
+    reportSkippedBundles('dsh',resolved)
+    await runProfile({environment:loadLayeredEnv('dsh'),profile:profileName,
+      resolvedProfile:{profile:resolved,installAnchor},patchFiles:[],
+      args:['--host','127.0.0.1','--port',String(port),'--no-open']})
+  } else {
+    const cli=await import(pathToFileURL(process.argv[1]))
+    if(typeof cli.runCli==='function')await cli.runCli()
+  }
 } else if(command==='stop') {await stop();console.log('Web integration stopped.')}
 else if(command==='status') {
   const old=await json(controlPath).catch(()=>null)
