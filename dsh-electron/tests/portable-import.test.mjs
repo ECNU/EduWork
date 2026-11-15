@@ -479,3 +479,51 @@ test('the migrated software-update choice keeps the backend off even when defaul
     assert.equal(await readFile(prefs, 'utf8'), before)
   } finally { await rm(base, { recursive: true, force: true }) }
 })
+
+test('an internal workspace sharing a key with an external workspace leaves the external sessions in place', async () => {
+  const { base, source, target, internalPath, externalPath } = await fixture()
+  try {
+    // <base>/old-app/sample-workspace-internal and the sibling directory
+    // <base>/old-app-sample-workspace-internal encode to the same project key.
+    const externalCollide = join(base, 'old-app-sample-workspace-internal')
+    assert.equal(sessionProjectKey(internalPath), sessionProjectKey(externalCollide))
+    await mkdir(externalCollide, { recursive: true })
+    await writeFile(join(externalCollide, 'hello.md'), '# external collide\n')
+    const registryPath = join(source, 'data/eduwork-electron/dsh/storages/workspace.json')
+    const registry = JSON.parse(await readFile(registryPath, 'utf8'))
+    registry.tables.workspaces['ws-external'].path = externalCollide
+    await writeFile(registryPath, JSON.stringify(registry, null, 2))
+    await rm(join(source, `data/eduwork-electron/dsh/sessions/${sessionProjectKey(externalPath)}`), { recursive: true, force: true })
+    const checksum = { params: { [constants.ZSTD_c_checksumFlag]: 1 } }
+    const frame = text => zstdCompressSync(Buffer.from(text, 'utf8'), checksum)
+    const headerLine = (id, cwd) => JSON.stringify({ type: 'session', version: 4, id, createdAt: 1794645447166, cwd, isSeeded: false, delegationDepth: 0, agentPreset: 'standard' }) + '\n'
+    const eventInternal = frame('{"type":"event","seq":1,"kind":"message","payload":"internal"}\n')
+    const eventExternal = frame('{"type":"event","seq":1,"kind":"message","payload":"external"}\n')
+    const shared = join(source, `data/eduwork-electron/dsh/sessions/${sessionProjectKey(internalPath)}`)
+    await writeFile(join(shared, 'session-internal/session.v4.jsonl.zstd'), Buffer.concat([frame(headerLine('session-internal', internalPath)), eventInternal]))
+    await mkdir(join(shared, 'session-external'), { recursive: true })
+    await writeFile(join(shared, 'session-external/session.v4.jsonl.zstd'), Buffer.concat([frame(headerLine('session-external', externalCollide)), eventExternal]))
+    const cacheDir = join(source, 'data/eduwork-electron/dsh/storages/session_projcache/sessions')
+    await writeFile(join(cacheDir, 'session-external.json'), JSON.stringify({ version: 7, record: { identity: { formatVersion: 4, cwd: externalCollide }, rows: { workingDirectory: { ver: 1, seq: 1, val: externalCollide } } } }, null, 2))
+    const before = await treeSnapshot(source)
+    const receipt = await run({ sourceRoot: source, targetRoot: target })
+    assert.deepEqual(receipt.workspacesMoved.map(move => move.id), ['ws-internal'])
+    const newPath = join(target, 'workspaces', 'sample-workspace-internal')
+    const sessionsRoot = join(target, 'data/eduwork-electron/dsh/sessions')
+    assert.deepEqual(await readdir(join(sessionsRoot, sessionProjectKey(newPath))), ['session-internal'])
+    const importedInternal = await readFile(join(sessionsRoot, sessionProjectKey(newPath), 'session-internal/session.v4.jsonl.zstd'))
+    const headerInternal = frame(headerLine('session-internal', newPath))
+    assert.equal(zstdDecompressSync(importedInternal.subarray(0, headerInternal.length)).toString('utf8'), headerLine('session-internal', newPath))
+    assert.deepEqual(importedInternal.subarray(headerInternal.length), eventInternal)
+    // The external workspace keeps its path, its key directory and its bytes.
+    const externalKeyDir = join(sessionsRoot, sessionProjectKey(externalCollide))
+    assert.deepEqual(await readdir(externalKeyDir), ['session-external'])
+    assert.deepEqual(await readFile(join(externalKeyDir, 'session-external/session.v4.jsonl.zstd')), Buffer.concat([frame(headerLine('session-external', externalCollide)), eventExternal]))
+    const after = JSON.parse(await readFile(join(target, 'data/eduwork-electron/dsh/storages/workspace.json'), 'utf8'))
+    assert.equal(after.tables.workspaces['ws-external'].path, externalCollide)
+    const cache = JSON.parse(await readFile(join(target, 'data/eduwork-electron/dsh/storages/session_projcache/sessions/session-external.json'), 'utf8'))
+    assert.equal(cache.record.identity.cwd, externalCollide)
+    assert.equal(cache.record.rows.workingDirectory.val, externalCollide)
+    assert.deepEqual(await treeSnapshot(source), before)
+  } finally { await rm(base, { recursive: true, force: true }) }
+})

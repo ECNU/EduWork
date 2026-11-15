@@ -193,8 +193,9 @@ async function applyWorkspaceRemap({ stage, namespace, moves }) {
   const registryPath = join(stage, 'data', namespace, 'dsh/storages/workspace.json')
   const registry = JSON.parse(await readFile(registryPath, 'utf8').catch(error => { if (error.code === 'ENOENT') return null; throw error }))
   const sessionsRoot = join(stage, 'data', namespace, 'dsh/sessions')
-  // The lossy project key can map several internal workspaces to one session
-  // directory; those sessions are split by header cwd, not given to the first.
+  // The lossy project key can map several workspaces to one session directory.
+  // Sessions are then split by header cwd instead of giving all to the first
+  // mover — whether the co-owners are other movers or workspaces that stay.
   const byOldKey = new Map()
   for (const move of moves) {
     if (move.missing) continue
@@ -202,12 +203,20 @@ async function applyWorkspaceRemap({ stage, namespace, moves }) {
     if (!byOldKey.has(key)) byOldKey.set(key, [])
     byOldKey.get(key).push(move)
   }
+  // External workspaces (and internal ones whose directory is missing) keep
+  // their original path and key; a mover must not take their sessions away.
+  const movingIds = new Set(moves.filter(move => !move.missing).map(move => move.id))
+  const stayKeys = new Set()
+  for (const [id, workspace] of Object.entries(registry?.tables?.workspaces ?? {})) {
+    if (movingIds.has(id) || typeof workspace.path !== 'string' || workspace.path.length === 0) continue
+    stayKeys.add(sessionProjectKey(workspace.path))
+  }
   for (const move of moves) {
     if (move.missing) continue
     if (registry?.tables?.workspaces?.[move.id]) registry.tables.workspaces[move.id].path = move.newPath
     const oldDir = join(sessionsRoot, sessionProjectKey(move.oldPath)), newDir = join(sessionsRoot, sessionProjectKey(move.newPath))
     const shared = byOldKey.get(sessionProjectKey(move.oldPath))
-    if (shared.length > 1) {
+    if (shared.length > 1 || stayKeys.has(sessionProjectKey(move.oldPath))) {
       if (await exists(oldDir)) {
         for (const name of await readdir(oldDir)) {
           const sessionDir = join(oldDir, name)
