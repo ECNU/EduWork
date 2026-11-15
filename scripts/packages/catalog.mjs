@@ -43,6 +43,10 @@ export function changedGroups(files) {
 }
 const sourceDocumentation = /^(?:AGENTS|CONTRIBUTING|README(?:_EN)?|RELEASE-CHECKLIST(?:_EN)?)\.md$/
 const productRoots = /^(?:assets|config|dsh-desktop|dsh-electron|dsh-host|dsh-plugins|dsh-presets|dsh-skills|scripts|tests|third_party)\//
+const productWorkflowFiles = new Set([
+  '.github/workflows/validate-local-web.yml',
+  '.github/workflows/validate-pinned-dsh-source.yml',
+])
 
 export function selectProductChecks(files, { receiptOnly = false, full = false, reason = '' } = {}) {
   const buildInputs = [], integrationInputs = [], unknown = []
@@ -60,7 +64,7 @@ export function selectProductChecks(files, { receiptOnly = false, full = false, 
     }
     buildInputs.push(file)
     integrationInputs.push(file)
-    if (!productRoots.test(file) && file !== 'source-receipt.json'
+    if (!productRoots.test(file) && !productWorkflowFiles.has(file) && file !== 'source-receipt.json'
       && !['LICENSE', 'LICENSE-MIT', 'LICENSING.md', 'THIRD_PARTY_NOTICES.md'].includes(file)) unknown.push(file)
   }
   const allPackages = full || unknown.length > 0 || files.some(file => ['scripts/ci-changes.mjs', 'scripts/ci-result.mjs', 'tests/ci-changes.test.mjs'].includes(file))

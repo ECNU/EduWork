@@ -1,4 +1,4 @@
-import { readFile, writeFile, mkdir, lstat, readlink, symlink, unlink, realpath, rename } from 'node:fs/promises'
+import { readFile, writeFile, mkdir, lstat, readlink, symlink, unlink, realpath, rename, open } from 'node:fs/promises'
 import { isAbsolute, join, relative, resolve, sep, dirname, basename } from 'node:path'
 import { randomUUID } from 'node:crypto'
 import { prepareProductPresets } from './product-presets.mjs'
@@ -28,8 +28,13 @@ async function canonical(path) {
 const sameTarget = async (a, b) => typeof a === 'string' && typeof b === 'string' && same(await canonical(a), await canonical(b))
 async function atomicJSON(path, value) {
   const temporary = path + '.' + randomUUID() + '.pending'
-  await writeFile(temporary, JSON.stringify(value, null, 2) + '\n')
-  await rename(temporary, path)
+  // Flush the complete replacement before publishing its name.
+  const handle = await open(temporary, 'wx')
+  try {
+    try { await handle.writeFile(JSON.stringify(value, null, 2) + '\n'); await handle.sync() }
+    finally { await handle.close() }
+    await rename(temporary, path)
+  } finally { await unlink(temporary).catch(error => { if (error.code !== 'ENOENT') throw error }) }
 }
 function mergeConfig(base = {}, extra = {}) {
   const result = { ...base }
@@ -79,10 +84,14 @@ export async function prepareProductProfile({ product, home, shell, pluginConfig
   const resources = await prepareNativeResources({ product })
   pluginConfig = mergeConfig(resources.pluginConfig, pluginConfig)
   const ownerFile = join(home, '.eduwork-desktop-home.json')
-  const owner = await json(ownerFile).catch(error => { if (error.code === 'ENOENT') return null; throw error })
-  if (owner && (owner.schemaVersion !== 1 || owner.shell !== shell || owner.distribution !== identity.distribution)) throw new Error('This data directory belongs to another desktop edition')
+  const owner = await json(ownerFile).catch(error => {
+    if (error.code === 'ENOENT') return undefined
+    if (error instanceof SyntaxError) throw Object.assign(new Error(`数据目录归属标记已损坏，无法确认所属发行版。请保留原目录并联系维护人员修复。\n标记文件：${ownerFile}`), { code: 'EDUWORK_HOME_MARKER_INVALID' })
+    throw error
+  })
+  if (owner !== undefined && (owner?.schemaVersion !== 1 || owner?.shell !== shell || owner?.distribution !== identity.distribution)) throw new Error('This data directory belongs to another desktop edition')
   await mkdir(home, { recursive: true })
-  await atomicJSON(ownerFile, { schemaVersion: 1, shell, distribution: identity.distribution })
+  if (owner === undefined) await atomicJSON(ownerFile, { schemaVersion: 1, shell, distribution: identity.distribution })
   const profile = await canonical(join(home, 'profiles', native ? 'desktop-017' : 'desktop'))
   const target = await canonical(join(product, 'd', 'node_modules'))
   if (!inside(home, profile) || !inside(product, target)) throw new Error('Desktop profile or modules link escapes its owned directory')

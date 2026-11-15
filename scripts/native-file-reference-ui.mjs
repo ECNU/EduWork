@@ -21,10 +21,11 @@ export function adaptNativeFileReferenceUI(source) {
   replace('clipboardText: chip.getTextContent(),', 'fileBytes: chip.getLatest().__fileBytes,\nclipboardText: chip.getTextContent(),')
   // rc.1 restores references and native quotes through separate span branches.
   // Add size only when recreating a reference chip, never to quote payloads.
-  replace('clipboardText: reference.clipboardText\n', 'fileBytes: reference.fileBytes,\nclipboardText: reference.clipboardText\n')
+  replace('clipboardText: reference.clipboardText }, reference.invalid === true)',
+    'fileBytes: reference.fileBytes, clipboardText: reference.clipboardText }, reference.invalid === true)')
   // Upstream 0.2.1 merges reference-decoration rescans into Lexical history.
   // Keep that implementation instead of carrying our previous backport.
-  replace('decorate() {\n\t\t\t\treturn (0, react_jsx_runtime.jsx)(ReferenceChip, {', `decorate(editor) {
+  replace('decorate() {\n      return (0, react_jsx_runtime.jsx)(ReferenceChip, {', `decorate(editor) {
         return (0, react_jsx_runtime.jsx)(ReferenceChip, {
           editor,
           fileBytes: this.__fileBytes,

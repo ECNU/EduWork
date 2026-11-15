@@ -231,6 +231,9 @@ app.whenReady().then(async () => {
     assert.deepEqual(await evaluate(`Array.from(document.querySelector('[data-windows-menu]').shadowRoot.querySelectorAll('button'),element=>element.textContent)`), ['应用', '编辑'])
     await evaluate(`document.documentElement.lang='en'`)
     await until(async () => (await evaluate(`document.querySelector('[data-windows-menu]').shadowRoot.querySelector('button').textContent`)) === 'Application')
+    // Document lang only drives the renderer caption; the shell menu follows localeChanged.
+    assert.equal(nativeMenu().items.find(item => item.role === 'editmenu').label, '编辑')
+    await evaluate(`__DSH_LOCALE__.onChange('en')`)
     await until(() => nativeMenu().items.find(item => item.role === 'editmenu').label === 'Edit')
     await evaluate(`document.body.insertAdjacentHTML('beforeend','<input id="edit-fixture" value="ab">'); const input=document.querySelector('#edit-fixture');input.focus();input.setSelectionRange(1,2);window.editKeys=[];input.addEventListener('keydown',event=>editKeys.push({key:event.key,ctrl:event.ctrlKey}))`)
     const buildMenu = Menu.buildFromTemplate

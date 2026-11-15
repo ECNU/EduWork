@@ -4,7 +4,6 @@ import { readFile, mkdir, writeFile, cp, copyFile, readdir } from 'node:fs/promi
 import { join, resolve, relative, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseArgs } from 'node:util'
-import { adaptNativeWebSearchUI } from './native-web-search-ui.mjs'
 import { usePinnedBrowser } from './pinned-browser.mjs'
 import { adaptNativePresetUI } from './native-preset-ui.mjs'
 import { adaptNativeFileReferenceUI } from './native-file-reference-ui.mjs'
@@ -42,7 +41,7 @@ for (const folder of ['dsh-plugins', 'config/distributions']) {
     filter: path => !relative(sourceRepository, path).split(/[\\/]/).some(part => ['node_modules', '.git', 'test', 'tests', '.research'].includes(part)),
   })
 }
-const { build } = require('esbuild')
+const { build, transform } = require('esbuild')
 // Every independently published plugin goes through its own npm release workflow.
 const distributionPath = join(repository, 'config/distributions/generic.json')
 const distribution = withPluginNotifications(usePinnedBrowser(JSON.parse(await readFile(distributionPath, 'utf8'))))
@@ -134,7 +133,6 @@ for (const [folder, upstream] of [
   ['client-ui-conversation-brand', 'ui-conversation'],
   ['client-ui-agent-preset-product', 'ui-agent-preset'],
   ['client-ui-skill-live', 'ui-skill'],
-  ['client-ui-web-search-product', 'ui-settings-web-search'],
 ]) {
   const root = join(repository, 'dsh-plugins', folder)
   const manifest = JSON.parse(await readFile(join(root, 'package.json'), 'utf8'))
@@ -144,6 +142,11 @@ for (const [folder, upstream] of [
   if (sourceManifest.version !== runtimeReceipt.dshVersion) throw new Error(`Unqualified client: ${upstreamName}`)
   let client = await readFile(join(upstreamRoot, 'lib/client.js'), 'utf8')
   if (!client.includes(upstreamName)) throw new Error(`Client identity is missing: ${upstreamName}`)
+  // rc.2 publishes compact client bundles. Normalize only the three existing
+  // product derivatives before applying their reviewed presentation changes.
+  // The installed upstream packages and independent npm plugins stay intact.
+  client = (await transform(client, { loader: 'js', target: 'es2022', minify: false,
+    supported: { 'template-literal': false }, charset: 'utf8', legalComments: 'inline' })).code
   client = client.replaceAll(upstreamName, manifest.name)
   const replaceOnce = (from, to) => {
     if (client.split(from).length !== 2) throw new Error(`Candidate UI anchor changed: ${upstreamName}: ${from}`)
@@ -160,7 +163,6 @@ for (const [folder, upstream] of [
   if (upstream === 'ui-skill') {
     replaceOnce('ctx.on("connection/reset", clearAll);', 'ctx.on("connection/reset", clearAll);\nctx.remote.$on("settings/document-updated", clearAll);')
   }
-  if (upstream === 'ui-settings-web-search') client = adaptNativeWebSearchUI(client)
   if (upstream === 'ui-agent-preset') client = adaptNativePresetUI(client)
   await mkdir(join(root, 'lib'), { recursive: true })
   await writeFile(join(root, 'lib/client.js'), client)

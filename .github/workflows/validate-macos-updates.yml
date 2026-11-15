@@ -4,6 +4,10 @@ on:
     paths:
       - 'dsh-electron/native/**'
       - 'dsh-electron/src/mac-sparkle-updates.mjs'
+      - 'dsh-electron/src/software-update-control.mjs'
+      - 'dsh-electron/src/software-update-scheduler.mjs'
+      - 'dsh-electron/tests/software-update-control.test.mjs'
+      - 'dsh-electron/tests/software-update-scheduler.test.mjs'
       - 'dsh-electron/tests/sparkle-macos-smoke.mjs'
       - 'dsh-electron/tests/sparkle-quit-retry.electron.mjs'
       - 'dsh-electron/src/desktop-exit.mjs'
@@ -68,6 +72,8 @@ jobs:
           node-version: '24.22.1'
       - name: Check shared update coordination
         run: node --test scripts/test/macos-update-feed.test.mjs scripts/test/macos-update-delta.test.mjs scripts/test/update-delta-bases.test.mjs dsh-electron/tests/mac-sparkle-updates.test.mjs dsh-electron/tests/content-coordinator.test.mjs dsh-electron/tests/desktop-paths.test.mjs dsh-electron/tests/window-visibility.test.mjs dsh-electron/tests/create-macos-archive.test.mjs dsh-electron/tests/desktop-exit.test.mjs dsh-host/test/quit-inspection.test.mjs
+      - name: Check background software update scheduling
+        run: node --test dsh-electron/tests/software-update-control.test.mjs dsh-electron/tests/software-update-scheduler.test.mjs
       - name: Prepare the pinned Electron test runtime
         run: |
           npm install --prefix "$RUNNER_TEMP/sparkle-check/tools" --ignore-scripts --no-audit --no-fund electron@44.0.0

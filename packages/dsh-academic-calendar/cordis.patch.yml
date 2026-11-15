@@ -1,4 +1,4 @@
-# Source or npm installation must make all four package identities resolvable.
+# Source or npm installation must make all three package identities resolvable.
 - insert:
     - id: calendar
       name: '@eduwork/dsh-calendar'

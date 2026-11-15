@@ -58,6 +58,22 @@ test('documentation and published package sources skip assembly, but not package
   assert.deepEqual(selectProductChecks(['packages/dsh-remote-access/docs/PROTOCOL.md']).groups, ['dsh-remote-access'])
 })
 
+test('Web and DSH workflows keep product checks and select only affected npm packages', () => {
+  const web = '.github/workflows/validate-local-web.yml'
+  const dsh = '.github/workflows/validate-pinned-dsh-source.yml'
+  for (const files of [[web], [dsh], [web, dsh]]) {
+    const selected = selectProductChecks(files)
+    assert.equal(selected.build, true)
+    assert.equal(selected.integration, true)
+    assert.equal(selected.packages, false)
+    assert.deepEqual(selected.groups, [])
+  }
+  assert.deepEqual(selectProductChecks([web, dsh, 'packages/dsh-decision/src/core.js']).groups, ['dsh-decision'])
+  assert.deepEqual(selectProductChecks([web, dsh, 'third_party/dsh/candidate-v0.2.2-rc.1/npm-runtime/package-lock.json']).groups,
+    ['dsh-decision', 'dsh-side-chat'])
+  assert.deepEqual(selectProductChecks([web, dsh, '.github/workflows/new-check.yml']).groups, groups)
+})
+
 test('direct source integration dependencies and mixed changes retain their checks', () => {
   for (const file of ['packages/dsh-desktop-pet/skins/default/idle.svg', 'packages/dsh-memory/scripts/check-query-contract.mjs',
     'packages/dsh-knowledge-studio/scripts/build-video-template.mjs', 'packages/dsh-oidc/package.json',

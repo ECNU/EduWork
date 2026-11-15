@@ -101,14 +101,16 @@ export class ReminderDelivery {
     })
   }
   inbox() {
-    const items = [...this.receipts.entries()].map(([, { nativeSent, ...receipt }]) => receipt)
+    const items = [...this.receipts.entries()]
+      .filter(([, receipt]) => this.calendar.isSourceVisible(receipt.ref.source))
+      .map(([, { nativeSent, ...receipt }]) => receipt)
       .sort((a, b) => b.deliveredAt.localeCompare(a.deliveredAt) || a.id.localeCompare(b.id))
     return { channel: this.channel, unread: items.filter(item => !item.read).length, items: items.slice(0, 100) }
   }
   ack(id) {
     return this.enqueue(async () => {
       const receipt = this.receipts.get(id)
-      if (!receipt) return { updated: false }
+      if (!receipt || !this.calendar.isSourceVisible(receipt.ref.source)) return { updated: false }
       await this.receipts.put(id, { ...receipt, read: true })
       this.notifications?.withdraw(id)
       this.calendar.invalidate({ domain: 'calendar_reminders' })

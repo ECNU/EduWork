@@ -120,6 +120,24 @@ test('due reminders enter the durable calendar inbox once, survive restart and c
   })
 })
 
+test('the inbox follows source visibility without losing reminder history', { skip: !runtime }, async t => {
+  t.mock.method(Date, 'now', () => Date.parse('2040-01-02T09:45:01'))
+  await withRoot('calendar-reminder-visibility-', async root => withCalendar(root, async calendar => {
+    const source = calendar.registerSource({ provider: 'example.edu', account: 'student-a', feed: 'timetable' })
+    await source.apply({ events: [{ uid: 'class', title: 'Seminar', start: '2040-01-02T10:00' }] })
+    await calendar.setPersonal({ source: source.source, uid: 'class', patch: { reminder: { kind: 'relative', minutes: 15 } } })
+    await calendar.checkReminders()
+    const [receipt] = calendar.reminders().items
+    assert.equal(receipt.title, 'Seminar')
+    source.setActive(false)
+    assert.equal(calendar.reminders().unread, 0)
+    assert.deepEqual(calendar.reminders().items, [])
+    assert.deepEqual(await calendar.ackReminder({ id: receipt.id }), { updated: false })
+    source.setActive(true)
+    assert.deepEqual(calendar.reminders().items, [receipt])
+  }))
+})
+
 test('moving a class moves its due reminder, cancellation stops relative reminders and fixed reminders stay independent', { skip: !runtime }, async t => {
   let now = Date.parse('2040-01-02T09:00:00')
   t.mock.method(Date, 'now', () => now)

@@ -5,6 +5,7 @@ import nodemailer from 'nodemailer'
 import {
   attachmentHandle, messageHandle, parseAttachmentHandle, parseMessageHandle, parseSearchCursor, searchCursor,
 } from './handles.js'
+import { normalizeExcerpt, PREVIEW_BYTES, PREVIEW_CHARS, readBounded, textLeaves } from './preview.js'
 import { sanitizeFilename, truncateText, validateAddress } from './sanitize.js'
 
 function addressList(value) {
@@ -400,6 +401,106 @@ export async function sendMail(settings, password, message, signal) {
   } finally {
     signal?.removeEventListener('abort', abort)
     transporter.close()
+  }
+}
+
+const MAX_ARRIVALS = 5
+
+/**
+ * A connection that outlives one operation, for the reminder poller: tools open a
+ * connection per call, but polling every couple of minutes should not log in again
+ * and again. Nothing here stores flags, so mail keeps its unread state.
+ */
+export async function openSession(settings, password, signal) {
+  const client = createImap(settings, password)
+  const abort = () => { try { client.close() } catch {} }
+  // A persistent session can fail between polls or emit a late login error after
+  // cancellation. Close it without an unhandled EventEmitter error; pending IMAP
+  // commands still reject and the poller reconnects after the failed probe.
+  client.on('error', abort)
+  signal?.addEventListener('abort', abort, { once: true })
+  try {
+    signal?.throwIfAborted()
+    await client.connect()
+    signal?.throwIfAborted()
+    return client
+  } catch (error) {
+    try { client.close() } catch { /* already torn down */ }
+    throw error
+  } finally {
+    signal?.removeEventListener('abort', abort)
+  }
+}
+
+export async function closeSession(client) {
+  if (client === undefined || client === null) return
+  try {
+    if (client.usable) await client.logout()
+    else client.close()
+  } catch { try { client.close() } catch { /* already closed */ } }
+}
+
+/** STATUS leaves the selected mailbox untouched, so a probe cannot disturb the UI. */
+export async function probeFolder(client, folder) {
+  const status = await client.status(folder, { messages: true, uidNext: true, uidValidity: true })
+  if (status === false || status === undefined) throw new Error('Mailbox is not available')
+  const validity = String(status.uidValidity ?? '')
+  if (!/^\d+$/.test(validity)) throw new Error('Mail server did not provide a valid UIDVALIDITY')
+  return { uidValidity: validity, uidNext: Number(status.uidNext ?? 0), messages: Number(status.messages ?? 0) }
+}
+
+/** Header-only view of new mail: the reminder never needs the body to list it. */
+export async function fetchArrivals(client, folder, { afterUid, limit = MAX_ARRIVALS } = {}) {
+  const lock = await client.getMailboxLock(folder, { readOnly: true })
+  try {
+    const validity = uidValidity(client)
+    const found = await client.search({ uid: `${Math.max(1, Number(afterUid) || 0)}:*` }, { uid: true })
+    const uids = (found === false ? [] : found)
+      .filter(uid => Number.isSafeInteger(uid) && uid > afterUid)
+      .sort((left, right) => left - right)
+      .slice(0, Math.min(MAX_ARRIVALS, Math.max(1, Number(limit) || MAX_ARRIVALS)))
+    if (uids.length === 0) return { uidValidity: validity, messages: [] }
+    const fetched = await client.fetchAll(uids, {
+      uid: true, envelope: true, size: true, internalDate: true, bodyStructure: true,
+    }, { uid: true })
+    const position = new Map(uids.map((uid, index) => [uid, index]))
+    const ordered = fetched.sort((left, right) => (position.get(left.uid) ?? 0) - (position.get(right.uid) ?? 0))
+    return {
+      uidValidity: validity,
+      messages: ordered.map(message => ({
+        uid: message.uid,
+        subject: String(message.envelope?.subject ?? ''),
+        from: addressList(message.envelope?.from),
+        receivedAt: dateIso(message.internalDate ?? message.envelope?.date),
+        size: Number(message.size ?? 0),
+        bodyStructure: message.bodyStructure,
+      })),
+    }
+  } finally {
+    try { lock.release() } catch { /* mailbox already released */ }
+  }
+}
+
+/**
+ * A bounded preview for one message: the download stops at `maxBytes` instead of
+ * buffering a whole body and truncating afterwards, so a 2 MiB message costs the
+ * configured cap, not its full size.
+ */
+export async function readExcerpt(client, folder, uid, { maxBytes = PREVIEW_BYTES, maxChars = PREVIEW_CHARS, signal } = {}) {
+  const lock = await client.getMailboxLock(folder, { readOnly: true })
+  try {
+    const message = await client.fetchOne(uid, { uid: true, bodyStructure: true }, { uid: true })
+    if (message === false) throw new Error('Message no longer exists')
+    const leaf = textLeaves(message.bodyStructure)[0]
+    if (leaf === undefined) return { text: '', truncated: false }
+    const download = await client.download(uid, leaf.part, { uid: true })
+    const bounded = await readBounded(download.content, { maxBytes, signal })
+    return {
+      text: normalizeExcerpt(bounded.text, { chars: maxChars, html: leaf.type === 'text/html' }),
+      truncated: bounded.truncated,
+    }
+  } finally {
+    try { lock.release() } catch { /* mailbox already released */ }
   }
 }
 
