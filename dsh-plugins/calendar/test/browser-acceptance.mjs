@@ -481,8 +481,16 @@ await acceptance('删除导入日程，同编号的个人日程不受影响', as
         // The imported one carries its source in the label, which is what tells the
         // two apart on the week.
         await page.getByRole('button', { name: /高等数学 A/ }).click()
-        await page.getByRole('button', { name: '删除日程' }).click()
-        await page.getByRole('button', { name: '删除', exact: true }).click()
+        const detail = page.getByRole('dialog', { name: '高等数学 A' })
+        const deleteAction = detail.getByRole('button', { name: '删除日程', exact: true })
+        assert.equal(await detail.locator('.ui-modal-footer').getByRole('button', { name: '关闭', exact: true }).count(), 0)
+        await deleteAction.click()
+        await detail.getByText('确定删除这条日程？', { exact: true }).waitFor()
+        assert.equal(await deleteAction.count(), 0)
+        assert.equal(await detail.getByRole('button', { name: '编辑日程信息', exact: true }).count(), 0)
+        await detail.getByRole('button', { name: '取消', exact: true }).click()
+        await deleteAction.click()
+        await detail.getByRole('button', { name: '删除', exact: true }).click()
 
         // The dialog closes and the week redraws from the service.
         await page.getByRole('button', { name: /自己加的复习课/ }).waitFor()
@@ -514,6 +522,38 @@ await acceptance('删除导入日程，同编号的个人日程不受影响', as
       })
     })
   })
+})
+
+await acceptance('周历拖选预览与保存后的个人日程配色一致', async () => {
+  await withRoot('eduwork-browser-selection-', async root => withCalendar(root, async calendar => {
+    await withBrowser(calendar, panel, METHODS, async ({ page, dayInWeek }) => {
+      const week = page.getByRole('region', { name: '周日历' })
+      const tuesday = await dayInWeek(1)
+      const column = week.locator(`[role="cell"][data-date="${tuesday}"]:not([data-calendar-day])`)
+      const lane = await column.boundingBox()
+      const start = await week.locator('[data-time="10:00:00"]').last().boundingBox()
+      const end = await week.locator('[data-time="11:00:00"]').last().boundingBox()
+      assert.ok(lane && start && end, '周历需要显示拖选的日期与时段')
+      const x = lane.x + lane.width / 2
+      const readColors = element => {
+        const styles = getComputedStyle(element)
+        return [styles.backgroundColor, styles.borderInlineStartColor, styles.color]
+      }
+
+      await page.mouse.move(x, start.y + start.height / 2)
+      await page.mouse.down()
+      await page.mouse.move(x, end.y + end.height / 2, { steps: 10 })
+      const preview = week.locator('.cal-selection-preview')
+      const previewColors = await preview.evaluate(readColors)
+      await page.mouse.up()
+
+      const create = page.getByRole('dialog', { name: '新建日程' })
+      await create.getByLabel('标题', { exact: true }).fill('拖选创建的个人日程')
+      await create.getByRole('button', { name: '新建', exact: true }).click()
+      const saved = week.getByRole('button', { name: /拖选创建的个人日程/ })
+      assert.deepEqual(await saved.evaluate(readColors), previewColors)
+    })
+  }))
 })
 
 // 3. The record page is the other first-class way to delete: the week's dialog asks

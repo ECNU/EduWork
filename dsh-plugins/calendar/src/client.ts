@@ -328,13 +328,23 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
     title: occurrence.title,
     closeLabel: '关闭',
     description: series ? seriesSummary(event) : undefined,
-    footer: React.createElement('div', { className: 'cal-dialog-actions' },
-      React.createElement('div', { className: 'cal-dialog-secondary' }, ...footerActions),
-      React.createElement('div', { className: 'cal-dialog-primary' },
-        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: onClose }, '关闭'),
-        event && React.createElement(Button, {
-          variant: 'outline', size: 'sm', onClick: () => onEdit(event.uid, event.source),
-        }, '编辑日程信息'))),
+    footer: confirming
+      ? React.createElement('div', { className: 'cal-dialog-actions' },
+        React.createElement('span', { className: 'cal-delete-question', role: 'status' }, '确定删除这条日程？'),
+        React.createElement('div', { className: 'cal-dialog-primary' },
+          React.createElement(Button, { variant: 'ghost', size: 'sm', autoFocus: true, onClick: () => setConfirming(false) }, '取消'),
+          React.createElement(Button, {
+            variant: 'outline', size: 'sm', className: 'cal-destructive',
+            onClick: async () => {
+              if (await run(() => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }), '已删除这条日程')) onClose()
+            },
+          }, '删除')))
+      : React.createElement('div', { className: 'cal-dialog-actions' },
+        React.createElement('div', { className: 'cal-dialog-secondary' }, ...footerActions),
+        event && React.createElement('div', { className: 'cal-dialog-primary' },
+          React.createElement(Button, {
+            variant: 'outline', size: 'sm', onClick: () => onEdit(event.uid, event.source),
+          }, '编辑日程信息'))),
   },
   React.createElement('div', { className: 'cal-event-dialog-body' },
     React.createElement('div', { className: 'cal-event-facts' },
@@ -423,16 +433,6 @@ function EventDialog({ occurrence, event, note, service, onClose, run, onEdit, s
         }, '保存'),
         React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setEditing(false) }, '取消'),
         React.createElement(Muted, null, series ? '只改这一次，系列其他日期不受影响' : '只改这一条日程')))
-      : undefined,
-    confirming
-      ? React.createElement('div', { className: 'cal-inline-confirm' },
-      React.createElement('p', null, '确定删除这条日程？'),
-      React.createElement('div', { className: 'cal-dialog-primary' },
-      React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirming(false) }, '取消'),
-      React.createElement(Button, {
-        variant: 'outline', size: 'sm', className: 'cal-destructive',
-        onClick: () => run(() => service.deleteEvent({ uid: occurrence.uid, source: occurrence.source }), '已删除这条日程').then(ok => ok && onClose()),
-      }, '删除')))
       : undefined))
 }
 

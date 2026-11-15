@@ -16,6 +16,7 @@ const h = React.createElement
 const nextDay = (date: string) => addDays(date.slice(0, 10), 1)
 const short = (date: string) => `${Number(date.slice(5, 7))}/${Number(date.slice(8, 10))}`
 const minutes = (date: string) => Number(date.slice(11, 13)) * 60 + Number(date.slice(14, 16))
+const eventBlockColor = (accent: string) => `color-mix(in srgb, ${accent} 17%, var(--cal-surface))`
 
 interface Span {
   firstDay: string
@@ -91,8 +92,7 @@ export function CalendarCanvas(props: CanvasProps) {
         id: occurrenceKeyOf(entry), title: entry.title, start: entry.start,
         end: allDay ? nextDay(entry.end ?? entry.start) : entry.end,
         allDay, display: block ? 'block' as const : 'list-item' as const,
-        color: block ? `color-mix(in srgb, ${accent} 17%, var(--cal-surface))` : accent,
-        contrastColor: 'var(--dsw-alias-label-primary)',
+        color: block ? eventBlockColor(accent) : accent,
         extendedProps: { entry, accent, block, note, order: allDay ? 1 : 2 },
       }
     }),
@@ -124,6 +124,9 @@ export function CalendarCanvas(props: CanvasProps) {
       views: { timeGridWeek: { dayHeaderFormat: { weekday: 'short', month: 'numeric', day: 'numeric' } } },
       eventOrder: 'order,start,title', eventOrderStrict: true,
       selectable: true, selectMinDistance: 6, selectMirror: true,
+      // 拖选预览尚无来源，保存后会写入个人日程。
+      eventColor: eventBlockColor(tintOf('manual').accent),
+      eventContrastColor: 'var(--cal-ink)',
       dayHeaderClass: 'cal-column-heading',
       dayCellInnerClass: 'cal-cell-content',
       dayCellTopClass: 'cal-cell-top',
@@ -146,7 +149,11 @@ export function CalendarCanvas(props: CanvasProps) {
         const entry = event.extendedProps.entry as Occurrence | undefined
         if (entry) callbacks.current.onSelect(entry)
       },
-      eventClass: ({ event }) => event.extendedProps.span ? 'cal-phase-band' : event.extendedProps.block ? 'cal-event cal-event-block' : 'cal-event',
+      eventClass: ({ event, isMirror }) => {
+        if (event.extendedProps.span) return 'cal-phase-band'
+        if (isMirror && !event.extendedProps.entry) return 'cal-event-block cal-selection-preview'
+        return event.extendedProps.block ? 'cal-event cal-event-block' : 'cal-event'
+      },
       eventContent: ({ event, timeText }) => {
         const { note } = event.extendedProps
         if (!note) return true
@@ -160,7 +167,7 @@ export function CalendarCanvas(props: CanvasProps) {
         details.append(title, summary)
         return { domNodes: [details] }
       },
-      eventDidMount: ({ event, el, isStart }) => {
+      eventDidMount: ({ event, el, isStart, isMirror }) => {
         const { span, entry, accent, note } = event.extendedProps
         if (span) {
           el.dataset.tone = span.tone
@@ -175,6 +182,8 @@ export function CalendarCanvas(props: CanvasProps) {
           el.setAttribute('aria-label', [time, el.title].join(' '))
           el.setAttribute('data-occurrence', event.id)
           el.dataset.eventTitle = entry.title
+        } else if (isMirror) {
+          el.style.setProperty('--cal-event-ink', callbacks.current.tintOf('manual').accent)
         }
       },
     }

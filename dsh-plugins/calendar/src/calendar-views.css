@@ -153,11 +153,14 @@
 .cal-day-number.cal-today { background: var(--cal-accent); color: var(--fc-monarch-primary-foreground); }
 .cal-focused-day { background: color-mix(in srgb, var(--cal-accent) 5%, var(--cal-surface)); }
 .cal-week-number { color: var(--cal-muted); font-size: 11px; white-space: nowrap; }
-.cal-event { font-size: 12px; cursor: pointer; }
+.cal-event, .cal-selection-preview { font-size: 12px; }
+.cal-event { cursor: pointer; }
 .cal-event-details { display: grid; min-width: 0; }
 .cal-event-details > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .cal-event-note { color: var(--cal-muted); font-size: 11px; }
 .cal-event-block { border-inline-start: 2px solid var(--cal-event-ink) !important; }
+/* 拖选期间 Monarch 会为按下的事件加深颜色，预览应保持保存后的底色。 */
+.cal-engine .cal-selection-preview { background-color: var(--fc-event-color); }
 .cal-event:hover { filter: brightness(.97); }
 .cal-phase-band {
   background: var(--cal-accent-soft) !important;
@@ -304,6 +307,7 @@
 }
 .cal-inline-confirm p { margin: 0; font-size: 13px; }
 .cal-inline-confirm p + p { color: var(--dsw-alias-label-secondary, GrayText); font-size: 12px; }
+.cal-delete-question { font-size: 13px; }
 .cal-destructive { color: var(--dsw-alias-state-error-primary, #d4553f); }
 .cal-source-list { display: grid; gap: 14px; }
 .cal-source-list label { display: grid; gap: 6px; font-size: 12px; font-weight: 600; color: var(--dsw-alias-label-secondary, GrayText); }
