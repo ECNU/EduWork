@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { TaskNotifications, nativeNotificationAdapter } from '../src/task-notifications.mjs'
+import { createTaskbarIndicator } from '../src/taskbar-indicator.mjs'
 import { applyDesktopBrand } from '../src/desktop-brand.mjs'
 import { notificationDefaults } from '../../dsh-plugins/desktop-services/lib/attention.js'
 import { DesktopAttention } from '../../dsh-plugins/desktop-services/lib/attention.js'
@@ -20,12 +21,16 @@ const productName = process.env.EDUWORK_TEST_PRODUCT_NAME || 'EduWork'
 applyDesktopBrand(app, process.platform, { productName, appId: 'org.eduwork.notification-test' })
 async function run() {
 const events = [], window = new BrowserWindow({ show: false, webPreferences: { sandbox: true, contextIsolation: true } })
+const indicatorErrors = []
+const indicator = createTaskbarIndicator({ platform: process.platform, nativeImage, getDock: () => app.dock, warn: e => indicatorErrors.push(e.message) })
+indicator.attach(window)
+if (process.platform === 'win32') window.showInactive()
 const tray = new Tray(nativeImage.createFromPath(fileURLToPath(new URL('../../assets/eduwork/icon-32.png', import.meta.url))))
 tray.setToolTip('EduWork notification test')
 const adapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName, activate: key => broker.activate(key), show: () => window.show(), failed: () => events.push('native-failed') })
 const broker = new TaskNotifications({ foreground: () => window.isFocused(), show: () => { events.push('window-restored'); window.show(); window.focus() },
   publish: value => { const result = adapter.publish(value); events.push('native-api-called'); return result }, dismiss: () => adapter.dismiss(),
-  changed: () => tray.setContextMenu(Menu.buildFromTemplate(broker.menu())) })
+  changed: status => { indicator.update(status); tray.setContextMenu(Menu.buildFromTemplate(broker.menu())) } })
 tray.on('balloon-show', () => events.push('balloon-show'))
 tray.on('balloon-click', () => adapter.balloonClick())
 tray.on('balloon-closed', () => adapter.balloonClosed())
@@ -33,6 +38,8 @@ try {
   broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, running: [], items: [{ key: 'fixture-approval', kind: 'approval', sessionId: 'fixture', title: '', createdAt: Date.now() }] })
   await new Promise(resolve => setTimeout(resolve, 5000))
   const menuItems = broker.menu().length
+  const observedDockBadge = app.dock?.getBadge()
+  if (process.platform === 'win32') assert.equal(window.isFocused(), false)
   broker.menu()[0].click()
   const target = broker.handle({ action: 'view', sessionId: 'fixture' }).openKey
   broker.handle({ action: 'sync', instance: 'fixture', preferences: notificationDefaults, running: [], items: [] })
@@ -63,9 +70,10 @@ try {
   await attention.flush()
   assert.equal(broker.menu().length, 0)
   source.dispose(); registry.close(); attention.close()
+  assert.deepEqual(indicatorErrors, [])
   await mkdir(evidence, { recursive: true })
   await writeFile(join(evidence, 'native-notifications.json'), JSON.stringify({ success: true, platform: process.platform, electron: process.versions.electron, productName: app.getName(), events, menuItems, target, cleared: broker.menu().length === 0,
-    pluginProtocol: 1, pluginNavigation: true,
+    pluginProtocol: 1, pluginNavigation: true, observedDockBadge, indicatorErrors,
     scope: 'Native tray/notification API and programmatic Agent/plugin menu navigation; does not certify visual delivery, OS permissions, historical toast clicks or DND.' }, null, 2))
 } finally { broker.close(); tray.destroy(); window.destroy(); app.quit() }
 }
