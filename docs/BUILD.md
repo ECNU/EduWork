@@ -15,6 +15,8 @@
 
 手动开发包验证不需要发行说明，也不会创建 Release。新 workflow 文件尚未进入仓库默认分支时，可运行已注册的 `desktop-candidates.yml`：选择 feature 分支、`build_mode=node`、`development=true`、开发版本及目标平台，并保持发布关闭、发行说明为空、审批未勾选。
 
+Windows 迁移开发可手动运行 `development-desktop.yml`，选择实现分支、`platform=windows` 并勾选 `windows_installed_candidate`。流水线先执行原有完整构建与便携包启动检查，再复用同一批输入组装 `installed` 布局，将程序与源码身份回执上传为 `windows-installed-candidate` artifact（保留 7 天）。该候选关闭软件更新，不创建 Release，也不包含安装器；下载后运行 `electron-candidate/EduWork-Electron.exe`，完成旧数据迁入、凭据解密和冷启动验收。回执将这些 `installed` 运行验收标为未执行，不沿用便携包的通过结论。
+
 ## CI 检查范围
 
 PR 和 main push 共用 `scripts/ci-changes.mjs` 判断变更范围。普通文档、网站、更新清单、独立 npm 包源码，以及只刷新时间和源码哈希的 `source-receipt.json`，不会触发产品装配。产品锁、Host、桌面外壳、Skill、资源、构建脚本和 CI 配置变化仍执行构建；未知路径或无法取得比较基准时执行完整检查。
