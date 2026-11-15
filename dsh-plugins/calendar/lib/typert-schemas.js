@@ -213,7 +213,10 @@ export const rangeParameter = jsonParameter('occurrences', 'range', rangeSchema)
 // Annotations speak in whole days: a range carrying clock parts or record
 // filters would be range vocabulary leaking into a decoration contract.
 const annotationDay = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'expected YYYY-MM-DD')
-export const annotationRangeSchema = z.object({ from: annotationDay.optional(), to: annotationDay.optional() }).strict()
+export const annotationRangeSchema = z.object({
+  from: annotationDay.optional(), to: annotationDay.optional(),
+  group: z.string().min(1).optional(), includeOriginalSpan: z.boolean().optional(),
+}).strict()
 export const annotationsRangeParameter = jsonParameter('annotationsFor', 'range', annotationRangeSchema)
 export const annotationSelectionParameter = jsonParameter('selectAnnotations', 'input', z.object({ group: z.string().min(1), id: z.string().nullable() }).strict())
 export const annotationChoicesResult = result('@eduwork/dsh-calendar#AnnotationChoices', z.array(z.object({

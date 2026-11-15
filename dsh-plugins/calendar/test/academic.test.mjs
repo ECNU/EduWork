@@ -183,12 +183,41 @@ test('selected calendar drives annotations and queries; exam weekends and breaks
     assert.equal(education.query({ from: '2027-01-17' }).days[0].phase.kind, 'examination')
     assert.equal(education.query({ from: '2027-01-18' }).days[0].week, undefined)
     assert.equal((await calendar.annotationsFor({ from: '2027-01-11', to: '2027-01-17' })).spans[0].lastDay, '2027-01-17')
+    const exact = await calendar.annotationsFor({ from: '2027-01-11', to: '2027-01-17', includeOriginalSpan: true })
+    assert.equal(exact.spans[0].lastDay, '2027-01-15')
+    assert.equal(exact.spans[0].originalFirstDay, '2027-01-04')
+    assert.match(exact.weeks[0].text, /第 18 周/)
     await calendar.selectAnnotations({ group: 'academic-calendar', id: 'b' })
     assert.equal(education.query({ from: '2026-10-26' }).days[0].academicYear, 'other')
     await calendar.selectAnnotations({ group: 'academic-calendar', id: null })
     assert.deepEqual(await calendar.annotationsFor({}), { weeks: [], spans: [] })
     assert.throws(() => education.query({ from: '2026-10-26' }), /选择/)
     assert.throws(() => education.query({ id: 'a', from: '2026-02-30' }), /日期/)
+  }))
+})
+
+test('month annotations can retain the original dates of a clipped school phase', { skip: !runtime }, async () => {
+  await withRoot('academic-original-span-', async root => withCalendar(root, async (education, calendar) => {
+    await education.registerDataset({ id: 'school', label: '本科校历', dataset: DATA })
+    const result = await calendar.annotationsFor({ from: '2027-01-18', to: '2027-01-24', includeOriginalSpan: true })
+    assert.deepEqual(result.spans[0], {
+      firstDay: '2027-01-18', lastDay: '2027-01-24', originalLastDay: DATA.breaks[0].lastDay,
+      text: DATA.breaks[0].name, tone: 'quiet',
+    })
+  }))
+})
+
+test('academic year overview reads only the selected school calendar provider', { skip: !runtime }, async () => {
+  await withRoot('academic-overview-provider-', async root => withCalendar(root, async (education, calendar) => {
+    await education.registerDataset({ id: 'school', label: '本科校历', dataset: DATA })
+    calendar.registerAnnotations({ id: 'other', annotationsFor: () => ({
+      weeks: [], spans: [{ firstDay: '2027-01-04', lastDay: '2027-01-04', text: '其他背景' }],
+    }) })
+    const { spans } = await calendar.annotationsFor({ group: 'academic-calendar' })
+    assert.deepEqual(spans.map(span => span.text), [
+      `${DATA.academicYear} ${DATA.terms[0].name}`, `${DATA.academicYear} ${DATA.terms[0].name} · ${DATA.terms[0].phases[1].name}`,
+      DATA.breaks[0].name,
+    ])
   }))
 })
 

@@ -173,7 +173,8 @@ export function annotationsForDataset(dataset, range = {}) {
   const spans = []
   for (const term of dataset.terms) {
     for (const phase of term.phases) {
-      const span = phaseRange(term, phase)
+      // 日历界面显示公示日期；教学周查询保留按整周归类的语义。
+      const span = range.includeOriginalSpan ? phase : phaseRange(term, phase)
       if (!overlaps(span.firstDay, span.lastDay)) continue
       const shortTerm = term.shortTerm === true
       const tone = phase.kind === 'examination' ? 'highlight' : shortTerm ? 'quiet' : 'neutral'
@@ -190,6 +191,8 @@ export function annotationsForDataset(dataset, range = {}) {
       spans.push({
         firstDay: span.firstDay < from ? from : span.firstDay,
         lastDay: span.lastDay > to ? to : span.lastDay,
+        ...(range.includeOriginalSpan && span.firstDay < from ? { originalFirstDay: span.firstDay } : {}),
+        ...(range.includeOriginalSpan && span.lastDay > to ? { originalLastDay: span.lastDay } : {}),
         text: `${dataset.academicYear} ${text}`.slice(0, 32),
         ...(tone === 'neutral' ? {} : { tone }),
       })
@@ -210,6 +213,8 @@ export function annotationsForDataset(dataset, range = {}) {
     spans.push({
       firstDay: rest.firstDay < from ? from : rest.firstDay,
       lastDay: rest.lastDay > to ? to : rest.lastDay,
+      ...(range.includeOriginalSpan && rest.firstDay < from ? { originalFirstDay: rest.firstDay } : {}),
+      ...(range.includeOriginalSpan && rest.lastDay > to ? { originalLastDay: rest.lastDay } : {}),
       text: rest.name,
       tone: 'quiet',
     })
