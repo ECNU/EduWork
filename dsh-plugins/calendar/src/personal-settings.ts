@@ -24,7 +24,7 @@ function draftOf(own: any, effective: any, once: boolean) {
 }
 
 /** One editor for both series defaults and occurrence overrides. */
-export function PersonalSettings({ identity, service, run, Field, allowOccurrence = true }: any) {
+export function PersonalSettings({ identity, service, run, Field, allowOccurrence = true, showHeading = true }: any) {
   const [target, setTarget] = useState(allowOccurrence && identity.originalStart ? 'once' : 'series')
   const [form, setForm] = useState<any>(null)
   const [baseline, setBaseline] = useState<any>(null)
@@ -99,11 +99,10 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
     form[field].mode === 'custom' ? React.createElement(Field, { label: field === 'note' ? '默认笔记' : '我的备注' },
       React.createElement('textarea', { 'aria-label': field === 'note' ? '默认笔记' : '我的备注', style: control, rows: 3,
         value: form[field].text, onChange: (event: any) => change(field, { ...form[field], text: event.target.value }) })) : undefined)
-  return React.createElement('section', { 'aria-label': '个人设置', style: { padding: 12, borderRadius: 10, border,
-    background: 'var(--dsw-alias-bg-layer-2, #f6f6f6)', fontSize: 13 } },
-    React.createElement('strong', null, '个人设置'),
-    React.createElement('p', { style: { color: 'var(--dsw-alias-label-secondary, #666)', fontSize: 12 } },
-      '笔记、备注和隐藏仅保存在本机。提前提醒随改期调整、停课取消；固定时间提醒独立保留。到点后进入提醒记录，桌面端支持系统通知。需保持 EduWork 运行，不会启动模型。'),
+  return React.createElement('section', { 'aria-label': '个人设置', className: 'cal-personal-settings' },
+    showHeading && React.createElement('strong', null, '个人设置'),
+    React.createElement('p', { className: 'cal-personal-help' },
+      '笔记、备注和隐藏设置仅保存在本机。提前提醒跟随日程，固定提醒按设定时间触发。提醒需保持 EduWork 运行。'),
     allowOccurrence && identity.originalStart ? select('设置范围', target, [['once', '仅这一次'], ['series', '整条日程']], setTarget) : undefined,
     !form ? React.createElement('p', null, problem || '正在读取个人设置…') : React.createElement(React.Fragment, null,
       textField('note', '笔记'), textField('remark', '备注'),
@@ -122,5 +121,6 @@ export function PersonalSettings({ identity, service, run, Field, allowOccurrenc
         React.createElement(Button, { variant: 'outline', size: 'sm', onClick: () => change('remark', { mode: 'custom', text: effective.legacyDescription }) }, '复制到我的备注')) : undefined,
       effective.legacyExtensions ? React.createElement('details', null, React.createElement('summary', null, '旧附加信息备份（归属待确认）'), React.createElement('pre', { style: { whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' } }, JSON.stringify(effective.legacyExtensions, null, 2))) : undefined,
       problem ? React.createElement('p', { role: 'alert' }, problem) : undefined,
-      React.createElement(Button, { size: 'sm', variant: 'primary', disabled: busy || JSON.stringify(form) === JSON.stringify(baseline), onClick: save }, '保存个人设置')))
+      React.createElement('div', { className: 'cal-personal-actions' },
+        React.createElement(Button, { variant: 'outline', disabled: busy || JSON.stringify(form) === JSON.stringify(baseline), onClick: save }, '保存个人设置'))))
 }

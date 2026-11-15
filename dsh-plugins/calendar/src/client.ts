@@ -49,15 +49,12 @@ const newUid = () => (globalThis.crypto?.randomUUID
   ? `manual-${globalThis.crypto.randomUUID()}`
   : `manual-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 10)}`)
 
-// 与详情页的时间标签对齐。
-const GUTTER = 54
 const PAGE_BACKGROUND = 'var(--dsw-alias-bg-base, #fff)'
 const PRIMARY = 'var(--dsw-alias-label-primary, #222)'
 const SECONDARY = 'var(--dsw-alias-label-secondary, #666)'
 const HAIRLINE = '.5px solid var(--dsw-alias-border-l1, #00000014)'
 const CARD_BORDER = '1px solid var(--dsw-alias-border-l2, #0000001f)'
 const LAYER = 'var(--dsw-alias-bg-layer-2, #f6f6f6)'
-const HOVER = 'var(--dsw-alias-interactive-bg-hover, #0000000a)'
 
 /** 弹窗沿用宿主的焦点、关闭和遮罩行为，由日历定义不同内容的宽度。 */
 function Modal({ children, className, contentClassName, size, ...props }:
@@ -72,12 +69,6 @@ function Modal({ children, className, contentClassName, size, ...props }:
 /** The hues a source is drawn in, as the product's static palette names; the fallbacks are for themes without them. */
 const TINTS: Record<string, string> = { blue: '#4d6bfe', amber: '#d99a2b', green: '#2f9e68', deepseek: '#4d6bfe', red: '#d4553f' }
 const TINT_FAMILIES = Object.keys(TINTS)
-
-/** Hover feedback for a row or a block, which inline styles cannot express. */
-function useHover() {
-  const [hovered, setHovered] = useState(false)
-  return [hovered, { onMouseEnter: () => setHovered(true), onMouseLeave: () => setHovered(false) }] as const
-}
 
 const pad2 = (value: number) => String(value).padStart(2, '0')
 const dateOf = (value: string) => value.slice(0, 10)
@@ -653,49 +644,28 @@ function ExportDialog({ service, onClose, toast }: any) {
   problem ? React.createElement('div', { style: { marginTop: 8, fontSize: 12, color: 'var(--dsw-alias-state-error-primary, #d4553f)' } }, problem) : undefined)
 }
 
-/** One entry row of the agenda: date, time, place, and the actions that fit a row. */
-function EventRow({ occurrence, tint, note, onOpen, onCancel, onDelete }: any) {
-  const [hovered, hover] = useHover()
+/** 日程页中的一条出现时间，可以打开这一次的详情。 */
+function EventRow({ occurrence, note, onOpen, onCancel }: any) {
   const date = dateOf(occurrence.start)
-  const series = Boolean(occurrence.recurrence)
-  return React.createElement('div', {
-    ...hover,
-    style: {
-      display: 'grid', gridTemplateColumns: `${GUTTER}px minmax(0, 1fr) auto`, alignItems: 'center', gap: 10,
-      padding: '8px 12px', borderTop: HAIRLINE, background: hovered ? HOVER : 'transparent',
+  const time = clockRange(occurrence)
+  const label = [occurrence.title, shortDate(date), time, occurrence.personal?.hidden && '已隐藏'].filter(Boolean).join(' ')
+  return React.createElement('div', { className: 'cal-record-occurrence' },
+    React.createElement('button', {
+      type: 'button', className: 'cal-record-occurrence-main', 'aria-label': label,
+      onClick: () => onOpen(occurrence),
     },
-  },
-  React.createElement('div', { style: { textAlign: 'center' } },
-    React.createElement('div', { style: { fontSize: 11, color: SECONDARY } }, weekdayOf(date)),
-    React.createElement('div', { style: { fontSize: 15, fontWeight: 650, color: PRIMARY } }, dayNumber(date))),
-  React.createElement('button', {
-    type: 'button',
-    onClick: () => onOpen(occurrence),
-    style: { display: 'block', minWidth: 0, padding: 0, border: 'none', background: 'none', textAlign: 'left', cursor: 'pointer', fontFamily: 'inherit', color: PRIMARY },
-  },
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 } },
-    React.createElement('span', { 'aria-hidden': true, style: { width: 8, height: 8, borderRadius: 999, background: tint.accent, flex: '0 0 auto' } }),
-    React.createElement('span', { style: { fontSize: 13, fontWeight: 550, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } }, occurrence.title),
-    occurrence.overridden ? React.createElement(Tag, { tone: 'info' }, '已改期') : undefined,
-    occurrence.personal?.hidden ? React.createElement(Tag, { tone: 'quiet' }, '已隐藏') : undefined),
-  React.createElement('div', { style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } },
-    [clockRange(occurrence), occurrence.location].filter(Boolean).join(' · ')),
-  // The reader's note, where the class is: a note nobody can see is a note nobody
-  // trusts to have been kept.
-  note
-    ? React.createElement('div', {
-      style: { marginTop: 2, fontSize: 12, color: SECONDARY, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' },
-    }, `笔记：${note}`)
-    : undefined),
-  React.createElement('div', { style: { display: 'flex', gap: 2, opacity: hovered ? 1 : 0, transition: 'opacity .12s ease' } },
-    series
-      ? React.createElement(IconButton, {
-        label: '取消这一次', icon: React.createElement(IconArchive),
-        onClick: () => onCancel(occurrence),
-      })
-      : React.createElement(IconButton, {
-        label: '删除日程', danger: true, icon: React.createElement(IconTrash),
-        onClick: () => onDelete(occurrence),
+    React.createElement('span', { className: 'cal-record-occurrence-date' },
+      React.createElement('strong', null, dayNumber(date)),
+      React.createElement('small', null, weekdayOf(date))),
+    React.createElement('span', { className: 'cal-record-occurrence-text' },
+      React.createElement('span', { className: 'cal-record-occurrence-time' }, time,
+        occurrence.overridden && React.createElement(Tag, { tone: 'info' }, '已改期'),
+        occurrence.personal?.hidden && React.createElement(Tag, { tone: 'quiet' }, '已隐藏')),
+      occurrence.location && React.createElement('small', null, occurrence.location),
+      note && React.createElement('small', null, `笔记：${note}`))),
+    occurrence.recurrence && React.createElement('div', { className: 'cal-record-occurrence-actions' },
+      React.createElement(IconButton, {
+        label: '取消这一次', icon: React.createElement(IconArchive), onClick: () => onCancel(occurrence),
       })))
 }
 
@@ -992,7 +962,6 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
   }, [occurrences])
 
   if (!event) return null
-  const tint = tintOf(event.source ?? event.uid)
   const exceptions = (event.exceptions ?? []).map(dateOf)
   const complaint = draftProblem(draft)
   const dirty = editor.dirty.length > 0
@@ -1024,98 +993,63 @@ function EventPage({ event, agenda, noteIndex, service, run, onOpenOccurrence, o
     }, '日程信息已保存')
   }
 
-  // The pieces are built apart and assembled at the end: one nested expression
-  // per row was unreadable, and a misread parenthesis there is a silent layout
-  // bug rather than a syntax error.
-  const infoCard = React.createElement('section', {
-    style: { padding: 16, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)' },
-  },
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12, flexWrap: 'wrap' } },
-    React.createElement('span', { 'aria-hidden': true, style: { width: 10, height: 10, borderRadius: 999, background: tint.accent } }),
-    React.createElement('strong', { style: { fontSize: 13 } }, '日程信息'),
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    event.recurrence ? React.createElement(Tag, { tone: 'outline' }, seriesSummary(event)) : undefined,
-    event.source ? React.createElement(Muted, null, sourceName(event.source)) : undefined),
-  React.createElement(EventForm, { draft, onChange: changeDraft, sourceOwned: event.source !== 'manual' }),
-  React.createElement(PersonalSettings, { identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false }),
-  React.createElement('div', { style: { display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' } },
-    React.createElement(Button, {
-      variant: 'primary', size: 'sm', disabled: !dirty || busy || Boolean(complaint), onClick: save,
-    }, '保存更改'),
-    dirty ? React.createElement(Muted, null, complaint ?? '有未保存的改动') : undefined,
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    // Deleting takes out every date of the record, so it is asked about here too: the
-    // dialog over one occurrence asks before the same act, and a page that did it on
-    // one click would make the safer path the more roundabout one.
+  const info = React.createElement('section', { className: 'cal-record-info', 'aria-label': '日程信息' },
+    React.createElement('div', { className: 'cal-record-heading' },
+      React.createElement('h2', null, '日程信息'),
+      event.recurrence && React.createElement(Muted, null, seriesSummary(event))),
+    React.createElement(EventForm, { draft, onChange: changeDraft, sourceOwned: event.source !== 'manual' }),
+    React.createElement('div', { className: 'cal-record-save' },
+      dirty && React.createElement(Muted, null, complaint ?? '有未保存的改动'),
+      React.createElement(Button, {
+        variant: 'primary', disabled: !dirty || busy || Boolean(complaint), onClick: save,
+      }, '保存更改')))
+
+  const personal = React.createElement('details', { className: 'cal-record-personal' },
+    React.createElement('summary', null, '个人设置', React.createElement(IconChevronDown, { 'aria-hidden': true })),
+    React.createElement(PersonalSettings, {
+      identity: { source: event.source, uid: event.uid }, service, run, Field, allowOccurrence: false, showHeading: false,
+    }))
+
+  const deletion = React.createElement('div', { className: 'cal-record-delete' },
     confirmingDelete
       ? React.createElement(React.Fragment, null,
-        React.createElement('span', { style: { fontSize: 13 } }, '确定删除这条日程？'),
+        React.createElement('span', { role: 'status' }, '确定删除这条日程？'),
         React.createElement(Button, {
-          variant: 'primary', size: 'sm',
-          style: { background: 'var(--dsw-alias-state-error-primary, #d4553f)' },
-          onClick: () => onDelete(event),
-        }, '删除'),
-        React.createElement(Button, { variant: 'ghost', size: 'sm', onClick: () => setConfirmingDelete(false) }, '取消'))
+          variant: 'ghost', size: 'sm', disabled: busy, onClick: () => setConfirmingDelete(false),
+        }, '取消'),
+        React.createElement(Button, {
+          variant: 'outline', size: 'sm', className: 'cal-destructive', disabled: busy, onClick: () => onDelete(event),
+        }, '删除'))
       : React.createElement(Button, {
-        variant: 'ghost', size: 'sm', icon: React.createElement(IconTrash),
-        style: { color: 'var(--dsw-alias-state-error-primary, #d4553f)' },
+        variant: 'ghost', size: 'sm', icon: React.createElement(IconTrash), className: 'cal-destructive',
         onClick: () => setConfirmingDelete(true),
-      }, '删除这条日程')))
+      }, '删除这条日程'))
 
-  const cancelledCard = exceptions.length === 0 ? undefined : React.createElement('section', {
-    style: { padding: 16, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)' },
-  },
-  React.createElement('strong', { style: { display: 'block', marginBottom: 10, fontSize: 13 } }, '已取消的日期'),
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' } },
-    ...exceptions.map((date: string) => React.createElement('span', {
-      key: date,
-      style: { display: 'inline-flex', alignItems: 'center', gap: 2, padding: '1px 4px 1px 7px', borderRadius: 999, background: LAYER, fontSize: 11 },
-    },
-    shortDate(date),
-    React.createElement(IconButton, {
-      label: `恢复 ${shortDate(date)}`, icon: React.createElement(IconRefreshSmall),
-      onClick: () => onRestore(event, date),
-    })))))
+  const cancelledDates = exceptions.length > 0 && React.createElement('section', { className: 'cal-record-cancelled' },
+    React.createElement('h2', null, '已取消的日期'),
+    React.createElement('div', null, ...exceptions.map((date: string) => React.createElement('span', { key: date },
+      shortDate(date),
+      React.createElement(IconButton, {
+        label: `恢复 ${shortDate(date)}`, icon: React.createElement(IconRefreshSmall), onClick: () => onRestore(event, date),
+      })))))
 
-  const monthBlocks = groups.flatMap(([month, items]) => [
-    React.createElement('div', {
-      key: month,
-      style: { padding: '6px 12px', background: LAYER, fontSize: 12, color: SECONDARY, position: 'sticky', top: 0 },
-    }, monthOf(`${month}-01`)),
-    ...items.map((occurrence: any) => React.createElement(EventRow, {
-      key: reactKeyOf(occurrence),
-      occurrence,
-      tint,
-      note: occurrenceNote(noteIndex, occurrence),
-      onOpen: onOpenOccurrence,
-      onCancel: (item: any) => onCancel(item),
-      onDelete: (item: any) => onDelete(item),
-    })),
-  ])
+  const times = React.createElement('section', { 'aria-label': '出现的时间' },
+    React.createElement('div', { className: 'cal-record-heading' },
+      React.createElement('h2', null, '出现的时间'),
+      React.createElement(Muted, null, `近一年 · ${occurrences.length} 次`)),
+    occurrences.length === 0
+      ? React.createElement('p', { className: 'cal-record-empty' }, '近一年没有日程')
+      : groups.map(([month, items]) => React.createElement('div', { className: 'cal-record-month', key: month },
+        React.createElement('h3', null, monthOf(`${month}-01`)),
+        ...items.map((occurrence: any) => React.createElement(EventRow, {
+          key: reactKeyOf(occurrence), occurrence, note: occurrenceNote(noteIndex, occurrence),
+          onOpen: onOpenOccurrence, onCancel,
+        })))))
 
-  const listCard = React.createElement('div', {
-    style: { flex: '2 1 420px', minWidth: 280, borderRadius: 12, border: CARD_BORDER, background: 'var(--dsw-alias-bg-layer-1, #fff)', overflow: 'hidden' },
-  },
-  React.createElement('div', { style: { display: 'flex', alignItems: 'center', gap: 8, padding: '10px 12px', flexWrap: 'wrap' } },
-    React.createElement('strong', { style: { fontSize: 13 } }, '出现的时间'),
-    React.createElement(Muted, null, `近一年内 ${occurrences.length} 次`),
-    React.createElement('span', { style: { flex: '1 1 auto' } }),
-    React.createElement(Muted, null, '点一条查看或调整')),
-  occurrences.length === 0
-    ? React.createElement('div', { style: { padding: '24px 12px', textAlign: 'center' } },
-      React.createElement(Muted, null, '近一年内没有它出现的时间'))
-    : React.createElement('div', null, ...monthBlocks))
-
-  return React.createElement('div', { style: { flex: '1 1 auto', minHeight: 0, overflowY: 'auto' } },
-    React.createElement('div', {
-      style: { display: 'flex', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap', padding: '16px 20px 24px' },
-    },
-    // Left: the entry itself, and the dates that were cancelled in it.
-    React.createElement('div', {
-      style: { flex: '1 1 300px', maxWidth: 420, minWidth: 260, display: 'flex', flexDirection: 'column', gap: 12 },
-    }, infoCard, cancelledCard),
-    // Right: the dates this entry covers, grouped by month.
-    listCard))
+  return React.createElement('div', { className: 'cal-record-scroll' },
+    React.createElement('div', { className: 'cal-record-layout' },
+      React.createElement('div', { className: 'cal-record-editor' }, info, personal, deletion),
+      React.createElement('aside', { className: 'cal-record-timeline' }, times, cancelledDates)))
 }
 
 /**
@@ -1318,6 +1252,7 @@ export function createCalendarPage(service: any) {
         label: `${event.source === 'manual' ? event.title : `${event.title}（${sourceName(event.source)}）`}${event.exceptions?.length ? ` · 已取消 ${event.exceptions.length} 次` : ''}`,
       }))
     const moreItems = [
+      ...(view.kind === 'event' ? [{ id: 'create', label: '新建日程', icon: React.createElement(IconPlus) }] : []),
       { id: 'records', label: '日程记录', icon: React.createElement(IconClock) },
       { id: 'import', label: '导入日历', icon: React.createElement(IconFolderOpen) },
       { id: 'export', label: '导出日历', icon: React.createElement(IconDownload) },
@@ -1353,7 +1288,7 @@ export function createCalendarPage(service: any) {
       },
     },
     React.createElement(CalendarStyles),
-    React.createElement('header', { className: 'cal-head' },
+    React.createElement('header', { className: view.kind === 'event' ? 'cal-head cal-record-head' : 'cal-head' },
       React.createElement('div', { className: 'cal-period' },
       view.kind === 'event' && React.createElement(Button, {
         variant: 'ghost', size: 'sm', icon: React.createElement(IconChevronLeft),
@@ -1390,6 +1325,7 @@ export function createCalendarPage(service: any) {
           items: moreItems,
           onSelect: (kind: string) => {
             if (kind === 'refresh') void refresh()
+            else if (kind === 'create') setDialog({ kind, date: current ? dateOf(current.start) : focusedDate })
             else setDialog({ kind })
           },
           align: 'end',
@@ -1399,9 +1335,9 @@ export function createCalendarPage(service: any) {
             icon: React.createElement(IconEllipsis), onClick: () => setMenuOpen(!menuOpen),
           }, reminderInbox.unread ? React.createElement('span', { className: 'cal-action-count' }, reminderInbox.unread) : undefined),
         }),
-        React.createElement(Button, {
+        view.kind === 'week' && React.createElement(Button, {
           variant: 'primary', size: 'sm', className: 'cal-primary', icon: React.createElement(IconPlus),
-          onClick: () => setDialog({ kind: 'create', date: view.kind === 'event' && current ? dateOf(current.start) : focusedDate }),
+          onClick: () => setDialog({ kind: 'create', date: focusedDate }),
         }, '新建日程'))),
     view.kind === 'week' && displayMode !== 'year' && React.createElement(PhaseSummary, { spans: visibleSpans, weekLabel: weekNote }),
     problem

@@ -228,6 +228,48 @@
 .cal-year-phase[data-tone="highlight"] .cal-year-bar { background: var(--cal-accent); }
 .cal-year-phase[data-tone="quiet"] .cal-year-bar { background: var(--cal-rest); }
 .cal-year-empty { padding: 20px; color: var(--cal-muted); }
+.cal-record-head, .cal-record-layout { width: 100%; max-width: 980px; margin-inline: auto; }
+.cal-record-head { padding-block: 22px 18px; border-bottom: 1px solid var(--cal-line); }
+.cal-record-head .cal-period { gap: 12px; }
+.cal-record-head .cal-actions { margin-inline-start: auto; }
+.cal-record-scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; }
+.cal-record-layout { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(240px, 1fr); align-items: start; gap: 40px; padding-block: 24px 32px; }
+.cal-record-editor, .cal-record-timeline { min-width: 0; }
+.cal-record-timeline { padding-inline-start: 24px; border-inline-start: 1px solid var(--cal-line); }
+.cal-record-heading { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 16px; }
+.cal-record-layout h2 { margin: 0; font-size: 16px; line-height: 1.5; font-weight: 600; }
+.cal-record-info .cal-field { margin-bottom: 14px; }
+.cal-record-info .cal-field :is(input, select, textarea) { min-width: 0; width: 100%; font-size: 14px; }
+.cal-record-info .cal-field :is(input, select) { min-height: 36px; }
+.cal-record-save, .cal-personal-actions { display: flex; justify-content: flex-end; align-items: center; flex-wrap: wrap; gap: 8px 12px; }
+.cal-record-personal, .cal-record-delete { border-top: 1px solid var(--cal-line); margin-top: 18px; }
+.cal-record-personal summary { display: flex; justify-content: space-between; align-items: center; min-height: 44px; cursor: pointer; font-size: 14px; font-weight: 600; }
+.cal-record-personal summary:focus-visible { outline: 2px solid var(--cal-accent); outline-offset: 2px; border-radius: 4px; }
+.cal-record-personal[open] summary svg { transform: rotate(180deg); }
+.cal-personal-settings { font-size: 13px; }
+.cal-personal-help { margin: 0 0 12px; font-size: 12px; line-height: 1.55; color: var(--dsw-alias-label-secondary, GrayText); }
+.cal-personal-settings > strong { display: block; margin-bottom: 6px; }
+.cal-record-delete { display: flex; align-items: center; flex-wrap: wrap; padding-top: 8px; gap: 6px; font-size: 13px; }
+.cal-record-month h3 { margin: 12px 0 4px; color: var(--cal-muted); font-size: 12px; font-weight: 500; }
+.cal-record-occurrence { display: flex; align-items: center; border-bottom: 1px solid var(--cal-line); border-radius: 6px; }
+.cal-record-occurrence:hover, .cal-record-occurrence:focus-within { background: var(--dsw-alias-interactive-bg-hover, var(--cal-layer)); }
+.cal-record-occurrence-main { flex: 1; min-width: 0; display: flex; align-items: center; gap: 12px; padding: 8px 4px; border: 0; background: none; border-radius: 6px; color: inherit; font: inherit; text-align: start; cursor: pointer; }
+.cal-record-occurrence-date { flex: 0 0 32px; display: grid; justify-items: center; font-variant-numeric: tabular-nums; }
+.cal-record-occurrence-date strong { font-size: 18px; line-height: 1.2; font-weight: 600; }
+.cal-record-occurrence small { color: var(--cal-muted); font-size: 12px; }
+.cal-record-occurrence-text { display: grid; gap: 3px; min-width: 0; overflow-wrap: anywhere; }
+.cal-record-occurrence-time { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; font-size: 14px; font-weight: 550; font-variant-numeric: tabular-nums; }
+.cal-record-occurrence-actions { opacity: 0; }
+.cal-record-occurrence:hover .cal-record-occurrence-actions, .cal-record-occurrence:focus-within .cal-record-occurrence-actions { opacity: 1; }
+@media (hover: none) { .cal-record-occurrence-actions { opacity: 1; } }
+.cal-record-empty { margin: 0; color: var(--cal-muted); font-size: 13px; }
+.cal-record-cancelled { margin-top: 24px; }
+.cal-record-cancelled > div { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.cal-record-cancelled span { display: inline-flex; gap: 4px; align-items: center; font-size: 12px; }
+@container (max-width: 720px) {
+  .cal-record-layout { grid-template-columns: 1fr; gap: 24px; }
+  .cal-record-timeline { padding-inline-start: 0; padding-top: 16px; border-inline-start: 0; border-top: 1px solid var(--cal-line); }
+}
 .eduwork-calendar-dialog {
   --cal-dialog-width: 600px;
   width: min(var(--cal-dialog-width), calc(100vw - 32px));
