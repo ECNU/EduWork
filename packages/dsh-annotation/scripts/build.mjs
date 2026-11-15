@@ -10,7 +10,7 @@ await build({ absWorkingDir: root, entryPoints: ['src/index.js'], outfile: 'lib/
 await build({
   absWorkingDir: root, entryPoints: ['src/client/index.js'], outfile: 'lib/client.js',
   bundle: true, platform: 'browser', format: 'cjs', target: 'es2022', minify: true,
-  external: ['react', 'react/*', 'react-dom', 'react-dom/*'],
+  external: ['react', 'react/*', 'react-dom', 'react-dom/*', '@deepseek-ai/dsh-client-ui-primitives'],
   banner: { js: `window.__ModuleLoader__.load({ id: ${JSON.stringify(manifest.name)}, factory: (require) => { var module = { exports: {} }; var exports = module.exports;` },
   footer: { js: 'return module.exports; } });' },
 })

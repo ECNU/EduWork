@@ -106,11 +106,10 @@ test('official DSH web-fetch provider reads Brotli using the upgraded Node', { s
   }).listen(0, '127.0.0.1')
   await once(server, 'listening')
   t.after(() => { server.closeAllConnections(); return new Promise(resolve => server.close(resolve)) })
-  // The official resolver injection is a test seam: pin only this synthetic
-  // hostname to our loopback fixture; production public-address policy is unchanged.
-  const provider = new HttpFetchProvider({ maxResponseBytes: 10000, maxBodyChars: 10000, timeoutMs: 5000, maxRedirects: 1, userAgent: 'eduwork-synthetic-test' },
-    async hostname => { assert.equal(hostname, 'eduwork-node.test'); return [{ address: '127.0.0.1', family: 4 }] })
-  const origin = `http://eduwork-node.test:${server.address().port}`
+  // rc.1 routes through the official process-wide dispatcher and permits
+  // private addresses. Exercise real HTTP on loopback without a DNS override.
+  const provider = new HttpFetchProvider({ maxResponseBytes: 10000, maxBodyChars: 10000, timeoutMs: 5000, maxRedirects: 1, userAgent: 'eduwork-synthetic-test' })
+  const origin = `http://127.0.0.1:${server.address().port}`
   const fetched = await provider.fetch({ url: origin })
   assert.equal(fetched.statusCode, 200)
   assert.equal(fetched.body.content, 'synthetic DSH page')

@@ -2,7 +2,7 @@
 
 [English](README_EN.md) · [完整部署指南](../DEPLOYMENT.md)
 
-使用 Docker Engine 和 Compose v2，从 npm 安装固定的 `@eduwork/dsh-remote-access@0.1.2` 并构建本地镜像。服务器不需要安装 Node.js，也不需要复制桌面端文件或插件源码。准备好域名和支持 WebSocket 的 HTTPS 反向代理，按下面步骤即可启动。
+使用 Docker Engine 和 Compose v2，从 npm 安装固定的 `@eduwork/dsh-remote-access@0.1.7` 并构建本地镜像。服务器不需要安装 Node.js，也不需要复制桌面端文件或插件源码。准备好域名和支持 WebSocket 的 HTTPS 反向代理，按下面步骤即可启动。
 
 ## 1. 准备文件和配置
 
@@ -58,7 +58,7 @@ curl -fsS https://example.edu/eduwork-remote/healthz
 
 健康检查应成功，两个 HTTP 请求应返回 `ok`；根路径部署时去掉命令中的 `/eduwork-remote`。容器健康状态只检查内部 HTTP 服务，外部 HTTPS、WebSocket 和身份认证还需从客户端验证。
 
-电脑安装远控插件 `0.1.2` 后，在“设置 → 远程访问”选择自己的中继，填写同一外部 URL 和 Key，点“测试连接”。它分别检查服务可达性和身份是否通过，未开启远控时也能测试。通过后开启“允许远程访问”，点“添加设备”，扫码或打开链接，在电脑上核对配对码并允许。详见[设备配对](../../README.md#添加和移除设备)。
+电脑安装远控插件 `0.1.7` 后，在“设置 → 远程访问”选择自己的中继，填写同一外部 URL 和 Key，点“测试连接”。它分别检查服务可达性和身份是否通过，未开启远控时也能测试。通过后开启“允许远程访问”，点“添加设备”，扫码或打开链接，在电脑上核对配对码并允许。详见[设备配对](../../README.md#添加和移除设备)。
 
 ## 4. 机构登录和网页嵌入
 
@@ -86,7 +86,7 @@ docker compose up -d --force-recreate
 升级时把 `REMOTE_ACCESS_VERSION` 设为已经发布、准备采用的确切版本；下面以本版为例。后续在同一 shell 中运行 Compose 命令，或把该变量保存在本机 `.env`，使镜像标签和构建参数保持一致。
 
 ```sh
-export REMOTE_ACCESS_VERSION=0.1.2
+export REMOTE_ACCESS_VERSION=0.1.7
 docker compose up -d --build
 docker compose exec -T relay node -p "require('@eduwork/dsh-remote-access/package.json').version"
 ```

@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, readFile, readdir, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createCipheriv, createDecipheriv, randomBytes } from 'node:crypto'
@@ -23,7 +23,68 @@ test('vault encrypts at rest, serializes writes, and survives a new provider', a
   await vault.operation('unset', 'TEST_4')
   assert.equal((await vault.operation('resolve', 'TEST_4')).configured, false)
   await assert.rejects(vault.operation('set', 'TEST_INVALID', ''))
-  await assert.rejects(new EncryptedVault(path, encryption()).operation('resolve', 'TEST_3'))
+})
+test('a vault this account cannot decrypt is kept aside and the app continues signed out', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-')), path = join(root, 'credentials.encrypted')
+  await new EncryptedVault(path, encryption()).operation('set', 'TEST_OLD', 'synthetic-old-secret')
+  const original = await readFile(path), events = []
+  // A different key stands in for a copied install or a reset OS password.
+  const vault = new EncryptedVault(path, encryption(), { confirmReplacement: () => true, onUnreadable: event => events.push(event) })
+  assert.deepEqual(await vault.operation('resolve', 'TEST_OLD'), { configured: false, writable: true, source: 'os-encrypted-vault' })
+  assert.deepEqual(await readFile(path), original)
+  assert.deepEqual(events, [])
+  await assert.rejects(vault.operation('unset', 'TEST_OLD'))
+  await vault.operation('set', 'TEST_NEW', 'synthetic-new-secret')
+  assert.equal(events.length, 1)
+  assert.deepEqual(await readFile(events[0].aside), original, 'the unreadable bytes are preserved, not deleted')
+  assert.equal((await vault.operation('resolve', 'TEST_NEW')).value, 'synthetic-new-secret')
+  assert.equal(events.length, 1, 'the fresh vault is readable')
+  assert.deepEqual((await readdir(root)).filter(name => name.includes('unreadable')).length, 1)
+})
+test('a temporarily locked vault stays in place and is retried, including after a cancelled replacement', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-')), path = join(root, 'credentials.encrypted')
+  const crypto = encryption()
+  await new EncryptedVault(path, crypto).operation('set', 'TEST', 'synthetic')
+  let locked = true, allow = false
+  const vault = new EncryptedVault(path, {
+    ...crypto, decryptString: bytes => { if (locked) throw new Error('key unavailable'); return crypto.decryptString(bytes) }
+  }, { confirmReplacement: () => { if (allow) locked = false; return allow } })
+  const original = await readFile(path)
+  assert.equal((await vault.operation('describe', 'TEST')).configured, false)
+  await assert.rejects(vault.operation('set', 'OTHER', 'new'))
+  assert.deepEqual(await readFile(path), original)
+  assert.deepEqual(await readdir(root), ['credentials.encrypted'])
+  locked = false
+  assert.equal((await vault.operation('resolve', 'TEST')).value, 'synthetic')
+  locked = true
+  allow = true
+  await vault.operation('set', 'OTHER', 'new')
+  assert.equal((await vault.operation('resolve', 'TEST')).value, 'synthetic')
+  assert.equal((await vault.operation('resolve', 'OTHER')).value, 'new')
+  assert.deepEqual(await readdir(root), ['credentials.encrypted'])
+})
+test('a future vault format and a file changed while confirming recovery are preserved', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-')), path = join(root, 'credentials.encrypted')
+  const crypto = encryption()
+  const future = crypto.encryptString(JSON.stringify({ schemaVersion: 2, values: {} }))
+  let confirmations = 0
+  const vault = new EncryptedVault(path, crypto, { confirmReplacement: async () => {
+    confirmations++
+    await writeFile(path, future)
+    return true
+  } })
+  await writeFile(path, crypto.encryptString('{'))
+  await assert.rejects(vault.operation('set', 'TEST', 'new'), /changed during recovery/)
+  await assert.rejects(vault.operation('set', 'TEST', 'new'), /Unsupported credential vault version/)
+  assert.equal(confirmations, 1)
+  assert.deepEqual(await readFile(path), future)
+  assert.deepEqual(await readdir(root), ['credentials.encrypted'])
+})
+test('a vault read error other than a missing file still fails', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'eduwork-vault-test-'))
+  // A directory in place of the file stands in for a locked or unreadable path.
+  await mkdir(join(root, 'credentials.encrypted'))
+  await assert.rejects(new EncryptedVault(join(root, 'credentials.encrypted'), encryption()).operation('resolve', 'TEST'))
 })
 test('native bridge rejects browser origins and unauthenticated callers; external opening is controlled', async () => {
   const root = await mkdtemp(join(tmpdir(), 'eduwork-bridge-test-')), opened = []

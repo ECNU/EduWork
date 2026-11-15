@@ -7,7 +7,8 @@ const allowed = new Set([
 // These are the official DSH test Host's separately installed native components,
 // not code or binaries included in the mail npm archive.
 const reviewedHostDependency = (path, entry) => entry.dev === true && (
-  (/^node_modules\/@deepseek-ai\/libreoffice-kit(?:-(?:darwin|win32)-(?:arm64|x64)|-wasm)?$/.test(path) && entry.version === '0.1.5' && entry.license === 'MPL-2.0') ||
+  (/^node_modules\/@deepseek-ai\/libreoffice-kit(?:-(?:darwin|win32)-(?:arm64|x64)|-wasm)?$/.test(path) && entry.version === '0.2.3' && entry.license === 'MPL-2.0') ||
+  (path === 'node_modules/lru-cache' && entry.version === '11.5.3' && entry.license === 'BlueOak-1.0.0') ||
   (/^node_modules\/@img\/sharp-libvips-/.test(path) && entry.version === '1.3.4' && entry.license === 'LGPL-3.0-or-later') ||
   (/^node_modules\/@img\/sharp-(?:win32-|wasm32$)/.test(path) && entry.version === '0.35.5' && ['Apache-2.0 AND LGPL-3.0-or-later','Apache-2.0 AND LGPL-3.0-or-later AND MIT'].includes(entry.license)) ||
   (path === 'node_modules/fast-sha256' && entry.version === '1.3.0' && entry.license === 'Unlicense')

@@ -6,7 +6,7 @@ import { pathToFileURL } from 'node:url'
 import { messageHandle } from '../../src/host/handles.js'
 import { DEFAULTS } from '../../src/host/constants.js'
 
-const { readMail, sendMail } = await import(pathToFileURL(process.argv[2]).href)
+const { readMail, sendMail, openSession, closeSession, probeFolder, fetchArrivals, readExcerpt } = await import(pathToFileURL(process.argv[2]).href)
 const sockets = new Set()
 async function listen(onLine, greeting) {
   const server = net.createServer(socket => {
@@ -27,22 +27,35 @@ async function listen(onLine, greeting) {
   return server
 }
 
-let raw, commands = []
+let raw, holdLogin, commands = []
 const imap = await listen((line, socket) => {
   commands.push(line)
   const [, tag, command] = /^(\S+) (.*)$/.exec(line) ?? []
   assert.ok(tag, 'Expected tagged IMAP command')
   const ok = () => socket.write(`${tag} OK completed\r\n`)
   if (command === 'CAPABILITY') socket.write('* CAPABILITY IMAP4rev1\r\n')
-  else if (command.startsWith('LOGIN ')) { /* Synthetic credentials only. */ }
+  else if (command.startsWith('LOGIN ')) {
+    // Keep authentication pending to test cancellation of an in-flight login.
+    if (holdLogin) { holdLogin(socket); return }
+  }
   else if (command.startsWith('LIST ')) socket.write('* LIST (\\HasNoChildren) "/" "INBOX"\r\n')
   else if (command.startsWith('LSUB ')) socket.write('* LSUB (\\HasNoChildren) "/" "INBOX"\r\n')
+  else if (command.startsWith('STATUS ')) socket.write('* STATUS INBOX (MESSAGES 1 UIDNEXT 2 UIDVALIDITY 7)\r\n')
+  else if (command.startsWith('UID SEARCH ')) socket.write('* SEARCH 1\r\n')
   else if (command.startsWith('EXAMINE ')) {
     socket.write('* FLAGS (\\Seen)\r\n* 1 EXISTS\r\n* OK [UIDVALIDITY 7] valid\r\n* OK [UIDNEXT 2] next\r\n')
   } else if (/^UID FETCH /i.test(command)) {
     if (command.includes('BODY.PEEK[]')) {
       socket.write(`* 1 FETCH (UID 1 BODY[] {${raw.length}}\r\n`)
       socket.write(raw)
+      socket.write(')\r\n')
+    } else if (command.includes('BODY.PEEK[TEXT]')) {
+      const split = raw.indexOf('\r\n\r\n') + 4
+      const headers = raw.subarray(0, split), body = raw.subarray(split)
+      socket.write(`* 1 FETCH (UID 1 RFC822.SIZE ${raw.length} BODY[HEADER] {${headers.length}}\r\n`)
+      socket.write(headers)
+      socket.write(` BODY[TEXT]<0> {${body.length}}\r\n`)
+      socket.write(body)
       socket.write(')\r\n')
     } else {
       assert.ok(!command.includes('BODY['), 'A source fetch must use PEEK')
@@ -114,6 +127,31 @@ try {
     assert.ok(commands.some(command => command.includes('BODY.PEEK[]')))
     assert.ok(!commands.some(command => /\b(SELECT|STORE|EXPUNGE)\b/.test(command)))
   }
+  commands = []
+  const client = await openSession(settings, 'fixture-only')
+  try {
+    assert.deepEqual(await probeFolder(client, 'INBOX'), { uidValidity: '7', uidNext: 2, messages: 1 })
+    const arrivals = await fetchArrivals(client, 'INBOX', { afterUid: 0 })
+    assert.deepEqual(arrivals.messages.map(message => message.uid), [1])
+    const excerpt = await readExcerpt(client, 'INBOX', 1)
+    assert.equal(excerpt.text, '本地合成正文，不访问真实邮箱。')
+    assert.ok(commands.some(command => command.includes(' STATUS ')))
+    assert.ok(commands.some(command => command.includes(' EXAMINE ')))
+    assert.ok(commands.some(command => command.includes('BODY.PEEK[TEXT]')))
+    assert.ok(!commands.some(command => /\b(SELECT|STORE|EXPUNGE)\b/.test(command)))
+    assert.ok(!commands.some(command => /BODY\[/.test(command)), 'All body reads must use PEEK')
+  } finally {
+    await closeSession(client)
+  }
+  const cancelled = new AbortController()
+  const loginStarted = new Promise(resolve => { holdLogin = resolve })
+  const connecting = openSession(settings, 'fixture-only', cancelled.signal)
+  const rejected = assert.rejects(connecting)
+  const pendingSocket = await loginStarted
+  const closed = new Promise(resolve => pendingSocket.once('close', resolve))
+  cancelled.abort()
+  await Promise.all([rejected, closed])
+  holdLogin = undefined
   const result = await sendMail(settings, 'fixture-only', {
     to: ['recipient@example.org'], subject: '测试发送', text: 'Local synthetic message only.',
   })
@@ -122,7 +160,7 @@ try {
   assert.equal(sent.length, 1)
   assert.match(sent[0], /Local synthetic message only\./)
   assert.ok(smtpCommands.some(line => line.startsWith('AUTH PLAIN ')))
-  console.log(JSON.stringify({ received: measurements, smtp: 'passed', readOnly: true }))
+  console.log(JSON.stringify({ received: measurements, smtp: 'passed', readOnly: true, remindersReadOnly: true, loginCancelled: true }))
 } finally {
   for (const socket of sockets) socket.destroy()
   await Promise.all([imap, smtp].map(server => new Promise(resolve => server.close(resolve))))

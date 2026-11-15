@@ -7,6 +7,7 @@ import { join } from 'node:path'
 import test, { type TestContext } from 'node:test'
 import { FORBIDDEN } from '../src/connections/handler.ts'
 import { HostStore } from '../src/devices/store.ts'
+import { Pairing } from '../src/devices/pairing.ts'
 import type { HostAdapter } from '../src/host/adapter.ts'
 import { deviceAuth, generateDeviceKey, pairingCode, parsePairingLink, type PairingLink } from '../src/protocol/auth.ts'
 import { Channel, ChannelClosed, type Header } from '../src/protocol/channel.ts'
@@ -123,6 +124,29 @@ test('an invite admits one device; strangers, declined and unanswered devices ar
   const unanswered = await connectDevice(relay, fresh, await generateDeviceKey(), fresh.invite)
   assert.deepEqual((await unanswered.channel.receive()).header, { t: 'rejected', reason: 'timeout' })
   assert.equal(access.status().devices.length, 0)
+})
+
+test('closing on the pending reply leaves no later local approval request', async () => {
+  const store = await HostStore.open(join(await mkdtemp(join(tmpdir(), 'remote-access-')), 'state.json'))
+  const stopped = new AbortController()
+  const replies: string[] = []
+  let pendingShown = false
+  const pairing = new Pairing(store, () => { if (pairing.pending.length) pendingShown = true }, { approvalMs: 100 })
+  const hash = new Uint8Array(32)
+  const auth = await deviceAuth(await generateDeviceKey(), hash, { invite: pairing.invite().secret, name: 'Test phone' })
+  const channel = {
+    hash, signal: stopped.signal,
+    receive: async () => ({ header: auth }),
+    send(header: Header) {
+      replies.push(String(header.t))
+      if (header.t === 'pending') stopped.abort()
+    },
+    close() { stopped.abort() },
+  } as unknown as Channel
+  assert.equal(await pairing.admit(channel, 'Lab PC'), undefined)
+  assert.deepEqual(replies, ['pending'])
+  assert.equal(pendingShown, false)
+  assert.equal(store.devices.length, 0)
 })
 
 test('stopping disconnects every device, including one still waiting for approval', async t => {

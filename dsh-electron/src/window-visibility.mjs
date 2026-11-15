@@ -18,6 +18,10 @@ export function attachAppActivation({ app, windows, platform = process.platform 
   return () => app.removeListener('activate', activate)
 }
 
+export function attachTrayActivation(tray, show, platform = process.platform) {
+  if (platform === 'win32') tray.on('click', show)
+}
+
 export function attachWindowVisibility({ app, window, platform = process.platform, isQuitting, shouldExit, hasTray }) {
   const show = () => showDesktopWindow(window)
   window.on('close', event => {

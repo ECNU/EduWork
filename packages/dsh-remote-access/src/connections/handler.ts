@@ -24,7 +24,7 @@ export function remoteHandler(adapter: HostAdapter, peer: Peer, onRefused: (name
   return {
     async fetch(request) {
       const { pathname } = new URL(request.url)
-      if (pathname !== '/api' && !pathname.startsWith('/api/')) return adapter.page(request)
+      if (pathname !== '/api' && !pathname.startsWith('/api/')) return adapter.page(request, peer)
       if (allowsApiRequest(request.method, pathname)) return adapter.api(request, peer)
       const body = request.method === 'POST' ? await request.text() : ''
       const call = rpcCall(body)

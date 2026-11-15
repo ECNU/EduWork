@@ -66,5 +66,6 @@ export class DesktopHostProcess {
     return { requestHeaders: { ...headers, origin: this.#ready.origin, cookie: this.#cookie, 'sec-fetch-site': 'same-origin' } }
   }
   updateTasks(action) { return this.#host.updateTasks(action) }
+  resolveDragResource(address, signal) { return this.#host.resolveDragResource(address, signal) }
   async stop() { this.#ready = undefined; this.#cookie = undefined; await this.#host.stop() }
 }

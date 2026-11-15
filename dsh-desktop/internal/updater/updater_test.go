@@ -17,6 +17,7 @@ import (
 	"runtime"
 	"strings"
 	"testing"
+	"time"
 )
 
 var updaterTestHealthFile = flag.String("update-health-file", "", "internal updater test health file")
@@ -31,6 +32,13 @@ func TestUpdaterHealthChild(t *testing.T) {
 	}
 	if err := os.MkdirAll(filepath.Dir(*updaterTestHealthFile), 0o700); err != nil {
 		t.Fatal(err)
+	}
+	if *updaterTestMode == "report-failure" {
+		if err := os.WriteFile(*updaterTestHealthFile, []byte(`{"schemaVersion":1,"state":"failed","message":"synthetic startup failure"}`), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		time.Sleep(5 * time.Second)
+		return
 	}
 	if err := os.WriteFile(*updaterTestHealthFile, []byte("ok\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -540,15 +548,22 @@ func TestApplyPendingRollsBackManagedTreeWhenNewBuildFailsHealth(t *testing.T) {
 	if runtime.GOOS != "windows" {
 		t.Skip("the portable release updater is currently a Windows delivery path")
 	}
-	fixture := newApplyFixture(t, "0.2.0-dev.20260815.10", "fail")
-	if err := ApplyPending(PendingFile(fixture.stateDir), 0); err == nil || !strings.Contains(err.Error(), "exited before startup health") {
-		t.Fatalf("failed update error = %v", err)
-	}
-	assertFileValue(t, filepath.Join(fixture.installDir, "resources", "version.txt"), "old-version")
-	assertFileValue(t, filepath.Join(fixture.installDir, "data", "user", "keep.txt"), "user-data")
-	pending, err := LoadPending(fixture.stateDir)
-	if err != nil || pending.State != "error" || pending.Error == "" {
-		t.Fatalf("rollback pending state = %#v, %v", pending, err)
+	for _, scenario := range []struct{ mode, expected string }{
+		{"fail", "exited before startup health"},
+		{"report-failure", "reported startup failure: synthetic startup failure"},
+	} {
+		t.Run(scenario.mode, func(t *testing.T) {
+			fixture := newApplyFixture(t, "0.2.0-dev.20260815.10", scenario.mode)
+			if err := ApplyPending(PendingFile(fixture.stateDir), 0); err == nil || !strings.Contains(err.Error(), scenario.expected) {
+				t.Fatalf("failed update error = %v", err)
+			}
+			assertFileValue(t, filepath.Join(fixture.installDir, "resources", "version.txt"), "old-version")
+			assertFileValue(t, filepath.Join(fixture.installDir, "data", "user", "keep.txt"), "user-data")
+			pending, err := LoadPending(fixture.stateDir)
+			if err != nil || pending.State != "error" || pending.Error == "" {
+				t.Fatalf("rollback pending state = %#v, %v", pending, err)
+			}
+		})
 	}
 }
 

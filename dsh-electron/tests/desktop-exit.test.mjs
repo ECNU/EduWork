@@ -55,16 +55,108 @@ test('a cancelled installation never starts the helper; concurrent quit requests
   release(); await pending; assert.equal(exit.complete, true)
 })
 
-test('failed shutdown permits another exit without retaining a restart request', async () => {
-  const calls = []; let fail = true
-  const exit = new DesktopExit({ confirm: async () => true,
-    close: async () => { calls.push('close'); if (fail) throw Error('Synthetic cleanup failure') },
-    relaunch: assert.fail, quit: () => calls.push('quit'), failed: () => calls.push('failed') })
-  exit.restart(); await exit.request()
-  assert.equal(exit.closing, false); assert.equal(exit.complete, false)
-  fail = false; await exit.request()
+test('an approved quit completes with a logged failure even when service cleanup fails', async () => {
+  const calls = [], error = Error('Synthetic cleanup failure'); let recorded
+  const exit = new DesktopExit({ confirm: async () => true, close: async () => { calls.push('close'); throw error },
+    relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: failure => { recorded = failure } })
+  await exit.request()
+  assert.equal(recorded, error)
+  assert.equal(exit.failure, error)
   assert.equal(exit.complete, true)
-  assert.deepEqual(calls, ['quit', 'close', 'failed', 'close', 'quit'])
+  assert.deepEqual(calls, ['close', 'quit'])
+})
+
+test('an installer handoff completes even when service cleanup fails', async () => {
+  const calls = [], error = Error('Synthetic Host stop failure')
+  const exit = new DesktopExit({ confirm: assert.fail, close: async () => { calls.push('close'); throw error },
+    relaunch: assert.fail, quit: () => calls.push('quit'), failed: () => {} })
+  exit.handoff()
+  await exit.request()
+  assert.equal(exit.complete, true)
+  assert.equal(calls.filter(value => value === 'quit').length, 2)
+})
+
+test('an installer handoff during a failed strict restart still completes the quit', async () => {
+  const calls = [], error = Error('Synthetic Host stop failure')
+  let rejectClose, startedClose
+  const started = new Promise(resolve => { startedClose = resolve })
+  const exit = new DesktopExit({ confirm: async () => true,
+    close: () => { startedClose(); return new Promise((_, reject) => { rejectClose = reject }) },
+    relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: failure => calls.push(failure) })
+  const restart = exit.restart({ strict: true })
+  await started
+  exit.handoff()
+  rejectClose(error)
+  await restart
+  assert.equal(exit.complete, true)
+  assert.equal(exit.failure, error)
+  assert.equal(calls.includes('relaunch'), false)
+  assert.equal(calls.filter(value => value === 'quit').length, 3)
+})
+
+test('a strict restart requires a confirmed stop and does not poison a later normal exit', async () => {
+  const calls = [], error = Error('Synthetic cleanup failure')
+  let fail = true
+  const exit = new DesktopExit({ confirm: async () => true,
+    close: async () => { calls.push('close'); if (fail) throw error },
+    relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: () => {} })
+  await exit.restart({ strict: true })
+  assert.equal(exit.complete, false)
+  assert.equal(exit.failure, error)
+  assert.equal(calls.includes('relaunch'), false)
+  fail = false
+  await exit.request()
+  assert.equal(exit.complete, true)
+  assert.equal(calls.includes('relaunch'), false, 'A failed strict restart must not retain a relaunch request')
+})
+
+test('a confirmation failure keeps the process running without cleanup or quit', async () => {
+  const calls = [], error = Error('Synthetic quit dialog failure'); let recorded
+  const exit = new DesktopExit({ confirm: async () => { throw error },
+    close: async () => calls.push('close'), relaunch: () => calls.push('relaunch'),
+    quit: () => calls.push('quit'), failed: failure => { recorded = failure } })
+  await exit.request()
+  assert.equal(recorded, error)
+  assert.equal(exit.complete, false)
+  assert.equal(exit.closing, false)
+  assert.equal(exit.pending, undefined)
+  assert.deepEqual(calls, [], 'A rejected confirmation must not run cleanup or quit')
+})
+
+test('an approved pending quit keeps its baseline outcome while a strict restart waits', async () => {
+  const calls = []
+  const exit = new DesktopExit({ confirm: async () => true,
+    close: async () => { calls.push('close'); throw Error('Synthetic bridge cleanup failure') },
+    relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: () => {} })
+  const pending = exit.request()
+  const restarting = exit.restart({ strict: true })
+  await pending
+  assert.equal(exit.complete, true, 'The approved ordinary quit completes with baseline semantics')
+  assert.equal(calls.includes('relaunch'), false, 'The waiting strict restart must not relaunch the approved quit')
+  await restarting
+  assert.equal(calls.includes('relaunch'), false)
+})
+
+test('a strict restart waits for a pending quit and does not leak into the next exit', async () => {
+  let confirmations = 0, recorded
+  const calls = []
+  const exit = new DesktopExit({ confirm: async () => ++confirmations > 1,
+    close: async () => { calls.push('close'); throw Error('Synthetic cleanup failure') },
+    relaunch: () => calls.push('relaunch'), quit: () => calls.push('quit'), failed: error => { recorded = error } })
+  const pending = exit.request()
+  const restarting = exit.restart({ strict: true })
+  await pending
+  assert.equal(exit.complete, false)
+  assert.equal(calls.includes('relaunch'), false, 'A cancelled quit must not relaunch')
+  // The declined quit releases the strict restart; its cleanup failure stays strict.
+  await restarting
+  assert.equal(exit.complete, false)
+  assert.equal(recorded.message, 'Synthetic cleanup failure')
+  assert.equal(calls.includes('relaunch'), false)
+  // A later normal exit is not poisoned by the strict attempt.
+  await exit.request()
+  assert.equal(exit.complete, true)
+  assert.equal(calls.includes('relaunch'), false)
 })
 
 test('native updater termination uses the normal quit guard and cancellation permits a later retry', async () => {

@@ -27,6 +27,18 @@ session.append('user/message', createUserMessage({ content: [{ type: 'text', tex
 assert.equal(source.kind, session.header.version >= 4 ? 'plugin:memory-native' : 'plugin')
 assert.equal(explicitMemoryRequest(session), false)
 assert.equal(executionSources({ agent: { session } }, [])[0].eventSeq, 1)
+// rc.2 can deliver several events in one append. The same readers must observe
+// the final direct-user intent and may not promote a plugin message into it.
+if (['0.2.2-rc.2', '0.2.2-rc.3'].includes(require('@deepseek-ai/dsh-session/package.json').version)) {
+  const events = session.append([
+    ['user/message', createUserMessage({ content: [{ type: 'text', text: 'Summarize the batch' }], source: { kind: 'user' } }), { surfaceOp: 'append' }],
+    ['user/message', createUserMessage({ content: [{ type: 'text', text: 'Please remember the plugin context' }], source }), { surfaceOp: 'append' }],
+  ])
+  assert.equal(events.length, 2)
+  assert.equal(events[1].seq, events[0].seq + 1)
+  assert.equal(explicitMemoryRequest(session), false)
+  assert.equal(executionSources({ agent: { session } }, [])[0].eventSeq, events[0].seq)
+}
 session.append('tool/call', { name: 'web_search', callId: 'synthetic-call', arguments: { query: 'synthetic query' } })
 const externalSources = executionSources({ agent: { session } }, [])
 assert.deepEqual(externalSources.filter(x => x.kind === 'tool').map(x => x.toolName), ['web_search'])

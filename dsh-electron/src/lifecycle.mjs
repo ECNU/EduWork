@@ -5,6 +5,7 @@ export class DesktopLifecycle {
   preparations = new Set()
   hosts = new Set()
   bridges = new Set()
+  failures = []
   shutdown = undefined
   check() { if (this.closing) throw new Error('Desktop is shutting down') }
   prepare(callback) {
@@ -20,9 +21,12 @@ export class DesktopLifecycle {
     if (this.shutdown) return this.shutdown
     this.closing = true
     this.shutdown = (async () => {
+      const collect = results => {
+        for (const result of results) if (result.status === 'rejected') this.failures.push(result.reason)
+      }
       while (this.preparations.size) await Promise.allSettled([...this.preparations])
-      await Promise.allSettled([...this.hosts].map(host => host.stop()))
-      await Promise.allSettled([...this.bridges].map(bridge => bridge.close()))
+      collect(await Promise.allSettled([...this.hosts].map(host => host.stop())))
+      collect(await Promise.allSettled([...this.bridges].map(bridge => bridge.close())))
     })()
     return this.shutdown
   }

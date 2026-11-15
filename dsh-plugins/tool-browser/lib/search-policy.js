@@ -16,12 +16,15 @@ export async function searchWithAvailableProvider({ request, signal, settings, r
 
 // DSH's settings service has no per-plugin read; take the live config of the
 // active web-search-deepseek entry from the config editor. A disabled or absent
-// entry is unavailable, independently of any ambient credential. DSH wraps
-// these fields in Volatile values; JSON serialization silently loses them.
+// entry is unavailable, independently of any ambient credential. Cordis 4.1
+// exposes the running, resolved config as effectiveConfig; config is raw input.
+// Earlier hosts expose the resolved config as config. Both wrap these fields in
+// Volatile values, which must be read before taking a request snapshot.
 export function providerSettings(configEditor, id) {
   const entry = configEditor?.entries?.().find(row => row.options?.id === id && row.fiber?.state === 2)
   if (!entry) return undefined
-  const config = entry.fiber.config
+  const config = 'effectiveConfig' in entry.fiber ? entry.fiber.effectiveConfig : entry.fiber.config
+  if (!config) return undefined
   return Object.fromEntries(['apiKey', 'apiKeyEnv', 'baseURL', 'model', 'apiVersion', 'maxTokens', 'maxUses']
     .map(key => [key, config[key].get()]))
 }

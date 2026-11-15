@@ -19,8 +19,8 @@ export function compressPages(adapter: HostAdapter): HostAdapter {
 
   return {
     ...adapter,
-    async page(request) {
-      const response = await adapter.page(request)
+    async page(request, peer) {
+      const response = await adapter.page(request, peer)
       const { headers } = response
       const eligible = request.method === 'GET' && response.status === 200 && !headers.has('content-encoding')
         && TEXT.test(headers.get('content-type') ?? '') && /\bgzip\b/.test(request.headers.get('accept-encoding') ?? '')

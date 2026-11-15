@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { mkdtemp, mkdir, readFile, writeFile, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import { EventEmitter } from 'node:events'
+import { setImmediate as nextTurn } from 'node:timers/promises'
 import { softwareUpdateControl, updatesWhenEnabled } from '../src/software-update-control.mjs'
 import { updateCoordinator } from '../src/update-coordinator.mjs'
 
@@ -109,4 +111,58 @@ test('invalid preferences are preserved and never silently interpreted as enable
     assert.equal(f.starts.length,0)
     assert.equal(await readFile(f.prefs,'utf8'),body)
   }
+})
+
+test('process scheduler goes through the software queue without checking signed content', async t => {
+  const f = await fixture(t), software = await softwareUpdateControl(f.options)
+  const powerMonitor = new EventEmitter(), timers = new Map()
+  let time = 0, id = 0, contentChecks = 0
+  const coordinator = updateCoordinator({ software, version: f.options.version,
+    content: { state: {}, snapshot: () => ({ state: 'current' }), check: async () => { contentChecks++ }, selectPolicy: async () => {}, close() {} } })
+  t.after(() => coordinator.close())
+  const options = { powerMonitor, now: () => time, interval: 1000, minimumGap: 10,
+    setTimer: (fn, delay) => { const key = ++id; timers.set(key, { fn, delay }); return key }, clearTimer: key => timers.delete(key) }
+  software.startBackground(options); software.startBackground(options)
+  await nextTurn()
+  const checks = () => f.calls.filter(action => action === 'check-updates').length
+  assert.equal(checks(), 0); assert.equal(powerMonitor.listenerCount('resume'), 1)
+  time = 1000; powerMonitor.emit('resume'); await nextTurn()
+  assert.equal(checks(), 1); assert.equal(contentChecks, 0)
+  // Shared UI actions update the same scheduler, while content keeps its own path.
+  time = 1500; await coordinator.action('check-updates')
+  assert.equal(checks(), 2); assert.equal(contentChecks, 1)
+  time = 2000; powerMonitor.emit('resume'); await nextTurn(); assert.equal(checks(), 2)
+  await coordinator.action('disable-software-updates'); assert.equal(timers.size, 0)
+  time = 5000; powerMonitor.emit('resume'); await nextTurn(); assert.equal(checks(), 2)
+  await coordinator.action('use-stable-updates'); await coordinator.action('enable-software-updates')
+  powerMonitor.emit('resume'); await nextTurn()
+  assert.equal(checks(), 3); assert.equal(f.state.policy, 'stable'); assert.equal(contentChecks, 1)
+  await coordinator.close()
+  assert.equal(powerMonitor.listenerCount('resume'), 0); assert.equal(timers.size, 0)
+})
+
+test('a download queued after a timer snapshot prevents its queued automatic check', async t => {
+  const f = await fixture(t)
+  const original = f.options.start
+  let notify
+  f.options.start = async options => {
+    const backend = await original(options)
+    return { ...backend, action: async action => {
+      if (action === 'download-update') { f.state.state = 'downloading'; f.state.busy = true }
+      const status = await backend.action(action)
+      if (action === 'status' && notify) { const callback = notify; notify = undefined; callback() }
+      return status
+    } }
+  }
+  const software = await softwareUpdateControl(f.options)
+  t.after(() => software.close())
+  let time = 0
+  const powerMonitor = new EventEmitter()
+  software.startBackground({ powerMonitor, now: () => time, interval: 1000, setTimer: () => 1, clearTimer() {} })
+  await nextTurn()
+  let download
+  notify = () => { download = software.action('download-update') }
+  time = 1000; powerMonitor.emit('resume'); await nextTurn(); await download
+  assert.equal(f.calls.includes('check-updates'), false)
+  assert.equal(f.state.state, 'downloading')
 })

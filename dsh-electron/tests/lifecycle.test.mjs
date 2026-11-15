@@ -19,6 +19,16 @@ test('closing during startup waits for a late bridge and closes it before quitti
   assert.throws(() => lifecycle.trackHost({}), /shutting down/)
 })
 
+test('a closed lifecycle does not retry failed hosts on another close', async () => {
+  let stops = 0
+  const lifecycle = new DesktopLifecycle()
+  lifecycle.trackHost({ async stop() { stops++; throw Error('Synthetic stop failure') } })
+  await lifecycle.close()
+  await lifecycle.close()
+  assert.equal(stops, 1, 'A second close must not pretend to retry the cached Host stop')
+  assert.equal(lifecycle.failures.length, 1)
+})
+
 test('shutdown remains one operation and stops Hosts before credential bridges', async () => {
   const lifecycle = new DesktopLifecycle(), events = []
   lifecycle.trackHost({ async stop() { await Promise.resolve(); events.push('host stopped') } })
