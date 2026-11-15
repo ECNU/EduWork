@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-15T08:08:42.864Z",
-  "fileSetSHA256": "0d821068c5660b484fc733674a4988f859f0463fdbd6a241578547206fdd4b97",
+  "createdAt": "2026-11-15T15:00:09.914Z",
+  "fileSetSHA256": "b8e344fa0b85d5c8d7e14aa5bc91a6a343f9ecef96cc25be6007e513f990ef82",
   "files": [
     {
       "path": ".gitattributes",
@@ -29,7 +29,7 @@
     },
     {
       "path": ".github/workflows/development-desktop.yml",
-      "sha256": "e2d58e3c5c3af415703389b48bf38120af08f0e237dad861d8a84f7e1da52655"
+      "sha256": "4dc407326800f9df0f8f760d9ec41ff5f6e14a00723adce7e12441bf5eacca7d"
     },
     {
       "path": ".github/workflows/packages-release.yml",
@@ -8161,7 +8161,7 @@
     },
     {
       "path": "tests/installed-candidate.test.mjs",
-      "sha256": "651cfde933c971aa85187a8ca754bf389680f33a536458a44d9730e85993aa65"
+      "sha256": "0e9aa4afa6b66f5eb2bf27918aec66a942dc4b17f18f74e2d279b3ab8d9d0fd8"
     },
     {
       "path": "tests/local-desktop-install.test.mjs",

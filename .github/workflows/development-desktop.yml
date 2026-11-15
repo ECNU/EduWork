@@ -125,8 +125,31 @@ jobs:
             --workspace "$RUNNER_TEMP/ew-development" --output "$RUNNER_TEMP/ew-installed"
           cd "$RUNNER_TEMP"
           # Windows tar.exe cannot write ZIP (-a only selects compression and
-          # silently produced a ustar tar named .zip); use the built-in .NET writer.
-          powershell.exe -NoProfile -Command 'Add-Type -AssemblyName System.IO.Compression.FileSystem; [System.IO.Compression.ZipFile]::CreateFromDirectory((Resolve-Path "ew-installed").Path, (Join-Path (Get-Location).Path "windows-installed-candidate.zip"), [System.IO.Compression.CompressionLevel]::Optimal, $false)'
+          # silently produced a ustar tar named .zip); the built-in .NET writer
+          # must also normalize separators because CreateFromDirectory emits
+          # backslash entry names, which violate the ZIP spec for POSIX tools.
+          powershell.exe -NoProfile -Command '
+            Add-Type -AssemblyName System.IO.Compression
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            $src = (Resolve-Path "ew-installed").Path
+            $dst = Join-Path (Get-Location).Path "windows-installed-candidate.zip"
+            $zip = [System.IO.Compression.ZipFile]::Open($dst, [System.IO.Compression.ZipArchiveMode]::Create)
+            try {
+              Get-ChildItem -LiteralPath $src -Recurse -File -Force | ForEach-Object {
+                $rel = $_.FullName.Substring($src.Length + 1).Replace("\", "/")
+                [System.IO.Compression.ZipFileExtensions]::CreateEntryFromFile($zip, $_.FullName, $rel, [System.IO.Compression.CompressionLevel]::Optimal) | Out-Null
+              }
+            } finally { $zip.Dispose() }
+            $check = [System.IO.Compression.ZipFile]::OpenRead($dst)
+            try {
+              $bad = $check.Entries | Where-Object { $_.FullName.Contains("\") } | Select-Object -First 1
+              $count = $check.Entries.Count
+            } finally { $check.Dispose() }
+            if ($bad) { throw "ZIP entry uses a backslash: $($bad.FullName)" }
+            $expected = (Get-ChildItem -LiteralPath $src -Recurse -File -Force).Count
+            if ($count -ne $expected) { throw "ZIP entry count $count differs from source file count $expected" }
+            Write-Output "ZIP entries: $count"
+          '
           node -e '
             const fs = require("fs");
             const fd = fs.openSync("windows-installed-candidate.zip", "r");

@@ -11,7 +11,14 @@ test('the candidate archive step writes a real ZIP and verifies its format', asy
   // Windows tar.exe has no zip write support; -a only selects compression and
   // silently produced a ustar tar named .zip.
   assert.doesNotMatch(step, /^\s*tar\.exe/m)
-  assert.match(step, /ZipFile\]::CreateFromDirectory/)
+  // CreateFromDirectory emits backslash entry names; entries must be written
+  // with forward slashes and verified.
+  assert.match(step, /CreateEntryFromFile/)
+  assert.doesNotMatch(step, /ZipFile\]::CreateFromDirectory/)
+  assert.match(step, /Replace\("\\", "\/"\)/)
+  assert.match(step, /Contains\("\\"\)/)
+  assert.match(step, /-File -Force/)
+  assert.match(step, /differs from source file count/)
   assert.match(step, /0x04034b50/)
   assert.match(step, /0x06054b50/)
 })
