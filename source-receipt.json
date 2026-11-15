@@ -4,8 +4,8 @@
   "edition": "generic",
   "version": "0.4.13",
   "sourceState": "local-development-snapshot",
-  "createdAt": "2026-11-15T01:56:59.077Z",
-  "fileSetSHA256": "9784f99c5f9c74af31184d9ca54dd7833467b7b2726c515d4d0874bdc56babba",
+  "createdAt": "2026-11-15T13:46:58.636Z",
+  "fileSetSHA256": "5973debd721bfa60f770fbd8f45049709a928e55ae2e050d3895e84e4268fde7",
   "files": [
     {
       "path": ".gitattributes",
@@ -1361,7 +1361,7 @@
     },
     {
       "path": "dsh-electron/src/native-vault.mjs",
-      "sha256": "48a02d9813c0257becd6c055db2514efbe2134e95241ada2d7124fa8b587d4e8"
+      "sha256": "b8a5db603af5d98c74cb9bbee9215658faed781fd8c617a1831580375e12bde2"
     },
     {
       "path": "dsh-electron/src/native-web-host.mjs",
@@ -1377,7 +1377,7 @@
     },
     {
       "path": "dsh-electron/src/product.mjs",
-      "sha256": "2415eaee953829fd99dd7712563d6628436b10a38daddd0b8bf1f356ed9be6ed"
+      "sha256": "2c35550170169d81c7d58ec9e66198f98c1c8fbee20034bd654edd6a7647a343"
     },
     {
       "path": "dsh-electron/src/runtime-access.mjs",
@@ -1581,7 +1581,7 @@
     },
     {
       "path": "dsh-electron/tests/native-vault.test.mjs",
-      "sha256": "98d2b84c3a464b7c4040e01994c419014822abcc5d28fceab1ec17efb4f9cc03"
+      "sha256": "c846e095e4aacd520c7a925a35c975fb24c0779c4869028a0782311ac9d3fcf5"
     },
     {
       "path": "dsh-electron/tests/oidc-native-vault.electron.mjs",

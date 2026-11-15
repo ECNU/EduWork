@@ -4,7 +4,7 @@ import { createDesktopPet } from './desktop-pet.mjs'
 import { applyDesktopBrand } from './desktop-brand.mjs'
 import { readFileSync, mkdirSync, writeFileSync, renameSync } from 'node:fs'
 import { readFile, writeFile, access, mkdir, stat } from 'node:fs/promises'
-import { join, isAbsolute, dirname } from 'node:path'
+import { join, isAbsolute, dirname, basename } from 'node:path'
 import { execFile } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { fileURLToPath } from 'node:url'
@@ -343,7 +343,16 @@ async function prepareDesktop() {
   process.env.EDUWORK_ELECTRON_VERSION = process.versions.electron
   process.env.EDUWORK_CHROMIUM_VERSION = process.versions.chrome
   process.env.EDUWORK_PRODUCT_NAME = settings.productName
-  const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage)
+  const vault = new EncryptedVault(join(paths.userData, 'credentials.encrypted'), safeStorage, {
+    confirmReplacement: async () => {
+      const zh = app.getLocale().toLowerCase().startsWith('zh')
+      const { response } = await showDesktopMessageBox({ type: 'warning', title: settings.productName,
+        message: zh ? '当前无法读取已保存的凭据。要备份原文件并写入新凭据吗？' : 'Saved credentials cannot be read. Back up the file and save new credentials?',
+        detail: zh ? '如果系统钥匙串暂时锁定，请先取消并解锁后重试。继续后，其他已保存的账号和密钥可能需要重新配置。' : 'If the system keychain is locked, cancel, unlock it, and retry. Continuing may require you to set up other accounts and keys again.',
+        buttons: zh ? ['取消', '备份并继续'] : ['Cancel', 'Back up and continue'], defaultId: 0, cancelId: 0 })
+      return response === 1
+    },
+    onUnreadable: ({ aside }) => desktopHostLog(JSON.stringify({ component: 'credential-vault', event: 'unreadable-backup', kept: basename(aside) }) + '\n') })
   const showNotificationWindow = () => { if (updateCompleted && mainWindow && !mainWindow.isDestroyed()) { if (mainWindow.isMinimized()) mainWindow.restore(); mainWindow.show(); mainWindow.focus() } }
   notificationAdapter = nativeNotificationAdapter({ platform: process.platform, Notification, getTray: () => tray, productName: settings.productName,
     activate: key => taskNotifications.activate(key), show: showNotificationWindow, failed: () => { taskNotifications.delivery = 'unavailable' } })
