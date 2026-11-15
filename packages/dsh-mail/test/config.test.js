@@ -6,6 +6,7 @@ test('installation defaults both capabilities off and uses encrypted transports'
   const value = settingsBase()
   assert.equal(value.readEnabled, false)
   assert.equal(value.sendEnabled, false)
+  assert.equal(value.notifyEnabled, false)
   assert.equal(value.imapTls, 'implicit')
   assert.equal(value.smtpTls, 'implicit')
   assert.doesNotThrow(() => validateSettings(value))

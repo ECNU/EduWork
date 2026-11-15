@@ -10,6 +10,10 @@ Choose “Add plugin” on the EduWork Plugins page, enter `@eduwork/dsh-annotat
 
 Requires a DSH client providing the official Chat view and composer extensions (`>=0.2.1-rc.2 <0.3.0-0`). Numbered buttons above sent bubbles require EduWork's `conversation.chat.user.decorate` extension seat. Clients without it independently render quote cards through official user-text slots; native text surfaces such as queued messages also use these cards.
 
+Version 0.1.2 supports DSH `0.2.2-rc.1` and extends its native text-interaction surface with Quote, Annotate and optional side chat in one toolbar. Native quotes and annotations can coexist across editing, Undo and draft restoration. Older hosts retain the existing selection adapter.
+
+The host owns selection and basic quotes; annotations use its native draft and submission APIs. This plugin adds per-excerpt comments, numbering and editing. On newer hosts, selected visible text comes from the official projection. Sent-annotation detail placement and outside-pointer dismissal reuse official UI primitives. Existing messages, comment payloads and source numbers remain compatible; the plugin does not maintain a separate conversation or draft store.
+
 ## Usage
 
 1. Select text in the final response of a completed turn and choose “Annotate” in the floating toolbar.
@@ -43,6 +47,8 @@ node scripts/packages/manage.mjs check dsh-annotation
 ```
 
 The plugin adds UI through official `conversation.chat.turnTail`, `conversation.input.left`, and `conversation.input.overlay` slots. Pending notes and their order come from public `InputState.occurrences`; editing and deletion use revision-guarded native input span operations, without changing Lexical directly or replacing the entire draft. `src/client/draft.js` isolates reference-coordinate conversion and source resolution through public Chat snapshots.
+
+The rc.1 public `InputState` omits native Quote spans. Editing/deleting an annotation therefore reads the input facade’s `draftSnapshot` getter, verifies that its text and references match the live state, and translates the coordinates. This getter is not yet part of the upstream public `SessionInput` type contract: it is a narrow adapter to recheck on upgrades. Missing or inconsistent snapshots reject the edit and preserve the draft. The plugin does not inspect editor internals or browser storage.
 
 Selection reads the official Chat row's `data-chat-node-key` to identify its message and uses DOM Range to capture bounded surrounding text in that row. There is no message DOM rewriting or global text matching. Hosts with different Chat row markup must revalidate this adapter rather than guess the source.
 

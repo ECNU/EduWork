@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url'
 import { resolve } from 'node:path'
 
 // API compatibility is independent of the exact artifacts selected by a build.
-export const rebuiltDshPeerRange = '>=0.2.0-rc.2 <0.3.0-0'
+export const rebuiltDshPeerRange = '>=0.2.0-rc.2 <0.3.0-0 || >=0.2.2-rc.1 <0.2.3-0'
 export function isDsh020(version, minimum = '0.2.0-rc.1') {
   try {
     versionParts(version)
@@ -31,10 +31,13 @@ export function rebuiltDshPeers(manifest, version, { editionOwned = false } = {}
 // Code-loading qualification remains exact. Keep feature decisions in the same
 // row so an upgrade cannot silently lose defaults or restore a retired adapter.
 const baselines = {
+  '0.2.2-rc.3': { commit: '38a6a5c965aa99ab525161efb7cc5cf1fe62fced', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
+  '0.2.2-rc.2': { commit: 'ddac96760b6edf8fa0fe17cbdcf0b512f4c12b2c', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.1.5-rc.2': { commit: 'fb2c4b9e698e30edb738bca4cf0618587db7d203', native: false },
   '0.1.7-alpha.2': { commit: '00102833dfaee1da9f48a3a8eae9d34005a75218', native: true },
   '0.1.7-rc.2': { commit: '477b4f420553e8a52c2fbccc464d7561b239c443', native: true, configurableSubagents: true },
   '0.2.0-rc.2': { commit: '639ed015397290b3745d163aafe02ffee4aa3f84', native: true, configurableSubagents: true, upstreamReveal: true, migrateSchedule: true },
+  '0.2.2-rc.1': { commit: '66491b05e3f05ad35bcdd4f6cd7ed26041d9e3db', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.2.1-rc.5': { commit: 'b830ec950faba0a46dda564be3e2d854afed94f1', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.2.1-rc.3': { commit: '1f81c047fc48fa190a683e469daa699857e9afe8', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },
   '0.2.1-rc.2': { commit: '687f282e8625c6b8d11ff58211a90524be2e4317', native: true, configurableSubagents: true, upstreamReveal: true, builtinSchedule: true },

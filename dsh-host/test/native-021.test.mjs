@@ -8,7 +8,7 @@ import { qualifiedDesktopBaseline } from '../dsh-compatibility.mjs'
 import { pinnedDshContract, verifyPinnedDshReceipt } from '../../scripts/pinned-dsh-contract.mjs'
 
 test('selected Runtime remains bound to both its version and source commit', () => {
-  const receipt = { dshVersion: '0.2.1-rc.5', dshCommit: 'b830ec950faba0a46dda564be3e2d854afed94f1' }
+  const receipt = { dshVersion: '0.2.2-rc.3', dshCommit: '38a6a5c965aa99ab525161efb7cc5cf1fe62fced' }
   verifyPinnedDshReceipt(receipt)
   assert.equal(pinnedDshContract.packageVersion, receipt.dshVersion)
   assert.equal(qualifiedDesktopBaseline(receipt).builtinSchedule, true)

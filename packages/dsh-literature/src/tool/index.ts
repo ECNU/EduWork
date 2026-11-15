@@ -50,6 +50,21 @@ export const Config: z<Config> = z.object({
 /** A model-facing text content block (the only block kind this tool emits). */
 type TextBlock = { readonly type: 'text'; readonly text: string }
 
+/** Kept only for older hosts; rc.2 intentionally no longer exposes start(). */
+interface LegacySubagents {
+  getProvider(name: string): unknown
+  start(provider: string, request: {
+    label: string; prompt: ContentBlock[]; parent: Agent; outputSchema: ObjectJsonSchema
+    toolFilter: { allow: never[] }; signal: AbortSignal
+  }): Promise<SubagentRun>
+}
+
+function hasLegacySubagentStart(value: unknown): value is LegacySubagents {
+  return typeof value === 'object' && value !== null
+    && typeof Reflect.get(value, 'start') === 'function'
+    && typeof Reflect.get(value, 'getProvider') === 'function'
+}
+
 /** Whether a value looks like a {@link LiteratureError} even from a duplicated package copy. */
 function isLiteratureError(error: unknown): error is LiteratureError {
   return error instanceof LiteratureError || (
@@ -302,7 +317,7 @@ export function apply(ctx: Context, config: Config = {}): void {
     if (subagents === undefined && ctx.get('llm') === undefined) {
       throw new LiteratureError('publisher PDF link resolution requires the subagents service', 'LITERATURE_FULLTEXT_UNAVAILABLE')
     }
-    const legacy = typeof subagents?.start === 'function'
+    const legacy = hasLegacySubagentStart(subagents)
     if (legacy && subagents.getProvider(subagentProvider) === undefined) {
       throw new LiteratureError(
         `publisher PDF link resolution requires the subagent provider "${subagentProvider}" (load a provider such as @deepseek-ai/dsh-subagent-spawn-in-process)`,

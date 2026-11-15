@@ -52,10 +52,9 @@ test('literature migrates guarded profile/home patches using official YAML and e
   assert.equal(groups[0].insert[0].config[1].name, '@other/literature')
   await writeNativeProfile(options)
 })
-test('official patch implementation keeps distribution policy above user enable/reload', { skip: !upstream }, async () => {
-  const text = await source('vendor/include/src/index.ts')
-  const start = text.indexOf('export function applyEntryPatches(')
-  const apply = runInNewContext(code(text.slice(start, text.indexOf('\n}\n', start) + 3)).replace('export ', '') + '\napplyEntryPatches', { structuredClone })
+test('official patch implementation keeps distribution policy above user enable/reload', { skip: !upstream || !process.env.EDUWORK_TEST_RUNTIME }, async () => {
+  const require = createRequire(join(process.env.EDUWORK_TEST_RUNTIME, 'package.json'))
+  const { applyEntryPatches: apply } = await import(pathToFileURL(require.resolve('@deepseek-ai/cordis-plugin-include')).href)
   const rows = disabledDistributionEntries.map(id => ({ id, disabled: false }))
   for (let reload = 0; reload < 3; reload++) {
     const user = apply(rows, rows.map(row => ({ ...row, disabled: false })), assert.fail)
@@ -77,7 +76,7 @@ test('adapted official window still publishes fullscreen on Windows and macOS', 
       isFullScreen = () => true
     }
     const create = runInNewContext(text + '\ncreateWindow', { BrowserWindow: Window,
-      app: { getLocale: () => 'zh-CN' }, resolveDesktopLocale: () => ({}), nativeTheme: { shouldUseDarkColors: false },
+      app: { getLocale: () => 'zh-CN' }, resolveDesktopLocale: () => ({}), nativeTheme: Object.assign(new EventEmitter(), { shouldUseDarkColors: false }),
       process: { platform }, WINDOWS_TITLEBAR_HEIGHT: 40, DESKTOP_IPC: { windowFullscreen: 'fullscreen' },
     })
     const window = create('preload', true, true)
@@ -93,7 +92,7 @@ test('adapted Windows context menus follow the application locale after startup 
   const create = runInNewContext(text + '\ncreateWindow', { BrowserWindow: Window,
     app: { getLocale: () => 'en' }, resolveDesktopLocale: () => ({ messages: { copy: 'System copy' } }),
     Menu: { buildFromTemplate: items => { menu = items; return { popup() {} } } },
-    nativeTheme: { shouldUseDarkColors: false }, process: { platform: 'win32' }, WINDOWS_TITLEBAR_HEIGHT: 40,
+    nativeTheme: Object.assign(new EventEmitter(), { shouldUseDarkColors: false }), process: { platform: 'win32' }, WINDOWS_TITLEBAR_HEIGHT: 40,
   })
   const window = create('preload', false, true, () => ({ messages: { copy: language === 'zh' ? '复制' : 'Copy' } }))
   const open = () => window.webContents.emit('context-menu', {}, { isEditable: false, selectionText: 'selected', editFlags: { canCopy: true } })
@@ -107,8 +106,10 @@ test('quit inspector sees official persisted schedules without a loaded Agent', 
   let dispose
   const require = createRequire(join(process.env.EDUWORK_TEST_RUNTIME, 'package.json'))
   const { ScheduleService } = await import(pathToFileURL(require.resolve('@deepseek-ai/dsh-schedule')).href)
-  const tasks = new Map([['cold', { sessionId: 'cold-session', status: 'active', record: { id: 'cold', scheduledAt: '2026-01-01' } }]])
-  const store = { getDomain: async () => ({ table: () => tasks }) }
+  const tasks = new Map([['cold', { sessionId: 'cold-session', target: { kind: 'session', sessionId: 'cold-session' }, involvedSessionIds: ['cold-session'], status: 'active', record: { id: 'cold', scheduledAt: '2026-01-01' } }]])
+  // Exercise the installed official catalog, including its newer entries/entry
+  // helpers, against a synthetic persisted domain with no live Agent.
+  const store = Object.assign(Object.create(ScheduleService.prototype), { getDomain: async () => ({ table: () => tasks }) })
   const services = { agents: { list: () => [] }, jobs: {}, schedule: { catalog: () => ScheduleService.prototype.catalog.call(store) } }
   const inspect = install({ get: name => services[name], effect: setup => { dispose = setup() } })
   assert.equal((await inspect()).scheduledTasks, true)

@@ -18,4 +18,6 @@ test('shipped parser handles the DoS regressions and ordinary read/send traffic'
   assert.equal(result.received.length, 4)
   assert.equal(result.smtp, 'passed')
   assert.equal(result.readOnly, true)
+  assert.equal(result.remindersReadOnly, true)
+  assert.equal(result.loginCancelled, true)
 })

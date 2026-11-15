@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/rand"
 	"crypto/sha256"
+	"debug/pe"
 	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
@@ -83,15 +84,88 @@ func Payload(f *os.File, expectedBytes int64) (*io.SectionReader, error) {
 	if st.Size() < FooterSize {
 		return nil, errors.New("安装程序不完整，请重新下载")
 	}
-	footer := make([]byte, FooterSize)
-	if _, err := f.ReadAt(footer, st.Size()-FooterSize); err != nil {
-		return nil, err
+	// Unsigned releases retain the original EOF footer layout.
+	if r := payloadBefore(f, st.Size(), expectedBytes); r != nil {
+		return r, nil
 	}
-	start, size := binary.LittleEndian.Uint64(footer[16:24]), binary.LittleEndian.Uint64(footer[24:32])
-	if string(footer[:16]) != Magic || size != uint64(expectedBytes) || size > uint64(st.Size()-FooterSize) || start != uint64(st.Size()-FooterSize)-size {
+	// Authenticode appends an aligned certificate table after the overlay. Its
+	// PE directory address is a FILE offset, not an RVA. Only accept a terminal,
+	// structurally valid table, then at most seven zero alignment bytes. This
+	// locates content; signature trust is checked separately by release tooling.
+	p, err := pe.NewFile(f)
+	if err != nil {
 		return nil, errors.New("安装程序内容边界不正确，请重新下载")
 	}
-	return io.NewSectionReader(f, int64(start), int64(size)), nil
+	var table pe.DataDirectory
+	switch h := p.OptionalHeader.(type) {
+	case *pe.OptionalHeader32:
+		if h.NumberOfRvaAndSizes > 4 {
+			table = h.DataDirectory[4]
+		}
+	case *pe.OptionalHeader64:
+		if h.NumberOfRvaAndSizes > 4 {
+			table = h.DataDirectory[4]
+		}
+	}
+	start, size := int64(table.VirtualAddress), int64(table.Size)
+	if start < FooterSize || start%8 != 0 || size < 8 || start > st.Size()-size || start+size != st.Size() {
+		return nil, errors.New("安装程序证书表边界不正确，请重新下载")
+	}
+	for offset := start; offset < st.Size(); {
+		var header [8]byte
+		if _, err := f.ReadAt(header[:], offset); err != nil {
+			return nil, err
+		}
+		length := int64(binary.LittleEndian.Uint32(header[:4]))
+		aligned := (length + 7) &^ 7
+		if length <= 8 || aligned > st.Size()-offset || binary.LittleEndian.Uint16(header[4:6]) != 0x200 || binary.LittleEndian.Uint16(header[6:8]) != 2 {
+			return nil, errors.New("安装程序证书表格式不正确，请重新下载")
+		}
+		if !zeroRange(f, offset+length, offset+aligned) {
+			return nil, errors.New("安装程序证书表填充不正确，请重新下载")
+		}
+		offset += aligned
+	}
+	for padding := int64(0); padding < 8; padding++ {
+		if !zeroRange(f, start-padding, start) {
+			break
+		}
+		if r := payloadBefore(f, start-padding, expectedBytes); r != nil {
+			return r, nil
+		}
+	}
+	return nil, errors.New("安装程序内容边界不正确，请重新下载")
+}
+
+func zeroRange(f *os.File, start, end int64) bool {
+	if start < 0 || end < start || end-start > 7 {
+		return false
+	}
+	var b [7]byte
+	if _, err := f.ReadAt(b[:end-start], start); err != nil {
+		return false
+	}
+	for _, value := range b[:end-start] {
+		if value != 0 {
+			return false
+		}
+	}
+	return true
+}
+
+func payloadBefore(f *os.File, end, expectedBytes int64) *io.SectionReader {
+	if expectedBytes < 0 || end < FooterSize {
+		return nil
+	}
+	var footer [FooterSize]byte
+	if _, err := f.ReadAt(footer[:], end-FooterSize); err != nil {
+		return nil
+	}
+	start, size := binary.LittleEndian.Uint64(footer[16:24]), binary.LittleEndian.Uint64(footer[24:32])
+	if string(footer[:16]) != Magic || size != uint64(expectedBytes) || size > uint64(end-FooterSize) || start != uint64(end-FooterSize)-size {
+		return nil
+	}
+	return io.NewSectionReader(f, int64(start), int64(size))
 }
 
 func ValidPath(name string) bool {

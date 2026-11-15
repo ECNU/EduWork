@@ -2,6 +2,7 @@ import {randomUUID} from 'node:crypto'
 import {copyFile,mkdir,realpath} from 'node:fs/promises'
 import {join,relative,isAbsolute} from 'node:path'
 import {officeSpec} from './office-spec.js'
+import {executeGovernedTool} from '@eduwork/dsh-artifact-services/tool-execution'
 
 // Reuse the optional host Office skills through their governed tools. Never
 // locate Python, install packages or bypass a rejected tool execution here.
@@ -11,7 +12,7 @@ export async function exportWithOfficeTools(ctx,artifact,directory,format,{execu
   const spec=officeSpec(artifact)
   const call=async arguments_=>{
     signal?.throwIfAborted()
-    const result=await ctx.tools.execute({callId:randomUUID(),rootCallId:execution.rootCallId||execution.callId,parent:execution.token,agent:execution.agent,signal,name,arguments:arguments_})
+    const result=await executeGovernedTool(ctx,{callId:randomUUID(),rootCallId:execution.rootCallId||execution.callId,parent:execution.token,agent:execution.agent,toolSet:execution.toolSet,signal,name,arguments:arguments_})
     if(result.isError)throw new Error(result.error?.message||'Office 文件生成未获批准或未完成')
     for(const context of result.additionalContexts||[])execution.deferContext?.(context)
     if(result.concludesTurn)execution.concludeTurn?.()

@@ -48,12 +48,19 @@ test('adapted npm menu keeps all three native slots, plugin navigation and appen
   await writeFile(join(copy, 'package.json'), JSON.stringify({ name: patch.package, version: '0.2.2' }))
   await assert.rejects(patchEntryCustomizationRuntime(modules), /newly qualified/)
   let plugin
-  runInNewContext(output, { window: { __ModuleLoader__: { load({ factory }) { plugin = factory(() => ({})) } } } })
+  // This fixture checks plugin registrations, not React/store rendering.
+  runInNewContext(output, { window: { __ModuleLoader__: { load({ factory }) {
+    plugin = factory(name => name === '@deepseek-ai/dsh-client-store' ? {
+      createSnapshotStore(initial) { let value = initial; return { set(next) { value = next }, getSnapshot: () => value } },
+    } : {})
+  } } } })
   // Cordis requires the parent service as well as the remote namespace.
   assert.ok(plugin.inject.includes('remote') && plugin.inject.includes('remote.agentPresets'))
   const slots = [], calls = []
   const ctx = {
-    effect: fn => fn(), locale: { register() {}, bind: () => key => key }, get: () => undefined,
+    effect: fn => fn(), locale: { register() {}, bind: () => key => key },
+    get: name => name === 'pluginNavigation' ? ctx.pluginNavigation : undefined,
+    inject: (_names, callback) => callback(ctx),
     slots: { inject: (name, fn) => fn(), register: options => slots.push(options) },
     pluginNavigation: { openList: () => calls.push('browse') },
     uiWorkspace: { startSession: (id, options) => calls.push({ id, options }) },

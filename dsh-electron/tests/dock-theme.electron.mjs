@@ -32,7 +32,7 @@ app.whenReady().then(async () => {
     }
     protocol.handle('dsh-app', () => new Response('<html><body>Theme test</body></html>', { headers: { 'content-type': 'text/html' } }))
     const source = readFileSync(join(root, 'dsh-electron/src/product.mjs'), 'utf8')
-    const helper = source.slice(source.indexOf('function savedEduworkStyle()'), source.indexOf('export async function attachDesktopWindow')).replace('export ', '')
+    const helper = source.slice(source.indexOf('function savedEduworkStyle()'), source.indexOf('export async function attachDesktopWindow')).replaceAll('export ', '')
     const seen = [], warnings = []
     const nativeApp = { getAppPath: () => appRoot, getPath: name => { assert.equal(name, 'userData'); return userData }, dock: { setIcon(icon) { seen.push(icon.toPNG()); app.dock.setIcon(icon) } } }
     const { attachDockTheme, savedEduworkStyle } = new Function('app', 'nativeImage', 'process', 'join', 'readFileSync', 'writeFileSync', 'renameSync', 'console', helper + '\nreturn {attachDockTheme, savedEduworkStyle}')(

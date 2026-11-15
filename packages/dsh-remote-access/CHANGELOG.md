@@ -1,5 +1,35 @@
 # 变更记录 / Changelog
 
+## 0.1.7 — 2026-11-15
+
+- 修复 iOS / iPadOS 16.4–17.3 上远程界面白屏：配对成功、电脑上也显示已连接，但设备上什么都不显示。远程网页现在会补上这些系统缺少的浏览器功能，DSH 界面也能正常加载。低于 16.4 的系统会提示版本过低，不再白屏。只需更新中继，电脑端不用更新。
+
+- Fix a blank remote interface on iOS / iPadOS 16.4–17.3, where pairing succeeded and the computer showed the device as connected but nothing appeared on it. The remote web page now fills in the browser features these versions lack, so the DSH interface loads as well. Older versions are told the system is too old instead of showing a blank page. Only the relay needs updating; computers do not.
+
+- 修复电脑启用“思考过程机器翻译”后远控页面无法启动的问题；远端翻译沿用电脑已配置的服务与限制，配置仍仅能在电脑上修改。
+- Fix remote workbench startup with reasoning machine translation enabled. Remote translation uses the Host's configured service and limits; preferences remain editable only on the computer.
+
+## 0.1.6 — 2026-11-12
+
+- 兼容 DSH 0.2.2-rc.2；将已验证的 0.2.2 预发布 API 系列纳入有界兼容范围，保留原有受支持的宿主。 适配 Office Kit、搜索 provider、子代理停止及账号通知接口；继续拒绝本机终端和配置管理接口。
+- Support DSH 0.2.2-rc.2 and the qualified 0.2.2 prerelease API family while retaining previously supported hosts. Adapt Office Kit, search providers, subagent interruption and account notification RPCs; retain terminal and configuration-management restrictions.
+- 补齐新版会话状态与事件、工具结果订阅、文件搜索、会话团队开关、定时任务和 Markdown 导出接口，并以真实 rc.2 网页宿主的接口清单检查允许与拒绝边界。
+- Cover new session state/events, tool-result subscriptions, file search, per-session team mode, scheduled tasks and Markdown export. Verify the allow/deny boundary against an actual rc.2 web-host inventory.
+
+## 0.1.5 — 2026-11-07
+
+- 连接在生成配对码时关闭后，及时清理待确认请求。
+- Drop a pending approval when the connection closes while its pairing code is being computed.
+
+- 修复 DSH 0.2.2 上手机布局错位：远程设备上侧栏打开后是空白遮罩、左上角出现两套按钮。DSH 0.2.2 已自带手机布局，插件不再覆盖它的布局，只保留远程设备上设置仅可查看的提示。兼容范围改为 DSH 0.2.2-rc.1 及以上，DSH 0.2.1 宿主请继续使用 0.1.4。
+
+- Fix the phone layout on DSH 0.2.2, where a remote device's sidebar opened as an empty mask and the top-left corner showed two sets of buttons. DSH 0.2.2 fits itself to phones, so the plugin no longer overrides its layout and only keeps settings view only on remote devices. The plugin now requires DSH 0.2.2-rc.1 or later; DSH 0.2.1 hosts should keep 0.1.4.
+
+## 0.1.3 — Unreleased
+
+- 兼容声明接纳已验证的 DSH 0.2.2-rc.1 与 Cordis 4.1；保留原有功能、配置及受支持的旧宿主范围。
+- Accept qualified DSH 0.2.2-rc.1 and Cordis 4.1 peers, retaining existing behavior, configuration and supported older hosts.
+
 ## 0.1.2 — 2026-10-26
 
 - 修复运行中安装或启用远控插件后，远端无法保存预览版说明确认状态的问题。

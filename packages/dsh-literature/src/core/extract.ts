@@ -1,6 +1,6 @@
 /**
  * Full-text extraction for the literature seam: in-memory gunzip+untar of the
- * arXiv source tarball, PDF text extraction via pdfjs-dist, HTML→Markdown via
+ * arXiv source (tarball or single TeX), PDF text extraction via pdfjs-dist, HTML→Markdown via
  * turndown, and a lossy LaTeX→prose stripper for the readable summary.
  * @module @eduwork/dsh-literature/core/extract
  */
@@ -53,9 +53,9 @@ function kindOf(path: string): LiteratureFulltextFile['kind'] {
 }
 
 /**
- * Decompress and untar an arXiv source tarball in memory, returning only the
- * text files keyed by their in-archive path.
- * @param gzipBytes - the gzipped tarball bytes.
+ * Decompress an arXiv source in memory, returning safe archive text files or
+ * a standalone TeX document as `main.tex`. Keep the exported name for callers.
+ * @param gzipBytes - the gzipped source bytes.
  * @returns text files by path.
  */
 export function untarSource(gzipBytes: Uint8Array): Promise<Map<string, string>> {
@@ -65,9 +65,23 @@ export function untarSource(gzipBytes: Uint8Array): Promise<Map<string, string>>
   } catch (error: unknown) {
     throw new LiteratureError('the downloaded source is not a valid gzip archive', 'LITERATURE_EXTRACTION_FAILED', { cause: error })
   }
+  // Older e-prints can be one gzipped TeX file, not a tar archive. Recognize
+  // conservative document headers; unknown data must fall through to the
+  // archive parser and, if unusable, the caller's HTML/PDF fallback.
+  const text = decompressed.toString('utf8')
+  const header = text.slice(0, 8192)
+  const withoutComments = header.replace(/^[\t ]*%[^\r\n]*(?:\r?\n|$)/gmu, '').trimStart()
+  if (!/[\u0000-\u0008\u000e-\u001f]/u.test(text)
+      && (/^\s*%&[a-zA-Z][\w-]*(?:\s|$)/u.test(header)
+        || /^\\(?:documentclass|documentstyle|input|document)\b/u.test(withoutComments))) {
+    return Promise.resolve(new Map([['main.tex', text]]))
+  }
   const files = new Map<string, string>()
   return new Promise((resolve, reject) => {
-    const parser = new Parser()
+    const fail = (error: unknown): void => {
+      reject(new LiteratureError('the downloaded source could not be extracted', 'LITERATURE_EXTRACTION_FAILED', { cause: error }))
+    }
+    const parser = new Parser({ strict: true })
     parser.on('entry', (entry: ReadEntry) => {
       if (!isSafeArchivePath(entry.path) || (entry.type !== 'File' && entry.type !== 'OldFile' && entry.type !== 'ContiguousFile') || !isTextPath(entry.path)) {
         entry.resume()
@@ -76,10 +90,11 @@ export function untarSource(gzipBytes: Uint8Array): Promise<Map<string, string>>
       const chunks: Buffer[] = []
       entry.on('data', (chunk: Buffer) => { chunks.push(chunk) })
       entry.on('end', () => { files.set(entry.path, Buffer.concat(chunks).toString('utf8')) })
+      entry.on('error', fail)
     })
-    parser.on('error', reject)
+    parser.on('error', fail)
     parser.on('end', () => { resolve(files) })
-    Readable.from(decompressed).on('error', reject).pipe(parser)
+    Readable.from(decompressed).on('error', fail).pipe(parser)
   })
 }
 
@@ -117,8 +132,8 @@ export interface ExtractOptions {
   readonly maxSummaryChars: number
 }
 
-/** Extract the source tarball into files plus a readable summary.
- * @param gzipBytes - the gzipped tarball
+/** Extract the source into files plus a readable summary.
+ * @param gzipBytes - the gzipped tarball or standalone TeX
  * @param options - bounded extractor limits
  * @returns the extracted files and summary
  */
@@ -132,6 +147,11 @@ export async function extractSource(gzipBytes: Uint8Array, options: ExtractOptio
     kind: kindOf(path),
     content: content.slice(0, options.maxFileChars),
   }))
+  // tar can finish successfully without yielding usable entries (e.g. a
+  // PDF-only archive). Never turn that into an empty successful fulltext result.
+  if (!extracted.some(file => file.content.trim() !== '')) {
+    throw new LiteratureError('the downloaded source contains no usable text files', 'LITERATURE_EXTRACTION_FAILED')
+  }
   const texPath = mainTex(files)
   /* v8 ignore next -- mainTex returns a path that is always a key of files */
   const summary = texPath !== undefined ? stripTex(files.get(texPath) ?? '').slice(0, options.maxSummaryChars) : ''

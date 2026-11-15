@@ -20,6 +20,7 @@ import { Session, SessionId, SESSION_FORMAT_VERSION } from '@deepseek-ai/dsh-ses
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import type { LiteratureSearchResult, FulltextResult } from '@eduwork/dsh-literature/core'
 import * as tool from '@eduwork/dsh-literature/tool'
+import { executeTool } from './execute.ts'
 
 const signal = new AbortController().signal
 
@@ -55,7 +56,7 @@ describe('literature_fulltext sandbox write under a divergent session cwd', () =
     await ctx.plugin(SandboxedFileSystem, { cwd: deployRoot })
     await ctx.plugin(tool, {})
 
-    const result = await ctx.tools.execute({
+    const result = await executeTool(ctx, {
       signal,
       callId: 'lit-sb-1',
       name: 'literature_fulltext',

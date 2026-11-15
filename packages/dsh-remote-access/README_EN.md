@@ -6,7 +6,7 @@
 
 The package has two parts:
 
-- **DSH plugin**: runs on the computer being accessed. Its settings page switches remote access on and off and adds and removes devices, and it fits DSH's interface to phone screens.
+- **DSH plugin**: runs on the computer being accessed. Its settings page switches remote access on and off and adds and removes devices.
 - **Relay service**: runs on a server with a public address. It forwards ciphertext and serves the page you open on your phone.
 
 ## Use
@@ -17,7 +17,7 @@ You need Node.js 24.22.1 or later and a reverse proxy that serves HTTPS for the 
 
 ```sh
 RELAY_URL=https://remote.example.edu/ RELAY_ACCESS_KEYS=replace-with-a-random-key \
-  npx --yes --package=@eduwork/dsh-remote-access@0.1.2 eduwork-remote-relay
+  npx --yes --package=@eduwork/dsh-remote-access@0.1.7 eduwork-remote-relay
 ```
 
 `RELAY_URL` is the public address users reach the relay at; `RELAY_ACCESS_KEYS` are the comma-separated access keys you give to computer owners. The relay listens on `127.0.0.1:8787` by default; change it with `HOST` and `PORT`. `<RELAY_URL>healthz` answers `ok` for monitoring.
@@ -52,7 +52,7 @@ Organization sign-in also requires `@eduwork/dsh-oidc@0.3.1` or a later compatib
 2. On the phone, scan the code or open the link, enter a device name and choose "Pair".
 3. Check that the phone and the computer show the same 6-digit pairing code, then choose "Allow" on the computer.
 
-From then on, opening the relay address on that device connects to the computer, and it reconnects by itself after a drop. On iPhone and iPad, add the page to the Home Screen first, open it from there and paste the pairing link: a pairing made only in Safari is lost after 7 days without use.
+From then on, opening the relay address on that device connects to the computer, and it reconnects by itself after a drop. iPhone and iPad need iOS / iPadOS 16.4 or later; add the page to the Home Screen first, open it from there and paste the pairing link: a pairing made only in Safari is lost after 7 days without use.
 
 Choose "Remove" under "Paired devices" on the computer to disconnect a device at once and keep it from connecting again.
 
@@ -60,7 +60,7 @@ Choose "Remove" under "Paired devices" on the computer to disconnect a device at
 
 They can choose an existing workspace, view and start conversations, continue and cancel tasks, approve or answer questions, and view and download results. Studio results and the calendar are also available when those plugins are installed on the host.
 
-A phone shows DSH's own interface, only fitted to the narrow screen: the session list (workspace folders, search, new session and so on) opens full screen from the top-left corner and closes once you pick a session or a panel; settings also fill the screen, with the sections as a row of tabs, and are view only on remote devices; conversations show durations, retries, approvals and questions as on the computer.
+A phone shows DSH's own interface. From DSH 0.2.2, DSH fits it to phone screens itself: the session list opens as a drawer from the top-left corner and closes once you pick a session or a panel, and settings fill the screen with the sections as a row of tabs. Settings are view only on remote devices. Conversations show durations, retries, approvals and questions as on the computer.
 
 Remote devices cannot directly call APIs that open local windows or programs or show notifications, register or remove workspaces, change settings, manage accounts, plugins, credentials, skills, memories or remote access, or access terminal and code-execution APIs. **Tasks submitted through the Agent can still execute commands under the session's permission and approval rules**; blocking direct terminal APIs does not disable Agent tools. The full list is in [src/gate/gate.ts](src/gate/gate.ts); anything not listed is refused.
 

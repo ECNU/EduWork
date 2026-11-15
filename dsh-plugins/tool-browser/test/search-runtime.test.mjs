@@ -70,7 +70,8 @@ test('pinned DSH volatile settings, live updates and official HTTP search work t
       } }
     },
   })
-  assert.equal(typeof fiber.config.apiKey.get, 'function', 'use the real upstream volatile schema')
+  const effectiveConfig = 'effectiveConfig' in fiber ? fiber.effectiveConfig : fiber.config
+  assert.equal(typeof effectiveConfig.apiKey.get, 'function', 'use the real upstream volatile schema')
   const snapshot = providerSettings(editor, 'web-search-deepseek')
   assert.deepEqual(snapshot, { ...initial, apiKeyEnv: 'DEEPSEEK_API_KEY' })
   const first = await ctx.web.search({ query: 'fixture query' })

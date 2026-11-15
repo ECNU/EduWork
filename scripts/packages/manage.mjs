@@ -3,7 +3,8 @@ import { execFileSync } from 'node:child_process'
 import { fileURLToPath } from 'node:url'
 import { resolve, join } from 'node:path'
 import { createHash } from 'node:crypto'
-import { packages, groups, selectPackage, changedGroups, needsProductBuild } from './catalog.mjs'
+import { packages, groups, selectPackage } from './catalog.mjs'
+import { selectChanges } from '../ci-changes.mjs'
 import { npm } from './npm.mjs'
 import { inspectArchive } from './archive.mjs'
 
@@ -13,17 +14,18 @@ const git = args => execFileSync('git', args, { cwd: root, encoding: 'utf8' }).t
 if (action === 'list') {
   console.log(JSON.stringify(packages, null, 2))
 } else if (action === 'changed' || action === 'product-changed') {
-  const files = id && !/^0+$/.test(id) ? git(['diff', '--name-only', `${id}...HEAD`]).split('\n') : git(['ls-files']).split('\n')
-  const selected = action === 'product-changed' ? needsProductBuild(files) : changedGroups(files)
+  const selection = selectChanges(root, process.env, id)
+  const selected = action === 'product-changed' ? selection.build : selection.groups
   const output = action === 'product-changed' ? 'build' : 'groups'
   if (process.env.GITHUB_OUTPUT) await appendFile(process.env.GITHUB_OUTPUT, `${output}=${JSON.stringify(selected)}\n`)
-  console.log(JSON.stringify(selected))
+  console.log(JSON.stringify(selection, null, 2))
 } else if (['install', 'check', 'pack'].includes(action)) {
   const selected = selectPackage(id)
   const cwd = join(root, 'packages', selected.group)
   if (action === 'install') npm(['ci'], { cwd, stdio: 'inherit' })
   if (action === 'check') {
     const scripts = {
+      'dsh-external-agents': ['check'],
       'dsh-decision': ['check'],
       'dsh-annotation': ['check'],
       'dsh-side-chat': ['check'],

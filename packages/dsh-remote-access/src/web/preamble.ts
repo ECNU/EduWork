@@ -2,11 +2,13 @@
  * Runs first in the DSH document inside the loader's iframe. It hands DSH's
  * client the carrier hooks it already supports, so RPCs and Gateway streams
  * travel this page's own tunnel (and so its own Host Peer). Apart from the
- * click of a download link (below), nothing global is replaced.
+ * click of a download link (below), nothing global is replaced; built-ins an
+ * older browser lacks are filled in first (fallbacks.ts).
  *
  * Values from the loader's realm are cloned into this one: DSH checks plain
  * objects by prototype, so a parent-realm object would read as malformed.
  */
+import './fallbacks.ts'
 import type { BridgeRequest, RemoteTunnel } from './bridge.ts'
 
 const tunnel = (parent as unknown as { remoteTunnel?: RemoteTunnel }).remoteTunnel
@@ -55,7 +57,7 @@ function dispositionName(header: string): string | undefined {
 }
 
 if (tunnel !== undefined) {
-  // The client plugin fits DSH's interface to a phone only on remote devices.
+  // The client plugin makes settings view only on remote devices.
   document.documentElement.setAttribute('data-eduwork-remote', '')
   Object.assign(globalThis, {
     __DSH_TRANSPORT__: {
