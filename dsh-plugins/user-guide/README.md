@@ -58,7 +58,20 @@
 
 ## 更新教程
 
-直接编辑 `guide/index.html`，随下一版客户端发布。截图放在 `guide/images/`，以相对路径引用；请先遮挡个人信息，宽度 2000 像素左右、WebP 格式，单张控制在 200 KB 以内。
+公版教程维护在 `guide/index.html`，截图放在 `guide/images/`。教程随客户端发布。
+
+发行版可以在自己的 `edition/distribution.json` 中指定一本 Markdown 指南。装配时生成离线首页，读者可以在页内切换到随包的通用教程。省略 `userGuide` 时，打开教程直接进入公版首页。
+
+```json
+{
+  "userGuide": {
+    "source": "docs/USER_GUIDE.md",
+    "sourceUrl": "https://github.com/example/edition/blob/main/docs/USER_GUIDE.md"
+  }
+}
+```
+
+一级标题作为书名，二级标题生成目录。正文支持 GitHub 风格的 Markdown 表格。相对文档链接按 `sourceUrl` 解析，在外部浏览器打开。用相对路径引用同仓的 PNG、JPEG 或 WebP 截图，构建时会嵌入页面供离线阅读。截图请先遮挡个人信息。
 
 ## 开发
 

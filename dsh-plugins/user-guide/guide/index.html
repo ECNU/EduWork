@@ -51,6 +51,12 @@ a:focus-visible, summary:focus-visible { outline: 2px solid var(--blue); outline
 .toc a { display: grid; grid-template-columns: 1.8em 1fr; color: var(--ink-soft); text-decoration: none; padding: 4px 8px; border-radius: 6px; }
 .toc a::before { content: counter(t); color: var(--ink-faint); font-family: var(--mono); font-size: 12px; padding-top: 1px; }
 .toc a:hover { background: var(--panel); color: var(--ink); }
+.toc .guide-switch { display: inline-block; margin-top: 1em; color: var(--blue); }
+.toc .guide-switch::before { content: none; }
+.edition-guide { max-width: var(--measure); }
+.edition-guide h1 { margin-bottom: .6em; }
+.edition-guide h2 { margin-top: 1.5em; }
+.edition-guide img { max-width: 100%; height: auto; }
 
 /* Masthead */
 .mast { border-bottom: 1px solid var(--rule); padding-bottom: 36px; margin-bottom: 8px; display: grid; gap: 14px; }

@@ -17,6 +17,7 @@ import { usePinnedBrowser } from './pinned-browser.mjs'
 import { withPluginNotifications } from './plugin-notification-contract.mjs'
 import { copyDshBundledSkills, resolveDshSkillChild } from './lib/dsh-skills.mjs'
 import { verifyPublishedPackageFiles } from './published-package-inputs.mjs'
+import { buildEditionUserGuide } from './build-edition-user-guide.mjs'
 
 const { values } = parseArgs({ options: Object.fromEntries(['product','edition','version','publisher-descriptors','channel','runtime-lock'].map(key=>[key,{type:'string'}])) })
 for(const key of ['product','version']) if(!values[key]) throw Error('Missing --'+key)
@@ -88,6 +89,7 @@ if(values.edition){
     await cp(join(edition,resource.source),join(product,'resources',resource.target),{recursive:true})
   }
   pluginNames.push(...entries.map(entry=>entry.name))
+  await buildEditionUserGuide(edition, distribution.userGuide, join(product,'d'))
   await save(join(product,'d/package.json'),runtime)
   await save(join(product,'composition.json'),composition)
 }

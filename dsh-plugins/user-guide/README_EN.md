@@ -58,7 +58,20 @@ Each locale has 26 fields.
 
 ## Updating the guide
 
-Edit `guide/index.html`; it ships with the next client. Put screenshots in `guide/images/` and reference them relatively; hide personal information first, about 2000 px wide, WebP, under 200 KB each.
+Edit the public guide in `guide/index.html` and keep its screenshots in `guide/images/`. The guide ships with the client.
+
+An edition can select its own Markdown handbook in `edition/distribution.json`. Assembly builds it as the offline landing page with a local link to the common guide. Editions that omit `userGuide` open the public guide directly.
+
+```json
+{
+  "userGuide": {
+    "source": "docs/USER_GUIDE.md",
+    "sourceUrl": "https://github.com/example/edition/blob/main/docs/USER_GUIDE.md"
+  }
+}
+```
+
+Use a level-one heading for the title and level-two headings for the contents. GitHub-style tables are supported. Relative document links resolve against `sourceUrl` and open in the external browser. Reference local PNG, JPEG or WebP screenshots by relative path. Assembly embeds them for offline reading. Redact personal information before adding screenshots.
 
 ## Development
 

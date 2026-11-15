@@ -32,7 +32,9 @@ export function resolveGuidePath(pathname, root = GUIDE_ROOT) {
 /** Writes data-theme on <html>; other values leave the page unchanged. */
 export function withTheme(body, theme) {
   if (theme !== 'light' && theme !== 'dark') return body
-  return Buffer.from(String(body).replace(/<html\b/i, `<html data-theme="${theme}"`))
+  return Buffer.from(String(body)
+    .replace(/<html\b/i, `<html data-theme="${theme}"`)
+    .replace(/href="\.\/(general|index)\.html"/g, `href="./$1.html?theme=${theme}"`))
 }
 
 /** The tour settings the client reads: product name, autoplay and localized copy overrides. */
