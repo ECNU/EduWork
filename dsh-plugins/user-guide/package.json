@@ -12,6 +12,7 @@
   "files": [
     "lib",
     "guide",
+    "locales",
     "README.md",
     "README_EN.md"
   ],

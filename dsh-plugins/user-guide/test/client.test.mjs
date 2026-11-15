@@ -33,11 +33,12 @@ function load() {
   return loaded
 }
 
-test('registers one account menu entry that opens the in-app guide', () => {
+test('registers one account menu entry that opens the in-app guide', async () => {
   const dom = fakeDom()
   const mod = load()
   const entries = []
   mod.apply({ configForms: { get: () => seenForm }, effect: () => {}, inject: (_deps, fn) => fn({ accountMenuEntries: { register: e => { entries.push(e); return () => {} } } }) })
+  await new Promise(setImmediate)
   assert.deepEqual(entries.map(e => e.id), ['eduwork-user-guide'])
   const button = entries[0].Component()
   assert.equal(dom.body.children.length, 0)
@@ -77,27 +78,35 @@ test('unloading the plugin closes an open guide', () => {
   assert.equal(dom.body.children.length, 0)
 })
 
-test('the application menu event opens the guide; unloading stops listening', () => {
+test('the application menu event opens the guide; unloading stops listening', async () => {
   const dom = fakeDom()
   const mod = load()
   const effects = []
   mod.apply({ configForms: { get: () => seenForm }, effect: fn => effects.push(fn()), inject: () => {} })
   window.fire('eduwork:open-user-guide')
+  await new Promise(setImmediate)
   assert.equal(dom.body.children.length, 1)
   for (const dispose of effects) dispose()
   assert.equal(dom.body.children.length, 0)
   window.fire('eduwork:open-user-guide')
+  await new Promise(setImmediate)
   assert.equal(dom.body.children.length, 0)
 })
 
 test('the panel title uses the distribution product name', async () => {
   const dom = fakeDom()
   const mod = load()
-  const settings = await mod.loadSettings(async () => ({ ok: true, json: async () => ({ productName: 'Campus AI' }) }))
-  assert.deepEqual(settings, { productName: 'Campus AI', autoStart: true, steps: [] })
-  assert.deepEqual(await mod.loadSettings(async () => { throw new Error('offline') }), { productName: 'EduWork', autoStart: true, steps: [] })
-  mod.openGuide()
-  assert.equal(dom.body.children[0].attrs['aria-label'], 'EduWork 使用教程')
+  const config = { productName: 'Campus AI', autoStart: false, copy: { 'zh-CN': { ui: { panelTitle: '{product} 指南', menuEntry: '指南' } } } }
+  globalThis.fetch = async () => ({ ok: true, json: async () => config })
+  const entries = []
+  mod.apply({ configForms: { get: () => seenForm }, effect() {}, inject: (_deps, fn) => fn({
+    accountMenuEntries: { register: e => { entries.push(e); return () => {} } },
+  }) })
+  window.fire('eduwork:open-user-guide')
+  await new Promise(setImmediate)
+  assert.equal(dom.body.children[0].attrs['aria-label'], 'Campus AI 指南')
+  assert.equal(entries[0].Component().args[3].args[2], '指南')
+  assert.deepEqual(await mod.loadSettings(async () => { throw new Error('offline') }), { productName: 'EduWork', autoStart: true, copy: {} })
   mod.closeGuide()
 })
 

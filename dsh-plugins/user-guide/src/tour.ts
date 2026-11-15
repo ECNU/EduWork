@@ -2,12 +2,12 @@
 // DSH class names change between builds, so targets are found by accessible labels and
 // button text. A step whose target is missing is centered and dims the whole window.
 
+import { guideCopy, type GuideCopy, type StepId } from './copy'
+
 export interface Rect { left: number; top: number; width: number; height: number }
 
 export interface TourStep {
-  id: string
-  title: [string, string]
-  body: [string, string]
+  id: StepId
   /** The element to highlight; null centers the card. */
   find?: (doc: Document) => Element | null
 }
@@ -43,29 +43,21 @@ export const composerInput = (doc: Document) =>
     .sort((a, b) => b.getBoundingClientRect().width - a.getBoundingClientRect().width)[0] ?? null
 const PERMISSIONS = ['仅可查看', '工作区内修改', '完全权限', 'Read Only', 'Workspace Write', 'Full access', 'Auto review']
 
-/** {product} in titles and bodies is replaced with the distribution's product name. */
+/** Step order and targets belong to the plugin; copy is selected separately by ID. */
 export const STEPS: TourStep[] = [
   {
     id: 'welcome',
-    title: ['欢迎使用 {product}', 'Welcome to {product}'],
-    body: ['花一分钟认识几个常用的地方。随时可以按 Esc 跳过。', 'Take a minute to see where things are. Press Esc to skip at any time.'],
   },
   {
     id: 'new-session',
-    title: ['新会话', 'New session'],
-    body: ['每个任务从这里开始。一个会话就是一段连续的对话，会记住其中的上下文。聊得太长会变慢，一个阶段做完就新开会话。', 'Start every task here. A session keeps its own conversation and context. Long sessions get slow; start a new one when a stage is done.'],
     find: doc => findByText(doc, 'button, a, [role="button"]', ['新会话', 'New Session'], inSidebar),
   },
   {
     id: 'workspaces',
-    title: ['工作区', 'Workspaces'],
-    body: ['工作区就是你电脑上的一个文件夹，{product} 只在其中读写文件。会话按创建时所在的文件夹分组。', 'A workspace is a folder on your computer; {product} reads and writes files only inside it. Sessions are grouped by the folder they started in.'],
     find: doc => findByText(doc, 'div, span, h2, h3, button', ['工作区', 'Workspaces'], inSidebar),
   },
   {
     id: 'composer',
-    title: ['说明你的任务', 'Describe the task'],
-    body: ['写清楚要做什么、相关文件在哪、怎样算完成。输入 @ 引用文件或对话，输入 / 调用指令和技能。', 'Say what to do, where the files are and what done looks like. Type @ to reference files or sessions, / for commands and skills.'],
     find: doc => {
       const input = composerInput(doc)
       return input ? growTo(input, input.getBoundingClientRect().width, 90) : null
@@ -73,8 +65,6 @@ export const STEPS: TourStep[] = [
   },
   {
     id: 'permission-model',
-    title: ['权限与模型', 'Permissions and model'],
-    body: ['左边决定它能做什么：「工作区内修改」可以新建、修改工作区里的文件，拿不准时就用它；「完全权限」能改工作区以外的文件和系统设置，要慎用。右边选择模型和推理等级。', 'On the left, choose what it may do: Workspace Write can create and edit files in the workspace and is the safe default; Full Access can change files outside it and system settings, so use it with care. On the right, pick the model and reasoning level.'],
     find: doc => {
       const permission = findByText(doc, 'button, [role="button"], [role="combobox"]', PERMISSIONS)
       const input = composerInput(doc)
@@ -84,51 +74,16 @@ export const STEPS: TourStep[] = [
   },
   {
     id: 'skills',
-    title: ['技能与插件', 'Skills and plugins'],
-    body: ['这里列出可用的技能和插件。技能会在需要时自动使用，也可以输入 / 手动调用。', 'Available skills and plugins are listed here. Skills are used when needed, or call them with /.'],
     find: doc => findByText(doc, 'button, a, [role="button"]', ['技能', 'Skills'], inSidebar),
   },
   {
     id: 'files',
-    title: ['文件栏', 'Files'],
-    body: ['点这里展开右侧栏，浏览工作区里的文件，点开即可预览生成的文档、表格和图片。', 'Open the right sidebar to browse the workspace and preview generated documents, sheets and images.'],
     find: doc => doc.querySelector('[aria-label="打开右侧边栏"], [aria-label="收起右侧边栏"], [aria-label="Open right sidebar"], [aria-label="Collapse right sidebar"]'),
   },
   {
     id: 'guide',
-    title: ['想了解更多？', 'Want to learn more?'],
-    body: ['《使用教程》介绍了常用功能和常见问题，以后可以在顶部「应用」菜单里随时打开。', 'The user guide covers common tasks and troubleshooting. Open it any time from the application menu.'],
   },
 ]
-
-export interface StepOverride {
-  id: string
-  title?: { zh?: string; en?: string }
-  body?: { zh?: string; en?: string }
-  selector?: string
-}
-
-const pair = (value: StepOverride['title'], fallback?: [string, string]): [string, string] =>
-  [value?.zh || fallback?.[0] || value?.en || '', value?.en || fallback?.[1] || value?.zh || '']
-
-/**
- * Builds the sequence from distribution settings: an empty list keeps the built-in steps;
- * otherwise the list replaces them in order. Built-in ids keep their target and copy
- * unless overridden; new steps need text and may name a CSS selector. {product} is filled in.
- */
-export function resolveSteps(overrides: StepOverride[] = [], product = 'EduWork', builtins: TourStep[] = STEPS): TourStep[] {
-  const fill = (p: [string, string]): [string, string] => [p[0].replaceAll('{product}', product), p[1].replaceAll('{product}', product)]
-  const byId = new Map(builtins.map(step => [step.id, step]))
-  const steps = !overrides.length ? builtins : overrides.flatMap((entry): TourStep[] => {
-    const base = byId.get(entry?.id)
-    const title = pair(entry?.title, base?.title), body = pair(entry?.body, base?.body)
-    if (!entry?.id || !title[0] || !body[0]) return []
-    const selector = entry.selector
-    const find = selector ? (doc: Document) => { try { return [...doc.querySelectorAll(selector)].find(visible) ?? null } catch { return null } } : base?.find
-    return [{ id: entry.id, title, body, ...find ? { find } : {} }]
-  })
-  return (steps.length ? steps : builtins).map(step => ({ ...step, title: fill(step.title), body: fill(step.body) }))
-}
 
 /** Spacing around the highlight. */
 export const PADDING = 6
@@ -154,11 +109,10 @@ export function placeCard(target: Rect | null, card: { width: number; height: nu
 }
 
 export interface TourOptions {
-  zh: boolean
+  copy?: GuideCopy
   onDone: (reason: 'finished' | 'skipped') => void
   onOpenGuide: () => void
   doc?: Document
-  steps?: TourStep[]
 }
 
 const ROOT_ID = 'eduwork-user-guide-tour'
@@ -167,9 +121,9 @@ export const tourRunning = () => stopCurrent !== null
 /** Closes a running tour without recording it as seen. */
 export function stopTour(): void { stopCurrent?.() }
 
-export function startTour({ zh, onDone, onOpenGuide, doc = document, steps = STEPS }: TourOptions): void {
+export function startTour({ copy = guideCopy('zh-CN'), onDone, onOpenGuide, doc = document }: TourOptions): void {
   if (doc.getElementById(ROOT_ID)) return
-  const L = (pair: [string, string]) => pair[zh ? 0 : 1]
+  const steps = STEPS
   const win = doc.defaultView ?? window
   const root = doc.createElement('div')
   root.id = ROOT_ID
@@ -202,10 +156,10 @@ export function startTour({ zh, onDone, onOpenGuide, doc = document, steps = STE
         : 'border:.5px solid var(--dsw-alias-border-l4,rgba(0,0,0,.2));background:transparent;color:inherit')
     return b
   }
-  const skip = button(zh ? '跳过' : 'Skip')
-  const back = button(zh ? '上一步' : 'Back')
-  const next = button(zh ? '下一步' : 'Next', true)
-  const guide = button(zh ? '打开使用教程' : 'Open user guide', true)
+  const skip = button(copy.ui.skip)
+  const back = button(copy.ui.back)
+  const next = button(copy.ui.next, true)
+  const guide = button(copy.ui.openGuide, true)
   foot.append(count, skip, back, next, guide)
   card.append(title, body, foot)
   root.append(hole, card)
@@ -234,12 +188,12 @@ export function startTour({ zh, onDone, onOpenGuide, doc = document, steps = STE
   const render = () => {
     const step = steps[index]
     const last = index === steps.length - 1
-    title.textContent = L(step.title)
-    body.textContent = L(step.body)
-    card.setAttribute('aria-label', L(step.title))
-    count.textContent = `${index + 1} / ${steps.length}`
+    title.textContent = copy.steps[step.id].title
+    body.textContent = copy.steps[step.id].body
+    card.setAttribute('aria-label', copy.steps[step.id].title)
+    count.textContent = copy.ui.progress.replaceAll('{current}', String(index + 1)).replaceAll('{total}', String(steps.length))
     back.hidden = index === 0
-    next.textContent = last ? (zh ? '完成' : 'Done') : (zh ? '下一步' : 'Next')
+    next.textContent = last ? copy.ui.done : copy.ui.next
     // On the last step Done turns secondary so Open user guide stands out.
     next.style.background = last ? 'transparent' : 'var(--dsw-alias-state-business-primary,#4176e6)'
     next.style.color = last ? 'inherit' : 'var(--dsw-alias-bg-base,#fff)'

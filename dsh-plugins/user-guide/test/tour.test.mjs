@@ -68,7 +68,14 @@ test('targets are found by exact visible text, preferring the topmost match', ()
 test('eight steps with Chinese and English copy; the last one leads to the guide', () => {
   const mod = load(fakeDocument())
   assert.equal(mod.STEPS.length, 8)
-  for (const step of mod.STEPS) for (const pair of [step.title, step.body]) assert.ok(pair[0] && pair[1], step.id)
+  const ids = mod.STEPS.map(step => step.id)
+  for (const locale of ['zh-CN', 'en']) {
+    const defaults = JSON.parse(readFileSync(new URL(`../locales/${locale}.json`, import.meta.url)))
+    assert.deepEqual(Object.keys(defaults.steps), ids)
+    for (const row of Object.values(defaults.steps)) assert.ok(row.title.trim() && row.body.trim())
+    assert.deepEqual(Object.keys(defaults.ui).sort(), Object.keys(mod.guideCopy('en').ui).sort())
+    assert.ok(Object.values(defaults.ui).every(text => text.trim()))
+  }
   assert.equal(mod.STEPS[0].find, undefined)
   assert.equal(mod.STEPS.at(-1).id, 'guide')
 })
@@ -77,7 +84,7 @@ test('walking through to the end offers the guide and records completion', () =>
   const doc = fakeDocument()
   const mod = load(doc)
   const done = []; let opened = 0
-  mod.startTour({ zh: true, doc, steps: mod.resolveSteps([], 'EduWork'), onDone: r => done.push(r), onOpenGuide: () => { opened++ } })
+  mod.startTour({ copy: mod.guideCopy('zh-CN'), doc, onDone: r => done.push(r), onOpenGuide: () => { opened++ } })
   const root = doc.body.children[0]
   const [, card] = root.children
   const [title, , foot] = card.children
@@ -94,13 +101,13 @@ test('Escape skips, arrows move, and unloading neither records nor opens anythin
   const doc = fakeDocument()
   const mod = load(doc)
   const done = []
-  mod.startTour({ zh: false, doc, onDone: r => done.push(r), onOpenGuide: assert.fail })
+  mod.startTour({ copy: mod.guideCopy('en'), doc, onDone: r => done.push(r), onOpenGuide: assert.fail })
   const count = doc.body.children[0].children[1].children[2].children[0]
   doc.key('ArrowRight'); doc.key('ArrowRight'); doc.key('ArrowLeft')
   assert.equal(count.textContent, '2 / 8')
   doc.key('Escape')
   assert.deepEqual(done, ['skipped'])
-  mod.startTour({ zh: false, doc, onDone: r => done.push(r), onOpenGuide: assert.fail })
+  mod.startTour({ copy: mod.guideCopy('en'), doc, onDone: r => done.push(r), onOpenGuide: assert.fail })
   mod.stopTour()
   assert.deepEqual(done, ['skipped']); assert.equal(doc.body.children.length, 0)
 })
@@ -126,24 +133,28 @@ test('the first-run tour starts once the workbench is ready, never before settin
   }
 })
 
-test('distributions replace, reword and add steps; the product name is filled in', () => {
+test('one localized field inherits every other field and keeps the eight built-in targets', () => {
   const doc = fakeDocument()
   const mod = load(doc)
-  const builtin = mod.resolveSteps([], 'Campus AI')
-  assert.equal(builtin[0].title[0], '欢迎使用 Campus AI'); assert.match(builtin[2].body[1], /Campus AI reads/)
-  const steps = mod.resolveSteps([
-    { id: 'welcome', title: { zh: '你好，{product}' } },
-    { id: 'quota', title: { zh: '用量', en: 'Quota' }, body: { zh: '这里看剩余用量。', en: 'Remaining quota.' }, selector: '[data-quota]' },
-    { id: 'broken' },
-    { id: 'guide' },
-  ], 'Campus AI')
-  assert.deepEqual(steps.map(s => s.id), ['welcome', 'quota', 'guide'])
-  assert.deepEqual(steps[0].title, ['你好，Campus AI', 'Welcome to Campus AI'])
-  const target = Object.assign(makeEl('div', doc), { rect: { left: 10, top: 10, width: 50, height: 20 } })
+  const base = mod.guideCopy('zh-CN', {}, 'Campus $&')
+  const copy = { 'zh-CN': { steps: { 'new-session': { body: '由{product}打开工作区。' } } } }
+  const expected = structuredClone(base)
+  expected.steps['new-session'].body = '由Campus $&打开工作区。'
+  assert.deepEqual(mod.guideCopy('zh-CN', copy, 'Campus $&'), expected)
+  assert.deepEqual(mod.guideCopy('en', copy), mod.guideCopy('en'))
+  assert.deepEqual(mod.guideCopy('zh-CN', { 'zh-CN': { steps: {
+    welcome: { title: '  ', body: null }, unknown: { title: 'extra' } }, ui: { back: 4 } } }), mod.guideCopy('zh-CN'))
+  const target = Object.assign(makeEl('button', doc), { textContent: '新会话', rect: { left: 10, top: 10, width: 50, height: 20 } })
   doc.nodes.push(target)
-  assert.equal(steps[1].find(doc), target)
-  assert.equal(steps[2].find, undefined)
-  assert.equal(mod.resolveSteps([{ id: 'broken' }]).length, 8, 'an unusable list falls back to the built-in steps')
-  const bad = mod.resolveSteps([{ id: 'x', title: { en: 'X' }, body: { en: 'Y' }, selector: '[' }])
-  assert.equal(bad[0].find({ querySelectorAll() { throw new SyntaxError('bad') } }), null)
+  assert.equal(mod.STEPS[1].find(doc), target)
+  const resolved = mod.guideCopy('zh-CN', { 'zh-CN': { steps: copy['zh-CN'].steps, ui: { next: '继续', progress: '{current}／{total}' } } }, 'Campus $&')
+  mod.startTour({ copy: resolved, doc, onDone() {}, onOpenGuide() {} })
+  const [title, body, foot] = doc.body.children[0].children[1].children
+  const [count, , , next] = foot.children
+  assert.equal(next.textContent, '继续')
+  next.click()
+  assert.equal(count.textContent, '2／8')
+  assert.equal(title.textContent, base.steps['new-session'].title)
+  assert.equal(body.textContent, expected.steps['new-session'].body)
+  mod.stopTour()
 })

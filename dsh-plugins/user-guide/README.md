@@ -22,23 +22,39 @@
 
 ## 发行版配置
 
-插件条目 `eduwork-user-guide` 的配置：
+在发行版装配配置中覆盖 `eduwork-user-guide` 条目。公版默认文案存放在 [简体中文](locales/zh-CN.json) 和 [English](locales/en.json) 资源中。
 
-| 字段 | 默认 | 说明 |
+| 字段 | 默认 | 用途 |
 | --- | --- | --- |
-| `productName` | `EduWork` | 面板标题与引导文案中的产品名（文案里的 `{product}`） |
-| `autoStart` | `true` | 为 `false` 时不自动播放，仍可从教程面板重看 |
-| `steps` | `[]` | 非空时按顺序替换内置步骤，见下 |
+| `productName` | `EduWork` | 替换文案中的 `{product}` |
+| `autoStart` | `true` | 首次进入是否自动播放；教程面板可手动重播 |
+| `copy` | `{}` | 按语言、步骤 ID 和字段覆盖公版文案 |
 
-`steps` 每项为 `{ id, title: { zh, en }, body: { zh, en }, selector }`。`id` 与内置步骤相同时沿用其目标和文案，只覆盖给出的字段；新 `id` 必须给出标题与正文，`selector` 为要挖亮元素的 CSS 选择器，省略时居中显示。无效条目被跳过，全部无效时回到内置步骤。最后一步始终提供「打开使用教程」。
+只修改「新会话」的中文说明时，发行版的配置如下。
 
 ```json
-{ "id": "eduwork-user-guide", "config": { "productName": "示例助手", "steps": [
-  { "id": "welcome" }, { "id": "new-session" }, { "id": "composer" },
-  { "id": "quota", "title": { "zh": "用量", "en": "Usage" }, "body": { "zh": "在这里查看剩余用量。", "en": "Check remaining usage here." }, "selector": "[data-example-usage]" },
-  { "id": "guide" }
-] } }
+{
+  "id": "eduwork-user-guide",
+  "config": {
+    "copy": {
+      "zh-CN": {
+        "steps": {
+          "new-session": {
+            "body": "在新会话中开始一项校园任务。"
+          }
+        }
+      }
+    }
+  }
+}
 ```
+
+未填写、空白或无效的字段回退到同语言的公版文案。步骤的顺序、定位、跳过与重播由插件管理；只改文案会保留用户的已读状态。
+
+每种语言有 26 个字段。
+
+- `steps` 包含 8 个步骤，每步有 `title` 和 `body`。
+- `ui` 包含 5 个引导按钮、进度格式、面板标题、关闭、重播和账户菜单入口。进度格式用 `{current}` 和 `{total}` 表示当前步数和总步数。
 
 ## 更新教程
 
@@ -46,4 +62,4 @@
 
 ## 开发
 
-`lib/client.js` 由 `src/client.ts` 生成并提交，产品装配时由 `prepare-pinned-dsh-product.mjs` 按固定设置重新编译。测试：`node --test test/*.test.mjs`。
+`lib/client.js` 由 `src/client.ts` 生成并提交，产品装配时由 `build-pinned-dsh-plugin-clients.mjs` 按固定设置重新编译。测试：`node --test test/*.test.mjs`。

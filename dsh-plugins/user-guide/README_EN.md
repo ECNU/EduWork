@@ -22,15 +22,39 @@ It coexists with the upstream welcome notice that `brand-settings-native` writes
 
 ## Distribution settings
 
-Configuration of the `eduwork-user-guide` entry:
+Override the `eduwork-user-guide` entry in the distribution configuration. The default texts live in the [Simplified Chinese](locales/zh-CN.json) and [English](locales/en.json) catalogs.
 
-| Field | Default | Meaning |
+| Field | Default | Purpose |
 | --- | --- | --- |
-| `productName` | `EduWork` | Product name in the panel title and tour copy (`{product}`) |
-| `autoStart` | `true` | `false` disables autoplay; the tour can still be replayed |
-| `steps` | `[]` | When non-empty, replaces the built-in steps in order |
+| `productName` | `EduWork` | Substituted for `{product}` in the copy |
+| `autoStart` | `true` | Start automatically on first use; the guide panel also allows manual replay |
+| `copy` | `{}` | Override individual fields by locale and step ID |
 
-Each step is `{ id, title: { zh, en }, body: { zh, en }, selector }`. A built-in `id` keeps its target and copy and overrides only the given fields; a new `id` needs a title and body, and `selector` is the CSS selector of the element to highlight (centered when omitted). Invalid entries are skipped; if none is usable the built-in steps are used. The last step always offers **Open user guide**.
+A distribution that changes only the Chinese explanation for the new-session step can use this configuration.
+
+```json
+{
+  "id": "eduwork-user-guide",
+  "config": {
+    "copy": {
+      "zh-CN": {
+        "steps": {
+          "new-session": {
+            "body": "在新会话中开始一项校园任务。"
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+Missing, blank or invalid fields use the public default in the same language. The plugin owns step order, targets, navigation and replay. Updating copy preserves the user's first-run completion state.
+
+Each locale has 26 fields.
+
+- `steps` contains a `title` and `body` for each of the eight steps.
+- `ui` contains five tour button labels, the progress format, the panel title, Close, Replay and the account menu entry. The progress format accepts `{current}` and `{total}`.
 
 ## Updating the guide
 
@@ -38,4 +62,4 @@ Edit `guide/index.html`; it ships with the next client. Put screenshots in `guid
 
 ## Development
 
-`lib/client.js` is generated from `src/client.ts` and committed; product assembly rebuilds it with `prepare-pinned-dsh-product.mjs`. Tests: `node --test test/*.test.mjs`.
+`lib/client.js` is generated from `src/client.ts` and committed; product assembly rebuilds it with `build-pinned-dsh-plugin-clients.mjs`. Tests: `node --test test/*.test.mjs`.

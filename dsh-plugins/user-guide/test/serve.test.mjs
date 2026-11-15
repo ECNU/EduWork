@@ -54,10 +54,10 @@ test('tour.json reports the distribution settings with defaults', async () => {
     const res = { writeHead(status, headers = {}) { this.status = status; this.headers = headers }, end(body) { this.body = body; resolve(this) } }
     createGuideHandler({ tour })({ url: ROUTE + '/tour.json', method }, res)
   })
-  const page = await call2(() => tourSettings({ productName: 'Campus AI', autoStart: false, steps: [{ id: 'welcome' }] }))
+  const page = await call2(() => tourSettings({ productName: 'Campus AI', autoStart: false, copy: { 'zh-CN': { steps: { 'new-session': { body: '学校文案' } } } } }))
   assert.equal(page.status, 200)
   assert.match(page.headers['Content-Type'], /application\/json/)
-  assert.deepEqual(JSON.parse(page.body), { productName: 'Campus AI', autoStart: false, steps: [{ id: 'welcome' }] })
-  assert.deepEqual(tourSettings(), { productName: 'EduWork', autoStart: true, steps: [] })
+  assert.deepEqual(JSON.parse(page.body), { productName: 'Campus AI', autoStart: false, copy: { 'zh-CN': { steps: { 'new-session': { body: '学校文案' } } } } })
+  assert.deepEqual(tourSettings(), { productName: 'EduWork', autoStart: true, copy: {} })
   assert.equal((await call2(() => ({}), 'POST')).status, 405)
 })

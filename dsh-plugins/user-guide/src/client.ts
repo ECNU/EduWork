@@ -3,7 +3,8 @@
 // first-run tour once. The panel is plain DOM on <body> so it outlives the menu that opened it.
 
 import { createElement } from 'react'
-import { composerInput, resolveSteps, startTour, stopTour, tourRunning, type StepOverride } from './tour'
+import { composerInput, startTour, stopTour, tourRunning } from './tour'
+import { guideCopy, type CopyOverrides } from './copy'
 
 export const inject = ['configForms']
 
@@ -15,12 +16,15 @@ export const OPEN_EVENT = 'eduwork:open-user-guide'
 const PANEL_ID = 'eduwork-user-guide-panel'
 const h = createElement
 
-export interface TourSettings { productName: string; autoStart: boolean; steps: StepOverride[] }
-const DEFAULTS: TourSettings = { productName: 'EduWork', autoStart: true, steps: [] }
+export interface TourSettings { productName: string; autoStart: boolean; copy: CopyOverrides }
+const DEFAULTS: TourSettings = { productName: 'EduWork', autoStart: true, copy: {} }
 let settings: TourSettings = DEFAULTS
 
 /** Follows <html lang>, like the rest of the client. */
-const uiZh = () => String(document.documentElement.lang || navigator.language || 'zh').toLowerCase().startsWith('zh')
+function currentCopy() {
+  const lang = document.documentElement.lang || navigator.language || 'zh'
+  return guideCopy(lang.toLowerCase().startsWith('zh') ? 'zh-CN' : 'en', settings.copy, settings.productName)
+}
 
 const BOOK = 'M4 5.5A2.5 2.5 0 0 1 6.5 3H20v15H6.5A2.5 2.5 0 0 0 4 20.5zM4 20.5A2.5 2.5 0 0 0 6.5 23H20v-5M8 7h8M8 11h6'
 const SVG = (d: string) => `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="${d}"/></svg>`
@@ -35,9 +39,9 @@ const appDark = () => document.body?.hasAttribute?.('data-ds-dark-theme') === tr
 
 export function openGuide(): void {
   if (document.getElementById(PANEL_ID)) return
-  const zh = uiZh()
+  const { ui } = currentCopy()
   const dark = appDark()
-  const title = zh ? `${settings.productName} 使用教程` : `${settings.productName} user guide`
+  const title = ui.panelTitle
   const mask = document.createElement('div')
   mask.id = PANEL_ID
   mask.setAttribute('role', 'dialog')
@@ -58,12 +62,12 @@ export function openGuide(): void {
   label.textContent = title
   const close = document.createElement('button')
   close.type = 'button'
-  close.setAttribute('aria-label', zh ? '关闭' : 'Close')
+  close.setAttribute('aria-label', ui.close)
   close.style.cssText = 'width:32px;height:32px;display:grid;place-items:center;border:none;border-radius:8px;background:transparent;color:inherit;cursor:pointer'
   close.innerHTML = SVG('M6 6l12 12M18 6L6 18')
   const replay = document.createElement('button')
   replay.type = 'button'
-  replay.textContent = zh ? '重新播放引导' : 'Replay tour'
+  replay.textContent = ui.replay
   replay.style.cssText = 'font:inherit;font-size:13px;padding:4px 10px;border-radius:8px;border:.5px solid var(--dsw-alias-border-l4,rgba(0,0,0,.2));background:transparent;color:inherit;cursor:pointer'
   replay.addEventListener('click', () => { dismiss(); replayTour?.() })
   bar.append(label, replay, close)
@@ -109,7 +113,7 @@ export function GuideEntry() {
     },
     onMouseEnter: (e: any) => { e.currentTarget.style.background = hover },
     onMouseLeave: (e: any) => { e.currentTarget.style.background = 'transparent' },
-  }, h('span', { 'aria-hidden': true, style: { display: 'flex' }, dangerouslySetInnerHTML: { __html: SVG(BOOK) } }), h('span', { style: { flex: 1 } }, uiZh() ? '使用教程' : 'User guide'))
+  }, h('span', { 'aria-hidden': true, style: { display: 'flex' }, dangerouslySetInnerHTML: { __html: SVG(BOOK) } }), h('span', { style: { flex: 1 } }, currentCopy().ui.menuEntry))
 }
 
 interface GuideForm {
@@ -159,8 +163,7 @@ export function watchFirstRun(form: GuideForm, { delay = 1200, enabled = () => s
 
 export function runTour(form: GuideForm): void {
   startTour({
-    zh: uiZh(),
-    steps: resolveSteps(settings.steps, settings.productName),
+    copy: currentCopy(),
     onDone: () => { void form.set('tourSeen', true).catch(() => {}) },
     onOpenGuide: () => openGuide(),
   })
@@ -174,7 +177,7 @@ export async function loadSettings(fetcher: typeof fetch = fetch): Promise<TourS
     return {
       productName: typeof value?.productName === 'string' && value.productName ? value.productName : DEFAULTS.productName,
       autoStart: value?.autoStart !== false,
-      steps: Array.isArray(value?.steps) ? value.steps : [],
+      copy: value?.copy ?? {},
     }
   } catch { return DEFAULTS }
 }
@@ -184,16 +187,25 @@ export function apply(ctx: any): void {
   replayTour = () => runTour(form)
   let stopWatching = () => {}
   let active = true
-  void loadSettings().then(value => { settings = value; if (active) stopWatching = watchFirstRun(form) })
+  const ready = loadSettings().then(value => {
+    if (!active) return
+    settings = value
+    stopWatching = watchFirstRun(form)
+  })
   ctx.effect(() => () => { active = false; stopWatching(); stopTour(); replayTour = null }, 'eduwork-user-guide: first-run tour')
-  const fromMenu = () => openGuide()
+  const fromMenu = () => { void ready.then(() => { if (active) openGuide() }) }
   window.addEventListener(OPEN_EVENT, fromMenu)
   ctx.effect(() => () => { window.removeEventListener(OPEN_EVENT, fromMenu); closeGuide() }, 'eduwork-user-guide: application menu')
   // Optional: only distributions that provide an account menu service get this entry.
   ctx.inject(['accountMenuEntries'], (scope: any) => {
-    const unregister = scope.accountMenuEntries.register({ id: PLUGIN_ID, Component: GuideEntry })
-    return () => { unregister(); closeGuide() }
+    let subscribed = true
+    let unregister: (() => void) | undefined
+    void ready.then(() => {
+      if (active && subscribed) unregister = scope.accountMenuEntries.register({ id: PLUGIN_ID, Component: GuideEntry })
+    })
+    return () => { subscribed = false; unregister?.(); closeGuide() }
   })
 }
 
-export { STEPS, findByText, placeCard, resolveSteps, startTour, stopTour } from './tour'
+export { STEPS, findByText, placeCard, startTour, stopTour } from './tour'
+export { guideCopy } from './copy'

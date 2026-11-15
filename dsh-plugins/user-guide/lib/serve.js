@@ -35,12 +35,12 @@ export function withTheme(body, theme) {
   return Buffer.from(String(body).replace(/<html\b/i, `<html data-theme="${theme}"`))
 }
 
-/** The tour settings the client reads: product name, autoplay and step overrides. */
+/** The tour settings the client reads: product name, autoplay and localized copy overrides. */
 export const TOUR_PATH = ROUTE + '/tour.json'
 
 /** The part of the configuration the client needs; tourSeen travels through the settings form. */
 export function tourSettings(config = {}) {
-  return { productName: config.productName || 'EduWork', autoStart: config.autoStart !== false, steps: Array.isArray(config.steps) ? config.steps : [] }
+  return { productName: config.productName || 'EduWork', autoStart: config.autoStart !== false, copy: config.copy ?? {} }
 }
 
 /** GET/HEAD serve files and tour.json; anything else is 404/405. */
